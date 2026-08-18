@@ -5,7 +5,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- ── WHAT THIS ESTABLISHES ───────────────────────────────────────────────────────────────────────
---   The seven static-world tables of docs/DESIGN.md Appendix 1, cut to the V0 scope of §K.1, with
+--   The eight static-world tables of docs/DESIGN.md Appendix 1, cut to the V0 scope of §K.1, with
 --   RLS on and read-only access for signed-in players. They are seeded by 0003, never by a client.
 --
 --   And `voyage.gc_distance_nm(lat1, lon1, lat2, lon2)` — the haversine of DESIGN §B.3, IMMUTABLE,
@@ -20,9 +20,9 @@
 --   walks the table in both directions from these single rows.
 --
 -- ── WHAT IT SELF-ASSERTS ────────────────────────────────────────────────────────────────────────
---   * All seven tables exist, RLS is ENABLED on all seven, and each carries exactly one SELECT
+--   * All eight tables exist, RLS is ENABLED on all eight, and each carries exactly one SELECT
 --     policy (a table with RLS on and no policy is invisible; a table with two is ambiguous).
---   * `authenticated` holds SELECT on all seven and `client_write_grants()` is still zero.
+--   * `authenticated` holds SELECT on all eight and `client_write_grants()` is still zero.
 --   * gc_distance_nm reproduces the DESIGN §B.3 worked figure Lisboa→Cádiz = 188 nm to within
 --     0.05 nm, is zero for a point against itself, and is symmetric — plus a NEGATIVE control
 --     proving a different pair yields a different number, so "188" cannot be a stuck constant.
@@ -134,6 +134,17 @@ comment on column public.goods.culture_mask is
   'DESIGN B.4/G.3: cultures that will NOT trade this good (wine and pork in Islamic-culture ports). '
   'Empty array = traded everywhere.';
 
+create table if not exists public.port_specialties (
+  port_id uuid not null references public.ports(id) on delete cascade,
+  good_id uuid not null references public.goods(id) on delete cascade,
+  primary key (port_id, good_id)
+);
+comment on table public.port_specialties is
+  'What a harbour is KNOWN FOR — the goods it actually dealt in, from data/ports.json. This is the '
+  'authored input to the price gradient: 0005 derives every (port, good) affinity from how far the '
+  'port is from the nearest place that produces the good, so ONE editorial fact (who produces what) '
+  'decides fifteen thousand prices instead of a matrix nobody could check.';
+
 create table if not exists public.ship_classes (
   id            uuid primary key default gen_random_uuid(),
   code          text not null unique,
@@ -160,6 +171,7 @@ alter table public.regions      enable row level security;
 alter table public.ports        enable row level security;
 alter table public.legs         enable row level security;
 alter table public.goods        enable row level security;
+alter table public.port_specialties enable row level security;
 alter table public.ship_classes enable row level security;
 
 create policy nations_read      on public.nations      for select to authenticated using (true);
@@ -168,10 +180,11 @@ create policy regions_read      on public.regions      for select to authenticat
 create policy ports_read        on public.ports        for select to authenticated using (true);
 create policy legs_read         on public.legs         for select to authenticated using (true);
 create policy goods_read        on public.goods        for select to authenticated using (true);
+create policy port_specialties_read on public.port_specialties for select to authenticated using (true);
 create policy ship_classes_read on public.ship_classes for select to authenticated using (true);
 
 grant select on public.nations, public.seas, public.regions, public.ports,
-                public.legs, public.goods, public.ship_classes
+                public.legs, public.goods, public.port_specialties, public.ship_classes
   to authenticated;
 
 grant execute on function voyage.gc_distance_nm(double precision, double precision, double precision, double precision)
@@ -180,7 +193,8 @@ grant execute on function voyage.gc_distance_nm(double precision, double precisi
 -- ── SELF-ASSERT ────────────────────────────────────────────────────────────────────────────────
 do $$
 declare
-  v_tables constant text[] := array['nations','seas','regions','ports','legs','goods','ship_classes'];
+  v_tables constant text[] := array['nations','seas','regions','ports','legs','goods','port_specialties','ship_classes'];
+  v_count  constant int    := 8;
   v_n        int;
   v_d_lis_cad double precision;
   v_d_self    double precision;
@@ -191,8 +205,8 @@ begin
   select count(*) into v_n
     from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
    where ns.nspname = 'public' and c.relkind = 'r' and c.relname = any(v_tables);
-  if v_n <> 7 then
-    raise exception '0002 self-assert FAIL: % of 7 static-world tables exist', v_n;
+  if v_n <> v_count then
+    raise exception '0002 self-assert FAIL: % of % static-world tables exist', v_n, v_count;
   end if;
 
   -- (b) RLS is ON on all seven. A table with RLS off is readable and writable by anyone the
@@ -200,16 +214,16 @@ begin
   select count(*) into v_n
     from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
    where ns.nspname = 'public' and c.relname = any(v_tables) and c.relrowsecurity;
-  if v_n <> 7 then
-    raise exception '0002 self-assert FAIL: RLS is enabled on only % of 7 static-world tables', v_n;
+  if v_n <> v_count then
+    raise exception '0002 self-assert FAIL: RLS is enabled on only % of % static-world tables', v_n, v_count;
   end if;
 
   -- (c) Exactly one SELECT policy each — no more (ambiguous), no fewer (invisible).
   select count(*) into v_n
     from pg_policies p
    where p.schemaname = 'public' and p.tablename = any(v_tables) and p.cmd = 'SELECT';
-  if v_n <> 7 then
-    raise exception '0002 self-assert FAIL: % SELECT policies across the 7 static-world tables, expected exactly 7', v_n;
+  if v_n <> v_count then
+    raise exception '0002 self-assert FAIL: % SELECT policies across the % static-world tables, expected exactly one each', v_n, v_count;
   end if;
 
   -- (d) authenticated can read all seven.
@@ -217,8 +231,8 @@ begin
     from information_schema.role_table_grants g
    where g.table_schema = 'public' and g.table_name = any(v_tables)
      and g.grantee = 'authenticated' and g.privilege_type = 'SELECT';
-  if v_n <> 7 then
-    raise exception '0002 self-assert FAIL: authenticated holds SELECT on only % of 7 static-world tables', v_n;
+  if v_n <> v_count then
+    raise exception '0002 self-assert FAIL: authenticated holds SELECT on only % of % static-world tables', v_n, v_count;
   end if;
 
   -- (e) The 0001 lockdown still holds after seven CREATE TABLEs. This is the exact moment the
@@ -248,6 +262,6 @@ begin
     raise exception '0002 self-assert FAIL: gc_distance_nm(Ceuta, Tunis) = %, DESIGN B.3 says 751 nm', v_d_other;
   end if;
 
-  raise notice '0002 self-assert ok: 7 static-world tables, RLS on all 7 with exactly 7 SELECT policies, authenticated reads all 7, 0 client write grants; gc_distance_nm gives Lisboa-Cádiz % nm and Ceuta-Tunis % nm (DESIGN B.3: 188 and 751), is 0 on identity and symmetric',
+  raise notice '0002 self-assert ok: 8 static-world tables, RLS on all 8 with exactly 8 SELECT policies, authenticated reads all 8, 0 client write grants; gc_distance_nm gives Lisboa-Cádiz % nm and Ceuta-Tunis % nm (DESIGN B.3: 188 and 751), is 0 on identity and symmetric',
     round(v_d_lis_cad::numeric, 2), round(v_d_other::numeric, 2);
 end $$;

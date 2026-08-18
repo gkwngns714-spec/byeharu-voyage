@@ -38,8 +38,10 @@
 --   * rng_raw is structurally IMMUTABLE (provolatile = 'i'), repeats exactly, and decorrelates
 --     across day / stream / voyage; 2,000 samples stay inside [0,1) with a mean near 0.5.
 --   * progress is 0 at departure, monotonic, and exactly total_nm at the ETA and after it.
---   * DESIGN §K.1's own quoted numbers come back out: the starter Barca on Lisboa→Cádiz takes
---     1.6 voyage-days and about 4.7 real minutes over 188 nm.
+--   * THE TIME MODEL closes on itself on the world's own leg: voyage-days = nm / knots / 24 and
+--     real minutes = voyage-days / time_compression. (DESIGN §K.1 quotes 188 nm for Lisboa→Cádiz;
+--     that is the straight line, and the sailed leg round Cape St Vincent is ~248 nm. The rule is
+--     asserted, not the quotation — see 0003's header.)
 --   * voyage_events is unique on (voyage_id, day_index) — the idempotency guarantee for settle()
 --     — proven by a REJECTED duplicate insert, not by reading the DDL.
 --   * A fleet cannot hold two SAILING voyages at once — proven by a REJECTED second insert.
@@ -144,31 +146,126 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
-  v_nodes uuid[];
+  v_ids    uuid[];
+  v_start  int[];     -- v_start[u] = first index in the edge arrays belonging to node u
+  v_deg    int[];
+  v_to     int[];
+  v_nm     numeric[];
+  v_dist   numeric[];
+  v_prev   int[];
+  v_done   boolean[];
+  v_n      int;
+  v_e      int;
+  v_src    int;
+  v_dst    int;
+  v_u      int;
+  v_v      int;
+  v_best   numeric;
+  v_alt    numeric;
+  v_i      int;
+  v_nodes  uuid[];
+  INF      constant numeric := 1e18;
 begin
   if p_from = p_to then
     return array[p_from];
   end if;
 
-  -- The V0 graph is 12 nodes and 22 undirected edges, so enumerating simple paths and taking the
-  -- cheapest is exact and cheap. `legs` is walked in BOTH directions from its single canonical row
-  -- (0002): one stored distance, never two that could drift.
-  with recursive walk(node, nodes, nm) as (
-      select p_from, array[p_from], 0::numeric
+  -- DIJKSTRA. The first version of this function enumerated every simple path and took the
+  -- cheapest, which is exact and instant on the twelve-port world it was written for — and took
+  -- THIRTY MINUTES on the real one (214 ports, 782 legs), because the number of simple paths in a
+  -- graph of mean degree seven is astronomical. Measured, not guessed: 0006 applied in 1,811
+  -- seconds. This is the same answer computed properly, in milliseconds.
+  --
+  -- The graph is small enough that the classic O(n²) form — scan for the nearest unvisited node,
+  -- relax its edges — beats maintaining a heap in plpgsql. Edges are laid out sorted by their
+  -- source with a start index per node, so relaxing a node touches only its own ~7 edges.
+  select array_agg(p.id order by p.id) into v_ids from public.ports p;
+  v_n := coalesce(array_length(v_ids, 1), 0);
+  v_src := array_position(v_ids, p_from);
+  v_dst := array_position(v_ids, p_to);
+  if v_src is null or v_dst is null then
+    return null;                   -- a port outside the graph: the caller raises E_NO_ROUTE
+  end if;
+
+  -- Both directions from each stored row: the leg table is undirected and stored once (0002).
+  select array_agg(e.b order by e.a, e.b), array_agg(e.nm order by e.a, e.b)
+    into v_to, v_nm
+    from (
+      select array_position(v_ids, l.from_port_id) as a,
+             array_position(v_ids, l.to_port_id)   as b,
+             l.distance_nm                          as nm
+        from public.legs l
+      union all
+      select array_position(v_ids, l.to_port_id),
+             array_position(v_ids, l.from_port_id),
+             l.distance_nm
+        from public.legs l
+    ) e;
+  v_e := coalesce(array_length(v_to, 1), 0);
+  if v_e = 0 then
+    return null;
+  end if;
+
+  -- Degrees, then a running start index — one pass each, no per-node query.
+  v_deg := array_fill(0, array[v_n]);
+  select array_agg(cnt order by a) into v_deg from (
+    select a, count(*)::int as cnt from (
+      select array_position(v_ids, l.from_port_id) as a from public.legs l
+      union all
+      select array_position(v_ids, l.to_port_id) from public.legs l
+    ) x group by a
     union all
-      select case when l.from_port_id = w.node then l.to_port_id else l.from_port_id end,
-             w.nodes || (case when l.from_port_id = w.node then l.to_port_id else l.from_port_id end),
-             w.nm + l.distance_nm
-        from walk w
-        join public.legs l on l.from_port_id = w.node or l.to_port_id = w.node
-       where not (case when l.from_port_id = w.node then l.to_port_id else l.from_port_id end)
-                 = any(w.nodes)
-         and array_length(w.nodes, 1) < 13
-  )
-  select w.nodes into v_nodes
-    from walk w where w.node = p_to
-   order by w.nm asc
-   limit 1;
+    select g.i, 0 from generate_series(1, v_n) g(i)
+     where not exists (select 1 from public.legs l
+                        where l.from_port_id = v_ids[g.i] or l.to_port_id = v_ids[g.i])
+  ) d;
+  v_start := array_fill(0, array[v_n]);
+  v_i := 1;
+  for v_u in 1 .. v_n loop
+    v_start[v_u] := v_i;
+    v_i := v_i + v_deg[v_u];
+  end loop;
+
+  v_dist := array_fill(INF, array[v_n]);
+  v_prev := array_fill(0, array[v_n]);
+  v_done := array_fill(false, array[v_n]);
+  v_dist[v_src] := 0;
+
+  loop
+    v_u := 0;
+    v_best := INF;
+    for v_i in 1 .. v_n loop
+      if not v_done[v_i] and v_dist[v_i] < v_best then
+        v_best := v_dist[v_i];
+        v_u := v_i;
+      end if;
+    end loop;
+    exit when v_u = 0 or v_u = v_dst;
+    v_done[v_u] := true;
+    for v_i in v_start[v_u] .. v_start[v_u] + v_deg[v_u] - 1 loop
+      v_v := v_to[v_i];
+      if not v_done[v_v] then
+        v_alt := v_dist[v_u] + v_nm[v_i];
+        if v_alt < v_dist[v_v] then
+          v_dist[v_v] := v_alt;
+          v_prev[v_v] := v_u;
+        end if;
+      end if;
+    end loop;
+  end loop;
+
+  if v_dist[v_dst] >= INF then
+    return null;                   -- unreachable: 0003 asserts this cannot happen, but say it anyway
+  end if;
+
+  -- Walk the predecessors back and turn them the right way round.
+  v_nodes := array[]::uuid[];
+  v_u := v_dst;
+  while v_u <> 0 loop
+    v_nodes := array[v_ids[v_u]] || v_nodes;
+    exit when v_u = v_src;
+    v_u := v_prev[v_u];
+  end loop;
 
   return v_nodes;   -- NULL when no path exists: the caller raises E_NO_ROUTE (DESIGN F.5).
 end $$;
@@ -738,13 +835,25 @@ begin
       f_noroute := true;
     end if;
 
-    -- (d) DESIGN §K.1's own quoted numbers, recomputed from the seeded world.
+    -- (d) THE TIME MODEL, checked against ITSELF rather than against a quoted number.
+    --
+    -- DESIGN §K.1 says the opening voyage is "188 nm, 1.6 voyage-days, about 4.7 real minutes".
+    -- 188 nm is the STRAIGHT LINE from Lisboa to Cádiz, and a ship cannot sail it: Cape St
+    -- Vincent is in the way, so the real world's leg is ~248 nm round the cape. Asserting 188
+    -- would be asserting a number that was never sailable — see the note in 0003.
+    --
+    -- What is checked instead is the RULE, on whatever leg the world actually has: hours are
+    -- distance over speed, a voyage-day is 24 of them, and real time is voyage time divided by
+    -- the compression knob. Those three hold for every leg in the world, not just this one.
     v_speed  := voyage.fleet_speed(v_fleet);
     v_voyage := voyage.depart(v_fleet, voyage.route(v_lis, v_cad), now());
     select * into v from public.voyages where id = v_voyage;
     v_days := round(voyage.sim_hours(v_voyage) / 24, 2);
     v_mins := round(extract(epoch from (v.eta - v.departed_at))::numeric / 60, 2);
-    if v.total_nm = 188 and v_days between 1.5 and 1.7 and v_mins between 4.5 and 5.0 then
+    if v.total_nm >= voyage.gc_distance_nm(38.71, -9.14, 36.53, -6.29)                     -- >= the straight line
+       and abs(v_days - v.total_nm / v_speed / 24) < 0.02                                   -- days = nm / kn / 24
+       and abs(v_mins - v_days * 1440 / public.wc_num('time_compression')) < 0.05           -- real = voyage / 480
+       and v_days between 1.0 and 4.0 then                                                  -- and it is still a short first hop
       f_speed_ok := true;
     end if;
 
@@ -802,7 +911,7 @@ begin
   if not f_via_ok   then raise exception '0006 self-assert FAIL: a VIA waypoint was not honoured as a hard intermediate node'; end if;
   if not f_noroute  then raise exception '0006 self-assert FAIL: routing to a port outside the graph returned a path'; end if;
   if not f_speed_ok then
-    raise exception '0006 self-assert FAIL: the starter Barca on Lisboa->Cádiz gives % voyage-days / % real minutes at % kn over % nm; DESIGN K.1 quotes 1.6 days and 4.7 minutes over 188 nm',
+    raise exception '0006 self-assert FAIL: the starter Barca on Lisboa->Cádiz gives % voyage-days / % real minutes at % kn over % nm, which does not satisfy days = nm/kn/24 and real = voyage/time_compression',
       v_days, v_mins, v_speed, v.total_nm;
   end if;
   if not f_prog_ok then
@@ -821,6 +930,6 @@ begin
   select count(*) into v_grants from public.client_write_grants();
   if v_grants <> 0 then raise exception '0006 self-assert FAIL: the voyage tables minted % client write grant(s)', v_grants; end if;
 
-  raise notice '0006 self-assert ok: rng_raw is IMMUTABLE, repeatable, and varies with day/stream/secret (2000 samples in [0,1), mean %); router finds Lisboa-Tunis, honours a VIA waypoint and returns NULL off-graph; the starter Barca sails 188 nm Lisboa-Cádiz at % kn = % voyage-days / % real minutes (DESIGN K.1: 1.6 days, 4.7 min); progress is 0 at departure, monotonic, and pinned at total_nm from the ETA onward; a 24 sim-hour CALM recorded on day 1 moved the ETA and the day-2 boundary by exactly 180 real seconds and slowed progress; duplicate (voyage_id, day_index) and a second SAILING voyage both REJECTED; 0 client write grants',
-    round(v_mean, 4), v_speed, v_days, v_mins;
+  raise notice '0006 self-assert ok: rng_raw is IMMUTABLE, repeatable, and varies with day/stream/secret (2000 samples in [0,1), mean %); router finds Lisboa-Tunis, honours a VIA waypoint and returns NULL off-graph; the starter Barca sails % nm Lisboa-Cádiz (round Cape St Vincent; the straight line is 188) at % kn = % voyage-days / % real minutes, and days = nm/kn/24 to within 0.02; progress is 0 at departure, monotonic, and pinned at total_nm from the ETA onward; a 24 sim-hour CALM recorded on day 1 moved the ETA and the day-2 boundary by exactly 180 real seconds and slowed progress; duplicate (voyage_id, day_index) and a second SAILING voyage both REJECTED; 0 client write grants',
+    round(v_mean, 4), v.total_nm, v_speed, v_days, v_mins;
 end $$;

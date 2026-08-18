@@ -5,6 +5,126 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-19 — D9: the world became the real world, and three assumptions died with it
+
+**The owner's correction, verbatim:** *"not typing, but making commands. i told you it will be
+real world, not a imaginary places. wtf."*
+
+Two separate defects, both mine, both structural rather than cosmetic.
+
+### The world was twelve toy ports
+
+`data/ports.json` has held **214 real harbours across 97 countries since day zero**, every
+coordinate a Wikidata P625 item — and the chain seeded **twelve**, around Iberia. The owner opened
+the game and saw a made-up world, because that is what was in the database. The data being right
+in a JSON file nobody plays is not the world being right.
+
+**Migration 0003 is now generated from the data**, by `scripts/build-world-seed.mjs`: 214 ports,
+782 legs, 70 goods, 51 seas, 25 regions, 20 nations, 834 specialty rows — 115 KB of SQL that
+applies in **0.1 s** and self-asserts every claim it makes. The generator's header states every
+derivation rule (size tier, draft, yards, development, culture, which 1550 power held a port), so
+the world can be re-derived rather than re-typed.
+
+### The legs could not be authored, so they are DERIVED FROM THE SEA
+
+Twenty-two hand-curated edges scaled to twelve ports. Twenty-two thousand candidate pairs do not.
+The first attempt asked "does the straight line between these two ports stay at sea?" — and got a
+world where **Lisbon and Cádiz had no leg at all**, because the straight line clips the Algarve.
+That is the wrong question: ships round Cape St Vincent.
+
+So `scripts/sea-grid.mjs` rasterises the Natural Earth land polygons into a **0.25° water grid**
+and a route is an **A\* search through water cells**, straightened by line-of-sight. What comes out
+is the real geography of the age, and nothing in the generator encodes any of it:
+
+```
+Lisbon → Cádiz          248 nm  (the straight line is 188; the cape is in the way)
+Alexandria → Aden    10,944 nm  round the Cape — there is no Suez until 1869
+Veracruz → Acapulco  10,860 nm  round the Horn — there is no Panama until 1914
+Guam → Honolulu → Acapulco     the Manila galleon, appearing on its own as an ocean crossing
+```
+
+**782 legs, one connected world, mean sailed/straight ratio 1.16×.** Both canal controls are
+printed on every run, because a generator that quietly starts digging Suez is worse than one that
+fails. Fifteen named CHANNELS are authored — the Sound, the Bosphorus, Bab-el-Mandeb, Hormuz,
+Malacca, the Cape road, Cape Horn, the St Lawrence — because those waters are narrower than the
+map's own resolution; that list is the whole of the game's "you may pass here" authority.
+
+### The prices could not be authored either
+
+§G.1 calls affinity "the authored soul of the world", and with 12 ports it was a hand-typed
+12×12 matrix. 214 × 70 is **14,980 cells**, and a hand-typed 14,980-cell matrix is not authorship,
+it is noise nobody can check. So ONE editorial fact is authored — **which ports produce which
+good**, in the new `public.port_specialties` table, sourced in `docs/WORLD_DATA.md` — and 0005
+derives every affinity from it by one rule:
+
+> a port that produces the good sells it at 0.60; everywhere else pays
+> `0.85 + 1.50 × min(1, nearest source / 6000 nm)`.
+
+That is the age of sail in one line: pepper is cheap in Malabar and dear in Lisbon because Lisbon
+is nine thousand miles from the nearest vine, and the whole voyage exists to close that gap.
+
+### THE ROUTER: 1,811 seconds → 0.1 seconds
+
+`voyage.route_direct` enumerated every simple path and took the cheapest. Its own comment said why
+that was fine: *"The V0 graph is 12 nodes and 22 undirected edges."* On 214 nodes of mean degree 7
+it took **thirty minutes** — measured, in the apply log, not guessed. Replaced with Dijkstra
+(O(n²) scan, edges laid out by source with a start index). Same answers, in milliseconds.
+
+### THE HALT RULE WAS HALF-IMPLEMENTED, and a probe found it
+
+§F.3 says a queue "halts at a failure — it never skips". `cmd.advance` did stop at a failure...
+within one call. The next arrival called `advance()` again, found the failed order was no longer
+`pending`, and ran the one behind it. That is skipping, on a delay. It surfaced as a queue reading
+`[1:failed E_HOLD_FULL 2:done 3:pending 4:pending]` in a probe that was only meant to be checking
+something else.
+
+Fixed: a failed order now blocks the fleet until it is cleared — and `cmd.clear` was widened to
+release it, because a halt with no release is the **empty-fleet deadlock** that cost the previous
+game a live incident. Both halves are asserted, in the two files that own them.
+
+### Every seed-shaped assertion in the chain, fixed in one pass
+
+The rule from the previous project: *a test that asserts a seed asserts a WORLD.* The chain was
+full of them, and the real world set them all off at once. They were rewritten to **assert the
+rule and find their own subject**, never to name a cargo or a distance:
+
+| was | is now |
+|---|---|
+| `port_goods rows = 144` | `= (count of ports) × (count of goods)` |
+| `snapshot has 12 ports / 22 legs` | `= what the tables actually hold` |
+| `tick_market_drift stepped 144 rows` | `= count(port_goods)` |
+| "Lisboa→Cádiz is 188 nm, 1.6 days, 4.7 min" | days = nm/kn/24 and real = voyage/compression, on whatever leg the world has |
+| "buy sal at Lisboa, sell at Cádiz" (0007, proof 4) | **find** the best one-leg trade a starter can afford, then play it |
+| `"s" is ambiguous, naming Safi and Sevilla` | it refuses, says E_AMBIGUOUS, and lists more than one |
+
+**Proof 4 — the product proof — now reads:** black pepper at Lisbon, 62.6% of its neighbours,
+sold at Ponta Delgada 781 nm out, wheat carried home: **+2,763 ducats on a 7,925 stake, 34.9%**,
+every order running unattended with no tick. (That return is high for an opening voyage; a
+balance pass belongs on the list, and it is a balance question, not a correctness one.)
+
+### Green, and what it costs
+
+```
+npm run db:apply    10 migrations, 10 self-assert receipts,  ~13 s
+npm run db:proof    4 files, 28/28 PASS markers
+```
+
+The chain applies **in the browser on first boot**, so that 13 s is a real cost the player pays
+once. 0010's drift soak came down from 15.1 s to 2.9 s by scoping the forced slots to a sample of
+twenty ports and saying so out loud. 0005's remaining 7.9 s is 14,980 real `world.price()` calls —
+the full sweep is kept deliberately, because "every price in the world is sane" is worth eight
+seconds and a sampled version would not be the same claim.
+
+### Still open from this entry
+
+- **The Command tab is still a typing prompt.** The owner's first correction. Being rebuilt as a
+  composer: pick fleet → verb → real options, previewed on the server, issued as the same string.
+- The five screens are still on fixtures; `src/live/worldStore.ts` is the seam they move onto.
+- Cold boot is ~15 s (2.2 s WASM + ~13 s chain). A prebuilt database image would remove almost all
+  of it and is the obvious next optimisation.
+
+---
+
 ## 2026-08-18 — D8: a blind local gate, and then an assert that could never pass
 
 Two failures, one after the other, and the second is the more interesting one.

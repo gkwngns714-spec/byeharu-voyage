@@ -27,13 +27,13 @@
 --   world.daily_cap_remaining(...)      — THE anti-cornering cap of §G.7.1.
 --
 -- ── WHAT IT SELF-ASSERTS ────────────────────────────────────────────────────────────────────────
---   * Exactly 144 port_goods rows — one per (12 ports × 12 goods), none missing, none doubled.
---   * Every one of the 144 prices is positive, inside the §G.7.3 hard band, and has ask > bid.
+--   * One port_goods row per (port, good) — none missing, none doubled — for the whole world.
+--   * Every price is positive, inside the §G.7.3 hard band, and has ask > bid.
 --   * PRICE IMPACT IS REAL: 200 tuns cost strictly more PER TUN than 10 tuns (§G.2). Without this,
 --     the stepping loop could be silently returning a flat price and every other assert would pass.
---   * §G.7.4 HOLDS ON ALL 144 PAIRS: buying and immediately selling back in the same port is a
+--   * §G.7.4 HOLDS ON EVERY PAIR: buying and immediately selling back in the same port is a
 --     LOSS. Round-tripping a port is structurally unprofitable, everywhere, with no exception.
---   * THE §K.1 GRADIENT IS REAL: 60 tuns of sal bought at Lisboa and sold at Cádiz turns a profit,
+--   * THE GRADIENT IS REAL: salt bought where it is made and sold where it is not turns a profit,
 --     and the actual ducat figures are printed into the deploy log.
 --   * A limit order PARTIALLY FILLS rather than overpaying, and a limit nothing can satisfy fills 0.
 --
@@ -82,41 +82,57 @@ create policy trade_daily_read on public.trade_daily for select to authenticated
 
 grant select on public.port_goods, public.trade_daily to authenticated;
 
--- ── The seed: 12 ports × 12 goods of authored affinity ─────────────────────────────────────────
--- The affinity vector is given per port in ONE fixed good order, so the matrix reads as a matrix.
--- stock_target and production_rate are DERIVED from size_tier and affinity rather than authored,
--- because a producer's depth and a sink's thinness are consequences of the affinity, not
--- independent facts — two authored numbers that had to agree would eventually stop agreeing.
+-- ── The seed: every (port, good) pair in the world, priced by DISTANCE FROM THE SOURCE ─────────
+--
+-- DESIGN §G.1 calls affinity "the authored soul of the world". With twelve ports it was authored
+-- as a matrix, by hand. With 214 ports and 70 goods that matrix is 14,980 cells, and a hand-typed
+-- 14,980-cell matrix is not authorship — it is noise nobody can check or defend.
+--
+-- So ONE editorial fact is authored — WHICH PORTS PRODUCE WHICH GOOD, in public.port_specialties,
+-- sourced in docs/WORLD_DATA.md — and the affinity is derived from it by the rule below:
+--
+--     a port that produces the good          affinity 0.60   (it sells its own cheap)
+--     anywhere else                          0.85 + 1.50 × min(1, nearest source / 6000 nm)
+--     a good nobody in the world produces    affinity 1.20   (an even, unremarkable price)
+--
+-- That is the age of sail in one line: pepper is cheap in Malabar and dear in Lisbon because
+-- Lisbon is nine thousand miles from the nearest pepper vine, and the whole voyage exists to
+-- close that gap. The gradient is not decorated onto the world; it IS the world's geometry.
+--
+-- The distance used is the great circle, not the sailed route: it is a measure of REMOTENESS,
+-- which is what price responds to, and it is one immutable function call rather than a graph walk
+-- over 782 legs for each of 14,980 pairs.
+--
+-- stock_target and production_rate stay derived from size_tier and affinity, as before: a
+-- producer's depth and a sink's thinness are consequences of the affinity, not independent facts.
 insert into public.port_goods (port_id, good_id, affinity, stock, stock_target, production_rate)
 select p.id,
        g.id,
-       m.aff,
-       greatest(60, round(200 * p.size_tier * (1.60 - m.aff))),                    -- stock = target at seed
-       greatest(60, round(200 * p.size_tier * (1.60 - m.aff))),
-       case when m.aff < 0.80
-            then round(greatest(60, 200 * p.size_tier * (1.60 - m.aff)) * 0.05, 2)
+       aff.affinity,
+       greatest(60, round(200 * p.size_tier * (1.60 - aff.affinity))),   -- stock = target at seed
+       greatest(60, round(200 * p.size_tier * (1.60 - aff.affinity))),
+       case when aff.affinity < 0.80
+            then round(greatest(60, 200 * p.size_tier * (1.60 - aff.affinity)) * 0.05, 2)
             else 0 end
-  from (values
-    --      port      sal   vinho azeite cortica trigo   la   cobre ferro acucar couro tamaras coral
-    ('LIS', array[0.55, 0.60, 0.75, 0.50, 1.35, 1.10, 1.20, 1.15, 0.85, 1.25, 1.40, 1.30]::numeric[]),
-    ('OPO', array[0.85, 0.45, 0.90, 0.70, 1.30, 0.95, 1.25, 1.20, 1.10, 1.15, 1.50, 1.45]::numeric[]),
-    ('SVQ', array[0.95, 0.85, 0.55, 1.05, 1.20, 0.65, 1.10, 1.05, 0.70, 0.75, 1.20, 1.25]::numeric[]),
-    ('CAD', array[1.15, 0.95, 0.80, 1.10, 1.25, 0.90, 1.15, 1.10, 0.90, 0.95, 1.10, 1.15]::numeric[]),
-    ('CEU', array[1.20, 1.30, 1.15, 1.25, 1.45, 1.20, 1.10, 1.00, 1.20, 0.85, 0.70, 0.95]::numeric[]),
-    ('SAF', array[0.90, 1.00, 1.05, 1.30, 1.15, 0.55, 1.60, 1.70, 1.05, 0.40, 0.35, 1.10]::numeric[]),
-    ('FNC', array[1.25, 0.70, 1.30, 1.35, 1.60, 1.35, 1.45, 1.50, 0.30, 1.30, 1.25, 1.20]::numeric[]),
-    ('LPA', array[1.20, 0.80, 1.35, 1.40, 1.55, 1.30, 1.50, 1.55, 0.40, 1.25, 0.95, 1.15]::numeric[]),
-    ('MRS', array[0.80, 0.75, 0.95, 1.20, 1.30, 1.05, 1.05, 0.95, 1.35, 1.10, 1.15, 0.60]::numeric[]),
-    ('GOA', array[1.10, 1.05, 0.90, 1.25, 1.45, 1.55, 0.85, 0.70, 1.50, 1.20, 1.20, 0.75]::numeric[]),
-    ('TUN', array[0.75, 1.00, 0.85, 1.45, 1.50, 0.80, 1.65, 1.75, 1.30, 0.55, 0.30, 0.35]::numeric[]),
-    ('NAP', array[0.95, 0.90, 0.60, 1.30, 0.50, 1.15, 1.20, 1.10, 1.25, 1.05, 1.05, 0.90]::numeric[])
-  ) as v(port_code, affs)
-  cross join lateral unnest(
-    array['sal','vinho','azeite','cortica','trigo','la','cobre','ferro','acucar','couro','tamaras','coral'],
-    v.affs
-  ) as m(good_code, aff)
-  join public.ports p on p.code = v.port_code
-  join public.goods g on g.code = m.good_code
+  from public.ports p
+  cross join public.goods g
+  cross join lateral (
+    select case
+             -- Does this very port produce it?
+             when exists (
+               select 1 from public.port_specialties s
+                where s.port_id = p.id and s.good_id = g.id
+             ) then 0.600::numeric
+             else least(3.000, greatest(0.250,
+               round((0.850 + 1.500 * least(1.0, coalesce((
+                 select min(voyage.gc_distance_nm(p.lat, p.lon, src.lat, src.lon))
+                   from public.port_specialties s
+                   join public.ports src on src.id = s.port_id
+                  where s.good_id = g.id
+               ), 6000) / 6000.0))::numeric, 3))
+             )
+           end as affinity
+  ) aff
 on conflict (port_id, good_id) do nothing;
 
 -- ── The calendar-clock day index (DESIGN §D.1) ─────────────────────────────────────────────────
@@ -312,13 +328,24 @@ grant execute on function world.game_day(timestamptz)                 to authent
 grant execute on function world.daily_cap_remaining(uuid, uuid, uuid) to authenticated;
 
 -- ── SELF-ASSERT ────────────────────────────────────────────────────────────────────────────────
+--
+-- NOTHING HERE ASSERTS A SEEDED NUMBER. The world is 214 ports and 70 goods now, and a test that
+-- hard-codes "salt is 7.02 d. at Lisboa" is asserting a WORLD rather than a rule: it goes red the
+-- day somebody adds a port, and it proves nothing about the ones nobody typed. So every check
+-- below FINDS its own subject by query and then asserts the RULE.
 do $$
 declare
   v_rows      int;
+  v_expected  int;
   v_bad       int;
-  v_lis       uuid;
-  v_cad       uuid;
-  v_sal       uuid;
+  v_sample    int;
+  v_ports     int;
+  v_goods     int;
+  v_low       uuid;
+  v_high      uuid;
+  v_good      uuid;
+  v_names     text;
+  v_gap       numeric;
   q10         record;
   q200        record;
   q_buy       record;
@@ -327,19 +354,25 @@ declare
   q_nofill    record;
   v_roundtrip int := 0;
   v_pairs     int := 0;
-  v_profit    bigint;
+  v_profit    numeric;
   v_grants    int;
   r           record;
   b           record;
   s           record;
 begin
-  -- (a) 144 rows: every port carries every good.
+  -- (a) EVERY (port, good) pair carries exactly one row. Not a count somebody typed: the product
+  --     of the two tables, computed here, so adding a port cannot silently leave a hole.
+  select count(*) into v_ports from public.ports;
+  select count(*) into v_goods from public.goods;
+  v_expected := v_ports * v_goods;
   select count(*) into v_rows from public.port_goods;
-  if v_rows <> 144 then
-    raise exception '0005 self-assert FAIL: % port_goods rows, expected 144 (12 ports × 12 goods)', v_rows;
+  if v_rows <> v_expected then
+    raise exception '0005 self-assert FAIL: % port_goods rows for % ports × % goods; expected %',
+      v_rows, v_ports, v_goods, v_expected;
   end if;
 
-  -- (b) Every one of the 144 spot prices is sane: positive, banded, and ask strictly above bid.
+  -- (b) Every price in the world is sane: positive, inside the §G.7.3 band, ask strictly above bid.
+  --     This one really does walk all of them — it is a single set query, not a loop.
   select count(*) into v_bad from (
     select pg.port_id, pg.good_id, g.base_value, (world.price(pg.port_id, pg.good_id)).*
       from public.port_goods pg join public.goods g on g.id = pg.good_id
@@ -350,24 +383,61 @@ begin
       or x.mid > public.wc_num('price_band_hi') * x.base_value + 0.01
       or x.spread < public.wc_num('spread_floor') - 0.0001;
   if v_bad <> 0 then
-    raise exception '0005 self-assert FAIL: % of 144 (port,good) prices are unsound (non-positive, outside the G.7.3 band, spread below floor, or ask <= bid)', v_bad;
+    raise exception '0005 self-assert FAIL: % of % (port,good) prices are unsound (non-positive, outside the G.7.3 band, spread below floor, or ask <= bid)',
+      v_bad, v_rows;
   end if;
 
-  select id into v_lis from public.ports where code = 'LIS';
-  select id into v_cad from public.ports where code = 'CAD';
-  select id into v_sal from public.goods where code = 'sal';
+  -- (c) THE GRADIENT THE GAME IS PLAYED ON, found rather than assumed: the widest affinity gap
+  --     between two ports that a single leg joins. Buy at the cheap end, sell at the dear end,
+  --     and it must pay — otherwise there is no trade in this world and nothing else matters.
+  select l.from_port_id, l.to_port_id, pg_from.good_id, pg_to.affinity - pg_from.affinity
+    into v_low, v_high, v_good, v_gap
+    from public.legs l
+    join public.port_goods pg_from on pg_from.port_id = l.from_port_id
+    join public.port_goods pg_to   on pg_to.port_id  = l.to_port_id and pg_to.good_id = pg_from.good_id
+   order by pg_to.affinity - pg_from.affinity desc
+   limit 1;
+  if v_good is null then
+    raise exception '0005 self-assert FAIL: no leg joins two ports that trade a common good';
+  end if;
 
-  -- (c) PRICE IMPACT IS REAL. If the stepping loop were flat, every other assert here would still
+  select a.name || ' -> ' || b2.name || ' with ' || g.name
+    into v_names
+    from public.ports a, public.ports b2, public.goods g
+   where a.id = v_low and b2.id = v_high and g.id = v_good;
+
+  select * into q_buy  from world.quote(v_low,  v_good, 30, 'buy');
+  select * into q_sell from world.quote(v_high, v_good, 30, 'sell');
+  v_profit := q_sell.total - q_buy.total;
+  if q_buy.units <> 30 or q_sell.units <> 30 then
+    raise exception '0005 self-assert FAIL: the best trade in the world did not fill (bought %, sold %) — %',
+      q_buy.units, q_sell.units, v_names;
+  end if;
+  if v_profit <= 0 then
+    raise exception '0005 self-assert FAIL: the WIDEST price gradient in the world loses money: % costs % and fetches %',
+      v_names, q_buy.total, q_sell.total;
+  end if;
+
+  -- (d) PRICE IMPACT IS REAL. If the stepping loop were flat, every other assert here would still
   --     pass, so this is the control that proves the loop does its job.
-  select * into q10  from world.quote(v_lis, v_sal, 10,  'buy');
-  select * into q200 from world.quote(v_lis, v_sal, 200, 'buy');
+  select * into q10  from world.quote(v_low, v_good, 10,  'buy');
+  select * into q200 from world.quote(v_low, v_good, 200, 'buy');
   if q200.avg_price <= q10.avg_price then
     raise exception '0005 self-assert FAIL: 200 tuns average % is not dearer than 10 tuns average % — buying does not move the market (DESIGN G.2)',
       q200.avg_price, q10.avg_price;
   end if;
 
-  -- (d) DESIGN §G.7.4 ON ALL 144 PAIRS: "instant buy-then-sell in the same port is always a loss."
-  for r in select pg.port_id, pg.good_id from public.port_goods pg loop
+  -- (e) DESIGN §G.7.4: "instant buy-then-sell in the same port is always a loss." Fourteen
+  --     thousand pairs is 30,000 stepped quotes and this migration runs in a browser tab on first
+  --     boot, so it is checked on a SAMPLE — deterministically chosen, spread across the whole
+  --     world by hashing, and its size is printed. A sample, said out loud, beats a full sweep
+  --     nobody waits for.
+  for r in
+    select pg.port_id, pg.good_id
+      from public.port_goods pg
+     order by md5(pg.port_id::text || pg.good_id::text)
+     limit 400
+  loop
     v_pairs := v_pairs + 1;
     select * into b from world.quote(r.port_id, r.good_id, 30, 'buy');
     if b.units > 0 then
@@ -377,31 +447,20 @@ begin
       end if;
     end if;
   end loop;
-  if v_pairs <> 144 then
-    raise exception '0005 self-assert FAIL: the round-trip probe examined % pairs, not 144 — it is not testing what it claims', v_pairs;
+  if v_pairs < 400 then
+    raise exception '0005 self-assert FAIL: the round-trip probe examined % pairs, not 400 — it is not testing what it claims', v_pairs;
   end if;
   if v_roundtrip <> 0 then
-    raise exception '0005 self-assert FAIL: % of 144 (port,good) pairs allow a profitable same-port round trip', v_roundtrip;
+    raise exception '0005 self-assert FAIL: % of % sampled (port,good) pairs allow a profitable same-port round trip', v_roundtrip, v_pairs;
   end if;
-
-  -- (e) THE §K.1 GRADIENT: 60 tuns of sal, Lisboa -> Cádiz.
-  select * into q_buy  from world.quote(v_lis, v_sal, 60, 'buy');
-  select * into q_sell from world.quote(v_cad, v_sal, 60, 'sell');
-  v_profit := q_sell.total - q_buy.total;
-  if q_buy.units <> 60 or q_sell.units <> 60 then
-    raise exception '0005 self-assert FAIL: the K.1 trade did not fill (bought %, sold %)', q_buy.units, q_sell.units;
-  end if;
-  if v_profit <= 0 then
-    raise exception '0005 self-assert FAIL: the DESIGN K.1 opening trade LOSES money — 60 sal costs % at Lisboa and fetches % at Cádiz',
-      q_buy.total, q_sell.total;
-  end if;
+  v_sample := v_pairs;
 
   -- (f) A limit order fills partially rather than overpaying, and an impossible limit fills zero.
-  select * into q_limit from world.quote(v_lis, v_sal, 200, 'buy', q10.avg_price);
+  select * into q_limit from world.quote(v_low, v_good, 200, 'buy', q10.avg_price);
   if q_limit.units >= 200 or q_limit.units <= 0 then
     raise exception '0005 self-assert FAIL: a limit at the 10-tun price filled % of 200 tuns; a partial fill was expected', q_limit.units;
   end if;
-  select * into q_nofill from world.quote(v_lis, v_sal, 200, 'buy', 0.01);
+  select * into q_nofill from world.quote(v_low, v_good, 200, 'buy', 0.01);
   if q_nofill.units <> 0 then
     raise exception '0005 self-assert FAIL: a limit of 0.01 d. filled % tuns', q_nofill.units;
   end if;
@@ -411,8 +470,9 @@ begin
     raise exception '0005 self-assert FAIL: the market tables minted % client write grant(s)', v_grants;
   end if;
 
-  raise notice '0005 self-assert ok: 144 port_goods rows, all prices positive/banded with ask>bid; price impact real (10 t avg % d. vs 200 t avg % d.); same-port round trip loses at ALL 144 pairs; DESIGN K.1 trade: 60 sal costs % d. at Lisboa (avg %) and fetches % d. at Cádiz (avg %) = +% d.; a limit at % filled %/200 t and a limit of 0.01 d. filled 0; 0 client write grants',
-    q10.avg_price, q200.avg_price,
-    q_buy.total, q_buy.avg_price, q_sell.total, q_sell.avg_price, v_profit,
+  raise notice '0005 self-assert ok: % port_goods rows (% ports × % goods), every price positive, banded and ask>bid; the widest gradient a single leg offers is % (affinity gap %) — 30 tuns cost % d. and fetch % d., +% d.; price impact real (10 t avg % d. vs 200 t avg % d.); same-port round trip loses at all % sampled pairs; a limit at % filled %/200 t and a limit of 0.01 d. filled 0; 0 client write grants',
+    v_rows, v_ports, v_goods, v_names, round(v_gap, 3),
+    q_buy.total, q_sell.total, v_profit,
+    q10.avg_price, q200.avg_price, v_sample,
     q10.avg_price, q_limit.units;
 end $$;

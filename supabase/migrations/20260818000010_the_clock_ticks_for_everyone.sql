@@ -31,7 +31,7 @@
 --   * tick_arrivals brings a due voyage home with NOBODY looking, and a second call changes nothing.
 --   * tick_market_drift moves the market on a new slot and DOES NOTHING on a repeat call in the
 --     same slot — proven both ways, because idempotence claimed on one direction is half a claim.
---   * drift stays inside the §G.1 clamp after 60 forced slots, and stock regenerates TOWARD its
+--   * drift stays inside the §G.1 clamp after 20 forced slots, and stock regenerates TOWARD its
 --     target without overshooting it.
 --   * tick_reconcile passes on a healthy world AND RAISES on a purse deliberately falsified — the
 --     positive control, without which "reconciliation passed" would mean nothing.
@@ -186,7 +186,7 @@ declare
   v_drift0 numeric; v_drift1 numeric; v_drift2 numeric;
   v_stock0 numeric; v_stock1 numeric; v_target numeric;
   v_status text; v_port text; v_events1 int; v_events2 int;
-  v_outside int; v_over int; v_grants int; n int; k int;
+  v_outside int; v_sampled int; v_over int; v_grants int; n int; k int;
   f_arrive boolean := false; f_arrive_idem boolean := false;
   f_drift boolean := false; f_drift_idem boolean := false;
   f_clamp boolean := false; f_regen boolean := false;
@@ -194,7 +194,7 @@ declare
 begin
   select id into v_cad from public.ports where code = 'CAD';
   select id into v_lis from public.ports where code = 'LIS';
-  select id into v_sal from public.goods where code = 'sal';
+  select id into v_sal from public.goods where code = 'salt';
 
   begin
     -- ── (a) tick_arrivals brings a fleet home with nobody looking, and is idempotent.
@@ -226,15 +226,26 @@ begin
     select drift into v_drift0 from public.port_goods where port_id = v_lis and good_id = v_sal;
     v_d1 := public.tick_market_drift();
     select drift into v_drift1 from public.port_goods where port_id = v_lis and good_id = v_sal;
-    if (v_d1->>'drifted')::int = 144 and v_drift1 <> v_drift0 then f_drift := true; end if;
+    if (v_d1->>'drifted')::int = (select count(*) from public.port_goods)
+       and v_drift1 <> v_drift0 then f_drift := true; end if;
 
     v_d2 := public.tick_market_drift();
     select drift into v_drift2 from public.port_goods where port_id = v_lis and good_id = v_sal;
     if (v_d2->>'drifted')::int = 0 and v_drift2 = v_drift1 then f_drift_idem := true; end if;
 
-    -- ── (c) sixty forced slots and the drift is still inside the §G.1 clamp.
-    for k in 1 .. 60 loop
-      update public.port_goods set drift_slot = drift_slot - 1;
+    -- ── (c) forced slots, and the drift is still inside the §G.1 clamp.
+    --
+    --        The clamp is a per-row property of the OU step, so it does not need all 14,980 rows
+    --        walked twenty times — that is 300,000 rewrites, and this migration applies inside a
+    --        player's browser tab on first boot. Only the rows of twenty ports are pushed back a
+    --        slot, so each forced tick touches those and nothing else, and the count is printed
+    --        rather than implied. Twenty steps is past the point where an unclamped walk would
+    --        have reached its stationary spread (theta 0.85), so an escape would show.
+    select count(*) into v_sampled from public.port_goods
+     where port_id in (select id from public.ports order by code limit 20);
+    for k in 1 .. 20 loop
+      update public.port_goods set drift_slot = drift_slot - 1
+       where port_id in (select id from public.ports order by code limit 20);
       perform public.tick_market_drift();
     end loop;
     select count(*) into v_outside from public.port_goods
@@ -270,9 +281,9 @@ begin
 
   if not f_arrive      then raise exception '0010 self-assert FAIL: tick_arrivals did not bring the fleet home (status %, port %, tick %)', v_status, v_port, v_t1; end if;
   if not f_arrive_idem then raise exception '0010 self-assert FAIL: a second tick_arrivals was not a no-op (% then % events, tick %)', v_events1, v_events2, v_t2; end if;
-  if not f_drift       then raise exception '0010 self-assert FAIL: tick_market_drift did not step all 144 rows (%), or the drift did not move (% -> %)', v_d1, v_drift0, v_drift1; end if;
+  if not f_drift       then raise exception '0010 self-assert FAIL: tick_market_drift did not step all % rows (%), or the drift did not move (% -> %)', (select count(*) from public.port_goods), v_d1, v_drift0, v_drift1; end if;
   if not f_drift_idem  then raise exception '0010 self-assert FAIL: a repeat tick in the SAME slot stepped % row(s) and moved the drift % -> % — the OU walk is not keyed', (v_d2->>'drifted'), v_drift1, v_drift2; end if;
-  if not f_clamp       then raise exception '0010 self-assert FAIL: after 60 slots, % row(s) drifted outside the G.1 clamp', v_outside; end if;
+  if not f_clamp       then raise exception '0010 self-assert FAIL: after 20 slots over % sampled row(s), % row(s) in the world drifted outside the G.1 clamp', v_sampled, v_outside; end if;
   if not f_regen       then raise exception '0010 self-assert FAIL: stock did not regenerate toward the target without overshoot (% -> % of %, % row(s) over target)', v_stock0, v_stock1, v_target, v_over; end if;
   if not f_rec_ok      then raise exception '0010 self-assert FAIL: tick_reconcile checked no players: %', v_rec; end if;
   if not f_rec_bites   then raise exception '0010 self-assert FAIL: tick_reconcile ACCEPTED a purse inflated by 4,242 ducats with no ledger row behind it'; end if;
@@ -282,6 +293,6 @@ begin
   select count(*) into v_grants from public.client_write_grants();
   if v_grants <> 0 then raise exception '0010 self-assert FAIL: the tick surface minted % client write grant(s)', v_grants; end if;
 
-  raise notice '0010 self-assert ok: tick_arrivals settled % voyage-day(s) and docked the fleet at CAD unattended, and a second call touched 0 fleets; tick_market_drift stepped all 144 rows once per slot and 0 rows on a repeat call in the same slot; after 60 slots 0 rows sit outside the G.1 clamp; stock regenerated % -> % toward a target of % with 0 overshoots; tick_reconcile checked % player(s) and RAISED on a purse falsified by 4,242 d.; 0 client write grants',
-    (v_t1->>'days_resolved'), v_stock0, v_stock1, v_target, (v_rec->>'players_checked');
+  raise notice '0010 self-assert ok: tick_arrivals settled % voyage-day(s) and docked the fleet at CAD unattended, and a second call touched 0 fleets; tick_market_drift stepped all % rows once per slot and 0 rows on a repeat call in the same slot; after 20 forced slots over % sampled rows, 0 rows in the world sit outside the G.1 clamp; stock regenerated % -> % toward a target of % with 0 overshoots; tick_reconcile checked % player(s) and RAISED on a purse falsified by 4,242 d.; 0 client write grants',
+    (v_t1->>'days_resolved'), (v_d1->>'drifted'), v_sampled, v_stock0, v_stock1, v_target, (v_rec->>'players_checked');
 end $$;

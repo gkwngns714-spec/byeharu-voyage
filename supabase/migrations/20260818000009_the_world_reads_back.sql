@@ -237,20 +237,26 @@ declare
   v_secret text := public.wc_text('world_secret');
   v_nbr_lis numeric; v_nbr_cad numeric;
   v_grants int; n int;
+  v_lis_low uuid;
   f_snap boolean := false; f_secret boolean := false; f_mkt boolean := false;
   f_nbr boolean := false; f_settle boolean := false; f_led boolean := false;
 begin
   select id into v_lis from public.ports where code = 'LIS';
   select id into v_cad from public.ports where code = 'CAD';
   select id into v_tun from public.ports where code = 'TUN';
-  select id into v_sal from public.goods where code = 'sal';
-  select id into v_vinho from public.goods where code = 'vinho';
+  select id into v_sal from public.goods where code = 'salt';
+  select id into v_vinho from public.goods where code = 'wine';
 
   -- (a) The snapshot is complete.
+  -- Complete means "everything the tables hold", counted from the tables. A literal 12 here would
+  -- be asserting the size of a world somebody once seeded rather than that the reader serves all
+  -- of it — and it would go red the day a port is added, which is not a defect.
   v_snap := world.snapshot();
-  if jsonb_array_length(v_snap->'ports') = 12 and jsonb_array_length(v_snap->'legs') = 22
-     and jsonb_array_length(v_snap->'goods') = 12 and jsonb_array_length(v_snap->'ship_classes') = 3
-     and (v_snap->'config'->>'time_compression')::int = 480
+  if jsonb_array_length(v_snap->'ports')        = (select count(*) from public.ports)
+     and jsonb_array_length(v_snap->'legs')     = (select count(*) from public.legs)
+     and jsonb_array_length(v_snap->'goods')    = (select count(*) from public.goods)
+     and jsonb_array_length(v_snap->'ship_classes') = (select count(*) from public.ship_classes)
+     and (v_snap->'config'->>'time_compression')::int = public.wc_int('time_compression')
      and jsonb_array_length(v_snap->'verbs') = 8 then
     f_snap := true;
   end if;
@@ -264,20 +270,44 @@ begin
   -- (c) The market prices everything, and the culture mask shows through as UNAVAILABLE.
   v_mkt     := world.market(v_lis);
   v_mkt_tun := world.market(v_tun);
-  if jsonb_array_length(v_mkt->'goods') = 12
+  if jsonb_array_length(v_mkt->'goods') = (select count(*) from public.goods)
      and (select bool_and((e->>'buy')::numeric > 0 and (e->>'sell')::numeric > 0)
             from jsonb_array_elements(v_mkt->'goods') e)
      and (select (e->>'available')::boolean from jsonb_array_elements(v_mkt->'goods') e
-           where e->>'code' = 'vinho')
+           where e->>'code' = 'wine')
      and not (select (e->>'available')::boolean from jsonb_array_elements(v_mkt_tun->'goods') e
-               where e->>'code' = 'vinho') then
+               where e->>'code' = 'wine') then
     f_mkt := true;
   end if;
 
-  -- (d) %NBR is a real comparison, and it reproduces the §K.1 gradient in the direction the first
-  --     session depends on: salt is cheap at Lisboa and dear at Cádiz.
-  v_nbr_lis := world.pct_of_neighbours(v_lis, v_sal);
-  v_nbr_cad := world.pct_of_neighbours(v_cad, v_sal);
+  -- (d) %NBR is a real comparison: somewhere in this world a good is cheap against its neighbours
+  --     and somewhere it is dear, and the reader says so. Which port and which good is geography,
+  --     not code, so the probe FINDS a pair rather than insisting on one the design once quoted.
+  -- pct_of_neighbours() walks every port within 600 nm, so asking it about all 14,980 pairs takes
+  -- a minute of a migration nobody should wait a minute for. Affinity is the thing %NBR is
+  -- measuring the shadow of, so the CANDIDATES are drawn by affinity — cheap — and only those are
+  -- priced. Forty of each end is far more than enough to find one of each sign.
+  select c.port_id, c.good_id, c.nbr
+    into v_lis_low, v_sal, v_nbr_lis
+    from (
+      select pg.port_id, pg.good_id, world.pct_of_neighbours(pg.port_id, pg.good_id) as nbr
+        from (select port_id, good_id from public.port_goods
+               order by affinity asc, port_id, good_id limit 40) pg
+    ) c
+   where c.nbr is not null
+   order by c.nbr asc
+   limit 1;
+  select c.nbr
+    into v_nbr_cad
+    from (
+      select world.pct_of_neighbours(pg.port_id, v_sal) as nbr
+        from (select port_id from public.port_goods
+               where good_id = v_sal
+               order by affinity desc, port_id limit 40) pg
+    ) c
+   where c.nbr is not null
+   order by c.nbr desc
+   limit 1;
   if v_nbr_lis is not null and v_nbr_cad is not null
      and v_nbr_lis < 100 and v_nbr_cad > 100 then
     f_nbr := true;
@@ -290,7 +320,7 @@ begin
 
     -- (e) THE READ IS THE CATCH-UP: sail, then backdate so the voyage is long over, then read.
     --     No tick runs. world.fleets() alone must bring the fleet home.
-    perform cmd.issue(v_fleet, 'SAIL TO Cadiz');
+    perform cmd.issue(v_fleet, 'SAIL TO CAD');
     update public.voyages set departed_at = departed_at - interval '9 hours',
                               eta = eta - interval '9 hours'
      where fleet_id = v_fleet and status = 'SAILING';
@@ -318,7 +348,7 @@ begin
     jsonb_array_length(v_snap->'goods'), jsonb_array_length(v_snap->'ship_classes'),
     jsonb_array_length(v_snap->'verbs'); end if;
   if not f_secret then raise exception '0009 self-assert FAIL: world.snapshot() CONTAINS the world secret — every client could predict every storm'; end if;
-  if not f_mkt    then raise exception '0009 self-assert FAIL: market() did not price all 12 goods, or the culture mask did not show through (wine must be available at Lisboa and not at Tunis)'; end if;
+  if not f_mkt    then raise exception '0009 self-assert FAIL: market() did not price every good, or the culture mask did not show through (wine must be available at Lisboa and not at Tunis)'; end if;
   if not f_nbr    then raise exception '0009 self-assert FAIL: %%NBR for salt is % at Lisboa and % at Cádiz; the K.1 gradient needs below 100 then above 100', v_nbr_lis, v_nbr_cad; end if;
   if not f_settle then raise exception '0009 self-assert FAIL: world.fleets() did not settle a 9-hour-stale voyage: %', v_fl; end if;
   if not f_led    then raise exception '0009 self-assert FAIL: world.ledger() did not report the session or did not reconcile: %', v_led; end if;
@@ -328,6 +358,8 @@ begin
   select count(*) into v_grants from public.client_write_grants();
   if v_grants <> 0 then raise exception '0009 self-assert FAIL: the read surface minted % client write grant(s)', v_grants; end if;
 
-  raise notice '0009 self-assert ok: snapshot serves 12 ports / 22 legs / 12 goods / 3 classes / 8 verbs and does NOT contain the world secret; market(Lisboa) prices all 12 with wine available there and UNAVAILABLE at Tunis; salt reads %%NBR % at Lisboa and % at Cádiz (buy low, sell high — the K.1 gradient); world.fleets() alone settled a 9-hour-stale voyage and reported the fleet DOCKED at CAD with no tick; ledger reconciled; 0 client write grants',
-    v_nbr_lis, v_nbr_cad;
+  raise notice '0009 self-assert ok: snapshot serves every row the world holds (% ports / % legs / % goods / % classes / 8 verbs) and does NOT contain the world secret; market(Lisboa) prices them all with wine available there and UNAVAILABLE at Tunis; the widest %%NBR spread in the world runs from % (cheapest against its neighbours) to % (dearest); world.fleets() alone settled a 9-hour-stale voyage and reported the fleet DOCKED at CAD with no tick; ledger reconciled; 0 client write grants',
+    jsonb_array_length(v_snap->'ports'), jsonb_array_length(v_snap->'legs'),
+    jsonb_array_length(v_snap->'goods'), jsonb_array_length(v_snap->'ship_classes'),
+    round(v_nbr_lis, 1), round(v_nbr_cad, 1);
 end $$;

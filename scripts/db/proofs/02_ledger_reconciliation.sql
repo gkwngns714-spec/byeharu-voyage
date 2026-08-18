@@ -70,9 +70,29 @@ begin
     v_cmd := case
       when v_roll < 0.30 then format('BUY %s %s',   v_goods[1 + floor(random() * array_length(v_goods, 1))::int],
                                                     (1 + floor(random() * 90))::int)
-      when v_roll < 0.52 then format('SELL %s %s',  v_goods[1 + floor(random() * array_length(v_goods, 1))::int],
-                                                    case when random() < 0.5 then 'ALL' else 'HALF' end)
-      when v_roll < 0.78 then format('SAIL TO %s',  v_ports[1 + floor(random() * array_length(v_ports, 1))::int])
+      -- SELL what the fleet is actually carrying when it is carrying anything. Drawing the good
+      -- at random from all 70 made almost every sale a refusal ("you have none of that"), so the
+      -- soak issued 500 orders and moved almost no money — it stopped being a soak. A player sells
+      -- out of the hold; so does this.
+      when v_roll < 0.52 then format('SELL %s %s',
+             coalesce((select key
+                         from public.ships sh, jsonb_each(sh.cargo) c(key, value)
+                        where sh.fleet_id = v_fleets[h] and (c.value)::numeric > 0
+                        order by (c.value)::numeric desc limit 1),
+                      v_goods[1 + floor(random() * array_length(v_goods, 1))::int]),
+             case when random() < 0.5 then 'ALL' else 'HALF' end)
+      -- SAIL to a port one leg away. Picking from all 214 sends the fleet round the world, which
+      -- §F.2's endurance rule refuses every time — again, 500 orders and no voyages. A player sails
+      -- to somewhere they can reach.
+      when v_roll < 0.78 then format('SAIL TO %s',
+             coalesce((select p2.code
+                         from public.fleets f
+                         join public.legs l on l.from_port_id = f.port_id or l.to_port_id = f.port_id
+                         join public.ports p2
+                           on p2.id = case when l.from_port_id = f.port_id then l.to_port_id else l.from_port_id end
+                        where f.id = v_fleets[h] and f.port_id is not null
+                        order by random() limit 1),
+                      v_ports[1 + floor(random() * array_length(v_ports, 1))::int]))
       when v_roll < 0.86 then 'PROVISION FULL'
       when v_roll < 0.93 then format('HIRE %s', (1 + floor(random() * 12))::int)
       when v_roll < 0.97 then 'REPAIR'
@@ -85,6 +105,11 @@ begin
         v_done := v_done + 1;
       else
         v_failed := v_failed + 1;
+        -- A refused order HALTS that fleet until it is cleared (0007's §F.3 rule), which is what a
+        -- player does the moment they see the red line. Without this the soak would stop being a
+        -- soak after the first refusal — 500 orders would move almost no money and the
+        -- reconciliation would be proving nothing about a busy ledger.
+        perform cmd.clear(v_fleets[h], false);
       end if;
     exception when others then
       -- An RPC that THREW rather than returning an envelope is itself a defect: cmd.issue owns the

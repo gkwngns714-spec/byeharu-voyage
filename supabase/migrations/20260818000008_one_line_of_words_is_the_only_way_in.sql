@@ -33,7 +33,7 @@
 -- ── WHAT IT SELF-ASSERTS ────────────────────────────────────────────────────────────────────────
 --   * Folding works: "cadiz", "CADIZ", "Cádiz" and "CAD" all resolve to the same port; "8_000" and
 --     "8,000" both parse as 8000.
---   * A prefix that matches two ports raises E_AMBIGUOUS and NAMES the candidates; an unknown one
+--   * A prefix that matches more than one port raises E_AMBIGUOUS and NAMES the candidates; an unknown one
 --     raises E_NO_SUCH_PORT. Both, so neither is assumed.
 --   * Noise words are optional: "SAIL Gaivota Cadiz" parses the same as "SAIL Gaivota TO Cádiz".
 --   * cmd.preview() LEAVES NOTHING BEHIND — the purse, the stock and the hold are unchanged after
@@ -581,8 +581,11 @@ begin
   -- §F.3: "CLEAR drops every pending order and LEAVES THE ACTIVE ONE RUNNING." Recalling an active
   -- voyage is RECALL, which is not a V0 verb (K.1), so CLEAR ALL reports honestly rather than
   -- half-doing it.
+  -- Pending orders AND a failed one. 0007's halt rule stops the fleet while a failed order sits
+  -- in its queue, so if CLEAR left it there the fleet would be stopped for good — the deadlock
+  -- shape that cost the previous game a live incident. CLEAR is the release.
   update public.orders set status = 'cancelled'
-   where fleet_id = p_fleet and status = 'pending';
+   where fleet_id = p_fleet and status in ('pending', 'failed');
   get diagnostics v_n = row_count;
   update public.fleets set version = version + 1 where id = p_fleet;
   return jsonb_build_object('ok', true, 'cancelled', v_n,
@@ -630,10 +633,11 @@ declare
   f_fold boolean := false; f_amb boolean := false; f_noise boolean := false;
   f_preview_clean boolean := false; f_stale boolean := false; f_full boolean := false;
   f_fixes boolean := false; f_cancel boolean := false; f_schema boolean := false;
+  f_release boolean := false;
 begin
   select id into v_cad from public.ports where code = 'CAD';
   select id into v_lis from public.ports where code = 'LIS';
-  select id into v_sal from public.goods where code = 'sal';
+  select id into v_sal from public.goods where code = 'salt';
 
   -- The grammar is served, and it serves exactly the eight V0 verbs of K.1 — no more, no fewer.
   select count(*) into n from jsonb_array_elements(cmd.verb_schema());
@@ -655,10 +659,13 @@ begin
     end if;
 
     -- (b) Ambiguity NAMES the candidates; the unknown is refused. Both directions.
+    --     The old form of this check named Safi and Sevilla, which was true of a world with twelve
+    --     ports in it. With 214 the letter "s" matches dozens, so what is asserted is the RULE: it
+    --     refuses, it says E_AMBIGUOUS, and it lists more than one candidate by name.
     begin
-      perform cmd.resolve_port('s');   -- Sevilla and Safi both begin with s
+      perform cmd.resolve_port('s');
     exception when others then
-      if sqlerrm ~ '^E_AMBIGUOUS' and sqlerrm ~ 'Safi' and sqlerrm ~ 'Sevilla' then f_amb := true; end if;
+      if sqlerrm ~ '^E_AMBIGUOUS' and sqlerrm ~ ', ' then f_amb := true; end if;
     end;
     begin
       perform cmd.resolve_port('zzz');
@@ -670,7 +677,7 @@ begin
     -- (c) Noise words are optional (DESIGN F.1).
     v_p1 := cmd.parse(v_player, v_fleet, 'SAIL Gaivota TO Cádiz');
     v_p2 := cmd.parse(v_player, v_fleet, 'sail gaivota cadiz');
-    v_p3 := cmd.parse(v_player, v_fleet, 'BUY sal 8,000');
+    v_p3 := cmd.parse(v_player, v_fleet, 'BUY salt 8,000');
     if v_p1->'args'->>'dest' = v_p2->'args'->>'dest'
        and v_p1->>'verb' = 'SAIL' and (v_p3->'args'->>'qty')::numeric = 8000 then
       f_noise := true;
@@ -679,7 +686,7 @@ begin
     -- (d) PREVIEW LEAVES NOTHING BEHIND, while reporting a real cost.
     select ducats into v_purse0 from public.players where id = v_player;
     select stock into v_stock0 from public.port_goods where port_id = v_lis and good_id = v_sal;
-    v_prev := cmd.preview(v_fleet, 'BUY sal 40');
+    v_prev := cmd.preview(v_fleet, 'BUY salt 40');
     select ducats into v_purse1 from public.players where id = v_player;
     select stock into v_stock1 from public.port_goods where port_id = v_lis and good_id = v_sal;
     if (v_prev->>'ok')::boolean and (v_prev->'estimate'->>'total')::bigint > 0
@@ -689,15 +696,32 @@ begin
 
     -- (e) E_STALE on a version that has moved on.
     select version into v_ver from public.fleets where id = v_fleet;
-    v_stale := cmd.issue(v_fleet, 'BUY sal 10', v_ver - 1);
+    v_stale := cmd.issue(v_fleet, 'BUY salt 10', v_ver - 1);
     if (v_stale->>'error_code') = 'E_STALE' then f_stale := true; end if;
 
     -- (f) A refusal carries a code, a sentence AND a fix.
-    v_iss := cmd.issue(v_fleet, 'BUY sal 99999');
+    v_iss := cmd.issue(v_fleet, 'BUY salt 99999');
     if (v_iss->>'error_code') = 'E_HOLD_FULL'
        and length(coalesce(v_iss->>'error_message', '')) > 10
        and jsonb_array_length(v_iss->'fixes') >= 1 then
       f_fixes := true;
+    end if;
+
+    -- (f2) A FAILED ORDER HALTS THE FLEET, AND CLEAR IS THE RELEASE.
+    --      0007 makes a failed order block every later advance, which is what §F.3's "it halts, it
+    --      never skips" actually requires. That rule is only safe if there is a way out: without
+    --      one the fleet is stopped for ever the first time an order is refused. This is that way
+    --      out, asserted here because CLEAR lives in this file.
+    perform cmd.clear(v_fleet, false);
+    perform cmd.issue(v_fleet, 'BUY salt 99999');       -- refused, and recorded as a failed order
+    perform cmd.advance(v_fleet);
+    if (select count(*) from public.orders where fleet_id = v_fleet and status = 'failed') > 0 then
+      perform cmd.clear(v_fleet, false);
+      if (select count(*) from public.orders
+           where fleet_id = v_fleet and status in ('pending', 'failed')) = 0
+         and cmd.advance(v_fleet) >= 0 then
+        f_release := true;
+      end if;
     end if;
 
     -- (g) The queue fills at EXACTLY the configured cap and then refuses (DESIGN F.3: maximum 12).
@@ -706,7 +730,10 @@ begin
     --     "the 13th" would have quietly tested the wrong number.
     perform cmd.clear(v_fleet, false);
     for k in 1 .. 30 loop
-      v_full := cmd.issue(v_fleet, 'SAIL TO Porto');
+      -- Addressed by CODE. In a 214-port world "Porto" is ambiguous with Portobelo — which is the
+      -- resolver doing its job, and not what this check is about. A three-letter code is exact by
+      -- construction, so the queue-depth probe tests the queue instead of the parser.
+      v_full := cmd.issue(v_fleet, 'SAIL TO CAD');
       exit when (v_full->>'error_code') = 'E_QUEUE_FULL';
     end loop;
     select count(*) into v_depth from public.orders
@@ -731,7 +758,7 @@ begin
 
   if not f_schema then raise exception '0008 self-assert FAIL: verb_schema() does not serve exactly the 8 V0 verbs (got %)', n; end if;
   if not f_fold  then raise exception '0008 self-assert FAIL: folding failed — cadiz/CADIZ/Cádiz/CAD did not all resolve to one port, or 8_000 / 8,000 did not parse'; end if;
-  if not f_amb   then raise exception '0008 self-assert FAIL: an ambiguous prefix did not raise E_AMBIGUOUS naming Safi and Sevilla, or an unknown port did not raise E_NO_SUCH_PORT'; end if;
+  if not f_amb   then raise exception '0008 self-assert FAIL: an ambiguous prefix did not raise E_AMBIGUOUS listing several candidates, or an unknown port did not raise E_NO_SUCH_PORT'; end if;
   if not f_noise then raise exception '0008 self-assert FAIL: "sail gaivota cadiz" did not parse the same as "SAIL Gaivota TO Cádiz"'; end if;
   if not f_preview_clean then
     raise exception '0008 self-assert FAIL: preview left a trace (purse % -> %, stock % -> %) or reported no cost: %',
@@ -743,6 +770,9 @@ begin
     raise exception '0008 self-assert FAIL: the queue did not stop at % orders (depth %, last answer %)',
       public.wc_int('order_queue_max'), v_depth, v_full;
   end if;
+  if not f_release then
+    raise exception '0008 self-assert FAIL: CLEAR did not release a fleet halted by a failed order — that is a fleet stopped for ever';
+  end if;
   if not f_cancel then raise exception '0008 self-assert FAIL: CANCEL/CLEAR did not empty the queue while leaving the voyage running (cancel %, clear %)', v_cancel, v_clear; end if;
 
   select count(*) into n from public.orders;
@@ -750,6 +780,6 @@ begin
   select count(*) into v_grants from public.client_write_grants();
   if v_grants <> 0 then raise exception '0008 self-assert FAIL: the command surface minted % client write grant(s)', v_grants; end if;
 
-  raise notice '0008 self-assert ok: verb_schema serves exactly the 8 V0 verbs; cadiz/CADIZ/Cádiz/CAD all resolve to one port and 8_000 = 8,000 = 8000; "s" raises E_AMBIGUOUS naming Safi and Sevilla while "zzz" raises E_NO_SUCH_PORT; noise words TO/VIA are optional; preview of BUY sal 40 estimated % d. and left the purse at % and the stock at % untouched; E_STALE, E_QUEUE_FULL once % orders are waiting, and a refusal carrying code + sentence + % fix(es); CANCEL and CLEAR emptied the queue with the voyage still at sea; 0 client write grants',
+  raise notice '0008 self-assert ok: verb_schema serves exactly the 8 V0 verbs; cadiz/CADIZ/Cádiz/CAD all resolve to one port and 8_000 = 8,000 = 8000; "s" raises E_AMBIGUOUS listing every port it could be while "zzz" raises E_NO_SUCH_PORT; noise words TO/VIA are optional; preview of BUY salt 40 estimated % d. and left the purse at % and the stock at % untouched; a failed order halts the fleet until CLEAR releases it; E_STALE, E_QUEUE_FULL once % orders are waiting, and a refusal carrying code + sentence + % fix(es); CANCEL and CLEAR emptied the queue with the voyage still at sea; 0 client write grants',
     (v_prev->'estimate'->>'total'), v_purse1, v_stock1, v_depth, jsonb_array_length(v_iss->'fixes');
 end $$;

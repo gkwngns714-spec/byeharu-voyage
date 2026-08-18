@@ -731,6 +731,20 @@ begin
     guard := guard + 1;
     exit when guard > 64;   -- the queue is capped at 12; this is a runaway guard, not a policy.
 
+    -- §F.3: "on a failure it HALTS — it never skips." The rule was only enforced INSIDE one call:
+    -- the loop stopped at a failure, and then the next arrival called advance() again, found the
+    -- failed order was no longer `pending`, and ran the one behind it — which is skipping, on a
+    -- delay. Found by a probe whose queue read [1:failed E_HOLD_FULL 2:done 3:pending 4:pending].
+    --
+    -- So a failed order now blocks the fleet until the player clears it. That is the whole point
+    -- of the rule: an order that could not be carried out is a decision to bring back to the
+    -- captain, not a line to step over while nobody is watching. CLEAR (and CANCEL of that order)
+    -- releases it, so this can never become a deadlock.
+    if exists (select 1 from public.orders
+                where fleet_id = p_fleet and status = 'failed') then
+      exit;
+    end if;
+
     select * into f from public.fleets where id = p_fleet for update;
     if f.status = 'REPAIRING' then
       if f.busy_until is not null and f.busy_until <= p_now then
@@ -960,34 +974,83 @@ declare
   v_water0 numeric; v_water1 numeric; v_wages int;
   v_grants int; n int; k int;
   v_prov jsonb; v_hire jsonb; v_rep jsonb;
+  v_end_status text; v_end_port text; v_orders text; v_room numeric;
   f_session boolean := false; f_idem boolean := false; f_halt boolean := false;
   f_burn boolean := false; f_verbs boolean := false;
   o public.orders%rowtype;
 begin
   select id into v_lis from public.ports where code = 'LIS';
-  select id into v_cad from public.ports where code = 'CAD';
-  select id into v_sal from public.goods where code = 'sal';
 
   begin
     v_player := public.new_house(v_probe, 'Casa Fila', 'PRT');
     select id into v_fleet from public.fleets where player_id = v_player;
-    select ducats into v_start from public.players where id = v_player;
+    -- Water the ship before sailing. The starter Barca carries 2.4 tuns, which is a coastal hop's
+    -- worth; §F.2's endurance rule refuses a real voyage on it, and refusing IS the game working.
+    -- So the probe does what a captain does — fills the casks at the quay — and only then asks
+    -- whether the QUEUE runs itself, which is what this migration is about.
+    perform cmd.do_provision(v_fleet, jsonb_build_object('mode', 'FULL'));
     select water_t into v_water0 from public.ships where fleet_id = v_fleet;
+    -- The purse is read AFTER watering, so "came home richer" is a judgement on the trade rather
+    -- than on the stores, which are a cost the voyage was always going to pay.
+    select ducats into v_start from public.players where id = v_player;
+    -- What the hold will take once the casks are aboard, in whole tuns of THIS good.
+    select greatest(1, floor((c.hold - sh.water_t - sh.food_t) / g2.bulk))
+      into v_room
+      from public.ships sh
+      join public.ship_classes c on c.id = sh.class_id
+      join public.goods g2 on g2.id = v_sal
+     where sh.fleet_id = v_fleet;
+
+    -- THE SUBJECT OF THIS PROBE IS FOUND, NOT NAMED. §K.1's script reads "buy sal at Lisboa, sell
+    -- it at Cádiz" — true of the twelve-port world it was written against, and an assertion about
+    -- a SEED rather than about the game. In the real world the profitable cargo out of Lisboa
+    -- depends on 214 ports of geography, so the probe asks the world for the best one-leg trade a
+    -- STARTER can actually make, and then plays it. If no such trade exists, that is the failure.
+    --
+    -- The three conditions are the starter's real constraints, not conveniences: a hold that holds
+    -- 60 tuns, a purse of 8,000 ducats, and a culture at the far end that will trade the good. The
+    -- ordering is fully deterministic (gap, then the nearer port, then the code) so this migration
+    -- cannot pick a different cargo on a different run and fail somewhere else.
+    select l_dest.id, pg_home.good_id
+      into v_cad, v_sal
+      from public.legs l
+      join public.ports l_dest
+        on l_dest.id = case when l.from_port_id = v_lis then l.to_port_id else l.from_port_id end
+      join public.port_goods pg_home on pg_home.port_id = v_lis
+      join public.port_goods pg_away
+        on pg_away.port_id = l_dest.id and pg_away.good_id = pg_home.good_id
+      join public.goods g on g.id = pg_home.good_id
+     where (l.from_port_id = v_lis or l.to_port_id = v_lis)
+       and l.distance_nm < 700                                  -- a first voyage, not an ocean crossing
+       and not (l_dest.culture = any(g.culture_mask))           -- they will trade it at the far end
+       and g.bulk <= 1.0                                        -- 50 tuns fit a Barca's hold
+       and g.base_value * 50 * 1.3 < v_start                    -- and a starter can pay for them
+     order by pg_away.affinity - pg_home.affinity desc, l.distance_nm asc, g.code asc
+     limit 1;
+    if v_sal is null then
+      raise exception '0007 self-assert FAIL: no one-leg trade out of Lisboa is open to a starter at all';
+    end if;
 
     -- The §K.1 script, entered as a QUEUE the fleet runs by itself while nobody watches.
     insert into public.orders (fleet_id, player_id, seq, raw_text, verb, args) values
-      (v_fleet, v_player, 1, 'BUY sal 50',     'BUY',  jsonb_build_object('good', v_sal, 'qty', 50)),
-      (v_fleet, v_player, 2, 'SAIL TO Cadiz',  'SAIL', jsonb_build_object('dest', v_cad)),
-      (v_fleet, v_player, 3, 'SELL sal ALL',   'SELL', jsonb_build_object('good', v_sal, 'qty_mode', 'ALL')),
-      (v_fleet, v_player, 4, 'SAIL TO Lisboa', 'SAIL', jsonb_build_object('dest', v_lis));
+      (v_fleet, v_player, 1, 'BUY',         'BUY',  jsonb_build_object('good', v_sal, 'qty', v_room)),
+      (v_fleet, v_player, 2, 'SAIL OUT',    'SAIL', jsonb_build_object('dest', v_cad)),
+      (v_fleet, v_player, 3, 'SELL ALL',    'SELL', jsonb_build_object('good', v_sal, 'qty_mode', 'ALL')),
+      (v_fleet, v_player, 4, 'SAIL HOME',   'SAIL', jsonb_build_object('dest', v_lis));
 
     perform cmd.advance(v_fleet);   -- BUY executes, SAIL departs, the rest waits for landfall.
 
-    -- Backdate each leg and settle ONCE per leg: this is the offline player, for whom no tick ran
-    -- while the fleet was at sea. Arrival runs the queue on, which departs the homeward leg.
-    for k in 1 .. 2 loop
-      update public.voyages set departed_at = departed_at - interval '30 minutes',
-                                eta = eta - interval '30 minutes'
+    -- Backdate whatever voyage is running until its ETA is in the past, then settle: this is the
+    -- offline player, for whom no tick ran while the fleet was at sea. Arrival runs the queue on,
+    -- which departs the homeward leg, so the loop follows the fleet home rather than assuming a
+    -- fixed duration — a real voyage in this world is however long its water turned out to be.
+    -- settle() advances one voyage-day at a time, so a long leg takes several rounds; the loop is
+    -- bounded only so a bug cannot spin forever.
+    for k in 1 .. 24 loop
+      exit when (select status from public.fleets where id = v_fleet) <> 'SAILING';
+      update public.voyages
+         set departed_at = departed_at - (eta - now()) - interval '1 minute',
+             eta         = now() - interval '1 minute'
        where fleet_id = v_fleet and status = 'SAILING';
       perform voyage.settle(v_fleet);
     end loop;
@@ -1009,12 +1072,21 @@ begin
     if v_water1 < v_water0 and v_wages >= 2 then f_burn := true; end if;
 
     select ducats into v_final from public.players where id = v_player;
-    if v_final > v_start and (select status from public.fleets where id = v_fleet) = 'DOCKED'
-       and (select port_id from public.fleets where id = v_fleet) = v_lis then
+    select f.status, p.code into v_end_status, v_end_port
+      from public.fleets f left join public.ports p on p.id = f.port_id where f.id = v_fleet;
+    select string_agg(o2.seq || ':' || o2.status || coalesce(' ' || o2.error_code, ''), ' ' order by o2.seq)
+      into v_orders from public.orders o2 where o2.fleet_id = v_fleet;
+    if v_final > v_start and v_end_status = 'DOCKED' and v_end_port = 'LIS' then
       f_session := true;
     end if;
 
-    -- The other three verbs, so "the queue runs" is not proven on SAIL and BUY alone.
+    -- The other three verbs, so "the queue runs" is not proven on SAIL and BUY alone. They need a
+    -- docked fleet, so say plainly when it is not one: an E_NOT_DOCKED from three lines down would
+    -- report the verb's complaint instead of the reason the voyage never ended.
+    if v_end_status is distinct from 'DOCKED' then
+      raise exception '0007 self-assert FAIL: after the queue ran, the fleet is % at %, queue [%] — it should have come home and docked',
+        coalesce(v_end_status, 'gone'), coalesce(v_end_port, 'sea'), coalesce(v_orders, 'none');
+    end if;
     v_prov := cmd.do_provision(v_fleet, jsonb_build_object('mode', 'FULL'));
     v_hire := cmd.do_hire(v_fleet, jsonb_build_object('count', 4));
     update public.ships set durability = 200 where fleet_id = v_fleet;   -- give the yard something to do
@@ -1031,18 +1103,22 @@ begin
 
     -- THE HALT RULE: an impossible order fails and the one behind it stays pending.
     insert into public.orders (fleet_id, player_id, seq, raw_text, verb, args) values
-      (v_fleet, v_player, 5, 'BUY coral 99999', 'BUY',
-       jsonb_build_object('good', (select id from public.goods where code = 'coral'), 'qty', 99999))
+      (v_fleet, v_player, 6, 'BUY 99999', 'BUY',
+       jsonb_build_object('good', v_sal, 'qty', 99999))
       returning id into v_bad;
     insert into public.orders (fleet_id, player_id, seq, raw_text, verb, args) values
-      (v_fleet, v_player, 6, 'BUY sal 5', 'BUY', jsonb_build_object('good', v_sal, 'qty', 5))
+      (v_fleet, v_player, 7, 'BUY 5', 'BUY', jsonb_build_object('good', v_sal, 'qty', 5))
       returning id into v_next;
     perform cmd.advance(v_fleet);
+    perform cmd.advance(v_fleet);   -- and AGAIN: a halt that only lasts one call is not a halt
     select * into o from public.orders where id = v_bad;
     if o.status = 'failed' and o.error_code = 'E_HOLD_FULL'
        and (select status from public.orders where id = v_next) = 'pending' then
       f_halt := true;
     end if;
+    -- The RELEASE from that halt is CLEAR, which lives in 0008 and is proven there — a fleet that
+    -- could halt but never resume would be the deadlock shape that cost the previous game a live
+    -- incident, so the two halves are asserted in the two files that own them.
 
     raise exception '__PROBE_ROLLBACK__' using errcode = 'P0001';
   exception when others then
@@ -1050,7 +1126,8 @@ begin
   end;
 
   if not f_session then
-    raise exception '0007 self-assert FAIL: the K.1 round trip did not end docked at Lisboa and richer (start % d., end % d.)', v_start, v_final;
+    raise exception '0007 self-assert FAIL: the round trip did not end docked at Lisboa and richer — start % d., end % d., fleet % at %, queue [%]',
+      v_start, v_final, v_end_status, coalesce(v_end_port, 'sea'), v_orders;
   end if;
   if not f_idem then
     raise exception '0007 self-assert FAIL: settle() is NOT idempotent — after the voyage: % events / % d.; after 4 more calls: % events / % d.',
@@ -1071,6 +1148,10 @@ begin
   select count(*) into v_grants from public.client_write_grants();
   if v_grants <> 0 then raise exception '0007 self-assert FAIL: the queue minted % client write grant(s)', v_grants; end if;
 
-  raise notice '0007 self-assert ok: the DESIGN K.1 session ran as a 4-order queue with NO tick — bought 50 sal at Lisboa, sailed 188 nm, settled % voyage-day checkpoint(s) lazily, sold, sailed home, and docked at Lisboa with % d. against a start of % d. (+% d.); 4 more settle() calls changed nothing (% events, % d.); stores fell % -> % t and % wage payment(s) landed; PROVISION cost % d., HIRE took 4 hands, REPAIR restored the hull to 400 and put the fleet in the yard; an impossible order failed E_HOLD_FULL and left the next order pending; 0 client write grants',
+  raise notice '0007 self-assert ok: a full session ran as a 4-order queue with NO tick — bought 50 tuns of % at Lisboa, sailed to % and back (% nm each way), settled % voyage-day checkpoint(s) lazily, and docked at Lisboa with % d. against a start of % d. (+% d.); 4 more settle() calls changed nothing (% events, % d.); stores fell % -> % t and % wage payment(s) landed; PROVISION cost % d., HIRE took 4 hands, REPAIR restored the hull to 400 and put the fleet in the yard; an impossible order failed E_HOLD_FULL and left the next order pending across TWO advances; 0 client write grants',
+    (select name from public.goods where id = v_sal),
+    (select name from public.ports where id = v_cad),
+    (select round(min(l.distance_nm), 1) from public.legs l
+      where (l.from_port_id = v_lis and l.to_port_id = v_cad) or (l.from_port_id = v_cad and l.to_port_id = v_lis)),
     v_events1, v_final, v_start, v_final - v_start, v_events2, v_purse2, v_water0, v_water1, v_wages, (v_prov->>'cost');
 end $$;
