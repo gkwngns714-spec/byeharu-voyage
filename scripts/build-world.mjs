@@ -79,28 +79,38 @@ function collect(features, scale, into) {
   return into;
 }
 
-const boxes = collect(fc.features, '110m', {});
-
-// Micro-territories with their own ISO alpha-2 code are dropped from the 110m sheet.
-// Pull just those from Natural Earth 1:10m (same repository, same public-domain licence).
-const NEEDED_FROM_10M = ['BB', 'BH', 'BM', 'CV', 'CW', 'FO', 'GI', 'GU', 'HK', 'MO', 'MT', 'SG', 'ST'];
+// The bbox table is built from Natural Earth 1:10m, not 110m: the 110m sheet drops
+// small islands and dependencies (the Azores, Madeira, the Canaries, Okinawa, Rhodes,
+// Jeju, Tsushima, Ceuta, Gibraltar, Macau...), which would make the plausibility test
+// reject perfectly correct island ports. 10m is downloaded here but NOT vendored.
 const SRC10 = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_0_countries.geojson';
 const res10 = await fetch(SRC10, { headers: { 'User-Agent': 'byeharu-voyage-dataset/0.1' } });
 if (!res10.ok) throw new Error(`HTTP ${res10.status} fetching ${SRC10}`);
-const fc10 = await res10.json();
-const extra = collect(fc10.features.filter(f => {
-  const p = f.properties;
-  const iso = (p.ISO_A2_EH && p.ISO_A2_EH !== '-99') ? p.ISO_A2_EH : p.ISO_A2;
-  return NEEDED_FROM_10M.includes(iso);
-}), '10m', {});
-for (const [iso, v] of Object.entries(extra)) boxes[iso] = v;
-console.log(`added ${Object.keys(extra).length} micro-territory bboxes from Natural Earth 1:10m`);
+const raw10 = await res10.text();
+console.log(`downloaded ${raw10.length} bytes from ${SRC10} (bbox table only, not vendored)`);
+const fc10 = JSON.parse(raw10);
+const boxes = collect(fc10.features, '10m', {});
+
+// Natural Earth's default point of view excludes the Crimean peninsula from Ukraine, so
+// UA's bbox stops north of Feodosia. Natural Earth also publishes point-of-view variants;
+// union in the Ukrainian one so UA covers the territory the UN recognises as Ukrainian.
+// The number comes from that file, not from a hand-typed coordinate.
+const SRC10_UKR = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_0_countries_ukr.geojson';
+const resUkr = await fetch(SRC10_UKR, { headers: { 'User-Agent': 'byeharu-voyage-dataset/0.1' } });
+if (!resUkr.ok) throw new Error(`HTTP ${resUkr.status} fetching ${SRC10_UKR}`);
+const ukrBoxes = collect((await resUkr.json()).features, '10m-ukr', {});
+if (boxes.UA && ukrBoxes.UA) {
+  const a = boxes.UA.bbox, b = ukrBoxes.UA.bbox;
+  boxes.UA.bbox = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+  boxes.UA.note = `unioned with Natural Earth's Ukrainian point-of-view file so the bbox covers Crimea (${SRC10_UKR})`;
+  console.log(`UA bbox unioned with the Ukrainian point-of-view file: ${JSON.stringify(boxes.UA.bbox)}`);
+}
 
 writeFileSync(join(HERE, 'country-bbox.generated.json'), JSON.stringify({
   _provenance: {
-    source110m: SRC,
-    source10m: SRC10,
-    dataset: 'Natural Earth Admin 0 Countries; bbox = min/max of every coordinate in the country geometry',
+    vendoredGeometry: SRC,
+    bboxSource: SRC10,
+    dataset: 'Natural Earth 1:10m Admin 0 Countries; bbox = min/max of every coordinate in the country geometry',
     licence: 'Public domain (Natural Earth terms of use)',
     note: 'bbox is [minLon, minLat, maxLon, maxLat], rounded to 4 decimal places. Names are Natural Earth NAME_LONG.',
     generatedAt: new Date().toISOString(),

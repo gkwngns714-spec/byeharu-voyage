@@ -1,5 +1,5 @@
 {
-  "$schema": "./seas.schema.md",
+  "$doc": "../docs/WORLD_DATA.md",
   "note": "Named water bodies referenced by data/ports.json. `centroid` is a hand-placed label anchor for map rendering, NOT a surveyed or sourced centroid — see docs/WORLD_DATA.md, 'What is NOT verified'.",
   "seas": [
     { "id": "arctic-ocean", "name": "Arctic Ocean", "centroid": { "lat": 85.0, "lon": 0.0 } },
@@ -53,7 +53,6 @@
 
     { "id": "east-china-sea", "name": "East China Sea", "centroid": { "lat": 29.0, "lon": 125.0 } },
     { "id": "yellow-sea", "name": "Yellow Sea", "centroid": { "lat": 35.5, "lon": 123.5 } },
-    { "id": "bohai-sea", "name": "Bohai Sea", "centroid": { "lat": 38.5, "lon": 119.5 } },
     { "id": "korea-strait", "name": "Korea Strait", "centroid": { "lat": 34.3, "lon": 129.0 } },
     { "id": "sea-of-japan", "name": "Sea of Japan", "centroid": { "lat": 40.0, "lon": 135.0 } },
     { "id": "seto-inland-sea", "name": "Seto Inland Sea", "centroid": { "lat": 34.2, "lon": 133.3 } },

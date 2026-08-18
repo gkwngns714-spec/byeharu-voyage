@@ -24,18 +24,34 @@ const UA = 'byeharu-voyage-dataset/0.1 (one-off game dataset build)';
 const DISAMBIG = 'Q4167410';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function api(params) {
+const ATTEMPTS = 7;
+const backoff = n => Math.min(60_000, 4_000 * 2 ** n);   // 4s, 8s, 16s, 32s, 60s, 60s
+
+async function api(params, { optional = false } = {}) {
   const url = `${API}?${new URLSearchParams({ format: 'json', formatversion: '2', ...params })}`;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' } });
-    if (res.ok) return res.json();
-    if (res.status === 429 || res.status >= 500) { await sleep(1500 * (attempt + 1)); continue; }
-    throw new Error(`HTTP ${res.status} for ${url}`);
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json', Connection: 'close' } });
+      if (res.ok) return res.json();
+      if (res.status === 429 || res.status >= 500) {
+        process.stderr.write(`HTTP ${res.status}, backing off ${backoff(attempt) / 1000}s\n`);
+        await sleep(backoff(attempt));
+        continue;
+      }
+      throw new Error(`HTTP ${res.status} for ${url}`);
+    } catch (err) {
+      // transient socket drops and truncated bodies are common on long batch runs
+      if (attempt === ATTEMPTS - 1) break;
+      process.stderr.write(`retrying after ${err.cause?.code ?? err.name}: ${err.message}\n`);
+      await sleep(backoff(attempt));
+    }
   }
+  if (optional) return null;
   throw new Error(`gave up on ${url}`);
 }
 
 const chunk = (a, n) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
+const BATCH = 25;   // small batches: long keep-alive runs against the API drop sockets mid-body
 
 const isoCache = new Map();
 
@@ -77,7 +93,7 @@ const countryQids = new Set();
 
 // --- pass 1: entries pinned to a QID ---
 const pinned = roster.filter(p => p.qid);
-for (const batch of chunk(pinned, 40)) {
+for (const batch of chunk(pinned, BATCH)) {
   const j = await api({ action: 'wbgetentities', ids: batch.map(p => p.qid).join('|'), props: PROPS, languages: 'en', sitefilter: 'enwiki' });
   for (const p of batch) {
     const c = await ingest(p, j.entities?.[p.qid]);
@@ -88,7 +104,7 @@ for (const batch of chunk(pinned, 40)) {
 
 // --- pass 2: entries resolved through their enwiki title ---
 const byTitleRoster = roster.filter(p => !p.qid);
-for (const batch of chunk(byTitleRoster, 40)) {
+for (const batch of chunk(byTitleRoster, BATCH)) {
   const j = await api({ action: 'wbgetentities', sites: 'enwiki', titles: batch.map(p => p.wiki).join('|'), props: PROPS, languages: 'en', sitefilter: 'enwiki' });
   const norm = new Map((j.normalized ?? []).map(n => [n.from, n.to]));
   const byTitle = new Map();
@@ -106,16 +122,37 @@ for (const batch of chunk(byTitleRoster, 40)) {
 }
 
 // --- country QID -> ISO 3166-1 alpha-2 ---
-for (const batch of chunk([...countryQids], 40)) {
-  const j = await api({ action: 'wbgetentities', ids: batch.join('|'), props: 'claims|labels', languages: 'en' });
+// Country items carry thousands of statements each; asking wbgetentities for their full
+// claims pulls megabytes per item and drops the socket. Take the labels in one cheap batch
+// and the single P297 claim one item at a time through wbgetclaims, which returns a few
+// hundred bytes.
+for (const batch of chunk([...countryQids], BATCH)) {
+  const j = await api({ action: 'wbgetentities', ids: batch.join('|'), props: 'labels', languages: 'en' });
   for (const [qid, ent] of Object.entries(j.entities ?? {})) {
-    isoCache.set(qid, {
-      iso: ent.claims?.P297?.[0]?.mainsnak?.datavalue?.value ?? null,
-      label: ent.labels?.en?.value ?? null,
-    });
+    isoCache.set(qid, { iso: null, label: ent.labels?.en?.value ?? null });
   }
-  await sleep(400);
+  await sleep(250);
 }
+let isoUnresolved = 0;
+for (const qid of countryQids) {
+  // `optional` — this is a QA cross-check, not data. If the API will not answer, report the
+  // gap rather than failing the run or silently implying the codes agree.
+  const j = await api({ action: 'wbgetclaims', entity: qid, property: 'P297' }, { optional: true });
+  if (j === null) { isoUnresolved++; continue; }
+  const claims = j.claims?.P297 ?? [];
+  // Prefer a live statement, but fall back to a deprecated one rather than reporting no code
+  // at all. Wikidata deprecates P297 = NL on Q55 (Netherlands) because the code formally
+  // belongs to the Kingdom of the Netherlands; the code is still the right answer here.
+  const pick = claims.find(c => c.rank === 'preferred') ?? claims.find(c => c.rank === 'normal') ?? claims[0];
+  isoCache.set(qid, {
+    iso: pick?.mainsnak?.datavalue?.value ?? null,
+    isoRank: pick?.rank ?? null,
+    label: isoCache.get(qid)?.label ?? null,
+  });
+  await sleep(150);
+}
+process.stderr.write(`ISO cross-check: ${countryQids.size - isoUnresolved}/${countryQids.size} country items resolved\n`);
+if (isoUnresolved) console.log(`\nWARNING: ${isoUnresolved} country items could not be re-checked (API unavailable); their ports are omitted from the cross-check below.`);
 
 for (const rec of Object.values(out)) {
   const c = rec.countryQid ? isoCache.get(rec.countryQid) : null;

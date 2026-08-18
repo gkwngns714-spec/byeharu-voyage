@@ -1,20 +1,9 @@
 {
-  "fetchedAt": "2026-08-18T07:50:16.369Z",
+  "fetchedAt": "2026-08-18T08:40:20.399Z",
   "source": "Wikidata wbgetentities API; coordinate property P625, country property P17 -> P297",
   "licence": "CC0 1.0 Universal (Wikidata data)",
-  "count": 280,
+  "count": 214,
   "entries": {
-    "julfar": {
-      "qid": "Q2126436",
-      "wikiResolved": "Ras Al Khaimah",
-      "label": "Ras al-Khaimah",
-      "lat": 25.7851,
-      "lon": 55.9479,
-      "precision": 0.1,
-      "countryQid": "Q878",
-      "wikidataCountryIso": "AE",
-      "wikidataCountryLabel": "United Arab Emirates"
-    },
     "hoi-an": {
       "qid": "Q36160",
       "wikiResolved": "Hội An (city)",
@@ -43,17 +32,6 @@
       "label": "Porto",
       "lat": 41.15,
       "lon": -8.610833333333334,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q45",
-      "wikidataCountryIso": "PT",
-      "wikidataCountryLabel": "Portugal"
-    },
-    "lagos-pt": {
-      "qid": "Q732548",
-      "wikiResolved": "Lagos, Portugal",
-      "label": "Lagos",
-      "lat": 37.102777777777774,
-      "lon": -8.672777777777778,
       "precision": 0.0002777777777777778,
       "countryQid": "Q45",
       "wikidataCountryIso": "PT",
@@ -147,17 +125,6 @@
       "wikidataCountryIso": "ES",
       "wikidataCountryLabel": "Spain"
     },
-    "a-coruna": {
-      "qid": "Q8757",
-      "wikiResolved": "A Coruña",
-      "label": "A Coruña",
-      "lat": 43.37385694021591,
-      "lon": -8.400027032341967,
-      "precision": 1e-8,
-      "countryQid": "Q29",
-      "wikidataCountryIso": "ES",
-      "wikidataCountryLabel": "Spain"
-    },
     "palma": {
       "qid": "Q8826",
       "wikiResolved": "Palma de Mallorca",
@@ -224,17 +191,6 @@
       "wikidataCountryIso": "ES",
       "wikidataCountryLabel": "Spain"
     },
-    "santa-cruz-tenerife": {
-      "qid": "Q14328",
-      "wikiResolved": "Santa Cruz de Tenerife",
-      "label": "Santa Cruz de Tenerife",
-      "lat": 28.466666666667,
-      "lon": -16.25,
-      "precision": 0.016666666666667,
-      "countryQid": "Q29",
-      "wikidataCountryIso": "ES",
-      "wikidataCountryLabel": "Spain"
-    },
     "cidade-velha": {
       "qid": "Q464913",
       "wikiResolved": "Cidade Velha",
@@ -290,28 +246,6 @@
       "wikidataCountryIso": "GB",
       "wikidataCountryLabel": "United Kingdom"
     },
-    "southampton": {
-      "qid": "Q79848",
-      "wikiResolved": "Southampton",
-      "label": "Southampton",
-      "lat": 50.906666666666666,
-      "lon": -1.4044444444444444,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q145",
-      "wikidataCountryIso": "GB",
-      "wikidataCountryLabel": "United Kingdom"
-    },
-    "falmouth": {
-      "qid": "Q478029",
-      "wikiResolved": "Falmouth, Cornwall",
-      "label": "Falmouth",
-      "lat": 50.15,
-      "lon": -5.0666666666667,
-      "precision": 0.016666666666667,
-      "countryQid": "Q145",
-      "wikidataCountryIso": "GB",
-      "wikidataCountryLabel": "United Kingdom"
-    },
     "kingston-upon-hull": {
       "qid": "Q128147",
       "wikiResolved": "Kingston upon Hull",
@@ -323,17 +257,6 @@
       "wikidataCountryIso": null,
       "wikidataCountryLabel": "Kingdom of England"
     },
-    "newcastle": {
-      "qid": "Q1425428",
-      "wikiResolved": "Newcastle upon Tyne",
-      "label": "Newcastle upon Tyne",
-      "lat": 54.977777777778,
-      "lon": -1.6133333333333,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q145",
-      "wikidataCountryIso": "GB",
-      "wikidataCountryLabel": "United Kingdom"
-    },
     "leith": {
       "qid": "Q1018540",
       "wikiResolved": "Leith",
@@ -341,17 +264,6 @@
       "lat": 55.9801,
       "lon": -3.17005,
       "precision": 0.0001,
-      "countryQid": "Q145",
-      "wikidataCountryIso": "GB",
-      "wikidataCountryLabel": "United Kingdom"
-    },
-    "aberdeen": {
-      "qid": "Q36405",
-      "wikiResolved": "Aberdeen",
-      "label": "Aberdeen",
-      "lat": 57.15,
-      "lon": -2.1,
-      "precision": 0.016666666666667,
       "countryQid": "Q145",
       "wikidataCountryIso": "GB",
       "wikidataCountryLabel": "United Kingdom"
@@ -374,17 +286,6 @@
       "lat": 51.9,
       "lon": -8.4730555555556,
       "precision": 0.00027777777777778,
-      "countryQid": "Q27",
-      "wikidataCountryIso": "IE",
-      "wikidataCountryLabel": "Ireland"
-    },
-    "galway": {
-      "qid": "Q129610",
-      "wikiResolved": "Galway",
-      "label": "Galway",
-      "lat": 53.2719,
-      "lon": -9.0488,
-      "precision": 0.0001,
       "countryQid": "Q27",
       "wikidataCountryIso": "IE",
       "wikidataCountryLabel": "Ireland"
@@ -439,28 +340,6 @@
       "label": "Le Havre",
       "lat": 49.494166666667,
       "lon": 0.10805555555556,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q142",
-      "wikidataCountryIso": "FR",
-      "wikidataCountryLabel": "France"
-    },
-    "dieppe": {
-      "qid": "Q183557",
-      "wikiResolved": "Dieppe",
-      "label": "Dieppe",
-      "lat": 49.925,
-      "lon": 1.075,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q142",
-      "wikidataCountryIso": "FR",
-      "wikidataCountryLabel": "France"
-    },
-    "brest": {
-      "qid": "Q12193",
-      "wikiResolved": "Brest, France",
-      "label": "Brest",
-      "lat": 48.39,
-      "lon": -4.4869444444444,
       "precision": 0.00027777777777778,
       "countryQid": "Q142",
       "wikidataCountryIso": "FR",
@@ -521,17 +400,6 @@
       "wikidataCountryIso": "BE",
       "wikidataCountryLabel": "Belgium"
     },
-    "ostend": {
-      "qid": "Q12996",
-      "wikiResolved": "Ostend",
-      "label": "Ostend",
-      "lat": 51.225833333333334,
-      "lon": 2.9194444444444443,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q31",
-      "wikidataCountryIso": "BE",
-      "wikidataCountryLabel": "Belgium"
-    },
     "amsterdam": {
       "qid": "Q727",
       "wikiResolved": "Amsterdam",
@@ -565,34 +433,12 @@
       "wikidataCountryIso": "NL",
       "wikidataCountryLabel": "Netherlands"
     },
-    "vlissingen": {
-      "qid": "Q10084",
-      "wikiResolved": "Vlissingen",
-      "label": "Vlissingen",
-      "lat": 51.45,
-      "lon": 3.5833333333333,
-      "precision": 0.016666666666667,
-      "countryQid": "Q55",
-      "wikidataCountryIso": "NL",
-      "wikidataCountryLabel": "Netherlands"
-    },
     "hoorn": {
       "qid": "Q9938",
       "wikiResolved": "Hoorn",
       "label": "Hoorn",
       "lat": 52.653333333333,
       "lon": 5.0733333333333,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q55",
-      "wikidataCountryIso": "NL",
-      "wikidataCountryLabel": "Netherlands"
-    },
-    "enkhuizen": {
-      "qid": "Q9918",
-      "wikiResolved": "Enkhuizen",
-      "label": "Enkhuizen",
-      "lat": 52.7,
-      "lon": 5.2833333333333,
       "precision": 0.00027777777777778,
       "countryQid": "Q55",
       "wikidataCountryIso": "NL",
@@ -631,28 +477,6 @@
       "wikidataCountryIso": "DE",
       "wikidataCountryLabel": "Germany"
     },
-    "bremen": {
-      "qid": "Q24879",
-      "wikiResolved": "Bremen",
-      "label": "Bremen",
-      "lat": 53.075833333333335,
-      "lon": 8.807222222222222,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q183",
-      "wikidataCountryIso": "DE",
-      "wikidataCountryLabel": "Germany"
-    },
-    "rostock": {
-      "qid": "Q2861",
-      "wikiResolved": "Rostock",
-      "label": "Rostock",
-      "lat": 54.083333333333,
-      "lon": 12.133333333333,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q183",
-      "wikidataCountryIso": "DE",
-      "wikidataCountryLabel": "Germany"
-    },
     "gdansk": {
       "qid": "Q1792",
       "wikiResolved": "Gdańsk",
@@ -674,17 +498,6 @@
       "countryQid": "Q159",
       "wikidataCountryIso": "RU",
       "wikidataCountryLabel": "Russia"
-    },
-    "klaipeda": {
-      "qid": "Q776965",
-      "wikiResolved": "Klaipėda",
-      "label": "Klaipėda",
-      "lat": 55.7125,
-      "lon": 21.135,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q37",
-      "wikidataCountryIso": "LT",
-      "wikidataCountryLabel": "Lithuania"
     },
     "riga": {
       "qid": "Q1773",
@@ -719,17 +532,6 @@
       "wikidataCountryIso": "SE",
       "wikidataCountryLabel": "Sweden"
     },
-    "gothenburg": {
-      "qid": "Q25287",
-      "wikiResolved": "Gothenburg",
-      "label": "Gothenburg",
-      "lat": 57.7075,
-      "lon": 11.9675,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q34",
-      "wikidataCountryIso": "SE",
-      "wikidataCountryLabel": "Sweden"
-    },
     "visby": {
       "qid": "Q54757",
       "wikiResolved": "Visby",
@@ -759,17 +561,6 @@
       "lat": 60.3925,
       "lon": 5.3233333333333,
       "precision": 0.00027777777777778,
-      "countryQid": "Q20",
-      "wikidataCountryIso": "NO",
-      "wikidataCountryLabel": "Norway"
-    },
-    "oslo": {
-      "qid": "Q585",
-      "wikiResolved": "Oslo",
-      "label": "Oslo",
-      "lat": 59.913333333333334,
-      "lon": 10.738888888888889,
-      "precision": 0.0002777777777777778,
       "countryQid": "Q20",
       "wikidataCountryIso": "NO",
       "wikidataCountryLabel": "Norway"
@@ -818,17 +609,6 @@
       "wikidataCountryIso": "IS",
       "wikidataCountryLabel": "Iceland"
     },
-    "hafnarfjordur": {
-      "qid": "Q103725",
-      "wikiResolved": "Hafnarfjörður",
-      "label": "Hafnarfjörður",
-      "lat": 64.066666666667,
-      "lon": -21.95,
-      "precision": 0.016666666666667,
-      "countryQid": "Q189",
-      "wikidataCountryIso": "IS",
-      "wikidataCountryLabel": "Iceland"
-    },
     "torshavn": {
       "qid": "Q10704",
       "wikiResolved": "Tórshavn",
@@ -847,17 +627,6 @@
       "lat": 64.175,
       "lon": -51.733333333333,
       "precision": 0.00027777777777778,
-      "countryQid": "Q223",
-      "wikidataCountryIso": "GL",
-      "wikidataCountryLabel": "Greenland"
-    },
-    "qaqortoq": {
-      "qid": "Q221203",
-      "wikiResolved": "Qaqortoq",
-      "label": "Qaqortoq",
-      "lat": 60.716666666667,
-      "lon": -46.033333333333,
-      "precision": 0.016666666666667,
       "countryQid": "Q223",
       "wikidataCountryIso": "GL",
       "wikidataCountryLabel": "Greenland"
@@ -917,17 +686,6 @@
       "wikidataCountryIso": "IT",
       "wikidataCountryLabel": "Italy"
     },
-    "amalfi": {
-      "qid": "Q80563",
-      "wikiResolved": "Amalfi",
-      "label": "Amalfi",
-      "lat": 40.633333333333,
-      "lon": 14.602777777778,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q38",
-      "wikidataCountryIso": "IT",
-      "wikidataCountryLabel": "Italy"
-    },
     "palermo": {
       "qid": "Q2656",
       "wikiResolved": "Palermo",
@@ -950,17 +708,6 @@
       "wikidataCountryIso": "IT",
       "wikidataCountryLabel": "Italy"
     },
-    "cagliari": {
-      "qid": "Q1897",
-      "wikiResolved": "Cagliari",
-      "label": "Cagliari",
-      "lat": 39.216666666667,
-      "lon": 9.1166666666667,
-      "precision": 0.016666666666667,
-      "countryQid": "Q38",
-      "wikidataCountryIso": "IT",
-      "wikidataCountryLabel": "Italy"
-    },
     "valletta": {
       "qid": "Q23800",
       "wikiResolved": "Valletta",
@@ -979,28 +726,6 @@
       "lat": 43.616666666667,
       "lon": 13.516666666667,
       "precision": 0.016666666666667,
-      "countryQid": "Q38",
-      "wikidataCountryIso": "IT",
-      "wikidataCountryLabel": "Italy"
-    },
-    "bari": {
-      "qid": "Q3519",
-      "wikiResolved": "Bari",
-      "label": "Bari",
-      "lat": 41.125277777778,
-      "lon": 16.866666666667,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q38",
-      "wikidataCountryIso": "IT",
-      "wikidataCountryLabel": "Italy"
-    },
-    "trieste": {
-      "qid": "Q546",
-      "wikiResolved": "Trieste",
-      "label": "Trieste",
-      "lat": 45.65027777777778,
-      "lon": 13.770277777777778,
-      "precision": 0.0002777777777777778,
       "countryQid": "Q38",
       "wikidataCountryIso": "IT",
       "wikidataCountryLabel": "Italy"
@@ -1104,17 +829,6 @@
       "wikidataCountryIso": "GR",
       "wikidataCountryLabel": "Greece"
     },
-    "chania": {
-      "qid": "Q182299",
-      "wikiResolved": "Chania",
-      "label": "Chania",
-      "lat": 35.516666666667,
-      "lon": 24.016666666667,
-      "precision": 0.016666666666667,
-      "countryQid": "Q41",
-      "wikidataCountryIso": "GR",
-      "wikidataCountryLabel": "Greece"
-    },
     "rhodes": {
       "qid": "Q188731",
       "wikiResolved": "Rhodes (city)",
@@ -1148,34 +862,12 @@
       "wikidataCountryIso": "UA",
       "wikidataCountryLabel": "Ukraine"
     },
-    "sinop": {
-      "qid": "Q599416",
-      "wikiResolved": "Sinop, Turkey",
-      "label": "Sinop",
-      "lat": 42.026666666666664,
-      "lon": 35.15111111111111,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q43",
-      "wikidataCountryIso": "TR",
-      "wikidataCountryLabel": "Turkey"
-    },
     "alexandria": {
       "qid": "Q87",
       "wikiResolved": "Alexandria",
       "label": "Alexandria",
       "lat": 31.1975,
       "lon": 29.8925,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q79",
-      "wikidataCountryIso": "EG",
-      "wikidataCountryLabel": "Egypt"
-    },
-    "damietta": {
-      "qid": "Q189383",
-      "wikiResolved": "Damietta",
-      "label": "Damietta",
-      "lat": 31.416666666666668,
-      "lon": 31.82138888888889,
       "precision": 0.0002777777777777778,
       "countryQid": "Q79",
       "wikidataCountryIso": "EG",
@@ -1202,28 +894,6 @@
       "countryQid": "Q822",
       "wikidataCountryIso": "LB",
       "wikidataCountryLabel": "Lebanon"
-    },
-    "latakia": {
-      "qid": "Q200030",
-      "wikiResolved": "Latakia",
-      "label": "Latakia",
-      "lat": 35.52,
-      "lon": 35.778055555555554,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q858",
-      "wikidataCountryIso": "SY",
-      "wikidataCountryLabel": "Syria"
-    },
-    "acre": {
-      "qid": "Q126084",
-      "wikiResolved": "Acre, Israel",
-      "label": "Acre",
-      "lat": 32.926111111111,
-      "lon": 35.083888888889,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q801",
-      "wikidataCountryIso": "IL",
-      "wikidataCountryLabel": "Israel"
     },
     "famagusta": {
       "qid": "Q193190",
@@ -1302,17 +972,6 @@
       "wikidataCountryIso": "DZ",
       "wikidataCountryLabel": "Algeria"
     },
-    "bejaia": {
-      "qid": "Q59975",
-      "wikiResolved": "Béjaïa",
-      "label": "Béjaïa",
-      "lat": 36.75111111111111,
-      "lon": 5.064166666666667,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q262",
-      "wikidataCountryIso": "DZ",
-      "wikidataCountryLabel": "Algeria"
-    },
     "tunis": {
       "qid": "Q3572",
       "wikiResolved": "Tunis",
@@ -1335,17 +994,6 @@
       "wikidataCountryIso": null,
       "wikidataCountryLabel": "Italian Tripolitania"
     },
-    "benghazi": {
-      "qid": "Q40816",
-      "wikiResolved": "Benghazi",
-      "label": "Benghazi",
-      "lat": 32.116666666667,
-      "lon": 20.066666666667,
-      "precision": 0.016666666666667,
-      "countryQid": "Q1016",
-      "wikidataCountryIso": "LY",
-      "wikidataCountryLabel": "Libya"
-    },
     "saint-louis": {
       "qid": "Q273779",
       "wikiResolved": "Saint-Louis, Senegal",
@@ -1367,17 +1015,6 @@
       "countryQid": "Q1041",
       "wikidataCountryIso": "SN",
       "wikidataCountryLabel": "Senegal"
-    },
-    "cacheu": {
-      "qid": "Q1002807",
-      "wikiResolved": "Cacheu",
-      "label": "Cacheu",
-      "lat": 12.2780115,
-      "lon": -16.1649709,
-      "precision": 1e-7,
-      "countryQid": "Q1007",
-      "wikidataCountryIso": "GW",
-      "wikidataCountryLabel": "Guinea-Bissau"
     },
     "elmina": {
       "qid": "Q968662",
@@ -1478,17 +1115,6 @@
       "wikidataCountryIso": "AO",
       "wikidataCountryLabel": "Angola"
     },
-    "benguela": {
-      "qid": "Q214248",
-      "wikiResolved": "Benguela",
-      "label": "Benguela",
-      "lat": -12.55,
-      "lon": 13.416666666667,
-      "precision": 0.016666666666667,
-      "countryQid": "Q916",
-      "wikidataCountryIso": "AO",
-      "wikidataCountryLabel": "Angola"
-    },
     "cape-town": {
       "qid": "Q5465",
       "wikiResolved": "Cape Town",
@@ -1566,17 +1192,6 @@
       "wikidataCountryIso": "KE",
       "wikidataCountryLabel": "Kenya"
     },
-    "lamu": {
-      "qid": "Q272799",
-      "wikiResolved": "Lamu",
-      "label": "Lamu",
-      "lat": -2.2686111111111,
-      "lon": 40.900277777778,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q114",
-      "wikidataCountryIso": "KE",
-      "wikidataCountryLabel": "Kenya"
-    },
     "mogadishu": {
       "qid": "Q2449",
       "wikiResolved": "Mogadishu",
@@ -1584,17 +1199,6 @@
       "lat": 2.0391666666666666,
       "lon": 45.341944444444444,
       "precision": 0.0002777777777777778,
-      "countryQid": "Q1045",
-      "wikidataCountryIso": "SO",
-      "wikidataCountryLabel": "Somalia"
-    },
-    "berbera": {
-      "qid": "Q191718",
-      "wikiResolved": "Berbera",
-      "label": "Berbera",
-      "lat": 10.43953,
-      "lon": 45.01305,
-      "precision": 0.00001,
       "countryQid": "Q1045",
       "wikidataCountryIso": "SO",
       "wikidataCountryLabel": "Somalia"
@@ -1620,17 +1224,6 @@
       "countryQid": "Q541455",
       "wikidataCountryIso": null,
       "wikidataCountryLabel": "Anglo-Egyptian Sudan"
-    },
-    "mahajanga": {
-      "qid": "Q218753",
-      "wikiResolved": "Mahajanga",
-      "label": "Mahajanga",
-      "lat": -15.716666666667,
-      "lon": 46.316666666667,
-      "precision": 0.016666666666667,
-      "countryQid": "Q1019",
-      "wikidataCountryIso": "MG",
-      "wikidataCountryLabel": "Madagascar"
     },
     "suez": {
       "qid": "Q134514",
@@ -1687,17 +1280,6 @@
       "wikidataCountryIso": "OM",
       "wikidataCountryLabel": "Oman"
     },
-    "sur": {
-      "qid": "Q737270",
-      "wikiResolved": "Sur, Oman",
-      "label": "Sur",
-      "lat": 22.566666666667,
-      "lon": 59.528888888889,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q842",
-      "wikidataCountryIso": "OM",
-      "wikidataCountryLabel": "Oman"
-    },
     "hormuz": {
       "qid": "Q695265",
       "wikiResolved": "Hormuz Island",
@@ -1715,17 +1297,6 @@
       "label": "Bandar Abbas",
       "lat": 27.18638888888889,
       "lon": 56.280833333333334,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q794",
-      "wikidataCountryIso": "IR",
-      "wikidataCountryLabel": "Iran"
-    },
-    "bushehr": {
-      "qid": "Q158928",
-      "wikiResolved": "Bushehr",
-      "label": "Bushehr",
-      "lat": 28.968888888888888,
-      "lon": 50.836666666666666,
       "precision": 0.0002777777777777778,
       "countryQid": "Q794",
       "wikidataCountryIso": "IR",
@@ -1792,28 +1363,6 @@
       "label": "Diu",
       "lat": 20.714997222222,
       "lon": 70.984358333333,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q668",
-      "wikidataCountryIso": "IN",
-      "wikidataCountryLabel": "India"
-    },
-    "daman": {
-      "qid": "Q463252",
-      "wikiResolved": "Daman, India",
-      "label": "Daman",
-      "lat": 20.416938888889,
-      "lon": 72.834022222222,
-      "precision": 0.0000027777777777778,
-      "countryQid": "Q668",
-      "wikidataCountryIso": "IN",
-      "wikidataCountryLabel": "India"
-    },
-    "chaul": {
-      "qid": "Q1068374",
-      "wikiResolved": "Chaul",
-      "label": "Chaul",
-      "lat": 18.5461,
-      "lon": 72.9272,
       "precision": 0.00027777777777778,
       "countryQid": "Q668",
       "wikidataCountryIso": "IN",
@@ -1929,28 +1478,6 @@
       "wikidataCountryIso": "LK",
       "wikidataCountryLabel": "Sri Lanka"
     },
-    "trincomalee": {
-      "qid": "Q323873",
-      "wikiResolved": "Trincomalee",
-      "label": "Trincomalee",
-      "lat": 8.5666666666667,
-      "lon": 81.233333333333,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q854",
-      "wikidataCountryIso": "LK",
-      "wikidataCountryLabel": "Sri Lanka"
-    },
-    "nagapattinam": {
-      "qid": "Q695585",
-      "wikiResolved": "Nagapattinam",
-      "label": "Nagapattinam",
-      "lat": 10.766666666667,
-      "lon": 79.833333333333,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q668",
-      "wikidataCountryIso": "IN",
-      "wikidataCountryLabel": "India"
-    },
     "pulicat": {
       "qid": "Q2117793",
       "wikiResolved": "Pulicat",
@@ -2017,17 +1544,6 @@
       "wikidataCountryIso": "MM",
       "wikidataCountryLabel": "Myanmar"
     },
-    "bago": {
-      "qid": "Q800122",
-      "wikiResolved": "Bago, Myanmar",
-      "label": "Bago",
-      "lat": 17.343333333333,
-      "lon": 96.498055555556,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q836",
-      "wikidataCountryIso": "MM",
-      "wikidataCountryLabel": "Myanmar"
-    },
     "myeik": {
       "qid": "Q1018163",
       "wikiResolved": "Myeik, Myanmar",
@@ -2060,28 +1576,6 @@
       "countryQid": "Q252",
       "wikidataCountryIso": "ID",
       "wikidataCountryLabel": "Indonesia"
-    },
-    "palembang": {
-      "qid": "Q8131",
-      "wikiResolved": "Palembang",
-      "label": "Palembang",
-      "lat": -2.9833333333333,
-      "lon": 104.76444444444,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q252",
-      "wikidataCountryIso": "ID",
-      "wikidataCountryLabel": "Indonesia"
-    },
-    "singapore": {
-      "qid": "Q334",
-      "wikiResolved": "Singapore",
-      "label": "Singapore",
-      "lat": 1.3,
-      "lon": 103.8,
-      "precision": 0.0166667,
-      "countryQid": "Q334",
-      "wikidataCountryIso": "SG",
-      "wikidataCountryLabel": "Singapore"
     },
     "jakarta": {
       "qid": "Q3630",
@@ -2134,17 +1628,6 @@
       "lat": 0.78333333333333,
       "lon": 127.36666666667,
       "precision": 0.016666666666667,
-      "countryQid": "Q252",
-      "wikidataCountryIso": "ID",
-      "wikidataCountryLabel": "Indonesia"
-    },
-    "tidore": {
-      "qid": "Q19153",
-      "wikiResolved": "Tidore",
-      "label": "Tidore Islands",
-      "lat": 0.68333333333333,
-      "lon": 127.4,
-      "precision": 0.00027777777777778,
       "countryQid": "Q252",
       "wikidataCountryIso": "ID",
       "wikidataCountryLabel": "Indonesia"
@@ -2226,17 +1709,6 @@
       "wikidataCountryIso": "VN",
       "wikidataCountryLabel": "Vietnam"
     },
-    "phnom-penh": {
-      "qid": "Q1850",
-      "wikiResolved": "Phnom Penh",
-      "label": "Phnom Penh",
-      "lat": 11.569583333333,
-      "lon": 104.92102777778,
-      "precision": 0.000027777777777778,
-      "countryQid": "Q424",
-      "wikidataCountryIso": "KH",
-      "wikidataCountryLabel": "Cambodia"
-    },
     "manila": {
       "qid": "Q1461",
       "wikiResolved": "Manila",
@@ -2258,17 +1730,6 @@
       "countryQid": "Q928",
       "wikidataCountryIso": "PH",
       "wikidataCountryLabel": "Philippines"
-    },
-    "brunei": {
-      "qid": "Q9279",
-      "wikiResolved": "Bandar Seri Begawan",
-      "label": "Bandar Seri Begawan",
-      "lat": 4.9166666666667,
-      "lon": 114.91666666667,
-      "precision": 0.016666666666667,
-      "countryQid": "Q921",
-      "wikidataCountryIso": "BN",
-      "wikidataCountryLabel": "Brunei"
     },
     "guangzhou": {
       "qid": "Q16572",
@@ -2347,28 +1808,6 @@
       "wikidataCountryIso": "CN",
       "wikidataCountryLabel": "People's Republic of China"
     },
-    "shanghai": {
-      "qid": "Q8686",
-      "wikiResolved": "Shanghai",
-      "label": "Shanghai",
-      "lat": 31.2325,
-      "lon": 121.46916666666667,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q148",
-      "wikidataCountryIso": "CN",
-      "wikidataCountryLabel": "People's Republic of China"
-    },
-    "tianjin": {
-      "qid": "Q11736",
-      "wikiResolved": "Tianjin",
-      "label": "Tianjin",
-      "lat": 39.146666666667,
-      "lon": 117.20555555556,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q148",
-      "wikidataCountryIso": "CN",
-      "wikidataCountryLabel": "People's Republic of China"
-    },
     "tainan": {
       "qid": "Q140631",
       "wikiResolved": "Tainan",
@@ -2376,17 +1815,6 @@
       "lat": 22.99,
       "lon": 120.185,
       "precision": 0.0002777777777777778,
-      "countryQid": "Q865",
-      "wikidataCountryIso": "TW",
-      "wikidataCountryLabel": "Taiwan"
-    },
-    "keelung": {
-      "qid": "Q249996",
-      "wikiResolved": "Keelung",
-      "label": "Keelung",
-      "lat": 25.12825,
-      "lon": 121.7419,
-      "precision": 0.099221938833218,
       "countryQid": "Q865",
       "wikidataCountryIso": "TW",
       "wikidataCountryLabel": "Taiwan"
@@ -2567,28 +1995,6 @@
       "wikidataCountryIso": "JP",
       "wikidataCountryLabel": "Japan"
     },
-    "niigata": {
-      "qid": "Q179691",
-      "wikiResolved": "Niigata (city)",
-      "label": "Niigata",
-      "lat": 37.91619444444444,
-      "lon": 139.0363888888889,
-      "precision": 0.00002777777777777778,
-      "countryQid": "Q17",
-      "wikidataCountryIso": "JP",
-      "wikidataCountryLabel": "Japan"
-    },
-    "hakodate": {
-      "qid": "Q26418",
-      "wikiResolved": "Hakodate",
-      "label": "Hakodate",
-      "lat": 41.76866666666667,
-      "lon": 140.72891666666666,
-      "precision": 0.00002777777777777778,
-      "countryQid": "Q17",
-      "wikidataCountryIso": "JP",
-      "wikidataCountryLabel": "Japan"
-    },
     "naha": {
       "qid": "Q181966",
       "wikiResolved": "Naha",
@@ -2655,17 +2061,6 @@
       "wikidataCountryIso": "CU",
       "wikidataCountryLabel": "Cuba"
     },
-    "santiago-de-cuba": {
-      "qid": "Q117040",
-      "wikiResolved": "Santiago de Cuba",
-      "label": "Santiago de Cuba",
-      "lat": 20.02166666666667,
-      "lon": -75.82944444444445,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q241",
-      "wikidataCountryIso": "CU",
-      "wikidataCountryLabel": "Cuba"
-    },
     "santo-domingo": {
       "qid": "Q34820",
       "wikiResolved": "Santo Domingo",
@@ -2721,34 +2116,12 @@
       "wikidataCountryIso": "BB",
       "wikidataCountryLabel": "Barbados"
     },
-    "port-of-spain": {
-      "qid": "Q39178",
-      "wikiResolved": "Port of Spain",
-      "label": "Port of Spain",
-      "lat": 10.666666666667,
-      "lon": -61.516666666667,
-      "precision": 0.016666666666667,
-      "countryQid": "Q754",
-      "wikidataCountryIso": "TT",
-      "wikidataCountryLabel": "Trinidad and Tobago"
-    },
     "cumana": {
       "qid": "Q319476",
       "wikiResolved": "Cumaná",
       "label": "Cumaná",
       "lat": 10.45,
       "lon": -64.166666666667,
-      "precision": 0.016666666666667,
-      "countryQid": "Q717",
-      "wikidataCountryIso": "VE",
-      "wikidataCountryLabel": "Venezuela"
-    },
-    "maracaibo": {
-      "qid": "Q171632",
-      "wikiResolved": "Maracaibo",
-      "label": "Maracaibo",
-      "lat": 10.633333333333,
-      "lon": -71.633333333333,
       "precision": 0.016666666666667,
       "countryQid": "Q717",
       "wikidataCountryIso": "VE",
@@ -2783,17 +2156,6 @@
       "lat": 19.190277777778,
       "lon": -96.153333333333,
       "precision": null,
-      "countryQid": "Q96",
-      "wikidataCountryIso": "MX",
-      "wikidataCountryLabel": "Mexico"
-    },
-    "campeche": {
-      "qid": "Q61301",
-      "wikiResolved": "Campeche (city)",
-      "label": "San Francisco de Campeche",
-      "lat": 19.844814166666666,
-      "lon": -90.53964916666666,
-      "precision": 2.7777777777777776e-7,
       "countryQid": "Q96",
       "wikidataCountryIso": "MX",
       "wikidataCountryLabel": "Mexico"
@@ -2842,17 +2204,6 @@
       "wikidataCountryIso": "US",
       "wikidataCountryLabel": "United States"
     },
-    "plymouth-ma": {
-      "qid": "Q326295",
-      "wikiResolved": "Plymouth, Massachusetts",
-      "label": "Plymouth",
-      "lat": 41.95861111111111,
-      "lon": -70.66777777777777,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q30",
-      "wikidataCountryIso": "US",
-      "wikidataCountryLabel": "United States"
-    },
     "st-georges-bermuda": {
       "qid": "Q28063",
       "wikiResolved": "St. George's, Bermuda",
@@ -2864,17 +2215,6 @@
       "wikidataCountryIso": "BM",
       "wikidataCountryLabel": "Bermuda"
     },
-    "annapolis-royal": {
-      "qid": "Q564536",
-      "wikiResolved": "Annapolis Royal",
-      "label": "Annapolis Royal",
-      "lat": 44.743729,
-      "lon": -65.518907,
-      "precision": 0.00001,
-      "countryQid": "Q16",
-      "wikidataCountryIso": "CA",
-      "wikidataCountryLabel": "Canada"
-    },
     "quebec-city": {
       "qid": "Q2145",
       "wikiResolved": "Quebec City",
@@ -2882,17 +2222,6 @@
       "lat": 46.816111,
       "lon": -71.224167,
       "precision": 0.00001,
-      "countryQid": "Q16",
-      "wikidataCountryIso": "CA",
-      "wikidataCountryLabel": "Canada"
-    },
-    "tadoussac": {
-      "qid": "Q1857392",
-      "wikiResolved": "Tadoussac",
-      "label": "Tadoussac",
-      "lat": 48.15,
-      "lon": -69.7167,
-      "precision": null,
       "countryQid": "Q16",
       "wikidataCountryIso": "CA",
       "wikidataCountryLabel": "Canada"
@@ -2919,34 +2248,12 @@
       "wikidataCountryIso": "BR",
       "wikidataCountryLabel": "Brazil"
     },
-    "sao-luis": {
-      "qid": "Q28441",
-      "wikiResolved": "São Luís, Maranhão",
-      "label": "São Luís",
-      "lat": -2.53,
-      "lon": -44.302777777778,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q155",
-      "wikidataCountryIso": "BR",
-      "wikidataCountryLabel": "Brazil"
-    },
     "recife": {
       "qid": "Q48344",
       "wikiResolved": "Recife",
       "label": "Recife",
       "lat": -8.0538888888889,
       "lon": -34.880833333333,
-      "precision": 0.00027777777777778,
-      "countryQid": "Q155",
-      "wikidataCountryIso": "BR",
-      "wikidataCountryLabel": "Brazil"
-    },
-    "olinda": {
-      "qid": "Q28301",
-      "wikiResolved": "Olinda",
-      "label": "Olinda",
-      "lat": -8.0088888888889,
-      "lon": -34.855,
       "precision": 0.00027777777777778,
       "countryQid": "Q155",
       "wikidataCountryIso": "BR",
@@ -2985,17 +2292,6 @@
       "wikidataCountryIso": "BR",
       "wikidataCountryLabel": "Brazil"
     },
-    "sao-vicente": {
-      "qid": "Q272254",
-      "wikiResolved": "São Vicente, São Paulo",
-      "label": "São Vicente",
-      "lat": -23.9664177,
-      "lon": -46.3861401,
-      "precision": 1e-7,
-      "countryQid": "Q155",
-      "wikidataCountryIso": "BR",
-      "wikidataCountryLabel": "Brazil"
-    },
     "buenos-aires": {
       "qid": "Q1486",
       "wikiResolved": "Buenos Aires",
@@ -3029,17 +2325,6 @@
       "wikidataCountryIso": "PA",
       "wikidataCountryLabel": "Panama"
     },
-    "guayaquil": {
-      "qid": "Q43509",
-      "wikiResolved": "Guayaquil",
-      "label": "Guayaquil",
-      "lat": -2.19,
-      "lon": -79.8875,
-      "precision": 0.0002777777777777778,
-      "countryQid": "Q736",
-      "wikidataCountryIso": "EC",
-      "wikidataCountryLabel": "Ecuador"
-    },
     "callao": {
       "qid": "Q105037",
       "wikiResolved": "Callao",
@@ -3050,17 +2335,6 @@
       "countryQid": "Q419",
       "wikidataCountryIso": "PE",
       "wikidataCountryLabel": "Peru"
-    },
-    "arica": {
-      "qid": "Q2203",
-      "wikiResolved": "Arica",
-      "label": "Arica",
-      "lat": -18.47838888888889,
-      "lon": -70.32122222222222,
-      "precision": 0.0000277778,
-      "countryQid": "Q298",
-      "wikidataCountryIso": "CL",
-      "wikidataCountryLabel": "Chile"
     },
     "valparaiso": {
       "qid": "Q33986",

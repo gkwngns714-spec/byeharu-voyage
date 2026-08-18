@@ -57,7 +57,7 @@ if (missingName.length) {
 ports.sort((a, b) => a.id.localeCompare(b.id));
 
 const doc = {
-  $schema: './ports.schema.md',
+  $doc: '../docs/WORLD_DATA.md',
   note: 'Real port cities of the ~1500-1650 Age of Sail. lat/lon are Wikidata property P625 (CC0), fetched by scripts/fetch-coords.mjs and never hand-typed; `source` records the exact item each coordinate came from. `sea`, `region`, `tier`, `goods` and `notes` are editorial. See docs/WORLD_DATA.md.',
   coordinateSource: {
     dataset: 'Wikidata',

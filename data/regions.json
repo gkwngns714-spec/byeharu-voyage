@@ -1,5 +1,5 @@
 {
-  "$schema": "./regions.schema.md",
+  "$doc": "../docs/WORLD_DATA.md",
   "note": "Game trading regions. `parentSea` names the sea a region is most identified with (an id from data/seas.json); ports inside a region may sit on other seas. Regions are an editorial game-design grouping, not an official geographic taxonomy.",
   "regions": [
     { "id": "iberia", "name": "Iberia", "parentSea": "north-atlantic",
