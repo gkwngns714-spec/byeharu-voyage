@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Map — render harness</title>
+  </head>
+  <body>
+    <!--
+      RENDER HARNESS — dev only, and never part of a production build.
+
+      The Map tab lives behind RequireAuth, so the only way to LOOK at it without a Supabase
+      session is to mount it on its own. Vite's dev server serves any .html in the project as an
+      entry, so `npm run dev` + /src/features/map/preview.html renders the real component with the
+      real tokens and the real coastline fetch.
+
+      `vite build` compiles index.html and nothing else (see vite.config.ts — there is no
+      rollupOptions.input), so this file and preview.tsx add ZERO bytes to what ships. They exist
+      because a map is the one screen in this game you cannot check by reading the code.
+    -->
+    <div id="map-preview" style="height: 100dvh"></div>
+    <script type="module" src="./preview.tsx"></script>
+  </body>
+</html>
