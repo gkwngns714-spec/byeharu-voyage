@@ -4,15 +4,18 @@ import {
   Badge,
   Card,
   CardHeader,
+  DetailRow,
   Meter,
   Notice,
   PageHeader,
   Screen,
   SectionLabel,
   StatRow,
+  TABLE_SCROLL_HINT,
   TD,
   TH,
   Table,
+  scrollTableClass,
 } from '../../components/ui'
 import {
   formatDucats,
@@ -84,42 +87,56 @@ export function PortScreen() {
 
       <Card>
         <CardHeader eyebrow="The city" title={port.name} subtitle={`Nation: ${port.nation}`} />
-        <dl className="space-y-2">
-          <StatRow
+        {/* THE ROW RULE (see DetailRow.tsx): a short figure keeps the right-aligned two-column
+            StatRow, because a column of figures has to line up. A value that is a SENTENCE — a
+            dot-separated list, a figure with a parenthetical — uses DetailRow and flows
+            left-aligned, because right-aligning prose leaves its tail stranded as a fragment. */}
+        <dl className="space-y-1">
+          <DetailRow
             label="Development"
+            mono
             value={`industry ${port.devIndustry} · commerce ${port.devCommerce} · military ${port.devMilitary}`}
           />
-          <StatRow label="Market tax" value={formatPct(port.marketTaxRate, 1)} hint="set by the Mayor, banded 0–8%" />
-          <StatRow
+          <DetailRow
+            label="Market tax"
+            mono
+            value={formatPct(port.marketTaxRate, 1)}
+            hint="set by the Mayor, banded 0–8%"
+          />
+          <DetailRow
             label="You pay"
+            mono
             value={formatPct(Math.max(0, port.marketTaxRate - model.world.player.taxRelief), 1)}
             hint={`reputation ${formatInt(model.world.player.reputation)} (${model.world.player.reputationLabel})`}
           />
           <StatRow label="Spread" value={formatPct(Math.max(0.02, 0.06 - 0.002 * port.devCommerce), 1)} />
           <StatRow label="Languages" value={port.languages.join(', ')} plain />
-          <StatRow
+          <DetailRow
             label="Specialties"
             value={port.specialties.map((c) => model.goodOf(c).name).join(' · ')}
-            plain
           />
         </dl>
       </Card>
 
       <Card>
         <CardHeader eyebrow="Services" title="What is on this quay" />
-        <dl className="space-y-2">
-          <StatRow
+        <dl className="space-y-1">
+          <DetailRow
             label="Harbour"
+            mono
             value={`${port.fleetsDocked} fleets docked · max draft ${port.maxDraft}`}
-            plain
           />
-          <StatRow
+          <DetailRow
             label="Yard"
+            mono
             value={port.hasYard ? `tier ${port.yardTier} · ${port.repairRate.toFixed(1)} d./point` : 'none'}
-            plain
           />
-          <StatRow label="Provisions" value={`water ${port.waterPrice} d./t · food ${port.foodPrice} d./t`} plain />
-          <StatRow label="Inn" value={`${formatInt(port.crewPool)} / ${formatInt(port.crewPoolMax)} hands · ${port.crewRate} d. each`} plain />
+          <DetailRow label="Provisions" mono value={`water ${port.waterPrice} d./t · food ${port.foodPrice} d./t`} />
+          <DetailRow
+            label="Inn"
+            mono
+            value={`${formatInt(port.crewPool)} / ${formatInt(port.crewPoolMax)} hands · ${port.crewRate} d. each`}
+          />
         </dl>
         <div className="mt-2">
           <Meter pct={(port.crewPool / port.crewPoolMax) * 100} tone={port.crewPool / port.crewPoolMax < 0.3 ? 'warning' : 'neutral'} />
@@ -148,7 +165,7 @@ export function PortScreen() {
               .join(' ')}
           </p>
         ) : (
-          <Table>
+          <Table className={scrollTableClass()}>
             <thead>
               <tr>
                 <TH>Ship</TH>
@@ -183,6 +200,9 @@ export function PortScreen() {
               )}
             </tbody>
           </Table>
+        )}
+        {docked.length > 0 && (
+          <p className="mt-1 font-mono text-[11px] text-ink-faint">{TABLE_SCROLL_HINT}</p>
         )}
       </Card>
 

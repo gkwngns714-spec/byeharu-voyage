@@ -10,9 +10,11 @@ import {
   PageHeader,
   Screen,
   SectionLabel,
+  TABLE_SCROLL_HINT,
   TD,
   TH,
   Table,
+  scrollTableClass,
 } from '../../components/ui'
 import { formatInt, formatPct, formatPctPoints, formatTuns } from '../../lib/format'
 import { useWorld } from '../../fixtures/useWorld'
@@ -58,6 +60,9 @@ export function MarketScreen() {
   const [portCode, setPortCode] = useState<PortCode>(model.world.currentPort)
   const [sort, setSort] = useState<SortKey>('nbr')
   const [filter, setFilter] = useState<Filter>('all')
+  // Folded by default. See the CONTROLS block below for why.
+  const [portsOpen, setPortsOpen] = useState(false)
+  const [optionsOpen, setOptionsOpen] = useState(false)
 
   const port = model.portOf(portCode)
   const taxRelief = model.world.player.taxRelief
@@ -105,16 +110,53 @@ export function MarketScreen() {
         subtitle={`Prices against the ${neighbours.length} ports within ${NEIGHBOUR_RADIUS_NM} nm.`}
       />
 
+      {/* ── CONTROLS, FOLDED ─────────────────────────────────────────────────────────────────
+          K.1's beat is "MARKET tab. Sal is 62% of its neighbours. The BUY block is at the top; you
+          did not have to know anything to see it." Twelve port chips over three rows plus a SORT
+          row plus a FILTER row consumed the entire first screenful and pushed the first price
+          under the fold — the player had to scroll before the game said anything. So the controls
+          collapse to ONE row: where you are, and how the table is arranged. Both open on tap, and
+          the chips inside them are unchanged. */}
       <Card>
         <div className="space-y-3">
-          <div>
-            <SectionLabel>Port</SectionLabel>
-            <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPortsOpen((v) => !v)}
+              aria-expanded={portsOpen}
+              className="flex min-h-11 items-center gap-2 rounded-md border border-edge bg-surface-2 px-3 text-sm text-ink transition hover:border-accent/60"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">Port</span>
+              <span className="font-mono text-sm text-accent">{port.name}</span>
+              <span aria-hidden className="font-mono text-xs text-ink-faint">
+                {portsOpen ? '▴' : '▾'}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setOptionsOpen((v) => !v)}
+              aria-expanded={optionsOpen}
+              className="ml-auto flex min-h-11 items-center gap-2 rounded-md border border-edge bg-surface-2 px-3 text-sm transition hover:border-accent/60"
+            >
+              <span className="font-mono text-xs text-ink-muted">
+                {sort === 'nbr' ? '%↑' : sort} · {filter}
+              </span>
+              <span aria-hidden className="font-mono text-xs text-ink-faint">
+                {optionsOpen ? '▴' : '▾'}
+              </span>
+            </button>
+          </div>
+
+          {portsOpen && (
+            <div className="flex flex-wrap gap-1.5 border-t border-edge pt-3">
               {model.world.ports.map((p) => (
                 <button
                   key={p.code}
                   type="button"
-                  onClick={() => setPortCode(p.code)}
+                  onClick={() => {
+                    setPortCode(p.code)
+                    setPortsOpen(false)
+                  }}
                   className={[
                     'min-h-11 rounded-md px-3 font-mono text-xs transition',
                     p.code === portCode
@@ -126,36 +168,38 @@ export function MarketScreen() {
                 </button>
               ))}
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <SectionLabel className="mb-0">Sort</SectionLabel>
-              {(['nbr', 'name', 'price', 'stock'] as const).map((k) => (
-                <Chip key={k} active={sort === k} onClick={() => setSort(k)}>
-                  {k === 'nbr' ? '%↑' : k}
-                </Chip>
-              ))}
+          )}
+
+          {optionsOpen && (
+            <div className="space-y-2 border-t border-edge pt-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <SectionLabel className="mb-0">Sort</SectionLabel>
+                {(['nbr', 'name', 'price', 'stock'] as const).map((k) => (
+                  <Chip key={k} active={sort === k} onClick={() => setSort(k)}>
+                    {k === 'nbr' ? '%↑' : k}
+                  </Chip>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <SectionLabel className="mb-0">Filter</SectionLabel>
+                {(['all', 'buy', 'sell'] as const).map((f) => (
+                  <Chip key={f} active={filter === f} onClick={() => setFilter(f)}>
+                    {f}
+                  </Chip>
+                ))}
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <SectionLabel className="mb-0">Filter</SectionLabel>
-              {(['all', 'buy', 'sell'] as const).map((f) => (
-                <Chip key={f} active={filter === f} onClick={() => setFilter(f)}>
-                  {f}
-                </Chip>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
       </Card>
 
       <Card>
         <CardHeader
-          eyebrow="Percent of neighbours"
           title="Goods"
           subtitle="Tap a good to load the order onto Command."
           aside={<Badge tone="accent">{shown.length} rows</Badge>}
         />
-        <Table>
+        <Table className={scrollTableClass()}>
           <thead>
             <tr>
               <TH>Good</TH>
@@ -185,6 +229,7 @@ export function MarketScreen() {
           <div>
             neighbours: {neighbours.map((c) => model.portOf(c).name).join(', ') || 'none within range'}
           </div>
+          <div>{TABLE_SCROLL_HINT}</div>
           <div>
             Orders execute in 10-tun steps, each repricing — buying raises the price you are still
             buying at (G.2).

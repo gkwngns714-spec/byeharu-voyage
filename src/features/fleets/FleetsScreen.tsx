@@ -9,9 +9,11 @@ import {
   PageHeader,
   Screen,
   SectionLabel,
+  TABLE_SCROLL_HINT,
   TD,
   TH,
   Table,
+  scrollTableClass,
 } from '../../components/ui'
 import {
   formatDucats,
@@ -65,7 +67,46 @@ export function FleetsScreen() {
 
       <Card>
         <CardHeader eyebrow="Roster" title="All fleets" subtitle="Tap a fleet to command it." />
-        <Table>
+
+        {/* ── THE ROSTER, TWICE ────────────────────────────────────────────────────────────────
+            Six columns do not fit 390px. Scrolling them sideways is legitimate and every other
+            table on this screen does exactly that — but ENDURANCE is the punchline of this
+            particular table (it is the number that decides whether a voyage can be ordered at
+            all), and putting the punchline behind a swipe is the same defect as clipping it.
+            So below `sm` the roster STACKS: one block per fleet, every field labelled, nothing
+            off-screen and nothing to swipe. From `sm` the table returns.
+            Both read the SAME fleet view — there is no second source of these numbers. */}
+        <ul className="space-y-2 sm:hidden">
+          {model.fleetViews.map((view) => (
+            <li key={view.fleet.id}>
+              <button
+                type="button"
+                onClick={() => command(`SAIL ${view.fleet.name} TO `, view.fleet.id)}
+                className="w-full rounded-md border border-edge bg-surface-2 p-3 text-left transition hover:border-accent/60"
+              >
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-sm text-accent">{view.fleet.name}</span>
+                  <Badge tone={statusTone(view)}>{view.fleet.status}</Badge>
+                  <span className="ml-auto font-mono text-[11px] text-ink-faint">
+                    {view.shipCount} ship{view.shipCount === 1 ? '' : 's'}
+                  </span>
+                </span>
+                <span className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-xs">
+                  <span className="text-ink-faint">where</span>
+                  <span className="text-ink">{whereText(view, model.portOf)}</span>
+                  <span className="text-ink-faint">eta</span>
+                  <span className="text-ink">
+                    {view.progress ? formatRealShort(view.progress.remainingMs) : '—'}
+                  </span>
+                  <span className="text-ink-faint">endurance</span>
+                  <span className="text-ink">{formatVoyageDays(view.enduranceDays)}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <Table className={`hidden sm:block ${scrollTableClass()}`}>
           <thead>
             <tr>
               <TH>Name</TH>
@@ -102,8 +143,8 @@ export function FleetsScreen() {
           </tbody>
         </Table>
         <p className="mt-3 font-mono text-[11px] text-ink-faint">
-          END. is endurance in voyage-days — the shortest-ranged hull in the fleet (C.4). One
-          voyage-day is three real minutes.
+          Endurance is in voyage-days — the shortest-ranged hull in the fleet (C.4). One voyage-day
+          is three real minutes.
         </p>
       </Card>
 
@@ -163,7 +204,7 @@ function FleetDetail({
 
         <div>
           <SectionLabel>Ships</SectionLabel>
-          <Table>
+          <Table className={scrollTableClass()}>
             <thead>
               <tr>
                 <TH>Ship</TH>
@@ -181,6 +222,7 @@ function FleetDetail({
               ))}
             </tbody>
           </Table>
+          <p className="mt-1 font-mono text-[11px] text-ink-faint">{TABLE_SCROLL_HINT}</p>
         </div>
 
         <div>
@@ -188,7 +230,7 @@ function FleetDetail({
           {cargo.length === 0 ? (
             <p className="text-sm text-ink-muted">Empty hold.</p>
           ) : (
-            <Table>
+            <Table className={scrollTableClass()}>
               <thead>
                 <tr>
                   <TH>Good</TH>

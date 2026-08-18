@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   Badge,
   Card,
+  DetailRow,
   EmptyState,
   Icon,
   Notice,
@@ -143,12 +144,13 @@ function Entry({ entry, nowMs }: { entry: LedgerEntry; nowMs: number }) {
       {entry.lines && entry.lines.length > 0 && (
         <div className="mt-3">
           <SectionLabel>Ledger</SectionLabel>
+          {/* These values are SENTENCES — "211% of its neighbours — the sell band", "525 nm · 13
+              min at a Barca's pace" — so they flow left-aligned as a block (DetailRow), not
+              right-aligned in a second column where the tail of every wrap reads as a fragment.
+              The money itself keeps the right-aligned figure treatment, below. */}
           <dl className="space-y-1">
             {entry.lines.map((line) => (
-              <div key={line.label} className="flex items-baseline justify-between gap-3 text-sm">
-                <dt className="text-ink-faint">{line.label}</dt>
-                <dd className="text-right font-mono text-ink-muted">{line.value}</dd>
-              </div>
+              <DetailRow key={line.label} label={line.label} value={line.value} mono />
             ))}
           </dl>
         </div>

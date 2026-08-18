@@ -1,0 +1,65 @@
+// Design-system WIDE-TABLE layout logic — pure (no React), beside Table.tsx exactly as
+// screenLayout.ts sits beside Screen.tsx and overlayLayout.ts beside OverlayPanel.tsx.
+//
+// It does not replace <Table> and does not restyle it. It CONFIGURES the one table primitive for
+// the case the primitive's own rule is about: a table too wide for a phone.
+//
+// ── THE DEFECT THIS FILE EXISTS TO CLOSE ────────────────────────────────────────────────────────
+// Table.tsx puts `w-full min-w-full` on the <table>. `w-full` pins the table to its wrapper's
+// width, so a six-column manifest on a 390px phone is CRUSHED to min-content — values break
+// mid-figure ("4.1 / t", "→ Las / Palmas") — and, because min-content still does not fit, the table
+// then overflows the wrapper anyway. Measured at 390x844 before this file existed:
+//
+//   fleets roster   table 359px in a 332px box  → 31px of the ENDURANCE column off the edge
+//   fleets ships    table 429px in a 332px box  → 101px off the edge
+//   market goods    table 379px in a 332px box  → 51px off the edge
+//
+// The wrapper is `overflow-x-auto`, so the content was technically reachable — but with overlay
+// scrollbars there was no affordance, the header read as a bare "E", and a value that has been
+// sheared is indistinguishable from a value that is missing. HIDDEN DATA IS WORSE THAN A SCROLLBAR.
+//
+// ── THE RULE ────────────────────────────────────────────────────────────────────────────────────
+//   1. The table sizes to its CONTENT (`w-auto`), never to the box; `min-w-full` keeps it filling
+//      the box when it is narrow enough to.
+//   2. No cell breaks a value across lines. A figure is one token.
+//   3. The FIRST column is sticky, so the thing a row is ABOUT stays on screen while its numbers
+//      scroll. That is also the reach law: the first cell is the tap target on every table in this
+//      game, and it may never be scrolled out of reach.
+//   4. The scrollbar is drawn, thin and permanent, so "there is more to the right" is visible
+//      rather than discovered.
+//
+// The page still never scrolls sideways: the scroll happens INSIDE this box, which is the whole
+// point of Table.tsx's first structural rule.
+
+/** Classes for the <Table> wrapper of a table that may be wider than a phone.
+ *  @param stickyBg the token background the sticky first column paints over — it must match the
+ *  surface the table sits on, or the scrolling columns show through it. Cards are `bg-surface`. */
+export function scrollTableClass(stickyBg: 'surface' | 'surface-2' = 'surface'): string {
+  return [
+    // 1. content-sized, never crushed
+    '[&>table]:w-auto [&>table]:min-w-full',
+    // 2. one value, one line
+    '[&_th]:whitespace-nowrap [&_td]:whitespace-nowrap',
+    // 3. the identity column stays put (and stays tappable)
+    // `:not([colspan])` matters: a full-width band row (MARKET's "▾ BUY (< 90%)" heading spans
+    // every column) must NOT be pinned, or it stays put and paints over the columns sliding under
+    // it. Only real first cells are sticky.
+    '[&_tr>*:first-child:not([colspan])]:sticky [&_tr>*:first-child:not([colspan])]:left-0 [&_tr>*:first-child:not([colspan])]:z-10',
+    stickyBg === 'surface'
+      ? '[&_tr>*:first-child:not([colspan])]:bg-surface'
+      : '[&_tr>*:first-child:not([colspan])]:bg-surface-2',
+    // 4. a visible, thin, always-present scrollbar
+    // NOTE: no `scrollbar-width: thin`. The standard property wins over the ::-webkit-scrollbar
+    // pseudo-elements in Chromium and selects an OVERLAY scrollbar, which paints nothing at rest —
+    // measured: `offsetHeight - clientHeight === 0`, i.e. no gutter, i.e. no affordance. Styling
+    // the pseudo-element alone gives a classic scrollbar that reserves 6px and is always visible.
+    'overscroll-x-contain',
+    '[&::-webkit-scrollbar]:h-1.5',
+    '[&::-webkit-scrollbar-track]:rounded [&::-webkit-scrollbar-track]:bg-surface-2',
+    '[&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-edge',
+  ].join(' ')
+}
+
+/** The one-line hint that belongs under a table wide enough to need scrolling. One authority for
+ *  the words, so five screens cannot invent five ways of saying it. */
+export const TABLE_SCROLL_HINT = 'Swipe the table sideways for the rest of the columns.'

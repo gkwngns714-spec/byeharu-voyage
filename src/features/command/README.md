@@ -97,6 +97,46 @@ horizontal scroll box, which is that primitive's stated rule; the tap target in 
 This has been rendered and measured, not argued: at 390×844 in Chromium, all five screens report
 `document.documentElement.scrollWidth === clientWidth === 390` and no console errors.
 
+**That measurement was necessary and not sufficient, and it hid a real defect.** The page did not
+scroll sideways *because the tables were clipped*, not because they fitted: the fleet roster
+rendered a 359px table inside a 332px box, shearing 31px of the ENDURANCE column so its header read
+as a bare "E"; the ship manifest sheared 101px; the goods table 51px. The cause was `w-full` on the
+`<table>` inside `Table.tsx`, which pins the table to its wrapper, crushes every column to
+min-content — breaking values mid-figure, "4.1 / t" — and then overflows anyway.
+
+Two rules now close it, and `tests/layout.spec.ts` measures both in a real viewport:
+
+1. **`scrollTableClass()`** (`src/components/ui/tableLayout.ts`) sizes the table to its content,
+   forbids a cell wrapping a value, and pins the first column so the row's identity and its tap
+   target can never be scrolled out of reach.
+2. Where the *punchline* of a table would end up behind the swipe — the roster, whose last column
+   is the endurance figure that decides whether a voyage can be ordered at all — the table is
+   replaced below `sm` by a stacked block per fleet. Nothing off-screen, nothing to swipe.
+
+The spec was verified to FAIL when either rule is removed, so it is not a proof that lies by
+staying green.
+
+## 11. Numbers right, sentences left
+
+One rule, applied everywhere, after right-aligned prose was observed wrapping into fragments
+("· military 8" and "sell band" stranded alone on a line):
+
+- **`StatRow`** — short, numeric, right-aligned, mono. A column of figures has to line up.
+- **`DetailRow`** — the value is a sentence, a dot-separated list, or a figure with a
+  parenthetical. Left-aligned, flows as a block under its label on a phone, second column from
+  `sm`. The parenthetical becomes a `hint` line rather than being jammed onto the end.
+
+The boundary is written into `DetailRow.tsx` so a caller never has to guess which one to use.
+
+## 12. MARKET opens on prices, not on controls
+
+§K.1's beat is *"MARKET tab. Sal is 62% of its neighbours. The BUY block is at the top; you did not
+have to know anything to see it."* Twelve port chips over three rows plus a SORT row plus a FILTER
+row filled the whole first screenful and pushed the first price under the fold. The controls now
+collapse to one row — where you are, and how the table is arranged — and open on tap with the chips
+unchanged. Measured at 390×844: the first complete price row moved from bottom **753px** (below the
+tab bar at 731px) to **495px**, and five complete rows are now above the fold.
+
 ## 10. What is not wired
 
 There is no server, and the screens say so where it matters. `Issue` on the CMD tab does not send
