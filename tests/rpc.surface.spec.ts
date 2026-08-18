@@ -1,0 +1,431 @@
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE RPC SURFACE — every function, against the real chain, checked against what the types claim
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// A TypeScript interface over a jsonb payload is an ASSERTION, not a guarantee: the compiler has
+// never seen the server. So every field src/lib/rpc/types.ts declares is read back here out of a
+// payload a real PostgreSQL produced. If a migration renames a key, this file goes red — instead
+// of a screen going blank in a player's hands.
+//
+// PURE UNIT SPEC. No browser: PGlite runs in this process, and the backend under test is exactly
+// the one the app installs in local mode.
+
+import { test, expect } from '@playwright/test'
+import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
+import { loadChain } from '../src/lib/db/chainSource.node.mjs'
+import {
+  RPCS,
+  backendKind,
+  clearBackend,
+  cmdCancel,
+  cmdClear,
+  cmdIssue,
+  cmdPreview,
+  cmdVerbSchema,
+  createLocalBackend,
+  expectOk,
+  fromError,
+  localSql,
+  namedArgs,
+  rpcLabel,
+  setBackend,
+  worldFleets,
+  worldLedger,
+  worldMarket,
+  worldSnapshot,
+} from '../src/lib/rpc'
+
+let db: LocalDb
+
+test.beforeAll(async () => {
+  db = await openLocalDb({ loadChain, dataDir: 'memory://', log: () => {} })
+  setBackend(createLocalBackend(db))
+})
+
+test.afterAll(async () => {
+  clearBackend()
+  await db?.close()
+})
+
+const isNum = (v: unknown) => typeof v === 'number' && Number.isFinite(v)
+const isStr = (v: unknown) => typeof v === 'string' && v.length > 0
+
+// ── the reads ──────────────────────────────────────────────────────────────────────────────────
+
+test('world.snapshot() carries the whole static world, and not the world secret', async () => {
+  const snap = expectOk(await worldSnapshot())
+  expect(snap.ports).toHaveLength(12)
+  expect(snap.legs).toHaveLength(22)
+  expect(snap.goods).toHaveLength(12)
+  expect(snap.ship_classes).toHaveLength(3)
+  expect(snap.verbs).toHaveLength(8)
+
+  const lisboa = snap.ports.find((p) => p.code === 'LIS')
+  expect(lisboa).toBeDefined()
+  // Every field SnapshotPort declares, read back off a real row.
+  expect(isStr(lisboa!.id)).toBe(true)
+  expect(lisboa!.name).toBe('Lisboa')
+  expect(isStr(lisboa!.country)).toBe(true)
+  expect(lisboa!.nation).toBe('PRT')
+  expect(isNum(lisboa!.lat) && isNum(lisboa!.lon)).toBe(true)
+  expect(isStr(lisboa!.sea) && isStr(lisboa!.region)).toBe(true)
+  expect(lisboa!.culture).toBe('latin')
+  expect(isNum(lisboa!.size_tier) && isNum(lisboa!.max_draft)).toBe(true)
+  expect(typeof lisboa!.has_yard).toBe('boolean')
+  expect(typeof lisboa!.has_academy).toBe('boolean')
+  expect(typeof lisboa!.is_ice_closed).toBe('boolean')
+  expect(isNum(lisboa!.yard_tier) && isNum(lisboa!.tax_rate) && isNum(lisboa!.crew_pool)).toBe(true)
+  expect(isNum(lisboa!.dev_industry) && isNum(lisboa!.dev_commerce) && isNum(lisboa!.dev_military)).toBe(
+    true,
+  )
+
+  const leg = snap.legs[0]
+  expect(isStr(leg.id) && isStr(leg.from) && isStr(leg.to)).toBe(true)
+  expect(isNum(leg.nm) && isNum(leg.hazard_mult)).toBe(true)
+  // Canonically ordered, stored once, both ends resolvable to a port in the same payload.
+  const codes = new Set(snap.ports.map((p) => p.code))
+  for (const l of snap.legs) expect(codes.has(l.from) && codes.has(l.to)).toBe(true)
+
+  const sal = snap.goods.find((g) => g.code === 'sal')!
+  expect(isStr(sal.id) && isStr(sal.name)).toBe(true)
+  expect(isNum(sal.base_value) && isNum(sal.bulk) && isNum(sal.perishable_pct_day)).toBe(true)
+  expect(Array.isArray(sal.culture_mask)).toBe(true)
+  const vinho = snap.goods.find((g) => g.code === 'vinho')!
+  expect(vinho.culture_mask).toContain('maghrebi')
+
+  const barca = snap.ship_classes.find((c) => c.code === 'barca')!
+  expect(barca.name).toBe('Barca')
+  expect(barca.hold).toBe(60)
+  expect(isNum(barca.speed_kn) && isNum(barca.crew_required) && isNum(barca.crew_max)).toBe(true)
+  expect(isNum(barca.durability) && isNum(barca.draft) && isNum(barca.tier)).toBe(true)
+  expect(isStr(barca.rig) && isStr(barca.family)).toBe(true)
+
+  expect(snap.config.time_compression).toBe(480)
+  expect(snap.config.order_queue_max).toBe(12)
+  for (const key of [
+    'fleet_max',
+    'ship_max',
+    'endurance_margin',
+    'trade_step_tuns',
+    'water_per_crew_day',
+    'food_per_crew_day',
+    'wage_per_crew_day',
+  ] as const) {
+    expect(isNum(snap.config[key]), `config.${key}`).toBe(true)
+  }
+
+  // §B.6: the hazard seed must not be in a payload every browser gets. Searched for BY VALUE, the
+  // way migration 0009 asserts it — an allow-list of key names proves only that nobody named it.
+  const secret = await db.pg.query<{ v: string }>("select public.wc_text('world_secret') as v")
+  expect(secret.rows[0].v.length).toBeGreaterThanOrEqual(8)
+  expect(JSON.stringify(snap)).not.toContain(secret.rows[0].v)
+})
+
+test('world.market() prices every good, with %NBR, stock band, availability and advice', async () => {
+  const snap = expectOk(await worldSnapshot())
+  const lis = snap.ports.find((p) => p.code === 'LIS')!
+  const tun = snap.ports.find((p) => p.code === 'TUN')!
+
+  const market = expectOk(await worldMarket(lis.id))
+  expect(market.port).not.toBeNull()
+  expect(market.port!.code).toBe('LIS')
+  expect(isNum(market.port!.tax_rate) && isNum(market.port!.spread)).toBe(true)
+  expect(isNum(market.port!.dev_commerce) && isStr(market.port!.culture)).toBe(true)
+  expect(market.goods).toHaveLength(12)
+
+  for (const g of market.goods) {
+    expect(isStr(g.good_id) && isStr(g.code) && isStr(g.name) && isStr(g.category)).toBe(true)
+    expect(g.buy).toBeGreaterThan(0)
+    expect(g.sell).toBeGreaterThan(0)
+    expect(g.buy).toBeGreaterThan(g.sell) // the spread, in the direction that costs the player
+    expect(isNum(g.mid)).toBe(true)
+    expect(g.pct_nbr === null || isNum(g.pct_nbr)).toBe(true)
+    expect(isNum(g.stock) && isNum(g.stock_target)).toBe(true)
+    expect(g.stock_band).toBeGreaterThanOrEqual(0)
+    expect(g.stock_band).toBeLessThanOrEqual(6)
+    expect(typeof g.available).toBe('boolean')
+    expect(['buy', 'hold', 'sell']).toContain(g.advice)
+  }
+
+  // The culture mask is a fact about the port, and it shows through as a flag, not as a price.
+  expect(market.goods.find((g) => g.code === 'vinho')!.available).toBe(true)
+  const tunis = expectOk(await worldMarket(tun.id))
+  expect(tunis.goods.find((g) => g.code === 'vinho')!.available).toBe(false)
+
+  // The §K.1 gradient, through the client seam: salt is cheap here and dear at Cádiz.
+  const cad = snap.ports.find((p) => p.code === 'CAD')!
+  const salLis = market.goods.find((g) => g.code === 'sal')!
+  const salCad = expectOk(await worldMarket(cad.id)).goods.find((g) => g.code === 'sal')!
+  expect(salLis.pct_nbr).toBeLessThan(100)
+  expect(salCad.pct_nbr).toBeGreaterThan(100)
+  expect(salLis.advice).toBe('buy')
+})
+
+test('world.fleets() reports the fleet, its ships, its stores and its empty queue', async () => {
+  const fleets = expectOk(await worldFleets())
+  expect(fleets).toHaveLength(1)
+  const f = fleets[0]
+  expect(isStr(f.id)).toBe(true)
+  expect(f.name).toBe('Gaivota')
+  expect(f.status).toBe('DOCKED')
+  expect(f.port).toBe('LIS')
+  expect(f.version).toBeGreaterThanOrEqual(1)
+  expect(f.busy_until).toBeNull()
+  expect(f.voyage).toBeNull()
+  expect(f.speed_kn).toBeGreaterThan(0)
+  expect(f.endurance_days).toBeGreaterThan(0)
+  expect(Array.isArray(f.queue)).toBe(true)
+  expect(f.queue).toHaveLength(0)
+
+  expect(f.ships).toHaveLength(1)
+  const s = f.ships[0]
+  expect(isStr(s.id)).toBe(true)
+  expect(s.name).toBe('Gaivota')
+  expect(s.class).toBe('Barca')
+  expect(s.is_flagship).toBe(true)
+  expect(s.hold).toBe(60)
+  expect(s.durability).toBe(s.max_durability)
+  expect(s.crew).toBe(s.crew_required)
+  expect(s.crew_max).toBeGreaterThanOrEqual(s.crew_required)
+  expect(s.cargo).toEqual({}) // goods code -> tuns; empty on a new hull
+  expect(s.cargo_tuns).toBe(0)
+  expect(s.water_t).toBeGreaterThan(0)
+  expect(s.food_t).toBeGreaterThan(0)
+})
+
+test('world.ledger() pages, reconciles, and carries the purse', async () => {
+  const page = expectOk(await worldLedger())
+  expect(page.ducats).toBe(8000)
+  expect(page.ledger_sum).toBe(page.ducats)
+  expect(page.events.length).toBeGreaterThanOrEqual(1)
+  const founding = page.events.find((e) => e.kind === 'FOUNDED')!
+  expect(founding).toBeDefined()
+  expect(isStr(founding.id) && isStr(founding.at)).toBe(true)
+  expect(founding.ducats_delta).toBe(8000)
+  expect(founding.balance_after).toBe(8000)
+  expect(founding.payload).toMatchObject({ port: 'LIS', company: 'Casa de Aveiro' })
+  expect(isStr(page.next_cursor)).toBe(true)
+
+  // The cursor is exclusive: paging past the oldest event returns nothing, and does not loop.
+  const older = expectOk(await worldLedger(page.next_cursor, 10))
+  expect(older.events).toHaveLength(0)
+
+  const capped = expectOk(await worldLedger(null, 1))
+  expect(capped.events).toHaveLength(1)
+})
+
+// ── the commands ───────────────────────────────────────────────────────────────────────────────
+
+test('cmd.verb_schema() serves the eight V0 verbs, argument by argument', async () => {
+  const verbs = expectOk(await cmdVerbSchema())
+  expect(verbs.map((v) => v.verb)).toEqual([
+    'SAIL',
+    'BUY',
+    'SELL',
+    'PROVISION',
+    'HIRE',
+    'REPAIR',
+    'CANCEL',
+    'CLEAR',
+  ])
+  const sail = verbs[0]
+  expect(sail.help.length).toBeGreaterThan(10)
+  const dest = sail.args.find((a) => a.name === 'dest')!
+  expect(dest.type).toBe('port')
+  expect(dest.required).toBe(true)
+  expect(dest.keyword).toBe('TO')
+  expect(sail.args.find((a) => a.name === 'via')!.repeat).toBe(true)
+  // The snapshot ships the same grammar, so a tap-builder and the keyboard cannot drift apart.
+  const snap = expectOk(await worldSnapshot())
+  expect(snap.verbs).toEqual(verbs)
+})
+
+test('cmd.preview() estimates without moving a ducat, and refuses in the same words a commit would', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  const before = expectOk(await worldLedger()).ducats
+
+  const ok = expectOk(await cmdPreview(fleet.id, 'BUY sal 40'))
+  expect(ok.ok).toBe(true)
+  expect(ok.parsed.verb).toBe('BUY')
+  expect(ok.parsed.fleet_id).toBe(fleet.id)
+  expect(ok.estimate).toBeDefined()
+  expect(ok.estimate!.qty).toBe(40)
+  expect(ok.estimate!.good).toBe('sal')
+  expect(Number(ok.estimate!.total)).toBeGreaterThan(0)
+  expect(expectOk(await worldLedger()).ducats).toBe(before) // the dry run really was dry
+
+  const refused = await cmdPreview(fleet.id, 'BUY sal 60')
+  expect(refused.ok).toBe(false)
+  if (refused.ok) throw new Error('unreachable')
+  expect(refused.refusal.code).toBe('E_HOLD_FULL')
+  expect(refused.refusal.source).toBe('server')
+})
+
+test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  const result = await cmdIssue(fleet.id, 'BUY sal 60', fleet.version)
+
+  // NOT a thrown string, NOT a null, NOT a silent no-op. The game refusing is the game working.
+  expect(result.ok).toBe(false)
+  if (result.ok) throw new Error('unreachable')
+  const r = result.refusal
+  expect(r.code).toBe('E_HOLD_FULL')
+  expect(r.sentence).toContain('room for')
+  expect(r.sentence.length).toBeGreaterThan(10)
+  expect(r.fixes.length).toBeGreaterThanOrEqual(1)
+  expect(r.fixes).toContain('SELL <good> ALL')
+  expect(r.source).toBe('server')
+  // The queue comes back with the refusal, so a screen can redraw without a second round trip.
+  expect(r.queue?.some((o) => o.error_code === 'E_HOLD_FULL')).toBe(true)
+
+  // …and the refused order is still in the queue as `failed`, exactly as the chain leaves it.
+  const after = expectOk(await worldFleets())[0]
+  expect(after.queue.some((o) => o.status === 'failed' && o.text === 'BUY sal 60')).toBe(true)
+
+  expectOk(await cmdClear(fleet.id))
+  await db.pg.query("delete from public.orders where status = 'failed'")
+})
+
+test('the other refusal shapes are the same shape', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+
+  // A stale version — the F.3 rule that stops two devices double-issuing.
+  const stale = await cmdIssue(fleet.id, 'BUY sal 10', fleet.version + 99)
+  expect(stale.ok).toBe(false)
+  if (stale.ok) throw new Error('unreachable')
+  expect(stale.refusal.code).toBe('E_STALE')
+  expect(stale.refusal.fixes.length).toBeGreaterThanOrEqual(1)
+
+  // An unknown port, refused by the resolver rather than by a screen's own validation.
+  const nowhere = await cmdIssue(fleet.id, 'SAIL TO zzz')
+  expect(nowhere.ok).toBe(false)
+  if (nowhere.ok) throw new Error('unreachable')
+  expect(nowhere.refusal.code).toBe('E_NO_SUCH_PORT')
+
+  // An ambiguous prefix, which must NAME the candidates rather than just say "ambiguous".
+  const ambiguous = await cmdIssue(fleet.id, 'SAIL TO s')
+  expect(ambiguous.ok).toBe(false)
+  if (ambiguous.ok) throw new Error('unreachable')
+  expect(ambiguous.refusal.code).toBe('E_AMBIGUOUS')
+  expect(ambiguous.refusal.sentence).toContain('Safi')
+  expect(ambiguous.refusal.sentence).toContain('Sevilla')
+
+  // A fleet that is not the player's: the ownership check, phrased as a refusal like any other.
+  const notMine = await cmdIssue('00000000-0000-4000-8000-0000000000ff', 'BUY sal 10')
+  expect(notMine.ok).toBe(false)
+  if (notMine.ok) throw new Error('unreachable')
+  expect(notMine.refusal.code).toBe('E_NO_SUCH_FLEET')
+})
+
+test('cmd.issue() / cmd.cancel_at() / cmd.clear() return the queue and the new version', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+
+  const bought = expectOk(await cmdIssue(fleet.id, 'BUY sal 10', fleet.version))
+  expect(bought.order.status).toBe('done')
+  expect(bought.order.seq).toBeGreaterThanOrEqual(1)
+  expect(bought.order.result).toMatchObject({ qty: 10, good: 'sal' })
+  // The issue payload carries the order WITHOUT its text or verb; the queue beside it carries both.
+  expect('verb' in bought.order).toBe(false)
+  expect(bought.version).toBeGreaterThan(fleet.version)
+  expect(bought.error_code).toBeNull()
+  expect(Array.isArray(bought.queue)).toBe(true)
+
+  // Queue two orders behind a SAILING fleet, then take them back apart.
+  const sailed = expectOk(await cmdIssue(fleet.id, 'SAIL Gaivota TO Cadiz'))
+  expect(sailed.order.status).toBe('done')
+  const queued = expectOk(await cmdIssue(fleet.id, 'SELL sal ALL'))
+  expect(queued.order.status).toBe('pending')
+  expectOk(await cmdIssue(fleet.id, 'BUY couro 10'))
+
+  const cancelled = expectOk(await cmdCancel(fleet.id))
+  expect(cancelled.cancelled).toBeGreaterThanOrEqual(1)
+  expect(cancelled.queue.every((o) => o.status !== 'cancelled')).toBe(true)
+
+  const cleared = expectOk(await cmdClear(fleet.id))
+  expect(cleared.cancelled).toBeGreaterThanOrEqual(1)
+  expect(cleared.queue).toHaveLength(0)
+  // §F.3: CLEAR drops the pending orders and LEAVES THE ACTIVE VOYAGE RUNNING.
+  expect(expectOk(await worldFleets())[0].status).toBe('SAILING')
+
+  const clearedAll = expectOk(await cmdClear(fleet.id, true))
+  expect(clearedAll.active_left_running).toBe(true)
+  expect(clearedAll.note).toContain('RECALL')
+})
+
+test('a fleet at sea reports its voyage and its closed-form position', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  expect(fleet.status).toBe('SAILING')
+  expect(fleet.port).toBeNull()
+  const v = fleet.voyage!
+  expect(v).not.toBeNull()
+  expect(isStr(v.id) && isStr(v.eta)).toBe(true)
+  expect(v.to).toBe('CAD')
+  expect(v.total_nm).toBe(188)
+  expect(v.nm_done).toBeGreaterThanOrEqual(0)
+  expect(v.nm_done).toBeLessThanOrEqual(v.total_nm)
+  const p = v.position!
+  expect(p).not.toBeNull()
+  expect(p.from_code).toBe('LIS')
+  expect(p.to_code).toBe('CAD')
+  expect(isNum(p.lat) && isNum(p.lon)).toBe(true)
+  expect(p.leg_frac).toBeGreaterThanOrEqual(0)
+  expect(p.leg_frac).toBeLessThanOrEqual(1)
+  expect(p.leg_index).toBe(0)
+})
+
+// ── the dispatcher ─────────────────────────────────────────────────────────────────────────────
+
+test('one catalogue builds both backends, and only one backend is ever in use', async () => {
+  expect(backendKind()).toBe('local')
+
+  // The SQL and the PostgREST call are derived from the same row — they cannot drift.
+  expect(localSql('worldMarket')).toBe('select world.market($1::uuid) as result')
+  expect(localSql('worldSnapshot')).toBe('select world.snapshot() as result')
+  expect(localSql('cmdIssue')).toBe('select cmd.issue($1::uuid, $2::text, $3::int) as result')
+  expect(namedArgs('cmdIssue', ['f', 'BUY sal 10'])).toEqual({
+    p_fleet: 'f',
+    p_text: 'BUY sal 10',
+    p_expected_version: null,
+  })
+  expect(rpcLabel('worldLedger')).toBe('world.ledger(p_cursor, p_limit)')
+
+  // The catalogue is the whole vocabulary. Server-only functions are deliberately not in it:
+  // a browser must not be able to found a house or assume an identity.
+  const names = Object.keys(RPCS)
+  expect(names).toHaveLength(9)
+  expect(JSON.stringify(RPCS)).not.toContain('new_house')
+  expect(JSON.stringify(RPCS)).not.toContain('assume_identity')
+  expect(JSON.stringify(RPCS)).not.toContain('settle')
+  expect(JSON.stringify(RPCS)).not.toContain('tick_')
+})
+
+test('a fault crosses the boundary as a refusal, not as a stack trace', async () => {
+  // Nothing installed: the surface answers, it does not explode.
+  clearBackend()
+  const nobody = await worldSnapshot()
+  expect(nobody.ok).toBe(false)
+  if (nobody.ok) throw new Error('unreachable')
+  expect(nobody.refusal.code).toBe('E_NO_BACKEND')
+  setBackend(createLocalBackend(db))
+
+  // A raised E_CODE (the parser's shape) keeps its code and its sentence.
+  const raised = fromError(new Error('E_AMBIGUOUS: "s" could be Safi, Sevilla'))
+  expect(raised.code).toBe('E_AMBIGUOUS')
+  expect(raised.sentence).toBe('"s" could be Safi, Sevilla')
+  expect(raised.source).toBe('raised')
+
+  // A permission failure is named as one — this is the SQLSTATE the lockdown produces.
+  const denied = fromError(Object.assign(new Error('permission denied for table ports'), { code: '42501' }))
+  expect(denied.code).toBe('E_FORBIDDEN')
+  expect(denied.detail).toContain('42501')
+
+  // A missing RPC upstream is what an unexposed schema looks like from PostgREST.
+  expect(fromError(Object.assign(new Error('not found'), { code: 'PGRST202' })).code).toBe('E_NO_SUCH_RPC')
+
+  // Anything else is a fault, and says so rather than pretending to be a game rule.
+  const broken = await worldMarket('not-a-uuid')
+  expect(broken.ok).toBe(false)
+  if (broken.ok) throw new Error('unreachable')
+  expect(broken.refusal.source).toBe('fault')
+  expect(broken.refusal.detail).toContain('local · world.market(p_port)')
+})
