@@ -100,11 +100,37 @@ dropped rather than drawn badly. Twenty specs assert no two label boxes intersec
 sizes. Likewise the boot failure was fixed by giving the auth gate **one** authority field that both
 cloud and local mode set, so the two modes cannot drift apart.
 
+### How day 0 ended
+
+Everything above landed green and pushed. Final gates, all run and read rather than assumed:
+
+```
+npx playwright test   191 passed, 6 skipped
+npm run db:apply      10 migrations, 10 self-assert receipts
+npm run db:proof      4 files, 27/27 PASS markers
+npm run build         exit 0
+npm run lint          exit 0
+```
+
+The K.1 first session now runs **through the client seam**, not only in SQL: buy salt at Lisboa, sail
+to Cádiz, sell, buy hides, sail home, sell, purse ends above 8,000.
+
+Three defects were fixed as rules rather than patches, which is the part worth keeping. The map's label
+collisions became a set-planning algorithm with priority and 8-way placement. The clipped tables turned
+out to have one root cause — `w-full` pinning the table to its wrapper, crushing columns to min-content
+and still overflowing — so `scrollWidth === clientWidth` read green while the data was simply hidden.
+And the boot crash was fixed by giving the auth gate one authority field that both modes set.
+
+One admission is preserved deliberately: the first version of the table-layout spec **passed the broken
+code**. It was rewritten to assert the column crush rather than the overflow, and proven non-vacuous by
+reverting the fix and watching it fail. A test that passes the bug is worse than no test.
+
 ### Open at the end of day 0
 
-- The browser data layer — running the same chain in PGlite in the browser behind one typed RPC surface.
-- Three screen defects from the 390×844 pass.
-- After both: rewiring the five screens from fixtures to live RPCs. The screens were built as pure
-  presentation specifically so that this would be mechanical.
+- **Rewiring the five screens from fixtures to live RPCs** — the one thing between this repo and a
+  playable game. `src/lib/db/README.md` §4 is the field-by-field mapping table written for that job.
+  The screens were built as pure presentation specifically so this would be mechanical.
+- `@electric-sql/pglite` still sits in devDependencies and must move before any `--omit=dev` deploy.
+- The cloud backend is written and typed but has never made a round trip, because there is no project.
 - Cloud production, blocked only by Supabase's 2-free-project limit. Not urgent; the game is playable
   locally without it.

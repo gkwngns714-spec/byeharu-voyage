@@ -115,23 +115,55 @@ That last one is the game: buy salt at Lisboa, sail 188 nm to Cádiz, sell, buy 
   8-way placement, so nothing overprints; measured 0 collisions at 390×844.
 - **Screens** — Command, Fleets, Port, Market, Ledger.
 
-### In flight when this was written
+### Also done — landed after the first draft of this file
 
-- **The browser data layer** (`src/lib/db/`, `src/lib/rpc/`) — booting the chain in PGlite in the
-  browser, persisted across reloads, behind one typed RPC surface with two backends. **This is the
-  piece that turns fixtures into a real game.** Check whether `src/lib/db/README.md` exists; if it
-  does, it contains the fixture-field → RPC-field mapping table.
-- **Three screen defects** found by screenshotting at 390×844: Fleets clipping its endurance column
-  instead of scrolling, prose values wrapping into ragged right-aligned fragments on Ledger and Port,
-  and Market burying every price under three rows of chips.
+- **The browser data layer.** `src/lib/db/` boots PGlite in the browser and applies
+  `supabase/migrations/*.sql` through `import.meta.glob`; Node applies the same files from disk. **No
+  SQL is duplicated** — `supabase/migrations/` stays the only place SQL lives. The database persists to
+  IndexedDB and stores a chain fingerprint, so a changed chain rebuilds from scratch instead of layering
+  a new migration onto a stale database.
+- **One typed RPC surface, two backends.** `src/lib/rpc/` exposes `worldSnapshot`, `worldMarket`,
+  `worldFleets`, `worldLedger`, `cmdIssue`, `cmdPreview`, `cmdCancel`, `cmdClear`, `cmdVerbSchema`, all
+  returning `RpcResult<T>`. **Nothing throws; a refusal is data** carrying its code, sentence and fixes,
+  identically on both backends. `init.ts` is the single place that reads `hasCloud`.
+- **The three screen defects** are fixed, as rules rather than patches.
 
-Both may have landed by the time you read this — check `git log` and `docs/DEV_LOG.md`.
+Measured on this machine, so you know what to expect: **cold boot 5,513 ms** to ready (2,234 ms
+WASM + initdb, 2,732 ms applying the chain, 167 ms seeding), **warm reload 1,039 ms** with no re-apply,
+first `world.fleets()` 57 ms. Bundle cost when wired is **17.69 MB raw / ~5.64 MB gzipped**, behind a
+dynamic import — cloud mode downloads none of it.
 
-### The next real step after those
+---
 
-**Rewiring the five screens from `src/fixtures/v0.ts` to the live RPC surface.** The screens were
-deliberately built as pure presentation against typed fixtures so that this rewiring is a mechanical,
-one-file-at-a-time job rather than a rewrite.
+## 3a. THE NEXT STEP — start here
+
+**Rewire the five screens from `src/fixtures/v0.ts` to the live RPC surface.** Everything else is in
+place; this is the last thing standing between the repo and a game you can actually play.
+
+**Read `src/lib/db/README.md` §4 first** — it is a field-by-field fixture→RPC mapping table written
+specifically for this job. The gaps it names are the real work, and none of them is guesswork:
+
+- no player RPC yet (name, level, reputation)
+- a voyage exposes its current leg and a closed-form `lat/lon`, not a full `path`
+- no `history7`, which the Market sparkline currently draws from
+- no cargo `avgCost`; `cargo` is a map, not a list
+- `raw` → `text`, `portCode` → `port`, ms → ISO timestamps
+- `WAGES` moves money without an event row, so **the Ledger must print `balance_after` rather than
+  summing the rows it renders**
+
+The screens were deliberately built as pure presentation against typed fixtures precisely so that this
+is a mechanical, one-file-at-a-time job. Do them one screen at a time, and screenshot each at 390×844
+after wiring it (§5 trap 5).
+
+### Two things flagged, not hidden
+
+1. **`@electric-sql/pglite` is still a devDependency.** It must move to `dependencies` before any
+   `npm ci --omit=dev` deploy, or the local backend will vanish from the build. Left alone deliberately
+   so the decision is visible rather than buried in a diff.
+2. **The cloud backend has never made a round trip**, because there is no Supabase project (§4). It is
+   written and typed; it is not proven.
+3. **RLS is bypassed under PGlite** (superuser). Local play proves the *rules*, not the *walls*. The
+   grant-lockdown proof and CI's disposable-Supabase job are what prove the walls.
 
 ---
 
