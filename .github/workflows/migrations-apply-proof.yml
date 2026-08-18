@@ -1,32 +1,46 @@
-name: Migrations — apply proof (disposable Supabase)
+name: Migrations — apply proof (PGlite gate + disposable Supabase)
 
-# WHAT THIS PROVES
-#   That the ENTIRE migration chain, from the first file to the newest, applies cleanly in order to
-#   a real PostgreSQL — and that every in-migration self-assert passes against real data.
+# WHAT THIS PROVES, IN TWO JOBS THAT PROVE DIFFERENT THINGS
 #
-#   `supabase start` boots a disposable local stack in Docker inside the runner and applies every
-#   file in supabase/migrations/ in version order. Any error — a syntax error, a broken dependency
-#   on an earlier migration, a violated CHECK constraint, a `raise exception` from a self-assert —
-#   fails the job. That is the whole point: a migration's self-assert is only a promise until
-#   something runs it, and THIS is the only place it runs.
+#   Neither job replaces the other. Running only one of them would leave a real class of defect
+#   uncaught, and the two classes are named below so nobody has to guess.
 #
-# WHY IT MUST EXIST
-#   There is no Docker on the dev machine, so SQL cannot be proven locally at all. A migration that
-#   has not been through this workflow is unproven, however carefully it was read. In byeharu the
-#   equivalent job is what caught the failures that static review had missed: a vacuous self-assert
-#   that never touched a row, and a migration that was correct in isolation but collided with a
-#   live CHECK constraint added three files earlier.
+# ── JOB 1: pglite-gate ─────────────────────────────────────────────────────────────────────────
+#   Applies the ENTIRE migration chain to a real PostgreSQL 18 compiled to WebAssembly
+#   (@electric-sql/pglite) — real planner, real plpgsql, real constraints, real triggers, real
+#   GRANTs — and then runs every proof in scripts/db/proofs/ inside transactions that are rolled
+#   back. It is the same gate the developer runs on their own machine in ten seconds
+#   (`npm run db:apply` / `npm run db:proof`), which is why a migration should never reach job 2
+#   red.
 #
-# WHAT IT DOES NOT DO — AND MUST NEVER DO
-#   It never touches a hosted project. There is no `environment:` on this job, so it cannot read
-#   production secrets even by accident; the database it applies to is created and destroyed inside
-#   the runner. Deploying to a real project is a separate, deliberate workflow.
+#   Its non-vacuity floors are what make it a gate rather than a formality:
+#     * every migration must print a "self-assert ok:" receipt, or the run fails;
+#     * every proof must declare "-- @pass MARKER" lines and every declared marker must actually
+#       appear in the output. A proof that quietly stopped emitting a marker FAILS. A proof that
+#       declares nothing FAILS as vacuous.
+#     * a proof that leaves committed rows behind FAILS, so the rollback is verified rather than
+#       assumed.
 #
-# EMPTY CHAIN
-#   supabase/migrations/ is empty today (only its README). The job still runs and still passes:
-#   `supabase start` boots the stack with a bare schema, which proves the harness itself works. The
-#   count step prints how many migrations were applied so a green run can never be mistaken for
-#   "the chain is proven" when the chain does not exist yet.
+#   What it CANNOT prove: it is not Supabase. `anon`, `authenticated`, `service_role` and
+#   `auth.uid()` do not exist in a bare PostgreSQL, so migration 0001 creates them only if absent.
+#   The lockdown is therefore proven against roles this chain made, which is exactly the case
+#   that CANNOT catch the predecessor's defect — a Supabase-supplied `GRANT ALL ON TABLES TO anon`
+#   arriving from DEFAULT PRIVILEGES nobody wrote. That is job 2's job.
+#
+# ── JOB 2: disposable-chain ────────────────────────────────────────────────────────────────────
+#   `supabase start` boots a disposable stack in Docker inside the runner and applies every file
+#   in supabase/migrations/ in version order — against Supabase's OWN roles and its own default
+#   privileges. Any error (a syntax error, a broken dependency on an earlier migration, a violated
+#   CHECK, a `raise exception` from a self-assert) fails the job.
+#
+#   It then re-runs the grant-lockdown proof by hand against that database, because that proof is
+#   the one whose result differs between the two environments, and asserts every PASS marker
+#   appears. Green is NOT "psql exited 0"; green is "every named marker was printed".
+#
+# ── WHAT NEITHER JOB DOES, AND MUST NEVER DO ───────────────────────────────────────────────────
+#   Touch a hosted project. There is no `environment:` on either job, so neither can read
+#   production secrets even by accident. Both databases are created and destroyed inside the
+#   runner. Deploying to a real project is a separate, deliberate, human-approved workflow.
 
 on:
   push:
@@ -34,6 +48,8 @@ on:
   pull_request:
     paths:
       - 'supabase/**'
+      - 'scripts/db/**'
+      - 'package.json'
       - '.github/workflows/migrations-apply-proof.yml'
   workflow_dispatch:
 
@@ -45,6 +61,43 @@ permissions:
   contents: read
 
 jobs:
+  # ═══════════════════════════════════════════════════════════════════════════════════════════
+  # 1. The fast gate: the whole chain + all four proofs, on real PostgreSQL, no Docker.
+  # ═══════════════════════════════════════════════════════════════════════════════════════════
+  pglite-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (from the lockfile)
+        run: npm ci
+
+      # A duplicate 14-digit version deploys as a SILENT no-op: schema_migrations keys on the
+      # version, so the second file is recorded already-applied and skipped, with everything green.
+      # It happened four times in the predecessor project. This check carries its own positive
+      # control — it proves it can detect a deliberately duplicated version before reporting none.
+      - name: Migration versions are unique
+        run: npm run db:check-versions
+
+      # Every migration applies in order AND prints its own self-assert receipt.
+      - name: Apply the whole chain to PGlite (real PostgreSQL 18, no Docker)
+        run: npm run db:apply
+
+      # Offline equivalence · ledger reconciliation · grant lockdown · the K.1 first session.
+      # Fails if any declared PASS marker is missing, if a proof declares none, or if a proof
+      # leaves committed rows behind.
+      - name: Run every proof (declared PASS markers must all appear)
+        run: npm run db:proof
+
+  # ═══════════════════════════════════════════════════════════════════════════════════════════
+  # 2. The net: the same chain against Supabase's own roles and default privileges.
+  # ═══════════════════════════════════════════════════════════════════════════════════════════
   disposable-chain:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -58,10 +111,10 @@ jobs:
           files=(supabase/migrations/*.sql)
           echo "migrations found: ${#files[@]}"
           if [ ${#files[@]} -eq 0 ]; then
-            echo "::notice title=Empty chain::No migrations yet — this run proves the harness boots, not the schema."
-          else
-            printf '  %s\n' "${files[@]}"
+            echo "::error title=Empty chain::No migrations. A green run over nothing is not a proof."
+            exit 1
           fi
+          printf '  %s\n' "${files[@]}"
 
       - uses: supabase/setup-cli@v1
         with:
@@ -79,6 +132,34 @@ jobs:
           # the directory listing, so a silently-skipped duplicate version shows up as a gap here.
           psql "$DB_URL" -v ON_ERROR_STOP=1 -c \
             "select version, name from supabase_migrations.schema_migrations order by version;"
+
+      # THE REASON THIS JOB EXISTS. Locally, migration 0001 creates `anon` and `authenticated`
+      # itself, so the revoke has nothing inherited to fight. HERE those roles arrive from
+      # Supabase, carrying Supabase's own DEFAULT PRIVILEGES — the exact shape that left `anon`
+      # able to write a table in the predecessor and aborted a production deploy. This is the only
+      # place that specific claim is tested.
+      - name: Grant lockdown, against Supabase's own roles
+        run: |
+          set -euo pipefail
+          set -a; . /tmp/sbenv; set +a
+          : "${DB_URL:?DB_URL (disposable stack) required}"
+          out="$(psql "$DB_URL" -v ON_ERROR_STOP=1 \
+                   -c 'begin' -f scripts/db/proofs/03_grant_lockdown.sql -c 'rollback' 2>&1)" || {
+            echo "$out"; echo "::error title=Lockdown proof failed::psql exited non-zero"; exit 1;
+          }
+          echo "$out"
+          # Green is not "exit 0" — it is "every named marker was printed".
+          for marker in GRANT_LOCKDOWN_PROBE_PROVES_QUERY \
+                        GRANT_LOCKDOWN_NO_WRITE_GRANTS \
+                        GRANT_LOCKDOWN_ANON_DENIED \
+                        GRANT_LOCKDOWN_AUTHENTICATED_DENIED \
+                        GRANT_LOCKDOWN_SECRET_UNREADABLE \
+                        GRANT_LOCKDOWN_RLS_ON_EVERY_TABLE \
+                        GRANT_LOCKDOWN_SERVICE_ROLE_RETAINED; do
+            echo "$out" | grep -q "PASS: $marker" \
+              || { echo "::error title=Missing PASS marker::$marker"; exit 1; }
+          done
+          echo "All 7 lockdown PASS markers present against Supabase's own roles."
 
       - name: Stop disposable stack (always)
         if: always()

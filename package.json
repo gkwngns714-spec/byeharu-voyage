@@ -9,7 +9,10 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "playwright test"
+    "test": "playwright test",
+    "db:apply": "node scripts/db/apply-chain.mjs",
+    "db:proof": "node scripts/db/proof.mjs",
+    "db:check-versions": "node scripts/db/check-versions.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
