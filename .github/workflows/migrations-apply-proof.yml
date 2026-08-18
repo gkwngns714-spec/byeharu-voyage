@@ -123,7 +123,12 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # PINNED, not "latest". Resolving "latest" costs a GitHub API call, and on 2026-08-18 that
+          # call failed the whole job with "Failed to resolve latest Supabase CLI release: rate limit
+          # exceeded" — an infrastructure flake reported as a red migration proof, which is the worst
+          # kind of false signal to leave in place. A pinned version cannot be rate-limited, and it
+          # also means the chain is proven against a known CLI rather than a moving one.
+          version: 2.114.0
 
       - name: Start disposable local Supabase (applies the WHOLE chain, in order)
         run: supabase start
