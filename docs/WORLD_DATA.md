@@ -20,6 +20,7 @@ traded* — not where it is.
 | `data/regions.json` | 5,540 | 25 trading regions, each tied to a parent sea |
 | `data/goods.json` | 16,891 | 70 tradeable commodities with category, value band and origin note |
 | `data/world-110m.json` | 280,378 | Country outlines for the map (Natural Earth 1:110m, property bag slimmed) |
+| `data/sea-routes.json` | 195,000 | **782 sea legs** — which ports are joined by water, and how far it is by sea. GENERATED; see §7 |
 
 Build and check scripts live in `scripts/`. None of them are needed at runtime.
 
@@ -33,6 +34,9 @@ Build and check scripts live in `scripts/`. None of them are needed at runtime.
 | `scripts/check-ports.mjs` | **no** | The validator. Offline, self-contained, exits non-zero on failure |
 | `scripts/check-coastal.mjs` | yes | Audits how far each port is from a coastline |
 | `scripts/project.mjs` | — | Reference implementation of the recommended projection |
+| `scripts/sea-grid.mjs` | **no** | THE routing rule: the sea as a 0.25° raster, and A* through water. §7 |
+| `scripts/build-sea-routes.mjs` | **no** | Applies that rule to all 214 ports and writes `data/sea-routes.json` |
+| `scripts/build-world-seed.mjs` | **no** | Writes migration 0003 from all of the above. The chain's world IS this data |
 
 Regenerate everything with:
 
@@ -41,6 +45,9 @@ node scripts/fetch-coords.mjs      # refresh coordinates from Wikidata
 node scripts/build-world.mjs       # refresh country outlines and bbox table
 node scripts/build-ports.mjs       # compose data/ports.json
 node scripts/check-ports.mjs       # validate
+node scripts/build-sea-routes.mjs  # recompute the sea legs (about 10 minutes)
+node scripts/build-world-seed.mjs  # rewrite migration 0003 from the data
+npm run db:apply                   # and prove the result applies
 ```
 
 ---
@@ -430,3 +437,77 @@ kilometres west; Old Goa was abandoned for Panjim; Sofala's harbour has silted �
 coordinate is the modern place, which may be several kilometres from where a ship of 1600
 would actually have anchored. For a game map at world scale this is immaterial; for anything
 claiming historical precision it is not.
+
+
+---
+
+## 7. The sea legs — how 782 routes were derived rather than authored
+
+`data/sea-routes.json` is **generated**. Do not hand-edit it: change the rule or the port list and
+run `node scripts/build-sea-routes.mjs` again.
+
+### The rule, in one line
+
+> A leg is the shortest path **through water** between two harbours, and its distance is the length
+> of that path.
+
+Not the straight line. `scripts/sea-grid.mjs` scan-fills the Natural Earth land polygons into a
+**0.25° raster** (1440 × 720 cells, ~715k of them water) and runs **A*** * over the water cells,
+then straightens the result by line-of-sight so the route is what a ship would sail rather than a
+staircase of grid steps.
+
+### Why the straight line was not good enough
+
+The first version of this generator asked whether the great circle between two ports stayed at sea.
+It produced a world in which **Lisbon and Cádiz had no leg at all**, because the straight line
+between them clips the Algarve. Ships round Cape St Vincent; so does the game now.
+
+| Pair | Straight line | By sea | Why |
+|---|---:|---:|---|
+| Lisbon → Cádiz | 188 nm | **248 nm** | Cape St Vincent |
+| Quebec → Boston | 268 nm | **1,153 nm** | the straight line is Maine |
+| Cape Town → Sofala | 1,198 nm | **1,611 nm** | round the Cape and up the channel |
+| Alexandria → Aden | 1,386 nm | **10,944 nm** | **there is no Suez until 1869** |
+| Veracruz → Acapulco | 255 nm | **10,860 nm** | **there is no Panama until 1914** |
+
+Nothing in the generator knows about canals, isthmuses or trade routes. Those numbers are what the
+water says. The last two are printed as **negative controls on every run**, because a generator
+that quietly starts digging Suez is worse than one that fails outright.
+
+### The channels — the only thing authored
+
+A 0.25° cell is about 15 nm. The Øresund is 2 nm wide and the Bosphorus half of one: at this
+resolution they are simply land, and refusing them would delete the Baltic grain trade, Istanbul,
+the Red Sea and the Gulf from a game about the age of sail. So `CHANNELS` in `scripts/sea-grid.mjs`
+lists **fifteen named straits and river approaches** whose cells are forced open before the search
+runs — the Danish Straits, the Dardanelles and the Bosphorus, Kerch, Bab-el-Mandeb, Hormuz, the
+Shatt al-Arab, Khambhat, the Hooghly, Malacca, Sunda, the Seto Inland Sea, the White Sea, the
+St Lawrence, the Gironde and Loire, the Thames and Scheldt, the Elbe and Weser, the Guadalquivir,
+the Pearl River, the Yangtze, the Río de la Plata, the Pará, and the Gambia and Senegal mouths.
+
+**That list is the whole of the game's "you may pass here" authority.** There is deliberately no
+Suez and no Panama in it.
+
+### How the graph is assembled
+
+1. **The coastal chain** — each port keeps its 6 nearest neighbours *by sea*, so the graph reads as
+   a coast you sail down port by port rather than a spiderweb.
+2. **Connectivity** — the shortest water link between separated halves is added until the world is
+   one piece. Five did it, and every one is a real ocean crossing: Gorée→Elmina, Luanda→Cape Town,
+   Banda Neira→Sydney, and Guam→Honolulu→Acapulco — **the Manila galleon, which the generator
+   found rather than being told.**
+3. **The trade roads** — where the chain forces a detour of more than 2.5× the actual sea distance,
+   that leg is opened.
+
+### The result
+
+```
+214 ports · 782 legs · ONE connected world · no isolated port
+degree           min 1, mean 7.3, max 16
+sailed/straight  mean 1.16x
+longest leg      3,309 nm (Honolulu — Acapulco)
+```
+
+Migration 0003 re-asserts the invariant against the coordinates it stored: **every leg is at least
+the great circle between its two ports**, and every port is reachable from Lisbon by walking the
+leg table. A leg may detour round land; it may never be a shortcut through the Earth.

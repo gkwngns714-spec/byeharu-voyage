@@ -134,3 +134,74 @@ reverting the fix and watching it fail. A test that passes the bug is worse than
 - The cloud backend is written and typed but has never made a round trip, because there is no project.
 - Cloud production, blocked only by Supabase's 2-free-project limit. Not urgent; the game is playable
   locally without it.
+
+
+---
+
+## Day 1 — 2026-08-19
+
+### The request
+
+The owner opened the game, looked at it, and corrected two things in one line:
+
+> "not typing, but making commands. i told you it will be real world, not a imaginary places. wtf."
+
+Both were fair. Both were structural.
+
+### What was wrong
+
+**The world was twelve toy ports.** `data/ports.json` had held 214 real harbours with Wikidata
+coordinates since day zero — and migration 0003 seeded twelve of them, around Iberia. Correct data
+sitting in a file nobody plays is not a correct world. What the owner saw when he opened the game
+was what the database contained.
+
+**The Command tab was a text prompt.** The brief said orders are *made*; the tab asked the player
+to type `SAIL Gaivota TO Cádiz`.
+
+### What was established
+
+**The world is now the real world, and it is generated rather than typed.** Migration 0003 is
+written by `scripts/build-world-seed.mjs` from `data/*.json`: 214 ports, 782 legs, 70 goods, 51
+seas, 25 regions, 20 nations, 834 specialty rows. It applies in 0.1 s.
+
+**The sea legs were derived from the sea itself.** Twenty-two hand-authored edges scaled to twelve
+ports; twenty-two thousand candidate pairs do not scale to a human. So the Natural Earth land
+polygons were rasterised to a 0.25° water grid and every leg became an A* path through water. The
+first attempt used the straight line and produced a world where Lisbon and Cádiz had no leg,
+because that line clips the Algarve — which is exactly why ships round Cape St Vincent. The
+grid's answers reproduce the age without being told about it: Alexandria to Aden comes out at
+10,944 nm round the Cape, Veracruz to Acapulco at 10,860 nm round the Horn, and the Manila galleon
+(Guam → Honolulu → Acapulco) appears on its own as one of only five ocean crossings needed to make
+the world connected.
+
+**The prices were derived from one authored fact.** A 12×12 affinity matrix does not become a
+14,980-cell matrix; it becomes noise. `public.port_specialties` records which ports produce which
+good — editorial, sourced — and every affinity in the world follows from distance to the nearest
+producer. Pepper is cheap in Malabar and dear in Lisbon for the reason it actually was.
+
+**A thirty-minute migration became a tenth of a second.** `voyage.route_direct` enumerated every
+simple path in the graph, which its own comment justified with "the V0 graph is 12 nodes and 22
+undirected edges". On the real graph it took 1,811 seconds — measured in the apply log. Dijkstra
+replaced it.
+
+**A rule that was only half-implemented was found by a probe.** §F.3 promises a queue halts at a
+failure and never skips. It halted within one call, and then the next arrival ran the order behind
+the failed one. Now a failed order blocks the fleet until CLEAR releases it — and CLEAR was widened
+in the same pass, because a halt with no release is the deadlock that cost the previous game a live
+incident.
+
+**Every seed-shaped assertion in the chain died in one pass.** Counts are computed from the tables;
+the time model is asserted as `days = nm / knots / 24` rather than as "188 nm, 1.6 days"; and the
+session proofs FIND their own cargo rather than naming one. The product proof now plays black
+pepper from Lisbon to Ponta Delgada and comes home +2,763 ducats on a 7,925 stake, unattended.
+
+### How day 1 stood at this point
+
+```
+npm run db:apply    10 migrations, 10 self-assert receipts, ~13 s
+npm run db:proof    4 files, 28/28 PASS markers
+CI                  both jobs green, including the disposable Supabase apply-proof
+```
+
+Pushed as `d70fe6e`. The five screens were still on fixtures at this point, and the Command tab was
+still a typing prompt — both being rebuilt against `src/live/worldStore.ts`.
