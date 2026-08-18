@@ -5,7 +5,8 @@ import { Skeleton } from '../components/ui'
 
 /** Gate that redirects unauthenticated visitors to /auth. */
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const session = useAuthStore((s) => s.session)
+  // ONE gate field, so cloud mode and local mode cannot drift apart. See authStore.
+  const authed = useAuthStore((s) => s.authed)
   const loading = useAuthStore((s) => s.loading)
 
   if (loading) {
@@ -25,7 +26,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!session) {
+  if (!authed) {
     return <Navigate to="/auth" replace />
   }
 

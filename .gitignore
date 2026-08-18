@@ -8,3 +8,9 @@ dist/
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# local verification artifacts (screenshots + throwaway drivers)
+shot.tmp.mjs
+*.png
+supabase/.temp/
+scripts/.bbox-table.txt
