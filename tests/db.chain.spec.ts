@@ -99,8 +99,14 @@ test('every migration applies, in order, and every one prints its self-assert re
     // receipt is a migration whose self-assert may have stopped asserting.
     expect(result.receipts).toBe(files.length)
 
+    // The world is seeded, and it is the REAL world — not a number this spec remembers. Pinning
+    // 12 (or 214) would make adding a port a test failure, which it is not.
     const ports = await db.query<{ n: number }>('select count(*)::int as n from public.ports')
-    expect(ports.rows[0].n).toBe(12)
+    expect(ports.rows[0].n).toBeGreaterThan(100)
+    const lisbon = await db.query<{ n: number }>(
+      "select count(*)::int as n from public.ports where code = 'LIS'",
+    )
+    expect(lisbon.rows[0].n).toBe(1)
   } finally {
     await db.close()
   }
@@ -223,8 +229,9 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
       [LOCAL_AUTH_UID],
     )
     expect(fresh.rows[0].company_name).toBe('Casa de Aveiro')
+    // A rebuild means the world came back WHOLE, not that it came back at a remembered size.
     const ports = await rebuilt.pg.query<{ n: number }>('select count(*)::int as n from public.ports')
-    expect(ports.rows[0].n).toBe(12)
+    expect(ports.rows[0].n).toBeGreaterThan(100)
     const grants = await rebuilt.pg.query<{ n: number }>(
       'select count(*)::int as n from public.client_write_grants()',
     )

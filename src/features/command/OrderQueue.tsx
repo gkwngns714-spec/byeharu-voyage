@@ -1,125 +1,141 @@
 import { Badge, Button, Notice } from '../../components/ui'
-import { formatRealShort } from '../../lib/format'
-import type { QueuedOrder } from '../../fixtures/types'
-import type { FleetView } from '../fleets/fleetMath'
-import { MAX_QUEUE } from './validate'
+import { formatNm, formatRealShort } from '../../lib/format'
+import type { FleetView, QueuedOrder } from '../../lib/rpc'
 
-// THE ORDER QUEUE — E.1's QUEUES block and F.3's rules, rendered.
+// THE QUEUE — E.1's QUEUES block and F.3's rules, made of the server's own rows.
 //
-//   Ponente     [1] SAIL→Calicut        pending  ✎ ✕
-//   Aurora      [1] SAIL→Amsterdam      ACTIVE  eta 11m  ✕
-//   Gaivota     — empty —                              ⚠
+//   [1] BUY sal 50            done
+//   [2] SAIL Gaivota TO CAD   ACTIVE   eta 11m   ✕
+//   [3] SELL sal ALL          pending            ✕
 //
 // F.3, and the two rules a player must be able to SEE rather than learn the hard way:
 //   · The queue HALTS on a failure. It does not skip. A failed order is drawn in danger tone with
-//     its code, and everything behind it is visibly stuck.
-//   · CANCEL on an ACTIVE voyage is a RECALL, not an undo. The button says so.
+//     the server's code and sentence, and everything behind it is visibly stuck until it is
+//     cleared — so CLEAR is drawn as the release, not as a tidy-up.
+//   · CANCEL on the ACTIVE voyage does not turn the ship around: RECALL is not a V0 verb, and
+//     `cmd.clear()` says so itself in `active_left_running`.
 //
-// An empty queue on a docked fleet is the warning E.1 badges: a fleet alongside with nothing to do
-// is money not working, and it is the one thing this panel actively complains about.
+// THIS IS ALSO WHERE CANCEL AND CLEAR ARE MADE. They are two of the eight verbs the server serves,
+// and their only argument is a row of this list — so they are composed HERE, by tapping that row,
+// rather than in the composer. One way to cancel, one way to clear.
 
 export function OrderQueue({
-  views,
-  ordersFor,
-  selectedFleetId,
-  onSelectFleet,
+  fleet,
+  queueMax,
+  busy,
+  readAt,
+  destination,
   onCancel,
+  onClear,
 }: {
-  views: readonly FleetView[]
-  ordersFor: (fleetId: string) => readonly QueuedOrder[]
-  selectedFleetId: string | null
-  onSelectFleet: (id: string) => void
-  onCancel: (fleetName: string, order: QueuedOrder) => void
+  fleet: FleetView
+  /** Where she is bound, in words. The queue carries a port CODE; the screen knows the name. */
+  destination?: string | null
+  /** `config.order_queue_max` — twelve, and the server's number, not a constant on this side. */
+  queueMax: number
+  busy: boolean
+  /** When the world was last READ. The ETA is counted from there, not from the wall clock: a read
+   *  is the catch-up (D.2), nothing on this screen ticks, and a render is not a clock. */
+  readAt: number | null
+  onCancel: (seq: number) => void
+  onClear: () => void
 }) {
+  const orders = fleet.queue
+  const live = orders.filter((o) => o.status === 'pending' || o.status === 'active')
+  const failed = orders.find((o) => o.status === 'failed')
+  const etaMs = fleet.voyage && readAt !== null ? Date.parse(fleet.voyage.eta) - readAt : null
+
   return (
-    <div className="space-y-4">
-      {views.map((view) => {
-        const orders = ordersFor(view.fleet.id)
-        const live = orders.filter((o) => o.status === 'pending' || o.status === 'active')
-        const idle = live.length === 0 && view.fleet.status === 'DOCKED'
-        return (
-          <div key={view.fleet.id} className="space-y-2">
-            <button
-              type="button"
-              onClick={() => onSelectFleet(view.fleet.id)}
-              className={[
-                'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-md px-2 text-left transition',
-                view.fleet.id === selectedFleetId ? 'bg-surface-2' : 'hover:bg-surface-2',
-              ].join(' ')}
-            >
-              <span className="font-mono text-sm text-ink">{view.fleet.name}</span>
-              <Badge tone={statusTone(view.fleet.status)}>{view.fleet.status}</Badge>
-              <span className="font-mono text-[11px] text-ink-faint">
-                {live.length}/{MAX_QUEUE} queued
-              </span>
-              {view.fleet.id === selectedFleetId && (
-                <span className="ml-auto font-mono text-[11px] uppercase tracking-wider text-accent">
-                  commanding
-                </span>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-sm text-ink">{fleet.name}</span>
+        <Badge tone={statusTone(fleet.status)}>{fleet.status}</Badge>
+        <span className="font-mono text-[11px] text-ink-faint">
+          {live.length}/{queueMax} queued
+        </span>
+        {failed && <Badge tone="danger">halted</Badge>}
+      </div>
+
+      {failed && (
+        <Notice tone="danger" className="text-xs">
+          <span className="font-mono">{failed.error_code}</span> — {failed.error_message}
+          <br />
+          {fleet.name} has HALTED at order {failed.seq} and will not skip past it. Clearing the queue
+          is what releases her.
+        </Notice>
+      )}
+
+      {/* THE VOYAGE IS NOT AN ORDER. A SAIL that has begun leaves the queue at once — the passage
+          itself lives on the fleet (D.2's closed form), so a queue panel that showed only orders
+          would report "nothing waiting" about a ship that is plainly at sea. */}
+      {fleet.voyage && (
+        <p className="flex flex-wrap items-center gap-2 rounded-md border border-accent/25 bg-accent-soft px-3 py-2 font-mono text-xs text-accent">
+          <span aria-hidden>⛵</span>
+          at sea → {destination ?? fleet.voyage.to}
+          <span className="text-ink-faint">
+            {formatNm(fleet.voyage.nm_done)} of {formatNm(fleet.voyage.total_nm)}
+          </span>
+          {etaMs !== null && <span>arrives in {formatRealShort(Math.max(etaMs, 0))}</span>}
+        </p>
+      )}
+
+      {orders.length === 0 ? (
+        <p className="text-sm text-ink-muted">
+          {fleet.status === 'DOCKED'
+            ? `${fleet.name} is alongside with nothing to do. A docked fleet earns nothing.`
+            : 'Nothing is queued for her arrival — an order made now will run the moment she is alongside.'}
+        </p>
+      ) : (
+        <ul className="space-y-1">
+          {orders.map((order) => (
+            <li key={order.id} className="flex flex-wrap items-center gap-2 border-b border-edge/50 py-1">
+              <span className="font-mono text-xs text-ink-faint">[{order.seq}]</span>
+              <code className="min-w-0 flex-1 break-words font-mono text-xs text-ink">{order.text}</code>
+              {order.status === 'active' && etaMs !== null && (
+                <span className="font-mono text-[11px] text-accent">eta {formatRealShort(Math.max(etaMs, 0))}</span>
               )}
-            </button>
-
-            {idle && (
-              <Notice tone="warning" className="font-mono text-xs">
-                ⚠ {view.fleet.name} is alongside with an empty queue. A docked fleet earns nothing.
-              </Notice>
-            )}
-
-            <ul className="space-y-1">
-              {orders.map((order) => (
-                <li
-                  key={order.id}
-                  className="flex flex-wrap items-center gap-2 border-b border-edge/50 py-1"
+              <Badge tone={orderTone(order.status)}>
+                {order.status === 'failed' && order.error_code ? order.error_code : order.status}
+              </Badge>
+              {(order.status === 'pending' || order.status === 'active') && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={busy}
+                  aria-label={`Cancel ${fleet.name} order ${order.seq}`}
+                  title={
+                    order.status === 'active'
+                      ? 'A voyage already at sea keeps sailing — RECALL is not a V0 verb (F.3)'
+                      : 'Drop this order from the queue'
+                  }
+                  onClick={() => onCancel(order.seq)}
                 >
-                  <span className="font-mono text-xs text-ink-faint">[{order.seq}]</span>
-                  <code className="min-w-0 flex-1 break-words font-mono text-xs text-ink">
-                    {order.raw}
-                  </code>
-                  {order.status === 'active' && view.progress && (
-                    <span className="font-mono text-[11px] text-accent">
-                      eta {formatRealShort(view.progress.remainingMs)}
-                    </span>
-                  )}
-                  <Badge tone={orderTone(order.status)}>
-                    {order.status === 'failed' && order.errorCode ? order.errorCode : order.status}
-                  </Badge>
-                  {(order.status === 'pending' || order.status === 'active') && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={
-                        order.status === 'active'
-                          ? `Recall ${view.fleet.name} — cancel order ${order.seq}`
-                          : `Cancel ${view.fleet.name} order ${order.seq}`
-                      }
-                      title={
-                        order.status === 'active'
-                          ? 'CANCEL on a running voyage is a RECALL (F.3)'
-                          : 'Remove from the queue'
-                      }
-                      onClick={() => onCancel(view.fleet.name, order)}
-                    >
-                      ✕
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
+                  ✕
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
 
-            {orders.some((o) => o.status === 'failed') && (
-              <Notice tone="danger" className="text-xs">
-                The queue has HALTED at the failed order. It does not skip ahead — a queue that
-                quietly continues past a failed BUY sails an empty ship halfway round the world.
-              </Notice>
-            )}
-          </div>
-        )
-      })}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant={failed ? 'danger' : 'secondary'}
+          disabled={busy || orders.length === 0}
+          onClick={onClear}
+        >
+          {failed ? `Clear the halt on ${fleet.name}` : `Clear ${fleet.name}'s queue`}
+        </Button>
+      </div>
+      <p className="font-mono text-[11px] text-ink-faint">
+        One queue per fleet, {queueMax} deep, first in first out. A voyage already at sea keeps
+        sailing when you clear.
+      </p>
     </div>
   )
 }
 
-function statusTone(status: FleetView['fleet']['status']) {
+function statusTone(status: FleetView['status']) {
   switch (status) {
     case 'SAILING':
       return 'accent' as const

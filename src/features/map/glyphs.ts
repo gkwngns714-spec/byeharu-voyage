@@ -4,7 +4,9 @@
 //   1. THE PORT      a triangle. Two weights, never two shapes: QUIET for a port no fleet of yours
 //                    is using, LOUD (larger, filled, brass, labelled) for one that is. §E.5: "▲ a
 //                    port, ▲ filled + label a fleet at anchor" — so a fleet at anchor IS the loud
-//                    port plus its name, not a fourth thing drawn on top of a third.
+//                    port plus its name, not a fourth thing drawn on top of a third. Both weights
+//                    are SCALED BY `size_tier`, so Lisboa and a Curaçao roadstead read as the same
+//                    shape at different weights instead of as two identical dots.
 //   2. THE FLEET     a dot on the dotted track, for a fleet at sea.
 //   3. THE DESTINATION  a ring around the port a fleet is bound for.
 //
@@ -41,6 +43,24 @@ export const GLYPH = {
   trackStroke: 1.4,
   glyphStroke: 1.2,
 } as const
+
+/**
+ * HOW BIG A PORT'S MARK IS, FOR ITS SIZE — the second half of the answer to 214 harbours (the
+ * first is which ones are drawn at all: PORT_TIER_BANDS in ./chartView.ts).
+ *
+ * `size_tier` runs 1–5 and the seeded world uses 2, 3 and 5. The scale is linear across the whole
+ * range so a tier the world does not use today still lands somewhere sensible:
+ *
+ *   tier 1 → 0.70×   tier 2 → 0.82×   tier 3 → 0.94×   tier 4 → 1.06×   tier 5 → 1.18×
+ *
+ * Against the quiet mark's 7.2 px width that is 5.0 px for a small harbour and 8.5 px for a great
+ * one — a difference you can see at a glance without either becoming invisible or shouting. Out-of-
+ * range or missing tiers clamp rather than vanish: bad data must not silently un-draw a port.
+ */
+export function portMarkScale(sizeTier: number): number {
+  const tier = Number.isFinite(sizeTier) ? Math.min(5, Math.max(1, sizeTier)) : 3
+  return 0.7 + 0.12 * (tier - 1)
+}
 
 /**
  * A triangle centred on (x, y), apex up — the port mark. Slightly top-heavy (0.6 of the height

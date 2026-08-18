@@ -1,145 +1,107 @@
-# The command language, as built
+# CMD — orders are MADE, not typed
 
-`DESIGN.md` §F is the specification. This file records only the places where the document is
-**genuinely silent or internally inconsistent**, and what was chosen instead. Nothing here overrides
-§F; where §F says something, §F won.
+`DESIGN.md` §E.1 and §F are the specification. This file records what was built, what was deleted,
+and the handful of decisions a future reader could otherwise mistake for an accident.
 
-Everything below is a decision that a future reader could otherwise mistake for an accident.
+**The correction that shaped this tab (the owner, 2026-08-19): _"not typing, but making commands."_**
+The order input is gone. It is not hidden behind a toggle and there is no "advanced" mode that
+brings it back — a second way in would be a second way for the two paths to drift.
 
 ---
 
-## 1. Twenty-seven verbs, not twenty-six
+## 1. The flow, in order
 
-§F.1's EBNF lists **27** verbs. §E.1's ASCII verb pad shows **21** (it is a wireframe, and it ran out
-of room). The EBNF is the grammar, so `grammar.ts` implements the EBNF's 27 and the pad renders all
-of them — the eight V0 verbs live, the other nineteen struck through and unpressable.
-
-## 2. A real verb outside V0 raises `E_RANK_LOCKED`, not `E_PARSE`
-
-§K.1 ships eight verbs. `SPLIT`, `INVEST`, `EXPLORE` and the rest are real orders in a game the
-player will eventually play, so calling them a parse error would be a lie about the language.
-`E_PARSE` means "that is not an order this game understands"; these are orders this game understands
-and has not yet opened. `E_RANK_LOCKED` — "not open to you in this version" — is the closest code in
-§F.5's closed list, and the sentence names the eight that are.
-
-## 3. `E_CREW_POOL` needs a threshold, and §F.2 does not give one
-
-§F.2's `HIRE` precondition is *"port crew pool ≥ count **or** pay the urgent premium"* — which, read
-literally, never refuses anything, yet `E_CREW_POOL` exists in §F.5's list. The choice:
-
-- up to the pool → the ordinary rate;
-- between the pool and **twice** the pool → ×2.5 "urgent recruitment", and the check line **warns**;
-- beyond twice the pool → `E_CREW_POOL`: the town has not got the men, at any price.
-
-## 4. `BUY`/`SELL` for a fleet at sea is checked against its DESTINATION
-
-§F.2: an order "executes immediately if the fleet is docked; otherwise queued and executed on
-arrival — which is the whole point of the queue: *sell the cloves when you get to Amsterdam*." So a
-`BUY` on a sailing fleet is **not** `E_NOT_DOCKED`. The market checked is the last port on its
-voyage path, and the check line says so and warns that the price will have moved.
-
-`PROVISION`, `HIRE` and `REPAIR` do require `DOCKED` (§F.2 states the precondition and does not
-describe queuing them), and `SAIL` accepts `DOCKED` **or** `ANCHORED` (§F.2's `ANCHOR` explicitly
-"keeps the fleet available for an immediate `SAIL`").
-
-## 5. Which fleet a fleet-less order belongs to
-
-`BUY sal 60` names no fleet, and §F.1 makes the `FOR <fleet>` clause optional. The missing fleet is
-supplied by the **CMD tab's selection**, held in `commandDraft.ts` beside the draft string. That is
-what makes a one-line order complete on a phone, and it is why MARKET and PORT set the selection at
-the same moment they set the text.
-
-## 6. Codes the V0 static check does not raise
-
-Listed so that "absent" is never mistaken for "forgotten". All are real; each arrives with the
-system that owns it.
-
-| Code | Why not at V0 |
-|---|---|
-| `E_PORT_CLOSED` | Ice closure is a V1 season effect (§B.4). No V0 port can close. |
-| `E_LANGUAGE` | Language levels arrive with V1's wider world. |
-| `E_STALE` | A version mismatch is a server fact. There is no second device yet. |
-| `E_NO_ROUTE` | Raised by the code, but unreachable in the V0 fixture: all 12 ports are connected by the 22 authored legs, so no destination is unreachable. It exists for the moment a leg is removed. |
-| `E_MIN_INVEST` … `E_NO_ACADEMY` | Investment, shipbuilding, exploration and officers are all "Not in V0" (§K.1); their verbs are refused wholesale by rule 2 above. |
-
-The codes that **are** raised are asserted, one test each, in `tests/commandGrammar.spec.ts`, and the
-closing test pins the set so a new one cannot appear untested.
-
-## 7. `CANCEL` with no index addresses the head of the queue
-
-§F.3's table describes `CANCEL <fleet> [<index>]` but not what an omitted index means. It addresses
-the head — the order that is running or about to — because that is the one a player in a hurry
-means. The check line always names the order it would remove, in full, before anything happens.
-
-## 8. Where the shared machinery lives
-
-Three modules are imported across feature folders rather than duplicated. Stated here because a
-cross-feature import should be a decision, not a habit:
-
-| Module | Owner | Used by |
+| step | what the player does | where the options come from |
 |---|---|---|
-| `features/command/geo.ts` | routing is a `SAIL` concern | fleets (leg progress), market (neighbour radius) |
-| `features/fleets/fleetMath.ts` | speed, endurance, hold, progress | command (validation), port, ledger |
-| `features/market/prices.ts` | §G.1 price formation | command (cost and limit checks), port |
+| **1. Commanding** | taps a fleet chip | `world.fleets()` — name, where she lies or is bound, queue depth, whether she is HALTED |
+| **2. What she is to do** | taps a verb | `world.snapshot().verbs` — the server's own `cmd.verb_schema()`. Nothing on this side lists verbs |
+| **3. Each argument** | taps a row, a chip, or drags a stepper | one picker per argument TYPE the schema declares (below) |
+| **4. What will be sent** | reads it | the line assembles itself, read-only, as the picks land |
+| **5. Preview** | reads the estimate, or the refusal | `cmd.preview()` — the REAL verb, run and rolled back |
+| **6. Issue** | one button | `cmd.issue(fleet_id, text, expected_version)` |
+| **7. Her queue** | cancels a row, or clears the halt | `fleet.queue`, `cmd.cancel()`, `cmd.clear()` |
 
-`features/command/worldModel.ts` assembles them into the one read model every screen shares, and
-`fixtures/useWorld.ts` is the only place that model is built from a snapshot and the shell's clock.
+Every argument picker offers what actually exists **now**:
 
-## 9. Reach law
+* **port** — the snapshot's ports, ones a single authored leg away first, then by great-circle
+  distance from where she lies. A filter box narrows the list; picking is still a tap on a row.
+* **good** — the goods in *this port's* market, with ask, bid, %NBR against the ports within
+  600 nm, the stock band and the server's own buy/hold/sell advice. SELL offers only what is
+  aboard.
+* **qty** — ALL / HALF / MAX and a stepper that walks in `config.trade_step_tuns`, bounded by the
+  hold, the stock and the purse, and captioned with **which** of those stops you there.
+* **number** — HIRE is bounded by empty berths, REPAIR starts above her present hull, PROVISION
+  offers days. No free-form number field exists on this screen.
+* **enum / price** — the schema's own words; a limit is offered around the market's price.
+
+## 2. The string is still the one contract
+
+F.4: *"Submit sends the string, not a structured object. There is exactly one parser."* The
+composer holds an intent while it is being made, and `orderText.ts` turns it into the exact line at
+issue time. That line is displayed while it writes itself, which is how a player learns the
+language without ever being made to spell it.
+
+`orderText.ts` encodes three facts about how `cmd.parse()` (migration 0008) **reads** a line — not a
+grammar, but the things a player would otherwise discover by collecting `E_PARSE`:
+
+1. A leading fleet name is consumed only by SAIL / PROVISION / HIRE / REPAIR, and only in first
+   position — so a fleet is written only where the schema lists it first.
+2. **BUY and SELL take no fleet at all**: their branch skips FOR/FROM as noise and then demands a
+   number, so `BUY sal 50 FOR Gaivota` is a parse error. The fleet travels as `cmd.issue()`'s own
+   `fleet_id`, which is where it belongs.
+3. Ports and goods are emitted as **codes** (`CAD`, `black-pepper`): `cmd.resolve_port/good` match a
+   code exactly, and "Banda Aceh" is two tokens to a parser that splits on whitespace.
+
+**Proven, not assumed (2026-08-19).** Every line the composer can emit was run through
+`cmd.preview()` on the real chain in PGlite — SAIL, SAIL … VIA, BUY n, BUY ALL, BUY … AT <=n, SELL
+ALL, PROVISION FULL, PROVISION n DAYS, HIRE n, REPAIR … TO n, CANCEL n, CLEAR, CLEAR ALL. All
+thirteen parsed; the only refusals were state refusals (`E_NO_CARGO`, `E_UNAVAILABLE`), which is the
+game working.
+
+## 3. What was deleted, and why
+
+| gone | why |
+|---|---|
+| the order input, `CheckBlock.tsx`, `TapBuilder.tsx` | the typing path. The owner said orders are made |
+| `validate.ts` (838 lines) | a second authority for "is this order legal". `cmd.preview()` runs the real verb in a subtransaction and rolls it back, so the estimate and the commit cannot disagree — and a client that also judges legality can only ever drift from it |
+| `parse.ts`, `grammar.ts`, `errors.ts` | a client-side parser, verb table and error catalogue with nothing left to parse. The grammar is served by `cmd.verb_schema()`; the sentences come with the refusal |
+| `tests/commandGrammar.spec.ts` | it tested exactly those four modules. `tests/rpc.surface.spec.ts` and `tests/rpc.firstSession.spec.ts` exercise the real parser, which is the one that decides |
+| `worldModel.ts`, `geo.ts` | the fixture read model and a second haversine. `src/lib/geo` is the one geography authority and `src/live/worldStore.ts` is the one world |
+| `src/fixtures/` | orphaned the moment the last screen left it. Nothing imported it |
+
+## 4. CANCEL and CLEAR are made on the queue
+
+They are two of the eight verbs the server serves, and their only argument is a row of the queue —
+so they are composed **where that row is**, by tapping it, and the composer's verb strip shows the
+other six. That is one way to cancel and one way to clear, rather than a queue button and a
+composer flow that do the same job. Both reach the same `cmd.cancel_at()` / `cmd.clear()`.
+
+## 5. The hand-off from other tabs
+
+`commandDraft.ts` is the one authority for "the order being made", and MARKET / PORT / FLEETS write
+into it. On 2026-08-19 it changed from a half-typed **string** to a structured **intent** (fleet +
+verb + a value per argument NAME, as the server's schema names them). The file's header carries the
+before/after for every caller; `features/market/handOff.ts` is the market's whole side of that seam.
+
+## 6. Refusals
+
+A refusal is data (F.5): a code as a small mono badge, the **sentence** as the thing the player
+reads, and every `fix` as a tappable option. Tapping a fix loads that corrected order into the
+composer — arguments the fix leaves as `<placeholders>` are simply left unanswered, and their picker
+opens. A fix that is a queue control (`CLEAR Gaivota`) acts on the queue; one that is not an order
+at all (`(reload and try again)`) is rendered as words, with no button that would lie.
+
+## 7. Reach law
 
 `CORE_REUSE.md` §1.5: **"An action may never live inside a region that can scroll or clip it."**
 
-No screen in this domain gives any container a `max-h` or an `overflow` — the page's own scroll is
-the only scroll, which is the one the law permits. The single exception is the `Table` primitive's
-horizontal scroll box, which is that primitive's stated rule; the tap target in every table is the
-**first** column, so it is reachable without scrolling the table at all.
+Nothing on this tab has a `max-h` or an `overflow`; the page's own scroll is the only one. A long
+list of ports or goods **truncates** at twelve rows and says how many the filter is hiding, rather
+than hiding them inside a scroll box — the rows on screen are whole and pressable, and the hidden
+ones are honest about being hidden.
 
-This has been rendered and measured, not argued: at 390×844 in Chromium, all five screens report
-`document.documentElement.scrollWidth === clientWidth === 390` and no console errors.
+## 8. Time
 
-**That measurement was necessary and not sufficient, and it hid a real defect.** The page did not
-scroll sideways *because the tables were clipped*, not because they fitted: the fleet roster
-rendered a 359px table inside a 332px box, shearing 31px of the ENDURANCE column so its header read
-as a bare "E"; the ship manifest sheared 101px; the goods table 51px. The cause was `w-full` on the
-`<table>` inside `Table.tsx`, which pins the table to its wrapper, crushes every column to
-min-content — breaking values mid-figure, "4.1 / t" — and then overflows anyway.
-
-Two rules now close it, and `tests/layout.spec.ts` measures both in a real viewport:
-
-1. **`scrollTableClass()`** (`src/components/ui/tableLayout.ts`) sizes the table to its content,
-   forbids a cell wrapping a value, and pins the first column so the row's identity and its tap
-   target can never be scrolled out of reach.
-2. Where the *punchline* of a table would end up behind the swipe — the roster, whose last column
-   is the endurance figure that decides whether a voyage can be ordered at all — the table is
-   replaced below `sm` by a stacked block per fleet. Nothing off-screen, nothing to swipe.
-
-The spec was verified to FAIL when either rule is removed, so it is not a proof that lies by
-staying green.
-
-## 11. Numbers right, sentences left
-
-One rule, applied everywhere, after right-aligned prose was observed wrapping into fragments
-("· military 8" and "sell band" stranded alone on a line):
-
-- **`StatRow`** — short, numeric, right-aligned, mono. A column of figures has to line up.
-- **`DetailRow`** — the value is a sentence, a dot-separated list, or a figure with a
-  parenthetical. Left-aligned, flows as a block under its label on a phone, second column from
-  `sm`. The parenthetical becomes a `hint` line rather than being jammed onto the end.
-
-The boundary is written into `DetailRow.tsx` so a caller never has to guess which one to use.
-
-## 12. MARKET opens on prices, not on controls
-
-§K.1's beat is *"MARKET tab. Sal is 62% of its neighbours. The BUY block is at the top; you did not
-have to know anything to see it."* Twelve port chips over three rows plus a SORT row plus a FILTER
-row filled the whole first screenful and pushed the first price under the fold. The controls now
-collapse to one row — where you are, and how the table is arranged — and open on tap with the chips
-unchanged. Measured at 390×844: the first complete price row moved from bottom **753px** (below the
-tab bar at 731px) to **495px**, and five complete rows are now above the fold.
-
-## 10. What is not wired
-
-There is no server, and the screens say so where it matters. `Issue` on the CMD tab does not send
-anything: it records the exact string that *would* go to `cmd.issue(fleet_id, raw_text,
-expected_version)` and prints it under "Issued this session". The fixture queue does not change. A
-button that pretends to have done something is worse than one that admits it has not.
+Nothing here ticks. A read is the catch-up (D.2): `Read again` refetches, issuing refetches, and an
+ETA is counted from `readAt` — the instant the world was last read — rather than from the wall clock
+during a render.

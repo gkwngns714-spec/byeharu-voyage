@@ -4,73 +4,202 @@ import {
   Button,
   Card,
   CardHeader,
+  EmptyState,
   Notice,
   PageHeader,
   Screen,
   SectionLabel,
 } from '../../components/ui'
-import { formatDucats, formatRealShort, formatVoyageDays } from '../../lib/format'
-import { useWorld } from '../../fixtures/useWorld'
-import type { QueuedOrder } from '../../fixtures/types'
-import { CheckBlock } from './CheckBlock'
+import { formatClock, formatDucats, formatTuns, formatVoyageDays } from '../../lib/format'
+import type { Refusal } from '../../lib/rpc'
+import { useWorld } from '../../live/worldStore'
+import { OrderComposer } from './OrderComposer'
 import { OrderQueue } from './OrderQueue'
-import { TapBuilder } from './TapBuilder'
+import { PreviewPanel, type CheckState } from './PreviewPanel'
 import { useCommandDraft } from './commandDraft'
-import { checkCommand } from './validate'
+import { freeHoldTuns } from './fleetLimits'
+import { composableVerbs, findVerb, isComplete, orderText, type FixAction } from './orderText'
 
 // CMD — THE HEART. E.1, and the only tab that changes the world.
 //
-// ONE GRAMMAR, TWO INPUT METHODS (F.4). There is one input box holding one string. The keyboard
-// writes into it; the tap-builder writes into it; MARKET, PORT and FLEETS hand orders into it
-// through the shared draft store. Nothing else composes an order, and nothing anywhere builds a
-// structured object — because the server parses the STRING, and there is exactly one parser.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// ORDERS ARE MADE, NOT TYPED. (The owner, 2026-08-19: "not typing, but making commands.")
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// There is no order input on this screen and there is no toggle that brings one back. The player
+// picks a fleet, a verb the server serves, and then each argument that verb declares — every one
+// of them a tap on something that really exists: a port in the snapshot, a good in THIS port's
+// market with its price and the server's own advice, a quantity bounded by the hold and the purse.
 //
-// THE CHECK LINE runs on every keystroke, client-side, against the fixture (F.5 layer 2). It is
-// advisory: the server's check is the authority. That is stated on the screen, not just here.
+// THE STRING IS STILL THE CONTRACT. F.4: "Submit sends the string, not a structured object. There
+// is exactly one parser." So the picks are assembled into the exact line `cmd.issue()` receives and
+// that line is shown, READ-ONLY, while it writes itself — which is how a player learns the language
+// without ever being made to spell it.
 //
-// THE REACH LAW (CORE_REUSE 1.5): the input, Issue, Clear, the fix chips, the verb pad and the
-// per-order cancels are ACTIONS. None of them is inside a capped or scrolling region — this screen
-// has no max-h and no overflow anywhere; the page itself scrolls, which is the one scroll the law
-// permits. "An action may never live inside a region that can scroll or clip it."
+// THE SERVER IS THE ONLY JUDGE. Before an order can be issued, `cmd.preview()` runs the REAL verb
+// in a subtransaction and rolls it back, so the estimate and the commit cannot disagree. The old
+// client-side checker (validate.ts, 838 lines) is deleted: two authorities for "is this order
+// legal" is exactly the duplication this project forbids.
 //
-// NOT WIRED: there is no server. Issue does not send anything; it records the exact string that
-// WOULD be sent to cmd.issue(fleet_id, raw_text, expected_version), and says so on screen. A
-// button that pretends to have done something is worse than one that admits it has not.
+// A READ IS THE CATCH-UP (D.2). Nothing on this screen ticks. `Read again` refetches, and issuing
+// refetches, and that is the entire client-side model of time.
+//
+// THE REACH LAW (CORE_REUSE 1.5): every picker, chip, fix and cancel here is an ACTION, so nothing
+// on this screen lives in a capped or scrolling region — the page's own scroll is the only one.
+// Long lists TRUNCATE and say how many they are hiding (see ArgPickers.tsx).
+
+const FALLBACK_REFUSAL: Refusal = {
+  code: 'E_REFUSED',
+  sentence: 'The server refused that, without saying why.',
+  fixes: [],
+  source: 'server',
+}
 
 export function CommandScreen() {
-  const model = useWorld()
-  const { text, fleetId, handoffs, setText, handOff, selectFleet, clear } = useCommandDraft()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [issued, setIssued] = useState<readonly { at: number; raw: string; fleet: string }[]>([])
+  const world = useWorld()
+  const { open, refresh, loadMarket, preview, issue, cancel, clear: clearQueue } = world
+  const draft = useCommandDraft()
+  const { fleetId, verb, args, handoffs, selectFleet, chooseVerb, setArg, handOff, clear } = draft
 
-  // Default the command to a fleet the first time the tab is opened: the one that is alongside,
-  // because that is the fleet that can do anything right now.
-  useEffect(() => {
-    if (fleetId) return
-    const docked = model.fleetViews.find((v) => v.fleet.status === 'DOCKED') ?? model.fleetViews[0]
-    if (docked) selectFleet(docked.fleet.id)
-  }, [fleetId, model.fleetViews, selectFleet])
+  // THE DRY RUN'S ANSWER, stamped with the line it was about. Keeping the ANSWER rather than a
+  // status means the state can never describe a line the player has already changed: a pick that
+  // rewrites the line puts the panel back to `checking` by derivation, not by a second setState.
+  const [checked, setChecked] = useState<{ text: string; state: CheckState } | null>(null)
+  const [issuing, setIssuing] = useState(false)
+  const [issued, setIssued] = useState<string | null>(null)
+  /** A boot that THREW rather than refused. Rendered, never spun on — see below. */
+  const [bootError, setBootError] = useState<string | null>(null)
+  const composerRef = useRef<HTMLDivElement>(null)
 
-  // Another tab handed an order over — put the caret where the player will keep typing.
+  // The world opens itself the first time this tab is mounted. `open()` is idempotent, so it costs
+  // nothing if the shell has already done it.
+  //
+  // THE CATCH IS LOAD-BEARING. `open()` awaits `initRpc()`, which THROWS when the migration chain
+  // will not apply (a failed self-assert, say) — that throw never reaches the store's `fatal`, so
+  // without this the screen would sit on "Opening the world…" for ever. A spinner that keeps
+  // spinning is what a swallowed exception looks like (src/lib/db/README §1).
   useEffect(() => {
-    if (handoffs > 0) inputRef.current?.focus()
+    open().catch((err: unknown) => setBootError(err instanceof Error ? err.message : String(err)))
+  }, [open])
+
+  const fleet = useMemo(() => world.fleets.find((f) => f.id === fleetId), [world.fleets, fleetId])
+
+  // Command the fleet that can act right now. A fleet alongside is the one with choices.
+  useEffect(() => {
+    if (fleet) return
+    const first = world.fleets.find((f) => f.status === 'DOCKED') ?? world.fleets[0]
+    if (first) selectFleet(first.id)
+  }, [fleet, world.fleets, selectFleet])
+
+  // The market this order would trade in: where she lies, or where she is bound (a BUY issued at
+  // sea runs on arrival — F.2, "sell the cloves when you get to Amsterdam").
+  const portCode = fleet?.port ?? fleet?.voyage?.to ?? null
+  const port = portCode ? (world.portByCode[portCode] ?? null) : null
+  const marketPortId = port?.id ?? null
+  useEffect(() => {
+    if (!marketPortId) return
+    if (useWorld.getState().markets[marketPortId]) return
+    void loadMarket(marketPortId)
+  }, [marketPortId, loadMarket])
+  const market = marketPortId ? world.markets[marketPortId] : undefined
+
+  const verbs = useMemo(() => composableVerbs(world.snapshot?.verbs ?? []), [world.snapshot])
+  const spec = findVerb(world.snapshot?.verbs ?? [], verb)
+
+  const text = spec ? orderText(spec, args, fleet?.name) : ''
+  const ready = Boolean(spec && fleet && isComplete(spec, args))
+
+  // Another tab handed an order over — bring the composer into view rather than leaving the player
+  // wondering where their tap went.
+  useEffect(() => {
+    if (handoffs > 0) composerRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }, [handoffs])
 
-  const result = useMemo(
-    () => (text.trim().length === 0 ? null : checkCommand(text, model, fleetId ?? undefined)),
-    [text, model, fleetId],
-  )
+  // THE DRY RUN. Debounced, because every pick rewrites the line and every preview is a real
+  // transaction on the server (it runs the verb and rolls it back).
+  useEffect(() => {
+    if (!ready || !fleetId) return
+    let alive = true
+    const timer = setTimeout(() => {
+      void preview(fleetId, text).then((result) => {
+        if (!alive) return
+        setChecked({
+          text,
+          state: result
+            ? { status: 'ok', result }
+            : { status: 'refused', refusal: useWorld.getState().refusal ?? FALLBACK_REFUSAL },
+        })
+      })
+    }, 250)
+    return () => {
+      alive = false
+      clearTimeout(timer)
+    }
+  }, [ready, fleetId, text, preview])
 
-  const selected = fleetId ? model.fleetView(fleetId) : undefined
+  const check: CheckState = !ready
+    ? { status: 'idle' }
+    : checked?.text === text
+      ? checked.state
+      : { status: 'checking' }
 
-  const issue = () => {
-    if (!result?.ok || !selected) return
-    setIssued((prev) => [{ at: model.nowMs, raw: text.trim(), fleet: selected.fleet.name }, ...prev])
-    clear()
+  const doIssue = async () => {
+    if (!ready || !fleetId) return
+    setIssuing(true)
+    const sent = text
+    const ok = await issue(fleetId, sent)
+    setIssuing(false)
+    if (ok) {
+      setIssued(sent)
+      setChecked(null)
+      // Back to "no verb chosen": the order is the server's now, and it is in the queue below.
+      clear()
+    } else {
+      setChecked({
+        text: sent,
+        state: { status: 'refused', refusal: useWorld.getState().refusal ?? FALLBACK_REFUSAL },
+      })
+    }
   }
 
-  const cancel = (fleetName: string, order: QueuedOrder) => {
-    handOff(`CANCEL ${fleetName} ${order.seq}`)
+  // A fix is a real order. Tapping one LOADS it — into the composer if it is composable, or onto
+  // the queue if it is CANCEL/CLEAR, whose only argument is a queue row.
+  const applyFix = (action: FixAction) => {
+    if (action.kind === 'compose') {
+      handOff({ verb: action.verb, args: action.args })
+      return
+    }
+    if (action.kind === 'queue' && fleetId) {
+      if (action.verb === 'CLEAR') void clearQueue(fleetId)
+      else void cancel(fleetId, action.index)
+    }
+  }
+
+  if (world.phase === 'failed' && world.fatal) {
+    return (
+      <Screen>
+        <PageHeader eyebrow="Orders" title="Command" />
+        <Notice tone="danger">
+          <span className="font-mono">{world.fatal.code}</span> — {world.fatal.sentence}
+        </Notice>
+      </Screen>
+    )
+  }
+
+  if (!world.snapshot) {
+    return (
+      <Screen>
+        <PageHeader
+          eyebrow="Orders"
+          title="Command"
+          subtitle={bootError ? 'The world would not open.' : 'Opening the world…'}
+        />
+        {bootError && (
+          <Notice tone="danger" className="whitespace-pre-wrap font-mono text-xs">
+            {bootError}
+          </Notice>
+        )}
+      </Screen>
+    )
   }
 
   return (
@@ -78,139 +207,168 @@ export function CommandScreen() {
       <PageHeader
         eyebrow="Orders"
         title="Command"
-        subtitle="Write the order. The sea answers later."
+        subtitle="Pick what she is to do. The order writes itself."
         actions={
-          <span className="font-mono text-sm text-accent">{formatDucats(model.world.player.ducats)}</span>
+          <>
+            {world.ducats !== null && (
+              <span className="font-mono text-sm text-accent">{formatDucats(world.ducats)}</span>
+            )}
+            <Button variant="ghost" disabled={world.busy} onClick={() => void refresh()}>
+              {world.busy ? 'reading…' : 'Read again'}
+            </Button>
+          </>
         }
       />
 
-      {/* ── THE LINE ─────────────────────────────────────────────────────────────────────── */}
-      <Card tone="accent">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <SectionLabel className="mb-0">Commanding</SectionLabel>
-            {model.fleetViews.map((v) => (
-              <button
-                key={v.fleet.id}
-                type="button"
-                onClick={() => selectFleet(v.fleet.id)}
-                className={[
-                  'min-h-11 rounded-md px-3 font-mono text-xs transition',
-                  v.fleet.id === fleetId
-                    ? 'bg-accent text-app'
-                    : 'border border-edge bg-surface-2 text-ink-muted hover:text-ink',
-                ].join(' ')}
-              >
-                {v.fleet.name}
-                <span className="ml-2 opacity-70">
-                  {v.fleet.portCode
-                    ? model.portOf(v.fleet.portCode).name
-                    : `→ ${model.portOf(v.progress!.destination).name} ${formatRealShort(v.progress!.remainingMs)}`}
-                </span>
-              </button>
-            ))}
+      {world.fleets.length === 0 ? (
+        <EmptyState
+          title="No fleets"
+          body="There is nothing to command yet. A house founds its first fleet before it can give an order."
+        />
+      ) : (
+        <>
+          {/* ── WHOSE ORDER THIS IS ────────────────────────────────────────────────────────── */}
+          <Card tone="accent">
+            <SectionLabel>Commanding</SectionLabel>
+            <div className="flex flex-wrap gap-2">
+              {world.fleets.map((f) => {
+                const halted = f.queue.some((o) => o.status === 'failed')
+                const waiting = f.queue.filter((o) => o.status === 'pending' || o.status === 'active').length
+                const where = f.port
+                  ? (world.portByCode[f.port]?.name ?? f.port)
+                  : f.voyage
+                    ? `→ ${world.portByCode[f.voyage.to]?.name ?? f.voyage.to}`
+                    : f.status.toLowerCase()
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => selectFleet(f.id)}
+                    className={[
+                      'min-h-11 rounded-md border px-3 py-1 text-left transition',
+                      f.id === fleetId
+                        ? 'border-accent bg-accent text-app'
+                        : 'border-edge bg-surface-2 text-ink hover:border-accent/60',
+                    ].join(' ')}
+                  >
+                    <span className="block font-mono text-xs">{f.name}</span>
+                    <span className="block font-mono text-[11px] opacity-75">
+                      {where}
+                      {waiting > 0 && ` · ${waiting} queued`}
+                      {halted && ' · HALTED'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {fleet && (
+              <p className="mt-3 font-mono text-[11px] text-ink-faint">
+                {fleet.name}: {formatVoyageDays(fleet.endurance_days)} of stores · {fleet.speed_kn.toFixed(1)} kn ·{' '}
+                {formatTuns(freeHoldTuns(fleet))} free{port ? ` · lying at ${port.name}` : ''}
+              </p>
+            )}
+          </Card>
+
+          {/* ── MAKING THE ORDER ───────────────────────────────────────────────────────────── */}
+          <div ref={composerRef}>
+            <Card>
+              <CardHeader
+                eyebrow="Make"
+                title="An order"
+                subtitle="Every choice below is something that really exists right now."
+                aside={<Badge tone="neutral">{verbs.length + 2} verbs</Badge>}
+              />
+              <OrderComposer
+                verbs={verbs}
+                spec={spec}
+                args={args}
+                fleet={fleet}
+                snapshot={world.snapshot}
+                market={market}
+                ducats={world.ducats}
+                onChooseVerb={chooseVerb}
+                onSetArg={setArg}
+              />
+
+              {/* THE LINE — read-only, and the whole contract with the server. */}
+              <div className="mt-4 space-y-3 rounded-md border border-accent/25 bg-accent-soft p-3">
+                <SectionLabel className="mb-0">What will be sent</SectionLabel>
+                <p className="flex items-start gap-2">
+                  <span aria-hidden className="font-mono text-lg leading-none text-accent">
+                    &gt;
+                  </span>
+                  <code aria-live="polite" className="min-w-0 flex-1 break-words font-mono text-sm text-ink">
+                    {text || <span className="text-ink-faint">nothing yet</span>}
+                  </code>
+                </p>
+                <p className="font-mono text-[11px] text-ink-faint">
+                  This exact line goes to cmd.issue(fleet, text, version). There is one parser, and it
+                  is on the server (F.4).
+                </p>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  variant="primary"
+                  disabled={!ready || issuing || check.status === 'refused' || check.status === 'checking'}
+                  busy={issuing}
+                  busyLabel="Issuing…"
+                  onClick={() => void doIssue()}
+                >
+                  Issue this order
+                </Button>
+                <Button variant="ghost" disabled={!spec} onClick={clear}>
+                  Start over
+                </Button>
+              </div>
+
+              <div className="mt-3 border-t border-edge pt-3">
+                <PreviewPanel
+                  state={check}
+                  verbs={world.snapshot.verbs}
+                  timeCompression={world.snapshot.config.time_compression}
+                  onFix={applyFix}
+                />
+              </div>
+
+              {issued && (
+                <Notice tone="success" className="mt-3 font-mono text-xs">
+                  sent: {issued}
+                </Notice>
+              )}
+            </Card>
           </div>
 
-          <div className="flex items-stretch gap-2">
-            <span aria-hidden className="self-center font-mono text-lg text-accent">
-              &gt;
-            </span>
-            <input
-              ref={inputRef}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') issue()
-              }}
-              spellCheck={false}
-              autoCapitalize="characters"
-              autoCorrect="off"
-              placeholder="SAIL Gaivota TO Cádiz"
-              aria-label="Order line"
-              className="min-h-11 min-w-0 flex-1 rounded-md border border-edge bg-app px-3 font-mono text-sm text-ink outline-none placeholder:text-ink-faint/60 focus:border-accent"
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button variant="primary" onClick={issue} disabled={!result?.ok}>
-              Issue
-            </Button>
-            <Button variant="ghost" onClick={clear} disabled={text.length === 0}>
-              Clear line
-            </Button>
-          </div>
-
-          <div className="border-t border-edge pt-3">
-            <CheckBlock result={result} onInsert={(command) => handOff(command)} />
-          </div>
-
-          <p className="font-mono text-[11px] text-ink-faint">
-            This check runs on your device against a cached world (F.5 layer 2). The server's check,
-            inside the transaction, is the one that decides.
-          </p>
-        </div>
-      </Card>
-
-      {/* ── THE TAP-BUILDER ──────────────────────────────────────────────────────────────── */}
-      <Card>
-        <CardHeader
-          eyebrow="Tap"
-          title="Build an order"
-          subtitle="Tap a verb, then its arguments. The same string a keyboard would type appears above."
-          aside={<Badge tone="neutral">8 of 27 verbs</Badge>}
-        />
-        <TapBuilder
-          model={model}
-          selectedFleetId={fleetId}
-          onEmit={(command) => handOff(command)}
-        />
-      </Card>
-
-      {/* ── THE QUEUES ───────────────────────────────────────────────────────────────────── */}
-      <Card>
-        <CardHeader
-          eyebrow="Standing"
-          title="Queues"
-          subtitle="One FIFO queue per fleet, twelve deep. On a failure it halts — it never skips."
-        />
-        <OrderQueue
-          views={model.fleetViews}
-          ordersFor={model.ordersFor}
-          selectedFleetId={fleetId}
-          onSelectFleet={selectFleet}
-          onCancel={cancel}
-        />
-        {selected && (
-          <p className="mt-4 font-mono text-[11px] text-ink-faint">
-            {selected.fleet.name}: {formatVoyageDays(selected.enduranceDays)} of stores ·{' '}
-            {selected.speedKn.toFixed(1)} kn · {Math.round(selected.holdFree)} t free
-          </p>
-        )}
-      </Card>
-
-      {/* ── WHAT WOULD HAVE BEEN SENT ────────────────────────────────────────────────────── */}
-      <Card tone={issued.length > 0 ? 'warning' : 'default'}>
-        <CardHeader
-          eyebrow="Not wired"
-          title="Issued this session"
-          subtitle="No server exists yet. These are the exact strings that would go to cmd.issue()."
-        />
-        {issued.length === 0 ? (
-          <p className="text-sm text-ink-muted">Nothing issued yet.</p>
-        ) : (
-          <ul className="space-y-1">
-            {issued.map((entry) => (
-              <li key={`${entry.at}-${entry.raw}`} className="flex flex-wrap items-baseline gap-2">
-                <span className="font-mono text-[11px] text-ink-faint">{entry.fleet}</span>
-                <code className="font-mono text-xs text-ink">{entry.raw}</code>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Notice tone="neutral" className="mt-3 text-xs">
-          Nothing here was sent. The order queue above is fixture data and does not change.
-        </Notice>
-      </Card>
+          {/* ── THE QUEUE ──────────────────────────────────────────────────────────────────── */}
+          {fleet && (
+            <Card>
+              <CardHeader
+                eyebrow="Standing"
+                title="Her queue"
+                subtitle="First in, first out. On a failure it halts — it never skips."
+                aside={
+                  world.readAt ? (
+                    // The queue is as fresh as the last READ — nothing here ticks (D.2), so the
+                    // panel says WHEN it was read rather than pretending to know the time now.
+                    <span className="font-mono text-[11px] text-ink-faint">
+                      as of {formatClock(world.readAt)}
+                    </span>
+                  ) : undefined
+                }
+              />
+              <OrderQueue
+                fleet={fleet}
+                queueMax={world.snapshot.config.order_queue_max}
+                busy={world.busy}
+                readAt={world.readAt}
+                destination={fleet.voyage ? (world.portByCode[fleet.voyage.to]?.name ?? null) : null}
+                onCancel={(seq) => void cancel(fleet.id, seq)}
+                onClear={() => void clearQueue(fleet.id)}
+              />
+            </Card>
+          )}
+        </>
+      )}
     </Screen>
   )
 }

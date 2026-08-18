@@ -1,7 +1,7 @@
+import { formatInt, formatNm, formatRealShort } from '../../lib/format'
 import { MapPanel } from './MapPanel'
 import { fleetsAtPort, fleetsBoundFor, type ChartModel } from './chartModel'
 import type { MapPort, MapSelection } from './mapTypes'
-import { formatEta } from './voyage'
 
 // PANEL TWO, BOTTOM-RIGHT — the detail of whatever is selected. DESIGN §E.5's "selected fleet
 // detail", widened by one case: a port, when a port is what was tapped.
@@ -10,6 +10,10 @@ import { formatEta } from './voyage'
 // ports would be a third panel (§E.5 allows two), it would have to be positioned somewhere, and
 // two selections could then disagree about what the player is looking at. So: one selection, one
 // detail, in one corner. Nothing is ever drawn over the middle of the chart.
+//
+// EVERY NUMBER HERE IS THE SERVER'S. `sailed / total` is `voyage.position.nm_done` against
+// `total_nm` — SAILED miles, so a passage that rounds a cape reads the distance it really is — and
+// the countdown is `voyage.eta` against the shell clock. The map computes none of it.
 //
 // It is READ-ONLY, all of it. There is no "sail here", no "set course", no button that starts an
 // order half-composed. The panel ends with where orders actually come from.
@@ -28,24 +32,25 @@ export function DetailPanel({
   model,
   portsByCode,
   selection,
+  nowMs,
   compact,
   onDismiss,
 }: {
   model: ChartModel
+  /** The WHOLE port table: the selected fleet's destination may be well off the glass. */
   portsByCode: ReadonlyMap<string, MapPort>
   selection: MapSelection
+  nowMs: number
   compact: boolean
   onDismiss: () => void
 }) {
   if (!selection) return null
 
+  const nameOf = (code: string) => portsByCode.get(code)?.name ?? code
+
   if (selection.kind === 'fleet') {
     const fleet = model.fleets.find((f) => f.fleet.id === selection.id)
     if (!fleet) return null
-
-    const destination = fleet.destinationCode
-      ? (portsByCode.get(fleet.destinationCode)?.name ?? fleet.destinationCode)
-      : null
 
     return (
       <MapPanel
@@ -58,20 +63,24 @@ export function DetailPanel({
       >
         <p className="mb-1 truncate font-serif text-sm text-ink">{fleet.fleet.name}</p>
         {fleet.dockedAtCode ? (
-          <Line label="at" value={portsByCode.get(fleet.dockedAtCode)?.name ?? fleet.dockedAtCode} />
+          <Line label="at" value={nameOf(fleet.dockedAtCode)} />
         ) : (
-          <>
-            <Line label="to" value={destination ?? '—'} />
-            {fleet.progress && (
-              <>
-                <Line
-                  label="sailed"
-                  value={`${Math.round(fleet.progress.sailedNm)} / ${Math.round(fleet.progress.totalNm)} nm`}
-                />
-                <Line label="arrives" value={formatEta(fleet.progress.remainingMs)} />
-              </>
-            )}
-          </>
+          fleet.leg && (
+            <>
+              <Line label="to" value={nameOf(fleet.leg.destinationCode)} />
+              {/* The leg it is ON, which is the only one the server serves. When the voyage has
+                  further legs to run, this is NOT the same as "to" — and saying both is the honest
+                  way to show that without drawing water the chart was not given. */}
+              {fleet.leg.toCode !== fleet.leg.destinationCode && (
+                <Line label="this leg" value={`${nameOf(fleet.leg.fromCode)} → ${nameOf(fleet.leg.toCode)}`} />
+              )}
+              <Line
+                label="sailed"
+                value={`${formatInt(fleet.leg.sailedNm)} / ${formatNm(fleet.leg.totalNm)}`}
+              />
+              <Line label="arrives" value={formatRealShort(fleet.leg.etaMs - nowMs)} />
+            </>
+          )
         )}
       </MapPanel>
     )

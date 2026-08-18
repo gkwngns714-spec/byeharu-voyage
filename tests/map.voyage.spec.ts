@@ -1,310 +1,316 @@
 import { test, expect } from '@playwright/test'
-import { haversineNm, project, type LatLon } from '../src/lib/geo'
-import { TIME_COMPRESSION, formatEta, voyagePoint, voyageProgress } from '../src/features/map/voyage'
-import { buildChartModel } from '../src/features/map/chartModel'
-import { hitTest, toggleSelection } from '../src/features/map/hitTest'
+import { project, type ViewBox } from '../src/lib/geo'
+import { buildChartModel, visiblePorts } from '../src/features/map/chartModel'
+import {
+  FIT_PADDING,
+  LEG_SPAN_LIMIT,
+  OPENING_MIN_SPAN_DEG,
+  minTierForSpan,
+  openingBounds,
+} from '../src/features/map/chartView'
 import { GLYPH } from '../src/features/map/glyphs'
-import { V0_PORTS, sampleFleets } from '../src/features/map/sampleVoyages'
-import type { Voyage } from '../src/features/map/mapTypes'
+import { hitTest, toggleSelection } from '../src/features/map/hitTest'
+import { mapFleetsOf, mapPortsOf } from '../src/features/map/liveWorld'
+import { legWebPath } from '../src/features/map/route'
+import type { FleetView } from '../src/lib/rpc'
+import { REAL_PORTS, dockedFleet, leg, portAt, sailingFleet } from './mapWorld.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE CLOSED FORM IS A PURE FUNCTION — DESIGN §D.2, proved rather than asserted in a comment.
+// A VOYAGE ON THE CHART IS THE SERVER'S ANSWER, COPIED — and this file is the proof of it.
 //
-// This is the single most important property on the map. If position were ever a function of
-// anything but (voyage, instant) — a counter, a previous frame, a timer's drift — then tabbing
-// away, throttling, or a dropped frame would move a fleet, and the client's picture would stop
-// matching the server's answer. Every test below is an attack on that.
+// WHAT THIS FILE USED TO PROVE, AND WHY IT DOES NOT ANY MORE. It proved that the map's own copy of
+// DESIGN §D.2 — `progress(t) = (t − departed_at) × TIME_COMPRESSION × v_fleet / 3600`, in
+// src/features/map/voyage.ts — was a pure function of (voyage, instant). It was. It was also a
+// SECOND IMPLEMENTATION of the movement rule on the client, and the live store forbids exactly
+// that: "voyage position … computed inside the transaction that owns it. The client's job is to
+// print them. There is no second implementation of any of it on this side of the wire." The server
+// now serves `voyage.position` (README §4.8), so voyage.ts is DELETED and the property worth
+// proving changed with it.
+//
+// WHAT IT PROVES NOW — the same discipline, one layer out:
+//   · the glyph is drawn at EXACTLY the coordinate the server sent; nothing is re-derived,
+//   · the model takes no clock at all, so there is nothing that could drift,
+//   · only the CURRENT leg is drawn, because only the current leg is served; a destination further
+//     on is RINGED, never routed,
+//   · the sea lanes are drawn close in and not at all when pulled back,
+//   · a tap selects, and a selection is the only value this surface can produce.
 //
 // Pure Node: no `page` fixture is used, so no browser is launched.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-const LISBOA: LatLon = { lat: 38.71, lon: -9.14 }
-const CADIZ: LatLon = { lat: 36.53, lon: -6.29 }
-const CEUTA: LatLon = { lat: 35.89, lon: -5.32 }
+const PORTS = mapPortsOf(REAL_PORTS)
+const LISBON = portAt('LIS')
+const CADIZ = portAt('CAD')
 
-const DEPARTED = 1_700_000_000_000
-
-/** §B.3's Lisboa → Cádiz → Ceuta, 249 nm at a frozen 5 knots. */
-const VOYAGE: Voyage = {
-  departedAtMs: DEPARTED,
-  legs: [
-    { fromPort: 'LIS', toPort: 'CAD', distanceNm: 188, speedKn: 5 },
-    { fromPort: 'CAD', toPort: 'CEU', distanceNm: 61, speedKn: 5 },
-  ],
-}
-const WAYPOINTS = [LISBOA, CADIZ, CEUTA]
-
-/** Real milliseconds for a number of voyage-hours, at §D.1's compression of 480. */
-const realMsForSimHours = (hours: number) => (hours * 3_600_000) / TIME_COMPRESSION
-
-test.describe('voyageProgress is a pure function of elapsed time', () => {
-  test('same input, same output — called repeatedly, and out of order', () => {
-    const instant = DEPARTED + 90_000
-    const first = voyageProgress(VOYAGE, instant)
-
-    // Ten more calls at the same instant.
-    for (let i = 0; i < 10; i++) expect(voyageProgress(VOYAGE, instant)).toEqual(first)
-
-    // And after being called at OTHER instants in between — if anything were cached or
-    // accumulated, this is where it would show.
-    voyageProgress(VOYAGE, DEPARTED)
-    voyageProgress(VOYAGE, DEPARTED + 10_000_000)
-    voyageProgress(VOYAGE, DEPARTED - 5_000)
-    expect(voyageProgress(VOYAGE, instant)).toEqual(first)
-  })
-
-  test('the result depends on nothing outside its arguments', () => {
-    // Sampling the same instant from two objects with identical values must agree — the function
-    // may not close over identity, insertion order, or anything it was handed earlier.
-    const twin: Voyage = { departedAtMs: DEPARTED, legs: VOYAGE.legs.map((l) => ({ ...l })) }
-    const instant = DEPARTED + 120_000
-    expect(voyageProgress(twin, instant)).toEqual(voyageProgress(VOYAGE, instant))
-  })
-
-  test('a jump forward and a walk forward land in the same place', () => {
-    // THE DRIFT TEST. One caller sampled every 16 ms for the whole passage (a tab that stayed
-    // open); another sampled once at the end (a tab that was asleep). They must agree exactly.
-    const end = DEPARTED + realMsForSimHours(30)
-    for (let t = DEPARTED; t < end; t += 16) voyageProgress(VOYAGE, t)
-    const walked = voyageProgress(VOYAGE, end)
-    const jumped = voyageProgress({ ...VOYAGE }, end)
-    expect(walked).toEqual(jumped)
-  })
-
-  test('progress is monotonic — time only ever moves a fleet forward', () => {
-    let previous = -1
-    for (let hours = 0; hours <= 60; hours += 0.25) {
-      const p = voyageProgress(VOYAGE, DEPARTED + realMsForSimHours(hours))
-      expect(p.sailedNm).toBeGreaterThanOrEqual(previous)
-      previous = p.sailedNm
-    }
-  })
+/** Aurora is on Lisbon → Cádiz, 45% of the way, but bound onward to Ceuta: the leg it is on is not
+ *  the leg it finishes on, which is the case the chart has to keep honest. */
+const AURORA: FleetView = sailingFleet({
+  id: 'aurora',
+  name: 'Aurora',
+  from: 'LIS',
+  to: 'CAD',
+  legFrac: 0.45,
+  destination: 'CEU',
+  sailedNm: 111.5,
+  totalNm: 309,
+  etaMs: 1_700_000_600_000,
 })
 
-test.describe('voyageProgress numbers match DESIGN §B.3 and §D.1', () => {
-  test('at departure, nothing is sailed', () => {
-    const p = voyageProgress(VOYAGE, DEPARTED)
-    expect(p.sailedNm).toBe(0)
-    expect(p.fraction).toBe(0)
-    expect(p.legIndex).toBe(0)
-    expect(p.legFraction).toBe(0)
-    expect(p.arrived).toBe(false)
-    expect(p.totalNm).toBe(249)
+const GAIVOTA = dockedFleet('gaivota', 'Gaivota', 'LIS')
+
+const MODEL = buildChartModel(mapFleetsOf([AURORA, GAIVOTA]), PORTS)
+
+test.describe('the position is the server’s, copied', () => {
+  test('the glyph is drawn at exactly position.lat / position.lon', () => {
+    const served = AURORA.voyage!.position!
+    const drawn = MODEL.fleets.find((f) => f.fleet.id === 'aurora')
+    expect(drawn).toBeDefined()
+    // EXACT equality, not "close to": a chart that rounds, re-projects or re-derives the coordinate
+    // would fail here, and it should.
+    expect(drawn!.at).toEqual({ lat: served.lat, lon: served.lon })
   })
 
-  test('249 nm at 5 knots is 49.8 voyage-hours — §D.4 calls that a ~6 minute passage', () => {
-    const p = voyageProgress(VOYAGE, DEPARTED)
-    expect(p.totalSimHours).toBeCloseTo(249 / 5, 9)
-    const realMinutes = (p.etaMs - DEPARTED) / 60_000
-    expect(realMinutes).toBeCloseTo(6.225, 3)
+  test('nothing between the wire and the ink invents a number', () => {
+    const served = AURORA.voyage!.position!
+    const [fleet] = mapFleetsOf([AURORA])
+    expect(fleet.kind).toBe('sailing')
+    if (fleet.kind !== 'sailing') return
+    expect(fleet.leg.at).toEqual({ lat: served.lat, lon: served.lon })
+    expect(fleet.leg.legFrac).toBe(served.leg_frac)
+    expect(fleet.leg.sailedNm).toBe(served.nm_done)
+    expect(fleet.leg.totalNm).toBe(served.total_nm)
+    expect(fleet.leg.fromCode).toBe(served.from_code)
+    expect(fleet.leg.toCode).toBe(served.to_code)
+    expect(fleet.leg.destinationCode).toBe(AURORA.voyage!.to)
+    expect(fleet.leg.etaMs).toBe(Date.parse(AURORA.voyage!.eta))
   })
 
-  test('after 18.8 voyage-hours the fleet is 94 nm out — exactly half of the first leg', () => {
-    const p = voyageProgress(VOYAGE, DEPARTED + realMsForSimHours(94 / 5))
-    expect(p.sailedNm).toBeCloseTo(94, 6)
-    expect(p.legIndex).toBe(0)
-    expect(p.legFraction).toBeCloseTo(0.5, 6)
-  })
-
-  test('crossing into the second leg is continuous, not a jump', () => {
-    const atJoint = voyageProgress(VOYAGE, DEPARTED + realMsForSimHours(188 / 5))
-    expect(atJoint.sailedNm).toBeCloseTo(188, 6)
-    expect(atJoint.legIndex).toBe(1)
-    expect(atJoint.legFraction).toBeCloseTo(0, 6)
-
-    const justBefore = voyageProgress(VOYAGE, DEPARTED + realMsForSimHours(188 / 5) - 1)
-    expect(Math.abs(justBefore.sailedNm - atJoint.sailedNm)).toBeLessThan(0.01)
-  })
-
-  test('past the ETA it is arrived and pinned to the destination — never past it', () => {
-    const p = voyageProgress(VOYAGE, DEPARTED + realMsForSimHours(10_000))
-    expect(p.arrived).toBe(true)
-    expect(p.fraction).toBe(1)
-    expect(p.sailedNm).toBe(249)
-    expect(p.remainingNm).toBe(0)
-    expect(p.remainingMs).toBe(0)
-  })
-
-  test('a clock behind the departure draws the fleet on the quay it left, not behind it', () => {
-    const p = voyageProgress(VOYAGE, DEPARTED - 60 * 60 * 1000)
-    expect(p.sailedNm).toBe(0)
-    expect(p.fraction).toBe(0)
-  })
-
-  test('a voyage with no legs is arrived, not NaN', () => {
-    const p = voyageProgress({ departedAtMs: DEPARTED, legs: [] }, DEPARTED + 1000)
-    expect(p.arrived).toBe(true)
-    expect(Number.isNaN(p.fraction)).toBe(false)
-    expect(p.totalNm).toBe(0)
-  })
-
-  test('a non-positive frozen speed stalls the fleet instead of producing NaN', () => {
-    const broken: Voyage = {
-      departedAtMs: DEPARTED,
-      legs: [{ fromPort: 'LIS', toPort: 'CAD', distanceNm: 188, speedKn: 0 }],
-    }
-    const p = voyageProgress(broken, DEPARTED + 10_000_000)
-    expect(Number.isNaN(p.sailedNm)).toBe(false)
-    expect(p.sailedNm).toBe(0)
-    expect(p.arrived).toBe(false)
-  })
-})
-
-test.describe('voyagePoint puts the glyph on the track', () => {
-  test('at departure it is on the first quay; at arrival, the last', () => {
-    const start = voyagePoint(voyageProgress(VOYAGE, DEPARTED), WAYPOINTS)
-    expect(haversineNm(start, LISBOA)).toBeCloseTo(0, 6)
-
-    const end = voyagePoint(voyageProgress(VOYAGE, DEPARTED + realMsForSimHours(1000)), WAYPOINTS)
-    expect(haversineNm(end, CEUTA)).toBeCloseTo(0, 6)
-  })
-
-  test('halfway down the first leg it is 94 nm from Lisboa and 94 from Cádiz', () => {
-    const at = voyagePoint(voyageProgress(VOYAGE, DEPARTED + realMsForSimHours(94 / 5)), WAYPOINTS)
-    expect(haversineNm(LISBOA, at)).toBeCloseTo(94, 0)
-    expect(haversineNm(at, CADIZ)).toBeCloseTo(94, 0)
-  })
-
-  test('the position is a pure function too', () => {
-    const instant = DEPARTED + 100_000
-    const a = voyagePoint(voyageProgress(VOYAGE, instant), WAYPOINTS)
-    voyagePoint(voyageProgress(VOYAGE, instant + 500_000), WAYPOINTS)
-    const b = voyagePoint(voyageProgress(VOYAGE, instant), WAYPOINTS)
-    expect(b).toEqual(a)
-  })
-})
-
-test.describe('the whole picture is derived, and holds no one else', () => {
-  test('buildChartModel at one instant is reproducible', () => {
-    const fleets = sampleFleets(DEPARTED)
-    const instant = DEPARTED + 90_000
-    const first = buildChartModel(fleets, V0_PORTS, instant)
-    buildChartModel(fleets, V0_PORTS, instant + 400_000)
-    const again = buildChartModel(fleets, V0_PORTS, instant)
+  test('the model takes no clock, so there is nothing that can drift', () => {
+    // Built twice, at whatever moments these two calls happen to run: identical. The old failure
+    // mode — a glyph that moves because a frame fired — cannot exist, because no frame is an input.
+    const first = buildChartModel(mapFleetsOf([AURORA, GAIVOTA]), PORTS)
+    const again = buildChartModel(mapFleetsOf([AURORA, GAIVOTA]), PORTS)
     expect(again.fleets.map((f) => f.at)).toEqual(first.fleets.map((f) => f.at))
-    expect([...again.portRoles].sort()).toEqual([...first.portRoles].sort())
+    expect(again.fleets.map((f) => f.track)).toEqual(first.fleets.map((f) => f.track))
+    expect(buildChartModel.length).toBe(2) // (fleets, ports) — and no third argument
   })
 
   test('only the player’s own fleets are in the model — there is no field for anyone else', () => {
-    const model = buildChartModel(sampleFleets(DEPARTED), V0_PORTS, DEPARTED + 60_000)
-    expect(model.fleets).toHaveLength(4)
-    expect(Object.keys(model)).toEqual([
+    expect(Object.keys(MODEL)).toEqual([
       'fleets',
       'portRoles',
       'destinationPoints',
       'focusPoints',
       'motionPoints',
     ])
+    expect(MODEL.fleets).toHaveLength(2)
   })
 
-  test('a fleet at sea gets a split track; a docked one gets none', () => {
-    const model = buildChartModel(sampleFleets(DEPARTED), V0_PORTS, DEPARTED + 60_000)
-    const atSea = model.fleets.filter((f) => f.dockedAtCode === null)
-    const docked = model.fleets.filter((f) => f.dockedAtCode !== null)
-    expect(atSea.length).toBeGreaterThan(0)
-    expect(docked.length).toBeGreaterThan(0)
-    for (const f of atSea) {
-      expect(f.track).not.toBeNull()
-      expect(f.track?.sailedD.startsWith('M')).toBe(true)
-      expect(f.track?.aheadD.startsWith('M')).toBe(true)
-    }
-    for (const f of docked) expect(f.track).toBeNull()
+  test('a voyage the server did not place is not parked at a guessed coordinate', () => {
+    const unplaced: FleetView = { ...AURORA, voyage: { ...AURORA.voyage!, position: null } }
+    expect(mapFleetsOf([unplaced])).toHaveLength(0)
+    // …and one that is simply in port is placed on its quay.
+    expect(mapFleetsOf([GAIVOTA])).toEqual([
+      { kind: 'docked', id: 'gaivota', name: 'Gaivota', portCode: 'LIS' },
+    ])
+  })
+})
+
+test.describe('the chart draws the leg it was given, and no other water', () => {
+  const aurora = () => MODEL.fleets.find((f) => f.fleet.id === 'aurora')!
+
+  test('the track runs from the leg’s origin to the leg’s arrival port, split at the fleet', () => {
+    const track = aurora().track
+    expect(track).not.toBeNull()
+    const from = project(LISBON)
+    const to = project(CADIZ)
+    const at = project(aurora().at)
+    const two = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+      `M${round(a.x)} ${round(a.y)}L${round(b.x)} ${round(b.y)}`
+    expect(track!.sailedD).toBe(two(from, at))
+    expect(track!.aheadD).toBe(two(at, to))
+  })
+
+  test('the ship sits ON its own track — the client geometry is the server’s geometry', () => {
+    // `voyage.position()` interpolates LINEARLY in lat/lon; on an equirectangular chart that is the
+    // straight segment ./route.ts draws. A great-circle arc would bow away from the very point the
+    // server put the ship at. This is the seam, asserted rather than assumed.
+    const at = aurora().at
+    const t = aurora().leg!.legFrac
+    expect(at.lat).toBeCloseTo(LISBON.lat + (CADIZ.lat - LISBON.lat) * t, 3)
+    expect(at.lon).toBeCloseTo(LISBON.lon + (CADIZ.lon - LISBON.lon) * t, 3)
+  })
+
+  test('a destination beyond this leg is RINGED, never routed', () => {
+    // Aurora is bound for Ceuta but is sailing Lisbon → Cádiz. The ring goes on Ceuta; the line
+    // stops at Cádiz, because the leg Cádiz → Ceuta is not served (README §4.8).
+    expect(aurora().destinationCode).toBe('CEU')
+    expect([...MODEL.destinationPoints.keys()]).toEqual(['CEU'])
+    const ceuta = portAt('CEU')
+    expect(MODEL.destinationPoints.get('CEU')).toEqual({ lat: ceuta.lat, lon: ceuta.lon })
+    expect(aurora().track!.aheadD).not.toContain(String(ceuta.lat))
   })
 
   test('the destination ring is placed once per port, not once per fleet', () => {
-    const model = buildChartModel(sampleFleets(DEPARTED), V0_PORTS, DEPARTED + 60_000)
-    // Two sample voyages, two different destinations.
-    expect(model.destinationPoints.size).toBe(2)
+    const two = buildChartModel(
+      mapFleetsOf([
+        AURORA,
+        sailingFleet({ id: 'b', name: 'Bonança', from: 'SAF', to: 'CEU', legFrac: 0.2, destination: 'CEU' }),
+      ]),
+      PORTS,
+    )
+    expect(two.destinationPoints.size).toBe(1)
+  })
+
+  test('a docked fleet gets no track and no destination', () => {
+    const docked = MODEL.fleets.find((f) => f.fleet.id === 'gaivota')!
+    expect(docked.track).toBeNull()
+    expect(docked.leg).toBeNull()
+    expect(docked.destinationCode).toBeNull()
+    expect(docked.dockedAtCode).toBe('LIS')
   })
 
   test('port roles rank correctly, and a port no fleet touches has none', () => {
-    const model = buildChartModel(sampleFleets(DEPARTED), V0_PORTS, DEPARTED + 60_000)
-    expect(model.portRoles.get('CEU')).toBe('destination') // Aurora is bound there
-    expect(model.portRoles.get('LPA')).toBe('destination') // Ponente is bound there
-    expect(model.portRoles.get('LIS')).toBe('anchorage') // Gaivota lies there, and 2 routes start there
-    expect(model.portRoles.get('GOA')).toBe('anchorage') // Levante lies there
-    expect(model.portRoles.get('CAD')).toBe('route') // Aurora passes through
-    expect(model.portRoles.get('SVQ')).toBeUndefined() // nothing of yours goes near Sevilla
-    expect(model.portRoles.get('NAP')).toBeUndefined()
+    expect(MODEL.portRoles.get('CEU')).toBe('destination') // Aurora is bound there
+    expect(MODEL.portRoles.get('LIS')).toBe('anchorage') // Gaivota lies there, and Aurora left it
+    expect(MODEL.portRoles.get('CAD')).toBe('route') // the far end of the leg Aurora is on
+    expect(MODEL.portRoles.get('SVL')).toBeUndefined()
+    expect(MODEL.portRoles.get('NAP')).toBeUndefined()
   })
 
-  test('the opening frame is what is HAPPENING, not the whole port table', () => {
-    const model = buildChartModel(sampleFleets(DEPARTED), V0_PORTS, DEPARTED + 60_000)
-    // Fleet positions, destinations and anchorages — never a port nothing of yours touches.
-    const points = model.focusPoints
+  test('the opening frame is what is HAPPENING, not the 214-port table', () => {
+    const points = MODEL.focusPoints
     expect(points.length).toBeGreaterThan(0)
-    const napoli = V0_PORTS.find((p) => p.code === 'NAP')
-    expect(points.some((p) => p.lat === napoli?.lat && p.lon === napoli?.lon)).toBe(false)
+    const nagasaki = portAt('NAG')
+    expect(points.some((p) => p.lat === nagasaki.lat && p.lon === nagasaki.lon)).toBe(false)
+    const bounds = openingBounds(MODEL.focusPoints, MODEL.motionPoints, PORTS, 1280 / 800)
+    expect(bounds.maxLon - bounds.minLon).toBeLessThan(60)
   })
 
-  test('with no fleets the whole port table stands in, so the map never opens on empty ocean', () => {
-    const model = buildChartModel([], V0_PORTS, DEPARTED)
-    expect(model.focusPoints).toHaveLength(V0_PORTS.length)
-  })
-})
-
-test.describe('formatEta says it in as few words as possible', () => {
-  test('minutes, hours, days — and never a negative clock', () => {
-    expect(formatEta(0)).toBe('now')
-    expect(formatEta(-5000)).toBe('now')
-    expect(formatEta(60_000)).toBe('1m')
-    expect(formatEta(11 * 60_000)).toBe('11m')
-    expect(formatEta(60 * 60_000)).toBe('1h')
-    expect(formatEta(72 * 60_000)).toBe('1h 12m')
-    expect(formatEta(27 * 60 * 60_000)).toBe('1d 3h')
+  test('with no fleets the frame falls back to the world, because that is the honest answer', () => {
+    const empty = buildChartModel([], PORTS)
+    expect(empty.focusPoints).toHaveLength(0)
+    const bounds = openingBounds(empty.focusPoints, empty.motionPoints, PORTS, 1280 / 800)
+    // Every port in the table is inside it — the map never opens on empty ocean.
+    for (const port of PORTS) {
+      expect(port.lon).toBeGreaterThanOrEqual(bounds.minLon)
+      expect(port.lon).toBeLessThanOrEqual(bounds.maxLon)
+    }
   })
 })
 
-test.describe('hitTest — nearest wins, at every zoom', () => {
-  const MODEL = buildChartModel(sampleFleets(DEPARTED), V0_PORTS, DEPARTED + 60_000)
-  const port = (code: string) => {
-    const found = V0_PORTS.find((p) => p.code === code)
-    if (!found) throw new Error(code)
-    return found
-  }
+test.describe('the sea lanes are a hairline close in, and nothing at all pulled back', () => {
+  const LEGS = [leg('CAD', 'LIS', 247.7), leg('CAD', 'CEU', 61), leg('LIS', 'NAG', 12_000)]
+  const byCode = new Map(PORTS.map((p) => [p.code, p]))
 
-  // The opening view of a 390 px phone: 38.66 deg across, so 1 px = 0.099 deg. At that scale a
-  // 44 px reach is 2.18 deg — and Cadiz to Sevilla is 54 nm, about 0.9 deg. Overlapping touch
-  // circles would make paint order decide; nearest must not.
-  const PHONE_UNITS_PER_PX = 38.66 / 390
-  const REACH = GLYPH.hitRadius * PHONE_UNITS_PER_PX
+  test('the lanes in view are drawn, as ONE path with one subpath each', () => {
+    const iberia: ViewBox = { x: -12, y: -42, width: 10, height: 8 }
+    const d = legWebPath(LEGS, byCode, iberia)
+    // Lisbon, Cádiz and Ceuta are all on this sheet, so both short lanes are drawn — as two `M…L…`
+    // subpaths of ONE string, because 782 lanes must never become 782 elements.
+    expect(d.split('M').filter(Boolean)).toHaveLength(2)
+    expect(d.startsWith('M')).toBe(true)
+    expect(d).toContain(`M${round(project(CADIZ).x)}`)
+  })
+
+  test('a leg with one end off the glass is dropped whole, never clipped to a stub', () => {
+    // The same three lanes, framed on Portugal: Ceuta (lon −5.3) is off the right edge, so the
+    // Cádiz–Ceuta lane goes entirely, and Lisbon–Nagasaki was never a candidate. That last one is
+    // what keeps a lane straddling the antimeridian off the sheet: no view holds both its ends.
+    const portugal: ViewBox = { x: -12, y: -42, width: 6, height: 8 }
+    const d = legWebPath(LEGS, byCode, portugal)
+    expect(d.split('M').filter(Boolean)).toHaveLength(1)
+    expect(d).not.toContain(String(round(project(portAt('CEU')).x)))
+  })
+
+  test('a lane the view does not contain contributes nothing, not a stub', () => {
+    const pacific: ViewBox = { x: 120, y: -40, width: 10, height: 8 }
+    expect(legWebPath(LEGS, byCode, pacific)).toBe('')
+  })
+
+  test('the layer covers the OPENING frame, and is dropped — not faded — above it', () => {
+    // MEASURED in the browser and then pinned here: a lone fleet at Lisbon frames
+    // OPENING_MIN_SPAN_DEG, which FIT_PADDING opens to 12 × 1.24 = 14.88° on the glass. If the lane
+    // limit sat below that, a new player would see no sea routes on the one screen that exists to
+    // answer "where can I go from here" — which is exactly what a run in Chrome showed.
+    const openingSpan = OPENING_MIN_SPAN_DEG * (1 + 2 * FIT_PADDING)
+    expect(openingSpan).toBeCloseTo(14.88, 6)
+    expect(LEG_SPAN_LIMIT).toBeGreaterThan(openingSpan)
+    // …and it is still a coast, not a hemisphere.
+    expect(LEG_SPAN_LIMIT).toBeLessThan(45)
+  })
+
+  test('a lane joins two MARKS, never a mark and blank water', () => {
+    // Iberia at 14° across: the tier floor is 3, so Ceuta (tier 2) has no triangle. The Cádiz–Ceuta
+    // lane must go with it — a hairline ending in empty sea reads as a route to nowhere.
+    const iberia: ViewBox = { x: -14, y: -43, width: 14, height: 9 }
+    expect(minTierForSpan(iberia.width)).toBe(3)
+    const drawn = visiblePorts(PORTS, new Map(), iberia, minTierForSpan(iberia.width))
+    expect(drawn.map((p) => p.code)).toContain('CAD')
+    expect(drawn.map((p) => p.code)).not.toContain('CEU')
+    const d = legWebPath(LEGS, new Map(drawn.map((p) => [p.code, p])), iberia)
+    expect(d.split('M').filter(Boolean)).toHaveLength(1) // Cádiz–Lisbon only
+    // Give Ceuta a role — a fleet is bound there — and it is drawn again, lane and all.
+    const withRole = visiblePorts(PORTS, MODEL.portRoles, iberia, minTierForSpan(iberia.width))
+    const withLane = legWebPath(LEGS, new Map(withRole.map((p) => [p.code, p])), iberia)
+    expect(withLane.split('M').filter(Boolean)).toHaveLength(2)
+  })
+
+  test('a leg naming a port the snapshot does not carry is skipped, never guessed', () => {
+    expect(legWebPath([leg('LIS', 'ZZZ', 100)], byCode, { x: -20, y: -50, width: 40, height: 30 })).toBe('')
+  })
+})
+
+test.describe('hitTest — nearest wins, at every zoom, over the ports actually drawn', () => {
+  // A 390 px phone looking at Iberia: 10° across, so 1 px = 0.0256°, and a 44 px reach is 0.56°.
+  const VIEW: ViewBox = { x: -12, y: -44, width: 10, height: 8 }
+  const REACH = GLYPH.hitRadius * (VIEW.width / 390)
+  const DRAWN = visiblePorts(PORTS, MODEL.portRoles, VIEW, minTierForSpan(VIEW.width))
 
   test('a tap ON a port picks THAT port, not its crowded neighbour', () => {
-    expect(hitTest(MODEL, V0_PORTS, project(port('CAD')), REACH)).toEqual({ kind: 'port', code: 'CAD' })
-    expect(hitTest(MODEL, V0_PORTS, project(port('SVQ')), REACH)).toEqual({ kind: 'port', code: 'SVQ' })
-    // Both are well inside one reach of each other, which is the case that used to be a coin toss.
-    const apart = Math.hypot(port('CAD').lon - port('SVQ').lon, port('CAD').lat - port('SVQ').lat)
+    expect(hitTest(MODEL, DRAWN, project(CADIZ), REACH)).toEqual({ kind: 'port', code: 'CAD' })
+    const sanlucar = portAt('SNL')
+    expect(hitTest(MODEL, DRAWN, project(sanlucar), REACH)).toEqual({ kind: 'port', code: 'SNL' })
+    // The two are well inside one reach of each other, which is the case that used to be a coin toss.
+    const apart = Math.hypot(CADIZ.lon - sanlucar.lon, CADIZ.lat - sanlucar.lat)
     expect(apart).toBeLessThan(REACH)
   })
 
   test('a tap between two ports picks the closer one', () => {
-    const a = project(port('CAD'))
-    const b = project(port('SVQ'))
+    const a = project(CADIZ)
+    const b = project(portAt('SNL'))
     const nearCadiz = { x: a.x + (b.x - a.x) * 0.3, y: a.y + (b.y - a.y) * 0.3 }
-    const nearSevilla = { x: a.x + (b.x - a.x) * 0.7, y: a.y + (b.y - a.y) * 0.7 }
-    expect(hitTest(MODEL, V0_PORTS, nearCadiz, REACH)).toEqual({ kind: 'port', code: 'CAD' })
-    expect(hitTest(MODEL, V0_PORTS, nearSevilla, REACH)).toEqual({ kind: 'port', code: 'SVQ' })
+    const nearSanlucar = { x: a.x + (b.x - a.x) * 0.7, y: a.y + (b.y - a.y) * 0.7 }
+    expect(hitTest(MODEL, DRAWN, nearCadiz, REACH)).toEqual({ kind: 'port', code: 'CAD' })
+    expect(hitTest(MODEL, DRAWN, nearSanlucar, REACH)).toEqual({ kind: 'port', code: 'SNL' })
   })
 
   test('a fleet at anchor wins the tie with the port it lies in', () => {
-    // Gaivota is docked at Lisboa, so both are at exactly the same point.
-    expect(hitTest(MODEL, V0_PORTS, project(port('LIS')), REACH)).toEqual({ kind: 'fleet', id: 'gaivota' })
+    expect(hitTest(MODEL, DRAWN, project(LISBON), REACH)).toEqual({ kind: 'fleet', id: 'gaivota' })
+  })
+
+  test('a port the chart is not drawing cannot be tapped', () => {
+    // At world zoom only the 35 great ports (and yours) are on the sheet, so a tap on a tier-2
+    // harbour finds nothing — which is right: there is no mark there to have meant.
+    const world: ViewBox = { x: -180, y: -90, width: 360, height: 180 }
+    const drawnFar = visiblePorts(PORTS, MODEL.portRoles, world, minTierForSpan(world.width))
+    const roadstead = portAt('BRI') // Bridgetown, tier 2, nothing of yours near it
+    expect(drawnFar.map((p) => p.code)).not.toContain('BRI')
+    expect(hitTest(MODEL, drawnFar, project(roadstead), 1)).toBeNull()
   })
 
   test('open water selects nothing', () => {
-    expect(hitTest(MODEL, V0_PORTS, { x: -40, y: -20 }, REACH)).toBeNull()
+    expect(hitTest(MODEL, DRAWN, { x: -40, y: -20 }, REACH)).toBeNull()
   })
 
   test('the reach is a distance, so it shrinks with the scale as the chart zooms in', () => {
-    const justOutside = project(port('CAD'))
-    const nudged = { x: justOutside.x + REACH * 2, y: justOutside.y }
-    expect(hitTest(MODEL, V0_PORTS, nudged, REACH)).not.toEqual({ kind: 'port', code: 'CAD' })
-    // Zoomed in 10x, the same 44 px is a tenth of the ground, so a far tap misses everything.
-    expect(hitTest(MODEL, V0_PORTS, nudged, REACH / 10)).toBeNull()
+    const nudged = { x: project(CADIZ).x + REACH * 3, y: project(CADIZ).y }
+    expect(hitTest(MODEL, DRAWN, nudged, REACH)).not.toEqual({ kind: 'port', code: 'CAD' })
+    expect(hitTest(MODEL, DRAWN, nudged, REACH / 10)).toBeNull()
   })
 })
 
-test.describe('toggleSelection', () => {
+test.describe('toggleSelection — and a selection is the ONLY thing this surface produces', () => {
   test('tapping the same thing twice clears it', () => {
     expect(toggleSelection({ kind: 'port', code: 'LIS' }, { kind: 'port', code: 'LIS' })).toBeNull()
     expect(toggleSelection({ kind: 'fleet', id: 'a' }, { kind: 'fleet', id: 'a' })).toBeNull()
@@ -325,4 +331,17 @@ test.describe('toggleSelection', () => {
     expect(toggleSelection({ kind: 'port', code: 'LIS' }, null)).toBeNull()
     expect(toggleSelection(null, null)).toBeNull()
   })
+
+  test('a hit is a NAME, never a verb: the only shapes it can return are two selections or null', () => {
+    const hit = hitTest(MODEL, PORTS, project(CADIZ), 1)
+    expect(hit && Object.keys(hit).sort()).toEqual(['code', 'kind'])
+  })
 })
+
+/** ./svgPath.ts prints two decimals and trims trailing zeros; the track assertions above have to
+ *  speak the same dialect to compare a whole `d` string rather than a fuzzy prefix. */
+function round(n: number): string {
+  const s = n.toFixed(2)
+  const trimmed = s.replace(/\.?0+$/, '')
+  return trimmed === '' || trimmed === '-' || trimmed === '-0' ? '0' : trimmed
+}

@@ -32,6 +32,11 @@ function distance(a: Point, b: Point): number {
  * converts the touch radius from pixels, so the reach stays a constant 44 px on screen while the
  * paper under it scales.
  *
+ * `ports` is the VISIBLE set (chartModel.visiblePorts) — the same list the marks layer drew and the
+ * label planner planned. A port not on the sheet is not tappable, which is the only answer that can
+ * never surprise anyone: with 214 harbours in the table, hit-testing ports the player cannot see
+ * would open a detail card for a mark that is not there.
+ *
  * Returns `null` when the tap landed on open water, which clears the selection: tapping the sea to
  * dismiss is the gesture every map has, and it costs nothing.
  */

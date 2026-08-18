@@ -10,7 +10,7 @@
 //
 //   * `world.snapshot()` carries NO player. The house's name, level, reputation and tax relief are
 //     not served by any V0 read; `world.ledger()` serves the purse (`ducats`) and nothing else
-//     about the player. src/fixtures/v0.ts has a whole `Player` object — see README §4.
+//     about the player: the house's name, level and reputation are not served — see README §4.
 //   * `world.market()` prices from `world.price()`, which returns ask/bid/mid. The fixture's
 //     PortGood carries authored `affinity`, `drift`, `seasonMod`, `history7` and `event`; NONE of
 //     those cross the RPC boundary. Price is derived server-side and the client is told the price.

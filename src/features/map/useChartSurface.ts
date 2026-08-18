@@ -94,10 +94,20 @@ export function useChartSurface(
    *  frame on a laptop and a bad one on a phone, so this is asked, not stored (see openingBounds).
    *  Must be stable: wrap it in useCallback. */
   frameBounds: (aspect: number) => GeoBounds,
-  /** Called when a pointer goes down and up WITHOUT panning: where it landed in chart units, and
-   *  the scale at that moment, so the caller can turn a reach in PIXELS into one in chart units
-   *  without holding a copy of the scale. A drag that ends over a glyph is a pan, never a tap. */
-  onTap?: (at: Point, chartUnitsPerPixel: number) => void,
+  /**
+   * Called when a pointer goes down and up WITHOUT panning. A drag that ends over a glyph is a pan,
+   * never a tap. It is handed three things, and they are the complete answer to "what did they
+   * tap":
+   *   `at`          where the finger landed, in chart units
+   *   `unitsPerPx`  the scale at that moment, so a reach in PIXELS becomes one in chart units
+   *                 without the caller holding a copy of the scale
+   *   `view`        the viewBox that was on the glass, so the caller can work out what was DRAWN
+   *                 at that instant. With 214 ports in the table, only the drawn ones are tappable
+   *                 — and passing the box is what lets the caller apply the SAME visibility rule
+   *                 the render used, without a ref into render state and without depending on this
+   *                 hook's own result to build the handler it is given.
+   */
+  onTap?: (at: Point, unitsPerPx: number, view: ViewBox) => void,
 ): ChartSurface {
   const [size, setSize] = useState({ width: 0, height: 0 })
   /** Only what the player moved to. `null` = they have not moved it, so the opening frame stands. */
@@ -256,6 +266,7 @@ export function useChartSurface(
           y: box.y + ((event.clientY - rect.top) / rect.height) * box.height,
         },
         unitsPerPixel(view, rect.width),
+        box,
       )
     },
     [ref, onTap, view],

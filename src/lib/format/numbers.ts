@@ -79,7 +79,7 @@ export function formatPct(fraction: number, dp = 0): string {
 }
 
 /** A percentage ALREADY in points (113.4) as "113%". This is what %NBR carries — see
- *  src/features/market/prices.ts, where the whole column is a percent-of-neighbours ratio. */
+ *  the MARKET tab's %NBR column, which is a percent-of-neighbours ratio the server derives. */
 export function formatPctPoints(points: number, dp = 0): string {
   if (!Number.isFinite(points)) return '—'
   return `${dp > 0 ? formatFixed(points, dp) : formatInt(points)}%`

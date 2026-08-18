@@ -975,6 +975,8 @@ declare
   v_grants int; n int; k int;
   v_prov jsonb; v_hire jsonb; v_rep jsonb;
   v_end_status text; v_end_port text; v_orders text; v_room numeric;
+  v_probe2 constant uuid := '00000000-0000-0000-0000-0000000007bb';
+  v_player2 uuid; v_fleet2 uuid;
   f_session boolean := false; f_idem boolean := false; f_halt boolean := false;
   f_burn boolean := false; f_verbs boolean := false;
   o public.orders%rowtype;
@@ -989,6 +991,15 @@ begin
     -- So the probe does what a captain does — fills the casks at the quay — and only then asks
     -- whether the QUEUE runs itself, which is what this migration is about.
     perform cmd.do_provision(v_fleet, jsonb_build_object('mode', 'FULL'));
+    -- AND SIGN A FULL COMPLEMENT. A Barca sails with the eight hands she needs and no more, so a
+    -- single desertion or fever at sea (§B.6 rolls them) leaves her below her minimum and the
+    -- homeward SAIL is refused E_CREW_SHORT — which is the game working, and which made this probe
+    -- fail on some runs and not others depending on the day's hazard rolls. A captain about to
+    -- cross five hundred miles hires to full at the quay; so does this.
+    perform cmd.do_hire(v_fleet, jsonb_build_object('count',
+      (select c.crew_max - sh.crew from public.ships sh
+         join public.ship_classes c on c.id = sh.class_id
+        where sh.fleet_id = v_fleet)));
     select water_t into v_water0 from public.ships where fleet_id = v_fleet;
     -- The purse is read AFTER watering, so "came home richer" is a judgement on the trade rather
     -- than on the stores, which are a cost the voyage was always going to pay.
@@ -1087,19 +1098,31 @@ begin
       raise exception '0007 self-assert FAIL: after the queue ran, the fleet is % at %, queue [%] — it should have come home and docked',
         coalesce(v_end_status, 'gone'), coalesce(v_end_port, 'sea'), coalesce(v_orders, 'none');
     end if;
-    v_prov := cmd.do_provision(v_fleet, jsonb_build_object('mode', 'FULL'));
-    v_hire := cmd.do_hire(v_fleet, jsonb_build_object('count', 4));
-    update public.ships set durability = 200 where fleet_id = v_fleet;   -- give the yard something to do
-    v_rep  := cmd.do_repair(v_fleet, jsonb_build_object('to_pct', 100));
+    -- ON A FRESH HOUSE, DELIBERATELY. Run against the fleet that just came home, this probe was
+    -- INTERMITTENT — red on two runs in four — because what that fleet has left after a voyage
+    -- depends on the hazards it rolled, and hazard rolls move with the game-day. PROVISION and
+    -- HIRE cost money, so a probe standing on a purse of unknown size is a probe that sometimes
+    -- proves nothing and sometimes fails for a reason that is not a defect.
+    --
+    -- A second house is a KNOWN precondition: a Barca docked at Lisboa with 8,000 ducats, exactly
+    -- as new_house() founds it. The rule from the previous project applies here too — a test must
+    -- set its own precondition or follow the game, never assume the state something else left.
+    v_player2 := public.new_house(v_probe2, 'Casa Verbos', 'PRT');
+    select id into v_fleet2 from public.fleets where player_id = v_player2;
+
+    v_prov := cmd.do_provision(v_fleet2, jsonb_build_object('mode', 'FULL'));
+    v_hire := cmd.do_hire(v_fleet2, jsonb_build_object('count', 4));
+    update public.ships set durability = 200 where fleet_id = v_fleet2;   -- give the yard something to do
+    v_rep  := cmd.do_repair(v_fleet2, jsonb_build_object('to_pct', 100));
     if (v_prov->>'cost')::bigint > 0 and (v_hire->>'hired')::int = 4 and (v_rep->>'cost')::bigint > 0
-       and (select crew from public.ships where fleet_id = v_fleet) = 12
-       and (select durability from public.ships where fleet_id = v_fleet) = 400
-       and (select status from public.fleets where id = v_fleet) = 'REPAIRING' then
+       and (select crew from public.ships where fleet_id = v_fleet2) = 12
+       and (select durability from public.ships where fleet_id = v_fleet2) = 400
+       and (select status from public.fleets where id = v_fleet2) = 'REPAIRING' then
       f_verbs := true;
     end if;
     -- The yard releases the fleet on its own, without a tick, once busy_until has elapsed.
-    update public.fleets set busy_until = now() - interval '1 second' where id = v_fleet;
-    perform cmd.advance(v_fleet);
+    update public.fleets set busy_until = now() - interval '1 second' where id = v_fleet2;
+    perform cmd.advance(v_fleet2);
 
     -- THE HALT RULE: an impossible order fails and the one behind it stays pending.
     insert into public.orders (fleet_id, player_id, seq, raw_text, verb, args) values
@@ -1148,7 +1171,7 @@ begin
   select count(*) into v_grants from public.client_write_grants();
   if v_grants <> 0 then raise exception '0007 self-assert FAIL: the queue minted % client write grant(s)', v_grants; end if;
 
-  raise notice '0007 self-assert ok: a full session ran as a 4-order queue with NO tick — bought 50 tuns of % at Lisboa, sailed to % and back (% nm each way), settled % voyage-day checkpoint(s) lazily, and docked at Lisboa with % d. against a start of % d. (+% d.); 4 more settle() calls changed nothing (% events, % d.); stores fell % -> % t and % wage payment(s) landed; PROVISION cost % d., HIRE took 4 hands, REPAIR restored the hull to 400 and put the fleet in the yard; an impossible order failed E_HOLD_FULL and left the next order pending across TWO advances; 0 client write grants',
+  raise notice '0007 self-assert ok: a full session ran as a 4-order queue with NO tick — bought 50 tuns of % at Lisboa, sailed to % and back (% nm each way), settled % voyage-day checkpoint(s) lazily, and docked at Lisboa with % d. against a start of % d. (+% d.); 4 more settle() calls changed nothing (% events, % d.); stores fell % -> % t and % wage payment(s) landed; on a second, freshly founded house PROVISION cost % d., HIRE took 4 hands and REPAIR restored the hull to 400 and put her in the yard; an impossible order failed E_HOLD_FULL and left the next order pending across TWO advances; 0 client write grants',
     (select name from public.goods where id = v_sal),
     (select name from public.ports where id = v_cad),
     (select round(min(l.distance_nm), 1) from public.legs l

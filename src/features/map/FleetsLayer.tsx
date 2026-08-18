@@ -11,7 +11,9 @@ import { GLYPH } from './glyphs'
 //
 // THE TRACK, per DESIGN §E.5: "dotted behind the fleet and fainter ahead of it". Two paths that
 // meet exactly at the dot, so the bright half is the passage made and the faint half is what is
-// left. The split point is the closed-form position (§D.2) and nothing else — see ./voyage.ts.
+// left. The split point is the SERVER's closed-form position (§D.2, `voyage.position`): copied,
+// never recomputed here. It is the CURRENT LEG and only that — the planned route beyond it is not
+// served (README §4.8), so the voyage's destination gets a ring and no line runs to it.
 //
 // A fleet AT ANCHOR gets no dot: §E.5 draws it as the port's filled triangle plus a label, and the
 // label is placed with all the others by ./labels.ts.
@@ -20,9 +22,9 @@ import { GLYPH } from './glyphs'
 // targeting surface, and this game has no PvP (§J.2). There is no prop on this layer that could
 // carry one — the omission is structural, not a setting.
 //
-// Everything here is a pure function of `model`, and `model` is a pure function of the wall clock
-// (./chartModel.ts). There is no animation state on this layer, so there is nothing to drift — and
-// no handler either: taps are resolved once, on the surface, by ./hitTest.ts.
+// Everything here is a pure function of `model`, and `model` is a pure function of the last read
+// (./chartModel.ts). There is no animation state and no clock on this layer, so there is nothing to
+// drift — and no handler either: taps are resolved once, on the surface, by ./hitTest.ts.
 
 /** Tracks and destination rings — painted UNDER the port marks. */
 export function TracksLayer({ model, unitsPerPx }: { model: ChartModel; unitsPerPx: number }) {

@@ -123,7 +123,14 @@ export const LABEL_PRIORITY = {
   fleetDocked: 75,
   /** A port on a fleet's route that is neither its origin's anchorage nor its destination. */
   route: 70,
-  /** Everything else. When the chart is crowded, these are what goes. */
+  /**
+   * Everything else. When the chart is crowded, these are what goes.
+   *
+   * It is a BASE, not a value: a quiet port asks at `quiet + size_tier`, so where two ports matter
+   * to you equally the great harbour is named before the roadstead. `size_tier` tops out at 5, so
+   * the loudest quiet port scores 15 — still far below `route`, and a port your fleet is actually
+   * using can therefore never lose its name to a big port your fleet is nowhere near.
+   */
   quiet: 10,
 } as const
 
@@ -308,6 +315,12 @@ const PORT_PRIORITY: Record<PortRole, number> = {
 /**
  * Every name the chart would like to print, with how badly it wants to print it.
  *
+ * `ports` IS THE VISIBLE SET (chartModel.visiblePorts), not the table. That matters now that the
+ * table is 214 harbours: asking to name all of them would be ~1,700 candidate placements a frame,
+ * almost all of them for ports off the glass, and every one of the survivors would still have to
+ * be dropped by the frame test. The set-based rule is unchanged — this just stops it being asked
+ * questions whose answer is already known.
+ *
  * `showQuietPorts` is the zoom rule of DESIGN §E.5 ("labels ... only for ports the player has
  * visited or has a fleet bound for"): pulled back to the world, a port nothing of yours touches
  * does not even ask. Zoomed in, it asks and usually gets one. Ports your fleets use always ask, at
@@ -329,7 +342,11 @@ export function mapLabelRequests(
       id: `port:${port.code}`,
       text: port.name,
       at: project(port),
-      priority: selected ? LABEL_PRIORITY.selected : role ? PORT_PRIORITY[role] : LABEL_PRIORITY.quiet,
+      priority: selected
+        ? LABEL_PRIORITY.selected
+        : role
+          ? PORT_PRIORITY[role]
+          : LABEL_PRIORITY.quiet + port.sizeTier,
       tone: role ? 'port-active' : 'port-quiet',
       force: selected,
     })

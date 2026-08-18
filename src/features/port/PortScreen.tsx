@@ -1,73 +1,148 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Badge,
   Card,
   CardHeader,
   DetailRow,
-  Meter,
   Notice,
   PageHeader,
   Screen,
   SectionLabel,
-  StatRow,
   TABLE_SCROLL_HINT,
   TD,
   TH,
   Table,
   scrollTableClass,
 } from '../../components/ui'
-import {
-  formatDucats,
-  formatInt,
-  formatNm,
-  formatPct,
-  formatTuns,
-  formatVoyageDays,
-} from '../../lib/format'
-import { useWorld } from '../../fixtures/useWorld'
-import type { PortCode } from '../../fixtures/types'
-import { gcDistanceNm } from '../command/geo'
+import { formatInt, formatNm, formatPct, formatPctPoints, formatTuns, formatVoyageDays } from '../../lib/format'
+import { useWorld } from '../../live/worldStore'
+import type { LiveWorld } from '../../live/worldStore'
+import type { FleetView, MarketGood, MarketView, SnapshotPort, WorldSnapshot } from '../../lib/rpc'
 import { useCommandDraft } from '../command/commandDraft'
-import { holdUsed } from '../fleets/fleetMath'
-import { midPrice, rowKey } from '../market/prices'
+import type { CommandIntent } from '../command/commandDraft'
+import { findVerb, orderText } from '../command/orderText'
+import { fleetCrew, fleetHoldFree, fleetMaxDraft, hullFraction, shipHoldUsed, worstHullFraction } from '../fleets/fleetDerive'
+import { WorldFailed, WorldLoading } from '../fleets/worldGate'
 
 // PORT — E.3. Where you are, what is here, and what you can do about it.
 //
-// THE TEACHING MOVE: every action on this screen is printed AS THE COMMAND IT WOULD ISSUE. There
-// is no "Provision" button that does a thing; there is a line that reads `PROVISION Gaivota FULL`
-// and loads exactly that string into the CMD input. A player who taps ten of these has read the
-// grammar ten times without being taught it, and when they eventually type one themselves nothing
-// behaves differently — F.4's "one grammar, two input methods", applied to a third surface.
+// THE TEACHING MOVE: every action on this screen is printed AS THE ORDER IT WOULD ISSUE. There is
+// no "Provision" button that does a thing; there is a line that reads `PROVISION Gaivota FULL`, and
+// tapping it hands that order — verb and arguments — to the Command tab with its pickers already
+// filled. A player who taps ten of these has read the language ten times without being taught it,
+// and the line they read is the exact line the server is sent (F.4: there is one parser, and one
+// composer on this side of the wire — orderText.ts).
 //
 // It also keeps law 2 intact: commands live on their own tab. This screen never issues anything.
 //
-// DARK AT V0, and labelled as such rather than faked: the Bureau (investment, H), the Inn's
-// officers (C.6), nation shares and the weekly Mayor (H.3). K.1 puts all of them outside the V0
-// slice, so they are named, dated and left unlit — not drawn with invented numbers.
+// ── WHAT THIS HARBOUR CANNOT TELL YOU, AND WHY IT SAYS SO ───────────────────────────────────────
+// The fixture port carried a price list this quay does not have. `world.snapshot()` serves a port's
+// id, geography, development, `tax_rate` and `crew_pool` — and nothing else about its services
+// (src/lib/db/README.md §4.3). NOT SERVED, and therefore NOT PRINTED:
+//
+//   crewRate · waterPrice · foodPrice · repairRate   the server prices HIRE / PROVISION / REPAIR
+//                                                    when the order runs; only `cmd.preview()` can
+//                                                    quote one, and previewing is Command's job.
+//   crewPoolMax                                      so the Inn shows a count, not a meter: a bar
+//                                                    needs a denominator and inventing one is a lie.
+//   languages                                        not in the schema at all.
+//   fleetsDocked                                     other houses' presence is V1 (J.3). YOUR hulls
+//                                                    alongside are served, and that is what shows.
+//   specialties                                      an authored affinity that never crosses the
+//                                                    wire. Replaced by a REAL reading: the live
+//                                                    market's %NBR and its buy/hold/sell advice.
+//
+// A row that would have to be invented is deleted, and the ones that are thinner than they look
+// say why on screen. DESIGN's rule for this: never show a number you cannot defend.
 
 export function PortScreen() {
-  const model = useWorld()
+  const world = useWorld()
+
+  if (world.phase === 'failed') {
+    return <WorldFailed eyebrow="Harbour" title="Port" refusal={world.fatal} />
+  }
+  if (world.phase !== 'ready' || !world.snapshot) {
+    return <WorldLoading eyebrow="Harbour" title="Port" subtitle="Where you are, and what is here." panels={3} />
+  }
+  return <PortBody world={world} snapshot={world.snapshot} />
+}
+
+function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapshot }) {
   const navigate = useNavigate()
   const handOff = useCommandDraft((s) => s.handOff)
   const draftFleetId = useCommandDraft((s) => s.fleetId)
-  const [portCode, setPortCode] = useState<PortCode>(model.world.currentPort)
+  const loadMarket = useWorld((s) => s.loadMarket)
 
-  const port = model.portOf(portCode)
-  const docked = model.fleetViews.filter((v) => v.fleet.portCode === portCode)
-  const acting = docked[0] ?? model.fleetViews.find((v) => v.fleet.id === draftFleetId) ?? model.fleetViews[0]
+  // There is no served "current port" — it is client UI state, and its natural default is where
+  // the first fleet is lying (README §4.1). A fleet at sea leaves the harbour unchosen, so the
+  // first port in the world stands in until the player picks one.
+  const [picked, setPicked] = useState<string | null>(null)
+  const defaultCode = world.fleets.find((f) => f.port)?.port ?? snapshot.ports[0]?.code ?? null
+  const portCode = picked ?? defaultCode
+  const port = portCode ? (world.portByCode[portCode] ?? null) : null
 
-  const command = (text: string) => {
-    handOff(text, acting?.fleet.id)
+  // The market is fetched per port, on demand — the store caches it, so this asks once per harbour.
+  const portId = port?.id ?? null
+  const market: MarketView | undefined = portId ? world.markets[portId] : undefined
+  const marketLoaded = market !== undefined
+  useEffect(() => {
+    if (portId && !marketLoaded) void loadMarket(portId)
+  }, [portId, marketLoaded, loadMarket])
+
+  const draftOfClass = useMemo(() => {
+    const byName = new Map(snapshot.ship_classes.map((c) => [c.name, c.draft]))
+    return (className: string) => byName.get(className)
+  }, [snapshot.ship_classes])
+
+  const bulkOfGood = (code: string) => world.goodByCode[code]?.bulk ?? 1
+
+  const docked = port ? world.fleets.filter((f) => f.port === port.code) : []
+  const acting =
+    docked[0] ?? world.fleets.find((f) => f.id === draftFleetId) ?? world.fleets[0] ?? null
+  const homeCode = world.fleets.find((f) => f.port)?.port ?? null
+
+  // A hand-off is a structured INTENT (commandDraft.ts) — orders are MADE, not typed. The LINE
+  // shown on the button is the one the server will receive, composed by the one function that
+  // composes it (orderText.ts, walking `snapshot.verbs`). The screen does not write order strings
+  // of its own: two composers would eventually print a line the parser rejects.
+  const command = (intent: CommandIntent) => {
+    handOff({ fleetId: acting?.id ?? null, ...intent })
     navigate('/command')
   }
+  const lineOf = (intent: CommandIntent): string => {
+    const spec = findVerb(snapshot.verbs, intent.verb ?? null)
+    return spec ? orderText(spec, intent.args ?? {}, acting?.name ?? null) : (intent.verb ?? '')
+  }
 
-  const oneLeg = [...(model.graph.edges.get(portCode)?.keys() ?? [])]
-    .map((code) => ({
-      port: model.portOf(code),
-      nm: gcDistanceNm(port.lat, port.lon, model.portOf(code).lat, model.portOf(code).lon),
+  if (!port) {
+    return (
+      <Screen>
+        <PageHeader eyebrow="Harbour" title="Port" subtitle="No harbour to read." />
+        <Notice tone="warning">The world served no ports. Nothing here is a harbour yet.</Notice>
+      </Screen>
+    )
+  }
+
+  // The legs the SERVER authored out of this port — with its own sailed `nm`, which includes the
+  // detour around land. The client used to great-circle this itself; the server's figure is the one
+  // the voyage is actually costed on (README §4.4), so it is the one printed.
+  const oneLeg = snapshot.legs
+    .filter((leg) => leg.from === port.code || leg.to === port.code)
+    .map((leg) => ({
+      code: leg.from === port.code ? leg.to : leg.from,
+      nm: leg.nm,
     }))
+    .map(({ code, nm }) => ({ port: world.portByCode[code] ?? null, code, nm }))
     .sort((a, b) => a.nm - b.nm)
+
+  const cheapHere = market
+    ? market.goods
+        .filter((g) => g.available && g.pct_nbr !== null)
+        .sort((a, b) => (a.pct_nbr ?? 0) - (b.pct_nbr ?? 0))
+        .slice(0, 3)
+    : []
+  const worthBuying = market ? market.goods.filter((g) => g.available && g.advice === 'buy').slice(0, 4) : []
 
   return (
     <Screen>
@@ -75,18 +150,22 @@ export function PortScreen() {
         eyebrow="Harbour"
         title={`Port · ${port.name}`}
         subtitle={`${port.country} · ${port.culture} · ${port.sea}`}
-        actions={<Badge tone="neutral">draft {port.maxDraft}</Badge>}
+        actions={<Badge tone="neutral">draft {port.max_draft}</Badge>}
       />
 
-      {portCode !== model.world.currentPort && (
+      {homeCode && port.code !== homeCode && (
         <Notice tone="warning" className="text-xs">
-          You are not lying in {port.name} — this is what your factors report from there. Your house
-          is at {model.portOf(model.world.currentPort).name}.
+          You are not lying in {port.name} — this is what your factors report from there. Your
+          nearest fleet is at {world.portByCode[homeCode]?.name ?? homeCode}.
         </Notice>
       )}
 
       <Card>
-        <CardHeader eyebrow="The city" title={port.name} subtitle={`Nation: ${port.nation}`} />
+        <CardHeader
+          eyebrow="The city"
+          title={port.name}
+          subtitle={`${port.nation ?? 'no nation'} · region ${port.region}`}
+        />
         {/* THE ROW RULE (see DetailRow.tsx): a short figure keeps the right-aligned two-column
             StatRow, because a column of figures has to line up. A value that is a SENTENCE — a
             dot-separated list, a figure with a parenthetical — uses DetailRow and flows
@@ -95,25 +174,32 @@ export function PortScreen() {
           <DetailRow
             label="Development"
             mono
-            value={`industry ${port.devIndustry} · commerce ${port.devCommerce} · military ${port.devMilitary}`}
+            value={`industry ${port.dev_industry} · commerce ${port.dev_commerce} · military ${port.dev_military}`}
           />
           <DetailRow
             label="Market tax"
             mono
-            value={formatPct(port.marketTaxRate, 1)}
-            hint="set by the Mayor, banded 0–8%"
+            value={formatPct(port.tax_rate, 1)}
+            hint="set by the Mayor, banded 0–8%. Tax relief is not in the V0 chain, so what you pay is what is printed."
           />
           <DetailRow
-            label="You pay"
+            label="Spread"
             mono
-            value={formatPct(Math.max(0, port.marketTaxRate - model.world.player.taxRelief), 1)}
-            hint={`reputation ${formatInt(model.world.player.reputation)} (${model.world.player.reputationLabel})`}
+            value={market?.port ? formatPct(market.port.spread, 1) : 'reading the market…'}
+            hint="half-spread, derived from commerce — the server's figure, not a client formula"
           />
-          <StatRow label="Spread" value={formatPct(Math.max(0.02, 0.06 - 0.002 * port.devCommerce), 1)} />
-          <StatRow label="Languages" value={port.languages.join(', ')} plain />
           <DetailRow
-            label="Specialties"
-            value={port.specialties.map((c) => model.goodOf(c).name).join(' · ')}
+            label="Cheapest here"
+            value={
+              cheapHere.length === 0
+                ? marketLoaded
+                  ? 'Nothing this port undercuts its neighbours on.'
+                  : 'reading the market…'
+                : cheapHere
+                    .map((g) => `${g.name} ${formatPctPoints(g.pct_nbr ?? 0)}`)
+                    .join(' · ')
+            }
+            hint="%NBR against ports within 600 nm — a live reading, not an authored specialty list"
           />
         </dl>
       </Card>
@@ -124,26 +210,30 @@ export function PortScreen() {
           <DetailRow
             label="Harbour"
             mono
-            value={`${port.fleetsDocked} fleets docked · max draft ${port.maxDraft}`}
+            value={`${docked.length} of your fleets alongside · max draft ${port.max_draft}`}
+            hint="Other houses' shipping is not reported by the V0 world (J.3 is V1)."
           />
           <DetailRow
             label="Yard"
             mono
-            value={port.hasYard ? `tier ${port.yardTier} · ${port.repairRate.toFixed(1)} d./point` : 'none'}
+            value={port.has_yard ? `tier ${port.yard_tier}` : 'none'}
+            hint={port.has_yard ? 'The yard prices a REPAIR when the order runs; PREVIEW it on Command for the quote.' : undefined}
           />
-          <DetailRow label="Provisions" mono value={`water ${port.waterPrice} d./t · food ${port.foodPrice} d./t`} />
+          <DetailRow
+            label="Provisions"
+            mono
+            value={`${formatTuns(snapshot.config.water_per_crew_day, 2)} water and ${formatTuns(snapshot.config.food_per_crew_day, 3)} food per hand, per voyage-day`}
+            hint="What stores COST is set when PROVISION runs — no quayside price list crosses the wire."
+          />
           <DetailRow
             label="Inn"
             mono
-            value={`${formatInt(port.crewPool)} / ${formatInt(port.crewPoolMax)} hands · ${port.crewRate} d. each`}
+            value={`${formatInt(port.crew_pool)} hands in the pool`}
+            hint="Beyond the pool, hands cost 2.5x — urgent recruitment (F.2). The rate is quoted when HIRE runs."
           />
+          <DetailRow label="Academy" mono value={port.has_academy ? 'yes' : 'none'} />
+          {port.is_ice_closed && <DetailRow label="Ice" mono value="CLOSED — nothing sails in or out" />}
         </dl>
-        <div className="mt-2">
-          <Meter pct={(port.crewPool / port.crewPoolMax) * 100} tone={port.crewPool / port.crewPoolMax < 0.3 ? 'warning' : 'neutral'} />
-          <p className="mt-1 font-mono text-[11px] text-ink-faint">
-            Beyond the pool, hands cost 2.5x — urgent recruitment (F.2).
-          </p>
-        </div>
         <Notice tone="neutral" className="mt-3 text-xs">
           Bureau (investment), officers at the Inn, the weekly Mayor and nation shares are V1 (K.1).
           They are not drawn here because there is nothing behind them yet.
@@ -159,9 +249,9 @@ export function PortScreen() {
         {docked.length === 0 ? (
           <p className="text-sm text-ink-muted">
             You have no fleet in {port.name}.{' '}
-            {model.fleetViews
-              .filter((v) => v.fleet.status === 'SAILING')
-              .map((v) => `${v.fleet.name} is at sea.`)
+            {world.fleets
+              .filter((f) => f.status === 'SAILING')
+              .map((f) => `${f.name} is at sea.`)
               .join(' ')}
           </p>
         ) : (
@@ -176,27 +266,24 @@ export function PortScreen() {
               </tr>
             </thead>
             <tbody>
-              {docked.flatMap((view) =>
-                view.ships.map((ship) => {
-                  const cls = model.classOf(ship)
-                  return (
-                    <tr key={ship.id}>
-                      <TD>
-                        {ship.name}
-                        {ship.isFlagship && <span className="ml-1 text-accent">⚑</span>}
-                        <span className="ml-2 text-xs text-ink-faint">{cls.name}</span>
-                      </TD>
-                      <TD>{view.fleet.name}</TD>
-                      <TD align="num">{formatPct(ship.durability / cls.maxDurability)}</TD>
-                      <TD align="num">
-                        {formatInt(ship.crew)}/{formatInt(cls.crewMax)}
-                      </TD>
-                      <TD align="num">
-                        {formatTuns(holdUsed(ship), 1)} / {formatTuns(cls.hold)}
-                      </TD>
-                    </tr>
-                  )
-                }),
+              {docked.flatMap((fleet) =>
+                fleet.ships.map((ship) => (
+                  <tr key={ship.id}>
+                    <TD>
+                      {ship.name}
+                      {ship.is_flagship && <span className="ml-1 text-accent">⚑</span>}
+                      <span className="ml-2 text-xs text-ink-faint">{ship.class}</span>
+                    </TD>
+                    <TD>{fleet.name}</TD>
+                    <TD align="num">{formatPct(hullFraction(ship))}</TD>
+                    <TD align="num">
+                      {formatInt(ship.crew)}/{formatInt(ship.crew_max)}
+                    </TD>
+                    <TD align="num">
+                      {formatTuns(shipHoldUsed(ship), 1)} / {formatTuns(ship.hold)}
+                    </TD>
+                  </tr>
+                )),
               )}
             </tbody>
           </Table>
@@ -213,7 +300,7 @@ export function PortScreen() {
           title="What you can do in this harbour"
           subtitle={
             acting
-              ? `Each of these loads onto Command as ${acting.fleet.name}'s order. Nothing is issued here.`
+              ? `Each of these loads onto Command as ${acting.name}'s order. Nothing is issued here.`
               : 'Nothing is issued here.'
           }
         />
@@ -223,45 +310,63 @@ export function PortScreen() {
               label="Stores and hands"
               actions={[
                 {
-                  command: `PROVISION ${acting.fleet.name} FULL`,
-                  note: `now ${formatVoyageDays(acting.enduranceDays)} · water ${port.waterPrice} d./t, food ${port.foodPrice} d./t`,
+                  intent: { verb: 'PROVISION', args: { mode: 'FULL' } },
+                  note: `${formatVoyageDays(acting.endurance_days)} of range at present`,
                 },
                 {
-                  command: `HIRE ${Math.max(1, Math.min(port.crewPool, acting.crewMax - acting.crew))} CREW FOR ${acting.fleet.name}`,
-                  note: `${formatInt(acting.crew)} of ${formatInt(acting.crewMax)} berths filled · ${formatDucats(port.crewRate)} each`,
+                  intent: { verb: 'HIRE', args: { count: String(hireCount(acting, port)) } },
+                  note: `${formatInt(fleetCrew(acting).aboard)} of ${formatInt(fleetCrew(acting).max)} berths filled · ${formatInt(port.crew_pool)} hands in the pool`,
                 },
-                ...(port.hasYard
+                ...(port.has_yard
                   ? [
                       {
-                        command: `REPAIR ${acting.fleet.name} TO 100`,
-                        note: `worst hull ${formatPct(acting.worstHullFraction)} · tier ${port.yardTier} yard`,
+                        intent: { verb: 'REPAIR', args: { to_pct: '100' } },
+                        note: `worst hull ${formatPct(worstHullFraction(acting))} · tier ${port.yard_tier} yard`,
                       },
                     ]
                   : []),
               ]}
+              lineOf={lineOf}
               onPick={command}
             />
 
             <ActionGroup
-              label="Trade the specialties"
-              actions={port.specialties.map((code) => {
-                const good = model.goodOf(code)
-                const row = model.priceIndex.rows.get(rowKey(portCode, code))
-                const mid = row ? midPrice(good, port, row) : null
-                return {
-                  command: `BUY ${good.name} ${Math.max(10, Math.floor(acting.holdFree))}`,
-                  note: mid === null ? 'not traded here' : `about ${formatInt(mid)} d./t · ${formatTuns(acting.holdFree, 0)} free`,
-                }
-              })}
+              label={marketLoaded ? 'What this market says to buy' : 'Trade'}
+              actions={
+                marketLoaded
+                  ? worthBuying.map((good) => ({
+                      intent: {
+                        verb: 'BUY',
+                        // CODES, never display names: `cmd.parse()` splits on whitespace.
+                        args: { good: good.code, qty: String(affordableUnits(acting, bulkOfGood(good.code))) },
+                      },
+                      note: `${buyNote(good)} · ${formatTuns(fleetHoldFree(acting), 0)} free in the hold`,
+                    }))
+                  : []
+              }
+              empty={
+                marketLoaded
+                  ? 'This market is not advising a purchase here — read the Market tab for the whole list.'
+                  : 'Reading the market…'
+              }
+              lineOf={lineOf}
               onPick={command}
             />
 
             <ActionGroup
               label="One leg from here"
-              actions={oneLeg.slice(0, 6).map(({ port: p, nm }) => ({
-                command: `SAIL ${acting.fleet.name} TO ${p.name}`,
-                note: `${formatNm(nm)} · ${p.maxDraft < acting.maxDraft ? 'too shallow for this fleet' : 'draft ' + p.maxDraft}`,
+              actions={oneLeg.slice(0, 6).map(({ port: p, code, nm }) => ({
+                intent: { verb: 'SAIL', args: { dest: code } },
+                note: `${formatNm(nm)} · ${
+                  p === null
+                    ? 'unknown harbour'
+                    : p.max_draft < fleetMaxDraft(acting, draftOfClass)
+                      ? 'too shallow for this fleet'
+                      : `draft ${p.max_draft}`
+                }`,
               }))}
+              empty="No authored leg leaves this port."
+              lineOf={lineOf}
               onPick={command}
             />
           </div>
@@ -271,14 +376,14 @@ export function PortScreen() {
       <Card>
         <CardHeader eyebrow="Elsewhere" title="Other ports" subtitle="Read a harbour before you sail to it." />
         <div className="flex flex-wrap gap-1.5">
-          {model.world.ports.map((p) => (
+          {snapshot.ports.map((p) => (
             <button
               key={p.code}
               type="button"
-              onClick={() => setPortCode(p.code)}
+              onClick={() => setPicked(p.code)}
               className={[
                 'min-h-11 rounded-md px-3 font-mono text-xs transition',
-                p.code === portCode
+                p.code === port.code
                   ? 'bg-accent text-app'
                   : 'border border-edge bg-surface-2 text-ink-muted hover:text-ink',
               ].join(' ')}
@@ -292,33 +397,63 @@ export function PortScreen() {
   )
 }
 
+/** How many hands the Inn can actually sign: berths short, capped by the pool it has. */
+function hireCount(fleet: FleetView, port: SnapshotPort): number {
+  const crew = fleetCrew(fleet)
+  return Math.max(1, Math.min(Math.floor(port.crew_pool), Math.max(0, crew.max - crew.aboard)))
+}
+
+/** Units, not tuns: the hold is in tuns and a good's `bulk` is the tuns one unit occupies. */
+function affordableUnits(fleet: FleetView, bulk: number): number {
+  const byHold = bulk > 0 ? Math.floor(fleetHoldFree(fleet) / bulk) : 0
+  return Math.max(1, byHold)
+}
+
+function buyNote(good: MarketGood): string {
+  const nbr = good.pct_nbr === null ? 'alone on this coast' : `${formatPctPoints(good.pct_nbr)} of neighbours`
+  return `${good.buy} d./t · ${nbr}`
+}
+
 function ActionGroup({
   label,
   actions,
+  empty,
+  lineOf,
   onPick,
 }: {
   label: string
-  actions: readonly { command: string; note?: string }[]
-  onPick: (command: string) => void
+  actions: readonly { intent: CommandIntent; note?: string }[]
+  /** What to say when there is nothing to offer — silence would read as a broken panel. */
+  empty?: string
+  /** The order line, composed by the ONE composer. The group never builds a string itself. */
+  lineOf: (intent: CommandIntent) => string
+  onPick: (intent: CommandIntent) => void
 }) {
-  if (actions.length === 0) return null
+  if (actions.length === 0 && !empty) return null
   return (
     <div>
       <SectionLabel>{label}</SectionLabel>
-      <ul className="space-y-1">
-        {actions.map((a) => (
-          <li key={a.command}>
-            <button
-              type="button"
-              onClick={() => onPick(a.command)}
-              className="min-h-11 w-full rounded-md border border-edge bg-surface px-3 py-2 text-left transition hover:border-accent/60"
-            >
-              <code className="block break-words font-mono text-xs text-accent">{a.command}</code>
-              {a.note && <span className="mt-0.5 block font-mono text-[11px] text-ink-faint">{a.note}</span>}
-            </button>
-          </li>
-        ))}
-      </ul>
+      {actions.length === 0 ? (
+        <p className="text-sm text-ink-muted">{empty}</p>
+      ) : (
+        <ul className="space-y-1">
+          {actions.map((a) => {
+            const line = lineOf(a.intent)
+            return (
+              <li key={line}>
+                <button
+                  type="button"
+                  onClick={() => onPick(a.intent)}
+                  className="min-h-11 w-full rounded-md border border-edge bg-surface px-3 py-2 text-left transition hover:border-accent/60"
+                >
+                  <code className="block break-words font-mono text-xs text-accent">{line}</code>
+                  {a.note && <span className="mt-0.5 block font-mono text-[11px] text-ink-faint">{a.note}</span>}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }

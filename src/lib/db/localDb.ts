@@ -55,6 +55,8 @@ export interface OpenLocalDbOptions {
   companyName?: string
   authUid?: string
   log?: (...args: unknown[]) => void
+  /** Set by the one-shot retry below. A caller never passes it. */
+  retried?: boolean
 }
 
 export interface LocalDb {
@@ -223,6 +225,35 @@ export async function openLocalDb(options: OpenLocalDbOptions): Promise<LocalDb>
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+
+    // A CHAIN THAT DIES HALFWAY LEAVES A HALF-BUILT DATABASE, and the fingerprint row is only
+    // written on success — so the NEXT boot finds a world it cannot recognise, starts again at
+    // 0001, and fails on `policy "nations_read" for table "nations" already exists` instead of on
+    // whatever actually broke. The player is then stuck behind an error about a policy, for ever,
+    // with no way back. Found in the browser (2026-08-19) after a genuinely failing migration.
+    //
+    // So: demolish the wreckage and try ONCE from an empty database. If it fails again it is the
+    // migration and not the leftovers, and THAT is the message the player is given.
+    if (pg! !== undefined && !options.retried) {
+      log('BOOT FAILED — demolishing the half-built world and trying once from empty\n' + message)
+      publish({
+        phase: 'booting',
+        rebuilt: true,
+        message: 'The world was left half-built. Clearing it and starting again.',
+      })
+      try {
+        await demolish(pg!)
+      } catch {
+        // Nothing left to salvage; the retry opens its own engine over the same store.
+      }
+      try {
+        await pg!.close()
+      } catch {
+        // Already gone.
+      }
+      return await openLocalDb({ ...options, retried: true })
+    }
+
     publish({
       phase: 'failed',
       error: message,

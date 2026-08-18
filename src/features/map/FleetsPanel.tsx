@@ -1,7 +1,7 @@
+import { formatRealShort } from '../../lib/format'
 import { MapPanel } from './MapPanel'
 import type { ChartModel, FleetOnChart } from './chartModel'
 import type { MapPort, MapSelection } from './mapTypes'
-import { formatEta } from './voyage'
 
 // PANEL ONE, TOP-LEFT — what you have, and where it is. DESIGN §E.5's fleet list.
 //
@@ -9,25 +9,34 @@ import { formatEta } from './voyage'
 // gets there. No tonnage, no cargo, no condition — those are the Fleets tab's job, and a map that
 // starts answering them stops being a map.
 //
+// "When it gets there" is the SERVER's arrival instant (`voyage.eta`) counted down against the
+// shell clock. The countdown is display; the arrival is decided in the transaction that owns it.
+// The wording comes from lib/format's `formatRealShort`, which every other countdown in the app
+// already uses — the map does not own a second way to say "4m".
+//
 // Tapping a row SELECTS. That is a view change (§E.5 says so in as many words), and the only thing
 // it changes is what the other panel reads.
 
-function statusOf(f: FleetOnChart, portsByCode: ReadonlyMap<string, MapPort>): string {
+function statusOf(f: FleetOnChart, portsByCode: ReadonlyMap<string, MapPort>, nowMs: number): string {
   if (f.dockedAtCode) return portsByCode.get(f.dockedAtCode)?.name ?? f.dockedAtCode
   const destination = f.destinationCode ? (portsByCode.get(f.destinationCode)?.name ?? f.destinationCode) : '—'
-  return `→ ${destination} · ${f.progress ? formatEta(f.progress.remainingMs) : '—'}`
+  return `→ ${destination} · ${f.leg ? formatRealShort(f.leg.etaMs - nowMs) : '—'}`
 }
 
 export function FleetsPanel({
   model,
   portsByCode,
   selection,
+  nowMs,
   compact,
   onSelect,
 }: {
   model: ChartModel
+  /** The WHOLE port table, not the visible set: a fleet bound for a port off the glass still has
+   *  to be able to name it. */
   portsByCode: ReadonlyMap<string, MapPort>
   selection: MapSelection
+  nowMs: number
   /** Phone-sized surface — see COMPACT_WIDTH_PX and `defaultOpen` below. */
   compact: boolean
   onSelect: (id: string) => void
@@ -79,7 +88,7 @@ export function FleetsPanel({
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-mono text-[11px] text-ink">{f.fleet.name}</span>
                     <span className="block truncate font-mono text-[10px] text-ink-faint">
-                      {statusOf(f, portsByCode)}
+                      {statusOf(f, portsByCode, nowMs)}
                     </span>
                   </span>
                 </button>

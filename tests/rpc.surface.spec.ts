@@ -54,9 +54,12 @@ const isStr = (v: unknown) => typeof v === 'string' && v.length > 0
 
 test('world.snapshot() carries the whole static world, and not the world secret', async () => {
   const snap = expectOk(await worldSnapshot())
-  expect(snap.ports).toHaveLength(12)
-  expect(snap.legs).toHaveLength(22)
-  expect(snap.goods).toHaveLength(12)
+  // COUNTED, NOT REMEMBERED. The world is 214 real harbours now and it will grow again; a spec
+  // that pins the number is asserting a seed, and goes red the day a port is added — which is not
+  // a defect. What the reader owes us is "everything the world holds, and nothing invented".
+  expect(snap.ports.length).toBeGreaterThan(100)
+  expect(snap.legs.length).toBeGreaterThan(snap.ports.length)     // a world you can sail across
+  expect(snap.goods.length).toBeGreaterThan(20)
   expect(snap.ship_classes).toHaveLength(3)
   expect(snap.verbs).toHaveLength(8)
 
@@ -64,7 +67,10 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   expect(lisboa).toBeDefined()
   // Every field SnapshotPort declares, read back off a real row.
   expect(isStr(lisboa!.id)).toBe(true)
-  expect(lisboa!.name).toBe('Lisboa')
+  // The port table carries the dataset's English names — the same strings the coordinate
+  // validator checks against Wikidata. Local forms (Lisboa, Sevilla, Napoli) live in
+  // data/ports.json as `localName` and are a presentation decision, not a data one.
+  expect(lisboa!.name).toBe('Lisbon')
   expect(isStr(lisboa!.country)).toBe(true)
   expect(lisboa!.nation).toBe('PRT')
   expect(isNum(lisboa!.lat) && isNum(lisboa!.lon)).toBe(true)
@@ -86,12 +92,12 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   const codes = new Set(snap.ports.map((p) => p.code))
   for (const l of snap.legs) expect(codes.has(l.from) && codes.has(l.to)).toBe(true)
 
-  const sal = snap.goods.find((g) => g.code === 'sal')!
+  const sal = snap.goods.find((g) => g.code === 'salt')!
   expect(isStr(sal.id) && isStr(sal.name)).toBe(true)
   expect(isNum(sal.base_value) && isNum(sal.bulk) && isNum(sal.perishable_pct_day)).toBe(true)
   expect(Array.isArray(sal.culture_mask)).toBe(true)
-  const vinho = snap.goods.find((g) => g.code === 'vinho')!
-  expect(vinho.culture_mask).toContain('maghrebi')
+  const vinho = snap.goods.find((g) => g.code === 'wine')!
+  expect(vinho.culture_mask).toContain('islamic')
 
   const barca = snap.ship_classes.find((c) => c.code === 'barca')!
   expect(barca.name).toBe('Barca')
@@ -131,7 +137,7 @@ test('world.market() prices every good, with %NBR, stock band, availability and 
   expect(market.port!.code).toBe('LIS')
   expect(isNum(market.port!.tax_rate) && isNum(market.port!.spread)).toBe(true)
   expect(isNum(market.port!.dev_commerce) && isStr(market.port!.culture)).toBe(true)
-  expect(market.goods).toHaveLength(12)
+  expect(market.goods).toHaveLength(snap.goods.length)     // every good the world trades, priced
 
   for (const g of market.goods) {
     expect(isStr(g.good_id) && isStr(g.code) && isStr(g.name) && isStr(g.category)).toBe(true)
@@ -148,17 +154,30 @@ test('world.market() prices every good, with %NBR, stock band, availability and 
   }
 
   // The culture mask is a fact about the port, and it shows through as a flag, not as a price.
-  expect(market.goods.find((g) => g.code === 'vinho')!.available).toBe(true)
+  expect(market.goods.find((g) => g.code === 'wine')!.available).toBe(true)
   const tunis = expectOk(await worldMarket(tun.id))
-  expect(tunis.goods.find((g) => g.code === 'vinho')!.available).toBe(false)
+  expect(tunis.goods.find((g) => g.code === 'wine')!.available).toBe(false)
 
-  // The §K.1 gradient, through the client seam: salt is cheap here and dear at Cádiz.
-  const cad = snap.ports.find((p) => p.code === 'CAD')!
-  const salLis = market.goods.find((g) => g.code === 'sal')!
-  const salCad = expectOk(await worldMarket(cad.id)).goods.find((g) => g.code === 'sal')!
-  expect(salLis.pct_nbr).toBeLessThan(100)
-  expect(salCad.pct_nbr).toBeGreaterThan(100)
-  expect(salLis.advice).toBe('buy')
+  // A GRADIENT EXISTS, through the client seam. Which good and which pair is geography — 214 ports
+  // and 14,980 derived prices decide it — so the spec asks the payload for one instead of naming
+  // the pair a twelve-port design document once quoted.
+  const buys = market.goods.filter((g) => g.advice === 'buy' && g.available)
+  expect(buys.length).toBeGreaterThan(0)                       // somewhere here is worth loading
+  for (const g of buys) expect(g.pct_nbr!).toBeLessThan(100)   // and the advice agrees with the number
+
+  // The other end of the same gradient: the good this port marks as a BUY reads dearer somewhere
+  // one leg away, which is the entire proposition of the game.
+  const cheapest = buys.sort((a, b) => (a.pct_nbr ?? 100) - (b.pct_nbr ?? 100))[0]
+  const neighbours = snap.legs
+    .filter((l) => l.from === lis.code || l.to === lis.code)
+    .map((l) => (l.from === lis.code ? l.to : l.from))
+  let dearerSomewhere = false
+  for (const code of neighbours) {
+    const other = snap.ports.find((p) => p.code === code)!
+    const there = expectOk(await worldMarket(other.id)).goods.find((g) => g.code === cheapest.code)!
+    if (there.available && there.mid > cheapest.mid) { dearerSomewhere = true; break }
+  }
+  expect(dearerSomewhere).toBe(true)
 })
 
 test('world.fleets() reports the fleet, its ships, its stores and its empty queue', async () => {
@@ -244,17 +263,17 @@ test('cmd.preview() estimates without moving a ducat, and refuses in the same wo
   const fleet = expectOk(await worldFleets())[0]
   const before = expectOk(await worldLedger()).ducats
 
-  const ok = expectOk(await cmdPreview(fleet.id, 'BUY sal 40'))
+  const ok = expectOk(await cmdPreview(fleet.id, 'BUY salt 40'))
   expect(ok.ok).toBe(true)
   expect(ok.parsed.verb).toBe('BUY')
   expect(ok.parsed.fleet_id).toBe(fleet.id)
   expect(ok.estimate).toBeDefined()
   expect(ok.estimate!.qty).toBe(40)
-  expect(ok.estimate!.good).toBe('sal')
+  expect(ok.estimate!.good).toBe('salt')
   expect(Number(ok.estimate!.total)).toBeGreaterThan(0)
   expect(expectOk(await worldLedger()).ducats).toBe(before) // the dry run really was dry
 
-  const refused = await cmdPreview(fleet.id, 'BUY sal 60')
+  const refused = await cmdPreview(fleet.id, 'BUY salt 60')
   expect(refused.ok).toBe(false)
   if (refused.ok) throw new Error('unreachable')
   expect(refused.refusal.code).toBe('E_HOLD_FULL')
@@ -263,7 +282,7 @@ test('cmd.preview() estimates without moving a ducat, and refuses in the same wo
 
 test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', async () => {
   const fleet = expectOk(await worldFleets())[0]
-  const result = await cmdIssue(fleet.id, 'BUY sal 60', fleet.version)
+  const result = await cmdIssue(fleet.id, 'BUY salt 60', fleet.version)
 
   // NOT a thrown string, NOT a null, NOT a silent no-op. The game refusing is the game working.
   expect(result.ok).toBe(false)
@@ -280,7 +299,7 @@ test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', as
 
   // …and the refused order is still in the queue as `failed`, exactly as the chain leaves it.
   const after = expectOk(await worldFleets())[0]
-  expect(after.queue.some((o) => o.status === 'failed' && o.text === 'BUY sal 60')).toBe(true)
+  expect(after.queue.some((o) => o.status === 'failed' && o.text === 'BUY salt 60')).toBe(true)
 
   expectOk(await cmdClear(fleet.id))
   await db.pg.query("delete from public.orders where status = 'failed'")
@@ -290,7 +309,7 @@ test('the other refusal shapes are the same shape', async () => {
   const fleet = expectOk(await worldFleets())[0]
 
   // A stale version — the F.3 rule that stops two devices double-issuing.
-  const stale = await cmdIssue(fleet.id, 'BUY sal 10', fleet.version + 99)
+  const stale = await cmdIssue(fleet.id, 'BUY salt 10', fleet.version + 99)
   expect(stale.ok).toBe(false)
   if (stale.ok) throw new Error('unreachable')
   expect(stale.refusal.code).toBe('E_STALE')
@@ -307,11 +326,13 @@ test('the other refusal shapes are the same shape', async () => {
   expect(ambiguous.ok).toBe(false)
   if (ambiguous.ok) throw new Error('unreachable')
   expect(ambiguous.refusal.code).toBe('E_AMBIGUOUS')
+  // It must NAME what it could have meant. With 214 ports "s" matches dozens, so what is asserted
+  // is the rule — several candidates, listed — rather than the two a twelve-port world had.
   expect(ambiguous.refusal.sentence).toContain('Safi')
-  expect(ambiguous.refusal.sentence).toContain('Sevilla')
+  expect(ambiguous.refusal.sentence.split(',').length).toBeGreaterThan(1)
 
   // A fleet that is not the player's: the ownership check, phrased as a refusal like any other.
-  const notMine = await cmdIssue('00000000-0000-4000-8000-0000000000ff', 'BUY sal 10')
+  const notMine = await cmdIssue('00000000-0000-4000-8000-0000000000ff', 'BUY salt 10')
   expect(notMine.ok).toBe(false)
   if (notMine.ok) throw new Error('unreachable')
   expect(notMine.refusal.code).toBe('E_NO_SUCH_FLEET')
@@ -320,10 +341,10 @@ test('the other refusal shapes are the same shape', async () => {
 test('cmd.issue() / cmd.cancel_at() / cmd.clear() return the queue and the new version', async () => {
   const fleet = expectOk(await worldFleets())[0]
 
-  const bought = expectOk(await cmdIssue(fleet.id, 'BUY sal 10', fleet.version))
+  const bought = expectOk(await cmdIssue(fleet.id, 'BUY salt 10', fleet.version))
   expect(bought.order.status).toBe('done')
   expect(bought.order.seq).toBeGreaterThanOrEqual(1)
-  expect(bought.order.result).toMatchObject({ qty: 10, good: 'sal' })
+  expect(bought.order.result).toMatchObject({ qty: 10, good: 'salt' })
   // The issue payload carries the order WITHOUT its text or verb; the queue beside it carries both.
   expect('verb' in bought.order).toBe(false)
   expect(bought.version).toBeGreaterThan(fleet.version)
@@ -331,11 +352,13 @@ test('cmd.issue() / cmd.cancel_at() / cmd.clear() return the queue and the new v
   expect(Array.isArray(bought.queue)).toBe(true)
 
   // Queue two orders behind a SAILING fleet, then take them back apart.
-  const sailed = expectOk(await cmdIssue(fleet.id, 'SAIL Gaivota TO Cadiz'))
+  // Addressed by CODE: "Porto" is ambiguous with Portobelo in the real world, and a three-letter
+  // code is exact by construction, so this tests the queue rather than the parser.
+  const sailed = expectOk(await cmdIssue(fleet.id, 'SAIL Gaivota TO CAD'))
   expect(sailed.order.status).toBe('done')
-  const queued = expectOk(await cmdIssue(fleet.id, 'SELL sal ALL'))
+  const queued = expectOk(await cmdIssue(fleet.id, 'SELL salt ALL'))
   expect(queued.order.status).toBe('pending')
-  expectOk(await cmdIssue(fleet.id, 'BUY couro 10'))
+  expectOk(await cmdIssue(fleet.id, 'BUY hides 10'))
 
   const cancelled = expectOk(await cmdCancel(fleet.id))
   expect(cancelled.cancelled).toBeGreaterThanOrEqual(1)
@@ -353,6 +376,7 @@ test('cmd.issue() / cmd.cancel_at() / cmd.clear() return the queue and the new v
 })
 
 test('a fleet at sea reports its voyage and its closed-form position', async () => {
+  const snap = expectOk(await worldSnapshot())
   const fleet = expectOk(await worldFleets())[0]
   expect(fleet.status).toBe('SAILING')
   expect(fleet.port).toBeNull()
@@ -360,7 +384,13 @@ test('a fleet at sea reports its voyage and its closed-form position', async () 
   expect(v).not.toBeNull()
   expect(isStr(v.id) && isStr(v.eta)).toBe(true)
   expect(v.to).toBe('CAD')
-  expect(v.total_nm).toBe(188)
+  // The SAILED distance of the leg, not the straight line: 188 nm is the great circle and Cape
+  // St Vincent is in the way. The number the voyage carries must be the number the leg holds.
+  const legLisCad = snap.legs.find(
+    (l) => (l.from === 'LIS' && l.to === 'CAD') || (l.from === 'CAD' && l.to === 'LIS'),
+  )!
+  expect(v.total_nm).toBe(legLisCad.nm)
+  expect(v.total_nm).toBeGreaterThan(188)
   expect(v.nm_done).toBeGreaterThanOrEqual(0)
   expect(v.nm_done).toBeLessThanOrEqual(v.total_nm)
   const p = v.position!
@@ -382,9 +412,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
   expect(localSql('worldMarket')).toBe('select world.market($1::uuid) as result')
   expect(localSql('worldSnapshot')).toBe('select world.snapshot() as result')
   expect(localSql('cmdIssue')).toBe('select cmd.issue($1::uuid, $2::text, $3::int) as result')
-  expect(namedArgs('cmdIssue', ['f', 'BUY sal 10'])).toEqual({
+  expect(namedArgs('cmdIssue', ['f', 'BUY salt 10'])).toEqual({
     p_fleet: 'f',
-    p_text: 'BUY sal 10',
+    p_text: 'BUY salt 10',
     p_expected_version: null,
   })
   expect(rpcLabel('worldLedger')).toBe('world.ledger(p_cursor, p_limit)')

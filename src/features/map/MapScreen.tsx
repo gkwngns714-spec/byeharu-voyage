@@ -1,22 +1,33 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Button } from '../../components/ui'
-import type { Point } from '../../lib/geo'
+import { Button, Notice } from '../../components/ui'
+import { formatRealShort } from '../../lib/format'
+import type { Point, ViewBox } from '../../lib/geo'
+import type { FleetView, Refusal, SnapshotConfig, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
+import { useShellState } from '../../app/shellState'
+import { useWorld } from '../../live/worldStore'
 import { CoastlineLayer } from './CoastlineLayer'
 import { DetailPanel } from './DetailPanel'
 import { FleetsLayer, TracksLayer } from './FleetsLayer'
 import { FleetsPanel } from './FleetsPanel'
 import { LabelsLayer } from './LabelsLayer'
+import { LegsLayer } from './LegsLayer'
 import { PortsLayer } from './PortsLayer'
-import { COMPACT_WIDTH_PX, LABEL_SPAN_LIMIT, openingBounds } from './chartView'
-import { buildChartModel } from './chartModel'
+import {
+  COMPACT_WIDTH_PX,
+  LABEL_SPAN_LIMIT,
+  LEG_SPAN_LIMIT,
+  minTierForSpan,
+  openingBounds,
+} from './chartView'
+import { buildChartModel, visiblePorts } from './chartModel'
 import { GLYPH } from './glyphs'
 import { hitTest, toggleSelection } from './hitTest'
 import { mapLabelRequests, planLabels } from './labels'
+import { mapFleetsOf, mapPortsOf } from './liveWorld'
 import type { MapSelection } from './mapTypes'
-import { V0_PORTS, V0_PORTS_BY_CODE, sampleFleets } from './sampleVoyages'
+import { legWebPath } from './route'
 import { CHART_CHROME, useChartSurface } from './useChartSurface'
 import { useCoastline } from './useCoastline'
-import { useWallClock } from './useWallClock'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // MAP — READ-ONLY, BY DESIGN AND FOREVER.
@@ -31,74 +42,177 @@ import { useWallClock } from './useWallClock'
 // things are. Any future pull to "just let them tap the port to sail there" adds a second place
 // orders come from, and there is exactly one.
 //
+// ── WHERE THE PICTURE COMES FROM ───────────────────────────────────────────────────────────────
+// The live world, and nowhere else (src/live/worldStore.ts):
+//   snapshot.ports  214 real harbours with Wikidata coordinates and a `size_tier`
+//   snapshot.legs   782 sea lanes whose distances are SAILED distances
+//   world.fleets    your fleets — and for one at sea, `voyage.position`, the closed form of §D.2
+//   snapshot.config the time compression printed in the caption, rather than a number typed here
+// ./liveWorld.ts is the only module that has seen the wire format. The stub it replaced
+// (sampleVoyages.ts: twelve invented ports, four invented fleets) is deleted.
+//
+// ── NOTHING ON THIS SCREEN MOVES BY ITSELF ─────────────────────────────────────────────────────
+// The position is the SERVER's, copied. There is no client clock driving a glyph, no per-frame
+// re-derivation, no animation state — the old ./voyage.ts and its rAF clock are deleted, because a
+// second implementation of the movement rule on this side of the wire is exactly what the live
+// store's third rule forbids. A read is the catch-up, so the picture changes when the world is read
+// again, and the caption says how long ago that was rather than pretending to be live.
+// The ONE clock-dependent thing left is the wording of a countdown, against the server's own `eta`.
+//
 // ── WHAT IS ON THIS SCREEN, AND WHAT IS NOT ────────────────────────────────────────────────────
-//   drawn   one pale coastline · three glyphs (port, fleet, destination) · a dotted track per
-//           fleet at sea · two corner panels · a permanent caption
+//   drawn   one pale coastline · the sea lanes, close in only · three glyphs (port, fleet,
+//           destination) · a dotted track for the CURRENT leg · two corner panels · a caption
 //   absent  OTHER PLAYERS. §E.5: drawing rivals would make the chart a targeting surface, and
 //           there is no PvP (§J.2). No prop on any layer here can carry one.
+//   absent  the planned route beyond the current leg — the server does not serve it (README §4.8),
+//           so the destination is RINGED and no line is drawn to it. The chart never invents water.
 //   absent  every control that is not pan, zoom, fold or dismiss.
 //
-// ── THE ONE THING THAT MOVES ───────────────────────────────────────────────────────────────────
-// `nowMs` is a wall-clock reading sampled per animation frame (./useWallClock.ts). `buildChartModel`
-// turns it into the whole picture through the closed form of §D.2 (./voyage.ts). NOTHING between
-// them remembers anything: leave the tab for an hour and the first frame back draws the fleet
-// exactly where the arithmetic says it is, because no timer was counting in the meantime.
+// ── 214 PORTS ON ONE SHEET ─────────────────────────────────────────────────────────────────────
+// Three rules, all keyed on one column and one number:
+//   1. the zoom sets a `size_tier` floor (PORT_TIER_BANDS) — the world shows the 35 great ports,
+//      a sea adds the 79 middling, a coast adds all 100 small ones. YOUR ports are always drawn.
+//   2. the mark is scaled by the tier (portMarkScale), so the hierarchy is visible, not implied.
+//   3. names are planned as a SET over the visible ports only, dropped rather than overprinted,
+//      and ranked by role first and tier second (./labels.ts).
 //
 // ── KEYBOARD AND SCREEN READERS ────────────────────────────────────────────────────────────────
 // The chart itself is `role="img"` with a description, and it holds NO focusable elements. That is
-// a decision, not an omission: sixteen invisible tab stops on a picture is worse than none, and
+// a decision, not an omission: dozens of invisible tab stops on a picture is worse than none, and
 // everything the chart says is also said in the panels — the fleet list names every fleet, where
 // it is and when it arrives, as ordinary keyboard-reachable buttons, and selecting one there fills
 // the same detail panel a tap does. Nothing on this screen is reachable ONLY by pointer.
-//
-// ── STUBBED, AND SAID SO ───────────────────────────────────────────────────────────────────────
-// The fleets come from ./sampleVoyages.ts, not from the server — there is no `voyages` table yet.
-// When there is, that import becomes the read RPC's result and nothing else on this screen changes.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export function MapScreen() {
-  // The sample is anchored ONCE, at mount, so the two demonstration voyages carry on from where
-  // they were instead of restarting on every render. (When this is live data it will be a prop.)
-  const [sampleOrigin] = useState(() => Date.now())
-  const fleets = useMemo(() => sampleFleets(sampleOrigin), [sampleOrigin])
+  const phase = useWorld((s) => s.phase)
+  const fatal = useWorld((s) => s.fatal)
+  const snapshot = useWorld((s) => s.snapshot)
+  const fleets = useWorld((s) => s.fleets)
+  const readAt = useWorld((s) => s.readAt)
 
-  const nowMs = useWallClock()
-  const model = useMemo(() => buildChartModel(fleets, V0_PORTS, nowMs), [fleets, nowMs])
+  // A FAILURE IS RENDERED, NEVER SPUN ON. The refusal arrives with a code and a sentence a player
+  // can read (DESIGN §F.5); printing it here is the whole handling.
+  if (phase === 'failed') return <ChartMessage refusal={fatal} />
+  // Opening: one quiet line on the chart's own sea, so the tab does not flash a different surface
+  // before settling. Never an endless spinner — the store's phase always resolves.
+  if (phase !== 'ready' || !snapshot) return <ChartMessage refusal={null} />
+
+  // The chart mounts ONLY with the world in hand. That is what lets it freeze its opening frame at
+  // its own mount (see below) on real fleets rather than on an empty model.
+  return (
+    <Chart
+      ports={snapshot.ports}
+      legs={snapshot.legs}
+      config={snapshot.config}
+      fleets={fleets}
+      readAt={readAt}
+    />
+  )
+}
+
+/** The chart's sea with one line on it: opening, or the reason it could not open. */
+function ChartMessage({ refusal }: { refusal: Refusal | null }) {
+  return (
+    <div
+      className="flex h-full w-full items-center justify-center bg-chart-sea p-6"
+      data-testid="map-chart"
+    >
+      {refusal ? (
+        <Notice tone="danger" className="max-w-sm" data-testid="map-fatal">
+          <span className="block font-mono text-[10px] uppercase tracking-wider">{refusal.code}</span>
+          {refusal.sentence}
+        </Notice>
+      ) : (
+        <p className="font-mono text-[11px] text-ink-faint" data-testid="map-loading">
+          opening the chart…
+        </p>
+      )}
+    </div>
+  )
+}
+
+function Chart({
+  ports: snapshotPorts,
+  legs,
+  config,
+  fleets: fleetViews,
+  readAt,
+}: {
+  ports: readonly SnapshotPort[]
+  legs: readonly SnapshotLeg[]
+  config: SnapshotConfig
+  fleets: readonly FleetView[]
+  readAt: number | null
+}) {
+  // THE ONE CLOCK (src/app/shellState.ts). It ticks a countdown's wording and nothing else on this
+  // screen: no glyph, no track and no frame is a function of it.
+  const { nowMs } = useShellState()
+
+  const ports = useMemo(() => mapPortsOf(snapshotPorts), [snapshotPorts])
+  const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
+  const fleets = useMemo(() => mapFleetsOf(fleetViews), [fleetViews])
+  const model = useMemo(() => buildChartModel(fleets, ports), [fleets, ports])
 
   const [selection, setSelection] = useState<MapSelection>(null)
 
-  // THE OPENING VIEW frames WHAT YOU HAVE, not the whole port table — and how much of it depends
-  // on the shape of the glass (openingBounds carries the measured arithmetic).
+  // THE OPENING VIEW frames WHAT YOU HAVE — your fleets and the ports they are using — not the 214
+  // harbours of the world; and how much of it depends on the shape of the glass (openingBounds
+  // carries the measured arithmetic, and the floor that stops a lone docked fleet opening on a
+  // 1.5° harbour approach).
   //
   // Taken from the model AT MOUNT, once. It has to be stable: it is the frame the "fit" control
-  // returns to, and a bounds that moved with the fleets would re-frame the chart on every
-  // animation frame, which is a map that will not sit still.
-  const [openingModel] = useState(() => buildChartModel(sampleFleets(sampleOrigin), V0_PORTS, sampleOrigin))
+  // returns to, and a bounds that moved with the fleets would re-frame the chart under the player
+  // every time the world was read.
+  const [openingModel] = useState(() => model)
   const frameBounds = useCallback(
-    (aspect: number) =>
-      openingBounds(openingModel.focusPoints, openingModel.motionPoints, V0_PORTS, aspect),
-    [openingModel],
+    (aspect: number) => openingBounds(openingModel.focusPoints, openingModel.motionPoints, ports, aspect),
+    [openingModel, ports],
   )
   const chartRef = useRef<HTMLDivElement>(null)
 
   // THE ONLY THING A TAP ON THE CHART DOES. The nearest glyph within a 44 px reach wins
   // (./hitTest.ts explains why that is one function and not a touch circle per glyph); tapping the
   // same thing again, or tapping open water, clears the selection. The surface hands over the
-  // scale at the moment of the tap, so the reach is 44 px at every zoom.
+  // scale AND the viewBox at the moment of the tap, so the reach is 44 px at every zoom and the
+  // ports it tests are exactly the ports that were drawn — the same `visiblePorts` rule, applied
+  // to the same box, with no second idea of what is on the sheet.
+  //
+  // A SELECTION IS A VIEW CHANGE AND NOTHING ELSE. There is no other callback on this surface.
   const onTap = useCallback(
-    (at: Point, unitsPerPx: number) =>
+    (at: Point, unitsPerPx: number, view: ViewBox) => {
+      const tappable = visiblePorts(ports, model.portRoles, view, minTierForSpan(view.width))
       setSelection((current) =>
-        toggleSelection(current, hitTest(model, V0_PORTS, at, GLYPH.hitRadius * unitsPerPx)),
-      ),
-    [model],
+        toggleSelection(current, hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx)),
+      )
+    },
+    [model, ports],
   )
 
   const surface = useChartSurface(chartRef, frameBounds, onTap)
-  const coastline = useCoastline()
-
   const box = surface.viewBox
+
+  // WHICH PORTS ARE ON THE PAPER — computed once, consumed by the marks and the names (and by the
+  // tap above, from the same function). chartModel.visiblePorts: on the glass, and either big
+  // enough for this zoom or one of yours.
+  const drawnPorts = useMemo(
+    () => (box ? visiblePorts(ports, model.portRoles, box, minTierForSpan(box.width)) : []),
+    [box, ports, model.portRoles],
+  )
+
   const selectedFleetId = selection?.kind === 'fleet' ? selection.id : null
   const selectedPortCode = selection?.kind === 'port' ? selection.code : null
+
+  const coastline = useCoastline()
+
+  // THE SEA LANES, close in only. Above LEG_SPAN_LIMIT the layer is not built and not rendered:
+  // 782 crossings drawn from orbit is a spiderweb, not a chart. It is built over the DRAWN ports,
+  // so a lane always joins two marks the player can see — never a line trailing off to a harbour
+  // this zoom is too far out to draw.
+  const legsD = useMemo(() => {
+    if (!box || box.width > LEG_SPAN_LIMIT) return ''
+    return legWebPath(legs, new Map(drawnPorts.map((p) => [p.code, p])), box)
+  }, [box, legs, drawnPorts])
 
   // A phone is not a small desktop. Below `sm` the chart is ~390 px wide and a panel that opens by
   // default eats most of it, so the fleet list starts folded to its header chip there and open at
@@ -106,14 +220,14 @@ export function MapScreen() {
   // panels wait for it — Collapsible reads `defaultOpen` once, at mount, so it must be right then.
   const compact = surface.width > 0 && surface.width < COMPACT_WIDTH_PX
 
-  // EVERY NAME ON THE CHART, PLACED AS A SET. Re-planned each frame because the fleets move; it is
-  // ~16 labels × 4 candidate sides, which is nothing, and it is the only way two labels can know
-  // about each other (see ./labels.ts for the overprinting this replaced).
+  // EVERY NAME ON THE CHART, PLACED AS A SET. It is the visible ports plus the fleets × 8 candidate
+  // sides, which is small because the visible set is small — and it is the only way two labels can
+  // know about each other (see ./labels.ts for the overprinting this replaced).
   const labels = useMemo(
     () =>
       box
         ? planLabels(
-            mapLabelRequests(model, V0_PORTS, selection, box.width <= LABEL_SPAN_LIMIT),
+            mapLabelRequests(model, drawnPorts, selection, box.width <= LABEL_SPAN_LIMIT),
             {
               viewBox: box,
               unitsPerPx: surface.unitsPerPx,
@@ -123,7 +237,7 @@ export function MapScreen() {
             },
           )
         : [],
-    [box, model, selection, surface.unitsPerPx],
+    [box, model, drawnPorts, selection, surface.unitsPerPx],
   )
 
   return (
@@ -140,15 +254,16 @@ export function MapScreen() {
           className="absolute inset-0 h-full w-full"
           viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
           role="img"
-          aria-label="Chart of the Atlantic approaches and the western Mediterranean, showing ports and your fleets"
+          aria-label="Chart of the world's harbours and the sea lanes between them, showing your fleets"
         >
-          {/* PAINT ORDER IS THE ONLY STACKING SVG HAS: sea, coast, tracks, port marks, fleet
+          {/* PAINT ORDER IS THE ONLY STACKING SVG HAS: sea, coast, lanes, tracks, port marks, fleet
               dots, names. Every name therefore sits on top of every mark, and no mark sits on a
-              name. */}
+              name. The lanes go under everything — they are the paper's grain. */}
           <CoastlineLayer d={coastline.data?.d ?? ''} />
+          <LegsLayer d={legsD} />
           <TracksLayer model={model} unitsPerPx={surface.unitsPerPx} />
           <PortsLayer
-            ports={V0_PORTS}
+            ports={drawnPorts}
             portRoles={model.portRoles}
             selectedCode={selectedPortCode}
             unitsPerPx={surface.unitsPerPx}
@@ -163,8 +278,9 @@ export function MapScreen() {
       {surface.width > 0 && (
         <FleetsPanel
           model={model}
-          portsByCode={V0_PORTS_BY_CODE}
+          portsByCode={portsByCode}
           selection={selection}
+          nowMs={nowMs}
           compact={compact}
           // Selecting from the LIST also brings the chart to the fleet. The opening frame holds
           // what is moving, which on a phone can leave a fleet lying in a far-off port off the
@@ -180,8 +296,9 @@ export function MapScreen() {
       {/* PANEL TWO — bottom-right, and only when something is selected. */}
       <DetailPanel
         model={model}
-        portsByCode={V0_PORTS_BY_CODE}
+        portsByCode={portsByCode}
         selection={selection}
+        nowMs={nowMs}
         compact={compact}
         onDismiss={() => setSelection(null)}
       />
@@ -222,18 +339,28 @@ export function MapScreen() {
         </Button>
       </div>
 
-      {/* THE PERMANENT CAPTION. Two facts the player should never have to work out or be told
-          twice: the time scale (§D.3 asks for it here, always) and — the owner asked for this
-          explicitly — that this screen is a view, and orders are given somewhere else.
+      {/* THE PERMANENT CAPTION. Three facts the player should never have to work out or be told
+          twice: the time scale (§D.3 asks for it here, always — and it is the SERVER's
+          `time_compression`, not a number typed into this file), that this screen is a view and
+          orders are given somewhere else (the owner asked for this explicitly), and WHEN the
+          picture was read. That last one is the honest half of "the position is the server's": the
+          chart is a reading, and a reading has an age.
           Pointer-transparent, so it can never swallow a pan gesture near the bottom edge. */}
       <div
         className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-app/70 px-3 py-1.5 backdrop-blur"
         data-testid="map-is-a-view"
       >
-        <span className="shrink-0 font-mono text-[10px] text-ink-faint">1 min = 8 h sail</span>
+        <span className="shrink-0 font-mono text-[10px] text-ink-faint">
+          1 min = {config.time_compression / 60} h sail
+        </span>
         <span className="min-w-0 truncate font-mono text-[10px] text-ink-muted">
           view only · orders on Command
         </span>
+        {readAt !== null && (
+          <span className="ml-auto shrink-0 font-mono text-[10px] text-ink-faint" data-testid="map-read-age">
+            read {formatRealShort(nowMs - readAt)} ago
+          </span>
+        )}
       </div>
 
       {/* A missing backdrop is worth one quiet line, never a crash: the chart still works without

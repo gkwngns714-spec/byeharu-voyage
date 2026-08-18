@@ -2,9 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
 import { ShellStateContext } from './shellState'
 import { NavBar } from './NavBar'
+import { useWorld } from '../live/worldStore'
 
 // THE PERSISTENT SHELL: a slim header, the tab content, and the ONE tab bar. Mounted once for the
 // whole authenticated app; the shared data layer (see shellState.ts) mounts HERE and nowhere else.
+
+/** How often the shell reads the world again. THE READ IS THE CATCH-UP (DESIGN D.2): every read
+ *  settles every voyage server-side before it answers, so this interval is not a poll for changes
+ *  — it IS how time passes in this game. Thirty seconds is well inside a voyage-day (three real
+ *  minutes at TIME_COMPRESSION 480), so nothing can arrive without the next read noticing. */
+const READ_INTERVAL_MS = 30_000
 
 export function AppShell() {
   // THE ONE CLOCK (shellState.ts explains why it is here and not in the countdowns themselves).
@@ -13,6 +20,36 @@ export function AppShell() {
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 1000)
     return () => window.clearInterval(id)
+  }, [])
+
+  // THE WORLD OPENS HERE, ONCE, and reaches every tab through the store. That is shellState.ts's
+  // own rule — "shared server state is polled ONCE, in AppShell; a tab never mounts its own
+  // poller" — applied to the real chain instead of to a stand-in.
+  useEffect(() => {
+    void useWorld.getState().open()
+  }, [])
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const world = useWorld.getState()
+      // Only when the world is up, and never on top of a read already in flight: a second read
+      // would settle the same voyages twice for nothing and race the first one's answer.
+      if (world.phase === 'ready' && !world.busy) void world.refresh()
+    }, READ_INTERVAL_MS)
+    return () => window.clearInterval(id)
+  }, [])
+
+  // A tab regaining focus is a player coming back, and coming back is exactly the moment the
+  // ledger should have moved. Reading here is what makes "it moved while I was away" true.
+  useEffect(() => {
+    const onVisible = () => {
+      const world = useWorld.getState()
+      if (document.visibilityState === 'visible' && world.phase === 'ready' && !world.busy) {
+        void world.refresh()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
   const shell = useMemo(() => ({ nowMs }), [nowMs])

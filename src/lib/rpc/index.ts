@@ -18,7 +18,7 @@
 // TWO THINGS THE SURFACE DOES NOT DO
 //   * It does not cache. `world.snapshot()` is static enough to cache hard, but caching is a
 //     screen-lifetime decision and a second copy of the world here would be the exact thing
-//     src/fixtures/useWorld.ts's header warns about.
+//     src/live/worldStore.ts is where a screen-lifetime copy belongs, and it keeps exactly one.
 //   * It does not settle, tick or poll. Every read RPC settles server-side first (D.2): the READ
 //     is the catch-up, so "refetch" is the entire client-side time model.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════

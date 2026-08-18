@@ -117,11 +117,70 @@ export function unitsPerPixel(view: ChartView, pixelWidth: number): number {
 }
 
 /**
- * How many degrees of longitude are on screen, which is what decides whether port labels are
- * printed (see PortsLayer). DESIGN §E.5 wants labels only once the chart is zoomed in and only for
- * ports that matter, so that the world view stays a clean coastline with a few glyphs on it.
+ * How many degrees of longitude are on screen, which is what decides whether a port NOTHING of
+ * yours touches asks for a label. DESIGN §E.5 wants labels only once the chart is zoomed in and
+ * only for ports that matter, so the world view stays a clean coastline with a few glyphs on it.
+ * Above this span, only the ports your fleets are using are named.
  */
 export const LABEL_SPAN_LIMIT = 70
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// 214 PORTS ON ONE SHEET — the zoom decides how much of the world is drawn at all.
+//
+// The world is no longer twelve Iberian harbours; it is 214 of them, from Arkhangelsk to Nagasaki,
+// joined by 782 sea lanes. Drawn flat, all of it, all the time, that is not a chart — it is a
+// texture. So the sheet gets coarser as you pull back, by ONE rule keyed on ONE column.
+//
+//   the world   (> 45° across)   the 35 great ports          size_tier 5
+//   a sea       (> 12° across)   + the 79 middling ones       size_tier 3
+//   a coast     (≤ 12° across)   + all 100 small ones         size_tier 2 — and the sea lanes
+//
+// The counts are the real ones: migration 0003 seeds 35 ports at tier 5, 79 at tier 3 and 100 at
+// tier 2. YOUR ports are exempt at every zoom — an anchorage or a destination is drawn whatever
+// size it is, because it is the reason the tab was opened (`visiblePorts`, ./chartModel.ts).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** Span (degrees of longitude on screen) → the smallest `size_tier` that earns a mark at it.
+ *  Ordered tightest first; the first row whose `maxSpanX` covers the view wins. */
+export const PORT_TIER_BANDS: readonly { readonly maxSpanX: number; readonly minTier: number }[] = [
+  { maxSpanX: 12, minTier: 1 },
+  { maxSpanX: 45, minTier: 3 },
+  { maxSpanX: Infinity, minTier: 5 },
+]
+
+/** The smallest port drawn at this zoom. */
+export function minTierForSpan(spanX: number): number {
+  for (const band of PORT_TIER_BANDS) if (spanX <= band.maxSpanX) return band.minTier
+  return PORT_TIER_BANDS[PORT_TIER_BANDS.length - 1].minTier
+}
+
+/**
+ * The span at or below which the sea lanes are drawn.
+ *
+ * §E.5 asks for a quiet chart, and 782 lanes drawn from orbit is precisely the spiderweb that rule
+ * exists to prevent. Close in, where a lane answers "can I actually sail there from here", it is
+ * worth a hairline. Above this span the layer is not drawn at all — not faded, not thinned: gone.
+ *
+ * WHY 16 AND NOT 12. MEASURED, in the browser, on the founding position: one Barca at Lisbon frames
+ * `OPENING_MIN_SPAN_DEG` = 12°, which `FIT_PADDING` of 0.12 then opens to 12 × 1.24 = 14.88° on the
+ * glass. A limit of 12 therefore put the lanes just out of reach of the OPENING view — a new player
+ * saw no water routes at all until they zoomed in a step, on the one screen whose whole question is
+ * "where can I go from here". 16 covers the opening frame with room to spare and is still a coast,
+ * not a hemisphere. (Only lanes between two DRAWN marks are painted, so this never produces a line
+ * running off to a port that has no triangle — see `legWebPath`.)
+ */
+export const LEG_SPAN_LIMIT = 16
+
+/**
+ * THE FLOOR ON THE OPENING FRAME, in degrees of longitude.
+ *
+ * A brand-new house is one Barca lying at Lisboa (§K.1) — ONE point. Framing one point gives a
+ * degenerate box, which `clampView` then opens to MIN_SPAN_X: 1.5°, a harbour approach, on which
+ * the player sees their own quay and no water, no neighbour and nowhere to go. 12° is about 700 nm
+ * across — Lisboa with Porto, Cádiz, Sevilla and the Straits on one sheet, which is the first
+ * voyage the game is asking for. It only ever WIDENS a frame; fleets spread wider keep their own.
+ */
+export const OPENING_MIN_SPAN_DEG = 12
 
 /**
  * The width below which the chart is treated as a phone rather than a small desktop.
@@ -136,7 +195,7 @@ export const COMPACT_WIDTH_PX = 640
 /**
  * How much bigger than its contents a view is allowed to be before the frame is judged wasteful.
  *
- * MEASURED, at 390×844 with the sample data. The V0 ports are a wide east–west strip and a phone
+ * MEASURED, at 390×844. The ports of a working house are a wide east–west strip and a phone
  * is a tall narrow rectangle, so fitting the strip without distortion forces the view to grow in
  * LATITUDE until the aspect matches — and the screenshot showed the result: a chart running from
  * Norway to Sierra Leone with every port squeezed into a band across the middle and the bottom
@@ -162,13 +221,30 @@ function overCoverage(bounds: GeoBounds, aspect: number): number {
   return Math.max(box.width / contentWidth, box.height / contentHeight)
 }
 
+/** Widen a rectangle about its centre until it is at least `minSpan` across (and half that tall,
+ *  which is the same ground north–south). Never narrows one. */
+function atLeast(bounds: GeoBounds, minSpan: number): GeoBounds {
+  const growX = Math.max(0, minSpan - (bounds.maxLon - bounds.minLon)) / 2
+  const growY = Math.max(0, minSpan / 2 - (bounds.maxLat - bounds.minLat)) / 2
+  return {
+    minLon: bounds.minLon - growX,
+    maxLon: bounds.maxLon + growX,
+    minLat: bounds.minLat - growY,
+    maxLat: bounds.maxLat + growY,
+  }
+}
+
 /**
- * THE OPENING FRAME. Everything of yours if the surface can hold it without drowning it in empty
- * water; otherwise just what is moving. Aspect-aware on purpose: the same port set is a good frame
- * on a laptop and a bad one on a phone, and the difference is the shape of the glass, not the data.
+ * THE OPENING FRAME — WHAT THE PLAYER HAS, not the globe.
  *
- * `everything` and `motion` come from ChartModel (focusPoints / motionPoints). `fallback` is used
- * only when there is nothing of yours at all.
+ * Everything of yours if the surface can hold it without drowning it in empty water; otherwise
+ * just what is moving. Aspect-aware on purpose: the same port set is a good frame on a laptop and a
+ * bad one on a phone, and the difference is the shape of the glass, not the data.
+ *
+ * With 214 ports in the table this is the difference between opening on your own water and opening
+ * on the whole Earth. `everything` and `motion` come from ChartModel (focusPoints / motionPoints);
+ * `fallback` is used ONLY when there is nothing of yours at all, which is when the globe is in fact
+ * the right answer.
  */
 export function openingBounds(
   everything: readonly LatLon[],
@@ -176,8 +252,10 @@ export function openingBounds(
   fallback: readonly LatLon[],
   aspect: number,
 ): GeoBounds {
-  const wide = boundsOf(everything) ?? boundsOf(fallback)
-  if (!wide) return WORLD_BOUNDS
+  const mine = boundsOf(everything)
+  if (!mine) return boundsOf(fallback) ?? WORLD_BOUNDS
+  const wide = atLeast(mine, OPENING_MIN_SPAN_DEG)
   if (overCoverage(wide, aspect) <= OVER_COVERAGE_LIMIT) return wide
-  return boundsOf(motion) ?? wide
+  const moving = boundsOf(motion)
+  return moving ? atLeast(moving, OPENING_MIN_SPAN_DEG) : wide
 }
