@@ -63,7 +63,7 @@ RAISE works: unknown port
 Real `plpgsql`, real `RAISE`, no Docker. The chain now applies locally in seconds.
 
 **The server was proven, not asserted.** 10 migrations, every one self-asserting, plus four proof files
-totalling 27 PASS markers. The first-session proof plays the game: salt bought at Lisboa at 7.02 d./tun,
+totalling 28 PASS markers. The first-session proof plays the game: salt bought at Lisboa at 7.02 d./tun,
 188 nm to Cádiz at 3.87 knots laden, sold, hides bought, home again — **+530 ducats on 8,000, 6.63%,
 with all four orders completing unattended and no tick running.** That is the design's stated
 win-feeling — "a ledger that moved while I was away" — demonstrated in SQL.
@@ -107,7 +107,7 @@ Everything above landed green and pushed. Final gates, all run and read rather t
 ```
 npx playwright test   191 passed, 6 skipped
 npm run db:apply      10 migrations, 10 self-assert receipts
-npm run db:proof      4 files, 27/27 PASS markers
+npm run db:proof      4 files, 28/28 PASS markers
 npm run build         exit 0
 npm run lint          exit 0
 ```

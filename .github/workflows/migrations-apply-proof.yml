@@ -138,37 +138,82 @@ jobs:
           psql "$DB_URL" -v ON_ERROR_STOP=1 -c \
             "select version, name from supabase_migrations.schema_migrations order by version;"
 
-      # The default ACLs — checked from OUTSIDE migration 0001, against the platform's own roles.
-      # This is the exact thing PGlite could not see until scripts/db/supabase-preamble.sql
-      # existed, and the exact thing that failed here on 2026-08-18 with 16 surviving entries. It
-      # is re-run here independently so the claim does not rest solely on the migration's own
-      # self-assert, and it PRINTS the grantors, because the grantor is the whole answer: an
-      # ALTER DEFAULT PRIVILEGES REVOKE without FOR ROLE cannot touch another role's defaults.
-      - name: Default privileges after the chain (0 entries, and show whose they were)
+      # THE DEFAULT ACLs, checked from OUTSIDE migration 0001, against the platform's own roles.
+      #
+      # Two different claims, because they have two different truth values on Supabase:
+      #   1. Default ACLs owned by THE MIGRATION ROLE must be zero. Those govern every object the
+      #      chain creates, so this one is enforced.
+      #   2. Default ACLs owned by anyone else (Supabase's `supabase_admin` ships 16) CANNOT be
+      #      revoked from the migration role — proven here on 2026-08-18, run 32122434872 — and do
+      #      not need to be: a pg_default_acl row binds only objects created by its own grantor.
+      #      They are PRINTED, never enforced, so a change in what the platform ships is visible on
+      #      every run instead of being discovered by a failed deploy.
+      # The claim that makes (2) safe — that nothing here was created by another grantor — is
+      # enforced below, and again by proof 03's GRANT_LOCKDOWN_CHAIN_OWNS_EVERYTHING marker.
+      - name: Default privileges and object ownership, after the chain
         run: |
           set -euo pipefail
           set -a; . /tmp/sbenv; set +a
           echo "── every default ACL in the database, after the whole chain ──"
-          psql "$DB_URL" -v ON_ERROR_STOP=1 -c \
-            "select pg_get_userbyid(d.defaclrole) as grantor,
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c             "select pg_get_userbyid(d.defaclrole) as grantor,
                     coalesce(n.nspname,'(no schema)') as schema,
                     d.defaclobjtype as objtype,
                     d.defaclacl::text as acl
                from pg_default_acl d
                left join pg_namespace n on n.oid = d.defaclnamespace
               order by 1,2,3;"
-          n="$(psql "$DB_URL" -v ON_ERROR_STOP=1 -tAc \
-            "select count(*)
+
+          echo "── 1. default ACLs owned by the migration role (must be 0) ──"
+          own="$(psql "$DB_URL" -v ON_ERROR_STOP=1 -tAc             "select count(*)
                from pg_default_acl d
                join pg_namespace n on n.oid = d.defaclnamespace
               cross join lateral aclexplode(d.defaclacl) a
               where n.nspname in ('public','world','cmd','voyage')
+                and d.defaclrole = current_user::regrole::oid
                 and (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end)
                     in ('anon','authenticated','PUBLIC')
                 and a.privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER','EXECUTE');")"
-          echo "assert-visible default ACL entries remaining in public/world/cmd/voyage: $n"
-          if [ "$n" != "0" ]; then
-            echo "::error title=Default ACL leak::$n entr(ies) would grant a client role a write or execute on future objects"
+          echo "owned by $(psql "$DB_URL" -tAc 'select current_user'): $own"
+          if [ "$own" != "0" ]; then
+            echo "::error title=Default ACL leak::$own entr(ies) owned by the migration role would grant a client a write on every object it creates"
+            exit 1
+          fi
+
+          echo "── 2. default ACLs owned by other grantors (reported, not enforced — see the comment above) ──"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c             "select pg_get_userbyid(d.defaclrole) as grantor, n.nspname as schema, d.defaclobjtype as objtype,
+                    count(*) as client_write_or_execute_entries
+               from pg_default_acl d
+               join pg_namespace n on n.oid = d.defaclnamespace
+              cross join lateral aclexplode(d.defaclacl) a
+              where n.nspname in ('public','world','cmd','voyage')
+                and d.defaclrole <> current_user::regrole::oid
+                and (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end)
+                    in ('anon','authenticated','PUBLIC')
+                and a.privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER','EXECUTE')
+              group by 1,2,3 order by 1,2,3;"
+
+          echo "── 3. THE CLAIM THAT MAKES (2) HARMLESS: every object here is owned by the migration role ──"
+          # Deliberately a raw catalogue query, not the chain's own objects_not_owned_by(): an
+          # independent second opinion on the claim proof 03 makes with the chain's authority.
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c             "select n.nspname, c.relname, c.relkind, pg_get_userbyid(c.relowner) as owner
+               from pg_class c join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname in ('public','world','cmd','voyage')
+                and c.relkind in ('r','p','S','v','m','f')
+                and c.relowner <> current_user::regrole::oid
+                and not exists (select 1 from pg_depend dep
+                                 where dep.classid = 'pg_class'::regclass and dep.objid = c.oid and dep.deptype = 'e')
+              order by 1,2;"
+          foreign_owned="$(psql "$DB_URL" -v ON_ERROR_STOP=1 -tAc             "select (select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                      where n.nspname in ('public','world','cmd','voyage') and c.relkind in ('r','p','S','v','m','f')
+                        and c.relowner <> current_user::regrole::oid
+                        and not exists (select 1 from pg_depend dep where dep.classid='pg_class'::regclass and dep.objid=c.oid and dep.deptype='e'))
+                 + (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                      where n.nspname in ('public','world','cmd','voyage')
+                        and p.proowner <> current_user::regrole::oid
+                        and not exists (select 1 from pg_depend dep where dep.classid='pg_proc'::regclass and dep.objid=p.oid and dep.deptype='e'));")"
+          echo "objects (excluding extension members) not owned by the migration role: $foreign_owned"
+          if [ "$foreign_owned" != "0" ]; then
+            echo "::error title=Foreign-owned object::$foreign_owned object(s) were created by another role and may carry its default GRANTs"
             exit 1
           fi
 
@@ -194,11 +239,12 @@ jobs:
                         GRANT_LOCKDOWN_AUTHENTICATED_DENIED \
                         GRANT_LOCKDOWN_SECRET_UNREADABLE \
                         GRANT_LOCKDOWN_RLS_ON_EVERY_TABLE \
-                        GRANT_LOCKDOWN_SERVICE_ROLE_RETAINED; do
+                        GRANT_LOCKDOWN_SERVICE_ROLE_RETAINED \
+                        GRANT_LOCKDOWN_CHAIN_OWNS_EVERYTHING; do
             echo "$out" | grep -q "PASS: $marker" \
               || { echo "::error title=Missing PASS marker::$marker"; exit 1; }
           done
-          echo "All 7 lockdown PASS markers present against Supabase's own roles."
+          echo "All 8 lockdown PASS markers present against Supabase's own roles."
 
       - name: Stop disposable stack (always)
         if: always()

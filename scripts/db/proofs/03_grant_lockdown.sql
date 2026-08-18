@@ -21,6 +21,15 @@
 --   be "secure" and useless, so both directions are asserted, exactly as the predecessor's
 --   pirate-zone lockdown proof did.
 --
+-- AND THE OWNERSHIP LAW, CHECKED AT THE END OF THE CHAIN
+--   Supabase ships `ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES TO anon, authenticated` under
+--   its own bootstrap role, and the migration role cannot revoke those (migration 0001 §5b). They
+--   are harmless only while every object here is owned by the role that applied the chain, because
+--   a default ACL binds at CREATE time to the object's OWNER. 0001 asserts that for the objects
+--   that existed at 0001. This proof asserts it for the FINISHED chain — all ten migrations' worth
+--   of tables, sequences, views and functions — and CI runs this same file against the disposable
+--   Supabase, which is the only place the claim meets the platform's real roles.
+--
 -- @pass GRANT_LOCKDOWN_PROBE_PROVES_QUERY  the catalogue query is shown to detect a real grant
 -- @pass GRANT_LOCKDOWN_NO_WRITE_GRANTS     client_write_grants() is empty across all four schemas
 -- @pass GRANT_LOCKDOWN_ANON_DENIED         anon: INSERT denied 42501 on every table
@@ -28,6 +37,7 @@
 -- @pass GRANT_LOCKDOWN_SECRET_UNREADABLE   neither client role can SELECT world_config
 -- @pass GRANT_LOCKDOWN_RLS_ON_EVERY_TABLE  RLS is enabled on every table in public
 -- @pass GRANT_LOCKDOWN_SERVICE_ROLE_RETAINED  the server itself can still write
+-- @pass GRANT_LOCKDOWN_CHAIN_OWNS_EVERYTHING  no object here was created by another grantor
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -43,6 +53,8 @@ declare
   v_norls    text;
   v_ok       boolean;
   v_player   uuid;
+  v_owned_probe int;
+  v_owned_wrong int;
 begin
   -- ── (a) POSITIVE CONTROL. Prove the catalogue query can see a grant before trusting its zero.
   create table public._lockdown_proof_probe (x int);
@@ -149,4 +161,22 @@ begin
   end if;
   raise notice 'PASS: GRANT_LOCKDOWN_SERVICE_ROLE_RETAINED — the server still writes: a house was founded with % ducats',
     (select ducats from public.players where id = v_player);
+
+  -- ── (g) Nothing here was created by another grantor, so nothing here inherited another grantor's
+  --       default privileges. Positive control first: the same authority, asked about a role that
+  --       owns nothing, must return rows — otherwise its zero is just a broken scan.
+  select count(*) into v_owned_probe from public.objects_not_owned_by('anon');
+  if v_owned_probe = 0 then
+    raise exception 'PROOF 3 FAILED: objects_not_owned_by(anon) found 0 objects across four schemas holding a finished chain. The ownership scan is not working, so its zero below would prove nothing.';
+  end if;
+
+  select count(*) into v_owned_wrong from public.objects_not_owned_by(current_user::text);
+  if v_owned_wrong <> 0 then
+    raise exception 'PROOF 3 FAILED: % object(s) are owned by a role other than %, and may therefore carry that role''s default GRANTs: %',
+      v_owned_wrong, current_user,
+      (select string_agg(o.schema_name || '.' || o.object_name || ' (' || o.kind || ', owned by ' || o.owner || ')', ', ' order by o.schema_name, o.object_name)
+         from public.objects_not_owned_by(current_user::text) o);
+  end if;
+  raise notice 'PASS: GRANT_LOCKDOWN_CHAIN_OWNS_EVERYTHING — all % object(s) in public/world/cmd/voyage are owned by %, so none can have inherited a foreign grantor''s default privileges (the scan proved it discriminates by finding % not owned by anon)',
+    (select count(*) from public.objects_not_owned_by('a_role_that_owns_nothing_here')), current_user, v_owned_probe;
 end $$;

@@ -86,11 +86,14 @@ to examine.
 
 The class of defect that **only** the disposable-Supabase job can catch:
 
-> **Anything that depends on state Supabase preconfigures.** Table and function **GRANTs**;
-> **`ALTER DEFAULT PRIVILEGES`** entries, especially those owned by a grantor other than the role
-> applying migrations; **RLS as an enforced wall** rather than a flag on a catalogue row; the real
-> `auth` schema and `auth.uid()`; PostgREST schema exposure; `pg_cron`; the hosted extension set;
-> and the fact that on Supabase the migration role is **not a superuser** as it is under PGlite.
+> **Anything that depends on state Supabase preconfigures — or on what the migration role is
+> permitted to do about it.** Table and function **GRANTs**; **`ALTER DEFAULT PRIVILEGES`** entries,
+> especially those owned by a grantor other than the role applying migrations; **RLS as an enforced
+> wall** rather than a flag on a catalogue row; the real `auth` schema and `auth.uid()`; PostgREST
+> schema exposure; `pg_cron`; the hosted extension set; and — the half that is easiest to forget —
+> **the migration role's actual authority.** Under PGlite it is a superuser. On Supabase `postgres`
+> is not, and is **not a member of `supabase_admin`**, so statements that succeed here are refused
+> there.
 
 `scripts/db/apply-chain.mjs` narrows that gap — it applies `scripts/db/supabase-preamble.sql`
 first, a **test fixture (never a migration)** that installs the Supabase roles and the default
@@ -99,8 +102,30 @@ hostile state CI does. The fixture asserts its own effect and the harness refuse
 But it is a fixture a human wrote, it can drift from the platform, and it models **only** roles and
 default ACLs. Everything else in the list above is still CI's alone.
 
+### And the sharper lesson, which cost a second red CI round on the same day
+
+**A local gate that models a hostile starting state can produce an assert that is unsatisfiable on
+the real thing.** With the preamble in place, migration 0001 was made to revoke the platform's
+default privileges — which works here, because the harness is a superuser, and is **refused
+outright** on Supabase. The assert was not merely failing; it *could never pass*. See
+`docs/DEV_LOG.md` **D8** and migration 0001 §5b for the full argument and the measurements.
+
+Modelling the environment is not the same as modelling the **authority** you have over it. So when
+you write a check, ask which of these it is:
+
+* **something this chain owns** → assert it, hard, and fail the deploy;
+* **something the platform owns that can reach our objects** → prove it cannot reach them, and
+  assert *that*;
+* **something the platform owns that cannot reach us** → report it loudly on every apply, and do
+  not pretend to control it.
+
+An assert that can never pass is not strictness. It is a permanently blocked deploy, and the
+pressure it creates is pressure to delete the check — which is how a real safety net gets lost.
+
 **So: run step 1 always, and expect step 2 to be able to fail anyway.** When it does, the answer is
-to fix the chain — never to relax the assert that caught it.
+almost always to fix the chain. When it is genuinely the assert that is wrong, say so out loud and
+argue it — and pay for every narrowing with a new assert that closes the gap it opens, the way (i)
+paid for (d) in 0001.
 
 ### The chain today
 
@@ -108,7 +133,7 @@ to fix the chain — never to relax the assert that caught it.
 and what it proves. They define the entire V0 server: the static world and its seed, the market and its
 price formation, closed-form voyages, the command parser, the read RPCs and the tick functions.
 
-Four proof files in `scripts/db/proofs/`, 27 PASS markers between them:
+Four proof files in `scripts/db/proofs/`, 28 PASS markers between them:
 
 | Proof | What it establishes |
 |---|---|

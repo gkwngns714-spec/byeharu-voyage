@@ -19,7 +19,7 @@ npm run db:proof            # apply, then run scripts/db/proofs/*.sql and check 
 
 | # | File | What it establishes | What it self-asserts |
 |---|---|---|---|
-| **0001** | `the_world_is_read_only_to_everyone_but_the_server` | The `world`/`cmd`/`voyage` schemas; gap-filling shims for `anon`/`authenticated`/`service_role`/`auth.uid()` so the identical SQL runs on Supabase and on PGlite; `world_config` (36 knobs, every one described, **server-only** because it holds `world_secret`); the one knob reader `wc()`; and THE LOCKDOWN — every write revoked from the client roles on tables, sequences and functions in all four schemas, plus the DEFAULT PRIVILEGES retuned so nothing created later inherits one, **for this role and for every other grantor `pg_default_acl` names** (§5b; see the 2026-08-18 note below). Mints `public.client_write_grants()`, the one authority for "does a client role hold a write?". | `client_write_grants()` is empty — **after** a deliberately-granted probe table proves the query can find one (2 grants found, then revoked). The same zero independently through `information_schema.role_table_grants`. No default ACL grants a client a write or an execute. `world_config` has RLS on and **no** privileges for any client role. All 36 knobs described and readable; `wc()` **raises** on an unknown key rather than inventing a default. `gen_random_uuid()` and `auth.uid()` resolve. |
+| **0001** | `the_world_is_read_only_to_everyone_but_the_server` | The `world`/`cmd`/`voyage` schemas; gap-filling shims for `anon`/`authenticated`/`service_role`/`auth.uid()` so the identical SQL runs on Supabase and on PGlite; `world_config` (36 knobs, every one described, **server-only** because it holds `world_secret`); the one knob reader `wc()`; and THE LOCKDOWN — every write revoked from the client roles on tables, sequences and functions in all four schemas, plus **this role's** DEFAULT PRIVILEGES retuned so nothing it creates later inherits one (§5a; §5b explains why the platform's own defaults are deliberately left alone). Mints a second authority, `public.objects_not_owned_by()`. Mints `public.client_write_grants()`, the one authority for "does a client role hold a write?". | `client_write_grants()` is empty — **after** a deliberately-granted probe table proves the query can find one (2 grants found, then revoked). The same zero independently through `information_schema.role_table_grants`. No default ACL grants a client a write or an execute. `world_config` has RLS on and **no** privileges for any client role. All 36 knobs described and readable; `wc()` **raises** on an unknown key rather than inventing a default. `gen_random_uuid()` and `auth.uid()` resolve. |
 | **0002** | `the_static_world_exists` | `nations, seas, regions, ports, legs, goods, ship_classes` with RLS and read-only access for signed-in players. `legs` stores each edge **once**, canonically ordered, `UNIQUE` on the unordered pair. And `voyage.gc_distance_nm()` — the haversine of §B.3, IMMUTABLE, the one distance authority. | All seven tables exist, RLS is on all seven, each has **exactly one** SELECT policy, `authenticated` holds SELECT on all seven, lockdown still zero. `gc_distance_nm` reproduces DESIGN §B.3's own published figures: Lisboa–Cádiz **188.40 nm** and Ceuta–Tunis **750.75 nm**; zero on identity; symmetric. The second figure is a negative control — one number could be a stuck constant, two cannot. |
 | **0003** | `twelve_ports_and_the_water_between_them` | The §K.1 world, seeded: 4 nations, 8 seas, 4 regions, **12 ports** at §B.2's exact coordinates, **22 legs**, **12 goods**, **3 ship classes**. Leg distances are the haversine times an authored detour factor where the sailed route rounds land; the factor and its reason are written into each leg's `notes`. | Counts against §K.1 (12/22/12/3). Every leg's endpoints resolve. Canonical ordering with no duplicate unordered pair. **No leg is shorter than the great-circle** between its ports, and the worst detour is ×1.604 (Cádiz→Sevilla, up the Guadalquivir) — a positive control, since a worst ratio of 1.000 would mean the detour data never landed. All **five** distances §B.3 publishes match exactly. The leg graph is **connected**: all 12 ports reachable from Lisboa. Every nation's capital resolves. The culture mask both **blocks** (wine refused at 2 Maghrebi ports) and **permits** (open at 10 Latin ones). |
 | **0004** | `a_house_its_fleets_and_an_honest_ledger` | `players, fleets, ships` + the append-only `events` and `ledger`. `public.credit()` is the ONE money mover; `emit_event()` the ONE event writer; `current_player_id()` the ONE auth→player translation every RLS policy calls. The purse invariant `Σ ledger.ducats_delta = players.ducats` is a pair of **deferrable constraint triggers** over one check function — not a job that hopes. Structural rules: a composite FK makes a crossed ship/fleet owner impossible, a partial unique index allows at most one flagship, `ducats >= 0` is a CHECK. | Inside a rolled-back probe: `new_house()` opens with 8,000 ducats reconciled on both sides, and **five positive controls all bite** — an unbacked purse write, an UPDATE on the ledger, a DELETE on events, a second flagship, and an overdraft are each REJECTED. The probe then rolls back to zero rows, which is itself asserted. |
@@ -42,7 +42,7 @@ none fails as vacuous.
 |---|---|---|
 | `01_offline_equivalence.sql` | 5 markers | DESIGN Appendix 2 §1. The **same** voyage — pre-screened to contain a real hazard — is settled day by day, the result captured, the settlement rolled away, and then settled **once, nine hours late**. `(day_index, kind, payload, resolved_at)` match to the character; so do the purse and the ETA. |
 | `02_ledger_reconciliation.sql` | 6 markers | DESIGN Appendix 2 §2. 500 randomised orders across 3 houses with time jumping forward underneath them. Requires both successes **and** refusals and money moving both ways, then `purse = Σ ledger.ducats_delta` exactly — and finally falsifies a purse by **one ducat** to prove the check bites. |
-| `03_grant_lockdown.sql` | 7 markers | DESIGN Appendix 2 §3. Not a catalogue query: it **becomes** `anon` and then `authenticated` and tries to INSERT into all 18 tables, requiring SQLSTATE **42501** specifically — a writable table would have failed 23502 instead. Also: `world_config` unreadable, RLS on every table, and `service_role` still able to write. |
+| `03_grant_lockdown.sql` | 8 markers | DESIGN Appendix 2 §3. Not a catalogue query: it **becomes** `anon` and then `authenticated` and tries to INSERT into all 18 tables, requiring SQLSTATE **42501** specifically — a writable table would have failed 23502 instead. Also: `world_config` unreadable, RLS on every table, `service_role` still able to write, and — at end of chain, where it matters most — **every object in all four schemas owned by the role that applied the chain**, which is what makes Supabase's un-revokable default privileges harmless (see the 2026-08-18 note). |
 | `04_first_session.sql` | 9 markers | §K.1's ten minutes, replayed as **typed strings through `cmd.issue()`**. Two honest divergences from the script are asserted rather than papered over: `BUY sal 60` does not fit a 60-tun hold carrying stores, and a laden Barca is slower than the 4.7 minutes quoted for an empty one. The house ends **+506 d. on an 8,000 d. stake**. |
 
 ## Two defects these proofs found
@@ -57,7 +57,7 @@ Recorded because a proof that has never caught anything is not yet known to work
    `SELL cloves ALL`, typed in Lisboa, meant "the number aboard right now" rather than "whatever is
    aboard at Amsterdam". Fixed by `cmd.resolve_qty()` reading the hold at execution time (0007).
 
-## 2026-08-18 — 0001 amended: the revoke had to name the grantor
+## 2026-08-18 — 0001 amended twice: an over-broad assert, and the honest form of it
 
 CI's disposable-Supabase job failed applying 0001, on 0001's own assert:
 
@@ -66,42 +66,86 @@ ERROR: 0001 self-assert FAIL: 16 default ACL entr(ies) would grant a client role
        write/execute on future objects (SQLSTATE P0001)
 ```
 
-The assert was right; the **revoke** was half a revoke. `ALTER DEFAULT PRIVILEGES ... REVOKE`
-without `FOR ROLE` only ever touches the **current role's** defaults. Supabase's
-`GRANT ALL ON TABLES/SEQUENCES/FUNCTIONS TO anon, authenticated, service_role` in `public` is
-issued by its **own bootstrap role**, not by the role that applies migrations — so 0001 could not
-see it, let alone clear it. The 16 are exactly: 12 table entries (`anon` + `authenticated` ×
-INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER), 2 sequence entries (UPDATE), 2 function
-entries (EXECUTE).
+Supabase ships `GRANT ALL ON TABLES/SEQUENCES/FUNCTIONS TO anon, authenticated, service_role` in
+`public`, issued by its own bootstrap role `supabase_admin` — 16 entries once exploded (12 table,
+2 sequence, 2 function, for `anon` and `authenticated`). `ALTER DEFAULT PRIVILEGES ... REVOKE`
+without `FOR ROLE` only touches the **current** role's defaults, so 0001 could not see them.
 
-0001 §5b now sweeps them, driven by `pg_default_acl` itself rather than by a guess about which
-roles a given Supabase version uses: it loops over every `(grantor, schema, object type)` the
-catalogue reports under **the same predicate the assert uses**, and issues
-`ALTER DEFAULT PRIVILEGES FOR ROLE <grantor> ... REVOKE ...` for each. It prints the grantors it
-swept, and raises with an actionable message — naming the grantor and the membership needed — if a
-revoke is refused. **Nothing was deployed anywhere, so 0001 was amended in place; no 0011 patch.**
+**The first attempt was to revoke them under each grantor `pg_default_acl` names.** That is
+impossible on the real thing, and CI said so in as many words (run `32122434872`):
 
-The assert was **not** weakened. It was strengthened: its failure message now names the grantor,
-schema, object type, grantee and privilege of every surviving entry, because "16 entries" cost a
-CI round trip to diagnose when the grantor was the whole answer.
+```
+ERROR: 0001: cannot clear the default privileges held by grantor supabase_admin in schema public
+       (object type S). The role applying this migration is postgres, which is not a member of
+       supabase_admin, so ALTER DEFAULT PRIVILEGES FOR ROLE is refused.
+```
 
-**And the local gate was made able to see it.** `npm run db:apply` boots a bare PGlite, which has
-no client roles and no default ACLs at all — so this assert, and the whole grant/RLS family with
-it, passed **vacuously**: nothing to find. `scripts/db/apply-chain.mjs` now applies
+**So the assert itself was wrong — over-broad — and this is the argued case, not a quiet
+softening.** The governing fact:
+
+> **A `pg_default_acl` row applies ONLY to objects created by its own grantor.** It is not a
+> schema-wide rule.
+
+Measured on PostgreSQL 18.3, with all 16 entries in place and 0001 §5a applied:
+
+| created by | resulting ACL |
+|---|---|
+| the migration role (`postgres`) | `relacl = null` — **no client privilege at all** |
+| `supabase_admin` | `anon` and `authenticated` get INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, SELECT |
+
+Same split for sequences and for functions. So `supabase_admin`'s defaults cannot reach a single
+object this game owns, and the old assert demanded control over something the migration cannot
+control **and** that does not threaten it — it would have blocked every deploy, forever. An assert
+that can never pass is not strictness; it is pressure to delete the check.
+
+**0001 now asserts what it can actually guarantee:**
+
+| | |
+|---|---|
+| **(d)** | default ACLs **owned by the role applying the chain** grant no client a write or execute. Kept, and narrowed to this — these are the ones that govern every object the chain creates. |
+| **(d2)** | default ACLs owned by **any other** grantor are printed as a permanent `NOTICE` on **every apply**, naming the grantor and the object types. Never swallowed, never fatal. |
+| **(b)(c)** | no **current** table carries a client write, through `client_write_grants()` and independently through `information_schema`. Unchanged; proof 03 confirms it by actually being `anon`. |
+| **(i)** | **NEW.** Every table, sequence, view and function in all four schemas is **owned by the role applying the chain** — so none of them can have inherited a foreign grantor's defaults. This is what converts (d2)'s un-revokable entries from an unprovable claim into an **irrelevant** one. |
+
+(i) has a positive control that needs no privileges: the same authority,
+`public.objects_not_owned_by()`, is asked about a role that owns nothing and must return rows,
+which proves the scan reaches these schemas and that the owner comparison discriminates. Extension
+members are excluded — their owner is the platform's choice, not ours — and the count skipped is
+NOTICEd rather than hidden.
+
+**§5b deliberately does not attempt the foreign revoke at all**, not even opportunistically. It
+would succeed locally (the harness runs as a superuser) and fail on Supabase, putting the cheap gate
+and CI back on different code paths — which is the original defect in this whole episode.
+
+`objects_not_owned_by()` is also asserted at **end of chain** by proof 03's eighth marker,
+`GRANT_LOCKDOWN_CHAIN_OWNS_EVERYTHING`, which CI re-runs against the disposable Supabase; and the
+workflow re-checks both claims from raw catalogue queries, independently of the chain's own
+authorities.
+
+**Nothing was deployed anywhere, so 0001 was amended in place; no 0011 patch.**
+
+**And the local gate was made able to see any of this.** `npm run db:apply` boots a bare PGlite,
+which has no client roles and no default ACLs at all — so this assert, and the whole grant family
+with it, passed **vacuously**: nothing to find. `scripts/db/apply-chain.mjs` now applies
 `scripts/db/supabase-preamble.sql` first (a **test fixture, never a migration**), installing those
-roles and those default privileges under a foreign grantor. With it in place the unfixed 0001
-fails locally with the identical 16-entry message CI reported. The fixture asserts its own effect
-and raises if it stops modelling 16.
+roles and those 16 default privileges under a foreign grantor. With it in place the original 0001
+failed locally with the identical 16-entry message CI reported, and the current 0001 prints the
+same `NOTE` locally that it will print on Supabase.
 
 ---
 
 ## What is NOT proven here
 
 * **Supabase's own roles.** The preamble is a fixture a human wrote from what CI reported; it can
-  drift from the platform, and it models only roles and default ACLs. Supabase creates the roles
-  itself, *with* a default `GRANT ALL` — the exact drift that aborted the predecessor's deploy.
-  Only the disposable-Supabase job in `.github/workflows/migrations-apply-proof.yml` proves the
-  revoke lands against those, and it now re-checks the default ACLs from outside the migration.
+  drift from the platform, and it models only roles and default ACLs — not that the migration role
+  is a **non-superuser** there, which is precisely what made the first fix impossible. Only the
+  disposable-Supabase job in `.github/workflows/migrations-apply-proof.yml` meets the real roles,
+  and it now re-checks the default ACLs and the object ownership from outside the migration.
+* **That the un-revokable platform defaults stay harmless.** They are harmless *because* nothing
+  here is created by `supabase_admin`. If a future migration ever runs `set role`, or an extension
+  is installed into one of these four schemas by another role, that stops being true — which is why
+  assert (i) and proof 03's `GRANT_LOCKDOWN_CHAIN_OWNS_EVERYTHING` run on every apply rather than
+  being a one-time argument written in a comment.
 * **pg_cron.** The tick functions are proven by being called, not by being scheduled. Nothing here
   shows a cron entry firing on a real Supabase project.
 * **PostgREST exposure.** The RPCs live in the `world` / `cmd` / `voyage` schemas, as DESIGN

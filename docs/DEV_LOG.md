@@ -5,99 +5,112 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
-## 2026-08-18 — D8: the local gate was blind to Supabase's own default privileges
+## 2026-08-18 — D8: a blind local gate, and then an assert that could never pass
 
-**The failure.** CI's `disposable-chain` job — the one that boots a real Supabase in Docker and
-applies the whole chain — failed applying migration **0001**, on 0001's own self-assert:
+Two failures, one after the other, and the second is the more interesting one.
+
+### Round 1 — the local gate was blind
+
+CI's `disposable-chain` job — the one that boots a real Supabase in Docker — failed applying
+migration **0001**, on 0001's own self-assert, three runs running (`8d1956e`, `27bcb58`, `0836c31`):
 
 ```
 ERROR: 0001 self-assert FAIL: 16 default ACL entr(ies) would grant a client role a
        write/execute on future objects (SQLSTATE P0001)
 ```
 
-Three runs in a row (`8d1956e`, `27bcb58`, `0836c31`). `npm run db:apply` and `npm run db:proof`
-were **green on this machine** the whole time.
+`npm run db:apply` and `npm run db:proof` were **green on this machine** the whole time, because
+`scripts/db/apply-chain.mjs` boots a **bare PGlite**: no `anon`, no `authenticated`, and **no
+`ALTER DEFAULT PRIVILEGES` entries of any kind**. 0001's lockdown had nothing to revoke and its
+assert had nothing to find. It passed **vacuously** — and so did every other grant / default-ACL /
+role-dependent assert in the chain. A green run over an empty starting state is not a proof.
 
-**Root cause, in two halves.**
+Fix: **`scripts/db/supabase-preamble.sql`**, a **test fixture, never a migration**, applied by
+`apply-chain.mjs` before 0001. It creates the Supabase roles and installs the default privileges a
+real project ships, **under a grantor that is not the role applying the chain** — which is the
+entire mechanism. It lives in `scripts/`, so the Supabase CLI (which only reads
+`supabase/migrations/`) cannot deploy it. The harness refuses to run without it, and refuses to run
+if it stops printing its own receipt. With it in place, the unfixed 0001 failed locally with CI's
+message character for character.
 
-1. *The revoke was half a revoke.* `ALTER DEFAULT PRIVILEGES ... REVOKE` **without `FOR ROLE` only
-   touches the current role's own defaults.** Supabase ships
-   `GRANT ALL ON TABLES/SEQUENCES/FUNCTIONS TO anon, authenticated, service_role` in `public`,
-   issued by its **own bootstrap role** — not by the role that applies migrations. 0001's revoke
-   could not see those entries, so all 16 survived: 12 on tables (`anon` + `authenticated` ×
-   INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER), 2 on sequences (UPDATE), 2 on functions
-   (EXECUTE). **The assert was correct and caught a real defect.** This is the second time this
-   exact shape has bitten: it is what aborted a production deploy in the predecessor project
-   (memory note *"Prod grant drift: revoke, don't assert"*), and it is why 0001 exists at all.
-2. *The local gate could not see it, and was never able to.* `scripts/db/apply-chain.mjs` boots a
-   **bare PGlite**: no `anon`, no `authenticated`, and **no `ALTER DEFAULT PRIVILEGES` entries of
-   any kind**. So 0001's lockdown had nothing to revoke and its assert had nothing to find. It
-   passed **vacuously** — and so did every other grant / default-ACL / role-dependent assert in
-   the chain. A green local run over an empty starting state is not a proof, and this was a whole
-   *class* of defect the ten-second gate structurally could not catch.
+### Round 2 — the assert was over-broad, and unsatisfiable on the real thing
 
-**The fix, both halves.**
-
-* **0001 §5b** now sweeps the default privileges of **every grantor `pg_default_acl` actually
-  names**, not just the current role. It is driven by the catalogue rather than by a guess about
-  which roles a given Supabase version uses, and it filters on **the same predicate the assert
-  uses**, so the sweep and the law cannot drift apart. It prints the grantors it swept, and if a
-  revoke is refused it raises naming the grantor, the current role and the membership required —
-  rather than letting the count-only assert fire with no explanation. Nothing is deployed
-  anywhere, so **0001 was amended in place; no 0011 patch.** Forward-only starts when the chain
-  goes live.
-* **`scripts/db/supabase-preamble.sql`** — a new **test fixture, never a migration**, applied by
-  `apply-chain.mjs` *before* 0001. It creates the Supabase roles and installs the default
-  privileges a real project ships, **under a grantor that is not the role applying the chain** —
-  which is the entire mechanism. It lives in `scripts/`, so the Supabase CLI (which only reads
-  `supabase/migrations/`) cannot deploy it. `apply-chain.mjs` refuses to run without it and
-  refuses to run if it does not print its own receipt.
-
-**The assert was not weakened anywhere.** It was strengthened: its failure message now names the
-grantor, schema, object type, grantee and privilege of every surviving entry, because "16 entries"
-with no grantor named cost a CI round trip to diagnose.
-
-**Proof the fixture is not decorative** — with the preamble in place and 0001 still unfixed,
-`npm run db:apply` fails locally with CI's message, character for character:
+The first fix made 0001 revoke the defaults of **every grantor `pg_default_acl` names**. CI then
+failed with the message that fix was written to produce (run `32122434872`):
 
 ```
-MIGRATION FAILED: 20260818000001_the_world_is_read_only_to_everyone_but_the_server.sql
-  message: 0001 self-assert FAIL: 16 default ACL entr(ies) would grant a client role a write/execute on future objects
-  sqlstate: P0001
+ERROR: 0001: cannot clear the default privileges held by grantor supabase_admin in schema public
+       (object type S). The role applying this migration is postgres, which is not a member of
+       supabase_admin, so ALTER DEFAULT PRIVILEGES FOR ROLE is refused.
 ```
 
-With 0001 fixed, the same command prints:
+So the grantor was `supabase_admin` and **the revoke is genuinely impossible from the migration
+role.** The assert as written could never pass on a real Supabase project.
+
+**The assert was wrong.** Stated plainly, and argued before changing, because that is the rule.
+The governing fact — verified by running it, not by reasoning about it:
+
+> **A `pg_default_acl` row applies ONLY to objects created by its own grantor.**
+
+Measured on PostgreSQL 18.3 with all 16 entries in place and 0001 §5a applied:
 
 ```
-── preamble: scripts/db/supabase-preamble.sql  (test fixture, never deployed)
-    supabase-preamble ok: 4 Supabase roles present; 16 assert-visible default ACL entries installed
-    under grantor supabase_admin (12 table + 2 sequence + 2 function), reproducing the CI starting state
-── 20260818000001_…
-    0001: cleared foreign-grantor default privileges with 3 ALTER DEFAULT PRIVILEGES statement(s)
-    under grantor(s): supabase_admin
-    0001 self-assert ok: lockdown holds …, 0 default-ACL leaks, …
+create table public.t_by_postgres        ->  owner postgres        relacl = null            (no client privilege)
+create table public.t_by_supabase_admin  ->  owner supabase_admin  anon + authenticated get
+                                             INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, SELECT
 ```
 
-**How the 16 was derived, since guessing is what caused this.** CI named the number; the arithmetic
-was then reproduced on real PostgreSQL 18.3 (PGlite 0.5.5) by issuing the three
-`ALTER DEFAULT PRIVILEGES` statements under a foreign grantor and exploding the result through the
-assert's own predicate — 12 + 2 + 2 = 16, on the nose. (PostgreSQL stores no `PUBLIC=X` entry in a
-function default ACL created that way, which is why it is 16 and not 17.)
+Same split for sequences and functions. `supabase_admin`'s defaults cannot reach an object this
+game owns. The assert was demanding control over something the migration cannot control **and**
+that does not threaten it — a permanently blocked deploy, which is really just sustained pressure
+to delete the check.
 
-**A defect found by exercising the error paths rather than trusting them.** Both new failure
-branches were run deliberately on PGlite (the assert with §5b removed; the sweep run as a role that
-is not a member of the grantor). The first raised `operator is not unique: text || "char"` instead
+**0001 restructured to assert what it can actually guarantee:**
+
+* **(d)** — default ACLs **owned by the role applying the chain** are clean. Kept and narrowed to
+  this; these are the ones that decide every object the chain creates. Real protection, unchanged
+  in force.
+* **(d2)** — foreign grantors' defaults are a permanent **`NOTICE` on every apply**, naming the
+  grantor and object types. Never swallowed, never fatal.
+* **(i) — NEW, and it is what pays for the narrowing.** Every table, sequence, view and function in
+  all four schemas is **owned by the role applying the chain**, so none can have inherited a foreign
+  grantor's defaults. That turns (d2)'s un-revokable entries from an unprovable claim into an
+  irrelevant one, which is the honest position. Positive control: the same authority
+  (`public.objects_not_owned_by()`) asked about a role that owns nothing must return rows — a
+  control that needs no privileges, which matters because the migration role on Supabase is not a
+  superuser and cannot manufacture a violation to test with.
+* Proof 03 gained an **eighth marker**, `GRANT_LOCKDOWN_CHAIN_OWNS_EVERYTHING`, so the ownership law
+  is checked at **end of chain** — and CI re-runs proof 03 against the disposable Supabase, which is
+  the only place it meets the platform's real roles. The workflow also re-checks both claims with
+  raw catalogue queries, independent of the chain's own authorities.
+
+**§5b deliberately does not even attempt the foreign revoke.** It would succeed here (the harness
+runs as a superuser) and fail there, putting the cheap gate and CI back on different code paths —
+the original defect of this whole episode.
+
+Nothing is deployed anywhere, so **0001 was amended in place; no 0011 patch.** Forward-only starts
+when the chain goes live.
+
+**A defect found by firing the error paths instead of trusting them.** Both new failure branches
+were run deliberately on PGlite. The first raised `operator is not unique: text || "char"` instead
 of its own message — `pg_default_acl.defaclobjtype` is `"char"` and needs an explicit `::text`. An
-error path that has never been fired is not known to work; this one would have cost another CI
-round trip.
+error path that has never been fired is not known to work.
 
-**Also changed:** `disposable-chain` now re-checks the default ACLs **from outside** migration 0001
-and prints every grantor, so the claim never rests on the migration's own self-assert alone, and a
-future failure names whose defaults they were on the first run.
+### What this actually taught, which is subtler than round 1
 
-**What is still true and must stay written down:** the PGlite gate is *narrower* than the
-disposable-Supabase job, not equal to it. `docs/HANDOFF.md` §2 has been corrected to say so and to
-name the class.
+Round 1's lesson was the obvious one: *CI catches a class of defect the local gate cannot see.*
+Round 2's is sharper and worth more:
+
+> **A local gate that models a hostile starting state can produce an assert that is unsatisfiable
+> on the real thing.** The preamble was right to exist — without it the defect was invisible. Its
+> first assert was wrong, because "reproduce the hostile state" is not the same as "reproduce what
+> the migration role is *permitted to do about it*". PGlite runs as a superuser; Supabase's
+> `postgres` is not one and is not a member of `supabase_admin`. A fixture that models the
+> environment but not the **authority** will happily let you write a check that passes locally and
+> can never pass in production.
+
+The general rule this leaves behind: **assert the thing you own, and prove the thing you don't own
+cannot reach you.** Not: assert that the platform is shaped the way you would have shaped it.
 
 ---
 

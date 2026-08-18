@@ -15,6 +15,14 @@
 --   The lesson is not "assert grants". It is "REVOKE FIRST, then assert, and do it before the
 --   first table exists, so that nothing can ever inherit the default". That is this file.
 --
+--   The second lesson, learned here on 2026-08-18 and written into 5b: assert the thing you can
+--   actually guarantee. The first version of this file demanded that NO default ACL anywhere in
+--   these schemas grant a client a write — including Supabase's own, which the migration role has
+--   no power to revoke. That assert could never have passed on a real project. An assert that
+--   cannot pass is not strictness, it is a permanently blocked deploy, and the pressure it creates
+--   is pressure to disable the check. It was narrowed to what this migration governs and PAID FOR
+--   with a new assert (i) that closes the gap the narrowing opened.
+--
 -- ── WHAT THIS MIGRATION ESTABLISHES ─────────────────────────────────────────────────────────────
 --   1. The four schemas the design names: public (tables), world / cmd / voyage (the RPC surface,
 --      docs/DESIGN.md Appendix 2).
@@ -29,18 +37,29 @@
 --   4. `public.wc_num/wc_int/wc_text` — the ONE knob reader. Fail-closed: a missing key RAISES.
 --      No caller may read world_config directly; a second reader is a second authority.
 --   5. THE LOCKDOWN: every write privilege revoked from the client roles, on tables AND functions,
---      in all four schemas, plus the DEFAULT PRIVILEGES retuned so nothing created later inherits
---      one — for THIS role (5a) and, driven by pg_default_acl itself, for EVERY OTHER GRANTOR the
---      platform preconfigured (5b). Later migrations grant SELECT explicitly, table by table.
+--      in all four schemas, plus THIS ROLE'S DEFAULT PRIVILEGES retuned so nothing it creates later
+--      inherits one (5a). Later migrations grant SELECT explicitly, table by table.
+--      5b explains, at length, why the platform's OWN default privileges are deliberately left
+--      alone — read it before touching any of this.
 --   6. `public.client_write_grants()` — the ONE authority for "does a client role hold a write?".
 --      Migrations 0002-0010 each call it; so does scripts/db/proofs/03_grant_lockdown.sql.
+--   6b. `public.objects_not_owned_by()` — the ONE authority for "did anything we own get created by
+--      somebody else?". It is what makes the platform defaults of 5b harmless rather than merely
+--      unproven, because a default ACL binds at CREATE time to the object's OWNER.
 --
 -- ── WHAT IT SELF-ASSERTS ────────────────────────────────────────────────────────────────────────
 --   * `client_write_grants()` returns zero rows — AND a deliberately granted probe table proves
 --      the query can actually find one (a zero-count assert with no positive control is a check
 --      that has never been shown capable of failing).
 --   * The same zero, independently, through `information_schema.role_table_grants`.
---   * No DEFAULT ACL in any of the four schemas grants a client role a write.
+--   * No default ACL OWNED BY THE ROLE APPLYING THIS CHAIN grants a client role a write or an
+--      execute — the defaults that actually govern every object this chain creates. Default ACLs
+--      owned by other grantors are REPORTED as a permanent NOTICE, on every apply, and are not
+--      fatal: see 5b for the measurement showing they cannot reach an object we own.
+--   * EVERY table, sequence, view and function in all four schemas is owned by that same role —
+--      with a positive control proving the ownership scan can report a mismatch. This is the assert
+--      that converts the un-revokable foreign defaults from an unprovable claim into an irrelevant
+--      one, and it is the honest form of the claim this file used to overstate.
 --   * `anon` and `authenticated` hold NOTHING AT ALL on `world_config`, not even SELECT.
 --   * Every seeded knob is readable through the reader, has a non-empty description, and a
 --      deliberately absent key RAISES rather than returning null.
@@ -221,77 +240,44 @@ alter default privileges in schema public, world, cmd, voyage
 alter default privileges in schema public, world, cmd, voyage
   revoke execute on functions from public, anon, authenticated;
 
--- 5b. EVERY OTHER GRANTOR'S defaults. This is the half that was missing, and the reason CI's
---     disposable-Supabase job failed this file's own assert (d) with 16 surviving entries while a
---     bare PGlite reported none.
+-- 5b. EVERY OTHER GRANTOR'S defaults — DELIBERATELY NOT TOUCHED. Read this before "fixing" it.
 --
---     `ALTER DEFAULT PRIVILEGES ... REVOKE` without `FOR ROLE` only ever touches the CURRENT
---     role's defaults. Supabase's `GRANT ALL ON TABLES/SEQUENCES/FUNCTIONS TO anon, authenticated,
---     service_role` in `public` is issued by its OWN bootstrap role, not by the role that applies
---     migrations — so 5a cannot see it, let alone clear it. Written out by hand it would also be a
---     guess about which roles a given Supabase version uses. It is not a guess here: pg_default_acl
---     names every grantor, and the loop revokes under each one it names.
+--     Supabase ships `GRANT ALL ON TABLES/SEQUENCES/FUNCTIONS TO anon, authenticated,
+--     service_role` in `public`, issued by its own bootstrap role `supabase_admin`. Sixteen such
+--     entries exist on a virgin project (12 table + 2 sequence + 2 function, for anon and
+--     authenticated). 5a cannot clear them: `ALTER DEFAULT PRIVILEGES ... REVOKE` without
+--     `FOR ROLE` only ever touches the CURRENT role's defaults. Neither can anything else in this
+--     file — the role that applies migrations is `postgres`, it is NOT a member of
+--     `supabase_admin`, and `ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin` is refused outright
+--     (proven on CI's disposable Supabase, 2026-08-18, run 32122434872).
 --
---     The filter is deliberately the SAME predicate assert (d) below uses, so the sweep and the law
---     cannot drift apart. Object types carrying only USAGE (domains, types) never match it and are
---     left alone — revoking USAGE on types from PUBLIC would break composite RPC return values and
---     is not what "no client may WRITE" means.
-do $$
-declare
-  r           record;
-  v_stmts     int  := 0;
-  v_grantors  text[] := '{}';
-begin
-  for r in
-    select distinct
-           d.defaclrole::regrole::text as grantor,
-           n.nspname                   as schema_name,
-           d.defaclobjtype             as objtype
-      from pg_default_acl d
-      join pg_namespace n on n.oid = d.defaclnamespace
-     cross join lateral aclexplode(d.defaclacl) a
-     where n.nspname in ('public', 'world', 'cmd', 'voyage')
-       and (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end)
-           in ('anon', 'authenticated', 'PUBLIC')
-       and a.privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER', 'EXECUTE')
-     order by 1, 2, 3
-  loop
-    begin
-      if r.objtype = 'r' then
-        execute format(
-          'alter default privileges for role %s in schema %I revoke all on tables from anon, authenticated',
-          r.grantor, r.schema_name);
-      elsif r.objtype = 'S' then
-        execute format(
-          'alter default privileges for role %s in schema %I revoke all on sequences from anon, authenticated',
-          r.grantor, r.schema_name);
-      elsif r.objtype = 'f' then
-        execute format(
-          'alter default privileges for role %s in schema %I revoke all on functions from public, anon, authenticated',
-          r.grantor, r.schema_name);
-      else
-        -- A default ACL object type that can carry a write and that this file does not know how to
-        -- revoke must stop the deploy, not be skipped quietly.
-        raise exception '0001: pg_default_acl names object type % (grantor %, schema %) carrying a client write, and this migration has no revoke for it',
-          r.objtype, r.grantor, r.schema_name;
-      end if;
-      v_stmts := v_stmts + 1;
-      if not (r.grantor = any (v_grantors)) then
-        v_grantors := v_grantors || r.grantor;
-      end if;
-    exception when insufficient_privilege then
-      raise exception '0001: cannot clear the default privileges held by grantor % in schema % (object type %). The role applying this migration is %, which is not a member of %, so ALTER DEFAULT PRIVILEGES FOR ROLE is refused. Grant that membership (or have % issue the revoke) — do NOT relax the assert below; those defaults really would hand a client role a write on every object % creates here.',
-        r.grantor, r.schema_name, r.objtype, current_user, r.grantor, r.grantor, r.grantor;
-    end;
-  end loop;
-
-  if v_stmts = 0 then
-    raise notice '0001: no foreign-grantor default ACL to clear in public/world/cmd/voyage (expected on a bare PostgreSQL; on Supabase this would mean the platform stopped shipping them)';
-  else
-    raise notice '0001: cleared foreign-grantor default privileges with % ALTER DEFAULT PRIVILEGES statement(s) under grantor(s): %',
-      v_stmts, array_to_string(v_grantors, ', ');
-  end if;
-end $$;
+--     THAT IS FINE, AND HERE IS WHY — the point everything below depends on:
+--
+--         A pg_default_acl row applies ONLY to objects created by ITS OWN GRANTOR.
+--
+--     It is not a schema-wide rule. supabase_admin's defaults decide the ACL of objects
+--     supabase_admin creates. Every object in this chain is created by the migration role, so the
+--     migration role's OWN defaults — the ones 5a revokes — are the ones that actually govern this
+--     game's tables, sequences and functions.
+--
+--     Measured on PostgreSQL 18.3, with those 16 entries in place and 5a applied:
+--         create table public.t_by_postgres        (...)  ->  relacl = null           (no client privilege)
+--         create table public.t_by_supabase_admin  (...)  ->  anon + authenticated get INSERT,
+--                                                             UPDATE, DELETE, TRUNCATE, REFERENCES,
+--                                                             TRIGGER, SELECT, MAINTAIN
+--     Same split for sequences and for functions. The grantor is the whole difference.
+--
+--     So the residual risk is not "supabase_admin has defaults". It is "did anything WE own get
+--     created by supabase_admin?" — and that is a question this migration CAN answer. Assert (i)
+--     answers it, for every table, sequence, view and function in all four schemas, through
+--     `public.objects_not_owned_by()`. Foreign defaults are reported by assert (d2) as a permanent
+--     NOTICE on every apply, so they are never invisible; they are harmless while (i) holds, and
+--     the moment (i) fails they become a live hole and (i) aborts the deploy.
+--
+--     AND WHY THERE IS NO "TRY THE REVOKE, IGNORE FAILURE" LOOP: it would succeed here — the local
+--     harness runs as a superuser — and fail on Supabase, so the local gate and CI would once again
+--     be testing different code paths. That divergence is the exact defect this file was corrected
+--     for. Do the same thing in both places, or the cheap gate is worthless.
 
 revoke all on public.world_config from anon, authenticated;
 
@@ -334,6 +320,61 @@ comment on function public.client_write_grants() is
 
 revoke all on function public.client_write_grants() from public, anon, authenticated;
 
+-- ── 6b. THE ONE AUTHORITY for "did anything we own get created by somebody else?" ──────────────
+-- The companion to client_write_grants(), and the reason the un-revokable foreign default ACLs
+-- described in 5b are harmless here. A default ACL binds at CREATE time to the object's OWNER, so
+-- an object owned by the migration role cannot have inherited another grantor's defaults. Prove
+-- the ownership and the foreign defaults stop mattering; lose it and they start mattering at once.
+--
+-- Takes the expected owner as an ARGUMENT rather than reading current_user, for two reasons: it is
+-- SECURITY DEFINER (where current_user is the definer, not the caller, which is a trap), and it
+-- lets the self-assert use a wrong owner as a POSITIVE CONTROL to prove the scan really discriminates.
+--
+-- Extension-owned objects are excluded and reported separately: `create extension` installs objects
+-- owned by whoever the platform installed the extension as, that owner is not ours to choose, and
+-- an extension is not a game object. Excluding them silently would be a hole, so assert (i) NOTICEs
+-- every one it skipped.
+create or replace function public.objects_not_owned_by(p_owner text)
+returns table (schema_name text, object_name text, kind text, owner text)
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select n.nspname::text, c.relname::text,
+         (case c.relkind when 'r' then 'table'    when 'p' then 'partitioned table'
+                         when 'S' then 'sequence' when 'v' then 'view'
+                         when 'm' then 'materialized view' when 'f' then 'foreign table'
+                         else c.relkind::text end)::text,
+         pg_get_userbyid(c.relowner)::text
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname in ('public', 'world', 'cmd', 'voyage')
+     and c.relkind in ('r', 'p', 'S', 'v', 'm', 'f')
+     and pg_get_userbyid(c.relowner) <> p_owner
+     and not exists (select 1 from pg_depend dep
+                      where dep.classid = 'pg_class'::regclass and dep.objid = c.oid
+                        and dep.deptype = 'e')
+  union all
+  select n.nspname::text, p.proname::text, 'function'::text,
+         pg_get_userbyid(p.proowner)::text
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname in ('public', 'world', 'cmd', 'voyage')
+     and pg_get_userbyid(p.proowner) <> p_owner
+     and not exists (select 1 from pg_depend dep
+                      where dep.classid = 'pg_proc'::regclass and dep.objid = p.oid
+                        and dep.deptype = 'e')
+$$;
+
+comment on function public.objects_not_owned_by(text) is
+  'THE ONE authority for "is any object in public/world/cmd/voyage owned by a role other than the '
+  'one that applied this chain?". Zero rows is the law, and it is what makes the platform default '
+  'ACLs this migration cannot revoke (see 5b) irrelevant rather than merely unproven. Extension '
+  'members are excluded; assert (i) in 0001 reports any it skipped.';
+
+revoke all on function public.objects_not_owned_by(text) from public, anon, authenticated;
+
 -- ── 7. SELF-ASSERT ─────────────────────────────────────────────────────────────────────────────
 do $$
 declare
@@ -341,10 +382,15 @@ declare
   v_probe_found  int;
   v_info         int;
   v_defacl       int;
+  v_foreign_n    int;
+  v_foreign_txt  text;
   v_wc           int;
   v_knobs        int;
   v_missing_desc int;
   v_raised       boolean := false;
+  v_owned_wrong  int;
+  v_owned_probe  int;
+  v_ext_skipped  int;
 begin
   -- (a) POSITIVE CONTROL FIRST. Grant a client role a write on a throwaway table and prove the
   --     authority SEES it. Without this, step (b)'s zero could mean "nothing is wrong" or
@@ -390,37 +436,70 @@ begin
     raise exception '0001 self-assert FAIL: information_schema still reports % client write grant(s)', v_info;
   end if;
 
-  -- (d) No DEFAULT ACL hands a future table a write. This is the half that the predecessor missed:
-  --     the tables were clean and the DEFAULT was not, so the NEXT table was born wrong.
+  -- (d) THE MIGRATION ROLE'S OWN default privileges are clean. THIS is the real protection, and
+  --     it is the half the predecessor missed: its tables were clean and its DEFAULT was not, so
+  --     the NEXT table it created was born wrong. Everything this chain creates is created by this
+  --     role, so these are the defaults that decide our objects' ACLs (see 5b for the measurement).
+  --
+  --     It was previously written over ALL grantors. That version could never pass on Supabase —
+  --     the platform's own `supabase_admin` defaults cannot be revoked from here — and it was
+  --     over-broad besides: a pg_default_acl row binds only objects created by its own grantor, so
+  --     supabase_admin's entries cannot touch an object this chain owns. Narrowed deliberately, on
+  --     evidence, and paid for by the NEW assert (i) below, which proves the thing that actually
+  --     matters. This is a narrowing, not a softening: (d) still fails closed for every default
+  --     that governs our own objects, and (i) closes what (d) gave up.
   select count(*) into v_defacl
     from pg_default_acl d
     join pg_namespace n on n.oid = d.defaclnamespace
    cross join lateral aclexplode(d.defaclacl) a
    where n.nspname in ('public', 'world', 'cmd', 'voyage')
+     and d.defaclrole = current_user::regrole::oid
      and (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end)
          in ('anon', 'authenticated', 'PUBLIC')
      and a.privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER', 'EXECUTE');
   if v_defacl <> 0 then
-    -- Name them. "16 entries" cost a CI round trip to diagnose because the message did not say
-    -- WHOSE defaults they were, and the grantor is the entire answer (see 5b).
-    raise exception '0001 self-assert FAIL: % default ACL entr(ies) would grant a client role a write/execute on future objects: %',
-      v_defacl,
-      (select string_agg(x.grantor || ' -> ' || x.schema_name || ' ' || x.objtype || ' ' || x.grantee || ':' || x.privilege_type, ', ' order by x.grantor, x.schema_name, x.objtype, x.grantee, x.privilege_type)
-         from (select d.defaclrole::regrole::text as grantor,
-                      n.nspname                  as schema_name,
+    raise exception '0001 self-assert FAIL: % default ACL entr(ies) owned by %, the role applying this chain, would grant a client role a write/execute on every object it creates here: %',
+      v_defacl, current_user,
+      (select string_agg(x.schema_name || ' ' || x.objtype || ' ' || x.grantee || ':' || x.privilege_type, ', ' order by x.schema_name, x.objtype, x.grantee, x.privilege_type)
+         from (select n.nspname             as schema_name,
                       -- ::text is load-bearing: defaclobjtype is "char", and `text || "char"` is
                       -- an ambiguous operator, so without it this message raises 42725 instead of
-                      -- itself. Proven by running the assert with the §5b sweep removed.
-                      d.defaclobjtype::text      as objtype,
+                      -- itself. Proven by firing the branch deliberately.
+                      d.defaclobjtype::text as objtype,
                       (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end) as grantee,
                       a.privilege_type
                  from pg_default_acl d
                  join pg_namespace n on n.oid = d.defaclnamespace
                 cross join lateral aclexplode(d.defaclacl) a
                 where n.nspname in ('public', 'world', 'cmd', 'voyage')
+                  and d.defaclrole = current_user::regrole::oid
                   and (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end)
                       in ('anon', 'authenticated', 'PUBLIC')
                   and a.privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER', 'EXECUTE')) x);
+  end if;
+
+  -- (d2) FOREIGN grantors' defaults: REPORTED, NEVER SWALLOWED, never fatal. This migration cannot
+  --      revoke them (5b) and does not need to (assert (i)). It must never hide them either: if
+  --      this NOTICE stops appearing on Supabase the platform changed something, and if assert (i)
+  --      ever fails these entries are the live hole. Printed on EVERY apply, by design.
+  select count(*), coalesce(string_agg(distinct y.grantor || ' (' || y.schema_name || ' ' || y.objtype || ')', ', '), '')
+    into v_foreign_n, v_foreign_txt
+    from (select d.defaclrole::regrole::text as grantor,
+                 n.nspname                   as schema_name,
+                 d.defaclobjtype::text       as objtype
+            from pg_default_acl d
+            join pg_namespace n on n.oid = d.defaclnamespace
+           cross join lateral aclexplode(d.defaclacl) a
+           where n.nspname in ('public', 'world', 'cmd', 'voyage')
+             and d.defaclrole <> current_user::regrole::oid
+             and (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end)
+                 in ('anon', 'authenticated', 'PUBLIC')
+             and a.privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER', 'EXECUTE')) y;
+  if v_foreign_n > 0 then
+    raise notice '0001 NOTE: % default ACL entr(ies) belong to grantor(s) OTHER than %, and cannot be revoked from here: %. They are HARMLESS to this game because a pg_default_acl row binds only objects created by its own grantor, and assert (i) below proves every object in these four schemas is owned by %. If (i) ever fails, THIS is the hole it opened.',
+      v_foreign_n, current_user, v_foreign_txt, current_user;
+  else
+    raise notice '0001 NOTE: no foreign-grantor default ACL in public/world/cmd/voyage. Expected on a bare PostgreSQL; on Supabase it would mean the platform stopped shipping its GRANT ALL defaults.';
   end if;
 
   -- (e) world_config is server-only: the clients hold NOTHING on it, not even SELECT.
@@ -479,5 +558,44 @@ begin
     raise exception '0001 self-assert FAIL: auth.uid() does not resolve';
   end if;
 
-  raise notice '0001 self-assert ok: lockdown holds (0 client write grants, probe proved the query fires on 2), 0 default-ACL leaks, world_config server-only with RLS on and % knobs all described, wc() raises on an unknown key, gen_random_uuid + auth.uid resolve', v_knobs;
+  -- (i) OWNERSHIP — THE ASSERT THAT MAKES (d2)'s FOREIGN DEFAULTS IRRELEVANT RATHER THAN MERELY
+  --     UNPROVEN. A default ACL binds at CREATE time, to the object's OWNER. So an object owned by
+  --     the role applying this chain CANNOT have inherited supabase_admin's `GRANT ALL`. Prove the
+  --     ownership across all four schemas and the un-revokable entries stop being a hole; lose it
+  --     and they become one instantly, which is what (d2)'s NOTICE exists to make findable.
+  --
+  --     POSITIVE CONTROL FIRST, as everywhere in this file: ask the same authority for objects not
+  --     owned by a role that owns nothing. It must return rows. That proves the scan reaches these
+  --     schemas AND that the owner comparison discriminates — the only two ways it could report a
+  --     false zero. It needs no privilege of any kind, which matters: the migration role on
+  --     Supabase is not a superuser and cannot create a role or reassign an owner to manufacture a
+  --     violation.
+  select count(*) into v_owned_probe from public.objects_not_owned_by('anon');
+  if v_owned_probe = 0 then
+    raise exception '0001 self-assert FAIL: objects_not_owned_by(anon) found 0 objects, but this chain has just created several owned by %. The ownership scan is not working, so its zero below would prove nothing.', current_user;
+  end if;
+
+  select count(*) into v_owned_wrong from public.objects_not_owned_by(current_user::text);
+  if v_owned_wrong <> 0 then
+    raise exception '0001 self-assert FAIL: % object(s) in public/world/cmd/voyage are owned by a role other than %, so they may have inherited that role''s default privileges (see 5b and NOTE (d2)): %',
+      v_owned_wrong, current_user,
+      (select string_agg(o.schema_name || '.' || o.object_name || ' (' || o.kind || ', owned by ' || o.owner || ')', ', ' order by o.schema_name, o.object_name)
+         from public.objects_not_owned_by(current_user::text) o);
+  end if;
+
+  -- Extension members are excluded from that scan on purpose (their owner is the platform's
+  -- choice, not ours, and an extension is not a game object). Excluding them SILENTLY would be a
+  -- hole, so say how many and which.
+  select count(*) into v_ext_skipped
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname in ('public', 'world', 'cmd', 'voyage')
+     and exists (select 1 from pg_depend dep
+                  where dep.classid = 'pg_class'::regclass and dep.objid = c.oid and dep.deptype = 'e');
+  if v_ext_skipped > 0 then
+    raise notice '0001 NOTE: % extension-owned relation(s) in these schemas are outside the ownership assert (i) — their owner is the platform''s choice, not this chain''s', v_ext_skipped;
+  end if;
+
+  raise notice '0001 self-assert ok: lockdown holds (0 client write grants, probe proved the query fires on 2), 0 default-ACL leaks owned by % (probe proved the ownership scan fires on %), world_config server-only with RLS on and % knobs all described, wc() raises on an unknown key, gen_random_uuid + auth.uid resolve',
+    current_user, v_owned_probe, v_knobs;
 end $$;
