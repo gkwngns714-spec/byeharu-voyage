@@ -3,3 +3,8 @@ dist/
 .env.local
 .DS_Store
 *.local
+
+# Playwright (browser test artifacts)
+/test-results/
+/playwright-report/
+/playwright/.cache/

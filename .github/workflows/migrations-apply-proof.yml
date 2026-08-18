@@ -1,0 +1,85 @@
+name: Migrations — apply proof (disposable Supabase)
+
+# WHAT THIS PROVES
+#   That the ENTIRE migration chain, from the first file to the newest, applies cleanly in order to
+#   a real PostgreSQL — and that every in-migration self-assert passes against real data.
+#
+#   `supabase start` boots a disposable local stack in Docker inside the runner and applies every
+#   file in supabase/migrations/ in version order. Any error — a syntax error, a broken dependency
+#   on an earlier migration, a violated CHECK constraint, a `raise exception` from a self-assert —
+#   fails the job. That is the whole point: a migration's self-assert is only a promise until
+#   something runs it, and THIS is the only place it runs.
+#
+# WHY IT MUST EXIST
+#   There is no Docker on the dev machine, so SQL cannot be proven locally at all. A migration that
+#   has not been through this workflow is unproven, however carefully it was read. In byeharu the
+#   equivalent job is what caught the failures that static review had missed: a vacuous self-assert
+#   that never touched a row, and a migration that was correct in isolation but collided with a
+#   live CHECK constraint added three files earlier.
+#
+# WHAT IT DOES NOT DO — AND MUST NEVER DO
+#   It never touches a hosted project. There is no `environment:` on this job, so it cannot read
+#   production secrets even by accident; the database it applies to is created and destroyed inside
+#   the runner. Deploying to a real project is a separate, deliberate workflow.
+#
+# EMPTY CHAIN
+#   supabase/migrations/ is empty today (only its README). The job still runs and still passes:
+#   `supabase start` boots the stack with a bare schema, which proves the harness itself works. The
+#   count step prints how many migrations were applied so a green run can never be mistaken for
+#   "the chain is proven" when the chain does not exist yet.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - '.github/workflows/migrations-apply-proof.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: migrations-apply-proof-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  disposable-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Count the migrations about to be applied
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(supabase/migrations/*.sql)
+          echo "migrations found: ${#files[@]}"
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::notice title=Empty chain::No migrations yet — this run proves the harness boots, not the schema."
+          else
+            printf '  %s\n' "${files[@]}"
+          fi
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start disposable local Supabase (applies the WHOLE chain, in order)
+        run: supabase start
+
+      - name: Show what the database recorded as applied
+        run: |
+          set -euo pipefail
+          supabase status -o env | tee /tmp/sbenv >/dev/null
+          set -a; . /tmp/sbenv; set +a
+          # Read back what actually landed — the applied list comes from the database, not from
+          # the directory listing, so a silently-skipped duplicate version shows up as a gap here.
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c \
+            "select version, name from supabase_migrations.schema_migrations order by version;"
+
+      - name: Stop disposable stack (always)
+        if: always()
+        run: supabase stop --no-backup || true

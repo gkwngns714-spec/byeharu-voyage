@@ -1,0 +1,83 @@
+name: Build (lint · typecheck · production build)
+
+# WHAT THIS PROVES
+#   That the app a reviewer is about to merge actually compiles and bundles, on a clean machine,
+#   from the committed lockfile alone.
+#
+#   Concretely, in order:
+#     1. `npm ci` — the lockfile installs. A dependency added by hand and never locked fails here.
+#     2. `npm run lint` — ESLint over every .ts/.tsx.
+#     3. duplicate migration versions — see the step's own comment; a duplicate version deploys as
+#        a SILENT no-op, so it is caught here rather than in production.
+#     4. `tsc -b` — the whole TypeScript project graph (app + node config + tests) typechecks.
+#     5. `vite build` — the production bundle is really produced, Tailwind included.
+#
+# WHAT IT DOES NOT PROVE
+#   Nothing about SQL, and nothing about how the app behaves in a browser. The migration chain is
+#   proven only by migrations-apply-proof.yml; runtime behaviour needs a Playwright job that does
+#   not exist yet. A green check here means "it builds", not "it works".
+#
+#   Local npm on the dev machine is not the bar either — this workflow is the bar.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (from the lockfile)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # A duplicate migration version deploys as a SILENT NO-OP: schema_migrations keys on the
+      # version, so a second file carrying an existing version is recorded already-applied and
+      # skipped, with everything green. It happened four times in the byeharu project and was
+      # caught by hand every time. This guard lives in `build` deliberately: `build` is the check
+      # that gates a merge, so it is the only place that can actually block one.
+      # It is a no-op while supabase/migrations/ holds no .sql files.
+      - name: Migration versions are unique
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(supabase/migrations/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No migrations yet — nothing to check."
+            exit 0
+          fi
+          dupes=$(printf '%s\n' "${files[@]}" \
+            | xargs -n1 basename \
+            | cut -d_ -f1 \
+            | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "DUPLICATE migration version(s) — the later file would be silently skipped:"
+            echo "$dupes"
+            exit 1
+          fi
+          echo "OK: ${#files[@]} migration(s), all versions unique."
+
+      - name: Typecheck (tsc -b)
+        run: npx tsc -b
+
+      - name: Production build (vite build)
+        run: npx vite build

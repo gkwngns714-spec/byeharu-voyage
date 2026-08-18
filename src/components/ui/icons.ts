@@ -1,0 +1,53 @@
+// Design-system icon glyphs — the ONE inline-SVG set. Pure data (no React) so the name→glyph
+// contract is testable. Every glyph is 1.5px-stroke line work on a 24×24 viewBox, drawn with
+// `currentColor` by <Icon> so it always wears token colors (text-accent, text-ink-muted, …).
+//
+// The set is deliberately SMALL. This is a text-and-tabs game: icons decorate empty states and
+// mark a fold, they never replace a word. A glyph enters this file only when a screen needs it.
+
+export const ICON_NAMES = [
+  'anchor',
+  'compass',
+  'chart',
+  'ship',
+  'scales',
+  'ledger',
+  'wreath',
+  'profile',
+  'chevron',
+  'close',
+  'plus',
+  'info',
+  'search',
+  'history',
+] as const
+
+export type IconName = (typeof ICON_NAMES)[number]
+
+/** SVG path `d` strings per glyph (one or more subpaths, all stroked, fill none). */
+export const ICON_PATHS: Record<IconName, readonly string[]> = {
+  // Anchor — Port.
+  anchor: ['M12 7.5V21', 'M12 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z', 'M5 13H2a10 10 0 0 0 20 0h-3', 'M8.5 10.5h7'],
+  // Compass rose — Command (where you set a heading).
+  compass: ['M12 2.5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19Z', 'm15.5 8.5-2 5-5 2 2-5 5-2Z'],
+  // Folded chart — Map (a thing you read, not a thing you press).
+  chart: ['M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4Z', 'M9 4v14', 'M15 6v14'],
+  // Hull with a mast and sail — Fleets.
+  ship: ['M3 17.5h18l-2 3.5H5l-2-3.5Z', 'M12 3v14.5', 'M12 5c3 1 5 2.5 6 4.5h-6', 'M12 8c-2 .8-3.5 1.5-4.5 3H12'],
+  // Balance — Market.
+  scales: ['M12 4v16', 'M6 20h12', 'M4.5 8h15', 'M4.5 8 2 14h5l-2.5-6Z', 'M19.5 8 17 14h5l-2.5-6Z'],
+  // Open book — Ledger.
+  ledger: ['M12 6.5C10.5 5 8.5 4.5 6 4.5H3.5v13H6c2.5 0 4.5.5 6 2', 'M12 6.5c1.5-1.5 3.5-2 6-2H20.5v13H18c-2.5 0-4.5.5-6 2', 'M12 6.5v15'],
+  // Laurel-ringed marker — Rank.
+  wreath: ['M12 3.5a8.5 8.5 0 0 1 0 17', 'M12 3.5a8.5 8.5 0 0 0 0 17', 'M8.5 12h7', 'M12 8.5v7'],
+  // Head-and-shoulders in a circle — Profile.
+  profile: ['M12 2.5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19Z', 'M12 7.2a3.1 3.1 0 1 0 0 6.2 3.1 3.1 0 0 0 0-6.2Z', 'M5.8 19a7.5 7.5 0 0 1 12.4 0'],
+  // Chevron (points right; rotate via className for other directions).
+  chevron: ['m9 5 7 7-7 7'],
+  close: ['M6 6l12 12', 'M18 6 6 18'],
+  plus: ['M12 5v14', 'M5 12h14'],
+  info: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z', 'M12 11v5.5', 'M12 7.6v.9'],
+  search: ['M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z', 'm16.2 16.2 4.3 4.3'],
+  // Clock with a back-arrow tick — the log.
+  history: ['M12 3a9 9 0 1 0 9 9', 'M12 3 8.5 5.5 12 8', 'M12 7.5V12l3.5 2.5'],
+}

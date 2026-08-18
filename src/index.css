@@ -1,0 +1,124 @@
+@import 'tailwindcss';
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   BYEHARU VOYAGE DESIGN SYSTEM — the ONE canonical token source.
+   Screens never hardcode palette literals (slate-900, white/40, …): they compose the primitives
+   in src/components/ui/, which consume ONLY these tokens. Tailwind v4 @theme turns each token
+   into utilities (bg-surface, text-ink-muted, border-edge, text-accent, rounded-card, …).
+
+   Skin     "Ship's ledger" — a dark chart table at night: cold ink-blue layers, warm parchment
+            text, brass accent. TEXT-FIRST: this game is words, numbers and tables. There is no
+            battlefield to click; the map is a chart you read. So the type carries the design and
+            the chrome stays quiet.
+
+   Layers   app < surface < surface-2 — a deep blue-black ramp (never pure black).
+   Text     ink (parchment, primary) / ink-muted (secondary) / ink-faint (small labels). All three
+            are picked for AA contrast on every layer.
+   Accent   brass — the ONE interactive family. Semantic: success (sea green) / warning (lamp
+            amber) / danger (signal red), each with a -hover step and a -soft alpha tint.
+   Type     THREE roles, and the split is load-bearing on a ledger:
+              --font-mono   JetBrains Mono — every number, code, coordinate, table cell and
+                            micro-label. Tabular figures line up in a column; proportional ones
+                            do not, and a manifest that does not line up cannot be scanned.
+              --font-sans   Inter — prose, controls, body copy.
+              --font-serif  system serif stack (Georgia et al., no download) — display titles and
+                            the log's voice. Deliberately NOT a webfont: it must never be the
+                            thing that makes a phone wait for a heading.
+            Conventions: page title text-2xl font-serif · panel title text-lg · body text-sm ·
+            metadata text-xs · micro-labels text-xs uppercase tracking-wider font-mono ink-faint.
+   Shape    rounded-card (0.75rem — squarer than a space UI; this is paper, not a HUD) for panels,
+            rounded-md inside. shadow-card = soft elevation + a hairline top highlight.
+   Mobile   every interactive target is ≥44px; the shell is 100dvh with its own scroll regions.
+   ═══════════════════════════════════════════════════════════════════════════════════════════ */
+@theme {
+  /* color layers — deep chart-blue, never pure black */
+  --color-app: #070b11;
+  --color-surface: #0d141d;
+  --color-surface-2: #16202c;
+  --color-edge: #253547;
+
+  /* text — warm parchment on cold ink */
+  --color-ink: #f1ebdd;
+  --color-ink-muted: #b3bcc7;
+  --color-ink-faint: #8b97a5;
+
+  /* accent + semantic — brass lamp-light on a night chart */
+  --color-accent: #e2ab52;
+  --color-accent-hover: #f2c479;
+  --color-success: #5cc48d;
+  --color-success-hover: #86d8ac;
+  --color-warning: #e8bd53;
+  --color-warning-hover: #f3d485;
+  --color-danger: #ef7f74;
+  --color-danger-hover: #f7a49b;
+
+  /* soft alpha tints — subtle panel washes (bg-accent-soft, …). Derived via color-mix so they
+     TRACK their semantic token: retune --color-accent once and these follow. */
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  --color-success-soft: color-mix(in srgb, var(--color-success) 10%, transparent);
+  --color-warning-soft: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  --color-danger-soft: color-mix(in srgb, var(--color-danger) 10%, transparent);
+
+  /* chart aliases — the read-only Map layer consumes these, never raw hex */
+  --color-chart-sea: #0a1220;
+  --color-chart-land: #1b2635;
+  --color-chart-grid: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  --color-chart-route: color-mix(in srgb, var(--color-accent) 55%, transparent);
+
+  /* typography (Inter + JetBrains Mono self-hosted via @fontsource, imported in src/main.tsx;
+     the serif is a system stack on purpose — zero bytes, always present) */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Menlo, Consolas, monospace;
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, 'Times New Roman', serif;
+
+  /* shape + elevation */
+  --radius-card: 0.75rem;
+  --shadow-card: inset 0 1px 0 0 rgb(255 255 255 / 0.04), 0 10px 30px -18px rgb(0 0 0 / 0.75);
+  --shadow-overlay: 0 16px 48px -16px rgb(0 0 0 / 0.85), 0 0 0 1px color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-app);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Numbers in a ledger must line up in a column. Every mono run gets tabular, slashed-zero
+   figures — this is why `font-mono` is the house rule for values, not a stylistic preference. */
+.font-mono {
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+/* Quiet entrance for newly-arrived log lines (the Ledger feed). */
+@keyframes bv-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.bv-fade-in {
+  animation: bv-fade-in 0.25s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bv-fade-in {
+    animation: none;
+  }
+}

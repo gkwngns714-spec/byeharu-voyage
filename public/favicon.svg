@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Byeharu Voyage">
+  <rect width="64" height="64" rx="12" fill="#070b11" />
+  <circle cx="32" cy="32" r="21" fill="none" stroke="#253547" stroke-width="2" />
+  <circle cx="32" cy="32" r="14" fill="none" stroke="#253547" stroke-width="1" />
+  <!-- compass rose: north limb in brass, the rest in ink -->
+  <path d="M32 11 L37 32 L32 53 L27 32 Z" fill="#e2ab52" />
+  <path d="M11 32 L32 27 L53 32 L32 37 Z" fill="#f1ebdd" opacity="0.75" />
+  <circle cx="32" cy="32" r="2.5" fill="#070b11" stroke="#e2ab52" stroke-width="1.5" />
+</svg>

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Byeharu Voyage</title>
+    <script type="text/javascript">
+      // GitHub Pages SPA deep-link fallback (rafgraph/spa-github-pages, MIT).
+      //
+      // GitHub Pages serves this 404.html for any path it cannot find on disk — e.g.
+      // /byeharu-voyage/command, a client-only React Router route. This script encodes the real
+      // path/query into a single query string and redirects to the app's index; index.html decodes
+      // it back BEFORE the router boots, so BrowserRouter renders the deep-linked route instead of
+      // GitHub's 404.
+      //
+      // pathSegmentsToKeep = 1 because the app is a GitHub *project* site served under one base
+      // segment (/byeharu-voyage/). That first segment is the Vite `base` and must be preserved
+      // as-is; only the segments AFTER it get encoded. A user/org root site would use 0.
+      var pathSegmentsToKeep = 1;
+
+      var l = window.location;
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash
+      );
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
