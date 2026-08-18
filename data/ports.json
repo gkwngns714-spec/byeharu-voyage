@@ -1,0 +1,7421 @@
+{
+  "$schema": "./ports.schema.md",
+  "note": "Real port cities of the ~1500-1650 Age of Sail. lat/lon are Wikidata property P625 (CC0), fetched by scripts/fetch-coords.mjs and never hand-typed; `source` records the exact item each coordinate came from. `sea`, `region`, `tier`, `goods` and `notes` are editorial. See docs/WORLD_DATA.md.",
+  "coordinateSource": {
+    "dataset": "Wikidata",
+    "property": "P625 (coordinate location)",
+    "licence": "CC0 1.0 Universal",
+    "url": "https://www.wikidata.org/",
+    "fetchedAt": "2026-08-18T07:50:16.369Z"
+  },
+  "count": 280,
+  "ports": [
+    {
+      "id": "a-coruna",
+      "name": "A Coruna",
+      "localName": "A Coruña",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 43.373857,
+      "lon": -8.400027,
+      "sea": "north-atlantic",
+      "region": "iberia",
+      "tier": 3,
+      "historicalNames": [
+        "La Coruña",
+        "Brigantium"
+      ],
+      "goods": [
+        "dried-fish",
+        "wine",
+        "timber"
+      ],
+      "notes": "Galician harbour from which the Spanish Armada sailed in 1588.",
+      "source": {
+        "wikidata": "Q8757",
+        "enwiki": "A Coruña"
+      }
+    },
+    {
+      "id": "aberdeen",
+      "name": "Aberdeen",
+      "localName": "Aberdeen",
+      "country": "GB",
+      "countryName": "United Kingdom",
+      "lat": 57.15,
+      "lon": -2.1,
+      "sea": "north-sea",
+      "region": "british-isles",
+      "tier": 3,
+      "historicalNames": [
+        "Aberdon"
+      ],
+      "goods": [
+        "dried-fish",
+        "wool-raw",
+        "hides"
+      ],
+      "notes": "Dee and Don estuary burgh exporting cured salmon and plaiding to the Baltic.",
+      "source": {
+        "wikidata": "Q36405",
+        "enwiki": "Aberdeen"
+      }
+    },
+    {
+      "id": "acapulco",
+      "name": "Acapulco",
+      "localName": "Acapulco",
+      "country": "MX",
+      "countryName": "Mexico",
+      "lat": 16.86287,
+      "lon": -99.887009,
+      "sea": "north-pacific",
+      "region": "pacific-americas",
+      "tier": 2,
+      "historicalNames": [
+        "Acapulco de Juárez"
+      ],
+      "goods": [
+        "silver",
+        "silk-cloth",
+        "porcelain",
+        "cacao"
+      ],
+      "notes": "American terminus of the Manila galleon from 1565; its annual fair traded Mexican silver for Asian goods.",
+      "source": {
+        "wikidata": "Q81398",
+        "enwiki": "Acapulco"
+      }
+    },
+    {
+      "id": "accra",
+      "name": "Accra",
+      "localName": "Nkran",
+      "country": "GH",
+      "countryName": "Ghana",
+      "lat": 5.55602,
+      "lon": -0.1969,
+      "sea": "gulf-of-guinea",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Nkran",
+        "Ga Mashie"
+      ],
+      "goods": [
+        "gold",
+        "ivory",
+        "salt"
+      ],
+      "notes": "Three rival forts, Danish, Dutch and English, stood on this stretch of shore in the 17th century.",
+      "source": {
+        "wikidata": "Q3761",
+        "enwiki": "Accra"
+      }
+    },
+    {
+      "id": "acre",
+      "name": "Acre",
+      "localName": "עכו",
+      "country": "IL",
+      "countryName": "Israel",
+      "lat": 32.926111,
+      "lon": 35.083889,
+      "sea": "mediterranean-sea",
+      "region": "levant",
+      "tier": 3,
+      "historicalNames": [
+        "Akka",
+        "Saint-Jean-d’Acre",
+        "Ptolemais"
+      ],
+      "goods": [
+        "cotton-raw",
+        "wheat",
+        "olive-oil"
+      ],
+      "notes": "Last crusader capital, lost in 1291; a modest Ottoman grain and cotton harbour thereafter.",
+      "source": {
+        "wikidata": "Q126084",
+        "enwiki": "Acre, Israel"
+      }
+    },
+    {
+      "id": "aden",
+      "name": "Aden",
+      "localName": "عدن",
+      "country": "YE",
+      "countryName": "Yemen",
+      "lat": 12.8,
+      "lon": 45.033333,
+      "sea": "gulf-of-aden",
+      "region": "arabia-gulf",
+      "tier": 2,
+      "historicalNames": [
+        "Adan"
+      ],
+      "goods": [
+        "black-pepper",
+        "coffee",
+        "frankincense",
+        "horses"
+      ],
+      "notes": "Volcanic crater harbour holding the Red Sea gate; Albuquerque failed to take it in 1513, the Ottomans held it from 1538.",
+      "source": {
+        "wikidata": "Q131694",
+        "enwiki": "Aden"
+      }
+    },
+    {
+      "id": "agadir",
+      "name": "Agadir",
+      "localName": "أݣادير",
+      "country": "MA",
+      "countryName": "Morocco",
+      "lat": 30.421389,
+      "lon": -9.583056,
+      "sea": "north-atlantic",
+      "region": "maghreb",
+      "tier": 3,
+      "historicalNames": [
+        "Santa Cruz do Cabo de Gué"
+      ],
+      "goods": [
+        "sugar",
+        "gold",
+        "wax",
+        "dried-fruit"
+      ],
+      "notes": "Portuguese fort from 1505 until the Saadians stormed it in 1541, opening the Sous to their sugar trade.",
+      "source": {
+        "wikidata": "Q170525",
+        "enwiki": "Agadir"
+      }
+    },
+    {
+      "id": "alexandria",
+      "name": "Alexandria",
+      "localName": "الإسكندرية",
+      "country": "EG",
+      "countryName": "Egypt",
+      "lat": 31.1975,
+      "lon": 29.8925,
+      "sea": "mediterranean-sea",
+      "region": "levant",
+      "tier": 1,
+      "historicalNames": [
+        "al-Iskandariyya",
+        "Alexandreia"
+      ],
+      "goods": [
+        "black-pepper",
+        "flax",
+        "wheat",
+        "sugar",
+        "alum"
+      ],
+      "notes": "Mediterranean outlet of the Red Sea spice route until the Cape route drew the trade away after 1500.",
+      "source": {
+        "wikidata": "Q87",
+        "enwiki": "Alexandria"
+      }
+    },
+    {
+      "id": "algiers",
+      "name": "Algiers",
+      "localName": "الجزائر",
+      "country": "DZ",
+      "countryName": "Algeria",
+      "lat": 36.776389,
+      "lon": 3.058611,
+      "sea": "mediterranean-sea",
+      "region": "maghreb",
+      "tier": 2,
+      "historicalNames": [
+        "al-Jaza’ir",
+        "Icosium"
+      ],
+      "goods": [
+        "wheat",
+        "hides",
+        "wax",
+        "coral"
+      ],
+      "notes": "Ottoman regency from 1516 and the leading Barbary corsair base in the western Mediterranean.",
+      "source": {
+        "wikidata": "Q3561",
+        "enwiki": "Algiers"
+      }
+    },
+    {
+      "id": "amalfi",
+      "name": "Amalfi",
+      "localName": "Amalfi",
+      "country": "IT",
+      "countryName": "Italy",
+      "lat": 40.633333,
+      "lon": 14.602778,
+      "sea": "mediterranean-sea",
+      "region": "western-mediterranean",
+      "tier": 3,
+      "historicalNames": [
+        "Amalfi"
+      ],
+      "goods": [
+        "linen",
+        "wine",
+        "dried-fruit",
+        "coral"
+      ],
+      "notes": "Former maritime republic remembered for the Tabula Amalphitana, a medieval code of sea law.",
+      "source": {
+        "wikidata": "Q80563",
+        "enwiki": "Amalfi"
+      }
+    },
+    {
+      "id": "ambon",
+      "name": "Ambon",
+      "localName": "Ambon",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": -3.696667,
+      "lon": 128.178333,
+      "sea": "banda-sea",
+      "region": "southeast-asia",
+      "tier": 2,
+      "historicalNames": [
+        "Amboina",
+        "Amboyna"
+      ],
+      "goods": [
+        "cloves",
+        "rice",
+        "nutmeg"
+      ],
+      "notes": "VOC headquarters in the Moluccas from 1605; site of the Amboyna executions of English merchants in 1623.",
+      "source": {
+        "wikidata": "Q18970",
+        "enwiki": "Ambon, Maluku"
+      }
+    },
+    {
+      "id": "amsterdam",
+      "name": "Amsterdam",
+      "localName": "Amsterdam",
+      "country": "NL",
+      "countryName": "Netherlands",
+      "lat": 52.366667,
+      "lon": 4.883333,
+      "sea": "north-sea",
+      "region": "france-low-countries",
+      "tier": 1,
+      "historicalNames": [
+        "Amstelredamme"
+      ],
+      "goods": [
+        "black-pepper",
+        "cloves",
+        "nutmeg",
+        "herring",
+        "wheat",
+        "timber"
+      ],
+      "notes": "Seat of the VOC chamber and the 1602 stock exchange; the Wisselbank followed in 1609.",
+      "source": {
+        "wikidata": "Q727",
+        "enwiki": "Amsterdam"
+      }
+    },
+    {
+      "id": "ancona",
+      "name": "Ancona",
+      "localName": "Ancona",
+      "country": "IT",
+      "countryName": "Italy",
+      "lat": 43.616667,
+      "lon": 13.516667,
+      "sea": "adriatic-sea",
+      "region": "adriatic-ionian",
+      "tier": 3,
+      "historicalNames": [
+        "Ancona",
+        "Ankon"
+      ],
+      "goods": [
+        "wool-cloth",
+        "wax",
+        "hides",
+        "wheat"
+      ],
+      "notes": "Papal free port on the Adriatic, linked by overland routes to Ragusa and the Ottoman Balkans.",
+      "source": {
+        "wikidata": "Q3415",
+        "enwiki": "Ancona"
+      }
+    },
+    {
+      "id": "annapolis-royal",
+      "name": "Annapolis Royal",
+      "localName": "Annapolis Royal",
+      "country": "CA",
+      "countryName": "Canada",
+      "lat": 44.743729,
+      "lon": -65.518907,
+      "sea": "north-atlantic",
+      "region": "north-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "Port-Royal",
+        "Annapolis Royal"
+      ],
+      "goods": [
+        "furs",
+        "dried-fish",
+        "timber"
+      ],
+      "notes": "Port-Royal, founded 1605 in the Annapolis Basin, was the first lasting French settlement in Acadia.",
+      "source": {
+        "wikidata": "Q564536",
+        "enwiki": "Annapolis Royal"
+      }
+    },
+    {
+      "id": "antalya",
+      "name": "Antalya",
+      "localName": "Antalya",
+      "country": "TR",
+      "countryName": "Turkey",
+      "lat": 36.90812,
+      "lon": 30.69556,
+      "sea": "mediterranean-sea",
+      "region": "aegean-anatolia",
+      "tier": 3,
+      "historicalNames": [
+        "Attaleia",
+        "Satalia"
+      ],
+      "goods": [
+        "timber",
+        "wheat",
+        "wax",
+        "carpets"
+      ],
+      "notes": "Ottoman naval harbour on the Pamphylian coast and outlet for Taurus cedar and pine.",
+      "source": {
+        "wikidata": "Q6487",
+        "enwiki": "Antalya"
+      }
+    },
+    {
+      "id": "antwerp",
+      "name": "Antwerp",
+      "localName": "Antwerpen",
+      "country": "BE",
+      "countryName": "Belgium",
+      "lat": 51.221111,
+      "lon": 4.399722,
+      "sea": "north-sea",
+      "region": "france-low-countries",
+      "tier": 1,
+      "historicalNames": [
+        "Antwerpen",
+        "Anvers"
+      ],
+      "goods": [
+        "wool-cloth",
+        "black-pepper",
+        "copper",
+        "diamonds",
+        "sugar"
+      ],
+      "notes": "Scheldt river port and Europe’s dominant commodity market until the 1585 Spanish siege and blockade.",
+      "source": {
+        "wikidata": "Q12892",
+        "enwiki": "Antwerp"
+      }
+    },
+    {
+      "id": "arica",
+      "name": "Arica",
+      "localName": "Arica",
+      "country": "CL",
+      "countryName": "Chile",
+      "lat": -18.478389,
+      "lon": -70.321222,
+      "sea": "south-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "San Marcos de Arica"
+      ],
+      "goods": [
+        "silver",
+        "wine",
+        "cotton-raw"
+      ],
+      "notes": "Shipping point where Potosi silver reached the Pacific after the mule descent from the altiplano.",
+      "source": {
+        "wikidata": "Q2203",
+        "enwiki": "Arica"
+      }
+    },
+    {
+      "id": "arkhangelsk",
+      "name": "Arkhangelsk",
+      "localName": "Архангельск",
+      "country": "RU",
+      "countryName": "Russia",
+      "lat": 64.543056,
+      "lon": 40.5375,
+      "sea": "white-sea",
+      "region": "scandinavia-arctic",
+      "tier": 2,
+      "historicalNames": [
+        "Archangel",
+        "Novo-Kholmogory"
+      ],
+      "goods": [
+        "furs",
+        "wax",
+        "hemp",
+        "timber"
+      ],
+      "notes": "Founded 1584 on the Dvina; Russia’s only sea outlet to the west, opened by Chancellor’s 1553 voyage.",
+      "source": {
+        "wikidata": "Q1851",
+        "enwiki": "Arkhangelsk"
+      }
+    },
+    {
+      "id": "ayutthaya",
+      "name": "Ayutthaya",
+      "localName": "พระนครศรีอยุธยา",
+      "country": "TH",
+      "countryName": "Thailand",
+      "lat": 14.359359,
+      "lon": 100.576145,
+      "sea": "gulf-of-thailand",
+      "region": "southeast-asia",
+      "tier": 2,
+      "historicalNames": [
+        "Ayutthaya",
+        "Judea",
+        "Siam"
+      ],
+      "goods": [
+        "brazilwood",
+        "hides",
+        "rice",
+        "tin",
+        "sandalwood"
+      ],
+      "notes": "Chao Phraya river capital of Siam, reachable by seagoing ships and host to Portuguese, Dutch, Japanese and French quarters.",
+      "source": {
+        "wikidata": "Q203370",
+        "enwiki": "Phra Nakhon Si Ayutthaya (city)"
+      }
+    },
+    {
+      "id": "bago",
+      "name": "Bago",
+      "localName": "ဗဂိုး",
+      "country": "MM",
+      "countryName": "Myanmar",
+      "lat": 17.343333,
+      "lon": 96.498056,
+      "sea": "andaman-sea",
+      "region": "eastern-india",
+      "tier": 3,
+      "historicalNames": [
+        "Pegu",
+        "Hanthawaddy"
+      ],
+      "goods": [
+        "diamonds",
+        "indigo",
+        "timber",
+        "sandalwood"
+      ],
+      "notes": "Capital of the Toungoo kings, described by 16th-century European travellers as a great gem market.",
+      "source": {
+        "wikidata": "Q800122",
+        "enwiki": "Bago, Myanmar"
+      }
+    },
+    {
+      "id": "banda-aceh",
+      "name": "Banda Aceh",
+      "localName": "Banda Aceh",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": 5.55,
+      "lon": 95.3175,
+      "sea": "strait-of-malacca",
+      "region": "southeast-asia",
+      "tier": 2,
+      "historicalNames": [
+        "Aceh Darussalam",
+        "Achin"
+      ],
+      "goods": [
+        "black-pepper",
+        "sandalwood",
+        "gold"
+      ],
+      "notes": "Sultanate at Sumatra’s northern tip, at its height under Iskandar Muda, 1607-1636, and a rival to Portuguese Malacca.",
+      "source": {
+        "wikidata": "Q5779",
+        "enwiki": "Banda Aceh"
+      }
+    },
+    {
+      "id": "banda-neira",
+      "name": "Banda Neira",
+      "localName": "Banda Neira",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": -4.512219,
+      "lon": 129.903,
+      "sea": "banda-sea",
+      "region": "southeast-asia",
+      "tier": 2,
+      "historicalNames": [
+        "Bandaneira"
+      ],
+      "goods": [
+        "nutmeg",
+        "mace",
+        "rice"
+      ],
+      "notes": "The Banda islands were the world’s only source of nutmeg and mace; Coen’s conquest of 1621 destroyed their society.",
+      "source": {
+        "wikidata": "Q2882109",
+        "enwiki": "Banda Neira"
+      }
+    },
+    {
+      "id": "bandar-abbas",
+      "name": "Bandar Abbas",
+      "localName": "بندرعباس",
+      "country": "IR",
+      "countryName": "Iran",
+      "lat": 27.186389,
+      "lon": 56.280833,
+      "sea": "persian-gulf",
+      "region": "arabia-gulf",
+      "tier": 2,
+      "historicalNames": [
+        "Gombroon",
+        "Gamrun"
+      ],
+      "goods": [
+        "silk-raw",
+        "carpets",
+        "pearls",
+        "dried-fruit"
+      ],
+      "notes": "Renamed by Shah Abbas after 1622 and made Persia’s Gulf outlet, with English and Dutch factories.",
+      "source": {
+        "wikidata": "Q154814",
+        "enwiki": "Bandar Abbas"
+      }
+    },
+    {
+      "id": "banten",
+      "name": "Banten",
+      "localName": "Banten",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": -6.037222,
+      "lon": 106.1625,
+      "sea": "java-sea",
+      "region": "southeast-asia",
+      "tier": 2,
+      "historicalNames": [
+        "Bantam",
+        "Banten Girang"
+      ],
+      "goods": [
+        "black-pepper",
+        "cloves",
+        "rice",
+        "sandalwood"
+      ],
+      "notes": "West Java pepper sultanate where the first Dutch fleet arrived in 1596 and the English opened a factory in 1603.",
+      "source": {
+        "wikidata": "Q2086056",
+        "enwiki": "Banten (town)"
+      }
+    },
+    {
+      "id": "barcelona",
+      "name": "Barcelona",
+      "localName": "Barcelona",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 41.3825,
+      "lon": 2.176944,
+      "sea": "mediterranean-sea",
+      "region": "iberia",
+      "tier": 1,
+      "historicalNames": [
+        "Barcino"
+      ],
+      "goods": [
+        "wool-cloth",
+        "coral",
+        "wine",
+        "iron"
+      ],
+      "notes": "Catalan maritime capital whose medieval Consolat de Mar code shaped Mediterranean commercial law.",
+      "source": {
+        "wikidata": "Q1492",
+        "enwiki": "Barcelona"
+      }
+    },
+    {
+      "id": "bari",
+      "name": "Bari",
+      "localName": "Bari",
+      "country": "IT",
+      "countryName": "Italy",
+      "lat": 41.125278,
+      "lon": 16.866667,
+      "sea": "adriatic-sea",
+      "region": "adriatic-ionian",
+      "tier": 3,
+      "historicalNames": [
+        "Barium"
+      ],
+      "goods": [
+        "olive-oil",
+        "wheat",
+        "dried-fruit",
+        "wine"
+      ],
+      "notes": "Apulian harbour exporting the olive oil that lit lamps and fulled cloth across northern Europe.",
+      "source": {
+        "wikidata": "Q3519",
+        "enwiki": "Bari"
+      }
+    },
+    {
+      "id": "basra",
+      "name": "Basra",
+      "localName": "البصرة",
+      "country": "IQ",
+      "countryName": "Iraq",
+      "lat": 30.515,
+      "lon": 47.81,
+      "sea": "persian-gulf",
+      "region": "arabia-gulf",
+      "tier": 2,
+      "historicalNames": [
+        "al-Basra",
+        "Balsora"
+      ],
+      "goods": [
+        "dried-fruit",
+        "horses",
+        "carpets",
+        "pearls"
+      ],
+      "notes": "Shatt al-Arab river port and the Ottoman head of navigation linking the Gulf to Baghdad and Aleppo.",
+      "source": {
+        "wikidata": "Q48195",
+        "enwiki": "Basra"
+      }
+    },
+    {
+      "id": "beirut",
+      "name": "Beirut",
+      "localName": "بيروت",
+      "country": "LB",
+      "countryName": "Lebanon",
+      "lat": 33.886944,
+      "lon": 35.513056,
+      "sea": "mediterranean-sea",
+      "region": "levant",
+      "tier": 2,
+      "historicalNames": [
+        "Bayrut",
+        "Berytus"
+      ],
+      "goods": [
+        "silk-raw",
+        "cotton-raw",
+        "olive-oil"
+      ],
+      "notes": "Outlet for Mount Lebanon raw silk, promoted by the Druze emir Fakhr al-Din II in the early 1600s.",
+      "source": {
+        "wikidata": "Q3820",
+        "enwiki": "Beirut"
+      }
+    },
+    {
+      "id": "bejaia",
+      "name": "Bejaia",
+      "localName": "بجاية",
+      "country": "DZ",
+      "countryName": "Algeria",
+      "lat": 36.751111,
+      "lon": 5.064167,
+      "sea": "mediterranean-sea",
+      "region": "maghreb",
+      "tier": 3,
+      "historicalNames": [
+        "Bougie",
+        "Saldae"
+      ],
+      "goods": [
+        "wax",
+        "hides",
+        "olive-oil",
+        "coral"
+      ],
+      "notes": "Its beeswax exports gave French the word \"bougie\" for a candle; Spanish-held 1510-1555.",
+      "source": {
+        "wikidata": "Q59975",
+        "enwiki": "Béjaïa"
+      }
+    },
+    {
+      "id": "belem",
+      "name": "Belem",
+      "localName": "Belém",
+      "country": "BR",
+      "countryName": "Brazil",
+      "lat": -1.455833,
+      "lon": -48.503889,
+      "sea": "south-atlantic",
+      "region": "south-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "Santa Maria de Belém do Grão-Pará"
+      ],
+      "goods": [
+        "cacao",
+        "gum-arabic",
+        "timber",
+        "cloves"
+      ],
+      "notes": "Founded 1616 at the Amazon mouth to shut French and Dutch traders out of the river.",
+      "source": {
+        "wikidata": "Q12829733",
+        "enwiki": "Belém"
+      }
+    },
+    {
+      "id": "benghazi",
+      "name": "Benghazi",
+      "localName": "بنغازي",
+      "country": "LY",
+      "countryName": "Libya",
+      "lat": 32.116667,
+      "lon": 20.066667,
+      "sea": "mediterranean-sea",
+      "region": "maghreb",
+      "tier": 3,
+      "historicalNames": [
+        "Berenice",
+        "Marsa ibn Ghazi"
+      ],
+      "goods": [
+        "wheat",
+        "dried-fruit",
+        "wool-raw",
+        "salt"
+      ],
+      "notes": "Cyrenaican roadstead on the Gulf of Sidra, a minor Ottoman grain and caravan outlet.",
+      "source": {
+        "wikidata": "Q40816",
+        "enwiki": "Benghazi"
+      }
+    },
+    {
+      "id": "benguela",
+      "name": "Benguela",
+      "localName": "Benguela",
+      "country": "AO",
+      "countryName": "Angola",
+      "lat": -12.55,
+      "lon": 13.416667,
+      "sea": "south-atlantic",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "São Filipe de Benguela"
+      ],
+      "goods": [
+        "ivory",
+        "wax",
+        "copper"
+      ],
+      "notes": "Portuguese fort of 1617 opening the southern Angolan highlands to coastal trade.",
+      "source": {
+        "wikidata": "Q214248",
+        "enwiki": "Benguela"
+      }
+    },
+    {
+      "id": "berbera",
+      "name": "Berbera",
+      "localName": "Barbara",
+      "country": "SO",
+      "countryName": "Somalia",
+      "lat": 10.43953,
+      "lon": 45.01305,
+      "sea": "gulf-of-aden",
+      "region": "east-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Barbara"
+      ],
+      "goods": [
+        "frankincense",
+        "myrrh",
+        "hides",
+        "furs"
+      ],
+      "notes": "Seasonal fair port on the Gulf of Aden, the outlet for Somali frankincense and myrrh.",
+      "source": {
+        "wikidata": "Q191718",
+        "enwiki": "Berbera"
+      }
+    },
+    {
+      "id": "bergen",
+      "name": "Bergen",
+      "localName": "Bergen",
+      "country": "NO",
+      "countryName": "Norway",
+      "lat": 60.3925,
+      "lon": 5.323333,
+      "sea": "norwegian-sea",
+      "region": "scandinavia-arctic",
+      "tier": 2,
+      "historicalNames": [
+        "Bjørgvin"
+      ],
+      "goods": [
+        "dried-fish",
+        "whale-oil",
+        "timber",
+        "furs"
+      ],
+      "notes": "Site of the Hanseatic Bryggen kontor, which controlled the northern stockfish trade until 1754.",
+      "source": {
+        "wikidata": "Q26793",
+        "enwiki": "Bergen"
+      }
+    },
+    {
+      "id": "bilbao",
+      "name": "Bilbao",
+      "localName": "Bilbo",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 43.263056,
+      "lon": -2.935,
+      "sea": "bay-of-biscay",
+      "region": "iberia",
+      "tier": 2,
+      "historicalNames": [
+        "Bilbo"
+      ],
+      "goods": [
+        "iron",
+        "wool-raw",
+        "timber"
+      ],
+      "notes": "Outlet for Biscayan iron and Castilian wool; its Consulado governed trade with Flanders and England.",
+      "source": {
+        "wikidata": "Q8692",
+        "enwiki": "Bilbao"
+      }
+    },
+    {
+      "id": "bordeaux",
+      "name": "Bordeaux",
+      "localName": "Bordeaux",
+      "country": "FR",
+      "countryName": "France",
+      "lat": 44.837778,
+      "lon": -0.579444,
+      "sea": "bay-of-biscay",
+      "region": "france-low-countries",
+      "tier": 1,
+      "historicalNames": [
+        "Burdigala",
+        "Bordèu"
+      ],
+      "goods": [
+        "wine",
+        "indigo",
+        "salt"
+      ],
+      "notes": "Garonne river port and the historic source of the claret shipped to England in bulk.",
+      "source": {
+        "wikidata": "Q1479",
+        "enwiki": "Bordeaux"
+      }
+    },
+    {
+      "id": "boston",
+      "name": "Boston",
+      "localName": "Boston",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 42.360278,
+      "lon": -71.057778,
+      "sea": "north-atlantic",
+      "region": "north-america-atlantic",
+      "tier": 2,
+      "historicalNames": [
+        "Shawmut",
+        "Boston"
+      ],
+      "goods": [
+        "dried-fish",
+        "timber",
+        "furs",
+        "naval-timber"
+      ],
+      "notes": "Founded 1630 by the Massachusetts Bay Company; its cod and shipbuilding drove the early New England economy.",
+      "source": {
+        "wikidata": "Q100",
+        "enwiki": "Boston"
+      }
+    },
+    {
+      "id": "bremen",
+      "name": "Bremen",
+      "localName": "Bremen",
+      "country": "DE",
+      "countryName": "Germany",
+      "lat": 53.075833,
+      "lon": 8.807222,
+      "sea": "north-sea",
+      "region": "baltic",
+      "tier": 3,
+      "historicalNames": [
+        "Bremen"
+      ],
+      "goods": [
+        "wool-cloth",
+        "wheat",
+        "wine",
+        "timber"
+      ],
+      "notes": "Weser river Hansestadt trading with England and the Low Countries.",
+      "source": {
+        "wikidata": "Q24879",
+        "enwiki": "Bremen"
+      }
+    },
+    {
+      "id": "brest",
+      "name": "Brest",
+      "localName": "Brest",
+      "country": "FR",
+      "countryName": "France",
+      "lat": 48.39,
+      "lon": -4.486944,
+      "sea": "north-atlantic",
+      "region": "france-low-countries",
+      "tier": 3,
+      "historicalNames": [
+        "Brest"
+      ],
+      "goods": [
+        "naval-timber",
+        "hemp",
+        "dried-fish"
+      ],
+      "notes": "Sheltered Breton roadstead at the western tip of France, later the Atlantic naval arsenal.",
+      "source": {
+        "wikidata": "Q12193",
+        "enwiki": "Brest, France"
+      }
+    },
+    {
+      "id": "bridgetown",
+      "name": "Bridgetown",
+      "localName": "Bridgetown",
+      "country": "BB",
+      "countryName": "Barbados",
+      "lat": 13.0975,
+      "lon": -59.616667,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 3,
+      "historicalNames": [
+        "Indian Bridge",
+        "St Michael’s Town"
+      ],
+      "goods": [
+        "sugar",
+        "cotton-raw",
+        "tobacco",
+        "wine"
+      ],
+      "notes": "English settlement of 1628; Barbados turned to sugar in the 1640s and became the model plantation colony.",
+      "source": {
+        "wikidata": "Q36168",
+        "enwiki": "Bridgetown"
+      }
+    },
+    {
+      "id": "bristol",
+      "name": "Bristol",
+      "localName": "Bristol",
+      "country": "GB",
+      "countryName": "United Kingdom",
+      "lat": 51.453611,
+      "lon": -2.5975,
+      "sea": "north-atlantic",
+      "region": "british-isles",
+      "tier": 2,
+      "historicalNames": [
+        "Brycgstow"
+      ],
+      "goods": [
+        "wool-cloth",
+        "dried-fish",
+        "wine",
+        "iron"
+      ],
+      "notes": "Avon river port; John Cabot sailed from here in 1497 and its ships worked the Newfoundland fishery.",
+      "source": {
+        "wikidata": "Q23154",
+        "enwiki": "Bristol"
+      }
+    },
+    {
+      "id": "bruges",
+      "name": "Bruges",
+      "localName": "Brugge",
+      "country": "BE",
+      "countryName": "Belgium",
+      "lat": 51.208889,
+      "lon": 3.224167,
+      "sea": "north-sea",
+      "region": "france-low-countries",
+      "tier": 3,
+      "historicalNames": [
+        "Brugge"
+      ],
+      "goods": [
+        "wool-cloth",
+        "linen",
+        "alum",
+        "wine"
+      ],
+      "notes": "Hanseatic kontor city whose Zwin channel silted up, shifting its trade to Antwerp by 1500.",
+      "source": {
+        "wikidata": "Q12994",
+        "enwiki": "Bruges"
+      }
+    },
+    {
+      "id": "brunei",
+      "name": "Brunei",
+      "localName": "Bandar Seri Begawan",
+      "country": "BN",
+      "countryName": "Brunei Darussalam",
+      "lat": 4.916667,
+      "lon": 114.916667,
+      "sea": "south-china-sea",
+      "region": "southeast-asia",
+      "tier": 3,
+      "historicalNames": [
+        "Brunei",
+        "Kota Batu"
+      ],
+      "goods": [
+        "sandalwood",
+        "musk",
+        "gold",
+        "black-pepper"
+      ],
+      "notes": "Sultanate visited by Pigafetta with Magellan’s survivors in 1521, then dominant over northern Borneo.",
+      "source": {
+        "wikidata": "Q9279",
+        "enwiki": "Bandar Seri Begawan"
+      }
+    },
+    {
+      "id": "buenos-aires",
+      "name": "Buenos Aires",
+      "localName": "Buenos Aires",
+      "country": "AR",
+      "countryName": "Argentina",
+      "lat": -34.599722,
+      "lon": -58.381944,
+      "sea": "south-atlantic",
+      "region": "south-america-atlantic",
+      "tier": 2,
+      "historicalNames": [
+        "Santa María del Buen Ayre"
+      ],
+      "goods": [
+        "hides",
+        "wax",
+        "silver",
+        "salted-beef"
+      ],
+      "notes": "Refounded 1580 on the Rio de la Plata; a legal backwater that thrived on contraband silver from Potosi.",
+      "source": {
+        "wikidata": "Q1486",
+        "enwiki": "Buenos Aires"
+      }
+    },
+    {
+      "id": "busan",
+      "name": "Busan",
+      "localName": "부산",
+      "country": "KR",
+      "countryName": "South Korea",
+      "lat": 35.18,
+      "lon": 129.075,
+      "sea": "korea-strait",
+      "region": "korea",
+      "tier": 1,
+      "historicalNames": [
+        "Pusan",
+        "東萊 Dongnae",
+        "釜山浦 Busanpo"
+      ],
+      "goods": [
+        "ginseng",
+        "ramie-cloth",
+        "rice",
+        "linen",
+        "porcelain"
+      ],
+      "notes": "Site of the Waegwan, the walled Japan House that was Joseon Korea’s only licensed trading post with Tsushima.",
+      "source": {
+        "wikidata": "Q16520",
+        "enwiki": "Busan"
+      }
+    },
+    {
+      "id": "bushehr",
+      "name": "Bushehr",
+      "localName": "بوشهر",
+      "country": "IR",
+      "countryName": "Iran",
+      "lat": 28.968889,
+      "lon": 50.836667,
+      "sea": "persian-gulf",
+      "region": "arabia-gulf",
+      "tier": 3,
+      "historicalNames": [
+        "Bushire",
+        "Rishahr"
+      ],
+      "goods": [
+        "carpets",
+        "dried-fruit",
+        "pearls"
+      ],
+      "notes": "Shallow Gulf roadstead serving the road up to Shiraz and the Persian interior.",
+      "source": {
+        "wikidata": "Q158928",
+        "enwiki": "Bushehr"
+      }
+    },
+    {
+      "id": "cacheu",
+      "name": "Cacheu",
+      "localName": "Cacheu",
+      "country": "GW",
+      "countryName": "Guinea-Bissau",
+      "lat": 12.278012,
+      "lon": -16.164971,
+      "sea": "north-atlantic",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Cacheu"
+      ],
+      "goods": [
+        "ivory",
+        "wax",
+        "hides",
+        "dried-fruit"
+      ],
+      "notes": "Portuguese fortified river factory of 1588, the administrative centre of Guinea of Cape Verde.",
+      "source": {
+        "wikidata": "Q1002807",
+        "enwiki": "Cacheu"
+      }
+    },
+    {
+      "id": "cadiz",
+      "name": "Cadiz",
+      "localName": "Cádiz",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 36.535,
+      "lon": -6.2975,
+      "sea": "north-atlantic",
+      "region": "iberia",
+      "tier": 1,
+      "historicalNames": [
+        "Gades",
+        "Qadis"
+      ],
+      "goods": [
+        "silver",
+        "wine",
+        "salt",
+        "olive-oil"
+      ],
+      "notes": "Atlantic outport of Seville and assembly point for the treasure fleets; raided by Drake in 1587.",
+      "source": {
+        "wikidata": "Q15682",
+        "enwiki": "Cádiz"
+      }
+    },
+    {
+      "id": "cagliari",
+      "name": "Cagliari",
+      "localName": "Cagliari",
+      "country": "IT",
+      "countryName": "Italy",
+      "lat": 39.216667,
+      "lon": 9.116667,
+      "sea": "mediterranean-sea",
+      "region": "western-mediterranean",
+      "tier": 3,
+      "historicalNames": [
+        "Casteddu",
+        "Karalis"
+      ],
+      "goods": [
+        "salt",
+        "wheat",
+        "coral",
+        "cheese"
+      ],
+      "notes": "Sardinian capital under the Crown of Aragon, exporting salt and coral from its lagoons and reefs.",
+      "source": {
+        "wikidata": "Q1897",
+        "enwiki": "Cagliari"
+      }
+    },
+    {
+      "id": "calabar",
+      "name": "Calabar",
+      "localName": "Atakpa",
+      "country": "NG",
+      "countryName": "Nigeria",
+      "lat": 4.95,
+      "lon": 8.325,
+      "sea": "gulf-of-guinea",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Old Calabar",
+        "Atakpa"
+      ],
+      "goods": [
+        "ivory",
+        "olive-oil",
+        "black-pepper",
+        "logwood"
+      ],
+      "notes": "Cross river trading town of the Efik, reached by ocean shipping through the Calabar estuary.",
+      "source": {
+        "wikidata": "Q844091",
+        "enwiki": "Calabar"
+      }
+    },
+    {
+      "id": "calais",
+      "name": "Calais",
+      "localName": "Calais",
+      "country": "FR",
+      "countryName": "France",
+      "lat": 50.9475,
+      "lon": 1.855556,
+      "sea": "english-channel",
+      "region": "france-low-countries",
+      "tier": 3,
+      "historicalNames": [
+        "Calais",
+        "Kales"
+      ],
+      "goods": [
+        "wool-raw",
+        "wool-cloth",
+        "herring"
+      ],
+      "notes": "English-held wool staple town from 1347 until its recapture by France in 1558.",
+      "source": {
+        "wikidata": "Q6454",
+        "enwiki": "Calais"
+      }
+    },
+    {
+      "id": "callao",
+      "name": "Callao",
+      "localName": "Callao",
+      "country": "PE",
+      "countryName": "Peru",
+      "lat": -12.052222,
+      "lon": -77.139167,
+      "sea": "south-pacific",
+      "region": "pacific-americas",
+      "tier": 1,
+      "historicalNames": [
+        "El Callao"
+      ],
+      "goods": [
+        "silver",
+        "wine",
+        "cacao"
+      ],
+      "notes": "Port of Lima from 1537 and the loading point of the Potosi silver bound north for the Panama fairs.",
+      "source": {
+        "wikidata": "Q105037",
+        "enwiki": "Callao"
+      }
+    },
+    {
+      "id": "campeche",
+      "name": "Campeche",
+      "localName": "San Francisco de Campeche",
+      "country": "MX",
+      "countryName": "Mexico",
+      "lat": 19.844814,
+      "lon": -90.539649,
+      "sea": "gulf-of-mexico",
+      "region": "caribbean",
+      "tier": 3,
+      "historicalNames": [
+        "San Francisco de Campeche",
+        "Can Pech"
+      ],
+      "goods": [
+        "logwood",
+        "salt",
+        "hides",
+        "wax"
+      ],
+      "notes": "Yucatan port shipping the logwood dye that drew buccaneers and eventually English cutters to the coast.",
+      "source": {
+        "wikidata": "Q61301",
+        "enwiki": "Campeche (city)"
+      }
+    },
+    {
+      "id": "cape-coast",
+      "name": "Cape Coast",
+      "localName": "Oguaa",
+      "country": "GH",
+      "countryName": "Ghana",
+      "lat": 5.1,
+      "lon": -1.25,
+      "sea": "gulf-of-guinea",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Cabo Corso",
+        "Oguaa"
+      ],
+      "goods": [
+        "gold",
+        "ivory",
+        "cotton-cloth"
+      ],
+      "notes": "Fort begun by the Swedes in 1653 and English from 1664; later headquarters of the Gold Coast forts.",
+      "source": {
+        "wikidata": "Q221283",
+        "enwiki": "Cape Coast"
+      }
+    },
+    {
+      "id": "cape-town",
+      "name": "Cape Town",
+      "localName": "Kaapstad",
+      "country": "ZA",
+      "countryName": "South Africa",
+      "lat": -33.925278,
+      "lon": 18.423889,
+      "sea": "south-atlantic",
+      "region": "east-africa",
+      "tier": 2,
+      "historicalNames": [
+        "Kaap de Goede Hoop",
+        "Table Bay"
+      ],
+      "goods": [
+        "wine",
+        "wheat",
+        "salted-beef",
+        "timber"
+      ],
+      "notes": "Table Bay refreshment station founded by Jan van Riebeeck for the VOC in 1652.",
+      "source": {
+        "wikidata": "Q5465",
+        "enwiki": "Cape Town"
+      }
+    },
+    {
+      "id": "cartagena",
+      "name": "Cartagena",
+      "localName": "Cartagena de Indias",
+      "country": "CO",
+      "countryName": "Colombia",
+      "lat": 10.423611,
+      "lon": -75.525278,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 1,
+      "historicalNames": [
+        "Cartagena de Indias"
+      ],
+      "goods": [
+        "gold",
+        "diamonds",
+        "hides",
+        "sugar"
+      ],
+      "notes": "Founded 1533; the fortified treasure port of the Tierra Firme fleet, sacked by Drake in 1586.",
+      "source": {
+        "wikidata": "Q657461",
+        "enwiki": "Cartagena, Colombia"
+      }
+    },
+    {
+      "id": "cebu",
+      "name": "Cebu",
+      "localName": "Sugbo",
+      "country": "PH",
+      "countryName": "Philippines",
+      "lat": 10.293,
+      "lon": 123.902,
+      "sea": "visayan-sea",
+      "region": "southeast-asia",
+      "tier": 3,
+      "historicalNames": [
+        "Sugbo",
+        "Villa de San Miguel"
+      ],
+      "goods": [
+        "gold",
+        "wax",
+        "cotton-cloth",
+        "coral"
+      ],
+      "notes": "Magellan was killed on nearby Mactan in 1521; Legazpi founded the first Spanish settlement here in 1565.",
+      "source": {
+        "wikidata": "Q1467",
+        "enwiki": "Cebu City"
+      }
+    },
+    {
+      "id": "ceuta",
+      "name": "Ceuta",
+      "localName": "Ceuta",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 35.886667,
+      "lon": -5.3,
+      "sea": "mediterranean-sea",
+      "region": "maghreb",
+      "tier": 3,
+      "historicalNames": [
+        "Sabta",
+        "Septem"
+      ],
+      "goods": [
+        "gold",
+        "wheat",
+        "wool-cloth"
+      ],
+      "notes": "Taken by Portugal in 1415, the first European foothold in North Africa; passed to Spain in 1668.",
+      "source": {
+        "wikidata": "Q5823",
+        "enwiki": "Ceuta"
+      }
+    },
+    {
+      "id": "chania",
+      "name": "Chania",
+      "localName": "Χανιά",
+      "country": "GR",
+      "countryName": "Greece",
+      "lat": 35.516667,
+      "lon": 24.016667,
+      "sea": "mediterranean-sea",
+      "region": "aegean-anatolia",
+      "tier": 3,
+      "historicalNames": [
+        "La Canea",
+        "Kydonia"
+      ],
+      "goods": [
+        "olive-oil",
+        "wine"
+      ],
+      "notes": "Venetian-walled western Cretan harbour, the first to fall to the Ottoman invasion of 1645.",
+      "source": {
+        "wikidata": "Q182299",
+        "enwiki": "Chania"
+      }
+    },
+    {
+      "id": "chaul",
+      "name": "Chaul",
+      "localName": "चौल",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 18.5461,
+      "lon": 72.9272,
+      "sea": "arabian-sea",
+      "region": "western-india",
+      "tier": 3,
+      "historicalNames": [
+        "Chaul",
+        "Revdanda"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "silk-cloth",
+        "black-pepper"
+      ],
+      "notes": "Konkan trading town where the Portuguese held a fort from 1521 and fought a siege in 1571.",
+      "source": {
+        "wikidata": "Q1068374",
+        "enwiki": "Chaul"
+      }
+    },
+    {
+      "id": "chennai",
+      "name": "Chennai",
+      "localName": "சென்னை",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 13.0825,
+      "lon": 80.275,
+      "sea": "bay-of-bengal",
+      "region": "eastern-india",
+      "tier": 2,
+      "historicalNames": [
+        "Madras",
+        "Madraspatnam",
+        "Chennapatnam"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "chintz",
+        "indigo",
+        "saltpetre"
+      ],
+      "notes": "Fort St George was begun in 1640 on land granted to the English, the nucleus of Madras.",
+      "source": {
+        "wikidata": "Q1352",
+        "enwiki": "Chennai"
+      }
+    },
+    {
+      "id": "chittagong",
+      "name": "Chittagong",
+      "localName": "চট্টগ্রাম",
+      "country": "BD",
+      "countryName": "Bangladesh",
+      "lat": 22.335,
+      "lon": 91.8325,
+      "sea": "bay-of-bengal",
+      "region": "eastern-india",
+      "tier": 3,
+      "historicalNames": [
+        "Porto Grande de Bengala",
+        "Chatgaon"
+      ],
+      "goods": [
+        "muslin",
+        "rice",
+        "sugar",
+        "timber"
+      ],
+      "notes": "The \"Great Port of Bengal\", held by Arakan with Portuguese freebooters until the Mughal conquest of 1666.",
+      "source": {
+        "wikidata": "Q376749",
+        "enwiki": "Chittagong"
+      }
+    },
+    {
+      "id": "cidade-velha",
+      "name": "Cidade Velha",
+      "localName": "Cidade Velha",
+      "country": "CV",
+      "countryName": "Cape Verde",
+      "lat": 14.916667,
+      "lon": -23.604167,
+      "sea": "north-atlantic",
+      "region": "atlantic-isles",
+      "tier": 3,
+      "historicalNames": [
+        "Ribeira Grande"
+      ],
+      "goods": [
+        "salt",
+        "cotton-cloth",
+        "hides"
+      ],
+      "notes": "Founded 1462 on Santiago, the first European city in the tropics and Portugal’s Cape Verde entrepot.",
+      "source": {
+        "wikidata": "Q464913",
+        "enwiki": "Cidade Velha"
+      }
+    },
+    {
+      "id": "colombo",
+      "name": "Colombo",
+      "localName": "කොළඹ",
+      "country": "LK",
+      "countryName": "Sri Lanka",
+      "lat": 6.926667,
+      "lon": 79.860556,
+      "sea": "laccadive-sea",
+      "region": "eastern-india",
+      "tier": 2,
+      "historicalNames": [
+        "Kolamba"
+      ],
+      "goods": [
+        "cinnamon",
+        "diamonds",
+        "ivory",
+        "dried-fruit"
+      ],
+      "notes": "Portuguese fort from 1518 guarding the cinnamon lands; taken by the Dutch after a siege in 1656.",
+      "source": {
+        "wikidata": "Q35381",
+        "enwiki": "Colombo"
+      }
+    },
+    {
+      "id": "copenhagen",
+      "name": "Copenhagen",
+      "localName": "København",
+      "country": "DK",
+      "countryName": "Denmark",
+      "lat": 55.676111,
+      "lon": 12.568889,
+      "sea": "baltic-sea",
+      "region": "baltic",
+      "tier": 1,
+      "historicalNames": [
+        "Køpmannæhafn",
+        "Hafnia"
+      ],
+      "goods": [
+        "herring",
+        "wheat",
+        "salted-beef",
+        "amber"
+      ],
+      "notes": "Danish capital commanding the Sound, where the Oresund toll was levied on all Baltic traffic from 1429.",
+      "source": {
+        "wikidata": "Q1748",
+        "enwiki": "Copenhagen"
+      }
+    },
+    {
+      "id": "corfu",
+      "name": "Corfu",
+      "localName": "Κέρκυρα",
+      "country": "GR",
+      "countryName": "Greece",
+      "lat": 39.623889,
+      "lon": 19.921389,
+      "sea": "ionian-sea",
+      "region": "adriatic-ionian",
+      "tier": 3,
+      "historicalNames": [
+        "Kerkyra",
+        "Corcyra"
+      ],
+      "goods": [
+        "olive-oil",
+        "wine",
+        "dried-fruit",
+        "salt"
+      ],
+      "notes": "Venetian fortress guarding the Adriatic entrance; withstood the Ottoman siege of 1537.",
+      "source": {
+        "wikidata": "Q205832",
+        "enwiki": "Corfu (city)"
+      }
+    },
+    {
+      "id": "cork",
+      "name": "Cork",
+      "localName": "Corcaigh",
+      "country": "IE",
+      "countryName": "Ireland",
+      "lat": 51.9,
+      "lon": -8.473056,
+      "sea": "north-atlantic",
+      "region": "british-isles",
+      "tier": 3,
+      "historicalNames": [
+        "Corcach Mór Mumhan"
+      ],
+      "goods": [
+        "salted-beef",
+        "cheese",
+        "hides",
+        "wool-raw"
+      ],
+      "notes": "Lee estuary harbour that provisioned Atlantic shipping with salt beef and butter.",
+      "source": {
+        "wikidata": "Q36647",
+        "enwiki": "Cork (city)"
+      }
+    },
+    {
+      "id": "cumana",
+      "name": "Cumana",
+      "localName": "Cumaná",
+      "country": "VE",
+      "countryName": "Venezuela",
+      "lat": 10.45,
+      "lon": -64.166667,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 3,
+      "historicalNames": [
+        "Nueva Toledo",
+        "Cumaná"
+      ],
+      "goods": [
+        "pearls",
+        "salt",
+        "cacao",
+        "tobacco"
+      ],
+      "notes": "Founded 1515 on the pearl coast opposite Cubagua, the earliest mainland Spanish town in South America.",
+      "source": {
+        "wikidata": "Q319476",
+        "enwiki": "Cumaná"
+      }
+    },
+    {
+      "id": "daman",
+      "name": "Daman",
+      "localName": "દમણ",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 20.416939,
+      "lon": 72.834022,
+      "sea": "arabian-sea",
+      "region": "western-india",
+      "tier": 3,
+      "historicalNames": [
+        "Damão"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "timber",
+        "salt"
+      ],
+      "notes": "Portuguese since 1559, controlling the Gulf of Khambhat approaches with Diu.",
+      "source": {
+        "wikidata": "Q463252",
+        "enwiki": "Daman, India"
+      }
+    },
+    {
+      "id": "damietta",
+      "name": "Damietta",
+      "localName": "دمياط",
+      "country": "EG",
+      "countryName": "Egypt",
+      "lat": 31.416667,
+      "lon": 31.821389,
+      "sea": "mediterranean-sea",
+      "region": "levant",
+      "tier": 3,
+      "historicalNames": [
+        "Dumyat",
+        "Damiata"
+      ],
+      "goods": [
+        "linen",
+        "rice",
+        "sugar",
+        "coffee"
+      ],
+      "notes": "Nile-branch port long known for its fine linen and, later, for handling Yemeni coffee.",
+      "source": {
+        "wikidata": "Q189383",
+        "enwiki": "Damietta"
+      }
+    },
+    {
+      "id": "dieppe",
+      "name": "Dieppe",
+      "localName": "Dieppe",
+      "country": "FR",
+      "countryName": "France",
+      "lat": 49.925,
+      "lon": 1.075,
+      "sea": "english-channel",
+      "region": "france-low-countries",
+      "tier": 3,
+      "historicalNames": [
+        "Dieppe"
+      ],
+      "goods": [
+        "ivory",
+        "brazilwood",
+        "dried-fish",
+        "linen"
+      ],
+      "notes": "Norman port whose Dieppe school produced lavish world maps in the 1540s-1560s.",
+      "source": {
+        "wikidata": "Q183557",
+        "enwiki": "Dieppe"
+      }
+    },
+    {
+      "id": "dili",
+      "name": "Dili",
+      "localName": "Díli",
+      "country": "TL",
+      "countryName": "Timor-Leste",
+      "lat": -8.553611,
+      "lon": 125.578333,
+      "sea": "banda-sea",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Dilly"
+      ],
+      "goods": [
+        "sandalwood",
+        "wax",
+        "sugar"
+      ],
+      "notes": "Portuguese Timor’s coast, worked for sandalwood from the 1510s; Dili became the capital in 1769.",
+      "source": {
+        "wikidata": "Q9310",
+        "enwiki": "Dili"
+      }
+    },
+    {
+      "id": "diu",
+      "name": "Diu",
+      "localName": "દીવ",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 20.714997,
+      "lon": 70.984358,
+      "sea": "arabian-sea",
+      "region": "western-india",
+      "tier": 3,
+      "historicalNames": [
+        "Diu"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "indigo",
+        "horses",
+        "silk-cloth"
+      ],
+      "notes": "Portuguese fortress from 1535; the sea battle of Diu in 1509 broke the Mamluk-Gujarati fleet.",
+      "source": {
+        "wikidata": "Q631849",
+        "enwiki": "Diu, India"
+      }
+    },
+    {
+      "id": "dublin",
+      "name": "Dublin",
+      "localName": "Baile Átha Cliath",
+      "country": "IE",
+      "countryName": "Ireland",
+      "lat": 53.349722,
+      "lon": -6.260278,
+      "sea": "irish-sea",
+      "region": "british-isles",
+      "tier": 2,
+      "historicalNames": [
+        "Dyflin",
+        "Baile Átha Cliath"
+      ],
+      "goods": [
+        "hides",
+        "wool-raw",
+        "salted-beef",
+        "timber"
+      ],
+      "notes": "Viking-founded Liffey port and seat of English administration in Ireland.",
+      "source": {
+        "wikidata": "Q1761",
+        "enwiki": "Dublin"
+      }
+    },
+    {
+      "id": "dubrovnik",
+      "name": "Dubrovnik",
+      "localName": "Dubrovnik",
+      "country": "HR",
+      "countryName": "Croatia",
+      "lat": 42.640278,
+      "lon": 18.108333,
+      "sea": "adriatic-sea",
+      "region": "adriatic-ionian",
+      "tier": 2,
+      "historicalNames": [
+        "Ragusa"
+      ],
+      "goods": [
+        "wool-cloth",
+        "silver",
+        "wax",
+        "salt",
+        "hides"
+      ],
+      "notes": "Ragusa, a tribute-paying republic under Ottoman protection whose neutral flag carried Balkan trade.",
+      "source": {
+        "wikidata": "Q1722",
+        "enwiki": "Dubrovnik"
+      }
+    },
+    {
+      "id": "elmina",
+      "name": "Elmina",
+      "localName": "Edina",
+      "country": "GH",
+      "countryName": "Ghana",
+      "lat": 5.083333,
+      "lon": -1.35,
+      "sea": "gulf-of-guinea",
+      "region": "west-africa",
+      "tier": 2,
+      "historicalNames": [
+        "São Jorge da Mina",
+        "Edina"
+      ],
+      "goods": [
+        "gold",
+        "ivory",
+        "cotton-cloth",
+        "dried-fruit"
+      ],
+      "notes": "Sao Jorge da Mina, built 1482, was the first and richest European gold fort on the Guinea coast; Dutch-taken 1637.",
+      "source": {
+        "wikidata": "Q968662",
+        "enwiki": "Elmina"
+      }
+    },
+    {
+      "id": "enkhuizen",
+      "name": "Enkhuizen",
+      "localName": "Enkhuizen",
+      "country": "NL",
+      "countryName": "Netherlands",
+      "lat": 52.7,
+      "lon": 5.283333,
+      "sea": "north-sea",
+      "region": "france-low-countries",
+      "tier": 3,
+      "historicalNames": [
+        "Enkhuizen"
+      ],
+      "goods": [
+        "herring",
+        "salt",
+        "timber"
+      ],
+      "notes": "Herring-fleet town and VOC chamber; home of the navigator Jan Huyghen van Linschoten.",
+      "source": {
+        "wikidata": "Q9918",
+        "enwiki": "Enkhuizen"
+      }
+    },
+    {
+      "id": "falmouth",
+      "name": "Falmouth",
+      "localName": "Falmouth",
+      "country": "GB",
+      "countryName": "United Kingdom",
+      "lat": 50.15,
+      "lon": -5.066667,
+      "sea": "english-channel",
+      "region": "british-isles",
+      "tier": 3,
+      "historicalNames": [
+        "Smithwick",
+        "Penny-come-quick"
+      ],
+      "goods": [
+        "tin",
+        "dried-fish",
+        "wool-cloth"
+      ],
+      "notes": "Deep natural anchorage on the Carrick Roads, one of the first landfalls for ships from the Atlantic.",
+      "source": {
+        "wikidata": "Q478029",
+        "enwiki": "Falmouth, Cornwall"
+      }
+    },
+    {
+      "id": "famagusta",
+      "name": "Famagusta",
+      "localName": "Ammochostos",
+      "country": "CY",
+      "countryName": "Cyprus",
+      "lat": 35.116667,
+      "lon": 33.95,
+      "sea": "mediterranean-sea",
+      "region": "levant",
+      "tier": 3,
+      "historicalNames": [
+        "Ammochostos",
+        "Magusa"
+      ],
+      "goods": [
+        "sugar",
+        "cotton-raw",
+        "salt",
+        "wine"
+      ],
+      "notes": "Venetian Cyprus’s fortified harbour, which fell after an eleven-month Ottoman siege in 1571.",
+      "source": {
+        "wikidata": "Q193190",
+        "enwiki": "Famagusta"
+      }
+    },
+    {
+      "id": "feodosia",
+      "name": "Feodosia",
+      "localName": "Феодосія",
+      "country": "UA",
+      "countryName": "Ukraine",
+      "lat": 45.048889,
+      "lon": 35.379167,
+      "sea": "black-sea",
+      "region": "aegean-anatolia",
+      "tier": 3,
+      "historicalNames": [
+        "Caffa",
+        "Kefe",
+        "Theodosia"
+      ],
+      "goods": [
+        "wheat",
+        "salt",
+        "furs",
+        "wax"
+      ],
+      "notes": "Caffa, the Genoese Crimean colony taken by the Ottomans in 1475 and thereafter their Black Sea seat.",
+      "source": {
+        "wikidata": "Q158491",
+        "enwiki": "Feodosia"
+      }
+    },
+    {
+      "id": "fukuoka",
+      "name": "Fukuoka",
+      "localName": "福岡",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 33.590139,
+      "lon": 130.401722,
+      "sea": "korea-strait",
+      "region": "japan",
+      "tier": 2,
+      "historicalNames": [
+        "Hakata",
+        "博多"
+      ],
+      "goods": [
+        "silk-raw",
+        "copper",
+        "porcelain",
+        "wine"
+      ],
+      "notes": "Hakata was Japan’s oldest China-trade harbour and the landing point of the Mongol invasions of 1274 and 1281.",
+      "source": {
+        "wikidata": "Q26600",
+        "enwiki": "Fukuoka"
+      }
+    },
+    {
+      "id": "funchal",
+      "name": "Funchal",
+      "localName": "Funchal",
+      "country": "PT",
+      "countryName": "Portugal",
+      "lat": 32.65,
+      "lon": -16.916667,
+      "sea": "north-atlantic",
+      "region": "atlantic-isles",
+      "tier": 2,
+      "historicalNames": [
+        "Funchal"
+      ],
+      "goods": [
+        "sugar",
+        "wine",
+        "timber"
+      ],
+      "notes": "Madeiran capital settled from 1424; Europe’s first plantation sugar economy before Brazil eclipsed it.",
+      "source": {
+        "wikidata": "Q25444",
+        "enwiki": "Funchal"
+      }
+    },
+    {
+      "id": "fuzhou",
+      "name": "Fuzhou",
+      "localName": "福州",
+      "country": "CN",
+      "countryName": "China",
+      "lat": 26.076944,
+      "lon": 119.291667,
+      "sea": "taiwan-strait",
+      "region": "china-coast",
+      "tier": 3,
+      "historicalNames": [
+        "Foochow",
+        "Minhou"
+      ],
+      "goods": [
+        "tea",
+        "timber",
+        "lacquerware",
+        "silk-cloth"
+      ],
+      "notes": "Min river port designated by the Ming for tribute missions arriving from the Ryukyu kingdom.",
+      "source": {
+        "wikidata": "Q68481",
+        "enwiki": "Fuzhou"
+      }
+    },
+    {
+      "id": "galle",
+      "name": "Galle",
+      "localName": "ගාල්ල",
+      "country": "LK",
+      "countryName": "Sri Lanka",
+      "lat": 6.032778,
+      "lon": 80.215556,
+      "sea": "indian-ocean",
+      "region": "eastern-india",
+      "tier": 3,
+      "historicalNames": [
+        "Point de Galle",
+        "Gimhathiththa"
+      ],
+      "goods": [
+        "cinnamon",
+        "diamonds",
+        "dried-fruit",
+        "hemp"
+      ],
+      "notes": "Southern Sri Lankan harbour taken by the Dutch in 1640 and rebuilt as their island stronghold.",
+      "source": {
+        "wikidata": "Q319366",
+        "enwiki": "Galle"
+      }
+    },
+    {
+      "id": "galway",
+      "name": "Galway",
+      "localName": "Gaillimh",
+      "country": "IE",
+      "countryName": "Ireland",
+      "lat": 53.2719,
+      "lon": -9.0488,
+      "sea": "north-atlantic",
+      "region": "british-isles",
+      "tier": 3,
+      "historicalNames": [
+        "Gaillimh"
+      ],
+      "goods": [
+        "wine",
+        "hides",
+        "dried-fish"
+      ],
+      "notes": "Western Irish town whose merchant tribes traded directly with Iberia for wine and salt.",
+      "source": {
+        "wikidata": "Q129610",
+        "enwiki": "Galway"
+      }
+    },
+    {
+      "id": "gdansk",
+      "name": "Gdansk",
+      "localName": "Gdańsk",
+      "country": "PL",
+      "countryName": "Poland",
+      "lat": 54.348291,
+      "lon": 18.654023,
+      "sea": "baltic-sea",
+      "region": "baltic",
+      "tier": 1,
+      "historicalNames": [
+        "Danzig",
+        "Gyddanyzc"
+      ],
+      "goods": [
+        "wheat",
+        "timber",
+        "tar",
+        "alum",
+        "amber"
+      ],
+      "notes": "Vistula outlet through which Polish rye and naval stores fed the Dutch grain trade.",
+      "source": {
+        "wikidata": "Q1792",
+        "enwiki": "Gdańsk"
+      }
+    },
+    {
+      "id": "genoa",
+      "name": "Genoa",
+      "localName": "Genova",
+      "country": "IT",
+      "countryName": "Italy",
+      "lat": 44.407222,
+      "lon": 8.933889,
+      "sea": "mediterranean-sea",
+      "region": "western-mediterranean",
+      "tier": 1,
+      "historicalNames": [
+        "Genova",
+        "Zena",
+        "Ianua"
+      ],
+      "goods": [
+        "silk-cloth",
+        "alum",
+        "coral",
+        "linen",
+        "silver"
+      ],
+      "notes": "Republic whose Casa di San Giorgio financiers underwrote much of Habsburg Spain’s war debt.",
+      "source": {
+        "wikidata": "Q1449",
+        "enwiki": "Genoa"
+      }
+    },
+    {
+      "id": "gibraltar",
+      "name": "Gibraltar",
+      "localName": "Gibraltar",
+      "country": "GI",
+      "countryName": "Gibraltar",
+      "lat": 36.14,
+      "lon": -5.35,
+      "sea": "mediterranean-sea",
+      "region": "iberia",
+      "tier": 3,
+      "historicalNames": [
+        "Jabal Tariq",
+        "Calpe"
+      ],
+      "goods": [
+        "dried-fish",
+        "wine"
+      ],
+      "notes": "Fortified rock commanding the strait between the Atlantic and the Mediterranean; Spanish-held until 1704.",
+      "source": {
+        "wikidata": "Q1410",
+        "enwiki": "Gibraltar"
+      }
+    },
+    {
+      "id": "goree",
+      "name": "Goree",
+      "localName": "Gorée",
+      "country": "SN",
+      "countryName": "Senegal",
+      "lat": 14.666944,
+      "lon": -17.398333,
+      "sea": "north-atlantic",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Ilha de Palma",
+        "Goedereede"
+      ],
+      "goods": [
+        "ivory",
+        "hides",
+        "wax",
+        "gold"
+      ],
+      "notes": "Island anchorage off Cape Verde peninsula, held in turn by Portugal, the Dutch from 1627 and France from 1677.",
+      "source": {
+        "wikidata": "Q244347",
+        "enwiki": "Gorée"
+      }
+    },
+    {
+      "id": "gothenburg",
+      "name": "Gothenburg",
+      "localName": "Göteborg",
+      "country": "SE",
+      "countryName": "Sweden",
+      "lat": 57.7075,
+      "lon": 11.9675,
+      "sea": "north-sea",
+      "region": "baltic",
+      "tier": 3,
+      "historicalNames": [
+        "Göteborg"
+      ],
+      "goods": [
+        "iron",
+        "timber",
+        "herring"
+      ],
+      "notes": "Chartered 1621 to give Sweden a North Sea harbour outside the Danish Sound toll.",
+      "source": {
+        "wikidata": "Q25287",
+        "enwiki": "Gothenburg"
+      }
+    },
+    {
+      "id": "guangzhou",
+      "name": "Guangzhou",
+      "localName": "廣州",
+      "country": "CN",
+      "countryName": "China",
+      "lat": 23.13,
+      "lon": 113.26,
+      "sea": "south-china-sea",
+      "region": "china-coast",
+      "tier": 1,
+      "historicalNames": [
+        "Canton",
+        "Panyu"
+      ],
+      "goods": [
+        "silk-cloth",
+        "porcelain",
+        "tea",
+        "ginseng",
+        "lacquerware"
+      ],
+      "notes": "Pearl River city whose twice-yearly fairs were the licensed point of contact for foreign trade with China.",
+      "source": {
+        "wikidata": "Q16572",
+        "enwiki": "Guangzhou"
+      }
+    },
+    {
+      "id": "guayaquil",
+      "name": "Guayaquil",
+      "localName": "Guayaquil",
+      "country": "EC",
+      "countryName": "Ecuador",
+      "lat": -2.19,
+      "lon": -79.8875,
+      "sea": "south-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "Santiago de Guayaquil"
+      ],
+      "goods": [
+        "cacao",
+        "timber",
+        "hides",
+        "gum-arabic"
+      ],
+      "notes": "Guayas river port and the main shipyard of the Spanish Pacific, using local guachapelí hardwood.",
+      "source": {
+        "wikidata": "Q43509",
+        "enwiki": "Guayaquil"
+      }
+    },
+    {
+      "id": "hafnarfjordur",
+      "name": "Hafnarfjordur",
+      "localName": "Hafnarfjörður",
+      "country": "IS",
+      "countryName": "Iceland",
+      "lat": 64.066667,
+      "lon": -21.95,
+      "sea": "north-atlantic",
+      "region": "scandinavia-arctic",
+      "tier": 3,
+      "historicalNames": [
+        "Hafnarfjörður"
+      ],
+      "goods": [
+        "dried-fish",
+        "sulphur",
+        "wool-cloth"
+      ],
+      "notes": "Iceland’s chief harbour in the 15th and 16th centuries, worked by English and then Hanseatic merchants.",
+      "source": {
+        "wikidata": "Q103725",
+        "enwiki": "Hafnarfjörður"
+      }
+    },
+    {
+      "id": "hagatna",
+      "name": "Hagatna",
+      "localName": "Hagåtña",
+      "country": "GU",
+      "countryName": "Guam",
+      "lat": 13.483333,
+      "lon": 144.75,
+      "sea": "philippine-sea",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Agaña",
+        "Hagåtña"
+      ],
+      "goods": [
+        "dried-fruit",
+        "hemp"
+      ],
+      "notes": "Guam was the Manila galleon’s mid-Pacific watering stop; a Spanish mission was established in 1668.",
+      "source": {
+        "wikidata": "Q30988",
+        "enwiki": "Hagåtña, Guam"
+      }
+    },
+    {
+      "id": "hakodate",
+      "name": "Hakodate",
+      "localName": "函館",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 41.768667,
+      "lon": 140.728917,
+      "sea": "sea-of-japan",
+      "region": "japan",
+      "tier": 3,
+      "historicalNames": [
+        "Hakodate",
+        "Usukeshi"
+      ],
+      "goods": [
+        "dried-fish",
+        "furs",
+        "timber"
+      ],
+      "notes": "Southern Ezo harbour in the Matsumae domain’s monopoly zone for trade with the Ainu.",
+      "source": {
+        "wikidata": "Q26418",
+        "enwiki": "Hakodate"
+      }
+    },
+    {
+      "id": "hamburg",
+      "name": "Hamburg",
+      "localName": "Hamburg",
+      "country": "DE",
+      "countryName": "Germany",
+      "lat": 53.55,
+      "lon": 10,
+      "sea": "north-sea",
+      "region": "baltic",
+      "tier": 1,
+      "historicalNames": [
+        "Hammaburg"
+      ],
+      "goods": [
+        "wine",
+        "wheat",
+        "wool-cloth",
+        "sugar",
+        "copper"
+      ],
+      "notes": "Elbe river port that absorbed much Antwerp trade after 1585; its Bank opened in 1619.",
+      "source": {
+        "wikidata": "Q1055",
+        "enwiki": "Hamburg"
+      }
+    },
+    {
+      "id": "hanoi",
+      "name": "Hanoi",
+      "localName": "Hà Nội",
+      "country": "VN",
+      "countryName": "Vietnam",
+      "lat": 21.0245,
+      "lon": 105.84117,
+      "sea": "gulf-of-tonkin",
+      "region": "southeast-asia",
+      "tier": 3,
+      "historicalNames": [
+        "Thăng Long",
+        "Kẻ Chợ",
+        "Tonkin"
+      ],
+      "goods": [
+        "silk-raw",
+        "lacquerware",
+        "cinnamon",
+        "porcelain"
+      ],
+      "notes": "Red River capital of Trinh-ruled Tonkin; Dutch and English factories traded here through the downstream port of Pho Hien.",
+      "source": {
+        "wikidata": "Q1858",
+        "enwiki": "Hanoi"
+      }
+    },
+    {
+      "id": "havana",
+      "name": "Havana",
+      "localName": "La Habana",
+      "country": "CU",
+      "countryName": "Cuba",
+      "lat": 23.136667,
+      "lon": -82.358889,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 1,
+      "historicalNames": [
+        "San Cristóbal de La Habana"
+      ],
+      "goods": [
+        "sugar",
+        "tobacco",
+        "hides",
+        "silver",
+        "timber"
+      ],
+      "notes": "Assembly point where the New Spain and Tierra Firme fleets joined before the convoy run home to Seville.",
+      "source": {
+        "wikidata": "Q1563",
+        "enwiki": "Havana"
+      }
+    },
+    {
+      "id": "heraklion",
+      "name": "Heraklion",
+      "localName": "Ηράκλειο",
+      "country": "GR",
+      "countryName": "Greece",
+      "lat": 35.340278,
+      "lon": 25.134444,
+      "sea": "mediterranean-sea",
+      "region": "aegean-anatolia",
+      "tier": 2,
+      "historicalNames": [
+        "Candia",
+        "Chandax"
+      ],
+      "goods": [
+        "wine",
+        "olive-oil",
+        "cheese",
+        "salt"
+      ],
+      "notes": "Candia, Venice’s Cretan capital, besieged by the Ottomans from 1648 and lost in 1669.",
+      "source": {
+        "wikidata": "Q160544",
+        "enwiki": "Heraklion"
+      }
+    },
+    {
+      "id": "hirado",
+      "name": "Hirado",
+      "localName": "平戸",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 33.368056,
+      "lon": 129.553722,
+      "sea": "east-china-sea",
+      "region": "japan",
+      "tier": 2,
+      "historicalNames": [
+        "Firando",
+        "平戸"
+      ],
+      "goods": [
+        "silver",
+        "silk-raw",
+        "copper",
+        "porcelain"
+      ],
+      "notes": "Held the Dutch factory from 1609 and the English from 1613, until both were moved or closed by 1641.",
+      "source": {
+        "wikidata": "Q328601",
+        "enwiki": "Hirado, Nagasaki"
+      }
+    },
+    {
+      "id": "hoi-an",
+      "name": "Hoi An",
+      "localName": "Hội An",
+      "country": "VN",
+      "countryName": "Vietnam",
+      "lat": 15.877669,
+      "lon": 108.33265,
+      "sea": "south-china-sea",
+      "region": "southeast-asia",
+      "tier": 2,
+      "historicalNames": [
+        "Faifo",
+        "Hai Pho"
+      ],
+      "goods": [
+        "silk-raw",
+        "sandalwood",
+        "sugar",
+        "porcelain",
+        "cinnamon"
+      ],
+      "notes": "Nguyen-ruled Cochinchina port with permanent Japanese and Chinese quarters, thriving on the shuinsen trade.",
+      "source": {
+        "wikidata": "Q36160",
+        "enwiki": "Hội An (city)"
+      }
+    },
+    {
+      "id": "hong-kong",
+      "name": "Hong Kong",
+      "localName": "香港",
+      "country": "HK",
+      "countryName": "Hong Kong",
+      "lat": 22.278333,
+      "lon": 114.158611,
+      "sea": "south-china-sea",
+      "region": "china-coast",
+      "tier": 3,
+      "historicalNames": [
+        "Hong Kong",
+        "Tuen Mun"
+      ],
+      "goods": [
+        "salt",
+        "frankincense",
+        "pearls",
+        "dried-fish"
+      ],
+      "notes": "Its name derives from the incense trade of the harbour; a salt and fishing district until British occupation in 1841.",
+      "source": {
+        "wikidata": "Q8646",
+        "enwiki": "Hong Kong"
+      }
+    },
+    {
+      "id": "honolulu",
+      "name": "Honolulu",
+      "localName": "Honolulu",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 21.304722,
+      "lon": -157.857222,
+      "sea": "north-pacific",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Honolulu",
+        "Kou"
+      ],
+      "goods": [
+        "sandalwood",
+        "salt",
+        "dried-fruit"
+      ],
+      "notes": "Oahu harbour unknown to Europeans until Cook’s 1778 landfall; included as a Pacific waypoint, outside the 1500-1650 era.",
+      "source": {
+        "wikidata": "Q18094",
+        "enwiki": "Honolulu"
+      }
+    },
+    {
+      "id": "hooghly",
+      "name": "Hooghly",
+      "localName": "হুগলি",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 22.908889,
+      "lon": 88.396667,
+      "sea": "bay-of-bengal",
+      "region": "eastern-india",
+      "tier": 2,
+      "historicalNames": [
+        "Hugli",
+        "Ugolim"
+      ],
+      "goods": [
+        "saltpetre",
+        "muslin",
+        "silk-raw",
+        "sugar",
+        "rice"
+      ],
+      "notes": "Portuguese river settlement of 1580 destroyed by the Mughals in 1632; the Dutch built Chinsurah beside it.",
+      "source": {
+        "wikidata": "Q20099772",
+        "enwiki": "Hugli-Chuchura"
+      }
+    },
+    {
+      "id": "hoorn",
+      "name": "Hoorn",
+      "localName": "Hoorn",
+      "country": "NL",
+      "countryName": "Netherlands",
+      "lat": 52.653333,
+      "lon": 5.073333,
+      "sea": "north-sea",
+      "region": "france-low-countries",
+      "tier": 3,
+      "historicalNames": [
+        "Hoorn"
+      ],
+      "goods": [
+        "cheese",
+        "herring",
+        "timber",
+        "nutmeg"
+      ],
+      "notes": "Zuiderzee VOC chamber town; Cape Horn is named after it by Schouten and Le Maire in 1616.",
+      "source": {
+        "wikidata": "Q9938",
+        "enwiki": "Hoorn"
+      }
+    },
+    {
+      "id": "hormuz",
+      "name": "Hormuz",
+      "localName": "هرمز",
+      "country": "IR",
+      "countryName": "Iran",
+      "lat": 27.0675,
+      "lon": 56.46,
+      "sea": "persian-gulf",
+      "region": "arabia-gulf",
+      "tier": 2,
+      "historicalNames": [
+        "Ormus",
+        "Hurmuz"
+      ],
+      "goods": [
+        "pearls",
+        "horses",
+        "silk-raw",
+        "black-pepper"
+      ],
+      "notes": "Island entrepot at the Gulf mouth, Portuguese from 1515 until an Anglo-Persian force took it in 1622.",
+      "source": {
+        "wikidata": "Q695265",
+        "enwiki": "Hormuz Island"
+      }
+    },
+    {
+      "id": "incheon",
+      "name": "Incheon",
+      "localName": "인천",
+      "country": "KR",
+      "countryName": "South Korea",
+      "lat": 37.463889,
+      "lon": 126.648611,
+      "sea": "yellow-sea",
+      "region": "korea",
+      "tier": 2,
+      "historicalNames": [
+        "Jemulpo",
+        "仁川 Incheon",
+        "Michuhol"
+      ],
+      "goods": [
+        "rice",
+        "salt",
+        "ramie-cloth",
+        "ginseng"
+      ],
+      "notes": "Yellow Sea approach to Hanyang, the Joseon capital; the sea road for envoys and tribute to Ming China.",
+      "source": {
+        "wikidata": "Q20934",
+        "enwiki": "Incheon"
+      }
+    },
+    {
+      "id": "istanbul",
+      "name": "Istanbul",
+      "localName": "İstanbul",
+      "country": "TR",
+      "countryName": "Turkey",
+      "lat": 41.01,
+      "lon": 28.960278,
+      "sea": "sea-of-marmara",
+      "region": "aegean-anatolia",
+      "tier": 1,
+      "historicalNames": [
+        "Constantinople",
+        "Konstantiniyye",
+        "Byzantion"
+      ],
+      "goods": [
+        "silk-cloth",
+        "carpets",
+        "wheat",
+        "furs",
+        "black-pepper"
+      ],
+      "notes": "Ottoman capital from 1453, straddling the Bosphorus between the Mediterranean and Black Sea trades.",
+      "source": {
+        "wikidata": "Q406",
+        "enwiki": "Istanbul"
+      }
+    },
+    {
+      "id": "izmir",
+      "name": "Izmir",
+      "localName": "İzmir",
+      "country": "TR",
+      "countryName": "Turkey",
+      "lat": 38.41273,
+      "lon": 27.13838,
+      "sea": "aegean-sea",
+      "region": "aegean-anatolia",
+      "tier": 2,
+      "historicalNames": [
+        "Smyrna"
+      ],
+      "goods": [
+        "dried-fruit",
+        "cotton-raw",
+        "silk-raw",
+        "carpets"
+      ],
+      "notes": "Smyrna, which grew in the 17th century into the chief Levant Company outlet for Anatolian produce.",
+      "source": {
+        "wikidata": "Q35997",
+        "enwiki": "İzmir"
+      }
+    },
+    {
+      "id": "jaffna",
+      "name": "Jaffna",
+      "localName": "யாழ்ப்பாணம்",
+      "country": "LK",
+      "countryName": "Sri Lanka",
+      "lat": 9.664722,
+      "lon": 80.016667,
+      "sea": "bay-of-bengal",
+      "region": "eastern-india",
+      "tier": 3,
+      "historicalNames": [
+        "Jafanapatão",
+        "Yalpanam"
+      ],
+      "goods": [
+        "ivory",
+        "dried-fruit",
+        "tobacco",
+        "pearls"
+      ],
+      "notes": "Tamil kingdom conquered by Portugal in 1619; commanded the Palk Strait pearl and elephant trades.",
+      "source": {
+        "wikidata": "Q215277",
+        "enwiki": "Jaffna"
+      }
+    },
+    {
+      "id": "jakarta",
+      "name": "Jakarta",
+      "localName": "Jakarta",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": -6.175278,
+      "lon": 106.826944,
+      "sea": "java-sea",
+      "region": "southeast-asia",
+      "tier": 1,
+      "historicalNames": [
+        "Batavia",
+        "Jayakarta",
+        "Sunda Kelapa"
+      ],
+      "goods": [
+        "cloves",
+        "nutmeg",
+        "black-pepper",
+        "porcelain",
+        "sugar"
+      ],
+      "notes": "Jan Pieterszoon Coen razed Jayakarta in 1619 and built Batavia, the VOC capital in Asia.",
+      "source": {
+        "wikidata": "Q3630",
+        "enwiki": "Jakarta"
+      }
+    },
+    {
+      "id": "jamestown",
+      "name": "Jamestown",
+      "localName": "Jamestown",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 37.209167,
+      "lon": -76.7775,
+      "sea": "north-atlantic",
+      "region": "north-america-atlantic",
+      "tier": 2,
+      "historicalNames": [
+        "James Fort",
+        "Jamestown"
+      ],
+      "goods": [
+        "tobacco",
+        "timber",
+        "gum-arabic",
+        "furs"
+      ],
+      "notes": "Established 1607 on the James river; the first English settlement in America to survive, on tobacco after 1614.",
+      "source": {
+        "wikidata": "Q323813",
+        "enwiki": "Jamestown"
+      }
+    },
+    {
+      "id": "jeddah",
+      "name": "Jeddah",
+      "localName": "جدة",
+      "country": "SA",
+      "countryName": "Saudi Arabia",
+      "lat": 21.529167,
+      "lon": 39.161111,
+      "sea": "red-sea",
+      "region": "arabia-gulf",
+      "tier": 2,
+      "historicalNames": [
+        "Judda"
+      ],
+      "goods": [
+        "black-pepper",
+        "coffee",
+        "frankincense",
+        "cotton-cloth"
+      ],
+      "notes": "Port of Mecca and the transhipment point where Indian goods met the pilgrim and Egyptian trades.",
+      "source": {
+        "wikidata": "Q374365",
+        "enwiki": "Jeddah"
+      }
+    },
+    {
+      "id": "jeju",
+      "name": "Jeju",
+      "localName": "제주",
+      "country": "KR",
+      "countryName": "South Korea",
+      "lat": 33.509722,
+      "lon": 126.521944,
+      "sea": "east-china-sea",
+      "region": "korea",
+      "tier": 3,
+      "historicalNames": [
+        "濟州 Jeju",
+        "Tamna"
+      ],
+      "goods": [
+        "horses",
+        "dried-fruit",
+        "dried-fish"
+      ],
+      "notes": "Former kingdom of Tamna, a royal horse-pasture island; Hendrick Hamel’s Dutch crew was wrecked here in 1653.",
+      "source": {
+        "wikidata": "Q42142",
+        "enwiki": "Jeju City"
+      }
+    },
+    {
+      "id": "julfar",
+      "name": "Julfar",
+      "localName": "جلفار",
+      "country": "AE",
+      "countryName": "United Arab Emirates",
+      "lat": 25.7851,
+      "lon": 55.9479,
+      "sea": "persian-gulf",
+      "region": "arabia-gulf",
+      "tier": 3,
+      "historicalNames": [
+        "Julfar",
+        "Ras al-Khaimah"
+      ],
+      "goods": [
+        "pearls",
+        "dried-fruit",
+        "horses",
+        "dried-fish"
+      ],
+      "notes": "Medieval pearling and shipbuilding town on the lower Gulf; birthplace of the pilot Ahmad ibn Majid.",
+      "source": {
+        "wikidata": "Q2126436",
+        "enwiki": "Ras Al Khaimah"
+      }
+    },
+    {
+      "id": "kagoshima",
+      "name": "Kagoshima",
+      "localName": "鹿児島",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 31.596806,
+      "lon": 130.557139,
+      "sea": "east-china-sea",
+      "region": "japan",
+      "tier": 3,
+      "historicalNames": [
+        "Kagoshima"
+      ],
+      "goods": [
+        "sulphur",
+        "sugar",
+        "silver",
+        "rice"
+      ],
+      "notes": "Satsuma’s castle port, where Francis Xavier landed in 1549 and from which Ryukyu was invaded in 1609.",
+      "source": {
+        "wikidata": "Q15674",
+        "enwiki": "Kagoshima"
+      }
+    },
+    {
+      "id": "kaliningrad",
+      "name": "Kaliningrad",
+      "localName": "Калининград",
+      "country": "RU",
+      "countryName": "Russia",
+      "lat": 54.716667,
+      "lon": 20.5,
+      "sea": "baltic-sea",
+      "region": "baltic",
+      "tier": 3,
+      "historicalNames": [
+        "Königsberg",
+        "Twangste"
+      ],
+      "goods": [
+        "amber",
+        "wheat",
+        "timber",
+        "flax"
+      ],
+      "notes": "Founded 1255 as Konigsberg; ducal Prussian capital holding the Baltic amber monopoly.",
+      "source": {
+        "wikidata": "Q1829",
+        "enwiki": "Kaliningrad"
+      }
+    },
+    {
+      "id": "kannur",
+      "name": "Kannur",
+      "localName": "കണ്ണൂർ",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 11.868889,
+      "lon": 75.355556,
+      "sea": "laccadive-sea",
+      "region": "western-india",
+      "tier": 3,
+      "historicalNames": [
+        "Cannanore"
+      ],
+      "goods": [
+        "black-pepper",
+        "ginger",
+        "cardamom",
+        "hemp"
+      ],
+      "notes": "Seat of the Kolathiri rajas; Portugal’s St Angelo fort of 1505 was one of its earliest in India.",
+      "source": {
+        "wikidata": "Q4789666",
+        "enwiki": "Kannur"
+      }
+    },
+    {
+      "id": "karachi",
+      "name": "Karachi",
+      "localName": "کراچی",
+      "country": "PK",
+      "countryName": "Pakistan",
+      "lat": 24.86,
+      "lon": 67.01,
+      "sea": "arabian-sea",
+      "region": "western-india",
+      "tier": 3,
+      "historicalNames": [
+        "Kolachi",
+        "Debal"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "indigo",
+        "wheat",
+        "saltpetre"
+      ],
+      "notes": "Sindh coast anchorage near the site of the medieval Indus delta port of Debal.",
+      "source": {
+        "wikidata": "Q8660",
+        "enwiki": "Karachi"
+      }
+    },
+    {
+      "id": "keelung",
+      "name": "Keelung",
+      "localName": "基隆",
+      "country": "TW",
+      "countryName": "Taiwan",
+      "lat": 25.12825,
+      "lon": 121.7419,
+      "sea": "east-china-sea",
+      "region": "china-coast",
+      "tier": 3,
+      "historicalNames": [
+        "Santissima Trinidad",
+        "Kelang"
+      ],
+      "goods": [
+        "sulphur",
+        "hides",
+        "gold"
+      ],
+      "notes": "Spain held Fort San Salvador on its harbour island from 1626 until the Dutch drove them out in 1642.",
+      "source": {
+        "wikidata": "Q249996",
+        "enwiki": "Keelung"
+      }
+    },
+    {
+      "id": "khambhat",
+      "name": "Khambhat",
+      "localName": "ખંભાત",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 22.313114,
+      "lon": 72.619408,
+      "sea": "arabian-sea",
+      "region": "western-india",
+      "tier": 2,
+      "historicalNames": [
+        "Cambay",
+        "Stambhatirtha"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "indigo",
+        "diamonds",
+        "silk-cloth"
+      ],
+      "notes": "Gujarat’s great medieval emporium, whose gulf silted so badly that trade shifted to Surat by 1600.",
+      "source": {
+        "wikidata": "Q1740527",
+        "enwiki": "Khambhat"
+      }
+    },
+    {
+      "id": "kilwa",
+      "name": "Kilwa",
+      "localName": "Kilwa Kisiwani",
+      "country": "TZ",
+      "countryName": "Tanzania",
+      "lat": -8.98173,
+      "lon": 39.51722,
+      "sea": "indian-ocean",
+      "region": "east-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Kilwa Kisiwani",
+        "Quiloa"
+      ],
+      "goods": [
+        "gold",
+        "ivory",
+        "ambergris",
+        "cotton-cloth"
+      ],
+      "notes": "Swahili sultanate that controlled the Sofala gold trade before Portuguese sacking in 1505.",
+      "source": {
+        "wikidata": "Q1741475",
+        "enwiki": "Kilwa Kisiwani"
+      }
+    },
+    {
+      "id": "kingston-upon-hull",
+      "name": "Kingston upon Hull",
+      "localName": "Kingston upon Hull",
+      "country": "GB",
+      "countryName": "United Kingdom",
+      "lat": 53.744444,
+      "lon": -0.3325,
+      "sea": "north-sea",
+      "region": "british-isles",
+      "tier": 3,
+      "historicalNames": [
+        "Hull",
+        "Wyke upon Hull"
+      ],
+      "goods": [
+        "wool-cloth",
+        "timber",
+        "tar",
+        "herring"
+      ],
+      "notes": "Humber port handling English trade with the Baltic and, from the 1610s, Arctic whaling voyages.",
+      "source": {
+        "wikidata": "Q128147",
+        "enwiki": "Kingston upon Hull"
+      }
+    },
+    {
+      "id": "klaipeda",
+      "name": "Klaipeda",
+      "localName": "Klaipėda",
+      "country": "LT",
+      "countryName": "Lithuania",
+      "lat": 55.7125,
+      "lon": 21.135,
+      "sea": "baltic-sea",
+      "region": "baltic",
+      "tier": 3,
+      "historicalNames": [
+        "Memel"
+      ],
+      "goods": [
+        "timber",
+        "flax",
+        "hemp",
+        "tar"
+      ],
+      "notes": "Memel, the northernmost Prussian harbour, shipping Lithuanian timber and hemp.",
+      "source": {
+        "wikidata": "Q776965",
+        "enwiki": "Klaipėda"
+      }
+    },
+    {
+      "id": "kochi",
+      "name": "Kochi",
+      "localName": "കൊച്ചി",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 9.966667,
+      "lon": 76.283333,
+      "sea": "laccadive-sea",
+      "region": "western-india",
+      "tier": 1,
+      "historicalNames": [
+        "Cochin",
+        "Kochi"
+      ],
+      "goods": [
+        "black-pepper",
+        "cinnamon",
+        "ginger",
+        "hemp",
+        "timber"
+      ],
+      "notes": "Site of Fort Manuel, 1503, Portugal’s first Indian fort; the Dutch took the town in 1663.",
+      "source": {
+        "wikidata": "Q1800",
+        "enwiki": "Kochi"
+      }
+    },
+    {
+      "id": "kollam",
+      "name": "Kollam",
+      "localName": "കൊല്ലം",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 8.885278,
+      "lon": 76.586389,
+      "sea": "laccadive-sea",
+      "region": "western-india",
+      "tier": 3,
+      "historicalNames": [
+        "Quilon",
+        "Desinganadu"
+      ],
+      "goods": [
+        "black-pepper",
+        "ginger",
+        "dried-fruit",
+        "hemp"
+      ],
+      "notes": "Ancient Malabar pepper port with a Portuguese factory from 1503 and a Dutch one after 1661.",
+      "source": {
+        "wikidata": "Q321475",
+        "enwiki": "Kollam"
+      }
+    },
+    {
+      "id": "kozhikode",
+      "name": "Kozhikode",
+      "localName": "കോഴിക്കോട്",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 11.247778,
+      "lon": 75.780278,
+      "sea": "laccadive-sea",
+      "region": "western-india",
+      "tier": 1,
+      "historicalNames": [
+        "Calicut",
+        "Kallikkotta"
+      ],
+      "goods": [
+        "black-pepper",
+        "ginger",
+        "cotton-cloth",
+        "cardamom"
+      ],
+      "notes": "Vasco da Gama made landfall here in May 1498; the Zamorin’s city gave its name to calico cloth.",
+      "source": {
+        "wikidata": "Q28729",
+        "enwiki": "Kozhikode"
+      }
+    },
+    {
+      "id": "kupang",
+      "name": "Kupang",
+      "localName": "Kupang",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": -10.163333,
+      "lon": 123.577778,
+      "sea": "timor-sea",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Coepang"
+      ],
+      "goods": [
+        "sandalwood",
+        "wax",
+        "rice"
+      ],
+      "notes": "West Timor harbour where the VOC built Fort Concordia in 1653 to contest the sandalwood trade.",
+      "source": {
+        "wikidata": "Q14155",
+        "enwiki": "Kupang"
+      }
+    },
+    {
+      "id": "la-rochelle",
+      "name": "La Rochelle",
+      "localName": "La Rochelle",
+      "country": "FR",
+      "countryName": "France",
+      "lat": 46.159444,
+      "lon": -1.151389,
+      "sea": "bay-of-biscay",
+      "region": "france-low-countries",
+      "tier": 2,
+      "historicalNames": [
+        "La Rochelle"
+      ],
+      "goods": [
+        "salt",
+        "wine",
+        "furs",
+        "dried-fish"
+      ],
+      "notes": "Huguenot merchant stronghold and the main French base for the Canadian fur trade until its 1628 siege.",
+      "source": {
+        "wikidata": "Q82185",
+        "enwiki": "La Rochelle"
+      }
+    },
+    {
+      "id": "lagos-ng",
+      "name": "Lagos",
+      "localName": "Èkó",
+      "country": "NG",
+      "countryName": "Nigeria",
+      "lat": 6.456111,
+      "lon": 3.393611,
+      "sea": "gulf-of-guinea",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Èkó",
+        "Lago de Curamo"
+      ],
+      "goods": [
+        "ivory",
+        "olive-oil",
+        "cotton-cloth",
+        "black-pepper"
+      ],
+      "notes": "Lagoon settlement named by Portuguese navigators in the late 15th century; a Benin outpost called Eko.",
+      "source": {
+        "wikidata": "Q8673",
+        "enwiki": "Lagos"
+      }
+    },
+    {
+      "id": "lagos-pt",
+      "name": "Lagos",
+      "localName": "Lagos",
+      "country": "PT",
+      "countryName": "Portugal",
+      "lat": 37.102778,
+      "lon": -8.672778,
+      "sea": "north-atlantic",
+      "region": "iberia",
+      "tier": 3,
+      "historicalNames": [
+        "Lacobriga"
+      ],
+      "goods": [
+        "dried-fish",
+        "salt",
+        "wine",
+        "gold"
+      ],
+      "notes": "Algarve harbour that outfitted the earliest 15th-century Portuguese voyages down the African coast.",
+      "source": {
+        "wikidata": "Q732548",
+        "enwiki": "Lagos, Portugal"
+      }
+    },
+    {
+      "id": "lamu",
+      "name": "Lamu",
+      "localName": "Lamu",
+      "country": "KE",
+      "countryName": "Kenya",
+      "lat": -2.268611,
+      "lon": 40.900278,
+      "sea": "indian-ocean",
+      "region": "east-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Lamu"
+      ],
+      "goods": [
+        "timber",
+        "ivory",
+        "cotton-cloth"
+      ],
+      "notes": "Swahili archipelago town exporting mangrove poles to the treeless ports of Arabia and the Gulf.",
+      "source": {
+        "wikidata": "Q272799",
+        "enwiki": "Lamu"
+      }
+    },
+    {
+      "id": "las-palmas",
+      "name": "Las Palmas",
+      "localName": "Las Palmas de Gran Canaria",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 28.127222,
+      "lon": -15.431389,
+      "sea": "north-atlantic",
+      "region": "atlantic-isles",
+      "tier": 2,
+      "historicalNames": [
+        "Las Palmas"
+      ],
+      "goods": [
+        "sugar",
+        "wine",
+        "indigo"
+      ],
+      "notes": "Founded 1478; standard first watering stop for Spanish fleets bound for the Americas.",
+      "source": {
+        "wikidata": "Q11974",
+        "enwiki": "Las Palmas"
+      }
+    },
+    {
+      "id": "latakia",
+      "name": "Latakia",
+      "localName": "اللاذقية",
+      "country": "SY",
+      "countryName": "Syria",
+      "lat": 35.52,
+      "lon": 35.778056,
+      "sea": "mediterranean-sea",
+      "region": "levant",
+      "tier": 3,
+      "historicalNames": [
+        "Laodicea",
+        "al-Ladhiqiyah"
+      ],
+      "goods": [
+        "tobacco",
+        "silk-raw",
+        "cotton-raw",
+        "wine"
+      ],
+      "notes": "Northern Syrian roadstead serving Aleppo, the great inland market of the Ottoman Levant.",
+      "source": {
+        "wikidata": "Q200030",
+        "enwiki": "Latakia"
+      }
+    },
+    {
+      "id": "le-havre",
+      "name": "Le Havre",
+      "localName": "Le Havre",
+      "country": "FR",
+      "countryName": "France",
+      "lat": 49.494167,
+      "lon": 0.108056,
+      "sea": "english-channel",
+      "region": "france-low-countries",
+      "tier": 3,
+      "historicalNames": [
+        "Le Havre-de-Grâce",
+        "Franciscopolis"
+      ],
+      "goods": [
+        "wine",
+        "wool-cloth",
+        "salt"
+      ],
+      "notes": "Founded by Francis I in 1517 as a purpose-built royal harbour at the Seine mouth.",
+      "source": {
+        "wikidata": "Q42810",
+        "enwiki": "Le Havre"
+      }
+    },
+    {
+      "id": "leith",
+      "name": "Leith",
+      "localName": "Leith",
+      "country": "GB",
+      "countryName": "United Kingdom",
+      "lat": 55.9801,
+      "lon": -3.17005,
+      "sea": "north-sea",
+      "region": "british-isles",
+      "tier": 3,
+      "historicalNames": [
+        "Inverleith"
+      ],
+      "goods": [
+        "wool-raw",
+        "salt",
+        "herring",
+        "timber"
+      ],
+      "notes": "Port of Edinburgh and the hub of Scotland’s Baltic and Low Countries trade.",
+      "source": {
+        "wikidata": "Q1018540",
+        "enwiki": "Leith"
+      }
+    },
+    {
+      "id": "lisbon",
+      "name": "Lisbon",
+      "localName": "Lisboa",
+      "country": "PT",
+      "countryName": "Portugal",
+      "lat": 38.708042,
+      "lon": -9.139016,
+      "sea": "north-atlantic",
+      "region": "iberia",
+      "tier": 1,
+      "historicalNames": [
+        "Lisboa",
+        "Olisipo",
+        "al-Ushbuna"
+      ],
+      "goods": [
+        "wine",
+        "salt",
+        "olive-oil",
+        "black-pepper",
+        "porcelain"
+      ],
+      "notes": "Seat of the Casa da Índia; terminus of the Portuguese Carreira da Índia from 1501.",
+      "source": {
+        "wikidata": "Q597",
+        "enwiki": "Lisbon"
+      }
+    },
+    {
+      "id": "livorno",
+      "name": "Livorno",
+      "localName": "Livorno",
+      "country": "IT",
+      "countryName": "Italy",
+      "lat": 43.55,
+      "lon": 10.316667,
+      "sea": "mediterranean-sea",
+      "region": "western-mediterranean",
+      "tier": 2,
+      "historicalNames": [
+        "Leghorn",
+        "Liburna"
+      ],
+      "goods": [
+        "wool-cloth",
+        "coral",
+        "wheat",
+        "alum"
+      ],
+      "notes": "Made a free port by the Medici Livornine laws of 1591-1593, drawing foreign merchant colonies.",
+      "source": {
+        "wikidata": "Q6761",
+        "enwiki": "Livorno"
+      }
+    },
+    {
+      "id": "london",
+      "name": "London",
+      "localName": "London",
+      "country": "GB",
+      "countryName": "United Kingdom",
+      "lat": 51.507222,
+      "lon": -0.1275,
+      "sea": "north-sea",
+      "region": "british-isles",
+      "tier": 1,
+      "historicalNames": [
+        "Londinium",
+        "Lundenwic"
+      ],
+      "goods": [
+        "wool-cloth",
+        "tin",
+        "iron",
+        "black-pepper"
+      ],
+      "notes": "Thames river port; the Royal Exchange opened 1571 and the English East India Company was chartered here in 1600.",
+      "source": {
+        "wikidata": "Q84",
+        "enwiki": "London"
+      }
+    },
+    {
+      "id": "longyearbyen",
+      "name": "Longyearbyen",
+      "localName": "Longyearbyen",
+      "country": "NO",
+      "countryName": "Norway",
+      "lat": 78.216667,
+      "lon": 15.633333,
+      "sea": "arctic-ocean",
+      "region": "scandinavia-arctic",
+      "tier": 3,
+      "historicalNames": [
+        "Spitsbergen"
+      ],
+      "goods": [
+        "whale-oil",
+        "furs"
+      ],
+      "notes": "On Spitsbergen, sighted by Barentsz in 1596 and the base of Dutch and English whaling from 1611; the town itself dates from 1906.",
+      "source": {
+        "wikidata": "Q25923",
+        "enwiki": "Longyearbyen"
+      }
+    },
+    {
+      "id": "luanda",
+      "name": "Luanda",
+      "localName": "Luanda",
+      "country": "AO",
+      "countryName": "Angola",
+      "lat": -8.838333,
+      "lon": 13.234444,
+      "sea": "south-atlantic",
+      "region": "west-africa",
+      "tier": 2,
+      "historicalNames": [
+        "São Paulo da Assunção de Loanda"
+      ],
+      "goods": [
+        "ivory",
+        "copper",
+        "salt",
+        "cotton-cloth"
+      ],
+      "notes": "Founded 1576 as Portugal’s Angolan capital; held by the Dutch from 1641 until Brazilian forces retook it in 1648.",
+      "source": {
+        "wikidata": "Q3897",
+        "enwiki": "Luanda"
+      }
+    },
+    {
+      "id": "lubeck",
+      "name": "Lubeck",
+      "localName": "Lübeck",
+      "country": "DE",
+      "countryName": "Germany",
+      "lat": 53.869722,
+      "lon": 10.686389,
+      "sea": "baltic-sea",
+      "region": "baltic",
+      "tier": 1,
+      "historicalNames": [
+        "Lübeck"
+      ],
+      "goods": [
+        "salt",
+        "herring",
+        "wax",
+        "furs",
+        "wheat"
+      ],
+      "notes": "Leading city of the Hanseatic League and the seat of its diets on the Trave river.",
+      "source": {
+        "wikidata": "Q2843",
+        "enwiki": "Lübeck"
+      }
+    },
+    {
+      "id": "macau",
+      "name": "Macau",
+      "localName": "澳門",
+      "country": "MO",
+      "countryName": "Macau",
+      "lat": 22.19,
+      "lon": 113.538056,
+      "sea": "south-china-sea",
+      "region": "china-coast",
+      "tier": 1,
+      "historicalNames": [
+        "Macao",
+        "Amacao"
+      ],
+      "goods": [
+        "silk-raw",
+        "porcelain",
+        "gold",
+        "silver",
+        "musk"
+      ],
+      "notes": "Portuguese settlement tolerated from 1557; the pivot of the Macau-Nagasaki silk-for-silver run.",
+      "source": {
+        "wikidata": "Q14773",
+        "enwiki": "Macau"
+      }
+    },
+    {
+      "id": "machilipatnam",
+      "name": "Machilipatnam",
+      "localName": "మచిలీపట్నం",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 16.166667,
+      "lon": 81.133333,
+      "sea": "bay-of-bengal",
+      "region": "eastern-india",
+      "tier": 3,
+      "historicalNames": [
+        "Masulipatnam",
+        "Bandar"
+      ],
+      "goods": [
+        "chintz",
+        "cotton-cloth",
+        "indigo",
+        "diamonds"
+      ],
+      "notes": "Golconda’s port, famous for kalamkari painted cottons and as the outlet for Deccan diamonds.",
+      "source": {
+        "wikidata": "Q845662",
+        "enwiki": "Machilipatnam"
+      }
+    },
+    {
+      "id": "mahajanga",
+      "name": "Mahajanga",
+      "localName": "Mahajanga",
+      "country": "MG",
+      "countryName": "Madagascar",
+      "lat": -15.716667,
+      "lon": 46.316667,
+      "sea": "mozambique-channel",
+      "region": "east-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Majunga"
+      ],
+      "goods": [
+        "rice",
+        "salted-beef",
+        "ambergris",
+        "wax"
+      ],
+      "notes": "Boina Bay harbour of northwest Madagascar, tied by dhow traffic to the Swahili and Omani coasts.",
+      "source": {
+        "wikidata": "Q218753",
+        "enwiki": "Mahajanga"
+      }
+    },
+    {
+      "id": "makassar",
+      "name": "Makassar",
+      "localName": "Makassar",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": -5.133056,
+      "lon": 119.413611,
+      "sea": "makassar-strait",
+      "region": "southeast-asia",
+      "tier": 2,
+      "historicalNames": [
+        "Macassar",
+        "Ujung Pandang"
+      ],
+      "goods": [
+        "cloves",
+        "sandalwood",
+        "coral",
+        "rice"
+      ],
+      "notes": "Gowa sultanate’s free port, where Portuguese, English and Danish traders evaded the Dutch spice monopoly until 1667.",
+      "source": {
+        "wikidata": "Q14634",
+        "enwiki": "Makassar"
+      }
+    },
+    {
+      "id": "malacca",
+      "name": "Malacca",
+      "localName": "Melaka",
+      "country": "MY",
+      "countryName": "Malaysia",
+      "lat": 2.188889,
+      "lon": 102.251111,
+      "sea": "strait-of-malacca",
+      "region": "southeast-asia",
+      "tier": 1,
+      "historicalNames": [
+        "Melaka",
+        "Malaca"
+      ],
+      "goods": [
+        "cloves",
+        "nutmeg",
+        "black-pepper",
+        "tin",
+        "porcelain"
+      ],
+      "notes": "Sultanate taken by Albuquerque in 1511; the strait chokepoint between the Indian Ocean and the China seas.",
+      "source": {
+        "wikidata": "Q61089",
+        "enwiki": "Malacca City"
+      }
+    },
+    {
+      "id": "malaga",
+      "name": "Malaga",
+      "localName": "Málaga",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 36.716667,
+      "lon": -4.416667,
+      "sea": "mediterranean-sea",
+      "region": "iberia",
+      "tier": 2,
+      "historicalNames": [
+        "Malaqa",
+        "Malaca"
+      ],
+      "goods": [
+        "wine",
+        "dried-fruit",
+        "olive-oil"
+      ],
+      "notes": "Chief Mediterranean outlet of Andalusia, exporting sweet wine and dried fruit across Europe.",
+      "source": {
+        "wikidata": "Q8851",
+        "enwiki": "Málaga"
+      }
+    },
+    {
+      "id": "malindi",
+      "name": "Malindi",
+      "localName": "Malindi",
+      "country": "KE",
+      "countryName": "Kenya",
+      "lat": -3.219444,
+      "lon": 40.116667,
+      "sea": "indian-ocean",
+      "region": "east-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Melinde"
+      ],
+      "goods": [
+        "ivory",
+        "ambergris",
+        "hemp",
+        "wheat"
+      ],
+      "notes": "Its sultan allied with Vasco da Gama in 1498 and provided the pilot who guided him to India.",
+      "source": {
+        "wikidata": "Q271411",
+        "enwiki": "Malindi"
+      }
+    },
+    {
+      "id": "manama",
+      "name": "Manama",
+      "localName": "المنامة",
+      "country": "BH",
+      "countryName": "Bahrain",
+      "lat": 26.216667,
+      "lon": 50.583333,
+      "sea": "persian-gulf",
+      "region": "arabia-gulf",
+      "tier": 3,
+      "historicalNames": [
+        "al-Manamah",
+        "Awal"
+      ],
+      "goods": [
+        "pearls",
+        "dried-fruit",
+        "dried-fish"
+      ],
+      "notes": "Bahrain, the centre of the Gulf pearl fishery, Portuguese-held 1521-1602 and then Safavid.",
+      "source": {
+        "wikidata": "Q3882",
+        "enwiki": "Manama"
+      }
+    },
+    {
+      "id": "mangaluru",
+      "name": "Mangaluru",
+      "localName": "ಮಂಗಳೂರು",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 12.871667,
+      "lon": 74.8425,
+      "sea": "arabian-sea",
+      "region": "western-india",
+      "tier": 3,
+      "historicalNames": [
+        "Mangalore",
+        "Mangalapuram"
+      ],
+      "goods": [
+        "rice",
+        "black-pepper",
+        "hemp",
+        "sandalwood"
+      ],
+      "notes": "Kanara rice port that victualled Portuguese Goa; a Portuguese factory stood here from 1526.",
+      "source": {
+        "wikidata": "Q127041",
+        "enwiki": "Mangaluru"
+      }
+    },
+    {
+      "id": "manila",
+      "name": "Manila",
+      "localName": "Maynila",
+      "country": "PH",
+      "countryName": "Philippines",
+      "lat": 14.595833,
+      "lon": 120.977222,
+      "sea": "south-china-sea",
+      "region": "southeast-asia",
+      "tier": 1,
+      "historicalNames": [
+        "Maynila",
+        "Intramuros"
+      ],
+      "goods": [
+        "silver",
+        "silk-cloth",
+        "porcelain",
+        "wax",
+        "gold"
+      ],
+      "notes": "Spanish capital from 1571 and Asian terminus of the Acapulco galleon, exchanging American silver for Chinese silk.",
+      "source": {
+        "wikidata": "Q1461",
+        "enwiki": "Manila"
+      }
+    },
+    {
+      "id": "maracaibo",
+      "name": "Maracaibo",
+      "localName": "Maracaibo",
+      "country": "VE",
+      "countryName": "Venezuela",
+      "lat": 10.633333,
+      "lon": -71.633333,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 3,
+      "historicalNames": [
+        "Nueva Zamora de Maracaibo"
+      ],
+      "goods": [
+        "cacao",
+        "hides",
+        "tobacco",
+        "logwood"
+      ],
+      "notes": "Lake Maracaibo town whose narrow bar made it a repeated buccaneer target in the 17th century.",
+      "source": {
+        "wikidata": "Q171632",
+        "enwiki": "Maracaibo"
+      }
+    },
+    {
+      "id": "marseille",
+      "name": "Marseille",
+      "localName": "Marseille",
+      "country": "FR",
+      "countryName": "France",
+      "lat": 43.296667,
+      "lon": 5.376389,
+      "sea": "mediterranean-sea",
+      "region": "western-mediterranean",
+      "tier": 1,
+      "historicalNames": [
+        "Massalia",
+        "Marselha"
+      ],
+      "goods": [
+        "olive-oil",
+        "coral",
+        "wool-cloth",
+        "wheat",
+        "coffee"
+      ],
+      "notes": "France’s Mediterranean gateway and the base of its Levant trade under the Ottoman capitulations of 1536.",
+      "source": {
+        "wikidata": "Q23482",
+        "enwiki": "Marseille"
+      }
+    },
+    {
+      "id": "massawa",
+      "name": "Massawa",
+      "localName": "ምጽዋዕ",
+      "country": "ER",
+      "countryName": "Eritrea",
+      "lat": 15.6,
+      "lon": 39.433333,
+      "sea": "red-sea",
+      "region": "east-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Massawa",
+        "Mitsiwa"
+      ],
+      "goods": [
+        "ivory",
+        "gold",
+        "musk",
+        "hides"
+      ],
+      "notes": "Red Sea gateway to the Ethiopian highlands, taken by the Ottomans in 1557.",
+      "source": {
+        "wikidata": "Q275635",
+        "enwiki": "Massawa"
+      }
+    },
+    {
+      "id": "messina",
+      "name": "Messina",
+      "localName": "Messina",
+      "country": "IT",
+      "countryName": "Italy",
+      "lat": 38.193611,
+      "lon": 15.554167,
+      "sea": "mediterranean-sea",
+      "region": "western-mediterranean",
+      "tier": 3,
+      "historicalNames": [
+        "Messana",
+        "Zancle"
+      ],
+      "goods": [
+        "silk-raw",
+        "dried-fruit",
+        "wine",
+        "wheat"
+      ],
+      "notes": "Guards the strait between Sicily and Calabria; the Holy League fleet sailed from here to Lepanto in 1571.",
+      "source": {
+        "wikidata": "Q13666",
+        "enwiki": "Messina"
+      }
+    },
+    {
+      "id": "middelburg",
+      "name": "Middelburg",
+      "localName": "Middelburg",
+      "country": "NL",
+      "countryName": "Netherlands",
+      "lat": 51.499722,
+      "lon": 3.613611,
+      "sea": "north-sea",
+      "region": "france-low-countries",
+      "tier": 3,
+      "historicalNames": [
+        "Middelburg in Zeeland"
+      ],
+      "goods": [
+        "wine",
+        "sugar",
+        "cloves",
+        "salt"
+      ],
+      "notes": "Zeeland capital, seat of the second-largest VOC chamber and a hub of the West India Company.",
+      "source": {
+        "wikidata": "Q52101",
+        "enwiki": "Middelburg, Zeeland"
+      }
+    },
+    {
+      "id": "mocha",
+      "name": "Mocha",
+      "localName": "المخا",
+      "country": "YE",
+      "countryName": "Yemen",
+      "lat": 13.316667,
+      "lon": 43.25,
+      "sea": "red-sea",
+      "region": "arabia-gulf",
+      "tier": 2,
+      "historicalNames": [
+        "al-Makha",
+        "Mokha"
+      ],
+      "goods": [
+        "coffee",
+        "myrrh",
+        "frankincense",
+        "indigo"
+      ],
+      "notes": "The world’s coffee port in the 17th century; European factories opened here from the 1610s.",
+      "source": {
+        "wikidata": "Q339258",
+        "enwiki": "Mokha"
+      }
+    },
+    {
+      "id": "mogadishu",
+      "name": "Mogadishu",
+      "localName": "Muqdisho",
+      "country": "SO",
+      "countryName": "Somalia",
+      "lat": 2.039167,
+      "lon": 45.341944,
+      "sea": "indian-ocean",
+      "region": "east-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Muqdisho",
+        "Magadoxo"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "ivory",
+        "frankincense",
+        "hides"
+      ],
+      "notes": "Benadir coast city long famous for the woven cotton cloth Arab writers called \"maqdishi\".",
+      "source": {
+        "wikidata": "Q2449",
+        "enwiki": "Mogadishu"
+      }
+    },
+    {
+      "id": "mokpo",
+      "name": "Mokpo",
+      "localName": "목포",
+      "country": "KR",
+      "countryName": "South Korea",
+      "lat": 34.793611,
+      "lon": 126.388611,
+      "sea": "yellow-sea",
+      "region": "korea",
+      "tier": 3,
+      "historicalNames": [
+        "木浦 Mokpo"
+      ],
+      "goods": [
+        "rice",
+        "cotton-cloth",
+        "salt",
+        "dried-fish"
+      ],
+      "notes": "Southwestern harbour among the Jeolla islands; a Joseon garrison post guarding the grain-tribute sea route.",
+      "source": {
+        "wikidata": "Q42094",
+        "enwiki": "Mokpo"
+      }
+    },
+    {
+      "id": "mombasa",
+      "name": "Mombasa",
+      "localName": "Mvita",
+      "country": "KE",
+      "countryName": "Kenya",
+      "lat": -4.05,
+      "lon": 39.666667,
+      "sea": "indian-ocean",
+      "region": "east-africa",
+      "tier": 2,
+      "historicalNames": [
+        "Mvita",
+        "Mombaça"
+      ],
+      "goods": [
+        "ivory",
+        "gold",
+        "cotton-cloth",
+        "hemp"
+      ],
+      "notes": "Swahili city-state where Portugal built Fort Jesus in 1593 to command the coast.",
+      "source": {
+        "wikidata": "Q225641",
+        "enwiki": "Mombasa"
+      }
+    },
+    {
+      "id": "mozambique-island",
+      "name": "Island of Mozambique",
+      "localName": "Ilha de Moçambique",
+      "country": "MZ",
+      "countryName": "Mozambique",
+      "lat": -15.036667,
+      "lon": 40.732778,
+      "sea": "mozambique-channel",
+      "region": "east-africa",
+      "tier": 2,
+      "historicalNames": [
+        "Moçambique",
+        "Musa al-Bik"
+      ],
+      "goods": [
+        "ivory",
+        "gold",
+        "ambergris",
+        "cotton-cloth"
+      ],
+      "notes": "Portuguese capital of East Africa and the standard wintering station on the Carreira da India.",
+      "source": {
+        "wikidata": "Q331099",
+        "enwiki": "Island of Mozambique"
+      }
+    },
+    {
+      "id": "mumbai",
+      "name": "Mumbai",
+      "localName": "मुंबई",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 19.075833,
+      "lon": 72.8775,
+      "sea": "arabian-sea",
+      "region": "western-india",
+      "tier": 2,
+      "historicalNames": [
+        "Bombaim",
+        "Bom Bahia",
+        "Mumbai"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "salt",
+        "hemp",
+        "timber"
+      ],
+      "notes": "Seven islands ceded by Portugal to England in 1661 and leased to the East India Company in 1668.",
+      "source": {
+        "wikidata": "Q1156",
+        "enwiki": "Mumbai"
+      }
+    },
+    {
+      "id": "muscat",
+      "name": "Muscat",
+      "localName": "مسقط",
+      "country": "OM",
+      "countryName": "Oman",
+      "lat": 23.613889,
+      "lon": 58.592222,
+      "sea": "gulf-of-oman",
+      "region": "arabia-gulf",
+      "tier": 2,
+      "historicalNames": [
+        "Masqat"
+      ],
+      "goods": [
+        "dried-fruit",
+        "horses",
+        "frankincense",
+        "pearls"
+      ],
+      "notes": "Portuguese-held from 1507 until the Ya’ariba imams expelled them in 1650, launching Omani sea power.",
+      "source": {
+        "wikidata": "Q3826",
+        "enwiki": "Muscat"
+      }
+    },
+    {
+      "id": "myeik",
+      "name": "Myeik",
+      "localName": "မြိတ်",
+      "country": "MM",
+      "countryName": "Myanmar",
+      "lat": 12.439444,
+      "lon": 98.600278,
+      "sea": "andaman-sea",
+      "region": "eastern-india",
+      "tier": 3,
+      "historicalNames": [
+        "Mergui",
+        "Beik"
+      ],
+      "goods": [
+        "tin",
+        "timber",
+        "sandalwood",
+        "ivory"
+      ],
+      "notes": "Tenasserim port linked by a short overland portage to Ayutthaya, bypassing the Malacca Strait.",
+      "source": {
+        "wikidata": "Q1018163",
+        "enwiki": "Myeik, Myanmar"
+      }
+    },
+    {
+      "id": "nagapattinam",
+      "name": "Nagapattinam",
+      "localName": "நாகப்பட்டினம்",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 10.766667,
+      "lon": 79.833333,
+      "sea": "bay-of-bengal",
+      "region": "eastern-india",
+      "tier": 3,
+      "historicalNames": [
+        "Negapatam"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "rice",
+        "indigo"
+      ],
+      "notes": "Coromandel town with a Portuguese settlement from the 1550s; Dutch headquarters in India after 1660.",
+      "source": {
+        "wikidata": "Q695585",
+        "enwiki": "Nagapattinam"
+      }
+    },
+    {
+      "id": "nagasaki",
+      "name": "Nagasaki",
+      "localName": "長崎",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 32.749528,
+      "lon": 129.879639,
+      "sea": "east-china-sea",
+      "region": "japan",
+      "tier": 1,
+      "historicalNames": [
+        "Nagasaki",
+        "Dejima"
+      ],
+      "goods": [
+        "silver",
+        "copper",
+        "lacquerware",
+        "porcelain",
+        "sandalwood"
+      ],
+      "notes": "Opened to Portuguese ships in 1571; after 1641 the Dejima island factory was Japan’s only European window.",
+      "source": {
+        "wikidata": "Q38234",
+        "enwiki": "Nagasaki"
+      }
+    },
+    {
+      "id": "naha",
+      "name": "Naha",
+      "localName": "那覇",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 26.212222,
+      "lon": 127.679167,
+      "sea": "east-china-sea",
+      "region": "japan",
+      "tier": 2,
+      "historicalNames": [
+        "Naha",
+        "Ryukyu"
+      ],
+      "goods": [
+        "sulphur",
+        "horses",
+        "lacquerware",
+        "brazilwood"
+      ],
+      "notes": "Port of the Ryukyu kingdom, whose ships carried an entrepot trade between China, Japan and Southeast Asia.",
+      "source": {
+        "wikidata": "Q181966",
+        "enwiki": "Naha"
+      }
+    },
+    {
+      "id": "nampo",
+      "name": "Nampo",
+      "localName": "남포",
+      "country": "KP",
+      "countryName": "North Korea",
+      "lat": 38.733333,
+      "lon": 125.4,
+      "sea": "yellow-sea",
+      "region": "korea",
+      "tier": 3,
+      "historicalNames": [
+        "Chinnampo",
+        "南浦"
+      ],
+      "goods": [
+        "iron",
+        "salt",
+        "ginseng",
+        "wheat"
+      ],
+      "notes": "Taedong river approach to Pyongyang, on the Yellow Sea route between Korea and Shandong.",
+      "source": {
+        "wikidata": "Q109386",
+        "enwiki": "Nampo"
+      }
+    },
+    {
+      "id": "nantes",
+      "name": "Nantes",
+      "localName": "Nantes",
+      "country": "FR",
+      "countryName": "France",
+      "lat": 47.217222,
+      "lon": -1.553889,
+      "sea": "bay-of-biscay",
+      "region": "france-low-countries",
+      "tier": 2,
+      "historicalNames": [
+        "Namnetes",
+        "Naoned"
+      ],
+      "goods": [
+        "salt",
+        "wine",
+        "linen",
+        "sugar"
+      ],
+      "notes": "Loire estuary port and the outlet for Bay of Bourgneuf salt and Breton linen.",
+      "source": {
+        "wikidata": "Q12191",
+        "enwiki": "Nantes"
+      }
+    },
+    {
+      "id": "naples",
+      "name": "Naples",
+      "localName": "Napoli",
+      "country": "IT",
+      "countryName": "Italy",
+      "lat": 40.835833,
+      "lon": 14.248611,
+      "sea": "mediterranean-sea",
+      "region": "western-mediterranean",
+      "tier": 2,
+      "historicalNames": [
+        "Napoli",
+        "Neapolis"
+      ],
+      "goods": [
+        "wheat",
+        "wine",
+        "olive-oil",
+        "silk-raw"
+      ],
+      "notes": "Capital of the Spanish viceroyalty and one of Europe’s largest cities in 1600.",
+      "source": {
+        "wikidata": "Q2634",
+        "enwiki": "Naples"
+      }
+    },
+    {
+      "id": "new-york",
+      "name": "New York",
+      "localName": "New York",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 40.712778,
+      "lon": -74.006111,
+      "sea": "north-atlantic",
+      "region": "north-america-atlantic",
+      "tier": 2,
+      "historicalNames": [
+        "New Amsterdam",
+        "Nieuw Amsterdam"
+      ],
+      "goods": [
+        "furs",
+        "timber",
+        "wheat",
+        "tobacco"
+      ],
+      "notes": "New Amsterdam, chartered 1625 at the Hudson mouth as the Dutch West India Company’s beaver-trade capital.",
+      "source": {
+        "wikidata": "Q60",
+        "enwiki": "New York City"
+      }
+    },
+    {
+      "id": "newcastle",
+      "name": "Newcastle upon Tyne",
+      "localName": "Newcastle upon Tyne",
+      "country": "GB",
+      "countryName": "United Kingdom",
+      "lat": 54.977778,
+      "lon": -1.613333,
+      "sea": "north-sea",
+      "region": "british-isles",
+      "tier": 3,
+      "historicalNames": [
+        "Novum Castellum",
+        "Pons Aelius"
+      ],
+      "goods": [
+        "iron",
+        "salt"
+      ],
+      "notes": "The Tyne coal trade to London was the largest bulk shipping route in 17th-century Europe.",
+      "source": {
+        "wikidata": "Q1425428",
+        "enwiki": "Newcastle upon Tyne"
+      }
+    },
+    {
+      "id": "niigata",
+      "name": "Niigata",
+      "localName": "新潟",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 37.916194,
+      "lon": 139.036389,
+      "sea": "sea-of-japan",
+      "region": "japan",
+      "tier": 3,
+      "historicalNames": [
+        "Niigata"
+      ],
+      "goods": [
+        "rice",
+        "gold",
+        "wine",
+        "dried-fish"
+      ],
+      "notes": "Shinano river port on the Sea of Japan coast, the mainland outlet for gold from the Sado mines.",
+      "source": {
+        "wikidata": "Q179691",
+        "enwiki": "Niigata (city)"
+      }
+    },
+    {
+      "id": "ningbo",
+      "name": "Ningbo",
+      "localName": "寧波",
+      "country": "CN",
+      "countryName": "China",
+      "lat": 29.875,
+      "lon": 121.549167,
+      "sea": "east-china-sea",
+      "region": "china-coast",
+      "tier": 2,
+      "historicalNames": [
+        "Liampo",
+        "Mingzhou"
+      ],
+      "goods": [
+        "silk-raw",
+        "porcelain",
+        "copper",
+        "lacquerware"
+      ],
+      "notes": "Ming-designated port for Japanese tribute missions and the base of the smuggling entrepot at Shuangyu, destroyed in 1548.",
+      "source": {
+        "wikidata": "Q42780",
+        "enwiki": "Ningbo"
+      }
+    },
+    {
+      "id": "nuuk",
+      "name": "Nuuk",
+      "localName": "Nuuk",
+      "country": "GL",
+      "countryName": "Greenland",
+      "lat": 64.175,
+      "lon": -51.733333,
+      "sea": "north-atlantic",
+      "region": "scandinavia-arctic",
+      "tier": 3,
+      "historicalNames": [
+        "Godthåb"
+      ],
+      "goods": [
+        "whale-oil",
+        "ivory",
+        "furs"
+      ],
+      "notes": "Near the Norse Western Settlement abandoned in the 14th century; refounded as Godthaab in 1728.",
+      "source": {
+        "wikidata": "Q226",
+        "enwiki": "Nuuk"
+      }
+    },
+    {
+      "id": "old-goa",
+      "name": "Old Goa",
+      "localName": "Velha Goa",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 15.50238,
+      "lon": 73.911746,
+      "sea": "arabian-sea",
+      "region": "western-india",
+      "tier": 1,
+      "historicalNames": [
+        "Velha Goa",
+        "Ela"
+      ],
+      "goods": [
+        "black-pepper",
+        "cinnamon",
+        "horses",
+        "silk-cloth",
+        "porcelain"
+      ],
+      "notes": "Taken by Albuquerque in 1510 and made the capital of the Estado da India, \"Goa Dourada\".",
+      "source": {
+        "wikidata": "Q553907",
+        "enwiki": "Old Goa"
+      }
+    },
+    {
+      "id": "olinda",
+      "name": "Olinda",
+      "localName": "Olinda",
+      "country": "BR",
+      "countryName": "Brazil",
+      "lat": -8.008889,
+      "lon": -34.855,
+      "sea": "south-atlantic",
+      "region": "south-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "Olinda"
+      ],
+      "goods": [
+        "sugar",
+        "brazilwood",
+        "cotton-raw"
+      ],
+      "notes": "Captaincy seat of Pernambuco, the richest sugar district of 16th-century Brazil; burned by the Dutch in 1631.",
+      "source": {
+        "wikidata": "Q28301",
+        "enwiki": "Olinda"
+      }
+    },
+    {
+      "id": "oran",
+      "name": "Oran",
+      "localName": "وهران",
+      "country": "DZ",
+      "countryName": "Algeria",
+      "lat": 35.696944,
+      "lon": -0.633056,
+      "sea": "mediterranean-sea",
+      "region": "maghreb",
+      "tier": 3,
+      "historicalNames": [
+        "Wahran"
+      ],
+      "goods": [
+        "wheat",
+        "wool-raw",
+        "hides",
+        "salt"
+      ],
+      "notes": "Spanish presidio from 1509, holding a bridgehead on the Algerian coast for nearly two centuries.",
+      "source": {
+        "wikidata": "Q131818",
+        "enwiki": "Oran"
+      }
+    },
+    {
+      "id": "osaka",
+      "name": "Osaka",
+      "localName": "大阪",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 34.69375,
+      "lon": 135.502111,
+      "sea": "seto-inland-sea",
+      "region": "japan",
+      "tier": 1,
+      "historicalNames": [
+        "Ōzaka",
+        "Naniwa"
+      ],
+      "goods": [
+        "rice",
+        "silver",
+        "wine",
+        "cotton-cloth"
+      ],
+      "notes": "Hideyoshi’s castle town of 1583, which became the rice market and \"kitchen\" of Tokugawa Japan.",
+      "source": {
+        "wikidata": "Q35765",
+        "enwiki": "Osaka"
+      }
+    },
+    {
+      "id": "oslo",
+      "name": "Oslo",
+      "localName": "Oslo",
+      "country": "NO",
+      "countryName": "Norway",
+      "lat": 59.913333,
+      "lon": 10.738889,
+      "sea": "north-sea",
+      "region": "scandinavia-arctic",
+      "tier": 3,
+      "historicalNames": [
+        "Christiania",
+        "Ánslo"
+      ],
+      "goods": [
+        "timber",
+        "iron",
+        "dried-fish"
+      ],
+      "notes": "Rebuilt as Christiania after the 1624 fire; outlet for eastern Norwegian sawn timber.",
+      "source": {
+        "wikidata": "Q585",
+        "enwiki": "Oslo"
+      }
+    },
+    {
+      "id": "ostend",
+      "name": "Ostend",
+      "localName": "Oostende",
+      "country": "BE",
+      "countryName": "Belgium",
+      "lat": 51.225833,
+      "lon": 2.919444,
+      "sea": "north-sea",
+      "region": "france-low-countries",
+      "tier": 3,
+      "historicalNames": [
+        "Oostende"
+      ],
+      "goods": [
+        "herring",
+        "wool-cloth",
+        "salt"
+      ],
+      "notes": "Flemish fishing and privateering harbour, besieged for three years from 1601 to 1604.",
+      "source": {
+        "wikidata": "Q12996",
+        "enwiki": "Ostend"
+      }
+    },
+    {
+      "id": "ouidah",
+      "name": "Ouidah",
+      "localName": "Glexwe",
+      "country": "BJ",
+      "countryName": "Benin",
+      "lat": 6.366667,
+      "lon": 2.083333,
+      "sea": "gulf-of-guinea",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Whydah",
+        "Ajuda",
+        "Glexwe"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "ivory",
+        "olive-oil"
+      ],
+      "notes": "Port of the kingdom of Hueda on the Slave Coast, where several European nations kept trading lodges.",
+      "source": {
+        "wikidata": "Q850031",
+        "enwiki": "Ouidah"
+      }
+    },
+    {
+      "id": "palembang",
+      "name": "Palembang",
+      "localName": "Palembang",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": -2.983333,
+      "lon": 104.764444,
+      "sea": "strait-of-malacca",
+      "region": "southeast-asia",
+      "tier": 3,
+      "historicalNames": [
+        "Palembang",
+        "Srivijaya"
+      ],
+      "goods": [
+        "black-pepper",
+        "tin",
+        "timber",
+        "sandalwood"
+      ],
+      "notes": "Musi river town on the site of the old Srivijaya capital, exporting Sumatran pepper and Bangka tin.",
+      "source": {
+        "wikidata": "Q8131",
+        "enwiki": "Palembang"
+      }
+    },
+    {
+      "id": "palermo",
+      "name": "Palermo",
+      "localName": "Palermo",
+      "country": "IT",
+      "countryName": "Italy",
+      "lat": 38.115658,
+      "lon": 13.361262,
+      "sea": "mediterranean-sea",
+      "region": "western-mediterranean",
+      "tier": 2,
+      "historicalNames": [
+        "Balarm",
+        "Panormus"
+      ],
+      "goods": [
+        "wheat",
+        "sugar",
+        "silk-raw",
+        "salt"
+      ],
+      "notes": "Sicilian capital and the shipping point for the island grain that fed much of the Mediterranean.",
+      "source": {
+        "wikidata": "Q2656",
+        "enwiki": "Palermo"
+      }
+    },
+    {
+      "id": "palma",
+      "name": "Palma de Mallorca",
+      "localName": "Palma",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 39.566667,
+      "lon": 2.649722,
+      "sea": "mediterranean-sea",
+      "region": "western-mediterranean",
+      "tier": 3,
+      "historicalNames": [
+        "Ciutat de Mallorca",
+        "Palma"
+      ],
+      "goods": [
+        "olive-oil",
+        "wine",
+        "salt",
+        "wool-cloth"
+      ],
+      "notes": "Balearic base of the medieval Majorcan chart-making school that supplied portolan charts to Atlantic pilots.",
+      "source": {
+        "wikidata": "Q8826",
+        "enwiki": "Palma de Mallorca"
+      }
+    },
+    {
+      "id": "panama-city",
+      "name": "Panama City",
+      "localName": "Ciudad de Panamá",
+      "country": "PA",
+      "countryName": "Panama",
+      "lat": 8.971111,
+      "lon": -79.534722,
+      "sea": "north-pacific",
+      "region": "pacific-americas",
+      "tier": 2,
+      "historicalNames": [
+        "Panamá Viejo",
+        "Nuestra Señora de la Asunción de Panamá"
+      ],
+      "goods": [
+        "silver",
+        "gold",
+        "pearls",
+        "cacao"
+      ],
+      "notes": "Founded 1519 as the Pacific end of the isthmus crossing; Morgan destroyed the old city in 1671.",
+      "source": {
+        "wikidata": "Q3306",
+        "enwiki": "Panama City"
+      }
+    },
+    {
+      "id": "paramaribo",
+      "name": "Paramaribo",
+      "localName": "Paramaribo",
+      "country": "SR",
+      "countryName": "Suriname",
+      "lat": 5.866667,
+      "lon": -55.166667,
+      "sea": "north-atlantic",
+      "region": "south-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "Paramaribo",
+        "Willoughbyland"
+      ],
+      "goods": [
+        "sugar",
+        "tobacco",
+        "logwood",
+        "cochineal"
+      ],
+      "notes": "Suriname river settlement founded by the English in 1651 and ceded to the Dutch in 1667.",
+      "source": {
+        "wikidata": "Q3001",
+        "enwiki": "Paramaribo"
+      }
+    },
+    {
+      "id": "patras",
+      "name": "Patras",
+      "localName": "Πάτρα",
+      "country": "GR",
+      "countryName": "Greece",
+      "lat": 38.246383,
+      "lon": 21.734911,
+      "sea": "ionian-sea",
+      "region": "adriatic-ionian",
+      "tier": 3,
+      "historicalNames": [
+        "Patrai",
+        "Balibadra"
+      ],
+      "goods": [
+        "dried-fruit",
+        "olive-oil",
+        "wine",
+        "silk-raw"
+      ],
+      "notes": "Ottoman-held Gulf of Corinth port; English ships loaded currants here for the London market.",
+      "source": {
+        "wikidata": "Q133123",
+        "enwiki": "Patras"
+      }
+    },
+    {
+      "id": "pattani",
+      "name": "Pattani",
+      "localName": "ปัตตานี",
+      "country": "TH",
+      "countryName": "Thailand",
+      "lat": 6.866389,
+      "lon": 101.250833,
+      "sea": "gulf-of-thailand",
+      "region": "southeast-asia",
+      "tier": 3,
+      "historicalNames": [
+        "Patani"
+      ],
+      "goods": [
+        "black-pepper",
+        "gold",
+        "brazilwood"
+      ],
+      "notes": "Malay sultanate on the Gulf of Siam where the Dutch opened their first Southeast Asian factory in 1602.",
+      "source": {
+        "wikidata": "Q1025966",
+        "enwiki": "Pattani, Thailand"
+      }
+    },
+    {
+      "id": "phnom-penh",
+      "name": "Phnom Penh",
+      "localName": "ភ្នំពេញ",
+      "country": "KH",
+      "countryName": "Cambodia",
+      "lat": 11.569583,
+      "lon": 104.921028,
+      "sea": "south-china-sea",
+      "region": "southeast-asia",
+      "tier": 3,
+      "historicalNames": [
+        "Phnom Penh",
+        "Chaktomuk"
+      ],
+      "goods": [
+        "rice",
+        "hides",
+        "indigo"
+      ],
+      "notes": "Mekong river capital of Cambodia from 1434, reached by seagoing junks and visited by Iberian adventurers in the 1590s.",
+      "source": {
+        "wikidata": "Q1850",
+        "enwiki": "Phnom Penh"
+      }
+    },
+    {
+      "id": "plymouth",
+      "name": "Plymouth",
+      "localName": "Plymouth",
+      "country": "GB",
+      "countryName": "United Kingdom",
+      "lat": 50.371389,
+      "lon": -4.142222,
+      "sea": "english-channel",
+      "region": "british-isles",
+      "tier": 2,
+      "historicalNames": [
+        "Sutton"
+      ],
+      "goods": [
+        "tin",
+        "dried-fish",
+        "wool-cloth"
+      ],
+      "notes": "Devon naval harbour; Drake’s circumnavigation began and ended here (1577-1580).",
+      "source": {
+        "wikidata": "Q43382",
+        "enwiki": "Plymouth"
+      }
+    },
+    {
+      "id": "plymouth-ma",
+      "name": "Plymouth",
+      "localName": "Plymouth",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 41.958611,
+      "lon": -70.667778,
+      "sea": "north-atlantic",
+      "region": "north-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "Patuxet",
+        "New Plymouth"
+      ],
+      "goods": [
+        "furs",
+        "dried-fish",
+        "timber"
+      ],
+      "notes": "Landing place of the Mayflower in 1620 and capital of the separate Plymouth Colony until 1691.",
+      "source": {
+        "wikidata": "Q326295",
+        "enwiki": "Plymouth, Massachusetts"
+      }
+    },
+    {
+      "id": "ponta-delgada",
+      "name": "Ponta Delgada",
+      "localName": "Ponta Delgada",
+      "country": "PT",
+      "countryName": "Portugal",
+      "lat": 37.74,
+      "lon": -25.67,
+      "sea": "north-atlantic",
+      "region": "atlantic-isles",
+      "tier": 2,
+      "historicalNames": [
+        "Ponta Delgada"
+      ],
+      "goods": [
+        "indigo",
+        "wheat",
+        "wine"
+      ],
+      "notes": "Azorean port where returning India and Indies fleets took on water and awaited naval escort.",
+      "source": {
+        "wikidata": "Q208149",
+        "enwiki": "Ponta Delgada"
+      }
+    },
+    {
+      "id": "port-of-spain",
+      "name": "Port of Spain",
+      "localName": "Puerto de España",
+      "country": "TT",
+      "countryName": "Trinidad and Tobago",
+      "lat": 10.666667,
+      "lon": -61.516667,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 3,
+      "historicalNames": [
+        "Puerto de España",
+        "Conquerabia"
+      ],
+      "goods": [
+        "tobacco",
+        "cacao",
+        "tar",
+        "hides"
+      ],
+      "notes": "Trinidad’s Gulf of Paria anchorage; Raleigh careened here in 1595 and used the Pitch Lake for his ships.",
+      "source": {
+        "wikidata": "Q39178",
+        "enwiki": "Port of Spain"
+      }
+    },
+    {
+      "id": "port-royal",
+      "name": "Port Royal",
+      "localName": "Port Royal",
+      "country": "JM",
+      "countryName": "Jamaica",
+      "lat": 17.9375,
+      "lon": -76.841389,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 3,
+      "historicalNames": [
+        "Cagway",
+        "Point Cagway"
+      ],
+      "goods": [
+        "sugar",
+        "logwood",
+        "wine",
+        "hides"
+      ],
+      "notes": "English base on Jamaica after the 1655 conquest; a buccaneer haven until the earthquake of 1692 sank most of it.",
+      "source": {
+        "wikidata": "Q685357",
+        "enwiki": "Port Royal"
+      }
+    },
+    {
+      "id": "porto",
+      "name": "Porto",
+      "localName": "Porto",
+      "country": "PT",
+      "countryName": "Portugal",
+      "lat": 41.15,
+      "lon": -8.610833,
+      "sea": "north-atlantic",
+      "region": "iberia",
+      "tier": 2,
+      "historicalNames": [
+        "Oporto",
+        "Portus Cale"
+      ],
+      "goods": [
+        "wine",
+        "olive-oil",
+        "dried-fish",
+        "timber"
+      ],
+      "notes": "Douro river port whose shipyards at Vila Nova de Gaia built vessels for the India voyages.",
+      "source": {
+        "wikidata": "Q36433",
+        "enwiki": "Porto"
+      }
+    },
+    {
+      "id": "portobelo",
+      "name": "Portobelo",
+      "localName": "Portobelo",
+      "country": "PA",
+      "countryName": "Panama",
+      "lat": 9.554444,
+      "lon": -79.655,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 2,
+      "historicalNames": [
+        "Puerto Bello",
+        "Nombre de Dios"
+      ],
+      "goods": [
+        "silver",
+        "gold",
+        "pearls",
+        "cacao"
+      ],
+      "notes": "Caribbean end of the isthmus mule road; its trade fairs handled the Peruvian silver from 1597.",
+      "source": {
+        "wikidata": "Q797147",
+        "enwiki": "Portobelo"
+      }
+    },
+    {
+      "id": "portsmouth",
+      "name": "Portsmouth",
+      "localName": "Portsmouth",
+      "country": "GB",
+      "countryName": "United Kingdom",
+      "lat": 50.805833,
+      "lon": -1.087222,
+      "sea": "english-channel",
+      "region": "british-isles",
+      "tier": 2,
+      "historicalNames": [
+        "Portsmouth"
+      ],
+      "goods": [
+        "naval-timber",
+        "hemp",
+        "iron"
+      ],
+      "notes": "Site of the first known dry dock in England, built for Henry VII in 1495.",
+      "source": {
+        "wikidata": "Q72259",
+        "enwiki": "Portsmouth"
+      }
+    },
+    {
+      "id": "pulicat",
+      "name": "Pulicat",
+      "localName": "பழவேற்காடு",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 13.416667,
+      "lon": 80.316667,
+      "sea": "bay-of-bengal",
+      "region": "eastern-india",
+      "tier": 3,
+      "historicalNames": [
+        "Paliacatta",
+        "Geldria"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "indigo",
+        "chintz"
+      ],
+      "notes": "Site of Fort Geldria, 1610, the first Dutch fortified factory on the Coromandel coast.",
+      "source": {
+        "wikidata": "Q2117793",
+        "enwiki": "Pulicat"
+      }
+    },
+    {
+      "id": "qaqortoq",
+      "name": "Qaqortoq",
+      "localName": "Qaqortoq",
+      "country": "GL",
+      "countryName": "Greenland",
+      "lat": 60.716667,
+      "lon": -46.033333,
+      "sea": "north-atlantic",
+      "region": "scandinavia-arctic",
+      "tier": 3,
+      "historicalNames": [
+        "Julianehåb"
+      ],
+      "goods": [
+        "ivory",
+        "whale-oil",
+        "furs"
+      ],
+      "notes": "Sits in the fjord district of the Norse Eastern Settlement, whose last record dates from 1408.",
+      "source": {
+        "wikidata": "Q221203",
+        "enwiki": "Qaqortoq"
+      }
+    },
+    {
+      "id": "quanzhou",
+      "name": "Quanzhou",
+      "localName": "泉州",
+      "country": "CN",
+      "countryName": "China",
+      "lat": 24.91389,
+      "lon": 118.58583,
+      "sea": "taiwan-strait",
+      "region": "china-coast",
+      "tier": 2,
+      "historicalNames": [
+        "Zayton",
+        "Citong"
+      ],
+      "goods": [
+        "silk-cloth",
+        "porcelain",
+        "tea",
+        "sugar"
+      ],
+      "notes": "The Zayton praised by Marco Polo; its harbour silted and Ming sea bans pushed trade to neighbouring ports.",
+      "source": {
+        "wikidata": "Q68695",
+        "enwiki": "Quanzhou"
+      }
+    },
+    {
+      "id": "quebec-city",
+      "name": "Quebec City",
+      "localName": "Ville de Québec",
+      "country": "CA",
+      "countryName": "Canada",
+      "lat": 46.816111,
+      "lon": -71.224167,
+      "sea": "gulf-of-saint-lawrence",
+      "region": "north-america-atlantic",
+      "tier": 2,
+      "historicalNames": [
+        "Québec",
+        "Stadacona"
+      ],
+      "goods": [
+        "furs",
+        "timber",
+        "wheat"
+      ],
+      "notes": "Champlain’s habitation of 1608 at the narrowing of the St Lawrence, the capital of New France.",
+      "source": {
+        "wikidata": "Q2145",
+        "enwiki": "Quebec City"
+      }
+    },
+    {
+      "id": "recife",
+      "name": "Recife",
+      "localName": "Recife",
+      "country": "BR",
+      "countryName": "Brazil",
+      "lat": -8.053889,
+      "lon": -34.880833,
+      "sea": "south-atlantic",
+      "region": "south-america-atlantic",
+      "tier": 2,
+      "historicalNames": [
+        "Recife",
+        "Mauritsstad"
+      ],
+      "goods": [
+        "sugar",
+        "brazilwood",
+        "tobacco",
+        "cotton-raw"
+      ],
+      "notes": "Reef-sheltered port of Pernambuco and capital of Dutch Brazil under Johan Maurits, 1637-1644.",
+      "source": {
+        "wikidata": "Q48344",
+        "enwiki": "Recife"
+      }
+    },
+    {
+      "id": "reykjavik",
+      "name": "Reykjavik",
+      "localName": "Reykjavík",
+      "country": "IS",
+      "countryName": "Iceland",
+      "lat": 64.1475,
+      "lon": -21.935,
+      "sea": "north-atlantic",
+      "region": "scandinavia-arctic",
+      "tier": 3,
+      "historicalNames": [
+        "Reykjavík"
+      ],
+      "goods": [
+        "dried-fish",
+        "wool-cloth",
+        "sulphur",
+        "whale-oil"
+      ],
+      "notes": "Icelandic farm settlement under the Danish trade monopoly of 1602; chartered as a town in 1786.",
+      "source": {
+        "wikidata": "Q1764",
+        "enwiki": "Reykjavík"
+      }
+    },
+    {
+      "id": "rhodes",
+      "name": "Rhodes",
+      "localName": "Ρόδος",
+      "country": "GR",
+      "countryName": "Greece",
+      "lat": 36.433333,
+      "lon": 28.216667,
+      "sea": "aegean-sea",
+      "region": "aegean-anatolia",
+      "tier": 3,
+      "historicalNames": [
+        "Rodos"
+      ],
+      "goods": [
+        "wine",
+        "olive-oil",
+        "coral",
+        "wheat"
+      ],
+      "notes": "Base of the Knights Hospitaller until Suleiman took the fortress in 1522.",
+      "source": {
+        "wikidata": "Q188731",
+        "enwiki": "Rhodes (city)"
+      }
+    },
+    {
+      "id": "riga",
+      "name": "Riga",
+      "localName": "Rīga",
+      "country": "LV",
+      "countryName": "Latvia",
+      "lat": 56.9475,
+      "lon": 24.106944,
+      "sea": "baltic-sea",
+      "region": "baltic",
+      "tier": 2,
+      "historicalNames": [
+        "Riga"
+      ],
+      "goods": [
+        "flax",
+        "hemp",
+        "timber",
+        "tar",
+        "furs"
+      ],
+      "notes": "Daugava river Hansestadt and the principal source of masts and cordage fibre for western navies.",
+      "source": {
+        "wikidata": "Q1773",
+        "enwiki": "Riga"
+      }
+    },
+    {
+      "id": "rio-de-janeiro",
+      "name": "Rio de Janeiro",
+      "localName": "Rio de Janeiro",
+      "country": "BR",
+      "countryName": "Brazil",
+      "lat": -22.911111,
+      "lon": -43.205556,
+      "sea": "south-atlantic",
+      "region": "south-america-atlantic",
+      "tier": 2,
+      "historicalNames": [
+        "São Sebastião do Rio de Janeiro",
+        "France Antarctique"
+      ],
+      "goods": [
+        "sugar",
+        "brazilwood",
+        "hides",
+        "whale-oil"
+      ],
+      "notes": "Founded 1565 in Guanabara Bay after the expulsion of the French colony of France Antarctique.",
+      "source": {
+        "wikidata": "Q8678",
+        "enwiki": "Rio de Janeiro"
+      }
+    },
+    {
+      "id": "rostock",
+      "name": "Rostock",
+      "localName": "Rostock",
+      "country": "DE",
+      "countryName": "Germany",
+      "lat": 54.083333,
+      "lon": 12.133333,
+      "sea": "baltic-sea",
+      "region": "baltic",
+      "tier": 3,
+      "historicalNames": [
+        "Rostock"
+      ],
+      "goods": [
+        "wheat",
+        "wine",
+        "herring",
+        "timber"
+      ],
+      "notes": "Wendish Hanseatic town on the Warnow exporting Mecklenburg grain.",
+      "source": {
+        "wikidata": "Q2861",
+        "enwiki": "Rostock"
+      }
+    },
+    {
+      "id": "rotterdam",
+      "name": "Rotterdam",
+      "localName": "Rotterdam",
+      "country": "NL",
+      "countryName": "Netherlands",
+      "lat": 51.92,
+      "lon": 4.48,
+      "sea": "north-sea",
+      "region": "france-low-countries",
+      "tier": 2,
+      "historicalNames": [
+        "Rotterdam"
+      ],
+      "goods": [
+        "herring",
+        "wheat",
+        "wine",
+        "timber"
+      ],
+      "notes": "Maas river port and one of the six VOC chambers established in 1602.",
+      "source": {
+        "wikidata": "Q34370",
+        "enwiki": "Rotterdam"
+      }
+    },
+    {
+      "id": "safi",
+      "name": "Safi",
+      "localName": "آسفي",
+      "country": "MA",
+      "countryName": "Morocco",
+      "lat": 32.283333,
+      "lon": -9.233333,
+      "sea": "north-atlantic",
+      "region": "maghreb",
+      "tier": 3,
+      "historicalNames": [
+        "Asfi"
+      ],
+      "goods": [
+        "sugar",
+        "copper",
+        "wool-raw",
+        "hides"
+      ],
+      "notes": "Portuguese-held 1508-1541; the Atlantic outlet for Marrakesh and its Sous sugar refineries.",
+      "source": {
+        "wikidata": "Q183405",
+        "enwiki": "Safi, Morocco"
+      }
+    },
+    {
+      "id": "saint-louis",
+      "name": "Saint-Louis",
+      "localName": "Ndar",
+      "country": "SN",
+      "countryName": "Senegal",
+      "lat": 16.033333,
+      "lon": -16.5,
+      "sea": "north-atlantic",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Ndar",
+        "Saint-Louis-du-Sénégal"
+      ],
+      "goods": [
+        "gum-arabic",
+        "ivory",
+        "hides",
+        "gold"
+      ],
+      "notes": "French post founded 1659 on an island in the Senegal river mouth, controlling the gum-arabic trade.",
+      "source": {
+        "wikidata": "Q273779",
+        "enwiki": "Saint-Louis, Senegal"
+      }
+    },
+    {
+      "id": "saint-malo",
+      "name": "Saint-Malo",
+      "localName": "Saint-Malo",
+      "country": "FR",
+      "countryName": "France",
+      "lat": 48.649444,
+      "lon": -2.026111,
+      "sea": "english-channel",
+      "region": "france-low-countries",
+      "tier": 2,
+      "historicalNames": [
+        "Saint-Malo"
+      ],
+      "goods": [
+        "dried-fish",
+        "linen",
+        "furs"
+      ],
+      "notes": "Corsair port; Jacques Cartier sailed from here to the St Lawrence in 1534.",
+      "source": {
+        "wikidata": "Q163108",
+        "enwiki": "Saint-Malo"
+      }
+    },
+    {
+      "id": "sakai",
+      "name": "Sakai",
+      "localName": "堺",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 34.573333,
+      "lon": 135.483,
+      "sea": "seto-inland-sea",
+      "region": "japan",
+      "tier": 2,
+      "historicalNames": [
+        "Sakai"
+      ],
+      "goods": [
+        "silver",
+        "iron",
+        "silk-cloth",
+        "tea"
+      ],
+      "notes": "Self-governing merchant city and gun-founding centre, absorbed under Oda and Toyotomi rule after 1568.",
+      "source": {
+        "wikidata": "Q193428",
+        "enwiki": "Sakai"
+      }
+    },
+    {
+      "id": "sale",
+      "name": "Sale",
+      "localName": "سلا",
+      "country": "MA",
+      "countryName": "Morocco",
+      "lat": 34.05,
+      "lon": -6.816667,
+      "sea": "north-atlantic",
+      "region": "maghreb",
+      "tier": 3,
+      "historicalNames": [
+        "Sala",
+        "New Salé"
+      ],
+      "goods": [
+        "hides",
+        "wax",
+        "wool-raw",
+        "dried-fruit"
+      ],
+      "notes": "Bou Regreg corsair republic of the 1620s-1660s, manned partly by Moriscos expelled from Spain.",
+      "source": {
+        "wikidata": "Q466046",
+        "enwiki": "Salé"
+      }
+    },
+    {
+      "id": "salvador",
+      "name": "Salvador",
+      "localName": "Salvador",
+      "country": "BR",
+      "countryName": "Brazil",
+      "lat": -12.983056,
+      "lon": -38.492778,
+      "sea": "south-atlantic",
+      "region": "south-america-atlantic",
+      "tier": 1,
+      "historicalNames": [
+        "São Salvador da Bahia de Todos os Santos"
+      ],
+      "goods": [
+        "sugar",
+        "tobacco",
+        "brazilwood",
+        "hides"
+      ],
+      "notes": "Founded 1549 in the Bay of All Saints as the first capital of Brazil; briefly Dutch-held in 1624-1625.",
+      "source": {
+        "wikidata": "Q36947",
+        "enwiki": "Salvador, Bahia"
+      }
+    },
+    {
+      "id": "san-juan",
+      "name": "San Juan",
+      "localName": "San Juan",
+      "country": "PR",
+      "countryName": "Puerto Rico",
+      "lat": 18.465278,
+      "lon": -66.116667,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 3,
+      "historicalNames": [
+        "Puerto Rico",
+        "San Juan Bautista"
+      ],
+      "goods": [
+        "sugar",
+        "ginger",
+        "hides",
+        "timber"
+      ],
+      "notes": "Its El Morro castle, begun 1539, guarded the first Spanish landfall on the run in from the Atlantic.",
+      "source": {
+        "wikidata": "Q41211",
+        "enwiki": "San Juan, Puerto Rico"
+      }
+    },
+    {
+      "id": "sanlucar",
+      "name": "Sanlucar de Barrameda",
+      "localName": "Sanlúcar de Barrameda",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 36.778889,
+      "lon": -6.353889,
+      "sea": "north-atlantic",
+      "region": "iberia",
+      "tier": 3,
+      "historicalNames": [
+        "Sanlúcar"
+      ],
+      "goods": [
+        "wine",
+        "salt",
+        "dried-fish"
+      ],
+      "notes": "Mouth of the Guadalquivir; Magellan sailed from here in 1519 and Elcano returned to it in 1522.",
+      "source": {
+        "wikidata": "Q210887",
+        "enwiki": "Sanlúcar de Barrameda"
+      }
+    },
+    {
+      "id": "santa-cruz-tenerife",
+      "name": "Santa Cruz de Tenerife",
+      "localName": "Santa Cruz de Tenerife",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 28.466667,
+      "lon": -16.25,
+      "sea": "north-atlantic",
+      "region": "atlantic-isles",
+      "tier": 3,
+      "historicalNames": [
+        "Santa Cruz de Santiago"
+      ],
+      "goods": [
+        "wine",
+        "sugar",
+        "indigo"
+      ],
+      "notes": "Canary roadstead exporting the malmsey wine English writers called \"Canary sack\".",
+      "source": {
+        "wikidata": "Q14328",
+        "enwiki": "Santa Cruz de Tenerife"
+      }
+    },
+    {
+      "id": "santiago-de-cuba",
+      "name": "Santiago de Cuba",
+      "localName": "Santiago de Cuba",
+      "country": "CU",
+      "countryName": "Cuba",
+      "lat": 20.021667,
+      "lon": -75.829444,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 3,
+      "historicalNames": [
+        "Santiago de Cuba"
+      ],
+      "goods": [
+        "copper",
+        "sugar",
+        "hides",
+        "tobacco"
+      ],
+      "notes": "Founded 1515 as Cuba’s first capital; its El Cobre mines were among the earliest worked in the Americas.",
+      "source": {
+        "wikidata": "Q117040",
+        "enwiki": "Santiago de Cuba"
+      }
+    },
+    {
+      "id": "santo-domingo",
+      "name": "Santo Domingo",
+      "localName": "Santo Domingo",
+      "country": "DO",
+      "countryName": "Dominican Republic",
+      "lat": 18.4625,
+      "lon": -69.936111,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 2,
+      "historicalNames": [
+        "Santo Domingo de Guzmán"
+      ],
+      "goods": [
+        "sugar",
+        "hides",
+        "ginger",
+        "brazilwood"
+      ],
+      "notes": "Founded 1496, the oldest continuously inhabited European city in the Americas and seat of the first audiencia.",
+      "source": {
+        "wikidata": "Q34820",
+        "enwiki": "Santo Domingo"
+      }
+    },
+    {
+      "id": "santos",
+      "name": "Santos",
+      "localName": "Santos",
+      "country": "BR",
+      "countryName": "Brazil",
+      "lat": -23.933599,
+      "lon": -46.32864,
+      "sea": "south-atlantic",
+      "region": "south-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "Santos"
+      ],
+      "goods": [
+        "sugar",
+        "brazilwood",
+        "hides"
+      ],
+      "notes": "Founded 1546 on the estuary below the Serra do Mar; Cavendish raided it during his 1591 voyage.",
+      "source": {
+        "wikidata": "Q81882",
+        "enwiki": "Santos, São Paulo"
+      }
+    },
+    {
+      "id": "sao-luis",
+      "name": "Sao Luis",
+      "localName": "São Luís",
+      "country": "BR",
+      "countryName": "Brazil",
+      "lat": -2.53,
+      "lon": -44.302778,
+      "sea": "south-atlantic",
+      "region": "south-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "São Luís",
+        "Saint-Louis de Maragnan"
+      ],
+      "goods": [
+        "cotton-raw",
+        "sugar",
+        "timber"
+      ],
+      "notes": "Founded by the French as Saint-Louis in 1612 and taken by Portugal in 1615, the only French-founded Brazilian capital.",
+      "source": {
+        "wikidata": "Q28441",
+        "enwiki": "São Luís, Maranhão"
+      }
+    },
+    {
+      "id": "sao-tome",
+      "name": "Sao Tome",
+      "localName": "São Tomé",
+      "country": "ST",
+      "countryName": "São Tomé and Principe",
+      "lat": 0.3375,
+      "lon": 6.728333,
+      "sea": "gulf-of-guinea",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "São Tomé"
+      ],
+      "goods": [
+        "sugar",
+        "ivory",
+        "olive-oil"
+      ],
+      "notes": "Equatorial island settled from 1493; its sugar mills were the model later carried to Brazil.",
+      "source": {
+        "wikidata": "Q3932",
+        "enwiki": "São Tomé"
+      }
+    },
+    {
+      "id": "sao-vicente",
+      "name": "Sao Vicente",
+      "localName": "São Vicente",
+      "country": "BR",
+      "countryName": "Brazil",
+      "lat": -23.966418,
+      "lon": -46.38614,
+      "sea": "south-atlantic",
+      "region": "south-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "São Vicente"
+      ],
+      "goods": [
+        "sugar",
+        "brazilwood",
+        "cotton-raw"
+      ],
+      "notes": "Established 1532 by Martim Afonso de Sousa, the first permanent Portuguese town in Brazil.",
+      "source": {
+        "wikidata": "Q272254",
+        "enwiki": "São Vicente, São Paulo"
+      }
+    },
+    {
+      "id": "setubal",
+      "name": "Setubal",
+      "localName": "Setúbal",
+      "country": "PT",
+      "countryName": "Portugal",
+      "lat": 38.524306,
+      "lon": -8.892611,
+      "sea": "north-atlantic",
+      "region": "iberia",
+      "tier": 3,
+      "historicalNames": [
+        "Cetobriga"
+      ],
+      "goods": [
+        "salt",
+        "wine",
+        "dried-fish",
+        "olive-oil"
+      ],
+      "notes": "Sado estuary salt pans supplied the salt that preserved northern European herring and cod catches.",
+      "source": {
+        "wikidata": "Q173699",
+        "enwiki": "Setúbal"
+      }
+    },
+    {
+      "id": "seville",
+      "name": "Seville",
+      "localName": "Sevilla",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 37.388611,
+      "lon": -5.995,
+      "sea": "north-atlantic",
+      "region": "iberia",
+      "tier": 1,
+      "historicalNames": [
+        "Sevilla",
+        "Hispalis",
+        "Ishbiliya"
+      ],
+      "goods": [
+        "silver",
+        "olive-oil",
+        "wine",
+        "cochineal",
+        "wheat"
+      ],
+      "notes": "Guadalquivir river port holding the Crown monopoly on the Indies trade through the Casa de Contratacion, 1503-1717.",
+      "source": {
+        "wikidata": "Q8717",
+        "enwiki": "Seville"
+      }
+    },
+    {
+      "id": "shanghai",
+      "name": "Shanghai",
+      "localName": "上海",
+      "country": "CN",
+      "countryName": "China",
+      "lat": 31.2325,
+      "lon": 121.469167,
+      "sea": "east-china-sea",
+      "region": "china-coast",
+      "tier": 3,
+      "historicalNames": [
+        "Huating",
+        "Shanghai"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "silk-raw",
+        "rice"
+      ],
+      "notes": "A walled Ming county town on the Huangpu, known for its cotton weaving long before its 19th-century rise.",
+      "source": {
+        "wikidata": "Q8686",
+        "enwiki": "Shanghai"
+      }
+    },
+    {
+      "id": "shimonoseki",
+      "name": "Shimonoseki",
+      "localName": "下関",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 33.957889,
+      "lon": 130.941333,
+      "sea": "seto-inland-sea",
+      "region": "japan",
+      "tier": 3,
+      "historicalNames": [
+        "Akamagaseki",
+        "Bakan"
+      ],
+      "goods": [
+        "rice",
+        "dried-fish",
+        "salt",
+        "copper"
+      ],
+      "notes": "Guards the Kanmon Strait between Honshu and Kyushu, the funnel for all Inland Sea coastal traffic.",
+      "source": {
+        "wikidata": "Q203308",
+        "enwiki": "Shimonoseki"
+      }
+    },
+    {
+      "id": "singapore",
+      "name": "Singapore",
+      "localName": "Singapura",
+      "country": "SG",
+      "countryName": "Singapore",
+      "lat": 1.3,
+      "lon": 103.8,
+      "sea": "strait-of-malacca",
+      "region": "southeast-asia",
+      "tier": 3,
+      "historicalNames": [
+        "Temasek",
+        "Singapura"
+      ],
+      "goods": [
+        "timber",
+        "tin",
+        "dried-fish"
+      ],
+      "notes": "Temasek was a minor Johor outpost through the 16th and 17th centuries; the modern port dates from 1819.",
+      "source": {
+        "wikidata": "Q334",
+        "enwiki": "Singapore"
+      }
+    },
+    {
+      "id": "sinop",
+      "name": "Sinop",
+      "localName": "Sinop",
+      "country": "TR",
+      "countryName": "Turkey",
+      "lat": 42.026667,
+      "lon": 35.151111,
+      "sea": "black-sea",
+      "region": "aegean-anatolia",
+      "tier": 3,
+      "historicalNames": [
+        "Sinope"
+      ],
+      "goods": [
+        "timber",
+        "copper",
+        "wheat",
+        "tar"
+      ],
+      "notes": "Only sheltered natural harbour on the northern Anatolian coast; a major Ottoman shipbuilding yard.",
+      "source": {
+        "wikidata": "Q599416",
+        "enwiki": "Sinop, Turkey"
+      }
+    },
+    {
+      "id": "sofala",
+      "name": "Sofala",
+      "localName": "Sofala",
+      "country": "MZ",
+      "countryName": "Mozambique",
+      "lat": -20.15,
+      "lon": 34.716667,
+      "sea": "mozambique-channel",
+      "region": "east-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Sofala",
+        "Nova Sofala"
+      ],
+      "goods": [
+        "gold",
+        "ivory",
+        "cotton-cloth"
+      ],
+      "notes": "Swahili gold port for the Zimbabwe plateau; Portugal built its fort here in 1505.",
+      "source": {
+        "wikidata": "Q1361151",
+        "enwiki": "Sofala"
+      }
+    },
+    {
+      "id": "southampton",
+      "name": "Southampton",
+      "localName": "Southampton",
+      "country": "GB",
+      "countryName": "United Kingdom",
+      "lat": 50.906667,
+      "lon": -1.404444,
+      "sea": "english-channel",
+      "region": "british-isles",
+      "tier": 3,
+      "historicalNames": [
+        "Hamwic",
+        "Southampton"
+      ],
+      "goods": [
+        "wool-cloth",
+        "wine",
+        "alum"
+      ],
+      "notes": "Terminal of the Venetian and Genoese galley voyages to England in the 15th and early 16th centuries.",
+      "source": {
+        "wikidata": "Q79848",
+        "enwiki": "Southampton"
+      }
+    },
+    {
+      "id": "soyo",
+      "name": "Soyo",
+      "localName": "Soyo",
+      "country": "AO",
+      "countryName": "Angola",
+      "lat": -6.133333,
+      "lon": 12.366667,
+      "sea": "south-atlantic",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Mpinda",
+        "Santo António do Zaire"
+      ],
+      "goods": [
+        "ivory",
+        "copper",
+        "cotton-cloth"
+      ],
+      "notes": "Mpinda at the Congo river mouth, the port of the kingdom of Kongo and Diogo Cao’s landfall in 1483.",
+      "source": {
+        "wikidata": "Q1015108",
+        "enwiki": "Soyo"
+      }
+    },
+    {
+      "id": "split",
+      "name": "Split",
+      "localName": "Split",
+      "country": "HR",
+      "countryName": "Croatia",
+      "lat": 43.51,
+      "lon": 16.44,
+      "sea": "adriatic-sea",
+      "region": "adriatic-ionian",
+      "tier": 3,
+      "historicalNames": [
+        "Spalato",
+        "Aspalathos"
+      ],
+      "goods": [
+        "wool-cloth",
+        "wax",
+        "hides",
+        "wine"
+      ],
+      "notes": "Venetian-held Dalmatian town; its scala from 1592 funnelled Ottoman caravan goods to Venice.",
+      "source": {
+        "wikidata": "Q1663",
+        "enwiki": "Split, Croatia"
+      }
+    },
+    {
+      "id": "st-augustine",
+      "name": "St. Augustine",
+      "localName": "San Agustín",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 29.894722,
+      "lon": -81.314444,
+      "sea": "north-atlantic",
+      "region": "north-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "San Agustín"
+      ],
+      "goods": [
+        "hides",
+        "timber",
+        "gum-arabic"
+      ],
+      "notes": "Founded 1565 to guard the Bahama Channel where the treasure fleets turned north; oldest European city in the United States.",
+      "source": {
+        "wikidata": "Q487988",
+        "enwiki": "St. Augustine, Florida"
+      }
+    },
+    {
+      "id": "st-georges-bermuda",
+      "name": "St. George's",
+      "localName": "St. George's",
+      "country": "BM",
+      "countryName": "Bermuda",
+      "lat": 32.379444,
+      "lon": -64.677778,
+      "sea": "north-atlantic",
+      "region": "north-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "St George's Town",
+        "Somers Isles"
+      ],
+      "goods": [
+        "tobacco",
+        "ambergris",
+        "timber",
+        "salt"
+      ],
+      "notes": "Settled after the Sea Venture wreck of 1609; a mid-Atlantic waypoint on the homeward sailing route from the Caribbean.",
+      "source": {
+        "wikidata": "Q28063",
+        "enwiki": "St. George's, Bermuda"
+      }
+    },
+    {
+      "id": "st-johns-nl",
+      "name": "St. John's",
+      "localName": "St. John's",
+      "country": "CA",
+      "countryName": "Canada",
+      "lat": 47.561389,
+      "lon": -52.711944,
+      "sea": "north-atlantic",
+      "region": "north-america-atlantic",
+      "tier": 2,
+      "historicalNames": [
+        "St John's",
+        "Sam Johns"
+      ],
+      "goods": [
+        "dried-fish",
+        "whale-oil",
+        "furs"
+      ],
+      "notes": "Sheltered harbour used by fishing fleets from the early 1500s; Gilbert claimed it for England in 1583.",
+      "source": {
+        "wikidata": "Q2082",
+        "enwiki": "St. John's, Newfoundland and Labrador"
+      }
+    },
+    {
+      "id": "stockholm",
+      "name": "Stockholm",
+      "localName": "Stockholm",
+      "country": "SE",
+      "countryName": "Sweden",
+      "lat": 59.329444,
+      "lon": 18.068611,
+      "sea": "baltic-sea",
+      "region": "baltic",
+      "tier": 2,
+      "historicalNames": [
+        "Stockholm"
+      ],
+      "goods": [
+        "copper",
+        "iron",
+        "tar",
+        "timber"
+      ],
+      "notes": "Swedish capital exporting Falun copper, which financed the crown through the Thirty Years War.",
+      "source": {
+        "wikidata": "Q1754",
+        "enwiki": "Stockholm"
+      }
+    },
+    {
+      "id": "suakin",
+      "name": "Suakin",
+      "localName": "سواكن",
+      "country": "SD",
+      "countryName": "Sudan",
+      "lat": 19.1025,
+      "lon": 37.33,
+      "sea": "red-sea",
+      "region": "east-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Sawakin"
+      ],
+      "goods": [
+        "gold",
+        "ivory",
+        "gum-arabic"
+      ],
+      "notes": "Coral-built Ottoman harbour and a principal embarkation point for pilgrims crossing to Jeddah.",
+      "source": {
+        "wikidata": "Q571215",
+        "enwiki": "Suakin"
+      }
+    },
+    {
+      "id": "suez",
+      "name": "Suez",
+      "localName": "السويس",
+      "country": "EG",
+      "countryName": "Egypt",
+      "lat": 29.966667,
+      "lon": 32.533333,
+      "sea": "red-sea",
+      "region": "arabia-gulf",
+      "tier": 3,
+      "historicalNames": [
+        "al-Suways"
+      ],
+      "goods": [
+        "black-pepper",
+        "coffee",
+        "wheat",
+        "copper"
+      ],
+      "notes": "Head of the Red Sea and the Ottoman shipyard from which fleets sailed against the Portuguese in 1538.",
+      "source": {
+        "wikidata": "Q134514",
+        "enwiki": "Suez"
+      }
+    },
+    {
+      "id": "sur",
+      "name": "Sur",
+      "localName": "صور",
+      "country": "OM",
+      "countryName": "Oman",
+      "lat": 22.566667,
+      "lon": 59.528889,
+      "sea": "gulf-of-oman",
+      "region": "arabia-gulf",
+      "tier": 3,
+      "historicalNames": [
+        "Sur"
+      ],
+      "goods": [
+        "dried-fruit",
+        "dried-fish",
+        "frankincense"
+      ],
+      "notes": "Omani dhow-building town at the entrance to the Gulf of Oman, trading with Zanzibar and India.",
+      "source": {
+        "wikidata": "Q737270",
+        "enwiki": "Sur, Oman"
+      }
+    },
+    {
+      "id": "surabaya",
+      "name": "Surabaya",
+      "localName": "Surabaya",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": -7.246284,
+      "lon": 112.737767,
+      "sea": "java-sea",
+      "region": "southeast-asia",
+      "tier": 3,
+      "historicalNames": [
+        "Surabaya"
+      ],
+      "goods": [
+        "rice",
+        "timber",
+        "salt",
+        "sugar"
+      ],
+      "notes": "East Java river port and shipbuilding town, subdued by Sultan Agung of Mataram in 1625.",
+      "source": {
+        "wikidata": "Q11462",
+        "enwiki": "Surabaya"
+      }
+    },
+    {
+      "id": "surat",
+      "name": "Surat",
+      "localName": "સુરત",
+      "country": "IN",
+      "countryName": "India",
+      "lat": 21.205,
+      "lon": 72.84,
+      "sea": "arabian-sea",
+      "region": "western-india",
+      "tier": 1,
+      "historicalNames": [
+        "Suryapur",
+        "Surat"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "indigo",
+        "saltpetre",
+        "silk-cloth",
+        "black-pepper"
+      ],
+      "notes": "Mughal India’s chief western port; the English factory of 1613 was their first foothold in India.",
+      "source": {
+        "wikidata": "Q4629",
+        "enwiki": "Surat"
+      }
+    },
+    {
+      "id": "sydney",
+      "name": "Sydney",
+      "localName": "Sydney",
+      "country": "AU",
+      "countryName": "Australia",
+      "lat": -33.867778,
+      "lon": 151.21,
+      "sea": "tasman-sea",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Port Jackson",
+        "Warrane"
+      ],
+      "goods": [
+        "timber",
+        "furs",
+        "wool-raw"
+      ],
+      "notes": "Port Jackson was settled in 1788; Dutch ships charted Australia’s west and north coasts from 1606, not this shore.",
+      "source": {
+        "wikidata": "Q3130",
+        "enwiki": "Sydney"
+      }
+    },
+    {
+      "id": "tadoussac",
+      "name": "Tadoussac",
+      "localName": "Tadoussac",
+      "country": "CA",
+      "countryName": "Canada",
+      "lat": 48.15,
+      "lon": -69.7167,
+      "sea": "gulf-of-saint-lawrence",
+      "region": "north-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "Tadoussac"
+      ],
+      "goods": [
+        "furs",
+        "whale-oil",
+        "dried-fish"
+      ],
+      "notes": "Saguenay river trading post from 1600, the oldest French fur-trade station in North America.",
+      "source": {
+        "wikidata": "Q1857392",
+        "enwiki": "Tadoussac"
+      }
+    },
+    {
+      "id": "tainan",
+      "name": "Tainan",
+      "localName": "臺南",
+      "country": "TW",
+      "countryName": "Taiwan",
+      "lat": 22.99,
+      "lon": 120.185,
+      "sea": "taiwan-strait",
+      "region": "china-coast",
+      "tier": 2,
+      "historicalNames": [
+        "Tayouan",
+        "Anping",
+        "Fort Zeelandia"
+      ],
+      "goods": [
+        "hides",
+        "sugar",
+        "silk-raw",
+        "timber"
+      ],
+      "notes": "The VOC built Fort Zeelandia here in 1624; Zheng Chenggong expelled the Dutch in 1662.",
+      "source": {
+        "wikidata": "Q140631",
+        "enwiki": "Tainan"
+      }
+    },
+    {
+      "id": "tallinn",
+      "name": "Tallinn",
+      "localName": "Tallinn",
+      "country": "EE",
+      "countryName": "Estonia",
+      "lat": 59.437222,
+      "lon": 24.745,
+      "sea": "baltic-sea",
+      "region": "baltic",
+      "tier": 2,
+      "historicalNames": [
+        "Reval",
+        "Lyndanisse"
+      ],
+      "goods": [
+        "furs",
+        "wax",
+        "flax",
+        "wheat"
+      ],
+      "notes": "Reval, the Hanseatic outlet for Russian goods coming west from Novgorod.",
+      "source": {
+        "wikidata": "Q1770",
+        "enwiki": "Tallinn"
+      }
+    },
+    {
+      "id": "tangier",
+      "name": "Tangier",
+      "localName": "طنجة",
+      "country": "MA",
+      "countryName": "Morocco",
+      "lat": 35.76963,
+      "lon": -5.803352,
+      "sea": "mediterranean-sea",
+      "region": "maghreb",
+      "tier": 3,
+      "historicalNames": [
+        "Tanja",
+        "Tingis"
+      ],
+      "goods": [
+        "hides",
+        "wax",
+        "wheat",
+        "wool-raw"
+      ],
+      "notes": "Held by Portugal from 1471; passed to England in 1661 as part of Catherine of Braganza’s dowry.",
+      "source": {
+        "wikidata": "Q126148",
+        "enwiki": "Tangier"
+      }
+    },
+    {
+      "id": "ternate",
+      "name": "Ternate",
+      "localName": "Ternate",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": 0.783333,
+      "lon": 127.366667,
+      "sea": "molucca-sea",
+      "region": "southeast-asia",
+      "tier": 2,
+      "historicalNames": [
+        "Ternate",
+        "Gapi"
+      ],
+      "goods": [
+        "cloves",
+        "rice",
+        "coral"
+      ],
+      "notes": "Clove sultanate; the Portuguese fort of 1522 was expelled in 1575 and the Dutch took over from 1607.",
+      "source": {
+        "wikidata": "Q19151",
+        "enwiki": "Ternate"
+      }
+    },
+    {
+      "id": "thanlyin",
+      "name": "Thanlyin",
+      "localName": "သန်လျင်",
+      "country": "MM",
+      "countryName": "Myanmar",
+      "lat": 16.768611,
+      "lon": 96.245,
+      "sea": "andaman-sea",
+      "region": "eastern-india",
+      "tier": 3,
+      "historicalNames": [
+        "Syriam"
+      ],
+      "goods": [
+        "diamonds",
+        "timber",
+        "indigo",
+        "rice"
+      ],
+      "notes": "Syriam, where the Portuguese adventurer Filipe de Brito ruled from 1600 until his execution in 1613.",
+      "source": {
+        "wikidata": "Q2734515",
+        "enwiki": "Thanlyin"
+      }
+    },
+    {
+      "id": "thessaloniki",
+      "name": "Thessaloniki",
+      "localName": "Θεσσαλονίκη",
+      "country": "GR",
+      "countryName": "Greece",
+      "lat": 40.640278,
+      "lon": 22.935556,
+      "sea": "aegean-sea",
+      "region": "aegean-anatolia",
+      "tier": 2,
+      "historicalNames": [
+        "Salonica",
+        "Selanik"
+      ],
+      "goods": [
+        "wool-cloth",
+        "wheat",
+        "tobacco",
+        "hides"
+      ],
+      "notes": "Ottoman Balkan port whose Sephardic community, settled after 1492, made it a woollen-cloth centre.",
+      "source": {
+        "wikidata": "Q17151",
+        "enwiki": "Thessaloniki"
+      }
+    },
+    {
+      "id": "tianjin",
+      "name": "Tianjin",
+      "localName": "天津",
+      "country": "CN",
+      "countryName": "China",
+      "lat": 39.146667,
+      "lon": 117.205556,
+      "sea": "bohai-sea",
+      "region": "china-coast",
+      "tier": 3,
+      "historicalNames": [
+        "Tianjin",
+        "Zhigu"
+      ],
+      "goods": [
+        "salt",
+        "wheat",
+        "furs"
+      ],
+      "notes": "Walled in 1404 to guard the Grand Canal and sea-grain route feeding Beijing.",
+      "source": {
+        "wikidata": "Q11736",
+        "enwiki": "Tianjin"
+      }
+    },
+    {
+      "id": "tidore",
+      "name": "Tidore",
+      "localName": "Tidore",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": 0.683333,
+      "lon": 127.4,
+      "sea": "molucca-sea",
+      "region": "southeast-asia",
+      "tier": 3,
+      "historicalNames": [
+        "Tidore"
+      ],
+      "goods": [
+        "cloves",
+        "rice",
+        "nutmeg"
+      ],
+      "notes": "Ternate’s rival clove island; the Spanish held a fort here from 1606 until 1663.",
+      "source": {
+        "wikidata": "Q19153",
+        "enwiki": "Tidore"
+      }
+    },
+    {
+      "id": "tokyo",
+      "name": "Tokyo",
+      "localName": "東京",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 35.689444,
+      "lon": 139.691667,
+      "sea": "north-pacific",
+      "region": "japan",
+      "tier": 1,
+      "historicalNames": [
+        "Edo",
+        "江戸"
+      ],
+      "goods": [
+        "rice",
+        "lacquerware",
+        "timber",
+        "copper"
+      ],
+      "notes": "Edo, seat of the Tokugawa shogunate from 1603 and supplied by coastal shipping into Edo Bay.",
+      "source": {
+        "wikidata": "Q1490",
+        "enwiki": "Tokyo"
+      }
+    },
+    {
+      "id": "tongyeong",
+      "name": "Tongyeong",
+      "localName": "통영",
+      "country": "KR",
+      "countryName": "South Korea",
+      "lat": 34.845833,
+      "lon": 128.423611,
+      "sea": "korea-strait",
+      "region": "korea",
+      "tier": 3,
+      "historicalNames": [
+        "統營 Tongyeong",
+        "Samdo Sugun Tongjeyeong"
+      ],
+      "goods": [
+        "dried-fish",
+        "lacquerware",
+        "salt"
+      ],
+      "notes": "Seat of the combined Three Provinces Naval Command from 1604, in the strait where the battle of Hansando was fought.",
+      "source": {
+        "wikidata": "Q42152",
+        "enwiki": "Tongyeong"
+      }
+    },
+    {
+      "id": "torshavn",
+      "name": "Torshavn",
+      "localName": "Tórshavn",
+      "country": "FO",
+      "countryName": "Faroe Islands",
+      "lat": 62.00981,
+      "lon": -6.77135,
+      "sea": "norwegian-sea",
+      "region": "scandinavia-arctic",
+      "tier": 3,
+      "historicalNames": [
+        "Tórshavn"
+      ],
+      "goods": [
+        "dried-fish",
+        "wool-cloth",
+        "whale-oil"
+      ],
+      "notes": "Faroese Tinganes assembly site and the islands’ single licensed trading harbour under Danish rule.",
+      "source": {
+        "wikidata": "Q10704",
+        "enwiki": "Tórshavn"
+      }
+    },
+    {
+      "id": "toulon",
+      "name": "Toulon",
+      "localName": "Toulon",
+      "country": "FR",
+      "countryName": "France",
+      "lat": 43.125,
+      "lon": 5.930556,
+      "sea": "mediterranean-sea",
+      "region": "western-mediterranean",
+      "tier": 3,
+      "historicalNames": [
+        "Telo Martius"
+      ],
+      "goods": [
+        "naval-timber",
+        "olive-oil",
+        "wine"
+      ],
+      "notes": "French royal galley base on the Provencal coast from the early 16th century.",
+      "source": {
+        "wikidata": "Q44160",
+        "enwiki": "Toulon"
+      }
+    },
+    {
+      "id": "trabzon",
+      "name": "Trabzon",
+      "localName": "Trabzon",
+      "country": "TR",
+      "countryName": "Turkey",
+      "lat": 41.005,
+      "lon": 39.7225,
+      "sea": "black-sea",
+      "region": "aegean-anatolia",
+      "tier": 3,
+      "historicalNames": [
+        "Trebizond",
+        "Trapezous"
+      ],
+      "goods": [
+        "silk-raw",
+        "copper",
+        "carpets",
+        "dried-fruit"
+      ],
+      "notes": "Black Sea terminus of the Tabriz caravan road; the Byzantine successor empire here fell in 1461.",
+      "source": {
+        "wikidata": "Q45301",
+        "enwiki": "Trabzon"
+      }
+    },
+    {
+      "id": "trieste",
+      "name": "Trieste",
+      "localName": "Trieste",
+      "country": "IT",
+      "countryName": "Italy",
+      "lat": 45.650278,
+      "lon": 13.770278,
+      "sea": "adriatic-sea",
+      "region": "adriatic-ionian",
+      "tier": 3,
+      "historicalNames": [
+        "Tergeste",
+        "Trst"
+      ],
+      "goods": [
+        "salt",
+        "iron",
+        "wine",
+        "timber"
+      ],
+      "notes": "Habsburg harbour at the head of the Adriatic, a persistent commercial rival to Venice.",
+      "source": {
+        "wikidata": "Q546",
+        "enwiki": "Trieste"
+      }
+    },
+    {
+      "id": "trincomalee",
+      "name": "Trincomalee",
+      "localName": "திருகோணமலை",
+      "country": "LK",
+      "countryName": "Sri Lanka",
+      "lat": 8.566667,
+      "lon": 81.233333,
+      "sea": "bay-of-bengal",
+      "region": "eastern-india",
+      "tier": 3,
+      "historicalNames": [
+        "Trincomale",
+        "Gokanna"
+      ],
+      "goods": [
+        "dried-fruit",
+        "diamonds",
+        "timber",
+        "salt"
+      ],
+      "notes": "One of the finest deep natural harbours in the Indian Ocean, first fortified by the Portuguese in 1623.",
+      "source": {
+        "wikidata": "Q323873",
+        "enwiki": "Trincomalee"
+      }
+    },
+    {
+      "id": "tripoli-lb",
+      "name": "Tripoli",
+      "localName": "طرابلس",
+      "country": "LB",
+      "countryName": "Lebanon",
+      "lat": 34.436667,
+      "lon": 35.834444,
+      "sea": "mediterranean-sea",
+      "region": "levant",
+      "tier": 3,
+      "historicalNames": [
+        "Tarabulus al-Sham",
+        "Tripolis"
+      ],
+      "goods": [
+        "silk-raw",
+        "olive-oil",
+        "coral"
+      ],
+      "notes": "Levant Company factory town and outlet for the caravan road running inland to Aleppo.",
+      "source": {
+        "wikidata": "Q168954",
+        "enwiki": "Tripoli, Lebanon"
+      }
+    },
+    {
+      "id": "tripoli-ly",
+      "name": "Tripoli",
+      "localName": "طرابلس",
+      "country": "LY",
+      "countryName": "Libya",
+      "lat": 32.8875,
+      "lon": 13.1875,
+      "sea": "mediterranean-sea",
+      "region": "maghreb",
+      "tier": 3,
+      "historicalNames": [
+        "Tarabulus al-Gharb",
+        "Oea"
+      ],
+      "goods": [
+        "gold",
+        "ivory",
+        "dried-fruit",
+        "hides"
+      ],
+      "notes": "Mediterranean terminus of the Fezzan caravan route; held by the Knights of Malta 1530-1551.",
+      "source": {
+        "wikidata": "Q3579",
+        "enwiki": "Tripoli, Libya"
+      }
+    },
+    {
+      "id": "trondheim",
+      "name": "Trondheim",
+      "localName": "Trondheim",
+      "country": "NO",
+      "countryName": "Norway",
+      "lat": 63.44,
+      "lon": 10.4,
+      "sea": "norwegian-sea",
+      "region": "scandinavia-arctic",
+      "tier": 3,
+      "historicalNames": [
+        "Nidaros",
+        "Trondhjem"
+      ],
+      "goods": [
+        "dried-fish",
+        "copper",
+        "timber",
+        "whale-oil"
+      ],
+      "notes": "Nidaros, medieval seat of the Norwegian archbishopric and outlet for Roros copper from 1644.",
+      "source": {
+        "wikidata": "Q25804",
+        "enwiki": "Trondheim"
+      }
+    },
+    {
+      "id": "tsushima",
+      "name": "Tsushima",
+      "localName": "対馬",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 34.202778,
+      "lon": 129.287528,
+      "sea": "korea-strait",
+      "region": "japan",
+      "tier": 3,
+      "historicalNames": [
+        "Tsushima",
+        "對馬"
+      ],
+      "goods": [
+        "ginseng",
+        "silver",
+        "ramie-cloth",
+        "dried-fish"
+      ],
+      "notes": "The So clan’s island domain held the sole licence for Japan’s trade and diplomacy with Joseon Korea.",
+      "source": {
+        "wikidata": "Q991032",
+        "enwiki": "Tsushima, Nagasaki"
+      }
+    },
+    {
+      "id": "tunis",
+      "name": "Tunis",
+      "localName": "تونس",
+      "country": "TN",
+      "countryName": "Tunisia",
+      "lat": 36.800833,
+      "lon": 10.18,
+      "sea": "mediterranean-sea",
+      "region": "maghreb",
+      "tier": 2,
+      "historicalNames": [
+        "Tunis"
+      ],
+      "goods": [
+        "wool-cloth",
+        "olive-oil",
+        "coral",
+        "wax",
+        "dried-fruit"
+      ],
+      "notes": "Hafsid then Ottoman capital whose harbour of La Goulette was taken by Charles V in 1535.",
+      "source": {
+        "wikidata": "Q3572",
+        "enwiki": "Tunis"
+      }
+    },
+    {
+      "id": "turku",
+      "name": "Turku",
+      "localName": "Turku",
+      "country": "FI",
+      "countryName": "Finland",
+      "lat": 60.451667,
+      "lon": 22.266944,
+      "sea": "baltic-sea",
+      "region": "baltic",
+      "tier": 3,
+      "historicalNames": [
+        "Åbo"
+      ],
+      "goods": [
+        "tar",
+        "timber",
+        "furs",
+        "dried-fish"
+      ],
+      "notes": "Abo, the administrative and trading centre of Swedish Finland at the Aura river mouth.",
+      "source": {
+        "wikidata": "Q38511",
+        "enwiki": "Turku"
+      }
+    },
+    {
+      "id": "ulsan",
+      "name": "Ulsan",
+      "localName": "울산",
+      "country": "KR",
+      "countryName": "South Korea",
+      "lat": 35.55,
+      "lon": 129.316667,
+      "sea": "sea-of-japan",
+      "region": "korea",
+      "tier": 3,
+      "historicalNames": [
+        "Yeompo",
+        "蔚山 Ulsan"
+      ],
+      "goods": [
+        "whale-oil",
+        "dried-fish",
+        "salt",
+        "iron"
+      ],
+      "notes": "One of the three ports opened to Japanese traders in 1426; besieged during the Imjin War in 1597-98.",
+      "source": {
+        "wikidata": "Q41278",
+        "enwiki": "Ulsan"
+      }
+    },
+    {
+      "id": "valencia",
+      "name": "Valencia",
+      "localName": "València",
+      "country": "ES",
+      "countryName": "Spain",
+      "lat": 39.47,
+      "lon": -0.376389,
+      "sea": "mediterranean-sea",
+      "region": "iberia",
+      "tier": 2,
+      "historicalNames": [
+        "Balansiya",
+        "Valentia"
+      ],
+      "goods": [
+        "silk-raw",
+        "dried-fruit",
+        "rice",
+        "porcelain"
+      ],
+      "notes": "Silk-weaving city; its Llotja de la Seda commodity exchange was completed in 1548.",
+      "source": {
+        "wikidata": "Q8818",
+        "enwiki": "Valencia"
+      }
+    },
+    {
+      "id": "valletta",
+      "name": "Valletta",
+      "localName": "Valletta",
+      "country": "MT",
+      "countryName": "Malta",
+      "lat": 35.897778,
+      "lon": 14.5125,
+      "sea": "mediterranean-sea",
+      "region": "western-mediterranean",
+      "tier": 2,
+      "historicalNames": [
+        "Valletta",
+        "Il-Belt"
+      ],
+      "goods": [
+        "cotton-cloth",
+        "wheat",
+        "salt"
+      ],
+      "notes": "Founded 1566 by the Knights of St John after the Great Siege; corsairing base against Ottoman shipping.",
+      "source": {
+        "wikidata": "Q23800",
+        "enwiki": "Valletta"
+      }
+    },
+    {
+      "id": "valparaiso",
+      "name": "Valparaiso",
+      "localName": "Valparaíso",
+      "country": "CL",
+      "countryName": "Chile",
+      "lat": -33.046111,
+      "lon": -71.619722,
+      "sea": "south-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "Valparaíso"
+      ],
+      "goods": [
+        "wheat",
+        "wine",
+        "hides",
+        "wax"
+      ],
+      "notes": "Port of Santiago from 1544, sending Chilean wheat north to Peru; raided by Drake in 1578.",
+      "source": {
+        "wikidata": "Q33986",
+        "enwiki": "Valparaíso"
+      }
+    },
+    {
+      "id": "vardo",
+      "name": "Vardo",
+      "localName": "Vardø",
+      "country": "NO",
+      "countryName": "Norway",
+      "lat": 70.37052,
+      "lon": 31.10954,
+      "sea": "barents-sea",
+      "region": "scandinavia-arctic",
+      "tier": 3,
+      "historicalNames": [
+        "Vardøhus"
+      ],
+      "goods": [
+        "dried-fish",
+        "whale-oil",
+        "furs"
+      ],
+      "notes": "Norway’s northeasternmost fortress town, meeting point of Pomor traders and Arctic passage-seekers.",
+      "source": {
+        "wikidata": "Q7915572",
+        "enwiki": "Vardø (town)"
+      }
+    },
+    {
+      "id": "venice",
+      "name": "Venice",
+      "localName": "Venezia",
+      "country": "IT",
+      "countryName": "Italy",
+      "lat": 45.439722,
+      "lon": 12.331944,
+      "sea": "adriatic-sea",
+      "region": "adriatic-ionian",
+      "tier": 1,
+      "historicalNames": [
+        "Venezia",
+        "Venexia"
+      ],
+      "goods": [
+        "glassware",
+        "black-pepper",
+        "silk-cloth",
+        "salt",
+        "olive-oil"
+      ],
+      "notes": "Lagoon republic whose state Arsenal could fit out a galley in a day at its 16th-century peak.",
+      "source": {
+        "wikidata": "Q641",
+        "enwiki": "Venice"
+      }
+    },
+    {
+      "id": "veracruz",
+      "name": "Veracruz",
+      "localName": "Veracruz",
+      "country": "MX",
+      "countryName": "Mexico",
+      "lat": 19.190278,
+      "lon": -96.153333,
+      "sea": "gulf-of-mexico",
+      "region": "caribbean",
+      "tier": 1,
+      "historicalNames": [
+        "La Villa Rica de la Vera Cruz",
+        "San Juan de Ulúa"
+      ],
+      "goods": [
+        "silver",
+        "cochineal",
+        "sugar",
+        "cacao",
+        "hides"
+      ],
+      "notes": "New Spain’s Atlantic port, where Cortes landed in 1519 and the fortress of San Juan de Ulua sheltered the fleets.",
+      "source": {
+        "wikidata": "Q173270",
+        "enwiki": "Veracruz (city)"
+      }
+    },
+    {
+      "id": "visby",
+      "name": "Visby",
+      "localName": "Visby",
+      "country": "SE",
+      "countryName": "Sweden",
+      "lat": 57.628997,
+      "lon": 18.307109,
+      "sea": "baltic-sea",
+      "region": "baltic",
+      "tier": 3,
+      "historicalNames": [
+        "Visby"
+      ],
+      "goods": [
+        "wax",
+        "furs",
+        "tar",
+        "salt"
+      ],
+      "notes": "Gotland town whose sea law circulated across the Baltic; sacked by Denmark in 1361 and in decline thereafter.",
+      "source": {
+        "wikidata": "Q54757",
+        "enwiki": "Visby"
+      }
+    },
+    {
+      "id": "vlissingen",
+      "name": "Vlissingen",
+      "localName": "Vlissingen",
+      "country": "NL",
+      "countryName": "Netherlands",
+      "lat": 51.45,
+      "lon": 3.583333,
+      "sea": "north-sea",
+      "region": "france-low-countries",
+      "tier": 3,
+      "historicalNames": [
+        "Flushing"
+      ],
+      "goods": [
+        "salt",
+        "sugar",
+        "wine"
+      ],
+      "notes": "Scheldt-mouth harbour held as an English cautionary town from 1585 to 1616.",
+      "source": {
+        "wikidata": "Q10084",
+        "enwiki": "Vlissingen"
+      }
+    },
+    {
+      "id": "willemstad",
+      "name": "Willemstad",
+      "localName": "Willemstad",
+      "country": "CW",
+      "countryName": "Curaçao",
+      "lat": 12.108,
+      "lon": -68.935,
+      "sea": "caribbean-sea",
+      "region": "caribbean",
+      "tier": 3,
+      "historicalNames": [
+        "Willemstad",
+        "Curaçao"
+      ],
+      "goods": [
+        "salt",
+        "hides",
+        "tobacco",
+        "logwood"
+      ],
+      "notes": "Dutch West India Company took Curacao in 1634 for its salt pans and its deep Schottegat harbour.",
+      "source": {
+        "wikidata": "Q132679",
+        "enwiki": "Willemstad"
+      }
+    },
+    {
+      "id": "xiamen",
+      "name": "Xiamen",
+      "localName": "廈門",
+      "country": "CN",
+      "countryName": "China",
+      "lat": 24.479722,
+      "lon": 118.081944,
+      "sea": "taiwan-strait",
+      "region": "china-coast",
+      "tier": 2,
+      "historicalNames": [
+        "Amoy",
+        "Zhongzuo"
+      ],
+      "goods": [
+        "silk-cloth",
+        "porcelain",
+        "sugar",
+        "tea"
+      ],
+      "notes": "Fujian island harbour and the base from which Zheng Chenggong ran his maritime empire in the 1650s.",
+      "source": {
+        "wikidata": "Q68744",
+        "enwiki": "Xiamen"
+      }
+    },
+    {
+      "id": "yeosu",
+      "name": "Yeosu",
+      "localName": "여수",
+      "country": "KR",
+      "countryName": "South Korea",
+      "lat": 34.760689,
+      "lon": 127.662163,
+      "sea": "korea-strait",
+      "region": "korea",
+      "tier": 2,
+      "historicalNames": [
+        "麗水 Yeosu",
+        "Jeolla Jwasuyeong"
+      ],
+      "goods": [
+        "dried-fish",
+        "salt",
+        "timber"
+      ],
+      "notes": "Headquarters of Yi Sun-sin’s Left Jeolla naval command, from which the turtle ships sailed in 1592.",
+      "source": {
+        "wikidata": "Q42125",
+        "enwiki": "Yeosu"
+      }
+    },
+    {
+      "id": "zanzibar",
+      "name": "Zanzibar",
+      "localName": "Unguja",
+      "country": "TZ",
+      "countryName": "Tanzania",
+      "lat": -6.166667,
+      "lon": 39.2,
+      "sea": "indian-ocean",
+      "region": "east-africa",
+      "tier": 2,
+      "historicalNames": [
+        "Unguja",
+        "Zanguebar"
+      ],
+      "goods": [
+        "ivory",
+        "cloves",
+        "cotton-cloth",
+        "ambergris"
+      ],
+      "notes": "Swahili island town on the monsoon route; Omani control from 1698 made it the region’s chief entrepot.",
+      "source": {
+        "wikidata": "Q2222874",
+        "enwiki": "Zanzibar City"
+      }
+    }
+  ]
+}
