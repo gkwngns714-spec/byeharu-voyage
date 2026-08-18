@@ -1,2 +1,5 @@
 * text=auto eol=lf
 *.sql text eol=lf
+*.mjs text eol=lf
+*.sh text eol=lf
+*.json text eol=lf

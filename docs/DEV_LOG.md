@@ -64,6 +64,47 @@ There is **no Docker on this machine**, so `supabase start` cannot run locally. 
 **the real migration chain is proven in GitHub Actions CI**, which does have Docker. That remains
 the net.
 
+### D6 — The migration chain runs LOCALLY, on real Postgres, with no Docker
+
+`byeharu`'s single worst handicap is written into its own operating notes: *"SQL migrations can NOT be
+run locally — no Docker / Supabase CLI / psql on this machine."* Every SQL mistake there costs a push
+and a CI round-trip.
+
+That handicap is **not inherited**. Proven on this machine today, not assumed:
+
+```
+VERSION: PostgreSQL 18.3 (PGlite 0.5.5) on wasm32-unknown-linux-gnu
+PLPGSQL RESULT: Lisbon->Malacca = 6310.0 nautical miles
+RAISE works: unknown port
+```
+
+That is a real `plpgsql` function with `SELECT ... INTO`, a `RAISE EXCEPTION`, and haversine maths,
+compiled and executed in-process by PGlite — the same package `byeharu` already ships, but used there
+only as a parser. So the chain gets proven in **three** places, in this order:
+
+1. **PGlite, locally** — the whole chain applied to real Postgres before a single push. New. Fast.
+2. **Disposable Supabase in GitHub Actions** — the apply-proof, exactly as in `byeharu`. Still the net.
+3. **Supabase cloud** — production.
+
+Because layer 1 exists, a migration should never reach layer 2 red.
+
+### D7 — Supabase cloud slots are full; production is deferred, development is not
+
+Attempted today, real output:
+
+> `Unexpected error creating project: The following organization members have reached their maximum
+> limits for the number of active free projects within organizations where they are an administrator
+> or owner: gkwngns714-spec (2 project limit).`
+
+Both free slots are taken by `byeharu` (Singapore) and `aqua-chronicles` (Seoul). A third free project
+cannot be created while both are active.
+
+This blocks **nothing** right now: V0 is built and played against layer 1 (PGlite), with the identical
+SQL. The cloud project is needed only when the game goes online for other players. When that moment
+comes it needs one of: pausing `aqua-chronicles` from the Supabase dashboard (reversible), or upgrading
+the `byeharu` org to Pro. That is the owner's call and is not urgent yet — it is recorded here so it is
+not a surprise later.
+
 ### Work dispatched today
 
 Three foundation agents, on disjoint file domains:
