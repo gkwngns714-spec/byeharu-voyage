@@ -73,7 +73,34 @@ proven in **three** places, in this order:
 2. **Disposable Supabase in GitHub Actions** — the apply-proof, with Docker, in CI. Still the net.
 3. **Supabase cloud** — production, when it exists (§4).
 
-**A migration should never reach CI red.** If it does, it means somebody skipped step 1.
+**A migration should never reach CI red for a reason step 1 can see.** That qualifier is not
+decoration — read the next paragraph before you treat a green local run as a licence to push.
+
+### ⚠ THE LOCAL GATE IS NARROWER THAN CI. It always will be.
+
+**A green `npm run db:apply` is not a sufficient pre-push check.** On 2026-08-18 it was green here
+while CI's disposable-Supabase job failed migration 0001 on 0001's own self-assert, with 16 default
+ACL entries to find that a bare PGlite did not have (`docs/DEV_LOG.md` **D8**). The asserts were not
+merely quiet — they were **vacuous**: they passed because the local database had nothing for them
+to examine.
+
+The class of defect that **only** the disposable-Supabase job can catch:
+
+> **Anything that depends on state Supabase preconfigures.** Table and function **GRANTs**;
+> **`ALTER DEFAULT PRIVILEGES`** entries, especially those owned by a grantor other than the role
+> applying migrations; **RLS as an enforced wall** rather than a flag on a catalogue row; the real
+> `auth` schema and `auth.uid()`; PostgREST schema exposure; `pg_cron`; the hosted extension set;
+> and the fact that on Supabase the migration role is **not a superuser** as it is under PGlite.
+
+`scripts/db/apply-chain.mjs` narrows that gap — it applies `scripts/db/supabase-preamble.sql`
+first, a **test fixture (never a migration)** that installs the Supabase roles and the default
+privileges a real project ships, under a foreign grantor, so the local run starts from the same
+hostile state CI does. The fixture asserts its own effect and the harness refuses to run without it.
+But it is a fixture a human wrote, it can drift from the platform, and it models **only** roles and
+default ACLs. Everything else in the list above is still CI's alone.
+
+**So: run step 1 always, and expect step 2 to be able to fail anyway.** When it does, the answer is
+to fix the chain — never to relax the assert that caught it.
 
 ### The chain today
 

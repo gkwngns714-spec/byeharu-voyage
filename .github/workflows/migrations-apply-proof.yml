@@ -21,11 +21,16 @@ name: Migrations — apply proof (PGlite gate + disposable Supabase)
 #     * a proof that leaves committed rows behind FAILS, so the rollback is verified rather than
 #       assumed.
 #
-#   What it CANNOT prove: it is not Supabase. `anon`, `authenticated`, `service_role` and
-#   `auth.uid()` do not exist in a bare PostgreSQL, so migration 0001 creates them only if absent.
-#   The lockdown is therefore proven against roles this chain made, which is exactly the case
-#   that CANNOT catch the predecessor's defect — a Supabase-supplied `GRANT ALL ON TABLES TO anon`
-#   arriving from DEFAULT PRIVILEGES nobody wrote. That is job 2's job.
+#   Since 2026-08-18 it applies scripts/db/supabase-preamble.sql first: the Supabase roles and the
+#   ALTER DEFAULT PRIVILEGES a real project ships, under a grantor that is not the migration role.
+#   Before that preamble existed this job — and the developer's local run — passed the whole
+#   grant/default-ACL family of asserts VACUOUSLY, on an empty database with nothing to find, while
+#   job 2 failed 0001 with 16 default-ACL entries to find (DEV_LOG D8).
+#
+#   What it STILL cannot prove: it is not Supabase. The preamble models roles and default ACLs and
+#   nothing else — no GoTrue, no PostgREST, no Realtime, no Storage, no `pg_cron`, no real `auth`
+#   schema, no hosted extension set, and the migration role here is a superuser where on Supabase
+#   it is not. Anything that depends on those is still job 2's alone.
 #
 # ── JOB 2: disposable-chain ────────────────────────────────────────────────────────────────────
 #   `supabase start` boots a disposable stack in Docker inside the runner and applies every file
@@ -133,11 +138,45 @@ jobs:
           psql "$DB_URL" -v ON_ERROR_STOP=1 -c \
             "select version, name from supabase_migrations.schema_migrations order by version;"
 
-      # THE REASON THIS JOB EXISTS. Locally, migration 0001 creates `anon` and `authenticated`
-      # itself, so the revoke has nothing inherited to fight. HERE those roles arrive from
-      # Supabase, carrying Supabase's own DEFAULT PRIVILEGES — the exact shape that left `anon`
-      # able to write a table in the predecessor and aborted a production deploy. This is the only
-      # place that specific claim is tested.
+      # The default ACLs — checked from OUTSIDE migration 0001, against the platform's own roles.
+      # This is the exact thing PGlite could not see until scripts/db/supabase-preamble.sql
+      # existed, and the exact thing that failed here on 2026-08-18 with 16 surviving entries. It
+      # is re-run here independently so the claim does not rest solely on the migration's own
+      # self-assert, and it PRINTS the grantors, because the grantor is the whole answer: an
+      # ALTER DEFAULT PRIVILEGES REVOKE without FOR ROLE cannot touch another role's defaults.
+      - name: Default privileges after the chain (0 entries, and show whose they were)
+        run: |
+          set -euo pipefail
+          set -a; . /tmp/sbenv; set +a
+          echo "── every default ACL in the database, after the whole chain ──"
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c \
+            "select pg_get_userbyid(d.defaclrole) as grantor,
+                    coalesce(n.nspname,'(no schema)') as schema,
+                    d.defaclobjtype as objtype,
+                    d.defaclacl::text as acl
+               from pg_default_acl d
+               left join pg_namespace n on n.oid = d.defaclnamespace
+              order by 1,2,3;"
+          n="$(psql "$DB_URL" -v ON_ERROR_STOP=1 -tAc \
+            "select count(*)
+               from pg_default_acl d
+               join pg_namespace n on n.oid = d.defaclnamespace
+              cross join lateral aclexplode(d.defaclacl) a
+              where n.nspname in ('public','world','cmd','voyage')
+                and (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end)
+                    in ('anon','authenticated','PUBLIC')
+                and a.privilege_type in ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER','EXECUTE');")"
+          echo "assert-visible default ACL entries remaining in public/world/cmd/voyage: $n"
+          if [ "$n" != "0" ]; then
+            echo "::error title=Default ACL leak::$n entr(ies) would grant a client role a write or execute on future objects"
+            exit 1
+          fi
+
+      # THE REASON THIS JOB EXISTS. Locally the roles and the default ACLs are a FIXTURE that a
+      # human wrote (scripts/db/supabase-preamble.sql) from what this job reported. HERE they are
+      # the real thing, arriving from the platform — the exact shape that left `anon` able to write
+      # a table in the predecessor and aborted a production deploy. A fixture can drift from the
+      # platform; this job cannot. It is still the only place the claim is tested against Supabase.
       - name: Grant lockdown, against Supabase's own roles
         run: |
           set -euo pipefail

@@ -13,12 +13,26 @@
 //   real triggers and real GRANTs. DEV_LOG D6 records the measurement that established this on
 //   this machine (PostgreSQL 18.3 / PGlite 0.5.5, running a plpgsql haversine with RAISE).
 //
-// WHAT IT DOES NOT PROVE
-//   * It is not Supabase. `anon` / `authenticated` / `service_role` and `auth.uid()` do not exist
-//     in a bare PostgreSQL, so migration 0001 mints them ONLY IF ABSENT (a gap-filling shim, never
-//     an overwrite). What that means here: the grant lockdown is proven against roles this chain
-//     created, and CI's disposable Supabase is where it is proven against the roles Supabase
-//     itself creates with its own default GRANT ALL. Both are needed. Neither replaces the other.
+// THE SUPABASE-SHAPED PREAMBLE  (scripts/db/supabase-preamble.sql)
+//   A bare PGlite starts EMPTY: no `anon`, no `authenticated`, and no ALTER DEFAULT PRIVILEGES
+//   entries whatsoever. Migration 0001's lockdown therefore had nothing to revoke here and its
+//   "no default ACL grants a client a write" assert had nothing to find — it passed VACUOUSLY,
+//   locally, while failing on CI's disposable Supabase with 16 entries to find (2026-08-18,
+//   DEV_LOG D8). Every grant / default-ACL assert in the chain was in that same position.
+//
+//   So this file applies supabase-preamble.sql BEFORE migration 0001: the Supabase roles, and the
+//   ALTER DEFAULT PRIVILEGES a real project ships, installed under a grantor that is NOT the role
+//   applying the chain. The local run now starts from the same hostile state CI does. The fixture
+//   asserts its own effect (exactly 16 assert-visible entries) and raises if it stops modelling it.
+//
+//   It is a FIXTURE, never a migration. It lives in scripts/, so the Supabase CLI — which only
+//   ever reads supabase/migrations/ — cannot deploy it.
+//
+// WHAT IT STILL DOES NOT PROVE
+//   * It is not Supabase. The preamble models the roles and the default ACLs; it does not model
+//     GoTrue, PostgREST, Realtime, Storage, `pg_cron`, the real `auth` schema, the hosted
+//     extension set, or the fact that on Supabase the migration role is NOT a superuser. CI's
+//     disposable-Supabase job is still the only place those are tested. Neither replaces the other.
 //   * PGlite runs single-user as a superuser. RLS is BYPASSED for the session owner, so a proof
 //     that wants RLS must `set local role anon` first — see scripts/db/proofs/.
 //   * There is no pg_cron. Tick functions are proven by calling them, not by being scheduled.
@@ -36,6 +50,12 @@ import path from 'node:path'
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 export const REPO_ROOT = path.resolve(HERE, '..', '..')
 export const MIGRATIONS_DIR = path.join(REPO_ROOT, 'supabase', 'migrations')
+
+/**
+ * The Supabase-shaped hostile starting state, applied before migration 0001.
+ * A TEST FIXTURE. It is deliberately NOT in supabase/migrations/, so it can never be deployed.
+ */
+export const PREAMBLE_PATH = path.join(REPO_ROOT, 'scripts', 'db', 'supabase-preamble.sql')
 
 /** Filenames the chain consists of, in the order PostgreSQL will see them. */
 export async function migrationFiles() {
@@ -67,6 +87,35 @@ export async function applyChain({ quiet = false, log = console.log } = {}) {
     throw new Error(
       'EMPTY CHAIN: supabase/migrations/ holds no .sql files. A green run over nothing is not a proof.',
     )
+  }
+
+  // ── The Supabase-shaped preamble, before anything else ───────────────────────────────────────
+  // Without it, every grant / default-ACL assert in the chain is vacuous here: it passes because
+  // a bare PGlite has nothing for it to find. See the header, and DEV_LOG D8.
+  const preambleRaw = await readFile(PREAMBLE_PATH, 'utf8')
+  if (preambleRaw.includes('\r')) {
+    throw new Error('CRLF in supabase-preamble.sql: it must be LF-only, like the migrations.')
+  }
+  const preambleNotices = []
+  try {
+    await db.exec(preambleRaw, { onNotice: (n) => preambleNotices.push(n.message ?? String(n)) })
+  } catch (err) {
+    throw new Error(
+      `SUPABASE PREAMBLE FAILED (${PREAMBLE_PATH}): ${err.message}\n` +
+        '  The local gate refuses to run without it — a run that starts from an empty database ' +
+        'proves the grant lockdown against nothing.',
+    )
+  }
+  if (!preambleNotices.some((l) => /supabase-preamble ok:/i.test(l))) {
+    throw new Error(
+      'SUPABASE PREAMBLE printed no "supabase-preamble ok:" receipt. It is supposed to assert its ' +
+        'own effect; without that receipt it may have stopped modelling the hostile state, which ' +
+        'is exactly the blindness it exists to remove.',
+    )
+  }
+  if (!quiet) {
+    log('\n── preamble: scripts/db/supabase-preamble.sql  (test fixture, never deployed)')
+    for (const line of preambleNotices) log(`    ${line}`)
   }
 
   for (const file of files) {

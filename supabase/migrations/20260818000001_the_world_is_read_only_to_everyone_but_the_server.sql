@@ -30,7 +30,8 @@
 --      No caller may read world_config directly; a second reader is a second authority.
 --   5. THE LOCKDOWN: every write privilege revoked from the client roles, on tables AND functions,
 --      in all four schemas, plus the DEFAULT PRIVILEGES retuned so nothing created later inherits
---      one. Later migrations grant SELECT explicitly, table by table.
+--      one — for THIS role (5a) and, driven by pg_default_acl itself, for EVERY OTHER GRANTOR the
+--      platform preconfigured (5b). Later migrations grant SELECT explicitly, table by table.
 --   6. `public.client_write_grants()` — the ONE authority for "does a client role hold a write?".
 --      Migrations 0002-0010 each call it; so does scripts/db/proofs/03_grant_lockdown.sql.
 --
@@ -208,6 +209,8 @@ revoke all on all tables    in schema public, world, cmd, voyage from anon, auth
 revoke all on all sequences in schema public, world, cmd, voyage from anon, authenticated;
 revoke all on all functions in schema public, world, cmd, voyage from public, anon, authenticated;
 
+-- 5a. The CURRENT role's own defaults. Everything this chain creates is created by this role, so
+--     this is the half that governs our own future objects.
 alter default privileges in schema public, world, cmd, voyage
   revoke all on tables from anon, authenticated;
 alter default privileges in schema public, world, cmd, voyage
@@ -217,6 +220,78 @@ alter default privileges in schema public, world, cmd, voyage
 -- grants EXECUTE explicitly to the role that may call it.
 alter default privileges in schema public, world, cmd, voyage
   revoke execute on functions from public, anon, authenticated;
+
+-- 5b. EVERY OTHER GRANTOR'S defaults. This is the half that was missing, and the reason CI's
+--     disposable-Supabase job failed this file's own assert (d) with 16 surviving entries while a
+--     bare PGlite reported none.
+--
+--     `ALTER DEFAULT PRIVILEGES ... REVOKE` without `FOR ROLE` only ever touches the CURRENT
+--     role's defaults. Supabase's `GRANT ALL ON TABLES/SEQUENCES/FUNCTIONS TO anon, authenticated,
+--     service_role` in `public` is issued by its OWN bootstrap role, not by the role that applies
+--     migrations — so 5a cannot see it, let alone clear it. Written out by hand it would also be a
+--     guess about which roles a given Supabase version uses. It is not a guess here: pg_default_acl
+--     names every grantor, and the loop revokes under each one it names.
+--
+--     The filter is deliberately the SAME predicate assert (d) below uses, so the sweep and the law
+--     cannot drift apart. Object types carrying only USAGE (domains, types) never match it and are
+--     left alone — revoking USAGE on types from PUBLIC would break composite RPC return values and
+--     is not what "no client may WRITE" means.
+do $$
+declare
+  r           record;
+  v_stmts     int  := 0;
+  v_grantors  text[] := '{}';
+begin
+  for r in
+    select distinct
+           d.defaclrole::regrole::text as grantor,
+           n.nspname                   as schema_name,
+           d.defaclobjtype             as objtype
+      from pg_default_acl d
+      join pg_namespace n on n.oid = d.defaclnamespace
+     cross join lateral aclexplode(d.defaclacl) a
+     where n.nspname in ('public', 'world', 'cmd', 'voyage')
+       and (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end)
+           in ('anon', 'authenticated', 'PUBLIC')
+       and a.privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER', 'EXECUTE')
+     order by 1, 2, 3
+  loop
+    begin
+      if r.objtype = 'r' then
+        execute format(
+          'alter default privileges for role %s in schema %I revoke all on tables from anon, authenticated',
+          r.grantor, r.schema_name);
+      elsif r.objtype = 'S' then
+        execute format(
+          'alter default privileges for role %s in schema %I revoke all on sequences from anon, authenticated',
+          r.grantor, r.schema_name);
+      elsif r.objtype = 'f' then
+        execute format(
+          'alter default privileges for role %s in schema %I revoke all on functions from public, anon, authenticated',
+          r.grantor, r.schema_name);
+      else
+        -- A default ACL object type that can carry a write and that this file does not know how to
+        -- revoke must stop the deploy, not be skipped quietly.
+        raise exception '0001: pg_default_acl names object type % (grantor %, schema %) carrying a client write, and this migration has no revoke for it',
+          r.objtype, r.grantor, r.schema_name;
+      end if;
+      v_stmts := v_stmts + 1;
+      if not (r.grantor = any (v_grantors)) then
+        v_grantors := v_grantors || r.grantor;
+      end if;
+    exception when insufficient_privilege then
+      raise exception '0001: cannot clear the default privileges held by grantor % in schema % (object type %). The role applying this migration is %, which is not a member of %, so ALTER DEFAULT PRIVILEGES FOR ROLE is refused. Grant that membership (or have % issue the revoke) — do NOT relax the assert below; those defaults really would hand a client role a write on every object % creates here.',
+        r.grantor, r.schema_name, r.objtype, current_user, r.grantor, r.grantor, r.grantor;
+    end;
+  end loop;
+
+  if v_stmts = 0 then
+    raise notice '0001: no foreign-grantor default ACL to clear in public/world/cmd/voyage (expected on a bare PostgreSQL; on Supabase this would mean the platform stopped shipping them)';
+  else
+    raise notice '0001: cleared foreign-grantor default privileges with % ALTER DEFAULT PRIVILEGES statement(s) under grantor(s): %',
+      v_stmts, array_to_string(v_grantors, ', ');
+  end if;
+end $$;
 
 revoke all on public.world_config from anon, authenticated;
 
@@ -326,7 +401,26 @@ begin
          in ('anon', 'authenticated', 'PUBLIC')
      and a.privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER', 'EXECUTE');
   if v_defacl <> 0 then
-    raise exception '0001 self-assert FAIL: % default ACL entr(ies) would grant a client role a write/execute on future objects', v_defacl;
+    -- Name them. "16 entries" cost a CI round trip to diagnose because the message did not say
+    -- WHOSE defaults they were, and the grantor is the entire answer (see 5b).
+    raise exception '0001 self-assert FAIL: % default ACL entr(ies) would grant a client role a write/execute on future objects: %',
+      v_defacl,
+      (select string_agg(x.grantor || ' -> ' || x.schema_name || ' ' || x.objtype || ' ' || x.grantee || ':' || x.privilege_type, ', ' order by x.grantor, x.schema_name, x.objtype, x.grantee, x.privilege_type)
+         from (select d.defaclrole::regrole::text as grantor,
+                      n.nspname                  as schema_name,
+                      -- ::text is load-bearing: defaclobjtype is "char", and `text || "char"` is
+                      -- an ambiguous operator, so without it this message raises 42725 instead of
+                      -- itself. Proven by running the assert with the §5b sweep removed.
+                      d.defaclobjtype::text      as objtype,
+                      (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end) as grantee,
+                      a.privilege_type
+                 from pg_default_acl d
+                 join pg_namespace n on n.oid = d.defaclnamespace
+                cross join lateral aclexplode(d.defaclacl) a
+                where n.nspname in ('public', 'world', 'cmd', 'voyage')
+                  and (case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end)
+                      in ('anon', 'authenticated', 'PUBLIC')
+                  and a.privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER', 'EXECUTE')) x);
   end if;
 
   -- (e) world_config is server-only: the clients hold NOTHING on it, not even SELECT.
