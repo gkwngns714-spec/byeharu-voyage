@@ -1071,6 +1071,7 @@ declare
   v_prov jsonb; v_hire jsonb; v_rep jsonb;
   v_end_status text; v_end_port text; v_orders text; v_room numeric;
   v_probe2 constant uuid := '00000000-0000-0000-0000-0000000007bb';
+  r_try record; q_try_buy record; q_try_sell record; v_try_qty numeric; v_best_gain numeric;
   v_player2 uuid; v_fleet2 uuid;
   f_session boolean := false; f_idem boolean := false; f_halt boolean := false;
   f_burn boolean := false; f_verbs boolean := false; f_cap boolean := false;
@@ -1100,42 +1101,58 @@ begin
     -- The purse is read AFTER watering, so "came home richer" is a judgement on the trade rather
     -- than on the stores, which are a cost the voyage was always going to pay.
     select ducats into v_start from public.players where id = v_player;
-    -- What the hold will take once the casks are aboard, in whole tuns of THIS good.
-    select greatest(1, floor((c.hold - sh.water_t - sh.food_t) / g2.bulk))
-      into v_room
-      from public.ships sh
-      join public.ship_classes c on c.id = sh.class_id
-      join public.goods g2 on g2.id = v_sal
-     where sh.fleet_id = v_fleet;
 
-    -- THE SUBJECT OF THIS PROBE IS FOUND, NOT NAMED. §K.1's script reads "buy sal at Lisboa, sell
-    -- it at Cádiz" — true of the twelve-port world it was written against, and an assertion about
-    -- a SEED rather than about the game. In the real world the profitable cargo out of Lisboa
-    -- depends on 214 ports of geography, so the probe asks the world for the best one-leg trade a
-    -- STARTER can actually make, and then plays it. If no such trade exists, that is the failure.
+    -- THE SUBJECT OF THIS PROBE IS FOUND, NOT NAMED, AND CHOSEN BY WHAT IT PAYS.
     --
-    -- The three conditions are the starter's real constraints, not conveniences: a hold that holds
-    -- 60 tuns, a purse of 8,000 ducats, and a culture at the far end that will trade the good. The
-    -- ordering is fully deterministic (gap, then the nearer port, then the code) so this migration
-    -- cannot pick a different cargo on a different run and fail somewhere else.
-    select l_dest.id, pg_home.good_id
-      into v_cad, v_sal
-      from public.legs l
-      join public.ports l_dest
-        on l_dest.id = case when l.from_port_id = v_lis then l.to_port_id else l.from_port_id end
-      join public.port_goods pg_home on pg_home.port_id = v_lis
-      join public.port_goods pg_away
-        on pg_away.port_id = l_dest.id and pg_away.good_id = pg_home.good_id
-      join public.goods g on g.id = pg_home.good_id
-     where (l.from_port_id = v_lis or l.to_port_id = v_lis)
-       and l.distance_nm < 700                                  -- a first voyage, not an ocean crossing
-       and not (l_dest.culture = any(g.culture_mask))           -- they will trade it at the far end
-       and g.bulk <= 1.0                                        -- 50 tuns fit a Barca's hold
-       and g.base_value * 50 * 1.3 < v_start                    -- and a starter can pay for them
-     order by pg_away.affinity - pg_home.affinity desc, l.distance_nm asc, g.code asc
-     limit 1;
+    -- §K.1's script reads "buy sal at Lisboa, sell it at Cádiz" — true of the twelve-port world it
+    -- was written against, and an assertion about a SEED rather than about the game. So the probe
+    -- asks the world instead.
+    --
+    -- It used to ask for the widest AFFINITY GAP, which is a proxy for profit and not profit: the
+    -- gap ignores the spread, the tax, and the market moving under the order. With the economy
+    -- tuned down to a median 8.8% (D10) that proxy picked a cargo whose whole margin was thinner
+    -- than the voyage's wages, and the round trip came home 23 ducats POORER — on CI, where the
+    -- hazard rolls differ from this machine, while passing here. A coin flip in a self-assert.
+    --
+    -- So it quotes BOTH ENDS through world.quote() — the same stepped pricing a real trade walks —
+    -- and takes the best actual gain. That is also what a player does with the MARKET tab open.
+    for r_try in
+      select g.id as good_id, l_dest.id as dest_id
+        from public.legs l
+        join public.ports l_dest
+          on l_dest.id = case when l.from_port_id = v_lis then l.to_port_id else l.from_port_id end
+        join public.port_goods pg_home on pg_home.port_id = v_lis
+        join public.port_goods pg_away
+          on pg_away.port_id = l_dest.id and pg_away.good_id = pg_home.good_id
+        join public.goods g on g.id = pg_home.good_id
+       where (l.from_port_id = v_lis or l.to_port_id = v_lis)
+         and l.distance_nm < 700                                  -- a first voyage, not an ocean crossing
+         and not (l_dest.culture = any(g.culture_mask))           -- they will trade it at the far end
+         and g.bulk <= 1.0                                        -- and it fits a Barca's hold
+       order by pg_away.affinity - pg_home.affinity desc, l.distance_nm asc, g.code asc
+       limit 8
+    loop
+      v_try_qty := (public.fleet_buy_capacity(v_fleet, r_try.good_id)->>'max_qty')::numeric;
+      if v_try_qty < 1 then continue; end if;
+      select * into q_try_buy  from world.quote(v_lis, r_try.good_id, v_try_qty, 'buy');
+      select * into q_try_sell from world.quote(r_try.dest_id, r_try.good_id, q_try_buy.units, 'sell');
+      if v_best_gain is null or (q_try_sell.total - q_try_buy.total) > v_best_gain then
+        v_best_gain := q_try_sell.total - q_try_buy.total;
+        v_sal  := r_try.good_id;
+        v_cad  := r_try.dest_id;
+        v_room := q_try_buy.units;
+      end if;
+    end loop;
+
     if v_sal is null then
       raise exception '0007 self-assert FAIL: no one-leg trade out of Lisboa is open to a starter at all';
+    end if;
+    -- The voyage has to clear its own wages and stores, or "came home richer" is a coin flip. If
+    -- the best trade in reach cannot, that is a BALANCE failure and it should say so in those
+    -- words — scripts/db/proofs/05_first_voyage_balance.sql is where that band is set.
+    if v_best_gain < 400 then
+      raise exception '0007 self-assert FAIL: the best one-leg trade out of Lisboa gains only % d. gross, which will not cover a voyage''s wages and stores. Run scripts/db/tune-balance.mjs.',
+        round(v_best_gain, 0);
     end if;
 
     -- The §K.1 script, entered as a QUEUE the fleet runs by itself while nobody watches.
