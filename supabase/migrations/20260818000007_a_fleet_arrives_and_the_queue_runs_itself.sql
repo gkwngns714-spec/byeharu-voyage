@@ -129,6 +129,97 @@ as $$
    where s.fleet_id = p_fleet
 $$;
 
+-- ── HOW MUCH CAN SHE ACTUALLY TAKE ON? ────────────────────────────────────────────────────────
+--
+-- THE one answer to that question, because there were two and they disagreed. The hold was the
+-- only limit anyone checked: `BUY salt ALL` filled the hold and then the trade was refused
+-- E_INSUFFICIENT_FUNDS, and the Command tab's MAX chip offered 91 tuns of pepper that cost 8,130
+-- against a purse of 8,000. Both were the same mistake — a maximum computed from ROOM while the
+-- price is what binds — and both are fixed by asking here.
+--
+-- Four things can stop her, and the answer says WHICH, so a screen can put it in words:
+--   hold   — the tuns left after stores, divided by the good's bulk
+--   stock  — a port cannot sell what it does not have
+--   cap    — §G.7.1's per-player, per-day anti-cornering limit
+--   purse  — and this is the one nobody was checking, because it needs the STEPPED price:
+--            buying moves the market (§G.2), so the tenth tun costs more than the first and a
+--            maximum computed off the spot price is always too high.
+--
+-- It walks down in trade_step_tuns steps and asks world.quote() — the same function the committed
+-- trade uses — so the number offered and the number charged cannot disagree.
+create or replace function public.fleet_buy_capacity(p_fleet uuid, p_good uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  f         public.fleets%rowtype;
+  v_bulk    numeric;
+  v_purse   numeric;
+  v_stock   numeric;
+  v_cap     numeric;
+  v_hold    numeric;
+  v_step    numeric := greatest(1, public.wc_num('trade_step_tuns'));
+  v_qty     numeric;
+  v_bound   text;
+  q         record;
+begin
+  select * into f from public.fleets where id = p_fleet;
+  if f.id is null then
+    return jsonb_build_object('max_qty', 0, 'est_total', 0, 'bound_by', 'no such fleet');
+  end if;
+  if f.port_id is null then
+    return jsonb_build_object('max_qty', 0, 'est_total', 0, 'bound_by', 'at sea');
+  end if;
+
+  select bulk into v_bulk from public.goods where id = p_good;
+  if v_bulk is null then
+    return jsonb_build_object('max_qty', 0, 'est_total', 0, 'bound_by', 'no such good');
+  end if;
+
+  select ducats into v_purse from public.players where id = f.player_id;
+  select stock  into v_stock from public.port_goods where port_id = f.port_id and good_id = p_good;
+  v_cap  := world.daily_cap_remaining(f.player_id, f.port_id, p_good);
+  v_hold := floor(public.fleet_free_hold(p_fleet) / v_bulk);
+
+  -- The structural limits first, cheapest to establish.
+  v_qty := floor(least(v_hold, coalesce(v_stock, 0), coalesce(v_cap, 0)));
+  v_bound := case
+               when v_qty = v_hold then 'hold'
+               when v_qty = floor(coalesce(v_stock, 0)) then 'stock'
+               else 'daily cap'
+             end;
+
+  -- Then the purse, at the price she would really pay. Stepping DOWN rather than solving for it
+  -- keeps this arithmetic-free: the quote is the authority on what a quantity costs.
+  while v_qty > 0 loop
+    select * into q from world.quote(f.port_id, p_good, v_qty, 'buy');
+    exit when q.units > 0 and q.total <= v_purse;
+    v_bound := 'purse';
+    -- Down a whole step while there is more than a step left, then ONE TUN AT A TIME. A pure
+    -- ten-step walk answers "0" for anything dearer than 800 ducats a tun — she could afford two
+    -- diamonds and the picker would offer her none.
+    if v_qty > v_step then
+      v_qty := floor((v_qty - 1) / v_step) * v_step;
+    else
+      v_qty := v_qty - 1;
+    end if;
+  end loop;
+
+  if v_qty <= 0 then
+    return jsonb_build_object('max_qty', 0, 'est_total', 0,
+      'bound_by', case when v_bound = 'purse' then 'purse' else v_bound end);
+  end if;
+  return jsonb_build_object('max_qty', v_qty, 'est_total', round(q.total, 2), 'bound_by', v_bound);
+end $$;
+
+comment on function public.fleet_buy_capacity(uuid, uuid) is
+  'THE most a fleet can actually buy, and WHICH of hold / stock / daily cap / purse stops her. '
+  'Priced through world.quote(), so it accounts for the market moving under a large order — a '
+  'maximum computed from the spot price is always too high.';
+
 create or replace function public.fleet_cargo_qty(p_fleet uuid, p_good_code text)
 returns numeric
 language sql
@@ -217,8 +308,12 @@ begin
     return (p_args->>'qty')::numeric;
   end if;
   if p_side = 'buy' then
-    select bulk into v_bulk from public.goods where code = p_good_code;
-    v_max := floor(public.fleet_free_hold(p_fleet) / v_bulk);
+    -- ALL means "as much as she can actually take on" — which is the hold OR the purse OR the
+    -- stock, whichever binds first. It used to mean the hold alone, so `BUY salt ALL` filled the
+    -- hold and was then refused for want of money, which is not what anybody means by ALL.
+    v_max := (public.fleet_buy_capacity(
+                p_fleet, (select id from public.goods where code = p_good_code)
+              )->>'max_qty')::numeric;
   else
     v_max := public.fleet_cargo_qty(p_fleet, p_good_code);
   end if;
@@ -978,7 +1073,8 @@ declare
   v_probe2 constant uuid := '00000000-0000-0000-0000-0000000007bb';
   v_player2 uuid; v_fleet2 uuid;
   f_session boolean := false; f_idem boolean := false; f_halt boolean := false;
-  f_burn boolean := false; f_verbs boolean := false;
+  f_burn boolean := false; f_verbs boolean := false; f_cap boolean := false;
+  v_cap jsonb; v_cap_good uuid; v_cap_total numeric; v_cap_over numeric; v_cap_purse numeric;
   o public.orders%rowtype;
 begin
   select id into v_lis from public.ports where code = 'LIS';
@@ -1124,6 +1220,29 @@ begin
     update public.fleets set busy_until = now() - interval '1 second' where id = v_fleet2;
     perform cmd.advance(v_fleet2);
 
+    -- ── HOW MUCH CAN SHE ACTUALLY BUY? Proven by BOTH edges, on a good dear enough for the purse
+    --    to be what binds. One edge alone would pass on a function that always answered "one tun".
+    select g.id into v_cap_good
+      from public.goods g
+      join public.port_goods pg on pg.good_id = g.id and pg.port_id = v_lis
+     where g.bulk <= 1.0
+     order by (select ask from world.price(v_lis, g.id)) desc
+     limit 1;
+    v_cap := public.fleet_buy_capacity(v_fleet2, v_cap_good);
+    select ducats into v_cap_purse from public.players where id = v_player2;
+    if (v_cap->>'bound_by') = 'purse' and (v_cap->>'max_qty')::numeric > 0 then
+      select total into v_cap_total
+        from world.quote(v_lis, v_cap_good, (v_cap->>'max_qty')::numeric, 'buy');
+      select total into v_cap_over
+        from world.quote(v_lis, v_cap_good, (v_cap->>'max_qty')::numeric + 1, 'buy');
+      -- Affordable at the number offered, and NOT affordable one tun above it: that is what makes
+      -- it a maximum rather than a guess. The old client-side answer failed the second half —
+      -- it offered 91 tuns of pepper for a purse that could carry 50.
+      if v_cap_total <= v_cap_purse and v_cap_over > v_cap_purse then
+        f_cap := true;
+      end if;
+    end if;
+
     -- THE HALT RULE: an impossible order fails and the one behind it stays pending.
     insert into public.orders (fleet_id, player_id, seq, raw_text, verb, args) values
       (v_fleet, v_player, 6, 'BUY 99999', 'BUY',
@@ -1159,6 +1278,10 @@ begin
   if not f_burn then
     raise exception '0007 self-assert FAIL: the voyage burned no stores (water % -> %) or paid wages only % time(s)', v_water0, v_water1, v_wages;
   end if;
+  if not f_cap then
+    raise exception '0007 self-assert FAIL: fleet_buy_capacity is not a real maximum — % (purse % d.); % at the max and % one tun over',
+      v_cap, v_cap_purse, v_cap_total, v_cap_over;
+  end if;
   if not f_verbs then
     raise exception '0007 self-assert FAIL: PROVISION / HIRE / REPAIR did not all take effect (provision %, hire %, repair %)', v_prov, v_hire, v_rep;
   end if;
@@ -1171,10 +1294,11 @@ begin
   select count(*) into v_grants from public.client_write_grants();
   if v_grants <> 0 then raise exception '0007 self-assert FAIL: the queue minted % client write grant(s)', v_grants; end if;
 
-  raise notice '0007 self-assert ok: a full session ran as a 4-order queue with NO tick — bought 50 tuns of % at Lisboa, sailed to % and back (% nm each way), settled % voyage-day checkpoint(s) lazily, and docked at Lisboa with % d. against a start of % d. (+% d.); 4 more settle() calls changed nothing (% events, % d.); stores fell % -> % t and % wage payment(s) landed; on a second, freshly founded house PROVISION cost % d., HIRE took 4 hands and REPAIR restored the hull to 400 and put her in the yard; an impossible order failed E_HOLD_FULL and left the next order pending across TWO advances; 0 client write grants',
+  raise notice '0007 self-assert ok: a full session ran as a 4-order queue with NO tick — bought 50 tuns of % at Lisboa, sailed to % and back (% nm each way), settled % voyage-day checkpoint(s) lazily, and docked at Lisboa with % d. against a start of % d. (+% d.); 4 more settle() calls changed nothing (% events, % d.); stores fell % -> % t and % wage payment(s) landed; on a second, freshly founded house PROVISION cost % d., HIRE took 4 hands and REPAIR restored the hull to 400 and put her in the yard; the most she can buy of the dearest good is % tun(s) (bound by the purse: affordable at that, too dear one tun over); an impossible order failed E_HOLD_FULL and left the next order pending across TWO advances; 0 client write grants',
     (select name from public.goods where id = v_sal),
     (select name from public.ports where id = v_cad),
     (select round(min(l.distance_nm), 1) from public.legs l
       where (l.from_port_id = v_lis and l.to_port_id = v_cad) or (l.from_port_id = v_cad and l.to_port_id = v_lis)),
-    v_events1, v_final, v_start, v_final - v_start, v_events2, v_purse2, v_water0, v_water1, v_wages, (v_prov->>'cost');
+    v_events1, v_final, v_start, v_final - v_start, v_events2, v_purse2, v_water0, v_water1, v_wages,
+    (v_cap->>'max_qty'), (v_prov->>'cost');
 end $$;

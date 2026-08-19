@@ -228,6 +228,32 @@ grant execute on function world.fleets()                          to authenticat
 grant execute on function world.ledger(timestamptz, int)          to authenticated;
 grant execute on function world.pct_of_neighbours(uuid, uuid)     to authenticated;
 
+-- ── world.buy_capacity(fleet, good) ────────────────────────────────────────────────────────────
+-- What the quantity picker on the Command tab is allowed to offer. The screen used to work this
+-- out itself from the spot price and free hold, and was wrong twice over: it ignored the purse,
+-- and it ignored the market moving under the order (§G.2). Now it asks, and it also gets the WORD
+-- for what stops her, so the caption under the slider is the server's answer too.
+create or replace function world.buy_capacity(p_fleet uuid, p_good uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_player uuid := public.current_player_id();
+begin
+  if v_player is null then
+    raise exception 'E_NO_PLAYER: there is no house signed in' using errcode = 'P0001';
+  end if;
+  if not exists (select 1 from public.fleets where id = p_fleet and player_id = v_player) then
+    raise exception 'E_NOT_YOURS: that is not your fleet' using errcode = 'P0001';
+  end if;
+  return public.fleet_buy_capacity(p_fleet, p_good);
+end $$;
+
+grant execute on function world.buy_capacity(uuid, uuid) to authenticated;
+
 -- ── SELF-ASSERT ────────────────────────────────────────────────────────────────────────────────
 do $$
 declare

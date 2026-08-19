@@ -46,6 +46,14 @@ export const RPCS = {
       { name: 'p_limit', type: 'int' },
     ],
   },
+  worldBuyCapacity: {
+    schema: 'world',
+    fn: 'buy_capacity',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_good', type: 'uuid' },
+    ],
+  },
   cmdIssue: {
     schema: 'cmd',
     fn: 'issue',

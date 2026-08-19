@@ -42,7 +42,21 @@
 
 insert into public.world_config (key, value, description) values
   ('game_day_seconds', to_jsonb(2880),
-   'DESIGN D.1 calendar clock: 1 real day = 1 game month = 30 game-days, so a game-day is 2880 real seconds (48 min). Governs stock regeneration and the daily volume cap.')
+   'DESIGN D.1 calendar clock: 1 real day = 1 game month = 30 game-days, so a game-day is 2880 real seconds (48 min). Governs stock regeneration and the daily volume cap.'),
+  -- ── THE FOUR NUMBERS THAT SET WHAT A VOYAGE PAYS ─────────────────────────────────────────────
+  -- Affinity is a function of ONE thing: how far this port is from the nearest place that makes
+  -- the good. These knobs are that function, so balance is a value to change and re-measure
+  -- (scripts/db/measure-first-voyage.mjs) rather than a formula to re-argue.
+  ('affinity_producer', to_jsonb(0.90),
+   'Affinity at a port that PRODUCES the good — the floor of every price in the world. The gap between this and affinity_home is the producer''s own discount, and it is what makes buying at the source worth the sail.'),
+  ('affinity_home', to_jsonb(0.98),
+   'Affinity at a port that does NOT produce it but is right next to one. Where the distance curve starts.'),
+  ('affinity_span', to_jsonb(0.88),
+   'How much affinity climbs between there and the far side of affinity_reach_nm. home + span is the dearest a good ever gets.'),
+  ('affinity_reach_nm', to_jsonb(8000),
+   'The distance at which a good is as dear as it will ever be. Beyond it nothing gets dearer: the Malabar-to-Lisbon pepper run is the TOP of the scale, not the middle of it.'),
+  ('affinity_curve', to_jsonb(0.75),
+   'The shape between them. Below 1 it rises fast then flattens, so neighbours differ a little and an ocean crossing differs a lot — which is the whole reason to sail far.')
 on conflict (key) do nothing;
 
 -- ── The market table ───────────────────────────────────────────────────────────────────────────
@@ -91,9 +105,27 @@ grant select on public.port_goods, public.trade_daily to authenticated;
 -- So ONE editorial fact is authored — WHICH PORTS PRODUCE WHICH GOOD, in public.port_specialties,
 -- sourced in docs/WORLD_DATA.md — and the affinity is derived from it by the rule below:
 --
---     a port that produces the good          affinity 0.60   (it sells its own cheap)
---     anywhere else                          0.85 + 1.50 × min(1, nearest source / 6000 nm)
---     a good nobody in the world produces    affinity 1.20   (an even, unremarkable price)
+--     a port that produces the good          affinity_producer
+--     anywhere else                          home + span × (nearest source / reach) ^ curve
+--     a good nobody in the world produces    home + span     (as dear as it gets: nobody makes it)
+--
+-- THE VALUES WERE CHOSEN BY MEASUREMENT, not by argument. scripts/db/tune-balance.mjs sweeps them
+-- against the real economy and prints what the best opening voyage pays from a sample of ports:
+--
+--     prod 0.60 home 0.85 span 1.50 reach 6000 curve 1.00   median 32.3%   <- what shipped first
+--     prod 0.88 home 0.97 span 0.90 reach 8000 curve 0.70   median 11.5%
+--   * prod 0.90 home 0.98 span 0.88 reach 8000 curve 0.75   median  8.8%   <- these
+--     prod 0.92 home 0.99 span 0.85 reach 9000 curve 0.80   median  6.0%
+--
+-- 32% a voyage is not a trading game, it is a money printer: the purse doubled in two round trips
+-- of twenty-five minutes each. At 8.8% a good voyage pays, the best one available pays about 19%,
+-- and nothing on the board is a loss — so a player is choosing between degrees of good, which is
+-- what a market is. scripts/db/proofs/05_first_voyage_balance.sql holds the band.
+--
+-- The five knobs live in world_config (top of this file), so the ECONOMY IS TUNED BY MEASUREMENT:
+-- scripts/db/measure-first-voyage.mjs plays the best opening voyage from two dozen ports and
+-- prints what it pays, and the self-assert at the foot of this file fails if that lands outside
+-- the band the game is designed around.
 --
 -- That is the age of sail in one line: pepper is cheap in Malabar and dear in Lisbon because
 -- Lisbon is nine thousand miles from the nearest pepper vine, and the whole voyage exists to
@@ -105,6 +137,43 @@ grant select on public.port_goods, public.trade_daily to authenticated;
 --
 -- stock_target and production_rate stay derived from size_tier and affinity, as before: a
 -- producer's depth and a sink's thinness are consequences of the affinity, not independent facts.
+-- THE AFFINITY OF ONE (port, good), as a function — so the seed below, the balance tuner and any
+-- later re-derivation all ask the SAME thing. A formula that lived only inside an INSERT could not
+-- be re-run without copying it, and a copied formula is how two economies get born.
+create or replace function world.affinity_for(p_port uuid, p_good uuid)
+returns numeric
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select case
+           -- Does this very port produce it?
+           when exists (
+             select 1 from public.port_specialties s
+              where s.port_id = p_port and s.good_id = p_good
+           ) then public.wc_num('affinity_producer')
+           else least(3.000, greatest(0.250, round((
+             public.wc_num('affinity_home')
+             + public.wc_num('affinity_span')
+               * power(
+                   least(1.0, coalesce((
+                     select min(voyage.gc_distance_nm(p.lat, p.lon, src.lat, src.lon))
+                       from public.port_specialties s
+                       join public.ports src on src.id = s.port_id
+                      where s.good_id = p_good
+                   ), public.wc_num('affinity_reach_nm')) / public.wc_num('affinity_reach_nm')
+                 ), public.wc_num('affinity_curve'))
+           )::numeric, 3)))
+         end
+    from public.ports p where p.id = p_port
+$$;
+
+comment on function world.affinity_for(uuid, uuid) is
+  'DESIGN G.1 affinity, derived from ONE authored fact (public.port_specialties: who produces what) '
+  'and four knobs. Change the knobs, re-run scripts/db/measure-first-voyage.mjs, and the economy is '
+  'retuned without a line of SQL moving.';
+
 insert into public.port_goods (port_id, good_id, affinity, stock, stock_target, production_rate)
 select p.id,
        g.id,
@@ -116,23 +185,7 @@ select p.id,
             else 0 end
   from public.ports p
   cross join public.goods g
-  cross join lateral (
-    select case
-             -- Does this very port produce it?
-             when exists (
-               select 1 from public.port_specialties s
-                where s.port_id = p.id and s.good_id = g.id
-             ) then 0.600::numeric
-             else least(3.000, greatest(0.250,
-               round((0.850 + 1.500 * least(1.0, coalesce((
-                 select min(voyage.gc_distance_nm(p.lat, p.lon, src.lat, src.lon))
-                   from public.port_specialties s
-                   join public.ports src on src.id = s.port_id
-                  where s.good_id = g.id
-               ), 6000) / 6000.0))::numeric, 3))
-             )
-           end as affinity
-  ) aff
+  cross join lateral (select world.affinity_for(p.id, g.id) as affinity) aff
 on conflict (port_id, good_id) do nothing;
 
 -- ── The calendar-clock day index (DESIGN §D.1) ─────────────────────────────────────────────────

@@ -26,6 +26,7 @@
 import { call } from './backend'
 import type { RpcResult } from './result'
 import type {
+  BuyCapacity,
   CancelResult,
   ClearResult,
   FleetView,
@@ -53,6 +54,15 @@ export function worldSnapshot(): Promise<RpcResult<WorldSnapshot>> {
  */
 export function worldMarket(portId: string): Promise<RpcResult<MarketView>> {
   return call<MarketView>('worldMarket', [portId])
+}
+
+/**
+ * How many tuns of a good this fleet can actually buy where she lies, and WHICH limit stops her —
+ * hold, stock, the daily cap, or the purse. Priced by the server through the same stepped quote a
+ * real BUY walks, so the number a picker offers and the number the trade charges cannot disagree.
+ */
+export function worldBuyCapacity(fleetId: string, goodId: string): Promise<RpcResult<BuyCapacity>> {
+  return call<BuyCapacity>('worldBuyCapacity', [fleetId, goodId])
 }
 
 /**

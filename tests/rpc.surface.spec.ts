@@ -421,8 +421,15 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
 
   // The catalogue is the whole vocabulary. Server-only functions are deliberately not in it:
   // a browser must not be able to found a house or assume an identity.
+  // The COUNT is not the point — what a client may call is. The list is asserted by name so that
+  // adding one is a deliberate edit here, and the three server-only entry points below stay out.
   const names = Object.keys(RPCS)
-  expect(names).toHaveLength(9)
+  expect(names.sort()).toEqual(
+    [
+      'cmdCancel', 'cmdClear', 'cmdIssue', 'cmdPreview', 'cmdVerbSchema',
+      'worldBuyCapacity', 'worldFleets', 'worldLedger', 'worldMarket', 'worldSnapshot',
+    ].sort(),
+  )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')
   expect(JSON.stringify(RPCS)).not.toContain('assume_identity')
   expect(JSON.stringify(RPCS)).not.toContain('settle')

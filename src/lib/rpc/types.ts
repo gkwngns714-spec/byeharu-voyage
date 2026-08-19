@@ -176,6 +176,16 @@ export interface MarketView {
   goods: MarketGood[]
 }
 
+/** world.buy_capacity(fleet, good) — the most this fleet can ACTUALLY take on here, priced through
+ *  the same stepped quote a committed trade uses, and the word for what stops her. A ceiling worked
+ *  out on the client from the spot price is always too high: buying moves the market (§G.2). */
+export interface BuyCapacity {
+  max_qty: number
+  est_total: number
+  /** `hold` · `stock` · `daily cap` · `purse` · `at sea` — a phrase for the caption, not a code. */
+  bound_by: string
+}
+
 // ── world.fleets() ─────────────────────────────────────────────────────────────────────────────
 
 export type FleetStatus = 'DOCKED' | 'ANCHORED' | 'SAILING' | 'REPAIRING' | 'ADRIFT' | 'UNABLE_TO_SAIL'

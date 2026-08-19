@@ -273,12 +273,15 @@ export function QtyPicker({
   step,
   value,
   onPick,
+  estTotal,
 }: {
   bound: QtyBound
   /** `config.trade_step_tuns` — the server reprices every step, so the stepper walks in them. */
   step: number
   value: string | undefined
   onPick: (value: string) => void
+  /** What the server says the MAXIMUM would cost, at the stepped price. Buy side only. */
+  estTotal?: number | null
 }) {
   const numeric = value && /^[0-9]+$/.test(value) ? Number(value) : null
   const max = bound.max
@@ -359,7 +362,8 @@ export function QtyPicker({
 
       <p className="font-mono text-[11px] text-ink-faint">
         {max > 0
-          ? `up to ${formatTuns(max)} — ${bound.binding} stops you there`
+          ? `up to ${formatTuns(max)} — ${bound.binding} stops you there` +
+            (estTotal ? ` (${formatDucats(estTotal)} for all of it)` : '')
           : `nothing is possible here: ${bound.binding} allows none`}
       </p>
     </div>

@@ -5,6 +5,82 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-19 — D10: the picker that lied, and an economy that printed money
+
+Two owner-reported defects, both found by looking at the running game rather than at a test.
+
+### The MAX chip offered more than the purse could carry
+
+The quantity picker's MAX read **91 tuns of pepper**; issuing it was refused with *"91 tuns of Black
+Pepper cost 8130 d. and you hold 8000"*. The game contradicting its own control.
+
+The client was dividing the purse by the market's opening ask — and `features/command/fleetLimits
+.ts` said so in its own comment: *"a real BUY reprices as it walks the book (G.1), so the true
+ceiling is a little lower."* A known-wrong number in a control that presents itself as exact.
+
+**The same bug was in the server, and worse.** `cmd.resolve_qty` resolved buy-side `ALL` from the
+FREE HOLD alone, so `BUY salt ALL` filled the hold and was then refused for want of money. Two
+places computing a maximum, both ignoring the price.
+
+One answer now: **`public.fleet_buy_capacity(fleet, good)`** walks down through `world.quote()` —
+the same stepped quote a committed trade uses — and returns `{max_qty, est_total, bound_by}` where
+`bound_by` is *hold* · *stock* · *daily cap* · *purse*. `ALL` means it, and `world.buy_capacity()`
+serves it to the picker, which now reads:
+
+> **MAX 50** — *up to 50 t — your purse stops you there (6,659 d. for all of it)*
+
+Asserted at BOTH edges in 0007: affordable at the number offered, and NOT affordable one tun above
+it. One edge alone would pass a function that always answered "one".
+
+It steps down in trade steps until the last stretch, then **one tun at a time** — a pure ten-step
+walk answers "0" for anything dearer than ~800 d./tun, and she can afford two diamonds.
+
+### A first voyage returned a third of the stake
+
+Measured across two dozen starting ports (`scripts/db/measure-first-voyage.mjs`, new): **median
+33.7%, best 65.6%**, on round trips of about twenty-five real minutes. The purse doubled in two
+voyages, before the player had seen the map. That is not a trading game.
+
+The gradient was too steep between NEIGHBOURS: affinity ran 0.60 at a producer against up to 2.35 a
+few hundred miles away, a price ratio near 2× for a leg you can sail in a coffee break.
+
+The rule is now five knobs in `world_config` and ONE function, `world.affinity_for()`, which the
+seed and the tuner both call — so a sweep cannot drift from the game:
+
+```
+prod 0.60 home 0.85 span 1.50 reach 6000 curve 1.00   median 32.3%   <- what shipped
+prod 0.88 home 0.97 span 0.90 reach 8000 curve 0.70   median 11.5%
+prod 0.90 home 0.98 span 0.88 reach 8000 curve 0.75   median  8.8%   <- chosen
+prod 0.92 home 0.99 span 0.85 reach 9000 curve 0.80   median  6.0%
+```
+
+`scripts/db/tune-balance.mjs` (new) prints that table by re-deriving all 14,980 affinities per
+candidate and replaying the best opening voyage. **Balance is a measurement now, not an opinion.**
+
+What the chosen row buys, measured after the fact:
+
+```
+Barcelona    164 nm  coral         3.0%     Callao      1311 nm  cacao   12.8%
+Antwerp      118 nm  diamonds      5.8%     Copenhagen  2004 nm  amber   13.3%
+Bordeaux     500 nm  indigo        8.8%     Cartagena   1027 nm  diamonds 19.0%
+```
+
+**Distance is what pays** — which is the entire reason the world is 214 ports wide. The first
+session proof now reads +9.41% on the stake.
+
+`scripts/db/proofs/05_first_voyage_balance.sql` (new) holds all three claims: every sampled port
+offers a voyage that pays, the median sits in a 4–16% band, and long legs out-earn short ones. If
+it goes red, run the sweep and read the table — do not nudge a constant until the red goes away.
+
+### Green
+
+```
+db:apply   10 migrations, 10 receipts     db:proof   5 files, 31/31 markers
+playwright 137 passed / 6 skipped         tsc · eslint · vite build all clean
+```
+
+---
+
 ## 2026-08-19 — D9: the world became the real world, and three assumptions died with it
 
 **The owner's correction, verbatim:** *"not typing, but making commands. i told you it will be

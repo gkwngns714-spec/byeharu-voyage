@@ -56,6 +56,7 @@ declare
   v_back_code text;
   v_dest_code text;
   v_dest_name text;
+  v_dest_culture text;
   v_start  bigint;
   v_after_buy bigint;
   v_final  bigint;
@@ -119,6 +120,7 @@ begin
     raise exception 'PROOF 4 FAILED at 0:20 — no one-leg trade out of Lisboa is open to a starter at all';
   end if;
 
+  select culture into v_dest_culture from public.ports where id = v_dest;
   v_mkt      := world.market(v_lis);
   v_nbr_home := world.pct_of_neighbours(v_lis, v_good);
   v_nbr_away := world.pct_of_neighbours(v_dest, v_good);
@@ -195,6 +197,10 @@ begin
 
   -- ── 1:35 "you queue the rest while it sails". The return cargo is chosen the same way the
   --    outbound one was: what that port sells cheap which Lisboa pays more for.
+  -- Chosen on the GRADIENT, and affordable against the stake rather than against what is left after
+  -- loading — because by the time this order runs the outbound cargo has been sold. She sails with
+  -- 586 ducats in hand and comes into Ponta Delgada with the pepper money; judging the return cargo
+  -- on the purse she has right now would rule out every good she will actually be able to buy.
   select pg_away.good_id, g.code
     into v_back, v_back_code
     from public.port_goods pg_away
@@ -202,7 +208,8 @@ begin
     join public.goods g on g.id = pg_away.good_id
    where pg_away.port_id = v_dest
      and g.bulk <= 1.0
-     and g.base_value * 20 < v_after_buy
+     and g.base_value * 10 < v_start
+     and not (v_dest_culture = any(g.culture_mask))
    order by pg_home.affinity - pg_away.affinity desc, g.code asc
    limit 1;
   if v_back is null then

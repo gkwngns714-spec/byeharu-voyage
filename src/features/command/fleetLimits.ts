@@ -78,35 +78,11 @@ export interface QtyBound {
   binding: string
 }
 
-/**
- * How much of a good this fleet could take aboard here. The purse term uses the market's opening
- * ask, and a real BUY reprices as it walks the book (G.1), so the true ceiling is a little lower —
- * `cmd.preview()` reports the exact cost before anything is issued.
- */
-export function buyBound(args: {
-  freeHold: number
-  bulk: number
-  stock: number
-  ducats: number | null
-  unitPrice: number
-}): QtyBound {
-  const byHold = Math.floor(args.freeHold / Math.max(args.bulk, 0.0001))
-  const byStock = Math.floor(args.stock)
-  const byPurse =
-    args.ducats === null || args.unitPrice <= 0 ? Infinity : Math.floor(args.ducats / args.unitPrice)
-
-  let max = byHold
-  let binding = 'the hold'
-  if (byStock < max) {
-    max = byStock
-    binding = 'the stock here'
-  }
-  if (byPurse < max) {
-    max = byPurse
-    binding = 'your purse'
-  }
-  return { max: Math.max(0, max), binding }
-}
+// THE BUY CEILING IS NOT HERE. It used to be — `buyBound()` divided the purse by the market's
+// opening ask — and it was wrong by construction, because a BUY reprices as it walks the book
+// (§G.2). It offered 91 tuns of pepper against a purse that could carry 50. The answer now comes
+// from `world.buy_capacity()` through ./useBuyCapacity.ts, priced by the same stepped quote the
+// trade itself walks. Selling stays here: what is aboard is aboard, and the client can count it.
 
 export function sellBound(aboard: number): QtyBound {
   return { max: Math.max(0, Math.floor(aboard)), binding: 'what is aboard' }

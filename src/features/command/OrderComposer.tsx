@@ -3,14 +3,12 @@ import { Badge, Button, Notice, SectionLabel } from '../../components/ui'
 import { formatTuns } from '../../lib/format'
 import type { FleetView, MarketView, VerbArg, VerbSpec, WorldSnapshot } from '../../lib/rpc'
 import { EnumPicker, GoodPicker, NumberPicker, PortPicker, PricePicker, QtyPicker } from './ArgPickers'
+import { useBuyCapacity } from './useBuyCapacity'
 import {
-  buyBound,
-  bulkOf,
   cargoAboard,
   cargoManifest,
   crewBerths,
   crewShort,
-  freeHoldTuns,
   hullPct,
   sellBound,
 } from './fleetLimits'
@@ -61,7 +59,6 @@ export function OrderComposer({
   fleet,
   snapshot,
   market,
-  ducats,
   onChooseVerb,
   onSetArg,
 }: {
@@ -73,7 +70,6 @@ export function OrderComposer({
   snapshot: WorldSnapshot
   /** The market of the port this fleet is in (or bound for). Undefined until it has been read. */
   market: MarketView | undefined
-  ducats: number | null
   onChooseVerb: (verb: string | null) => void
   onSetArg: (name: string, value: string | null) => void
 }) {
@@ -183,7 +179,6 @@ export function OrderComposer({
                         fleet={fleet}
                         snapshot={snapshot}
                         market={market}
-                        ducats={ducats}
                         onPick={(v) => answer(arg, v)}
                       />
                     </div>
@@ -220,6 +215,62 @@ function describe(
 }
 
 /**
+ * HOW MUCH — the one picker whose ceiling comes from the server.
+ *
+ * Selling is arithmetic the client can do honestly: what is aboard is aboard. BUYING is not — the
+ * price climbs as the order walks the book (§G.2), so a ceiling divided out of the spot price
+ * offers more than the purse can carry. That is exactly what happened: MAX offered 91 tuns of
+ * pepper and the trade was refused at 8,130 against 8,000. So the buy ceiling is world.buy_capacity().
+ */
+function QtyArg({
+  selling,
+  fleet,
+  goodCode,
+  step,
+  value,
+  onPick,
+}: {
+  selling: boolean
+  fleet: FleetView | undefined
+  goodCode: string | null
+  step: number
+  value: string | undefined
+  onPick: (value: string) => void
+}) {
+  const capacity = useBuyCapacity(selling ? null : (fleet?.id ?? null), goodCode)
+
+  if (!goodCode) {
+    return <Notice tone="neutral" className="text-xs">Pick the good first — how much depends on which.</Notice>
+  }
+  if (selling) {
+    return (
+      <QtyPicker
+        bound={sellBound(cargoAboard(fleet, goodCode))}
+        step={step}
+        value={value}
+        onPick={onPick}
+      />
+    )
+  }
+  if (!capacity.bound) {
+    return (
+      <p className="font-mono text-xs text-ink-faint">
+        {capacity.loading ? 'Asking what she can carry and afford…' : 'The most she can take on is not known yet.'}
+      </p>
+    )
+  }
+  return (
+    <QtyPicker
+      bound={capacity.bound}
+      step={step}
+      value={value}
+      onPick={onPick}
+      estTotal={capacity.estTotal}
+    />
+  )
+}
+
+/**
  * The picker for one argument, chosen by the TYPE the server declared for it. A type this screen
  * has never seen says so, plainly, instead of quietly offering nothing.
  */
@@ -230,7 +281,6 @@ function ArgPicker({
   fleet,
   snapshot,
   market,
-  ducats,
   onPick,
 }: {
   spec: VerbSpec
@@ -239,7 +289,6 @@ function ArgPicker({
   fleet: FleetView | undefined
   snapshot: WorldSnapshot
   market: MarketView | undefined
-  ducats: number | null
   onPick: (value: string) => void
 }) {
   const selling = spec.verb === 'SELL'
@@ -269,30 +318,19 @@ function ArgPicker({
       )
     }
 
-    case 'qty': {
-      const code = args.good
-      if (!code) {
-        return <Notice tone="neutral" className="text-xs">Pick the good first — how much depends on which.</Notice>
-      }
-      const row = market?.goods.find((g) => g.code === code)
-      const bound = selling
-        ? sellBound(cargoAboard(fleet, code))
-        : buyBound({
-            freeHold: freeHoldTuns(fleet),
-            bulk: bulkOf(snapshot.goods, code),
-            stock: row?.stock ?? 0,
-            ducats,
-            unitPrice: row?.buy ?? 0,
-          })
+    case 'qty':
+      // Its own component, because a BUY ceiling has to be ASKED FOR (the server prices the whole
+      // stepped order), and a hook cannot be called from inside a switch.
       return (
-        <QtyPicker
-          bound={bound}
+        <QtyArg
+          selling={selling}
+          fleet={fleet}
+          goodCode={args.good ?? null}
           step={snapshot.config.trade_step_tuns}
           value={args[arg.name]}
           onPick={onPick}
         />
       )
-    }
 
     case 'price': {
       const row = market?.goods.find((g) => g.code === args.good)

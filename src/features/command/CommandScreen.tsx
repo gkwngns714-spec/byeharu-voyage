@@ -285,7 +285,6 @@ export function CommandScreen() {
                 fleet={fleet}
                 snapshot={world.snapshot}
                 market={market}
-                ducats={world.ducats}
                 onChooseVerb={chooseVerb}
                 onSetArg={setArg}
               />
