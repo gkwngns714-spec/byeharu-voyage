@@ -5,6 +5,101 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-20 — D11c: I reset the owner's save, and the game never said a word
+
+Owner: *"wait, i've bought something before and the currency went down. but after this load fix, it
+was set back to original value."*
+
+They are right, and it was my doing. **This is a regression I caused in D11b, and the save is gone.**
+
+### What happened
+
+D11b edited migration 0005 for speed. Editing ANY migration changes the chain fingerprint, and
+`src/lib/db/localDb.ts` then does exactly what its own header has always promised:
+
+> "if the build carries a different chain, the stored database is DEMOLISHED and rebuilt from
+> migration 0001 — applying six new migrations on top of a four-migration database is how you get a
+> schema that exists in no repository."
+
+`demolish()` is `drop schema public cascade`. It takes the world **and the house standing in it** —
+`players`, `fleets`, `ships`, `voyages`, `orders`, `events`, `ledger`. The purse went back to 8,000
+because a brand-new house was founded on the rebuilt world.
+
+That rule is right and it stays. Two things around it were not:
+
+1. **It happened without a word.** `bootState` has carried a `rebuilt` flag since the day it was
+   written, and `grep -rn "rebuilt" src --include=*.tsx` returned nothing outside `lib/db`: a fact
+   computed and thrown away. A purse silently returning to its opening balance does not read as
+   "the world was rebuilt", it reads as the game losing your money — which is how it was reported.
+2. **It could not be undone.** Nothing was dumped first. `dumpDataDir`, `backup`, `restore`: no
+   hits anywhere in `src/lib/db`.
+
+And I told the owner *"your browser has the old chain cached, so your next load will rebuild once"*
+without saying that a rebuild destroys the save. That sentence was the last chance to prevent this
+and it did not carry the one fact that mattered.
+
+### What is fixed
+
+**`src/lib/db/rescue.ts`** — before `demolish()`, every row of the eight player tables is read out
+and stashed in `localStorage` under `byeharu-voyage.rescued.v1`, with column names, keyed by the
+fingerprint of the world it came from. It cannot throw: a missing table, an unreadable one, absent
+or full storage all come back as a receipt, because this runs on the path to a rebuild the player
+did not ask for and must never turn a wipe into a dead boot.
+
+**`src/app/RebuildNotice.tsx`** — the game now says it. A standing panel (not a toast: losing a
+voyage is not a thing to mention for four seconds and withdraw) that names what happened, how many
+rows went, where the copy is, and why it is not put back automatically.
+
+### What is NOT fixed, and why not pretending is the point
+
+**The rescue does not replay the save into the new world.** Every world row is keyed by
+`gen_random_uuid()`, so a rebuild gives every port, good and ship class a NEW id.
+`fleets.port_id`, `voyages.from_port_id`, `ships.class_id` and a cargo row's `good_id` all point at
+uuids that no longer exist. A replay has to translate each one back through its stable code
+(`ports.code`, `goods.code`, `ship_classes.name`) and prove the destination table still has the same
+shape. That is a real piece of work with its own proofs. THE DATA HAD TO SURVIVE BEFORE ANYTHING
+COULD RESTORE IT, and that half is what shipped today.
+
+**The owner's lost voyage is not recoverable.** It was demolished before any of this existed.
+
+### Proved on the real path, not asserted
+
+A Playwright run that plays the game rather than mocking it:
+
+    1. purse after a real PROVISION : 7,925        (issued through the Command tab, 8,000 -> 7,925)
+    2. migration edited (fingerprint now differs)
+    3. purse after the rebuild      : (fresh house)
+    4. rescued from localStorage    : {"rows":8,"tables":["players","fleets","ships","orders",
+                                       "events","ledger"],"ducats":7925}
+    5. notice shown to the player   : true
+    6. console                      : [db] THE CHAIN HAS CHANGED ... | [db] RESCUED 8 of your
+                                      row(s) from 6 table(s) before demolishing
+
+`players.ducats = 7925` — the exact figure that was silently lost this morning is now on disk before
+the demolition starts. tsc, eslint clean; `npx playwright test` 137 passed.
+
+### Observed once and NOT explained: 0010's drift self-assert
+
+During the proof run one boot printed:
+
+    [db] BOOT FAILED — demolishing the half-built world and trying once from empty
+    MIGRATION FAILED: 20260818000010_the_clock_ticks_for_everyone.sql
+    0010 self-assert FAIL: tick_market_drift did not step all 14980 rows
+    ({"drifted": 14980, "slot": 2978652, ...}), or the drift did not move (0.0000 -> 0.0000)
+
+`drifted: 14980` shows every row WAS stepped, so it is the second clause that bit: the assert reads
+one specific row (Lisboa x Salt) before and after a drift tick and requires the value to change.
+`port_goods.drift` is `numeric(6,4)`, so an OU step under 0.00005 rounds to no change at all.
+
+The boot's own one-shot retry recovered it and the game came up. I could not reproduce it: **0
+failures in 8 full chain applications** — but that is WEAK EVIDENCE and should not be read as
+"rare". `drift_slot_seconds` is 600, so eight runs inside two minutes sampled one or two draws, not
+eight. NOT INVESTIGATED FURTHER, NOT FIXED, and not caused by D11b as far as I can tell (the D11b
+rewrite was proved to produce bit-identical `port_goods`). It is written down here because it was
+seen, not because it is understood.
+
+---
+
 ## 2026-08-20 — D11b: the first load took 37 seconds, and 13 of them were one INSERT
 
 Owner: *"the first loading takes quite a long time, why?"* Measured before answering, in a real

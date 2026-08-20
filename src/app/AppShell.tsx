@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
 import { ShellStateContext } from './shellState'
 import { NavBar } from './NavBar'
+import { RebuildNotice } from './RebuildNotice'
 import { useWorld } from '../live/worldStore'
 
 // THE PERSISTENT SHELL: a slim header, the tab content, and the ONE tab bar. Mounted once for the
@@ -70,6 +71,10 @@ export function AppShell() {
             Account
           </Link>
         </header>
+
+        {/* A world that was demolished and rebuilt says so, once, above everything — see
+            RebuildNotice.tsx. It renders nothing on an ordinary boot. */}
+        <RebuildNotice />
 
         {/* Tab content gets the viewport minus header and tab bar; each screen owns its own scroll
             (see the Screen primitive), so the page itself never scrolls. */}

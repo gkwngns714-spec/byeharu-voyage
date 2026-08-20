@@ -28,6 +28,7 @@ import type { MigrationFile } from './chain'
 import { describeChain, fingerprintChain, orderChain } from './chain'
 import { applyChain } from './applyChain'
 import { bootChannel, progressFor, type BootChannel } from './bootState'
+import { rescuePlayerRows } from './rescue'
 
 /** The IndexedDB database the local world lives in. */
 export const LOCAL_DATA_DIR = 'idb://byeharu-voyage-v0'
@@ -159,9 +160,23 @@ export async function openLocalDb(options: OpenLocalDbOptions): Promise<LocalDb>
           `over ${files.length}). Rebuilding from migration 0001 — applying new migrations onto an ` +
           `old database would produce a schema that exists in no repository.`,
       )
+      // THE PLAYER'S ROWS COME OUT FIRST. `demolish()` is a `drop schema public cascade`: it takes
+      // the world AND the house standing in it, and until 2026-08-20 it took them silently and
+      // irrecoverably — a purse that had bought cargo was back at 8,000 ducats with no word said
+      // (DEV_LOG D11c). This cannot throw; a failed rescue is reported, never fatal.
+      const rescued = await rescuePlayerRows(pg, stored.fingerprint)
+      if (rescued.rows > 0) {
+        log(
+          rescued.stored
+            ? `RESCUED ${rescued.rows} of your row(s) from ${rescued.tables} table(s) before ` +
+                `demolishing — kept under localStorage "byeharu-voyage.rescued.v1".`
+            : `COULD NOT RESCUE your ${rescued.rows} row(s): ${rescued.note}.`,
+        )
+      }
       publish({
         phase: 'booting',
         rebuilt: true,
+        rescued: rescued.rows > 0 ? rescued : null,
         message: 'The world was built by an older version of the game. Rebuilding it from scratch.',
       })
       await demolish(pg)
