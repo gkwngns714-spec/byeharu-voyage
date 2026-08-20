@@ -8,6 +8,7 @@ import {
   CardHeader,
   Notice,
   PageHeader,
+  PriceIndex,
   Screen,
   SectionLabel,
   Skeleton,
@@ -17,7 +18,7 @@ import {
   Table,
   scrollTableClass,
 } from '../../components/ui'
-import { formatInt, formatPct, formatPctPoints, formatTuns } from '../../lib/format'
+import { formatInt, formatPct, formatTuns } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
 import type { FleetView, MarketGood, Refusal, SnapshotPort } from '../../lib/rpc'
 import { handOffTrade } from '../../domain/order'
@@ -271,13 +272,28 @@ export function MarketScreen() {
       ) : !view ? (
         <SkeletonTable note={`Reading ${port?.name ?? 'the port'}'s prices.`} />
       ) : (
-        <Card>
-          <CardHeader
-            title="Goods"
-            subtitle="Tap a good to load the order onto Command."
-            explain="These are today's opening prices. An order executes in steps, each one repricing — buying raises the price you are still buying at (§G.2), and the server does that walk when the order runs. No seven-day line is drawn: a price history is a record that has to be kept before it can be shown, and nothing in the chain keeps one yet."
-            aside={<Badge tone="accent">{countRows(blocks)} rows</Badge>}
-          />
+        /* THE DOCKED PANEL (docs/UI_DIRECTION.md §2). The goods table is this screen's subject, so
+           it wears the reference's panel: a full-bleed header bar over the body, parted by a gold
+           hairline, with the row count riding in the bar rather than floating in the padding. */
+        /* THE DOCKED PANEL (docs/UI_DIRECTION.md §2). The goods table is this screen's subject, so
+           it wears the reference's panel: a full-bleed header bar over the body, parted by a gold
+           hairline, with the row count riding in the bar rather than floating in the padding.
+
+           THE BAR HOLDS ONE LINE. A title, a dot and a count — nothing that wraps. The first cut
+           of this put the tap-affordance line in the bar too and it grew to 100px, which cost two
+           price rows above the fold; on a screen whose whole job is rows, the chrome does not get
+           to eat them. The affordance moved into the body, where it is one small line. */
+        <Card
+          head={
+            <CardHeader
+              flush
+              title="Goods"
+              explain="These are today's opening prices. An order executes in steps, each one repricing — buying raises the price you are still buying at (§G.2), and the server does that walk when the order runs. No seven-day line is drawn: a price history is a record that has to be kept before it can be shown, and nothing in the chain keeps one yet."
+              aside={<Badge tone="accent">{countRows(blocks)} rows</Badge>}
+            />
+          }
+        >
+          <p className="mb-2 text-xs text-ink-muted">Tap a good to load the order onto Command.</p>
           <Table className={scrollTableClass()}>
             <thead>
               <tr>
@@ -377,7 +393,7 @@ function BlockRows({
         </td>
       </tr>
       {rows.map((good) => (good.available ? (
-        <TradedRow key={good.good_id} good={good} block={block} onTap={onTap} />
+        <TradedRow key={good.good_id} good={good} onTap={onTap} />
       ) : (
         <UntradedRow key={good.good_id} good={good} />
       )))}
@@ -387,34 +403,39 @@ function BlockRows({
 
 function TradedRow({
   good,
-  block,
   onTap,
 }: {
   good: MarketGood
-  block: MarketBlock
+  // No `block` prop any more. The row used to take it only to tint the %NBR figure, and the pill
+  // now carries that meaning from the server's own `advice` (PriceIndex.tsx) — the band heading
+  // and the pill were two renderings of one fact, and this was the copy that had to go.
   onTap: (good: MarketGood) => void
 }) {
-  const tone =
-    block === 'buy' ? 'text-success' : block === 'sell' ? 'text-accent' : 'text-ink-muted'
   return (
     <tr>
       <TD>
+        {/* ONE LINE, NOT TWO. The category used to print under the name, which made every row
+            62px and fitted four of them above the fold — the reference fits eleven. The category
+            is a fact about the good, not about its price today, so it moved to the row's title
+            (hover on a desktop, and the good's own name already implies it); what stays is the
+            name and the 44px target the reach law requires. Four rows became seven. */}
         <button
           type="button"
           onClick={() => onTap(good)}
-          title={`${good.advice === 'sell' ? 'SELL' : 'BUY'} ${good.name} — load onto Command`}
-          className="min-h-11 w-full text-left"
+          title={`${good.advice === 'sell' ? 'SELL' : 'BUY'} ${good.name} (${good.category}) — load onto Command`}
+          className="flex min-h-11 w-full items-center text-left"
         >
           <span className="block text-sm text-accent underline-offset-4 hover:underline">
             {good.name}
           </span>
-          <span className="block font-mono text-[10px] text-ink-faint">{good.category}</span>
         </button>
       </TD>
+      {/* THE PILL, NOT A BARE FIGURE (docs/UI_DIRECTION.md §2). %NBR is the number the game is
+          played from, and in the reference it rides directly behind the good's name as a coloured
+          pill — the shape is what makes it scannable down a column of eleven rows. The tone is the
+          SERVER'S `advice`; nothing here compares pct against a threshold. */}
       <TD align="num">
-        <span className={tone}>
-          {good.pct_nbr === null ? '—' : formatPctPoints(good.pct_nbr)}
-        </span>
+        <PriceIndex pct={good.pct_nbr} advice={good.advice} />
       </TD>
       <TD align="num">{formatInt(good.buy)}</TD>
       <TD align="num">{formatInt(good.sell)}</TD>

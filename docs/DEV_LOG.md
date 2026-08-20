@@ -5,6 +5,129 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-20 — D12: it was a document, so it was made of something
+
+Owner: *"this is not a proper game. see other games such as 대항해시대 오리진 — find korean images,
+gameplay videos, images. Refer to them and make the UI the same, or even better. Refer to
+Runescape 3, EVE online as well. They have good UI. USE the best tools for each tasks, and make a
+proper game."*
+
+### The reference was LOOKED AT, not remembered
+
+Marketing art teaches nothing about UI, so the App Store shots were a dead end — they are 60%
+character illustration. The usable captures are on Line Games' own Korean guide site, which
+documents the game with real in-game screenshots (`static.pcs.line.games/gameguide/guideContent/`).
+Twenty-six were downloaded and read. They live **outside the repo**: they are Line Games'
+copyright, and what this project keeps is what was learned, never their art.
+
+The single most useful frame is 세계지도 — the world map with the port-info panel docked at the
+right. It gives the whole layout grammar in one picture, and the row inside it is the lesson:
+
+    (icon) 포탄     101%   574
+    (icon) 돌소금   105%   516
+    (icon) 인쇄물    99%   306
+
+**Four facts, one line, no prose** — and the price index is a coloured pill riding directly behind
+the name, not a column you swipe to reach. D11h moved `%NBR` to second position by reasoning about
+it. The reference proves the position by shipping it, and proves the *shape* we had not got to.
+
+`docs/UI_DIRECTION.md` is the write-up: the diagnosis, the layout grammar, a pattern table, the
+material read off the captures, what RuneScape 3 and EVE Online add on top, and **eight rules** the
+client now builds to. It states plainly that it overrides `docs/DESIGN.md`'s UI austerity on the
+owner's instruction — and that it changes nothing about the architecture.
+
+### The doctrine that had to be retired, in its own words
+
+`src/index.css` opened with: *"TEXT-FIRST: this game is words, numbers and tables … the type
+carries the design and **the chrome stays quiet**."* That sentence is why the app looked like a
+web form, and it was load-bearing — it was the reason nothing was made of anything. It is replaced
+in place, with the owner's instruction quoted beside it, rather than quietly deleted.
+
+**The palette survived unchanged.** It was never the problem. Cold ink-blue layers, warm parchment
+text, brass accent — all still exactly what they were. What was missing was *material*.
+
+### What material means, concretely
+
+Fourteen new tokens, **every one derived via `color-mix` off the existing palette**, so retuning
+`--color-accent` retunes the material with it. A literal would have been a second palette.
+
+    panel / panel-2 / panel-head    the ink layers pushed warm, toward oiled wood
+    hairline                        the 1px gold rule under every panel header
+    brass / brass-2 / brass-rim     the primary action's fill, rim and lit top edge
+    sea / sea-lit / sky / sea-deep  the world behind the glass
+    cheap / dear / even             one meaning per colour, rule 7
+
+and four compositions no single utility expresses: `.bv-panel-head`, `.bv-cut` (a 7px chamfer —
+metal, where a 12px radius reads as a web card), `.bv-brass`, and `.bv-sea`, a **pure-CSS lit
+horizon**. That last one is deliberate: this repo has no art at all, and a gradient in the
+stylesheet costs zero bytes and can never 404.
+
+### One panel, not two
+
+The tempting move was a new `GamePanel` beside `Card`. That is two authorities for "what a panel
+is", which is the thing this project keeps having to rip out. Instead **`Card` became the game
+panel**: same name, same callers, new material, plus a `head`/`foot` slot — because the reference's
+header bar is FULL-BLEED and a caller cannot make one from inside the padding without negative
+margins. Cards that pass neither are exactly what they were and simply inherit the new skin.
+
+### The frame
+
+`TopBar` is the persistent chrome the app never had: wordmark, a live-read dot, and the purse. It
+carries **one** figure, because the purse is the only number this server actually keeps — the
+reference shows four currencies and inventing three more would be decorating the UI with facts the
+game does not have. It carries **no back chevron**, because eight tabs is a flat model and a
+chevron with nowhere to go is worse than none.
+
+Wiring it found a real duplication: COMMAND and LEDGER were each printing the purse in their own
+header. **Three copies of one figure**, and the two that scroll away were the wrong ones to keep.
+Both deleted.
+
+The shell root is now `.bv-sea` and does not scroll; each screen scrolls its panels over it, so the
+horizon stays put the way it would from a deck.
+
+### The chip, which the design system was missing
+
+The audit found **twelve hand-written copies** of one pair of recipes across Command, Market and
+Fleets — drifting in border colour and hover between copies. `buttonClasses` now has `chip` and
+`chip-on`. Two variants rather than a boolean, because it is a pure string function and every
+caller already knows which state it is drawing.
+
+### MARKET, measured
+
+`PriceIndex` is the %NBR pill and the one treatment of the figure the game is played from. It is
+deliberately **not** a `Badge`: Badge is the status-WORD pill at 10px, and rule 2 says the number is
+the hero. **The tone comes from the server's own `advice`** — never from comparing `pct` against a
+threshold on this side of the wire.
+
+Two measurements drove the rest, taken in a real browser at 390×844:
+
+* the panel header's first cut put the tap-affordance line inside the bar, which grew it to ~100px
+  and **cost two price rows above the fold**. On a screen whose whole job is rows, the chrome does
+  not get to eat them. One line in the bar; the affordance moved to the body.
+* the row printed the category under the name, making every row 62px — **four rows above the fold**.
+  The category is a fact about the good, not about its price today, so it moved to the row's title.
+  **Four became five**, and the row is still the 44px the reach law requires.
+
+`TradedRow`'s `block` prop is gone with it: it existed only to tint the %NBR figure, and the pill
+now carries that meaning from `advice`. Two renderings of one fact; this was the copy to delete.
+
+### Proved
+
+**149 passed, 0 failed** against a served production build — including all 12 layout tests and
+`MARKET puts a complete price row above the fold, per K.1`. The fold measured directly in the
+browser afterwards: `{foldY: 731, rows: 70, above: 5, firstText: "Black Pepper 83% 131 120 ██████
+glut"}`. tsc + eslint clean.
+
+### What this did NOT do, and is next
+
+The frame and the material are in; **six screens still wear them without being re-composed**. PORT
+is still four sibling cards where the reference is one place with faces; COMMAND's verbs are still
+text buttons rather than the reference's hero action cards; FLEETS has no status orbs; RANK is
+still an 18-line placeholder. And the honest blockers stand, all of them server-side rather than
+visual: **no price history** (so no sparkline can be drawn honestly), **no player row** (so PROFILE
+and RANK cannot be driven at all), no officers, no skills, no fame. Each is a migration, not a
+component — and they are why the UI still looks empty in the places where it is behaving correctly.
+
 ## 2026-08-20 — D11h: the four left undone, done
 
 Owner: *"don't leave out. do all."* So all four, each proved in a browser rather than reasoned about.

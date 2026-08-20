@@ -98,14 +98,10 @@ function LedgerBody({ world }: { world: LiveWorld }) {
         eyebrow="Record"
         title="Ledger"
         explain="Everything that happened, in the order it happened. The ledger is the server's record, not a client log: it is the same one your standing is judged from."
-        actions={
-          <>
-            <span className="font-mono text-sm text-accent">
-              {world.ducats === null ? '—' : formatDucats(world.ducats)}
-            </span>
-            <ReadAgain world={world} />
-          </>
-        }
+        /* The purse readout moved to the top bar (TopBar.tsx), where it is on screen on every tab
+           instead of only this one. The balance still appears in this screen's prose, which is a
+           different thing: a sentence that explains reconciliation, not a readout. */
+        actions={<ReadAgain world={world} />}
       />
 
       {events.length > 0 && (

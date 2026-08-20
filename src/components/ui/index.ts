@@ -4,6 +4,9 @@ export { Button } from './Button'
 export { buttonClasses, type ButtonVariant, type ButtonSize } from './buttonStyles'
 export { Card, CardHeader, type CardTone } from './Card'
 export { Badge, type BadgeTone } from './Badge'
+// Badge's numeric counterpart: the %NBR pill (see PriceIndex.tsx for the boundary — a
+// status WORD is a Badge, the figure the game is played from is a PriceIndex).
+export { PriceIndex, type PriceAdvice } from './PriceIndex'
 export { Meter, type MeterTone } from './Meter'
 export { Notice, type NoticeTone } from './Notice'
 export { SectionLabel } from './SectionLabel'

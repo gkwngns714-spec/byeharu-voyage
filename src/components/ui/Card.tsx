@@ -2,29 +2,57 @@ import type { HTMLAttributes, ReactNode } from 'react'
 import { ExplainDot, ExplainPanel } from './Explain'
 import { useExplainDisclosure } from './explainState'
 
-// Design-system Card/Panel: the ONE panel treatment (surface + edge + radius + elevation).
-// `tone` gives a panel its subtle identity tint WITHOUT per-screen palettes. Rendered as
-// <section>; spreads rest props so data-testid and aria-* pass through untouched.
+// Design-system Card/Panel: the ONE panel treatment. `tone` gives a panel its subtle identity
+// tint WITHOUT per-screen palettes. Rendered as <section>; spreads rest props so data-testid and
+// aria-* pass through untouched.
+//
+// MATERIAL, changed 2026-08-20 (docs/UI_DIRECTION.md). A panel used to be a flat surface box with
+// a 12px radius — a web card. It is now made of something: a warm panel body, a chamfered corner
+// instead of a radius, and — when it carries a `head` — a browner header bar parted from the body
+// by a gold hairline. That treatment was read off reference captures, where it is the single most
+// repeated shape on screen.
+//
+// THE `head` SLOT EXISTS SO THERE IS STILL ONE PANEL. The reference header is FULL-BLEED: it runs
+// to the panel's edges while the body stays padded. A caller cannot produce that from inside the
+// padding without negative margins, so the panel owns the bar and the caller passes its contents
+// (normally a <CardHeader>). Without `head`, a Card is exactly what it always was — every existing
+// caller keeps working and simply inherits the new material.
 
 export type CardTone = 'default' | 'accent' | 'success' | 'warning' | 'danger'
 
 const TONE: Record<CardTone, string> = {
-  default: 'border-edge bg-surface',
-  accent: 'border-accent/25 bg-surface',
-  success: 'border-success/25 bg-surface',
-  warning: 'border-warning/25 bg-surface',
-  danger: 'border-danger/25 bg-surface',
+  default: 'border-edge bg-panel',
+  accent: 'border-accent/25 bg-panel',
+  success: 'border-success/25 bg-panel',
+  warning: 'border-warning/25 bg-panel',
+  danger: 'border-danger/25 bg-panel',
 }
 
 export function Card({
   tone = 'default',
+  head,
+  foot,
   className = '',
   children,
   ...rest
-}: HTMLAttributes<HTMLElement> & { tone?: CardTone }) {
+}: HTMLAttributes<HTMLElement> & {
+  tone?: CardTone
+  /** Full-bleed header bar contents — normally a <CardHeader>. Omit for a plain padded panel. */
+  head?: ReactNode
+  /** Full-bleed footer bar contents — the reference's pinned meter ("hold 276/457"). */
+  foot?: ReactNode
+}) {
+  const framed = head !== undefined || foot !== undefined
   return (
-    <section className={`rounded-card border ${TONE[tone]} p-4 shadow-card sm:p-5 ${className}`} {...rest}>
-      {children}
+    <section
+      className={`bv-cut border ${TONE[tone]} shadow-card ${framed ? '' : 'p-4 sm:p-5'} ${className}`}
+      {...rest}
+    >
+      {head !== undefined && <div className="bv-panel-head px-4 py-2.5 sm:px-5">{head}</div>}
+      {framed ? <div className="p-4 sm:p-5">{children}</div> : children}
+      {foot !== undefined && (
+        <div className="border-t border-rule bg-panel-2 px-4 py-2 sm:px-5">{foot}</div>
+      )}
     </section>
   )
 }
@@ -51,6 +79,7 @@ export function CardHeader({
   subtitle,
   explain,
   aside,
+  flush = false,
   className = '',
 }: {
   eyebrow?: ReactNode
@@ -62,11 +91,16 @@ export function CardHeader({
    *  Behind the ⓘ; never a live figure. */
   explain?: ReactNode
   aside?: ReactNode
+  /** Set when this header IS the panel's header bar (passed as Card's `head`). The bar owns the
+   *  spacing, so the header must not add a bottom margin inside it. */
+  flush?: boolean
   className?: string
 }) {
   const disclosure = useExplainDisclosure()
   return (
-    <div className={`mb-4 flex flex-wrap items-start justify-between gap-3 ${className}`}>
+    <div
+      className={`flex flex-wrap items-start justify-between gap-3 ${flush ? '' : 'mb-4'} ${className}`}
+    >
       <div className="min-w-0">
         {eyebrow && (
           <p className="mb-0.5 font-mono text-xs uppercase tracking-wider text-ink-faint">{eyebrow}</p>

@@ -20,6 +20,7 @@ export const ICON_NAMES = [
   'info',
   'search',
   'history',
+  'coin',
 ] as const
 
 export type IconName = (typeof ICON_NAMES)[number]
@@ -50,4 +51,7 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   search: ['M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z', 'm16.2 16.2 4.3 4.3'],
   // Clock with a back-arrow tick — the log.
   history: ['M12 3a9 9 0 1 0 9 9', 'M12 3 8.5 5.5 12 8', 'M12 7.5V12l3.5 2.5'],
+  // The purse. A milled coin: rim, inner rule, and a struck bar — legible at 14px,
+  // which the ducat figure in the top bar is rendered at.
+  coin: ['M12 3.2a8.8 8.8 0 1 0 0 17.6 8.8 8.8 0 0 0 0-17.6Z', 'M12 6.4a5.6 5.6 0 1 0 0 11.2 5.6 5.6 0 0 0 0-11.2Z', 'M9.6 12h4.8'],
 }

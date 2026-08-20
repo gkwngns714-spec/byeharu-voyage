@@ -7,9 +7,14 @@
    into utilities (bg-surface, text-ink-muted, border-edge, text-accent, rounded-card, …).
 
    Skin     "Ship's ledger" — a dark chart table at night: cold ink-blue layers, warm parchment
-            text, brass accent. TEXT-FIRST: this game is words, numbers and tables. There is no
-            battlefield to click; the map is a chart you read. So the type carries the design and
-            the chrome stays quiet.
+            text, brass accent.
+
+            ⚠ DOCTRINE CHANGED 2026-08-20. This block used to read "TEXT-FIRST … the type carries
+            the design and the chrome stays quiet", and the owner overruled it: *"this is not a
+            proper game … make the UI the same [as 대항해시대 오리진], or even better."* The palette
+            above survives — it was never what was wrong. What changed: the chrome must be MADE OF
+            SOMETHING, and the world must be visible behind it. docs/UI_DIRECTION.md carries the
+            evidence and the eight rules; the tokens serving it are the MATERIAL block below.
 
    Layers   app < surface < surface-2 — a deep blue-black ramp (never pure black).
    Text     ink (parchment, primary) / ink-muted (secondary) / ink-faint (small labels). All three
@@ -71,6 +76,41 @@
   --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Menlo, Consolas, monospace;
   --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, 'Times New Roman', serif;
 
+  /* ── MATERIAL ───────────────────────────────────────────────────────────────────────────────
+     Added 2026-08-20 with the doctrine change above. These are the tokens that let a panel be
+     made of something. Read off reference captures (docs/UI_DIRECTION.md §2): a panel is a warm
+     dark body under a browner header bar, parted by a gold hairline; the primary action is brass
+     with a darker rim; the world behind it is a lit sea, never a flat colour.
+
+     Every one of these is DERIVED from the palette above via color-mix, so retuning --color-accent
+     retunes the material with it. A literal here would be a second palette. */
+
+  /* panel body + header — the ink layers pushed warm, toward oiled wood */
+  --color-panel: color-mix(in srgb, var(--color-surface) 88%, #3a2a1c);
+  --color-panel-2: color-mix(in srgb, var(--color-surface-2) 88%, #3a2a1c);
+  --color-panel-head: color-mix(in srgb, var(--color-surface-2) 62%, #43301f);
+  --color-panel-head-2: color-mix(in srgb, var(--color-surface) 62%, #2a1d12);
+  /* the 1px rule under every panel header, and the quieter one between rows */
+  --color-hairline: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  --color-rule: color-mix(in srgb, var(--color-edge) 80%, transparent);
+
+  /* brass — the primary action's fill, rim and lit top edge */
+  --color-brass: color-mix(in srgb, var(--color-accent) 78%, #6d4a16);
+  --color-brass-2: color-mix(in srgb, var(--color-accent) 42%, #3a2609);
+  --color-brass-rim: color-mix(in srgb, var(--color-accent) 65%, #201400);
+
+  /* the world layer — sea and sky behind the glass, and the haze the panels sit on */
+  --color-sea-deep: #060d18;
+  --color-sea: #0b1b2c;
+  --color-sea-lit: color-mix(in srgb, var(--color-accent) 9%, #12283f);
+  --color-sky: #142438;
+  --color-haze: color-mix(in srgb, var(--color-app) 72%, transparent);
+
+  /* price index — one meaning per colour (rule 7). cheap = you should BUY, dear = you should SELL */
+  --color-cheap: var(--color-success);
+  --color-dear: var(--color-danger);
+  --color-even: var(--color-ink-faint);
+
   /* shape + elevation */
   --radius-card: 0.75rem;
   --shadow-card: inset 0 1px 0 0 rgb(255 255 255 / 0.04), 0 10px 30px -18px rgb(0 0 0 / 0.75);
@@ -100,6 +140,49 @@ body {
    figures — this is why `font-mono` is the house rule for values, not a stylistic preference. */
 .font-mono {
   font-variant-numeric: tabular-nums slashed-zero;
+}
+
+/* ── MATERIAL COMPOSITION ─────────────────────────────────────────────────────────────────────
+   Tailwind's @theme gives us the colours as utilities; the three things below are compositions
+   (a gradient, a clipped corner, a lit rim) that no single utility expresses. They live here so
+   the primitives in src/components/ui can be plain className strings and there is still exactly
+   ONE definition of what a panel is made of. Screens never use these directly — GamePanel and
+   Button do. See docs/UI_DIRECTION.md §2. */
+
+/* the browner bar at the top of every panel, parted from the body by a gold hairline */
+.bv-panel-head {
+  background-image: linear-gradient(to bottom, var(--color-panel-head), var(--color-panel-head-2));
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+/* cut corners, not rounded ones — the reference frames are clipped, and a 4px chamfer reads as
+   metal where a 12px radius reads as a web card */
+.bv-cut {
+  clip-path: polygon(
+    7px 0,
+    100% 0,
+    100% calc(100% - 7px),
+    calc(100% - 7px) 100%,
+    0 100%,
+    0 7px
+  );
+}
+
+/* brass fill for the one primary action on a screen: lit along the top, dark at the rim */
+.bv-brass {
+  background-image: linear-gradient(to bottom, var(--color-brass), var(--color-brass-2));
+  border: 1px solid var(--color-brass-rim);
+  box-shadow:
+    inset 0 1px 0 0 color-mix(in srgb, var(--color-accent-hover) 45%, transparent),
+    0 1px 0 0 rgb(0 0 0 / 0.35);
+}
+
+/* the sea behind the glass — a lit horizon band over deep water. Pure CSS on purpose: this repo
+   has no art, and a gradient that ships in the stylesheet costs zero bytes and never 404s. */
+.bv-sea {
+  background-image:
+    radial-gradient(120% 60% at 50% 0%, var(--color-sea-lit) 0%, transparent 60%),
+    linear-gradient(to bottom, var(--color-sky) 0%, var(--color-sea) 38%, var(--color-sea-deep) 100%);
 }
 
 /* Quiet entrance for newly-arrived log lines (the Ledger feed). */

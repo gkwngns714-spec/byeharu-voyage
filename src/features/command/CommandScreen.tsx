@@ -11,7 +11,7 @@ import {
   Screen,
   SectionLabel,
 } from '../../components/ui'
-import { formatClock, formatDucats, formatTuns, formatVoyageDays } from '../../lib/format'
+import { formatClock, formatTuns, formatVoyageDays } from '../../lib/format'
 import type { Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { OrderComposer } from './OrderComposer'
@@ -209,15 +209,13 @@ export function CommandScreen() {
         eyebrow="Orders"
         title="Command"
         explain="Pick what she is to do; the order writes itself. Nothing here happens until you issue it."
+        /* The purse used to be printed here as well. It lives in the top bar now, on every screen
+           at once (TopBar.tsx): one fact shown in two places is two authorities for it, and the
+           copy that scrolls away is the wrong one to keep. */
         actions={
-          <>
-            {world.ducats !== null && (
-              <span className="font-mono text-sm text-accent">{formatDucats(world.ducats)}</span>
-            )}
-            <Button variant="ghost" disabled={world.busy} onClick={() => void refresh()}>
-              {world.busy ? 'reading…' : 'Read again'}
-            </Button>
-          </>
+          <Button variant="ghost" disabled={world.busy} onClick={() => void refresh()}>
+            {world.busy ? 'reading…' : 'Read again'}
+          </Button>
         }
       />
 
