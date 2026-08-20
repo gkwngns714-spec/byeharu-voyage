@@ -3,6 +3,7 @@ import { Link, Outlet } from 'react-router-dom'
 import { ShellStateContext } from './shellState'
 import { NavBar } from './NavBar'
 import { RebuildNotice } from './RebuildNotice'
+import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
 
 // THE PERSISTENT SHELL: a slim header, the tab content, and the ONE tab bar. Mounted once for the
@@ -53,6 +54,13 @@ export function AppShell() {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
+  // The register gate's two inputs, selected as PRIMITIVES and not as one object: a selector
+  // returning `{phase, fleets}` builds a fresh object every render, and zustand compares with
+  // Object.is — so it would re-render the whole shell on every market fetch, which is the opposite
+  // of what selecting is for.
+  const worldPhase = useWorld((s) => s.phase)
+  const houseUnfounded = useWorld((s) => s.fleets.length === 0)
+
   const shell = useMemo(() => ({ nowMs }), [nowMs])
 
   return (
@@ -76,13 +84,31 @@ export function AppShell() {
             RebuildNotice.tsx. It renders nothing on an ordinary boot. */}
         <RebuildNotice />
 
-        {/* Tab content gets the viewport minus header and tab bar; each screen owns its own scroll
-            (see the Screen primitive), so the page itself never scrolls. */}
-        <main className="min-h-0 flex-1 overflow-hidden">
-          <Outlet />
-        </main>
+        {/* A SIGNED-IN CAPTAIN WITH NO HOUSE GETS ONE DOOR, NOT EIGHT TABS.
+            On a real project `public.new_house()` is revoked from every client role, so a new
+            account arrives owning nothing — and every tab would be an empty shell of a screen. The
+            register replaces the whole tab content until the book is signed, so there is nothing to
+            navigate around and nothing to misread as broken.
 
-        <NavBar />
+            `fleets.length === 0` is only meaningful once the world is READY: while it is opening or
+            after it has failed the list is empty too, and those are not the same state. Local mode
+            founds its captain during boot, so this never appears there. */
+        }
+        {worldPhase === 'ready' && houseUnfounded ? (
+          <main className="min-h-0 flex-1 overflow-hidden">
+            <SignTheBook />
+          </main>
+        ) : (
+          <>
+            {/* Tab content gets the viewport minus header and tab bar; each screen owns its own
+                scroll (see the Screen primitive), so the page itself never scrolls. */}
+            <main className="min-h-0 flex-1 overflow-hidden">
+              <Outlet />
+            </main>
+
+            <NavBar />
+          </>
+        )}
       </div>
     </ShellStateContext.Provider>
   )

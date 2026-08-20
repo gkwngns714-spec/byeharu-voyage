@@ -5,6 +5,90 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-20 — D11e: the game went online
+
+Owner: *"can you just delete everything of aqua chronicles, and overwrite this?"*
+
+### What was destroyed, and what was looked at first
+
+`aqua-chronicles` held one of the account's two free Supabase slots. Before deleting anything:
+
+| | |
+|---|---|
+| status | `ACTIVE_HEALTHY`, Seoul, Postgres 17 |
+| last commit | **2026-06-16** — two months dead, the day byeharu began |
+| data | 8 players, 5 ships, 3 teams |
+| accounts | 8 — and **7 were test accounts** (`cooptest_`, `cargo_e2e_`, `repro_`, `claudedebug_`) |
+
+So: a dormant dev database holding the owner's own two emails and six robots. Every row of it was
+exported to `Desktop/aqua-chronicles/_final_db_export_20260820/` first, and the 293 migrations that
+built it were never at risk — they are in the repo. Then the project was deleted. **That is
+irreversible and the export is the only copy.**
+
+### byeharu-voyage is now a real server
+
+    project   byeharu-voyage · olaquvizoavjeiricyxk · ap-northeast-2 (Seoul)
+    chain     11 migrations pushed, 11 self-assert receipts GREEN on real Supabase
+    schemas   world, cmd, voyage exposed to PostgREST
+    world     214 ports · 782 legs · 14,980 prices · 0 client write grants
+
+0001's grant lockdown found what only a real project has: **16 default-ACL entries owned by
+`supabase_admin`** that cannot be revoked from the migration role. It printed them, proved every
+object in the four schemas is owned by `postgres`, and passed — the exact scenario D8 wrote the
+Supabase-shaped preamble for, now confirmed against the real thing rather than a fixture.
+
+### The proof, end to end, in a browser
+
+    1. sign-in       -> /command   [rpc] cloud: Supabase project, PostgREST, schemas world/cmd
+    2. no house      -> THE REGISTER · "Sign the book"
+    3. signed        -> 8,000 d. · Gaivota · lying at Lisbon · 15.0 d of stores · 56 t free
+    4. FLEETS        -> 1/2 fleets · 1/4 ships · Gaivota DOCKED at Lisbon · Barca
+
+A `cmd.found_house()` call over PostgREST returned `{"ok": true, ...}`, and a second one returned
+`E_ALREADY_FOUNDED` — **the positive control biting in production**, not in a fixture.
+
+### The screen that had to exist first
+
+`src/features/found/SignTheBook.tsx`. Local mode founds its captain during boot, so nobody had ever
+needed one; on a real project a new account owns nothing and every tab is an empty shell. The
+register now REPLACES the tab content until the book is signed (`AppShell.tsx`) — there is nothing
+to navigate around and nothing to misread as broken. It appears only when the world is `ready` and
+the fleet list is empty, because "still opening" and "failed" are also empty and are not the same
+state; local mode never sees it.
+
+**It validates nothing.** `public.players` already carries `unique` and
+`check (length(btrim(company_name)) between 3 and 24)`, and 0011 turns each into a refusal with a
+sentence. A length check in the form would be a second authority that drifts the first time the
+constraint moves. The button asks, and prints what comes back.
+
+### Two mistakes made along the way, both corrected
+
+**1. The auth config was pushed when I had declined it.** `supabase config push` prompts per
+service; piping `y\nn\n…` answered the API prompt correctly and then did *not* hold for auth —
+remote auth silently took the local file's values, changing `site_url` from `localhost:3000` to
+`127.0.0.1:3000` and turning MFA enrolment off. No users existed and nothing broke, but it was not
+an intended change. Corrected deliberately: `site_url` is now
+`http://localhost:5173/byeharu-voyage/` (where the game actually runs), the Pages URL is in
+`additional_redirect_urls` for when it exists, and MFA is back on. Verified by re-diffing until all
+four services reported *up to date*.
+
+**2. I called a 42501 a defect before reading the grant.** `world.snapshot()` over PostgREST
+returned *"permission denied for schema world"* and the first instinct was written down as a bug
+only a live deployment could find. It is not a bug: 0001 line 223 grants `world` USAGE to
+`authenticated` and `service_role` and deliberately **not** to `anon`. The call was made with an
+anonymous key. Signed in, it returns 200 and the whole world.
+
+### Still not done
+
+* **pg_cron is not scheduled.** 0010's receipt has said so on every apply and still does. Reads
+  settle voyages (D.2) so the game plays, but market drift and stock regeneration never run.
+* **The `.env.local` switch is total.** With it present the dev server is in cloud mode, and the
+  local PGlite world — including any game played in this browser — is not what loads. Delete the
+  file to go back.
+* **One world, many captains** is now literally true and has never been under load.
+
+---
+
 ## 2026-08-20 — D11d: cloud mode could never have worked, and the reason was one missing function
 
 Owner: *"this is an online game... everything must be server controlled."*
