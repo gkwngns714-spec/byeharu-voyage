@@ -1,0 +1,217 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #e2ab52; } a:hover { color: #f2c479; }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums slashed-zero; }
+    .serif { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; }
+    .tile { transition: border-color .15s, background-color .15s; }
+    .tile:hover { border-color: rgba(226,171,82,.55); background: #1a2534; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #070b11; color: #f1ebdd; font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;">
+
+  <!-- ── the quay: sky, water, hulls. Drawn, not decorated — it is the only thing that says
+       "you are standing somewhere" rather than "you are reading a page". ────────────────── -->
+  <div style="position: absolute; inset: 0 0 auto 0; height: 236px; overflow: hidden;">
+    <svg viewBox="0 0 390 236" width="390" height="236" style="display: block;">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#0d141d"/><stop offset="1" stop-color="#1b2635"/>
+        </linearGradient>
+        <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#070b11" stop-opacity="0"/><stop offset="1" stop-color="#070b11"/>
+        </linearGradient>
+      </defs>
+      <rect width="390" height="236" fill="url(#sky)"/>
+      <circle cx="312" cy="58" r="26" fill="#e2ab52" opacity="0.10"/>
+      <circle cx="312" cy="58" r="12" fill="#e2ab52" opacity="0.16"/>
+      <path d="M0 150 L44 150 L60 128 L96 128 L112 150 L150 150 L168 118 L206 118 L222 150 L268 150 L284 134 L322 134 L338 150 L390 150 L390 236 L0 236 Z" fill="#16202c"/>
+      <g stroke="#253547" stroke-width="1" fill="none">
+        <path d="M72 150 v-14 M84 150 v-14 M186 150 v-22 M300 150 v-12"/>
+      </g>
+      <g opacity="0.55" stroke="#8b97a5" stroke-width="1.2" fill="none">
+        <path d="M258 150 v-62 M258 96 c14 5 22 12 27 21 h-27 M258 110 c-10 4 -16 7 -21 15 h21"/>
+        <path d="M232 150 h52 l-6 10 h-40 z" fill="#0d141d"/>
+      </g>
+      <rect y="150" width="390" height="86" fill="#0a1220"/>
+      <g stroke="#e2ab52" stroke-width="1" opacity="0.14" fill="none">
+        <path d="M0 170 q28 -5 56 0 t56 0 t56 0 t56 0 t56 0 t56 0"/>
+        <path d="M-20 192 q28 -5 56 0 t56 0 t56 0 t56 0 t56 0 t56 0"/>
+        <path d="M0 214 q28 -5 56 0 t56 0 t56 0 t56 0 t56 0 t56 0"/>
+      </g>
+      <rect y="176" width="390" height="60" fill="url(#fade)"/>
+    </svg>
+  </div>
+
+  <!-- ── the only chrome that never leaves: who you are, what you hold ─────────────────── -->
+  <div style="position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 0;">
+    <span class="mono" style="font-size: 11px; letter-spacing: .2em; color: #8b97a5;">DAY 12 · 09:40</span>
+    <span class="mono" style="font-size: 15px; color: #e2ab52; font-weight: 500;">7,451 d.</span>
+  </div>
+
+  <!-- ── where you are ────────────────────────────────────────────────────────────────── -->
+  <div style="position: relative; padding: 96px 16px 0;">
+    <p class="mono" style="margin: 0 0 2px; font-size: 10px; letter-spacing: .22em; color: #8b97a5;">PORTUGAL · NORTH ATLANTIC</p>
+    <h1 class="serif" style="margin: 0; font-size: 40px; line-height: 1; font-weight: 600; letter-spacing: -.01em;">Lisbon</h1>
+    <p style="margin: 8px 0 0; font-size: 13px; color: #b3bcc7;">Gaivota lies alongside, hold empty, 15 days of stores.</p>
+  </div>
+
+  <!-- ── the doors. This is the whole change: the port is a PLACE with rooms in it, and
+       each room's ONE live fact is on its door, so you know where to go before you go. ── -->
+  <div style="position: relative; padding: 20px 16px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+    <sc-for list="{{doors}}" as="d" hint-placeholder-count="6">
+      <div class="tile" onClick="{{d.open}}" style="min-height: 96px; display: flex; flex-direction: column; justify-content: space-between; padding: 12px; border: 1px solid #253547; border-radius: 12px; background: #0d141d; box-shadow: inset 0 1px 0 0 rgba(255,255,255,.04); cursor: pointer;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="{{d.tint}}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <sc-for list="{{d.paths}}" as="p" hint-placeholder-count="3"><path d="{{p}}"></path></sc-for>
+          </svg>
+          <span class="serif" style="font-size: 17px; font-weight: 600;">{{d.name}}</span>
+        </div>
+        <span class="mono" style="font-size: 11px; line-height: 1.35; color: {{d.tint}};">{{d.note}}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ── the standing bar: three things that follow you everywhere, not eight tabs ─────── -->
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; border-top: 1px solid #253547; background: #0d141d;">
+    <sc-for list="{{bar}}" as="b" hint-placeholder-count="3">
+      <div style="flex-grow: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer;">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="{{b.tint}}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <sc-for list="{{b.paths}}" as="p" hint-placeholder-count="3"><path d="{{p}}"></path></sc-for>
+        </svg>
+        <span class="mono" style="font-size: 9px; letter-spacing: .16em; color: {{b.tint}};">{{b.label}}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ══ THE ROOM YOU OPENED ═══════════════════════════════════════════════════════════
+       Tapping a door does not navigate. The port stays where it is and the room opens on
+       top of it — so you always know where you are standing, and closing is one tap. ── -->
+  <sc-if value="{{panel}}" hint-placeholder-val="{{true}}">
+    <div style="position: absolute; inset: 0; background: rgba(7,11,17,.72);" onClick="{{shut}}"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; max-height: 84%; display: flex; flex-direction: column; border-top: 1px solid rgba(226,171,82,.28); border-radius: 16px 16px 0 0; background: #0d141d; box-shadow: 0 -16px 48px -16px rgba(0,0,0,.85);">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 10px; border-bottom: 1px solid #253547;">
+        <div>
+          <p class="mono" style="margin: 0 0 2px; font-size: 10px; letter-spacing: .2em; color: #8b97a5;">LISBON</p>
+          <h2 class="serif" style="margin: 0; font-size: 21px; font-weight: 600;">{{panel.title}}</h2>
+        </div>
+        <div onClick="{{shut}}" style="width: 44px; height: 44px; margin: -8px -10px -8px 0; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#8b97a5" stroke-width="1.5" stroke-linecap="round">
+            <path d="M6 6l12 12"></path><path d="M18 6 6 18"></path>
+          </svg>
+        </div>
+      </div>
+      <div style="padding: 14px 16px 22px; overflow-y: auto;">
+        <p style="margin: 0 0 14px; font-size: 13px; color: #b3bcc7;">{{panel.lede}}</p>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <sc-for list="{{panel.rows}}" as="r" hint-placeholder-count="4">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 12px; border: 1px solid #253547; border-radius: 8px; background: #16202c;">
+              <div style="min-width: 0;">
+                <p style="margin: 0; font-size: 14px; color: #f1ebdd;">{{r.name}}</p>
+                <p class="mono" style="margin: 2px 0 0; font-size: 11px; color: #8b97a5;">{{r.sub}}</p>
+              </div>
+              <span class="mono" style="flex-shrink: 0; font-size: 13px; color: {{r.tint}};">{{r.value}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"open":{"editor":"enum","options":["none","market","shipyard","inn","harbour"],"default":"none","section":"State"}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props)
+    this.state = { open: null }
+  }
+
+  rooms() {
+    return {
+      market: {
+        title: 'The Market',
+        lede: 'Four goods here sell dearer somewhere your factors can reach. The rest are noise.',
+        rows: [
+          { name: 'Black Pepper', sub: '83% of neighbours · 131 d.', value: 'Tangier +21%', tint: '#5cc48d' },
+          { name: 'Porcelain', sub: '84% of neighbours · 367 d.', value: 'Sevilla +18%', tint: '#5cc48d' },
+          { name: 'Olive Oil', sub: '88% of neighbours · 92 d.', value: 'Ceuta +9%', tint: '#5cc48d' },
+          { name: 'Salt', sub: '89% of neighbours · 28 d.', value: 'Sale +7%', tint: '#5cc48d' },
+          { name: '66 more', sub: 'nothing here undercuts its neighbours', value: 'show', tint: '#8b97a5' },
+        ],
+      },
+      shipyard: {
+        title: 'The Shipyard',
+        lede: 'Tier 3 yard. She is sound; a bigger hull is what stands between you and a real cargo.',
+        rows: [
+          { name: 'Careen and caulk', sub: 'hull 100% — nothing to mend', value: '—', tint: '#8b97a5' },
+          { name: 'Barca', sub: '60 t hold · 5.0 kn · draft 5', value: 'yours', tint: '#8b97a5' },
+          { name: 'Caravela Latina', sub: '120 t hold · 5.6 kn · draft 6', value: '14,200 d.', tint: '#e2ab52' },
+          { name: 'Nau', sub: '260 t hold · 4.4 kn · draft 9', value: '41,800 d.', tint: '#8b97a5' },
+        ],
+      },
+      inn: {
+        title: 'The Inn',
+        lede: '400 hands drinking in this port. Eight aboard, twenty berths — she is sailing light.',
+        rows: [
+          { name: 'Sign on hands', sub: '8 of 20 berths filled', value: '12 for 96 d.', tint: '#e2ab52' },
+          { name: 'Provisions', sub: '15 days of stores aboard', value: 'top up', tint: '#e2ab52' },
+          { name: 'Harbour talk', sub: 'a Genoese factor was asking after pepper', value: 'listen', tint: '#8b97a5' },
+        ],
+      },
+      harbour: {
+        title: 'The Harbour Master',
+        lede: 'Where she can be by nightfall. Distance is what she sails, not what a gull flies.',
+        rows: [
+          { name: 'Cádiz', sub: '248 nm · 2.1 days · draft 5', value: 'pepper +12%', tint: '#b3bcc7' },
+          { name: 'Tangier', sub: '284 nm · 2.4 days · draft 3', value: 'pepper +21%', tint: '#5cc48d' },
+          { name: 'Gibraltar', sub: '238 nm · 2.0 days · draft 6', value: 'pepper +4%', tint: '#b3bcc7' },
+          { name: 'Ponta Delgada', sub: '781 nm · 6.6 days · draft 7', value: 'pepper +25%', tint: '#5cc48d' },
+        ],
+      },
+    }
+  }
+
+  renderVals() {
+    const rooms = this.rooms()
+    const forced = this.props.open && this.props.open !== 'none' ? this.props.open : null
+    const key = this.state.open ?? forced
+    const door = (id, name, note, tint, paths) => ({
+      id, name, note, tint, paths,
+      open: () => this.setState({ open: id }),
+    })
+    return {
+      panel: key ? rooms[key] ?? null : null,
+      shut: () => this.setState({ open: null }),
+      doors: [
+        door('market', 'Market', '4 worth buying', '#5cc48d',
+          ['M12 4v16', 'M6 20h12', 'M4.5 8h15', 'M4.5 8 2 14h5l-2.5-6Z', 'M19.5 8 17 14h5l-2.5-6Z']),
+        door('harbour', 'Harbour', '9 ports in reach', '#e2ab52',
+          ['M12 7.5V21', 'M12 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z', 'M5 13H2a10 10 0 0 0 20 0h-3', 'M8.5 10.5h7']),
+        door('shipyard', 'Shipyard', 'tier 3 · hull sound', '#8b97a5',
+          ['M3 17.5h18l-2 3.5H5l-2-3.5Z', 'M12 3v14.5', 'M12 5c3 1 5 2.5 6 4.5h-6', 'M12 8c-2 .8-3.5 1.5-4.5 3H12']),
+        door('inn', 'Inn', '400 hands · 12 berths free', '#e2ab52',
+          ['M6 8h11v7a5 5 0 0 1-5 5H11a5 5 0 0 1-5-5Z', 'M17 10h2.5a2.5 2.5 0 0 1 0 5H17', 'M9 5V3', 'M13 5V3']),
+      ],
+      bar: [
+        { label: 'FLEET', tint: '#8b97a5', paths: ['M3 17.5h18l-2 3.5H5l-2-3.5Z', 'M12 3v14.5', 'M12 5c3 1 5 2.5 6 4.5h-6'] },
+        { label: 'CHART', tint: '#8b97a5', paths: ['M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4Z', 'M9 4v14', 'M15 6v14'] },
+        { label: 'LOG', tint: '#8b97a5', paths: ['M12 6.5C10.5 5 8.5 4.5 6 4.5H3.5v13H6c2.5 0 4.5.5 6 2', 'M12 6.5c1.5-1.5 3.5-2 6-2H20.5v13H18c-2.5 0-4.5.5-6 2', 'M12 6.5v15'] },
+      ],
+    }
+  }
+}
+</script>
+</body>
+</html>

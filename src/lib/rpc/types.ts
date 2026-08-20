@@ -350,3 +350,17 @@ export interface ClearResult {
   note: string | null
   queue: QueuedOrder[]
 }
+
+/**
+ * What `cmd.found_house()` hands back when a captain signs the book (0011).
+ *
+ * There is no uid in the request and none in the reply: the server took the identity from the JWT,
+ * so a client can only ever have founded its own house. A refusal arrives as a `Refusal` through
+ * the usual `RpcResult`, never as a field on this — E_ALREADY_FOUNDED, E_NAME_TAKEN, E_BAD_NAME,
+ * E_NO_SUCH_NATION and E_NOT_SIGNED_IN are the five the migration can raise.
+ */
+export interface FoundedHouse {
+  player_id: string
+  company_name: string
+  nation: string
+}

@@ -1,0 +1,39 @@
+{
+  "artboards": [
+    { "file": "Current.dc.html", "title": "Today — Port tab", "x": 0, "y": 0, "w": 390, "h": 844 },
+    { "file": "Main.dc.html", "title": "Lisbon — the port as a place", "x": 520, "y": 0, "w": 390, "h": 844 },
+    { "file": "Market.dc.html", "title": "The Market, opened", "x": 1040, "y": 0, "w": 390, "h": 844 },
+    { "file": "AtSea.dc.html", "title": "At sea — the chart is the screen", "x": 1560, "y": 0, "w": 390, "h": 844 }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -230,
+      "w": 390,
+      "text": "TODAY\n\nOne column, top to bottom. Eight equal tabs treat Market and Profile as the same kind of thing. Nothing tells you where you are — only which document you are reading."
+    },
+    {
+      "id": "place",
+      "x": 520,
+      "y": -230,
+      "w": 390,
+      "text": "THE PORT IS A PLACE\n\nYou are standing on a quay, not reading a page. Facilities are doors, and each door carries the one live fact that decides whether you go in.\n\nTap a door — it opens OVER the harbour, so you never lose where you are. The eight tabs collapse to three things that follow you: FLEET, CHART, LOG."
+    },
+    {
+      "id": "market-note",
+      "x": 1040,
+      "y": -230,
+      "w": 390,
+      "text": "THE MARKET\n\n%NBR was a sixth column that fell off the right edge of a 390px phone — the one number the game turns on, invisible. It is a bar now, first and full width.\n\nAnd the two things that cost a real voyage: WHERE it sells dearer (the bookkeeper), and what a PARCEL actually costs — 133 a tun, not the 131 on the label."
+    },
+    {
+      "id": "sea-note",
+      "x": 1560,
+      "y": -230,
+      "w": 390,
+      "text": "AT SEA\n\nWhile she is sailing the chart IS the screen, not a tab you visit.\n\nStanding orders read as a numbered sentence, and a mis-ordered pair says so BEFORE it runs — the queue currently accepts 'sail home' ahead of 'sell' in silence, which is a guaranteed loss you only find in the ledger."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

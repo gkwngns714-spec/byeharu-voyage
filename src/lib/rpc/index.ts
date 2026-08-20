@@ -30,6 +30,7 @@ import type {
   CancelResult,
   ClearResult,
   FleetView,
+  FoundedHouse,
   IssueResult,
   LedgerPage,
   MarketView,
@@ -141,3 +142,21 @@ export type { RpcName, RpcSpec } from './catalog'
 export { expectOk, fromError, fromPayload, ok, refused } from './result'
 export type { Refusal, RpcResult } from './result'
 export type * from './types'
+
+/**
+ * Sign the book: found this account's house, its 8,000 ducats and its first Barca at Lisboa.
+ *
+ * CALLED ONCE PER ACCOUNT, EVER, and the server is what makes that true — `public.players.auth_uid`
+ * is unique, and 0011 translates the violation into `E_ALREADY_FOUNDED`. So the client never has to
+ * ask "has this player founded yet?" before calling; it may simply call, and read the refusal.
+ *
+ * Nothing here identifies the captain. The uid is the JWT's, read server-side (0011), which is why
+ * this is the only founding path a browser is allowed to hold — `public.new_house()` takes a uid
+ * and is revoked from every client role for exactly that reason.
+ */
+export function cmdFoundHouse(
+  companyName: string,
+  nationCode = 'PRT',
+): Promise<RpcResult<FoundedHouse>> {
+  return call<FoundedHouse>('cmdFoundHouse', [companyName, nationCode])
+}

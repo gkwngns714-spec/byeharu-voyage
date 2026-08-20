@@ -31,7 +31,7 @@ import {
 } from '../src/lib/db/chainSource.node.mjs'
 
 const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.sql'
-const LAST = '20260818000010_the_clock_ticks_for_everyone.sql'
+const LAST = '20260818000011_a_captain_signs_the_book.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
@@ -254,5 +254,5 @@ test('progress never goes backwards and never claims done before it is', () => {
 })
 
 test('a migration filename reads as a sentence', () => {
-  expect(humanMigration(LAST)).toBe('the clock ticks for everyone')
+  expect(humanMigration(LAST)).toBe('a captain signs the book')
 })

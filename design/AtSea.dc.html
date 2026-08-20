@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #e2ab52; } a:hover { color: #f2c479; }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums slashed-zero; }
+    .serif { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #0a1220; color: #f1ebdd; font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;">
+
+  <!-- ── the chart IS the screen while she is at sea. Not a tab you can visit — the place
+       you are. Read-only: nothing on this water is a control. ─────────────────────────── -->
+  <svg viewBox="0 0 390 470" width="390" height="470" style="display: block; position: absolute; top: 0; left: 0;">
+    <defs>
+      <linearGradient id="deep" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#0d141d"/><stop offset="1" stop-color="#0a1220"/>
+      </linearGradient>
+    </defs>
+    <rect width="390" height="470" fill="url(#deep)"/>
+    <g stroke="#e2ab52" stroke-width="1" opacity="0.07">
+      <path d="M0 90h390M0 180h390M0 270h390M0 360h390M78 0v470M156 0v470M234 0v470M312 0v470"/>
+    </g>
+    <path d="M-30 300 q60 -34 130 -22 q54 10 96 -12 q40 -20 84 -6 l0 210 l-310 0 z" fill="#1b2635" opacity="0.85"/>
+    <path d="M250 62 q64 -18 116 4 l0 92 q-70 16 -116 -12 z" fill="#1b2635" opacity="0.6"/>
+    <path d="M96 176 C 150 208, 214 236, 268 268" fill="none" stroke="#e2ab52" stroke-width="1.6" stroke-dasharray="5 6" opacity="0.55"/>
+    <g>
+      <circle cx="96" cy="176" r="4.5" fill="#0a1220" stroke="#8b97a5" stroke-width="1.5"/>
+      <text x="86" y="164" text-anchor="end" fill="#8b97a5" font-size="11" font-family="'JetBrains Mono', monospace" letter-spacing="1.4">LISBON</text>
+      <circle cx="268" cy="268" r="4.5" fill="#0a1220" stroke="#e2ab52" stroke-width="1.5"/>
+      <text x="278" y="272" fill="#e2ab52" font-size="11" font-family="'JetBrains Mono', monospace" letter-spacing="1.4">TANGIER</text>
+    </g>
+    <g transform="translate(182 232) rotate(31)">
+      <path d="M-9 4 h18 l-3 5 h-12 z" fill="#0d141d" stroke="#e2ab52" stroke-width="1.2"/>
+      <path d="M0 4 v-16 M0 -11 c5 2 8 4 10 8 h-10" fill="none" stroke="#e2ab52" stroke-width="1.2"/>
+    </g>
+  </svg>
+
+  <div style="position: absolute; top: 14px; left: 16px; right: 16px; display: flex; align-items: center; justify-content: space-between;">
+    <span class="mono" style="font-size: 11px; letter-spacing: .2em; color: #8b97a5;">DAY 14 · AT SEA</span>
+    <span class="mono" style="font-size: 15px; color: #e2ab52; font-weight: 500;">792 d.</span>
+  </div>
+
+  <div style="position: absolute; top: 300px; left: 16px; right: 16px;">
+    <h1 class="serif" style="margin: 0; font-size: 30px; line-height: 1.14; font-weight: 600;">Two days out of Lisbon,<br>bound for Tangier.</h1>
+    <p class="mono" style="margin: 12px 0 0; font-size: 12px; color: #b3bcc7;">148 of 284 nm · 4.3 kn · 50 t of pepper below</p>
+    <div style="margin-top: 10px; height: 4px; border-radius: 2px; background: #16202c; overflow: hidden;">
+      <div style="height: 100%; width: 52%; background: #e2ab52; opacity: .85;"></div>
+    </div>
+    <p class="mono" style="margin: 8px 0 0; font-size: 11px; color: #8b97a5;">SHE IS ALONGSIDE IN 4 MIN</p>
+  </div>
+
+  <!-- ── standing orders. The old queue accepted "sail home" ahead of "sell" and said nothing,
+       which is a guaranteed loss the player only finds in the ledger. Here the sequence is
+       numbered as a sentence, and a mis-ordered pair says so before it runs. ───────────── -->
+  <div style="position: absolute; left: 0; right: 0; bottom: 56px; padding: 16px 16px 18px; border-top: 1px solid #253547; border-radius: 16px 16px 0 0; background: #0d141d; box-shadow: 0 -16px 48px -16px rgba(0,0,0,.85);">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;">
+      <h2 class="serif" style="margin: 0; font-size: 18px; font-weight: 600;">When she arrives</h2>
+      <span class="mono" style="font-size: 11px; color: #8b97a5;">3 standing</span>
+    </div>
+
+    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+      <sc-for list="{{orders}}" as="o" hint-placeholder-count="3">
+        <div style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border: 1px solid {{o.edge}}; border-radius: 8px; background: #16202c;">
+          <span class="mono" style="flex-shrink: 0; width: 18px; font-size: 11px; color: #8b97a5;">{{o.n}}</span>
+          <span class="mono" style="flex-grow: 1; min-width: 0; font-size: 12px; color: {{o.ink}};">{{o.text}}</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" style="flex-shrink: 0;" fill="none" stroke="#8b97a5" stroke-width="1.5" stroke-linecap="round">
+            <path d="M4 8h16"></path><path d="M4 12h16"></path><path d="M4 16h16"></path>
+          </svg>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="margin-top: 10px; display: flex; align-items: flex-start; gap: 9px; padding: 10px 12px; border: 1px solid rgba(232,189,83,.3); border-radius: 8px; background: rgba(232,189,83,.10);">
+      <svg viewBox="0 0 24 24" width="16" height="16" style="flex-shrink: 0; margin-top: 1px;" fill="none" stroke="#e8bd53" stroke-width="1.5" stroke-linecap="round">
+        <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"></path><path d="M12 11v5.5"></path><path d="M12 7.6v.9"></path>
+      </svg>
+      <p style="margin: 0; font-size: 12px; line-height: 1.45; color: #e8bd53;">She sails for Lisbon before the pepper is sold. Drag <span class="mono">3</span> above <span class="mono">2</span>, or she carries it home and sells it cheap.</p>
+    </div>
+
+    <div style="margin-top: 12px; display: flex; gap: 8px;">
+      <div style="flex-grow: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: #e2ab52;">
+        <span style="font-size: 14px; font-weight: 500; color: #070b11;">Give her an order</span>
+      </div>
+      <div style="flex-shrink: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; padding: 0 16px; border: 1px solid #253547; border-radius: 6px; background: #16202c;">
+        <span style="font-size: 14px; color: #f1ebdd;">Log</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; border-top: 1px solid #253547; background: #0d141d;">
+    <sc-for list="{{bar}}" as="b" hint-placeholder-count="3">
+      <div style="flex-grow: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="{{b.tint}}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <sc-for list="{{b.paths}}" as="p" hint-placeholder-count="3"><path d="{{p}}"></path></sc-for>
+        </svg>
+        <span class="mono" style="font-size: 9px; letter-spacing: .16em; color: {{b.tint}};">{{b.label}}</span>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      orders: [
+        { n: '1', text: 'Come alongside at Tangier', ink: '#f1ebdd', edge: '#253547' },
+        { n: '2', text: 'SAIL Gaivota TO Lisbon', ink: '#e8bd53', edge: 'rgba(232,189,83,.35)' },
+        { n: '3', text: 'SELL black-pepper ALL', ink: '#f1ebdd', edge: '#253547' },
+      ],
+      bar: [
+        { label: 'FLEET', tint: '#8b97a5', paths: ['M3 17.5h18l-2 3.5H5l-2-3.5Z', 'M12 3v14.5', 'M12 5c3 1 5 2.5 6 4.5h-6'] },
+        { label: 'CHART', tint: '#e2ab52', paths: ['M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4Z', 'M9 4v14', 'M15 6v14'] },
+        { label: 'LOG', tint: '#8b97a5', paths: ['M12 6.5C10.5 5 8.5 4.5 6 4.5H3.5v13H6c2.5 0 4.5.5 6 2', 'M12 6.5c1.5-1.5 3.5-2 6-2H20.5v13H18c-2.5 0-4.5.5-6 2', 'M12 6.5v15'] },
+      ],
+    }
+  }
+}
+</script>
+</body>
+</html>

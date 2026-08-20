@@ -5,6 +5,113 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-20 — D11d: cloud mode could never have worked, and the reason was one missing function
+
+Owner: *"this is an online game... everything must be server controlled."*
+
+### What is already server-controlled, and it is most of it
+
+The RULES have never been anywhere but the server. Every verb is a SQL function; `cmd.preview()`
+runs the real verb in a subtransaction and rolls it back, so the estimate and the commit cannot
+disagree; the client-side validator (838 lines) was deleted in D5 because *"two authorities for 'is
+this order legal' is exactly the duplication this project forbids"*. RLS is on all 19 tables with
+**0 client write grants**, re-proved on every apply. The client renders and requests. It decides
+nothing.
+
+### What is not
+
+**The database runs in the player's browser.** PGlite, one private world each — no shared economy,
+no other captains, no server clock, and a save that lives or dies with one origin's IndexedDB
+(D11c). `src/lib/rpc/init.ts` was built to flip this with one answer (`hasCloud`), and
+`cloudBackend.ts` has said so since it was written: *"NOT PROVEN AGAINST A REAL PROJECT."*
+
+### The hole that flip would have fallen into
+
+Auditing the cloud path before deploying anything, rather than after:
+
+    grep -rn "new_house" src/     ->  src/lib/db/localDb.ts, and nothing else
+
+`public.new_house(p_auth_uid, name, nation)` founds the house, the 8,000 ducats, the Barca at
+Lisboa. 0004 line 342 revokes it from `public, anon, authenticated` — **correctly and permanently**,
+because it takes a uid as an argument, so a client that held it could found a house on somebody
+else's account. Its only caller was the local engine's boot.
+
+So: **sign in to a real project and you would land in an empty world.** No fleet, no purse, no
+ledger, and nothing on any screen to press. Cloud mode has never been playable, and nothing would
+have said so until a real player signed up.
+
+### 0011 — `cmd.found_house(name, nation)`
+
+Note what is *not* in that signature. **It takes no uid.** It reads `auth.uid()` itself, so the only
+house a caller can found is their own — the security property is structural, not checked.
+
+It also **restates no rule that already exists**. `public.players` already carries
+`auth_uid uuid unique` and `company_name text not null unique check (length(btrim(...)) between 3
+and 24)`. The function lets those constraints bite and translates the SQLSTATE into the refusal
+vocabulary the client already speaks. Two authorities for "is this name legal" would drift; there is
+one, and it is the constraint.
+
+Five refusals, and the self-assert makes **four positive controls BITE** rather than asserting the
+happy path alone:
+
+| | |
+|---|---|
+| `E_NOT_SIGNED_IN` | an unsigned caller, before any house exists |
+| `E_ALREADY_FOUNDED` | a second house on one account |
+| `E_NAME_TAKEN` | a name already trading |
+| `E_BAD_NAME` | a 1-character name |
+| `E_NO_SUCH_NATION` | an unknown flag — carrying all 20 real ones as fixes |
+
+and it asserts the grants OUTSIDE the rolled-back probe, because a revoke that never happened must
+fail the migration rather than vanish with it: `anon` may **not** execute it (or a crawler founds
+thousands), `authenticated` may (or nobody can sign the book at all). After the four refusals it
+re-checks that the refused captain still has **no** house — a refusal that half-founded one would
+leave a purse with no ledger behind it.
+
+### Wired, and the vocabulary test earned its keep
+
+`cmdFoundHouse` is one row in `src/lib/rpc/catalog.ts` — both backends are built from it, so the
+local SQL and the PostgREST named-argument call cannot drift. Adding it turned
+`rpc.surface.spec.ts` red, exactly as designed: the client's whole vocabulary is asserted by name
+*"so that adding one is a deliberate edit here"*. The edit is made, and the comment beside it that
+0011 invalidated (*"a browser must not be able to found a house"*) is corrected to the real rule —
+`new_house(uid, …)` never, `found_house(name)` yes, and **the difference is the argument**.
+
+`npm run db:apply` 11/11 receipts · `db:proof` 31/31 · `npx playwright test` 140 passed · tsc and
+eslint clean. Three test pins moved deliberately (last-migration name, its sentence, the vocabulary
+list).
+
+### THE WALL, stated as a fact
+
+**There is no Supabase project for byeharu-voyage, and one cannot be created on this account.**
+`supabase projects list` returns exactly two, and the free tier allows two:
+
+    aqua-chronicles   Northeast Asia (Seoul)       2026-05-24
+    byeharu           Southeast Asia (Singapore)   2026-06-16
+
+The one-time fix is the owner's and takes a minute in the dashboard: **pause `aqua-chronicles`**
+(reversible, keeps the data) or **upgrade the org to Pro**. Nothing else is blocked by it — CI's
+disposable-Supabase job proves the whole chain against real Supabase roles on every push, and it is
+green on `4f598e6`.
+
+### What still stands between a project and a shared world
+
+Written down now so the day it exists is a checklist, not a discovery:
+
+1. **Expose the schemas.** PostgREST serves `public` only by default; the API settings must add
+   `world`, `cmd`, `voyage`. `cloudBackend.ts` has carried this note since it was written.
+2. **Schedule the clock.** 0010's own receipt says *"pg_cron absent — the tick functions exist and
+   are proven, but nothing schedules them here."* Reads still settle (D.2), so the game plays; but
+   market drift and stock regeneration would never run.
+3. **A screen to sign the book.** 0011 gives the server side; a signed-in captain with no house
+   needs somewhere to type a name. Deliberately not built blind — it cannot be proven end-to-end
+   without a project, and a founding screen that has never founded anything is not a screen.
+4. **One world, many captains.** The moment the economy is shared, price impact stops being personal:
+   `%NBR` and the stepped book start reflecting what other people bought this morning. That is the
+   game working — and it is also the first thing that has ever needed load thinking.
+
+---
+
 ## 2026-08-20 — D11c: I reset the owner's save, and the game never said a word
 
 Owner: *"wait, i've bought something before and the currency went down. but after this load fix, it

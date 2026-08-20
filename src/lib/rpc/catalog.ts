@@ -88,6 +88,16 @@ export const RPCS = {
     ],
   },
   cmdVerbSchema: { schema: 'cmd', fn: 'verb_schema', args: [] },
+  // The ONE way a signed-in captain gets a house (0011). It takes no uid — the server reads
+  // auth.uid() — which is why it is safe for a browser to hold, unlike public.new_house().
+  cmdFoundHouse: {
+    schema: 'cmd',
+    fn: 'found_house',
+    args: [
+      { name: 'p_company_name', type: 'text' },
+      { name: 'p_nation_code', type: 'text' },
+    ],
+  },
 } as const satisfies Record<string, RpcSpec>
 
 export type RpcName = keyof typeof RPCS

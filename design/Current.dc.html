@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #e2ab52; } a:hover { color: #f2c479; }
+    .mono { font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums slashed-zero; }
+    .serif { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, serif; }
+  </style>
+</helmet>
+
+<!-- THE SCREEN AS IT SHIPS TODAY, rebuilt from src/features/port/PortScreen.tsx and the
+     design-system primitives (Screen, PageHeader, Card, CardHeader, DetailRow, Badge, NavBar) at
+     their real token values. Kept beside the redesign so the change is a comparison, not a claim. -->
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; overflow: hidden; background: #070b11; color: #f1ebdd; font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;">
+
+  <div style="flex-shrink: 0; min-height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid #253547; background: #0d141d;">
+    <span class="mono" style="font-size: 12px; letter-spacing: .2em; color: #8b97a5;">BYEHARU VOYAGE</span>
+    <span class="mono" style="font-size: 11px; letter-spacing: .1em; color: #8b97a5;">ACCOUNT</span>
+  </div>
+
+  <div style="flex-grow: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+      <div style="min-width: 0;">
+        <p class="mono" style="margin: 0 0 2px; font-size: 12px; letter-spacing: .05em; color: #8b97a5;">HARBOUR</p>
+        <h1 class="serif" style="margin: 0; font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -.01em;">Port · Lisbon</h1>
+        <p style="margin: 2px 0 0; font-size: 14px; color: #b3bcc7;">Portugal · latin · North Atlantic Ocean</p>
+      </div>
+      <span class="mono" style="flex-shrink: 0; padding: 2px 8px; border-radius: 4px; background: #16202c; font-size: 10px; letter-spacing: .05em; color: #b3bcc7;">DRAFT 5</span>
+    </div>
+
+    <div style="padding: 16px; border: 1px solid #253547; border-radius: 12px; background: #0d141d; box-shadow: inset 0 1px 0 0 rgba(255,255,255,.04), 0 10px 30px -18px rgba(0,0,0,.75);">
+      <div style="margin-bottom: 16px;">
+        <p class="mono" style="margin: 0 0 2px; font-size: 12px; letter-spacing: .05em; color: #8b97a5;">THE CITY</p>
+        <h2 class="serif" style="margin: 0; font-size: 18px; font-weight: 600;">Lisbon</h2>
+        <p style="margin: 2px 0 0; font-size: 14px; color: #b3bcc7;">PRT · region IBE</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+          <div style="padding: 2px 0;">
+            <p style="margin: 0; font-size: 14px; color: #8b97a5;">{{r.label}}</p>
+            <p class="mono" style="margin: 2px 0 0; font-size: 13px; color: #f1ebdd;">{{r.value}}<span style="display: inline-flex; width: 16px; height: 16px; margin-left: 5px; vertical-align: -3px; align-items: center; justify-content: center;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#8b97a5" stroke-width="1.5" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"></path><path d="M12 11v5.5"></path><path d="M12 7.6v.9"></path></svg></span></p>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="padding: 16px; border: 1px solid #253547; border-radius: 12px; background: #0d141d; box-shadow: inset 0 1px 0 0 rgba(255,255,255,.04), 0 10px 30px -18px rgba(0,0,0,.75);">
+      <div style="margin-bottom: 16px;">
+        <p class="mono" style="margin: 0 0 2px; font-size: 12px; letter-spacing: .05em; color: #8b97a5;">SERVICES</p>
+        <h2 class="serif" style="margin: 0; font-size: 18px; font-weight: 600;">What is on this quay</h2>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <sc-for list="{{quay}}" as="r" hint-placeholder-count="3">
+          <div style="padding: 2px 0;">
+            <p style="margin: 0; font-size: 14px; color: #8b97a5;">{{r.label}}</p>
+            <p class="mono" style="margin: 2px 0 0; font-size: 13px; color: #f1ebdd;">{{r.value}}</p>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- eight destinations, two rows of four (src/app/navTabs.ts) -->
+  <div style="flex-shrink: 0; border-top: 1px solid #253547; background: #0d141d;">
+    <sc-for list="{{navRows}}" as="row" hint-placeholder-count="2">
+      <div style="display: flex;">
+        <sc-for list="{{row.tabs}}" as="t" hint-placeholder-count="4">
+          <div style="flex-grow: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-top: 2px solid {{t.mark}};">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="{{t.tint}}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <sc-for list="{{t.paths}}" as="p" hint-placeholder-count="3"><path d="{{p}}"></path></sc-for>
+            </svg>
+            <span class="mono" style="font-size: 10px; letter-spacing: .1em; color: {{t.tint}};">{{t.label}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      compass: ['M12 2.5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19Z', 'm15.5 8.5-2 5-5 2 2-5 5-2Z'],
+      ship: ['M3 17.5h18l-2 3.5H5l-2-3.5Z', 'M12 3v14.5', 'M12 5c3 1 5 2.5 6 4.5h-6'],
+      anchor: ['M12 7.5V21', 'M12 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z', 'M5 13H2a10 10 0 0 0 20 0h-3', 'M8.5 10.5h7'],
+      scales: ['M12 4v16', 'M6 20h12', 'M4.5 8h15', 'M4.5 8 2 14h5l-2.5-6Z', 'M19.5 8 17 14h5l-2.5-6Z'],
+      chart: ['M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4Z', 'M9 4v14', 'M15 6v14'],
+      ledger: ['M12 6.5C10.5 5 8.5 4.5 6 4.5H3.5v13H6c2.5 0 4.5.5 6 2', 'M12 6.5c1.5-1.5 3.5-2 6-2H20.5v13H18c-2.5 0-4.5.5-6 2', 'M12 6.5v15'],
+      wreath: ['M12 3.5a8.5 8.5 0 0 1 0 17', 'M12 3.5a8.5 8.5 0 0 0 0 17', 'M8.5 12h7', 'M12 8.5v7'],
+      profile: ['M12 2.5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19Z', 'M12 7.2a3.1 3.1 0 1 0 0 6.2 3.1 3.1 0 0 0 0-6.2Z', 'M5.8 19a7.5 7.5 0 0 1 12.4 0'],
+    }
+    const tab = (label, key, on) => ({
+      label, paths: P[key],
+      tint: on ? '#e2ab52' : '#8b97a5',
+      mark: on ? '#e2ab52' : 'transparent',
+    })
+    return {
+      rows: [
+        { label: 'Development', value: 'industry 10 · commerce 17 · military 11' },
+        { label: 'Market tax', value: '3.0%' },
+        { label: 'Spread', value: '2.6%' },
+        { label: 'Cheapest here', value: 'Black Pepper 83% · Porcelain 84% · Olive Oil 88%' },
+      ],
+      quay: [
+        { label: 'Harbour', value: '1 of your fleets alongside · max draft 5' },
+        { label: 'Yard', value: 'tier 3' },
+        { label: 'Provisions', value: '0.02 t water and 0.015 t food per hand, per voyage-day' },
+      ],
+      navRows: [
+        { tabs: [tab('COMMAND', 'compass', false), tab('FLEETS', 'ship', false), tab('PORT', 'anchor', true), tab('MARKET', 'scales', false)] },
+        { tabs: [tab('MAP', 'chart', false), tab('LEDGER', 'ledger', false), tab('RANK', 'wreath', false), tab('PROFILE', 'profile', false)] },
+      ],
+    }
+  }
+}
+</script>
+</body>
+</html>

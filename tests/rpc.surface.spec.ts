@@ -19,6 +19,7 @@ import {
   clearBackend,
   cmdCancel,
   cmdClear,
+  cmdFoundHouse,
   cmdIssue,
   cmdPreview,
   cmdVerbSchema,
@@ -419,14 +420,19 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
   })
   expect(rpcLabel('worldLedger')).toBe('world.ledger(p_cursor, p_limit)')
 
-  // The catalogue is the whole vocabulary. Server-only functions are deliberately not in it:
-  // a browser must not be able to found a house or assume an identity.
+  // The catalogue is the whole vocabulary. Server-only functions are deliberately not in it.
   // The COUNT is not the point — what a client may call is. The list is asserted by name so that
-  // adding one is a deliberate edit here, and the three server-only entry points below stay out.
+  // adding one is a deliberate edit here, and the server-only entry points below stay out.
+  //
+  // FOUNDING A HOUSE IS THE LINE WORTH BEING PRECISE ABOUT (0011). `public.new_house(uid, …)` takes
+  // an arbitrary uid, so a client holding it could found a house on somebody else's account — it is
+  // revoked from every client role, permanently, and stays out of this list. `cmd.found_house(name)`
+  // takes NO uid and reads auth.uid() server-side, so the only house a caller can found is their
+  // own. One of those belongs to a browser and the other never can; the difference is the argument.
   const names = Object.keys(RPCS)
   expect(names.sort()).toEqual(
     [
-      'cmdCancel', 'cmdClear', 'cmdIssue', 'cmdPreview', 'cmdVerbSchema',
+      'cmdCancel', 'cmdClear', 'cmdFoundHouse', 'cmdIssue', 'cmdPreview', 'cmdVerbSchema',
       'worldBuyCapacity', 'worldFleets', 'worldLedger', 'worldMarket', 'worldSnapshot',
     ].sort(),
   )
@@ -465,4 +471,42 @@ test('a fault crosses the boundary as a refusal, not as a stack trace', async ()
   if (broken.ok) throw new Error('unreachable')
   expect(broken.refusal.source).toBe('fault')
   expect(broken.refusal.detail).toContain('local · world.market(p_port)')
+})
+
+// ── signing the book (0011) ────────────────────────────────────────────────────────────────────
+//
+// This is the ONE path by which a signed-in player on a real project gets a house at all, and
+// until 0011 it did not exist: `public.new_house()` takes a uid and is revoked from every client
+// role, so cloud mode would have dropped a captain into an empty world with nothing to press.
+//
+// LOCAL MODE ALREADY FOUNDED ITS ONE CAPTAIN AT BOOT, which makes this fixture the exact case the
+// client must survive on every sign-in: call it, and read the refusal rather than asking first.
+
+test('cmd.found_house() refuses a second house on an account that already keeps one', async () => {
+  const r = await cmdFoundHouse('Casa Duplicada')
+  expect(r.ok, 'the local captain already has a house, so this must be a refusal').toBe(false)
+  if (r.ok) return
+  expect(r.refusal.code).toBe('E_ALREADY_FOUNDED')
+  // DESIGN F.5: a refusal is a code, a SENTENCE and a fix — not a code the screen has to translate.
+  expect(r.refusal.sentence.length).toBeGreaterThan(10)
+  expect(r.refusal.source).toBe('server')
+})
+
+test('cmd.found_house() refuses an unknown nation, and names the ones that exist', async () => {
+  const r = await cmdFoundHouse('Casa Sem Bandeira', 'ZZZ')
+  expect(r.ok).toBe(false)
+  if (r.ok) return
+  // The already-founded check runs FIRST for the local captain, so this asserts the refusal
+  // contract rather than the ordering: whichever bites, it arrives typed, with a sentence.
+  expect(['E_NO_SUCH_NATION', 'E_ALREADY_FOUNDED']).toContain(r.refusal.code)
+  expect(r.refusal.sentence.length).toBeGreaterThan(10)
+})
+
+test('the catalogue spells found_house the way the migration does', () => {
+  expect(RPCS.cmdFoundHouse.schema).toBe('cmd')
+  expect(RPCS.cmdFoundHouse.fn).toBe('found_house')
+  // PostgREST calls by NAME: these two strings are the wire contract with 0011's signature.
+  expect(RPCS.cmdFoundHouse.args.map((a) => a.name)).toEqual(['p_company_name', 'p_nation_code'])
+  // And no uid crosses the wire — that is the whole security property of 0011.
+  expect(rpcLabel('cmdFoundHouse')).not.toContain('uid')
 })
