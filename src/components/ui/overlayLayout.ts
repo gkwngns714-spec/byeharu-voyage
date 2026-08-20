@@ -36,7 +36,15 @@ const TONE: Record<OverlayTone, string> = {
 export function overlayPanelClass(tone: OverlayTone = 'default', slot?: OverlaySlot, extra = '', inert = true): string {
   return [
     inert ? 'pointer-events-none' : 'pointer-events-auto',
-    'rounded-md border bg-surface/90 p-2 shadow-overlay backdrop-blur',
+    // MATERIAL, D12: the map's corner chrome is a panel like every other panel — the warm body and
+    // the 7px chamfer, not a rounded web card floating over the chart. It keeps its translucency
+    // and blur, which the flat panels do not have: this one sits ON the world and has to let the
+    // coastline under it stay legible.
+    //
+    // The blur is deliberately NOT applied to the flat screens. CCP measured window blur at up to
+    // 32 ms a frame and drop it entirely at low shader quality; two small corner panels over a
+    // static SVG is a budget that survives it, a whole screen of panels is not.
+    'bv-cut border bg-panel/90 p-2 shadow-overlay backdrop-blur',
     TONE[tone],
     slot ? `absolute z-10 ${SLOT_POS[slot]}` : '',
     extra,

@@ -115,7 +115,7 @@ export function MapScreen() {
 function ChartMessage({ refusal }: { refusal: Refusal | null }) {
   return (
     <div
-      className="flex h-full w-full items-center justify-center bg-chart-sea p-6"
+      className="bv-sea flex h-full w-full items-center justify-center p-6"
       data-testid="map-chart"
     >
       {refusal ? (
@@ -246,7 +246,7 @@ function Chart({
       {...surface.handlers}
       // `touch-none` hands every touch to the pan/zoom handler instead of the page scroller;
       // `select-none` stops a drag across the chart highlighting the labels.
-      className="relative h-full w-full touch-none select-none overflow-hidden bg-chart-sea"
+      className="bv-sea relative h-full w-full touch-none select-none overflow-hidden"
       data-testid="map-chart"
     >
       {box && (

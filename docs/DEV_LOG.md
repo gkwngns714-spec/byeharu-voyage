@@ -5,6 +5,96 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-20 — D12c: the rest of the screens
+
+Owner: *"keep going, do the rest of the screens."* (D12b, logged only in its commit until now, made
+a verb an action card carrying the server's own `spec.help`, and added §3a to the direction doc.)
+
+### PORT is one place with faces now
+
+It was four sibling Cards down a page. At 390px the fourth began roughly 1,200px down and, in
+practice, was never read. It is one panel with a tab strip — **Quay · City · Services · Alongside**,
+the reference's 기본/교역/시설/투자 — with the same content and the same order lines.
+
+**The Quay opens first, deliberately.** §3a's second trap is *"the action lives on the wrong
+screen"*, and the most-praised patch in that game's four-year convenience backlog added no feature
+at all: it moved selling provisions onto the buy screen, where the need arises. What you can DO here
+opens first; what the city IS is one tap away.
+
+Composing it introduced two duplications immediately — `DRAFT 5` and the `HARBOUR` eyebrow each
+printed twice, once in the PageHeader and once in the new panel head. Both deleted from the panel.
+Same rule that took the purse off two screens in D12, broken again within ten minutes of writing it
+down.
+
+### Three primitives the design system was missing
+
+**`TabRow`** — a real `role="tablist"`, and it **scrolls sideways rather than wrapping**: a wrapped
+second row of tabs changes the panel's height when the selection changes, which makes everything
+below it jump.
+
+**`Gauge`** — a resource drawn as **countable segments**, not a smooth bar. EVE draws its capacitor
+in fragments for the reason that matters on a phone: you can *count* blocks and reason "four left,
+that is 40 tuns", where a bar forces arithmetic against a denominator that is not on screen. This
+game already had the idea in one place — the Market's six-cell text `stockBar` — and this is that
+idea as a primitive. The partial segment is **shaded, not rounded up**: a hold with a sliver free
+must not read as a hold with a whole block free.
+
+FLEETS uses it for the two facts that decide the next order, **hold and worst hull**, which were
+buried one tap and a scroll down in the detail panel. Whether to buy is "how much room is left";
+whether to sail is "how sound is the worst hull". The figure stays beside the blocks, because a
+gauge you cannot read exactly is a mood ring and this is a ledger.
+
+**`Input`** — the audit found four hand-written recipes differing in border, focus ring, padding and
+whether they cleared 44px. Auth and the register are migrated.
+
+### RANK and PROFILE stopped being placeholders
+
+RANK was 18 lines naming three things that would exist one day. The honest position is narrower and
+more useful: **the client can say what you are worth; it cannot say what that is worth relative to
+anyone**, because no other house's figures cross the wire and nothing in the chain computes a table.
+
+It now shows the real figures a standing would be computed FROM — purse, fleets, ships, and from the
+ledger: voyages completed, ports reached, trades struck, taken in, paid out — and states the missing
+half as a fact, naming the four things a standing needs first.
+
+**The derived counts say what window they looked at.** `world.events` is ONE page of the ledger (the
+store fetches the default 50), so "voyages completed" is not a lifetime total and must not be printed
+as one. Purse, fleets and ships are exact, because those are served whole.
+
+PROFILE keeps the session half, which was always real, and replaces the bullet list of promises with
+**the world half** — which backend answered, the world's size, the time compression. A player asking
+*"am I on the live server"* or *"why did my purse reset"* had nowhere to look. What is still absent
+is named as server work rather than drawn as empty fields.
+
+### Everywhere else
+
+* **LEDGER**: the delta is `text-xl`. It was the same size as the "balance" caption beside it, which
+  gave the number a player scans a ledger FOR the same weight as the one they merely check. Its
+  filter chips are the `chip` primitive now.
+* **MAP**: the corner panels take the panel material and keep their blur — they sit ON the world and
+  must let the coastline stay legible. **The blur stops there**: CCP measured window blur at up to
+  32 ms a frame and drop it entirely at low shader quality, so two small panels over a static SVG is
+  a budget that survives and a screenful of panels is not. The chart's water is `bv-sea` now — the
+  map is not a different place, it is the same world seen from further up.
+* **AUTH**: the first thing anyone sees was a flat `bg-app` field, the colour of an unstyled page.
+  It is the lit sea, so signing in and playing are visibly the same place.
+
+### Proved
+
+**149 passed** against a served production build, twice — once before the map and input changes and
+once after. All 12 layout tests, the K.1 fold test, and the four-viewport map label specs. tsc and
+eslint clean. Every tab screenshotted at 390×844 and checked for sideways scroll: **all eight clean.**
+
+### Still not done
+
+COMMAND's argument pickers are still the old chrome inside the new action cards, and the Market's
+port picker still truncates 214 ports to 40 with an on-screen admission that it cannot show the
+world. The server gaps are unchanged and are the real ceiling: **no price history, no player row, no
+officers, no skills, no fame.** Each is a migration, and until they land there are screens here that
+are correct and still look empty.
+
+---
+
 ## 2026-08-20 — D12: it was a document, so it was made of something
 
 Owner: *"this is not a proper game. see other games such as 대항해시대 오리진 — find korean images,

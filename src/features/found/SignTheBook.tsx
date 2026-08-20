@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, Notice, PageHeader, Screen } from '../../components/ui'
+import { Button, Card, Input, Notice, PageHeader, Screen } from '../../components/ui'
 import { cmdFoundHouse } from '../../lib/rpc'
 import type { Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -59,7 +59,10 @@ export function SignTheBook() {
         <label htmlFor="house-name" className="block text-sm text-ink-muted">
           What will your house trade as?
         </label>
-        <input
+        {/* The house's name is typed in the game's display face, not the UI face: this is the one
+            field in the app that is a SIGNATURE. `Input` owns the chrome; the serif is this
+            screen's own decision, passed through className. */}
+        <Input
           id="house-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -69,7 +72,7 @@ export function SignTheBook() {
           placeholder="Casa de Aveiro"
           autoComplete="off"
           autoFocus
-          className="mt-2 min-h-11 w-full rounded-md border border-edge bg-surface-2 px-3 py-3 font-serif text-lg text-ink outline-none placeholder:text-ink-faint focus:border-accent/60"
+          className="mt-2 font-serif !text-lg"
         />
         <p className="mt-2 text-xs text-ink-faint">
           Three to twenty-four letters, and no two houses may trade under the same name.

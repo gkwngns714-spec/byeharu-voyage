@@ -1,6 +1,8 @@
 // Byeharu Voyage design-system primitives — the single import surface.
 // Screens import from here, never from the individual files, so the set stays one authority.
 export { Button } from './Button'
+// The text field. One recipe, replacing four hand-written ones (see Input.tsx).
+export { Input } from './Input'
 export { buttonClasses, type ButtonVariant, type ButtonSize } from './buttonStyles'
 export { Card, CardHeader, type CardTone } from './Card'
 export { Badge, type BadgeTone } from './Badge'
@@ -8,6 +10,9 @@ export { Badge, type BadgeTone } from './Badge'
 // status WORD is a Badge, the figure the game is played from is a PriceIndex).
 export { PriceIndex, type PriceAdvice } from './PriceIndex'
 export { Meter, type MeterTone } from './Meter'
+// Meter's countable counterpart: a resource with a UNIT (tuns, days, berths) drawn as segments
+// you can count, rather than as a fraction you must do arithmetic on. See Gauge.tsx.
+export { Gauge, type GaugeTone } from './Gauge'
 export { Notice, type NoticeTone } from './Notice'
 export { SectionLabel } from './SectionLabel'
 export { PageHeader } from './PageHeader'
@@ -21,6 +26,9 @@ export { EmptyState } from './EmptyState'
 export { Skeleton } from './Skeleton'
 export { Table, TH, TD, ListRow } from './Table'
 export { scrollTableClass, TABLE_SCROLL_HINT } from './tableLayout'
+// The faces of ONE place — a tab strip, for a panel that has several sides rather than a
+// page that has several cards (see TabRow.tsx).
+export { TabRow, type TabSpec } from './TabRow'
 export { Sheet } from './Sheet'
 export { OverlayPanel } from './OverlayPanel'
 export { overlayPanelClass, OVERLAY_SLOTS, type OverlaySlot, type OverlayTone } from './overlayLayout'

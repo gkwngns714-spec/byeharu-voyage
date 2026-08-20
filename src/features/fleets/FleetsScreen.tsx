@@ -5,6 +5,7 @@ import {
   CardHeader,
   CollapsibleCard,
   Explain,
+  Gauge,
   Meter,
   PageHeader,
   Screen,
@@ -40,6 +41,7 @@ import {
   fleetHoldUsed,
   fleetStores,
   hullFraction,
+  worstHullFraction,
   shipHoldFree,
   shipHoldUsed,
   voyageEtaMs,
@@ -158,6 +160,41 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
                     <span className="text-ink">{dueText(fleet, nowMs)}</span>
                     <span className="text-ink-faint">endurance</span>
                     <span className="text-ink">{formatVoyageDays(fleet.endurance_days)}</span>
+
+                    {/* THE TWO FACTS THAT DECIDE THE NEXT ORDER, DRAWN AS COUNTABLE BLOCKS.
+                        Hold and hull were figures buried in the per-fleet detail panel, one tap
+                        and a scroll away. They belong on the roster: whether to buy is "how much
+                        room is left", and whether to sail is "how sound is the worst hull". The
+                        figure stays beside the blocks — a gauge you cannot read exactly is a mood
+                        ring, and this is a ledger. See Gauge.tsx for why blocks and not a bar. */}
+                    <span className="text-ink-faint">hold</span>
+                    <span className="flex items-center gap-2">
+                      <Gauge
+                        value={fleetHoldUsed(fleet)}
+                        max={fleetHoldTotal(fleet)}
+                        tone={fleetHoldFree(fleet) <= 0 ? 'warning' : 'accent'}
+                        label={`hold, ${fleetHoldUsed(fleet)} of ${fleetHoldTotal(fleet)} tuns`}
+                      />
+                      <span className="text-ink">
+                        {formatTuns(fleetHoldUsed(fleet), 0)}/{formatTuns(fleetHoldTotal(fleet), 0)}
+                      </span>
+                    </span>
+                    <span className="text-ink-faint">hull</span>
+                    <span className="flex items-center gap-2">
+                      <Gauge
+                        value={worstHullFraction(fleet)}
+                        max={1}
+                        tone={
+                          worstHullFraction(fleet) < 0.4
+                            ? 'danger'
+                            : worstHullFraction(fleet) < 0.75
+                              ? 'warning'
+                              : 'success'
+                        }
+                        label={`worst hull, ${formatPct(worstHullFraction(fleet))}`}
+                      />
+                      <span className="text-ink">{formatPct(worstHullFraction(fleet))}</span>
+                    </span>
                   </span>
                 </button>
               </li>

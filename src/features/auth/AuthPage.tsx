@@ -1,17 +1,15 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
-import { Button, Card, CardHeader, Notice } from '../../components/ui'
+import { Button, Card, CardHeader, Input, Notice } from '../../components/ui'
 import { HOME_TAB } from '../../app/navTabs'
 
 // The sign-in / sign-up screen. Functionally identical to byeharu's: one form, two modes, the
 // auth store does the work and this file only renders. Restyled as the first page of a ship's
 // register — a ruled card, a mono heading rule, parchment on ink.
 
-// Shared token-based input chrome (both fields are identical); ≥44px touch targets.
-const INPUT_CLASSES =
-  'min-h-11 w-full rounded-md border border-edge bg-surface-2 px-3 py-3 text-sm text-ink ' +
-  'placeholder:text-ink-faint outline-none transition focus:border-accent focus:ring-1 focus:ring-accent/40'
+// The two fields used to share a hand-written INPUT_CLASSES string here. That string was one of
+// four such recipes in the app; it is the design system's `Input` now (Input.tsx).
 
 type Mode = 'signin' | 'signup'
 
@@ -50,7 +48,10 @@ export function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-app px-4 py-8 text-ink">
+    /* THE FIRST THING ANYONE SEES, so it gets the world behind it (docs/UI_DIRECTION.md rule 6).
+       This was a flat `bg-app` field — the same colour as an unstyled page. It is the lit sea now,
+       the same one the shell paints, so signing in and playing are visibly the same place. */
+    <div className="bv-sea flex min-h-[100dvh] items-center justify-center px-4 py-8 text-ink">
       <Card tone="accent" className="w-full max-w-sm">
         <CardHeader
           eyebrow="Register of shipping"
@@ -63,16 +64,15 @@ export function AuthPage() {
         />
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
+          <Input
             type="email"
             required
             placeholder="Email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className={INPUT_CLASSES}
           />
-          <input
+          <Input
             type="password"
             required
             minLength={6}
@@ -80,7 +80,6 @@ export function AuthPage() {
             autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={INPUT_CLASSES}
           />
 
           {error && <Notice tone="danger">{error}</Notice>}

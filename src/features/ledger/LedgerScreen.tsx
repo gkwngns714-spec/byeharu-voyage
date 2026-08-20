@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   Badge,
+  buttonClasses,
   Card,
   EmptyState,
   Icon,
@@ -113,12 +114,14 @@ function LedgerBody({ world }: { world: LiveWorld }) {
                   key={k}
                   type="button"
                   onClick={() => setFilter(k)}
-                  className={[
-                    'min-h-11 rounded-md px-3 font-mono text-xs uppercase tracking-wider transition',
-                    k === filter
-                      ? 'bg-accent text-app'
-                      : 'border border-edge bg-surface-2 text-ink-muted hover:text-ink',
-                  ].join(' ')}
+                  // One of the twelve hand-written chip recipes the D12 audit found. It is the
+                  // design system's `chip` variant now, so a filter chip here and a verb chip on
+                  // Command cannot drift apart again.
+                  className={buttonClasses(
+                    k === filter ? 'chip-on' : 'chip',
+                    'md',
+                    'font-mono text-xs uppercase tracking-wider',
+                  )}
                 >
                   {k === 'all' ? 'all' : k.toLowerCase().replace('_', ' ')}
                 </button>
@@ -208,10 +211,18 @@ function Entry({
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2 border-t border-edge pt-2">
+      {/* THE DELTA IS THE HERO (docs/UI_DIRECTION.md rule 2). It used to be text-sm — the same
+          size as the "balance" caption beside it — which made the one number a player scans a
+          ledger FOR the same weight as the one they merely check. It is text-xl now, and the
+          balance stays small: what changed is the news, what it stands at is the footnote.
+
+          THE BALANCE IS STILL `balance_after`, NEVER A RUNNING TOTAL. WAGES move the purse without
+          an event row, so summing the rows this screen renders does not reach the purse — the
+          served balance is the only honest figure and the Notice below the feed says so. */}
+      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2 border-t border-rule pt-2">
         <span
           className={[
-            'font-mono text-sm',
+            'font-mono text-xl',
             delta === null || delta === 0
               ? 'text-ink-faint'
               : delta > 0
@@ -219,7 +230,7 @@ function Entry({
                 : 'text-danger',
           ].join(' ')}
         >
-          {delta === null ? 'no movement' : formatDucatsDelta(delta)}
+          {delta === null ? <span className="text-sm">no movement</span> : formatDucatsDelta(delta)}
         </span>
         <span className="font-mono text-xs text-ink-muted">
           {event.balance_after === null ? 'no balance recorded' : `balance ${formatDucats(event.balance_after)}`}

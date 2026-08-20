@@ -9,6 +9,7 @@ import {
   PageHeader,
   Screen,
   SectionLabel,
+  TabRow,
   TABLE_SCROLL_HINT,
   TD,
   TH,
@@ -56,6 +57,9 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 // A row that would have to be invented is deleted, and the ones that are thinner than they look
 // say why on screen. DESIGN's rule for this: never show a number you cannot defend.
 
+/** The four faces of one place. Not a route: a port is one screen, and these are its sides. */
+type PortFace = 'quay' | 'city' | 'services' | 'ships'
+
 export function PortScreen() {
   const world = useWorld()
 
@@ -78,6 +82,9 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
   // the first fleet is lying (README §4.1). A fleet at sea leaves the harbour unchosen, so the
   // first port in the world stands in until the player picks one.
   const [picked, setPicked] = useState<string | null>(null)
+  // WHICH FACE OF THE PORT IS TURNED TOWARDS YOU. It opens on the Quay — the things you can do —
+  // rather than on the city's statistics, because an action is why a player opens a port screen.
+  const [face, setFace] = useState<PortFace>('quay')
   const defaultCode = world.fleets.find((f) => f.port)?.port ?? snapshot.ports[0]?.code ?? null
   const portCode = picked ?? defaultCode
   const port = portCode ? (world.portByCode[portCode] ?? null) : null
@@ -160,214 +167,312 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
         </Notice>
       )}
 
-      <Card>
-        <CardHeader
-          eyebrow="The city"
-          title={port.name}
-          subtitle={`${port.nation ?? 'no nation'} · region ${port.region}`}
-        />
-        {/* THE ROW RULE (see DetailRow.tsx): a short figure keeps the right-aligned two-column
-            StatRow, because a column of figures has to line up. A value that is a SENTENCE — a
-            dot-separated list, a figure with a parenthetical — uses DetailRow and flows
-            left-aligned, because right-aligning prose leaves its tail stranded as a fragment. */}
-        <dl className="space-y-1">
-          <DetailRow
-            label="Development"
-            mono
-            value={`industry ${port.dev_industry} · commerce ${port.dev_commerce} · military ${port.dev_military}`}
-          />
-          <DetailRow
-            label="Market tax"
-            mono
-            value={formatPct(port.tax_rate, 1)}
-            hint="set by the Mayor, banded 0–8%. Tax relief is not in the V0 chain, so what you pay is what is printed."
-          />
-          <DetailRow
-            label="Spread"
-            mono
-            value={market?.port ? formatPct(market.port.spread, 1) : 'reading the market…'}
-            hint="half-spread, derived from commerce — the server's figure, not a client formula"
-          />
-          <DetailRow
-            label="Cheapest here"
-            value={
-              cheapHere.length === 0
-                ? marketLoaded
-                  ? 'Nothing this port undercuts its neighbours on.'
-                  : 'reading the market…'
-                : cheapHere
-                    .map((g) => `${g.name} ${formatPctPoints(g.pct_nbr ?? 0)}`)
-                    .join(' · ')
-            }
-            hint="%NBR against ports within 600 nm — a live reading, not an authored specialty list"
-          />
-        </dl>
-      </Card>
+      {/* ONE PLACE WITH FACES, NOT FOUR CARDS DOWN A PAGE (docs/UI_DIRECTION.md §2).
+          The reference draws a port as a single panel with 기본/교역/시설/투자 along its top. This
+          screen used to be four sibling Cards, which at 390px meant the fourth began ~1,200px down
+          and was, in practice, never read. Same content, same order lines, one panel.
 
-      <Card>
-        <CardHeader
-          eyebrow="Services"
-          title="What is on this quay"
-          explain="Bureau (investment), officers at the Inn, the weekly Mayor and nation shares are V1 (K.1). They are not drawn here because there is nothing behind them yet."
-        />
-        <dl className="space-y-1">
-          <DetailRow
-            label="Harbour"
-            mono
-            value={`${docked.length} of your fleets alongside · max draft ${port.max_draft}`}
-            hint="Other houses' shipping is not reported by the V0 world (J.3 is V1)."
-          />
-          <DetailRow
-            label="Yard"
-            mono
-            value={port.has_yard ? `tier ${port.yard_tier}` : 'none'}
-            hint={port.has_yard ? 'The yard prices a REPAIR when the order runs; PREVIEW it on Command for the quote.' : undefined}
-          />
-          <DetailRow
-            label="Provisions"
-            mono
-            value={`${formatTuns(snapshot.config.water_per_crew_day, 2)} water and ${formatTuns(snapshot.config.food_per_crew_day, 3)} food per hand, per voyage-day`}
-            hint="What stores COST is set when PROVISION runs — no quayside price list crosses the wire."
-          />
-          <DetailRow
-            label="Inn"
-            mono
-            value={`${formatInt(port.crew_pool)} hands in the pool`}
-            hint="Beyond the pool, hands cost 2.5x — urgent recruitment (F.2). The rate is quoted when HIRE runs."
-          />
-          <DetailRow label="Academy" mono value={port.has_academy ? 'yes' : 'none'} />
-          {port.is_ice_closed && <DetailRow label="Ice" mono value="CLOSED — nothing sails in or out" />}
-        </dl>
-      </Card>
+          THE                 {acting && (
+                  <div className="space-y-4">
+                    <ActionGroup
+                      label="Stores and hands"
+                      actions={[
+                        {
+                          intent: { verb: 'PROVISION', args: { mode: 'FULL' } },
+                          note: `${formatVoyageDays(acting.endurance_days)} of range at present`,
+                        },
+                        {
+                          intent: { verb: 'HIRE', args: { count: String(hireCount(acting, port)) } },
+                          note: `${formatInt(fleetCrew(acting).aboard)} of ${formatInt(fleetCrew(acting).max)} berths filled · ${formatInt(port.crew_pool)} hands in the pool`,
+                        },
+                        ...(port.has_yard
+                          ? [
+                              {
+                                intent: { verb: 'REPAIR', args: { to_pct: '100' } },
+                                note: `worst hull ${formatPct(worstHullFraction(acting))} · tier ${port.yard_tier} yard`,
+                              },
+                            ]
+                          : []),
+                      ]}
+                      lineOf={lineOf}
+                      onPick={command}
+                    />
 
-      <Card>
-        <CardHeader
-          eyebrow="Your ships"
-          title={docked.length === 0 ? 'Nothing of yours alongside' : 'Alongside'}
-          explain={docked.length === 0 ? undefined : 'Every hull you have in this harbour.'}
+                    <ActionGroup
+                      label={marketLoaded ? 'What this market says to buy' : 'Trade'}
+                      actions={
+                        marketLoaded
+                          ? worthBuying.map((good) => ({
+                              intent: {
+                                verb: 'BUY',
+                                // CODES, never display names: `cmd.parse()` splits on whitespace.
+                                args: { good: good.code, qty: String(affordableUnits(acting, bulkOfGood(good.code))) },
+                              },
+                              note: `${buyNote(good)} · ${formatTuns(fleetHoldFree(acting), 0)} free in the hold`,
+                            }))
+                          : []
+                      }
+                      empty={
+                        marketLoaded
+                          ? 'This market is not advising a purchase here — read the Market tab for the whole list.'
+                          : 'Reading the market…'
+                      }
+                      lineOf={lineOf}
+                      onPick={command}
+                    />
+
+                    <ActionGroup
+                      label="One leg from here"
+                      actions={oneLeg.slice(0, 6).map(({ port: p, code, nm }) => ({
+                        intent: { verb: 'SAIL', args: { dest: code } },
+                        note: `${formatNm(nm)} · ${
+                          p === null
+                            ? 'unknown harbour'
+                            : p.max_draft < fleetMaxDraft(acting, draftOfClass)
+                              ? 'too shallow for this fleet'
+                              : `draft ${p.max_draft}`
+                        }`,
+                      }))}
+                      empty="No authored leg leaves this port."
+                      lineOf={lineOf}
+                      onPick={command}
+                    />
+                  </div>
+                )} IS THE FIRST FACE, deliberately. §3a's second trap is "the action lives on the
+          wrong screen" — the most-praised patch in that game's four-year convenience backlog added
+          no feature at all, it moved an action to the screen where the need arises. What you can
+          DO here opens first; what the city IS is one tap away. */}
+      <Card
+        head={
+          /* No eyebrow and no draft badge here: the PageHeader above already carries both, and
+             this panel sits directly beneath it. One fact, one place — the same rule that took the
+             purse off two screens in D12. */
+          <CardHeader
+            flush
+            title="The quayside"
+            explain="Everything this port is, and everything you can do while lying in it. Nothing on any face issues an order — the Quay prints each one as the exact line it would become and hands it to Command."
+          />
+        }
+      >
+        <TabRow
+          label="Port faces"
+          value={face}
+          onChange={setFace}
+          className="mb-3"
+          tabs={[
+            { id: 'quay', label: 'Quay' },
+            { id: 'city', label: 'City' },
+            { id: 'services', label: 'Services' },
+            { id: 'ships', label: 'Alongside', hint: docked.length || undefined },
+          ]}
         />
-        {docked.length === 0 ? (
-          <p className="text-sm text-ink-muted">
-            You have no fleet in {port.name}.{' '}
-            {world.fleets
-              .filter((f) => f.status === 'SAILING')
-              .map((f) => `${f.name} is at sea.`)
-              .join(' ')}
-          </p>
-        ) : (
-          <Table className={scrollTableClass()}>
-            <thead>
-              <tr>
-                <TH>Ship</TH>
-                <TH>Fleet</TH>
-                <TH align="num">Hull</TH>
-                <TH align="num">Crew</TH>
-                <TH align="num">Hold</TH>
-              </tr>
-            </thead>
-            <tbody>
-              {docked.flatMap((fleet) =>
-                fleet.ships.map((ship) => (
-                  <tr key={ship.id}>
-                    <TD>
-                      {ship.name}
-                      {ship.is_flagship && <span className="ml-1 text-accent">⚑</span>}
-                      <span className="ml-2 text-xs text-ink-faint">{ship.class}</span>
-                    </TD>
-                    <TD>{fleet.name}</TD>
-                    <TD align="num">{formatPct(hullFraction(ship))}</TD>
-                    <TD align="num">
-                      {formatInt(ship.crew)}/{formatInt(ship.crew_max)}
-                    </TD>
-                    <TD align="num">
-                      {formatTuns(shipHoldUsed(ship), 1)} / {formatTuns(ship.hold)}
-                    </TD>
-                  </tr>
-                )),
+
+        <div role="tabpanel">
+          {face === 'quay' && (
+            <>
+              {acting && (
+                <p className="mb-3 text-xs text-ink-muted">
+                  Tap one to load it onto Command as {acting.name}&apos;s order.
+                </p>
               )}
-            </tbody>
-          </Table>
-        )}
-        {docked.length > 0 && (
-          <p className="mt-1 font-mono text-[11px] text-ink-faint">{TABLE_SCROLL_HINT}</p>
-        )}
-      </Card>
+                {acting && (
+                  <div className="space-y-4">
+                    <ActionGroup
+                      label="Stores and hands"
+                      actions={[
+                        {
+                          intent: { verb: 'PROVISION', args: { mode: 'FULL' } },
+                          note: `${formatVoyageDays(acting.endurance_days)} of range at present`,
+                        },
+                        {
+                          intent: { verb: 'HIRE', args: { count: String(hireCount(acting, port)) } },
+                          note: `${formatInt(fleetCrew(acting).aboard)} of ${formatInt(fleetCrew(acting).max)} berths filled · ${formatInt(port.crew_pool)} hands in the pool`,
+                        },
+                        ...(port.has_yard
+                          ? [
+                              {
+                                intent: { verb: 'REPAIR', args: { to_pct: '100' } },
+                                note: `worst hull ${formatPct(worstHullFraction(acting))} · tier ${port.yard_tier} yard`,
+                              },
+                            ]
+                          : []),
+                      ]}
+                      lineOf={lineOf}
+                      onPick={command}
+                    />
 
-      {/* ── ACTIONS, WRITTEN AS COMMANDS ─────────────────────────────────────────────────── */}
-      <Card tone="accent">
-        <CardHeader
-          eyebrow="Actionable here"
-          title="What you can do in this harbour"
-          subtitle={acting ? `Tap one to load it onto Command as ${acting.name}'s order.` : undefined}
-          explain="Nothing is issued here. Every line below is printed as the exact order it would become, and tapping it hands that order to Command with its pickers already filled — where you preview it, and where you issue it."
-        />
-        {acting && (
-          <div className="space-y-4">
-            <ActionGroup
-              label="Stores and hands"
-              actions={[
-                {
-                  intent: { verb: 'PROVISION', args: { mode: 'FULL' } },
-                  note: `${formatVoyageDays(acting.endurance_days)} of range at present`,
-                },
-                {
-                  intent: { verb: 'HIRE', args: { count: String(hireCount(acting, port)) } },
-                  note: `${formatInt(fleetCrew(acting).aboard)} of ${formatInt(fleetCrew(acting).max)} berths filled · ${formatInt(port.crew_pool)} hands in the pool`,
-                },
-                ...(port.has_yard
-                  ? [
-                      {
-                        intent: { verb: 'REPAIR', args: { to_pct: '100' } },
-                        note: `worst hull ${formatPct(worstHullFraction(acting))} · tier ${port.yard_tier} yard`,
-                      },
-                    ]
-                  : []),
-              ]}
-              lineOf={lineOf}
-              onPick={command}
-            />
+                    <ActionGroup
+                      label={marketLoaded ? 'What this market says to buy' : 'Trade'}
+                      actions={
+                        marketLoaded
+                          ? worthBuying.map((good) => ({
+                              intent: {
+                                verb: 'BUY',
+                                // CODES, never display names: `cmd.parse()` splits on whitespace.
+                                args: { good: good.code, qty: String(affordableUnits(acting, bulkOfGood(good.code))) },
+                              },
+                              note: `${buyNote(good)} · ${formatTuns(fleetHoldFree(acting), 0)} free in the hold`,
+                            }))
+                          : []
+                      }
+                      empty={
+                        marketLoaded
+                          ? 'This market is not advising a purchase here — read the Market tab for the whole list.'
+                          : 'Reading the market…'
+                      }
+                      lineOf={lineOf}
+                      onPick={command}
+                    />
 
-            <ActionGroup
-              label={marketLoaded ? 'What this market says to buy' : 'Trade'}
-              actions={
-                marketLoaded
-                  ? worthBuying.map((good) => ({
-                      intent: {
-                        verb: 'BUY',
-                        // CODES, never display names: `cmd.parse()` splits on whitespace.
-                        args: { good: good.code, qty: String(affordableUnits(acting, bulkOfGood(good.code))) },
-                      },
-                      note: `${buyNote(good)} · ${formatTuns(fleetHoldFree(acting), 0)} free in the hold`,
-                    }))
-                  : []
-              }
-              empty={
-                marketLoaded
-                  ? 'This market is not advising a purchase here — read the Market tab for the whole list.'
-                  : 'Reading the market…'
-              }
-              lineOf={lineOf}
-              onPick={command}
-            />
+                    <ActionGroup
+                      label="One leg from here"
+                      actions={oneLeg.slice(0, 6).map(({ port: p, code, nm }) => ({
+                        intent: { verb: 'SAIL', args: { dest: code } },
+                        note: `${formatNm(nm)} · ${
+                          p === null
+                            ? 'unknown harbour'
+                            : p.max_draft < fleetMaxDraft(acting, draftOfClass)
+                              ? 'too shallow for this fleet'
+                              : `draft ${p.max_draft}`
+                        }`,
+                      }))}
+                      empty="No authored leg leaves this port."
+                      lineOf={lineOf}
+                      onPick={command}
+                    />
+                  </div>
+                )}
+            </>
+          )}
 
-            <ActionGroup
-              label="One leg from here"
-              actions={oneLeg.slice(0, 6).map(({ port: p, code, nm }) => ({
-                intent: { verb: 'SAIL', args: { dest: code } },
-                note: `${formatNm(nm)} · ${
-                  p === null
-                    ? 'unknown harbour'
-                    : p.max_draft < fleetMaxDraft(acting, draftOfClass)
-                      ? 'too shallow for this fleet'
-                      : `draft ${p.max_draft}`
-                }`,
-              }))}
-              empty="No authored leg leaves this port."
-              lineOf={lineOf}
-              onPick={command}
-            />
-          </div>
-        )}
+          {face === 'city' && (
+            <>
+                {/* THE ROW RULE (see DetailRow.tsx): a short figure keeps the right-aligned two-column
+                    StatRow, because a column of figures has to line up. A value that is a SENTENCE — a
+                    dot-separated list, a figure with a parenthetical — uses DetailRow and flows
+                    left-aligned, because right-aligning prose leaves its tail stranded as a fragment. */}
+                <dl className="space-y-1">
+                  <DetailRow
+                    label="Development"
+                    mono
+                    value={`industry ${port.dev_industry} · commerce ${port.dev_commerce} · military ${port.dev_military}`}
+                  />
+                  <DetailRow
+                    label="Market tax"
+                    mono
+                    value={formatPct(port.tax_rate, 1)}
+                    hint="set by the Mayor, banded 0–8%. Tax relief is not in the V0 chain, so what you pay is what is printed."
+                  />
+                  <DetailRow
+                    label="Spread"
+                    mono
+                    value={market?.port ? formatPct(market.port.spread, 1) : 'reading the market…'}
+                    hint="half-spread, derived from commerce — the server's figure, not a client formula"
+                  />
+                  <DetailRow
+                    label="Cheapest here"
+                    value={
+                      cheapHere.length === 0
+                        ? marketLoaded
+                          ? 'Nothing this port undercuts its neighbours on.'
+                          : 'reading the market…'
+                        : cheapHere
+                            .map((g) => `${g.name} ${formatPctPoints(g.pct_nbr ?? 0)}`)
+                            .join(' · ')
+                    }
+                    hint="%NBR against ports within 600 nm — a live reading, not an authored specialty list"
+                  />
+                </dl>
+            </>
+          )}
+
+          {face === 'services' && (
+            <>
+              <p className="mb-3 text-xs text-ink-muted">
+                Bureau, officers and the Mayor are V1 — they are not drawn because there is nothing
+                behind them yet.
+              </p>
+                <dl className="space-y-1">
+                  <DetailRow
+                    label="Harbour"
+                    mono
+                    value={`${docked.length} of your fleets alongside · max draft ${port.max_draft}`}
+                    hint="Other houses' shipping is not reported by the V0 world (J.3 is V1)."
+                  />
+                  <DetailRow
+                    label="Yard"
+                    mono
+                    value={port.has_yard ? `tier ${port.yard_tier}` : 'none'}
+                    hint={port.has_yard ? 'The yard prices a REPAIR when the order runs; PREVIEW it on Command for the quote.' : undefined}
+                  />
+                  <DetailRow
+                    label="Provisions"
+                    mono
+                    value={`${formatTuns(snapshot.config.water_per_crew_day, 2)} water and ${formatTuns(snapshot.config.food_per_crew_day, 3)} food per hand, per voyage-day`}
+                    hint="What stores COST is set when PROVISION runs — no quayside price list crosses the wire."
+                  />
+                  <DetailRow
+                    label="Inn"
+                    mono
+                    value={`${formatInt(port.crew_pool)} hands in the pool`}
+                    hint="Beyond the pool, hands cost 2.5x — urgent recruitment (F.2). The rate is quoted when HIRE runs."
+                  />
+                  <DetailRow label="Academy" mono value={port.has_academy ? 'yes' : 'none'} />
+                  {port.is_ice_closed && <DetailRow label="Ice" mono value="CLOSED — nothing sails in or out" />}
+                </dl>
+            </>
+          )}
+
+          {face === 'ships' && (
+            <>
+                {docked.length === 0 ? (
+                  <p className="text-sm text-ink-muted">
+                    You have no fleet in {port.name}.{' '}
+                    {world.fleets
+                      .filter((f) => f.status === 'SAILING')
+                      .map((f) => `${f.name} is at sea.`)
+                      .join(' ')}
+                  </p>
+                ) : (
+                  <Table className={scrollTableClass()}>
+                    <thead>
+                      <tr>
+                        <TH>Ship</TH>
+                        <TH>Fleet</TH>
+                        <TH align="num">Hull</TH>
+                        <TH align="num">Crew</TH>
+                        <TH align="num">Hold</TH>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {docked.flatMap((fleet) =>
+                        fleet.ships.map((ship) => (
+                          <tr key={ship.id}>
+                            <TD>
+                              {ship.name}
+                              {ship.is_flagship && <span className="ml-1 text-accent">⚑</span>}
+                              <span className="ml-2 text-xs text-ink-faint">{ship.class}</span>
+                            </TD>
+                            <TD>{fleet.name}</TD>
+                            <TD align="num">{formatPct(hullFraction(ship))}</TD>
+                            <TD align="num">
+                              {formatInt(ship.crew)}/{formatInt(ship.crew_max)}
+                            </TD>
+                            <TD align="num">
+                              {formatTuns(shipHoldUsed(ship), 1)} / {formatTuns(ship.hold)}
+                            </TD>
+                          </tr>
+                        )),
+                      )}
+                    </tbody>
+                  </Table>
+                )}
+                {docked.length > 0 && (
+                  <p className="mt-1 font-mono text-[11px] text-ink-faint">{TABLE_SCROLL_HINT}</p>
+                )}
+            </>
+          )}
+        </div>
       </Card>
 
       <Card>
