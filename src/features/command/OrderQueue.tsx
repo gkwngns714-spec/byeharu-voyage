@@ -45,6 +45,19 @@ export function OrderQueue({
   const failed = orders.find((o) => o.status === 'failed')
   const etaMs = fleet.voyage && readAt !== null ? Date.parse(fleet.voyage.eta) - readAt : null
 
+  // Which trades will run somewhere OTHER than where she is heading now: everything after the
+  // first SAIL still waiting in the queue. Orders run top to bottom, so a SAIL is a change of
+  // scene and every trade behind it happens on the new stage.
+  const afterSail = new Set<number>()
+  {
+    let sailed = false
+    for (const o of orders) {
+      if (o.status === 'done' || o.status === 'failed') continue
+      if (sailed && (o.verb === 'BUY' || o.verb === 'SELL')) afterSail.add(o.seq)
+      if (o.verb === 'SAIL') sailed = true
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -91,6 +104,17 @@ export function OrderQueue({
             <li key={order.id} className="flex flex-wrap items-center gap-2 border-b border-edge/50 py-1">
               <span className="font-mono text-xs text-ink-faint">[{order.seq}]</span>
               <code className="min-w-0 flex-1 break-words font-mono text-xs text-ink">{order.text}</code>
+              {/* THE TRAP THIS CLOSES (2026-08-20 playtest): a SELL was queued behind a SAIL home,
+                  the queue accepted both in silence, and the pepper was carried back to the port it
+                  had been bought cheap in and sold there — a guaranteed loss, discoverable only in
+                  the ledger afterwards.
+                  A queue is first-in-first-out and cannot be reordered, so the fix is to say WHERE
+                  a trade will happen while it can still be cancelled. It reads the server's own
+                  parsed `verb` and nothing else: writing a second parser for the order line, when
+                  F.4 says there is exactly one and it is on the server, would be the worse bug. */}
+              {afterSail.has(order.seq) && (
+                <span className="font-mono text-[11px] text-warning">after she sails</span>
+              )}
               {order.status === 'active' && etaMs !== null && (
                 <span className="font-mono text-[11px] text-accent">eta {formatRealShort(Math.max(etaMs, 0))}</span>
               )}

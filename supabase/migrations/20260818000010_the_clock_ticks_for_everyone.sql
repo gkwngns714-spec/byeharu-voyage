@@ -184,6 +184,7 @@ declare
   v_player uuid; v_fleet uuid; v_cad uuid; v_lis uuid; v_sal uuid;
   v_t1 jsonb; v_t2 jsonb; v_d1 jsonb; v_d2 jsonb; v_rec jsonb;
   v_drift0 numeric; v_drift1 numeric; v_drift2 numeric;
+  v_moved  int; v_rows int;
   v_stock0 numeric; v_stock1 numeric; v_target numeric;
   v_status text; v_port text; v_events1 int; v_events2 int;
   v_outside int; v_sampled int; v_over int; v_grants int; n int; k int;
@@ -222,12 +223,26 @@ begin
     if (v_t2->>'fleets_touched')::int = 0 and v_events1 = v_events2 then f_arrive_idem := true; end if;
 
     -- ── (b) tick_market_drift steps once per slot, and only once.
+    --
+    -- IT ASKS WHETHER THE MARKET MOVED, NOT WHETHER ONE ROW DID. This used to read the drift of a
+    -- single row (Lisboa x Salt) before and after and require it to change — and it flaked, once,
+    -- in a player's browser: "the drift did not move (0.0000 -> 0.0000)" while the tick reported
+    -- all 14,980 rows stepped. Both facts were true. `port_goods.drift` is numeric(6,4), so an OU
+    -- step smaller than 0.00005 rounds to no change at all, and from a zeroed drift that is a
+    -- perfectly ordinary draw. The assert was a lottery on one row, and the boot it failed had
+    -- done nothing wrong. It self-healed on the one-shot retry, which is how it stayed hidden.
+    --
+    -- So the claim is measured where it lives: the tick promises to step EVERY row, and a stepped
+    -- market is one that has MOVED. A handful of rows rounding to zero is the arithmetic working;
+    -- a market where almost nothing moved is the defect this is looking for, and the count is
+    -- printed rather than implied.
     update public.port_goods set drift = 0, drift_slot = 0;
     select drift into v_drift0 from public.port_goods where port_id = v_lis and good_id = v_sal;
     v_d1 := public.tick_market_drift();
     select drift into v_drift1 from public.port_goods where port_id = v_lis and good_id = v_sal;
-    if (v_d1->>'drifted')::int = (select count(*) from public.port_goods)
-       and v_drift1 <> v_drift0 then f_drift := true; end if;
+    select count(*) into v_moved from public.port_goods where drift <> 0;
+    select count(*) into v_rows  from public.port_goods;
+    if (v_d1->>'drifted')::int = v_rows and v_moved * 10 >= v_rows * 9 then f_drift := true; end if;
 
     v_d2 := public.tick_market_drift();
     select drift into v_drift2 from public.port_goods where port_id = v_lis and good_id = v_sal;
@@ -281,7 +296,7 @@ begin
 
   if not f_arrive      then raise exception '0010 self-assert FAIL: tick_arrivals did not bring the fleet home (status %, port %, tick %)', v_status, v_port, v_t1; end if;
   if not f_arrive_idem then raise exception '0010 self-assert FAIL: a second tick_arrivals was not a no-op (% then % events, tick %)', v_events1, v_events2, v_t2; end if;
-  if not f_drift       then raise exception '0010 self-assert FAIL: tick_market_drift did not step all % rows (%), or the drift did not move (% -> %)', (select count(*) from public.port_goods), v_d1, v_drift0, v_drift1; end if;
+  if not f_drift       then raise exception '0010 self-assert FAIL: tick_market_drift stepped % of % row(s) and left only % of them moved — a market that does not move is not drifting', (v_d1->>'drifted'), v_rows, v_moved; end if;
   if not f_drift_idem  then raise exception '0010 self-assert FAIL: a repeat tick in the SAME slot stepped % row(s) and moved the drift % -> % — the OU walk is not keyed', (v_d2->>'drifted'), v_drift1, v_drift2; end if;
   if not f_clamp       then raise exception '0010 self-assert FAIL: after 20 slots over % sampled row(s), % row(s) in the world drifted outside the G.1 clamp', v_sampled, v_outside; end if;
   if not f_regen       then raise exception '0010 self-assert FAIL: stock did not regenerate toward the target without overshoot (% -> % of %, % row(s) over target)', v_stock0, v_stock1, v_target, v_over; end if;
@@ -293,6 +308,6 @@ begin
   select count(*) into v_grants from public.client_write_grants();
   if v_grants <> 0 then raise exception '0010 self-assert FAIL: the tick surface minted % client write grant(s)', v_grants; end if;
 
-  raise notice '0010 self-assert ok: tick_arrivals settled % voyage-day(s) and docked the fleet at CAD unattended, and a second call touched 0 fleets; tick_market_drift stepped all % rows once per slot and 0 rows on a repeat call in the same slot; after 20 forced slots over % sampled rows, 0 rows in the world sit outside the G.1 clamp; stock regenerated % -> % toward a target of % with 0 overshoots; tick_reconcile checked % player(s) and RAISED on a purse falsified by 4,242 d.; 0 client write grants',
-    (v_t1->>'days_resolved'), (v_d1->>'drifted'), v_sampled, v_stock0, v_stock1, v_target, (v_rec->>'players_checked');
+  raise notice '0010 self-assert ok: tick_arrivals settled % voyage-day(s) and docked the fleet at CAD unattended, and a second call touched 0 fleets; tick_market_drift stepped all % rows once per slot with % of them actually moved (the rest round to zero at numeric(6,4), which is the arithmetic working) and 0 rows on a repeat call in the same slot; after 20 forced slots over % sampled rows, 0 rows in the world sit outside the G.1 clamp; stock regenerated % -> % toward a target of % with 0 overshoots; tick_reconcile checked % player(s) and RAISED on a purse falsified by 4,242 d.; 0 client write grants',
+    (v_t1->>'days_resolved'), (v_d1->>'drifted'), v_moved, v_sampled, v_stock0, v_stock1, v_target, (v_rec->>'players_checked');
 end $$;

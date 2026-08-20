@@ -281,10 +281,17 @@ export function MarketScreen() {
           <Table className={scrollTableClass()}>
             <thead>
               <tr>
+                {/* %NBR IS SECOND, AND THAT IS THE WHOLE POINT.
+                    It was sixth, and at 390px it fell off the right edge: the column the entire
+                    game turns on — this port's price as a percentage of what its neighbours pay —
+                    was the one you had to swipe to see, while `131` and `139`, which mean nothing
+                    on their own, sat in plain view. The first column is sticky (tableLayout.ts),
+                    so a column placed second is the last one guaranteed to be on screen without
+                    scrolling. The prices did not get less important; they got less URGENT. */}
                 <TH>Good</TH>
+                <TH align="num">%NBR</TH>
                 <TH align="num">Buy</TH>
                 <TH align="num">Sell</TH>
-                <TH align="num">%NBR</TH>
                 <TH>Stock</TH>
                 <TH>Note</TH>
               </tr>
@@ -404,13 +411,13 @@ function TradedRow({
           <span className="block font-mono text-[10px] text-ink-faint">{good.category}</span>
         </button>
       </TD>
-      <TD align="num">{formatInt(good.buy)}</TD>
-      <TD align="num">{formatInt(good.sell)}</TD>
       <TD align="num">
         <span className={tone}>
           {good.pct_nbr === null ? '—' : formatPctPoints(good.pct_nbr)}
         </span>
       </TD>
+      <TD align="num">{formatInt(good.buy)}</TD>
+      <TD align="num">{formatInt(good.sell)}</TD>
       <TD>
         <span
           className="font-mono text-xs text-ink-muted"

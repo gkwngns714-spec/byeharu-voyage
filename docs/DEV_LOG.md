@@ -5,6 +5,73 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-20 — D11h: the four left undone, done
+
+Owner: *"don't leave out. do all."* So all four, each proved in a browser rather than reasoned about.
+
+### 1. The drift flake, explained rather than suppressed
+
+0010's assert read ONE row (Lisboa x Salt) before and after a drift tick and required it to change.
+`port_goods.drift` is `numeric(6,4)`, so an OU step under 0.00005 rounds to no change — from a
+zeroed drift, a perfectly ordinary draw. **The assert was a lottery on one row.**
+
+Measured, now that it counts: **14,967 of 14,980 rows move; 13 round away.** That is 0.087%, so the
+old single-row assert had roughly a **1-in-1,150 chance of failing any boot it ran in** — which is
+exactly "seen once, never reproduced in 8 tries".
+
+The claim is now measured where it lives: the tick promises to step every row, and a stepped market
+is one that has MOVED. It requires 90% and gets 99.91%, and the receipt prints the count so a
+regression shows instead of hiding.
+
+### 2. %NBR was sixth, and fell off the right edge
+
+The column the entire game turns on — this port's price against what its neighbours pay — was the
+one you had to swipe to see, while `131` and `139`, which mean nothing on their own, sat in plain
+view. **It is second now**, immediately behind the sticky good name, which is the last position
+guaranteed to be on screen at 390px without scrolling.
+
+Measured in the browser: `GOOD | %NBR | BUY | SELL | STOCK | NOTE`, second cell `83%`,
+`fullyVisible: true`. The prices did not get less important; they got less urgent.
+
+### 3. The queue trap now says so, while it can still be cancelled
+
+A SELL queued behind a SAIL home is a guaranteed loss the ledger tells you about afterwards. A queue
+is first-in-first-out and cannot be reordered, so the fix is to say WHERE a trade will happen:
+
+    [2] SAIL Gaivota TO LIS                    PENDING
+    [3] BUY salt ALL      after she sails      PENDING
+
+It reads the server's own parsed `verb` and nothing else. Writing a client-side parser for the order
+line — when F.4 says there is exactly one parser and it is on the server — would have been a worse
+bug than the one being fixed.
+
+### 4. A half-made order survives a reload
+
+Composing an order is four or five deliberate taps through pickers, and a refresh threw them away
+with no trace. The draft persists to **sessionStorage**, not local: a draft is a thing you are
+doing, not a thing you keep, so tomorrow opens on a clean composer instead of resurrecting an order
+aimed at a fleet that has since sailed, sold and come home.
+
+`handoffs` is deliberately NOT persisted — it is the nudge that scrolls the composer into view when
+another tab hands an order over, and restoring it would scroll on a plain reload as though a
+hand-off had just happened. **Persist the order; never persist the reaction to it.** A corrupt byte
+opens a clean composer rather than wedging the tab.
+
+Proved: `SAIL Gaivota` on screen, reload, `SAIL Gaivota` still on screen.
+
+### The whole suite, green
+
+**149 passed, 0 skipped, 0 failed** — the first fully-green run of the day, including all 12 layout
+tests and the fold test that had been red since before this session started. `db:proof` 31/31.
+
+**One consequence to record:** editing 0010's self-assert changes the chain fingerprint, so any
+browser still in LOCAL mode rebuilds its world once. Cloud mode has been the default since D11e, so
+this is now a note rather than a loss. The live server is unaffected — `db push --dry-run` reports
+*"Remote database is up to date"*, and a recorded migration is never re-applied. As with 0012, the
+deployed copy of 0010 carries the older assert text; no schema or behaviour differs.
+
+---
+
 ## 2026-08-20 — D11g: the three defects the playtest found, fixed
 
 Owner: *"fix and do what is necessary."* So: the catalogue from D11's playtest, not new work.

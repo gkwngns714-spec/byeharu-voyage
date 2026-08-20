@@ -39,6 +39,7 @@
 // it; MARKET and PORT read it so the order they hand over is aimed at the right ship.
 
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
 /** A partially- or fully-made order. Every field is optional: a hand-off says what it knows. */
 export interface CommandIntent {
@@ -72,33 +73,72 @@ export interface CommandDraftState {
   clear: () => void
 }
 
-export const useCommandDraft = create<CommandDraftState>((set) => ({
-  fleetId: null,
-  verb: null,
-  args: {},
-  handoffs: 0,
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// IT SURVIVES A RELOAD, BECAUSE A HALF-MADE ORDER IS WORK.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// Found in the 2026-08-20 playtest: SAIL was half-composed, the page reloaded, and the pick was
+// gone with no trace — the store was memory-only. Composing an order is four or five deliberate
+// taps through pickers; losing them to a refresh is losing work, and the player cannot tell a lost
+// draft from one that was never made.
+//
+// SESSION storage, NOT local. A draft is a thing you are doing, not a thing you keep: `sessionStorage`
+// dies with the tab, so tomorrow's visit opens on a clean composer instead of resurrecting an order
+// aimed at a fleet that has since sailed, sold and come home. Same instinct as
+// components/ui/collapsibleState.ts, which persists a fold and says why.
+//
+// `handoffs` IS DELIBERATELY NOT PERSISTED. It is a nudge counter — CMD scrolls the composer into
+// view when another tab hands an order over — and restoring it would scroll on a plain reload as
+// though a hand-off had just happened. Persist the ORDER; never persist the reaction to it.
+const NOTHING_MADE = { fleetId: null, verb: null, args: {} as Record<string, string> }
 
-  selectFleet: (fleetId) => set({ fleetId }),
+export const useCommandDraft = create<CommandDraftState>()(
+  persist(
+    (set) => ({
+      fleetId: null,
+      verb: null,
+      args: {},
+      handoffs: 0,
 
-  chooseVerb: (verb) => set({ verb, args: {} }),
+      selectFleet: (fleetId) => set({ fleetId }),
 
-  setArg: (name, value) =>
-    set((s) => {
-      const args = { ...s.args }
-      if (value === null || value === '') delete args[name]
-      else args[name] = value
-      return { args }
+      chooseVerb: (verb) => set({ verb, args: {} }),
+
+      setArg: (name, value) =>
+        set((s) => {
+          const args = { ...s.args }
+          if (value === null || value === '') delete args[name]
+          else args[name] = value
+          return { args }
+        }),
+
+      handOff: (intent) =>
+        set((s) => ({
+          fleetId: intent.fleetId === undefined ? s.fleetId : intent.fleetId,
+          // A hand-off that names a verb replaces the arguments; one that does not is only adding
+          // to what is already being made (MARKET setting a good on an existing BUY, say).
+          verb: intent.verb === undefined ? s.verb : intent.verb,
+          args: intent.verb === undefined ? { ...s.args, ...intent.args } : { ...intent.args },
+          handoffs: s.handoffs + 1,
+        })),
+
+      clear: () => set({ verb: null, args: {} }),
     }),
-
-  handOff: (intent) =>
-    set((s) => ({
-      fleetId: intent.fleetId === undefined ? s.fleetId : intent.fleetId,
-      // A hand-off that names a verb replaces the arguments; one that does not is only adding to
-      // what is already being made (MARKET setting a good on an existing BUY, say).
-      verb: intent.verb === undefined ? s.verb : intent.verb,
-      args: intent.verb === undefined ? { ...s.args, ...intent.args } : { ...intent.args },
-      handoffs: s.handoffs + 1,
-    })),
-
-  clear: () => set({ verb: null, args: {} }),
-}))
+    {
+      name: 'byeharu-voyage.draft.v1',
+      storage: createJSONStorage(() => sessionStorage),
+      // Actions are functions and `handoffs` is a nudge; only the order itself is written.
+      partialize: (s) => ({ fleetId: s.fleetId, verb: s.verb, args: s.args }),
+      // A corrupt or half-written byte must open a clean composer, never wedge the tab.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<CommandDraftState>
+        const args = p.args && typeof p.args === 'object' && !Array.isArray(p.args) ? p.args : {}
+        return {
+          ...current,
+          fleetId: typeof p.fleetId === 'string' ? p.fleetId : NOTHING_MADE.fleetId,
+          verb: typeof p.verb === 'string' ? p.verb : NOTHING_MADE.verb,
+          args,
+        }
+      },
+    },
+  ),
+)
