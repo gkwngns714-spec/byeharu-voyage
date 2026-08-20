@@ -364,7 +364,7 @@ function ArgPicker({
 function MarketPending() {
   return (
     <p className="font-mono text-xs text-ink-faint">
-      Reading this port's market… (the prices come from the server, never from a cache of a guess)
+      Reading this port's market…
     </p>
   )
 }

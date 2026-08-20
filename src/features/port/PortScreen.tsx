@@ -205,7 +205,11 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
       </Card>
 
       <Card>
-        <CardHeader eyebrow="Services" title="What is on this quay" />
+        <CardHeader
+          eyebrow="Services"
+          title="What is on this quay"
+          explain="Bureau (investment), officers at the Inn, the weekly Mayor and nation shares are V1 (K.1). They are not drawn here because there is nothing behind them yet."
+        />
         <dl className="space-y-1">
           <DetailRow
             label="Harbour"
@@ -234,17 +238,13 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
           <DetailRow label="Academy" mono value={port.has_academy ? 'yes' : 'none'} />
           {port.is_ice_closed && <DetailRow label="Ice" mono value="CLOSED — nothing sails in or out" />}
         </dl>
-        <Notice tone="neutral" className="mt-3 text-xs">
-          Bureau (investment), officers at the Inn, the weekly Mayor and nation shares are V1 (K.1).
-          They are not drawn here because there is nothing behind them yet.
-        </Notice>
       </Card>
 
       <Card>
         <CardHeader
           eyebrow="Your ships"
           title={docked.length === 0 ? 'Nothing of yours alongside' : 'Alongside'}
-          subtitle={docked.length === 0 ? undefined : 'Every hull you have in this harbour.'}
+          explain={docked.length === 0 ? undefined : 'Every hull you have in this harbour.'}
         />
         {docked.length === 0 ? (
           <p className="text-sm text-ink-muted">
@@ -298,11 +298,8 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
         <CardHeader
           eyebrow="Actionable here"
           title="What you can do in this harbour"
-          subtitle={
-            acting
-              ? `Each of these loads onto Command as ${acting.name}'s order. Nothing is issued here.`
-              : 'Nothing is issued here.'
-          }
+          subtitle={acting ? `Tap one to load it onto Command as ${acting.name}'s order.` : undefined}
+          explain="Nothing is issued here. Every line below is printed as the exact order it would become, and tapping it hands that order to Command with its pickers already filled — where you preview it, and where you issue it."
         />
         {acting && (
           <div className="space-y-4">
@@ -374,7 +371,11 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
       </Card>
 
       <Card>
-        <CardHeader eyebrow="Elsewhere" title="Other ports" subtitle="Read a harbour before you sail to it." />
+        <CardHeader
+          eyebrow="Elsewhere"
+          title="Other ports"
+          explain="Read a harbour before you sail to it — the prices you see are the ones your factors report from there, not the ones you are lying in."
+        />
         <div className="flex flex-wrap gap-1.5">
           {snapshot.ports.map((p) => (
             <button

@@ -5,6 +5,7 @@ import {
   Card,
   CardHeader,
   EmptyState,
+  Explain,
   Notice,
   PageHeader,
   Screen,
@@ -207,7 +208,7 @@ export function CommandScreen() {
       <PageHeader
         eyebrow="Orders"
         title="Command"
-        subtitle="Pick what she is to do. The order writes itself."
+        explain="Pick what she is to do; the order writes itself. Nothing here happens until you issue it."
         actions={
           <>
             {world.ducats !== null && (
@@ -275,7 +276,7 @@ export function CommandScreen() {
               <CardHeader
                 eyebrow="Make"
                 title="An order"
-                subtitle="Every choice below is something that really exists right now."
+                explain="Every choice below is something that really exists right now — a port she can reach, a good this market trades, a quantity she can afford."
                 aside={<Badge tone="neutral">{verbs.length + 2} verbs</Badge>}
               />
               <OrderComposer
@@ -291,7 +292,15 @@ export function CommandScreen() {
 
               {/* THE LINE — read-only, and the whole contract with the server. */}
               <div className="mt-4 space-y-3 rounded-md border border-accent/25 bg-accent-soft p-3">
-                <SectionLabel className="mb-0">What will be sent</SectionLabel>
+                {/* The dot rides the section label, where the reader is already looking, rather
+                    than floating alone under the line it explains. */}
+                <SectionLabel className="mb-0">
+                  What will be sent
+                  <Explain label="What will be sent" dotClassName="ml-0.5">
+                    This exact line goes to cmd.issue(fleet, text, version). There is one parser, and
+                    it is on the server (F.4).
+                  </Explain>
+                </SectionLabel>
                 <p className="flex items-start gap-2">
                   <span aria-hidden className="font-mono text-lg leading-none text-accent">
                     &gt;
@@ -299,10 +308,6 @@ export function CommandScreen() {
                   <code aria-live="polite" className="min-w-0 flex-1 break-words font-mono text-sm text-ink">
                     {text || <span className="text-ink-faint">nothing yet</span>}
                   </code>
-                </p>
-                <p className="font-mono text-[11px] text-ink-faint">
-                  This exact line goes to cmd.issue(fleet, text, version). There is one parser, and it
-                  is on the server (F.4).
                 </p>
               </div>
 
@@ -344,7 +349,7 @@ export function CommandScreen() {
               <CardHeader
                 eyebrow="Standing"
                 title="Her queue"
-                subtitle="First in, first out. On a failure it halts — it never skips."
+                explain={`One queue per fleet, ${world.snapshot.config.order_queue_max} deep, first in first out. On a failure it halts — it never skips. A voyage already at sea keeps sailing when you clear.`}
                 aside={
                   world.readAt ? (
                     // The queue is as fresh as the last READ — nothing here ticks (D.2), so the

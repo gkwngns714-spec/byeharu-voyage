@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from 'react'
+import { Explain } from './Explain'
 
 // Design-system LABEL/VALUE row for a value that is a SENTENCE, not a number.
 //
@@ -38,7 +39,9 @@ export function DetailRow({
   label: ReactNode
   /** The sentence. Wraps as a block; never right-aligned. */
   value: ReactNode
-  /** A quieter second line under the value — the parenthetical that used to be jammed on the end. */
+  /** The standing explanation of this value — units, provenance, the rule behind it. NOT PRINTED:
+   *  it goes behind the ⓘ that trails the value, and appears when the player taps it (Explain.tsx).
+   *  Never put a live figure here; the row's `value` is where anything current belongs. */
   hint?: ReactNode
   /** Set when the value is prose ABOUT figures ("water 3 d./t · food 12 d./t") and the digits
    *  should still be tabular. Alignment does not change; only the face does. */
@@ -55,7 +58,11 @@ export function DetailRow({
       <dt className="text-ink-faint">{label}</dt>
       <dd className={`min-w-0 text-left text-ink ${mono ? 'font-mono text-[13px]' : ''}`}>
         {value}
-        {hint && <span className="mt-0.5 block text-xs text-ink-faint">{hint}</span>}
+        {hint && (
+          <Explain label={typeof label === 'string' ? label : undefined} dotClassName="ml-1">
+            {hint}
+          </Explain>
+        )}
       </dd>
     </div>
   )

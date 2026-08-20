@@ -4,8 +4,8 @@ import {
   Card,
   CardHeader,
   CollapsibleCard,
+  Explain,
   Meter,
-  Notice,
   PageHeader,
   Screen,
   SectionLabel,
@@ -101,7 +101,7 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
       <PageHeader
         eyebrow="Assets"
         title="Fleets"
-        subtitle="What you own, and the state it is in."
+        explain="What you own, and the state it is in. Endurance is in voyage-days; one voyage-day is three real minutes."
         actions={
           <>
             <span className="font-mono text-xs text-ink-faint">
@@ -121,7 +121,12 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
         </Card>
       ) : (
         <Card>
-          <CardHeader eyebrow="Roster" title="All fleets" subtitle="Tap a fleet to command it." />
+          <CardHeader
+            eyebrow="Roster"
+            title="All fleets"
+            subtitle="Tap a fleet to command it."
+            explain="Speed and endurance are the server's own figures — the ones SAIL refuses on. Endurance is in voyage-days; one voyage-day is three real minutes."
+          />
 
           {/* ── THE ROSTER, TWICE ──────────────────────────────────────────────────────────────
               Six columns do not fit 390px. Scrolling them sideways is legitimate and every other
@@ -195,10 +200,6 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
               ))}
             </tbody>
           </Table>
-          <p className="mt-3 font-mono text-[11px] text-ink-faint">
-            Speed and endurance are the server's own figures — the ones SAIL refuses on. Endurance
-            is in voyage-days; one voyage-day is three real minutes.
-          </p>
         </Card>
       )}
 
@@ -216,8 +217,11 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
       {world.readAt !== null && (
         <p className="text-center font-mono text-[11px] text-ink-faint">
           Read {formatRealShort(Math.max(0, nowMs - world.readAt))} ago
-          {world.mode ? ` · ${world.mode}` : ''}. A read is the catch-up: reading again is what
-          settles a voyage.
+          {world.mode ? ` · ${world.mode}` : ''}
+          <Explain label="how fresh this is" dotClassName="ml-0.5">
+            A read is the catch-up: nothing on this screen ticks, so reading again is what settles a
+            voyage and brings a fleet in.
+          </Explain>
         </p>
       )}
     </Screen>
@@ -270,16 +274,25 @@ function FleetDetail({
             </div>
             <Meter pct={fraction * 100} tone="accent" />
             <p className="font-mono text-[11px] text-ink-faint">
-              Bound for {portName(fleet.voyage.to)} at {formatKnots(fleet.speed_kn)}. The ETA was
-              frozen at departure and never moves (B.5); the position is the server's closed form,
-              not an interpolation.
+              Bound for {portName(fleet.voyage.to)} at {formatKnots(fleet.speed_kn)}.
               {etaMs !== null && nowMs >= etaMs && ' She is DUE — read again to bring her in.'}
+              <Explain label="this passage" dotClassName="ml-0.5">
+                The ETA was frozen at departure and never moves (B.5); the position is the server's
+                closed form, not an interpolation.
+              </Explain>
             </p>
           </div>
         )}
 
         <div>
-          <SectionLabel>Ships</SectionLabel>
+          <SectionLabel>
+            Ships
+            <Explain label="Ships" dotClassName="ml-0.5">
+              Speed is a FLEET figure — {formatKnots(fleet.speed_kn)}, the slowest hull with the
+              formation penalty already in it. The server does not report a per-hull speed, so this
+              table does not print one.
+            </Explain>
+          </SectionLabel>
           <Table className={scrollTableClass()}>
             <thead>
               <tr>
@@ -299,15 +312,16 @@ function FleetDetail({
             </tbody>
           </Table>
           <p className="mt-1 font-mono text-[11px] text-ink-faint">{TABLE_SCROLL_HINT}</p>
-          <p className="mt-1 font-mono text-[11px] text-ink-faint">
-            Speed is a FLEET figure — {formatKnots(fleet.speed_kn)}, the slowest hull with the
-            formation penalty already in it. The server does not report a per-hull speed, so this
-            table does not print one.
-          </p>
         </div>
 
         <div>
-          <SectionLabel>Cargo</SectionLabel>
+          <SectionLabel>
+            Cargo
+            <Explain label="Cargo" dotClassName="ml-0.5">
+              No average-cost column: the server carries what is aboard, not what it cost. The price
+              you paid is on the Ledger, in the BOUGHT entry for the parcel.
+            </Explain>
+          </SectionLabel>
           {cargo.length === 0 ? (
             <p className="text-sm text-ink-muted">Empty hold.</p>
           ) : (
@@ -353,16 +367,19 @@ function FleetDetail({
                   </tr>
                 </tbody>
               </Table>
-              <p className="mt-1 font-mono text-[11px] text-ink-faint">
-                No average-cost column: the server carries what is aboard, not what it cost. The
-                price you paid is on the Ledger, in the BOUGHT entry for the parcel.
-              </p>
             </>
           )}
         </div>
 
         <div>
-          <SectionLabel>Stores and hands</SectionLabel>
+          <SectionLabel>
+            Stores and hands
+            <Explain label="Stores and hands" dotClassName="ml-0.5">
+              Stores share the hold with the cargo. Officers arrive with V1 (C.6): at V0 every
+              expertise coefficient is 1.00, so a fleet is exactly its hulls, its hands and what is
+              in the hold.
+            </Explain>
+          </SectionLabel>
           <p className="font-mono text-xs text-ink-muted">
             water {formatTuns(stores.waterT, 1)} · food {formatTuns(stores.foodT, 1)} ·{' '}
             {formatVoyageDays(fleet.endurance_days)} of range · {formatInt(crew.aboard)} hands (
@@ -372,14 +389,10 @@ function FleetDetail({
           </p>
           <p className="mt-1 font-mono text-[11px] text-ink-faint">
             hold {formatTuns(fleetHoldUsed(fleet), 1)} / {formatTuns(fleetHoldTotal(fleet))} ·{' '}
-            {formatTuns(fleetHoldFree(fleet), 1)} free (stores share the hold with the cargo).
+            {formatTuns(fleetHoldFree(fleet), 1)} free.
           </p>
         </div>
 
-        <Notice tone="neutral" className="text-xs">
-          Officers arrive with V1 (C.6). At V0 every expertise coefficient is 1.00, so a fleet is
-          exactly its hulls, its hands and what is in the hold.
-        </Notice>
       </div>
     </CollapsibleCard>
   )

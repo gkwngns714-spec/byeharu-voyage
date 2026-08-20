@@ -5,6 +5,108 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-20 — D11: too many words, so the words went behind a dot
+
+Owner, looking at the running game: *"too much word. Make icons, make them tappable, then show info
+explaining."*
+
+### What was measured, before anything was changed
+
+Every tab screenshotted at 390x844, full page, and its visible text counted:
+
+| tab | words |
+|---|---|
+| PORT | 713 |
+| MARKET | 766 |
+| FLEETS | 235 |
+| COMMAND | 194 |
+| LEDGER | 106 |
+
+The top of PORT was three numbers wearing seventy words of footnote — `Market tax 3.0%` followed by
+*"set by the Mayor, banded 0–8%. Tax relief is not in the V0 chain, so what you pay is what is
+printed."*, then `Spread 2.6%` followed by another. Every figure in the game came with a permanent
+paragraph defending it.
+
+The prose was not wrong. It is what makes the game legible the first time you meet it, and it is
+worthless on the two-hundredth reading — by which point it is the thing standing between the player
+and the number.
+
+### The one authority: `Explain`
+
+`src/components/ui/Explain.tsx` (+ `explainState.ts` for the hook, the same split
+Collapsible/collapsibleState already uses). An `ExplainDot` — a real inline `<button>` carrying the
+`info` glyph, `aria-expanded` + `aria-controls` — and an `ExplainPanel` that mounts only while open.
+`<Explain>` wires the pair for the common case; PageHeader and CardHeader compose the parts because
+their dot rides the heading and their panel drops below it.
+
+Where the line falls against the fold we already had, written into the file:
+
+- **Collapsible** — folds content the player came for. Full-width header, persisted, open by default.
+- **Explain** — folds the standing explanation *of* content. Inline dot, ephemeral, always closed.
+
+**IT DRAWS AT 28px AND IS TAPPED AT 44px.** `navTabs.ts` sets this app's floor at 44px; a dot that
+cleared it visually would be a blot beside a 13px figure, and there are eleven on PORT. So the
+circle is 28×28 and the hit area is an invisible `::before` inflated 8px on every side. It also
+carries `z-20`, and that is part of the target rather than decoration: measured on FLEETS, the
+sticky table header (`z-10`, tableLayout.ts) took the bottom half of the Ships dot and left a 44×22.
+
+The panel is a `<span class="block">`, not a `<div>`: it opens inside `<p>`, inside `<h3>` and inside
+`<dd>`, and a div is invalid in the first two. React said so out loud until it was a span.
+
+### The prop that was carrying two different things
+
+`subtitle` was doing two jobs, and only one of them belonged on the screen by default:
+
+    Port · Lisbon                              Fleets
+    Portugal · latin · North Atlantic Ocean    What you own, and the state it is in.
+    ^ LIVE — the harbour you are reading       ^ STANDING — true on every visit, forever
+
+So `PageHeader` and `CardHeader` now take **both**: `subtitle` stays printed (live subject, status,
+or the disclosure of a tap affordance the player could not otherwise find), and `explain` goes
+behind the dot. Each of the 25 call sites was sorted by hand rather than by rule.
+
+### What may never go behind a dot
+
+Written into Explain.tsx so it survives the next sweep: live data, a refusal sentence and its fixes,
+and any hint disclosing an affordance that is otherwise invisible. `TABLE_SCROLL_HINT` ("Swipe the
+table sideways…") and "Tap a fleet to command it." are still printed, on purpose — hiding those is
+hiding the game, not tidying it.
+
+### After
+
+| tab | before | after |
+|---|---|---|
+| PORT | 713 | 557 |
+| MARKET | 766 | 623 |
+| FLEETS | 235 | **123** |
+| COMMAND | 194 | **122** |
+| LEDGER | 106 | 98 |
+
+PORT and MARKET stay high because most of what remains is *data* — 70 priced goods, 214 port chips —
+which is the screen doing its job. The prose walls are gone from all five.
+
+### Proved in a browser, not asserted
+
+A Playwright pass at 390×844 walks **every dot on every tab**: 25 dots, 25 opened and showed real
+text and closed again, 0 failures. All 25 clear 44×44 at all four corners (`elementFromPoint` at
+centre ±21px). No page ever scrolls sideways (390/390). Zero console errors — the invalid-nesting
+warning that the first draft produced is gone.
+
+`tsc -b` and `eslint .` clean; `npx playwright test` 137 passed / 6 skipped; `layout.spec.ts`
+11 passed.
+
+**Pre-existing red, NOT caused by this work:** `MARKET puts a complete price row above the fold`
+fails with *"only 0 complete price rows above the fold at 731px"*. Verified by stashing this change,
+rebuilding and re-running: `main` fails identically. The failure screenshot shows the page still on
+"Opening the world." — `waitForLoadState('networkidle')` returns long before PGlite has applied the
+chain (~15s), so the test measures a skeleton. It is a harness timing gap, not a layout defect.
+
+**Also noted, environment:** `vite preview` binds `[::1]` only on this machine, while
+playwright.config.ts defaults to `127.0.0.1` — the layout specs silently SKIP unless run with
+`PLAYWRIGHT_BASE_URL=http://localhost:4173/byeharu-voyage/`.
+
+---
+
 ## 2026-08-19 — D10: the picker that lied, and an economy that printed money
 
 Two owner-reported defects, both found by looking at the running game rather than at a test.

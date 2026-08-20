@@ -24,4 +24,8 @@ export { overlayPanelClass, OVERLAY_SLOTS, type OverlaySlot, type OverlayTone } 
 export { Icon } from './Icon'
 export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
 export { Collapsible, CollapsibleCard } from './Collapsible'
+// Collapsible's inline counterpart: the tappable ⓘ that folds a standing EXPLANATION rather than
+// content (see Explain.tsx for the boundary between them, and for what may never go behind a dot).
+export { Explain, ExplainDot, ExplainPanel } from './Explain'
+export { useExplainDisclosure, type ExplainDisclosure } from './explainState'
 export { foldStorageKey, foldStateValue, readFoldState } from './collapsibleState'

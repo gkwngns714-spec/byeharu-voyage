@@ -127,10 +127,6 @@ export function OrderQueue({
           {failed ? `Clear the halt on ${fleet.name}` : `Clear ${fleet.name}'s queue`}
         </Button>
       </div>
-      <p className="font-mono text-[11px] text-ink-faint">
-        One queue per fleet, {queueMax} deep, first in first out. A voyage already at sea keeps
-        sailing when you clear.
-      </p>
     </div>
   )
 }

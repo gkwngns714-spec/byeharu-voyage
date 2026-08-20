@@ -158,7 +158,7 @@ export function MarketScreen() {
       <PageHeader
         eyebrow="Trade"
         title={`Market · ${port?.name ?? '—'}`}
-        subtitle={`Every price is the server's, read against the ports within ${NEIGHBOUR_RADIUS_NM} nm.`}
+        explain={`Every price is the server's, read against the ports within ${NEIGHBOUR_RADIUS_NM} nm. Orders execute in steps, each repricing — buying raises the price you are still buying at (§G.2). The server does that walk; these figures are today's opening ones.`}
         actions={
           portId ? (
             <Button onClick={() => fetchMarket(portId)}>Read again</Button>
@@ -262,6 +262,7 @@ export function MarketScreen() {
           <CardHeader
             title="Goods"
             subtitle="Tap a good to load the order onto Command."
+            explain="These are today's opening prices. An order executes in steps, each one repricing — buying raises the price you are still buying at (§G.2), and the server does that walk when the order runs. No seven-day line is drawn: a price history is a record that has to be kept before it can be shown, and nothing in the chain keeps one yet."
             aside={<Badge tone="accent">{countRows(blocks)} rows</Badge>}
           />
           <Table className={scrollTableClass()}>
@@ -282,6 +283,9 @@ export function MarketScreen() {
             </tbody>
           </Table>
 
+          {/* WHAT STAYS PRINTED: the live reading of this quay and the swipe affordance. The two
+              standing paragraphs that used to sit under them — how a stepped order reprices, and
+              why there is no seven-day line — are behind the dot on the card's title. */}
           <dl className="mt-4 space-y-1 font-mono text-[11px] text-ink-faint">
             {view.port && (
               <div>
@@ -295,31 +299,27 @@ export function MarketScreen() {
                 : 'No fleet of yours is in this port, so an order tapped here will need a fleet on Command.'}
             </div>
             <div>{TABLE_SCROLL_HINT}</div>
-            <div>
-              Orders execute in steps, each repricing — buying raises the price you are still buying
-              at (§G.2). The server does that walk; these figures are today's opening ones.
-            </div>
-            {/* The one quiet line the deleted sparkline earned. */}
-            <div>
-              No seven-day line is drawn: a price history is a record that has to be kept before it
-              can be shown, and nothing in the chain keeps one yet.
-            </div>
           </dl>
         </Card>
       )}
 
+      {/* THE RULE IS THE TITLE; THE ESSAY IS BEHIND THE DOT. A player who has learnt %NBR needs
+          the threshold and nothing else, and they need it on every visit for the rest of the game.
+          A player meeting it for the first time taps once. */}
       <Card tone="accent">
         <CardHeader
           eyebrow="How to read it"
           title={`Below ${ADVICE_BUY_BELOW}, buy. Above ${ADVICE_SELL_ABOVE}, sell.`}
+          explain={
+            <>
+              The %NBR column is this port's price as a percentage of what the same good fetches in
+              the ports within {NEIGHBOUR_RADIUS_NM} nm of it. It is the whole game in one column: it
+              tells you nothing about whether a price is high, and everything about whether it is
+              high <em>here</em>. Salt in {port?.name ?? 'a port'} is not cheap because salt is
+              cheap; it is cheap because somebody two days' sail away will pay more for it.
+            </>
+          }
         />
-        <p className="text-sm text-ink-muted">
-          The %NBR column is this port's price as a percentage of what the same good fetches in the
-          ports within {NEIGHBOUR_RADIUS_NM} nm of it. It is the whole game in one column: it tells
-          you nothing about whether a price is high, and everything about whether it is high{' '}
-          <em>here</em>. Salt in {port?.name ?? 'a port'} is not cheap because salt is cheap; it is
-          cheap because somebody two days' sail away will pay more for it.
-        </p>
       </Card>
     </Screen>
   )

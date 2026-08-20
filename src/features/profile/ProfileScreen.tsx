@@ -13,10 +13,10 @@ export function ProfileScreen() {
 
   return (
     <Screen>
-      <PageHeader eyebrow="Account" title="Profile" subtitle="Who is signed in on this device." />
+      <PageHeader eyebrow="Account" title="Profile" explain="Who is signed in on this device." />
 
       <Card>
-        <CardHeader title="Session" subtitle="Held by Supabase auth and refreshed automatically." />
+        <CardHeader title="Session" explain="Held by Supabase auth and refreshed automatically." />
         <dl className="space-y-2">
           <StatRow label="Email" value={user?.email ?? '—'} plain />
           <StatRow label="User id" value={user?.id ? `${user.id.slice(0, 8)}…` : '—'} />

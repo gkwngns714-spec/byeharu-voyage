@@ -97,7 +97,7 @@ function LedgerBody({ world }: { world: LiveWorld }) {
       <PageHeader
         eyebrow="Record"
         title="Ledger"
-        subtitle="Everything that happened, in the order it happened."
+        explain="Everything that happened, in the order it happened. The ledger is the server's record, not a client log: it is the same one your standing is judged from."
         actions={
           <>
             <span className="font-mono text-sm text-accent">
