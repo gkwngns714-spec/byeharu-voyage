@@ -265,7 +265,12 @@ export function CommandScreen() {
             {fleet && (
               <p className="mt-3 font-mono text-[11px] text-ink-faint">
                 {fleet.name}: {formatVoyageDays(fleet.endurance_days)} of stores · {fleet.speed_kn.toFixed(1)} kn ·{' '}
-                {formatTuns(freeHoldTuns(fleet))} free{port ? ` · lying at ${port.name}` : ''}
+                {formatTuns(freeHoldTuns(fleet))} free
+                {/* `port` is where the order will TRADE — where she lies, or where she is bound if
+                    she is at sea (F.2). Printing it as "lying at" either way told the player she
+                    was alongside while the panel below said "at sea, 84 nm of 248". Same fact,
+                    two sentences, one of them false. */}
+                {port ? (fleet.status === 'SAILING' ? ` · bound for ${port.name}` : ` · lying at ${port.name}`) : ''}
               </p>
             )}
           </Card>

@@ -61,6 +61,48 @@ async function reachable(request: { get: (url: string) => Promise<{ ok(): boolea
   }
 }
 
+/**
+ * `networkidle` IS NOT "THE APP IS UP" HERE, and treating it as one is what made the fold test red.
+ *
+ * The chain applies inside the browser (PGlite), which takes seconds — 15 on this machine before
+ * D11b, ~8 after. `networkidle` fires as soon as the bundle has finished downloading, long before
+ * `world.snapshot()` has answered, so every measurement below was taken against the skeleton:
+ * "only 0 complete price rows above the fold" was the loading placeholder, measured honestly.
+ *
+ * READY IS THE ABSENCE OF THE TWO THINGS LOADING LOOKS LIKE, and nothing screen-shaped. Waiting
+ * for a table row was the obvious idea and it was wrong: COMMAND has no table at all, so the wait
+ * timed out on a screen that had been up for a minute. Both signals below are design-system-wide —
+ * `Skeleton` is the ONE loading placeholder (`animate-pulse`), and "Opening the world" is the one
+ * sentence every screen prints while the chain applies.
+ */
+async function ready(page: import('@playwright/test').Page) {
+  await page.waitForLoadState('domcontentloaded')
+  await page.waitForFunction(
+    () => {
+      const pulsing = document.querySelectorAll('.animate-pulse').length
+      const opening = /Opening the world/i.test(document.body.innerText)
+      return pulsing === 0 && !opening
+    },
+    undefined,
+    { timeout: 90_000 },
+  )
+  // One frame, so nothing measures a box that is still being laid out.
+  await page.waitForTimeout(250)
+
+  // THIS FILE MEASURES THE GAME, AND A CLOUD BUILD SHOWS A SIGN-IN FORM INSTEAD.
+  // With `.env.local` present the app runs against the Supabase project and every route redirects
+  // to /auth until a captain signs in — on which there is no table to measure and no world to
+  // wait for. That is not a layout failure, so it must not be reported as one: the build under
+  // test is simply the wrong one. Build without `.env.local` to measure local play.
+  if (/\/auth$/.test(new URL(page.url()).pathname)) {
+    test.skip(
+      true,
+      'this build is in CLOUD mode and redirected to /auth — the layout proof measures local play. ' +
+        'Move .env.local aside, `npm run build && npm run preview`, and re-run.',
+    )
+  }
+}
+
 for (const tab of TABS) {
   test(`${tab}: every table is fully readable at ${PHONE.width}px`, async ({ page, request, baseURL }) => {
     test.skip(
@@ -69,7 +111,7 @@ for (const tab of TABS) {
     )
 
     await page.goto(tab)
-    await page.waitForLoadState('networkidle')
+    await ready(page)
 
     const report = await page.evaluate((): { pageScrollW: number; pageClientW: number; tables: TableReport[] } => {
       const tables: TableReport[] = []
@@ -163,7 +205,7 @@ test('MARKET puts a complete price row above the fold, per K.1', async ({ page, 
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
   await page.goto('market')
-  await page.waitForLoadState('networkidle')
+  await ready(page)
 
   const fold = await page.evaluate(() => {
     const nav = document.querySelector('nav')

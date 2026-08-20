@@ -116,8 +116,21 @@ export function MarketScreen() {
   const fleetHere = fleets.find((f) => port && f.port === port.code) ?? null
   const holdFree = fleetHere ? freeHold(fleetHere) : 0
 
-  // THE ONE CALL INTO THE COMMAND FEATURE (./handOff.ts). A row that the port refuses to trade is
+  // THE ONE CALL INTO THE ORDER SECTION (domain/order). A row that the port refuses to trade is
   // not tappable: there is no order to hand over.
+  //
+  // BOTH SIDES HAND OVER `ALL`, AND NEITHER COMPUTES A MAXIMUM. This used to prefill a BUY with
+  // the free hold, which ignored the purse — so the very first tap a new player made arrived on
+  // Command already refused: "60 tuns of Black Pepper cost 8020 d. and you hold 8000". Twenty
+  // ducats over, on a screen they had not touched yet.
+  //
+  // It was the THIRD copy of the rule D10 was written to kill ("two places computing a maximum,
+  // both ignoring the price"). D10 fixed the MAX chip and `cmd.resolve_qty`; this one survived
+  // because nothing pointed at it. The fix deletes the copy rather than correcting it: buy-side
+  // `ALL` is resolved server-side through `public.fleet_buy_capacity()`, which walks the same
+  // stepped book a committed trade walks and stops at whichever of hold, stock, daily cap or
+  // PURSE binds first. `ALL` is read when the order RUNS, so it is still right after a voyage
+  // that changed the hold.
   const tap = (good: MarketGood) => {
     if (!good.available) return
     const verb = good.advice === 'sell' ? 'SELL' : 'BUY'
@@ -125,7 +138,7 @@ export function MarketScreen() {
       fleetId: fleetHere?.id ?? fleets[0]?.id ?? null,
       verb,
       goodCode: good.code,
-      qty: verb === 'SELL' ? 'ALL' : Math.max(1, Math.floor(holdFree)),
+      qty: 'ALL',
     })
     navigate('/command')
   }

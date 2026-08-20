@@ -5,6 +5,67 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-20 — D11g: the three defects the playtest found, fixed
+
+Owner: *"fix and do what is necessary."* So: the catalogue from D11's playtest, not new work.
+
+### 1. The first tap a new player made was already refused
+
+Tapping a good on MARKET handed the order to Command prefilled with the FREE HOLD — which ignores
+the purse. The preview refused it instantly: *"60 tuns of Black Pepper cost 8020 d. and you hold
+8000"*. Twenty ducats over, on a screen they had not touched yet.
+
+It was the **third copy** of the rule D10 was written to kill (*"two places computing a maximum,
+both ignoring the price"*). D10 fixed the MAX chip and `cmd.resolve_qty` and this one survived
+because nothing pointed at it.
+
+**The fix deletes the copy rather than correcting it.** Both sides now hand over `ALL`, and the
+client computes no maximum at all: buy-side `ALL` resolves server-side through
+`public.fleet_buy_capacity()`, which walks the same stepped book a committed trade walks and stops
+at whichever of hold, stock, daily cap or **purse** binds first. `ALL` is read when the order RUNS,
+so it survives a voyage that changed the hold.
+
+### 2. She was "lying at" a port she was still sailing towards
+
+The COMMAND summary read *"…56 t free · lying at Cadiz"* while the panel directly below it read
+*"at sea → Cadiz, 84 nm of 248 nm"*. Same fact, two sentences, one of them false. `port` there is
+where the order will TRADE — where she lies, or where she is bound if she is at sea (F.2) — and it
+was printed as "lying at" either way. It now says **bound for** when she is SAILING.
+
+### 3. A proof that had been red since before today
+
+`MARKET puts a complete price row above the fold` failed with *"only 0 complete price rows above the
+fold at 731px"*. Not a layout defect: `waitForLoadState('networkidle')` fires when the bundle has
+downloaded, and the chain applies **inside the browser** for seconds after that — so the test was
+measuring the loading skeleton, honestly and uselessly.
+
+The first fix was wrong and the suite said so: waiting for a table row timed out on COMMAND, which
+has no table. **Ready is the absence of the two things loading looks like**, and both are
+design-system-wide: `Skeleton` is the ONE placeholder (`animate-pulse`), and *"Opening the world"*
+is the one sentence every screen prints while the chain applies.
+
+All 12 layout tests green, including the fold test, measuring the real screen.
+
+### And a guard the deployment made necessary
+
+With `.env.local` present the app is in cloud mode and every route redirects to `/auth`, where there
+is no table to measure. That is the wrong BUILD, not a layout failure, so the spec now **skips with
+the reason and the fix** instead of failing confusingly — proved by running it both ways: 12 passed
+on a local build, 6 skipped on a cloud one.
+
+`db:proof` 31/31 · `playwright` 143 passed · tsc + eslint clean.
+
+### Left undone, deliberately
+
+* **%NBR is still cut off at 390px** — the column the game turns on. It needs the layout change the
+  redesign canvas draws, not a patch.
+* **The queue is still FIFO with no reorder and no warning** when "sail home" is queued ahead of
+  "sell". Design work, not a fix.
+* **A half-composed order still dies on a reload** (the draft is in-memory).
+* **0010's drift self-assert flake** — seen once, never reproduced, still not understood.
+
+---
+
 ## 2026-08-20 — D11f: sections, and the clock that runs in one of them
 
 Owner: *"do the next thing, but again, no spaghetti with others. What you've created so far,
