@@ -114,6 +114,72 @@ the window manager.
 
 ---
 
+## 3a. ⚠ COPY THE MATERIAL, NOT THE DEPTH
+
+The most important research finding, and it inverts the naive reading of the owner's instruction.
+
+**대항해시대 오리진's interface is the single most criticised thing about the game in its own
+Korean community.** 나무위키's evaluation page gives it a top-level heading — **「최악의 UX」**,
+"the worst UX" — the only interface-specific heading in the whole negative section:
+
+> *"대항해시대 오리진은 노골적으로 말해 유저의 편의성을 전혀 신경 쓰지 않은 엉망진창인 UI를 들고 나왔다."*
+> — bluntly, it shipped a shambolic UI that pays no attention to player convenience.
+
+And the complaint is **quantified**, which makes it usable:
+
+| task | cost |
+|---|---|
+| dump water and food | **9 taps** (`ESC-창고-선창-물-휴지통-확인-식량-휴지통-확인`) |
+| change a fleet preset | 4+, no hotkey — and direct preset shortcuts were *removed* |
+| swap one component across 9 presets | ~27 clicks |
+| sponsor officers | ~20 clicks, with a confirmation popup after **each one** |
+| reach a bottle quest | 4 levels deep (`메뉴-창고-도구함-기타`) |
+
+The developers now say it themselves. They created a dedicated 편의성 개선팀 in January 2025, and
+the director's stated goal is worth keeping on the wall:
+
+> *"목표는 게임 내의 정보들을 열람하기 위해 인게임이 아니라 커뮤니티나 유저 공략 등을 별도로 참조하는
+> 부분들을 최소화하는 것입니다."* — minimise the parts where a player has to leave the game and
+> consult a community wiki to read the game's own information.
+
+Their design principle for the convenience pass, verbatim, is the one line to steal outright:
+
+> *"UI 및 게임 정보 확인의 용이함, 시인성 개선, **조작 횟수 및 depth 감소**에 중점"*
+
+### The three traps, named
+
+1. **A convenience feature that becomes a blocker.** The cargo-ratio screen is elegant *and* one of
+   the most hated in the game: exceeding the ratio **blocks departure outright**, and it is set in
+   percentages so an exact quantity is unreachable. Take the stacked allocation bar; **never let an
+   allocation gate an action.** A target, not a constraint.
+2. **The action lives on the wrong screen.** Auto-supply sits in Supply but is needed at Departure;
+   dumping cargo sits in Storage but is needed at the trading post. The most-praised patch in four
+   years added no feature at all — it moved *selling provisions* onto the buy screen, where the
+   need arises. *"교역소 구매 화면에서 바로 물빵을 전부 파는게 가능하니까 정말 편하네요."*
+3. **Invisible rules are bugs, not content.** A 2026 patch **deleted** a quest-eligibility rule
+   outright rather than document it, because *"기존 규칙은 인게임 내 확인이 어려워"*.
+
+### What players actually praise — one thing, over and over
+
+**One-tap intent.** Tap the quest → she sails there. Tap the port → she sails there. Tap the
+minimap → he walks there. Plus consolidation: the tavern absorbed the pub, the departure office
+absorbed repair and crew hiring. (The art is the other consistent praise — the illustration quality
+is credited with *lowering* the entry barrier.)
+
+**This is the half we already have.** Orders are composed, not typed; a good on MARKET is one tap
+to a filled-in order; PORT prints every action as the literal order line it will become. The thing
+their four-year convenience backlog exists to fix is the thing this project started from.
+
+### So the instruction resolves as
+
+**Take the material, the density and the layout grammar. Refuse the menu tree.** Every pattern in
+§2 is about how a panel LOOKS and how much it can say per row. None of it is about how many taps
+sit between the player and an act — and on that axis the reference is the cautionary tale, not the
+model. A tap count is a design fact: if something is done more than five times a session and has no
+bulk form, that is a defect, and their history says it will take a year to notice.
+
+---
+
 ## 4. The rules this project now builds to
 
 1. **Every screen is the same frame.** Top bar (back · title · help · currency), a world layer, one

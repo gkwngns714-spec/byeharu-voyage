@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Badge, Button, Notice, SectionLabel } from '../../components/ui'
+import { Badge, Button, Icon, Notice, SectionLabel } from '../../components/ui'
+import { VERB_ICON } from './verbIcons'
 import { formatTuns } from '../../lib/format'
 import type { FleetView, MarketView, VerbArg, VerbSpec, WorldSnapshot } from '../../lib/rpc'
 import { EnumPicker, GoodPicker, NumberPicker, PortPicker, PricePicker, QtyPicker } from './ArgPickers'
@@ -98,30 +99,59 @@ export function OrderComposer({
     <div className="space-y-4">
       <div>
         <SectionLabel>What she is to do</SectionLabel>
-        <div className="flex flex-wrap gap-2">
-          {verbs.map((v) => (
-            <button
-              key={v.verb}
-              type="button"
-              onClick={() => onChooseVerb(v.verb === spec?.verb ? null : v.verb)}
-              className={[
-                'min-h-11 rounded-md border px-4 font-mono text-xs uppercase tracking-wider transition',
-                v.verb === spec?.verb
-                  ? 'border-accent bg-accent text-app'
-                  : 'border-edge bg-surface-2 text-ink hover:border-accent/60',
-              ].join(' ')}
-            >
-              {v.verb}
-            </button>
-          ))}
+        {/* THE ACTION CARD (docs/UI_DIRECTION.md §2). These were six text chips in a row, which is
+            a menu — the reference draws an action as a CARD carrying its own mark and a line of
+            what it does, so the choice is legible before it is made.
+            
+            THE LINE IS `spec.help`, WHICH THE SERVER ALREADY SERVES. It used to appear only AFTER
+            a verb was chosen, which is the wrong side of the decision. Nothing is authored here:
+            add a verb to the chain and its card appears, with its own sentence, without an edit
+            (F.4). The mark is the one presentational thing this file adds, and a verb with no mark
+            in the table still draws — with its initial — rather than breaking the grid. */}
+        <div className="grid grid-cols-2 gap-2">
+          {verbs.map((v) => {
+            const on = v.verb === spec?.verb
+            const mark = VERB_ICON[v.verb]
+            return (
+              <button
+                key={v.verb}
+                type="button"
+                onClick={() => onChooseVerb(on ? null : v.verb)}
+                className={[
+                  'bv-cut flex min-h-11 flex-col gap-1 border p-2.5 text-left transition',
+                  on
+                    ? 'border-accent bg-accent-soft'
+                    : 'border-edge bg-surface-2 hover:border-accent/60',
+                ].join(' ')}
+              >
+                <span className="flex items-center gap-2">
+                  {mark ? (
+                    <Icon
+                      name={mark}
+                      size={16}
+                      className={on ? 'text-accent' : 'text-ink-faint'}
+                    />
+                  ) : (
+                    <span
+                      className={`w-4 text-center font-mono text-xs ${on ? 'text-accent' : 'text-ink-faint'}`}
+                    >
+                      {v.verb.slice(0, 1)}
+                    </span>
+                  )}
+                  <span
+                    className={`font-mono text-xs uppercase tracking-wider ${on ? 'text-accent' : 'text-ink'}`}
+                  >
+                    {v.verb}
+                  </span>
+                </span>
+                <span className="line-clamp-2 text-[11px] leading-snug text-ink-faint">
+                  {v.help}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
-
-      {!spec && (
-        <p className="text-sm text-ink-muted">
-          Choose a verb and the order writes itself, one real choice at a time.
-        </p>
-      )}
 
       {spec && (
         <>
