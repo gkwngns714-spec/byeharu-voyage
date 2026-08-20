@@ -1,6 +1,6 @@
-import { Button, Card, Notice, PageHeader, Screen, SectionLabel, Skeleton } from '../../components/ui'
-import type { LiveWorld } from '../../live/worldStore'
-import type { Refusal } from '../../lib/rpc'
+import { Button, Card, Notice, PageHeader, Screen, SectionLabel, Skeleton } from '../components/ui'
+import type { LiveWorld } from './worldStore'
+import type { Refusal } from '../lib/rpc'
 
 // THE TWO NON-READY STATES OF A SCREEN, written once.
 //

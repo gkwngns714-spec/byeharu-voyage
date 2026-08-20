@@ -1,8 +1,8 @@
 import { Badge, Button, Notice, StatRow } from '../../components/ui'
 import { formatDucats, formatFixed, formatInt, formatNm, formatRealShort, formatTuns, formatUnitPrice, formatVoyageDays } from '../../lib/format'
 import type { PreviewResult, Refusal, VerbSpec } from '../../lib/rpc'
-import type { FixAction } from './orderText'
-import { fixAction } from './orderText'
+import type { FixAction } from '../../domain/order'
+import { fixAction } from '../../domain/order'
 
 // THE DRY RUN — F.5 layer 3, rendered.
 //

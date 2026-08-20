@@ -29,8 +29,8 @@ import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
 import type { LiveWorld } from '../../live/worldStore'
 import type { FleetShip, FleetStatus, FleetView, SnapshotConfig } from '../../lib/rpc'
-import { useCommandDraft } from '../command/commandDraft'
-import type { CommandIntent } from '../command/commandDraft'
+import { useCommandDraft } from '../../domain/order'
+import type { CommandIntent } from '../../domain/order'
 import {
   busyUntilMs,
   fleetCargo,
@@ -44,8 +44,8 @@ import {
   shipHoldUsed,
   voyageEtaMs,
   voyageFraction,
-} from './fleetDerive'
-import { ReadAgain, WorldFailed, WorldLoading } from './worldGate'
+} from '../../domain/fleet'
+import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 
 // FLEETS — E.2's roster. THE READ-ONLY TAB.
 //

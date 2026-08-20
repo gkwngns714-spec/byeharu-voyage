@@ -22,7 +22,7 @@
 // voyage that changed the hold. Neither is a price and neither is binding: CMD previews the order
 // and the server prices it.
 
-import { useCommandDraft } from '../command/commandDraft'
+import { useCommandDraft } from './draft'
 
 export interface TradeIntent {
   /** The fleet the order belongs to; null when the player has none here and CMD must ask. */

@@ -5,6 +5,104 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-20 — D11f: sections, and the clock that runs in one of them
+
+Owner: *"do the next thing, but again, no spaghetti with others. What you've created so far,
+organize them separately and independently so that individual have its own separate section …
+ships, stats, skills, trade goods … prices, buffs, fleet, captains, location."*
+
+### The spaghetti was real, and it was measurable
+
+Nine imports had one SCREEN reaching into another screen's internals:
+
+    port/PortScreen      -> command/commandDraft, command/orderText, fleets/worldGate, fleets/fleetDerive
+    fleets/FleetsScreen  -> command/commandDraft
+    market/handOff       -> command/commandDraft
+    ledger/LedgerScreen  -> fleets/worldGate
+
+None of it was bad code. Every one was a screen borrowing something that was never the lender's:
+**"how much hold is free" is a property of a fleet, not of the tab that draws one.**
+
+The clearest tell was `market/handOff.ts`, whose own header explained that it existed as an adapter
+because *"commandDraft.ts is owned by the CMD tab"*. **An adapter that exists only to survive a
+boundary is a sign the boundary is in the wrong place.** It still exists as a named intent; it is no
+longer a border crossing.
+
+### Two sections, by pure move
+
+    src/domain/order/   draft.ts · text.ts · handOff.ts   the order language and the order being made
+    src/domain/fleet/   derive.ts                          hold, crew, stores, cargo, hull, draught
+    src/live/WorldGate  (was features/fleets/worldGate)    world loading + failure chrome
+
+Each has one entrance (`index.ts`). Both are pure — no React, no store, no screen — and **neither
+decides anything**: the server owns every rule, and these only read what a served payload says.
+
+Cross-screen imports today: **zero**.
+
+### The rule has teeth now
+
+`tests/sections.spec.ts` reads the import graph off disk and fails on three things: a screen
+importing another screen, a domain reaching up into a screen or the shell, and anything reaching
+past a section's entrance into its internals.
+
+**It was proved to bite before it was trusted** — a cross-screen import was added on purpose and the
+spec failed, naming the exact crossing, then went green when it was removed. A boundary test that
+has never failed is decoration.
+
+`docs/SECTIONS.md` is the map: which section owns which concept today, and — for the ones the owner
+named that do not exist yet — where they land. Skills, buffs and officers each get their **own
+migration**, never a column bolted onto `players` because that table was nearest. The row worth
+guarding is `stats`: a stats table that anything may write is not a section, it is the place
+sections go to tangle.
+
+**The server is not reorganised, and that is deliberate.** The chain is deployed; re-cutting
+0001–0012 would desync `schema_migrations` on the live project and destroy every player's world to
+gain a filing improvement. Existing migrations stand. New concepts get new files.
+
+### The next thing: 0012, the clock is wound
+
+0010 owns what a tick DOES. **0012 owns only when it runs.** Two files, two questions, no overlap —
+the pattern the rest of the game should copy.
+
+The cadence is **derived, not restated**: `drift_slot_seconds` (0010) already answers "how often does
+the market step", so writing `*/10 * * * *` here would be a second answer, and the day somebody
+retunes the knob the cron would keep the old rhythm. `public.tick_cron_expression()` computes it,
+and the self-assert proves the crontab and the knob agree.
+
+    arrivals    * * * * *      every minute — a voyage-day is three real minutes
+    drift       */10 * * * *   from drift_slot_seconds = 600, not from a literal
+    reconcile   7 * * * *      hourly and OFF the hour, so the audit never lands on the writers
+
+Positive controls that bite: a 30-second slot and a 35-minute slot are both REFUSED, not rounded.
+And under PGlite, where pg_cron cannot exist, it applies cleanly, schedules nothing, and **says so**
+rather than pretending.
+
+### Proved running, not merely scheduled
+
+    jobname                   schedule        active
+    byeharu-voyage:arrivals   * * * * *       true
+    byeharu-voyage:drift      */10 * * * *    true
+    byeharu-voyage:reconcile  7 * * * *       true
+
+    cron.job_run_details: arrivals succeeded at 06:48:00 and again at 06:49:00
+
+**The world breathes on its own now.** Market drift and stock regeneration run whether anyone is
+looking or not — which is what makes a shared economy shared.
+
+`db:apply` 12/12 receipts · `db:proof` 31/31 · `playwright` 143 passed · tsc + eslint clean. Three
+test pins moved deliberately (last migration, its sentence, the receipt count).
+
+### One honest discrepancy
+
+0012 was pushed to the live server, and THEN two cosmetic edits were made to the file: the
+no-scheduler receipt was reworded to match the `self-assert ok:` contract the chain's non-vacuity
+floor requires, and a no-op `for` loop was deleted. Supabase will not re-apply an already-recorded
+migration, so **the deployed copy carries the older text**. There is no schema or behaviour
+difference — a NOTICE string and dead code — and the three jobs on the server are the correct ones,
+verified above. It is recorded here rather than quietly left.
+
+---
+
 ## 2026-08-20 — D11e: the game went online
 
 Owner: *"can you just delete everything of aqua chronicles, and overwrite this?"*

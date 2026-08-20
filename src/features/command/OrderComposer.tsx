@@ -12,7 +12,7 @@ import {
   hullPct,
   sellBound,
 } from './fleetLimits'
-import { missingArgs, visibleArgs } from './orderText'
+import { missingArgs, visibleArgs } from '../../domain/order'
 
 // THE COMPOSER — an order is MADE, never typed.
 //

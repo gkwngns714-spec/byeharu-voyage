@@ -19,7 +19,7 @@ import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
 import type { LiveWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
-import { ReadAgain, WorldFailed, WorldLoading } from '../fleets/worldGate'
+import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 
 // LEDGER — E.6. "The narrative organ of the game. This is where combat lives, as prose."
 //

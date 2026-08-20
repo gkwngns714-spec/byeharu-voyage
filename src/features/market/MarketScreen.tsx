@@ -20,7 +20,7 @@ import {
 import { formatInt, formatPct, formatPctPoints, formatTuns } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
 import type { FleetView, MarketGood, Refusal, SnapshotPort } from '../../lib/rpc'
-import { handOffTrade } from './handOff'
+import { handOffTrade } from '../../domain/order'
 import {
   ADVICE_BUY_BELOW,
   ADVICE_SELL_ABOVE,

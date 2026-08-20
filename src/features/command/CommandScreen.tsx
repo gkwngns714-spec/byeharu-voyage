@@ -17,9 +17,9 @@ import { useWorld } from '../../live/worldStore'
 import { OrderComposer } from './OrderComposer'
 import { OrderQueue } from './OrderQueue'
 import { PreviewPanel, type CheckState } from './PreviewPanel'
-import { useCommandDraft } from './commandDraft'
+import { useCommandDraft } from '../../domain/order'
 import { freeHoldTuns } from './fleetLimits'
-import { composableVerbs, findVerb, isComplete, orderText, type FixAction } from './orderText'
+import { composableVerbs, findVerb, isComplete, orderText, type FixAction } from '../../domain/order'
 
 // CMD — THE HEART. E.1, and the only tab that changes the world.
 //

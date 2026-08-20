@@ -19,11 +19,11 @@ import { formatInt, formatNm, formatPct, formatPctPoints, formatTuns, formatVoya
 import { useWorld } from '../../live/worldStore'
 import type { LiveWorld } from '../../live/worldStore'
 import type { FleetView, MarketGood, MarketView, SnapshotPort, WorldSnapshot } from '../../lib/rpc'
-import { useCommandDraft } from '../command/commandDraft'
-import type { CommandIntent } from '../command/commandDraft'
-import { findVerb, orderText } from '../command/orderText'
-import { fleetCrew, fleetHoldFree, fleetMaxDraft, hullFraction, shipHoldUsed, worstHullFraction } from '../fleets/fleetDerive'
-import { WorldFailed, WorldLoading } from '../fleets/worldGate'
+import { useCommandDraft } from '../../domain/order'
+import type { CommandIntent } from '../../domain/order'
+import { findVerb, orderText } from '../../domain/order'
+import { fleetCrew, fleetHoldFree, fleetMaxDraft, hullFraction, shipHoldUsed, worstHullFraction } from '../../domain/fleet'
+import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
 // PORT — E.3. Where you are, what is here, and what you can do about it.
 //
