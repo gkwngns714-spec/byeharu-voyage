@@ -5,6 +5,100 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-20 — D11b: the first load took 37 seconds, and 13 of them were one INSERT
+
+Owner: *"the first loading takes quite a long time, why?"* Measured before answering, in a real
+browser at 390x844, with every non-localhost request blocked at the network layer:
+
+| | to a rendered PORT screen |
+|---|---|
+| cold — first ever visit | **37.1 s** |
+| warm — second visit, same profile | 3.5 s |
+
+The console said where it went: *"chain applied: 10 migration(s) in 34194 ms"*. **The chain is not
+applied on a server. It runs in the browser, in PGlite, once per player.** A cold load downloads
+15.6 MB of WebAssembly PostgreSQL (`pglite.wasm` 9.62 MB + `pglite.data` 6.00 MB) and then applies
+all ten migrations for real inside it — self-asserts included. A warm load is 3.5 s because
+`bootState` reuses the stored world: *"reusing the stored world: 10 migration(s)"*.
+
+Per migration, timed on this machine:
+
+| migration | ms | share |
+|---|---|---|
+| 0005 every price is derived, never stored | 16 049 | **69%** |
+| 0010 the clock ticks for everyone | 4 087 | 18% |
+| 0009 the world reads back | 2 643 | 11% |
+| the other seven | 508 | 2% |
+
+Split 0005 at its own SELF-ASSERT banner: the proof was 2.5 s and the **seed was 13.1 s**. It was
+not the proof. It was one INSERT.
+
+### Which half of the seed, measured rather than guessed
+
+    as shipped (world.affinity_for() per row)                 12.4 s
+    knobs read once, distance still per (port, good)          10.2 s
+    knobs once + the nearest source as one set-based pass     10.0 s
+  * knobs once + a port x source-port distance matrix          3.8 s
+
+The config knobs were never the cost. **The distance was.** Asked per (port, good), the
+nearest-source subquery evaluates the great circle once per specialty row of that good: 214 ports x
+834 specialty rows = **178,476 haversines**. But a distance does not depend on the GOOD at all.
+Computed once per (port, source-port) pair it is 214 x 214 = **45,796**, and the per-good answer is
+a `min` over that matrix through the authored fact. Nearly 4x fewer; 3.3x faster on the clock.
+
+(`public.wc_num` is `security definer`, so PostgreSQL can never inline it — the five knobs per row
+were ~150,000 function invocations. Real, and the smaller half: 2.2 s of the 12.4.)
+
+### The fix, without a second economy
+
+0005's own comment warned that *"a formula that lived only inside an INSERT could not be re-run
+without copying it, and a copied formula is how two economies get born."* That law stands, so the
+set-based seed does **not** restate the formula. The formula was extracted instead:
+
+- **`world.affinity_at(is_producer, nearest_nm, producer, home, span, reach, curve)`** — the
+  arithmetic and nothing else. Every input is an argument, so it is `immutable` with no
+  `security definer`, which is exactly what lets PostgreSQL inline it. 14,980 calls now cost nothing.
+- **`world.affinity_for(port, good)`** — unchanged signature, still the shape the balance tuner and
+  any re-derivation ask for. It reads the knobs, finds the nearest source, and defers.
+- **the seed** — knobs in a CTE, the port x source-port distance matrix in a second CTE, then the
+  same `world.affinity_at()`.
+
+One formula. Two callers. Neither restates it.
+
+### Proved identical, not assumed identical
+
+The whole chain was applied before and after and all 14,980 `port_goods` rows — affinity, stock,
+stock_target, production_rate, ordered by port and good — hashed:
+
+    before  sha256 328de64e8c263b835f38ec2ab1846d84ca1f208a97d7d59018448d96aba5d0ef
+    after   sha256 328de64e8c263b835f38ec2ab1846d84ca1f208a97d7d59018448d96aba5d0ef
+
+`npm run db:proof` 31/31 PASS, including `BALANCE_MEDIAN_IN_BAND` (median first voyage 7.4%, band
+4.0-16.0) and `BALANCE_DISTANCE_PAYS`. `npx playwright test` 137 passed. tsc and eslint clean.
+
+### Result
+
+| | before | after |
+|---|---|---|
+| migration 0005 | 16.0 s | **7.9 s** |
+| whole chain (node) | 23.3 s | **15.3 s** |
+| chain in the browser | 34.2 s | **15.0 s** |
+| **cold first load** | **37.1 s** | **17.6 s** |
+| warm load | 3.5 s | 3.3 s |
+
+### And the answer to the question before it
+
+The game needs **no internet**. Both boot runs above ran with every non-localhost request aborted at
+the network layer: **0 external requests**, game fully playable. No Supabase (`hasCloud` is false
+with no `.env.local`, so `initRpc()` picks the local PGlite engine), no CDN, fonts self-hosted via
+`@fontsource` and bundled. Only `npm install` and `git push` need the network.
+
+Still on the table, not done: 0010 (4.1 s) and 0009 (2.6 s) are now 43% of the chain between them,
+and the 15.6 MB PGlite payload is a one-time download that would dominate a first visit over a real
+network rather than over localhost.
+
+---
+
 ## 2026-08-20 — D11: too many words, so the words went behind a dot
 
 Owner, looking at the running game: *"too much word. Make icons, make them tappable, then show info

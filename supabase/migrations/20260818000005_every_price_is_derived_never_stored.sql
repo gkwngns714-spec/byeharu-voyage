@@ -137,9 +137,51 @@ grant select on public.port_goods, public.trade_daily to authenticated;
 --
 -- stock_target and production_rate stay derived from size_tier and affinity, as before: a
 -- producer's depth and a sink's thinness are consequences of the affinity, not independent facts.
--- THE AFFINITY OF ONE (port, good), as a function — so the seed below, the balance tuner and any
--- later re-derivation all ask the SAME thing. A formula that lived only inside an INSERT could not
--- be re-run without copying it, and a copied formula is how two economies get born.
+-- THE FORMULA ITSELF, and NOTHING ELSE — no lookups, no knob reads, no table access. Everything it
+-- needs arrives as an argument, which is what lets it be `immutable` and free of `security
+-- definer`, which in turn is what lets PostgreSQL INLINE it into a caller's plan. Both callers
+-- below are the same formula:
+--
+--   world.affinity_for(port, good)   one pair, on demand — the tuner, a re-derivation, a probe
+--   the seed INSERT                  all 14,980 pairs at once, at migration time
+--
+-- The comment this replaces warned that "a formula that lived only inside an INSERT could not be
+-- re-run without copying it, and a copied formula is how two economies get born". That is still the
+-- law. The answer is not that one caller must be slow — it is that the formula lives in ONE place
+-- and both callers compose it.
+create or replace function world.affinity_at(
+  p_is_producer boolean,
+  p_nearest_nm  double precision,   -- to the nearest source; null when nobody in the world makes it
+  p_producer    numeric,
+  p_home        numeric,
+  p_span        numeric,
+  p_reach_nm    numeric,
+  p_curve       numeric
+)
+returns numeric
+language sql
+immutable
+parallel safe
+as $$
+  select case
+           when p_is_producer then p_producer
+           else least(3.000, greatest(0.250, round((
+             p_home
+             + p_span * power(
+                 least(1.0, coalesce(p_nearest_nm, p_reach_nm::double precision) / p_reach_nm),
+                 p_curve)
+           )::numeric, 3)))
+         end
+$$;
+
+comment on function world.affinity_at(boolean, double precision, numeric, numeric, numeric, numeric, numeric) is
+  'DESIGN G.1 affinity as pure arithmetic: the producer value, or home + span x (nearest source / '
+  'reach) ^ curve. THE one formula — world.affinity_for() and the 0005 seed both call it and '
+  'neither restates it. Immutable and inlinable, so 14,980 calls in one statement cost nothing.';
+
+-- THE AFFINITY OF ONE (port, good), on demand — the shape the balance tuner and any later
+-- re-derivation ask for. It reads the knobs and finds the nearest source, then defers to the
+-- formula above rather than repeating it.
 create or replace function world.affinity_for(p_port uuid, p_good uuid)
 returns numeric
 language sql
@@ -147,33 +189,75 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  select case
-           -- Does this very port produce it?
-           when exists (
+  select world.affinity_at(
+           exists (
              select 1 from public.port_specialties s
               where s.port_id = p_port and s.good_id = p_good
-           ) then public.wc_num('affinity_producer')
-           else least(3.000, greatest(0.250, round((
-             public.wc_num('affinity_home')
-             + public.wc_num('affinity_span')
-               * power(
-                   least(1.0, coalesce((
-                     select min(voyage.gc_distance_nm(p.lat, p.lon, src.lat, src.lon))
-                       from public.port_specialties s
-                       join public.ports src on src.id = s.port_id
-                      where s.good_id = p_good
-                   ), public.wc_num('affinity_reach_nm')) / public.wc_num('affinity_reach_nm')
-                 ), public.wc_num('affinity_curve'))
-           )::numeric, 3)))
-         end
+           ),
+           (select min(voyage.gc_distance_nm(p.lat, p.lon, src.lat, src.lon))
+              from public.port_specialties s
+              join public.ports src on src.id = s.port_id
+             where s.good_id = p_good),
+           public.wc_num('affinity_producer'),
+           public.wc_num('affinity_home'),
+           public.wc_num('affinity_span'),
+           public.wc_num('affinity_reach_nm'),
+           public.wc_num('affinity_curve')
+         )
     from public.ports p where p.id = p_port
 $$;
 
 comment on function world.affinity_for(uuid, uuid) is
-  'DESIGN G.1 affinity, derived from ONE authored fact (public.port_specialties: who produces what) '
-  'and four knobs. Change the knobs, re-run scripts/db/measure-first-voyage.mjs, and the economy is '
-  'retuned without a line of SQL moving.';
+  'DESIGN G.1 affinity for ONE (port, good), derived from ONE authored fact (public.port_specialties: '
+  'who produces what) and four knobs, via world.affinity_at(). Change the knobs, re-run '
+  'scripts/db/measure-first-voyage.mjs, and the economy is retuned without a line of SQL moving.';
 
+-- ── THE SEED, AND WHY IT NO LONGER CALLS affinity_for() 14,980 TIMES ─────────────────────────
+--
+-- It did, and that one statement was 13.1 of the chain's 23.3 seconds — 58% of the whole boot, and
+-- the reason a player's FIRST load of the game took 37 seconds. The chain is not applied on a
+-- server: it runs in the browser, in PGlite, once per player. Measured 2026-08-20:
+--
+--     as shipped (affinity_for per row)                        12.4 s
+--     knobs read once, distance still per (port, good)         10.2 s
+--     knobs once + the nearest source as one set-based pass    10.0 s
+--   * knobs once + a port x source-port distance matrix         3.8 s
+--
+-- The knobs were never the cost. THE DISTANCE WAS. Asked per (port, good), the nearest-source
+-- subquery evaluates the great circle once for every specialty row of that good: 214 ports x 834
+-- specialty rows = 178,476 haversines. But a distance does not depend on the GOOD at all. Computed
+-- once per (port, source-port) pair it is 214 x 214 = 45,796, and the per-good answer is a `min`
+-- over that matrix through the authored fact. Nearly 4x fewer, and the clock agrees: 3.3x faster.
+--
+-- `wc_num` is `security definer` and so can never be inlined; reading the five knobs in a CTE
+-- rather than per row also removes ~150,000 function invocations. That is the smaller half.
+--
+-- THE ARITHMETIC IS UNCHANGED, and that is proved rather than asserted: the whole chain was applied
+-- before and after this rewrite and all 14,980 rows — affinity, stock, stock_target,
+-- production_rate — hash to the same sha256. See DEV_LOG D11.
+with knob as (
+  select public.wc_num('affinity_producer') as producer,
+         public.wc_num('affinity_home')     as home,
+         public.wc_num('affinity_span')     as span,
+         public.wc_num('affinity_reach_nm') as reach_nm,
+         public.wc_num('affinity_curve')    as curve
+),
+-- Every port to every port that produces anything: the distance half of the formula, computed once
+-- and then reused by all 70 goods.
+source_distance as (
+  select p.id as port_id, src.id as src_id,
+         voyage.gc_distance_nm(p.lat, p.lon, src.lat, src.lon) as nm
+    from public.ports p
+    cross join (select distinct port_id from public.port_specialties) s
+    join public.ports src on src.id = s.port_id
+),
+-- ...and the nearest source OF EACH GOOD, which is that matrix min-ed through the authored fact.
+nearest as (
+  select d.port_id, ps.good_id, min(d.nm) as nm
+    from source_distance d
+    join public.port_specialties ps on ps.port_id = d.src_id
+   group by d.port_id, ps.good_id
+)
 insert into public.port_goods (port_id, good_id, affinity, stock, stock_target, production_rate)
 select p.id,
        g.id,
@@ -185,7 +269,14 @@ select p.id,
             else 0 end
   from public.ports p
   cross join public.goods g
-  cross join lateral (select world.affinity_for(p.id, g.id) as affinity) aff
+  cross join knob k
+  left join nearest n on n.port_id = p.id and n.good_id = g.id
+  cross join lateral (
+    select world.affinity_at(
+             exists (select 1 from public.port_specialties s
+                      where s.port_id = p.id and s.good_id = g.id),
+             n.nm, k.producer, k.home, k.span, k.reach_nm, k.curve) as affinity
+  ) aff
 on conflict (port_id, good_id) do nothing;
 
 -- ── The calendar-clock day index (DESIGN §D.1) ─────────────────────────────────────────────────
