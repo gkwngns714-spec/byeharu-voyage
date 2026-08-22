@@ -9,6 +9,9 @@ export { Badge, type BadgeTone } from './Badge'
 // Badge's numeric counterpart: the %NBR pill (see PriceIndex.tsx for the boundary — a
 // status WORD is a Badge, the figure the game is played from is a PriceIndex).
 export { PriceIndex, type PriceAdvice } from './PriceIndex'
+// The price LINE (0013 gave the server a memory to draw one from). See Sparkline.tsx for what it
+// deliberately refuses to do — interpolate, scale to zero, or draw a single point.
+export { Sparkline, type SparkTone } from './Sparkline'
 export { Meter, type MeterTone } from './Meter'
 // Meter's countable counterpart: a resource with a UNIT (tuns, days, berths) drawn as segments
 // you can count, rather than as a fraction you must do arithmetic on. See Gauge.tsx.

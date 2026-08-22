@@ -284,7 +284,7 @@ the `queue` in the same response carries both.
 | — | `advice` | `'buy'` / `'hold'` / `'sell'` — what the MARKET tab sorts on |
 | — | `available` | false where the port's culture refuses the good (wine at Tunis) |
 | `affinity`, `drift`, `seasonMod` | — | authored server-side, deliberately not served — they are the price, and the client is told the price |
-| `history7` | — | **not served.** `Sparkline` has no data. Either a migration stores a price history, or the sparkline is not V0. |
+| `history7` | `world.price_history(port, slots)` | **SERVED since 0013.** One call per PORT, keyed by good CODE, oldest point first — not one call per good. The record is written by `public.tick_price_snapshot()`, which is scheduled where pg_cron exists and therefore does not run under PGlite: local play draws no line, and that is the scheduler being absent, not the feature being missing. |
 | `event` | — | G.6 market events are not in the V0 chain |
 
 ### 4.12 Ledger

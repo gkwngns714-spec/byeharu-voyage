@@ -87,14 +87,44 @@ export function ProfileScreen() {
         </dl>
       </Card>
 
+      <Card head={<CardHeader flush title="The house" />}>
+        {world.player ? (
+          <dl className="space-y-2">
+            <StatRow label="Company" value={world.player.company_name} plain />
+            <StatRow
+              label="Nation"
+              value={world.player.nation_name ?? world.player.nation ?? '—'}
+              plain
+            />
+            <StatRow label="Company level" value={formatInt(world.player.company_level)} />
+            <StatRow
+              label="Founded"
+              value={world.player.founded_at.slice(0, 10)}
+              hint="When this account signed the book (0011)."
+            />
+            <StatRow
+              label="Lying at"
+              value={world.player.lying_at ?? 'every fleet at sea'}
+              plain
+              hint="Where her first fleet lies. There is no home port in this game — a port is a place, not a base — so this is reported as what it is."
+            />
+          </dl>
+        ) : (
+          <p className="text-sm text-ink-muted">
+            This account keeps no house yet. The register is where one is opened.
+          </p>
+        )}
+      </Card>
+
       <Card head={<CardHeader flush title="Not yet served" />}>
         <p className="mb-3 text-xs text-ink-muted">
           These are absent because the server has no row for them — not because the screen has no
-          room. Each is a migration.
+          room. Each is a migration. (The house&apos;s name, nation and level arrived with 0014 and
+          are above.)
         </p>
         <SectionLabel>Waiting on the chain</SectionLabel>
         <ul className="space-y-1 text-sm text-ink-muted">
-          <li>· The captain&apos;s own name, house colours, nation and reputation</li>
+          <li>· House colours, and a title ladder that moves `title_level`</li>
           <li>· Preferences — units, date format, notifications — which need somewhere to persist</li>
           <li>· Account actions: change password, delete account</li>
         </ul>

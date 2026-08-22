@@ -5,6 +5,109 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-22 — D13: four migrations, and two of them change a rule
+
+Owner: *"do the migrations - price history, player row, officers, skills"* — the four server gaps
+D12 named as the real ceiling.
+
+### The problem every one of them hit: 0007 is DEPLOYED
+
+Fame wants to be a counter each verb increments. A skill wants to be XP each verb awards. Officers
+want a hook in the trade and the voyage. **All three mean editing migrations that have already run**,
+which this chain does not do. So each migration had to find the shape that fits the constraint —
+and in two cases the constrained shape is better than the obvious one.
+
+* **Fame is DERIVED** (0014), not counted: `public.player_fame()` reads the append-only ledger every
+  time it is asked. It cannot drift from the record, and it is retroactively correct for every
+  voyage sailed before the migration existed. A stored total would have been a second authority for
+  something `events` already knows.
+* **A skill is a CHOICE, so it is STUDIED** (0016), not earned: derived XP would level itself, and
+  then it is not a decision, it is a second fame. `cmd.study_skill()` costs money and requires a
+  port with an academy — and **`ports.has_academy` has existed since 0002 with nothing reading it.**
+  A flag nothing reads is scenery; it has a consequence now.
+* **Two files SUPERSEDE one function each** — `voyage.fleet_speed()` (0015) and
+  `voyage.endurance_days()` (0016). That is the sanctioned way to change a rule here (README §1:
+  "a change goes in a NEW file that supersedes the old one") and it is not re-cutting 0006, which
+  still proves its own claims when the chain replays in order.
+
+**The supersedes are no-ops when the new thing is absent, and that is asserted rather than assumed.**
+An unofficered fleet reads 0006's exact 4.9125 kn; an unstudied captain reads 0006's exact endurance.
+That is what keeps `04_first_session` — which sails an unofficered, unskilled Barca — honest.
+
+### An officer or a skill that changes nothing is decoration
+
+Both migrations could have shipped tables and a hiring RPC with the effect left for "later". Each
+wires exactly ONE thing instead, and **says out loud which of the rest are inert**:
+
+    NAVIGATOR    -> voyage.fleet_speed()      READ
+    QUARTERMASTER / SURGEON / PURSER          seeded, NOT READ YET
+    SEAMANSHIP   -> voyage.endurance_days()   READ
+    NAVIGATION / ACCOUNTING / HAGGLING        seeded, NOT READ YET
+
+`world.officers()` and `world.skills()` carry a `takes_effect` flag per row, the self-asserts check
+it both ways, and the UI prints *"No rule reads this yet — this bonus changes nothing today."* The
+same posture 0010 and 0012 take about an absent pg_cron: report it, never pretend.
+
+NAVIGATION is deliberately the inert one on the skill side: **0015's navigators already own speed**,
+and two authorities for one number is the thing this project forbids.
+
+### 0013, and the sentence that had to be deleted
+
+`public.price_history` is keyed `(port, good, slot)`, so a retried tick is a no-op by construction
+rather than by a check somebody has to remember. It samples 14,980 rows per slot and prunes past a
+288-slot window; both directions are proven, and the prune is proven by **ageing a row on purpose**,
+because on a table this young a prune that removes nothing looks identical to one that works.
+
+The slot formula got a name. 0010 computes `floor(epoch / drift_slot_seconds)` inline and cannot be
+re-cut, so `public.drift_slot_of()` is minted as the named authority and the self-assert **proves it
+returns the slot `tick_market_drift()` itself reports** rather than assuming the two agree.
+
+MarketScreen printed, on screen: *"No seven-day line is drawn … nothing in the chain keeps one yet."*
+That sentence is now false, so it is gone, and a TREND sparkline stands where it was. Three docs that
+listed `history7` as not-served were corrected too.
+
+### What the client got, so this is not half a slice
+
+Seven RPCs (`worldPriceHistory`, `worldPlayer`, `worldOfficers`, `worldSkills`, `cmdHireOfficer`,
+`cmdPostOfficer`, `cmdStudySkill`), their types, and the store. Then:
+
+* **MARKET** draws the line. `Sparkline` refuses to interpolate (a gap in the record is a gap in the
+  line), refuses to scale to zero (a 2% move would look like a halving), and draws nothing under two
+  points.
+* **PORT** gains two faces — **Officers** and **Academy** — because §3a's second trap is "the action
+  lives on the wrong screen". An officer signs on at a quay; a trade is learned at an academy. The
+  Academy face is only offered where `has_academy`, since a face that always refuses wastes a tap.
+* **RANK** stops counting. It used to derive voyages and turnover from one 50-row ledger page and
+  had to admit the window; fame is the server's now, over the whole record. What is left derived is
+  a fact about the PAGE, and it says so.
+* **PROFILE** shows the house — company, nation, level, founded, where she lies.
+
+### Proved
+
+`db:apply` **16/16 receipts**, `db:proof` **31/31 markers**, `playwright` **149 passed** against a
+served build. tsc + eslint clean. Every new migration is LF (checked, not assumed — the CRLF trap).
+
+**Three test pins moved deliberately:** the chain's LAST migration, its human sentence, and the RPC
+catalogue's allow-list, which exists precisely so that adding an RPC is an edit somebody made on
+purpose.
+
+### Two things found on the way
+
+1. `ledger.event_id` does not exist — the column is **`ref_event_id`**. Caught by the first apply,
+   which is the whole argument for PGlite: it cost thirty seconds instead of a CI round trip.
+2. A fleet cannot be set to "at sea" by nulling its port alone: `fleets_position_is_unambiguous`
+   (0004) ties status and port together. The constraint doing its job — a fleet cannot be nowhere.
+
+### Still not done
+
+**No standings table**, and that half is a DESIGN decision rather than a missing SELECT: a table of
+captains needs a rule about who may see whose figures. **Buffs** have no table. Three officer
+specialties and three skills are inert by design and say so. And the price line stays empty in local
+play, because nothing schedules a tick under PGlite — on the live server, where D11e proved pg_cron
+runs, the record fills every ten minutes.
+
+---
+
 ## 2026-08-20 — D12c: the rest of the screens
 
 Owner: *"keep going, do the rest of the screens."* (D12b, logged only in its commit until now, made

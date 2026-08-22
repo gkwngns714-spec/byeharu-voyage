@@ -21,6 +21,7 @@ import { useWorld } from '../../live/worldStore'
 import type { LiveWorld } from '../../live/worldStore'
 import type { FleetView, MarketGood, MarketView, SnapshotPort, WorldSnapshot } from '../../lib/rpc'
 import { useCommandDraft } from '../../domain/order'
+import { AcademyFace, OfficersFace } from './PortFaces'
 import type { CommandIntent } from '../../domain/order'
 import { findVerb, orderText } from '../../domain/order'
 import { fleetCrew, fleetHoldFree, fleetMaxDraft, hullFraction, shipHoldUsed, worstHullFraction } from '../../domain/fleet'
@@ -58,7 +59,7 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 // say why on screen. DESIGN's rule for this: never show a number you cannot defend.
 
 /** The four faces of one place. Not a route: a port is one screen, and these are its sides. */
-type PortFace = 'quay' | 'city' | 'services' | 'ships'
+type PortFace = 'quay' | 'city' | 'services' | 'ships' | 'officers' | 'academy'
 
 export function PortScreen() {
   const world = useWorld()
@@ -264,6 +265,13 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
             { id: 'city', label: 'City' },
             { id: 'services', label: 'Services' },
             { id: 'ships', label: 'Alongside', hint: docked.length || undefined },
+            /* HIRING AND STUDYING LIVE WHERE THEY HAPPEN. §3a's second trap is "the action lives
+               on the wrong screen"; an officer signs on at a quay and a trade is learned at an
+               academy, so both are faces of the PORT rather than tabs of their own. The academy
+               face is only offered where there IS one — a face that always refuses is a menu item
+               that wastes a tap. */
+            { id: 'officers', label: 'Officers' },
+            ...(port.has_academy ? [{ id: 'academy' as const, label: 'Academy' }] : []),
           ]}
         />
 
@@ -422,6 +430,10 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
                 </dl>
             </>
           )}
+
+          {face === 'officers' && <OfficersFace port={port} acting={acting} />}
+
+          {face === 'academy' && <AcademyFace port={port} acting={acting} />}
 
           {face === 'ships' && (
             <>

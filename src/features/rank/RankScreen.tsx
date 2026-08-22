@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import {
+  Badge,
   Card,
   CardHeader,
   Gauge,
@@ -29,11 +30,19 @@ import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 // missing half as a fact rather than as a promise. A player can read their own position even while
 // there is nothing to compare it against.
 //
-// ── THE DERIVED COUNTS ARE HONEST ABOUT THEIR WINDOW ────────────────────────────────────────────
-// Voyages, ports and trades are counted from `world.events`, which is ONE PAGE of the ledger (the
-// store fetches the default 50). That is not the house's lifetime total, and this screen must not
-// print it as one — so it says how many entries it looked at. The purse, the fleets and the ships
-// are exact, because those are served whole.
+// ── FAME IS THE SERVER'S NOW, AND THE WINDOW PROBLEM WENT WITH IT ───────────────────────────────
+// This screen used to count voyages and turnover out of `world.events` — ONE PAGE of the ledger,
+// the default 50 — and had to print how many entries it had looked at, because the total was not a
+// lifetime total.
+//
+// 0014 made fame a server-side reading of the WHOLE record: `world.player()` returns trade fame,
+// exploration fame and ports reached, derived on every call. So the client stops counting. What
+// remains derived here is only what fame does not cover — how many entries this page holds — and
+// it still says so.
+//
+// The rule that made this worth doing is the one this project keeps: a figure computed in two
+// places is two authorities for it. The ledger is the source of truth from which rank is computed
+// (I.4), and now exactly one thing computes it.
 
 export function RankScreen() {
   const world = useWorld()
@@ -60,31 +69,17 @@ function RankBody() {
   const fleets = world.fleets
   const config = world.snapshot?.config
 
-  const tally = useMemo(() => {
-    let voyages = 0
-    let trades = 0
-    let earned = 0
-    let spent = 0
-    const ports = new Set<string>()
-    for (const e of events) {
-      if (e.kind === 'VOYAGE_REPORT') {
-        voyages += 1
-        // VOYAGE_REPORT carries `to` as a port CODE. Arriving somewhere is the only landfall the
-        // payload set records; nothing else in it names a port you have reached.
-        const to = e.payload['to']
-        if (typeof to === 'string') ports.add(to)
-      }
-      if (e.kind === 'BOUGHT' || e.kind === 'SOLD') trades += 1
-      const d = e.ducats_delta
-      if (typeof d === 'number') {
-        if (d > 0) earned += d
-        else spent += -d
-      }
-    }
-    return { voyages, trades, earned, spent, ports: ports.size }
-  }, [events])
+  // WHAT THE SERVER DOES NOT COUNT. Fame, turnover and ports reached are `world.player()`'s now;
+  // the only thing left to derive is how many trades sit in the page this screen happens to hold,
+  // which is a fact about the PAGE and not about the house.
+  const tradesOnPage = useMemo(
+    () => events.filter((e) => e.kind === 'BOUGHT' || e.kind === 'SOLD').length,
+    [events],
+  )
 
   const shipCount = fleets.reduce((n, f) => n + f.ships.length, 0)
+  const house = world.player
+  const fame = house?.fame ?? null
 
   return (
     <Screen>
@@ -95,7 +90,17 @@ function RankBody() {
         actions={<ReadAgain world={world} />}
       />
 
-      <Card head={<CardHeader flush title="The house" />}>
+      <Card
+        head={
+          <CardHeader
+            flush
+            title={house?.company_name ?? 'The house'}
+            aside={
+              house?.nation ? <Badge tone="neutral">{house.nation_name ?? house.nation}</Badge> : null
+            }
+          />
+        }
+      >
         <dl className="space-y-2">
           <StatRow
             label="Purse"
@@ -129,23 +134,31 @@ function RankBody() {
         )}
       </Card>
 
-      <Card head={<CardHeader flush title="What is on the record" />}>
+      <Card head={<CardHeader flush title="Fame" />}>
         <p className="mb-3 text-xs text-ink-muted">
-          Counted from the {formatInt(events.length)} most recent ledger{' '}
-          {events.length === 1 ? 'entry' : 'entries'} — not the house&apos;s lifetime. The chain
-          keeps every entry; this screen has read one page of them.
+          Derived by the server from the whole record every time it is asked (0014) — never a stored
+          counter, so it cannot drift from the ledger it is computed from.
         </p>
         <dl className="space-y-2">
-          <StatRow label="Voyages completed" value={formatInt(tally.voyages)} />
-          <StatRow label="Ports reached" value={formatInt(tally.ports)} />
-          <StatRow label="Trades struck" value={formatInt(tally.trades)} />
           <StatRow
-            label="Taken in"
-            value={formatDucats(tally.earned)}
-            hint="The sum of the positive movements in the entries read. It is gross, not income: wages are paid without writing an entry of their own."
+            label="Trade fame"
+            value={fame ? formatInt(fame.trade) : '—'}
+            hint="One point per 100 ducats TURNED OVER on a purchase or a sale. Turnover, not profit: the profit is already the purse, and paying fame for it too would score one thing twice."
           />
-          <StatRow label="Paid out" value={formatDucats(tally.spent)} />
+          <StatRow
+            label="Exploration fame"
+            value={fame ? formatInt(fame.exploration) : '—'}
+            hint="25 for each DISTINCT port you have arrived at. A port is reached once; sailing between two of them for ever is trade, not exploration."
+          />
+          <StatRow label="Total" value={fame ? formatInt(fame.total) : '—'} />
+          <StatRow label="Ports reached" value={fame ? formatInt(fame.ports_reached) : '—'} />
+          <StatRow label="Turned over" value={fame ? formatDucats(fame.turnover) : '—'} />
         </dl>
+
+        <p className="mt-3 font-mono text-[11px] text-ink-faint">
+          {formatInt(tradesOnPage)} of the {formatInt(events.length)} entries on this page are
+          trades. That count is about the PAGE; the fame above is about the house.
+        </p>
       </Card>
 
       <Card head={<CardHeader flush title="The table of captains" />}>

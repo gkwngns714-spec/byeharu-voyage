@@ -10,6 +10,7 @@ import {
   PageHeader,
   PriceIndex,
   Screen,
+  Sparkline,
   SectionLabel,
   Skeleton,
   TABLE_SCROLL_HINT,
@@ -20,7 +21,14 @@ import {
 } from '../../components/ui'
 import { formatInt, formatPct, formatTuns } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
-import type { FleetView, MarketGood, Refusal, SnapshotPort } from '../../lib/rpc'
+import type {
+  FleetView,
+  MarketGood,
+  PriceHistory,
+  PricePoint,
+  Refusal,
+  SnapshotPort,
+} from '../../lib/rpc'
 import { handOffTrade } from '../../domain/order'
 import {
   ADVICE_BUY_BELOW,
@@ -64,6 +72,8 @@ export function MarketScreen() {
   const markets = useWorld((s) => s.markets)
   const portByCode = useWorld((s) => s.portByCode)
   const loadMarket = useWorld((s) => s.loadMarket)
+  const history = useWorld((s) => s.history)
+  const loadHistory = useWorld((s) => s.loadHistory)
   const open = useWorld((s) => s.open)
 
   const [chosenPortId, setChosenPortId] = useState<string | null>(null)
@@ -108,6 +118,14 @@ export function MarketScreen() {
     if (!portId || markets[portId]) return
     fetchMarket(portId)
   }, [portId, markets, fetchMarket])
+
+  // The remembered prices ride beside the live ones. A FAILED history read is deliberately silent
+  // (worldStore.loadHistory swallows it): a market with no line is one whose record has not been
+  // kept yet, which is a normal state on a young world rather than a failure worth a banner.
+  useEffect(() => {
+    if (!portId || history[portId]) return
+    void loadHistory(portId)
+  }, [portId, history, loadHistory])
 
   const blocks = useMemo(
     () => (view ? marketBlocks(view.goods, sort, filter) : []),
@@ -288,7 +306,7 @@ export function MarketScreen() {
             <CardHeader
               flush
               title="Goods"
-              explain="These are today's opening prices. An order executes in steps, each one repricing — buying raises the price you are still buying at (§G.2), and the server does that walk when the order runs. No seven-day line is drawn: a price history is a record that has to be kept before it can be shown, and nothing in the chain keeps one yet."
+              explain="These are today's opening prices. An order executes in steps, each one repricing — buying raises the price you are still buying at (§G.2), and the server does that walk when the order runs. The TREND line is the remembered mid, sampled once per drift slot (0013) — the shape of the move, not its size; the figures beside it carry that. A good with no line is one the record has not sampled yet, which is the normal state of a world where nothing schedules the tick: local play keeps no cron, so lines fill in on the live server and stay empty here."
               aside={<Badge tone="accent">{countRows(blocks)} rows</Badge>}
             />
           }
@@ -309,19 +327,30 @@ export function MarketScreen() {
                 <TH align="num">Buy</TH>
                 <TH align="num">Sell</TH>
                 <TH>Stock</TH>
+                {/* 0013 gave the market a memory, so the line this screen used to say it could not
+                    draw is drawn. It sits after the figures because it is a SHAPE — the numbers
+                    tell you the size of a move, the line tells you which way it has been going. */}
+                <TH>Trend</TH>
                 <TH>Note</TH>
               </tr>
             </thead>
             <tbody>
               {blocks.map((b) => (
-                <BlockRows key={b.block} label={b.label} block={b.block} rows={b.rows} onTap={tap} />
+                <BlockRows
+                  key={b.block}
+                  label={b.label}
+                  block={b.block}
+                  rows={b.rows}
+                  history={portId ? history[portId] : undefined}
+                  onTap={tap}
+                />
               ))}
             </tbody>
           </Table>
 
           {/* WHAT STAYS PRINTED: the live reading of this quay and the swipe affordance. The two
               standing paragraphs that used to sit under them — how a stepped order reprices, and
-              why there is no seven-day line — are behind the dot on the card's title. */}
+              what the trend line is and is not — are behind the dot on the card's title. */}
           <dl className="mt-4 space-y-1 font-mono text-[11px] text-ink-faint">
             {view.port && (
               <div>
@@ -367,17 +396,19 @@ function BlockRows({
   label,
   block,
   rows,
+  history,
   onTap,
 }: {
   label: string
   block: MarketBlock
   rows: readonly MarketGood[]
+  history: PriceHistory | undefined
   onTap: (good: MarketGood) => void
 }) {
   return (
     <>
       <tr>
-        <td colSpan={6} className="border-b border-edge px-2 pb-1 pt-4">
+        <td colSpan={7} className="border-b border-edge px-2 pb-1 pt-4">
           <span
             className={[
               'font-mono text-[11px] uppercase tracking-wider',
@@ -393,7 +424,12 @@ function BlockRows({
         </td>
       </tr>
       {rows.map((good) => (good.available ? (
-        <TradedRow key={good.good_id} good={good} onTap={onTap} />
+        <TradedRow
+          key={good.good_id}
+          good={good}
+          points={history?.goods[good.code]}
+          onTap={onTap}
+        />
       ) : (
         <UntradedRow key={good.good_id} good={good} />
       )))}
@@ -403,9 +439,14 @@ function BlockRows({
 
 function TradedRow({
   good,
+  points,
   onTap,
 }: {
   good: MarketGood
+  /** The remembered mids for THIS good at THIS port, oldest first. Undefined while the history read
+   *  is in flight, and absent for a good the record has never sampled — the Sparkline prints a dash
+   *  for both, because "no record" is not "no movement" and neither of them is a line. */
+  points: PricePoint[] | undefined
   // No `block` prop any more. The row used to take it only to tint the %NBR figure, and the pill
   // now carries that meaning from the server's own `advice` (PriceIndex.tsx) — the band heading
   // and the pill were two renderings of one fact, and this was the copy that had to go.
@@ -447,6 +488,15 @@ function TradedRow({
           {stockBar(good.stock_band)}
         </span>
       </TD>
+      {/* THE LINE THIS SCREEN USED TO SAY IT COULD NOT DRAW. 0013 gave the market a memory; the
+          tone is the server's own advice, so the line never introduces a fifth colour vocabulary. */}
+      <TD>
+        <Sparkline
+          values={(points ?? []).map((pt) => pt.mid)}
+          tone={good.advice === 'buy' ? 'cheap' : good.advice === 'sell' ? 'dear' : 'even'}
+          label={`${good.name}: ${points?.length ?? 0} remembered price(s)`}
+        />
+      </TD>
       <TD>
         <span className="font-mono text-[11px] text-ink-faint">
           {good.stock_band <= 1 ? 'scarce' : good.stock_band >= 6 ? 'glut' : ''}
@@ -470,6 +520,11 @@ function UntradedRow({ good }: { good: MarketGood }) {
       <TD align="num">—</TD>
       <TD>
         <span className="font-mono text-xs text-ink-faint">——————</span>
+      </TD>
+      {/* No trend either, and for a better reason than "no data": a port whose culture refuses a
+          good has never priced it, so there is nothing for the record to have remembered. */}
+      <TD>
+        <span className="font-mono text-[10px] text-ink-faint">—</span>
       </TD>
       <TD>
         <span className="font-mono text-[11px] text-ink-faint">not traded here</span>

@@ -88,6 +88,43 @@ export const RPCS = {
     ],
   },
   cmdVerbSchema: { schema: 'cmd', fn: 'verb_schema', args: [] },
+  // 0013-0016: the record, the house, the roster and the school.
+  worldPriceHistory: {
+    schema: 'world',
+    fn: 'price_history',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_slots', type: 'int' },
+    ],
+  },
+  // Takes NO id — the server reads auth.uid(), so a caller can only ever read their own house.
+  worldPlayer: { schema: 'world', fn: 'player', args: [] },
+  worldOfficers: { schema: 'world', fn: 'officers', args: [] },
+  worldSkills: { schema: 'world', fn: 'skills', args: [] },
+  cmdHireOfficer: {
+    schema: 'cmd',
+    fn: 'hire_officer',
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_fleet', type: 'uuid' },
+    ],
+  },
+  cmdPostOfficer: {
+    schema: 'cmd',
+    fn: 'post_officer',
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_fleet', type: 'uuid' },
+    ],
+  },
+  cmdStudySkill: {
+    schema: 'cmd',
+    fn: 'study_skill',
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_fleet', type: 'uuid' },
+    ],
+  },
   // The ONE way a signed-in captain gets a house (0011). It takes no uid — the server reads
   // auth.uid() — which is why it is safe for a browser to hold, unlike public.new_house().
   cmdFoundHouse: {

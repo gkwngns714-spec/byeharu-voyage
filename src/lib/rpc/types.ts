@@ -364,3 +364,134 @@ export interface FoundedHouse {
   company_name: string
   nation: string
 }
+
+// ── 0013-0016: the record, the house, the roster and the school ─────────────────────────────────
+
+/** One remembered point on a good's price line. `mid` only: the spread and the tax are the port's
+ *  cut and are read live, while what MOVED is the mid (0013). */
+export interface PricePoint {
+  /** The drift slot the sample belongs to — the x axis, in units of `slot_seconds`. */
+  slot: number
+  at: string
+  mid: number
+}
+
+/** `world.price_history(port, slots)` — ONE call per port, keyed by good CODE, oldest point first.
+ *  A good with no points yet is simply absent from `goods`; it is never an empty array, so a
+ *  caller must treat "missing" and "flat" as different. */
+export interface PriceHistory {
+  port: string
+  slots: number
+  /** How many real seconds one slot spans, so an axis can be labelled without knowing the cadence. */
+  slot_seconds: number
+  goods: Record<string, PricePoint[]>
+}
+
+/** Fame, DERIVED from the append-only record every time it is asked (0014) — never a stored
+ *  counter, so it cannot drift from the ledger it is computed from. */
+export interface PlayerFame {
+  trade: number
+  exploration: number
+  total: number
+  ports_reached: number
+  turnover: number
+}
+
+/** The signed-in house, reading itself (0014). */
+export interface PlayerHouse {
+  id: string
+  company_name: string
+  nation: string | null
+  nation_name: string | null
+  ducats: number
+  company_level: number
+  title_level: number
+  founded_at: string
+  fleets: number
+  ships: number
+  /** Where her first fleet lies, or null while every fleet is at sea. There is no home port in this
+   *  game, so this is reported as what it is rather than as a base. */
+  lying_at: string | null
+  fame: PlayerFame
+}
+
+/** `world.player()`. `player` is NULL for a signed-in account that has not signed the book yet —
+ *  a STATE, not a refusal, which is why it is not an error result. */
+export interface PlayerView {
+  player: PlayerHouse | null
+}
+
+export type OfficerSpecialty = 'NAVIGATOR' | 'QUARTERMASTER' | 'SURGEON' | 'PURSER'
+
+export interface Officer {
+  code: string
+  name: string
+  specialty: OfficerSpecialty
+  bonus_pct: number
+  wage: number
+  blurb: string
+  port: string | null
+  nation: string | null
+  /** FALSE when no rule reads this specialty yet (0015 wires NAVIGATOR only). A card that hid this
+   *  would be selling a bonus that does nothing — the UI must print it. */
+  takes_effect: boolean
+  hired: boolean
+  /** The fleet they serve in, by NAME, or null for an officer ashore. */
+  fleet: string | null
+}
+
+export interface OfficerRoster {
+  /** The most any one fleet may gain from officers of one specialty, in percent. */
+  bonus_cap_pct: number
+  specialties_read: OfficerSpecialty[]
+  officers: Officer[]
+}
+
+export type SkillEffect = 'ENDURANCE' | 'SPEED' | 'TRADE_CAP' | 'SPREAD'
+
+export interface Skill {
+  code: string
+  name: string
+  effect: SkillEffect
+  pct_per_level: number
+  blurb: string
+  /** 0 when never studied — the absence of a row, not a stored zero. */
+  level: number
+  /** What the next level costs, or null at the ceiling. */
+  next_cost: number | null
+  /** FALSE when no rule reads this effect yet (0016 wires ENDURANCE only). */
+  takes_effect: boolean
+}
+
+export interface SkillBook {
+  max_level: number
+  base_cost: number
+  effects_read: SkillEffect[]
+  skills: Skill[]
+}
+
+/** What `cmd.hire_officer` / `cmd.post_officer` / `cmd.study_skill` hand back. A refusal arrives as
+ *  a `Refusal` through the usual `RpcResult`, never as a field here. */
+export interface HiredOfficer {
+  officer: string
+  name: string
+  specialty: OfficerSpecialty
+  bonus_pct: number
+  fleet: string | null
+  paid: number
+}
+
+export interface PostedOfficer {
+  officer: string
+  fleet: string | null
+}
+
+export interface StudiedSkill {
+  skill: string
+  name: string
+  level: number
+  max_level: number
+  paid: number
+  port: string
+  effect: SkillEffect
+}

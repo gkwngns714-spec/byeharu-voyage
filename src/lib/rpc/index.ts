@@ -31,10 +31,17 @@ import type {
   ClearResult,
   FleetView,
   FoundedHouse,
+  HiredOfficer,
   IssueResult,
   LedgerPage,
   MarketView,
+  OfficerRoster,
+  PlayerView,
+  PostedOfficer,
   PreviewResult,
+  PriceHistory,
+  SkillBook,
+  StudiedSkill,
   VerbSpec,
   WorldSnapshot,
 } from './types'
@@ -159,4 +166,53 @@ export function cmdFoundHouse(
   nationCode = 'PRT',
 ): Promise<RpcResult<FoundedHouse>> {
   return call<FoundedHouse>('cmdFoundHouse', [companyName, nationCode])
+}
+
+// ── 0013-0016 ───────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * One port's remembered prices — every good it trades, oldest point first (0013).
+ *
+ * ONE CALL PER PORT, NOT PER GOOD. A market screen draws a line on every row it shows, and 70 goods
+ * would otherwise be 70 round trips with the client deciding how many points a line has.
+ */
+export function worldPriceHistory(portId: string, slots = 48): Promise<RpcResult<PriceHistory>> {
+  return call<PriceHistory>('worldPriceHistory', [portId, slots])
+}
+
+/**
+ * The signed-in house, reading itself (0014) — name, nation, purse, counts, and DERIVED fame.
+ *
+ * Takes no id: the server reads `auth.uid()`, so a caller can only ever read their own. A signed-in
+ * account that has not signed the book yet reads back `{ player: null }`, which is a STATE and not
+ * a refusal — the register screen exists for exactly that case.
+ */
+export function worldPlayer(): Promise<RpcResult<PlayerView>> {
+  return call<PlayerView>('worldPlayer')
+}
+
+/** The officer roster, and which of them this house has signed (0015). */
+export function worldOfficers(): Promise<RpcResult<OfficerRoster>> {
+  return call<OfficerRoster>('worldOfficers')
+}
+
+/** What can be learned, and how far this house has learned it (0016). */
+export function worldSkills(): Promise<RpcResult<SkillBook>> {
+  return call<SkillBook>('worldSkills')
+}
+
+/** Sign an officer, and optionally post them to a fleet at once. The wage leaves the purse through
+ *  the one money mover, so the ledger and the purse cannot disagree. */
+export function cmdHireOfficer(code: string, fleetId: string | null = null) {
+  return call<HiredOfficer>('cmdHireOfficer', [code, fleetId])
+}
+
+/** Move an officer already in the house's service to a fleet, or ashore with `null`. */
+export function cmdPostOfficer(code: string, fleetId: string | null = null) {
+  return call<PostedOfficer>('cmdPostOfficer', [code, fleetId])
+}
+
+/** Raise one skill by one level, for money, at a port that keeps an academy (0016). */
+export function cmdStudySkill(code: string, fleetId: string) {
+  return call<StudiedSkill>('cmdStudySkill', [code, fleetId])
 }

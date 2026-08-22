@@ -96,8 +96,10 @@ UWO gives the *material*. These two give the *behaviour under density*, which is
 * **EVE's Overview → our MARKET.** A sortable, column-configurable table with saved presets is the
   right answer to "eleven numeric facts, a 390px screen". The player picks the columns that matter
   and the game remembers.
-* **EVE's price-history graph** is the one thing a trade game must have and that we cannot draw
-  today — there is no `history7` on the RPC surface. That is a *server* gap.
+* **EVE's price-history graph** is the one thing a trade game must have. It could not be drawn
+  until 0013 gave the market a memory; MARKET now carries a TREND sparkline per row. The full
+  instrument — median with a hi/lo band, two moving averages, a volume histogram — stays a desktop
+  idea; at 390px the honest form is the shape of the line, with the exact figures beside it.
 * **EVE's number formatting**: tabular numerals, thousands separators, units always attached
   (`m³` there; `t` and `d.` here). Numbers align down a column.
 * **EVE's colour language**: one meaning per colour, everywhere, permanently.
@@ -201,12 +203,14 @@ bulk form, that is a defect, and their history says it will take a year to notic
 
 Recorded here rather than faked in the UI:
 
-* **price history** — no `history7`, so a sparkline or an EVE-style graph cannot be drawn honestly.
+* ~~price history~~ — **closed by 0013.** `world.price_history()` serves it and MARKET draws it.
 * **ship art / class silhouettes** — there is no art in this repository at all.
-* **officers, skills, buffs** — named by the owner; no tables exist. `docs/SECTIONS.md` says where
-  each one lands.
-* **rank standings** — RANK is an 18-line placeholder; nothing computes a table.
-* **fame / reputation** — the currency cluster has room for it and no such number exists yet.
+* **buffs** — still no table. ~~officers~~ closed by 0015, ~~skills~~ by 0016; each got its own
+  migration exactly where `docs/SECTIONS.md` said it would land.
+* **rank standings** — still nothing computes a table, and that half is a design decision (who may
+  see whose figures) rather than a missing SELECT. The house's OWN figures are served by 0014.
+* ~~fame / reputation~~ — **closed by 0014**, and DERIVED from the ledger rather than counted, so
+  it cannot drift from the record it is computed from.
 
 Each of these is a migration, not a component. They are why the UI looks empty even where it is
 behaving correctly.

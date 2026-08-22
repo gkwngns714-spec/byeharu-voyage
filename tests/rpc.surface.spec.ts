@@ -434,6 +434,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
     [
       'cmdCancel', 'cmdClear', 'cmdFoundHouse', 'cmdIssue', 'cmdPreview', 'cmdVerbSchema',
       'worldBuyCapacity', 'worldFleets', 'worldLedger', 'worldMarket', 'worldSnapshot',
+      // 0013-0016. Each of the three cmd.* entries takes NO player id — identity is the JWT's,
+      // the same property that makes cmd.found_house safe for a browser to hold.
+      'worldPriceHistory', 'worldPlayer', 'worldOfficers', 'worldSkills',
+      'cmdHireOfficer', 'cmdPostOfficer', 'cmdStudySkill',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

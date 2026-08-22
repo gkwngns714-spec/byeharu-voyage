@@ -26,20 +26,31 @@ import { create } from 'zustand'
 import {
   cmdCancel,
   cmdClear,
+  cmdHireOfficer,
   cmdIssue,
+  cmdPostOfficer,
   cmdPreview,
+  cmdStudySkill,
   initRpc,
   worldFleets,
   worldLedger,
   worldMarket,
+  worldOfficers,
+  worldPlayer,
+  worldPriceHistory,
+  worldSkills,
   worldSnapshot,
 } from '../lib/rpc'
 import type {
   FleetView,
   LedgerEvent,
   MarketView,
+  OfficerRoster,
+  PlayerHouse,
   PreviewResult,
+  PriceHistory,
   Refusal,
+  SkillBook,
   SnapshotGood,
   SnapshotPort,
   WorldSnapshot,
@@ -59,6 +70,15 @@ export interface LiveWorld {
   snapshot: WorldSnapshot | null
   /** The player's fleets, ships, cargo, queue and voyage position. Refetching this IS the clock. */
   fleets: FleetView[]
+  /** The house itself — name, nation, counts and DERIVED fame (0014). Null for a signed-in
+   *  account that has not signed the book: a state, not a failure. */
+  player: PlayerHouse | null
+  /** The officer roster and the school, fetched on demand — neither changes while you look at it. */
+  officers: OfficerRoster | null
+  skills: SkillBook | null
+  /** One port's remembered prices, keyed by port id (0013). Fetched beside its market. */
+  history: Record<string, PriceHistory>
+
   /** The purse, and the events behind it. */
   ducats: number | null
   events: LedgerEvent[]
@@ -84,6 +104,16 @@ export interface LiveWorld {
   refresh: () => Promise<void>
   /** Fetch (and cache) one port's market. */
   loadMarket: (portId: string) => Promise<void>
+  /** Fetch (and cache) one port's remembered prices. */
+  loadHistory: (portId: string) => Promise<void>
+  /** Fetch the roster and the school. Idempotent; screens call them on mount. */
+  loadOfficers: () => Promise<void>
+  loadSkills: () => Promise<void>
+  /** Sign an officer, post one, or study a level. Each re-reads what it changed, because the
+   *  server's answer is the only true one — no local patching (the `issue` rule). */
+  hireOfficer: (code: string, fleetId: string | null) => Promise<boolean>
+  postOfficer: (code: string, fleetId: string | null) => Promise<boolean>
+  studySkill: (code: string, fleetId: string) => Promise<boolean>
 
   /** Issue an order. The string is the whole contract (F.4) — the tap-builder composes the same
    *  string a keyboard would. Refreshes on success so the queue and purse are never stale. */
@@ -113,6 +143,10 @@ export const useWorld = create<LiveWorld>((set, get) => ({
   mode: null,
   snapshot: null,
   fleets: [],
+  player: null,
+  officers: null,
+  skills: null,
+  history: {},
   ducats: null,
   events: [],
   markets: {},
@@ -173,13 +207,18 @@ export const useWorld = create<LiveWorld>((set, get) => ({
 
   refresh: async () => {
     set({ busy: true })
-    const [fleets, ledger] = await Promise.all([worldFleets(), worldLedger()])
+    // The house rides along with the fleets: it is the same read cadence (fame is derived from the
+    // ledger, so it moves whenever the ledger does) and a separate poll would be a second clock.
+    const [fleets, ledger, player] = await Promise.all([worldFleets(), worldLedger(), worldPlayer()])
     if (!fleets.ok) {
       set({ busy: false, fatal: fleets.refusal, phase: 'failed' })
       return
     }
     set({
       fleets: fleets.value,
+      // A failed player read leaves the house NULL rather than fatal, for the same reason a failed
+      // ledger read only nulls the purse: the world is still playable without it.
+      player: player.ok ? player.value.player : null,
       ducats: ledger.ok ? (ledger.value.ducats ?? null) : null,
       events: ledger.ok ? ledger.value.events : [],
       busy: false,
@@ -194,6 +233,57 @@ export const useWorld = create<LiveWorld>((set, get) => ({
       return
     }
     set((s) => ({ markets: { ...s.markets, [portId]: r.value } }))
+  },
+
+  loadHistory: async (portId) => {
+    const r = await worldPriceHistory(portId)
+    if (!r.ok) return
+    set((s) => ({ history: { ...s.history, [portId]: r.value } }))
+  },
+
+  loadOfficers: async () => {
+    const r = await worldOfficers()
+    if (r.ok) set({ officers: r.value })
+    else set({ refusal: r.refusal })
+  },
+
+  loadSkills: async () => {
+    const r = await worldSkills()
+    if (r.ok) set({ skills: r.value })
+    else set({ refusal: r.refusal })
+  },
+
+  hireOfficer: async (code, fleetId) => {
+    const r = await cmdHireOfficer(code, fleetId)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return false
+    }
+    set({ refusal: null })
+    await Promise.all([get().loadOfficers(), get().refresh()])
+    return true
+  },
+
+  postOfficer: async (code, fleetId) => {
+    const r = await cmdPostOfficer(code, fleetId)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return false
+    }
+    set({ refusal: null })
+    await Promise.all([get().loadOfficers(), get().refresh()])
+    return true
+  },
+
+  studySkill: async (code, fleetId) => {
+    const r = await cmdStudySkill(code, fleetId)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return false
+    }
+    set({ refusal: null })
+    await Promise.all([get().loadSkills(), get().refresh()])
+    return true
   },
 
   issue: async (fleetId, text) => {
