@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   CardHeader,
+  Input,
   Notice,
   PageHeader,
   PriceIndex,
@@ -21,6 +22,7 @@ import {
 } from '../../components/ui'
 import { formatInt, formatPct, formatTuns } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
+import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 import type {
   FleetView,
   MarketGood,
@@ -55,11 +57,29 @@ import {
 // sits at the top, so a player who knows nothing sees the two rows that pay without scrolling.
 // The cutting lives in ./marketRows.ts and reads the server's `advice`; the screen renders it.
 //
-// A REFUSAL IS RENDERED, NEVER SPUN ON. `phase !== 'ready'` draws Skeletons; `phase === 'failed'`
-// draws the fatal refusal; a market that would not load draws its own refusal with a retry. No
-// state of this screen is an endless spinner.
+// THE WORLD GATE IS IMPORTED, NEVER RE-SPELT. `WorldFailed` (src/live/WorldGate.tsx:24) and
+// `WorldLoading` (src/live/WorldGate.tsx:70) are the two non-ready renderings that every tab
+// reading the live world has, and FLEETS, LEDGER, PORT and RANK all compose them. This screen used
+// to carry its own copies of BOTH — an inline `phase === 'failed'` Notice and a `MarketSkeleton` —
+// which made four copies of one rule, the exact duplication docs/UI_DIRECTION.md §4 and the dev
+// log's standing "one authority per concept" exist to forbid. The rejected alternative was to keep
+// the local pair because their fallback sentences were market-flavoured ("…so there are no prices
+// to read"): a better sentence is not worth a fourth authority for what a failed world looks like,
+// and the shared one prints the refusal's own `fixes`, which the local copy silently dropped.
 //
-// MOBILE: six columns do not fit 390px, so the table scrolls INSIDE its own box (Table's
+// WHAT IS STILL LOCAL, AND WHY IT HAS TO BE. The header's `read again` is NOT WorldGate's
+// `ReadAgain` (src/live/WorldGate.tsx:110). That component hard-codes `world.refresh()` — fleets,
+// ledger and house (src/live/worldStore.ts:208) — while this screen's read is `loadMarket(portId)`
+// (src/live/worldStore.ts:229), one port's prices. Composing ReadAgain here would put a button on
+// the prices screen that re-reads everything EXCEPT the prices, so it stays a local Button wearing
+// ReadAgain's exact word and skin: two tabs may not grow two vocabularies for one affordance even
+// while they cannot yet share the component.
+//
+// A MARKET THAT WOULD NOT LOAD still draws its own refusal with a retry. That one is not a world
+// gate — it is a fact about ONE PORT, which WorldGate has nothing to say about. No state of this
+// screen is an endless spinner.
+//
+// MOBILE: seven columns do not fit 390px, so the table scrolls INSIDE its own box (Table's
 // structural rule + scrollTableClass) and the page never moves sideways. The tap target is the
 // FIRST column, which scrollTableClass pins — it can never be scrolled out of reach.
 
@@ -162,27 +182,22 @@ export function MarketScreen() {
     navigate('/command')
   }
 
+  // THE GATE, COMPOSED. Two calls where there used to be an inline eighteen-line refusal and a
+  // local `MarketSkeleton`. `panels={2}` stands in for the controls card and the goods panel,
+  // which is what this screen actually opens with.
   if (phase === 'failed') {
-    return (
-      <Screen wide>
-        <PageHeader eyebrow="Trade" title="Market" />
-        <Notice tone="danger">
-          <span className="font-mono text-xs uppercase tracking-wider">
-            {fatal?.code ?? 'E_WORLD_CLOSED'}
-          </span>{' '}
-          — {fatal?.sentence ?? 'The world could not be opened, so there are no prices to read.'}
-        </Notice>
-        {fatal?.detail && (
-          <Card>
-            <p className="font-mono text-[11px] text-ink-faint">{fatal.detail}</p>
-          </Card>
-        )}
-      </Screen>
-    )
+    return <WorldFailed eyebrow="Trade" title="Market" refusal={fatal} />
   }
 
   if (phase !== 'ready') {
-    return <MarketSkeleton note="Opening the world." />
+    return (
+      <WorldLoading
+        eyebrow="Trade"
+        title="Market"
+        subtitle="Opening the world."
+        panels={2}
+      />
+    )
   }
 
   return (
@@ -191,10 +206,13 @@ export function MarketScreen() {
         eyebrow="Trade"
         title={`Market · ${port?.name ?? '—'}`}
         explain={`Every price is the server's, read against the ports within ${NEIGHBOUR_RADIUS_NM} nm. Orders execute in steps, each repricing — buying raises the price you are still buying at (§G.2). The server does that walk; these figures are today's opening ones.`}
+        // THE SHARED CONTROL, driven by THIS screen's read. `ReadAgain` used to hard-code
+        // `world.refresh()` — fleets, ledger and house — which on the prices screen would have
+        // re-read everything EXCEPT the prices, so this screen carried a fifth hand-written copy
+        // of the affordance instead. WorldGate now takes an optional `read`, so the copy is gone
+        // and the word, the skin and the 44px floor are one authority again for all five tabs.
         actions={
-          portId ? (
-            <Button onClick={() => fetchMarket(portId)}>Read again</Button>
-          ) : undefined
+          portId ? <ReadAgain read={() => fetchMarket(portId)} /> : undefined
         }
       />
 
@@ -535,8 +553,35 @@ function UntradedRow({ good }: { good: MarketGood }) {
 
 // ── the port picker ─────────────────────────────────────────────────────────────────────────────
 
-/** Two hundred ports is a list, not a chip row: it is filtered by name, code or region, and the
- *  port the player's fleet is in stays one tap away at the top. */
+/**
+ * EVERY PORT IN THE WORLD, AND NOTHING SHORT OF IT.
+ *
+ * This used to render `matches.slice(0, 40)` and print "40 of 214 ports — narrow the search." A
+ * picker that admits it cannot reach two thirds of the world is not a picker, and the admission did
+ * not make it one: a player who does not already know a port's name, its three-letter code or its
+ * region code could not get to it at all, and 174 of the chain's 214 ports (data/ports.json) were
+ * simply unreachable from MARKET. The cap is gone. Nothing is hidden and nothing is capped.
+ *
+ * WHY FILTERING RATHER THAN TRUNCATION, WHICH IS THE OTHER PICKER'S ANSWER. Command's pickers
+ * (src/features/command/ArgPickers.tsx:24) stop at `MAX_ROWS = 12` and say how many more the filter
+ * is hiding, and their header explains why: their rows are tall, they carry live figures, and there
+ * is a filter box to narrow them with. This one is the same law reaching the opposite conclusion,
+ * for a reason that is in the shape of the row rather than in the law: a port chip is a NAME, so a
+ * hundred of them cost a column of taps rather than a column of paragraphs, and the choice being
+ * made here — "which market am I reading?" — has no shortlist that is right for everybody. What
+ * both files share is the part that actually matters: NEITHER puts an action inside something that
+ * scrolls or clips it. There is no max-height here, no inner scroll box and no `overflow` of any
+ * kind; the list grows the page, which is the only surface a thumb already knows how to move.
+ *
+ * THE ONE CONTROL THAT SHORTENS THE LIST IS `sticky`, and that is the reach law rather than a
+ * flourish: with 214 chips the page is thousands of pixels long, so a filter field left in plain
+ * flow would be the first thing to leave the screen and the only thing that could bring it back.
+ * It stays pinned to the top of the panel for as long as the panel is on screen.
+ *
+ * ORDER: the fleet's own waters first, then the rest by region and name — the same "where the
+ * player is, not where an alphabet starts" this screen already opens on (see :117). The port the
+ * fleet is lying in also keeps its own pinned row, one tap away, above everything.
+ */
 function PortPicker({
   ports,
   query,
@@ -553,45 +598,85 @@ function PortPicker({
   onPick: (id: string) => void
 }) {
   const needle = query.trim().toLowerCase()
-  const matches = needle
-    ? ports.filter(
-        (p) =>
-          p.name.toLowerCase().includes(needle) ||
-          p.code.toLowerCase().includes(needle) ||
-          p.region.toLowerCase().includes(needle),
-      )
-    : ports
-  const shown = matches.slice(0, 40)
+
+  // Name, code and region, as before — plain `toLowerCase()` and not ArgPickers' accent-folding
+  // `fold()` (src/features/command/ArgPickers.tsx:27), which is deliberately NOT copied here: it is
+  // not exported, and a second copy of an accent-folder is the duplication this pass is removing.
+  // Nothing is lost by it today — no port name in data/ports.json carries a diacritic (checked, 0
+  // of 214) — and when one does, `fold()` should be lifted somewhere both pickers can import.
+  const listed = useMemo(() => {
+    const matched = needle
+      ? ports.filter(
+          (p) =>
+            p.name.toLowerCase().includes(needle) ||
+            p.code.toLowerCase().includes(needle) ||
+            p.region.toLowerCase().includes(needle),
+        )
+      : ports
+    const ownWaters = home?.region ?? null
+    return [...matched].sort(
+      (a, b) =>
+        Number(b.region === ownWaters) - Number(a.region === ownWaters) ||
+        a.region.localeCompare(b.region) ||
+        a.name.localeCompare(b.name),
+    )
+  }, [ports, needle, home])
 
   return (
-    <div className="space-y-2 border-t border-edge pt-3">
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => onQuery(e.target.value)}
-        placeholder="Find a port by name, code or region"
-        className="min-h-11 w-full rounded-md border border-edge bg-surface-2 px-3 text-sm text-ink placeholder:text-ink-faint focus:border-accent/60 focus:outline-none"
-      />
+    <div className="border-t border-edge pt-3">
+      {/* THE FIELD AND THE COUNT, OUT OF THE SCROLL. Bled to the panel's edges and painted with the
+          panel's own token so the chips pass UNDER it rather than beside it — a translucent bar
+          over a moving list is unreadable, and `bg-panel` is what Card.tsx:24 paints. */}
+      <div className="sticky top-0 z-10 -mx-4 space-y-2 bg-panel px-4 pb-2 sm:-mx-5 sm:px-5">
+        <Input
+          size="sm"
+          type="search"
+          value={query}
+          onChange={(e) => onQuery(e.target.value)}
+          aria-label="Find a port by name, code or region"
+          placeholder="Find a port by name, code or region"
+          spellCheck={false}
+          autoCorrect="off"
+        />
+        {/* WHAT IT SAYS IS TRUE OF WHAT IT SHOWS. The old line here claimed a limit; there is no
+            limit left, so the line counts rather than apologises. */}
+        <p className="font-mono text-[11px] text-ink-faint">
+          {needle
+            ? `${listed.length} of ${ports.length} ports answer to “${query.trim()}”.`
+            : home
+              ? `All ${ports.length} ports — ${home.region} first, then the rest of the world.`
+              : `All ${ports.length} ports.`}
+        </p>
+      </div>
+
       {home && (
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 pt-2">
           <SectionLabel className="mb-0">Your fleet</SectionLabel>
           <PortChip port={home} active={home.id === current} onPick={onPick} />
         </div>
       )}
-      <div className="flex flex-wrap gap-1.5">
-        {shown.map((p) => (
-          <PortChip key={p.id} port={p} active={p.id === current} onPick={onPick} />
-        ))}
-      </div>
-      <p className="font-mono text-[11px] text-ink-faint">
-        {matches.length > shown.length
-          ? `${shown.length} of ${matches.length} ports — narrow the search.`
-          : `${matches.length} port${matches.length === 1 ? '' : 's'}.`}
-      </p>
+
+      {listed.length === 0 ? (
+        <p className="pt-2 text-sm text-ink-muted">
+          No port answers to that. Clear the field and all {ports.length} are here again.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5 pt-2">
+          {listed.map((p) => (
+            <PortChip key={p.id} port={p} active={p.id === current} onPick={onPick} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
+/** THE DESIGN SYSTEM'S CHIP, not a thirteenth hand-written copy of it. `chip`/`chip-on`
+ *  (src/components/ui/buttonStyles.ts:35) exist because an audit on 2026-08-20 found TWELVE
+ *  hand-rolled versions of these two recipes across Command, Market and Fleets, drifting in border
+ *  colour and hover — and this button, with its own `bg-accent`/`border-edge` pair, was one of
+ *  them. `size` is left at `md`, which is the 44px floor the reach law asks of a tap target;
+ *  `sm` exists for in-row secondary actions and would not clear it. */
 function PortChip({
   port,
   active,
@@ -602,35 +687,27 @@ function PortChip({
   onPick: (id: string) => void
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant={active ? 'chip-on' : 'chip'}
       onClick={() => onPick(port.id)}
-      className={[
-        'min-h-11 rounded-md px-3 font-mono text-xs transition',
-        active
-          ? 'bg-accent text-app'
-          : 'border border-edge bg-surface-2 text-ink-muted hover:text-ink',
-      ].join(' ')}
+      // The code and the region are what the field above matches on, so the chip carries them
+      // where a pointer can read them. They are not printed: 214 chips each carrying three facts
+      // is a wall, and the name is the fact the player is looking for.
+      title={`${port.code} · ${port.region}`}
+      className="max-w-full font-mono"
     >
       {port.name}
-    </button>
+    </Button>
   )
 }
 
-// ── the waiting states ──────────────────────────────────────────────────────────────────────────
+// ── the waiting state that is NOT a world gate ──────────────────────────────────────────────────
 
-function MarketSkeleton({ note }: { note: string }) {
-  return (
-    <Screen wide>
-      <PageHeader eyebrow="Trade" title="Market" subtitle={note} />
-      <Card>
-        <Skeleton className="h-11 w-full" />
-      </Card>
-      <SkeletonTable note={note} />
-    </Screen>
-  )
-}
-
+/** The world is open and the SCREEN is up; it is this one port's prices that have not landed yet.
+ *  WorldGate's `WorldLoading` cannot serve here and must not be stretched to: it replaces the whole
+ *  screen, and this placeholder sits inside a screen that is already showing its header, its port
+ *  picker and its controls. The whole-screen twin of this (`MarketSkeleton`) WAS a copy of
+ *  WorldLoading and is deleted. */
 function SkeletonTable({ note }: { note: string }) {
   return (
     <Card>
@@ -648,6 +725,10 @@ function SkeletonTable({ note }: { note: string }) {
   )
 }
 
+/** The SORT and FILTER tokens. Same primitive as PortChip above, for the same reason: one chip
+ *  vocabulary per screen, and this one was reaching for `primary` — which docs/UI_DIRECTION.md §2
+ *  reserves for the ONE brass action on a screen, not for four sort keys and three filters. Same
+ *  `md` box, so nothing above the fold moves. */
 function Chip({
   active,
   onClick,
@@ -658,7 +739,7 @@ function Chip({
   children: ReactNode
 }) {
   return (
-    <Button variant={active ? 'primary' : 'secondary'} onClick={onClick}>
+    <Button variant={active ? 'chip-on' : 'chip'} onClick={onClick}>
       {children}
     </Button>
   )

@@ -1,5 +1,5 @@
 import { Button, Card, Notice, PageHeader, Screen, SectionLabel, Skeleton } from '../components/ui'
-import type { LiveWorld } from './worldStore'
+import { useWorld } from './worldStore'
 import type { Refusal } from '../lib/rpc'
 
 // THE TWO NON-READY STATES OF A SCREEN, written once.
@@ -107,14 +107,38 @@ export function WorldLoading({
  * It lives in a PageHeader's action slot deliberately: the reach law forbids putting an action
  * inside a scrolling or height-capped region, and every screen body here is one.
  */
-export function ReadAgain({ world }: { world: LiveWorld }) {
+export function ReadAgain({
+  read,
+  busy,
+}: {
+  /** What "read again" MEANS on this screen. Defaults to `world.refresh()` — fleets, ledger and
+   *  house — which is right for every tab whose subject is the world.
+   *
+   *  MARKET is the exception that forced this prop, and it is worth stating plainly: its subject is
+   *  ONE PORT'S PRICES, fetched by `loadMarket(portId)`. Composing the default there would have put
+   *  a button on the prices screen that re-reads everything EXCEPT the prices — so Market carried a
+   *  fifth hand-written copy of this control instead. A prop is cheaper than a fifth copy. */
+  read?: () => void | Promise<void>
+  /** Overrides the store's `busy` when a screen's own read has its own in-flight flag. */
+  busy?: boolean
+} = {}) {
+  // IT TAKES NO `world` ANY MORE. Every caller passed the whole store object in just so this could
+  // read two fields off it, which meant a screen using fine-grained selectors (MARKET) had nothing
+  // to hand over without subscribing to everything. This component lives in src/live, beside the
+  // store, so it simply selects what it needs — and selects PRIMITIVES, not an object, because
+  // zustand compares with Object.is and a fresh `{busy, refresh}` would re-render on every write.
+  const storeBusy = useWorld((s) => s.busy)
+  const refresh = useWorld((s) => s.refresh)
   return (
     <Button
       variant="ghost"
-      size="sm"
-      busy={world.busy}
+      // `md`, NOT `sm`. This was `size="sm"` on five tabs, and buttonStyles.ts says in as many words
+      // that `sm` is the one size that does NOT clear the 44px touch floor — it is for in-row
+      // secondary actions. The one control that makes time pass in this game is not that.
+      size="md"
+      busy={busy ?? storeBusy}
       busyLabel="reading…"
-      onClick={() => void world.refresh()}
+      onClick={() => void (read ? read() : refresh())}
     >
       read again
     </Button>

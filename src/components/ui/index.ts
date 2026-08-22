@@ -37,6 +37,9 @@ export { OverlayPanel } from './OverlayPanel'
 export { overlayPanelClass, OVERLAY_SLOTS, type OverlaySlot, type OverlayTone } from './overlayLayout'
 export { Icon } from './Icon'
 export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
+// A mark for a trade good, and the human spelling of its category. See goodIcons.ts for why the
+// mark is carried on the CATEGORY axis rather than as seventy drawings that do not exist.
+export { goodIcon, categoryLabel } from './goodIcons'
 export { Collapsible, CollapsibleCard } from './Collapsible'
 // Collapsible's inline counterpart: the tappable ⓘ that folds a standing EXPLANATION rather than
 // content (see Explain.tsx for the boundary between them, and for what may never go behind a dot).

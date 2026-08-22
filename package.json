@@ -15,6 +15,7 @@
     "db:check-versions": "node scripts/db/check-versions.mjs"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.5",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@supabase/supabase-js": "^2.108.2",
@@ -24,7 +25,6 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.5",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "1.61.0",
     "@tailwindcss/vite": "^4.3.1",

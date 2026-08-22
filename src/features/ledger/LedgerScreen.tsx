@@ -102,7 +102,7 @@ function LedgerBody({ world }: { world: LiveWorld }) {
         /* The purse readout moved to the top bar (TopBar.tsx), where it is on screen on every tab
            instead of only this one. The balance still appears in this screen's prose, which is a
            different thing: a sentence that explains reconciliation, not a readout. */
-        actions={<ReadAgain world={world} />}
+        actions={<ReadAgain />}
       />
 
       {events.length > 0 && (

@@ -109,7 +109,7 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
             <span className="font-mono text-xs text-ink-faint">
               {world.fleets.length}/{config.fleet_max} fleets · {shipCount}/{config.ship_max} ships
             </span>
-            <ReadAgain world={world} />
+            <ReadAgain />
           </>
         }
       />

@@ -209,8 +209,27 @@ Exit code **0**.
 |---|---|---|
 | `.github/workflows/build.yml` | push to `main`, every PR, manual | the lockfile installs, ESLint is clean, no duplicate migration versions, `tsc -b` typechecks the whole project graph, `vite build` really produces the bundle |
 | `.github/workflows/migrations-apply-proof.yml` | push to `main`, PRs touching `supabase/**`, manual | the **entire** migration chain applies in order to a real PostgreSQL in a disposable Supabase (Docker in the runner) and every in-migration self-assert passes; it then reads `supabase_migrations.schema_migrations` back out of the database |
+| `.github/workflows/acceptance.yml` | push to `main`, every PR, manual | the app **runs**: chromium is installed, the production build is served, and every spec in `tests/` runs against it — including `layout.spec.ts`, the one browser spec, which measures at 390×844 that no table shears data off the right edge |
+| `.github/workflows/deploy-pages.yml` | push to `main`, manual | the build is published to GitHub Pages — behind a repeat of lint, the duplicate-version check and `npm run build`, so nothing that fails the gate can ship |
 
 Each file's header comment states this in full, including what it does *not* prove. The apply proof
 passes gracefully with an empty `supabase/migrations/` and emits a CI notice saying the run proved
 the harness, not the schema — so a green tick can never be mistaken for a proven chain that does not
 exist yet. It carries no `environment:`, so it cannot reach production secrets even by accident.
+
+Two things about the last two rows are worth knowing before the first run.
+
+**Pages needs one human click, once.** Settings → Pages → "Build and deployment" → Source must be
+set to **GitHub Actions**. While it is still "Deploy from a branch", `actions/deploy-pages` fails
+with a "Pages site not configured" error and no workflow can fix it. After that switch, every push
+to `main` republishes.
+
+**The published build is local-PGlite mode.** `deploy-pages.yml` passes no `VITE_SUPABASE_URL` and
+no `VITE_SUPABASE_ANON_KEY`, so `src/lib/rpc/init.ts` picks the local engine: PostgreSQL 18 on
+WebAssembly inside the visitor's own tab, the whole chain applied there, the world in IndexedDB.
+Every visitor gets a private save file. Publishing a cloud build instead means adding those two
+values as repository secrets and exposing them to the build step — a deliberate human act. No
+placeholder is committed, because a fake anon key builds a game that white-screens on `createClient`
+(HANDOFF §5 trap 5). `acceptance.yml` builds the same way on purpose: a cloud build redirects to
+`/auth`, where `layout.spec.ts` has nothing to measure and skips itself, and that job counts a skip
+as a failure.

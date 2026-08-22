@@ -192,6 +192,7 @@ declare
   v_players int;
   v_grants  int;
   v_turn    numeric;
+  v_buy     jsonb;
   v_expect  int;
 begin
   v_anon_x := has_function_privilege('anon', 'world.player()', 'execute');
@@ -244,13 +245,36 @@ begin
     select f.id into v_fleet from public.fleets f where f.player_id = v_player limit 1;
     select p.id into v_port from public.ports p join public.fleets f on f.port_id = p.id
       where f.id = v_fleet;
-    select pg.good_id into v_good from public.port_goods pg
-     where pg.port_id = v_port and pg.stock > 50 limit 1;
+    -- THIS PICK WAS A LOTTERY, AND IT LOST. It read `... where pg.stock > 50 limit 1` with NO
+    -- ORDER BY, so which good the probe bought depended on heap order — which varies between runs
+    -- because the seed writes rows keyed by gen_random_uuid(). Draw a good this port's culture
+    -- refuses, or one whose 10 tuns the opening purse cannot cover, and the BUY does nothing, and
+    -- the assert below fires on a control that was never given a chance to work. It passed twice on
+    -- 2026-08-22 and failed on the third run, on an unchanged chain.
+    --
+    -- Same defect class as D11h's drift assert: "the assert was a lottery on one row". The fix is
+    -- the same one — make the probe DETERMINISTIC and make it satisfy its own preconditions:
+    -- ordered by code so every run picks the same good, `available` so the culture will trade it,
+    -- and cheap enough that 10 tuns fit the opening purse with room to spare.
+    select pg.good_id into v_good
+      from public.port_goods pg
+      join public.goods g on g.id = pg.good_id
+     where pg.port_id = v_port
+       and pg.stock > 50
+       and not ((select p.culture from public.ports p where p.id = v_port) = any(g.culture_mask))
+       and (select ask from world.price(v_port, pg.good_id)) * 10 < public.wc_int('starting_ducats') / 2
+     order by g.code
+     limit 1;
     if v_good is null then
-      raise exception '0014 self-assert FAIL: no stocked good at the starting port, so the fame control could not run';
+      raise exception '0014 self-assert FAIL: the starting port stocks no good this house could both trade and afford, so the fame control could not run';
     end if;
 
-    perform cmd.issue(v_fleet, format('BUY %s 10', (select code from public.goods where id = v_good)));
+    -- AND THE BUY MUST BE SEEN TO WORK. `perform` discarded the result, so a refusal arrived as the
+    -- silent "no ducats moved" failure below instead of as the reason. Read the answer and say it.
+    v_buy := cmd.issue(v_fleet, format('BUY %s 10', (select code from public.goods where id = v_good)));
+    if (v_buy->>'ok') is distinct from 'true' then
+      raise exception '0014 self-assert FAIL: the probe BUY was refused, so the fame control could not run: %', v_buy;
+    end if;
 
     select coalesce(sum(abs(l.ducats_delta)), 0) into v_turn
       from public.ledger l join public.events e on e.id = l.ref_event_id

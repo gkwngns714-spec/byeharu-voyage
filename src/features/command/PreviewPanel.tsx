@@ -53,6 +53,14 @@ export function PreviewPanel({
     return (
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
+          {/* ✗ AND ✓ STAY AS TEXT, and it is a decision rather than an oversight. They are the two
+              faces of ONE readout — the dry run refused, the dry run passed — and `icons.ts` has
+              no tick. `close` is the DISMISS mark (it is what shuts a panel, OrderQueue.tsx and
+              MapPanel.tsx), so borrowing it here would give one glyph two meanings, which rule 7
+              forbids of colour and which is no better of a shape. Drawing the ✗ as SVG and leaving
+              its ✓ partner as a font glyph would make one panel's two states disagree in weight.
+              The set's own header says a glyph never replaces a word; these two are closer to
+              words. See the ✓ at the foot of this file. */}
           <span aria-hidden className="font-mono text-sm text-danger">
             ✗
           </span>
@@ -107,6 +115,7 @@ export function PreviewPanel({
   return (
     <div className="space-y-2">
       <p className="flex flex-wrap items-center gap-2 font-mono text-sm text-success">
+        {/* Text, for the reason recorded beside its ✗ partner above: the icon set has no tick. */}
         <span aria-hidden>✓</span>
         <span>ran on the server and was rolled back — this is what it would do</span>
       </p>

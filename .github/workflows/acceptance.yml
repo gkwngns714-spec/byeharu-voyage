@@ -1,0 +1,167 @@
+name: Acceptance (the whole spec suite, against a served build)
+
+# WHAT THIS PROVES
+#   That the app RUNS. build.yml's own header says a green tick there means "it builds, not it
+#   works"; this is the workflow that closes that sentence. It builds the app exactly as
+#   deploy-pages.yml does, serves that build, and runs every spec in tests/ against it.
+#
+#   The suite is two different kinds of proof and this job runs both in one pass:
+#
+#     * TEN PURE SPECS (db.chain, format, map.*, rpc.*, sections, tableLayout) never ask for the
+#       `page` fixture, so Playwright runs them as plain Node processes. Three of them boot PGlite
+#       — real PostgreSQL 18 on wasm32 — and drive the real RPC surface over the real chain. They
+#       need no browser at all; they are here because this is where the suite lives.
+#
+#     * ONE BROWSER SPEC, tests/layout.spec.ts, needs a real 390×844 viewport AND a served app.
+#       Its header has said "NOT RUN IN CI ... there are no browser binaries in the runner" since
+#       it was written. That is what this workflow changes, and that header should be updated when
+#       this lands. It is the only proof that no data is hidden on a phone — the defect it caught
+#       (a fleet-roster column sheared off the right edge while `scrollWidth === clientWidth`) is
+#       invisible to lint, to tsc, to vite build, and to every pure spec above it.
+#
+#   NO SPEC IS EXCLUDED, and none needed to be. Every spec in tests/ is either pure Node or wants
+#   exactly what this job provides — a chromium and a served build. The only reason the browser
+#   spec was ever a local-only gate is that CI had neither.
+#
+# WHY IT IS ITS OWN WORKFLOW AND NOT A JOB IN build.yml
+#   The repo partitions workflows by the CLAIM they make — build.yml says "it compiles",
+#   migrations-apply-proof.yml says "the chain applies", and this one says "it runs". Folding a
+#   browser job into build.yml would make its name and its whole header block false.
+#
+#   The practical half matters more. build.yml is the fast merge gate, budgeted at 10 minutes.
+#   This job downloads a chromium and then waits while a 16-migration chain applies INSIDE that
+#   browser, six times over — once per tab measured. Attaching that to the merge gate would turn a
+#   three-minute signal into a twenty-minute one for every push, including the ones that fail lint
+#   in the first thirty seconds. Kept separate, both signals arrive when they are useful.
+#
+# WHAT IT DOES NOT PROVE
+#   Nothing about SQL against real Supabase (migrations-apply-proof.yml job 2 owns that), nothing
+#   about the cloud backend (which has never made a round trip — HANDOFF §3a), and nothing about
+#   RLS: under PGlite the migration role is a superuser, so local play proves the RULES, never the
+#   WALLS.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    # Derived from the suite's own declared budgets, not from a stopwatch. The slow half is the
+    # browser spec: six tests (five tabs plus the market fold), each of which loads the app and
+    # waits while the 16-migration chain applies inside chromium. layout.spec.ts's `ready()`
+    # allows 90 s for that, so those six alone can take ~9 min, and playwright.config.ts sets a
+    # 120 s per-test cap. Add a chromium download, `npm ci`, a production build, and three pure
+    # specs that each boot PGlite in Node. 25 leaves genuine headroom without letting a hung run
+    # burn half an hour of runner time. If this number ever needs raising, find out WHY first —
+    # a suite that got slower is usually a boot that got slower, and that is the player's boot.
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (from the lockfile)
+        run: npm ci
+
+      # chromium ONLY. The suite declares one project (playwright.config.ts) and one spec needs a
+      # browser; firefox and webkit would be two more downloads proving nothing. `--with-deps`
+      # pulls the shared libraries the runner image does not ship.
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      # The SAME build deploy-pages.yml publishes, produced the same way — no VITE_SUPABASE_URL and
+      # no VITE_SUPABASE_ANON_KEY, so `hasCloud` is false and the app boots the local PGlite engine.
+      # This is deliberate and load-bearing: a cloud build redirects every route to /auth, where
+      # there is no world and no table, and layout.spec.ts would SKIP itself rather than measure.
+      # The floor at the end of this job is what makes that impossible to miss.
+      - name: Build the app under test (local-PGlite mode)
+        run: npm run build
+
+      # `--strictPort` so a taken port fails here, loudly, instead of leaving the suite pointed at
+      # nothing. The host and port must match playwright.config.ts's PLAYWRIGHT_BASE_URL default
+      # (http://127.0.0.1:4173/byeharu-voyage/); that env var is left unset on purpose so the
+      # config stays the single authority for the URL. If they ever disagree, every browser test
+      # skips — which the no-skips floor below turns into a red run rather than a green one.
+      - name: Serve the build
+        run: |
+          set -euo pipefail
+          nohup npx vite preview --host 127.0.0.1 --port 4173 --strictPort > /tmp/preview.log 2>&1 &
+          echo "PREVIEW_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:4173/byeharu-voyage/ > /dev/null; then
+              echo "served after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error title=Nothing served::vite preview never answered on 127.0.0.1:4173"
+          cat /tmp/preview.log
+          exit 1
+
+      # Reporters are set on the CLI rather than in playwright.config.ts so the config keeps
+      # describing how a developer runs the suite. `json` is here only to be read by the next step.
+      - name: Run the suite
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-results.json
+        run: npx playwright test --reporter=list,html,json
+
+      # THE NON-VACUITY FLOOR. Green is not "playwright exited 0" — it is "the tests that matter
+      # actually ran". Every skip in tests/ lives in layout.spec.ts and every one of them fires on
+      # a condition this job exists to rule out: nothing served, or a cloud build sitting on /auth.
+      # Either would produce a perfectly green run that measured no pixels at all, which is the
+      # exact camouflage that spec was written to strip off. So a skip here is a failure.
+      - name: Every test ran — no skips, and not zero tests
+        if: always()
+        run: |
+          set -euo pipefail
+          test -f playwright-results.json || {
+            echo "::error title=No JSON report::the suite did not run to completion"; exit 1; }
+          expected=$(jq -r '.stats.expected // 0' playwright-results.json)
+          skipped=$(jq -r '.stats.skipped  // 0' playwright-results.json)
+          echo "expected: $expected   skipped: $skipped"
+          if [ "$expected" -eq 0 ]; then
+            echo "::error title=Vacuous run::0 tests passed. A green tick over nothing is not a proof."
+            exit 1
+          fi
+          if [ "$skipped" -ne 0 ]; then
+            echo "::error title=Skipped test(s)::$skipped test(s) skipped. Every skip in tests/ means the app was not served, or was built in cloud mode — neither is a pass."
+            # Walk the whole tree: the JSON reporter nests a file suite inside a project suite, so
+            # a fixed `.suites[].specs[]` path silently finds nothing. `.stats` is the authority
+            # that failed the step; this is only here to name the tests.
+            jq -r '[.. | objects | select(has("tests") and has("title"))]
+                   | .[] | select(any(.tests[]?; .status == "skipped"))
+                   | "  skipped: \(.title)"' playwright-results.json || true
+            exit 1
+          fi
+          echo "OK: $expected test(s) ran, none skipped."
+
+      # `screenshot: on` and `trace: on` are the config's defaults, so a red run arrives with the
+      # picture and the timeline already in it. Uploaded always, because a green report is how the
+      # phone-width measurements get read back.
+      - name: Upload the Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            playwright-results.json
+          retention-days: 14
+
+      - name: Stop the preview server (always)
+        if: always()
+        run: kill "${PREVIEW_PID:-0}" 2>/dev/null || true

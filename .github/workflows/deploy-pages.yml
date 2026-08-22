@@ -1,0 +1,111 @@
+name: Deploy (GitHub Pages)
+
+# WHAT THIS PROVES
+#   That the commit on `main` compiles, lints, typechecks, and produces a bundle that GitHub Pages
+#   can actually serve at https://<owner>.github.io/byeharu-voyage/ — and then it publishes it.
+#
+#   Concretely, in order:
+#     1. `npm ci` — the lockfile installs.
+#     2. `npm run lint` — ESLint over every .ts/.tsx.
+#     3. `npm run db:check-versions` — see that step's own comment. The chain ships INSIDE this
+#        bundle, so a duplicate version is a deploy-blocking defect here, not just a database one.
+#     4. `npm run build` (= `tsc -b && vite build`) — typecheck AND bundle, together.
+#     5. upload `dist` and deploy it.
+#
+#   Steps 2 and 4 are build.yml's gate, repeated deliberately. `needs:` cannot reach across
+#   workflows, so the only way to make "lint or typecheck is red" mean "nothing deploys" is to run
+#   them here too. A deploy that trusted another workflow's tick would be trusting a claim.
+#
+# WHAT IT DOES NOT PROVE
+#   That the deployed page works. Nothing here opens a browser — acceptance.yml does that, against
+#   a build produced the same way. A green check here means "it is published", not "it is playable".
+#
+# WHICH BACKEND THE DEPLOYED BUILD RUNS
+#   LOCAL-PGLITE MODE. `src/lib/rpc/init.ts` picks the cloud backend only when `hasCloud` is true,
+#   and that is decided at BUILD time from `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`
+#   (see .env.example). This workflow passes neither, so the published game boots PostgreSQL 18
+#   compiled to WebAssembly inside the player's own tab, applies the whole migration chain there,
+#   and keeps the world in IndexedDB. Every visitor gets their own private save file.
+#
+#   To publish a CLOUD build instead, those two values must exist as repository secrets and be
+#   exposed to the `Build` step's `env:`. They are NOT set here and no placeholder is committed:
+#   an anon key is still a credential, and a fake one would build a game that white-screens on
+#   `createClient` (HANDOFF §5 trap 5). Adding them is a deliberate, separate act by a human.
+#
+# THE FIRST RUN NEEDS A HUMAN
+#   Settings → Pages → "Build and deployment" → Source: **GitHub Actions**. Until that is switched
+#   from "Deploy from a branch", `actions/deploy-pages` fails with "Not Found" / "Pages site not
+#   configured". Nothing in this file can do it.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and `cancel-in-progress: false` on purpose: cancelling a half-finished
+# Pages deployment can leave the site on a partially uploaded artifact. Queue, do not interrupt.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════════════════════
+  # 1. Produce the artifact — and refuse to produce one from code that does not pass the gate.
+  # ═══════════════════════════════════════════════════════════════════════════════════════════
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (from the lockfile)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # In local mode the browser applies supabase/migrations/*.sql itself, and
+      # src/lib/db/chain.ts:64 THROWS on a duplicate 14-digit version rather than booting a world
+      # with a migration silently missing from it. So a duplicate version does not merely deploy
+      # as a no-op here — it deploys a game that refuses to start. Same authority as the other two
+      # workflows use, called rather than re-implemented.
+      - name: Migration versions are unique
+        run: npm run db:check-versions
+
+      # `npm run build` is `tsc -b && vite build`: the typecheck gates the bundle, in one step.
+      # NO VITE_SUPABASE_* here — see "WHICH BACKEND" above. This is the local-PGlite build.
+      - name: Build (tsc -b && vite build)
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      # `dist` is what vite.config.ts writes, and its `base: '/byeharu-voyage/'` is what makes the
+      # asset URLs and public/404.html's redirector agree with the project-site path. Do not
+      # change one without the other.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  # ═══════════════════════════════════════════════════════════════════════════════════════════
+  # 2. Publish it. Separate job so the deploy cannot run unless the gate above went green.
+  # ═══════════════════════════════════════════════════════════════════════════════════════════
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

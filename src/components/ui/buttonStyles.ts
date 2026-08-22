@@ -14,6 +14,7 @@ export type ButtonVariant =
   | 'success'
   | 'chip'
   | 'chip-on'
+  | 'chip-soft'
 export type ButtonSize = 'sm' | 'md' | 'icon'
 
 const VARIANT: Record<ButtonVariant, string> = {
@@ -34,6 +35,16 @@ const VARIANT: Record<ButtonVariant, string> = {
   // function and every caller already knows which state it is drawing.
   chip: 'border border-edge bg-surface-2 text-ink hover:border-accent/60',
   'chip-on': 'border border-accent bg-accent text-app font-medium',
+
+  // THE SELECTED ROW, as opposed to the selected CHIP. `chip-on` fills solid brass and puts dark
+  // text on it, which is right for a word in a set and wrong for a full-width row that CARRIES
+  // things — a picker row holds a badge, a %NBR pill and a stock meter, and a solid fill swallows
+  // all three. This is the soft tint TabRow already uses for a selected face (TabRow.tsx:60),
+  // named once so a row and a tab cannot drift apart.
+  //
+  // It pairs with `chip` for its OFF arm, so one control is drawn by one recipe in both states —
+  // which is what the command section could not do while this variant did not exist.
+  'chip-soft': 'border border-accent bg-accent-soft text-ink',
 }
 
 const SIZE: Record<ButtonSize, string> = {

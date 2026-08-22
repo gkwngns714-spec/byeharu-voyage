@@ -32,7 +32,7 @@ import {
 
 const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.sql'
 // Moved deliberately with 0013-0016 (the record, the house, the roster and the school).
-const LAST = '20260818000016_a_captain_learns_a_trade.sql'
+const LAST = '20260818000017_a_quartermaster_stows_the_hold_and_a_purser_shaves_the_spread.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
@@ -255,5 +255,5 @@ test('progress never goes backwards and never claims done before it is', () => {
 })
 
 test('a migration filename reads as a sentence', () => {
-  expect(humanMigration(LAST)).toBe('a captain learns a trade')
+  expect(humanMigration(LAST)).toBe('a quartermaster stows the hold and a purser shaves the spread')
 })

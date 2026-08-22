@@ -182,8 +182,21 @@ export function OrderComposer({
                           )}
                         </span>
                       </span>
-                      <span aria-hidden className="shrink-0 font-mono text-xs text-accent">
-                        {isOpen ? '▾' : value === undefined ? 'choose' : 'change'}
+                      {/* OPEN IS A MARK, CLOSED IS A WORD, and the asymmetry is deliberate: a
+                          closed row still has something to SAY — "choose" or "change", i.e.
+                          whether this argument has been answered — while an open one only has to
+                          point. So the open state is the design system's chevron turned down, the
+                          same glyph and the same `rotate-90` Collapsible.tsx:92 uses for a fold,
+                          instead of the literal ▾ this used to print: the one typographic
+                          character on the screen pretending to be an icon. */}
+                      <span aria-hidden className="flex shrink-0 items-center font-mono text-xs text-accent">
+                        {isOpen ? (
+                          <Icon name="chevron" size={14} className="rotate-90" />
+                        ) : value === undefined ? (
+                          'choose'
+                        ) : (
+                          'change'
+                        )}
                       </span>
                     </button>
                     {value !== undefined && !arg.required && (
@@ -193,7 +206,11 @@ export function OrderComposer({
                         aria-label={`Leave ${labelOf(arg)} out`}
                         onClick={() => onSetArg(arg.name, null)}
                       >
-                        ✕
+                        {/* The dismiss mark is `close` from the icon set, drawn at the same 14px
+                            as every other dismiss in the app (MapPanel.tsx:99). It was a literal ✕,
+                            which is a different X at a different weight in every font a phone
+                            might fall back to. */}
+                        <Icon name="close" size={14} />
                       </Button>
                     )}
                   </div>

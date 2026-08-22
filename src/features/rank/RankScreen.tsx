@@ -87,7 +87,7 @@ function RankBody() {
         eyebrow="Standings"
         title="Rank"
         explain="Your own record, computed from the ledger the server keeps. There is no table of captains yet: nothing in the chain computes one, and no other house's figures cross the wire."
-        actions={<ReadAgain world={world} />}
+        actions={<ReadAgain />}
       />
 
       <Card

@@ -14,8 +14,14 @@ name: Build (lint · typecheck · production build)
 #
 # WHAT IT DOES NOT PROVE
 #   Nothing about SQL, and nothing about how the app behaves in a browser. The migration chain is
-#   proven only by migrations-apply-proof.yml; runtime behaviour needs a Playwright job that does
-#   not exist yet. A green check here means "it builds", not "it works".
+#   proven only by migrations-apply-proof.yml, and runtime behaviour only by acceptance.yml, which
+#   serves this same build and runs the whole spec suite — including the one browser spec — against
+#   it. A green check HERE still means "it builds", not "it works"; the tick that means "it works"
+#   is the other one.
+#
+#   Nor does it publish anything: deploy-pages.yml is what puts a build on GitHub Pages, and it
+#   repeats this workflow's lint and typecheck rather than trusting this tick, because `needs:`
+#   cannot reach across workflows.
 #
 #   Local npm on the dev machine is not the bar either — this workflow is the bar.
 

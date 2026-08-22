@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Badge,
   Button,
+  buttonClasses,
   Card,
   CardHeader,
   EmptyState,
@@ -243,18 +244,21 @@ export function CommandScreen() {
                     key={f.id}
                     type="button"
                     onClick={() => selectFleet(f.id)}
-                    className={[
-                      'min-h-11 rounded-md border px-3 py-1 text-left transition',
-                      f.id === fleetId
-                        ? 'border-accent bg-accent text-app'
-                        : 'border-edge bg-surface-2 text-ink hover:border-accent/60',
-                    ].join(' ')}
+                    // One of the hand-written chip recipes the D12 audit found. It is the design
+                    // system's `chip` / `chip-on` now (buttonStyles.ts), so a fleet chip here, a
+                    // verb chip in a picker and a filter chip on the Ledger cannot drift apart
+                    // again. The two lines are wrapped in ONE span deliberately: `buttonClasses`
+                    // puts `gap-2` on the flex container, and two direct children would open 8px
+                    // of air between a fleet's name and where she lies.
+                    className={buttonClasses(f.id === fleetId ? 'chip-on' : 'chip', 'md', 'text-left')}
                   >
-                    <span className="block font-mono text-xs">{f.name}</span>
-                    <span className="block font-mono text-[11px] opacity-75">
-                      {where}
-                      {waiting > 0 && ` · ${waiting} queued`}
-                      {halted && ' · HALTED'}
+                    <span className="block">
+                      <span className="block font-mono text-xs">{f.name}</span>
+                      <span className="block font-mono text-[11px] opacity-75">
+                        {where}
+                        {waiting > 0 && ` · ${waiting} queued`}
+                        {halted && ' · HALTED'}
+                      </span>
                     </span>
                   </button>
                 )
@@ -305,6 +309,10 @@ export function CommandScreen() {
                   </Explain>
                 </SectionLabel>
                 <p className="flex items-start gap-2">
+                  {/* THIS ONE STAYS A CHARACTER. It reads as a chevron, and `icons.ts` has one —
+                      but it is a PROMPT, set in the same mono face and on the same baseline as the
+                      order line beside it, which is what makes the two read as one typed command.
+                      An SVG here would be a mark next to a line of code instead of the head of it. */}
                   <span aria-hidden className="font-mono text-lg leading-none text-accent">
                     &gt;
                   </span>
@@ -324,9 +332,26 @@ export function CommandScreen() {
                 >
                   Issue this order
                 </Button>
-                <Button variant="ghost" disabled={!spec} onClick={clear}>
-                  Start over
-                </Button>
+                {/* TWO THINGS ABOUT THIS BUTTON, AND BOTH ARE EASY TO GET WRONG.
+
+                    IT IS THE DRAFT, NOT THE QUEUE. It calls the draft store's `clear()`
+                    (src/domain/order/draft.ts:124), which throws away the verb and arguments being
+                    composed ON THIS CLIENT and keeps the fleet selected. Nothing has been sent, so
+                    nothing is cancelled. The panel below carries "Clear <fleet>'s queue", which is
+                    the other thing entirely: `cmd.clear()` on the server, dropping orders she has
+                    already been given. It used to read "Start over", which named neither — and sat
+                    a few hundred pixels from a control that really does destroy standing orders.
+                    "Discard this order" says which order and how far it had got.
+
+                    IT IS HIDDEN ON PROVISION, by the owner's explicit instruction (2026-08-22:
+                    "remove start over on provision"). Not disabled — absent. Every other verb keeps
+                    it, and a fleet chosen with no verb yet keeps it too, disabled, exactly as
+                    before: there is no draft to discard. */}
+                {spec?.verb !== 'PROVISION' && (
+                  <Button variant="ghost" disabled={!spec} onClick={clear}>
+                    Discard this order
+                  </Button>
+                )}
               </div>
 
               <div className="mt-3 border-t border-edge pt-3">

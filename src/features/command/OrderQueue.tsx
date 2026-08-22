@@ -1,4 +1,4 @@
-import { Badge, Button, Notice } from '../../components/ui'
+import { Badge, Button, Icon, Notice } from '../../components/ui'
 import { formatNm, formatRealShort } from '../../lib/format'
 import type { FleetView, QueuedOrder } from '../../lib/rpc'
 
@@ -83,7 +83,12 @@ export function OrderQueue({
           would report "nothing waiting" about a ship that is plainly at sea. */}
       {fleet.voyage && (
         <p className="flex flex-wrap items-center gap-2 rounded-md border border-accent/25 bg-accent-soft px-3 py-2 font-mono text-xs text-accent">
-          <span aria-hidden>⛵</span>
+          {/* The design system's `ship`, not the ⛵ emoji this used to carry. An emoji is rendered
+              by whatever colour font the device ships — it arrives in someone else's palette, at
+              someone else's weight, and it is the one thing on a token-only screen that cannot
+              wear `text-accent`. The icon strokes in `currentColor`, so it is brass like the line
+              it sits on. */}
+          <Icon name="ship" size={14} className="shrink-0" />
           at sea → {destination ?? fleet.voyage.to}
           <span className="text-ink-faint">
             {formatNm(fleet.voyage.nm_done)} of {formatNm(fleet.voyage.total_nm)}
@@ -134,7 +139,10 @@ export function OrderQueue({
                   }
                   onClick={() => onCancel(order.seq)}
                 >
-                  ✕
+                  {/* `close` from the icon set, at the same 14px as every other dismiss in the app
+                      (MapPanel.tsx:99). The header sketch above still draws it as ✕ — that is a
+                      diagram of the row, not a spelling of the glyph. */}
+                  <Icon name="close" size={14} />
                 </Button>
               )}
             </li>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Badge, Meter } from '../../components/ui'
+import { Badge, Button, buttonClasses, categoryLabel, goodIcon, Icon, Meter, PriceIndex } from '../../components/ui'
 import { formatDucats, formatInt, formatNm, formatTuns, formatUnitPrice } from '../../lib/format'
 import { haversineNm } from '../../lib/geo'
 import type { MarketGood, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
@@ -34,6 +34,7 @@ function fold(text: string): string {
 function PickerRow({
   onClick,
   selected,
+  mark,
   left,
   right,
   hint,
@@ -41,6 +42,8 @@ function PickerRow({
 }: {
   onClick: () => void
   selected: boolean
+  /** A glyph at the head of the row. A good carries one (see GoodPicker); a port does not. */
+  mark?: ReactNode
   left: ReactNode
   right?: ReactNode
   hint?: ReactNode
@@ -50,13 +53,20 @@ function PickerRow({
     <button
       type="button"
       onClick={onClick}
-      className={[
-        'flex min-h-11 w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-md border px-3 py-2 text-left transition',
-        selected
-          ? 'border-accent bg-accent-soft text-ink'
-          : 'border-edge bg-surface-2 text-ink hover:border-accent/60',
-      ].join(' ')}
+      // ONE CONTROL, ONE RECIPE, in both states. This used to be hand-written with a note saying
+      // it was waiting on a soft-selected variant: the OFF arm was character for character the
+      // design system's `chip`, but the ON arm could not be `chip-on` — a picker row is a
+      // full-width ROW carrying a badge, a %NBR pill and a stock meter, and `chip-on`'s solid
+      // brass swallows all three. `chip-soft` (buttonStyles.ts) is that variant, and it is the
+      // same soft tint TabRow uses for a selected face, so a selected row and a selected tab
+      // cannot drift apart.
+      className={buttonClasses(
+        selected ? 'chip-soft' : 'chip',
+        'md',
+        'flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left',
+      )}
     >
+      {mark}
       <span className="min-w-0 flex-1">
         <span className="block text-sm">{left}</span>
         {hint && <span className="block font-mono text-[11px] text-ink-faint">{hint}</span>}
@@ -236,27 +246,91 @@ export function GoodPicker({
           key={g.code}
           selected={value === g.code}
           onClick={() => onPick(g.code)}
-          left={
-            <span className="flex flex-wrap items-center gap-2">
-              {g.name}
-              <span className="font-mono text-[11px] text-ink-faint">{g.code}</span>
-              <Badge tone={g.advice === 'buy' ? 'success' : g.advice === 'sell' ? 'accent' : 'neutral'}>
-                {g.advice}
-              </Badge>
-            </span>
+          // A MARK PER GOOD (the owner, 2026-08-22: "i want a picture or an icon for each trade
+          // good"). The glyph comes from goodIcons.ts, which carries it on the CATEGORY axis
+          // because there are seventy goods and no art in this repository — read that file's
+          // header before reaching for a seventy-row table here.
+          mark={<Icon name={goodIcon(g.code, g.category)} size={22} className="shrink-0 text-ink-faint" />}
+          left={g.name}
+          // THE NAME USED TO BE PRINTED TWICE. This slot held `g.code`, and the code is DERIVED
+          // from the name ("Black Pepper" → "black-pepper"), so the row read "Black Pepper
+          // black-pepper" and spent its second line saying nothing. The owner: "beside the name i
+          // see again, a name repeated … i want beside the name show category of what the trade
+          // good is in." Nothing is lost: the code is the parser's spelling, and the composed
+          // order line above still shows it (CommandScreen's "What will be sent").
+          hint={categoryLabel(g.category)}
+          right={
+            <Badge tone={g.advice === 'buy' ? 'success' : g.advice === 'sell' ? 'accent' : 'neutral'}>
+              {g.advice}
+            </Badge>
           }
-          hint={
-            <>
-              buy {formatUnitPrice(g.buy)} · sell {formatUnitPrice(g.sell)}
-              {g.pct_nbr !== null && ` · ${Math.round(g.pct_nbr)}% of neighbours`}
-              {aboard && ` · ${formatTuns(aboard[g.code] ?? 0)} aboard`}
-            </>
-          }
-          under={<Meter pct={(g.stock_band / 6) * 100} tone={g.stock_band >= 4 ? 'success' : 'warning'} />}
+          under={<GoodFigures good={g} aboard={aboard ? (aboard[g.code] ?? 0) : undefined} />}
         />
       ))}
       <TruncationNote hidden={rows.length - shown.length} />
     </div>
+  )
+}
+
+/**
+ * THE THREE FIGURES, EACH IN ITS OWN COLUMN — the owner, 2026-08-22: *"for each info - buy, sell,
+ * 81% of neighbours i want a separate tab - graphics. bigger."*
+ *
+ * They used to be one run-on mono line under the name — `buy 7 d./t · sell 6 d./t · 81% of
+ * neighbours` — at 11px, which is docs/UI_DIRECTION.md §1's second diagnosis exactly: prose where
+ * the game wants a number. Rule 2 says **the number is the hero**, so each figure gets its own
+ * column: the label small-caps, mono and dim; the figure bright and a clear size larger than it.
+ *
+ * THE UNIT RIDES SMALL BESIDE THE FIGURE rather than inside it. `formatUnitPrice` renders
+ * "3,500 d./t", which at this size does not fit a third of a 390px row — and dropping the unit is
+ * not an option (EVE's rule, §3: units are always attached). So the figure is the grouped number
+ * and the unit is a 10px suffix, which is the same shape NumberPicker already uses for its
+ * suggestion chips.
+ *
+ * %NBR IS <PriceIndex>, NOT A FOURTH RENDERING OF IT. The pill is the one treatment of that number
+ * and its tone comes from the server's own `advice` (PriceIndex.tsx) — never from comparing `pct`
+ * against a threshold here, because the thresholds live in migration 0009.
+ */
+function GoodFigures({ good, aboard }: { good: MarketGood; aboard: number | undefined }) {
+  return (
+    <span className="mt-1.5 grid gap-2">
+      <span className="grid grid-cols-3 gap-2">
+        <Figure label="buy" title="What she pays here, per tun">
+          <span className="tabular-nums">{formatInt(good.buy)}</span>
+          <span className="ml-1 text-[10px] font-normal text-ink-faint">d./t</span>
+        </Figure>
+        <Figure label="sell" title="What this port pays her, per tun">
+          <span className="tabular-nums">{formatInt(good.sell)}</span>
+          <span className="ml-1 text-[10px] font-normal text-ink-faint">d./t</span>
+        </Figure>
+        <Figure label="neighbours" title="This port's price as a percentage of the ports within 600 nm">
+          <PriceIndex pct={good.pct_nbr} advice={good.advice} />
+        </Figure>
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-ink-faint">stock</span>
+        <Meter
+          pct={(good.stock_band / 6) * 100}
+          tone={good.stock_band >= 4 ? 'success' : 'warning'}
+          className="min-w-0 flex-1"
+        />
+        {aboard !== undefined && (
+          <span className="shrink-0 font-mono text-[11px] text-ink-muted">{formatTuns(aboard)} aboard</span>
+        )}
+      </span>
+    </span>
+  )
+}
+
+/** One labelled figure cell. Label above, figure below — never the other way round (rule 2). */
+function Figure({ label, title, children }: { label: string; title: string; children: ReactNode }) {
+  return (
+    <span className="block min-w-0 rounded border border-edge/60 bg-app/40 px-2 py-1" title={title}>
+      <span className="block truncate font-mono text-[10px] uppercase tracking-wider text-ink-faint">
+        {label}
+      </span>
+      <span className="block truncate font-mono text-sm text-ink">{children}</span>
+    </span>
   )
 }
 
@@ -295,17 +369,20 @@ export function QtyPicker({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
+        {/* Three of the hand-written chip recipes the D12 audit found, now the design system's own
+            `chip` / `chip-on` variants (buttonStyles.ts). MAX has no ON state — it SETS the number
+            rather than becoming the value — so it is always the OFF variant, and the disabled
+            treatment it used to spell out (`disabled:opacity-45`) is already in the base recipe. */}
         {(['ALL', 'HALF'] as const).map((token) => (
           <button
             key={token}
             type="button"
             onClick={() => onPick(token)}
-            className={[
-              'min-h-11 rounded-md border px-4 font-mono text-xs uppercase tracking-wider transition',
-              value === token
-                ? 'border-accent bg-accent text-app'
-                : 'border-edge bg-surface-2 text-ink hover:border-accent/60',
-            ].join(' ')}
+            className={buttonClasses(
+              value === token ? 'chip-on' : 'chip',
+              'md',
+              'font-mono text-xs uppercase tracking-wider',
+            )}
           >
             {token}
           </button>
@@ -314,7 +391,7 @@ export function QtyPicker({
           type="button"
           disabled={max <= 0}
           onClick={() => setNumber(max)}
-          className="min-h-11 rounded-md border border-edge bg-surface-2 px-4 font-mono text-xs uppercase tracking-wider text-ink transition hover:border-accent/60 disabled:opacity-45"
+          className={buttonClasses('chip', 'md', 'font-mono text-xs uppercase tracking-wider')}
         >
           max {formatInt(max)}
         </button>
@@ -323,14 +400,26 @@ export function QtyPicker({
       {max > 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            {/* THE STEPPER IS `Button variant="chip" size="icon"`. `icon` is exactly the
+                `h-11 w-11 p-0` these two used to spell out, and `chip` is exactly their skin, so
+                the pair is now the design system's and cannot drift from the chips beside it.
+                `text-lg` stays: the size sets `text-base`, and a stepper glyph wants to be the
+                largest thing in its own square.
+
+                THE GLYPHS STAY AS TEXT, BOTH OF THEM. `icons.ts` has a `plus` and no minus, and a
+                stepper whose + is 1.5px SVG line work while its − is a font glyph would not match
+                in weight at any size. The pair is one control, so it is drawn one way — and the
+                icon set's own header says a glyph "never replaces a word". A minus is closer to a
+                word than to a mark. */}
+            <Button
+              variant="chip"
+              size="icon"
               aria-label={`Less by ${stepSize} tuns`}
               onClick={() => bump(-stepSize)}
-              className="h-11 w-11 shrink-0 rounded-md border border-edge bg-surface-2 text-lg text-ink transition hover:border-accent/60"
+              className="shrink-0 text-lg"
             >
               −
-            </button>
+            </Button>
             <span
               className={`min-w-0 flex-1 text-center font-mono text-lg ${numeric === null ? 'text-ink-faint' : 'text-ink'}`}
             >
@@ -338,14 +427,15 @@ export function QtyPicker({
                   a bare dash tells the player nothing about what + is about to do. */}
               {numeric === null ? (value ?? formatTuns(current)) : formatTuns(numeric)}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="chip"
+              size="icon"
               aria-label={`More by ${stepSize} tuns`}
               onClick={() => bump(stepSize)}
-              className="h-11 w-11 shrink-0 rounded-md border border-edge bg-surface-2 text-lg text-ink transition hover:border-accent/60"
+              className="shrink-0 text-lg"
             >
               +
-            </button>
+            </Button>
           </div>
           <input
             type="range"
@@ -404,12 +494,9 @@ export function NumberPicker({
               key={n}
               type="button"
               onClick={() => onPick(String(n))}
-              className={[
-                'min-h-11 rounded-md border px-4 font-mono text-sm transition',
-                numeric === n
-                  ? 'border-accent bg-accent text-app'
-                  : 'border-edge bg-surface-2 text-ink hover:border-accent/60',
-              ].join(' ')}
+              // Another of the audit's hand-written chips. `md` already carries `text-sm`, so the
+              // only thing this recipe still asks for by name is the mono face every figure wears.
+              className={buttonClasses(numeric === n ? 'chip-on' : 'chip', 'md', 'font-mono')}
             >
               {n}
               {unit && <span className="ml-1 text-[11px] opacity-70">{unit}</span>}
@@ -418,14 +505,17 @@ export function NumberPicker({
       </div>
       {max > min && (
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          {/* The same stepper pair as QtyPicker's, drawn the same way and for the same reasons —
+              see the comment there for why both glyphs stay as text. */}
+          <Button
+            variant="chip"
+            size="icon"
             aria-label="Less"
             onClick={() => onPick(clamp(current - step))}
-            className="h-11 w-11 shrink-0 rounded-md border border-edge bg-surface-2 text-lg text-ink transition hover:border-accent/60"
+            className="shrink-0 text-lg"
           >
             −
-          </button>
+          </Button>
           <input
             type="range"
             min={min}
@@ -436,14 +526,15 @@ export function NumberPicker({
             onChange={(e) => onPick(clamp(Number(e.target.value)))}
             className="h-11 min-w-0 flex-1 accent-accent"
           />
-          <button
-            type="button"
+          <Button
+            variant="chip"
+            size="icon"
             aria-label="More"
             onClick={() => onPick(clamp(current + step))}
-            className="h-11 w-11 shrink-0 rounded-md border border-edge bg-surface-2 text-lg text-ink transition hover:border-accent/60"
+            className="shrink-0 text-lg"
           >
             +
-          </button>
+          </Button>
         </div>
       )}
       <p className="font-mono text-[11px] text-ink-faint">
@@ -505,12 +596,13 @@ export function EnumPicker({
           key={v}
           type="button"
           onClick={() => onPick(v)}
-          className={[
-            'min-h-11 rounded-md border px-4 font-mono text-xs uppercase tracking-wider transition',
-            value === v
-              ? 'border-accent bg-accent text-app'
-              : 'border-edge bg-surface-2 text-ink hover:border-accent/60',
-          ].join(' ')}
+          // The last of the audit's hand-written chips in this file. Same recipe as QtyPicker's
+          // ALL/HALF, which is the whole point: one word from the server's schema, drawn the one way.
+          className={buttonClasses(
+            value === v ? 'chip-on' : 'chip',
+            'md',
+            'font-mono text-xs uppercase tracking-wider',
+          )}
         >
           {v}
         </button>

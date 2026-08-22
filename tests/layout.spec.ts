@@ -23,9 +23,16 @@
 // If nothing is served the tests SKIP with a stated reason rather than pass — a skip is visibly a
 // skip, and a proof that goes green without measuring anything is worse than no proof at all.
 //
-// NOT RUN IN CI: .github/workflows/build.yml runs lint + tsc + vite build only; there are no
-// browser binaries in the runner. This is a local gate, and it is stated here so a green CI tick
-// can never be mistaken for a measured layout.
+// RUN IN CI SINCE 2026-08-22: .github/workflows/acceptance.yml installs a chromium, builds, serves
+// the build and runs this suite against it. This comment used to say the opposite — "NOT RUN IN
+// CI … this is a local gate" — which was true of `build.yml` (lint + tsc + vite build, no browser
+// binaries) and is no longer true of the repo.
+//
+// THE SKIPS ARE WHY THAT WORKFLOW HAS A NON-VACUITY FLOOR. Every skip in this file (below, and at
+// the two guards further down) fires on "nothing is being served" or "this is a cloud build and it
+// redirected to /auth" — precisely the two states that would let a green tick measure no pixels at
+// all. acceptance.yml therefore fails the job if ANY test skipped, or if zero passed, in the same
+// spirit as migrations-apply-proof.yml requiring every declared PASS marker to actually appear.
 
 import { test, expect } from '@playwright/test'
 

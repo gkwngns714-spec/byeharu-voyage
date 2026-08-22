@@ -32,9 +32,16 @@
 // point of Table.tsx's first structural rule.
 
 /** Classes for the <Table> wrapper of a table that may be wider than a phone.
- *  @param stickyBg the token background the sticky first column paints over — it must match the
- *  surface the table sits on, or the scrolling columns show through it. Cards are `bg-surface`. */
-export function scrollTableClass(stickyBg: 'surface' | 'surface-2' = 'surface'): string {
+ *  @param stickyBg the token background the sticky first column paints over. IT MUST MATCH THE
+ *  SURFACE THE TABLE SITS ON, or the scrolling columns show through the pinned one.
+ *
+ *  THE DEFAULT CHANGED ON 2026-08-22, and it was a real regression: D12 made a Card's body
+ *  `bg-panel` (`--color-panel` is `color-mix(surface 88%, #3a2a1c)` — warmer than `--color-surface`,
+ *  not equal to it) while this default still painted `bg-surface`. Every table in the game sits in
+ *  a Card, so every sticky first column was painting the wrong colour and the columns sliding under
+ *  it were faintly visible. Found by reading the tokens, not the screen — which is why the default
+ *  now names the surface that actually exists rather than the one that used to. */
+export function scrollTableClass(stickyBg: 'panel' | 'surface' | 'surface-2' = 'panel'): string {
   return [
     // 1. content-sized, never crushed
     '[&>table]:w-auto [&>table]:min-w-full',
@@ -45,9 +52,11 @@ export function scrollTableClass(stickyBg: 'surface' | 'surface-2' = 'surface'):
     // every column) must NOT be pinned, or it stays put and paints over the columns sliding under
     // it. Only real first cells are sticky.
     '[&_tr>*:first-child:not([colspan])]:sticky [&_tr>*:first-child:not([colspan])]:left-0 [&_tr>*:first-child:not([colspan])]:z-10',
-    stickyBg === 'surface'
-      ? '[&_tr>*:first-child:not([colspan])]:bg-surface'
-      : '[&_tr>*:first-child:not([colspan])]:bg-surface-2',
+    stickyBg === 'panel'
+      ? '[&_tr>*:first-child:not([colspan])]:bg-panel'
+      : stickyBg === 'surface'
+        ? '[&_tr>*:first-child:not([colspan])]:bg-surface'
+        : '[&_tr>*:first-child:not([colspan])]:bg-surface-2',
     // 4. a visible, thin, always-present scrollbar
     // NOTE: no `scrollbar-width: thin`. The standard property wins over the ::-webkit-scrollbar
     // pseudo-elements in Chromium and selects an OVERLAY scrollbar, which paints nothing at rest —

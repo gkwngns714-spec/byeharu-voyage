@@ -46,7 +46,11 @@ test('scrollbar-width is NOT set, because the standard property selects an overl
 })
 
 test('the sticky column paints the surface it sits on, or the columns show through it', () => {
-  expect(scrollTableClass()).toContain(':bg-surface')
+  // Pin moved deliberately 2026-08-22: the DEFAULT is now `panel`, because that is what a Card's
+  // body has been painted since D12 and a sticky column must match the surface under it. The two
+  // older options still resolve, so a caller that needs them has not been taken away.
+  expect(scrollTableClass()).toContain(':bg-panel')
+  expect(scrollTableClass('surface')).toContain(':bg-surface')
   expect(scrollTableClass('surface-2')).toContain(':bg-surface-2')
 })
 

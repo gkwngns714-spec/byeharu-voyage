@@ -1,6 +1,6 @@
 # The V0 chain
 
-Sixteen migrations. Each one establishes **one concept**, and each one **proves its own effect in the
+Seventeen migrations. Each one establishes **one concept**, and each one **proves its own effect in the
 same transaction that applies it** — see `README.md` §3 for the self-assert rules this chain follows.
 
 Every migration also re-asserts the grant lockdown of 0001 through the single authority
@@ -36,9 +36,60 @@ npm run db:proof            # apply, then run scripts/db/proofs/*.sql and check 
 | **0015** | `an_officer_signs_on` | `officers` + `player_officers` (the posting lives on the OFFICER's row — SECTIONS.md forbids officer columns on ships/fleets), `fleet_officer_bonus()` as the one reading, `cmd.hire_officer` / `cmd.post_officer`, `world.officers()`. **SUPERSEDES `voyage.fleet_speed()`** so a navigator actually makes the ship faster. | No officer column exists on ships or fleets. An unofficered fleet reads 0006's **exact** speed (4.9125 kn), so the supersede is a no-op without officers. A +8.00% navigator takes it to **5.3055 kn** — the stated amount — and the wage leaves the purse through `public.credit`. The per-fleet cap clamps the sum. Four refusals BITE. `world.officers()` reports `takes_effect` FALSE for the three specialties no rule reads. |
 | **0016** | `a_captain_learns_a_trade` | `skills` + `player_skills` (never columns on `players`), `player_skill_bonus()`, `cmd.study_skill()`, `world.skills()`. A skill is **studied for money at a port with an academy** — not earned by XP, because XP means hooking 0007's deployed verbs, and because a derived skill would level itself and stop being a choice. **SUPERSEDES `voyage.endurance_days()`.** `ports.has_academy` finally means something. | At level 0 the endurance is 0006's exact figure, so the supersede is a no-op unstudied. Studying is REFUSED at sea (`E_AT_SEA`) and at a port with no academy (`E_NO_ACADEMY`), and allowed at one that keeps one — taking endurance from 15.000 to 15.900 d at +6.00%. The ceiling BITES (`E_SKILL_MAXED`) after studying to it; `E_NO_SUCH_SKILL` and `E_NOT_ENOUGH_DUCATS` bite too. |
 
+| **0017** | `a_quartermaster_stows_the_hold_and_a_purser_shaves_the_spread` | Two of 0015's three inert specialties, wired. `public.ship_hold_capacity()` — the ONE answer to "how many tuns fit in this hull", the rated `ship_classes.hold` stretched by the fleet's QUARTERMASTERS — replaces the same subtraction hand-copied into four server functions (`fleet_free_hold` 0007:127, `fleet_load` 0007:249, `do_provision` 0007:579/583/609/613, `world.fleets` 0009:183), all of which now compose onto it. `world.quote()` gains ONE appended parameter, `p_fleet`, and a PURSER shaves the spread the quote executes at — `world.spread(port)` stays the port's own one-argument fact, and the three callers that know a fleet pass it. `world.fleets()` serves the STOWED capacity under `hold` (with `hold_rated` and `officer_pct` alongside) so the client's mirrored arithmetic stays true. SURGEON is deliberately left inert. And every function this file re-cut is taken off the client. | With no officer aboard a 60-tun hull reads **60** and the fleet's free hold **matches 0007's own definition recomputed inline**, so the supersede is a no-op; a **+6.00%** quartermaster takes the hull to **63** tuns and the free hold rises by exactly 3 — then `fleet_load` places **every** tun `fleet_free_hold` offered and REFUSES one more, so the check and the placement cannot disagree and no one pays for cargo that never lands. Naming an unpursered fleet reproduces the 0005 quote **to the digit** (ask 4002.70, bid 3674.15); a **+6.00%** purser moves them to **3999.70 / 3677.06** — the stated amounts, recomputed from `world.mid_price`, `world.tax_rate` and `world.spread` — with the bid still under the ask. The world cap **BITES**, on a cap the probe lowers to 5 itself rather than trusting the seeded 25 that two officers can never reach. SURGEON still reports `takes_effect` false, `specialties_read` names exactly three, and 0016's HAGGLING skill is still unread. Seven anon-executable SECURITY DEFINER functions are closed and the **17 still open chain-wide are NOTICEd by name on every apply** — see below. |
+
 ---
 
-## The four proofs
+## 2026-08-22 — 0017 found a grant hole that had been open since 0001
+
+0017's posture assert (README §3: *"assert `REVOKE`d state explicitly; do not assume the default"*)
+failed on its first apply, on a claim that should have been free:
+
+```
+0017 self-assert FAIL: authenticated may execute public.fleet_free_hold
+```
+
+Measured on PostgreSQL 18.3, chain applied through 0016 with `scripts/db/supabase-preamble.sql` in
+place: **`pg_default_acl` holds three rows and every one of them is owned by `supabase_admin`.
+There is no row for the role that applies this chain.** So 0001 §5a's
+
+```sql
+alter default privileges in schema public, world, cmd, voyage
+  revoke execute on functions from public, anon, authenticated;
+```
+
+recorded nothing, and every function created since which did not carry its own explicit `revoke`
+was left at PostgreSQL's built-in function default — **EXECUTE for PUBLIC**.
+
+The tables half of the same statement is harmless by luck: the built-in default for a *table*
+grants nobody anything, which is why `client_write_grants()` has honestly read zero all along. It
+reads table grants and is blind to this by design. Functions were the exposed half, and **22
+`SECURITY DEFINER` functions that WRITE were executable by `anon`** — among them
+`public.fleet_load`, `public.fleet_unload`, `cmd.do_buy`, `cmd.do_sail`, `cmd.issue`,
+`cmd.execute_order`, `voyage.depart` and `cmd.advance`. None of them checks who is asking, because
+0007 and 0008 rely on `cmd.issue` doing that upstream — which is exactly the assumption a direct
+call breaks.
+
+**0017 closed the seven it re-cut** (`public.ship_hold_capacity`, `public.fleet_free_hold`,
+`public.fleet_load`, `public.fleet_buy_capacity`, `cmd.do_buy`, `cmd.do_sell`, `cmd.do_provision`)
+and re-granted the two the client really calls (`world.quote`, `world.fleets`) to `authenticated`.
+It did **not** attempt the other 17: a blanket revoke written blind is how a deploy takes the game
+offline, and re-granting the chain is its own concept. They are printed as a permanent `NOTICE`,
+by name, on every apply — 0001 (d2)'s shape, never swallowed and never fatal, because an assert
+that can never pass is pressure to delete the check.
+
+**Still open, and wanting their own migration:** `cmd.advance`, `cmd.cancel_at`, `cmd.clear`,
+`cmd.do_hire`, `cmd.do_repair`, `cmd.do_sail`, `cmd.execute_order`, `cmd.issue`, `cmd.preview`,
+`public.fleet_unload`, `public.tg_reconcile_from_ledger`, `public.tg_reconcile_from_player`,
+`voyage.assert_sailing_invariant`, `voyage.depart`, `voyage.recompute_eta`, `voyage.settle`,
+`world.ledger`. (`cmd.issue`, `cmd.preview`, `cmd.cancel_at`, `cmd.clear` and `world.ledger` are
+meant to be callable by `authenticated`; the migration that closes this must grant them back
+explicitly rather than leaving them on a default. `proofs/03_grant_lockdown.sql` should grow a
+ninth marker that fails on a `SECURITY DEFINER` writer reachable by `anon`, or this returns.)
+
+---
+
+## The five proofs
 
 `scripts/db/proofs/` — run by `npm run db:proof`, each inside a transaction that is rolled back.
 Green means **every `-- @pass` marker the file declares actually appeared**; a file that declares
@@ -49,7 +100,8 @@ none fails as vacuous.
 | `01_offline_equivalence.sql` | 5 markers | DESIGN Appendix 2 §1. The **same** voyage — pre-screened to contain a real hazard — is settled day by day, the result captured, the settlement rolled away, and then settled **once, nine hours late**. `(day_index, kind, payload, resolved_at)` match to the character; so do the purse and the ETA. |
 | `02_ledger_reconciliation.sql` | 6 markers | DESIGN Appendix 2 §2. 500 randomised orders across 3 houses with time jumping forward underneath them. Requires both successes **and** refusals and money moving both ways, then `purse = Σ ledger.ducats_delta` exactly — and finally falsifies a purse by **one ducat** to prove the check bites. |
 | `03_grant_lockdown.sql` | 8 markers | DESIGN Appendix 2 §3. Not a catalogue query: it **becomes** `anon` and then `authenticated` and tries to INSERT into all 18 tables, requiring SQLSTATE **42501** specifically — a writable table would have failed 23502 instead. Also: `world_config` unreadable, RLS on every table, `service_role` still able to write, and — at end of chain, where it matters most — **every object in all four schemas owned by the role that applied the chain**, which is what makes Supabase's un-revokable default privileges harmless (see the 2026-08-18 note). |
-| `04_first_session.sql` | 9 markers | §K.1's ten minutes, replayed as **typed strings through `cmd.issue()`**. Two honest divergences from the script are asserted rather than papered over: `BUY sal 60` does not fit a 60-tun hold carrying stores, and a laden Barca is slower than the 4.7 minutes quoted for an empty one. The house ends **+506 d. on an 8,000 d. stake**. |
+| `04_first_session.sql` | 9 markers | §K.1's ten minutes, replayed as **typed strings through `cmd.issue()`**. Two honest divergences from the script are asserted rather than papered over: `BUY sal 60` does not fit a 60-tun hold carrying stores, and a laden Barca is slower than the 4.7 minutes quoted for an empty one. The house comes home **richer on an 8,000 d. stake**, by a printed number. |
+| `05_first_voyage_balance.sql` | 3 markers | **Balance, measured rather than argued.** The first version of this world paid 32% of the stake for one twenty-five-minute round trip. Across a sample of starting ports it now requires: every port offers a first voyage that pays; the **median return sits inside 4.0–16.0 per cent**; and **the long legs out-earn the short ones**, or there is no reason to leave home waters. The knobs behind it are swept by `scripts/db/tune-balance.mjs` — if this goes red, read that table rather than nudging a constant until the red goes away. |
 
 ## Two defects these proofs found
 
