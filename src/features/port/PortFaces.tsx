@@ -6,6 +6,7 @@ import {
   Notice,
   SectionLabel,
   Skeleton,
+  fineClass,
 } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
@@ -133,7 +134,7 @@ export function OfficersFace({ port, acting }: { port: SnapshotPort; acting: Fle
           <SectionLabel>Serving elsewhere</SectionLabel>
           <ul className="space-y-1">
             {elsewhere.map((o) => (
-              <li key={o.code} className="font-mono text-[11px] text-ink-faint">
+              <li key={o.code} className={fineClass()}>
                 {o.name} · {o.specialty.toLowerCase()} · {o.port ?? 'no port'}
                 {o.hired ? ' · signed' : ''}
               </li>

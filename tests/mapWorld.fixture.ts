@@ -294,6 +294,21 @@ export function leg(from: string, to: string, nm: number): SnapshotLeg {
   return { id: `leg-${from}-${to}`, from, to, nm, hazard_mult: 1, notes: null }
 }
 
+/**
+ * THE HOLD AND THE OFFICERS, added to every served fleet by 0017.
+ *
+ * Written ONCE and spread into both factories below. A map fixture has no opinion about cargo —
+ * these fleets carry `ships: []` — so both fields take the value that is TRUE of an empty,
+ * unofficered fleet rather than a plausible number a map spec might drift into asserting. The
+ * whole point of `free_hold` being served (types.ts:274-284) is that the client stopped computing
+ * it in three places; a fixture that invented a fourth answer would be the same defect wearing a
+ * test's clothes.
+ */
+const EMPTY_HOLD_NO_OFFICERS = {
+  free_hold: 0,
+  officer_pct: { NAVIGATOR: 0, QUARTERMASTER: 0, SURGEON: 0, PURSER: 0 },
+} satisfies Pick<FleetView, 'free_hold' | 'officer_pct'>
+
 /** A fleet lying in a port. */
 export function dockedFleet(id: string, name: string, portCode: string): FleetView {
   return {
@@ -308,6 +323,7 @@ export function dockedFleet(id: string, name: string, portCode: string): FleetVi
     voyage: null,
     ships: [],
     queue: [],
+    ...EMPTY_HOLD_NO_OFFICERS,
   }
 }
 
@@ -367,5 +383,6 @@ export function sailingFleet(args: {
     },
     ships: [],
     queue: [],
+    ...EMPTY_HOLD_NO_OFFICERS,
   }
 }

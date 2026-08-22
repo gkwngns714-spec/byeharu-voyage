@@ -13,13 +13,18 @@ import { formatInt } from '../../lib/format'
 // purse reset" or "am I on the live server" had nowhere to look, and this is that place.
 //
 // WHAT IS STILL NOT HERE IS NOT A LAYOUT PROBLEM. The captain's own name, house colours, nation
-// and reputation are not served: `world.snapshot()` carries no player row (README §4). Preferences
+// and reputation are not served: `snapshot()` carries no player row (README §4). Preferences
 // have nowhere to persist to for the same reason. Those are named at the foot of the screen as
 // server work, not drawn as empty fields.
 
 export function ProfileScreen() {
   const user = useAuthStore((s) => s.user)
-  const world = useWorld()
+  // FIELDS, NOT THE STORE (worldStore.ts rule 4). This screen prints five facts and used to
+  // re-render on every write to any of them plus every unrelated one.
+  const mode = useWorld((s) => s.mode)
+  const phase = useWorld((s) => s.phase)
+  const snapshot = useWorld((s) => s.snapshot)
+  const player = useWorld((s) => s.player)
   const signOut = useAuthStore((s) => s.signOut)
   const [busy, setBusy] = useState(false)
 
@@ -57,29 +62,29 @@ export function ProfileScreen() {
         <dl className="space-y-2">
           <StatRow
             label="Backend"
-            value={world.mode ?? '—'}
+            value={mode ?? '—'}
             plain
             hint="`local` is a Postgres compiled to WebAssembly, running inside this tab and stored in this browser. `cloud` is the shared Supabase project every captain plays in. The app picks one at boot and nothing branches on it afterwards."
           />
-          <StatRow label="World" value={world.phase} plain />
+          <StatRow label="World" value={phase} plain />
           <StatRow
             label="Ports"
-            value={world.snapshot ? formatInt(world.snapshot.ports.length) : '—'}
+            value={snapshot ? formatInt(snapshot.ports.length) : '—'}
             hint="Every coordinate came from Wikidata and is stored with the item it came from — none was typed by hand."
           />
           <StatRow
             label="Sea legs"
-            value={world.snapshot ? formatInt(world.snapshot.legs.length) : '—'}
+            value={snapshot ? formatInt(snapshot.legs.length) : '—'}
           />
           <StatRow
             label="Goods"
-            value={world.snapshot ? formatInt(world.snapshot.goods.length) : '—'}
+            value={snapshot ? formatInt(snapshot.goods.length) : '—'}
           />
           <StatRow
             label="Time"
             value={
-              world.snapshot
-                ? `${formatInt(world.snapshot.config.time_compression)}x`
+              snapshot
+                ? `${formatInt(snapshot.config.time_compression)}x`
                 : '—'
             }
             hint="How much faster the world runs than the clock. One voyage-day is three real minutes at 480x."
@@ -88,23 +93,23 @@ export function ProfileScreen() {
       </Card>
 
       <Card head={<CardHeader flush title="The house" />}>
-        {world.player ? (
+        {player ? (
           <dl className="space-y-2">
-            <StatRow label="Company" value={world.player.company_name} plain />
+            <StatRow label="Company" value={player.company_name} plain />
             <StatRow
               label="Nation"
-              value={world.player.nation_name ?? world.player.nation ?? '—'}
+              value={player.nation_name ?? player.nation ?? '—'}
               plain
             />
-            <StatRow label="Company level" value={formatInt(world.player.company_level)} />
+            <StatRow label="Company level" value={formatInt(player.company_level)} />
             <StatRow
               label="Founded"
-              value={world.player.founded_at.slice(0, 10)}
+              value={player.founded_at.slice(0, 10)}
               hint="When this account signed the book (0011)."
             />
             <StatRow
               label="Lying at"
-              value={world.player.lying_at ?? 'every fleet at sea'}
+              value={player.lying_at ?? 'every fleet at sea'}
               plain
               hint="Where her first fleet lies. There is no home port in this game — a port is a place, not a base — so this is reported as what it is."
             />

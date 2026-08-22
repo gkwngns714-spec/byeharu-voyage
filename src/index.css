@@ -67,8 +67,6 @@
   /* chart aliases — the read-only Map layer consumes these, never raw hex */
   --color-chart-sea: #0a1220;
   --color-chart-land: #1b2635;
-  --color-chart-grid: color-mix(in srgb, var(--color-accent) 8%, transparent);
-  --color-chart-route: color-mix(in srgb, var(--color-accent) 55%, transparent);
 
   /* typography (Inter + JetBrains Mono self-hosted via @fontsource, imported in src/main.tsx;
      the serif is a system stack on purpose — zero bytes, always present) */

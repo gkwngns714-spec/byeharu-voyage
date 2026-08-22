@@ -9,6 +9,7 @@ import {
   Screen,
   SectionLabel,
   StatRow,
+  fineClass,
 } from '../../components/ui'
 import { formatDucats, formatInt } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
@@ -45,12 +46,14 @@ import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 // (I.4), and now exactly one thing computes it.
 
 export function RankScreen() {
-  const world = useWorld()
+  // FIELDS, NOT THE STORE (worldStore.ts rule 4).
+  const phase = useWorld((s) => s.phase)
+  const fatal = useWorld((s) => s.fatal)
 
-  if (world.phase === 'failed') {
-    return <WorldFailed eyebrow="Standings" title="Rank" refusal={world.fatal} />
+  if (phase === 'failed') {
+    return <WorldFailed eyebrow="Standings" title="Rank" refusal={fatal} />
   }
-  if (world.phase !== 'ready') {
+  if (phase !== 'ready') {
     return (
       <WorldLoading
         eyebrow="Standings"
@@ -64,10 +67,14 @@ export function RankScreen() {
 }
 
 function RankBody() {
-  const world = useWorld()
-  const events = world.events
-  const fleets = world.fleets
-  const config = world.snapshot?.config
+  const events = useWorld((s) => s.events)
+  // The snapshot, not `snapshot?.config` — a selector must return something stable, and reaching
+  // one level deeper is free here because the snapshot object is replaced only when the world is
+  // reopened (worldStore.ts rule 4, 'the one thing to watch').
+  const snapshot = useWorld((s) => s.snapshot)
+  const ducats = useWorld((s) => s.ducats)
+  const house = useWorld((s) => s.player)
+  const config = snapshot?.config
 
   // WHAT THE SERVER DOES NOT COUNT. Fame, turnover and ports reached are `world.player()`'s now;
   // the only thing left to derive is how many trades sit in the page this screen happens to hold,
@@ -77,8 +84,10 @@ function RankBody() {
     [events],
   )
 
-  const shipCount = fleets.reduce((n, f) => n + f.ships.length, 0)
-  const house = world.player
+  // SERVED, not folded — `world.player()` counts them (migration 0014:140-141). FleetsScreen was
+  // folding the roster for the same two figures; both read the house now.
+  const shipCount = house?.ships ?? null
+  const fleetCount = house?.fleets ?? null
   const fame = house?.fame ?? null
 
   return (
@@ -104,21 +113,23 @@ function RankBody() {
         <dl className="space-y-2">
           <StatRow
             label="Purse"
-            value={world.ducats === null ? '—' : formatDucats(world.ducats)}
+            value={ducats === null ? '—' : formatDucats(ducats)}
             hint="The server's figure, reconciled against the ledger on every read. It is the number a net-worth standing would start from."
           />
           <StatRow
             label="Fleets"
-            value={`${formatInt(fleets.length)} / ${config ? formatInt(config.fleet_max) : '—'}`}
+            value={`${fleetCount === null ? '—' : formatInt(fleetCount)} / ${config ? formatInt(config.fleet_max) : '—'}`}
             hint="fleet_max is a WORLD knob, the same for every house — not a rank, and not something you have earned."
           />
           <StatRow
             label="Ships"
-            value={`${formatInt(shipCount)} / ${config ? formatInt(config.ship_max) : '—'}`}
+            value={`${shipCount === null ? '—' : formatInt(shipCount)} / ${config ? formatInt(config.ship_max) : '—'}`}
           />
         </dl>
 
-        {config && (
+        {/* The gauge needs a COUNT; an unread house has none, and drawing a zero-length gauge
+            would be inventing one. It simply does not draw. */}
+        {config && shipCount !== null && (
           <div className="mt-3 flex items-center gap-3">
             <Gauge
               value={shipCount}
@@ -127,7 +138,7 @@ function RankBody() {
               tone={shipCount >= config.ship_max ? 'warning' : 'accent'}
               label={`${shipCount} of ${config.ship_max} ships`}
             />
-            <span className="font-mono text-[11px] text-ink-faint">
+            <span className={fineClass()}>
               {shipCount >= config.ship_max ? 'every berth taken' : 'hulls the house may still own'}
             </span>
           </div>
@@ -155,7 +166,7 @@ function RankBody() {
           <StatRow label="Turned over" value={fame ? formatDucats(fame.turnover) : '—'} />
         </dl>
 
-        <p className="mt-3 font-mono text-[11px] text-ink-faint">
+        <p className={fineClass('mt-3')}>
           {formatInt(tradesOnPage)} of the {formatInt(events.length)} entries on this page are
           trades. That count is about the PAGE; the fame above is about the house.
         </p>

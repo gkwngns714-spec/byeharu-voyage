@@ -57,4 +57,3 @@ export {
   FOUNDING_NATION,
 } from './localDb'
 export type { LocalDb, OpenLocalDbOptions } from './localDb'
-export { useDbBoot } from './useDbBoot'

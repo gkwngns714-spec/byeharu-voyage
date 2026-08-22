@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, Input, Notice, PageHeader, Screen } from '../../components/ui'
+import { Button, Card, fineClass, Input, Notice, PageHeader, Screen } from '../../components/ui'
 import { cmdFoundHouse } from '../../lib/rpc'
 import type { Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -89,7 +89,7 @@ export function SignTheBook() {
         {refusal && refusal.fixes.length > 0 && (
           <ul className="mt-2 space-y-1">
             {refusal.fixes.slice(0, 4).map((fix) => (
-              <li key={fix} className="font-mono text-[11px] text-ink-faint">
+              <li key={fix} className={fineClass()}>
                 {fix}
               </li>
             ))}

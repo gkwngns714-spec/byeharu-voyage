@@ -92,12 +92,14 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   // hold is 60 tuns and the purse is 8,000 ducats. Porcelain is the best gradient out of Lisbon
   // and 110 tuns of it costs 27,657 — the game says E_INSUFFICIENT_FUNDS, correctly, and a first
   // session that ignored the purse would be testing a player who does not exist.
-  const ship0 = fleet.ships[0]
+  // FREE HOLD IS THE SERVER'S NUMBER, not a fold repeated here. This spec used to compute
+  // `hold - cargo - water - food` by hand, which was a seventh copy of the rule migration 0017
+  // folded onto `public.fleet_free_hold()` — and copies of that particular rule have already
+  // drifted twice in this repo (one client copy forgot the stores entirely). Reading the served
+  // field is also what makes this spec still true once an officer is posted: a quartermaster
+  // changes the capacity, and a hand-fold here would silently ignore him.
   const spaceFor = (code: string) =>
-    Math.floor(
-      (ship0.hold - ship0.cargo_tuns - ship0.water_t - ship0.food_t) /
-        snapshot.goods.find((g) => g.code === code)!.bulk,
-    )
+    Math.floor(fleet.free_hold / snapshot.goods.find((g) => g.code === code)!.bulk)
 
   let cargo = buys[0]
   let destination = neighbours[0]
@@ -127,9 +129,8 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   const stake = expectOk(await worldLedger()).ducats!
 
   // ── 0:40 — the order the tapped row composes, at a size that does NOT fit ────────────────────
-  const ship = fleet.ships[0]
   const bulk = snapshot.goods.find((g) => g.code === cargo.code)!.bulk
-  const room = Math.floor((ship.hold - ship.cargo_tuns - ship.water_t - ship.food_t) / bulk)
+  const room = Math.floor(fleet.free_hold / bulk)
   expect(room).toBeGreaterThan(0)
 
   const tooMuch = await cmdIssue(fleet.id, `BUY ${cargo.code} ${room + 20}`, fleet.version)

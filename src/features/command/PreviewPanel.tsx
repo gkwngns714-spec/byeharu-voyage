@@ -1,4 +1,4 @@
-import { Badge, Button, Notice, StatRow } from '../../components/ui'
+import { Badge, Button, fineClass, Notice, StatRow } from '../../components/ui'
 import { formatDucats, formatFixed, formatInt, formatNm, formatRealShort, formatTuns, formatUnitPrice, formatVoyageDays } from '../../lib/format'
 import type { PreviewResult, Refusal, VerbSpec } from '../../lib/rpc'
 import type { FixAction } from '../../domain/order'
@@ -70,14 +70,14 @@ export function PreviewPanel({
         <p className="text-sm text-ink">{refusal.sentence}</p>
         {refusal.fixes.length > 0 && (
           <div className="space-y-2">
-            <p className="font-mono text-[11px] uppercase tracking-wider text-ink-faint">Instead</p>
+            <p className={fineClass('uppercase tracking-wider')}>Instead</p>
             {refusal.fixes.map((fix) => {
               const action = fixAction(fix, verbs)
               return (
                 <div key={fix} className="flex flex-wrap items-center gap-2">
                   <code className="min-w-0 flex-1 break-words font-mono text-xs text-accent">{fix}</code>
                   {action.kind === 'none' ? (
-                    <span className="font-mono text-[11px] text-ink-faint">nothing to load</span>
+                    <span className={fineClass()}>nothing to load</span>
                   ) : (
                     <Button variant="secondary" onClick={() => onFix(action)}>
                       {action.kind === 'queue' ? 'do it' : 'make this'}

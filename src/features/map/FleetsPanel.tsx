@@ -45,7 +45,7 @@ export function FleetsPanel({
 
   return (
     <MapPanel
-      positionClassName="left-3 top-3"
+      slot="top-left"
       title="Fleets"
       aside={model.fleets.length}
       storageKey="map.fleets"

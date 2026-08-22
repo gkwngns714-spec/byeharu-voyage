@@ -4,6 +4,9 @@ export { Button } from './Button'
 // The text field. One recipe, replacing four hand-written ones (see Input.tsx).
 export { Input } from './Input'
 export { buttonClasses, type ButtonVariant, type ButtonSize } from './buttonStyles'
+// The two text treatments this game repeats: the fine-print voice and the tappable row link. See
+// typography.ts for the thirty and the three hand-written spellings they replace.
+export { fineClass, rowLinkClass } from './typography'
 export { Card, CardHeader, type CardTone } from './Card'
 export { Badge, type BadgeTone } from './Badge'
 // Badge's numeric counterpart: the %NBR pill (see PriceIndex.tsx for the boundary — a
@@ -24,17 +27,24 @@ export { StatRow } from './StatRow'
 // the boundary between them).
 export { DetailRow } from './DetailRow'
 export { Screen } from './Screen'
-export { screenBodyClass, screenSplitClass, screenRailClass } from './screenLayout'
+export { screenBodyClass } from './screenLayout'
 export { EmptyState } from './EmptyState'
 export { Skeleton } from './Skeleton'
-export { Table, TH, TD, ListRow } from './Table'
+export { Table, TH, TD } from './Table'
 export { scrollTableClass, TABLE_SCROLL_HINT } from './tableLayout'
 // The faces of ONE place — a tab strip, for a panel that has several sides rather than a
 // page that has several cards (see TabRow.tsx).
 export { TabRow, type TabSpec } from './TabRow'
-export { Sheet } from './Sheet'
 export { OverlayPanel } from './OverlayPanel'
-export { overlayPanelClass, OVERLAY_SLOTS, type OverlaySlot, type OverlayTone } from './overlayLayout'
+// FOUR CORNERS, ONE TABLE. `overlaySlotClass` is how chrome that is NOT an OverlayPanel reaches
+// the same anchors — see overlayLayout.ts for the five spellings it replaced.
+export {
+  overlayPanelClass,
+  overlaySlotClass,
+  OVERLAY_SLOTS,
+  type OverlaySlot,
+  type OverlayTone,
+} from './overlayLayout'
 export { Icon } from './Icon'
 export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
 // A mark for a trade good, and the human spelling of its category. See goodIcons.ts for why the
@@ -45,4 +55,3 @@ export { Collapsible, CollapsibleCard } from './Collapsible'
 // content (see Explain.tsx for the boundary between them, and for what may never go behind a dot).
 export { Explain, ExplainDot, ExplainPanel } from './Explain'
 export { useExplainDisclosure, type ExplainDisclosure } from './explainState'
-export { foldStorageKey, foldStateValue, readFoldState } from './collapsibleState'

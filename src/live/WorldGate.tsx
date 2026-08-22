@@ -1,4 +1,4 @@
-import { Button, Card, Notice, PageHeader, Screen, SectionLabel, Skeleton } from '../components/ui'
+import { Button, Card, fineClass, Notice, PageHeader, Screen, SectionLabel, Skeleton } from '../components/ui'
 import { useWorld } from './worldStore'
 import type { Refusal } from '../lib/rpc'
 
@@ -55,7 +55,7 @@ export function WorldFailed({
           </div>
         )}
         {refusal?.detail && (
-          <p className="mt-3 font-mono text-[11px] text-ink-faint">{refusal.detail}</p>
+          <p className={fineClass('mt-3')}>{refusal.detail}</p>
         )}
         <p className="mt-3 text-sm text-ink-muted">
           Nothing was lost: the world is a database in this tab, and it is still on disk. Reload to

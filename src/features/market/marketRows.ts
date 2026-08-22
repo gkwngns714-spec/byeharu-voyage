@@ -113,6 +113,18 @@ export function marketBlocks(
   })).filter((b) => b.rows.length > 0)
 }
 
+/**
+ * WHICH ORDER A TAP ON THIS ROW MEANS. The server advises `buy` / `hold` / `sell`; a tap has to
+ * become one of two verbs, and "hold" resolves to BUY because the row is still an opportunity to
+ * take a position rather than a reason to do nothing.
+ *
+ * It is here because the screen spelt the ternary twice — once for the hand-off and once for the
+ * row's title — and the two would have had to be corrected together. One reading of the advice.
+ */
+export function verbFor(good: MarketGood): 'BUY' | 'SELL' {
+  return good.advice === 'sell' ? 'SELL' : 'BUY'
+}
+
 /** How many rows the table is showing, for the count badge. */
 export function countRows(blocks: readonly MarketBlockView[]): number {
   return blocks.reduce((n, b) => n + b.rows.length, 0)

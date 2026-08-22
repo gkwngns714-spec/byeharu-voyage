@@ -19,8 +19,11 @@ import {
   TH,
   Table,
   scrollTableClass,
+  fineClass,
+  rowLinkClass,
 } from '../../components/ui'
 import { formatInt, formatPct, formatTuns } from '../../lib/format'
+import { fold, foldedMatch } from '../../lib/text'
 import { useWorld } from '../../live/worldStore'
 import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 import type {
@@ -42,6 +45,7 @@ import {
   countRows,
   marketBlocks,
   stockBar,
+  verbFor,
 } from './marketRows'
 
 // MARKET — §E.4, "the most important table in the game", and now A WINDOW ONTO THE SERVER'S PRICES
@@ -153,7 +157,13 @@ export function MarketScreen() {
   )
 
   const fleetHere = fleets.find((f) => port && f.port === port.code) ?? null
-  const holdFree = fleetHere ? freeHold(fleetHere) : 0
+  // THE SERVER'S FIGURE, AND THE END OF A THREE-YEAR-OLD LIE. This screen carried its own
+  // `freeHold()` at the foot of the file — `Σ max(0, hold − cargo_tuns)` — which forgot that water
+  // and food occupy the same hold, so a fleet provisioned for a long passage was told it had room
+  // it did not have. Migration 0017 folded the server's four copies of this rule onto
+  // `public.fleet_free_hold` and serves the answer; the client copy is deleted, not corrected,
+  // because correcting it would have left a second authority that was merely right today.
+  const holdFree = fleetHere?.free_hold ?? 0
 
   // THE ONE CALL INTO THE ORDER SECTION (domain/order). A row that the port refuses to trade is
   // not tappable: there is no order to hand over.
@@ -172,7 +182,7 @@ export function MarketScreen() {
   // that changed the hold.
   const tap = (good: MarketGood) => {
     if (!good.available) return
-    const verb = good.advice === 'sell' ? 'SELL' : 'BUY'
+    const verb = verbFor(good)
     handOffTrade({
       fleetId: fleetHere?.id ?? fleets[0]?.id ?? null,
       verb,
@@ -369,7 +379,7 @@ export function MarketScreen() {
           {/* WHAT STAYS PRINTED: the live reading of this quay and the swipe affordance. The two
               standing paragraphs that used to sit under them — how a stepped order reprices, and
               what the trend line is and is not — are behind the dot on the card's title. */}
-          <dl className="mt-4 space-y-1 font-mono text-[11px] text-ink-faint">
+          <dl className={fineClass('mt-4 space-y-1')}>
             {view.port && (
               <div>
                 tax {formatPct(view.port.tax_rate, 1)} · spread {formatPct(view.port.spread, 1)} at
@@ -481,10 +491,10 @@ function TradedRow({
         <button
           type="button"
           onClick={() => onTap(good)}
-          title={`${good.advice === 'sell' ? 'SELL' : 'BUY'} ${good.name} (${good.category}) — load onto Command`}
+          title={`${verbFor(good)} ${good.name} (${good.category}) — load onto Command`}
           className="flex min-h-11 w-full items-center text-left"
         >
-          <span className="block text-sm text-accent underline-offset-4 hover:underline">
+          <span className={rowLinkClass('block')}>
             {good.name}
           </span>
         </button>
@@ -516,7 +526,7 @@ function TradedRow({
         />
       </TD>
       <TD>
-        <span className="font-mono text-[11px] text-ink-faint">
+        <span className={fineClass()}>
           {good.stock_band <= 1 ? 'scarce' : good.stock_band >= 6 ? 'glut' : ''}
         </span>
       </TD>
@@ -545,7 +555,7 @@ function UntradedRow({ good }: { good: MarketGood }) {
         <span className="font-mono text-[10px] text-ink-faint">—</span>
       </TD>
       <TD>
-        <span className="font-mono text-[11px] text-ink-faint">not traded here</span>
+        <span className={fineClass()}>not traded here</span>
       </TD>
     </tr>
   )
@@ -597,22 +607,15 @@ function PortPicker({
   home: SnapshotPort | null
   onPick: (id: string) => void
 }) {
-  const needle = query.trim().toLowerCase()
+  const needle = fold(query.trim())
 
-  // Name, code and region, as before — plain `toLowerCase()` and not ArgPickers' accent-folding
-  // `fold()` (src/features/command/ArgPickers.tsx:27), which is deliberately NOT copied here: it is
-  // not exported, and a second copy of an accent-folder is the duplication this pass is removing.
-  // Nothing is lost by it today — no port name in data/ports.json carries a diacritic (checked, 0
-  // of 214) — and when one does, `fold()` should be lifted somewhere both pickers can import.
+  // NAME, CODE AND REGION, MATCHED THE ONE WAY. This used to fold nothing and compare with a bare
+  // `toLowerCase()`, while Command's pickers accent-folded — so `sao` found São Vicente on one tab
+  // and not on the other. The comment that stood here said what should happen and then did not do
+  // it: "when one [carries a diacritic], `fold()` should be lifted somewhere both pickers can
+  // import". It is lifted (src/lib/text/match.ts) and both import it.
   const listed = useMemo(() => {
-    const matched = needle
-      ? ports.filter(
-          (p) =>
-            p.name.toLowerCase().includes(needle) ||
-            p.code.toLowerCase().includes(needle) ||
-            p.region.toLowerCase().includes(needle),
-        )
-      : ports
+    const matched = ports.filter((p) => foldedMatch(needle, p.name, p.code, p.region))
     const ownWaters = home?.region ?? null
     return [...matched].sort(
       (a, b) =>
@@ -640,7 +643,7 @@ function PortPicker({
         />
         {/* WHAT IT SAYS IS TRUE OF WHAT IT SHOWS. The old line here claimed a limit; there is no
             limit left, so the line counts rather than apologises. */}
-        <p className="font-mono text-[11px] text-ink-faint">
+        <p className={fineClass()}>
           {needle
             ? `${listed.length} of ${ports.length} ports answer to “${query.trim()}”.`
             : home
@@ -761,9 +764,4 @@ function portOfPlayer(
     if (to && portByCode[to]) return portByCode[to]
   }
   return null
-}
-
-/** Tuns the fleet can still take aboard — what a BUY is prefilled with. */
-function freeHold(fleet: FleetView): number {
-  return fleet.ships.reduce((n, s) => n + Math.max(0, s.hold - s.cargo_tuns), 0)
 }

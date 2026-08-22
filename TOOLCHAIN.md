@@ -82,12 +82,14 @@ same proven set: React 19, Vite 8, TypeScript 6, Tailwind 4 via `@tailwindcss/vi
   the session is the one thing that really works: it shows the signed-in email/user id and signs
   out.
 * **`src/components/ui/Table.tsx`** — new primitive, and the one the game is actually made of:
-  `Table` / `TH` / `TD` / `ListRow`. Two structural rules — the table scrolls inside its own box so
+  `Table` / `TH` / `TD`. (`ListRow` was deleted on 2026-08-22: it had no caller in the whole
+  repo, and dead surface is the soil duplication grows in.) Two structural rules — the table scrolls inside its own box so
   the page never scrolls sideways on a phone, and numeric cells are mono + right-aligned (the mono
   token carries `tabular-nums slashed-zero`, so figures line up).
-* **`src/components/ui/Sheet.tsx`** — the dismissible overlay (bottom sheet on mobile, dialog at
-  sm+), closable three ways: button, backdrop, Escape. Replaces byeharu's map-specific
-  `OverlayRail`.
+* ~~`src/components/ui/Sheet.tsx`~~ — **deleted 2026-08-22.** It was carried from byeharu as the
+  dismissible overlay and no screen ever mounted it; the map's own corner chrome (`MapPanel` +
+  `OverlayPanel`) is what the game actually uses. A primitive nothing calls is not a design system,
+  it is inventory.
 * **Design tokens (`src/index.css`)** — a dark "ship's ledger" skin: deep chart-blue layers, warm
   parchment text, brass accent. Three type roles — JetBrains Mono for every number/table/micro-label,
   Inter for prose, and a **system serif stack** for display titles (zero bytes downloaded; a heading

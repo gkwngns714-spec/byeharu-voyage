@@ -59,17 +59,18 @@ Rules that fall out of that:
 
 ### Boot progress
 
-`openLocalDb()` publishes to `bootChannel` (`src/lib/db/bootState.ts`), and `useDbBoot()` is the
-React subscription:
+`openLocalDb()` publishes to `bootChannel` (`src/lib/db/bootState.ts`): `idle → booting → applying →
+seeding → ready`, or `failed` with an error. **`failed` must be rendered as a failure.** A spinner
+that keeps spinning is what a swallowed exception looks like.
 
-```tsx
-const boot = useDbBoot()      // {phase, message, migration, progress, error, rebuilt, elapsedMs}
-if (boot.phase === 'failed') return <Fatal>{boot.error}</Fatal>
-if (boot.phase !== 'ready')  return <Progress value={boot.progress}>{boot.message}</Progress>
-```
-
-`idle → booting → applying → seeding → ready`, or `failed` with an error. **`failed` must be
-rendered as a failure.** A spinner that keeps spinning is what a swallowed exception looks like.
+**There is no React hook over it, deliberately (2026-08-22).** `db/useDbBoot.ts` wrapped the channel
+in `useSyncExternalStore` and was written for a boot screen that never got built — nothing imported
+it in the app's whole life, and this section described its API in a code sample nobody could run.
+It is deleted. `src/live/WorldGate.tsx` is what the app actually renders while the world opens, and
+it reads the STORE's `phase` (worldStore.ts), not this channel. Whoever wants a per-migration
+progress bar should subscribe `bootChannel` from the component that draws it — `subscribe`/`get`
+are exactly the `useSyncExternalStore` pair, and re-adding a hook nothing else uses is not the way
+back in.
 
 ---
 
@@ -322,7 +323,6 @@ row in `events`. **Summing the rendered rows will not equal the printed balance.
 | `db/chainSource.node.mjs` (+`.d.mts`) | **Node** transport, for specs. Plain JS so a spec never gets Node globals in ambient scope. |
 | `db/applyChain.ts` | applies the files; loud, file-named, SQLSTATE-carrying failure |
 | `db/bootState.ts` | the boot state machine and its observable |
-| `db/useDbBoot.ts` | `useSyncExternalStore` over it |
 | `db/localDb.ts` | opens PGlite, persists, rebuilds on chain change, seeds, `callAs()` |
 | `db/index.ts` | browser entry: `startLocalDb()`, one engine, idempotent |
 | `rpc/types.ts` | the payload contract, typed from the SQL |

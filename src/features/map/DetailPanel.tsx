@@ -54,7 +54,7 @@ export function DetailPanel({
 
     return (
       <MapPanel
-        positionClassName="bottom-11 right-3"
+        slot="bottom-right"
         title="Fleet"
         compact={compact}
         onDismiss={onDismiss}
@@ -94,7 +94,7 @@ export function DetailPanel({
 
   return (
     <MapPanel
-      positionClassName="bottom-11 right-3"
+      slot="bottom-right"
       title="Port"
       compact={compact}
       onDismiss={onDismiss}

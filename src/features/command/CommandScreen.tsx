@@ -11,6 +11,7 @@ import {
   PageHeader,
   Screen,
   SectionLabel,
+  fineClass,
 } from '../../components/ui'
 import { formatClock, formatTuns, formatVoyageDays } from '../../lib/format'
 import type { Refusal } from '../../lib/rpc'
@@ -19,7 +20,6 @@ import { OrderComposer } from './OrderComposer'
 import { OrderQueue } from './OrderQueue'
 import { PreviewPanel, type CheckState } from './PreviewPanel'
 import { useCommandDraft } from '../../domain/order'
-import { freeHoldTuns } from './fleetLimits'
 import { composableVerbs, findVerb, isComplete, orderText, type FixAction } from '../../domain/order'
 
 // CMD — THE HEART. E.1, and the only tab that changes the world.
@@ -57,10 +57,35 @@ const FALLBACK_REFUSAL: Refusal = {
 }
 
 export function CommandScreen() {
-  const world = useWorld()
-  const { open, refresh, loadMarket, preview, issue, cancel, clear: clearQueue } = world
-  const draft = useCommandDraft()
-  const { fleetId, verb, args, handoffs, selectFleet, chooseVerb, setArg, handOff, clear } = draft
+  // FIELDS, NOT THE STORE (worldStore.ts rule 4). Actions are selected too: a zustand action is a
+  // stable reference, so a hook per verb costs nothing and never re-renders.
+  const phase = useWorld((s) => s.phase)
+  const fatal = useWorld((s) => s.fatal)
+  const snapshot = useWorld((s) => s.snapshot)
+  const fleets = useWorld((s) => s.fleets)
+  const portByCode = useWorld((s) => s.portByCode)
+  const markets = useWorld((s) => s.markets)
+  const busy = useWorld((s) => s.busy)
+  const readAt = useWorld((s) => s.readAt)
+  const open = useWorld((s) => s.open)
+  const refresh = useWorld((s) => s.refresh)
+  const loadMarket = useWorld((s) => s.loadMarket)
+  const preview = useWorld((s) => s.preview)
+  const issue = useWorld((s) => s.issue)
+  const cancel = useWorld((s) => s.cancel)
+  const clearQueue = useWorld((s) => s.clear)
+  // The draft store gets the same treatment, and for the same reason: this was `useCommandDraft()`
+  // destructured, which re-rendered the whole tab on every keystroke of a pick even where only one
+  // field had moved. Every other caller of this store already selected (FleetsScreen, PortScreen).
+  const fleetId = useCommandDraft((s) => s.fleetId)
+  const verb = useCommandDraft((s) => s.verb)
+  const args = useCommandDraft((s) => s.args)
+  const handoffs = useCommandDraft((s) => s.handoffs)
+  const selectFleet = useCommandDraft((s) => s.selectFleet)
+  const chooseVerb = useCommandDraft((s) => s.chooseVerb)
+  const setArg = useCommandDraft((s) => s.setArg)
+  const handOff = useCommandDraft((s) => s.handOff)
+  const clear = useCommandDraft((s) => s.clear)
 
   // THE DRY RUN'S ANSWER, stamped with the line it was about. Keeping the ANSWER rather than a
   // status means the state can never describe a line the player has already changed: a pick that
@@ -83,29 +108,29 @@ export function CommandScreen() {
     open().catch((err: unknown) => setBootError(err instanceof Error ? err.message : String(err)))
   }, [open])
 
-  const fleet = useMemo(() => world.fleets.find((f) => f.id === fleetId), [world.fleets, fleetId])
+  const fleet = useMemo(() => fleets.find((f) => f.id === fleetId), [fleets, fleetId])
 
   // Command the fleet that can act right now. A fleet alongside is the one with choices.
   useEffect(() => {
     if (fleet) return
-    const first = world.fleets.find((f) => f.status === 'DOCKED') ?? world.fleets[0]
+    const first = fleets.find((f) => f.status === 'DOCKED') ?? fleets[0]
     if (first) selectFleet(first.id)
-  }, [fleet, world.fleets, selectFleet])
+  }, [fleet, fleets, selectFleet])
 
   // The market this order would trade in: where she lies, or where she is bound (a BUY issued at
   // sea runs on arrival — F.2, "sell the cloves when you get to Amsterdam").
   const portCode = fleet?.port ?? fleet?.voyage?.to ?? null
-  const port = portCode ? (world.portByCode[portCode] ?? null) : null
+  const port = portCode ? (portByCode[portCode] ?? null) : null
   const marketPortId = port?.id ?? null
   useEffect(() => {
     if (!marketPortId) return
     if (useWorld.getState().markets[marketPortId]) return
     void loadMarket(marketPortId)
   }, [marketPortId, loadMarket])
-  const market = marketPortId ? world.markets[marketPortId] : undefined
+  const market = marketPortId ? markets[marketPortId] : undefined
 
-  const verbs = useMemo(() => composableVerbs(world.snapshot?.verbs ?? []), [world.snapshot])
-  const spec = findVerb(world.snapshot?.verbs ?? [], verb)
+  const verbs = useMemo(() => composableVerbs(snapshot?.verbs ?? []), [snapshot])
+  const spec = findVerb(snapshot?.verbs ?? [], verb)
 
   const text = spec ? orderText(spec, args, fleet?.name) : ''
   const ready = Boolean(spec && fleet && isComplete(spec, args))
@@ -176,18 +201,18 @@ export function CommandScreen() {
     }
   }
 
-  if (world.phase === 'failed' && world.fatal) {
+  if (phase === 'failed' && fatal) {
     return (
       <Screen>
         <PageHeader eyebrow="Orders" title="Command" />
         <Notice tone="danger">
-          <span className="font-mono">{world.fatal.code}</span> — {world.fatal.sentence}
+          <span className="font-mono">{fatal.code}</span> — {fatal.sentence}
         </Notice>
       </Screen>
     )
   }
 
-  if (!world.snapshot) {
+  if (!snapshot) {
     return (
       <Screen>
         <PageHeader
@@ -214,13 +239,13 @@ export function CommandScreen() {
            at once (TopBar.tsx): one fact shown in two places is two authorities for it, and the
            copy that scrolls away is the wrong one to keep. */
         actions={
-          <Button variant="ghost" disabled={world.busy} onClick={() => void refresh()}>
-            {world.busy ? 'reading…' : 'Read again'}
+          <Button variant="ghost" disabled={busy} onClick={() => void refresh()}>
+            {busy ? 'reading…' : 'Read again'}
           </Button>
         }
       />
 
-      {world.fleets.length === 0 ? (
+      {fleets.length === 0 ? (
         <EmptyState
           title="No fleets"
           body="There is nothing to command yet. A house founds its first fleet before it can give an order."
@@ -231,13 +256,13 @@ export function CommandScreen() {
           <Card tone="accent">
             <SectionLabel>Commanding</SectionLabel>
             <div className="flex flex-wrap gap-2">
-              {world.fleets.map((f) => {
+              {fleets.map((f) => {
                 const halted = f.queue.some((o) => o.status === 'failed')
                 const waiting = f.queue.filter((o) => o.status === 'pending' || o.status === 'active').length
                 const where = f.port
-                  ? (world.portByCode[f.port]?.name ?? f.port)
+                  ? (portByCode[f.port]?.name ?? f.port)
                   : f.voyage
-                    ? `→ ${world.portByCode[f.voyage.to]?.name ?? f.voyage.to}`
+                    ? `→ ${portByCode[f.voyage.to]?.name ?? f.voyage.to}`
                     : f.status.toLowerCase()
                 return (
                   <button
@@ -265,9 +290,13 @@ export function CommandScreen() {
               })}
             </div>
             {fleet && (
-              <p className="mt-3 font-mono text-[11px] text-ink-faint">
+              <p className={fineClass('mt-3')}>
+                {/* THE SERVER'S OWN FIGURE. `free_hold` is `public.fleet_free_hold` (0017:183) —
+                    the same reading `cmd.do_buy` checks and `public.fleet_load` places into — so
+                    the line above the composer and the refusal below it cannot disagree. It used
+                    to be `freeHoldTuns(fleet)`, one of three client re-derivations of it. */}
                 {fleet.name}: {formatVoyageDays(fleet.endurance_days)} of stores · {fleet.speed_kn.toFixed(1)} kn ·{' '}
-                {formatTuns(freeHoldTuns(fleet))} free
+                {formatTuns(fleet.free_hold)} free
                 {/* `port` is where the order will TRADE — where she lies, or where she is bound if
                     she is at sea (F.2). Printing it as "lying at" either way told the player she
                     was alongside while the panel below said "at sea, 84 nm of 248". Same fact,
@@ -291,7 +320,7 @@ export function CommandScreen() {
                 spec={spec}
                 args={args}
                 fleet={fleet}
-                snapshot={world.snapshot}
+                snapshot={snapshot}
                 market={market}
                 onChooseVerb={chooseVerb}
                 onSetArg={setArg}
@@ -357,8 +386,8 @@ export function CommandScreen() {
               <div className="mt-3 border-t border-edge pt-3">
                 <PreviewPanel
                   state={check}
-                  verbs={world.snapshot.verbs}
-                  timeCompression={world.snapshot.config.time_compression}
+                  verbs={snapshot.verbs}
+                  timeCompression={snapshot.config.time_compression}
                   onFix={applyFix}
                 />
               </div>
@@ -377,23 +406,23 @@ export function CommandScreen() {
               <CardHeader
                 eyebrow="Standing"
                 title="Her queue"
-                explain={`One queue per fleet, ${world.snapshot.config.order_queue_max} deep, first in first out. On a failure it halts — it never skips. A voyage already at sea keeps sailing when you clear.`}
+                explain={`One queue per fleet, ${snapshot.config.order_queue_max} deep, first in first out. On a failure it halts — it never skips. A voyage already at sea keeps sailing when you clear.`}
                 aside={
-                  world.readAt ? (
+                  readAt ? (
                     // The queue is as fresh as the last READ — nothing here ticks (D.2), so the
                     // panel says WHEN it was read rather than pretending to know the time now.
-                    <span className="font-mono text-[11px] text-ink-faint">
-                      as of {formatClock(world.readAt)}
+                    <span className={fineClass()}>
+                      as of {formatClock(readAt)}
                     </span>
                   ) : undefined
                 }
               />
               <OrderQueue
                 fleet={fleet}
-                queueMax={world.snapshot.config.order_queue_max}
-                busy={world.busy}
-                readAt={world.readAt}
-                destination={fleet.voyage ? (world.portByCode[fleet.voyage.to]?.name ?? null) : null}
+                queueMax={snapshot.config.order_queue_max}
+                busy={busy}
+                readAt={readAt}
+                destination={fleet.voyage ? (portByCode[fleet.voyage.to]?.name ?? null) : null}
                 onCancel={(seq) => void cancel(fleet.id, seq)}
                 onClear={() => void clearQueue(fleet.id)}
               />

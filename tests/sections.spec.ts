@@ -92,15 +92,69 @@ test('no screen imports another screen', () => {
   ).toEqual([])
 })
 
+// `domain` may compose `domain` and stand on `lib`. Everything else is above it. The list is
+// written as what is FORBIDDEN rather than as what is allowed, so a new top-level folder is
+// caught by the next test's shape rather than silently permitted here.
+const ABOVE_DOMAIN = ['features/', 'app/', 'live/', 'store/', 'components/']
+
 test('a domain section depends on nothing above it', () => {
   const leaks = imports(path.join(SRC, 'domain'))
-    .filter((r) => r.spec.startsWith('features/') || r.spec.startsWith('app/'))
+    .filter((r) => ABOVE_DOMAIN.some((up) => r.spec.startsWith(up)))
     .map((r) => `${r.from}  ->  ${r.spec}`)
 
   expect(
     leaks,
-    `A domain section is reaching UP into a screen or the shell. A section is a part of the game ` +
-      `and must be usable without any of them.\n` + leaks.join('\n'),
+    `A domain section is reaching UP into a screen, the shell, the store or the design system. A ` +
+      `section is a part of the GAME — it must be usable without any of them, and a rule that ` +
+      `imports a component is a rule that cannot be proved without rendering one.\n` +
+      leaks.join('\n'),
+  ).toEqual([])
+})
+
+// ── ADDED 2026-08-22, with docs/NO_SPAGHETTI.md ────────────────────────────────────────────────
+// The two rules below were already WRITTEN in docs/SECTIONS.md — "src/lib/* MACHINERY. Knows
+// nothing above it" and "src/components/ui the design system. One import surface" — and neither
+// was checked by anything. A rule that lives only in a doc is a rule that lasts until the next
+// hurried afternoon, which is the sentence at the top of this file. Both stand at zero today.
+
+test('machinery knows nothing above it', () => {
+  const ABOVE_MACHINERY = ['domain/', 'features/', 'app/', 'live/', 'store/']
+  const leaks = [...imports(path.join(SRC, 'lib')), ...imports(path.join(SRC, 'components'))]
+    .filter((r) => ABOVE_MACHINERY.some((up) => r.spec.startsWith(up)))
+    .map((r) => `${r.from}  ->  ${r.spec}`)
+
+  expect(
+    leaks,
+    `src/lib and src/components are the layer everything else stands ON. An import pointing back ` +
+      `up makes a cycle, and a cycle is how "which of these two owns the rule?" stops having an ` +
+      `answer. Whatever is needed up there is a PARAMETER, not an import.\n` + leaks.join('\n'),
+  ).toEqual([])
+})
+
+test('the design system has one entrance', () => {
+  // src/components/ui/index.ts:1-2 — "the single import surface. Screens import from here, never
+  // from the individual files, so the set stays one authority." That is what lets a primitive be
+  // renamed, split or re-skinned without touching a screen — and what makes `buttonClasses` the
+  // only place a chip recipe can live.
+  const deep = [
+    ...imports(path.join(SRC, 'features')),
+    ...imports(path.join(SRC, 'app')),
+    ...imports(path.join(SRC, 'live')),
+    ...imports(path.join(SRC, 'domain')),
+    ...imports(path.join(SRC, 'store')),
+  ]
+    .filter((r) => {
+      const m = /^components\/ui\/(.+)$/.exec(r.spec)
+      return m !== null && m[1] !== 'index'
+    })
+    .map((r) => `${r.from}  ->  ${r.spec}`)
+
+  expect(
+    deep,
+    `Something imported a design-system file directly instead of the design system. Import from ` +
+      `'.../components/ui' — if what you need is not exported there, export it there, because a ` +
+      `primitive nobody can reach through the entrance is a primitive the next screen will ` +
+      `hand-write instead (twelve times, on the record: buttonStyles.ts:31-35).\n` + deep.join('\n'),
   ).toEqual([])
 })
 

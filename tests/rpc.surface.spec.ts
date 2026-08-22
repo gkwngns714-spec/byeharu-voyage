@@ -211,6 +211,26 @@ test('world.fleets() reports the fleet, its ships, its stores and its empty queu
   expect(s.cargo_tuns).toBe(0)
   expect(s.water_t).toBeGreaterThan(0)
   expect(s.food_t).toBeGreaterThan(0)
+
+  // ── THE THREE KEYS 0017 ADDED, pinned so a rename turns THIS red instead of a screen blank ────
+  // The client deleted its own "how much fits in this hull" arithmetic in favour of these (three
+  // copies, one of which had silently forgotten the stores). That trade is only safe while the
+  // server keeps serving them under these names, which is what this asserts.
+  expect(s.hold_rated).toBe(60) // the shipwright's figure — never changes with an officer
+  expect(typeof f.free_hold).toBe('number')
+  expect(f.free_hold).toBeGreaterThan(0)
+
+  // AND THE RELATIONSHIP, not merely the presence. Free hold is the stowed capacity minus what is
+  // already aboard — cargo AND stores — so on a provisioned hull with an empty cargo bay it must be
+  // strictly LESS than the hold. A free_hold that equalled `hold` would be the exact defect the
+  // client copy had: stores forgotten.
+  expect(f.free_hold).toBeLessThan(s.hold)
+  expect(f.free_hold).toBeCloseTo(s.hold - s.cargo_tuns - s.water_t - s.food_t, 5)
+
+  // No officer is posted on a new house, so the quartermaster's share is zero and the stowed hold
+  // is the rated hold. This is the no-op 0017 promises, checked from the client's side of the wire.
+  expect(f.officer_pct?.QUARTERMASTER ?? 0).toBe(0)
+  expect(s.hold).toBe(s.hold_rated)
 })
 
 test('world.ledger() pages, reconciles, and carries the purse', async () => {

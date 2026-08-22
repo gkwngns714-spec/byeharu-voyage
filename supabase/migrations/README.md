@@ -151,6 +151,19 @@ The rules that block reads out of it:
   (`salvage_market_enabled is not false at seed time` → exception), and — learned from byeharu's
   prod grant drift — that client roles do **not** hold write grants they should never have. Assert
   `REVOKE`d state explicitly; do not assume the default.
+* **Posture has two halves, and a migration must assert both.** `public.client_write_grants()`
+  (0001) answers "does a client role hold a write on a TABLE?"; `public.client_executable_writers()`
+  (0018) answers "may a client role EXECUTE a `SECURITY DEFINER` function that writes?". The second
+  exists because the first read an honest zero for seventeen migrations while `anon` could call
+  `public.fleet_unload` directly — a `SECURITY DEFINER` function runs as its definer and reaches no
+  table ACL on the way. Both must read zero. A new RPC the client is meant to call needs a row in
+  `public.client_rpc_entry_points()` (the server-side mirror of `src/lib/rpc/catalog.ts`) and an
+  explicit `grant execute ... to authenticated`; since 0018 nothing is executable by default.
+* **A catalogue row is not the property.** 0018's first draft proved its default-privilege fix by
+  reading `pg_default_acl` back and finding the rows it expected — while functions created a line
+  later were still executable by `anon`. Where a behavioural check is available, make it the
+  governing assert and keep the catalogue read beside it as corroboration: create the object and ask
+  `has_function_privilege`, `set local role` and try the call. See CHAIN.md, 2026-08-22.
 
 ---
 

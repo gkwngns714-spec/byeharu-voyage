@@ -15,16 +15,16 @@ import {
   TH,
   Table,
   scrollTableClass,
+  fineClass,
 } from '../../components/ui'
 import { formatInt, formatNm, formatPct, formatPctPoints, formatTuns, formatVoyageDays } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
-import type { LiveWorld } from '../../live/worldStore'
 import type { FleetView, MarketGood, MarketView, SnapshotPort, WorldSnapshot } from '../../lib/rpc'
 import { useCommandDraft } from '../../domain/order'
 import { AcademyFace, OfficersFace } from './PortFaces'
 import type { CommandIntent } from '../../domain/order'
 import { findVerb, orderText } from '../../domain/order'
-import { fleetCrew, fleetHoldFree, fleetMaxDraft, hullFraction, shipHoldUsed, worstHullFraction } from '../../domain/fleet'
+import { fleetCrew, fleetMaxDraft, hullFraction, shipHoldUsed, worstHullFraction } from '../../domain/fleet'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
 // PORT — E.3. Where you are, what is here, and what you can do about it.
@@ -62,18 +62,25 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 type PortFace = 'quay' | 'city' | 'services' | 'ships' | 'officers' | 'academy'
 
 export function PortScreen() {
-  const world = useWorld()
+  // FIELDS, NOT THE STORE (worldStore.ts rule 4).
+  const phase = useWorld((s) => s.phase)
+  const fatal = useWorld((s) => s.fatal)
+  const snapshot = useWorld((s) => s.snapshot)
 
-  if (world.phase === 'failed') {
-    return <WorldFailed eyebrow="Harbour" title="Port" refusal={world.fatal} />
+  if (phase === 'failed') {
+    return <WorldFailed eyebrow="Harbour" title="Port" refusal={fatal} />
   }
-  if (world.phase !== 'ready' || !world.snapshot) {
+  if (phase !== 'ready' || !snapshot) {
     return <WorldLoading eyebrow="Harbour" title="Port" subtitle="Where you are, and what is here." panels={3} />
   }
-  return <PortBody world={world} snapshot={world.snapshot} />
+  return <PortBody snapshot={snapshot} />
 }
 
-function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapshot }) {
+function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
+  const fleets = useWorld((s) => s.fleets)
+  const portByCode = useWorld((s) => s.portByCode)
+  const goodByCode = useWorld((s) => s.goodByCode)
+  const markets = useWorld((s) => s.markets)
   const navigate = useNavigate()
   const handOff = useCommandDraft((s) => s.handOff)
   const draftFleetId = useCommandDraft((s) => s.fleetId)
@@ -86,13 +93,13 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
   // WHICH FACE OF THE PORT IS TURNED TOWARDS YOU. It opens on the Quay — the things you can do —
   // rather than on the city's statistics, because an action is why a player opens a port screen.
   const [face, setFace] = useState<PortFace>('quay')
-  const defaultCode = world.fleets.find((f) => f.port)?.port ?? snapshot.ports[0]?.code ?? null
+  const defaultCode = fleets.find((f) => f.port)?.port ?? snapshot.ports[0]?.code ?? null
   const portCode = picked ?? defaultCode
-  const port = portCode ? (world.portByCode[portCode] ?? null) : null
+  const port = portCode ? (portByCode[portCode] ?? null) : null
 
   // The market is fetched per port, on demand — the store caches it, so this asks once per harbour.
   const portId = port?.id ?? null
-  const market: MarketView | undefined = portId ? world.markets[portId] : undefined
+  const market: MarketView | undefined = portId ? markets[portId] : undefined
   const marketLoaded = market !== undefined
   useEffect(() => {
     if (portId && !marketLoaded) void loadMarket(portId)
@@ -103,12 +110,16 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
     return (className: string) => byName.get(className)
   }, [snapshot.ship_classes])
 
-  const bulkOfGood = (code: string) => world.goodByCode[code]?.bulk ?? 1
+  const bulkOfGood = (code: string) => goodByCode[code]?.bulk ?? 1
 
-  const docked = port ? world.fleets.filter((f) => f.port === port.code) : []
+  const docked = port ? fleets.filter((f) => f.port === port.code) : []
   const acting =
-    docked[0] ?? world.fleets.find((f) => f.id === draftFleetId) ?? world.fleets[0] ?? null
-  const homeCode = world.fleets.find((f) => f.port)?.port ?? null
+    docked[0] ?? fleets.find((f) => f.id === draftFleetId) ?? fleets[0] ?? null
+  // ONE reading of her hands, from the fleet section (domain/fleet). The Quay used to call
+  // `fleetCrew(acting)` twice in one template string and then spell "berths still empty" a THIRD
+  // way inside `hireCount` below — three foldings of one payload on one screen.
+  const actingCrew = acting ? fleetCrew(acting) : null
+  const homeCode = fleets.find((f) => f.port)?.port ?? null
 
   // A hand-off is a structured INTENT (commandDraft.ts) — orders are MADE, not typed. The LINE
   // shown on the button is the one the server will receive, composed by the one function that
@@ -141,7 +152,7 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
       code: leg.from === port.code ? leg.to : leg.from,
       nm: leg.nm,
     }))
-    .map(({ code, nm }) => ({ port: world.portByCode[code] ?? null, code, nm }))
+    .map(({ code, nm }) => ({ port: portByCode[code] ?? null, code, nm }))
     .sort((a, b) => a.nm - b.nm)
 
   const cheapHere = market
@@ -164,7 +175,7 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
       {homeCode && port.code !== homeCode && (
         <Notice tone="warning" className="text-xs">
           You are not lying in {port.name} — this is what your factors report from there. Your
-          nearest fleet is at {world.portByCode[homeCode]?.name ?? homeCode}.
+          nearest fleet is at {portByCode[homeCode]?.name ?? homeCode}.
         </Notice>
       )}
 
@@ -173,73 +184,7 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
           screen used to be four sibling Cards, which at 390px meant the fourth began ~1,200px down
           and was, in practice, never read. Same content, same order lines, one panel.
 
-          THE                 {acting && (
-                  <div className="space-y-4">
-                    <ActionGroup
-                      label="Stores and hands"
-                      actions={[
-                        {
-                          intent: { verb: 'PROVISION', args: { mode: 'FULL' } },
-                          note: `${formatVoyageDays(acting.endurance_days)} of range at present`,
-                        },
-                        {
-                          intent: { verb: 'HIRE', args: { count: String(hireCount(acting, port)) } },
-                          note: `${formatInt(fleetCrew(acting).aboard)} of ${formatInt(fleetCrew(acting).max)} berths filled · ${formatInt(port.crew_pool)} hands in the pool`,
-                        },
-                        ...(port.has_yard
-                          ? [
-                              {
-                                intent: { verb: 'REPAIR', args: { to_pct: '100' } },
-                                note: `worst hull ${formatPct(worstHullFraction(acting))} · tier ${port.yard_tier} yard`,
-                              },
-                            ]
-                          : []),
-                      ]}
-                      lineOf={lineOf}
-                      onPick={command}
-                    />
-
-                    <ActionGroup
-                      label={marketLoaded ? 'What this market says to buy' : 'Trade'}
-                      actions={
-                        marketLoaded
-                          ? worthBuying.map((good) => ({
-                              intent: {
-                                verb: 'BUY',
-                                // CODES, never display names: `cmd.parse()` splits on whitespace.
-                                args: { good: good.code, qty: String(affordableUnits(acting, bulkOfGood(good.code))) },
-                              },
-                              note: `${buyNote(good)} · ${formatTuns(fleetHoldFree(acting), 0)} free in the hold`,
-                            }))
-                          : []
-                      }
-                      empty={
-                        marketLoaded
-                          ? 'This market is not advising a purchase here — read the Market tab for the whole list.'
-                          : 'Reading the market…'
-                      }
-                      lineOf={lineOf}
-                      onPick={command}
-                    />
-
-                    <ActionGroup
-                      label="One leg from here"
-                      actions={oneLeg.slice(0, 6).map(({ port: p, code, nm }) => ({
-                        intent: { verb: 'SAIL', args: { dest: code } },
-                        note: `${formatNm(nm)} · ${
-                          p === null
-                            ? 'unknown harbour'
-                            : p.max_draft < fleetMaxDraft(acting, draftOfClass)
-                              ? 'too shallow for this fleet'
-                              : `draft ${p.max_draft}`
-                        }`,
-                      }))}
-                      empty="No authored leg leaves this port."
-                      lineOf={lineOf}
-                      onPick={command}
-                    />
-                  </div>
-                )} IS THE FIRST FACE, deliberately. §3a's second trap is "the action lives on the
+          THE QUAY IS THE FIRST FACE, deliberately. §3a's second trap is "the action lives on the
           wrong screen" — the most-praised patch in that game's four-year convenience backlog added
           no feature at all, it moved an action to the screen where the need arises. What you can
           DO here opens first; what the city IS is one tap away. */}
@@ -294,7 +239,7 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
                         },
                         {
                           intent: { verb: 'HIRE', args: { count: String(hireCount(acting, port)) } },
-                          note: `${formatInt(fleetCrew(acting).aboard)} of ${formatInt(fleetCrew(acting).max)} berths filled · ${formatInt(port.crew_pool)} hands in the pool`,
+                          note: `${formatInt(actingCrew?.aboard ?? 0)} of ${formatInt(actingCrew?.max ?? 0)} berths filled · ${formatInt(port.crew_pool)} hands in the pool`,
                         },
                         ...(port.has_yard
                           ? [
@@ -319,7 +264,9 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
                                 // CODES, never display names: `cmd.parse()` splits on whitespace.
                                 args: { good: good.code, qty: String(affordableUnits(acting, bulkOfGood(good.code))) },
                               },
-                              note: `${buyNote(good)} · ${formatTuns(fleetHoldFree(acting), 0)} free in the hold`,
+                              // `free_hold` is the SERVER's reading (public.fleet_free_hold,
+                              // 0017:183) — the one a BUY is checked against. Nothing re-folds it.
+                              note: `${buyNote(good)} · ${formatTuns(acting.free_hold, 0)} free in the hold`,
                             }))
                           : []
                       }
@@ -440,7 +387,7 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
                 {docked.length === 0 ? (
                   <p className="text-sm text-ink-muted">
                     You have no fleet in {port.name}.{' '}
-                    {world.fleets
+                    {fleets
                       .filter((f) => f.status === 'SAILING')
                       .map((f) => `${f.name} is at sea.`)
                       .join(' ')}
@@ -480,7 +427,7 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
                   </Table>
                 )}
                 {docked.length > 0 && (
-                  <p className="mt-1 font-mono text-[11px] text-ink-faint">{TABLE_SCROLL_HINT}</p>
+                  <p className={fineClass('mt-1')}>{TABLE_SCROLL_HINT}</p>
                 )}
             </>
           )}
@@ -515,15 +462,18 @@ function PortBody({ world, snapshot }: { world: LiveWorld; snapshot: WorldSnapsh
   )
 }
 
-/** How many hands the Inn can actually sign: berths short, capped by the pool it has. */
+/** How many hands the Inn can actually sign: berths still empty, capped by the pool it has.
+ *  `berths` is `fleetCrew`'s — `sum(crew_max - crew)`, the spelling `cmd.do_hire` refuses on
+ *  (0007:659). This used to compute it inline as `max(0, max - aboard)`, which is a different
+ *  function once a hull is over-crewed and was one of two client spellings of the rule. */
 function hireCount(fleet: FleetView, port: SnapshotPort): number {
-  const crew = fleetCrew(fleet)
-  return Math.max(1, Math.min(Math.floor(port.crew_pool), Math.max(0, crew.max - crew.aboard)))
+  return Math.max(1, Math.min(Math.floor(port.crew_pool), Math.max(0, fleetCrew(fleet).berths)))
 }
 
-/** Units, not tuns: the hold is in tuns and a good's `bulk` is the tuns one unit occupies. */
+/** Units, not tuns: the hold is in tuns and a good's `bulk` is the tuns one unit occupies.
+ *  The room is `free_hold` — SERVED (public.fleet_free_hold, 0017:183), never re-folded here. */
 function affordableUnits(fleet: FleetView, bulk: number): number {
-  const byHold = bulk > 0 ? Math.floor(fleetHoldFree(fleet) / bulk) : 0
+  const byHold = bulk > 0 ? Math.floor(fleet.free_hold / bulk) : 0
   return Math.max(1, byHold)
 }
 
@@ -565,7 +515,7 @@ function ActionGroup({
                   className="min-h-11 w-full rounded-md border border-edge bg-surface px-3 py-2 text-left transition hover:border-accent/60"
                 >
                   <code className="block break-words font-mono text-xs text-accent">{line}</code>
-                  {a.note && <span className="mt-0.5 block font-mono text-[11px] text-ink-faint">{a.note}</span>}
+                  {a.note && <span className={fineClass('mt-0.5 block')}>{a.note}</span>}
                 </button>
               </li>
             )

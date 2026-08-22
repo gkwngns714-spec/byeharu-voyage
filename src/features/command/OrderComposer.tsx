@@ -1,18 +1,16 @@
 import { useState } from 'react'
-import { Badge, Button, Icon, Notice, SectionLabel } from '../../components/ui'
+import { Badge, Button, fineClass, Icon, Notice, SectionLabel } from '../../components/ui'
 import { VERB_ICON } from './verbIcons'
 import { formatTuns } from '../../lib/format'
 import type { FleetView, MarketView, VerbArg, VerbSpec, WorldSnapshot } from '../../lib/rpc'
 import { EnumPicker, GoodPicker, NumberPicker, PortPicker, PricePicker, QtyPicker } from './ArgPickers'
 import { useBuyCapacity } from './useBuyCapacity'
-import {
-  cargoAboard,
-  cargoManifest,
-  crewBerths,
-  crewShort,
-  hullPct,
-  sellBound,
-} from './fleetLimits'
+import { sellBound } from './fleetLimits'
+// THE FLEET'S OWN ARITHMETIC COMES FROM THE FLEET SECTION. What is aboard, how many berths stand
+// empty and how sound the worst hull is are properties of a FLEET, not of the tab composing an
+// order about one. ./fleetLimits.ts used to answer all three and every answer had a twin somewhere
+// else in src/ — its header is the ledger of what moved where.
+import { fleetCargoByCode, fleetCrew, worstHullFraction } from '../../domain/fleet'
 import { missingArgs, visibleArgs } from '../../domain/order'
 
 // THE COMPOSER — an order is MADE, never typed.
@@ -170,7 +168,7 @@ export function OrderComposer({
                       aria-expanded={isOpen}
                     >
                       <span className="min-w-0">
-                        <span className="block font-mono text-[11px] uppercase tracking-wider text-ink-faint">
+                        <span className={fineClass('block uppercase tracking-wider')}>
                           {labelOf(arg)}
                           {!arg.required && <span className="ml-2 lowercase tracking-normal">optional</span>}
                         </span>
@@ -292,7 +290,7 @@ function QtyArg({
   if (selling) {
     return (
       <QtyPicker
-        bound={sellBound(cargoAboard(fleet, goodCode))}
+        bound={sellBound(fleet ? (fleetCargoByCode(fleet)[goodCode] ?? 0) : 0)}
         step={step}
         value={value}
         onPick={onPick}
@@ -360,7 +358,7 @@ function ArgPicker({
           value={args[arg.name]}
           onPick={onPick}
           intent={selling ? 'sell' : 'buy'}
-          aboard={selling ? cargoManifest(fleet) : undefined}
+          aboard={selling && fleet ? fleetCargoByCode(fleet) : undefined}
         />
       )
     }
@@ -433,8 +431,9 @@ function BoundedNumber({
   onPick: (value: string) => void
 }) {
   if (arg.name === 'count') {
-    const berths = crewBerths(fleet)
-    const short = crewShort(fleet)
+    const crew = fleet ? fleetCrew(fleet) : null
+    const berths = crew?.berths ?? 0
+    const short = crew?.short ?? 0
     if (berths <= 0) {
       return <Notice tone="neutral" className="text-xs">Every berth in this fleet is filled.</Notice>
     }
@@ -453,7 +452,9 @@ function BoundedNumber({
   }
 
   if (arg.name === 'to_pct') {
-    const now = hullPct(fleet)
+    // A fleet with no hulls reads 100%: `worstHullFraction` returns 1 for an empty roster, which is
+    // the same floor the deleted `hullPct` kept, arrived at once instead of twice.
+    const now = Math.round((fleet ? worstHullFraction(fleet) : 1) * 100)
     return (
       <div className="space-y-2">
         <p className="text-xs text-ink-muted">Her worst hull stands at {now}%.</p>

@@ -21,6 +21,19 @@ const SLOT_POS: Record<OverlaySlot, string> = {
   'bottom-right': 'bottom-3 right-3',
 }
 
+/**
+ * WHERE A CORNER IS — for chrome that is not an OverlayPanel but must sit in the same four places.
+ *
+ * The map's zoom/fit column is three bare buttons rather than a panel, and it carried its own
+ * hand-written `absolute right-3 top-3`: a fifth spelling of a corner, beside this table and the
+ * free-text `positionClassName` strings `MapPanel` used to take from each of its callers. Four
+ * names for one anchor is how a panel and the control beside it drift a pixel apart. There is one
+ * table, and this is how something that is not a panel reads it.
+ */
+export function overlaySlotClass(slot: OverlaySlot): string {
+  return SLOT_POS[slot]
+}
+
 // Border tint per tone — mirrors Card's TONE alphas so identity reads the same language.
 const TONE: Record<OverlayTone, string> = {
   default: 'border-edge',
@@ -46,7 +59,7 @@ export function overlayPanelClass(tone: OverlayTone = 'default', slot?: OverlayS
     // static SVG is a budget that survives it, a whole screen of panels is not.
     'bv-cut border bg-panel/90 p-2 shadow-overlay backdrop-blur',
     TONE[tone],
-    slot ? `absolute z-10 ${SLOT_POS[slot]}` : '',
+    slot ? `absolute z-10 ${overlaySlotClass(slot)}` : '',
     extra,
   ]
     .filter(Boolean)

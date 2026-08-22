@@ -201,7 +201,16 @@ export interface FleetShip {
   crew: number
   crew_required: number
   crew_max: number
+  /**
+   * HOW MANY TUNS FIT — the STOWED capacity, `public.ship_hold_capacity(ship)` (0017:156): the
+   * rated hull stretched by the quartermasters posted to her fleet. The key keeps its old name
+   * deliberately (0017 says so in its own header), so every reader that already said `hold` reads
+   * the effective figure without having to know an officer exists.
+   */
   hold: number
+  /** What the shipwright built — `ship_classes.hold`, before any officer. For a card that wants to
+   *  show the hull itself rather than what she can be made to carry. */
+  hold_rated: number
   /** goods CODE → tuns aboard. `{}` when empty. Water and food are stores, not cargo. */
   cargo: Record<string, number>
   /** Tuns occupied, bulk applied. */
@@ -261,6 +270,22 @@ export interface FleetView {
   /** Formation speed in knots, slowest ship first (B.3). */
   speed_kn: number
   endurance_days: number
+  /**
+   * ROOM FOR THE NEXT PARCEL, IN TUNS — `public.fleet_free_hold(fleet)` (0017:183), and THE ONE
+   * ANSWER to it. It is the same reading `cmd.do_buy` checks against and `public.fleet_load`
+   * places into, so what a screen prints and what a BUY refuses on cannot disagree.
+   *
+   * WHY IT IS A FIELD AND NOT A CLIENT FOLD. It was computed three times on this side — in
+   * `domain/fleet/derive.ts`, in `features/command/fleetLimits.ts` and in `MarketScreen`, whose
+   * copy subtracted only the cargo and forgot the water and the food, so it had over-reported the
+   * free hold since the day it was written. Three spellings of one subtraction is exactly the
+   * duplication 0017 folded on the server; the client's answer is now to READ this.
+   */
+  free_hold: number
+  /** What this fleet's posted officers are actually worth, per specialty, in PERCENT — already
+   *  summed within the specialty and clamped at `officer_bonus_cap_pct` by
+   *  `public.fleet_officer_bonus` (0015). Nothing on the client sums `Officer.bonus_pct` itself. */
+  officer_pct: Record<OfficerSpecialty, number>
   voyage: FleetVoyage | null
   ships: FleetShip[]
   queue: QueuedOrder[]

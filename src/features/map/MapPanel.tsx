@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Button, Collapsible, Icon, OverlayPanel } from '../../components/ui'
+import { Button, Collapsible, Icon, OverlayPanel, type OverlaySlot } from '../../components/ui'
 import { CHART_CHROME } from './useChartSurface'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -21,10 +21,18 @@ import { CHART_CHROME } from './useChartSurface'
 //
 // It composes the design system rather than re-implementing it: OverlayPanel for the corner chrome
 // and Collapsible for the fold. The map does not own a second disclosure.
+//
+// ── A CORNER IS A SLOT, NOT A STRING (2026-08-22) ──────────────────────────────────────────────
+// This took a free-text `positionClassName` and each caller invented its own: `left-3 top-3` here,
+// `bottom-11 right-3` there — the `11` a hand-tuned guess at how tall the caption bar in MapScreen
+// happens to be, tuned separately from the `bottom-9` a second element used to clear the SAME bar.
+// The design system already had exactly four corners (`overlayLayout.ts:OVERLAY_SLOTS`) and none
+// of them were being used. The prop is now that `slot`, and the caption's band is reserved ONCE,
+// by the chrome layer in MapScreen, so no panel here knows the caption exists.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export function MapPanel({
-  positionClassName,
+  slot,
   title,
   aside,
   onDismiss,
@@ -36,8 +44,10 @@ export function MapPanel({
   testId,
   children,
 }: {
-  /** Absolute corner placement — the caller's ONE positioning decision, e.g. `left-3 top-3`. */
-  positionClassName: string
+  /** WHICH CORNER — the caller's ONE positioning decision, and it may only be one of the four the
+   *  design system names. It resolves through `overlayLayout.ts`, the same table every other piece
+   *  of chart chrome reads, so no caller can invent a fifth corner or a hand-tuned inset. */
+  slot: OverlaySlot
   title: ReactNode
   /** A count or a status, printed at the right of the header. Never interactive (it sits inside
    *  the fold button, and a button inside a button is invalid). */
@@ -57,12 +67,14 @@ export function MapPanel({
   return (
     <OverlayPanel
       inert={false}
+      // THE CORNER COMES FROM THE SLOT, not from this file: `OverlayPanel` already turns a slot
+      // into `absolute z-10 <anchor>`, and it did so the whole time this component was overriding
+      // it with a string. All that is left to say here is how wide the panel is.
+      slot={slot}
       // CHART CHROME: inside the chart's box, but not the chart. Every gesture handler on the
       // surface skips anything under this marker, so pressing a panel can never pan or select.
       {...CHART_CHROME}
-      className={`absolute z-10 ${positionClassName} ${
-        widthClassName ?? (compact ? 'w-auto min-w-28 max-w-[55vw]' : 'w-48 max-w-[45vw]')
-      }`}
+      className={widthClassName ?? (compact ? 'w-auto min-w-28 max-w-[55vw]' : 'w-48 max-w-[45vw]')}
       data-testid={testId}
     >
       {/* `relative` + an absolutely-placed dismiss keeps the two controls as SIBLINGS (no nested

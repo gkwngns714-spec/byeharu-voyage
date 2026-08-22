@@ -17,9 +17,34 @@
 //    working — it arrives with a code, a sentence and tappable fixes (DESIGN F.5) — so the store
 //    keeps the last refusal as state rather than swallowing it into a console.
 //
-// 3. NUMBERS COME FROM THE SERVER. Speed, endurance, prices, %NBR, voyage position: all of them
-//    are computed inside the transaction that owns them. The client's job is to print them. There
-//    is no second implementation of any of it on this side of the wire.
+// 3. NUMBERS COME FROM THE SERVER. Speed, endurance, prices, %NBR, free hold, voyage position: all
+//    of them are computed inside the transaction that owns them. The client's job is to print
+//    them. There is no second implementation of any of it on this side of the wire.
+//
+// 4. A SCREEN SUBSCRIBES TO FIELDS, NEVER TO THE STORE. `useWorld((s) => s.fleets)`, one hook per
+//    field. **`useWorld()` with no selector is banned** — the reason is below.
+//
+// ── RULE 4, AND WHY IT IS A RULE RATHER THAN A TASTE (2026-08-22) ──────────────────────────────
+//
+// Both spellings worked, so both got written. MARKET, MAP, the shell and the world gate selected
+// fields; FLEETS, LEDGER, COMMAND, PORT, PROFILE and RANK called `useWorld()` bare and passed the
+// whole `LiveWorld` down as a prop. Two conventions for one thing is the duplication this project
+// forbids on its own account — and this one also has a cost that can be measured.
+//
+// `useWorld()` with no selector subscribes to the WHOLE store object, and zustand replaces that
+// object on every `set()`. `refresh()` alone sets twice — `{busy: true}` on the way in, the
+// payload on the way out — so ONE read re-rendered every bare subscriber twice over, whether or
+// not a field it draws had moved. That is not theoretical here: reading IS how time passes (rule
+// 1), issuing an order from Command refreshes the world, and the Ledger's list is long.
+//
+// THE CONVENTION IS THE FINE-GRAINED SELECTOR, in every screen, for actions as much as for data.
+// A zustand action is a stable reference, so selecting one costs nothing and never re-renders.
+//
+// THE ONE THING TO WATCH: a selector must return something STABLE. Returning a fresh object or
+// array (`useWorld((s) => ({ a: s.a, b: s.b }))`, `useWorld((s) => s.fleets.filter(…))`) builds a
+// new value every render and re-renders for ever. Take ONE field per hook and do the shaping in
+// the component, under `useMemo` where it is worth it. `fleetOf` / `portOfFleet` below are plain
+// functions over an already-selected value for exactly that reason — they are not selectors.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { create } from 'zustand'

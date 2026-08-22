@@ -38,7 +38,24 @@
 -- @pass GRANT_LOCKDOWN_RLS_ON_EVERY_TABLE  RLS is enabled on every table in public
 -- @pass GRANT_LOCKDOWN_SERVICE_ROLE_RETAINED  the server itself can still write
 -- @pass GRANT_LOCKDOWN_CHAIN_OWNS_EVERYTHING  no object here was created by another grantor
+-- @pass GRANT_LOCKDOWN_ANON_CANNOT_EXECUTE    anon: EXECUTE denied 42501 on every SECURITY DEFINER writer
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
+--
+-- AND THE OTHER HALF OF THE LOCKDOWN, ADDED 2026-08-22 WITH MIGRATION 0018
+--   A table grant is not the only way in. A SECURITY DEFINER function runs as its DEFINER, so a
+--   client role that can EXECUTE one bypasses RLS entirely and never touches a table ACL on the
+--   way — which is why `client_write_grants()` read an honest zero for seventeen migrations while
+--   `anon` could call `cmd.issue`, `voyage.depart` and `cmd.execute_order` directly (0017's NOTICE
+--   named all 17; 0018's header records how the hole was opened). Marker (h) below sweeps the
+--   catalogue for SECURITY DEFINER functions that WRITE, becomes `anon`, and calls every one of
+--   them with all-null arguments, requiring SQLSTATE 42501 each time — the same "not just some
+--   error" discipline as the INSERT sweep, for the same reason: a reachable one would have failed
+--   P0001 or 22004 from inside its own body instead.
+--
+--   Its positive control is the trap it exists to guard. The identical call is then made as
+--   `authenticated` against `cmd.issue` — THE only mutating entry point in the game — and must NOT
+--   be refused with 42501. A lockdown that also took that grant would leave every captain unable to
+--   give an order for ever, and this proof would then pass on a game nobody can play.
 
 do $$
 declare
@@ -55,6 +72,8 @@ declare
   v_player   uuid;
   v_owned_probe int;
   v_owned_wrong int;
+  v_calls    text[];
+  v_trig     int;
 begin
   -- ── (a) POSITIVE CONTROL. Prove the catalogue query can see a grant before trusting its zero.
   create table public._lockdown_proof_probe (x int);
@@ -179,4 +198,108 @@ begin
   end if;
   raise notice 'PASS: GRANT_LOCKDOWN_CHAIN_OWNS_EVERYTHING — all % object(s) in public/world/cmd/voyage are owned by %, so none can have inherited a foreign grantor''s default privileges (the scan proved it discriminates by finding % not owned by anon)',
     (select count(*) from public.objects_not_owned_by('a_role_that_owns_nothing_here')), current_user, v_owned_probe;
+
+  -- ── (h) THE EXECUTE HALF. The database refusing FIRST, the catalogue authority second — the
+  --       same order, and for the same reason, as this file's header gives for the table sweep.
+  --
+  -- Every SECURITY DEFINER function that WRITES, from the catalogue, called with all-null
+  -- arguments of the right types. Trigger bodies are excluded and counted separately: they cannot
+  -- be invoked as a statement at all (0A000 comes back before any ACL is consulted), and no client
+  -- role can attach a trigger here to reach one. `client_executable_writers()` above still covers
+  -- them, so nothing is dropped — only this behavioural sweep skips them, and says how many.
+  select count(*) into v_trig
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname in ('public', 'world', 'cmd', 'voyage')
+     and p.prosecdef and p.provolatile = 'v' and p.prorettype = 'trigger'::regtype;
+
+  select array_agg(call order by call) into v_calls
+    from (select format('select %I.%I(%s)', n.nspname, p.proname,
+                        -- ORDER BY the ordinality, not by luck: string_agg over an unordered
+                        -- input may reorder, and (uuid, text, int) reordered is a type error.
+                        (select coalesce(string_agg(format('null::%s', u.atype::regtype), ', ' order by u.i), '')
+                           from unnest(p.proargtypes) with ordinality as u(atype, i))) as call
+            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname in ('public', 'world', 'cmd', 'voyage')
+             and p.prosecdef and p.provolatile = 'v'
+             and p.prorettype <> 'trigger'::regtype) s;
+  if array_length(v_calls, 1) < 25 then
+    raise exception 'PROOF 3 FAILED: the writer sweep found only % callable SECURITY DEFINER writer(s) in four schemas holding a finished chain; it would prove almost nothing',
+      coalesce(array_length(v_calls, 1), 0);
+  end if;
+
+  -- THE OUTER DOOR IS OPENED FIRST, ON PURPOSE. `anon` holds no USAGE on world, cmd or voyage
+  -- (0001:222-225 grants it only on public) — measured, applied through 0017: `select
+  -- cmd.do_sail(null,null)` as anon answers "42501 permission denied for SCHEMA cmd". So a sweep
+  -- run as-is would collect its 42501s from the schema door and would still be green with EXECUTE
+  -- handed back to anon on every function in three of the four schemas. Granting USAGE here — in a
+  -- transaction this file's runner throws away — is what makes the FUNCTION ACL the thing under
+  -- test. It also matches what `public` already is: anon has USAGE there, which is why
+  -- `public.fleet_unload(null,null,null)` really did ANSWER for anon before 0018.
+  grant usage on schema world, cmd, voyage to anon;
+
+  v_denied := 0;
+  v_wrong  := '';
+  foreach t in array v_calls loop
+    begin
+      execute 'set local role anon';
+      begin
+        execute t;
+        v_wrong := v_wrong || format(' %s(ANSWERED)', t);
+      exception when others then
+        get stacked diagnostics v_state = returned_sqlstate;
+        if v_state = '42501' then
+          v_denied := v_denied + 1;
+        else
+          -- P0001 / 22004 here would mean the call got PAST the permission check and ran.
+          v_wrong := v_wrong || format(' %s(sqlstate %s)', t, v_state);
+        end if;
+      end;
+      execute 'set local role none';
+    exception when others then
+      execute 'set local role none';
+      raise;
+    end;
+  end loop;
+  revoke usage on schema world, cmd, voyage from anon;
+  if v_wrong <> '' or v_denied <> array_length(v_calls, 1) then
+    raise exception 'PROOF 3 FAILED: with the schema door deliberately opened, anon was refused 42501 on only % of % SECURITY DEFINER writers; the others answered:%',
+      v_denied, array_length(v_calls, 1), v_wrong;
+  end if;
+
+  -- THE POSITIVE CONTROL, and the trap this whole marker guards: the same sweep, as the role that
+  -- is SUPPOSED to get in, against the one function without which no order can ever be given.
+  v_ok := false;
+  begin
+    execute 'set local role authenticated';
+    begin
+      execute 'select cmd.issue(null::uuid, null::text, null::int)';
+      v_ok := true;          -- reached it; the game refuses a null fleet by returning a refusal
+    exception when others then
+      get stacked diagnostics v_state = returned_sqlstate;
+      v_ok := (v_state <> '42501');
+    end;
+    execute 'set local role none';
+  exception when others then
+    execute 'set local role none';
+    raise;
+  end;
+  if not v_ok then
+    raise exception 'PROOF 3 FAILED: authenticated was refused 42501 on cmd.issue — the only mutating entry point in the game. The lockdown went too far and no captain could give an order.';
+  end if;
+
+  -- And the catalogue authority, which sees what the anon sweep structurally cannot: a writer
+  -- handed to `authenticated` that src/lib/rpc/catalog.ts never named. `client_executable_writers()`
+  -- (0018) is to functions what `client_write_grants()` is to tables, and it is asserted here at
+  -- END OF CHAIN — where a later migration's new RPC shows up — not only inside the migration that
+  -- minted it.
+  select count(*) into v_n from public.client_executable_writers();
+  if v_n <> 0 then
+    raise exception 'PROOF 3 FAILED: % SECURITY DEFINER writer(s) are executable by a client role and are not declared entry points: %',
+      v_n,
+      (select string_agg(schema_name || '.' || function_name || '(' || identity_arguments || ') ' || grantee, ', ')
+         from public.client_executable_writers());
+  end if;
+
+  raise notice 'PASS: GRANT_LOCKDOWN_ANON_CANNOT_EXECUTE — anon was refused with SQLSTATE 42501 on all % callable SECURITY DEFINER writers with USAGE on all four schemas deliberately granted first, so the refusal is the FUNCTION grant and not the schema door (% trigger body/bodies excluded, unreachable as a statement in any case); authenticated still reached cmd.issue, so this is a lockdown and not an outage; and client_executable_writers() is empty across all four schemas',
+    v_denied, v_trig;
 end $$;

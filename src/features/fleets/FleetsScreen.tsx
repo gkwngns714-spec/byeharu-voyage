@@ -15,6 +15,8 @@ import {
   TH,
   Table,
   scrollTableClass,
+  fineClass,
+  rowLinkClass,
 } from '../../components/ui'
 import {
   formatDucats,
@@ -22,23 +24,23 @@ import {
   formatKnots,
   formatNm,
   formatPct,
+  formatPctPoints,
   formatRealShort,
   formatTuns,
   formatVoyageDays,
 } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
-import type { LiveWorld } from '../../live/worldStore'
-import type { FleetShip, FleetStatus, FleetView, SnapshotConfig } from '../../lib/rpc'
+import type { FleetShip, FleetView, SnapshotConfig } from '../../lib/rpc'
 import { useCommandDraft } from '../../domain/order'
 import type { CommandIntent } from '../../domain/order'
 import {
   busyUntilMs,
   fleetCargo,
   fleetCrew,
-  fleetHoldFree,
   fleetHoldTotal,
   fleetHoldUsed,
+  fleetStatusTone,
   fleetStores,
   hullFraction,
   worstHullFraction,
@@ -71,18 +73,26 @@ import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 // what lands it. The roster says exactly that rather than pretending.
 
 export function FleetsScreen() {
-  const world = useWorld()
+  // FIELDS, NOT THE STORE (worldStore.ts rule 4).
+  const phase = useWorld((s) => s.phase)
+  const fatal = useWorld((s) => s.fatal)
+  const snapshot = useWorld((s) => s.snapshot)
 
-  if (world.phase === 'failed') {
-    return <WorldFailed eyebrow="Assets" title="Fleets" refusal={world.fatal} />
+  if (phase === 'failed') {
+    return <WorldFailed eyebrow="Assets" title="Fleets" refusal={fatal} />
   }
-  if (world.phase !== 'ready' || !world.snapshot) {
+  if (phase !== 'ready' || !snapshot) {
     return <WorldLoading eyebrow="Assets" title="Fleets" subtitle="What you own, and the state it is in." panels={3} />
   }
-  return <FleetsBody world={world} config={world.snapshot.config} />
+  return <FleetsBody config={snapshot.config} />
 }
 
-function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfig }) {
+function FleetsBody({ config }: { config: SnapshotConfig }) {
+  const fleets = useWorld((s) => s.fleets)
+  const house = useWorld((s) => s.player)
+  const portByCode = useWorld((s) => s.portByCode)
+  const readAt = useWorld((s) => s.readAt)
+  const mode = useWorld((s) => s.mode)
   const { nowMs } = useShellState()
   const navigate = useNavigate()
   const handOff = useCommandDraft((s) => s.handOff)
@@ -95,8 +105,16 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
     navigate('/command')
   }
 
-  const shipCount = world.fleets.reduce((n, f) => n + f.ships.length, 0)
-  const portName = (code: string | null) => (code ? (world.portByCode[code]?.name ?? code) : null)
+  // THE HOUSE COUNTS ITS OWN HULLS. `world.player()` serves `fleets` and `ships` (migration
+  // 0014:140-141, straight `count(*)`), and this screen and RankScreen each folded the roster to
+  // reach the same two figures. Reading them is one line shorter AND cannot disagree with the
+  // Profile tab, which was already printing the served pair.
+  //
+  // NULL, NOT A FALLBACK FOLD. `?? fleets.length` would put the old count back as a second
+  // answer for exactly the case the two answers could differ — a player read that failed while
+  // the fleets read succeeded. An unread house prints a dash; the roster below is still drawn.
+  const counts = house ? { fleets: house.fleets, ships: house.ships } : null
+  const portName = (code: string | null) => (code ? (portByCode[code]?.name ?? code) : null)
 
   return (
     <Screen>
@@ -107,14 +125,15 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
         actions={
           <>
             <span className="font-mono text-xs text-ink-faint">
-              {world.fleets.length}/{config.fleet_max} fleets · {shipCount}/{config.ship_max} ships
+              {counts ? counts.fleets : '—'}/{config.fleet_max} fleets ·{' '}
+              {counts ? counts.ships : '—'}/{config.ship_max} ships
             </span>
             <ReadAgain />
           </>
         }
       />
 
-      {world.fleets.length === 0 ? (
+      {fleets.length === 0 ? (
         <Card>
           <CardHeader eyebrow="Roster" title="No fleets" />
           <p className="text-sm text-ink-muted">
@@ -139,7 +158,7 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
               off-screen and nothing to swipe. From `sm` the table returns.
               Both read the SAME served fleet — there is no second source of these numbers. */}
           <ul className="space-y-2 sm:hidden">
-            {world.fleets.map((fleet) => (
+            {fleets.map((fleet) => (
               <li key={fleet.id}>
                 <button
                   type="button"
@@ -148,8 +167,8 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
                 >
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm text-accent">{fleet.name}</span>
-                    <Badge tone={statusTone(fleet.status)}>{fleet.status}</Badge>
-                    <span className="ml-auto font-mono text-[11px] text-ink-faint">
+                    <Badge tone={fleetStatusTone(fleet.status)}>{fleet.status}</Badge>
+                    <span className={fineClass('ml-auto')}>
                       {fleet.ships.length} ship{fleet.ships.length === 1 ? '' : 's'}
                     </span>
                   </span>
@@ -172,7 +191,7 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
                       <Gauge
                         value={fleetHoldUsed(fleet)}
                         max={fleetHoldTotal(fleet)}
-                        tone={fleetHoldFree(fleet) <= 0 ? 'warning' : 'accent'}
+                        tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}
                         label={`hold, ${fleetHoldUsed(fleet)} of ${fleetHoldTotal(fleet)} tuns`}
                       />
                       <span className="text-ink">
@@ -214,12 +233,12 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
               </tr>
             </thead>
             <tbody>
-              {world.fleets.map((fleet) => (
+              {fleets.map((fleet) => (
                 <tr key={fleet.id}>
                   <TD>
                     <button
                       type="button"
-                      className="min-h-11 text-left font-mono text-sm text-accent underline-offset-4 hover:underline"
+                      className={rowLinkClass('min-h-11 text-left font-mono')}
                       onClick={() => command({ verb: 'SAIL', fleetId: fleet.id })}
                     >
                       {fleet.name}
@@ -227,7 +246,7 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
                   </TD>
                   <TD align="num">{fleet.ships.length}</TD>
                   <TD>
-                    <Badge tone={statusTone(fleet.status)}>{fleet.status}</Badge>
+                    <Badge tone={fleetStatusTone(fleet.status)}>{fleet.status}</Badge>
                   </TD>
                   <TD>{whereText(fleet, portName)}</TD>
                   <TD align="num">{dueText(fleet, nowMs)}</TD>
@@ -240,21 +259,20 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
         </Card>
       )}
 
-      {world.fleets.map((fleet) => (
+      {fleets.map((fleet) => (
         <FleetDetail
           key={fleet.id}
           fleet={fleet}
-          world={world}
           config={config}
           nowMs={nowMs}
           onCommand={command}
         />
       ))}
 
-      {world.readAt !== null && (
-        <p className="text-center font-mono text-[11px] text-ink-faint">
-          Read {formatRealShort(Math.max(0, nowMs - world.readAt))} ago
-          {world.mode ? ` · ${world.mode}` : ''}
+      {readAt !== null && (
+        <p className={fineClass('text-center')}>
+          Read {formatRealShort(Math.max(0, nowMs - readAt))} ago
+          {mode ? ` · ${mode}` : ''}
           <Explain label="how fresh this is" dotClassName="ml-0.5">
             A read is the catch-up: nothing on this screen ticks, so reading again is what settles a
             voyage and brings a fleet in.
@@ -267,31 +285,34 @@ function FleetsBody({ world, config }: { world: LiveWorld; config: SnapshotConfi
 
 function FleetDetail({
   fleet,
-  world,
   config,
   nowMs,
   onCommand,
 }: {
   fleet: FleetView
-  world: LiveWorld
   config: SnapshotConfig
   nowMs: number
   onCommand: (intent: CommandIntent) => void
 }) {
+  // The two name INDEXES, selected here rather than handed down as part of a whole `world` prop.
+  // Both are rebuilt only when the snapshot is (worldStore.ts:open), so a panel that draws a cargo
+  // line is now untouched by a read that only moved a fleet.
+  const goodByCode = useWorld((s) => s.goodByCode)
+  const portByCode = useWorld((s) => s.portByCode)
   const cargo = fleetCargo(fleet)
   const crew = fleetCrew(fleet)
   const stores = fleetStores(fleet)
   const flagship = fleet.ships.find((s) => s.is_flagship) ?? null
   const fraction = voyageFraction(fleet)
   const etaMs = voyageEtaMs(fleet)
-  const goodName = (code: string) => world.goodByCode[code]?.name ?? code
-  const portName = (code: string) => world.portByCode[code]?.name ?? code
+  const goodName = (code: string) => goodByCode[code]?.name ?? code
+  const portName = (code: string) => portByCode[code]?.name ?? code
 
   return (
     <CollapsibleCard
       title={fleet.name}
       subtitle={flagship ? `flag: ${flagship.name} (${flagship.class})` : 'no flagship'}
-      aside={<Badge tone={statusTone(fleet.status)}>{fleet.status}</Badge>}
+      aside={<Badge tone={fleetStatusTone(fleet.status)}>{fleet.status}</Badge>}
       storageKey={`fleet-${fleet.id}`}
       defaultOpen
     >
@@ -310,7 +331,7 @@ function FleetDetail({
               </span>
             </div>
             <Meter pct={fraction * 100} tone="accent" />
-            <p className="font-mono text-[11px] text-ink-faint">
+            <p className={fineClass()}>
               Bound for {portName(fleet.voyage.to)} at {formatKnots(fleet.speed_kn)}.
               {etaMs !== null && nowMs >= etaMs && ' She is DUE — read again to bring her in.'}
               <Explain label="this passage" dotClassName="ml-0.5">
@@ -348,7 +369,7 @@ function FleetDetail({
               ))}
             </tbody>
           </Table>
-          <p className="mt-1 font-mono text-[11px] text-ink-faint">{TABLE_SCROLL_HINT}</p>
+          <p className={fineClass('mt-1')}>{TABLE_SCROLL_HINT}</p>
         </div>
 
         <div>
@@ -377,7 +398,7 @@ function FleetDetail({
                       <TD>
                         <button
                           type="button"
-                          className="min-h-11 text-left text-sm text-accent underline-offset-4 hover:underline"
+                          className={rowLinkClass('min-h-11 text-left')}
                           onClick={() =>
                             onCommand({
                               verb: 'SELL',
@@ -392,7 +413,7 @@ function FleetDetail({
                         </button>
                       </TD>
                       <TD align="num">{formatInt(line.qty)}</TD>
-                      <TD align="num">{world.goodByCode[line.code]?.bulk ?? '—'}</TD>
+                      <TD align="num">{goodByCode[line.code]?.bulk ?? '—'}</TD>
                     </tr>
                   ))}
                   <tr>
@@ -411,10 +432,18 @@ function FleetDetail({
         <div>
           <SectionLabel>
             Stores and hands
+            {/* THIS USED TO SAY "Officers arrive with V1 (C.6): at V0 every expertise coefficient
+                is 1.00". Migration 0017 made that false — a quartermaster now stretches the hold
+                and a purser shaves the spread — and a hold figure that had quietly grown while the
+                screen swore no officer could touch it is exactly the kind of lie one authority is
+                supposed to end. `officer_pct` is the SERVER's own reading of what this fleet's
+                officers are worth (already summed within the specialty and clamped at the world
+                cap), so this sentence cannot drift from the number above it again. */}
             <Explain label="Stores and hands" dotClassName="ml-0.5">
-              Stores share the hold with the cargo. Officers arrive with V1 (C.6): at V0 every
-              expertise coefficient is 1.00, so a fleet is exactly its hulls, its hands and what is
-              in the hold.
+              Stores share the hold with the cargo.{' '}
+              {fleet.officer_pct.QUARTERMASTER > 0
+                ? `Her quartermasters stow ${formatPctPoints(fleet.officer_pct.QUARTERMASTER)} more into the same hulls, and the hold figure below already carries it.`
+                : 'No quartermaster is posted to her, so the hold is what the shipwright built.'}
             </Explain>
           </SectionLabel>
           <p className="font-mono text-xs text-ink-muted">
@@ -424,9 +453,13 @@ function FleetDetail({
             {formatTuns(crew.aboard * (config.water_per_crew_day + config.food_per_crew_day), 2)} and{' '}
             {formatDucats(crew.aboard * config.wage_per_crew_day)} a voyage-day.
           </p>
-          <p className="mt-1 font-mono text-[11px] text-ink-faint">
+          {/* `free_hold` is not `total − used`, and printing it as though it were is what the
+              deleted client copies did. It is the SERVER's `public.fleet_free_hold` (0017:183),
+              which clamps per hull — a fleet with one over-stowed hull has less room than the
+              subtraction suggests, and this line says the number a BUY will actually obey. */}
+          <p className={fineClass('mt-1')}>
             hold {formatTuns(fleetHoldUsed(fleet), 1)} / {formatTuns(fleetHoldTotal(fleet))} ·{' '}
-            {formatTuns(fleetHoldFree(fleet), 1)} free.
+            {formatTuns(fleet.free_hold, 1)} free.
           </p>
         </div>
 
@@ -491,20 +524,4 @@ function dueText(fleet: FleetView, nowMs: number): string {
   const at = voyageEtaMs(fleet) ?? busyUntilMs(fleet)
   if (at === null) return '—'
   return nowMs >= at ? 'due' : formatRealShort(at - nowMs)
-}
-
-function statusTone(status: FleetStatus) {
-  switch (status) {
-    case 'SAILING':
-      return 'accent' as const
-    case 'DOCKED':
-      return 'success' as const
-    case 'REPAIRING':
-      return 'warning' as const
-    case 'ADRIFT':
-    case 'UNABLE_TO_SAIL':
-      return 'danger' as const
-    default:
-      return 'neutral' as const
-  }
 }

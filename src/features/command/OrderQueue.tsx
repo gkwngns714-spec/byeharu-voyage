@@ -1,6 +1,7 @@
-import { Badge, Button, Icon, Notice } from '../../components/ui'
+import { Badge, Button, fineClass, Icon, Notice } from '../../components/ui'
 import { formatNm, formatRealShort } from '../../lib/format'
 import type { FleetView, QueuedOrder } from '../../lib/rpc'
+import { fleetStatusTone, voyageEtaMs } from '../../domain/fleet'
 
 // THE QUEUE — E.1's QUEUES block and F.3's rules, made of the server's own rows.
 //
@@ -43,7 +44,11 @@ export function OrderQueue({
   const orders = fleet.queue
   const live = orders.filter((o) => o.status === 'pending' || o.status === 'active')
   const failed = orders.find((o) => o.status === 'failed')
-  const etaMs = fleet.voyage && readAt !== null ? Date.parse(fleet.voyage.eta) - readAt : null
+  // THE ARRIVAL INSTANT COMES FROM domain/fleet. `voyageEtaMs` already documents that `eta` is
+  // an ISO STRING and that parsing it is the whole of the job — and it said it was "parsed once"
+  // while this file and features/map/liveWorld.ts each parsed it again. Now it is parsed once.
+  const eta = voyageEtaMs(fleet)
+  const etaMs = eta !== null && readAt !== null ? eta - readAt : null
 
   // Which trades will run somewhere OTHER than where she is heading now: everything after the
   // first SAIL still waiting in the queue. Orders run top to bottom, so a SAIL is a change of
@@ -62,8 +67,8 @@ export function OrderQueue({
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-sm text-ink">{fleet.name}</span>
-        <Badge tone={statusTone(fleet.status)}>{fleet.status}</Badge>
-        <span className="font-mono text-[11px] text-ink-faint">
+        <Badge tone={fleetStatusTone(fleet.status)}>{fleet.status}</Badge>
+        <span className={fineClass()}>
           {live.length}/{queueMax} queued
         </span>
         {failed && <Badge tone="danger">halted</Badge>}
@@ -161,22 +166,6 @@ export function OrderQueue({
       </div>
     </div>
   )
-}
-
-function statusTone(status: FleetView['status']) {
-  switch (status) {
-    case 'SAILING':
-      return 'accent' as const
-    case 'DOCKED':
-      return 'success' as const
-    case 'REPAIRING':
-      return 'warning' as const
-    case 'ADRIFT':
-    case 'UNABLE_TO_SAIL':
-      return 'danger' as const
-    default:
-      return 'neutral' as const
-  }
 }
 
 function orderTone(status: QueuedOrder['status']) {

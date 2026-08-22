@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Badge, Button, buttonClasses, categoryLabel, goodIcon, Icon, Meter, PriceIndex } from '../../components/ui'
+import { Badge, Button, buttonClasses, categoryLabel, fineClass, goodIcon, Icon, Meter, PriceIndex } from '../../components/ui'
 import { formatDucats, formatInt, formatNm, formatTuns, formatUnitPrice } from '../../lib/format'
 import { haversineNm } from '../../lib/geo'
 import type { MarketGood, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
+import { fold, foldedMatch } from '../../lib/text'
 import type { QtyBound } from './fleetLimits'
 
 // THE PICKERS — one per argument TYPE the server's verb schema declares (`port`, `good`, `qty`,
@@ -22,14 +23,6 @@ import type { QtyBound } from './fleetLimits'
 
 /** How many rows a list may render before it starts asking the player to narrow the filter. */
 const MAX_ROWS = 12
-
-/** Case- and accent-insensitive, the way the server's `cmd.fold()` matches a name. */
-function fold(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(new RegExp('[\\u0300-\\u036f]', 'g'), '')
-    .toLowerCase()
-}
 
 function PickerRow({
   onClick,
@@ -69,7 +62,7 @@ function PickerRow({
       {mark}
       <span className="min-w-0 flex-1">
         <span className="block text-sm">{left}</span>
-        {hint && <span className="block font-mono text-[11px] text-ink-faint">{hint}</span>}
+        {hint && <span className={fineClass('block')}>{hint}</span>}
       </span>
       {right && <span className="shrink-0 font-mono text-xs text-ink-muted">{right}</span>}
       {under && <span className="w-full">{under}</span>}
@@ -102,7 +95,7 @@ function FilterBox({
 function TruncationNote({ hidden }: { hidden: number }) {
   if (hidden <= 0) return null
   return (
-    <p className="font-mono text-[11px] text-ink-faint">
+    <p className={fineClass()}>
       {hidden} more — narrow the filter to bring them into reach.
     </p>
   )
@@ -143,7 +136,7 @@ export function PortPicker({
     const q = fold(filter.trim())
     return ports
       .filter((p) => p.code !== origin)
-      .filter((p) => q === '' || fold(p.name).includes(q) || fold(p.code).includes(q) || fold(p.country).includes(q))
+      .filter((p) => foldedMatch(q, p.name, p.code, p.country))
       .map((p) => ({
         port: p,
         direct: direct.has(p.code),
@@ -173,7 +166,7 @@ export function PortPicker({
           left={
             <span className="flex flex-wrap items-center gap-2">
               {port.name}
-              <span className="font-mono text-[11px] text-ink-faint">{port.code}</span>
+              <span className={fineClass()}>{port.code}</span>
               {direct && <Badge tone="accent">one leg</Badge>}
               {port.is_ice_closed && <Badge tone="warning">ice</Badge>}
             </span>
@@ -215,7 +208,7 @@ export function GoodPicker({
     return goods
       .filter((g) => g.available)
       .filter((g) => (aboard ? (aboard[g.code] ?? 0) > 0 : true))
-      .filter((g) => q === '' || fold(g.name).includes(q) || fold(g.code).includes(q) || fold(g.category).includes(q))
+      .filter((g) => foldedMatch(q, g.name, g.code, g.category))
       .sort((a, b) => {
         // The advice the server gave, first: a BUY list opens on what is cheap here, a SELL list on
         // what this port pays over the odds for.
@@ -450,7 +443,7 @@ export function QtyPicker({
         </div>
       )}
 
-      <p className="font-mono text-[11px] text-ink-faint">
+      <p className={fineClass()}>
         {max > 0
           ? `up to ${formatTuns(max)} — ${bound.binding} stops you there` +
             (estTotal ? ` (${formatDucats(estTotal)} for all of it)` : '')
@@ -537,7 +530,7 @@ export function NumberPicker({
           </Button>
         </div>
       )}
-      <p className="font-mono text-[11px] text-ink-faint">
+      <p className={fineClass()}>
         {formatInt(min)}–{formatInt(max)}
         {unit ? ` ${unit}` : ''} · now {numeric === null ? '—' : formatInt(numeric)}
       </p>
@@ -563,7 +556,7 @@ export function PricePicker({
   const max = Math.max(min + 1, Math.round(reference * 1.5))
   return (
     <div className="space-y-2">
-      <p className="font-mono text-[11px] text-ink-faint">
+      <p className={fineClass()}>
         the market is at {formatUnitPrice(reference)} · your limit {op ?? ''}
       </p>
       <NumberPicker
@@ -611,8 +604,3 @@ export function EnumPicker({
   )
 }
 
-/** A purse line, so a cost can be read against what there is. */
-export function PurseLine({ ducats }: { ducats: number | null }) {
-  if (ducats === null) return null
-  return <span className="font-mono text-sm text-accent">{formatDucats(ducats)}</span>
-}

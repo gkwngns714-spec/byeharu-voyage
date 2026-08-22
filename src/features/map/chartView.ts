@@ -193,6 +193,21 @@ export const OPENING_MIN_SPAN_DEG = 12
 export const COMPACT_WIDTH_PX = 640
 
 /**
+ * THE CAPTION BAR'S BAND — one height, two consumers, and no guessing between them.
+ *
+ * The permanent caption (time scale · "view only" · read age) runs the full width of the chart's
+ * bottom edge, so anything anchored to a bottom CORNER has to clear it. That clearance used to be
+ * guessed twice, and differently: the detail panel carried a magic `bottom-11` while the
+ * coastline-unavailable note carried `bottom-9`, and the bar itself was whatever its padding made
+ * it — so neither number was right, only slack. Now the bar IS `barClass` tall and the chrome
+ * layer stops `clearClass` short of the bottom edge, which makes them the same fact stated once.
+ *
+ * They are literal Tailwind classes rather than a computed number because the JIT scanner reads
+ * source text: a class assembled at runtime is a class that never reaches the stylesheet.
+ */
+export const CHART_CAPTION = { barClass: 'h-8', clearClass: 'bottom-8' } as const
+
+/**
  * How much bigger than its contents a view is allowed to be before the frame is judged wasteful.
  *
  * MEASURED, at 390×844. The ports of a working house are a wide east–west strip and a phone

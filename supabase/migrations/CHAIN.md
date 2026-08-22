@@ -1,11 +1,14 @@
 # The V0 chain
 
-Seventeen migrations. Each one establishes **one concept**, and each one **proves its own effect in the
+Eighteen migrations. Each one establishes **one concept**, and each one **proves its own effect in the
 same transaction that applies it** — see `README.md` §3 for the self-assert rules this chain follows.
 
 Every migration also re-asserts the grant lockdown of 0001 through the single authority
 `public.client_write_grants()`, because a new table is exactly where the predecessor's
-`GRANT ALL ON TABLES TO anon` came back.
+`GRANT ALL ON TABLES TO anon` came back. From 0018 there is a second authority to call beside it,
+`public.client_executable_writers()`, because a table grant is not the only way in: a
+`SECURITY DEFINER` function runs as its DEFINER, so a client role that can EXECUTE one bypasses RLS
+without ever touching a table ACL.
 
 Run it locally, in about ten seconds, with no Docker:
 
@@ -37,6 +40,8 @@ npm run db:proof            # apply, then run scripts/db/proofs/*.sql and check 
 | **0016** | `a_captain_learns_a_trade` | `skills` + `player_skills` (never columns on `players`), `player_skill_bonus()`, `cmd.study_skill()`, `world.skills()`. A skill is **studied for money at a port with an academy** — not earned by XP, because XP means hooking 0007's deployed verbs, and because a derived skill would level itself and stop being a choice. **SUPERSEDES `voyage.endurance_days()`.** `ports.has_academy` finally means something. | At level 0 the endurance is 0006's exact figure, so the supersede is a no-op unstudied. Studying is REFUSED at sea (`E_AT_SEA`) and at a port with no academy (`E_NO_ACADEMY`), and allowed at one that keeps one — taking endurance from 15.000 to 15.900 d at +6.00%. The ceiling BITES (`E_SKILL_MAXED`) after studying to it; `E_NO_SUCH_SKILL` and `E_NOT_ENOUGH_DUCATS` bite too. |
 
 | **0017** | `a_quartermaster_stows_the_hold_and_a_purser_shaves_the_spread` | Two of 0015's three inert specialties, wired. `public.ship_hold_capacity()` — the ONE answer to "how many tuns fit in this hull", the rated `ship_classes.hold` stretched by the fleet's QUARTERMASTERS — replaces the same subtraction hand-copied into four server functions (`fleet_free_hold` 0007:127, `fleet_load` 0007:249, `do_provision` 0007:579/583/609/613, `world.fleets` 0009:183), all of which now compose onto it. `world.quote()` gains ONE appended parameter, `p_fleet`, and a PURSER shaves the spread the quote executes at — `world.spread(port)` stays the port's own one-argument fact, and the three callers that know a fleet pass it. `world.fleets()` serves the STOWED capacity under `hold` (with `hold_rated` and `officer_pct` alongside) so the client's mirrored arithmetic stays true. SURGEON is deliberately left inert. And every function this file re-cut is taken off the client. | With no officer aboard a 60-tun hull reads **60** and the fleet's free hold **matches 0007's own definition recomputed inline**, so the supersede is a no-op; a **+6.00%** quartermaster takes the hull to **63** tuns and the free hold rises by exactly 3 — then `fleet_load` places **every** tun `fleet_free_hold` offered and REFUSES one more, so the check and the placement cannot disagree and no one pays for cargo that never lands. Naming an unpursered fleet reproduces the 0005 quote **to the digit** (ask 4002.70, bid 3674.15); a **+6.00%** purser moves them to **3999.70 / 3677.06** — the stated amounts, recomputed from `world.mid_price`, `world.tax_rate` and `world.spread` — with the bid still under the ask. The world cap **BITES**, on a cap the probe lowers to 5 itself rather than trusting the seeded 25 that two officers can never reach. SURGEON still reports `takes_effect` false, `specialties_read` names exactly three, and 0016's HAGGLING skill is still unread. Seven anon-executable SECURITY DEFINER functions are closed and the **17 still open chain-wide are NOTICEd by name on every apply** — see below. |
+
+| **0018** | `only_a_signed_in_captain_may_move_anything` | The other half of the lockdown: the EXECUTE half. Every `SECURITY DEFINER` function in the four schemas is taken off `public`, `anon` and `authenticated` by a **loop over `pg_proc`** — the catalogue, never a list of names, because a list is correct on the day it is typed and stale the day someone adds a function. The eighteen the browser actually calls are granted back to `authenticated` **by name**, from `public.client_rpc_entry_points()`, which is minted here as the server's mirror of `src/lib/rpc/catalog.ts` and is the ONE place the sanctioned set is stated (the grants are a loop over it, and the new authority subtracts it, so granted and sanctioned cannot drift). `anon` gets nothing at all: every RPC is behind `RequireAuth` (`src/app/App.tsx:19`). And the root cause is fixed — 0001:240's `ALTER DEFAULT PRIVILEGES ... **IN SCHEMA** ... REVOKE EXECUTE` is re-issued **without** `IN SCHEMA`, the only form that records anything. Mints `public.client_executable_writers()`, the EXECUTE-side twin of `client_write_grants()`. | A probe `SECURITY DEFINER` writer created **after** the default-privilege fix is **born** unreachable by both client roles — the fix measured, not claimed — and then, granted to `anon` on purpose, is **found** by the new authority (1 row), and lost again when revoked (0). Then: **0** rows from `client_executable_writers()`; every one of the eighteen entry points named **individually** as still executable by `authenticated` and not by `anon` (counting to eighteen would not have said WHICH, and losing `cmd.issue` means no order can ever be given again); `anon` may execute **0** of the 94 definers and `authenticated` **exactly** those eighteen; `pg_default_acl` holds the schema-less row 0001 never wrote, granting a client nothing; and the database itself refuses `anon` with SQLSTATE **42501** on four representative writers **with USAGE on world/cmd/voyage deliberately granted first**, so what is measured is the function grant and not 0001's schema door — while `authenticated` still reaches `cmd.issue` and is turned away by the GAME (`E_NO_SUCH_FLEET`). |
 
 ---
 
@@ -78,14 +83,81 @@ offline, and re-granting the chain is its own concept. They are printed as a per
 by name, on every apply — 0001 (d2)'s shape, never swallowed and never fatal, because an assert
 that can never pass is pressure to delete the check.
 
-**Still open, and wanting their own migration:** `cmd.advance`, `cmd.cancel_at`, `cmd.clear`,
-`cmd.do_hire`, `cmd.do_repair`, `cmd.do_sail`, `cmd.execute_order`, `cmd.issue`, `cmd.preview`,
-`public.fleet_unload`, `public.tg_reconcile_from_ledger`, `public.tg_reconcile_from_player`,
+**Those seventeen were closed by 0018**, which is the migration that paragraph asked for:
+`cmd.advance`, `cmd.cancel_at`, `cmd.clear`, `cmd.do_hire`, `cmd.do_repair`, `cmd.do_sail`,
+`cmd.execute_order`, `cmd.issue`, `cmd.preview`, `public.fleet_unload`,
+`public.tg_reconcile_from_ledger`, `public.tg_reconcile_from_player`,
 `voyage.assert_sailing_invariant`, `voyage.depart`, `voyage.recompute_eta`, `voyage.settle`,
-`world.ledger`. (`cmd.issue`, `cmd.preview`, `cmd.cancel_at`, `cmd.clear` and `world.ledger` are
-meant to be callable by `authenticated`; the migration that closes this must grant them back
-explicitly rather than leaving them on a default. `proofs/03_grant_lockdown.sql` should grow a
-ninth marker that fails on a `SECURITY DEFINER` writer reachable by `anon`, or this returns.)
+`world.ledger`. `proofs/03_grant_lockdown.sql` grew the ninth marker as well:
+`GRANT_LOCKDOWN_ANON_CANNOT_EXECUTE`.
+
+## 2026-08-22 — 0018 closed it, and found that the culprit was two words
+
+### How bad it actually was, measured
+
+The chain applied through 0017, then `set local role anon` and the call made:
+
+| as `anon` | answer |
+|---|---|
+| `select public.fleet_unload(null, null, null)` | **ANSWERED. No error.** It writes cargo. |
+| `select cmd.do_sail(null, null)` | 42501 permission denied for **schema** cmd |
+| `select cmd.issue(null, null, null)` | 42501 permission denied for **schema** cmd |
+| `select world.ledger(null, null)` | 42501 permission denied for **schema** world |
+| `select voyage.depart(null, null, null)` | 42501 permission denied for **schema** voyage |
+
+`anon` holds USAGE on `public` and on nothing else (0001:222-225), so in three of the four schemas a
+second door happened to be shut — **not** by the lock that was supposed to be doing the job, and not
+shut at all on `public`, which is the schema PostgREST exposes by default and where a
+`SECURITY DEFINER` function that writes ship cargo was genuinely reachable by an anonymous caller.
+That is why proof 03's new marker **grants `anon` USAGE on the three closed schemas first**, inside
+the transaction it throws away: otherwise the sweep collects its 42501s from the schema door and
+would stay green with EXECUTE handed back to `anon` on every function in three schemas.
+
+### The culprit was `IN SCHEMA`
+
+Four variants, each on a fresh PostgreSQL 18.3 (PGlite 0.5.5) holding the client roles and the four
+schemas, each followed by `create function` in `public`, `world` and `voyage`:
+
+| statement, issued as the migration role | `pg_default_acl` | the function it then bore |
+|---|---|---|
+| 0001:240 verbatim — `... IN SCHEMA public, world, cmd, voyage REVOKE EXECUTE ON FUNCTIONS FROM public, anon, authenticated` | **0 rows** | `proacl` null; anon, authenticated **and** service_role may all execute |
+| the same, preceded by a per-schema `GRANT EXECUTE ON FUNCTIONS TO postgres` so a row certainly exists | 4 rows, `{postgres=X/postgres}` | `proacl` null; **still** all three may execute |
+| the same statement **without `IN SCHEMA`** | 1 row, `defaclnamespace = 0`, `{postgres=X/postgres}` | `proacl {postgres=X/postgres}`; **all three denied** |
+| the same, preceded by a global grant to the owner | identical | identical |
+
+So the defect was never the REVOKE or the role list. A **schema-scoped** default ACL is added to what
+`acldefault()` already gives — which for a function is EXECUTE for PUBLIC — while the **schema-less**
+entry replaces it. 0001 wrote the one form that cannot express "PUBLIC gets nothing".
+
+**The second row of that table is the trap, and it is why 0018 does not stop at reading
+`pg_default_acl` back.** Four rows appear, they read `{postgres=X/postgres}`, a catalogue assert
+passes — and a function created a line later is still executable by `anon`. A recorded row is not
+the property. 0018's governing assert is therefore behavioural: it creates a probe function *after*
+the fix and requires `has_function_privilege` to say no for both client roles. The catalogue read
+sits beside it as corroboration, never as the proof. (The first draft of 0018 did exactly the wrong
+thing here and its own assert caught it on the first apply.)
+
+**Blast radius, stated rather than discovered later:** without `IN SCHEMA` this governs every schema,
+not only these four. It still binds **only** objects created by the role that applies this chain — a
+`pg_default_acl` row applies to its own grantor's objects and nobody else's (§5b, measured there) —
+so nothing `supabase_admin` creates is touched. From 0019 on, a function is born executable by
+nobody but the owner: it needs an explicit `GRANT EXECUTE ... TO authenticated` **and** a row in
+`client_rpc_entry_points()` to reach the client, and an explicit `GRANT ... TO service_role` if a
+tick calls it. `service_role` loses the PUBLIC ride it has had until now; the four grants already
+written (0007:1059, 0010:160-162) are untouched.
+
+### What 0018 deliberately did not do
+
+Eight functions in these schemas are **not** `SECURITY DEFINER`, and seven of them stay executable by
+PUBLIC: `cmd.fold`, `cmd.parse_number`, `voyage.gc_distance_nm`, `voyage.report_line`,
+`voyage.rng_raw`, `world.affinity_at` are IMMUTABLE pure arithmetic or string folding that run as the
+**caller** (so RLS applies and they reach no row the caller could not), and `public.forbid_mutation`
+is a trigger body. `voyage.rng_raw` takes the world secret as a *parameter* precisely so calling it
+discloses nothing. They are NOTICEd by name on every apply rather than left invisible.
+
+It also **revoked `world.quote` from `authenticated`**, which 0017:418-419 had granted while 0017's
+own header (`:90-91`) recorded that the client never calls it. The header was right;
+`src/lib/rpc/catalog.ts` does not name it, and every money-moving path reaches it as the definer.
 
 ---
 
@@ -99,7 +171,7 @@ none fails as vacuous.
 |---|---|---|
 | `01_offline_equivalence.sql` | 5 markers | DESIGN Appendix 2 §1. The **same** voyage — pre-screened to contain a real hazard — is settled day by day, the result captured, the settlement rolled away, and then settled **once, nine hours late**. `(day_index, kind, payload, resolved_at)` match to the character; so do the purse and the ETA. |
 | `02_ledger_reconciliation.sql` | 6 markers | DESIGN Appendix 2 §2. 500 randomised orders across 3 houses with time jumping forward underneath them. Requires both successes **and** refusals and money moving both ways, then `purse = Σ ledger.ducats_delta` exactly — and finally falsifies a purse by **one ducat** to prove the check bites. |
-| `03_grant_lockdown.sql` | 8 markers | DESIGN Appendix 2 §3. Not a catalogue query: it **becomes** `anon` and then `authenticated` and tries to INSERT into all 18 tables, requiring SQLSTATE **42501** specifically — a writable table would have failed 23502 instead. Also: `world_config` unreadable, RLS on every table, `service_role` still able to write, and — at end of chain, where it matters most — **every object in all four schemas owned by the role that applied the chain**, which is what makes Supabase's un-revokable default privileges harmless (see the 2026-08-18 note). |
+| `03_grant_lockdown.sql` | 9 markers | DESIGN Appendix 2 §3. Not a catalogue query: it **becomes** `anon` and then `authenticated` and tries to INSERT into all 24 tables, requiring SQLSTATE **42501** specifically — a writable table would have failed 23502 instead. Also: `world_config` unreadable, RLS on every table, `service_role` still able to write, and — at end of chain, where it matters most — **every object in all four schemas owned by the role that applied the chain**, which is what makes Supabase's un-revokable default privileges harmless (see the 2026-08-18 note). Since 0018 it does the same for **EXECUTE**: it becomes `anon` — with USAGE on the three closed schemas deliberately granted first, so the function grant is what is under test — and calls **every** `SECURITY DEFINER` writer the catalogue holds with all-null arguments, requiring 42501 on each; then calls `cmd.issue` as `authenticated` and requires that it is **not** refused, because a lockdown that takes the game's only mutating entry point is an outage, not a lockdown. |
 | `04_first_session.sql` | 9 markers | §K.1's ten minutes, replayed as **typed strings through `cmd.issue()`**. Two honest divergences from the script are asserted rather than papered over: `BUY sal 60` does not fit a 60-tun hold carrying stores, and a laden Barca is slower than the 4.7 minutes quoted for an empty one. The house comes home **richer on an 8,000 d. stake**, by a printed number. |
 | `05_first_voyage_balance.sql` | 3 markers | **Balance, measured rather than argued.** The first version of this world paid 32% of the stake for one twenty-five-minute round trip. Across a sample of starting ports it now requires: every port offers a first voyage that pays; the **median return sits inside 4.0–16.0 per cent**; and **the long legs out-earn the short ones**, or there is no reason to leave home waters. The knobs behind it are swept by `scripts/db/tune-balance.mjs` — if this goes red, read that table rather than nudging a constant until the red goes away. |
 

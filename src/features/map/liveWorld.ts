@@ -30,6 +30,7 @@
 
 import type { FleetView, SnapshotPort } from '../../lib/rpc'
 import type { MapFleet, MapPort } from './mapTypes'
+import { voyageEtaMs } from '../../domain/fleet'
 
 /** The port table the chart draws. Field-for-field; nothing derived, nothing dropped but the
  *  columns a chart has no use for. */
@@ -68,7 +69,10 @@ export function mapFleetsOf(fleets: readonly FleetView[]): MapFleet[] {
           legFrac: position.leg_frac,
           sailedNm: position.nm_done,
           totalNm: position.total_nm,
-          etaMs: Date.parse(f.voyage.eta),
+          // domain/fleet owns the parse (`eta` is an ISO string, not ms). A voyage WITH a served
+          // position always has an eta, so the null arm is unreachable here — it is spelt rather
+          // than asserted because a second Date.parse is how the three copies happened.
+          etaMs: voyageEtaMs(f) ?? 0,
           destinationCode: f.voyage.to,
         },
       })

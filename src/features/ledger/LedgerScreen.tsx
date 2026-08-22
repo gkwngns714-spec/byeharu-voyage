@@ -8,6 +8,7 @@ import {
   Notice,
   PageHeader,
   Screen,
+  fineClass,
 } from '../../components/ui'
 import {
   formatClock,
@@ -18,7 +19,6 @@ import {
 } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
-import type { LiveWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
 import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 
@@ -58,12 +58,16 @@ import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 // once, in `headline()` below. The prose report IS served — `payload.lines`, already sentences.
 
 export function LedgerScreen() {
-  const world = useWorld()
+  // FIELDS, NOT THE STORE (worldStore.ts rule 4). The Ledger is the screen that made the rule: it
+  // is the longest list in the game and it re-rendered whole, twice, on every read — and reading
+  // is how time passes here, so that is every few seconds while the tab is open.
+  const phase = useWorld((s) => s.phase)
+  const fatal = useWorld((s) => s.fatal)
 
-  if (world.phase === 'failed') {
-    return <WorldFailed eyebrow="Record" title="Ledger" refusal={world.fatal} />
+  if (phase === 'failed') {
+    return <WorldFailed eyebrow="Record" title="Ledger" refusal={fatal} />
   }
-  if (world.phase !== 'ready') {
+  if (phase !== 'ready') {
     return (
       <WorldLoading
         eyebrow="Record"
@@ -73,16 +77,19 @@ export function LedgerScreen() {
       />
     )
   }
-  return <LedgerBody world={world} />
+  return <LedgerBody />
 }
 
-function LedgerBody({ world }: { world: LiveWorld }) {
+function LedgerBody() {
+  const events = useWorld((s) => s.events)
+  const portByCode = useWorld((s) => s.portByCode)
+  const readAt = useWorld((s) => s.readAt)
+  const ducats = useWorld((s) => s.ducats)
   const { nowMs } = useShellState()
   const [filter, setFilter] = useState<string>('all')
 
   // `world.ledger()` already answers newest-first (0009: `order by e.created_at desc`). The screen
   // does not re-sort it: the server's order is the record's order.
-  const events = world.events
   const kinds = useMemo(() => {
     const seen: string[] = []
     for (const e of events) if (!seen.includes(e.kind)) seen.push(e.kind)
@@ -91,7 +98,7 @@ function LedgerBody({ world }: { world: LiveWorld }) {
   }, [events])
 
   const shown = filter === 'all' ? events : events.filter((e) => e.kind === filter)
-  const portName = (code: string) => world.portByCode[code]?.name ?? code
+  const portName = (code: string) => portByCode[code]?.name ?? code
 
   return (
     <Screen>
@@ -127,11 +134,11 @@ function LedgerBody({ world }: { world: LiveWorld }) {
                 </button>
               ))}
             </div>
-            <div className="text-right font-mono text-[11px] text-ink-faint">
+            <div className={fineClass('text-right')}>
               <div>
                 {shown.length} of {events.length} entries
               </div>
-              {world.readAt !== null && <div>read {formatRelative(world.readAt, nowMs)}</div>}
+              {readAt !== null && <div>read {formatRelative(readAt, nowMs)}</div>}
             </div>
           </div>
         </Card>
@@ -156,7 +163,7 @@ function LedgerBody({ world }: { world: LiveWorld }) {
       {events.length > 0 && (
         <Notice tone="neutral" className="text-xs">
           Each entry prints the balance the server recorded for it. The purse now stands at{' '}
-          {world.ducats === null ? 'an unread figure' : formatDucats(world.ducats)} — and it will
+          {ducats === null ? 'an unread figure' : formatDucats(ducats)} — and it will
           NOT equal the sum of the movements above: wages are paid every voyage-day without writing
           an entry of their own, so a gap between two consecutive balances is a crew that has been
           paid.
@@ -190,7 +197,7 @@ function Entry({
           <span className="font-mono text-xs uppercase tracking-wider text-ink">{fleet}</span>
         )}
         <Badge tone={kindTone(event.kind)}>{event.kind.replace('_', ' ')}</Badge>
-        <span className="ml-auto font-mono text-[11px] text-ink-faint">
+        <span className={fineClass('ml-auto')}>
           {Number.isFinite(atMs) ? formatRelative(atMs, nowMs) : ''}
         </span>
       </div>

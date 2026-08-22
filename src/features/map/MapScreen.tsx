@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Button, Notice } from '../../components/ui'
+import { Button, fineClass, Notice, overlaySlotClass } from '../../components/ui'
 import { formatRealShort } from '../../lib/format'
 import type { Point, ViewBox } from '../../lib/geo'
 import type { FleetView, Refusal, SnapshotConfig, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
@@ -13,6 +13,7 @@ import { LabelsLayer } from './LabelsLayer'
 import { LegsLayer } from './LegsLayer'
 import { PortsLayer } from './PortsLayer'
 import {
+  CHART_CAPTION,
   COMPACT_WIDTH_PX,
   LABEL_SPAN_LIMIT,
   LEG_SPAN_LIMIT,
@@ -124,7 +125,7 @@ function ChartMessage({ refusal }: { refusal: Refusal | null }) {
           {refusal.sentence}
         </Notice>
       ) : (
-        <p className="font-mono text-[11px] text-ink-faint" data-testid="map-loading">
+        <p className={fineClass()} data-testid="map-loading">
           opening the chart…
         </p>
       )}
@@ -273,70 +274,97 @@ function Chart({
         </svg>
       )}
 
-      {/* PANEL ONE — top-left. Held back until the surface has been measured, so it mounts
-          knowing whether it is on a phone (see `compact`). */}
-      {surface.width > 0 && (
-        <FleetsPanel
+      {/* ── THE CHROME LAYER ─────────────────────────────────────────────────────────────────
+          EVERY corner panel and control on this chart lives inside this one box, and the box stops
+          `CHART_CAPTION.clearClass` short of the bottom edge — exactly the height the caption bar
+          below occupies. That is the whole of "clear the caption", stated ONCE, in the layer that
+          owns the corners; it replaces the hand-tuned `bottom-11` the detail panel used to carry
+          and the differently-hand-tuned `bottom-9` the coastline note carried for the same reason.
+          Panels can now simply say which corner they are in (OVERLAY_SLOTS).
+
+          Pointer-transparent itself, so it cannot swallow a pan gesture over open water; every
+          child that is meant to be pressed turns pointer events back on for itself. */}
+      <div
+        className={`pointer-events-none absolute inset-x-0 top-0 z-10 ${CHART_CAPTION.clearClass}`}
+      >
+        {/* PANEL ONE — top-left. Held back until the surface has been measured, so it mounts
+            knowing whether it is on a phone (see `compact`). */}
+        {surface.width > 0 && (
+          <FleetsPanel
+            model={model}
+            portsByCode={portsByCode}
+            selection={selection}
+            nowMs={nowMs}
+            compact={compact}
+            // Selecting from the LIST also brings the chart to the fleet. The opening frame holds
+            // what is moving, which on a phone can leave a fleet lying in a far-off port off the
+            // glass; this is how you get to it, and it is still only a view change.
+            onSelect={(id) => {
+              setSelection((current) => toggleSelection(current, { kind: 'fleet', id }))
+              const target = model.fleets.find((f) => f.fleet.id === id)
+              if (target) surface.centreOn(target.at)
+            }}
+          />
+        )}
+
+        {/* PANEL TWO — bottom-right, and only when something is selected. */}
+        <DetailPanel
           model={model}
           portsByCode={portsByCode}
           selection={selection}
           nowMs={nowMs}
           compact={compact}
-          // Selecting from the LIST also brings the chart to the fleet. The opening frame holds
-          // what is moving, which on a phone can leave a fleet lying in a far-off port off the
-          // glass; this is how you get to it, and it is still only a view change.
-          onSelect={(id) => {
-            setSelection((current) => toggleSelection(current, { kind: 'fleet', id }))
-            const target = model.fleets.find((f) => f.fleet.id === id)
-            if (target) surface.centreOn(target.at)
-          }}
+          onDismiss={() => setSelection(null)}
         />
+
+        {/* THE VIEW CONTROLS — the complete set. Top-right, in their own uncapped, unscrollable
+            column, so nothing can ever put them out of reach (docs/CORE_REUSE.md §1.5).
+            The corner is `overlaySlotClass('top-right')`, the same table the panels read — this used
+            to be a hand-written `right-3 top-3`, a fifth spelling of an anchor the design system
+            already owned. */}
+        <div
+          {...CHART_CHROME}
+          className={`pointer-events-auto absolute ${overlaySlotClass('top-right')} flex flex-col gap-1`}
+          data-testid="map-view-controls"
+        >
+          <Button
+            variant="secondary"
+            size="icon"
+            aria-label="Zoom in"
+            onClick={surface.zoomIn}
+            className="bg-surface/90 backdrop-blur"
+          >
+            +
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            aria-label="Zoom out"
+            onClick={surface.zoomOut}
+            className="bg-surface/90 backdrop-blur"
+          >
+            −
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            aria-label="Frame your fleets"
+            onClick={surface.fit}
+            className="bg-surface/90 font-mono text-[10px] backdrop-blur"
+          >
+            fit
+          </Button>
+      </div>
+
+      {/* A missing backdrop is worth one quiet line, never a crash: the chart still works without
+          it. Ports, fleets and tracks are all drawn from coordinates, not from this file. It sits
+          in the one free corner, by slot — it used to carry its own `bottom-9`, a second guess at
+          the caption clearance the layer above now makes for everything in it. */}
+      {coastline.error && (
+        <p className={`absolute ${overlaySlotClass('bottom-left')} font-mono text-[10px] text-ink-faint`}>
+          coastline unavailable
+        </p>
       )}
-
-      {/* PANEL TWO — bottom-right, and only when something is selected. */}
-      <DetailPanel
-        model={model}
-        portsByCode={portsByCode}
-        selection={selection}
-        nowMs={nowMs}
-        compact={compact}
-        onDismiss={() => setSelection(null)}
-      />
-
-      {/* THE VIEW CONTROLS — the complete set. Top-right, in their own uncapped, unscrollable
-          column, so nothing can ever put them out of reach (docs/CORE_REUSE.md §1.5). */}
-      <div
-        {...CHART_CHROME}
-        className="absolute right-3 top-3 z-10 flex flex-col gap-1"
-        data-testid="map-view-controls"
-      >
-        <Button
-          variant="secondary"
-          size="icon"
-          aria-label="Zoom in"
-          onClick={surface.zoomIn}
-          className="bg-surface/90 backdrop-blur"
-        >
-          +
-        </Button>
-        <Button
-          variant="secondary"
-          size="icon"
-          aria-label="Zoom out"
-          onClick={surface.zoomOut}
-          className="bg-surface/90 backdrop-blur"
-        >
-          −
-        </Button>
-        <Button
-          variant="secondary"
-          size="icon"
-          aria-label="Frame your fleets"
-          onClick={surface.fit}
-          className="bg-surface/90 font-mono text-[10px] backdrop-blur"
-        >
-          fit
-        </Button>
       </div>
 
       {/* THE PERMANENT CAPTION. Three facts the player should never have to work out or be told
@@ -346,8 +374,10 @@ function Chart({
           picture was read. That last one is the honest half of "the position is the server's": the
           chart is a reading, and a reading has an age.
           Pointer-transparent, so it can never swallow a pan gesture near the bottom edge. */}
+      {/* Its height is `CHART_CAPTION.barClass` rather than whatever its padding happens to make
+          it, because the chrome layer above is inset by exactly that much. One fact, one place. */}
       <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-app/70 px-3 py-1.5 backdrop-blur"
+        className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-app/70 px-3 backdrop-blur ${CHART_CAPTION.barClass}`}
         data-testid="map-is-a-view"
       >
         <span className="shrink-0 font-mono text-[10px] text-ink-faint">
@@ -363,13 +393,6 @@ function Chart({
         )}
       </div>
 
-      {/* A missing backdrop is worth one quiet line, never a crash: the chart still works without
-          it. Ports, fleets and tracks are all drawn from coordinates, not from this file. */}
-      {coastline.error && (
-        <p className="pointer-events-none absolute bottom-9 left-3 z-10 font-mono text-[10px] text-ink-faint">
-          coastline unavailable
-        </p>
-      )}
     </div>
   )
 }

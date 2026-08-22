@@ -8,12 +8,42 @@ This file answers one question and refuses to answer any other: **where does thi
 It is not a wish. `tests/sections.spec.ts` reads the import graph off disk and fails when a boundary
 is crossed, and it was proved to bite by breaking it on purpose before it was trusted.
 
+> **The other half of the law is [`docs/NO_SPAGHETTI.md`](NO_SPAGHETTI.md).** This file says where
+> a thing goes; that one says **how many of it there may be** — one authority per concept, how to
+> tell a second CALLER from a second AUTHOR, superseding a deployed migration instead of re-cutting
+> it, the self-assert discipline, delete-don't-adapt, when a number may live in a test, and a
+> ten-question checklist to run before finishing any change. Its teeth are
+> `tests/duplication.spec.ts`.
+>
+> A boundary alone is not enough, and the two files exist together for a measured reason: forbidding
+> a sideways import does not remove the need to share — it converts it into a **silent copy**, which
+> no import-graph check can see. `PortPicker` is written twice today for exactly that reason
+> (`NO_SPAGHETTI.md` §2). When a boundary bites, **promote the thing**; never copy it.
+
 ---
 
 ## The rule
 
 **A section owns one concept. Sections may be used; they may not be reached into. Nothing reaches
 sideways.**
+
+> **And the trap that rule sets, discovered 2026-08-22.** A boundary that forbids borrowing does not
+> stop sharing — it converts sharing into a SILENT COPY, and `tests/sections.spec.ts` stays green
+> because a copy imports nothing. It really happened: MARKET could not import COMMAND's `PortPicker`
+> so it wrote its own, and `fold()` was private to `ArgPickers` so MARKET matched with a bare
+> `toLowerCase()` and quietly stopped finding `São Vicente` under `sao`.
+>
+> **So the boundary is only half the law.** The other half is `docs/NO_SPAGHETTI.md` and
+> `tests/duplication.spec.ts`, which look for the copy the import graph cannot see. When you are
+> forbidden to reach sideways, the answer is to MOVE the thing down a layer — never to retype it.
+
+## One store, one way to read it
+
+`useWorld()` with no selector is **banned**. It subscribes to the whole store object, which zustand
+replaces on every `set()` — and `refresh()` sets twice, so a single read re-rendered every bare
+subscriber twice no matter what actually moved. Reading is how time passes in this game, so that is
+not an edge case, it is the main loop. Select primitives: `useWorld((s) => s.fleets)`. The rule and
+its stable-return caveat are written at the head of `src/live/worldStore.ts`.
 
 That is all of it. Everything below is where the line currently falls.
 
@@ -24,7 +54,7 @@ That is all of it. Everything below is where the line currently falls.
 ```
 src/domain/*      a part of the GAME.  Pure. No React, no store, no screen.
 src/features/*    a SCREEN.            May use any domain, lib, component. NEVER another screen.
-src/lib/*         MACHINERY.           rpc, db, format, geo. Knows nothing above it.
+src/lib/*         MACHINERY.           rpc, db, format, geo, text. Knows nothing above it.
 src/live/*        the world in memory. The store, and the gate that renders its loading/failure.
 src/components/ui the design system.   One import surface, already a section in everything but name.
 ```
@@ -58,6 +88,26 @@ a sign the boundary is in the wrong place.** It still exists, as a named intent;
 border crossing.
 
 Cross-screen imports today: **zero**, and the spec keeps it that way.
+
+### What the spec checks, as of 2026-08-22
+
+Two of the layer rules stated in the box above had never been checked by anything — they were true,
+and nothing would have noticed if they stopped being. Both now bite, and both were proved to bite by
+breaking them on purpose:
+
+| test | refuses |
+|---|---|
+| `no screen imports another screen` | one `features/<a>` file importing `features/<b>` |
+| `a domain section depends on nothing above it` | a game rule importing a screen, the shell, the store, `live/` **or the design system** — a rule that imports a component cannot be proved without rendering one |
+| `machinery knows nothing above it` | **NEW** — `src/lib/**` or `src/components/**` importing `domain/`, `features/`, `app/`, `live/` or `store/`. What is needed up there is a parameter, not an import |
+| `the design system has one entrance` | **NEW** — anything importing `components/ui/<File>` instead of `components/ui`. `index.ts:1-2` already said "never from the individual files"; now that is enforced, because a primitive nobody can reach through the entrance is one the next screen hand-writes instead |
+| `every domain section has one entrance` | a section with no `index.ts`, and reaching past one into a section's internals |
+
+**A known seam, named rather than enforced:** four `src/features/*` files import
+`src/app/shellState` (`FleetsScreen`, `LedgerScreen`, `MapScreen`) and `src/app/navTabs`
+(`AuthPage`) while `src/app` renders the screens — a folder-level cycle. That state is not the
+shell's; it is app-wide UI state and it wants a section of its own. It is **not** a test, because a
+guard that is red the day it is written gates nothing.
 
 ---
 
@@ -123,6 +173,12 @@ is the place sections go to tangle.
    positive controls bite. Never edit a deployed one.
 2. New shared maths on the client → **`src/domain/<name>/`** with an `index.ts` entrance.
 3. A screen needs something another screen has → **it is not that screen's.** Move it into a section
-   and both import it from there.
+   and both import it from there. **Never copy it instead** — the boundary check cannot see a copy,
+   only an import, which is why `docs/NO_SPAGHETTI.md` exists beside this file.
+4. New shared LOOK or control → **`src/components/ui/`**, exported from `index.ts`. A recipe written
+   in a screen is a recipe that will be written in the next screen too; that is how the chip reached
+   twelve copies (`src/components/ui/buttonStyles.ts:31-35`).
 
-`npx playwright test sections.spec.ts` is the check.
+`npx playwright test tests/sections.spec.ts tests/duplication.spec.ts` is the check — the first for
+where things live, the second for how many of them there are. Before finishing any change, run
+`docs/NO_SPAGHETTI.md` §8.
