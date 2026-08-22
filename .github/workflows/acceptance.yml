@@ -150,17 +150,33 @@ jobs:
           echo "OK: $expected test(s) ran, none skipped."
 
       # `screenshot: on` and `trace: on` are the config's defaults, so a red run arrives with the
-      # picture and the timeline already in it. Uploaded always, because a green report is how the
-      # phone-width measurements get read back.
-      - name: Upload the Playwright report
-        if: always()
+      # picture and the timeline already in it.
+      #
+      # ── ONLY ON FAILURE, AND NEVER ALLOWED TO FAIL THE JOB (2026-08-22) ────────────────────────
+      # This step used to run `if: always()` with a 14-day retention, and on its very first real
+      # push it turned a GREEN suite RED:
+      #
+      #     157 passed (11.3m) · expected: 157  skipped: 0 · OK: 157 test(s) ran, none skipped.
+      #     ##[error]Failed to CreateArtifact: Artifact storage quota has been hit.
+      #
+      # 183 files per run, every run, on a private repo's storage allowance. The reason given for
+      # `always()` was that "a green report is how the phone-width measurements get read back" —
+      # but a report nobody opens is not worth a red tick on a passing suite, and the measurements
+      # that matter are asserted by the specs themselves rather than read out of an artifact.
+      #
+      # `if: failure()` keeps the trace exactly where it is useful. `continue-on-error` is the
+      # load-bearing half: a STORAGE problem must never be able to mask a test result again, in
+      # either direction. The suite's own step is what decides this job.
+      - name: Upload the Playwright report (only when something failed)
+        if: failure()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: |
             playwright-report/
             playwright-results.json
-          retention-days: 14
+          retention-days: 7
 
       - name: Stop the preview server (always)
         if: always()
