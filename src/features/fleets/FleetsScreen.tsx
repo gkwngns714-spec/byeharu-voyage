@@ -10,7 +10,6 @@ import {
   PageHeader,
   Screen,
   SectionLabel,
-  TABLE_SCROLL_HINT,
   TD,
   TH,
   Table,
@@ -122,7 +121,14 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
       <PageHeader
         eyebrow="Assets"
         title="Fleets"
-        explain="What you own, and the state it is in. Endurance is in voyage-days; one voyage-day is three real minutes."
+        /* THE UNITS ARE GLOSSED HERE, ONCE. The owner, 2026-08-22: "i want common words, stores?
+           t? kn? what is theses." Three abbreviations carry most of this game's figures and
+           nothing on any screen said what they were. This is the screen where all three appear
+           together, so the glossary lives behind its dot rather than as a fourth footnote per
+           panel. NOTE FOR WHOEVER OWNS src/lib/format: the real fix is that `formatVoyageDays`
+           prints "15.0 d" while `formatDucats` prints "8,000 d." — the same letter for two units.
+           A gloss cannot repair that; one authority spelling them out can. */
+        explain="What you own, and the state it is in. t is a TUN — one cask of cargo room. kn is KNOTS, sea miles an hour. A figure in d is a voyage-day, and one voyage-day is three real minutes."
         actions={
           <>
             <span className="font-mono text-xs text-ink-faint">
@@ -138,16 +144,20 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
         <Card>
           <CardHeader eyebrow="Roster" title="No fleets" />
           <p className="text-sm text-ink-muted">
-            The house owns nothing that floats. That is a world state, not an error.
+            The house owns nothing that floats. Not an error — a state.
           </p>
         </Card>
       ) : (
         <Card>
+          {/* THE ENDURANCE SENTENCE WAS WRITTEN TWICE — here and on the PageHeader eight lines up,
+              word for word. Two dots on one screen opening the same sentence is two authorities
+              for it (docs/NO_SPAGHETTI.md §1); the header keeps it, because it is true of the
+              whole screen, and this card explains only what is its own. */}
           <CardHeader
             eyebrow="Roster"
             title="All fleets"
             subtitle="Tap a fleet to command it."
-            explain="Speed and endurance are the server's own figures — the ones SAIL refuses on. Endurance is in voyage-days; one voyage-day is three real minutes."
+            explain="Speed and endurance are the server's own figures — the ones SAIL refuses on."
           />
 
           {/* ── THE ROSTER, TWICE ──────────────────────────────────────────────────────────────
@@ -275,8 +285,7 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
           Read {formatRealShort(Math.max(0, nowMs - readAt))} ago
           {mode ? ` · ${mode}` : ''}
           <Explain label="how fresh this is" dotClassName="ml-0.5">
-            A read is the catch-up: nothing on this screen ticks, so reading again is what settles a
-            voyage and brings a fleet in.
+            Nothing here ticks. Reading again is what settles a voyage and brings a fleet in.
           </Explain>
         </p>
       )}
@@ -348,11 +357,10 @@ function FleetDetail({
             Ships
             <Explain label="Ships" dotClassName="ml-0.5">
               Speed is a FLEET figure — {formatKnots(fleet.speed_kn)}, the slowest hull with the
-              formation penalty already in it. The server does not report a per-hull speed, so this
-              table does not print one.
+              formation penalty in it. The server reports no per-hull speed, so no column prints one.
             </Explain>
           </SectionLabel>
-          <Table className={scrollTableClass()}>
+          <Table scrollHint className={scrollTableClass()}>
             <thead>
               <tr>
                 <TH>Ship</TH>
@@ -370,7 +378,6 @@ function FleetDetail({
               ))}
             </tbody>
           </Table>
-          <p className={fineClass('mt-1')}>{TABLE_SCROLL_HINT}</p>
         </div>
 
         <div>
@@ -431,8 +438,10 @@ function FleetDetail({
         </div>
 
         <div>
+          {/* "Stores and hands" is a sailor's phrase, not a common one — the owner named exactly
+              this class of word. Supplies and crew say the same thing to anybody. */}
           <SectionLabel>
-            Stores and hands
+            Supplies and crew
             {/* THIS USED TO SAY "Officers arrive with V1 (C.6): at V0 every expertise coefficient
                 is 1.00". Migration 0017 made that false — a quartermaster now stretches the hold
                 and a purser shaves the spread — and a hold figure that had quietly grown while the
@@ -440,28 +449,49 @@ function FleetDetail({
                 supposed to end. `officer_pct` is the SERVER's own reading of what this fleet's
                 officers are worth (already summed within the specialty and clamped at the world
                 cap), so this sentence cannot drift from the number above it again. */}
-            <Explain label="Stores and hands" dotClassName="ml-0.5">
+            <Explain label="Supplies and crew" dotClassName="ml-0.5">
               Stores share the hold with the cargo.{' '}
               {fleet.officer_pct.QUARTERMASTER > 0
                 ? `Her quartermasters stow ${formatPctPoints(fleet.officer_pct.QUARTERMASTER)} more into the same hulls, and the hold figure below already carries it.`
                 : 'No quartermaster is posted to her, so the hold is what the shipwright built.'}
             </Explain>
           </SectionLabel>
-          <p className="font-mono text-xs text-ink-muted">
-            water {formatTuns(stores.waterT, 1)} · food {formatTuns(stores.foodT, 1)} ·{' '}
-            {formatVoyageDays(fleet.endurance_days)} of range · {formatInt(crew.aboard)} hands (
-            {formatInt(crew.required)} needed, {formatInt(crew.max)} berths) · burns{' '}
-            {formatTuns(crew.aboard * (config.water_per_crew_day + config.food_per_crew_day), 2)} and{' '}
-            {formatDucats(crew.aboard * config.wage_per_crew_day)} a voyage-day.
-          </p>
-          {/* `free_hold` is not `total − used`, and printing it as though it were is what the
-              deleted client copies did. It is the SERVER's `public.fleet_free_hold` (0017:183),
-              which clamps per hull — a fleet with one over-stowed hull has less room than the
-              subtraction suggests, and this line says the number a BUY will actually obey. */}
-          <p className={fineClass('mt-1')}>
-            hold {formatTuns(fleetHoldUsed(fleet), 1)} / {formatTuns(fleetHoldTotal(fleet))} ·{' '}
-            {formatTuns(fleet.free_hold, 1)} free.
-          </p>
+          {/* ═══════════════════════════════════════════════════════════════════════════════════
+              SIX FACTS IN ONE SENTENCE BECAME SIX LABELLED ROWS.
+              ═══════════════════════════════════════════════════════════════════════════════════
+              This was one run-on mono paragraph — "water 3.5 t · food 0.2 t · 15.0 d of range · 8
+              hands (6 needed, 20 berths) · burns 0.42 and 8 d. a voyage-day." — with the hold on a
+              second line beneath it. At 390px it wrapped to four lines and no figure could be
+              found without reading the prose around it, which is exactly what
+              docs/UI_DIRECTION.md §4 rule 2 forbids: the number is the hero, tabular and aligned,
+              and the label is the small dim thing beside it.
+
+              Every figure is the same figure it was, from the same reading (`fleetStores`,
+              `fleetCrew`, and the SERVER's `free_hold` — `public.fleet_free_hold`, 0017:183, which
+              clamps per hull, so it is NOT `total − used` and is never printed as though it were).
+              The grid is the roster's own two-column recipe, ten lines above. */}
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-xs">
+            <dt className="text-ink-faint">water</dt>
+            <dd className="text-ink">{formatTuns(stores.waterT, 1)}</dd>
+            <dt className="text-ink-faint">food</dt>
+            <dd className="text-ink">{formatTuns(stores.foodT, 1)}</dd>
+            <dt className="text-ink-faint">range</dt>
+            <dd className="text-ink">{formatVoyageDays(fleet.endurance_days)}</dd>
+            <dt className="text-ink-faint">hands</dt>
+            <dd className="text-ink">
+              {formatInt(crew.aboard)}/{formatInt(crew.max)} · {formatInt(crew.required)} needed
+            </dd>
+            <dt className="text-ink-faint">hold</dt>
+            <dd className="text-ink">
+              {formatTuns(fleetHoldUsed(fleet), 1)}/{formatTuns(fleetHoldTotal(fleet))} ·{' '}
+              {formatTuns(fleet.free_hold, 1)} free
+            </dd>
+            <dt className="text-ink-faint">a day</dt>
+            <dd className="text-ink">
+              {formatTuns(crew.aboard * (config.water_per_crew_day + config.food_per_crew_day), 2)}{' '}
+              · {formatDucats(crew.aboard * config.wage_per_crew_day)}
+            </dd>
+          </dl>
         </div>
 
       </div>

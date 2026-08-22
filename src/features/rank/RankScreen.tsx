@@ -112,7 +112,12 @@ function RankBody() {
       <PageHeader
         eyebrow="Standings"
         title="Rank"
-        explain="Your own record, kept by the game and worked out fresh from your ledger every time you look. There is no table of captains yet — the game does not keep one, and no other house's figures are shown to you."
+        /* THE "no table of captains" SENTENCE WAS WRITTEN TWICE — here, behind a dot, and again in
+           full in the card at the foot of the screen. One disclosure, two authorities
+           (docs/NO_SPAGHETTI.md §1). The CARD keeps it, because a limitation the player must not
+           mistake for a failed read has to be PRINTED, not folded; the header explains only where
+           the figures come from. */
+        explain="Your own record, worked out fresh from your ledger every time you look."
         actions={<ReadAgain />}
       />
 
@@ -131,14 +136,14 @@ function RankBody() {
           <StatRow
             label="Purse"
             value={ducats === null ? '—' : formatDucats(ducats)}
-            hint="The game's own figure, checked against your ledger every time it is read. It is where a standing by wealth would start."
+            hint="The game's own figure, checked against your ledger every time it is read."
           />
           <StatRow
             label="Fleets"
             value={`${fleetCount === null ? '—' : formatInt(fleetCount)} / ${config ? formatInt(config.fleet_max) : '—'}`}
             /* `fleet_max` was named here by its config key — provenance for a developer, and to a
                captain a word from nowhere. What they need is what the second figure MEANS. */
-            hint="The second figure is the same for every house in the world. It is a limit, not a rank, and nothing you do raises it."
+            hint="The second figure is the same for every house. It is a limit, not a rank, and nothing you do raises it."
           />
           <StatRow
             label="Ships"
@@ -164,20 +169,24 @@ function RankBody() {
         )}
       </Card>
 
-      <Card head={<CardHeader flush title="Fame" />}>
-        {/* The provenance a player needs is "it is re-read from your ledger, not banked" — which
-            is why the figure can never quietly disagree with the record. The migration that made
-            it so was named here as "(0014)"; that is a fact about this repository, not about the
-            game, and docs/UI_DIRECTION.md §4 rule 4 keeps it off the screen. */}
-        <p className="mb-3 text-xs text-ink-muted">
-          Counted from your whole ledger every time you open this screen — never a running total
-          kept aside, so it cannot drift away from what you actually did.
-        </p>
+      {/* THE PROVENANCE MOVED BEHIND THE DOT. "Counted from your whole ledger every time you open
+          this screen — never a running total kept aside…" is a standing rule about how the figures
+          are made, which is the exact thing docs/UI_DIRECTION.md §4 rule 4 folds. It was a printed
+          paragraph sitting between the card's title and the five numbers it introduces. */}
+      <Card
+        head={
+          <CardHeader
+            flush
+            title="Fame"
+            explain="Counted from your whole ledger every time you open this screen — never a running total kept aside, so it cannot drift from what you actually did."
+          />
+        }
+      >
         <dl className="space-y-2">
           <StatRow
             label="Trade fame"
             value={fame ? formatInt(fame.trade) : '—'}
-            hint="One point per 100 ducats TURNED OVER on a purchase or a sale. Turnover, not profit: the profit is already the purse, and paying fame for it too would score one thing twice."
+            hint="One point per 100 ducats TURNED OVER on a buy or a sale. Turnover, not profit — the profit is already the purse, and scoring it twice would count one thing twice."
           />
           <StatRow
             label="Exploration fame"
@@ -196,9 +205,8 @@ function RankBody() {
           which four pieces of server work would build one; that list is in this file's header. */}
       <Card head={<CardHeader flush title="The table of captains" />}>
         <Notice tone="neutral" className="text-xs">
-          No table of captains exists yet, and nothing here has failed to load. Other captains keep
-          their own books and none of their figures are shown to you, so there is nobody to place
-          you against. What you can read is above, and it is your whole record.
+          None exists yet — nothing here failed to load. No other house&rsquo;s figures are shown
+          to you, so there is nobody to place you against.
         </Notice>
       </Card>
     </Screen>

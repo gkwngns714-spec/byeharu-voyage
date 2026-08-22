@@ -1288,7 +1288,7 @@ shipyard discount.
 | **Legs** | 22 authored legs connecting them, distances from §B.3. |
 | **Goods** | 12: sal, vinho, azeite, cortiça, trigo, lã, cobre, ferro, açúcar, couro, tâmaras, coral. |
 | **Ships** | 3 classes: Barca, Caravela latina, Nau. |
-| **Fleets** | 2 fleets, 4 ships max. |
+| **Fleets** | 2 fleets, **8 ships max** (owner, 2026-08-22: *"This game fleet will be comprised with 8 ships"*). Was 4; §C.4 had always said a fleet is 1-8 hulls, and B.3's formation penalty already had a band for 7+ that no fleet could ever reach. Raised and ENFORCED in 0021 — before it, all three caps were captions no rule read. |
 | **Hazards** | `STORM`, `CALM`, `PIRATES`, `SHORT_RATIONS`. Full report prose. |
 | **Economy** | Full §G formula: affinity, stock, elasticity, drift, spread, tax, price impact, daily cap. |
 | **Time** | Full §D: compression 480, closed-form movement, `settle()` catch-up, `tick_arrivals`, `tick_market_drift`. |

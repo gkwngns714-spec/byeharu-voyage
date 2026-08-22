@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Badge, Button, buttonClasses, categoryLabel, fineClass, goodIcon, Icon, Meter, PriceIndex } from '../../components/ui'
-import { formatDucats, formatInt, formatNm, formatTuns, formatUnitPrice } from '../../lib/format'
+import { formatInt, formatNm, formatTuns, formatUnitPrice } from '../../lib/format'
 // `haversineNm` is deliberately NOT imported any more: the only thing this file used it for was a
 // destination's distance, and that number belongs to the server's leg (see PortPicker's header).
 import type { MarketGood, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
@@ -22,8 +22,23 @@ import type { QtyBound } from './fleetLimits'
 // the screen says how many more the filter is hiding. A scroll box would have hidden them too, and
 // less honestly.
 
-/** How many rows a list may render before it starts asking the player to narrow the filter. */
-const MAX_ROWS = 12
+/**
+ * How many PORTS a list may render before it starts asking the player to narrow the filter.
+ *
+ * IT IS NOT A GENERAL LIST LENGTH, AND IT USED TO BE. The same twelve capped the goods list too,
+ * which meant a market of 68 tradeable goods offered twelve and printed "56 more — narrow the
+ * filter" — the owner, 2026-08-22: *"When buy, i want all the trade goods on left side."* Twelve of
+ * sixty-eight is not all of them.
+ *
+ * The two lists are not the same question and that is why they no longer share an answer:
+ *   · PORTS are the whole world — 214 today and 996 in an earlier chain — and no sort can put the
+ *     one you mean near the top, so the FILTER is the way in and a cap is honest about that.
+ *   · GOODS are one port's book. It is bounded by what this harbour actually trades, and the list
+ *     is already sorted by the server's own `advice`, so the rows worth buying are at the top and
+ *     the rest is the tail of a catalogue rather than a haystack. GoodPicker therefore renders
+ *     every row it has, and keeps the filter for reaching one by name.
+ */
+const MAX_PORT_ROWS = 12
 
 function PickerRow({
   onClick,
@@ -182,7 +197,7 @@ export function PortPicker({
       )
   }, [ports, legs, origin, filter])
 
-  const shown = rows.slice(0, MAX_ROWS)
+  const shown = rows.slice(0, MAX_PORT_ROWS)
   const routed = shown.some((r) => r.nm === null)
 
   return (
@@ -264,11 +279,21 @@ export function GoodPicker({
       })
   }, [goods, filter, aboard, intent])
 
-  const shown = rows.slice(0, MAX_ROWS)
+  // EVERY GOOD THIS PORT TRADES, not a page of them — see MAX_PORT_ROWS for why the ports list
+  // still caps and this one does not. The count rides above the list so the length is a stated
+  // fact rather than a surprise, and the filter is still the way to one row by name.
+  const shown = rows
 
   return (
     <div className="space-y-2">
       <FilterBox value={filter} onChange={setFilter} label="Filter goods by name or kind" />
+      {shown.length > 0 && (
+        <p className={fineClass()}>
+          {shown.length} {shown.length === 1 ? 'good' : 'goods'}
+          {aboard ? ' aboard and traded here' : ' traded here'}
+          {filter.trim() ? ' answer to that filter' : ", the quay's own advice first"}
+        </p>
+      )}
       {shown.length === 0 && (
         <p className="text-sm text-ink-muted">
           {aboard
@@ -302,7 +327,6 @@ export function GoodPicker({
           under={<GoodFigures good={g} aboard={aboard ? (aboard[g.code] ?? 0) : undefined} />}
         />
       ))}
-      <TruncationNote hidden={rows.length - shown.length} />
     </div>
   )
 }
@@ -376,21 +400,30 @@ function Figure({ label, title, children }: { label: string; title: string; chil
  * tokens and are read when the order RUNS, not when it is made (F.2) — which is why they are
  * offered beside the slider rather than instead of it: a queued `SELL cloves ALL` sells whatever
  * arrived, and that is usually what a player means.
+ *
+ * ── WHAT THE CAPTION NO LONGER SAYS, 2026-08-22 ────────────────────────────────────────────────
+ * It read `up to 50 t — your purse stops you there (6,916 d. for all of it)`, and it took an
+ * `estTotal` prop to say the money part. MEASURED on the running BUY screen: the same 6,916 d. was
+ * printed 400px away in the fleet rail's THIS ORDER block, under a label, in a column, beside the
+ * price of the first step — the better of the two renderings by some distance. Two renderings of
+ * one fact, so this was the copy to delete (docs/NO_SPAGHETTI.md §5), and the prop went with it
+ * rather than being left unused.
+ *
+ * The ceiling itself stays, because a control should say what stops it and because SELL has no
+ * rail at all: what is aboard is aboard, the client can count it, and nothing else on the screen
+ * says so.
  */
 export function QtyPicker({
   bound,
   step,
   value,
   onPick,
-  estTotal,
 }: {
   bound: QtyBound
   /** `config.trade_step_tuns` — the server reprices every step, so the stepper walks in them. */
   step: number
   value: string | undefined
   onPick: (value: string) => void
-  /** What the server says the MAXIMUM would cost, at the stepped price. Buy side only. */
-  estTotal?: number | null
 }) {
   const numeric = value && /^[0-9]+$/.test(value) ? Number(value) : null
   const max = bound.max
@@ -487,8 +520,7 @@ export function QtyPicker({
 
       <p className={fineClass()}>
         {max > 0
-          ? `up to ${formatTuns(max)} — ${bound.binding} stops you there` +
-            (estTotal ? ` (${formatDucats(estTotal)} for all of it)` : '')
+          ? `up to ${formatTuns(max)} — ${bound.binding} stops you there`
           : `nothing is possible here: ${bound.binding} allows none`}
       </p>
     </div>

@@ -6,7 +6,6 @@ import {
   Screen,
   StatRow,
   PageHeader,
-  SectionLabel,
   fineClass,
 } from '../../components/ui'
 import { useAuthStore } from '../../store/authStore'
@@ -73,11 +72,13 @@ export function ProfileScreen() {
             title="Session"
             explain="Nothing is held anywhere but this browser: no account, no server, no password."
           />
+          {/* FIFTY WORDS SAYING TWO THINGS. Both are kept: there is no account, and the world is
+              in this browser's storage where clearing it ends the house. What went is the third
+              retelling of "so there is nobody to sign in as", which the disabled control and its
+              own reason below already say twice more. */}
           <p className="text-sm text-ink-muted">
-            There is no account on this device. This copy of the game keeps its whole world inside
-            this browser and opens straight onto it, so there is nobody to sign in as. Your house,
-            your purse and your ledger are in this browser&apos;s storage — clearing it is the only
-            thing that ends this session, and it ends the house with it.
+            No account on this device — the whole world lives in this browser. Your house, purse
+            and ledger are in its storage, and clearing it ends them.
           </p>
           <div className="mt-4">
             {/* DISABLED WITH ITS REASON, not hidden (docs/UI_DIRECTION.md §4 rule 5). It was
@@ -87,9 +88,7 @@ export function ProfileScreen() {
             <Button variant="secondary" disabled>
               Sign out
             </Button>
-            <p className={fineClass('mt-1')}>
-              Nothing to sign out of — there is no account behind this world.
-            </p>
+            <p className={fineClass('mt-1')}>No account to sign out of.</p>
           </div>
         </Card>
       ) : (
@@ -130,13 +129,13 @@ export function ProfileScreen() {
             label="Where this world is"
             value={mode ?? '—'}
             plain
-            hint="Local means the whole game — world, prices, your house — is running inside this browser tab and is stored on this device only. Cloud means the shared world every captain plays in, kept on a server. The game picks one when it starts and never changes it."
+            hint="Local: the whole game runs in this browser tab and is stored on this device only. Cloud: the shared world on a server. The game picks one at startup and never changes it."
           />
           <StatRow label="World" value={phase} plain />
           <StatRow
             label="Ports"
             value={snapshot ? formatInt(snapshot.ports.length) : '—'}
-            hint="Every coordinate came from Wikidata and is stored with the item it came from — none was typed by hand."
+            hint="Every coordinate came from Wikidata, stored with the item it came from. None was typed by hand."
           />
           <StatRow
             label="Sea legs"
@@ -184,7 +183,7 @@ export function ProfileScreen() {
                 player.lying_at ? portNameOf(portByCode, player.lying_at) : 'every fleet at sea'
               }
               plain
-              hint="Where her first fleet lies. There is no home port in this game — a port is a place, not a base — so this is reported as what it is."
+              hint="Where her first fleet lies. There is no home port in this game — a port is a place, not a base."
             />
           </dl>
         ) : (
@@ -210,12 +209,20 @@ export function ProfileScreen() {
             · preferences need a per-player settings table before a screen can offer one
             · change-password / delete-account are Supabase auth calls, and in local mode there is
               no account for them to act on (see the session card above) */}
-      <Card head={<CardHeader flush title="Not in the game yet" />}>
-        <p className="mb-3 text-xs text-ink-muted">
-          These are missing because the game does not keep them yet — not because this screen ran
-          out of room for them. They are named here so an empty space is not mistaken for a fault.
-        </p>
-        <SectionLabel>Still to come</SectionLabel>
+      {/* THE LIST IS THE DISCLOSURE; THE PARAGRAPH ABOUT THE LIST WAS NOT. Two sentences explained
+          why the list exists, and a "Still to come" label repeated the card's own title one line
+          under it. The reason is a standing explanation and goes behind the dot
+          (docs/UI_DIRECTION.md §4 rule 4); the label was a second name for the same thing and is
+          deleted. Not one of the three missing things was cut. */}
+      <Card
+        head={
+          <CardHeader
+            flush
+            title="Not in the game yet"
+            explain="These are missing because the game does not keep them yet, not because this screen ran out of room. They are named so an empty space is not mistaken for a fault."
+          />
+        }
+      >
         <ul className="space-y-1 text-sm text-ink-muted">
           <li>· A house&apos;s own colours, and a ladder of titles to climb</li>
           <li>· Your own settings — units, dates, what you are told about</li>

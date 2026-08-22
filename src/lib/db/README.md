@@ -167,7 +167,7 @@ decision to make, not an oversight to fix silently.
 | `companyName` | — | in `public.players`, no RPC reads it. Locally it is always `Casa de Aveiro`. |
 | `nation` | — | in `public.players.nation_id`, not served |
 | `companyLevel` | — | column exists (`company_level`), not served |
-| `maxFleets`, `maxShips` | `worldSnapshot().config.fleet_max` / `.ship_max` | **global knobs, not per-player caps** |
+| `maxFleets`, `maxShips` | `worldSnapshot().config.fleet_max` / `.ship_max` | **PER-HOUSE CAPS, and enforced since 0021.** They were described here as "global knobs, not per-player caps" and that was true in the worst way: THREE knobs (`fleet_max`, `ship_max`, `fleet_ship_max`) were read by nothing at all, while RANK and FLEETS printed them as hard limits. 0021 folded all three onto `public.assert_house_caps()` and put it on the TABLE as a trigger, so whatever adds a hull inherits the cap — a future BUILD verb cannot re-derive it. `ship_max` is now **8**. |
 | `taxRelief`, `reputation`, `reputationLabel` | — | no reputation system in the V0 chain at all |
 
 → A PROFILE/RANK screen cannot be driven by V0 RPCs. It needs a `world.player()` RPC (a migration),

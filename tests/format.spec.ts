@@ -107,7 +107,11 @@ test('durations have a long form and a table-cell form', () => {
 
 test('the two clocks are printed together, because one of them is a lie on its own (D.3)', () => {
   expect(formatTwoClocks(1.567)).toBe('1.6 voyage-days · 4.7 min real')
-  expect(formatVoyageDays(9.44)).toBe('9.4 d')
+  // Pin moved deliberately 2026-08-22: "9.4 d" collided with formatDucats' "8,000 d." — one
+  // letter, two units, side by side on two screens. The word is spelled now.
+  expect(formatVoyageDays(9.44)).toBe('9.4 days')
+  // And the collision itself is now asserted, so it cannot come back quietly.
+  expect(formatVoyageDays(9.44).endsWith(' d')).toBe(false)
 })
 
 test('relative time reads forwards and backwards from a supplied instant', () => {

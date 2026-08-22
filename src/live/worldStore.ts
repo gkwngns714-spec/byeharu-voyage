@@ -51,6 +51,7 @@ import { create } from 'zustand'
 import {
   cmdCancel,
   cmdClear,
+  cmdHaggle,
   cmdHireOfficer,
   cmdIssue,
   cmdPostOfficer,
@@ -69,6 +70,7 @@ import {
 } from '../lib/rpc'
 import type {
   FleetView,
+  HaggleAttempt,
   LedgerEvent,
   MarketView,
   OfficerRoster,
@@ -148,6 +150,15 @@ export interface LiveWorld {
   hireOfficer: (code: string, fleetId: string | null) => Promise<boolean>
   postOfficer: (code: string, fleetId: string | null) => Promise<boolean>
   studySkill: (code: string, fleetId: string) => Promise<boolean>
+
+  /** ONE attempt at a bargain (0022). Returns the attempt — WON OR LOST, both of which are `ok` —
+   *  or null when the server refused. Attempts are finite and a lost one is spent, so a caller may
+   *  never retry on the player's behalf. */
+  haggle: (
+    fleetId: string,
+    goodId: string,
+    side: 'buy' | 'sell',
+  ) => Promise<HaggleAttempt | null>
 
   /** Issue an order. The string is the whole contract (F.4) — the tap-builder composes the same
    *  string a keyboard would. Refreshes on success so the queue and purse are never stale. */
@@ -347,6 +358,30 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     set({ refusal: null })
     await Promise.all([get().loadSkills(), get().refresh()])
     return true
+  },
+
+  // ONE ATTEMPT AT A BARGAIN (0022). A WRITE, so it lives here rather than in a read hook.
+  //
+  // IT RETURNS THE ATTEMPT, WON OR LOST, and the caller renders the server's own `message`. A lost
+  // haggle is NOT a refusal — the factor heard you and said no, which is the game working — so it
+  // comes back `ok:true, won:false` and must never be dressed as an error. A real refusal
+  // (E_NOT_DOCKED, E_NO_STOCK, E_NO_CARGO, E_HAGGLE_SPENT) arrives through the usual `refusal`
+  // channel, in the server's own words and with the server's own fixes.
+  //
+  // A WON BARGAIN CHANGES WHAT A TRADE COSTS, so the world is read back: `refresh()` bumps `readAt`,
+  // which is what `useBuyCapacity` and `useHaggleState` key on, so the ceiling and the estimate are
+  // re-asked at the new spread rather than standing stale. THE MARKET IS DELIBERATELY NOT RE-READ:
+  // the port's PUBLISHED price has not moved, and 0022 refused to make it move for exactly this
+  // reason — a bargain is a better fill inside the port's cut, not a different world.
+  haggle: async (fleetId, goodId, side) => {
+    const r = await cmdHaggle(fleetId, goodId, side)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return null
+    }
+    set({ refusal: null })
+    await get().refresh()
+    return r.value
   },
 
   issue: async (fleetId, text) => {

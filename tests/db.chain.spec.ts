@@ -35,7 +35,7 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // speak to a captain, not to a schema): the read that ranks reachable ports by what a trade would
 // be worth, the three folds it needed first — voyage.reach_from, voyage.sail_refusal, and one %NBR
 // walk per good instead of four — and the verb help text the Command tab now prints to players.
-const LAST = '20260818000020_the_verbs_speak_to_a_captain_not_to_a_schema.sql'
+const LAST = '20260818000024_a_bargain_worth_striking.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
@@ -258,5 +258,5 @@ test('progress never goes backwards and never claims done before it is', () => {
 })
 
 test('a migration filename reads as a sentence', () => {
-  expect(humanMigration(LAST)).toBe('the verbs speak to a captain not to a schema')
+  expect(humanMigration(LAST)).toBe('a bargain worth striking')
 })

@@ -55,5 +55,10 @@ test('the sticky column paints the surface it sits on, or the columns show throu
 })
 
 test('there is ONE wording for "there is more to the right"', () => {
-  expect(TABLE_SCROLL_HINT).toBe('Swipe the table sideways for the rest of the columns.')
+  // Pin moved deliberately 2026-08-22 with the wordiness pass ("this is a game, make it so").
+  // The words are shorter and, more to the point, WHEN they appear is no longer the caller's
+  // choice: `<Table scrollHint>` measures its own overflow (Table.tsx) so the line is absent under
+  // a table that fits. PORT's Alongside face printed it under a five-column table with room to
+  // spare, which is a hint that is false.
+  expect(TABLE_SCROLL_HINT).toBe('Swipe the table for the rest.')
 })

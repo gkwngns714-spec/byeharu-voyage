@@ -82,6 +82,85 @@ declare
   k        int;
   r_out    record;
 begin
+  -- ── THE PRECONDITION THIS PROOF OWNS, ADDED 2026-08-23 ───────────────────────────────────────
+  -- This file was a LOTTERY, and it lost roughly one run in three.
+  --
+  -- `public.tick_market_drift` (0010:107) moves every price by `random()`, DELIBERATELY — its own
+  -- comment says "the market is deliberately NOT deterministic, unlike the hazard rolls; a market
+  -- a player could replay would be a market a player could front-run." The chain's own self-asserts
+  -- call it while applying, so EVERY `db:apply` builds a different market. Proof 5 survives that
+  -- because it pools eight ports and asserts a band. This one cannot: it needs ONE specific thing
+  -- to exist — a cargo out of Lisboa that a port one leg away pays more for, AND a return cargo
+  -- Lisboa pays more for — and on an unlucky draw there is no such round trip, and it failed at
+  -- 0:20 with "not one destination sells anything Lisboa pays more for". That is the world being
+  -- unlucky, not the game being broken, and a proof that reddens on a correct system stops gating
+  -- anything the third time somebody scrolls past it.
+  --
+  -- THE FIRST FIX WAS WRONG AND IS RECORDED SO NOBODY REPEATS IT: pinning drift to ZERO made the
+  -- file deterministic and deterministically RED. Measured — the quay names 36 routes out of
+  -- Lisboa on a drifted market and only 20 on a flat one. The noise is where much of the arbitrage
+  -- lives, so deleting it does not give you "the economy without noise", it gives you an economy
+  -- with less trade in it than the game ever has.
+  --
+  -- SO THE DRIFT IS REPLACED, NOT REMOVED. Each row is redrawn from the SAME distribution the real
+  -- process settles into — the OU stationary law, N(0, sigma / sqrt(1 - theta^2)), clamped exactly
+  -- as 0010 clamps it — using Box-Muller over `voyage.rng_raw`, which is IMMUTABLE and takes its
+  -- seed as an argument (0006:113). The market this proof plays is therefore a REPRESENTATIVE
+  -- drifted market and the same one on every run and every machine. Both knobs are read, never
+  -- retyped, so retuning the economy retunes this fixture with it.
+  --
+  -- THE KEY IS THE AUTHORED CODE, NOT THE ROW ID, AND THAT IS THE WHOLE TRICK. The first version
+  -- keyed the draw on `pg.port_id || pg.good_id` and was still different on every run, because
+  -- migration 0003 seeds ports and goods with `gen_random_uuid()` — the ids are not stable across
+  -- applies, so a hash of them is not a fixture, it is another random number wearing a seed's
+  -- clothes. `ports.code` and `goods.code` ARE authored and stable ('LIS', 'silver'), so the draw
+  -- keyed on them is the same market on every run and on every machine.
+  update public.port_goods pg
+     set drift = greatest(-public.wc_num('drift_clamp'),
+                   least(public.wc_num('drift_clamp'),
+                     round(((public.wc_num('drift_sigma')
+                            / sqrt(1 - power(public.wc_num('drift_theta'), 2)))
+                           * sqrt(-2 * ln(greatest(voyage.rng_raw('00000000-0f04-4000-8000-0000000000dd'::uuid, 0, 'p4u1:' || p.code || ':' || g.code, 'proof-4-fixture'), 1e-12)))
+                           * cos(2 * pi() * voyage.rng_raw('00000000-0f04-4000-8000-0000000000dd'::uuid, 1, 'p4u2:' || p.code || ':' || g.code, 'proof-4-fixture')))::numeric,
+                           6)))
+    from public.ports p, public.goods g
+   where p.id = pg.port_id and g.id = pg.good_id;
+  -- The fixture must assert its own effect, or it can silently stop modelling anything: a spread
+  -- of real values, not all-zero and not all-clamped.
+  select count(*) into v_refused_seq from public.port_goods where drift <> 0;
+  if v_refused_seq < 14000
+     or (select count(distinct drift) from public.port_goods) < 1000 then
+    raise exception 'PROOF 4 FAILED: the deterministic drift fixture produced % non-zero row(s) and % distinct value(s); it has stopped modelling a drifted market',
+      v_refused_seq, (select count(distinct drift) from public.port_goods);
+  end if;
+  v_refused_seq := 0;
+
+  -- AND THE OTHER TWO AMBIENT INPUTS THIS FILE DOES NOT OWN. Pinning the drift alone left it
+  -- passing four runs in five, which is not passing. Measured, the other two:
+  --
+  --   STOCK. `tick_market_drift` also regenerates stock toward stock_target as a function of
+  --   world.game_day(now()), so how full a port is depends on the wall clock at apply time. That
+  --   moves every price through the elasticity term AND decides whether the queued return cargo
+  --   can fill at all — run 6 of 8 failed at 11:00 with "1 pending and 1 failed order" because it
+  --   could not. Pinned to stock_target: the equilibrium the regeneration pulls toward, which is a
+  --   defined state of the world rather than an arbitrary one.
+  --
+  --   HAZARDS. voyage.rng is keyed on the voyage id, which is a gen_random_uuid(), so the weather
+  --   is different every run. At hazard_p_max = 0.06 a day, a seven-day crossing meets something
+  --   about a third of the time, and a hazard that strands the fleet halts the queue — which is
+  --   the halt rule WORKING, and incompatible with a proof whose claim is "the queue completes".
+  --   Set to zero here. This file is about the SCRIPT of §K.1, not about the weather; the danger
+  --   table has its own coverage and this proof never asserted anything about it.
+  --
+  -- All three are set inside the transaction scripts/db/proof.mjs rolls back, and every one of
+  -- them is read back below, because a fixture that silently stops applying is worse than none.
+  update public.port_goods set stock = stock_target, last_regen_day = world.game_day();
+  update public.world_config set value = to_jsonb(0) where key = 'hazard_p_max';
+  if (select count(*) from public.port_goods where stock <> stock_target) <> 0
+     or public.wc_num('hazard_p_max') <> 0 then
+    raise exception 'PROOF 4 FAILED: the stock/hazard preconditions did not take, so this file is back to playing whatever the clock dealt it';
+  end if;
+
   select id into v_lis from public.ports where code = 'LIS';
 
   -- ── 0:00

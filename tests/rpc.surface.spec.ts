@@ -20,6 +20,7 @@ import {
   cmdCancel,
   cmdClear,
   cmdFoundHouse,
+  cmdHaggle,
   cmdIssue,
   cmdPreview,
   cmdVerbSchema,
@@ -31,6 +32,7 @@ import {
   rpcLabel,
   setBackend,
   worldFleets,
+  worldHaggleState,
   worldLedger,
   worldMarket,
   worldSnapshot,
@@ -359,6 +361,167 @@ test('the other refusal shapes are the same shape', async () => {
   expect(notMine.refusal.code).toBe('E_NO_SUCH_FLEET')
 })
 
+// ── the bargain (migration 0022) ───────────────────────────────────────────────────────────────
+//
+// THESE TWO RUN BEFORE THE FLEET GOES TO SEA, and they say so rather than relying on it: a bargain
+// is struck on the quay, so DOCKED is a precondition, and a precondition a proof does not own is
+// the class of bug docs/NO_SPAGHETTI.md §4 exists to stop.
+//
+// THE OUTCOME IS FORCED, NOT WISHED FOR. `cmd.haggle` rolls `voyage.rng` against odds seeded from
+// the world secret, so a proof that simply haggled and hoped would pass ~73% of the time and would
+// be exactly the "probe picked its subject by lottery" defect 0010 and 0014 both shipped once. So
+// the knobs are set to 0 for a certain refusal and to 1 for a certain win, inside the test, and put
+// back afterwards. What is proven is then the RULE, at both ends, every run.
+
+test('world.haggle_state() answers "how much negotiation can be done", in the server\'s own numbers', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  expect(fleet.status).toBe('DOCKED') // the precondition this test owns, stated
+  const port = expectOk(await worldSnapshot()).ports.find((p) => p.code === fleet.port)!
+  const market = expectOk(await worldMarket(port.id))
+  // A DETERMINISTIC SUBJECT: the first tradeable good with stock, by code. Never `limit 1` on
+  // whatever the heap hands back.
+  const good = market.goods
+    .filter((g) => g.available && g.stock > 0)
+    .sort((a, b) => a.code.localeCompare(b.code))[0]
+  expect(good).toBeDefined()
+
+  const state = expectOk(await worldHaggleState(fleet.id, good.good_id))
+  expect(state.docked).toBe(true)
+  if (!state.docked) throw new Error('unreachable')
+
+  // Every field src/lib/rpc/types.ts declares, read back out of a payload a real PostgreSQL made.
+  expect(state.port).toBe(port.code)
+  expect(state.good).toBe(good.code)
+  expect(isNum(state.game_day)).toBe(true)
+  expect(state.attempts_used).toBe(0)
+  expect(state.attempts_left).toBe(state.attempts_max)
+  expect(state.attempts_max).toBeGreaterThan(0)
+  expect(state.wins).toBe(0)
+  expect(state.concession).toBe(0)
+  expect(state.concession_pct).toBe(0)
+  expect(state.concession_max).toBeGreaterThan(0)
+  expect(state.concession_max_pct).toBeCloseTo(state.concession_max * 100, 6)
+  expect(state.step_pct).toBeGreaterThan(0)
+  // THE ODDS SHOWN ARE THE ODDS ROLLED. `haggle_odds` is read by BOTH this and cmd.haggle, so a
+  // panel drawn from this read cannot promise what the verb will not do — assert the range and
+  // the pct/fraction agreement rather than a seeded value.
+  expect(state.next_odds).toBeGreaterThan(0)
+  expect(state.next_odds).toBeLessThanOrEqual(1)
+  expect(state.next_odds_pct).toBeCloseTo(state.next_odds * 100, 1)
+  // With no bargain struck and no purser posted, the executed spread IS the published one.
+  expect(state.spread_published).toBeGreaterThan(0)
+  expect(state.spread_effective).toBeCloseTo(state.spread_published, 6)
+  expect(state.spread_floor).toBeLessThan(state.spread_published)
+  expect(state.at_floor).toBe(false)
+  expect(isStr(state.spent_on)).toBe(true)
+
+  // A FLEET THAT IS NOT YOURS IS A REFUSAL, not a disclosure.
+  const notMine = await worldHaggleState('00000000-0000-4000-8000-0000000000ff', good.good_id)
+  expect(notMine.ok).toBe(false)
+  if (notMine.ok) throw new Error('unreachable')
+  expect(notMine.refusal.code).toBe('E_NOT_YOURS')
+})
+
+test('cmd.haggle() spends an attempt whether it wins or loses, and a win really moves the price', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  expect(fleet.status).toBe('DOCKED')
+  const port = expectOk(await worldSnapshot()).ports.find((p) => p.code === fleet.port)!
+  const market = expectOk(await worldMarket(port.id))
+  const good = market.goods
+    .filter((g) => g.available && g.stock > 0)
+    .sort((a, b) => a.code.localeCompare(b.code))[0]
+
+  // THE KNOBS THIS TEST OWNS WHILE IT RUNS. `haggle_odds` is
+  // `(base + skill) × (1 − hardening × fails)`, clamped by `success_max` — so forcing an outcome
+  // means setting THREE knobs, not one, and the hardening term is exactly the thing that made the
+  // first draft of this test pass a forced win at 0.75 odds and fail on the roll.
+  const knob = async (key: string, v: number) =>
+    db.pg.query('update public.world_config set value = $1::jsonb where key = $2', [String(v), key])
+  const before = expectOk(await worldHaggleState(fleet.id, good.good_id))
+  if (!before.docked) throw new Error('unreachable')
+
+  // WHAT TEN TUNS COST BEFORE ANY BARGAIN — the real quote, through the verb itself, rolled back.
+  const quoted = (r: Awaited<ReturnType<typeof cmdPreview>>) => Number(expectOk(r).estimate!.total)
+  const totalPlain = quoted(await cmdPreview(fleet.id, `BUY ${good.code} 10`))
+  expect(totalPlain).toBeGreaterThan(0)
+
+  try {
+    // ── A CERTAIN REFUSAL. It still costs an attempt: 0022 writes the attempt and increments the
+    //    count BEFORE it rolls, which is what makes save-scumming structurally impossible.
+    await knob('haggle_base_success', 0)
+    await knob('haggle_success_max', 0)
+    const lost = expectOk(await cmdHaggle(fleet.id, good.good_id, 'buy'))
+    expect(lost.ok).toBe(true)
+    expect(lost.won).toBe(false)
+    expect(lost.attempt).toBe(1)
+    expect(lost.attempts_left).toBe(lost.attempts_max - 1)
+    expect(lost.concession).toBe(0)
+    expect(lost.good).toBe(good.code)
+    expect(lost.side).toBe('buy')
+    expect(isStr(lost.message)).toBe(true)
+    expect(lost.spread_effective).toBeCloseTo(lost.spread_published, 6)
+    // The count the panel prints is the server's, and it moved.
+    const afterLoss = expectOk(await worldHaggleState(fleet.id, good.good_id))
+    if (!afterLoss.docked) throw new Error('unreachable')
+    expect(afterLoss.attempts_used).toBe(1)
+    expect(afterLoss.wins).toBe(0)
+    // …and it moved no money.
+    expect(quoted(await cmdPreview(fleet.id, `BUY ${good.code} 10`))).toBe(totalPlain)
+
+    // ── A REFUSAL HARDENS THE NEXT ATTEMPT, and that is asserted AT THE SHIPPED KNOBS.
+    // The first draft compared the odds while `haggle_base_success` was still forced to 0, which
+    // proved only that this test had turned a knob down. Put the base back and the hardening term
+    // is the only thing left that can have moved the number: one refusal multiplies the odds by
+    // (1 - haggle_hardening_per_fail), and the read must show it BEFORE a try is spent on it.
+    await knob('haggle_base_success', 0.45)
+    await knob('haggle_success_max', 0.85)
+    const hardened = expectOk(await worldHaggleState(fleet.id, good.good_id))
+    if (!hardened.docked) throw new Error('unreachable')
+    expect(hardened.next_odds).toBeLessThan(before.next_odds)
+    const perFail = await db.pg.query<{ v: number }>(
+      "select public.wc_num('haggle_hardening_per_fail')::float8 as v",
+    )
+    expect(hardened.next_odds).toBeCloseTo(before.next_odds * (1 - perFail.rows[0].v), 4)
+
+    // ── A CERTAIN WIN, and the price has to actually move. The hardening goes to 0 as well: with
+    //    one refusal already taken, odds of 1 would still only be 0.75 and the roll could beat it.
+    await knob('haggle_base_success', 1)
+    await knob('haggle_success_max', 1)
+    await knob('haggle_hardening_per_fail', 0)
+    const won = expectOk(await cmdHaggle(fleet.id, good.good_id, 'buy'))
+    expect(won.won).toBe(true)
+    expect(won.attempt).toBe(2)
+    expect(won.attempts_left).toBe(won.attempts_max - 2)
+    expect(won.concession).toBeGreaterThan(0)
+    expect(won.concession_pct).toBeCloseTo(won.concession * 100, 1)
+    // THE COMPOSITION RULE, checked rather than trusted: with no purser posted the executed spread
+    // is the published one less the concession, MULTIPLICATIVELY (0022 decision 5).
+    expect(won.spread_effective).toBeCloseTo(won.spread_published * (1 - won.concession), 5)
+    expect(won.spread_effective).toBeLessThan(won.spread_published)
+
+    // AND THE MONEY. The same ten tuns, through the same verb, cost less than they did.
+    const totalHaggled = quoted(await cmdPreview(fleet.id, `BUY ${good.code} 10`))
+    expect(totalHaggled).toBeLessThan(totalPlain)
+
+    // ── FINITE. The third attempt is allowed; the fourth is refused, in the server's words.
+    expectOk(await cmdHaggle(fleet.id, good.good_id, 'buy'))
+    const spent = await cmdHaggle(fleet.id, good.good_id, 'buy')
+    expect(spent.ok).toBe(false)
+    if (spent.ok) throw new Error('unreachable')
+    expect(spent.refusal.code).toBe('E_HAGGLE_SPENT')
+    expect(spent.refusal.source).toBe('server')
+    expect(spent.refusal.fixes.length).toBeGreaterThanOrEqual(1)
+  } finally {
+    // The knobs go back whatever happened, so a failure here cannot poison the tests after it.
+    // The values are 0022's own seeds; the day they are retuned this restore is what goes stale,
+    // which is why it sits beside the migration's name rather than in a helper somewhere else.
+    await knob('haggle_base_success', 0.45)
+    await knob('haggle_success_max', 0.85)
+    await knob('haggle_hardening_per_fail', 0.25)
+    await db.pg.query('delete from public.haggle_daily')
+  }
+})
+
 test('cmd.issue() / cmd.cancel_at() / cmd.clear() return the queue and the new version', async () => {
   const fleet = expectOk(await worldFleets())[0]
 
@@ -463,6 +626,15 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // the same property that makes cmd.found_house safe for a browser to hold.
       'worldPriceHistory', 'worldPlayer', 'worldOfficers', 'worldSkills',
       'cmdHireOfficer', 'cmdPostOfficer', 'cmdStudySkill',
+      // Pin moved deliberately 2026-08-23 with migration 0022, `a_bargain_is_struck_on_the_quay`:
+      // `world.haggle_state` (the read) and `cmd.haggle` (the verb). They land together because
+      // they are ONE feature, and because 0022 GRANTS EXECUTE to `authenticated` on exactly the
+      // entry points this catalogue names — 0018's sweep reads it BY NAME, so a grant with no row
+      // here is a door nobody opens. That is precisely what 0022 shipped as until this pin moved:
+      // a complete server mechanic with no client at all.
+      // Neither takes a player id; both read `current_player_id()` and refuse a fleet that is not
+      // yours, which is the same property that makes `cmd.found_house` safe for a browser to hold.
+      'worldHaggleState', 'cmdHaggle',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

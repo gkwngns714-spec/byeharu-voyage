@@ -7,13 +7,13 @@ import {
   CardHeader,
   Collapsible,
   DetailRow,
+  Explain,
   Input,
   Notice,
   PageHeader,
   Screen,
   SectionLabel,
   TabRow,
-  TABLE_SCROLL_HINT,
   TD,
   TH,
   Table,
@@ -159,7 +159,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
     return (
       <Screen>
         <PageHeader eyebrow="Harbour" title="Port" subtitle="No harbour to read." />
-        <Notice tone="warning">The world served no ports. Nothing here is a harbour yet.</Notice>
+        <Notice tone="warning">The world served no ports.</Notice>
       </Screen>
     )
   }
@@ -206,14 +206,22 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
           different sentences because they are different situations: a hull alongside somewhere
           else can be sailed here; a hull at sea is committed until she arrives. */}
       {acting && !actingIsHere && (
+        /* IT WAS A <p> INSIDE A <p>. `Notice` renders a paragraph (Notice.tsx:19) and this put a
+           <p> and a <Button> inside it — invalid markup the browser silently reparents, which is
+           why the button sat outside the tint. A <div> with the same tint through `Notice`'s own
+           token is not available to a caller, so the shape changed instead: ONE short line, and
+           the "these are only your factors' figures" disclosure behind the dot where every other
+           standing sentence in this app lives. Nothing was dropped — it got shorter and folded. */
         <Notice tone="warning" className="text-xs">
-          <p>
-            {acting.status === 'SAILING' && acting.voyage
-              ? `${acting.name} is at sea, bound for ${portNameOf(portByCode, acting.voyage.to)} — any order you give her runs THERE. This is only what your factors report from ${port.name}.`
-              : actingPortCode
-                ? `${acting.name} is lying at ${portNameOf(portByCode, actingPortCode)}, not in ${port.name}. This is only what your factors report from here.`
-                : `${acting.name} is not alongside anywhere. This is only what your factors report from ${port.name}.`}
-          </p>
+          {acting.status === 'SAILING' && acting.voyage
+            ? `${acting.name} is at sea, bound for ${portNameOf(portByCode, acting.voyage.to)}. Orders run there.`
+            : actingPortCode
+              ? `${acting.name} lies at ${portNameOf(portByCode, actingPortCode)}. Orders run there.`
+              : `${acting.name} is alongside nowhere.`}
+          <Explain label="reading a harbour you are not in" dotClassName="ml-1">
+            {port.name} is being read from a distance — these are what your factors report, not
+            what you are lying in.
+          </Explain>
           {actingPortCode && (
             <Button variant="secondary" className="mt-2" onClick={() => setPicked(actingPortCode)}>
               Read {portNameOf(portByCode, actingPortCode)} instead
@@ -271,18 +279,16 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                   would have run at Porto. Reading a far harbour is a real thing to want; giving it
                   ORDERS is not, so the reading stays and the actions go. */}
               {!acting ? (
-                <p className="text-sm text-ink-muted">
-                  There is no fleet to give an order to yet.
-                </p>
+                <p className="text-sm text-ink-muted">No fleet to give an order to yet.</p>
               ) : !actingIsHere ? (
                 <p className="text-sm text-ink-muted">
-                  Nothing to do here from where {acting.name} is. The City and Services faces read
-                  this harbour from a distance; her own quay is where her orders are made.
+                  Nothing to order from here — {acting.name} is elsewhere. City and Services still
+                  read this harbour.
                 </p>
               ) : (
                 <>
                   <p className="mb-3 text-xs text-ink-muted">
-                    Tap one to load it onto Command as {acting.name}&apos;s order.
+                    Tap one to send it to Command as {acting.name}&apos;s order.
                   </p>
                   <div className="space-y-4">
                     {/* AN ACTION THAT WOULD BE REFUSED IS NOT OFFERED. HIRE used to be printed
@@ -292,17 +298,17 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                         Both are the same defect as the BUY line below and are gated the same way:
                         the picker never offers what the server would refuse. */}
                     <ActionGroup
-                      label="Stores and hands"
+                      label="Supplies and crew"
                       actions={[
                         {
                           intent: { verb: 'PROVISION', args: { mode: 'FULL' } },
-                          note: `${formatVoyageDays(acting.endurance_days)} of range at present`,
+                          note: `range ${formatVoyageDays(acting.endurance_days)}`,
                         },
                         ...(hireCount(acting, port) > 0
                           ? [
                               {
                                 intent: { verb: 'HIRE', args: { count: String(hireCount(acting, port)) } },
-                                note: `${formatInt(actingCrew?.aboard ?? 0)} of ${formatInt(actingCrew?.max ?? 0)} berths filled · ${formatInt(port.crew_pool)} hands in the pool`,
+                                note: `berths ${formatInt(actingCrew?.aboard ?? 0)}/${formatInt(actingCrew?.max ?? 0)} · pool ${formatInt(port.crew_pool)}`,
                               },
                             ]
                           : []),
@@ -310,7 +316,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                           ? [
                               {
                                 intent: { verb: 'REPAIR', args: { to_pct: '100' } },
-                                note: `worst hull ${formatPct(worstHullFraction(acting))} · tier ${port.yard_tier} yard`,
+                                note: `worst hull ${formatPct(worstHullFraction(acting))} · yard t${port.yard_tier}`,
                               },
                             ]
                           : []),
@@ -343,8 +349,19 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                         hold. Nothing on this screen needs the figure; where one is ever needed,
                         `world.buy_capacity(fleet, good)` is on the RPC surface and in the store
                         (features/command/useBuyCapacity.ts). */}
+                    {/* THE HOLD IS ONE FACT, SO IT IS PRINTED ONCE. `… free in the hold` used to
+                        ride on EVERY buy row — the same four words and the same figure, four
+                        times, wrapping each row onto a second line (docs/UI_DIRECTION.md §4 rule
+                        3: one row, four facts). It is the GROUP's fact, not the row's, so it sits
+                        on the group's label. `free_hold` is still the SERVER's reading
+                        (public.fleet_free_hold, 0017:183) — the one a BUY is checked against. */}
                     <ActionGroup
-                      label={marketLoaded ? 'What this market says to buy' : 'Trade'}
+                      label={marketLoaded ? 'Worth buying' : 'Trade'}
+                      note={
+                        marketLoaded && acting.free_hold > 0
+                          ? `${formatTuns(acting.free_hold, 0)} free in the hold`
+                          : undefined
+                      }
                       actions={
                         marketLoaded && acting.free_hold > 0
                           ? worthBuying.map((good) => ({
@@ -353,9 +370,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                                 // CODES, never display names: `cmd.parse()` splits on whitespace.
                                 args: { good: good.code, qty: 'ALL' },
                               },
-                              // `free_hold` is the SERVER's reading (public.fleet_free_hold,
-                              // 0017:183) — the one a BUY is checked against. Nothing re-folds it.
-                              note: `${buyNote(good)} · ${formatTuns(acting.free_hold, 0)} free in the hold`,
+                              note: buyNote(good),
                             }))
                           : []
                       }
@@ -363,8 +378,8 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                         !marketLoaded
                           ? 'Reading the market…'
                           : acting.free_hold <= 0
-                            ? `${acting.name} has no room left — every tun of her hold is spoken for. Sell something before you buy.`
-                            : 'This market is not advising a purchase here — read the Market tab for the whole list.'
+                            ? 'Hold full. Sell before you buy.'
+                            : 'Nothing cheap here — the Market tab has the whole list.'
                       }
                       lineOf={lineOf}
                       onPick={command}
@@ -378,11 +393,11 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                           p === null
                             ? 'unknown harbour'
                             : p.max_draft < fleetMaxDraft(acting, draftOfClass)
-                              ? 'too shallow for this fleet'
+                              ? 'too shallow'
                               : `draft ${p.max_draft}`
                         }`,
                       }))}
-                      empty="No authored leg leaves this port."
+                      empty="No leg leaves this port."
                       lineOf={lineOf}
                       onPick={command}
                     />
@@ -407,22 +422,26 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                       per point (0007:736). `dev_military` is read by nothing, and the hint says so
                       rather than letting it look like it matters — the alternative was to drop it,
                       but a city with a garrison has one whether or not the rules notice yet. */}
+                  {/* `/20` THREE TIMES IS THE SAME SCALE THREE TIMES, and it wrapped the value
+                      onto a second line. It moves into the LABEL, where one printing serves all
+                      three figures — the scale is still on screen, which is what "never show a
+                      number you cannot defend" asks for. */}
                   <DetailRow
-                    label="How grown"
+                    label="How grown, of 20"
                     mono
-                    value={`trade ${port.dev_commerce}/20 · crafts ${port.dev_industry}/20 · garrison ${port.dev_military}/20`}
-                    hint="What this city has built up, out of twenty. Trade narrows the cut it takes on a deal and shaves what it asks for goods; crafts make its yard cheaper to mend in. The garrison is recorded but nothing reads it yet, so it changes no price you will pay."
+                    value={`trade ${port.dev_commerce} · crafts ${port.dev_industry} · garrison ${port.dev_military}`}
+                    hint="Out of twenty. Trade narrows the cut this city takes on a deal; crafts make its yard cheaper. The garrison is recorded and nothing reads it yet, so it changes no price you pay."
                   />
                   <DetailRow
                     label="Market tax"
                     mono
                     value={formatPct(port.tax_rate, 1)}
-                    hint="The Mayor's cut of every deal, between nothing and 8%. There is no way to have it waived, so what is printed here is what you pay."
+                    hint="The Mayor's cut of every deal, between nothing and 8%. It cannot be waived, so what is printed is what you pay."
                   />
                   <DetailRow
                     label="Spread"
                     mono
-                    value={market?.port ? formatPct(market.port.spread, 1) : 'reading the market…'}
+                    value={market?.port ? formatPct(market.port.spread, 1) : 'reading…'}
                     hint="The cut between what this port buys at and what it sells at. It narrows as a city's trade grows."
                   />
                   <DetailRow
@@ -430,13 +449,13 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                     value={
                       cheapHere.length === 0
                         ? marketLoaded
-                          ? 'Nothing this port undercuts its neighbours on.'
-                          : 'reading the market…'
+                          ? 'nothing undercuts its neighbours'
+                          : 'reading…'
                         : cheapHere
                             .map((g) => `${g.name} ${formatPctPoints(g.pct_nbr ?? 0)}`)
                             .join(' · ')
                     }
-                    hint="What this port charges as a share of what its neighbours within 600 nm charge — a live reading of today's market, not a list of what the town is famous for."
+                    hint="What this port charges as a share of what its neighbours charge — today's market, not a list of what the town is famous for."
                   />
                 </dl>
             </>
@@ -444,24 +463,18 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
 
           {shownFace.id === 'services' && (
             <>
-              {/* THIS SENTENCE USED TO CONTRADICT THE TAB BESIDE IT. It read "Bureau, officers
-                  and the Mayor are V1 — they are not drawn because there is nothing behind them
-                  yet" while OFFICERS was a sibling face that hires two named officers, and the row
-                  below printed `Academy — yes`. 0015 shipped the roster and the sentence was not
-                  corrected with it (docs/NO_SPAGHETTI.md §8 question 4: delete what your change
-                  made false, in the change that made it false). Only the two that really have
-                  nothing behind them are named now. */}
-              <p className="mb-3 text-xs text-ink-muted">
-                What this harbour keeps, and what it does not. No port has a Bureau or a Mayor's
-                office open to callers yet — nothing is being hidden from you, they simply are not
-                there to visit. Officers sign on under the Officers face, and a school under
-                Academy.
-              </p>
+              {/* THE PARAGRAPH IS GONE AND NOTHING IT SAID IS. It ran three sentences over the
+                  rows to disclose that no port keeps a Bureau or a Mayor's office, and to point at
+                  two tabs that are one tap away and visible. The disclosure is now a ROW, in the
+                  same list as the yard and the inn — which is what rule 5 asks for anyway
+                  ("unavailable is shown with its reason") and what rule 3 asks for instead of a
+                  paragraph. The signposting to Officers and Academy is deleted: the tab strip is
+                  directly above, so it was telling the player what they could already see. */}
                 <dl className="space-y-1">
                   <DetailRow
                     label="Harbour"
                     mono
-                    value={`${docked.length} of your fleets alongside · max draft ${port.max_draft}`}
+                    value={`${docked.length} alongside · draft ${port.max_draft}`}
                     hint="Your own hulls only. What another house has lying here is not something a harbour will tell you."
                   />
                   <DetailRow
@@ -471,43 +484,68 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                     hint={port.has_yard ? 'The yard prices a REPAIR when the order runs; PREVIEW it on Command for the quote.' : undefined}
                   />
                   <DetailRow
-                    label="Provisions"
+                    label="Chandler"
                     mono
-                    value={`${formatTuns(snapshot.config.water_per_crew_day, 2)} water and ${formatTuns(snapshot.config.food_per_crew_day, 3)} food per hand, per voyage-day`}
-                    hint="What stores cost is settled when PROVISION runs. No chandler posts a price list on the quay — PREVIEW the order on Command for the figure."
+                    value={`water ${formatTuns(snapshot.config.water_per_crew_day, 2)} · food ${formatTuns(snapshot.config.food_per_crew_day, 3)} a hand-day`}
+                    hint="What one hand drinks and eats per voyage-day. What stores COST is settled when PROVISION runs — no chandler posts a price list on the quay, so PREVIEW the order on Command for the figure."
                   />
                   <DetailRow
                     label="Inn"
                     mono
-                    value={`${formatInt(port.crew_pool)} hands in the pool`}
-                    hint="Take on more hands than the pool holds and the rest are found at short notice, at two and a half times the wage. The rate is quoted when HIRE runs."
+                    value={`${formatInt(port.crew_pool)} hands`}
+                    hint="Hands in the pool. Take on more than it holds and the rest are found at short notice, at two and a half times the wage — quoted when HIRE runs."
                   />
                   <DetailRow label="Academy" mono value={port.has_academy ? 'yes' : 'none'} />
-                  {port.is_ice_closed && <DetailRow label="Ice" mono value="CLOSED — nothing sails in or out" />}
+                  <DetailRow
+                    label="Bureau"
+                    mono
+                    value="none"
+                    hint="No port keeps one open to callers yet. Nothing is being hidden from you — there is nothing there to visit."
+                  />
+                  <DetailRow
+                    label="Mayor"
+                    mono
+                    value="none"
+                    hint="No port keeps an office open to callers yet. Nothing is being hidden from you — there is nothing there to visit."
+                  />
+                  {port.is_ice_closed && <DetailRow label="Ice" mono value="CLOSED — nothing sails" />}
                 </dl>
             </>
           )}
 
           {shownFace.id === 'officers' && <OfficersFace port={port} acting={acting} />}
 
-          {shownFace.id === 'academy' && <AcademyFace port={port} acting={acting} />}
+          {shownFace.id === 'academy' && <AcademyFace acting={acting} />}
 
           {shownFace.id === 'ships' && (
             <>
                 {docked.length === 0 ? (
                   <p className="text-sm text-ink-muted">
-                    You have no fleet in {port.name}.{' '}
-                    {fleets
-                      .filter((f) => f.status === 'SAILING')
-                      .map((f) => `${f.name} is at sea.`)
-                      .join(' ')}
+                    No fleet of yours in {port.name}.{' '}
+                    {(() => {
+                      const atSea = fleets.filter((f) => f.status === 'SAILING')
+                      // ONE SENTENCE, NOT ONE PER HULL. This mapped every sailing fleet to its own
+                      // "X is at sea." and joined them, so a house with four fleets out printed
+                      // four sentences saying one thing.
+                      return atSea.length === 0
+                        ? ''
+                        : `${atSea.map((f) => f.name).join(', ')} at sea.`
+                    })()}
                   </p>
                 ) : (
-                  <Table className={scrollTableClass()}>
+                  /* THE FLEET COLUMN ONLY EXISTS WHEN THERE ARE TWO FLEETS TO TELL APART.
+                     A fleet is one to EIGHT hulls by design, so with one fleet alongside this
+                     column printed the same word eight times down a 390px table and pushed the
+                     hold off the right edge. Measured with eight hulls: 489px of table in a 332px
+                     box with the column, 411px without — the swipe stops being needed at all for
+                     a single fleet. It is not "hidden to save room": with a second fleet docked,
+                     which ship belongs to which is the only thing this table cannot say without
+                     it, so it comes back. */
+                  <Table scrollHint className={scrollTableClass()}>
                     <thead>
                       <tr>
                         <TH>Ship</TH>
-                        <TH>Fleet</TH>
+                        {docked.length > 1 && <TH>Fleet</TH>}
                         <TH align="num">Hull</TH>
                         <TH align="num">Crew</TH>
                         <TH align="num">Hold</TH>
@@ -522,7 +560,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                               {ship.is_flagship && <span className="ml-1 text-accent">⚑</span>}
                               <span className="ml-2 text-xs text-ink-faint">{ship.class}</span>
                             </TD>
-                            <TD>{fleet.name}</TD>
+                            {docked.length > 1 && <TD>{fleet.name}</TD>}
                             <TD align="num">{formatPct(hullFraction(ship))}</TD>
                             <TD align="num">
                               {formatInt(ship.crew)}/{formatInt(ship.crew_max)}
@@ -535,9 +573,6 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                       )}
                     </tbody>
                   </Table>
-                )}
-                {docked.length > 0 && (
-                  <p className={fineClass('mt-1')}>{TABLE_SCROLL_HINT}</p>
                 )}
             </>
           )}
@@ -641,8 +676,7 @@ function ElsewherePanel({
         contentClassName="pt-3"
       >
         <p className={fineClass('mb-2')}>
-          What you see there is what your factors report, not what you are lying in. Giving orders
-          still happens where your fleet is.
+          A reading only — orders still happen where your fleet is.
         </p>
         <Input
           size="sm"
@@ -656,7 +690,7 @@ function ElsewherePanel({
         />
         <p className={fineClass('mt-2')}>
           {query.trim()
-            ? `${formatInt(listed.length)} of ${formatInt(ports.length)} answer to “${query.trim()}”.`
+            ? `${formatInt(listed.length)} of ${formatInt(ports.length)} match.`
             : `All ${formatInt(ports.length)}, by name.`}
         </p>
 
@@ -693,7 +727,7 @@ function ElsewherePanel({
           ))}
         </div>
         {listed.length === 0 && (
-          <p className="text-sm text-ink-muted">No harbour answers to that. Clear the field to see them all.</p>
+          <p className="text-sm text-ink-muted">No harbour matches. Clear the field for all {formatInt(ports.length)}.</p>
         )}
       </Collapsible>
     </Card>
@@ -707,12 +741,16 @@ function buyNote(good: MarketGood): string {
 
 function ActionGroup({
   label,
+  note,
   actions,
   empty,
   lineOf,
   onPick,
 }: {
   label: string
+  /** ONE live figure that is true of the whole group, printed once beside the label instead of
+   *  repeated on every row (the free hold, which used to ride on all four buy lines). */
+  note?: string
   actions: readonly { intent: CommandIntent; note?: string }[]
   /** What to say when there is nothing to offer — silence would read as a broken panel. */
   empty?: string
@@ -723,7 +761,10 @@ function ActionGroup({
   if (actions.length === 0 && !empty) return null
   return (
     <div>
-      <SectionLabel>{label}</SectionLabel>
+      <SectionLabel>
+        {label}
+        {note && <span className="ml-2 normal-case text-ink-muted">{note}</span>}
+      </SectionLabel>
       {actions.length === 0 ? (
         <p className="text-sm text-ink-muted">{empty}</p>
       ) : (

@@ -9,7 +9,7 @@ import {
   fineClass,
 } from '../../components/ui'
 import { formatInt } from '../../lib/format'
-import { useWorld } from '../../live/worldStore'
+import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, SnapshotPort } from '../../lib/rpc'
 
 // TWO FACES OF THE PORT — the roster (0015) and the school (0016).
@@ -33,9 +33,7 @@ import type { FleetView, SnapshotPort } from '../../lib/rpc'
  *  works — the migration's receipt makes the same promise in the deploy log. */
 function InertNote({ what }: { what: string }) {
   return (
-    <p className="mt-1 text-[11px] text-warning">
-      No rule reads {what} yet — this bonus changes nothing today.
-    </p>
+    <p className="mt-1 text-[11px] text-warning">No rule reads {what} yet — it changes nothing.</p>
   )
 }
 
@@ -51,6 +49,7 @@ function Refused() {
 
 export function OfficersFace({ port, acting }: { port: SnapshotPort; acting: FleetView | null }) {
   const roster = useWorld((s) => s.officers)
+  const portByCode = useWorld((s) => s.portByCode)
   const loadOfficers = useWorld((s) => s.loadOfficers)
   const hireOfficer = useWorld((s) => s.hireOfficer)
   const postOfficer = useWorld((s) => s.postOfficer)
@@ -71,9 +70,12 @@ export function OfficersFace({ port, acting }: { port: SnapshotPort; acting: Fle
     <div className="space-y-3">
       <Refused />
 
+      {/* THE FIRST SENTENCE WAS WRITTEN TWICE, WORD FOR WORD — here and as this face's own ⓘ line
+          (portView.ts's `officers` entry). One rule, two authorities, and the player read it twice
+          on one screen. The dot keeps the rule; what stays printed is the one LIVE figure, which
+          is a fact about this world and cannot go behind a dot. */}
       <p className="text-xs text-ink-muted">
-        An officer signs on where they live and serves in one fleet. No fleet may gain more than{' '}
-        {formatInt(roster.bonus_cap_pct)}% from officers of one specialty.
+        No fleet may gain more than {formatInt(roster.bonus_cap_pct)}% from one specialty.
       </p>
 
       {here.length === 0 ? (
@@ -134,8 +136,13 @@ export function OfficersFace({ port, acting }: { port: SnapshotPort; acting: Fle
           <SectionLabel>Serving elsewhere</SectionLabel>
           <ul className="space-y-1">
             {elsewhere.map((o) => (
+              /* IT PRINTED THE PORT CODE — "Vicente Pinzón · navigator · CAD" — while every other
+                 surface in the game says "Cádiz". `portNameOf` (worldStore) is the one translation
+                 and this was one of the last places not composing it; the same defect Profile's
+                 "Lying at LIS" was fixed for. The code survives as its own fallback. */
               <li key={o.code} className={fineClass()}>
-                {o.name} · {o.specialty.toLowerCase()} · {o.port ?? 'no port'}
+                {o.name} · {o.specialty.toLowerCase()} ·{' '}
+                {o.port ? portNameOf(portByCode, o.port) : 'no port'}
                 {o.hired ? ' · signed' : ''}
               </li>
             ))}
@@ -146,7 +153,11 @@ export function OfficersFace({ port, acting }: { port: SnapshotPort; acting: Fle
   )
 }
 
-export function AcademyFace({ port, acting }: { port: SnapshotPort; acting: FleetView | null }) {
+// NO `port` PROP ANY MORE. It was used only to print "{port} keeps an academy", which restated the
+// tab the player had just pressed on the screen already titled with that port's name. The face is
+// only offered where `has_academy` is true (PortScreen's `offeredFaces`), so the port is what
+// decides whether this renders — never what it says.
+export function AcademyFace({ acting }: { acting: FleetView | null }) {
   const book = useWorld((s) => s.skills)
   const loadSkills = useWorld((s) => s.loadSkills)
   const studySkill = useWorld((s) => s.studySkill)
@@ -162,9 +173,11 @@ export function AcademyFace({ port, acting }: { port: SnapshotPort; acting: Flee
     <div className="space-y-3">
       <Refused />
 
+      {/* "{port} keeps an academy" restated the tab the player just pressed, and "a trade is
+          learned ashore, one level at a time" is this face's ⓘ line verbatim (portView.ts). What
+          is left is the one thing neither of those says: WHOSE captain is being taught. */}
       <p className="text-xs text-ink-muted">
-        {port.name} keeps an academy. A trade is learned ashore, one level at a time, and the fleet
-        you name is the one whose captain sits the course.
+        {acting ? `${acting.name}'s captain sits the course.` : 'Name a fleet and her captain sits the course.'}
       </p>
 
       <ul className="space-y-2">

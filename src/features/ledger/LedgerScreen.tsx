@@ -4,11 +4,13 @@ import {
   buttonClasses,
   Card,
   EmptyState,
+  Explain,
   Icon,
   Notice,
   PageHeader,
   Screen,
   fineClass,
+  headRowClass,
 } from '../../components/ui'
 import {
   formatClock,
@@ -116,7 +118,7 @@ function LedgerBody() {
       <PageHeader
         eyebrow="Record"
         title="Ledger"
-        explain="Everything that happened, in the order it happened. The ledger is the server's record, not a client log: it is the same one your standing is judged from."
+        explain="Everything that happened, newest first. This is the server's record, not a client log — the same one your standing is judged from."
         /* The purse readout moved to the top bar (TopBar.tsx), where it is on screen on every tab
            instead of only this one. The balance still appears in this screen's prose, which is a
            different thing: a sentence that explains reconciliation, not a readout. */
@@ -159,7 +161,7 @@ function LedgerBody() {
         <EmptyState
           icon={<Icon name="ledger" size={28} />}
           title="Nothing has happened yet"
-          body="The log fills itself: found a house, buy a parcel, put to sea. Every one of those writes a line here."
+          body="Buy a parcel, put to sea — each writes a line here."
         />
       ) : shown.length === 0 ? (
         <EmptyState icon={<Icon name="ledger" size={28} />} title="Nothing under that filter" />
@@ -171,13 +173,23 @@ function LedgerBody() {
         </div>
       )}
 
+      {/* THE DISCLOSURE IS INTACT AND THE PARAGRAPH IS NOT. Fifty-five words stood at the foot of
+          every ledger, permanently, to say two things: what the purse is, and that the rows do not
+          add up to it. The first is live and stays printed; the second is a standing RULE about the
+          record and goes behind the dot, which is what docs/UI_DIRECTION.md §4 rule 4 says a rule
+          does. Nothing about wages was cut — it is one tap away instead of read three hundred
+          times. */}
       {events.length > 0 && (
         <Notice tone="neutral" className="text-xs">
-          Each entry prints the balance the server recorded for it. The purse now stands at{' '}
-          {ducats === null ? 'an unread figure' : formatDucats(ducats)} — and it will
-          NOT equal the sum of the movements above: wages are paid every voyage-day without writing
-          an entry of their own, so a gap between two consecutive balances is a crew that has been
-          paid.
+          {/* NO FULL STOP AFTER THE FIGURE: `formatDucats` already ends in "d.", and adding one
+              printed "Purse 8,000 d.." — seen at 390px. An em dash carries the join instead. */}
+          Purse {ducats === null ? '—' : formatDucats(ducats)} — the balances above will not sum to
+          it.
+          <Explain label="why the balances do not sum" dotClassName="ml-1">
+            Each entry prints the balance the server recorded for it. Wages are paid every
+            voyage-day without writing an entry of their own, so a gap between two consecutive
+            balances is a crew that has been paid.
+          </Explain>
         </Notice>
       )}
     </Screen>
@@ -200,7 +212,7 @@ function Entry({
 
   return (
     <Card tone={report.length > 0 ? 'accent' : 'default'} className="bv-fade-in">
-      <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <div className={headRowClass(false)}>
         <span className="font-mono text-xs text-ink-faint">
           {Number.isFinite(atMs) ? formatClock(atMs) : '--:--'}
         </span>

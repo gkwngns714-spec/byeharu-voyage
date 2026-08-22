@@ -6,7 +6,7 @@ export { Input } from './Input'
 export { buttonClasses, type ButtonVariant, type ButtonSize } from './buttonStyles'
 // The two text treatments this game repeats: the fine-print voice and the tappable row link. See
 // typography.ts for the thirty and the three hand-written spellings they replace.
-export { fineClass, rowLinkClass } from './typography'
+export { fineClass, rowLinkClass, headRowClass } from './typography'
 export { Card, CardHeader, type CardTone } from './Card'
 export { Badge, type BadgeTone } from './Badge'
 // Badge's numeric counterpart: the %NBR pill (see PriceIndex.tsx for the boundary — a
@@ -27,7 +27,10 @@ export { StatRow } from './StatRow'
 // the boundary between them).
 export { DetailRow } from './DetailRow'
 export { Screen } from './Screen'
-export { screenBodyClass } from './screenLayout'
+// The page scaffold, and the two-pane split a screen lays INSIDE it — a working list on the left,
+// a rail of figures on the right, one column below `md`. See screenLayout.ts for why it is flex
+// and not grid, why the breakpoint is `md`, and why no action may live in the rail.
+export { screenBodyClass, splitClass, splitMainClass, splitRailClass } from './screenLayout'
 export { EmptyState } from './EmptyState'
 export { Skeleton } from './Skeleton'
 export { Table, TH, TD } from './Table'

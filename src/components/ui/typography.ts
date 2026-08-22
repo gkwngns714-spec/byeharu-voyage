@@ -33,3 +33,30 @@ export function fineClass(extra = ''): string {
 export function rowLinkClass(extra = ''): string {
   return `text-sm text-accent underline-offset-4 hover:underline${extra ? ` ${extra}` : ''}`
 }
+
+/**
+ * THE HEAD ROW OF A PANEL — a name on the left, its meta on the right, and it WRAPS.
+ *
+ * Found by `tests/duplication.spec.ts` at 83% similarity across two screens that had never met:
+ * the Ledger's entry head (time · fleet · kind · when) and the haggle block's head (title ·
+ * attempts left). Neither was wrong; both were the same idea typed twice, which is how the twelve
+ * chip copies started.
+ *
+ * `flex-wrap` with `items-baseline` is the load-bearing part, and it is the same reasoning
+ * `CardHeader` records: the right-hand side is meta that must not truncate, so without wrapping the
+ * row's MINIMUM width is left + gap + right — a number made of glyphs, which differs per platform
+ * and can push a 320px page sideways. Wrapping makes the minimum the WIDER OF THE TWO instead of
+ * their sum, and is a no-op whenever they fit.
+ *
+ * `spread` is the only choice a caller gets: `true` pushes the meta to the far edge
+ * (`justify-between`), `false` lets it sit straight after the title.
+ */
+export function headRowClass(spread = true, extra = ''): string {
+  return [
+    'mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1',
+    spread ? 'justify-between' : '',
+    extra,
+  ]
+    .filter(Boolean)
+    .join(' ')
+}

@@ -5,6 +5,155 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-23 — D17: a fleet of eight, an order said in one breath, and a bargain worth striking
+
+Owner: *"MAKE An order - Command. too much unncessary info. So is Sail, Sell, Hire etc. Too long
+explanation. this is a game, make it so. Check all aspect of the game. When buy, i want all the
+trade goods on left side, and my fleet info on the right side, showing how much room, how much
+negotiation can be done, and so on. This game fleet will be comprised with 8 ships."*
+
+Then, when told this game had no haggling and that adding one was a design decision rather than a
+UI change: *"yes add haggling mechanic."*
+
+Four migrations (0021–0024), a new game mechanic on both sides of the wire, a two-pane BUY, and a
+verbosity sweep over every screen.
+
+### THE VERBS: 1,212 CHARACTERS → 309
+
+    SAIL   Put to sea and make for another port.        (153 → 37)
+    BUY    Take cargo aboard at the price on the quay.  (227 → 43)
+    SELL   Sell out of the hold at the price offered.   (242 → 42)
+
+The fine print did not go: 0021 adds a served `note` field and **proves the mechanics MOVED rather
+than being retyped** — six phrases must be present in the old `help` and in the new `note`. The
+card prints `help`; the ⓘ prints `note`. Nothing is authored client-side, because `cmd.verb_schema()`
+is the one authority for the grammar and a client gloss would be a second one.
+
+COMMAND also deleted a paragraph that printed the selected verb's own sentence **a second time, in
+full, 200px below the card**. That was the loudest instance of the owner's complaint.
+
+### EIGHT SHIPS, AND THREE CAPS THAT WERE FICTION
+
+The design had always said a fleet is 1–8 hulls (`fleet_ship_max = 8`, §C.4) and B.3's formation
+penalty had a band for **7+ that no fleet could ever reach**. What blocked it was `ship_max = 4`.
+
+Raising it turned up the real defect: **all three caps were read by nothing.**
+`fleet_ship_max` had never been read by any function, trigger, constraint or client since 0001 —
+a sentence in a `description` column. `ship_max` and `fleet_max` were *served and printed as hard
+limits* (RANK's gauge, FLEETS' "1/4 ships") while no server rule held them.
+
+One authority now — `public.assert_house_caps()` — **on the table as a trigger, not inside a verb**,
+so a future shipyard verb inherits the cap instead of re-deriving it. The caps were proven to bite
+SEPARATELY: a 9th hull refused from one fleet while the same hull was accepted into a second.
+
+    1 hull   4.9125 kn · free hold  55.8 t · crew  8
+    8 hulls  4.6669 kn · free hold 446.4 t · crew 64      ← the 0.95 band, exercised at last
+
+### THE BUY SCREEN IS TWO PANES
+
+Goods left, the fleet's own state right, sticky while the list scrolls, at `md` and up. The
+breakpoint was measured, not chosen: at `sm` the left pane is ~290px and the buy/sell/%NBR columns
+wrap — the exact crushed-column signature `layout.spec` fails a build over.
+
+**The rail is written FIRST in the DOM with `md:order-last`**, because at 390px the working pane is
+**11,718px tall** and a rail placed after it would sit eleven thousand pixels below the list it
+belongs beside.
+
+The goods list is uncapped now — it was showing 12 of 68 and printing "56 more, narrow the filter".
+The owner asked for *all* the goods.
+
+### HAGGLING — AND THE HONEST FORM OF IT
+
+0016 seeded a HAGGLING skill with effect `SPREAD` and the note *"not yet read by any rule."* This
+made it real, and the mechanic lands exactly there.
+
+**The lever is the spread, never the mid.** The mid is the world's price — identical for every house
+on the quay. The spread is the port's cut, and that is what a factor can be talked out of. The
+inline `spread × (1 − purser)` of 0017 became a named authority, `world.spread_effective()`, so the
+rule about what a house executes at has ONE place to change.
+
+* **Save-scumming is structurally impossible** — the attempt row is written and counted BEFORE the
+  roll, and the attempt index is part of the RNG key. A retry is a different draw that has already
+  cost a chance.
+* **No new randomness** — it reuses `voyage.rng`, the IMMUTABLE primitive that keeps the world
+  secret server-side. A second RNG in a chain whose offline-equivalence proof rests on there being
+  one would have been a real defect.
+* **A failure hardens the ODDS, not the price** — hardening the price would make `world.market()`
+  print an ask the trade does not charge, since market() is served without knowing who has haggled.
+* **Purser and bargain compose multiplicatively**, not additively: 25% + 30% is 47.5% off, not 55%.
+
+### AND IT SHIPPED AS A ROUNDING ERROR, AND WAS SENT BACK
+
+Driven in a browser, the finished mechanic saved **19 ducats on 40 tuns — 0.36%.** Three finite,
+hardening attempts for a third of a percent. That is not a mechanic, and it would have read as
+broken rather than subtle.
+
+0024 retuned it: step 0.15 → 0.25, cap 0.30 → 0.75, floor 0.55 → 0.20. A full bargain is now
+**2.88% of stake — 22% of a 13% voyage.**
+
+**The brief asked for "a fifth to a third of a voyage's margin" and a third is arithmetically
+impossible**, and the agent said so rather than fudging: a round trip pays one whole spread, spreads
+average 3.84%, so even a bargain of 100% — the quay keeping *nothing* — is 3.84% of stake, 30% of a
+voyage. Reaching a third means widening the spread itself, which taxes every unhaggled trader. Not
+done; recorded with the measured projection.
+
+`BALANCE_MEDIAN_IN_BAND` measures the UNHAGGLED median and still reads 12.9%. A bargained trader now
+sits at 15–17%, at or just over the top of the band — **stated, not absorbed.**
+
+### THE REGRESSION I PUT ON THE LIVE SERVER
+
+0018's grant sweep — which I pushed to production yesterday — revoked `public.current_player_id()`
+from `authenticated`. **Every RLS policy in the chain calls it**, so a direct client SELECT raised
+42501. It was invisible only because every read goes through a `world.*` definer function.
+
+It was worse than first reported: **11 tables, not 6.** And the agent swept all five ways a function
+can be caller-evaluated — policy, CHECK, DEFAULT, GENERATED, index expression — rather than taking my
+list. Triggers are deliberately excluded: EXECUTE on a trigger body is checked at `CREATE TRIGGER`,
+not at fire time, so including them would report four defects that are not defects.
+
+`public.caller_evaluated_functions()` is the third member of the family beside `client_write_grants()`
+and `client_executable_writers()`. It **refuses to grant anything VOLATILE**, so 0018's property
+cannot be re-opened by accident.
+
+**Proof 03's hole is closed.** It tested INSERT denial and never a SELECT, which is exactly why a
+broken read wall was invisible to it. It now runs with a THIRD house present, so isolation is proven
+by ownership rather than by arithmetic — after the agent caught its own first assert ("A + B = the
+whole table") being true on an empty database and **false on production, which carries a real
+house**.
+
+### TWO THINGS MY OWN GUARD CAUGHT
+
+`tests/duplication.spec.ts`, written two days ago, failed this work twice:
+
+1. **83% recipe similarity** between the haggle block's head row and the Ledger's entry head — two
+   screens that never met, typing the same idea. Now `headRowClass()`.
+2. **0022 re-cut five functions without the word "supersede" in its header.** It genuinely does
+   supersede `world.quote`, `do_buy`, `do_sell`, `world.skills` and `client_rpc_entry_points`, and
+   they move in one file for 0017's reason: a bargain `world.quote` honours but `do_buy` never
+   spends is the same defect as checking room with one function and placing cargo with another's
+   copy.
+
+### UNITS
+
+`9.4 d` was voyage-days and `8,000 d.` was ducats — **one letter, two units, a full stop apart, side
+by side on FLEETS and PORT.** Days spell the word now. `t` and `kn` stay short; nothing collides
+with them.
+
+### Gate
+
+`db:apply` 24/24 receipts · `db:proof` **45/45** markers across 6 files · `playwright` **159 passed**
+· tsc, eslint, build clean.
+
+**One honest caveat:** the first full run had two failures — `rpc.firstSession` and the chain-rebuild
+spec — and the second run was clean. Both are the flake class 0024 documented and fixed for proof 04:
+`tick_market_drift` uses `random()` by design, so every apply builds a different market and a spec
+that needs one specific profitable round trip to EXIST can miss. Proof 04 now draws from the OU
+process's stationary distribution keyed on authored codes. **`tests/rpc.firstSession.spec.ts` has the
+same root cause and has not been given the same fixture.** It is a lottery, it is known, and it is
+written here rather than left to surprise someone.
+
+---
+
 ## 2026-08-22 — D16: the audit, and the day the game could not tell you where to sell
 
 Owner: *"after all things are made, run audit on the all parts of the game. Make it playable. But

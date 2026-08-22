@@ -69,6 +69,33 @@ export const RPCS = {
       { name: 'p_good', type: 'uuid' },
     ],
   },
+  // 0022 — THE BARGAIN. The read and the verb are named here together because they are one feature,
+  // and because 0022 grants EXECUTE to `authenticated` on exactly the entry points this catalogue
+  // declares (0018's sweep reads it BY NAME). A grant with no row here is a door nobody opens —
+  // which is what 0022 shipped as, until this entry.
+  //
+  // Neither takes a player id: both read `public.current_player_id()` and refuse a fleet that is not
+  // yours (E_NOT_YOURS / E_NOT_YOUR_FLEET). That is the same property that makes `cmd.found_house`
+  // safe for a browser to hold.
+  worldHaggleState: {
+    schema: 'world',
+    fn: 'haggle_state',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_good', type: 'uuid' },
+    ],
+  },
+  cmdHaggle: {
+    schema: 'cmd',
+    fn: 'haggle',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_good', type: 'uuid' },
+      // LOAD-BEARING, not decoration (0022:470-486): a BUY bargain is gated on the quay HAVING the
+      // stock and a SELL one on her CARRYING the cargo, so the side decides which refusal you get.
+      { name: 'p_side', type: 'text' },
+    ],
+  },
   cmdIssue: {
     schema: 'cmd',
     fn: 'issue',

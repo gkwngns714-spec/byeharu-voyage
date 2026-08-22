@@ -34,10 +34,20 @@ export function realMsToVoyageDays(ms: number): number {
   return ms / REAL_MS_PER_VOYAGE_DAY
 }
 
-/** Voyage-days as the fleet roster prints them: 1.63 → "1.6 d". */
+/** Voyage-days as the fleet roster prints them: 1.63 → "1.6 days".
+ *
+ *  IT SPELLS THE WORD, and that is the whole point. It used to print "1.6 d" while
+ *  `formatDucats` printed "8,000 d." — THE SAME LETTER FOR TWO UNITS, separated only by a full
+ *  stop, and the two appear side by side on FLEETS and PORT ("15.0 d of stores · 4.9 kn · 56 t
+ *  free" under a purse reading "8,000 d."). The owner asked, 2026-08-22: "common words — stores?
+ *  t? kn? what are these". A reader who cannot tell money from time is not reading a ledger.
+ *
+ *  The other two abbreviations survive because they are unambiguous in this game: `t` is a TUN of
+ *  hold and `kn` is KNOTS, and neither collides with anything. They are glossed behind the info
+ *  dot rather than spelled out in every cell. */
 export function formatVoyageDays(days: number, dp = 1): string {
   if (!Number.isFinite(days)) return '—'
-  return `${formatFixed(days, dp)} d`
+  return `${formatFixed(days, dp)} days`
 }
 
 /** A real-world span, long form — the shape §B.3's worked table uses.

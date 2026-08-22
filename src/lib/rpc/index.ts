@@ -31,6 +31,8 @@ import type {
   ClearResult,
   FleetView,
   FoundedHouse,
+  HaggleAttempt,
+  HaggleState,
   HiredOfficer,
   IssueResult,
   LedgerPage,
@@ -72,6 +74,39 @@ export function worldMarket(portId: string): Promise<RpcResult<MarketView>> {
  */
 export function worldBuyCapacity(fleetId: string, goodId: string): Promise<RpcResult<BuyCapacity>> {
   return call<BuyCapacity>('worldBuyCapacity', [fleetId, goodId])
+}
+
+/**
+ * HOW MUCH NEGOTIATION CAN BE DONE HERE (0022) — attempts left today, the bargain currently held,
+ * the cap it can reach, the odds of the next attempt, and the spread this house would actually
+ * execute at.
+ *
+ * The odds come from `public.haggle_odds`, which is the SAME function `cmd.haggle` rolls against,
+ * so a panel drawn from this read cannot promise something the verb will not do. Answers a
+ * two-key `{docked:false, why}` when she is at sea rather than refusing — being at sea is a state,
+ * not an error.
+ */
+export function worldHaggleState(fleetId: string, goodId: string): Promise<RpcResult<HaggleState>> {
+  return call<HaggleState>('worldHaggleState', [fleetId, goodId])
+}
+
+/**
+ * ONE ATTEMPT AT A BARGAIN (0022). It wins a fraction off the PORT'S SPREAD, never off the mid.
+ *
+ * Attempts are finite and **a failed attempt costs one**: `cmd.haggle` writes the attempt and
+ * increments the count BEFORE it rolls, and keys the roll on the attempt index, so calling again is
+ * a different draw that has already spent a chance. Nothing on this side may retry on the player's
+ * behalf, and nothing may predict the outcome.
+ *
+ * @param side `'buy'` or `'sell'` — which bargain. Buying needs the quay to hold stock; selling
+ *             needs her to be carrying the cargo. The server enforces both and says which.
+ */
+export function cmdHaggle(
+  fleetId: string,
+  goodId: string,
+  side: 'buy' | 'sell',
+): Promise<RpcResult<HaggleAttempt>> {
+  return call<HaggleAttempt>('cmdHaggle', [fleetId, goodId, side])
 }
 
 /**

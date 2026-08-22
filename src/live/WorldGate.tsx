@@ -1,4 +1,4 @@
-import { Button, Card, fineClass, Notice, PageHeader, Screen, SectionLabel, Skeleton } from '../components/ui'
+import { Button, Card, Explain, Notice, PageHeader, Screen, SectionLabel, Skeleton } from '../components/ui'
 import { useWorld } from './worldStore'
 import type { Refusal } from '../lib/rpc'
 
@@ -54,8 +54,19 @@ export function WorldFailed({
             </ul>
           </div>
         )}
+        {/* THE DETAIL IS A DEVELOPER'S NOTE, so it goes behind the dot rather than on the screen.
+            It was printed in full, and on a real failure it read:
+              "sqlstate: P0001 context: PL/pgSQL function inline_code_block line 266 at RAISE"
+            A player cannot act on a PL/pgSQL line number, and a stack trace on the one screen that
+            appears when the game is already broken reads as the game being MORE broken. The
+            `sentence` above is what a player needs; this is what I need, and it is one tap away —
+            deleting it outright would be worse, because a bug report with it is worth ten without. */}
         {refusal?.detail && (
-          <p className={fineClass('mt-3')}>{refusal.detail}</p>
+          <div className="mt-3">
+            <Explain label="What the server said">
+              <span className="font-mono text-[11px] break-words">{refusal.detail}</span>
+            </Explain>
+          </div>
         )}
         <p className="mt-3 text-sm text-ink-muted">
           Nothing was lost: the world is a database in this tab, and it is still on disk. Reload to

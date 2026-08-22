@@ -233,7 +233,11 @@ export function CommandScreen() {
   }
 
   return (
-    <Screen>
+    // `wide` — the max-w-6xl measure MARKET already uses. COMMAND earned it when the BUY composer
+    // grew a second pane: at the narrow measure the goods list and the fleet rail share 720px, and
+    // the three price columns on a market row are the first thing to crush. It changes NOTHING
+    // below 768px, where a max-width that large never binds, so the phone layout is untouched.
+    <Screen wide>
       <PageHeader
         eyebrow="Orders"
         title="Command"

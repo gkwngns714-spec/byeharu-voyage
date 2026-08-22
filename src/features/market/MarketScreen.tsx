@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   CardHeader,
+  Explain,
   Input,
   Notice,
   PageHeader,
@@ -14,7 +15,6 @@ import {
   Sparkline,
   SectionLabel,
   Skeleton,
-  TABLE_SCROLL_HINT,
   TD,
   TH,
   Table,
@@ -22,7 +22,7 @@ import {
   fineClass,
   rowLinkClass,
 } from '../../components/ui'
-import { formatInt, formatPct, formatTuns } from '../../lib/format'
+import { formatInt, formatPct, formatTuns, formatVoyageDays } from '../../lib/format'
 import { fold, foldedMatch } from '../../lib/text'
 import { useWorld } from '../../live/worldStore'
 import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
@@ -269,7 +269,7 @@ export function MarketScreen() {
       <PageHeader
         eyebrow="Trade"
         title={`Market · ${port?.name ?? '—'}`}
-        explain={`Every price is the server's, read against the ports within ${config?.neighbour_radius_nm ?? '—'} nm. Orders execute in steps, each repricing — buying raises the price you are still buying at: the server does that walk, and these figures are today's opening ones. The "where it pays" column and the panel under the table price the whole voyage through that same walk.`}
+        explain={`Every price is the server's, read against the ports within ${config?.neighbour_radius_nm ?? '—'} nm. These are opening figures: an order fills in steps and each step reprices, so buying raises the price you are still buying at.`}
         // THE SHARED CONTROL, driven by THIS screen's read. `ReadAgain` used to hard-code
         // `world.refresh()` — fleets, ledger and house — which on the prices screen would have
         // re-read everything EXCEPT the prices, so this screen carried a fifth hand-written copy
@@ -361,7 +361,7 @@ export function MarketScreen() {
             —{' '}
             {loadError.refusal?.sentence ??
               `The prices for ${port?.name ?? 'this port'} did not come back.`}{' '}
-            Nothing is being guessed in their place.
+            Nothing is guessed in their place.
           </Notice>
           <div className="mt-3">
             <Button variant="primary" onClick={() => fetchMarket(loadError.portId)}>
@@ -388,13 +388,18 @@ export function MarketScreen() {
             <CardHeader
               flush
               title="Goods"
-              explain="These are today's opening prices. An order executes in steps, each one repricing — buying raises the price you are still buying at (§G.2), and the server does that walk when the order runs. The TREND line is the remembered mid, sampled once per drift slot (0013) — the shape of the move, not its size; the figures beside it carry that. A good with no line is one the record has not sampled yet, which is the normal state of a world where nothing schedules the tick: local play keeps no cron, so lines fill in on the live server and stay empty here."
+              /* THE PROVENANCE WENT WITH THE PARAGRAPH. `§G.2` and `(0013)` are section and
+                 migration numbers — facts about this repository, not about the game
+                 (docs/UI_DIRECTION.md §4 rule 4). The repricing sentence also stood here AND on
+                 the page header two panels up; one authority, so it stays on the header and the
+                 card explains only what the card's own columns mean. */
+              explain="TREND is the remembered mid price — the shape of the move, not its size; the figures beside it carry that. A good with no line has not been sampled yet: nothing schedules the tick in a browser-local world, so lines fill in on the live server and stay empty here."
               aside={<Badge tone="accent">{countRows(blocks)} rows</Badge>}
             />
           }
         >
-          <p className="mb-2 text-xs text-ink-muted">Tap a good to load the order onto Command.</p>
-          <Table className={scrollTableClass()}>
+          <p className="mb-2 text-xs text-ink-muted">Tap a good to send it to Command.</p>
+          <Table scrollHint className={scrollTableClass()}>
             <thead>
               <tr>
                 {/* %NBR IS SECOND, AND THAT IS THE WHOLE POINT.
@@ -439,24 +444,27 @@ export function MarketScreen() {
           {/* WHAT STAYS PRINTED: the live reading of this quay and the swipe affordance. The two
               standing paragraphs that used to sit under them — how a stepped order reprices, and
               what the trend line is and is not — are behind the dot on the card's title. */}
+          {/* FOUR FIGURES, NOT A SENTENCE ABOUT FOUR FIGURES. This line read "…dealer's spread
+              2.6%, narrowed by how well this port is set up for trade (7 of 10) · culture latin",
+              which spends fourteen words explaining a relationship between two numbers that are
+              both printed. The numbers stay and line up; the relationship is behind the dot
+              (docs/UI_DIRECTION.md §4 rules 2 and 4). */}
           <dl className={fineClass('mt-4 space-y-1')}>
             {view.port && (
               <div>
-                {/* WHAT THE PORT TAKES OUT OF EVERY TRADE. `dev_commerce` was printed here as a
-                    bare column name — provenance for whoever wrote the schema, and nothing to a
-                    trader. The number is kept, because the spread it explains is the one the
-                    player pays; it is the WORDS that changed. */}
-                tax {formatPct(view.port.tax_rate, 1)} · dealer&rsquo;s spread{' '}
-                {formatPct(view.port.spread, 1)}, narrowed by how well this port is set up for
-                trade ({view.port.dev_commerce} of 10) · culture {view.port.culture}
+                tax {formatPct(view.port.tax_rate, 1)} · spread {formatPct(view.port.spread, 1)} ·
+                trade {view.port.dev_commerce}/10 · {view.port.culture}
+                <Explain label="tax and spread" dotClassName="ml-1">
+                  Tax is the Mayor&rsquo;s cut of every deal. The spread is the gap between what
+                  this port buys at and sells at, and it narrows as the port&rsquo;s trade grows.
+                </Explain>
               </div>
             )}
             <div>
               {fleetHere
-                ? `${fleetHere.name} is lying here with ${formatTuns(holdFree)} of hold free.`
-                : 'No fleet of yours is in this port, so an order tapped here will need a fleet on Command.'}
+                ? `${fleetHere.name} is here — ${formatTuns(holdFree)} of hold free.`
+                : 'No fleet of yours here. A tap will need one named on Command.'}
             </div>
-            <div>{TABLE_SCROLL_HINT}</div>
           </dl>
         </Card>
       )}
@@ -479,16 +487,11 @@ export function MarketScreen() {
           title="%NBR says cheap HERE — not profitable."
           explain={
             <>
-              The %NBR column is this port&rsquo;s price as a percentage of what the same good
-              fetches in the ports within {config?.neighbour_radius_nm ?? '—'} nm of it. It tells
-              you nothing about whether a price is high, and everything about whether it is high{' '}
-              <em>here</em> — which is worth knowing, and is not the same thing as a profit. A
-              profit is two ports, two taxes, two spreads and the price your own order moves as it
-              fills, so a good can read {config?.advice_sell_above ?? 110}% at a port one leg away
-              and still lose money when you carry it there. <strong>Where it pays</strong> answers
-              that question instead: it is priced through the same quote your order will execute
-              at, at the quantity shown, over the distance actually sailed. What it does not
-              include is your crew&rsquo;s wages, which a voyage pays for every day at sea.
+              %NBR is this port&rsquo;s price against the ports within{' '}
+              {config?.neighbour_radius_nm ?? '—'} nm — high <em>here</em>, which is not a profit. A
+              profit is two ports, two taxes, two spreads and what your own order does to the
+              price. <strong>Where it pays</strong> answers that, priced through the same quote
+              your order executes at. Crew wages are not in it.
             </>
           }
         />
@@ -691,7 +694,7 @@ function RoutesPanel({
         <CardHeader
           flush
           title="Where to sail"
-          explain="Every good this port will sell you, against every port within reach, priced end to end through the same quote your order executes at — so the figure offered and the figure charged cannot disagree. The distance is the route actually sailed, not the straight line, and a destination this fleet could not reach today is not offered at all. The margin is the TRADE's: a voyage also pays its crew every day at sea, and that is not in it."
+          explain="Every good this port sells, against every port in reach, priced end to end through the same quote your order executes at. The distance is the route actually sailed. The margin is the TRADE's — a voyage also pays its crew every day at sea, and that is not in it."
           aside={
             routes ? <Badge tone="accent">{routes.basis.routes_found} routes</Badge> : undefined
           }
@@ -706,9 +709,8 @@ function RoutesPanel({
         </div>
       ) : shown.length === 0 ? (
         <p className="text-sm text-ink-muted">
-          Nothing {portName} sells is worth more within {routes.basis.max_legs} leg(s) of here — at
-          least not after tax, the dealer&rsquo;s spread and what your own order does to the price.
-          Sail somewhere else and read this again.
+          Nothing {portName} sells pays within {routes.basis.max_legs} leg(s) — not after tax,
+          spread and your own price impact.
         </p>
       ) : (
         <ul className="divide-y divide-edge">
@@ -728,11 +730,19 @@ function RoutesPanel({
                   +{formatInt(r.profit)}
                 </span>
               </button>
+              {/* SIX FACTS, NOT A SENTENCE ABOUT SIX FACTS. "pay 5,793 d. here, receive 7,001 d.
+                  there" spent five words on an arrow; at 390px the line wrapped to three. The
+                  figures are the row (docs/UI_DIRECTION.md §4 rule 2) and the words that told you
+                  which way the money goes are now the arrow that shows it. */}
               <p className={fineClass('-mt-1 pb-1.5')}>
-                {formatTuns(r.qty)} · pay {formatInt(r.outlay)} d. here, receive{' '}
-                {formatInt(r.proceeds)} d. there · {formatInt(r.nm)} nm
-                {r.days === null ? '' : `, ${r.days} voyage-days`}
-                {r.return_pct === null ? '' : ` · ${r.return_pct}% on the outlay`}
+                {formatTuns(r.qty)} · {formatInt(r.outlay)} → {formatInt(r.proceeds)} d. ·{' '}
+                {formatInt(r.nm)} nm
+                {/* `${r.days} voyage-days` printed the raw served numeric — "13.01 d" beside a
+                    game that says "15.0 d" everywhere else. `formatVoyageDays` is the one spelling
+                    of a voyage-day (lib/format/time.ts:38) and this row was the last caller not
+                    using it. */}
+                {r.days === null ? '' : ` · ${formatVoyageDays(r.days)}`}
+                {r.return_pct === null ? '' : ` · +${Math.round(r.return_pct)}%`}
               </p>
             </li>
           ))}
@@ -745,16 +755,16 @@ function RoutesPanel({
         <dl className={fineClass('mt-3 space-y-1')}>
           <div>
             {routes.basis.qty_from === 'fleet'
-              ? `Priced at what ${fleetName ?? 'your fleet'} can actually afford, carry and sail to.`
-              : `Priced at ${routes.basis.tuns} tuns a time — no fleet of yours is lying here, so the server used its own quantity rather than guessing at yours.`}
+              ? `Priced at what ${fleetName ?? 'your fleet'} can afford and carry.`
+              : `No fleet of yours here, so priced at ${routes.basis.tuns} tuns a time.`}
           </div>
           <div>
             {/* The server reports null reach when a caller PINS a destination; this screen never
                 does, and printing "null leg(s)" for a case that cannot arise is worse than not
                 printing the sentence. */}
             {routes.basis.max_legs === null
-              ? `Only ${routes.basis.to ?? 'one port'} was compared, ${routes.basis.keep_per_good} destination(s) per good priced in full.`
-              : `${routes.basis.ports_considered} port(s) within ${routes.basis.max_legs} sailed leg(s) were compared, ${routes.basis.keep_per_good} destination(s) per good priced in full.`}
+              ? `${routes.basis.to ?? 'One port'} only · ${routes.basis.keep_per_good} destination(s) per good.`
+              : `${routes.basis.ports_considered} port(s) within ${routes.basis.max_legs} leg(s) · ${routes.basis.keep_per_good} destination(s) per good.`}
           </div>
         </dl>
       )}
@@ -846,9 +856,9 @@ function PortPicker({
             limit left, so the line counts rather than apologises. */}
         <p className={fineClass()}>
           {needle
-            ? `${listed.length} of ${ports.length} ports answer to “${query.trim()}”.`
+            ? `${listed.length} of ${ports.length} match.`
             : home
-              ? `All ${ports.length} ports — ${home.region} first, then the rest of the world.`
+              ? `All ${ports.length} ports — ${home.region} first.`
               : `All ${ports.length} ports.`}
         </p>
       </div>
@@ -862,7 +872,7 @@ function PortPicker({
 
       {listed.length === 0 ? (
         <p className="pt-2 text-sm text-ink-muted">
-          No port answers to that. Clear the field and all {ports.length} are here again.
+          No port matches. Clear the field for all {ports.length}.
         </p>
       ) : (
         <div className="flex flex-wrap gap-1.5 pt-2">

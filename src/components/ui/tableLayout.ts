@@ -70,5 +70,13 @@ export function scrollTableClass(stickyBg: 'panel' | 'surface' | 'surface-2' = '
 }
 
 /** The one-line hint that belongs under a table wide enough to need scrolling. One authority for
- *  the words, so five screens cannot invent five ways of saying it. */
-export const TABLE_SCROLL_HINT = 'Swipe the table sideways for the rest of the columns.'
+ *  the words, so five screens cannot invent five ways of saying it.
+ *
+ *  WHEN it is printed is NOT the caller's decision any more — `<Table scrollHint>` measures its own
+ *  overflow and prints this only while there really is something to the right (Table.tsx). Three
+ *  screens used to print it unconditionally and PORT's Alongside face printed it under a table
+ *  that fitted. */
+// Pin moved deliberately 2026-08-22 with the wordiness pass: nine words carried the same
+// affordance as fifteen, and the line now appears under tables where it is true, so it is read
+// rather than skipped. tests/tableLayout.spec.ts holds the matching pin.
+export const TABLE_SCROLL_HINT = 'Swipe the table for the rest.'

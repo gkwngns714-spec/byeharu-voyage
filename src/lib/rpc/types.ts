@@ -129,7 +129,19 @@ export interface VerbArg {
 export interface VerbSpec {
   verb: string
   args: VerbArg[]
+  /** ONE LINE, 30-60 characters, in a captain's voice — "Put to sea and make for another port."
+   *  It is printed on the verb's card, so it has to fit one. Migration 0021 cut these from 85-242
+   *  characters (1,212 across the eight verbs, down to 309) after the owner's "too long
+   *  explanation. this is a game, make it so." */
   help: string
+  /** THE FINE PRINT THAT USED TO BE INSIDE `help`, and is still true: that a big order walks a
+   *  stepped book ten tuns at a time, that FULL fills the stores, that hands beyond the idle men
+   *  cost two and a half times. It belongs behind the info dot, never on the card.
+   *
+   *  Optional because it is served by 0021 onward and the client must not break against a server
+   *  that predates it. 0021 PROVES each mechanic moved here rather than being deleted — it
+   *  requires six phrases present in the old `help` to be present in the new `note`. */
+  note?: string
 }
 
 export interface WorldSnapshot {
@@ -244,6 +256,94 @@ export interface BuyCapacity {
   est_total: number
   /** `hold` · `stock` · `daily cap` · `purse` · `at sea` — a phrase for the caption, not a code. */
   bound_by: string
+}
+
+// ── world.haggle_state(fleet, good) · cmd.haggle(fleet, good, side) — migration 0022 ───────────
+//
+// EVERY FIELD BELOW WAS READ OUT OF `20260818000022_a_bargain_is_struck_on_the_quay.sql`, from the
+// `jsonb_build_object` that produces it (`:610-635` for the read, `:534-557` for the verb) — not
+// inferred from the shape of `buy_capacity`, which it resembles but does not copy.
+//
+// WHAT A BARGAIN IS, IN ONE LINE: a concession off the PORT'S SPREAD — never off the mid. The mid
+// is what a good is worth and is the same for every house on the quay; 0022 refuses to let a
+// negotiation touch it, because `world.market()`'s %NBR, the price history and `trade_routes`
+// would then each be reporting a different world.
+
+/** She is not alongside, so there is nobody to bargain with. The server's own two-key answer. */
+export interface HaggleAshore {
+  docked: false
+  attempts_max: number
+  /** The server's sentence — "She is at sea. A bargain is struck on the quay." Render it as-is. */
+  why: string
+}
+
+/** She is alongside: the whole state of the bargaining for one good at this port, today. */
+export interface HaggleOnQuay {
+  docked: true
+  /** Port and good CODES. */
+  port: string
+  good: string
+  game_day: number
+  /** HOW MUCH NEGOTIATION CAN BE DONE — the literal answer, and the server's count, never ours. */
+  attempts_used: number
+  attempts_left: number
+  attempts_max: number
+  wins: number
+  /** The bargain currently HELD, as a fraction of the port's spread, and the same as a percentage. */
+  concession: number
+  concession_pct: number
+  concession_max: number
+  concession_max_pct: number
+  /** What one more win would add, in percentage points of the spread. */
+  step_pct: number
+  /** The odds of the NEXT attempt — read from `public.haggle_odds`, the same authority
+   *  `cmd.haggle` rolls against, so the panel cannot promise what the verb will not do. */
+  next_odds: number
+  next_odds_pct: number
+  /** The port's PUBLISHED spread, and the spread THIS house executes at — purser and bargain
+   *  already folded in by `world.spread_effective`, which is what `world.quote` itself calls. */
+  spread_published: number
+  spread_effective: number
+  spread_floor: number
+  /** True when the stack has reached `haggle_spread_floor_frac` × published and can go no lower. */
+  at_floor: boolean
+  /** "the next trade of this good at this port, or the day's end" — the server's own words. */
+  spent_on: string
+}
+
+export type HaggleState = HaggleAshore | HaggleOnQuay
+
+/**
+ * What ONE attempt returns. A refusal never arrives here: `cmd.haggle` answers a refusal as
+ * `{ok:false, error_code, error_message, fixes}` in the payload, which `fromPayload()` turns into
+ * a `Refusal` before a caller ever sees it — so E_NOT_DOCKED, E_NO_STOCK, E_NO_CARGO and
+ * E_HAGGLE_SPENT reach the screen in the server's own words, with the server's own fixes.
+ *
+ * THE ATTEMPT IS SPENT BEFORE THE ROLL IS TAKEN and the roll is keyed on the attempt INDEX
+ * (0022:508-518), so a retry is a genuinely different draw that has already cost a chance. There is
+ * no sequence of calls that re-rolls one draw, and nothing on this side should pretend otherwise.
+ */
+export interface HaggleAttempt {
+  ok: true
+  won: boolean
+  good: string
+  good_name: string
+  port: string
+  side: 'buy' | 'sell'
+  /** The odds this attempt was rolled against — read BEFORE the attempt was spent. */
+  odds: number
+  /** 1-based: which attempt of the day this was. */
+  attempt: number
+  attempts_max: number
+  attempts_left: number
+  concession: number
+  concession_pct: number
+  concession_max_pct: number
+  next_odds: number
+  spread_published: number
+  spread_effective: number
+  /** The sentence a player reads, won or lost. Written by the server; never composed here. */
+  message: string
 }
 
 // ── world.fleets() ─────────────────────────────────────────────────────────────────────────────

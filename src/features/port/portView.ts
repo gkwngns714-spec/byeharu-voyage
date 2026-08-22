@@ -46,21 +46,21 @@ export const PORT_FACES = [
     label: 'Quay',
     title: 'The quayside',
     explain:
-      'What you can do while lying here. Nothing on this face issues an order — each is printed as the exact line it would become, and tapping it hands that line to Command.',
+      'Each line is the exact order it would become. Tapping one sends it to Command; nothing here issues anything.',
   },
   {
     id: 'city',
     label: 'City',
     title: 'The city',
     explain:
-      "What this place IS: how far it has grown, what the Mayor takes on a deal, and what it sells cheaper than its neighbours do. Every figure is read from the market as it stands today.",
+      'How far this place has grown, what the Mayor takes, and what it sells cheaper than its neighbours. Every figure is read from the market as it stands today.',
   },
   {
     id: 'services',
     label: 'Services',
     title: 'What the port keeps',
     explain:
-      'The yard, the inn, the chandler and the school. What a service COSTS is set when the order runs, so a price is quoted by PREVIEW on Command rather than listed here.',
+      'The yard, the inn, the chandler and the school. What a service COSTS is set when the order runs, so PREVIEW on Command quotes it — no price is listed here.',
   },
   {
     id: 'ships',

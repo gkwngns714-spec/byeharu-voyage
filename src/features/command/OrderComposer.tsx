@@ -1,10 +1,24 @@
 import { useState } from 'react'
-import { Badge, Button, fineClass, Icon, Notice, SectionLabel } from '../../components/ui'
+import {
+  Badge,
+  Button,
+  Explain,
+  fineClass,
+  Icon,
+  Notice,
+  SectionLabel,
+  splitClass,
+  splitMainClass,
+  splitRailClass,
+} from '../../components/ui'
 import { VERB_ICON } from './verbIcons'
 import { formatTuns } from '../../lib/format'
 import type { FleetView, MarketView, VerbArg, VerbSpec, WorldSnapshot } from '../../lib/rpc'
 import { EnumPicker, GoodPicker, NumberPicker, PortPicker, PricePicker, QtyPicker } from './ArgPickers'
-import { useBuyCapacity } from './useBuyCapacity'
+import { useBuyCapacity, type BuyCapacityState } from './useBuyCapacity'
+import { BuyFleetPanel } from './BuyFleetPanel'
+import { HaggleBlock } from './HaggleBlock'
+import { useHaggleState } from './useHaggleState'
 import { sellBound } from './fleetLimits'
 // THE FLEET'S OWN ARITHMETIC COMES FROM THE FLEET SECTION. What is aboard, how many berths stand
 // empty and how sound the worst hull is are properties of a FLEET, not of the tab composing an
@@ -93,6 +107,26 @@ export function OrderComposer({
     setOverride(null)
   }
 
+  // BUYING IS THE ONE ORDER WITH A SECOND HALF. The owner asked for the goods on the left and the
+  // fleet's own state on the right while buying, and only while buying: nothing about a SAIL or a
+  // HIRE is answered by a hold gauge and a spread.
+  const buying = spec?.verb === 'BUY'
+
+  // ONE READING OF `world.buy_capacity()` PER COMPOSED ORDER, and it is made here.
+  //
+  // It used to be called inside `QtyArg`, which was the only consumer. The rail wants the same
+  // answer — the same fleet, the same good, the same read — and two components calling the hook
+  // would put TWO identical round trips on the wire for one question. So it is asked once, at the
+  // top, and handed to both. (It is not a second authority either way; the server answers it. This
+  // is about not asking twice.) `null` for anything but a BUY, which makes the hook idle.
+  const capacity = useBuyCapacity(buying ? (fleet?.id ?? null) : null, args.good ?? null)
+
+  // AND THE SAME ARRANGEMENT FOR THE BARGAIN (0022). Asked once, here; the RAIL draws the figures
+  // and the WORKING PANE draws the act, both from this one answer. Idle unless this is a BUY with a
+  // good chosen — a bargain is struck over a named good, at a named quay.
+  const bargain = useHaggleState(buying ? (fleet?.id ?? null) : null, args.good ?? null)
+  const buyingGood = buying && args.good ? market?.goods.find((g) => g.code === args.good) : undefined
+
   return (
     <div className="space-y-4">
       <div>
@@ -100,13 +134,25 @@ export function OrderComposer({
         {/* THE ACTION CARD (docs/UI_DIRECTION.md §2). These were six text chips in a row, which is
             a menu — the reference draws an action as a CARD carrying its own mark and a line of
             what it does, so the choice is legible before it is made.
-            
-            THE LINE IS `spec.help`, WHICH THE SERVER ALREADY SERVES. It used to appear only AFTER
-            a verb was chosen, which is the wrong side of the decision. Nothing is authored here:
-            add a verb to the chain and its card appears, with its own sentence, without an edit
-            (F.4). The mark is the one presentational thing this file adds, and a verb with no mark
-            in the table still draws — with its initial — rather than breaking the grid. */}
-        <div className="grid grid-cols-2 gap-2">
+
+            THE CARD IS A CONTROL, NOT A PARAGRAPH (the owner, 2026-08-22: "MAKE An order - Command.
+            too much unncessary info. So is Sail, Sell, Hire etc. Too long explanation. this is a
+            game, make it so."). The VERB is the hero — set at `text-base`, which is larger than
+            anything else on the tile — the mark rides beside it, and `spec.help` is one dim line
+            under it. Migrations 0020 and then 0021 cut those strings for exactly this slot: 85-242
+            characters became 33-43, and the mechanics they used to carry moved into `spec.note`,
+            which the ⓘ under the grid prints and the card never does. The clamp stays at two lines
+            anyway, because the card must not become a paragraph again the day a verb is added with
+            a longer line — the card is a fixed shape and the dot is where prose goes.
+
+            THE LINE IS `spec.help`, WHICH THE SERVER ALREADY SERVES. Nothing is authored here: add
+            a verb to the chain and its card appears, with its own sentence, without an edit (F.4).
+            The mark is the one presentational thing this file adds, and a verb with no mark in the
+            table still draws — with its initial — rather than breaking the grid.
+
+            THREE ACROSS FROM `sm`. Six verbs are three rows of two on a phone and two rows of three
+            on anything wider, so the grid never leaves a card stranded on a line of its own. */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {verbs.map((v) => {
             const on = v.verb === spec?.verb
             const mark = VERB_ICON[v.verb]
@@ -116,7 +162,7 @@ export function OrderComposer({
                 type="button"
                 onClick={() => onChooseVerb(on ? null : v.verb)}
                 className={[
-                  'bv-cut flex min-h-11 flex-col gap-1 border p-2.5 text-left transition',
+                  'bv-cut flex min-h-11 flex-col gap-1.5 border p-3 text-left transition',
                   on
                     ? 'border-accent bg-accent-soft'
                     : 'border-edge bg-surface-2 hover:border-accent/60',
@@ -126,18 +172,18 @@ export function OrderComposer({
                   {mark ? (
                     <Icon
                       name={mark}
-                      size={16}
-                      className={on ? 'text-accent' : 'text-ink-faint'}
+                      size={18}
+                      className={`shrink-0 ${on ? 'text-accent' : 'text-ink-faint'}`}
                     />
                   ) : (
                     <span
-                      className={`w-4 text-center font-mono text-xs ${on ? 'text-accent' : 'text-ink-faint'}`}
+                      className={`w-[18px] shrink-0 text-center font-mono text-base ${on ? 'text-accent' : 'text-ink-faint'}`}
                     >
                       {v.verb.slice(0, 1)}
                     </span>
                   )}
                   <span
-                    className={`font-mono text-xs uppercase tracking-wider ${on ? 'text-accent' : 'text-ink'}`}
+                    className={`truncate font-mono text-base uppercase tracking-wide ${on ? 'text-accent' : 'text-ink'}`}
                   >
                     {v.verb}
                   </span>
@@ -152,10 +198,51 @@ export function OrderComposer({
       </div>
 
       {spec && (
-        <>
-          <p className="text-sm text-ink-muted">{spec.help}</p>
-          <div className="space-y-2">
-            {visibleArgs(spec, args).map((arg) => {
+        // ── THE ORDER ITSELF, AND — WHEN BUYING — HER STATE BESIDE IT ─────────────────────────
+        // One column on a phone, two from `md` up (src/components/ui/screenLayout.ts). The rail is
+        // BUY's alone: a hold gauge and a spread answer nothing about a SAIL.
+        <div className={buying ? splitClass() : undefined}>
+          {buying && (
+            // FIGURES ONLY IN HERE — see splitRailClass()'s header for why a sticky rail may not
+            // carry a control, and why the rail is written BEFORE the pane it sits beside.
+            <aside className={splitRailClass()}>
+              <BuyFleetPanel
+                fleet={fleet}
+                market={market}
+                config={snapshot.config}
+                goodCode={args.good ?? null}
+                capacity={capacity}
+                bargain={bargain}
+              />
+            </aside>
+          )}
+
+          <div className={buying ? splitMainClass() : undefined}>
+            {/* ⓘ IS `spec.note`, AND THE CARD IS `spec.help`. THIS IS THE CLIENT HALF OF 0021.
+                A paragraph of `spec.help` stood here, so a chosen verb said the card's own sentence
+                a second time within 200px — two renderings of one fact, and that was the copy to
+                delete (docs/NO_SPAGHETTI.md §5). But deleting it alone would have LOST the fine
+                print, and a `help` string discloses real mechanics: the stepped book, ALL and HALF
+                being counted when she reaches the quay, hands beyond the idle men costing two and a
+                half times.
+
+                Migration 0021 split the string for exactly this: `help` is one line for the card
+                (33-43 characters now, was 85-242) and `note` is the fine print, and its self-assert
+                proves six mechanics MOVED rather than were deleted. Its own type comment says the
+                note "belongs behind the info dot, never on the card" — so this dot is where it
+                lands, and until this line it was served and printed nowhere.
+
+                `?? spec.help` because `note` is optional against a server older than 0021 — a
+                client that blanked the dot on such a server would be losing the disclosure a second
+                way. The row also gives the argument list the label it never had. */}
+            <div className="mb-2 flex flex-wrap items-center gap-x-1">
+              <SectionLabel className="mb-0">What {spec.verb} needs</SectionLabel>
+              <Explain label={spec.verb} panelClassName="w-full normal-case tracking-normal">
+                {spec.note ?? spec.help}
+              </Explain>
+            </div>
+            <div className="space-y-2">
+              {visibleArgs(spec, args).map((arg) => {
               const value = args[arg.name]
               const isOpen = open === arg.name
               return (
@@ -224,15 +311,22 @@ export function OrderComposer({
                         fleet={fleet}
                         snapshot={snapshot}
                         market={market}
+                        capacity={capacity}
                         onPick={(v) => answer(arg, v)}
                       />
                     </div>
                   )}
                 </div>
               )
-            })}
+              })}
+            </div>
+
+            {/* THE ACT LIVES IN THE WORKING PANE, under the quantity stepper. The figures are in
+                the rail; the button may never be, because the rail is sticky and a sticky panel
+                taller than the viewport hides its own foot (screenLayout.ts, CORE_REUSE §1.5). */}
+            <HaggleBlock fleetId={fleet?.id ?? null} good={buyingGood} read={bargain} />
           </div>
-        </>
+        </div>
       )}
     </div>
   )
@@ -266,6 +360,12 @@ function describe(
  * price climbs as the order walks the book (§G.2), so a ceiling divided out of the spot price
  * offers more than the purse can carry. That is exactly what happened: MAX offered 91 tuns of
  * pepper and the trade was refused at 8,130 against 8,000. So the buy ceiling is world.buy_capacity().
+ *
+ * THE ANSWER IS HANDED IN, NOT ASKED FOR HERE. This component used to call `useBuyCapacity` itself,
+ * which was fine while it was the only consumer; the rail now shows the same ceiling and the same
+ * estimate, and two hooks for one question means two identical round trips. `OrderComposer` asks
+ * once and passes the state to both. (Not a spaghetti fix — there was only ever one authority, the
+ * server — a duplicate-request fix.)
  */
 function QtyArg({
   selling,
@@ -273,6 +373,7 @@ function QtyArg({
   goodCode,
   step,
   value,
+  capacity,
   onPick,
 }: {
   selling: boolean
@@ -280,10 +381,10 @@ function QtyArg({
   goodCode: string | null
   step: number
   value: string | undefined
+  /** The composer's reading of `world.buy_capacity()`. Idle on a SELL, which never consults it. */
+  capacity: BuyCapacityState
   onPick: (value: string) => void
 }) {
-  const capacity = useBuyCapacity(selling ? null : (fleet?.id ?? null), goodCode)
-
   if (!goodCode) {
     return <Notice tone="neutral" className="text-xs">Pick the good first — how much depends on which.</Notice>
   }
@@ -304,15 +405,9 @@ function QtyArg({
       </p>
     )
   }
-  return (
-    <QtyPicker
-      bound={capacity.bound}
-      step={step}
-      value={value}
-      onPick={onPick}
-      estTotal={capacity.estTotal}
-    />
-  )
+  // The MONEY is not passed on: `capacity.estTotal` is printed by the fleet rail, under a label and
+  // beside the price of the first step. See QtyPicker's header for the measurement.
+  return <QtyPicker bound={capacity.bound} step={step} value={value} onPick={onPick} />
 }
 
 /**
@@ -326,6 +421,7 @@ function ArgPicker({
   fleet,
   snapshot,
   market,
+  capacity,
   onPick,
 }: {
   spec: VerbSpec
@@ -334,6 +430,8 @@ function ArgPicker({
   fleet: FleetView | undefined
   snapshot: WorldSnapshot
   market: MarketView | undefined
+  /** The composer's ONE reading of `world.buy_capacity()`; only the `qty` arm consults it. */
+  capacity: BuyCapacityState
   onPick: (value: string) => void
 }) {
   const selling = spec.verb === 'SELL'
@@ -366,8 +464,8 @@ function ArgPicker({
     }
 
     case 'qty':
-      // Its own component, because a BUY ceiling has to be ASKED FOR (the server prices the whole
-      // stepped order), and a hook cannot be called from inside a switch.
+      // Still its own component, because a BUY ceiling is a different question from a SELL one and
+      // the two answers are drawn differently. It no longer holds the hook — the composer does.
       return (
         <QtyArg
           selling={selling}
@@ -375,6 +473,7 @@ function ArgPicker({
           goodCode={args.good ?? null}
           step={snapshot.config.trade_step_tuns}
           value={args[arg.name]}
+          capacity={capacity}
           onPick={onPick}
         />
       )
