@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Badge,
   Button,
@@ -13,10 +13,24 @@ import {
 } from '../../components/ui'
 import { VERB_ICON } from './verbIcons'
 import { formatTuns } from '../../lib/format'
-import type { FleetView, MarketView, VerbArg, VerbSpec, WorldSnapshot } from '../../lib/rpc'
+import type {
+  FleetView,
+  MarketView,
+  SnapshotPort,
+  TradeRoutes,
+  VerbArg,
+  VerbSpec,
+  WorldSnapshot,
+} from '../../lib/rpc'
+// THE CHART IS A LAYER OF ITS OWN (src/chart), not the Map tab's. SAIL's rail draws the SAME chart
+// the Map tab draws, out of the same modules — a chart copied across the screen boundary is the
+// silent copy docs/NO_SPAGHETTI.md §2 calls worse than the import. src/chart/index.ts records why
+// the carve-out line falls where it does.
+import { SmallChart } from '../../chart'
 import { EnumPicker, GoodPicker, NumberPicker, PortPicker, PricePicker, QtyPicker } from './ArgPickers'
 import { useBuyCapacity, type BuyCapacityState } from './useBuyCapacity'
-import { BuyFleetPanel } from './BuyFleetPanel'
+import { FleetRail } from './FleetRail'
+import { railKind } from './railVerbs'
 import { HaggleBlock } from './HaggleBlock'
 import { useHaggleState } from './useHaggleState'
 import { sellBound } from './fleetLimits'
@@ -71,7 +85,9 @@ export function OrderComposer({
   args,
   fleet,
   snapshot,
+  port,
   market,
+  routes,
   onChooseVerb,
   onSetArg,
 }: {
@@ -81,8 +97,14 @@ export function OrderComposer({
   args: Record<string, string>
   fleet: FleetView | undefined
   snapshot: WorldSnapshot
+  /** Where the order will happen — where she lies, or where she is bound (F.2). The screen already
+   *  resolves it for the market read, so it is handed down rather than looked up a second time. */
+  port: SnapshotPort | null
   /** The market of the port this fleet is in (or bound for). Undefined until it has been read. */
   market: MarketView | undefined
+  /** `world.trade_routes()` for that same port — ONE read for the whole goods list, fetched by the
+   *  screen beside the market. Undefined while it is in flight. */
+  routes: TradeRoutes | undefined
   onChooseVerb: (verb: string | null) => void
   onSetArg: (name: string, value: string | null) => void
 }) {
@@ -102,15 +124,69 @@ export function OrderComposer({
     setOverride({ verb: spec.verb, name: open === name ? null : name })
   }
 
+  // WHICH GOOD ROW IS UNFOLDED — ONE, AND IT IS HELD HERE RATHER THAN INSIDE THE LIST.
+  //
+  // The owner, 2026-08-23: "click a trade good → it unfolds showing how much I can buy, and more."
+  // The fold's headline figure is `world.buy_capacity()`, and that is a ROUND TRIP — so it must be
+  // asked for the OPEN row and no other, which means the open row has to be known where the hook
+  // lives. A `useBuyCapacity` inside the row component would put seventy reads on the wire.
+  //
+  // It is stamped with the verb, like `override` above and for the same reason: a good inspected
+  // under BUY is not still being inspected when the player switches to SELL. And it is only
+  // meaningful while the good picker is the open argument — `open === 'good'` — so folding the
+  // argument row away drops the inspection with no second piece of state to keep in step.
+  const [inspect, setInspect] = useState<{ verb: string; good: string } | null>(null)
+  const inspecting =
+    inspect && open === 'good' && inspect.verb === spec?.verb ? inspect.good : null
+
+  // WHICH PORT ROW THE PLAYER IS ON — the same shape as `inspect` above, one argument type over.
+  //
+  // A port row COMMITS on tap (unlike a good row, which unfolds), so on a phone the chart follows
+  // the choice and this is never set. It is what a POINTER and a KEYBOARD can say that a thumb
+  // cannot: running down the list names each harbour on the chart as you reach it. It is stamped
+  // with the verb for the same reason `inspect` is — a port considered under SAIL is not still
+  // being considered when the player switches verb.
+  //
+  // IT DOES NOT MOVE THE FRAME. Only the CHOICE frames the chart (see `chartPorts` below): a
+  // picture that jumped as the pointer ran down twelve rows would be unreadable, and the reach law
+  // has nothing to do with it — this is simply the difference between looking and choosing.
+  const [consider, setConsider] = useState<{ verb: string; port: string } | null>(null)
+  const considering = consider && consider.verb === spec?.verb ? consider.port : null
+
   const answer = (arg: VerbArg, value: string) => {
     onSetArg(arg.name, value)
     setOverride(null)
+    // Choosing ENDS the looking. Without this, re-opening the good row later would unfold whatever
+    // was last peeked at rather than the row that was actually chosen.
+    setInspect(null)
+    setConsider(null)
   }
 
-  // BUYING IS THE ONE ORDER WITH A SECOND HALF. The owner asked for the goods on the left and the
-  // fleet's own state on the right while buying, and only while buying: nothing about a SAIL or a
-  // HIRE is answered by a hold gauge and a spread.
+  // FOUR ORDERS HAVE A SECOND HALF. BUY was the first — the goods on the left, her state on the
+  // right — and the owner then asked for the same on the three verbs that are equally decisions
+  // about the fleet: *"hire, repair, provision — I want fleet info like what is in buy."* The rail
+  // itself decides what it prints for each (see ./FleetRail.tsx); this only decides whether the
+  // composer lays out in two columns. SAIL and SELL still have no rail, and `hasRail` is the one
+  // place that list is written.
   const buying = spec?.verb === 'BUY'
+  const rail = railKind(spec?.verb)
+  const railed = rail !== null
+
+  // THE PORTS THIS ORDER IS ABOUT — read off the SERVER'S OWN SCHEMA, never off a list of argument
+  // names typed here. SAIL declares `dest` and an optional `via`; a verb that one day declares a
+  // third port argument gets it on the chart without an edit, which is the same rule the pickers
+  // are built on (F.4: the grammar is served, not restated).
+  //
+  // They are what the chart RINGS and what it FRAMES, so the picture always holds both ends of the
+  // decision: where she lies, and where this order would put her.
+  const chartPorts = useMemo(() => {
+    if (!spec) return []
+    const codes = spec.args
+      .filter((a) => a.type === 'port')
+      .map((a) => args[a.name])
+      .filter((code): code is string => code !== undefined && code !== '')
+    return [...new Set(codes)]
+  }, [spec, args])
 
   // ONE READING OF `world.buy_capacity()` PER COMPOSED ORDER, and it is made here.
   //
@@ -119,13 +195,26 @@ export function OrderComposer({
   // would put TWO identical round trips on the wire for one question. So it is asked once, at the
   // top, and handed to both. (It is not a second authority either way; the server answers it. This
   // is about not asking twice.) `null` for anything but a BUY, which makes the hook idle.
-  const capacity = useBuyCapacity(buying ? (fleet?.id ?? null) : null, args.good ?? null)
+  //
+  // AND IT FOLLOWS THE ROW BEING LOOKED AT, NOT ONLY THE ONE CHOSEN. `focusGood` is the unfolded
+  // row while the list is open and the chosen good otherwise, so ONE hook serves the fold, the
+  // stepper and the rail — and the rail updates as the player reads down the list, which is the
+  // whole point of putting her state beside the goods.
+  const focusGood = inspecting ?? args.good ?? null
+  const capacity = useBuyCapacity(buying ? (fleet?.id ?? null) : null, focusGood)
 
   // AND THE SAME ARRANGEMENT FOR THE BARGAIN (0022). Asked once, here; the RAIL draws the figures
   // and the WORKING PANE draws the act, both from this one answer. Idle unless this is a BUY with a
-  // good chosen — a bargain is struck over a named good, at a named quay.
-  const bargain = useHaggleState(buying ? (fleet?.id ?? null) : null, args.good ?? null)
-  const buyingGood = buying && args.good ? market?.goods.find((g) => g.code === args.good) : undefined
+  // good in focus — a bargain is struck over a named good, at a named quay.
+  const bargain = useHaggleState(buying ? (fleet?.id ?? null) : null, focusGood)
+  // THE ACT IS ONLY EVER OVER THE CHOSEN GOOD. The rail may show the figures for a good that is
+  // merely being INSPECTED, because figures are looking; `cmd.haggle` spends one of three tries a
+  // day and is not. So the block draws only when the focus and the choice are the same good —
+  // which also guarantees `bargain` above is the read for the good this block names.
+  const buyingGood =
+    buying && args.good && focusGood === args.good
+      ? market?.goods.find((g) => g.code === args.good)
+      : undefined
 
   return (
     <div className="space-y-4">
@@ -198,26 +287,63 @@ export function OrderComposer({
       </div>
 
       {spec && (
-        // ── THE ORDER ITSELF, AND — WHEN BUYING — HER STATE BESIDE IT ─────────────────────────
-        // One column on a phone, two from `md` up (src/components/ui/screenLayout.ts). The rail is
-        // BUY's alone: a hold gauge and a spread answer nothing about a SAIL.
-        <div className={buying ? splitClass() : undefined}>
-          {buying && (
-            // FIGURES ONLY IN HERE — see splitRailClass()'s header for why a sticky rail may not
-            // carry a control, and why the rail is written BEFORE the pane it sits beside.
+        // ── THE ORDER ITSELF, AND — ON FIVE VERBS — WHAT IT IS A DECISION ABOUT BESIDE IT ─────
+        // One column on a phone, two from `md` up (src/components/ui/screenLayout.ts). SELL keeps
+        // the single column: neither a hold gauge nor a chart answers anything about it — what is
+        // aboard is aboard, and the stepper states it in full.
+        <div className={railed ? splitClass() : undefined}>
+          {railed && (
+            // FIGURES AND PICTURES ONLY IN HERE — see splitRailClass()'s header for why a sticky
+            // rail may not carry a control, and why the rail is written BEFORE the pane it sits
+            // beside (on a phone the working pane can be eleven thousand pixels tall).
             <aside className={splitRailClass()}>
-              <BuyFleetPanel
-                fleet={fleet}
-                market={market}
-                config={snapshot.config}
-                goodCode={args.good ?? null}
-                capacity={capacity}
-                bargain={bargain}
-              />
+              {rail === 'chart' ? (
+                // ── SAIL: THE WORLD, NOT THE FLEET ─────────────────────────────────────────────
+                // The owner, 2026-08-23: "sail — a small map + current location on the left side."
+                // Choosing a destination from a list of names asks the player to hold a map in
+                // their head. This is that map, and it is the Map tab's, drawn by the same modules.
+                //
+                // NOTHING IN THIS BLOCK IS TAPPABLE — not the chart (it takes no handler at all)
+                // and not the ⓘ's contents. The destination is still chosen in the list beside it,
+                // in words, because the map never accepts an order (docs/DESIGN.md §E.5).
+                <div className="space-y-1" data-testid="sail-chart-rail">
+                  <div className="flex flex-wrap items-center gap-x-1">
+                    <SectionLabel className="mb-0">Where she is</SectionLabel>
+                    <Explain label="the chart" panelClassName="w-full normal-case tracking-normal">
+                      Her berth is the filled mark; a ring is a harbour this order would send her
+                      to. The hairlines are the sea lanes — the water she can actually take. No line
+                      is drawn between the two, because a straight one across this sheet is not the
+                      passage and is not its length: Lisbon to Cádiz is 248 miles sailed against 188
+                      as the gull flies, and the list beside this prints the sailed figure.
+                    </Explain>
+                  </div>
+                  <SmallChart
+                    ports={snapshot.ports}
+                    legs={snapshot.legs}
+                    // Just this fleet. The order is hers, and every other hull on the chart would
+                    // be an answer to a question nobody asked here (the Map tab has the roster).
+                    fleets={fleet ? [fleet] : []}
+                    considering={chartPorts}
+                    highlight={considering}
+                    ariaLabel={`Chart showing where ${fleet?.name ?? 'the fleet'} lies and where this order would send her`}
+                  />
+                </div>
+              ) : (
+                <FleetRail
+                  verb={spec.verb}
+                  fleet={fleet}
+                  port={port}
+                  market={market}
+                  config={snapshot.config}
+                  goodCode={focusGood}
+                  capacity={capacity}
+                  bargain={bargain}
+                />
+              )}
             </aside>
           )}
 
-          <div className={buying ? splitMainClass() : undefined}>
+          <div className={railed ? splitMainClass() : undefined}>
             {/* ⓘ IS `spec.note`, AND THE CARD IS `spec.help`. THIS IS THE CLIENT HALF OF 0021.
                 A paragraph of `spec.help` stood here, so a chosen verb said the card's own sentence
                 a second time within 200px — two renderings of one fact, and that was the copy to
@@ -311,7 +437,15 @@ export function OrderComposer({
                         fleet={fleet}
                         snapshot={snapshot}
                         market={market}
+                        routes={routes}
                         capacity={capacity}
+                        inspecting={inspecting}
+                        onInspect={(code) =>
+                          setInspect(spec && code ? { verb: spec.verb, good: code } : null)
+                        }
+                        onConsider={(code) =>
+                          setConsider(spec && code ? { verb: spec.verb, port: code } : null)
+                        }
                         onPick={(v) => answer(arg, v)}
                       />
                     </div>
@@ -421,7 +555,11 @@ function ArgPicker({
   fleet,
   snapshot,
   market,
+  routes,
   capacity,
+  inspecting,
+  onInspect,
+  onConsider,
   onPick,
 }: {
   spec: VerbSpec
@@ -430,8 +568,17 @@ function ArgPicker({
   fleet: FleetView | undefined
   snapshot: WorldSnapshot
   market: MarketView | undefined
-  /** The composer's ONE reading of `world.buy_capacity()`; only the `qty` arm consults it. */
+  /** `world.trade_routes()` for this port; only the `good` arm consults it. */
+  routes: TradeRoutes | undefined
+  /** The composer's ONE reading of `world.buy_capacity()` — the `qty` arm draws its ceiling from
+   *  it, and the `good` arm's unfolded row draws the same answer for the row being looked at. */
   capacity: BuyCapacityState
+  /** The unfolded good row, and how to move it. Only the `good` arm has anything to unfold. */
+  inspecting: string | null
+  onInspect: (code: string | null) => void
+  /** The port row a pointer or the keyboard is ON. Only the `port` arm raises it — it names that
+   *  harbour on SAIL's chart while the player runs down the list, and it chooses nothing. */
+  onConsider: (code: string | null) => void
   onPick: (value: string) => void
 }) {
   const selling = spec.verb === 'SELL'
@@ -447,6 +594,7 @@ function ArgPicker({
           origin={fleet ? fleetPortCode(fleet) : null}
           value={args[arg.name]}
           onPick={onPick}
+          onConsider={onConsider}
         />
       )
 
@@ -459,6 +607,10 @@ function ArgPicker({
           onPick={onPick}
           intent={selling ? 'sell' : 'buy'}
           aboard={selling && fleet ? fleetCargoByCode(fleet) : undefined}
+          inspecting={inspecting}
+          onInspect={onInspect}
+          capacity={capacity}
+          routes={routes}
         />
       )
     }

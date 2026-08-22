@@ -1,7 +1,6 @@
 import { formatRealShort } from '../../lib/format'
+import type { ChartModel, FleetOnChart, MapPort, MapSelection } from '../../chart'
 import { MapPanel } from './MapPanel'
-import type { ChartModel, FleetOnChart } from './chartModel'
-import type { MapPort, MapSelection } from './mapTypes'
 
 // PANEL ONE, TOP-LEFT — what you have, and where it is. DESIGN §E.5's fleet list.
 //

@@ -3,8 +3,9 @@ import {
   COASTLINE_MIN_SPAN_DEG,
   COASTLINE_TOLERANCE_DEG,
   buildCoastline,
-} from '../src/features/map/coastlineBuild'
-import { toClosedRingsD, toPolylineD } from '../src/features/map/svgPath'
+  toClosedRingsD,
+  toPolylineD,
+} from '../src/chart'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE COASTLINE BUILDER — pure, so it can be proved without a network or a browser.

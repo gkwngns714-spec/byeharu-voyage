@@ -1,4 +1,4 @@
-import { project } from '../../lib/geo'
+import { project } from '../lib/geo'
 import type { ChartModel } from './chartModel'
 import { GLYPH } from './glyphs'
 

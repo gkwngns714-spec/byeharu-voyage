@@ -37,13 +37,16 @@ import type {
 } from '../../lib/rpc'
 import { handOffTrade } from '../../domain/order'
 import { housePortCode } from '../../domain/fleet'
+// WHERE A GOOD IS WORTH MORE THAN IT IS HERE — a section, not this screen's. The Command tab's
+// unfolded good row names the same destination from the same read, so the index moved out of
+// ./marketRows into src/domain/trade rather than being copied across a screen boundary.
+import { routesByGood } from '../../domain/trade'
 import {
   type MarketBlock,
   type MarketFilter,
   type SortKey,
   countRows,
   marketBlocks,
-  routesByGood,
   stockBar,
   verbFor,
 } from './marketRows'

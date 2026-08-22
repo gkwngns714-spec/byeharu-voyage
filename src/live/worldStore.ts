@@ -65,6 +65,8 @@ import {
   worldPlayer,
   worldPriceHistory,
   worldSkills,
+  worldStandings,
+  worldBuffs,
   worldSnapshot,
   worldTradeRoutes,
 } from '../lib/rpc'
@@ -79,6 +81,9 @@ import type {
   PriceHistory,
   Refusal,
   SkillBook,
+  SnapshotNation,
+  StandingsBoard,
+  BuffsView,
   SnapshotGood,
   SnapshotPort,
   TradeRoutes,
@@ -105,6 +110,10 @@ export interface LiveWorld {
   /** The officer roster and the school, fetched on demand — neither changes while you look at it. */
   officers: OfficerRoster | null
   skills: SkillBook | null
+  /** The settled board (0025). Null until RANK asks for it — nothing else needs it. */
+  standings: StandingsBoard | null
+  /** What is on at the quay (0026), keyed by port id — a fair is a PORT's fact, not the world's. */
+  buffs: Record<string, BuffsView>
   /** One port's remembered prices, keyed by port id (0013). Fetched beside its market. */
   history: Record<string, PriceHistory>
 
@@ -127,6 +136,7 @@ export interface LiveWorld {
 
   // ── lookups, built once per snapshot ─────────────────────────────────────────────────────────
   portByCode: Record<string, SnapshotPort>
+  nationByCode: Record<string, SnapshotNation>
   portById: Record<string, SnapshotPort>
   goodByCode: Record<string, SnapshotGood>
 
@@ -145,6 +155,8 @@ export interface LiveWorld {
   /** Fetch the roster and the school. Idempotent; screens call them on mount. */
   loadOfficers: () => Promise<void>
   loadSkills: () => Promise<void>
+  loadStandings: (limit?: number | null) => Promise<void>
+  loadBuffs: (portId: string) => Promise<void>
   /** Sign an officer, post one, or study a level. Each re-reads what it changed, because the
    *  server's answer is the only true one — no local patching (the `issue` rule). */
   hireOfficer: (code: string, fleetId: string | null) => Promise<boolean>
@@ -201,6 +213,26 @@ export function portNameOf(portByCode: Record<string, SnapshotPort>, code: strin
   return portByCode[code]?.name ?? code
 }
 
+/**
+ * WHAT A NATION CODE IS CALLED — the one reading of it, and the second member of this family.
+ *
+ * Written the day the board shipped (0025) printing `PRT` and `ESP` beside every captain's name,
+ * on a screen whose whole job is telling houses apart. The agent that built it REFUSED to write the
+ * lookup table here and reported the gap instead, which is why there is one authority to write
+ * rather than a seventh copy to find: 0028 serves `snapshot.nations`, so the answer now comes from
+ * the world rather than from a table a screen keeps.
+ *
+ * The fallback is the CODE and not a word like "unknown", for `portNameOf`'s reason: a code is at
+ * least true, and a screen printing "unknown" beside a real house hides the defect instead of
+ * showing it.
+ */
+export function nationNameOf(
+  nationByCode: Record<string, SnapshotNation>,
+  code: string,
+): string {
+  return nationByCode[code]?.name ?? code
+}
+
 export const useWorld = create<LiveWorld>((set, get) => ({
   phase: 'idle',
   fatal: null,
@@ -210,6 +242,8 @@ export const useWorld = create<LiveWorld>((set, get) => ({
   player: null,
   officers: null,
   skills: null,
+  standings: null,
+  buffs: {},
   history: {},
   ducats: null,
   events: [],
@@ -219,6 +253,7 @@ export const useWorld = create<LiveWorld>((set, get) => ({
   refusal: null,
   readAt: null,
   portByCode: {},
+  nationByCode: {},
   portById: {},
   goodByCode: {},
 
@@ -262,8 +297,10 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     }
     const goodByCode: Record<string, SnapshotGood> = {}
     for (const g of snap.value.goods) goodByCode[g.code] = g
+    const nationByCode: Record<string, SnapshotNation> = {}
+    for (const nat of snap.value.nations) nationByCode[nat.code] = nat
 
-    set({ snapshot: snap.value, portByCode, portById, goodByCode, mode })
+    set({ snapshot: snap.value, portByCode, portById, goodByCode, nationByCode, mode })
     await get().refresh()
     // A world that answered snapshot() but not fleets() is still a world worth showing: the
     // failure is already in `fatal` and the screens render it in place.
@@ -325,6 +362,25 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     const r = await worldSkills()
     if (r.ok) set({ skills: r.value })
     else set({ refusal: r.refusal })
+  },
+
+  // A FAILED BOARD READ IS LOUD, unlike history and routes. Those two decorate a price that is true
+  // without them; the board IS the screen, so a RANK tab that silently kept yesterday's order would
+  // be showing a standing nobody holds.
+  loadStandings: async (limit = null) => {
+    const r = await worldStandings(limit)
+    if (r.ok) set({ standings: r.value })
+    else set({ refusal: r.refusal })
+  },
+
+  // A FAILED BUFF READ IS SILENT, and this is the one place that choice has a second consequence:
+  // this read is also what winds the calendar where pg_cron is absent (0026). A quay that does not
+  // know a fair is on still quotes the right price — `world.market` reads the spread itself — so the
+  // cost of failing quietly is a missing sign, never a wrong number.
+  loadBuffs: async (portId) => {
+    const r = await worldBuffs(portId)
+    if (!r.ok) return
+    set((s) => ({ buffs: { ...s.buffs, [portId]: r.value } }))
   },
 
   hireOfficer: async (code, fleetId) => {

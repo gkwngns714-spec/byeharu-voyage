@@ -10,7 +10,7 @@ import { buildCoastline, type CoastlineData } from './coastlineBuild'
 // Vite hands back the URL of the vendored file as a build asset (hashed, cacheable, and NOT in the
 // JS bundle — `npm run build` emits it as dist/assets/world-110m-*.json). `data/` belongs to
 // another agent; this module only ever reads it.
-import worldUrl from '../../../data/world-110m.json?url'
+import worldUrl from '../../data/world-110m.json?url'
 
 /** Fetch the vendored world file and build the path. One network read per session; the browser
  *  cache handles the rest. */

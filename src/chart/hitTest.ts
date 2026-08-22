@@ -19,7 +19,7 @@
 // only value it can return is a `MapSelection`, which is a name, not a verb.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { project, type Point } from '../../lib/geo'
+import { project, type Point } from '../lib/geo'
 import type { ChartModel } from './chartModel'
 import type { MapPort, MapSelection } from './mapTypes'
 

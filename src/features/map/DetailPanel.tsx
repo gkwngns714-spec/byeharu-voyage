@@ -1,7 +1,6 @@
 import { formatInt, formatNm, formatRealShort } from '../../lib/format'
+import { fleetsAtPort, fleetsBoundFor, type ChartModel, type MapPort, type MapSelection } from '../../chart'
 import { MapPanel } from './MapPanel'
-import { fleetsAtPort, fleetsBoundFor, type ChartModel } from './chartModel'
-import type { MapPort, MapSelection } from './mapTypes'
 
 // PANEL TWO, BOTTOM-RIGHT — the detail of whatever is selected. DESIGN §E.5's "selected fleet
 // detail", widened by one case: a port, when a port is what was tapped.

@@ -5,7 +5,7 @@
 // WHY IT IS HERE. `data/world-110m.json` is 177 country features, 289 rings, 10,654 points. Drawn
 // verbatim that is ~123 KB of SVG path data in one element, and the browser re-rasterises all of
 // it on every frame of a pinch-zoom. A pale backdrop coastline does not earn that. Decimating at
-// LOAD time (see src/features/map/coastline.ts) keeps `data/` as the single source of truth — no
+// LOAD time (see src/chart/coastline.ts) keeps `data/` as the single source of truth — no
 // second, generated copy of the world to drift out of date — and costs one pass at map open.
 //
 // The tolerance is in whatever units the points are in; the coastline passes chart units, so a

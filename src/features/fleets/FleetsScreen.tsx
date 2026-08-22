@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Badge,
@@ -10,6 +11,7 @@ import {
   PageHeader,
   Screen,
   SectionLabel,
+  TabRow,
   TD,
   TH,
   Table,
@@ -293,6 +295,10 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
   )
 }
 
+
+/** The three faces of one fleet. Not routes — a fleet is one card, and these are its sides. */
+type FleetFace = 'ships' | 'cargo' | 'stores'
+
 function FleetDetail({
   fleet,
   config,
@@ -310,6 +316,9 @@ function FleetDetail({
   const goodByCode = useWorld((s) => s.goodByCode)
   const portByCode = useWorld((s) => s.portByCode)
   const cargo = fleetCargo(fleet)
+  // WHICH FACE OF THIS FLEET IS TURNED TOWARDS YOU. Per-fleet, not shared: two cards open at once
+  // must be able to show different faces, and a single shared value would move both.
+  const [face, setFace] = useState<FleetFace>('ships')
   const crew = fleetCrew(fleet)
   const stores = fleetStores(fleet)
   const flagship = fleet.ships.find((s) => s.is_flagship) ?? null
@@ -352,146 +361,178 @@ function FleetDetail({
           </div>
         )}
 
-        <div>
-          <SectionLabel>
-            Ships
-            <Explain label="Ships" dotClassName="ml-0.5">
-              Speed is a FLEET figure — {formatKnots(fleet.speed_kn)}, the slowest hull with the
-              formation penalty in it. The server reports no per-hull speed, so no column prints one.
-            </Explain>
-          </SectionLabel>
-          <Table scrollHint className={scrollTableClass()}>
-            <thead>
-              <tr>
-                <TH>Ship</TH>
-                <TH>Class</TH>
-                <TH align="num">Hull</TH>
-                <TH align="num">Crew</TH>
-                <TH align="num">Hold</TH>
-                <TH align="num">Load</TH>
-                <TH align="num">Free</TH>
-              </tr>
-            </thead>
-            <tbody>
-              {fleet.ships.map((ship) => (
-                <ShipRow key={ship.id} ship={ship} />
-              ))}
-            </tbody>
-          </Table>
-        </div>
+        {/* THE GALLEY IS ITS OWN FACE (the owner, 2026-08-23: "내 주방 separate tab but next the
+            dishes. like before"). A fleet card used to stack all three of these down one column, so
+            the stores — the figures that decide whether she can sail at all — sat below a cargo
+            table and were read last, if at all. "like before" is the PORT panel, whose faces this
+            copies; TabRow is the same primitive, and it WRAPS rather than scrolls for the reason
+            written in its header. */}
+        <TabRow
+          label={`${fleet.name} faces`}
+          value={face}
+          onChange={setFace}
+          tabs={[
+            { id: 'ships', label: 'Ships', hint: fleet.ships.length },
+            { id: 'cargo', label: 'Cargo', hint: cargo.length || undefined },
+            { id: 'stores', label: 'Galley' },
+          ]}
+        />
 
-        <div>
-          <SectionLabel>
-            Cargo
-            <Explain label="Cargo" dotClassName="ml-0.5">
-              No average-cost column: the server carries what is aboard, not what it cost. The price
-              you paid is on the Ledger, in the BOUGHT entry for the parcel.
-            </Explain>
-          </SectionLabel>
-          {cargo.length === 0 ? (
-            <p className="text-sm text-ink-muted">Empty hold.</p>
-          ) : (
+        <div role="tabpanel">
+          {face === 'ships' && (
             <>
-              <Table className={scrollTableClass()}>
-                <thead>
-                  <tr>
-                    <TH>Good</TH>
-                    <TH align="num">Units</TH>
-                    <TH align="num">Bulk</TH>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cargo.map((line) => (
-                    <tr key={line.code}>
-                      <TD>
-                        <button
-                          type="button"
-                          className={rowLinkClass('min-h-11 text-left')}
-                          onClick={() =>
-                            onCommand({
-                              verb: 'SELL',
-                              fleetId: fleet.id,
-                              // A good travels as its CODE: the parser splits on whitespace and a
-                              // display name like "black pepper" would arrive as two arguments.
-                              args: { good: line.code, qty: 'ALL' },
-                            })
-                          }
-                        >
-                          {goodName(line.code)}
-                        </button>
-                      </TD>
-                      <TD align="num">{formatInt(line.qty)}</TD>
-                      <TD align="num">{goodByCode[line.code]?.bulk ?? '—'}</TD>
+              <div>
+                <SectionLabel>
+                  Ships
+                  <Explain label="Ships" dotClassName="ml-0.5">
+                    Speed is a FLEET figure — {formatKnots(fleet.speed_kn)}, the slowest hull with the
+                    formation penalty in it. The server reports no per-hull speed, so no column prints one.
+                  </Explain>
+                </SectionLabel>
+                <Table scrollHint className={scrollTableClass()}>
+                  <thead>
+                    <tr>
+                      <TH>Ship</TH>
+                      <TH>Class</TH>
+                      <TH align="num">Hull</TH>
+                      <TH align="num">Crew</TH>
+                      <TH align="num">Hold</TH>
+                      <TH align="num">Load</TH>
+                      <TH align="num">Free</TH>
                     </tr>
-                  ))}
-                  <tr>
-                    <TD className="font-mono text-xs text-ink-faint">stowed</TD>
-                    <TD align="num">{formatInt(cargo.reduce((n, l) => n + l.qty, 0))}</TD>
-                    <TD align="num">
-                      {formatTuns(fleet.ships.reduce((n, s) => n + s.cargo_tuns, 0), 1)}
-                    </TD>
-                  </tr>
-                </tbody>
-              </Table>
+                  </thead>
+                  <tbody>
+                    {fleet.ships.map((ship) => (
+                      <ShipRow key={ship.id} ship={ship} />
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
             </>
           )}
-        </div>
+          {face === 'cargo' && (
+            <>
+              <div>
+                <SectionLabel>
+                  Cargo
+                  <Explain label="Cargo" dotClassName="ml-0.5">
+                    No average-cost column: the server carries what is aboard, not what it cost. The price
+                    you paid is on the Ledger, in the BOUGHT entry for the parcel.
+                  </Explain>
+                </SectionLabel>
+                {cargo.length === 0 ? (
+                  <p className="text-sm text-ink-muted">Empty hold.</p>
+                ) : (
+                  <>
+                    <Table className={scrollTableClass()}>
+                      <thead>
+                        <tr>
+                          <TH>Good</TH>
+                          <TH align="num">Units</TH>
+                          <TH align="num">Bulk</TH>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cargo.map((line) => (
+                          <tr key={line.code}>
+                            <TD>
+                              <button
+                                type="button"
+                                className={rowLinkClass('min-h-11 text-left')}
+                                onClick={() =>
+                                  onCommand({
+                                    verb: 'SELL',
+                                    fleetId: fleet.id,
+                                    // A good travels as its CODE: the parser splits on whitespace and a
+                                    // display name like "black pepper" would arrive as two arguments.
+                                    args: { good: line.code, qty: 'ALL' },
+                                  })
+                                }
+                              >
+                                {goodName(line.code)}
+                              </button>
+                            </TD>
+                            <TD align="num">{formatInt(line.qty)}</TD>
+                            <TD align="num">{goodByCode[line.code]?.bulk ?? '—'}</TD>
+                          </tr>
+                        ))}
+                        <tr>
+                          <TD className="font-mono text-xs text-ink-faint">stowed</TD>
+                          <TD align="num">{formatInt(cargo.reduce((n, l) => n + l.qty, 0))}</TD>
+                          <TD align="num">
+                            {formatTuns(fleet.ships.reduce((n, s) => n + s.cargo_tuns, 0), 1)}
+                          </TD>
+                        </tr>
+                      </tbody>
+                    </Table>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+          {face === 'stores' && (
+            <>
+              <div>
+                {/* NO HEADING HERE. The tab above already says GALLEY, and a panel that repeats its
+                    own tab's name spends a line saying nothing — the same "too much unnecessary
+                    info" the owner named. ("Stores and hands" was the older phrase; it is a
+                    sailor's, not a common one, which is why the tab is not called that either.)
+                    The disclosure it used to carry did not die with the heading — it moved DOWN to
+                    the `hold` row, which is the row it is actually about (stores share the hold; a
+                    quartermaster stretches it). A dot floating alone above a grid, attached to
+                    nothing, was the shape that replaced it, and that is not better than a heading. */}
+                {/* ═══════════════════════════════════════════════════════════════════════════════════
+                    SIX FACTS IN ONE SENTENCE BECAME SIX LABELLED ROWS.
+                    ═══════════════════════════════════════════════════════════════════════════════════
+                    This was one run-on mono paragraph — "water 3.5 t · food 0.2 t · 15.0 d of range · 8
+                    hands (6 needed, 20 berths) · burns 0.42 and 8 d. a voyage-day." — with the hold on a
+                    second line beneath it. At 390px it wrapped to four lines and no figure could be
+                    found without reading the prose around it, which is exactly what
+                    docs/UI_DIRECTION.md §4 rule 2 forbids: the number is the hero, tabular and aligned,
+                    and the label is the small dim thing beside it.
 
-        <div>
-          {/* "Stores and hands" is a sailor's phrase, not a common one — the owner named exactly
-              this class of word. Supplies and crew say the same thing to anybody. */}
-          <SectionLabel>
-            Supplies and crew
-            {/* THIS USED TO SAY "Officers arrive with V1 (C.6): at V0 every expertise coefficient
-                is 1.00". Migration 0017 made that false — a quartermaster now stretches the hold
-                and a purser shaves the spread — and a hold figure that had quietly grown while the
-                screen swore no officer could touch it is exactly the kind of lie one authority is
-                supposed to end. `officer_pct` is the SERVER's own reading of what this fleet's
-                officers are worth (already summed within the specialty and clamped at the world
-                cap), so this sentence cannot drift from the number above it again. */}
-            <Explain label="Supplies and crew" dotClassName="ml-0.5">
-              Stores share the hold with the cargo.{' '}
-              {fleet.officer_pct.QUARTERMASTER > 0
-                ? `Her quartermasters stow ${formatPctPoints(fleet.officer_pct.QUARTERMASTER)} more into the same hulls, and the hold figure below already carries it.`
-                : 'No quartermaster is posted to her, so the hold is what the shipwright built.'}
-            </Explain>
-          </SectionLabel>
-          {/* ═══════════════════════════════════════════════════════════════════════════════════
-              SIX FACTS IN ONE SENTENCE BECAME SIX LABELLED ROWS.
-              ═══════════════════════════════════════════════════════════════════════════════════
-              This was one run-on mono paragraph — "water 3.5 t · food 0.2 t · 15.0 d of range · 8
-              hands (6 needed, 20 berths) · burns 0.42 and 8 d. a voyage-day." — with the hold on a
-              second line beneath it. At 390px it wrapped to four lines and no figure could be
-              found without reading the prose around it, which is exactly what
-              docs/UI_DIRECTION.md §4 rule 2 forbids: the number is the hero, tabular and aligned,
-              and the label is the small dim thing beside it.
-
-              Every figure is the same figure it was, from the same reading (`fleetStores`,
-              `fleetCrew`, and the SERVER's `free_hold` — `public.fleet_free_hold`, 0017:183, which
-              clamps per hull, so it is NOT `total − used` and is never printed as though it were).
-              The grid is the roster's own two-column recipe, ten lines above. */}
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-xs">
-            <dt className="text-ink-faint">water</dt>
-            <dd className="text-ink">{formatTuns(stores.waterT, 1)}</dd>
-            <dt className="text-ink-faint">food</dt>
-            <dd className="text-ink">{formatTuns(stores.foodT, 1)}</dd>
-            <dt className="text-ink-faint">range</dt>
-            <dd className="text-ink">{formatVoyageDays(fleet.endurance_days)}</dd>
-            <dt className="text-ink-faint">hands</dt>
-            <dd className="text-ink">
-              {formatInt(crew.aboard)}/{formatInt(crew.max)} · {formatInt(crew.required)} needed
-            </dd>
-            <dt className="text-ink-faint">hold</dt>
-            <dd className="text-ink">
-              {formatTuns(fleetHoldUsed(fleet), 1)}/{formatTuns(fleetHoldTotal(fleet))} ·{' '}
-              {formatTuns(fleet.free_hold, 1)} free
-            </dd>
-            <dt className="text-ink-faint">a day</dt>
-            <dd className="text-ink">
-              {formatTuns(crew.aboard * (config.water_per_crew_day + config.food_per_crew_day), 2)}{' '}
-              · {formatDucats(crew.aboard * config.wage_per_crew_day)}
-            </dd>
-          </dl>
+                    Every figure is the same figure it was, from the same reading (`fleetStores`,
+                    `fleetCrew`, and the SERVER's `free_hold` — `public.fleet_free_hold`, 0017:183, which
+                    clamps per hull, so it is NOT `total − used` and is never printed as though it were).
+                    The grid is the roster's own two-column recipe, ten lines above. */}
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-xs">
+                  <dt className="text-ink-faint">water</dt>
+                  <dd className="text-ink">{formatTuns(stores.waterT, 1)}</dd>
+                  <dt className="text-ink-faint">food</dt>
+                  <dd className="text-ink">{formatTuns(stores.foodT, 1)}</dd>
+                  <dt className="text-ink-faint">range</dt>
+                  <dd className="text-ink">{formatVoyageDays(fleet.endurance_days)}</dd>
+                  <dt className="text-ink-faint">hands</dt>
+                  <dd className="text-ink">
+                    {formatInt(crew.aboard)}/{formatInt(crew.max)} · {formatInt(crew.required)} needed
+                  </dd>
+                  <dt className="text-ink-faint">hold</dt>
+                  <dd className="text-ink">
+                    {formatTuns(fleetHoldUsed(fleet), 1)}/{formatTuns(fleetHoldTotal(fleet))} ·{' '}
+                    {formatTuns(fleet.free_hold, 1)} free
+                    {/* THIS SENTENCE USED TO SAY "Officers arrive with V1 (C.6): at V0 every expertise
+                        coefficient is 1.00". Migration 0017 made that false — a quartermaster stretches
+                        the hold and a purser shaves the spread — and a hold figure that had quietly
+                        grown while the screen swore no officer could touch it is exactly the kind of lie
+                        one authority is supposed to end. `officer_pct` is the SERVER's own reading of
+                        what this fleet's officers are worth (already summed within the specialty and
+                        clamped at the world cap), so it cannot drift from the number beside it. */}
+                    <Explain label="the hold" dotClassName="ml-0.5">
+                      Stores share the hold with the cargo.{' '}
+                      {fleet.officer_pct.QUARTERMASTER > 0
+                        ? `Her quartermasters stow ${formatPctPoints(fleet.officer_pct.QUARTERMASTER)} more into the same hulls, and the figure above already carries it.`
+                        : 'No quartermaster is posted to her, so the hold is what the shipwright built.'}
+                    </Explain>
+                  </dd>
+                  <dt className="text-ink-faint">a day</dt>
+                  <dd className="text-ink">
+                    {formatTuns(crew.aboard * (config.water_per_crew_day + config.food_per_crew_day), 2)}{' '}
+                    · {formatDucats(crew.aboard * config.wage_per_crew_day)}
+                  </dd>
+                </dl>
+              </div>
+            </>
+          )}
         </div>
 
       </div>

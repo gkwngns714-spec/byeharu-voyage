@@ -96,7 +96,20 @@ export interface SnapshotShipClass {
 
 /** The allow-listed knobs. `world_secret` is NOT among them and 0009 asserts that by value. */
 export interface SnapshotConfig {
+  /** THE VOYAGE CLOCK (DESIGN D.1). 480, so a voyage-day is 86_400 / 480 real seconds. It governs
+   *  sailing, provisions, wages and hazard checkpoints — everything `formatVoyageDays` prints. */
   time_compression: number
+  /** THE CALENDAR CLOCK (DESIGN D.1), served from 0028. How many REAL seconds one game-day is. It
+   *  governs the season, the daily trade cap, stock regeneration and the buff calendar — so every
+   *  `*_game_days` figure on the wire (`BuffKind.duration_game_days`, `season_game_days`) is
+   *  counted in THIS unit and becomes real time by multiplying by this number.
+   *
+   *  IT IS A DIFFERENT RATE FROM `time_compression`, AND THAT IS THE POINT. Both clocks call their
+   *  unit a "day" and they are not the same length: a voyage-day is minutes, a game-day is the
+   *  best part of an hour. Until 0028 only the voyage clock crossed the wire, so a screen served a
+   *  figure in game-days could either print it on the wrong clock or not at all — and PortFair
+   *  correctly printed not at all. Never convert one with the other's constant. */
+  game_day_seconds: number
   order_queue_max: number
   fleet_max: number
   ship_max: number
@@ -144,10 +157,34 @@ export interface VerbSpec {
   note?: string
 }
 
+/**
+ * A NATION, served as a catalogue from 0028 — the one place a nation CODE becomes a name.
+ *
+ * Every payload in this game that mentions a nation says its code and only its code:
+ * `SnapshotPort.nation`, `StandingRow.nation`. Before 0028 nothing on the wire could turn one into
+ * a name, so a screen could only print "PRT" or grow its own lookup table — and a client-side
+ * code -> name table is the second authority `portNameOf` (src/live/worldStore.ts:192-208) exists to
+ * prevent, after the port version of it had been hand-written seven times.
+ *
+ * `PlayerHouse.nation_name` is still served beside your own house's `nation`, and 0028 asserts the
+ * two say the same word, so the convenience field cannot drift away from this catalogue.
+ */
+export interface SnapshotNation {
+  id: string
+  code: string
+  /** The name a player is shown. "Portugal", never "PRT". */
+  name: string
+  flag_char: string
+  /** The port CODE of the capital, resolvable through `portByCode`. Null where none is authored. */
+  capital: string | null
+}
+
 export interface WorldSnapshot {
   ports: SnapshotPort[]
   legs: SnapshotLeg[]
   goods: SnapshotGood[]
+  /** DESIGN B.1, served from 0028. The one reading of what a nation code is called. */
+  nations: SnapshotNation[]
   ship_classes: SnapshotShipClass[]
   config: SnapshotConfig
   /** The same eight verbs `cmd.verb_schema()` serves — one grammar, delivered with the world. */
@@ -653,6 +690,122 @@ export interface SkillBook {
   base_cost: number
   effects_read: SkillEffect[]
   skills: Skill[]
+}
+
+// ── the board (0025) ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * ONE HOUSE'S LINE ON THE BOARD. Four things and no fifth: a name, a nation, a standing, and the
+ * fames the standing is computed from.
+ *
+ * WHAT IS DELIBERATELY ABSENT, and why it is absent HERE as well as on the server: no purse, no
+ * cargo, no fleet, no ship, no port, no ledger line. DESIGN J.1 makes the order book the only PvP
+ * surface, so another house's purse and the harbour her fleet lies in are not colour — they say
+ * what she can afford to corner and where to be waiting. `public.standings` carries RLS with NO
+ * policy and NO grant to any client role, so this shape is what the server can physically hand
+ * over, not a subset a screen politely asks for.
+ */
+export interface StandingRow {
+  /** Competition rank: two houses level are BOTH 1st and the next is 3rd. */
+  position: number
+  /** True when at least one other house shares this position. */
+  tied: boolean
+  company_name: string
+  nation: string
+  trade_fame: number
+  exploration_fame: number
+  total_fame: number
+  ports_reached: number
+  is_you: boolean
+}
+
+/**
+ * THE BOARD IS SETTLED, NOT LIVE, and it says so. `settled_at`/`age_seconds` are what let a screen
+ * print "as of four minutes ago" instead of implying a figure that moves while you read it — your
+ * OWN figures stay live through `world.player()`, which is the one place a house reads itself.
+ *
+ * `season` is null and stays null until something records a boundary. It is carried rather than
+ * omitted so that the day seasons land, no payload shape changes.
+ */
+export interface StandingsBoard {
+  settled_at: string | null
+  age_seconds: number | null
+  board_slot: number | null
+  slot_seconds: number
+  houses: number
+  board_size: number
+  season: null
+  board: StandingRow[]
+  /** Your line even when you are off the end of the board; null before the book is signed. */
+  you: (Omit<StandingRow, 'company_name' | 'nation' | 'is_you'> & { on_board: boolean }) | null
+  /** Present only on an empty world — a STATE with its reason, never a refusal. */
+  why?: string
+}
+
+// ── what is on at the quay (0026) ──────────────────────────────────────────────────────────────
+
+/** The one effect a timed modifier may reach today. Speed is absent ON PURPOSE: `voyage.depart`
+ *  freezes a fleet's speed into `voyages.speed_profile`, and a modifier that moved a frozen number
+ *  would be folded into a stored total the moment she sailed. */
+export type BuffEffect = 'SPREAD'
+
+/** An authored kind of thing that can be on — the calendar is DATA, so magnitude, duration, season
+ *  length and chance all live on this row rather than in a knob table beside it. */
+export interface BuffKind {
+  code: string
+  name: string
+  subject_kind: string
+  effect: BuffEffect
+  magnitude_pct: number
+  /** How long one runs, counted on the CALENDAR clock — multiply by `SnapshotConfig
+   *  .game_day_seconds` for real time, never by `time_compression`. */
+  duration_game_days: number
+  /** The calendar half. NULL in BOTH of these means "this kind is not on a calendar" — a buff some
+   *  other rule awards (0026:173-176 makes that a CHECK). Nothing authored today is in that state,
+   *  which is exactly why the null branch has to be handled rather than assumed away. */
+  season_game_days: number | null
+  chance_per_season: number | null
+  blurb: string
+  /** False when no rule reads this effect yet. Nothing authored today is false. */
+  takes_effect: boolean
+}
+
+/** A kind that is actually on, at one port, between two instants. */
+export interface RunningBuff {
+  code: string
+  name: string
+  effect: BuffEffect
+  magnitude_pct: number
+  blurb: string
+  starts_at: string
+  ends_at: string
+  /** Inside its window right now. A row outside its window moves nothing. */
+  live: boolean
+  takes_effect: boolean
+}
+
+export interface PortBuffs {
+  code: string
+  name: string
+  /** The port's cut AFTER anything running — the published figure every captain sees. */
+  spread_published: number
+  buff_pct: number
+  running: RunningBuff[]
+}
+
+/**
+ * Reading this winds the calendar where pg_cron is absent (0009's catch-up idiom) — but SINCE 0028
+ * IT IS NO LONGER THE ONLY THING THAT DOES. `world.fleets()`, the read AppShell makes every thirty
+ * seconds, winds it too, so a fair happens whether or not anybody opens a quay. Both call the one
+ * writer, `public.tick_buff_calendar`; neither decides when a fair happens.
+ */
+export interface BuffsView {
+  now: string
+  effects_read: BuffEffect[]
+  cap_pct: number
+  kinds: BuffKind[]
+  /** Null when asked without a port — the catalogue with nobody's quay attached. */
+  port: PortBuffs | null
 }
 
 /** What `cmd.hire_officer` / `cmd.post_officer` / `cmd.study_skill` hand back. A refusal arrives as

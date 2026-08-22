@@ -143,6 +143,15 @@ export const RPCS = {
   worldPlayer: { schema: 'world', fn: 'player', args: [] },
   worldOfficers: { schema: 'world', fn: 'officers', args: [] },
   worldSkills: { schema: 'world', fn: 'skills', args: [] },
+  // THE BOARD (0025). `p_limit` bounds the rows returned, never who may be on them — the server
+  // decides what a board row may carry (name, nation, standing, and the fames the standing is
+  // computed from) and `public.standings` is unreadable to every client role, so a wider limit
+  // cannot widen a row. Your own position comes back in `you` even when you are off the board.
+  worldStandings: { schema: 'world', fn: 'standings', args: [{ name: 'p_limit', type: 'int' }] },
+  // WHAT IS ON AT THE QUAY (0026). Null port = the catalogue of kinds with no port's own running
+  // list. Reading it is also what WINDS the calendar where pg_cron is absent, which is 0009's
+  // catch-up idiom and the reason this is a read the client makes rather than a job someone runs.
+  worldBuffs: { schema: 'world', fn: 'buffs', args: [{ name: 'p_port', type: 'uuid' }] },
   cmdHireOfficer: {
     schema: 'cmd',
     fn: 'hire_officer',

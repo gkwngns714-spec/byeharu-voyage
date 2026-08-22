@@ -49,11 +49,12 @@ That is all of it. Everything below is where the line currently falls.
 
 ---
 
-## The client — three layers, dependencies point one way only
+## The client — the layers, dependencies point one way only
 
 ```
 src/domain/*      a part of the GAME.  Pure. No React, no store, no screen.
-src/features/*    a SCREEN.            May use any domain, lib, component. NEVER another screen.
+src/chart         HOW THE WORLD IS DRAWN. May use lib, domain, components/ui. One entrance.
+src/features/*    a SCREEN.            May use any domain, chart, lib, component. NEVER another screen.
 src/lib/*         MACHINERY.           rpc, db, format, geo, text. Knows nothing above it.
 src/live/*        the world in memory. The store, and the gate that renders its loading/failure.
 src/components/ui the design system.   One import surface, already a section in everything but name.
@@ -65,9 +66,61 @@ src/components/ui the design system.   One import surface, already a section in 
 |---|---|---|
 | `domain/order` | the order language: the draft being composed, the composer that turns picks into the exact line `cmd.issue()` receives, and the hand-off another section can post into it | `domain/order/index.ts` |
 | `domain/fleet` | what a hull, a crew and a hold add up to — free hold, crew against berths, worst hull, stores, cargo lines, draught, voyage progress | `domain/fleet/index.ts` |
+| `domain/trade` | where a good is worth more than it is here — the index over `world.trade_routes()` | `domain/trade/index.ts` |
+| **`chart`** | **the picture of the world**: the read model, the projection and the density rules, the SVG layers, the paint order, the pan/zoom surface, and the two things a screen mounts — `ChartCanvas` (a picture at a given view) and `SmallChart` (a whole framed one) | `chart/index.ts` |
 
-Both are pure and derive from served payloads. **Neither decides anything** — the server owns every
-rule; these only read what a payload already says.
+The `domain/*` ones are pure and derive from served payloads. **Neither they nor the chart decide
+anything** — the server owns every rule; these only read what a payload already says.
+
+### `src/chart` — why the chart is a layer and not the Map tab's folder
+
+Added **2026-08-23**, and it is the worked example of the trap named at the top of this file, so it
+is written out as a case rather than left as a row in a table.
+
+Every file in it was `src/features/map/`, which made the chart the Map tab's property. Then the
+owner asked for a small chart on the SAIL composer — *"sail — a small map + current location on the
+left side"* — and `tests/sections.spec.ts` correctly refused COMMAND an import of MAP. **That
+refusal is the boundary working, and it is also the boundary's trap.** The smallest workable
+carve-out measured at nine of the fourteen files (`src/features/command/README.md` §11 counted
+them), so "copy what SAIL needs" meant copying most of the chart — a silent copy, invisible to
+every import check in the repo, and the worst outcome available.
+
+The two homes that already existed were both tried on paper and both fail on a rule this repo
+already enforces:
+
+* **Model to `src/domain/chart/`, layers to `src/components/chart/`.** *"Machinery knows nothing
+  above it"* forbids `src/components/**` importing `src/domain/**`, and every layer needs
+  `ChartModel` / `MapPort` / `PortRole`. Rewriting each layer to take plain `{x, y, role}` props to
+  get past that is an adapter written to survive a boundary — the exact tell `NO_SPAGHETTI.md` §2
+  gives for a boundary in the wrong place.
+* **Leave it in `features/map` and let COMMAND import it.** That is the cross-screen import the
+  first rule in the spec exists to refuse, and weakening the rule for one case retires it for every
+  other. `NO_SPAGHETTI.md` §6: never weaken to green.
+
+So the chart moved DOWN a layer instead. Its edges are two new tests, both broken on purpose and
+watched go red before they were trusted:
+
+| test | refuses |
+|---|---|
+| `the chart knows nothing above it` | `src/chart/**` importing `features/`, `app/`, `live/` or `store/`. `live/` is the sharp one: a chart that read the store could only ever be drawn on the tab the store happens to be about. What it needs from up there is a **parameter** |
+| `the chart has one entrance` | anything importing `chart/<File>` instead of `chart`. The SVG layers, the label planner and the coastline builder are exported to **nobody** — `ChartCanvas` is the only thing that composes them, which is what makes the paint order a rule rather than a habit |
+
+`ABOVE_DOMAIN` and `ABOVE_MACHINERY` both gained `chart` in the same pass, so a game rule or a
+design-system primitive that reaches for a picture is refused too.
+
+**What did NOT move: the Map tab.** `MapScreen`, its two corner panels and its caption are one
+screen's chrome and they stay in `src/features/map/`, composing the section like any other caller.
+MapScreen's composition is unchanged; only its import paths are — plus the seven lines of SVG paint
+order, which became `ChartCanvas` so that the second caller composes it instead of restating it.
+Two paint orders can disagree, which is question 3 of `NO_SPAGHETTI.md` §1.
+
+**One property the carve-out exposed, and kept.** `src/chart/coastline.ts` imports
+`…/world-110m.json?url`, which only a bundler can resolve, so re-exporting it from the entrance made
+the whole section unloadable by a plain Node process — and this repo's pure specs are plain Node
+processes (`coastlineBuild.ts`'s decimation figures are *measured* by one of them). Found by the
+specs going red, not by argument. `useCoastline` therefore reaches that module with a dynamic
+`import()` inside its effect and `loadCoastline` is deliberately absent from the entrance: one small
+chunk ahead of a 280 KB fetch, in exchange for a section a spec can still import.
 
 ### What this fixed, measured
 
@@ -89,19 +142,24 @@ border crossing.
 
 Cross-screen imports today: **zero**, and the spec keeps it that way.
 
-### What the spec checks, as of 2026-08-22
+### What the spec checks, as of 2026-08-23
 
-Two of the layer rules stated in the box above had never been checked by anything — they were true,
-and nothing would have noticed if they stopped being. Both now bite, and both were proved to bite by
-breaking them on purpose:
+Every rule below was proved to bite by breaking it on purpose and watching it go red. A guard nobody
+has seen fail is decoration.
 
 | test | refuses |
 |---|---|
 | `no screen imports another screen` | one `features/<a>` file importing `features/<b>` |
-| `a domain section depends on nothing above it` | a game rule importing a screen, the shell, the store, `live/` **or the design system** — a rule that imports a component cannot be proved without rendering one |
-| `machinery knows nothing above it` | **NEW** — `src/lib/**` or `src/components/**` importing `domain/`, `features/`, `app/`, `live/` or `store/`. What is needed up there is a parameter, not an import |
-| `the design system has one entrance` | **NEW** — anything importing `components/ui/<File>` instead of `components/ui`. `index.ts:1-2` already said "never from the individual files"; now that is enforced, because a primitive nobody can reach through the entrance is one the next screen hand-writes instead |
+| `a domain section depends on nothing above it` | a game rule importing a screen, the shell, the store, `live/`, the design system **or the chart** — a rule that needs a component or a picture to be proved cannot be proved without rendering one |
+| `machinery knows nothing above it` | `src/lib/**` or `src/components/**` importing `domain/`, **`chart`**, `features/`, `app/`, `live/` or `store/`. What is needed up there is a parameter, not an import |
+| `the design system has one entrance` | anything importing `components/ui/<File>` instead of `components/ui` — including from `src/chart`, which draws with the design system too. A primitive nobody can reach through the entrance is one the next screen hand-writes instead |
 | `every domain section has one entrance` | a section with no `index.ts`, and reaching past one into a section's internals |
+| `the chart knows nothing above it` | **NEW** — `src/chart/**` importing `features/`, `app/`, `live/` or `store/`. Read the case above for why `live/` is the sharp one |
+| `the chart has one entrance` | **NEW** — anything importing `chart/<File>` instead of `chart`. The layers and the label planner are exported to nobody |
+
+The three that were extended or added on 2026-08-23 were each shown failing first, with the file and
+the crossing named in the message: `domain/fleet/derive.ts -> chart`,
+`chart/glyphs.ts -> live/worldStore`, and `features/map/MapScreen.tsx -> chart/PortsLayer`.
 
 **A known seam, named rather than enforced:** four `src/features/*` files import
 `src/app/shellState` (`FleetsScreen`, `LedgerScreen`, `MapScreen`) and `src/app/navTabs`
@@ -178,6 +236,12 @@ is the place sections go to tangle.
 4. New shared LOOK or control → **`src/components/ui/`**, exported from `index.ts`. A recipe written
    in a screen is a recipe that will be written in the next screen too; that is how the chip reached
    twelve copies (`src/components/ui/buttonStyles.ts:31-35`).
+5. New way of DRAWING THE WORLD → **`src/chart/`**, exported from its `index.ts`. A second `<svg>`
+   that stacks the layers itself is a second paint order, and paint order is the only stacking SVG
+   has. Compose `ChartCanvas`, or `SmallChart` if you want a whole framed chart in a box.
+6. **A second screen wants a picture the first one has → the same rule as 3.** The chart is the
+   proof that rule works at any size: it was nine of fourteen files, and it moved rather than
+   being copied. If the move looks too big, that is a measure of how bad the copy would have been.
 
 `npx playwright test tests/sections.spec.ts tests/duplication.spec.ts` is the check — the first for
 where things live, the second for how many of them there are. Before finishing any change, run

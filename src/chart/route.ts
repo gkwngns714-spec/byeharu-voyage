@@ -23,7 +23,7 @@
 // draws legs with BOTH ends on the glass, and no view holds both ends of such a leg.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { project, type LatLon, type ViewBox } from '../../lib/geo'
+import { project, type LatLon, type ViewBox } from '../lib/geo'
 import { toPolylineD } from './svgPath'
 import type { MapPort } from './mapTypes'
 

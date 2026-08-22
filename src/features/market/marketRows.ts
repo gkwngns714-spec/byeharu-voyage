@@ -28,7 +28,7 @@
 // computation behind it. They arrive in `world.snapshot().config` now and this module prints what
 // it is handed.
 
-import type { MarketGood, SnapshotConfig, TradeRoute, TradeRoutes } from '../../lib/rpc'
+import type { MarketGood, SnapshotConfig } from '../../lib/rpc'
 
 /**
  * The four blocks the table is cut into. Three are §E.4's bands, read straight off the server's
@@ -121,19 +121,10 @@ export function marketBlocks(
   })).filter((b) => b.rows.length > 0)
 }
 
-/**
- * THE COMPARISON, INDEXED BY GOOD CODE, so a table row can find its own destination in one lookup
- * rather than scanning the list per row.
- *
- * It is a plain re-keying of what the server sent and it computes NOTHING: a row that is not in the
- * answer prints nothing, because "the quay found no port in reach that pays more for this" and "the
- * quay was never asked" both look like an absent row and neither is a number.
- */
-export function routesByGood(routes: TradeRoutes | undefined): Record<string, TradeRoute> {
-  const out: Record<string, TradeRoute> = {}
-  for (const r of routes?.routes ?? []) out[r.code] = r
-  return out
-}
+// `routesByGood` USED TO BE HERE, and it is now `src/domain/trade`. The Command tab's unfolded good
+// row names the same destination from the same read, a screen may never import another screen
+// (tests/sections.spec.ts), and copying it would have been the second author docs/NO_SPAGHETTI.md §2
+// forbids. So it moved out rather than being borrowed, and MarketScreen imports the section.
 
 /**
  * WHICH ORDER A TAP ON THIS ROW MEANS. The server advises `buy` / `hold` / `sell`; a tap has to

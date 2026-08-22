@@ -11,7 +11,7 @@
 // ports a fleet is not using are quieter) cannot be computed two different ways in two layers.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { project, type LatLon, type ViewBox } from '../../lib/geo'
+import { project, type LatLon, type ViewBox } from '../lib/geo'
 import type { MapFleet, MapPort, MapVoyageLeg } from './mapTypes'
 import { buildTrack, type TrackPaths } from './route'
 
@@ -69,6 +69,22 @@ export interface ChartModel {
 export function buildChartModel(
   fleets: readonly MapFleet[],
   ports: readonly MapPort[],
+  /**
+   * PORTS THE PLAYER IS CHOOSING BETWEEN — the destination being composed on the Command tab,
+   * before any order has been issued and therefore before any fleet is bound anywhere.
+   *
+   * It is a parameter on THIS function rather than an overlay computed by the screen that wanted it,
+   * because "which ports are loud, and which of them are ringed" has exactly one author (see this
+   * file's header, and `docs/NO_SPAGHETTI.md` §1: *owned but too narrow → generalise that one owner
+   * and repoint every caller*). A second table of roles assembled beside the model could disagree
+   * with it, and the glyph layer, the label planner and the hit test all read the model's.
+   *
+   * It takes the SAME role a served destination takes, because it is the same fact one moment
+   * earlier: *this is where she would be going*. Nothing here implies a course — the ring means a
+   * place, and no track is drawn to it (the server serves no legs for a voyage that does not exist).
+   * Empty by default, which is the map tab: it draws what the world says, never what is being typed.
+   */
+  considering: readonly string[] = [],
 ): ChartModel {
   const portsByCode = new Map(ports.map((p) => [p.code, p]))
   const roles = new Map<string, PortRole>()
@@ -138,6 +154,19 @@ export function buildChartModel(
       destinationCode: leg.destinationCode,
       dockedAtCode: null,
     })
+  }
+
+  // AFTER the fleets, so a port that is BOTH — she lies there and it is also the one being
+  // considered — keeps the role the world gave it and simply gains the ring. `setRole` already
+  // ranks destination above anchorage, and `destinations` is a map keyed by code, so a port cannot
+  // collect two rings however many ways it earns one.
+  for (const code of considering) {
+    const at = placeOf(code)
+    if (!at) continue
+    setRole(code, 'destination')
+    destinations.set(code, at)
+    focus.push(at)
+    motion.push(at)
   }
 
   return {

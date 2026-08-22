@@ -16,7 +16,8 @@ brings it back — a second way in would be a second way for the two paths to dr
 | **1. Commanding** | taps a fleet chip | `world.fleets()` — name, where she lies or is bound, queue depth, whether she is HALTED |
 | **2. What she is to do** | taps a verb | `world.snapshot().verbs` — the server's own `cmd.verb_schema()`. Nothing on this side lists verbs. The card prints the verb, its mark and `spec.help` (one line); `spec.note` — the fine print 0021 split out of it — is behind the ⓘ and never on the card |
 | **3. Each argument** | taps a row, a chip, or drags a stepper | one picker per argument TYPE the schema declares (below) |
-| **3b. (BUY only) her state** | reads it | the fleet rail — room, what this order would take, and what moves the price (§9) |
+| **3b. (BUY · HIRE · REPAIR · PROVISION) her state** | reads it | the fleet rail — the room, the hands, the hulls or the stores, whichever the verb is a decision about (§9) |
+| **3b'. (SAIL) where she is** | reads it | the same rail slot, carrying a CHART instead: her berth, the harbour this order would send her to, and the sea lanes between them (§11) |
 | **3c. (BUY only) a bargain** | taps *Haggle* | `cmd.haggle` / `world.haggle_state` — one finite, server-rolled attempt at the port's cut (§10) |
 | **4. What will be sent** | reads it | the line assembles itself, read-only, as the picks land |
 | **5. Preview** | reads the estimate, or the refusal | `cmd.preview()` — the REAL verb, run and rolled back |
@@ -33,7 +34,16 @@ Every argument picker offers what actually exists **now**:
   600 nm, the stock band and the server's own buy/hold/sell advice. SELL offers only what is
   aboard. **Every good the port trades is listed** — no cap (the owner, 2026-08-22: *"i want all
   the trade goods on left side"*) — sorted by the server's advice, with the count stated above the
-  list and the filter still there to reach one by name.
+  list and the filter still there to reach one by name. **A row UNFOLDS** (the owner, 2026-08-23:
+  *"click a trade good → it unfolds showing how much I can buy, and more"*): one row at a time, and
+  opening is looking — the pick is only made by the fold's own `Choose` button. Inside it,
+  `world.buy_capacity()`'s ceiling, total and the server's phrase for what stops her; the reachable
+  port that pays most for the good with its margin, return and passage, from `world.trade_routes()`
+  (0019, **one read for the whole quay** — never one per row); and the stock figures behind the
+  row's meter. **SELL's fold has no capacity block at all** — what is aboard is already on the row
+  and again in the stepper's caption, and a third rendering was the copy to delete. It gets the half
+  of the comparison that is about the parcel she is *carrying*: which reachable port bids more for
+  it, and what that quay bids against this one.
 * **qty** — ALL / HALF / MAX and a stepper that walks in `config.trade_step_tuns`, bounded by the
   hold, the stock and the purse, and captioned with **which** of those stops you there. What that
   quantity would COST is not on the caption; the rail says it (§9).
@@ -107,9 +117,15 @@ Nothing on this tab has a `max-h` or an `overflow`; the page's own scroll is the
 them inside a scroll box — the rows on screen are whole and pressable, and the hidden ones are
 honest about being hidden. The **goods** list hides nothing at all (§1).
 
-The BUY rail is `md:sticky`, and a sticky panel taller than the viewport pins its top and leaves its
-foot unreachable. That is why the rail carries **no control of any kind** — only figures. Anything
-tappable belongs in the working pane, which is never sticky, never capped and never scrolled.
+The fleet rail is `md:sticky`, and a sticky panel taller than the viewport pins its top and leaves
+its foot unreachable. That is why the rail carries **no control of any kind** — only figures.
+Anything tappable belongs in the working pane, which is never sticky, never capped and never
+scrolled.
+
+**An unfolded good row obeys the same law.** Tapping a good opens a panel inside the list carrying
+what she can take, where it pays more, and a `Choose` button — and that button is an ACTION, so the
+fold has no `max-h` and no `overflow` of its own. It simply makes the page longer; the page's scroll
+is still the only one on the tab (§1 under **good**, and `ArgPickers.tsx`'s `GoodDetail`).
 
 ## 8. Time
 
@@ -117,16 +133,44 @@ Nothing here ticks. A read is the catch-up (D.2): `Read again` refetches, issuin
 ETA is counted from `readAt` — the instant the world was last read — rather than from the wall clock
 during a render.
 
-## 9. The BUY rail — and the honest answer to "how much negotiation can be done"
+## 9. The fleet rail — one panel, four verbs
+
+*(SAIL takes the same rail SLOT and puts a chart in it — see §11. `railVerbs.ts` holds one list per
+kind of rail, so "does this verb split into two columns" and "what is the rail about" are one fact
+each rather than one boolean doing both jobs.)*
 
 The owner, 2026-08-22: *"When buy, i want all the trade goods on left side, and my fleet info on the
 right side, showing how much room, how much negotiation can be done, and so on."*
+The owner, 2026-08-23: *"hire, repair, provision — I want fleet info like what is in buy."*
 
-`BuyFleetPanel.tsx`, shown **only** while the chosen verb is BUY. Goods on the left, her state on the
-right from `md` (768px) up; one column below that, with the rail written FIRST so it is read before
-the list rather than eleven thousand pixels under it. The layout is the design system's
+`FleetRail.tsx` (was `BuyFleetPanel.tsx`). Shown while the chosen verb is one of `railVerbs.ts`'s
+four — the ones that are decisions about the fleet's own state. The working pane on the left, her
+state on the right from `md` (768px) up; one column below that, with the rail written FIRST so it is
+read before the list rather than eleven thousand pixels under it. The layout is the design system's
 `splitClass()` / `splitMainClass()` / `splitRailClass()` — see `src/components/ui/screenLayout.ts`
 for why it is flex and not grid, and why the breakpoint is `md`.
+
+**One rail, generalised — not four panels.** A `HireFleetPanel`, a `RepairFleetPanel` and a
+`ProvisionFleetPanel` beside the buyer's would be four authorities for "what a rail is".
+`docs/NO_SPAGHETTI.md` §1: *owned but too narrow → generalise that one owner and repoint every
+caller.* So the panel widened. **Room in the hold** is genuinely shared — BUY and PROVISION both
+draw it, because water and food take cargo's own tuns (C.3) — and everything else is per verb:
+
+| verb | the blocks | where every figure comes from |
+|---|---|---|
+| **BUY** | room in the hold · this order · what moves the price | the three sections below |
+| **HIRE** | her hands against her berths · the idle men here | `fleetCrew(fleet)` — the spelling `E_CREW_MAX` counts by (0007:659) · `port.crew_pool` · `config.wage_per_crew_day` |
+| **REPAIR** | her worst hull, then every hull · the yard here | `worstHullFraction` / `hullFraction` · `port.has_yard`, `port.yard_tier` |
+| **PROVISION** | room in the hold · her stores | `fleet.endurance_days` (SERVED, never divided out here) · `fleetStores(fleet)` |
+
+**The rail never prices HIRE, REPAIR or PROVISION, because nothing serves those prices.**
+`src/lib/rpc/types.ts:18-19` states it: *"a port carries `crew_pool` but no crew RATE, no water/food
+price and no repair rate … PROVISION/HIRE/REPAIR are priced by the server when the order runs."* A
+plausible figure would be the fabricated number `UI_DIRECTION.md` §4 rule 5 forbids, so the last
+block on those three verbs says so in the player's words and points at `cmd.preview()`, which runs
+the real verb and names the figure before a ducat moves. `config.wage_per_crew_day` is the one money
+figure HIRE prints, and it is the standing wage at sea rather than the price of signing a hand on —
+the RATE, where `FleetsScreen.tsx:529` already owns the daily BILL (`aboard × rate`).
 
 Three blocks, every figure served:
 
@@ -201,3 +245,99 @@ bargain (30% off the cut, two wins) moves 40 tuns of alum from **5,283 d. to 5,2
 0.36%**. The mechanic behaves exactly as 0022 specifies; its effect on a purse is small because the
 spread is small and the mayor's 3% tax is untouchable. The rail therefore states the concession as a
 percentage **of the cut**, which is what it actually is, and never as a saving.
+
+## 11. The chart on SAIL, and the layer that had to exist first
+
+The owner, 2026-08-23: *"sail — a small map + current location on the left side."*
+
+**Built 2026-08-23.** This section previously recorded why it was NOT built, and named the two ways
+it could be; that write-up is kept below as §11a because the decision it forced is the interesting
+part. What shipped is option (a).
+
+### What the player sees
+
+SAIL now lays out in two columns like BUY does, and its rail carries a chart instead of the fleet:
+
+* **the fleet's berth** is the port's loud filled mark, with her name beside it — or, if the order is
+  composed while she is at sea, her dot on her own dotted track, exactly where `voyage.position` puts
+  her. Nothing on this side computes a position;
+* **the destination this order would send her to** is ringed — the same dashed ring the Map tab draws
+  round a port a fleet is bound for, because it is the same fact one moment earlier. `VIA` is ringed
+  too, and the argument is found by asking the SERVER'S schema which arguments are of type `port`,
+  so a verb that one day declares a third one gets it without an edit;
+* **the sea lanes**, close in, as hairlines between two drawn marks — the authored leg graph, which
+  is the honest answer to *"where can I actually sail from here"*;
+* **the frame holds both ends of the decision**, re-fitted whenever the choice changes, with the same
+  12° floor that stops a lone docked fleet opening on a harbour approach.
+
+Running a POINTER or the KEYBOARD down the destination list names each harbour on the chart as you
+reach it (`OrderComposer`'s `considering`, the same shape as the good list's `inspecting`). It
+**chooses nothing** — a tap still commits — and it deliberately **does not move the frame**, because
+a picture that jumped as the pointer crossed twelve rows would be unreadable. A thumb raises neither
+event, so on the 390px target the chart simply follows the choice.
+
+### The three things it does not do, and why each one is load-bearing
+
+1. **It draws no line between the two places.** A straight segment across this sheet is not the
+   passage and is not its length. That exact substitution was a real defect on this very picker —
+   Seville at 169 nm against the server's 286, and the wrong number SORTED the list (see
+   `PortPicker`'s header, above). Printing it was fixed; drawing it would be the same lie in a shape
+   nobody can check. What *is* drawn between ports is the authored lane graph, whose miles are the
+   server's own, and the distance stays where it was: on the row, from `legs.nm`, with a dash where
+   there is no direct leg.
+2. **It takes no input at all.** No pan, no zoom, no tap, no handler prop that could carry one —
+   `pointer-events: none` on the picture. The map never accepts an order (`docs/DESIGN.md` §E.5),
+   and separately, a gesture surface embedded in a form fights the page's own scroll on a phone:
+   `useChartSurface` sets `touch-none` and calls `preventDefault` on wheel, which is right for a
+   whole tab and wrong inside a composer. So `SmallChart` does not mount it.
+3. **The rail still carries no control.** `splitRailClass()` is `md:sticky`, and a sticky panel
+   taller than the viewport leaves its foot unreachable (§7, §9, §10). A chart is a figure. The ⓘ
+   beside it is the one thing that folds, and it folds text.
+
+### What moved, and what it cost
+
+`railVerbs.ts` was one list answering two questions at once — *does this verb get a rail* and *does
+it render `FleetRail`*. Those diverged the moment SAIL got a rail that is not about the fleet, so it
+is now one list per **kind** (`FLEET_RAIL_VERBS`, `CHART_RAIL_VERBS`) with `railKind()` deciding and
+`hasRail()` derived from it. The sentence that used to explain SAIL's absence — *"SAIL's decision is
+about the WORLD"* — is still there, and it is now the reason it has a rail of a different kind
+rather than the reason it has none.
+
+`buildChartModel` gained one parameter, `considering`, rather than the composer assembling its own
+table of which ports are loud. Which ports are loud and which are ringed has exactly one author, and
+the glyph layer, the label planner and the hit test all read it (`docs/NO_SPAGHETTI.md` §1: *owned
+but too narrow → generalise that one owner*). It defaults to empty, so the Map tab is unchanged.
+
+---
+
+## 11a. The decision this forced, recorded as it stood
+
+**The problem, as written before it was solved.** The rail slot was already there and the chart the
+tab wants already existed and must not be rebuilt — but every piece of it lived in
+`src/features/map/`, and `tests/sections.spec.ts` refuses a screen that imports another screen.
+Copying a layer across that boundary is the silent copy `docs/NO_SPAGHETTI.md` §2 names as *worse
+than the import*, so nothing was copied.
+
+**The minimum a small chart needed, measured off the imports rather than guessed:**
+`useCoastline.ts` → `coastline.ts` → `coastlineBuild.ts` → `svgPath.ts`; `CoastlineLayer.tsx`;
+`PortsLayer.tsx` → `chartModel.ts` (for `PortRole`), `glyphs.ts`, `mapTypes.ts`. That is **nine of
+the fourteen** files in `features/map/` — there was no small carve-out to take, which is exactly the
+measure of how bad the copy would have been.
+
+**And the obvious split did not work.** The natural home was the model in `src/domain/chart/` and
+the SVG layers in `src/components/chart/` — but *"machinery knows nothing above it"* forbids
+`src/components/**` importing `domain/**`, and every layer needs `ChartModel` / `MapPort` /
+`PortRole`. Making them take plain `{x, y, role}` props to get around that is a rewrite of every
+layer's prop type in order to survive a boundary, which is §2's own tell for a boundary in the wrong
+place.
+
+**Taken: a new layer, `src/chart/`** — model, hooks and layers together, one `index.ts` entrance,
+sitting between `domain` and `features`. `docs/SECTIONS.md` gained the row and the case; the spec
+gained two rules (`the chart knows nothing above it`, `the chart has one entrance`) and two existing
+rules gained `chart`; all four were broken on purpose and watched go red. MapScreen kept composing
+exactly what it composed before — only its import paths changed, plus its seven-line SVG paint order,
+which became `ChartCanvas` so the second caller composes it instead of restating it.
+
+**Standing law either way, and it still holds: the map never accepts an order** (`docs/DESIGN.md`,
+and MapScreen's own header). The destination is picked from the list; the chart shows where she is
+and where that is, and nothing on it is tappable.

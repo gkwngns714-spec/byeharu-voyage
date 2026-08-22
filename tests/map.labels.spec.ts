@@ -1,18 +1,23 @@
 import { test, expect } from '@playwright/test'
 import { WORLD_BOUNDS, project, type ViewBox } from '../src/lib/geo'
-import { buildChartModel, visiblePorts } from '../src/features/map/chartModel'
 import {
+  buildChartModel,
+  GLYPH,
+  LABEL_PRIORITY,
   LABEL_SPAN_LIMIT,
   fitView,
+  mapFleetsOf,
+  mapLabelRequests,
+  mapPortsOf,
   minTierForSpan,
   openingBounds,
+  planLabels,
   unitsPerPixel,
   viewBoxOf,
-} from '../src/features/map/chartView'
-import { GLYPH } from '../src/features/map/glyphs'
-import { LABEL_PRIORITY, mapLabelRequests, planLabels, type PlacedLabel } from '../src/features/map/labels'
-import { mapFleetsOf, mapPortsOf } from '../src/features/map/liveWorld'
-import type { MapSelection } from '../src/features/map/mapTypes'
+  visiblePorts,
+  type MapSelection,
+  type PlacedLabel,
+} from '../src/chart'
 import { REAL_PORTS, REAL_PORT_COUNT, dockedFleet, sailingFleet } from './mapWorld.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════

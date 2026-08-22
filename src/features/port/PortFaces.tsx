@@ -28,14 +28,27 @@ import type { FleetView, SnapshotPort } from '../../lib/rpc'
 // They are in their own file because PortScreen was already 576 lines, not because they are a
 // section: they use the port's own data and belong to the port screen (docs/SECTIONS.md).
 
-/** An officer whose specialty no rule reads yet must SAY so. `takes_effect` is the server's own
- *  flag (0015 wires NAVIGATOR only), and a bonus that does nothing must never look like one that
- *  works — the migration's receipt makes the same promise in the deploy log. */
-function InertNote({ what }: { what: string }) {
-  return (
-    <p className="mt-1 text-[11px] text-warning">No rule reads {what} yet — it changes nothing.</p>
-  )
-}
+// ── `InertNote` STOOD HERE AND IS DELETED (0027) ────────────────────────────────────────────────
+// It printed "No rule reads navigators yet — it changes nothing" under any card whose server-side
+// `takes_effect` was false. 0015 shipped three inert specialties and 0016 an inert effect, so it
+// was a real and necessary admission for as long as this game sold a bonus nothing read.
+//
+// NOTHING IN THIS GAME IS INERT ANY MORE. 0027 wired the last three — SURGEON into
+// `public.raid_crew_lost`, ACCOUNTING into `world.daily_cap_remaining`, NAVIGATION into
+// `voyage.fleet_speed` — and it asserts the closure rather than claiming it (0027:909-923): every
+// specialty in `public.officers` must appear in `world.officers().specialties_read` and every
+// effect in `public.skills` in `world.skills().effects_read`, or the migration refuses to apply.
+//
+// MEASURED, not remembered, against the served payloads on the applied chain (2026-08-23):
+//   world.officers().specialties_read = NAVIGATOR, QUARTERMASTER, PURSER, SURGEON — 0 of 8 officers
+//   world.skills().effects_read       = ENDURANCE, SPREAD, TRADE_CAP, SPEED    — 0 of 4 skills
+//   world.buffs().effects_read        = SPREAD                                 — 0 of 1 kind
+// carry `takes_effect: false`, and neither catalogue holds a specialty or effect its list omits.
+//
+// So it could not render, and a component that cannot render is dead code the change that killed
+// it should have taken with it (docs/NO_SPAGHETTI.md §5). What survives is the `takes_effect`
+// READING on the cards below: a future migration is free to author a bonus ahead of the rule that
+// reads it, and the day one does, the card goes neutral instead of quietly selling it as working.
 
 function Refused() {
   const refusal = useWorld((s) => s.refusal)
@@ -96,7 +109,6 @@ export function OfficersFace({ port, acting }: { port: SnapshotPort; acting: Fle
                 <span className="text-ink-muted">{formatInt(o.wage)} d.</span>
                 {o.hired && <span className="text-accent">{o.fleet ?? 'ashore'}</span>}
               </div>
-              {!o.takes_effect && <InertNote what={`${o.specialty.toLowerCase()}s`} />}
               <div className="mt-3">
                 {o.hired ? (
                   <Button
@@ -204,7 +216,6 @@ export function AcademyFace({ acting }: { acting: FleetView | null }) {
                 +{sk.pct_per_level}% per level
               </span>
             </p>
-            {!sk.takes_effect && <InertNote what="this" />}
             <div className="mt-3">
               <Button
                 size="sm"

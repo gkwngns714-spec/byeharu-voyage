@@ -36,7 +36,15 @@
 
 import { test, expect } from '@playwright/test'
 
-const TABS = ['command', 'fleets', 'port', 'market', 'ledger'] as const
+// 'rank' joined the list 2026-08-23, when 0025 gave that tab a wide table to draw. It was the only
+// tab carrying a scrolling table that this guard did not measure, which is the combination the guard
+// exists for — a table 469px wide in a 332px box is fine, and a table 469px wide with a button
+// inside the scrolled region is the reach-law break this file catches.
+//
+// STILL ABSENT, and not by oversight: 'map' draws an SVG chart with no table and no text rows, so
+// every assertion here would pass vacuously on it; 'profile' is the auth surface and redirects on a
+// cloud build, which is one of the two skip states the header above says must never go unnoticed.
+const TABS = ['command', 'fleets', 'port', 'market', 'ledger', 'rank'] as const
 
 /** iPhone 14 Pro logical viewport — the narrow case the brief names. */
 const PHONE = { width: 390, height: 844 }

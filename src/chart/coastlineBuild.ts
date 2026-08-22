@@ -31,7 +31,7 @@
 // source of truth: there is no generated copy of the world to drift out of date with it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { boundingSpan, project, simplifyPath, type LatLon, type Point } from '../../lib/geo'
+import { boundingSpan, project, simplifyPath, type LatLon, type Point } from '../lib/geo'
 import { toClosedRingsD } from './svgPath'
 
 /** Simplification tolerance in degrees. 0.2° ≈ 12 nm. */

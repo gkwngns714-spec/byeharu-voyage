@@ -35,7 +35,22 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // speak to a captain, not to a schema): the read that ranks reachable ports by what a trade would
 // be worth, the three folds it needed first — voyage.reach_from, voyage.sail_refusal, and one %NBR
 // walk per good instead of four — and the verb help text the Command tab now prints to players.
-const LAST = '20260818000024_a_bargain_worth_striking.sql'
+//
+// Moved again, deliberately, 2026-08-23 with 0025-0027: the table of captains (a board settled from
+// the ledger, carrying deeds and never another house's purse), the fair at the quay (the first
+// TIMED modifier, taken on the port's published cut because voyage.depart freezes speed and a
+// modifier cannot honestly reach a frozen number), and the wiring of the last three inert
+// coefficients — SURGEON into voyage.settle's crew loss, ACCOUNTING into the daily allowance, and
+// NAVIGATION composed THROUGH voyage.fleet_speed rather than beside it.
+//
+// Moved again, deliberately, 2026-08-23 with 0028: the buff calendar is now wound by world.fleets()
+// — the read AppShell makes every thirty seconds — instead of only by world.buffs(), whose one
+// caller was the PORT tab, so a fair happens because the game is being played rather than because
+// one screen was opened; and world.snapshot() gains the two things the wire was missing, DESIGN
+// D.1's CALENDAR clock (`game_day_seconds`, without which no client could honestly print a figure
+// counted in game-days) and a `nations` catalogue (without which a nation crossed the wire as a
+// code nothing could turn back into a name).
+const LAST = '20260818000028_a_fair_happens_because_the_game_is_played.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
@@ -257,6 +272,20 @@ test('progress never goes backwards and never claims done before it is', () => {
   expect(progressFor('ready', 0, 0)).toBe(1)
 })
 
+// THE SENTENCE IS DERIVED FROM `LAST`, NOT REMEMBERED BESIDE IT. This spec was pinned to the
+// literal 'a bargain worth striking' (0024) and stayed pinned there while `LAST` moved twice — so
+// it was RED on an entirely correct chain, which is a guard that has stopped guarding (the
+// permanently-red-proof failure, docs/NO_SPAGHETTI.md §7). What it is actually for is the
+// TRANSFORM: strip the version, strip the extension, underscores become spaces. Deriving the
+// expectation from the same constant the rest of the file uses means it can never go stale again,
+// and the second case below is what keeps it non-vacuous — a broken transform cannot satisfy both.
 test('a migration filename reads as a sentence', () => {
-  expect(humanMigration(LAST)).toBe('a bargain worth striking')
+  expect(humanMigration(LAST)).toBe(
+    LAST.replace(/^\d+_/, '').replace(/\.sql$/, '').replace(/_/g, ' '),
+  )
+  expect(humanMigration(LAST)).not.toContain('_')
+  expect(humanMigration(LAST)).not.toMatch(/^\d/)
+  expect(humanMigration('20260818000024_a_bargain_worth_striking.sql')).toBe(
+    'a bargain worth striking',
+  )
 })

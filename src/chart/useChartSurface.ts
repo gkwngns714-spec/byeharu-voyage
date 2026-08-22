@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react'
-import { project, type GeoBounds, type LatLon, type Point, type ViewBox } from '../../lib/geo'
+import { project, type GeoBounds, type LatLon, type Point, type ViewBox } from '../lib/geo'
 import {
   clampView,
   fitView,
@@ -18,6 +18,7 @@ import {
   ZOOM_STEP,
   type ChartView,
 } from './chartView'
+import { useElementSize } from './useElementSize'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CHART SURFACE — the element's size, the view, and the ONLY three gestures the map
@@ -109,7 +110,11 @@ export function useChartSurface(
    */
   onTap?: (at: Point, unitsPerPx: number, view: ViewBox) => void,
 ): ChartSurface {
-  const [size, setSize] = useState({ width: 0, height: 0 })
+  // ── measure ───────────────────────────────────────────────────────────────────────────────────
+  // ./useElementSize.ts, because the small chart needs the same two numbers and must not mount this
+  // hook to get them (its non-passive wheel listener would eat the page scroll under a chart that
+  // is embedded in a form).
+  const size = useElementSize(ref)
   /** Only what the player moved to. `null` = they have not moved it, so the opening frame stands. */
   const [movedTo, setMovedTo] = useState<ChartView | null>(null)
 
@@ -118,21 +123,6 @@ export function useChartSurface(
 
   const measured = size.width > 0 && size.height > 0
   const aspect = measured ? size.width / size.height : 1
-
-  // ── measure ───────────────────────────────────────────────────────────────────────────────────
-  // The ResizeObserver is the external system; the size is what it reports. Nothing else is stored.
-  useEffect(() => {
-    const element = ref.current
-    if (!element) return
-    const observer = new ResizeObserver((entries) => {
-      const box = entries[0]?.contentRect
-      if (box) setSize({ width: box.width, height: box.height })
-    })
-    observer.observe(element)
-    const rect = element.getBoundingClientRect()
-    setSize({ width: rect.width, height: rect.height })
-    return () => observer.disconnect()
-  }, [ref])
 
   /** The view as it is right now: what the player moved to, or the opening frame — always clamped
    *  to the CURRENT aspect, so a rotation re-frames instead of stretching. */

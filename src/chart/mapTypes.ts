@@ -18,7 +18,7 @@
 //     store's third rule forbids. See ./liveWorld.ts.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import type { LatLon } from '../../lib/geo'
+import type { LatLon } from '../lib/geo'
 
 /** A port as the chart needs it: a name to print, a place to print it, and how big a mark it earns. */
 export interface MapPort extends LatLon {

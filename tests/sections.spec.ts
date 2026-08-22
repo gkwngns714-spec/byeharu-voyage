@@ -22,14 +22,34 @@
 // The order being composed belongs to the ORDER, not to the Command tab. So the shared things
 // moved out into sections of their own and the borrowing stopped being a border crossing.
 //
-// ── THE THREE LAYERS, AND THE ONE DIRECTION DEPENDENCIES MAY POINT ─────────────────────────────
+// ── THE LAYERS, AND THE ONE DIRECTION DEPENDENCIES MAY POINT ───────────────────────────────────
 //
-//   src/domain/*    a part of the GAME: order, fleet. Pure, no React, no store, no screen.
-//   src/features/*  a SCREEN. May use any domain, any lib, any component. NEVER another screen.
 //   src/lib/*       machinery under the game: rpc, db, format, geo. Knows nothing above it.
+//   src/components  the design system. One entrance, and it knows nothing above it either.
+//   src/domain/*    a part of the GAME: order, fleet, trade. Pure, no React, no store, no screen.
+//   src/chart       HOW THE WORLD IS DRAWN. May use lib, domain and the design system.
+//   src/features/*  a SCREEN. May use any of the above. NEVER another screen.
 //
 // Adding a section (skills, buffs, captains, prices…) means a new `src/domain/<name>/` with its own
 // entrance, not a new file inside whichever screen happens to show it first.
+//
+// ── WHY `src/chart` IS A LAYER AND NOT ONE SCREEN'S FOLDER (added 2026-08-23) ──────────────────
+// Every file in it was `src/features/map/`, which made the chart the Map tab's property. Then the
+// owner asked for a small chart on the SAIL composer — "sail — a small map + current location on
+// the left side" — and the FIRST test in this file correctly refused COMMAND an import of MAP.
+//
+// That refusal is the boundary working, and it is also the boundary's trap, which docs/SECTIONS.md
+// states in as many words: forbidding a sideways import does not remove the need to share, it
+// converts sharing into a SILENT COPY — and a copy imports nothing, so nothing in this file could
+// ever see it. `PortPicker`, and `num`/`str`, are in the tree today for exactly that reason.
+//
+// The two alternative homes were both tried on paper and both fail on a rule already written below.
+// The SVG layers cannot live in `src/components/chart/`, because "machinery knows nothing above it"
+// forbids `components/**` importing `domain/**` and every layer needs `ChartModel` / `MapPort` /
+// `PortRole`; rewriting each layer to take plain `{x, y, role}` props in order to get around that
+// is the "adapter written to survive a boundary" docs/NO_SPAGHETTI.md §2 names as the tell that the
+// boundary is in the wrong place. So the chart moved DOWN a layer, kept one entrance, and both
+// screens compose it. MapScreen's composition did not change; its import paths did.
 
 import { test, expect } from '@playwright/test'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
@@ -74,6 +94,15 @@ function imports(dir: string): Ref[] {
 
 const featureOf = (p: string) => (p.startsWith('features/') ? p.split('/')[1] : null)
 
+/**
+ * Is this resolved specifier inside `folder`? A section is reachable BY ITS NAME as well as by a
+ * path under it — `import '../../chart'` resolves to exactly `chart`, and `startsWith('chart')`
+ * would also swallow a future `charts/` or `chartlet.ts`. One predicate, so no rule below has to
+ * remember the trailing slash.
+ */
+const inFolder = (spec: string, folder: string) =>
+  spec === folder || spec.startsWith(`${folder}/`)
+
 test('no screen imports another screen', () => {
   const crossings = imports(path.join(SRC, 'features'))
     .filter((r) => {
@@ -92,22 +121,23 @@ test('no screen imports another screen', () => {
   ).toEqual([])
 })
 
-// `domain` may compose `domain` and stand on `lib`. Everything else is above it. The list is
-// written as what is FORBIDDEN rather than as what is allowed, so a new top-level folder is
-// caught by the next test's shape rather than silently permitted here.
-const ABOVE_DOMAIN = ['features/', 'app/', 'live/', 'store/', 'components/']
+// `domain` may compose `domain` and stand on `lib`. Everything else is above it — INCLUDING the
+// chart, because a rule of the game that needs a picture to be proved is not a rule of the game.
+// The list is written as what is FORBIDDEN rather than as what is allowed, so a new top-level
+// folder is caught by the next test's shape rather than silently permitted here.
+const ABOVE_DOMAIN = ['features', 'app', 'live', 'store', 'components', 'chart']
 
 test('a domain section depends on nothing above it', () => {
   const leaks = imports(path.join(SRC, 'domain'))
-    .filter((r) => ABOVE_DOMAIN.some((up) => r.spec.startsWith(up)))
+    .filter((r) => ABOVE_DOMAIN.some((up) => inFolder(r.spec, up)))
     .map((r) => `${r.from}  ->  ${r.spec}`)
 
   expect(
     leaks,
-    `A domain section is reaching UP into a screen, the shell, the store or the design system. A ` +
-      `section is a part of the GAME — it must be usable without any of them, and a rule that ` +
-      `imports a component is a rule that cannot be proved without rendering one.\n` +
-      leaks.join('\n'),
+    `A domain section is reaching UP into a screen, the shell, the store, the design system or ` +
+      `the chart. A section is a part of the GAME — it must be usable without any of them, and a ` +
+      `rule that imports a component or a picture is a rule that cannot be proved without ` +
+      `rendering one.\n` + leaks.join('\n'),
   ).toEqual([])
 })
 
@@ -118,9 +148,9 @@ test('a domain section depends on nothing above it', () => {
 // hurried afternoon, which is the sentence at the top of this file. Both stand at zero today.
 
 test('machinery knows nothing above it', () => {
-  const ABOVE_MACHINERY = ['domain/', 'features/', 'app/', 'live/', 'store/']
+  const ABOVE_MACHINERY = ['domain', 'chart', 'features', 'app', 'live', 'store']
   const leaks = [...imports(path.join(SRC, 'lib')), ...imports(path.join(SRC, 'components'))]
-    .filter((r) => ABOVE_MACHINERY.some((up) => r.spec.startsWith(up)))
+    .filter((r) => ABOVE_MACHINERY.some((up) => inFolder(r.spec, up)))
     .map((r) => `${r.from}  ->  ${r.spec}`)
 
   expect(
@@ -142,6 +172,9 @@ test('the design system has one entrance', () => {
     ...imports(path.join(SRC, 'live')),
     ...imports(path.join(SRC, 'domain')),
     ...imports(path.join(SRC, 'store')),
+    // The chart draws with the design system too, and a layer that hand-writes a control is how a
+    // recipe reaches twelve copies. It is held to the same entrance as a screen.
+    ...imports(path.join(SRC, 'chart')),
   ]
     .filter((r) => {
       const m = /^components\/ui\/(.+)$/.exec(r.spec)
@@ -184,5 +217,66 @@ test('every domain section has one entrance', () => {
     `Something reached past a section's entrance into its internals. Import the section ` +
       `('../../domain/fleet'), not a file inside it — the entrance is what keeps the inside free ` +
       `to change.\n` + deep.join('\n'),
+  ).toEqual([])
+})
+
+// ── ADDED 2026-08-23, WITH `src/chart` ─────────────────────────────────────────────────────────
+// The chart got a layer of its own so that MAP and COMMAND could draw the SAME chart instead of
+// each owning one (see this file's header for why the two obvious homes were both wrong). A layer
+// with no edges is a folder, so here are its two edges. Both were broken on purpose and watched go
+// red before they were trusted — a guard nobody has seen fail is a guard nobody should trust
+// (docs/SECTIONS.md:8-9, docs/NO_SPAGHETTI.md §7).
+
+test('the chart knows nothing above it', () => {
+  // It may use `lib`, `domain` and the design system — it draws the GAME, so it is allowed to know
+  // what a fleet is. It may not know that a screen, a shell, a store or a live world exists.
+  //
+  // `live/` is the sharp one and the reason this rule is worth having. Reading the world inside the
+  // chart would make it impossible to draw one anywhere but the tab the store happens to be about,
+  // and it would put `useWorld()` inside a component that renders on every pan. What the chart
+  // needs from up there is a PARAMETER: MapScreen and the SAIL composer each read the store
+  // themselves and hand over ports, legs and fleets.
+  const ABOVE_CHART = ['features', 'app', 'live', 'store']
+  const leaks = imports(path.join(SRC, 'chart'))
+    .filter((r) => ABOVE_CHART.some((up) => inFolder(r.spec, up)))
+    .map((r) => `${r.from}  ->  ${r.spec}`)
+
+  expect(
+    leaks,
+    `src/chart is a LAYER, under every screen and above the design system. An import pointing up ` +
+      `into a screen, the shell, the store or src/live makes the chart the property of whatever it ` +
+      `reached for — which is the state it was just carved out of. Whatever it needs from up ` +
+      `there is a PARAMETER, not an import.\n` + leaks.join('\n'),
+  ).toEqual([])
+})
+
+test('the chart has one entrance', () => {
+  const files = readdirSync(path.join(SRC, 'chart'))
+  expect(files, 'src/chart has no index.ts — a layer without an entrance is a folder').toContain(
+    'index.ts',
+  )
+
+  // Nothing outside reaches past it. This is the half that keeps the SVG layers, the label planner
+  // and the coastline builder free to change: they are exported to NOBODY, and `ChartCanvas` is the
+  // one thing that composes them, which is what makes the paint order a rule instead of a habit.
+  const deep = [
+    ...imports(path.join(SRC, 'features')),
+    ...imports(path.join(SRC, 'app')),
+    ...imports(path.join(SRC, 'live')),
+    ...imports(path.join(SRC, 'store')),
+  ]
+    .filter((r) => {
+      const m = /^chart\/(.+)$/.exec(r.spec)
+      return m !== null && m[1] !== 'index'
+    })
+    .map((r) => `${r.from}  ->  ${r.spec}`)
+
+  expect(
+    deep,
+    `Something reached past src/chart's entrance into its internals. Import '../../chart', not a ` +
+      `file inside it — and if what you need is not exported there, export it there. A layer ` +
+      `nobody can reach through the entrance is a layer the next screen copies a file out of, ` +
+      `which is the silent copy no import check can see (docs/NO_SPAGHETTI.md §2).\n` +
+      deep.join('\n'),
   ).toEqual([])
 })

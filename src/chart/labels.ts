@@ -35,7 +35,7 @@
 // touch wider still cannot overlap.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { project, type Point, type ViewBox } from '../../lib/geo'
+import { project, type Point, type ViewBox } from '../lib/geo'
 import type { ChartModel, PortRole } from './chartModel'
 import type { MapPort, MapSelection } from './mapTypes'
 

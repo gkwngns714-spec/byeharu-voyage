@@ -338,7 +338,7 @@ is decoration. There is a recorded case of one that passed the bug it was writte
 
 | enforced by | what it refuses |
 |---|---|
-| `tests/sections.spec.ts` | a screen importing another screen · a domain section reaching up or sideways · a section with no entrance · reaching past an entrance · `lib`/`components` importing anything above them · the design system imported file-by-file instead of through `index.ts` |
+| `tests/sections.spec.ts` | a screen importing another screen · a domain section reaching up or sideways · a section with no entrance · reaching past an entrance · `lib`/`components` importing anything above them · the design system imported file-by-file instead of through `index.ts` · **`src/chart` reaching up into a screen, the shell, the store or `live/`, and anything reaching past `src/chart`'s entrance** |
 | `tests/duplication.spec.ts` | a raw Tailwind palette literal · a class recipe hand-written twice · a screen re-declaring a name the design system or a domain section already exports · two modules exporting one name · a migration with no self-assert receipt · a migration re-creating an existing function without declaring a supersede |
 | `tests/db.chain.spec.ts` | a chain that is out of order, CRLF, duplicate-versioned, or has silently gained a migration |
 | `npm run db:check-versions` + CI | two migrations sharing a version (a silent no-op deploy) |

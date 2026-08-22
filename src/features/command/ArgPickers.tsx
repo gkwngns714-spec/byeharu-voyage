@@ -1,11 +1,36 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Badge, Button, buttonClasses, categoryLabel, fineClass, goodIcon, Icon, Meter, PriceIndex } from '../../components/ui'
-import { formatInt, formatNm, formatTuns, formatUnitPrice } from '../../lib/format'
+import {
+  Badge,
+  Button,
+  buttonClasses,
+  categoryLabel,
+  fineClass,
+  goodIcon,
+  HeroFigure,
+  Icon,
+  Meter,
+  PriceIndex,
+  SectionLabel,
+  StatRow,
+} from '../../components/ui'
+import {
+  formatDucats,
+  formatInt,
+  formatNm,
+  formatTuns,
+  formatUnitPrice,
+  formatVoyageDays,
+} from '../../lib/format'
 // `haversineNm` is deliberately NOT imported any more: the only thing this file used it for was a
 // destination's distance, and that number belongs to the server's leg (see PortPicker's header).
-import type { MarketGood, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
+import type { MarketGood, SnapshotLeg, SnapshotPort, TradeRoute, TradeRoutes } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
+// WHERE THIS GOOD IS WORTH MORE THAN IT IS HERE — one lookup into the server's own comparison
+// (migration 0019). The index is a SECTION (src/domain/trade), not this tab's and not the Market
+// tab's, because both name the same destination from the same read.
+import { routesByGood } from '../../domain/trade'
+import type { BuyCapacityState } from './useBuyCapacity'
 import type { QtyBound } from './fleetLimits'
 
 // THE PICKERS — one per argument TYPE the server's verb schema declares (`port`, `good`, `qty`,
@@ -42,7 +67,9 @@ const MAX_PORT_ROWS = 12
 
 function PickerRow({
   onClick,
+  onHover,
   selected,
+  expanded,
   mark,
   left,
   right,
@@ -50,7 +77,17 @@ function PickerRow({
   under,
 }: {
   onClick: () => void
+  /**
+   * The row is under a POINTER or has KEYBOARD focus. Optional, and it never chooses anything —
+   * PortPicker uses it to name that harbour on SAIL's chart while the player runs down the list.
+   * A thumb raises neither event, which is why nothing may depend on it: on the 390px target the
+   * chart follows the CHOICE, and this is desktop and keyboard reach on top of that.
+   */
+  onHover?: (on: boolean) => void
   selected: boolean
+  /** Given only by a row that UNFOLDS (GoodPicker). A row that commits on tap has nothing to
+   *  expand, so it says nothing — `aria-expanded={undefined}` is absent, not false. */
+  expanded?: boolean
   /** A glyph at the head of the row. A good carries one (see GoodPicker); a port does not. */
   mark?: ReactNode
   left: ReactNode
@@ -62,6 +99,11 @@ function PickerRow({
     <button
       type="button"
       onClick={onClick}
+      onPointerEnter={onHover && (() => onHover(true))}
+      onPointerLeave={onHover && (() => onHover(false))}
+      onFocus={onHover && (() => onHover(true))}
+      onBlur={onHover && (() => onHover(false))}
+      aria-expanded={expanded}
       // ONE CONTROL, ONE RECIPE, in both states. This used to be hand-written with a note saying
       // it was waiting on a soft-selected variant: the OFF arm was character for character the
       // design system's `chip`, but the ON arm could not be `chip-on` — a picker row is a
@@ -159,6 +201,7 @@ export function PortPicker({
   origin,
   value,
   onPick,
+  onConsider,
 }: {
   ports: readonly SnapshotPort[]
   legs: readonly SnapshotLeg[]
@@ -166,6 +209,13 @@ export function PortPicker({
   origin: string | null
   value: string | undefined
   onPick: (code: string) => void
+  /**
+   * The row a pointer or the keyboard is ON, raised as the player runs down the list and cleared
+   * when they leave it. It CHOOSES NOTHING — `onPick` is still the only thing that answers the
+   * argument, and the tap that fires it is unchanged. SAIL's rail draws the named harbour on its
+   * chart (OrderComposer's `considering`); every other caller passes nothing and nothing happens.
+   */
+  onConsider?: (code: string | null) => void
 }) {
   const [filter, setFilter] = useState('')
 
@@ -211,6 +261,7 @@ export function PortPicker({
           key={port.code}
           selected={value === port.code}
           onClick={() => onPick(port.code)}
+          onHover={onConsider && ((on) => onConsider(on ? port.code : null))}
           left={
             <span className="flex flex-wrap items-center gap-2">
               {port.name}
@@ -243,6 +294,35 @@ export function PortPicker({
  * What to trade, priced. E.4's whole reading room in a row: what it costs, what it fetches, how
  * that compares with the ports within 600 nm (%NBR), and the server's own buy/hold/sell advice —
  * so the choice is informed before it is made rather than explained after it.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * A ROW UNFOLDS. TAPPING IT IS LOOKING; CHOOSING IT IS A SEPARATE ACT.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * The owner, 2026-08-23: *"click a trade good → it unfolds showing how much I can buy, and more."*
+ *
+ * A tap used to COMMIT the pick and jump straight to the quantity step, which made the one question
+ * a trader actually asks — *how much of this can I take, and is it worth taking?* — answerable only
+ * AFTER the decision it should inform. So the head of the row now opens the row, and the fold
+ * carries a `Choose` button that is the only thing which answers the argument.
+ *
+ * THREE RULES THIS KEEPS, and each of them is the reason the shape is what it is:
+ *
+ * 1. **One row open at a time.** The open code is held by the COMPOSER, not by this list, and it is
+ *    a single value rather than a set. A list where every row can be open is a list nobody can
+ *    scan, and seventy goods is a list that must stay scannable. It lives upstairs because the same
+ *    open row is what `world.buy_capacity()` is asked about — see OrderComposer's `focusGood`.
+ * 2. **Opening never commits.** `onInspect` moves what is being LOOKED at; only `onPick` answers
+ *    the argument, and only the fold's own button calls it. Tapping an open row's head closes it
+ *    again, which is the same gesture undone rather than a second meaning for one tap.
+ * 3. **The fold is not a scroll box.** THE REACH LAW (CORE_REUSE §1.5) — the `Choose` button is an
+ *    action, so nothing between it and the page's own scroll may cap or clip. The fold has no
+ *    `max-h` and no `overflow`; it simply makes the page longer, which is honest.
+ *
+ * EVERY FIGURE IN THE FOLD IS SERVED. Nothing here multiplies a price by a quantity: buying walks a
+ * stepped book (§G.2), so the client's arithmetic would disagree with the charge. `max_qty`,
+ * `est_total` and the phrase for what stops her are `world.buy_capacity()`; the destination and its
+ * margin are `world.trade_routes()` (0019), priced through the same `world.quote()` the money moves
+ * at. What is ABOARD is the one number this side may count, and it is the fleet's own manifest.
  */
 export function GoodPicker({
   goods,
@@ -251,14 +331,27 @@ export function GoodPicker({
   /** SELL only: tuns aboard by good code. When given, only what is aboard can be picked. */
   aboard,
   intent,
+  inspecting,
+  onInspect,
+  capacity,
+  routes,
 }: {
   goods: readonly MarketGood[]
   value: string | undefined
   onPick: (code: string) => void
   aboard?: Record<string, number>
   intent: 'buy' | 'sell'
+  /** The ONE row that is unfolded, held upstairs so the capacity read can follow it. */
+  inspecting: string | null
+  onInspect: (code: string | null) => void
+  /** The composer's ONE reading of `world.buy_capacity()`, asked about `inspecting`. */
+  capacity: BuyCapacityState
+  /** `world.trade_routes()` for THIS port — one read for the whole list, never one per row.
+   *  Undefined while it is in flight, which the fold says rather than reading as "nowhere pays". */
+  routes: TradeRoutes | undefined
 }) {
   const [filter, setFilter] = useState('')
+  const routeOf = useMemo(() => routesByGood(routes), [routes])
 
   const rows = useMemo(() => {
     const q = fold(filter.trim())
@@ -301,35 +394,254 @@ export function GoodPicker({
             : 'Nothing here answers to that.'}
         </p>
       )}
-      {shown.map((g) => (
-        <PickerRow
-          key={g.code}
-          selected={value === g.code}
-          onClick={() => onPick(g.code)}
-          // A MARK PER GOOD (the owner, 2026-08-22: "i want a picture or an icon for each trade
-          // good"). The glyph comes from goodIcons.ts, which carries it on the CATEGORY axis
-          // because there are seventy goods and no art in this repository — read that file's
-          // header before reaching for a seventy-row table here.
-          mark={<Icon name={goodIcon(g.code, g.category)} size={22} className="shrink-0 text-ink-faint" />}
-          left={g.name}
-          // THE NAME USED TO BE PRINTED TWICE. This slot held `g.code`, and the code is DERIVED
-          // from the name ("Black Pepper" → "black-pepper"), so the row read "Black Pepper
-          // black-pepper" and spent its second line saying nothing. The owner: "beside the name i
-          // see again, a name repeated … i want beside the name show category of what the trade
-          // good is in." Nothing is lost: the code is the parser's spelling, and the composed
-          // order line above still shows it (CommandScreen's "What will be sent").
-          hint={categoryLabel(g.category)}
-          right={
-            <Badge tone={g.advice === 'buy' ? 'success' : g.advice === 'sell' ? 'accent' : 'neutral'}>
-              {g.advice}
-            </Badge>
-          }
-          under={<GoodFigures good={g} aboard={aboard ? (aboard[g.code] ?? 0) : undefined} />}
-        />
-      ))}
+      {shown.map((g) => {
+        const isOpen = inspecting === g.code
+        return (
+          // The row and its fold are ONE thing, so they are wrapped in one box. The fold is a
+          // sibling of the head rather than a child of it: the head is a <button> and the fold
+          // carries a <button>, and a button inside a button is not markup a browser will honour.
+          <div key={g.code}>
+            <PickerRow
+              // TWO STATES, ONE TINT, DELIBERATELY. `chip-soft` means "this row is the one you are
+              // dealing with" — whether that is because it is CHOSEN or because it is OPEN. They
+              // are never ambiguous in practice, because the mark on the right says which: an open
+              // row points down, a chosen row says "chosen", and an untouched one says "look".
+              selected={value === g.code || isOpen}
+              expanded={isOpen}
+              // OPENING, NOT CHOOSING. This tap used to call `onPick` and commit the argument.
+              onClick={() => onInspect(isOpen ? null : g.code)}
+              // A MARK PER GOOD, AND IT IS NOW LITERALLY PER GOOD (the owner, 2026-08-22: "i want a
+              // picture or an icon for each trade good"). `goodIcons.ts` carried the mark on the
+              // CATEGORY axis when this row was written — seven glyphs for seventy goods — and the
+              // comment here told the next reader not to reach for a seventy-row table. That table
+              // now EXISTS: every good in data/goods.json has its own drawn glyph, and the category
+              // is only the fallback for a good a migration adds before anybody draws one. The
+              // signature did not change, so this call did not; the advice did, and a comment
+              // arguing against the thing that shipped is worse than no comment.
+              //
+              // WHICH IS WHY THE NAME STAYS BESIDE THE MARK, and why `mark` is not an alternative to
+              // `left`. At 22px a handful of pairs — ivory/tea, nutmeg/cacao, silk cloth/muslin,
+              // musk/furs — are only just apart. The glyph is what makes a list of seventy rows
+              // scannable; the word is what makes it unambiguous. Neither replaces the other.
+              mark={<Icon name={goodIcon(g.code, g.category)} size={22} className="shrink-0 text-ink-faint" />}
+              left={g.name}
+              // THE NAME USED TO BE PRINTED TWICE. This slot held `g.code`, and the code is DERIVED
+              // from the name ("Black Pepper" → "black-pepper"), so the row read "Black Pepper
+              // black-pepper" and spent its second line saying nothing. The owner: "beside the name i
+              // see again, a name repeated … i want beside the name show category of what the trade
+              // good is in." Nothing is lost: the code is the parser's spelling, and the composed
+              // order line above still shows it (CommandScreen's "What will be sent").
+              hint={categoryLabel(g.category)}
+              right={
+                <span className="flex items-center gap-2">
+                  <Badge tone={g.advice === 'buy' ? 'success' : g.advice === 'sell' ? 'accent' : 'neutral'}>
+                    {g.advice}
+                  </Badge>
+                  {/* THE SAME ASYMMETRY THE ARGUMENT ROWS USE (OrderComposer): open is a MARK,
+                      closed is a WORD. A closed row still has something to say — whether this good
+                      has been chosen — while an open one only has to point. The glyph is the design
+                      system's chevron turned down, the same one Collapsible.tsx uses for a fold. */}
+                  <span aria-hidden className="text-accent">
+                    {isOpen ? (
+                      <Icon name="chevron" size={14} className="rotate-90" />
+                    ) : value === g.code ? (
+                      'chosen'
+                    ) : (
+                      'look'
+                    )}
+                  </span>
+                </span>
+              }
+              under={<GoodFigures good={g} aboard={aboard ? (aboard[g.code] ?? 0) : undefined} />}
+            />
+            {isOpen && (
+              <GoodDetail
+                good={g}
+                intent={intent}
+                capacity={capacity}
+                route={routeOf[g.code]}
+                comparing={routes === undefined}
+                chosen={value === g.code}
+                onChoose={() => onPick(g.code)}
+              />
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
+
+/**
+ * THE UNFOLDED ROW — how much she can take, where it pays more, and the one act that chooses it.
+ *
+ * ── WHAT IS HERE, AND WHOSE NUMBER EACH ONE IS ─────────────────────────────────────────────────
+ *   HOW MANY SHE CAN TAKE   `world.buy_capacity(fleet, good)` — `max_qty`, `est_total` and
+ *                           `bound_by`, the server's own PHRASE for what stops her. On a SELL the
+ *                           ceiling is what is aboard, which is the fleet's own manifest and the
+ *                           one quantity this side may count (fleetLimits.ts).
+ *   WHERE IT PAYS MORE      `world.trade_routes()` (0019) — the reachable port that pays most for
+ *                           this good, priced end to end through the same `world.quote()` an order
+ *                           executes at, over the SAILED route. One read for the whole list.
+ *   ON THE QUAY             `stock` against `stock_target`, the figures behind the row's meter.
+ *
+ * ── AND WHAT IS DELIBERATELY NOT ───────────────────────────────────────────────────────────────
+ *   · NO PRODUCT OF A PRICE AND A QUANTITY. A BUY reprices every `trade_step_tuns` (§G.2), so
+ *     `buy × qty` is always too low — that exact arithmetic is what offered 91 tuns of pepper
+ *     against a purse that could carry 50 (useBuyCapacity.ts). `est_total` is the served answer.
+ *   · NO WAGES IN THE MARGIN. 0019 leaves a voyage's daily crew cost out of `profit` on purpose,
+ *     so the fold prints `days` beside it and says so, rather than quietly implying a take-home.
+ *   · NO ADVICE. The server already gives one word of it on the row; a paragraph arguing for a
+ *     trade would be this screen having an opinion about a price, which is the thing it may not do.
+ */
+function GoodDetail({
+  good,
+  intent,
+  capacity,
+  route,
+  comparing,
+  chosen,
+  onChoose,
+}: {
+  good: MarketGood
+  intent: 'buy' | 'sell'
+  // NO `aboard` PROP. It was here to draw a SELL hero reading "20 t aboard" — a third rendering of
+  // a figure the row above and the quantity stepper below both already carry. The block went and
+  // the prop went with it, rather than being left threaded through to nothing.
+  capacity: BuyCapacityState
+  route: TradeRoute | undefined
+  /** True while `world.trade_routes()` is still in flight — which is NOT "nowhere pays more". */
+  comparing: boolean
+  chosen: boolean
+  onChoose: () => void
+}) {
+  return (
+    <div className="mt-1 space-y-3 rounded-md border border-accent/40 bg-app p-3">
+      {/* ── HOW MANY SHE CAN TAKE — BUY ONLY, AND THE ABSENCE ON SELL IS THE POINT ───────────────
+          A SELL block here would print "20 t aboard" as a hero, and that number is ALREADY on the
+          row above it (GoodFigures' `20 t aboard`, beside the stock meter) and again in the
+          quantity stepper's caption ("up to 20 t — what is aboard stops you there"). Three
+          renderings of one fact, so the two that were added here are the ones that go
+          (docs/NO_SPAGHETTI.md §5). What a SELL actually needs deciding is not how much is
+          aboard — it is whether to sell it HERE, which the block below answers. */}
+      {intent === 'buy' && (
+        <section>
+          <SectionLabel className="mb-1.5">How much she can take</SectionLabel>
+          {capacity.bound ? (
+            <>
+              <HeroFigure value={formatInt(capacity.bound.max)} unit="t at most" />
+              <dl className="mt-2 space-y-1">
+                {/* THE SERVER'S WORD FOR WHAT STOPS HER — 'hold' · 'stock' · 'daily cap' · 'purse' ·
+                    'at sea'. This is the whole of "and why not more", and it is not worked out here:
+                    a client that guessed would guess wrong the moment a quartermaster is posted. */}
+                <StatRow label="stopped by" value={capacity.bound.binding} plain />
+                {capacity.estTotal !== null && (
+                  <StatRow label="all of it costs" value={formatDucats(capacity.estTotal)} />
+                )}
+              </dl>
+            </>
+          ) : (
+            <p className={fineClass()}>
+              {capacity.loading
+                ? 'Asking the quay what she can carry and afford…'
+                : 'The most she can take on is not known yet.'}
+            </p>
+          )}
+        </section>
+      )}
+
+      <section className="border-t border-edge pt-3 first:border-0 first:pt-0">
+        <SectionLabel className="mb-1.5">Where it pays more</SectionLabel>
+        {route ? (
+          <>
+            <p className="text-sm text-ink">
+              {route.to.name} <span className={fineClass()}>{route.to.code}</span>
+            </p>
+            <dl className="mt-1.5 space-y-1">
+              {/* ── THE MONEY ROWS ARE A BUY'S ARITHMETIC, AND ONLY A BUY GETS THEM ─────────────
+                  `world.trade_routes` prices a round trip FROM THIS QUAY: buy `qty` here, carry it,
+                  sell it there. On a SELL the parcel is already aboard and `qty` is whatever the
+                  purse could afford on top of it — measured in the running game, a fleet holding
+                  20 tuns of porcelain was shown "margin on 2 t", which is a true number answering a
+                  question nobody asked. So SELL gets the half of the row that IS about the parcel
+                  she is carrying: where it fetches more, and what that quay bids. Both served. */}
+              {intent === 'buy' ? (
+                <>
+                  <StatRow
+                    label={`margin on ${formatTuns(route.qty)}`}
+                    value={`+${formatInt(route.profit)} d.${route.return_pct === null ? '' : ` · ${Math.round(route.return_pct)}%`}`}
+                  />
+                  {/* TWO ROWS, NOT ONE PACKED ONE. `pay here, take there` with `6,806 → 7,954 d.`
+                      beside it wrapped BOTH halves at 390px — the label onto two lines and the
+                      figures onto two more. A label that wraps is a label that has stopped being a
+                      label (docs/UI_DIRECTION.md §4 rule 3: one row, one fact). */}
+                  <StatRow label="you pay here" value={formatDucats(route.outlay)} />
+                  <StatRow label="she is paid there" value={formatDucats(route.proceeds)} />
+                </>
+              ) : (
+                <>
+                  <StatRow label="they bid there" value={formatUnitPrice(route.sell_price)} />
+                  <StatRow label="they bid here" value={formatUnitPrice(good.sell)} />
+                </>
+              )}
+              {/* THE PASSAGE IS TWO ROWS FOR THE SAME REASON. `1,534 nm · 2 legs · 13.0 days` is
+                  29 mono characters, which at 390px is wider than the value cell — and StatRow's
+                  value does not shrink (it must not, or a column of figures stops lining up), so
+                  the overflow printed straight THROUGH its own label. Measured, not guessed: the
+                  row read "pass1,534 nm · 2 legs · 13.0 days". */}
+              <StatRow
+                label="the passage"
+                value={`${formatNm(route.nm)} · ${route.legs} leg${route.legs === 1 ? '' : 's'}`}
+              />
+              {route.days !== null && (
+                <StatRow label="days at sea" value={formatVoyageDays(route.days)} />
+              )}
+              {intent === 'buy' && route.profit_per_day !== null && (
+                <StatRow label="a day at sea earns" value={`+${formatInt(route.profit_per_day)} d.`} />
+              )}
+            </dl>
+            <p className={fineClass('mt-1.5')}>
+              {intent === 'buy'
+                ? 'Priced end to end through the quote your own order executes at. A voyage also pays its crew every day at sea, and that is not in the margin.'
+                : 'Both bids are what your own order would execute at. Carrying her there costs the crew a wage every day at sea, and the quay there reprices as she unloads.'}
+            </p>
+          </>
+        ) : (
+          <p className={fineClass()}>
+            {comparing
+              ? 'Comparing this quay with every port in reach…'
+              : 'No port in reach pays more for this than here — not after tax, spread and your own price impact.'}
+          </p>
+        )}
+      </section>
+
+      <section className="border-t border-edge pt-3">
+        <dl className="space-y-1">
+          {/* THE FIGURES BEHIND THE ROW'S OWN METER, and ONLY those. The first draft of this block
+              also printed "this port asks 87 d./t" and "this port pays 80 d./t" — which are the
+              BUY and SELL columns of the row this fold is hanging off, 200px above it. Two
+              renderings of one fact, so this is the copy that goes (docs/NO_SPAGHETTI.md §5; the
+              same call `TradedRow`'s `block` prop lost, docs/DEV_LOG.md:305). The stock FIGURES
+              are not a second rendering: the row carries a six-block meter and no numbers. */}
+          <StatRow
+            label="on the quay"
+            value={`${formatTuns(good.stock)} of ${formatTuns(good.stock_target)}`}
+          />
+        </dl>
+      </section>
+
+      {/* THE DELIBERATE ACT. Opening the row was looking; this is the only control that answers the
+          argument, and it closes the fold by advancing the composer to the next question.
+
+          IT IS AN ACTION, SO NOTHING ABOVE IT MAY CLIP (CORE_REUSE §1.5) — the fold has no max
+          height and no overflow of its own, and the page's scroll is the only one on this tab. */}
+      <Button variant="primary" className="w-full" onClick={onChoose}>
+        {chosen ? `Keep ${good.name}` : `Choose ${good.name}`}
+      </Button>
+    </div>
+  )
+}
+
 
 /**
  * THE THREE FIGURES, EACH IN ITS OWN COLUMN — the owner, 2026-08-22: *"for each info - buy, sell,
@@ -362,7 +674,11 @@ function GoodFigures({ good, aboard }: { good: MarketGood; aboard: number | unde
           <span className="tabular-nums">{formatInt(good.sell)}</span>
           <span className="ml-1 text-[10px] font-normal text-ink-faint">d./t</span>
         </Figure>
-        <Figure label="neighbours" title="This port's price as a percentage of the ports within 600 nm">
+        {/* "nearby", NOT "neighbours". Measured at 390px: a third of the row is ~96px and
+            `neighbours` rendered as `NEIGHBOUR…` — a label truncated by its own cell, which is a
+            label that has stopped working. Not `%NBR` either: that is the column name in the data
+            and in migration 0009, and the map-UX rule is that the player never reads the schema. */}
+        <Figure label="nearby" title="This port's price as a percentage of the ports within 600 nm">
           <PriceIndex pct={good.pct_nbr} advice={good.advice} />
         </Figure>
       </span>

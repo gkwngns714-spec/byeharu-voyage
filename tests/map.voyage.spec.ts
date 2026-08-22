@@ -1,17 +1,20 @@
 import { test, expect } from '@playwright/test'
 import { project, type ViewBox } from '../src/lib/geo'
-import { buildChartModel, visiblePorts } from '../src/features/map/chartModel'
 import {
   FIT_PADDING,
+  GLYPH,
   LEG_SPAN_LIMIT,
   OPENING_MIN_SPAN_DEG,
+  buildChartModel,
+  hitTest,
+  legWebPath,
+  mapFleetsOf,
+  mapPortsOf,
   minTierForSpan,
   openingBounds,
-} from '../src/features/map/chartView'
-import { GLYPH } from '../src/features/map/glyphs'
-import { hitTest, toggleSelection } from '../src/features/map/hitTest'
-import { mapFleetsOf, mapPortsOf } from '../src/features/map/liveWorld'
-import { legWebPath } from '../src/features/map/route'
+  toggleSelection,
+  visiblePorts,
+} from '../src/chart'
 import type { FleetView } from '../src/lib/rpc'
 import { REAL_PORTS, dockedFleet, leg, portAt, sailingFleet } from './mapWorld.fixture'
 

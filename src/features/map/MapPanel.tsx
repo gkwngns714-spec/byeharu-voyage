@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Button, Collapsible, Icon, OverlayPanel, type OverlaySlot } from '../../components/ui'
-import { CHART_CHROME } from './useChartSurface'
+import { CHART_CHROME } from '../../chart'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A CORNER PANEL — the map's ONE panel shape, and there are only ever two of them on screen.

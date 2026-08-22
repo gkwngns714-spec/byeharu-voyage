@@ -1,4 +1,4 @@
-import { project } from '../../lib/geo'
+import { project } from '../lib/geo'
 import type { PortRole } from './chartModel'
 import { GLYPH, portMarkScale, trianglePath } from './glyphs'
 import type { MapPort } from './mapTypes'

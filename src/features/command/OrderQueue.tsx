@@ -46,7 +46,7 @@ export function OrderQueue({
   const failed = orders.find((o) => o.status === 'failed')
   // THE ARRIVAL INSTANT COMES FROM domain/fleet. `voyageEtaMs` already documents that `eta` is
   // an ISO STRING and that parsing it is the whole of the job — and it said it was "parsed once"
-  // while this file and features/map/liveWorld.ts each parsed it again. Now it is parsed once.
+  // while this file and chart/liveWorld.ts each parsed it again. Now it is parsed once.
   const eta = voyageEtaMs(fleet)
   const etaMs = eta !== null && readAt !== null ? eta - readAt : null
 

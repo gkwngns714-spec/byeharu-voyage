@@ -66,6 +66,10 @@ export function CommandScreen() {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const markets = useWorld((s) => s.markets)
+  // WHERE EACH GOOD IS WORTH MORE THAN IT IS HERE (0019). One read for the whole quay, cached by
+  // the store and shared with the Market tab — never one read per good row.
+  const routesByPort = useWorld((s) => s.routes)
+  const loadRoutes = useWorld((s) => s.loadRoutes)
   const busy = useWorld((s) => s.busy)
   const readAt = useWorld((s) => s.readAt)
   const open = useWorld((s) => s.open)
@@ -131,6 +135,21 @@ export function CommandScreen() {
     void loadMarket(marketPortId)
   }, [marketPortId, loadMarket])
   const market = marketPortId ? markets[marketPortId] : undefined
+
+  // THE COMPARISON, BESIDE THE PRICES. `world.trade_routes(port, fleet)` answers "where, in reach,
+  // does this good fetch more, and what is the voyage worth" for EVERY good the quay sells, in one
+  // call — which is what makes it affordable to put a destination inside the unfolded good row.
+  //
+  // NO CACHE GUARD, UNLIKE THE MARKET READ ABOVE, AND THAT IS DELIBERATE. The store keys this by
+  // PORT, but the answer is priced at what THIS FLEET can afford and carry (`basis.qty_from`), so a
+  // cached row belongs to whichever fleet asked last. Re-reading when the fleet changes costs one
+  // round trip and is the difference between a margin and a margin for somebody else. Each row
+  // still prints the `qty` it was priced at, so the figure names its own basis either way.
+  useEffect(() => {
+    if (!marketPortId) return
+    void loadRoutes(marketPortId, fleet?.id ?? null)
+  }, [marketPortId, fleet?.id, loadRoutes])
+  const routes = marketPortId ? routesByPort[marketPortId] : undefined
 
   const verbs = useMemo(() => composableVerbs(snapshot?.verbs ?? []), [snapshot])
   const spec = findVerb(snapshot?.verbs ?? [], verb)
@@ -334,7 +353,9 @@ export function CommandScreen() {
                 args={args}
                 fleet={fleet}
                 snapshot={snapshot}
+                port={port}
                 market={market}
+                routes={routes}
                 onChooseVerb={chooseVerb}
                 onSetArg={setArg}
               />

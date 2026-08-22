@@ -2,27 +2,32 @@ import type { IconName } from './icons'
 
 // A MARK FOR A TRADE GOOD — the one mapping from a good to the glyph that stands for it.
 //
-// ── THE OWNER ASKED FOR A PICTURE PER GOOD, AND THIS IS THE HONEST FORM OF THAT ─────────────────
-// There are SEVENTY goods in `data/goods.json` and there is no art in this repository at all — not
-// one raster, not one illustration. Seventy bespoke drawings is not something that can be delivered
-// truthfully, and seventy near-identical ones would be worse than none: a mark that does not
-// distinguish is decoration that costs a tap's worth of attention.
+// ── WHAT THIS FILE DOES ─────────────────────────────────────────────────────────────────────────
+// `GOOD_ICON` gives EVERY good in `data/goods.json` — all seventy — its own drawn mark. It is the
+// primary table and it is complete: the seventy rows below are the seventy rows of that file, in
+// its order, and the glyphs they name are drawn in icons.ts under "ONE MARK PER TRADE GOOD".
 //
-// So the mark is carried on the axis the data actually has. Every good already declares a
-// `category` — spice, textile, metal, luxury, foodstuff, raw, naval-stores — and that is also the
-// axis a trader reasons in ("is this a bulk cargo or a luxury?"). Seven distinct glyphs, one per
-// category, applied to all seventy goods.
+// `CATEGORY_ICON` is the FALLBACK, and only that. A good that arrives from a future migration
+// before anyone has drawn it still gets a truthful mark on the day it lands — a spice looks like a
+// spice — and nothing here can throw.
 //
-// ── AND THEN THE ONES WORTH KNOWING BY SIGHT ────────────────────────────────────────────────────
-// A category mark makes salt and wheat look identical, and those are the two cargoes a new captain
-// handles first. `GOOD_ICON` overrides the category for specific goods where a more telling glyph
-// already exists in the set. It is deliberately SHORT: an override earns its place by being a
-// cargo people actually run, and a table of seventy overrides would just be the seventy drawings
-// again, badly.
+// ── WHY IT IS SEVENTY AND NOT SEVEN ─────────────────────────────────────────────────────────────
+// It was seven, one per category, and that was the wrong answer to a question the owner asked
+// twice. A picker of seventy rows that repeats seven marks is a picker whose marks carry no
+// information: the reader still has to read every name, and the icon column is then pure cost.
+// Distinguishing seventy things is the entire job, not a decoration on top of it.
 //
-// A good with no override falls back to its category; a category that somehow does not resolve
-// falls back to `raw`. Neither can throw — a new good added by a migration gets a sensible mark on
-// the day it lands, with no edit here.
+// The hard part is not drawing seventy pictures, it is drawing seventy pictures that are still
+// TELLABLE APART at the 22px the good picker renders them at. icons.ts states the rule the glyphs
+// obey — separate by outer silhouette, spend interior detail only after the silhouette is won —
+// and this file's job is just to be exhaustive and to stay in step with the data.
+//
+// ── KEEPING IT IN STEP ──────────────────────────────────────────────────────────────────────────
+// The keys are good `code`s (the `id` column of data/goods.json, which is what `MarketGood.code`
+// and `SnapshotGood.code` carry). The values are `IconName`, so a glyph named here that does not
+// exist in ICON_NAMES is a COMPILE error rather than a blank square at runtime. Adding a good is
+// three edits — the glyph, its name in ICON_NAMES, its row here — and missing the third is the
+// only one of the three that fails quietly, which is why the fallback exists.
 
 /** Category → glyph. The seven are exactly the categories `data/goods.json` declares. */
 const CATEGORY_ICON: Record<string, IconName> = {
@@ -35,24 +40,91 @@ const CATEGORY_ICON: Record<string, IconName> = {
   'naval-stores': 'navalStores',
 }
 
-/** The few cargoes worth recognising without reading. Keep this list short — see the header. */
+/** Good `code` → its own mark. Complete over `data/goods.json`, in that file's order. */
 const GOOD_ICON: Record<string, IconName> = {
-  // The starter loop's own goods (DESIGN K.1 sails salt and wheat before anything else).
-  salt: 'foodstuff',
-  wheat: 'foodstuff',
-  // Coin-like and weighed-by-value cargoes read better as the luxury star than as ore.
-  gold: 'luxury',
-  silver: 'luxury',
-  pearls: 'luxury',
-  // Timber, pitch and cordage are what a yard eats; the anchor-ish mark says "this repairs a ship".
-  timber: 'navalStores',
-  pitch: 'navalStores',
-  hemp: 'navalStores',
+  // spice
+  'black-pepper': 'goodBlackPepper',
+  cloves: 'goodCloves',
+  nutmeg: 'goodNutmeg',
+  mace: 'goodMace',
+  cinnamon: 'goodCinnamon',
+  ginger: 'goodGinger',
+  cardamom: 'goodCardamom',
+  // textile
+  'wool-cloth': 'goodWoolCloth',
+  linen: 'goodLinen',
+  'cotton-cloth': 'goodCottonCloth',
+  muslin: 'goodMuslin',
+  chintz: 'goodChintz',
+  'silk-cloth': 'goodSilkCloth',
+  'silk-raw': 'goodSilkRaw',
+  carpets: 'goodCarpets',
+  'ramie-cloth': 'goodRamieCloth',
+  // metal
+  gold: 'goodGold',
+  silver: 'goodSilver',
+  copper: 'goodCopper',
+  tin: 'goodTin',
+  iron: 'goodIron',
+  // luxury
+  porcelain: 'goodPorcelain',
+  lacquerware: 'goodLacquerware',
+  glassware: 'goodGlassware',
+  pearls: 'goodPearls',
+  diamonds: 'goodDiamonds',
+  ivory: 'goodIvory',
+  ambergris: 'goodAmbergris',
+  musk: 'goodMusk',
+  coral: 'goodCoral',
+  amber: 'goodAmber',
+  frankincense: 'goodFrankincense',
+  myrrh: 'goodMyrrh',
+  // foodstuff
+  wheat: 'goodWheat',
+  rice: 'goodRice',
+  sugar: 'goodSugar',
+  salt: 'goodSalt',
+  'olive-oil': 'goodOliveOil',
+  wine: 'goodWine',
+  'dried-fish': 'goodDriedFish',
+  herring: 'goodHerring',
+  cheese: 'goodCheese',
+  'salted-beef': 'goodSaltedBeef',
+  coffee: 'goodCoffee',
+  tea: 'goodTea',
+  cacao: 'goodCacao',
+  'dried-fruit': 'goodDriedFruit',
+  // raw
+  tobacco: 'goodTobacco',
+  indigo: 'goodIndigo',
+  cochineal: 'goodCochineal',
+  brazilwood: 'goodBrazilwood',
+  logwood: 'goodLogwood',
+  alum: 'goodAlum',
+  saltpetre: 'goodSaltpetre',
+  sulphur: 'goodSulphur',
+  hides: 'goodHides',
+  furs: 'goodFurs',
+  wax: 'goodWax',
+  'cotton-raw': 'goodCottonRaw',
+  'wool-raw': 'goodWoolRaw',
+  'gum-arabic': 'goodGumArabic',
+  sandalwood: 'goodSandalwood',
+  ginseng: 'goodGinseng',
+  horses: 'goodHorses',
+  // naval stores
+  timber: 'goodTimber',
+  'naval-timber': 'goodNavalTimber',
+  tar: 'goodTar',
+  hemp: 'goodHemp',
+  flax: 'goodFlax',
+  'whale-oil': 'goodWhaleOil',
 }
 
 /**
  * The glyph for a good. Give it the good's `code` and `category` — both are on `MarketGood` and on
- * `SnapshotGood`, so no caller has to look anything up.
+ * `SnapshotGood`, so no caller has to look anything up. The category is the fallback for a good
+ * that has no drawn mark yet; every good in today's data has one.
  */
 export function goodIcon(code: string, category: string): IconName {
   return GOOD_ICON[code] ?? CATEGORY_ICON[category] ?? 'raw'

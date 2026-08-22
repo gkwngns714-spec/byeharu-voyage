@@ -22,6 +22,9 @@ export { Gauge, type GaugeTone } from './Gauge'
 export { Notice, type NoticeTone } from './Notice'
 export { SectionLabel } from './SectionLabel'
 export { PageHeader } from './PageHeader'
+// SectionLabel's opposite number: the one FIGURE a block is about, drawn as the hero
+// (docs/UI_DIRECTION.md §4 rule 2). See HeroFigure.tsx for the three hand-written copies it names.
+export { HeroFigure } from './HeroFigure'
 export { StatRow } from './StatRow'
 // StatRow's complement: the label/value row for a value that is a SENTENCE (see DetailRow.tsx for
 // the boundary between them).
@@ -50,8 +53,8 @@ export {
 } from './overlayLayout'
 export { Icon } from './Icon'
 export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
-// A mark for a trade good, and the human spelling of its category. See goodIcons.ts for why the
-// mark is carried on the CATEGORY axis rather than as seventy drawings that do not exist.
+// A mark for a trade good, and the human spelling of its category. Every good in data/goods.json
+// has its OWN drawn glyph — see goodIcons.ts for the table and for why seven was the wrong answer.
 export { goodIcon, categoryLabel } from './goodIcons'
 export { Collapsible, CollapsibleCard } from './Collapsible'
 // Collapsible's inline counterpart: the tappable ⓘ that folds a standing EXPLANATION rather than

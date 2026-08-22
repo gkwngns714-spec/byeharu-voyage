@@ -43,6 +43,8 @@ import type {
   PreviewResult,
   PriceHistory,
   SkillBook,
+  StandingsBoard,
+  BuffsView,
   StudiedSkill,
   TradeRoutes,
   VerbSpec,
@@ -263,6 +265,26 @@ export function worldOfficers(): Promise<RpcResult<OfficerRoster>> {
 /** What can be learned, and how far this house has learned it (0016). */
 export function worldSkills(): Promise<RpcResult<SkillBook>> {
   return call<SkillBook>('worldSkills')
+}
+
+/**
+ * The table of captains (0025) — houses ranked by the deeds the ledger already records.
+ *
+ * `limit` bounds how many LINES come back. It cannot widen a line: what a board row may carry is
+ * decided on the server, and `public.standings` is unreadable to every client role.
+ */
+export function worldStandings(limit: number | null = null): Promise<RpcResult<StandingsBoard>> {
+  return call<StandingsBoard>('worldStandings', [limit])
+}
+
+/**
+ * What is on at the quay (0026) — the catalogue of kinds, and one port's running list.
+ *
+ * Pass null for the catalogue alone. THIS READ ALSO WINDS THE CALENDAR on a deployment without
+ * pg_cron, so a screen that shows a fair is also the thing that makes fairs happen.
+ */
+export function worldBuffs(portId: string | null = null): Promise<RpcResult<BuffsView>> {
+  return call<BuffsView>('worldBuffs', [portId])
 }
 
 /** Sign an officer, and optionally post them to a fleet at once. The wage leaves the purse through

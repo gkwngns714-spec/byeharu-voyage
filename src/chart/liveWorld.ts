@@ -28,9 +28,9 @@
 // than a picture that is honest about being a reading.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import type { FleetView, SnapshotPort } from '../../lib/rpc'
+import type { FleetView, SnapshotPort } from '../lib/rpc'
 import type { MapFleet, MapPort } from './mapTypes'
-import { voyageEtaMs } from '../../domain/fleet'
+import { voyageEtaMs } from '../domain/fleet'
 
 /** The port table the chart draws. Field-for-field; nothing derived, nothing dropped but the
  *  columns a chart has no use for. */

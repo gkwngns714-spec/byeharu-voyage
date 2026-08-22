@@ -5,30 +5,31 @@ import type { Point, ViewBox } from '../../lib/geo'
 import type { FleetView, Refusal, SnapshotConfig, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
 import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
-import { CoastlineLayer } from './CoastlineLayer'
-import { DetailPanel } from './DetailPanel'
-import { FleetsLayer, TracksLayer } from './FleetsLayer'
-import { FleetsPanel } from './FleetsPanel'
-import { LabelsLayer } from './LabelsLayer'
-import { LegsLayer } from './LegsLayer'
-import { PortsLayer } from './PortsLayer'
+// THE CHART IS A SECTION OF ITS OWN (src/chart), and no longer this tab's property. Every module
+// below was a file in this folder until 2026-08-23; they moved so the Command tab could draw the
+// same chart on SAIL without copying a layer across a boundary — the silent copy docs/SECTIONS.md
+// warns a boundary produces. This screen's COMPOSITION did not change; only these paths did, and
+// the seven-line paint order became `ChartCanvas` so there is one of it rather than two.
 import {
+  buildChartModel,
   CHART_CAPTION,
+  CHART_CHROME,
+  ChartCanvas,
   COMPACT_WIDTH_PX,
-  LABEL_SPAN_LIMIT,
-  LEG_SPAN_LIMIT,
+  GLYPH,
+  hitTest,
+  mapFleetsOf,
+  mapPortsOf,
   minTierForSpan,
   openingBounds,
-} from './chartView'
-import { buildChartModel, visiblePorts } from './chartModel'
-import { GLYPH } from './glyphs'
-import { hitTest, toggleSelection } from './hitTest'
-import { mapLabelRequests, planLabels } from './labels'
-import { mapFleetsOf, mapPortsOf } from './liveWorld'
-import type { MapSelection } from './mapTypes'
-import { legWebPath } from './route'
-import { CHART_CHROME, useChartSurface } from './useChartSurface'
-import { useCoastline } from './useCoastline'
+  toggleSelection,
+  useChartSurface,
+  useCoastline,
+  visiblePorts,
+  type MapSelection,
+} from '../../chart'
+import { DetailPanel } from './DetailPanel'
+import { FleetsPanel } from './FleetsPanel'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // MAP — READ-ONLY, BY DESIGN AND FOREVER.
@@ -193,53 +194,13 @@ function Chart({
   const surface = useChartSurface(chartRef, frameBounds, onTap)
   const box = surface.viewBox
 
-  // WHICH PORTS ARE ON THE PAPER — computed once, consumed by the marks and the names (and by the
-  // tap above, from the same function). chartModel.visiblePorts: on the glass, and either big
-  // enough for this zoom or one of yours.
-  const drawnPorts = useMemo(
-    () => (box ? visiblePorts(ports, model.portRoles, box, minTierForSpan(box.width)) : []),
-    [box, ports, model.portRoles],
-  )
-
-  const selectedFleetId = selection?.kind === 'fleet' ? selection.id : null
-  const selectedPortCode = selection?.kind === 'port' ? selection.code : null
-
   const coastline = useCoastline()
-
-  // THE SEA LANES, close in only. Above LEG_SPAN_LIMIT the layer is not built and not rendered:
-  // 782 crossings drawn from orbit is a spiderweb, not a chart. It is built over the DRAWN ports,
-  // so a lane always joins two marks the player can see — never a line trailing off to a harbour
-  // this zoom is too far out to draw.
-  const legsD = useMemo(() => {
-    if (!box || box.width > LEG_SPAN_LIMIT) return ''
-    return legWebPath(legs, new Map(drawnPorts.map((p) => [p.code, p])), box)
-  }, [box, legs, drawnPorts])
 
   // A phone is not a small desktop. Below `sm` the chart is ~390 px wide and a panel that opens by
   // default eats most of it, so the fleet list starts folded to its header chip there and open at
   // desktop widths (defect 3). `surface.width` is 0 until the box is measured, which is why the
   // panels wait for it — Collapsible reads `defaultOpen` once, at mount, so it must be right then.
   const compact = surface.width > 0 && surface.width < COMPACT_WIDTH_PX
-
-  // EVERY NAME ON THE CHART, PLACED AS A SET. It is the visible ports plus the fleets × 8 candidate
-  // sides, which is small because the visible set is small — and it is the only way two labels can
-  // know about each other (see ./labels.ts for the overprinting this replaced).
-  const labels = useMemo(
-    () =>
-      box
-        ? planLabels(
-            mapLabelRequests(model, drawnPorts, selection, box.width <= LABEL_SPAN_LIMIT),
-            {
-              viewBox: box,
-              unitsPerPx: surface.unitsPerPx,
-              fontSizePx: GLYPH.labelSize,
-              gapPx: GLYPH.labelGapX,
-              glyphRadiusPx: GLYPH.fleetHaloRadius,
-            },
-          )
-        : [],
-    [box, model, drawnPorts, selection, surface.unitsPerPx],
-  )
 
   return (
     <div
@@ -250,28 +211,23 @@ function Chart({
       className="bv-sea relative h-full w-full touch-none select-none overflow-hidden"
       data-testid="map-chart"
     >
+      {/* THE PICTURE. Which ports are drawn, which lanes, which names and in what paint order are
+          `ChartCanvas`'s to decide (src/chart/ChartCanvas.tsx) — they were forty lines here until
+          the SAIL composer became the chart's second caller, and two copies of the paint order can
+          disagree. The tap above asks `visiblePorts` the same question with the same box, which is
+          what keeps "what you can touch" and "what you can see" the same list. */}
       {box && (
-        <svg
+        <ChartCanvas
+          model={model}
+          ports={ports}
+          legs={legs}
+          box={box}
+          unitsPerPx={surface.unitsPerPx}
+          coastlineD={coastline.data?.d ?? ''}
+          selection={selection}
+          ariaLabel="Chart of the world's harbours and the sea lanes between them, showing your fleets"
           className="absolute inset-0 h-full w-full"
-          viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
-          role="img"
-          aria-label="Chart of the world's harbours and the sea lanes between them, showing your fleets"
-        >
-          {/* PAINT ORDER IS THE ONLY STACKING SVG HAS: sea, coast, lanes, tracks, port marks, fleet
-              dots, names. Every name therefore sits on top of every mark, and no mark sits on a
-              name. The lanes go under everything — they are the paper's grain. */}
-          <CoastlineLayer d={coastline.data?.d ?? ''} />
-          <LegsLayer d={legsD} />
-          <TracksLayer model={model} unitsPerPx={surface.unitsPerPx} />
-          <PortsLayer
-            ports={drawnPorts}
-            portRoles={model.portRoles}
-            selectedCode={selectedPortCode}
-            unitsPerPx={surface.unitsPerPx}
-          />
-          <FleetsLayer model={model} selectedId={selectedFleetId} unitsPerPx={surface.unitsPerPx} />
-          <LabelsLayer labels={labels} unitsPerPx={surface.unitsPerPx} />
-        </svg>
+        />
       )}
 
       {/* ── THE CHROME LAYER ─────────────────────────────────────────────────────────────────

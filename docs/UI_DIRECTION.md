@@ -207,8 +207,10 @@ Recorded here rather than faked in the UI:
 * **ship art / class silhouettes** — there is no art in this repository at all.
 * **buffs** — still no table. ~~officers~~ closed by 0015, ~~skills~~ by 0016; each got its own
   migration exactly where `docs/SECTIONS.md` said it would land.
-* **rank standings** — still nothing computes a table, and that half is a design decision (who may
-  see whose figures) rather than a missing SELECT. The house's OWN figures are served by 0014.
+* ~~rank standings~~ — **closed by 0025.** The design decision this line was waiting on (who may
+  see whose figures) was taken in that migration's header and cut once, to a stated size: a board
+  row carries a name, a nation, a standing and the fames it is computed from, and nothing else.
+  RANK draws it as a settled board that says how old it is.
 * ~~fame / reputation~~ — **closed by 0014**, and DERIVED from the ledger rather than counted, so
   it cannot drift from the record it is computed from.
 

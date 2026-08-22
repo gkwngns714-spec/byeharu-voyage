@@ -635,6 +635,20 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Neither takes a player id; both read `current_player_id()` and refuse a fleet that is not
       // yours, which is the same property that makes `cmd.found_house` safe for a browser to hold.
       'worldHaggleState', 'cmdHaggle',
+      // Pin moved deliberately 2026-08-23 with 0025 (the table of captains) and 0026 (the fair at
+      // the quay). Both are READS and neither takes a player id.
+      //
+      // `world.standings(p_limit)` bounds how many LINES come back and cannot widen one: what a
+      // board row may carry is settled on the server, and `public.standings` carries RLS with no
+      // policy and no grant to any client role — a house's purse and the harbour her fleet lies in
+      // are physically unreachable through it, which is 0025's own break-test.
+      //
+      // `world.buffs(p_port)` is the one on this list with a SIDE EFFECT, and it is deliberate:
+      // reading it winds the fair calendar where pg_cron is absent (0009's catch-up idiom). It is
+      // not the only winder any more — 0028 put the same call in `world.fleets()` so a fair happens
+      // because the game is played rather than because one tab was opened — but it is still a
+      // writer reached through a read, and that is worth knowing before anyone "optimises" it.
+      'worldStandings', 'worldBuffs',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

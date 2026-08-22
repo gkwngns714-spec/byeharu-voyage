@@ -5,7 +5,7 @@
 // (MIN_SPAN_X = 1.5° across a phone, ~0.004°/px) that is a quarter of a pixel — invisible — and it
 // keeps the coastline path string roughly a third the size of full float output.
 
-import type { Point } from '../../lib/geo'
+import type { Point } from '../lib/geo'
 
 const PRECISION = 2
 

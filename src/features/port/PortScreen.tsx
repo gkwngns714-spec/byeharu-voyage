@@ -26,6 +26,7 @@ import type { FleetView, MarketGood, MarketView, SnapshotPort, WorldSnapshot } f
 import { fold, foldedMatch } from '../../lib/text'
 import { useCommandDraft } from '../../domain/order'
 import { AcademyFace, OfficersFace } from './PortFaces'
+import { QuayToday } from './PortFair'
 import { PORT_FACES, usePortView } from './portView'
 import type { CommandIntent } from '../../domain/order'
 import { findVerb, orderText } from '../../domain/order'
@@ -229,6 +230,16 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
           )}
         </Notice>
       )}
+
+      {/* WHAT IS ON AT THE QUAY, ABOVE THE PANEL AND ABOVE THE FOLD (0026, PortFair.tsx).
+          It sits OUTSIDE the faces on purpose: a fair is not a side of the port you turn to, it is
+          a fact about the harbour that changes the price on every face at once — the Quay's buy
+          lines, the City's spread and the Market tab's whole column are all quoting through it. A
+          face would have hidden it behind a tap, and 1.6 per cent of port-days is exactly the
+          frequency at which a player never finds the tap.
+          It costs ONE dim line while the quay is quiet, and becomes a panel only when something is
+          actually on. */}
+      <QuayToday portId={portId} />
 
       {/* ONE PLACE WITH FACES, NOT FOUR CARDS DOWN A PAGE (docs/UI_DIRECTION.md §2).
           The reference draws a port as a single panel with 기본/교역/시설/투자 along its top. This
@@ -442,7 +453,14 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                     label="Spread"
                     mono
                     value={market?.port ? formatPct(market.port.spread, 1) : 'reading…'}
-                    hint="The cut between what this port buys at and what it sells at. It narrows as a city's trade grows."
+                    /* THE HINT STOPPED BEING THE WHOLE RULE WHEN 0026 LANDED. `world.spread()` is
+                       now development LESS whatever is running on the quay, so a sentence naming
+                       only development described a number the game had stopped computing that way
+                       — the same "a screen's sentence became false, so it was corrected in the
+                       change that made it false" standard docs/NO_SPAGHETTI.md §8 asks for. The
+                       FIGURE is untouched: this is still `world.market()`'s one spread, and the
+                       fair is not printed again here (PortFair.tsx says why). */
+                    hint="The cut between what this port buys at and what it sells at. It narrows as a city's trade grows, and narrows again while a fair is on — this figure already has both in it."
                   />
                   <DetailRow
                     label="Cheapest here"

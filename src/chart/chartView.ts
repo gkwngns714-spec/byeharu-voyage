@@ -20,7 +20,7 @@ import {
   type GeoBounds,
   type LatLon,
   type ViewBox,
-} from '../../lib/geo'
+} from '../lib/geo'
 
 /** Where the chart is looking. `spanX` is the width of the view in chart units (degrees of longitude). */
 export interface ChartView {

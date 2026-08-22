@@ -5,6 +5,186 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-23 — D18: seventy marks, a row that unfolds, and a fair that happens whether or not you look
+
+Owner: *"make icon for each trade good, do all the things that i asked before, and then do 8, 9, 10"* —
+and, when asked what 내 주방 meant: **the galley, as its own tab beside the cargo.**
+
+Six background agents across three waves, partitioned by disjoint file domains. Four migrations
+(0025–0028), three new screens' worth of client, and one architectural carve-out that had been
+correctly refused the day before.
+
+### SEVENTY GOODS, SEVENTY MARKS
+
+The picker drew seven category glyphs across seventy rows, which is an icon column carrying no
+information: the reader still had to read every name. Now every good in `data/goods.json` has its
+own drawn mark.
+
+**The hard part was never drawing seventy pictures — it was drawing seventy that are still tellable
+apart at the 22px the picker renders them at.** Nine were redrawn after the first contact sheet:
+ginseng read as a standing human figure, furs was indistinguishable from musk, horses was a smudge
+as a head profile (a horseshoe now), whale oil collided with tea, raw silk with cinnamon, ivory with
+tobacco.
+
+**And the honest limit is written down rather than smoothed over.** Nothing shares a mark, but six
+pairs still need the name beside them: ivory/tea, nutmeg/cacao, silk cloth/muslin, musk/furs,
+cinnamon/raw silk, and the three bowls (rice, gums, whale oil). The icon is an accelerator, never a
+replacement for the name — which is why the unfolding row keeps both.
+
+The old override table was **partly dead**: `pitch` was not a good id (the good is `tar`), and four
+"overrides" pointed at their own category glyph. Both classes gone.
+
+### THE ROW THAT UNFOLDS — asked for twice before it was built
+
+Tapping a good opens it in place. The pick happens only on the fold's own `Choose <good>` button.
+
+    ◔ Porcelain              BUY ⌄        HOW MUCH SHE CAN TAKE
+      luxury                              20 t at most
+      BUY 358 · SELL 328 · NEARBY 82%     stopped by       your purse
+      STOCK ████████████████              all of it costs  7,179 d.
+
+**Cost measured, not reasoned**: opening a row is exactly 2 RPCs; opening a second is 2 (the first
+closes, nothing leaks); closing is 0; `trade_routes` is 0 per row, fetched once per (port, fleet).
+Opening does not commit — proven in the browser: the argument still says *not chosen yet*.
+
+`neighbours` was truncating to `NEIGHBOUR…` in a 96px cell. A label clipped by its own cell is a
+label that has stopped working; it reads `NEARBY` now. Not `%NBR` — that is the column name in
+migration 0009, and the player never reads the schema.
+
+### THE BOARD, AND WHAT A ROW MAY CARRY
+
+**The blocking question was not how to rank — it was what a board row may say.** A name, a nation, a
+standing, and the fames the standing is computed from. Nothing else.
+
+DESIGN J.1 makes the order book the only PvP surface, so another house's purse and the harbour her
+fleet lies in are not colour — they say what she can afford to corner and where to be waiting.
+Enforced by the server refusing to hand it over: `public.standings` carries RLS with **no policy and
+no grant to any client role**. The break-test: adding a purse to a row →
+*"another house's purse of 131,457 d. was reachable through the board."*
+
+Ties are `rank()`, not `row_number()` (which invents an order out of heap order) and not
+`dense_rank()` (which hides how many are level). Two houses level are **both 1st and the third is
+3rd**, `=2` on every tied row so the missing number does not read as a bug.
+
+The board is a RECORD keyed like `price_history`, and **the read is the catch-up** — no cron
+dependency, because PGlite has no pg_cron.
+
+### THE FAIR, AND WHERE A TIMED MODIFIER MAY HONESTLY LAND
+
+Decided by elimination, and the rejection is the load-bearing part:
+
+* **Speed — rejected.** `voyage.depart` FREEZES speed into `voyages.speed_profile` (0006:62). A
+  weather buff wired to speed would be summed into a stored total the moment a fleet sailed, and
+  that freeze is what makes offline settlement byte-identical (proof 01).
+* **The daily cap — rejected here on purpose**, because ACCOUNTING lands there in 0027 and two new
+  terms in one function on one day is how a composition goes unproven.
+* **The port's cut — taken.** `world.spread_effective` (0022) is untouched: it calls `world.spread`
+  as its first line, so purser, bargain, floor and cap keep composing exactly as proven.
+
+The calendar is **data, not code** — magnitude, duration, season length and chance all live on the
+authored kind row. A `festival_*` knob would have been a second authority.
+
+### THE THREE THAT DID NOTHING
+
+* **SURGEON** — and the agent's own assert caught its own first draft. Shaving the surgeon off the
+  loss *fraction* rounds away entirely on a starter Barca: `floor(8 × 0.721) = floor(8 × 0.70) = 5`.
+  It works on **hands**. Proved on a real raid, then replayed on the identical roll with a surgeon
+  aboard: 8 → 6 where nobody had left 5, and *"We buried 3 of the hands"* became *"We buried 2; the
+  surgeon kept the rest."*
+* **ACCOUNTING** — multiplies the allowance, never the tally already spent.
+* **NAVIGATION — the trap, and it did not get deferred a fourth time.** 0016 deferred it to weather;
+  0026 closed that escape hatch by establishing a timed modifier cannot reach frozen speed. So it
+  composes THROUGH `voyage.fleet_speed` rather than beside it. Not double-counting, by four
+  measurements — and breaking `(1+nav)*(1+skill)` to the sum form made the migration go red.
+
+### A FAIR HAPPENS BECAUSE THE GAME IS PLAYED
+
+`world.buffs()` was the only thing drawing a fair anywhere in the world, and PORT was its only
+caller. **A world rule that depends on a screen being looked at is not a world rule.**
+
+`world.snapshot()` was the obvious home and was **the wrong one, measured**: the client calls it
+once per session and caches it hard, so winding there moves the bug from "a tab was opened" to "the
+app was launched". It is also `STABLE`, so Postgres refuses a write inside it. The winder went into
+`world.fleets()` — the 30-second read, already 0009's catch-up read.
+
+    world.fleets()   1.455 ms → 1.695 ms   (+0.240 ms, +16.5%)
+
+Three runs agreed within 0.04 ms. One writer still: 1 function writes `active_buffs`, 3 read it,
+`tick_buff_calendar` has exactly 2 callers and the migration names them.
+
+**The break-testing found a real weakness and the guard was fixed, not the test.** The first
+idempotence assert compared row COUNTS — and a writer that clears its season and re-draws it leaves
+the same number of fairs. It digests the row **ids** now, and that term is what fired.
+
+### TWO CLOCKS, ONE WORD
+
+`duration_game_days` rides the calendar clock (2,880 s/day); the wire carried only
+`time_compression` (the voyage clock, 180 s/day). A client printing "lasts 3 days" would have been
+**wrong by ×16** — which is why the agent that built the PORT panel printed none of them and wrote
+down why instead of guessing.
+
+They are genuinely two clocks and were not collapsed: at one rate either a passage costs an hour per
+sea-day or a game year passes in an afternoon. **The defect is the wire, not the model.** The seam is
+asserted end to end, with the ×16 as the negative control computed from the two served knobs.
+
+### THE CHART, AND THE BOUNDARY THAT WAS PRODUCING COPIES
+
+A small map on SAIL needed 9 of the 14 files in `features/map/`, and no screen may import another.
+The previous agent **refused to copy and refused to weaken the guard**, and wrote the problem up
+instead. That was right: `sections.spec.ts` was green the whole time `PortPicker` existed twice.
+
+`src/chart/` is now a layer between domain and features, with one entrance. Three new guards,
+each broken on purpose and watched fail:
+
+> *"A layer nobody can reach through the entrance is a layer the next screen copies a file out of,
+> which is the silent copy no import check can see."*
+
+**No line is drawn between the two ports** — deliberately, and written into the code. A straight line
+would be read as the distance, and straight-line distance is the defect that once showed Seville at
+169 nm against the server's 286 *and sorted the list by it*. Distances stay on the row, from the
+server: Setúbal 16, Porto 195, Cádiz 248, Seville 286.
+
+### THE GALLEY
+
+내 주방 — the fleet card is three faces now: **SHIPS · CARGO · GALLEY**. Water, food, range, hands,
+hold and the daily burn were one run-on mono paragraph that wrapped to four lines at 390px; they are
+six labelled rows. The heading came off (the tab already says GALLEY), and the disclosure it carried
+moved DOWN onto the `hold` row — the row it is actually about. A dot floating alone above a grid,
+attached to nothing, is not better than a heading.
+
+### FOUR THINGS FOUND AND SAID RATHER THAN PATCHED
+
+1. **`RankScreen` printed `PRT`** on the one screen whose job is telling houses apart. The agent
+   REFUSED to write a client-side code→name table and reported it — which is why there is one
+   authority (`nationNameOf`, beside `portNameOf`) instead of a seventh copy. 0028 serves
+   `snapshot.nations`; a `nation_name` on the row was rejected because `snapshot.ports[].nation`
+   would still be unresolvable and the wire would carry three spellings.
+2. **`db.chain.spec.ts:268` was already RED on a correct chain** — pinned to 0024's literal title
+   while `LAST` had moved. A guard red on a correct chain gates nothing.
+3. **`rpc.surface.spec.ts` was missing `worldBuffs` and `worldStandings`.** 0022 shipped a complete
+   server mechanic with no client at all for exactly this reason.
+4. **`layout.spec.ts`'s TABS list never included `rank`** — the only tab with a scrolling table the
+   390px guard did not measure. Added; 7 pass. `map` and `profile` stay out, and the reason is
+   written in rather than left to be rediscovered.
+
+### Gate
+
+`db:check-versions` 28, positive control fired · `db:apply` **28/28 receipts** · `db:proof` **45/45**
+markers across 6 files, run four times · `playwright` **162 passed** · tsc, eslint, build clean.
+
+`BALANCE_MEDIAN_IN_BAND` was green on all four proof runs (13.6 / 13.2 / 11.6 / 14.2). It went red
+once mid-session and was **measured rather than re-rolled**: six runs on the new chain gave
+13.1/12.5/13.8/13.5/12.2/10.3 against six on the unchanged chain at 15.1/9.0/12.4/14.4/12.4/12.1.
+The unchanged chain has the WIDER spread. Pre-existing non-determinism in proof 05, already
+documented in 0021's header — a flake on the safety net, and worth its own slice.
+
+**Still open:** proof 04 now winds the calendar (0026's "the proofs run in a fair-free world" is half
+false, and 0028's header says so). A fair only makes a trade cheaper, so it can only help
+`FIRST_SESSION_HOME_RICHER` — and the fixture was deliberately NOT reached into, because a migration
+editing a fixture to protect a number nothing pins is the wrong repair.
+
+---
+
 ## 2026-08-23 — D17: a fleet of eight, an order said in one breath, and a bargain worth striking
 
 Owner: *"MAKE An order - Command. too much unncessary info. So is Sail, Sell, Hire etc. Too long
