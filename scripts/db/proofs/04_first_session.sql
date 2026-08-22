@@ -64,6 +64,10 @@ declare
   v_nbr_away numeric;
   v_r      jsonb;
   v_mkt    jsonb;
+  v_routes jsonb;
+  v_home   jsonb;
+  v_edge   numeric;
+  v_qty    numeric;
   v_fl     jsonb;
   v_led    jsonb;
   v_eta_min numeric;
@@ -76,6 +80,7 @@ declare
   v_rated  numeric;
   v_refused_seq int;
   k        int;
+  r_out    record;
 begin
   select id into v_lis from public.ports where code = 'LIS';
 
@@ -98,45 +103,91 @@ begin
   end if;
   raise notice 'PASS: FIRST_SESSION_OPENS — Casa de Aveiro, one Barca "Gaivota" docked at Lisboa, % ducats', v_start;
 
-  -- ── 0:20 the MARKET tab. The player does not know the world; they read the %NBR column and the
-  --    BUY block at the top of it. So does this proof: it takes the best buy-here-sell-there pair
-  --    that ONE leg out of Lisboa offers, judged the way the tab judges it.
-  select p_dest.id, p_dest.code, p_dest.name, pg_home.good_id, g.code, l.distance_nm
-    into v_dest, v_dest_code, v_dest_name, v_good, v_good_code, v_leg_nm
-    from public.legs l
-    join public.ports p_dest
-      on p_dest.id = case when l.from_port_id = v_lis then l.to_port_id else l.from_port_id end
-    join public.port_goods pg_home on pg_home.port_id = v_lis
-    join public.port_goods pg_away
-      on pg_away.port_id = p_dest.id and pg_away.good_id = pg_home.good_id
-    join public.goods g on g.id = pg_home.good_id
-   where (l.from_port_id = v_lis or l.to_port_id = v_lis)
-     and not (p_dest.culture = any(g.culture_mask))
-     and g.bulk <= 1.0                                  -- a Barca's hold is 60 tuns, stores included
-     and g.base_value * 40 < v_start                    -- and a starter has to be able to pay for it
-   order by pg_away.affinity - pg_home.affinity desc, l.distance_nm asc, g.code asc
-   limit 1;
+  -- Water the casks first. §F.2 refuses a voyage the stores cannot cover, and refusing is the game
+  -- working; a captain fills them at the quay before a 500-mile round trip. It happens BEFORE the
+  -- market is read now, because the quay only offers destinations she can actually reach today and
+  -- a dry ship can reach almost none of them (voyage.sail_refusal, 0019).
+  perform cmd.issue(v_fleet, 'PROVISION FULL');
+
+  -- ── 0:20 the MARKET tab. The player does not know the world; they read the WHERE IT PAYS column
+  --    and take the row that pays most. So does this proof.
+  --
+  --    IT USED TO PICK THE WIDEST AFFINITY GAP, and that is the defect migration 0019 exists to
+  --    fix, reproduced inside the proof: an affinity gap is not a profit, and the round trip
+  --    therefore lost money on roughly one run in twenty — measured, not guessed, and it is why
+  --    this file was intermittently red before anybody had changed the economy. A proof that fails
+  --    by luck gates nothing. The trade is now the one `world.trade_routes` names, priced end to
+  --    end through the same `world.quote` these orders will execute at.
+  --    AND IT IS A ROUND TRIP, so the destination has to be worth coming back FROM. The first cut
+  --    took the single best outbound row and then asked what Ponta Delgada sells that Lisboa pays
+  --    more for — nothing, as it happens, because a small Atlantic island buys from the capital
+  --    rather than selling to it. That is not a defect in either read; it is the difference
+  --    between one trade and a voyage. So the outbound rows are walked in profit order and the
+  --    first destination that ALSO offers a cargo home is the one she sails to. Both legs are the
+  --    quay's, through the same authority, and the second call PINS the destination because she is
+  --    coming home whatever else is on offer.
+  v_routes := world.trade_routes(v_lis, v_fleet, 1, null);
+  for r_out in
+    select (e->'to'->>'id')::uuid            as dest_id,
+           e->'to'->>'code'                  as dest_code,
+           e->'to'->>'name'                  as dest_name,
+           (e->>'good_id')::uuid             as good_id,
+           e->>'code'                        as good_code,
+           (e->>'nm')::numeric               as nm,
+           (e->>'profit')::numeric           as profit,
+           (e->>'qty')::numeric              as qty
+      from jsonb_array_elements(v_routes->'routes') e
+      join public.goods g on g.code = e->>'code'
+     where g.bulk <= 1.0                                -- a Barca's hold is 60 tuns, stores included
+     order by (e->>'profit')::numeric desc, e->>'code'
+  loop
+    v_home := world.trade_routes(r_out.dest_id, null, null, null, v_lis);
+    select (e->>'good_id')::uuid, e->>'code'
+      into v_back, v_back_code
+      from jsonb_array_elements(v_home->'routes') e
+      join public.goods g on g.code = e->>'code'
+     where g.bulk <= 1.0
+       and g.base_value * 10 < v_start
+     order by (e->>'profit')::numeric desc, e->>'code'
+     limit 1;
+    if v_back is not null then
+      v_dest      := r_out.dest_id;
+      v_dest_code := r_out.dest_code;
+      v_dest_name := r_out.dest_name;
+      v_good      := r_out.good_id;
+      v_good_code := r_out.good_code;
+      v_leg_nm    := r_out.nm;
+      v_edge      := r_out.profit;
+      v_qty       := r_out.qty;
+      exit;
+    end if;
+  end loop;
   if v_good is null then
-    raise exception 'PROOF 4 FAILED at 0:20 — no one-leg trade out of Lisboa is open to a starter at all';
+    raise exception 'PROOF 4 FAILED at 0:20 — of the % route(s) the quay names out of Lisboa, not one destination sells anything Lisboa pays more for, so there is no round trip to play (basis %)',
+      jsonb_array_length(v_routes->'routes'), v_routes->'basis';
   end if;
 
   select culture into v_dest_culture from public.ports where id = v_dest;
   v_mkt      := world.market(v_lis);
   v_nbr_home := world.pct_of_neighbours(v_lis, v_good);
   v_nbr_away := world.pct_of_neighbours(v_dest, v_good);
-  if v_nbr_home is null or v_nbr_away is null or v_nbr_home >= 90 or v_nbr_away <= v_nbr_home then
-    raise exception 'PROOF 4 FAILED at 0:20 — % reads %%NBR % at Lisboa and % at %; the session needs a clear buy here and a dearer market there',
-      v_good_code, v_nbr_home, v_nbr_away, v_dest_name;
+  -- The prices screen still has to price EVERYTHING (that is what a reading room is), the good the
+  -- quay named has to be on it, and the margin it quoted has to be a real one at the fleet's own
+  -- quantity. %NBR is printed beside them as what it is — an index — and deliberately NOT required
+  -- to be in any band: a good can read below the buy threshold here and still lose money over
+  -- there, which is the whole reason the WHERE column exists.
+  if jsonb_array_length(v_mkt->'goods') <> (select count(*) from public.goods)
+     or (select count(*) from jsonb_array_elements(v_mkt->'goods') e where e->>'code' = v_good_code) <> 1
+     or v_edge is null or v_edge <= 0
+     or v_routes->'basis'->>'qty_from' <> 'fleet' then
+    raise exception 'PROOF 4 FAILED at 0:20 — the Lisboa market served % of % goods, % is on it % time(s), and the quay quoted a margin of % on the % basis',
+      jsonb_array_length(v_mkt->'goods'), (select count(*) from public.goods), v_good_code,
+      (select count(*) from jsonb_array_elements(v_mkt->'goods') e where e->>'code' = v_good_code),
+      v_edge, v_routes->'basis'->>'qty_from';
   end if;
-  if (select e->>'advice' from jsonb_array_elements(v_mkt->'goods') e where e->>'code' = v_good_code) <> 'buy' then
-    raise exception 'PROOF 4 FAILED at 0:20 — the market does not mark % as a BUY at Lisboa, so the BUY block would not have shown it', v_good_code;
-  end if;
-  raise notice 'PASS: FIRST_SESSION_READS_MARKET — % is % per cent of its neighbours at Lisboa (marked BUY) and % per cent at % — % nm away',
-    v_good_code, round(v_nbr_home, 1), round(v_nbr_away, 1), v_dest_name, v_leg_nm;
-
-  -- Water the casks first. §F.2 refuses a voyage the stores cannot cover, and refusing is the game
-  -- working; a captain fills them at the quay before a 500-mile round trip.
-  perform cmd.issue(v_fleet, 'PROVISION FULL');
+  raise notice 'PASS: FIRST_SESSION_READS_MARKET — Lisboa prices all % goods, and the quay names % for % — % nm out, a quoted margin of % d.; %%NBR reads % here and % there, which is the index and not the reason',
+    jsonb_array_length(v_mkt->'goods'), v_good_code, v_dest_name, v_leg_nm, v_edge,
+    round(v_nbr_home, 1), round(v_nbr_away, 1);
   select greatest(1, floor((c.hold - s.water_t - s.food_t) / g.bulk))
     into v_room
     from public.ships s
@@ -159,16 +210,23 @@ begin
     v_good_code, (v_room + 20)::int, v_r->>'error_message', jsonb_array_length(v_r->'fixes');
 
   perform cmd.clear(v_fleet, false);
-  v_r := cmd.issue(v_fleet, 'BUY ' || v_good_code || ' ' || v_room::int);
+  -- AND THE QUANTITY IS THE QUAY'S, NOT THE HOLD'S. `v_room` is what FITS; it ignores the purse,
+  -- which is how this beat used to arrive at "110 tuns of Porcelain cost 40534 d. and you hold
+  -- 7925" the moment the trade stopped being hand-picked for cheapness. `world.trade_routes`
+  -- priced the row through `public.fleet_buy_capacity`, which stops at whichever of hold, stock,
+  -- the daily cap and the purse binds first — the same authority `ALL` resolves through when the
+  -- order runs. The number offered and the number charged are the same number.
+  v_r := cmd.issue(v_fleet, 'BUY ' || v_good_code || ' ' || v_qty::int);
   select ducats into v_after_buy from public.players where id = v_player;
   v_cargo := public.fleet_cargo_qty(v_fleet, v_good_code);
-  if not (v_r->>'ok')::boolean or v_cargo <> v_room
+  if not (v_r->>'ok')::boolean or v_cargo <> v_qty
      or v_after_buy <> v_start - (v_r->'order'->'result'->>'total')::bigint then
-    raise exception 'PROOF 4 FAILED at 0:40 — the cargo did not go aboard (% tuns of %, purse % -> %): %',
-      v_cargo, v_good_code, v_start, v_after_buy, v_r;
+    raise exception 'PROOF 4 FAILED at 0:40 — the cargo did not go aboard (% of % tuns of %, purse % -> %): %',
+      v_cargo, v_qty, v_good_code, v_start, v_after_buy, v_r;
   end if;
-  raise notice 'PASS: FIRST_SESSION_BUYS_CARGO — % tuns of % aboard at % d./tun, % d. total, purse % → %',
-    v_room, v_good_code, v_r->'order'->'result'->>'avg_price', v_r->'order'->'result'->>'total', v_start, v_after_buy;
+  raise notice 'PASS: FIRST_SESSION_BUYS_CARGO — % tuns of % aboard at % d./tun, % d. total, purse % → % (the quay offered % tuns and % is what she took)',
+    v_cargo, v_good_code, v_r->'order'->'result'->>'avg_price', v_r->'order'->'result'->>'total',
+    v_start, v_after_buy, v_qty, v_cargo;
 
   -- ── 1:20 SAIL, typed the way a player types it
   select speed_kn into v_rated from public.ship_classes c
@@ -190,31 +248,18 @@ begin
   -- mean M_load was never applied, and hold space would stop being a decision (§C.3).
   if v_speed >= v_rated or v_eta_min <= 0 then
     raise exception 'PROOF 4 FAILED at 1:20 — a Barca carrying % of her 60 tuns makes % kn against a % kn rating over % real minutes',
-      v_room, v_speed, v_rated, v_eta_min;
+      v_qty, v_speed, v_rated, v_eta_min;
   end if;
   raise notice 'PASS: FIRST_SESSION_SAILS — % nm to % at % kn (rated %, laden), % voyage-days, ETA % real minutes',
     v_leg_nm, v_dest_name, round(v_speed, 3), v_rated, v_r->'order'->'result'->>'voyage_days', round(v_eta_min, 2);
 
-  -- ── 1:35 "you queue the rest while it sails". The return cargo is chosen the same way the
-  --    outbound one was: what that port sells cheap which Lisboa pays more for.
-  -- Chosen on the GRADIENT, and affordable against the stake rather than against what is left after
-  -- loading — because by the time this order runs the outbound cargo has been sold. She sails with
-  -- 586 ducats in hand and comes into Ponta Delgada with the pepper money; judging the return cargo
-  -- on the purse she has right now would rule out every good she will actually be able to buy.
-  select pg_away.good_id, g.code
-    into v_back, v_back_code
-    from public.port_goods pg_away
-    join public.port_goods pg_home on pg_home.port_id = v_lis and pg_home.good_id = pg_away.good_id
-    join public.goods g on g.id = pg_away.good_id
-   where pg_away.port_id = v_dest
-     and g.bulk <= 1.0
-     and g.base_value * 10 < v_start
-     and not (v_dest_culture = any(g.culture_mask))
-   order by pg_home.affinity - pg_away.affinity desc, g.code asc
-   limit 1;
-  if v_back is null then
-    raise exception 'PROOF 4 FAILED at 1:35 — nothing at % is worth carrying home', v_dest_name;
-  end if;
+  -- ── 1:35 "you queue the rest while it sails". The homeward cargo was settled at 0:20, when the
+  --    destination was: a port is only worth sailing to if there is something to bring back, and
+  --    choosing the two legs apart is how a round trip ends up with an empty one. No fleet was
+  --    named for that read — she is at sea by now, and fleet_buy_capacity reads the port a fleet is
+  --    LYING in — so the quay priced it at its own stated quantity and this order takes twenty tuns
+  --    of what it named. Affordability was judged against the stake rather than against what is
+  --    left after loading, because by the time this order runs the outbound cargo has been sold.
 
   perform cmd.issue(v_fleet, 'SELL ' || v_good_code || ' ALL');
   perform cmd.issue(v_fleet, 'BUY ' || v_back_code || ' 20');

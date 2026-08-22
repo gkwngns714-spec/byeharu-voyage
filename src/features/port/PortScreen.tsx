@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Badge,
+  Button,
   Card,
   CardHeader,
+  Collapsible,
   DetailRow,
+  Input,
   Notice,
   PageHeader,
   Screen,
@@ -18,13 +21,23 @@ import {
   fineClass,
 } from '../../components/ui'
 import { formatInt, formatNm, formatPct, formatPctPoints, formatTuns, formatVoyageDays } from '../../lib/format'
-import { useWorld } from '../../live/worldStore'
+import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, MarketGood, MarketView, SnapshotPort, WorldSnapshot } from '../../lib/rpc'
+import { fold, foldedMatch } from '../../lib/text'
 import { useCommandDraft } from '../../domain/order'
 import { AcademyFace, OfficersFace } from './PortFaces'
+import { PORT_FACES, usePortView } from './portView'
 import type { CommandIntent } from '../../domain/order'
 import { findVerb, orderText } from '../../domain/order'
-import { fleetCrew, fleetMaxDraft, hullFraction, shipHoldUsed, worstHullFraction } from '../../domain/fleet'
+import {
+  fleetCrew,
+  fleetMaxDraft,
+  fleetPortCode,
+  housePortCode,
+  hullFraction,
+  shipHoldUsed,
+  worstHullFraction,
+} from '../../domain/fleet'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
 // PORT — E.3. Where you are, what is here, and what you can do about it.
@@ -58,9 +71,6 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 // A row that would have to be invented is deleted, and the ones that are thinner than they look
 // say why on screen. DESIGN's rule for this: never show a number you cannot defend.
 
-/** The four faces of one place. Not a route: a port is one screen, and these are its sides. */
-type PortFace = 'quay' | 'city' | 'services' | 'ships' | 'officers' | 'academy'
-
 export function PortScreen() {
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
@@ -79,21 +89,31 @@ export function PortScreen() {
 function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
-  const goodByCode = useWorld((s) => s.goodByCode)
   const markets = useWorld((s) => s.markets)
   const navigate = useNavigate()
   const handOff = useCommandDraft((s) => s.handOff)
   const draftFleetId = useCommandDraft((s) => s.fleetId)
   const loadMarket = useWorld((s) => s.loadMarket)
 
-  // There is no served "current port" — it is client UI state, and its natural default is where
-  // the first fleet is lying (README §4.1). A fleet at sea leaves the harbour unchosen, so the
-  // first port in the world stands in until the player picks one.
-  const [picked, setPicked] = useState<string | null>(null)
-  // WHICH FACE OF THE PORT IS TURNED TOWARDS YOU. It opens on the Quay — the things you can do —
-  // rather than on the city's statistics, because an action is why a player opens a port screen.
-  const [face, setFace] = useState<PortFace>('quay')
-  const defaultCode = fleets.find((f) => f.port)?.port ?? snapshot.ports[0]?.code ?? null
+  // WHICH HARBOUR, AND WHICH FACE OF IT — both persisted, because both were being lost every time
+  // the player left the tab (portView.ts records the measurement).
+  const picked = usePortView((s) => s.picked)
+  const setPicked = usePortView((s) => s.pick)
+  const face = usePortView((s) => s.face)
+  const setFace = usePortView((s) => s.turnTo)
+
+  // THE DEFAULT IS WHERE THE HOUSE IS, AND A FLEET AT SEA IS SOMEWHERE.
+  //
+  // This read `fleets.find((f) => f.port)?.port ?? snapshot.ports[0]?.code`, so the moment the only
+  // fleet weighed anchor the whole screen fell through to the FIRST PORT IN THE SNAPSHOT — served
+  // by CODE, so in practice Acapulco, ~10,000 nm from a house sailing the Iberian coast. It was not
+  // merely a wrong heading: every action on the Quay composes an order for the ACTING fleet, so a
+  // player sailing Lisbon → Porto could tap Acapulco's `BUY porcelain 86` and queue it to run at
+  // Porto, where the price, the stock and the hold are all different.
+  //
+  // `housePortCode` (domain/fleet) is the one answer: alongside if anything is alongside, else
+  // where she is BOUND — which is the market her queued orders will actually execute in.
+  const defaultCode = housePortCode(fleets) ?? snapshot.ports[0]?.code ?? null
   const portCode = picked ?? defaultCode
   const port = portCode ? (portByCode[portCode] ?? null) : null
 
@@ -110,8 +130,6 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
     return (className: string) => byName.get(className)
   }, [snapshot.ship_classes])
 
-  const bulkOfGood = (code: string) => goodByCode[code]?.bulk ?? 1
-
   const docked = port ? fleets.filter((f) => f.port === port.code) : []
   const acting =
     docked[0] ?? fleets.find((f) => f.id === draftFleetId) ?? fleets[0] ?? null
@@ -119,7 +137,10 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   // `fleetCrew(acting)` twice in one template string and then spell "berths still empty" a THIRD
   // way inside `hireCount` below — three foldings of one payload on one screen.
   const actingCrew = acting ? fleetCrew(acting) : null
-  const homeCode = fleets.find((f) => f.port)?.port ?? null
+  // WHERE THE ACTING FLEET'S NEXT ORDER WOULD RUN — alongside, or the harbour she is bound for.
+  // Read ONCE, from the fleet section, and used for both the banner and the gate on the Quay.
+  const actingPortCode = acting ? fleetPortCode(acting) : null
+  const actingIsHere = actingPortCode !== null && actingPortCode === port?.code
 
   // A hand-off is a structured INTENT (commandDraft.ts) — orders are MADE, not typed. The LINE
   // shown on the button is the one the server will receive, composed by the one function that
@@ -142,6 +163,13 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
       </Screen>
     )
   }
+
+  // WHICH FACES THIS HARBOUR HAS, and which of them is up. A persisted face can outlive the port
+  // it was chosen on — turn to ACADEMY in Sagres, then read a harbour that keeps no school — so the
+  // shown face is derived from what is OFFERED rather than trusted from storage. Falling back to
+  // the Quay is the same rule as the tab list: never leave a face up that this port cannot host.
+  const offeredFaces = PORT_FACES.filter((f) => f.id !== 'academy' || port.has_academy)
+  const shownFace = offeredFaces.find((f) => f.id === face) ?? offeredFaces[0]
 
   // The legs the SERVER authored out of this port — with its own sailed `nm`, which includes the
   // detour around land. The client used to great-circle this itself; the server's figure is the one
@@ -172,10 +200,25 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         actions={<Badge tone="neutral">draft {port.max_draft}</Badge>}
       />
 
-      {homeCode && port.code !== homeCode && (
+      {/* THE BANNER SAYS WHERE SHE IS, NOT WHERE A LIST OF FLEETS STARTS. It used to read "your
+          NEAREST fleet is at X" off `fleets.find(f => f.port)`, which is neither nearest nor,
+          for a fleet at sea, true — she is at neither end of her passage. The two states are
+          different sentences because they are different situations: a hull alongside somewhere
+          else can be sailed here; a hull at sea is committed until she arrives. */}
+      {acting && !actingIsHere && (
         <Notice tone="warning" className="text-xs">
-          You are not lying in {port.name} — this is what your factors report from there. Your
-          nearest fleet is at {portByCode[homeCode]?.name ?? homeCode}.
+          <p>
+            {acting.status === 'SAILING' && acting.voyage
+              ? `${acting.name} is at sea, bound for ${portNameOf(portByCode, acting.voyage.to)} — any order you give her runs THERE. This is only what your factors report from ${port.name}.`
+              : actingPortCode
+                ? `${acting.name} is lying at ${portNameOf(portByCode, actingPortCode)}, not in ${port.name}. This is only what your factors report from here.`
+                : `${acting.name} is not alongside anywhere. This is only what your factors report from ${port.name}.`}
+          </p>
+          {actingPortCode && (
+            <Button variant="secondary" className="mt-2" onClick={() => setPicked(actingPortCode)}>
+              Read {portNameOf(portByCode, actingPortCode)} instead
+            </Button>
+          )}
         </Notice>
       )}
 
@@ -192,12 +235,12 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         head={
           /* No eyebrow and no draft badge here: the PageHeader above already carries both, and
              this panel sits directly beneath it. One fact, one place — the same rule that took the
-             purse off two screens in D12. */
-          <CardHeader
-            flush
-            title="The quayside"
-            explain="Everything this port is, and everything you can do while lying in it. Nothing on any face issues an order — the Quay prints each one as the exact line it would become and hands it to Command."
-          />
+             purse off two screens in D12.
+
+             THE HEADING NAMES THE FACE THAT IS UP. It was hard-coded "The quayside" on all six,
+             so CITY, SERVICES, OFFICERS and ACADEMY each sat under the name of a face they were
+             not. Both the heading and the strip below now read the one FACES table. */
+          <CardHeader flush title={shownFace.title} explain={shownFace.explain} />
         }
       >
         <TabRow
@@ -205,31 +248,49 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
           value={face}
           onChange={setFace}
           className="mb-3"
-          tabs={[
-            { id: 'quay', label: 'Quay' },
-            { id: 'city', label: 'City' },
-            { id: 'services', label: 'Services' },
-            { id: 'ships', label: 'Alongside', hint: docked.length || undefined },
-            /* HIRING AND STUDYING LIVE WHERE THEY HAPPEN. §3a's second trap is "the action lives
-               on the wrong screen"; an officer signs on at a quay and a trade is learned at an
-               academy, so both are faces of the PORT rather than tabs of their own. The academy
-               face is only offered where there IS one — a face that always refuses is a menu item
-               that wastes a tap. */
-            { id: 'officers', label: 'Officers' },
-            ...(port.has_academy ? [{ id: 'academy' as const, label: 'Academy' }] : []),
-          ]}
+          /* HIRING AND STUDYING LIVE WHERE THEY HAPPEN. §3a's second trap is "the action lives on
+             the wrong screen"; an officer signs on at a quay and a trade is learned at an academy,
+             so both are faces of the PORT rather than tabs of their own. The academy face is only
+             offered where there IS one — a face that always refuses is a menu item that wastes a
+             tap, and `offeredFaces` is where that one exception lives. */
+          tabs={offeredFaces.map((f) => ({
+            id: f.id,
+            label: f.label,
+            hint: f.id === 'ships' ? docked.length || undefined : undefined,
+          }))}
         />
 
         <div role="tabpanel">
-          {face === 'quay' && (
+          {shownFace.id === 'quay' && (
             <>
-              {acting && (
-                <p className="mb-3 text-xs text-ink-muted">
-                  Tap one to load it onto Command as {acting.name}&apos;s order.
+              {/* THE QUAY ONLY OFFERS ORDERS FOR THE HARBOUR SHE IS ACTUALLY IN.
+                  Every line here composes an order for the ACTING fleet, and an order runs where
+                  she is — so printing `BUY porcelain …` under a port she is 10,000 nm from is the
+                  screen offering a trade at one market that would execute at another. Measured in
+                  the playtest: sailing Lisbon → Porto, Acapulco's buy line composed cleanly and
+                  would have run at Porto. Reading a far harbour is a real thing to want; giving it
+                  ORDERS is not, so the reading stays and the actions go. */}
+              {!acting ? (
+                <p className="text-sm text-ink-muted">
+                  There is no fleet to give an order to yet.
                 </p>
-              )}
-                {acting && (
+              ) : !actingIsHere ? (
+                <p className="text-sm text-ink-muted">
+                  Nothing to do here from where {acting.name} is. The City and Services faces read
+                  this harbour from a distance; her own quay is where her orders are made.
+                </p>
+              ) : (
+                <>
+                  <p className="mb-3 text-xs text-ink-muted">
+                    Tap one to load it onto Command as {acting.name}&apos;s order.
+                  </p>
                   <div className="space-y-4">
+                    {/* AN ACTION THAT WOULD BE REFUSED IS NOT OFFERED. HIRE used to be printed
+                        unconditionally with `Math.max(1, …)` hands, so a fleet with every berth
+                        filled — or a port with an empty pool — was handed `HIRE 1`, which the
+                        server answers with E_CREW_MAX. REPAIR was printed beside a whole hull.
+                        Both are the same defect as the BUY line below and are gated the same way:
+                        the picker never offers what the server would refuse. */}
                     <ActionGroup
                       label="Stores and hands"
                       actions={[
@@ -237,11 +298,15 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                           intent: { verb: 'PROVISION', args: { mode: 'FULL' } },
                           note: `${formatVoyageDays(acting.endurance_days)} of range at present`,
                         },
-                        {
-                          intent: { verb: 'HIRE', args: { count: String(hireCount(acting, port)) } },
-                          note: `${formatInt(actingCrew?.aboard ?? 0)} of ${formatInt(actingCrew?.max ?? 0)} berths filled · ${formatInt(port.crew_pool)} hands in the pool`,
-                        },
-                        ...(port.has_yard
+                        ...(hireCount(acting, port) > 0
+                          ? [
+                              {
+                                intent: { verb: 'HIRE', args: { count: String(hireCount(acting, port)) } },
+                                note: `${formatInt(actingCrew?.aboard ?? 0)} of ${formatInt(actingCrew?.max ?? 0)} berths filled · ${formatInt(port.crew_pool)} hands in the pool`,
+                              },
+                            ]
+                          : []),
+                        ...(port.has_yard && worstHullFraction(acting) < 1
                           ? [
                               {
                                 intent: { verb: 'REPAIR', args: { to_pct: '100' } },
@@ -254,15 +319,39 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                       onPick={command}
                     />
 
+                    {/* ═══════════════════════════════════════════════════════════════════════
+                        HOW MUCH TO BUY IS THE SERVER'S ANSWER. THE FOURTH COPY IS DELETED.
+                        ═══════════════════════════════════════════════════════════════════════
+                        This line used to carry a number from a private `affordableUnits(fleet,
+                        bulk)` — `floor(free_hold / bulk)`, floored at 1 — which was called
+                        "affordable" and never once read the purse. On a fresh 8,000 d. save, two
+                        of the four buys it offered were refused the instant they were issued:
+                        `BUY porcelain 186` → "cost 75701 d. and you hold 8000", `BUY black-pepper
+                        93` → "cost 12532 d. and you hold 8000". Its `Math.max(1, …)` also offered
+                        `BUY olive-oil 1` on a full hold, which refuses with E_HOLD_FULL.
+
+                        It was the FOURTH copy of a rule D10 was written to kill twice, and the
+                        answer is the one MarketScreen.tsx:168-175 records: hand over the word
+                        `ALL` and let `public.fleet_buy_capacity()` resolve it. That walks the same
+                        stepped book a committed trade walks (§G.2 — buying raises the price you
+                        are still buying at) and stops at whichever of hold, stock, daily cap or
+                        PURSE binds first. The copy is DELETED, not given a purse term: a fifth
+                        correct-today arithmetic is still a second authority.
+
+                        `ALL` is also read when the order RUNS rather than when it is made (F.2),
+                        so a buy queued from here is still right after a voyage that changed the
+                        hold. Nothing on this screen needs the figure; where one is ever needed,
+                        `world.buy_capacity(fleet, good)` is on the RPC surface and in the store
+                        (features/command/useBuyCapacity.ts). */}
                     <ActionGroup
                       label={marketLoaded ? 'What this market says to buy' : 'Trade'}
                       actions={
-                        marketLoaded
+                        marketLoaded && acting.free_hold > 0
                           ? worthBuying.map((good) => ({
                               intent: {
                                 verb: 'BUY',
                                 // CODES, never display names: `cmd.parse()` splits on whitespace.
-                                args: { good: good.code, qty: String(affordableUnits(acting, bulkOfGood(good.code))) },
+                                args: { good: good.code, qty: 'ALL' },
                               },
                               // `free_hold` is the SERVER's reading (public.fleet_free_hold,
                               // 0017:183) — the one a BUY is checked against. Nothing re-folds it.
@@ -271,9 +360,11 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                           : []
                       }
                       empty={
-                        marketLoaded
-                          ? 'This market is not advising a purchase here — read the Market tab for the whole list.'
-                          : 'Reading the market…'
+                        !marketLoaded
+                          ? 'Reading the market…'
+                          : acting.free_hold <= 0
+                            ? `${acting.name} has no room left — every tun of her hold is spoken for. Sell something before you buy.`
+                            : 'This market is not advising a purchase here — read the Market tab for the whole list.'
                       }
                       lineOf={lineOf}
                       onPick={command}
@@ -296,33 +387,43 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                       onPick={command}
                     />
                   </div>
-                )}
+                </>
+              )}
             </>
           )}
 
-          {face === 'city' && (
+          {shownFace.id === 'city' && (
             <>
                 {/* THE ROW RULE (see DetailRow.tsx): a short figure keeps the right-aligned two-column
                     StatRow, because a column of figures has to line up. A value that is a SENTENCE — a
                     dot-separated list, a figure with a parenthetical — uses DetailRow and flows
                     left-aligned, because right-aligning prose leaves its tail stranded as a fragment. */}
                 <dl className="space-y-1">
+                  {/* THREE RAW COLUMN NAMES USED TO BE PRINTED HERE — `industry 4 · commerce 7 ·
+                      military 2` — with no scale, no unit and no consequence, which is a database
+                      row wearing a label. All three are 0–20 (migration 0002:98-100), and two of
+                      them really do change what a player pays: `dev_commerce` narrows the spread
+                      and shaves the mid price (0005:299,331), `dev_industry` takes 1% off a repair
+                      per point (0007:736). `dev_military` is read by nothing, and the hint says so
+                      rather than letting it look like it matters — the alternative was to drop it,
+                      but a city with a garrison has one whether or not the rules notice yet. */}
                   <DetailRow
-                    label="Development"
+                    label="How grown"
                     mono
-                    value={`industry ${port.dev_industry} · commerce ${port.dev_commerce} · military ${port.dev_military}`}
+                    value={`trade ${port.dev_commerce}/20 · crafts ${port.dev_industry}/20 · garrison ${port.dev_military}/20`}
+                    hint="What this city has built up, out of twenty. Trade narrows the cut it takes on a deal and shaves what it asks for goods; crafts make its yard cheaper to mend in. The garrison is recorded but nothing reads it yet, so it changes no price you will pay."
                   />
                   <DetailRow
                     label="Market tax"
                     mono
                     value={formatPct(port.tax_rate, 1)}
-                    hint="set by the Mayor, banded 0–8%. Tax relief is not in the V0 chain, so what you pay is what is printed."
+                    hint="The Mayor's cut of every deal, between nothing and 8%. There is no way to have it waived, so what is printed here is what you pay."
                   />
                   <DetailRow
                     label="Spread"
                     mono
                     value={market?.port ? formatPct(market.port.spread, 1) : 'reading the market…'}
-                    hint="half-spread, derived from commerce — the server's figure, not a client formula"
+                    hint="The cut between what this port buys at and what it sells at. It narrows as a city's trade grows."
                   />
                   <DetailRow
                     label="Cheapest here"
@@ -335,24 +436,33 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                             .map((g) => `${g.name} ${formatPctPoints(g.pct_nbr ?? 0)}`)
                             .join(' · ')
                     }
-                    hint="%NBR against ports within 600 nm — a live reading, not an authored specialty list"
+                    hint="What this port charges as a share of what its neighbours within 600 nm charge — a live reading of today's market, not a list of what the town is famous for."
                   />
                 </dl>
             </>
           )}
 
-          {face === 'services' && (
+          {shownFace.id === 'services' && (
             <>
+              {/* THIS SENTENCE USED TO CONTRADICT THE TAB BESIDE IT. It read "Bureau, officers
+                  and the Mayor are V1 — they are not drawn because there is nothing behind them
+                  yet" while OFFICERS was a sibling face that hires two named officers, and the row
+                  below printed `Academy — yes`. 0015 shipped the roster and the sentence was not
+                  corrected with it (docs/NO_SPAGHETTI.md §8 question 4: delete what your change
+                  made false, in the change that made it false). Only the two that really have
+                  nothing behind them are named now. */}
               <p className="mb-3 text-xs text-ink-muted">
-                Bureau, officers and the Mayor are V1 — they are not drawn because there is nothing
-                behind them yet.
+                What this harbour keeps, and what it does not. No port has a Bureau or a Mayor's
+                office open to callers yet — nothing is being hidden from you, they simply are not
+                there to visit. Officers sign on under the Officers face, and a school under
+                Academy.
               </p>
                 <dl className="space-y-1">
                   <DetailRow
                     label="Harbour"
                     mono
                     value={`${docked.length} of your fleets alongside · max draft ${port.max_draft}`}
-                    hint="Other houses' shipping is not reported by the V0 world (J.3 is V1)."
+                    hint="Your own hulls only. What another house has lying here is not something a harbour will tell you."
                   />
                   <DetailRow
                     label="Yard"
@@ -364,13 +474,13 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                     label="Provisions"
                     mono
                     value={`${formatTuns(snapshot.config.water_per_crew_day, 2)} water and ${formatTuns(snapshot.config.food_per_crew_day, 3)} food per hand, per voyage-day`}
-                    hint="What stores COST is set when PROVISION runs — no quayside price list crosses the wire."
+                    hint="What stores cost is settled when PROVISION runs. No chandler posts a price list on the quay — PREVIEW the order on Command for the figure."
                   />
                   <DetailRow
                     label="Inn"
                     mono
                     value={`${formatInt(port.crew_pool)} hands in the pool`}
-                    hint="Beyond the pool, hands cost 2.5x — urgent recruitment (F.2). The rate is quoted when HIRE runs."
+                    hint="Take on more hands than the pool holds and the rest are found at short notice, at two and a half times the wage. The rate is quoted when HIRE runs."
                   />
                   <DetailRow label="Academy" mono value={port.has_academy ? 'yes' : 'none'} />
                   {port.is_ice_closed && <DetailRow label="Ice" mono value="CLOSED — nothing sails in or out" />}
@@ -378,11 +488,11 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
             </>
           )}
 
-          {face === 'officers' && <OfficersFace port={port} acting={acting} />}
+          {shownFace.id === 'officers' && <OfficersFace port={port} acting={acting} />}
 
-          {face === 'academy' && <AcademyFace port={port} acting={acting} />}
+          {shownFace.id === 'academy' && <AcademyFace port={port} acting={acting} />}
 
-          {face === 'ships' && (
+          {shownFace.id === 'ships' && (
             <>
                 {docked.length === 0 ? (
                   <p className="text-sm text-ink-muted">
@@ -434,30 +544,12 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         </div>
       </Card>
 
-      <Card>
-        <CardHeader
-          eyebrow="Elsewhere"
-          title="Other ports"
-          explain="Read a harbour before you sail to it — the prices you see are the ones your factors report from there, not the ones you are lying in."
-        />
-        <div className="flex flex-wrap gap-1.5">
-          {snapshot.ports.map((p) => (
-            <button
-              key={p.code}
-              type="button"
-              onClick={() => setPicked(p.code)}
-              className={[
-                'min-h-11 rounded-md px-3 font-mono text-xs transition',
-                p.code === port.code
-                  ? 'bg-accent text-app'
-                  : 'border border-edge bg-surface-2 text-ink-muted hover:text-ink',
-              ].join(' ')}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
-      </Card>
+      <ElsewherePanel
+        ports={snapshot.ports}
+        current={port.code}
+        home={defaultCode}
+        onPick={setPicked}
+      />
     </Screen>
   )
 }
@@ -465,16 +557,147 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
 /** How many hands the Inn can actually sign: berths still empty, capped by the pool it has.
  *  `berths` is `fleetCrew`'s — `sum(crew_max - crew)`, the spelling `cmd.do_hire` refuses on
  *  (0007:659). This used to compute it inline as `max(0, max - aboard)`, which is a different
- *  function once a hull is over-crewed and was one of two client spellings of the rule. */
+ *  function once a hull is over-crewed and was one of two client spellings of the rule.
+ *
+ *  IT MAY RETURN ZERO, AND ZERO MEANS "DO NOT OFFER THIS". It used to floor at 1, which handed a
+ *  fully-crewed fleet — or a port with an empty pool — a `HIRE 1` the server answers with
+ *  E_CREW_MAX. The Quay reads the zero and leaves the line out; see the gate at the call site. */
 function hireCount(fleet: FleetView, port: SnapshotPort): number {
-  return Math.max(1, Math.min(Math.floor(port.crew_pool), Math.max(0, fleetCrew(fleet).berths)))
+  return Math.min(Math.floor(port.crew_pool), Math.max(0, fleetCrew(fleet).berths))
 }
 
-/** Units, not tuns: the hold is in tuns and a good's `bulk` is the tuns one unit occupies.
- *  The room is `free_hold` — SERVED (public.fleet_free_hold, 0017:183), never re-folded here. */
-function affordableUnits(fleet: FleetView, bulk: number): number {
-  const byHold = bulk > 0 ? Math.floor(fleet.free_hold / bulk) : 0
-  return Math.max(1, byHold)
+// `affordableUnits(fleet, bulk)` STOOD HERE AND IS DELETED, not corrected. It answered "the most
+// she can buy" from `floor(free_hold / bulk)` and never read the purse — the fourth copy of a rule
+// D10 killed twice. The one authority is `public.fleet_buy_capacity()`, reached either by handing
+// the server the word `ALL` (what the Quay does) or by asking `world.buy_capacity(fleet, good)`
+// (what the composer does, via features/command/useBuyCapacity.ts). See the BUY group above for
+// the measured refusals it produced.
+
+/**
+ * READING A HARBOUR YOU ARE NOT IN — 214 ports, in the order they are PRINTED, behind one tap.
+ *
+ * ── THREE THINGS WERE WRONG WITH THE GRID THIS REPLACES ────────────────────────────────────────
+ * 1. IT WAS SORTED BY A COLUMN IT DOES NOT SHOW. `world.snapshot()` serves the ports ordered by
+ *    CODE and the buttons print NAMES, so the strip read *Antalya, Arkhangelsk, Antwerp* and
+ *    *Barcelona, Bandar Abbas, Beirut* — alphabetical, in an alphabet the player cannot see, which
+ *    reads as shuffled. Sorting by what is shown is the whole fix; `localeCompare` is used because
+ *    the names carry diacritics (`Ávila` sorts under A, not after Z).
+ * 2. THERE WAS NO WAY TO FIND ONE. 214 chips and no filter, while the Market tab's picker and the
+ *    Command tab's have had one for weeks. It matches through `lib/text`'s `foldedMatch`, which is
+ *    the same folding `cmd.fold()` does on the server — so a port found by typing `sao` is a port
+ *    the parser will accept spelt that way, and this screen cannot drift from the other two the
+ *    way MARKET's bare `toLowerCase()` once did.
+ * 3. IT SAT UNDER EVERY FACE. The panel is outside the tabpanel, so all ~214 buttons were below
+ *    the Quay, the City, Services, Alongside, Officers AND the Academy — a column of scroll between
+ *    a player and the bottom of every face they open. It is folded now, and its header says how
+ *    many are inside, so it costs one tap instead of a thousand pixels.
+ *
+ * IT IS PORT'S CHIP LIST, and it is deliberately not the row-picker `features/command/ArgPickers`
+ * offers: that one answers "where shall she SAIL", so its rows carry a sailed distance, a draught
+ * and a one-leg badge. This one answers "whose market am I reading", where the only thing that
+ * matters is the name. The two are named as separate controls in docs/NO_SPAGHETTI.md §7's debt
+ * list; what they must NOT do is match text two different ways, and they no longer can.
+ */
+function ElsewherePanel({
+  ports,
+  current,
+  home,
+  onPick,
+}: {
+  ports: readonly SnapshotPort[]
+  /** The harbour being read now. */
+  current: string
+  /** Where the house is — pinned first, so getting back is one tap and not a search. */
+  home: string | null
+  onPick: (code: string) => void
+}) {
+  const [query, setQuery] = useState('')
+
+  const listed = useMemo(() => {
+    const needle = fold(query.trim())
+    return ports
+      .filter((p) => foldedMatch(needle, p.name, p.code, p.country, p.region))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [ports, query])
+
+  const homePort = home ? (ports.find((p) => p.code === home) ?? null) : null
+
+  return (
+    <Card>
+      {/* THE EYEBROW SITS OUTSIDE THE TOGGLE, not inside it. A Collapsible's header IS a <button>,
+          and <SectionLabel> is an <h3> — not phrasing content, so it may not go there. The
+          alternative was to hand-write the eyebrow's classes inside the span, which is how the
+          design system ended up with two copies of that recipe already (NO_SPAGHETTI §7). One tap
+          target, one label above it, no third copy. */}
+      <SectionLabel>Elsewhere</SectionLabel>
+      <Collapsible
+        defaultOpen={false}
+        storageKey="port.elsewhere"
+        header={
+          <span className="min-w-0 text-sm text-ink">
+            Read another harbour — {formatInt(ports.length)} of them
+          </span>
+        }
+        contentClassName="pt-3"
+      >
+        <p className={fineClass('mb-2')}>
+          What you see there is what your factors report, not what you are lying in. Giving orders
+          still happens where your fleet is.
+        </p>
+        <Input
+          size="sm"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Find a harbour by name, code, country or region"
+          placeholder="Find a harbour by name, code, country or region"
+          spellCheck={false}
+          autoCorrect="off"
+        />
+        <p className={fineClass('mt-2')}>
+          {query.trim()
+            ? `${formatInt(listed.length)} of ${formatInt(ports.length)} answer to “${query.trim()}”.`
+            : `All ${formatInt(ports.length)}, by name.`}
+        </p>
+
+        {/* ONE HARBOUR IS ALWAYS ONE TAP AWAY: the one the house is in. Without it, a player who
+            had wandered off to read Aden had to type their own port's name to get back. */}
+        {homePort && !query.trim() && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <SectionLabel className="mb-0">Your fleet</SectionLabel>
+            <Button
+              variant={homePort.code === current ? 'chip-on' : 'chip'}
+              onClick={() => onPick(homePort.code)}
+            >
+              {homePort.name}
+            </Button>
+          </div>
+        )}
+
+        {/* THE DESIGN SYSTEM'S CHIP, not a fourteenth hand-written copy of it. This grid used to
+            spell out its own `bg-accent text-app` / `border border-edge bg-surface-2` pair, which
+            is exactly the recipe `chip` / `chip-on` exists to be (buttonStyles.ts). It is also NOT
+            wrapped in a local `PortChip` component: MARKET already declares one
+            (features/market/MarketScreen.tsx:683) for the same job, and a second declaration of
+            that name is the silent copy docs/SECTIONS.md warns a boundary converts sharing into.
+            Two <Button>s composing one recipe is not a duplication; two components would be. */}
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {listed.map((p) => (
+            <Button
+              key={p.code}
+              variant={p.code === current ? 'chip-on' : 'chip'}
+              onClick={() => onPick(p.code)}
+            >
+              {p.name}
+            </Button>
+          ))}
+        </div>
+        {listed.length === 0 && (
+          <p className="text-sm text-ink-muted">No harbour answers to that. Clear the field to see them all.</p>
+        )}
+      </Collapsible>
+    </Card>
+  )
 }
 
 function buyNote(good: MarketGood): string {

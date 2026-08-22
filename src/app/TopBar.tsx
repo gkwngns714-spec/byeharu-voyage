@@ -26,11 +26,22 @@ export function TopBar() {
 
   return (
     <header className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-panel-head px-4">
+      {/* THE WORDMARK IS A NAVIGATION CONTROL, so it obeys the 44px reach floor like every other
+          one. It was 134×16 — the height of its own text — because it was styled as a caption
+          that happened to be a link, and a caption is not something anyone aims a thumb at.
+          `self-stretch` takes the header's full height rather than pinning a number here: the bar
+          is `min-h-11` (44px) and stays the one authority for how tall it is, so the target grows
+          with the bar instead of drifting away from it. `flex items-center` keeps the text
+          optically where it already was, so nothing moved — only the box around it. */}
       <Link
         to="/profile"
-        className="min-w-0 font-mono text-xs uppercase tracking-[0.2em] text-ink-faint transition hover:text-ink"
+        className="flex min-w-0 items-center self-stretch font-mono text-xs uppercase tracking-[0.2em] text-ink-faint transition hover:text-ink"
       >
-        Byeharu <span className="text-accent">Voyage</span>
+        {/* One text node, wrapped, so the flex box above does not make "Byeharu" and "Voyage" two
+            flex items and eat the space between them. */}
+        <span>
+          Byeharu <span className="text-accent">Voyage</span>
+        </span>
       </Link>
 
       <div className="flex shrink-0 items-center gap-3">

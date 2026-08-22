@@ -9,26 +9,26 @@
 // about it. Nothing in this file computes, adjusts or re-derives a served number. It arranges
 // rows, and that is all.
 //
-// ── §E.4: %NBR IS THE COLUMN THE GAME IS PLAYED FROM ────────────────────────────────────────────
-// It is this port's mid as a percentage of the ports within 600 nm that trade the good. Below 90
-// you buy; above 110 you sell; the rest is your judgement. THE TABLE IS SORTED INTO THOSE THREE
-// BLOCKS, BUY FIRST — so a player who knows nothing sees the two rows that pay without scrolling.
-// That ordering is the tutorial, and it is the reason this module exists rather than a `.sort()`
-// call buried in the screen.
+// ── §E.4: %NBR IS A LOCAL PRICE INDEX, AND THAT IS ALL IT EVER WAS ──────────────────────────────
+// It is this port's mid as a percentage of the ports within the neighbourhood radius that trade the
+// good. Below the buy band it is cheap HERE; above the sell band it is dear HERE. THE TABLE IS CUT
+// INTO THOSE THREE BLOCKS, BUY FIRST, so a player who knows nothing sees the cheap rows without
+// scrolling. That ordering is the tutorial, and it is the reason this module exists rather than a
+// `.sort()` call buried in the screen.
 //
-// The two thresholds below are the WORDS ON THE BLOCK HEADINGS, not a second derivation: the block
-// a row lands in comes from the server's `advice`, never from comparing `pct_nbr` here. They are
-// the same 90/110 the chain uses (migration 0009, `world.market`), printed so the player can see
-// what the heading means.
+// WHAT IT IS NOT — AND THIS COST A PLAYER REAL MONEY. A price index cannot predict a profit: it
+// contains neither port's tax, neither port's spread, nor the price impact of the order itself.
+// Migration 0019's header records the measurement — salt reads 109.6 at Porto, a SELL by this
+// screen's own bands, and carrying it there from Lisboa LOSES 77 ducats. The trade is named by
+// `world.trade_routes`, in ducats, priced through the same quote the money moves at. This file
+// arranges the index; it never presents it as advice.
+//
+// THE THREE NUMBERS ARE THE SERVER'S. 90, 110 and 600 were declared here as well as in the chain
+// until 0019 — two authorities for one number, and a caption that could quietly stop describing the
+// computation behind it. They arrive in `world.snapshot().config` now and this module prints what
+// it is handed.
 
-import type { MarketGood } from '../../lib/rpc'
-
-export const ADVICE_BUY_BELOW = 90
-export const ADVICE_SELL_ABOVE = 110
-
-/** §E.4's header: prices are read against the ports within this radius. Server-side constant,
- *  reprinted here as a caption. */
-export const NEIGHBOUR_RADIUS_NM = 600
+import type { MarketGood, SnapshotConfig, TradeRoute, TradeRoutes } from '../../lib/rpc'
 
 /**
  * The four blocks the table is cut into. Three are §E.4's bands, read straight off the server's
@@ -45,11 +45,18 @@ export function blockOf(good: MarketGood): MarketBlock {
 /** BUY at the top, always. The player who knows nothing must land on the rows that pay. */
 export const BLOCK_ORDER: readonly MarketBlock[] = ['buy', 'sell', 'hold', 'unavailable']
 
-export const BLOCK_LABEL: Record<MarketBlock, string> = {
-  buy: `BUY  (< ${ADVICE_BUY_BELOW}%)`,
-  sell: `SELL (> ${ADVICE_SELL_ABOVE}%)`,
-  hold: 'hold',
-  unavailable: 'not traded here',
+/** The heading over each block, in the server's own thresholds. */
+export function blockLabel(block: MarketBlock, config: SnapshotConfig): string {
+  switch (block) {
+    case 'buy':
+      return `CHEAP HERE  (< ${config.advice_buy_below}%)`
+    case 'sell':
+      return `DEAR HERE  (> ${config.advice_sell_above}%)`
+    case 'hold':
+      return 'about the local average'
+    case 'unavailable':
+      return 'not traded here'
+  }
 }
 
 export type SortKey = 'nbr' | 'name' | 'price' | 'stock'
@@ -102,15 +109,30 @@ export function marketBlocks(
   goods: readonly MarketGood[],
   sort: SortKey,
   filter: MarketFilter,
+  config: SnapshotConfig,
 ): MarketBlockView[] {
   const kept =
     filter === 'all' ? [...goods] : goods.filter((g) => g.available && g.advice === filter)
 
   return BLOCK_ORDER.map((block) => ({
     block,
-    label: BLOCK_LABEL[block],
+    label: blockLabel(block, config),
     rows: kept.filter((g) => blockOf(g) === block).sort(compare(sort, directionFor(block))),
   })).filter((b) => b.rows.length > 0)
+}
+
+/**
+ * THE COMPARISON, INDEXED BY GOOD CODE, so a table row can find its own destination in one lookup
+ * rather than scanning the list per row.
+ *
+ * It is a plain re-keying of what the server sent and it computes NOTHING: a row that is not in the
+ * answer prints nothing, because "the quay found no port in reach that pays more for this" and "the
+ * quay was never asked" both look like an absent row and neither is a number.
+ */
+export function routesByGood(routes: TradeRoutes | undefined): Record<string, TradeRoute> {
+  const out: Record<string, TradeRoute> = {}
+  for (const r of routes?.routes ?? []) out[r.code] = r
+  return out
 }
 
 /**

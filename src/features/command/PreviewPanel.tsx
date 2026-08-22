@@ -73,14 +73,21 @@ export function PreviewPanel({
             <p className={fineClass('uppercase tracking-wider')}>Instead</p>
             {refusal.fixes.map((fix) => {
               const action = fixAction(fix, verbs)
+              const hole = HOLE.test(fix)
               return (
                 <div key={fix} className="flex flex-wrap items-center gap-2">
-                  <code className="min-w-0 flex-1 break-words font-mono text-xs text-accent">{fix}</code>
+                  <code className="min-w-0 flex-1 break-words font-mono text-xs text-accent">
+                    <FixLine fix={fix} />
+                  </code>
                   {action.kind === 'none' ? (
                     <span className={fineClass()}>nothing to load</span>
                   ) : (
                     <Button variant="secondary" onClick={() => onFix(action)}>
-                      {action.kind === 'queue' ? 'do it' : 'make this'}
+                      {/* WHAT THE BUTTON PROMISES HAS TO BE WHAT HAPPENS. `SELL <good> ALL` cannot
+                          be "made" by tapping — it loads SELL and opens the good picker, because a
+                          placeholder is a hole the server left for the player (text.ts:146). It
+                          said "make this" anyway, beside a line reading a literal `<good>`. */}
+                      {action.kind === 'queue' ? 'do it' : hole ? 'start this' : 'make this'}
                     </Button>
                   )}
                 </div>
@@ -106,8 +113,8 @@ export function PreviewPanel({
     return (
       <Notice tone="accent" className="text-xs">
         The fleet is at sea, so this order will WAIT in her queue and run the moment she is
-        alongside. The server cannot cost it until then — prices will have moved by the time she
-        arrives, which is the whole gamble (F.2).
+        alongside. Nothing can cost it until then — prices will have moved by the time she arrives,
+        and that is the whole gamble.
       </Notice>
     )
   }
@@ -123,6 +130,43 @@ export function PreviewPanel({
         <Estimate verb={result.parsed.verb} estimate={result.estimate} timeCompression={timeCompression} />
       </dl>
     </div>
+  )
+}
+
+// ── a refusal's fixes, and the holes the server leaves in them ──────────────────────────────────
+//
+// A fix arrives as a real order line, and some of them carry a `<placeholder>`: `SELL <good> ALL`,
+// `BUY <good> HALF`, `SAIL Gaivota TO <a nearer port>`. Those are not broken templates — they are
+// the server saying "this, and you choose the rest", and `fixAction` (domain/order/text.ts:146)
+// already reads everything up to the hole and leaves the argument unset so the composer opens its
+// picker on it. Tapping one WORKS.
+//
+// What was wrong was the rendering: the line printed the raw `<good>` in the same brass mono as a
+// real token, so it read as a variable name that leaked out of the server — and the button beside
+// it said "make this" about an order it could not finish making. The hole is now drawn as a hole
+// (dimmed, italic, without the angle brackets, which are a programmer's punctuation) and the button
+// says "start this". Nothing about the fix's meaning is invented here: the words inside the
+// brackets are the server's own, and they are printed.
+
+/** A `<…>` hole in a fix line — the server's mark for "you choose this part". */
+const HOLE = /<[^>]+>/
+
+/** The fix line, with the server's placeholders drawn as holes rather than as tokens. */
+function FixLine({ fix }: { fix: string }) {
+  // `split` with a capturing group keeps the delimiters, so the pieces alternate literal / hole.
+  const pieces = fix.split(/(<[^>]+>)/g).filter((p) => p !== '')
+  return (
+    <>
+      {pieces.map((piece, i) =>
+        piece.startsWith('<') && piece.endsWith('>') ? (
+          <span key={i} className="italic text-ink-faint">
+            {piece.slice(1, -1)}
+          </span>
+        ) : (
+          <span key={i}>{piece}</span>
+        ),
+      )}
+    </>
   )
 }
 

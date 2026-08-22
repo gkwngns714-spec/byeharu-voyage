@@ -14,11 +14,13 @@ import {
   formatClock,
   formatDucats,
   formatDucatsDelta,
+  formatInt,
   formatNm,
+  formatPctPoints,
   formatRelative,
 } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
-import { useWorld } from '../../live/worldStore'
+import { portNameOf, useWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
 import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 
@@ -49,10 +51,16 @@ import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 // computed on this side would be a second, wrong, authority for the player's money.
 //
 // ── THE VOCABULARY IS THE SERVER'S ──────────────────────────────────────────────────────────────
-// FOUNDED · BOUGHT · SOLD · DEPARTED · VOYAGE_REPORT · PROVISIONED · HIRED · REPAIRING · REPAIRED.
-// The fixture's TRADE / VOYAGE / PORT / MARKET kinds do not exist and are not translated into — a
-// mapping layer would be a second name for every event. The filter chips are built FROM the kinds
-// actually present in the page, so a migration that adds a kind needs no edit here.
+// FOUNDED · BOUGHT · SOLD · DEPARTED · VOYAGE_REPORT · PROVISIONED · HIRED · REPAIRING · REPAIRED
+// · SIGNED_OFFICER · STUDIED. The fixture's TRADE / VOYAGE / PORT / MARKET kinds do not exist and
+// are not translated into — a mapping layer would be a second name for every event. The filter
+// chips are built FROM the kinds actually present in the page, so a migration that adds a kind
+// needs no edit here.
+//
+// A kind is spelled for a human in exactly ONE place, `kindWords()` below. It used to be written
+// three times — the filter chip, the badge and the fallback headline — each with
+// `.replace('_', ' ')`, which replaces the FIRST underscore only. Nothing has three words in it
+// today, so all three copies agreed and none of them was right.
 //
 // The headline is not served either (README §4.12): the client composes it from `kind` + `payload`,
 // once, in `headline()` below. The prose report IS served — `payload.lines`, already sentences.
@@ -98,7 +106,10 @@ function LedgerBody() {
   }, [events])
 
   const shown = filter === 'all' ? events : events.filter((e) => e.kind === filter)
-  const portName = (code: string) => portByCode[code]?.name ?? code
+  // A CALLER, not a second author: `portNameOf` is the one reading of "what is this code called"
+  // (worldStore.ts). This screen used to re-derive it, and so do five other screens — see the
+  // note on `portNameOf` for the copies still to be folded.
+  const portName = (code: string) => portNameOf(portByCode, code)
 
   return (
     <Screen>
@@ -130,7 +141,7 @@ function LedgerBody() {
                     'font-mono text-xs uppercase tracking-wider',
                   )}
                 >
-                  {k === 'all' ? 'all' : k.toLowerCase().replace('_', ' ')}
+                  {k === 'all' ? 'all' : kindWords(k)}
                 </button>
               ))}
             </div>
@@ -196,7 +207,8 @@ function Entry({
         {fleet && (
           <span className="font-mono text-xs uppercase tracking-wider text-ink">{fleet}</span>
         )}
-        <Badge tone={kindTone(event.kind)}>{event.kind.replace('_', ' ')}</Badge>
+        {/* Badge upper-cases in CSS, so it takes the same lowercase words the chip does. */}
+        <Badge tone={kindTone(event.kind)}>{kindWords(event.kind)}</Badge>
         <span className={fineClass('ml-auto')}>
           {Number.isFinite(atMs) ? formatRelative(atMs, nowMs) : ''}
         </span>
@@ -259,12 +271,26 @@ function Entry({
 //   HIRED         {fleet, count, urgent, cost}
 //   REPAIRING     {fleet, points, cost, sim_hours}
 //   REPAIRED      {fleet}
+//   SIGNED_OFFICER {officer, code, specialty, bonus_pct, cost}   (0015:231 — NO fleet key)
+//   STUDIED       {skill, code, level, port, cost}               (0016:239 — port is a CODE)
 //
 // An unknown kind falls through to the kind itself rather than to an invented sentence — a new
 // migration's event shows up as a legible row on the day it lands, without lying about its content.
+//
+// ── WHY THE FALLBACK NO LONGER SUPPLIES A SUBJECT ───────────────────────────────────────────────
+// The last two kinds shipped without their half of this composer and fell to the default, which
+// read `${fleet} · …` off a `fleet` that defaulted to "A fleet". So signing Bartolomeu Dias
+// printed "A fleet · signed officer." — legible, and about a fleet that had nothing to do with it.
+// NEITHER PAYLOAD CONTAINS A FLEET AT ALL: an officer signs with the HOUSE (0015 refuses to put an
+// officer column on `fleets`), and a trade is learned by the CAPTAIN. So the fallback now names a
+// fleet only when the payload names one, and the default that invented it is gone. The rule the
+// header states is intact — an unknown kind still prints its own name — it just no longer prints
+// somebody else's.
 
 function headline(event: LedgerEvent, portName: (code: string) => string): string {
   const p = event.payload
+  // The fallback for a payload that IS about a fleet and has lost the key. Not read by the
+  // default branch: see the note above.
   const fleet = str(p, 'fleet') ?? 'A fleet'
 
   switch (event.kind) {
@@ -325,11 +351,49 @@ function headline(event: LedgerEvent, portName: (code: string) => string): strin
     }
     case 'REPAIRED':
       return `${fleet} came out of the yard, sound again.`
+    case 'SIGNED_OFFICER': {
+      // The three facts a player chose this officer BY, in the order the roster card showed them
+      // (PortFaces.tsx:85-95): who, what they are, what they are worth. The wage is deliberately
+      // absent — it is the delta printed under this sentence, and saying it twice would make one
+      // movement look like two. `cost` is in the payload for the record, not for the headline.
+      //
+      // It says "worth", never "makes her faster": three of the four specialties are read by no
+      // rule yet (0015's header), the payload does not carry `takes_effect`, and a ledger line
+      // that claimed an effect the world does not apply would be exactly the fabricated figure
+      // this screen exists to refuse. The roster card is where that limitation is disclosed.
+      const officer = str(p, 'officer') ?? 'An officer'
+      const specialty = str(p, 'specialty')
+      const bonus = num(p, 'bonus_pct')
+      return `${officer} signed on${specialty ? ` as ${specialty.toLowerCase()}` : ''}${
+        bonus === null ? '' : `, worth +${formatPctPoints(bonus)}`
+      }.`
+    }
+    case 'STUDIED': {
+      // The SKILL is the subject: the payload has no captain in it and this house has exactly one,
+      // so "The captain studied…" would add a word carrying no information. Tuition is the delta
+      // below, for the same reason the officer's wage is not repeated here.
+      const skill = str(p, 'skill') ?? 'A trade'
+      const level = num(p, 'level')
+      const port = str(p, 'port')
+      return `${skill} studied${level === null ? '' : ` to level ${formatInt(level)}`}${
+        port ? ` at ${portName(port)}` : ''
+      }.`
+    }
     case 'WAGES':
       return `Wages paid to ${fleet}.`
-    default:
-      return `${fleet} · ${event.kind.toLowerCase().replace('_', ' ')}.`
+    default: {
+      const named = str(p, 'fleet')
+      const what = kindWords(event.kind)
+      return named ? `${named} · ${what}.` : `${what}.`
+    }
   }
+}
+
+/** How a server kind is spelled for a human, in one place. Lowercase: the two surfaces that want
+ *  capitals (the filter chip and the Badge) upper-case in CSS, and the fallback headline needs it
+ *  mid-sentence. `/_/g`, not `'_'` — the old spelling stopped at the first underscore. */
+function kindWords(kind: string): string {
+  return kind.toLowerCase().replace(/_/g, ' ')
 }
 
 function kindTone(kind: string) {

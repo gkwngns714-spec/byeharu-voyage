@@ -66,6 +66,43 @@ export function fleetStatusTone(
   }
 }
 
+/**
+ * WHERE HER NEXT ORDER HAPPENS — the port she is lying in, or, at sea, the port she is BOUND for.
+ *
+ * A fleet at sea is not nowhere. An order issued to her waits in her queue and runs the moment she
+ * is alongside (F.2, "sell the cloves when you get to Amsterdam"), so the market her orders will
+ * execute in is `voyage.to` — not wherever a list of ports happens to begin.
+ *
+ * ADDED 2026-08-22 BECAUSE THERE WERE FOUR SPELLINGS OF IT AND ONE OF THEM WAS WRONG — spaghetti,
+ * in the word docs/NO_SPAGHETTI.md §1 asks for. Three read `fleet.port ?? fleet.voyage?.to` inline
+ * (`features/command/CommandScreen.tsx`, `features/command/OrderComposer.tsx`,
+ * `features/market/MarketScreen.tsx:portOfPlayer`); the fourth, `features/port/PortScreen.tsx`,
+ * read only `fleet.port` and fell back to `snapshot.ports[0]` — so with the only fleet at sea the
+ * Port tab opened on Acapulco, ~10,000 nm away, and composed orders from there that would have run
+ * at the port she was actually bound for. Four answers to one question, and the fourth could not
+ * agree with the other three.
+ */
+export function fleetPortCode(fleet: FleetView): string | null {
+  return fleet.port ?? fleet.voyage?.to ?? null
+}
+
+/**
+ * WHERE THE HOUSE IS — the harbour a screen with no explicit choice should open on.
+ *
+ * A fleet ALONGSIDE wins over a fleet at sea, because a docked hull can act now. Only when nothing
+ * is alongside does a fleet's destination stand in. Null when the house has no fleet at all, which
+ * is the only case where a screen may reasonably fall back to the world's first port.
+ */
+export function housePortCode(fleets: readonly FleetView[]): string | null {
+  const alongside = fleets.find((f) => f.port)
+  if (alongside?.port) return alongside.port
+  for (const f of fleets) {
+    const bound = fleetPortCode(f)
+    if (bound) return bound
+  }
+  return null
+}
+
 /** Hull condition, 0–1. `durability` and `max_durability` are both served; the ratio is not. */
 export function hullFraction(ship: FleetShip): number {
   return ship.max_durability > 0 ? ship.durability / ship.max_durability : 0

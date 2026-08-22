@@ -30,7 +30,7 @@ import {
   formatVoyageDays,
 } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
-import { useWorld } from '../../live/worldStore'
+import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetShip, FleetView, SnapshotConfig } from '../../lib/rpc'
 import { useCommandDraft } from '../../domain/order'
 import type { CommandIntent } from '../../domain/order'
@@ -114,7 +114,8 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
   // answer for exactly the case the two answers could differ — a player read that failed while
   // the fleets read succeeded. An unread house prints a dash; the roster below is still drawn.
   const counts = house ? { fleets: house.fleets, ships: house.ships } : null
-  const portName = (code: string | null) => (code ? (portByCode[code]?.name ?? code) : null)
+  // The one authority for code -> name (worldStore.portNameOf). This was one of seven copies.
+  const portName = (code: string | null) => (code ? portNameOf(portByCode, code) : null)
 
   return (
     <Screen>
@@ -306,7 +307,7 @@ function FleetDetail({
   const fraction = voyageFraction(fleet)
   const etaMs = voyageEtaMs(fleet)
   const goodName = (code: string) => goodByCode[code]?.name ?? code
-  const portName = (code: string) => portByCode[code]?.name ?? code
+  const portName = (code: string) => portNameOf(portByCode, code)
 
   return (
     <CollapsibleCard

@@ -61,7 +61,12 @@ begin
 
   -- ── Find a voyage that actually meets weather. hazard_roll() is pure, so looking ahead costs
   --    nothing and changes nothing.
-  while v_try < 25 and not v_found loop
+  --    THE CAP IS 120, AND IT IS A MEASUREMENT. 2026-08-22, PGlite 0.5.5: of 120 Lisboa-Tunis
+  --    voyages, 20 carried at least one hazard — 17 per cent, over 11 voyage-days. At the old cap
+  --    of 25 the chance of finding none was 0.83^25, ONE RUN IN NINETY, and this file duly went red
+  --    on a correct system, which is a proof that gates nothing. At 120 it is 1 in 70 million. An
+  --    attempt costs ~17 ms and the median run needs about six of them.
+  while v_try < 120 and not v_found loop
     v_try := v_try + 1;
     v_retry := false;
     begin
@@ -88,7 +93,7 @@ begin
   end loop;
 
   if not v_found then
-    raise exception 'PROOF 1 FAILED: no voyage in % attempts carried a hazard; the comparison would have been vacuous', v_try;
+    raise exception 'PROOF 1 FAILED: no voyage in % attempts carried a hazard; the comparison would have been vacuous. At the measured rate of ~17%% that is a 1-in-70-million run, so suspect the hazard rule rather than the dice', v_try;
   end if;
   raise notice 'PASS: OFFLINE_EQUIV_HAZARD_PRESENT — voyage % over % voyage-days carries % hazard day(s) (found on attempt %)',
     v_voyage, v_days, v_haz, v_try;

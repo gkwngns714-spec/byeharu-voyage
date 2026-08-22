@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import {
   Badge,
   Card,
@@ -7,7 +6,6 @@ import {
   Notice,
   PageHeader,
   Screen,
-  SectionLabel,
   StatRow,
   fineClass,
 } from '../../components/ui'
@@ -37,13 +35,37 @@ import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 // lifetime total.
 //
 // 0014 made fame a server-side reading of the WHOLE record: `world.player()` returns trade fame,
-// exploration fame and ports reached, derived on every call. So the client stops counting. What
-// remains derived here is only what fame does not cover — how many entries this page holds — and
-// it still says so.
+// exploration fame and ports reached, derived on every call. So the client stops counting — and as
+// of 2026-08-22 it counts NOTHING: the last derived figure, a tally of trades in the page this
+// screen happened to hold, is gone with the paragraph that had to explain it.
 //
 // The rule that made this worth doing is the one this project keeps: a figure computed in two
 // places is two authorities for it. The ledger is the source of truth from which rank is computed
 // (I.4), and now exactly one thing computes it.
+//
+// ── WHAT THE PLAYER IS TOLD, AND WHAT STAYS IN THIS COMMENT (2026-08-22) ────────────────────────
+// This screen used to end with a bulleted list headed "What a standing needs first", naming a
+// players table, a settled net worth, first-reached ports and a season boundary. Every line of it
+// was true and none of it was the player's business: it is MY backlog, printed on their screen,
+// and the same pass found `(0014)` in the Fame card — a migration number, which is provenance for
+// a developer and noise to a captain (docs/UI_DIRECTION.md §4 rule 4).
+//
+// THE HONESTY IS NOT THE BACKLOG. What a player must know is that no table of captains exists and
+// that this is the game's state rather than a failed read — that sentence stays, in their words.
+// What they need never know is which migration would add one, so it lives here:
+//
+//   · no players table a client may read — `world.snapshot()` carries the world and no houses
+//   · no settled net worth — purse, plus hulls, plus cargo at an agreed valuation
+//   · ports FIRST reached are not recorded; fame counts distinct arrivals, which is a different
+//     claim on the world
+//   · no season boundary, so a table would be of all time rather than of something
+//
+// And the same pass deleted this screen's last derived figure — "N of the M entries on this page
+// are trades". It was ungrammatical ("0 of the 1 entries"), it was a fact about the LEDGER's
+// paging rather than about the house, and the Ledger already prints exactly that count on the
+// screen that owns it. Nothing above it is paged: `world.player()` reads the whole record. So the
+// line disclosed no limitation, and deleting the count deleted the caveat that existed only to
+// stop it being misread.
 
 export function RankScreen() {
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
@@ -67,7 +89,6 @@ export function RankScreen() {
 }
 
 function RankBody() {
-  const events = useWorld((s) => s.events)
   // The snapshot, not `snapshot?.config` — a selector must return something stable, and reaching
   // one level deeper is free here because the snapshot object is replaced only when the world is
   // reopened (worldStore.ts rule 4, 'the one thing to watch').
@@ -76,13 +97,9 @@ function RankBody() {
   const house = useWorld((s) => s.player)
   const config = snapshot?.config
 
-  // WHAT THE SERVER DOES NOT COUNT. Fame, turnover and ports reached are `world.player()`'s now;
-  // the only thing left to derive is how many trades sit in the page this screen happens to hold,
-  // which is a fact about the PAGE and not about the house.
-  const tradesOnPage = useMemo(
-    () => events.filter((e) => e.kind === 'BOUGHT' || e.kind === 'SOLD').length,
-    [events],
-  )
+  // NOTHING ON THIS SCREEN IS DERIVED FROM THE LEDGER ANY MORE. The last figure that was — a count
+  // of trades in the page this screen happened to hold — was deleted; see the header note.
+  // `world.player()` reads the whole record, so every number below is a lifetime figure.
 
   // SERVED, not folded — `world.player()` counts them (migration 0014:140-141). FleetsScreen was
   // folding the roster for the same two figures; both read the house now.
@@ -95,7 +112,7 @@ function RankBody() {
       <PageHeader
         eyebrow="Standings"
         title="Rank"
-        explain="Your own record, computed from the ledger the server keeps. There is no table of captains yet: nothing in the chain computes one, and no other house's figures cross the wire."
+        explain="Your own record, kept by the game and worked out fresh from your ledger every time you look. There is no table of captains yet — the game does not keep one, and no other house's figures are shown to you."
         actions={<ReadAgain />}
       />
 
@@ -114,12 +131,14 @@ function RankBody() {
           <StatRow
             label="Purse"
             value={ducats === null ? '—' : formatDucats(ducats)}
-            hint="The server's figure, reconciled against the ledger on every read. It is the number a net-worth standing would start from."
+            hint="The game's own figure, checked against your ledger every time it is read. It is where a standing by wealth would start."
           />
           <StatRow
             label="Fleets"
             value={`${fleetCount === null ? '—' : formatInt(fleetCount)} / ${config ? formatInt(config.fleet_max) : '—'}`}
-            hint="fleet_max is a WORLD knob, the same for every house — not a rank, and not something you have earned."
+            /* `fleet_max` was named here by its config key — provenance for a developer, and to a
+               captain a word from nowhere. What they need is what the second figure MEANS. */
+            hint="The second figure is the same for every house in the world. It is a limit, not a rank, and nothing you do raises it."
           />
           <StatRow
             label="Ships"
@@ -146,9 +165,13 @@ function RankBody() {
       </Card>
 
       <Card head={<CardHeader flush title="Fame" />}>
+        {/* The provenance a player needs is "it is re-read from your ledger, not banked" — which
+            is why the figure can never quietly disagree with the record. The migration that made
+            it so was named here as "(0014)"; that is a fact about this repository, not about the
+            game, and docs/UI_DIRECTION.md §4 rule 4 keeps it off the screen. */}
         <p className="mb-3 text-xs text-ink-muted">
-          Derived by the server from the whole record every time it is asked (0014) — never a stored
-          counter, so it cannot drift from the ledger it is computed from.
+          Counted from your whole ledger every time you open this screen — never a running total
+          kept aside, so it cannot drift away from what you actually did.
         </p>
         <dl className="space-y-2">
           <StatRow
@@ -165,28 +188,18 @@ function RankBody() {
           <StatRow label="Ports reached" value={fame ? formatInt(fame.ports_reached) : '—'} />
           <StatRow label="Turned over" value={fame ? formatDucats(fame.turnover) : '—'} />
         </dl>
-
-        <p className={fineClass('mt-3')}>
-          {formatInt(tradesOnPage)} of the {formatInt(events.length)} entries on this page are
-          trades. That count is about the PAGE; the fame above is about the house.
-        </p>
       </Card>
 
+      {/* THE LIMITATION STAYS; THE BACKLOG GOES. A player must be told that no table of captains
+          exists, and told that it is the game's state and not a slow or broken read — otherwise
+          this screen looks like a leaderboard that failed to load. What they must NOT be told is
+          which four pieces of server work would build one; that list is in this file's header. */}
       <Card head={<CardHeader flush title="The table of captains" />}>
         <Notice tone="neutral" className="text-xs">
-          There is no standing to show, and this is not late data or a failed read: nothing in the
-          chain computes a table, and no other house&apos;s figures are served to a client. Both are
-          server work rather than screen work.
+          No table of captains exists yet, and nothing here has failed to load. Other captains keep
+          their own books and none of their figures are shown to you, so there is nobody to place
+          you against. What you can read is above, and it is your whole record.
         </Notice>
-        <div className="mt-3">
-          <SectionLabel>What a standing needs first</SectionLabel>
-          <ul className="space-y-1 text-sm text-ink-muted">
-            <li>· A players table a client may read at all — the snapshot carries none today.</li>
-            <li>· A settled net worth: purse, plus hulls, plus cargo at some agreed valuation.</li>
-            <li>· Ports first reached — a claim on the world, which has to be recorded once.</li>
-            <li>· A season boundary, so that a table is of something rather than of all time.</li>
-          </ul>
-        </div>
       </Card>
     </Screen>
   )

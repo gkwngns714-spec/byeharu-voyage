@@ -16,11 +16,22 @@
 // literal tokens the order line will carry — a good CODE (`sal`), which `cmd.resolve_good()`
 // matches exactly, never the printed name, which may be two words.
 //
-// QUANTITIES. A BUY is prefilled with what the hold can still take, because the answer to "how
-// much" is almost always "as much as fits". A SELL is prefilled with the word ALL, which the
-// grammar reads WHEN THE ORDER RUNS rather than when it is made — so it is still right after a
-// voyage that changed the hold. Neither is a price and neither is binding: CMD previews the order
-// and the server prices it.
+// QUANTITIES. BOTH SIDES HAND OVER THE WORD `ALL`, and neither computes a number.
+//
+// This comment used to say a BUY was "prefilled with what the hold can still take". That stopped
+// being true in D11g and the sentence outlived it by two weeks — which is its own small lesson: a
+// comment describing a behaviour is a second authority for that behaviour, and it drifts silently
+// because nothing compiles it.
+//
+// The reason it changed is worth keeping. A client-side maximum ignores the purse, so the very
+// first tap a new player made arrived on CMD already refused — "60 tuns cost 8020 d. and you hold
+// 8000". The same bug was then found a THIRD and a FOURTH time (the MAX chip, and PORT's
+// `affordableUnits`, deleted 2026-08-22). `ALL` is resolved server-side by
+// `public.fleet_buy_capacity()`, which walks the same stepped book a real trade walks and stops at
+// whichever of hold, stock, daily cap or purse binds first — and because the grammar reads it WHEN
+// THE ORDER RUNS, it is still right after a voyage that changed the hold.
+//
+// Neither side is a price and neither is binding: CMD previews the order and the server prices it.
 
 import { useCommandDraft } from './draft'
 

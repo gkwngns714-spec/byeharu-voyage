@@ -139,7 +139,7 @@ export function OrderQueue({
                   aria-label={`Cancel ${fleet.name} order ${order.seq}`}
                   title={
                     order.status === 'active'
-                      ? 'A voyage already at sea keeps sailing — RECALL is not a V0 verb (F.3)'
+                      ? 'A voyage already at sea keeps sailing. There is no way to call a fleet back once she has weighed anchor.'
                       : 'Drop this order from the queue'
                   }
                   onClick={() => onCancel(order.seq)}

@@ -10,7 +10,7 @@ import { sellBound } from './fleetLimits'
 // empty and how sound the worst hull is are properties of a FLEET, not of the tab composing an
 // order about one. ./fleetLimits.ts used to answer all three and every answer had a twin somewhere
 // else in src/ — its header is the ledger of what moved where.
-import { fleetCargoByCode, fleetCrew, worstHullFraction } from '../../domain/fleet'
+import { fleetCargoByCode, fleetCrew, fleetPortCode, worstHullFraction } from '../../domain/fleet'
 import { missingArgs, visibleArgs } from '../../domain/order'
 
 // THE COMPOSER — an order is MADE, never typed.
@@ -344,7 +344,9 @@ function ArgPicker({
         <PortPicker
           ports={snapshot.ports}
           legs={snapshot.legs}
-          origin={fleet?.port ?? fleet?.voyage?.to ?? null}
+          // Where she IS, or is bound — one answer, from the fleet section. A SAIL composed at sea
+          // leaves from the port she is arriving at, so that is the port the legs are measured from.
+          origin={fleet ? fleetPortCode(fleet) : null}
           value={args[arg.name]}
           onPick={onPick}
         />

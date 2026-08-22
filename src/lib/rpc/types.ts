@@ -105,6 +105,12 @@ export interface SnapshotConfig {
   water_per_crew_day: number
   food_per_crew_day: number
   wage_per_crew_day: number
+  /** DESIGN E.4 — the radius %NBR compares against, and the two bands it is cut into. These were
+   *  declared on the client until 0019; they are the server's numbers and it serves them now, so a
+   *  caption cannot disagree with the computation behind it. */
+  neighbour_radius_nm: number
+  advice_buy_below: number
+  advice_sell_above: number
 }
 
 export interface VerbArg {
@@ -168,6 +174,60 @@ export interface MarketGood {
   /** False when the port's culture refuses the good outright (B.4). It is a fact, not a price. */
   available: boolean
   advice: 'buy' | 'sell' | 'hold'
+}
+
+/**
+ * ONE ROW OF `world.trade_routes()` (0019) — a good, the reachable port that pays most for it, and
+ * what the voyage is worth.
+ *
+ * EVERY MONEY FIGURE HERE CAME OUT OF `world.quote()`, the same function a committed BUY and SELL
+ * execute at, at the quantity named in `qty`. `nm` is the SAILED leg distance over the shortest
+ * route (`voyage.reach_from`), never a straight line. `profit` is the TRADE's margin — a voyage
+ * also pays its crew's wages each day at sea, and that is deliberately not folded in here (see the
+ * migration header): `days` is printed beside it so the exposure is visible.
+ */
+export interface TradeRoute {
+  good_id: string
+  code: string
+  name: string
+  to: { id: string; code: string; name: string }
+  /** The quantity every figure in this row was priced at. */
+  qty: number
+  outlay: number
+  proceeds: number
+  profit: number
+  return_pct: number | null
+  buy_price: number
+  sell_price: number
+  /** Sailed leg distance over the shortest route, and how many legs it is. */
+  nm: number
+  legs: number
+  /** Null when no fleet was named — there is no speed to divide by, so no days to quote. */
+  days: number | null
+  profit_per_day: number | null
+  profit_per_nm: number
+}
+
+/** What the read searched under, reported rather than assumed. */
+export interface TradeRoutesBasis {
+  /** `fleet` — priced at what this fleet can afford and carry. `default` — at `tuns`. */
+  qty_from: 'fleet' | 'default'
+  tuns: number
+  /** Null when the caller pinned a destination — there is no reach to report, only that port. */
+  max_legs: number | null
+  /** The port code the scan was pinned to, or null when it looked everywhere in reach. */
+  to: string | null
+  ports_considered: number
+  goods_cap: number
+  keep_per_good: number
+  routes_found: number
+}
+
+export interface TradeRoutes {
+  from: { id: string; code: string; name: string } | null
+  fleet: { id: string; name: string; speed_kn: number; here: boolean } | null
+  basis: TradeRoutesBasis
+  routes: TradeRoute[]
 }
 
 export interface MarketView {

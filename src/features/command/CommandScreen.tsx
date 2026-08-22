@@ -15,12 +15,13 @@ import {
 } from '../../components/ui'
 import { formatClock, formatTuns, formatVoyageDays } from '../../lib/format'
 import type { Refusal } from '../../lib/rpc'
-import { useWorld } from '../../live/worldStore'
+import { portNameOf, useWorld } from '../../live/worldStore'
 import { OrderComposer } from './OrderComposer'
 import { OrderQueue } from './OrderQueue'
 import { PreviewPanel, type CheckState } from './PreviewPanel'
 import { useCommandDraft } from '../../domain/order'
 import { composableVerbs, findVerb, isComplete, orderText, type FixAction } from '../../domain/order'
+import { fleetPortCode } from '../../domain/fleet'
 
 // CMD — THE HEART. E.1, and the only tab that changes the world.
 //
@@ -118,8 +119,10 @@ export function CommandScreen() {
   }, [fleet, fleets, selectFleet])
 
   // The market this order would trade in: where she lies, or where she is bound (a BUY issued at
-  // sea runs on arrival — F.2, "sell the cloves when you get to Amsterdam").
-  const portCode = fleet?.port ?? fleet?.voyage?.to ?? null
+  // sea runs on arrival — F.2, "sell the cloves when you get to Amsterdam"). `fleetPortCode` is
+  // that question's one answer (domain/fleet); this was one of four places that spelt it out, and
+  // the fourth — PortScreen's — had got it wrong.
+  const portCode = fleet ? fleetPortCode(fleet) : null
   const port = portCode ? (portByCode[portCode] ?? null) : null
   const marketPortId = port?.id ?? null
   useEffect(() => {
@@ -260,9 +263,9 @@ export function CommandScreen() {
                 const halted = f.queue.some((o) => o.status === 'failed')
                 const waiting = f.queue.filter((o) => o.status === 'pending' || o.status === 'active').length
                 const where = f.port
-                  ? (portByCode[f.port]?.name ?? f.port)
+                  ? portNameOf(portByCode, f.port)
                   : f.voyage
-                    ? `→ ${portByCode[f.voyage.to]?.name ?? f.voyage.to}`
+                    ? `→ ${portNameOf(portByCode, f.voyage.to)}`
                     : f.status.toLowerCase()
                 return (
                   <button
@@ -313,7 +316,13 @@ export function CommandScreen() {
                 eyebrow="Make"
                 title="An order"
                 explain="Every choice below is something that really exists right now — a port she can reach, a good this market trades, a quantity she can afford."
-                aside={<Badge tone="neutral">{verbs.length + 2} verbs</Badge>}
+                /* THE COUNT IS OF WHAT IS ON THIS CARD. It read `verbs.length + 2`, and the +2 was
+                   CANCEL and CLEAR — which are not composable and are not here: they are MADE on
+                   the queue, where the row they act on is (domain/order/text.ts:QUEUE_VERBS). So a
+                   card carrying six tiles announced "8 VERBS" and sent the player hunting for two
+                   that do not exist on it. `verbs` is already `composableVerbs(...)`; counting the
+                   list you rendered is the only count that cannot drift from it. */
+                aside={<Badge tone="neutral">{verbs.length} verbs</Badge>}
               />
               <OrderComposer
                 verbs={verbs}
@@ -333,8 +342,11 @@ export function CommandScreen() {
                 <SectionLabel className="mb-0">
                   What will be sent
                   <Explain label="What will be sent" dotClassName="ml-0.5">
-                    This exact line goes to cmd.issue(fleet, text, version). There is one parser, and
-                    it is on the server (F.4).
+                    {/* THE ⓘ IS PLAYER COPY, not a code comment with a dot in front of it. It said
+                        "goes to cmd.issue(fleet, text, version) … (F.4)" — a function signature and
+                        a design-document section, shown to somebody who is trying to buy pepper. */}
+                    This is the order itself, word for word, as your clerk will write it out. Nothing
+                    is added on the way: what you read here is what your fleet is told.
                   </Explain>
                 </SectionLabel>
                 <p className="flex items-start gap-2">
@@ -422,7 +434,7 @@ export function CommandScreen() {
                 queueMax={snapshot.config.order_queue_max}
                 busy={busy}
                 readAt={readAt}
-                destination={fleet.voyage ? (portByCode[fleet.voyage.to]?.name ?? null) : null}
+                destination={fleet.voyage ? portNameOf(portByCode, fleet.voyage.to) : null}
                 onCancel={(seq) => void cancel(fleet.id, seq)}
                 onClear={() => void clearQueue(fleet.id)}
               />

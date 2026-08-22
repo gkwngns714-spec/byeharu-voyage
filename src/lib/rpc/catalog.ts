@@ -38,6 +38,21 @@ export const RPCS = {
   worldSnapshot: { schema: 'world', fn: 'snapshot', args: [] },
   worldMarket: { schema: 'world', fn: 'market', args: [{ name: 'p_port', type: 'uuid' }] },
   worldFleets: { schema: 'world', fn: 'fleets', args: [] },
+  // 0019 — the comparison. `p_fleet` is optional and is what makes the quantities REAL: name her
+  // and every row is priced at what she can actually afford and carry, and at what she may sail to.
+  worldTradeRoutes: {
+    schema: 'world',
+    fn: 'trade_routes',
+    args: [
+      { name: 'p_from', type: 'uuid' },
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_max_legs', type: 'int' },
+      { name: 'p_limit', type: 'int' },
+      // Pin the destination and the read answers the other question a trader has: not "where is
+      // this worth more" but "what should I carry THERE".
+      { name: 'p_to', type: 'uuid' },
+    ],
+  },
   worldLedger: {
     schema: 'world',
     fn: 'ledger',

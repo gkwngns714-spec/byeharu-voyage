@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Badge, Button, buttonClasses, categoryLabel, fineClass, goodIcon, Icon, Meter, PriceIndex } from '../../components/ui'
 import { formatDucats, formatInt, formatNm, formatTuns, formatUnitPrice } from '../../lib/format'
-import { haversineNm } from '../../lib/geo'
+// `haversineNm` is deliberately NOT imported any more: the only thing this file used it for was a
+// destination's distance, and that number belongs to the server's leg (see PortPicker's header).
 import type { MarketGood, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import type { QtyBound } from './fleetLimits'
@@ -105,8 +106,37 @@ function TruncationNote({ hidden }: { hidden: number }) {
 
 /**
  * Somewhere to sail. Ports one leg away come first — the authored leg graph is what a voyage is
- * routed over (D.1), so a one-leg destination is the difference between a passage and a haul — and
- * the rest follow by great-circle distance from where the fleet is lying.
+ * routed over (D.1), so a one-leg destination is the difference between a passage and a haul.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * THE DISTANCE IS THE SERVER'S SAILED LEG. IT USED TO BE A STRAIGHT LINE, AND IT WAS SHORT.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * This picker called `haversineNm(here, there)` while `legs` — which carries the real sailed `nm`,
+ * the one the voyage is costed and timed on — was already in the same `useMemo`. Measured in the
+ * running game, same instant, same fleet lying at Lisbon:
+ *
+ *     destination   this picker   the server
+ *     Porto             149 nm        195 nm
+ *     Seville           169 nm        286 nm   (+69%)
+ *     Cádiz             188 nm        248 nm
+ *
+ * 188 against 248 for Lisbon → Cádiz is precisely the Cape St Vincent detour that the water-raster
+ * world generation exists to produce (docs/WORLD_DATA.md §7): a great circle sails through Iberia
+ * and no ship does. The number was wrong on every row and it also drove the SORT, so "nearest
+ * first" was not nearest — it was "shortest as the gull flies", which is a different list.
+ *
+ * WHERE THERE IS NO DIRECT LEG, THERE IS NO NUMBER. `world.snapshot()` serves the leg graph and
+ * nothing else about distance; a multi-leg passage is routed by `voyage.route` INSIDE the server
+ * and is not on the RPC surface, so the client cannot know what it is worth. Substituting a great
+ * circle there would put back the exact lie this comment records, on the rows where it is worst
+ * (a Lisbon → Aden straight line is under half the real passage round the Cape). So those rows
+ * print no distance and the list says why. A number that is wrong is worse than a dash.
+ *
+ * WHAT THAT COSTS THE SORT, honestly: only the one-leg rows can be ordered by distance. The rest
+ * fall back to region and name — the same grouping the Market tab's port list uses — which is at
+ * least a stable, readable order rather than a false ranking. `SAIL`'s own preview names the real
+ * figure the moment a destination is picked (PreviewPanel's `distance` row), so the number is one
+ * tap away and it comes from the server.
  */
 export function PortPicker({
   ports,
@@ -125,32 +155,35 @@ export function PortPicker({
   const [filter, setFilter] = useState('')
 
   const rows = useMemo(() => {
-    const here = origin ? ports.find((p) => p.code === origin) : undefined
-    const direct = new Set<string>()
+    // ONE WALK OF THE LEG GRAPH, and it now yields the DISTANCE as well as the fact of a leg. The
+    // old code built a `Set` of one-leg codes here and then computed the distance a second way; the
+    // sailed `nm` was sitting on the very row it was throwing away.
+    const legNm = new Map<string, number>()
     if (origin) {
       for (const leg of legs) {
-        if (leg.from === origin) direct.add(leg.to)
-        else if (leg.to === origin) direct.add(leg.from)
+        if (leg.from === origin) legNm.set(leg.to, leg.nm)
+        else if (leg.to === origin) legNm.set(leg.from, leg.nm)
       }
     }
     const q = fold(filter.trim())
     return ports
       .filter((p) => p.code !== origin)
       .filter((p) => foldedMatch(q, p.name, p.code, p.country))
-      .map((p) => ({
-        port: p,
-        direct: direct.has(p.code),
-        nm: here ? haversineNm({ lat: here.lat, lon: here.lon }, { lat: p.lat, lon: p.lon }) : null,
-      }))
+      .map((p) => ({ port: p, nm: legNm.get(p.code) ?? null }))
       .sort(
         (a, b) =>
-          Number(b.direct) - Number(a.direct) ||
-          (a.nm ?? Infinity) - (b.nm ?? Infinity) ||
+          // One-leg destinations first, ordered by what she will actually sail. Everything else is
+          // a routed passage whose length this side of the wire does not know, so it is grouped by
+          // region and named — never ranked by a number that was invented to rank it.
+          Number(b.nm !== null) - Number(a.nm !== null) ||
+          (a.nm ?? 0) - (b.nm ?? 0) ||
+          a.port.region.localeCompare(b.port.region) ||
           a.port.name.localeCompare(b.port.name),
       )
   }, [ports, legs, origin, filter])
 
   const shown = rows.slice(0, MAX_ROWS)
+  const routed = shown.some((r) => r.nm === null)
 
   return (
     <div className="space-y-2">
@@ -158,7 +191,7 @@ export function PortPicker({
       {shown.length === 0 && (
         <p className="text-sm text-ink-muted">No port answers to that. Clear the filter to see them all.</p>
       )}
-      {shown.map(({ port, direct, nm }) => (
+      {shown.map(({ port, nm }) => (
         <PickerRow
           key={port.code}
           selected={value === port.code}
@@ -167,14 +200,23 @@ export function PortPicker({
             <span className="flex flex-wrap items-center gap-2">
               {port.name}
               <span className={fineClass()}>{port.code}</span>
-              {direct && <Badge tone="accent">one leg</Badge>}
+              {nm !== null && <Badge tone="accent">one leg</Badge>}
               {port.is_ice_closed && <Badge tone="warning">ice</Badge>}
             </span>
           }
           hint={`${port.country}${port.has_yard ? ' · yard' : ''}`}
-          right={nm === null ? undefined : formatNm(nm)}
+          // The sailed leg, or a dash. Never a great circle — see this component's header for the
+          // three measurements that dash replaces.
+          right={nm === null ? <span className="text-ink-faint">—</span> : formatNm(nm)}
         />
       ))}
+      {routed && (
+        <p className={fineClass()}>
+          A figure is the leg she would sail. A dash is a harbour with no direct leg from here — your
+          navigator will take her round by others, and the real distance is named the moment you
+          check the order.
+        </p>
+      )}
       <TruncationNote hidden={rows.length - shown.length} />
     </div>
   )

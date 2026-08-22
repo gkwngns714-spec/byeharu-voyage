@@ -5,6 +5,136 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-22 — D16: the audit, and the day the game could not tell you where to sell
+
+Owner: *"after all things are made, run audit on the all parts of the game. Make it playable. But
+most of all, sort out your code so that it is well tidy and organized. No spaghetti."*
+
+Seven background agents across two waves, partitioned by disjoint file domains, none permitted to
+run git or the suite so that one working tree could not be fought over.
+
+### THE VERDICT: playable, and the machine is good
+
+An agent drove the real game at 390×844 and completed the loop twice through the UI alone — read a
+market, composed a buy without typing, sailed, queued a sell while at sea, watched it run on
+arrival. 8,000 → 8,131 d. Zero crashes, zero console errors across eight tabs, no sideways scroll,
+and `Aborted()` **could not be reproduced in 13 cold loads**.
+
+### AND THE THING THAT WAS ACTUALLY WRONG
+
+**The metric the entire UI was built on is mathematically incapable of pointing at a profit.**
+
+`%NBR` compares a price against ports within 600 nm — which is almost exactly *the set of ports
+reachable in one leg*, so neighbours share a price BY CONSTRUCTION. Measured: over 2,100
+(port, good) pairs, **145 read "buy", 13 read "sell", 1,872 "hold"**. A player at Lisbon saw seventy
+rows and no SELL anywhere. The auditor followed the screen's own printed rule and the quay's own
+recommendation and **lost 199 d. in 16 minutes**.
+
+Worse, where the band did fire it could be wrong about money: salt reads 109.6 at Porto — a SELL by
+the screen's rule — and carrying it there from Lisbon **loses 77 d.** A ratio of mids contains
+neither port's tax, neither spread, nor the order's own price impact. Widening the radius cannot fix
+that.
+
+**0019 mints `world.trade_routes()`**: for each good a port sells, the reachable port that pays most
+for it — priced end to end through the same `world.quote()` a committed trade executes at, over the
+SAILED leg distance, and only to ports the fleet may actually reach. MARKET now names voyages:
+
+    Black Pepper → Saint-Louis  +1,640
+    60 t · pay 7,747 d. here, receive 9,387 d. there · 1,534 nm, 13.01 days · 21.2% on the outlay
+
+%NBR is **kept and unchanged** — it honestly answers "is this cheap locally?" — and simply taken off
+the advice job. Its band headings read `CHEAP HERE` rather than `BUY`, and a card says plainly:
+*"%NBR says cheap HERE — not profitable."*
+
+**Three folds were required before ranking was even possible**, each because the answer would
+otherwise have had two authors: `voyage.reach_from` (one shortest path — a second Dijkstra could
+have quoted 195 nm for a voyage that sails 248), `voyage.sail_refusal` (one answer to "may she sail
+there?", found the expensive way when the first draft recommended a voyage `cmd.issue` then refused
+with `E_ENDURANCE`), and `world.market` computing %NBR once instead of four times.
+
+**The agent caught its own ranking bug by reading its output**: ranked by profit-per-sea-mile it put
+*"wax to Setúbal, 16 nm, +49 d."* above *"+1,847 d."* — the original defect in a new column.
+
+**And it is proven cheap without being wrong.** Proof 05 gained a marker: at ALE an EXHAUSTIVE scan
+of 483 (good, destination) pairs found 1,034 d. at best, and the shortlist found the same 1,034 d.
+`world.market` also got FASTER — 800 ms → 245 ms.
+
+### THE P0, and it was real
+
+**55 SECURITY DEFINER functions were executable by `anon`**, 17 of them writers, all bypassing RLS.
+Proved by exploiting it: as `anon`, `public.fleet_unload()` ANSWERED.
+
+The root cause was not the REVOKE — it was **`IN SCHEMA`**. Measured on a fresh PG 18.3: the
+per-schema form of `alter default privileges` records rows that LOOK right while the function is
+still anon-executable, so a catalogue assert passes vacuously. Only the schema-less form works.
+0018's governing assert is therefore BEHAVIOURAL — create a probe writer after the fix and require
+the privilege check to say no. Its first draft used the catalogue check, and **its own assert caught
+its own draft**.
+
+    anon-executable 55 → 0 · authenticated 65 → 18 (exactly catalog.ts) · pg_default_acl 0 → 1
+
+### THREE WAYS THE GAME WAS LYING, all measured and all fixed
+
+* **`affordableUnits()` never read the purse** — two of four offered buys refused instantly on a
+  fresh save. The FOURTH copy of a bug the log says was killed twice. **Deleted, not patched.**
+* **PORT teleported to Acapulco** when the fleet was at sea, and lost a chosen port on every tab
+  change. Underneath, "where does her next order happen" had FOUR spellings and the fourth was the
+  bug. One function now.
+* **The SAIL picker showed straight-line distance** — Seville 169 nm against the server's 286 — and
+  that wrong number sorted the list, so "nearest first" was not.
+* **OFFICERS and ACADEMY rendered off the right edge** with no scroll affordance: `scrollWidth 401`
+  against `clientWidth 332`. The newest features were the ones a player could not find. The strip
+  wraps now — 293/293, six of six on screen — and the agent **overruled a comment I had written**
+  claiming wrapping would jump the panel height. It was right: the ON and OFF arms differ only in
+  colour.
+
+### NO SPAGHETTI — the law, and the teeth
+
+`docs/NO_SPAGHETTI.md` is the law. `tests/duplication.spec.ts` is what makes it bite: six shapes
+that fail CI, **each proved able to go red** by mirroring the tree and injecting the defect.
+Thresholds measured, not guessed — the closest honest pair sits at 0.71 against a 0.75 cut.
+
+Twelve duplications ripped out, deleted rather than adapted. The headline: **"how much fits in this
+hull" had seven implementations** — four server, three client — and MarketScreen's had forgotten
+water and food since the day it was written, on the screen where you decide what to buy. Also:
+`fold()` was private to COMMAND, so MARKET silently stopped finding `São Vicente`; `.replace('_',
+' ')` written three times, each replacing only the FIRST underscore; `portByCode[code]?.name ?? code`
+written **seven** times with one already drifted; and **67 lines of Quay JSX pasted verbatim inside a
+JSX comment** by my own PORT refactor, invisible to the compiler.
+
+`useWorld()` with no selector is now banned — it re-rendered every bare subscriber twice per read,
+and reading is how time passes here.
+
+### THE FINDING WORTH KEEPING
+
+> **A boundary that forbids borrowing converts sharing into a silent COPY that no import check can
+> see.**
+
+`sections.spec.ts` was green the entire time `PortPicker` existed twice. "No screen imports another
+screen" is satisfied perfectly by a copy. The boundary was producing the duplication it existed to
+prevent — which is why the import guard alone was never going to be enough, and why the duplication
+guard had to be written.
+
+### Two defects of mine, both found by agents
+
+The sticky first column painted `bg-surface` while D12 made panels `bg-panel`. And **0014's
+self-assert was a lottery** — `limit 1` with no ORDER BY — measured at 3 failures in 7 runs. Same
+class as D11h's drift assert, which this project had already recorded, and I reproduced it anyway.
+
+### Gate
+
+`db:apply` 20/20 receipts · `db:proof` 33/33 markers · `playwright` **157 passed** · tsc, eslint and
+build clean. Verified stable over five consecutive applies and six consecutive proofs, because
+prices drift with the wall clock and one green run proves nothing about a flake.
+
+### Still open
+
+The local world is still demolished on every chain change — rows are rescued to localStorage and
+**never put back**, so every migration still resets every player. The real answer is the server, and
+the Supabase CLI on this machine is not authenticated. Nothing has been pushed to the live project.
+
+---
+
 ## 2026-08-22 — D13: four migrations, and two of them change a rule
 
 Owner: *"do the migrations - price history, player row, officers, skills"* — the four server gaps

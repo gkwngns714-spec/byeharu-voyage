@@ -31,8 +31,11 @@ import {
 } from '../src/lib/db/chainSource.node.mjs'
 
 const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.sql'
-// Moved deliberately with 0013-0016 (the record, the house, the roster and the school).
-const LAST = '20260818000018_only_a_signed_in_captain_may_move_anything.sql'
+// Moved deliberately 2026-08-22 with 0019 (the quay names the port that pays) and 0020 (the verbs
+// speak to a captain, not to a schema): the read that ranks reachable ports by what a trade would
+// be worth, the three folds it needed first — voyage.reach_from, voyage.sail_refusal, and one %NBR
+// walk per good instead of four — and the verb help text the Command tab now prints to players.
+const LAST = '20260818000020_the_verbs_speak_to_a_captain_not_to_a_schema.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
@@ -255,5 +258,5 @@ test('progress never goes backwards and never claims done before it is', () => {
 })
 
 test('a migration filename reads as a sentence', () => {
-  expect(humanMigration(LAST)).toBe('only a signed in captain may move anything')
+  expect(humanMigration(LAST)).toBe('the verbs speak to a captain not to a schema')
 })

@@ -42,6 +42,7 @@ import type {
   PriceHistory,
   SkillBook,
   StudiedSkill,
+  TradeRoutes,
   VerbSpec,
   WorldSnapshot,
 } from './types'
@@ -71,6 +72,34 @@ export function worldMarket(portId: string): Promise<RpcResult<MarketView>> {
  */
 export function worldBuyCapacity(fleetId: string, goodId: string): Promise<RpcResult<BuyCapacity>> {
   return call<BuyCapacity>('worldBuyCapacity', [fleetId, goodId])
+}
+
+/**
+ * WHERE THIS GOOD IS WORTH MORE THAN IT IS HERE, AND WHAT THE VOYAGE WOULD BE WORTH (0019).
+ *
+ * `world.market()` serves ONE port and has no opinion about any other, which is why a player could
+ * read seventy rows at Lisboa and still not find a trade that paid. This ranks the reachable ports
+ * against the one you are standing in, priced end to end through the same `world.quote()` a real
+ * BUY and SELL execute at, over the SAILED leg distance, and only to ports this fleet may actually
+ * reach.
+ *
+ * @param fleetId name her and the quantities become real — hold, purse, stock and the daily cap.
+ *                Omit it and every row is priced at the server's stated default, reported in
+ *                `basis.tuns`.
+ * @param maxLegs how many sailed legs out to look. Null takes the server's own default.
+ * @param limit   how many rows; null for every good that pays.
+ * @param toPortId pin the destination, and the read answers the OTHER question a trader has —
+ *                "what should I carry there?" — over the same shortlist, quotes and sail gate.
+ *                The leg and port caps do not apply: you have named the only destination there is.
+ */
+export function worldTradeRoutes(
+  portId: string,
+  fleetId: string | null = null,
+  maxLegs: number | null = null,
+  limit: number | null = null,
+  toPortId: string | null = null,
+): Promise<RpcResult<TradeRoutes>> {
+  return call<TradeRoutes>('worldTradeRoutes', [portId, fleetId, maxLegs, limit, toPortId])
 }
 
 /**

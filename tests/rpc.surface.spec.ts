@@ -454,6 +454,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
     [
       'cmdCancel', 'cmdClear', 'cmdFoundHouse', 'cmdIssue', 'cmdPreview', 'cmdVerbSchema',
       'worldBuyCapacity', 'worldFleets', 'worldLedger', 'worldMarket', 'worldSnapshot',
+      // Added deliberately 2026-08-22 with migration 0019: `world.trade_routes`, the read that
+      // answers "where is this good worth more than it is here". It takes a port and OPTIONALLY a
+      // fleet id — the fleet is checked against auth.uid() server-side (0019), so naming somebody
+      // else's is E_NOT_YOURS rather than a disclosure.
+      'worldTradeRoutes',
       // 0013-0016. Each of the three cmd.* entries takes NO player id — identity is the JWT's,
       // the same property that makes cmd.found_house safe for a browser to hold.
       'worldPriceHistory', 'worldPlayer', 'worldOfficers', 'worldSkills',

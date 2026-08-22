@@ -50,6 +50,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     return { error: error?.message ?? null }
   },
 
+  /**
+   * End the cloud session. IN LOCAL MODE THIS DOES NOTHING, AND CANNOT: the gate was never opened
+   * by a session (see `init` below), so there is none to close.
+   *
+   * That silence was rendered as an enabled "Sign out" on Profile which did nothing when tapped —
+   * no navigation, no state change, no message. The fix is NOT here: making this throw, or sign
+   * the local captain out of a world they cannot get back into, would break a mode that is working
+   * as designed. It is on the caller, and `features/profile/ProfileScreen.tsx` now disables the
+   * control in local mode and prints why. Any future caller owes the same.
+   */
   signOut: async () => {
     if (!supabase) return
     await supabase.auth.signOut()

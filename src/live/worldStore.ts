@@ -65,6 +65,7 @@ import {
   worldPriceHistory,
   worldSkills,
   worldSnapshot,
+  worldTradeRoutes,
 } from '../lib/rpc'
 import type {
   FleetView,
@@ -78,6 +79,7 @@ import type {
   SkillBook,
   SnapshotGood,
   SnapshotPort,
+  TradeRoutes,
   WorldSnapshot,
 } from '../lib/rpc'
 
@@ -109,6 +111,10 @@ export interface LiveWorld {
   events: LedgerEvent[]
   /** One port's prices, keyed by port id. Fetched on demand; the Market tab drives it. */
   markets: Record<string, MarketView>
+  /** Where each good is worth MORE than it is in that port (0019), keyed by port id. The prices and
+   *  the comparison are two reads because they are two questions: `world.market` is one quay's
+   *  book, `world.trade_routes` is that book against everything in reach. */
+  routes: Record<string, TradeRoutes>
 
   /** True while a refresh is in flight — for a quiet indicator, never for a blocking spinner. */
   busy: boolean
@@ -131,6 +137,9 @@ export interface LiveWorld {
   loadMarket: (portId: string) => Promise<void>
   /** Fetch (and cache) one port's remembered prices. */
   loadHistory: (portId: string) => Promise<void>
+  /** Fetch (and cache) where the goods of one port pay more. Naming the fleet lying there is what
+   *  makes the quantities hers rather than the server's stated default. */
+  loadRoutes: (portId: string, fleetId: string | null) => Promise<void>
   /** Fetch the roster and the school. Idempotent; screens call them on mount. */
   loadOfficers: () => Promise<void>
   loadSkills: () => Promise<void>
@@ -151,15 +160,34 @@ export interface LiveWorld {
   dismissRefusal: () => void
 }
 
-/** A fleet by id, for a screen that holds a selection. */
-export function fleetOf(world: LiveWorld, id: string | null): FleetView | undefined {
-  return id ? world.fleets.find((f) => f.id === id) : undefined
-}
+// `fleetOf(world, id)` and `portOfFleet(world, fleet)` were deleted here on 2026-08-22 with zero
+// callers anywhere in src, tests or scripts. Both took the WHOLE store as their first argument,
+// which is the shape this file has since banned (see the selector rule above): a screen that
+// called them would have had to subscribe to everything to use them. `find` on a served array is
+// not a concept that needs an authority, and "where does her next order happen" — the real
+// question the second one looked like it answered — turned out to be four different rules, one of
+// which was a bug; it now lives, once, in domain/fleet as fleetPortCode/housePortCode.
 
-/** The port a fleet is lying in, or null at sea. */
-export function portOfFleet(world: LiveWorld, fleet: FleetView | undefined): SnapshotPort | null {
-  if (!fleet?.port) return null
-  return world.portByCode[fleet.port] ?? null
+/**
+ * WHAT A PORT CODE IS CALLED — the one reading of it.
+ *
+ * The server speaks in codes (`LIS`); a player has never been shown one and should not be. That
+ * translation was hand-written seven times as `portByCode[code]?.name ?? code`, and an eighth was
+ * about to be typed on Profile, which was printing a bare `LIS` where every other screen said
+ * "Lisbon". Seven copies of a fallback is how a fallback drifts: one of them will one day print
+ * the code, or an empty string, or "unknown".
+ *
+ * It takes the LOOKUP rather than the store because a screen selects primitives
+ * (`useWorld((s) => s.portByCode)`) and never subscribes to the whole object — rule 4 above.
+ *
+ * FOLDED SO FAR: LedgerScreen, ProfileScreen, and — 2026-08-22 — CommandScreen (3 sites) and
+ * PortScreen (3 sites: the one that was there, plus two the Port rewrite would otherwise have
+ * ADDED, which is the whole reason a fallback reaches seven copies). STILL WRITING THEIR OWN:
+ * `features/fleets/FleetsScreen.tsx:117,309`. Listed here rather than in a doc so the count cannot
+ * be lost; re-derive it before trusting it.
+ */
+export function portNameOf(portByCode: Record<string, SnapshotPort>, code: string): string {
+  return portByCode[code]?.name ?? code
 }
 
 export const useWorld = create<LiveWorld>((set, get) => ({
@@ -175,6 +203,7 @@ export const useWorld = create<LiveWorld>((set, get) => ({
   ducats: null,
   events: [],
   markets: {},
+  routes: {},
   busy: false,
   refusal: null,
   readAt: null,
@@ -266,6 +295,15 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     set((s) => ({ history: { ...s.history, [portId]: r.value } }))
   },
 
+  // A FAILED COMPARISON IS SILENT, like the history read and for the same reason: the prices are
+  // still true and still worth showing. What must never happen is the screen inventing a
+  // destination in its place — an absent row prints nothing at all.
+  loadRoutes: async (portId, fleetId) => {
+    const r = await worldTradeRoutes(portId, fleetId)
+    if (!r.ok) return
+    set((s) => ({ routes: { ...s.routes, [portId]: r.value } }))
+  },
+
   loadOfficers: async () => {
     const r = await worldOfficers()
     if (r.ok) set({ officers: r.value })
@@ -323,7 +361,10 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     // rather than patching a local copy of it — the server's answer is the only true one.
     await get().refresh()
     const port = fleet?.port ? get().portByCode[fleet.port] : null
-    if (port) await get().loadMarket(port.id)
+    // The order moved the book — the stock fell, the price stepped — so the comparison drawn from
+    // it is stale too. Both are re-read, or MARKET would print a profit computed against a price
+    // that no longer exists.
+    if (port) await Promise.all([get().loadMarket(port.id), get().loadRoutes(port.id, fleetId)])
     return true
   },
 
