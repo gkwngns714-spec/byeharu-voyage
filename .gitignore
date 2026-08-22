@@ -10,6 +10,17 @@ dist/
 /playwright/.cache/
 
 # local verification artifacts (screenshots + throwaway drivers)
+#
+# THE LEADING UNDERSCORE IS THE CONVENTION for a throwaway driver — a script written to drive the
+# browser, probe the chain or measure one thing, and then deleted. `shot.tmp.mjs` was the old
+# hand-maintained spelling and it only ever covered the one name somebody remembered.
+#
+# It stopped being theoretical on 2026-08-22: three agents' probe scripts and one of mine were
+# committed to main because the ignore list named a file rather than a shape. A convention that
+# depends on remembering is not a convention.
+_*.mjs
+_*.sql
+_*.ts
 shot.tmp.mjs
 *.png
 supabase/.temp/
