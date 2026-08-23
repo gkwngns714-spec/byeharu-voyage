@@ -131,7 +131,7 @@ for (const tab of TABS) {
     await page.goto(tab)
     await ready(page)
 
-    const report = await page.evaluate((): { pageScrollW: number; pageClientW: number; tables: TableReport[] } => {
+    const report = await page.evaluate((): { pageScrollW: number; pageClientW: number; tables: TableReport[]; measurables: number } => {
       const tables: TableReport[] = []
       document.querySelectorAll('table').forEach((table, index) => {
         // A table hidden at this breakpoint (the roster's `hidden sm:block` variant) is not
@@ -187,12 +187,37 @@ for (const tab of TABS) {
           headers: [...table.querySelectorAll('th')].map((th) => th.textContent ?? ''),
         })
       })
+      // WHAT COUNTS AS "THIS SCREEN RENDERED SOMETHING". Tables were the only measurable thing
+      // when this spec was written; goods and harbours are TILES now, and a tile-only screen must
+      // not read as an empty one. Both are counted, plus the nav rail, which every real screen of
+      // this app carries and vite's 404 helper does not.
+      const tiles = document.querySelectorAll('[data-good-tile], [role="tabpanel"] a, nav a').length
       return {
         pageScrollW: document.documentElement.scrollWidth,
         pageClientW: document.documentElement.clientWidth,
         tables,
+        measurables: tables.length + tiles,
       }
     })
+
+    // 3b. NON-VACUITY — THIS SPEC COULD PASS WHILE MEASURING NOTHING, AND DID.
+    //     Found 2026-08-23 by an audit agent: point `PLAYWRIGHT_BASE_URL` at a bare host with no
+    //     `/byeharu-voyage/` base and vite preview answers every path with its own "did you mean"
+    //     page. That page has no tables, no tiles and no skeletons — so `ready()` resolves, the
+    //     table loop finds nothing to walk, the sideways-scroll check passes on a page with no
+    //     content, and ALL EIGHT TESTS GO GREEN having measured a 404 helper.
+    //
+    //     The header above already says why every skip in this file has a floor: a green tick that
+    //     measured no pixels is worse than a red one. That reasoning was applied to `test.skip` and
+    //     not to the body, which is exactly the gap. A guard that cannot fail is not a guard
+    //     (docs/NO_SPAGHETTI.md §8 q7), so the spec now proves it FOUND something before it
+    //     believes anything it did not find.
+    expect(
+      report.measurables,
+      `${tab} rendered nothing measurable — no table and no tile. If PLAYWRIGHT_BASE_URL is set, ` +
+        `check it carries the /byeharu-voyage/ base; a bare host serves vite's "did you mean" page, ` +
+        `which passes every other assertion here by having no content at all.`,
+    ).toBeGreaterThan(0)
 
     // 4. The page never moves sideways — necessary, but on its own it is the camouflage, so it is
     //    asserted LAST and never alone.

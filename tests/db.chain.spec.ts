@@ -237,6 +237,16 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
 })
 
 test('a chain change rebuilds the stored world instead of layering onto it', async () => {
+  // THIS TEST BUILDS THE WHOLE WORLD TWICE, so its cost grows with every migration added and the
+  // 120 s global timeout is not sized for it. Measured 2026-08-23 at 34 migrations: ~1.9 min ALONE,
+  // and failing on every full run under parallel load — a gate that is red on a correct chain gates
+  // nothing, which is the same defect this file's own LAST pin had a fortnight ago.
+  //
+  // Raised rather than sharded because the two full builds ARE the assertion: the point is that a
+  // chain change rebuilds instead of layering, and you cannot prove that with one build. If this
+  // starts timing out again the answer is a lighter fixture, not a bigger number — a test that
+  // needs ten minutes will be one nobody runs.
+  test.setTimeout(360_000)
   const dir = await scratchDataDir('rebuild')
   try {
     // 1. Build a world and put a mark in it that only survives if the data survives.
