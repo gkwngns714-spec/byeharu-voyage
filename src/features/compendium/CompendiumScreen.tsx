@@ -35,7 +35,7 @@ import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 //
 // ── IT IS A REFERENCE. IT COMMANDS NOTHING. ────────────────────────────────────────────────────
 // No buy, no hire, no sail, no hand-off. Every acting surface already exists once — orders are
-// composed on COMMAND, officers sign on at their home quay on PORT, hulls are a yard's business —
+// composed on COMMAND, officers sign on at their home quay on PORT, hulls are a shipyard's business —
 // and a button here would be a second one of it. The moment this screen wants an action, the
 // action belongs to the tab that owns it.
 //
@@ -93,11 +93,11 @@ const FACES: readonly FaceSpec[] = [
     noun: 'ship classes',
     title: 'Ship classes',
     explain:
-      'Every class of hull a yard can lay down, as the shipwright rates her — before any ' +
+      'Every class of hull a shipyard can lay down, as the shipwright rates her — before any ' +
       'officer or skill touches the figures. CREW is what she must have aboard against the berths ' +
       'she carries. HULL is her rated durability. DRAFT is the water she needs — a port’s ' +
-      'harbour has a depth, and a hull that draws more cannot come alongside. BUILD is the yard’s ' +
-      'time and the yard’s bill.',
+      'harbour has a depth, and a hull that draws more cannot come alongside. BUILD is the ' +
+      'shipyard’s time and the shipyard’s bill.',
   },
   {
     id: 'captains',
@@ -467,8 +467,11 @@ function GoodsFace({
           <thead>
             <tr>
               <TH>Good</TH>
-              <TH>Kind</TH>
+              {/* Rarity BEFORE kind: the tier is the qualifying fact and must survive the 390px
+                  fold — the icon already half-says the kind, and a tier hidden behind the table's
+                  horizontal scroll is decoration, not information (measured before this order). */}
               <TH>Rarity</TH>
+              <TH>Kind</TH>
               <TH align="num">Base</TH>
               <TH align="num">Bulk</TH>
               <TH align="num">Spoils</TH>
@@ -486,12 +489,12 @@ function GoodsFace({
                     {g.name}
                   </span>
                 </TD>
-                <TD className="text-ink-muted">{categoryLabel(g.category)}</TD>
                 <TD>
                   {/* Colour AND shape, from the one rendering (Rarity.tsx) — the tier qualifies
                       the good; the drawn mark and the name stay the row's subject. */}
                   <RarityMark rarity={g.rarity} withWord />
                 </TD>
+                <TD className="text-ink-muted">{categoryLabel(g.category)}</TD>
                 {/* Some anchors are half-ducat figures (82.50) — rounding them would misprint a
                     served value, so the halves keep one decimal and the whole figures stay whole. */}
                 <TD align="num">{g.base_value % 1 === 0 ? formatDucats(g.base_value) : `${formatFixed(g.base_value, 1)} d.`}</TD>

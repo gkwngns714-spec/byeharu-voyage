@@ -11,6 +11,7 @@ import {
   Icon,
   Meter,
   PriceIndex,
+  RarityMark,
   SectionLabel,
   StatRow,
 } from '../../components/ui'
@@ -492,7 +493,18 @@ export function GoodPicker({
               // see again, a name repeated … i want beside the name show category of what the trade
               // good is in." Nothing is lost: the code is the parser's spelling, and the composed
               // order line above still shows it (CommandScreen's "What will be sent").
-              hint={categoryLabel(g.category)}
+              // THE KIND, AND HOW SCARCE IT IS — the two things about a good that are true
+              // everywhere, as against the three figures below, which are true only at this quay.
+              // `rarity` is SERVED (0032, derived from how many ports actually produce the good),
+              // so this row prints the server's answer and never a threshold of its own; the same
+              // field rides on the compendium's rows, which is why there is one RarityMark and not
+              // a second rendering here.
+              hint={
+                <span className="inline-flex items-center gap-1.5">
+                  {categoryLabel(g.category)}
+                  <RarityMark rarity={g.rarity} />
+                </span>
+              }
               right={
                 <span className="flex items-center gap-2">
                   <Badge tone={g.advice === 'buy' ? 'success' : g.advice === 'sell' ? 'accent' : 'neutral'}>

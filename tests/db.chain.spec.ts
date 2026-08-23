@@ -64,7 +64,10 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // derived on the server from how many ports produce it (public.good_rarity, one threshold law),
 // served on snapshot.goods[] and market.goods[], asserted inhabited in all four tiers and a
 // declared no-op on both payloads but for the field. 32 migrations, 32 receipts, verified green.
-const LAST = '20260818000032_a_good_is_as_rare_as_the_ports_that_make_it.sql'
+// Pin moved deliberately 2026-08-23 again with 0033: the owner asked "what is yard?" — the two
+// repair refusals and the REPAIR card now say "shipyard", sliced out of the live definitions
+// 0030-style with the surroundings byte-identical by construction. 33 migrations, 33 receipts.
+const LAST = '20260818000033_the_yard_is_called_the_shipyard.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
