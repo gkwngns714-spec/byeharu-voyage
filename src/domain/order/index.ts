@@ -30,6 +30,7 @@ export { useCommandDraft, type CommandIntent, type CommandDraftState } from './d
 export {
   QUEUE_VERBS,
   composableVerbs,
+  enumNaming,
   findVerb,
   fixAction,
   isComplete,

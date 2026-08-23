@@ -26,19 +26,18 @@ import type {
 // silent copy docs/NO_SPAGHETTI.md §2 calls worse than the import. src/chart/index.ts records why
 // the carve-out line falls where it does.
 import { SmallChart } from '../../chart'
-import { EnumPicker, GoodPicker, NumberPicker, PortPicker, PricePicker, QtyPicker } from './ArgPickers'
+import { EnumPicker, GoodPicker, NumberPicker, PortPicker, PricePicker } from './ArgPickers'
 import { useBuyCapacity, type BuyCapacityState } from './useBuyCapacity'
 import { FleetRail } from './FleetRail'
 import { railKind } from './railVerbs'
 import { HaggleBlock } from './HaggleBlock'
 import { useHaggleState } from './useHaggleState'
-import { sellBound } from './fleetLimits'
 // THE FLEET'S OWN ARITHMETIC COMES FROM THE FLEET SECTION. What is aboard, how many berths stand
 // empty and how sound the worst hull is are properties of a FLEET, not of the tab composing an
 // order about one. ./fleetLimits.ts used to answer all three and every answer had a twin somewhere
 // else in src/ — its header is the ledger of what moved where.
 import { fleetCargoByCode, fleetCrew, fleetPortCode, worstHullFraction } from '../../domain/fleet'
-import { missingArgs, visibleArgs } from '../../domain/order'
+import { enumNaming, visibleArgs } from '../../domain/order'
 
 // THE COMPOSER — an order is MADE, never typed.
 //
@@ -66,7 +65,9 @@ const LABELS: Record<string, string> = {
   dest: 'Where to',
   via: 'Call on the way',
   good: 'Which good',
-  qty: 'How much',
+  // No `qty` entry: a trade's quantity step renders inside the chosen good's fold (GoodDetail),
+  // which carries its own "How much" label — a row for it never draws, so a label here would be a
+  // second spelling waiting to drift.
   limit: 'Price limit',
   mode: 'How much',
   days: 'Days of stores',
@@ -75,34 +76,34 @@ const LABELS: Record<string, string> = {
 }
 
 /**
- * VERBS WHOSE ARGUMENT ROWS DO NOT FOLD. The owner, 2026-08-23: *"when pressing hire, 12, it
- * unfolds. this is uncomfortable. keep it without unfolding, and let me hire"* — and *"Provision
- * also, does not need to be fold/unfoldable."*
+ * WHETHER ONE ARGUMENT ROW CAN FOLD AT ALL — the one spelling of the decision, and it is a rule
+ * about the ARGUMENT, never a list of verbs.
  *
- * The asymmetry against BUY is the point, not an accident: BUY's good row folds because it is a
- * choice among seventy things and the fold is what informs it; HIRE and PROVISION are one number
- * each, and a fold in front of one number is a door in front of a doorway. These pickers render
- * open, always, and answering never collapses them.
+ * THE LAW IT SERVES (the owner, four times by 2026-08-23, most plainly: *"i told you to not
+ * recreate anything when pressing a certain tab… the tab disappears and opens a new one"*): a
+ * control SELECTS. It never replaces, collapses or destroys the surface it was pressed on. The
+ * old model derived ONE open row from "the next unanswered question", which meant every answer
+ * unmounted the very picker it was given on — tapping a good's price cell threw away the whole
+ * goods list and stood a quantity stepper where it had been. That derivation is DELETED, not
+ * parameterised (docs/NO_SPAGHETTI.md §5); this predicate and the player's own taps are all
+ * that is left of "open".
+ *
+ * So an argument row stands OPEN, permanently, when the order cannot be said without it or the
+ * verb is substantially about it:
+ *   · it is REQUIRED (SAIL's dest, BUY's good, HIRE's count) — the verb's own question;
+ *   · the schema gives it a DEFAULT (PROVISION's mode, REPAIR's to_pct) — the server will answer
+ *     it either way, so the control IS the verb's substance, and a fold in front of one number is
+ *     a door in front of a doorway (*"when pressing hire, 12, it unfolds. this is
+ *     uncomfortable"*);
+ *   · another argument's enum NAMES it (PROVISION's days) — it is half of a question whose other
+ *     half is already open (*"in provision, full and days, they does not have to be folded"*).
+ *
+ * What remains foldable is the genuinely optional extra — SAIL's via, a trade's price limit —
+ * and even those fold only under the player's OWN tap: opening one is theirs, closing one is
+ * theirs, and answering one changes nothing but the answer.
  */
-const FLAT_VERBS = new Set(['HIRE', 'PROVISION'])
-
-/**
- * WHETHER ONE ARGUMENT ROW RENDERS OPEN, ALWAYS — the one spelling of the flat/foldable decision,
- * asked per argument because the grain of the rule turned out to be the ARGUMENT, not the verb.
- *
- * SAIL's `dest` joined 2026-08-23: *"when pressing a location to sail, dont unfold, instead make
- * the what sail needs bottom by comming out unfoldingly."* The harbour grid IS the choice surface
- * — choosing from it must not fold it away, because changing your mind is a tap on another tile
- * and a folded grid puts a door in front of that. What DOES happen on the choice is the docked
- * check at the foot of the screen (CommandScreen's SAIL sheet) and the ring on the chart. `via`
- * stays foldable: it is optional, rarely given, and a second always-open harbour grid would be
- * two fields of tiles the eye cannot tell apart.
- *
- * NOT the same rule as BUY's good row, deliberately: a good UNFOLDS IN PLACE because a good has
- * facts to read before choosing. A harbour tile shows its whole face already, so its tap commits.
- */
-function flatArg(verb: string, arg: string): boolean {
-  return FLAT_VERBS.has(verb) || (verb === 'SAIL' && arg === 'dest')
+function foldable(spec: VerbSpec, arg: VerbArg): boolean {
+  return !arg.required && arg.default === undefined && enumNaming(spec, arg) === undefined
 }
 
 function labelOf(arg: VerbArg): string {
@@ -134,20 +135,24 @@ export function OrderComposer({
   onChooseVerb: (verb: string | null) => void
   onSetArg: (name: string, value: string | null) => void
 }) {
-  // WHICH PICKER IS OPEN IS DERIVED, NOT REMEMBERED. The open one is simply the next question the
-  // order still needs — so choosing a verb opens its first question, answering one advances to the
-  // next, and a complete order closes up, with no effect and no state to fall out of step.
+  // WHICH OPTIONAL ROWS THE PLAYER HAS OPENED — and nothing else, because nothing else folds.
   //
-  // `override` is only the player disagreeing with that: opening an optional argument by hand, or
-  // folding a row away. It is discarded the moment they answer anything, and it is stamped with the
-  // verb it was made under so a new verb starts clean.
-  const [override, setOverride] = useState<{ verb: string; name: string | null } | null>(null)
-  const auto = spec ? (missingArgs(spec, args)[0]?.name ?? null) : null
-  const open = override && override.verb === spec?.verb ? override.name : auto
+  // Un-foldable rows (see `foldable`) are simply always there. This state holds only the truly
+  // optional extras the player has opened by hand, it is stamped with the verb so a new verb
+  // starts clean, and NOTHING BUT THE PLAYER'S OWN TAP ever removes a name from it: answering an
+  // argument — this one or any other — leaves every open row standing. The derived
+  // next-unanswered-question model this replaces is what kept unmounting pickers under the
+  // player's finger (the owner's *"the tab disappears and opens a new one"*), and it is deleted,
+  // not kept behind a flag.
+  const [extras, setExtras] = useState<{ verb: string; names: readonly string[] } | null>(null)
+  const opened = extras && extras.verb === spec?.verb ? extras.names : []
 
   const toggle = (name: string) => {
     if (!spec) return
-    setOverride({ verb: spec.verb, name: open === name ? null : name })
+    setExtras({
+      verb: spec.verb,
+      names: opened.includes(name) ? opened.filter((n) => n !== name) : [...opened, name],
+    })
   }
 
   // WHICH GOOD ROW IS UNFOLDED — ONE, AND IT IS HELD HERE RATHER THAN INSIDE THE LIST.
@@ -157,13 +162,11 @@ export function OrderComposer({
   // asked for the OPEN row and no other, which means the open row has to be known where the hook
   // lives. A `useBuyCapacity` inside the row component would put seventy reads on the wire.
   //
-  // It is stamped with the verb, like `override` above and for the same reason: a good inspected
-  // under BUY is not still being inspected when the player switches to SELL. And it is only
-  // meaningful while the good picker is the open argument — `open === 'good'` — so folding the
-  // argument row away drops the inspection with no second piece of state to keep in step.
+  // It is stamped with the verb, like `extras` above and for the same reason: a good inspected
+  // under BUY is not still being inspected when the player switches to SELL. The goods list never
+  // folds any more, so the verb stamp is the whole lifetime — nothing else clears a look.
   const [inspect, setInspect] = useState<{ verb: string; good: string } | null>(null)
-  const inspecting =
-    inspect && open === 'good' && inspect.verb === spec?.verb ? inspect.good : null
+  const inspecting = inspect && inspect.verb === spec?.verb ? inspect.good : null
 
   // WHICH PORT ROW THE PLAYER IS ON — the same shape as `inspect` above, one argument type over.
   //
@@ -181,10 +184,16 @@ export function OrderComposer({
 
   const answer = (arg: VerbArg, value: string) => {
     onSetArg(arg.name, value)
-    setOverride(null)
-    // Choosing ENDS the looking. Without this, re-opening the good row later would unfold whatever
-    // was last peeked at rather than the row that was actually chosen.
-    setInspect(null)
+    // ANSWERING A NAMED HALF CHOOSES ITS ENUM (domain/order's `enumNaming`): saying "30" on
+    // PROVISION's day stepper IS choosing DAYS, because both halves stand open at once and asking
+    // the player to also tap the DAYS chip would be the same answer demanded twice. FULL stays a
+    // tap away, and a number said under it is kept on screen but kept OFF the line (orderText's
+    // guard) — changing your mind never destroys what you said.
+    if (spec) {
+      const naming = enumNaming(spec, arg)
+      if (naming) onSetArg(naming.enumArg.name, naming.value)
+    }
+    // Choosing a harbour ends the chart's pointer-following; it does NOT close anything.
     setConsider(null)
   }
 
@@ -199,9 +208,23 @@ export function OrderComposer({
   const trade = (tradeVerb: 'BUY' | 'SELL', code: string) => {
     if (spec?.verb !== tradeVerb) onChooseVerb(tradeVerb)
     onSetArg('good', code)
-    setOverride(null)
-    setInspect(null)
+    // THE LIST STAYS; THE CHOSEN ROW OPENS. The cell's tap selects — it must not unmount the
+    // seventy rows it was pressed among (the owner, fourth time: "the tab disappears and opens a
+    // new one. how many times do i have to say this simple thing?") — so the quantity step lives
+    // in THIS row's own fold (GoodDetail), and pointing the inspection at the chosen good is what
+    // unfolds it, right under the finger, with every other row still on the page to change your
+    // mind with.
+    setInspect({ verb: tradeVerb, good: code })
     setConsider(null)
+  }
+
+  // THE QUANTITY'S ONE SETTER — for the step that lives inside the chosen good's fold
+  // (GoodDetail). It answers the verb's own `qty` argument through the same `answer` every picker
+  // goes through, so the fold's stepper and a hand-off from another tab write the one draft field
+  // the one way.
+  const pickQty = (value: string) => {
+    const qtyArg = spec?.args.find((a) => a.type === 'qty')
+    if (qtyArg) answer(qtyArg, value)
   }
 
   // FOUR ORDERS HAVE A SECOND HALF. BUY was the first — the goods on the left, her state on the
@@ -437,19 +460,27 @@ export function OrderComposer({
               </Explain>
             </div>
             <div className="space-y-2">
-              {visibleArgs(spec, args).map((arg) => {
+              {visibleArgs(spec).map((arg) => {
+              // A TRADE'S QUANTITY LIVES IN THE CHOSEN GOOD'S OWN FOLD, not in a row of its own.
+              // The owner's spelling of the flow ("i want to be able to click on buy and sell
+              // itself and do trades. when pressed unfold another so that i can choose how much i
+              // buy") puts the stepper WHERE THE PRESS WAS — GoodDetail unfolds it under the
+              // chosen row, with the other sixty-nine rows still standing. A second qty row down
+              // here would be two controls writing one draft field. Keyed on the schema (the verb
+              // that declares a good declares where its qty is asked), never on a verb list.
+              if (arg.type === 'qty' && spec.args.some((a) => a.type === 'good')) return null
               const value = args[arg.name]
-              const flat = flatArg(spec.verb, arg.name)
-              const isOpen = flat || open === arg.name
+              const canFold = foldable(spec, arg)
+              const isOpen = !canFold || opened.includes(arg.name)
               return (
                 <div key={arg.name} className="rounded-md border border-edge bg-app p-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    {flat ? (
-                      // A FLAT ROW HAS NO HEAD TO TAP — the picker is simply there (FLAT_VERBS).
-                      // The label stays, because a slider with no name is a mystery; the "not
-                      // chosen yet / value" line does not, because the always-open picker beneath
-                      // it already states the value, and saying it twice is two renderings of one
-                      // fact.
+                    {!canFold ? (
+                      // AN UN-FOLDABLE ROW HAS NO HEAD TO TAP — the picker is simply there (see
+                      // `foldable`). The label stays, because a slider with no name is a mystery;
+                      // the "not chosen yet / value" line does not, because the always-open picker
+                      // beneath it already states the value, and saying it twice is two renderings
+                      // of one fact.
                       <span className={fineClass('block min-h-0 min-w-0 flex-1 uppercase tracking-wider')}>
                         {labelOf(arg)}
                         {!arg.required && <span className="ml-2 lowercase tracking-normal">optional</span>}
@@ -510,10 +541,10 @@ export function OrderComposer({
 
                   {isOpen && (
                     // The row above already names what is being chosen; repeating it over the
-                    // picker cost a line of a phone screen and said nothing. On a FLAT row the
-                    // rule stays for the opposite reason: there is no fold for the divider to
+                    // picker cost a line of a phone screen and said nothing. On an un-foldable row
+                    // the rule stays for the opposite reason: there is no fold for the divider to
                     // separate the picker from.
-                    <div className={flat ? 'mt-2 space-y-2' : 'mt-3 space-y-2 border-t border-edge pt-3'}>
+                    <div className={canFold ? 'mt-3 space-y-2 border-t border-edge pt-3' : 'mt-2 space-y-2'}>
                       <ArgPicker
                         spec={spec}
                         arg={arg}
@@ -530,6 +561,7 @@ export function OrderComposer({
                           setConsider(spec && code ? { verb: spec.verb, port: code } : null)
                         }
                         onTrade={trade}
+                        onPickQty={pickQty}
                         onPick={(v) => answer(arg, v)}
                       />
                     </div>
@@ -572,63 +604,6 @@ function describe(
 }
 
 /**
- * HOW MUCH — the one picker whose ceiling comes from the server.
- *
- * Selling is arithmetic the client can do honestly: what is aboard is aboard. BUYING is not — the
- * price climbs as the order walks the book (§G.2), so a ceiling divided out of the spot price
- * offers more than the purse can carry. That is exactly what happened: MAX offered 91 tuns of
- * pepper and the trade was refused at 8,130 against 8,000. So the buy ceiling is world.buy_capacity().
- *
- * THE ANSWER IS HANDED IN, NOT ASKED FOR HERE. This component used to call `useBuyCapacity` itself,
- * which was fine while it was the only consumer; the rail now shows the same ceiling and the same
- * estimate, and two hooks for one question means two identical round trips. `OrderComposer` asks
- * once and passes the state to both. (Not a spaghetti fix — there was only ever one authority, the
- * server — a duplicate-request fix.)
- */
-function QtyArg({
-  selling,
-  fleet,
-  goodCode,
-  step,
-  value,
-  capacity,
-  onPick,
-}: {
-  selling: boolean
-  fleet: FleetView | undefined
-  goodCode: string | null
-  step: number
-  value: string | undefined
-  /** The composer's reading of `world.buy_capacity()`. Idle on a SELL, which never consults it. */
-  capacity: BuyCapacityState
-  onPick: (value: string) => void
-}) {
-  if (!goodCode) {
-    return <Notice tone="neutral" className="text-xs">Pick the good first — how much depends on which.</Notice>
-  }
-  if (selling) {
-    return (
-      <QtyPicker
-        bound={sellBound(fleet ? (fleetCargoByCode(fleet)[goodCode] ?? 0) : 0)}
-        step={step}
-        value={value}
-        onPick={onPick}
-      />
-    )
-  }
-  if (!capacity.bound) {
-    return (
-      <p className="font-mono text-xs text-ink-faint">
-        {capacity.loading ? 'Asking what she can carry and afford…' : 'The most she can take on is not known yet.'}
-      </p>
-    )
-  }
-  // The MONEY is not passed on: `capacity.estTotal` is printed by the fleet rail, under a label and
-  // beside the price of the first step. See QtyPicker's header for the measurement.
-  return <QtyPicker bound={capacity.bound} step={step} value={value} onPick={onPick} />
-}
-
-/**
  * The picker for one argument, chosen by the TYPE the server declared for it. A type this screen
  * has never seen says so, plainly, instead of quietly offering nothing.
  */
@@ -644,6 +619,7 @@ function ArgPicker({
   onInspect,
   onConsider,
   onTrade,
+  onPickQty,
   onPick,
 }: {
   spec: VerbSpec
@@ -664,6 +640,9 @@ function ArgPicker({
   /** A good row's buy or sell cell — the composer's `trade`, which sets the verb AND the good on
    *  the one draft. Only the `good` arm raises it. */
   onTrade: (verb: 'BUY' | 'SELL', code: string) => void
+  /** The quantity step inside the chosen good's fold, answering the verb's own `qty` argument —
+   *  bound by the composer to that argument through the same `answer` every picker uses. */
+  onPickQty: (value: string) => void
   onPick: (value: string) => void
 }) {
   const selling = spec.verb === 'SELL'
@@ -685,6 +664,10 @@ function ArgPicker({
 
     case 'good': {
       if (!market) return <MarketPending />
+      // The verb's own qty argument, if it declares one — the good list carries the quantity step
+      // inside the CHOSEN row's fold (GoodDetail), because that is where the press was. There is
+      // no `case 'qty'` arm any more and no separate qty row: one control for one draft field.
+      const qtyArg = spec.args.find((a) => a.type === 'qty')
       return (
         <GoodPicker
           goods={market.goods}
@@ -698,24 +681,12 @@ function ArgPicker({
           onInspect={onInspect}
           capacity={capacity}
           onTrade={onTrade}
+          step={snapshot.config.trade_step_tuns}
+          qtyValue={qtyArg ? args[qtyArg.name] : undefined}
+          onPickQty={onPickQty}
         />
       )
     }
-
-    case 'qty':
-      // Still its own component, because a BUY ceiling is a different question from a SELL one and
-      // the two answers are drawn differently. It no longer holds the hook — the composer does.
-      return (
-        <QtyArg
-          selling={selling}
-          fleet={fleet}
-          goodCode={args.good ?? null}
-          step={snapshot.config.trade_step_tuns}
-          value={args[arg.name]}
-          capacity={capacity}
-          onPick={onPick}
-        />
-      )
 
     case 'price': {
       const row = market?.goods.find((g) => g.code === args.good)
