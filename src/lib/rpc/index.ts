@@ -40,8 +40,12 @@ import type {
   OfficerRoster,
   PlayerView,
   PostedOfficer,
+  PresetApplied,
+  PresetDeleted,
+  PresetSaved,
   PreviewResult,
   PriceHistory,
+  ProvisionPresetBook,
   SkillBook,
   StandingsBoard,
   BuffsView,
@@ -301,4 +305,37 @@ export function cmdPostOfficer(code: string, fleetId: string | null = null) {
 /** Raise one skill by one level, for money, at a port that keeps an academy (0016). */
 export function cmdStudySkill(code: string, fleetId: string) {
   return call<StudiedSkill>('cmdStudySkill', [code, fleetId])
+}
+
+/**
+ * The book of standing orders (0034) — the house's provision presets, the fleets sailing under
+ * each, and the cap. The days figure is a RANGE target: what it costs in tuns is decided when a
+ * fleet makes port, from the crew aboard then, by the same rule the manual PROVISION runs.
+ */
+export function worldProvisionPresets(): Promise<RpcResult<ProvisionPresetBook>> {
+  return call<ProvisionPresetBook>('worldProvisionPresets')
+}
+
+/** Write a standing order (presetId null), or adjust one — rename, re-day, or both. */
+export function cmdProvisionPresetSave(
+  presetId: string | null,
+  name: string | null,
+  days: number | null,
+): Promise<RpcResult<PresetSaved>> {
+  return call<PresetSaved>('cmdProvisionPresetSave', [presetId, name, days])
+}
+
+/** Strike an order from the book. Fleets sailing under it are detached, and the answer says how
+ *  many — a fleet can never point at an order that no longer exists. */
+export function cmdProvisionPresetDelete(presetId: string): Promise<RpcResult<PresetDeleted>> {
+  return call<PresetDeleted>('cmdProvisionPresetDelete', [presetId])
+}
+
+/** Put a fleet under a standing order, or clear it with `null`. Nothing is bought here: the
+ *  order fires when she makes port, and only there. */
+export function cmdProvisionPresetApply(
+  fleetId: string,
+  presetId: string | null,
+): Promise<RpcResult<PresetApplied>> {
+  return call<PresetApplied>('cmdProvisionPresetApply', [fleetId, presetId])
 }

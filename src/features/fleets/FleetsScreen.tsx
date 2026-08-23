@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Badge,
+  Button,
   Card,
   CardHeader,
   CollapsibleCard,
   Explain,
   Gauge,
+  Input,
   Meter,
+  Notice,
   PageHeader,
   Screen,
   SectionLabel,
@@ -24,6 +27,7 @@ import {
   formatInt,
   formatKnots,
   formatNm,
+  formatOfTotal,
   formatPct,
   formatPctPoints,
   formatRealShort,
@@ -32,7 +36,7 @@ import {
 } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
-import type { FleetShip, FleetView, SnapshotConfig } from '../../lib/rpc'
+import type { FleetShip, FleetView, ProvisionPreset, SnapshotConfig } from '../../lib/rpc'
 import { useCommandDraft } from '../../domain/order'
 import type { CommandIntent } from '../../domain/order'
 import {
@@ -97,6 +101,14 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
   const { nowMs } = useShellState()
   const navigate = useNavigate()
   const handOff = useCommandDraft((s) => s.handOff)
+  const loadPresets = useWorld((s) => s.loadPresets)
+
+  // The book of standing orders rides on this tab: the server fires them on arrival whether or
+  // not anyone looks, so the read is display, not mechanism — unlike world.fleets, it winds
+  // nothing and one fetch per mount is enough (the preset verbs each re-read it themselves).
+  useEffect(() => {
+    void loadPresets()
+  }, [loadPresets])
 
   // The draft is a structured INTENT, not a half-typed line (commandDraft.ts): the player is
   // making an order, not typing one. A hand-off from here says the verb and the fleet and leaves
@@ -159,7 +171,7 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
             eyebrow="Roster"
             title="All fleets"
             subtitle="Tap a fleet to command it."
-            explain="Speed and endurance are the server's own figures — the ones SAIL refuses on."
+            explain="Speed and provision are the server's own figures — the ones SAIL refuses on."
           />
 
           {/* ── THE ROSTER, TWICE ──────────────────────────────────────────────────────────────
@@ -190,7 +202,10 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
                     <span className="text-ink">{whereText(fleet, portName)}</span>
                     <span className="text-ink-faint">due</span>
                     <span className="text-ink">{dueText(fleet, nowMs)}</span>
-                    <span className="text-ink-faint">endurance</span>
+                    {/* "provision", not "endurance" or "range" — one figure had three names
+                        across FLEETS and COMMAND, and PROVISION is the verb that refills it, so
+                        the figure and the order share one word (owner label sweep, 2026-08-23). */}
+                    <span className="text-ink-faint">provision</span>
                     <span className="text-ink">{formatVoyageDays(fleet.endurance_days)}</span>
 
                     {/* THE TWO FACTS THAT DECIDE THE NEXT ORDER, DRAWN AS COUNTABLE BLOCKS.
@@ -242,7 +257,7 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
                 <TH>Where</TH>
                 <TH align="num">Due</TH>
                 <TH align="num">Speed</TH>
-                <TH align="num">End.</TH>
+                <TH align="num">Provision</TH>
               </tr>
             </thead>
             <tbody>
@@ -272,6 +287,8 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
         </Card>
       )}
 
+      <PresetsCard />
+
       {fleets.map((fleet) => (
         <FleetDetail
           key={fleet.id}
@@ -296,6 +313,139 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
 }
 
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE BOOK OF STANDING ORDERS (0034) — the house's provision presets, written and adjusted here.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// A preset is "keep her at N days of stores", named by the player, fired by the SERVER when a
+// fleet under it makes port — sized there, from the crew aboard then. This card is the CRUD
+// surface; which fleet sails under which order lives on each fleet's galley face, beside the
+// figures the order governs. Controls are plain rows: pressing anything SELECTS or SAVES — no
+// fold, no re-flow, nothing docked (the owner's rule, three times on 2026-08-23).
+//
+// NOT SEEDED, deliberately: a standing order is the player's own words, and six rows they did not
+// write are clutter. New composes one ("Preset N", 15 days) already valid and obviously editable.
+
+function PresetsCard() {
+  const book = useWorld((s) => s.presets)
+  const savePreset = useWorld((s) => s.savePreset)
+  const refusal = useWorld((s) => s.refusal)
+  const dismissRefusal = useWorld((s) => s.dismissRefusal)
+  if (!book) return null
+
+  const nextName = () => {
+    for (let n = 1; n <= book.max + 1; n += 1) {
+      const name = `Preset ${n}`
+      if (!book.presets.some((p) => p.name.toLowerCase() === name.toLowerCase())) return name
+    }
+    return 'Preset'
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        eyebrow="Standing orders"
+        title="Presets"
+        subtitle="Keep a fleet at so many days of stores."
+        explain="A preset is a standing order the server fills when the fleet makes port: it tops her stores up to the named days, sized for the crew aboard at that moment, and charges the purse. Stores share the hold with cargo, so a deeper order is less room to trade with. Apply one on a fleet's Galley face."
+        aside={
+          <span className="font-mono text-xs text-ink-faint">
+            {book.presets.length}/{book.max}
+          </span>
+        }
+      />
+      {refusal && (
+        <Notice tone="danger" className="mb-2">
+          {refusal.sentence}{' '}
+          <button type="button" className="underline" onClick={dismissRefusal}>
+            dismiss
+          </button>
+        </Notice>
+      )}
+      {book.presets.length === 0 ? (
+        <p className="text-sm text-ink-muted">The book is empty. Not an error — a state.</p>
+      ) : (
+        <ul className="space-y-2">
+          {book.presets.map((preset) => (
+            // Keyed on the SERVED values, so a save that lands re-seats the inputs on the
+            // server's answer and a refused one is corrected on the next successful read.
+            <PresetRow key={`${preset.id}:${preset.name}:${preset.days}`} preset={preset} />
+          ))}
+        </ul>
+      )}
+      <div className="mt-3">
+        <Button variant="secondary" onClick={() => void savePreset(null, nextName(), 15)}>
+          New
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+/** One standing order: its name, its days, the fleets under it, and the strike. Inputs commit on
+ *  blur or Enter; a commit that changes nothing calls nothing. */
+function PresetRow({ preset }: { preset: ProvisionPreset }) {
+  const savePreset = useWorld((s) => s.savePreset)
+  const deletePreset = useWorld((s) => s.deletePreset)
+
+  const commitName = (raw: string) => {
+    const name = raw.trim()
+    if (name && name !== preset.name) void savePreset(preset.id, name, null)
+  }
+  const commitDays = (raw: string) => {
+    const days = Math.trunc(Number(raw))
+    if (Number.isFinite(days) && days !== preset.days) void savePreset(preset.id, null, days)
+  }
+  const blurOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') e.currentTarget.blur()
+  }
+
+  return (
+    <li>
+      {/* The WRAPPERS own the widths: Input's base recipe is w-full (its own header), so a width
+          utility on the component fights it and the winner is CSS order — measured losing here,
+          with the name squeezed to nothing. A sized span is unambiguous. */}
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 flex-1">
+          <Input
+            defaultValue={preset.name}
+            aria-label={`name of ${preset.name}`}
+            onBlur={(e) => commitName(e.currentTarget.value)}
+            onKeyDown={blurOnEnter}
+            maxLength={24}
+            className="font-mono"
+          />
+        </span>
+        <span className="w-16 shrink-0">
+          <Input
+            defaultValue={String(preset.days)}
+            aria-label={`days of ${preset.name}`}
+            inputMode="numeric"
+            onBlur={(e) => commitDays(e.currentTarget.value)}
+            onKeyDown={blurOnEnter}
+            className="text-right font-mono"
+          />
+        </span>
+        <span className={fineClass()}>days</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`delete ${preset.name}`}
+          title="delete"
+          onClick={() => void deletePreset(preset.id)}
+        >
+          ✕
+        </Button>
+      </div>
+      {preset.fleets.length > 0 && (
+        <p className={fineClass('mt-0.5')}>
+          {preset.fleets.map((f) => f.name).join(' · ')}
+        </p>
+      )}
+    </li>
+  )
+}
+
 /** The three faces of one fleet. Not routes — a fleet is one card, and these are its sides. */
 type FleetFace = 'ships' | 'cargo' | 'stores'
 
@@ -315,7 +465,16 @@ function FleetDetail({
   // line is now untouched by a read that only moved a fleet.
   const goodByCode = useWorld((s) => s.goodByCode)
   const portByCode = useWorld((s) => s.portByCode)
+  const book = useWorld((s) => s.presets)
+  const applyPreset = useWorld((s) => s.applyPreset)
   const cargo = fleetCargo(fleet)
+  // Which standing order this fleet sails under — the BOOK is the authority (the fleet points at
+  // a preset by reference on the server; the book serves that edge), so nothing here is a copy.
+  const preset = book?.presets.find((p) => p.fleets.some((f) => f.id === fleet.id)) ?? null
+  // Docked under an order she no longer meets: the served figure against the served target, with
+  // the same 0.01-day dust floor the server's own satisfied-check uses (0034).
+  const presetShort =
+    preset !== null && fleet.status === 'DOCKED' && fleet.endurance_days < preset.days - 0.01
   // WHICH FACE OF THIS FLEET IS TURNED TOWARDS YOU. Per-fleet, not shared: two cards open at once
   // must be able to show different faces, and a single shared value would move both.
   const [face, setFace] = useState<FleetFace>('ships')
@@ -500,8 +659,28 @@ function FleetDetail({
                   <dd className="text-ink">{formatTuns(stores.waterT, 1)}</dd>
                   <dt className="text-ink-faint">food</dt>
                   <dd className="text-ink">{formatTuns(stores.foodT, 1)}</dd>
-                  <dt className="text-ink-faint">range</dt>
-                  <dd className="text-ink">{formatVoyageDays(fleet.endurance_days)}</dd>
+                  {/* "provision", not "range" — the same served figure had three names across two
+                      screens (endurance / range / provision); PROVISION is the verb that refills
+                      it, so the figure, the verb and the standing order share one word. WARNING
+                      tone while she is docked under a standing order she no longer meets — the
+                      "hire 20 at Cádiz and her range collapses" case, made visible BEFORE she
+                      sails rather than discovered at sea. The figure itself is still the server's
+                      endurance_days; nothing here recomputes it. */}
+                  <dt className="text-ink-faint">provision</dt>
+                  <dd className={presetShort ? 'text-warning' : 'text-ink'}>
+                    {formatVoyageDays(fleet.endurance_days)}
+                    {presetShort && preset && ` — under her ${formatVoyageDays(preset.days)} order`}
+                  </dd>
+                  {/* THE STANDING ORDER, and the crew it is measured against ("crew now, but show
+                      it clearly" — the owner). The days figure is meaningless without the crew it
+                      assumes, so the two travel together; the crew is the crew ABOARD, read live,
+                      because that is exactly what the server will size the next top-up from. */}
+                  <dt className="text-ink-faint">keep</dt>
+                  <dd className="text-ink">
+                    {preset
+                      ? `${preset.name} · ${formatVoyageDays(preset.days)} · at ${formatInt(crew.aboard)} crew`
+                      : '—'}
+                  </dd>
                   {/* "crew", NOT "hands" (the owner, 2026-08-23: "and hands? seriously? change it
                       like crew or something"). Sailor's cant reads as period flavour to whoever
                       writes it and as nonsense to whoever plays it — same no-jargon rule that
@@ -512,9 +691,14 @@ function FleetDetail({
                   <dd className="text-ink">
                     {formatInt(crew.aboard)}/{formatInt(crew.max)} · {formatInt(crew.required)} needed
                   </dd>
-                  <dt className="text-ink-faint">hold</dt>
+                  {/* "cargo", matching the COMMANDING card's label and figure shape for the same
+                      pair (one name per figure — the label sweep, 2026-08-23). The served
+                      free_hold stays: it clamps per hull (0017) and is NOT total − used, which is
+                      why it is printed rather than derived. */}
+                  <dt className="text-ink-faint">cargo</dt>
                   <dd className="text-ink">
-                    {formatTuns(fleetHoldUsed(fleet), 1)}/{formatTuns(fleetHoldTotal(fleet))} ·{' '}
+                    {formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} t ·{' '}
+                    {formatPct(fleetHoldTotal(fleet) > 0 ? fleetHoldUsed(fleet) / fleetHoldTotal(fleet) : 0)} full ·{' '}
                     {formatTuns(fleet.free_hold, 1)} free
                     {/* THIS SENTENCE USED TO SAY "Officers arrive with V1 (C.6): at V0 every expertise
                         coefficient is 1.00". Migration 0017 made that false — a quartermaster stretches
@@ -536,6 +720,29 @@ function FleetDetail({
                     · {formatDucats(crew.aboard * config.wage_per_crew_day)}
                   </dd>
                 </dl>
+
+                {/* WHICH ORDER SHE SAILS UNDER — one tap to set, one tap (None) to clear, every
+                    chip 44px, and pressing one SELECTS: nothing folds, moves or re-flows. The
+                    order fires when she makes port, and only there; nothing is bought here. */}
+                {book && book.presets.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      variant={preset === null ? 'chip-on' : 'chip'}
+                      onClick={() => void applyPreset(fleet.id, null)}
+                    >
+                      None
+                    </Button>
+                    {book.presets.map((p) => (
+                      <Button
+                        key={p.id}
+                        variant={p.id === preset?.id ? 'chip-on' : 'chip'}
+                        onClick={() => void applyPreset(fleet.id, p.id)}
+                      >
+                        {p.name} · {formatVoyageDays(p.days)}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </div>
             </>
           )}

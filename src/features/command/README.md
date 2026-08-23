@@ -14,12 +14,12 @@ brings it back — a second way in would be a second way for the two paths to dr
 | step | what the player does | where the options come from |
 |---|---|---|
 | **1. Commanding** | taps a fleet chip | `world.fleets()` — name, where she lies or is bound, queue depth, whether she is HALTED |
-| **2. What she is to do** | taps a verb | `world.snapshot().verbs` — the server's own `cmd.verb_schema()`. Nothing on this side lists verbs. The card prints the verb, its mark and `spec.help` (one line); `spec.note` — the fine print 0021 split out of it — is behind the ⓘ and never on the card |
+| **2. Verb** | taps a verb | `world.snapshot().verbs` — the server's own `cmd.verb_schema()`. Nothing on this side lists verbs. The card prints the verb, its mark and `spec.help` (one line); `spec.note` — the fine print 0021 split out of it — is behind the ⓘ and never on the card |
 | **3. Each argument** | taps a row, a chip, or drags a stepper | one picker per argument TYPE the schema declares (below) |
 | **3b. (BUY · HIRE · REPAIR · PROVISION) her state** | reads it | the fleet rail — the room, the crew, the hulls or the stores, whichever the verb is a decision about (§9) |
 | **3b'. (SAIL) where she is** | reads it | the same rail slot, carrying a CHART instead: her berth, the harbour this order would send her to, and the sea lanes between them (§11) |
 | **3c. (BUY only) a bargain** | taps *Haggle* | `cmd.haggle` / `world.haggle_state` — one finite, server-rolled attempt at the port's cut (§10) |
-| **4. What will be sent** | reads it | the line assembles itself, read-only, as the picks land |
+| **4. Order** | reads it | the line assembles itself, read-only, as the picks land |
 | **5. Preview** | reads the estimate, or the refusal | `cmd.preview()` — the REAL verb, run and rolled back |
 | **6. Issue** | one button | `cmd.issue(fleet_id, text, expected_version)` |
 | **7. Her queue** | cancels a row, or clears the halt | `fleet.queue`, `cmd.cancel()`, `cmd.clear()` |
@@ -160,15 +160,15 @@ for why it is flex and not grid, and why the breakpoint is `md`.
 **One rail, generalised — not four panels.** A `HireFleetPanel`, a `RepairFleetPanel` and a
 `ProvisionFleetPanel` beside the buyer's would be four authorities for "what a rail is".
 `docs/NO_SPAGHETTI.md` §1: *owned but too narrow → generalise that one owner and repoint every
-caller.* So the panel widened. **Room in the hold** is genuinely shared — BUY and PROVISION both
+caller.* So the panel widened. **Hold** is genuinely shared — BUY and PROVISION both
 draw it, because water and food take cargo's own tuns (C.3) — and everything else is per verb:
 
 | verb | the blocks | where every figure comes from |
 |---|---|---|
-| **BUY** | room in the hold · this order · what moves the price | the three sections below |
-| **HIRE** | her crew against her berths · the idle men here | `fleetCrew(fleet)` — the spelling `E_CREW_MAX` counts by (0007:659) · `port.crew_pool` · `config.wage_per_crew_day` |
+| **BUY** | hold · this order · price movement | the three sections below |
+| **HIRE** | crew against berths · the idle men here | `fleetCrew(fleet)` — the spelling `E_CREW_MAX` counts by (0007:659) · `port.crew_pool` · `config.wage_per_crew_day` |
 | **REPAIR** | her worst hull, then every hull · the yard here | `worstHullFraction` / `hullFraction` · `port.has_yard`, `port.yard_tier` |
-| **PROVISION** | room in the hold · her stores | `fleet.endurance_days` (SERVED, never divided out here) · `fleetStores(fleet)` |
+| **PROVISION** | hold · provision | `fleet.endurance_days` (SERVED, never divided out here) · `fleetStores(fleet)` |
 
 **The rail never prices HIRE, REPAIR or PROVISION, because nothing serves those prices.**
 `src/lib/rpc/types.ts:18-19` states it: *"a port carries `crew_pool` but no crew RATE, no water/food
@@ -183,11 +183,11 @@ Three blocks, every figure served:
 
 | block | from |
 |---|---|
-| **Room in the hold** | `fleet.free_hold` (`public.fleet_free_hold`, 0017:183) over `fleetHoldTotal(fleet)`. Never recomputed here — three client spellings of that subtraction were deleted and one had been wrong its whole life |
+| **Hold** | `fleet.free_hold` (`public.fleet_free_hold`, 0017:183) over `fleetHoldTotal(fleet)`. Never recomputed here — three client spellings of that subtraction were deleted and one had been wrong its whole life |
 | **This order** | `world.buy_capacity(fleet, good)` — the ceiling, what all of it costs, and the server's own PHRASE for what stops her. Asked once by `OrderComposer` and shared with the quantity stepper |
-| **What moves the price** | `world.haggle_state`'s `spread_published` / `spread_effective`, `fleet.officer_pct.PURSER`, the bargain held, `market.port.tax_rate`, `config.trade_step_tuns` |
+| **Price movement** | `world.haggle_state`'s `spread_published` / `spread_effective`, `fleet.officer_pct.PURSER`, the bargain held, `market.port.tax_rate`, `config.trade_step_tuns` |
 
-**The block is labelled "what moves the price", not "negotiation".** The reference (대항해시대
+**The block is labelled "price movement", not "negotiation".** The reference (대항해시대
 오리진) has a 협상 minigame with a before/after price and a success bar; inventing a figure of that
 shape would be the fabricated number `UI_DIRECTION.md` §4 rule 5 forbids, so every row is a served
 number. It does **not** assert the absence either: an earlier draft printed *"there is no haggling in
@@ -197,7 +197,7 @@ reports HAGGLING/SPREAD unread (`0017:1088`) — and it stopped being safe to pr
 price has a WORLD half (the mid, the same for every house) and a PORT half (the cut), and only the
 cut can be shaved. The rows are ordered RESULT first, then CAUSES:
 
-* **the port's spread** — `spread_published`. Half added to the ask, half taken off the bid
+* **spread** — `spread_published`. Half added to the ask, half taken off the bid
   (0005:381-382), derived from `dev_commerce`. The same number for everybody: 0017 explicitly
   **refused** to make `world.spread()` player-aware so that the market screen cannot print a figure
   that depends on who is looking (`0017:66-72`), and 0022 kept that refusal;

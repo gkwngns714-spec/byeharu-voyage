@@ -56,6 +56,9 @@ import {
   cmdIssue,
   cmdPostOfficer,
   cmdPreview,
+  cmdProvisionPresetApply,
+  cmdProvisionPresetDelete,
+  cmdProvisionPresetSave,
   cmdStudySkill,
   initRpc,
   worldFleets,
@@ -68,6 +71,7 @@ import {
   worldStandings,
   worldBuffs,
   worldSnapshot,
+  worldProvisionPresets,
   worldTradeRoutes,
 } from '../lib/rpc'
 import type {
@@ -79,6 +83,7 @@ import type {
   PlayerHouse,
   PreviewResult,
   PriceHistory,
+  ProvisionPresetBook,
   Refusal,
   SkillBook,
   SnapshotNation,
@@ -112,6 +117,9 @@ export interface LiveWorld {
   skills: SkillBook | null
   /** The settled board (0025). Null until RANK asks for it — nothing else needs it. */
   standings: StandingsBoard | null
+  /** The book of standing orders (0034). Null until FLEETS asks for it — it is that tab's card,
+   *  and the server tops fleets up on arrival whether or not anyone is looking. */
+  presets: ProvisionPresetBook | null
   /** What is on at the quay (0026), keyed by port id — a fair is a PORT's fact, not the world's. */
   buffs: Record<string, BuffsView>
   /** One port's remembered prices, keyed by port id (0013). Fetched beside its market. */
@@ -157,6 +165,15 @@ export interface LiveWorld {
   loadSkills: () => Promise<void>
   loadStandings: (limit?: number | null) => Promise<void>
   loadBuffs: (portId: string) => Promise<void>
+  /** Fetch the book of standing orders. FLEETS calls it on mount and after every preset verb. */
+  loadPresets: () => Promise<void>
+  /** Write or adjust a standing order (0034). Re-reads the book — the server's answer is the only
+   *  true one, the same rule every other verb here follows. */
+  savePreset: (presetId: string | null, name: string | null, days: number | null) => Promise<boolean>
+  deletePreset: (presetId: string) => Promise<boolean>
+  /** Put a fleet under an order, or clear it with null. Nothing is bought now — the order fires
+   *  when she makes port, and only there — so only the book is re-read, never the fleets. */
+  applyPreset: (fleetId: string, presetId: string | null) => Promise<boolean>
   /** Sign an officer, post one, or study a level. Each re-reads what it changed, because the
    *  server's answer is the only true one — no local patching (the `issue` rule). */
   hireOfficer: (code: string, fleetId: string | null) => Promise<boolean>
@@ -243,6 +260,7 @@ export const useWorld = create<LiveWorld>((set, get) => ({
   officers: null,
   skills: null,
   standings: null,
+  presets: null,
   buffs: {},
   history: {},
   ducats: null,
@@ -381,6 +399,48 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     const r = await worldBuffs(portId)
     if (!r.ok) return
     set((s) => ({ buffs: { ...s.buffs, [portId]: r.value } }))
+  },
+
+  // A FAILED BOOK READ IS LOUD, for the standings' reason: the card IS the book, and a Presets
+  // panel silently showing yesterday's orders would let a player believe a standing order stands
+  // when it does not.
+  loadPresets: async () => {
+    const r = await worldProvisionPresets()
+    if (r.ok) set({ presets: r.value })
+    else set({ refusal: r.refusal })
+  },
+
+  savePreset: async (presetId, name, days) => {
+    const r = await cmdProvisionPresetSave(presetId, name, days)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return false
+    }
+    set({ refusal: null })
+    await get().loadPresets()
+    return true
+  },
+
+  deletePreset: async (presetId) => {
+    const r = await cmdProvisionPresetDelete(presetId)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return false
+    }
+    set({ refusal: null })
+    await get().loadPresets()
+    return true
+  },
+
+  applyPreset: async (fleetId, presetId) => {
+    const r = await cmdProvisionPresetApply(fleetId, presetId)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return false
+    }
+    set({ refusal: null })
+    await get().loadPresets()
+    return true
   },
 
   hireOfficer: async (code, fleetId) => {

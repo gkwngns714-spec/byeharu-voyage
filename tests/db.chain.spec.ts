@@ -67,7 +67,12 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Pin moved deliberately 2026-08-23 again with 0033: the owner asked "what is yard?" — the two
 // repair refusals and the REPAIR card now say "shipyard", sliced out of the live definitions
 // 0030-style with the surroundings byte-identical by construction. 33 migrations, 33 receipts.
-const LAST = '20260818000033_the_yard_is_called_the_shipyard.sql'
+// Pin moved deliberately 2026-08-23 with 0034: the STANDING PROVISION ORDER — house-owned
+// presets ("keep her at N days of stores") a fleet points at by reference, fired by
+// voyage.settle's arrival arm (sliced, byte-parity proven) through the one provisioning rule
+// cmd.do_provision, sized at fire time from the crew aboard. 34 migrations, 34 receipts,
+// verified green locally (db:apply + db:proof, twice).
+const LAST = '20260818000034_a_standing_order_keeps_her_provisioned.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

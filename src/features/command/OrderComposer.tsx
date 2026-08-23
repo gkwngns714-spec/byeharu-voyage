@@ -150,22 +150,6 @@ export function OrderComposer({
     setOverride({ verb: spec.verb, name: open === name ? null : name })
   }
 
-  // WHETHER THE VERB GRID IS SHOWING — derived, like `open` above, with the same one override.
-  //
-  // The owner, twice (2026-08-23, "i told you"): *"when i click buy, the tab should be not
-  // unfolded. it should stay where it is."* Six expanded cards after one is chosen filled the
-  // whole viewport, so the next question — the goods, the harbours, the count — began BELOW the
-  // two verbs the player had already rejected, and acting on the choice meant scrolling past it.
-  // So a chosen verb COLLAPSES the grid to that verb alone, closed the way an answered argument
-  // row closes (same skin, same `change` word), and the next step lands exactly where the eye
-  // already is. `regrid` is the player asking to see the grid again; it is stamped with the verb
-  // it was made under — so a hand-off from another tab collapses it — and discarded the moment
-  // anything is chosen or answered, exactly as `override` is.
-  const [regrid, setRegrid] = useState<string | null>(null)
-  const gridOpen = !spec || regrid === spec.verb
-  /** The chosen verb's mark, for the collapsed control (indexed once, so the guard narrows). */
-  const chosenMark = spec ? VERB_ICON[spec.verb] : undefined
-
   // WHICH GOOD ROW IS UNFOLDED — ONE, AND IT IS HELD HERE RATHER THAN INSIDE THE LIST.
   //
   // The owner, 2026-08-23: "click a trade good → it unfolds showing how much I can buy, and more."
@@ -202,9 +186,6 @@ export function OrderComposer({
     // was last peeked at rather than the row that was actually chosen.
     setInspect(null)
     setConsider(null)
-    // And it ends a re-opened verb grid the same way: answering an argument is proof the player
-    // is going on with THIS verb, so the grid they asked to reconsider folds back to it.
-    setRegrid(null)
   }
 
   // THE PRICE IS THE ACT (the owner, 2026-08-23: "i want to be able to click on buy and sell
@@ -221,7 +202,6 @@ export function OrderComposer({
     setOverride(null)
     setInspect(null)
     setConsider(null)
-    setRegrid(null)
   }
 
   // FOUR ORDERS HAVE A SECOND HALF. BUY was the first — the goods on the left, her state on the
@@ -281,7 +261,10 @@ export function OrderComposer({
   return (
     <div className="space-y-4">
       <div>
-        <SectionLabel>What she is to do</SectionLabel>
+        {/* "Verb", not "What she is to do" (the owner, 2026-08-23: "Why add unnecessary words?").
+            A label names the thing, and "verb" is the word this card already counts by (the
+            "6 verbs" badge in its header). */}
+        <SectionLabel>Verb</SectionLabel>
         {/* THE ACTION CARD (docs/UI_DIRECTION.md §2). These were six text chips in a row, which is
             a menu — the reference draws an action as a CARD carrying its own mark and a line of
             what it does, so the choice is legible before it is made.
@@ -304,96 +287,58 @@ export function OrderComposer({
             THREE ACROSS FROM `sm`. Six verbs are three rows of two on a phone and two rows of three
             on anything wider, so the grid never leaves a card stranded on a line of its own.
 
-            A CHOSEN VERB COLLAPSES THE GRID TO ITSELF (the owner, repeated: "when i click buy, the
-            tab should be not unfolded. it should stay where it is"). The collapsed control below
-            is the argument rows' own closed idiom — the value, and the word `change` in the same
-            accent mono — so there is ONE spelling of "this is answered; tap to answer differently"
-            on the screen. Tapping it re-opens the grid without discarding anything; tapping the
-            same verb in the re-opened grid folds it back, still without discarding; tapping a
-            DIFFERENT verb goes through `chooseVerb`, whose one authority discards the arguments
-            that no longer apply (domain/order/draft.ts:104 — `dest` means nothing to BUY). */}
-        {gridOpen ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {verbs.map((v) => {
-              const on = v.verb === spec?.verb
-              const mark = VERB_ICON[v.verb]
-              return (
-                <button
-                  key={v.verb}
-                  type="button"
-                  onClick={() => {
-                    // Re-tapping the verb already chosen (only reachable through `change`) KEEPS
-                    // it: the player looked at the alternatives and stayed. A different verb is a
-                    // real choice and goes through the draft's one authority.
-                    if (!on) onChooseVerb(v.verb)
-                    setRegrid(null)
-                  }}
-                  className={[
-                    'bv-cut flex min-h-11 flex-col gap-1.5 border p-3 text-left transition',
-                    on
-                      ? 'border-accent bg-accent-soft'
-                      : 'border-edge bg-surface-2 hover:border-accent/60',
-                  ].join(' ')}
-                >
-                  <span className="flex items-center gap-2">
-                    {mark ? (
-                      <Icon
-                        name={mark}
-                        size={18}
-                        className={`shrink-0 ${on ? 'text-accent' : 'text-ink-faint'}`}
-                      />
-                    ) : (
-                      <span
-                        className={`w-[18px] shrink-0 text-center font-mono text-base ${on ? 'text-accent' : 'text-ink-faint'}`}
-                      >
-                        {v.verb.slice(0, 1)}
-                      </span>
-                    )}
+            THE GRID NEVER RESTRUCTURES (the owner, 2026-08-23: "when pressing sail, stop folding
+            the sail. when pressing buy stop folding buy."). Choosing a verb marks its card chosen
+            and nothing else moves — all six stay at the same size in the same places, so the page
+            holds still under the tap. Re-tapping the chosen card keeps it rather than going through
+            `chooseVerb`, whose one authority would discard the arguments already answered; a
+            DIFFERENT verb is a real choice and does (domain/order/draft.ts:104 — `dest` means
+            nothing to BUY). */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {verbs.map((v) => {
+            const on = v.verb === spec?.verb
+            const mark = VERB_ICON[v.verb]
+            return (
+              <button
+                key={v.verb}
+                type="button"
+                onClick={() => {
+                  if (!on) onChooseVerb(v.verb)
+                }}
+                className={[
+                  'bv-cut flex min-h-11 flex-col gap-1.5 border p-3 text-left transition',
+                  on
+                    ? 'border-accent bg-accent-soft'
+                    : 'border-edge bg-surface-2 hover:border-accent/60',
+                ].join(' ')}
+              >
+                <span className="flex items-center gap-2">
+                  {mark ? (
+                    <Icon
+                      name={mark}
+                      size={18}
+                      className={`shrink-0 ${on ? 'text-accent' : 'text-ink-faint'}`}
+                    />
+                  ) : (
                     <span
-                      className={`truncate font-mono text-base uppercase tracking-wide ${on ? 'text-accent' : 'text-ink'}`}
+                      className={`w-[18px] shrink-0 text-center font-mono text-base ${on ? 'text-accent' : 'text-ink-faint'}`}
                     >
-                      {v.verb}
+                      {v.verb.slice(0, 1)}
                     </span>
+                  )}
+                  <span
+                    className={`truncate font-mono text-base uppercase tracking-wide ${on ? 'text-accent' : 'text-ink'}`}
+                  >
+                    {v.verb}
                   </span>
-                  <span className="line-clamp-2 text-[11px] leading-snug text-ink-faint">
-                    {v.help}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        ) : (
-          spec && (
-            <button
-              type="button"
-              onClick={() => setRegrid(spec.verb)}
-              aria-expanded={false}
-              data-testid="verb-chosen"
-              className="bv-cut flex min-h-11 w-full items-center gap-2 border border-accent bg-accent-soft p-3 text-left transition"
-            >
-              {chosenMark ? (
-                <Icon name={chosenMark} size={18} className="shrink-0 text-accent" />
-              ) : (
-                <span className="w-[18px] shrink-0 text-center font-mono text-base text-accent">
-                  {spec.verb.slice(0, 1)}
                 </span>
-              )}
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-mono text-base uppercase tracking-wide text-accent">
-                  {spec.verb}
+                <span className="line-clamp-2 text-[11px] leading-snug text-ink-faint">
+                  {v.help}
                 </span>
-                <span className="line-clamp-1 text-[11px] leading-snug text-ink-faint">
-                  {spec.help}
-                </span>
-              </span>
-              {/* The same word the closed argument rows say, for the same reason: a closed thing
-                  with a value has something to SAY, and it says what tapping does. */}
-              <span aria-hidden className="shrink-0 font-mono text-xs text-accent">
-                change
-              </span>
-            </button>
-          )
-        )}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {spec && (
@@ -428,7 +373,9 @@ export function OrderComposer({
                 // `chartPorts` below derives from the ARGS the tap writes.
                 <div className="space-y-1" data-testid="sail-chart-rail">
                   <div className="flex flex-wrap items-center gap-x-1">
-                    <SectionLabel className="mb-0">Where she is</SectionLabel>
+                    {/* "Chart" — the thing's name (the ⓘ beside it already says what it shows).
+                        "Where she is" was a description standing where a name belongs. */}
+                    <SectionLabel className="mb-0">Chart</SectionLabel>
                     <Explain label="the chart" panelClassName="w-full normal-case tracking-normal">
                       Her berth is the filled mark; a ring is a harbour this order would send her
                       to. The hairlines are the sea lanes — the water she can actually take. No line
@@ -482,7 +429,9 @@ export function OrderComposer({
                 client that blanked the dot on such a server would be losing the disclosure a second
                 way. The row also gives the argument list the label it never had. */}
             <div className="mb-2 flex flex-wrap items-center gap-x-1">
-              <SectionLabel className="mb-0">What {spec.verb} needs</SectionLabel>
+              {/* "Needs", not "What SAIL needs" — the chosen verb is already marked on the grid
+                  directly above, and the ⓘ beside this label names it again for the reader. */}
+              <SectionLabel className="mb-0">Needs</SectionLabel>
               <Explain label={spec.verb} panelClassName="w-full normal-case tracking-normal">
                 {spec.note ?? spec.help}
               </Explain>

@@ -869,3 +869,52 @@ export interface StudiedSkill {
   port: string
   effect: SkillEffect
 }
+
+// ── THE BOOK OF STANDING ORDERS (0034) ──────────────────────────────────────────────────────────
+// A provision preset is a HOUSE-owned standing order — "keep her at N days of stores" — that a
+// fleet points at by reference. The days figure is a RANGE target judged against the served
+// `endurance_days` when the fleet makes port; the tonnage it costs is computed there, from the
+// crew aboard then. Nothing on this side derives either figure — the client's job is to print
+// the target beside the crew it is measured against.
+
+export interface ProvisionPresetFleetRef {
+  id: string
+  name: string
+}
+
+export interface ProvisionPreset {
+  id: string
+  name: string
+  /** The RANGE target, in voyage-days — never a tonnage. Sized at fire time from crew aboard. */
+  days: number
+  /** The fleets sailing under this order. Served, so FLEETS and the book cannot disagree. */
+  fleets: ProvisionPresetFleetRef[]
+}
+
+/** What `world.provision_presets()` serves: the whole book, and how full it may get. */
+export interface ProvisionPresetBook {
+  max: number
+  presets: ProvisionPreset[]
+}
+
+/** `cmd.provision_preset_save` — create (id null) or adjust. Refusals arrive as `Refusal`. */
+export interface PresetSaved {
+  ok: true
+  id: string
+  name: string
+  days: number
+}
+
+export interface PresetDeleted {
+  ok: true
+  deleted: string
+  /** How many fleets the strike released — the FK detaches them, and the server says so. */
+  detached_fleets: number
+}
+
+export interface PresetApplied {
+  ok: true
+  fleet: string
+  preset: string | null
+  days: number | null
+}

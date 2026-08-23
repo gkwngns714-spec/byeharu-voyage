@@ -258,7 +258,9 @@ export function PortPicker({
 
   return (
     <div className="space-y-2">
-      <FilterBox value={filter} onChange={setFilter} label="Filter ports by name or country" />
+      {/* "Filter ports" — a placeholder names the control; one that explains its own matching
+          rules is teaching, not labelling (the owner's 2026-08-23 label sweep). */}
+      <FilterBox value={filter} onChange={setFilter} label="Filter ports" />
       {shown.length === 0 && (
         <p className="text-sm text-ink-muted">No port answers to that. Clear the filter to see them all.</p>
       )}
@@ -441,7 +443,7 @@ export function GoodPicker({
 
   return (
     <div className="space-y-2">
-      <FilterBox value={filter} onChange={setFilter} label="Filter goods by name or kind" />
+      <FilterBox value={filter} onChange={setFilter} label="Filter goods" />
       {shown.length > 0 && (
         <p className={fineClass()}>
           {shown.length} {shown.length === 1 ? 'good' : 'goods'}
@@ -492,7 +494,7 @@ export function GoodPicker({
               // black-pepper" and spent its second line saying nothing. The owner: "beside the name i
               // see again, a name repeated … i want beside the name show category of what the trade
               // good is in." Nothing is lost: the code is the parser's spelling, and the composed
-              // order line above still shows it (CommandScreen's "What will be sent").
+              // order line above still shows it (CommandScreen's "Order" block).
               // THE KIND, AND HOW SCARCE IT IS — the two things about a good that are true
               // everywhere, as against the three figures below, which are true only at this quay.
               // `rarity` is SERVED (0032, derived from how many ports actually produce the good),
@@ -588,7 +590,9 @@ function GoodDetail({
           (docs/NO_SPAGHETTI.md §5). */}
       {intent === 'buy' && (
         <section>
-          <SectionLabel className="mb-1.5">How much she can take</SectionLabel>
+          {/* "Capacity", not "How much she can take" — the owner's 2026-08-23 label sweep: a label
+              names a thing, it is not a question. The word is `world.buy_capacity()`'s own. */}
+          <SectionLabel className="mb-1.5">Capacity</SectionLabel>
           {capacity.bound ? (
             <>
               <HeroFigure value={formatInt(capacity.bound.max)} unit="t at most" />

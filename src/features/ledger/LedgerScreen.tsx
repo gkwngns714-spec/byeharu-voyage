@@ -355,6 +355,18 @@ function headline(event: LedgerEvent, portName: (code: string) => string): strin
         water === null || food === null ? '' : ` — ${water.toFixed(1)} t of water, ${food.toFixed(1)} t of food`
       }.`
     }
+    // A STANDING ORDER THAT COULD NOT RUN IS AN EVENT, not a silence. 0034 writes this row when a
+    // fleet makes port under a preset and the purse or the hold cannot carry it — and the whole
+    // reason the server writes it rather than shrugging is so the player can find out WHY their
+    // ship is under-provisioned. Rendering it through the generic fallback ("provision refused")
+    // would keep the row and lose the reason, which is the half-fix §7C names.
+    case 'PROVISION_REFUSED': {
+      const preset = str(p, 'preset')
+      const reason = str(p, 'reason')
+      return `${fleet} made port under her ${preset ?? 'standing'} order, but ${
+        reason ?? 'she could not be provisioned'
+      }.`
+    }
     case 'HIRED': {
       const count = num(p, 'count')
       const urgent = p['urgent'] === true || num(p, 'urgent') === 1

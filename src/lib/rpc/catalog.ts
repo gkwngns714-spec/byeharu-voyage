@@ -176,6 +176,35 @@ export const RPCS = {
       { name: 'p_fleet', type: 'uuid' },
     ],
   },
+  // 0034 — THE BOOK OF STANDING ORDERS. One read and three verbs, landed here together with the
+  // migration's grant rows because a grant with no catalogue entry is a door nobody opens — the
+  // 0022 lesson, written into that migration's own header. None takes a player id: each reads
+  // `public.current_player_id()` server-side and refuses what is not yours, the same property
+  // that makes cmd.found_house safe for a browser to hold. `provision_preset_apply` with a null
+  // `p_preset` CLEARS the fleet's standing order — clearing is not a second verb.
+  worldProvisionPresets: { schema: 'world', fn: 'provision_presets', args: [] },
+  cmdProvisionPresetSave: {
+    schema: 'cmd',
+    fn: 'provision_preset_save',
+    args: [
+      { name: 'p_preset', type: 'uuid' },
+      { name: 'p_name', type: 'text' },
+      { name: 'p_days', type: 'int' },
+    ],
+  },
+  cmdProvisionPresetDelete: {
+    schema: 'cmd',
+    fn: 'provision_preset_delete',
+    args: [{ name: 'p_preset', type: 'uuid' }],
+  },
+  cmdProvisionPresetApply: {
+    schema: 'cmd',
+    fn: 'provision_preset_apply',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_preset', type: 'uuid' },
+    ],
+  },
   // The ONE way a signed-in captain gets a house (0011). It takes no uid — the server reads
   // auth.uid() — which is why it is safe for a browser to hold, unlike public.new_house().
   cmdFoundHouse: {

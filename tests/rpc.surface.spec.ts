@@ -35,6 +35,10 @@ import {
   worldHaggleState,
   worldLedger,
   worldMarket,
+  worldProvisionPresets,
+  cmdProvisionPresetSave,
+  cmdProvisionPresetDelete,
+  cmdProvisionPresetApply,
   worldSnapshot,
 } from '../src/lib/rpc'
 
@@ -664,6 +668,13 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // because the game is played rather than because one tab was opened — but it is still a
       // writer reached through a read, and that is worth knowing before anyone "optimises" it.
       'worldStandings', 'worldBuffs',
+      // Pin moved deliberately 2026-08-23 with migration 0034 (a standing order keeps her
+      // provisioned): the book of standing orders — one read and three verbs, landed WITH the
+      // migration's grant rows because a grant with no catalogue row is a door nobody opens
+      // (0022 shipped that way once, and its header says so). None takes a player id; apply with
+      // a null preset CLEARS a fleet's order, so clearing is not a fifth entry point.
+      'worldProvisionPresets', 'cmdProvisionPresetSave', 'cmdProvisionPresetDelete',
+      'cmdProvisionPresetApply',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')
@@ -739,4 +750,67 @@ test('the catalogue spells found_house the way the migration does', () => {
   expect(RPCS.cmdFoundHouse.args.map((a) => a.name)).toEqual(['p_company_name', 'p_nation_code'])
   // And no uid crosses the wire — that is the whole security property of 0011.
   expect(rpcLabel('cmdFoundHouse')).not.toContain('uid')
+})
+
+// ── the book of standing orders (0034) ─────────────────────────────────────────────────────────
+//
+// The MECHANIC — the top-up on arrival, crew-at-fire-time, the trade-off, the cap, the written
+// refusal — is proven on the server side twice over (0034's self-assert and proof 07). What this
+// spec owes is the WIRE: every field the types declare read back off a real payload, and the
+// refusal contract on the verbs the browser actually holds. The test writes one order and strikes
+// it before it ends, so the local captain's book leaves as it arrived.
+
+test('the book of standing orders round-trips: write, adjust, apply, clear, strike', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+
+  const empty = expectOk(await worldProvisionPresets())
+  expect(empty.max).toBeGreaterThan(0)
+  expect(Array.isArray(empty.presets)).toBe(true)
+  const before = empty.presets.length
+
+  // WRITE. Every field PresetSaved declares, off a real answer.
+  const saved = expectOk(await cmdProvisionPresetSave(null, 'Spec Order', 21))
+  expect(isStr(saved.id)).toBe(true)
+  expect(saved.name).toBe('Spec Order')
+  expect(saved.days).toBe(21)
+
+  // ADJUST — days only, then name only. A null argument means "keep", not "blank".
+  expect(expectOk(await cmdProvisionPresetSave(saved.id, null, 30)).days).toBe(30)
+  expect(expectOk(await cmdProvisionPresetSave(saved.id, 'Spec Order II', null)).name).toBe(
+    'Spec Order II',
+  )
+
+  // APPLY, and the BOOK is where the edge is served — FleetsScreen joins on exactly this.
+  const applied = expectOk(await cmdProvisionPresetApply(fleet.id, saved.id))
+  expect(applied.fleet).toBe(fleet.name)
+  expect(applied.preset).toBe('Spec Order II')
+  expect(applied.days).toBe(30)
+  const book = expectOk(await worldProvisionPresets())
+  const row = book.presets.find((preset) => preset.id === saved.id)
+  expect(row).toBeDefined()
+  expect(row!.days).toBe(30)
+  expect(row!.fleets.map((f) => f.id)).toContain(fleet.id)
+  expect(isStr(row!.fleets[0].name)).toBe(true)
+
+  // CLEAR is apply-with-null, one verb, and the edge disappears from the served book.
+  expectOk(await cmdProvisionPresetApply(fleet.id, null))
+  const cleared = expectOk(await worldProvisionPresets())
+  expect(cleared.presets.find((preset) => preset.id === saved.id)!.fleets).toHaveLength(0)
+
+  // REFUSALS ARE TYPED, with a sentence — the F.5 contract on the new verbs.
+  const zero = await cmdProvisionPresetSave(saved.id, null, 0)
+  expect(zero.ok).toBe(false)
+  if (zero.ok) throw new Error('unreachable')
+  expect(zero.refusal.code).toBe('E_PARSE')
+  expect(zero.refusal.sentence.length).toBeGreaterThan(10)
+  const ghost = await cmdProvisionPresetApply(fleet.id, '00000000-0000-4000-8000-0000000000aa')
+  expect(ghost.ok).toBe(false)
+  if (ghost.ok) throw new Error('unreachable')
+  expect(ghost.refusal.code).toBe('E_NO_SUCH_PRESET')
+
+  // STRIKE, and leave the book as it was found.
+  const struck = expectOk(await cmdProvisionPresetDelete(saved.id))
+  expect(struck.deleted).toBe('Spec Order II')
+  expect(struck.detached_fleets).toBe(0)
+  expect(expectOk(await worldProvisionPresets()).presets.length).toBe(before)
 })

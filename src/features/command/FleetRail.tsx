@@ -10,6 +10,7 @@ import {
 } from '../../lib/format'
 import type { FleetView, MarketView, SnapshotConfig, SnapshotPort } from '../../lib/rpc'
 import { fleetCrew, fleetHoldTotal, fleetStores, hullFraction, worstHullFraction } from '../../domain/fleet'
+import { useWorld } from '../../live/worldStore'
 import type { BuyCapacityState } from './useBuyCapacity'
 import type { HaggleStateRead } from './useHaggleState'
 
@@ -34,7 +35,7 @@ import type { HaggleStateRead } from './useHaggleState'
 // for PROVISION, because *"water and food take the same tuns as cargo"* (DESIGN C.3) makes filling
 // the stores a cargo decision. Everything else is per-verb.
 //
-//   BUY        room in the hold · what this order would do · what moves the price
+//   BUY        the hold · what this order would do · price movement
 //   HIRE       her crew against her berths · the idle men in this port
 //   REPAIR     her worst hull, then every hull · whether there is a yard here, and its tier
 //   PROVISION  room in the hold · her stores and how many days they are worth
@@ -56,7 +57,9 @@ import type { HaggleStateRead } from './useHaggleState'
 //   2. WHAT THIS ORDER WOULD DO — `world.buy_capacity()`, which walks the same stepped quote a
 //      committed trade walks and names the limit that stops her. Asked once by the composer and
 //      handed down; see ./useBuyCapacity.ts.
-//   3. WHAT MOVES THE PRICE — see below, because this is the part that is easy to lie about.
+//   3. PRICE MOVEMENT — see below, because this is the part that is easy to lie about. (The label
+//      read "What moves the price" until 2026-08-23 — the owner: "what moves the price -> price
+//      movement … Why add unnecessary words?" A label names a thing; it is not a question.)
 //
 // ── "HOW MUCH NEGOTIATION CAN BE DONE" — THE ANSWER, AND HOW IT CHANGED UNDER THIS FILE ────────
 // The reference game (대항해시대 오리진) has a 협상 minigame: a before/after price, a delta, a
@@ -175,7 +178,7 @@ function HoldBlock({ fleet }: { fleet: FleetView }) {
   const quarter = fleet.officer_pct.QUARTERMASTER
   return (
     <section className={BLOCK}>
-        <SectionLabel className="mb-1.5">Room in the hold</SectionLabel>
+        <SectionLabel className="mb-1.5">Hold</SectionLabel>
         {/* Rule 2 — the number is the hero. The figure is the largest thing in the block and the
             words under it are the small ones, never the other way round. The recipe was written
             out here and again below, and the unfolded good row wanted a third: it is
@@ -246,7 +249,7 @@ function BuyOrderBlock({
   )
 }
 
-/** WHAT MOVES THE PRICE — the honest answer to "how much negotiation can be done". Every row is a
+/** PRICE MOVEMENT — the honest answer to "how much negotiation can be done". Every row is a
  *  served number; see this file's header for what each one is and why they are in this order. */
 function PriceBlock({
   market,
@@ -262,9 +265,9 @@ function PriceBlock({
   return (
       <section className={BLOCK}>
         <div className="mb-1.5 flex flex-wrap items-center gap-x-1">
-          <SectionLabel className="mb-0">What moves the price</SectionLabel>
+          <SectionLabel className="mb-0">Price movement</SectionLabel>
           <Explain
-            label="What moves the price"
+            label="Price movement"
             panelClassName="w-full normal-case tracking-normal"
           >
             A price has two halves. What a good is WORTH is the world's half, and it is the same for
@@ -281,8 +284,10 @@ function PriceBlock({
                 That makes it the row that matters, and it supersedes reading the purser's percentage
                 as if it were the outcome: the two rows below it are the CAUSES, this pair is the
                 RESULT. Before 0022 there was only one spread and no difference to draw. */}
+            {/* "spread", not "the port's spread" — the whole panel is already this port's, and the
+                hint carries the sentence (the owner, 2026-08-23: "the port's spread -> spread"). */}
             <StatRow
-              label="the port's spread"
+              label="spread"
               value={formatPct(quay ? quay.spread_published : market.port.spread, 1)}
               hint="Half of it is added to what you pay and half taken off what you are paid. A busier harbour publishes a narrower one, and it is the same figure for every house in port — a bargain never moves it, only what YOU are filled at inside it."
             />
@@ -294,7 +299,7 @@ function PriceBlock({
               />
             )}
             <StatRow
-              label="your purser"
+              label="purser"
               value={purser > 0 ? `−${formatPctPoints(purser, 1)} of it` : 'none posted'}
               plain={purser <= 0}
               hint="A purser does not narrow the harbour's spread — he wins a better fill inside it, on this fleet's quotes only. Post one from the Port tab."
@@ -303,7 +308,7 @@ function PriceBlock({
                 Every figure the server's: what is held, what the cap is, how many tries remain. */}
             {quay && (
               <StatRow
-                label="your bargain"
+                label="bargain"
                 value={
                   quay.concession > 0
                     ? `−${formatPctPoints(quay.concession_pct, 1)} of it`
@@ -329,12 +334,12 @@ function PriceBlock({
               />
             )}
             <StatRow
-              label="the mayor's tax"
+              label="tax"
               value={formatPct(market.port.tax_rate, 1)}
               hint="Charged on the quay, on top of the spread. No bargain touches it."
             />
             <StatRow
-              label="a big order"
+              label="big orders"
               value={`each ${formatTuns(config.trade_step_tuns)} dearer`}
               plain
               hint="An order is filled in steps and every step reprices, so the price you are shown is the price of the first step. Splitting a purchase across two ports beats forcing one market."
@@ -379,10 +384,34 @@ function CrewBlock({
   config: SnapshotConfig
 }) {
   const crew = fleetCrew(fleet)
+  // SIGNING CREW SHORTENS HER RANGE, AND THIS IS WHERE THAT BITES. 0034's standing order sizes
+  // stores for the crew aboard AT THE MOMENT IT FIRES, which the owner chose over sizing for full
+  // berths — *"crew now, but show it clearly"*. The hazard of that choice is precise: provision at
+  // Lisbon for eight, sign twenty at Cadiz, and she is carrying a larder built for a crew she no
+  // longer has. So the warning belongs on the screen where the crew is being signed, not only on
+  // FLEETS where the damage is discovered later.
+  //
+  // THE FIGURE IS SERVED AND NOT PROJECTED. It would be easy to compute what her range WILL be
+  // after this hire; that would be a second consumption arithmetic beside the server's, and the two
+  // would drift the first time a knob moved. `endurance_days` is the one answer, and HIRE already
+  // refreshes after an order runs, so the number corrects itself from the wire.
+  //
+  // The 0.01-day tolerance is the server's own: stores are numeric(10,3), so the dust a rounding
+  // can owe is ~0.003 days, and a bare `<` would flag a fleet that is short by an amount too small
+  // to buy — an order that could never be satisfied.
+  const presets = useWorld((s) => s.presets)
+  const standing = presets?.presets.find((pr) => pr.fleets.some((f) => f.id === fleet.id)) ?? null
+  const underOrder = standing !== null && fleet.endurance_days < standing.days - 0.01
   return (
     <section className={BLOCK}>
-      <SectionLabel className="mb-1.5">Her crew</SectionLabel>
+      <SectionLabel className="mb-1.5">Crew</SectionLabel>
       <HeroFigure value={formatInt(crew.aboard)} unit={`of ${formatInt(crew.max)} berths`} />
+      {underOrder && standing !== null && (
+        <p className={fineClass('mt-1 text-warning')}>
+          provision {formatVoyageDays(fleet.endurance_days)} — under her{' '}
+          {formatVoyageDays(standing.days)} order
+        </p>
+      )}
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
         <Gauge
           value={crew.aboard}
@@ -417,7 +446,7 @@ function CrewBlock({
           hint="The ceiling on a HIRE. The server counts them the same way (E_CREW_MAX, 0007:659)."
         />
         <StatRow
-          label="idle in this port"
+          label="idle here"
           value={port ? formatInt(port.crew_pool) : '—'}
           hint="The men idle here sign on at the quay's own rate. Ask for MORE than are idle and the rest must be found at a steeper price a head — dearer, never refused; the quay names the figure when the order runs."
         />
@@ -428,7 +457,7 @@ function CrewBlock({
             `aboard × rate`) — one product, one place; this row is the rate the product is made
             of. */}
         <StatRow
-          label="crew wage"
+          label="wage"
           value={`${formatDucats(config.wage_per_crew_day)} a day each`}
           hint="Paid to every crew member aboard for every day at sea, whatever she is doing. What it costs to SIGN one on is the port's own rate and is settled when the order runs."
         />
@@ -453,7 +482,7 @@ function HullsBlock({ fleet, port }: { fleet: FleetView; port: SnapshotPort | nu
   return (
     <>
       <section className={BLOCK}>
-        <SectionLabel className="mb-1.5">Her hulls</SectionLabel>
+        <SectionLabel className="mb-1.5">Hulls</SectionLabel>
         <HeroFigure value={formatPct(worst, 0)} unit="worst hull" />
         {/* EVERY HULL, NOT JUST THE WORST — because REPAIR mends the fleet TO a percentage, so the
             hull that is already above it is the one that will not be touched, and the player can
@@ -479,8 +508,10 @@ function HullsBlock({ fleet, port }: { fleet: FleetView; port: SnapshotPort | nu
       <section className={BLOCK}>
         {/* "SHIPYARD", NEVER "YARD" (the owner, 2026-08-23: "what is yard?"). A word the player
             has to ask about is jargon, and the no-jargon rule applies to the game's own nouns
-            first. The full word says what the place IS; the sentence says what it does. */}
-        <SectionLabel className="mb-1.5">The shipyard here</SectionLabel>
+            first. The full word says what the place IS; the sentence says what it does. And just
+            the word — "The … here" was padding around the name (the owner: "Why add unnecessary
+            words?"); the block's own prose already says it is this port's. */}
+        <SectionLabel className="mb-1.5">Shipyard</SectionLabel>
         {!port ? (
           <p className={fineClass()}>She is at sea. A hull is mended alongside.</p>
         ) : port.has_yard ? (
@@ -516,9 +547,12 @@ function StoresBlock({ fleet }: { fleet: FleetView }) {
           and on what actually fits, both of which are the server's — `cmd.preview()` runs the real
           verb and rolls it back, so it can say. Guessing it with `(water + days × crew × rate)`
           would be a client rule for a server decision. */}
+      {/* "Provision" — the same word the COMMANDING card's endurance figure and the verb itself
+          use, so the figure, the label and the order that moves it share one name. ("Her stores"
+          until 2026-08-23 — the owner's label sweep: cut every word that is not the name.) */}
       <div className="mb-1.5 flex flex-wrap items-center gap-x-1">
-        <SectionLabel className="mb-0">Her stores</SectionLabel>
-        <Explain label="her stores" panelClassName="w-full normal-case tracking-normal">
+        <SectionLabel className="mb-0">Provision</SectionLabel>
+        <Explain label="provision" panelClassName="w-full normal-case tracking-normal">
           Every tun of water is a tun of pepper she did not carry. What the stores would be worth
           after this order is named when you check it.
         </Explain>
@@ -533,7 +567,9 @@ function StoresBlock({ fleet }: { fleet: FleetView }) {
 }
 
 /**
- * WHAT IT WILL COST — the honest answer, which is "not yet known", said in the player's words.
+ * COST — the honest answer, which is "not yet known", said in the player's words. (The label read
+ * "What it will cost" until the owner's 2026-08-23 label sweep: a label names a thing, it is not
+ * a question.)
  *
  * `src/lib/rpc/types.ts:18-19`: *"a port carries `crew_pool` but no crew RATE, no water/food price
  * and no repair rate; those live in world_config, which snapshot() serves only as an allow-list …
@@ -552,8 +588,8 @@ function PricedOnTheDayBlock({ verb }: { verb: string }) {
       {/* One sentence stays — it is the block's whole answer. The second, which explains WHERE the
           figure does come from, is standing prose and lives behind the dot (Explain.tsx). */}
       <div className="mb-1.5 flex flex-wrap items-center gap-x-1">
-        <SectionLabel className="mb-0">What it will cost</SectionLabel>
-        <Explain label="what it will cost" panelClassName="w-full normal-case tracking-normal">
+        <SectionLabel className="mb-0">Cost</SectionLabel>
+        <Explain label="cost" panelClassName="w-full normal-case tracking-normal">
           Finish the order and the check below the composer runs the real thing and rolls it back,
           so it can tell you the price before a ducat moves.
         </Explain>
