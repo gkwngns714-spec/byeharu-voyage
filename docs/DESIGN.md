@@ -1033,7 +1033,12 @@ takes to regenerate — which is the whole basis of route competition between pl
 
 ### G.3 Real goods, 1500–1650
 
-~60 goods at V2, all historical, grouped so a player can reason about a category.
+**243 goods, all historical** (grown from the original 70 at the owner's direction: real
+trade by regions, at the granularity of the reference games). Grouped in seven categories so
+a player can reason about a category; rarity (0032) is derived from how many ports produce
+each good — 25 common staples, 27 uncommon, 58 rare regionals, 133 exotic one-or-two-port
+specialities. The table below names the anchor examples per category, not the full list —
+`data/goods.json` is the catalogue.
 
 | Category | Goods | Anchor producers → sinks |
 |---|---|---|

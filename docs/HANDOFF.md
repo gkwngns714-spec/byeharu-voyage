@@ -157,7 +157,7 @@ That last one is the game: buy salt at Lisboa, sail 188 nm to Cádiz, sell, buy 
   on every claim.
 - **Core reuse audit** — `docs/CORE_REUSE.md` (1,643 lines), 154 cited `path:line` references into the
   old repo. What to carry, what to adapt, what to leave, and a 16-item risk ledger.
-- **World data** — 214 ports, 91 countries, 51 seas, 25 regions, 70 goods. **Every coordinate is from
+- **World data** — 214 ports, 91 countries, 51 seas, 25 regions, 243 goods (grown from 70 on 2026-08-23 — DEV_LOG D21). **Every coordinate is from
   Wikidata P625 (CC0) and stores the item it came from.** `node scripts/check-ports.mjs` re-verifies
   the lot; worst country-bbox margin 0.0000°. Projection is equirectangular, chosen by measurement
   (Web Mercator stretches Longyearbyen 4.81×, Miller 2.16×, equirectangular 1.00×).

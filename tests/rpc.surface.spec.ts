@@ -45,6 +45,9 @@ import {
 let db: LocalDb
 
 test.beforeAll(async () => {
+  // One full build of the 243-good world (D21): ~2-3 min in Node PGlite. The default hook
+  // timeout was sized for a smaller chain.
+  test.setTimeout(360_000)
   db = await openLocalDb({ loadChain, dataDir: 'memory://', log: () => {} })
   setBackend(createLocalBackend(db))
 })

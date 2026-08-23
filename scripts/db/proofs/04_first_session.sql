@@ -52,6 +52,7 @@ declare
   v_dest   uuid;
   v_good   uuid;
   v_back   uuid;
+  v_back_qty numeric;
   v_good_code text;
   v_back_code text;
   v_dest_code text;
@@ -232,12 +233,23 @@ begin
      order by (e->>'profit')::numeric desc, e->>'code'
   loop
     v_home := world.trade_routes(r_out.dest_id, null, null, null, v_lis);
-    select (e->>'good_id')::uuid, e->>'code'
-      into v_back, v_back_code
+    -- AFFORDABILITY IS THE QUAY'S OWN ARITHMETIC, NOT A PROXY. This used to filter on
+    -- `base_value * 10 < stake` and then buy a flat 20 tuns — and the day the catalogue grew to
+    -- 243 goods the top-profit return row out of Setubal became sword-blades, whose 20 tuns cost
+    -- roughly twice the stake the proxy had approved. The order failed E_INSUFFICIENT_FUNDS, the
+    -- queue halted, and the proof reddened on a correct system. So the filter now prices the very
+    -- purchase it will make from the row's own outlay/qty (the same authority that charges it),
+    -- with 15%% headroom for drift between this read and the arrival that executes it. Buying
+    -- fewer tuns than the row priced can only cost less per tun (price impact rises with
+    -- quantity), so the estimate is conservative by construction.
+    select (e->>'good_id')::uuid, e->>'code', least(20, floor((e->>'qty')::numeric))
+      into v_back, v_back_code, v_back_qty
       from jsonb_array_elements(v_home->'routes') e
       join public.goods g on g.code = e->>'code'
      where g.bulk <= 1.0
-       and g.base_value * 10 < v_start
+       and (e->>'qty')::numeric >= 1
+       and ((e->>'outlay')::numeric / (e->>'qty')::numeric)
+             * least(20, floor((e->>'qty')::numeric)) * 1.15 < v_start
      order by (e->>'profit')::numeric desc, e->>'code'
      limit 1;
     if v_back is not null then
@@ -347,12 +359,13 @@ begin
   --    destination was: a port is only worth sailing to if there is something to bring back, and
   --    choosing the two legs apart is how a round trip ends up with an empty one. No fleet was
   --    named for that read — she is at sea by now, and fleet_buy_capacity reads the port a fleet is
-  --    LYING in — so the quay priced it at its own stated quantity and this order takes twenty tuns
-  --    of what it named. Affordability was judged against the stake rather than against what is
-  --    left after loading, because by the time this order runs the outbound cargo has been sold.
+  --    LYING in — so the quay priced it at its own stated quantity and this order takes that
+  --    quantity (capped at twenty tuns for a Barca's hold). Affordability was judged against the
+  --    stake, from the row's own outlay, because by the time this order runs the outbound cargo
+  --    has been sold.
 
   perform cmd.issue(v_fleet, 'SELL ' || v_good_code || ' ALL');
-  perform cmd.issue(v_fleet, 'BUY ' || v_back_code || ' 20');
+  perform cmd.issue(v_fleet, 'BUY ' || v_back_code || ' ' || v_back_qty::int);
   perform cmd.issue(v_fleet, 'SAIL Gaivota TO LIS');
   select count(*) into v_queued from public.orders where fleet_id = v_fleet and status = 'pending';
   if v_queued <> 3 or (select status from public.fleets where id = v_fleet) <> 'SAILING' then

@@ -95,6 +95,12 @@ async function reachable(request: { get: (url: string) => Promise<{ ok(): boolea
  */
 async function ready(page: import('@playwright/test').Page) {
   await page.waitForLoadState('domcontentloaded')
+  // BUDGET, MEASURED (2026-08-23, D21): the 243-good world cold-boots in 78.8 s in an idle
+  // chromium — the chain's 52,002-row price seed is most of it — and this suite runs several
+  // workers, each booting its own tab, so contention multiplies that. 90 s was sized for the
+  // ~8-15 s chain this comment block used to describe and it now fails a CORRECT build. 300 s
+  // covers the measured boot times a loaded machine; the real cure is the pre-built database
+  // image DEV_LOG D21 names, at which point this number can shrink back.
   await page.waitForFunction(
     () => {
       const pulsing = document.querySelectorAll('.animate-pulse').length
@@ -102,7 +108,7 @@ async function ready(page: import('@playwright/test').Page) {
       return pulsing === 0 && !opening
     },
     undefined,
-    { timeout: 90_000 },
+    { timeout: 300_000 },
   )
   // One frame, so nothing measures a box that is still being laid out.
   await page.waitForTimeout(250)
@@ -123,6 +129,8 @@ async function ready(page: import('@playwright/test').Page) {
 
 for (const tab of TABS) {
   test(`${tab}: every table is fully readable at ${PHONE.width}px`, async ({ page, request, baseURL }) => {
+    // The boot dominates (see ready()); the measurement itself is seconds.
+    test.setTimeout(420_000)
     test.skip(
       !(await reachable(request, baseURL ?? '')),
       `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,

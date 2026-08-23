@@ -47,15 +47,15 @@ insert into public.world_config (key, value, description) values
   -- Affinity is a function of ONE thing: how far this port is from the nearest place that makes
   -- the good. These knobs are that function, so balance is a value to change and re-measure
   -- (scripts/db/measure-first-voyage.mjs) rather than a formula to re-argue.
-  ('affinity_producer', to_jsonb(0.90),
+  ('affinity_producer', to_jsonb(0.92),
    'Affinity at a port that PRODUCES the good — the floor of every price in the world. The gap between this and affinity_home is the producer''s own discount, and it is what makes buying at the source worth the sail.'),
-  ('affinity_home', to_jsonb(0.98),
+  ('affinity_home', to_jsonb(0.99),
    'Affinity at a port that does NOT produce it but is right next to one. Where the distance curve starts.'),
-  ('affinity_span', to_jsonb(0.88),
+  ('affinity_span', to_jsonb(0.85),
    'How much affinity climbs between there and the far side of affinity_reach_nm. home + span is the dearest a good ever gets.'),
-  ('affinity_reach_nm', to_jsonb(8000),
+  ('affinity_reach_nm', to_jsonb(9000),
    'The distance at which a good is as dear as it will ever be. Beyond it nothing gets dearer: the Malabar-to-Lisbon pepper run is the TOP of the scale, not the middle of it.'),
-  ('affinity_curve', to_jsonb(0.75),
+  ('affinity_curve', to_jsonb(0.80),
    'The shape between them. Below 1 it rises fast then flattens, so neighbours differ a little and an ocean crossing differs a lot — which is the whole reason to sail far.')
 on conflict (key) do nothing;
 
@@ -114,13 +114,24 @@ grant select on public.port_goods, public.trade_daily to authenticated;
 --
 --     prod 0.60 home 0.85 span 1.50 reach 6000 curve 1.00   median 32.3%   <- what shipped first
 --     prod 0.88 home 0.97 span 0.90 reach 8000 curve 0.70   median 11.5%
---   * prod 0.90 home 0.98 span 0.88 reach 8000 curve 0.75   median  8.8%   <- these
+--     prod 0.90 home 0.98 span 0.88 reach 8000 curve 0.75   median  8.8%   <- shipped on 70 goods
 --     prod 0.92 home 0.99 span 0.85 reach 9000 curve 0.80   median  6.0%
 --
--- 32% a voyage is not a trading game, it is a money printer: the purse doubled in two round trips
--- of twenty-five minutes each. At 8.8% a good voyage pays, the best one available pays about 19%,
--- and nothing on the board is a loss — so a player is choosing between degrees of good, which is
--- what a market is. scripts/db/proofs/05_first_voyage_balance.sql holds the band.
+-- RE-MEASURED when the catalogue grew 70 -> 243 goods (1,270 specialty rows): the long tail of
+-- one- and two-port specialties steepened the local gradients, and the same sweep on the NEW
+-- world read (medians over 14 ports):
+--
+--     prod 0.90 home 0.98 span 0.88 reach 8000 curve 0.75   median 10.4%   <- the old setting
+--   * prod 0.92 home 0.99 span 0.85 reach 9000 curve 0.80   median  7.5%   <- these
+--     prod 0.92 home 1.00 span 0.80 reach 9000 curve 0.85   median  7.2%
+--
+-- Through the quay's own read (proof 05, world.trade_routes at 8 ports) the old setting measured
+-- 16.5% on the grown catalogue — past the 16.0 top of the band — and the starred one brings it
+-- back inside. 32% a voyage is not a trading game, it is a money printer: the purse doubled in
+-- two round trips of twenty-five minutes each. At this setting a good voyage pays, the best one
+-- available pays more, and nothing on the board is a loss — so a player is choosing between
+-- degrees of good, which is what a market is. scripts/db/proofs/05_first_voyage_balance.sql
+-- holds the band.
 --
 -- The five knobs live in world_config (top of this file), so the ECONOMY IS TUNED BY MEASUREMENT:
 -- scripts/db/measure-first-voyage.mjs plays the best opening voyage from two dozen ports and

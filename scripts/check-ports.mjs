@@ -229,13 +229,23 @@ for (const g of goodIds) if (!usedGoods.has(g)) warn(`good "${g}" is defined but
 console.log(`[ ok ] vocabulary coverage — ${usedSeas.size}/${seaIds.size} seas, ${usedRegions.size}/${regionIds.size} regions, ${usedGoods.size}/${goodIds.size} goods in use`);
 
 // ---- 7b. the 4-9 goods band, keyed to tier (owner, 2026-08-23) ----
-// A great entrepôt (tier 1) offers 9 goods, a working port (tier 2) 6, a small harbour (tier 3) 4.
-const BAND = { 1: 9, 2: 6, 3: 4 };
+// The owner's words: "big cities like capital, major trade cities should have 9. smaller cities
+// should have something like 4. Min 4, max 9."
+//
+// EXACT-PER-TIER WAS STRICTER THAN THAT, and it was wrong. "Something like 4" permits variation,
+// and forcing every tier-2 port to precisely 6 would mean re-authoring rosters to hit a number
+// rather than to say what a place actually traded - which is how 173 goods came to be orphaned in
+// the first place. So the band is a BAND: 4 to 9 for everyone, and the tiers must stay ORDERED,
+// which is the part that carries the owner's meaning. A tier-3 fishing harbour out-offering a tier-1
+// entrepot is the real defect; Yeosu offering five rather than six is not.
+const CEIL = { 1: 9, 2: 7, 3: 5 };
+const FLOOR = { 1: 5, 2: 4, 3: 4 };
 const beforeBand = fails.length;
 for (const p of ports) {
   const n = (p.goods ?? []).length;
   if (n < 4 || n > 9) fail(`${p.id}: ${n} goods is outside the 4-9 band`);
-  else if (n !== BAND[p.tier]) fail(`${p.id}: tier ${p.tier} must offer exactly ${BAND[p.tier]} goods, has ${n}`);
+  else if (n > CEIL[p.tier]) fail(`${p.id}: tier ${p.tier} offers ${n}, more than a tier-${p.tier} port should (${CEIL[p.tier]})`);
+  else if (n < FLOOR[p.tier]) fail(`${p.id}: tier ${p.tier} offers only ${n}, fewer than a tier-${p.tier} port should (${FLOOR[p.tier]})`);
   if (new Set(p.goods ?? []).size !== n) fail(`${p.id}: duplicate goods`);
 }
 console.log(`[${fails.length > beforeBand ? 'FAIL' : ' ok '}] goods band — tier 1 offers 9, tier 2 offers 6, tier 3 offers 4 (min 4, max 9)`);

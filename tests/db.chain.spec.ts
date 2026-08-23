@@ -184,6 +184,10 @@ test('a migration that fails names the FILE and carries the SQLSTATE', async () 
 // ── booting the world ──────────────────────────────────────────────────────────────────────────
 
 test('a cold boot ends ready, seeded with the K.1 first session, and reports every phase', async () => {
+  // One full build of the 243-good world: ~2-3 min in Node PGlite (the 52,002-row price seed is
+  // 53 s of it alone — measured 2026-08-23, D21), more under parallel workers. The 120 s global
+  // timeout was sized for a smaller world and failed a correct chain.
+  test.setTimeout(360_000)
   const channel = createBootChannel()
   const phases: BootPhase[] = []
   const migrations: string[] = []
@@ -252,10 +256,14 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
   // nothing, which is the same defect this file's own LAST pin had a fortnight ago.
   //
   // Raised rather than sharded because the two full builds ARE the assertion: the point is that a
-  // chain change rebuilds instead of layering, and you cannot prove that with one build. If this
-  // starts timing out again the answer is a lighter fixture, not a bigger number — a test that
-  // needs ten minutes will be one nobody runs.
-  test.setTimeout(360_000)
+  // chain change rebuilds instead of layering, and you cannot prove that with one build. The last
+  // revision of this comment said "if this starts timing out again the answer is a lighter
+  // fixture, not a bigger number" — and then the OWNER grew the world to 243 goods (D21), which
+  // is not a fixture that can be lightened: the fixture IS the real chain, and two builds are now
+  // ~6 min alone (one build measured 2-3 min in Node PGlite). So the number moves with the world
+  // it measures, and the standing answer to "a test nobody runs" is the pre-built database image
+  // D21 names, which would collapse both builds to a copy.
+  test.setTimeout(720_000)
   const dir = await scratchDataDir('rebuild')
   try {
     // 1. Build a world and put a mark in it that only survives if the data survives.

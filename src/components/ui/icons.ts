@@ -6,10 +6,10 @@
 // decorate empty states and mark a fold, they never replace a word. A glyph enters that half only
 // when a screen needs it.
 //
-// The TRADE-GOOD half is the opposite: it is a complete set, one mark per row of `data/goods.json`,
-// because the owner asked for a picture for each trade good and a picker of seventy rows that
-// repeats seven marks is a picker with no marks at all. See the header of that section for the
-// constraint every one of them was drawn against.
+// The TRADE-GOOD half covers every good a player meets often: the original seventy each keep
+// their own mark, and of the 243-good catalogue every good offered at five or more ports has one
+// too — the long tail wears its category glyph beside its name and rarity mark, which is truthful
+// and tellable. goodIcons.ts states the policy; the section header below states the drawing rule.
 
 export const ICON_NAMES = [
   'anchor',
@@ -119,6 +119,26 @@ export const ICON_NAMES = [
   'goodHemp',
   'goodFlax',
   'goodWhaleOil',
+  // ── DRAWN MARKS FOR THE MOST-TRADED OF THE 243-GOOD CATALOGUE ────────────────────────────────
+  // When the catalogue grew 70 -> 243, drawing every good stopped being honest work: 173 new
+  // goods, most offered at one or two ports, would be 173 marks nobody could tell apart at 22px.
+  // The policy is now: every good a player meets OFTEN gets its own mark, and the long tail wears
+  // its category glyph — which is truthful (a spice looks like a spice) and already the fallback
+  // goodIcon() serves. "Often" is measured, not felt: these twelve are the new goods offered at
+  // five or more ports (the uncommon tier and up). A new good that grows into that tier earns its
+  // drawing then.
+  'goodCitrus',
+  'goodCoconuts',
+  'goodDates',
+  'goodRye',
+  'goodBeer',
+  'goodCoir',
+  'goodSappanwood',
+  'goodSoap',
+  'goodArecaNuts',
+  'goodButter',
+  'goodPaper',
+  'goodHoney',
   // ── THE FOUR RARITY TIERS (0032) — a SHAPE per tier, so rarity is never colour alone ─────────
   // Drawn for ~12px: four distinct silhouettes (ring, diamond, faceted gem, four-point star),
   // because at that size interior detail is gone and the outline is all a colourblind player or a
@@ -367,6 +387,30 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   // A lamp burning it. A whale's fluke was the first cut of this mark and it read as the tea sprig;
   // the thing train oil is actually bought for does not collide with anything.
   goodWhaleOil: ['M4.4 14.2h11.2l3.6-1.6-.8 3c-.7 2.4-2.9 4-5.6 4h-3c-3.2 0-5.4-2.3-5.4-5.4Z', 'M18.6 11.4c-1.5-1.2-2.2-2.4-2.2-3.6 0-1.5 1-2.8 2.2-3.8 1.2 1 2.2 2.3 2.2 3.8 0 1.2-.7 2.4-2.2 3.6Z', 'M4.4 14.6c-1.3 0-2.2-.9-2.2-2s.9-2 2.2-2'],
+  // Lemon: the pointed-oval fruit with a stem leaf — nothing else in the set is a tipped ellipse.
+  goodCitrus: ['M6.2 9.8a6.6 5 45 1 0 9.4 9.4a6.6 5 45 1 0 -9.4-9.4Z', 'M6.2 9.8 4.6 8.2', 'M15.6 4.4c1.6-.4 3 0 4 1.2-1.2 1-2.6 1.2-4 .4-.4-.6-.4-1.2 0-1.6Z', 'M16.4 6.4l-1.6 2.2'],
+  // Coconut: the round nut with its three germination eyes — a circle carrying three dots.
+  goodCoconuts: ['M12 4.6a7.6 7.6 0 1 0 0 15.2a7.6 7.6 0 1 0 0-15.2Z', 'M12 8.6a.9.9 0 1 0 0 1.8a.9.9 0 1 0 0-1.8Z', 'M9.4 13a.9.9 0 1 0 0 1.8a.9.9 0 1 0 0-1.8Z', 'M14.6 13a.9.9 0 1 0 0 1.8a.9.9 0 1 0 0-1.8Z'],
+  // Date palm: trunk, four fronds, and the hanging fruit cluster under them.
+  goodDates: ['M12 21V9.5', 'M12 9.5C9.5 9.5 7 8 5.5 5.5 8.5 5 11 6.5 12 9.5Z', 'M12 9.5c2.5 0 5-1.5 6.5-4-3-.5-5.5 1-6.5 4Z', 'M12 9.5C10.5 7 10.5 4.5 12 2.5c1.5 2 1.5 4.5 0 7Z', 'M9.8 11.6a1.1 1.1 0 1 0 0 2.2a1.1 1.1 0 1 0 0-2.2Z', 'M14.2 11.6a1.1 1.1 0 1 0 0 2.2a1.1 1.1 0 1 0 0-2.2Z'],
+  // Rye: a bearded ear — the awns wheat's twin-lobed glyph deliberately does not have.
+  goodRye: ['M12 21V4.5', 'M12 7.5 8.5 4', 'M12 7.5 15.5 4', 'M12 11 8.5 7.5', 'M12 11l3.5-3.5', 'M12 14.5 8.5 11', 'M12 14.5l3.5-3.5'],
+  // Beer: a tankard — body, handle and the foam standing proud of the rim.
+  goodBeer: ['M6.5 8.5h9.5V20a1 1 0 0 1-1 1h-7.5a1 1 0 0 1-1-1Z', 'M16 11h2.2a2.6 2.6 0 0 1 0 5.2H16', 'M6.5 8.5c-.4-2.6 1-4.2 2.8-4.2 .6-1 1.6-1.6 2.8-1.6 1.4 0 2.6.8 3 2 1.6.4 2.4 1.8 1.9 3.8Z'],
+  // Coir: a coiled rope with its working end loose — read as rope, not as the hemp leaf-ring.
+  goodCoir: ['M12 5.4a6.6 6.6 0 1 0 0 13.2a6.6 6.6 0 1 0 0-13.2Z', 'M12 8.8a3.2 3.2 0 1 0 0 6.4a3.2 3.2 0 1 0 0-6.4Z', 'M17 16.6 21 20.4', 'M18.6 15l2.9 2.9'],
+  // Sappanwood: a split billet dripping its dye — two staves and the drop beneath.
+  goodSappanwood: ['M5 4.8h4l1.6 12H6.6Z', 'M15 4.8h4l-1.6 12h-4Z', 'M12 17.4c-1 1.2-1.5 2.1-1.5 2.9a1.5 1.5 0 0 0 3 0c0-.8-.5-1.7-1.5-2.9Z'],
+  // Soap: a bar with rising bubbles.
+  goodSoap: ['M4.5 12.5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2Z', 'M8.5 6.8a1.4 1.4 0 1 0 0 2.8a1.4 1.4 0 1 0 0-2.8Z', 'M13.4 3.6a2 2 0 1 0 0 4a2 2 0 1 0 0-4Z', 'M17.6 7.4a1.1 1.1 0 1 0 0 2.2a1.1 1.1 0 1 0 0-2.2Z'],
+  // Areca: the pointed betel leaf with two nuts at its foot.
+  goodArecaNuts: ['M12 2.8c4 2.6 6 5.8 6 9 0 3.4-2.6 6-6 6s-6-2.6-6-6c0-3.2 2-6.4 6-9Z', 'M12 6v11', 'M9.2 18.6a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0Z', 'M13.6 19.4a1.3 1.3 0 1 0 2.6 0a1.3 1.3 0 1 0 -2.6 0Z'],
+  // Butter: the slab on its dish, a pat cut off the end.
+  goodButter: ['M4 16.5h16', 'M5.5 16.5 7 19h10l1.5-2.5', 'M6.5 16.5v-4h8v4', 'M14.5 12.5h3.5v4', 'M14.5 14.5h3.5'],
+  // Paper: a scroll — rolled head, hanging sheet, two written lines.
+  goodPaper: ['M8 4.2a2.2 2.2 0 1 0 0 4.4h11a2.2 2.2 0 0 1-2.2-2.2A2.2 2.2 0 0 0 14.6 4.2Z', 'M8 8.6h8.8V19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6.4', 'M9.5 12.4h5.8', 'M9.5 15.6h5.8'],
+  // Honey: the straw skep — dome, coiled bands, and its little arch of a door.
+  goodHoney: ['M12 4.5c-4.4 0-7.5 3.6-7.5 8.2 0 2.6.8 4.8 2.2 6.3h10.6c1.4-1.5 2.2-3.7 2.2-6.3 0-4.6-3.1-8.2-7.5-8.2Z', 'M5 9.6h14', 'M4.5 14h15', 'M5.8 17h12.4', 'M12 19v-2.6a1.6 1.6 0 0 0-1.6-1.6', 'M12 19v-2.6a1.6 1.6 0 0 1 1.6-1.6'],
   // ── rarity tiers (0032) — silhouettes only; see the note on ICON_NAMES ───────────────────────
   // A plain ring: the everyday coin of the catalogue.
   rarityCommon: ['M12 6.6a5.4 5.4 0 1 0 0 10.8a5.4 5.4 0 1 0 0-10.8Z'],
