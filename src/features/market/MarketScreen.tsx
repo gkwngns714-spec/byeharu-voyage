@@ -36,6 +36,9 @@ import type {
 } from '../../lib/rpc'
 import { handOffTrade } from '../../domain/order'
 import { housePortCode } from '../../domain/fleet'
+// WHICH HARBOUR THIS HOUSE IS READING — one owner, shared with PORT; the MAP is its named next
+// caller (src/store/harbour.ts carries the whole reasoning).
+import { harbourCode, useHarbour } from '../../store/harbour'
 // WHERE A GOOD IS WORTH MORE THAN IT IS HERE — a section, not this screen's. The Command tab's
 // unfolded good row names the same destination from the same read, so the index moved out of
 // ./marketRows into src/domain/trade rather than being copied across a screen boundary.
@@ -119,15 +122,13 @@ export function MarketScreen() {
   const loadRoutes = useWorld((s) => s.loadRoutes)
   const open = useWorld((s) => s.open)
 
-  // LEFT COMPONENT-LOCAL, DELIBERATELY (2026-08-22). PORT persists the same choice to
-  // sessionStorage (`features/port/portView.ts:21-25` names this as a seam rather than copying
-  // it), so a player who picks Cadiz here, checks their fleet and comes back does land on Lisboa
-  // again. The fix is NOT to reach into PORT's module — a screen may not import another screen,
-  // and copying it would be the second author `portView.ts` was careful not to create. It is to
-  // promote "which port is this house LOOKING at" into a section of its own, which is a change to
-  // two screens and a new module and does not belong inside the trade-finding slice. Named here so
-  // it is not lost.
-  const [chosenPortId, setChosenPortId] = useState<string | null>(null)
+  // WHICH HARBOUR — the ONE owner (src/store/harbour.ts), shared with PORT. This was a
+  // component-local `chosenPortId` that died on every tab switch (pick Cádiz, check the fleet,
+  // come back: Lisboa) while PORT persisted its own copy of the same choice — the seam both files
+  // named on 2026-08-22 and this promotion closes. By port CODE, because that is the world's
+  // stable name; the market fetch converts to id through `portByCode`.
+  const picked = useHarbour((s) => s.picked)
+  const pick = useHarbour((s) => s.pick)
   const [loadError, setLoadError] = useState<{ portId: string; refusal: Refusal | null } | null>(
     null,
   )
@@ -152,10 +153,12 @@ export function MarketScreen() {
     const code = housePortCode(fleets)
     return code ? (portByCode[code] ?? null) : null
   }, [fleets, portByCode])
-  // The player's port first; the first port of the world only so that a house with no fleet at all
-  // still opens on a real market rather than on nothing.
-  const portId = chosenPortId ?? homePort?.id ?? snapshot?.ports[0]?.id ?? null
-  const port = portId ? (snapshot?.ports.find((p) => p.id === portId) ?? null) : null
+  // The pick, else the player's port, else the first port of the world so that a house with no
+  // fleet at all still opens on a real market — `harbourCode` is the ONE spelling of that
+  // fallback, and PORT calls the same function.
+  const portCode = harbourCode(picked, fleets, snapshot?.ports ?? [])
+  const port = portCode ? (portByCode[portCode] ?? null) : null
+  const portId = port?.id ?? null
   const view = portId ? markets[portId] : undefined
   const fleetHere = fleets.find((f) => port && f.port === port.code) ?? null
 
@@ -323,10 +326,10 @@ export function MarketScreen() {
               ports={snapshot?.ports ?? []}
               query={query}
               onQuery={setQuery}
-              current={portId}
+              current={portCode}
               home={homePort}
-              onPick={(id) => {
-                setChosenPortId(id)
+              onPick={(code) => {
+                pick(code)
                 setPortsOpen(false)
               }}
             />
@@ -762,9 +765,10 @@ function PortPicker({
   ports: readonly SnapshotPort[]
   query: string
   onQuery: (q: string) => void
+  /** The harbour being read, by port CODE — src/store/harbour.ts's currency. */
   current: string | null
   home: SnapshotPort | null
-  onPick: (id: string) => void
+  onPick: (code: string) => void
 }) {
   const needle = fold(query.trim())
 
@@ -814,7 +818,7 @@ function PortPicker({
       {home && (
         <div className="flex flex-wrap items-center gap-1.5 pt-2">
           <SectionLabel className="mb-0">Your fleet</SectionLabel>
-          <PortChip port={home} active={home.id === current} onPick={onPick} />
+          <PortChip port={home} active={home.code === current} onPick={onPick} />
         </div>
       )}
 
@@ -825,7 +829,7 @@ function PortPicker({
       ) : (
         <div className="flex flex-wrap gap-1.5 pt-2">
           {listed.map((p) => (
-            <PortChip key={p.id} port={p} active={p.id === current} onPick={onPick} />
+            <PortChip key={p.id} port={p} active={p.code === current} onPick={onPick} />
           ))}
         </div>
       )}
@@ -846,12 +850,12 @@ function PortChip({
 }: {
   port: SnapshotPort
   active: boolean
-  onPick: (id: string) => void
+  onPick: (code: string) => void
 }) {
   return (
     <Button
       variant={active ? 'chip-on' : 'chip'}
-      onClick={() => onPick(port.id)}
+      onClick={() => onPick(port.code)}
       // The code and the region are what the field above matches on, so the chip carries them
       // where a pointer can read them. They are not printed: 214 chips each carrying three facts
       // is a wall, and the name is the fact the player is looking for.

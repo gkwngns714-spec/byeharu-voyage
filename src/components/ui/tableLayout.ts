@@ -31,6 +31,8 @@
 // The page still never scrolls sideways: the scroll happens INSIDE this box, which is the whole
 // point of Table.tsx's first structural rule.
 
+import { hScrollClass } from './scrollAffordance'
+
 /** Classes for the <Table> wrapper of a table that may be wider than a phone.
  *  @param stickyBg the token background the sticky first column paints over. IT MUST MATCH THE
  *  SURFACE THE TABLE SITS ON, or the scrolling columns show through the pinned one.
@@ -57,15 +59,12 @@ export function scrollTableClass(stickyBg: 'panel' | 'surface' | 'surface-2' = '
       : stickyBg === 'surface'
         ? '[&_tr>*:first-child:not([colspan])]:bg-surface'
         : '[&_tr>*:first-child:not([colspan])]:bg-surface-2',
-    // 4. a visible, thin, always-present scrollbar
-    // NOTE: no `scrollbar-width: thin`. The standard property wins over the ::-webkit-scrollbar
-    // pseudo-elements in Chromium and selects an OVERLAY scrollbar, which paints nothing at rest —
-    // measured: `offsetHeight - clientHeight === 0`, i.e. no gutter, i.e. no affordance. Styling
-    // the pseudo-element alone gives a classic scrollbar that reserves 6px and is always visible.
-    'overscroll-x-contain',
-    '[&::-webkit-scrollbar]:h-1.5',
-    '[&::-webkit-scrollbar-track]:rounded [&::-webkit-scrollbar-track]:bg-surface-2',
-    '[&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-edge',
+    // 4. a visible, thin, always-present scrollbar. The recipe (and the measured reason the
+    // standard `scrollbar-width: thin` cannot draw one — it selects Chromium's overlay scrollbar,
+    // which paints nothing at rest) lives in scrollAffordance.ts now: the compendium's filter
+    // strips owe the player the same affordance, and two spellings of one scrollbar would be the
+    // silent copy.
+    hScrollClass(),
   ].join(' ')
 }
 

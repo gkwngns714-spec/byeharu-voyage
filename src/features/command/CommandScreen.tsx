@@ -418,24 +418,26 @@ export function CommandScreen() {
                    list you rendered is the only count that cannot drift from it. */
                 aside={<Badge tone="neutral">{verbs.length} verbs</Badge>}
               />
-              <OrderComposer
-                verbs={verbs}
-                spec={spec}
-                args={args}
-                fleet={fleet}
-                snapshot={snapshot}
-                port={port}
-                market={market}
-                onChooseVerb={chooseVerb}
-                onSetArg={setArg}
-              />
+              {/* ── THE ORDER, ITS CONTROLS AND ITS CHECK STAND AT THE HEAD OF THE CARD ─────────
+                  (the owner approved this placement 2026-08-23: "number 1 go"). They used to sit
+                  under the pickers, which put the Issue button 1,262px from the top of the page at
+                  390px once a SAIL destination was chosen — the player picked a harbour and then
+                  scrolled a screen and a half to send her. The head is also the truer reading: the
+                  line IS the order being written, so it forms in front of the player as each pick
+                  below fills it in.
 
-              {/* THE LINE — read-only, and the whole contract with the server. It sits in ordinary
-                  document flow, after the pickers, and the player scrolls to it (the owner,
-                  2026-08-23: "what will be sent tab stays on the page until the scroll is down
-                  enough. i don't like this" — said of a sticky version that followed the viewport;
-                  it must not come back as sticky, fixed, or any other self-repositioning shape). */}
-              <div className="mt-4 space-y-3 rounded-md border border-accent/25 bg-accent-soft p-3">
+                  THIS IS ORDINARY LAYOUT, NOT BEHAVIOUR, and that is why it does not touch the
+                  no-restructure law (OWNER_REQUESTS 15/25): the block is in ordinary document
+                  flow, always in the same place, and nothing about it appears on press, docks, or
+                  follows the scroll (the owner, 2026-08-23: "what will be sent tab stays on the
+                  page until the scroll is down enough. i don't like this" — said of a sticky
+                  version; it must not come back as sticky, fixed, or any other self-repositioning
+                  shape).
+
+                  THE CHECK STAYS WITH THE BUTTON IT GATES. The dry run's verdict — estimate or
+                  refusal — is what disables Issue, so the two moved together: a refusal printed a
+                  screen away from the control it blocks is a reason orphaned from its consequence. */}
+              <div className="space-y-3 rounded-md border border-accent/25 bg-accent-soft p-3">
                 {/* The dot rides the section label, where the reader is already looking, rather
                     than floating alone under the line it explains. */}
                 {/* "Order", not "What will be sent" (the owner, 2026-08-23: "Why add unnecessary
@@ -511,6 +513,23 @@ export function CommandScreen() {
                   sent: {issued}
                 </Notice>
               )}
+
+              {/* The rule the head block answers to also binds what follows it: the composer sits
+                  below in the same ordinary flow, and picking in it rewrites the line above by
+                  state, never by anything moving. */}
+              <div className="mt-4 border-t border-edge pt-4">
+                <OrderComposer
+                  verbs={verbs}
+                  spec={spec}
+                  args={args}
+                  fleet={fleet}
+                  snapshot={snapshot}
+                  port={port}
+                  market={market}
+                  onChooseVerb={chooseVerb}
+                  onSetArg={setArg}
+                />
+              </div>
             </Card>
           </div>
 

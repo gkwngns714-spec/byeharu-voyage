@@ -41,3 +41,8 @@ export {
   type CargoLine,
   type CrewCount,
 } from './derive'
+
+// WHAT EACH SHIP FIGURE DECIDES — the one sentence per stat that COMPENDIUM, FLEETS and PORT all
+// compose. It lives in this section because what a stat decides is a fact about the fleet rules,
+// not about any screen that prints one (statGloss.ts's header carries the citations).
+export { SHIP_STATS, shipStatItems, type ShipStatGloss, type ShipStatKey } from './statGloss'
