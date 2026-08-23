@@ -74,13 +74,51 @@ verifying an 11-point path is all water  0.02 ms
 essentially nothing — which matters, because that verification is how the never-touch-land law is
 enforced rather than hoped for.
 
-**The number that decides it is PGlite**, the runtime that actually ships — the world is applied and
-queried inside the player's browser tab. `scripts/proto/pglite-astar.sql` implements A* in plpgsql
-and `bench-pglite.mjs` measures it. **That measurement was still running when this was written and
-must be filled in before anything is built.** If plpgsql A* is too slow, the fallbacks in order of
-preference are: a coarser first pass refined locally; the search in the client with the server
-verifying the result; or a precomputed distance field. **None of them may turn the answer back into
-a fixed graph of routes.**
+### And in PGlite — measured 2026-08-24, and it settles the design
+
+```
+route                  |      ms |  expanded |   nm
+-----------------------+---------+-----------+------
+Lisboa -> Cadiz        |     330 |        74 |  286
+Lisboa -> Amsterdam    |   3 549 |       957 | 1122
+Lisboa -> Salvador     |  42 619 |     11150 | 3731
+Amsterdam -> Venice    |  67 729 |     17775 | 3246
+Lisboa -> Calicut      | 302 438 |     85268 | 9802
+```
+
+**A\* written in plpgsql is about 1,800x slower than the same algorithm in JavaScript.** Five
+minutes to issue one order is not a tuning problem, and no constant factor rescues it: the search
+expands 85,000 cells and plpgsql pays interpreter cost on every one. Raster load and storage are
+fine (163 ms, and 1 MiB of raster TOASTs to 27 KiB) — **the loop is the problem, not the data.**
+
+**So the pathfinding does not run in SQL.**
+
+### THE ANSWER: the client proposes, the server verifies
+
+The asymmetry the prototype measured is the whole design:
+
+| | cost |
+|---|---|
+| FINDING a path (JS) | 47-166 ms |
+| VERIFYING a path is all water | **0.02 ms** |
+
+Finding is expensive; checking is free. So the client — which is JavaScript, and fast — proposes a
+water path, and the **server verifies it and measures it**. Verification is the authoritative act.
+
+**This does not weaken server authority, and it is worth being precise about why.** The server
+independently (a) samples every segment against its own raster and refuses anything touching land,
+and (b) computes the distance itself from the polyline. A client cannot gain by lying:
+- a path crossing land is **refused**;
+- a longer path only **costs the player** more days and more stores;
+- a *shorter* water-valid path is not a cheat — it is a better route, and legal water is legal water.
+
+The one thing the server must never do is take the client's word for the DISTANCE. It measures.
+
+**Rejected, and why:** a precomputed waypoint mesh is a fixed graph wearing a new name and the owner
+has refused that three times. Edge Functions would put the search on a server but add a service and a
+second runtime for one function. A coarse-then-refine pass in plpgsql still pays interpreter cost on
+the refinement, and 330 ms for Lisboa-Cadiz — the SHORTEST case measured — is already too slow to
+build on.
 
 ---
 
