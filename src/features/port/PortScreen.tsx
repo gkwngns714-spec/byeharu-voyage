@@ -514,7 +514,12 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                   {/* "crew", NOT "hands" (the owner, 2026-08-23: "change it like crew or
                       something"). "a hand-day" was that jargon squared — a made-up unit built on a
                       sailor's word. The rate is unchanged; only its unit is said in the player's
-                      words. The server's own refusals still say "hands" — the wire's to fix. */}
+                      words. The SERVER said "hands" too until migration 0030 sliced cmd.do_hire's three
+                      refusals, voyage.report_line's burial and short-ration prose and the HIRE
+                      verb's own help text; 0033 did the same for "yard". The wire says crew and
+                      shipyard now, so there is nothing left here for a client gloss to paper over
+                      — which is the point: a client gloss over served copy would have been a
+                      second author for the game's own words. */}
                   <DetailRow
                     label="Chandler"
                     mono
