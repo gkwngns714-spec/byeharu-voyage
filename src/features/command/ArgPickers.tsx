@@ -20,16 +20,11 @@ import {
   formatNm,
   formatTuns,
   formatUnitPrice,
-  formatVoyageDays,
 } from '../../lib/format'
 // `haversineNm` is deliberately NOT imported any more: the only thing this file used it for was a
 // destination's distance, and that number belongs to the server's leg (see PortPicker's header).
-import type { MarketGood, SnapshotLeg, SnapshotPort, TradeRoute, TradeRoutes } from '../../lib/rpc'
+import type { MarketGood, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
-// WHERE THIS GOOD IS WORTH MORE THAN IT IS HERE — one lookup into the server's own comparison
-// (migration 0019). The index is a SECTION (src/domain/trade), not this tab's and not the Market
-// tab's, because both name the same destination from the same read.
-import { routesByGood } from '../../domain/trade'
 import type { BuyCapacityState } from './useBuyCapacity'
 import type { QtyBound } from './fleetLimits'
 
@@ -93,38 +88,65 @@ function PickerRow({
   left: ReactNode
   right?: ReactNode
   hint?: ReactNode
+  /** Rides under the head on its own line — and it MAY CARRY ACTIONS (a good row's buy and sell
+   *  cells are buttons since 2026-08-23), so it is never rendered inside the head's own button:
+   *  a button inside a button is not markup a browser will honour. A row with an `under` is a
+   *  chip-skinned box whose HEAD is the button; a row without one stays a single button. */
   under?: ReactNode
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      onPointerEnter={onHover && (() => onHover(true))}
-      onPointerLeave={onHover && (() => onHover(false))}
-      onFocus={onHover && (() => onHover(true))}
-      onBlur={onHover && (() => onHover(false))}
-      aria-expanded={expanded}
-      // ONE CONTROL, ONE RECIPE, in both states. This used to be hand-written with a note saying
-      // it was waiting on a soft-selected variant: the OFF arm was character for character the
-      // design system's `chip`, but the ON arm could not be `chip-on` — a picker row is a
-      // full-width ROW carrying a badge, a %NBR pill and a stock meter, and `chip-on`'s solid
-      // brass swallows all three. `chip-soft` (buttonStyles.ts) is that variant, and it is the
-      // same soft tint TabRow uses for a selected face, so a selected row and a selected tab
-      // cannot drift apart.
-      className={buttonClasses(
-        selected ? 'chip-soft' : 'chip',
-        'md',
-        'flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left',
-      )}
-    >
+  // ONE CONTROL, ONE RECIPE, in both states. This used to be hand-written with a note saying
+  // it was waiting on a soft-selected variant: the OFF arm was character for character the
+  // design system's `chip`, but the ON arm could not be `chip-on` — a picker row is a
+  // full-width ROW carrying a badge, a %NBR pill and a stock meter, and `chip-on`'s solid
+  // brass swallows all three. `chip-soft` (buttonStyles.ts) is that variant, and it is the
+  // same soft tint TabRow uses for a selected face, so a selected row and a selected tab
+  // cannot drift apart. The SAME call in both arms below, so the two shapes cannot drift either.
+  const skin = (extra: string) => buttonClasses(selected ? 'chip-soft' : 'chip', 'md', extra)
+  const hover = {
+    onPointerEnter: onHover && (() => onHover(true)),
+    onPointerLeave: onHover && (() => onHover(false)),
+    onFocus: onHover && (() => onHover(true)),
+    onBlur: onHover && (() => onHover(false)),
+  }
+  const face = (
+    <>
       {mark}
       <span className="min-w-0 flex-1">
         <span className="block text-sm">{left}</span>
         {hint && <span className={fineClass('block')}>{hint}</span>}
       </span>
       {right && <span className="shrink-0 font-mono text-xs text-ink-muted">{right}</span>}
-      {under && <span className="w-full">{under}</span>}
-    </button>
+    </>
+  )
+  if (under === undefined) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        {...hover}
+        aria-expanded={expanded}
+        className={skin('flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left')}
+      >
+        {face}
+      </button>
+    )
+  }
+  return (
+    // The same classes the single-button arm wears, on a DIV: the skin is the row's, the button
+    // is only the head. `under` wraps onto its own line exactly as it did when it was a child of
+    // the one flex-wrap container — `w-full` is what breaks the line, then as now.
+    <div className={skin('flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left')}>
+      <button
+        type="button"
+        onClick={onClick}
+        {...hover}
+        aria-expanded={expanded}
+        className="flex min-h-11 w-full flex-wrap items-center gap-x-3 gap-y-1 text-left"
+      >
+        {face}
+      </button>
+      <span className="w-full">{under}</span>
+    </div>
   )
 }
 
@@ -296,14 +318,19 @@ export function PortPicker({
  * so the choice is informed before it is made rather than explained after it.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * A ROW UNFOLDS. TAPPING IT IS LOOKING; CHOOSING IT IS A SEPARATE ACT.
+ * A ROW UNFOLDS TO BE READ; THE PRICE ITSELF IS THE ACT.
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * The owner, 2026-08-23: *"click a trade good → it unfolds showing how much I can buy, and more."*
+ * The owner, 2026-08-23, twice in one day:
+ *   · *"click a trade good → it unfolds showing how much I can buy, and more."*
+ *   · *"i want to be able to click on buy and sell itself and do trades. when pressed unfold
+ *      another so that i can choose how much i buy."*
  *
- * A tap used to COMMIT the pick and jump straight to the quantity step, which made the one question
- * a trader actually asks — *how much of this can I take, and is it worth taking?* — answerable only
- * AFTER the decision it should inform. So the head of the row now opens the row, and the fold
- * carries a `Choose` button that is the only thing which answers the argument.
+ * So the row carries TWO kinds of tap and they never share a target: the HEAD opens the row for
+ * reading (capacity, the quay's stock), and the BUY / SELL figure cells are the trade itself.
+ * Tapping a cell names both the verb and the good — through the one draft the composer already
+ * writes — and the composer's own derivation then unfolds the next question, which is the
+ * quantity. The `Choose <good>` button the fold used to carry is DELETED, not kept alongside:
+ * two ways to pick one good is two authorities for the pick (docs/NO_SPAGHETTI.md §5).
  *
  * THREE RULES THIS KEEPS, and each of them is the reason the shape is what it is:
  *
@@ -311,34 +338,33 @@ export function PortPicker({
  *    a single value rather than a set. A list where every row can be open is a list nobody can
  *    scan, and seventy goods is a list that must stay scannable. It lives upstairs because the same
  *    open row is what `world.buy_capacity()` is asked about — see OrderComposer's `focusGood`.
- * 2. **Opening never commits.** `onInspect` moves what is being LOOKED at; only `onPick` answers
- *    the argument, and only the fold's own button calls it. Tapping an open row's head closes it
- *    again, which is the same gesture undone rather than a second meaning for one tap.
- * 3. **The fold is not a scroll box.** THE REACH LAW (CORE_REUSE §1.5) — the `Choose` button is an
- *    action, so nothing between it and the page's own scroll may cap or clip. The fold has no
+ * 2. **Opening never commits.** `onInspect` moves what is being LOOKED at; only a price cell
+ *    answers the argument. Tapping an open row's head closes it again, which is the same gesture
+ *    undone rather than a second meaning for one tap.
+ * 3. **Nothing folds behind a scroll box.** THE REACH LAW (CORE_REUSE §1.5) — the price cells are
+ *    actions, so nothing between them and the page's own scroll may cap or clip. The fold has no
  *    `max-h` and no `overflow`; it simply makes the page longer, which is honest.
  *
  * EVERY FIGURE IN THE FOLD IS SERVED. Nothing here multiplies a price by a quantity: buying walks a
  * stepped book (§G.2), so the client's arithmetic would disagree with the charge. `max_qty`,
- * `est_total` and the phrase for what stops her are `world.buy_capacity()`; the destination and its
- * margin are `world.trade_routes()` (0019), priced through the same `world.quote()` the money moves
- * at. What is ABOARD is the one number this side may count, and it is the fleet's own manifest.
+ * `est_total` and the phrase for what stops her are `world.buy_capacity()`. What is ABOARD is the
+ * one number this side may count, and it is the fleet's own manifest.
  */
 export function GoodPicker({
   goods,
   value,
-  onPick,
-  /** SELL only: tuns aboard by good code. When given, only what is aboard can be picked. */
+  /** Tuns aboard by good code — the fleet's own manifest, whenever a fleet is chosen. On a SELL it
+   *  also narrows the list to what she carries; on every row it is what lets a sell cell say
+   *  "none aboard" instead of going silently dead. */
   aboard,
   intent,
   inspecting,
   onInspect,
   capacity,
-  routes,
+  onTrade,
 }: {
   goods: readonly MarketGood[]
   value: string | undefined
-  onPick: (code: string) => void
   aboard?: Record<string, number>
   intent: 'buy' | 'sell'
   /** The ONE row that is unfolded, held upstairs so the capacity read can follow it. */
@@ -346,18 +372,20 @@ export function GoodPicker({
   onInspect: (code: string | null) => void
   /** The composer's ONE reading of `world.buy_capacity()`, asked about `inspecting`. */
   capacity: BuyCapacityState
-  /** `world.trade_routes()` for THIS port — one read for the whole list, never one per row.
-   *  Undefined while it is in flight, which the fold says rather than reading as "nowhere pays". */
-  routes: TradeRoutes | undefined
+  /** THE PRICE IS THE ACT. Fired by a row's buy or sell cell; the composer answers it by setting
+   *  the verb AND the good on the one draft, so the cell can never become a second way an order
+   *  comes into being — the same line is composed, previewed and issued as ever. */
+  onTrade: (verb: 'BUY' | 'SELL', code: string) => void
 }) {
   const [filter, setFilter] = useState('')
-  const routeOf = useMemo(() => routesByGood(routes), [routes])
 
   const rows = useMemo(() => {
     const q = fold(filter.trim())
     return goods
       .filter((g) => g.available)
-      .filter((g) => (aboard ? (aboard[g.code] ?? 0) > 0 : true))
+      // A SELL list is what she carries; a BUY list is the whole book. `aboard` itself no longer
+      // decides — it is given on BUY too now, so the sell cells can say why they are dead.
+      .filter((g) => (intent === 'sell' && aboard ? (aboard[g.code] ?? 0) > 0 : true))
       .filter((g) => foldedMatch(q, g.name, g.code, g.category))
       .sort((a, b) => {
         // The advice the server gave, first: a BUY list opens on what is cheap here, a SELL list on
@@ -383,13 +411,13 @@ export function GoodPicker({
       {shown.length > 0 && (
         <p className={fineClass()}>
           {shown.length} {shown.length === 1 ? 'good' : 'goods'}
-          {aboard ? ' aboard and traded here' : ' traded here'}
+          {intent === 'sell' ? ' aboard and traded here' : ' traded here'}
           {filter.trim() ? ' answer to that filter' : ", the quay's own advice first"}
         </p>
       )}
       {shown.length === 0 && (
         <p className="text-sm text-ink-muted">
-          {aboard
+          {intent === 'sell' && !filter.trim()
             ? 'This fleet is carrying nothing this port will trade.'
             : 'Nothing here answers to that.'}
         </p>
@@ -452,19 +480,16 @@ export function GoodPicker({
                   </span>
                 </span>
               }
-              under={<GoodFigures good={g} aboard={aboard ? (aboard[g.code] ?? 0) : undefined} />}
+              under={
+                <GoodFigures
+                  good={g}
+                  aboard={aboard ? (aboard[g.code] ?? 0) : undefined}
+                  intent={intent}
+                  onTrade={(verb) => onTrade(verb, g.code)}
+                />
+              }
             />
-            {isOpen && (
-              <GoodDetail
-                good={g}
-                intent={intent}
-                capacity={capacity}
-                route={routeOf[g.code]}
-                comparing={routes === undefined}
-                chosen={value === g.code}
-                onChoose={() => onPick(g.code)}
-              />
-            )}
+            {isOpen && <GoodDetail good={g} intent={intent} capacity={capacity} />}
           </div>
         )
       })}
@@ -473,24 +498,26 @@ export function GoodPicker({
 }
 
 /**
- * THE UNFOLDED ROW — how much she can take, where it pays more, and the one act that chooses it.
+ * THE UNFOLDED ROW — reading only. How much she can take, and the quay's stock; the act itself is
+ * the row's own price cells (GoodFigures), and the fold carries no button any more — the
+ * `Choose <good>` it used to hold was a second way to pick a good once the cells became the first,
+ * so it went (docs/NO_SPAGHETTI.md §5).
  *
  * ── WHAT IS HERE, AND WHOSE NUMBER EACH ONE IS ─────────────────────────────────────────────────
  *   HOW MANY SHE CAN TAKE   `world.buy_capacity(fleet, good)` — `max_qty`, `est_total` and
  *                           `bound_by`, the server's own PHRASE for what stops her. On a SELL the
  *                           ceiling is what is aboard, which is the fleet's own manifest and the
  *                           one quantity this side may count (fleetLimits.ts).
- *   WHERE IT PAYS MORE      `world.trade_routes()` (0019) — the reachable port that pays most for
- *                           this good, priced end to end through the same `world.quote()` an order
- *                           executes at, over the SAILED route. One read for the whole list.
  *   ON THE QUAY             `stock` against `stock_target`, the figures behind the row's meter.
  *
  * ── AND WHAT IS DELIBERATELY NOT ───────────────────────────────────────────────────────────────
  *   · NO PRODUCT OF A PRICE AND A QUANTITY. A BUY reprices every `trade_step_tuns` (§G.2), so
  *     `buy × qty` is always too low — that exact arithmetic is what offered 91 tuns of pepper
  *     against a purse that could carry 50 (useBuyCapacity.ts). `est_total` is the served answer.
- *   · NO WAGES IN THE MARGIN. 0019 leaves a voyage's daily crew cost out of `profit` on purpose,
- *     so the fold prints `days` beside it and says so, rather than quietly implying a take-home.
+ *   · NO "WHERE IT PAYS MORE". The fold used to name the reachable port that pays most, from
+ *     `world.trade_routes()` — the owner, 2026-08-23: "where it pays more does not need to be
+ *     given in buy." The comparison belongs to the Market tab, which still draws it; the block,
+ *     its props and the screen's per-port fetch went together (docs/NO_SPAGHETTI.md §5).
  *   · NO ADVICE. The server already gives one word of it on the row; a paragraph arguing for a
  *     trade would be this screen having an opinion about a price, which is the thing it may not do.
  */
@@ -498,10 +525,6 @@ function GoodDetail({
   good,
   intent,
   capacity,
-  route,
-  comparing,
-  chosen,
-  onChoose,
 }: {
   good: MarketGood
   intent: 'buy' | 'sell'
@@ -509,11 +532,6 @@ function GoodDetail({
   // a figure the row above and the quantity stepper below both already carry. The block went and
   // the prop went with it, rather than being left threaded through to nothing.
   capacity: BuyCapacityState
-  route: TradeRoute | undefined
-  /** True while `world.trade_routes()` is still in flight — which is NOT "nowhere pays more". */
-  comparing: boolean
-  chosen: boolean
-  onChoose: () => void
 }) {
   return (
     <div className="mt-1 space-y-3 rounded-md border border-accent/40 bg-app p-3">
@@ -522,8 +540,7 @@ function GoodDetail({
           row above it (GoodFigures' `20 t aboard`, beside the stock meter) and again in the
           quantity stepper's caption ("up to 20 t — what is aboard stops you there"). Three
           renderings of one fact, so the two that were added here are the ones that go
-          (docs/NO_SPAGHETTI.md §5). What a SELL actually needs deciding is not how much is
-          aboard — it is whether to sell it HERE, which the block below answers. */}
+          (docs/NO_SPAGHETTI.md §5). */}
       {intent === 'buy' && (
         <section>
           <SectionLabel className="mb-1.5">How much she can take</SectionLabel>
@@ -550,72 +567,9 @@ function GoodDetail({
         </section>
       )}
 
+      {/* `first:` because on a SELL there is no capacity block above, and a rule with nothing over
+          it is a line the eye trips on. */}
       <section className="border-t border-edge pt-3 first:border-0 first:pt-0">
-        <SectionLabel className="mb-1.5">Where it pays more</SectionLabel>
-        {route ? (
-          <>
-            <p className="text-sm text-ink">
-              {route.to.name} <span className={fineClass()}>{route.to.code}</span>
-            </p>
-            <dl className="mt-1.5 space-y-1">
-              {/* ── THE MONEY ROWS ARE A BUY'S ARITHMETIC, AND ONLY A BUY GETS THEM ─────────────
-                  `world.trade_routes` prices a round trip FROM THIS QUAY: buy `qty` here, carry it,
-                  sell it there. On a SELL the parcel is already aboard and `qty` is whatever the
-                  purse could afford on top of it — measured in the running game, a fleet holding
-                  20 tuns of porcelain was shown "margin on 2 t", which is a true number answering a
-                  question nobody asked. So SELL gets the half of the row that IS about the parcel
-                  she is carrying: where it fetches more, and what that quay bids. Both served. */}
-              {intent === 'buy' ? (
-                <>
-                  <StatRow
-                    label={`margin on ${formatTuns(route.qty)}`}
-                    value={`+${formatInt(route.profit)} d.${route.return_pct === null ? '' : ` · ${Math.round(route.return_pct)}%`}`}
-                  />
-                  {/* TWO ROWS, NOT ONE PACKED ONE. `pay here, take there` with `6,806 → 7,954 d.`
-                      beside it wrapped BOTH halves at 390px — the label onto two lines and the
-                      figures onto two more. A label that wraps is a label that has stopped being a
-                      label (docs/UI_DIRECTION.md §4 rule 3: one row, one fact). */}
-                  <StatRow label="you pay here" value={formatDucats(route.outlay)} />
-                  <StatRow label="she is paid there" value={formatDucats(route.proceeds)} />
-                </>
-              ) : (
-                <>
-                  <StatRow label="they bid there" value={formatUnitPrice(route.sell_price)} />
-                  <StatRow label="they bid here" value={formatUnitPrice(good.sell)} />
-                </>
-              )}
-              {/* THE PASSAGE IS TWO ROWS FOR THE SAME REASON. `1,534 nm · 2 legs · 13.0 days` is
-                  29 mono characters, which at 390px is wider than the value cell — and StatRow's
-                  value does not shrink (it must not, or a column of figures stops lining up), so
-                  the overflow printed straight THROUGH its own label. Measured, not guessed: the
-                  row read "pass1,534 nm · 2 legs · 13.0 days". */}
-              <StatRow
-                label="the passage"
-                value={`${formatNm(route.nm)} · ${route.legs} leg${route.legs === 1 ? '' : 's'}`}
-              />
-              {route.days !== null && (
-                <StatRow label="days at sea" value={formatVoyageDays(route.days)} />
-              )}
-              {intent === 'buy' && route.profit_per_day !== null && (
-                <StatRow label="a day at sea earns" value={`+${formatInt(route.profit_per_day)} d.`} />
-              )}
-            </dl>
-            <p className={fineClass('mt-1.5')}>
-              {intent === 'buy'
-                ? 'Priced end to end through the quote your own order executes at. A voyage also pays its crew every day at sea, and that is not in the margin.'
-                : 'Both bids are what your own order would execute at. Carrying her there costs the crew a wage every day at sea, and the quay there reprices as she unloads.'}
-            </p>
-          </>
-        ) : (
-          <p className={fineClass()}>
-            {comparing
-              ? 'Comparing this quay with every port in reach…'
-              : 'No port in reach pays more for this than here — not after tax, spread and your own price impact.'}
-          </p>
-        )}
-      </section>
-
-      <section className="border-t border-edge pt-3">
         <dl className="space-y-1">
           {/* THE FIGURES BEHIND THE ROW'S OWN METER, and ONLY those. The first draft of this block
               also printed "this port asks 87 d./t" and "this port pays 80 d./t" — which are the
@@ -629,15 +583,6 @@ function GoodDetail({
           />
         </dl>
       </section>
-
-      {/* THE DELIBERATE ACT. Opening the row was looking; this is the only control that answers the
-          argument, and it closes the fold by advancing the composer to the next question.
-
-          IT IS AN ACTION, SO NOTHING ABOVE IT MAY CLIP (CORE_REUSE §1.5) — the fold has no max
-          height and no overflow of its own, and the page's scroll is the only one on this tab. */}
-      <Button variant="primary" className="w-full" onClick={onChoose}>
-        {chosen ? `Keep ${good.name}` : `Choose ${good.name}`}
-      </Button>
     </div>
   )
 }
@@ -661,16 +606,45 @@ function GoodDetail({
  * %NBR IS <PriceIndex>, NOT A FOURTH RENDERING OF IT. The pill is the one treatment of that number
  * and its tone comes from the server's own `advice` (PriceIndex.tsx) — never from comparing `pct`
  * against a threshold here, because the thresholds live in migration 0009.
+ *
+ * THE BUY AND SELL CELLS ARE THE TRADE (the owner, 2026-08-23: "i want to be able to click on buy
+ * and sell itself and do trades"). Both are real buttons at the 44px floor, and each answers the
+ * verb AND the good in one tap, through `onTrade` — never through a second path.
+ *
+ *   · A SELL of what she does not carry is not an order, so that cell is disabled AND says why —
+ *     "none aboard", on the cell — never a grey square with no explanation. `aboard` is the
+ *     fleet's own manifest, the one quantity this side may count.
+ *   · A BUY the purse cannot afford is NOT decided here. That answer is `world.buy_capacity()`'s,
+ *     read once for the good in focus — never seventy times for seventy rows — and the quantity
+ *     step names it in the server's own word ("purse allows none").
  */
-function GoodFigures({ good, aboard }: { good: MarketGood; aboard: number | undefined }) {
+function GoodFigures({
+  good,
+  aboard,
+  intent,
+  onTrade,
+}: {
+  good: MarketGood
+  /** Tuns of THIS good aboard, when a fleet is chosen; undefined when none is. */
+  aboard: number | undefined
+  intent: 'buy' | 'sell'
+  onTrade: (verb: 'BUY' | 'SELL') => void
+}) {
+  const sellDead = aboard !== undefined && aboard <= 0
   return (
     <span className="mt-1.5 grid gap-2">
       <span className="grid grid-cols-3 gap-2">
-        <Figure label="buy" title="What she pays here, per tun">
+        <Figure label="buy" title="Buy this here — what she pays, per tun" onPress={() => onTrade('BUY')}>
           <span className="tabular-nums">{formatInt(good.buy)}</span>
           <span className="ml-1 text-[10px] font-normal text-ink-faint">d./t</span>
         </Figure>
-        <Figure label="sell" title="What this port pays her, per tun">
+        <Figure
+          label="sell"
+          title="Sell this here — what this port pays her, per tun"
+          onPress={() => onTrade('SELL')}
+          disabled={sellDead}
+          note={sellDead ? 'none aboard' : undefined}
+        >
           <span className="tabular-nums">{formatInt(good.sell)}</span>
           <span className="ml-1 text-[10px] font-normal text-ink-faint">d./t</span>
         </Figure>
@@ -689,7 +663,10 @@ function GoodFigures({ good, aboard }: { good: MarketGood; aboard: number | unde
           tone={good.stock_band >= 4 ? 'success' : 'warning'}
           className="min-w-0 flex-1"
         />
-        {aboard !== undefined && (
+        {/* The aboard figure is a SELL list's caption, as it always was — on a BUY the manifest is
+            here only to reason about the sell cell, and printing "0 t aboard" on seventy buy rows
+            would be seventy answers to a question nobody asked. */}
+        {intent === 'sell' && aboard !== undefined && (
           <span className="shrink-0 font-mono text-[11px] text-ink-muted">{formatTuns(aboard)} aboard</span>
         )}
       </span>
@@ -697,15 +674,58 @@ function GoodFigures({ good, aboard }: { good: MarketGood; aboard: number | unde
   )
 }
 
-/** One labelled figure cell. Label above, figure below — never the other way round (rule 2). */
-function Figure({ label, title, children }: { label: string; title: string; children: ReactNode }) {
-  return (
-    <span className="block min-w-0 rounded border border-edge/60 bg-app/40 px-2 py-1" title={title}>
+/**
+ * One labelled figure cell. Label above, figure below — never the other way round (rule 2).
+ *
+ * Given `onPress` it is a BUTTON — the buy/sell cells are the trade since 2026-08-23 — at the 44px
+ * floor, with the chip's own hover grammar and the system's disabled treatment
+ * (`disabled:opacity-45`, buttonStyles.ts), and `note` is the one line that says why a dead cell
+ * is dead. This component is the single authority for the cell's recipe in both shapes.
+ */
+function Figure({
+  label,
+  title,
+  children,
+  onPress,
+  disabled,
+  note,
+}: {
+  label: string
+  title: string
+  children: ReactNode
+  onPress?: () => void
+  disabled?: boolean
+  note?: string
+}) {
+  const cell = 'min-w-0 rounded border border-edge/60 bg-app/40 px-2 py-1'
+  const inner = (
+    <>
       <span className="block truncate font-mono text-[10px] uppercase tracking-wider text-ink-faint">
         {label}
       </span>
       <span className="block truncate font-mono text-sm text-ink">{children}</span>
-    </span>
+      {/* The note WRAPS, never truncates: it is the reason a dead cell is dead, and "none abo…"
+          is not a reason. MEASURED at 390px — a third of the row truncated it. */}
+      {note && <span className={fineClass('block')}>{note}</span>}
+    </>
+  )
+  if (!onPress) {
+    return (
+      <span className={`block ${cell}`} title={title}>
+        {inner}
+      </span>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      disabled={disabled}
+      title={title}
+      className={`block min-h-11 text-left transition hover:border-accent/60 disabled:cursor-not-allowed disabled:opacity-45 ${cell}`}
+    >
+      {inner}
+    </button>
   )
 }
 

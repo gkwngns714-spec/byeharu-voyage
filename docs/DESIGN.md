@@ -584,11 +584,37 @@ The most important table in the game. It carries Origin's percent-of-neighbours 
 
 `%NBR` is the whole game in one column: below 90 buy, above 110 sell, and the rest is your judgement.
 
-### E.5 MAP — the output device
+### E.5 MAP — where things are, and the one place you can act on it
 
-**Law 3.** This tab has no interactive elements except pan, zoom and folding the two corner panels. There
-is no command, no drag, no target, no context menu. Per the owner's standing map rules: clean map, minimal
-words and icons, no jargon, panels in the corners not the centre, everything foldable.
+**Law 3 — AMENDED 2026-08-23. You act FROM this tab; you do not COMPOSE on it.**
+
+This paragraph used to read: *"This tab has no interactive elements except pan, zoom and folding the two
+corner panels. There is no command, no drag, no target, no context menu."* The tab printed that law to the
+player as a permanent caption — **view only · orders on Command** — and the owner's verdict was that a map
+you cannot act from is a picture: you could see your fleet lying in Lisbon and 214 harbours around her, and
+to sail to one of them you had to remember its name, leave the tab, and find it in a list.
+
+The old law protected the right thing and stated it as the wrong rule. **What must never be duplicated is
+the COMPOSER, the GRAMMAR and the JUDGE** — one `features/command`, one `cmd.verb_schema()`, one
+`cmd.preview()`. A tap that hands an INTENT to the composer duplicates none of the three. So:
+
+- **Tapping a harbour selects it, and the detail panel offers ONE action: sail there.** It names an intent
+  (`SAIL`, this port, the fleet the composer's draft already has in hand), asks `cmd.preview()` — the real
+  verb, run and rolled back — what that exact line would do, prints the answer, and hands the intent to
+  `domain/order`'s draft before going to COMMAND, which composes it. That is the same hand-off FLEETS, PORT
+  and MARKET have always used; the map is its fourth caller, not a new mechanism.
+- **Nothing is ever greyed out silently.** Where she may sail, the panel prints the SERVER's own sailed
+  miles and voyage-days. Where she may not, it prints `voyage.sail_refusal`'s sentence — the one
+  `cmd.issue` would have raised — beside a button that is still live, because COMMAND renders that
+  refusal's *fixes* as tappable orders and the fix is what the player actually wants.
+- **No argument picker, no quantity control and no client-side legality check may live in
+  `src/features/map`.** That list is the real law, and it is the one to defend.
+- **Every control is anchored to the glass, never to a map coordinate.** A chart pans and zooms, so an
+  action drawn at a coordinate is an action the player can send off the screen. The action lives in the
+  corner panel, which is chrome.
+
+Otherwise unchanged and still binding — per the owner's standing map rules: clean map, minimal words and
+icons, no jargon, panels in the corners not the centre, everything foldable.
 
 ```
 ╔═ MAP ═════════════════════════════════════════════════════════╗
@@ -618,11 +644,37 @@ Rendering rules, binding:
 
 - **Three glyphs only.** `▲` a port, `▲` filled + label a fleet at anchor, a moving dot on a dotted track
   for a fleet at sea. Nothing else is drawn.
-- **Coastlines are a single pale stroke.** No fill, no terrain, no bathymetry, no borders.
+- **Coastlines are a single pale stroke on a quiet body.** No terrain, no bathymetry, no borders, no
+  relief, no second land colour. **Amended 2026-08-23, from "no fill".** The original ban was written
+  for austerity and it was measured out of the game: an outline alone leaves the player deciding
+  which side of a line is water, and the values shipped in its place put land at **1.23 : 1** against
+  the chart's sea — **1.03 : 1** against what was actually behind it, because the chart painted no
+  sea of its own and sat on the `.bv-sea` gradient. At 390 px Iberia and the Atlantic were one
+  object, which is a chart failing at its only job. The rule is now a pair of numbers rather than a
+  prohibition: the **stroke stands clear of the water at 3 : 1** — WCAG 1.4.11's floor for a graphic
+  that carries meaning, and what makes "a single pale stroke" true rather than aspirational — and
+  the **body at ~2 : 1**, kept deliberately below the marks so the coast stays the ground and the
+  ports stay the subject. `src/index.css` carries the tokens and the arithmetic;
+  `src/chart/ChartCanvas.tsx` paints the sea those figures are measured against.
+- **A port's mark is ranked by its `size_tier`,** on two channels and no others: how big the triangle
+  is and how firm its line is. The same column already decides which ports are drawn at each zoom,
+  so the chart has one idea of importance and it is the world's, not the renderer's.
 - **Labels appear at zoom ≥ 2** and only for ports the player has visited or has a fleet bound for.
+- **A name is never printed under the chrome.** A label may not be placed inside a rectangle the
+  screen has declared opaque — the zoom column, the corner panels. Measured at 390×844 before the
+  rule existed: `Saint-Malo` read as `Sain` and `Nantes` as a bare `s`, both placed entirely inside
+  the glass and both painted behind a button. Half a name is worse than no name, because it cannot
+  be told apart from another port's whole one. Where nothing fits, the name is dropped and the
+  detail panel still carries it.
 - **The track is the authored leg path**, dotted behind the fleet and fainter ahead of it.
-- **Two panels, both in corners, both foldable to a chevron**: fleet list (top-left), selected fleet detail
-  (bottom-right). Tapping a fleet on the map selects it — that is a *view* change, not a command.
+- **Two panels, both in corners, both foldable to a chevron**: fleet list (top-left), selected fleet or
+  port detail (bottom-right). Tapping a fleet on the map selects it — that is a *view* change, not a
+  command; it also points the composer's draft at her, so the harbour tapped next sails the ship just
+  pointed at. The bottom-right panel is where Law 3's one action lives when a PORT is what is selected.
+- **One tap finds her.** The third view control returns to the opening frame, which is built around what
+  the house HAS — its fleets and the harbours they are using — not around the 214-port world. It is
+  labelled `find`; it read `fit` until 2026-08-23, which is a chart programmer's word for the thing a
+  player calls "where is my ship".
 - **Nothing blinks, nothing pulses, nothing pops.** Position updates by re-evaluating the closed-form
   progress function (§D.2) on a 1 Hz timer.
 - The only persistent text is the time-scale hint in the bottom-left corner.

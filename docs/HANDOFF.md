@@ -258,8 +258,14 @@ These are not hypothetical. Each one cost the predecessor real time.
    chromium is enough: `npx playwright install chromium`, then screenshot at 390×844.
 6. **One authority per concept.** If you find yourself writing the same rule twice, hoist it. The old
    repo accumulated 7 and 11 copies of single rules and had to have them ripped out.
-7. **The map never accepts an order.** If a map interaction ever mutates game state, the design has
-   been violated. Pan, zoom and select are the whole interaction budget.
+7. **The map never MUTATES anything, and never composes.** This rule read *"the map never accepts an
+   order … pan, zoom and select are the whole interaction budget"* until 2026-08-23, when the tab's
+   `view only · orders on Command` caption was deleted and a tapped harbour gained a `Sail here`. The
+   half that was load-bearing is intact and is what to check: **no argument picker, no quantity control
+   and no legality check may live in `src/features/map`.** The button names an intent, asks
+   `cmd.preview()` what that intent would do, and hands it to `domain/order`'s draft — the same seam
+   FLEETS, PORT and MARKET use. If a map interaction ever mutates game state directly, or decides for
+   itself whether an order is legal, the design HAS been violated. `docs/DESIGN.md` §E.5 Law 3.
 
 ---
 

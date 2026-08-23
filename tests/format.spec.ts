@@ -10,6 +10,7 @@ import {
   REAL_MS_PER_VOYAGE_DAY,
   TIME_COMPRESSION,
   formatClock,
+  formatCountdown,
   formatDucats,
   formatDucatsDelta,
   formatFixed,
@@ -125,6 +126,20 @@ test('relative time reads forwards and backwards from a supplied instant', () =>
 test('the wall clock stamps a ledger row as HH:MM', () => {
   const at = new Date(2026, 5, 1, 14, 22, 0).getTime()
   expect(formatClock(at)).toBe('14:22')
+})
+
+test('the LIVE clock and the countdown face tick by the second (0029)', () => {
+  // The seconds form is the same authority, extended - never a second formatter.
+  const at = new Date(2026, 5, 1, 14, 22, 7).getTime()
+  expect(formatClock(at, true)).toBe('14:22:07')
+  expect(formatClock(at)).toBe('14:22')
+  // A countdown face moves every second, which is what separates it from formatRealShort's
+  // table cell ("11m") - drawn with that, a ten-minute countdown would only move ten times.
+  expect(formatCountdown(252_000)).toBe('4:12')
+  expect(formatCountdown(7_000)).toBe('0:07')
+  expect(formatCountdown(3_727_000)).toBe('1:02:07')
+  // Never negative: a passed instant is the cue to RE-ASK the server, not to count up.
+  expect(formatCountdown(-5_000)).toBe('0:00')
 })
 
 test('the calendar clock runs one game month per real day (D.1) and seasons follow B.4', () => {

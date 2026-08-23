@@ -115,8 +115,16 @@ begin
   -- applies, so a hash of them is not a fixture, it is another random number wearing a seed's
   -- clothes. `ports.code` and `goods.code` ARE authored and stable ('LIS', 'silver'), so the draw
   -- keyed on them is the same market on every run and on every machine.
+  --
+  -- AND THE SLOT IS PINNED WITH IT (added 2026-08-23 with 0029). world.market() now WINDS
+  -- public.tick_market_drift before pricing — so if this transaction opens in a later drift slot
+  -- than the apply did, the market read at 0:20 would REDRAW all 14,980 rows with random() and
+  -- destroy the deterministic fixture this header just spent forty lines establishing. Setting
+  -- drift_slot to THIS transaction's slot makes the wind a no-op here, which is this file owning
+  -- its precondition rather than trusting the wall clock (docs/NO_SPAGHETTI.md §4).
   update public.port_goods pg
-     set drift = greatest(-public.wc_num('drift_clamp'),
+     set drift_slot = public.drift_slot_of(now()),
+         drift = greatest(-public.wc_num('drift_clamp'),
                    least(public.wc_num('drift_clamp'),
                      round(((public.wc_num('drift_sigma')
                             / sqrt(1 - power(public.wc_num('drift_theta'), 2)))
@@ -129,9 +137,12 @@ begin
   -- of real values, not all-zero and not all-clamped.
   select count(*) into v_refused_seq from public.port_goods where drift <> 0;
   if v_refused_seq < 14000
-     or (select count(distinct drift) from public.port_goods) < 1000 then
-    raise exception 'PROOF 4 FAILED: the deterministic drift fixture produced % non-zero row(s) and % distinct value(s); it has stopped modelling a drifted market',
-      v_refused_seq, (select count(distinct drift) from public.port_goods);
+     or (select count(distinct drift) from public.port_goods) < 1000
+     or (select count(*) from public.port_goods
+          where drift_slot < public.drift_slot_of(now())) <> 0 then
+    raise exception 'PROOF 4 FAILED: the deterministic drift fixture produced % non-zero row(s) and % distinct value(s), with % row(s) behind the current drift slot; it has stopped modelling a drifted market, or 0029''s wind is about to redraw it',
+      v_refused_seq, (select count(distinct drift) from public.port_goods),
+      (select count(*) from public.port_goods where drift_slot < public.drift_slot_of(now()));
   end if;
   v_refused_seq := 0;
 

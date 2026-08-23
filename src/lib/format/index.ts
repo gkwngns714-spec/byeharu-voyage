@@ -25,6 +25,7 @@ export {
   formatVoyageDays,
   formatRealDuration,
   formatRealShort,
+  formatCountdown,
   formatTwoClocks,
   formatRelative,
   formatClock,

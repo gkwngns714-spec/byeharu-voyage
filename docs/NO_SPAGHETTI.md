@@ -380,6 +380,132 @@ it (`docs/CORE_REUSE.md:1589-1595`).
 
 ---
 
+## 7B. THE FORWARD HALF — plan the shape BEFORE you write it
+
+Added 2026-08-23, in the owner's own words: *"no spaghetti - separate independant codes, with plans
+for future - meaning future codes must not also be made spaghetti, which means it has to be planned
+precisely and correctly."*
+
+Everything above this section is **reactive**: it says what to do once two authorities already
+exist. That is necessary and it is not enough. Every duplication this repository has torn out was
+cheap to prevent and expensive to remove — seven copies of "how much fits in this hull", four
+spellings of "where does her next order happen", two `PortPicker`s, `num`/`str` written three times.
+**None of them were written by someone being careless. They were written by someone who did not
+decide where the concept lived before they needed it.**
+
+So this section is the counterpart to §8: §8 runs before you FINISH; this one runs before you START.
+
+### The four questions, before the first line of a new thing
+
+1. **What CONCEPT am I adding, in one noun phrase?** Not "a panel for X" — the concept. If you
+   cannot name it in one phrase you are adding more than one thing, and they will end up tangled
+   with each other. Split them first.
+
+2. **Where does it live, and WHY there?** §2 already gives the test: ask what KIND of thing it is,
+   never who needs it first. Write the answer in the file's header. A file whose header cannot say
+   why it is in that directory is a file that gets copied into a second directory later.
+
+3. **Who is the SECOND caller going to be?** Answer it now, even though it does not exist yet. Most
+   spaghetti in this repo is a thing built for one screen that a second screen then needed:
+   `PortPicker`, the chart, `routesByGood`. **If a second caller is plausible, put it where both can
+   reach it TODAY** — the cost is a directory choice, and the cost of getting it wrong is a silent
+   copy no import check can see (§2's trap). If a second caller is genuinely implausible, say so in
+   the header, so the next person knows it was considered rather than missed.
+
+4. **What would make this the WRONG shape, and how would anyone find out?** Name the failure and,
+   where it can be, make it a guard. A rule nobody can watch break is a rule that will be broken
+   quietly. That is why `duplication.spec.ts`, `sections.spec.ts` and the chart's three entrance
+   rules exist, and why every one of them was watched going red before it was trusted.
+
+### What must be planned on paper before it is built
+
+Some shapes cannot be retrofitted cheaply. These require the decision to be WRITTEN — in the
+section's own header, or in a doc — before the code exists:
+
+* **A new section or layer** (`src/chart/`, `src/domain/trade/`): what may import it, what it may
+  import, and where its single entrance is. `docs/SECTIONS.md` and `tests/sections.spec.ts` must
+  gain the rule in the same change, or the boundary is a comment rather than a boundary.
+* **A new server contract**: what the payload carries **and what it deliberately does not**, with
+  the reason. 0025's board carries a name, a nation, a standing and the fames it is computed from
+  because everything else is actionable against another player — that sentence had to exist before
+  the SQL did.
+* **Anything with two callers on day one.** Two callers is not a coincidence; it is the definition
+  of a shared authority. Decide its home before writing either caller.
+* **A new word a player reads.** `categoryLabel`, `portNameOf` and `nationNameOf` all exist because
+  a code-to-name translation was hand-written first and folded later — one of them seven times, with
+  one copy already drifted. Any new code the player must never see needs its one reading NOW.
+
+### The rule that keeps this rule alive
+
+**A plan that lives only in a turn is not a plan.** It is gone at the next context compaction, and
+this project has already lost instructions that way. The decision goes in the file's own header,
+where whoever next touches the code will read it, or into `docs/SECTIONS.md` where a test can
+enforce it. §8's checklist then verifies it was honoured.
+
+If work is handed to a subagent, **the plan is part of the brief**. An agent told "build X" will
+build X somewhere. An agent told "build X, it lives HERE, and its second caller will be Y" builds it
+where it belongs. Every carve-out in this repo that went well, went well for that reason.
+
+---
+
+## 7C. A RULE IS ABSOLUTE, OR IT IS NOT A RULE
+
+Added 2026-08-23, the owner: *"i want everything to be perfect, meaning that something that does not
+to be conditional must not be conditional."*
+
+**The failure this prevents, which actually happened.** `deploy-pages.yml` said, in effect: *if the
+cloud credentials are present, publish the online game; otherwise publish the local one.* Both
+branches compile, lint, boot and play. So for weeks the published site was a browser-local world
+with no account and no server — a house that dies when its owner clears their storage — while every
+check downstream stayed green, because nothing downstream can tell the two artefacts apart. **The
+only place the difference was knowable was the branch itself, and that is exactly where it was
+being swallowed.**
+
+The rule is not "avoid conditionals". Conditionals are how software works. The rule is:
+
+> **A conditional may choose between two ACCEPTABLE outcomes. It may never choose between an
+> acceptable outcome and an unacceptable one.** When the alternative is unacceptable, the branch is
+> not a choice — it is a failure that has been dressed up as a choice, and it must throw, refuse or
+> fail the build instead.
+
+### How to tell which one you are writing
+
+Ask: **if the `else` branch runs, is anyone harmed, misled, or given the wrong artefact?**
+
+* *"If no fleet is selected, ask which"* — a real choice. Both outcomes are fine.
+* *"If the catalogue has no name for this code, show the code"* — a real choice. A code is at least
+  true, and `portNameOf`'s header says so in as many words.
+* *"If the credentials are missing, publish the offline build"* — **not a choice.** One outcome is
+  the product and the other is a different product wearing its name. Fail.
+* *"If the migration cannot apply, carry on"* — **not a choice.** `src/lib/db/chain.ts` already gets
+  this right: it THROWS on a duplicate version rather than booting a world with a rule missing.
+
+### The three shapes to hunt
+
+1. **The silent fallback.** `A ?? B` where B is not merely a lesser A but a different thing. Ask
+   what B being wrong would look like from the outside. If the answer is "exactly like success",
+   it must be an error.
+2. **The swallowed failure.** A `catch` that logs and continues, a `.catch(() => {})`, an
+   `-ErrorAction SilentlyContinue`. The refusal contract exists so failures CROSS the boundary as
+   refusals; a swallowed one leaves every screen on "Opening the world…" for ever, which this repo
+   has already shipped once.
+3. **The optional guard.** A check that only runs when something else is configured. `world.buffs()`
+   was, for a while, the ONLY thing winding the fair calendar — so fairs existed if and only if a
+   player opened one tab. 0028 fixed the mechanism; the shape is the lesson. **A world rule that
+   depends on a screen being looked at is not a world rule.**
+
+### And the mirror: do not make ABSOLUTE what is genuinely conditional
+
+Over-applying this is its own defect. A fallback that keeps a truthful, lesser answer on screen is
+correct and must not be turned into a crash: an unresolvable port code, a market read that failed
+while the prices around it are still true, a chart that has not loaded yet. §7B's fourth question
+applies — name what going wrong would look like, and let that decide which shape you are writing.
+
+**The test either way:** a conditional whose branches are both acceptable needs no defence. One
+whose `else` is unacceptable needs to stop being a conditional.
+
+---
+
 ## 8. The checklist — run this before you finish anything
 
 Ten questions. They take two minutes and every one of them has caught something real in this
@@ -413,3 +539,12 @@ repository.
 
 **If a fact can be read two ways, that duality IS the spaghetti. Pick one, derive or delete the
 other — in the turn that created it.**
+
+And its forward half, which is §7B in one line:
+
+**Decide where a concept lives BEFORE you need it twice — because by the time you need it twice, the
+copy already exists.**
+
+And §7C in one line:
+
+**If the `else` branch is unacceptable, it is not a branch — it is a failure you agreed to hide.**

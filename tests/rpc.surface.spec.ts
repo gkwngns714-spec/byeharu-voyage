@@ -142,6 +142,21 @@ test('world.market() prices every good, with %NBR, stock band, availability and 
   expect(isNum(market.port!.dev_commerce) && isStr(market.port!.culture)).toBe(true)
   expect(market.goods).toHaveLength(snap.goods.length)     // every good the world trades, priced
 
+  // THE PRICES' OWN CLOCK (0029): two served instants a countdown subtracts — never a cadence
+  // knob a client multiplies. `next_change_at` is strictly ahead of the payload's own `now`
+  // (a boundary instant serves the NEXT boundary), and by no more than a whole slot, read from
+  // the server's knob here only to bound the claim — the client never sees slot_seconds on this
+  // payload, which is the point.
+  const clockNow = Date.parse(market.clock.now)
+  const nextChange = Date.parse(market.clock.next_change_at)
+  expect(Number.isFinite(clockNow) && Number.isFinite(nextChange)).toBe(true)
+  expect(nextChange).toBeGreaterThan(clockNow)
+  const slotMs = Number(
+    (await db.pg.query<{ v: number }>("select public.wc_num('drift_slot_seconds')::float8 as v"))
+      .rows[0].v,
+  ) * 1000
+  expect(nextChange - clockNow).toBeLessThanOrEqual(slotMs)
+
   for (const g of market.goods) {
     expect(isStr(g.good_id) && isStr(g.code) && isStr(g.name) && isStr(g.category)).toBe(true)
     expect(g.buy).toBeGreaterThan(0)

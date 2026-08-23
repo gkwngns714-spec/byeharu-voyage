@@ -1,8 +1,16 @@
-import { Badge, Button, fineClass, Notice, StatRow } from '../../components/ui'
+import { Badge, Button, Explain, fineClass, Notice, StatRow } from '../../components/ui'
 import { formatDucats, formatFixed, formatInt, formatNm, formatRealShort, formatTuns, formatUnitPrice, formatVoyageDays } from '../../lib/format'
 import type { PreviewResult, Refusal, VerbSpec } from '../../lib/rpc'
+// THE PAYLOAD READERS ARE MACHINERY NOW (2026-08-23). `num` and `str` were declared at the foot of
+// this file and again in `features/ledger/LedgerScreen.tsx`, and they had drifted — LEDGER's `num`
+// tolerated a numeric that arrived as a string and this one did not. docs/NO_SPAGHETTI.md §2 named
+// the pair as debt; the Map tab needing a third reader triggered §1's "found a third time" rule.
+import { num, str } from '../../lib/json'
 import type { FixAction } from '../../domain/order'
-import { fixAction } from '../../domain/order'
+// AND THE SAIL ESTIMATE'S KEYS BELONG TO THE ORDER SECTION. The Map tab prints the same passage
+// beside "Sail here", so `total_nm` / `voyage_days` have one READING (domain/order/estimate.ts)
+// and two renderings — a rendering is a screen's chrome, not a second authority.
+import { fixAction, sailEstimate } from '../../domain/order'
 
 // THE DRY RUN — F.5 layer 3, rendered.
 //
@@ -37,9 +45,16 @@ export function PreviewPanel({
   onFix: (action: FixAction) => void
 }) {
   if (state.status === 'idle') {
+    // The HOW of the check is standing prose, so it is behind the dot (Explain.tsx) — beside the
+    // short line it explains, never orphaned on a line of its own. What stays visible is only the
+    // state that is true right now: there is nothing to check yet.
     return (
-      <p className="font-mono text-xs text-ink-faint">
-        Finish the order and the server will run it, roll it back, and tell you what it would cost.
+      <p className="flex flex-wrap items-center gap-x-1 font-mono text-xs text-ink-faint">
+        Nothing to check yet
+        <Explain label="the check" panelClassName="w-full normal-case tracking-normal">
+          Finish the order and the server will run it, roll it back, and tell you what it would
+          cost — before a ducat moves.
+        </Explain>
       </p>
     )
   }
@@ -171,18 +186,10 @@ function FixLine({ fix }: { fix: string }) {
 }
 
 // ── the verb-shaped estimates cmd.do_*() return (migration 0007) ────────────────────────────────
-
-function num(estimate: Record<string, unknown> | undefined, key: string): number | null {
-  const raw = estimate?.[key]
-  if (raw === null || raw === undefined) return null
-  const n = Number(raw)
-  return Number.isFinite(n) ? n : null
-}
-
-function str(estimate: Record<string, unknown> | undefined, key: string): string | null {
-  const raw = estimate?.[key]
-  return typeof raw === 'string' ? raw : null
-}
+//
+// `num` and `str` were declared HERE until 2026-08-23. They are `src/lib/json.ts` now — see the
+// import at the head of this file, and that module's header for the drift they had already
+// accumulated against LEDGER's copies.
 
 function Estimate({
   verb,
@@ -199,8 +206,9 @@ function Estimate({
 
   switch (verb) {
     case 'SAIL': {
-      const nm = num(estimate, 'total_nm')
-      const days = num(estimate, 'voyage_days')
+      // ONE READING, TWO SCREENS (domain/order/estimate.ts). The Map tab prints the same two
+      // figures beside "Sail here"; what differs is the chrome, never the keys.
+      const { nm, days } = sailEstimate(estimate)
       // The real-world wait is voyage-days ÷ the compression the SERVER serves in snapshot.config —
       // not the constant in lib/format, which pins 480 at build time and would lie the day a
       // migration retunes the clock.

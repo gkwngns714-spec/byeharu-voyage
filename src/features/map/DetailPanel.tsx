@@ -1,9 +1,12 @@
 import { formatInt, formatNm, formatRealShort } from '../../lib/format'
+import type { FleetView, VerbSpec } from '../../lib/rpc'
 import { fleetsAtPort, fleetsBoundFor, type ChartModel, type MapPort, type MapSelection } from '../../chart'
 import { MapPanel } from './MapPanel'
+import { SailHere } from './SailHere'
 
-// PANEL TWO, BOTTOM-RIGHT — the detail of whatever is selected. DESIGN §E.5's "selected fleet
-// detail", widened by one case: a port, when a port is what was tapped.
+// PANEL TWO, BOTTOM-RIGHT — the detail of whatever is selected, and the ONE place you act from.
+// DESIGN §E.5's "selected fleet detail", widened by one case: a port, when a port is what was
+// tapped.
 //
 // ONE PANEL FOR BOTH, and one `MapSelection` behind it, deliberately. A second floating card for
 // ports would be a third panel (§E.5 allows two), it would have to be positioned somewhere, and
@@ -14,8 +17,17 @@ import { MapPanel } from './MapPanel'
 // `total_nm` — SAILED miles, so a passage that rounds a cape reads the distance it really is — and
 // the countdown is `voyage.eta` against the shell clock. The map computes none of it.
 //
-// It is READ-ONLY, all of it. There is no "sail here", no "set course", no button that starts an
-// order half-composed. The panel ends with where orders actually come from.
+// ── IT USED TO SAY "IT IS READ-ONLY, ALL OF IT" (deleted 2026-08-23) ───────────────────────────
+// The paragraph that stood here read: *"There is no 'sail here', no 'set course', no button that
+// starts an order half-composed. The panel ends with where orders actually come from."* Every word
+// of it was true, and it was the defect — the owner's verdict on this tab was that a map you
+// cannot act from is a picture, and the caption at the foot of the chart said so out loud.
+//
+// A selected PORT now carries exactly one action, `SailHere`. The distinction the old paragraph
+// was reaching for survives whole, and it is the important half: **this panel still composes
+// nothing.** It names one intent, asks the SERVER what that intent would do, prints the answer —
+// including the refusal, when there is one — and hands the intent to the one composer. There is
+// still no argument picker on this screen, no quantity control, and no legality check.
 
 /** One label/value line — the panel is a tiny table and nothing more. */
 function Line({ label, value }: { label: string; value: string }) {
@@ -33,6 +45,9 @@ export function DetailPanel({
   selection,
   nowMs,
   compact,
+  acting,
+  verbs,
+  onSail,
   onDismiss,
 }: {
   model: ChartModel
@@ -41,6 +56,16 @@ export function DetailPanel({
   selection: MapSelection
   nowMs: number
   compact: boolean
+  /** The hull an order from this panel belongs to. It is `domain/order`'s draft's `fleetId`,
+   *  resolved against the served roster in MapScreen — this screen keeps NO second idea of which
+   *  fleet is in hand. Null when the house has chosen none; the hand-off then carries none and
+   *  Command asks. */
+  acting: FleetView | null
+  /** The server's own verb grammar (`world.snapshot().verbs`). Nothing here lists verbs. */
+  verbs: readonly VerbSpec[]
+  /** Hand a SAIL to the one composer and go to it. MapScreen owns the two lines, exactly as
+   *  FleetsScreen, PortScreen and MarketScreen each do. */
+  onSail: (fleetId: string | null, args: Record<string, string>) => void
   onDismiss: () => void
 }) {
   if (!selection) return null
@@ -98,6 +123,13 @@ export function DetailPanel({
       compact={compact}
       onDismiss={onDismiss}
       storageKey="map.detail"
+      // A PORT CARRIES AN ACTION, so this panel is wider than the fleet's on a phone. The compact
+      // default (`max-w-[55vw]`, ~214 px at 390) was sized for four short label/value lines; a
+      // refusal is a SENTENCE the server wrote, and squeezing it into a 214 px column turns a
+      // readable reason into a ragged tower that pushes the button toward the top of the glass.
+      // The chart div clips at its own edge, so panel HEIGHT is the thing that has to stay bounded
+      // — and width is what buys height back.
+      widthClassName={compact ? 'w-[74vw] max-w-[74vw]' : 'w-56 max-w-[45vw]'}
       testId="map-detail-panel"
     >
       <p className="mb-1 truncate font-serif text-sm text-ink">{port.name}</p>
@@ -107,6 +139,15 @@ export function DetailPanel({
         value={here.length > 0 ? here.map((f) => f.fleet.name).join(', ') : 'none'}
       />
       {bound.length > 0 && <Line label="on passage" value={bound.map((f) => f.fleet.name).join(', ')} />}
+
+      {/* THE ONE ACT ON THIS SCREEN. It composes nothing — see this file's header and SailHere's. */}
+      <SailHere
+        fleet={acting}
+        portCode={port.code}
+        portName={port.name}
+        verbs={verbs}
+        onSail={onSail}
+      />
     </MapPanel>
   )
 }

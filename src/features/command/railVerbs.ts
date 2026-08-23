@@ -14,7 +14,7 @@
  * decision about the fleet's own state.
  *
  *   BUY        how much room she has, and what this order would take of it
- *   HIRE       hands aboard against berths, and the idle men this port can offer
+ *   HIRE       crew aboard against berths, and the idle men this port can offer
  *   REPAIR     the worst hull, every hull, and whether this port even keeps a yard
  *   PROVISION  days of stores, and the fact that water and food take cargo's own tuns
  *
@@ -33,7 +33,7 @@ export const FLEET_RAIL_VERBS: readonly string[] = ['BUY', 'HIRE', 'REPAIR', 'PR
  * ── WHY THIS IS A SECOND LIST AND NOT A LONGER FIRST ONE ───────────────────────────────────────
  * SAIL was named in the list above as deliberately ABSENT, with a sentence that is still true and
  * is exactly the reason it now has a rail of its OWN kind: *"SAIL's decision is about the WORLD —
- * where, how far, what the passage costs."* A `FleetRail` on SAIL would print her hold, her hands
+ * where, how far, what the passage costs."* A `FleetRail` on SAIL would print her hold, her crew
  * and her hulls beside a question about geography — furniture, by the paragraph above. So the fact
  * this module records is not "does this verb get a rail" but "what is this verb a decision ABOUT",
  * and the composer switches on that. One list per answer; the boolean is derived from them.

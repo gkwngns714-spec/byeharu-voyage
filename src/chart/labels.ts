@@ -24,9 +24,27 @@
 //      chart, a fleet at sea — was boxed in on all four sides by the marks for Lisboa and Sevilla
 //      and dropped. Eight positions is what makes the priority table mean anything in a crowd.
 //
-//   3. DROP. If no side fits, the label is not drawn. It is never drawn badly. The glyph stays
+//   3. KEEP OUT. A label may not be placed inside a rectangle the screen has declared opaque —
+//      its zoom column, its corner panels. THE DEFECT, measured at 390×844: the chart drew
+//      `Saint-Malo` from x=309 while the zoom buttons ran from x=334, so the player read `Sain`;
+//      `Nantes` began at x=347, entirely under the column, and the 7 px that escaped past its right
+//      edge rendered as a bare `s`. The names were not clipped by the viewport — nothing was, and
+//      the edge rule above was doing its job — they were BEHIND AN OPAQUE BUTTON, which is a worse
+//      failure than dropping them: half a name cannot be told from another port's whole one, so the
+//      reader cannot know whether that is Saint-Malo or Santander.
+//
+//      The rectangles arrive as a PARAMETER, in chart units. This layer must never learn where a
+//      screen puts its buttons (src/chart/index.ts's standing rule) — and it must not, because two
+//      screens draw this chart and only one of them has any chrome at all. `useChartSurface`
+//      measures them off the `CHART_CHROME` marker the gesture handlers already respect, so
+//      "opaque chrome over the chart" is declared ONCE and both the gestures and the names read the
+//      same declaration.
+//
+//   4. DROP. If no side fits, the label is not drawn. It is never drawn badly. The glyph stays
 //      exactly where it was and stays tappable, and the detail panel names it — so a dropped label
-//      costs a tap, never information.
+//      costs a tap, never information. This is why keep-out binds even a FORCED label: a name
+//      printed under a button is not a name that was placed, it is a name that was hidden while the
+//      chart believed it had been printed.
 //
 // MEASURING TEXT WITHOUT A DOM. Every label on this chart is set in `font-mono`, and every font in
 // that stack is MONOSPACE, so a label's width is `characters × advance × fontSize` exactly — no
@@ -104,6 +122,12 @@ export interface LabelLayoutOptions {
   readonly glyphRadiusPx?: number
   /** Keep-out margin at the viewport edge. */
   readonly edgeInsetPx?: number
+  /**
+   * RECTANGLES A NAME MAY NOT BE PLACED IN, in chart units — the screen's own opaque chrome, handed
+   * down. Empty by default, because a chart with nothing over it has nothing to avoid. See the
+   * KEEP-OUT note in this file's header for what these are and why they arrive as a parameter.
+   */
+  readonly keepOut?: readonly Rect[]
 }
 
 /**
@@ -138,6 +162,9 @@ export const LABEL_PRIORITY = {
 const ADVANCE_EM = 0.6 * 1.06
 
 const DEFAULTS = { fontSizePx: 10.5, gapPx: 9, glyphRadiusPx: 7, edgeInsetPx: 4 }
+
+/** One frozen empty list, so a chart with no chrome over it does not allocate one per frame. */
+const EMPTY_KEEP_OUT: readonly Rect[] = []
 
 function intersects(a: Rect, b: Rect): boolean {
   return (
@@ -227,7 +254,8 @@ function candidates(
 
 /**
  * Place as many labels as fit, best first. PURE: same requests + same options → same layout, so a
- * test can assert "no two boxes intersect at 390×844" and mean it.
+ * test can assert "no two boxes intersect at 390×844", or "none of them lands under the zoom
+ * column", and mean it.
  */
 export function planLabels(
   requests: readonly LabelRequest[],
@@ -238,6 +266,7 @@ export function planLabels(
   const gap = (options.gapPx ?? DEFAULTS.gapPx) * u
   const glyph = (options.glyphRadiusPx ?? DEFAULTS.glyphRadiusPx) * u
   const inset = (options.edgeInsetPx ?? DEFAULTS.edgeInsetPx) * u
+  const keepOut = options.keepOut ?? EMPTY_KEEP_OUT
 
   const vb = options.viewBox
   const frame: Rect = {
@@ -274,6 +303,10 @@ export function planLabels(
     let chosen: (typeof options_)[number] | null = null
     for (const candidate of options_) {
       if (!containedBy(candidate.box, frame)) continue
+      // Keep-out binds EVERY label, forced ones included: `force` overrides tidiness (two names
+      // crowding each other), never visibility. A name under an opaque button is invisible, and a
+      // chart that believes it printed a name it did not is worse than one that dropped it.
+      if (keepOut.some((k) => intersects(candidate.box, k))) continue
       if (!request.force) {
         if (glyphBoxes.some((g) => g.id !== request.id && intersects(candidate.box, g.rect))) continue
         if (taken.some((t) => intersects(candidate.box, t))) continue

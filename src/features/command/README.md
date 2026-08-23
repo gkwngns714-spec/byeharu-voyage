@@ -16,7 +16,7 @@ brings it back — a second way in would be a second way for the two paths to dr
 | **1. Commanding** | taps a fleet chip | `world.fleets()` — name, where she lies or is bound, queue depth, whether she is HALTED |
 | **2. What she is to do** | taps a verb | `world.snapshot().verbs` — the server's own `cmd.verb_schema()`. Nothing on this side lists verbs. The card prints the verb, its mark and `spec.help` (one line); `spec.note` — the fine print 0021 split out of it — is behind the ⓘ and never on the card |
 | **3. Each argument** | taps a row, a chip, or drags a stepper | one picker per argument TYPE the schema declares (below) |
-| **3b. (BUY · HIRE · REPAIR · PROVISION) her state** | reads it | the fleet rail — the room, the hands, the hulls or the stores, whichever the verb is a decision about (§9) |
+| **3b. (BUY · HIRE · REPAIR · PROVISION) her state** | reads it | the fleet rail — the room, the crew, the hulls or the stores, whichever the verb is a decision about (§9) |
 | **3b'. (SAIL) where she is** | reads it | the same rail slot, carrying a CHART instead: her berth, the harbour this order would send her to, and the sea lanes between them (§11) |
 | **3c. (BUY only) a bargain** | taps *Haggle* | `cmd.haggle` / `world.haggle_state` — one finite, server-rolled attempt at the port's cut (§10) |
 | **4. What will be sent** | reads it | the line assembles itself, read-only, as the picks land |
@@ -34,21 +34,28 @@ Every argument picker offers what actually exists **now**:
   600 nm, the stock band and the server's own buy/hold/sell advice. SELL offers only what is
   aboard. **Every good the port trades is listed** — no cap (the owner, 2026-08-22: *"i want all
   the trade goods on left side"*) — sorted by the server's advice, with the count stated above the
-  list and the filter still there to reach one by name. **A row UNFOLDS** (the owner, 2026-08-23:
-  *"click a trade good → it unfolds showing how much I can buy, and more"*): one row at a time, and
-  opening is looking — the pick is only made by the fold's own `Choose` button. Inside it,
-  `world.buy_capacity()`'s ceiling, total and the server's phrase for what stops her; the reachable
-  port that pays most for the good with its margin, return and passage, from `world.trade_routes()`
-  (0019, **one read for the whole quay** — never one per row); and the stock figures behind the
-  row's meter. **SELL's fold has no capacity block at all** — what is aboard is already on the row
-  and again in the stepper's caption, and a third rendering was the copy to delete. It gets the half
-  of the comparison that is about the parcel she is *carrying*: which reachable port bids more for
-  it, and what that quay bids against this one.
+  list and the filter still there to reach one by name. **A row UNFOLDS to be read** (the owner,
+  2026-08-23: *"click a trade good → it unfolds showing how much I can buy, and more"*): one row at
+  a time, opening is looking, and inside it are `world.buy_capacity()`'s ceiling, total and the
+  server's phrase for what stops her, and the stock figures behind the row's meter. **The BUY and
+  SELL price cells are the trade itself** (the owner, 2026-08-23: *"i want to be able to click on
+  buy and sell itself and do trades"*): tapping a cell names the verb AND the good on the one
+  draft, and the composer's own derivation then unfolds the quantity step — the `Choose <good>`
+  button the fold used to carry was deleted with that change, because two ways to pick one good is
+  two authorities for the pick. A sell cell for a good she carries none of is disabled and says
+  why (“none aboard”). The fold's “where it pays more” block — `world.trade_routes()` — was
+  removed by the owner's instruction (2026-08-23: *"where it pays more does not need to be given
+  in buy"*); the comparison lives on the Market tab, which still reads 0019. **SELL's fold has no
+  capacity block at all** — what is aboard is already on the row and again in the stepper's
+  caption, and a third rendering was the copy to delete.
 * **qty** — ALL / HALF / MAX and a stepper that walks in `config.trade_step_tuns`, bounded by the
   hold, the stock and the purse, and captioned with **which** of those stops you there. What that
   quantity would COST is not on the caption; the rail says it (§9).
 * **number** — HIRE is bounded by empty berths, REPAIR starts above her present hull, PROVISION
-  offers days. No free-form number field exists on this screen.
+  offers days. No free-form number field exists on this screen. **HIRE's and PROVISION's argument
+  rows do not fold** (the owner, 2026-08-23: *"when pressing hire, 12, it unfolds. this is
+  uncomfortable"* / *"Provision also"*): each is one number, the picker is simply there, and
+  answering never collapses it — the fold is BUY's, where it informs a choice among seventy.
 * **enum / price** — the schema's own words; a limit is offered around the market's price.
 
 ## 2. The string is still the one contract
@@ -122,10 +129,10 @@ its foot unreachable. That is why the rail carries **no control of any kind** �
 Anything tappable belongs in the working pane, which is never sticky, never capped and never
 scrolled.
 
-**An unfolded good row obeys the same law.** Tapping a good opens a panel inside the list carrying
-what she can take, where it pays more, and a `Choose` button — and that button is an ACTION, so the
-fold has no `max-h` and no `overflow` of its own. It simply makes the page longer; the page's scroll
-is still the only one on the tab (§1 under **good**, and `ArgPickers.tsx`'s `GoodDetail`).
+**A good row obeys the same law.** Its buy and sell price cells are ACTIONS (they are the trade
+itself, §1 under **good**), and the fold they open into the quantity step has no `max-h` and no
+`overflow` of its own. It simply makes the page longer; the page's scroll is still the only one on
+the tab (`ArgPickers.tsx`'s `GoodFigures` and `GoodDetail`).
 
 ## 8. Time
 
@@ -159,7 +166,7 @@ draw it, because water and food take cargo's own tuns (C.3) — and everything e
 | verb | the blocks | where every figure comes from |
 |---|---|---|
 | **BUY** | room in the hold · this order · what moves the price | the three sections below |
-| **HIRE** | her hands against her berths · the idle men here | `fleetCrew(fleet)` — the spelling `E_CREW_MAX` counts by (0007:659) · `port.crew_pool` · `config.wage_per_crew_day` |
+| **HIRE** | her crew against her berths · the idle men here | `fleetCrew(fleet)` — the spelling `E_CREW_MAX` counts by (0007:659) · `port.crew_pool` · `config.wage_per_crew_day` |
 | **REPAIR** | her worst hull, then every hull · the yard here | `worstHullFraction` / `hullFraction` · `port.has_yard`, `port.yard_tier` |
 | **PROVISION** | room in the hold · her stores | `fleet.endurance_days` (SERVED, never divided out here) · `fleetStores(fleet)` |
 
@@ -169,7 +176,7 @@ price and no repair rate … PROVISION/HIRE/REPAIR are priced by the server when
 plausible figure would be the fabricated number `UI_DIRECTION.md` §4 rule 5 forbids, so the last
 block on those three verbs says so in the player's words and points at `cmd.preview()`, which runs
 the real verb and names the figure before a ducat moves. `config.wage_per_crew_day` is the one money
-figure HIRE prints, and it is the standing wage at sea rather than the price of signing a hand on —
+figure HIRE prints, and it is the standing wage at sea rather than the price of signing a crew member on —
 the RATE, where `FleetsScreen.tsx:529` already owns the daily BILL (`aboard × rate`).
 
 Three blocks, every figure served:
@@ -286,10 +293,12 @@ event, so on the 390px target the chart simply follows the choice.
    server's own, and the distance stays where it was: on the row, from `legs.nm`, with a dash where
    there is no direct leg.
 2. **It takes no input at all.** No pan, no zoom, no tap, no handler prop that could carry one —
-   `pointer-events: none` on the picture. The map never accepts an order (`docs/DESIGN.md` §E.5),
-   and separately, a gesture surface embedded in a form fights the page's own scroll on a phone:
-   `useChartSurface` sets `touch-none` and calls `preventDefault` on wheel, which is right for a
-   whole tab and wrong inside a composer. So `SmallChart` does not mount it.
+   `pointer-events: none` on the picture. The reason is about THIS chart, not about maps: a gesture
+   surface embedded in a form fights the page's own scroll on a phone — `useChartSurface` sets
+   `touch-none` and calls `preventDefault` on wheel, which is right for a whole tab and wrong inside
+   a composer — so `SmallChart` does not mount it. *(This clause also cited "the map never accepts
+   an order"; that sentence was amended 2026-08-23, when the MAP tab's own chart gained a `Sail
+   here` on a tapped harbour — `docs/DESIGN.md` §E.5 Law 3. It was never this chart's real reason.)*
 3. **The rail still carries no control.** `splitRailClass()` is `md:sticky`, and a sticky panel
    taller than the viewport leaves its foot unreachable (§7, §9, §10). A chart is a figure. The ⓘ
    beside it is the one thing that folds, and it folds text.
@@ -338,6 +347,12 @@ rules gained `chart`; all four were broken on purpose and watched go red. MapScr
 exactly what it composed before — only its import paths changed, plus its seven-line SVG paint order,
 which became `ChartCanvas` so the second caller composes it instead of restating it.
 
-**Standing law either way, and it still holds: the map never accepts an order** (`docs/DESIGN.md`,
-and MapScreen's own header). The destination is picked from the list; the chart shows where she is
-and where that is, and nothing on it is tappable.
+**Standing law either way — AMENDED 2026-08-23.** This read *"the map never accepts an order"*. The
+MAP tab now offers one action on a tapped harbour, and the law it was protecting survives in the form
+that is actually load-bearing: **nothing outside this feature COMPOSES an order, and no argument
+picker, quantity control or legality check lives in `src/features/map`.** The map names an intent and
+hands it to `domain/order`'s draft, exactly as FLEETS, PORT and MARKET do, and this tab composes it —
+`docs/DESIGN.md` §E.5 Law 3 and `features/map/SailHere.tsx`.
+
+None of that touches the chart in THIS rail, which is unchanged: the destination is picked from the
+list, the chart shows where she is and where that is, and nothing on it is tappable (see point 2).

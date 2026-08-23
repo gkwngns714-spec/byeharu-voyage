@@ -27,12 +27,17 @@ import { useElementSize } from './useElementSize'
 // ── THREE THINGS IT DELIBERATELY DOES NOT DO ───────────────────────────────────────────────────
 //
 // 1. IT TAKES NO INPUT. No pan, no zoom, no tap, no hover target — `pointer-events: none` on the
-//    picture, and no handler prop exists to pass one. Two reasons, and either would be enough:
-//    the standing law is that the map never accepts an order (`docs/DESIGN.md`, MapScreen's
-//    header), and a gesture surface embedded in a form fights the page's own scroll on a phone
-//    (`useChartSurface` sets `touch-none` and calls `preventDefault` on wheel, which is right for a
-//    full tab and wrong inside a composer). It re-frames itself when the choice changes; that is
-//    all the interaction it has.
+//    picture, and no handler prop exists to pass one. The reason is about a chart inside a FORM: a
+//    gesture surface embedded in one fights the page's own scroll on a phone (`useChartSurface`
+//    sets `touch-none` and calls `preventDefault` on wheel, which is right for a full tab and wrong
+//    inside a composer). It re-frames itself when the choice changes; that is all the interaction
+//    it has.
+//
+//    This used to give a second reason — *"the standing law is that the map never accepts an
+//    order"* — and that law was amended on 2026-08-23: the MAP tab's chart now offers `Sail here`
+//    on a tapped harbour, which is a hand-off to the one composer and not a second one
+//    (`docs/DESIGN.md` §E.5 Law 3). Nothing about THIS chart changes; it simply no longer has two
+//    reasons, and the surviving one is the true one.
 //
 // 2. IT DRAWS NO LINE BETWEEN THE TWO PLACES. A straight segment from here to there would be read
 //    as the passage and measured as the distance, and it is neither: Lisbon → Cádiz is 248 sailed

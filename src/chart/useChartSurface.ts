@@ -64,6 +64,98 @@ function isChrome(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(`[${CHROME_ATTR}]`) !== null
 }
 
+/** A chrome rectangle in CSS pixels, measured from the surface's top-left corner. */
+export interface ChromeBox {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}
+
+/** One frozen empty list, so "no chrome" never allocates and never re-renders a consumer. */
+const NO_CHROME: readonly ChromeBox[] = []
+
+/**
+ * WHERE THE CHROME IS, in the surface's own pixels — so a NAME is never printed under a button.
+ *
+ * THE DEFECT, measured at 390×844: `Saint-Malo` rendered as `Sain` and `Nantes` as a bare `s`,
+ * because the zoom column is opaque and sat on top of them. Neither name was clipped by the
+ * viewport — the label engine's edge rule had placed both entirely inside the glass, and the
+ * measured count of edge-clipped labels was zero. They were painted underneath a control.
+ * ./labels.ts carries the arithmetic and the rule that now refuses those placements.
+ *
+ * THIS IS THE DECLARATION THE GESTURES ALREADY READ. `CHART_CHROME` exists so that a press on a
+ * panel does not pan the chart: it is the screen saying *this box is mine, and it is opaque*.
+ * Asking that same marker where those boxes ARE composes an authority that exists rather than
+ * adding a second one — as against a keep-out rectangle hand-written beside the zoom buttons, which
+ * would be one more spelling of a corner `overlaySlotClass` already owns and would drift the day
+ * the buttons move. Nothing here knows what the chrome IS: a zoom column, a fleet list and a detail
+ * card occlude a name in exactly the same way, and all three are covered by the one rule.
+ *
+ * MEASURED, NOT DERIVED. The panels fold, the detail card exists only while something is selected,
+ * and the fleet list opens folded below `COMPACT_WIDTH_PX`. A rectangle computed from class names
+ * would be right at one width and silently wrong at the next.
+ */
+function useChromeBoxes(ref: RefObject<HTMLDivElement | null>): readonly ChromeBox[] {
+  const [boxes, setBoxes] = useState<readonly ChromeBox[]>(NO_CHROME)
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return
+    let frame = 0
+    let last = ''
+
+    const measure = () => {
+      frame = 0
+      const surface = element.getBoundingClientRect()
+      const next: ChromeBox[] = []
+      for (const node of element.querySelectorAll(`[${CHROME_ATTR}]`)) {
+        const rect = node.getBoundingClientRect()
+        if (rect.width <= 0 || rect.height <= 0) continue
+        next.push({
+          x: rect.left - surface.left,
+          y: rect.top - surface.top,
+          width: rect.width,
+          height: rect.height,
+        })
+      }
+      // Compared as a string, and state replaced ONLY when it really changed. The observers below
+      // fire on every repaint of the chart (its labels are a subtree mutation), so without this the
+      // hook would set state every frame and the chart would re-render itself for ever.
+      const key = next
+        .map((b) => `${b.x.toFixed(1)},${b.y.toFixed(1)},${b.width.toFixed(1)},${b.height.toFixed(1)}`)
+        .join('|')
+      if (key === last) return
+      last = key
+      setBoxes(next.length === 0 ? NO_CHROME : next)
+    }
+
+    const schedule = () => {
+      if (frame === 0) frame = requestAnimationFrame(measure)
+    }
+
+    // Two observers, because chrome moves for two unrelated reasons: the SURFACE resizes (rotation,
+    // a dragged window) and the CHROME changes (a panel folds, the detail card appears).
+    const resize = new ResizeObserver(schedule)
+    resize.observe(element)
+    const mutations = new MutationObserver(schedule)
+    mutations.observe(element, { childList: true, subtree: true, attributes: true })
+    // The first measurement goes through the same frame as every later one, rather than being
+    // taken synchronously here: a rect read during the effect body is a rect read before the
+    // browser has painted, and setting state from it would be the cascading render React warns
+    // about. One frame later the chart has no chrome to avoid; from the second, it has.
+    schedule()
+
+    return () => {
+      if (frame !== 0) cancelAnimationFrame(frame)
+      resize.disconnect()
+      mutations.disconnect()
+    }
+  }, [ref])
+
+  return boxes
+}
+
 export interface ChartSurface {
   /** Measured CSS pixels. Zero until the first layout. */
   readonly width: number
@@ -74,6 +166,14 @@ export interface ChartSurface {
   readonly viewBox: ViewBox | null
   /** Chart units per CSS pixel — multiply by this to keep a glyph a constant size on screen. */
   readonly unitsPerPx: number
+  /**
+   * Every opaque `CHART_CHROME` box on this surface, in CSS pixels from its top-left corner.
+   *
+   * PASS IT STRAIGHT TO `ChartCanvas`'s `keepOut` — that is what it is for, and it is the whole of
+   * a screen's part in "a name is never printed under a button". The chart converts it to chart
+   * units itself; the screen does no arithmetic and states no coordinate.
+   */
+  readonly chromeBoxes: readonly ChromeBox[]
   readonly zoomIn: () => void
   readonly zoomOut: () => void
   /** Back to the opening frame. */
@@ -115,6 +215,7 @@ export function useChartSurface(
   // hook to get them (its non-passive wheel listener would eat the page scroll under a chart that
   // is embedded in a form).
   const size = useElementSize(ref)
+  const chromeBoxes = useChromeBoxes(ref)
   /** Only what the player moved to. `null` = they have not moved it, so the opening frame stands. */
   const [movedTo, setMovedTo] = useState<ChartView | null>(null)
 
@@ -289,6 +390,7 @@ export function useChartSurface(
     view,
     viewBox: view ? viewBoxOf(view, aspect) : null,
     unitsPerPx: view ? unitsPerPixel(view, size.width) : 1,
+    chromeBoxes,
     zoomIn,
     zoomOut,
     fit,

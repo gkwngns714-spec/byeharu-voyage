@@ -72,13 +72,15 @@ export function ProfileScreen() {
             title="Session"
             explain="Nothing is held anywhere but this browser: no account, no server, no password."
           />
-          {/* FIFTY WORDS SAYING TWO THINGS. Both are kept: there is no account, and the world is
-              in this browser's storage where clearing it ends the house. What went is the third
-              retelling of "so there is nobody to sign in as", which the disabled control and its
-              own reason below already say twice more. */}
+          {/* ONE SENTENCE, AND IT IS THE WARNING. "No account on this device" was still being said
+              THREE times on this card — here, in the header's ⓘ ("no account, no server, no
+              password") and as the disabled button's own reason two lines down — so this copy is
+              deleted, not moved. What stays printed is the one thing the other two never say and a
+              player must not learn by losing a save: clearing this browser's storage ends the
+              house. A data-loss warning is a thing to act on and may not go behind a dot. */}
           <p className="text-sm text-ink-muted">
-            No account on this device — the whole world lives in this browser. Your house, purse
-            and ledger are in its storage, and clearing it ends them.
+            Your house, purse and ledger live in this browser&apos;s storage — clearing it ends
+            them.
           </p>
           <div className="mt-4">
             {/* DISABLED WITH ITS REASON, not hidden (docs/UI_DIRECTION.md §4 rule 5). It was

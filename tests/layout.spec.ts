@@ -44,7 +44,10 @@ import { test, expect } from '@playwright/test'
 // STILL ABSENT, and not by oversight: 'map' draws an SVG chart with no table and no text rows, so
 // every assertion here would pass vacuously on it; 'profile' is the auth surface and redirects on a
 // cloud build, which is one of the two skip states the header above says must never go unnoticed.
-const TABS = ['command', 'fleets', 'port', 'market', 'ledger', 'rank'] as const
+// 'compendium' joined 2026-08-23, the day the tab shipped — with three scrolling tables (goods,
+// ships, nations) it is exactly the combination this guard exists for, and 'rank' had to be added
+// AFTER its screen shipped because this list was not grown in the same slice. Not this time.
+const TABS = ['command', 'fleets', 'port', 'market', 'ledger', 'rank', 'compendium'] as const
 
 /** iPhone 14 Pro logical viewport — the narrow case the brief names. */
 const PHONE = { width: 390, height: 844 }

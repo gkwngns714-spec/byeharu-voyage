@@ -18,10 +18,14 @@
 //   text.ts     the ONE composer from picks to the exact line `cmd.issue()` receives, walking the
 //               server's own verb schema — there is one parser (on the server) and one composer
 //   handOff.ts  a named INTENT another section can hand in, without touching the draft's shape
+//   estimate.ts the ONE reading of what `cmd.preview()` said a SAIL would be. COMMAND draws the
+//               full readout under the composer and MAP prints the passage beside "Sail here";
+//               two readers of one estimate is fine, two READINGS of it is the disease
 //
 // ── WHAT IT MAY DEPEND ON ──────────────────────────────────────────────────────────────────────
-// `lib/rpc` types, and nothing else in the app. It knows no screen, no store beyond its own, and
-// no other section. That is what makes it safe for every screen to import.
+// `lib/rpc` types and `lib/json`'s payload readers, and nothing else in the app. It knows no
+// screen, no store beyond its own, and no other section. That is what makes it safe for every
+// screen to import.
 export { useCommandDraft, type CommandIntent, type CommandDraftState } from './draft'
 export {
   QUEUE_VERBS,
@@ -36,3 +40,4 @@ export {
   type FixAction,
 } from './text'
 export { handOffTrade, type TradeIntent } from './handOff'
+export { sailEstimate, type SailEstimate } from './estimate'

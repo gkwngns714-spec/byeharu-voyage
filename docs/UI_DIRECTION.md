@@ -6,7 +6,11 @@
 This document is the standing art and interaction direction for the client. It **overrides the
 austerity of `docs/DESIGN.md` §UI** where the two disagree — the owner's instruction outranks the
 earlier design intent. What it does **not** touch is the architecture: the server still owns every
-rule, `docs/SECTIONS.md` boundaries still hold, and the map still accepts no orders.
+rule, `docs/SECTIONS.md` boundaries still hold, and **nothing outside `features/command` composes an
+order.** That last clause read *"and the map still accepts no orders"* until 2026-08-23, when a tapped
+harbour on the Map tab gained a `Sail here`. The architecture did not move; the sentence was pitched one
+level too low. The map names an INTENT and hands it to the one composer — it holds no argument picker, no
+quantity control and no legality check. `docs/DESIGN.md` §E.5 Law 3 carries the whole amendment.
 
 Every claim below marked **[seen]** was taken from a screenshot that was downloaded and looked at,
 not from memory. The reference captures live outside the repo — they are Line Games' copyright, not

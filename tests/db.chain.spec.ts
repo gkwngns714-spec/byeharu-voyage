@@ -50,7 +50,17 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // D.1's CALENDAR clock (`game_day_seconds`, without which no client could honestly print a figure
 // counted in game-days) and a `nations` catalogue (without which a nation crossed the wire as a
 // code nothing could turn back into a name).
-const LAST = '20260818000028_a_fair_happens_because_the_game_is_played.sql'
+//
+// Moved again, deliberately, 2026-08-23 with 0029-0031. 0029: world.market() serves the prices'
+// own clock — `clock.now` and `clock.next_change_at`, from the new named authority
+// public.next_drift_change_at — and WINDS public.tick_market_drift before pricing, so a screen's
+// countdown is subtraction against a served instant (never client arithmetic over slot_seconds)
+// and the re-ask at zero is itself what steps the market where pg_cron is absent. 0030: the
+// owner's word — "hands" becomes "crew" in every served refusal, report line, verb card and
+// blurb, sliced out of the live definitions with the surroundings byte-identical by construction.
+// 0031 (authored in a parallel session, verified green here — 31 migrations, 31 receipts): the
+// world secret is rotated off the published 0001 literal and the table now refuses it by CHECK.
+const LAST = '20260818000031_a_secret_printed_in_a_book_is_not_a_secret.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

@@ -35,7 +35,7 @@ import type { HaggleStateRead } from './useHaggleState'
 // the stores a cargo decision. Everything else is per-verb.
 //
 //   BUY        room in the hold · what this order would do · what moves the price
-//   HIRE       her hands against her berths · the idle men in this port
+//   HIRE       her crew against her berths · the idle men in this port
 //   REPAIR     her worst hull, then every hull · whether there is a yard here, and its tier
 //   PROVISION  room in the hold · her stores and how many days they are worth
 //
@@ -148,7 +148,7 @@ export function FleetRail({
           decision as much as BUY is. */}
       {(verb === 'BUY' || verb === 'PROVISION') && <HoldBlock fleet={fleet} />}
 
-      {verb === 'HIRE' && <HandsBlock fleet={fleet} port={port} config={config} />}
+      {verb === 'HIRE' && <CrewBlock fleet={fleet} port={port} config={config} />}
       {verb === 'REPAIR' && <HullsBlock fleet={fleet} port={port} />}
       {verb === 'PROVISION' && <StoresBlock fleet={fleet} />}
 
@@ -355,7 +355,7 @@ function PriceBlock({
 //
 // Each of these is a decision about the fleet's state, and until this slice the composer showed the
 // player NOTHING about it — HIRE offered a slider up to her empty berths without saying how many
-// hands she had, REPAIR asked for a percentage without saying what her worst hull stood at, and
+// crew she had, REPAIR asked for a percentage without saying what her worst hull stood at, and
 // PROVISION asked for days without saying how many she was already carrying.
 //
 // EVERY FIGURE BELOW IS EITHER SERVED OR A FOLD THAT ALREADY HAS ONE OWNER in `src/domain/fleet` —
@@ -363,10 +363,13 @@ function PriceBlock({
 // `worstHullFraction`, `hullFraction`, `fleetStores`, and `fleet.endurance_days` straight off the
 // wire. Nothing here re-derives a rule, and nothing here prices anything.
 
-/** HER HANDS — what is aboard against what she was built to carry, and the pool this port offers.
+/** HER CREW — what is aboard against what she was built to carry, and the pool this port offers.
  *  `fleetCrew` is the ONE reading of a fleet's crew (domain/fleet); three screens used to fold it
- *  three ways and only one of them matched the server. */
-function HandsBlock({
+ *  three ways and only one of them matched the server. ("Her hands" until 2026-08-23 — the owner:
+ *  "and hands? seriously? change it like crew or something." Sailor's cant is jargon, and the
+ *  standing rule is no jargon. The word survives only where the SERVER says it — verb help/note,
+ *  refusal sentences — which is a migration's to change, not this file's to paper over.) */
+function CrewBlock({
   fleet,
   port,
   config,
@@ -379,7 +382,7 @@ function HandsBlock({
   return (
     <>
       <section className={BLOCK}>
-        <SectionLabel className="mb-1.5">Her hands</SectionLabel>
+        <SectionLabel className="mb-1.5">Her crew</SectionLabel>
         <HeroFigure value={formatInt(crew.aboard)} unit={`of ${formatInt(crew.max)} berths`} />
         <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
           <Gauge
@@ -406,36 +409,40 @@ function HandsBlock({
             }
           />
           {/* THE RATE, NOT THE BILL. `config.wage_per_crew_day` is a served knob and this is the
-              number a HIRE is decided against: every hand signed on adds this much to every day at
-              sea, for as long as she is out. The fleet's TOTAL daily wage is a different fact and
-              it is already printed on the Fleets tab (FleetsScreen.tsx:529, `aboard × rate`) — one
-              product, one place; this row is the rate the product is made of. */}
+              number a HIRE is decided against: every crew member signed on adds this much to every
+              day at sea, for as long as she is out. The fleet's TOTAL daily wage is a different
+              fact and it is already printed on the Fleets tab (FleetsScreen.tsx:529,
+              `aboard × rate`) — one product, one place; this row is the rate the product is made
+              of. */}
           <StatRow
-            label="a hand's wage"
-            value={`${formatDucats(config.wage_per_crew_day)} a day`}
-            hint="Paid to every hand aboard for every day at sea, whatever she is doing. What it costs to SIGN one on is the port's own rate and is settled when the order runs."
+            label="crew wage"
+            value={`${formatDucats(config.wage_per_crew_day)} a day each`}
+            hint="Paid to every crew member aboard for every day at sea, whatever she is doing. What it costs to SIGN one on is the port's own rate and is settled when the order runs."
           />
         </dl>
       </section>
 
       <section className={BLOCK}>
-        <SectionLabel className="mb-1.5">The idle men here</SectionLabel>
+        {/* THE STANDING EXPLANATION IS BEHIND THE DOT (Explain.tsx's law: the screen prints what
+            is true right now; why it is true is a tap away). This was a permanent two-sentence
+            paragraph under the figure — and it said "crimps", which is sailor's cant nobody who
+            has not read Patrick O'Brian knows; the no-jargon rule applies to explanations too.
+            WHAT THIS COSTS IS STILL THE SERVER'S, AND IT IS ALREADY SAID ONCE: the verb's own
+            `note` (0021) carries the multiple, and this panel does not restate it. */}
+        <div className="mb-1.5 flex flex-wrap items-center gap-x-1">
+          <SectionLabel className="mb-0">The idle men here</SectionLabel>
+          <Explain label="the idle men" panelClassName="w-full normal-case tracking-normal">
+            The men idle in this port sign on at the quay's own rate. Ask for more than are idle
+            and the rest must be found, at a steeper price a head — the quay names the figure when
+            the order runs.
+          </Explain>
+        </div>
         {port ? (
-          <>
-            <HeroFigure value={formatInt(port.crew_pool)} unit="in port" />
-            <p className={fineClass('mt-1.5')}>
-              {/* WHAT THIS COSTS IS THE SERVER'S, AND IT IS ALREADY SAID ONCE. The verb's own
-                  `note` — behind the ⓘ over the argument list — carries the mechanic ("hands
-                  beyond the idle men cost two and a half times"), served by migration 0021. This
-                  line says WHICH SIDE OF THAT LINE she is on, and does not restate the multiple:
-                  a number printed in two places is two authorities for it, and this one is not
-                  even the rail's to hold. */}
-              Sign on more than this and the crimps must go looking, which costs more a head. The
-              quay names the figure when the order runs.
-            </p>
-          </>
+          <HeroFigure value={formatInt(port.crew_pool)} unit="in port" />
         ) : (
-          <p className={fineClass()}>She is at sea. Hands are signed on in port.</p>
+          // A REASON, NOT AN EXPLANATION — it is attached to something she cannot do right now,
+          // so it stays visible. Refusals never go behind a dot (Explain.tsx).
+          <p className={fineClass()}>She is at sea. Crew are signed on in port.</p>
         )}
       </section>
     </>
@@ -503,20 +510,23 @@ function StoresBlock({ fleet }: { fleet: FleetView }) {
   const stores = fleetStores(fleet)
   return (
     <section className={BLOCK}>
-      <SectionLabel className="mb-1.5">Her stores</SectionLabel>
+      {/* THE STANDING EXPLANATION IS BEHIND THE DOT (Explain.tsx). The "after" figure is still not
+          invented here: how many days she would have once provisioned depends on the port's prices
+          and on what actually fits, both of which are the server's — `cmd.preview()` runs the real
+          verb and rolls it back, so it can say. Guessing it with `(water + days × crew × rate)`
+          would be a client rule for a server decision. */}
+      <div className="mb-1.5 flex flex-wrap items-center gap-x-1">
+        <SectionLabel className="mb-0">Her stores</SectionLabel>
+        <Explain label="her stores" panelClassName="w-full normal-case tracking-normal">
+          Every tun of water is a tun of pepper she did not carry. What the stores would be worth
+          after this order is named when you check it.
+        </Explain>
+      </div>
       <HeroFigure value={formatVoyageDays(fleet.endurance_days)} unit="at sea" />
       <dl className="mt-2 space-y-1">
         <StatRow label="water" value={formatTuns(stores.waterT)} />
         <StatRow label="food" value={formatTuns(stores.foodT)} />
       </dl>
-      <p className={fineClass('mt-1.5')}>
-        {/* THE "AFTER" FIGURE IS NOT INVENTED HERE. How many days she would have once provisioned
-            depends on the port's prices and on what actually fits, both of which are the server's —
-            and `cmd.preview()` runs the real verb and rolls it back, so it can say. Guessing it
-            with `(water + days × crew × rate)` would be a client rule for a server decision. */}
-        Every tun of water is a tun of pepper she did not carry. What the stores would be worth after
-        this order is named when you check it.
-      </p>
     </section>
   )
 }
@@ -532,20 +542,24 @@ function StoresBlock({ fleet }: { fleet: FleetView }) {
 function PricedOnTheDayBlock({ verb }: { verb: string }) {
   const what =
     verb === 'HIRE'
-      ? 'What a hand costs'
+      ? 'What a crew member costs'
       : verb === 'REPAIR'
         ? "What the yard's work costs"
         : 'What water and food cost'
   return (
     <section className={BLOCK}>
-      <SectionLabel className="mb-1.5">What it will cost</SectionLabel>
+      {/* One sentence stays — it is the block's whole answer. The second, which explains WHERE the
+          figure does come from, is standing prose and lives behind the dot (Explain.tsx). */}
+      <div className="mb-1.5 flex flex-wrap items-center gap-x-1">
+        <SectionLabel className="mb-0">What it will cost</SectionLabel>
+        <Explain label="what it will cost" panelClassName="w-full normal-case tracking-normal">
+          Finish the order and the check below the composer runs the real thing and rolls it back,
+          so it can tell you the price before a ducat moves.
+        </Explain>
+      </div>
       <p className="text-sm text-ink-muted">
         {what} is the port's own affair, settled on the day the order runs — no figure for it is
         published in advance.
-      </p>
-      <p className={fineClass('mt-1.5')}>
-        Finish the order and the check below the composer runs the real thing and rolls it back, so
-        it can tell you the price before a ducat moves.
       </p>
     </section>
   )

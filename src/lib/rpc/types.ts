@@ -279,10 +279,28 @@ export interface TradeRoutes {
   routes: TradeRoute[]
 }
 
+/** The prices' own clock (0029), served beside the prices so a countdown has one author. */
+export interface MarketClock {
+  /** The server's reading of "now" at the instant this payload was made — the same per-payload
+   *  fact `BuffsView.now` is. ISO timestamptz. */
+  now: string
+  /** The instant the drift walk next steps the whole market (`public.next_drift_change_at`).
+   *  ISO timestamptz. A countdown is SUBTRACTION against this and `now` — it must never be
+   *  recomputed from `slot_seconds` and a wall clock (that is a second authority for "when do
+   *  prices change", wrong by the elapsed slot time on every read and silently wrong the day the
+   *  cadence knob moves — migration 0029 measures both). When the countdown reaches zero the
+   *  client RE-ASKS `world.market()`; the re-ask is itself what steps the market where pg_cron
+   *  is absent, so assuming instead of re-asking shows prices the server no longer serves.
+   *  Another captain's trade or stock regeneration can nudge an individual price sooner; the
+   *  scheduled walk moves at this instant and not before. */
+  next_change_at: string
+}
+
 export interface MarketView {
   /** Null when the port id does not exist. */
   port: MarketPort | null
   goods: MarketGood[]
+  clock: MarketClock
 }
 
 /** world.buy_capacity(fleet, good) — the most this fleet can ACTUALLY take on here, priced through

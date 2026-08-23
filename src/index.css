@@ -64,9 +64,32 @@
   --color-warning-soft: color-mix(in srgb, var(--color-warning) 10%, transparent);
   --color-danger-soft: color-mix(in srgb, var(--color-danger) 10%, transparent);
 
-  /* chart aliases — the read-only Map layer consumes these, never raw hex */
+  /* ── THE CHART'S THREE INKS ─────────────────────────────────────────────────────────────────
+     The read-only chart layer consumes these and never raw hex. THE SEA IS THE GROUND: since
+     2026-08-23 `ChartCanvas` paints `--color-chart-sea` as the first thing on the sheet, so this
+     token is what is actually behind every coast, every mark and every label halo. Before that the
+     chart was drawn straight onto the `.bv-sea` gradient and this token was a colour the eye never
+     met — while `stroke-chart-sea` (the label halo) punched a hole in a backdrop that was not there.
+
+     THE OTHER TWO ARE MIXES OF ONE INK INTO IT, so the whole chart palette is one water colour and
+     one pen, and retuning either retunes the sheet (the MATERIAL block's rule: a literal here would
+     be a second palette). The percentages are not taste — they are contrast ratios, MEASURED in the
+     running game at 390 px against the sea:
+
+       land   42%  #404a58   2.09 : 1   the BODY of the land. A step you can see, and deliberately
+                                        far below the 4.9 : 1 a port mark gets: the coast is the
+                                        ground, the marks are the subject.
+       coast  62%  #5a6472   3.12 : 1   the BOUNDARY, at WCAG 1.4.11's 3 : 1 floor for a meaningful
+                                        graphic. §E.5 asks for "a single pale stroke"; this is the
+                                        value that makes that sentence true rather than aspirational.
+
+     WHAT THIS REPLACED, and why it had to. Land was #1b2635 on #0a1220 — 1.23 : 1, which its own
+     layer described in its header as "a ~5% value step". On screen it was worse: the chart had no
+     sea of its own, so land sat on `.bv-sea`, whose top stop `--color-sky` (#142438) put Iberia
+     against the Atlantic at 1.03 : 1. Two bodies one part in thirty apart is not a chart. */
   --color-chart-sea: #0a1220;
-  --color-chart-land: #1b2635;
+  --color-chart-land: color-mix(in srgb, var(--color-ink-faint) 42%, var(--color-chart-sea));
+  --color-chart-coast: color-mix(in srgb, var(--color-ink-faint) 62%, var(--color-chart-sea));
 
   /* typography (Inter + JetBrains Mono self-hosted via @fontsource, imported in src/main.tsx;
      the serif is a system stack on purpose — zero bytes, always present) */

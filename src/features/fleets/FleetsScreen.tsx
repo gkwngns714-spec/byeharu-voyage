@@ -502,7 +502,13 @@ function FleetDetail({
                   <dd className="text-ink">{formatTuns(stores.foodT, 1)}</dd>
                   <dt className="text-ink-faint">range</dt>
                   <dd className="text-ink">{formatVoyageDays(fleet.endurance_days)}</dd>
-                  <dt className="text-ink-faint">hands</dt>
+                  {/* "crew", NOT "hands" (the owner, 2026-08-23: "and hands? seriously? change it
+                      like crew or something"). Sailor's cant reads as period flavour to whoever
+                      writes it and as nonsense to whoever plays it — same no-jargon rule that
+                      renamed the map's `fit` control. The server's own refusals and voyage
+                      reports said "hands" too until migration 0030 renamed them the same day —
+                      one wording decision, both sides of the wire. */}
+                  <dt className="text-ink-faint">crew</dt>
                   <dd className="text-ink">
                     {formatInt(crew.aboard)}/{formatInt(crew.max)} · {formatInt(crew.required)} needed
                   </dd>

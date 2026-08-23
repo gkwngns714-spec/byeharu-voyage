@@ -5,6 +5,127 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-23 — D19: the map stops being a picture
+
+Owner, on the Map tab's caption: it *"literally reads `view only · orders on Command` — that sentence is
+the screen confessing it is unfinished."* You could see the whole world, your fleet lying in Lisbon and
+214 harbours around her, and act from none of them: remember the name, leave the tab, find it in a list.
+
+**The caption is deleted, with the behaviour it described.** Tapping a harbour now offers `Sail here`.
+
+### THE SEAM: THERE WAS ALREADY ONE, AND IT GOT A FOURTH CALLER
+
+`tests/sections.spec.ts` forbids a screen importing a screen, so the map cannot reach into COMMAND. The
+honest mechanism is a hand-off — and this repo has exactly one: `domain/order`'s draft, written by FLEETS,
+PORT and MARKET as `handOff(intent)` then `navigate('/command')`. **Nothing new was built to carry an
+order off the Map tab.** Three alternatives were considered and rejected, each for the same reason — each
+would be a second place a pending order lives:
+
+| rejected | why |
+|---|---|
+| a field on `live/worldStore` | two drafts. The store is the WORLD; it is not the order being made |
+| router state (`navigate('/command', { state })`) | invisible to the draft's `sessionStorage`, so a reload loses an order the composer would otherwise still hold |
+| a search param (`?verb=SAIL&dest=CAD`) | the URL becomes a second authority for the draft **and** needs parsing on arrival — a second parser, in a game whose whole point is that there is one |
+
+**And "which hull is this order for" got no new answer either.** `domain/order`'s draft already owns it
+app-wide. The map READS it, and selecting a fleet on the chart or in the list WRITES it — so the harbour
+you tap next sails the ship you just pointed at, and COMMAND opens on her. A `useState` here would have
+been a fourth screen with a private answer to one question, which is how *"where does her next order
+happen"* reached four spellings (`domain/fleet/derive.ts:76`).
+
+### THE MAP DOES NOT JUDGE, AND CANNOT RECOMMEND WHAT `cmd.issue` WOULD REFUSE
+
+`voyage.sail_refusal` is THE answer to "may she sail there?" and it is revoked from every client role
+(`0019:461`), so the only honest way to ask it from a browser is to run the verb and throw it away —
+`cmd.preview()`. The `args` the map previews and the `args` it hands over are **the same object**, walked
+through the same `orderText` COMMAND will walk, so the line the server judged and the line it is later
+asked to run are equal by construction rather than by agreement.
+
+Measured in the running game at 390×844, local PGlite chain, a freshly founded house:
+
+| tapped | what the panel said |
+|---|---|
+| **Cádiz** | `Sail Gaivota here` · **248 nm · 2.1 days** — the SAILED distance round Cape St Vincent, not the 188 nm straight line |
+| **Las Palmas** | `Sail Gaivota here` · 808 nm · 6.8 days |
+| **Alexandria** | `Sail Gaivota here`, and under it `E_ENDURANCE` — *"Gaivota carries 15.0 days of stores and that route is 19.9 voyage-days; you need 22.9 — PROVISION first"* |
+| **Cádiz, with her at sea and bound there** | *"She is at sea — this would wait in her queue."* |
+| **Lisbon, with her alongside** | *"Gaivota lies here."* and no button |
+
+**The refused button is not disabled**, which is the rule the haggle block already keeps (`README` §10.1):
+tapping it hands over anyway, and COMMAND renders the refusal's *fixes* as tappable orders. Driven: the
+Alexandria tap landed on COMMAND carrying `SAIL Gaivota TO ALE` with `PROVISION Gaivota FULL` offered
+beside it and *Issue this order* correctly dead. **The map states the reason; COMMAND offers the remedy.**
+
+### THE LOOP, COMPLETED
+
+Tap Cádiz → `Sail Gaivota here` → COMMAND opens on `SAIL Gaivota TO CAD` → *Issue this order* → `sent:
+SAIL Gaivota TO CAD` → Gaivota `SAILING`, *at sea → Cadiz, 0 nm of 248 nm, arrives in 6m* → back on the
+chart, her dotted track out of Lisbon with Cádiz ringed. No pageerror, no console.error,
+`scrollWidth === clientWidth === 390`. Repeated at 1440×900.
+
+### A DEFECT THE DRIVE CAUGHT, WHICH NO TYPE COULD
+
+The first draft asked `fleetPortCode(fleet)` whether she was already at the tapped port. That function
+answers a **different question** — *"where does her next ORDER happen"*, `fleet.port ?? fleet.voyage.to` —
+so with Gaivota three minutes out of Lisbon on a Cádiz passage, tapping Cádiz printed **"Gaivota lies
+here."** She was 248 nm away. It is now `fleet.port === portCode`, one served field, and the comment above
+it says why the other one is wrong. One field, two questions, and the wrong one was true-looking enough
+to ship.
+
+### TWO DUPLICATIONS FOLDED, BECAUSE THIS SLICE WOULD OTHERWISE HAVE BEEN THE THIRD COPY
+
+`docs/NO_SPAGHETTI.md` §2 listed `num`/`str` — *"read a field out of a jsonb payload safely"* — as open
+debt in two places that **had already drifted**: LEDGER's `num` tolerated a numeric arriving as a string
+and COMMAND's did not. The map needed to read `cmd.preview`'s estimate, which is §1's *"found a third time
+→ stop the feature and fold it, the same turn."* So:
+
+* **`src/lib/json.ts`** — `num` and `str`, the STRONGER version of each (§6: never weaken to green).
+  PreviewPanel's and LedgerScreen's copies deleted; neither screen's behaviour changes.
+* **`src/domain/order/estimate.ts`** — `sailEstimate()`, the one READING of `total_nm` / `voyage_days`.
+  COMMAND draws the full readout, MAP prints the passage in a corner panel; the chrome differs, the keys
+  have one owner. **Only SAIL** — the other verbs' estimates have one reader each, and folding something
+  that is not duplicated is inventing a home rather than finding one.
+
+### SMALLER, AND DELIBERATE
+
+* **`fit` → `find`.** One tap, always on the glass, frames what the house HAS. The behaviour is unchanged;
+  `fit` is a chart programmer's word for the thing a player calls *"where is my ship"*, and the owner's
+  standing map rule is no insider jargon.
+* **The FLEETS chip stays folded on a phone, and that is the right call.** Measured when the rule was
+  written: open at 390×844 it filled y 0–505 of 844 — 60% of the chart, from a component whose whole brief
+  is "corner panel". Folded it is a 44px chip in the corner, one tap opens it, and the fold is remembered
+  per player. Desktop is unchanged (open). It is also not the only way to find her — `find` is one tap and
+  never folds.
+* **The port panel is wider than the fleet panel on a phone** (`74vw` against the compact default's `55vw`).
+  A refusal is a SENTENCE, and a 214px column turns a readable reason into a tower that pushes the button
+  up the glass. The chart clips at its own edge, so panel height is what must stay bounded, and width is
+  what buys it back.
+* **The action is in the CORNER PANEL, never on the marker.** A chart pans; an action drawn at a map
+  coordinate can be panned off the screen. That is the reach law arrived at by a different route, and it
+  is now written into `components/ui/overlayLayout.ts`, whose header used to ban command buttons on
+  overlays outright.
+* **`keepOut={surface.chromeBoxes}`** wired through to `ChartCanvas` — the chart side's fix for names
+  printed under this screen's opaque chrome (`Saint-Malo` as `Sain`, `Nantes` as a bare `s`). The port
+  card the new flow opens is a `MapPanel` and carries the `CHART_CHROME` marker already, so it is covered
+  by the same one line.
+
+### WHAT THE SERVER WOULD HAVE TO SERVE NEXT
+
+Two things the map wants and cannot honestly have. Both are named here rather than computed on the client:
+
+1. **"Every port she can reach right now, and the reason for each one she cannot."** One preview per tap
+   answers one harbour; painting the whole sheet reachable/not would be 214 round trips, or a client copy
+   of `voyage.sail_refusal`. The shape wanted is one read — `world.reachable(fleet)` → `[{port_id, nm,
+   voyage_days, refusal_code, refusal_sentence}]` — over the same `voyage.reach_from` + `voyage.sail_refusal`
+   pair `world.trade_routes` already composes (0019). **That is a migration, and it is not this slice's.**
+2. **"Read this harbour's market" from the map.** The READ exists (`world.market`); the *seam* does not.
+   Which port a screen is LOOKING at is component-local in MARKET and `sessionStorage` in PORT, and
+   `MarketScreen.tsx:113-122` already names the fix as promoting that into a section of its own. Building
+   it means touching two screens this slice may not, so the map offers no "read the market here" button —
+   an honest absence beats a button that lands on Lisbon.
+
+---
+
 ## 2026-08-23 — D18: seventy marks, a row that unfolds, and a fair that happens whether or not you look
 
 Owner: *"make icon for each trade good, do all the things that i asked before, and then do 8, 9, 10"* —

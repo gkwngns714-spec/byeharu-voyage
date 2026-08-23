@@ -1,10 +1,21 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button, fineClass, Notice, overlaySlotClass } from '../../components/ui'
 import { formatRealShort } from '../../lib/format'
 import type { Point, ViewBox } from '../../lib/geo'
-import type { FleetView, Refusal, SnapshotConfig, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
+import type {
+  FleetView,
+  Refusal,
+  SnapshotConfig,
+  SnapshotLeg,
+  SnapshotPort,
+  VerbSpec,
+} from '../../lib/rpc'
 import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
+// THE HAND-OFF SEAM — `domain/order`'s draft, which is the SAME one FLEETS, PORT and MARKET
+// already write into. Nothing new was built to carry an order off this screen; see the header.
+import { useCommandDraft } from '../../domain/order'
 // THE CHART IS A SECTION OF ITS OWN (src/chart), and no longer this tab's property. Every module
 // below was a file in this folder until 2026-08-23; they moved so the Command tab could draw the
 // same chart on SAIL without copying a layer across a boundary — the silent copy docs/SECTIONS.md
@@ -32,17 +43,44 @@ import { DetailPanel } from './DetailPanel'
 import { FleetsPanel } from './FleetsPanel'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// MAP — READ-ONLY, BY DESIGN AND FOREVER.
+// MAP — YOU CAN ACT FROM IT, AND IT STILL COMPOSES NOTHING.
 //
-// The chart shows where fleets are and where they are sailing. It accepts no input that changes
-// the world: no click-to-move, no drag-a-route, no context menu, no order composed on a marker.
-// Orders are written on the Command tab, in words.
+// ── WHAT THIS BLOCK USED TO SAY, AND WHY IT IS GONE (2026-08-23) ───────────────────────────────
+// It was headed *"MAP — READ-ONLY, BY DESIGN AND FOREVER"* and it argued: *"Any future pull to
+// 'just let them tap the port to sail there' adds a second place orders come from, and there is
+// exactly one."* The caption at the foot of the chart said the same thing to the player, in four
+// words: **view only · orders on Command**. That sentence is a screen confessing it is unfinished
+// — you could see your fleet lying in Lisbon and 214 harbours around her, and you could not do a
+// single thing from any of them; you had to remember the name, leave, and find it in a list.
 //
-// This is not a temporary limitation of the skeleton — it is the game's shape. byeharu's map grew
-// commands and the movement rules then had to be re-derived on the map's terms; the map became the
-// hardest surface in the app because it was doing two jobs. Here it does one: it tells you where
-// things are. Any future pull to "just let them tap the port to sail there" adds a second place
-// orders come from, and there is exactly one.
+// **The premise was wrong, not the conclusion.** The thing worth protecting is that there is ONE
+// composer, ONE grammar and ONE judge of legality — not that the map is a picture. Tapping a
+// harbour here does not compose an order: it names an INTENT, asks the SERVER what that intent
+// would do, and hands the intent to `features/command`, which composes it as it always has. The
+// old paragraph mistook the transport for the authority.
+//
+// So the rule that survives, in the form that is actually load-bearing:
+//
+//   **NOTHING IN `features/map` MAY PICK AN ARGUMENT, BOUND A QUANTITY, OR JUDGE AN ORDER.**
+//   There is no picker on this screen, no stepper, and no `if (endurance < …)`. The one action
+//   asks `cmd.preview()` — the real verb, run and rolled back — and prints what it answered,
+//   refusal included. See ./SailHere.tsx, which is where all of that lives.
+//
+// ── THE SEAM, AND THE THREE THAT WERE REJECTED ─────────────────────────────────────────────────
+// `docs/SECTIONS.md` forbids a screen importing another screen, so the map cannot reach into
+// Command. The honest mechanism is a HAND-OFF, and this repo already had exactly one:
+// `domain/order`'s draft — *"the ONE order being composed right now"* — written by FLEETS, PORT and
+// MARKET through `handOff(intent)` and followed by `navigate('/command')`. The map is the fourth
+// caller of a seam with three; nothing new carries an order off this screen.
+//
+// Rejected, each for the same reason — it would be a SECOND place a pending order lives:
+//   · a field of its own on `live/worldStore` — two drafts, and the store is the world, not the
+//     order being made;
+//   · router state (`navigate('/command', { state })`) — invisible to the draft's session
+//     persistence, so a reload would lose an order the composer would otherwise still hold;
+//   · a search param (`?verb=SAIL&dest=CAD`) — the URL becomes a second authority for the draft
+//     AND needs parsing on arrival, which is a second parser in a game whose whole point is that
+//     there is one.
 //
 // ── WHERE THE PICTURE COMES FROM ───────────────────────────────────────────────────────────────
 // The live world, and nowhere else (src/live/worldStore.ts):
@@ -68,7 +106,15 @@ import { FleetsPanel } from './FleetsPanel'
 //           there is no PvP (§J.2). No prop on any layer here can carry one.
 //   absent  the planned route beyond the current leg — the server does not serve it (README §4.8),
 //           so the destination is RINGED and no line is drawn to it. The chart never invents water.
-//   absent  every control that is not pan, zoom, fold or dismiss.
+//   absent  every control that is not pan, zoom, find, fold, dismiss — or the ONE hand-off.
+//
+// ── EVERY CONTROL IS ANCHORED TO THE GLASS, NEVER TO A COORDINATE ──────────────────────────────
+// `docs/CORE_REUSE.md` §1.5: an action may never live in a region that can scroll or clip it. A
+// chart pans and zooms, so an action drawn at a map coordinate is an action the player can send off
+// the screen — that is the same defect as a button in a capped rail, reached by a different route.
+// The `Sail here` button is therefore in the CORNER PANEL, inside the chrome layer, which is
+// positioned against the chart box and does not move when the world under it does. `ChartCanvas`
+// still produces exactly one value on a tap: a selection.
 //
 // ── 214 PORTS ON ONE SHEET ─────────────────────────────────────────────────────────────────────
 // Three rules, all keyed on one column and one number:
@@ -107,6 +153,9 @@ export function MapScreen() {
       ports={snapshot.ports}
       legs={snapshot.legs}
       config={snapshot.config}
+      // THE SERVER'S OWN GRAMMAR, handed down so the one action can be composed by the one
+      // composer. Nothing in this folder lists a verb.
+      verbs={snapshot.verbs}
       fleets={fleets}
       readAt={readAt}
     />
@@ -138,18 +187,50 @@ function Chart({
   ports: snapshotPorts,
   legs,
   config,
+  verbs,
   fleets: fleetViews,
   readAt,
 }: {
   ports: readonly SnapshotPort[]
   legs: readonly SnapshotLeg[]
   config: SnapshotConfig
+  verbs: readonly VerbSpec[]
   fleets: readonly FleetView[]
   readAt: number | null
 }) {
   // THE ONE CLOCK (src/app/shellState.ts). It ticks a countdown's wording and nothing else on this
   // screen: no glyph, no track and no frame is a function of it.
   const { nowMs } = useShellState()
+  const navigate = useNavigate()
+
+  // ── WHICH HULL AN ORDER FROM HERE IS FOR ─────────────────────────────────────────────────────
+  // `domain/order`'s draft owns that, app-wide, and has since the day it was written: *"The
+  // selected fleet lives here too, because a short order carries no fleet."* The Command tab's
+  // fleet strip sets it; MARKET and PORT read it. This screen does BOTH, and keeps no second idea
+  // of it — a `useState` here would be a fourth screen with its own answer to one question, which
+  // is how "where does her next order happen" reached four spellings (domain/fleet/derive.ts:76).
+  //
+  // Selecting a fleet on the chart or in the list therefore also selects her for the composer, so
+  // the harbour you tap next sails the ship you just pointed at, and Command opens on her.
+  // Selectors, not the store (worldStore.ts rule 4 — a zustand action is a stable reference).
+  const draftFleetId = useCommandDraft((s) => s.fleetId)
+  const selectFleet = useCommandDraft((s) => s.selectFleet)
+  const handOff = useCommandDraft((s) => s.handOff)
+  const acting = useMemo(
+    () => fleetViews.find((f) => f.id === draftFleetId) ?? null,
+    [fleetViews, draftFleetId],
+  )
+
+  // THE HAND-OFF, in the two lines every other screen uses (FleetsScreen.tsx:104,
+  // PortScreen.tsx:151, MarketScreen.tsx:235). The map issues nothing and composes nothing: it
+  // names an intent and goes to the tab that composes.
+  const sail = useCallback(
+    (fleetId: string | null, args: Record<string, string>) => {
+      handOff({ fleetId, verb: 'SAIL', args })
+      navigate('/command')
+    },
+    [handOff, navigate],
+  )
 
   const ports = useMemo(() => mapPortsOf(snapshotPorts), [snapshotPorts])
   const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
@@ -180,15 +261,19 @@ function Chart({
   // ports it tests are exactly the ports that were drawn — the same `visiblePorts` rule, applied
   // to the same box, with no second idea of what is on the sheet.
   //
-  // A SELECTION IS A VIEW CHANGE AND NOTHING ELSE. There is no other callback on this surface.
+  // A TAP STILL PRODUCES EXACTLY ONE VALUE — a selection. `hitTest` returns a NAME, never a verb
+  // (tests/map.voyage.spec.ts asserts the shape), and there is still no second callback on this
+  // surface. What changed on 2026-08-23 is what the SCREEN does with a selection that names a
+  // fleet: it points the composer's draft at her too, because "which hull is in hand" has one
+  // authority and this screen reads it (see `acting` above). That is a selection, not an order.
   const onTap = useCallback(
     (at: Point, unitsPerPx: number, view: ViewBox) => {
       const tappable = visiblePorts(ports, model.portRoles, view, minTierForSpan(view.width))
-      setSelection((current) =>
-        toggleSelection(current, hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx)),
-      )
+      const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx)
+      if (hit?.kind === 'fleet') selectFleet(hit.id)
+      setSelection((current) => toggleSelection(current, hit))
     },
-    [model, ports],
+    [model, ports, selectFleet],
   )
 
   const surface = useChartSurface(chartRef, frameBounds, onTap)
@@ -208,6 +293,12 @@ function Chart({
       {...surface.handlers}
       // `touch-none` hands every touch to the pan/zoom handler instead of the page scroller;
       // `select-none` stops a drag across the chart highlighting the labels.
+      //
+      // `bv-sea` IS KEPT DELIBERATELY, though the chart now paints its own sea as the first mark
+      // on the sheet (2026-08-23). It is not redundant: `ChartCanvas` mounts only once `box` has
+      // been measured (`{box && …}` below), so for the frames before that this class is the only
+      // thing painting, and dropping it would flash the app's background where the sea will be.
+      // `ChartMessage` uses it for the same reason.
       className="bv-sea relative h-full w-full touch-none select-none overflow-hidden"
       data-testid="map-chart"
     >
@@ -225,6 +316,16 @@ function Chart({
           unitsPerPx={surface.unitsPerPx}
           coastlineD={coastline.data?.d ?? ''}
           selection={selection}
+          // WHAT IS SITTING ON TOP OF THE SHEET (2026-08-23, from the chart side). The label
+          // planner drops a name rather than overprint another name — but it could not see this
+          // screen's own opaque chrome, so at 390px `Saint-Malo` rendered as `Sain`, `Nantes` as a
+          // bare `s`, and `Bristol` not at all, all three under the zoom column, with the chart
+          // believing it had printed them. The boxes are measured off the `CHART_CHROME` marker
+          // the gesture handlers already respect, so every panel here is covered by the ONE thing
+          // this screen hands back — including the port card the new tap-a-port flow opens, which
+          // is a `MapPanel` and therefore carries the marker already. No coordinate, scale or
+          // viewBox crosses this line; `ChartCanvas` converts.
+          keepOut={surface.chromeBoxes}
           ariaLabel="Chart of the world's harbours and the sea lanes between them, showing your fleets"
           className="absolute inset-0 h-full w-full"
         />
@@ -255,7 +356,11 @@ function Chart({
             // Selecting from the LIST also brings the chart to the fleet. The opening frame holds
             // what is moving, which on a phone can leave a fleet lying in a far-off port off the
             // glass; this is how you get to it, and it is still only a view change.
+            //
+            // …and it points the composer's draft at her, exactly as tapping her glyph does
+            // (`onTap` above). One authority for "which hull is in hand", two ways to reach it.
             onSelect={(id) => {
+              selectFleet(id)
               setSelection((current) => toggleSelection(current, { kind: 'fleet', id }))
               const target = model.fleets.find((f) => f.fleet.id === id)
               if (target) surface.centreOn(target.at)
@@ -263,13 +368,17 @@ function Chart({
           />
         )}
 
-        {/* PANEL TWO — bottom-right, and only when something is selected. */}
+        {/* PANEL TWO — bottom-right, and only when something is selected. It carries the screen's
+            ONE action when that something is a port; see ./DetailPanel.tsx and ./SailHere.tsx. */}
         <DetailPanel
           model={model}
           portsByCode={portsByCode}
           selection={selection}
           nowMs={nowMs}
           compact={compact}
+          acting={acting}
+          verbs={verbs}
+          onSail={sail}
           onDismiss={() => setSelection(null)}
         />
 
@@ -301,14 +410,21 @@ function Chart({
           >
             −
           </Button>
+          {/* FIND HER — one tap, from anywhere on a 214-harbour sheet, always on the glass.
+              This control is not new; its WORD is. It read `fit`, which is a chart programmer's
+              word for an act the player thinks of as "where is my ship" — and the owner's standing
+              map rule is *no insider jargon*. The behaviour is unchanged and deliberately so: it
+              returns to the opening frame, which `openingBounds` builds around what you HAVE
+              (your fleets and the harbours they are using), not around the world. */}
           <Button
             variant="secondary"
             size="icon"
-            aria-label="Frame your fleets"
+            aria-label="Find your fleets"
             onClick={surface.fit}
             className="bg-surface/90 font-mono text-[10px] backdrop-blur"
+            data-testid="map-find"
           >
-            fit
+            find
           </Button>
       </div>
 
@@ -323,24 +439,27 @@ function Chart({
       )}
       </div>
 
-      {/* THE PERMANENT CAPTION. Three facts the player should never have to work out or be told
+      {/* THE PERMANENT CAPTION. TWO facts the player should never have to work out or be told
           twice: the time scale (§D.3 asks for it here, always — and it is the SERVER's
-          `time_compression`, not a number typed into this file), that this screen is a view and
-          orders are given somewhere else (the owner asked for this explicitly), and WHEN the
-          picture was read. That last one is the honest half of "the position is the server's": the
-          chart is a reading, and a reading has an age.
-          Pointer-transparent, so it can never swallow a pan gesture near the bottom edge. */}
-      {/* Its height is `CHART_CAPTION.barClass` rather than whatever its padding happens to make
-          it, because the chrome layer above is inset by exactly that much. One fact, one place. */}
+          `time_compression`, not a number typed into this file), and WHEN the picture was read.
+          That last one is the honest half of "the position is the server's": the chart is a
+          reading, and a reading has an age.
+
+          THERE WERE THREE. The middle one read **view only · orders on Command**, and it is
+          deleted with the behaviour it described (2026-08-23) — a caption that has become false is
+          worse than no caption, and this one had become false in the same commit that gave a
+          tapped harbour a `Sail here`. The `data-testid="map-is-a-view"` went with the sentence:
+          a hook named after a claim the screen no longer makes is the same lie, one layer down.
+
+          Pointer-transparent, so it can never swallow a pan gesture near the bottom edge. Its
+          height is `CHART_CAPTION.barClass` rather than whatever its padding happens to make it,
+          because the chrome layer above is inset by exactly that much. One fact, one place. */}
       <div
         className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-app/70 px-3 backdrop-blur ${CHART_CAPTION.barClass}`}
-        data-testid="map-is-a-view"
+        data-testid="map-caption"
       >
         <span className="shrink-0 font-mono text-[10px] text-ink-faint">
           1 min = {config.time_compression / 60} h sail
-        </span>
-        <span className="min-w-0 truncate font-mono text-[10px] text-ink-muted">
-          view only · orders on Command
         </span>
         {readAt !== null && (
           <span className="ml-auto shrink-0 font-mono text-[10px] text-ink-faint" data-testid="map-read-age">

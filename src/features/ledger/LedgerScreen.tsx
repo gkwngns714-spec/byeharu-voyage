@@ -22,6 +22,11 @@ import {
   formatRelative,
 } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
+// THE ONE READER OF A JSONB FIELD (2026-08-23). `num`/`str` were declared here AND in
+// features/command/PreviewPanel.tsx, and they had already drifted; docs/NO_SPAGHETTI.md §2 listed
+// the pair as debt to fold. See src/lib/json.ts for why the stronger version is the one that
+// survived — this screen's behaviour is unchanged by the move.
+import { num, str } from '../../lib/json'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
 import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
@@ -353,7 +358,9 @@ function headline(event: LedgerEvent, portName: (code: string) => string): strin
     case 'HIRED': {
       const count = num(p, 'count')
       const urgent = p['urgent'] === true || num(p, 'urgent') === 1
-      return `${count === null ? 'Hands' : `${formatQty(count)} hands`} signed for ${fleet}${
+      // "crew", NOT "hands" — the owner's no-jargon rule (2026-08-23). This headline is composed
+      // CLIENT-side, so the word is this file's to choose; the served `payload.lines` prose is not.
+      return `${count === null ? 'Crew' : `${formatQty(count)} crew`} signed for ${fleet}${
         urgent ? ', at the urgent rate' : ''
       }.`
     }
@@ -428,24 +435,11 @@ function kindTone(kind: string) {
 
 // ── PAYLOAD READERS ─────────────────────────────────────────────────────────────────────────────
 // `payload` is `Record<string, unknown>` because it genuinely is: one jsonb column, a different
-// shape per kind. These three readers are the only place this screen touches it, so a payload that
-// is missing a key produces a shorter sentence rather than "undefined" on the page.
-
-function str(payload: Record<string, unknown>, key: string): string | null {
-  const v = payload[key]
-  return typeof v === 'string' && v !== '' ? v : null
-}
-
-/** jsonb numerics can arrive as a JSON number or as a string, depending on the transport. */
-function num(payload: Record<string, unknown>, key: string): number | null {
-  const v = payload[key]
-  if (typeof v === 'number') return Number.isFinite(v) ? v : null
-  if (typeof v === 'string' && v.trim() !== '') {
-    const n = Number(v)
-    return Number.isFinite(n) ? n : null
-  }
-  return null
-}
+// shape per kind, so a payload that is missing a key produces a shorter sentence rather than
+// "undefined" on the page. `num` and `str` USED TO BE DECLARED HERE and were deleted on
+// 2026-08-23 — they lived here and in `features/command/PreviewPanel.tsx` and had drifted apart.
+// They are `src/lib/json.ts` now, imported at the head of this file. Only `payloadLines` is left,
+// and it stays because it reads THIS payload's own `report` shape and nothing else does.
 
 /** The after-action prose: `string[]`, composed server-side by `voyage.report_line()`. */
 function payloadLines(payload: Record<string, unknown>): string[] {

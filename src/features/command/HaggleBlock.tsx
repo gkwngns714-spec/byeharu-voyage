@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Badge, Button, fineClass, headRowClass, Meter, Notice, SectionLabel } from '../../components/ui'
+import { Badge, Button, Explain, fineClass, headRowClass, Meter, Notice, SectionLabel } from '../../components/ui'
 import { formatPctPoints } from '../../lib/format'
 import type { HaggleAttempt, MarketGood, Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -94,7 +94,16 @@ export function HaggleBlock({
   return (
     <div className="bv-cut mt-2 border border-edge bg-surface-2 p-3">
       <div className={headRowClass()}>
-        <SectionLabel className="mb-0">Strike a bargain</SectionLabel>
+        <span className="flex flex-wrap items-center gap-x-1">
+          <SectionLabel className="mb-0">Strike a bargain</SectionLabel>
+          {/* THE STANDING EXPLANATION IS BEHIND THE DOT (Explain.tsx): how a haggle works is a rule
+              the player learns once, and it stood here as a permanent two-sentence paragraph. The
+              tries-left count, the odds and the outcome stay in the open — they are live. */}
+          <Explain label="the bargain" panelClassName="w-full normal-case tracking-normal">
+            Offer the factor less for {good.name}. He may come down off his cut, or he may fold his
+            arms — and either way the try is spent.
+          </Explain>
+        </span>
         {onQuay && (
           <span className={fineClass()}>
             {onQuay.attempts_left} of {onQuay.attempts_max} tries left today
@@ -102,16 +111,12 @@ export function HaggleBlock({
         )}
       </div>
 
-      {/* AT SEA — the server's own sentence, printed as it wrote it. */}
+      {/* AT SEA — the server's own sentence, printed as it wrote it. A REASON attached to a thing
+          she cannot do stays visible; reasons never go behind a dot. */}
       {state?.docked === false ? (
         <p className="text-sm text-ink-muted">{state.why}</p>
       ) : (
         <>
-          <p className="text-sm text-ink-muted">
-            Offer the factor less for {good.name}. He may come down off his cut, or he may fold his
-            arms — and either way the try is spent.
-          </p>
-
           {onQuay && (
             <div className="mt-2 space-y-1">
               <div className="flex items-center gap-2">

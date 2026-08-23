@@ -501,17 +501,21 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                     value={port.has_yard ? `tier ${port.yard_tier}` : 'none'}
                     hint={port.has_yard ? 'The yard prices a REPAIR when the order runs; PREVIEW it on Command for the quote.' : undefined}
                   />
+                  {/* "crew", NOT "hands" (the owner, 2026-08-23: "change it like crew or
+                      something"). "a hand-day" was that jargon squared — a made-up unit built on a
+                      sailor's word. The rate is unchanged; only its unit is said in the player's
+                      words. The server's own refusals still say "hands" — the wire's to fix. */}
                   <DetailRow
                     label="Chandler"
                     mono
-                    value={`water ${formatTuns(snapshot.config.water_per_crew_day, 2)} · food ${formatTuns(snapshot.config.food_per_crew_day, 3)} a hand-day`}
-                    hint="What one hand drinks and eats per voyage-day. What stores COST is settled when PROVISION runs — no chandler posts a price list on the quay, so PREVIEW the order on Command for the figure."
+                    value={`water ${formatTuns(snapshot.config.water_per_crew_day, 2)} · food ${formatTuns(snapshot.config.food_per_crew_day, 3)} per crew member a day`}
+                    hint="What one crew member drinks and eats per voyage-day. What stores COST is settled when PROVISION runs — no chandler posts a price list on the quay, so PREVIEW the order on Command for the figure."
                   />
                   <DetailRow
                     label="Inn"
                     mono
-                    value={`${formatInt(port.crew_pool)} hands`}
-                    hint="Hands in the pool. Take on more than it holds and the rest are found at short notice, at two and a half times the wage — quoted when HIRE runs."
+                    value={`${formatInt(port.crew_pool)} crew`}
+                    hint="Crew waiting to sign on. Take on more than the pool holds and the rest are found at short notice, at two and a half times the wage — quoted when HIRE runs."
                   />
                   <DetailRow label="Academy" mono value={port.has_academy ? 'yes' : 'none'} />
                   <DetailRow
@@ -693,9 +697,12 @@ function ElsewherePanel({
         }
         contentClassName="pt-3"
       >
-        <p className={fineClass('mb-2')}>
-          A reading only — orders still happen where your fleet is.
-        </p>
+        {/* "A reading only — orders still happen where your fleet is." STOOD HERE AND IS DELETED,
+            not folded. The moment a far harbour is picked, the banner at the top of the screen says
+            where orders actually run (and carries the reading-from-a-distance disclosure behind its
+            dot), and the Quay face refuses with "Nothing to order from here". A third statement of
+            one rule, printed before the player has even picked, is the duplication this sweep
+            exists to remove — moving it behind a dot would have kept two authorities for it. */}
         <Input
           size="sm"
           type="search"

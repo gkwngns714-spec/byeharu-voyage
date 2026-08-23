@@ -312,6 +312,191 @@ test.describe('priority decides what survives a crowd', () => {
   })
 })
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// A NAME IS NEVER PRINTED UNDER A BUTTON — the keep-out rule, on the REAL control column.
+//
+// THE DEFECT, measured in the running game at 390×844 before the fix: the zoom/fit column occupies
+// x 334–378, y 56–196 of the viewport, and the chart's own box starts at y=44 — so in the chart's
+// own pixels the column is (334, 12) 44×140. Three names were drawn underneath it. `Saint-Malo`
+// began at x=309 and the player read `Sain`; `Nantes` began at x=347, entirely behind the buttons,
+// and the 6.9 px that escaped past their right edge is one mono glyph wide and rendered as a bare
+// `s`.
+//
+// NOT A CLIPPING BUG, and that is the part worth recording. The measured count of labels clipped by
+// the chart's edge was ZERO, before and after: the edge rule was working the whole time. Half a
+// name and no name look alike in a screenshot and are completely different defects, and only
+// measurement tells them apart.
+//
+// The numbers below are that measurement, kept as a fixture. They are the SCREEN's, which is why
+// they arrive as a parameter: nothing in src/chart may know where a screen puts its buttons.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * The zoom/fit column at 390×844, in CHART pixels — measured on the running app, and independently
+ * reported by `useChartSurface`'s own chrome measurement as exactly {334, 12, 44, 140}. Not derived
+ * from class names: the panels fold and the column reflows, so a rect computed from Tailwind would
+ * be right at one width and quietly wrong at the next.
+ */
+const CONTROLS_PX = { x: 334, y: 12, width: 44, height: 140 }
+
+/** The same rectangle in chart units, exactly as ChartCanvas converts it. */
+function controlsRect(viewBox: ViewBox, unitsPerPx: number) {
+  return {
+    x: viewBox.x + CONTROLS_PX.x * unitsPerPx,
+    y: viewBox.y + CONTROLS_PX.y * unitsPerPx,
+    width: CONTROLS_PX.width * unitsPerPx,
+    height: CONTROLS_PX.height * unitsPerPx,
+  }
+}
+
+const hits = (label: PlacedLabel, r: { x: number; y: number; width: number; height: number }) =>
+  label.box.x < r.x + r.width &&
+  r.x < label.box.x + label.box.width &&
+  label.box.y < r.y + r.height &&
+  r.y < label.box.y + label.box.height
+
+/** The options MapScreen's chart is planned with at this size, minus the keep-out under test. */
+function optionsAt(widthPx: number, heightPx: number) {
+  const { viewBox, unitsPerPx } = chartAt(widthPx, heightPx)
+  return {
+    viewBox,
+    unitsPerPx,
+    fontSizePx: GLYPH.labelSize,
+    gapPx: GLYPH.labelGapX,
+    glyphRadiusPx: GLYPH.fleetHaloRadius,
+  }
+}
+
+/**
+ * A CROWDED COAST, at the phone's scale — the Mediterranean at "a coast" zoom, where every tier is
+ * drawn. This is the frame the guard below needs, and the reason it is not the opening one: the
+ * fixture's four fleets frame a stretch of Atlantic whose few names happen to fall nowhere near the
+ * top-right corner, so the opening view could only ever prove the rule VACUOUSLY. The defect is real
+ * either way — it was measured on the running game, whose house has one fleet at Lisbon, not four —
+ * but a proof has to be run somewhere it can fail.
+ */
+const CROWDED: ViewBox = { x: 2, y: -45, width: 12, height: 26 }
+
+function crowdedOptions() {
+  return {
+    viewBox: CROWDED,
+    unitsPerPx: CROWDED.width / 390,
+    fontSizePx: GLYPH.labelSize,
+    gapPx: GLYPH.labelGapX,
+    glyphRadiusPx: GLYPH.fleetHaloRadius,
+  }
+}
+
+test.describe('labels keep out of the screen’s own chrome', () => {
+  test('with the control column declared, NO label is placed under it', () => {
+    const options = crowdedOptions()
+    const keep = controlsRect(options.viewBox, options.unitsPerPx)
+    const drawn = visiblePorts(PORTS, MODEL.portRoles, CROWDED, minTierForSpan(CROWDED.width))
+    const requests = mapLabelRequests(MODEL, drawn, null, true)
+
+    // NON-VACUITY FIRST. A keep-out guard that passes because nothing was ever there is not a
+    // guard, so the same layout WITHOUT the rule must actually put names under the buttons — which
+    // it does here, and did on the running game, three of them.
+    const before = planLabels(requests, options).filter((l) => hits(l, keep))
+    expect(
+      before.length,
+      'nothing was under the controls to begin with — this guard would prove nothing',
+    ).toBeGreaterThan(0)
+
+    const after = planLabels(requests, { ...options, keepOut: [keep] })
+    for (const label of after) {
+      expect(hits(label, keep), `"${label.text}" (${label.side}) is drawn under the zoom controls`).toBe(
+        false,
+      )
+    }
+    // And the chart is not emptied to achieve it: a name moves to another side, or it goes.
+    expect(after.length).toBeGreaterThan(0)
+    // Most of them simply move. A rule that answered a crowded corner by silencing the whole sheet
+    // would trade one unreadable chart for another.
+    expect(after.length).toBeGreaterThanOrEqual(planLabels(requests, options).length - before.length)
+  })
+
+  test('390x844, the opening frame: still nothing under the column', () => {
+    // The frame the player actually opens on. Nothing is under the controls here even without the
+    // rule (see CROWDED above), so this asserts only that the rule does no harm to the common case.
+    const options = optionsAt(390, 844)
+    const keep = controlsRect(options.viewBox, options.unitsPerPx)
+    const placed = planLabels(
+      mapLabelRequests(MODEL, drawnAt(options.viewBox), null, options.viewBox.width <= LABEL_SPAN_LIMIT),
+      { ...options, keepOut: [keep] },
+    )
+    expect(placed.length).toBeGreaterThan(0)
+    for (const label of placed) expect(hits(label, keep), `"${label.text}"`).toBe(false)
+  })
+
+  test('every name that survives is still inside the glass, and still disjoint', () => {
+    const options = optionsAt(390, 844)
+    const keep = controlsRect(options.viewBox, options.unitsPerPx)
+    const placed = planLabels(
+      mapLabelRequests(MODEL, drawnAt(options.viewBox), null, options.viewBox.width <= LABEL_SPAN_LIMIT),
+      { ...options, keepOut: [keep] },
+    )
+    for (const label of placed) {
+      expect(label.box.x, `${label.text} runs off the left`).toBeGreaterThanOrEqual(options.viewBox.x)
+      expect(label.box.x + label.box.width, `${label.text} runs off the right`).toBeLessThanOrEqual(
+        options.viewBox.x + options.viewBox.width,
+      )
+    }
+    for (let i = 0; i < placed.length; i++) {
+      for (let j = i + 1; j < placed.length; j++) {
+        expect(overlaps(placed[i], placed[j])).toBe(false)
+      }
+    }
+  })
+
+  test('a FORCED label obeys keep-out too — hidden is not the same as placed', () => {
+    // `force` overrides tidiness, never visibility: a selected name printed under an opaque button
+    // is a name the chart believes it drew and the player cannot read. It gives way instead, and
+    // the detail panel still names the thing — the standing fallback for any dropped label.
+    const VIEW = { x: 0, y: 0, width: 100, height: 100 }
+    // A band covering everything to the RIGHT of the glyph, and nothing to its left: "Chosen" is
+    // 38 units wide here, so `left` is the one placement that both fits the frame and clears it.
+    const RIGHT_BAND = { x: 52, y: 0, width: 48, height: 100 }
+    const OPTS = {
+      viewBox: VIEW,
+      unitsPerPx: 1,
+      fontSizePx: 10,
+      gapPx: 5,
+      glyphRadiusPx: 4,
+      edgeInsetPx: 0,
+      keepOut: [RIGHT_BAND],
+    }
+    const [only] = planLabels(
+      [{ id: 'me', text: 'Chosen', at: { x: 50, y: 50 }, priority: 1000, tone: 'fleet', force: true }],
+      OPTS,
+    )
+    expect(only, 'the forced label was dropped when a legal side existed').toBeTruthy()
+    expect(only.side).toBe('left')
+    expect(hits(only, RIGHT_BAND)).toBe(false)
+
+    // And where there is nowhere at all, it is dropped rather than hidden.
+    expect(
+      planLabels(
+        [{ id: 'me', text: 'Chosen', at: { x: 60, y: 50 }, priority: 1000, tone: 'fleet', force: true }],
+        { ...OPTS, keepOut: [{ x: 0, y: 0, width: 100, height: 100 }] },
+      ),
+    ).toHaveLength(0)
+  })
+
+  test('no chrome declared changes nothing — SmallChart has none at all', () => {
+    const options = optionsAt(390, 844)
+    const requests = mapLabelRequests(
+      MODEL,
+      drawnAt(options.viewBox),
+      null,
+      options.viewBox.width <= LABEL_SPAN_LIMIT,
+    )
+    expect(planLabels(requests, { ...options, keepOut: [] }).map((l) => `${l.id}:${l.side}`)).toEqual(
+      planLabels(requests, options).map((l) => `${l.id}:${l.side}`),
+    )
+  })
+})
+
 test.describe('planLabels, the rule itself', () => {
   const VIEW = { x: 0, y: 0, width: 100, height: 100 }
   const OPTS = { viewBox: VIEW, unitsPerPx: 1, fontSizePx: 10, gapPx: 5, glyphRadiusPx: 4, edgeInsetPx: 0 }

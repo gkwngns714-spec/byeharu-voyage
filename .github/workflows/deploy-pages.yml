@@ -21,16 +21,24 @@ name: Deploy (GitHub Pages)
 #   a build produced the same way. A green check here means "it is published", not "it is playable".
 #
 # WHICH BACKEND THE DEPLOYED BUILD RUNS
-#   LOCAL-PGLITE MODE. `src/lib/rpc/init.ts` picks the cloud backend only when `hasCloud` is true,
-#   and that is decided at BUILD time from `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`
-#   (see .env.example). This workflow passes neither, so the published game boots PostgreSQL 18
-#   compiled to WebAssembly inside the player's own tab, applies the whole migration chain there,
-#   and keeps the world in IndexedDB. Every visitor gets their own private save file.
+#   CLOUD MODE, ALWAYS. This is a law, not a default (2026-08-23, the owner, for the second time):
+#   *"this is a online game, a user info and game progress should always be kept"* and *"All game
+#   must be logged in so that they are safe."*
 #
-#   To publish a CLOUD build instead, those two values must exist as repository secrets and be
-#   exposed to the `Build` step's `env:`. They are NOT set here and no placeholder is committed:
-#   an anon key is still a credential, and a fake one would build a game that white-screens on
-#   `createClient` (HANDOFF §5 trap 5). Adding them is a deliberate, separate act by a human.
+#   THIS WORKFLOW USED TO PUBLISH THE LOCAL-PGLITE BUILD, and that is the defect this block now
+#   exists to prevent. `src/lib/rpc/init.ts` picks the cloud backend only when `hasCloud` is true,
+#   decided at BUILD time from `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`. This file passed
+#   neither, so every visitor to the published site got PostgreSQL 18 compiled to WebAssembly in
+#   their own tab and a private save file in IndexedDB — no account, no server, and a house that
+#   ends when the browser is cleared. The Profile screen said so honestly, in a sentence the owner
+#   read and rightly called nonsense for an online game. The sentence was not the bug. This was.
+#
+#   THE MISSING SECRETS NOW FAIL THE DEPLOY. They do NOT fall back to local mode. A silent
+#   fallback is how the wrong game got published for weeks while every check stayed green: the
+#   local build compiles, lints, boots and plays, so nothing downstream can tell it is the wrong
+#   artefact. The only place that difference is knowable is here, so this is where it must fail.
+#   Local-PGlite mode remains what it was built to be — a DEVELOPMENT and TEST backend (`npm run
+#   dev`, `--mode browser`, the whole proof harness). It is not a thing players are given.
 #
 # THE FIRST RUN NEEDS A HUMAN
 #   Settings → Pages → "Build and deployment" → Source: **GitHub Actions**. Until that is switched
@@ -82,9 +90,36 @@ jobs:
       - name: Migration versions are unique
         run: npm run db:check-versions
 
+      # THE GUARD THAT MAKES "CLOUD MODE, ALWAYS" TRUE rather than intended. It runs BEFORE the
+      # build so the failure names the cause; a missing secret would otherwise surface as a
+      # perfectly good local-mode bundle that nothing further down can distinguish from the right
+      # one. Both values are required together: `hasCloud` is `Boolean(url && anonKey)`, so one
+      # without the other is silently false and publishes the local build again.
+      - name: The deployed build must be a CLOUD build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          missing=""
+          [ -n "$VITE_SUPABASE_URL" ] || missing="$missing VITE_SUPABASE_URL"
+          [ -n "$VITE_SUPABASE_ANON_KEY" ] || missing="$missing VITE_SUPABASE_ANON_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Refusing to publish. Missing repository secret(s):$missing"
+            echo "Without both, src/lib/rpc/init.ts sets hasCloud=false and this job would publish"
+            echo "the local-PGlite build: no account, no server, and a world that dies with the"
+            echo "browser's storage. That is not what is shipped to players."
+            echo "Fix: Settings -> Secrets and variables -> Actions -> New repository secret."
+            exit 1
+          fi
+          echo "Both secrets present. Building in cloud mode."
+
       # `npm run build` is `tsc -b && vite build`: the typecheck gates the bundle, in one step.
-      # NO VITE_SUPABASE_* here — see "WHICH BACKEND" above. This is the local-PGlite build.
+      # The two VITE_SUPABASE_* values are what make `hasCloud` true, and they are read at BUILD
+      # time — Vite substitutes them into the bundle, so they cannot be supplied at run time.
       - name: Build (tsc -b && vite build)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
       - uses: actions/configure-pages@v5

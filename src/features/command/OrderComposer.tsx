@@ -17,7 +17,6 @@ import type {
   FleetView,
   MarketView,
   SnapshotPort,
-  TradeRoutes,
   VerbArg,
   VerbSpec,
   WorldSnapshot,
@@ -71,9 +70,21 @@ const LABELS: Record<string, string> = {
   limit: 'Price limit',
   mode: 'How much',
   days: 'Days of stores',
-  count: 'How many hands',
+  count: 'How many crew',
   to_pct: 'Mend her to',
 }
+
+/**
+ * VERBS WHOSE ARGUMENT ROWS DO NOT FOLD. The owner, 2026-08-23: *"when pressing hire, 12, it
+ * unfolds. this is uncomfortable. keep it without unfolding, and let me hire"* — and *"Provision
+ * also, does not need to be fold/unfoldable."*
+ *
+ * The asymmetry against BUY is the point, not an accident: BUY's good row folds because it is a
+ * choice among seventy things and the fold is what informs it; HIRE and PROVISION are one number
+ * each, and a fold in front of one number is a door in front of a doorway. These pickers render
+ * open, always, and answering never collapses them.
+ */
+const FLAT_VERBS = new Set(['HIRE', 'PROVISION'])
 
 function labelOf(arg: VerbArg): string {
   return LABELS[arg.name] ?? arg.name
@@ -87,7 +98,6 @@ export function OrderComposer({
   snapshot,
   port,
   market,
-  routes,
   onChooseVerb,
   onSetArg,
 }: {
@@ -102,9 +112,6 @@ export function OrderComposer({
   port: SnapshotPort | null
   /** The market of the port this fleet is in (or bound for). Undefined until it has been read. */
   market: MarketView | undefined
-  /** `world.trade_routes()` for that same port — ONE read for the whole goods list, fetched by the
-   *  screen beside the market. Undefined while it is in flight. */
-  routes: TradeRoutes | undefined
   onChooseVerb: (verb: string | null) => void
   onSetArg: (name: string, value: string | null) => void
 }) {
@@ -158,6 +165,22 @@ export function OrderComposer({
     setOverride(null)
     // Choosing ENDS the looking. Without this, re-opening the good row later would unfold whatever
     // was last peeked at rather than the row that was actually chosen.
+    setInspect(null)
+    setConsider(null)
+  }
+
+  // THE PRICE IS THE ACT (the owner, 2026-08-23: "i want to be able to click on buy and sell
+  // itself and do trades"). A row's buy or sell cell answers the VERB and the GOOD in one tap —
+  // and if the cell disagrees with the verb chosen above, the cell wins, because it is the more
+  // specific act. Both writes land on the ONE draft (domain/order) the whole tab composes from,
+  // so the line that is previewed and the line that is issued are the same string; this is a
+  // second ENTRANCE to the composer, never a second composer. Zustand sets synchronously, so the
+  // verb is already switched by the time the good lands, and `chooseVerb` has discarded the old
+  // verb's arguments as it always does.
+  const trade = (tradeVerb: 'BUY' | 'SELL', code: string) => {
+    if (spec?.verb !== tradeVerb) onChooseVerb(tradeVerb)
+    onSetArg('good', code)
+    setOverride(null)
     setInspect(null)
     setConsider(null)
   }
@@ -304,8 +327,14 @@ export function OrderComposer({
                 // their head. This is that map, and it is the Map tab's, drawn by the same modules.
                 //
                 // NOTHING IN THIS BLOCK IS TAPPABLE — not the chart (it takes no handler at all)
-                // and not the ⓘ's contents. The destination is still chosen in the list beside it,
-                // in words, because the map never accepts an order (docs/DESIGN.md §E.5).
+                // and not the ⓘ's contents. That is a decision about THIS chart, not about maps: a
+                // gesture surface embedded in a form fights the page's own scroll on a phone
+                // (`useChartSurface` sets `touch-none` and calls `preventDefault` on wheel, which
+                // is right for a whole tab and wrong inside a composer), so `SmallChart` mounts no
+                // surface at all and the destination is chosen in the list beside it, in words.
+                // This comment used to give the reason as "the map never accepts an order"; that
+                // sentence was amended 2026-08-23 (docs/DESIGN.md §E.5 Law 3) and it was never the
+                // real reason this particular chart is inert.
                 <div className="space-y-1" data-testid="sail-chart-rail">
                   <div className="flex flex-wrap items-center gap-x-1">
                     <SectionLabel className="mb-0">Where she is</SectionLabel>
@@ -370,10 +399,22 @@ export function OrderComposer({
             <div className="space-y-2">
               {visibleArgs(spec, args).map((arg) => {
               const value = args[arg.name]
-              const isOpen = open === arg.name
+              const flat = FLAT_VERBS.has(spec.verb)
+              const isOpen = flat || open === arg.name
               return (
                 <div key={arg.name} className="rounded-md border border-edge bg-app p-3">
                   <div className="flex flex-wrap items-center gap-2">
+                    {flat ? (
+                      // A FLAT ROW HAS NO HEAD TO TAP — the picker is simply there (FLAT_VERBS).
+                      // The label stays, because a slider with no name is a mystery; the "not
+                      // chosen yet / value" line does not, because the always-open picker beneath
+                      // it already states the value, and saying it twice is two renderings of one
+                      // fact.
+                      <span className={fineClass('block min-h-0 min-w-0 flex-1 uppercase tracking-wider')}>
+                        {labelOf(arg)}
+                        {!arg.required && <span className="ml-2 lowercase tracking-normal">optional</span>}
+                      </span>
+                    ) : (
                     <button
                       type="button"
                       onClick={() => toggle(arg.name)}
@@ -410,6 +451,7 @@ export function OrderComposer({
                         )}
                       </span>
                     </button>
+                    )}
                     {value !== undefined && !arg.required && (
                       <Button
                         variant="ghost"
@@ -428,8 +470,10 @@ export function OrderComposer({
 
                   {isOpen && (
                     // The row above already names what is being chosen; repeating it over the
-                    // picker cost a line of a phone screen and said nothing.
-                    <div className="mt-3 space-y-2 border-t border-edge pt-3">
+                    // picker cost a line of a phone screen and said nothing. On a FLAT row the
+                    // rule stays for the opposite reason: there is no fold for the divider to
+                    // separate the picker from.
+                    <div className={flat ? 'mt-2 space-y-2' : 'mt-3 space-y-2 border-t border-edge pt-3'}>
                       <ArgPicker
                         spec={spec}
                         arg={arg}
@@ -437,7 +481,6 @@ export function OrderComposer({
                         fleet={fleet}
                         snapshot={snapshot}
                         market={market}
-                        routes={routes}
                         capacity={capacity}
                         inspecting={inspecting}
                         onInspect={(code) =>
@@ -446,6 +489,7 @@ export function OrderComposer({
                         onConsider={(code) =>
                           setConsider(spec && code ? { verb: spec.verb, port: code } : null)
                         }
+                        onTrade={trade}
                         onPick={(v) => answer(arg, v)}
                       />
                     </div>
@@ -555,11 +599,11 @@ function ArgPicker({
   fleet,
   snapshot,
   market,
-  routes,
   capacity,
   inspecting,
   onInspect,
   onConsider,
+  onTrade,
   onPick,
 }: {
   spec: VerbSpec
@@ -568,8 +612,6 @@ function ArgPicker({
   fleet: FleetView | undefined
   snapshot: WorldSnapshot
   market: MarketView | undefined
-  /** `world.trade_routes()` for this port; only the `good` arm consults it. */
-  routes: TradeRoutes | undefined
   /** The composer's ONE reading of `world.buy_capacity()` — the `qty` arm draws its ceiling from
    *  it, and the `good` arm's unfolded row draws the same answer for the row being looked at. */
   capacity: BuyCapacityState
@@ -579,6 +621,9 @@ function ArgPicker({
   /** The port row a pointer or the keyboard is ON. Only the `port` arm raises it — it names that
    *  harbour on SAIL's chart while the player runs down the list, and it chooses nothing. */
   onConsider: (code: string | null) => void
+  /** A good row's buy or sell cell — the composer's `trade`, which sets the verb AND the good on
+   *  the one draft. Only the `good` arm raises it. */
+  onTrade: (verb: 'BUY' | 'SELL', code: string) => void
   onPick: (value: string) => void
 }) {
   const selling = spec.verb === 'SELL'
@@ -604,13 +649,15 @@ function ArgPicker({
         <GoodPicker
           goods={market.goods}
           value={args[arg.name]}
-          onPick={onPick}
           intent={selling ? 'sell' : 'buy'}
-          aboard={selling && fleet ? fleetCargoByCode(fleet) : undefined}
+          // The manifest rides along on BUY too now — it is what tells a sell cell to say "none
+          // aboard" rather than going silently dead. The SELL list still narrows to it inside
+          // the picker; that gate moved there with the reason.
+          aboard={fleet ? fleetCargoByCode(fleet) : undefined}
           inspecting={inspecting}
           onInspect={onInspect}
           capacity={capacity}
-          routes={routes}
+          onTrade={onTrade}
         />
       )
     }
@@ -696,10 +743,10 @@ function BoundedNumber({
         {short > 0 && (
           <p className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
             <Badge tone="warning">short</Badge>
-            she is {short} hands under her required crew.
+            she is {short} crew short of what she needs.
           </p>
         )}
-        <NumberPicker min={1} max={berths} step={1} suggestions={suggestions} unit="hands" value={value} onPick={onPick} />
+        <NumberPicker min={1} max={berths} step={1} suggestions={suggestions} unit="crew" value={value} onPick={onPick} />
       </div>
     )
   }

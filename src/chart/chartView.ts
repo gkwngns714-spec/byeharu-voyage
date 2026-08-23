@@ -195,7 +195,8 @@ export const COMPACT_WIDTH_PX = 640
 /**
  * THE CAPTION BAR'S BAND — one height, two consumers, and no guessing between them.
  *
- * The permanent caption (time scale · "view only" · read age) runs the full width of the chart's
+ * The permanent caption (time scale · read age — the "view only · orders on Command" span between
+ * them was deleted 2026-08-23 with the behaviour it described) runs the full width of the chart's
  * bottom edge, so anything anchored to a bottom CORNER has to clear it. That clearance used to be
  * guessed twice, and differently: the detail panel carried a magic `bottom-11` while the
  * coastline-unavailable note carried `bottom-9`, and the bar itself was whatever its padding made

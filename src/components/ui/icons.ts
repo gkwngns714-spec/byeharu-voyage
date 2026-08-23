@@ -20,6 +20,7 @@ export const ICON_NAMES = [
   'ledger',
   'wreath',
   'profile',
+  'codex',
   'chevron',
   'close',
   'plus',
@@ -139,6 +140,9 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   wreath: ['M12 3.5a8.5 8.5 0 0 1 0 17', 'M12 3.5a8.5 8.5 0 0 0 0 17', 'M8.5 12h7', 'M12 8.5v7'],
   // Head-and-shoulders in a circle — Profile.
   profile: ['M12 2.5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19Z', 'M12 7.2a3.1 3.1 0 1 0 0 6.2 3.1 3.1 0 0 0 0-6.2Z', 'M5.8 19a7.5 7.5 0 0 1 12.4 0'],
+  // CLOSED book with a bookmark — Compendium (the reference you look things up in). The OPEN book
+  // is the Ledger's, and the two must stay tellable apart: the record you write vs the book you consult.
+  codex: ['M7 2.5h12.5v19H7A2.5 2.5 0 0 1 4.5 19V5A2.5 2.5 0 0 1 7 2.5Z', 'M4.5 19a2.5 2.5 0 0 1 2.5-2.5h12.5', 'M13.5 2.5V9l2.25-1.7L18 9V2.5'],
   // Chevron (points right; rotate via className for other directions).
   chevron: ['m9 5 7 7-7 7'],
   close: ['M6 6l12 12', 'M18 6 6 18'],

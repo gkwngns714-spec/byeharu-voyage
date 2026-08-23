@@ -12,6 +12,7 @@ import { MarketScreen } from '../features/market/MarketScreen'
 import { MapScreen } from '../features/map/MapScreen'
 import { LedgerScreen } from '../features/ledger/LedgerScreen'
 import { RankScreen } from '../features/rank/RankScreen'
+import { CompendiumScreen } from '../features/compendium/CompendiumScreen'
 import { ProfileScreen } from '../features/profile/ProfileScreen'
 
 // THE ROUTE TABLE. One destination per tab (src/app/navTabs.ts is the tab table; these are the
@@ -45,6 +46,7 @@ export function App() {
           <Route path="/map" element={<MapScreen />} />
           <Route path="/ledger" element={<LedgerScreen />} />
           <Route path="/rank" element={<RankScreen />} />
+          <Route path="/compendium" element={<CompendiumScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
         </Route>
         <Route path="/" element={<Navigate to={HOME_TAB} replace />} />

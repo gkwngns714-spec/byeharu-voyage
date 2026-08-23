@@ -76,6 +76,21 @@ export function formatRealShort(ms: number): string {
   return `${h}h${String(m).padStart(2, '0')}m`
 }
 
+/** A LIVE countdown's clock face: "4:12", "0:07", "1:02:07" (0029). Ticks legibly every second,
+ *  which is what separates it from `formatRealShort` — that is a duration in a four-character
+ *  table cell ("11m") and rounds the seconds away, so a countdown drawn with it would only move
+ *  once a minute and read as stuck. Never negative: a passed instant is the caller's cue to
+ *  re-ask the server, not to count up. */
+export function formatCountdown(ms: number): string {
+  if (!Number.isFinite(ms)) return '—'
+  const totalS = Math.max(0, Math.floor(ms / 1000))
+  const h = Math.floor(totalS / 3600)
+  const m = Math.floor((totalS % 3600) / 60)
+  const s = totalS % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 /** THE IDIOM that keeps the two clocks honest: "1.6 voyage-days · 4.7 min real". */
 export function formatTwoClocks(voyageDays: number): string {
   return `${formatFixed(voyageDays, 1)} voyage-days · ${formatRealDuration(voyageDaysToRealMs(voyageDays))} real`
@@ -96,10 +111,15 @@ export function formatRelative(atMs: number, nowMs: number): string {
 }
 
 /** Wall clock, 24 h, as the Ledger stamps a row: "14:22". Local time deliberately — the player
- *  reads their own day, and nothing is decided from this string. */
-export function formatClock(atMs: number): string {
+ *  reads their own day, and nothing is decided from this string.
+ *
+ *  `withSeconds` is the LIVE-clock form (0029, "the actual time"): "14:22:07", ticking each second
+ *  so the reader can see it is alive. Extended here rather than written a second time — this is
+ *  the one authority for how this game prints a time of day. */
+export function formatClock(atMs: number, withSeconds = false): string {
   const d = new Date(atMs)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return withSeconds ? `${hm}:${String(d.getSeconds()).padStart(2, '0')}` : hm
 }
 
 const MONTHS = [

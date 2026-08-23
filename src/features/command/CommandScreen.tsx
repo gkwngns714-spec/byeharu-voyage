@@ -1,19 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Badge,
   Button,
   buttonClasses,
   Card,
   CardHeader,
+  Countdown,
   EmptyState,
   Explain,
   Notice,
   PageHeader,
   Screen,
   SectionLabel,
+  WallClock,
   fineClass,
+  useReaskAtEdge,
 } from '../../components/ui'
 import { formatClock, formatTuns, formatVoyageDays } from '../../lib/format'
+import { useShellState } from '../../app/shellState'
 import type { Refusal } from '../../lib/rpc'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { OrderComposer } from './OrderComposer'
@@ -66,10 +70,6 @@ export function CommandScreen() {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const markets = useWorld((s) => s.markets)
-  // WHERE EACH GOOD IS WORTH MORE THAN IT IS HERE (0019). One read for the whole quay, cached by
-  // the store and shared with the Market tab — never one read per good row.
-  const routesByPort = useWorld((s) => s.routes)
-  const loadRoutes = useWorld((s) => s.loadRoutes)
   const busy = useWorld((s) => s.busy)
   const readAt = useWorld((s) => s.readAt)
   const open = useWorld((s) => s.open)
@@ -136,20 +136,25 @@ export function CommandScreen() {
   }, [marketPortId, loadMarket])
   const market = marketPortId ? markets[marketPortId] : undefined
 
-  // THE COMPARISON, BESIDE THE PRICES. `world.trade_routes(port, fleet)` answers "where, in reach,
-  // does this good fetch more, and what is the voyage worth" for EVERY good the quay sells, in one
-  // call — which is what makes it affordable to put a destination inside the unfolded good row.
+  // ── THE WALL CLOCK, AND HOW LONG THE QUAY'S PRICES STAND ───────────────────────────────────────
+  // The owner: *"i want actual time shown on command, and how much left for it to change the prices
+  // live."* Both instants are SERVED, on the same payload that carries the prices themselves
+  // (`clock`, migration 0029) — the client never multiplies a cadence out to find the next boundary,
+  // because "when do prices move" may have exactly one author and the read that serves the prices
+  // is it.
   //
-  // NO CACHE GUARD, UNLIKE THE MARKET READ ABOVE, AND THAT IS DELIBERATE. The store keys this by
-  // PORT, but the answer is priced at what THIS FLEET can afford and carry (`basis.qty_from`), so a
-  // cached row belongs to whichever fleet asked last. Re-reading when the fleet changes costs one
-  // round trip and is the difference between a margin and a margin for somebody else. Each row
-  // still prints the `qty` it was priced at, so the figure names its own basis either way.
-  useEffect(() => {
-    if (!marketPortId) return
-    void loadRoutes(marketPortId, fleet?.id ?? null)
-  }, [marketPortId, fleet?.id, loadRoutes])
-  const routes = marketPortId ? routesByPort[marketPortId] : undefined
+  // THE RE-ASK IS NOT A REFRESH. On any deployment without pg_cron — which is every browser — the
+  // market read is ALSO what steps the drift walk (0029). So a countdown that reaches zero and
+  // re-asks is not merely fetching a newer number; it is the thing that makes the prices move. Do
+  // not "optimise" it into a conditional fetch.
+  const { nowMs } = useShellState()
+  const clock = market?.clock
+  const priceEdgeMs = clock ? Date.parse(clock.next_change_at) : null
+  const pricePayloadAtMs = clock ? Date.parse(clock.now) : null
+  const reaskMarket = useCallback(() => {
+    if (marketPortId) void loadMarket(marketPortId)
+  }, [marketPortId, loadMarket])
+  useReaskAtEdge(priceEdgeMs, pricePayloadAtMs, nowMs, reaskMarket)
 
   const verbs = useMemo(() => composableVerbs(snapshot?.verbs ?? []), [snapshot])
   const spec = findVerb(snapshot?.verbs ?? [], verb)
@@ -265,9 +270,24 @@ export function CommandScreen() {
            at once (TopBar.tsx): one fact shown in two places is two authorities for it, and the
            copy that scrolls away is the wrong one to keep. */
         actions={
-          <Button variant="ghost" disabled={busy} onClick={() => void refresh()}>
-            {busy ? 'reading…' : 'Read again'}
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* THE TIME, AND THE PRICES' OWN DEADLINE, in the header rather than beside the goods:
+                the countdown governs every price on this screen at once, not one row, and a figure
+                that belongs to the whole screen must not be anchored to a part of it. Both are
+                one-line and tabular, so no ⓘ — there is no sentence here to fold. */}
+            <span className="flex flex-col items-end leading-tight">
+              <WallClock nowMs={nowMs} className="font-mono text-xs text-ink-muted" />
+              {priceEdgeMs !== null && (
+                <span className={fineClass()}>
+                  prices move in{' '}
+                  <Countdown untilMs={priceEdgeMs} nowMs={nowMs} dueText="now" />
+                </span>
+              )}
+            </span>
+            <Button variant="ghost" disabled={busy} onClick={() => void refresh()}>
+              {busy ? 'reading…' : 'Read again'}
+            </Button>
+          </div>
         }
       />
 
@@ -355,7 +375,6 @@ export function CommandScreen() {
                 snapshot={snapshot}
                 port={port}
                 market={market}
-                routes={routes}
                 onChooseVerb={chooseVerb}
                 onSetArg={setArg}
               />

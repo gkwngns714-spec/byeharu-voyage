@@ -87,7 +87,7 @@ export {
 } from './chartView'
 
 // ── ink: the glyph metrics, the lines, the names, and what a tap lands on ──────────────────────
-export { GLYPH, portMarkScale, trianglePath } from './glyphs'
+export { GLYPH, portMarkScale, portStrokeWidth, trianglePath } from './glyphs'
 export { toClosedRingsD, toPolylineD } from './svgPath'
 export { buildTrack, legWebPath, type MapLeg, type TrackPaths } from './route'
 export {
@@ -99,6 +99,7 @@ export {
   type LabelSide,
   type LabelTone,
   type PlacedLabel,
+  type Rect,
 } from './labels'
 export { hitTest, toggleSelection } from './hitTest'
 
@@ -117,5 +118,9 @@ export {
 export { useCoastline, type CoastlineState } from './useCoastline'
 
 // ── the surfaces a screen mounts ───────────────────────────────────────────────────────────────
-export { CHART_CHROME, useChartSurface, type ChartSurface } from './useChartSurface'
+// `chromeBoxes` on the returned surface is the ONE thing a screen must now hand back to
+// `ChartCanvas` (as `keepOut`), so that a port's name is never printed under one of the screen's own
+// opaque buttons. See ./useChartSurface.ts's `useChromeBoxes` for why the chart measures the boxes
+// but refuses to know what they are.
+export { CHART_CHROME, useChartSurface, type ChartSurface, type ChromeBox } from './useChartSurface'
 export { useElementSize, type ElementSize } from './useElementSize'

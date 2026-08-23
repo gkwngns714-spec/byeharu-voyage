@@ -61,3 +61,8 @@ export { Collapsible, CollapsibleCard } from './Collapsible'
 // content (see Explain.tsx for the boundary between them, and for what may never go behind a dot).
 export { Explain, ExplainDot, ExplainPanel } from './Explain'
 export { useExplainDisclosure, type ExplainDisclosure } from './explainState'
+// The two faces of THE ONE CLOCK: the real time now, and the time until a served instant —
+// pure display over shellState's nowMs (see Clock.tsx). When a countdown reaches zero the caller
+// re-asks the server through useReaskAtEdge; the edge idiom lives once, in reaskAtEdge.ts.
+export { WallClock, Countdown } from './Clock'
+export { useReaskAtEdge } from './reaskAtEdge'

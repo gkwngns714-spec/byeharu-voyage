@@ -8,9 +8,10 @@ import { PortsLayer } from './PortsLayer'
 import { visiblePorts, type ChartModel } from './chartModel'
 import { LABEL_SPAN_LIMIT, LEG_SPAN_LIMIT, minTierForSpan } from './chartView'
 import { GLYPH } from './glyphs'
-import { mapLabelRequests, planLabels } from './labels'
+import { mapLabelRequests, planLabels, type Rect } from './labels'
 import type { MapPort, MapSelection } from './mapTypes'
 import { legWebPath, type MapLeg } from './route'
+import type { ChromeBox } from './useChartSurface'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // WHAT IS ON THE PAPER, AND IN WHAT ORDER — the whole chart, drawn once, wherever it is drawn.
@@ -18,6 +19,16 @@ import { legWebPath, type MapLeg } from './route'
 // PAINT ORDER IS THE ONLY STACKING SVG HAS, so it is a RULE and not a preference: sea, coast,
 // lanes, tracks, port marks, fleet dots, names. Every name therefore sits on top of every mark and
 // no mark sits on a name; the lanes go under everything, because they are the paper's grain.
+//
+// ── THE SEA IS PAINTED HERE, AND THAT IS NEW (2026-08-23) ──────────────────────────────────────
+// "Sea" used to be the first word of that list and no line of code. The chart drew straight onto
+// whatever its container happened to be — the `.bv-sea` gradient on both callers — so the sheet had
+// no ground of its own, and three things followed. The coast's contrast varied with WHERE on the
+// glass it fell (1.03 : 1 against the gradient's top stop, ~1.6 : 1 against its bottom). The label
+// halo, `stroke-chart-sea`, punched a hole in a colour that was nowhere behind it. And a token
+// named "the chart's sea" described nothing the eye ever met. One `<rect>` makes all three true at
+// once, and it is why the contrast figures in src/index.css are one number rather than a range.
+// It also means the chart's legibility no longer depends on what any screen puts behind it.
 //
 // ── WHY THIS IS A COMPONENT AND NOT SEVEN LINES INSIDE MapScreen ───────────────────────────────
 // It was seven lines inside MapScreen while the map tab was the only place a chart appeared. The
@@ -53,6 +64,7 @@ export function ChartCanvas({
   unitsPerPx,
   coastlineD,
   selection,
+  keepOut,
   ariaLabel,
   className,
 }: {
@@ -67,6 +79,17 @@ export function ChartCanvas({
   /** The world's land as one `d`, or '' while it is still being fetched (./useCoastline.ts). */
   coastlineD: string
   selection: MapSelection
+  /**
+   * OPAQUE CHROME THE SCREEN HAS PUT OVER THIS CHART, in CSS pixels from the chart's top-left
+   * corner — hand `useChartSurface`'s `chromeBoxes` straight through. No name will be placed inside
+   * one of these, which is how `Saint-Malo` stops rendering as `Sain` behind the zoom column.
+   *
+   * A PARAMETER, because a chart may not know what a screen is (src/chart/index.ts). Both figures
+   * in it are the screen's: the chart converts them to chart units and asks nothing else about
+   * them, and it never learns what the box CONTAINS. Omit it and the chart assumes nothing is over
+   * it, which is exactly true of `SmallChart`.
+   */
+  keepOut?: readonly ChromeBox[]
   ariaLabel: string
   className?: string
 }) {
@@ -80,6 +103,20 @@ export function ChartCanvas({
     return legWebPath(legs, new Map(drawnPorts.map((p) => [p.code, p])), box)
   }, [legs, box, drawnPorts])
 
+  // THE SCREEN'S PIXELS, TURNED INTO CHART UNITS — the one line of arithmetic the keep-out contract
+  // needs, done here so no screen ever has to hold a scale or a viewBox origin. `unitsPerPx` is the
+  // same on both axes (viewBoxOf derives the height from the surface's aspect), so one factor does
+  // both.
+  const keepOutUnits = useMemo<readonly Rect[] | undefined>(() => {
+    if (!keepOut || keepOut.length === 0) return undefined
+    return keepOut.map((r) => ({
+      x: box.x + r.x * unitsPerPx,
+      y: box.y + r.y * unitsPerPx,
+      width: r.width * unitsPerPx,
+      height: r.height * unitsPerPx,
+    }))
+  }, [keepOut, box, unitsPerPx])
+
   const labels = useMemo(
     () =>
       planLabels(mapLabelRequests(model, drawnPorts, selection, box.width <= LABEL_SPAN_LIMIT), {
@@ -88,8 +125,9 @@ export function ChartCanvas({
         fontSizePx: GLYPH.labelSize,
         gapPx: GLYPH.labelGapX,
         glyphRadiusPx: GLYPH.fleetHaloRadius,
+        keepOut: keepOutUnits,
       }),
-    [model, drawnPorts, selection, box, unitsPerPx],
+    [model, drawnPorts, selection, box, unitsPerPx, keepOutUnits],
   )
 
   const selectedFleetId = selection?.kind === 'fleet' ? selection.id : null
@@ -102,6 +140,17 @@ export function ChartCanvas({
       role="img"
       aria-label={ariaLabel}
     >
+      {/* THE SEA — the ground everything else is measured against. It is the whole viewBox, so it
+          moves with the paper and there is never an unpainted edge mid-pan. */}
+      <rect
+        x={box.x}
+        y={box.y}
+        width={box.width}
+        height={box.height}
+        className="fill-chart-sea"
+        pointerEvents="none"
+        data-testid="map-sea"
+      />
       <CoastlineLayer d={coastlineD} />
       <LegsLayer d={legsD} />
       <TracksLayer model={model} unitsPerPx={unitsPerPx} />

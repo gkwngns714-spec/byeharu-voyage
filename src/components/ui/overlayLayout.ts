@@ -2,11 +2,22 @@
 // screenLayout.ts idiom: a pure module beside the component, so react-refresh stays happy and the
 // slot/chrome contract is unit-testable). Tokens only.
 //
-// WHAT THIS IS FOR, AND WHAT IT IS NOT. These slots position READ-ONLY chrome over the chart: a
-// legend, a scale bar, a "3 fleets at sea" readout. THE MAP IS A VIEW, NOT A CONTROLLER — no
-// order is ever composed here, so an overlay never carries a command button. (byeharu learned the
-// hard way that a control inside a capped, scrollable map rail can be scrolled out of reach; this
-// game removes the whole class by keeping controls off the map and on the Command tab.)
+// WHAT THIS IS FOR. These slots position chrome over a chart: a legend, a scale bar, a "3 fleets
+// at sea" readout, a corner panel — and, since 2026-08-23, the Map tab's one action.
+//
+// THIS BLOCK USED TO SAY *"THE MAP IS A VIEW, NOT A CONTROLLER — no order is ever composed here,
+// so an overlay never carries a command button."* Half of it is still the law and the other half
+// was never the point. **No order is composed on an overlay**, and none is: what a corner panel
+// may carry is a HAND-OFF — a button that names an intent and goes to the one tab that composes
+// it (`features/map/SailHere.tsx`). What the sentence was really protecting is REACH, so that is
+// what it says now:
+//
+//   AN ACTION MAY LIVE IN A SLOT PRECISELY BECAUSE A SLOT CANNOT BE PANNED, SCROLLED OR CLIPPED
+//   AWAY. It is anchored to a corner of the box, not to a coordinate in the picture that a pan
+//   could carry off the glass, and the panel filling it keeps its header and its controls outside
+//   any capped region (`features/map/MapPanel.tsx`). byeharu shipped a button with 8 of its 44
+//   pixels on screen because a rail was capped at the CALL SITE; the answer to that is this
+//   table, not a ban on acting.
 
 export const OVERLAY_SLOTS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
 export type OverlaySlot = (typeof OVERLAY_SLOTS)[number]
