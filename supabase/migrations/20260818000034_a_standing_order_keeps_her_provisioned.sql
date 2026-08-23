@@ -572,6 +572,7 @@ declare
   v_ref    jsonb;
   v_ledger bigint;
   v_left   int;
+  v_base   int;   -- houses present BEFORE the probe; see the rollback assert
   v_grants int;
   v_writers int;
   e        record;
@@ -635,6 +636,13 @@ begin
   end if;
 
   -- (c) THE PROBE — a real house, a real preset, three real arrivals, then rolled back.
+  --
+  -- THE BASELINE IS TAKEN FIRST, and this is the whole reason: the rollback check below used to
+  -- assert `count(*) = 0`, which is a claim about THE WORLD and not about this probe. It passed on
+  -- every empty local apply and FAILED on production 2026-08-23 the first time it met a database
+  -- with real houses in it — reporting a leak that had not happened. A count is an ambient default;
+  -- the DELTA is the only thing this file owns.
+  select count(*) into v_base from public.players;
   begin
     select id into v_lis from public.ports where code = 'LIS';
     select id into v_cad from public.ports where code = 'CAD';
@@ -852,10 +860,12 @@ begin
     raise exception '0034 self-assert FAIL: striking the order left a fleet pointing at a ghost';
   end if;
 
-  -- The rollback really rolled back.
+  -- The rollback really rolled back — measured as a DELTA against the world this file found, never
+  -- as an absolute count (see the baseline above).
   select count(*) into v_left from public.players;
-  if v_left <> 0 then
-    raise exception '0034 self-assert FAIL: % player row(s) survived the probe subtransaction', v_left;
+  if v_left <> v_base then
+    raise exception '0034 self-assert FAIL: the probe subtransaction left % player row(s) behind (% before, % after)',
+      v_left - v_base, v_base, v_left;
   end if;
 
   -- (g) THE LOCKDOWN HOLDS. No client table write, no unsanctioned executable writer, and the
