@@ -11,45 +11,32 @@ const FILES = ['europe', 'africa-indian-ocean', 'east-asia', 'americas'].map(n =
 // roster term -> canonical goods id. Terms already canonical are absent from this map.
 const MAP = {
   'salt-cod': 'dried-fish', stockfish: 'dried-fish', salmon: 'dried-fish',
-  seaweed: 'dried-fish', kelp: 'dried-fish', abalone: 'dried-fish',
-  cork: 'olive-oil', soap: 'olive-oil', 'palm-oil': 'olive-oil',
-  grain: 'wheat', sago: 'rice', 'sweet-potato': 'rice',
-  oxen: 'salted-beef', cattle: 'salted-beef', butter: 'cheese',
-  honey: 'sugar',
-  raisins: 'dried-fruit', currants: 'dried-fruit', figs: 'dried-fruit', citrus: 'dried-fruit',
-  dates: 'dried-fruit', almonds: 'dried-fruit', cashew: 'dried-fruit', kola: 'dried-fruit',
+  kelp: 'dried-fish', abalone: 'dried-fish',
+    grain: 'wheat', 'sweet-potato': 'rice',
+  oxen: 'salted-beef', cattle: 'salted-beef',     raisins: 'dried-fruit', currants: 'dried-fruit',   cashew: 'dried-fruit', kola: 'dried-fruit',
   fruit: 'dried-fruit', 'areca-nut': 'dried-fruit',
-  gin: 'wine', brandy: 'wine', rum: 'wine', sake: 'wine', beer: 'wine', 'malmsey-wine': 'wine',
-  woad: 'indigo', orchil: 'indigo', lac: 'indigo', gamboge: 'indigo',
-  annatto: 'cochineal',
-  dyewood: 'logwood', redwood: 'logwood',
-  sappanwood: 'brazilwood',
-  potash: 'alum',
-  coal: 'iron', lead: 'iron', matchlocks: 'iron', mercury: 'silver',
-  ceramics: 'porcelain', celadon: 'porcelain',
-  carnelian: 'diamonds', gems: 'diamonds', emeralds: 'diamonds', rubies: 'diamonds',
-  spices: 'black-pepper', pepper: 'black-pepper', 'clove-bark': 'cloves',
-  textiles: 'cotton-cloth', 'raffia-cloth': 'cotton-cloth',
-  paper: 'linen', 'hanji-paper': 'linen',
+  gin: 'wine', 'malmsey-wine': 'wine',
+      dyewood: 'logwood', redwood: 'logwood',
+      matchlocks: 'iron', mercury: 'silver',
+  ceramics: 'porcelain',   gems: 'diamonds',   spices: 'black-pepper', pepper: 'black-pepper', 'clove-bark': 'cloves',
+  textiles: 'cotton-cloth',   'hanji-paper': 'linen',
   'coconut-coir': 'hemp', cordage: 'hemp',
-  'mangrove-poles': 'timber', teak: 'timber', cedar: 'timber', rattan: 'timber',
-  'train-oil': 'whale-oil', whalebone: 'whale-oil',
-  'walrus-ivory': 'ivory', elephants: 'ivory',
-  sealskins: 'furs', 'ostrich-feathers': 'furs',
-  incense: 'frankincense', civet: 'musk', 'birds-nests': 'musk',
-  camphor: 'sandalwood', benzoin: 'sandalwood', aloeswood: 'sandalwood',
-  senna: 'gum-arabic', sarsaparilla: 'gum-arabic', sassafras: 'gum-arabic',
-  rhubarb: 'ginseng',
-  deerhides: 'hides', leather: 'hides',
-  sponges: 'coral', tortoiseshell: 'coral',
-  pitch: 'tar', tallow: 'wax',
-  hazelnuts: 'dried-fruit', rosewater: 'musk',
-  // dropped: no defensible canonical equivalent
+    'train-oil': 'whale-oil', whalebone: 'whale-oil',
+      incense: 'frankincense',         deerhides: 'hides', leather: 'hides',
+    pitch: 'tar',     // dropped: no defensible canonical equivalent
   water: null, guano: null,
 };
 
 const goods = JSON.parse(readFileSync(join(HERE, '..', 'data', 'goods.json'), 'utf8'));
 const canonical = new Set(goods.goods.map(g => g.id));
+
+// The invariant the header states, enforced: a term that IS a canonical good id must not appear
+// as a MAP key — it would silently rewrite a real good into a different one. This bit when the
+// catalogue grew 70 -> 243 and forty-odd folded terms (dates, rum, celadon, sappanwood...) became
+// goods in their own right; their fold entries were deleted, and this guard keeps the class dead.
+for (const k of Object.keys(MAP)) {
+  if (canonical.has(k)) throw new Error(`MAP key "${k}" is a canonical good id — delete the fold entry`)
+}
 
 const unmapped = new Set();
 let arrays = 0;

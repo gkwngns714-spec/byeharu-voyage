@@ -3,31 +3,28 @@ import type { IconName } from './icons'
 // A MARK FOR A TRADE GOOD — the one mapping from a good to the glyph that stands for it.
 //
 // ── WHAT THIS FILE DOES ─────────────────────────────────────────────────────────────────────────
-// `GOOD_ICON` gives EVERY good in `data/goods.json` — all seventy — its own drawn mark. It is the
-// primary table and it is complete: the seventy rows below are the seventy rows of that file, in
-// its order, and the glyphs they name are drawn in icons.ts under "ONE MARK PER TRADE GOOD".
+// `GOOD_ICON` gives a good its own drawn mark; `CATEGORY_ICON` is the fallback — a good with no
+// drawing of its own wears its category's glyph, which is truthful (a spice looks like a spice)
+// and can never throw.
 //
-// `CATEGORY_ICON` is the FALLBACK, and only that. A good that arrives from a future migration
-// before anyone has drawn it still gets a truthful mark on the day it lands — a spice looks like a
-// spice — and nothing here can throw.
+// ── THE POLICY, SINCE THE CATALOGUE GREW 70 -> 243 ──────────────────────────────────────────────
+// When the catalogue was seventy goods, every one had its own mark, because a picker of seventy
+// rows that repeats seven marks is a picker whose marks carry no information. At 243 goods that
+// arithmetic INVERTS: most of the catalogue is a long tail of one- and two-port specialities a
+// player meets rarely, and 243 hand-drawn marks could not stay tellable apart at the 22px the
+// good picker renders them at — the design constraint icons.ts states (separate by outer
+// silhouette first) runs out of distinct silhouettes long before 243.
 //
-// ── WHY IT IS SEVENTY AND NOT SEVEN ─────────────────────────────────────────────────────────────
-// It was seven, one per category, and that was the wrong answer to a question the owner asked
-// twice. A picker of seventy rows that repeats seven marks is a picker whose marks carry no
-// information: the reader still has to read every name, and the icon column is then pure cost.
-// Distinguishing seventy things is the entire job, not a decoration on top of it.
-//
-// The hard part is not drawing seventy pictures, it is drawing seventy pictures that are still
-// TELLABLE APART at the 22px the good picker renders them at. icons.ts states the rule the glyphs
-// obey — separate by outer silhouette, spend interior detail only after the silhouette is won —
-// and this file's job is just to be exhaustive and to stay in step with the data.
+// So the rule is now MEASURED, not felt: every good offered at FIVE OR MORE ports (the uncommon
+// tier and up — the goods a player actually meets on quay after quay) has its own drawn mark; the
+// long tail wears its category glyph plus its name and rarity mark, which together already
+// distinguish it. The original seventy keep their drawings; the twelve most-traded of the new
+// catalogue earned theirs; a tail good that grows into the uncommon tier earns its drawing then.
 //
 // ── KEEPING IT IN STEP ──────────────────────────────────────────────────────────────────────────
 // The keys are good `code`s (the `id` column of data/goods.json, which is what `MarketGood.code`
 // and `SnapshotGood.code` carry). The values are `IconName`, so a glyph named here that does not
-// exist in ICON_NAMES is a COMPILE error rather than a blank square at runtime. Adding a good is
-// three edits — the glyph, its name in ICON_NAMES, its row here — and missing the third is the
-// only one of the three that fails quietly, which is why the fallback exists.
+// exist in ICON_NAMES is a COMPILE error rather than a blank square at runtime.
 
 /** Category → glyph. The seven are exactly the categories `data/goods.json` declares. */
 const CATEGORY_ICON: Record<string, IconName> = {
@@ -40,7 +37,7 @@ const CATEGORY_ICON: Record<string, IconName> = {
   'naval-stores': 'navalStores',
 }
 
-/** Good `code` → its own mark. Complete over `data/goods.json`, in that file's order. */
+/** Good `code` → its own mark: the original seventy, plus every newer good offered at 5+ ports. */
 const GOOD_ICON: Record<string, IconName> = {
   // spice
   'black-pepper': 'goodBlackPepper',
@@ -119,6 +116,19 @@ const GOOD_ICON: Record<string, IconName> = {
   hemp: 'goodHemp',
   flax: 'goodFlax',
   'whale-oil': 'goodWhaleOil',
+  // the most-traded of the 243-good catalogue (offered at 5+ ports); the tail wears its category
+  citrus: 'goodCitrus',
+  coconuts: 'goodCoconuts',
+  dates: 'goodDates',
+  rye: 'goodRye',
+  beer: 'goodBeer',
+  coir: 'goodCoir',
+  sappanwood: 'goodSappanwood',
+  soap: 'goodSoap',
+  'areca-nuts': 'goodArecaNuts',
+  butter: 'goodButter',
+  paper: 'goodPaper',
+  honey: 'goodHoney',
 }
 
 /**

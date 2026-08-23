@@ -5,6 +5,68 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-23 — D21: the catalogue grows to 243 real goods, and the world re-tunes around it
+
+The owner: **"why are there only 70 trade goods? there should be thousand. real-life trading by
+regions + 대항해시대 오리진 + 대항해시대."**
+
+### THE COUNT, AND WHY IT IS 243 AND NOT 1,000 — arithmetic, not preference
+
+A port OFFERS its listed goods (cheap there, it produces them) and BUYS anything — that is what
+lets a big catalogue live on 214 ports. But the owner's own 4–9-offers-per-port-by-size rule caps
+the world at ~1,450 offer slots on 214 ports (tier 1 ≤ 9, tier 2 ≤ 7, tier 3 4–5). At 1,000 goods
+that is 1.45 producers per good: ~80% of the catalogue lands in 0032's exotic tier (≤2 producers),
+which reds 0032's own no-tier-over-60% assert and makes rarity a label with no information — and
+there is no slot budget left for a staples spine at all. 243 is the largest catalogue this world
+carries with all four tiers meaning something; the ceiling scales with ports × offers-per-port, so
+island ports and any future widening of the offer band raise it mechanically. A second, softer
+bound: at kind granularity (a good = a thing a merchant priced as its own article; claret and
+malmsey are both `wine`) the real 1500–1650 sea trade yields roughly this many distinct articles —
+1,000 would mean vineyard-level near-duplicates, which `data/goods.json`'s own no-near-duplicates
+rule forbids.
+
+### WHAT LANDED
+
+* **`data/goods.json` 70 → 243** (+173, every one a real article of period trade with a sourced-
+  style note; all 70 legacy ids KEPT — `salt`/`wine` are load-bearing in 0008/0009/0010 and the
+  tests). 22 umbrella names NARROWED because their folds were undone: `wine` sheds sake/rum/
+  brandy/beer/arrack, `diamonds` sheds rubies/emeralds/carnelian, `sandalwood` sheds camphor/
+  benzoin/aloeswood, `iron` sheds lead/coal/muskets, and so on.
+* **Roster: every port re-authored to 4–9 offers by size** — 834 → 1,270 specialty rows, each
+  defensible at its port (Basra dates, Sakai muskets, Chios mastic via Izmir, Iceland gyrfalcons,
+  Bermuda cedar, Makassar trepang…). Measured distribution: 25 common (13+ ports) / 27 uncommon
+  (6–12) / 58 rare (3–5) / 133 exotic (1–2) — exotic 54.7%, inside 0032's 60% cap with margin, and
+  the island-port slice can only push counts UP (exotic → rare), the safe direction.
+* **Migration 0003 regenerated** (243 goods, 1,270 specialties, 136 KB); generator gains the new
+  perishables and ONE alcohol mask rule (`wine/beer/sake/rum/brandy/arrack` refused by islamic +
+  swahili culture — verified on the compendium: the tiles say so).
+* **0005 knobs retuned by measurement, in place** (the D11 precedent): the long tail of one-port
+  specialties steepened local gradients and proof 05 read a 16.5% median first voyage — past the
+  16.0 band top. `tune-balance.mjs` swept the candidates on the NEW world; prod 0.92 / home 0.99 /
+  span 0.85 / reach 9000 / curve 0.80 brings the proof's median to **13.5%** (band 4–16), distance
+  still pays (9.26% pooled >800 nm vs 4.61% <400 nm). The 0005 header carries the new sweep table.
+  The full suite then ran twice: 51/51 markers both times, medians 14.8% and 14.2%.
+* **Proof 04 had a latent seed-shaped constant** the growth flushed out: it filtered the return
+  cargo on `base_value * 10 < stake` and then bought a flat 20 tuns — sword-blades passed the
+  proxy and cost 2× the stake, the order failed, the queue halted. It now prices the very purchase
+  from the quay's own `outlay/qty` and buys the quay's own quantity (docs/NO_SPAGHETTI.md §6:
+  derive it, never pin it). 9/9 green.
+* **Icons policy is now measured**: the original 70 keep their drawn marks; of the new goods the
+  twelve offered at 5+ ports (rye, beer, dates, citrus, coconuts, coir, sappanwood, soap,
+  areca-nuts, butter, paper, honey) got new drawn glyphs; the long tail wears its category glyph +
+  name + rarity mark — verified rendering, no blank squares. `normalise-goods.mjs` now REFUSES a
+  fold key that is a canonical good id (49 stale folds deleted — the `dates`→`dried-fruit` class
+  of landmine is dead).
+
+### THE COST, MEASURED
+
+Chain apply: ~178 s in Node (0005's 52,002-row price world is 53 s of it). **Browser cold boot
+78.8 s to a live purse** (was ~30–55 s), warm boot 2.4 s — measured chromium 390×844 against the
+built bundle. The pre-built database image DEV_LOG has flagged before is now the obvious next
+optimisation.
+
+---
+
 ## 2026-08-23 — D20: plain words everywhere, goods become blocks, and the useless button dies
 
 Three owner instructions in one sweep: **"overall, check game itself - every aspect, and move simple

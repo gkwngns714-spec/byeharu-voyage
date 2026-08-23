@@ -199,9 +199,20 @@ const derived = new Map(ports.map((p) => [p.id, derivePort(p)]))
 // base_value is the midpoint of the dataset's researched price band. bulk and spoilage are by
 // category: a tun of pepper is not a tun of timber, and fish rots while iron does not.
 const BULK = { spice: 0.6, textile: 0.9, metal: 0.8, luxury: 0.3, foodstuff: 1.0, raw: 1.2, 'naval-stores': 1.4 }
-const PERISH = { 'dried-fish': 0.004, herring: 0.004, cheese: 0.004, 'salted-beef': 0.003, 'dried-fruit': 0.003, wheat: 0.002, rice: 0.002, sugar: 0.001, 'olive-oil': 0.001, hides: 0.001, furs: 0.001 }
-/** DESIGN B.4/G.3: cultures that will not trade the good at all. */
-const CULTURE_MASK = { wine: ['islamic', 'swahili'] }
+const PERISH = {
+  'dried-fish': 0.004, herring: 0.004, cheese: 0.004, 'salted-beef': 0.003, 'dried-fruit': 0.003,
+  wheat: 0.002, rice: 0.002, sugar: 0.001, 'olive-oil': 0.001, hides: 0.001, furs: 0.001,
+  // the catalogue growth to 243: same rule — fish and fresh stores spoil, grain slowly, durables never
+  butter: 0.004, citrus: 0.005, beer: 0.003, sake: 0.002, caviar: 0.004, 'salted-tuna': 0.004,
+  seaweed: 0.001, 'dried-abalone': 0.001, trepang: 0.001, molasses: 0.001, dates: 0.002,
+  figs: 0.002, almonds: 0.001, hazelnuts: 0.001, pistachios: 0.001, lychees: 0.002,
+  coconuts: 0.002, sago: 0.002, maize: 0.002, cassava: 0.002, rye: 0.002, barley: 0.002,
+  'palm-sugar': 0.001, ghee: 0.002, 'sesame-oil': 0.001, 'palm-oil': 0.001, 'sharks-fin': 0.001,
+  tamarind: 0.001,
+}
+/** DESIGN B.4/G.3: cultures that will not trade the good at all. ONE rule for every alcohol. */
+const ALCOHOL_MASK = ['islamic', 'swahili']
+const CULTURE_MASK = { wine: ALCOHOL_MASK, beer: ALCOHOL_MASK, sake: ALCOHOL_MASK, rum: ALCOHOL_MASK, brandy: ALCOHOL_MASK, arrack: ALCOHOL_MASK }
 
 // ── SQL ───────────────────────────────────────────────────────────────────────────────────────
 const lines = []

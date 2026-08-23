@@ -1,8 +1,8 @@
 # World data — provenance280,378 schema, validation
 
 The geographic dataset behind `byeharu-voyage`: 214 real port cities, the seas and regions
-that connect them, the goods they traded in roughly 1500–1650, and the country outlines the
-map is drawn from.
+that connect them, the 243 goods they traded in roughly 1500–1650, and the country outlines
+the map is drawn from.
 
 **The rule this dataset was built under: no coordinate was typed by hand.** Every `lat`/`lon`
 in `data/ports.json` was fetched from Wikidata by a script and carries, in the record itself,
@@ -15,10 +15,10 @@ traded* — not where it is.
 
 | File | Bytes | What it is |
 |---|---:|---|
-| `data/ports.json` | 139,244 | 214 port cities, with coordinates, sea, region, tier, goods and a note |
+| `data/ports.json` | 147,730 | 214 port cities, with coordinates, sea, region, tier, goods and a note |
 | `data/seas.json` | 5,263 | 51 named seas and oceans, each with a label anchor |
 | `data/regions.json` | 5,540 | 25 trading regions, each tied to a parent sea |
-| `data/goods.json` | 16,891 | 70 tradeable commodities with category, value band and origin note |
+| `data/goods.json` | 54,296 | 243 tradeable commodities with category, value band and origin note |
 | `data/world-110m.json` | 280,378 | Country outlines for the map (Natural Earth 1:110m, property bag slimmed) |
 | `data/sea-routes.json` | 195,000 | **782 sea legs** — which ports are joined by water, and how far it is by sea. GENERATED; see §7 |
 
@@ -29,7 +29,7 @@ Build and check scripts live in `scripts/`. None of them are needed at runtime.
 | `scripts/roster/*.mjs` | — | The editorial roster: which ports exist, and everything about them except position |
 | `scripts/fetch-coords.mjs` | yes | Resolves every roster entry to a Wikidata item and pulls P625 + P17 |
 | `scripts/build-world.mjs` | yes | Downloads Natural Earth, vendors `world-110m.json`, generates the country bbox table |
-| `scripts/normalise-goods.mjs` | — | Folds the roster's free-hand goods terms onto the 70 canonical ids |
+| `scripts/normalise-goods.mjs` | — | Folds the roster's free-hand goods terms onto the canonical goods ids |
 | `scripts/build-ports.mjs` | — | Composes `data/ports.json` from roster + coordinate cache |
 | `scripts/check-ports.mjs` | **no** | The validator. Offline, self-contained, exits non-zero on failure |
 | `scripts/check-coastal.mjs` | yes | Audits how far each port is from a coastline |
@@ -195,7 +195,7 @@ files and its own embedded bbox table — no network:
 ```
 byeharu-voyage world data check
 ==================================================================
-ports 214   seas 51   regions 25   goods 70
+ports 214   seas 51   regions 25   goods 243
 
 [ ok ] unique kebab-case ids — 214 distinct
 [ ok ] required fields, types, tier range
@@ -204,11 +204,11 @@ ports 214   seas 51   regions 25   goods 70
 [ ok ] every sea, region, parentSea and good id resolves
 [ ok ] every port inside its country bbox (tolerance 0.05°); worst margin 0.0000°
        note: RU, US span the antimeridian, so their longitude test is weak
-[ ok ] vocabulary coverage — 51/51 seas, 25/25 regions, 70/70 goods in use
+[ ok ] vocabulary coverage — 51/51 seas, 25/25 regions, 243/243 goods in use
 [ ok ] every region has ports — tier 1: 35, tier 2: 79, tier 3: 100
        countries represented: 91
 
-RESULT: PASS — 214 ports, 51 seas, 25 regions, 70 goods, 0 failures, 0 warnings.
+RESULT: PASS — 214 ports, 51 seas, 25 regions, 243 goods, 0 failures, 0 warnings.
 ```
 
 Exit code `0`.
@@ -361,13 +361,25 @@ official geographic taxonomy.
 They say "this place was known for these things in roughly this period" — they are not
 transcribed from a customs ledger, and no port's list is exhaustive.
 
-**The 70 goods are a deliberately consolidated vocabulary.** Real distinct commodities were
-folded together to keep the list inside a workable size, and the fold is lossy. `diamonds`
-covers Golconda diamonds, Pegu rubies, New Granada emeralds and Gujarati carnelian.
-`sandalwood` covers Timor sandalwood, Borneo camphor, Sumatran benzoin and Cochinchinese
-aloeswood. `wine` covers brandy, gin, rum and sake. `alum` covers Baltic potash. The full
-mapping from the roster's original free-hand terms to the canonical 70 is in
-`scripts/normalise-goods.mjs` and is the authoritative record of what was merged into what.
+**The 243 goods are a vocabulary at KIND granularity, and the line is deliberate.** The
+catalogue began as 70 goods with real commodities folded together to keep it small; the owner
+asked for the real variety back, and most of those folds were undone — rubies, emeralds and
+carnelian out of `diamonds`; camphor, benzoin and aloeswood out of `sandalwood`; sake, rum,
+brandy, beer and arrack out of `wine`; potash out of `alum`; and some 170 more, each a
+distinct article of period trade with its own producing ports. What remains folded is
+regional VARIANTS of one kind: claret, sack and malmsey are all `wine`; sable and beaver are
+both `furs`; Dhaka and lesser muslins are one `muslin`. A "good" is a thing a merchant would
+have called by its own name and priced as its own article — not a vineyard. The residual
+fold map in `scripts/normalise-goods.mjs` records the few free-hand roster terms that still
+normalise onto a canonical id, and it now refuses any entry whose key has since become a
+canonical good.
+
+**Every port offers 4–9 goods, by size.** A great entrepôt (tier 1) lists up to nine, a
+working port (tier 2) up to seven, a small harbour (tier 3) four or five — 1,270 offer rows
+across the 214 ports. A port SELLS its listed goods cheaply (it produces them) and BUYS
+anything; that asymmetry is what lets a 243-good catalogue live on 214 ports, with rarity
+derived from the producer counts (migration 0032: 25 common, 27 uncommon, 58 rare, 133
+exotic).
 
 **Enslaved people are deliberately excluded from the goods list.** The Atlantic slave trade
 was the largest single item of commerce on several of the coasts represented here, and several
