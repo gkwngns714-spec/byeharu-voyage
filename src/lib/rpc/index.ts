@@ -29,6 +29,7 @@ import type {
   BuyCapacity,
   CancelResult,
   ClearResult,
+  DivertResult,
   FleetView,
   FoundedHouse,
   HaggleAttempt,
@@ -199,6 +200,16 @@ export function cmdCancel(fleetId: string, index: number | null = null): Promise
  */
 export function cmdClear(fleetId: string, includeActive = false): Promise<RpcResult<ClearResult>> {
   return call<ClearResult>('cmdClear', [fleetId, includeActive])
+}
+
+/**
+ * The helm order at sea (0037): change a SAILING fleet's destination. She finishes the leg under
+ * her keel, turns at its far node, and the onward passage is a SAIL queued through the one parser
+ * — gated at the node by the one refusal authority, so a second legality path exists nowhere.
+ * History is untouched: settled days, rolled hazards and the miles already sailed all stand.
+ */
+export function cmdDivert(fleetId: string, destPortId: string): Promise<RpcResult<DivertResult>> {
+  return call<DivertResult>('cmdDivert', [fleetId, destPortId])
 }
 
 /** The grammar, for the tap-builder: the same 8 verbs `world.snapshot().verbs` carries. */

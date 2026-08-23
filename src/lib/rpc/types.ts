@@ -49,6 +49,12 @@ export interface SnapshotPort {
   dev_industry: number
   dev_commerce: number
   dev_military: number
+  /** 0036: HARBOUR is a settlement with a shore; SEA_PLACE is a named location in open water —
+   *  same graph, same router, same arrival, and NOTHING ashore. The one served answer to
+   *  "is there a quay here?" — a screen never derives it from other fields. */
+  kind: 'HARBOUR' | 'SEA_PLACE'
+  /** 0036: the lookout's line for a SEA_PLACE (the LANDFALL report speaks it); null for harbours. */
+  approach: string | null
 }
 
 export interface SnapshotLeg {
@@ -606,6 +612,24 @@ export interface ClearResult {
   /** A voyage already at sea keeps sailing — RECALL is not a V0 verb. */
   active_left_running: boolean
   note: string | null
+  queue: QueuedOrder[]
+}
+
+/**
+ * What `cmd.divert()` hands back when a sailing fleet answers her helm (0037). She finishes the
+ * leg she is on, turns at `node`, and a SAIL to `dest` stands in her queue — the refusals
+ * (E_NOT_SAILING, E_NO_SUCH_PORT, E_SAME_DEST, E_NO_ROUTE) arrive as a `Refusal` as usual.
+ */
+export interface DivertResult {
+  ok: true
+  /** The port CODE of the turn — the far end of the leg she is on. */
+  node: string
+  /** The port CODE she was bound for. */
+  was: string
+  /** The port CODE she now makes for. */
+  dest: string
+  /** ISO instant she reaches the turn node (the truncated voyage's recomputed ETA). */
+  node_eta: string
   queue: QueuedOrder[]
 }
 

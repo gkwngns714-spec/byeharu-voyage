@@ -80,12 +80,19 @@ export function SailHere({
   onSail: (fleetId: string | null, args: Record<string, string>) => void
 }) {
   const preview = useWorld((s) => s.preview)
+  const divert = useWorld((s) => s.divert)
+  const portByCode = useWorld((s) => s.portByCode)
   // THE ANSWER, STAMPED WITH THE LINE IT IS ABOUT — `CommandScreen.tsx:176`'s shape, and for its
   // reason: keeping the answer rather than a status means the state can never describe an order
   // the player has already changed. Tapping the next harbour puts this back to `asking` BY
   // DERIVATION (below), so nothing has to be reset in an effect — which is also what keeps the
   // `react-hooks/set-state-in-effect` rule satisfied without disabling it.
   const [checked, setChecked] = useState<{ line: string; answer: Answer } | null>(null)
+  // THE HELM (0037), stamped with the harbour it is about — same derivation trick as `checked`:
+  // tapping another port makes this stale BY KEY, so nothing needs resetting in an effect.
+  const [helm, setHelm] = useState<
+    { code: string; state: 'busy' | 'turned' | 'refused'; refusal: Refusal | null } | null
+  >(null)
 
   // THE ONE INTENT, stated once. Both the preview below and the hand-off read this object, which
   // is what makes them the same order rather than two orders that agree today.
@@ -109,7 +116,13 @@ export function SailHere({
   // `on passage · Gaivota`, and `cmd.preview` says the rest — the order would WAIT in her queue.
   // Neither of those is this file's opinion.
   const sheLiesHere = fleet?.port === portCode
-  const asking = line !== null && fleet !== null && !sheLiesHere
+  // UNDER WAY, the act changes (0037): the same tap on the same harbour is a DIVERT — she turns
+  // at the next node and makes for it NOW — instead of a SAIL that would wait out the old passage
+  // in her queue. Same panel, same corner, no mode: which act it is follows from where she is,
+  // exactly as the button's label says. The queue-a-SAIL flow is still one tab away on Command.
+  const underWay = fleet !== null && fleet.voyage != null
+  const boundHere = underWay && fleet?.voyage?.to === portCode
+  const asking = line !== null && fleet !== null && !sheLiesHere && !underWay
 
   // THE DRY RUN, debounced — every preview is a real transaction on the server (it runs the verb
   // and rolls it back), and a player crossing a crowded coast selects several ports on the way.
@@ -156,6 +169,68 @@ export function SailHere({
       <p className={fineClass('mt-2')} data-testid="map-sail-here-none">
         {fleet.name} lies here.
       </p>
+    )
+  }
+
+  // ── UNDER WAY: THE HELM (0037) ──────────────────────────────────────────────────────────────
+  // The same tap, the same corner — the act is DIVERT because she is at sea. The server settles
+  // her, truncates the passage at the far node of the leg she is on (authored water, never a line
+  // of our own), and queues the onward SAIL through the one parser. The refusal, when there is
+  // one, is the server's sentence — this block invents no legality of its own, same as the
+  // preview flow below it.
+  if (underWay && fleet) {
+    if (boundHere) {
+      return (
+        <p className={fineClass('mt-2')} data-testid="map-divert-bound">
+          {fleet.name} is already bound here.
+        </p>
+      )
+    }
+    const portId = portByCode[portCode]?.id ?? null
+    const shown = helm?.code === portCode ? helm : null
+    return (
+      <div className="mt-2 space-y-1.5" data-testid="map-divert">
+        <Button
+          variant="primary"
+          className="w-full justify-center"
+          data-testid="map-divert-button"
+          onClick={() => {
+            if (!portId || shown?.state === 'busy') return
+            setHelm({ code: portCode, state: 'busy', refusal: null })
+            void divert(fleet.id, portId).then((okay) => {
+              setHelm({
+                code: portCode,
+                state: okay ? 'turned' : 'refused',
+                refusal: okay ? null : useWorld.getState().refusal,
+              })
+            })
+          }}
+        >
+          {`Divert ${fleet.name} here`}
+        </Button>
+        {shown === null && (
+          <p className={fineClass()} data-testid="map-divert-note">
+            She is at sea — she finishes the water she is on, turns at the next port, and makes
+            for {portName}.
+          </p>
+        )}
+        {shown?.state === 'busy' && (
+          <p className={fineClass()} data-testid="map-divert-busy">
+            putting the helm over…
+          </p>
+        )}
+        {shown?.state === 'turned' && (
+          <p className={fineClass()} data-testid="map-divert-turned">
+            Helm answered — she turns at the next port, then makes for {portName}.
+          </p>
+        )}
+        {shown?.state === 'refused' && shown.refusal && (
+          <div className="space-y-1" data-testid="map-divert-refusal">
+            <Badge tone="danger">{shown.refusal.code}</Badge>
+            <p className="text-[11px] leading-snug text-ink">{shown.refusal.sentence}</p>
+          </div>
+        )}
+      </div>
     )
   }
 

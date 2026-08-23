@@ -362,3 +362,31 @@ migration to remove.
 is the system byeharu built, never lit, and deleted. What voyage is missing is the ACTIVITY link of
 its own loop, and the first brick of that is making *what can happen out there* a table instead of
 a CASE in three functions.**
+
+---
+
+## 8. POSTSCRIPT, 2026-08-23 EVENING — the owner overruled §1, and what hands over
+
+§1's refusal of free-coordinate sailing was recorded "so it can be overruled", and it has been.
+The owner, later the same day: *"it should go by sea without the fixed route — but fastest way
+possible. Also, in map, i should be able to pinpoint anywhere in the ocean to make a fleet move."*
+That is the design decision §6's last-but-one row said it would be: the leg graph is being
+replaced by pathfinding through the water raster at departure, in its own slice (the routes
+agent's). This section records what 0036/0037 built against the graph model and what each piece
+becomes under the mover, so the replacement slice starts from a ledger rather than an excavation.
+
+**The risk §1 named still binds, and the mover must answer it:** byeharu's free coordinate failed
+because a fleet there had NO location — nothing could reach her. Under the new model a fleet is
+always a real position at a real instant, and presence must key on WHERE SHE IS. A fleet at a
+NAMED sea place already has the strongest form of that (a `ports` row and `fleets.port_id` on
+it, 0036); a fleet at open water needs the mover's equivalent.
+
+| built in 0036/0037 (graph model) | under the free-water mover |
+|---|---|
+| sea places as `ports` rows: `kind`, `approach`, real water-checked coordinates | **SURVIVES UNCHANGED** — they stop being *reachable* places and stay *interesting* ones |
+| the shore guards: E_NO_CHANDLER, fair calendar filter + `buff_needs_a_quay`, snapshot `kind`/`approach`, the client's anchorage view / lozenge glyph / market filter | **SURVIVES UNCHANGED** — all about what a place IS, none about how it is reached |
+| LANDFALL through 0035's catalogue, written by settle's arrival arm | **SURVIVES** — re-anchor the slice hunk if settle is re-cut |
+| the 42 spur legs and the generator's leg pass (`scripts/build-sea-places.mjs`) | **TRANSITIONAL** — their only job was making places graph-reachable; delete the rows in the mover's migration and strip the leg pass from the generator in the same slice |
+| `sail_refusal`'s round-trip stores clause (composes `voyage.reach_from`) | the RULE survives — *a destination with no chandler requires stores there AND back to one* — the implementation dies with `reach_from`; **carry the rule into the mover's gate** |
+| `cmd.divert` turning at the far node of the current leg (0037) | the SEAM survives (RPC name, catalogue row, refusal codes, SailHere UI, store action); the BODY is superseded to *turn where she stands*, which the mover makes legal — every point is then a valid origin |
+| the §6 spec for folding places into `build-sea-routes.mjs` as through-nodes | **DEAD** — free pathfinding needs no through-nodes; do not build it |

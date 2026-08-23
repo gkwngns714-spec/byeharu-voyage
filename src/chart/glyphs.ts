@@ -113,3 +113,16 @@ export function trianglePath(x: number, y: number, halfWidth: number, height: nu
   const down = height * 0.4
   return `M${x} ${y - up}L${x + halfWidth} ${y + down}L${x - halfWidth} ${y + down}Z`
 }
+
+/**
+ * A lozenge (diamond) centred on (x, y) — the SEA-PLACE mark (0036). A different SHAPE, not a
+ * different weight or ink: the triangle already means "a town with a quay", and both of the other
+ * channels are spoken for (weight = a fleet of yours is using it, ink was rejected for the small
+ * ports — see portStrokeWidth's header). Symmetric about the coordinate because a bank or a strait
+ * IS the coordinate — there is no town above the waterline for the mark to sit under. Sized off
+ * the same ramps as the triangle, so the two families rank together at every zoom.
+ */
+export function lozengePath(x: number, y: number, halfWidth: number, height: number): string {
+  const half = height * 0.5
+  return `M${x} ${y - half}L${x + halfWidth} ${y}L${x} ${y + half}L${x - halfWidth} ${y}Z`
+}

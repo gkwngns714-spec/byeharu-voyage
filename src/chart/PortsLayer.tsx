@@ -1,6 +1,6 @@
 import { project } from '../lib/geo'
 import type { PortRole } from './chartModel'
-import { GLYPH, portMarkScale, portStrokeWidth, trianglePath } from './glyphs'
+import { GLYPH, lozengePath, portMarkScale, portStrokeWidth, trianglePath } from './glyphs'
 import type { MapPort } from './mapTypes'
 
 // GLYPH 1 — THE PORT, in two weights and five RANKS.
@@ -52,14 +52,18 @@ export function PortsLayer({
         const active = portRoles.has(port.code)
         const selected = selectedCode === port.code
         const scale = portMarkScale(port.sizeTier)
+        // 0036: a SEA PLACE — a bank, a strait, a belt of wind — is a lozenge, never the harbour
+        // triangle: the triangle promises a town, and out there is only water. Same ramps, same
+        // weight rule, same everything else; the SHAPE is the one honest difference.
+        const mark = port.kind === 'SEA_PLACE' ? lozengePath : trianglePath
 
         return (
-          <g key={port.code} data-port-tier={port.sizeTier}>
+          <g key={port.code} data-port-tier={port.sizeTier} data-port-kind={port.kind}>
             <path
               d={
                 active
-                  ? trianglePath(x, y, px(GLYPH.loudPortHalfWidth * scale), px(GLYPH.loudPortHeight * scale))
-                  : trianglePath(x, y, px(GLYPH.quietPortHalfWidth * scale), px(GLYPH.quietPortHeight * scale))
+                  ? mark(x, y, px(GLYPH.loudPortHalfWidth * scale), px(GLYPH.loudPortHeight * scale))
+                  : mark(x, y, px(GLYPH.quietPortHalfWidth * scale), px(GLYPH.quietPortHeight * scale))
               }
               // The quiet mark's ink went from `/70` to `/85` in the same change that gave the coast
               // a real body: a hollow triangle at 70% ink stands on the new land at 1.74 : 1, which

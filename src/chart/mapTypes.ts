@@ -34,6 +34,14 @@ export interface MapPort extends LatLon {
    * and none of them is a hand-picked list of "important" ports.
    */
   readonly sizeTier: number
+  /**
+   * 0036: `HARBOUR` is a town with a quay; `SEA_PLACE` is a named water — a bank, a strait, a
+   * belt of wind — with nothing ashore. Same node of the same graph, so everything else here
+   * treats them alike; the ONE consequence on the chart is the glyph (PortsLayer draws a lozenge
+   * instead of a triangle, because a mark that promises a town where there is only sea is a lie
+   * at exactly the scale a chart exists to be trusted at).
+   */
+  readonly kind: 'HARBOUR' | 'SEA_PLACE'
 }
 
 /**

@@ -21,6 +21,7 @@ traded* — not where it is.
 | `data/goods.json` | 16,891 | 70 tradeable commodities with category, value band and origin note |
 | `data/world-110m.json` | 280,378 | Country outlines for the map (Natural Earth 1:110m, property bag slimmed) |
 | `data/sea-routes.json` | 195,000 | **782 sea legs** — which ports are joined by water, and how far it is by sea. GENERATED; see §7 |
+| `data/sea-places.json` | ~11,000 | **14 sea places** — named waters a fleet can sail to (banks, straits, wind belts). AUTHORED; see §8 |
 
 Build and check scripts live in `scripts/`. None of them are needed at runtime.
 
@@ -37,6 +38,7 @@ Build and check scripts live in `scripts/`. None of them are needed at runtime.
 | `scripts/sea-grid.mjs` | **no** | THE routing rule: the sea as a 0.25° raster, and A* through water. §7 |
 | `scripts/build-sea-routes.mjs` | **no** | Applies that rule to all 214 ports and writes `data/sea-routes.json` |
 | `scripts/build-world-seed.mjs` | **no** | Writes migration 0003 from all of the above. The chain's world IS this data |
+| `scripts/build-sea-places.mjs` | **no** | Writes migration 0036 from `data/sea-places.json`: the places, and their spur legs by the §7 rule. §8 |
 
 Regenerate everything with:
 
@@ -511,3 +513,34 @@ longest leg      3,309 nm (Honolulu — Acapulco)
 Migration 0003 re-asserts the invariant against the coordinates it stored: **every leg is at least
 the great circle between its two ports**, and every port is reachable from Lisbon by walking the
 leg table. A leg may detour round land; it may never be a shortcut through the Earth.
+
+---
+
+## 8. The sea places — 14 named waters, authored, strictly wet
+
+`data/sea-places.json` is **authored**, deliberately: unlike the 214 harbours these are not
+settlements with a Wikidata item apiece — they are waters a sailor of 1550 knew by name. A bank,
+a strait, a belt of wind. What a human chose is *which waters matter and where their mark sits*;
+what is derived (`scripts/build-sea-places.mjs`, writing migration 0036) is how each one joins
+the leg graph: its K = 3 nearest harbours **by sea**, distances from the same 0.25° raster and
+the same A* rule as §7, subject to the same `>= great circle` invariant.
+
+**The never-touch-land law applies with no excuse.** §7's generator snaps a harbour to the
+nearest water cell because a coastal town's own cell is usually land at 15 nm resolution (161 of
+214 are). A sea place gets no snap: the generator **refuses** any place whose own cell is not
+water. Measured against `buildSeaGrid()` on 2026-08-23, all 14 pass:
+
+```
+WATER  CSV   36.9   -9.35  Cape St Vincent        WATER  SGS   28.0  -60.0  The Sargasso Sea
+WATER  SOG  35.95   -5.6   Strait of Gibraltar    WATER  HLT   30.5  -40.0  The Horse Latitudes
+WATER  BIS   45.5   -4.5   Bay of Biscay          WATER  DLD    4.0  -22.0  The Doldrums
+WATER  DOG   54.7    2.8   Dogger Bank            WATER  SKC  -18.5   11.8  The Skeleton Coast
+WATER  GBK   45.0  -51.0   The Grand Banks        WATER  RRF  -40.5   25.0  The Roaring Forties
+WATER  DRK  -57.0  -64.5   Drake Passage          WATER  BAB   12.6   43.3  Bab-el-Mandeb
+WATER  SOH   26.6   56.5   Strait of Hormuz       WATER  SOM    2.9  100.6  One Fathom Bank
+```
+
+In the chain a sea place is a row of `public.ports` with `kind = 'SEA_PLACE'` and an authored
+`approach` line (the sentence the LANDFALL report speaks on arrival) — see migration 0036's
+header for the four design decisions, and `docs/PLATFORM.md` §8 for which parts of the spur-leg
+machinery are transitional under the free-water mover the owner has since asked for.

@@ -205,6 +205,17 @@ export const RPCS = {
       { name: 'p_preset', type: 'uuid' },
     ],
   },
+  // 0037: the helm order at sea — change a SAILING fleet's destination. She finishes the leg
+  // under her keel, turns at its far node, and the onward passage is a queued SAIL through the
+  // one parser. Not a verb: it acts on the queue and the voyage NOW, like cancel_at and clear.
+  cmdDivert: {
+    schema: 'cmd',
+    fn: 'divert',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_dest', type: 'uuid' },
+    ],
+  },
   // The ONE way a signed-in captain gets a house (0011). It takes no uid — the server reads
   // auth.uid() — which is why it is safe for a browser to hold, unlike public.new_house().
   cmdFoundHouse: {

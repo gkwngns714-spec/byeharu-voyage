@@ -675,6 +675,14 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // a null preset CLEARS a fleet's order, so clearing is not a fifth entry point.
       'worldProvisionPresets', 'cmdProvisionPresetSave', 'cmdProvisionPresetDelete',
       'cmdProvisionPresetApply',
+      // Pin moved deliberately 2026-08-23 with migration 0037 (she answers her helm at sea):
+      // `cmd.divert` — change a SAILING fleet's destination NOW. Not a verb: it acts on the
+      // queue and the voyage like cancel_at and clear, which is why it is an entry point and not
+      // a row in the grammar. It takes no player id; the server reads current_player_id() and
+      // refuses a fleet that is not yours. The onward passage it queues goes through cmd.issue
+      // (the one parser) and is gated at the turn node by voyage.sail_refusal (the one refusal
+      // authority), so this entry point carries no second grammar and no second legality path.
+      'cmdDivert',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')
