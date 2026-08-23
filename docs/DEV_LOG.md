@@ -5,6 +5,95 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-23 — D21: the OSN question, answered NO — and the one seam that was actually missing
+
+Owner: *"this game might need OSN system as well as other system built in byeharu, the previous game.
+audit and implement it so that later on, combat, exploration, npcs can be added."* Architecture, not a
+feature. **`docs/PLATFORM.md` is the deliverable; migration 0035 is the whole of the code.**
+
+### THE AUDIT SAYS NO TO OSN, AND THE REASON INVERTS THE PREMISE
+
+`dev/byeharu` was read end to end. Five findings, any one of which settles it:
+
+1. **It was built, gated, never lit, and then deleted.** The per-ship coordinate stack (byeharu
+   0055–0070) ended as `20260618000232` dropping **20 functions**, plus a table, three columns and six
+   CHECKs — and `0231:245-250` refuses to run unless both coordinate flags are FALSE, which they were.
+   A whole subsystem authored, proved, deployed dark, demolished, with no player ever using it.
+2. **Free coordinates are where combat CANNOT reach.** `combat_encounters.presence_id` is
+   `not null references location_presence` (`20260616000014:14`), and the space-arrival branch creates
+   no presence — *"open space has no location"* (`0208:163-166`). A fleet at a free coordinate cannot
+   be ambushed, cannot hunt, cannot explore. Importing OSN to make room for those would remove the room.
+3. **It produced four movement systems** (`MOVEMENT_UNIFICATION_CHARTER.md:488-500`) and cost four
+   ships stuck at `traveling` with nothing behind them, five teleported to wrong ports, a global cron
+   wedge, a ghost-dock where *"the fleet flew while its ships stayed docked"*, and a player's fleet lost
+   because the brake refused. *"Is this fleet docked?"* reached **eleven hand-copied definitions**.
+4. **Voyage cannot enforce a free coordinate.** The coastline is a build-time raster in
+   `scripts/sea-grid.mjs`; nothing at runtime knows where land is, so an arbitrary lat/lon sails through
+   Africa. The 782 legs *are* the coastline.
+5. **It contradicts Law 3** (the map never accepts input) and the composed-not-typed order language.
+
+And byeharu's own `ARCHITECTURE.md:24-30`, written before its first migration: *"Do not build
+free-moving ships that chase/fight from live positions… build the game around location presence."*
+`CORE_REUSE.md:1168` already recorded the verdict — *"Byeharu spent 2026 walking away from that rule
+(OSN, free coordinate travel, spatial combat) and byeharu-voyage is walking back to it."*
+
+**What voyage should take from OSN it already has, and better:** OSN §12's core rule is ONE
+authoritative spatial state. Voyage enforces it with a partial unique index *and*
+`voyage.assert_sailing_invariant`, and its position is closed-form over a multi-leg frozen speed
+profile where byeharu's was one straight segment at one speed.
+
+### THE SPATIAL PRIMITIVE IS THE LEG. ZONES ARE REJECTED.
+
+A leg already *is* what a byeharu `danger_zone` was — a continuous exposure surface with its own risk
+multiplier, bounded by two places — with no polygon, no PostGIS, no overlap policy and no hit test,
+because a voyage's path is a list of legs by construction. The zone platform's own reviewer is quoted
+against it in PLATFORM.md §2. `voyage.position`'s lat/lon stays display-only; its comment says so and
+that fence holds.
+
+### WHAT WAS ACTUALLY MISSING — three seams, ranked, and only the first is built
+
+Voyage's loop is `Map → Port → Voyage → Arrival → Activity → Report`. Four links are good. **ACTIVITY is
+the missing one**, and combat, exploration and NPCs are all activities.
+
+1. **What can happen at sea was stated in THREE functions** — `hazard_roll`'s CASE, `settle`'s arms, and
+   `report_line`'s CASE whose `else` printed the raw schema code at the player. Adding a kind and
+   forgetting the third did not fail; it shipped `Day 7. DERELICT`. **This is 0035.**
+2. **An event has no SUBJECT**, so a raid happens *with the sea* — `piracy_index × 40 × (0.5+mag)`, an
+   opponent you can never meet twice. NOT BUILT: a column with no reader is byeharu's own recorded
+   failure class, four items long.
+3. **One event per voyage-day, and only on a voyage** — `primary key (voyage_id, day_index)`. NOT BUILT:
+   that PK is what makes offline settlement byte-identical, and widening it belongs to the slice that
+   first needs a second beat, so the determinism proof is written against a real case.
+
+Shapes for 2, 3 and five more are written down in PLATFORM.md §6 so nobody re-derives them.
+
+### 0035 — `public.voyage_event_kinds`
+
+One table, two superseded functions, `voyage.settle` **untouched**, the hazard *probability* untouched.
+`voyage_events.kind` becomes a **foreign key** into the catalogue, which is why settle needs no change:
+it cannot invent a kind. `report_line`'s code-printing fallback is deleted in favour of a raise
+(NO_SPAGHETTI §7C). 0027's burial sentence was generalised from `kind = 'PIRATES'` to *the payload
+carries `crew_lost`* — byte-identical today (0027:388-390 is the sole writer) and free for whatever
+costs crew next.
+
+**Adding a thing that happens at sea is now one INSERT** plus, only if it does something new to the
+ships, one arm in a superseding `settle`.
+
+Proven, not asserted: the draw agrees with 0006's CASE on **50,000** (r_kind, piracy) pairs including
+9,600 that cede a storm to raiders; on a real 7,071 nm haul out of Lisboa with every sea and leg at the
+worst the schema holds, all **18** occurring days across 2 kinds answered exactly as the CASE would; all
+**11** after-action lines are byte-identical including both fallbacks and all four branches of the
+surgeon clause; and both guards were shown biting on real rejected writes. **Nine asserts, all nine
+break-tested red first** — including one break that tripped the weight-closure trigger *before* the
+sweep it was aimed at, which is the trigger proving itself.
+
+**A measurement worth keeping:** `voyage.leg_at_day` called inline in a `WHERE` clause raises
+`E_NO_SUCH_VOYAGE` for a voyage the very next statement can count (PGlite 0.5.5, measured). Hoist it into
+a variable — which is exactly what `hazard_roll` itself does at `0006:673-675`. The house pattern was
+already right; the probe had wandered off it.
+
+---
+
 ## 2026-08-23 — D20: plain words everywhere, goods become blocks, and the useless button dies
 
 Three owner instructions in one sweep: **"overall, check game itself - every aspect, and move simple
