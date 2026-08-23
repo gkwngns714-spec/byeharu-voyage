@@ -118,6 +118,14 @@ export const ICON_NAMES = [
   'goodHemp',
   'goodFlax',
   'goodWhaleOil',
+  // ── THE FOUR RARITY TIERS (0032) — a SHAPE per tier, so rarity is never colour alone ─────────
+  // Drawn for ~12px: four distinct silhouettes (ring, diamond, faceted gem, four-point star),
+  // because at that size interior detail is gone and the outline is all a colourblind player or a
+  // greyscale screenshot gets. Consumed only by RarityMark; the tier→shape table lives there.
+  'rarityCommon',
+  'rarityUncommon',
+  'rarityRare',
+  'rarityExotic',
 ] as const
 
 export type IconName = (typeof ICON_NAMES)[number]
@@ -346,4 +354,13 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   // A lamp burning it. A whale's fluke was the first cut of this mark and it read as the tea sprig;
   // the thing train oil is actually bought for does not collide with anything.
   goodWhaleOil: ['M4.4 14.2h11.2l3.6-1.6-.8 3c-.7 2.4-2.9 4-5.6 4h-3c-3.2 0-5.4-2.3-5.4-5.4Z', 'M18.6 11.4c-1.5-1.2-2.2-2.4-2.2-3.6 0-1.5 1-2.8 2.2-3.8 1.2 1 2.2 2.3 2.2 3.8 0 1.2-.7 2.4-2.2 3.6Z', 'M4.4 14.6c-1.3 0-2.2-.9-2.2-2s.9-2 2.2-2'],
+  // ── rarity tiers (0032) — silhouettes only; see the note on ICON_NAMES ───────────────────────
+  // A plain ring: the everyday coin of the catalogue.
+  rarityCommon: ['M12 6.6a5.4 5.4 0 1 0 0 10.8a5.4 5.4 0 1 0 0-10.8Z'],
+  // A diamond on its point — the first step away from round.
+  rarityUncommon: ['M12 4.8 18.8 12 12 19.2 5.2 12Z'],
+  // A faceted gem: flat crown, cut shoulders — reads as "cut stone" beside the plain diamond.
+  rarityRare: ['M5 9.6 8.4 5.2h7.2L19 9.6 12 19.6Z', 'M5 9.6h14'],
+  // A four-point star — the only concave silhouette in the set.
+  rarityExotic: ['M12 3.4c.6 4.4 2 5.8 8.6 8.6-6.6 2.8-8 4.2-8.6 8.6-.6-4.4-2-5.8-8.6-8.6 6.6-2.8 8-4.2 8.6-8.6Z'],
 }

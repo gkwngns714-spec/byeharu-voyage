@@ -122,5 +122,14 @@ export { useCoastline, type CoastlineState } from './useCoastline'
 // `ChartCanvas` (as `keepOut`), so that a port's name is never printed under one of the screen's own
 // opaque buttons. See ./useChartSurface.ts's `useChromeBoxes` for why the chart measures the boxes
 // but refuses to know what they are.
-export { CHART_CHROME, useChartSurface, type ChartSurface, type ChromeBox } from './useChartSurface'
+export {
+  CHART_CHROME,
+  useChartSurface,
+  type ChartSurface,
+  type ChartSurfaceOptions,
+  type ChromeBox,
+} from './useChartSurface'
+// The one +/−/find column both surfaces wear — the Map tab mounts it and `SmallChart` mounts it
+// itself, so an embedded chart arrives with its zoom already on board.
+export { ViewControls } from './ViewControls'
 export { useElementSize, type ElementSize } from './useElementSize'

@@ -132,6 +132,26 @@
   --color-dear: var(--color-danger);
   --color-even: var(--color-ink-faint);
 
+  /* ── RARITY — the four tiers of 0032, served on every good ──────────────────────────────────
+     Three GENUINELY NEW meanings (the sanctioned reason for a new base literal — see
+     tests/duplication.spec.ts §1): rule 7's existing colours are all spoken for (gold = act,
+     green = gain, red = danger, blue = information), so the tiers take the three hues the game
+     does not otherwise use — sea-glass, violet, orchid — and `common` stays the quiet ink the
+     rest of the ledger already speaks in. Colour is never the only channel: every tier also has
+     its own glyph shape (icons.ts, rarityCommon…rarityExotic), so the tier survives a
+     colourblind player and a greyscale screenshot.
+
+     Contrast, MEASURED against bg-panel rgb(18,23,29) — the surface every table row sits on
+     (Card.tsx) — all clear of WCAG AA's 4.5:1 for the small text these colour:
+       common    #8b97a5  6.06 : 1   (the ink-faint token itself)
+       uncommon  #5ec9b4  9.00 : 1
+       rare      #b39df2  7.74 : 1
+       exotic    #e59ad5  8.50 : 1  */
+  --color-rarity-common: var(--color-ink-faint);
+  --color-rarity-uncommon: #5ec9b4;
+  --color-rarity-rare: #b39df2;
+  --color-rarity-exotic: #e59ad5;
+
   /* shape + elevation */
   --radius-card: 0.75rem;
   --shadow-card: inset 0 1px 0 0 rgb(255 255 255 / 0.04), 0 10px 30px -18px rgb(0 0 0 / 0.75);

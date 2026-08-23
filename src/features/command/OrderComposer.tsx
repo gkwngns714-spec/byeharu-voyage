@@ -86,6 +86,25 @@ const LABELS: Record<string, string> = {
  */
 const FLAT_VERBS = new Set(['HIRE', 'PROVISION'])
 
+/**
+ * WHETHER ONE ARGUMENT ROW RENDERS OPEN, ALWAYS — the one spelling of the flat/foldable decision,
+ * asked per argument because the grain of the rule turned out to be the ARGUMENT, not the verb.
+ *
+ * SAIL's `dest` joined 2026-08-23: *"when pressing a location to sail, dont unfold, instead make
+ * the what sail needs bottom by comming out unfoldingly."* The harbour grid IS the choice surface
+ * — choosing from it must not fold it away, because changing your mind is a tap on another tile
+ * and a folded grid puts a door in front of that. What DOES happen on the choice is the docked
+ * check at the foot of the screen (CommandScreen's SAIL sheet) and the ring on the chart. `via`
+ * stays foldable: it is optional, rarely given, and a second always-open harbour grid would be
+ * two fields of tiles the eye cannot tell apart.
+ *
+ * NOT the same rule as BUY's good row, deliberately: a good UNFOLDS IN PLACE because a good has
+ * facts to read before choosing. A harbour tile shows its whole face already, so its tap commits.
+ */
+function flatArg(verb: string, arg: string): boolean {
+  return FLAT_VERBS.has(verb) || (verb === 'SAIL' && arg === 'dest')
+}
+
 function labelOf(arg: VerbArg): string {
   return LABELS[arg.name] ?? arg.name
 }
@@ -131,6 +150,22 @@ export function OrderComposer({
     setOverride({ verb: spec.verb, name: open === name ? null : name })
   }
 
+  // WHETHER THE VERB GRID IS SHOWING — derived, like `open` above, with the same one override.
+  //
+  // The owner, twice (2026-08-23, "i told you"): *"when i click buy, the tab should be not
+  // unfolded. it should stay where it is."* Six expanded cards after one is chosen filled the
+  // whole viewport, so the next question — the goods, the harbours, the count — began BELOW the
+  // two verbs the player had already rejected, and acting on the choice meant scrolling past it.
+  // So a chosen verb COLLAPSES the grid to that verb alone, closed the way an answered argument
+  // row closes (same skin, same `change` word), and the next step lands exactly where the eye
+  // already is. `regrid` is the player asking to see the grid again; it is stamped with the verb
+  // it was made under — so a hand-off from another tab collapses it — and discarded the moment
+  // anything is chosen or answered, exactly as `override` is.
+  const [regrid, setRegrid] = useState<string | null>(null)
+  const gridOpen = !spec || regrid === spec.verb
+  /** The chosen verb's mark, for the collapsed control (indexed once, so the guard narrows). */
+  const chosenMark = spec ? VERB_ICON[spec.verb] : undefined
+
   // WHICH GOOD ROW IS UNFOLDED — ONE, AND IT IS HELD HERE RATHER THAN INSIDE THE LIST.
   //
   // The owner, 2026-08-23: "click a trade good → it unfolds showing how much I can buy, and more."
@@ -167,6 +202,9 @@ export function OrderComposer({
     // was last peeked at rather than the row that was actually chosen.
     setInspect(null)
     setConsider(null)
+    // And it ends a re-opened verb grid the same way: answering an argument is proof the player
+    // is going on with THIS verb, so the grid they asked to reconsider folds back to it.
+    setRegrid(null)
   }
 
   // THE PRICE IS THE ACT (the owner, 2026-08-23: "i want to be able to click on buy and sell
@@ -183,6 +221,7 @@ export function OrderComposer({
     setOverride(null)
     setInspect(null)
     setConsider(null)
+    setRegrid(null)
   }
 
   // FOUR ORDERS HAVE A SECOND HALF. BUY was the first — the goods on the left, her state on the
@@ -263,50 +302,98 @@ export function OrderComposer({
             table still draws — with its initial — rather than breaking the grid.
 
             THREE ACROSS FROM `sm`. Six verbs are three rows of two on a phone and two rows of three
-            on anything wider, so the grid never leaves a card stranded on a line of its own. */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {verbs.map((v) => {
-            const on = v.verb === spec?.verb
-            const mark = VERB_ICON[v.verb]
-            return (
-              <button
-                key={v.verb}
-                type="button"
-                onClick={() => onChooseVerb(on ? null : v.verb)}
-                className={[
-                  'bv-cut flex min-h-11 flex-col gap-1.5 border p-3 text-left transition',
-                  on
-                    ? 'border-accent bg-accent-soft'
-                    : 'border-edge bg-surface-2 hover:border-accent/60',
-                ].join(' ')}
-              >
-                <span className="flex items-center gap-2">
-                  {mark ? (
-                    <Icon
-                      name={mark}
-                      size={18}
-                      className={`shrink-0 ${on ? 'text-accent' : 'text-ink-faint'}`}
-                    />
-                  ) : (
+            on anything wider, so the grid never leaves a card stranded on a line of its own.
+
+            A CHOSEN VERB COLLAPSES THE GRID TO ITSELF (the owner, repeated: "when i click buy, the
+            tab should be not unfolded. it should stay where it is"). The collapsed control below
+            is the argument rows' own closed idiom — the value, and the word `change` in the same
+            accent mono — so there is ONE spelling of "this is answered; tap to answer differently"
+            on the screen. Tapping it re-opens the grid without discarding anything; tapping the
+            same verb in the re-opened grid folds it back, still without discarding; tapping a
+            DIFFERENT verb goes through `chooseVerb`, whose one authority discards the arguments
+            that no longer apply (domain/order/draft.ts:104 — `dest` means nothing to BUY). */}
+        {gridOpen ? (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {verbs.map((v) => {
+              const on = v.verb === spec?.verb
+              const mark = VERB_ICON[v.verb]
+              return (
+                <button
+                  key={v.verb}
+                  type="button"
+                  onClick={() => {
+                    // Re-tapping the verb already chosen (only reachable through `change`) KEEPS
+                    // it: the player looked at the alternatives and stayed. A different verb is a
+                    // real choice and goes through the draft's one authority.
+                    if (!on) onChooseVerb(v.verb)
+                    setRegrid(null)
+                  }}
+                  className={[
+                    'bv-cut flex min-h-11 flex-col gap-1.5 border p-3 text-left transition',
+                    on
+                      ? 'border-accent bg-accent-soft'
+                      : 'border-edge bg-surface-2 hover:border-accent/60',
+                  ].join(' ')}
+                >
+                  <span className="flex items-center gap-2">
+                    {mark ? (
+                      <Icon
+                        name={mark}
+                        size={18}
+                        className={`shrink-0 ${on ? 'text-accent' : 'text-ink-faint'}`}
+                      />
+                    ) : (
+                      <span
+                        className={`w-[18px] shrink-0 text-center font-mono text-base ${on ? 'text-accent' : 'text-ink-faint'}`}
+                      >
+                        {v.verb.slice(0, 1)}
+                      </span>
+                    )}
                     <span
-                      className={`w-[18px] shrink-0 text-center font-mono text-base ${on ? 'text-accent' : 'text-ink-faint'}`}
+                      className={`truncate font-mono text-base uppercase tracking-wide ${on ? 'text-accent' : 'text-ink'}`}
                     >
-                      {v.verb.slice(0, 1)}
+                      {v.verb}
                     </span>
-                  )}
-                  <span
-                    className={`truncate font-mono text-base uppercase tracking-wide ${on ? 'text-accent' : 'text-ink'}`}
-                  >
-                    {v.verb}
                   </span>
+                  <span className="line-clamp-2 text-[11px] leading-snug text-ink-faint">
+                    {v.help}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          spec && (
+            <button
+              type="button"
+              onClick={() => setRegrid(spec.verb)}
+              aria-expanded={false}
+              data-testid="verb-chosen"
+              className="bv-cut flex min-h-11 w-full items-center gap-2 border border-accent bg-accent-soft p-3 text-left transition"
+            >
+              {chosenMark ? (
+                <Icon name={chosenMark} size={18} className="shrink-0 text-accent" />
+              ) : (
+                <span className="w-[18px] shrink-0 text-center font-mono text-base text-accent">
+                  {spec.verb.slice(0, 1)}
                 </span>
-                <span className="line-clamp-2 text-[11px] leading-snug text-ink-faint">
-                  {v.help}
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-mono text-base uppercase tracking-wide text-accent">
+                  {spec.verb}
                 </span>
-              </button>
-            )
-          })}
-        </div>
+                <span className="line-clamp-1 text-[11px] leading-snug text-ink-faint">
+                  {spec.help}
+                </span>
+              </span>
+              {/* The same word the closed argument rows say, for the same reason: a closed thing
+                  with a value has something to SAY, and it says what tapping does. */}
+              <span aria-hidden className="shrink-0 font-mono text-xs text-accent">
+                change
+              </span>
+            </button>
+          )
+        )}
       </div>
 
       {spec && (
@@ -326,15 +413,19 @@ export function OrderComposer({
                 // Choosing a destination from a list of names asks the player to hold a map in
                 // their head. This is that map, and it is the Map tab's, drawn by the same modules.
                 //
-                // NOTHING IN THIS BLOCK IS TAPPABLE — not the chart (it takes no handler at all)
-                // and not the ⓘ's contents. That is a decision about THIS chart, not about maps: a
-                // gesture surface embedded in a form fights the page's own scroll on a phone
-                // (`useChartSurface` sets `touch-none` and calls `preventDefault` on wheel, which
-                // is right for a whole tab and wrong inside a composer), so `SmallChart` mounts no
-                // surface at all and the destination is chosen in the list beside it, in words.
-                // This comment used to give the reason as "the map never accepts an order"; that
-                // sentence was amended 2026-08-23 (docs/DESIGN.md §E.5 Law 3) and it was never the
-                // real reason this particular chart is inert.
+                // THE CHART IS A GESTURE SURFACE NOW — zoom, pan, pinch, with the Map tab's own
+                // +/−/find column — and it lives inside a scrolling form anyway, because
+                // `SmallChart` mounts `useChartSurface` in its `page-vertical` posture: the wheel
+                // and the one-finger vertical drag are CEDED to the page, so the chart can never
+                // trap the scroll between a player and the pickers below it (SmallChart.tsx's
+                // header carries the full reasoning and the measurements). An earlier cut of this
+                // comment said the block was not tappable at all and mounted no surface; that was
+                // true when the only alternative was `touch-none` trapping the page, and it was
+                // deleted when the posture made both halves false.
+                //
+                // CHOOSING still happens in the tiles, in words — the chart takes looking
+                // gestures, never an order — and it rings the harbour the tap chose, because
+                // `chartPorts` below derives from the ARGS the tap writes.
                 <div className="space-y-1" data-testid="sail-chart-rail">
                   <div className="flex flex-wrap items-center gap-x-1">
                     <SectionLabel className="mb-0">Where she is</SectionLabel>
@@ -399,7 +490,7 @@ export function OrderComposer({
             <div className="space-y-2">
               {visibleArgs(spec, args).map((arg) => {
               const value = args[arg.name]
-              const flat = FLAT_VERBS.has(spec.verb)
+              const flat = flatArg(spec.verb, arg.name)
               const isOpen = flat || open === arg.name
               return (
                 <div key={arg.name} className="rounded-md border border-edge bg-app p-3">
@@ -737,7 +828,20 @@ function BoundedNumber({
     if (berths <= 0) {
       return <Notice tone="neutral" className="text-xs">Every berth in this fleet is filled.</Notice>
     }
-    const suggestions = [...new Set([short, 4, 8, 12, 20, 40, berths].filter((n) => n > 0))].sort((a, b) => a - b)
+    // COARSE FIRST, THE OWNER'S OWN SPELLING (2026-08-23: "have it + 10, +100, max, make it more
+    // friendly"). The seven absolute chips this used to offer (4, 8, 12, 20, 40, …) were a guess
+    // at every crew a player might want; +10/+100/max compose ANY of them in two taps, so the one
+    // absolute chip that survives is the only one with a meaning of its own: her shortfall.
+    //
+    // THE CEILING IS `berths`, AND ONLY `berths` — the same `Σ (crew_max − crew)` the server's
+    // E_CREW_MAX refuses over (0007:659, kept as fleetCrew's one fold). The port's idle pool is
+    // deliberately NOT folded into it: hiring beyond the pool is a PRICE (the urgent multiplier,
+    // DESIGN F.2), not a refusal — capping at the pool would forbid something the game allows.
+    // The purse is not folded in either, and cannot honestly be: the signing rate
+    // (`hire_crew_rate`) is a world_config knob the snapshot deliberately does not serve
+    // (lib/rpc/types.ts:18-19), so any affordability arithmetic here would be an invented price.
+    // What the purse allows is the server's to say, and it says it before a ducat moves —
+    // `cmd.preview()` runs the real verb and E_INSUFFICIENT_FUNDS arrives with its own fix line.
     return (
       <div className="space-y-2">
         {short > 0 && (
@@ -746,7 +850,16 @@ function BoundedNumber({
             she is {short} crew short of what she needs.
           </p>
         )}
-        <NumberPicker min={1} max={berths} step={1} suggestions={suggestions} unit="crew" value={value} onPick={onPick} />
+        <NumberPicker
+          min={1}
+          max={berths}
+          step={1}
+          suggestions={short > 0 ? [short] : []}
+          coarse={[10, 100]}
+          unit="crew"
+          value={value}
+          onPick={onPick}
+        />
       </div>
     )
   }

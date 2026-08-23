@@ -483,7 +483,11 @@ test.describe('labels keep out of the screen’s own chrome', () => {
     ).toHaveLength(0)
   })
 
-  test('no chrome declared changes nothing — SmallChart has none at all', () => {
+  test('an explicit empty keep-out is the same plan as none declared', () => {
+    // The guard on the default. This example used to be "SmallChart has no chrome at all"; since
+    // 2026-08-23 both charts wear the zoom column and declare it. The property still matters,
+    // because every surface's FIRST measured frame plans with no chrome (`useChromeBoxes` reports
+    // one frame late by design), and that frame must be the plain plan, not a different one.
     const options = optionsAt(390, 844)
     const requests = mapLabelRequests(
       MODEL,

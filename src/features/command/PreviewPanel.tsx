@@ -273,7 +273,9 @@ function Estimate({
         <>
           {points !== null && <StatRow label="hull mended" value={formatFixed(points, 1)} />}
           {cost !== null && <StatRow label="it costs" value={formatDucats(cost)} />}
-          {hours !== null && <StatRow label="in the yard" value={`${formatFixed(hours, 1)} h`} />}
+          {/* "shipyard", not "yard" — the owner asked what a yard was (2026-08-23), and a label a
+              player must ask about is jargon. The LABEL is this client's; the figure is served. */}
+          {hours !== null && <StatRow label="in the shipyard" value={`${formatFixed(hours, 1)} h`} />}
         </>
       )
     }

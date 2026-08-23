@@ -60,7 +60,7 @@ export const PORT_FACES = [
     label: 'Services',
     title: 'What the port keeps',
     explain:
-      'The yard, the inn, the chandler and the school. What a service COSTS is set when the order runs, so PREVIEW on Command quotes it — no price is listed here.',
+      'The shipyard, the inn, the chandler and the school. What a service COSTS is set when the order runs, so PREVIEW on Command quotes it — no price is listed here.',
   },
   {
     id: 'ships',

@@ -366,10 +366,10 @@ function headline(event: LedgerEvent, portName: (code: string) => string): strin
     }
     case 'REPAIRING': {
       const points = num(p, 'points')
-      return `${fleet} went into the yard${points === null ? '' : ` for ${Math.round(points)} points of hull`}.`
+      return `${fleet} went into the shipyard${points === null ? '' : ` for ${Math.round(points)} points of hull`}.`
     }
     case 'REPAIRED':
-      return `${fleet} came out of the yard, sound again.`
+      return `${fleet} came out of the shipyard, sound again.`
     case 'SIGNED_OFFICER': {
       // The three facts a player chose this officer BY, in the order the roster card showed them
       // (PortFaces.tsx:85-95): who, what they are, what they are worth. The wage is deliberately

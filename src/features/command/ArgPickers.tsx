@@ -17,7 +17,6 @@ import {
 import {
   formatDucats,
   formatInt,
-  formatNm,
   formatTuns,
   formatUnitPrice,
 } from '../../lib/format'
@@ -62,7 +61,6 @@ const MAX_PORT_ROWS = 12
 
 function PickerRow({
   onClick,
-  onHover,
   selected,
   expanded,
   mark,
@@ -72,13 +70,6 @@ function PickerRow({
   under,
 }: {
   onClick: () => void
-  /**
-   * The row is under a POINTER or has KEYBOARD focus. Optional, and it never chooses anything —
-   * PortPicker uses it to name that harbour on SAIL's chart while the player runs down the list.
-   * A thumb raises neither event, which is why nothing may depend on it: on the 390px target the
-   * chart follows the CHOICE, and this is desktop and keyboard reach on top of that.
-   */
-  onHover?: (on: boolean) => void
   selected: boolean
   /** Given only by a row that UNFOLDS (GoodPicker). A row that commits on tap has nothing to
    *  expand, so it says nothing — `aria-expanded={undefined}` is absent, not false. */
@@ -102,12 +93,6 @@ function PickerRow({
   // same soft tint TabRow uses for a selected face, so a selected row and a selected tab
   // cannot drift apart. The SAME call in both arms below, so the two shapes cannot drift either.
   const skin = (extra: string) => buttonClasses(selected ? 'chip-soft' : 'chip', 'md', extra)
-  const hover = {
-    onPointerEnter: onHover && (() => onHover(true)),
-    onPointerLeave: onHover && (() => onHover(false)),
-    onFocus: onHover && (() => onHover(true)),
-    onBlur: onHover && (() => onHover(false)),
-  }
   const face = (
     <>
       {mark}
@@ -123,7 +108,6 @@ function PickerRow({
       <button
         type="button"
         onClick={onClick}
-        {...hover}
         aria-expanded={expanded}
         className={skin('flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left')}
       >
@@ -139,7 +123,6 @@ function PickerRow({
       <button
         type="button"
         onClick={onClick}
-        {...hover}
         aria-expanded={expanded}
         className="flex min-h-11 w-full flex-wrap items-center gap-x-3 gap-y-1 text-left"
       >
@@ -278,26 +261,76 @@ export function PortPicker({
       {shown.length === 0 && (
         <p className="text-sm text-ink-muted">No port answers to that. Clear the filter to see them all.</p>
       )}
-      {shown.map(({ port, nm }) => (
-        <PickerRow
-          key={port.code}
-          selected={value === port.code}
-          onClick={() => onPick(port.code)}
-          onHover={onConsider && ((on) => onConsider(on ? port.code : null))}
-          left={
-            <span className="flex flex-wrap items-center gap-2">
+      {/* ── TILES, NOT SENTENCES (the owner, 2026-08-23: "all the port is alligned by sentence.
+          make it like a cube"). A harbour used to be a full-width row that read as a line of
+          prose; it is now a TILE in a grid — the name is the title, the sailed distance is the
+          hero figure beneath it (docs/UI_DIRECTION.md §4 rule 2), and the eye scans a field of
+          harbours instead of reading down a column.
+
+          TWO ACROSS AT 390px, three from `sm`. Measured: a 390px phone gives each of two tiles
+          ~167px of content, which holds "São Vicente" on one wrapped line without truncating —
+          names WRAP, never ellipsize, because a harbour you cannot read is a harbour you cannot
+          choose. Three across at 390px would be ~106px, which crushes both the name and the
+          figure.
+
+          THE TAP CHOOSES — IT NEVER UNFOLDS (the owner, same day: "when pressing a location to
+          sail, dont unfold, instead make the what sail needs bottom by comming out unfoldingly").
+          A good's row unfolds because a good has facts you must read before choosing; a harbour
+          tile already SHOWS everything it has — name, country, distance — so there is nothing to
+          unfold into, and the tap commits. What happens NEXT is the composer's affair: the check
+          and the issue rise docked from the foot of the screen (CommandScreen's SAIL sheet), and
+          the chart rings the chosen harbour (OrderComposer's `chartPorts`, which follows the
+          CHOICE and therefore follows this very tap).
+
+          THE SORT IS UNCHANGED: one-leg harbours first, nearest sailed leg first, then region and
+          name. A grid reads left-to-right then down, so "nearest first" still puts the passages
+          worth taking in the top rows. */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {shown.map(({ port, nm }) => (
+          <button
+            key={port.code}
+            type="button"
+            onClick={() => onPick(port.code)}
+            // The pointer/keyboard "considering" events name this harbour on SAIL's chart as the
+            // player runs across the grid. A thumb raises neither, which is why nothing depends
+            // on them: on the phone the chart follows the CHOICE (the tap above).
+            onPointerEnter={onConsider && (() => onConsider(port.code))}
+            onPointerLeave={onConsider && (() => onConsider(null))}
+            onFocus={onConsider && (() => onConsider(port.code))}
+            onBlur={onConsider && (() => onConsider(null))}
+            className={buttonClasses(
+              value === port.code ? 'chip-soft' : 'chip',
+              'md',
+              'flex min-h-11 flex-col items-stretch gap-1 px-3 py-2 text-left',
+            )}
+          >
+            <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm leading-snug">
               {port.name}
-              <span className={fineClass()}>{port.code}</span>
-              {nm !== null && <Badge tone="accent">one leg</Badge>}
               {port.is_ice_closed && <Badge tone="warning">ice</Badge>}
             </span>
-          }
-          hint={`${port.country}${port.has_yard ? ' · yard' : ''}`}
-          // The sailed leg, or a dash. Never a great circle — see this component's header for the
-          // three measurements that dash replaces.
-          right={nm === null ? <span className="text-ink-faint">—</span> : formatNm(nm)}
-        />
-      ))}
+            {/* The sailed leg is the tile's hero, or a dash. Never a great circle — see this
+                component's header for the three measurements that dash replaces. */}
+            <span className="font-mono text-base leading-none tabular-nums text-ink">
+              {nm === null ? (
+                <span className="text-ink-faint">—</span>
+              ) : (
+                <>
+                  {formatInt(Math.round(nm))}
+                  <span className="ml-1 text-[10px] font-normal text-ink-faint">nm</span>
+                </>
+              )}
+            </span>
+            {/* The CODE stays on the tile: it is the spelling the order line carries ("SAIL … TO
+                CAD"), and unlike a good's code it is not derivable from the name. "shipyard", not
+                "yard" — the owner asked what a yard was, and jargon a player must ask about is a
+                bug (docs/UI_DIRECTION.md §3a trap 3). */}
+            <span className={fineClass('block')}>
+              {port.code} · {port.country}
+              {port.has_yard ? ' · shipyard' : ''}
+            </span>
+          </button>
+        ))}
+      </div>
       {routed && (
         <p className={fineClass()}>
           A figure is the leg she would sail. A dash is a harbour with no direct leg from here — your
@@ -871,6 +904,7 @@ export function NumberPicker({
   max,
   step,
   suggestions,
+  coarse,
   unit,
   value,
   onPick,
@@ -879,6 +913,19 @@ export function NumberPicker({
   max: number
   step: number
   suggestions: readonly number[]
+  /**
+   * COARSE JUMPS FOR A BIG RANGE (the owner, 2026-08-23: *"how many crew to hire, have it + 10,
+   * +100, max, make it more friendly"*). Each entry is a `+n` chip that ADDS to the current figure
+   * — relative, where `suggestions` are absolute — and giving the prop at all also raises a
+   * `max` chip that sets the ceiling itself.
+   *
+   * A JUMP THAT WOULD OVERSHOOT CLAMPS TO THE CEILING, IT IS NEVER DEAD: `+100` with 12 berths
+   * left signs 12, because a chip that goes grey exactly when the player reaches for it is a
+   * refusal wearing a control's clothes. The ceiling is `max`, which the CALLER owes to the
+   * server's own bound (for HIRE that is `fleetCrew().berths` — the very sum E_CREW_MAX counts,
+   * 0007:659 — so nothing offered here is a number the server would refuse for size).
+   */
+  coarse?: readonly number[]
   unit?: string
   value: string | undefined
   onPick: (value: string) => void
@@ -905,6 +952,29 @@ export function NumberPicker({
               {unit && <span className="ml-1 text-[11px] opacity-70">{unit}</span>}
             </button>
           ))}
+        {/* The coarse jumps. `+n` builds on what is already chosen (nothing chosen counts as
+            nought, so the first `+10` reads 10) and clamps to the ceiling. Never `chip-on`: like
+            QtyPicker's MAX, a jump SETS the number rather than becoming the value. */}
+        {coarse?.map((n) => (
+          <button
+            key={`+${n}`}
+            type="button"
+            onClick={() => onPick(clamp((numeric ?? 0) + n))}
+            className={buttonClasses('chip', 'md', 'font-mono')}
+          >
+            +{formatInt(n)}
+          </button>
+        ))}
+        {coarse && (
+          <button
+            type="button"
+            disabled={max <= 0}
+            onClick={() => onPick(String(max))}
+            className={buttonClasses('chip', 'md', 'font-mono text-xs uppercase tracking-wider')}
+          >
+            max {formatInt(max)}
+          </button>
+        )}
       </div>
       {max > min && (
         <div className="flex items-center gap-2">

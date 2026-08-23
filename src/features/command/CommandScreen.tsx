@@ -8,6 +8,7 @@ import {
   Countdown,
   EmptyState,
   Explain,
+  HeroFigure,
   Notice,
   PageHeader,
   Screen,
@@ -16,7 +17,7 @@ import {
   fineClass,
   useReaskAtEdge,
 } from '../../components/ui'
-import { formatClock, formatTuns, formatVoyageDays } from '../../lib/format'
+import { formatClock, formatFixed, formatInt } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import type { Refusal } from '../../lib/rpc'
 import { portNameOf, useWorld } from '../../live/worldStore'
@@ -336,19 +337,56 @@ export function CommandScreen() {
               })}
             </div>
             {fleet && (
-              <p className={fineClass('mt-3')}>
-                {/* THE SERVER'S OWN FIGURE. `free_hold` is `public.fleet_free_hold` (0017:183) —
-                    the same reading `cmd.do_buy` checks and `public.fleet_load` places into — so
-                    the line above the composer and the refusal below it cannot disagree. It used
-                    to be `freeHoldTuns(fleet)`, one of three client re-derivations of it. */}
-                {fleet.name}: {formatVoyageDays(fleet.endurance_days)} of stores · {fleet.speed_kn.toFixed(1)} kn ·{' '}
-                {formatTuns(fleet.free_hold)} free
-                {/* `port` is where the order will TRADE — where she lies, or where she is bound if
-                    she is at sea (F.2). Printing it as "lying at" either way told the player she
-                    was alongside while the panel below said "at sea, 84 nm of 248". Same fact,
-                    two sentences, one of them false. */}
-                {port ? (fleet.status === 'SAILING' ? ` · bound for ${port.name}` : ` · lying at ${port.name}`) : ''}
-              </p>
+              // ── HER THREE FIGURES, EACH UNDER ITS OWN LABEL ──────────────────────────────────
+              // This was one run-on mono sentence — "Gaivota: 15.0 days of stores · 4.9 kn ·
+              // 56 t free · lying at Lisbon" — and the owner named all four of its faults
+              // (2026-08-23): days of WHAT, 4.9 kn of WHAT, free of WHAT, and a berth already
+              // printed on the chip above. So each figure now stands in its own labelled cell
+              // (docs/UI_DIRECTION.md §4 rule 2: the number is the hero, the label is the small
+              // dim thing beside it), the sentence that explains a figure is behind its dot, and
+              // WHERE SHE LIES IS NOT HERE AT ALL — the fleet chip is the one place that names
+              // it, and one fact in two places is two authorities for it.
+              //
+              // EVERY FIGURE IS THE SERVER'S: `endurance_days` (voyage.endurance_days, 0009:172),
+              // `speed_kn` (voyage.fleet_speed, 0009:171) and `free_hold`
+              // (public.fleet_free_hold, 0017:183 — clamped per hull, NOT total minus used, which
+              // is why nothing here subtracts). Nothing is recomputed.
+              <dl className="mt-3 grid grid-cols-3 gap-3">
+                <div>
+                  <dt className={fineClass('flex flex-wrap items-center gap-x-0.5 uppercase tracking-wider')}>
+                    stores last
+                    <Explain label="stores">
+                      How long she can keep the sea before her water and food run out. PROVISION
+                      refills the barrels; a passage longer than this is refused before she sails.
+                    </Explain>
+                  </dt>
+                  <dd>
+                    {/* The NUMBER is the value and the word is the small unit — "15.0 days" as one
+                        2xl string wraps a 120px column at 390px (measured; the first cut shipped
+                        it and the figure broke across three lines). */}
+                    <HeroFigure value={formatFixed(fleet.endurance_days, 1)} unit="days" />
+                  </dd>
+                </div>
+                <div>
+                  <dt className={fineClass('uppercase tracking-wider')}>her speed</dt>
+                  <dd>
+                    <HeroFigure value={formatFixed(fleet.speed_kn, 1)} unit="kn" />
+                  </dd>
+                </div>
+                <div>
+                  <dt className={fineClass('flex flex-wrap items-center gap-x-0.5 uppercase tracking-wider')}>
+                    hold free
+                    <Explain label="hold free">
+                      Room left in her hold, in tuns — cargo, water and food all take the same
+                      space. The figure is the server's own (the same one a BUY is checked
+                      against), so the composer and a refusal can never disagree about it.
+                    </Explain>
+                  </dt>
+                  <dd>
+                    <HeroFigure value={formatInt(fleet.free_hold)} unit="t free" />
+                  </dd>
+                </div>
+              </dl>
             )}
           </Card>
 
@@ -379,6 +417,39 @@ export function CommandScreen() {
                 onSetArg={setArg}
               />
 
+              {/* ── ON SAIL, THE CHECK RISES FROM THE FOOT OF THE SCREEN ─────────────────────────
+                  The owner, 2026-08-23: *"when pressing a location to sail, dont unfold, instead
+                  make the what sail needs bottom by comming out unfoldingly."* Choosing a harbour
+                  keeps the grid of tiles exactly where the eye left it (the dest row is FLAT —
+                  OrderComposer's flatArg), and the moment a destination exists this block — the
+                  line, the buttons, the check — DOCKS to the bottom edge instead of waiting
+                  thousands of pixels below the tiles.
+
+                  `sticky`, NOT `fixed`, and that is the whole trick: the block keeps its place in
+                  the card's flow (nothing is covered that cannot be scrolled to, nothing jumps),
+                  it merely refuses to leave the viewport while its natural position is below it.
+                  The reach law holds — the Issue button, the fixes and the discard are all inside
+                  a block that can neither scroll internally nor be clipped, and it carries no
+                  max-height. The same shape serves every width: at `md`+ it is simply a docked
+                  panel at the foot of the composer column, which is why there is no second
+                  desktop layout to drift from this one. Dismissing is the block's own "Discard
+                  this order" (one tap, 44px); changing the destination is a tap on another tile,
+                  with nothing to dismiss first.
+
+                  BUY IS DELIBERATELY NOT DOCKED (yet): its working pane interleaves the fold and
+                  the haggle block with the goods, and docking the check under those needs its own
+                  measurement. §7B names BUY as this shape's likely second caller; when it comes,
+                  the condition below is the one place to widen. The negative margins are Card's
+                  own padding (p-4 sm:p-5), rolled back so the docked block bleeds to the panel's
+                  edges and content scrolls cleanly under its top border. */}
+              <div
+                className={
+                  spec?.verb === 'SAIL' && args.dest !== undefined
+                    ? 'sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-accent/25 bg-panel px-4 pb-4 sm:-mx-5 sm:-mb-5 sm:px-5 sm:pb-5'
+                    : undefined
+                }
+                data-testid={spec?.verb === 'SAIL' && args.dest !== undefined ? 'sail-sheet' : undefined}
+              >
               {/* THE LINE — read-only, and the whole contract with the server. */}
               <div className="mt-4 space-y-3 rounded-md border border-accent/25 bg-accent-soft p-3">
                 {/* The dot rides the section label, where the reader is already looking, rather
@@ -453,6 +524,7 @@ export function CommandScreen() {
                   sent: {issued}
                 </Notice>
               )}
+              </div>
             </Card>
           </div>
 

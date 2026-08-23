@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, fineClass, Notice, overlaySlotClass } from '../../components/ui'
+import { fineClass, Notice, overlaySlotClass } from '../../components/ui'
 import { formatRealShort } from '../../lib/format'
 import type { Point, ViewBox } from '../../lib/geo'
 import type {
@@ -24,7 +24,6 @@ import { useCommandDraft } from '../../domain/order'
 import {
   buildChartModel,
   CHART_CAPTION,
-  CHART_CHROME,
   ChartCanvas,
   COMPACT_WIDTH_PX,
   GLYPH,
@@ -36,6 +35,7 @@ import {
   toggleSelection,
   useChartSurface,
   useCoastline,
+  ViewControls,
   visiblePorts,
   type MapSelection,
 } from '../../chart'
@@ -291,7 +291,10 @@ function Chart({
     <div
       ref={chartRef}
       {...surface.handlers}
-      // `touch-none` hands every touch to the pan/zoom handler instead of the page scroller;
+      // `surface.touchClass` is `touch-none` on this full-tab surface — every touch goes to the
+      // pan/zoom handler, none to a page scroller. The class comes from the hook rather than being
+      // typed here, because the gesture posture and its `touch-action` are ONE fact and the hook
+      // owns it (useChartSurface's header; SmallChart is the other posture).
       // `select-none` stops a drag across the chart highlighting the labels.
       //
       // `bv-sea` IS KEPT DELIBERATELY, though the chart now paints its own sea as the first mark
@@ -299,7 +302,7 @@ function Chart({
       // been measured (`{box && …}` below), so for the frames before that this class is the only
       // thing painting, and dropping it would flash the app's background where the sea will be.
       // `ChartMessage` uses it for the same reason.
-      className="bv-sea relative h-full w-full touch-none select-none overflow-hidden"
+      className={`bv-sea relative h-full w-full ${surface.touchClass} select-none overflow-hidden`}
       data-testid="map-chart"
     >
       {/* THE PICTURE. Which ports are drawn, which lanes, which names and in what paint order are
@@ -382,51 +385,17 @@ function Chart({
           onDismiss={() => setSelection(null)}
         />
 
-        {/* THE VIEW CONTROLS — the complete set. Top-right, in their own uncapped, unscrollable
-            column, so nothing can ever put them out of reach (docs/CORE_REUSE.md §1.5).
-            The corner is `overlaySlotClass('top-right')`, the same table the panels read — this used
-            to be a hand-written `right-3 top-3`, a fifth spelling of an anchor the design system
-            already owned. */}
-        <div
-          {...CHART_CHROME}
-          className={`pointer-events-auto absolute ${overlaySlotClass('top-right')} flex flex-col gap-1`}
-          data-testid="map-view-controls"
-        >
-          <Button
-            variant="secondary"
-            size="icon"
-            aria-label="Zoom in"
-            onClick={surface.zoomIn}
-            className="bg-surface/90 backdrop-blur"
-          >
-            +
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon"
-            aria-label="Zoom out"
-            onClick={surface.zoomOut}
-            className="bg-surface/90 backdrop-blur"
-          >
-            −
-          </Button>
-          {/* FIND HER — one tap, from anywhere on a 214-harbour sheet, always on the glass.
-              This control is not new; its WORD is. It read `fit`, which is a chart programmer's
-              word for an act the player thinks of as "where is my ship" — and the owner's standing
-              map rule is *no insider jargon*. The behaviour is unchanged and deliberately so: it
-              returns to the opening frame, which `openingBounds` builds around what you HAVE
-              (your fleets and the harbours they are using), not around the world. */}
-          <Button
-            variant="secondary"
-            size="icon"
-            aria-label="Find your fleets"
-            onClick={surface.fit}
-            className="bg-surface/90 font-mono text-[10px] backdrop-blur"
-            data-testid="map-find"
-          >
-            find
-          </Button>
-      </div>
+        {/* THE VIEW CONTROLS — the complete set, and since SmallChart grew gestures they are ONE
+            component with two callers (src/chart/ViewControls.tsx, which carries the corner-slot
+            and no-jargon reasoning that used to live here). "find" returns to the opening frame,
+            which `openingBounds` builds around what you HAVE — your fleets and the harbours they
+            are using — which is why this surface's aria sentence names them. */}
+        <ViewControls
+          surface={surface}
+          findAriaLabel="Find your fleets"
+          findTestId="map-find"
+          testId="map-view-controls"
+        />
 
       {/* A missing backdrop is worth one quiet line, never a crash: the chart still works without
           it. Ports, fleets and tracks are all drawn from coordinates, not from this file. It sits

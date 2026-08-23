@@ -62,6 +62,17 @@ export interface SnapshotLeg {
   notes: string | null
 }
 
+/**
+ * HOW RARE A GOOD IS — a SERVED word, decided by exactly one server function (0032's
+ * `public.good_rarity`: how many ports produce the good, put through one threshold law). The
+ * client renders it (`RarityMark` in the design system) and never computes it: a tier derived
+ * client-side from price or producer counts would be a second authority that drifts the day
+ * either input moves. It measures scarcity of SOURCE, not price — in this world every port
+ * trades every good, so gold (22 producing ports) is dear and common, while glassware (one
+ * port) is mid-priced and exotic.
+ */
+export type GoodRarity = 'common' | 'uncommon' | 'rare' | 'exotic'
+
 export interface SnapshotGood {
   id: string
   code: string
@@ -71,6 +82,9 @@ export interface SnapshotGood {
   bulk: number
   category: string
   perishable_pct_day: number
+  /** Served by 0032 — see GoodRarity. Optional so the client does not break against a server
+   *  that predates it (the same contract `VerbSpec.note` states for 0021). */
+  rarity?: GoodRarity
   /** Cultures that will NOT trade it. Empty = traded everywhere (DESIGN B.4). */
   culture_mask: string[]
 }
@@ -209,6 +223,10 @@ export interface MarketGood {
   code: string
   name: string
   category: string
+  /** Served by 0032 from the SAME authority as `SnapshotGood.rarity` — one rule, two callers, so
+   *  a market row never needs a code→catalogue join to say one word. Optional for the same
+   *  serve-order reason. */
+  rarity?: GoodRarity
   /** What the player PAYS (ask). */
   buy: number
   /** What the player RECEIVES (bid). */

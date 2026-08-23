@@ -60,7 +60,11 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // blurb, sliced out of the live definitions with the surroundings byte-identical by construction.
 // 0031 (authored in a parallel session, verified green here — 31 migrations, 31 receipts): the
 // world secret is rotated off the published 0001 literal and the table now refuses it by CHECK.
-const LAST = '20260818000031_a_secret_printed_in_a_book_is_not_a_secret.sql'
+// Pin moved deliberately 2026-08-23 with 0032: every good now carries a served RARITY tier —
+// derived on the server from how many ports produce it (public.good_rarity, one threshold law),
+// served on snapshot.goods[] and market.goods[], asserted inhabited in all four tiers and a
+// declared no-op on both payloads but for the field. 32 migrations, 32 receipts, verified green.
+const LAST = '20260818000032_a_good_is_as_rare_as_the_ports_that_make_it.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

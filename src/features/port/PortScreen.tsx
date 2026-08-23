@@ -327,7 +327,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                           ? [
                               {
                                 intent: { verb: 'REPAIR', args: { to_pct: '100' } },
-                                note: `worst hull ${formatPct(worstHullFraction(acting))} · yard t${port.yard_tier}`,
+                                note: `worst hull ${formatPct(worstHullFraction(acting))} · shipyard t${port.yard_tier}`,
                               },
                             ]
                           : []),
@@ -441,7 +441,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                     label="How grown, of 20"
                     mono
                     value={`trade ${port.dev_commerce} · crafts ${port.dev_industry} · garrison ${port.dev_military}`}
-                    hint="Out of twenty. Trade narrows the cut this city takes on a deal; crafts make its yard cheaper. The garrison is recorded and nothing reads it yet, so it changes no price you pay."
+                    hint="Out of twenty. Trade narrows the cut this city takes on a deal; crafts make its shipyard cheaper. The garrison is recorded and nothing reads it yet, so it changes no price you pay."
                   />
                   <DetailRow
                     label="Market tax"
@@ -484,7 +484,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
               {/* THE PARAGRAPH IS GONE AND NOTHING IT SAID IS. It ran three sentences over the
                   rows to disclose that no port keeps a Bureau or a Mayor's office, and to point at
                   two tabs that are one tap away and visible. The disclosure is now a ROW, in the
-                  same list as the yard and the inn — which is what rule 5 asks for anyway
+                  same list as the shipyard and the inn — which is what rule 5 asks for anyway
                   ("unavailable is shown with its reason") and what rule 3 asks for instead of a
                   paragraph. The signposting to Officers and Academy is deleted: the tab strip is
                   directly above, so it was telling the player what they could already see. */}
@@ -499,7 +499,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                     label="Yard"
                     mono
                     value={port.has_yard ? `tier ${port.yard_tier}` : 'none'}
-                    hint={port.has_yard ? 'The yard prices a REPAIR when the order runs; PREVIEW it on Command for the quote.' : undefined}
+                    hint={port.has_yard ? 'The shipyard prices a REPAIR when the order runs; PREVIEW it on Command for the quote.' : undefined}
                   />
                   {/* "crew", NOT "hands" (the owner, 2026-08-23: "change it like crew or
                       something"). "a hand-day" was that jargon squared — a made-up unit built on a

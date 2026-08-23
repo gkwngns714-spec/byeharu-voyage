@@ -56,6 +56,10 @@ export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
 // A mark for a trade good, and the human spelling of its category. Every good in data/goods.json
 // has its OWN drawn glyph — see goodIcons.ts for the table and for why seven was the wrong answer.
 export { goodIcon, categoryLabel } from './goodIcons'
+// The one rendering of a good's SERVED rarity tier (0032): a colour token AND a shape per tier,
+// so the tier survives a colourblind player and a greyscale screenshot. See Rarity.tsx.
+export { RarityMark } from './Rarity'
+export { rarityLabel, RARITY_TIERS } from './rarityTiers'
 export { Collapsible, CollapsibleCard } from './Collapsible'
 // Collapsible's inline counterpart: the tappable ⓘ that folds a standing EXPLANATION rather than
 // content (see Explain.tsx for the boundary between them, and for what may never go behind a dot).

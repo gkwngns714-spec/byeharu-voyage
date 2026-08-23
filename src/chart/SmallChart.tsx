@@ -1,43 +1,66 @@
-import { useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { fineClass } from '../components/ui'
 import type { FleetView, SnapshotLeg, SnapshotPort } from '../lib/rpc'
 import { ChartCanvas } from './ChartCanvas'
 import { buildChartModel } from './chartModel'
-import { clampView, fitView, openingBounds, unitsPerPixel, viewBoxOf } from './chartView'
+import { openingBounds } from './chartView'
 import { mapFleetsOf, mapPortsOf } from './liveWorld'
 import type { MapSelection } from './mapTypes'
+import { useChartSurface } from './useChartSurface'
 import { useCoastline } from './useCoastline'
-import { useElementSize } from './useElementSize'
+import { ViewControls } from './ViewControls'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// A SMALL CHART, EMBEDDED — the same chart, framed on two places and taking no gestures at all.
+// A SMALL CHART, EMBEDDED — the same chart, framed on the order being made, and steerable without
+// ever standing between the player and the rest of the form.
 //
-// The owner, 2026-08-23: *"sail — a small map + current location on the left side."* Choosing where
-// to sail from a list of names asks the player to hold a map in their head; this is the map.
+// The owner, 2026-08-23: *"sail — a small map + current location on the left side"*, and then:
+// *"the map in sail, i should be able to zoom, drag, move."* Choosing where to sail from a list of
+// names asks the player to hold a map in their head; this is the map, and now it moves.
 //
 // ── IT IS THE SAME CHART, NOT A SECOND ONE ─────────────────────────────────────────────────────
 // Every mark on it comes from the modules the Map tab draws with: `buildChartModel` decides which
 // ports are loud, `ChartCanvas` decides what is on the paper and in what order, `openingBounds`
 // decides the frame, `useCoastline` fetches the one backdrop (and the browser serves the second
-// caller from cache). Nothing is redrawn here and nothing is re-derived here. That is the whole
-// reason `src/chart/` exists as a layer of its own: `tests/sections.spec.ts` forbids the Command
-// tab to reach into the Map tab, and the answer to a boundary that bites is to MOVE the thing down
-// a layer, never to retype it (`docs/NO_SPAGHETTI.md` §2).
+// caller from cache) — and, since 2026-08-23, `useChartSurface` runs the gestures and
+// `ViewControls` is the zoom column. Nothing is redrawn here and nothing is re-derived here. That
+// is the whole reason `src/chart/` exists as a layer of its own (`docs/NO_SPAGHETTI.md` §2).
 //
-// ── THREE THINGS IT DELIBERATELY DOES NOT DO ───────────────────────────────────────────────────
+// ── A GESTURE SURFACE INSIDE A SCROLLING FORM, AND HOW THAT IS NOT A TRAP ──────────────────────
+// This chart sits above the Issue button, inside a form a phone scrolls. A chart that owned every
+// gesture there — `touch-none`, a preventDefault wheel — would be a wall: the player's finger
+// lands on it, drags down, and the page does not move. An action must never live where it cannot
+// be reached (docs/CORE_REUSE.md §1.5), which is exactly why this chart mounted no surface at all
+// until today. The answer is not a second gesture implementation and not staying inert; it is the
+// ONE surface hook in its embedded posture, `scroll: 'page-vertical'` (its header carries the
+// contract):
 //
-// 1. IT TAKES NO INPUT. No pan, no zoom, no tap, no hover target — `pointer-events: none` on the
-//    picture, and no handler prop exists to pass one. The reason is about a chart inside a FORM: a
-//    gesture surface embedded in one fights the page's own scroll on a phone (`useChartSurface`
-//    sets `touch-none` and calls `preventDefault` on wheel, which is right for a full tab and wrong
-//    inside a composer). It re-frames itself when the choice changes; that is all the interaction
-//    it has.
+//   · a one-finger drag DOWN the page scrolls the page — the browser itself runs the vertical
+//     axis (`touch-pan-y`), so the Issue button is always reachable with a thumb on the chart;
+//   · a one-finger drag ALONG the coast pans the chart; a pinch zooms it; a mouse drag pans both
+//     axes (a mouse never scrolled a page by dragging);
+//   · the WHEEL scrolls the page, untouched — no listener is attached — and zoom is the visible
+//     +/−/find column, the same 44 px controls the Map tab wears, measured into `keepOut` so no
+//     port name is ever printed underneath them.
 //
-//    This used to give a second reason — *"the standing law is that the map never accepts an
-//    order"* — and that law was amended on 2026-08-23: the MAP tab's chart now offers `Sail here`
-//    on a tapped harbour, which is a hand-off to the one composer and not a second one
-//    (`docs/DESIGN.md` §E.5 Law 3). Nothing about THIS chart changes; it simply no longer has two
-//    reasons, and the surviving one is the true one.
+// Rejected: a tap-to-activate mode (a modal state the player must discover, and one forgotten
+// deactivation from being the very trap above); an expand-to-fullscreen chart (a second screen to
+// build and leave, when the owner asked for THIS map to move); and any second implementation of
+// pan/zoom (forbidden outright — one authority, configured, is the entire design).
+//
+// ── THE FRAME FOLLOWS THE CHOICE, UNTIL THE PLAYER TAKES THE WHEEL ─────────────────────────────
+// Untouched, the chart re-frames as the order changes — the frame is the answer to "where are
+// these two places", so picking a destination brings both ends onto the sheet (`openingBounds`,
+// with the same 12° floor the tab uses). Once the player pans or zooms, their view stands (the
+// hook keeps only deliberate moves), and `find` returns to the choice's frame by forgetting them —
+// so there is exactly one definition of where this chart opens, and it is computed, not stored.
+//
+// ── TWO THINGS IT STILL DELIBERATELY DOES NOT DO ───────────────────────────────────────────────
+//
+// 1. IT TAKES NO TAP. No `onTap` is mounted: there is nothing here a tap could select that the
+//    list beside it does not already say in words, and a tap that picked a destination would be a
+//    second composer — the one thing docs/DESIGN.md §E.5 Law 3 still forbids. Pan and zoom change
+//    what is SEEN, never what is ORDERED.
 //
 // 2. IT DRAWS NO LINE BETWEEN THE TWO PLACES. A straight segment from here to there would be read
 //    as the passage and measured as the distance, and it is neither: Lisbon → Cádiz is 248 sailed
@@ -47,8 +70,8 @@ import { useElementSize } from './useElementSize'
 //    and drawing it instead of printing it would be the same lie in a shape nobody can check. What
 //    IS drawn between ports is the authored sea-lane graph, whose miles are the server's own.
 //
-// 3. IT INVENTS NO PLACE. Ports, coordinates and lanes are `world.snapshot()`; the fleet's position
-//    at sea is `voyage.position`, the server's closed form, copied (./liveWorld.ts).
+// And it still invents no place: ports, coordinates and lanes are `world.snapshot()`; the fleet's
+// position at sea is `voyage.position`, the server's closed form, copied (./liveWorld.ts).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export function SmallChart({
@@ -83,7 +106,6 @@ export function SmallChart({
   className?: string
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
-  const size = useElementSize(boxRef)
   const coastline = useCoastline()
 
   const chartPorts = useMemo(() => mapPortsOf(ports), [ports])
@@ -93,46 +115,48 @@ export function SmallChart({
     [chartFleets, chartPorts, considering],
   )
 
-  const measured = size.width > 0 && size.height > 0
-  const aspect = measured ? size.width / size.height : 1
+  // The frame is a FUNCTION of the current choice, not a value frozen at mount as the tab's is:
+  // the tab freezes because the player can sail away from its frame and "find" needs somewhere
+  // stable to return to; here the choice IS the frame, so when the order changes, so does what
+  // "find" (and an untouched chart) shows. `openingBounds` is the same arithmetic the tab uses,
+  // including the 12° floor and the clamp against a wider-than-the-world fit.
+  const frameBounds = useCallback(
+    (aspect: number) => openingBounds(model.focusPoints, model.motionPoints, chartPorts, aspect),
+    [model, chartPorts],
+  )
 
-  // THE FRAME IS RE-COMPUTED, NOT REMEMBERED. The Map tab freezes its opening bounds at mount
-  // because the player can move away from them and "fit" has to have somewhere to return to. Here
-  // there is nowhere to move to and nothing to return to: the frame IS the answer to "where are
-  // these two places", so it follows the choice. `openingBounds` is the same function the tab uses,
-  // including the 12° floor that stops one docked fleet opening on a 1.5° harbour approach.
-  //
-  // `clampView` for the same reason the tab clamps: two ports on opposite sides of the world fit to
-  // a span wider than the world, and the clamp parks the sheet in the middle instead of jamming it
-  // against an edge.
-  const view = useMemo(() => {
-    if (!measured) return null
-    const bounds = openingBounds(model.focusPoints, model.motionPoints, chartPorts, aspect)
-    return clampView(fitView(bounds, aspect), aspect)
-  }, [measured, model, chartPorts, aspect])
-
-  const box = view ? viewBoxOf(view, aspect) : null
+  // No tap handler — see the header. `scroll: 'page-vertical'` is the embedded posture: the page
+  // keeps its wheel and its vertical thumb-scroll, the chart gets everything else.
+  const surface = useChartSurface(boxRef, frameBounds, undefined, { scroll: 'page-vertical' })
+  const box = surface.viewBox
 
   const selection: MapSelection = highlight ? { kind: 'port', code: highlight } : null
 
   return (
     <div
       ref={boxRef}
-      // `overflow-hidden` clips nothing that can be acted on: there is no control anywhere inside
-      // this box, so the reach law (docs/CORE_REUSE.md §1.5) has nothing to bite on. `bv-sea` is
-      // the design system's own water, the same surface the Map tab opens on.
-      className={`bv-sea relative overflow-hidden rounded-md border border-edge ${className}`}
+      {...surface.handlers}
+      // `surface.touchClass` is `touch-pan-y` here — the posture and its touch-action are one fact,
+      // stated by the hook. `select-none` stops a pan highlighting the labels, exactly as on the
+      // tab. `overflow-hidden` clips only the picture; the one control (ViewControls) is in a
+      // corner slot, which cannot be panned or clipped away, so the reach law has nothing to bite
+      // on. `bv-sea` paints the water for the frames before the box is measured.
+      className={`bv-sea relative overflow-hidden rounded-md border border-edge select-none ${surface.touchClass} ${className}`}
       data-testid="small-chart"
     >
-      {box && view ? (
+      {box && surface.view ? (
         <ChartCanvas
           model={model}
           ports={chartPorts}
           legs={legs}
           box={box}
-          unitsPerPx={unitsPerPixel(view, size.width)}
+          unitsPerPx={surface.unitsPerPx}
           coastlineD={coastline.data?.d ?? ''}
           selection={selection}
+          // The zoom column is opaque and sits on the glass; these are its measured boxes, so the
+          // label planner never prints a harbour's name underneath it (the Saint-Malo defect, found
+          // 2026-08-21 — the same one mechanism the Map tab feeds, not a second spelling of it).
+          keepOut={surface.chromeBoxes}
           ariaLabel={ariaLabel}
           className="pointer-events-none absolute inset-0 h-full w-full"
         />
@@ -141,6 +165,11 @@ export function SmallChart({
           opening the chart…
         </p>
       )}
+      <ViewControls
+        surface={surface}
+        findAriaLabel="Show where she lies and the harbours of this order"
+        testId="small-chart-controls"
+      />
     </div>
   )
 }

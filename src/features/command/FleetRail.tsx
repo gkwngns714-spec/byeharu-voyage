@@ -380,72 +380,69 @@ function CrewBlock({
 }) {
   const crew = fleetCrew(fleet)
   return (
-    <>
-      <section className={BLOCK}>
-        <SectionLabel className="mb-1.5">Her crew</SectionLabel>
-        <HeroFigure value={formatInt(crew.aboard)} unit={`of ${formatInt(crew.max)} berths`} />
-        <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-          <Gauge
-            value={crew.aboard}
-            max={crew.max}
-            segments={10}
-            // SHORT-HANDED IS THE DANGER STATE, NOT FULL. A full crew is the good end of this
-            // gauge, which is the opposite of the hold's — so the tone is read off `short`, the
-            // server's own B.3 penalty condition, rather than off how full the bar looks.
-            tone={crew.short > 0 ? 'danger' : 'success'}
-            label={`crew, ${formatInt(crew.aboard)} of ${formatInt(crew.max)} berths filled`}
-          />
-          <span className={fineClass()}>{formatOfTotal(crew.aboard, crew.max)} filled</span>
-        </div>
-        <dl className="mt-2 space-y-1">
-          <StatRow label="she needs" value={`${formatInt(crew.required)} to sail`} />
-          <StatRow
-            label={crew.short > 0 ? 'short by' : 'berths empty'}
-            value={formatInt(crew.short > 0 ? crew.short : crew.berths)}
-            hint={
-              crew.short > 0
-                ? 'Below her required complement she sails slower — the crew penalty of DESIGN B.3. HIRE at least this many and she is whole again.'
-                : 'Empty berths are the ceiling on a HIRE. The server counts them the same way (E_CREW_MAX, 0007:659).'
-            }
-          />
-          {/* THE RATE, NOT THE BILL. `config.wage_per_crew_day` is a served knob and this is the
-              number a HIRE is decided against: every crew member signed on adds this much to every
-              day at sea, for as long as she is out. The fleet's TOTAL daily wage is a different
-              fact and it is already printed on the Fleets tab (FleetsScreen.tsx:529,
-              `aboard × rate`) — one product, one place; this row is the rate the product is made
-              of. */}
-          <StatRow
-            label="crew wage"
-            value={`${formatDucats(config.wage_per_crew_day)} a day each`}
-            hint="Paid to every crew member aboard for every day at sea, whatever she is doing. What it costs to SIGN one on is the port's own rate and is settled when the order runs."
-          />
-        </dl>
-      </section>
-
-      <section className={BLOCK}>
-        {/* THE STANDING EXPLANATION IS BEHIND THE DOT (Explain.tsx's law: the screen prints what
-            is true right now; why it is true is a tap away). This was a permanent two-sentence
-            paragraph under the figure — and it said "crimps", which is sailor's cant nobody who
-            has not read Patrick O'Brian knows; the no-jargon rule applies to explanations too.
-            WHAT THIS COSTS IS STILL THE SERVER'S, AND IT IS ALREADY SAID ONCE: the verb's own
-            `note` (0021) carries the multiple, and this panel does not restate it. */}
-        <div className="mb-1.5 flex flex-wrap items-center gap-x-1">
-          <SectionLabel className="mb-0">The idle men here</SectionLabel>
-          <Explain label="the idle men" panelClassName="w-full normal-case tracking-normal">
-            The men idle in this port sign on at the quay's own rate. Ask for more than are idle
-            and the rest must be found, at a steeper price a head — the quay names the figure when
-            the order runs.
-          </Explain>
-        </div>
-        {port ? (
-          <HeroFigure value={formatInt(port.crew_pool)} unit="in port" />
-        ) : (
-          // A REASON, NOT AN EXPLANATION — it is attached to something she cannot do right now,
-          // so it stays visible. Refusals never go behind a dot (Explain.tsx).
-          <p className={fineClass()}>She is at sea. Crew are signed on in port.</p>
-        )}
-      </section>
-    </>
+    <section className={BLOCK}>
+      <SectionLabel className="mb-1.5">Her crew</SectionLabel>
+      <HeroFigure value={formatInt(crew.aboard)} unit={`of ${formatInt(crew.max)} berths`} />
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <Gauge
+          value={crew.aboard}
+          max={crew.max}
+          segments={10}
+          // SHORT-HANDED IS THE DANGER STATE, NOT FULL. A full crew is the good end of this
+          // gauge, which is the opposite of the hold's — so the tone is read off `short`, the
+          // server's own refusal condition, rather than off how full the bar looks.
+          tone={crew.short > 0 ? 'danger' : 'success'}
+          label={`crew, ${formatInt(crew.aboard)} of ${formatInt(crew.max)} berths filled`}
+        />
+        <span className={fineClass()}>{formatOfTotal(crew.aboard, crew.max)} filled</span>
+      </div>
+      {/* ONE LIST OF CREW FIGURES (the owner, 2026-08-23: "how many crew? show my ship info
+          regarding crew, how many needs, min amount, max amount etc at the right"). Aboard, the
+          least she sails with, the most she was built for, the empty berths a HIRE can fill, and
+          the men this port can offer — each a bare figure with its label, aligned down one
+          column. The idle men used to be a SECOND section with its own hero, which put the one
+          figure a HIRE is compared against (berths empty) two blocks away from the pool it is
+          compared WITH; they are rows of one list now, and read together. */}
+      <dl className="mt-2 space-y-1">
+        <StatRow label="aboard" value={formatInt(crew.aboard)} />
+        <StatRow
+          label="needs to sail"
+          value={formatInt(crew.required)}
+          hint="Her required complement. Below it SAIL is refused outright (E_CREW_SHORT) — she cannot leave the quay short-handed."
+        />
+        <StatRow label="berths" value={formatInt(crew.max)} />
+        <StatRow
+          label="berths empty"
+          value={formatInt(crew.berths)}
+          hint="The ceiling on a HIRE. The server counts them the same way (E_CREW_MAX, 0007:659)."
+        />
+        <StatRow
+          label="idle in this port"
+          value={port ? formatInt(port.crew_pool) : '—'}
+          hint="The men idle here sign on at the quay's own rate. Ask for MORE than are idle and the rest must be found at a steeper price a head — dearer, never refused; the quay names the figure when the order runs."
+        />
+        {/* THE RATE, NOT THE BILL. `config.wage_per_crew_day` is a served knob and this is the
+            number a HIRE is decided against: every crew member signed on adds this much to every
+            day at sea, for as long as she is out. The fleet's TOTAL daily wage is a different
+            fact and it is already printed on the Fleets tab (FleetsScreen.tsx:529,
+            `aboard × rate`) — one product, one place; this row is the rate the product is made
+            of. */}
+        <StatRow
+          label="crew wage"
+          value={`${formatDucats(config.wage_per_crew_day)} a day each`}
+          hint="Paid to every crew member aboard for every day at sea, whatever she is doing. What it costs to SIGN one on is the port's own rate and is settled when the order runs."
+        />
+      </dl>
+      {/* REASONS STAY VISIBLE — these are things she cannot do right now, so neither goes behind
+          a dot (Explain.tsx's law: refusals are never folded away). */}
+      {crew.short > 0 && (
+        <p className={fineClass('mt-1.5')}>
+          She is {formatInt(crew.short)} crew short of her complement — SAIL is refused until they
+          are signed on.
+        </p>
+      )}
+      {!port && <p className={fineClass('mt-1.5')}>She is at sea. Crew are signed on in port.</p>}
+    </section>
   )
 }
 
@@ -480,23 +477,27 @@ function HullsBlock({ fleet, port }: { fleet: FleetView; port: SnapshotPort | nu
       </section>
 
       <section className={BLOCK}>
-        <SectionLabel className="mb-1.5">The yard here</SectionLabel>
+        {/* "SHIPYARD", NEVER "YARD" (the owner, 2026-08-23: "what is yard?"). A word the player
+            has to ask about is jargon, and the no-jargon rule applies to the game's own nouns
+            first. The full word says what the place IS; the sentence says what it does. */}
+        <SectionLabel className="mb-1.5">The shipyard here</SectionLabel>
         {!port ? (
           <p className={fineClass()}>She is at sea. A hull is mended alongside.</p>
         ) : port.has_yard ? (
           <>
             <HeroFigure value={`Tier ${formatInt(port.yard_tier)}`} />
             <p className={fineClass('mt-1.5')}>
-              {port.name} keeps a yard. A better yard is a better yard — what it charges for this
-              hull is the port's own affair, and it is named when you check the order.
+              {port.name} keeps a shipyard, where hulls are mended. A better one works better —
+              what it charges for this hull is the port's own affair, and it is named when you
+              check the order.
             </p>
           </>
         ) : (
           // NOT HIDDEN, AND WITH ITS REASON (docs/UI_DIRECTION.md §4 rule 5). The refusal itself is
           // still the server's; this only stops the order being a surprise.
           <p className="text-sm text-ink-muted">
-            There is no yard at {port.name}. She must lie at a port that keeps one before she can be
-            mended.
+            There is no shipyard at {port.name}. She must lie at a port that keeps one before she
+            can be mended.
           </p>
         )}
       </section>
@@ -544,7 +545,7 @@ function PricedOnTheDayBlock({ verb }: { verb: string }) {
     verb === 'HIRE'
       ? 'What a crew member costs'
       : verb === 'REPAIR'
-        ? "What the yard's work costs"
+        ? "What the shipyard's work costs"
         : 'What water and food cost'
   return (
     <section className={BLOCK}>

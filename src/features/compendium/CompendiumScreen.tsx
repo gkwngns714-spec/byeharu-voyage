@@ -8,6 +8,8 @@ import {
   Input,
   Notice,
   PageHeader,
+  RARITY_TIERS,
+  RarityMark,
   Screen,
   Skeleton,
   TD,
@@ -18,6 +20,7 @@ import {
   fineClass,
   goodIcon,
   headRowClass,
+  rarityLabel,
   scrollTableClass,
 } from '../../components/ui'
 import { formatDucats, formatFixed, formatInt, formatKnots, formatOfTotal, formatPct, formatPctPoints, formatTuns } from '../../lib/format'
@@ -78,8 +81,10 @@ const FACES: readonly FaceSpec[] = [
     explain:
       'Every good this world trades, in its seven kinds. BASE is the catalogue anchor a tun is ' +
       'reckoned from before any port’s supply, distance or tax moves it — it is not a price ' +
-      'you can trade at; live prices are per port, on Market. BULK is the room one unit takes in ' +
-      'the hold. SPOILS is what a day at sea costs of it — a dash keeps indefinitely. REFUSED BY ' +
+      'you can trade at; live prices are per port, on Market. RARITY is how hard a cheap source ' +
+      'is to find — how few of the world’s ports produce the good, from common (you are never ' +
+      'far from one) to exotic (one or two harbours in the world) — said by the world itself, ' +
+      'never reckoned here. BULK is the room one unit takes in the hold. SPOILS is what a day at sea costs of it — a dash keeps indefinitely. REFUSED BY ' +
       'names the cultures whose ports will not trade it at all.',
   },
   {
@@ -170,6 +175,9 @@ function CompendiumBody() {
   const [face, setFace] = useState<FaceId>('goods')
   const [query, setQuery] = useState('')
   const [kind, setKind] = useState<string | null>(null)
+  // The goods face filters on TWO served fields — category and rarity (0032) — and they compose:
+  // "rare metals" is a question the reference should answer. Other faces have one axis.
+  const [tier, setTier] = useState<string | null>(null)
 
   // A filter belongs to the face it was typed against. Carrying "pepper" onto the ships face
   // would show an empty catalogue for a reason the player typed a minute ago on another list.
@@ -177,6 +185,7 @@ function CompendiumBody() {
     setFace(next)
     setQuery('')
     setKind(null)
+    setTier(null)
   }, [])
 
   // `phase === 'ready'` implies the snapshot answered (worldStore.open sets it before `ready`),
@@ -217,7 +226,15 @@ function CompendiumBody() {
 
         <div role="tabpanel" aria-label={shownFace.title}>
           {face === 'goods' && (
-            <GoodsFace goods={snapshot.goods} query={query} onQuery={setQuery} kind={kind} onKind={setKind} />
+            <GoodsFace
+              goods={snapshot.goods}
+              query={query}
+              onQuery={setQuery}
+              kind={kind}
+              onKind={setKind}
+              tier={tier}
+              onTier={setTier}
+            />
           )}
           {face === 'ships' && (
             <ShipsFace classes={snapshot.ship_classes} query={query} onQuery={setQuery} kind={kind} onKind={setKind} />
@@ -264,21 +281,26 @@ function kindsOf<T>(rows: readonly T[], of: (row: T) => string, label: (value: s
   return out
 }
 
+/** One chip-row filter over one served field. The goods face has two; the rest have at most one. */
+interface FilterGroup {
+  /** What the group filters by, for the group's accessible name: 'kind', 'rarity'. */
+  axis: string
+  kinds: KindOption[]
+  kind: string | null
+  onKind: (k: string | null) => void
+}
+
 function CatalogueControls({
   noun,
   query,
   onQuery,
-  kinds,
-  kind,
-  onKind,
+  groups = [],
 }: {
   noun: string
   query: string
   onQuery: (q: string) => void
-  /** Renders only when the data distinguishes at least two — one chip filters nothing. */
-  kinds?: KindOption[]
-  kind?: string | null
-  onKind?: (k: string | null) => void
+  /** Each group renders only when the data distinguishes at least two — one chip filters nothing. */
+  groups?: FilterGroup[]
 }) {
   return (
     <div className="space-y-2">
@@ -291,31 +313,38 @@ function CatalogueControls({
         aria-label={`Filter ${noun} by name`}
         placeholder={`Filter ${noun}…`}
       />
-      {kinds !== undefined && onKind !== undefined && kinds.length >= 2 && (
-        /* `md`, not `sm`: these chips are the face's primary filter, not an in-row secondary
-           action, and md is the size that clears the 44px reach floor (buttonStyles.ts). */
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Filter ${noun} by kind`}>
-          <Button
-            variant={kind == null ? 'chip-on' : 'chip'}
-            size="md"
-            className="font-mono text-xs uppercase tracking-wider"
-            onClick={() => onKind(null)}
+      {groups
+        .filter((g) => g.kinds.length >= 2)
+        .map((g) => (
+          /* `md`, not `sm`: these chips are the face's primary filter, not an in-row secondary
+             action, and md is the size that clears the 44px reach floor (buttonStyles.ts). */
+          <div
+            key={g.axis}
+            className="flex flex-wrap gap-1.5"
+            role="group"
+            aria-label={`Filter ${noun} by ${g.axis}`}
           >
-            all
-          </Button>
-          {kinds.map((k) => (
             <Button
-              key={k.value}
-              variant={kind === k.value ? 'chip-on' : 'chip'}
+              variant={g.kind == null ? 'chip-on' : 'chip'}
               size="md"
               className="font-mono text-xs uppercase tracking-wider"
-              onClick={() => onKind(kind === k.value ? null : k.value)}
+              onClick={() => g.onKind(null)}
             >
-              {k.label}
+              all
             </Button>
-          ))}
-        </div>
-      )}
+            {g.kinds.map((k) => (
+              <Button
+                key={k.value}
+                variant={g.kind === k.value ? 'chip-on' : 'chip'}
+                size="md"
+                className="font-mono text-xs uppercase tracking-wider"
+                onClick={() => g.onKind(g.kind === k.value ? null : k.value)}
+              >
+                {k.label}
+              </Button>
+            ))}
+          </div>
+        ))}
     </div>
   )
 }
@@ -331,22 +360,23 @@ function CatalogueCount({
   total,
   noun,
   query,
-  kindLabel,
+  applied = [],
 }: {
   shown: number
   total: number
   noun: string
   query: string
-  kindLabel: string | null
+  /** The chip filters in force, pre-phrased by the face: 'the kind “Spices”', 'the rarity “rare”'. */
+  applied?: string[]
 }) {
   if (shown === 0) {
     const q = query.trim()
     return (
       <p className="py-2 text-sm text-ink-muted">
-        {q === '' && kindLabel === null
+        {q === '' && applied.length === 0
           ? `The world serves no ${noun} yet.`
           : `None of the ${formatInt(total)} ${noun} answers to ` +
-            [q === '' ? null : `“${q}”`, kindLabel === null ? null : `the kind “${kindLabel}”`]
+            [q === '' ? null : `“${q}”`, applied.length === 0 ? null : applied.join(' and ')]
               .filter(Boolean)
               .join(' under ') +
             '. Clear the filter to see them all.'}
@@ -368,17 +398,34 @@ function GoodsFace({
   onQuery,
   kind,
   onKind,
+  tier,
+  onTier,
 }: {
   goods: readonly SnapshotGood[]
   query: string
   onQuery: (q: string) => void
   kind: string | null
   onKind: (k: string | null) => void
+  tier: string | null
+  onTier: (t: string | null) => void
 }) {
   // Chips in the same alphabetical-by-kind order the rows group under, so the strip reads as the
   // table's own contents list rather than as the payload's code order.
   const kinds = useMemo(
     () => kindsOf(goods, (g) => g.category, categoryLabel).sort((a, b) => a.label.localeCompare(b.label)),
+    [goods],
+  )
+
+  // The rarity chips keep the SCALE's order (common → exotic, RARITY_TIERS), not first-appearance
+  // or alphabetical — a rarity is an ordered word, and 'exotic' before 'common' would misstate the
+  // scale. Only tiers the payload actually serves render, so against a server predating 0032 the
+  // whole group disappears rather than offering chips that filter everything to nothing.
+  const tiers = useMemo(
+    () =>
+      RARITY_TIERS.filter((t) => goods.some((g) => g.rarity === t)).map((t) => ({
+        value: t,
+        label: rarityLabel(t),
+      })),
     [goods],
   )
 
@@ -390,18 +437,30 @@ function GoodsFace({
     return [...goods]
       .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name))
       .filter((g) => (kind === null ? true : g.category === kind))
-      .filter((g) => foldedMatch(needle, g.name, g.code, categoryLabel(g.category)))
-  }, [goods, query, kind])
+      .filter((g) => (tier === null ? true : g.rarity === tier))
+      .filter((g) => foldedMatch(needle, g.name, g.code, categoryLabel(g.category), g.rarity ?? ''))
+  }, [goods, query, kind, tier])
 
   return (
     <div className="space-y-2">
-      <CatalogueControls noun="goods" query={query} onQuery={onQuery} kinds={kinds} kind={kind} onKind={onKind} />
+      <CatalogueControls
+        noun="goods"
+        query={query}
+        onQuery={onQuery}
+        groups={[
+          { axis: 'kind', kinds, kind, onKind },
+          { axis: 'rarity', kinds: tiers, kind: tier, onKind: onTier },
+        ]}
+      />
       <CatalogueCount
         shown={rows.length}
         total={goods.length}
         noun="goods"
         query={query}
-        kindLabel={kind === null ? null : categoryLabel(kind)}
+        applied={[
+          ...(kind === null ? [] : [`the kind “${categoryLabel(kind)}”`]),
+          ...(tier === null ? [] : [`the rarity “${rarityLabel(tier)}”`]),
+        ]}
       />
       {rows.length > 0 && (
         <Table scrollHint className={scrollTableClass()}>
@@ -409,6 +468,7 @@ function GoodsFace({
             <tr>
               <TH>Good</TH>
               <TH>Kind</TH>
+              <TH>Rarity</TH>
               <TH align="num">Base</TH>
               <TH align="num">Bulk</TH>
               <TH align="num">Spoils</TH>
@@ -427,6 +487,11 @@ function GoodsFace({
                   </span>
                 </TD>
                 <TD className="text-ink-muted">{categoryLabel(g.category)}</TD>
+                <TD>
+                  {/* Colour AND shape, from the one rendering (Rarity.tsx) — the tier qualifies
+                      the good; the drawn mark and the name stay the row's subject. */}
+                  <RarityMark rarity={g.rarity} withWord />
+                </TD>
                 {/* Some anchors are half-ducat figures (82.50) — rounding them would misprint a
                     served value, so the halves keep one decimal and the whole figures stay whole. */}
                 <TD align="num">{g.base_value % 1 === 0 ? formatDucats(g.base_value) : `${formatFixed(g.base_value, 1)} d.`}</TD>
@@ -486,13 +551,18 @@ function ShipsFace({
 
   return (
     <div className="space-y-2">
-      <CatalogueControls noun="ship classes" query={query} onQuery={onQuery} kinds={kinds} kind={kind} onKind={onKind} />
+      <CatalogueControls
+        noun="ship classes"
+        query={query}
+        onQuery={onQuery}
+        groups={[{ axis: 'kind', kinds, kind, onKind }]}
+      />
       <CatalogueCount
         shown={rows.length}
         total={classes.length}
         noun="ship classes"
         query={query}
-        kindLabel={kind}
+        applied={kind === null ? [] : [`the kind “${kind}”`]}
       />
       {rows.length > 0 && (
         <Table scrollHint className={scrollTableClass()}>
@@ -599,13 +669,18 @@ function CaptainsFace({
 
   return (
     <div className="space-y-2">
-      <CatalogueControls noun="officers" query={query} onQuery={onQuery} kinds={kinds} kind={kind} onKind={onKind} />
+      <CatalogueControls
+        noun="officers"
+        query={query}
+        onQuery={onQuery}
+        groups={[{ axis: 'kind', kinds, kind, onKind }]}
+      />
       <CatalogueCount
         shown={rows.length}
         total={officers.length}
         noun="officers"
         query={query}
-        kindLabel={kind === null ? null : kind.toLowerCase()}
+        applied={kind === null ? [] : [`the kind “${kind.toLowerCase()}”`]}
       />
       <ul>
         {rows.map((o) => (
@@ -673,7 +748,7 @@ function NationsFace({
   return (
     <div className="space-y-2">
       <CatalogueControls noun="nations" query={query} onQuery={onQuery} />
-      <CatalogueCount shown={rows.length} total={nations.length} noun="nations" query={query} kindLabel={null} />
+      <CatalogueCount shown={rows.length} total={nations.length} noun="nations" query={query} />
       {rows.length > 0 && (
         <Table scrollHint className={scrollTableClass()}>
           <thead>

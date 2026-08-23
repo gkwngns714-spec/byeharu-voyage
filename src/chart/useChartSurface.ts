@@ -28,6 +28,31 @@ import { useElementSize } from './useElementSize'
 // context menu, no click-to-sail. A TAP is handled outside this hook and does one thing: it
 // selects, which changes what the corner panel READS, and nothing else.
 //
+// ── ONE IMPLEMENTATION, TWO POSTURES (2026-08-23) ──────────────────────────────────────────────
+// This hook is the only gesture implementation the game has, and it now serves two kinds of
+// surface. A FULL-TAB chart (the Map tab) owns every gesture on its glass: `touch-none`, and a
+// non-passive wheel listener that `preventDefault`s so zooming never scrolls anything. An
+// EMBEDDED chart (`SmallChart`, inside the SAIL composer's scrolling form) must NOT own them all:
+// a chart that eats the wheel and every vertical drag, sitting above the Issue button, is a wall
+// the player cannot scroll past — a reach break (docs/CORE_REUSE.md §1.5), which is the reason
+// SmallChart was inert until today. `scroll: 'page-vertical'` is the whole difference, and it is
+// an OPTION on this hook rather than a second implementation precisely so the pan arithmetic, the
+// pinch, the chrome guard and the tap rule can never drift apart between the two surfaces.
+//
+// What 'page-vertical' cedes, and to whom (§7C: every branch here chooses between two ACCEPTABLE
+// outcomes — both "the chart moves" and "the page scrolls" are products, on the surface each is
+// asked for on):
+//   · the WHEEL is the page's. No listener is attached at all, so a mouse wheel over the chart
+//     scrolls the form exactly as it does over the text beside it. Zoom is the visible +/− column
+//     (`ViewControls`), which the full tab has anyway.
+//   · a one-finger TOUCH drag's VERTICAL axis is the page's. The paired `touchClass` is
+//     `touch-pan-y`, so the browser itself runs vertical scrolling (and cancels our pointer when
+//     it claims a drag); our pan applies the HORIZONTAL component only, so the two authorities
+//     never fight over one gesture — a finger going down the page scrolls the page, a finger
+//     going along the coast pans the chart.
+//   · a PINCH is still the chart's (`pan-y` leaves multi-touch to us), and a MOUSE drag still
+//     pans both axes — a mouse drag never scrolled a page, so there is nothing to cede.
+//
 // ── THE VIEW IS DERIVED, NOT SYNCHRONISED ──────────────────────────────────────────────────────
 // State holds only the view the player DELIBERATELY moved to. Everything else — the opening frame,
 // and re-fitting when the phone rotates — is computed during render from the measured box. So
@@ -156,6 +181,18 @@ function useChromeBoxes(ref: RefObject<HTMLDivElement | null>): readonly ChromeB
   return boxes
 }
 
+export interface ChartSurfaceOptions {
+  /**
+   * Who owns the gestures a scrolling page also wants — see the header.
+   *   'chart'          (default) a full-tab surface: wheel zooms (non-passive), every drag pans.
+   *   'page-vertical'  embedded in a vertically scrolling form: the wheel and a one-finger touch
+   *                    drag's vertical axis belong to the PAGE; zoom is the caller's `ViewControls`.
+   * Whichever is chosen, put the returned `touchClass` on the surface element — the posture and
+   * its `touch-action` are one fact, stated here once, never hand-paired at a call site.
+   */
+  readonly scroll?: 'chart' | 'page-vertical'
+}
+
 export interface ChartSurface {
   /** Measured CSS pixels. Zero until the first layout. */
   readonly width: number
@@ -174,6 +211,14 @@ export interface ChartSurface {
    * units itself; the screen does no arithmetic and states no coordinate.
    */
   readonly chromeBoxes: readonly ChromeBox[]
+  /**
+   * The `touch-action` class this surface's posture REQUIRES, for the caller to put on the
+   * element the handlers go on. `touch-none` for a surface that owns every gesture;
+   * `touch-pan-y` for one that cedes vertical scrolling to the page. Literal Tailwind classes
+   * (the JIT scanner reads source text), and they live HERE because pairing them by hand at each
+   * call site is how one caller ends up eating a scroll its option said it would cede.
+   */
+  readonly touchClass: 'touch-none' | 'touch-pan-y'
   readonly zoomIn: () => void
   readonly zoomOut: () => void
   /** Back to the opening frame. */
@@ -209,7 +254,11 @@ export function useChartSurface(
    *                 hook's own result to build the handler it is given.
    */
   onTap?: (at: Point, unitsPerPx: number, view: ViewBox) => void,
+  options?: ChartSurfaceOptions,
 ): ChartSurface {
+  /** True when the surrounding page owns the wheel and the vertical axis of a one-finger touch
+   *  drag. A boolean rather than the option string below, so every consumer reads one spelling. */
+  const pageOwnsVertical = options?.scroll === 'page-vertical'
   // ── measure ───────────────────────────────────────────────────────────────────────────────────
   // ./useElementSize.ts, because the small chart needs the same two numbers and must not mount this
   // hook to get them (its non-passive wheel listener would eat the page scroll under a chart that
@@ -244,7 +293,13 @@ export function useChartSurface(
   // ── wheel (and the trackpad pinch, which arrives as ctrlKey + wheel) ──────────────────────────
   // Attached natively because it must be non-passive: a chart that scrolls the page under the
   // player's finger while they zoom is unusable, and React's onWheel cannot say preventDefault.
+  //
+  // NOT ATTACHED AT ALL when the page owns the scroll: an embedded chart that preventDefaults the
+  // wheel is a dead band in the middle of a form — the player spins the wheel over it and the page
+  // stands still, with the Issue button below the fold. No listener, so the wheel behaves over the
+  // chart exactly as it does over the paragraph above it, and zoom is the visible +/− column.
   useEffect(() => {
+    if (pageOwnsVertical) return
     const element = ref.current
     if (!element) return
     const onWheel = (event: WheelEvent) => {
@@ -262,7 +317,7 @@ export function useChartSurface(
     }
     element.addEventListener('wheel', onWheel, { passive: false })
     return () => element.removeEventListener('wheel', onWheel)
-  }, [ref, from])
+  }, [ref, from, pageOwnsVertical])
 
   // ── pointers: one finger pans, two pinch ──────────────────────────────────────────────────────
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -290,15 +345,19 @@ export function useChartSurface(
       travelled.current += Math.hypot(nextPoint.x - previousPoint.x, nextPoint.y - previousPoint.y)
 
       if (others.length === 0) {
+        // WHEN THE PAGE OWNS THE VERTICAL, a one-finger TOUCH drag pans horizontally ONLY. With
+        // `touch-pan-y` the browser is simultaneously deciding whether this drag is a page scroll,
+        // and until it decides (and fires pointercancel) both of us receive the moves — panning
+        // the chart on dy in that window would drag the sheet a few pixels and then have the
+        // browser snatch the gesture, a visible stutter with two hands on one wheel. Ceding the
+        // axis outright is the honest split: down the page scrolls, along the coast pans, and the
+        // vertical of the chart is reached by pinch, by the buttons, or by a mouse — whose drags
+        // never scrolled a page and therefore keep both axes.
+        const panDy = pageOwnsVertical && event.pointerType === 'touch' ? 0 : nextPoint.y - previousPoint.y
         setMovedTo((previous) => {
           const base = from(previous, surfaceAspect)
           const perPixel = unitsPerPixel(base, rect.width)
-          return panBy(
-            base,
-            surfaceAspect,
-            (nextPoint.x - previousPoint.x) * perPixel,
-            (nextPoint.y - previousPoint.y) * perPixel,
-          )
+          return panBy(base, surfaceAspect, (nextPoint.x - previousPoint.x) * perPixel, panDy * perPixel)
         })
         return
       }
@@ -325,7 +384,7 @@ export function useChartSurface(
         return zoomAt(panned, surfaceAspect, after / before, u, v)
       })
     },
-    [ref, from],
+    [ref, from, pageOwnsVertical],
   )
 
   const endPointer = useCallback(
@@ -391,6 +450,7 @@ export function useChartSurface(
     viewBox: view ? viewBoxOf(view, aspect) : null,
     unitsPerPx: view ? unitsPerPixel(view, size.width) : 1,
     chromeBoxes,
+    touchClass: pageOwnsVertical ? 'touch-pan-y' : 'touch-none',
     zoomIn,
     zoomOut,
     fit,
