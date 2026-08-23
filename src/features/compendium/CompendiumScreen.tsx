@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import {
   Badge,
   Button,
@@ -6,6 +7,7 @@ import {
   CardHeader,
   GoodTile,
   GoodTileLine,
+  HSCROLL_HINT,
   Input,
   Notice,
   PageHeader,
@@ -13,6 +15,7 @@ import {
   Screen,
   SectionLabel,
   Skeleton,
+  StatLegend,
   TD,
   TH,
   TabRow,
@@ -20,13 +23,17 @@ import {
   categoryLabel,
   fineClass,
   goodTileGridClass,
+  hScrollClass,
   headRowClass,
   rarityLabel,
   scrollTableClass,
+  useClipped,
 } from '../../components/ui'
 import { formatDucats, formatFixed, formatInt, formatKnots, formatOfTotal, formatPct, formatPctPoints, formatTuns } from '../../lib/format'
 import type { Officer, SnapshotGood, SnapshotNation, SnapshotPort, SnapshotShipClass } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
+// WHAT EACH SHIP FIGURE DECIDES — the one sentence per stat, shared with FLEETS and PORT.
+import { shipStatItems } from '../../domain/fleet'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
@@ -69,8 +76,9 @@ interface FaceSpec {
   /** The plural noun the count line and the no-answer sentence speak in. */
   noun: string
   title: string
-  /** The face's standing explanation — column meanings and refusals. Behind the ⓘ, never live. */
-  explain: string
+  /** The face's standing explanation — column meanings and refusals. Behind the ⓘ, never live.
+   *  A node, not a string, so the ships face can compose domain/fleet's stat legend. */
+  explain: ReactNode
 }
 
 const FACES: readonly FaceSpec[] = [
@@ -93,12 +101,32 @@ const FACES: readonly FaceSpec[] = [
     label: 'Ships',
     noun: 'ship classes',
     title: 'Ship classes',
-    explain:
-      'Every class of hull a shipyard can lay down, as the shipwright rates her — before any ' +
-      'officer or skill touches the figures. CREW is what she must have aboard against the berths ' +
-      'she carries. HULL is her rated durability. DRAFT is the water she needs — a port’s ' +
-      'harbour has a depth, and a hull that draws more cannot come alongside. BUILD is the ' +
-      'shipyard’s time and the shipyard’s bill.',
+    /* EVERY COLUMN GLOSSED FROM THE ONE TABLE. This was a prose paragraph explaining four of the
+       ten figures in this face's own words; the sentences now come from domain/fleet's statGloss —
+       the single authority FLEETS' ships table and PORT's draft badge also compose — so no two
+       screens can explain a stat apart. BUILD and COST say out loud that no rule reads them yet
+       (statGloss.ts's header carries the citations, and the limit of that claim). */
+    explain: (
+      <>
+        Every class of hull, as the shipwright rates her — before any officer or skill touches the
+        figures. What each column decides:
+        <StatLegend
+          className="mt-1"
+          items={shipStatItems([
+            'tier',
+            'hold',
+            'crew',
+            'speed',
+            'guns',
+            'hull',
+            'draft',
+            'build',
+            'cost',
+            'lineage',
+          ])}
+        />
+      </>
+    ),
   },
   {
     id: 'captains',
@@ -300,6 +328,21 @@ function CatalogueControls({
   /** Each group renders only when the data distinguishes at least two — one chip filters nothing. */
   groups?: FilterGroup[]
 }) {
+  const shown = groups.filter((g) => g.kinds.length >= 2)
+
+  // WHICH STRIPS ARE REALLY CLIPPED, so the swipe hint prints once, under the block, and only
+  // while it is true — the Table.tsx rule (a hint that is false teaches the player to ignore the
+  // hints that are not). Keyed by axis; the `shown.some` guard below keeps an axis that stopped
+  // rendering (a face whose data distinguishes only one kind) from holding the hint up.
+  const [clippedAxes, setClippedAxes] = useState<readonly string[]>([])
+  const onClipped = useCallback((axis: string, clipped: boolean) => {
+    setClippedAxes((prev) => {
+      const has = prev.includes(axis)
+      if (clipped) return has ? prev : [...prev, axis]
+      return has ? prev.filter((a) => a !== axis) : prev
+    })
+  }, [])
+
   return (
     <div className="space-y-2">
       <Input
@@ -311,38 +354,88 @@ function CatalogueControls({
         aria-label={`Filter ${noun} by name`}
         placeholder={`Filter ${noun}…`}
       />
-      {groups
-        .filter((g) => g.kinds.length >= 2)
-        .map((g) => (
-          /* `md`, not `sm`: these chips are the face's primary filter, not an in-row secondary
-             action, and md is the size that clears the 44px reach floor (buttonStyles.ts). */
-          <div
-            key={g.axis}
-            className="flex flex-wrap gap-1.5"
-            role="group"
-            aria-label={`Filter ${noun} by ${g.axis}`}
-          >
-            <Button
-              variant={g.kind == null ? 'chip-on' : 'chip'}
-              size="md"
-              className="font-mono text-xs uppercase tracking-wider"
-              onClick={() => g.onKind(null)}
-            >
-              all
-            </Button>
-            {g.kinds.map((k) => (
-              <Button
-                key={k.value}
-                variant={g.kind === k.value ? 'chip-on' : 'chip'}
-                size="md"
-                className="font-mono text-xs uppercase tracking-wider"
-                onClick={() => g.onKind(g.kind === k.value ? null : k.value)}
-              >
-                {k.label}
-              </Button>
-            ))}
-          </div>
-        ))}
+      {shown.map((g) => (
+        <ChipStrip key={g.axis} noun={noun} group={g} onClipped={onClipped} />
+      ))}
+      {shown.some((g) => clippedAxes.includes(g.axis)) && (
+        <p className={fineClass()}>{HSCROLL_HINT}</p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * ONE FILTER AXIS IS ONE ROW, and the row scrolls sideways instead of wrapping.
+ *
+ * Wrapped, the goods face's two axes stood FIVE ROWS of 44px chips deep at 390px — ~250px of
+ * filter before the first entry of the catalogue the tab exists to browse, and every category the
+ * world grows adds another part-row. A strip's height is constant however large the catalogue
+ * gets, and nothing about it ever appears, folds or moves on a press — the no-restructure law
+ * (docs/OWNER_REQUESTS.md 15/25) is why this is a scroll and not a "Filters" fold: a strip is
+ * static layout, a fold is a control that moves the list under the player's finger.
+ *
+ * A SIDEWAYS SCROLL MUST BE VISIBLE, or it is a feature that does not exist — this project has
+ * shipped that defect once (tableLayout.ts's header carries the measurements). So the strip wears
+ * the same two affordances the wide tables wear, from the same single authorities:
+ *   · the drawn, thin, permanent scrollbar (hScrollClass — one recipe, both callers);
+ *   · the swipe hint, printed only while the strip is really clipped (useClipped — one
+ *     measurement, both callers; the parent prints it so two strips say it once).
+ *
+ * AND THE `all` CHIP IS STICKY AT THE LEFT — the tables' own reach rule (tableLayout.ts rule 3:
+ * the first cell is the tap target and may never be scrolled out of reach), applied to the one
+ * chip that clears the axis: however far the strip is swiped, the way back to "no filter" stays
+ * on screen. It paints `bg-panel` for the same reason the tables' sticky column does — the card
+ * body it sits on is bg-panel, and the chips sliding under it must not show through.
+ *
+ * `md`, not `sm`: these chips are the face's primary filter, not an in-row secondary action, and
+ * md is the size that clears the 44px reach floor (buttonStyles.ts).
+ */
+function ChipStrip({
+  noun,
+  group,
+  onClipped,
+}: {
+  noun: string
+  group: FilterGroup
+  onClipped: (axis: string, clipped: boolean) => void
+}) {
+  const boxRef = useRef<HTMLDivElement>(null)
+  const clipped = useClipped(boxRef)
+  useEffect(() => {
+    onClipped(group.axis, clipped)
+  }, [onClipped, group.axis, clipped])
+
+  return (
+    <div
+      ref={boxRef}
+      role="group"
+      aria-label={`Filter ${noun} by ${group.axis}`}
+      className={`flex gap-1.5 overflow-x-auto pb-1 ${hScrollClass()}`}
+    >
+      {/* The wrapper's pr + negative mr paint the flex gap beside the sticky chip, so a chip
+          sliding under it can never show through the 6px seam. Layout is unchanged: the negative
+          margin gives back exactly the padding's width. */}
+      <span className="sticky left-0 z-10 -mr-1.5 shrink-0 bg-panel pr-1.5">
+        <Button
+          variant={group.kind == null ? 'chip-on' : 'chip'}
+          size="md"
+          className="font-mono text-xs uppercase tracking-wider"
+          onClick={() => group.onKind(null)}
+        >
+          all
+        </Button>
+      </span>
+      {group.kinds.map((k) => (
+        <Button
+          key={k.value}
+          variant={group.kind === k.value ? 'chip-on' : 'chip'}
+          size="md"
+          className="shrink-0 whitespace-nowrap font-mono text-xs uppercase tracking-wider"
+          onClick={() => group.onKind(group.kind === k.value ? null : k.value)}
+        >
+          {k.label}
+        </Button>
+      ))}
     </div>
   )
 }

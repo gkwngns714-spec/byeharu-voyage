@@ -14,6 +14,7 @@ import {
   Screen,
   SectionLabel,
   TabRow,
+  StatLegend,
   TD,
   TH,
   Table,
@@ -28,15 +29,18 @@ import { useCommandDraft } from '../../domain/order'
 import { AcademyFace, OfficersFace } from './PortFaces'
 import { QuayToday } from './PortFair'
 import { PORT_FACES, usePortView } from './portView'
+import { harbourCode, useHarbour } from '../../store/harbour'
 import type { CommandIntent } from '../../domain/order'
 import { findVerb, orderText } from '../../domain/order'
 import {
+  SHIP_STATS,
   fleetCrew,
   fleetMaxDraft,
   fleetPortCode,
   housePortCode,
   hullFraction,
   shipHoldUsed,
+  shipStatItems,
   worstHullFraction,
 } from '../../domain/fleet'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
@@ -96,10 +100,11 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const draftFleetId = useCommandDraft((s) => s.fleetId)
   const loadMarket = useWorld((s) => s.loadMarket)
 
-  // WHICH HARBOUR, AND WHICH FACE OF IT — both persisted, because both were being lost every time
-  // the player left the tab (portView.ts records the measurement).
-  const picked = usePortView((s) => s.picked)
-  const setPicked = usePortView((s) => s.pick)
+  // WHICH HARBOUR — the ONE owner (src/store/harbour.ts), shared with MARKET, so a harbour picked
+  // on either tab is the harbour both read. WHICH FACE — this screen's own chrome (portView.ts).
+  // Both persisted, because both were being lost every time the player left the tab.
+  const picked = useHarbour((s) => s.picked)
+  const setPicked = useHarbour((s) => s.pick)
   const face = usePortView((s) => s.face)
   const setFace = usePortView((s) => s.turnTo)
 
@@ -112,10 +117,11 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   // player sailing Lisbon → Porto could tap Acapulco's `BUY porcelain 86` and queue it to run at
   // Porto, where the price, the stock and the hold are all different.
   //
-  // `housePortCode` (domain/fleet) is the one answer: alongside if anything is alongside, else
-  // where she is BOUND — which is the market her queued orders will actually execute in.
-  const defaultCode = housePortCode(fleets) ?? snapshot.ports[0]?.code ?? null
-  const portCode = picked ?? defaultCode
+  // `harbourCode` (src/store/harbour.ts) is now the ONE spelling of pick-else-house-else-first-
+  // port, composed on `housePortCode` (domain/fleet) — MARKET calls the same function, so the two
+  // tabs cannot derive different defaults.
+  const homeCode = housePortCode(fleets)
+  const portCode = harbourCode(picked, fleets, snapshot.ports)
   const port = portCode ? (portByCode[portCode] ?? null) : null
 
   // The market is fetched per port, on demand — the store caches it, so this asks once per harbour.
@@ -200,6 +206,11 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         // "latin culture", not a bare "latin" — the raw culture value read as a word from
         // nowhere between a country and a sea (the plain-words sweep, 2026-08-23).
         subtitle={`${port.country} · ${port.culture} culture · ${port.sea}`}
+        /* THE FIGURE THE OWNER MET BARE. `draft 5` stood here with no unit and nothing saying what
+           it decides — the question that started the whole stat-gloss pass. The sentence is
+           domain/fleet's ONE draft sentence (statGloss.ts), the same one the compendium's ships
+           legend prints — composed, never respelt, so two screens cannot explain draft apart. */
+        explain={SHIP_STATS.draft.line}
         actions={<Badge tone="neutral">draft {port.max_draft}</Badge>}
       />
 
@@ -261,7 +272,24 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
              THE HEADING NAMES THE FACE THAT IS UP. It was hard-coded "The quayside" on all six,
              so CITY, SERVICES, OFFICERS and ACADEMY each sat under the name of a face they were
              not. Both the heading and the strip below now read the one FACES table. */
-          <CardHeader flush title={shownFace.title} explain={shownFace.explain} />
+          <CardHeader
+            flush
+            title={shownFace.title}
+            /* THE ALONGSIDE FACE PRINTS SHIP COLUMNS (Hull · Crew · Hold), so its explanation
+               carries the ONE sentence each of those figures has — domain/fleet's statGloss,
+               the same lines FLEETS' ships table opens (docs/NO_SPAGHETTI.md §1: one authority,
+               two callers, never two spellings). The other faces keep their own line. */
+            explain={
+              shownFace.id === 'ships' ? (
+                <>
+                  {shownFace.explain}
+                  <StatLegend items={shipStatItems(['hull', 'crew', 'hold'])} className="mt-1" />
+                </>
+              ) : (
+                shownFace.explain
+              )
+            }
+          />
         }
       >
         <TabRow
@@ -619,7 +647,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
       <ElsewherePanel
         ports={snapshot.ports}
         current={port.code}
-        home={defaultCode}
+        home={homeCode}
         onPick={setPicked}
       />
     </Screen>

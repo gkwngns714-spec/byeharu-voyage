@@ -26,6 +26,9 @@ export { PageHeader } from './PageHeader'
 // (docs/UI_DIRECTION.md §4 rule 2). See HeroFigure.tsx for the three hand-written copies it names.
 export { HeroFigure } from './HeroFigure'
 export { StatRow } from './StatRow'
+// The "TERM (unit) — what it decides" list for the inside of an Explain panel. The words arrive
+// as a parameter (domain/fleet's shipStatItems is the first supplier); this is the one chrome.
+export { StatLegend, type StatLegendItem } from './StatLegend'
 // StatRow's complement: the label/value row for a value that is a SENTENCE (see DetailRow.tsx for
 // the boundary between them).
 export { DetailRow } from './DetailRow'
@@ -38,6 +41,10 @@ export { EmptyState } from './EmptyState'
 export { Skeleton } from './Skeleton'
 export { Table, TH, TD } from './Table'
 export { scrollTableClass, TABLE_SCROLL_HINT } from './tableLayout'
+// The sideways-scroll affordance tables and the compendium's filter strips share: the drawn
+// permanent scrollbar (one recipe) and the "is this box really clipped" measurement (one hook).
+export { hScrollClass, HSCROLL_HINT } from './scrollAffordance'
+export { useClipped } from './useClipped'
 // The faces of ONE place — a tab strip, for a panel that has several sides rather than a
 // page that has several cards (see TabRow.tsx).
 export { TabRow, type TabSpec } from './TabRow'

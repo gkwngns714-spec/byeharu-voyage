@@ -1,28 +1,18 @@
-// WHICH HARBOUR THE PORT TAB IS READING, AND WHICH FACE OF IT IS TURNED TOWARDS YOU.
+// WHICH FACE OF THE HARBOUR IS TURNED TOWARDS YOU — the PORT tab's own chrome, and only that.
 //
 // ── WHY THIS IS A STORE AND NOT `useState` (2026-08-22) ─────────────────────────────────────────
-// It was `useState` in PortScreen, and the tab unmounts when you leave it. Measured in the
-// playtest: pick Lisbon on PORT → go to MARKET → come back → `Port · Acapulco`. Choosing a harbour
-// out of 214 is deliberate work — a filter typed, a name found, a chip tapped — and losing it to a
-// tab switch is losing work, exactly as `src/domain/order/draft.ts` says of a half-composed order.
-// The trap it set was worse than the annoyance: the screen silently went back to composing orders
-// from a port ~10,000 nm from the fleet.
+// It was `useState` in PortScreen, and the tab unmounts when you leave it. Losing a chosen face to
+// a tab switch is losing work, exactly as `src/domain/order/draft.ts` says of a half-composed
+// order. SESSION STORAGE for draft.ts's reason: a face you turned to is a thing you are DOING, not
+// a thing you keep — it survives a reload and dies with the browser tab.
 //
-// SESSION STORAGE, NOT LOCAL, and the reasoning is draft.ts's word for word: a harbour you are
-// reading is a thing you are DOING, not a thing you keep. It dies with the tab, so tomorrow opens
-// on wherever the fleet actually is rather than resurrecting a port that stopped being interesting
-// three voyages ago.
-//
-// ── WHAT IT IS NOT ─────────────────────────────────────────────────────────────────────────────
-// It is NOT "the port the game is at" — there is no such thing; a house is wherever its hulls are
-// (`domain/fleet`'s `housePortCode`). `null` here means "nothing chosen", and the screen falls back
-// to the house's own harbour, which is the only default that is ever right.
-//
-// A NAMED SEAM, not a hidden one: MARKET keeps the same kind of selection as component-local state
-// (`features/market/MarketScreen.tsx:103`, `chosenPortId`, by port ID where this is by port CODE).
-// If a player is ever meant to read one harbour on both tabs, those two are ONE question and this
-// store is where the answer belongs — but folding MARKET's copy in means editing MARKET, so it is
-// written down here rather than left to be rediscovered.
+// ── WHICH HARBOUR IS NOT HERE ANY MORE (2026-08-23) ────────────────────────────────────────────
+// `picked` lived in this store while MARKET kept its own component-local copy of the same choice —
+// a seam both files named rather than crossed, and it meant Cádiz picked on MARKET was Lisboa
+// again after a tab switch. It is PROMOTED: "which harbour is this house reading" is
+// `src/store/harbour.ts` now — one owner that PORT and MARKET both compose, with the MAP named as
+// its next caller. The FACE stays here because it is this one screen's chrome: no other tab has a
+// quay to turn to.
 
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
@@ -88,32 +78,28 @@ export const PORT_FACES = [
 export type PortFace = (typeof PORT_FACES)[number]['id']
 
 export interface PortViewState {
-  /** The port CODE the player chose, or null while the house's own harbour stands. */
-  picked: string | null
   face: PortFace
-  pick: (code: string | null) => void
   turnTo: (face: PortFace) => void
 }
 
 export const usePortView = create<PortViewState>()(
   persist(
     (set) => ({
-      picked: null,
       face: 'quay',
-      pick: (picked) => set({ picked }),
       turnTo: (face) => set({ face }),
     }),
     {
+      // The v1 byte also carried `picked`; that key now belongs to `src/store/harbour.ts` and the
+      // stale field is simply ignored by the merge below — sessionStorage, so no migration.
       name: 'byeharu-voyage.port.v1',
       storage: createJSONStorage(() => sessionStorage),
-      partialize: (s) => ({ picked: s.picked, face: s.face }),
-      // A corrupt or half-written byte must open the Quay at the house's own harbour, never wedge
-      // the tab on a face that no longer exists.
+      partialize: (s) => ({ face: s.face }),
+      // A corrupt or half-written byte must open the Quay, never wedge the tab on a face that no
+      // longer exists.
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<PortViewState>
         return {
           ...current,
-          picked: typeof p.picked === 'string' ? p.picked : null,
           face: PORT_FACES.some((f) => f.id === p.face) ? (p.face as PortFace) : 'quay',
         }
       },

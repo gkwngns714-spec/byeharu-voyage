@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import type { HTMLAttributes, TdHTMLAttributes, ThHTMLAttributes } from 'react'
 import { TABLE_SCROLL_HINT } from './tableLayout'
 import { fineClass } from './typography'
+import { useClipped } from './useClipped'
 
 // Design-system TABLE — the primitive this game is actually made of. A trade ledger is columns of
 // numbers, so the table is a first-class primitive here, not an afterthought.
@@ -28,9 +29,11 @@ import { fineClass } from './typography'
 //
 // It could not be fixed at the call site, because whether a table overflows is not a fact a screen
 // knows — it depends on the rendered content and the width of the glass, which is why it took a
-// measurement to find. The BOX knows, so the box says it. `overflow` is watched with a
-// ResizeObserver on both the box and the table, so it is right after a read adds rows, after a
-// rotation, and after a fleet grows from one hull to eight.
+// measurement to find. The BOX knows, so the box says it. The measurement itself is `useClipped`
+// now — a ResizeObserver on the box and its children, in its own file, because the compendium's
+// filter strips came to need the identical question and a second observer would have been the
+// silent copy — so it is right after a read adds rows, after a rotation, and after a fleet grows
+// from one hull to eight.
 //
 // It is NOT foldable behind an Explain dot. Explain.tsx names this exact string as the example of
 // what may never go behind one: it discloses an affordance the player cannot otherwise find, and
@@ -46,20 +49,7 @@ export function Table({
   scrollHint?: boolean
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
-  const [clipped, setClipped] = useState(false)
-
-  useEffect(() => {
-    const box = boxRef.current
-    if (!scrollHint || !box) return
-    // +1 absorbs sub-pixel rounding: a table 331.4px wide in a 331px box is not clipped.
-    const measure = () => setClipped(box.scrollWidth > box.clientWidth + 1)
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(box)
-    const table = box.querySelector('table')
-    if (table) ro.observe(table)
-    return () => ro.disconnect()
-  })
+  const clipped = useClipped(boxRef)
 
   return (
     <>
