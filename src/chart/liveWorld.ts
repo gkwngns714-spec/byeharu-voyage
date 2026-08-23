@@ -42,6 +42,7 @@ export function mapPortsOf(ports: readonly SnapshotPort[]): MapPort[] {
     lat: p.lat,
     lon: p.lon,
     sizeTier: p.size_tier,
+    kind: p.kind,
   }))
 }
 

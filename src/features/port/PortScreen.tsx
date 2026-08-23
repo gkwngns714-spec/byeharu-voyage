@@ -125,12 +125,15 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const port = portCode ? (portByCode[portCode] ?? null) : null
 
   // The market is fetched per port, on demand — the store caches it, so this asks once per harbour.
+  // Never for a SEA PLACE (0036): open water keeps no book, and asking for one would cache an
+  // empty market that looks exactly like a real market with nothing in it.
+  const isSeaPlace = port?.kind === 'SEA_PLACE'
   const portId = port?.id ?? null
   const market: MarketView | undefined = portId ? markets[portId] : undefined
   const marketLoaded = market !== undefined
   useEffect(() => {
-    if (portId && !marketLoaded) void loadMarket(portId)
-  }, [portId, marketLoaded, loadMarket])
+    if (portId && !marketLoaded && !isSeaPlace) void loadMarket(portId)
+  }, [portId, marketLoaded, isSeaPlace, loadMarket])
 
   const draftOfClass = useMemo(() => {
     const byName = new Map(snapshot.ship_classes.map((c) => [c.name, c.draft]))
@@ -189,6 +192,61 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
     }))
     .map(({ code, nm }) => ({ port: portByCode[code] ?? null, code, nm }))
     .sort((a, b) => a.nm - b.nm)
+
+  // 0036: A SEA PLACE HAS NO SHORE, so it gets the anchorage view and none of the harbour faces.
+  // The served `kind` decides — the screen never infers "no quay" from an empty market, because an
+  // empty market and a missing market must not look alike (NO_SPAGHETTI §7C). Everything shown is
+  // served: the approach line the LANDFALL report speaks, your hulls lying here, and the sailed
+  // legs out — each of which composes the same SAIL hand-off every other row on this screen uses.
+  if (port.kind === 'SEA_PLACE') {
+    return (
+      <Screen>
+        <PageHeader
+          eyebrow="Open water"
+          title={port.name}
+          subtitle={`${port.country} · ${port.sea}`}
+          actions={<Badge tone="neutral">sea place</Badge>}
+        />
+        {port.approach && (
+          <Card>
+            <p className="text-sm italic leading-relaxed text-ink">{port.approach}</p>
+          </Card>
+        )}
+        <Card>
+          <CardHeader title="At anchor" />
+          {docked.length === 0 ? (
+            <p className="text-sm text-ink-muted">None of your hulls are lying here.</p>
+          ) : (
+            docked.map((f) => (
+              <DetailRow key={f.id} label={f.name} value={`${f.ships.length} ship(s), holding station`} />
+            ))
+          )}
+          <p className={fineClass('mt-2')}>
+            There is no quay here — no market, no chandler, no crew, no shipyard. Stores are bought
+            in harbour, and the sailing gate already made her carry enough to leave again.
+          </p>
+        </Card>
+        <Card>
+          <CardHeader title="Sailing on" subtitle="The sailed legs out of this water." />
+          <div className="space-y-1">
+            {oneLeg.map(({ port: p, code, nm }) => (
+              <Button
+                key={code}
+                variant="secondary"
+                className="w-full justify-between font-mono text-xs"
+                onClick={() => command({ verb: 'SAIL', args: { dest: code } })}
+              >
+                <span>{lineOf({ verb: 'SAIL', args: { dest: code } })}</span>
+                <span className="text-ink-faint">
+                  {p?.name ?? code} · {formatInt(Math.round(nm))} nm
+                </span>
+              </Button>
+            ))}
+          </div>
+        </Card>
+      </Screen>
+    )
+  }
 
   const cheapHere = market
     ? market.goods

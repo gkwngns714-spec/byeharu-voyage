@@ -258,6 +258,11 @@ const UNUSED = {
   dev_industry: 8,
   dev_commerce: 8,
   dev_military: 8,
+  // 0036: the fixture is the HARBOUR table verbatim — the 14 sea places are deliberately absent
+  // here (they are 0036's rows, proven by 0036's own asserts and the live snapshot), so every
+  // density/label measurement below stays a measurement of the same 214 harbours it pinned.
+  kind: 'HARBOUR',
+  approach: null,
 } as const
 
 /** The 214 ports of the seeded world, in `world.snapshot().ports` shape. */

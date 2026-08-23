@@ -323,7 +323,10 @@ export function MarketScreen() {
 
           {portsOpen && (
             <PortPicker
-              ports={snapshot?.ports ?? []}
+              // Harbours only (0036): a SEA PLACE keeps no book, so a market picker offering the
+              // Dogger Bank would open onto seventy rows of nothing. The SAIL picker still offers
+              // every sea place — this filter is about what can be READ here, not where she may go.
+              ports={(snapshot?.ports ?? []).filter((p) => p.kind === 'HARBOUR')}
               query={query}
               onQuery={setQuery}
               current={portCode}

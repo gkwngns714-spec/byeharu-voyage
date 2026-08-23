@@ -51,6 +51,7 @@ import { create } from 'zustand'
 import {
   cmdCancel,
   cmdClear,
+  cmdDivert,
   cmdHaggle,
   cmdHireOfficer,
   cmdIssue,
@@ -196,6 +197,9 @@ export interface LiveWorld {
   preview: (fleetId: string, text: string) => Promise<PreviewResult | null>
   cancel: (fleetId: string, index?: number | null) => Promise<boolean>
   clear: (fleetId: string) => Promise<boolean>
+  /** The helm order at sea (0037): a SAILING fleet turns at the next node and makes for a new
+   *  port. A refusal (E_NOT_SAILING, E_SAME_DEST, E_NO_ROUTE…) lands in `refusal` as usual. */
+  divert: (fleetId: string, destPortId: string) => Promise<boolean>
   /** Drop the last refusal — a screen calls this when the player moves on. */
   dismissRefusal: () => void
 }
@@ -545,6 +549,20 @@ export const useWorld = create<LiveWorld>((set, get) => ({
       set({ refusal: r.refusal })
       return false
     }
+    await get().refresh()
+    return true
+  },
+
+  // THE HELM ORDER AT SEA (0037). The server settles her first, truncates the voyage at the far
+  // node of the leg she is on, and queues the onward SAIL through the one parser — so this action
+  // is read-back like every other: the world is re-read, never locally patched.
+  divert: async (fleetId, destPortId) => {
+    const r = await cmdDivert(fleetId, destPortId)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return false
+    }
+    set({ refusal: null })
     await get().refresh()
     return true
   },
