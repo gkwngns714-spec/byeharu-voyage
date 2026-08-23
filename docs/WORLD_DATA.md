@@ -1,6 +1,6 @@
 # World data — provenance280,378 schema, validation
 
-The geographic dataset behind `byeharu-voyage`: 214 real port cities, the seas and regions
+The geographic dataset behind `byeharu-voyage`: 224 real port cities, the seas and regions
 that connect them, the goods they traded in roughly 1500–1650, and the country outlines the
 map is drawn from.
 
@@ -15,7 +15,7 @@ traded* — not where it is.
 
 | File | Bytes | What it is |
 |---|---:|---|
-| `data/ports.json` | 139,244 | 214 port cities, with coordinates, sea, region, tier, goods and a note |
+| `data/ports.json` | 145,554 | 224 port cities, with coordinates, sea, region, tier, goods and a note |
 | `data/seas.json` | 5,263 | 51 named seas and oceans, each with a label anchor |
 | `data/regions.json` | 5,540 | 25 trading regions, each tied to a parent sea |
 | `data/goods.json` | 16,891 | 70 tradeable commodities with category, value band and origin note |
@@ -35,7 +35,7 @@ Build and check scripts live in `scripts/`. None of them are needed at runtime.
 | `scripts/check-coastal.mjs` | yes | Audits how far each port is from a coastline |
 | `scripts/project.mjs` | — | Reference implementation of the recommended projection |
 | `scripts/sea-grid.mjs` | **no** | THE routing rule: the sea as a 0.25° raster, and A* through water. §7 |
-| `scripts/build-sea-routes.mjs` | **no** | Applies that rule to all 214 ports and writes `data/sea-routes.json` |
+| `scripts/build-sea-routes.mjs` | **no** | Applies that rule to all 224 ports and writes `data/sea-routes.json` |
 | `scripts/build-world-seed.mjs` | **no** | Writes migration 0003 from all of the above. The chain's world IS this data |
 
 Regenerate everything with:
@@ -64,7 +64,7 @@ npm run db:apply                   # and prove the result applies
 - **Licence:** Wikidata content is released under the **Creative Commons CC0 1.0 Universal
   public domain dedication**. <https://www.wikidata.org/wiki/Wikidata:Licensing>
 - **Fetched:** see the `coordinateSource.fetchedAt` field at the top of `data/ports.json`.
-- **Coverage:** 214 of 214 roster entries resolved to an item carrying a `P625` coordinate.
+- **Coverage:** 224 of 224 roster entries resolved to an item carrying a `P625` coordinate.
   Every port record stores the exact item in `source.wikidata` (for example
   `"source": { "wikidata": "Q597", "enwiki": "Lisbon" }`), so any single coordinate can be
   re-checked at `https://www.wikidata.org/wiki/Q597`.
@@ -126,7 +126,7 @@ Section 6 says plainly which of them are claims of fact and which are game-desig
 ```jsonc
 {
   "coordinateSource": { "dataset": "Wikidata", "property": "P625 ...", "licence": "CC0 1.0 Universal", "fetchedAt": "..." },
-  "count": 214,
+  "count": 224,
   "ports": [
     {
       "id": "lisbon",                  // stable kebab-case slug, unique, the join key everywhere else
@@ -195,9 +195,9 @@ files and its own embedded bbox table — no network:
 ```
 byeharu-voyage world data check
 ==================================================================
-ports 214   seas 51   regions 25   goods 70
+ports 224   seas 51   regions 25   goods 70
 
-[ ok ] unique kebab-case ids — 214 distinct
+[ ok ] unique kebab-case ids — 224 distinct
 [ ok ] required fields, types, tier range
 [ ok ] lat in [-90,90], lon in [-180,180], no (0,0)
 [ ok ] no duplicate or near-duplicate coordinates (threshold 0.005°)
@@ -205,15 +205,16 @@ ports 214   seas 51   regions 25   goods 70
 [ ok ] every port inside its country bbox (tolerance 0.05°); worst margin 0.0000°
        note: RU, US span the antimeridian, so their longitude test is weak
 [ ok ] vocabulary coverage — 51/51 seas, 25/25 regions, 70/70 goods in use
-[ ok ] every region has ports — tier 1: 35, tier 2: 79, tier 3: 100
-       countries represented: 91
+[ ok ] goods band — tier 1 offers 9, tier 2 offers 6, tier 3 offers 4 (min 4, max 9)
+[ ok ] every region has ports — tier 1: 35, tier 2: 79, tier 3: 110
+       countries represented: 93
 
-RESULT: PASS — 214 ports, 51 seas, 25 regions, 70 goods, 0 failures, 0 warnings.
+RESULT: PASS — 224 ports, 51 seas, 25 regions, 70 goods, 0 failures, 0 warnings.
 ```
 
 Exit code `0`.
 
-Note the sixth line: **the worst bounding-box margin is 0.0000°**. Every one of the 214 ports
+Note the sixth line: **the worst bounding-box margin is 0.0000°**. Every one of the 224 ports
 falls strictly inside its stated country's Natural Earth 10m outline; the 0.05° tolerance was
 never needed. The `RU` and `US` boxes span the antimeridian (Russia's Chukotka and the
 Aleutians cross ±180°), so for those two countries the longitude half of the test proves
@@ -226,7 +227,7 @@ Because it measures to the nearest coastline *vertex* rather than the nearest po
 line, every figure below is an over-estimate:
 
 ```
-median distance 2.0 km; 205 of 214 ports within 25 km of a coastline vertex.
+median distance 2.0 km; 215 of 224 ports within 25 km of a coastline vertex.
 
      83.1 km  hanoi (VN)       — Red River, Thang Long
      83.1 km  ayutthaya (TH)   — Chao Phraya
@@ -277,10 +278,10 @@ given latitude, relative to the equator, printed by `node scripts/project.mjs`:
   linear `y`, a fleet sailing due north at a constant speed moves down the screen at a
   constant speed; latitude is directly readable off the vertical axis; and the inverse is one
   subtraction and one divide, with no logarithms. The round-trip is exact to floating-point
-  precision — measured at **5.68e-14 degrees worst case across all 214 ports**.
+  precision — measured at **5.68e-14 degrees worst case across all 224 ports**.
 
 The cost is real and worth naming: at 60–78°N the far north looks laterally squashed compared
-with a familiar atlas. Given that only nine of the 214 ports sit above 60°N, that is the
+with a familiar atlas. Given that only ten of the 224 ports sit above 60°N, that is the
 right trade. If a later art pass decides atlas familiarity matters more, Miller is a two-line change
 — both formulas are below, and `scripts/project.mjs` implements both.
 
@@ -377,7 +378,7 @@ commodity in a game. Where a port's history is inseparable from it, the `notes` 
 the place was without turning it into a mechanic.
 
 **Country assignment follows the modern ISO 3166-1 alpha-2 code, which sometimes disagrees
-with Wikidata's `P17`.** The resolver cross-checks all 214 on every run and currently reports **nine** disagreements.
+with Wikidata's `P17`.** The resolver cross-checks all 224 on every run and currently reports **nine** disagreements.
 Each was decided deliberately:
 
 | Port | This dataset | Wikidata `P17` | Why |
@@ -408,7 +409,9 @@ present because the coverage brief asked for Australia, the Pacific and the Arct
 were no European-frequented harbours on those exact sites in the period. Their notes state the
 real dates rather than implying otherwise. Several other ports are late within the window
 rather than outside it — Cape Town (1652), Port Royal (1655), Gothenburg (1621), Saint-Louis
-(1659) — and their notes give the founding year.
+(1659) — and their notes give the founding year. `port-louis` is the same honest compromise
+for Mauritius: the Dutch worked the island's ebony from 1598, inside the window, but the
+harbour town itself is French and later, and its note says so.
 
 **Historical names are the common forms, not a philological apparatus.** `historicalNames`
 lists the names a European or Asian merchant of the period would have used, plus the classical
@@ -419,14 +422,15 @@ romanisation standard is applied throughout.
 from its 16th-century one — Tokyo for Edo, Mumbai for Bombaim, Kozhikode for Calicut — the
 `localName` is the modern form and the period name is in `historicalNames`.
 
-**Six coordinates describe an island or a site rather than a town centre.** Every port's
-Wikidata item was checked for its `P31` type. Two resolve to islands — `hormuz` to Hormuz
-Island and `banda-neira` to Neira Island — one to an archaeological site (`sofala`) and one to
-an unincorporated community that is the preserved historic site (`jamestown`). In each case
+**Nine coordinates describe an island or a site rather than a town centre.** Every port's
+Wikidata item was checked for its `P31` type. Five resolve to islands — `hormuz` to Hormuz
+Island, `banda-neira` to Neira Island, and, from the 2026-08-23 island additions, `chios`,
+`zakynthos` and `tidore` to their islands — one to an archaeological site (`sofala`) and one
+to an unincorporated community that is the preserved historic site (`jamestown`). In each case
 that *is* the right place for the period, and the islands are small enough that the difference
-from the harbour is a kilometre or two. The remaining two (`banten`, `pattani`) are ordinary
-settlements under local administrative types. No port resolved to a province, a region or a
-same-named place elsewhere: a separate audit compared all 214 Wikidata labels against the
+from the harbour town (Chios town, Zakynthos town, Soasio) is a few kilometres at most. The
+remaining two (`banten`, `pattani`) are ordinary settlements under local administrative types. No port resolved to a province, a region or a
+same-named place elsewhere: a separate audit compared all 214 (now 224) Wikidata labels against the
 roster names and historical names and found one difference, `banda-neira` against the label
 "Neira Island", which is the island the town stands on.
 

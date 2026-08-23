@@ -58,6 +58,11 @@ export const CHANNELS = [
   { id: 'turkish-straits', name: 'the Dardanelles and the Bosphorus', points: [[39.9, 25.8], [40.1, 26.2], [40.4, 26.8], [40.7, 28.2], [41.0, 29.0], [41.3, 29.3], [41.6, 30.0]] },
   { id: 'kerch', name: 'the Strait of Kerch', points: [[44.8, 36.4], [45.1, 36.5], [45.4, 36.7]] },
   { id: 'bab-el-mandeb', name: 'the Bab-el-Mandeb', points: [[12.3, 44.0], [12.6, 43.4], [13.2, 42.9], [15.0, 41.5], [17.5, 40.0], [20.0, 38.5], [24.0, 36.0], [27.0, 34.5]] },
+  // Without this spur, Suez's nearest raster water is the MEDITERRANEAN, 72 nm north across the
+  // isthmus — measured 2026-08-23, when suez->alexandria routed at 261 nm: a Suez Canal, three
+  // centuries early. The gulf is 12-17 nm wide, under this raster's resolution, so it is a channel
+  // like every other narrow water; the isthmus itself stays land and the two seas stay unjoined.
+  { id: 'gulf-of-suez', name: 'the Gulf of Suez', points: [[27.0, 34.5], [27.8, 33.8], [28.5, 33.3], [29.2, 32.9], [29.9, 32.6]] },
   { id: 'hormuz', name: 'the Strait of Hormuz', points: [[24.8, 57.4], [25.8, 56.8], [26.3, 56.5], [26.4, 55.5], [26.4, 54.5], [27.2, 52.0], [28.6, 49.9], [29.6, 48.9], [30.0, 48.6]] },
   { id: 'khambhat', name: 'the Gulf of Khambhat', points: [[20.6, 71.8], [21.0, 72.0], [21.4, 72.3]] },
   { id: 'hooghly', name: 'the Hooghly approach', points: [[20.5, 88.3], [21.2, 88.2], [21.8, 88.1], [22.4, 88.2], [22.9, 88.4]] },
@@ -78,6 +83,22 @@ export const CHANNELS = [
   { id: 'amazon-para', name: 'the Pará and the Amazon mouth', points: [[-0.5, -47.5], [-1.0, -48.0], [-1.4, -48.5]] },
   { id: 'gambia-senegal', name: 'the Gambia and Senegal mouths', points: [[13.5, -16.8], [13.4, -16.5], [16.0, -16.6], [16.0, -16.4]] },
   { id: 'baltic-gulfs', name: 'the Gulf of Finland and the Gulf of Riga', points: [[59.5, 22.0], [59.6, 23.5], [59.5, 24.8], [57.8, 22.5], [57.5, 23.5], [56.9, 24.0]] },
+]
+
+// ── THE ICE — the water the age of sail could never use ────────────────────────────────────────
+// The inverse authority of CHANNELS: named waters CLOSED by hand. The raster models land, not
+// pack ice, so without this the Arctic reads as open water and the router discovers the polar
+// passages — the first thing the ocean-road pass found (2026-08-23) was Arkhangelsk — Nampo,
+// 6,396 nm along the Siberian coast: the Northeast Passage, first actually sailed by
+// Nordenskiöld in 1878-79. So these waters are ice, whatever the season:
+//   * the Siberian arctic east of Novaya Zemlya — the Kara, Laptev, East Siberian and Chukchi seas;
+//   * the Canadian arctic and northern Baffin Bay — the Northwest Passage, probed at its mouth by
+//     Frobisher and Davis in the 1570s-80s and not forced until Amundsen in 1903-06.
+// The Barents Sea and the White Sea road to Arkhangelsk stay open (the Muscovy Company sailed them
+// from 1553), as do Svalbard's whaling grounds and the Davis Strait up to Nuuk.
+export const ICE = [
+  { id: 'northeast-passage', name: 'the Siberian arctic', latAbove: 66.5, lonFrom: 60, lonTo: 180 },
+  { id: 'northwest-passage', name: 'the Canadian arctic', latAbove: 66.5, lonFrom: -180, lonTo: -60 },
 ]
 
 // ── the land, scan-filled into the grid ───────────────────────────────────────────────────────
@@ -126,6 +147,17 @@ export function buildSeaGrid() {
         const to = colOf(xs[k + 1])
         const span = to >= from ? to - from : COLS - from + to
         for (let s = 0; s <= span; s++) water[row * COLS + ((from + s) % COLS)] = 0
+      }
+    }
+  }
+
+  // The ice: authored CLOSED water (see ICE above) — the passages the period could not force.
+  for (const ice of ICE) {
+    const rowTo = rowOf(ice.latAbove)
+    for (let row = 0; row <= rowTo; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const lon = cellLon(col)
+        if (lon >= ice.lonFrom && lon <= ice.lonTo) water[row * COLS + col] = 0
       }
     }
   }
