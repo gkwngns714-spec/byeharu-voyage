@@ -372,6 +372,13 @@ re-declares a name a section owns. The rest is question 1 of the checklist.
   written twice inside the design system — `Card.tsx` and `PageHeader.tsx` — while
   `SectionLabel` exists. `tests/duplication.spec.ts` treats `src/components/**` as one authority
   and so does not count it; it is a real duplication and it is written here so it is not lost.
+* **The good tile's home is decided** (§7B, 2026-08-23): a trade good drawn as a BLOCK is
+  `src/components/ui/GoodTile.tsx` (+ `goodTileLayout.ts` for the grid), composed by MARKET's
+  goods panel and the COMPENDIUM's goods face. **COMMAND's good picker row
+  (`features/command/ArgPickers.tsx`) is the named next caller** — when it converts, it imports
+  the tile and passes its own figures; a second tile component would be the silent copy this
+  entry exists to forbid. Its label line already shares `fineClass` and its figure vocabulary
+  ("nearby", `PriceIndex`, `RarityMark`) is the same on all three screens.
 
 **The four open duplications named above — `statusTone`, `PortPicker`, `num`, `str` — are not
 seams. They are debt, they are listed so they cannot be lost, and the standing instruction is

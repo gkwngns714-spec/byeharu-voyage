@@ -56,6 +56,10 @@ export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
 // A mark for a trade good, and the human spelling of its category. Every good in data/goods.json
 // has its OWN drawn glyph — see goodIcons.ts for the table and for why seven was the wrong answer.
 export { goodIcon, categoryLabel } from './goodIcons'
+// A trade good as a BLOCK — icon + name + rarity over aligned figures. MARKET and the COMPENDIUM
+// compose it; COMMAND's good picker is the named next caller (see GoodTile.tsx for the boundary).
+export { GoodTile, GoodTileLine } from './GoodTile'
+export { goodTileGridClass } from './goodTileLayout'
 // The one rendering of a good's SERVED rarity tier (0032): a colour token AND a shape per tier,
 // so the tier survives a colourblind player and a greyscale screenshot. See Rarity.tsx.
 export { RarityMark } from './Rarity'

@@ -7,6 +7,9 @@ import {
   Card,
   CardHeader,
   Explain,
+  GoodTile,
+  GoodTileLine,
+  goodTileGridClass,
   Input,
   Notice,
   PageHeader,
@@ -15,17 +18,13 @@ import {
   Sparkline,
   SectionLabel,
   Skeleton,
-  TD,
-  TH,
-  Table,
-  scrollTableClass,
   fineClass,
   rowLinkClass,
 } from '../../components/ui'
 import { formatInt, formatPct, formatTuns, formatVoyageDays } from '../../lib/format'
 import { fold, foldedMatch } from '../../lib/text'
 import { useWorld } from '../../live/worldStore'
-import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
+import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import type {
   MarketGood,
   PriceHistory,
@@ -47,6 +46,7 @@ import {
   type SortKey,
   countRows,
   marketBlocks,
+  sortWord,
   stockBar,
   verbFor,
 } from './marketRows'
@@ -85,21 +85,24 @@ import {
 // to read"): a better sentence is not worth a fourth authority for what a failed world looks like,
 // and the shared one prints the refusal's own `fixes`, which the local copy silently dropped.
 //
-// WHAT IS STILL LOCAL, AND WHY IT HAS TO BE. The header's `read again` is NOT WorldGate's
-// `ReadAgain` (src/live/WorldGate.tsx:110). That component hard-codes `world.refresh()` — fleets,
-// ledger and house (src/live/worldStore.ts:208) — while this screen's read is `loadMarket(portId)`
-// (src/live/worldStore.ts:229), one port's prices. Composing ReadAgain here would put a button on
-// the prices screen that re-reads everything EXCEPT the prices, so it stays a local Button wearing
-// ReadAgain's exact word and skin: two tabs may not grow two vocabularies for one affordance even
-// while they cannot yet share the component.
+// THE PRICES RIDE THE WORLD'S OWN CADENCE. The header's `read again` control is DELETED (the
+// owner, 2026-08-23: "read again on top left of the game is useless. remove it") — AppShell
+// already re-reads the world every thirty seconds and on every tab focus, and `readAt` is that
+// read's stamp. This screen keys its market fetch on it, so the prices are re-asked on the same
+// beat instead of waiting for a button that taught the player their tap did something the game
+// was already doing. The re-ask is also what steps the drift walk where pg_cron is absent
+// (migration 0029's contract), so the prices genuinely move while the tab is open.
 //
 // A MARKET THAT WOULD NOT LOAD still draws its own refusal with a retry. That one is not a world
 // gate — it is a fact about ONE PORT, which WorldGate has nothing to say about. No state of this
 // screen is an endless spinner.
 //
-// MOBILE: seven columns do not fit 390px, so the table scrolls INSIDE its own box (Table's
-// structural rule + scrollTableClass) and the page never moves sideways. The tap target is the
-// FIRST column, which scrollTableClass pins — it can never be scrolled out of reach.
+// MOBILE: THE GOODS ARE TILES, NOT ROWS (the owner, 2026-08-23: "make trade goods in blocks as
+// well, not all alligned in sentences — horizontally"). Seven columns never fit 390px and the
+// table answered that with a sideways scroll, which hid the trend and the destination behind a
+// swipe. `GoodTile` (design system) draws each good as a block — its own mark, its name, its
+// rarity, the figures aligned beneath — in a two-column field, so nothing scrolls sideways and
+// nothing is hidden. The whole tile is the tap target, ≥44px by construction.
 
 export function MarketScreen() {
   const navigate = useNavigate()
@@ -169,10 +172,15 @@ export function MarketScreen() {
     [loadMarket],
   )
 
+  // KEYED ON `readAt`, DELIBERATELY (see the header). The world's own thirty-second read stamps
+  // `readAt`; re-asking this port's prices on the same stamp is what keeps them live now that the
+  // `read again` button is deleted. A port change re-asks immediately for the same reason. The
+  // cached payload stays up while the fresh one is in flight, so nothing flickers.
+  const readAt = useWorld((s) => s.readAt)
   useEffect(() => {
-    if (!portId || markets[portId]) return
+    if (!portId || readAt === null) return
     fetchMarket(portId)
-  }, [portId, markets, fetchMarket])
+  }, [portId, readAt, fetchMarket])
 
   // The remembered prices ride beside the live ones. A FAILED history read is deliberately silent
   // (worldStore.loadHistory swallows it): a market with no line is one whose record has not been
@@ -273,14 +281,6 @@ export function MarketScreen() {
         eyebrow="Trade"
         title={`Market · ${port?.name ?? '—'}`}
         explain={`Every price is the server's, read against the ports within ${config?.neighbour_radius_nm ?? '—'} nm. These are opening figures: an order fills in steps and each step reprices, so buying raises the price you are still buying at.`}
-        // THE SHARED CONTROL, driven by THIS screen's read. `ReadAgain` used to hard-code
-        // `world.refresh()` — fleets, ledger and house — which on the prices screen would have
-        // re-read everything EXCEPT the prices, so this screen carried a fifth hand-written copy
-        // of the affordance instead. WorldGate now takes an optional `read`, so the copy is gone
-        // and the word, the skin and the 44px floor are one authority again for all five tabs.
-        actions={
-          portId ? <ReadAgain read={() => fetchMarket(portId)} /> : undefined
-        }
       />
 
       {/* ── CONTROLS, FOLDED ─────────────────────────────────────────────────────────────────
@@ -310,7 +310,7 @@ export function MarketScreen() {
               className="ml-auto flex min-h-11 items-center gap-2 rounded-md border border-edge bg-surface-2 px-3 text-sm transition hover:border-accent/60"
             >
               <span className="font-mono text-xs text-ink-muted">
-                {sort === 'nbr' ? '%↑' : sort} · {filter}
+                {sortWord(sort)} · {filter}
               </span>
               <span aria-hidden className="font-mono text-xs text-ink-faint">
                 {optionsOpen ? '▴' : '▾'}
@@ -338,7 +338,7 @@ export function MarketScreen() {
                 <SectionLabel className="mb-0">Sort</SectionLabel>
                 {(['nbr', 'name', 'price', 'stock'] as const).map((k) => (
                   <Chip key={k} active={sort === k} onClick={() => setSort(k)}>
-                    {k === 'nbr' ? '%↑' : k}
+                    {sortWord(k)}
                   </Chip>
                 ))}
               </div>
@@ -368,24 +368,21 @@ export function MarketScreen() {
           </Notice>
           <div className="mt-3">
             <Button variant="primary" onClick={() => fetchMarket(loadError.portId)}>
-              Try the read again
+              Try again
             </Button>
           </div>
         </Card>
       ) : !view ? (
         <SkeletonTable note={`Reading ${port?.name ?? 'the port'}'s prices.`} />
       ) : (
-        /* THE DOCKED PANEL (docs/UI_DIRECTION.md §2). The goods table is this screen's subject, so
-           it wears the reference's panel: a full-bleed header bar over the body, parted by a gold
-           hairline, with the row count riding in the bar rather than floating in the padding. */
-        /* THE DOCKED PANEL (docs/UI_DIRECTION.md §2). The goods table is this screen's subject, so
-           it wears the reference's panel: a full-bleed header bar over the body, parted by a gold
-           hairline, with the row count riding in the bar rather than floating in the padding.
+        /* THE DOCKED PANEL (docs/UI_DIRECTION.md §2). The goods are this screen's subject, so
+           they wear the reference's panel: a full-bleed header bar over the body, parted by a gold
+           hairline, with the count riding in the bar rather than floating in the padding.
 
            THE BAR HOLDS ONE LINE. A title, a dot and a count — nothing that wraps. The first cut
            of this put the tap-affordance line in the bar too and it grew to 100px, which cost two
-           price rows above the fold; on a screen whose whole job is rows, the chrome does not get
-           to eat them. The affordance moved into the body, where it is one small line. */
+           price rows above the fold; on a screen whose whole job is prices, the chrome does not
+           get to eat them. The affordance moved into the body, where it is one small line. */
         <Card
           head={
             <CardHeader
@@ -397,52 +394,28 @@ export function MarketScreen() {
                  the page header two panels up; one authority, so it stays on the header and the
                  card explains only what the card's own columns mean. */
               explain="TREND is the remembered mid price — the shape of the move, not its size; the figures beside it carry that. A good with no line has not been sampled yet: nothing schedules the tick in a browser-local world, so lines fill in on the live server and stay empty here."
-              aside={<Badge tone="accent">{countRows(blocks)} rows</Badge>}
+              aside={<Badge tone="accent">{countRows(blocks)} goods</Badge>}
             />
           }
         >
           <p className="mb-2 text-xs text-ink-muted">Tap a good to send it to Command.</p>
-          <Table scrollHint className={scrollTableClass()}>
-            <thead>
-              <tr>
-                {/* %NBR IS SECOND, AND THAT IS THE WHOLE POINT.
-                    It was sixth, and at 390px it fell off the right edge: the column the entire
-                    game turns on — this port's price as a percentage of what its neighbours pay —
-                    was the one you had to swipe to see, while `131` and `139`, which mean nothing
-                    on their own, sat in plain view. The first column is sticky (tableLayout.ts),
-                    so a column placed second is the last one guaranteed to be on screen without
-                    scrolling. The prices did not get less important; they got less URGENT. */}
-                <TH>Good</TH>
-                <TH align="num">%NBR</TH>
-                <TH align="num">Buy</TH>
-                <TH align="num">Sell</TH>
-                <TH>Stock</TH>
-                {/* 0013 gave the market a memory, so the line this screen used to say it could not
-                    draw is drawn. It sits after the figures because it is a SHAPE — the numbers
-                    tell you the size of a move, the line tells you which way it has been going. */}
-                <TH>Trend</TH>
-                {/* THE COLUMN THAT USED TO SAY `glut` ON EVERY ROW. It now says where this good
-                    is worth more than it is here, and what the voyage's margin would be — the
-                    server's own `world.trade_routes`, priced through the quote a real order
-                    executes at. An empty cell is an honest empty cell: no port in reach pays more
-                    for it. */}
-                <TH>Where it pays</TH>
-              </tr>
-            </thead>
-            <tbody>
-              {blocks.map((b) => (
-                <BlockRows
-                  key={b.block}
-                  label={b.label}
-                  block={b.block}
-                  rows={b.rows}
-                  history={portId ? history[portId] : undefined}
-                  routeOf={routeOf}
-                  onTap={tap}
-                />
-              ))}
-            </tbody>
-          </Table>
+          {/* THE FIELD OF TILES — the owner's "blocks, not sentences". Each block heading keeps
+              the band's own tone and threshold; under it the goods sit two abreast, every figure
+              labelled in place, nothing behind a sideways swipe. The order inside each band is
+              unchanged from the table it replaces (marketRows.ts owns it). */}
+          <div className="space-y-4">
+            {blocks.map((b) => (
+              <GoodsBlock
+                key={b.block}
+                label={b.label}
+                block={b.block}
+                rows={b.rows}
+                history={portId ? history[portId] : undefined}
+                routeOf={routeOf}
+                onTap={tap}
+              />
+            ))}
+          </div>
 
           {/* WHAT STAYS PRINTED: the live reading of this quay and the swipe affordance. The two
               standing paragraphs that used to sit under them — how a stepped order reprices, and
@@ -456,7 +429,7 @@ export function MarketScreen() {
             {view.port && (
               <div>
                 tax {formatPct(view.port.tax_rate, 1)} · spread {formatPct(view.port.spread, 1)} ·
-                trade {view.port.dev_commerce}/10 · {view.port.culture}
+                trade {view.port.dev_commerce}/10 · {view.port.culture} culture
                 <Explain label="tax and spread" dotClassName="ml-1">
                   Tax is the Mayor&rsquo;s cut of every deal. The spread is the gap between what
                   this port buys at and sells at, and it narrows as the port&rsquo;s trade grows.
@@ -482,18 +455,20 @@ export function MarketScreen() {
       />
 
       {/* THE RULE IS THE TITLE; THE ESSAY IS BEHIND THE DOT. The old title here was "Below 90,
-          buy. Above 110, sell." — read as an instruction, followed, and it lost money. %NBR is a
-          local price index and the title now says so; what names a trade is the panel above. */}
+          buy. Above 110, sell." — read as an instruction, followed, and it lost money. The nearby
+          figure is a local price index and the title now says so; what names a trade is the panel
+          above. ("nearby", never `%NBR` — the schema's name for the column, which the player
+          never reads. COMMAND's good rows made the same call, for the same reason.) */}
       <Card tone="accent">
         <CardHeader
           eyebrow="How to read it"
-          title="%NBR says cheap HERE — not profitable."
+          title="NEARBY says cheap HERE — not profitable."
           explain={
             <>
-              %NBR is this port&rsquo;s price against the ports within{' '}
+              The nearby figure is this port&rsquo;s price against the ports within{' '}
               {config?.neighbour_radius_nm ?? '—'} nm — high <em>here</em>, which is not a profit. A
               profit is two ports, two taxes, two spreads and what your own order does to the
-              price. <strong>Where it pays</strong> answers that, priced through the same quote
+              price. <strong>Pays at</strong> answers that, priced through the same quote
               your order executes at. Crew wages are not in it.
             </>
           }
@@ -503,9 +478,9 @@ export function MarketScreen() {
   )
 }
 
-// ── the rows ────────────────────────────────────────────────────────────────────────────────────
+// ── the tiles ───────────────────────────────────────────────────────────────────────────────────
 
-function BlockRows({
+function GoodsBlock({
   label,
   block,
   rows,
@@ -521,39 +496,37 @@ function BlockRows({
   onTap: (good: MarketGood) => void
 }) {
   return (
-    <>
-      <tr>
-        <td colSpan={7} className="border-b border-edge px-2 pb-1 pt-4">
-          <span
-            className={[
-              'font-mono text-[11px] uppercase tracking-wider',
-              block === 'buy'
-                ? 'text-success'
-                : block === 'sell'
-                  ? 'text-accent'
-                  : 'text-ink-faint',
-            ].join(' ')}
-          >
-            ▾ {label}
-          </span>
-        </td>
-      </tr>
-      {rows.map((good) => (good.available ? (
-        <TradedRow
-          key={good.good_id}
-          good={good}
-          points={history?.goods[good.code]}
-          route={routeOf[good.code]}
-          onTap={onTap}
-        />
-      ) : (
-        <UntradedRow key={good.good_id} good={good} />
-      )))}
-    </>
+    <div>
+      <p
+        className={[
+          'mb-1.5 border-b border-edge pb-1 font-mono text-[11px] uppercase tracking-wider',
+          block === 'buy'
+            ? 'text-success'
+            : block === 'sell'
+              ? 'text-accent'
+              : 'text-ink-faint',
+        ].join(' ')}
+      >
+        ▾ {label}
+      </p>
+      <div className={goodTileGridClass()}>
+        {rows.map((good) => (good.available ? (
+          <TradedTile
+            key={good.good_id}
+            good={good}
+            points={history?.goods[good.code]}
+            route={routeOf[good.code]}
+            onTap={onTap}
+          />
+        ) : (
+          <UntradedTile key={good.good_id} good={good} />
+        )))}
+      </div>
+    </div>
   )
 }
 
-function TradedRow({
+function TradedTile({
   good,
   points,
   route,
@@ -565,113 +538,85 @@ function TradedRow({
    *  for both, because "no record" is not "no movement" and neither of them is a line. */
   points: PricePoint[] | undefined
   /** Where this good is worth more than it is here, if anywhere in reach is (0019). Undefined
-   *  while the read is in flight AND for a good no reachable port pays more for; the cell prints
-   *  nothing for both, because neither of those is a destination. */
+   *  while the read is in flight AND for a good no reachable port pays more for; the line prints
+   *  a dash for both, because neither of those is a destination. */
   route: TradeRoute | undefined
-  // No `block` prop any more. The row used to take it only to tint the %NBR figure, and the pill
-  // now carries that meaning from the server's own `advice` (PriceIndex.tsx) — the band heading
-  // and the pill were two renderings of one fact, and this was the copy that had to go.
   onTap: (good: MarketGood) => void
 }) {
   return (
-    <tr>
-      <TD>
-        {/* ONE LINE, NOT TWO. The category used to print under the name, which made every row
-            62px and fitted four of them above the fold — the reference fits eleven. The category
-            is a fact about the good, not about its price today, so it moved to the row's title
-            (hover on a desktop, and the good's own name already implies it); what stays is the
-            name and the 44px target the reach law requires. Four rows became seven. */}
-        <button
-          type="button"
-          onClick={() => onTap(good)}
-          title={`${verbFor(good)} ${good.name} (${good.category}) — load onto Command`}
-          className="flex min-h-11 w-full items-center text-left"
-        >
-          <span className={rowLinkClass('block')}>
-            {good.name}
-          </span>
-        </button>
-      </TD>
-      {/* THE PILL, NOT A BARE FIGURE (docs/UI_DIRECTION.md §2). %NBR is the number the game is
-          played from, and in the reference it rides directly behind the good's name as a coloured
-          pill — the shape is what makes it scannable down a column of eleven rows. The tone is the
-          SERVER'S `advice`; nothing here compares pct against a threshold. */}
-      <TD align="num">
+    <GoodTile
+      code={good.code}
+      category={good.category}
+      name={good.name}
+      rarity={good.rarity}
+      onTap={() => onTap(good)}
+      tapTitle={`${verbFor(good)} ${good.name} (${good.category}) — load onto Command`}
+      testId="good-tile"
+    >
+      {/* THE PILL AND THE LINE SHARE THE FIRST ROW — the figure the game is played from and the
+          shape of where it has been. "nearby", never `%NBR`: that is the column name in the data
+          and in migration 0009, and the player never reads the schema (the word is COMMAND's own
+          pick, features/command/ArgPickers.tsx — one word for one figure across the game). The
+          pill's tone is the SERVER'S `advice`; the line borrows it, so no fifth colour vocabulary. */}
+      <GoodTileLine label="nearby">
         <PriceIndex pct={good.pct_nbr} advice={good.advice} />
-      </TD>
-      <TD align="num">{formatInt(good.buy)}</TD>
-      <TD align="num">{formatInt(good.sell)}</TD>
-      <TD>
-        <span
-          className="font-mono text-xs text-ink-muted"
-          title={`${formatTuns(good.stock)} of a ${formatTuns(good.stock_target)} target`}
-        >
-          {stockBar(good.stock_band)}
-        </span>
-      </TD>
-      {/* THE LINE THIS SCREEN USED TO SAY IT COULD NOT DRAW. 0013 gave the market a memory; the
-          tone is the server's own advice, so the line never introduces a fifth colour vocabulary. */}
-      <TD>
         <Sparkline
+          width={44}
           values={(points ?? []).map((pt) => pt.mid)}
           tone={good.advice === 'buy' ? 'cheap' : good.advice === 'sell' ? 'dear' : 'even'}
           label={`${good.name}: ${points?.length ?? 0} remembered price(s)`}
         />
-      </TD>
-      {/* WHERE IT PAYS. One line, so the row height (and the count of rows above the fold that
-          tests/layout.spec.ts pins) does not move. The port code and the margin in ducats, both
-          the server's; the title carries the sentence. */}
-      <TD>
+      </GoodTileLine>
+      {/* TWO LINES, NOT ONE PAIR. `buy · sell — 364 · 334` wrapped mid-figure at 390px (measured:
+          the pair plus its label is ~1px over a tile's 138px of content, and four-digit prices are
+          well over). A figure is one token; two labelled lines cost the same height the wrap did
+          and can never shear a number. */}
+      <GoodTileLine label="buy">{formatInt(good.buy)}</GoodTileLine>
+      <GoodTileLine label="sell">{formatInt(good.sell)}</GoodTileLine>
+      <GoodTileLine label="stock">
+        <span
+          className="text-ink-muted"
+          title={`${formatTuns(good.stock)} of a ${formatTuns(good.stock_target)} target`}
+        >
+          {stockBar(good.stock_band)}
+        </span>
+      </GoodTileLine>
+      {/* WHERE IT PAYS — the port code and the margin in ducats, both the server's; the title
+          carries the whole sentence. A dash is an honest dash: no port in reach pays more. */}
+      <GoodTileLine label="pays at">
         {route ? (
           <span
-            className="font-mono text-xs text-success"
+            className="text-success"
             title={`${route.qty} tun(s) to ${route.to.name} — ${formatInt(route.nm)} nm, ${route.legs} leg(s)${route.days === null ? '' : `, ${route.days} voyage-days`}: pay ${formatInt(route.outlay)} d. here, receive ${formatInt(route.proceeds)} d. there. Wages are not in that margin.`}
           >
             {route.to.code} +{formatInt(route.profit)}
           </span>
         ) : (
-          <span className={fineClass()}>—</span>
+          <span className="text-ink-faint">—</span>
         )}
-      </TD>
-    </tr>
+      </GoodTileLine>
+    </GoodTile>
   )
 }
 
 /** §B.4 — the port's culture will not trade this good AT ALL. That is a fact about the port, so it
- *  is printed as one: the row is struck through, the prices are absent rather than zero, and there
- *  is nothing to tap because there is no order to hand over. */
-function UntradedRow({ good }: { good: MarketGood }) {
+ *  is printed as one: the tile is struck through and dim, the prices are absent rather than zero,
+ *  and there is nothing to tap because there is no order to hand over. */
+function UntradedTile({ good }: { good: MarketGood }) {
   return (
-    <tr>
-      <TD>
-        <span className="block min-h-11 py-2 text-sm text-ink-faint line-through">{good.name}</span>
-      </TD>
-      <TD align="num">—</TD>
-      <TD align="num">—</TD>
-      <TD align="num">—</TD>
-      <TD>
-        <span className="font-mono text-xs text-ink-faint">——————</span>
-      </TD>
-      {/* No trend either, and for a better reason than "no data": a port whose culture refuses a
-          good has never priced it, so there is nothing for the record to have remembered. */}
-      <TD>
-        <span className="font-mono text-[10px] text-ink-faint">—</span>
-      </TD>
-      <TD>
-        <span className={fineClass()}>not traded here</span>
-      </TD>
-    </tr>
+    <GoodTile code={good.code} category={good.category} name={good.name} rarity={good.rarity} muted>
+      <span className={fineClass()}>not traded here</span>
+    </GoodTile>
   )
 }
 
 /**
  * WHERE TO SAIL — the answer this screen could not give until migration 0019.
  *
- * NOT A TABLE, deliberately. `tests/layout.spec.ts` measures every `<table>` on the tab for fit,
- * wrapping and reach, and counts the complete price rows above the fold; a second table here would
- * be a second thing competing for the same 390 px and the same measurements. These are rows of a
- * list, one tap target each, and they sit BELOW the goods table because the goods table is the
- * subject of this screen.
+ * NOT A TABLE, deliberately. `tests/layout.spec.ts` counts the complete good tiles above the
+ * fold; a table here would be a second thing competing for the same 390 px and the same
+ * measurements. These are rows of a list, one tap target each, and they sit BELOW the goods
+ * because the goods are the subject of this screen.
  *
  * EVERY NUMBER IS THE SERVER'S. `profit` is proceeds minus outlay at the stated quantity, both out
  * of `world.quote()`; `nm` is the distance actually sailed; `days` is her own speed. Nothing here

@@ -133,14 +133,24 @@ export function ProfileScreen() {
             plain
             hint="Local: the whole game runs in this browser tab and is stored on this device only. Cloud: the shared world on a server. The game picks one at startup and never changes it."
           />
-          <StatRow label="World" value={phase} plain />
+          {/* THE PLAYER'S WORD, NOT THE STORE'S. `phase` is 'ready' / 'opening' / 'failed' — a
+              state machine's vocabulary, printed raw here on the day this card shipped. "open" is
+              what 'ready' means to the person reading it. */}
+          <StatRow
+            label="World"
+            value={phase === 'ready' ? 'open' : phase === 'failed' ? 'failed' : 'opening'}
+            plain
+          />
           <StatRow
             label="Ports"
             value={snapshot ? formatInt(snapshot.ports.length) : '—'}
             hint="Every coordinate came from Wikidata, stored with the item it came from. None was typed by hand."
           />
+          {/* "Sea lanes", not "Sea legs" — the label read as the idiom, and the chart's own
+              caption already calls the network "the sea lanes" (one word per idea). A single
+              stretch of one is still "a leg" where a passage is counted in them. */}
           <StatRow
-            label="Sea legs"
+            label="Sea lanes"
             value={snapshot ? formatInt(snapshot.legs.length) : '—'}
           />
           <StatRow

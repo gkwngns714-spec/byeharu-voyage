@@ -54,7 +54,7 @@ import {
   voyageEtaMs,
   voyageFraction,
 } from '../../domain/fleet'
-import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
+import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
 // FLEETS — E.2's roster. THE READ-ONLY TAB.
 //
@@ -72,10 +72,12 @@ import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
 // ratio and a fold (fleetDerive.ts), each cited to the SQL it agrees with.
 //
 // ── READING IS HOW TIME PASSES ──────────────────────────────────────────────────────────────────
-// There is no tick loop. `world.fleets()` settles every voyage server-side before it answers, so
-// "Read again" is not a refresh button in the web sense — it is the clock. The countdown below is
-// display only: when it reaches zero the fleet has NOT arrived, it is DUE, and the next read is
-// what lands it. The roster says exactly that rather than pretending.
+// There is no tick loop. `world.fleets()` settles every voyage server-side before it answers, and
+// AppShell makes that read every thirty seconds and on every tab focus — the clock needs no
+// button, which is why the header's `read again` control is DELETED (the owner, 2026-08-23:
+// "read again on top left of the game is useless. remove it"). The countdown below is display
+// only: when it reaches zero the fleet has NOT arrived, it is DUE, and the next read — moments
+// away — is what lands it. The roster says exactly that rather than pretending.
 
 export function FleetsScreen() {
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
@@ -144,13 +146,10 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
            A gloss cannot repair that; one authority spelling them out can. */
         explain="What you own, and the state it is in. t is a TUN — one cask of cargo room. kn is KNOTS, sea miles an hour. A figure in d is a voyage-day, and one voyage-day is three real minutes."
         actions={
-          <>
-            <span className="font-mono text-xs text-ink-faint">
-              {counts ? counts.fleets : '—'}/{config.fleet_max} fleets ·{' '}
-              {counts ? counts.ships : '—'}/{config.ship_max} ships
-            </span>
-            <ReadAgain />
-          </>
+          <span className="font-mono text-xs text-ink-faint">
+            {counts ? counts.fleets : '—'}/{config.fleet_max} fleets ·{' '}
+            {counts ? counts.ships : '—'}/{config.ship_max} ships
+          </span>
         }
       />
 
@@ -304,7 +303,8 @@ function FleetsBody({ config }: { config: SnapshotConfig }) {
           Read {formatRealShort(Math.max(0, nowMs - readAt))} ago
           {mode ? ` · ${mode}` : ''}
           <Explain label="how fresh this is" dotClassName="ml-0.5">
-            Nothing here ticks. Reading again is what settles a voyage and brings a fleet in.
+            The game reads the world every half minute on its own — that read is what settles a
+            voyage and brings a fleet in. Nothing here needs pressing.
           </Explain>
         </p>
       )}
@@ -333,19 +333,21 @@ function PresetsCard() {
   const dismissRefusal = useWorld((s) => s.dismissRefusal)
   if (!book) return null
 
+  // "Order N", not "Preset N": a preset is a software word, and the card already calls the thing
+  // by its game name — a standing order. The player renames it anyway; the default just must not
+  // teach them the schema's vocabulary (the owner's plain-words rule, 2026-08-23).
   const nextName = () => {
     for (let n = 1; n <= book.max + 1; n += 1) {
-      const name = `Preset ${n}`
+      const name = `Order ${n}`
       if (!book.presets.some((p) => p.name.toLowerCase() === name.toLowerCase())) return name
     }
-    return 'Preset'
+    return 'Order'
   }
 
   return (
     <Card>
       <CardHeader
-        eyebrow="Standing orders"
-        title="Presets"
+        title="Standing orders"
         subtitle="Keep a fleet at so many days of stores."
         explain="A preset is a standing order the server fills when the fleet makes port: it tops her stores up to the named days, sized for the crew aboard at that moment, and charges the purse. Stores share the hold with cargo, so a deeper order is less room to trade with. Apply one on a fleet's Galley face."
         aside={
@@ -489,7 +491,7 @@ function FleetDetail({
   return (
     <CollapsibleCard
       title={fleet.name}
-      subtitle={flagship ? `flag: ${flagship.name} (${flagship.class})` : 'no flagship'}
+      subtitle={flagship ? `flagship: ${flagship.name} (${flagship.class})` : 'no flagship'}
       aside={<Badge tone={fleetStatusTone(fleet.status)}>{fleet.status}</Badge>}
       storageKey={`fleet-${fleet.id}`}
       defaultOpen
@@ -511,7 +513,7 @@ function FleetDetail({
             <Meter pct={fraction * 100} tone="accent" />
             <p className={fineClass()}>
               Bound for {portName(fleet.voyage.to)} at {formatKnots(fleet.speed_kn)}.
-              {etaMs !== null && nowMs >= etaMs && ' She is DUE — read again to bring her in.'}
+              {etaMs !== null && nowMs >= etaMs && ' She is DUE — any moment now.'}
               <Explain label="this passage" dotClassName="ml-0.5">
                 The ETA was frozen at departure and never moves (B.5); the position is the server's
                 closed form, not an interpolation.

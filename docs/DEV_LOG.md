@@ -5,6 +5,48 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-23 — D20: plain words everywhere, goods become blocks, and the useless button dies
+
+Three owner instructions in one sweep: **"overall, check game itself - every aspect, and move simple
+words"**, **"make trade goods in blocks as well, not all alligned in sentences - horizontally"**, and
+**"read again on top left of the game is useless. remove it."**
+
+### THE `read again` CONTROL IS DELETED, NOT HIDDEN
+
+AppShell already reads the world every thirty seconds and on every tab focus, and `world.fleets()` is
+the catch-up — a button asking for something already happening taught the player their tap did nothing.
+Removed from MARKET, FLEETS, LEDGER, RANK and the COMPENDIUM (COMMAND holds its own local copy, another
+slice's). **The reads the button carried did not die with it**: each screen's extra read (MARKET's
+prices, RANK's board, the COMPENDIUM's roster) is now keyed on `readAt`, the world-read's own stamp, so
+it re-asks on the same thirty-second beat — which also means a refused board/roster read retries itself,
+and MARKET's prices step the drift walk (0029) while the tab is open. The two "read again to try once
+more" sentences those retries orphaned are reworded. `live/WorldGate.tsx`'s `ReadAgain` now has **zero
+callers** — deleting it belongs to whoever owns `src/live`, which this slice does not.
+
+### TRADE GOODS ARE TILES (`src/components/ui/GoodTile.tsx`)
+
+The market table read each good as a sentence — name, index, price, strung horizontally, with trend and
+destination behind a sideways swipe. It is now a two-column field of blocks: the good's own drawn mark
+and name as the title, its rarity mark, and the figures labelled beneath (nearby index + trend line,
+buy · sell, stock, pays at). The COMPENDIUM's goods face composes the same tile with its own figures
+(base, bulk, spoils, refused by), grouped under kind headings instead of spending a column on the
+category. **The tile's home is the design system** — `GoodTile.tsx` + `goodTileLayout.ts` — with
+COMMAND's good picker as the named next caller (docs/NO_SPAGHETTI.md §7's seam list). Sort orders are
+unchanged; `tests/layout.spec.ts`'s MARKET fold proof now counts complete tiles.
+
+### THE WORD SWEEP (one word per idea, no schema on screen)
+
+`%NBR` → **nearby** (COMMAND's own earlier pick, now MARKET's sort chip and how-to card, and PORT's
+buy notes — "of neighbours" was a third name); `Yard` → **Shipyard** (0033's word, last client
+holdout); `watered and victualled` → **provisioned**; `Presets` → **Standing orders** (with `Order N`
+as the default name); `flag:` → **flagship:**; Profile's raw `ready` phase → **open**, `Sea legs` →
+**Sea lanes**; Map's `asking the server…` → **checking the passage…**; `pool 35` → **35 at the inn**;
+bare culture values get their noun (`latin culture`); `shipyard t2` → **shipyard tier 2**. Also:
+REPAIRED's ledger badge was the same red as REPAIRING — a recovery coloured as a wound — and is green
+now, and PortFaces' officer bonus now prints through `formatPctPoints` like the compendium's.
+
+---
+
 ## 2026-08-23 — D19: the map stops being a picture
 
 Owner, on the Map tab's caption: it *"literally reads `view only · orders on Command` — that sentence is

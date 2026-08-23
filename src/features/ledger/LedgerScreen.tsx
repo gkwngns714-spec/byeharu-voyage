@@ -29,7 +29,7 @@ import { useShellState } from '../../app/shellState'
 import { num, str } from '../../lib/json'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
-import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
+import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
 // LEDGER — E.6. "The narrative organ of the game. This is where combat lives, as prose."
 //
@@ -126,8 +126,9 @@ function LedgerBody() {
         explain="Everything that happened, newest first. This is the server's record, not a client log — the same one your standing is judged from."
         /* The purse readout moved to the top bar (TopBar.tsx), where it is on screen on every tab
            instead of only this one. The balance still appears in this screen's prose, which is a
-           different thing: a sentence that explains reconciliation, not a readout. */
-        actions={<ReadAgain />}
+           different thing: a sentence that explains reconciliation, not a readout. No header
+           action either: the `read again` control is deleted (the owner, 2026-08-23) — the world
+           re-reads itself every thirty seconds and on tab focus, and this feed rides that read. */
       />
 
       {events.length > 0 && (
@@ -349,9 +350,12 @@ function headline(event: LedgerEvent, portName: (code: string) => string): strin
       }.`
     }
     case 'PROVISIONED': {
+      // "provisioned", not "watered and victualled" — sailor's cant reads as period flavour to
+      // whoever writes it and as nonsense to whoever plays it (the owner's plain-words rule,
+      // 2026-08-23). PROVISION is the verb the player pressed; the report uses their own word.
       const water = num(p, 'water_t')
       const food = num(p, 'food_t')
-      return `${fleet} watered and victualled${
+      return `${fleet} provisioned${
         water === null || food === null ? '' : ` — ${water.toFixed(1)} t of water, ${food.toFixed(1)} t of food`
       }.`
     }
@@ -438,8 +442,11 @@ function kindTone(kind: string) {
     case 'BOUGHT':
       return 'warning' as const
     case 'REPAIRING':
-    case 'REPAIRED':
       return 'danger' as const
+    // "came out of the shipyard, sound again" is good news; it wore the same red as going IN,
+    // which coloured a recovery as a wound (found in the 2026-08-23 sweep).
+    case 'REPAIRED':
+      return 'success' as const
     default:
       return 'neutral' as const
   }

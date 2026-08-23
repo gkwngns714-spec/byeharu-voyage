@@ -4,13 +4,14 @@ import {
   Button,
   Card,
   CardHeader,
-  Icon,
+  GoodTile,
+  GoodTileLine,
   Input,
   Notice,
   PageHeader,
   RARITY_TIERS,
-  RarityMark,
   Screen,
+  SectionLabel,
   Skeleton,
   TD,
   TH,
@@ -18,7 +19,7 @@ import {
   Table,
   categoryLabel,
   fineClass,
-  goodIcon,
+  goodTileGridClass,
   headRowClass,
   rarityLabel,
   scrollTableClass,
@@ -27,7 +28,7 @@ import { formatDucats, formatFixed, formatInt, formatKnots, formatOfTotal, forma
 import type { Officer, SnapshotGood, SnapshotNation, SnapshotPort, SnapshotShipClass } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
-import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
+import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
 // COMPENDIUM — the 도감: everything that exists in this world, catalogued, whether or not you have
 // met it. The owner, 2026-08-23: "create a 도감, separate tab, showing all the trade goods, ships,
@@ -146,7 +147,7 @@ function CompendiumBody() {
   const snapshot = useWorld((s) => s.snapshot)
   const roster = useWorld((s) => s.officers)
   const loadOfficers = useWorld((s) => s.loadOfficers)
-  const refresh = useWorld((s) => s.refresh)
+  const readAt = useWorld((s) => s.readAt)
   const portByCode = useWorld((s) => s.portByCode)
   const nationByCode = useWorld((s) => s.nationByCode)
 
@@ -155,7 +156,12 @@ function CompendiumBody() {
   // without the distinction a refused read draws a skeleton for ever.
   const [rosterAnswered, setRosterAnswered] = useState(false)
 
+  // KEYED ON `readAt`: the `read again` button is deleted (the owner: "read again on top left of
+  // the game is useless. remove it") — the world re-reads itself every thirty seconds and on tab
+  // focus, and the one live thing on this screen (who has signed, and whose fleet they serve)
+  // rides that same beat. A refused roster read is retried on the next beat with no button.
   useEffect(() => {
+    if (readAt === null) return
     let alive = true
     void loadOfficers().then(() => {
       if (alive) setRosterAnswered(true)
@@ -163,14 +169,7 @@ function CompendiumBody() {
     return () => {
       alive = false
     }
-  }, [loadOfficers])
-
-  // READ AGAIN MEANS THE ROSTER TOO: `refresh()` does not know about officers (its cadence is the
-  // world's), and the one live thing on this screen — who has signed, and whose fleet they serve —
-  // moves with the roster.
-  const readAgain = useCallback(async () => {
-    await Promise.all([refresh(), loadOfficers()])
-  }, [refresh, loadOfficers])
+  }, [loadOfficers, readAt])
 
   const [face, setFace] = useState<FaceId>('goods')
   const [query, setQuery] = useState('')
@@ -201,7 +200,6 @@ function CompendiumBody() {
         eyebrow="Reference"
         title="Compendium"
         explain="Everything that exists in this world — every trade good, every class of hull, every officer, every flag — whether or not you have met it yet. A reference only: nothing on this tab buys, hires or sails."
-        actions={<ReadAgain read={readAgain} />}
       />
 
       <Card head={<CardHeader flush title={shownFace.title} explain={shownFace.explain} />}>
@@ -441,6 +439,19 @@ function GoodsFace({
       .filter((g) => foldedMatch(needle, g.name, g.code, categoryLabel(g.category), g.rarity ?? ''))
   }, [goods, query, kind, tier])
 
+  // THE KIND IS A HEADING, NOT A CELL. The table this replaces spent a column printing the
+  // category down seventy rows; as tiles the kind heads its own group — the same fact, said once
+  // per group instead of once per good, and the sort above already delivers the groups whole.
+  const groups = useMemo(() => {
+    const out: { category: string; rows: SnapshotGood[] }[] = []
+    for (const g of rows) {
+      const last = out[out.length - 1]
+      if (last && last.category === g.category) last.rows.push(g)
+      else out.push({ category: g.category, rows: [g] })
+    }
+    return out
+  }, [rows])
+
   return (
     <div className="space-y-2">
       <CatalogueControls
@@ -462,64 +473,45 @@ function GoodsFace({
           ...(tier === null ? [] : [`the rarity “${rarityLabel(tier)}”`]),
         ]}
       />
-      {rows.length > 0 && (
-        <Table scrollHint className={scrollTableClass()}>
-          <thead>
-            <tr>
-              <TH>Good</TH>
-              {/* Rarity BEFORE kind: the tier is the qualifying fact and must survive the 390px
-                  fold — the icon already half-says the kind, and a tier hidden behind the table's
-                  horizontal scroll is decoration, not information (measured before this order). */}
-              <TH>Rarity</TH>
-              <TH>Kind</TH>
-              <TH align="num">Base</TH>
-              <TH align="num">Bulk</TH>
-              <TH align="num">Spoils</TH>
-              <TH>Refused by</TH>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((g) => (
-              <tr key={g.code}>
-                <TD>
-                  <span className="flex items-center gap-2">
-                    {/* Every one of the seventy has its OWN drawn mark (goodIcons.ts) — the
-                        category glyph is only the fallback for a good a migration lands undrawn. */}
-                    <Icon name={goodIcon(g.code, g.category)} size={18} className="shrink-0 text-ink-muted" />
-                    {g.name}
-                  </span>
-                </TD>
-                <TD>
-                  {/* Colour AND shape, from the one rendering (Rarity.tsx) — the tier qualifies
-                      the good; the drawn mark and the name stay the row's subject. */}
-                  <RarityMark rarity={g.rarity} withWord />
-                </TD>
-                <TD className="text-ink-muted">{categoryLabel(g.category)}</TD>
-                {/* Some anchors are half-ducat figures (82.50) — rounding them would misprint a
-                    served value, so the halves keep one decimal and the whole figures stay whole. */}
-                <TD align="num">{g.base_value % 1 === 0 ? formatDucats(g.base_value) : `${formatFixed(g.base_value, 1)} d.`}</TD>
-                <TD align="num">{formatTuns(g.bulk, 1)}</TD>
-                <TD align="num">
-                  {g.perishable_pct_day > 0 ? (
-                    `${formatPct(g.perishable_pct_day, 1)}/day`
-                  ) : (
-                    <span className="text-ink-faint">{'—'}</span>
-                  )}
-                </TD>
-                <TD>
-                  {g.culture_mask.length === 0 ? (
-                    <span className="text-ink-faint">{'—'}</span>
-                  ) : (
-                    // UNAVAILABLE IS SHOWN WITH ITS REASON (§4 rule 5): the cultures whose ports
-                    // refuse this good outright, in the server's own words.
-                    <span className="text-warning">{g.culture_mask.join(', ')}</span>
-                  )}
-                </TD>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      )}
+      {/* TILES, NOT ROWS (the owner, 2026-08-23: "make trade goods in blocks as well, not all
+          alligned in sentences — horizontally"). The same GoodTile MARKET composes, carrying this
+          face's own figures: the tile is the design system's, the figures are the catalogue's.
+          Nothing scrolls sideways and no name truncates. */}
+      <div className="space-y-4">
+        {groups.map((group) => (
+          <div key={group.category}>
+            <SectionLabel>{categoryLabel(group.category)}</SectionLabel>
+            <div className={goodTileGridClass()}>
+              {group.rows.map((g) => (
+                <GoodTile key={g.code} code={g.code} category={g.category} name={g.name} rarity={g.rarity}>
+                  {/* Some anchors are half-ducat figures (82.50) — rounding them would misprint a
+                      served value, so the halves keep one decimal and whole figures stay whole. */}
+                  <GoodTileLine label="base">
+                    {g.base_value % 1 === 0 ? formatDucats(g.base_value) : `${formatFixed(g.base_value, 1)} d.`}
+                  </GoodTileLine>
+                  <GoodTileLine label="bulk">{formatTuns(g.bulk, 1)}</GoodTileLine>
+                  <GoodTileLine label="spoils">
+                    {g.perishable_pct_day > 0 ? (
+                      `${formatPct(g.perishable_pct_day, 1)}/day`
+                    ) : (
+                      <span className="text-ink-faint">{'—'}</span>
+                    )}
+                  </GoodTileLine>
+                  <GoodTileLine label="refused by">
+                    {g.culture_mask.length === 0 ? (
+                      <span className="text-ink-faint">{'—'}</span>
+                    ) : (
+                      // UNAVAILABLE IS SHOWN WITH ITS REASON (§4 rule 5): the cultures whose
+                      // ports refuse this good outright, in the server's own words.
+                      <span className="text-warning">{g.culture_mask.join(', ')}</span>
+                    )}
+                  </GoodTileLine>
+                </GoodTile>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -659,7 +651,7 @@ function CaptainsFace({
     return answered ? (
       <Notice tone="warning">
         The roster could not be read just now. The rest of the compendium does not depend on it —
-        read again to try the roster once more.
+        it will be tried again in a moment.
       </Notice>
     ) : (
       <div className="space-y-2">

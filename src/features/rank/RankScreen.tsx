@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Badge,
   Card,
@@ -19,7 +19,7 @@ import {
 import { formatDucats, formatInt, formatRealShort, formatRelative } from '../../lib/format'
 import type { StandingsBoard } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
-import { ReadAgain, WorldFailed, WorldLoading } from '../../live/WorldGate'
+import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
 // RANK — I.4: "the Ledger is not a UI convenience — it is the source of truth from which rank is
 // computed." That sentence is the whole design of this screen, and as of 0025 the whole of it is
@@ -87,7 +87,7 @@ function RankBody() {
   const house = useWorld((s) => s.player)
   const board = useWorld((s) => s.standings)
   const loadStandings = useWorld((s) => s.loadStandings)
-  const refresh = useWorld((s) => s.refresh)
+  const readAt = useWorld((s) => s.readAt)
   const config = snapshot?.config
 
   // WHETHER THE BOARD HAS ANSWERED, which `standings === null` alone cannot say: null is both "not
@@ -95,7 +95,13 @@ function RankBody() {
   // which is the shape of a screen that is lying about being busy.
   const [answered, setAnswered] = useState(false)
 
+  // KEYED ON `readAt`: the `read again` button is deleted (the owner: "read again on top left of
+  // the game is useless. remove it") — the world re-reads itself every thirty seconds and on tab
+  // focus, and the board rides that same beat, so a refused board read is retried with no button
+  // and a new slot's photograph appears on its own. A repeat inside one slot costs two index
+  // lookups, because 0025 settles at most once per slot.
   useEffect(() => {
+    if (readAt === null) return
     let alive = true
     void loadStandings().then(() => {
       if (alive) setAnswered(true)
@@ -103,16 +109,7 @@ function RankBody() {
     return () => {
       alive = false
     }
-  }, [loadStandings])
-
-  // READ AGAIN MEANS READ THE BOARD AGAIN. `refresh()` reads fleets, ledger and house — it does not
-  // know about the board, and it should not: the store's default read is the world's cadence, and
-  // MARKET already established that a screen whose subject is its own read passes its own
-  // (WorldGate.tsx, the `read` prop). A repeat inside one slot costs two index lookups, because
-  // 0025 settles at most once per slot.
-  const readAgain = useCallback(async () => {
-    await Promise.all([refresh(), loadStandings()])
-  }, [refresh, loadStandings])
+  }, [loadStandings, readAt])
 
   // SERVED, not folded — `world.player()` counts them (migration 0014:140-141). FleetsScreen was
   // folding the roster for the same two figures; both read the house now.
@@ -126,7 +123,6 @@ function RankBody() {
         eyebrow="Standings"
         title="Rank"
         explain="Your own record, worked out fresh from your ledger every time you look. The table of captains beneath it is settled on a timer and says how old it is."
-        actions={<ReadAgain read={readAgain} />}
       />
 
       <TableOfCaptains board={board} answered={answered} houseName={house?.company_name ?? null} houseNation={house?.nation ?? null} />
@@ -246,7 +242,7 @@ function TableOfCaptains({
         {answered ? (
           <Notice tone="warning">
             The board could not be read just now. Nothing about your own record above depends on it
-            — read again to try the board once more.
+            — it will be tried again in a moment.
           </Notice>
         ) : (
           <div className="space-y-2">
