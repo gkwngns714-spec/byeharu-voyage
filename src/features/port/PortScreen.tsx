@@ -197,7 +197,9 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
       <PageHeader
         eyebrow="Harbour"
         title={`Port · ${port.name}`}
-        subtitle={`${port.country} · ${port.culture} · ${port.sea}`}
+        // "latin culture", not a bare "latin" — the raw culture value read as a word from
+        // nowhere between a country and a sea (the plain-words sweep, 2026-08-23).
+        subtitle={`${port.country} · ${port.culture} culture · ${port.sea}`}
         actions={<Badge tone="neutral">draft {port.max_draft}</Badge>}
       />
 
@@ -313,13 +315,18 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                       actions={[
                         {
                           intent: { verb: 'PROVISION', args: { mode: 'FULL' } },
-                          note: `range ${formatVoyageDays(acting.endurance_days)}`,
+                          // "provision", not "range" — the same served figure carried three names
+                          // (endurance / range / provision) and FLEETS settled on the verb that
+                          // refills it. This note was the last "range" left on a screen.
+                          note: `provision ${formatVoyageDays(acting.endurance_days)}`,
                         },
                         ...(hireCount(acting, port) > 0
                           ? [
                               {
                                 intent: { verb: 'HIRE', args: { count: String(hireCount(acting, port)) } },
-                                note: `berths ${formatInt(actingCrew?.aboard ?? 0)}/${formatInt(actingCrew?.max ?? 0)} · pool ${formatInt(port.crew_pool)}`,
+                                // "at the inn", not "pool" — the Services face calls the same
+                                // figure the Inn's, and a schema word must not name it here.
+                                note: `berths ${formatInt(actingCrew?.aboard ?? 0)}/${formatInt(actingCrew?.max ?? 0)} · ${formatInt(port.crew_pool)} at the inn`,
                               },
                             ]
                           : []),
@@ -327,7 +334,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                           ? [
                               {
                                 intent: { verb: 'REPAIR', args: { to_pct: '100' } },
-                                note: `worst hull ${formatPct(worstHullFraction(acting))} · shipyard t${port.yard_tier}`,
+                                note: `worst hull ${formatPct(worstHullFraction(acting))} · shipyard tier ${port.yard_tier}`,
                               },
                             ]
                           : []),
@@ -495,8 +502,11 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                     value={`${docked.length} alongside · draft ${port.max_draft}`}
                     hint="Your own hulls only. What another house has lying here is not something a harbour will tell you."
                   />
+                  {/* "Shipyard", not "Yard" — the owner's own example of the jargon sweep
+                      ("yard" → shipyard, 2026-08-23); migration 0033 made the served strings say
+                      the same word, and this label was the last "Yard" on a screen. */}
                   <DetailRow
-                    label="Yard"
+                    label="Shipyard"
                     mono
                     value={port.has_yard ? `tier ${port.yard_tier}` : 'none'}
                     hint={port.has_yard ? 'The shipyard prices a REPAIR when the order runs; PREVIEW it on Command for the quote.' : undefined}
@@ -760,7 +770,9 @@ function ElsewherePanel({
 }
 
 function buyNote(good: MarketGood): string {
-  const nbr = good.pct_nbr === null ? 'alone on this coast' : `${formatPctPoints(good.pct_nbr)} of neighbours`
+  // "of nearby ports", matching the one word the game uses for this figure ("nearby" — COMMAND's
+  // good rows and MARKET's tiles). "neighbours" was a third name for it on a third screen.
+  const nbr = good.pct_nbr === null ? 'alone on this coast' : `${formatPctPoints(good.pct_nbr)} of nearby ports`
   return `${good.buy} d./t · ${nbr}`
 }
 

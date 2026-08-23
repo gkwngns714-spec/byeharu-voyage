@@ -1,4 +1,4 @@
-// THE ARRANGEMENT OF THE MARKET TABLE — pure, no React, and NO ARITHMETIC ABOUT PRICE.
+// THE ARRANGEMENT OF THE MARKET GOODS — pure, no React, and NO ARITHMETIC ABOUT PRICE.
 //
 // ── WHY THERE IS NO PRICE CODE IN THIS FOLDER ANY MORE ──────────────────────────────────────────
 // `features/market/prices.ts` used to derive mid/ask/bid, %NBR and the buy/hold/sell band on this
@@ -61,6 +61,14 @@ export function blockLabel(block: MarketBlock, config: SnapshotConfig): string {
 
 export type SortKey = 'nbr' | 'name' | 'price' | 'stock'
 export type MarketFilter = 'all' | 'buy' | 'sell'
+
+/** The player's word for a sort key. `nbr` is the schema's name for the neighbour index and the
+ *  player never reads the schema — the chip used to say `%↑`, which is a glyph you had to already
+ *  understand. "nearby" is the word COMMAND's good rows chose for the same figure
+ *  (features/command/ArgPickers.tsx), and one figure carries one name across the game. */
+export function sortWord(key: SortKey): string {
+  return key === 'nbr' ? 'nearby' : key
+}
 
 /** The six-cell block meter of §E.4, drawn from the server's 0..6 `stock_band`. A port under a
  *  third of its target is shaded rather than filled: a shortage should not look like a stock. */

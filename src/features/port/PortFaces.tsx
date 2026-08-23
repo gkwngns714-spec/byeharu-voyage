@@ -8,7 +8,7 @@ import {
   Skeleton,
   fineClass,
 } from '../../components/ui'
-import { formatInt } from '../../lib/format'
+import { formatInt, formatPctPoints } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, SnapshotPort } from '../../lib/rpc'
 
@@ -103,8 +103,10 @@ export function OfficersFace({ port, acting }: { port: SnapshotPort; acting: Fle
               </div>
               <p className="mt-1 text-xs text-ink-muted">{o.blurb}</p>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs">
+                {/* `formatPctPoints`, matching the compendium's spelling of the same served
+                    figure — one figure, one formatting, across the two screens that print it. */}
                 <span className={o.takes_effect ? 'text-success' : 'text-ink-faint'}>
-                  +{o.bonus_pct}%
+                  +{formatPctPoints(o.bonus_pct)}
                 </span>
                 <span className="text-ink-muted">{formatInt(o.wage)} d.</span>
                 {o.hired && <span className="text-accent">{o.fleet ?? 'ashore'}</span>}

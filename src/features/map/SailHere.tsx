@@ -178,9 +178,11 @@ export function SailHere({
         </p>
       )}
 
+      {/* "checking the passage…", not "asking the server…" — the player is not talking to a
+          server, they are asking whether she may sail (the plain-words sweep, 2026-08-23). */}
       {answer?.kind === 'asking' && (
         <p className={fineClass()} data-testid="map-sail-asking">
-          asking the server…
+          checking the passage…
         </p>
       )}
 

@@ -217,7 +217,7 @@ for (const tab of TABS) {
   })
 }
 
-test('MARKET puts a complete price row above the fold, per K.1', async ({ page, request, baseURL }) => {
+test('MARKET puts complete priced goods above the fold, per K.1', async ({ page, request, baseURL }) => {
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
@@ -225,24 +225,28 @@ test('MARKET puts a complete price row above the fold, per K.1', async ({ page, 
   await page.goto('market')
   await ready(page)
 
+  // THE GOODS ARE TILES NOW (2026-08-23, the owner: "make trade goods in blocks as well, not all
+  // alligned in sentences — horizontally"), so the fold is measured in complete TILES rather than
+  // complete table rows. A tile carries MORE than the old 44px row did (the index, both prices,
+  // stock, trend and destination all at once), so two whole tiles above the fold say strictly more
+  // than three rows used to — the floor is 2 tiles, and the first must show its % index.
   const fold = await page.evaluate(() => {
     const nav = document.querySelector('nav')
     const foldY = nav ? nav.getBoundingClientRect().top : window.innerHeight
-    const rows = [...document.querySelectorAll('tbody tr')].filter((r) => r.querySelector('td button'))
-    const complete = rows.filter((r) => r.getBoundingClientRect().bottom <= foldY)
+    const tiles = [...document.querySelectorAll('[data-testid="good-tile"]')]
+    const complete = tiles.filter((t) => t.getBoundingClientRect().bottom <= foldY)
     return {
       foldY: Math.round(foldY),
-      firstRowBottom: rows[0] ? Math.round(rows[0].getBoundingClientRect().bottom) : null,
-      completeRowsAboveFold: complete.length,
-      firstRowText: rows[0] ? (rows[0] as HTMLElement).innerText.replace(/\s+/g, ' ') : '',
+      completeTilesAboveFold: complete.length,
+      firstTileText: tiles[0] ? (tiles[0] as HTMLElement).innerText.replace(/\s+/g, ' ') : '',
     }
   })
 
   // K.1's beat: "MARKET tab. Sal is 62% of its neighbours. The BUY block is at the top; you did not
   // have to know anything to see it." If you have to scroll first, the game has said nothing.
   expect(
-    fold.completeRowsAboveFold,
-    `only ${fold.completeRowsAboveFold} complete price rows above the fold at ${fold.foldY}px`,
-  ).toBeGreaterThanOrEqual(3)
-  expect(fold.firstRowText).toMatch(/%/) // a %NBR figure really is on screen
+    fold.completeTilesAboveFold,
+    `only ${fold.completeTilesAboveFold} complete good tiles above the fold at ${fold.foldY}px`,
+  ).toBeGreaterThanOrEqual(2)
+  expect(fold.firstTileText).toMatch(/%/) // the nearby index really is on screen
 })
