@@ -1,6 +1,8 @@
-// Measures the prototype pathfinder. Every number in docs/DESIGN_RESEARCH_NAVIGATION.md that
-// concerns cost comes from a run of this file. `node scripts/proto/bench.mjs`
-import { buildNavGrid, findPath, COLS, ROWS } from './pathfind.mjs'
+// Measures the prototype pathfinder in JavaScript. Every cost figure in
+// docs/DESIGN_RESEARCH_NAVIGATION.md §P.4 comes from a run of this file.
+// `node scripts/proto/bench.mjs`
+import { readFileSync } from 'node:fs'
+import { buildNavGrid, findPath, segmentIsWater, COLS, ROWS } from './pathfind.mjs'
 import { buildSeaGrid, findSeaRoute } from '../sea-grid.mjs'
 
 const P = {
@@ -21,7 +23,6 @@ const P = {
   OPEN_ATL: { lat: 20.0, lon: -40.0, n: 'open Atlantic 20N 40W' },
   OPEN_PAC: { lat: 0.0, lon: -150.0, n: 'open Pacific 0N 150W' },
 }
-
 const CASES = [
   ['LIS', 'CAD'], ['LIS', 'AMS'], ['LIS', 'SSA'], ['LIS', 'CAL'],
   ['LIS', 'NAG'], ['LIS', 'MNL'], ['VER', 'ACA'], ['ALX', 'ADN'],
@@ -67,29 +68,23 @@ for (const [a, b] of CASES) {
 console.log('')
 console.log(`WORST proto search: ${worst.toFixed(0)} ms`)
 
-// Repeat the worst case to see the warm cost (the scratch arrays are reused, the grid is resident).
 const HOT = 5
 t = performance.now()
 for (let i = 0; i < HOT; i++) findPath(nav, P.LIS, P.NAG, scratch)
 console.log(`Lisboa → Nagasaki, ${HOT} consecutive searches: ${((performance.now() - t) / HOT).toFixed(0)} ms each`)
 
-// The whole 214-port world, every pair, is what a stored graph buys. Price it.
-const ports = JSON.parse(
-  (await import('node:fs')).readFileSync(new URL('../../data/ports.json', import.meta.url), 'utf8'))
-const list = (Array.isArray(ports) ? ports : ports.ports).map((p) => ({ lat: p.lat, lon: p.lon, n: p.id ?? p.code }))
+const portsRaw = JSON.parse(readFileSync(new URL('../../data/ports.json', import.meta.url), 'utf8'))
+const list = (Array.isArray(portsRaw) ? portsRaw : portsRaw.ports)
 console.log(`\nports in data/ports.json: ${list.length}`)
 t = performance.now()
 let n = 0
 for (let i = 0; i < 40; i++) {
   const from = list[i % list.length]
   const to = list[(i * 37 + 11) % list.length]
-  const r = findPath(nav, from, to, scratch)
-  if (r) n++
+  if (findPath(nav, from, to, scratch)) n++
 }
 console.log(`40 random port pairs: ${((performance.now() - t) / 40).toFixed(0)} ms each (${n}/40 routable)`)
 
-// Verification is the other half of the story: walking a path and checking every sample is water.
-const { segmentIsWater } = await import('./pathfind.mjs')
 const long = findPath(nav, P.LIS, P.NAG, scratch)
 t = performance.now()
 for (let rep = 0; rep < 100; rep++) {
@@ -98,7 +93,7 @@ for (let rep = 0; rep < 100; rep++) {
       i + 2 === long.path.length ? 40 : 0)
   }
 }
-console.log(`verifying that same ${long.path.length}-point path is all water: ${((performance.now() - t) / 100).toFixed(2)} ms`)
+console.log(`verifying that same ${long.path.length}-point path is all water (in JS): ${((performance.now() - t) / 100).toFixed(2)} ms`)
 
 console.log('\n── the Arctic defect, stated as a diff ─────────────────────────────────────')
 for (const { name, r, o } of rows) {

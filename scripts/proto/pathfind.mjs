@@ -7,7 +7,7 @@
 //   docs/DESIGN_RESEARCH_NAVIGATION.md §Proposal — this file exists to price that decision, not to
 //   pre-empt it.
 // WHO THE SECOND CALLER IS (q3): the trade-route scan, which today asks voyage.reach_from for the
-//   distance to MANY ports. That is why `sail()` here can also answer many goals in one search.
+//   distance to MANY ports.
 // WHAT WOULD MAKE IT THE WRONG SHAPE (q4): if a search costs more than a player will wait for at
 //   departure. That is the number this file measures, and it refuses to be a guess.
 //
@@ -15,10 +15,9 @@
 // has today:
 //   1. A BINARY HEAP, not a linear scan of the open list. sea-grid.mjs says "fast enough and this
 //      runs offline"; it is not fast enough to run at departure.
-//   2. AN ICE MASK. sea-grid.mjs's raster has an open Arctic, so its own A* routes Lisboa->Nagasaki
-//      over the North Pole at 88.6°N for 7,565 nm. In 1550 that water is ice.
-//   3. AN OCTILE HEURISTIC scaled to the true cell size, and a tie-break, so the search does not
-//      fan out over an open ocean where every path costs the same.
+//   2. (WAS an ice mask of its own. sea-grid.mjs now carries `ICE` and does it better — see below.)
+//   3. AN OCTILE STEP COST scaled to the true cell size at each latitude, rather than a great
+//      circle per step.
 //   4. IT KEEPS THE PATH. The 782 stored legs keep only their length (0 of 782 carry a path), which
 //      is why a fleet is drawn straight across the cape its leg was measured round.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -28,29 +27,26 @@ import { buildSeaGrid, COLS, ROWS, CELL_DEG, cellLat, cellLon, rowOf, colOf, gcN
 
 const NM_PER_DEG = 60
 
-// ── The passability mask ───────────────────────────────────────────────────────────────────────
-// Water is not one thing. A cell is CLOSED (ice, in this century) or open, and open water still
-// carries a cost multiplier so a route can prefer the sailed road over the geometric one.
+// ── The navigable sea ──────────────────────────────────────────────────────────────────────────
+// This USED to add an ice mask of its own — a flat cut above 66.5°N — because sea-grid.mjs's raster
+// had an open Arctic and its own A* routed Lisboa→Nagasaki over the North Pole at 88.6°N for
+// 7,565 nm against a true 12,989.
 //
-// The northern limit is the honest part of this prototype: the Northeast and Northwest Passages
-// were not sailed until 1878 and 1906, so any path the raster offers above them is an artefact of
-// the raster, not a route. The southern limit is the Antarctic pack.
-export const ICE_NORTH_LAT = 66.5     // the Arctic Circle. See the note in the design doc: this is
-export const ICE_SOUTH_LAT = -60.0    // a placeholder for a per-sea, per-season closure table.
-
-/** water = navigable in this century. Returns a Uint8Array, 1 = sailable. */
+// That is now fixed UPSTREAM, and better than I had it: sea-grid.mjs gained an `ICE` list on
+// 2026-08-23 which closes the Siberian and Canadian arctics BY LONGITUDE above 66.5°N, so the
+// Northeast and Northwest Passages are shut while the Barents and White Sea road to Arkhangelsk —
+// sailed by the Muscovy Company from 1553 — stays open. My flat latitude cut stranded Vardø at
+// 70.4°N and fifteen real legs with it.
+//
+// So this prototype now COMPOSES the one authority rather than keeping a second, worse copy of it
+// ([[no-spaghetti-law]]). The wrapper survives only as the seam where a per-sea, per-season
+// closure would attach — see the design doc, §P.10.
 export function buildNavGrid() {
-  const water = buildSeaGrid()
-  const nav = Uint8Array.from(water)
-  for (let row = 0; row < ROWS; row++) {
-    const lat = cellLat(row)
-    if (lat > ICE_NORTH_LAT || lat < ICE_SOUTH_LAT) nav.fill(0, row * COLS, row * COLS + COLS)
-  }
-  return nav
+  return buildSeaGrid()
 }
 
 // ── A min-heap over (priority, node) ───────────────────────────────────────────────────────────
-// Typed arrays, no allocation per push. The open list on a Lisboa->Nagasaki search reaches tens of
+// Typed arrays, no allocation per push. The open list on a Lisboa→Nagasaki search reaches tens of
 // thousands of entries and a linear scan of it is what makes the existing generator take seconds.
 class Heap {
   constructor(cap = 1 << 16) {
@@ -58,14 +54,14 @@ class Heap {
     this.node = new Int32Array(cap)
     this.n = 0
   }
-  #grow() {
+  grow() {
     const pri = new Float64Array(this.pri.length * 2)
     const node = new Int32Array(this.node.length * 2)
     pri.set(this.pri); node.set(this.node)
     this.pri = pri; this.node = node
   }
   push(p, v) {
-    if (this.n === this.pri.length) this.#grow()
+    if (this.n === this.pri.length) this.grow()
     let i = this.n++
     this.pri[i] = p; this.node[i] = v
     while (i > 0) {
@@ -100,7 +96,7 @@ class Heap {
 
 // ── Geometry, precomputed per row ──────────────────────────────────────────────────────────────
 // A cell is CELL_DEG tall everywhere and CELL_DEG*cos(lat) wide. Both in nm, once per row, so the
-// inner loop is eight adds and no trigonometry.
+// inner loop is a few adds and no trigonometry.
 const NS = CELL_DEG * NM_PER_DEG
 const EW = new Float64Array(ROWS)
 for (let r = 0; r < ROWS; r++) EW[r] = CELL_DEG * NM_PER_DEG * Math.cos((cellLat(r) * Math.PI) / 180)
@@ -131,7 +127,7 @@ export function snapToNav(nav, lat, lon, maxRings = 12) {
 const D = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]]
 
 /**
- * THE search. Returns { nm, cells, path, expanded, ms } or null.
+ * THE search. Returns { nm, path, cells, expanded, snapNm, ms } or null.
  *
  * `path` is the straightened polyline a ship actually sails — the grid's 45° staircase is an
  * artefact of the raster, not of the sea — and `nm` is the length OF THAT POLYLINE, so the number
@@ -161,8 +157,7 @@ export function findPath(nav, from, to, opts = {}) {
   while (heap.n > 0) {
     const cur = heap.pop()
     if (cur === goal) { found = true; break }
-    // A stale heap entry: this node already came out with a better g.
-    if (seen[cur] !== stamp) continue
+    if (seen[cur] !== stamp) continue          // a stale heap entry
     seen[cur] = -stamp                          // closed
     expanded++
     const row = (cur / COLS) | 0
@@ -170,13 +165,13 @@ export function findPath(nav, from, to, opts = {}) {
     const ns = NS, ew = EW[row]
     const cost = g[cur]
     for (let k = 0; k < 8; k++) {
-      const nrow = row + D[k][0]
+      const dr = D[k][0], dc = D[k][1]
+      const nrow = row + dr
       if (nrow < 0 || nrow >= ROWS) continue
-      const ncol = ((col + D[k][1]) % COLS + COLS) % COLS
+      const ncol = ((col + dc) % COLS + COLS) % COLS
       const next = nrow * COLS + ncol
       if (!nav[next]) continue
       if (seen[next] === -stamp) continue
-      const dr = D[k][0], dc = D[k][1]
       const dy = dr === 0 ? 0 : ns
       const dx = dc === 0 ? 0 : (ew + EW[nrow]) / 2
       const step = dx === 0 ? dy : dy === 0 ? dx : Math.sqrt(dx * dx + dy * dy)

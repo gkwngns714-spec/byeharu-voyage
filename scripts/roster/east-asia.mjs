@@ -195,6 +195,14 @@ export default [
     notes: 'Port Jackson was settled in 1788; Dutch ships charted Australia’s west and north coasts from 1606, not this shore.' },
 
   // ---------- islands (added 2026-08-24) ----------
+  // Tidore was lost in the roster reconciliation of 2026-08-24 and is restored here. It is not
+  // optional colour: Tidore and Ternate are THE two clove sultanates, the islands the whole
+  // spice trade turned on, and 8 legs of the sea graph still named it after it vanished.
+  { id: 'tidore', name: 'Tidore', localName: 'Tidore', wiki: 'Tidore', country: 'ID', sea: 'molucca-sea', region: 'southeast-asia', tier: 3,
+    historicalNames: ['Duko'],
+    goods: ['cloves', 'rice', 'dried-fish', 'coral'],
+    notes: 'Ternate’s twin and rival clove sultanate; Spain garrisoned a fort here against the Dutch from 1606 to 1663.' },
+
   // Real places with real coordinates, resolved through Wikidata like every other
   // port here. They are tier 3, so four offers each under the owner's 4-9 rule, and
   // every good they name exists in the 243-good catalogue - checked, not assumed.

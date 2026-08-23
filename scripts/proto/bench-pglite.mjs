@@ -1,10 +1,10 @@
 // Measures the plpgsql A* inside PGlite — the runtime the game actually ships on.
+// THIS IS THE MEASUREMENT THAT REJECTS THE OPTION. Expect it to take ~20 minutes.
 // `node scripts/proto/bench-pglite.mjs`
-import { PGlite } from '@electric-sql/pglite'
+import { loadPGlite } from './pglite-loader.mjs'
+const PGlite = await loadPGlite()
 import { readFileSync } from 'node:fs'
 import { buildNavGrid, COLS, ROWS, CELL_DEG } from './pathfind.mjs'
-
-const sql = readFileSync(new URL('./pglite-astar.sql', import.meta.url), 'utf8')
 
 const nav = buildNavGrid()
 console.log(`nav grid ${COLS}x${ROWS}, ${nav.length} bytes`)
@@ -14,9 +14,10 @@ const db = await new PGlite()
 await db.query('select 1')
 console.log(`PGlite boot: ${(performance.now() - t).toFixed(0)} ms`)
 
-await db.exec(sql)
+for (const f of ['./raster.sql', './pglite-astar.sql']) {
+  await db.exec(readFileSync(new URL(f, import.meta.url), 'utf8'))
+}
 
-// The raster goes in as one bytea. Hex is the portable way through the wire protocol.
 t = performance.now()
 await db.query(
   `insert into sea.raster (id, cols, rows, cell_deg, cells) values (1, $1, $2, $3, $4)

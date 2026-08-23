@@ -313,6 +313,19 @@ begin
   select id into v_lis from public.ports where code = 'LIS';
 
   begin
+      -- THE PROBE OWNS ITS WEATHER, and this is not tidiness -- it is the difference between a
+      -- guard and a lottery. 0031 rotates the world secret on every fresh apply, and voyage.rng
+      -- is keyed on it, so the hazards rolled for this passage differ on every single run. A
+      -- STORM delays her arrival past the instant the onward assert settles to, and f_onward
+      -- stays false for a reason that has nothing to do with diverting. MEASURED before this line
+      -- existed: one failure in seven applies -- rare enough to look like a fluke, frequent enough
+      -- to red a CI run nobody could reproduce.
+      --
+      -- Zeroed HERE, inside the subtransaction that is rolled back, so the live world's weather is
+      -- untouched. This is 0034's fix, which hit the identical trap and wrote it down; a lottery
+      -- assert has cost this project four CI rounds before that.
+      update public.world_config set value = to_jsonb(0.0) where key = 'hazard_p_max';
+
     -- THE SUBJECT IS FOUND: the nearest harbour exactly three legs out of Lisboa, so there is a
     -- real tail to cut and the probe still settles in seconds.
     select r.port_id into v_far

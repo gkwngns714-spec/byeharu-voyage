@@ -8,7 +8,7 @@
     "url": "https://www.wikidata.org/",
     "fetchedAt": "2026-08-18T08:40:20.399Z"
   },
-  "count": 223,
+  "count": 224,
   "ports": [
     {
       "id": "acapulco",
@@ -5705,6 +5705,32 @@
       "source": {
         "wikidata": "Q17151",
         "enwiki": "Thessaloniki"
+      }
+    },
+    {
+      "id": "tidore",
+      "name": "Tidore",
+      "localName": "Tidore",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": 0.683333,
+      "lon": 127.4,
+      "sea": "molucca-sea",
+      "region": "southeast-asia",
+      "tier": 3,
+      "historicalNames": [
+        "Duko"
+      ],
+      "goods": [
+        "cloves",
+        "rice",
+        "dried-fish",
+        "coral"
+      ],
+      "notes": "Ternate’s twin and rival clove sultanate; Spain garrisoned a fort here against the Dutch from 1606 to 1663.",
+      "source": {
+        "wikidata": "Q19153",
+        "enwiki": "Tidore"
       }
     },
     {
