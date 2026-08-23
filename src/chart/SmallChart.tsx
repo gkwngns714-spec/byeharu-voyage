@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { fineClass } from '../components/ui'
+import { project } from '../lib/geo'
 import type { FleetView, SnapshotLeg, SnapshotPort } from '../lib/rpc'
 import { ChartCanvas } from './ChartCanvas'
 import { buildChartModel } from './chartModel'
@@ -129,6 +130,35 @@ export function SmallChart({
   // keeps its wheel and its vertical thumb-scroll, the chart gets everything else.
   const surface = useChartSurface(boxRef, frameBounds, undefined, { scroll: 'page-vertical' })
   const box = surface.viewBox
+
+  // ── THE CHART MOVES TO THE HARBOUR YOU CHOSE (the owner, 2026-08-23: "when i press corfu or
+  // dubrovnik for example on sail, map, the map does not move to that location. make it move -
+  // pinpoint"). A ring drawn off the glass is the chart saying "I marked it" and showing nothing:
+  // the untouched chart re-frames through `frameBounds` above, but once the player has panned or
+  // zoomed, their view stands — and a chosen Adriatic harbour stayed outside a frame parked off
+  // Iberia. So when the CHOICE gains a harbour (the same `considering` the ring is drawn from —
+  // never the hover-only `highlight`, which a phone cannot raise), and the current frame cannot
+  // show it, the view centres on it at the player's own zoom (`surface.centreOn`, the one existing
+  // camera move — no second camera, no span change, nothing appears or disappears; only the
+  // viewBox moves, which is the chart ANSWERING, not the layout restructuring).
+  //
+  // Only a NEW code moves the frame — the ref remembers what was already chosen, so panning away
+  // from a standing choice is respected, and a frame that already holds the harbour is left alone.
+  const chosenBefore = useRef<readonly string[]>([])
+  useEffect(() => {
+    if (!box) return
+    const before = new Set(chosenBefore.current)
+    chosenBefore.current = considering
+    const fresh = considering.filter((code) => !before.has(code))
+    const code = fresh[fresh.length - 1]
+    if (!code) return
+    const port = chartPorts.find((p) => p.code === code)
+    if (!port) return
+    const at = project(port)
+    const inside =
+      at.x >= box.x && at.x <= box.x + box.width && at.y >= box.y && at.y <= box.y + box.height
+    if (!inside) surface.centreOn(port)
+  }, [considering, chartPorts, box, surface])
 
   const selection: MapSelection = highlight ? { kind: 'port', code: highlight } : null
 

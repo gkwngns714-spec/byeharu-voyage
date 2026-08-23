@@ -50,19 +50,45 @@ export function findVerb(verbs: readonly VerbSpec[], verb: string | null): VerbS
 /**
  * The argument an enum VALUE stands in for, if any. `PROVISION`'s `mode` offers `FULL` and `DAYS`,
  * and `DAYS` is the name of the next argument — choosing it is choosing to say a number of days.
- * The relationship is in the schema; reading it here is what lets the composer show the day
- * stepper only when it means something, without a per-verb rule.
+ * The relationship is in the schema; reading it here is what keeps it a single relationship
+ * rather than a per-verb rule.
  */
 function revealedArg(spec: VerbSpec, arg: VerbArg, value: string | undefined): VerbArg | undefined {
   if (arg.type !== 'enum' || !value) return undefined
   return spec.args.find((a) => a !== arg && a.name.toUpperCase() === value.toUpperCase())
 }
 
-/** True when this argument is only meaningful because an enum choice asked for it. */
-function isRevealedByEnum(spec: VerbSpec, arg: VerbArg): boolean {
-  return spec.args.some(
-    (a) => a.type === 'enum' && (a.values ?? []).some((v) => v.toUpperCase() === arg.name.toUpperCase()),
-  )
+/**
+ * THE SAME RELATIONSHIP, READ FROM THE OTHER END: the enum argument (and which of its values)
+ * that NAMES this argument. `days` is named by `mode`'s value `DAYS`; an argument nothing names
+ * gets `undefined`.
+ *
+ * This is the one reading of "these two arguments are halves of one question" — `revealedArg`
+ * above walks it value→argument for the line, this walks it argument→enum for the composer.
+ * The composer needs it because BOTH halves are on screen at once (the owner, 2026-08-23: *"in
+ * provision, full and days, they does not have to be folded"*): answering the named argument IS
+ * choosing the enum value, so the composer writes both, and `orderText` below refuses to emit a
+ * named argument whose enum currently says something else.
+ */
+export function enumNaming(
+  spec: VerbSpec,
+  arg: VerbArg,
+): { enumArg: VerbArg; value: string } | undefined {
+  for (const a of spec.args) {
+    if (a.type !== 'enum' || a === arg) continue
+    const value = (a.values ?? []).find((v) => v.toUpperCase() === arg.name.toUpperCase())
+    if (value !== undefined) return { enumArg: a, value }
+  }
+  return undefined
+}
+
+/** True when the enum that names this argument currently says its name — the condition under
+ *  which the argument MEANS anything. An argument nothing names always means something. */
+function namedByItsEnum(spec: VerbSpec, arg: VerbArg, args: Record<string, string>): boolean {
+  const naming = enumNaming(spec, arg)
+  if (!naming) return true
+  const said = args[naming.enumArg.name] ?? String(naming.enumArg.default ?? '')
+  return said.toUpperCase() === naming.value.toUpperCase()
 }
 
 /**
@@ -71,19 +97,23 @@ function isRevealedByEnum(spec: VerbSpec, arg: VerbArg): boolean {
  * Fleet arguments are never among them: the fleet is picked ONCE, at the top of the screen, and it
  * is what `cmd.issue()` is called with. Asking for it twice would be two authorities for the one
  * question "whose order is this?".
+ *
+ * An enum-revealed argument (`days`) is ALWAYS among them. It used to appear only once the enum
+ * had been asked for it, which put PROVISION's day stepper behind a chip — the fold the owner
+ * refused: *"in provision, full and days, they does not have to be folded."* Both halves stand
+ * open; the guard against a meaningless value moved to where it belongs, the LINE (`orderText`
+ * skips a named argument whose enum says something else) and the completeness check below.
  */
-export function visibleArgs(spec: VerbSpec, args: Record<string, string>): VerbArg[] {
-  return spec.args.filter((arg) => {
-    if (arg.type === 'fleet') return false
-    if (!isRevealedByEnum(spec, arg)) return true
-    // A revealed argument appears only once the enum that names it has been chosen.
-    return spec.args.some((a) => revealedArg(spec, a, args[a.name]) === arg)
-  })
+export function visibleArgs(spec: VerbSpec): VerbArg[] {
+  return spec.args.filter((arg) => arg.type !== 'fleet')
 }
 
-/** Required, in the schema's words — the arguments the line cannot be issued without. */
+/** Required, in the schema's words — the arguments the line cannot be issued without. A named
+ *  argument is only missing while its enum is actually asking for it. */
 export function missingArgs(spec: VerbSpec, args: Record<string, string>): VerbArg[] {
-  return visibleArgs(spec, args).filter((a) => a.required && !args[a.name])
+  return visibleArgs(spec).filter(
+    (a) => a.required && !args[a.name] && namedByItsEnum(spec, a, args),
+  )
 }
 
 export function isComplete(spec: VerbSpec, args: Record<string, string>): boolean {
@@ -116,6 +146,13 @@ export function orderText(
 
     const value = args[arg.name]
     if (value === undefined || value === '') continue
+
+    // A named argument rides out on its enum's own emission (the `revealed` branch below), and
+    // ONLY when the enum is asking for it. With both halves of PROVISION on screen at once, a
+    // player can say 30 days and then choose FULL — the 30 stays visible for changing their mind,
+    // and this line is what keeps it out of "PROVISION Gaivota FULL 30", which is not a sentence
+    // cmd.parse() reads.
+    if (!namedByItsEnum(spec, arg, args)) continue
 
     const revealed = revealedArg(spec, arg, value)
     if (revealed) {

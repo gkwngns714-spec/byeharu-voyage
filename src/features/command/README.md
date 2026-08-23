@@ -40,22 +40,32 @@ Every argument picker offers what actually exists **now**:
   server's phrase for what stops her, and the stock figures behind the row's meter. **The BUY and
   SELL price cells are the trade itself** (the owner, 2026-08-23: *"i want to be able to click on
   buy and sell itself and do trades"*): tapping a cell names the verb AND the good on the one
-  draft, and the composer's own derivation then unfolds the quantity step — the `Choose <good>`
-  button the fold used to carry was deleted with that change, because two ways to pick one good is
-  two authorities for the pick. A sell cell for a good she carries none of is disabled and says
-  why (“none aboard”). The fold's “where it pays more” block — `world.trade_routes()` — was
-  removed by the owner's instruction (2026-08-23: *"where it pays more does not need to be given
-  in buy"*); the comparison lives on the Market tab, which still reads 0019. **SELL's fold has no
-  capacity block at all** — what is aboard is already on the row and again in the stepper's
-  caption, and a third rendering was the copy to delete.
+  draft, opens the chosen row's fold, **and the quantity step is IN that fold** — right under the
+  press, with the whole list still standing (the owner, fourth time, 2026-08-23: *"i told you to
+  not recreate anything when pressing a certain tab… the tab disappears and opens a new one"*; the
+  old shape unmounted all seventy rows and stood a qty row where they had been). The
+  `Choose <good>` button the fold used to carry was deleted with the cells change, because two
+  ways to pick one good is two authorities for the pick; the separate qty argument row went the
+  same way when the step moved into the fold. A sell cell for a good she carries none of is
+  disabled and says why (“none aboard”). The fold's “where it pays more” block —
+  `world.trade_routes()` — was removed by the owner's instruction (2026-08-23: *"where it pays
+  more does not need to be given in buy"*); the comparison lives on the Market tab, which still
+  reads 0019. **A fold states the ceiling once**: the row being looked at gets the capacity
+  reading, the row that was chosen gets the stepper (whose caption states the same ceiling and
+  binding), never both.
 * **qty** — ALL / HALF / MAX and a stepper that walks in `config.trade_step_tuns`, bounded by the
   hold, the stock and the purse, and captioned with **which** of those stops you there. What that
   quantity would COST is not on the caption; the rail says it (§9).
 * **number** — HIRE is bounded by empty berths, REPAIR starts above her present hull, PROVISION
-  offers days. No free-form number field exists on this screen. **HIRE's and PROVISION's argument
-  rows do not fold** (the owner, 2026-08-23: *"when pressing hire, 12, it unfolds. this is
-  uncomfortable"* / *"Provision also"*): each is one number, the picker is simply there, and
-  answering never collapses it — the fold is BUY's, where it informs a choice among seventy.
+  offers days. No free-form number field exists on this screen. **No argument row ever folds on an
+  answer** (the owner, 2026-08-23, four times, most plainly: *"i told you to not recreate anything
+  when pressing a certain tab"*): a required argument, one with a schema default, or one another
+  argument's enum names renders open, permanently (`OrderComposer`'s `foldable`); only a genuinely
+  optional extra — SAIL's `via`, a trade's price limit — folds, and only under the player's own
+  tap. PROVISION's FULL/DAYS chips and its day stepper stand open together (*"in provision, full
+  and days, they does not have to be folded"*) — saying a number of days IS choosing DAYS
+  (`domain/order`'s `enumNaming`). The one fold that informs rather than hides remains the good
+  ROW's reading fold, which is a different thing from an argument row collapsing.
 * **enum / price** — the schema's own words; a limit is offered around the market's price.
 
 ## 2. The string is still the one contract
@@ -136,9 +146,12 @@ the tab (`ArgPickers.tsx`'s `GoodFigures` and `GoodDetail`).
 
 ## 8. Time
 
-Nothing here ticks. A read is the catch-up (D.2): `Read again` refetches, issuing refetches, and an
-ETA is counted from `readAt` — the instant the world was last read — rather than from the wall clock
-during a render.
+Nothing here ticks. A read is the catch-up (D.2): the shell reads the world every thirty seconds and
+on tab focus (`AppShell.tsx`), issuing refetches, the market's countdown re-asks at the price edge,
+and an ETA is counted from `readAt` — the instant the world was last read — rather than from the
+wall clock during a render. The screen carries no refresh control of its own (the owner, 2026-08-23:
+*"read again on top left of the game is useless. remove it"* — a button asking for what already
+happens teaches the player their tap did nothing).
 
 ## 9. The fleet rail — one panel, four verbs
 
@@ -283,6 +296,14 @@ reach it (`OrderComposer`'s `considering`, the same shape as the good list's `in
 a picture that jumped as the pointer crossed twelve rows would be unreadable. A thumb raises neither
 event, so on the 390px target the chart simply follows the choice.
 
+**The CHOICE, unlike the pointer, does move the chart** (the owner, 2026-08-23: *"when i press corfu
+or dubrovnik for example on sail, map, the map does not move to that location. make it move -
+pinpoint"*). An untouched chart re-frames through `frameBounds`; once the player has panned or
+zoomed, their view stands — so a chosen harbour the frame cannot show recentres the view on it at
+the player's own zoom (`SmallChart`'s effect over `surface.centreOn`, the one existing camera move).
+Only the viewBox moves: nothing appears, disappears or changes size, which is what keeps this on the
+right side of the no-restructure law.
+
 ### The three things it does not do, and why each one is load-bearing
 
 1. **It draws no line between the two places.** A straight segment across this sheet is not the
@@ -292,13 +313,14 @@ event, so on the 390px target the chart simply follows the choice.
    nobody can check. What *is* drawn between ports is the authored lane graph, whose miles are the
    server's own, and the distance stays where it was: on the row, from `legs.nm`, with a dash where
    there is no direct leg.
-2. **It takes no input at all.** No pan, no zoom, no tap, no handler prop that could carry one —
-   `pointer-events: none` on the picture. The reason is about THIS chart, not about maps: a gesture
-   surface embedded in a form fights the page's own scroll on a phone — `useChartSurface` sets
-   `touch-none` and calls `preventDefault` on wheel, which is right for a whole tab and wrong inside
-   a composer — so `SmallChart` does not mount it. *(This clause also cited "the map never accepts
-   an order"; that sentence was amended 2026-08-23, when the MAP tab's own chart gained a `Sail
-   here` on a tapped harbour — `docs/DESIGN.md` §E.5 Law 3. It was never this chart's real reason.)*
+2. **It takes no ORDER.** *(This point read "no input at all" until later on 2026-08-23, when the
+   owner asked for the chart to move — `SmallChart` now mounts the ONE gesture hook in its embedded
+   `page-vertical` posture: drag pans, pinch zooms, the +/− column rides it, and the wheel and the
+   vertical thumb-scroll stay the page's, so the form below is always reachable. What survives of
+   the old clause is the load-bearing half:)* no tap handler is mounted, so nothing on the picture
+   can select or compose — pan and zoom change what is SEEN, never what is ORDERED. *(The clause
+   also once cited "the map never accepts an order"; that sentence was amended when the MAP tab's
+   chart gained `Sail here` — `docs/DESIGN.md` §E.5 Law 3. It was never this chart's real reason.)*
 3. **The rail still carries no control.** `splitRailClass()` is `md:sticky`, and a sticky panel
    taller than the viewport leaves its foot unreachable (§7, §9, §10). A chart is a figure. The ⓘ
    beside it is the one thing that folds, and it folds text.

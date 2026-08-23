@@ -48,8 +48,10 @@ import { fleetHoldTotal, fleetHoldUsed, fleetPortCode } from '../../domain/fleet
 // client-side checker (validate.ts, 838 lines) is deleted: two authorities for "is this order
 // legal" is exactly the duplication this project forbids.
 //
-// A READ IS THE CATCH-UP (D.2). Nothing on this screen ticks. `Read again` refetches, and issuing
-// refetches, and that is the entire client-side model of time.
+// A READ IS THE CATCH-UP (D.2). Nothing on this screen ticks. The shell reads the world every
+// thirty seconds and on tab focus (AppShell.tsx), issuing refetches, and the market's own
+// countdown re-asks at the price edge — that is the entire client-side model of time, and it is
+// why this screen carries no refresh control of its own.
 //
 // THE REACH LAW (CORE_REUSE 1.5): every picker, chip, fix and cancel here is an ACTION, so nothing
 // on this screen lives in a capped or scrolling region — the page's own scroll is the only one.
@@ -74,7 +76,6 @@ export function CommandScreen() {
   const busy = useWorld((s) => s.busy)
   const readAt = useWorld((s) => s.readAt)
   const open = useWorld((s) => s.open)
-  const refresh = useWorld((s) => s.refresh)
   const loadMarket = useWorld((s) => s.loadMarket)
   const preview = useWorld((s) => s.preview)
   const issue = useWorld((s) => s.issue)
@@ -270,25 +271,26 @@ export function CommandScreen() {
         /* The purse used to be printed here as well. It lives in the top bar now, on every screen
            at once (TopBar.tsx): one fact shown in two places is two authorities for it, and the
            copy that scrolls away is the wrong one to keep. */
+        /* NO "READ AGAIN" BUTTON (the owner, 2026-08-23: "read again on top left of the game is
+           useless. remove it"). The shell already reads the world every thirty seconds and on the
+           tab regaining focus (AppShell.tsx, READ_INTERVAL_MS) — a button asking for what is
+           already happening teaches the player their tap did nothing. Deleted, not hidden; the
+           price-clock re-ask below is a DIFFERENT mechanism (it is what steps the market) and
+           stays. */
         actions={
-          <div className="flex items-center gap-3">
-            {/* THE TIME, AND THE PRICES' OWN DEADLINE, in the header rather than beside the goods:
-                the countdown governs every price on this screen at once, not one row, and a figure
-                that belongs to the whole screen must not be anchored to a part of it. Both are
-                one-line and tabular, so no ⓘ — there is no sentence here to fold. */}
-            <span className="flex flex-col items-end leading-tight">
-              <WallClock nowMs={nowMs} className="font-mono text-xs text-ink-muted" />
-              {priceEdgeMs !== null && (
-                <span className={fineClass()}>
-                  prices move in{' '}
-                  <Countdown untilMs={priceEdgeMs} nowMs={nowMs} dueText="now" />
-                </span>
-              )}
-            </span>
-            <Button variant="ghost" disabled={busy} onClick={() => void refresh()}>
-              {busy ? 'reading…' : 'Read again'}
-            </Button>
-          </div>
+          /* THE TIME, AND THE PRICES' OWN DEADLINE, in the header rather than beside the goods:
+             the countdown governs every price on this screen at once, not one row, and a figure
+             that belongs to the whole screen must not be anchored to a part of it. Both are
+             one-line and tabular, so no ⓘ — there is no sentence here to fold. */
+          <span className="flex flex-col items-end leading-tight">
+            <WallClock nowMs={nowMs} className="font-mono text-xs text-ink-muted" />
+            {priceEdgeMs !== null && (
+              <span className={fineClass()}>
+                prices move in{' '}
+                <Countdown untilMs={priceEdgeMs} nowMs={nowMs} dueText="now" />
+              </span>
+            )}
+          </span>
         }
       />
 

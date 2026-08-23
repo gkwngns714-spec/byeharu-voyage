@@ -26,6 +26,7 @@ export const ICON_NAMES = [
   'plus',
   'info',
   'search',
+  'locate',
   'history',
   'coin',
   'cask',
@@ -157,6 +158,18 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   plus: ['M12 5v14', 'M5 12h14'],
   info: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z', 'M12 11v5.5', 'M12 7.6v.9'],
   search: ['M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z', 'm16.2 16.2 4.3 4.3'],
+  // Crosshair with a centre point — the chart's "find" control (ViewControls): bring what this
+  // surface is about back onto the glass. Not the compass, deliberately: that mark already means
+  // Command (navTabs) and SAIL (verbIcons), and one glyph carrying a third meaning is a glyph
+  // carrying none.
+  locate: [
+    'M12 5a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z',
+    'M12 2.5V5',
+    'M12 19v2.5',
+    'M2.5 12H5',
+    'M19 12h2.5',
+    'M12 10.8a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z',
+  ],
   // Clock with a back-arrow tick — the log.
   history: ['M12 3a9 9 0 1 0 9 9', 'M12 3 8.5 5.5 12 8', 'M12 7.5V12l3.5 2.5'],
   // The purse. A milled coin: rim, inner rule, and a struck bar — legible at 14px,

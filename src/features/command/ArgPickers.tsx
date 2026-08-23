@@ -26,7 +26,7 @@ import {
 import type { MarketGood, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import type { BuyCapacityState } from './useBuyCapacity'
-import type { QtyBound } from './fleetLimits'
+import { sellBound, type QtyBound } from './fleetLimits'
 
 // THE PICKERS — one per argument TYPE the server's verb schema declares (`port`, `good`, `qty`,
 // `number`, `price`, `enum`). Every one of them offers REAL options read out of the world, and
@@ -364,9 +364,12 @@ export function PortPicker({
  * So the row carries TWO kinds of tap and they never share a target: the HEAD opens the row for
  * reading (capacity, the quay's stock), and the BUY / SELL figure cells are the trade itself.
  * Tapping a cell names both the verb and the good — through the one draft the composer already
- * writes — and the composer's own derivation then unfolds the next question, which is the
- * quantity. The `Choose <good>` button the fold used to carry is DELETED, not kept alongside:
- * two ways to pick one good is two authorities for the pick (docs/NO_SPAGHETTI.md §5).
+ * writes — and opens THIS row's fold, where the quantity step is (GoodDetail). The list never
+ * moves: an earlier shape answered the cell by unmounting all seventy rows and standing a qty row
+ * where they had been, which is the "tab disappears and opens a new one" the owner refused four
+ * times, and it is deleted. The `Choose <good>` button the fold used to carry is DELETED too, not
+ * kept alongside: two ways to pick one good is two authorities for the pick
+ * (docs/NO_SPAGHETTI.md §5).
  *
  * THREE RULES THIS KEEPS, and each of them is the reason the shape is what it is:
  *
@@ -398,6 +401,9 @@ export function GoodPicker({
   onInspect,
   capacity,
   onTrade,
+  step,
+  qtyValue,
+  onPickQty,
 }: {
   goods: readonly MarketGood[]
   value: string | undefined
@@ -412,6 +418,12 @@ export function GoodPicker({
    *  the verb AND the good on the one draft, so the cell can never become a second way an order
    *  comes into being — the same line is composed, previewed and issued as ever. */
   onTrade: (verb: 'BUY' | 'SELL', code: string) => void
+  /** `config.trade_step_tuns` — the fold's quantity stepper walks in the server's own steps. */
+  step: number
+  /** The draft's `qty`, drawn ONLY in the chosen good's fold — the list itself never says it. */
+  qtyValue: string | undefined
+  /** Answers the verb's `qty` argument, through the composer's one `answer`. */
+  onPickQty: (value: string) => void
 }) {
   const [filter, setFilter] = useState('')
 
@@ -536,7 +548,24 @@ export function GoodPicker({
                 />
               }
             />
-            {isOpen && <GoodDetail good={g} intent={intent} capacity={capacity} />}
+            {isOpen && (
+              <GoodDetail
+                good={g}
+                intent={intent}
+                capacity={capacity}
+                // THE QUANTITY STEP RIDES IN THE CHOSEN ROW'S FOLD AND NOWHERE ELSE. Tapping a
+                // price cell chooses the good AND opens this fold (the composer's `trade`), so
+                // "how much" appears right under the press — with the whole list still standing
+                // above and below it to change your mind with. A row merely being LOOKED at gets
+                // the reading (capacity, the quay's stock) and no stepper: sizing an order is an
+                // act over the CHOSEN good only.
+                qty={
+                  value === g.code
+                    ? { step, value: qtyValue, aboard: aboard?.[g.code] ?? 0, onPick: onPickQty }
+                    : null
+                }
+              />
+            )}
           </div>
         )
       })}
@@ -545,10 +574,13 @@ export function GoodPicker({
 }
 
 /**
- * THE UNFOLDED ROW — reading only. How much she can take, and the quay's stock; the act itself is
- * the row's own price cells (GoodFigures), and the fold carries no button any more — the
- * `Choose <good>` it used to hold was a second way to pick a good once the cells became the first,
- * so it went (docs/NO_SPAGHETTI.md §5).
+ * THE UNFOLDED ROW — the reading, and, for the CHOSEN good only, the quantity step. Opening the
+ * fold is still looking (capacity, the quay's stock) and still commits nothing; choosing is still
+ * the row's own price cells (GoodFigures). What the cells' tap opens is THIS fold, with "how much"
+ * inside it, so the answer to the press appears under the press and the list never restructures.
+ * The `Choose <good>` button the fold once held stays deleted — a second way to pick a good is two
+ * authorities for the pick (docs/NO_SPAGHETTI.md §5) — and the stepper is not a second way either:
+ * it answers `qty`, not `good`, through the composer's one `answer`.
  *
  * ── WHAT IS HERE, AND WHOSE NUMBER EACH ONE IS ─────────────────────────────────────────────────
  *   HOW MANY SHE CAN TAKE   `world.buy_capacity(fleet, good)` — `max_qty`, `est_total` and
@@ -572,13 +604,25 @@ function GoodDetail({
   good,
   intent,
   capacity,
+  qty,
 }: {
   good: MarketGood
   intent: 'buy' | 'sell'
-  // NO `aboard` PROP. It was here to draw a SELL hero reading "20 t aboard" — a third rendering of
-  // a figure the row above and the quantity stepper below both already carry. The block went and
-  // the prop went with it, rather than being left threaded through to nothing.
+  // NO bare `aboard` PROP. It was here to draw a SELL hero reading "20 t aboard" — a third
+  // rendering of a figure the row above already carries. What rides in instead is `qty.aboard`,
+  // and only for the CHOSEN good, because it is the sell stepper's CEILING — an input to a
+  // control, not a rendering of a fact.
   capacity: BuyCapacityState
+  /**
+   * THE QUANTITY STEP — present only when this fold belongs to the CHOSEN good (the owner,
+   * 2026-08-23: *"i want to be able to click on buy and sell itself and do trades. when pressed
+   * unfold another so that i can choose how much i buy"*). The old shape answered that by
+   * UNMOUNTING the goods list and standing a qty row where it had been — the exact
+   * "tab disappears and opens a new one" the owner refused four times — so the step now unfolds
+   * HERE, under the pressed row, and the list never moves. `aboard` is the SELL ceiling (the one
+   * quantity this side may count); a BUY's ceiling stays `capacity`, the server's own answer.
+   */
+  qty: { step: number; value: string | undefined; aboard: number; onPick: (v: string) => void } | null
 }) {
   return (
     <div className="mt-1 space-y-3 rounded-md border border-accent/40 bg-app p-3">
@@ -588,7 +632,14 @@ function GoodDetail({
           quantity stepper's caption ("up to 20 t — what is aboard stops you there"). Three
           renderings of one fact, so the two that were added here are the ones that go
           (docs/NO_SPAGHETTI.md §5). */}
-      {intent === 'buy' && (
+      {/* … AND NOT WHEN THE STEPPER IS. For the CHOSEN good the quantity step below already
+          states the same ceiling and the same binding in its own caption ("up to 74 t — hold
+          stops you there"), so drawing the hero figure above it would be two renderings of one
+          fact in one fold (docs/NO_SPAGHETTI.md §5). The reading serves the row being LOOKED at;
+          the stepper serves the row that was chosen; a fold carries one of them. What the hero
+          block says that the caption does not — what all of it costs — is the rail's THIS ORDER
+          figure, drawn there under a label (see QtyPicker's header for that measurement). */}
+      {intent === 'buy' && !qty && (
         <section>
           {/* "Capacity", not "How much she can take" — the owner's 2026-08-23 label sweep: a label
               names a thing, it is not a question. The word is `world.buy_capacity()`'s own. */}
@@ -610,6 +661,28 @@ function GoodDetail({
             <p className={fineClass()}>
               {capacity.loading
                 ? 'Asking the quay what she can carry and afford…'
+                : 'The most she can take on is not known yet.'}
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* ── HOW MUCH — the act's own size, in the fold the act opened ──────────────────────────
+          "How much", the same words the argument row used to carry (LABELS.qty), so the concept
+          keeps its one name. On a BUY the ceiling is the server's (`capacity.bound`, §G.2 — the
+          book steps, so nothing here multiplies a price out); on a SELL it is what is aboard,
+          the one quantity this side may count. */}
+      {qty && (
+        <section className="border-t border-edge pt-3 first:border-0 first:pt-0">
+          <SectionLabel className="mb-1.5">How much</SectionLabel>
+          {intent === 'sell' ? (
+            <QtyPicker bound={sellBound(qty.aboard)} step={qty.step} value={qty.value} onPick={qty.onPick} />
+          ) : capacity.bound ? (
+            <QtyPicker bound={capacity.bound} step={qty.step} value={qty.value} onPick={qty.onPick} />
+          ) : (
+            <p className={fineClass()}>
+              {capacity.loading
+                ? 'Asking what she can carry and afford…'
                 : 'The most she can take on is not known yet.'}
             </p>
           )}
@@ -840,13 +913,17 @@ export function QtyPicker({
             {token}
           </button>
         ))}
+        {/* JUST "MAX" (the owner, 2026-08-23: "what is max 12 in hire? just max is enough").
+            The chip means "as much as possible"; the figure it lands on is already stated in the
+            caption under the slider, and printing it on the chip too was two renderings of the
+            ceiling 60px apart. */}
         <button
           type="button"
           disabled={max <= 0}
           onClick={() => setNumber(max)}
           className={buttonClasses('chip', 'md', 'font-mono text-xs uppercase tracking-wider')}
         >
-          max {formatInt(max)}
+          max
         </button>
       </div>
 
@@ -982,13 +1059,16 @@ export function NumberPicker({
           </button>
         ))}
         {coarse && (
+          // JUST "MAX" — the owner, 2026-08-23, of this very chip on HIRE: "what is max 12 in
+          // hire? just max is enough." The figure it lands on is already the caption's own
+          // `1–12 crew` below, and on HIRE the fleet rail states the empty berths beside it.
           <button
             type="button"
             disabled={max <= 0}
             onClick={() => onPick(String(max))}
             className={buttonClasses('chip', 'md', 'font-mono text-xs uppercase tracking-wider')}
           >
-            max {formatInt(max)}
+            max
           </button>
         )}
       </div>
