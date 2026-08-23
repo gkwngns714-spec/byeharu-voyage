@@ -72,7 +72,16 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // voyage.settle's arrival arm (sliced, byte-parity proven) through the one provisioning rule
 // cmd.do_provision, sized at fire time from the crew aboard. 34 migrations, 34 receipts,
 // verified green locally (db:apply + db:proof, twice).
-const LAST = '20260818000034_a_standing_order_keeps_her_provisioned.sql'
+// Pin moved deliberately 2026-08-23 with 0035: WHAT CAN BEFALL A FLEET AT SEA IS A TABLE — the set
+// of things that can happen on a voyage-day was stated in THREE functions (hazard_roll's CASE,
+// settle's arms, and report_line's CASE, whose `else` printed the raw schema code at the player)
+// and is now ONE catalogue, public.voyage_event_kinds, with voyage_events.kind a foreign key into
+// it, so a kind nobody named cannot be written. Declared a no-op and proven one: the draw agrees
+// with 0006's CASE on 50,000 (r_kind, piracy) pairs and all eleven after-action lines are
+// byte-identical. This is the foundation of docs/PLATFORM.md — it builds no combat, no exploration
+// and no NPC, only the seam they will need. 35 migrations, 35 receipts, verified green locally
+// (db:apply + db:proof, twice) with all nine of its new asserts break-tested red first.
+const LAST = '20260818000035_what_can_befall_a_fleet_at_sea_is_a_table.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
