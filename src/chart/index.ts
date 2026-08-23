@@ -47,6 +47,9 @@
 // ── the picture ────────────────────────────────────────────────────────────────────────────────
 export { ChartCanvas } from './ChartCanvas'
 export { SmallChart } from './SmallChart'
+// The whole-world locator inset a full-tab chart wears in a corner (its header carries the §7B
+// answers — including why it composes the chart's parts rather than `ChartCanvas` whole).
+export { Minimap } from './Minimap'
 
 // ── the read model: what a chart is told, and what it makes of it ──────────────────────────────
 export type { MapFleet, MapPort, MapSelection, MapVoyageLeg } from './mapTypes'

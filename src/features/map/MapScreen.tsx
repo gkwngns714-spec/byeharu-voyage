@@ -30,6 +30,7 @@ import {
   hitTest,
   mapFleetsOf,
   mapPortsOf,
+  Minimap,
   minTierForSpan,
   openingBounds,
   toggleSelection,
@@ -397,15 +398,31 @@ function Chart({
           testId="map-view-controls"
         />
 
-      {/* A missing backdrop is worth one quiet line, never a crash: the chart still works without
-          it. Ports, fleets and tracks are all drawn from coordinates, not from this file. It sits
-          in the one free corner, by slot — it used to carry its own `bottom-9`, a second guess at
-          the caption clearance the layer above now makes for everything in it. */}
-      {coastline.error && (
-        <p className={`absolute ${overlaySlotClass('bottom-left')} font-mono text-[10px] text-ink-faint`}>
-          coastline unavailable
-        </p>
-      )}
+      {/* THE MINIMAP — the whole world, always, with every fleet on it and the window this chart
+          is currently looking through (the owner, 2026-08-23: "a small miniturized map at the
+          corner of the map, that shows where my fleets are in color + symbol"). It fills the one
+          free corner; everything it draws and every reason it is shaped the way it is lives in
+          src/chart/Minimap.tsx. A tap on it is `centreOn` — the same one camera move the fleet
+          list uses, so nothing appears, vanishes or resizes (OWNER_REQUESTS row 32). Being
+          CHART_CHROME it is measured into `keepOut` above, so no harbour's name prints under it.
+
+          The coastline note shares the corner: a missing backdrop is worth one quiet line, never
+          a crash — the chart (and the minimap) still work without it. It used to carry its own
+          `bottom-9`, a second guess at the caption clearance the layer above now makes for
+          everything in it. */}
+      <div className={`absolute ${overlaySlotClass('bottom-left')} flex flex-col items-start gap-1`}>
+        {coastline.error && (
+          <p className="font-mono text-[10px] text-ink-faint">coastline unavailable</p>
+        )}
+        <Minimap
+          model={model}
+          ports={ports}
+          coastlineD={coastline.data?.d ?? ''}
+          viewport={box}
+          onJump={surface.centreOn}
+          ariaLabel="The whole world, your fleets marked on it, and the part of it this chart is showing. Tap a place to look there."
+        />
+      </div>
       </div>
 
       {/* THE PERMANENT CAPTION. TWO facts the player should never have to work out or be told
