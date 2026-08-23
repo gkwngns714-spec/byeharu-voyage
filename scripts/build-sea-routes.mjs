@@ -19,7 +19,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { CHANNELS, buildSeaGrid, findSeaRoute, gcNm } from './sea-grid.mjs'
+import { CHANNELS, ICE, buildSeaGrid, findSeaRoute, gcNm, snapToWater, cellLat, cellLon } from './sea-grid.mjs'
 
 const DATA = join(dirname(fileURLToPath(import.meta.url)), '..', 'data')
 
@@ -181,6 +181,55 @@ for (let round = 0; round < 4; round++) {
   if (added === 0) break
 }
 
+// ── pass 3b: the ocean roads — the same law, past the candidate radius ────────────────────────
+// Pass 3 above can only see pairs inside CANDIDATE_NM, so a transoceanic corridor could never be
+// opened by it — and pass 2 only adds a crossing when the graph would otherwise be DISCONNECTED.
+// The measured consequence (2026-08-23): the Atlantic connected north-about through Iceland and
+// Newfoundland, so no South Atlantic crossing was ever forced, and Cape Verde -> Recife — the
+// most-sailed ocean crossing of the period, 1,534 nm by great circle — was served as a 7,591 nm
+// detour via Bermuda. Cape Horn had the same shape: no leg within 1,300 nm of straight line, so
+// Buenos Aires -> Valparaíso was served ACROSS THE PACIFIC at 34,647 nm.
+//
+// The law here is pass 3's own, applied to every pair: where the graph's answer is more than
+// DETOUR_LIMIT times the SEA distance, the sea wins and the leg is opened. The great circle is
+// only the cheap lower bound that decides which pairs are worth asking the raster about; the
+// conviction is always against the A* sea distance, which is what keeps Suez and Panama shut —
+// for an isthmus pair the sea distance IS the long way round, so the graph is never 2.5x worse
+// than it and no leg opens. Worst offenders first, one leg at a time, distances recomputed after
+// every opening, so one real crossing absolves the whole family of pairs it serves.
+const oceanRoads = []
+for (let guard = 0; ; guard++) {
+  if (guard > 200) throw new Error('pass 3b did not converge — over 200 ocean roads is a spiderweb, not a graph')
+  const adj = adjacencyOf()
+  const distances = new Map(ports.map((p) => [p.id, shortestFrom(p.id, adj)]))
+  const suspects = []
+  for (let i = 0; i < ports.length; i++) {
+    for (let j = i + 1; j < ports.length; j++) {
+      const a = ports[i]
+      const b = ports[j]
+      if (kept.has(pairKey(a.id, b.id))) continue
+      const overGraph = distances.get(a.id).get(b.id) ?? Infinity
+      const gc = gcNm(a.lat, a.lon, b.lat, b.lon)
+      if (overGraph > gc * DETOUR_LIMIT) suspects.push({ a, b, gc, overGraph, ratio: overGraph / gc })
+    }
+  }
+  suspects.sort((x, y) => y.ratio - x.ratio)
+  let opened = false
+  for (const s of suspects) {
+    // The sea's own answer, bounded: if no water route exists within overGraph / DETOUR_LIMIT,
+    // the graph is not DETOUR_LIMIT worse than the sea and the pair is innocent. Memoised, so a
+    // pair is asked of the raster at most once per run.
+    const r = routeOf(s.a, s.b, s.overGraph / DETOUR_LIMIT)
+    if (!r || s.overGraph <= r.nm * DETOUR_LIMIT) continue
+    keep(s.a, s.b, r.nm, 'ocean road')
+    oceanRoads.push({ a: s.a, b: s.b, nm: r.nm, was: s.overGraph })
+    console.log(`  ocean road       ${s.a.name} — ${s.b.name}  ${Math.round(r.nm)} nm (the graph said ${Math.round(s.overGraph)})`)
+    opened = true
+    break
+  }
+  if (!opened) break
+}
+
 // ── hazard, derived from the water the leg crosses, never authored per edge ───────────────────
 const PIRATE_SEAS = new Set([
   'mediterranean-sea', 'strait-of-malacca', 'caribbean-sea', 'gulf-of-guinea',
@@ -200,12 +249,57 @@ function hazardOf(a, b, nm) {
   return Math.round(Math.min(2, Math.max(0.6, h)) * 1000) / 1000
 }
 
+// ── the approach: how far each harbour sits from the raster's open water ──────────────────────
+// A river or estuary port (Bristol up the Severn, Hanoi up the Red River) is land at 0.25°; its
+// route starts at the port's true coordinate, so the approach IS already inside every leg's nm.
+// What was missing was saying so: legs that end up such an approach now carry it in their note.
+const approachNm = new Map(ports.map((p) => {
+  const s = snapToWater(water, p.lat, p.lon)
+  return [p.id, s ? gcNm(p.lat, p.lon, cellLat(s.row), cellLon(s.col)) : Infinity]
+}))
+
+const round2 = (n) => Math.round(n * 100) / 100
 const legs = [...kept.values()]
   .map(({ a, b, nm, why }) => {
     const [from, to] = a.id < b.id ? [a, b] : [b, a]
     const gc = gcNm(a.lat, a.lon, b.lat, b.lon)
-    const sailed = Math.ceil(nm * 10) / 10
+    // THE SHAPE OF THE LEG — the water walk itself, which the first version of this file computed
+    // and threw away, leaving the chart to draw fleets straight across capes (owner, 2026-08-23:
+    // "i don't want the fleet to ever touch land"). Every kept pair came through routeOf(), so its
+    // walked path is in the cache. Points are rounded to 0.01° (about half a nautical mile, the
+    // same precision the chain stores port coordinates at) and the leg's distance is the length
+    // of exactly this polyline, so the drawn route and the priced route cannot disagree.
+    const cached = routes.get(pairKey(a.id, b.id))
+    if (!cached?.path) throw new Error(`no cached water path for ${a.id}-${b.id}`)
+    let path = cached.path.map(([la, lo]) => [round2(la), round2(lo)])
+    const dFwd = gcNm(path[0][0], path[0][1], from.lat, from.lon)
+    const dBack = gcNm(path[path.length - 1][0], path[path.length - 1][1], from.lat, from.lon)
+    if (dBack < dFwd) path.reverse()
+    const dedup = []
+    for (const p of path) {
+      const last = dedup[dedup.length - 1]
+      if (!last || last[0] !== p[0] || last[1] !== p[1]) dedup.push(p)
+    }
+    path = dedup
+    let pathNm = 0
+    for (let i = 0; i + 1 < path.length; i++) pathNm += gcNm(path[i][0], path[i][1], path[i + 1][0], path[i + 1][1])
+    if (Math.abs(pathNm - nm) > 5) throw new Error(`leg ${a.id}-${b.id}: path length ${pathNm.toFixed(1)} disagrees with searched ${nm.toFixed(1)}`)
+    // The larger of the polyline's length and the exact great circle: rounding the vertices to
+    // 0.01° can shave a fraction of a mile off a straight leg, and a leg under its own great
+    // circle would fail the chain's first invariant.
+    const sailed = Math.ceil(Math.max(pathNm, gc) * 10) / 10
     const detour = sailed / gc
+    const approaches = [from, to]
+      .filter((p) => approachNm.get(p.id) > 20)
+      .map((p) => `the last ${Math.round(approachNm.get(p.id))} nm are the approach to ${p.name}`)
+    const baseNote =
+      why === 'ocean crossing'
+        ? `${Math.round(sailed)} nm of open ocean — the only water joining these coasts`
+        : why === 'ocean road'
+        ? `${Math.round(sailed)} nm of open ocean — the crossing every coastal chain would multiply`
+        : detour > 1.15
+          ? `${Math.round(sailed)} nm sailed against ${Math.round(gc)} nm straight: the coast is in the way`
+          : `${Math.round(sailed)} nm of open water`
     return {
       from: from.id,
       to: to.id,
@@ -213,12 +307,8 @@ const legs = [...kept.values()]
       gc_nm: Math.round(gc * 10) / 10,
       hazard_mult: hazardOf(a, b, sailed),
       why,
-      note:
-        why === 'ocean crossing'
-          ? `${Math.round(sailed)} nm of open ocean — the only water joining these coasts`
-          : detour > 1.15
-            ? `${Math.round(sailed)} nm sailed against ${Math.round(gc)} nm straight: the coast is in the way`
-            : `${Math.round(sailed)} nm of open water`,
+      note: approaches.length ? `${baseNote}; ${approaches.join('; ')}` : baseNote,
+      path,
     }
   })
   .sort((x, y) => (x.from === y.from ? x.to.localeCompare(y.to) : x.from.localeCompare(y.from)))
@@ -238,6 +328,11 @@ console.log(`components         ${finalGroups.length}${finalGroups.length === 1 
 console.log(`degree             min ${Math.min(...degrees)}, mean ${(degrees.reduce((s, d) => s + d, 0) / degrees.length).toFixed(1)}, max ${Math.max(...degrees)}`)
 console.log(`sailed vs straight mean ${(detours.reduce((s, d) => s + d, 0) / detours.length).toFixed(2)}x, worst ${Math.max(...detours).toFixed(2)}x`)
 console.log(`longest leg        ${Math.max(...legs.map((l) => l.nm))} nm`)
+const riverPorts = ports.filter((p) => approachNm.get(p.id) > 20).sort((x, y) => approachNm.get(y.id) - approachNm.get(x.id))
+console.log(`river approaches   ${riverPorts.length} ports lie over 20 nm from the raster's open water — counted inside their legs' nm and said in the legs' notes`)
+for (const p of riverPorts.slice(0, 8)) console.log(`   ${Math.round(approachNm.get(p.id))} nm  ${p.name}`)
+const pathPoints = legs.reduce((s, l) => s + l.path.length, 0)
+console.log(`path points        ${pathPoints} across ${legs.length} legs (mean ${(pathPoints / legs.length).toFixed(1)} per leg)`)
 console.log(`ocean crossings    ${crossings.length}`)
 for (const c of crossings) console.log(`   ${c.a.name} — ${c.b.name}  ${Math.round(c.nm)} nm`)
 console.log(`trade roads opened ${shortcuts.length} (the chain was over ${DETOUR_LIMIT}x the sea distance)`)
@@ -257,8 +352,32 @@ const control = (fromId, toId, expectOverNm) => {
   const ok = r && r.nm > expectOverNm
   return `${a.name} → ${b.name}: ${r ? Math.round(r.nm) + ' nm by sea' : 'no route'} against ${straight} nm straight — ${ok ? 'the long way round ✓' : 'SOMETHING DUG A CANAL ✗'}`
 }
+console.log(`ocean roads opened ${oceanRoads.length} (the graph was over ${DETOUR_LIMIT}x the sea, past the candidate radius)`)
+for (const s of oceanRoads) {
+  console.log(`   ${s.a.name} — ${s.b.name}  ${Math.round(s.nm)} nm, was ${Math.round(s.was)} nm round the graph`)
+}
 console.log('controls           ' + control('alexandria', 'aden', 8000))
 console.log('                   ' + control('veracruz', 'acapulco', 8000))
+
+// Positive controls on pass 3b itself: the corridors whose absence was the 2026-08-23 defect.
+// Measured over the FINAL graph, so a regression in any pass shows up here, not in a player's route.
+const graphControl = (fromId, toId, maxRatio, name) => {
+  const adj = adjacencyOf()
+  const d = shortestFrom(fromId, adj).get(toId) ?? Infinity
+  const a = ports.find((p) => p.id === fromId)
+  const b = ports.find((p) => p.id === toId)
+  const gc = gcNm(a.lat, a.lon, b.lat, b.lon)
+  const ok = d / gc <= maxRatio
+  if (!ok) process.exitCode = 1
+  return `${name}: ${a.name} → ${b.name} is ${Math.round(d)} nm over the graph against ${Math.round(gc)} nm straight (x${(d / gc).toFixed(2)}) — ${ok ? 'a route a sailor would sail ✓' : `OVER x${maxRatio}: THE CORRIDOR IS MISSING AGAIN ✗`}`
+}
+console.log('                   ' + graphControl('cidade-velha', 'recife', 1.5, 'the South Atlantic crossing'))
+console.log('                   ' + graphControl('buenos-aires', 'valparaiso', 2.5, 'the Cape Horn road'))
+console.log('                   ' + graphControl('lisbon', 'recife', 1.6, 'the Carreira do Brasil'))
+
+// Ice control: the raster must refuse the Northeast Passage. Arkhangelsk to Nampo by sea is the
+// long way — round the Cape or the Horn — never 6,400 nm along the Siberian coast.
+console.log('                   ' + control('arkhangelsk', 'nampo', 12000))
 
 writeFileSync(
   join(DATA, 'sea-routes.json'),
@@ -272,6 +391,7 @@ writeFileSync(
       generator: 'scripts/build-sea-routes.mjs',
       knobs: { K_NEAREST, CANDIDATE_NM, SEARCH_LIMIT_NM, DETOUR_LIMIT, CELL_DEG: 0.25 },
       channels: CHANNELS.map((c) => ({ id: c.id, name: c.name })),
+      ice: ICE.map((c) => ({ id: c.id, name: c.name })),
       count: legs.length,
       connected: finalGroups.length === 1,
       legs,

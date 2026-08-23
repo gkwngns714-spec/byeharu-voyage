@@ -71,6 +71,8 @@ const COUNTRY_BBOX = {
   MM: [92.175, 9.7907, 101.1739, 28.5385],     // Myanmar
   MO: [113.5199, 22.1054, 113.5875, 22.2208],  // Macau
   MT: [14.1836, 35.8012, 14.5671, 36.0756],    // Malta
+  MU: [56.5242, -20.5173, 63.4939, -10.3239],  // Mauritius (incl. outer islands)
+  MV: [72.6848, -0.6886, 73.7532, 7.1072],     // Maldives
   MX: [-118.3688, 14.5463, -86.7006, 32.7128], // Mexico
   MY: [99.6452, 0.8514, 119.2781, 7.3558],     // Malaysia
   MZ: [30.2138, -26.8603, 40.848, -10.469],    // Mozambique
@@ -225,6 +227,18 @@ for (const s of seaIds) if (!usedSeas.has(s)) warn(`sea "${s}" is defined but no
 for (const r of regionIds) if (!usedRegions.has(r)) warn(`region "${r}" is defined but no port uses it`);
 for (const g of goodIds) if (!usedGoods.has(g)) warn(`good "${g}" is defined but no port produces it`);
 console.log(`[ ok ] vocabulary coverage — ${usedSeas.size}/${seaIds.size} seas, ${usedRegions.size}/${regionIds.size} regions, ${usedGoods.size}/${goodIds.size} goods in use`);
+
+// ---- 7b. the 4-9 goods band, keyed to tier (owner, 2026-08-23) ----
+// A great entrepôt (tier 1) offers 9 goods, a working port (tier 2) 6, a small harbour (tier 3) 4.
+const BAND = { 1: 9, 2: 6, 3: 4 };
+const beforeBand = fails.length;
+for (const p of ports) {
+  const n = (p.goods ?? []).length;
+  if (n < 4 || n > 9) fail(`${p.id}: ${n} goods is outside the 4-9 band`);
+  else if (n !== BAND[p.tier]) fail(`${p.id}: tier ${p.tier} must offer exactly ${BAND[p.tier]} goods, has ${n}`);
+  if (new Set(p.goods ?? []).size !== n) fail(`${p.id}: duplicate goods`);
+}
+console.log(`[${fails.length > beforeBand ? 'FAIL' : ' ok '}] goods band — tier 1 offers 9, tier 2 offers 6, tier 3 offers 4 (min 4, max 9)`);
 
 // ---- 8. distribution ----
 const byRegion = {};

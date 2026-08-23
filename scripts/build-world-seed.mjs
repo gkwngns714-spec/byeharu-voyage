@@ -105,6 +105,9 @@ const CULTURE_OVERRIDE = {
   'cape-town': 'guinean',    // a Dutch victualling station on a Khoi coast; not a Swahili port
   amsterdam: 'germanic', antwerp: 'germanic', rotterdam: 'germanic', bruges: 'germanic',
   athens: 'islamic', heraklion: 'latin',   // Ottoman Greece; Venetian Crete until 1669
+  chios: 'latin',            // the Genoese Maona held the island until 1566
+  male: 'islamic',           // the Maldives, an Islamic sultanate since 1153
+  'port-louis': 'guinean',   // like cape-town: a Dutch station on an ocean coast, not a Swahili port
 }
 
 // ── NATIONS ───────────────────────────────────────────────────────────────────────────────────
@@ -151,6 +154,10 @@ const NATION_OVERRIDE = {
   elmina: 'PRT', luanda: 'PRT', macau: 'PRT', nagasaki: 'JPN', hormuz: 'PRT', diu: 'PRT',
   antwerp: 'ESP', bruges: 'ESP', // the Habsburg Netherlands answered to Madrid in 1550
   hamburg: 'HAN', lubeck: 'HAN', bremen: 'HAN', gdansk: 'POL', riga: 'POL',
+  heraklion: 'VEN', corfu: 'VEN', zakynthos: 'VEN', // Venice's sea empire: Crete until 1669, the Ionians throughout
+  chios: 'GEN',              // the Genoese Maona until 1566
+  cagliari: 'ESP',           // Sardinia under the Crown of Aragon
+  hadibu: null,              // Socotra answered to the Mahra sultans, not the Porte — an explicit "no seeded power"
 }
 /** The capitals, set here rather than guessed from the roster. */
 const CAPITALS = {
@@ -189,7 +196,7 @@ function derivePort(p) {
     dev_military: clamp(size * 1.8 + (yardTier > 0 ? 2 : 0)),
     crew_pool: size * 80,
     culture: CULTURE_OVERRIDE[p.id] ?? CULTURE_BY_REGION[p.region] ?? 'latin',
-    nation: NATION_OVERRIDE[p.id] ?? NATION_BY_COUNTRY[p.country] ?? null,
+    nation: Object.hasOwn(NATION_OVERRIDE, p.id) ? NATION_OVERRIDE[p.id] : NATION_BY_COUNTRY[p.country] ?? null,
     specialties,
   }
 }
@@ -472,6 +479,23 @@ begin
       from public.ports p
      where not exists (select 1 from public.port_specialties s where s.port_id = p.id);
     raise exception '0003 self-assert FAIL: % port(s) are known for nothing: %', v_n, v_lonely;
+  end if;
+
+  -- (h2) THE 4-9 RULE (owner, 2026-08-23): every port offers at least 4 and at most 9 goods, and
+  -- the count is keyed to the port's size — a great entrepôt offers 9, a working port 6, a small
+  -- harbour 4. Computed from the tables the seed just wrote, never pinned to a count.
+  select count(*) into v_n
+    from public.ports p
+    join lateral (select count(*) as c from public.port_specialties s where s.port_id = p.id) sc on true
+   where sc.c < 4 or sc.c > 9
+      or sc.c <> case p.size_tier when 5 then 9 when 3 then 6 else 4 end;
+  if v_n <> 0 then
+    select string_agg(p.code, ', ') into v_lonely
+      from public.ports p
+      join lateral (select count(*) as c from public.port_specialties s where s.port_id = p.id) sc on true
+     where sc.c < 4 or sc.c > 9
+        or sc.c <> case p.size_tier when 5 then 9 when 3 then 6 else 4 end;
+    raise exception '0003 self-assert FAIL: % port(s) are off the 4-9 goods band for their size: %', v_n, v_lonely;
   end if;
 
   -- (i) The 0001 lockdown still holds after seeding eight tables.
