@@ -25,3 +25,4 @@ shot.tmp.mjs
 *.png
 supabase/.temp/
 scripts/.bbox-table.txt
+scripts/db/.proof-courses.json

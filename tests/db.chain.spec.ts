@@ -126,7 +126,16 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // pin, which is the exact staleness this convention exists to prevent. It names the true last file
 // now. The gap 0042-0044 is deliberate: 0038/0039 are the mover's, and versions are arbitrated by
 // npm run db:check-versions, never by counting.
-const LAST = '20260818000045_the_world_runs_twenty_times_faster.sql'
+//
+// Moved 2026-08-24 when the mover LANDED, regenerated against this chain as 0046-0049 (its helm
+// cut was 0038/0039/0041 against a 37-migration base): 0046 THE WATER KNOWS THE WAY (the raster
+// and the all-pairs sailed distances — Arctic closed, no Suez, no Panama), 0047 THE SEA IS A FREE
+// PLANE (ONE mover: the client proposes a course, the server verifies it against its own raster
+// and measures it itself; any water point is a destination), 0048 THE QUAY REPRICES THE HONEST
+// SEA (the affinity knobs retuned to honest distances), and 0049 THE GRAPH IS HISTORY (public.legs
+// dropped — the raster is the one authority for what water connects to what, and the world guard
+// stopped checking a table that no longer exists while keeping its planted-drift controls).
+const LAST = '20260818000049_the_graph_is_history.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

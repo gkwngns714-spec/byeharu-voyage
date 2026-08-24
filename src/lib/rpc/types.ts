@@ -57,17 +57,6 @@ export interface SnapshotPort {
   approach: string | null
 }
 
-export interface SnapshotLeg {
-  id: string
-  /** Port CODES, canonically ordered (lower code first). The graph is undirected. */
-  from: string
-  to: string
-  /** Sailed distance, which may exceed the great circle where the route rounds land. */
-  nm: number
-  hazard_mult: number
-  notes: string | null
-}
-
 /**
  * HOW RARE A GOOD IS — a SERVED word, decided by exactly one server function (0032's
  * `public.good_rarity`: how many ports produce the good, put through one threshold law). The
@@ -201,7 +190,6 @@ export interface SnapshotNation {
 
 export interface WorldSnapshot {
   ports: SnapshotPort[]
-  legs: SnapshotLeg[]
   goods: SnapshotGood[]
   /** DESIGN B.1, served from 0028. The one reading of what a nation code is called. */
   nations: SnapshotNation[]
@@ -209,6 +197,25 @@ export interface WorldSnapshot {
   config: SnapshotConfig
   /** The same eight verbs `cmd.verb_schema()` serves — one grammar, delivered with the world. */
   verbs: VerbSpec[]
+}
+
+// ── world.sea_raster() / world.reach(port) — the free sea (0039) ───────────────────────────────
+
+/** The navigable-water raster, packed. Unpack through `src/lib/sea` (`navFromServed`) — the one
+ *  reading of the format on this side of the wire. */
+export interface SeaRasterPayload {
+  cols: number
+  rows: number
+  cell_deg: number
+  bits_per_cell: number
+  cells_base64: string
+}
+
+/** One place's sailed distances to everywhere: `{ code: nm }`, plus its own water approach. */
+export interface ReachPayload {
+  from: string
+  snap_nm: number
+  reaches: Record<string, number>
 }
 
 // ── world.market(port) ─────────────────────────────────────────────────────────────────────────
@@ -254,8 +261,9 @@ export interface MarketGood {
  * what the voyage is worth.
  *
  * EVERY MONEY FIGURE HERE CAME OUT OF `world.quote()`, the same function a committed BUY and SELL
- * execute at, at the quantity named in `qty`. `nm` is the SAILED leg distance over the shortest
- * route (`voyage.reach_from`), never a straight line. `profit` is the TRADE's margin — a voyage
+ * execute at, at the quantity named in `qty`. `nm` is the SAILED distance over the water
+ * (`sea_reaches`, 0038 — derived from the raster, Arctic closed), never a straight line.
+ * `profit` is the TRADE's margin — a voyage
  * also pays its crew's wages each day at sea, and that is deliberately not folded in here (see the
  * migration header): `days` is printed beside it so the exposure is visible.
  */
@@ -272,9 +280,8 @@ export interface TradeRoute {
   return_pct: number | null
   buy_price: number
   sell_price: number
-  /** Sailed leg distance over the shortest route, and how many legs it is. */
+  /** Sailed distance over the water, from the same table the endurance gate reads. */
   nm: number
-  legs: number
   /** Null when no fleet was named — there is no speed to divide by, so no days to quote. */
   days: number | null
   profit_per_day: number | null
@@ -286,8 +293,8 @@ export interface TradeRoutesBasis {
   /** `fleet` — priced at what this fleet can afford and carry. `default` — at `tuns`. */
   qty_from: 'fleet' | 'default'
   tuns: number
-  /** Null when the caller pinned a destination — there is no reach to report, only that port. */
-  max_legs: number | null
+  /** The sailed radius searched, in nm; null when the caller pinned a destination. */
+  radius_nm: number | null
   /** The port code the scan was pinned to, or null when it looked everywhere in reach. */
   to: string | null
   ports_considered: number
@@ -458,11 +465,11 @@ export interface FleetShip {
   food_t: number
 }
 
-/** The closed-form position of DESIGN D.2 — computed, never simulated. */
+/** The closed-form position of DESIGN D.2 — computed, never simulated. 0039: the point sits on
+ *  the served COURSE (linear along its segment — the same interpolation the server's water law
+ *  samples), so the glyph is always ON the drawn line. */
 export interface VoyagePosition {
-  leg_index: number
-  from_code: string
-  to_code: string
+  seg_index: number
   leg_frac: number
   nm_done: number
   total_nm: number
@@ -472,8 +479,13 @@ export interface VoyagePosition {
 
 export interface FleetVoyage {
   id: string
-  /** Destination port CODE. */
-  to: string
+  /** Destination port CODE — null when she is bound for a bare point of open water (0039). */
+  to: string | null
+  /** [lat, lon] of the open-water destination; null when `to` names a port. */
+  dest_point: [number, number] | null
+  /** THE WHOLE COURSE she sails, [[lat, lon], …] — the chart draws exactly this polyline and
+   *  nothing of its own (src/chart/route.ts). */
+  course: [number, number][]
   /** ISO timestamp. */
   eta: string
   total_nm: number
@@ -503,8 +515,10 @@ export interface FleetView {
   status: FleetStatus
   /** Bump this into cmd.issue() as `expected_version` to make double-issue impossible (F.3). */
   version: number
-  /** Port CODE while not SAILING; null at sea. */
+  /** Port CODE while docked; null at sea and at open anchor. */
   port: string | null
+  /** [lat, lon] while ANCHORED at a bare point of open water (0039); null otherwise. */
+  anchor: [number, number] | null
   busy_until: string | null
   /** Formation speed in knots, slowest ship first (B.3). */
   speed_kn: number
@@ -616,20 +630,19 @@ export interface ClearResult {
 }
 
 /**
- * What `cmd.divert()` hands back when a sailing fleet answers her helm (0037). She finishes the
- * leg she is on, turns at `node`, and a SAIL to `dest` stands in her queue — the refusals
- * (E_NOT_SAILING, E_NO_SUCH_PORT, E_SAME_DEST, E_NO_ROUTE) arrive as a `Refusal` as usual.
+ * What `cmd.divert()` hands back when a sailing fleet answers her helm (0039). She turns WHERE
+ * SHE IS: `at` is the "lat,lon" of the turn, and the onward passage to `dest` is already under
+ * way — the refusals (E_NOT_SAILING, E_NO_SUCH_PORT, E_SAME_DEST, E_LAND…) arrive as a `Refusal`
+ * as usual.
  */
 export interface DivertResult {
   ok: true
-  /** The port CODE of the turn — the far end of the leg she is on. */
-  node: string
-  /** The port CODE she was bound for. */
+  /** "lat,lon" of the point she turned at. */
+  at: string
+  /** The port CODE she was bound for, or "open sea". */
   was: string
-  /** The port CODE she now makes for. */
+  /** The port CODE — or "lat,lon" point — she now makes for. */
   dest: string
-  /** ISO instant she reaches the turn node (the truncated voyage's recomputed ETA). */
-  node_eta: string
   queue: QueuedOrder[]
 }
 

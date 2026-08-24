@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { fineClass } from '../components/ui'
 import { project } from '../lib/geo'
-import type { FleetView, SnapshotLeg, SnapshotPort } from '../lib/rpc'
+import type { FleetView, SnapshotPort } from '../lib/rpc'
 import { ChartCanvas } from './ChartCanvas'
 import { buildChartModel } from './chartModel'
 import { openingBounds } from './chartView'
@@ -68,16 +68,16 @@ import { ViewControls } from './ViewControls'
 //    miles because Cape St Vincent is in the way, against 188 as the gull flies. That exact
 //    substitution was a real defect on this very picker — it showed Seville at 169 nm against the
 //    server's 286 and SORTED the list by the wrong number (`ArgPickers.tsx`, PortPicker's header) —
-//    and drawing it instead of printing it would be the same lie in a shape nobody can check. What
-//    IS drawn between ports is the authored sea-lane graph, whose miles are the server's own.
+//    and drawing it instead of printing it would be the same lie in a shape nobody can check.
+//    (0039: the sea-lane graph is gone with the leg model — the only lines a chart draws are
+//    TRACKS, verified courses fleets are actually sailing.)
 //
-// And it still invents no place: ports, coordinates and lanes are `world.snapshot()`; the fleet's
+// And it still invents no place: ports and coordinates are `world.snapshot()`; the fleet's
 // position at sea is `voyage.position`, the server's closed form, copied (./liveWorld.ts).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export function SmallChart({
   ports,
-  legs,
   fleets,
   considering,
   highlight,
@@ -86,8 +86,6 @@ export function SmallChart({
 }: {
   /** `world.snapshot().ports` — the whole table. `ChartCanvas` decides which of it is drawn. */
   ports: readonly SnapshotPort[]
-  /** `world.snapshot().legs`. Pass an empty list for a chart that should not show the water routes. */
-  legs: readonly SnapshotLeg[]
   /** The fleets to place. Usually the one the order is about. */
   fleets: readonly FleetView[]
   /**
@@ -178,7 +176,6 @@ export function SmallChart({
         <ChartCanvas
           model={model}
           ports={chartPorts}
-          legs={legs}
           box={box}
           unitsPerPx={surface.unitsPerPx}
           coastlineD={coastline.data?.d ?? ''}

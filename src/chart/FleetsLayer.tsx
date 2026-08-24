@@ -53,6 +53,24 @@ export function TracksLayer({ model, unitsPerPx }: { model: ChartModel; unitsPer
         ) : null,
       )}
 
+      {/* GLYPH 3b — a destination that is BARE WATER (0039): the same dashed ring, at the
+          pinpointed spot, because it is the same fact — where she is bound. */}
+      {model.destinationSeaPoints.map((at, i) => {
+        const { x, y } = project(at)
+        return (
+          <circle
+            key={`sea-${i}`}
+            cx={x}
+            cy={y}
+            r={GLYPH.destinationRingRadius * unitsPerPx}
+            className="fill-none stroke-accent/60"
+            strokeWidth={GLYPH.glyphStroke}
+            strokeDasharray="3 3"
+            vectorEffect="non-scaling-stroke"
+          />
+        )
+      })}
+
       {/* GLYPH 3 — the destination: a dashed ring round the port a fleet is bound for. */}
       {[...model.destinationPoints].map(([code, at]) => {
         const { x, y } = project(at)

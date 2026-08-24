@@ -5,10 +5,17 @@ Written 2026-08-24 for the owner, who asked to see the plan before anything is b
 > *"do all the work in appropriate order, after research, build what you think it is best without
 > ruining this game"*
 
-**Status of this document:** the MEASUREMENTS below are real, taken from the prototype in
-`scripts/proto/`. The reference-game research (`DESIGN_RESEARCH_NAVIGATION.md`) was **not finished** —
-the agent writing it hit the session limit. That gap is stated rather than papered over; the owner
-supplied the design directly, which is what the proposal is built on.
+**Status of this document:** BUILT, 2026-08-24 — migrations 0038 (`the_water_knows_the_way`) and
+0039 (`the_sea_is_a_free_plane`), with the client in `src/lib/sea` + `src/domain/passage` and the
+chart drawing the served course whole. `docs/DEV_LOG.md` D22 records what landed and what it
+measured; proof 09 (renumbered here: 08 is the sea-membership proof) holds the never-touch-land law and the Arctic door shut on every run. The
+prototype in `scripts/proto/` was CONSUMED by the build (the pathfinder moved into
+`src/lib/sea/pathfind.ts`, the plpgsql A* was rejected by its own measurements) and is deleted;
+the measurements below are its record. The reference-game research
+(`DESIGN_RESEARCH_NAVIGATION.md`) was **not finished** — the agent writing it hit the session
+limit. That gap is stated rather than papered over; the owner supplied the design directly, which
+is what the built system rests on. Wind (§6 step 5) and encounters (§6 step 6) are deliberately
+NOT in the built slice; the wind seam (per-segment frozen speeds) is.
 
 ---
 

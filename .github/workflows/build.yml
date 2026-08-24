@@ -47,7 +47,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24  # 0039: Node scripts import src/lib/sea/*.ts via type stripping (default from 23.6)
           cache: npm
 
       - name: Install dependencies (from the lockfile)

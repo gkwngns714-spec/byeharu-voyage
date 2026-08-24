@@ -92,6 +92,22 @@ function namedByItsEnum(spec: VerbSpec, arg: VerbArg, args: Record<string, strin
 }
 
 /**
+ * WHAT ANSWERS AN ARGUMENT — one reading. Almost every argument is answered by its own name in
+ * the draft; a `place` argument (0039: SAIL's destination is a harbour OR any point of open sea)
+ * is also answered by `<name>_point`, the "lat,lon" token the map writes when the player pinpoints
+ * water. The parser reads both spellings of the same token, so the line needs no translation.
+ */
+export function argValue(arg: VerbArg, args: Record<string, string>): string | undefined {
+  const own = args[arg.name]
+  if (own !== undefined && own !== '') return own
+  if (arg.type === 'place') {
+    const point = args[`${arg.name}_point`]
+    if (point !== undefined && point !== '') return point
+  }
+  return undefined
+}
+
+/**
  * The arguments the composer shows a picker for, in the schema's order.
  *
  * Fleet arguments are never among them: the fleet is picked ONCE, at the top of the screen, and it
@@ -112,7 +128,7 @@ export function visibleArgs(spec: VerbSpec): VerbArg[] {
  *  argument is only missing while its enum is actually asking for it. */
 export function missingArgs(spec: VerbSpec, args: Record<string, string>): VerbArg[] {
   return visibleArgs(spec).filter(
-    (a) => a.required && !args[a.name] && namedByItsEnum(spec, a, args),
+    (a) => a.required && argValue(a, args) === undefined && namedByItsEnum(spec, a, args),
   )
 }
 
@@ -144,7 +160,7 @@ export function orderText(
       continue
     }
 
-    const value = args[arg.name]
+    const value = argValue(arg, args)
     if (value === undefined || value === '') continue
 
     // A named argument rides out on its enum's own emission (the `revealed` branch below), and

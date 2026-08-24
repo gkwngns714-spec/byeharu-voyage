@@ -93,6 +93,11 @@ try {
   // 2026-08-24 — the day 0003 turned out to have been edited after production applied it).
   const { assertWorldMatchesData } = await import('./world-guard.mjs')
   await assertWorldMatchesData(db, { log: console.log })
+  // 0047: the proofs sail like players — they PROPOSE courses and the server verifies them.
+  // The proposals are a test fixture (schema `proof`), invisible to the per-proof digest, which
+  // reads public tables only. See ./proof-courses.mjs.
+  const { installProofCourses } = await import('./proof-courses.mjs')
+  await installProofCourses(db)
 } catch (err) {
   console.error(err.message)
   process.exit(1)

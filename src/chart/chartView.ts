@@ -154,22 +154,6 @@ export function minTierForSpan(spanX: number): number {
   return PORT_TIER_BANDS[PORT_TIER_BANDS.length - 1].minTier
 }
 
-/**
- * The span at or below which the sea lanes are drawn.
- *
- * §E.5 asks for a quiet chart, and 782 lanes drawn from orbit is precisely the spiderweb that rule
- * exists to prevent. Close in, where a lane answers "can I actually sail there from here", it is
- * worth a hairline. Above this span the layer is not drawn at all — not faded, not thinned: gone.
- *
- * WHY 16 AND NOT 12. MEASURED, in the browser, on the founding position: one Barca at Lisbon frames
- * `OPENING_MIN_SPAN_DEG` = 12°, which `FIT_PADDING` of 0.12 then opens to 12 × 1.24 = 14.88° on the
- * glass. A limit of 12 therefore put the lanes just out of reach of the OPENING view — a new player
- * saw no water routes at all until they zoomed in a step, on the one screen whose whole question is
- * "where can I go from here". 16 covers the opening frame with room to spare and is still a coast,
- * not a hemisphere. (Only lanes between two DRAWN marks are painted, so this never produces a line
- * running off to a port that has no triangle — see `legWebPath`.)
- */
-export const LEG_SPAN_LIMIT = 16
 
 /**
  * THE FLOOR ON THE OPENING FRAME, in degrees of longitude.

@@ -12,7 +12,7 @@
 // the two ever drift, a test says so rather than a player noticing a dot in the wrong sea.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import type { LatLon } from './projection'
+import type { LatLon } from './projection.ts'
 
 /** Mean Earth radius in nautical miles — DESIGN §B.3, verbatim. */
 export const EARTH_RADIUS_NM = 3440.065

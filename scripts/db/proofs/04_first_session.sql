@@ -217,7 +217,10 @@ begin
   --    first destination that ALSO offers a cargo home is the one she sails to. Both legs are the
   --    quay's, through the same authority, and the second call PINS the destination because she is
   --    coming home whatever else is on offer.
-  v_routes := world.trade_routes(v_lis, v_fleet, 1, null);
+  -- 0039: "one leg out" became a sailed radius. 600 nm is measured, not chosen: the old one-leg
+  -- scan reached a median of 7 harbours per port, and 600 nm of sailed water reaches a median 8 -
+  -- the closest radius to the horizon the proof was written against.
+  v_routes := world.trade_routes(v_lis, v_fleet, 600, null);
   for r_out in
     select (e->'to'->>'id')::uuid            as dest_id,
            e->'to'->>'code'                  as dest_code,
@@ -333,7 +336,7 @@ begin
   -- ── 1:20 SAIL, typed the way a player types it
   select speed_kn into v_rated from public.ship_classes c
     join public.ships s on s.class_id = c.id where s.fleet_id = v_fleet;
-  v_r := cmd.issue(v_fleet, 'SAIL Gaivota TO ' || v_dest_code);
+  v_r := proof.sail(v_fleet, v_dest_code);
   if not (v_r->>'ok')::boolean then
     raise exception 'PROOF 4 FAILED at 1:20 — SAIL was refused: %', v_r;
   end if;
@@ -342,8 +345,11 @@ begin
   v_speed := voyage.fleet_speed(v_fleet);
   -- The crossing is the LEG's own sailed distance — the one the chart draws and the router summed
   -- — not a figure quoted in a document.
-  if abs((v_r->'order'->'result'->>'total_nm')::numeric - v_leg_nm) > 0.05 then
-    raise exception 'PROOF 4 FAILED at 1:20 — the crossing is % nm but the leg is % nm',
+  -- 0039: the quay quotes the reach table (rounded to 0.1 nm) and the mover measures the
+  -- proposed course segment by segment (rounded to 0.01 each, long segments split) — one
+  -- generator, two roundings, so the tolerance is half a per cent, not a twentieth of a mile.
+  if abs((v_r->'order'->'result'->>'total_nm')::numeric - v_leg_nm) > greatest(0.5, v_leg_nm * 0.005) then
+    raise exception 'PROOF 4 FAILED at 1:20 — the crossing is % nm but the quay quoted % nm',
       v_r->'order'->'result'->>'total_nm', v_leg_nm;
   end if;
   -- Laden, and therefore slower than the rating. Both directions matter: no penalty at all would
@@ -366,7 +372,7 @@ begin
 
   perform cmd.issue(v_fleet, 'SELL ' || v_good_code || ' ALL');
   perform cmd.issue(v_fleet, 'BUY ' || v_back_code || ' ' || v_back_qty::int);
-  perform cmd.issue(v_fleet, 'SAIL Gaivota TO LIS');
+  perform proof.sail(v_fleet, 'LIS');
   select count(*) into v_queued from public.orders where fleet_id = v_fleet and status = 'pending';
   if v_queued <> 3 or (select status from public.fleets where id = v_fleet) <> 'SAILING' then
     raise exception 'PROOF 4 FAILED at 1:35 — % order(s) queued behind a fleet that is %',

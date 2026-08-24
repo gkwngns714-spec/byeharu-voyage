@@ -16,9 +16,10 @@
 //                 seeded once and then owned by the running game (0007 hire drains it)
 //   * goods       every good, every column, both directions
 //   * offers      every port's port_specialties rows equal its `goods` array, as a set
-//   * legs        every harbour-harbour leg equals data/sea-routes.json: pair, distance, hazard,
-//                 note. SEA_PLACE spur legs belong to 0036 (generated from data/sea-places.json);
-//                 here each place is checked to exist, sit where the data says, and keep its spurs
+//   * (legs)      RETIRED 2026-08-24 with migration 0049: public.legs and data/sea-routes.json
+//                 are both gone — the raster (0046) is the one authority for what water connects
+//                 to what, cross-checked against 0040's sea-membership at generation. Sea places
+//                 are still checked to exist and sit where data/sea-places.json says.
 //   * seas/regions/nations   the code+name sets are equal
 //   * market      exactly one port_goods row per (harbour, good) — the market covers the world
 //
@@ -28,7 +29,7 @@
 // guarantees the browser applies the same bytes this guard just certified.
 //
 // POSITIVE CONTROL, EVERY RUN: before certifying, the comparator is aimed at a deliberately
-// mutated copy of the derived world (one harbour dropped, one distance bent) and MUST report both
+// mutated copy of the derived world (one harbour dropped, one good's value bent) and MUST report both
 // wounds. A guard that cannot see a planted drift certifies nothing (proofs-never-assert rule).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -85,19 +86,6 @@ function drift(db_, want) {
   for (const k of wSpec) if (!dSpec.has(k)) say(`offer ${k.replace('|', '·')} is in a data roster but not in port_specialties`)
   for (const k of dSpec) if (!wSpec.has(k)) say(`offer ${k.replace('|', '·')} is in port_specialties but in no data roster`)
 
-  // harbour legs
-  const key = (f, t) => `${f}|${t}`
-  const wLegs = new Map(want.legs.map((l) => [key(l.from, l.to), l]))
-  const dLegs = new Map(db_.legs.map((l) => [key(l.f, l.t), l]))
-  for (const [k, l] of wLegs) {
-    const d = dLegs.get(k)
-    if (!d) { say(`leg ${k.replace('|', '-')} (${Math.round(l.nm)} nm) is in data/sea-routes.json but not in the database`); continue }
-    if (Math.abs(Number(d.nm) - Math.round(l.nm * 10) / 10) > 0.05) say(`leg ${k.replace('|', '-')}.distance: ${d.nm} vs ${Math.round(l.nm * 10) / 10}`)
-    if (Math.abs(Number(d.hz) - l.hazard) > 1e-9) say(`leg ${k.replace('|', '-')}.hazard: ${d.hz} vs ${l.hazard}`)
-    if (String(d.note ?? '') !== String(l.note ?? '')) say(`leg ${k.replace('|', '-')}.note differs`)
-  }
-  for (const k of dLegs.keys()) if (!wLegs.has(k)) say(`leg ${k.replace('|', '-')} is in the database but not in data/sea-routes.json`)
-
   // sea places
   const wPlaces = new Map(want.places.map((p) => [p.code, p]))
   for (const p of db_.places) if (!wPlaces.has(p.code)) say(`sea place ${p.code} (${p.name}) is in the database but not in data/sea-places.json`)
@@ -108,7 +96,6 @@ function drift(db_, want) {
     if (Math.abs(Number(d.lat) - round2(p.lat)) > 1e-9 || Math.abs(Number(d.lon) - round2(p.lon)) > 1e-9) {
       say(`sea place ${p.code} sits at (${d.lat}, ${d.lon}); data says (${round2(p.lat)}, ${round2(p.lon)})`)
     }
-    if (Number(d.spurs) < 1) say(`sea place ${p.code} has no spur leg at all — it cannot be reached`)
   }
 
   // seas / regions / nations
@@ -154,19 +141,12 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       left join public.nations n on n.id = p.nation_id
      where p.kind = 'HARBOUR' order by p.code`)).rows
   db_.places = (await db.query(`
-    select p.code, p.name, p.lat::float8 lat, p.lon::float8 lon,
-           (select count(*) from public.legs l where l.from_port_id = p.id or l.to_port_id = p.id) as spurs
+    select p.code, p.name, p.lat::float8 lat, p.lon::float8 lon
       from public.ports p where p.kind = 'SEA_PLACE' order by p.code`)).rows
   db_.goods = (await db.query(`
     select code, name, base_value::float8 base_value, bulk::float8 bulk,
            perishable_pct_day::float8 perishable_pct_day, category, culture_mask
       from public.goods order by code`)).rows
-  db_.legs = (await db.query(`
-    select a.code as f, b.code as t, l.distance_nm::float8 nm, l.hazard_mult::float8 hz, l.notes as note
-      from public.legs l
-      join public.ports a on a.id = l.from_port_id
-      join public.ports b on b.id = l.to_port_id
-     where a.kind = 'HARBOUR' and b.kind = 'HARBOUR'`)).rows
   db_.spec = (await db.query(`
     select p.code as port, g.code as good from public.port_specialties s
       join public.ports p on p.id = s.port_id join public.goods g on g.id = s.good_id`)).rows
@@ -182,15 +162,15 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const wounded = {
     ...want,
     ports: want.ports.slice(1),                                      // one harbour dropped
-    legs: want.legs.map((l, i) => (i === 0 ? { ...l, nm: l.nm + 500 } : l)), // one distance bent
+    goods: want.goods.map((g, i) => (i === 0 ? { ...g, base_value: g.base_value + 500 } : g)), // one value bent
   }
   const seen = drift(db_, wounded)
   const sawDrop = seen.some((s) => s.includes(`${want.ports[0].code}`))
-  const sawBend = seen.some((s) => s.includes('.distance:'))
+  const sawBend = seen.some((s) => s.includes('.base_value:'))
   if (!sawDrop || !sawBend) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}) or bent leg distance was NOT reported by the comparator ` +
+        `(${want.ports[0].code}) or bent good value was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -212,8 +192,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
 
   log(
     `world-guard ok: the applied world EQUALS data/*.json — ${want.ports.length} harbours, ` +
-      `${want.goods.length} goods, ${want.specialtyPairs.length} offers, ${want.legs.length} legs, ` +
+      `${want.goods.length} goods, ${want.specialtyPairs.length} offers, ` +
       `${want.places.length} sea places, ${db_.marketRows} market rows ` +
-      `(positive control: a planted dropped-harbour and bent-distance were both seen)`,
+      `(positive control: a planted dropped-harbour and bent-good-value were both seen)`,
   )
 }

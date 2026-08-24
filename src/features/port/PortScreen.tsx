@@ -94,6 +94,8 @@ export function PortScreen() {
 function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
+  const reaches = useWorld((s) => s.reaches)
+  const loadReach = useWorld((s) => s.loadReach)
   const markets = useWorld((s) => s.markets)
   const navigate = useNavigate()
   const handOff = useCommandDraft((s) => s.handOff)
@@ -134,6 +136,11 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   useEffect(() => {
     if (portId && !marketLoaded && !isSeaPlace) void loadMarket(portId)
   }, [portId, marketLoaded, isSeaPlace, loadMarket])
+  // The sailed distances out of here (world.reach, 0039) - the "nearest water" list below reads
+  // them. Cached in the store; a reach never changes within a chain version.
+  useEffect(() => {
+    if (portId) void loadReach(portId)
+  }, [portId, loadReach])
 
   const draftOfClass = useMemo(() => {
     const byName = new Map(snapshot.ship_classes.map((c) => [c.name, c.draft]))
@@ -181,16 +188,13 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const offeredFaces = PORT_FACES.filter((f) => f.id !== 'academy' || port.has_academy)
   const shownFace = offeredFaces.find((f) => f.id === face) ?? offeredFaces[0]
 
-  // The legs the SERVER authored out of this port — with its own sailed `nm`, which includes the
-  // detour around land. The client used to great-circle this itself; the server's figure is the one
-  // the voyage is actually costed on (README §4.4), so it is the one printed.
-  const oneLeg = snapshot.legs
-    .filter((leg) => leg.from === port.code || leg.to === port.code)
-    .map((leg) => ({
-      code: leg.from === port.code ? leg.to : leg.from,
-      nm: leg.nm,
-    }))
-    .map(({ code, nm }) => ({ port: portByCode[code] ?? null, code, nm }))
+  // The nearest water from here — the server's sailed figures (world.reach, 0039: the same
+  // distance table the endurance gate and the trade scan read; the approach detour is inside
+  // every number). The old one-leg graph is gone; "near" is now simply near, by sea.
+  const reachHere = reaches[port.id]?.reaches ?? null
+  const oneLeg = (reachHere ? Object.entries(reachHere) : [])
+    .map(([code, nm]) => ({ port: portByCode[code] ?? null, code, nm }))
+    .filter((r) => r.port !== null && r.port.kind === 'HARBOUR')
     .sort((a, b) => a.nm - b.nm)
 
   // 0036: A SEA PLACE HAS NO SHORE, so it gets the anchorage view and none of the harbour faces.
@@ -227,7 +231,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
           </p>
         </Card>
         <Card>
-          <CardHeader title="Sailing on" subtitle="The sailed legs out of this water." />
+          <CardHeader title="Sailing on" subtitle="The nearest water, by sailed miles." />
           <div className="space-y-1">
             {oneLeg.map(({ port: p, code, nm }) => (
               <Button
@@ -286,7 +290,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
            standing sentence in this app lives. Nothing was dropped — it got shorter and folded. */
         <Notice tone="warning" className="text-xs">
           {acting.status === 'SAILING' && acting.voyage
-            ? `${acting.name} is at sea, bound for ${portNameOf(portByCode, acting.voyage.to)}. Orders run there.`
+            ? `${acting.name} is at sea, bound for ${acting.voyage.to ? portNameOf(portByCode, acting.voyage.to) : 'open water'}. Orders run there.`
             : actingPortCode
               ? `${acting.name} lies at ${portNameOf(portByCode, actingPortCode)}. Orders run there.`
               : `${acting.name} is alongside nowhere.`}
@@ -490,7 +494,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                     />
 
                     <ActionGroup
-                      label="One leg from here"
+                      label="Nearest by sea"
                       actions={oneLeg.slice(0, 6).map(({ port: p, code, nm }) => ({
                         intent: { verb: 'SAIL', args: { dest: code } },
                         note: `${formatNm(nm)} · ${
@@ -501,7 +505,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                               : `draft ${p.max_draft}`
                         }`,
                       }))}
-                      empty="No leg leaves this port."
+                      empty="The distances are still being fetched."
                       lineOf={lineOf}
                       onPick={command}
                     />

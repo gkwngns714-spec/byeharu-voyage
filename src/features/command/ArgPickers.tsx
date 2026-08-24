@@ -23,7 +23,7 @@ import {
 } from '../../lib/format'
 // `haversineNm` is deliberately NOT imported any more: the only thing this file used it for was a
 // destination's distance, and that number belongs to the server's leg (see PortPicker's header).
-import type { MarketGood, SnapshotLeg, SnapshotPort } from '../../lib/rpc'
+import type { MarketGood, SnapshotPort } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import type { BuyCapacityState } from './useBuyCapacity'
 import { sellBound, type QtyBound } from './fleetLimits'
@@ -168,49 +168,34 @@ function TruncationNote({ hidden }: { hidden: number }) {
 // ── port ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Somewhere to sail. Ports one leg away come first — the authored leg graph is what a voyage is
- * routed over (D.1), so a one-leg destination is the difference between a passage and a haul.
+ * Somewhere to sail — every place in the world, nearest sailed water first.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * THE DISTANCE IS THE SERVER'S SAILED LEG. IT USED TO BE A STRAIGHT LINE, AND IT WAS SHORT.
+ * THE DISTANCE IS THE SERVER'S SAILED FIGURE, FOR EVERY ROW (0039).
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * This picker called `haversineNm(here, there)` while `legs` — which carries the real sailed `nm`,
- * the one the voyage is costed and timed on — was already in the same `useMemo`. Measured in the
- * running game, same instant, same fleet lying at Lisbon:
+ * This picker once used a straight line (Seville read 169 nm against the server's 286 and the
+ * SORT was wrong on every row), then the leg graph, which could only price one-leg neighbours and
+ * left a dash on the rest. `world.reach` now serves the sailed distance from the origin to EVERY
+ * place — from the same table the endurance gate and the trade scan read (sea_reaches, derived
+ * from the water raster by the one pathfinder, Arctic closed, no Suez, no Panama) — so every tile
+ * carries its real figure and "nearest first" is finally the whole list's order.
  *
- *     destination   this picker   the server
- *     Porto             149 nm        195 nm
- *     Seville           169 nm        286 nm   (+69%)
- *     Cádiz             188 nm        248 nm
- *
- * 188 against 248 for Lisbon → Cádiz is precisely the Cape St Vincent detour that the water-raster
- * world generation exists to produce (docs/WORLD_DATA.md §7): a great circle sails through Iberia
- * and no ship does. The number was wrong on every row and it also drove the SORT, so "nearest
- * first" was not nearest — it was "shortest as the gull flies", which is a different list.
- *
- * WHERE THERE IS NO DIRECT LEG, THERE IS NO NUMBER. `world.snapshot()` serves the leg graph and
- * nothing else about distance; a multi-leg passage is routed by `voyage.route` INSIDE the server
- * and is not on the RPC surface, so the client cannot know what it is worth. Substituting a great
- * circle there would put back the exact lie this comment records, on the rows where it is worst
- * (a Lisbon → Aden straight line is under half the real passage round the Cape). So those rows
- * print no distance and the list says why. A number that is wrong is worse than a dash.
- *
- * WHAT THAT COSTS THE SORT, honestly: only the one-leg rows can be ordered by distance. The rest
- * fall back to region and name — the same grouping the Market tab's port list uses — which is at
- * least a stable, readable order rather than a false ranking. `SAIL`'s own preview names the real
- * figure the moment a destination is picked (PreviewPanel's `distance` row), so the number is one
- * tap away and it comes from the server.
+ * WHILE THE REACH READ IS IN FLIGHT (or failed), rows print no number and group by region and
+ * name — a truthful, lesser answer (docs/NO_SPAGHETTI.md §7C's mirror). A number that is wrong
+ * is worse than a dash, and nothing here ever invents one.
  */
 export function PortPicker({
   ports,
-  legs,
+  reach,
   origin,
   value,
   onPick,
   onConsider,
 }: {
   ports: readonly SnapshotPort[]
-  legs: readonly SnapshotLeg[]
+  /** Sailed nm from `origin` to every place, keyed by code (`world.reach`, 0039). Null while the
+   *  read is in flight — rows then carry no figure rather than an invented one. */
+  reach: Record<string, number> | null
   /** The port CODE the fleet is at (or bound for). Null when it is not known. */
   origin: string | null
   value: string | undefined
@@ -226,32 +211,22 @@ export function PortPicker({
   const [filter, setFilter] = useState('')
 
   const rows = useMemo(() => {
-    // ONE WALK OF THE LEG GRAPH, and it now yields the DISTANCE as well as the fact of a leg. The
-    // old code built a `Set` of one-leg codes here and then computed the distance a second way; the
-    // sailed `nm` was sitting on the very row it was throwing away.
-    const legNm = new Map<string, number>()
-    if (origin) {
-      for (const leg of legs) {
-        if (leg.from === origin) legNm.set(leg.to, leg.nm)
-        else if (leg.to === origin) legNm.set(leg.from, leg.nm)
-      }
-    }
     const q = fold(filter.trim())
     return ports
       .filter((p) => p.code !== origin)
       .filter((p) => foldedMatch(q, p.name, p.code, p.country))
-      .map((p) => ({ port: p, nm: legNm.get(p.code) ?? null }))
+      .map((p) => ({ port: p, nm: reach ? (reach[p.code] ?? null) : null }))
       .sort(
         (a, b) =>
-          // One-leg destinations first, ordered by what she will actually sail. Everything else is
-          // a routed passage whose length this side of the wire does not know, so it is grouped by
-          // region and named — never ranked by a number that was invented to rank it.
+          // Nearest sailed water first — every row carries the server's own figure now (0039).
+          // While the reach is still loading, rows fall back to region and name: a stable,
+          // readable order, never a ranking by a number that was invented to rank it.
           Number(b.nm !== null) - Number(a.nm !== null) ||
           (a.nm ?? 0) - (b.nm ?? 0) ||
           a.port.region.localeCompare(b.port.region) ||
           a.port.name.localeCompare(b.port.name),
       )
-  }, [ports, legs, origin, filter])
+  }, [ports, reach, origin, filter])
 
   const shown = rows.slice(0, MAX_PORT_ROWS)
   const routed = shown.some((r) => r.nm === null)
@@ -311,8 +286,8 @@ export function PortPicker({
               {port.name}
               {port.is_ice_closed && <Badge tone="warning">ice</Badge>}
             </span>
-            {/* The sailed leg is the tile's hero, or a dash. Never a great circle — see this
-                component's header for the three measurements that dash replaces. */}
+            {/* The sailed water is the tile's hero. Never a great circle — see this component's
+                header; a dash only ever means the reach read has not landed yet. */}
             <span className="font-mono text-base leading-none tabular-nums text-ink">
               {nm === null ? (
                 <span className="text-ink-faint">—</span>
@@ -336,9 +311,8 @@ export function PortPicker({
       </div>
       {routed && (
         <p className={fineClass()}>
-          A figure is the leg she would sail. A dash is a harbour with no direct leg from here — your
-          navigator will take her round by others, and the real distance is named the moment you
-          check the order.
+          Distances are still being fetched — every figure, when it lands, is the sailed water
+          from where she lies, never a straight line.
         </p>
       )}
       <TruncationNote hidden={rows.length - shown.length} />

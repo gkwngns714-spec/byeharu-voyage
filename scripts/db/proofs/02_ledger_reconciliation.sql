@@ -84,13 +84,19 @@ begin
       -- SAIL to a port one leg away. Picking from all 214 sends the fleet round the world, which
       -- §F.2's endurance rule refuses every time — again, 500 orders and no voyages. A player sails
       -- to somewhere they can reach.
+      -- 0039: "one leg away" became "a destination the course fixture covers from here" — the
+      -- same ~1,900 nm horizon a player's first hops live in. proof.issue attaches the course.
       when v_roll < 0.78 then format('SAIL TO %s',
-             coalesce((select p2.code
+             coalesce((select c.b
                          from public.fleets f
-                         join public.legs l on l.from_port_id = f.port_id or l.to_port_id = f.port_id
-                         join public.ports p2
-                           on p2.id = case when l.from_port_id = f.port_id then l.to_port_id else l.from_port_id end
-                        where f.id = v_fleets[h] and f.port_id is not null
+                         join public.ports p on p.id = f.port_id
+                         join proof.courses c on c.a = p.code
+                        where f.id = v_fleets[h]
+                        order by random() limit 1),
+                      (select c2.a from public.fleets f2
+                         join public.ports p2 on p2.id = f2.port_id
+                         join proof.courses c2 on c2.b = p2.code
+                        where f2.id = v_fleets[h]
                         order by random() limit 1),
                       v_ports[1 + floor(random() * array_length(v_ports, 1))::int]))
       when v_roll < 0.86 then 'PROVISION FULL'
@@ -101,7 +107,7 @@ begin
 
     r := null;
     begin
-      if (cmd.issue(v_fleets[h], v_cmd)->>'ok')::boolean then
+      if (proof.issue(v_fleets[h], v_cmd)->>'ok')::boolean then
         v_done := v_done + 1;
       else
         v_failed := v_failed + 1;

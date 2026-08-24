@@ -2,15 +2,10 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fineClass, Notice, overlaySlotClass } from '../../components/ui'
 import { formatRealShort } from '../../lib/format'
-import type { Point, ViewBox } from '../../lib/geo'
-import type {
-  FleetView,
-  Refusal,
-  SnapshotConfig,
-  SnapshotLeg,
-  SnapshotPort,
-  VerbSpec,
-} from '../../lib/rpc'
+import { unproject, type Point, type ViewBox } from '../../lib/geo'
+import type { FleetView, Refusal, SnapshotConfig, SnapshotPort, VerbSpec } from '../../lib/rpc'
+import type { SeaNav } from '../../lib/sea'
+import { snapSeaPoint } from '../../domain/passage'
 import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
 // THE HAND-OFF SEAM — `domain/order`'s draft, which is the SAME one FLEETS, PORT and MARKET
@@ -86,7 +81,6 @@ import { FleetsPanel } from './FleetsPanel'
 // ── WHERE THE PICTURE COMES FROM ───────────────────────────────────────────────────────────────
 // The live world, and nowhere else (src/live/worldStore.ts):
 //   snapshot.ports  214 real harbours with Wikidata coordinates and a `size_tier`
-//   snapshot.legs   782 sea lanes whose distances are SAILED distances
 //   world.fleets    your fleets — and for one at sea, `voyage.position`, the closed form of §D.2
 //   snapshot.config the time compression printed in the caption, rather than a number typed here
 // ./liveWorld.ts is the only module that has seen the wire format. The stub it replaced
@@ -137,6 +131,7 @@ export function MapScreen() {
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
   const snapshot = useWorld((s) => s.snapshot)
+  const seaNav = useWorld((s) => s.seaNav)
   const fleets = useWorld((s) => s.fleets)
   const readAt = useWorld((s) => s.readAt)
 
@@ -145,14 +140,14 @@ export function MapScreen() {
   if (phase === 'failed') return <ChartMessage refusal={fatal} />
   // Opening: one quiet line on the chart's own sea, so the tab does not flash a different surface
   // before settling. Never an endless spinner — the store's phase always resolves.
-  if (phase !== 'ready' || !snapshot) return <ChartMessage refusal={null} />
+  if (phase !== 'ready' || !snapshot || !seaNav) return <ChartMessage refusal={null} />
 
   // The chart mounts ONLY with the world in hand. That is what lets it freeze its opening frame at
   // its own mount (see below) on real fleets rather than on an empty model.
   return (
     <Chart
       ports={snapshot.ports}
-      legs={snapshot.legs}
+      seaNav={seaNav}
       config={snapshot.config}
       // THE SERVER'S OWN GRAMMAR, handed down so the one action can be composed by the one
       // composer. Nothing in this folder lists a verb.
@@ -186,14 +181,15 @@ function ChartMessage({ refusal }: { refusal: Refusal | null }) {
 
 function Chart({
   ports: snapshotPorts,
-  legs,
+  seaNav,
   config,
   verbs,
   fleets: fleetViews,
   readAt,
 }: {
   ports: readonly SnapshotPort[]
-  legs: readonly SnapshotLeg[]
+  /** The served navigable-water grid — the tap-on-open-water snap reads it (0039). */
+  seaNav: SeaNav
   config: SnapshotConfig
   verbs: readonly VerbSpec[]
   fleets: readonly FleetView[]
@@ -272,9 +268,18 @@ function Chart({
       const tappable = visiblePorts(ports, model.portRoles, view, minTierForSpan(view.width))
       const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx)
       if (hit?.kind === 'fleet') selectFleet(hit.id)
-      setSelection((current) => toggleSelection(current, hit))
+      if (hit) {
+        setSelection((current) => toggleSelection(current, hit))
+        return
+      }
+      // 0039 — THE PINPOINT: a tap on open water SELECTS that water (the owner: "in map, i should
+      // be able to pinpoint anywhere in the ocean to make a fleet move"). The point is snapped to
+      // the nearest sailable cell, so what the panel offers is water by construction; a tap deep
+      // inland still clears the selection, which keeps the dismiss gesture every map has.
+      const sea = snapSeaPoint(seaNav, unproject(at))
+      setSelection(sea ? { kind: 'sea', at: sea } : null)
     },
-    [model, ports, selectFleet],
+    [model, ports, selectFleet, seaNav],
   )
 
   const surface = useChartSurface(chartRef, frameBounds, onTap)
@@ -315,7 +320,6 @@ function Chart({
         <ChartCanvas
           model={model}
           ports={ports}
-          legs={legs}
           box={box}
           unitsPerPx={surface.unitsPerPx}
           coastlineD={coastline.data?.d ?? ''}

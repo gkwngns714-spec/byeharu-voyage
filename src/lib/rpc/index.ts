@@ -26,6 +26,8 @@
 import { call } from './backend'
 import type { RpcResult } from './result'
 import type {
+  SeaRasterPayload,
+  ReachPayload,
   BuyCapacity,
   CancelResult,
   ClearResult,
@@ -128,7 +130,8 @@ export function cmdHaggle(
  * @param fleetId name her and the quantities become real — hold, purse, stock and the daily cap.
  *                Omit it and every row is priced at the server's stated default, reported in
  *                `basis.tuns`.
- * @param maxLegs how many sailed legs out to look. Null takes the server's own default.
+ * @param radiusNm how far out to look, in SAILED nautical miles over the distance table (0039).
+ *                Null takes the server's own sea_scan_radius_nm.
  * @param limit   how many rows; null for every good that pays.
  * @param toPortId pin the destination, and the read answers the OTHER question a trader has —
  *                "what should I carry there?" — over the same shortlist, quotes and sail gate.
@@ -137,11 +140,25 @@ export function cmdHaggle(
 export function worldTradeRoutes(
   portId: string,
   fleetId: string | null = null,
-  maxLegs: number | null = null,
+  radiusNm: number | null = null,
   limit: number | null = null,
   toPortId: string | null = null,
 ): Promise<RpcResult<TradeRoutes>> {
-  return call<TradeRoutes>('worldTradeRoutes', [portId, fleetId, maxLegs, limit, toPortId])
+  return call<TradeRoutes>('worldTradeRoutes', [portId, fleetId, radiusNm, limit, toPortId])
+}
+
+/**
+ * The navigable sea, whole (0039): the raster the client's pathfinder proposes over — the very
+ * row the server verifies every course against, so the two cannot hold different water. ~346 KB
+ * of base64; fetch once per session and unpack through src/lib/sea.
+ */
+export function worldSeaRaster(): Promise<RpcResult<SeaRasterPayload>> {
+  return call<SeaRasterPayload>('worldSeaRaster')
+}
+
+/** One place's sailed distances to everywhere (0039) — the SAIL picker's ordering and figures. */
+export function worldReach(portId: string): Promise<RpcResult<ReachPayload>> {
+  return call<ReachPayload>('worldReach', [portId])
 }
 
 /**
@@ -176,8 +193,11 @@ export function cmdIssue(
   fleetId: string,
   rawText: string,
   expectedVersion: number | null = null,
+  /** A SAIL's PROPOSED course, [[lat, lon], …] (0039). The server verifies and measures it —
+   *  attaching a course makes nothing legal, only findable. */
+  path: [number, number][] | null = null,
 ): Promise<RpcResult<IssueResult>> {
-  return call<IssueResult>('cmdIssue', [fleetId, rawText, expectedVersion])
+  return call<IssueResult>('cmdIssue', [fleetId, rawText, expectedVersion, path])
 }
 
 /**
@@ -185,8 +205,12 @@ export function cmdIssue(
  * the estimate and the commit cannot disagree — and so a preview that refuses is telling you
  * exactly what the commit would have refused.
  */
-export function cmdPreview(fleetId: string, rawText: string): Promise<RpcResult<PreviewResult>> {
-  return call<PreviewResult>('cmdPreview', [fleetId, rawText])
+export function cmdPreview(
+  fleetId: string,
+  rawText: string,
+  path: [number, number][] | null = null,
+): Promise<RpcResult<PreviewResult>> {
+  return call<PreviewResult>('cmdPreview', [fleetId, rawText, path])
 }
 
 /** Cancel one queued order by its 1-based index, or the head of the queue when index is null. */
@@ -203,13 +227,18 @@ export function cmdClear(fleetId: string, includeActive = false): Promise<RpcRes
 }
 
 /**
- * The helm order at sea (0037): change a SAILING fleet's destination. She finishes the leg under
- * her keel, turns at its far node, and the onward passage is a SAIL queued through the one parser
- * — gated at the node by the one refusal authority, so a second legality path exists nowhere.
- * History is untouched: settled days, rolled hazards and the miles already sailed all stand.
+ * The helm order at sea (0039): a SAILING fleet turns WHERE SHE IS and makes for a port or any
+ * point of open water. The proposed onward course rides along; the server bridges it to her true
+ * position and verifies it as water like every other course. History is untouched: settled days,
+ * rolled hazards and the miles already sailed all stand.
  */
-export function cmdDivert(fleetId: string, destPortId: string): Promise<RpcResult<DivertResult>> {
-  return call<DivertResult>('cmdDivert', [fleetId, destPortId])
+export function cmdDivert(
+  fleetId: string,
+  destPortId: string | null,
+  destPoint: { lat: number; lon: number } | null = null,
+  path: [number, number][] | null = null,
+): Promise<RpcResult<DivertResult>> {
+  return call<DivertResult>('cmdDivert', [fleetId, destPortId, destPoint, path])
 }
 
 /** The grammar, for the tap-builder: the same 8 verbs `world.snapshot().verbs` carries. */

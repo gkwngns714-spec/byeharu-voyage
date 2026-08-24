@@ -70,7 +70,9 @@ begin
     v_try := v_try + 1;
     v_retry := false;
     begin
-      perform cmd.issue(v_fleet, 'SAIL Gaivota TO Tunis');
+      -- 0039: a proof sails like a player — it PROPOSES the course (proof.sail attaches the
+      -- fixture's proposal) and the server verifies and measures it.
+      perform proof.sail(v_fleet, 'TUN');
       select id into v_voyage from public.voyages where fleet_id = v_fleet and status = 'SAILING';
       if v_voyage is null then
         raise exception 'PROOF 1 SETUP FAILED: the fleet did not depart for Tunis on attempt %', v_try;

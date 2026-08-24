@@ -12,19 +12,20 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { project, type LatLon, type ViewBox } from '../lib/geo'
-import type { MapFleet, MapPort, MapVoyageLeg } from './mapTypes'
+import type { MapFleet, MapPort, MapVoyage } from './mapTypes'
 import { buildTrack, type TrackPaths } from './route'
 
 /** One fleet, resolved to ink. */
 export interface FleetOnChart {
   readonly fleet: MapFleet
-  /** Where to draw the glyph — the server's closed-form position at sea, the quay at anchor. */
+  /** Where to draw the glyph — the server's closed-form position at sea, the quay when docked,
+   *  the held coordinate at an open anchor. */
   readonly at: LatLon
-  /** Null for a docked fleet: it is not on a passage, so there is no leg to report. */
-  readonly leg: MapVoyageLeg | null
-  /** Null for a docked fleet: no passage, no track. */
+  /** Null unless she is on a passage. */
+  readonly voyage: MapVoyage | null
+  /** Null unless she is on a passage: the served course, split at the served position. */
   readonly track: TrackPaths | null
-  /** Where it is bound, if it is bound anywhere. */
+  /** The PORT she is bound for, if she is bound for one (a point-bound voyage has none). */
   readonly destinationCode: string | null
   /** The port it lies in, if it lies in one. */
   readonly dockedAtCode: string | null
@@ -37,7 +38,9 @@ export interface FleetOnChart {
  *
  *   anchorage    one of your fleets lies in it
  *   destination  one of your fleets is bound for it
- *   route        it is an end of the leg a fleet is on, and is neither of the above
+ *   route        RETIRED with the leg graph (0039): a free course has no port endpoints to mark.
+ *                The member stays in the type so the priority tables need no re-cut; nothing
+ *                assigns it any more.
  *
  * A port with no role is quiet.
  */
@@ -51,6 +54,9 @@ export interface ChartModel {
   /** Ports some fleet is STILL bound for, with where they are — one entry per port, so two fleets
    *  converging on Cádiz do not stack two destination rings on it. */
   readonly destinationPoints: ReadonlyMap<string, LatLon>
+  /** Bare points of open water fleets are bound for (0039) — ringed exactly like a destination
+   *  port, because they are one. */
+  readonly destinationSeaPoints: readonly LatLon[]
   /**
    * EVERYTHING OF YOURS: each fleet's position, the ports they are bound for, and the ports they
    * lie in — but not the whole port table. With 214 harbours on the sheet that distinction is the
@@ -105,6 +111,7 @@ export function buildChartModel(
     return port ? { lat: port.lat, lon: port.lon } : null
   }
 
+  const seaDestinations: LatLon[] = []
   for (const fleet of fleets) {
     if (fleet.kind === 'docked') {
       const at = placeOf(fleet.portCode)
@@ -116,7 +123,7 @@ export function buildChartModel(
       drawn.push({
         fleet,
         at,
-        leg: null,
+        voyage: null,
         track: null,
         destinationCode: null,
         dockedAtCode: fleet.portCode,
@@ -124,34 +131,48 @@ export function buildChartModel(
       continue
     }
 
-    const leg = fleet.leg
-    const from = placeOf(leg.fromCode)
-    const to = placeOf(leg.toCode)
-    if (!from || !to) continue
-
-    setRole(leg.fromCode, 'route')
-    setRole(leg.toCode, 'route')
-
-    // The ring marks where the VOYAGE ends, which may be several legs further on than `toCode`.
-    // The server does not serve those legs (README §4.8), so the destination is RINGED and never
-    // routed: the chart says where the fleet is going without drawing water it was not given.
-    const destination = placeOf(leg.destinationCode)
-    if (destination) {
-      setRole(leg.destinationCode, 'destination')
-      destinations.set(leg.destinationCode, destination)
-      focus.push(destination)
-      motion.push(destination)
+    if (fleet.kind === 'anchored') {
+      // She holds a bare point of open water (0039): drawn like a fleet at sea, with no track —
+      // she is not going anywhere until ordered.
+      focus.push(fleet.at)
+      drawn.push({
+        fleet,
+        at: fleet.at,
+        voyage: null,
+        track: null,
+        destinationCode: null,
+        dockedAtCode: null,
+      })
+      continue
     }
 
-    focus.push(leg.at, to)
-    motion.push(leg.at, to)
+    const voyage = fleet.voyage
+
+    // The ring marks where the voyage ends — a port, or a bare point of water (0039). The course
+    // itself is SERVED whole now, so the track below is the real line, not an invention.
+    if (voyage.destinationCode) {
+      const destination = placeOf(voyage.destinationCode)
+      if (destination) {
+        setRole(voyage.destinationCode, 'destination')
+        destinations.set(voyage.destinationCode, destination)
+        focus.push(destination)
+        motion.push(destination)
+      }
+    } else if (voyage.destPoint) {
+      seaDestinations.push(voyage.destPoint)
+      focus.push(voyage.destPoint)
+      motion.push(voyage.destPoint)
+    }
+
+    focus.push(voyage.at)
+    motion.push(voyage.at)
 
     drawn.push({
       fleet,
-      at: leg.at,
-      leg,
-      track: buildTrack(from, to, leg.at),
-      destinationCode: leg.destinationCode,
+      at: voyage.at,
+      voyage,
+      track: buildTrack(voyage.course, voyage.at, voyage.segIndex),
+      destinationCode: voyage.destinationCode,
       dockedAtCode: null,
     })
   }
@@ -173,6 +194,7 @@ export function buildChartModel(
     fleets: drawn,
     portRoles: roles,
     destinationPoints: destinations,
+    destinationSeaPoints: seaDestinations,
     // With no fleets at all there is no action to frame. Left EMPTY rather than filled with the
     // port table: `openingBounds` takes its own fallback and is the one place that decides what a
     // player with nothing gets to look at.

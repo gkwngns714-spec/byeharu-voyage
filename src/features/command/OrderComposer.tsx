@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Badge,
   Button,
@@ -37,7 +37,9 @@ import { useHaggleState } from './useHaggleState'
 // order about one. ./fleetLimits.ts used to answer all three and every answer had a twin somewhere
 // else in src/ — its header is the ledger of what moved where.
 import { fleetCargoByCode, fleetCrew, fleetPortCode, worstHullFraction } from '../../domain/fleet'
-import { enumNaming, visibleArgs } from '../../domain/order'
+import { argValue, enumNaming, visibleArgs } from '../../domain/order'
+import { parsePointToken, pointLabel } from '../../domain/passage'
+import { useWorld } from '../../live/worldStore'
 
 // THE COMPOSER — an order is MADE, never typed.
 //
@@ -237,6 +239,20 @@ export function OrderComposer({
   const rail = railKind(spec?.verb)
   const railed = rail !== null
 
+  // THE SAILED DISTANCES the port picker orders by (0039): world.reach — one place's figures to
+  // everywhere, from the same table the endurance gate and the trade scan read. Fetched once per
+  // origin and cached in the store; while it is in flight the picker lists everything unordered
+  // by distance, which is a truthful, lesser answer (§7C's mirror), never an invented figure.
+  const portByCode = useWorld((st) => st.portByCode)
+  const reaches = useWorld((st) => st.reaches)
+  const loadReach = useWorld((st) => st.loadReach)
+  const originCode = fleet ? fleetPortCode(fleet) : null
+  const originPortId = originCode ? (portByCode[originCode]?.id ?? null) : null
+  useEffect(() => {
+    if (originPortId) void loadReach(originPortId)
+  }, [originPortId, loadReach])
+  const reach = originPortId ? (reaches[originPortId]?.reaches ?? null) : null
+
   // THE PORTS THIS ORDER IS ABOUT — read off the SERVER'S OWN SCHEMA, never off a list of argument
   // names typed here. SAIL declares `dest` and an optional `via`; a verb that one day declares a
   // third port argument gets it on the chart without an edit, which is the same rule the pickers
@@ -247,7 +263,7 @@ export function OrderComposer({
   const chartPorts = useMemo(() => {
     if (!spec) return []
     const codes = spec.args
-      .filter((a) => a.type === 'port')
+      .filter((a) => a.type === 'port' || a.type === 'place')
       .map((a) => args[a.name])
       .filter((code): code is string => code !== undefined && code !== '')
     return [...new Set(codes)]
@@ -401,15 +417,15 @@ export function OrderComposer({
                     <SectionLabel className="mb-0">Chart</SectionLabel>
                     <Explain label="the chart" panelClassName="w-full normal-case tracking-normal">
                       Her berth is the filled mark; a ring is a harbour this order would send her
-                      to. The hairlines are the sea lanes — the water she can actually take. No line
-                      is drawn between the two, because a straight one across this sheet is not the
-                      passage and is not its length: Lisbon to Cádiz is 248 miles sailed against 188
-                      as the gull flies, and the list beside this prints the sailed figure.
+                      to. No line is drawn between the two, because a straight one across this
+                      sheet is not the passage and is not its length: Lisbon to Cádiz is 254 miles
+                      sailed against 188 as the gull flies, and the list beside this prints the
+                      sailed figure. The course itself is plotted through open water the moment
+                      the order is checked, and the map draws it once she is under way.
                     </Explain>
                   </div>
                   <SmallChart
                     ports={snapshot.ports}
-                    legs={snapshot.legs}
                     // Just this fleet. The order is hers, and every other hull on the chart would
                     // be an answer to a question nobody asked here (the Map tab has the roster).
                     fleets={fleet ? [fleet] : []}
@@ -469,7 +485,9 @@ export function OrderComposer({
               // here would be two controls writing one draft field. Keyed on the schema (the verb
               // that declares a good declares where its qty is asked), never on a verb list.
               if (arg.type === 'qty' && spec.args.some((a) => a.type === 'good')) return null
-              const value = args[arg.name]
+              // `argValue`, not a direct read: a `place` argument may be answered by the map's
+              // pinpoint (`dest_point`), and that answer must read as an answer here (0039).
+              const value = argValue(arg, args)
               const canFold = foldable(spec, arg)
               const isOpen = !canFold || opened.includes(arg.name)
               return (
@@ -552,6 +570,7 @@ export function OrderComposer({
                         fleet={fleet}
                         snapshot={snapshot}
                         market={market}
+                        reach={reach}
                         capacity={capacity}
                         inspecting={inspecting}
                         onInspect={(code) =>
@@ -589,9 +608,13 @@ function describe(
   snapshot: WorldSnapshot,
   market: MarketView | undefined,
 ): string {
-  if (arg.type === 'port') {
+  if (arg.type === 'port' || arg.type === 'place') {
     const port = snapshot.ports.find((p) => p.code === value)
-    return port ? `${port.name} (${port.code})` : value
+    if (port) return `${port.name} (${port.code})`
+    // 0039: a `place` may be a pinpointed spot of open water — the "lat,lon" token the map wrote.
+    const point = parsePointToken(value)
+    if (point) return `open sea · ${pointLabel(point)}`
+    return value
   }
   if (arg.type === 'good') {
     const good = market?.goods.find((g) => g.code === value) ?? snapshot.goods.find((g) => g.code === value)
@@ -614,6 +637,7 @@ function ArgPicker({
   fleet,
   snapshot,
   market,
+  reach,
   capacity,
   inspecting,
   onInspect,
@@ -628,6 +652,9 @@ function ArgPicker({
   fleet: FleetView | undefined
   snapshot: WorldSnapshot
   market: MarketView | undefined
+  /** Sailed nm from the order's origin to every place, keyed by code (`world.reach`, 0039) —
+   *  null while the read is in flight. The `place` arm's picker orders and figures by it. */
+  reach: Record<string, number> | null
   /** The composer's ONE reading of `world.buy_capacity()` — the `qty` arm draws its ceiling from
    *  it, and the `good` arm's unfolded row draws the same answer for the row being looked at. */
   capacity: BuyCapacityState
@@ -649,12 +676,13 @@ function ArgPicker({
 
   switch (arg.type) {
     case 'port':
+    case 'place':
       return (
         <PortPicker
           ports={snapshot.ports}
-          legs={snapshot.legs}
+          reach={reach}
           // Where she IS, or is bound — one answer, from the fleet section. A SAIL composed at sea
-          // leaves from the port she is arriving at, so that is the port the legs are measured from.
+          // leaves from the place she is arriving at, so that is where the reach is measured from.
           origin={fleet ? fleetPortCode(fleet) : null}
           value={args[arg.name]}
           onPick={onPick}

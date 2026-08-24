@@ -192,14 +192,13 @@ or those fields stay on fixtures and are visibly marked as not-yet-real.
 | `languages` | — | not in the schema |
 | `fleetsDocked` | — | not served (J.3 presence is V1) |
 
-### 4.4 Leg
+### 4.4 Leg — RETIRED (0039)
 
-| fixture `Leg` | `SnapshotLeg` | note |
-|---|---|---|
-| `from`, `to` | `from`, `to` | port CODES, canonically ordered, stored once — the graph is undirected |
-| `hazardMult` | `hazard_mult` | |
-| `notes` | `notes` | |
-| — | `id`, **`nm`** | the AUTHORED sailed distance. The fixture had no distance and the client computed a great circle (`features/command/geo.ts`); the server's `nm` includes the detour factor and **is the number the game uses**. Prefer it. |
+The fixed leg graph and `SnapshotLeg` are GONE: the sea is served as a raster
+(`worldSeaRaster()`, unpacked by `src/lib/sea`) and the sailed distance between places comes from
+`worldReach(port)` — the same `sea_reaches` table the endurance gate and the trade scan read. A
+voyage serves its WHOLE course (`FleetVoyage.course`), so nothing on the client ever computes a
+distance or invents a line of water.
 
 ### 4.5 Good
 

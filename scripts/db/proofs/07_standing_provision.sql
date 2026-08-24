@@ -153,8 +153,8 @@ begin
 
   -- ── 3. THE TRADE-OFF, measured between twins ─────────────────────────────────────────────────
   -- Both sail the same leg with the same crew; the only difference is the standing order.
-  perform cmd.issue(v_fleet_a, 'SAIL CAD');
-  perform cmd.issue(v_fleet_b, 'SAIL CAD');
+  perform proof.sail(v_fleet_a, 'CAD');
+  perform proof.sail(v_fleet_b, 'CAD');
   for k in 1 .. 12 loop
     exit when (select count(*) from public.fleets
                 where id in (v_fleet_a, v_fleet_b) and status = 'SAILING') = 0;
@@ -206,8 +206,8 @@ begin
     raise exception 'PROOF 7 FAILED: the edit did not land (days %)', v_days;
   end if;
 
-  perform cmd.issue(v_fleet_a, 'SAIL LIS');
-  perform cmd.issue(v_fleet_b, 'SAIL LIS');
+  perform proof.sail(v_fleet_a, 'LIS');
+  perform proof.sail(v_fleet_b, 'LIS');
   for k in 1 .. 12 loop
     exit when (select count(*) from public.fleets
                 where id in (v_fleet_a, v_fleet_b) and status = 'SAILING') = 0;
@@ -238,7 +238,7 @@ begin
     (select c.crew_max - s.crew from public.ships s
        join public.ship_classes c on c.id = s.class_id where s.fleet_id = v_fleet_a));
   select crew into v_crew_a2 from public.ships where fleet_id = v_fleet_a;
-  perform cmd.issue(v_fleet_a, 'SAIL CAD');
+  perform proof.sail(v_fleet_a, 'CAD');
   for k in 1 .. 12 loop
     exit when (select status from public.fleets where id = v_fleet_a) <> 'SAILING';
     update public.voyages
@@ -265,7 +265,7 @@ begin
   -- ── 6. A REFUSAL THE PLAYER'S OWN LEDGER READ SERVES ─────────────────────────────────────────
   select ducats into v_purse from public.players where id = v_player;
   perform public.credit(v_player, 'PROOF_DRAIN', -(v_purse - 1));
-  perform cmd.issue(v_fleet_a, 'SAIL LIS');
+  perform proof.sail(v_fleet_a, 'LIS');
   for k in 1 .. 12 loop
     exit when (select status from public.fleets where id = v_fleet_a) <> 'SAILING';
     update public.voyages

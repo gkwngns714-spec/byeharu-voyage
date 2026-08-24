@@ -11,7 +11,7 @@
 //     surface, and this game has no PvP (§J.2). There is no field here that could carry one.
 //   · Any callback that changes the world. The only events this chart raises are selections, and a
 //     selection is a VIEW change. Orders are composed on the Command tab, in words.
-//   · Any way to DERIVE a position. A fleet at sea arrives here already placed — `MapVoyageLeg.at`
+//   · Any way to DERIVE a position. A fleet at sea arrives here already placed — `MapVoyage.at`
 //     is the server's closed form (DESIGN §D.2, `voyage.position()`), copied, not recomputed. The
 //     departure time and the frozen speed profile are not served and are not wanted: a second
 //     implementation of the movement rule on this side of the wire is exactly the thing the live
@@ -45,37 +45,37 @@ export interface MapPort extends LatLon {
 }
 
 /**
- * THE CURRENT LEG OF A VOYAGE, EXACTLY AS THE SERVER SERVES IT — and nothing beyond it.
+ * A VOYAGE, EXACTLY AS THE SERVER SERVES IT (0039): the WHOLE course she sails, and where on it
+ * she is. The course is the verified water polyline the server measured and froze — the chart
+ * draws exactly this line and never invents one of its own (./route.ts's header carries the
+ * geometry rule).
  *
- * `world.fleets()` carries `voyage.position`: the leg the fleet is on, how far along it, and the
- * lat/lon that follows (README §4.8). It does NOT carry the planned route, so the chart draws the
- * CURRENT LEG and only that. A line to a port the server never mentioned would be an invention.
- *
- * `at` is the server's own display geometry: `voyage.position()` interpolates LINEARLY in lat/lon
- * between the two ports. The track is therefore drawn as a straight segment in chart units
- * (./route.ts) — on an equirectangular chart that is the same line, so the glyph sits exactly on
- * its own track instead of beside a great circle it is not following.
+ * `at` is the server's closed-form position, placed LINEARLY along `course[segIndex]` — copied,
+ * never derived here.
  */
-export interface MapVoyageLeg {
-  readonly fromCode: string
-  readonly toCode: string
+export interface MapVoyage {
+  /** The whole served course, in sailing order. At least two points. */
+  readonly course: readonly LatLon[]
+  /** Which segment of the course the position lies on (`voyage.position.seg_index`). */
+  readonly segIndex: number
   /** The closed-form position (§D.2). Copied from the server; never derived here. */
   readonly at: LatLon
-  /** 0–1 along THIS leg. */
-  readonly legFrac: number
   /** Whole-voyage progress, in nautical miles — the server's numbers, printed as given. */
   readonly sailedNm: number
   readonly totalNm: number
   /** Arrival instant, epoch ms, from `voyage.eta`. A countdown is display; arrival is the server's. */
   readonly etaMs: number
-  /** Where the voyage ENDS (`voyage.to`), which may lie beyond `toCode`. It is ringed, not routed. */
-  readonly destinationCode: string
+  /** The port the voyage ends at — null when she is bound for a bare point of open water. */
+  readonly destinationCode: string | null
+  /** The open-water destination; null when `destinationCode` names a port. Exactly one is set. */
+  readonly destPoint: LatLon | null
 }
 
-/** A fleet, in exactly one of the two states the chart can draw. */
+/** A fleet, in exactly one of the three states the chart can draw (0039 added the open anchor). */
 export type MapFleet =
   | { readonly kind: 'docked'; readonly id: string; readonly name: string; readonly portCode: string }
-  | { readonly kind: 'sailing'; readonly id: string; readonly name: string; readonly leg: MapVoyageLeg }
+  | { readonly kind: 'sailing'; readonly id: string; readonly name: string; readonly voyage: MapVoyage }
+  | { readonly kind: 'anchored'; readonly id: string; readonly name: string; readonly at: LatLon }
 
 /**
  * What the player has singled out to read about. ONE selection concept for the whole chart, so
@@ -85,4 +85,7 @@ export type MapFleet =
 export type MapSelection =
   | { readonly kind: 'fleet'; readonly id: string }
   | { readonly kind: 'port'; readonly code: string }
+  /** A pinpointed spot of open water (0039) — already SNAPPED to sailable sea by the screen that
+   *  made it, so what the panel offers to sail to is water by construction. */
+  | { readonly kind: 'sea'; readonly at: LatLon }
   | null

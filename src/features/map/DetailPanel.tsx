@@ -1,6 +1,7 @@
 import { formatInt, formatNm, formatRealShort } from '../../lib/format'
 import type { FleetView, VerbSpec } from '../../lib/rpc'
 import { fleetsAtPort, fleetsBoundFor, type ChartModel, type MapPort, type MapSelection } from '../../chart'
+import { pointLabel } from '../../domain/passage'
 import { MapPanel } from './MapPanel'
 import { SailHere } from './SailHere'
 
@@ -88,24 +89,57 @@ export function DetailPanel({
         <p className="mb-1 truncate font-serif text-sm text-ink">{fleet.fleet.name}</p>
         {fleet.dockedAtCode ? (
           <Line label="at" value={nameOf(fleet.dockedAtCode)} />
+        ) : fleet.fleet.kind === 'anchored' ? (
+          <Line label="at anchor" value={pointLabel(fleet.at)} />
         ) : (
-          fleet.leg && (
+          fleet.voyage && (
             <>
-              <Line label="to" value={nameOf(fleet.leg.destinationCode)} />
-              {/* The leg it is ON, which is the only one the server serves. When the voyage has
-                  further legs to run, this is NOT the same as "to" — and saying both is the honest
-                  way to show that without drawing water the chart was not given. */}
-              {fleet.leg.toCode !== fleet.leg.destinationCode && (
-                <Line label="this leg" value={`${nameOf(fleet.leg.fromCode)} → ${nameOf(fleet.leg.toCode)}`} />
-              )}
+              {/* 0039: a destination is a port, or a pinpointed spot of open water. */}
+              <Line
+                label="to"
+                value={
+                  fleet.voyage.destinationCode
+                    ? nameOf(fleet.voyage.destinationCode)
+                    : fleet.voyage.destPoint
+                      ? pointLabel(fleet.voyage.destPoint)
+                      : '—'
+                }
+              />
               <Line
                 label="sailed"
-                value={`${formatInt(fleet.leg.sailedNm)} / ${formatNm(fleet.leg.totalNm)}`}
+                value={`${formatInt(fleet.voyage.sailedNm)} / ${formatNm(fleet.voyage.totalNm)}`}
               />
-              <Line label="arrives" value={formatRealShort(fleet.leg.etaMs - nowMs)} />
+              <Line label="arrives" value={formatRealShort(fleet.voyage.etaMs - nowMs)} />
             </>
           )
         )}
+      </MapPanel>
+    )
+  }
+
+  // ── OPEN SEA (0039): the owner's pinpoint. The tapped spot arrives already SNAPPED to
+  // sailable water (MapScreen), so what this panel offers to sail to is water by construction.
+  // Same corner, same one act, same rules — a destination is a destination.
+  if (selection.kind === 'sea') {
+    return (
+      <MapPanel
+        slot="bottom-right"
+        title="Open sea"
+        compact={compact}
+        onDismiss={onDismiss}
+        storageKey="map.detail"
+        widthClassName={compact ? 'w-[74vw] max-w-[74vw]' : 'w-56 max-w-[45vw]'}
+        testId="map-detail-panel"
+      >
+        <p className="mb-1 truncate font-serif text-sm text-ink" data-testid="map-sea-label">
+          {pointLabel(selection.at)}
+        </p>
+        <SailHere
+          fleet={acting}
+          dest={{ kind: 'sea', at: selection.at }}
+          verbs={verbs}
+          onSail={onSail}
+        />
       </MapPanel>
     )
   }
@@ -143,8 +177,7 @@ export function DetailPanel({
       {/* THE ONE ACT ON THIS SCREEN. It composes nothing — see this file's header and SailHere's. */}
       <SailHere
         fleet={acting}
-        portCode={port.code}
-        portName={port.name}
+        dest={{ kind: 'port', code: port.code, name: port.name }}
         verbs={verbs}
         onSail={onSail}
       />

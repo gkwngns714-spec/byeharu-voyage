@@ -20,7 +20,7 @@ export {
   type Point,
   type ViewBox,
   type GeoBounds,
-} from './projection'
+} from './projection.ts'
 
 export {
   EARTH_RADIUS_NM,
@@ -30,6 +30,6 @@ export {
   pathLengthNm,
   cumulativeNm,
   densifyGreatCircle,
-} from './greatCircle'
+} from './greatCircle.ts'
 
-export { simplifyPath, boundingSpan } from './simplify'
+export { simplifyPath, boundingSpan } from './simplify.ts'

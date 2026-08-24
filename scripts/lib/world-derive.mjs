@@ -22,7 +22,7 @@
 //   nation        the 1550 sovereign, where one of the seeded powers plainly held it; else null
 //
 // WHAT IS NOT DERIVED: coordinates (Wikidata P625, never touched), the specialty lists (editorial,
-// sourced in docs/WORLD_DATA.md), and the leg distances (scripts/build-sea-routes.mjs).
+// sourced in docs/WORLD_DATA.md). The leg distances retired with the graph (0049).
 //
 // ⚠ CODE STABILITY IS A DEPLOYED CONTRACT. assignCodes() walks data/ports.json in ARRAY ORDER and
 // hands out first-free codes, so inserting a port in the middle of the array can steal the code a
@@ -433,14 +433,13 @@ const CULTURE_MASK = { wine: ALCOHOL_MASK, beer: ALCOHOL_MASK, sake: ALCOHOL_MAS
 
 /**
  * Derive the whole world from data/*.json — the rows the database should hold, keyed the way the
- * database keys them (port/good/sea/region/nation CODES, canonical leg pairs).
+ * database keys them (port/good/sea/region/nation CODES).
  */
 export function deriveWorld() {
   const ports = JSON.parse(readFileSync(join(DATA, 'ports.json'), 'utf8')).ports
   const goods = JSON.parse(readFileSync(join(DATA, 'goods.json'), 'utf8')).goods
   const regions = JSON.parse(readFileSync(join(DATA, 'regions.json'), 'utf8')).regions
   const seas = JSON.parse(readFileSync(join(DATA, 'seas.json'), 'utf8')).seas
-  const routes = JSON.parse(readFileSync(join(DATA, 'sea-routes.json'), 'utf8'))
 
   const portCode = new Map()
   for (const p of ports) {
@@ -528,24 +527,8 @@ export function deriveWorld() {
     culture_mask: CULTURE_MASK[g.id] ?? [],
   }))
 
-  const legs = routes.legs.map((l) => {
-    const a = ports.find((p) => p.id === l.from)
-    const b = ports.find((p) => p.id === l.to)
-    if (!a || !b) {
-      throw new Error(
-        `data/sea-routes.json leg ${l.from} → ${l.to} references a port that is not in ` +
-          `data/ports.json — the two files disagree; regenerate the routes or restore the port`,
-      )
-    }
-    // The chain recomputes the great circle from the STORED coordinates, which are rounded to 0.01°.
-    // Rounding can lengthen the great circle by a few tenths of a mile, so the stored distance is
-    // taken as the larger of the sailed figure and that rounded great circle — the leg can never
-    // come out shorter than the line the database itself will draw.
-    const gcRounded = gcNm(round2(a.lat), round2(a.lon), round2(b.lat), round2(b.lon))
-    const nm = Math.max(l.nm, Math.ceil(gcRounded * 10) / 10)
-    const [from, to] = byId.get(a.id).code < byId.get(b.id).code ? [a, b] : [b, a]
-    return { from: byId.get(from.id).code, to: byId.get(to.id).code, nm, hazard: l.hazard_mult, note: l.note }
-  })
+  // (legs) RETIRED 2026-08-24 with migration 0049: public.legs and data/sea-routes.json are
+  // gone — the raster (0046) is the one authority for what water connects to what.
 
   const specialtyPairs = []
   for (const d of derivedPorts) for (const g of d.specialties) specialtyPairs.push([d.code, g])
@@ -556,7 +539,6 @@ export function deriveWorld() {
     seas: derivedSeas,
     regions: derivedRegions,
     nations: derivedNations,
-    legs,
     specialtyPairs,
     portCode,
     seaCode,

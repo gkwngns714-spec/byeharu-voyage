@@ -13,6 +13,9 @@
 import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
+import { isWaterAt, navFromServed } from '../src/lib/sea'
+import { TIME_COMPRESSION } from '../src/lib/format'
+import { courseBetween, seaNav } from './seaCourse.fixture'
 import {
   RPCS,
   backendKind,
@@ -40,6 +43,8 @@ import {
   cmdProvisionPresetDelete,
   cmdProvisionPresetApply,
   worldSnapshot,
+  worldSeaRaster,
+  worldReach,
 } from '../src/lib/rpc'
 
 let db: LocalDb
@@ -68,7 +73,9 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   // that pins the number is asserting a seed, and goes red the day a port is added — which is not
   // a defect. What the reader owes us is "everything the world holds, and nothing invented".
   expect(snap.ports.length).toBeGreaterThan(100)
-  expect(snap.legs.length).toBeGreaterThan(snap.ports.length)     // a world you can sail across
+  // 0039: the 782-leg graph is GONE from the wire — what water connects to what is the raster
+  // (world.sea_raster) and the sailed distances (world.reach), asserted in their own test below.
+  expect('legs' in snap).toBe(false)
   expect(snap.goods.length).toBeGreaterThan(20)
   expect(snap.ship_classes).toHaveLength(3)
   expect(snap.verbs).toHaveLength(8)
@@ -95,13 +102,6 @@ test('world.snapshot() carries the whole static world, and not the world secret'
     true,
   )
 
-  const leg = snap.legs[0]
-  expect(isStr(leg.id) && isStr(leg.from) && isStr(leg.to)).toBe(true)
-  expect(isNum(leg.nm) && isNum(leg.hazard_mult)).toBe(true)
-  // Canonically ordered, stored once, both ends resolvable to a port in the same payload.
-  const codes = new Set(snap.ports.map((p) => p.code))
-  for (const l of snap.legs) expect(codes.has(l.from) && codes.has(l.to)).toBe(true)
-
   const sal = snap.goods.find((g) => g.code === 'salt')!
   expect(isStr(sal.id) && isStr(sal.name)).toBe(true)
   expect(isNum(sal.base_value) && isNum(sal.bulk) && isNum(sal.perishable_pct_day)).toBe(true)
@@ -116,7 +116,10 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   expect(isNum(barca.durability) && isNum(barca.draft) && isNum(barca.tier)).toBe(true)
   expect(isStr(barca.rig) && isStr(barca.family)).toBe(true)
 
-  expect(snap.config.time_compression).toBe(480)
+  // 0045 x20: the served knob and the client's display mirror are ONE number, asserted equal
+  // here so neither can move without the other (the mirror lives in src/lib/format/time.ts).
+  expect(snap.config.time_compression).toBe(9600)
+  expect(snap.config.time_compression).toBe(TIME_COMPRESSION)
   expect(snap.config.order_queue_max).toBe(12)
   for (const key of [
     'fleet_max',
@@ -135,6 +138,34 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   const secret = await db.pg.query<{ v: string }>("select public.wc_text('world_secret') as v")
   expect(secret.rows[0].v.length).toBeGreaterThanOrEqual(8)
   expect(JSON.stringify(snap)).not.toContain(secret.rows[0].v)
+})
+
+test('world.sea_raster() and world.reach() serve the free sea (0039)', async () => {
+  // THE RASTER: the very water the server verifies every course against, served whole so the
+  // client proposes over the same sea. Dimensions and mask width are the 0038 contract; the
+  // content is spot-read through the same unpacker the app boots with.
+  const raster = expectOk(await worldSeaRaster())
+  expect(raster.cols).toBe(1440)
+  expect(raster.rows).toBe(720)
+  expect(raster.bits_per_cell).toBe(2)
+  expect(raster.cells_base64.length).toBeGreaterThan(100_000)
+  const grid = navFromServed(raster)
+  expect(isWaterAt(grid, 30, -40)).toBe(true) // the mid-Atlantic
+  expect(isWaterAt(grid, 39.5, -4.5)).toBe(false) // the middle of Iberia
+  expect(isWaterAt(grid, 75, 120)).toBe(false) // the Siberian pack — the Arctic stays closed
+
+  // THE REACH: one place's sailed distances to everywhere, from the same table the endurance
+  // gate and the trade scan read. Every figure at least the great circle; the cape detour shows.
+  const snap = expectOk(await worldSnapshot())
+  const lis = snap.ports.find((p) => p.code === 'LIS')!
+  const reach = expectOk(await worldReach(lis.id))
+  expect(reach.from).toBe('LIS')
+  expect(isNum(reach.snap_nm)).toBe(true)
+  expect(Object.keys(reach.reaches)).toHaveLength(snap.ports.length - 1)
+  expect(reach.reaches['CAD']).toBeGreaterThan(188) // Cape St Vincent is in the way
+  // The Arctic fix, read through the client seam: Japan is priced round the Cape, not the pole.
+  const nagasaki = snap.ports.find((p) => p.name === 'Nagasaki')!
+  expect(reach.reaches[nagasaki.code]).toBeGreaterThan(12_000)
 })
 
 test('world.market() prices every good, with %NBR, stock band, availability and advice', async () => {
@@ -193,9 +224,12 @@ test('world.market() prices every good, with %NBR, stock band, availability and 
   // The other end of the same gradient: the good this port marks as a BUY reads dearer somewhere
   // one leg away, which is the entire proposition of the game.
   const cheapest = buys.sort((a, b) => (a.pct_nbr ?? 100) - (b.pct_nbr ?? 100))[0]
-  const neighbours = snap.legs
-    .filter((l) => l.from === lis.code || l.to === lis.code)
-    .map((l) => (l.from === lis.code ? l.to : l.from))
+  // 0039: "one leg away" became "nearest by sailed water", from the reach table.
+  const reachHere = expectOk(await worldReach(lis.id)).reaches
+  const neighbours = Object.entries(reachHere)
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 8)
+    .map(([code]) => code)
   let dearerSomewhere = false
   for (const code of neighbours) {
     const other = snap.ports.find((p) => p.code === code)!
@@ -294,11 +328,14 @@ test('cmd.verb_schema() serves the eight V0 verbs, argument by argument', async 
   ])
   const sail = verbs[0]
   expect(sail.help.length).toBeGreaterThan(10)
+  // 0039: SAIL's destination is a PLACE — a harbour, or any lat,lon point of open sea (the map
+  // writes that token). VIA is retired with the leg graph it belonged to: a course is proposed
+  // as a polyline at the moment of ordering, not spelt port by port.
   const dest = sail.args.find((a) => a.name === 'dest')!
-  expect(dest.type).toBe('port')
+  expect(dest.type).toBe('place')
   expect(dest.required).toBe(true)
   expect(dest.keyword).toBe('TO')
-  expect(sail.args.find((a) => a.name === 'via')!.repeat).toBe(true)
+  expect(sail.args.find((a) => a.name === 'via')).toBeUndefined()
   // The snapshot ships the same grammar, so a tap-builder and the keyboard cannot drift apart.
   const snap = expectOk(await worldSnapshot())
   expect(snap.verbs).toEqual(verbs)
@@ -560,7 +597,11 @@ test('cmd.issue() / cmd.cancel_at() / cmd.clear() return the queue and the new v
   // Queue two orders behind a SAILING fleet, then take them back apart.
   // Addressed by CODE: "Porto" is ambiguous with Portobelo in the real world, and a three-letter
   // code is exact by construction, so this tests the queue rather than the parser.
-  const sailed = expectOk(await cmdIssue(fleet.id, 'SAIL Gaivota TO CAD'))
+  const lisPort = expectOk(await worldSnapshot()).ports.find((p) => p.code === 'LIS')!
+  const cadPort = expectOk(await worldSnapshot()).ports.find((p) => p.code === 'CAD')!
+  const sailed = expectOk(
+    await cmdIssue(fleet.id, 'SAIL Gaivota TO CAD', null, courseBetween(await seaNav(), lisPort, cadPort)),
+  )
   expect(sailed.order.status).toBe('done')
   const queued = expectOk(await cmdIssue(fleet.id, 'SELL salt ALL'))
   expect(queued.order.status).toBe('pending')
@@ -590,23 +631,28 @@ test('a fleet at sea reports its voyage and its closed-form position', async () 
   expect(v).not.toBeNull()
   expect(isStr(v.id) && isStr(v.eta)).toBe(true)
   expect(v.to).toBe('CAD')
-  // The SAILED distance of the leg, not the straight line: 188 nm is the great circle and Cape
-  // St Vincent is in the way. The number the voyage carries must be the number the leg holds.
-  const legLisCad = snap.legs.find(
-    (l) => (l.from === 'LIS' && l.to === 'CAD') || (l.from === 'CAD' && l.to === 'LIS'),
-  )!
-  expect(v.total_nm).toBe(legLisCad.nm)
+  expect(v.dest_point).toBeNull()
+  // 0039: the SAILED distance of the verified course, never the straight line — 188 nm is the
+  // great circle and Cape St Vincent is in the way. The quay's own reach figure and the voyage's
+  // measured total are one generator, two roundings: within half a per cent of each other.
+  const lis = snap.ports.find((p) => p.code === 'LIS')!
+  const quoted = expectOk(await worldReach(lis.id)).reaches['CAD']
   expect(v.total_nm).toBeGreaterThan(188)
+  expect(Math.abs(v.total_nm - quoted)).toBeLessThan(Math.max(0.5, quoted * 0.005))
   expect(v.nm_done).toBeGreaterThanOrEqual(0)
   expect(v.nm_done).toBeLessThanOrEqual(v.total_nm)
+  // THE WHOLE COURSE is served — the chart draws exactly this line (src/chart/route.ts).
+  expect(Array.isArray(v.course)).toBe(true)
+  expect(v.course.length).toBeGreaterThanOrEqual(2)
+  expect(v.course[0][0]).toBeCloseTo(lis.lat, 1)
+  expect(v.course[0][1]).toBeCloseTo(lis.lon, 1)
   const p = v.position!
   expect(p).not.toBeNull()
-  expect(p.from_code).toBe('LIS')
-  expect(p.to_code).toBe('CAD')
   expect(isNum(p.lat) && isNum(p.lon)).toBe(true)
   expect(p.leg_frac).toBeGreaterThanOrEqual(0)
   expect(p.leg_frac).toBeLessThanOrEqual(1)
-  expect(p.leg_index).toBe(0)
+  expect(p.seg_index).toBeGreaterThanOrEqual(0)
+  expect(p.seg_index).toBeLessThan(v.course.length - 1)
 })
 
 // ── the dispatcher ─────────────────────────────────────────────────────────────────────────────
@@ -617,11 +663,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
   // The SQL and the PostgREST call are derived from the same row — they cannot drift.
   expect(localSql('worldMarket')).toBe('select world.market($1::uuid) as result')
   expect(localSql('worldSnapshot')).toBe('select world.snapshot() as result')
-  expect(localSql('cmdIssue')).toBe('select cmd.issue($1::uuid, $2::text, $3::int) as result')
+  expect(localSql('cmdIssue')).toBe('select cmd.issue($1::uuid, $2::text, $3::int, $4::jsonb) as result')
   expect(namedArgs('cmdIssue', ['f', 'BUY salt 10'])).toEqual({
     p_fleet: 'f',
     p_text: 'BUY salt 10',
     p_expected_version: null,
+    p_path: null,
   })
   expect(rpcLabel('worldLedger')).toBe('world.ledger(p_cursor, p_limit)')
 
@@ -686,6 +733,14 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // (the one parser) and is gated at the turn node by voyage.sail_refusal (the one refusal
       // authority), so this entry point carries no second grammar and no second legality path.
       'cmdDivert',
+      // Pin moved deliberately 2026-08-24 with migrations 0038-0039 (the free sea): the raster
+      // the client's pathfinder proposes over — the SAME row the server verifies every course
+      // against — and one place's sailed distances to everywhere (the SAIL picker's figures).
+      // Both are reads; neither takes a player id. In the same change, cmd.issue and cmd.preview
+      // gained `p_path` (the PROPOSED course — verified and measured server-side, so it can make
+      // nothing legal, only findable), cmd.divert gained a dest_point and a course, and
+      // world.trade_routes' third argument became a sailed radius in nm.
+      'worldSeaRaster', 'worldReach',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

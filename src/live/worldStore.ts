@@ -74,7 +74,10 @@ import {
   worldSnapshot,
   worldProvisionPresets,
   worldTradeRoutes,
+  worldSeaRaster,
+  worldReach,
 } from '../lib/rpc'
+import { navFromServed, type SeaNav } from '../lib/sea'
 import type {
   FleetView,
   HaggleAttempt,
@@ -86,6 +89,7 @@ import type {
   PriceHistory,
   ProvisionPresetBook,
   Refusal,
+  ReachPayload,
   SkillBook,
   SnapshotNation,
   StandingsBoard,
@@ -106,8 +110,15 @@ export interface LiveWorld {
   /** Which backend answered. Display only — nothing branches on it. */
   mode: 'local' | 'cloud' | null
 
-  /** The static world: ports, legs, goods, ship classes, config knobs, the verb grammar. */
+  /** The static world: ports, goods, ship classes, config knobs, the verb grammar. */
   snapshot: WorldSnapshot | null
+  /** THE NAVIGABLE SEA (0039) — the served raster, unpacked once for the pathfinder. The same
+   *  row the server verifies every course against, so client and server cannot hold different
+   *  water. Null only while the world is still opening. */
+  seaNav: SeaNav | null
+  /** One place's sailed distances to everywhere (0039), keyed by port id — the SAIL picker's
+   *  ordering and figures. Fetched on demand; a reach never changes within a chain version. */
+  reaches: Record<string, ReachPayload>
   /** The player's fleets, ships, cargo, queue and voyage position. Refetching this IS the clock. */
   fleets: FleetView[]
   /** The house itself — name, nation, counts and DERIVED fame (0014). Null for a signed-in
@@ -158,6 +169,8 @@ export interface LiveWorld {
   loadMarket: (portId: string) => Promise<void>
   /** Fetch (and cache) one port's remembered prices. */
   loadHistory: (portId: string) => Promise<void>
+  /** Fetch (and cache) one place's sailed distances to everywhere (0039). */
+  loadReach: (portId: string) => Promise<void>
   /** Fetch (and cache) where the goods of one port pay more. Naming the fleet lying there is what
    *  makes the quantities hers rather than the server's stated default. */
   loadRoutes: (portId: string, fleetId: string | null) => Promise<void>
@@ -191,15 +204,26 @@ export interface LiveWorld {
   ) => Promise<HaggleAttempt | null>
 
   /** Issue an order. The string is the whole contract (F.4) — the tap-builder composes the same
-   *  string a keyboard would. Refreshes on success so the queue and purse are never stale. */
-  issue: (fleetId: string, text: string) => Promise<boolean>
+   *  string a keyboard would. A SAIL also carries its PROPOSED course (0039), which the server
+   *  verifies and measures itself. Refreshes on success so the queue and purse are never stale. */
+  issue: (fleetId: string, text: string, path?: [number, number][] | null) => Promise<boolean>
   /** Dry-run the same string: the server executes the real verb and rolls it back (F.5 layer 3). */
-  preview: (fleetId: string, text: string) => Promise<PreviewResult | null>
+  preview: (
+    fleetId: string,
+    text: string,
+    path?: [number, number][] | null,
+  ) => Promise<PreviewResult | null>
   cancel: (fleetId: string, index?: number | null) => Promise<boolean>
   clear: (fleetId: string) => Promise<boolean>
-  /** The helm order at sea (0037): a SAILING fleet turns at the next node and makes for a new
-   *  port. A refusal (E_NOT_SAILING, E_SAME_DEST, E_NO_ROUTE…) lands in `refusal` as usual. */
-  divert: (fleetId: string, destPortId: string) => Promise<boolean>
+  /** The helm order at sea (0039): a SAILING fleet turns WHERE SHE IS and makes for a port or a
+   *  point of open water, on a proposed course the server bridges to her true position and
+   *  verifies. A refusal (E_NOT_SAILING, E_SAME_DEST, E_LAND…) lands in `refusal` as usual. */
+  divert: (
+    fleetId: string,
+    destPortId: string | null,
+    destPoint?: { lat: number; lon: number } | null,
+    path?: [number, number][] | null,
+  ) => Promise<boolean>
   /** Drop the last refusal — a screen calls this when the player moves on. */
   dismissRefusal: () => void
 }
@@ -259,6 +283,8 @@ export const useWorld = create<LiveWorld>((set, get) => ({
   fatal: null,
   mode: null,
   snapshot: null,
+  seaNav: null,
+  reaches: {},
   fleets: [],
   player: null,
   officers: null,
@@ -311,6 +337,14 @@ export const useWorld = create<LiveWorld>((set, get) => ({
       set({ phase: 'failed', fatal: snap.refusal, mode })
       return
     }
+    // THE SEA RIDES WITH THE WORLD. Without the raster no course can be proposed and SAIL — the
+    // game's core verb — is dead, so a world without its water is a failed open, not a degraded
+    // one (§7C: the else branch would be a different product wearing this one's name).
+    const sea = await worldSeaRaster()
+    if (!sea.ok) {
+      set({ phase: 'failed', fatal: sea.refusal, mode })
+      return
+    }
     const portByCode: Record<string, SnapshotPort> = {}
     const portById: Record<string, SnapshotPort> = {}
     for (const p of snap.value.ports) {
@@ -322,7 +356,15 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     const nationByCode: Record<string, SnapshotNation> = {}
     for (const nat of snap.value.nations) nationByCode[nat.code] = nat
 
-    set({ snapshot: snap.value, portByCode, portById, goodByCode, nationByCode, mode })
+    set({
+      snapshot: snap.value,
+      seaNav: navFromServed(sea.value),
+      portByCode,
+      portById,
+      goodByCode,
+      nationByCode,
+      mode,
+    })
     await get().refresh()
     // A world that answered snapshot() but not fleets() is still a world worth showing: the
     // failure is already in `fatal` and the screens render it in place.
@@ -363,6 +405,15 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     const r = await worldPriceHistory(portId)
     if (!r.ok) return
     set((s) => ({ history: { ...s.history, [portId]: r.value } }))
+  },
+
+  // A FAILED REACH READ IS SILENT, like history: the picker still lists every harbour, only
+  // unordered by distance — a truthful, lesser answer (§7C's mirror), never a fabricated figure.
+  loadReach: async (portId) => {
+    if (get().reaches[portId]) return
+    const r = await worldReach(portId)
+    if (!r.ok) return
+    set((s) => ({ reaches: { ...s.reaches, [portId]: r.value } }))
   },
 
   // A FAILED COMPARISON IS SILENT, like the history read and for the same reason: the prices are
@@ -504,9 +555,9 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     return r.value
   },
 
-  issue: async (fleetId, text) => {
+  issue: async (fleetId, text, path = null) => {
     const fleet = get().fleets.find((f) => f.id === fleetId)
-    const r = await cmdIssue(fleetId, text, fleet?.version ?? null)
+    const r = await cmdIssue(fleetId, text, fleet?.version ?? null, path)
     if (!r.ok) {
       set({ refusal: r.refusal })
       return false
@@ -523,8 +574,8 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     return true
   },
 
-  preview: async (fleetId, text) => {
-    const r = await cmdPreview(fleetId, text)
+  preview: async (fleetId, text, path = null) => {
+    const r = await cmdPreview(fleetId, text, path)
     if (!r.ok) {
       set({ refusal: r.refusal })
       return null
@@ -553,11 +604,11 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     return true
   },
 
-  // THE HELM ORDER AT SEA (0037). The server settles her first, truncates the voyage at the far
-  // node of the leg she is on, and queues the onward SAIL through the one parser — so this action
-  // is read-back like every other: the world is re-read, never locally patched.
-  divert: async (fleetId, destPortId) => {
-    const r = await cmdDivert(fleetId, destPortId)
+  // THE HELM ORDER AT SEA (0039). The server settles her first, truncates the voyage at her
+  // closed-form position, and departs the onward passage through the one parser and mover — so
+  // this action is read-back like every other: the world is re-read, never locally patched.
+  divert: async (fleetId, destPortId, destPoint = null, path = null) => {
+    const r = await cmdDivert(fleetId, destPortId, destPoint, path)
     if (!r.ok) {
       set({ refusal: r.refusal })
       return false

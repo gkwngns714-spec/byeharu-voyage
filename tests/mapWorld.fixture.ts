@@ -18,7 +18,7 @@
 // app gets its ports from `world.snapshot()` like everything else.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import type { FleetView, SnapshotLeg, SnapshotPort } from '../src/lib/rpc'
+import type { FleetView, SnapshotPort } from '../src/lib/rpc'
 
 /** code | name | country | lat | lon | size_tier */
 const PORT_ROWS = `
@@ -293,12 +293,6 @@ export function portAt(code: string): SnapshotPort {
   return port
 }
 
-/** A sea lane, in `world.snapshot().legs` shape. `nm` is a SAILED distance and is deliberately not
- *  the great circle — nothing on this map may read a distance off the picture. */
-export function leg(from: string, to: string, nm: number): SnapshotLeg {
-  return { id: `leg-${from}-${to}`, from, to, nm, hazard_mult: 1, notes: null }
-}
-
 /**
  * THE HOLD AND THE OFFICERS, added to every served fleet by 0017.
  *
@@ -322,6 +316,26 @@ export function dockedFleet(id: string, name: string, portCode: string): FleetVi
     status: 'DOCKED',
     version: 1,
     port: portCode,
+    anchor: null,
+    busy_until: null,
+    speed_kn: 5,
+    endurance_days: 30,
+    voyage: null,
+    ships: [],
+    queue: [],
+    ...EMPTY_HOLD_NO_OFFICERS,
+  }
+}
+
+/** A fleet holding a bare point of open water (0039). */
+export function anchoredFleet(id: string, name: string, at: { lat: number; lon: number }): FleetView {
+  return {
+    id,
+    name,
+    status: 'ANCHORED',
+    version: 1,
+    port: null,
+    anchor: [at.lat, at.lon],
     busy_until: null,
     speed_kn: 5,
     endurance_days: 30,
@@ -333,15 +347,14 @@ export function dockedFleet(id: string, name: string, portCode: string): FleetVi
 }
 
 /**
- * A fleet at sea, placed THE WAY THE SERVER PLACES ONE.
+ * A fleet at sea, placed THE WAY THE SERVER PLACES ONE (0039).
  *
- * `voyage.position()` interpolates linearly in lat/lon along the current leg and rounds to four
- * decimals; this does exactly the same, so a spec asserting "the chart draws the ship where the
- * server put it" is comparing against the server's arithmetic and not against a nicer one.
- *
- * `destination` defaults to `to` — the fleet is on its last leg. Passing a different port is the
- * case the chart has to get right: the voyage carries on past this leg, so the map may RING that
- * port but may not draw a line to it, because the legs beyond the current one are not served.
+ * The voyage carries its WHOLE COURSE — a polyline of port coordinates (`course`, port codes,
+ * default [from, to]) — and `voyage.position()` interpolates linearly in lat/lon along the
+ * segment `legIndex`, rounding to four decimals; this does exactly the same, so a spec asserting
+ * "the chart draws the ship where the server put it" is comparing against the server's arithmetic
+ * and not against a nicer one. The destination is the course's LAST point (a port code), or a
+ * bare water point when `toPoint` is given.
  */
 export function sailingFleet(args: {
   id: string
@@ -349,14 +362,24 @@ export function sailingFleet(args: {
   from: string
   to: string
   legFrac: number
-  destination?: string
+  /** Port codes of the whole course, in order. Defaults to [from, to]. */
+  course?: readonly string[]
+  /** A bare open-water destination; the course then ends on this point (0039). */
+  toPoint?: { lat: number; lon: number }
   sailedNm?: number
   totalNm?: number
   etaMs?: number
   legIndex?: number
 }): FleetView {
-  const a = portAt(args.from)
-  const b = portAt(args.to)
+  const codes = args.course ?? [args.from, args.to]
+  const points: [number, number][] = codes.map((c) => {
+    const p = portAt(c)
+    return [p.lat, p.lon]
+  })
+  if (args.toPoint) points.push([args.toPoint.lat, args.toPoint.lon])
+  const segIndex = args.legIndex ?? 0
+  const [aLat, aLon] = points[segIndex]
+  const [bLat, bLon] = points[segIndex + 1]
   const round4 = (n: number) => Math.round(n * 10_000) / 10_000
   const totalNm = args.totalNm ?? 1000
   const nmDone = args.sailedNm ?? totalNm * args.legFrac
@@ -366,24 +389,25 @@ export function sailingFleet(args: {
     status: 'SAILING',
     version: 1,
     port: null,
+    anchor: null,
     busy_until: null,
     speed_kn: 5,
     endurance_days: 30,
     voyage: {
       id: `voyage-${args.id}`,
-      to: args.destination ?? args.to,
+      to: args.toPoint ? null : (codes[codes.length - 1] ?? args.to),
+      dest_point: args.toPoint ? [args.toPoint.lat, args.toPoint.lon] : null,
+      course: points,
       eta: new Date(args.etaMs ?? 1_700_000_600_000).toISOString(),
       total_nm: totalNm,
       nm_done: nmDone,
       position: {
-        leg_index: args.legIndex ?? 0,
-        from_code: args.from,
-        to_code: args.to,
+        seg_index: segIndex,
         leg_frac: args.legFrac,
         nm_done: nmDone,
         total_nm: totalNm,
-        lat: round4(a.lat + (b.lat - a.lat) * args.legFrac),
-        lon: round4(a.lon + (b.lon - a.lon) * args.legFrac),
+        lat: round4(aLat + (bLat - aLat) * args.legFrac),
+        lon: round4(aLon + (bLon - aLon) * args.legFrac),
       },
     },
     ships: [],

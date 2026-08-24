@@ -12,7 +12,7 @@
 // tolerance of 0.2 means "no point moved more than 0.2° (~12 nm) from where it was".
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import type { Point } from './projection'
+import type { Point } from './projection.ts'
 
 /** Squared distance from `p` to the SEGMENT ab (not the infinite line — the segment, or a ring's
  *  end points wander). */

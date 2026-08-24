@@ -2,7 +2,8 @@
 //
 // THE TWO CLOCKS, and why the UI must state both:
 //
-//   VOYAGE CLOCK   compressed TIME_COMPRESSION = 480×.  1 voyage-day = 3 REAL MINUTES.
+//   VOYAGE CLOCK   compressed TIME_COMPRESSION = 9600×.  1 voyage-day = 9 REAL SECONDS.
+//                  (0045 raised it ×20 for faster testing; it was 480 = 3 real minutes.)
 //                  Governs sailing, provisions, wages, hazard checkpoints.
 //   CALENDAR CLOCK 1 REAL DAY = 1 game month (a game year is 12 real days).
 //                  Governs season, wind regime, ice closure, seasonal goods.
@@ -17,10 +18,12 @@
 
 import { formatFixed, formatInt } from './numbers'
 
-/** DESIGN.md §D.1 / §L.1 — a server constant, mirrored here for DISPLAY ONLY. */
-export const TIME_COMPRESSION = 480
+/** DESIGN.md §D.1 / §L.1 — a server constant (world_config.time_compression, 0045), mirrored
+ *  here for DISPLAY ONLY. tests/rpc.surface.spec.ts asserts the served knob EQUALS this mirror,
+ *  so the two cannot drift apart quietly. */
+export const TIME_COMPRESSION = 9600
 
-/** 24 h of voyage time in real milliseconds: 86_400_000 / 480 = 180_000 = 3 real minutes. */
+/** 24 h of voyage time in real milliseconds: 86_400_000 / 9600 = 9_000 = 9 real seconds. */
 export const REAL_MS_PER_VOYAGE_DAY = (24 * 60 * 60 * 1000) / TIME_COMPRESSION
 
 /** One real day is one game month. */

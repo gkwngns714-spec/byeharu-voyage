@@ -68,6 +68,8 @@ src/components/ui the design system.   One import surface, already a section in 
 | `domain/fleet` | what a hull, a crew and a hold add up to — free hold, crew against berths, worst hull, stores, cargo lines, draught, voyage progress | `domain/fleet/index.ts` |
 | `domain/trade` | where a good is worth more than it is here — the index over `world.trade_routes()` | `domain/trade/index.ts` |
 | **`chart`** | **the picture of the world**: the read model, the projection and the density rules, the SVG layers, the paint order, the pan/zoom surface, and the two things a screen mounts — `ChartCanvas` (a picture at a given view) and `SmallChart` (a whole framed one) | `chart/index.ts` |
+| `domain/passage` | the course a client PROPOSES for a SAIL or a DIVERT (0039): where she departs from, the snapped water point a map tap becomes, the `lat,lon` token the grammar reads, and the one wording of a point on a screen. It proposes; the SERVER verifies and measures — this section decides nothing | `domain/passage/index.ts` |
+| `lib/sea` | the navigable-water grid and the pathfinder over it (0039) — machinery with no game opinion, consumed by the browser, the Node generators and the proof harness, so all three search the same water the same way. The AUTHORITY on what the grid contains is the served `public.sea_raster` row | `lib/sea/index.ts` |
 
 The `domain/*` ones are pure and derive from served payloads. **Neither they nor the chart decide
 anything** — the server owns every rule; these only read what a payload already says.

@@ -35,8 +35,10 @@ import {
   worldFleets,
   worldLedger,
   worldMarket,
+  worldReach,
   worldSnapshot,
 } from '../src/lib/rpc'
+import { courseBetween, seaNav } from './seaCourse.fixture'
 
 let db: LocalDb
 
@@ -86,9 +88,14 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
     .sort((a, b) => (a.pct_nbr ?? 100) - (b.pct_nbr ?? 100))
   expect(buys.length).toBeGreaterThan(0)
 
-  const neighbours = snapshot.legs
-    .filter((l) => l.from === 'LIS' || l.to === 'LIS')
-    .map((l) => snapshot.ports.find((p) => p.code === (l.from === 'LIS' ? l.to : l.from))!)
+  // 0039: "one leg away" became "nearest by sailed water" — world.reach, the same distance
+  // table the endurance gate and the trade scan read. Eight nearest, like the old one-leg set.
+  const reachHere = expectOk(await worldReach(lisboa.id)).reaches
+  const neighbours = Object.entries(reachHere)
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 8)
+    .map(([code]) => snapshot.ports.find((p) => p.code === code)!)
+    .filter((p) => p.kind === 'HARBOUR')
   expect(neighbours.length).toBeGreaterThan(0)
 
   // A STARTER'S constraints are part of the choice, not a detail to work around afterwards: the
@@ -104,6 +111,18 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   const spaceFor = (code: string) =>
     Math.floor(fleet.free_hold / snapshot.goods.find((g) => g.code === code)!.bulk)
 
+  // WHAT SHE WILL ACTUALLY TRADE: the hold bounds it here, and the DESTINATION's daily cap
+  // (G.7.1: daily_cap_fraction x stock_target, per player-port-good) bounds it there — a spec
+  // that sells ALL of a full hold at a small market is asserting an ambient it does not own,
+  // and on the 243-good catalogue it found one (Chank Shells, cap 23, hold 43: E_DAILY_CAP,
+  // measured 2026-08-24). The fraction is deliberately NOT served (players meet the cap as a
+  // refusal), so the bound composes the two chain rules a red would name: stock_target is
+  // floored at 60 (0005's own greatest(60, …), re-asserted over every row by 0041) and the
+  // fraction is 0.35 — their product floors every cap at 21. If either knob moves, this line
+  // is the one to move with it.
+  const CAP_SAFE = 20
+  const tradeQty = (code: string) => Math.min(spaceFor(code), CAP_SAFE)
+
   let cargo = buys[0]
   let destination = neighbours[0]
   let bestGain = 0
@@ -114,7 +133,7 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
     for (const port of neighbours) {
       const there = expectOk(await worldMarket(port.id)).goods.find((g) => g.code === candidate.code)!
       if (!there.available) continue
-      const gain = (there.sell - candidate.buy) * spaceFor(candidate.code)
+      const gain = (there.sell - candidate.buy) * tradeQty(candidate.code)
       if (gain > bestGain) {
         bestGain = gain
         cargo = candidate
@@ -146,25 +165,48 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   expectOk(await cmdClear(fleet.id))
 
   fleet = expectOk(await worldFleets())[0]
-  const bought = expectOk(await cmdIssue(fleet.id, `BUY ${cargo.code} ${room}`, fleet.version))
+  const qty = tradeQty(cargo.code)
+  const bought = expectOk(await cmdIssue(fleet.id, `BUY ${cargo.code} ${qty}`, fleet.version))
   expect(bought.order.status).toBe('done')
   const spent = Number(bought.order.result!.total)
   expect(spent).toBeGreaterThan(0)
 
   fleet = expectOk(await worldFleets())[0]
-  expect(fleet.ships[0].cargo[cargo.code]).toBe(room)
+  expect(fleet.ships[0].cargo[cargo.code]).toBe(qty)
   expect(expectOk(await worldLedger()).ducats).toBe(stake - spent)
 
   // ── 1:20 — SAIL, typed the way a player types it ─────────────────────────────────────────────
-  const sailed = expectOk(await cmdIssue(fleet.id, `SAIL Gaivota TO ${destination.code}`, fleet.version))
+  // 0039: the player's client PROPOSES the course; the server verifies it and MEASURES the
+  // miles itself. The spec plays the client's part with the app's own pathfinder.
+  const sailed = expectOk(
+    await cmdIssue(
+      fleet.id,
+      `SAIL Gaivota TO ${destination.code}`,
+      fleet.version,
+      courseBetween(await seaNav(), lisboa, destination),
+    ),
+  )
   expect(sailed.order.status).toBe('done')
-  // The distance is the LEG's own sailed figure — the one that rounds capes — not a straight line.
-  const leg = snapshot.legs.find(
-    (l) =>
-      (l.from === 'LIS' && l.to === destination.code) ||
-      (l.from === destination.code && l.to === 'LIS'),
-  )!
-  expect(Number(sailed.order.result!.total_nm)).toBe(leg.nm)
+
+  // 0045 runs the world twenty times faster: this passage is ~30 REAL SECONDS, and the reads
+  // between orders (world.market winds the drift over 54k rows) cost seconds each in a WASM
+  // database — so without this the fleet ARRIVES underneath the spec's own typing and the
+  // "queue the rest while it sails" beat executes at the quay instead of queueing (measured
+  // 2026-08-24: the SELL ran at the destination and was refused by its daily cap). Time is held
+  // still the same way timePasses() moves it — shifting departed_at and eta TOGETHER, which
+  // keeps the closed-form schedule identical in shape while progress clamps at 0 — because the
+  // beat under test is "orders land while she is at sea", never the player's typing speed.
+  await db.pg.query(
+    `update public.voyages
+        set departed_at = departed_at + interval '1 hour', eta = eta + interval '1 hour'
+      where status = 'SAILING'`,
+  )
+  // The distance is the SAILED figure that rounds capes, never a straight line — and it agrees
+  // with the quay's own reach quote to half a per cent (one generator, two roundings).
+  const quoted = reachHere[destination.code]
+  const measured = Number(sailed.order.result!.total_nm)
+  expect(measured).toBeGreaterThan(0)
+  expect(Math.abs(measured - quoted)).toBeLessThan(Math.max(0.5, quoted * 0.005))
 
   // ── 1:35 — "you queue the rest while it sails" ───────────────────────────────────────────────
   const homeward = expectOk(await worldMarket(destination.id))
@@ -174,7 +216,9 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
 
   expectOk(await cmdIssue(fleet.id, `SELL ${cargo.code} ALL`))
   expectOk(await cmdIssue(fleet.id, `BUY ${homeward.code} 10`))
-  expectOk(await cmdIssue(fleet.id, 'SAIL Gaivota TO LIS'))
+  expectOk(
+    await cmdIssue(fleet.id, 'SAIL Gaivota TO LIS', null, courseBetween(await seaNav(), destination, lisboa)),
+  )
 
   fleet = expectOk(await worldFleets())[0]
   expect(fleet.status).toBe('SAILING')

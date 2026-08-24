@@ -1,4 +1,5 @@
 import { formatRealShort } from '../../lib/format'
+import { pointLabel } from '../../domain/passage'
 import type { ChartModel, FleetOnChart, MapPort, MapSelection } from '../../chart'
 import { MapPanel } from './MapPanel'
 
@@ -18,8 +19,14 @@ import { MapPanel } from './MapPanel'
 
 function statusOf(f: FleetOnChart, portsByCode: ReadonlyMap<string, MapPort>, nowMs: number): string {
   if (f.dockedAtCode) return portsByCode.get(f.dockedAtCode)?.name ?? f.dockedAtCode
-  const destination = f.destinationCode ? (portsByCode.get(f.destinationCode)?.name ?? f.destinationCode) : '—'
-  return `→ ${destination} · ${f.leg ? formatRealShort(f.leg.etaMs - nowMs) : '—'}`
+  // 0039: at a bare-water anchor she is somewhere, going nowhere — say the spot, not a dash.
+  if (f.fleet.kind === 'anchored') return `at anchor · ${pointLabel(f.at)}`
+  const destination = f.destinationCode
+    ? (portsByCode.get(f.destinationCode)?.name ?? f.destinationCode)
+    : f.voyage?.destPoint
+      ? pointLabel(f.voyage.destPoint)
+      : '—'
+  return `→ ${destination} · ${f.voyage ? formatRealShort(f.voyage.etaMs - nowMs) : '—'}`
 }
 
 export function FleetsPanel({

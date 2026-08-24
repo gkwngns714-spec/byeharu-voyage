@@ -35,6 +35,19 @@
 // Writes: supabase/migrations/20260818000036_the_sea_has_places_in_it.sql
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// RETIRED 2026-08-24 with migration 0049 (the graph is history). This script generated 0036,
+// whose sea places were reachable through SPUR LEGS in public.legs — a table that no longer
+// exists. A NEW sea place today is: a ports insert in a growth-style migration, plus a
+// regenerated raster/reaches migration from scripts/build-sea-migration.mjs (free sailing is
+// how anything is reached now). This file is kept as the record of how 0036 was made.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+console.error(
+  'build-sea-places.mjs is RETIRED (0049 dropped public.legs, where its spur legs lived). ' +
+  'A new sea place is a ports insert in a growth-style migration plus a regenerated ' +
+  'raster/reaches migration (scripts/build-sea-migration.mjs). See the header.',
+)
+
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'

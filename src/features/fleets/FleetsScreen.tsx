@@ -54,6 +54,7 @@ import {
   voyageEtaMs,
   voyageFraction,
 } from '../../domain/fleet'
+import { pointLabel } from '../../domain/passage'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
 // FLEETS — E.2's roster. THE READ-ONLY TAB.
@@ -501,9 +502,14 @@ function FleetDetail({
           <div className="space-y-1">
             <div className="flex flex-wrap items-baseline justify-between gap-2 font-mono text-xs">
               <span className="text-ink">
-                {fleet.voyage.position
-                  ? `${portName(fleet.voyage.position.from_code)} → ${portName(fleet.voyage.position.to_code)}`
-                  : `→ ${portName(fleet.voyage.to)}`}
+                {/* 0039: a course has no port-pair under her keel any more; the passage reads as
+                    where she is bound - a harbour, or the pinpointed water. */}
+                {'→ '}
+                {fleet.voyage.to
+                  ? portName(fleet.voyage.to)
+                  : fleet.voyage.dest_point
+                    ? pointLabel({ lat: fleet.voyage.dest_point[0], lon: fleet.voyage.dest_point[1] })
+                    : 'open sea'}
               </span>
               <span className="text-ink-muted">
                 {formatNm(fleet.voyage.nm_done)} / {formatNm(fleet.voyage.total_nm)} ·{' '}
@@ -512,7 +518,13 @@ function FleetDetail({
             </div>
             <Meter pct={fraction * 100} tone="accent" />
             <p className={fineClass()}>
-              Bound for {portName(fleet.voyage.to)} at {formatKnots(fleet.speed_kn)}.
+              Bound for{' '}
+              {fleet.voyage.to
+                ? portName(fleet.voyage.to)
+                : fleet.voyage.dest_point
+                  ? pointLabel({ lat: fleet.voyage.dest_point[0], lon: fleet.voyage.dest_point[1] })
+                  : 'open sea'}{' '}
+              at {formatKnots(fleet.speed_kn)}.
               {etaMs !== null && nowMs >= etaMs && ' She is DUE — any moment now.'}
               <Explain label="this passage" dotClassName="ml-0.5">
                 The ETA was frozen at departure and never moves (B.5); the position is the server's

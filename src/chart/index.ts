@@ -52,7 +52,7 @@ export { SmallChart } from './SmallChart'
 export { Minimap } from './Minimap'
 
 // ── the read model: what a chart is told, and what it makes of it ──────────────────────────────
-export type { MapFleet, MapPort, MapSelection, MapVoyageLeg } from './mapTypes'
+export type { MapFleet, MapPort, MapSelection, MapVoyage } from './mapTypes'
 export {
   buildChartModel,
   fleetsAtPort,
@@ -70,7 +70,6 @@ export {
   COMPACT_WIDTH_PX,
   FIT_PADDING,
   LABEL_SPAN_LIMIT,
-  LEG_SPAN_LIMIT,
   MAX_SPAN_X,
   MIN_SPAN_X,
   OPENING_MIN_SPAN_DEG,
@@ -92,7 +91,7 @@ export {
 // ── ink: the glyph metrics, the lines, the names, and what a tap lands on ──────────────────────
 export { GLYPH, portMarkScale, portStrokeWidth, trianglePath } from './glyphs'
 export { toClosedRingsD, toPolylineD } from './svgPath'
-export { buildTrack, legWebPath, type MapLeg, type TrackPaths } from './route'
+export { buildTrack, type TrackPaths } from './route'
 export {
   LABEL_PRIORITY,
   LABEL_SIDES,

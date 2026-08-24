@@ -251,6 +251,12 @@ for (const tab of TABS) {
 }
 
 test('MARKET puts complete priced goods above the fold, per K.1', async ({ page, request, baseURL }) => {
+  // The same measured budget its sibling tests carry (line ~133): a cold boot builds the whole
+  // chain in the tab — ~100 s at 39 migrations, more under parallel load, and 0041's 52k-row
+  // affinity recompute adds to it — so the global 120 s timeout fails a CORRECT build. The
+  // standing cure is the pre-built database image (DEV_LOG D21); until then the number moves
+  // with the world it measures.
+  test.setTimeout(420_000)
   test.skip(
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,

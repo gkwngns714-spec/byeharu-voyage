@@ -1,16 +1,15 @@
 import { useMemo } from 'react'
 import type { ViewBox } from '../lib/geo'
 import { CoastlineLayer } from './CoastlineLayer'
+import { project } from '../lib/geo'
 import { FleetsLayer, TracksLayer } from './FleetsLayer'
 import { LabelsLayer } from './LabelsLayer'
-import { LegsLayer } from './LegsLayer'
 import { PortsLayer } from './PortsLayer'
 import { visiblePorts, type ChartModel } from './chartModel'
-import { LABEL_SPAN_LIMIT, LEG_SPAN_LIMIT, minTierForSpan } from './chartView'
+import { LABEL_SPAN_LIMIT, minTierForSpan } from './chartView'
 import { GLYPH } from './glyphs'
 import { mapLabelRequests, planLabels, type Rect } from './labels'
 import type { MapPort, MapSelection } from './mapTypes'
-import { legWebPath, type MapLeg } from './route'
 import type { ChromeBox } from './useChartSurface'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -42,8 +41,8 @@ import type { ChromeBox } from './useChartSurface'
 //   · WHICH PORTS      `visiblePorts` — on the glass, and either big enough for this zoom
 //                      (`minTierForSpan`) or one of yours. ONE list, consumed by the marks and by
 //                      the label planner, so a name can never float over a mark that was not drawn.
-//   · WHICH LANES      only inside `LEG_SPAN_LIMIT`, and only between two DRAWN marks, so a lane
-//                      never trails off to a harbour this zoom is too far out to draw.
+//   · (the lane layer is GONE — 0039: there are no fixed sea lanes on a free sea; the only lines
+//      are TRACKS, the verified courses fleets are actually sailing)
 //   · WHICH NAMES      planned as a SET over the drawn ports (./labels.ts), which is the only way
 //                      two labels can know about each other.
 // MapScreen's hit test asks `visiblePorts` the same question with the same box at the moment of a
@@ -59,7 +58,6 @@ import type { ChromeBox } from './useChartSurface'
 export function ChartCanvas({
   model,
   ports,
-  legs,
   box,
   unitsPerPx,
   coastlineD,
@@ -71,8 +69,6 @@ export function ChartCanvas({
   model: ChartModel
   /** The WHOLE port table. What is drawn out of it is this component's decision, not the caller's. */
   ports: readonly MapPort[]
-  /** The sea-lane graph. Pass none for a chart that should not draw the water routes. */
-  legs: readonly MapLeg[]
   box: ViewBox
   /** Chart units per CSS pixel — every glyph and label size is in pixels and scaled by it. */
   unitsPerPx: number
@@ -97,11 +93,6 @@ export function ChartCanvas({
     () => visiblePorts(ports, model.portRoles, box, minTierForSpan(box.width)),
     [ports, model.portRoles, box],
   )
-
-  const legsD = useMemo(() => {
-    if (legs.length === 0 || box.width > LEG_SPAN_LIMIT) return ''
-    return legWebPath(legs, new Map(drawnPorts.map((p) => [p.code, p])), box)
-  }, [legs, box, drawnPorts])
 
   // THE SCREEN'S PIXELS, TURNED INTO CHART UNITS — the one line of arithmetic the keep-out contract
   // needs, done here so no screen ever has to hold a scale or a viewBox origin. `unitsPerPx` is the
@@ -152,8 +143,26 @@ export function ChartCanvas({
         data-testid="map-sea"
       />
       <CoastlineLayer d={coastlineD} />
-      <LegsLayer d={legsD} />
       <TracksLayer model={model} unitsPerPx={unitsPerPx} />
+      {/* THE PINPOINT (0039) — the tapped spot of open water, marked exactly like a selected
+          port is ringed, because it is the same act one step earlier: naming a destination. */}
+      {selection?.kind === 'sea' &&
+        (() => {
+          const at = project(selection.at)
+          return (
+            <g pointerEvents="none" data-testid="map-sea-point">
+              <circle
+                cx={at.x}
+                cy={at.y}
+                r={GLYPH.destinationRingRadius * unitsPerPx}
+                className="fill-none stroke-ink/70"
+                strokeWidth={GLYPH.glyphStroke}
+                vectorEffect="non-scaling-stroke"
+              />
+              <circle cx={at.x} cy={at.y} r={2 * unitsPerPx} className="fill-ink/70" />
+            </g>
+          )
+        })()}
       <PortsLayer
         ports={drawnPorts}
         portRoles={model.portRoles}

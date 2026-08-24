@@ -21,6 +21,7 @@ import {
   formatPctPoints,
   formatRelative,
 } from '../../lib/format'
+import { parsePointToken, pointLabel } from '../../domain/passage'
 import { useShellState } from '../../app/shellState'
 // THE ONE READER OF A JSONB FIELD (2026-08-23). `num`/`str` were declared here AND in
 // features/command/PreviewPanel.tsx, and they had already drifted; docs/NO_SPAGHETTI.md §2 listed
@@ -283,8 +284,8 @@ function Entry({
 //
 //   FOUNDED       {company, port}                             (port is a CODE)
 //   BOUGHT/SOLD   {fleet, good, qty, avg_price, total}        (good is the NAME)
-//   DEPARTED      {fleet, voyage_id, total_nm, legs, eta}     (no destination in the payload)
-//   VOYAGE_REPORT {fleet, voyage_id, from, to, total_nm, lines[]}   (from/to are CODES)
+//   DEPARTED      {fleet, voyage_id, total_nm, points, dest, eta}   (0039: dest is a code or a "lat,lon")
+//   VOYAGE_REPORT {fleet, voyage_id, from, to, from_point?, to_point?, total_nm, lines[]}
 //   PROVISIONED   {fleet, water_t, food_t, cost}
 //   HIRED         {fleet, count, urgent, cost}
 //   REPAIRING     {fleet, points, cost, sim_hours}
@@ -334,18 +335,28 @@ function headline(event: LedgerEvent, portName: (code: string) => string): strin
       }.`
     }
     case 'DEPARTED': {
+      // 0039: the payload names the destination — a port code, or the "lat,lon" of a pinpointed
+      // spot of open sea — and the course's point count replaced the retired leg count.
       const nm = num(p, 'total_nm')
-      const legs = num(p, 'legs')
-      return `${fleet} put to sea${nm === null ? '' : ` — ${formatNm(nm)}`}${
-        legs === null ? '' : ` over ${legs} leg${legs === 1 ? '' : 's'}`
-      }.`
+      const dest = str(p, 'dest')
+      const destPoint = dest ? parsePointToken(dest) : null
+      const bound = dest ? ` for ${destPoint ? pointLabel(destPoint) : portName(dest)}` : ''
+      return `${fleet} put to sea${bound}${nm === null ? '' : ` — ${formatNm(nm)}`}.`
     }
     case 'VOYAGE_REPORT': {
       const from = str(p, 'from')
       const to = str(p, 'to')
       const nm = num(p, 'total_nm')
-      const leg = from && to ? ` from ${portName(from)}` : ''
-      return `${fleet} came in${to ? ` to ${portName(to)}` : ''}${leg}${
+      // 0039: an open-water end carries its POINT instead of a code; the report names the spot
+      // rather than leaving the sentence trailing (pointLabel is the one wording of a point).
+      const toPoint = p['to_point']
+      const toLabel = to
+        ? ` to ${portName(to)}`
+        : Array.isArray(toPoint) && toPoint.length === 2
+          ? ` to ${pointLabel({ lat: Number(toPoint[0]), lon: Number(toPoint[1]) })}`
+          : ''
+      const leg = from ? ` from ${portName(from)}` : ''
+      return `${fleet} came in${toLabel}${leg}${
         nm === null ? '' : ` — ${formatNm(nm)} sailed`
       }.`
     }

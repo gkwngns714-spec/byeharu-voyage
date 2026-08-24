@@ -80,21 +80,26 @@ test('percentages: fractions and already-in-points both have a formatter, and th
   expect(formatPctDelta(-0.135)).toBe(`${MINUS}13%`)
 })
 
-test('the compression constant is 480 and one voyage-day is three real minutes (D.1)', () => {
-  expect(TIME_COMPRESSION).toBe(480)
-  expect(REAL_MS_PER_VOYAGE_DAY).toBe(180_000)
-  expect(voyageDaysToRealMs(1)).toBe(3 * 60 * 1000)
-  expect(realMsToVoyageDays(180_000)).toBe(1)
+test('the compression constant is 9600 and one voyage-day is nine real seconds (D.1, 0045)', () => {
+  // Pin moved deliberately 2026-08-24 with migration 0045 (the world runs twenty times faster):
+  // the served knob went 480 -> 9600, and this client mirror moves WITH it — rpc.surface.spec
+  // asserts the two are equal, so neither can move alone again.
+  expect(TIME_COMPRESSION).toBe(9600)
+  expect(REAL_MS_PER_VOYAGE_DAY).toBe(9_000)
+  expect(voyageDaysToRealMs(1)).toBe(9 * 1000)
+  expect(realMsToVoyageDays(9_000)).toBe(1)
 })
 
-test('B.3 worked distances reproduce their published real times', () => {
-  // Lisboa -> Cadiz, 188 nm at 5 kn = 1.567 voyage-days = 4.7 min.
+test('B.3 worked distances reproduce their real times at the 0045 clock', () => {
+  // The B.3 table was published at compression 480; at 9600 (0045) the same voyage-days land
+  // twenty times sooner. The DAYS are unchanged — only the real-time twin moved with the knob.
+  // Lisboa -> Cadiz, 188 nm at 5 kn = 1.567 voyage-days = 14 s real.
   const days = 188 / 5 / 24
-  expect(formatRealDuration(voyageDaysToRealMs(days))).toBe('4.7 min')
-  // Cadiz -> Havana, 3,944 nm at 5 kn = 32.9 days = 1 h 39 min.
-  expect(formatRealDuration(voyageDaysToRealMs(3944 / 5 / 24))).toBe('1 h 39 min')
-  // Lisboa -> Malaca, 11,736 nm at 5 kn = 97.8 days = 4 h 53 min.
-  expect(formatRealDuration(voyageDaysToRealMs(11736 / 5 / 24))).toBe('4 h 53 min')
+  expect(formatRealDuration(voyageDaysToRealMs(days))).toBe('14 s')
+  // Cadiz -> Havana, 3,944 nm at 5 kn = 32.9 days = 4.9 min.
+  expect(formatRealDuration(voyageDaysToRealMs(3944 / 5 / 24))).toBe('4.9 min')
+  // Lisboa -> Malaca, 11,736 nm at 5 kn = 97.8 days = 14.7 min.
+  expect(formatRealDuration(voyageDaysToRealMs(11736 / 5 / 24))).toBe('14.7 min')
 })
 
 test('durations have a long form and a table-cell form', () => {
@@ -107,7 +112,7 @@ test('durations have a long form and a table-cell form', () => {
 })
 
 test('the two clocks are printed together, because one of them is a lie on its own (D.3)', () => {
-  expect(formatTwoClocks(1.567)).toBe('1.6 voyage-days · 4.7 min real')
+  expect(formatTwoClocks(1.567)).toBe('1.6 voyage-days · 14 s real')
   // Pin moved deliberately 2026-08-22: "9.4 d" collided with formatDucats' "8,000 d." — one
   // letter, two units, side by side on two screens. The word is spelled now.
   expect(formatVoyageDays(9.44)).toBe('9.4 days')

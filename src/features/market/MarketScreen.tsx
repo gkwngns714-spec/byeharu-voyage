@@ -593,7 +593,7 @@ function TradedTile({
         {route ? (
           <span
             className="text-success"
-            title={`${route.qty} tun(s) to ${route.to.name} — ${formatInt(route.nm)} nm, ${route.legs} leg(s)${route.days === null ? '' : `, ${route.days} voyage-days`}: pay ${formatInt(route.outlay)} d. here, receive ${formatInt(route.proceeds)} d. there. Wages are not in that margin.`}
+            title={`${route.qty} tun(s) to ${route.to.name} — ${formatInt(route.nm)} nm sailed${route.days === null ? '' : `, ${route.days} voyage-days`}: pay ${formatInt(route.outlay)} d. here, receive ${formatInt(route.proceeds)} d. there. Wages are not in that margin.`}
           >
             {route.to.code} +{formatInt(route.profit)}
           </span>
@@ -663,8 +663,8 @@ function RoutesPanel({
         </div>
       ) : shown.length === 0 ? (
         <p className="text-sm text-ink-muted">
-          Nothing {portName} sells pays within {routes.basis.max_legs} leg(s) — not after tax,
-          spread and your own price impact.
+          Nothing {portName} sells pays within {formatInt(routes.basis.radius_nm ?? 0)} sailed
+          miles — not after tax, spread and your own price impact.
         </p>
       ) : (
         <ul className="divide-y divide-edge">
@@ -714,11 +714,11 @@ function RoutesPanel({
           </div>
           <div>
             {/* The server reports null reach when a caller PINS a destination; this screen never
-                does, and printing "null leg(s)" for a case that cannot arise is worse than not
+                does, and printing "null nm" for a case that cannot arise is worse than not
                 printing the sentence. */}
-            {routes.basis.max_legs === null
+            {routes.basis.radius_nm === null
               ? `${routes.basis.to ?? 'One port'} only · ${routes.basis.keep_per_good} destination(s) per good.`
-              : `${routes.basis.ports_considered} port(s) within ${routes.basis.max_legs} leg(s) · ${routes.basis.keep_per_good} destination(s) per good.`}
+              : `${routes.basis.ports_considered} port(s) within ${formatInt(routes.basis.radius_nm)} sailed miles · ${routes.basis.keep_per_good} destination(s) per good.`}
           </div>
         </dl>
       )}

@@ -65,16 +65,16 @@ for (const port of ports) {
   const { rows: [after] } = await db.query(`select ducats from public.players where id = $1`, [house.player_id])
   const stake = Number(after.ducats)
 
-  // Every (good, neighbour) pair this port offers, priced for real.
+  // Every (good, neighbour) pair this port offers, priced for real. 0039: the neighbourhood is
+  // the same 600 nm of SAILED water proofs 04/05 measure, from the honest reach table.
   const { rows: options } = await db.query(
-    `select g.id as good_id, g.code as good, g.bulk, d.id as dest_id, d.code as dest, l.distance_nm
-       from public.legs l
-       join public.ports d
-         on d.id = case when l.from_port_id = $1 then l.to_port_id else l.from_port_id end
+    `select g.id as good_id, g.code as good, g.bulk, d.id as dest_id, d.code as dest, rf.nm as distance_nm
+       from voyage.reach_from($1) rf
+       join public.ports d on d.id = rf.port_id and d.kind = 'HARBOUR'
        join public.goods g on true
        join public.port_goods pg_home on pg_home.port_id = $1 and pg_home.good_id = g.id
        join public.port_goods pg_away on pg_away.port_id = d.id and pg_away.good_id = g.id
-      where (l.from_port_id = $1 or l.to_port_id = $1)
+      where rf.nm <= 600
         and not (d.culture = any(g.culture_mask))
         and not ($2::text = any(g.culture_mask))
       order by pg_away.affinity - pg_home.affinity desc

@@ -46,13 +46,20 @@ export const RPCS = {
     args: [
       { name: 'p_from', type: 'uuid' },
       { name: 'p_fleet', type: 'uuid' },
-      { name: 'p_max_legs', type: 'int' },
+      // 0039: the reach is a RADIUS in sailed nautical miles over the distance table (null = the
+      // server's sea_scan_radius_nm knob). "Legs" died with the graph.
+      { name: 'p_radius_nm', type: 'numeric' },
       { name: 'p_limit', type: 'int' },
       // Pin the destination and the read answers the other question a trader has: not "where is
       // this worth more" but "what should I carry THERE".
       { name: 'p_to', type: 'uuid' },
     ],
   },
+  // 0039 — THE FREE SEA. The raster the client's pathfinder proposes over (the same row the
+  // server verifies by — one authority, fetched once per session), and one place's sailed
+  // distances to everywhere (the SAIL picker's ordering and figures).
+  worldSeaRaster: { schema: 'world', fn: 'sea_raster', args: [] },
+  worldReach: { schema: 'world', fn: 'reach', args: [{ name: 'p_from', type: 'uuid' }] },
   worldLedger: {
     schema: 'world',
     fn: 'ledger',
@@ -103,6 +110,9 @@ export const RPCS = {
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_text', type: 'text' },
       { name: 'p_expected_version', type: 'int' },
+      // 0039: a SAIL carries the PROPOSED course ([[lat,lon], …]). The server verifies it against
+      // its own raster and measures it itself — a client cannot gain by lying here.
+      { name: 'p_path', type: 'jsonb' },
     ],
   },
   cmdPreview: {
@@ -111,6 +121,7 @@ export const RPCS = {
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_text', type: 'text' },
+      { name: 'p_path', type: 'jsonb' },
     ],
   },
   cmdCancel: {
@@ -205,15 +216,18 @@ export const RPCS = {
       { name: 'p_preset', type: 'uuid' },
     ],
   },
-  // 0037: the helm order at sea — change a SAILING fleet's destination. She finishes the leg
-  // under her keel, turns at its far node, and the onward passage is a queued SAIL through the
-  // one parser. Not a verb: it acts on the queue and the voyage NOW, like cancel_at and clear.
+  // 0039: the helm order at sea — she turns WHERE SHE IS. The destination is a port OR any point
+  // of open water, and the proposed onward course rides along (bridged server-side to her true
+  // position and verified as water like every other course). Not a verb: it acts on the queue and
+  // the voyage NOW, like cancel_at and clear.
   cmdDivert: {
     schema: 'cmd',
     fn: 'divert',
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_dest', type: 'uuid' },
+      { name: 'p_dest_point', type: 'jsonb' },
+      { name: 'p_path', type: 'jsonb' },
     ],
   },
   // The ONE way a signed-in captain gets a house (0011). It takes no uid — the server reads

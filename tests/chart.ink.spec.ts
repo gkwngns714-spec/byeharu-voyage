@@ -119,6 +119,11 @@ test.describe('land reads as land at 390px', () => {
     request,
     baseURL,
   }) => {
+    // The same measured budget layout.spec's ready() carries: a cold boot builds the whole chain
+    // in the tab — ~100 s at 39 migrations plus 0041's 52k-row affinity recompute, more under
+    // parallel load — and the old 180 s purse wait failed a CORRECT build. The standing cure is
+    // the pre-built database image (DEV_LOG D21).
+    test.setTimeout(420_000)
     let served: boolean
     try {
       served = (await request.get(baseURL ?? '')).ok()
@@ -137,7 +142,7 @@ test.describe('land reads as land at 390px', () => {
     await page.waitForFunction(
       () => !/—/.test(document.querySelector('[data-testid="purse"]')?.textContent ?? '—'),
       undefined,
-      { timeout: 180_000 },
+      { timeout: 300_000 },
     )
     if (/\/auth$/.test(new URL(page.url()).pathname)) {
       test.skip(true, 'this build is in CLOUD mode and redirected to /auth — build without .env.local')

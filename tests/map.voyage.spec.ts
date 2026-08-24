@@ -1,13 +1,9 @@
 import { test, expect } from '@playwright/test'
 import { project, type ViewBox } from '../src/lib/geo'
 import {
-  FIT_PADDING,
   GLYPH,
-  LEG_SPAN_LIMIT,
-  OPENING_MIN_SPAN_DEG,
   buildChartModel,
   hitTest,
-  legWebPath,
   mapFleetsOf,
   mapPortsOf,
   minTierForSpan,
@@ -16,7 +12,7 @@ import {
   visiblePorts,
 } from '../src/chart'
 import type { FleetView } from '../src/lib/rpc'
-import { REAL_PORTS, dockedFleet, leg, portAt, sailingFleet } from './mapWorld.fixture'
+import { REAL_PORTS, anchoredFleet, dockedFleet, portAt, sailingFleet } from './mapWorld.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A VOYAGE ON THE CHART IS THE SERVER'S ANSWER, COPIED — and this file is the proof of it.
@@ -30,12 +26,13 @@ import { REAL_PORTS, dockedFleet, leg, portAt, sailingFleet } from './mapWorld.f
 // now serves `voyage.position` (README §4.8), so voyage.ts is DELETED and the property worth
 // proving changed with it.
 //
-// WHAT IT PROVES NOW — the same discipline, one layer out:
+// WHAT IT PROVES NOW — the same discipline, one layer out (re-pointed for 0039):
 //   · the glyph is drawn at EXACTLY the coordinate the server sent; nothing is re-derived,
 //   · the model takes no clock at all, so there is nothing that could drift,
-//   · only the CURRENT leg is drawn, because only the current leg is served; a destination further
-//     on is RINGED, never routed,
-//   · the sea lanes are drawn close in and not at all when pulled back,
+//   · THE WHOLE SERVED COURSE is drawn, split at the fleet, and no other water — the server
+//     serves the verified polyline the voyage actually sails, and the chart adds nothing to it,
+//   · a bare-water destination is ringed at its point; a fleet at open anchor is drawn where it
+//     holds,
 //   · a tap selects, and a selection is the only value this surface can produce.
 //
 // Pure Node: no `page` fixture is used, so no browser is launched.
@@ -45,15 +42,16 @@ const PORTS = mapPortsOf(REAL_PORTS)
 const LISBON = portAt('LIS')
 const CADIZ = portAt('CAD')
 
-/** Aurora is on Lisbon → Cádiz, 45% of the way, but bound onward to Ceuta: the leg it is on is not
- *  the leg it finishes on, which is the case the chart has to keep honest. */
+/** Aurora sails a three-point course Lisbon → Cádiz → Ceuta, 45% along its FIRST segment: the
+ *  segment she is on is not the one she finishes on, which is the case the split has to keep
+ *  honest — and under 0039 the WHOLE course is served, so the water ahead includes Ceuta. */
 const AURORA: FleetView = sailingFleet({
   id: 'aurora',
   name: 'Aurora',
   from: 'LIS',
   to: 'CAD',
+  course: ['LIS', 'CAD', 'CEU'],
   legFrac: 0.45,
-  destination: 'CEU',
   sailedNm: 111.5,
   totalNm: 309,
   etaMs: 1_700_000_600_000,
@@ -78,14 +76,15 @@ test.describe('the position is the server’s, copied', () => {
     const [fleet] = mapFleetsOf([AURORA])
     expect(fleet.kind).toBe('sailing')
     if (fleet.kind !== 'sailing') return
-    expect(fleet.leg.at).toEqual({ lat: served.lat, lon: served.lon })
-    expect(fleet.leg.legFrac).toBe(served.leg_frac)
-    expect(fleet.leg.sailedNm).toBe(served.nm_done)
-    expect(fleet.leg.totalNm).toBe(served.total_nm)
-    expect(fleet.leg.fromCode).toBe(served.from_code)
-    expect(fleet.leg.toCode).toBe(served.to_code)
-    expect(fleet.leg.destinationCode).toBe(AURORA.voyage!.to)
-    expect(fleet.leg.etaMs).toBe(Date.parse(AURORA.voyage!.eta))
+    expect(fleet.voyage.at).toEqual({ lat: served.lat, lon: served.lon })
+    expect(fleet.voyage.segIndex).toBe(served.seg_index)
+    expect(fleet.voyage.sailedNm).toBe(served.nm_done)
+    expect(fleet.voyage.totalNm).toBe(served.total_nm)
+    expect(fleet.voyage.course).toEqual(
+      AURORA.voyage!.course.map(([lat, lon]) => ({ lat, lon })),
+    )
+    expect(fleet.voyage.destinationCode).toBe(AURORA.voyage!.to)
+    expect(fleet.voyage.etaMs).toBe(Date.parse(AURORA.voyage!.eta))
   })
 
   test('the model takes no clock, so there is nothing that can drift', () => {
@@ -103,6 +102,7 @@ test.describe('the position is the server’s, copied', () => {
       'fleets',
       'portRoles',
       'destinationPoints',
+      'destinationSeaPoints',
       'focusPoints',
       'motionPoints',
     ])
@@ -116,49 +116,77 @@ test.describe('the position is the server’s, copied', () => {
     expect(mapFleetsOf([GAIVOTA])).toEqual([
       { kind: 'docked', id: 'gaivota', name: 'Gaivota', portCode: 'LIS' },
     ])
+    // …and one at open anchor is drawn exactly where it holds (0039).
+    expect(mapFleetsOf([anchoredFleet('h', 'Holdfast', { lat: 33, lon: -15 })])).toEqual([
+      { kind: 'anchored', id: 'h', name: 'Holdfast', at: { lat: 33, lon: -15 } },
+    ])
   })
 })
 
-test.describe('the chart draws the leg it was given, and no other water', () => {
+test.describe('the chart draws the course it was given — whole — and no other water', () => {
   const aurora = () => MODEL.fleets.find((f) => f.fleet.id === 'aurora')!
 
-  test('the track runs from the leg’s origin to the leg’s arrival port, split at the fleet', () => {
+  test('the track is the WHOLE served course, split at the fleet (0039)', () => {
     const track = aurora().track
     expect(track).not.toBeNull()
     const from = project(LISBON)
-    const to = project(CADIZ)
+    const cadiz = project(CADIZ)
+    const ceuta = project(portAt('CEU'))
     const at = project(aurora().at)
-    const two = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-      `M${round(a.x)} ${round(a.y)}L${round(b.x)} ${round(b.y)}`
-    expect(track!.sailedD).toBe(two(from, at))
-    expect(track!.aheadD).toBe(two(at, to))
+    const line = (pts: { x: number; y: number }[]) =>
+      `M${round(pts[0].x)} ${round(pts[0].y)}` +
+      pts.slice(1).map((q) => `L${round(q.x)} ${round(q.y)}`).join('')
+    // Sailed: the course up to her segment, then the ship. Ahead: the ship, then EVERYTHING the
+    // server said she will sail — including Ceuta, which the old leg model could not draw.
+    expect(track!.sailedD).toBe(line([from, at]))
+    expect(track!.aheadD).toBe(line([at, cadiz, ceuta]))
   })
 
   test('the ship sits ON its own track — the client geometry is the server’s geometry', () => {
-    // `voyage.position()` interpolates LINEARLY in lat/lon; on an equirectangular chart that is the
-    // straight segment ./route.ts draws. A great-circle arc would bow away from the very point the
-    // server put the ship at. This is the seam, asserted rather than assumed.
+    // `voyage.position()` interpolates LINEARLY in lat/lon along the segment — the same
+    // interpolation the server's water law samples (0039), and on an equirectangular chart the
+    // straight stroke ./route.ts draws. A great-circle arc would bow away from the very point
+    // the server put the ship at. This is the seam, asserted rather than assumed.
     const at = aurora().at
-    const t = aurora().leg!.legFrac
+    const t = AURORA.voyage!.position!.leg_frac
     expect(at.lat).toBeCloseTo(LISBON.lat + (CADIZ.lat - LISBON.lat) * t, 3)
     expect(at.lon).toBeCloseTo(LISBON.lon + (CADIZ.lon - LISBON.lon) * t, 3)
   })
 
-  test('a destination beyond this leg is RINGED, never routed', () => {
-    // Aurora is bound for Ceuta but is sailing Lisbon → Cádiz. The ring goes on Ceuta; the line
-    // stops at Cádiz, because the leg Cádiz → Ceuta is not served (README §4.8).
+  test('the destination is RINGED, and — new under 0039 — the water to it is drawn too', () => {
     expect(aurora().destinationCode).toBe('CEU')
     expect([...MODEL.destinationPoints.keys()]).toEqual(['CEU'])
     const ceuta = portAt('CEU')
     expect(MODEL.destinationPoints.get('CEU')).toEqual({ lat: ceuta.lat, lon: ceuta.lon })
-    expect(aurora().track!.aheadD).not.toContain(String(ceuta.lat))
+  })
+
+  test('a bare-water destination is ringed at its point (0039)', () => {
+    const toSea = buildChartModel(
+      mapFleetsOf([
+        sailingFleet({
+          id: 's',
+          name: 'Sonda',
+          from: 'LIS',
+          to: 'LIS',
+          course: ['LIS'],
+          toPoint: { lat: 33, lon: -15 },
+          legFrac: 0.5,
+        }),
+      ]),
+      PORTS,
+    )
+    expect(toSea.destinationSeaPoints).toEqual([{ lat: 33, lon: -15 }])
+    expect(toSea.destinationPoints.size).toBe(0)
+    const [f] = toSea.fleets
+    expect(f.destinationCode).toBeNull()
+    expect(f.voyage!.destPoint).toEqual({ lat: 33, lon: -15 })
   })
 
   test('the destination ring is placed once per port, not once per fleet', () => {
     const two = buildChartModel(
       mapFleetsOf([
         AURORA,
-        sailingFleet({ id: 'b', name: 'Bonança', from: 'SAF', to: 'CEU', legFrac: 0.2, destination: 'CEU' }),
+        sailingFleet({ id: 'b', name: 'Bonança', from: 'SAF', to: 'CEU', legFrac: 0.2 }),
       ]),
       PORTS,
     )
@@ -168,7 +196,7 @@ test.describe('the chart draws the leg it was given, and no other water', () => 
   test('a docked fleet gets no track and no destination', () => {
     const docked = MODEL.fleets.find((f) => f.fleet.id === 'gaivota')!
     expect(docked.track).toBeNull()
-    expect(docked.leg).toBeNull()
+    expect(docked.voyage).toBeNull()
     expect(docked.destinationCode).toBeNull()
     expect(docked.dockedAtCode).toBe('LIS')
   })
@@ -176,7 +204,9 @@ test.describe('the chart draws the leg it was given, and no other water', () => 
   test('port roles rank correctly, and a port no fleet touches has none', () => {
     expect(MODEL.portRoles.get('CEU')).toBe('destination') // Aurora is bound there
     expect(MODEL.portRoles.get('LIS')).toBe('anchorage') // Gaivota lies there, and Aurora left it
-    expect(MODEL.portRoles.get('CAD')).toBe('route') // the far end of the leg Aurora is on
+    // 0039: the 'route' role is retired with the leg graph — a waypoint on a free course is not
+    // a port fact any more, so Cádiz (mid-course) is quiet unless something else makes it loud.
+    expect(MODEL.portRoles.get('CAD')).toBeUndefined()
     expect(MODEL.portRoles.get('SVL')).toBeUndefined()
     expect(MODEL.portRoles.get('NAP')).toBeUndefined()
   })
@@ -199,68 +229,6 @@ test.describe('the chart draws the leg it was given, and no other water', () => 
       expect(port.lon).toBeGreaterThanOrEqual(bounds.minLon)
       expect(port.lon).toBeLessThanOrEqual(bounds.maxLon)
     }
-  })
-})
-
-test.describe('the sea lanes are a hairline close in, and nothing at all pulled back', () => {
-  const LEGS = [leg('CAD', 'LIS', 247.7), leg('CAD', 'CEU', 61), leg('LIS', 'NAG', 12_000)]
-  const byCode = new Map(PORTS.map((p) => [p.code, p]))
-
-  test('the lanes in view are drawn, as ONE path with one subpath each', () => {
-    const iberia: ViewBox = { x: -12, y: -42, width: 10, height: 8 }
-    const d = legWebPath(LEGS, byCode, iberia)
-    // Lisbon, Cádiz and Ceuta are all on this sheet, so both short lanes are drawn — as two `M…L…`
-    // subpaths of ONE string, because 782 lanes must never become 782 elements.
-    expect(d.split('M').filter(Boolean)).toHaveLength(2)
-    expect(d.startsWith('M')).toBe(true)
-    expect(d).toContain(`M${round(project(CADIZ).x)}`)
-  })
-
-  test('a leg with one end off the glass is dropped whole, never clipped to a stub', () => {
-    // The same three lanes, framed on Portugal: Ceuta (lon −5.3) is off the right edge, so the
-    // Cádiz–Ceuta lane goes entirely, and Lisbon–Nagasaki was never a candidate. That last one is
-    // what keeps a lane straddling the antimeridian off the sheet: no view holds both its ends.
-    const portugal: ViewBox = { x: -12, y: -42, width: 6, height: 8 }
-    const d = legWebPath(LEGS, byCode, portugal)
-    expect(d.split('M').filter(Boolean)).toHaveLength(1)
-    expect(d).not.toContain(String(round(project(portAt('CEU')).x)))
-  })
-
-  test('a lane the view does not contain contributes nothing, not a stub', () => {
-    const pacific: ViewBox = { x: 120, y: -40, width: 10, height: 8 }
-    expect(legWebPath(LEGS, byCode, pacific)).toBe('')
-  })
-
-  test('the layer covers the OPENING frame, and is dropped — not faded — above it', () => {
-    // MEASURED in the browser and then pinned here: a lone fleet at Lisbon frames
-    // OPENING_MIN_SPAN_DEG, which FIT_PADDING opens to 12 × 1.24 = 14.88° on the glass. If the lane
-    // limit sat below that, a new player would see no sea routes on the one screen that exists to
-    // answer "where can I go from here" — which is exactly what a run in Chrome showed.
-    const openingSpan = OPENING_MIN_SPAN_DEG * (1 + 2 * FIT_PADDING)
-    expect(openingSpan).toBeCloseTo(14.88, 6)
-    expect(LEG_SPAN_LIMIT).toBeGreaterThan(openingSpan)
-    // …and it is still a coast, not a hemisphere.
-    expect(LEG_SPAN_LIMIT).toBeLessThan(45)
-  })
-
-  test('a lane joins two MARKS, never a mark and blank water', () => {
-    // Iberia at 14° across: the tier floor is 3, so Ceuta (tier 2) has no triangle. The Cádiz–Ceuta
-    // lane must go with it — a hairline ending in empty sea reads as a route to nowhere.
-    const iberia: ViewBox = { x: -14, y: -43, width: 14, height: 9 }
-    expect(minTierForSpan(iberia.width)).toBe(3)
-    const drawn = visiblePorts(PORTS, new Map(), iberia, minTierForSpan(iberia.width))
-    expect(drawn.map((p) => p.code)).toContain('CAD')
-    expect(drawn.map((p) => p.code)).not.toContain('CEU')
-    const d = legWebPath(LEGS, new Map(drawn.map((p) => [p.code, p])), iberia)
-    expect(d.split('M').filter(Boolean)).toHaveLength(1) // Cádiz–Lisbon only
-    // Give Ceuta a role — a fleet is bound there — and it is drawn again, lane and all.
-    const withRole = visiblePorts(PORTS, MODEL.portRoles, iberia, minTierForSpan(iberia.width))
-    const withLane = legWebPath(LEGS, new Map(withRole.map((p) => [p.code, p])), iberia)
-    expect(withLane.split('M').filter(Boolean)).toHaveLength(2)
-  })
-
-  test('a leg naming a port the snapshot does not carry is skipped, never guessed', () => {
-    expect(legWebPath([leg('LIS', 'ZZZ', 100)], byCode, { x: -20, y: -50, width: 40, height: 30 })).toBe('')
   })
 })
 

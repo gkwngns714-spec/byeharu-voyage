@@ -5,8 +5,7 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
-<<<<<<< HEAD
-## 2026-08-24 — D22: the edited-migration defect — 0003 reverted, the world grows through 0041, and a guard so it can never drift silently again
+## 2026-08-24 — D23: the edited-migration defect — 0003 reverted, the world grows through 0041, and a guard so it can never drift silently again
 
 **THE DEFECT (mine, prior session).** D21 regenerated migration 0003 in place after production had
 already applied it. Editing an applied migration does not re-run it, so production kept the
@@ -49,7 +48,8 @@ deployed world keeps the old values).
 
 **Numbering:** 0038/0039 are the helm worktree's, 0040 the seas worktree's; growth took **0041**.
 The chain spec's LAST pin moved to 0041 with the dated note.
-=======
+---
+
 ## 2026-08-24 — D22: every water answers its sea (migration 0040)
 
 The owner's free-sailing spec (OWNER_REQUESTS rows 42/43) keys piracy, hazards and NPC levels on
@@ -118,7 +118,6 @@ Channel, Adriatic, Malacca, Gulf of Mexico and Sea of Japan renders.
   question (research P.10), unchanged by this slice.
 
 ---
->>>>>>> seas
 
 ## 2026-08-23 — D21: the catalogue grows to 243 real goods, and the world re-tunes around it
 

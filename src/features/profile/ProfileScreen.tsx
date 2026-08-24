@@ -146,13 +146,9 @@ export function ProfileScreen() {
             value={snapshot ? formatInt(snapshot.ports.length) : '—'}
             hint="Every coordinate came from Wikidata, stored with the item it came from. None was typed by hand."
           />
-          {/* "Sea lanes", not "Sea legs" — the label read as the idiom, and the chart's own
-              caption already calls the network "the sea lanes" (one word per idea). A single
-              stretch of one is still "a leg" where a passage is counted in them. */}
-          <StatRow
-            label="Sea lanes"
-            value={snapshot ? formatInt(snapshot.legs.length) : '—'}
-          />
+          {/* 0039: the fixed sea-lane graph is gone - the sea itself is the way, so the world is
+              counted in harbours and goods, and a passage is measured in sailed miles when it is
+              made, not in lanes it might use. */}
           <StatRow
             label="Goods"
             value={snapshot ? formatInt(snapshot.goods.length) : '—'}

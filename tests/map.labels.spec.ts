@@ -45,8 +45,8 @@ const PORTS = mapPortsOf(REAL_PORTS)
 const FLEETS = mapFleetsOf([
   dockedFleet('gaivota', 'Gaivota', 'LIS'),
   dockedFleet('levante', 'Levante', 'GOA'),
-  sailingFleet({ id: 'aurora', name: 'Aurora', from: 'LIS', to: 'CAD', legFrac: 0.45, destination: 'CEU' }),
-  sailingFleet({ id: 'ponente', name: 'Ponente', from: 'LIS', to: 'FNC', legFrac: 0.35, destination: 'LPA' }),
+  sailingFleet({ id: 'aurora', name: 'Aurora', from: 'LIS', to: 'CAD', course: ['LIS', 'CAD', 'CEU'], legFrac: 0.45 }),
+  sailingFleet({ id: 'ponente', name: 'Ponente', from: 'LIS', to: 'FNC', course: ['LIS', 'FNC', 'LPA'], legFrac: 0.35 }),
 ])
 
 const MODEL = buildChartModel(FLEETS, PORTS)

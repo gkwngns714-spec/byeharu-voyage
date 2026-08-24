@@ -27,6 +27,7 @@ import { PreviewPanel, type CheckState } from './PreviewPanel'
 import { useCommandDraft } from '../../domain/order'
 import { composableVerbs, findVerb, isComplete, orderText, type FixAction } from '../../domain/order'
 import { fleetHoldTotal, fleetHoldUsed, fleetPortCode } from '../../domain/fleet'
+import { parsePointToken, pointLabel, proposeCourse, sailOrigin } from '../../domain/passage'
 
 // CMD — THE HEART. E.1, and the only tab that changes the world.
 //
@@ -70,6 +71,7 @@ export function CommandScreen() {
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
   const snapshot = useWorld((s) => s.snapshot)
+  const seaNav = useWorld((s) => s.seaNav)
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const markets = useWorld((s) => s.markets)
@@ -164,6 +166,26 @@ export function CommandScreen() {
   const text = spec ? orderText(spec, args, fleet?.name) : ''
   const ready = Boolean(spec && fleet && isComplete(spec, args))
 
+  // THE PROPOSAL (0039). A SAIL carries the course the client found - the one pathfinder over the
+  // served raster - and the SERVER verifies every segment and measures the miles itself. Computed
+  // when the destination is answered (worst measured search ~166 ms; the browser figure is in the
+  // acceptance report), and attached to BOTH the dry run and the issue, so the estimate printed
+  // and the order committed are priced over the same water.
+  const course = useMemo(() => {
+    if (spec?.verb !== 'SAIL' || !fleet || !seaNav) return null
+    const destCode = args['dest']
+    const pointTok = args['dest_point']
+    const port = destCode ? portByCode[destCode] : undefined
+    const target = port
+      ? { lat: port.lat, lon: port.lon }
+      : pointTok
+        ? parsePointToken(pointTok)
+        : null
+    const origin = sailOrigin(fleet, portByCode)
+    if (!target || !origin) return null
+    return proposeCourse(seaNav, origin, target)
+  }, [spec, fleet, seaNav, args, portByCode])
+
   // Another tab handed an order over — bring the composer into view rather than leaving the player
   // wondering where their tap went.
   useEffect(() => {
@@ -176,7 +198,7 @@ export function CommandScreen() {
     if (!ready || !fleetId) return
     let alive = true
     const timer = setTimeout(() => {
-      void preview(fleetId, text).then((result) => {
+      void preview(fleetId, text, course).then((result) => {
         if (!alive) return
         setChecked({
           text,
@@ -190,7 +212,7 @@ export function CommandScreen() {
       alive = false
       clearTimeout(timer)
     }
-  }, [ready, fleetId, text, preview])
+  }, [ready, fleetId, text, course, preview])
 
   const check: CheckState = !ready
     ? { status: 'idle' }
@@ -202,7 +224,7 @@ export function CommandScreen() {
     if (!ready || !fleetId) return
     setIssuing(true)
     const sent = text
-    const ok = await issue(fleetId, sent)
+    const ok = await issue(fleetId, sent, course)
     setIssuing(false)
     if (ok) {
       setIssued(sent)
@@ -311,8 +333,10 @@ export function CommandScreen() {
                 const where = f.port
                   ? portNameOf(portByCode, f.port)
                   : f.voyage
-                    ? `→ ${portNameOf(portByCode, f.voyage.to)}`
-                    : f.status.toLowerCase()
+                    ? `→ ${f.voyage.to ? portNameOf(portByCode, f.voyage.to) : f.voyage.dest_point ? pointLabel({ lat: f.voyage.dest_point[0], lon: f.voyage.dest_point[1] }) : 'open sea'}`
+                    : f.anchor
+                      ? `at anchor · ${pointLabel({ lat: f.anchor[0], lon: f.anchor[1] })}`
+                      : f.status.toLowerCase()
                 return (
                   <button
                     key={f.id}
@@ -555,7 +579,15 @@ export function CommandScreen() {
                 queueMax={snapshot.config.order_queue_max}
                 busy={busy}
                 readAt={readAt}
-                destination={fleet.voyage ? portNameOf(portByCode, fleet.voyage.to) : null}
+                destination={
+                  fleet.voyage
+                    ? fleet.voyage.to
+                      ? portNameOf(portByCode, fleet.voyage.to)
+                      : fleet.voyage.dest_point
+                        ? pointLabel({ lat: fleet.voyage.dest_point[0], lon: fleet.voyage.dest_point[1] })
+                        : 'open sea'
+                    : null
+                }
                 onCancel={(seq) => void cancel(fleet.id, seq)}
                 onClear={() => void clearQueue(fleet.id)}
               />

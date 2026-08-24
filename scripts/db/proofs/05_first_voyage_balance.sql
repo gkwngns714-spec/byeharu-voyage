@@ -112,7 +112,9 @@ begin
     -- the read ranks by profit per sea-mile and this proof is asking a different question: what is
     -- the most a first voyage can RETURN ON THE STAKE? The rows are the read's; the metric is this
     -- file's, and it is applied to the read's own outlay and proceeds.
-    v_routes := world.trade_routes(r_port.id, v_fleet, 1, null);
+    -- 0039: "one leg" became a 600 nm sailed radius (measured: the closest match to the old
+    -- one-leg horizon - see proof 04's note).
+    v_routes := world.trade_routes(r_port.id, v_fleet, 600, null);
     select max((e->>'profit')::numeric),
            (array_agg((e->>'nm')::numeric order by (e->>'profit')::numeric desc))[1]
       into v_best, v_best_nm
@@ -128,23 +130,24 @@ begin
     if r_port.code = (select code from public.ports order by size_tier desc, code limit 1) then
       v_ctrl_port := r_port.code;
       v_ctrl_read := v_best;
-      -- EXHAUSTIVE: every good this port trades against EVERY one-leg destination she may sail to,
-      -- priced through the same quotes at the same capacity. No shortlist, no cap, no ranking.
+      -- EXHAUSTIVE: every good this port trades against EVERY destination inside the same 600 nm
+      -- the shortlisted scan searched, priced through the same quotes at the same capacity.
+      -- No shortlist, no cap, no ranking. (0039: "one leg" became the sailed radius.)
       select count(*), max(x.p),
              (array_agg(x.g order by x.p desc))[1], (array_agg(x.d order by x.p desc))[1]
         into v_ctrl_pairs, v_ctrl_full, v_ctrl_good, v_ctrl_dest
         from (
           select g.code as g, d.code as d, qs.total - qb.total as p
-            from voyage.reach_from(r_port.id, 120) rf
-            join public.ports d on d.id = rf.port_id
+            from voyage.reach_from(r_port.id) rf
+            join public.ports d on d.id = rf.port_id and d.kind = 'HARBOUR'
             join public.port_goods pg on pg.port_id = r_port.id
             join public.goods g on g.id = pg.good_id
            cross join lateral (select (public.fleet_buy_capacity(v_fleet, g.id)->>'max_qty')::numeric q) c
            cross join lateral world.quote(r_port.id, g.id, c.q, 'buy', null, v_fleet) qb
            cross join lateral world.quote(d.id, g.id, qb.units, 'sell', null, v_fleet) qs
-           where rf.hops = 1
+           where rf.nm <= 600
              and c.q >= 1 and qb.units > 0
-             and voyage.sail_refusal(v_fleet, d.id, rf.nm) is null
+             and voyage.sail_refusal(v_fleet, d.id, null, rf.nm) is null
              and not (d.culture = any(g.culture_mask))
              and not (r_port.culture = any(g.culture_mask))
         ) x;

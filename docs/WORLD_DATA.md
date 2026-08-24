@@ -20,7 +20,7 @@ traded* — not where it is.
 | `data/regions.json` | 5,540 | 25 trading regions, each tied to a parent sea |
 | `data/goods.json` | 54,296 | 243 tradeable commodities with category, value band and origin note |
 | `data/world-110m.json` | 280,378 | Country outlines for the map (Natural Earth 1:110m, property bag slimmed) |
-| `data/sea-routes.json` | 195,000 | **782 sea legs** — which ports are joined by water, and how far it is by sea. GENERATED; see §7 |
+| ~~`data/sea-routes.json`~~ | — | **DELETED with the fixed leg graph (0047/0049).** What water connects to what is the raster (migration 0046, `scripts/build-sea-migration.mjs`) and the sailed distance between every pair of places is `sea_reaches`, derived from it by the one pathfinder (`src/lib/sea`); see §7 |
 | `data/sea-places.json` | ~11,000 | **14 sea places** — named waters a fleet can sail to (banks, straits, wind belts). AUTHORED; see §8 |
 
 Build and check scripts live in `scripts/`. None of them are needed at runtime.
@@ -36,7 +36,7 @@ Build and check scripts live in `scripts/`. None of them are needed at runtime.
 | `scripts/check-coastal.mjs` | yes | Audits how far each port is from a coastline |
 | `scripts/project.mjs` | — | Reference implementation of the recommended projection |
 | `scripts/sea-grid.mjs` | **no** | THE routing rule: the sea as a 0.25° raster, and A* through water. §7 |
-| `scripts/build-sea-routes.mjs` | **no** | Applies that rule to all 214 ports and writes `data/sea-routes.json` |
+| ~~`scripts/build-sea-routes.mjs`~~ | — | DELETED (0049). `scripts/build-sea-migration.mjs` emits the raster + all-pairs distances as migration 0046 |
 | `scripts/build-world-seed.mjs` | **no** | Writes migration 0003 from all of the above. The chain's world IS this data |
 | `scripts/build-sea-places.mjs` | **no** | Writes migration 0036 from `data/sea-places.json`: the places, and their spur legs by the §7 rule. §8 |
 | `scripts/build-sea-raster.mjs` | first run only | Writes migration 0040: WHICH SEA every water cell is in, from Natural Earth marine polygons. §9 |
@@ -48,7 +48,7 @@ node scripts/fetch-coords.mjs      # refresh coordinates from Wikidata
 node scripts/build-world.mjs       # refresh country outlines and bbox table
 node scripts/build-ports.mjs       # compose data/ports.json
 node scripts/check-ports.mjs       # validate
-node scripts/build-sea-routes.mjs  # recompute the sea legs (about 10 minutes)
+node scripts/build-sea-migration.mjs  # the sea itself: raster + all-pairs sailed distances (emits a NEW migration)
 node scripts/build-world-seed.mjs  # rewrite migration 0003 from the data
 npm run db:apply                   # and prove the result applies
 ```
@@ -458,8 +458,11 @@ claiming historical precision it is not.
 
 ## 7. The sea legs — how 782 routes were derived rather than authored
 
-`data/sea-routes.json` is **generated**. Do not hand-edit it: change the rule or the port list and
-run `node scripts/build-sea-routes.mjs` again.
+The fixed leg graph is GONE (0047 replaced the mover; 0049 dropped `public.legs`). The sea is
+served as a raster (0046) and sailing pathfinds freely over it at the moment of ordering;
+`sea_reaches` carries the all-pairs sailed distances the economy and the endurance gate read.
+Change the sea (`scripts/sea-grid.mjs`) or the ports and cut a NEW migration with
+`scripts/build-sea-migration.mjs` — an applied one is history.
 
 ### The rule, in one line
 

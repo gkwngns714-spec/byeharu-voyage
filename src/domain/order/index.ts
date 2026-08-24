@@ -29,6 +29,7 @@
 export { useCommandDraft, type CommandIntent, type CommandDraftState } from './draft'
 export {
   QUEUE_VERBS,
+  argValue,
   composableVerbs,
   enumNaming,
   findVerb,

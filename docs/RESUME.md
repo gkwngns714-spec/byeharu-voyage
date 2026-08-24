@@ -14,6 +14,31 @@ So: **build without asking, but do not skip the gate, and do not silently narrow
 
 ---
 
+## LANDED 2026-08-24 — the free-sea mover is IN THIS CHAIN
+
+Everything the section below asks for is BUILT and LANDED, regenerated against this chain as
+migrations **0046–0049** (the helm worktree cut it as 0038/0039/0041 against a 37-migration base;
+generated migrations are regenerated, never textually merged):
+
+* **0046 — the water knows the way**: the navigable sea as ONE raster + `sea_reaches` (all-pairs
+  sailed nm) + `voyage.path_nm`/`voyage.path_refusal`. Cross-checked cell-for-cell against 0040's
+  sea-membership raster at generation.
+* **0047 — the sea is a free plane**: ONE mover. The client proposes a course, the server verifies
+  it against its own raster and measures it itself; any water point is a destination; divert turns
+  where she is; `voyage.sea_near` COMPOSES 0040's `sea_at` (the helm cut's interim body was never
+  created). The four graph movement authorities are DROPPED, not joined.
+* **0048 — the quay reprices the honest sea**: affinity knobs retuned to honest distances.
+* **0049 — the graph is history**: `public.legs` dropped, `data/sea-routes.json` and its
+  generator deleted, the world guard repointed (still able to fail: planted-drift controls kept).
+
+The Arctic defect is dead: Lisboa→Nagasaki is served at ~13,052 nm round the Cape with a maximum
+course latitude of 38.7°N, where the leg graph served 7,565 nm over the pole at 88.6°N. The client
+clock mirror moved with 0045 (480 → 9600; a voyage-day is 9 real seconds) and rpc.surface asserts
+the served knob equals the mirror. See DEV_LOG's top entry for the full landing record and every
+gate's measurement.
+
+The section below is kept as the record of WHY.
+
 ## THE ONE THING THAT MATTERS MOST
 
 **The movement model is being replaced.** This is `OWNER_REQUESTS.md` rows 42 and 43, and it is the

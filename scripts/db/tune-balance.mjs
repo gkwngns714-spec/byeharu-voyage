@@ -17,12 +17,14 @@
 import { applyChain } from './apply-chain.mjs'
 
 const CANDIDATES = [
-  { producer: 0.60, home: 0.85, span: 1.50, reach: 6000, curve: 1.0 },   // what shipped: 32% median
-  { producer: 0.88, home: 0.97, span: 0.90, reach: 8000, curve: 0.70 },
-  { producer: 0.90, home: 0.98, span: 0.88, reach: 8000, curve: 0.75 },
-  { producer: 0.90, home: 0.99, span: 0.85, reach: 9000, curve: 0.80 },
-  { producer: 0.92, home: 0.99, span: 0.85, reach: 9000, curve: 0.80 },
+  // 2026-08-24, the free-sea sweep: the honest 600 nm reach finds better-paying destinations than
+  // the old one-leg graph did, so the same knobs price a first voyage higher — proof 05 measured
+  // 14.7-17.8% against the 4-16 band. The sweep below re-measures the CURRENT knobs under the
+  // honest scan and two flatter candidates to pull the median back to mid-band.
+  { producer: 0.92, home: 0.99, span: 0.85, reach: 9000, curve: 0.80 },  // current (D21)
   { producer: 0.92, home: 1.00, span: 0.80, reach: 9000, curve: 0.85 },
+  { producer: 0.93, home: 1.00, span: 0.76, reach: 9500, curve: 0.88 },
+  { producer: 0.94, home: 1.00, span: 0.72, reach: 9500, curve: 0.90 },
 ]
 
 const SAMPLE = Number(process.env.SAMPLE ?? 14)
@@ -93,15 +95,17 @@ async function retune({ producer, home, span, reach, curve }) {
 }
 
 async function bestVoyage(house) {
+  // 0039: the first-voyage horizon is the same 600 nm of SAILED water proof 05 measures — the
+  // honest reach table, not the retired one-leg graph, so the sweep prices the game the player
+  // is actually offered.
   const { rows: options } = await db.query(
-    `select g.id as good_id, g.code as good, g.bulk, d.id as dest_id, l.distance_nm
-       from public.legs l
-       join public.ports d
-         on d.id = case when l.from_port_id = $1 then l.to_port_id else l.from_port_id end
+    `select g.id as good_id, g.code as good, g.bulk, d.id as dest_id, rf.nm as distance_nm
+       from voyage.reach_from($1) rf
+       join public.ports d on d.id = rf.port_id and d.kind = 'HARBOUR'
        join public.goods g on true
        join public.port_goods pg_home on pg_home.port_id = $1 and pg_home.good_id = g.id
        join public.port_goods pg_away on pg_away.port_id = d.id and pg_away.good_id = g.id
-      where (l.from_port_id = $1 or l.to_port_id = $1)
+      where rf.nm <= 600
         and not (d.culture = any(g.culture_mask))
         and not ($2::text = any(g.culture_mask))
       order by pg_away.affinity - pg_home.affinity desc
