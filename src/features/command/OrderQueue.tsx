@@ -1,7 +1,8 @@
-import { Badge, Button, fineClass, Icon, Notice } from '../../components/ui'
+import { Badge, Button, fineClass, Icon, Notice, RefusalNote } from '../../components/ui'
 import { formatNm, formatRealShort } from '../../lib/format'
 import type { FleetView, QueuedOrder } from '../../lib/rpc'
 import { fleetStatusTone, voyageEtaMs } from '../../domain/fleet'
+import { refusalOfOrder } from '../../domain/order'
 
 // THE QUEUE — E.1's QUEUES block and F.3's rules, made of the server's own rows.
 //
@@ -44,6 +45,7 @@ export function OrderQueue({
   const orders = fleet.queue
   const live = orders.filter((o) => o.status === 'pending' || o.status === 'active')
   const failed = orders.find((o) => o.status === 'failed')
+  const failedRefusal = failed ? refusalOfOrder(failed) : null
   // THE ARRIVAL INSTANT COMES FROM domain/fleet. `voyageEtaMs` already documents that `eta` is
   // an ISO STRING and that parsing it is the whole of the job — and it said it was "parsed once"
   // while this file and chart/liveWorld.ts each parsed it again. Now it is parsed once.
@@ -74,12 +76,18 @@ export function OrderQueue({
         {failed && <Badge tone="danger">halted</Badge>}
       </div>
 
-      {failed && (
+      {/* THE HALT IS A REFUSAL, drawn by the one thing that draws refusals. This used to be a
+          hand-written `code — message` line: a third rendering of "the server said no", which is
+          how a bar reaches two screens and prose reaches the third. RefusalNote gets the served
+          figures through `refusalOfOrder`, so a fleet halted on E_ENDURANCE shows
+          `▁▁▂ 2.9 / 33 days` here exactly as the composer does. */}
+      {failedRefusal && failed && (
         <Notice tone="danger" className="text-xs">
-          <span className="font-mono">{failed.error_code}</span> — {failed.error_message}
-          <br />
-          {fleet.name} has HALTED at order {failed.seq} and will not skip past it. Clearing the queue
-          is what releases her.
+          <RefusalNote refusal={failedRefusal} testId="queue-halt-refusal" />
+          <p className="mt-1.5">
+            {fleet.name} has HALTED at order {failed.seq} and will not skip past it. Clearing the
+            queue is what releases her.
+          </p>
         </Notice>
       )}
 

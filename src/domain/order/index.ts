@@ -38,6 +38,7 @@ export {
   isQueueVerb,
   missingArgs,
   orderText,
+  refusalOfOrder,
   visibleArgs,
   type FixAction,
 } from './text'

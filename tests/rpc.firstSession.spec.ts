@@ -159,8 +159,14 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   expect(tooMuch.ok).toBe(false)
   if (tooMuch.ok) throw new Error('unreachable')
   expect(tooMuch.refusal.code).toBe('E_HOLD_FULL')
-  expect(tooMuch.refusal.sentence).toContain('room for')
   expect(tooMuch.refusal.fixes.length).toBeGreaterThanOrEqual(1)
+  // AND THE PLAYER IS SHOWN THE ARITHMETIC AS A BAR, not asked to read it out of a paragraph
+  // (migration 0050). The figures are the SERVER'S OWN numbers — `have` is the free hold this
+  // spec computed from `fleet.free_hold` independently, which is what makes this an agreement
+  // between two sides rather than a restatement of one. The old assertion pinned the sentence's
+  // wording ("room for"), so shortening the prose would have reddened a correct chain.
+  expect(tooMuch.refusal.figures).toEqual({ have: room, need: room + 20, unit: 't' })
+  expect(tooMuch.refusal.sentence).not.toMatch(/\d/)
   // CLEAR drops pending orders AND releases the halt a failed one puts the fleet under (§F.3).
   expectOk(await cmdClear(fleet.id))
 

@@ -371,13 +371,28 @@ test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', as
   if (result.ok) throw new Error('unreachable')
   const r = result.refusal
   expect(r.code).toBe('E_HOLD_FULL')
-  expect(r.sentence).toContain('room for')
   expect(r.sentence.length).toBeGreaterThan(10)
   expect(r.fixes.length).toBeGreaterThanOrEqual(1)
   expect(r.fixes).toContain('SELL <good> ALL')
   expect(r.source).toBe('server')
-  // The queue comes back with the refusal, so a screen can redraw without a second round trip.
-  expect(r.queue?.some((o) => o.error_code === 'E_HOLD_FULL')).toBe(true)
+
+  // THE TWO NUMBERS ARE SERVED, NOT WRITTEN INTO A SENTENCE (migration 0050). This line used to
+  // read `sentence.toContain('room for')`, which pinned the chain's PROSE — the very thing the
+  // owner asked to shorten — and would have gone red on a correct system the day it was. The
+  // property is the CONTRACT: an arithmetic refusal carries have/need/unit, `need` is what was
+  // asked for, and the sentence is free of the arithmetic because RefusalNote draws the bar.
+  expect(r.figures).toBeDefined()
+  expect(r.figures!.unit).toBe('t')
+  expect(r.figures!.need).toBe(60)
+  expect(r.figures!.have).toBeLessThan(60)
+  expect(r.sentence).not.toMatch(/\d/)
+
+  // The queue comes back with the refusal, so a screen can redraw without a second round trip —
+  // and it carries the SAME figures, so the halted row draws the same bar rather than a second,
+  // prose-only rendering of one event.
+  const halted = r.queue?.find((o) => o.error_code === 'E_HOLD_FULL')
+  expect(halted).toBeDefined()
+  expect(halted!.figures).toEqual(r.figures)
 
   // …and the refused order is still in the queue as `failed`, exactly as the chain leaves it.
   const after = expectOk(await worldFleets())[0]

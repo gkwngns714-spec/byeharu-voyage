@@ -24,7 +24,10 @@
 //           E_FLAGSHIP_DISABLED gate on SAIL (0007:375-377).
 //   guns    escort_score = Σ(guns + crew×0.02 + tier×3) — the game's whole combat number
 //           (0007:979, re-cut 0027:334-335; DESIGN B.6).
-//   draft   E_DRAFT: "the deepest hull draws % and that port takes %" (0007:381-386, 0019:434).
+//   draft   the deepest hull's draft against public.ports.max_draft — the E_DRAFT gate on SAIL
+//           (voyage.sail_refusal, re-cut 0050). The refusal now SERVES the two numbers as figures
+//           (port depth over hull draft), so nothing quotes its sentence here: a number in a
+//           comment is a liability the day the sentence changes, which is today.
 //   tier    the third term of the escort score (0007:979), and the catalogue's ladder (0009:97).
 //   build   ship_classes.build_hours — NO RULE READS IT. Table 0002:161 and the seed only;
 //           0021:50 states it: "There is no verb that adds a hull today."

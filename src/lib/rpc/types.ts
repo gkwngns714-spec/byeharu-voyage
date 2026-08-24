@@ -21,6 +21,10 @@
 //     would be a second authority for what a field is called.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+// The refusal's two numbers are declared where a refusal is declared (result.ts), not a second
+// time here — an order row carries the same shape the envelope does, because it is the same thing.
+import type { RefusalFigures } from './result'
+
 // ── world.snapshot() ───────────────────────────────────────────────────────────────────────────
 
 export interface SnapshotPort {
@@ -505,6 +509,12 @@ export interface QueuedOrder {
   status: OrderStatus
   error_code: string | null
   error_message: string | null
+  /**
+   * The two numbers behind a FAILED order's refusal, served from `public.orders.error_figures`
+   * (migration 0050). The queue is where a halted fleet is read, so the halt gets the same bar the
+   * refusal itself got — never a second, prose-only rendering of the same event.
+   */
+  figures: RefusalFigures | null
   /** Verb-shaped result of a completed order (`{qty, good, total, avg_price}` for BUY, …). */
   result: Record<string, unknown> | null
 }
@@ -598,6 +608,8 @@ export interface IssuedOrder {
   status: OrderStatus
   error_code: string | null
   error_message: string | null
+  /** As on QueuedOrder — the refusal's figures, served (0050), never derived from the sentence. */
+  figures: RefusalFigures | null
   result: Record<string, unknown> | null
 }
 

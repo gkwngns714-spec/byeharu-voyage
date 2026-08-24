@@ -20,11 +20,13 @@ import type { ParsedCommand, QueuedOrder } from './types'
  * THE FIGURES BEHIND AN ARITHMETIC REFUSAL — what the owner's concise law (2026-08-24: *"make it
  * very concise … Always show in graphics"*) needs to draw `▁▁▂ 2.9 / 33 days` instead of the
  * paragraph. SERVED, beside the sentence, by the refusing migration itself; the client NEVER
- * parses a sentence for numbers — a sentence is the server's prose, not a wire format. Absent
- * until the serving migration lands (specified 2026-08-24: sail_refusal and its arithmetic
- * siblings return figures beside their text, and the cmd.* envelope carries them as `figures`);
- * every renderer falls back to the sentence, which is the same forward contract `spec.note ??
- * spec.help` used for 0021.
+ * parses a sentence for numbers — a sentence is the server's prose, not a wire format.
+ *
+ * SERVED SINCE MIGRATION 0050 (2026-08-25): `voyage.sail_refusal` returns the whole refusal as one
+ * value, `cmd.refuse` raises it with the figures in PG_EXCEPTION_DETAIL, and `cmd.execute_order` /
+ * `cmd.preview` / `cmd.issue` / `cmd.queue` carry them across as `figures`. Still OPTIONAL, and
+ * that is not laziness: a refusal with no arithmetic behind it (E_NO_STOCK, E_NOT_DOCKED,
+ * E_NO_YARD …) has no two numbers to draw, and every renderer falls back to the sentence.
  */
 export interface RefusalFigures {
   /** What she has — 2.9 (days of stores), 40 (tuns free), … */
@@ -76,6 +78,24 @@ function readFigures(raw: unknown): RefusalFigures | undefined {
   if (typeof f.need !== 'number' || !Number.isFinite(f.need)) return undefined
   if (typeof f.unit !== 'string' || f.unit === '') return undefined
   return { have: f.have, need: f.need, unit: f.unit }
+}
+
+/**
+ * The same figures when they arrive on an EXCEPTION rather than in a payload. The chain's one
+ * raiser (`cmd.refuse`, migration 0050) puts them in `DETAIL`, which PostgREST and PGlite both
+ * hand over as `details` — structured data the server wrote, never prose. A `details` that is
+ * anything else (a real PostgreSQL "Key (id)=(…) already exists") fails the shape check and the
+ * refusal degrades to its sentence, which is the same forward contract the payload path uses.
+ *
+ * THIS IS NOT PARSING A SENTENCE. `message` is never touched here.
+ */
+function readRawFigures(details: unknown): RefusalFigures | undefined {
+  if (typeof details !== 'string' || details === '' || details[0] !== '{') return undefined
+  try {
+    return readFigures(JSON.parse(details))
+  } catch {
+    return undefined
+  }
 }
 
 /** `E_HOLD_FULL: the fleet has room for 5 tuns` → code and sentence, split once, here. */
@@ -139,6 +159,7 @@ export function fromError(err: unknown): Refusal {
       code: m[1],
       sentence: m[2].trim() || raw,
       fixes: [],
+      figures: readRawFigures(e.details),
       source: 'raised',
       detail: detailParts.join('; ') || undefined,
     }

@@ -24,7 +24,7 @@
 // If the server ever adds a verb or an argument, this file needs no edit: it walks whatever
 // schema arrived.
 
-import type { VerbArg, VerbSpec } from '../../lib/rpc'
+import type { QueuedOrder, Refusal, VerbArg, VerbSpec } from '../../lib/rpc'
 
 /**
  * CANCEL and CLEAR are served in the same schema as the other six, but their only argument is a
@@ -236,4 +236,26 @@ export function fixAction(fix: string, verbs: readonly VerbSpec[]): FixAction {
     i += 1
   }
   return { kind: 'compose', verb: spec.verb, args }
+}
+
+// ── A HALTED ORDER IS A REFUSAL ────────────────────────────────────────────────────────────────
+// The queue's failed row and the composer's refusal are the SAME event: the server said no, in the
+// server's words, with the server's figures. They were drawn two different ways — RefusalNote in
+// the composer, a hand-written `code — message` line in the queue — which is two renderings of one
+// concept, and the one that would drift is always the one nobody looks at.
+//
+// So the queue asks for the refusal it is holding and hands it to RefusalNote like everyone else.
+// This TRANSCRIBES served fields; it derives nothing. In particular it never reads `error_message`
+// for numbers — `figures` is served beside it (migration 0050) precisely so that nobody has to.
+export function refusalOfOrder(order: QueuedOrder): Refusal | null {
+  if (order.status !== 'failed' || !order.error_code) return null
+  return {
+    code: order.error_code,
+    sentence: order.error_message ?? 'The server refused that, without saying why.',
+    // The fixes ride on the ISSUE envelope, not on the order row — a row read back later has no
+    // fix attached, and inventing one here would be a second author of "→ do this instead".
+    fixes: [],
+    figures: order.figures ?? undefined,
+    source: 'server',
+  }
 }

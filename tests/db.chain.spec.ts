@@ -135,7 +135,14 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // SEA (the affinity knobs retuned to honest distances), and 0049 THE GRAPH IS HISTORY (public.legs
 // dropped — the raster is the one authority for what water connects to what, and the world guard
 // stopped checking a table that no longer exists while keeping its planted-drift controls).
-const LAST = '20260818000049_the_graph_is_history.sql'
+//
+// Moved 2026-08-25 for 0050 A REFUSAL IS TWO NUMBERS AND A VERB — the owner's concise law served
+// rather than described: every arithmetic refusal now carries {have, need, unit} beside its
+// sentence (voyage.sail_refusal returns the refusal as ONE value; cmd.refuse raises it with the
+// figures in PG_EXCEPTION_DETAIL; the cmd.* envelope and public.orders.error_figures carry them
+// to the client), the sentences lost the arithmetic and the repeated verb and kept the REASON,
+// and the FIVE hand-copied "split E_CODE: sentence" definitions became one, cmd.refusal_caught.
+const LAST = '20260818000050_a_refusal_is_two_numbers_and_a_verb.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
