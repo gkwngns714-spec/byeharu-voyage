@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Badge,
@@ -59,6 +59,27 @@ import { sellBound, type QtyBound } from './fleetLimits'
  *     every row it has, and keeps the filter for reaching one by name.
  */
 const MAX_PORT_ROWS = 12
+
+/**
+ * How many harbour tiles stand in one grid row: two on a phone, three from Tailwind's `sm`
+ * (640px — the same boundary the old `sm:grid-cols-3` class drew, now read in JS because the
+ * confirm fold must land after the ROW containing the chosen tile, and only the code that knows
+ * where rows END can place it without moving the tiles beside her). The hook's value drives BOTH
+ * the chunking and the grid's own template, so the two cannot disagree.
+ */
+const TILE_COLS_QUERY = '(min-width: 640px)'
+function useTileCols(): number {
+  const [wide, setWide] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(TILE_COLS_QUERY).matches,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(TILE_COLS_QUERY)
+    const read = () => setWide(mq.matches)
+    mq.addEventListener('change', read)
+    return () => mq.removeEventListener('change', read)
+  }, [])
+  return wide ? 3 : 2
+}
 
 function PickerRow({
   onClick,
@@ -189,6 +210,7 @@ export function PortPicker({
   reach,
   origin,
   value,
+  confirm,
   onPick,
   onConsider,
 }: {
@@ -199,6 +221,14 @@ export function PortPicker({
   /** The port CODE the fleet is at (or bound for). Null when it is not known. */
   origin: string | null
   value: string | undefined
+  /**
+   * SAIL's confirm fold — the order line, the check and THE Issue button, built by the screen
+   * that owns the issue path. When given, it unfolds directly beneath the ROW OF TILES holding
+   * the chosen harbour (the owner, 2026-08-24: *"issue this order … at the bottom of the
+   * location i click on it, unfolding it"*), and the chosen tile is guaranteed a place in the
+   * grid so the fold always has a tile to hang from. This picker never looks inside it.
+   */
+  confirm?: ReactNode
   onPick: (code: string) => void
   /**
    * The row a pointer or the keyboard is ON, raised as the player runs down the list and cleared
@@ -209,6 +239,7 @@ export function PortPicker({
   onConsider?: (code: string | null) => void
 }) {
   const [filter, setFilter] = useState('')
+  const cols = useTileCols()
 
   const rows = useMemo(() => {
     const q = fold(filter.trim())
@@ -228,8 +259,27 @@ export function PortPicker({
       )
   }, [ports, reach, origin, filter])
 
-  const shown = rows.slice(0, MAX_PORT_ROWS)
+  // THE CHOSEN HARBOUR ALWAYS HAS A TILE when the confirm fold rides this picker: a destination
+  // handed off from FLEETS (or filtered away) may fall outside the twelve nearest, and a fold
+  // with no tile to hang from would strand the order's one Issue button nowhere. She is appended
+  // rather than promoted, so the nearest-first order of the honest twelve never re-shuffles.
+  const sliced = rows.slice(0, MAX_PORT_ROWS)
+  const shown =
+    confirm !== undefined && value !== undefined && !sliced.some((r) => r.port.code === value)
+      ? [
+          ...sliced,
+          ...ports
+            .filter((p) => p.code === value)
+            .map((p) => ({ port: p, nm: reach ? (reach[p.code] ?? null) : null })),
+        ]
+      : sliced
   const routed = shown.some((r) => r.nm === null)
+
+  // The grid, as ROWS of `cols` tiles — chunked here because the confirm fold must land after
+  // the WHOLE ROW containing the chosen tile: an element spanning the grid mid-row would push
+  // the rest of that row's tiles around, and nothing may move when a fold opens.
+  const tileRows: (typeof shown)[] = []
+  for (let i = 0; i < shown.length; i += cols) tileRows.push(shown.slice(i, i + cols))
 
   return (
     <div className="space-y-2">
@@ -245,70 +295,85 @@ export function PortPicker({
           hero figure beneath it (docs/UI_DIRECTION.md §4 rule 2), and the eye scans a field of
           harbours instead of reading down a column.
 
-          TWO ACROSS AT 390px, three from `sm`. Measured: a 390px phone gives each of two tiles
-          ~167px of content, which holds "São Vicente" on one wrapped line without truncating —
-          names WRAP, never ellipsize, because a harbour you cannot read is a harbour you cannot
-          choose. Three across at 390px would be ~106px, which crushes both the name and the
-          figure.
+          TWO ACROSS AT 390px, three from `sm` (useTileCols). Measured: a 390px phone gives each
+          of two tiles ~167px of content, which holds "São Vicente" on one wrapped line without
+          truncating — names WRAP, never ellipsize, because a harbour you cannot read is a harbour
+          you cannot choose. Three across at 390px would be ~106px, which crushes both the name
+          and the figure.
 
-          THE TAP CHOOSES — IT NEVER UNFOLDS (the owner, same day: "when pressing a location to
-          sail, dont unfold, instead make the what sail needs bottom by comming out unfoldingly").
-          A good's row unfolds because a good has facts you must read before choosing; a harbour
-          tile already SHOWS everything it has — name, country, distance — so there is nothing to
-          unfold into, and the tap commits. What happens NEXT is the composer's affair: the check
-          and the issue rise docked from the foot of the screen (CommandScreen's SAIL sheet), and
-          the chart rings the chosen harbour (OrderComposer's `chartPorts`, which follows the
-          CHOICE and therefore follows this very tap).
+          THE TAP CHOOSES — AND THE ORDER COMPLETES BENEATH THE TILE. The first reading of the
+          owner's 2026-08-23 instruction sent "what sail needs" to a docked sheet at the foot of
+          the screen; their 2026-08-24 correction is the spelling that stands: *"i want issue this
+          order to be at the bottom of the location i click on it, unfolding it, but without
+          making a new screen."* So the tap still COMMITS the destination (nothing else moves —
+          the grid never re-sorts on a choice), and the `confirm` fold — the line, the check, the
+          Issue — unfolds after the ROW holding the chosen tile, exactly the BUY good row's
+          pattern. The chart still rings the chosen harbour (OrderComposer's `chartPorts`).
 
-          THE SORT IS UNCHANGED: one-leg harbours first, nearest sailed leg first, then region and
-          name. A grid reads left-to-right then down, so "nearest first" still puts the passages
-          worth taking in the top rows. */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {shown.map(({ port, nm }) => (
-          <button
-            key={port.code}
-            type="button"
-            onClick={() => onPick(port.code)}
-            // The pointer/keyboard "considering" events name this harbour on SAIL's chart as the
-            // player runs across the grid. A thumb raises neither, which is why nothing depends
-            // on them: on the phone the chart follows the CHOICE (the tap above).
-            onPointerEnter={onConsider && (() => onConsider(port.code))}
-            onPointerLeave={onConsider && (() => onConsider(null))}
-            onFocus={onConsider && (() => onConsider(port.code))}
-            onBlur={onConsider && (() => onConsider(null))}
-            className={buttonClasses(
-              value === port.code ? 'chip-soft' : 'chip',
-              'md',
-              'flex min-h-11 flex-col items-stretch gap-1 px-3 py-2 text-left',
-            )}
+          THE SORT IS UNCHANGED: nearest sailed water first, then region and name. A grid reads
+          left-to-right then down, so "nearest first" still puts the passages worth taking in the
+          top rows. */}
+      {tileRows.map((row) => (
+        <Fragment key={row[0].port.code}>
+          <div
+            className="grid gap-2"
+            // The column count is the hook's ONE value — the same number that chunked the rows
+            // above — so the fold's placement and the CSS can never disagree about where a row
+            // ends. A Tailwind `sm:grid-cols-3` here would be a second author of that number.
+            style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
           >
-            <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm leading-snug">
-              {port.name}
-              {port.is_ice_closed && <Badge tone="warning">ice</Badge>}
-            </span>
-            {/* The sailed water is the tile's hero. Never a great circle — see this component's
-                header; a dash only ever means the reach read has not landed yet. */}
-            <span className="font-mono text-base leading-none tabular-nums text-ink">
-              {nm === null ? (
-                <span className="text-ink-faint">—</span>
-              ) : (
-                <>
-                  {formatInt(Math.round(nm))}
-                  <span className="ml-1 text-[10px] font-normal text-ink-faint">nm</span>
-                </>
-              )}
-            </span>
-            {/* The CODE stays on the tile: it is the spelling the order line carries ("SAIL … TO
-                CAD"), and unlike a good's code it is not derivable from the name. "shipyard", not
-                "yard" — the owner asked what a yard was, and jargon a player must ask about is a
-                bug (docs/UI_DIRECTION.md §3a trap 3). */}
-            <span className={fineClass('block')}>
-              {port.code} · {port.country}
-              {port.has_yard ? ' · shipyard' : ''}
-            </span>
-          </button>
-        ))}
-      </div>
+            {row.map(({ port, nm }) => (
+              <button
+                key={port.code}
+                type="button"
+                onClick={() => onPick(port.code)}
+                aria-expanded={confirm !== undefined ? value === port.code : undefined}
+                // The pointer/keyboard "considering" events name this harbour on SAIL's chart as
+                // the player runs across the grid. A thumb raises neither, which is why nothing
+                // depends on them: on the phone the chart follows the CHOICE (the tap above).
+                onPointerEnter={onConsider && (() => onConsider(port.code))}
+                onPointerLeave={onConsider && (() => onConsider(null))}
+                onFocus={onConsider && (() => onConsider(port.code))}
+                onBlur={onConsider && (() => onConsider(null))}
+                className={buttonClasses(
+                  value === port.code ? 'chip-soft' : 'chip',
+                  'md',
+                  'flex min-h-11 flex-col items-stretch gap-1 px-3 py-2 text-left',
+                )}
+              >
+                <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm leading-snug">
+                  {port.name}
+                  {port.is_ice_closed && <Badge tone="warning">ice</Badge>}
+                </span>
+                {/* The sailed water is the tile's hero. Never a great circle — see this
+                    component's header; a dash only ever means the reach read has not landed. */}
+                <span className="font-mono text-base leading-none tabular-nums text-ink">
+                  {nm === null ? (
+                    <span className="text-ink-faint">—</span>
+                  ) : (
+                    <>
+                      {formatInt(Math.round(nm))}
+                      <span className="ml-1 text-[10px] font-normal text-ink-faint">nm</span>
+                    </>
+                  )}
+                </span>
+                {/* The CODE stays on the tile: it is the spelling the order line carries ("SAIL …
+                    TO CAD"), and unlike a good's code it is not derivable from the name.
+                    "shipyard", not "yard" — the owner asked what a yard was, and jargon a player
+                    must ask about is a bug (docs/UI_DIRECTION.md §3a trap 3). */}
+                <span className={fineClass('block')}>
+                  {port.code} · {port.country}
+                  {port.has_yard ? ' · shipyard' : ''}
+                </span>
+              </button>
+            ))}
+          </div>
+          {/* THE CONFIRM FOLD — after the whole row holding the chosen tile, so the tiles beside
+              her hold perfectly still and only what is BELOW moves down, which is what an unfold
+              is. Rendered, not owned: the node is the screen's (see the prop's doc). */}
+          {confirm !== undefined && row.some((r) => r.port.code === value) && confirm}
+        </Fragment>
+      ))}
       {routed && (
         <p className={fineClass()}>
           Distances are still being fetched — every figure, when it lands, is the sailed water

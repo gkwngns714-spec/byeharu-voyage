@@ -1,9 +1,10 @@
 import { formatInt, formatNm, formatRealShort } from '../../lib/format'
-import type { FleetView, VerbSpec } from '../../lib/rpc'
+import type { VerbSpec } from '../../lib/rpc'
+import type { CommandIntent } from '../../domain/order'
 import { fleetsAtPort, fleetsBoundFor, type ChartModel, type MapPort, type MapSelection } from '../../chart'
 import { pointLabel } from '../../domain/passage'
 import { MapPanel } from './MapPanel'
-import { SailHere } from './SailHere'
+import { SendFleet } from './SendFleet'
 
 // PANEL TWO, BOTTOM-RIGHT — the detail of whatever is selected, and the ONE place you act from.
 // DESIGN §E.5's "selected fleet detail", widened by one case: a port, when a port is what was
@@ -24,11 +25,12 @@ import { SailHere } from './SailHere'
 // of it was true, and it was the defect — the owner's verdict on this tab was that a map you
 // cannot act from is a picture, and the caption at the foot of the chart said so out loud.
 //
-// A selected PORT now carries exactly one action, `SailHere`. The distinction the old paragraph
-// was reaching for survives whole, and it is the important half: **this panel still composes
-// nothing.** It names one intent, asks the SERVER what that intent would do, prints the answer —
-// including the refusal, when there is one — and hands the intent to the one composer. There is
-// still no argument picker on this screen, no quantity control, and no legality check.
+// A selected PORT (or spot of open sea) now carries exactly one act, `SendFleet` — the owner's
+// unfolding flow, completed ON the map (2026-08-24). The distinction the old paragraph was
+// reaching for survives whole, and it is the important half: **this panel still composes
+// nothing.** Every verdict it prints is the server's, every send goes down the one issue path,
+// and there is still no argument picker on this screen, no quantity control, and no legality
+// check. See SendFleet.tsx for the flow and its rules.
 
 /** One label/value line — the panel is a tiny table and nothing more. */
 function Line({ label, value }: { label: string; value: string }) {
@@ -46,9 +48,8 @@ export function DetailPanel({
   selection,
   nowMs,
   compact,
-  acting,
   verbs,
-  onSail,
+  onCompose,
   onDismiss,
 }: {
   model: ChartModel
@@ -57,16 +58,12 @@ export function DetailPanel({
   selection: MapSelection
   nowMs: number
   compact: boolean
-  /** The hull an order from this panel belongs to. It is `domain/order`'s draft's `fleetId`,
-   *  resolved against the served roster in MapScreen — this screen keeps NO second idea of which
-   *  fleet is in hand. Null when the house has chosen none; the hand-off then carries none and
-   *  Command asks. */
-  acting: FleetView | null
   /** The server's own verb grammar (`world.snapshot().verbs`). Nothing here lists verbs. */
   verbs: readonly VerbSpec[]
-  /** Hand a SAIL to the one composer and go to it. MapScreen owns the two lines, exactly as
-   *  FleetsScreen, PortScreen and MarketScreen each do. */
-  onSail: (fleetId: string | null, args: Record<string, string>) => void
+  /** The hand-off to the one composer — reached ONLY by a refusal's fix that needs composing
+   *  (PROVISION first, …). The send itself completes on this screen (SendFleet). MapScreen owns
+   *  the two lines, exactly as FleetsScreen, PortScreen and MarketScreen each do. */
+  onCompose: (intent: CommandIntent) => void
   onDismiss: () => void
 }) {
   if (!selection) return null
@@ -134,12 +131,7 @@ export function DetailPanel({
         <p className="mb-1 truncate font-serif text-sm text-ink" data-testid="map-sea-label">
           {pointLabel(selection.at)}
         </p>
-        <SailHere
-          fleet={acting}
-          dest={{ kind: 'sea', at: selection.at }}
-          verbs={verbs}
-          onSail={onSail}
-        />
+        <SendFleet dest={{ kind: 'sea', at: selection.at }} verbs={verbs} onCompose={onCompose} />
       </MapPanel>
     )
   }
@@ -174,12 +166,11 @@ export function DetailPanel({
       />
       {bound.length > 0 && <Line label="on passage" value={bound.map((f) => f.fleet.name).join(', ')} />}
 
-      {/* THE ONE ACT ON THIS SCREEN. It composes nothing — see this file's header and SailHere's. */}
-      <SailHere
-        fleet={acting}
+      {/* THE ONE ACT ON THIS SCREEN. It composes nothing — see this file's header and SendFleet's. */}
+      <SendFleet
         dest={{ kind: 'port', code: port.code, name: port.name }}
         verbs={verbs}
-        onSail={onSail}
+        onCompose={onCompose}
       />
     </MapPanel>
   )

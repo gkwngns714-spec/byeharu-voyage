@@ -40,10 +40,16 @@ import { useExplainDisclosure, type ExplainDisclosure } from './explainState'
 // the whole point is that the default screen is quiet.
 //
 // ── WHAT MAY NOT GO BEHIND THE DOT ──────────────────────────────────────────────────────────────
-// Live data (a count, a price, an ETA), a refusal sentence and its fixes, and any hint that
-// discloses an affordance the player cannot otherwise find (TABLE_SCROLL_HINT). Hiding those is
-// hiding the game. The dot takes standing prose — rules, provenance, units, "why this column is
-// not here" — and nothing else.
+// Live data (a count, a price, an ETA), a refusal and its fixes, and any hint that discloses an
+// affordance the player cannot otherwise find (TABLE_SCROLL_HINT). Hiding those is hiding the
+// game. The dot takes standing prose — rules, provenance, units, "why this column is not here" —
+// and nothing else.
+//
+// ONE AMENDMENT, from the owner's concise-and-graphic law (2026-08-24): the rule protects the
+// REFUSAL, not its prose. When the server serves the refusal's FIGURES and RefusalNote draws them
+// as the bar and the numbers, the refusal is still fully in the open — and its sentence becomes
+// standing explanation OF it, which is exactly what this dot is for. With no served figures the
+// sentence stays visible, because then it is the refusal.
 
 /**
  * The ⓘ. An inline, real <button> — so Enter/Space work and it lands in the tab order.

@@ -20,6 +20,10 @@ export { Meter, type MeterTone } from './Meter'
 // you can count, rather than as a fraction you must do arithmetic on. See Gauge.tsx.
 export { Gauge, type GaugeTone } from './Gauge'
 export { Notice, type NoticeTone } from './Notice'
+// The one concise rendering of a refusal — bar + figures when the server serves them, the
+// sentence when it does not, fixes as the caller's own buttons. See RefusalNote.tsx for the
+// owner's concise-and-graphic law and the Explain boundary it amends.
+export { RefusalNote } from './RefusalNote'
 export { SectionLabel } from './SectionLabel'
 export { PageHeader } from './PageHeader'
 // SectionLabel's opposite number: the one FIGURE a block is about, drawn as the hero
