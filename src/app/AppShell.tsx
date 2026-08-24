@@ -12,9 +12,34 @@ import { useWorld } from '../live/worldStore'
 
 /** How often the shell reads the world again. THE READ IS THE CATCH-UP (DESIGN D.2): every read
  *  settles every voyage server-side before it answers, so this interval is not a poll for changes
- *  — it IS how time passes in this game. Thirty seconds is well inside a voyage-day (three real
- *  minutes at TIME_COMPRESSION 480), so nothing can arrive without the next read noticing. */
-const READ_INTERVAL_MS = 30_000
+ *  — it IS how time passes in this game, and it is also how often a fleet's position on the chart
+ *  can move.
+ *
+ *  THIS USED TO BE A FLAT 30 SECONDS, and its own comment justified that as "well inside a
+ *  voyage-day (three real minutes at TIME_COMPRESSION 480)". Migration 0045 took the compression to
+ *  9600 for testing, which makes a voyage-day NINE SECONDS — so thirty seconds became THREE AND A
+ *  THIRD voyage-days between reads. A short passage could begin and end between two of them, and a
+ *  fleet under way jumped across the chart instead of crawling. The owner: *"i want the location of
+ *  my fleet moving in map to be shown more often, updated more often"*.
+ *
+ *  So the cadence is DERIVED from the served clock rather than pinned beside it. The rule is "read
+ *  several times per voyage-day", which is what the old comment actually meant; the number 30_000
+ *  was that rule evaluated once, by hand, against a knob that has since moved. A second hand-tuned
+ *  constant would drift again the next time anyone touches the compression.
+ *
+ *  Clamped at both ends: never faster than 3 s (a read settles voyages server-side, and hammering
+ *  it buys nothing a player can see), never slower than 30 s (the old cadence remains the floor on
+ *  a slow world, so nothing can arrive unnoticed). */
+const READS_PER_VOYAGE_DAY = 4
+const READ_MIN_MS = 3_000
+const READ_MAX_MS = 30_000
+
+function readIntervalMs(timeCompression: number | undefined): number {
+  if (!timeCompression || timeCompression <= 0) return READ_MAX_MS
+  const voyageDaySeconds = (24 * 3600) / timeCompression
+  const ms = (voyageDaySeconds / READS_PER_VOYAGE_DAY) * 1000
+  return Math.min(READ_MAX_MS, Math.max(READ_MIN_MS, Math.round(ms)))
+}
 
 export function AppShell() {
   // THE ONE CLOCK (shellState.ts explains why it is here and not in the countdowns themselves).
@@ -32,15 +57,19 @@ export function AppShell() {
     void useWorld.getState().open()
   }, [])
 
+  // The cadence follows the SERVED clock, so it is right for whatever the world's compression is —
+  // and it re-arms if that knob ever changes under a running tab.
+  const compression = useWorld((w) => w.snapshot?.config.time_compression)
   useEffect(() => {
+    const every = readIntervalMs(compression)
     const id = window.setInterval(() => {
       const world = useWorld.getState()
       // Only when the world is up, and never on top of a read already in flight: a second read
       // would settle the same voyages twice for nothing and race the first one's answer.
       if (world.phase === 'ready' && !world.busy) void world.refresh()
-    }, READ_INTERVAL_MS)
+    }, every)
     return () => window.clearInterval(id)
-  }, [])
+  }, [compression])
 
   // A tab regaining focus is a player coming back, and coming back is exactly the moment the
   // ledger should have moved. Reading here is what makes "it moved while I was away" true.
