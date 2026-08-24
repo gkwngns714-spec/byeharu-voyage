@@ -112,7 +112,21 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // scripts/db/world-guard.mjs now fails ANY db:apply/db:proof whose world is not the data.
 // NOTE the version gap: 0038/0039 belong to the helm worktree and 0040 to the seas worktree;
 // growth deliberately took 0041 (npm run db:check-versions arbitrates collisions).
-const LAST = '20260818000041_ten_islands_and_a_richer_catalogue.sql'
+//
+// Moved again in the SAME merge for 0040: EVERY WATER ANSWERS ITS SEA — every navigable cell of
+// the 0.25-degree raster carries seas.raster_ordinal, with boundaries from Natural Earth's marine
+// polygons rather than the unsurveyed label centroids, and unnamed water joined to its nearest sea
+// BY WATER so nothing leaks across land. voyage.sea_at(lat, lon) is the one lookup, server-private.
+// It is the ground the free-water mover, the hazard system and the by-sea NPC design (row 43) all
+// key on: a fleet in open water belonged to no sea before this, which would have switched off the
+// spatial dimension of all three silently.
+//
+// AND THE PIN ITSELF WAS WRONG BEFORE THIS MERGE. Main already carried 0045 (the world runs twenty
+// times faster) while this constant still named 0041 — I added a migration and did not move the
+// pin, which is the exact staleness this convention exists to prevent. It names the true last file
+// now. The gap 0042-0044 is deliberate: 0038/0039 are the mover's, and versions are arbitrated by
+// npm run db:check-versions, never by counting.
+const LAST = '20260818000045_the_world_runs_twenty_times_faster.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

@@ -5,6 +5,7 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+<<<<<<< HEAD
 ## 2026-08-24 — D22: the edited-migration defect — 0003 reverted, the world grows through 0041, and a guard so it can never drift silently again
 
 **THE DEFECT (mine, prior session).** D21 regenerated migration 0003 in place after production had
@@ -48,6 +49,76 @@ deployed world keeps the old values).
 
 **Numbering:** 0038/0039 are the helm worktree's, 0040 the seas worktree's; growth took **0041**.
 The chain spec's LAST pin moved to 0041 with the dated note.
+=======
+## 2026-08-24 — D22: every water answers its sea (migration 0040)
+
+The owner's free-sailing spec (OWNER_REQUESTS rows 42/43) keys piracy, hazards and NPC levels on
+WHERE a fleet is — *"different npcs in different areas of the sea - different levels"*, so a late
+joiner is never thrown into someone else's difficulty curve. But a point of open water belonged to
+NO sea: `data/seas.json` held 51 hand-placed label centroids its own note marks unsurveyed. The
+moment a fleet can sail to any water point, the spatial dimension of all three systems would have
+silently switched off. This slice makes the answer total BEFORE the mover ships.
+
+### WHAT LANDED
+
+* **`public.sea_cells`** — a sea-membership raster on the SAME 0.25° grid as the water: 720 rows
+  of 1,440 bytes, one byte per cell = `seas.raster_ordinal` (0 = no navigable sea). Storage shape
+  is the measured one (research P.5: one TOASTed bytea reads at ~843 ms, 720 inline rows at 4–8 ms):
+  1,216 KiB heap, no TOAST, `storage main`. Server-private (0035's posture: RLS on, no policy).
+* **`voyage.sea_at(lat, lon)`** — the ONE membership lookup, strict (null on land — never a
+  navigability answer; the mover's water raster owns that). Not granted to clients: no client
+  caller exists; the day a map label wants it, that slice adds world.* + registry + catalog rows
+  together. Measured: 0.88 ms per round-trip call, 0.065 ms per sample inside one statement
+  (a 500-sample path sweep costs 32 ms).
+* **Boundaries are SOURCED** — Natural Earth `ne_10m_geography_marine_polys` (public domain, the
+  coastline's own source family): 49 of our 51 sea names match NE exactly; `INDIAN OCEAN` (caps)
+  and `Inner Sea` (the Seto) are the only aliases. NE waters we do not model join their nearest
+  sea BY WATER (multi-source BFS through water cells — nothing leaks across an isthmus), except
+  seven authored, documented folds (Gibraltar/Alboran → Med, Bosporus → Marmara, Bristol Channel →
+  Atlantic, Greenland Sea → Arctic, Coral Sea → S Pacific, SOUTHERN OCEAN split at the IHO sector
+  meridians). Generator: `scripts/build-sea-raster.mjs`; polygons cached with provenance in
+  `scripts/marine-polys.cache.json`.
+* **Every sea got a danger tier and a character** — `seas.danger_level` (1 home waters … 5 deadly;
+  Malacca is 5, "thick with pirates") and `seas.note` (plain words, a name not a sentence),
+  authored in `data/seas.json`. **Both are marked READ BY NO RULE TODAY** in their column
+  comments — the takes_effect discipline — with the NPC system named as reader.
+
+### THE NUMBERS
+
+647,913 navigable water cells; every one of them carries a sea except **687 in landlocked pools no
+sea route can reach** (the Caspian 628, the inner Salish Sea 28, Lake Maracaibo 8, and 7 smaller
+pockets — each unreachable by the mover by construction, drawn loud magenta in the proof renders).
+All 228 chain ports resolve within 8 rings; **17 disagree with their hand-declared sea** and every
+one is asserted BY NAME in 0040's self-assert, so a silent boundary drift is a red apply. The 17
+are genuine boundary facts, not defects — Havana faces the Straits of Florida, Crete's north shore
+is the Aegean, San Juan's is the open Atlantic; the port's `sea` stays the editorial market filing
+(WORLD_DATA §6), the raster stays the surveyed water.
+
+### THE NET
+
+All seven assert families break-tested red with the real messages recorded (a deleted row, an
+orphan byte, an extent-less sea, a port in the Sahara, a blanked control cell, a client grant, and
+the disagreement-list delta — which caught a REAL drift during the build: data/ports.json runs 10
+island ports ahead of the chain, so the assert is filtered to the ports the table holds at 0040's
+position). Proof 08 holds the property against the FINISHED chain for ever, with a positive
+control that pokes one byte in-txn and requires the answer to move. Eyeball pass done on the
+Channel, Adriatic, Malacca, Gulf of Mexico and Sea of Japan renders.
+
+### KNOWN, STATED, NOT HIDDEN
+
+* `db:apply` flaked ONCE at 0036 during break-testing ("fleet is SAILING at (nowhere)") — the
+  world_secret is generated per apply since 0031, so 0036's voyage probe is a per-run lottery: the
+  same class as proof 05's BALANCE_MEDIAN row in OWNER_REQUESTS. Pre-existing, now on the record.
+* Bristol still reads `english-channel` at ring 4: the Severn estuary is land at raster
+  resolution, so Bristol's nearest water is Lyme Bay — the same 65 nm silent snap row 41 logged.
+  The honest fix is a Severn entry in sea-grid.mjs CHANNELS (like the Thames and Gironde), which
+  belongs to the mover's worktree — flagged, not smuggled in here.
+* The far-south shelf water off Antarctica and the pole-side cells NE's polygons do not cover are
+  BFS-filled ocean; a fleet could still pinpoint absurd latitudes — the mover's ice/season masking
+  question (research P.10), unchanged by this slice.
+
+---
+>>>>>>> seas
 
 ## 2026-08-23 — D21: the catalogue grows to 243 real goods, and the world re-tunes around it
 
