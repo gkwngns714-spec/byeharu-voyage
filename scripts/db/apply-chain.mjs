@@ -203,6 +203,15 @@ if (isMain) {
       await db.close()
       process.exit(1)
     }
+
+    // ── THE WORLD GUARD: the applied world must EQUAL data/*.json, on every apply ────────────
+    // Added 2026-08-24, after 0003 was edited post-deploy and the divergence stayed green for a
+    // whole working day. See scripts/db/world-guard.mjs. proof.mjs runs the same gate. It sits
+    // here in the CLI (not inside applyChain()) because tools like build-sea-places.mjs apply
+    // DELIBERATELY partial chains through the library and must not be judged as worlds.
+    const { assertWorldMatchesData } = await import('./world-guard.mjs')
+    await assertWorldMatchesData(db, { log: console.log })
+
     await db.close()
     process.exit(0)
   } catch (err) {
