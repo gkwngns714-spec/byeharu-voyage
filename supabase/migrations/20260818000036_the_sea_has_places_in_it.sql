@@ -675,6 +675,18 @@ begin
   -- (c) + (d) THE WIRING, on a real house — rolled back at the foot.
   ---------------------------------------------------------------------------------------------
   begin
+      -- THE PROBE OWNS ITS WEATHER. 0031 rotates the world secret on every fresh apply and
+      -- voyage.rng is keyed on it, so the hazards rolled for this passage differ every single run.
+      -- A STORM delays her past the instant this probe settles to, and she is still SAILING when
+      -- the assert looks -- reported as 'the fleet is SAILING at (nowhere)', which sounds like a
+      -- broken sea place and is nothing of the kind.
+      --
+      -- MEASURED: this is the flake that stopped the WORLD OPENING in a browser, because a failed
+      -- migration is a world that will not boot. 0034 and 0037 both hit it and both fixed it the
+      -- same way; 0036 was written between them and never got it. Zeroed HERE, inside the
+      -- subtransaction that is rolled back, so the live world's weather is untouched.
+      update public.world_config set value = to_jsonb(0.0) where key = 'hazard_p_max';
+
     -- The subject is FOUND, deterministically: the sea place nearest Lisboa by sailed distance.
     select p.id, p.code, p.name, p.approach into v_place, v_pcode, v_pname, v_remark
       from public.ports p
