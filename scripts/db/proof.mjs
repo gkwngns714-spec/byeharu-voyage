@@ -88,6 +88,11 @@ try {
     `chain: ${chain.applied.length} migration(s) applied, ` +
       `${selfAssertReceipts(chain.notices)} self-assert receipt(s)`,
   )
+  // The same world guard `npm run db:apply` runs: the applied world must EQUAL data/*.json
+  // before any proof is allowed to certify anything about it (scripts/db/world-guard.mjs,
+  // 2026-08-24 — the day 0003 turned out to have been edited after production applied it).
+  const { assertWorldMatchesData } = await import('./world-guard.mjs')
+  await assertWorldMatchesData(db, { log: console.log })
 } catch (err) {
   console.error(err.message)
   process.exit(1)
