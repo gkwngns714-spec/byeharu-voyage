@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 -- 0041 — TEN ISLANDS AND A RICHER CATALOGUE
---        The world grows to what data/*.json holds today: 223 harbours, 243 goods,
---        818 sea legs, 1306 port offers — landed as a DELTA on whatever world this
+--        The world grows to what data/*.json holds today: 224 harbours, 243 goods,
+--        829 sea legs, 1310 port offers — landed as a DELTA on whatever world this
 --        database holds, and pinned to the data by set equality at the foot of this file.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
@@ -17,11 +17,11 @@
 -- world — production's, a fresh browser's, CI's — arrives at the same place through the same door.
 --
 -- ── WHAT LANDS HERE (measured against the applied baseline, not remembered) ────────────────────
---   +9    harbour ports  (ANG CAG CHS HAD MLE MAT PLO TEN TID)
+--   +10   harbour ports  (ANG CAG CHS HAD MLE MAT PLO TEN TID ZAK)
 --   ~210  harbour rows updated (dev_* follow the roster; Corfu & Heraklion fly Venice)
 --   +173  goods; ~10 renamed (codes never change)
---   +83/-47/~621 sea legs (data/sea-routes.json was regenerated with approach legs)
---   +602/-130 port offers, then port_goods re-derived for EVERY (harbour, good) pair
+--   +94/-47/~621 sea legs (data/sea-routes.json was regenerated with approach legs)
+--   +606/-130 port offers, then port_goods re-derived for EVERY (harbour, good) pair
 --   the five affinity_* knobs reconciled to the chain's tuned values (0005 was edited in place
 --   before the never-edit rule was enforced; a deployed world may still hold the old values)
 --
@@ -259,7 +259,7 @@ update public.goods g
    and (g.name, g.base_value, g.bulk, g.perishable_pct_day, g.category, g.culture_mask)
        is distinct from (v.name, v.base_value, v.bulk, v.perish, v.category, v.mask::text[]);
 
--- ── 3. The 9 new harbours ────────────────────────────────────────────────────────────────
+-- ── 3. The 10 new harbours ────────────────────────────────────────────────────────────────
 insert into public.ports (
   code, name, country, nation_id, lat, lon, sea_id, region_id, culture,
   size_tier, max_draft, has_yard, yard_tier, has_academy,
@@ -277,7 +277,8 @@ select v.code, v.name, v.country, n.id, v.lat, v.lon, s.id, r.id, v.culture,
     ('MAT', 'Matsumae', 'Japan', 'JPN', 41.43, 140.11, 'SFJ', 'JAP', 'japanese', 2, 3, 0, false, 6, 9, 4, 160),
     ('PLO', 'Port Louis', 'Mauritius', null, -20.16, 57.5, 'IND', 'EAS', 'guinean', 2, 3, 0, false, 6, 9, 4, 160),
     ('TEN', 'Santa Cruz de Tenerife', 'Spain', 'ESP', 28.47, -16.25, 'NOR', 'ATL', 'latin', 2, 3, 0, false, 4, 9, 4, 160),
-    ('TID', 'Tidore', 'Indonesia', null, 0.68, 127.4, 'MOL', 'SOU', 'malay', 2, 3, 0, false, 4, 9, 4, 160)
+    ('TID', 'Tidore', 'Indonesia', null, 0.68, 127.4, 'MOL', 'SOU', 'malay', 2, 3, 0, false, 4, 9, 4, 160),
+    ('ZAK', 'Zakynthos', 'Greece', 'VEN', 37.8, 20.75, 'ION', 'ADR', 'latin', 2, 3, 0, false, 4, 9, 4, 160)
   ) as v(code, name, country, nation_code, lat, lon, sea_code, region_code, culture,
          size_tier, max_draft, yard_tier, academy, dev_i, dev_c, dev_m, crew_pool)
   join public.seas    s on s.code = v.sea_code
@@ -654,7 +655,7 @@ delete from public.port_specialties ps
   ('WIL', 'tobacco')
 );
 
--- ── 4b. 602 offers added ──────────────────────────────────────────────────────────────────
+-- ── 4b. 606 offers added ──────────────────────────────────────────────────────────────────
 insert into public.port_specialties (port_id, good_id)
 select p.id, g.id from (values
   ('ACA', 'peru-balsam'),
@@ -1256,6 +1257,10 @@ select p.id, g.id from (values
   ('XIA', 'copper-cash'),
   ('YEO', 'rice'),
   ('YEO', 'seaweed'),
+  ('ZAK', 'dried-fruit'),
+  ('ZAK', 'wine'),
+  ('ZAK', 'olive-oil'),
+  ('ZAK', 'salt'),
   ('ZAN', 'coconuts'),
   ('ZAN', 'copal'),
   ('ZAN', 'timber')
@@ -1951,7 +1956,7 @@ delete from public.legs l
   ('TOU', 'VAL')
 );
 
--- ── 5c. 83 new legs (canonical from.code < to.code, the 0002 rule) ───────────────────────
+-- ── 5c. 94 new legs (canonical from.code < to.code, the 0002 rule) ───────────────────────
 insert into public.legs (from_port_id, to_port_id, distance_nm, hazard_mult, notes)
 select pf.id, pt.id, v.nm, v.hz, v.note
   from (values
@@ -1960,6 +1965,7 @@ select pf.id, pt.id, v.nm, v.hz, v.note
     ('AGA', 'TEN', 367.8, 1.000, '368 nm of open water'),
     ('ALG', 'CAG', 321.9, 1.150, '322 nm of open water'),
     ('AMB', 'TID', 275.7, 1.000, '276 nm of open water; the last 20 nm are the approach to Tidore'),
+    ('ANC', 'ZAK', 484.1, 1.000, '484 nm of open water'),
     ('ANG', 'FNC', 618.0, 1.100, '618 nm of open water'),
     ('ANG', 'LPA', 864.0, 1.100, '864 nm of open water'),
     ('ANG', 'LIS', 846.0, 1.100, '846 nm of open water; the last 34 nm are the approach to Lisbon'),
@@ -1997,7 +2003,9 @@ select pf.id, pt.id, v.nm, v.hz, v.note
     ('CID', 'REC', 1536.3, 1.300, '1536 nm of open ocean — the crossing every coastal chain would multiply'),
     ('CID', 'TEN', 910.5, 1.100, '911 nm of open water'),
     ('COL', 'MLE', 414.0, 1.000, '414 nm of open water'),
+    ('COR', 'ZAK', 116.2, 0.700, '116 nm of open water'),
     ('DIL', 'TID', 568.3, 1.000, '568 nm of open water; the last 20 nm are the approach to Tidore'),
+    ('DBR', 'ZAK', 315.1, 1.000, '315 nm of open water'),
     ('FAM', 'HER', 441.9, 1.250, '442 nm of open water; the last 21 nm are the approach to Heraklion'),
     ('FUK', 'MAT', 663.2, 1.000, '663 nm of open water; the last 22 nm are the approach to Fukuoka'),
     ('FNC', 'TEN', 253.6, 1.000, '254 nm of open water'),
@@ -2011,6 +2019,7 @@ select pf.id, pt.id, v.nm, v.hz, v.note
     ('HAD', 'SUA', 1175.7, 1.450, '1176 nm of open water'),
     ('HAG', 'TID', 1323.0, 1.200, '1323 nm of open water; the last 20 nm are the approach to Tidore'),
     ('HER', 'TRI', 550.2, 1.250, '550 nm of open water; the last 21 nm are the approach to Heraklion'),
+    ('HER', 'ZAK', 268.8, 1.250, '269 nm of open water; the last 21 nm are the approach to Heraklion'),
     ('HOR', 'SUE', 2734.1, 1.450, '2734 nm sailed against 1272 nm straight: the coast is in the way; the last 21 nm are the approach to Hormuz'),
     ('JED', 'SUE', 623.5, 1.250, '624 nm of open water; the last 26 nm are the approach to Jeddah'),
     ('KAN', 'MLE', 474.8, 1.000, '475 nm of open water'),
@@ -2027,8 +2036,10 @@ select pf.id, pt.id, v.nm, v.hz, v.note
     ('MAT', 'TOK', 514.4, 1.100, '514 nm sailed against 345 nm straight: the coast is in the way; the last 48 nm are the approach to Tokyo'),
     ('MAT', 'TSU', 671.3, 1.000, '671 nm of open water'),
     ('MAT', 'ULS', 617.3, 1.000, '617 nm of open water; the last 25 nm are the approach to Ulsan'),
+    ('MES', 'ZAK', 249.8, 1.250, '250 nm of open water'),
     ('MOC', 'SUE', 1164.0, 1.450, '1164 nm of open water'),
     ('ISL', 'PLO', 1223.0, 1.300, '1223 nm sailed against 1007 nm straight: the coast is in the way'),
+    ('PAT', 'ZAK', 53.8, 0.700, '54 nm of open water; the last 47 nm are the approach to Patras'),
     ('PON', 'TEN', 730.3, 1.100, '730 nm of open water'),
     ('PLO', 'SOF', 1456.4, 1.300, '1456 nm of open water'),
     ('SAF', 'TEN', 429.6, 1.100, '430 nm of open water; the last 22 nm are the approach to Safi'),
@@ -2036,8 +2047,13 @@ select pf.id, pt.id, v.nm, v.hz, v.note
     ('SAL', 'TEN', 624.3, 1.100, '624 nm of open water; the last 25 nm are the approach to Sale'),
     ('TAN', 'TEN', 688.1, 1.350, '688 nm of open water'),
     ('SOS', 'VLP', 3749.2, 1.300, '3749 nm of open ocean — the crossing every coastal chain would multiply'),
+    ('SPL', 'ZAK', 395.0, 1.000, '395 nm of open water'),
     ('SUA', 'SUE', 741.7, 1.250, '742 nm of open water'),
-    ('TER', 'TID', 6.4, 0.700, '6 nm of open water; the last 25 nm are the approach to Ternate; the last 20 nm are the approach to Tidore')
+    ('TER', 'TID', 6.4, 0.700, '6 nm of open water; the last 25 nm are the approach to Ternate; the last 20 nm are the approach to Tidore'),
+    ('THE', 'ZAK', 448.4, 1.000, '448 nm sailed against 199 nm straight: the coast is in the way; the last 31 nm are the approach to Thessaloniki'),
+    ('TRP', 'ZAK', 473.2, 1.250, '473 nm of open water; the last 21 nm are the approach to Tripoli'),
+    ('VLL', 'ZAK', 320.7, 1.250, '321 nm of open water'),
+    ('VEN', 'ZAK', 594.7, 1.000, '595 nm of open water')
   ) as v(f, t, nm, hz, note)
   join public.ports pf on pf.code = v.f
   join public.ports pt on pt.code = v.t
@@ -2335,6 +2351,7 @@ insert into want_ports_0041 values
   ('WIL', 'Willemstad', 'Curaçao', null, 12.11, -68.93, 'CAR', 'CAR', 'latin', 2, 3, 0, false, 4, 10, 4),
   ('XIA', 'Xiamen', 'China', 'MNG', 24.48, 118.08, 'TAI', 'CHI', 'sinic', 3, 4, 1, false, 9, 14, 7),
   ('YEO', 'Yeosu', 'South Korea', 'JOS', 34.76, 127.66, 'KOR', 'KOR', 'korean', 3, 4, 1, false, 8, 12, 7),
+  ('ZAK', 'Zakynthos', 'Greece', 'VEN', 37.8, 20.75, 'ION', 'ADR', 'latin', 2, 3, 0, false, 4, 9, 4),
   ('ZAN', 'Zanzibar', 'Tanzania', null, -6.17, 39.2, 'IND', 'EAS', 'swahili', 3, 4, 1, false, 9, 14, 7);
 
 create temporary table want_goods_0041 (
@@ -3886,6 +3903,10 @@ insert into want_offers_0041 values
   ('YEO', 'timber'),
   ('YEO', 'rice'),
   ('YEO', 'seaweed'),
+  ('ZAK', 'dried-fruit'),
+  ('ZAK', 'wine'),
+  ('ZAK', 'olive-oil'),
+  ('ZAK', 'salt'),
   ('ZAN', 'ivory'),
   ('ZAN', 'cloves'),
   ('ZAN', 'cotton-cloth'),
@@ -3955,6 +3976,7 @@ insert into want_legs_0041 values
   ('ANC', 'PAT', 549.4, 1.000, '549 nm of open water; the last 47 nm are the approach to Patras'),
   ('ANC', 'SPL', 127.4, 0.700, '127 nm of open water'),
   ('ANC', 'VEN', 120.7, 0.700, '121 nm of open water'),
+  ('ANC', 'ZAK', 484.1, 1.000, '484 nm of open water'),
   ('ANG', 'FNC', 618.0, 1.100, '618 nm of open water'),
   ('ANG', 'LPA', 864.0, 1.100, '864 nm of open water'),
   ('ANG', 'LIS', 846.0, 1.100, '846 nm of open water; the last 34 nm are the approach to Lisbon'),
@@ -4203,6 +4225,7 @@ insert into want_legs_0041 values
   ('COR', 'SPL', 298.4, 1.000, '298 nm of open water'),
   ('COR', 'VLL', 340.5, 1.250, '341 nm of open water'),
   ('COR', 'VEN', 484.3, 1.000, '484 nm of open water'),
+  ('COR', 'ZAK', 116.2, 0.700, '116 nm of open water'),
   ('CRK', 'DUB', 151.7, 1.100, '152 nm sailed against 119 nm straight: the coast is in the way; the last 34 nm are the approach to Dublin'),
   ('CRK', 'LEH', 392.2, 1.100, '392 nm of open water; the last 30 nm are the approach to Le Havre'),
   ('CRK', 'PLY', 227.1, 1.100, '227 nm sailed against 187 nm straight: the coast is in the way'),
@@ -4236,6 +4259,7 @@ insert into want_legs_0041 values
   ('DBR', 'PAT', 379.0, 1.000, '379 nm sailed against 311 nm straight: the coast is in the way; the last 47 nm are the approach to Patras'),
   ('DBR', 'SPL', 94.0, 0.700, '94 nm of open water'),
   ('DBR', 'VEN', 304.2, 0.900, '304 nm of open water'),
+  ('DBR', 'ZAK', 315.1, 1.000, '315 nm of open water'),
   ('ELM', 'GOR', 1284.7, 1.550, '1285 nm of open ocean — the only water joining these coasts'),
   ('ELM', 'LAG', 300.9, 1.150, '301 nm of open water; the last 26 nm are the approach to Lagos'),
   ('ELM', 'OUI', 231.6, 1.150, '232 nm of open water'),
@@ -4341,6 +4365,7 @@ insert into want_legs_0041 values
   ('HER', 'RHO', 164.0, 1.250, '164 nm of open water; the last 21 nm are the approach to Heraklion'),
   ('HER', 'THE', 343.4, 1.250, '343 nm of open water; the last 21 nm are the approach to Heraklion; the last 31 nm are the approach to Thessaloniki'),
   ('HER', 'TRI', 550.2, 1.250, '550 nm of open water; the last 21 nm are the approach to Heraklion'),
+  ('HER', 'ZAK', 268.8, 1.250, '269 nm of open water; the last 21 nm are the approach to Heraklion'),
   ('HIR', 'JEJ', 152.2, 0.900, '152 nm of open water'),
   ('HIR', 'KAG', 122.5, 0.700, '123 nm of open water; the last 39 nm are the approach to Kagoshima'),
   ('HIR', 'NAG', 40.8, 0.700, '41 nm of open water'),
@@ -4556,6 +4581,7 @@ insert into want_legs_0041 values
   ('MES', 'PAT', 319.1, 1.250, '319 nm of open water; the last 47 nm are the approach to Patras'),
   ('MES', 'TRP', 478.5, 1.250, '479 nm sailed against 339 nm straight: the coast is in the way; the last 21 nm are the approach to Tripoli'),
   ('MES', 'TUN', 302.7, 1.150, '303 nm of open water; the last 22 nm are the approach to Tunis'),
+  ('MES', 'ZAK', 249.8, 1.250, '250 nm of open water'),
   ('MID', 'ROT', 41.1, 0.700, '41 nm of open water; the last 35 nm are the approach to Rotterdam'),
   ('MOC', 'SUA', 513.7, 1.250, '514 nm of open water'),
   ('MOC', 'SUE', 1164.0, 1.450, '1164 nm of open water'),
@@ -4623,6 +4649,7 @@ insert into want_legs_0041 values
   ('PAT', 'SPL', 409.2, 1.000, '409 nm of open water; the last 47 nm are the approach to Patras'),
   ('PAT', 'VLL', 378.3, 1.250, '378 nm of open water; the last 47 nm are the approach to Patras'),
   ('PAT', 'VEN', 620.6, 1.000, '621 nm of open water; the last 47 nm are the approach to Patras'),
+  ('PAT', 'ZAK', 53.8, 0.700, '54 nm of open water; the last 47 nm are the approach to Patras'),
   ('PTT', 'THA', 712.5, 1.000, '713 nm of open water'),
   ('PLY', 'PTH', 129.3, 0.700, '129 nm of open water'),
   ('PLY', 'SNT', 132.3, 0.700, '132 nm of open water'),
@@ -4689,6 +4716,7 @@ insert into want_legs_0041 values
   ('SHI', 'ULS', 124.8, 0.800, '125 nm of open water; the last 25 nm are the approach to Ulsan'),
   ('SOF', 'ZAN', 1035.7, 1.300, '1036 nm sailed against 879 nm straight: the coast is in the way'),
   ('SPL', 'VEN', 211.6, 0.900, '212 nm of open water'),
+  ('SPL', 'ZAK', 395.0, 1.000, '395 nm of open water'),
   ('STA', 'STG', 867.0, 1.100, '867 nm of open water'),
   ('STA', 'VER', 1269.3, 1.300, '1269 nm sailed against 1033 nm straight: the coast is in the way'),
   ('STG', 'STJ', 1069.4, 1.300, '1069 nm of open water'),
@@ -4701,6 +4729,7 @@ insert into want_legs_0041 values
   ('TAL', 'VIS', 244.0, 0.900, '244 nm of open water'),
   ('TER', 'TID', 6.4, 0.700, '6 nm of open water; the last 25 nm are the approach to Ternate; the last 20 nm are the approach to Tidore'),
   ('THE', 'TRA', 866.1, 1.000, '866 nm of open water; the last 31 nm are the approach to Thessaloniki'),
+  ('THE', 'ZAK', 448.4, 1.000, '448 nm sailed against 199 nm straight: the coast is in the way; the last 31 nm are the approach to Thessaloniki'),
   ('TON', 'TSU', 58.1, 0.700, '58 nm of open water'),
   ('TON', 'ULS', 75.6, 0.800, '76 nm sailed against 61 nm straight: the coast is in the way; the last 25 nm are the approach to Ulsan'),
   ('TON', 'YEO', 37.9, 0.700, '38 nm of open water'),
@@ -4708,12 +4737,15 @@ insert into want_legs_0041 values
   ('TOR', 'VAR', 1087.1, 1.300, '1087 nm of open water'),
   ('TRP', 'TUN', 317.8, 1.150, '318 nm of open water; the last 21 nm are the approach to Tripoli; the last 22 nm are the approach to Tunis'),
   ('TRP', 'VLL', 192.3, 1.150, '192 nm of open water; the last 21 nm are the approach to Tripoli'),
+  ('TRP', 'ZAK', 473.2, 1.250, '473 nm of open water; the last 21 nm are the approach to Tripoli'),
   ('TRO', 'VAR', 828.0, 1.100, '828 nm sailed against 635 nm straight: the coast is in the way; the last 46 nm are the approach to Trondheim'),
   ('TSU', 'ULS', 81.1, 0.800, '81 nm of open water; the last 25 nm are the approach to Ulsan'),
   ('TSU', 'YEO', 87.4, 0.700, '87 nm of open water'),
   ('TUN', 'VLL', 228.8, 1.150, '229 nm of open water; the last 22 nm are the approach to Tunis'),
   ('TUR', 'VIS', 209.0, 0.900, '209 nm of open water'),
-  ('ULS', 'YEO', 101.0, 0.800, '101 nm of open water; the last 25 nm are the approach to Ulsan');
+  ('ULS', 'YEO', 101.0, 0.800, '101 nm of open water; the last 25 nm are the approach to Ulsan'),
+  ('VLL', 'ZAK', 320.7, 1.250, '321 nm of open water'),
+  ('VEN', 'ZAK', 594.7, 1.000, '595 nm of open water');
 
 do $$
 declare
@@ -4737,21 +4769,21 @@ begin
   ---------------------------------------------------------------------------------------------
   select count(*) into v_harbours from public.ports where kind = 'HARBOUR';
   select count(*) into v_goods    from public.goods;
-  if v_harbours - pre.harbours <> 9 or v_goods - pre.goods <> 173 then
-    raise exception '0041 self-assert FAIL: expected +9 harbours and +173 goods over the pre-image; got +% harbours (% now) and +% goods (% now)',
+  if v_harbours - pre.harbours <> 10 or v_goods - pre.goods <> 173 then
+    raise exception '0041 self-assert FAIL: expected +10 harbours and +173 goods over the pre-image; got +% harbours (% now) and +% goods (% now)',
       v_harbours - pre.harbours, v_harbours, v_goods - pre.goods, v_goods;
   end if;
   select count(*) into v_n from public.legs l
     join public.ports a on a.id = l.from_port_id
     join public.ports b on b.id = l.to_port_id
    where a.kind = 'HARBOUR' and b.kind = 'HARBOUR';
-  if v_n - pre.harbour_legs <> 36 then
-    raise exception '0041 self-assert FAIL: harbour legs moved by % (expected +83-47 = 36): % now against % before',
+  if v_n - pre.harbour_legs <> 47 then
+    raise exception '0041 self-assert FAIL: harbour legs moved by % (expected +94-47 = 47): % now against % before',
       v_n - pre.harbour_legs, v_n, pre.harbour_legs;
   end if;
   select count(*) into v_n from public.port_specialties;
-  if v_n - pre.offers <> 472 then
-    raise exception '0041 self-assert FAIL: offers moved by % (expected +602-130 = 472)', v_n - pre.offers;
+  if v_n - pre.offers <> 476 then
+    raise exception '0041 self-assert FAIL: offers moved by % (expected +606-130 = 476)', v_n - pre.offers;
   end if;
 
   ---------------------------------------------------------------------------------------------
