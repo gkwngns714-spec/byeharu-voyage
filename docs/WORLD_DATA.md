@@ -39,6 +39,7 @@ Build and check scripts live in `scripts/`. None of them are needed at runtime.
 | `scripts/build-sea-routes.mjs` | **no** | Applies that rule to all 214 ports and writes `data/sea-routes.json` |
 | `scripts/build-world-seed.mjs` | **no** | Writes migration 0003 from all of the above. The chain's world IS this data |
 | `scripts/build-sea-places.mjs` | **no** | Writes migration 0036 from `data/sea-places.json`: the places, and their spur legs by the §7 rule. §8 |
+| `scripts/build-sea-raster.mjs` | first run only | Writes migration 0040: WHICH SEA every water cell is in, from Natural Earth marine polygons. §9 |
 
 Regenerate everything with:
 
@@ -556,3 +557,62 @@ In the chain a sea place is a row of `public.ports` with `kind = 'SEA_PLACE'` an
 `approach` line (the sentence the LANDFALL report speaks on arrival) — see migration 0036's
 header for the four design decisions, and `docs/PLATFORM.md` §8 for which parts of the spur-leg
 machinery are transitional under the free-water mover the owner has since asked for.
+
+
+---
+
+## 9. The sea raster — every water cell answers which sea it is in
+
+**Migration 0040 is written by `scripts/build-sea-raster.mjs`.** Do not hand-edit it: change the
+data or the generator and run it again (`node scripts/build-sea-raster.mjs`, add `--png <dir>`
+for the proof renders).
+
+### Why it exists
+
+Free sailing (OWNER_REQUESTS rows 42/43) makes any water point a destination, and piracy, hazards
+and the by-sea NPC design are all keyed on WHICH SEA a point is in. The 51 centroids in
+`data/seas.json` are label anchors, unsurveyed (§6) — a Voronoi over them would put the
+Channel and Adriatic boundaries in visibly wrong places. So the sea has real extents now.
+
+### Where the boundaries come from
+
+- **Source:** Natural Earth **1:10m Geography Marine Polygons** (`ne_10m_geography_marine_polys`),
+  public domain — the same project and licence as the coastline in `data/world-110m.json`.
+  The slimmed feature set (only the polygons the generator names) is vendored with full provenance
+  at `scripts/marine-polys.cache.json`; delete it to refetch.
+- **49 of the 51 sea names match NE exactly.** Two aliases only: NE spells `INDIAN OCEAN` in caps
+  and calls the Seto Inland Sea `Inner Sea`.
+- **NE-named waters this game does not model** (Celtic Sea, Hudson Bay, Gulf of Bothnia, Sea of
+  Okhotsk, Bering Sea…) join their **nearest named sea BY WATER** — a multi-source BFS through
+  water cells, so an assignment can never leak across land.
+- **Seven authored folds**, each with its reason written in the generator: Strait of Gibraltar and
+  the Alboran Sea → Mediterranean (the Med begins at Gibraltar), Bosporus → Sea of Marmara,
+  Bristol Channel → North Atlantic, Greenland Sea → Arctic Ocean, Coral Sea → South Pacific, and
+  the SOUTHERN OCEAN split at the IHO sector meridians (20°E, 146°55′E, 67°16′W). The two straits
+  are narrower than a cell, so their fold is painted by sampling their polygon rings — the same
+  reason `sea-grid.mjs` needs its CHANNELS.
+
+### The shape in the database
+
+`public.sea_cells`: 720 rows of 1,440 bytes, one byte per 0.25° cell = `seas.raster_ordinal`
+(1-based position in `data/seas.json` array order, which is append-only), 0 = no navigable sea.
+720 inline rows because the storage shape was measured (DESIGN_RESEARCH_NAVIGATION P.5): one
+TOASTed bytea pays ~843 ms per detoasting read, inline rows 4–8 ms. On disk: 1,216 KiB heap, no
+TOAST. `voyage.sea_at(lat, lon)` is the one lookup — strict (null on land; membership, never
+navigability), server-private, 0.065 ms per sample inside a statement.
+
+### The numbers, from the committed generation
+
+647,913 navigable water cells; 687 unassigned, all in landlocked pools no sea route reaches
+(Caspian 628, inner Salish Sea 28, Lake Maracaibo 8, seven pockets of 1–8). All 228 chain ports
+resolve within 8 rings; **17 disagree with their declared `sea`**, every one asserted by name in
+0040's self-assert. They are boundary facts, not defects — the port's `sea` is the editorial
+market filing of §6, the raster is the surveyed water. The full list and its classification is in
+DEV_LOG D22 and the 0040 header.
+
+### seas.danger and seas.note
+
+`data/seas.json` now authors `danger` (1 home waters … 5 deadly — the WHERE-keyed threat tier
+the NPC design will read) and `note` (the sea's character in plain words). Seeded onto
+`public.seas.danger_level` / `.note` by 0040, and **both column comments say plainly that no
+rule reads them yet** — the takes_effect discipline of 0015/0016.

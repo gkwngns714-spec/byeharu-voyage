@@ -101,7 +101,16 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // public.legs — the never-touch-land law holds by construction, with no from-a-point router
 // built. A direct act beside cancel_at and clear, catalogued in client_rpc_entry_points (re-cut
 // proven pre-image + exactly one row). 37 migrations, 37 receipts.
-const LAST = '20260818000037_she_answers_her_helm_at_sea.sql'
+// Pin moved deliberately 2026-08-24 with 0040 (0038/0039 are claimed by the mover's worktree): EVERY WATER ANSWERS ITS SEA — the sea-membership
+// raster the free-water mover, the hazard system and the by-sea NPC design (OWNER_REQUESTS row
+// 43) all key on: every navigable 0.25-degree cell carries seas.raster_ordinal, boundaries from
+// Natural Earth's marine polygons (NOT the unsurveyed label centroids), unnamed water joined to
+// its nearest sea BY WATER so nothing leaks across land. voyage.sea_at(lat, lon) is the one
+// lookup, server-private; danger_level 1-5 and a plain-words note landed on every sea, both
+// marked read-by-no-rule-yet. 720 inline rows (1,216 KiB heap, no TOAST — the measured 100x
+// storage-shape difference), all seven self-assert families break-tested red, proof 08 holds the
+// property against the finished chain for ever. 38 files, 38 receipts in this worktree.
+const LAST = '20260818000040_every_water_answers_its_sea.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
