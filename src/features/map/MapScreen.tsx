@@ -50,10 +50,13 @@ import { FleetsPanel } from './FleetsPanel'
 // single thing from any of them; you had to remember the name, leave, and find it in a list.
 //
 // **The premise was wrong, not the conclusion.** The thing worth protecting is that there is ONE
-// composer, ONE grammar and ONE judge of legality — not that the map is a picture. Tapping a
-// harbour here does not compose an order: it names an INTENT, asks the SERVER what that intent
-// would do, and hands the intent to `features/command`, which composes it as it always has. The
-// old paragraph mistook the transport for the authority.
+// composer, ONE grammar, ONE judge of legality and ONE issue path — not that the map is a
+// picture. Tapping a harbour here does not compose an order: the SEND FLEET flow (2026-08-24, the
+// owner's own spelling: *"press send fleet, then it will unfold to my fleets … then i will press
+// and it will send, without going to another screen"*) unfolds the fleets, their verdicts and the
+// standing-order step beneath the tapped place, and sends through the same `worldStore.issue`
+// Command's button calls. The old paragraph mistook the transport for the authority; the only
+// hand-off left is a refusal's FIX that genuinely needs composing.
 //
 // So the rule that survives, in the form that is actually load-bearing:
 //
@@ -200,30 +203,23 @@ function Chart({
   const { nowMs } = useShellState()
   const navigate = useNavigate()
 
-  // ── WHICH HULL AN ORDER FROM HERE IS FOR ─────────────────────────────────────────────────────
+  // ── WHICH HULL IS IN HAND ────────────────────────────────────────────────────────────────────
   // `domain/order`'s draft owns that, app-wide, and has since the day it was written: *"The
   // selected fleet lives here too, because a short order carries no fleet."* The Command tab's
-  // fleet strip sets it; MARKET and PORT read it. This screen does BOTH, and keeps no second idea
-  // of it — a `useState` here would be a fourth screen with its own answer to one question, which
-  // is how "where does her next order happen" reached four spellings (domain/fleet/derive.ts:76).
-  //
-  // Selecting a fleet on the chart or in the list therefore also selects her for the composer, so
-  // the harbour you tap next sails the ship you just pointed at, and Command opens on her.
-  // Selectors, not the store (worldStore.ts rule 4 — a zustand action is a stable reference).
-  const draftFleetId = useCommandDraft((s) => s.fleetId)
+  // fleet strip sets it; MARKET and PORT read it. Selecting a fleet on the chart or in the list
+  // (or in the send flow's own fleet step) also selects her for the composer, so Command opens on
+  // her. Selectors, not the store (worldStore.ts rule 4 — a zustand action is a stable reference).
   const selectFleet = useCommandDraft((s) => s.selectFleet)
   const handOff = useCommandDraft((s) => s.handOff)
-  const acting = useMemo(
-    () => fleetViews.find((f) => f.id === draftFleetId) ?? null,
-    [fleetViews, draftFleetId],
-  )
 
   // THE HAND-OFF, in the two lines every other screen uses (FleetsScreen.tsx:104,
-  // PortScreen.tsx:151, MarketScreen.tsx:235). The map issues nothing and composes nothing: it
-  // names an intent and goes to the tab that composes.
-  const sail = useCallback(
-    (fleetId: string | null, args: Record<string, string>) => {
-      handOff({ fleetId, verb: 'SAIL', args })
+  // PortScreen.tsx:151, MarketScreen.tsx:235) — and since 2026-08-24 it fires ONLY for a
+  // refusal's FIX that genuinely needs composing (the owner: *"without going to another screen or
+  // creating a new screen"* — the send itself completes on this screen, in SendFleet). The map
+  // still composes nothing either way.
+  const compose = useCallback(
+    (intent: Parameters<typeof handOff>[0]) => {
+      handOff(intent)
       navigate('/command')
     },
     [handOff, navigate],
@@ -377,16 +373,15 @@ function Chart({
         )}
 
         {/* PANEL TWO — bottom-right, and only when something is selected. It carries the screen's
-            ONE action when that something is a port; see ./DetailPanel.tsx and ./SailHere.tsx. */}
+            ONE act when that something is a place; see ./DetailPanel.tsx and ./SendFleet.tsx. */}
         <DetailPanel
           model={model}
           portsByCode={portsByCode}
           selection={selection}
           nowMs={nowMs}
           compact={compact}
-          acting={acting}
           verbs={verbs}
-          onSail={sail}
+          onCompose={compose}
           onDismiss={() => setSelection(null)}
         />
 

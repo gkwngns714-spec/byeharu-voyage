@@ -257,7 +257,7 @@ export { createCloudBackend } from './cloudBackend'
 export { RPCS, rpcLabel, localSql, namedArgs } from './catalog'
 export type { RpcName, RpcSpec } from './catalog'
 export { expectOk, fromError, fromPayload, ok, refused } from './result'
-export type { Refusal, RpcResult } from './result'
+export type { Refusal, RefusalFigures, RpcResult } from './result'
 export type * from './types'
 
 /**

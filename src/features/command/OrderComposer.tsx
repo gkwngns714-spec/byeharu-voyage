@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import {
   Badge,
   Button,
@@ -120,6 +121,7 @@ export function OrderComposer({
   snapshot,
   port,
   market,
+  sailConfirm,
   onChooseVerb,
   onSetArg,
 }: {
@@ -134,6 +136,11 @@ export function OrderComposer({
   port: SnapshotPort | null
   /** The market of the port this fleet is in (or bound for). Undefined until it has been read. */
   market: MarketView | undefined
+  /** SAIL's confirm fold — the order line, the check and THE Issue button, BUILT by the screen
+   *  (beside the issue path it wires) and only PLACED here: it unfolds beneath the chosen harbour
+   *  tile (the owner, 2026-08-24: "issue this order … at the bottom of the location i click on
+   *  it, unfolding it"). Null for every other verb, whose Issue stays at the head of the card. */
+  sailConfirm?: ReactNode
   onChooseVerb: (verb: string | null) => void
   onSetArg: (name: string, value: string | null) => void
 }) {
@@ -490,6 +497,15 @@ export function OrderComposer({
               const value = argValue(arg, args)
               const canFold = foldable(spec, arg)
               const isOpen = !canFold || opened.includes(arg.name)
+              // SAIL'S CONFIRM RIDES THE DESTINATION — keyed on the SCHEMA (the required place
+              // argument is the verb's own question), never on an argument name typed here. The
+              // picker unfolds it beneath the CHOSEN tile; a destination answered by the map's
+              // pinpoint has no tile, so the fold stands at the picker's foot instead — still
+              // beneath the thing that answered the question.
+              const carriesConfirm =
+                sailConfirm != null && arg.required && (arg.type === 'place' || arg.type === 'port')
+              const pointAnswered =
+                carriesConfirm && value !== undefined && (args[arg.name] ?? '') === ''
               return (
                 <div key={arg.name} className="rounded-md border border-edge bg-app p-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -573,6 +589,7 @@ export function OrderComposer({
                         reach={reach}
                         capacity={capacity}
                         inspecting={inspecting}
+                        confirm={carriesConfirm && !pointAnswered ? sailConfirm : undefined}
                         onInspect={(code) =>
                           setInspect(spec && code ? { verb: spec.verb, good: code } : null)
                         }
@@ -583,6 +600,7 @@ export function OrderComposer({
                         onPickQty={pickQty}
                         onPick={(v) => answer(arg, v)}
                       />
+                      {pointAnswered && sailConfirm}
                     </div>
                   )}
                 </div>
@@ -640,6 +658,7 @@ function ArgPicker({
   reach,
   capacity,
   inspecting,
+  confirm,
   onInspect,
   onConsider,
   onTrade,
@@ -660,6 +679,8 @@ function ArgPicker({
   capacity: BuyCapacityState
   /** The unfolded good row, and how to move it. Only the `good` arm has anything to unfold. */
   inspecting: string | null
+  /** SAIL's confirm fold, placed by the `port`/`place` arm beneath the chosen tile. */
+  confirm?: ReactNode
   onInspect: (code: string | null) => void
   /** The port row a pointer or the keyboard is ON. Only the `port` arm raises it — it names that
    *  harbour on SAIL's chart while the player runs down the list, and it chooses nothing. */
@@ -685,6 +706,7 @@ function ArgPicker({
           // leaves from the place she is arriving at, so that is where the reach is measured from.
           origin={fleet ? fleetPortCode(fleet) : null}
           value={args[arg.name]}
+          confirm={confirm}
           onPick={onPick}
           onConsider={onConsider}
         />

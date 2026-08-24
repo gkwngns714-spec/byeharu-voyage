@@ -1,4 +1,4 @@
-import { Badge, Button, Explain, fineClass, Notice, StatRow } from '../../components/ui'
+import { Button, Explain, fineClass, Notice, RefusalNote, StatRow } from '../../components/ui'
 import { formatDucats, formatFixed, formatInt, formatNm, formatRealShort, formatTuns, formatUnitPrice, formatVoyageDays } from '../../lib/format'
 import type { PreviewResult, Refusal, VerbSpec } from '../../lib/rpc'
 // THE PAYLOAD READERS ARE MACHINERY NOW (2026-08-23). `num` and `str` were declared at the foot of
@@ -65,24 +65,14 @@ export function PreviewPanel({
 
   if (state.status === 'refused') {
     const { refusal } = state
+    // THE REFUSAL ITSELF IS RefusalNote — the design system's ONE concise rendering (the owner's
+    // 2026-08-24 law: graphics and figures, never a paragraph; the served figures draw the bar
+    // the moment a migration serves them, and the sentence carries the reason until then). The
+    // ✗ that used to head this branch went with the hand-written copy: its ✓ partner marks the
+    // PASSED readout below, and the refusal's own badge-or-bar is mark enough. What stays THIS
+    // panel's is the fixes block — loading a fix into the composer is the composer's affair.
     return (
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* ✗ AND ✓ STAY AS TEXT, and it is a decision rather than an oversight. They are the two
-              faces of ONE readout — the dry run refused, the dry run passed — and `icons.ts` has
-              no tick. `close` is the DISMISS mark (it is what shuts a panel, OrderQueue.tsx and
-              MapPanel.tsx), so borrowing it here would give one glyph two meanings, which rule 7
-              forbids of colour and which is no better of a shape. Drawing the ✗ as SVG and leaving
-              its ✓ partner as a font glyph would make one panel's two states disagree in weight.
-              The set's own header says a glyph never replaces a word; these two are closer to
-              words. See the ✓ at the foot of this file. */}
-          <span aria-hidden className="font-mono text-sm text-danger">
-            ✗
-          </span>
-          <Badge tone="danger">{refusal.code}</Badge>
-          {refusal.source === 'fault' && <Badge tone="warning">fault</Badge>}
-        </div>
-        <p className="text-sm text-ink">{refusal.sentence}</p>
+      <RefusalNote refusal={refusal}>
         {refusal.fixes.length > 0 && (
           <div className="space-y-2">
             <p className={fineClass('uppercase tracking-wider')}>Instead</p>
@@ -110,7 +100,7 @@ export function PreviewPanel({
             })}
           </div>
         )}
-      </div>
+      </RefusalNote>
     )
   }
 
@@ -137,7 +127,9 @@ export function PreviewPanel({
   return (
     <div className="space-y-2">
       <p className="flex flex-wrap items-center gap-2 font-mono text-sm text-success">
-        {/* Text, for the reason recorded beside its ✗ partner above: the icon set has no tick. */}
+        {/* Text, deliberately: `icons.ts` has no tick, and `close` is the DISMISS mark (it shuts
+            panels), so borrowing it would give one glyph two meanings. The refused state's mark
+            is RefusalNote's own badge-or-bar since 2026-08-24. */}
         <span aria-hidden>✓</span>
         <span>ran on the server and was rolled back — this is what it would do</span>
       </p>

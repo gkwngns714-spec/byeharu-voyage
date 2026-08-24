@@ -65,6 +65,35 @@ const FALLBACK_REFUSAL: Refusal = {
   source: 'server',
 }
 
+/** The order's own box — one recipe, worn by the head block and by SAIL's in-tile confirm. */
+const ORDER_BOX = 'space-y-3 rounded-md border border-accent/25 bg-accent-soft p-3'
+
+/**
+ * THE LINE, AS THE CLERK WRITES IT — one rendering, two wearers: the head block (where it forms
+ * in front of the player as the picks fill it in) and SAIL's confirm fold (where it is read one
+ * last time before the press). `live` only on the head's copy: two aria-live regions announcing
+ * the same string would say everything twice to a screen reader.
+ */
+function OrderLine({ text, live }: { text: string; live?: boolean }) {
+  return (
+    <p className="flex items-start gap-2">
+      {/* THIS ONE STAYS A CHARACTER. It reads as a chevron, and `icons.ts` has one — but it is a
+          PROMPT, set in the same mono face and on the same baseline as the order line beside it,
+          which is what makes the two read as one typed command. An SVG here would be a mark next
+          to a line of code instead of the head of it. */}
+      <span aria-hidden className="font-mono text-lg leading-none text-accent">
+        &gt;
+      </span>
+      <code
+        aria-live={live ? 'polite' : undefined}
+        className="min-w-0 flex-1 break-words font-mono text-sm text-ink"
+      >
+        {text || <span className="text-ink-faint">nothing yet</span>}
+      </code>
+    </p>
+  )
+}
+
 export function CommandScreen() {
   // FIELDS, NOT THE STORE (worldStore.ts rule 4). Actions are selected too: a zustand action is a
   // stable reference, so a hook per verb costs nothing and never re-renders.
@@ -280,6 +309,43 @@ export function CommandScreen() {
     )
   }
 
+  // ── SAIL COMPLETES UNDER THE TILE THAT COMPLETED IT (the owner, 2026-08-24) ────────────────────
+  // *"i want issue this order to be at the bottom of the location i click on it, unfolding it, but
+  // without making a new screen."* A SAIL is one argument, and tapping a harbour tile supplies it —
+  // so the check and the Issue button UNFOLD right beneath the tapped tile (the same shape as the
+  // BUY good row's fold, which the owner asked for twice), instead of asking the player to travel
+  // back up to the head of the card.
+  //
+  // ONE BUTTON PER ORDER, so for SAIL the head block keeps the forming line and LOSES its Issue
+  // and its check — both live in this fold, which is the one you press. Two Issue buttons for one
+  // order is exactly the duplication this codebase keeps deleting (docs/NO_SPAGHETTI.md §5). The
+  // node is BUILT here — beside `doIssue`, `check` and `applyFix`, whose authorities it wires —
+  // and only RENDERED down in the picker, so nothing below this screen ever calls the issue path.
+  //
+  // THE REACH LAW HOLDS: the fold sits in ordinary document flow inside the picker (no scroll box,
+  // no cap — ArgPickers' own rule), and it is under the player's finger by construction.
+  const sailInline = spec?.verb === 'SAIL'
+  const sailConfirm = sailInline ? (
+    <div className={ORDER_BOX} data-testid="sail-confirm">
+      <OrderLine text={text} />
+      <PreviewPanel
+        state={check}
+        verbs={snapshot.verbs}
+        timeCompression={snapshot.config.time_compression}
+        onFix={applyFix}
+      />
+      <Button
+        variant="primary"
+        disabled={!ready || issuing || check.status === 'refused' || check.status === 'checking'}
+        busy={issuing}
+        busyLabel="Issuing…"
+        onClick={() => void doIssue()}
+      >
+        Issue this order
+      </Button>
+    </div>
+  ) : null
+
   return (
     // `wide` — the max-w-6xl measure MARKET already uses. COMMAND earned it when the BUY composer
     // grew a second pane: at the narrow measure the goods list and the fleet rail share 720px, and
@@ -450,6 +516,13 @@ export function CommandScreen() {
                   line IS the order being written, so it forms in front of the player as each pick
                   below fills it in.
 
+                  EXCEPT ON SAIL (the owner, 2026-08-24: "i want issue this order to be at the
+                  bottom of the location i click on it, unfolding it"). A SAIL completes the moment
+                  a harbour tile is tapped, so its check and its Issue live in the fold that opens
+                  under that tile (`sailConfirm`, above) — and this head block keeps the forming
+                  LINE and loses the button and the check while SAIL is chosen, because two Issue
+                  buttons for one order is the duplication this codebase keeps deleting.
+
                   THIS IS ORDINARY LAYOUT, NOT BEHAVIOUR, and that is why it does not touch the
                   no-restructure law (OWNER_REQUESTS 15/25): the block is in ordinary document
                   flow, always in the same place, and nothing about it appears on press, docks, or
@@ -459,9 +532,10 @@ export function CommandScreen() {
                   shape).
 
                   THE CHECK STAYS WITH THE BUTTON IT GATES. The dry run's verdict — estimate or
-                  refusal — is what disables Issue, so the two moved together: a refusal printed a
-                  screen away from the control it blocks is a reason orphaned from its consequence. */}
-              <div className="space-y-3 rounded-md border border-accent/25 bg-accent-soft p-3">
+                  refusal — is what disables Issue, so the two live together wherever the button
+                  is: a refusal printed a screen away from the control it blocks is a reason
+                  orphaned from its consequence. */}
+              <div className={ORDER_BOX}>
                 {/* The dot rides the section label, where the reader is already looking, rather
                     than floating alone under the line it explains. */}
                 {/* "Order", not "What will be sent" (the owner, 2026-08-23: "Why add unnecessary
@@ -477,30 +551,21 @@ export function CommandScreen() {
                     is added on the way: what you read here is what your fleet is told.
                   </Explain>
                 </SectionLabel>
-                <p className="flex items-start gap-2">
-                  {/* THIS ONE STAYS A CHARACTER. It reads as a chevron, and `icons.ts` has one —
-                      but it is a PROMPT, set in the same mono face and on the same baseline as the
-                      order line beside it, which is what makes the two read as one typed command.
-                      An SVG here would be a mark next to a line of code instead of the head of it. */}
-                  <span aria-hidden className="font-mono text-lg leading-none text-accent">
-                    &gt;
-                  </span>
-                  <code aria-live="polite" className="min-w-0 flex-1 break-words font-mono text-sm text-ink">
-                    {text || <span className="text-ink-faint">nothing yet</span>}
-                  </code>
-                </p>
+                <OrderLine text={text} live />
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  variant="primary"
-                  disabled={!ready || issuing || check.status === 'refused' || check.status === 'checking'}
-                  busy={issuing}
-                  busyLabel="Issuing…"
-                  onClick={() => void doIssue()}
-                >
-                  Issue this order
-                </Button>
+                {!sailInline && (
+                  <Button
+                    variant="primary"
+                    disabled={!ready || issuing || check.status === 'refused' || check.status === 'checking'}
+                    busy={issuing}
+                    busyLabel="Issuing…"
+                    onClick={() => void doIssue()}
+                  >
+                    Issue this order
+                  </Button>
+                )}
                 {/* TWO THINGS ABOUT THIS BUTTON, AND BOTH ARE EASY TO GET WRONG.
 
                     IT IS THE DRAFT, NOT THE QUEUE. It calls the draft store's `clear()`
@@ -523,14 +588,17 @@ export function CommandScreen() {
                 )}
               </div>
 
-              <div className="mt-3 border-t border-edge pt-3">
-                <PreviewPanel
-                  state={check}
-                  verbs={snapshot.verbs}
-                  timeCompression={snapshot.config.time_compression}
-                  onFix={applyFix}
-                />
-              </div>
+              {/* On SAIL the check rides in the tile's fold with the button it gates. */}
+              {!sailInline && (
+                <div className="mt-3 border-t border-edge pt-3">
+                  <PreviewPanel
+                    state={check}
+                    verbs={snapshot.verbs}
+                    timeCompression={snapshot.config.time_compression}
+                    onFix={applyFix}
+                  />
+                </div>
+              )}
 
               {issued && (
                 <Notice tone="success" className="mt-3 font-mono text-xs">
@@ -550,6 +618,7 @@ export function CommandScreen() {
                   snapshot={snapshot}
                   port={port}
                   market={market}
+                  sailConfirm={sailConfirm}
                   onChooseVerb={chooseVerb}
                   onSetArg={setArg}
                 />

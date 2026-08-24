@@ -16,6 +16,25 @@
 
 import type { ParsedCommand, QueuedOrder } from './types'
 
+/**
+ * THE FIGURES BEHIND AN ARITHMETIC REFUSAL — what the owner's concise law (2026-08-24: *"make it
+ * very concise … Always show in graphics"*) needs to draw `▁▁▂ 2.9 / 33 days` instead of the
+ * paragraph. SERVED, beside the sentence, by the refusing migration itself; the client NEVER
+ * parses a sentence for numbers — a sentence is the server's prose, not a wire format. Absent
+ * until the serving migration lands (specified 2026-08-24: sail_refusal and its arithmetic
+ * siblings return figures beside their text, and the cmd.* envelope carries them as `figures`);
+ * every renderer falls back to the sentence, which is the same forward contract `spec.note ??
+ * spec.help` used for 0021.
+ */
+export interface RefusalFigures {
+  /** What she has — 2.9 (days of stores), 40 (tuns free), … */
+  have: number
+  /** What the order needs, same unit. */
+  need: number
+  /** The unit both figures are in: `days`, `t`, `ducats`, `crew`. A NAME, not a sentence. */
+  unit: string
+}
+
 export interface Refusal {
   /** `E_HOLD_FULL`, `E_STALE`, `E_NO_SUCH_PORT`, … or `E_SERVER` / `E_TRANSPORT` for a fault. */
   code: string
@@ -23,6 +42,8 @@ export interface Refusal {
   sentence: string
   /** DESIGN F.5's "→ do this instead". May be empty; never null. */
   fixes: string[]
+  /** The served numbers behind the sentence, when the refusal is arithmetic. See RefusalFigures. */
+  figures?: RefusalFigures
   /**
    * `server`    — the chain refused, in the words the chain chose.
    * `raised`    — the chain raised an exception carrying `E_CODE: sentence` (the parser's codes).
@@ -46,6 +67,17 @@ export function refused<T>(refusal: Refusal): RpcResult<T> {
   return { ok: false, refusal }
 }
 
+/** The served `figures` object, or undefined for anything that is not exactly its shape — a
+ *  malformed payload degrades to the sentence, never to a NaN drawn as a bar. */
+function readFigures(raw: unknown): RefusalFigures | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const f = raw as { have?: unknown; need?: unknown; unit?: unknown }
+  if (typeof f.have !== 'number' || !Number.isFinite(f.have)) return undefined
+  if (typeof f.need !== 'number' || !Number.isFinite(f.need)) return undefined
+  if (typeof f.unit !== 'string' || f.unit === '') return undefined
+  return { have: f.have, need: f.need, unit: f.unit }
+}
+
 /** `E_HOLD_FULL: the fleet has room for 5 tuns` → code and sentence, split once, here. */
 const RAISED_RE = /^(E_[A-Z0-9_]+):\s*([\s\S]*)$/
 
@@ -56,6 +88,7 @@ export function fromPayload<T>(payload: unknown): RpcResult<T> {
       error_code?: unknown
       error_message?: unknown
       fixes?: unknown
+      figures?: unknown
       queue?: unknown
       parsed?: unknown
     }
@@ -66,6 +99,7 @@ export function fromPayload<T>(payload: unknown): RpcResult<T> {
           ? p.error_message
           : 'The server refused that, without saying why.',
       fixes: Array.isArray(p.fixes) ? p.fixes.filter((f): f is string => typeof f === 'string') : [],
+      figures: readFigures(p.figures),
       source: 'server',
       queue: Array.isArray(p.queue) ? (p.queue as QueuedOrder[]) : undefined,
       parsed: (p.parsed as ParsedCommand | undefined) ?? undefined,
