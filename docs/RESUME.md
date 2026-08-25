@@ -37,12 +37,32 @@ clock mirror moved with 0045 (480 → 9600; a voyage-day is 9 real seconds) and 
 the served knob equals the mirror. See DEV_LOG's top entry for the full landing record and every
 gate's measurement.
 
-The section below is kept as the record of WHY.
+> **CORRECTION 2026-08-25.** The ~13,052 nm above is not reproducible from anything in this repo and
+> should not be quoted. The chain's own served figure for Lisboa→Nagasaki is **12,989.3 nm**
+> (`sea_reaches` row `LIS`, migration 0046), which is the number 0046's header and
+> `docs/DESIGN_RESEARCH_NAVIGATION.md:356` both carry. The 38.7°N and 7,565 nm / 88.6°N figures do
+> check out (`docs/NAVIGATION_PLAN.md:33-34`, 0046's header).
 
-## THE ONE THING THAT MATTERS MOST
+**Also landed since this was written:** **0050 — a refusal is two numbers and a verb** (2026-08-25).
+Every arithmetic refusal now serves `{have, need, unit}` as DATA beside its sentence, so the client
+never parses a served sentence for numbers; `cmd.refuse` / `cmd.refusal_caught` replace SIX
+hand-copied refusal splits and the eight-character truncation all six carried; `public.orders`
+gained `error_figures`. DEV_LOG D24 is the record.
 
-**The movement model is being replaced.** This is `OWNER_REQUESTS.md` rows 42 and 43, and it is the
-largest correction of the project.
+---
+
+# ▼ HISTORY BELOW THIS LINE — NOT A TO-DO LIST ▼
+
+**Everything from here to `STATE AT THE MOMENT OF WRITING` was DELIVERED on 2026-08-24 as migrations
+0046–0049 (see the section above and DEV_LOG D24).** It is kept only as the record of WHY the
+movement model was replaced. Nothing in it is outstanding work. Read it as history — if you are
+looking for what to do next, it is not here.
+
+## WHY THE MOVEMENT MODEL WAS REPLACED — delivered 2026-08-24, kept for the record
+
+**The movement model was replaced.** This is `OWNER_REQUESTS.md` rows 42 and 43, and it is the
+largest correction of the project. It is DONE; the present tense below is the tense it was written
+in, on 2026-08-23, before the work landed.
 
 byeharu-voyage models sailing as a **fixed graph of 782 precomputed legs between ports**. That is the
 wrong game. The owner's words:
@@ -95,13 +115,30 @@ promise.** `docs/UI_DIRECTION.md` forbids printing a number the game will not ho
 
 ---
 
-## STATE AT THE MOMENT OF WRITING
+# ▲ HISTORY ABOVE THIS LINE ▲
 
-**Production:** 35/35 migrations, matching local. Site live at
+---
+
+## STATE AT THE MOMENT OF WRITING (2026-08-23), production line corrected 2026-08-25
+
+**Production — corrected 2026-08-25.** The line here used to read *"35/35 migrations, matching
+local"*, and that was false: `supabase/migrations/` holds **45 `.sql` files** (0001–0037, 0040/0041,
+0045–0050; the gaps 0038/0039 and 0042–0044 are deliberate). **The live project is on 0050, the head
+of the chain**, verified by probing it directly with the anon key on 2026-08-25 — not asserted from
+memory:
+
+* `GET /rest/v1/legs` → **404**. The table is gone, so **0049** is applied.
+* `GET /rest/v1/orders?select=error_figures` → **`42501 permission denied for table orders`**, where
+  the same request for a made-up column answers **`42703 column … does not exist`**. The column
+  exists, so **0050** is applied. (Neither probe reads a row; the read wall is intact.)
+
+Since Supabase applies the chain in order, 0045–0048 are on it too. Site live at
 `https://gkwngns714-spec.github.io/byeharu-voyage/`, cloud build, behind a login. The repo is public;
 the world secret was rotated off disk first (0031) and a CHECK constraint refuses the old literal.
 
-**Agents in flight** (each in its own worktree, `bv-*`, `node_modules` junctioned):
+**Agents in flight AS OF 2026-08-23 — HISTORICAL, all of this landed on `main`.** None of these are
+running now; the table is kept because the merge order and the reasons are the record of how the
+work was partitioned. Do not read it as live status:
 
 | worktree | slice |
 |---|---|
@@ -111,8 +148,9 @@ the world secret was rotated off disk first (0031) and a CHECK constraint refuse
 | `bv-clarity` | Issue button to the top (was 2,112px down); Codex filter chips (2.5 screens before content). |
 | `bv-goods` | **finished** — 243 goods delivered, not 1,000, with arithmetic. **Do not merge before `bv-ports`**, or 173 goods are orphaned. |
 
-**Merge order: `bv-ports` → `bv-goods` → everything else.** Re-run `db:proof` after, because sailed
-distances move.
+**Merge order was: `bv-ports` → `bv-goods` → everything else.** Re-run `db:proof` after, because
+sailed distances move. **All five merged on 2026-08-24** — the world growth landed as 0041 (DEV_LOG
+D23), the seas as 0040 (D22), and the mover was regenerated against this chain as 0046–0049 (D24).
 
 **Killed by the owner, do not restart without asking:** the ship-stats/market-port agent (`stats`).
 
