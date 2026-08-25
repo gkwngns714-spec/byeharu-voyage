@@ -78,6 +78,20 @@ export function mapFleetsOf(fleets: readonly FleetView[]): MapFleet[] {
           destPoint: f.voyage.dest_point
             ? { lat: f.voyage.dest_point[0], lon: f.voyage.dest_point[1] }
             : null,
+          // 0055 — THE WATERS AHEAD. Field for field, and NOTHING is derived here: the tier, the
+          // note and both distances are `voyage.waters_ahead`'s, measured over the course the
+          // server froze at departure. A build talking to a server that predates 0055 gets an
+          // empty list and draws no rows, which is a truthful lesser answer rather than a crash
+          // (docs/NO_SPAGHETTI.md §7C's mirror rule).
+          waters: (f.voyage.waters ?? []).map((w) => ({
+            code: w.sea,
+            name: w.name,
+            danger: w.danger,
+            note: w.note,
+            nmTo: w.nm_to,
+            nmIn: w.nm_in,
+            now: w.now,
+          })),
         },
       })
       continue

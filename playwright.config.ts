@@ -6,7 +6,10 @@ import { defineConfig, devices } from '@playwright/test'
 
 // Browser acceptance — runs against a local preview by default; point it at the deployed Pages
 // site (or any build) with PLAYWRIGHT_BASE_URL. Test infrastructure only: no game code imports it.
-const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4173/byeharu-voyage/'
+// localhost, NOT the 127.0.0.1 literal: `vite preview` binds the IPv6 loopback [::1] only, so the
+// v4 address answers 000 and Playwright SILENTLY SKIPS every browser spec — a green with a
+// shrunken denominator, which is worse than a red. Cost three agents a wasted run on 2026-08-25.
+const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:4173/byeharu-voyage/'
 
 export default defineConfig({
   testDir: './tests',

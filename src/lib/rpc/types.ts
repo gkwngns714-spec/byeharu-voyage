@@ -481,6 +481,30 @@ export interface VoyagePosition {
   lon: number
 }
 
+/**
+ * ONE SEA HER COURSE STILL HAS TO CROSS (migration 0055), served in sailing order on
+ * `FleetVoyage.waters`. Everything here except `nm_to` is FROZEN AT DEPARTURE — `voyage.depart`
+ * stores the verified segments and each one carries its own `sea_id` — so the list cannot drift
+ * while she sails, and nothing on it is a prediction: no rng stream is touched to produce it.
+ */
+export interface VoyageWater {
+  /** Sea CODE — `MED`, `STR`. */
+  sea: string
+  name: string
+  /** 1 (home waters) … 5 (deadly): `seas.danger_level`, authored per sea by 0040 — and the SAME
+   *  column the per-sea encounter mix is keyed on, so what is shown and what will decide her
+   *  weather are one number rather than two authorities. */
+  danger: number
+  /** The sea's character in plain words — a NAME, not a sentence (`seas.note`). */
+  note: string
+  /** Sailed nautical miles she must still make good before she enters it. 0 for the one she is in. */
+  nm_to: number
+  /** How much of her remaining passage lies in it. */
+  nm_in: number
+  /** True for the water she is in right now — always exactly the first row. */
+  now: boolean
+}
+
 export interface FleetVoyage {
   id: string
   /** Destination port CODE — null when she is bound for a bare point of open water (0039). */
@@ -494,6 +518,9 @@ export interface FleetVoyage {
   eta: string
   total_nm: number
   nm_done: number
+  /** THE WATERS SHE STILL HAS TO CROSS (0055), in sailing order. Optional only for the sake of a
+   *  build talking to a server older than 0055; the chain always serves it, empty on arrival. */
+  waters?: VoyageWater[]
   position: VoyagePosition | null
 }
 

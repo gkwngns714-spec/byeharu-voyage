@@ -27,6 +27,17 @@
 -- @pass OFFLINE_EQUIV_IDENTICAL_BYTES  day_index, kind, payload and resolved_at match exactly
 -- @pass OFFLINE_EQUIV_SAME_PURSE       wages and hazard costs came to the same ducat
 -- @pass OFFLINE_EQUIV_SAME_ETA         the delays moved the arrival to the same instant
+-- @pass OFFLINE_EQUIV_ENCOUNTER        voyage.encounter_at answers identically across both runs
+--
+-- WHY THE LAST ONE IS HERE, AND WHY IT IS HERE ALREADY (added with migration 0055)
+--   0055 authored a per-sea encounter mix and landed it DARK: `voyage.encounter_at` is written to
+--   BE `voyage.hazard_roll`'s next body, and today nothing calls it. On the day it is lit, the
+--   whole of this file's claim rests on IT rather than on hazard_roll — so it is gated HERE, on
+--   the same voyage and across the same two settlements, by the slice that AUTHORED it rather
+--   than by the slice that lights it. A dark function that is offline-equivalent on the day it
+--   goes live is a promise; one that has been proved so on every run since is a fact. The
+--   comparison is over the full tuple (occurred, kind, magnitude), so it is not vacuous even on
+--   a quiet day — and the voyage under test is pre-screened for a hazard anyway.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -51,6 +62,10 @@ declare
   v_lazy_purse bigint;
   v_lazy_eta   timestamptz;
   v_depart timestamptz;
+  -- 0055: the same comparison, for the dark per-sea encounter derivation.
+  v_step_enc   text;
+  v_lazy_enc   text;
+  v_enc_days   int;
 begin
   v_player := public.new_house(c_auth, 'Casa Ausente', 'PRT');
   select id into v_fleet from public.fleets where player_id = v_player;
@@ -123,6 +138,14 @@ begin
     select ducats into v_step_purse from public.players where id = v_player;
     select eta    into v_step_eta   from public.voyages where id = v_voyage;
 
+    -- 0055: what the SEA-decided mix would have made of the same days, read at the same moment of
+    -- the same settled voyage. Dark today; gated from today.
+    select string_agg(coalesce(e.kind, '-') || ':' || e.magnitude, '|' order by g),
+           count(*) filter (where e.occurred)
+      into v_step_enc, v_enc_days
+      from generate_series(1, v_days) g
+     cross join lateral voyage.encounter_at(v_voyage, g) e;
+
     -- Throw the entire settlement away. The voyage row itself was created BEFORE this
     -- subtransaction, so its id — and therefore every rng seed — is unchanged.
     raise exception '__DISCARD_RUN_A__' using errcode = 'P0001';
@@ -147,6 +170,11 @@ begin
   select ducats into v_lazy_purse from public.players where id = v_player;
   select eta    into v_lazy_eta   from public.voyages where id = v_voyage;
 
+  select string_agg(coalesce(e.kind, '-') || ':' || e.magnitude, '|' order by g)
+    into v_lazy_enc
+    from generate_series(1, v_days) g
+   cross join lateral voyage.encounter_at(v_voyage, g) e;
+
   if v_step_rows <> v_lazy_rows or v_step_rows = 0 then
     raise exception 'PROOF 1 FAILED: tick-by-tick resolved % checkpoint(s), lazy resolved %',
       v_step_rows, v_lazy_rows;
@@ -169,4 +197,16 @@ begin
     raise exception 'PROOF 1 FAILED: ETA differs — tick-by-tick %, lazy %', v_step_eta, v_lazy_eta;
   end if;
   raise notice 'PASS: OFFLINE_EQUIV_SAME_ETA — both runs put the arrival at % (departed %)', v_lazy_eta, v_depart;
+
+  if v_step_enc is null or v_lazy_enc is null or v_enc_days is null then
+    raise exception 'PROOF 1 FAILED: the encounter comparison read nothing on one of the two runs — it would have passed vacuously';
+  end if;
+  if v_step_enc is distinct from v_lazy_enc then
+    raise exception E'PROOF 1 FAILED: voyage.encounter_at differs across the two settlements.
+  tick-by-tick: %
+  lazy:         %',
+      v_step_enc, v_lazy_enc;
+  end if;
+  raise notice 'PASS: OFFLINE_EQUIV_ENCOUNTER — the per-sea mix (0055, dark) answers identically over all % voyage-day(s) of both settlements, % of them carrying an encounter; the day it replaces voyage.hazard_roll this file already covers it',
+    v_days, v_enc_days;
 end $$;

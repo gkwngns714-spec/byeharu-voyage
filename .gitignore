@@ -26,3 +26,6 @@ shot.tmp.mjs
 supabase/.temp/
 scripts/.bbox-table.txt
 scripts/db/.proof-courses.json
+
+# Agent worktrees: real git repos that live inside this one. Never commit them.
+.claude/worktrees/
