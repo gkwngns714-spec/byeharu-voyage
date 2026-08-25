@@ -162,7 +162,7 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // southern England; and the Antarctic pack moves out of the generator's own `cells.fill(0)` into
 // the ONE ice list (ICE gained `latBelow`), same parallel, 0 cells different. If 0051 lands after
 // this, the pin moves again — it names the true last file, never the last one anybody remembers.
-const LAST = '20260818000052_the_severn_is_water_and_the_pack_is_one_rule.sql'
+const LAST = '20260818000053_the_quay_prices_its_neighbours_once.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
