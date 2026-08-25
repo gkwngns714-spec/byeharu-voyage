@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
-  Explain, Button, RefusalNote, SectionLabel, fineClass } from '../../components/ui'
-import { formatNm, formatVoyageDays } from '../../lib/format'
+  Explain, Button, Gauge, HeroFigure, RefusalNote, SectionLabel, fineClass } from '../../components/ui'
+import { formatFixed, formatNm, formatVoyageDays } from '../../lib/format'
 import type { LatLon } from '../../lib/geo'
 import type { FleetView, PreviewResult, Refusal, SnapshotPort, VerbSpec } from '../../lib/rpc'
 import {
@@ -29,6 +29,8 @@ import { portNameOf, useWorld } from '../../live/worldStore'
 //                  her fleets, each with the passage's own verdict on its row
 //                     ↓ press one, unfolds beneath THAT row
 //                  her standing order (0034's provision presets) — press one, and it sends
+//                  …and, beneath the orders she already has, THE RATIO ITSELF — a bar, two
+//                  figures, and one named press that writes it into the book and sends her
 //
 // Each step unfolds under the thing that was pressed (the BUY good-row pattern, the owner's own
 // favourite); nothing navigates, nothing is replaced, and the map stays the map. This supersedes
@@ -36,13 +38,41 @@ import { portNameOf, useWorld } from '../../live/worldStore'
 // press Issue — a new screen standing between the decision and the act.
 //
 // ── WHAT THIS IS NOT, AND THAT IS THE WHOLE DESIGN ─────────────────────────────────────────────
-// It is NOT a second order composer, and not a second preset editor either. One composer
-// (`features/command`), one grammar (`cmd.verb_schema()`), one judge (`cmd.preview()` runs the
-// real verb and rolls it back), ONE issue path (`worldStore.issue` → `cmd.issue`) and ONE
-// standing-order authority (`worldStore.applyPreset` → `cmd.provision_preset_apply`, the same
-// call the FLEETS galley chips make — a fleet holds a REFERENCE, 0034). Everything here is a
-// second CALLER of an existing authority; nothing here is a picker of arguments, a quantity
-// control, a legality rule, or a place presets are made (the book is written on FLEETS).
+// It is NOT a second order composer. One composer (`features/command`), one grammar
+// (`cmd.verb_schema()`), one judge (`cmd.preview()` runs the real verb and rolls it back), ONE
+// issue path (`worldStore.issue` → `cmd.issue`) and ONE standing-order authority
+// (`worldStore.applyPreset`/`savePreset` → `cmd.provision_preset_apply`/`_save`, the same two
+// calls the FLEETS book presses — a fleet holds a REFERENCE, 0034). Everything here is a second
+// CALLER of an existing authority; nothing here picks an argument for a VERB, bounds a quantity,
+// or judges an order.
+//
+// ── THE RATIO IS SET HERE NOW, AND WHY THAT IS STILL NOT A COMPOSER (2026-08-25) ───────────────
+// This block used to end at the preset chips, and the owner's row 45 was therefore only half
+// built: *"then when i press fleet, **it will show how i can set my cargo/provision ratio**"*. A
+// house that had authored no standing order saw ONE chip — `None` — and had to leave the map for
+// FLEETS to write a ratio before the fold could offer anything. That is exactly the screen-hop
+// the request exists to delete.
+//
+// A standing order is NOT an order. `cmd.issue` composes a verb against a fleet and the server
+// judges it; `cmd.provision_preset_save` writes a row in the house's own book — a target the
+// server later fires at a quay, sized there, spent there. So setting a ratio here breaks neither
+// the one-composer law (no verb, no argument, no legality check crosses this file) nor the
+// one-authority law: the arithmetic of what a ratio COSTS lives in `cmd.do_provision` (0017's
+// capacity authority) and is not restated, estimated or previewed on this side of the wire. The
+// map holds a NUMBER OF DAYS and hands it to the book.
+//
+// The book is still the one place a ratio lives, which is why a ratio set here is LOOKED UP in it
+// first and only written when it is not there — so the map cannot mint a second, parallel set of
+// standing orders beside the ones FLEETS shows. `docs/OWNER_REQUESTS.md` row 45: *"Must COMPOSE
+// 0034's presets, not mint a second way to set a ratio."*
+//
+// ── AND IT MUST NOT BECOME EASIER TO SEND BY ACCIDENT ──────────────────────────────────────────
+// The chips send the instant they are pressed, which is the owner's own flow and stays. The ratio
+// therefore had to be built so that ADJUSTING IT WRITES NOTHING AND SENDS NOTHING: − and + move a
+// number held in this component and touch neither the book nor the fleet. Exactly one control in
+// the ratio block dispatches a voyage, it is on its own line under the figures rather than beside
+// them, and it says both what it will keep and that it will send. A stray tap while adjusting
+// lands on a stepper, and a stepper cannot sail a fleet.
 //
 // ── EVERY ROW SAYS ITS OWN TRUTH ───────────────────────────────────────────────────────────────
 // When the fleet list unfolds, each sendable fleet's row is DRY-RUN against this exact
@@ -61,6 +91,19 @@ import { portNameOf, useWorld } from '../../live/worldStore'
 export type SailDest =
   | { readonly kind: 'port'; readonly code: string; readonly name: string }
   | { readonly kind: 'sea'; readonly at: LatLon }
+
+/**
+ * WHAT SHE IS TO SAIL UNDER — the one argument the send takes besides the fleet.
+ *
+ *   `preset`  a standing order that already exists (a chip, or `null` for none)
+ *   `days`    a ratio the player just set on the fold: LOOKED UP in the book, and written into it
+ *             only if the book does not already hold it
+ *
+ * Two spellings of one thing rather than two send paths: `send` resolves this to a preset id
+ * through the book's own RPCs and everything after that point is identical, so the ratio cannot
+ * grow a second issue path, a second refusal channel or a second idea of what a standing order is.
+ */
+type Keep = { readonly kind: 'preset'; readonly id: string | null } | { readonly kind: 'days'; readonly days: number }
 
 /** The server's verdict on one fleet's passage to this place — the dry run's answer, kept whole. */
 type Verdict =
@@ -90,6 +133,9 @@ export function SendFleet({
   const book = useWorld((s) => s.presets)
   const loadPresets = useWorld((s) => s.loadPresets)
   const applyPreset = useWorld((s) => s.applyPreset)
+  // The ONE way a standing order is written, anywhere in the game — the same call FLEETS' book
+  // makes. The map never inserts a preset by another route and never edits one it did not write.
+  const savePreset = useWorld((s) => s.savePreset)
   const cancelOrder = useWorld((s) => s.cancel)
   const clearQueue = useWorld((s) => s.clear)
   // Pressing a fleet here also points the app-wide draft at her — "which hull is in hand" has one
@@ -107,6 +153,11 @@ export function SendFleet({
   const [act, setAct] = useState<
     { key: string; fleetId: string; state: 'busy' | 'sent' | 'refused'; refusal: Refusal | null } | null
   >(null)
+  // THE RATIO THE PLAYER IS SETTING, stamped with place AND fleet like everything else here. Null
+  // means "they have not touched it", and the figure shown is then DERIVED (`ratioDays` below) —
+  // so the control opens on something true about her rather than on a number typed into this file.
+  // Nothing outside this component sees it until a send resolves it into the book.
+  const [ratio, setRatio] = useState<{ key: string; fleetId: string; days: number } | null>(null)
 
   const destName = dest.kind === 'port' ? dest.name : pointLabel(dest.at)
   const destKey = dest.kind === 'port' ? dest.code : pointToken(dest.at)
@@ -178,10 +229,12 @@ export function SendFleet({
     if (picked !== null && book === null) void loadPresets()
   }, [picked, book, loadPresets])
 
-  // ── THE SEND — ratio first (only when it changes her), then the one mover's own act for where
-  // she is: `issue` from a quay or an anchor, `divert` when she is under way. Same authorities,
-  // same refusal channel, nothing decided on this side of the wire.
-  const send = (f: FleetView, presetId: string | null) => {
+  // ── THE SEND — THE ONE PATH, whether the order came from a chip or from the ratio.
+  // The standing order is resolved through the book first, applied only when it CHANGES her, and
+  // then the one mover's own act for where she is: `issue` from a quay or an anchor, `divert`
+  // when she is under way. Same authorities, same refusal channel, nothing decided on this side
+  // of the wire — and a second entrance for the ratio would have been a second one of all three.
+  const send = (f: FleetView, keep: Keep) => {
     if (act?.state === 'busy') return
     if (!spec || !seaNav || !target) return
     setAct({ key: destKey, fleetId: f.id, state: 'busy', refusal: null })
@@ -193,6 +246,26 @@ export function SendFleet({
           state: 'refused',
           refusal: useWorld.getState().refusal,
         })
+      // ── THE STANDING ORDER SHE SAILS UNDER, resolved through the BOOK and nothing else.
+      // A chip already names one. A ratio names a number of days: if the book holds an order at
+      // those days it IS that order (the book is a set of day-targets, so asking for 15 when
+      // "15 days" stands is not a new order), and only otherwise is one written. That is what
+      // keeps the map from minting a second, parallel set of standing orders beside FLEETS'.
+      const orderOf = async (): Promise<{ id: string | null } | null> => {
+        if (keep.kind === 'preset') return { id: keep.id }
+        const held = () => useWorld.getState().presets?.presets.find((p) => p.days === keep.days)
+        const known = held()
+        if (known) return { id: known.id }
+        if (!(await savePreset(null, orderName(keep.days), keep.days))) return null
+        // `savePreset` re-reads the book before it returns, and the days it just wrote are unique
+        // in it by the branch above — so this cannot miss. It FAILS CLOSED if it ever does rather
+        // than sailing her under an order nobody asked for.
+        const written = held()
+        return written ? { id: written.id } : null
+      }
+      const order = await orderOf()
+      if (!order) return fail()
+      const presetId = order.id
       const current = presetOf(f.id)?.id ?? null
       if (presetId !== current && !(await applyPreset(f.id, presetId))) return fail()
       let okay: boolean
@@ -223,6 +296,38 @@ export function SendFleet({
 
   const presetOf = (fleetId: string) =>
     book?.presets.find((p) => p.fleets.some((fl) => fl.id === fleetId)) ?? null
+
+  /**
+   * THE DEPTH THE RATIO OPENS ON — every branch READS a served figure; none of them computes one.
+   *
+   *   1. what the player has already set on this fold for this fleet, if they have touched it
+   *   2. the standing order she already sails under (0034's book — the fleet holds a reference)
+   *   3. the SERVER's own `need` from this row's refusal, when it serves figures — the forward
+   *      contract `RefusalNote` already reads (OWNER_REQUESTS row 47's serving migration is not
+   *      landed, so this is dark today and lights up with it, with no edit here)
+   *   4. the deepest order the book already holds — the house's own habit
+   *   5. her range NOW, `endurance_days` (0016's one authority), rounded up
+   *
+   * Never an invented default: a number typed here would be a rule about how deep a hold should
+   * be provisioned, and that rule belongs to the server.
+   */
+  const ratioDays = (f: FleetView): number => {
+    if (ratio?.key === destKey && ratio.fleetId === f.id) return ratio.days
+    const current = presetOf(f.id)
+    if (current) return current.days
+    const v = byFleet[f.id]
+    const need = v?.kind === 'refused' ? (v.refusal.figures?.need ?? null) : null
+    if (need !== null && need > 0) return atLeastOneDay(need)
+    const deepest = (book?.presets ?? []).reduce((most, p) => Math.max(most, p.days), 0)
+    if (deepest > 0) return deepest
+    return atLeastOneDay(f.endurance_days)
+  }
+
+  /** Move the figure. It writes NOTHING and sends NOTHING — see the header's last block. There is
+   *  no ceiling here on purpose: what a hold can actually carry is judged by `cmd.do_provision`
+   *  and the days bound by the table's own CHECK, and neither is restated on this side. */
+  const nudge = (f: FleetView, by: number) =>
+    setRatio({ key: destKey, fleetId: f.id, days: Math.max(1, ratioDays(f) + by) })
 
   /** A refusal's fixes as real buttons: a composable fix loads the one composer; a queue fix acts
    *  on the queue through the store's own cancel/clear. Never a dead line. */
@@ -357,14 +462,15 @@ export function SendFleet({
                     <SectionLabel className="mb-0">
                       Keep &amp; send
                       <Explain label="Keep and send" dotClassName="ml-0.5">
-                        Pressing an order sets it and sends her at once. The book of standing orders itself is
-                        written on Fleets.
+                        Pressing an order sets it and sends her at once. The bar sets a new one: stores share
+                        the hold with cargo, so a deeper order is less room to trade with. Moving it sends
+                        nothing — the press under it does.
                       </Explain>
                     </SectionLabel>
                     <span className="flex flex-wrap gap-2">
                       <Button
                         variant={current === null ? 'chip-on' : 'chip'}
-                        onClick={() => send(f, null)}
+                        onClick={() => send(f, { kind: 'preset', id: null })}
                         data-testid="map-send-keep-none"
                       >
                         None
@@ -373,7 +479,7 @@ export function SendFleet({
                         <Button
                           key={p.id}
                           variant={current?.id === p.id ? 'chip-on' : 'chip'}
-                          onClick={() => send(f, p.id)}
+                          onClick={() => send(f, { kind: 'preset', id: p.id })}
                           data-testid="map-send-keep-preset"
                         >
                           {p.name} · {formatVoyageDays(p.days)}
@@ -382,6 +488,65 @@ export function SendFleet({
                     </span>
                     {book === null && (
                       <p className={fineClass()}>reading her standing orders…</p>
+                    )}
+
+                    {/* THE RATIO — the owner's *"it will show how i can set my cargo/provision ratio"*,
+                        drawn as figures and a gauge rather than as a form (OWNER_REQUESTS row 46's law:
+                        `▁▁▁▂ 2.9 / 33 days`, never a paragraph). The hero is `range now / the depth this
+                        order keeps her at`, both in voyage-days: LEFT is the SERVER's `endurance_days`,
+                        RIGHT is what the standing order would ask for. The gauge under it is `Gauge`
+                        because stores are a COUNTABLE resource — its own header names "days of stores" as
+                        the case it exists for, and `Meter` as the wrong one.
+
+                        THE STEPPERS MOVE A NUMBER AND NOTHING ELSE: no RPC, no write to the book, no
+                        send. Exactly one control here dispatches a voyage, it is on its own line below
+                        the figures rather than beside them, and it names both halves of what it does.
+                        Nothing is drawn until her book has been read, so the figure can never open on a
+                        default that a standing order would have overruled. */}
+                    {book !== null && (
+                      <div className="space-y-1.5" data-testid="map-send-ratio">
+                        {/* THE FIGURE GETS THE WHOLE WIDTH. It shared a row with the two steppers
+                            once and wrapped mid-figure at 390 px — `15.0 /` over `16 days` — and a
+                            hero broken across two lines is not a hero. The steppers go under it,
+                            at the two ends, with the gauge between them. */}
+                        <span className="block text-center" data-testid="map-send-ratio-figures">
+                          <HeroFigure value={`${formatFixed(f.endurance_days, 1)} / ${ratioDays(f)}`} unit="days" />
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="icon"
+                            aria-label={`fewer days of stores for ${f.name}`}
+                            onClick={() => nudge(f, -1)}
+                            data-testid="map-send-ratio-less"
+                          >
+                            −
+                          </Button>
+                          <span className="flex min-w-0 flex-1 justify-center">
+                            <Gauge
+                              value={f.endurance_days}
+                              max={ratioDays(f)}
+                              tone={f.endurance_days >= ratioDays(f) ? 'success' : 'accent'}
+                              label={`stores, ${formatFixed(f.endurance_days, 1)} of ${ratioDays(f)} days`}
+                            />
+                          </span>
+                          <Button
+                            size="icon"
+                            aria-label={`more days of stores for ${f.name}`}
+                            onClick={() => nudge(f, 1)}
+                            data-testid="map-send-ratio-more"
+                          >
+                            +
+                          </Button>
+                        </div>
+                        <Button
+                          variant="primary"
+                          className="w-full justify-center"
+                          onClick={() => send(f, { kind: 'days', days: ratioDays(f) })}
+                          data-testid="map-send-ratio-send"
+                        >
+                          Keep {ratioDays(f)} &amp; send
+                        </Button>
+                      </div>
                     )}
                     {acted?.state === 'busy' && (
                       <p className={fineClass()} data-testid="map-send-busy">
@@ -407,6 +572,31 @@ export function SendFleet({
       )}
     </div>
   )
+}
+
+/** A whole number of days, never less than one — the shape the book's `days` column takes. It
+ *  ROUNDS UP, because a target rounded down is a target that does not cover the thing it was read
+ *  from. Not a rule about provisioning: the server judges every one of these. */
+function atLeastOneDay(days: number): number {
+  return Number.isFinite(days) ? Math.max(1, Math.ceil(days)) : 1
+}
+
+/**
+ * WHAT A STANDING ORDER WRITTEN FROM THE MAP IS CALLED.
+ *
+ * A preset needs a name (0034: 2–24 characters, unique per house) and there is nobody on a map to
+ * type one, so it is named for the only thing it is: its depth. Through `formatVoyageDays`, so the
+ * game has ONE spelling of a days figure and this is not a second one — and so the name the book
+ * shows on FLEETS reads exactly like the figure the fold set it from.
+ *
+ * It is NOT `nextName()` from the FLEETS book ("Order 1", "Order 2", …) and must never become a
+ * copy of it: that rule numbers a row the player is about to rename, and this one describes a row
+ * the player never sees being made. Two different jobs, deliberately not one shared helper with a
+ * flag. If the house already holds an order under this exact name at OTHER days, the server's own
+ * E_NAME_TAKEN comes back and is printed on the row like every other refusal.
+ */
+function orderName(days: number): string {
+  return formatVoyageDays(days, 0)
 }
 
 /** Where she is, in the fleet chip's own wording — one line under the name. */

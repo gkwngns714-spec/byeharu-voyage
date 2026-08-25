@@ -247,12 +247,16 @@ function Chart({
   )
   const chartRef = useRef<HTMLDivElement>(null)
 
-  // THE ONLY THING A TAP ON THE CHART DOES. The nearest glyph within a 44 px reach wins
+  // THE ONLY THING A TAP ON THE CHART DOES. The nearest glyph within `GLYPH.hitRadius` wins
   // (./hitTest.ts explains why that is one function and not a touch circle per glyph); tapping the
   // same thing again, or tapping open water, clears the selection. The surface hands over the
-  // scale AND the viewBox at the moment of the tap, so the reach is 44 px at every zoom and the
-  // ports it tests are exactly the ports that were drawn — the same `visiblePorts` rule, applied
-  // to the same box, with no second idea of what is on the sheet.
+  // scale AND the viewBox at the moment of the tap, so the reach is the same number of SCREEN
+  // pixels at every zoom and the ports it tests are exactly the ports that were drawn — the same
+  // `visiblePorts` rule, applied to the same box, with no second idea of what is on the sheet.
+  //
+  // The reach is not typed here and never was: src/chart/glyphs.ts derives it, from the touch
+  // floor and the size of the thing actually drawn, and carries the browser measurements that say
+  // why it is 38 px rather than 22 (a tap on a harbour's NAME used to open the open sea beside it).
   //
   // A TAP STILL PRODUCES EXACTLY ONE VALUE — a selection. `hitTest` returns a NAME, never a verb
   // (tests/map.voyage.spec.ts asserts the shape), and there is still no second callback on this
