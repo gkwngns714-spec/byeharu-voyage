@@ -5,6 +5,271 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-24 — D24: the sea becomes a free plane — the clock ×20, ONE raster, ONE mover, the graph deleted, and a refusal that is two numbers and a verb
+
+Six migrations, **0045–0050**, and four of them REPLACE a model rather than extend one. (0050's hunks
+were sliced on 2026-08-25 and it committed that morning as `d3463da`; it is the finish of this day's
+work and is recorded with it rather than alone.)
+
+**THE THREE ASKS, in the owner's own words:**
+
+* *"make the speed of moving ships faster 20 times, for faster testing"* → 0045.
+* *"it should go by sea without the fixed route — but fastest way possible. Also, in map, i should
+  be able to pinpoint anywhere in the ocean to make a fleet move."* — said three times
+  (OWNER_REQUESTS rows 41–43) → 0046, 0047, 0048, 0049.
+* *"too long. make it very concise. This concise concept will have to be applied to all aspects of
+  the game. Always show in graphics, concisely."* — said of E_ENDURANCE's four-clause paragraph →
+  0050.
+
+**THE DEFECT THEY REPLACE.** The game sailed a fixed graph of 782 precomputed legs between ports, and
+the graph was measurably wrong: it routed Lisboa→Nagasaki **over the North Pole at 88.6°N for 7,565
+nm**, where the honest water is **12,989.3 nm round the Cape of Good Hope at a maximum course
+latitude of 38.7°N**. It drew **532 of its legs over land** and silently teleported **41** river-port
+approaches (Suez 72 nm, Bristol 65, Hanoi 59) at no cost in time or stores. Every one of those
+numbers gated an endurance check and priced a trade route.
+
+### 0045 — the world runs twenty times faster
+
+* `time_compression` 480 → 9600. A voyage-day WAS three real minutes; it is **9 real seconds**, and
+  the self-assert DERIVES that from the knob rather than retyping it — a second copy of that
+  arithmetic is how 0028's two clocks came to disagree by a factor of sixteen.
+* **A knob, not a dev flag.** The server owns how fast time runs (DESIGN D.1, `voyage.position`
+  closed-form); a client "test mode" would be a SECOND authority for the rate at which the world
+  turns. The header says out loud that this reaches production on the next deploy, and that the way
+  back is a superseding migration — not a flag, and not an un-deployed prod.
+* **What made it more than a one-line UPDATE:** `eta` is STORED at departure, but the day boundaries
+  are RE-DERIVED on every read and clamped by `least(v.eta, …)`. Raising the knob under a fleet
+  already at sea splits her in two — every remaining day completes at once, her hazards all roll in
+  one tick, and she then sits becalmed off her destination waiting for a stored `eta` computed at the
+  old rate. So every SAILING voyage is re-ETA'd here through `voyage.recompute_eta`, the ONE ETA
+  authority, and only the arrival instant moves.
+* **The probe is non-vacuous by construction.** A fresh chain has no fleet at sea, so the re-ETA loop
+  would run zero times and prove nothing: a real house is founded and put to sea inside a
+  subtransaction, the knob is wound BACK to 480 (the arrival must move LATER) and forward again (it
+  must come back in) — both directions, so the ETA is proven to FOLLOW the knob rather than merely
+  differ from a number typed in the file — then the whole probe rolls back and a delta assert proves
+  it left no row behind.
+* **Deliberately untouched:** `game_day_seconds` (2880), the CALENDAR clock that fairs and seasons
+  run on. The owner asked for ships to move faster, not for the seasons to blur past. The consequence
+  is stated rather than discovered later: the two clocks differed by 16× (0028) and now differ by
+  0.3× — a fair lasts many more voyages than it did.
+
+### 0046 — the water knows the way (generated; `scripts/build-sea-migration.mjs`)
+
+* **`public.sea_raster`** — 1,440×720 cells at 0.25°, a 2-bit passability mask per cell packed
+  LSB-first in **259,200 bytes**. Bit 0 SEA = sailable (Natural Earth land, CHANNELS forced open,
+  Arctic ice closures, Antarctic pack south of 60°S). Bit 1 POLAR is the open polar margin — DATA
+  for the ice and region systems to come; **it gates nothing yet, and the migration that gives it a
+  reader must say so.**
+* **`public.sea_reaches`** — one row per place: the sailed nm to every other place, flooded by the
+  one pathfinder (`src/lib/sea`) over this very raster, straightened by line-of-sight and measured as
+  the polyline's great-circle length. Plus `snap_nm`, how far the true harbour coordinate sits from
+  sailable water (Suez 0.00, Bristol 64.55) — and it is **INSIDE** every reach figure, because each
+  path starts and ends at the true coordinate. The silent snap is charged, never skipped again.
+* **`voyage.path_nm`** is THE measure of a polyline — the server never takes a client's distance —
+  and **`voyage.path_refusal`** is THE water-legality of one: every segment sampled at half-cell
+  steps (≤ 7.5 nm) by the same linear interpolation `voyage.position` uses to place the ship, so the
+  line judged is the line sailed. The ends are exempt only by the MEASURED approach allowance, never
+  a fixed guess. Neither is granted to a client.
+* **The canal controls, printed on every apply.** There is no Suez and no Panama in 1550, and nothing
+  encodes that: it falls out of the land. **Alexandria→Aden 11,050 nm** round the Cape;
+  **Veracruz→Acapulco 12,398 nm** round the Horn. LIS→NAG is asserted over 12,000 nm — under it and
+  the Arctic is open again.
+* **The two rasters are made to agree.** Cell-for-cell against 0040's sea-membership raster at
+  generation, and at apply on eight named control cells read back through `get_bit` (mid-Atlantic,
+  the middle of Iberia, the Bosphorus, the Siberian arctic, the Barents Sea, the Antarctic pack, the
+  South China Sea, the Sahara), four of them re-asked through `voyage.sea_at`. Then the properties:
+  every place reaches every other, symmetric, and never shorter than the great circle.
+
+### 0047 — the sea is a free plane (generated; `scripts/gen-0047.mjs`)
+
+* **The split is measured, not chosen.** A\* in plpgsql costs **302 s** for Lisboa→Calicut; the same
+  search in the browser costs **≤166 ms**; VERIFYING that a path is all water costs **0.02 ms**. So
+  the search runs where it is cheap — the client PROPOSES a course — and the authoritative acts stay
+  on the server: verify → measure → gate → depart. **A client cannot gain by lying:** land is
+  refused, a longer course only costs its own player days and stores, and a shorter water-legal
+  course is simply a better route. With no course attached the straight line is tried, which is free
+  and correct exactly when it verifies; otherwise E_NO_COURSE.
+* **The FOUR graph movement authorities are DROPPED, not joined** — `voyage.route`,
+  `voyage.route_direct`, `voyage.path_from_nodes` and `voyage.reach_from(uuid, int, uuid)` — with
+  `sail_refusal`, `depart`, `position`, `cmd.do_sail`, `cmd.divert`, `cmd.issue`/`cmd.preview` and
+  `world.trade_routes` superseded whole or sliced. The predecessor's recorded catastrophe was four
+  overlapping movement paths.
+* **Any water point is a destination.** Fleets carry `lat`/`lon` and an ANCHORED status; `cmd.divert`
+  turns her AT HER POSITION (truncate, settle through the one arrival arm, clear the stale queue, one
+  SAIL through the one parser). 0037's node-turn existed only because routing from a point was
+  impossible; it is not any more.
+* **The slice-and-replace method:** every superseded body is edited by hunks that must occur EXACTLY
+  ONCE in the DEPLOYED definition (`pg_get_functiondef`), re-asserted at apply time — a drifted
+  deployment refuses rather than half-applies. Nothing is retyped.
+* **Carried forward:** pre-0047 voyages stored leg REFERENCES and are converted in place to
+  legacy-marked segments with the same nm, the same seas and the same frozen speeds — the schedule is
+  byte-identical, so proof 01's offline settlement rests exactly where 0006 put it. A computed course
+  is still a FIXED course once departed.
+* **The self-assert plays a whole game.** A real house was refused a straight course across Iberia as
+  E_LAND *through `cmd.issue` itself*, refused an unplotted cape passage E_NO_COURSE and a mis-joined
+  course E_OFF_COURSE; then SAILED Lisbon–Cádiz on a verified water course whose server-measured
+  total agrees with the reach table to 3%; a homeward SAIL queued at sea departed itself on arrival;
+  she PINPOINTED 33,−15, ANCHORED on the very point, was refused BUY there as E_NOT_DOCKED, and
+  sailed home from the anchor; on thin stores the same passage was refused for the ROUND TRIP; the
+  helm answered MID-OCEAN, truncating at her position to the mile; a leg-era voyage converted with
+  its schedule byte-identical; and the land guard walked every stored course and BIT a planted
+  straight Lisbon–Barcelona voyage.
+* **`world.trade_routes` re-cut:** the scan radius is now SAILED nm over `sea_reaches`
+  (`sea_scan_radius_nm` = 1,700, the measured median horizon of the old 2-leg scan), so the Asian
+  trade stops being priced at half its true distance.
+
+### 0048 — the quay reprices the honest sea
+
+Honest water reaches better-paying markets inside the same first-voyage horizon than the 782-leg
+graph did. Proof 05's median first-voyage return, tuned to 13.5–14.8% under the graph (D21), measured
+**14.6 / 14.7 / 15.2 / 15.5 / 16.8 / 17.8 across six full runs** — mean ~15.8, straddling the 4–16
+band's ceiling. The band is the design and the affinity knobs are the sanctioned lever (D11/D21
+precedent), so the sweep is the evidence (`scripts/db/tune-balance.mjs`, 14 top-tier ports, the same
+600 nm honest reach the proof measures):
+
+| knobs (producer / home / span / reach / curve) | median | p25 | p75 |
+|---|---|---|---|
+| 0.92 / 0.99 / 0.85 / 9000 / 0.80 — D21's, in force | 8.9% | 7.6% | 9.7% |
+| **0.93 / 1.00 / 0.76 / 9500 / 0.88 — CHOSEN** | **6.2%** | 5.1% | 7.1% |
+
+−30% relative on the sweep's own statistic. Every `port_goods.affinity` is recomputed through
+`world.affinity_for` — THE function the seed used, so the world cannot drift from its own rule —
+`stock` is CLAMPED DOWN to a fallen target and never re-seeded upward (stock is player-made state and
+a reprice must not mint goods), and `drift` is deliberately NOT reset: it is live market state, and
+zeroing it would move every price at once for no reason the ledger could name.
+
+### 0049 — the graph is history
+
+* **`public.legs` is dropped**, and in the same commit `data/sea-routes.json` and its generator
+  `scripts/build-sea-routes.mjs` are deleted, the growth generator stops deriving legs, and the world
+  guard is repointed — **keeping its planted-drift positive controls, because a guard that cannot
+  fail certifies nothing**.
+* **Why it is its own migration.** 0047 left the table "as history, with no reader", which is exactly
+  the state the no-spaghetti law forbids: a second, dead authority for what water connects to what,
+  which every future world change would have to keep regenerating (0041 regenerated
+  `sea-routes.json` for no reader) and which the world guard would keep certifying as if it mattered.
+* **It refuses to drop blind.** ≥100 leg rows must exist (a drop that deletes nothing is a different
+  migration than the one this file documents); **no live function body may name `public.legs`**,
+  asked of `pg_proc` rather than of my memory; and no stored voyage path may still be leg-shaped.
+* History is not edited: the applied migrations that create and seed the table still run at their own
+  chain positions, where it exists.
+
+### 0050 — a refusal is two numbers and a verb
+
+The owner, on this sentence — *"Gaivota carries 2.9 days of stores, and there is no chandler where she
+is bound — the round trip is 28.7 voyage-days; you need 33.0 — PROVISION first"* — said: *"too long.
+make it very concise. This concise concept will have to be applied to all aspects of the game. Always
+show in graphics, concisely."* What the player needs is a bar, two figures and a verb:
+`▁▁▁▂ 2.9 / 33 days  [ PROVISION ]`.
+
+* **THE LAW:** the client must NEVER parse a served sentence for numbers. A client that regexes "2.9"
+  out of prose is a second author of the refusal, one wording change from lying — the same defect
+  0030 (crew) and 0033 (shipyard) had to undo. So the numbers travel as DATA, from the one place that
+  computed them.
+* **Neither obvious mechanism works alone, and reading the code is what settled it.** Returning the
+  figures from `voyage.sail_refusal` does not reach the client, because `cmd.do_sail` RAISES and a
+  returned value does not survive a raise — `do_sail` would have to RE-DERIVE have and need for the
+  raise, a second arithmetic one knob from disagreeing with the sentence printed beside it. Carrying
+  them only in `PG_EXCEPTION_DETAIL` drifts the other way, because `sail_refusal` must keep RETURNING
+  (`world.trade_routes` asks it as a silent `… is null` predicate and cannot catch an exception per
+  candidate port), so the author of the sentence and the author of the figures would be two different
+  functions with nothing making them agree. **So: the return value for the AUTHORITY, the DETAIL for
+  the one crossing that already exists.** `voyage.sail_refusal` now returns code, sentence and figures
+  as ONE value; `cmd.refuse(code, sentence, figures)` is the ONE raiser — three arguments of one
+  statement cannot drift apart — and `cmd.refusal_caught(message, detail)` is its inverse.
+* **WHAT THE FILE PAID FOR ITSELF WITH.** "Split a raised refusal into an envelope" had **SIX
+  hand-copied definitions** — `cmd.execute_order`, `cmd.preview` (twice), `cmd.issue`,
+  `cmd.provision_preset_save`, `cmd.run_standing_provision`. Five were found by reading; **the sixth
+  was found by this file's own guard, which asks the catalogue instead of my memory — which is the
+  whole reason it asks the catalogue.** All six carried the same latent bug: when a message did not
+  start with `E_CODE:` the code fell back to `'E_PARSE'` and the sentence was still cut at
+  `length('E_PARSE') + 2`, so an unexpected PostgreSQL error reached the player with its first eight
+  characters shaved off — *"division by zero"* → *"by zero"*. One authority, one fix.
+* **The figures law is enforced, not documented.** `cmd.figures` raises if `have > need`, if `need`
+  is not positive, or if the unit is anything but a bare lower-case NAME (`days`, `t`, `ducats`,
+  `crew`, `depth` — never a sentence). A refusal always means have < need, so the bar is always
+  have/need and always short.
+* **`public.orders.error_figures`** — a failed order is history and its figures are part of it, so
+  `cmd.issue` and `cmd.queue` read the order ROW rather than the exception.
+* **The sentences lose two things they should never have carried:** the ARITHMETIC (E_ENDURANCE's
+  sentence now contains no digit at all — that is the bar's job) and the FIX (`cmd.fixes()` has been
+  the one author of "→ do this instead" since 0008, and the sentences were repeating it). What they
+  KEEP is the REASON, which is the one thing neither a bar nor a fix can say: *no chandler where she
+  is bound* is a real fact about the world and it survives, behind the ⓘ.
+* 14 live bodies were sliced by occurs-exactly-once hunks. `world.trade_routes` and proof 05 needed no
+  change at all — `… is null` reads a jsonb exactly as it read a text — and `voyage.path_refusal`
+  keeps returning text, because E_LAND / E_OFF_COURSE / E_NO_COURSE are not arithmetic and there are
+  no two numbers to draw.
+
+### THE CLIENT, in the same window
+
+* **The map now updates as often as the world moves.** The owner: *"i want the location of my fleet
+  moving in map to be shown more often, updated more often."* The read interval was a flat 30 s whose
+  own comment justified it as "well inside a voyage-day (three real minutes at TIME_COMPRESSION
+  480)" — and 0045 made a voyage-day nine seconds, so thirty seconds became **3⅓ voyage-days between
+  reads**, and a short passage could begin and end between two of them while a fleet under way jumped
+  across the chart instead of crawling. The number was a rule evaluated once, by hand, against a knob
+  that has since moved — so the cadence is now DERIVED from the served clock (four reads per
+  voyage-day, clamped between 3 and 30 s) and re-arms if the knob changes under a running tab.
+  Measured in the running game: *"read 2s ago"*, then *"read 0s ago"* four seconds later.
+* **The whole send happens on the map** (OWNER_REQUESTS rows 45/46). Tap a place → **Send fleet** →
+  her fleets unfold, each row dry-run against THIS destination through `cmd.preview` over the same
+  proposed course the send will carry → press a fleet → 0034's standing-order presets unfold beneath
+  that row → press one and she goes. `SailHere` is deleted, replaced. It COMPOSES what exists — the
+  same order draft, the same issue path, the same `applyPreset` the FLEETS galley presses — and
+  nothing on the map writes a preset. One thing fixed after driving it: the preset row carried the
+  caption *"press one - it sets her order and sends her"* — a sentence explaining a row of buttons,
+  on the very screen that had just been called too wordy. The chip is named for what it does (**Keep
+  and send**) and the reason moved behind the dot.
+* **`RefusalNote`** draws the bar from `refusal.figures` and falls back to a compact badge when they
+  are absent. It was built waiting for 0050's contract, which is why 0050 is the migration it is.
+
+### THE FLAKE THAT MADE THE GAME UNOPENABLE
+
+The browser refused to boot: MIGRATION FAILED at 0036, *"after settling past the ETA the fleet is
+SAILING at (nowhere)"*. That reads like a broken sea place and is nothing of the kind. 0031 rotates
+the world secret on every fresh apply and `voyage.rng` is keyed on it, so the hazards rolled for a
+probe's passage differ every run — a storm delayed her past the instant the probe settled to, and she
+was still at sea when the assert looked. **0034 hit this and fixed it; 0037 hit it and fixed it; 0036
+was written between them and never got the fix.** The pattern was known, written down twice, and
+still landed a third time. Zeroed inside the rolled-back probe; three consecutive clean applies. A
+failed migration is a world that will not boot, so this did not merely red a gate — it made the game
+unopenable, intermittently, which is the worst way for a flake to present.
+
+### KNOWN, STATED, NOT HIDDEN
+
+* **The two clocks now differ by 0.3×, not 16×.** Ships were made twenty times faster and the
+  calendar was not. If the seasons should scale too, that is a second decision and nobody has taken
+  it.
+* **Proof 05's balance band is still a lottery, and the mechanism is now measured rather than
+  argued.** The sanctioned lever was pulled (0048) and the proof's median barely moved (15.9 / 17.3
+  after); zero the drift and the same world's median drops to **8.8**, because the statistic is a max
+  over ~243 goods × ~8 ports of drift-noised gaps and is therefore dominated by the drift amplitude,
+  which no affinity knob touches. Zeroing drift inside the proof exposed a second finding
+  (`route_scan_keep=3`'s shortlist drops the best trade at drift 0), so the two must land together,
+  in a balance slice of their own.
+* **The POLAR bit gates nothing**, and the ice/season masking question (navigation research P.10) is
+  unchanged: a fleet can still pinpoint absurd latitudes on the open polar margin.
+* **Bristol's approach is now MEASURED and charged** — 64.55 nm, inside every one of her reach
+  figures, rather than teleported for free — but the Severn entry in `sea-grid.mjs`'s CHANNELS that
+  D22 flagged is still not cut.
+* **Rows 45–47 of `OWNER_REQUESTS.md` are BUILT and NOT CLOSED.** Commit `3ddcad1` claims the map
+  send was *"driven end to end: the URL never changes at any step"*, and no browser drive of either
+  the send flow or the served figures is recorded in this log or in that ledger. That file's rule 2
+  says an agent report — mine included — is a claim, not proof, so the rows stay open until a drive
+  is recorded.
+
+### WHERE IT IS
+
+**Applied to production.** Probed on 2026-08-25 against the live project with the anon key alone:
+`public.legs` answers **404** — the table is gone, so 0049 ran — and `public.orders.error_figures`
+answers **`42501 permission denied for table orders`** where a made-up column on the same table
+answers **`42703 column … does not exist`**, so that column exists and 0050 ran. The chain applies in
+order, so 0045–0048 are there with them. The chain is **45 files**; the numbering gaps 0038/0039 and
+0042–0044 are deliberate and arbitrated by `npm run db:check-versions`, never by counting.
+---
+
 ## 2026-08-24 — D23: the edited-migration defect — 0003 reverted, the world grows through 0041, and a guard so it can never drift silently again
 
 **THE DEFECT (mine, prior session).** D21 regenerated migration 0003 in place after production had

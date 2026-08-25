@@ -16,8 +16,17 @@ the world is the real world, with real ports at real coordinates. It replaces th
 sibling repo `byeharu`, whose visual combat layer failed. **There is no combat scene here and there
 never will be** — danger is a probability table resolved server-side and reported as prose.
 
-- Repo: `https://github.com/gkwngns714-spec/byeharu-voyage` (**private**)
+- Repo: `https://github.com/gkwngns714-spec/byeharu-voyage` (~~**private**~~ → **PUBLIC since
+  2026-08-23**, at the owner's instruction — `OWNER_REQUESTS.md` row 13, `RESUME.md:101`. The world
+  secret was rotated off disk first, in migration 0031, and a CHECK constraint refuses the old
+  literal. Corrected here 2026-08-25.)
 - The old game, `https://github.com/gkwngns714-spec/byeharu`, is **still live and must not be touched**.
+
+> **READ THIS BEFORE TRUSTING THE REST OF THIS FILE.** It was written on 2026-08-18, when the chain
+> was 10 migrations long and there was no cloud project. Corrections carrying a date have been
+> inserted at each place where the file had gone false; the superseded text is struck through rather
+> than deleted, because how it was wrong is part of the record. For where the project actually
+> stands, read `docs/RESUME.md` and then the top entry of `docs/DEV_LOG.md`.
 
 ---
 
@@ -129,6 +138,15 @@ paid for (d) in 0001.
 
 ### The chain today
 
+> **CORRECTED 2026-08-25.** ~~10 migrations~~ — **45**, `supabase/migrations/` (0001–0037, 0040/0041,
+> 0045–0050; the gaps 0038/0039 and 0042–0044 are deliberate and are arbitrated by
+> `npm run db:check-versions`, never by counting). ~~Four proof files~~ — **nine**
+> (`01`–`09`; `05_first_voyage_balance`, `06_haggle`, `07_standing_provision`, `08_the_sea_answers`
+> and `09_the_fleet_never_touches_land` were added after this file was written). The paragraph and
+> the table below are left as they stood on 2026-08-18: they describe the V0 chain correctly and are
+> no longer the whole of it. `supabase/migrations/CHAIN.md` is the current list — and note it, too,
+> still counts forty-four; 0050 landed after it was last written.
+
 10 migrations, `supabase/migrations/`, all self-asserting. `supabase/migrations/CHAIN.md` lists each one
 and what it proves. They define the entire V0 server: the static world and its seed, the market and its
 price formation, closed-form voyages, the command parser, the read RPCs and the tick functions.
@@ -161,7 +179,7 @@ That last one is the game: buy salt at Lisboa, sail 188 nm to Cádiz, sell, buy 
   Wikidata P625 (CC0) and stores the item it came from.** `node scripts/check-ports.mjs` re-verifies
   the lot; worst country-bbox margin 0.0000°. Projection is equirectangular, chosen by measurement
   (Web Mercator stretches Longyearbyen 4.81×, Miller 2.16×, equirectangular 1.00×).
-- **Server** — the 10 migrations above.
+- **Server** — the 10 migrations above (**45 as of 2026-08-25**; see the correction in §2).
 - **Client shell** — 8 tabs, auth, UI primitives, carried from the old repo's core.
 - **Map** — inline SVG over Natural Earth 1:110m. Labels are planned as a *set* with priority and
   8-way placement, so nothing overprints; measured 0 collisions at 390×844.
@@ -187,7 +205,21 @@ dynamic import — cloud mode downloads none of it.
 
 ---
 
-## 3a. THE NEXT STEP — start here
+## 3a. ~~THE NEXT STEP — start here~~ — DONE 2026-08-20, superseded (marked 2026-08-25)
+
+> **This is no longer the next step, and this section must not be started.** The rewire was done on
+> 2026-08-20 (DEV_LOG D12/D12b/D12c). **`src/fixtures/` no longer exists** — grep `src/` for
+> `fixtures/v0` and the only hit is `src/live/worldStore.ts:5`, whose comment records that the store
+> *"replaced the fixture layer (`src/fixtures/`, now deleted)"*. The five screens read the live RPC
+> surface.
+>
+> **Where the next step actually lives:** `docs/RESUME.md` first, then the top entry of
+> `docs/DEV_LOG.md`, then `docs/OWNER_REQUESTS.md` for what the owner has asked for and what is still
+> open. As of 2026-08-25 the nearest open thing is a browser drive of the map send flow and the
+> served refusal figures (OWNER_REQUESTS rows 45–47), not any wiring.
+>
+> The list below is kept because the six gaps it names were real and each was closed by a decision
+> worth knowing about.
 
 **Rewire the five screens from `src/fixtures/v0.ts` to the live RPC surface.** Everything else is in
 place; this is the last thing standing between the repo and a game you can actually play.
@@ -207,19 +239,32 @@ The screens were deliberately built as pure presentation against typed fixtures 
 is a mechanical, one-file-at-a-time job. Do them one screen at a time, and screenshot each at 390×844
 after wiring it (§5 trap 5).
 
-### Two things flagged, not hidden
+### Two things flagged, not hidden — items 1 and 2 are FIXED; see the corrections
 
-1. **`@electric-sql/pglite` is still a devDependency.** It must move to `dependencies` before any
-   `npm ci --omit=dev` deploy, or the local backend will vanish from the build. Left alone deliberately
-   so the decision is visible rather than buried in a diff.
-2. **The cloud backend has never made a round trip**, because there is no Supabase project (§4). It is
-   written and typed; it is not proven.
+1. ~~**`@electric-sql/pglite` is still a devDependency.** It must move to `dependencies` before any
+   `npm ci --omit=dev` deploy, or the local backend will vanish from the build.~~
+   **CORRECTED 2026-08-25: it is in `dependencies`** — `package.json` lists
+   `"@electric-sql/pglite": "^0.5.5"` under `dependencies`, not `devDependencies`. There is no
+   blocker here and nothing to move; the deploy warning above is a phantom.
+2. ~~**The cloud backend has never made a round trip**, because there is no Supabase project (§4). It
+   is written and typed; it is not proven.~~
+   **CORRECTED 2026-08-25: false since 2026-08-20.** The game went online that day on a real Supabase
+   project (Seoul) — `docs/DEV_LOG.md` D11e is the record — and the live project answered a probe on
+   2026-08-25 (see §4). The cloud backend is the one the published site runs on.
 3. **RLS is bypassed under PGlite** (superuser). Local play proves the *rules*, not the *walls*. The
-   grant-lockdown proof and CI's disposable-Supabase job are what prove the walls.
+   grant-lockdown proof and CI's disposable-Supabase job are what prove the walls. **Still true.**
 
 ---
 
 ## 4. The database, honestly
+
+> **CORRECTED 2026-08-25 — the project EXISTS.** The free-slot wall below was real on 2026-08-18 and
+> was cleared on 2026-08-20: the game has its own Supabase project in Seoul and has been online since
+> (DEV_LOG D11e). It answered on 2026-08-25 — an anon-key probe of the REST surface returned
+> `42501 permission denied for table orders` for a real column and `42703 … does not exist` for an
+> invented one, which is the read wall standing and the schema at chain head (0050). The local PGlite
+> backend still works exactly as described, and a checkout with no `.env.local` still opens in local
+> mode — that part of §1 is unchanged. What is no longer true is *"there is no Supabase project"*.
 
 **Nothing about the cloud blocks development.** But you will hit this eventually, so know it now:
 
