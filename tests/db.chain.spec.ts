@@ -142,7 +142,15 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // figures in PG_EXCEPTION_DETAIL; the cmd.* envelope and public.orders.error_figures carry them
 // to the client), the sentences lost the arithmetic and the repeated verb and kept the REASON,
 // and the FIVE hand-copied "split E_CODE: sentence" definitions became one, cmd.refusal_caught.
-const LAST = '20260818000050_a_refusal_is_two_numbers_and_a_verb.sql'
+//
+// Moved 2026-08-25 for 0052 THE SEVERN IS WATER, AND THE PACK IS ONE RULE — the raster and the
+// all-pairs sailed distances re-cut (0046's DATA superseded, 0046 itself untouched): the Bristol
+// Channel and the Avon join CHANNELS, so Bristol stops snapping 64.55 nm to Lyme Bay and stops
+// being granted a ~90 nm land-exempt head allowance that let her courses run straight across
+// southern England; and the Antarctic pack moves out of the generator's own `cells.fill(0)` into
+// the ONE ice list (ICE gained `latBelow`), same parallel, 0 cells different. If 0051 lands after
+// this, the pin moves again — it names the true last file, never the last one anybody remembers.
+const LAST = '20260818000052_the_severn_is_water_and_the_pack_is_one_rule.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

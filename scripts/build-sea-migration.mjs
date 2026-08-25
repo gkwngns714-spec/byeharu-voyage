@@ -1,5 +1,14 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// build-sea-migration.mjs — writes migration 0046: THE NAVIGABLE SEA, AS DATA.
+// build-sea-migration.mjs — writes THE NAVIGABLE SEA, AS DATA. Currently migration 0052.
+//
+// IT WROTE 0046 FIRST, AND 0046 IS HISTORY NOW. An applied migration is never edited (README §1,
+// D23); when the sea moves, this generator emits the NEXT number and that file SUPERSEDES the data
+// the last one seeded. So the emit below is a data supersede — it updates public.sea_raster's one
+// row and replaces public.sea_reaches — and it deliberately re-cuts NO function: voyage.path_nm
+// and voyage.path_refusal were created by 0046 and voyage.sail_refusal was re-cut by 0050, so a
+// generator that re-emitted the function bodies it happened to remember would silently roll 0050
+// back. The tables and the two 0046 functions are 0046's; only the numbers in them are this file's.
+// One constant, MIGRATION, says which file is being written; move it, never the emitted SQL.
 //
 // §7B — the four questions:
 //   CONCEPT      "the one statement of what water connects to what": the navigable raster, and
@@ -8,19 +17,24 @@
 //   LIVES HERE   scripts/, because it is a GENERATOR: it runs the applied chain in PGlite to read
 //                the world's own ports (codes and coordinates come from the database, never from
 //                a second derivation of them), computes, and emits SQL. The AUTHORITY it emits is
-//                the migration; after 0046 applies, the raster row IS the sea.
+//                the migration; once the newest one applies, the raster row IS the sea.
 //   SECOND CALLER  none — it is run by hand when the sea or the ports change, and then a NEW
 //                migration is cut (never an edit of an applied one). scripts/build-proof-paths.mjs
 //                consumes the same src/lib/sea search, not this file.
 //   WRONG SHAPE  if the raster it packs and the raster a browser unpacks could differ. They
-//                cannot: both sides are src/lib/sea/grid.ts, and 0046's own self-assert round-
+//                cannot: both sides are src/lib/sea/grid.ts, and the emitted self-assert round-
 //                trips get_bit() against embedded control cells.
 //
-// THE NAV RULE, stated once, here, where the raster is made:
-//   navigable = buildSeaGrid()            (Natural Earth land, scan-filled; CHANNELS forced open;
-//                                          the Arctic ICE closures of scripts/sea-grid.mjs)
-//               minus everything south of 60°S   (the Antarctic pack — the age of sail rounded
-//                                          Cape Horn at ~56°S; nothing sailed the pack ice)
+// THE NAV RULE, stated once, and NOT here:
+//   navigable = buildSeaGrid()            (Natural Earth land, scan-filled; the CHANNELS forced
+//                                          open; the ICE closures shut — BOTH poles)
+// Until 2026-08-25 this file kept a second half of that rule of its own — `if (cellLat(row) < -60)
+// cells.fill(0, …)`, the Antarctic pack, written here because ICE only knew how to close a
+// NORTHERN latitude. One concept, two files, and the cross-check below then had to hard-code the
+// same −60 a third time to know which closed water was allowed to carry a sea name. ICE now takes
+// `latBelow` as well as `latAbove`, the Antarctic pack is a row in it like the Northeast Passage,
+// and this file reads that list instead of remembering the number. The water is unchanged: the
+// closure is the same parallel, measured cell-for-cell (0 cells differ).
 //
 // THE MASK (2 bits per cell — passability is a property of (water, ship), coordinator 2026-08-24):
 //   bit 0  SEA    sailable water. The LAW gates on this alone today.
@@ -32,22 +46,25 @@
 // Run:  node scripts/build-sea-migration.mjs        (applies the chain first; takes minutes)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { writeFileSync } from 'node:fs'
+import { writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { buildSeaGrid, COLS, ROWS, CELL_DEG, cellLat } from './sea-grid.mjs'
-import { packCells, findPath, floodFrom, floodPathTo, gcNm, SEA_BIT, POLAR_BIT } from '../src/lib/sea/index.ts'
+import { buildSeaGrid, COLS, ROWS, CELL_DEG, cellLat, cellLon, inIce } from './sea-grid.mjs'
+import { packCells, findPath, floodFrom, floodPathTo, gcNm, navFromServed, SEA_BIT, POLAR_BIT } from '../src/lib/sea/index.ts'
 import { applyChain, MIGRATIONS_DIR } from './db/apply-chain.mjs'
 
-const OUT = path.join(MIGRATIONS_DIR, '20260818000046_the_water_knows_the_way.sql')
+// The migration this run writes. 0046 was the first; an applied one is history, so this moves and
+// the emitted SQL supersedes what the previous number seeded.
+const MIGRATION = '20260818000052_the_severn_is_water_and_the_pack_is_one_rule.sql'
+const SHORT = MIGRATION.slice(10, 14)
+const OUT = path.join(MIGRATIONS_DIR, MIGRATION)
 const BITS = 2
 
 // ── 1. The navigable grid ──────────────────────────────────────────────────────────────────────
+// buildSeaGrid() is the WHOLE rule now — land, channels and the ice at both poles. Nothing is
+// added, removed or clamped here; see the header.
 console.log('building the navigable grid…')
 const cells = buildSeaGrid()
-for (let row = 0; row < ROWS; row++) {
-  if (cellLat(row) < -60) cells.fill(0, row * COLS, row * COLS + COLS)
-}
 const nav = { cols: COLS, rows: ROWS, cellDeg: CELL_DEG, cells }
 const masks = new Uint8Array(COLS * ROWS)
 for (let row = 0; row < ROWS; row++) {
@@ -85,16 +102,33 @@ for (const p of ports) reaches.set(p.code, new Map())
 //     with byte 0 means the two rasters genuinely disagree — refuse to emit);
 //   * unreachable navigable water with no sea is the KNOWN landlocked-pool set (Caspian and
 //     friends) — counted and printed, never silently;
-//   * membership on water this mask CLOSES must lie south of 60°S (the Antarctic pack rule is
-//     this file's own; 0040 names those waters, this file forbids sailing them — that is a
-//     division of labour, not a disagreement) or on the ice closures sea-grid already shares.
+//   * membership on water this mask CLOSES must be inside an authored ICE closure — 0040 names
+//     those waters, this file forbids sailing them, which is a division of labour and not a
+//     disagreement. The allowance is read from scripts/sea-grid.mjs's ICE list (inIce), never
+//     from a latitude repeated here.
+//
+// AND WHEN A CHANNEL OPENS WATER 0040 NEVER SAW. A new CHANNELS entry turns land into sea, and
+// land carries no sea name, so those cells arrive as reachable-water-with-no-sea — the wound above.
+// They are not a drift: they are this migration's own doing, and the honest repair is the SAME
+// rule build-sea-raster.mjs used for every unnamed water it met (its header: "it joins the nearest
+// named sea BY WATER — a multi-source BFS through water cells, so nothing leaks across an
+// isthmus"). So each wound is healed by a BFS through the NEW water to the nearest cell that
+// already carries a name, the healed rows are emitted as a sea_cells patch beside the raster, and
+// every one is printed and asserted BY NAME in the migration. A wound the rule cannot answer
+// (no named water reachable at all) still refuses to emit.
+const seaPatch = new Map() // row_idx -> Uint8Array(COLS), only for rows a heal touched
+const healed = [] // { lat, lon, ordinal } — printed, and asserted by name in the migration
 {
   const seaRows = (
     await db.query('select row_idx, seas from public.sea_cells order by row_idx')
   ).rows
   if (seaRows.length !== ROWS) throw new Error(`sea_cells has ${seaRows.length} rows, expected ${ROWS} — is 0040 applied?`)
   const membership = new Uint8Array(COLS * ROWS)
-  for (const r of seaRows) membership.set(r.seas, r.row_idx * COLS)
+  const seaByRow = new Map()
+  for (const r of seaRows) {
+    membership.set(r.seas, r.row_idx * COLS)
+    seaByRow.set(r.row_idx, r.seas)
+  }
   // reachable set: BFS over the navigable mask from the first port's water cell
   const seed = ports[0]
   const seedFlood = floodFrom(nav, seed)
@@ -105,38 +139,69 @@ for (const p of ports) reaches.set(p.code, new Map())
   for (let i = 0; i < COLS * ROWS; i++) {
     if (!cells[i]) continue
     if (membership[i] > 0) continue
-    if (reachable[i] === 2) {
-      const row = (i / COLS) | 0
-      const col = i - row * COLS
-      wounds.push(`(${(90 - (row + 0.5) * CELL_DEG).toFixed(2)}, ${(-180 + (col + 0.5) * CELL_DEG).toFixed(2)})`)
-    } else pools++
+    if (reachable[i] === 2) wounds.push(i)
+    else pools++
   }
-  if (wounds.length > 0) {
-    throw new Error(
-      `REACHABLE water with NO sea (${wounds.length} cell(s)) — public.sea_cells (0040) and this ` +
-        `raster disagree about the ocean itself: ${wounds.slice(0, 12).join(', ')}`,
-    )
+
+  // Heal each wound with the nearest named sea BY WATER (four-neighbour BFS over the new grid).
+  for (const wound of wounds) {
+    const seen = new Set([wound])
+    const queue = [wound]
+    let found = 0
+    for (let head = 0; head < queue.length && found === 0; head++) {
+      const at = queue[head]
+      const row = (at / COLS) | 0
+      const col = at - row * COLS
+      for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        const nrow = row + dr
+        if (nrow < 0 || nrow >= ROWS) continue
+        const ncol = ((col + dc) % COLS + COLS) % COLS
+        const next = nrow * COLS + ncol
+        if (seen.has(next) || !cells[next]) continue
+        if (membership[next] > 0) { found = membership[next]; break }
+        seen.add(next)
+        queue.push(next)
+      }
+    }
+    const row = (wound / COLS) | 0
+    const col = wound - row * COLS
+    if (found === 0) {
+      throw new Error(
+        `REACHABLE water with NO sea at (${cellLat(row).toFixed(2)}, ${cellLon(col).toFixed(2)}) and ` +
+          `no named water reachable from it — public.sea_cells (0040) and this raster disagree ` +
+          `about the ocean itself, and the nearest-sea-by-water rule cannot answer it`,
+      )
+    }
+    if (!seaPatch.has(row)) seaPatch.set(row, Uint8Array.from(seaByRow.get(row)))
+    seaPatch.get(row)[col] = found
+    membership[wound] = found
+    healed.push({ row, col, lat: cellLat(row), lon: cellLon(col), ordinal: found })
   }
-  let southless = 0
+
+  let iced = 0
   const northWounds = []
   for (let i = 0; i < COLS * ROWS; i++) {
     if (cells[i] || membership[i] === 0) continue
     const row = (i / COLS) | 0
-    const lat = 90 - (row + 0.5) * CELL_DEG
-    if (lat < -60) southless++
-    else northWounds.push(`(${lat.toFixed(2)}, ${(-180 + ((i - row * COLS) + 0.5) * CELL_DEG).toFixed(2)})`)
+    const col = i - row * COLS
+    if (inIce(cellLat(row), cellLon(col))) iced++
+    else northWounds.push(`(${cellLat(row).toFixed(2)}, ${cellLon(col).toFixed(2)})`)
   }
   if (northWounds.length > 0) {
     throw new Error(
-      `sea-membership on water this mask closes NORTH of 60°S (${northWounds.length} cell(s)) — ` +
-        `the two rasters disagree outside the Antarctic rule: ${northWounds.slice(0, 12).join(', ')}`,
+      `sea-membership on water this mask closes OUTSIDE every ICE closure (${northWounds.length} ` +
+        `cell(s)) — the two rasters disagree where no authored ice explains it: ${northWounds.slice(0, 12).join(', ')}`,
     )
   }
   console.log(
-    `  cross-check vs public.sea_cells (0040): every reachable navigable cell carries a sea; ` +
+    `  cross-check vs public.sea_cells (0040): every reachable navigable cell carries a sea ` +
+      `(${healed.length} newly opened cell(s) healed to the nearest sea by water); ` +
       `${pools} unreachable pool cell(s) carry none (Caspian and friends); ` +
-      `${southless} named-but-closed cell(s), all south of 60°S (the Antarctic pack rule)`,
+      `${iced} named-but-closed cell(s), every one inside an authored ICE closure`,
   )
+  for (const h of healed) {
+    console.log(`    healed (${h.lat.toFixed(3)}, ${h.lon.toFixed(3)}) → sea ordinal ${h.ordinal}`)
+  }
 }
 
 for (let i = 0; i < ports.length; i++) {
@@ -167,7 +232,7 @@ if (unreachable.length > 0) {
   throw new Error(`unreachable pairs (${unreachable.length}): ${unreachable.slice(0, 20).join(', ')}`)
 }
 
-// ── 4. The fixtures 0046 embeds for its own asserts ────────────────────────────────────────────
+// ── 4. The fixtures the migration embeds for its own asserts ───────────────────────────────────
 const byName = (...names) => {
   const p = ports.find((x) => names.includes(x.name))
   if (!p) throw new Error(`no port named ${names.join(' / ')}`)
@@ -181,10 +246,22 @@ const ADE = byName('Aden')
 const VER = byName('Veracruz')
 const ACA = byName('Acapulco')
 const BCN = byName('Barcelona')
+const BRS = byName('Bristol')
+const AMS = byName('Amsterdam')
 
 // A real proposed water path, as a client would send one: Lisbon→Cádiz round Cape St Vincent.
 const lisCad = findPath(nav, LIS, CAD)
 if (!lisCad) throw new Error('no Lisbon→Cádiz path — the raster is broken')
+// …and the course this migration exists to make possible: Bristol→Amsterdam, down the Bristol
+// Channel, round Land's End and up the Channel. Before the Severn opened, Bristol's own water lay
+// 64.8 nm away in Lyme Bay, so her measured approach allowance was ~90 nm and the pathfinder's
+// first leg was a STRAIGHT LINE from the quay across Somerset, Dorset and Hampshire to (50.63,
+// -0.13): 324.7 nm to Amsterdam over dry England (measured 2026-08-25).
+const brsAms = findPath(nav, BRS, AMS)
+if (!brsAms) throw new Error('no Bristol→Amsterdam path — the Severn channel is broken')
+const brsAmsNm = reaches.get(BRS.code).get(AMS.code)
+console.log(`  the Severn fix: ${BRS.code} snaps ${snapNm.get(BRS.code).toFixed(2)} nm to water; ` +
+            `${BRS.code}→${AMS.code} ${Math.round(brsAmsNm)} nm (the overland shortcut served 324.7)`)
 const lisNagNm = reaches.get(LIS.code).get(NAG.code)
 const alxAdeNm = reaches.get(ALX.code).get(ADE.code)
 const verAcaNm = reaches.get(VER.code).get(ACA.code)
@@ -202,6 +279,14 @@ const CONTROLS = [
   ['the Antarctic pack', -65, 0, 0],
   ['the South China Sea', 12, 112, 1],
   ['the Sahara', 23, 10, 0],
+  // The Severn: the channel Bristol sails, and the hills it must NOT spill into.
+  ['the Bristol Channel off Barry', 51.4, -3.1, 1],
+  ['the Severn approach at Bristol', 51.45, -2.6, 1],
+  ['the Welsh hills above the channel', 52.0, -3.5, 0],
+  // The Antarctic closure, pinned to the parallel from BOTH sides: the Southern Ocean at 59°S is
+  // open water the period's whalers and Horn traffic could be in; 61°S is pack ice.
+  ['the Southern Ocean at 59°S (open)', -59, 0, 1],
+  ['the pack at 61°S (closed)', -61, 0, 0],
 ]
 for (const [name, lat, lon, want] of CONTROLS) {
   const r = Math.min(ROWS - 1, Math.max(0, Math.floor((90 - lat) / CELL_DEG)))
@@ -222,98 +307,132 @@ const j = (x) => `'${JSON.stringify(x).replace(/'/g, "''")}'`
 
 const pathJson = (p) => p.map(([lat, lon]) => [Number(lat.toFixed(4)), Number(lon.toFixed(4))])
 
+// ── WHAT THIS RASTER CHANGES, measured against the one the chain is already serving ────────────
+// The applied chain includes the previous raster migration, so the bytes it seeded are readable
+// right here. Diffing them against what was just built is the only honest way to say "N cells
+// changed" — a number remembered from a probe would drift the first time anyone edited the sea.
+const applied = navFromServed(
+  (
+    await db.query(`select cols, rows, cell_deg::float8 as cell_deg, bits_per_cell,
+                           replace(encode(cells, 'base64'), e'\\n', '') as cells_base64
+                      from public.sea_raster where id = 1`)
+  ).rows[0],
+)
+let opened = 0
+let closed = 0
+for (let i = 0; i < COLS * ROWS; i++) {
+  if (cells[i] && !applied.cells[i]) opened++
+  else if (!cells[i] && applied.cells[i]) closed++
+}
+const appliedWater = applied.cells.reduce((n, c) => n + c, 0)
+const newWater = cells.reduce((n, c) => n + c, 0)
+console.log(`  raster diff vs the applied one: ${appliedWater} → ${newWater} water cells (+${opened} opened, -${closed} closed)`)
+
+// The seas by raster ordinal, so a healed cell can be asserted BY NAME rather than by byte.
+const seaNames = new Map(
+  (await db.query('select raster_ordinal, name from public.seas where raster_ordinal is not null')).rows
+    .map((r) => [Number(r.raster_ordinal), r.name]),
+)
+for (const h of healed) {
+  h.sea = seaNames.get(h.ordinal)
+  if (!h.sea) throw new Error(`healed cell (${h.lat}, ${h.lon}) took ordinal ${h.ordinal}, which names no sea`)
+}
+const b64Row = (bytes) => Buffer.from(bytes).toString('base64')
+
 w(`-- ═══════════════════════════════════════════════════════════════════════════════════════════════`)
-w(`-- 0046 — THE WATER KNOWS THE WAY`)
-w(`--        The navigable sea as ONE raster, the sailed distance between every pair of places`)
-w(`--        derived from it, and the two primitives every free passage stands on: MEASURE a`)
-w(`--        polyline, and REFUSE a polyline that touches land.`)
+w(`-- ${SHORT} — THE SEVERN IS WATER, AND THE PACK IS ONE RULE`)
+w(`--        Bristol stops sailing overland, and the Antarctic closure stops being a second`)
+w(`--        authority written in a generator.`)
 w(`-- ═══════════════════════════════════════════════════════════════════════════════════════════════`)
 w(`--`)
 w(`-- GENERATED by scripts/build-sea-migration.mjs — do not hand-edit. Change the sea (scripts/`)
 w(`-- sea-grid.mjs) or the ports and cut a NEW migration; an applied one is history.`)
 w(`--`)
-w(`-- ── WHY (docs/NAVIGATION_PLAN.md, approved by the owner) ───────────────────────────────────────`)
-w(`-- The game sailed a fixed graph of 782 precomputed legs, and the graph was measurably wrong:`)
-w(`-- it routed Lisboa→Nagasaki over the North Pole at 88.6°N for 7,565 nm where the honest path`)
-w(`-- is ${Math.round(lisNagNm).toLocaleString('en')} nm round the Cape of Good Hope. Every one of those numbers gated an endurance`)
-w(`-- check and priced a trade route. The owner, three times: "it should go by sea without the`)
-w(`-- fixed route — but fastest way possible." So the raster becomes the ONE source of what water`)
-w(`-- connects to what, and 0047 replaces the graph-bound mover with a free one.`)
+w(`-- ── WHAT THIS SUPERSEDES ───────────────────────────────────────────────────────────────────────`)
+w(`--   It SUPERSEDES THE DATA of 0046 (the water knows the way): public.sea_raster's one row is`)
+w(`--   rewritten and public.sea_reaches is replaced wholesale. 0046 stays exactly as it applied —`)
+w(`--   it is history, and editing it is the D23 defect.`)
+w(`--   It supersedes NO FUNCTION and re-cuts none. voyage.path_nm and voyage.path_refusal are`)
+w(`--   0046's and are untouched; voyage.sail_refusal belongs to 0050 now. A generator that`)
+w(`--   re-emitted the bodies it remembered would silently roll 0050 back, so this file emits data.`)
+w(`--   It also PATCHES ${seaPatch.size} row(s) of 0040's membership raster (public.sea_cells): the cells the`)
+w(`--   Severn opens were land when 0040 was cut, and land carries no sea name. Each one joins the`)
+w(`--   nearest named sea BY WATER — build-sea-raster.mjs's own rule for unnamed water, reused, not`)
+w(`--   re-invented — and each is asserted by name below. Two rasters that could disagree about`)
+w(`--   where the sea is would be the exact disease build-sea-raster's header names.`)
 w(`--`)
-w(`-- ── WHAT THIS FILE PUTS IN THE WORLD ───────────────────────────────────────────────────────────`)
-w(`--   public.sea_raster    ${COLS}×${ROWS} cells at ${CELL_DEG}°, a ${BITS}-bit PASSABILITY MASK per cell,`)
-w(`--                        packed LSB-first (get_bit numbering; cell i starts at bit i×${BITS}).`)
-w(`--                        Bit 0 SEA = sailable (land from Natural Earth; CHANNELS forced open;`)
-w(`--                        Arctic ICE closures; Antarctic pack south of 60°S). Bit 1 POLAR = the`)
-w(`--                        open polar margin (>66.5°N / <55°S) — DATA for the region and ice-`)
-w(`--                        capability systems to come; it gates nothing yet, and the migration`)
-w(`--                        that gives it a reader must say so. Passability is a property of`)
-w(`--                        (water, ship); ports keep max_draft, which answers BERTHING.`)
-w(`--   public.sea_reaches   one row per place: the SAILED nm to every other place, computed by`)
-w(`--                        the one pathfinder (src/lib/sea) over this very raster — Dijkstra`)
-w(`--                        flood per source, path straightened by line-of-sight, measured as`)
-w(`--                        the polyline's great-circle length. Plus snap_nm: how far the true`)
-w(`--                        harbour coordinate sits from sailable water (a river port's approach).`)
-w(`--   voyage.path_nm       THE measure of a polyline. The server never takes a client's distance.`)
-w(`--   voyage.path_refusal  THE water-legality of a polyline: every segment sampled at half-cell`)
-w(`--                        intervals against this raster, ends exempt only by a MEASURED approach`)
-w(`--                        allowance. Returns the refusal sentence, or null for legal water.`)
+w(`-- ── DEFECT 1: BRISTOL SAILED OVERLAND ──────────────────────────────────────────────────────────`)
+w(`--   docs/DEV_LOG.md D22 flagged it and left it for the mover's worktree: "Bristol still reads`)
+w(`--   english-channel at ring 4 … the honest fix is a Severn entry in sea-grid.mjs CHANNELS".`)
+w(`--   It was worse than a wrong label. The Severn estuary is narrower than a 0.25° cell above`)
+w(`--   Barry, so the whole Bristol Channel east of 4°W scan-filled as LAND, and Bristol's nearest`)
+w(`--   sailable water was Lyme Bay — 64.8 nm away, over Devon, on the other coast of England.`)
+w(`--   sea_reaches.snap_nm is what voyage.path_refusal grants a course as its head allowance, so`)
+w(`--   Bristol carried a ~90 nm land-exempt corridor and the pathfinder used it: measured`)
+w(`--   2026-08-25 on the old raster, BRS→AMS was 324.7 nm whose first leg ran STRAIGHT from the`)
+w(`--   quay to (50.63, -0.13) across Somerset, Dorset and Hampshire; BRS→DUB 179.5 nm ran straight`)
+w(`--   over the Welsh mountains. The owner's law (OWNER_REQUESTS row 41) is "i don't want the`)
+w(`--   fleet to ever touch land."`)
+w(`--   The Bristol Channel and the Avon are now a CHANNELS entry like the Thames and the Gironde —`)
+w(`--   real navigable water Bristol's ships worked to King Road and seven miles up to the quay.`)
+w(`--   MEASURED, this raster against the last one:`)
+w(`--     Bristol's snap        64.55 nm (Lyme Bay, English Channel)  →  ${snapNm.get(BRS.code).toFixed(2)} nm (her own cell)`)
+w(`--     the sea she answers   english-channel at ring 4             →  her own declared sea, at ring 0`)
+w(`--     BRS→AMS               324.7 nm over England                 →  ${Math.round(brsAmsNm).toLocaleString('en')} nm round Land's End`)
+w(`--     water cells           ${appliedWater.toLocaleString('en')}  →  ${newWater.toLocaleString('en')}  (+${opened} opened, -${closed} closed)`)
 w(`--`)
-w(`-- ── THE CANAL CONTROLS, printed on every run ───────────────────────────────────────────────────`)
-w(`--   There is no Suez and no Panama in 1550. Nothing encodes that: it falls out of the land.`)
-w(`--   ${ALX.name}→${ADE.name} ${Math.round(alxAdeNm).toLocaleString('en')} nm round the Cape; ${VER.name}→${ACA.name} ${Math.round(verAcaNm).toLocaleString('en')} nm round the Horn.`)
+w(`-- ── DEFECT 2: THE ANTARCTIC CLOSURE WAS A SECOND AUTHORITY ─────────────────────────────────────`)
+w(`--   scripts/sea-grid.mjs holds ICE, "the inverse authority of CHANNELS: named waters CLOSED by`)
+w(`--   hand", with a historical justification per closure. It could only express a NORTHERN`)
+w(`--   parallel, so the Antarctic pack lived in the generator instead as`)
+w(`--   \`if (cellLat(row) < -60) cells.fill(0, …)\`, and the generator's cross-check then repeated`)
+w(`--   the same −60 a third time to know which closed water was allowed to carry a sea name. One`)
+w(`--   concept, three statements (docs/NO_SPAGHETTI.md: one authority per concept).`)
+w(`--   ICE now takes \`latBelow\` beside \`latAbove\` and the Antarctic pack is a row in it. THE WATER`)
+w(`--   DID NOT MOVE: the closure is the same parallel and 0 cells differ from the old rule.`)
+w(`--   Why 60°S, from the dates and not from taste: the southernmost land seen by the end of this`)
+w(`--   game's century was South Georgia (54°S, 1675); the South Shetlands at 62°S were not sighted`)
+w(`--   until 1819, the Antarctic Circle not crossed until Cook in 1773, the continent not seen`)
+w(`--   until 1820. Everything the age of sail worked stays open and MEASURED UNCHANGED here:`)
+w(`--     Cape Horn and the Drake Passage   VER→ACA ${Math.round(verAcaNm).toLocaleString('en')} nm, rounding through 55.63°S`)
+w(`--     the Horn again, from the east     Buenos Aires→Callao 4,251.9 nm, also through 55.63°S`)
+w(`--     the Roaring Forties               Rio de Janeiro→Manila 9,919.0 nm, riding 43.9°S`)
+w(`--     the Cape of Good Hope             Cape Town→Jakarta 5,244.8 nm, Valparaiso→Cape Town 5,228.7 nm`)
+w(`--   Every one of those four is identical to 0.1 nm before and after. The closure is asserted`)
+w(`--   from BOTH sides below: 59°S open water, 61°S ice.`)
 w(`--`)
-w(`-- ── WHAT IT DELIBERATELY DOES NOT DO ───────────────────────────────────────────────────────────`)
-w(`--   * It does not touch public.legs or any mover — 0047 is the supersede; this file is data`)
-w(`--     and two pure functions, so the chain stays green between the two.`)
-w(`--   * It does not serve anything to a client — world.sea_raster() and the reach read arrive`)
-w(`--     with the mover that needs them (0047).`)
+w(`-- ── THE CONSEQUENCE, STATED FOR THE BALANCE SLICE ──────────────────────────────────────────────`)
+w(`--   Sailed distances price trade. ${opened} water cell(s) opened and ${closed} closed, so only routes THROUGH the Bristol`)
+w(`--   Channel move, and they move UP — Bristol was cheating. Bristol's reaches rise by 41 to 293 nm`)
+w(`--   on the short British and North Sea runs; nothing else in the table changes. The canal and`)
+w(`--   Arctic controls are unmoved: ${LIS.code}→${NAG.code} ${Math.round(lisNagNm).toLocaleString('en')} nm, ${ALX.code}→${ADE.code} ${Math.round(alxAdeNm).toLocaleString('en')} nm, ${VER.code}→${ACA.code} ${Math.round(verAcaNm).toLocaleString('en')} nm.`)
 w(`--`)
-w(`-- Depends on: 0001 (schemas), 0002 (ports, gc_distance_nm), 0003/0036/0041 (the port rows —`)
-w(`-- ten islands included), and 0040 (voyage.sea_at over public.sea_cells: the membership raster`)
-w(`-- this passability raster is cross-checked against, at generation over every reachable cell`)
-w(`-- and at apply on the named controls).`)
+w(`-- Depends on: 0002 (ports, seas, gc_distance_nm), 0040 (sea_cells, voyage.sea_at), 0046 (the two`)
+w(`-- tables and voyage.path_nm / voyage.path_refusal), and the port rows of 0003/0036/0041.`)
 w(`-- ═══════════════════════════════════════════════════════════════════════════════════════════════`)
 w()
-w(`-- ── The raster ─────────────────────────────────────────────────────────────────────────────────`)
-w(`create table if not exists public.sea_raster (`)
-w(`  id            int primary key default 1 check (id = 1),`)
-w(`  cols          int not null,`)
-w(`  rows          int not null,`)
-w(`  cell_deg      numeric not null,`)
-w(`  bits_per_cell int not null,`)
-w(`  -- a bits_per_cell-bit passability mask per cell, LSB-first: cell (row, col)'s mask starts at`)
-w(`  -- bit (row*cols+col)*bits_per_cell, exactly get_bit()'s numbering. Bit 0 = SEA (sailable);`)
-w(`  -- bit 1 = POLAR margin (no reader yet — see the header). Row 0 is the north edge (+90);`)
-w(`  -- col 0 is the antimeridian (−180).`)
-w(`  cells         bytea not null`)
-w(`);`)
+w(`-- ── The raster, superseding 0046's ─────────────────────────────────────────────────────────────`)
+w(`-- Same shape, same LSB-first packing, same two bits per cell (bit 0 SEA, bit 1 POLAR). An`)
+w(`-- UPDATE, not an insert: 0046's row is the one row, and this file rewrites what is in it.`)
+w(`update public.sea_raster`)
+w(`   set cols = ${COLS}, rows = ${ROWS}, cell_deg = ${CELL_DEG}, bits_per_cell = ${BITS},`)
+w(`       cells = decode('${b64}', 'base64')`)
+w(` where id = 1;`)
 w()
-// ONE literal, one line. The first cut chunked this into 2,880 concatenated 120-char literals
-// for readability, and PGlite's exec silently stopped mid-file on the expression — a several-
-// thousand-term || tree is a parser stress nobody needs. A single long token is boring and works.
-w(`insert into public.sea_raster (id, cols, rows, cell_deg, bits_per_cell, cells)`)
-w(`values (1, ${COLS}, ${ROWS}, ${CELL_DEG}, ${BITS}, decode('${b64}', 'base64'))`)
-w(`on conflict (id) do nothing;`)
-w()
-w(`-- ── The sailed distances ───────────────────────────────────────────────────────────────────────`)
-w(`create table if not exists public.sea_reaches (`)
-w(`  port_id uuid primary key references public.ports(id) on delete cascade,`)
-w(`  code    text not null unique,`)
-w(`  -- great-circle nm from the port's true coordinate to the nearest sailable cell: the river or`)
-w(`  -- estuary approach (Suez ${Math.round(snapNm.get(byName('Suez').code))} nm, Bristol ${Math.round(snapNm.get(byName('Bristol').code))} nm). INSIDE every reach figure below,`)
-w(`  -- because each path starts and ends at the true coordinate — never silently skipped again.`)
-w(`  snap_nm numeric not null,`)
-w(`  -- { other_code: sailed_nm } for every other place in the world. Symmetric by construction`)
-w(`  -- (one flood per pair, mirrored) and asserted below over the whole table.`)
-w(`  reaches jsonb not null`)
-w(`);`)
-w()
-w(`alter table public.sea_raster  enable row level security;`)
-w(`alter table public.sea_reaches enable row level security;`)
-w(`create policy sea_raster_read  on public.sea_raster  for select to authenticated using (true);`)
-w(`create policy sea_reaches_read on public.sea_reaches for select to authenticated using (true);`)
-w(`grant select on public.sea_raster, public.sea_reaches to authenticated;`)
+if (seaPatch.size > 0) {
+  w(`-- ── The membership patch (0040's public.sea_cells) ─────────────────────────────────────────────`)
+  for (const h of healed) {
+    w(`--   (${h.lat.toFixed(3)}, ${h.lon.toFixed(3)}) was land when 0040 was cut; it is water now and joins ${h.sea}.`)
+  }
+  for (const [row, bytes] of [...seaPatch.entries()].sort((a, b) => a[0] - b[0])) {
+    w(`update public.sea_cells set seas = decode('${b64Row(bytes)}', 'base64') where row_idx = ${row};`)
+  }
+  w()
+}
+w(`-- ── The sailed distances, superseding 0046's ───────────────────────────────────────────────────`)
+w(`-- Replaced whole rather than merged: every figure in the table comes from ONE flood over ONE`)
+w(`-- raster, and a half-updated table would be two authorities for one distance.`)
+w(`delete from public.sea_reaches;`)
 w()
 w(`insert into public.sea_reaches (port_id, code, snap_nm, reaches)`)
 w(`select p.id, v.code, v.snap_nm::numeric, v.reaches::jsonb`)
@@ -328,150 +447,7 @@ w(`  from (values`)
   w(rows.join(',\n'))
 }
 w(`  ) as v(code, snap_nm, reaches)`)
-w(`  join public.ports p on p.code = v.code`)
-w(`on conflict (port_id) do nothing;`)
-w()
-w(`-- ── THE MEASURE. The server never takes a client's word for a distance. ────────────────────────`)
-w(`create or replace function voyage.path_nm(p_path jsonb)`)
-w(`returns numeric`)
-w(`language sql`)
-w(`stable`)
-w(`security definer`)
-w(`set search_path = public, pg_temp`)
-w(`as $$`)
-w(`  -- The polyline's own great-circle length, segment by segment, via THE distance authority`)
-w(`  -- (voyage.gc_distance_nm, 0002). A path is [[lat, lon], …]; anything shorter than two points`)
-w(`  -- measures 0 and the refusal function is what rejects it as a shape.`)
-w(`  select coalesce(sum(voyage.gc_distance_nm(`)
-w(`           (a.value->>0)::float8, (a.value->>1)::float8,`)
-w(`           (b.value->>0)::float8, (b.value->>1)::float8)), 0)`)
-w(`    from jsonb_array_elements(p_path) with ordinality a(value, i)`)
-w(`    join jsonb_array_elements(p_path) with ordinality b(value, i) on b.i = a.i + 1`)
-w(`$$;`)
-w()
-w(`revoke all on function voyage.path_nm(jsonb) from public, anon, authenticated;`)
-w()
-w(`-- ── THE LAW. A polyline is legal exactly when every sample of it is sailable water. ────────────`)
-w(`create or replace function voyage.path_refusal(`)
-w(`  p_path jsonb,`)
-w(`  p_from_lat numeric, p_from_lon numeric,`)
-w(`  p_to_lat   numeric, p_to_lon   numeric,`)
-w(`  p_join_nm  numeric,      -- how far path[first]/path[last] may sit from the stated ends`)
-w(`  p_head_nm  numeric,      -- measured approach allowance at the origin (its snap + one cell)`)
-w(`  p_tail_nm  numeric       -- measured approach allowance at the destination`)
-w(`)`)
-w(`returns text`)
-w(`language plpgsql`)
-w(`stable`)
-w(`security definer`)
-w(`set search_path = public, pg_temp`)
-w(`as $$`)
-w(`-- Returns NULL for legal water, else the exact 'E_CODE: sentence' the mover raises. ONE reading`)
-w(`-- of "may a ship be here", shared by cmd.do_sail, cmd.divert and the land-guard proof — a second`)
-w(`-- sampler with a different step or allowance could disagree, which is the spaghetti this file`)
-w(`-- exists to prevent.`)
-w(`--`)
-w(`-- THE SAMPLING RULE: each segment is walked at half-cell steps (≤ ${(CELL_DEG * 60 * 0.5).toFixed(1)} nm), linearly in`)
-w(`-- lat/lon — the SAME interpolation voyage.position uses to place the ship, so the line judged`)
-w(`-- is the line sailed. Samples inside the head/tail allowance of the path's FIRST/LAST point are`)
-w(`-- exempt: a harbour sits ON the coast and its cell is usually land at this resolution; the`)
-w(`-- allowance is the MEASURED snap of that harbour (sea_reaches.snap_nm), never a fixed guess.`)
-w(`-- A segment jumping the antimeridian the long way (|Δlon| > 180) is refused: the pathfinder`)
-w(`-- never emits one, and linear interpolation across it would sample water it does not cross.`)
-w(`declare`)
-w(`  r        public.sea_raster%rowtype;`)
-w(`  v_n      int;`)
-w(`  v_prev   jsonb := null;`)
-w(`  v_seg    jsonb;`)
-w(`  v_i      int := 0;`)
-w(`  v_lat1   float8; v_lon1 float8; v_lat2 float8; v_lon2 float8;`)
-w(`  v_nm     float8;`)
-w(`  v_step   int;`)
-w(`  v_s      int;`)
-w(`  v_f      float8;`)
-w(`  v_lat    float8; v_lon float8;`)
-w(`  v_row    int; v_col int;`)
-w(`  v_done   float8 := 0;`)
-w(`  v_total  float8;`)
-w(`begin`)
-w(`  if p_path is null or jsonb_typeof(p_path) <> 'array' or jsonb_array_length(p_path) < 2 then`)
-w(`    return 'E_BAD_PATH: a course is a list of at least two [lat, lon] points';`)
-w(`  end if;`)
-w(`  select * into r from public.sea_raster where id = 1;`)
-w(`  v_n := jsonb_array_length(p_path);`)
-w()
-w(`  -- Every point is a finite coordinate on the sphere.`)
-w(`  for v_i in 0 .. v_n - 1 loop`)
-w(`    v_seg := p_path->v_i;`)
-w(`    if jsonb_typeof(v_seg) <> 'array' or jsonb_array_length(v_seg) <> 2`)
-w(`       or jsonb_typeof(v_seg->0) <> 'number' or jsonb_typeof(v_seg->1) <> 'number' then`)
-w(`      return 'E_BAD_PATH: point ' || v_i || ' is not a [lat, lon] pair';`)
-w(`    end if;`)
-w(`    if abs((v_seg->>0)::float8) > 90 or abs((v_seg->>1)::float8) > 180 then`)
-w(`      return 'E_BAD_PATH: point ' || v_i || ' is off the sphere';`)
-w(`    end if;`)
-w(`  end loop;`)
-w()
-w(`  -- The course must JOIN what it claims to join: its first point at the stated origin, its last`)
-w(`  -- at the stated destination, within p_join_nm. Without this a legal-water path from anywhere`)
-w(`  -- to anywhere could be attached to any order.`)
-w(`  if voyage.gc_distance_nm(p_from_lat::float8, p_from_lon::float8,`)
-w(`                           (p_path->0->>0)::float8, (p_path->0->>1)::float8) > p_join_nm then`)
-w(`    return format('E_OFF_COURSE: the course begins %s nm from where she lies',`)
-w(`      round(voyage.gc_distance_nm(p_from_lat::float8, p_from_lon::float8,`)
-w(`                                  (p_path->0->>0)::float8, (p_path->0->>1)::float8)::numeric, 1));`)
-w(`  end if;`)
-w(`  if voyage.gc_distance_nm(p_to_lat::float8, p_to_lon::float8,`)
-w(`                           (p_path->(v_n-1)->>0)::float8, (p_path->(v_n-1)->>1)::float8) > p_join_nm then`)
-w(`    return format('E_OFF_COURSE: the course ends %s nm short of the destination',`)
-w(`      round(voyage.gc_distance_nm(p_to_lat::float8, p_to_lon::float8,`)
-w(`                                  (p_path->(v_n-1)->>0)::float8, (p_path->(v_n-1)->>1)::float8)::numeric, 1));`)
-w(`  end if;`)
-w()
-w(`  v_total := voyage.path_nm(p_path)::float8;`)
-w(`  if v_total <= 0 then`)
-w(`    return 'E_BAD_PATH: the course has no length';`)
-w(`  end if;`)
-w()
-w(`  -- Sample every segment. v_done tracks nm already walked, so the head/tail allowances are`)
-w(`  -- against the whole path's ends, exactly as the client's own straightener applies them.`)
-w(`  for v_i in 0 .. v_n - 2 loop`)
-w(`    v_lat1 := (p_path->v_i->>0)::float8;     v_lon1 := (p_path->v_i->>1)::float8;`)
-w(`    v_lat2 := (p_path->(v_i+1)->>0)::float8; v_lon2 := (p_path->(v_i+1)->>1)::float8;`)
-w(`    if abs(v_lon2 - v_lon1) > 180 then`)
-w(`      return format('E_BAD_PATH: segment %s jumps the antimeridian the long way round', v_i);`)
-w(`    end if;`)
-w(`    v_nm := voyage.gc_distance_nm(v_lat1, v_lon1, v_lat2, v_lon2)::float8;`)
-w(`    v_step := greatest(2, ceil(v_nm / ${(CELL_DEG * 60 * 0.5).toFixed(2)})::int);`)
-w(`    for v_s in 1 .. v_step - 1 loop`)
-w(`      v_f := v_s::float8 / v_step;`)
-w(`      -- exempt only the measured approaches at the path's own two ends`)
-w(`      continue when v_done + v_f * v_nm < p_head_nm;`)
-w(`      continue when v_total - (v_done + v_f * v_nm) < p_tail_nm;`)
-w(`      v_lat := v_lat1 + (v_lat2 - v_lat1) * v_f;`)
-w(`      v_lon := v_lon1 + (v_lon2 - v_lon1) * v_f;`)
-w(`      v_row := least(${ROWS - 1}, greatest(0, floor((90 - v_lat) / ${CELL_DEG})::int));`)
-w(`      v_col := ((floor((v_lon + 180) / ${CELL_DEG})::int % ${COLS}) + ${COLS}) % ${COLS};`)
-w(`      if get_bit(r.cells, (v_row * ${COLS} + v_col) * r.bits_per_cell) = 0 then`)
-w(`        return format('E_LAND: the course touches land near %s°, %s° (segment %s)',`)
-w(`                      round(v_lat::numeric, 2), round(v_lon::numeric, 2), v_i);`)
-w(`      end if;`)
-w(`    end loop;`)
-w(`    v_done := v_done + v_nm;`)
-w(`  end loop;`)
-w(`  return null;`)
-w(`end $$;`)
-w()
-w(`revoke all on function voyage.path_refusal(jsonb, numeric, numeric, numeric, numeric, numeric, numeric, numeric) from public, anon, authenticated;`)
-w()
-w(`comment on function voyage.path_refusal(jsonb, numeric, numeric, numeric, numeric, numeric, numeric, numeric) is`)
-w(`  'THE water-legality of a proposed course (0046): shape, endpoint joins, and every segment '`)
-w(`  'sampled at half-cell intervals against public.sea_raster. NULL means legal water; anything '`)
-w(`  'else is the E_ sentence the mover raises. One sampler for do_sail, divert and the land guard.';`)
-w()
-w(`comment on function voyage.path_nm(jsonb) is`)
-w(`  'THE measure of a course (0046): the polyline''s own great-circle length. The server never '`)
-w(`  'takes a client''s word for a distance — it measures.';`)
+w(`  join public.ports p on p.code = v.code;`)
 w()
 w(`-- ── SELF-ASSERT ────────────────────────────────────────────────────────────────────────────────`)
 w(`do $$`)
@@ -482,21 +458,26 @@ w(`  v_bad      int;`)
 w(`  v_ports    int;`)
 w(`  v_nm       numeric;`)
 w(`  v_ref      text;`)
+w(`  v_snap     numeric;`)
 w(`  v_lis_cad  constant jsonb := ${j(pathJson(lisCad.path))}::jsonb;`)
+w(`  v_brs_ams  constant jsonb := ${j(pathJson(brsAms.path))}::jsonb;`)
+w(`  -- the course the OLD raster served: Bristol straight across southern England to the Channel,`)
+w(`  -- then on to Amsterdam. It must now be refused as land.`)
+w(`  v_overland constant jsonb := ${j([[BRS.lat, BRS.lon], [50.63, -0.13], [50.63, 0.63], [AMS.lat, AMS.lon]])}::jsonb;`)
 w(`begin`)
-w(`  -- (a) THE RASTER IS THERE AND THE BIT ORDER IS THE ONE THE CLIENT PACKS. Eight control cells,`)
+w(`  -- (a) THE RASTER IS THERE AND THE BIT ORDER IS THE ONE THE CLIENT PACKS. ${CONTROLS.length} control cells,`)
 w(`  --     each a named piece of the world, asserted through get_bit — the same read the sampler`)
-w(`  --     uses. A packing that shifted one bit would fail all eight.`)
+w(`  --     uses. A packing that shifted one bit would fail all of them.`)
 w(`  select * into r from public.sea_raster where id = 1;`)
 w(`  if r.cols <> ${COLS} or r.rows <> ${ROWS} or r.bits_per_cell <> ${BITS} or octet_length(r.cells) <> ${packed.length} then`)
-w(`    raise exception '0046 self-assert FAIL: the raster is % x % at % bit(s) with % bytes — expected ${COLS} x ${ROWS} at ${BITS} with ${packed.length}', r.cols, r.rows, r.bits_per_cell, octet_length(r.cells);`)
+w(`    raise exception '${SHORT} self-assert FAIL: the raster is % x % at % bit(s) with % bytes — expected ${COLS} x ${ROWS} at ${BITS} with ${packed.length}', r.cols, r.rows, r.bits_per_cell, octet_length(r.cells);`)
 w(`  end if;`)
 for (const [name, lat, lon, want] of CONTROLS) {
   const row = Math.min(ROWS - 1, Math.max(0, Math.floor((90 - lat) / CELL_DEG)))
   const col = ((Math.floor((lon + 180) / CELL_DEG) % COLS) + COLS) % COLS
   const bit = (row * COLS + col) * BITS
   w(`  if get_bit(r.cells, ${bit}) <> ${want} then`)
-  w(`    raise exception '0046 self-assert FAIL: ${name} (${lat}, ${lon}) reads %, expected ${want}', get_bit(r.cells, ${bit});`)
+  w(`    raise exception '${SHORT} self-assert FAIL: ${name} (${lat}, ${lon}) reads %, expected ${want}', get_bit(r.cells, ${bit});`)
   w(`  end if;`)
 }
 // …and the POLAR bit, both ways: set on the Barents road, clear on the mid-Atlantic. A packing
@@ -508,30 +489,43 @@ for (const [name, lat, lon, want] of CONTROLS) {
     return (row * COLS + col) * BITS
   }
   w(`  if get_bit(r.cells, ${cellBit(70, 40) + 1}) <> 1 then`)
-  w(`    raise exception '0046 self-assert FAIL: the Barents Sea does not carry the POLAR mark';`)
+  w(`    raise exception '${SHORT} self-assert FAIL: the Barents Sea does not carry the POLAR mark';`)
   w(`  end if;`)
   w(`  if get_bit(r.cells, ${cellBit(30, -40) + 1}) <> 0 then`)
-  w(`    raise exception '0046 self-assert FAIL: the mid-Atlantic carries a POLAR mark it must not';`)
+  w(`    raise exception '${SHORT} self-assert FAIL: the mid-Atlantic carries a POLAR mark it must not';`)
   w(`  end if;`)
   w(`  if get_bit(r.cells, ${cellBit(-57.5, -65) + 1}) <> 1 or get_bit(r.cells, ${cellBit(-57.5, -65)}) <> 1 then`)
-  w(`    raise exception '0046 self-assert FAIL: the Drake Passage fringe should be open POLAR water';`)
+  w(`    raise exception '${SHORT} self-assert FAIL: the Drake Passage fringe should be open POLAR water';`)
   w(`  end if;`)
 }
 w()
-w(`  -- (a2) THE TWO RASTERS AGREE AT THE CONTROLS: every sailable control cell answers a sea`)
-w(`  --      through voyage.sea_at (0040) — one authority composed, so a database where the`)
-w(`  --      membership and passability rasters drifted apart cannot apply this file.`)
+w(`  -- (a2) THE TWO RASTERS AGREE: every sailable control cell answers a sea through voyage.sea_at`)
+w(`  --      (0040), and so does every cell the Severn newly opened — by NAME, so a heal that took`)
+w(`  --      the wrong neighbour is a red apply and not a quiet relabelling of somebody's water.`)
 w(`  if voyage.sea_at(30, -40) is null then`)
-w(`    raise exception '0046 self-assert FAIL: the mid-Atlantic (30, -40) is sailable here but answers NO sea through voyage.sea_at (0040) — the two rasters have drifted apart';`)
+w(`    raise exception '${SHORT} self-assert FAIL: the mid-Atlantic (30, -40) is sailable here but answers NO sea through voyage.sea_at (0040) — the two rasters have drifted apart';`)
 w(`  end if;`)
 w(`  if voyage.sea_at(41, 29) is null then`)
-w(`    raise exception '0046 self-assert FAIL: the Bosphorus channel (41, 29) is sailable here but answers NO sea through voyage.sea_at (0040) — the two rasters have drifted apart';`)
+w(`    raise exception '${SHORT} self-assert FAIL: the Bosphorus channel (41, 29) is sailable here but answers NO sea through voyage.sea_at (0040) — the two rasters have drifted apart';`)
 w(`  end if;`)
 w(`  if voyage.sea_at(70, 40) is null then`)
-w(`    raise exception '0046 self-assert FAIL: the Barents Sea (70, 40) is sailable here but answers NO sea through voyage.sea_at (0040) — the two rasters have drifted apart';`)
+w(`    raise exception '${SHORT} self-assert FAIL: the Barents Sea (70, 40) is sailable here but answers NO sea through voyage.sea_at (0040) — the two rasters have drifted apart';`)
 w(`  end if;`)
 w(`  if voyage.sea_at(12, 112) is null then`)
-w(`    raise exception '0046 self-assert FAIL: the South China Sea (12, 112) is sailable here but answers NO sea through voyage.sea_at (0040) — the two rasters have drifted apart';`)
+w(`    raise exception '${SHORT} self-assert FAIL: the South China Sea (12, 112) is sailable here but answers NO sea through voyage.sea_at (0040) — the two rasters have drifted apart';`)
+w(`  end if;`)
+for (const h of healed) {
+  w(`  if voyage.sea_at(${h.lat}, ${h.lon}) is distinct from (select id from public.seas where name = ${q(h.sea)}) then`)
+  w(`    raise exception '${SHORT} self-assert FAIL: the newly opened cell (${h.lat}, ${h.lon}) should answer ${h.sea.replace(/'/g, "''")}, got [%]', coalesce((select name from public.seas where id = voyage.sea_at(${h.lat}, ${h.lon})), 'null');`)
+  w(`  end if;`)
+}
+w()
+w(`  -- (a3) BRISTOL ANSWERS HER OWN DECLARED SEA, AT HER OWN COORDINATE. Before this file her cell`)
+w(`  --      was land and the ring search walked four rings across Devon to the English Channel.`)
+w(`  if voyage.sea_at(${BRS.lat}, ${BRS.lon}) is distinct from (select sea_id from public.ports where code = ${q(BRS.code)}) then`)
+w(`    raise exception '${SHORT} self-assert FAIL: Bristol (${BRS.lat}, ${BRS.lon}) answers [%] and not her declared sea [%]',`)
+w(`      coalesce((select name from public.seas where id = voyage.sea_at(${BRS.lat}, ${BRS.lon})), 'null'),`)
+w(`      (select s.name from public.ports p join public.seas s on s.id = p.sea_id where p.code = ${q(BRS.code)});`)
 w(`  end if;`)
 w()
 w(`  -- (b) EVERY PLACE HAS A REACH ROW, AND EVERY ROW REACHES EVERY OTHER PLACE. Non-vacuous by`)
@@ -539,27 +533,25 @@ w(`  --     the counts themselves: the world cannot hold an island nobody can sa
 w(`  select count(*) into v_ports from public.ports;`)
 w(`  select count(*) into v_n from public.sea_reaches;`)
 w(`  if v_n <> v_ports or v_n < 2 then`)
-w(`    raise exception '0046 self-assert FAIL: % reach row(s) for % port(s)', v_n, v_ports;`)
+w(`    raise exception '${SHORT} self-assert FAIL: % reach row(s) for % port(s)', v_n, v_ports;`)
 w(`  end if;`)
 w(`  select count(*) into v_bad from public.sea_reaches sr`)
 w(`   where (select count(*) from jsonb_object_keys(sr.reaches)) <> v_ports - 1;`)
 w(`  if v_bad <> 0 then`)
-w(`    raise exception '0046 self-assert FAIL: % place(s) do not reach every other place', v_bad;`)
+w(`    raise exception '${SHORT} self-assert FAIL: % place(s) do not reach every other place', v_bad;`)
 w(`  end if;`)
 w()
-w(`  -- (c) THE TABLE IS SYMMETRIC — the whole crosswalk, not a sample. a→b and b→a are one flood,`)
-w(`  --     mirrored at generation; a divergence would mean two authorities for one distance.`)
+w(`  -- (c) THE TABLE IS SYMMETRIC — the whole crosswalk, not a sample.`)
 w(`  select count(*) into v_bad`)
 w(`    from public.sea_reaches a`)
 w(`   cross join lateral jsonb_each_text(a.reaches) e(code, nm)`)
 w(`    join public.sea_reaches b on b.code = e.code`)
 w(`   where (b.reaches->>a.code)::numeric is distinct from e.nm::numeric;`)
 w(`  if v_bad <> 0 then`)
-w(`    raise exception '0046 self-assert FAIL: % asymmetric pair reading(s)', v_bad;`)
+w(`    raise exception '${SHORT} self-assert FAIL: % asymmetric pair reading(s)', v_bad;`)
 w(`  end if;`)
 w()
-w(`  -- (d) NO SAILED DISTANCE IS SHORTER THAN THE GREAT CIRCLE. The whole table against the one`)
-w(`  --     distance authority (0002), with a half-percent tolerance for the endpoint snap.`)
+w(`  -- (d) NO SAILED DISTANCE IS SHORTER THAN THE GREAT CIRCLE.`)
 w(`  select count(*) into v_bad`)
 w(`    from public.sea_reaches a`)
 w(`   cross join lateral jsonb_each_text(a.reaches) e(code, nm)`)
@@ -568,77 +560,111 @@ w(`    join public.ports pb on pb.code = e.code`)
 w(`   where a.code < e.code`)
 w(`     and e.nm::numeric < voyage.gc_distance_nm(pa.lat::float8, pa.lon::float8, pb.lat::float8, pb.lon::float8) * 0.995;`)
 w(`  if v_bad <> 0 then`)
-w(`    raise exception '0046 self-assert FAIL: % pair(s) sail shorter than the great circle', v_bad;`)
+w(`    raise exception '${SHORT} self-assert FAIL: % pair(s) sail shorter than the great circle', v_bad;`)
 w(`  end if;`)
 w()
-w(`  -- (e) THE ARCTIC FIX AND THE CANAL CONTROLS — the three worldly facts this migration exists`)
-w(`  --     to make true, asserted as RULES about the served numbers, not as seeds.`)
+w(`  -- (e) THE ARCTIC FIX AND THE CANAL CONTROLS — 0046's three worldly facts, still true.`)
 w(`  v_nm := (select (reaches->>${q(NAG.code)})::numeric from public.sea_reaches where code = ${q(LIS.code)});`)
 w(`  if v_nm is null or v_nm < 12000 then`)
-w(`    raise exception '0046 self-assert FAIL: ${LIS.code}→${NAG.code} is % nm — under 12,000 means the Arctic is open again (the leg graph served 7,565 over the pole)', v_nm;`)
+w(`    raise exception '${SHORT} self-assert FAIL: ${LIS.code}→${NAG.code} is % nm — under 12,000 means the Arctic is open again (the leg graph served 7,565 over the pole)', v_nm;`)
 w(`  end if;`)
 w(`  if (select (reaches->>${q(ADE.code)})::numeric from public.sea_reaches where code = ${q(ALX.code)}) < 9000 then`)
-w(`    raise exception '0046 self-assert FAIL: ${ALX.code}→${ADE.code} under 9,000 nm — a Suez Canal three centuries early';`)
+w(`    raise exception '${SHORT} self-assert FAIL: ${ALX.code}→${ADE.code} under 9,000 nm — a Suez Canal three centuries early';`)
 w(`  end if;`)
 w(`  if (select (reaches->>${q(ACA.code)})::numeric from public.sea_reaches where code = ${q(VER.code)}) < 9000 then`)
-w(`    raise exception '0046 self-assert FAIL: ${VER.code}→${ACA.code} under 9,000 nm — a Panama Canal three centuries early';`)
+w(`    raise exception '${SHORT} self-assert FAIL: ${VER.code}→${ACA.code} under 9,000 nm — a Panama Canal three centuries early';`)
 w(`  end if;`)
 w()
-w(`  -- (f) THE MEASURE: a real proposed course (Lisbon→Cádiz round Cape St Vincent, produced by`)
-w(`  --     the one pathfinder at generation time) measures what the table says it measures, and`)
-w(`  --     LONGER than the straight line — the cape is the whole point.`)
+w(`  -- (f) THE SEVERN, AS A RULE ABOUT THE SERVED NUMBERS. Bristol's approach is a river approach`)
+w(`  --     now, not a walk across a peninsula, and the North Sea run is the long way round because`)
+w(`  --     there is no short way.`)
+w(`  select snap_nm into v_snap from public.sea_reaches where code = ${q(BRS.code)};`)
+w(`  if v_snap is null or v_snap > 20 then`)
+w(`    raise exception '${SHORT} self-assert FAIL: Bristol snaps % nm to sailable water — over 20 means the Severn is land again and her courses get that much of a land-exempt head allowance (it was 64.55 nm to Lyme Bay)', v_snap;`)
+w(`  end if;`)
+w(`  v_nm := (select (reaches->>${q(AMS.code)})::numeric from public.sea_reaches where code = ${q(BRS.code)});`)
+w(`  if v_nm is null or v_nm < 500 then`)
+w(`    raise exception '${SHORT} self-assert FAIL: ${BRS.code}→${AMS.code} is % nm — under 500 means the overland shortcut across southern England is back (it served 324.7)', v_nm;`)
+w(`  end if;`)
+w()
+w(`  -- (g) THE MEASURE AND THE LAW. The positive controls first: two real water courses produced by`)
+w(`  --     the one pathfinder at generation time measure what the table says and are ACCEPTED…`)
 w(`  v_nm := voyage.path_nm(v_lis_cad);`)
 w(`  if abs(v_nm - ${lisCad.nm.toFixed(1)}) > ${(lisCad.nm * 0.005).toFixed(1)} then`)
-w(`    raise exception '0046 self-assert FAIL: the embedded Lisbon→Cádiz course measures % nm, generation measured ${lisCad.nm.toFixed(1)}', v_nm;`)
+w(`    raise exception '${SHORT} self-assert FAIL: the embedded Lisbon→Cádiz course measures % nm, generation measured ${lisCad.nm.toFixed(1)}', v_nm;`)
 w(`  end if;`)
 w(`  if v_nm <= voyage.gc_distance_nm(${LIS.lat}, ${LIS.lon}, ${CAD.lat}, ${CAD.lon}) then`)
-w(`    raise exception '0046 self-assert FAIL: the sailed Lisbon→Cádiz course is not longer than the straight line — Cape St Vincent has gone missing';`)
+w(`    raise exception '${SHORT} self-assert FAIL: the sailed Lisbon→Cádiz course is not longer than the straight line — Cape St Vincent has gone missing';`)
 w(`  end if;`)
-w()
-w(`  -- (g) THE LAW, both ways — the positive control FIRST: the real water course is accepted…`)
 w(`  v_ref := voyage.path_refusal(v_lis_cad, ${LIS.lat}, ${LIS.lon}, ${CAD.lat}, ${CAD.lon}, 15,`)
 w(`             (select snap_nm from public.sea_reaches where code = ${q(LIS.code)}) + 25,`)
 w(`             (select snap_nm from public.sea_reaches where code = ${q(CAD.code)}) + 25);`)
 w(`  if v_ref is not null then`)
-w(`    raise exception '0046 self-assert FAIL: the real Lisbon→Cádiz water course was refused: %', v_ref;`)
+w(`    raise exception '${SHORT} self-assert FAIL: the real Lisbon→Cádiz water course was refused: %', v_ref;`)
 w(`  end if;`)
-w(`  -- …and the straight line Lisbon→Barcelona, which crosses the whole of Iberia, is REFUSED as`)
-w(`  -- land. This is the non-vacuity proof the never-touch-land law demands (OWNER_REQUESTS 41):`)
-w(`  -- a sampler that cannot catch a line across a continent is decoration.`)
+w(`  v_ref := voyage.path_refusal(v_brs_ams, ${BRS.lat}, ${BRS.lon}, ${AMS.lat}, ${AMS.lon}, 15,`)
+w(`             (select snap_nm from public.sea_reaches where code = ${q(BRS.code)}) + 25,`)
+w(`             (select snap_nm from public.sea_reaches where code = ${q(AMS.code)}) + 25);`)
+w(`  if v_ref is not null then`)
+w(`    raise exception '${SHORT} self-assert FAIL: the real Bristol→Amsterdam course down the Bristol Channel was refused: %', v_ref;`)
+w(`  end if;`)
+w(`  -- …and now the two negative controls. The course the OLD raster served — Bristol straight`)
+w(`  -- across Somerset, Dorset and Hampshire — must be REFUSED as land WITH BRISTOL'S OWN allowance.`)
+w(`  -- That is the whole defect, asserted: it was legal only because her snap bought 90 nm of`)
+w(`  -- exemption, and a raster that closed the Severn again would let it through.`)
+w(`  v_ref := voyage.path_refusal(v_overland, ${BRS.lat}, ${BRS.lon}, ${AMS.lat}, ${AMS.lon}, 15,`)
+w(`             (select snap_nm from public.sea_reaches where code = ${q(BRS.code)}) + 25,`)
+w(`             (select snap_nm from public.sea_reaches where code = ${q(AMS.code)}) + 25);`)
+w(`  if v_ref is null or v_ref not like 'E_LAND:%' then`)
+w(`    raise exception '${SHORT} self-assert FAIL: the old overland Bristol→Amsterdam course was NOT refused as land (got [%])', coalesce(v_ref, 'null');`)
+w(`  end if;`)
+w(`  -- the straight line Lisbon→Barcelona across the whole of Iberia, 0046's own non-vacuity control`)
 w(`  v_ref := voyage.path_refusal(`)
 w(`             jsonb_build_array(jsonb_build_array(${LIS.lat}, ${LIS.lon}), jsonb_build_array(${BCN.lat}, ${BCN.lon})),`)
 w(`             ${LIS.lat}, ${LIS.lon}, ${BCN.lat}, ${BCN.lon}, 15, 40, 40);`)
 w(`  if v_ref is null or v_ref not like 'E_LAND:%' then`)
-w(`    raise exception '0046 self-assert FAIL: a straight Lisbon→Barcelona line across Iberia was NOT refused as land (got [%])', coalesce(v_ref, 'null');`)
+w(`    raise exception '${SHORT} self-assert FAIL: a straight Lisbon→Barcelona line across Iberia was NOT refused as land (got [%])', coalesce(v_ref, 'null');`)
 w(`  end if;`)
 w(`  -- a course that joins the wrong ends is refused as itself, not as land`)
 w(`  v_ref := voyage.path_refusal(v_lis_cad, ${CAD.lat}, ${CAD.lon}, ${LIS.lat}, ${LIS.lon}, 15, 40, 40);`)
 w(`  if v_ref is null or v_ref not like 'E_OFF_COURSE:%' then`)
-w(`    raise exception '0046 self-assert FAIL: a course starting 250 nm from the stated origin was not refused E_OFF_COURSE (got [%])', coalesce(v_ref, 'null');`)
+w(`    raise exception '${SHORT} self-assert FAIL: a course starting 250 nm from the stated origin was not refused E_OFF_COURSE (got [%])', coalesce(v_ref, 'null');`)
 w(`  end if;`)
 w(`  -- and a non-course is refused as a shape`)
 w(`  if voyage.path_refusal('[[1,2]]'::jsonb, 0, 0, 0, 0, 15, 0, 0) not like 'E_BAD_PATH:%' then`)
-w(`    raise exception '0046 self-assert FAIL: a one-point course was not refused E_BAD_PATH';`)
+w(`    raise exception '${SHORT} self-assert FAIL: a one-point course was not refused E_BAD_PATH';`)
 w(`  end if;`)
 w()
-w(`  -- (h) the posture: world data readable, the two functions server-only`)
+w(`  -- (h) the posture is 0046's, unchanged: world data readable, the two functions server-only`)
 w(`  if not has_table_privilege('authenticated', 'public.sea_reaches', 'select')`)
 w(`     or has_function_privilege('anon', 'voyage.path_refusal(jsonb, numeric, numeric, numeric, numeric, numeric, numeric, numeric)', 'execute')`)
 w(`     or has_function_privilege('authenticated', 'voyage.path_nm(jsonb)', 'execute')`)
 w(`     or (select count(*) from public.client_write_grants()) <> 0 then`)
-w(`    raise exception '0046 self-assert FAIL: the grant posture is wrong';`)
+w(`    raise exception '${SHORT} self-assert FAIL: the grant posture is wrong';`)
 w(`  end if;`)
 w()
-w(`  raise notice '0046 self-assert ok: the sea is one raster (${COLS}x${ROWS}, % bytes, 8 named control cells read back through get_bit), every one of % places reaches every other with a symmetric sailed distance never under the great circle; the Arctic is closed (${LIS.code}→${NAG.code} % nm where the leg graph served 7,565 over the pole) and there is no Suez and no Panama (${ALX.code}→${ADE.code} ${Math.round(alxAdeNm)} nm, ${VER.code}→${ACA.code} ${Math.round(verAcaNm)} nm); the measure prices the embedded Lisbon→Cádiz course at % nm (the straight line is %), the law accepted that course and REFUSED a straight Lisbon→Barcelona line across Iberia as E_LAND, a mis-joined course as E_OFF_COURSE and a one-point course as E_BAD_PATH; 0 client write grants',`)
-w(`    octet_length(r.cells), v_ports,`)
-w(`    (select (reaches->>${q(NAG.code)})::numeric from public.sea_reaches where code = ${q(LIS.code)}),`)
-w(`    round(voyage.path_nm(v_lis_cad), 1),`)
-w(`    round(voyage.gc_distance_nm(${LIS.lat}, ${LIS.lon}, ${CAD.lat}, ${CAD.lon})::numeric, 1);`)
+w(`  raise notice '${SHORT} self-assert ok: the sea is one raster (${COLS}x${ROWS}, % bytes, ${CONTROLS.length} named control cells read back through get_bit, the Antarctic closure pinned open at 59S and shut at 61S); the Severn is water, so Bristol snaps % nm instead of 64.55 to Lyme Bay, answers her own declared sea at ring 0, and sails % nm to ${AMS.name} round Land''s End where the overland course served 324.7 — that course is now refused as E_LAND with her own allowance; every one of % places reaches every other with a symmetric sailed distance never under the great circle; the Arctic stays closed (${LIS.code}→${NAG.code} % nm) and there is still no Suez and no Panama (${ALX.code}→${ADE.code} ${Math.round(alxAdeNm)} nm, ${VER.code}→${ACA.code} ${Math.round(verAcaNm)} nm); ${healed.length} newly opened cell(s) answer their sea by name; 0 client write grants',`)
+w(`    octet_length(r.cells),`)
+w(`    (select round(snap_nm, 2) from public.sea_reaches where code = ${q(BRS.code)}),`)
+w(`    (select (reaches->>${q(AMS.code)})::numeric from public.sea_reaches where code = ${q(BRS.code)}),`)
+w(`    v_ports,`)
+w(`    (select (reaches->>${q(NAG.code)})::numeric from public.sea_reaches where code = ${q(LIS.code)});`)
 w(`end $$;`)
 w()
 
 const sql = lines.join('\n')
 if (sql.includes('\r')) throw new Error('CR found in generated SQL — refuse to emit')
+// NEVER OVERWRITE A MIGRATION THAT IS ALREADY ON DISK. Once a file is in the chain it has applied
+// somewhere, and rewriting it in place is the D23 defect. The next sea change moves MIGRATION to a
+// new version; the emitted SQL is already a supersede (it UPDATEs the raster and replaces the
+// reach table), so nothing else has to change.
+if (existsSync(OUT)) {
+  throw new Error(
+    `${OUT} already exists — refusing to rewrite a migration in the chain (supabase/migrations/` +
+      `README.md §1: never edit an applied migration). Move the MIGRATION constant at the top of ` +
+      `this file to the next version and run again.`,
+  )
+}
 writeFileSync(OUT, sql, 'utf8')
 console.log(`\nwrote ${OUT} — ${(sql.length / 1024).toFixed(0)} KiB`)
 await db.close()

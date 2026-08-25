@@ -73,6 +73,13 @@ export const CHANNELS = [
   { id: 'saint-lawrence', name: 'the River of Saint Lawrence', points: [[49.2, -64.5], [49.0, -65.5], [48.8, -66.5], [48.6, -67.6], [48.3, -68.8], [47.9, -69.6], [47.4, -70.2], [46.9, -70.9], [46.8, -71.2]] },
   { id: 'gironde', name: 'the Gironde and the Loire', points: [[45.6, -1.3], [45.4, -1.0], [45.0, -0.7], [44.9, -0.6], [47.2, -2.4], [47.3, -2.1], [47.2, -1.7]] },
   { id: 'thames-scheldt', name: 'the Thames and the Scheldt', points: [[51.5, 1.4], [51.5, 0.8], [51.5, 0.2], [51.5, -0.1], [51.6, 3.4], [51.4, 3.6], [51.3, 4.0], [51.2, 4.4]] },
+  // Without this, Bristol's nearest raster water is LYME BAY — 64.8 nm away, on the far side of
+  // Devon, in the English Channel (measured 2026-08-25; DEV_LOG D22 logged the same 65 nm snap and
+  // flagged the fix for this worktree). The Severn estuary narrows below one cell above Barry, so
+  // the whole Bristol Channel east of 4°W scan-fills as land and John Cabot's home port answers
+  // the wrong sea from the wrong side of a peninsula. The water is real and was sailed: square
+  // riggers worked the channel to King Road and warped seven miles up the Avon to the quay.
+  { id: 'severn', name: 'the Bristol Channel and the Avon', points: [[51.4, -4.1], [51.4, -3.6], [51.4, -3.1], [51.5, -2.8], [51.5, -2.7], [51.45, -2.6]] },
   { id: 'elbe-weser', name: 'the Elbe and the Weser', points: [[54.0, 8.2], [53.9, 8.7], [53.7, 9.2], [53.5, 9.9], [53.5, 8.6], [53.2, 8.5]] },
   { id: 'guadalquivir', name: 'the Guadalquivir', points: [[36.8, -6.4], [37.0, -6.3], [37.2, -6.1], [37.4, -6.0]] },
   { id: 'pearl-river', name: 'the Pearl River', points: [[22.0, 114.0], [22.3, 113.8], [22.7, 113.6], [23.1, 113.3]] },
@@ -93,13 +100,61 @@ export const CHANNELS = [
 // Nordenskiöld in 1878-79. So these waters are ice, whatever the season:
 //   * the Siberian arctic east of Novaya Zemlya — the Kara, Laptev, East Siberian and Chukchi seas;
 //   * the Canadian arctic and northern Baffin Bay — the Northwest Passage, probed at its mouth by
-//     Frobisher and Davis in the 1570s-80s and not forced until Amundsen in 1903-06.
+//     Frobisher and Davis in the 1570s-80s and not forced until Amundsen in 1903-06;
+//   * the Antarctic pack, south of 60°S, the whole way round — see that entry's own note.
 // The Barents Sea and the White Sea road to Arkhangelsk stay open (the Muscovy Company sailed them
 // from 1553), as do Svalbard's whaling grounds and the Davis Strait up to Nuuk.
+//
+// A closure names ONE parallel and the longitudes it spans. `latAbove` closes everything poleward
+// of that parallel to the NORTH; `latBelow` everything poleward of it to the SOUTH. Exactly one of
+// the two, so a closure always has a side. The southern form used to be a `cells.fill(0)` loop of
+// its own inside scripts/build-sea-migration.mjs — the same concept said twice, in two files, one
+// of them a generator, which is the second authority docs/NO_SPAGHETTI.md forbids. Since
+// 2026-08-25 it is an ICE row like any other and the generator reads THIS list for both poles.
 export const ICE = [
   { id: 'northeast-passage', name: 'the Siberian arctic', latAbove: 66.5, lonFrom: 60, lonTo: 180 },
   { id: 'northwest-passage', name: 'the Canadian arctic', latAbove: 66.5, lonFrom: -180, lonTo: -60 },
+  // 60°S is where the period stops, and the dates are the argument, not the taste. The
+  // southernmost land anyone had seen by the end of this game's century was South Georgia (54°S,
+  // Antonio de la Roché, 1675); the South Shetlands at 62°S were not sighted until William Smith
+  // in 1819, the Antarctic Circle not crossed until Cook in 1773, the continent itself not seen
+  // until 1820. Everything the age of sail actually worked lies north of this line and stays open:
+  // Cape Horn at 55.98°S and the Drake Passage under it — Veracruz→Acapulco and Buenos Aires→
+  // Callao both round it through 55.63°S, measured 2026-08-25, unchanged by this closure; the
+  // Roaring Forties and Furious Fifties of the Brouwer route, which Rio de Janeiro→Manila rides
+  // at 43.9°S; and the sub-Antarctic sealing and whaling grounds about South Georgia. South of
+  // 60°S is pack ice, and no hull in this world was built for it.
+  { id: 'antarctic-pack', name: 'the Antarctic pack', latBelow: -60, lonFrom: -180, lonTo: 180 },
 ]
+
+/** The row span an ICE closure covers, from the side it declares. Exactly one side, or it is not
+ *  a closure — a row with neither (or both) would silently close the whole globe or nothing. */
+export function iceRowFrom(ice) {
+  assertOneSide(ice)
+  return ice.latBelow === undefined ? 0 : rowOf(ice.latBelow)
+}
+export function iceRowTo(ice) {
+  assertOneSide(ice)
+  return ice.latAbove === undefined ? ROWS - 1 : rowOf(ice.latAbove)
+}
+function assertOneSide(ice) {
+  const north = ice.latAbove !== undefined
+  const south = ice.latBelow !== undefined
+  if (north === south) {
+    throw new Error(`ICE "${ice.id}" must declare exactly one of latAbove / latBelow — it has ${north ? 'both' : 'neither'}`)
+  }
+}
+
+/** Is this cell inside an authored ice closure? The ONE reading of "closed by hand, not by land",
+ *  so a generator can tell an ice cell from a land cell without re-deriving the rule. */
+export function inIce(lat, lon) {
+  const row = rowOf(lat)
+  for (const ice of ICE) {
+    if (row < iceRowFrom(ice) || row > iceRowTo(ice)) continue
+    if (lon >= ice.lonFrom && lon <= ice.lonTo) return ice
+  }
+  return null
+}
 
 // ── the land, scan-filled into the grid ───────────────────────────────────────────────────────
 function landPolygons() {
@@ -151,10 +206,11 @@ export function buildSeaGrid() {
     }
   }
 
-  // The ice: authored CLOSED water (see ICE above) — the passages the period could not force.
+  // The ice: authored CLOSED water (see ICE above) — the waters the period could not force, at
+  // BOTH poles through the one list. `latAbove` runs from the north edge down to that parallel;
+  // `latBelow` runs from that parallel down to the south edge.
   for (const ice of ICE) {
-    const rowTo = rowOf(ice.latAbove)
-    for (let row = 0; row <= rowTo; row++) {
+    for (let row = iceRowFrom(ice); row <= iceRowTo(ice); row++) {
       for (let col = 0; col < COLS; col++) {
         const lon = cellLon(col)
         if (lon >= ice.lonFrom && lon <= ice.lonTo) water[row * COLS + col] = 0
