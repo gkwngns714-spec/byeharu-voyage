@@ -98,6 +98,13 @@ try {
   // reads public tables only. See ./proof-courses.mjs.
   const { installProofCourses } = await import('./proof-courses.mjs')
   await installProofCourses(db)
+  // The ONE authority for "hold the market still so a measurement means something": every apply
+  // deals a different drift (0010's random() step) and a different stock (a function of the wall
+  // clock), and a proof that measures the economy on top of that is a lottery. See
+  // ./market-fixture.mjs. Installing it is not using it — proofs 04 and 05 call it; the rest do
+  // not, and measure the market this apply happened to build, deliberately.
+  const { installMarketFixture } = await import('./market-fixture.mjs')
+  await installMarketFixture(db, { log: console.log })
 } catch (err) {
   console.error(err.message)
   process.exit(1)
