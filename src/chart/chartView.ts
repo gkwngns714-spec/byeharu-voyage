@@ -235,7 +235,70 @@ function atLeast(bounds: GeoBounds, minSpan: number): GeoBounds {
 }
 
 /**
- * THE OPENING FRAME — WHAT THE PLAYER HAS, not the globe.
+ * A FRAME WITH NO LAND IN IT IS NOT A CHART — the opening view's last rule.
+ *
+ * ── THE DEFECT (found in a browser drive of production, 2026-08-25) ────────────────────────────
+ * The Map tab opened on the player's fleet and showed **a featureless dark field with a handful of
+ * floating port names on it** — no coastline, nothing separating sea from shore. The map was fine:
+ * two presses of zoom-out drew Iberia, France and Britain correctly. The OPENING VIEW was wrong,
+ * and it is the first thing a player sees on the tab.
+ *
+ * It was reachable by construction, not by accident. `atLeast` guarantees the frame is 12° across;
+ * it guarantees nothing about what is IN it, and free-coordinate anchoring (0039, OWNER_REQUESTS
+ * row 42) puts fleets in open water on purpose. A fleet riding at anchor in the middle of an ocean
+ * therefore opened on 12° of water — a correct frame of nothing. In a game whose one spatial law
+ * is *"i don't want the fleet to ever touch land"* (row 41), the screen that exists to show where
+ * the water is opened showing nothing else.
+ *
+ * ── HOW LAND IS FOUND WITHOUT THE COASTLINE ───────────────────────────────────────────────────
+ * The coast is FETCHED (280 KB, ./useCoastline.ts) and arrives after the frame is already fixed at
+ * mount, so the frame cannot wait on it and must not: a backdrop may never be what makes the map
+ * wait. It does not have to. **A harbour is where land meets water** — 214 of them are in the
+ * snapshot the chart already holds, and they are already this function's `world` argument. So the
+ * frame widens, about its own centre and keeping its own shape, until the nearest harbour is on
+ * it. One harbour on the sheet is one coast on the sheet.
+ *
+ * ── MID-OCEAN, WHICH IS THE CASE THAT MADE THE RULE ───────────────────────────────────────────
+ * Whatever it costs. A fleet anchored in the middle of the Pacific opens on a frame wide enough to
+ * reach the nearest harbour, which may be an ocean across — and that IS the honest picture of
+ * where she is. `clampView` caps it at the world, so the worst case is the globe, which is a map.
+ * The alternative — a tight frame of empty water — is the defect this rule exists to remove.
+ *
+ * It only ever WIDENS, exactly like `atLeast`, so no frame that already held a coast is moved.
+ */
+function withCoastInView(bounds: GeoBounds, world: readonly LatLon[]): GeoBounds {
+  const cx = (bounds.minLon + bounds.maxLon) / 2
+  const cy = (bounds.minLat + bounds.maxLat) / 2
+  const halfX = (bounds.maxLon - bounds.minLon) / 2
+  const halfY = (bounds.maxLat - bounds.minLat) / 2
+  if (world.length === 0 || halfX <= 0 || halfY <= 0) return bounds
+
+  // The CHEAPEST harbour to reach: the one needing the least growth, measured in frames rather
+  // than in degrees — a port 5° north of a tall frame is nearer to being on it than one 5° east
+  // of a narrow one, and it is the frame that has to grow, not the crow that has to fly.
+  let growth = Infinity
+  for (const p of world) {
+    const overX = Math.abs(p.lon - cx) / halfX
+    const overY = Math.abs(p.lat - cy) / halfY
+    const over = Math.max(overX, overY)
+    if (over <= 1) return bounds // a harbour is already in frame; nothing to do
+    if (over < growth) growth = over
+  }
+  if (!Number.isFinite(growth)) return bounds
+
+  // Grown uniformly, so the frame keeps the shape `atLeast` and the glass gave it and the chosen
+  // harbour lands exactly on the edge — where `fitView`'s own FIT_PADDING then brings it inside.
+  // No second padding is invented here.
+  return {
+    minLon: cx - halfX * growth,
+    maxLon: cx + halfX * growth,
+    minLat: cy - halfY * growth,
+    maxLat: cy + halfY * growth,
+  }
+}
+
+/**
+ * THE OPENING FRAME — WHAT THE PLAYER HAS, not the globe, and never a frame of empty water.
  *
  * Everything of yours if the surface can hold it without drowning it in empty water; otherwise
  * just what is moving. Aspect-aware on purpose: the same port set is a good frame on a laptop and a
@@ -243,19 +306,20 @@ function atLeast(bounds: GeoBounds, minSpan: number): GeoBounds {
  *
  * With 214 ports in the table this is the difference between opening on your own water and opening
  * on the whole Earth. `everything` and `motion` come from ChartModel (focusPoints / motionPoints);
- * `fallback` is used ONLY when there is nothing of yours at all, which is when the globe is in fact
- * the right answer.
+ * `world` is every harbour there is. It has TWO uses and they are the same fact — a harbour is a
+ * place on the coast: it is the frame of last resort when nothing of yours exists to frame, and it
+ * is the LAND REFERENCE that `withCoastInView` widens the chosen frame onto.
  */
 export function openingBounds(
   everything: readonly LatLon[],
   motion: readonly LatLon[],
-  fallback: readonly LatLon[],
+  world: readonly LatLon[],
   aspect: number,
 ): GeoBounds {
   const mine = boundsOf(everything)
-  if (!mine) return boundsOf(fallback) ?? WORLD_BOUNDS
+  if (!mine) return boundsOf(world) ?? WORLD_BOUNDS
   const wide = atLeast(mine, OPENING_MIN_SPAN_DEG)
-  if (overCoverage(wide, aspect) <= OVER_COVERAGE_LIMIT) return wide
+  if (overCoverage(wide, aspect) <= OVER_COVERAGE_LIMIT) return withCoastInView(wide, world)
   const moving = boundsOf(motion)
-  return moving ? atLeast(moving, OPENING_MIN_SPAN_DEG) : wide
+  return withCoastInView(moving ? atLeast(moving, OPENING_MIN_SPAN_DEG) : wide, world)
 }

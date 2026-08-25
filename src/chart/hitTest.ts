@@ -15,6 +15,14 @@
 // TIES GO TO THE FLEET: a fleet at anchor is drawn ON its port, so their distances are equal. The
 // fleet is the thing the player put there, so it is the thing they meant.
 //
+// TIES BETWEEN TWO HARBOURS are broken by the harbour, never by the array. Two ports exactly
+// equidistant from a thumb used to be resolved by whichever came first in `ports` — which is seed
+// order, i.e. the same "decided by something that is not where your thumb is" this file exists to
+// abolish, one layer down from paint order. So: the GREATER harbour wins (`sizeTier` — it is drawn
+// bigger and firmer, so it is the one the eye was on), and if they rank equally the lower `code`
+// wins, which is a fact about the world and cannot be reordered by a later read. It matters more
+// since the reach grew to 38 px (./glyphs.ts): more pairs are inside it at once.
+//
 // This is selection, and selection is a VIEW change (DESIGN §E.5). It cannot issue an order — the
 // only value it can return is a `MapSelection`, which is a name, not a verb.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -29,8 +37,8 @@ function distance(a: Point, b: Point): number {
 
 /**
  * The nearest fleet or port to `at`, within `radius`. All three are in CHART UNITS — the caller
- * converts the touch radius from pixels, so the reach stays a constant 44 px on screen while the
- * paper under it scales.
+ * converts the touch reach from pixels (`GLYPH.hitRadius`, derived there and measured), so the
+ * reach stays the same number of SCREEN pixels at every zoom while the paper under it scales.
  *
  * `ports` is the VISIBLE set (chartModel.visiblePorts) — the same list the marks layer drew and the
  * label planner planned. A port not on the sheet is not tappable, which is the only answer that can
@@ -52,17 +60,27 @@ export function hitTest(
     if (d <= radius && (!nearestFleet || d < nearestFleet.d)) nearestFleet = { id: f.fleet.id, d }
   }
 
-  let nearestPort: { code: string; d: number } | null = null
+  let nearestPort: { port: MapPort; d: number } | null = null
   for (const p of ports) {
     const d = distance(project(p), at)
-    if (d <= radius && (!nearestPort || d < nearestPort.d)) nearestPort = { code: p.code, d }
+    if (d > radius) continue
+    if (!nearestPort || d < nearestPort.d || (d === nearestPort.d && beats(p, nearestPort.port))) {
+      nearestPort = { port: p, d }
+    }
   }
 
   if (nearestFleet && (!nearestPort || nearestFleet.d <= nearestPort.d)) {
     return { kind: 'fleet', id: nearestFleet.id }
   }
-  if (nearestPort) return { kind: 'port', code: nearestPort.code }
+  if (nearestPort) return { kind: 'port', code: nearestPort.port.code }
   return null
+}
+
+/** Which of two EXACTLY equidistant harbours the tap meant — see the header. Never consulted for
+ *  anything else: a nearer port has already won on distance before this is asked. */
+function beats(candidate: MapPort, held: MapPort): boolean {
+  if (candidate.sizeTier !== held.sizeTier) return candidate.sizeTier > held.sizeTier
+  return candidate.code < held.code
 }
 
 /** Tapping the thing that is already selected clears it — one gesture, both directions, so nothing

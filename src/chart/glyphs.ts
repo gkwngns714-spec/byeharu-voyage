@@ -23,22 +23,86 @@
 //   · quiet port 7.2 px across                      · labels 10.5 px mono
 //     (both are the TIER-3 size; `portMarkScale` runs them from 0.60× to 1.40× — 4.3 px to 10.1 px
 //      across for a quiet mark — and `portStrokeWidth` runs the line from 0.70 px to 1.58 px)
-//   · every tappable thing gets a 44 px target (2 × HIT_RADIUS), the mobile touch floor
+//   · the reach a tap has for a glyph is `hitRadius`, DERIVED below rather than typed
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * THE TOUCH FLOOR, in CSS pixels — the smallest a target may be for a finger.
+ *
+ * 44 is WCAG 2.5.5 (Target Size, AAA) and Apple's HIG; Android/Material asks 48. It is the
+ * EDGE-TO-EDGE size of a target, so half of it — 22 px — is how far from the point they aimed at
+ * a finger may still land. The design system already builds every control to the same floor
+ * (`buttonStyles.ts`'s `min-h-11` / `h-11 w-11`); this is the same fact for a thing drawn on a
+ * chart, where there is no element to give a minimum height to.
+ */
+export const TOUCH_TARGET_PX = 44
+
+/** The loud (in-use) port triangle's half-width at tier 3, in CSS pixels. Named out of the table
+ *  below because the reach a tap has is DERIVED from it and an object cannot read itself. */
+const LOUD_PORT_HALF_WIDTH_PX = 5
+
+/** Where a name starts, measured from the mark it belongs to. Named for the same reason. */
+const LABEL_GAP_X_PX = 9
 
 /** Glyph metrics in CSS pixels. */
 export const GLYPH = {
   quietPortHalfWidth: 3.6,
   quietPortHeight: 6.4,
-  loudPortHalfWidth: 5,
+  loudPortHalfWidth: LOUD_PORT_HALF_WIDTH_PX,
   loudPortHeight: 9,
   destinationRingRadius: 11,
   fleetDotRadius: 4.4,
   fleetHaloRadius: 8,
-  /** Half the touch target: 22 px radius = a 44 px tappable circle. */
-  hitRadius: 22,
+  /**
+   * HOW FAR FROM A GLYPH A TAP STILL MEANS THAT GLYPH — 38 px, and every term is measured.
+   *
+   * ── WHAT IT WAS, AND THE DEFECT IT SHIPPED (measured 2026-08-25) ────────────────────────────
+   * It was `22` with the comment *"half the touch target: 22 px radius = a 44 px tappable
+   * circle"*. That arithmetic treats the MARK'S CENTRE as the thing the player aims at, and on
+   * the running app it is not. Driven in a real browser at 1389×900, on the seeded world:
+   *
+   *     Cadiz  mark centre x=959.6   ·  its name "Cadiz" runs x=968.6 … 1000.1
+   *     → the centre of the word is 24.8 px from the mark, and a tap there returned
+   *       OPEN SEA 36.4°N 6.4°W — a plausible-looking panel for a different act.
+   *     Walked outwards from the mark: 18 px selected Cadiz, 22 px was open sea.
+   *
+   * The harbour a player sees is the mark AND its name. Under the old number the NAME — much the
+   * larger half of it, and the half you read — lay entirely outside the harbour's own target,
+   * and missing it was silent: you got a free-coordinate destination beside the port instead of
+   * a refusal or a miss. `docs/OWNER_REQUESTS.md:102`: *"A button that landed on the wrong port
+   * would be worse than no button."* This is that, one step quieter.
+   *
+   * ── THE DERIVATION ──────────────────────────────────────────────────────────────────────────
+   *     labelGapX                  9 px   where the name starts, measured from the mark
+   *   + TOUCH_TARGET_PX / 2       22 px   how far a finger lands from the point it aimed at
+   *   + the largest mark's half-extent    the mark has a BODY: loudPortHalfWidth × portMarkScale(5)
+   *                               7 px    = 5 × 1.4, and the DOM measured that mark 14.00 px wide
+   *   ────────────────────────────────
+   *                               38 px
+   *
+   * Checked against the names the running app actually drew (their own centres, from the mark):
+   * Cadiz 24.8, Porto 24.8, Lisbon 27.9, Malaga 27.9, Sevilla 31.0 — every one inside 38 with
+   * room to spare, so **a tap on a harbour's name selects that harbour**.
+   *
+   * ── WHAT IT DOES NOT FIX, STATED RATHER THAN HALF-BUILT ─────────────────────────────────────
+   * A long name has a tail outside the reach: `Strait of Gibraltar` measured 119.6 px wide, so
+   * its far end is 129 px from the mark. The honest fix for that is not a bigger radius — it is
+   * hit-testing the label's own BOX, which needs the label PLAN (./labels.ts, planned inside
+   * ChartCanvas against the selection and the chrome). Recomputing that plan at tap time would be
+   * a second author of where a name is, and the two could disagree about which names were even
+   * printed. It stays one authority and one radius until the plan is lifted for both.
+   *
+   * ── WHAT IT COSTS, AND WHY THAT IS THE RIGHT TRADE ──────────────────────────────────────────
+   * Free-sea pinpointing (0039) is unchanged everywhere that is not near a drawn harbour, and
+   * near one it is a zoom away: the reach is 38 CSS px at EVERY zoom, so it covers 70 nm on the
+   * opening frame and 9 nm four steps in. Zoom is the precision control it always was. Nothing
+   * here can pick the WRONG harbour — nearest still wins (./hitTest.ts).
+   */
+  // `portMarkScale` is a hoisted function declaration below, so the ramp has ONE author and this
+  // term reads it rather than restating `0.4 + 0.2 × 5`.
+  hitRadius: LABEL_GAP_X_PX + TOUCH_TARGET_PX / 2 + LOUD_PORT_HALF_WIDTH_PX * portMarkScale(5),
   labelSize: 10.5,
-  labelGapX: 9,
+  labelGapX: LABEL_GAP_X_PX,
   labelLineHeight: 12,
   /** The halo stroke that keeps a label readable where it crosses a coastline. */
   labelHaloWidth: 3.5,
