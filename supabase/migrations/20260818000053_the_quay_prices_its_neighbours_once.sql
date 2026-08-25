@@ -480,6 +480,14 @@ language sql
 stable
 security definer
 set search_path = public, pg_temp
+-- PLAN THIS FOR THE PORT IT IS ASKED ABOUT, EVERY TIME. Measured on PostgreSQL 17.6 (section 0):
+-- the first few calls are planned against the actual uuid and cost 2,352 buffers; after the fifth,
+-- PostgreSQL's plancache compares a GENERIC plan and keeps it, and the generic plan — which cannot
+-- know which port, so it cannot estimate the forty-odd rows a good has — rescans the whole 54,432
+-- row table and costs 298,087. Values never move, so nothing goes red; the read simply becomes two
+-- orders of magnitude more expensive on the sixth call of a session and stays there. PGlite's
+-- PostgreSQL 18 never showed this, which is why the file shipped measuring 8.2x.
+set plan_cache_mode = 'force_custom_plan'
 as $$
   -- The five knobs, read ONCE per call instead of once per (good, neighbour). `materialized` is
   -- load-bearing on all three fences below for 0019's reason: without it the planner substitutes
@@ -730,6 +738,12 @@ begin
   --         port_goods_good_id_idx: without it the identical body costs 127x on PostgreSQL 17
   --         (section 0's measurements) while every value it answers stays correct — which is the
   --         quietest way this file could ever be undone.
+  if not exists (
+        select 1 from pg_proc p
+         where p.oid = 'world.pct_of_neighbours_at(uuid,uuid)'::regprocedure
+           and p.proconfig @> array['plan_cache_mode=force_custom_plan']) then
+    raise exception '0053 self-assert FAIL: world.pct_of_neighbours_at is no longer pinned to a custom plan — PostgreSQL 17 will switch it to a generic plan on the sixth call of a session and the read costs 127x while every value it answers stays correct';
+  end if;
   if to_regclass('public.port_goods_good_id_idx') is null then
     raise exception '0053 self-assert FAIL: public.port_goods_good_id_idx does not exist — the neighbourhood walk has no good-side access path and the read silently costs two orders of magnitude more on PostgreSQL 17';
   end if;
