@@ -67,7 +67,10 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # 25, not 10, since 2026-08-25 — same cause as build.yml: `npm run build` now applies the whole
+    # chain once to emit the pre-built world image, which is what turned a 171.7 s browser cold
+    # boot into 7.1 s. The cost moved from every player's phone to this runner, once.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -78,6 +81,15 @@ jobs:
 
       - name: Install dependencies (from the lockfile)
         run: npm ci
+
+      # Same cache, same key and same reason as build.yml: keyed by the chain, restored after
+      # npm ci (which removes node_modules whole), and a miss just applies the chain as before.
+      # The published artifact is the image itself, so this only decides how long that takes.
+      - name: Cache the pre-built world image (keyed by the chain)
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/byeharu-world-image
+          key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
 
       - name: Lint
         run: npm run lint

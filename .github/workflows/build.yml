@@ -41,7 +41,12 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # 25, not 10, since 2026-08-25: `vite build` now APPLIES THE WHOLE CHAIN once, to emit the
+    # pre-built world image (vite.config.ts, `byeharu:world-image`). Measured on the dev machine
+    # that is 76 s quiet and 216 s under load; a 2-core runner is slower than either, and it lands
+    # on top of npm ci + lint + typecheck. At 10 minutes this job would have started failing on
+    # wall-clock alone the first time the image shipped — a red that names nothing.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -52,6 +57,16 @@ jobs:
 
       - name: Install dependencies (from the lockfile)
         run: npm ci
+
+      # The world image is keyed by the CHAIN, so a run whose migrations are unchanged can restore
+      # the tarball instead of applying 47 migrations to build a world it already built. It must
+      # come AFTER npm ci: npm ci removes node_modules whole, and the cache lives inside it.
+      # A miss is not a failure — the build applies the chain, which is what it did before.
+      - name: Cache the pre-built world image (keyed by the chain)
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/byeharu-world-image
+          key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
 
       - name: Lint
         run: npm run lint
