@@ -105,6 +105,41 @@ Two things that could be made cheaper later, neither done yet: fingerprinting th
 time (so the 71 kB of SQL is fetched only when a rebuild is actually needed), and running PGlite
 in a worker (so a 2.7 s apply does not sit on the main thread).
 
+### 2a. The pre-built world (2026-08-25)
+
+The table above is from a ten-migration world. At 45 migrations and 243 goods the same cold boot
+was **78.8 s** (`docs/DEV_LOG.md:177`), because the tab was deriving 52,002 price rows and
+re-measuring the sea on every first visit — to arrive at a world that is a pure function of the
+repository. So the build does it once now and ships the answer.
+
+Measured back to back against the same production build, chromium 390×844, empty storage, the
+purse read off the screen — the way DEV_LOG measured the 78.8 s:
+
+| | measured on this machine, 2026-08-25 |
+|---|---|
+| Cold boot, chain applied in the tab (the image withheld) | **171.7 s** to a live purse — 168.8 s of it applying 45 migrations |
+| Cold boot, world restored from the image | **7.1 s** to a live purse — 4.3 s to `ready`, **no migration applied in the tab** |
+| Warm boot (world already in IndexedDB) | 5–7 s either way; this slice does not touch that path |
+| The image itself | 100.4 MB dumped → 37.4 MB after the log trim → **4.75 MB gzipped** |
+| Build cost | 216 s for the first build of a chain (`npm run build` end to end: 3 m 50 s); every later build reuses the cached image and takes ~1 s |
+
+**The download it costs:** `dist` is 22.55 MB raw / 7.48 MB over the wire without the image and
+27.30 MB / 12.22 MB with it. That 4.75 MB is fetched **only when a world has to be built** — a
+first visit, or a chain change — and never on a reload. It is an honest 4.75 MB against nearly
+three minutes of somebody's phone.
+
+**Not measured here:** GitHub Pages. `vite preview` serves the tarball with `Content-Encoding:
+gzip`, so the browser inflates it in transit and PGlite is handed a plain tar — which is why
+`asWorldImageFile()` sniffs the gzip magic instead of trusting the name. Pages serves `.tar.gz`
+as-is, which is the other branch, and that one is exercised in `tests/db.image.spec.ts` (it loads
+the gzipped bytes straight off disk).
+
+**Where the size went:** the raw dump is 100 MB, and 67 MB of it was `pg_wal` — segments PostgreSQL
+had RECYCLED, holding the log of migrations that had already run, waiting to be overwritten by
+writes a shipped copy will never make. `dropSurplusWal()` keeps only `[checkpoint, current]`, which
+is what a restored engine replays, and `initdb --wal-segsize=1` makes those segments 1 MB instead
+of 16. 19.28 MB gzipped became 4.75 MB.
+
 ---
 
 ## 3. How the local engine behaves
@@ -113,7 +148,21 @@ in a worker (so a 2.7 s apply does not sit on the main thread).
   *.sql', {query:'?raw', eager:true})`, resolved by Vite at build time. There is no generated copy
   of the SQL and no second chain. A Node process (the specs) reads the same directory through
   `chainSource.node.mjs`. Two transports, one source.
-* **It persists.** `idb://byeharu-voyage-v0`. Closing the tab does not sink the fleet.
+* **The world may arrive pre-built.** `npm run build` applies the chain once and emits
+  `dist/db/world-<fingerprint>.tar.gz` (`scripts/db/build-image.mjs`, wired in `vite.config.ts`).
+  The boot asks for the image at a URL it derives from `fingerprintChain(files)` — so a client can
+  only ever name its OWN chain's image — and then reads the fingerprint stamped INSIDE the restored
+  database and refuses it out loud if it disagrees (`appLocal.ts`'s `imageRefusal()`,
+  `bootState.imageRefused`, `app/RebuildNotice.tsx`). Every refusal, 404 and unreadable tarball
+  lands on the path below. **The image is never committed**: it is generated from the chain in the
+  repository at build time, keyed by that chain's fingerprint, so there is nothing for a human to
+  forget to regenerate — which is the D23 defect, and it stayed green for a working day.
+  Certified by `scripts/db/world-guard.mjs`, the same authority every `db:apply` runs, against the
+  database RESTORED FROM THE TARBALL — and `tests/db.image.spec.ts` re-certifies whatever the build
+  actually emitted, with two wounded images as its positive control.
+* **It persists.** `idb://byeharu-voyage-v0`. Closing the tab does not sink the fleet. A world
+  restored from an image persists and is reused exactly like one applied here; nothing downstream
+  can tell them apart, which is the point.
 * **It never applies half a chain.** The applied chain's fingerprint is stored in `app_local.chain`
   *inside the database*. On boot: same fingerprint → reuse; different → **demolish and rebuild from
   0001**, saying so in the console. Applying six new migrations onto a four-migration database
@@ -322,8 +371,12 @@ row in `events`. **Summing the rendered rows will not equal the printed balance.
 | `db/chainSource.node.mjs` (+`.d.mts`) | **Node** transport, for specs. Plain JS so a spec never gets Node globals in ambient scope. |
 | `db/applyChain.ts` | applies the files; loud, file-named, SQLSTATE-carrying failure |
 | `db/bootState.ts` | the boot state machine and its observable |
-| `db/localDb.ts` | opens PGlite, persists, rebuilds on chain change, seeds, `callAs()` |
-| `db/index.ts` | browser entry: `startLocalDb()`, one engine, idempotent |
+| `db/appLocal.ts` | `app_local.chain` — the stamp of which chain built this database. ONE writer's DDL, shared by the browser apply and the image builder; `imageRefusal()` is the pairing rule. |
+| `db/worldImage.ts` | where the pre-built world is served from, and how the browser asks for it |
+| `db/idbStore.ts` | the only place that knows how PGlite lays out IndexedDB — quarantined, never trusted, verified by consequence |
+| `db/localDb.ts` | opens PGlite, persists, restores the image or applies the chain, rebuilds on chain change, seeds, `callAs()` |
+| `db/index.ts` | browser entry: `startLocalDb()`, one engine, idempotent; wires `fetchWorldImage` |
+| `scripts/db/build-image.mjs` (+`.d.mts`) | builds, trims and CERTIFIES the image; `npm run db:image`, and called by `vite.config.ts` during `npm run build` |
 | `rpc/types.ts` | the payload contract, typed from the SQL |
 | `rpc/catalog.ts` | the 9 RPCs, named once; both backends are built from it |
 | `rpc/result.ts` | `RpcResult`, `Refusal`, and the mapping from anything thrown |
@@ -332,8 +385,8 @@ row in `events`. **Summing the rendered rows will not equal the printed balance.
 | `rpc/init.ts` | **the one place that reads `hasCloud`** |
 | `rpc/index.ts` | the typed surface a screen imports |
 
-Proofs: `tests/db.chain.spec.ts`, `tests/rpc.surface.spec.ts`, `tests/rpc.firstSession.spec.ts` —
-pure Node, no browser, real Postgres.
+Proofs: `tests/db.chain.spec.ts`, `tests/db.image.spec.ts`, `tests/rpc.surface.spec.ts`,
+`tests/rpc.firstSession.spec.ts` — pure Node, no browser, real Postgres.
 
 ## 6. Known gaps
 
@@ -346,6 +399,15 @@ pure Node, no browser, real Postgres.
 3. **No player RPC** (§4.2), **no voyage path** (§4.8), **no price history** (§4.11), **no cargo
    average cost** (§4.9). Each needs a migration or a screen decision.
 4. **The chain is downloaded on every boot** (71 kB gzipped) even when the stored world is current,
-   because the fingerprint is computed from the text. A build-time fingerprint would remove that.
+   because the fingerprint is computed from the text. A build-time fingerprint would remove that —
+   and note it CANNOT simply be replaced by the image's own stamp: the fingerprint of the shipped
+   chain is what the image is checked against, so it has to be computed from the shipped chain.
+   The saving available is the 71 kB, not the check.
 5. **PGlite runs on the main thread.** A 2.7 s chain apply blocks it. A worker build exists
    upstream (`@electric-sql/pglite/worker`) and is untried here.
+6. **A rebuild on a browser that cannot enumerate IndexedDB** falls back to applying the chain
+   rather than restoring the image: PGlite will not unpack over an existing database, and
+   `idbStore.ts` refuses to guess. First boots are unaffected. Firefox before 126 is the case.
+7. **The image build lengthens CI.** `npm run build` now applies the chain once (~95–175 s here)
+   the first time it sees a chain; `build.yml` is described as a ten-minute gate, and the cache
+   that makes local rebuilds free does not survive a fresh runner.

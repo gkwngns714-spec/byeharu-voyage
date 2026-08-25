@@ -13,6 +13,14 @@
 //     carries a different chain, the stored database is DEMOLISHED and rebuilt from migration 0001
 //     — applying six new migrations on top of a four-migration database is how you get a schema
 //     that exists in no repository and can never be reproduced.
+//   * NEVER SOMEONE ELSE'S WORLD. Since 2026-08-25 the world may arrive PRE-BUILT, as a data
+//     directory generated during `npm run build` (scripts/db/build-image.mjs), because replaying
+//     45 migrations in the player's tab cost 78.8 s (DEV_LOG D23). An image is a second copy of
+//     the world, so it is admitted only on proof: it is asked for by a URL that contains this
+//     build's own chain fingerprint, and once restored it must ANSWER with that same fingerprint
+//     from app_local.chain, or `imageRefusal()` rejects it out loud and the chain is applied here
+//     as before. The pre-built path is an OPTIMISATION on top of the apply path; it never replaces
+//     it, and every failure of it lands back on it.
 //   * ONE IDENTITY. Local mode has one captain. Their auth uid is stored in the database itself,
 //     not in localStorage, so it cannot survive the data it identifies.
 //   * HONEST FAILURE. Every phase reports through bootState; nothing is swallowed into a spinner.
@@ -27,8 +35,11 @@ import type { PGlite } from '@electric-sql/pglite'
 import type { MigrationFile } from './chain'
 import { describeChain, fingerprintChain, orderChain } from './chain'
 import { applyChain } from './applyChain'
+import { imageRefusal, readStoredChain, recordChain } from './appLocal'
 import { bootChannel, progressFor, type BootChannel } from './bootState'
+import { emptyStore, hasStoredWorld, type EmptyStoreResult } from './idbStore'
 import { rescuePlayerRows } from './rescue'
+import type { WorldImageFetch } from './worldImage'
 
 /** The IndexedDB database the local world lives in. */
 export const LOCAL_DATA_DIR = 'idb://byeharu-voyage-v0'
@@ -48,6 +59,19 @@ export const LOCAL_AUTH_UID = '00000000-0000-4000-8000-000000000a17'
 export interface OpenLocalDbOptions {
   /** How the SQL reaches this process. Browser: chainSource.ts. Node/tests: chainSource.node.mjs. */
   loadChain: () => Promise<MigrationFile[]>
+  /**
+   * How the PRE-BUILT world reaches this process, if this build ships one. Browser:
+   * worldImage.ts's `fetchWorldImage`, wired in index.ts. A Node spec hands in the file the build
+   * emitted. ABSENT BY DEFAULT — with no image the boot applies the chain, which is what it did
+   * for the whole of this game's life and what still runs whenever the image is missing or refused.
+   */
+  loadImage?: (fingerprint: string) => Promise<WorldImageFetch>
+  /**
+   * Empty the store behind `dataDir`, so a pre-built world can be untarred into it. Defaults to
+   * the IndexedDB implementation; a Node spec passes one that removes its scratch directory.
+   * Its answer is never trusted — see idbStore.ts's header.
+   */
+  resetStore?: (dataDir: string) => Promise<EmptyStoreResult>
   /** PGlite dataDir. Defaults to IndexedDB; a test passes `memory://` for a throwaway. */
   dataDir?: string
   /** Where boot progress is published. Defaults to the app-wide channel. */
@@ -69,9 +93,13 @@ export interface LocalDb {
   readonly fingerprint: string
   /** True when the stored database was demolished and rebuilt because the chain had changed. */
   readonly rebuilt: boolean
+  /** True when this world was restored from the pre-built image instead of applied here. */
+  readonly fromImage: boolean
   /** Milliseconds from the first line of boot to `ready`. Measured, not estimated. */
   readonly bootMs: number
-  /** Names of the migrations applied, in order. */
+  /** The migrations this world was built from, in order — applied in this tab, or, when
+   *  `fromImage`, applied by the build that produced the image. Same chain either way: that is
+   *  what the fingerprint check guarantees. */
   readonly applied: readonly string[]
   /**
    * Run ONE server function as the local captain.
@@ -84,22 +112,13 @@ export interface LocalDb {
   close(): Promise<void>
 }
 
-/** The bookkeeping this adapter keeps beside the game data. NOT part of the chain, and says so. */
-const APP_LOCAL_DDL = `
-create schema if not exists app_local;
-comment on schema app_local is
-  'CLIENT-SIDE BOOKKEEPING, written by src/lib/db — never by a migration. It records which chain '
-  'built this browser database and which local captain owns it. Nothing in supabase/migrations '
-  'reads it, so a cloud deployment is identical without it.';
-create table if not exists app_local.chain (
-  singleton   boolean primary key default true check (singleton),
-  fingerprint text not null,
-  files       int not null,
-  names       text[] not null,
-  applied_at  timestamptz not null default now(),
-  auth_uid    uuid
-);
-`
+/** No image on offer. The default, and the shape every failure mode of a fetch comes back as. */
+const NO_IMAGE: WorldImageFetch = {
+  blob: null,
+  url: '',
+  bytes: 0,
+  note: 'this build carries no pre-built world, so the chain is applied here',
+}
 
 export async function openLocalDb(options: OpenLocalDbOptions): Promise<LocalDb> {
   const channel = options.channel ?? bootChannel
@@ -119,10 +138,11 @@ export async function openLocalDb(options: OpenLocalDbOptions): Promise<LocalDb>
     error: null,
   })
 
-  let pg: PGlite
+  let pg: PGlite | undefined
   let files: MigrationFile[]
   let fingerprint: string
   let rebuilt = false
+  let fromImage: boolean
   try {
     // Dynamic, so a cloud-configured build never downloads a Postgres it will not run.
     const [{ PGlite: PGliteCtor }, loaded] = await Promise.all([
@@ -131,100 +151,134 @@ export async function openLocalDb(options: OpenLocalDbOptions): Promise<LocalDb>
     ])
     files = orderChain(loaded)
     fingerprint = fingerprintChain(files)
-    pg = await PGliteCtor.create(dataDir)
+    const loadImage = options.loadImage ?? (() => Promise.resolve(NO_IMAGE))
+    const resetStore = options.resetStore ?? emptyStore
 
-    const stored = await readStoredChain(pg)
-    if (stored && stored.fingerprint === fingerprint) {
-      log(`reusing the stored world: ${describeChain(files)} (applied ${stored.applied_at})`)
-      const applied = files.map((f) => f.name)
-      const ready = await finishBoot({
-        pg,
-        channel,
-        publish,
-        authUid: stored.auth_uid ?? authUid,
-        options,
-        log,
-        fingerprint,
-        rebuilt: false,
-        applied,
-        t0,
-      })
-      return ready
-    }
+    // ── 1. IS THIS BUILD'S WORLD ALREADY HERE? ────────────────────────────────────────────────
+    // Asked first, because reusing it costs nothing and is what happens on every visit after the
+    // first. The engine is opened to ask — EXCEPT when the store is known to have never held a
+    // world, because opening it would run an `initdb` over the very directory a pre-built world
+    // has to be untarred into (PGlite refuses to load one over an existing database), and that
+    // initdb would then have to be thrown away again. `hasStoredWorld()` answers `false` only
+    // when it is sure; every other answer takes the ordinary road.
+    const stores = await hasStoredWorld(dataDir)
+    if (stores !== false) {
+      pg = await PGliteCtor.create(dataDir)
+      const stored = await readStoredChain(pg)
 
-    if (stored) {
-      rebuilt = true
-      log(
-        `THE CHAIN HAS CHANGED since this browser's world was built ` +
-          `(stored ${stored.fingerprint} over ${stored.files} file(s); this build ${fingerprint} ` +
-          `over ${files.length}). Rebuilding from migration 0001 — applying new migrations onto an ` +
-          `old database would produce a schema that exists in no repository.`,
-      )
-      // THE PLAYER'S ROWS COME OUT FIRST. `demolish()` is a `drop schema public cascade`: it takes
-      // the world AND the house standing in it, and until 2026-08-20 it took them silently and
-      // irrecoverably — a purse that had bought cargo was back at 8,000 ducats with no word said
-      // (DEV_LOG D11c). This cannot throw; a failed rescue is reported, never fatal.
-      const rescued = await rescuePlayerRows(pg, stored.fingerprint)
-      if (rescued.rows > 0) {
-        log(
-          rescued.stored
-            ? `RESCUED ${rescued.rows} of your row(s) from ${rescued.tables} table(s) before ` +
-                `demolishing — kept under localStorage "byeharu-voyage.rescued.v1".`
-            : `COULD NOT RESCUE your ${rescued.rows} row(s): ${rescued.note}.`,
-        )
+      if (stored && stored.fingerprint === fingerprint) {
+        log(`reusing the stored world: ${describeChain(files)} (applied ${stored.applied_at})`)
+        return await finishBoot({
+          pg,
+          channel,
+          publish,
+          authUid: stored.auth_uid ?? authUid,
+          options,
+          log,
+          fingerprint,
+          rebuilt: false,
+          fromImage: false,
+          applied: files.map((f) => f.name),
+          t0,
+        })
       }
-      publish({
-        phase: 'booting',
-        rebuilt: true,
-        rescued: rescued.rows > 0 ? rescued : null,
-        message: 'The world was built by an older version of the game. Rebuilding it from scratch.',
-      })
-      await demolish(pg)
+
+      if (stored) {
+        rebuilt = true
+        log(
+          `THE CHAIN HAS CHANGED since this browser's world was built ` +
+            `(stored ${stored.fingerprint} over ${stored.files} file(s); this build ${fingerprint} ` +
+            `over ${files.length}). Rebuilding from migration 0001 — applying new migrations onto an ` +
+            `old database would produce a schema that exists in no repository.`,
+        )
+        // THE PLAYER'S ROWS COME OUT FIRST. The rebuild below takes the world AND the house
+        // standing in it, and until 2026-08-20 it took them silently and irrecoverably — a purse
+        // that had bought cargo was back at 8,000 ducats with no word said (DEV_LOG D11c). This
+        // cannot throw; a failed rescue is reported, never fatal.
+        const rescued = await rescuePlayerRows(pg, stored.fingerprint)
+        if (rescued.rows > 0) {
+          log(
+            rescued.stored
+              ? `RESCUED ${rescued.rows} of your row(s) from ${rescued.tables} table(s) before ` +
+                  `demolishing — kept under localStorage "byeharu-voyage.rescued.v1".`
+              : `COULD NOT RESCUE your ${rescued.rows} row(s): ${rescued.note}.`,
+          )
+        }
+        publish({
+          phase: 'booting',
+          rebuilt: true,
+          rescued: rescued.rows > 0 ? rescued : null,
+          message: 'The world was built by an older version of the game. Rebuilding it from scratch.',
+        })
+      }
+
+      // Nothing here is usable. Let the engine go, so the store can be emptied for a pre-built
+      // world — and if that does not work out, step 3 re-opens it and `demolish()` still does the
+      // job it always did.
+      await pg.close()
+      pg = undefined
     }
 
-    publish({
-      phase: 'applying',
-      migrationCount: files.length,
-      migrationIndex: 0,
-      migration: files[0]?.name ?? null,
+    // ── 2. THE PRE-BUILT WORLD ────────────────────────────────────────────────────────────────
+    // An optimisation, admitted only on proof, and never load-bearing: every way this can fail —
+    // no image emitted, a 404, an unreadable tarball, a fingerprint that does not match the chain
+    // this build carries — returns undefined and lands on step 3, out loud.
+    pg = await openFromImage({
+      PGliteCtor,
+      dataDir,
       fingerprint,
-      rebuilt,
-      message: 'Building the world: applying the migration chain.',
-      progress: progressFor('applying', 0, files.length),
+      loadImage,
+      resetStore,
+      // Nothing to empty on a store that is known never to have held a world.
+      emptyFirst: stores !== false,
+      log,
+      publish,
     })
+    fromImage = pg !== undefined
 
-    const result = await applyChain(pg, files, (step) => {
+    // ── 3. THE CHAIN, APPLIED HERE. The path this game ran on for its whole life. ─────────────
+    if (pg === undefined) {
+      pg = await PGliteCtor.create(dataDir)
+      // Re-read rather than assume: step 2 may have emptied the store, may have half-emptied it,
+      // or may never have been reached at all.
+      if (rebuilt || (await readStoredChain(pg)) !== null) await demolish(pg)
+
       publish({
         phase: 'applying',
-        migration: step.name,
-        migrationIndex: step.index,
-        migrationCount: step.total,
-        progress: progressFor('applying', step.index, step.total),
-        message: `Applying ${step.index + 1} of ${step.total}: ${humanMigration(step.name)}`,
+        migrationCount: files.length,
+        migrationIndex: 0,
+        migration: files[0]?.name ?? null,
+        fingerprint,
+        rebuilt,
+        message: 'Building the world: applying the migration chain.',
+        progress: progressFor('applying', 0, files.length),
       })
-    })
-    log(
-      `chain applied: ${result.applied.length} migration(s) in ${result.ms} ms, ` +
-        `${result.receipts} self-assert receipt(s)`,
-    )
-    if (result.receipts < result.applied.length) {
-      // Same non-vacuity floor as apply-chain.mjs: every migration in this chain proves itself out
-      // loud, so a missing receipt means a self-assert stopped asserting.
-      log(
-        `WARNING: ${result.applied.length} migration(s) applied but only ${result.receipts} printed ` +
-          `a self-assert receipt.`,
-      )
-    }
 
-    await pg.exec(APP_LOCAL_DDL)
-    await pg.query(
-      `insert into app_local.chain (singleton, fingerprint, files, names, auth_uid)
-       values (true, $1, $2, $3, $4)
-       on conflict (singleton) do update
-          set fingerprint = excluded.fingerprint, files = excluded.files,
-              names = excluded.names, applied_at = now(), auth_uid = excluded.auth_uid`,
-      [fingerprint, files.length, files.map((f) => f.name), authUid],
-    )
+      const result = await applyChain(pg, files, (step) => {
+        publish({
+          phase: 'applying',
+          migration: step.name,
+          migrationIndex: step.index,
+          migrationCount: step.total,
+          progress: progressFor('applying', step.index, step.total),
+          message: `Applying ${step.index + 1} of ${step.total}: ${humanMigration(step.name)}`,
+        })
+      })
+      log(
+        `chain applied: ${result.applied.length} migration(s) in ${result.ms} ms, ` +
+          `${result.receipts} self-assert receipt(s)`,
+      )
+      if (result.receipts < result.applied.length) {
+        // Same non-vacuity floor as apply-chain.mjs: every migration in this chain proves itself out
+        // loud, so a missing receipt means a self-assert stopped asserting.
+        log(
+          `WARNING: ${result.applied.length} migration(s) applied but only ${result.receipts} printed ` +
+            `a self-assert receipt.`,
+        )
+      }
+
+      await recordChain(pg, { fingerprint, names: files.map((f) => f.name), authUid })
+    }
 
     return await finishBoot({
       pg,
@@ -235,7 +289,8 @@ export async function openLocalDb(options: OpenLocalDbOptions): Promise<LocalDb>
       log,
       fingerprint,
       rebuilt,
-      applied: result.applied.map((a) => a.name),
+      fromImage,
+      applied: files.map((f) => f.name),
       t0,
     })
   } catch (err) {
@@ -249,7 +304,7 @@ export async function openLocalDb(options: OpenLocalDbOptions): Promise<LocalDb>
     //
     // So: demolish the wreckage and try ONCE from an empty database. If it fails again it is the
     // migration and not the leftovers, and THAT is the message the player is given.
-    if (pg! !== undefined && !options.retried) {
+    if (pg !== undefined && !options.retried) {
       log('BOOT FAILED — demolishing the half-built world and trying once from empty\n' + message)
       publish({
         phase: 'booting',
@@ -257,12 +312,12 @@ export async function openLocalDb(options: OpenLocalDbOptions): Promise<LocalDb>
         message: 'The world was left half-built. Clearing it and starting again.',
       })
       try {
-        await demolish(pg!)
+        await demolish(pg)
       } catch {
         // Nothing left to salvage; the retry opens its own engine over the same store.
       }
       try {
-        await pg!.close()
+        await pg.close()
       } catch {
         // Already gone.
       }
@@ -290,10 +345,11 @@ async function finishBoot(args: {
   log: (...a: unknown[]) => void
   fingerprint: string
   rebuilt: boolean
+  fromImage: boolean
   applied: string[]
   t0: number
 }): Promise<LocalDb> {
-  const { pg, publish, authUid, options, log, fingerprint, rebuilt, applied, t0 } = args
+  const { pg, publish, authUid, options, log, fingerprint, rebuilt, fromImage, applied, t0 } = args
 
   const existing = await pg.query<{ id: string }>('select id from public.players where auth_uid = $1', [
     authUid,
@@ -334,6 +390,7 @@ async function finishBoot(args: {
     authUid,
     fingerprint,
     rebuilt,
+    fromImage,
     bootMs,
     applied,
     async callAs<T>(sql: string, params: unknown[] = []): Promise<T> {
@@ -347,27 +404,94 @@ async function finishBoot(args: {
   }
 }
 
-interface StoredChain {
+/**
+ * OPEN THE PRE-BUILT WORLD, or hand back nothing and say why.
+ *
+ * Every step here can decline, and declining is not an error: the caller applies the chain, which
+ * is what this game did for its whole life and still does whenever an image is absent, unreadable,
+ * or built from another chain. NOTHING IN THIS FUNCTION THROWS, for that reason.
+ *
+ * The one thing it will not do is hand back a world it cannot vouch for. `imageRefusal()` compares
+ * the fingerprint written INSIDE the restored database against the fingerprint of the chain this
+ * build carries, and a mismatch is logged as an error, published to the boot channel so the app
+ * can show it, and thrown away — store and all, so the next boot does not find it sitting there.
+ */
+async function openFromImage(args: {
+  PGliteCtor: typeof PGlite
+  dataDir: string
   fingerprint: string
-  files: number
-  applied_at: string
-  auth_uid: string | null
+  loadImage: (fingerprint: string) => Promise<WorldImageFetch>
+  resetStore: (dataDir: string) => Promise<EmptyStoreResult>
+  emptyFirst: boolean
+  log: (...a: unknown[]) => void
+  publish: (patch: Parameters<BootChannel['set']>[0]) => void
+}): Promise<PGlite | undefined> {
+  const { PGliteCtor, dataDir, fingerprint, loadImage, resetStore, emptyFirst, log, publish } = args
+
+  let fetched: WorldImageFetch
+  try {
+    fetched = await loadImage(fingerprint)
+  } catch (err) {
+    log(`the pre-built world could not be asked for (${describeError(err)}) — applying the chain`)
+    return undefined
+  }
+  if (!fetched.blob) {
+    log(`applying the chain here: ${fetched.note ?? 'no pre-built world was offered'}`)
+    return undefined
+  }
+
+  const size = `${(fetched.bytes / 1048576).toFixed(1)} MB`
+  publish({
+    phase: 'booting',
+    progress: progressFor('booting', 0, 0),
+    message: `Unpacking the world this version of the game was built with (${size}).`,
+  })
+
+  if (emptyFirst) {
+    // PGlite will not untar a data directory over an existing database, so the store has to go
+    // first. Its answer is a report, not a permission — the load below is what actually decides.
+    const emptied = await resetStore(dataDir)
+    log(
+      emptied.emptied
+        ? `emptied the stored world (${emptied.deleted.join(', ')}) to make room for the pre-built one`
+        : `could not empty the stored world (${emptied.note}) — the pre-built world may not fit`,
+    )
+  }
+
+  let pg: PGlite
+  try {
+    pg = await PGliteCtor.create({ dataDir, loadDataDir: fetched.blob })
+  } catch (err) {
+    log(
+      `the pre-built world at ${fetched.url} could not be unpacked (${describeError(err)}) — ` +
+        'applying the chain here instead',
+    )
+    return undefined
+  }
+
+  const stored = await readStoredChain(pg)
+  const refusal = imageRefusal(stored, fingerprint)
+  if (refusal) {
+    log(`PRE-BUILT WORLD REFUSED: ${refusal}`)
+    publish({ imageRefused: refusal })
+    try {
+      await pg.close()
+    } catch {
+      // Already gone; the reset below is what matters.
+    }
+    await resetStore(dataDir)
+    return undefined
+  }
+
+  log(
+    `restored the pre-built world (${size}, chain ${stored?.fingerprint}) — no migrations were ` +
+      'applied in this tab',
+  )
+  return pg
 }
 
-/** What built this browser's database — or null if nothing has, or if it predates this bookkeeping. */
-async function readStoredChain(pg: PGlite): Promise<StoredChain | null> {
-  try {
-    const r = await pg.query<StoredChain>(
-      `select fingerprint, files, applied_at::text as applied_at, auth_uid::text as auth_uid
-         from app_local.chain where singleton`,
-    )
-    return r.rows[0] ?? null
-  } catch {
-    // No app_local schema means no chain has ever been recorded here. Two cases land in the same
-    // place, correctly: a brand-new database, and one built before this adapter existed. Both must
-    // be built from 0001, and `demolish` makes the second case safe.
-    return null
-  }
+function describeError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
 }
 
 /**

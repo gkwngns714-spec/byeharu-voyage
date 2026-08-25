@@ -29,8 +29,38 @@ export function RebuildNotice() {
   const boot = useBootState()
   const [dismissed, setDismissed] = useState(false)
 
-  if (!boot.rebuilt || dismissed) return null
+  if ((!boot.rebuilt && boot.imageRefused === null) || dismissed) return null
   const rescued = boot.rescued
+
+  // ── A REFUSED PRE-BUILT WORLD (2026-08-25) ──────────────────────────────────────────────────
+  // The world may now arrive pre-built, generated during `npm run build` from the chain in the
+  // repository at that moment. If the one that arrived says it was built from a DIFFERENT chain
+  // than the one this build carries, the boot throws it away and applies the chain instead — the
+  // game is correct either way. But that is D23's defect exactly: two worlds, both plausible, and
+  // "nothing red happened anywhere". So it is red here, on the screen, and not only in a console
+  // nobody has open.
+  if (!boot.rebuilt && boot.imageRefused !== null) {
+    return (
+      <Card tone="warning" className="mx-4 mt-3" data-testid="image-refused-notice">
+        <SectionLabel className="mb-1">The pre-built world was refused</SectionLabel>
+        <div className="space-y-1.5 text-sm text-ink-muted">
+          <p>
+            This build downloaded a ready-made world that does not match its own migrations, so it
+            was discarded and the world was built here instead. Nothing of yours was at risk — but
+            this build is shipping two different worlds, and that is a fault to report.
+            <Explain label="what did not match" dotClassName="ml-1">
+              {boot.imageRefused}
+            </Explain>
+          </p>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => setDismissed(true)}>
+            I have read this
+          </Button>
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <Card tone="warning" className="mx-4 mt-3" data-testid="rebuild-notice">
@@ -70,6 +100,18 @@ export function RebuildNotice() {
           <p>
             Your house went with it — {rescued.rows} row(s) — and could NOT be copied out first:{' '}
             {rescued.note}.
+          </p>
+        )}
+        {/* A rebuild that ALSO refused a mispaired pre-built world says both things. The rebuild is
+            the player's news; the refusal is a fault in the build, and it must not be swallowed by
+            the louder message next to it. */}
+        {boot.imageRefused !== null && (
+          <p>
+            It also downloaded a ready-made world that did not match its own migrations, and
+            discarded it.
+            <Explain label="what did not match" dotClassName="ml-1">
+              {boot.imageRefused}
+            </Explain>
           </p>
         )}
       </div>
