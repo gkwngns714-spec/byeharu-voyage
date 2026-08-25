@@ -80,6 +80,7 @@ declare
   v_speed  numeric;
   v_rated  numeric;
   v_refused_seq int;
+  v_fixture jsonb;
   k        int;
   r_out    record;
 begin
@@ -89,9 +90,10 @@ begin
   -- `public.tick_market_drift` (0010:107) moves every price by `random()`, DELIBERATELY — its own
   -- comment says "the market is deliberately NOT deterministic, unlike the hazard rolls; a market
   -- a player could replay would be a market a player could front-run." The chain's own self-asserts
-  -- call it while applying, so EVERY `db:apply` builds a different market. Proof 5 survives that
-  -- because it pools eight ports and asserts a band. This one cannot: it needs ONE specific thing
-  -- to exist — a cargo out of Lisboa that a port one leg away pays more for, AND a return cargo
+  -- call it while applying, so EVERY `db:apply` builds a different market. (Proof 5 was believed to
+  -- survive that by pooling eight ports and asserting a band. It did not — it lost about one run in
+  -- six on an unchanged chain, and since 2026-08-25 it pins the market through the same fixture
+  -- this file does.) This one never had a chance: it needs ONE specific thing to exist — a cargo out of Lisboa that a port one leg away pays more for, AND a return cargo
   -- Lisboa pays more for — and on an unlucky draw there is no such round trip, and it failed at
   -- 0:20 with "not one destination sells anything Lisboa pays more for". That is the world being
   -- unlucky, not the game being broken, and a proof that reddens on a correct system stops gating
@@ -103,59 +105,25 @@ begin
   -- lives, so deleting it does not give you "the economy without noise", it gives you an economy
   -- with less trade in it than the game ever has.
   --
-  -- SO THE DRIFT IS REPLACED, NOT REMOVED. Each row is redrawn from the SAME distribution the real
-  -- process settles into — the OU stationary law, N(0, sigma / sqrt(1 - theta^2)), clamped exactly
-  -- as 0010 clamps it — using Box-Muller over `voyage.rng_raw`, which is IMMUTABLE and takes its
-  -- seed as an argument (0006:113). The market this proof plays is therefore a REPRESENTATIVE
-  -- drifted market and the same one on every run and every machine. Both knobs are read, never
-  -- retyped, so retuning the economy retunes this fixture with it.
+  -- SO THE DRIFT IS REPLACED, NOT REMOVED, and the replacement is not written here.
   --
-  -- THE KEY IS THE AUTHORED CODE, NOT THE ROW ID, AND THAT IS THE WHOLE TRICK. The first version
-  -- keyed the draw on `pg.port_id || pg.good_id` and was still different on every run, because
-  -- migration 0003 seeds ports and goods with `gen_random_uuid()` — the ids are not stable across
-  -- applies, so a hash of them is not a fixture, it is another random number wearing a seed's
-  -- clothes. `ports.code` and `goods.code` ARE authored and stable ('LIS', 'silver'), so the draw
-  -- keyed on them is the same market on every run and on every machine.
+  -- 2026-08-25: the forty lines of Box-Muller that used to stand in this spot are now
+  -- `proof.pin_market` (scripts/db/market-fixture.mjs), because proof 05 and
+  -- tests/rpc.firstSession.spec.ts needed exactly the same thing and three copies of one rule is
+  -- the duplication docs/NO_SPAGHETTI.md §1 forbids — the copy that drifts is always the one
+  -- nobody is looking at. The law it applies is unchanged and is written out there: every row
+  -- redrawn from the OU stationary law the real process settles into, clamped as 0010 clamps it,
+  -- keyed on the AUTHORED codes (`ports.code`, `goods.code`) rather than the `gen_random_uuid()`
+  -- ids, with the drift slot parked ahead of 0029's wind and the stock pinned to `stock_target`.
   --
-  -- AND THE SLOT IS PINNED WITH IT (added 2026-08-23 with 0029). world.market() now WINDS
-  -- public.tick_market_drift before pricing — so if this transaction opens in a later drift slot
-  -- than the apply did, the market read at 0:20 would REDRAW all 14,980 rows with random() and
-  -- destroy the deterministic fixture this header just spent forty lines establishing. Setting
-  -- drift_slot to THIS transaction's slot makes the wind a no-op here, which is this file owning
-  -- its precondition rather than trusting the wall clock (docs/NO_SPAGHETTI.md §4).
-  update public.port_goods pg
-     set drift_slot = public.drift_slot_of(now()),
-         drift = greatest(-public.wc_num('drift_clamp'),
-                   least(public.wc_num('drift_clamp'),
-                     round(((public.wc_num('drift_sigma')
-                            / sqrt(1 - power(public.wc_num('drift_theta'), 2)))
-                           * sqrt(-2 * ln(greatest(voyage.rng_raw('00000000-0f04-4000-8000-0000000000dd'::uuid, 0, 'p4u1:' || p.code || ':' || g.code, 'proof-4-fixture'), 1e-12)))
-                           * cos(2 * pi() * voyage.rng_raw('00000000-0f04-4000-8000-0000000000dd'::uuid, 1, 'p4u2:' || p.code || ':' || g.code, 'proof-4-fixture')))::numeric,
-                           6)))
-    from public.ports p, public.goods g
-   where p.id = pg.port_id and g.id = pg.good_id;
-  -- The fixture must assert its own effect, or it can silently stop modelling anything: a spread
-  -- of real values, not all-zero and not all-clamped.
-  select count(*) into v_refused_seq from public.port_goods where drift <> 0;
-  if v_refused_seq < 14000
-     or (select count(distinct drift) from public.port_goods) < 1000
-     or (select count(*) from public.port_goods
-          where drift_slot < public.drift_slot_of(now())) <> 0 then
-    raise exception 'PROOF 4 FAILED: the deterministic drift fixture produced % non-zero row(s) and % distinct value(s), with % row(s) behind the current drift slot; it has stopped modelling a drifted market, or 0029''s wind is about to redraw it',
-      v_refused_seq, (select count(distinct drift) from public.port_goods),
-      (select count(*) from public.port_goods where drift_slot < public.drift_slot_of(now()));
-  end if;
-  v_refused_seq := 0;
+  -- THE DRAW IS STILL THIS FILE'S OWN. The key, the secret and both stream prefixes below are the
+  -- ones this proof has used since 2026-08-23, so the market it plays is byte-identical to the one
+  -- it has been playing; proof 05 passes its own and cannot move these numbers.
+  v_fixture := proof.pin_market('00000000-0f04-4000-8000-0000000000dd'::uuid, 'proof-4-fixture',
+                                'p4u1:', 'p4u2:');
 
-  -- AND THE OTHER TWO AMBIENT INPUTS THIS FILE DOES NOT OWN. Pinning the drift alone left it
-  -- passing four runs in five, which is not passing. Measured, the other two:
-  --
-  --   STOCK. `tick_market_drift` also regenerates stock toward stock_target as a function of
-  --   world.game_day(now()), so how full a port is depends on the wall clock at apply time. That
-  --   moves every price through the elasticity term AND decides whether the queued return cargo
-  --   can fill at all — run 6 of 8 failed at 11:00 with "1 pending and 1 failed order" because it
-  --   could not. Pinned to stock_target: the equilibrium the regeneration pulls toward, which is a
-  --   defined state of the world rather than an arbitrary one.
+  -- AND THE OTHER AMBIENT INPUT THIS FILE DOES NOT OWN — the one `proof.pin_market` deliberately
+  -- does not touch, because it is the weather and not the market:
   --
   --   HAZARDS. voyage.rng is keyed on the voyage id, which is a gen_random_uuid(), so the weather
   --   is different every run. At hazard_p_max = 0.06 a day, a seven-day crossing meets something
@@ -164,13 +132,15 @@ begin
   --   Set to zero here. This file is about the SCRIPT of §K.1, not about the weather; the danger
   --   table has its own coverage and this proof never asserted anything about it.
   --
-  -- All three are set inside the transaction scripts/db/proof.mjs rolls back, and every one of
-  -- them is read back below, because a fixture that silently stops applying is worse than none.
-  update public.port_goods set stock = stock_target, last_regen_day = world.game_day();
+  -- All of it is set inside the transaction scripts/db/proof.mjs rolls back, and every one of them
+  -- is read back, because a fixture that silently stops applying is worse than none: pin_market
+  -- raises on its own vacuity and returns the receipt asserted here, and the hazard knob is
+  -- re-read below.
   update public.world_config set value = to_jsonb(0) where key = 'hazard_p_max';
-  if (select count(*) from public.port_goods where stock <> stock_target) <> 0
+  if (v_fixture->>'nonzero')::int < 14000 or (v_fixture->>'distinct')::int < 1000
      or public.wc_num('hazard_p_max') <> 0 then
-    raise exception 'PROOF 4 FAILED: the stock/hazard preconditions did not take, so this file is back to playing whatever the clock dealt it';
+    raise exception 'PROOF 4 FAILED: the market/hazard preconditions did not take (% non-zero drift row(s), % distinct value(s), hazard_p_max %), so this file is back to playing whatever the clock dealt it',
+      v_fixture->>'nonzero', v_fixture->>'distinct', public.wc_num('hazard_p_max');
   end if;
 
   select id into v_lis from public.ports where code = 'LIS';

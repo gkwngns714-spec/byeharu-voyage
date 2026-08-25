@@ -21,6 +21,24 @@
 // ONE THING HAPPENS BEHIND THE SEAM, and it is marked where it happens: TIME. A voyage takes real
 // minutes and a spec has seconds, so the departure is backdated with a direct UPDATE — the same
 // device proof 04 and migration 0009's self-assert use. Everything else is the player's own words.
+//
+// ── 2026-08-25: AND THE MARKET IS PINNED, FOR THE SAME REASON PROOF 04'S IS ────────────────────
+// This spec had proof 04's defect and had never been given proof 04's fixture
+// (docs/OWNER_REQUESTS.md:100). `public.tick_market_drift` moves every price by `random()`
+// deliberately, and the chain's own self-asserts call it while applying, so every rebuild of the
+// world deals a different market — and this file needs ONE SPECIFIC THING to exist: a cargo out of
+// Lisboa that a neighbour pays more for, a return cargo Lisboa pays more for, and a hold that the
+// destination's daily cap will take. On an unlucky draw one of those is missing and the spec goes
+// red on a correct chain, which is how a gate stops gating.
+//
+// So the market is pinned by `proof.pin_market` — the ONE authority for it
+// (scripts/db/market-fixture.mjs), shared with proofs 04 and 05 — with this file's own draw. The
+// drift is REPLACED, not removed: every row is redrawn from the distribution the real process
+// settles into, keyed on the authored port and good codes, so this is a representative market and
+// the same one on every run and every machine. Weather is pinned too, and for the same reason proof
+// 04 pins it: a hazard that strands the fleet halts the queue, which is the halt rule WORKING and
+// incompatible with a spec whose claim is "the queue completes". Neither is asserted here; both
+// have their own coverage.
 
 import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
@@ -39,8 +57,13 @@ import {
   worldSnapshot,
 } from '../src/lib/rpc'
 import { courseBetween, seaNav } from './seaCourse.fixture'
+import { installMarketFixture } from '../scripts/db/market-fixture.mjs'
 
 let db: LocalDb
+
+/** This spec's own draw. Nothing else in the repo uses this key, so nothing else can move it. */
+const FIXTURE_KEY = '00000000-0f51-4000-8000-000000000051'
+const FIXTURE_SECRET = 'first-session-fixture'
 
 test.beforeAll(async () => {
   // One full build of the 243-good world (D21): ~2-3 min in Node PGlite. The default hook
@@ -48,6 +71,23 @@ test.beforeAll(async () => {
   test.setTimeout(360_000)
   db = await openLocalDb({ loadChain, dataDir: 'memory://', log: () => {} })
   setBackend(createLocalBackend(db))
+
+  // THE PRECONDITIONS THIS FILE OWNS — see the header. pin_market raises on its own vacuity, so a
+  // fixture that stopped applying reddens here rather than turning this spec back into a lottery.
+  await installMarketFixture(db.pg)
+  await db.pg.query(`select proof.pin_market($1::uuid, $2, 'fs1:', 'fs2:')`, [
+    FIXTURE_KEY,
+    FIXTURE_SECRET,
+  ])
+  await db.pg.query(`update public.world_config set value = to_jsonb(0) where key = 'hazard_p_max'`)
+  const { rows } = await db.pg.query<{ hazard: string; drifted: number; off_target: number }>(
+    `select public.wc_num('hazard_p_max')::text as hazard,
+            (select count(*)::int from public.port_goods where drift <> 0) as drifted,
+            (select count(*)::int from public.port_goods where stock <> stock_target) as off_target`,
+  )
+  expect(Number(rows[0].hazard)).toBe(0)
+  expect(rows[0].drifted).toBeGreaterThan(14_000)
+  expect(rows[0].off_target).toBe(0)
 })
 
 test.afterAll(async () => {
