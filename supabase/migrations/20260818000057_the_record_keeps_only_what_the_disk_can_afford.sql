@@ -259,7 +259,39 @@ select pg.port_id, pg.good_id, s.slot, now(),
    (public.drift_slot_of(now()) - 3),    -- recent: inside every window this law can produce
    (public.drift_slot_of(now()) - 10),   -- recent: inside every window this law can produce
    (public.drift_slot_of(now()) - 100)   -- ancient: inside 0013's old window (288), outside the new one
- ) as s(slot);
+ ) as s(slot)
+-- THE CONFLICT CLAUSE IS NOT DECORATION — IT IS THE PRODUCTION DEPLOY'S OWN BUG REPORT.
+-- 2026-08-26: this migration FAILED on the real production push with
+--     ERROR: duplicate key value violates unique constraint "price_history_pkey" (SQLSTATE 23505)
+--     Key (port_id, good_id, slot)=(c205adb3..., 4c69bf2d..., 2979499) already exists.
+-- The comment above already SAID "on production the equivalent excess already exists for real, at
+-- every pair" — and then seeded with a bare INSERT anyway. A fresh chain (PGlite, CI's disposable
+-- Supabase) boots price_history EMPTY, so nothing collided there and both engines went green on a
+-- precondition that cannot hold on the only database that matters. ON CONFLICT DO NOTHING is
+-- 0013's own idempotence rule (public.tick_price_snapshot writes the identical way), and it makes
+-- this step mean the same thing on both: AFTER it, rows exist at all three slots — written by this
+-- file on a fresh chain, by the live tick on production. Every assertion below reads the table, not
+-- this statement's row count, so none of them weakens: on production the ancient slot carries REAL
+-- rows the prune must remove, which is a stronger positive control than the synthetic one.
+on conflict (port_id, good_id, slot) do nothing;
+
+-- NON-VACUITY OF THE PRECONDITION, ASSERTED RATHER THAN ARGUED. The clause above can silently do
+-- nothing; what must be true is not "the insert wrote rows" but "the three slots are populated".
+do $$
+declare v_recent int; v_ancient int;
+begin
+  select count(*) into v_recent from public.price_history h join subject_0057 s on s.id = h.port_id
+   where h.slot in (public.drift_slot_of(now()) - 3, public.drift_slot_of(now()) - 10);
+  select count(*) into v_ancient from public.price_history h join subject_0057 s on s.id = h.port_id
+   where h.slot = public.drift_slot_of(now()) - 100;
+  if v_recent = 0 then
+    raise exception '0057 self-assert FAIL: 0 recent row(s) at the seeded slots for the subject port — the parity and span proofs below would run over nothing';
+  end if;
+  if v_ancient = 0 then
+    raise exception '0057 self-assert FAIL: 0 ancient row(s) at slot now-100 for the subject port — the prune positive control below would pass vacuously, proving nothing shrank';
+  end if;
+  raise notice '0057 precondition ok: subject port carries % recent and % ancient price_history row(s) before the prune', v_recent, v_ancient;
+end $$;
 
 -- ── 4. THE BEFORE PAYLOAD — captured while world.price_history is STILL 0013's deployed body,
 --       exactly 0051/0053's convention: the parity proof below reads this, not a description of it.
