@@ -171,7 +171,12 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // southern England; and the Antarctic pack moves out of the generator's own `cells.fill(0)` into
 // the ONE ice list (ICE gained `latBelow`), same parallel, 0 cells different. If 0051 lands after
 // this, the pin moves again — it names the true last file, never the last one anybody remembers.
-const LAST = '20260818000056_the_noise_stops_drowning_the_geography.sql'
+//
+// MOVED 2026-08-26 to 0058. Two migrations landed after 0056: 0057 bounds `public.price_history`,
+// whose 288-slot window was sized for a 14,980-pair world, grew to 7,347,231 rows / 1,410 MB in the
+// 54,432-pair one, filled production's disk and put the whole project into READ-ONLY mode; and 0058
+// makes a port's roster a law — capital 10, mid 4-8, small 4 — instead of 0041's hand-typed band.
+const LAST = '20260818000058_a_city_offers_what_its_size_earns.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
