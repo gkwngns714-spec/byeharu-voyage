@@ -1,7 +1,99 @@
 # RESUME — where the work stands
 
-Written 2026-08-23 23:00, before the owner's 01:20 session reset. **If you are picking this project
-up cold, read this first, then `docs/OWNER_REQUESTS.md`.**
+**If you are picking this project up cold: read the anchor immediately below, then
+`docs/DEV_LOG.md`'s top entry (D25), then `docs/OWNER_REQUESTS.md`. Everything under
+`LANDED 2026-08-24` and lower is older and is kept as record.**
+
+---
+
+# ▼ RESUME ANCHOR — 2026-08-25 ▼
+
+## WHERE THE CODE IS
+
+* **`supabase/migrations/` holds 50 `.sql` files, ending at 0056.** The ranges are 0001–0037,
+  0040/0041, 0045–0053, 0055/0056. The gaps 0038/0039, 0042–0044 **and 0054** are deliberate:
+  versions are arbitrated by `npm run db:check-versions`, **never by counting**. 0054 is a gap because
+  the slice that took that number turned out to need no migration at all — it moved the balance proof
+  onto a fixture and changed no schema, and cutting a file to look busy would have been a lie in the
+  chain. `supabase/migrations/CHAIN.md` is the current per-migration list.
+* **Nothing from 2026-08-25 is pushed, and nothing from it is deployed.** Local `main` is **25 commits
+  ahead of `origin/main`**, which sits at `d3463da` — *"A refusal is two numbers and a verb"*,
+  migration 0050. **These 50 migrations are merged to LOCAL main only.** Do not tell anyone to
+  refresh into any of it.
+* **What that means for production:** the last recorded, probed statement about the live project is
+  D24's, on 2026-08-25, with the anon key — it was on **0050**, the head of a 45-file chain. Nothing
+  since has been pushed to change that, and **this file makes no claim beyond that probe.** If you
+  need the live state, probe it; do not read it out of a document.
+
+## WHAT LANDED ON 2026-08-25 (local `main`, not deployed)
+
+Five migrations, one no-migration slice, and three client slices. `DEV_LOG.md` D25 is the full record
+with every measurement; this is the index.
+
+| slice | what it is |
+|---|---|
+| **0051** | Rarity thresholds stop being three absolute producer counts calibrated for 70 goods (243 goods were **54.7% exotic**) and become fractions of the world's own mean producer count: **47 / 86 / 58 / 52**. Proven scale-free at k = 2/3/7/17/50. |
+| **0052** | The Severn is water. Bristol snapped **64.55 nm to Lyme Bay**, and because `snap_nm` is granted to a course as its head allowance she carried a **~90 nm land-exempt corridor the pathfinder used** — a live breach of the owner's never-touch-land law that the docs had filed as a labelling issue. Now 0.00 nm. The Antarctic closure also folds three statements into one `ICE` rule, 0 cells different. |
+| **0053** | `world.mid_price` re-read four knobs on every call — **38,880 plpgsql calls per quay for four constants, 62% of the mid's cost**. Bordeaux `world.market` **1,442 → 241 ms**, buffers **331,470 → 40,530**. All 54,432 mids proven byte-identical. |
+| **0054** (no migration) | The balance proof's market is PINNED on one fixture authority, `proof.pin_market`. The lottery is dead — and it was hiding the finding below. |
+| **0055** | Encounters, **landed DARK**. `hazard_base`/`piracy_index` took **three distinct value-pairs across 51 seas — 71% of the world's water was mechanically identical**. Now ten mixes derived from the sea's own danger and piracy. `FAIR_WIND` is the first event kind that is not a loss. |
+| **0056** | `drift_sigma` **0.040 → 0.020**. See the finding below. |
+| nav | The tab bar was **three rows, 390×168 px, 19.9% of a phone viewport**. Now one row of six: the five voyage tabs stay direct, the four that do not act on the world sit behind CABIN. **390×56 px.** |
+| map | The harbour hit-target was 22 px while the centre of a harbour's own printed name sits **24.8–31.0 px** from its mark. `hitRadius` is now derived (**38 px**). The fold gained a provision-ratio control that COMPOSES 0034's presets. `openingBounds` widens until a harbour is on the sheet. |
+| boot image | `vite build` applies the chain once and emits `dist/db/world-<fingerprint>.tar.gz`. Cold boot **171.7 s → 7.1 s**, +4.75 MB fetched only when a world must be built. |
+
+## THE FINDING THAT MATTERS MOST
+
+**A number this project quoted in its own docs for a week was measuring the test harness.**
+
+Proof 05's *"a first voyage returns 12–18%"* was a count of how many drift ticks the harness happened
+to run before it looked. A freshly applied chain has stepped the drift **once** on the 14,980 rows
+0003 seeded and **never** on the 39,468 that 0041 added, so **72% of its prices sit at drift 0**.
+**Every deployed world — every world whose clock has run, which is all of them — was paying ≈37.4%.**
+
+And the deciding number was not that one. `BALANCE_DISTANCE_PAYS` had fallen to **18.87% long vs
+16.19% short — 1.17×**, where the world's own geography makes distance worth **3.31×**. The noise had
+all but erased the reason to leave home waters. 0056 pulls `drift_sigma` to 0.020 and geography
+recovers to **9.66 vs 5.88 = 1.64×**, with the quay's offer shape moving too: 85 near routes fall to
+55 while 360 far ones rise to 405. **0.020 was chosen over 0.015 because 0.015 thins the near market
+to 39 short routes, and that is the water a new captain starts in.**
+
+The claim is now two markers rather than one widened band: `BALANCE_MEDIAN_IN_BAND` (13.0–20.0, and
+it says out loud that it is a **regression tripwire** on the settled market) and
+`BALANCE_GRADIENT_IN_BAND` (the design's original 4–16, measured on a FLAT market — the economy the
+affinity knobs actually author, where it reads **7.0%** against the 7.5 they were tuned to). **The
+authored economy was already doing exactly what it was designed to do. Everything above 7.5 was
+noise.**
+
+## WHAT THE NEXT WORK IS
+
+In the order a cold reader should consider them:
+
+1. **PUSH AND DEPLOY, or decide not to.** Twenty-five commits and five migrations are sitting on local
+   `main`. Two of them change a live economy (0051 re-tiers 171 goods, 0056 halves the price noise) and
+   one changes sailed distances (0052 moves 468 pair readings, all Bristol's). **This is a real
+   ~30-player-class deploy decision, not a formality**, and it is the owner's.
+2. **Light 0055, or decide not to.** It is one migration and four statements, named in 0055's own
+   header, and the measured cost is Barbary raid-days 43.0% → 20.4% of event-days. Owner's call.
+3. **`public.good_rarity`, 87 ms of the ~240 ms left in `world.market`** — now the largest single item
+   in that read, named by 0053 and deliberately left for its own slice.
+4. **The other 39 port snaps.** Bristol was one of **40 harbours that snap more than 20 nm** to
+   sailable water (13 over 30 nm): Longyearbyen 67.68, Hanoi 58.68, Khambhat 57.77, Tokyo 47.69 lead
+   it. Same class of breach of the never-touch-land law, same fix shape as 0052.
+5. **Hit-test the label's box, not a radius** — `Strait of Gibraltar` is 119.6 px wide and its far end
+   is 129 px from the mark. Needs the label plan lifted out of `ChartCanvas`; a second author of where
+   a name is would be worse than the miss.
+6. **Drive the pre-built image in a browser.** It is proven in Node only (`tests/db.image.spec.ts:5`
+   says so of itself). Nobody has watched a browser arrive at a live purse in 7.1 s.
+7. **Drive the map's ratio control on production.** It landed after the day's drive and has never been
+   pressed on the live game.
+
+# ▲ RESUME ANCHOR ▲
+
+---
+
+Everything below was written 2026-08-23 23:00, before the owner's 01:20 session reset, and updated in
+place since. It is history and context, not a to-do list.
 
 The owner's standing authority, in their words:
 
@@ -121,10 +213,12 @@ promise.** `docs/UI_DIRECTION.md` forbids printing a number the game will not ho
 
 ## STATE AT THE MOMENT OF WRITING (2026-08-23), production line corrected 2026-08-25
 
-**Production — corrected 2026-08-25.** The line here used to read *"35/35 migrations, matching
-local"*, and that was false: `supabase/migrations/` holds **45 `.sql` files** (0001–0037, 0040/0041,
-0045–0050; the gaps 0038/0039 and 0042–0044 are deliberate). **The live project is on 0050, the head
-of the chain**, verified by probing it directly with the anon key on 2026-08-25 — not asserted from
+**Production — corrected 2026-08-25, twice; SEE THE ANCHOR AT THE TOP, WHICH SUPERSEDES THIS.** The
+line here used to read *"35/35 migrations, matching local"*, and that was false; it was then corrected
+to **45 `.sql` files**, and by the end of the same day that was stale too — **the chain is 50 files
+ending at 0056, and the last five are on local `main` only, unpushed.** What the probe below
+established, and all it established, is that the live project was on **0050** — the head of the chain
+*as it stood that morning* — verified directly with the anon key on 2026-08-25, not asserted from
 memory:
 
 * `GET /rest/v1/legs` → **404**. The table is gone, so **0049** is applied.
@@ -158,12 +252,22 @@ D23), the seas as 0040 (D22), and the mover was regenerated against this chain a
 
 ## KNOWN, WRITTEN DOWN, NOT LOST
 
-- **Rarity thresholds do not scale.** Fixed at ≤2/≤5/≤12 producers, calibrated for 70 goods. At 243
-  the catalogue is **54.7% exotic** — exotic has become the default and therefore means nothing.
-- **Cold boot 78.8 s** measured with 243 goods (was ~30–55 s). The world builds in the player's tab.
-- **Proof 05's balance band is a genuine lottery** — an unchanged chain measured
+- ~~**Rarity thresholds do not scale.** Fixed at ≤2/≤5/≤12 producers, calibrated for 70 goods. At 243
+  the catalogue is **54.7% exotic** — exotic has become the default and therefore means nothing.~~
+  **FIXED 2026-08-25 by migration 0051** — the cuts are now fractions of the world's own mean producer
+  count and the catalogue reads 47 / 86 / 58 / 52, proven scale-free at k = 2/3/7/17/50. On local
+  `main`, not deployed.
+- ~~**Cold boot 78.8 s** measured with 243 goods (was ~30–55 s). The world builds in the player's
+  tab.~~ **FIXED 2026-08-25** — `vite build` applies the chain once and ships the world as an image
+  named by the chain's own fingerprint; the tab restores it instead of replaying the chain.
+  **171.7 s → 7.1 s** measured back to back on the same build. On local `main`, not deployed, and
+  **proven in Node rather than in a browser**.
+- ~~**Proof 05's balance band is a genuine lottery** — an unchanged chain measured
   15.1/9.0/12.4/14.4/12.4/12.1 against a 4–16 band, and once 16.2. A gate that cries wolf gets
-  ignored.
+  ignored.~~ **FIXED 2026-08-25 by the 0054 slice, and it was hiding a real defect** — see the anchor
+  at the top of this file. The market is pinned on one fixture authority, five `db:proof` runs now
+  agree to the digit, and the 12–18% this proof reported turned out to be a count of how many drift
+  ticks the harness ran. Every deployed world was paying ≈37.4%.
 - `db.chain`'s rebuild spec builds the world twice and grows with every migration; timeout raised to
   360 s deliberately. If it times out again the answer is a lighter fixture, not a bigger number.
 - The Supabase access token on this machine **expires ~2026-09-23** and was pasted into a chat
