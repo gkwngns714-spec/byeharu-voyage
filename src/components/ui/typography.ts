@@ -1,5 +1,5 @@
 // Design-system TYPE RECIPES — pure class builders, the `buttonStyles.ts` / `tableLayout.ts` idiom
-// applied to the two text treatments this game repeats most.
+// applied to the text treatments this game repeats most.
 //
 // ── WHY THESE ARE FUNCTIONS AND NOT A COMMENT SAYING "USE THESE CLASSES" ───────────────────────
 // An audit on 2026-08-22 counted `font-mono text-[11px] text-ink-faint` written out THIRTY times
@@ -20,6 +20,11 @@
 //                order, a good that hands a BUY to Command. It carries the colour and the
 //                underline and nothing else, because the 44 px floor belongs to the <button>
 //                around it and differs by row (see the callers, which pass `min-h-11 text-left`).
+//   inlineFigureClass
+//                the READ FIGURE inside a row — full-strength ink, mono, tabular. `fineClass` is
+//                the number you may ignore; this is the number the row exists to show, sitting
+//                beside the bar that draws it rather than above the block as its headline (that
+//                is `HeroFigure`, and it is `text-2xl` and a `<p>` for exactly that reason).
 //
 // `extra` is appended, never merged: Tailwind's later-class-wins is by stylesheet order, not by
 // string order, so a caller that needs a different size passes the size and gets it.
@@ -32,6 +37,29 @@ export function fineClass(extra = ''): string {
 /** Text that is a tap target inside a row. The tap FLOOR is the caller's button, not this. */
 export function rowLinkClass(extra = ''): string {
   return `text-sm text-accent underline-offset-4 hover:underline${extra ? ` ${extra}` : ''}`
+}
+
+/**
+ * THE FIGURE BESIDE THE BAR — mono, tabular, full-strength ink, at reading size.
+ *
+ * Found by `tests/duplication.spec.ts` at 100% across two files that had never met:
+ * `RefusalNote.tsx`'s `2.9 / 33` beside its danger Meter, and `HaggleBlock.tsx`'s odds percentage
+ * beside its own. Both had hand-written `shrink-0 font-mono text-sm tabular-nums text-ink`, and
+ * both were right — which is precisely the shape the twelve chip copies started in
+ * (`buttonStyles.ts:31-35`). One recipe, one place, before a third one landed.
+ *
+ * `tabular-nums` is the load-bearing token and the reason this is not just "small mono text": the
+ * figure sits in a flex row whose other child is a `Meter` that grows, so a proportional `9` and a
+ * proportional `1` would shift the bar's end every time the number ticked. Fixed-width digits make
+ * the figure's box a function of its DIGIT COUNT and nothing else.
+ *
+ * The FLEX BEHAVIOUR is the caller's, not this recipe's — the same boundary `rowLinkClass` keeps
+ * with the 44 px floor. Both callers today pass `shrink-0` because both sit beside a `min-w-0
+ * flex-1` Meter, but a figure standing on its own line needs no such thing, and a recipe that
+ * baked it in would have to be un-baked by the first caller that did.
+ */
+export function inlineFigureClass(extra = ''): string {
+  return `font-mono text-sm tabular-nums text-ink${extra ? ` ${extra}` : ''}`
 }
 
 /**

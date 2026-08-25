@@ -365,6 +365,23 @@ test('a migration that re-cuts an existing function declares the supersede in it
     const recut = new Set<string>()
     for (const c of code.matchAll(/create\s+(?:or\s+replace\s+)?function\s+([a-z_]+\.[a-z_0-9]+)/gi)) {
       const fn = c[1].toLowerCase()
+      // pg_temp IS THE ONE SCHEMA THAT CANNOT BE SUPERSEDED, so this guard does not read it.
+      // A `pg_temp.*` function lives in the connection's own temporary schema and is dropped with
+      // the session; it never enters the deployed catalogue. So the premise this test is built on
+      // — "an earlier migration already created it, and a deployment is now carrying that body" —
+      // is false for pg_temp by construction. There is no deployed body to re-cut, no caller that
+      // outlives the transaction, and nothing a second definition could drift away from. Worse,
+      // the sanctioned fix cannot apply either: a file that is replayed alone, into a fresh
+      // session, MUST carry its own copy of any pg_temp helper it uses, so demanding the word
+      // "supersede" would be demanding a declaration about a supersede that never happens.
+      // THE CASE THAT EXPOSED IT: the hunk-slicing helper `pg_temp.recut` is defined at
+      // 20260818000047_the_sea_is_a_free_plane.sql:80 and again at
+      // 20260818000050_a_refusal_is_two_numbers_and_a_verb.sql:120 — two definitions by necessity,
+      // because neither transaction can see the other's.
+      // NARROWED TO pg_temp AND NOTHING ELSE: every persistent schema (public, voyage, cmd,
+      // world, …) is still read exactly as before, and 0050's genuine supersede of
+      // voyage.sail_refusal is still caught by this test.
+      if (fn.startsWith('pg_temp.')) continue
       const owner = firstCut.get(fn)
       if (owner === undefined) firstCut.set(fn, m.file)
       else if (owner !== m.file) recut.add(fn)
