@@ -3,6 +3,7 @@ import type { Refusal } from '../../lib/rpc'
 import { Badge } from './Badge'
 import { Explain } from './Explain'
 import { Meter } from './Meter'
+import { inlineFigureClass } from './typography'
 
 // Design-system REFUSAL — the one concise rendering of "the server said no".
 //
@@ -59,7 +60,7 @@ export function RefusalNote({
             tone="danger"
             className="min-w-0 flex-1"
           />
-          <span className="shrink-0 font-mono text-sm tabular-nums text-ink">
+          <span className={inlineFigureClass('shrink-0')}>
             {trim(f.have)} / {trim(f.need)}
             <span className="ml-1 text-[10px] text-ink-faint">{f.unit}</span>
           </span>

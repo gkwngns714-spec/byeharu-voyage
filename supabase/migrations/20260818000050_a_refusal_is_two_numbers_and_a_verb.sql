@@ -105,6 +105,37 @@
 --            arithmetic, there are no two numbers to draw, and cmd.refusal_caught splits them at
 --            the envelope exactly as before.
 --
+-- ── THE SUPERSEDE, DECLARED ────────────────────────────────────────────────────────────────────
+-- The mechanism is argued at length above; the DECLARATION is this paragraph, in the word
+-- README §1 uses — "a change goes in a NEW file that supersedes the old one" — because a rule
+-- explained is still not a rule declared.
+--
+-- WHAT IS SUPERSEDED, AND WHY. `voyage.sail_refusal(uuid, uuid, jsonb, numeric)`, cut by 0047,
+-- is superseded here. 0047's body could only answer in PROSE, and prose is the one shape the bar
+-- cannot be drawn from: to print "2.9 / 33" the client would have to regex the figures back out
+-- of the sentence, which is exactly the second author of the refusal this file exists to
+-- prevent. The superseding body IS 0047's body — same gates in the same order, arithmetic
+-- unchanged to the character — and only the SHAPE of the answer moves, text → jsonb
+-- {code, sentence, figures}. 0047 itself is not touched and still proves its own claims when the
+-- chain replays in order.
+--
+-- IT IS A NO-OP WHERE THE NEW INPUT IS ABSENT. `figures` is the whole of what is new, so every
+-- caller that does not read it must see what it saw yesterday. `world.trade_routes` and
+-- scripts/db/proofs/05 ask the refusal as the silent predicate `... is null`, and a jsonb is null
+-- on exactly the voyages a text was null on — neither changes by a character. Self-assert (h)
+-- measures that seam as a DELTA instead of claiming it here: the quay must consider MORE ports
+-- once her casks are full than it did on thin stores, so the gate is proven still ASKED rather
+-- than merely still compiling. `voyage.path_refusal` is deliberately NOT superseded — E_LAND,
+-- E_OFF_COURSE and E_NO_COURSE are not arithmetic and have no two numbers to draw.
+--
+-- EVERYTHING THAT MUST MOVE TOGETHER MOVES IN THIS FILE. That clause is 0017:50-55's scar: do_buy
+-- checked room with one function and placed cargo with another function's private copy of the
+-- same arithmetic. So the raiser (cmd.refuse), its inverse (cmd.refusal_caught, replacing all six
+-- hand-copied splits), the column a failed order keeps its figures in
+-- (public.orders.error_figures) and every sliced caller listed under WHAT MOVES land in this one
+-- transaction. Nothing is deferred: a chain where the raiser had landed without the reader would
+-- serve refusals that nobody downstream could split.
+--
 -- ── THE SLICES ─────────────────────────────────────────────────────────────────────────────────
 -- Every re-cut body is edited by hunks that must occur EXACTLY ONCE in the DEPLOYED definition
 -- (pg_get_functiondef), re-asserted at apply time: a drifted deployment refuses rather than

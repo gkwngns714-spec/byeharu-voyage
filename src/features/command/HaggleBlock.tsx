@@ -1,5 +1,15 @@
 import { useState } from 'react'
-import { Badge, Button, Explain, fineClass, headRowClass, Meter, Notice, SectionLabel } from '../../components/ui'
+import {
+  Badge,
+  Button,
+  Explain,
+  fineClass,
+  headRowClass,
+  inlineFigureClass,
+  Meter,
+  Notice,
+  SectionLabel,
+} from '../../components/ui'
 import { formatPctPoints } from '../../lib/format'
 import type { HaggleAttempt, MarketGood, Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -126,7 +136,7 @@ export function HaggleBlock({
                   tone={onQuay.next_odds_pct >= 45 ? 'success' : 'warning'}
                   className="min-w-0 flex-1"
                 />
-                <span className="shrink-0 font-mono text-sm tabular-nums text-ink">
+                <span className={inlineFigureClass('shrink-0')}>
                   {formatPctPoints(onQuay.next_odds_pct, 1)}
                 </span>
               </div>

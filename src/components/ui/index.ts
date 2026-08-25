@@ -4,9 +4,10 @@ export { Button } from './Button'
 // The text field. One recipe, replacing four hand-written ones (see Input.tsx).
 export { Input } from './Input'
 export { buttonClasses, type ButtonVariant, type ButtonSize } from './buttonStyles'
-// The two text treatments this game repeats: the fine-print voice and the tappable row link. See
-// typography.ts for the thirty and the three hand-written spellings they replace.
-export { fineClass, rowLinkClass, headRowClass } from './typography'
+// The text treatments this game repeats: the fine-print voice, the tappable row link, the panel
+// head row, and the read figure that sits beside a bar. See typography.ts for the hand-written
+// spellings each one replaces — thirty of the first, three of the second, two apiece after that.
+export { fineClass, rowLinkClass, headRowClass, inlineFigureClass } from './typography'
 export { Card, CardHeader, type CardTone } from './Card'
 export { Badge, type BadgeTone } from './Badge'
 // Badge's numeric counterpart: the %NBR pill (see PriceIndex.tsx for the boundary — a
