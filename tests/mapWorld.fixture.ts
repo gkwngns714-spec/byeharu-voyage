@@ -18,7 +18,7 @@
 // app gets its ports from `world.snapshot()` like everything else.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import type { FleetView, SnapshotPort } from '../src/lib/rpc'
+import type { FleetView, FleetVoyage, SnapshotPort } from '../src/lib/rpc'
 
 /** code | name | country | lat | lon | size_tier */
 const PORT_ROWS = `
@@ -370,6 +370,9 @@ export function sailingFleet(args: {
   totalNm?: number
   etaMs?: number
   legIndex?: number
+  /** 0055: the seas her frozen course still has to cross, exactly as world.fleets serves them.
+   *  Omitted = a server predating 0055, which is a case the chart must survive. */
+  waters?: FleetVoyage['waters']
 }): FleetView {
   const codes = args.course ?? [args.from, args.to]
   const points: [number, number][] = codes.map((c) => {
@@ -401,6 +404,7 @@ export function sailingFleet(args: {
       eta: new Date(args.etaMs ?? 1_700_000_600_000).toISOString(),
       total_nm: totalNm,
       nm_done: nmDone,
+      ...(args.waters ? { waters: args.waters } : {}),
       position: {
         seg_index: segIndex,
         leg_frac: args.legFrac,

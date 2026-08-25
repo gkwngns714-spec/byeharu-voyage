@@ -52,7 +52,7 @@ export { SmallChart } from './SmallChart'
 export { Minimap } from './Minimap'
 
 // ── the read model: what a chart is told, and what it makes of it ──────────────────────────────
-export type { MapFleet, MapPort, MapSelection, MapVoyage } from './mapTypes'
+export type { MapFleet, MapPort, MapSelection, MapVoyage, MapWater } from './mapTypes'
 export {
   buildChartModel,
   fleetsAtPort,

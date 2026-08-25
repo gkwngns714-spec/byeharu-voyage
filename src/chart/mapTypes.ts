@@ -69,6 +69,31 @@ export interface MapVoyage {
   readonly destinationCode: string | null
   /** The open-water destination; null when `destinationCode` names a port. Exactly one is set. */
   readonly destPoint: LatLon | null
+  /**
+   * THE WATERS SHE STILL HAS TO CROSS (0055), in sailing order, first row = the sea she is in.
+   * Served on `world.fleets().voyage.waters`; every field is the server's, copied.
+   *
+   * It is a LIST OF PLACES, not a forecast. The chart has no idea what will happen on any of these
+   * days and must never be given one: `voyage.hazard_roll` is pure, so predicting it is trivial and
+   * refused — see migration 0055's header for both reasons, the design one and the measured one.
+   */
+  readonly waters: readonly MapWater[]
+}
+
+/** One sea a voyage still has to cross — `VoyageWater`, in the chart's own words. */
+export interface MapWater {
+  readonly code: string
+  readonly name: string
+  /** 1–5, straight from `seas.danger_level`. Drawn by `DangerMark`; never derived here. */
+  readonly danger: number
+  /** The sea's character in plain words (`seas.note`) — a name, not a sentence. */
+  readonly note: string
+  /** Sailed nm she must still make good to enter it; 0 for the one she is in. */
+  readonly nmTo: number
+  /** How much of her remaining passage lies in it. */
+  readonly nmIn: number
+  /** True for the water she is in now — always exactly the first entry. */
+  readonly now: boolean
 }
 
 /** A fleet, in exactly one of the three states the chart can draw (0039 added the open anchor). */

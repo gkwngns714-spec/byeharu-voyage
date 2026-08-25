@@ -75,6 +75,10 @@ export { goodTileGridClass } from './goodTileLayout'
 // so the tier survives a colourblind player and a greyscale screenshot. See Rarity.tsx.
 export { RarityMark } from './Rarity'
 export { rarityLabel, RARITY_TIERS } from './rarityTiers'
+// RarityMark's counterpart for WATER: a sea's served danger tier (0040), drawn as countable pips
+// in the game's three-tone colour language. Same split, same rules — see DangerMark.tsx.
+export { DangerMark } from './DangerMark'
+export { dangerLabel, dangerPips, dangerTone, DANGER_PIPS, DANGER_TIERS } from './dangerTiers'
 export { Collapsible, CollapsibleCard } from './Collapsible'
 // Collapsible's inline counterpart: the tappable ⓘ that folds a standing EXPLANATION rather than
 // content (see Explain.tsx for the boundary between them, and for what may never go behind a dot).

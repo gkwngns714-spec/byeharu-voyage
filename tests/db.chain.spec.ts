@@ -142,7 +142,16 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // figures in PG_EXCEPTION_DETAIL; the cmd.* envelope and public.orders.error_figures carry them
 // to the client), the sentences lost the arithmetic and the repeated verb and kept the REASON,
 // and the FIVE hand-copied "split E_CODE: sentence" definitions became one, cmd.refusal_caught.
-const LAST = '20260818000050_a_refusal_is_two_numbers_and_a_verb.sql'
+//
+// Moved 2026-08-25 for 0055 WHAT THESE WATERS BREED — the per-sea encounter mix, landed DARK.
+// `public.voyage_event_kinds` gains three response numbers per kind, so what befalls a fleet is
+// derived from `seas.danger_level` and `seas.piracy_index` (which had been read by no rule at all)
+// instead of from one flat bag every sea shared; five new kinds are authored against 0035's
+// catalogue with `is_rolled = false`; and `world.fleets()` gains `voyage.waters` — the seas her
+// frozen course still has to cross, with the distance to each — which the map draws. The draw
+// itself is untouched and asserted byte-identical: no voyage yields differently because it ran.
+// The gap 0051-0054 is other worktrees'; versions are arbitrated by npm run db:check-versions.
+const LAST = '20260818000055_what_these_waters_breed.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

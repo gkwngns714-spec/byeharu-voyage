@@ -5,6 +5,7 @@ import { fleetsAtPort, fleetsBoundFor, type ChartModel, type MapPort, type MapSe
 import { pointLabel } from '../../domain/passage'
 import { MapPanel } from './MapPanel'
 import { SendFleet } from './SendFleet'
+import { WatersAhead } from './WatersAhead'
 
 // PANEL TWO, BOTTOM-RIGHT — the detail of whatever is selected, and the ONE place you act from.
 // DESIGN §E.5's "selected fleet detail", widened by one case: a port, when a port is what was
@@ -81,6 +82,18 @@ export function DetailPanel({
         compact={compact}
         onDismiss={onDismiss}
         storageKey="map.detail"
+        // A FLEET AT SEA CARRIES THE WATERS AHEAD, so she needs the same width the port case
+        // needed and for the same reason: the default compact column (`max-w-[55vw]`, ~214 px at
+        // 390) was sized for four short label/value lines, and a sea's name beside a distance
+        // wraps in it. The chart clips at its own edge, so panel HEIGHT is what must stay bounded
+        // — and width is what buys height back. A docked fleet keeps the narrow column.
+        widthClassName={
+          fleet.voyage && fleet.voyage.waters.length > 0
+            ? compact
+              ? 'w-[74vw] max-w-[74vw]'
+              : 'w-56 max-w-[45vw]'
+            : undefined
+        }
         testId="map-detail-panel"
       >
         <p className="mb-1 truncate font-serif text-sm text-ink">{fleet.fleet.name}</p>
@@ -107,6 +120,9 @@ export function DetailPanel({
                 value={`${formatInt(fleet.voyage.sailedNm)} / ${formatNm(fleet.voyage.totalNm)}`}
               />
               <Line label="arrives" value={formatRealShort(fleet.voyage.etaMs - nowMs)} />
+              {/* 0055 — WHAT WATER IS STILL IN FRONT OF HER, and how far off it is. A list of
+                  places, never a forecast; see ./WatersAhead.tsx. */}
+              <WatersAhead waters={fleet.voyage.waters} />
             </>
           )
         )}
