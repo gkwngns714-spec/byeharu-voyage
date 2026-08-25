@@ -54,8 +54,9 @@ const knob = (key, value) =>
 // Each break names the marker it is expected to redden. A break that goes green is a marker that
 // was not measuring what its name claims.
 const BREAKS = [
-  ['drift doubled — a noisier market pays more', knob('drift_sigma', 0.08), 'BALANCE_MEDIAN_IN_BAND'],
-  ['drift quartered — the printer turned off', knob('drift_sigma', 0.01), 'BALANCE_MEDIAN_IN_BAND'],
+  // Both are relative to what migration 0056 set (0.02), not to 0001's retired 0.04.
+  ['drift doubled — 0056 undone, the printer back on', knob('drift_sigma', 0.04), 'BALANCE_MEDIAN_IN_BAND'],
+  ['drift halved — 0056 overshot', knob('drift_sigma', 0.01), 'BALANCE_MEDIAN_IN_BAND'],
   ['the quay takes a fifth of every trade', knob('spread_base', 0.2), 'BALANCE_EVERY_PORT_HAS_A_TRADE'],
   // NOT the `affinity_*` knobs: `port_goods.affinity` is DERIVED ONCE at seed time (0005/0041), so
   // moving the knobs afterwards moves nothing and the first version of this break went green
@@ -119,12 +120,12 @@ for (const [name, setup, expected] of BREAKS) {
 
 // ── 3. THE DRIFT SWEEP — not a test, a TABLE for whoever retunes this ─────────────────────────
 //
-// The settled economy pays 37 per cent of the stake on a first voyage, which is over twice the
-// designed pace, and no affinity knob moves it (proof 05's header has the measurement). The knob
-// that does is `drift_sigma`. This prints what each setting pays, so the decision can be made on
-// numbers. Reds here are EXPECTED — the band is pinned to today's reality, so every setting but
-// the current one is out of it by construction.
-console.log('\n── what drift_sigma pays (band-red is expected off the current setting) ──')
+// This is the sweep that decided migration 0056. No affinity knob moves the settled economy — the
+// one that does is `drift_sigma` — so this prints what each setting pays and lets the decision be
+// made on numbers. It is kept after the decision, not retired with it: the next person to argue
+// about the pace should re-run it rather than re-derive it. Reds here are EXPECTED — the band is
+// pinned to what 0056 set, so every setting but the current one is out of it by construction.
+console.log('\n-- what drift_sigma pays (band-red is expected off the current setting) --')
 const MEDIAN = /returns %?([\d.]+) (?:per cent )?of the stake/
 for (const sigma of [0.01, 0.015, 0.02, 0.03, 0.04, 0.06]) {
   const r = await run(knob('drift_sigma', sigma))

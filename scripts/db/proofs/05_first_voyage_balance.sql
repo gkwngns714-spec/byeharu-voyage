@@ -57,17 +57,51 @@
 -- for two hours — which is every deployed world, since `world.market()` itself winds the tick
 -- (0029) — sits at sigma / sqrt(1 - theta^2) = 0.04 / sqrt(1 - 0.81) = 0.0918, and pays about 37.
 --
--- THAT IS A REAL BALANCE DEFECT AND IT IS STATED, NOT ABSORBED. It is recorded in this header, in
--- this file's PASS lines, and it is why the band below reads the way it does. The lever is
--- `drift_sigma` / `drift_theta` (0001), NOT the market spread — widening the spread taxes every
--- unhaggled trader (docs/DEV_LOG.md:613) and would not touch this number anyway. Nothing here
--- pulls that lever: retuning a live economy is the owner's call, not a proof's.
+-- THAT IS A REAL BALANCE DEFECT AND IT IS STATED, NOT ABSORBED.
 --
--- AND IT SHOWS UP TWICE. BALANCE_DISTANCE_PAYS used to read 10.80 per cent for the long legs
--- against 3.26 for the short ones — geography worth three and a third times as much as staying
--- home. On the settled market the same pooled comparison reads 18.87 against 16.19: still the right
--- way round, but the noise has all but drowned the reason to leave home waters. That is the same
--- defect wearing a different marker, and it is why the margin there now looks thin.
+-- AND IT SHOWED UP TWICE, WHICH IS WHAT DECIDED IT. BALANCE_DISTANCE_PAYS used to read 10.80 per
+-- cent for the long legs against 3.26 for the short ones — geography worth three and a third times
+-- as much as staying home. On the settled market the same pooled comparison read 18.87 against
+-- 16.19: still the right way round, and worth 17 per cent. This is a game about carrying goods from
+-- where they are made to where they are not, and the noise had all but erased the reason to leave
+-- home waters. A knob that drowns the premise is not a balance preference.
+--
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+-- 2026-08-25, THE SAME DAY — THE KNOB WAS PULLED: `drift_sigma` 0.04 -> 0.02 (MIGRATION 0056)
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+--
+-- Everything above is why. Migration 0056 carries the change, the alternatives it rejected and its
+-- own self-assert; this file carries the band that judges it, and the two landed in ONE commit so
+-- that the knob and its judge are never in two states at once.
+--
+-- MEASURED THROUGH THIS VERY FILE, on the chain as it stands at 0053 (2026-08-25, PGlite 0.5.5 /
+-- PostgreSQL 18.3), with the band widened in memory so every marker still emitted:
+--
+--     drift_sigma            0.040    0.030    0.025   >0.020<   0.015
+--     pooled median          37.4%    26.7%    21.5%    15.7%    12.5%
+--     flat-market gradient    7.0%     7.0%     7.0%     7.0%     7.0%
+--     long legs (>800 nm)    18.87%   14.21%   11.78%    9.66%    7.68%
+--     short legs (<400 nm)   16.19%   11.10%    8.64%    5.88%    3.92%
+--     long / short            1.17x    1.28x    1.36x    1.64x    1.96x
+--     routes offered long/short 360/85  371/77   391/64   405/55   417/39
+--
+-- THREE THINGS THAT TABLE SETTLES, none of them assumed:
+--   1. GEOGRAPHY MEASURABLY RECOVERS. The long-leg premium goes 1.17x -> 1.64x, a 40 per cent
+--      relative gain, and the shape of what the quay offers moves with it: 85 near routes fall to
+--      55 while 360 far ones rise to 405. Less noise does not merely pay less — it pays less for
+--      staying home, which is the whole point.
+--   2. THE AUTHORED GRADIENT IS UNTOUCHED. 7.0 per cent at every setting, to the digit, because
+--      BALANCE_GRADIENT_IN_BAND measures the FLAT market — amplitude 0 — which no sigma can scale.
+--      Confirmed by measurement rather than assumed.
+--   3. THE 0051 / 0052 / 0053 MERGES MOVED NOTHING. At 0.040 this chain reports 37.4 / 7.0 /
+--      18.87 / 16.19 — identical in every digit to the 45-migration chain the previous slice
+--      measured. The band below is pinned to the chain it will be judged on.
+--
+-- WHAT WAS NOT DONE, AND THE NUMBERS THAT ARGUE FOR IT: 0.015 pays 12.5 (mid-band rather than at
+-- its ceiling), recovers geography further to 1.96x, and keeps a fully bargained trader inside
+-- 4-16 where 0.020 does not (15.7 + proof 06's 2.7 = 18.4). Against it: it thins the near market
+-- hard, 39 short routes against 85 at the old setting. 0.020 was the authorised step and 0.020 is
+-- what shipped; the rest is recorded so a second step needs no new measurement.
 --
 -- ── WHAT THIS ASSERTS, AND WHY EACH ONE ────────────────────────────────────────────────────────
 --   * THE OPENING VOYAGE PAYS, EVERYWHERE. From a sample of starting ports, on every drawn market,
@@ -95,25 +129,19 @@
 -- Every figure here is UNHAGGLED. A bargain struck at the cap is worth a further 2.7 per cent of
 -- the stake over a round trip — measured across all 238 ports by proof 06's
 -- HAGGLE_IS_WORTH_DOING, which is the one authority for that number and is not re-derived here.
--- The band's ceiling is set wide enough that a fully bargained trader is still inside it; a second
--- implementation of "what is a bargain worth" would be the duplication §1 forbids.
+-- The band's ceiling is set wide enough that a fully bargained trader is still inside it (15.7 +
+-- 2.7 = 18.4, against a ceiling of 20.0); a second implementation of "what is a bargain worth"
+-- would be the duplication §1 forbids. Note that the bargained trader is inside THIS band and just
+-- outside the DESIGNED 4-16 — stated, not absorbed, exactly as docs/DEV_LOG.md:619 first stated it.
 --
 -- The knobs behind the gradient live in world_config (`affinity_*`, migration 0005) and are swept
 -- by scripts/db/tune-balance.mjs. If BALANCE_GRADIENT_IN_BAND goes red, run that sweep and read the
 -- table it prints rather than nudging a constant until the red goes away. If BALANCE_MEDIAN_IN_BAND
 -- goes red ALONE, the gradient is fine and the drift amplitude has moved — look at 0001's knobs.
 --
--- ── THE ONE KNOB, MEASURED, FOR WHOEVER DECIDES ────────────────────────────────────────────────
--- `node scripts/db/breaktest-balance.mjs` ends by sweeping `drift_sigma` through this very file.
--- Measured 2026-08-25, everything else held:
---
---     drift_sigma   0.010   0.015   0.020   0.030   0.040 (today)   0.060
---     median         9.1    12.5    15.7    26.7    37.4            54.0
---
--- 0.020 lands the settled economy at 15.7 per cent — the top of the designed band, with the
--- authored gradient untouched at 7.0 because a flat market does not depend on sigma at all. That is
--- the whole decision, in one number. IT IS NOT TAKEN HERE: it is a live economy, ~30 houses are
--- playing in it, and moving it is a migration and the owner's call.
+-- ── THE ONE KNOB, STILL SWEPT, FOR WHOEVER RETUNES NEXT ────────────────────────────────────────
+-- `node scripts/db/breaktest-balance.mjs` ends by sweeping `drift_sigma` through this very file, so
+-- the table above can be reproduced — and extended — without writing a line of new measurement.
 --
 -- BREAK-TESTED, because a gate nobody has watched fail is a gate nobody has tested: the same script
 -- moves the economy on purpose and prints which marker each break reddens, and it proves the clean
@@ -130,32 +158,40 @@ do $$
 declare
   -- ── THE BAND, stated here, once, in the file that enforces it ────────────────────────────────
   --
-  -- WHAT A BOUND MEANS. These two numbers no longer say "what a first voyage ought to pay" — that
-  -- claim moved to c_grad_lo/c_grad_hi below, which is the band this file has always carried and
+  -- WHAT A BOUND MEANS. These two numbers do not say "what a first voyage ought to pay" — that
+  -- claim belongs to c_grad_lo/c_grad_hi below, which is the band this file has always carried and
   -- which is asserted on the FLAT market, the only state the affinity knobs actually govern. What
-  -- these two say is: THE SETTLED ECONOMY HAS NOT MOVED SINCE IT WAS MEASURED. On 2026-08-25 the
-  -- pooled median of 8 ports x 3 drawn markets read 37.4 per cent (the three per-market medians
-  -- were 34.5 / 41.2 / 37.7, so a single drawn market is worth about +/- 3.5 on its own). The band
-  -- is that measurement plus room for one drawn market's worth of luck in each direction.
+  -- these two say is: THE SETTLED ECONOMY IS WHERE MIGRATION 0056 PUT IT. At drift_sigma = 0.02 the
+  -- pooled median of 8 ports x 3 drawn markets reads 15.7 per cent (per-market medians 17.4 / 15.7 /
+  -- 17.3, so a single drawn market is worth about +/- 1.5 on its own).
   --
-  --   * BELOW c_median_lo: the economy got poorer than it was measured to be. Either a price
-  --     authority, the capacity fold or the trade scan has regressed, or somebody has retuned the
-  --     drift knobs and has not re-measured this file.
-  --   * ABOVE c_median_hi: the economy got richer than it was measured to be, and it was ALREADY
-  --     over twice the designed pace. A value out here is a printer on top of a printer.
+  -- THE WIDTH IS CHOSEN FROM THE SWEEP IN THE HEADER, not from taste. The neighbouring settings
+  -- this file measured pay 12.5 (sigma 0.015) and 21.5 (sigma 0.025), so a band of 13.0-20.0 is the
+  -- widest one that still REFUSES a quarter-sized error in the knob in either direction, while
+  -- leaving room for a drawn market's luck and for a fully bargained trader at 18.4.
+  --
+  --   * BELOW c_median_lo: the economy got poorer than 0056 set it. Either a price authority, the
+  --     capacity fold or the trade scan has regressed, or the drift amplitude was cut again and
+  --     this file was not re-measured with it.
+  --   * ABOVE c_median_hi: the economy got richer than 0056 set it — the drift is climbing back
+  --     toward the 37.4 per cent that made this a money printer, and geography is being drowned
+  --     again. Read BALANCE_DISTANCE_PAYS in the same run: that is where it shows first.
   --
   -- A VALUE OUTSIDE THIS BAND IS A REAL DEFECT AND NEVER A BAD ROLL: the market is pinned by
   -- `proof.pin_market` and every input to the number below is a pure function of the chain. The
   -- same bytes give the same figure to the digit, on any machine, at any hour. If this reddens,
   -- something in the chain changed.
-  c_median_lo constant numeric := 30.0;
-  c_median_hi constant numeric := 45.0;
+  c_median_lo constant numeric := 13.0;
+  c_median_hi constant numeric := 20.0;
 
   -- ── AND THE DESIGNED BAND, on the state the design actually governs ──────────────────────────
   -- 4-16 per cent, unchanged since this file was written: below it a voyage is not worth the
   -- twenty-five minutes it takes, above it the purse doubles before the map is learned. Asserted
   -- on the flat market, where the number is the authored gradient and nothing else. Measured
-  -- 2026-08-25: 7.0 per cent.
+  -- 2026-08-25: 7.0 per cent — against the 7.5 migration 0005:125 tuned the affinity knobs to, so
+  -- THE AUTHORED ECONOMY IS DOING WHAT IT WAS DESIGNED TO DO. It read 7.0 at every drift_sigma in
+  -- the header's sweep, to the digit, which is what makes it the right band for the design's claim:
+  -- 0056 moved the settled market and could not move this one.
   --
   -- ONE CAVEAT, STATED. On a flat market `world.trade_routes`' shortlist (route_scan_keep = 3) is
   -- known to drop the best trade sometimes, so this figure is a LOWER BOUND on the gradient. It
