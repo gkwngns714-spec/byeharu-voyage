@@ -142,7 +142,19 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // figures in PG_EXCEPTION_DETAIL; the cmd.* envelope and public.orders.error_figures carry them
 // to the client), the sentences lost the arithmetic and the repeated verb and kept the REASON,
 // and the FIVE hand-copied "split E_CODE: sentence" definitions became one, cmd.refusal_caught.
-const LAST = '20260818000050_a_refusal_is_two_numbers_and_a_verb.sql'
+//
+// Moved 2026-08-25 for 0051 THE WORLD SAYS HOW RARE RARE IS — the rarity thresholds stopped being
+// three absolute producer counts calibrated for a 70-good catalogue (at 243 goods they had made
+// 54.7% of the world `exotic`, so the top tier was the default) and became fractions of the
+// world's own mean producer count: public.rarity_scale() derives the yardstick, the law
+// public.rarity_from_producers(int, numeric) is the one place the thresholds live, and 0032's
+// rarity_from_producers(int) was DROPPED rather than overloaded so no caller can choose between
+// the two. world.snapshot() and world.market() are NOT re-cut — they already ask the one
+// authority, public.good_rarity, whose signature and volatility do not move. 46 migrations, 46
+// receipts, verified green locally (db:apply + world-guard), with all twelve of 0051's guards
+// break-tested red first (scripts/db/breaktest-0051.mjs). The catalogue now tiers
+// 47 exotic / 86 rare / 58 uncommon / 52 common.
+const LAST = '20260818000051_the_world_says_how_rare_rare_is.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
