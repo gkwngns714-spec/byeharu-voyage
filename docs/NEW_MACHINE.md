@@ -2,6 +2,44 @@
 
 Written 2026-08-25, at the end of the session that landed migrations 0051–0056.
 
+---
+
+## ⚠ START HERE — main has ONE known failing test
+
+`tests/map.sendfleet.spec.ts:115` — *"a harbour is tappable by its name, and a ratio can be set
+without sailing"* — **fails on main**, reproduced on a quiet machine against a freshly built
+`dist`:
+
+```
+Error: a tap on the word "Cadiz" did not select Cadiz — the harbour a player sees is the mark
+       AND its name, and missing it silently offers a different destination
+Expected substring: "Cadiz"
+Received string:    "Open sea36.6°N 7.1°WSend fleet"
+```
+
+**What is known, so you do not re-derive it:**
+
+- It is **not** a stale build. The first full-suite run had 8 failures; 7 were a stale `dist/`
+  holding the 47-migration world image against a 50-migration chain — the image guard working
+  correctly. Rebuilding fixed those 7. This one survived the rebuild.
+- The fix it is testing **is still present**: `src/chart/glyphs.ts:103` still derives
+  `hitRadius` (38 px), and `src/chart/hitTest.ts` still reads it. Nothing was lost in a merge.
+- It is a **cross-slice interaction**. The map slice and the encounters slice (0055) were built
+  in separate worktrees, each passed its own suite, and neither saw the other. The detail panel
+  on main now carries `w-[74vw] max-w-[74vw]` sizing that did not exist when the map spec was
+  written, and `tests/waters.panel.spec.ts` — from the encounters slice — touches the same
+  surface. The likely cause is that the panel's new geometry moves what is under the tap, not
+  that the reach is wrong.
+
+**Do not "fix" it by widening `hitRadius` or by relaxing the assertion.** The assertion is
+correct and is the whole point of that slice: a player who taps the harbour name they can read
+must not be silently offered open sea. Find why the tap now lands elsewhere.
+
+Everything else is green: 192 passed locally, and `Build` and `Deploy (GitHub Pages)` are green
+in CI at `b138216`.
+
+---
+
 **This file is the MACHINE procedure only — how to get a working checkout that can build, apply
 the chain and run the gates.** What the project *is*, what state the work is in, and what to do
 next live in `docs/RESUME.md`, and that is the one authority for it. Read this file to get the
