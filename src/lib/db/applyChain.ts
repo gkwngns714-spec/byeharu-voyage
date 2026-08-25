@@ -13,7 +13,13 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import type { MigrationFile } from './chain'
-import { assertChainIsSane, orderChain } from './chain'
+// The `.ts` is deliberate and is what lets scripts/db/build-image.mjs import THIS module — the
+// applier the browser actually runs — instead of writing a third copy of "apply the files in
+// order" for the build. Node resolves and strips it directly; TypeScript allows it
+// (`allowImportingTsExtensions`, tsconfig.app.json) and Vite resolves it unchanged. The same
+// arrangement already carries `src/lib/sea/index.ts` into scripts/build-sea-migration.mjs, and
+// every workflow pins Node 24 for it.
+import { assertChainIsSane, orderChain } from './chain.ts'
 
 /** The slice of PGlite this module needs. Structural, so a test can hand in a stub. */
 export interface PgExecutor {

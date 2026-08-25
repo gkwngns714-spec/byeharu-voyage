@@ -37,6 +37,11 @@ export interface BootState {
    *  a purse that silently returns to 8,000 ducats reads as the game losing their money, which is
    *  exactly how it was reported (DEV_LOG D11c). See lib/db/rescue.ts. */
   rescued: { rows: number; tables: number; stored: boolean; note: string | null } | null
+  /** Set when a PRE-BUILT world was downloaded and then REFUSED because the fingerprint written
+   *  inside it is not this build's chain. The boot recovers by applying the chain, so the game
+   *  still starts — but a shipped world that disagrees with the shipped chain is the D23 defect
+   *  wearing new clothes, and it must never pass in silence. See lib/db/appLocal.ts. */
+  imageRefused: string | null
   /** Wall-clock ms since the boot started. Frozen when it reaches `ready` or `failed`. */
   elapsedMs: number
 }
@@ -52,6 +57,7 @@ const INITIAL: BootState = {
   fingerprint: null,
   rebuilt: false,
   rescued: null,
+  imageRefused: null,
   elapsedMs: 0,
 }
 

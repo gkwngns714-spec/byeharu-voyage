@@ -12,9 +12,20 @@
 
 import { loadChain } from './chainSource'
 import { openLocalDb, type LocalDb, type OpenLocalDbOptions } from './localDb'
+import { fetchWorldImage } from './worldImage'
 
 let booting: Promise<LocalDb> | null = null
 let ready: LocalDb | null = null
+
+/**
+ * THE ONE PLACE THE PRE-BUILT WORLD IS ASKED FOR, and the reason `import.meta.env` appears in
+ * this file and nowhere deeper: the image is served beside the app, so its URL is a fact about
+ * how the app is DEPLOYED (`base: '/byeharu-voyage/'`, vite.config.ts), not about the database.
+ * openLocalDb() takes it as an option and works without one.
+ */
+function loadImage(fingerprint: string) {
+  return fetchWorldImage(fingerprint, import.meta.env.BASE_URL)
+}
 
 /**
  * Start the local engine, or return the boot already in flight.
@@ -23,7 +34,7 @@ let ready: LocalDb | null = null
  * IndexedDB directory is a corrupted world, not a slow one.
  */
 export function startLocalDb(options?: Partial<OpenLocalDbOptions>): Promise<LocalDb> {
-  booting ??= openLocalDb({ loadChain, ...options }).then((db) => {
+  booting ??= openLocalDb({ loadChain, loadImage, ...options }).then((db) => {
     ready = db
     return db
   })
@@ -43,6 +54,10 @@ export function forgetLocalDb(): void {
 
 export { loadChain, chainFiles } from './chainSource'
 export { fingerprintChain, describeChain, orderChain, assertChainIsSane } from './chain'
+export { fetchWorldImage, worldImageUrl, worldImageFileName, WORLD_IMAGE_DIR } from './worldImage'
+export type { WorldImageFetch } from './worldImage'
+export { imageRefusal, readStoredChain, recordChain, APP_LOCAL_DDL } from './appLocal'
+export type { StoredChain } from './appLocal'
 export type { MigrationFile } from './chain'
 export { applyChain, MigrationFailure } from './applyChain'
 export type { ApplyResult, AppliedMigration, PgExecutor } from './applyChain'
