@@ -5,6 +5,463 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-25 — D25: nine slices — and the number this project has quoted for a week was measuring the harness
+
+Five migrations (**0051, 0052, 0053, 0055, 0056**), one slice that took the number **0054** and turned
+out to need no migration at all, and three client slices. The chain is **50 files** and ends at 0056.
+
+**THE ONE TO READ FIRST** is the balance finding at the bottom. `docs/DEV_LOG.md`, `docs/RESUME.md`
+and this proof's own header have quoted *"a first voyage returns 12–18%"* since 2026-08-18. That
+figure was never about the economy. It was a count of how many drift ticks the test harness happened
+to run before it looked, and **every deployed world — every world whose clock has run, which is all of
+them — was paying about 37%.**
+
+### The recipe named once, the supersede declared, and a guard that stopped over-reaching
+
+Two duplication guards were red, and they were two different defects.
+
+* **The class recipe written twice.** `src/components/ui/RefusalNote.tsx:63` (the `have / need` figure
+  beside a danger Meter) and `src/features/command/HaggleBlock.tsx:139` (the next-odds percentage
+  beside its own Meter) both hand-wrote `shrink-0 font-mono text-sm tabular-nums text-ink` — **100
+  per cent token overlap across two files that never met**, which is the shape the twelve chip copies
+  started in. Named once as `inlineFigureClass()` at `src/components/ui/typography.ts:61`, beside
+  `fineClass`/`rowLinkClass`/`headRowClass` and exported from the design system's one entrance; both
+  call sites ask for it and neither owns it. **The flex behaviour (`shrink-0`) is deliberately left
+  to the caller** rather than baked in — the same boundary `rowLinkClass` keeps with the 44 px floor.
+  `tabular-nums` is named as the load-bearing token: the figure sits in a flex row beside a
+  `min-w-0 flex-1` Meter, so proportional digits would shift the bar's end on every tick.
+* **0050 genuinely supersedes `voyage.sail_refusal` and its header never used the word.** A
+  `── THE SUPERSEDE, DECLARED ──` section now says it: what is superseded and why, that it is a
+  no-op where `figures` is absent, and that everything which must move together moved in that one
+  file. **0050 is applied to production, so this had to be comment text and nothing else** — proven
+  rather than promised: `git diff -U0` is 31 added lines, every one beginning `--`, and the two
+  versions are byte-identical once comment lines are stripped. Said out loud as a consequence:
+  `src/lib/db/chain.ts` fingerprints the chain's bytes, comments included, so a comment moves the
+  fingerprint and every local browser database rebuilds from 0001 (rescuing player rows first).
+* **The third guard was WRONG, and the fix was to narrow it, not to invent a supersede.**
+  `pg_temp.recut` is the hunk-slicing helper, defined at `0047:80` and again at `0050:120`. A
+  `pg_temp.*` function lives in the connection's temporary schema and dies with the session: it never
+  enters the deployed catalogue, so there is no deployed body to re-cut and **a migration replayed
+  alone into a fresh session MUST carry its own copy.** `tests/duplication.spec.ts` now skips
+  `pg_temp` and nothing else (`tests/duplication.spec.ts:368-384`, one line of code and seventeen of
+  reason) — every persistent schema is still read, and 0050's real supersede is still caught by the
+  same test.
+
+### 0052 — the Severn is water, and the pack is one rule
+
+**D22 filed this as a wrong label. It was a live breach of the owner's law.** *"i don't want the
+fleet to ever touch land"* (`OWNER_REQUESTS` row 41).
+
+The Severn estuary is narrower than a 0.25° cell above Barry, so the whole Bristol Channel east of
+4°W scan-filled as LAND and Bristol's nearest sailable water was **Lyme Bay, 64.55 nm away, over
+Devon, on the other coast of England**. And `sea_reaches.snap_nm` is not a label: it is what
+`voyage.path_refusal` grants a course as its **head allowance**, so Bristol carried a **~90 nm
+land-exempt corridor and the pathfinder used it**. Measured on the old raster: **BRS→AMS 324.7 nm**,
+whose first leg ran straight from the quay to (50.63, −0.13) **across Somerset, Dorset and
+Hampshire**; **BRS→DUB 179.5 nm** straight over the Welsh mountains.
+
+A `severn` entry in `scripts/sea-grid.mjs`'s CHANNELS — the Bristol Channel and the Avon, real water
+her ships worked to King Road and seven miles up to the quay — opens **5 cells (545,984 → 545,989)**:
+
+| | before | after |
+|---|---|---|
+| Bristol's snap | 64.55 nm (Lyme Bay, English Channel) | **0.00 nm** (her own cell) |
+| the sea she answers | english-channel at ring 4 | her own declared sea, at **ring 0** |
+| BRS→AMS | 324.7 nm over England | **613 nm** round Land's End |
+
+The second defect in the same file: **the Antarctic closure was three statements of one concept** —
+`ICE` could only express a northern parallel, so the pack lived in the generator as its own
+`cells.fill(0)` at −60 and the generator's cross-check repeated the same −60 a third time. `ICE` now
+takes `latBelow` and the pack is one row in it, justified from the dates (South Georgia 54°S 1675;
+the South Shetlands at 62°S not sighted until 1819; the Circle not crossed until Cook in 1773).
+**THE WATER DID NOT MOVE: same parallel, 0 cells different.**
+
+And the file proves it changed only what it meant to: **55,938 pair readings identical, 468 moved,
+every one of them Bristol's.** LIS→NAG 12,989 nm, ALE→ADE 11,050 nm, VER→ACA 12,398 nm — unmoved.
+Cape Horn, the Drake Passage, the Roaring Forties and the Cape route identical to 0.1 nm. Both
+Bristol guards are non-vacuous by construction (the snap must not exceed 20 nm — *it was 64.55*;
+BRS→AMS must not fall under 500 nm — *it served 324.7*), and the real overland course is put in front
+of `voyage.path_refusal` and REFUSED.
+
+### The map: a name you can hit, a ratio you can set, and an opening frame with land in it
+
+Three defects, each found by driving the running game in a browser, each reproduced before it was
+touched, each with an assertion that goes red without its fix (`tests/map.sendfleet.spec.ts`).
+
+* **A harbour's name was not part of the harbour.** Measured at 1389×900 on the seeded world: Cádiz's
+  mark sits at x = 959.6 and the word *Cadiz* runs x = 968.6…1000.1, so **the centre of the name is
+  24.8 px from the mark and the reach was 22 px.** Walking outwards, 18 px selected Cádiz and 22 px
+  returned *"OPEN SEA 36.4°N 6.4°W"* — a plausible panel for a different destination and a wasted
+  voyage, with nothing to tell the player they had missed. `GLYPH.hitRadius` is now DERIVED from
+  numbers this repo already owns: `labelGapX` 9 + `TOUCH_TARGET_PX`/2 22 + the largest mark's
+  half-extent 7 = **38 px**. Checked against the names the running app actually drew, measured from
+  their own centres: **Cadiz 24.8, Porto 24.8, Lisbon 27.9, Malaga 27.9, Sevilla 31.0** — every one
+  inside 38. Free-sea pinpointing is untouched away from a drawn harbour, and near one it is a zoom
+  away: 38 CSS px is 70 nm on the opening frame and 9 nm four steps in. Ties are no longer decided by
+  array order — greater `size_tier` wins, then the lower code.
+* **The fold could USE a standing order but not WRITE one.** A house that had authored none saw a
+  single `None` chip and had to leave the map for FLEETS — the screen-hop row 45 exists to delete.
+  The fold now carries the ratio itself: the hero figure `15.0 / 16 days` (her served
+  `endurance_days` over the depth the order would keep her at), a countable `Gauge`, and two
+  steppers. **Adjusting writes nothing and sends nothing;** one named press on its own line —
+  `Keep 16 & send` — resolves the days through 0034's book and sends. The ratio is looked up in the
+  book and written only when the book does not already hold it, through the same
+  `cmd.provision_preset_save` / `cmd.provision_preset_apply` the FLEETS galley presses. **The map
+  cannot mint a second set of standing orders**; one issue path, one judge, one composer.
+* **The opening frame could contain no land.** `atLeast` guaranteed 12 degrees across and nothing
+  about what was in them, and free-coordinate anchoring puts fleets in open water on purpose — so a
+  fleet at anchor mid-ocean opened on a correct frame of nothing. `openingBounds` now widens about
+  its own centre, keeping its shape, until the nearest HARBOUR is on the sheet (a harbour is where
+  land meets water, and the coastline is fetched too late to consult). **It only ever widens**, so
+  the frame every existing player already sees is unchanged.
+
+The land check is not a promise either: `tests/map.sendfleet.spec.ts` asks the RENDERED coastline
+path itself, through `isPointInFill`, at 24 × 24 = **576 sample points** on the §K.1 opening frame
+and measures **154 / 576 = 26.7 per cent land** against an asserted floor of 5 per cent. Break-tested:
+the 22 px reach turns the Cádiz tap back into *"Open sea 36.6°N 7.1°W"*; hiding the ratio block fails
+the fold assertion; a mid-ocean opening frame reports **0.0 per cent land** through the same probe.
+
+### One row of six: the voyage stays direct, the cabin takes the tap
+
+Measured at 390×844 before: **nine cells of 130×56 in a bar 168 px tall — three rows, 19.9 per cent
+of the screen spent on navigation.** After: **six cells of 65×56 in a bar 56 px tall, one row.** The
+game gained 112 px.
+
+`docs/OWNER_REQUESTS.md` carried this as an open question — *"noted here in case the answer is to group
+tabs rather than add a row."* The answer is to group, and the grouping is read off the information
+architecture rather than an arithmetic split:
+
+* **THE VOYAGE stays one tap.** Command, Fleets, Port, Market and Map are the loop, touched many
+  times a session, and `UI_DIRECTION.md` 3a is explicit that depth added to a frequent act is a
+  defect. None of them is grouped.
+* **THE CABIN is the one group: Ledger, Rank, Codex, Profile.** What they share is not "leftovers" —
+  **none of them acts on the world.** They are consulted, not played, and one extra tap is what buys
+  the frequent five their directness. RECORDS was rejected (Ledger is already *the running record*);
+  HARBOUR over {Port, Market} was rejected (Port is already glossed *the harbour you are in*, and
+  Market is played too often to sit behind a tap).
+
+**ONE TABLE, STILL.** `group` is a field on the tab in `ALL_TABS`; `NAV_CELLS` is DERIVED from it.
+There is no second array of members to drift. **A group REVEALS, it does not replace the bar:** the
+members open in a panel positioned out of flow above the rail, so not one cell moves, the rail does
+not change height, and the screen behind is overlaid rather than pushed — the owner's rule, said four
+times and built backwards twice. `tests/nav.geometry.spec.ts` pins both halves and was break-tested
+both ways: forcing `grid-cols-4` goes red on the row count, and making the panel `relative` goes red
+on the rail swelling **57 px → 113 px** (`nav.geometry.spec.ts:232-237`). **That second break PASSED
+the first version of the guard** — the six cells were identical to the pixel and the screen behind
+had still been re-flowed — which is why the guard now measures the nav box and `main` as well as the
+cells. Also measured at 320×568: six cells of 53×56, widest label 46 px, none shaved, which is the
+reason it is six and not seven (320 ÷ 7 = 45.7 px, and COMMAND needs 46).
+
+### The world arrives built — a pre-built image the chain's own fingerprint names
+
+`docs/RESUME.md` and this file both recorded the defect: *"Cold boot 78.8 s measured with 243 goods.
+The world builds in the player's tab."* Every first visit replayed the whole chain — 52,002 derived
+price rows, a re-measured sea — to arrive at a world that is **a pure function of the repository**.
+`npm run build` now applies the chain once and emits `dist/db/world-<fingerprint>.tar.gz`.
+
+Measured on this machine, back to back, on the same build:
+
+| | measured, chromium 390×844, empty storage, the purse read off the screen |
+|---|---|
+| cold boot, chain applied in the tab | **171.7 s** to a live purse — 168.8 s of it applying the chain |
+| cold boot, world restored from the image | **7.1 s** to a live purse — 4.3 s to `ready`, **no migration applied in the tab** |
+| warm boot (world already in IndexedDB) | 5–7 s either way; this slice does not touch that path |
+| the image over the wire | **+4.75 MB** gzipped (`dist` 7.48 → 12.22 MB), fetched **only when a world must be built** |
+
+**A shipped image is a SECOND COPY OF THE WORLD, and D23 is what that costs** — 0003 was edited after
+production had applied it, production kept 70 goods while every fresh rebuild got 243, and *"nothing
+red happened anywhere."* So the image is built to be impossible to ship stale: it is **generated,
+never committed** (`vite.config.ts` calls `ensureWorldImage()` during the build, from the chain on
+disk at that moment); **its NAME is its fingerprint**, and the client derives that URL at run time
+from `fingerprintChain(files)`, so a moved chain is a 404 and a 404 applies the chain; **it carries
+the fingerprint INSIDE it** (`app_local.chain` moved to `appLocal.ts` so builder and browser stamp
+and read it with one DDL and one query) and `imageRefusal()` refuses a mismatch out loud, in the
+console, in `bootState` and in `RebuildNotice` on the screen; and **it is certified by the existing
+authority** — `scripts/db/world-guard.mjs` run against the database RESTORED FROM THE TARBALL, no
+second comparator written, plus §K.1's opening played inside it, because a world that reads back but
+cannot be written to is not a world anybody can play.
+
+The size came from the same discipline. **100.4 MB dumped → 37.4 MB after the log trim → 4.75 MB
+gzipped**: 67 MB of the raw dump was `pg_wal` — segments PostgreSQL had RECYCLED, holding the log of
+migrations that had already run, waiting to be overwritten by writes a shipped copy will never make.
+`dropSurplusWal()` keeps only `[checkpoint, current]`, which is what a restored engine replays, and
+`initdb --wal-segsize=1` makes those segments 1 MB instead of 16.
+The trim is not trusted: the certification restores and PLAYS the trimmed tarball before it is
+allowed a filename. `tests/db.image.spec.ts` certifies whatever the build emitted and carries its own
+positive controls — an image offered as another chain's, and an image whose inner stamp was
+rewritten, must both be REFUSED, and both were watched red. The fallback is untouched and driven end
+to end: no image, a 404, an SPA page instead of a tarball, an unreadable tarball, or a mispaired one
+all land on the chain apply.
+
+### 0051 — the world says how rare rare is
+
+0032 derived rarity from how many ports produce a good, which was right, and then cut it at **three
+absolute producer counts calibrated for a 70-good catalogue**. At 243 goods over 1,310 specialty rows:
+
+    exotic 133 (54.7%) / rare 58 (23.9%) / uncommon 27 (11.1%) / common 25 (10.3%)
+
+**The top tier was the default, so the word meant nothing.** The average harbours per good had fallen
+11.9 → 5.4 under the same fixed cuts. And 0032's own shape assert allowed any tier up to 60 per cent,
+so the meaningless rule satisfied it — **that loose assert was part of the defect** and is re-cut here
+to fail on it (apex ≤ 25 per cent, no tier over 40).
+
+THE RULE: `public.rarity_scale()` is the world's own mean producer count (μ = 5.391 today, read from
+`port_specialties` alone), and the cuts are `max(1, μ/4)` / `max(2, μ/2)` / `max(3, μ)` — a geometric
+ladder floored at the smallest three whole numbers of producing ports so the tiers stay
+distinguishable however sparse the world gets. Today: **exotic 47 / rare 86 / uncommon 58 / common
+52**, with **171 of 243 goods re-tiered**. The apex cannot be thinner than 47, because 47 goods are
+made in exactly one harbour.
+
+* **Scale-freedom is PROVEN, not argued:** every good keeps its tier when the whole world is
+  multiplied by **k = 2, 3, 7, 17 and 50** — 47/86/58/52 at every one — **with 0032's absolute rule
+  run through the same sweep as a positive control**, where it collapses: k=3 gives 0/47/135/61, k=7
+  gives 0/0/47/196, and **at k=17 it puts 100 per cent of the catalogue in `common`**.
+* **Run BACKWARDS on 0032's own world** (70 goods, 834 rows, μ = 11.914) the new law derives
+  ≤2 / ≤5 / ≤11 against the ≤2 / ≤5 / ≤12 that 0032 chose by hand. Two of three thresholds
+  reproduced exactly, the third off by one.
+* **The old function is DROPPED, not overloaded.** `rarity_from_producers(int)` no longer resolves,
+  so no caller can pick between the old law and the new. The law stays IMMUTABLE because the table
+  read was lifted OUT of it into an argument. `world.snapshot` and `world.market` are not re-cut —
+  they already ask the one authority.
+* **Cost, stated:** `world.snapshot()` 1,437 → 2,377 ms (+65 per cent), paid once per session;
+  `world.market(port)` unchanged within run-to-run spread.
+
+### 0053 — the quay prices its neighbours once
+
+`world.market()` drew ONE screen by calling `world.pct_of_neighbours` 243 times, which called
+`world.mid_price` 9,720 times, **each of which re-read four `public.wc` knobs** — **38,880 plpgsql
+calls for four numbers that cannot change while the statement runs.** Broken down: the 9,720 mid
+calls cost 514 ms, of which **321 ms is the knob reads — 62 per cent of the mid's cost.** At 70 goods
+that was 2,800 calls and invisible.
+
+`explain (analyze, buffers)` on `select world.market(BOR)`: **336,872 buffer hits to serve 243 rows,
+305,396 of them (91 per cent) inside the `nbr` CTE.**
+
+The §G.1 mid arithmetic moves into `world.mid_from_terms` — **SQL, IMMUTABLE, no SECURITY DEFINER and
+no SET clause, which is exactly what PostgreSQL needs to INLINE it** — and %NBR gains a set-valued
+body, `world.pct_of_neighbours_at`, that derives the neighbourhood and the five knobs ONCE per quay.
+The scalar keeps its name and COMPOSES the set through a nullable narrowing argument; nothing is
+copied. 0019's CTE fence is **not** the problem and is kept.
+
+| port | neighbours | before | after |
+|---|---|---|---|
+| Bordeaux | 42 | 1,442 ms | **241 ms** |
+| Bilbao | 39 | 1,250 ms | 218 ms |
+| Goa | 36 | 1,420 ms | 223 ms |
+| Lisboa | 24 | 881 ms | 250 ms |
+| Malé | 8 | 845 ms | 247 ms |
+| Callao | 0 | 584 ms | 188 ms |
+
+**The guard is the buffer RATIO and the deployed shape, never a millisecond** — a second controlled
+run read 1,095 → 336 ms at Bordeaux where this one read 1,442 → 241, a factor of 3.3 against a factor
+of 6.0, and a wall clock that swings 1,066 ms to 2,740 ms on the same call twenty minutes later
+cannot gate anything. The invariant is **331,470 buffers → 40,530 for one read of Bordeaux, 8.2×**;
+the guard demands 3×, because the break-test harness reads 5.8× and the old shape scores about 1×.
+
+**All 54,432 mids in the world are proven byte-identical** against a pre-image captured in the same
+transaction, alongside a 7,290-row hypothetical-stock sweep, 268 answers through the scalar door, and
+the FULL `world.market` payload byte for byte at six ports including the crowdedest neighbourhood and
+an empty one. And the inline precondition is asserted rather than assumed — SQL, IMMUTABLE, not
+definer, no proconfig — because otherwise 9,720 real function calls silently come back.
+
+### 0055 — what these waters breed, landed DARK
+
+`public.seas` carries four spatial facts. Only `hazard_base` and `piracy_index` were read by any rule,
+and those two took **exactly three distinct value-pairs across all 51 seas**:
+
+    0.0080 / 0.2000 → 36 seas      0.0180 / 0.1200 → 8      0.0120 / 0.4500 → 7
+
+**71 per cent of the world's water was mechanically the same water**, so the Strait of Malacca — the
+game's only danger 5, *"thick with pirates"* — drew from the same bag as the Baltic. And the calm was
+35 per cent of everything, everywhere. `seas.danger_level` and `seas.note`, authored per sea by 0040
+for exactly this, were **read by no rule at all**.
+
+Each kind row gains three response numbers and the mix is DERIVED —
+`mix_base × (1 + mix_danger·D + mix_raiders·D·piracy)`, `D = danger_level / 5` — rather than authored
+in a per-(kind, sea) table, which would have been **51 × 8 = 408 hand-written numbers free to drift
+from the danger scale they restate**. **Ten distinct mixes where there were three.**
+
+**`mix_raiders` is an INTERACTION, and that is the whole reason it is one:** a plain piracy term puts
+corsairs in the Arctic (danger 4, piracy 0.12). Raiders need lawless water AND hard water at once, so
+the Arctic stays at 9.3 per cent while Malacca reaches 25.8 and the Baltic sits at 7.0.
+
+Five new kinds against 0035's catalogue: **FAIR_WIND — the first event kind in this game that is not
+a loss** — plus CONSORT, DERELICT, FOUL_WATER and SHOAL_WATER. Every one reads back out of
+`voyage.report_line` with no code edit, which is the claim `NAVIGATION_PLAN:173` makes about 0035 and
+this file proves on real payloads.
+
+**IT IS DARK, AND ASSERTED SO.** `voyage.hazard_roll`, `voyage.settle` and `voyage.report_line` are
+byte-identical after this file; the rolled set is still exactly {STORM 0.40, CALM 0.35, PIRATES 0.25};
+the live draw still answers 0006's CASE on all 50,000 (r, piracy) pairs; `voyage.encounter_at` has
+**zero callers**, probed on comment-stripped `prosrc` with a positive control. **No voyage yields one
+ducat differently because this file ran** — deliberately, because another worktree was measuring what
+a first voyage returns and moving the mix under that measurement would have invalidated it.
+
+The panel that landed with it says **WATER, not ships**, and the header says why: a contact means an
+actor and that seam is unbuilt. Two dishonest panels were refused — one listing the days ahead (it
+hands the player the dice, and a look-ahead is not even authoritative in this chain) and one printing
+a dark mix. What it shows is frozen at departure: the seas her course still has to cross, the
+distance to each, the 0040 tier as countable pips, and the sea's character in the world's own words.
+
+### 0054 and 0056 — the balance figure this project has quoted for a week was measuring the harness
+
+This is the most important thing found today, and it invalidates a number in our own documentation.
+
+**THE GATE CRIED WOLF FIRST.** On an unchanged chain, `BALANCE_MEDIAN_IN_BAND` measured
+**15.1 / 9.0 / 12.4 / 14.4 / 12.4 / 12.1**, once 16.2, and on 2026-08-25 the same bytes gave 18.3 and
+then 14.1 against a 4–16 band. `public.tick_market_drift` moves every price by `random()` deliberately
+and the chain's own self-asserts call it while applying, **so every `db:apply` dealt a different
+market**. `tests/rpc.firstSession.spec.ts` had the identical defect and had never been given proof
+04's fixture.
+
+**0054 built ONE authority for holding it still.** `proof.pin_market` (`scripts/db/market-fixture.mjs`)
+redraws every row from the distribution the real process settles into — the OU stationary law, clamped
+as 0010 clamps it, keyed on the AUTHORED port and good codes so the market is the same on every run
+and on every machine. The forty lines of Box-Muller that stood inside proof 04 are gone from it;
+proof 04, proof 05 and the first-session spec all call the one function now. The drift is **replaced,
+never removed** — proof 04 records that a flat market is not "the economy without noise", it is an
+economy with less trade in it than the game ever has (36 routes out of Lisboa drifted, 20 flat).
+Measured: two runs on the same apply are IDENTICAL, and three separate applies — each with a fresh
+world secret and fresh port and good uuids — all report **37.4 / 7.0 to the digit**. **No migration
+was cut: nothing in the shipped game changed, and cutting one to look busy would have been a lie in
+the chain.**
+
+**AND PINNING IT EXPOSED WHAT THE LOTTERY WAS HIDING.** Driving the chain's own tick forward one slot
+at a time from a freshly applied world:
+
+    ticks (10 min each)     0       1       2       4       8      16      32
+    sd(drift)           0.0210  0.0442  0.0566  0.0706  0.0827  0.0890  0.0905
+    median voyage        13.2%   20.2%   21.1%   28.8%   32.5%   34.1%   35.2%
+
+**A FRESHLY APPLIED CHAIN IS NOT A LIVE WORLD.** It has taken about one drift step on the **14,980**
+market rows 0003 seeded and **none** on the **39,468** that 0041 added, so **72 per cent of its prices
+sit at exactly drift 0**. The 12–18 per cent this proof reported was a measurement of how many ticks
+the harness happened to run. A world whose clock has been running for about two hours — which is
+every deployed world, since `pg_cron` winds the tick and `world.market()` winds it too on every read —
+sits at `0.04 / √(1 − 0.81) = 0.0918` and pays about **37.4**.
+
+**AND THE DECIDING NUMBER IS NOT THAT ONE.** 37 per cent is over twice the designed pace, but a pace
+can be argued about. `BALANCE_DISTANCE_PAYS` could not be:
+
+| | long legs (>800 nm) | short legs (<400 nm) | long / short |
+|---|---|---|---|
+| one drift step | 10.80% | 3.26% | **3.31×** |
+| the settled market, σ 0.040 | 18.87% | 16.19% | **1.17×** |
+| the settled market, σ 0.020 | 9.66% | 5.88% | **1.64×** |
+
+This is a game about carrying goods from where they are made to where they are not. **At σ = 0.04,
+crossing 800 nm of ocean was worth 17 per cent more than staying inside 400, where the world's own
+geography makes it worth three and a third times as much.** A knob that drowns the premise is not a
+balance preference.
+
+**0056 pulled `drift_sigma` 0.040 → 0.020.** One row of one table; it supersedes the value 0001 seeded
+at `0001:159` and nothing else — not `drift_theta`, not `drift_clamp`, not a spread knob, not an
+affinity knob, and not one stored price, because every price is derived on read.
+
+* **Geography measurably recovers,** and the shape of what the quay offers moves with it: the long-leg
+  premium 1.17× → **1.64×**, a 40 per cent relative gain, while **85 near routes fall to 55 and 360
+  far ones rise to 405**. Less noise does not merely pay less — it pays less for staying home.
+* **THE AUTHORED ECONOMY WAS ALREADY DOING EXACTLY WHAT IT WAS DESIGNED TO DO.** On a flat market the
+  gradient reads **7.0 per cent at every sigma setting, to the digit**, against the 7.5 that
+  `0005:125` tuned the affinity knobs to. Everything above 7.5 was noise — **and flattening the
+  gradient to compensate, which is what 0048 did, would have made the geography WORSE while leaving
+  the printer running.**
+* **The claim was split into two markers rather than widened.** `BALANCE_MEDIAN_IN_BAND` is now
+  **13.0–20.0 on the settled market and says out loud that it is a REGRESSION TRIPWIRE**, not a
+  statement of what a voyage ought to pay. The design's own claim did not disappear: it moved to
+  **`BALANCE_GRADIENT_IN_BAND`**, which measures the FLAT market — the thing the affinity knobs
+  actually govern — inside the original 4–16, where it reads 7.0. The gap between them is the drift
+  windfall, and every proof run now prints it. The band's width is chosen from the sweep, not from
+  taste: the neighbouring settings pay 12.5 and 21.5, so 13.0–20.0 is the widest band that still
+  refuses a quarter-sized error in the knob in either direction.
+* **The self-assert does not read the knob back, it watches it work.** The market is flattened, the
+  chain's own `tick_market_drift` is run, and the measured sd must land within 0.9–1.1× of 0.02 on at
+  least 14,000 moved rows — **and the same probe with 0.04 restored must NOT land in that window**,
+  which is the positive control that makes the first number mean anything. Both probes unwind to a
+  savepoint; only the number escapes. The first draft asserted "one knob moved" from `updated_at` and
+  `scripts/db/breaktest-0056.mjs` walked straight through it, so it now photographs the whole knob
+  table before and after.
+* **Rejected, with figures rather than opinions:** the affinity knobs (0041 flattened the gradient 30
+  per cent and the median barely moved); widening the spread (spreads average 3.6 per cent against a
+  30-point overshoot); `drift_theta` (memory, not size — the market would flicker rather than wander);
+  `drift_clamp` (it bound on well under one per cent of rows); and moving the band and leaving the
+  economy alone, **which was the previous slice's conclusion and is superseded by this one — a band of
+  30–45 certifies the money printer the proof exists to prevent.**
+
+**THE OWNER RULED 0.020 OVER 0.015.** The measurement favoured neither on its own: 0.015 pays 12.5
+(mid-band rather than at its ceiling), recovers geography further to 1.96×, and keeps a fully
+bargained trader inside the designed 4–16 where 0.020 does not (15.7 + proof 06's 2.7 = 18.4).
+Against it: **it thins the near market hard — 39 short routes against 55 at 0.020 and 85 at the old
+setting — and that is the water a new captain starts in.** 0.020 shipped; the rest is recorded so a
+second step needs no new measurement.
+
+Five `db:proof` runs after it landed: **61/61 markers, median 15.7 and distance 9.66 / 5.88 identical
+in every one.** The lottery is dead.
+
+### KNOWN, STATED, NOT HIDDEN
+
+* **0055 is DARK, and lighting it is one migration and four statements** — named in its own header so
+  the next hand does not have to work them out: (1) `create or replace function voyage.hazard_roll` =
+  this file's `voyage.encounter_at` body, which is written to be dropped in; (2)
+  `update public.voyage_event_kinds set is_rolled = true, roll_weight = null where in_sea_mix`, which
+  0035's closure trigger forbids, **so the same slice must also drop
+  `voyage_event_kinds_weights_close` and `roll_weight`** — once the mix is the draw, a flat weight is
+  a second authority and must not survive; (3) `voyage.settle` gains one arm per new kind, five arms
+  (FAIR_WIND subtracts delay hours, FOUL_WATER starts water over the side, SHOAL_WATER takes
+  durability, DERELICT and CONSORT touch no ship); (4) the map panel gains the mix as a fifth fact per
+  row. Measured cost of doing it: **Barbary raid-days 43.0 → 20.4 per cent of event-days**, home
+  waters 33.0 → 7.0, Malacca 43.0 → 25.8. **The frequency of event-days does not move at all** —
+  this changes WHICH thing happens, never HOW OFTEN something does.
+* **`public.good_rarity` is now the largest single item left in `world.market` — 87 ms of the ~240
+  that remain** (`supabase/migrations/20260818000053_the_quay_prices_its_neighbours_once.sql:164`).
+  It got there honestly: 0051 made it derive the world's scale, and 0032's callers ask it once per
+  good. 0053 named it and did not fix it, on purpose: 0053's brief was the %NBR regression, and 0051
+  was a day old and is the newest authority in that area. It is a real cost, it is a different slice,
+  and it is written down so the next hand does not have to measure it again.
+* **`Strait of Gibraltar` still falls outside the hit reach** (`src/chart/glyphs.ts:88-93`). Its label
+  measured **119.6 px wide**, so its far end is **129 px from the mark** against a 38 px radius.
+  **The honest fix is not a bigger radius** — it is hit-testing the label's own BOX, which needs the
+  label PLAN (`src/chart/labels.ts`, currently planned inside `ChartCanvas` against the selection and
+  the chrome). Recomputing that plan at tap time would be a second author of where a name is, and the
+  two could disagree about which names were even printed. It stays one authority and one radius
+  **until the plan is lifted out of `ChartCanvas` for both**.
+* **Bristol was not the only one, and it was not even the worst — there are FORTY.** Counted off
+  0052's own `sea_reaches` rows: **40 harbours still snap more than 20 nm to sailable water, and 13
+  of them more than 30 nm.** The four largest are **Longyearbyen 67.68 nm, Hanoi 58.68, Khambhat
+  57.77, Tokyo 47.69**, then Patras 47.21, Trondheim 45.98, Izmir 40.29, Amsterdam 35.47. Every one
+  of those is a land-exempt head allowance of exactly the kind that let Bristol sail across
+  Somerset, and the fix for each is the same shape 0052 used: a CHANNELS entry for the water that is
+  really there. **None of them is cut, and this census is not written down anywhere else** —
+  `scripts/build-sea-migration.mjs:298` prints the count to the console at generation and no file
+  keeps it, so it has to be recounted from the data each time somebody wants it. Do not confuse it
+  with the *"the last 67 nm are the approach to Longyearbyen"* notes in 0041's leg rows: those are
+  the retired graph's authored detour allowances, a different quantity from a different model.
+* **The rebuild-with-image path is proven in Node, not in a browser.** `tests/db.image.spec.ts:5` says
+  so in its own first line — *"PURE UNIT SPEC. No `page` fixture, so Playwright runs it as a plain
+  Node process"* — and the PostgreSQL and the tarball are real, but no browser has been driven through
+  a cold boot off the image. The certification, the two wounded-image positive controls and the
+  fallback are all real; **what is not recorded is a human or a browser arriving at a live purse in
+  7.1 s.**
+* **The map's ratio control has not been driven on production.** The unfold chain was verified on the
+  live game today (see `OWNER_REQUESTS` rows 45/46); the ratio block landed after that drive and is
+  built-not-verified.
+* **`world.snapshot()` costs 0.9 s more per session** than it did yesterday, paid once, and that is
+  0051's price for a rarity ladder that scales. Stated rather than absorbed.
+
+### WHERE IT IS
+
+**MERGED TO LOCAL `main`. NOT PUSHED. NOT DEPLOYED.** As of writing, local `main` is **25 commits
+ahead of `origin/main`**, which sits at `d3463da` — *"A refusal is two numbers and a verb"*, migration
+0050. Everything in this entry exists only in this checkout.
+
+What that means concretely: **production is running the 45-migration chain** that D24 recorded and
+probed with the anon key on 2026-08-25. **0051, 0052, 0053, 0055 and 0056 are not on it.** So the live
+game today is still paying the ~37 per cent first voyage, still tiering 54.7 per cent of its
+catalogue as exotic, still letting Bristol sail across Somerset, and still drawing a three-row nav
+bar. Nothing in this entry is visible to a player until this is pushed and deployed.
+
+---
+
 ## 2026-08-24 — D24: the sea becomes a free plane — the clock ×20, ONE raster, ONE mover, the graph deleted, and a refusal that is two numbers and a verb
 
 Six migrations, **0045–0050**, and four of them REPLACE a model rather than extend one. (0050's hunks

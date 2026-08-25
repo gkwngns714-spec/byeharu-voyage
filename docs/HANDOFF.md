@@ -138,14 +138,15 @@ paid for (d) in 0001.
 
 ### The chain today
 
-> **CORRECTED 2026-08-25.** ~~10 migrations~~ — **45**, `supabase/migrations/` (0001–0037, 0040/0041,
-> 0045–0050; the gaps 0038/0039 and 0042–0044 are deliberate and are arbitrated by
-> `npm run db:check-versions`, never by counting). ~~Four proof files~~ — **nine**
-> (`01`–`09`; `05_first_voyage_balance`, `06_haggle`, `07_standing_provision`, `08_the_sea_answers`
-> and `09_the_fleet_never_touches_land` were added after this file was written). The paragraph and
-> the table below are left as they stood on 2026-08-18: they describe the V0 chain correctly and are
-> no longer the whole of it. `supabase/migrations/CHAIN.md` is the current list — and note it, too,
-> still counts forty-four; 0050 landed after it was last written.
+> **CORRECTED 2026-08-25, twice.** ~~10 migrations~~ ~~**45**~~ — **50**, `supabase/migrations/`
+> (0001–0037, 0040/0041, 0045–0053, 0055/0056; the gaps 0038/0039, 0042–0044 and 0054 are deliberate
+> and are arbitrated by `npm run db:check-versions`, never by counting). ~~Four proof files~~ —
+> **nine** (`01`–`09`; `05_first_voyage_balance`, `06_haggle`, `07_standing_provision`,
+> `08_the_sea_answers` and `09_the_fleet_never_touches_land` were added after this file was written).
+> The paragraph and the table below are left as they stood on 2026-08-18: they describe the V0 chain
+> correctly and are no longer the whole of it. `supabase/migrations/CHAIN.md` is the current list, and
+> it now counts fifty — the "still counts forty-four" this note carried earlier today was true when
+> it was written and was repaired the same day.
 
 10 migrations, `supabase/migrations/`, all self-asserting. `supabase/migrations/CHAIN.md` lists each one
 and what it proves. They define the entire V0 server: the static world and its seed, the market and its
