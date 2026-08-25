@@ -4,39 +4,32 @@ Written 2026-08-25, at the end of the session that landed migrations 0051–0056
 
 ---
 
-## ⚠ START HERE — main has ONE known failing test
+## ⚠ START HERE — the acceptance suite is GREEN on main; a wrong-mode build only LOOKS red
 
-`tests/map.sendfleet.spec.ts:115` — *"a harbour is tappable by its name, and a ratio can be set
-without sailing"* — **fails on main**, reproduced on a quiet machine against a freshly built
-`dist`:
+**`tests/map.sendfleet.spec.ts:115` is NOT failing on main.** It was suspected red on
+2026-08-25 and written up here as a known failure, but that was never reproduced against a
+correctly-configured build, and it does not hold. Verified twice on 2026-08-25 at commit
+`3a8e9b5`:
 
-```
-Error: a tap on the word "Cadiz" did not select Cadiz — the harbour a player sees is the mark
-       AND its name, and missing it silently offers a different destination
-Expected substring: "Cadiz"
-Received string:    "Open sea36.6°N 7.1°WSend fleet"
-```
+- CI job **"Acceptance (the whole spec suite, against a served build)"**, run
+  `32857651456`, completed **success**.
+- A local run of `tests/map.sendfleet.spec.ts` alone, against a freshly built `dist` in
+  **local PGlite mode** (`.env.local` absent), passed **4/4 in 4.2 s**.
 
-**What is known, so you do not re-derive it:**
+**The trap that produced the false alarm — kept here because it is real and it will bite again:**
+a build made **with `.env.local` present is a CLOUD build**, and a cloud build asks the browser
+to sign in. The map never renders behind the login screen, so every map spec fails for a reason
+that has nothing to do with hit targets or panel geometry — a tap "misses" everything because
+there is no chart under it, not because the reach is wrong. That failure mode reads exactly like
+a broken hit-test and cost a full build cycle before the real cause (which build mode was running)
+was found. **Before trusting any red result from a map/chart spec, check which build produced
+it**: local PGlite mode (no `.env.local`) for a machine-level check, or a real authenticated
+session for a cloud-mode check. Never compare a cloud-mode failure to a PGlite-mode expectation.
 
-- It is **not** a stale build. The first full-suite run had 8 failures; 7 were a stale `dist/`
-  holding the 47-migration world image against a 50-migration chain — the image guard working
-  correctly. Rebuilding fixed those 7. This one survived the rebuild.
-- The fix it is testing **is still present**: `src/chart/glyphs.ts:103` still derives
-  `hitRadius` (38 px), and `src/chart/hitTest.ts` still reads it. Nothing was lost in a merge.
-- It is a **cross-slice interaction**. The map slice and the encounters slice (0055) were built
-  in separate worktrees, each passed its own suite, and neither saw the other. The detail panel
-  on main now carries `w-[74vw] max-w-[74vw]` sizing that did not exist when the map spec was
-  written, and `tests/waters.panel.spec.ts` — from the encounters slice — touches the same
-  surface. The likely cause is that the panel's new geometry moves what is under the tap, not
-  that the reach is wrong.
-
-**Do not "fix" it by widening `hitRadius` or by relaxing the assertion.** The assertion is
-correct and is the whole point of that slice: a player who taps the harbour name they can read
-must not be silently offered open sea. Find why the tap now lands elsewhere.
-
-Everything else is green: 192 passed locally, and `Build` and `Deploy (GitHub Pages)` are green
-in CI at `b138216`.
+`Build`, `Deploy (GitHub Pages)`, and `Acceptance` are all green in CI at `15bd8c3` (the current
+`origin/main` head). `Migrations — apply proof`'s `disposable-chain` job is **not** green there —
+see `docs/RESUME.md`'s anchor for that open blocker, which is unrelated to this test and is a
+Postgres-17-vs-18 issue in migration 0053, not a map defect.
 
 ---
 

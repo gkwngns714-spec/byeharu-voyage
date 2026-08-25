@@ -1,8 +1,8 @@
 # RESUME — where the work stands
 
 **If you are picking this project up cold: read the anchor immediately below, then
-`docs/DEV_LOG.md`'s top entry (D25), then `docs/OWNER_REQUESTS.md`. Everything under
-`LANDED 2026-08-24` and lower is older and is kept as record.**
+`docs/DEV_LOG.md`'s top two entries (D26, then D25), then `docs/OWNER_REQUESTS.md`. Everything
+under `LANDED 2026-08-24` and lower is older and is kept as record.**
 
 ---
 
@@ -16,14 +16,58 @@
   the slice that took that number turned out to need no migration at all — it moved the balance proof
   onto a fixture and changed no schema, and cutting a file to look busy would have been a lie in the
   chain. `supabase/migrations/CHAIN.md` is the current per-migration list.
-* **Nothing from 2026-08-25 is pushed, and nothing from it is deployed.** Local `main` is **25 commits
-  ahead of `origin/main`**, which sits at `d3463da` — *"A refusal is two numbers and a verb"*,
-  migration 0050. **These 50 migrations are merged to LOCAL main only.** Do not tell anyone to
-  refresh into any of it.
-* **What that means for production:** the last recorded, probed statement about the live project is
-  D24's, on 2026-08-25, with the anon key — it was on **0050**, the head of a 45-file chain. Nothing
-  since has been pushed to change that, and **this file makes no claim beyond that probe.** If you
-  need the live state, probe it; do not read it out of a document.
+* **CORRECTED 2026-08-25, later the same day: it has been pushed, and the SITE is deployed.**
+  `origin/main` is now at `15bd8c3` (the code that had been sitting on local `main` only). CI's
+  `Build`, `Acceptance`, and `Deploy (GitHub Pages)` workflows all ran **green** on that push (run
+  `32857651456` for Acceptance), and GitHub Pages served the new build — the owner drove the live
+  game at `https://gkwngns714-spec.github.io/byeharu-voyage/` and saw the one-row six-cell nav bar.
+  **Keep the distinction this file has always insisted on: the SITE is deployed; the MIGRATIONS are
+  not.** `Migrations — apply proof`'s `disposable-chain` job is **red** on that same push — see
+  "OPEN BLOCKER" below — which is a separate thing from whether the frontend shipped.
+* **What that means for production's database:** verified 2026-08-25 with `supabase migration list
+  --linked`: the live project is on **0050**. Migrations 0051, 0052, 0053, 0055 and 0056 all show an
+  empty remote column — none of them has been applied to production. **Do not tell anyone to refresh
+  into 0051–0056's effects** (the retuned rarity tiers, the Bristol fix, the faster market read, the
+  encounter mixes, the lower drift) — none of it is live yet, even though the client code that
+  expects it now is.
+
+## THE OUTAGE — 2026-08-25, not previously recorded anywhere in this repo
+
+The production Supabase project filled its disk and Postgres put the **whole project into
+READ-ONLY mode**. Every write failed; `POST /auth/v1/token?grant_type=refresh_token` returned
+**500**, so no player could even hold a session, and the live game hung on loading skeletons.
+`supabase db push` and `supabase migration list` both died with
+`ERROR: 25006: cannot execute GRANT ROLE in a read-only transaction`.
+
+**Cause, measured in the dashboard SQL editor:** `public.price_history` was **1,410 MB across
+7,347,231 rows — 98% of a 1.43 GB database**, where a freshly built world from the same chain is
+21 MB. The owner upgraded the org to Pro and raised the disk from 2 GB to 8 GB; read-only cleared
+at 23:34 and the game came back.
+
+**The underlying defect** is that the retention window `price_history_slots = 288` was calibrated
+for a 14,980-pair world, and migration 0041 grew the world to 54,432 pairs without resizing that
+window — a designed ceiling of **15.7M rows / ~3.0 GB**, well past what a free-tier project can
+hold. It is **being fixed as migration 0057 by another agent, in another worktree, as of this
+writing. It has not landed here** — do not claim it is fixed until `supabase/migrations/` actually
+carries an 0057 file and its self-assert has been proven.
+
+## OPEN BLOCKER — migration 0053 fails on Postgres 17, and production runs Postgres 17
+
+`supabase/config.toml` pins `major_version = 17`, which is what production runs. PGlite (the local
+apply/proof gate) runs Postgres 18, and 0053 passes there — **but CI's `disposable-chain` job,
+which boots a real disposable Supabase (Postgres 17), fails on it**: run `32857650723`, job
+`disposable-chain`:
+
+```
+ERROR: 0053 self-assert FAIL: one world.market() read still touches 314337 buffer(s) against the
+old body's 270277 — less than the 3x this file exists to buy. The read has gone back to walking
+the neighbourhood once per good. (SQLSTATE P0001)
+```
+
+**This blocks every migration deploy**, since `supabase db push` applies migrations in order and
+dies at 0053. Another agent (worktree `bv-pg17`, branch `pg17-0053`) is working on a fix as of this
+writing. **It has not landed on `main`** — do not report this as fixed until it has, and until the
+`disposable-chain` job is green on a real run.
 
 ## WHAT LANDED ON 2026-08-25 (local `main`, not deployed)
 
@@ -67,25 +111,37 @@ noise.**
 
 ## WHAT THE NEXT WORK IS
 
-In the order a cold reader should consider them:
+In the order a cold reader should consider them, **re-derived 2026-08-25 after the push, the
+outage, and the 0053 discovery — the old item 1 ("push and deploy, or decide not to") is done and
+removed; everything below is what is actually left**:
 
-1. **PUSH AND DEPLOY, or decide not to.** Twenty-five commits and five migrations are sitting on local
-   `main`. Two of them change a live economy (0051 re-tiers 171 goods, 0056 halves the price noise) and
-   one changes sailed distances (0052 moves 468 pair readings, all Bristol's). **This is a real
-   ~30-player-class deploy decision, not a formality**, and it is the owner's.
-2. **Light 0055, or decide not to.** It is one migration and four statements, named in 0055's own
+1. **Fix migration 0053 for Postgres 17, or decide to re-cut it.** This is the hard blocker: it
+   stops `supabase db push` from reaching 0054 or anything after it, so 0051, 0052, 0055 and 0056
+   are also stuck behind it even though none of them are themselves at fault. See "OPEN BLOCKER"
+   above. In flight in worktree `bv-pg17` / branch `pg17-0053` as of this writing.
+2. **Confirm migration 0057 (the `price_history` retention fix) lands, is proven, and actually
+   prevents a recurrence** before deploying anything else — the outage's root cause is not fixed by
+   raising the disk quota; that bought time, not headroom. Re-check the designed row ceiling against
+   the resized retention window once 0057 exists.
+3. **Deploy 0051–0056 (and 0057, once both land) to production, or decide not to.** Two of them
+   change a live economy (0051 re-tiers 171 goods, 0056 halves the price noise) and one changes
+   sailed distances (0052 moves 468 pair readings, all Bristol's). **This is a real
+   ~30-player-class deploy decision, not a formality**, and it is the owner's. The frontend already
+   expects this schema; the longer the deploy waits, the longer the live client and the live
+   database disagree.
+4. **Light 0055, or decide not to.** It is one migration and four statements, named in 0055's own
    header, and the measured cost is Barbary raid-days 43.0% → 20.4% of event-days. Owner's call.
-3. **`public.good_rarity`, 87 ms of the ~240 ms left in `world.market`** — now the largest single item
+5. **`public.good_rarity`, 87 ms of the ~240 ms left in `world.market`** — now the largest single item
    in that read, named by 0053 and deliberately left for its own slice.
-4. **The other 39 port snaps.** Bristol was one of **40 harbours that snap more than 20 nm** to
+6. **The other 39 port snaps.** Bristol was one of **40 harbours that snap more than 20 nm** to
    sailable water (13 over 30 nm): Longyearbyen 67.68, Hanoi 58.68, Khambhat 57.77, Tokyo 47.69 lead
    it. Same class of breach of the never-touch-land law, same fix shape as 0052.
-5. **Hit-test the label's box, not a radius** — `Strait of Gibraltar` is 119.6 px wide and its far end
+7. **Hit-test the label's box, not a radius** — `Strait of Gibraltar` is 119.6 px wide and its far end
    is 129 px from the mark. Needs the label plan lifted out of `ChartCanvas`; a second author of where
    a name is would be worse than the miss.
-6. **Drive the pre-built image in a browser.** It is proven in Node only (`tests/db.image.spec.ts:5`
+8. **Drive the pre-built image in a browser.** It is proven in Node only (`tests/db.image.spec.ts:5`
    says so of itself). Nobody has watched a browser arrive at a live purse in 7.1 s.
-7. **Drive the map's ratio control on production.** It landed after the day's drive and has never been
+9. **Drive the map's ratio control on production.** It landed after the day's drive and has never been
    pressed on the live game.
 
 # ▲ RESUME ANCHOR ▲
@@ -213,10 +269,12 @@ promise.** `docs/UI_DIRECTION.md` forbids printing a number the game will not ho
 
 ## STATE AT THE MOMENT OF WRITING (2026-08-23), production line corrected 2026-08-25
 
-**Production — corrected 2026-08-25, twice; SEE THE ANCHOR AT THE TOP, WHICH SUPERSEDES THIS.** The
-line here used to read *"35/35 migrations, matching local"*, and that was false; it was then corrected
-to **45 `.sql` files**, and by the end of the same day that was stale too — **the chain is 50 files
-ending at 0056, and the last five are on local `main` only, unpushed.** What the probe below
+**Production — corrected 2026-08-25, three times now; SEE THE ANCHOR AT THE TOP, WHICH SUPERSEDES
+THIS.** The line here used to read *"35/35 migrations, matching local"*, and that was false; it was
+then corrected to **45 `.sql` files**, and by the end of the same day that was stale too — **the
+chain is 50 files ending at 0056, and at the time of the probe below, the last five were on local
+`main` only, unpushed.** They have since been pushed (see the anchor) but production's database is
+still on 0050 — pushing the client code did not deploy the migrations. What the probe below
 established, and all it established, is that the live project was on **0050** — the head of the chain
 *as it stood that morning* — verified directly with the anon key on 2026-08-25, not asserted from
 memory:
