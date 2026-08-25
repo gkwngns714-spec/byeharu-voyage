@@ -3,7 +3,7 @@ import type { IconName } from '../components/ui'
 // THE TAB TABLE — pure data + policy (no React), so the navigation contract can be pinned by a
 // spec instead of read out of JSX. NavBar renders EXACTLY this list; there is no second table.
 //
-// ── THE EIGHT DESTINATIONS, and why each is its own tab ─────────────────────────────────────────
+// ── THE NINE DESTINATIONS, and why each is its own screen ───────────────────────────────────────
 //   Command  compose orders. THE ONLY PLACE AN ORDER IS COMPOSED. Sail, load, unload, sell, buy.
 //            Four tabs HAND an order to it — Fleets, Port, Market and (2026-08-23) Map — and none
 //            of them composes one: they name an intent, `domain/order`'s draft holds it, and this
@@ -20,20 +20,45 @@ import type { IconName } from '../components/ui'
 //            or not you have met it. A reference — it commands nothing.
 //   Profile  account, session, preferences.
 //
-// ── NINE ON A PHONE ─────────────────────────────────────────────────────────────────────────────
-// Nine cells in one row at 320px is 35px each, under the 44px touch floor. Four across — the shape
-// eight tabs wore — leaves 4+4+1: a last row with ONE orphaned cell, which reads as a mistake and
-// wastes a whole 56px band on a single tab. So at nine the phone bar is THREE ROWS OF THREE
-// (320 ÷ 3 = 106px, 390 ÷ 3 = 130px per cell — both comfortably over the floor) and one row of
-// nine from `sm` up (640 ÷ 9 = 71px at the breakpoint's worst).
+// ── NINE DESTINATIONS, SIX CELLS (2026-08-25) ───────────────────────────────────────────────────
+// Nine cells in one row at 390px is 43px each — under the 44px reach floor, and under the 46px the
+// widest label (COMMAND) needs. The bar therefore WRAPPED: three rows of three, MEASURED at
+// 390×844 as nine cells of 130×56 in a bar **168px tall**, which is 19.9% of the screen spent on
+// navigation before the game gets a pixel. `docs/OWNER_REQUESTS.md` recorded the open question —
+// *"noted here in case the answer is to group tabs rather than add a row"* — and the owner's answer
+// was: **group them. No second row.**
 //
-// MEASURED 2026-08-23, chromium against the built app (the paragraph that stood here called its
-// own numbers "an estimate that has not been checked"; these are rendered and read back):
-//   390×844  every cell 130×56px in a 3×3 bar 169px tall; every label's scrollWidth equals its
-//            clientWidth (widest: COMMAND and PROFILE at 46px, CODEX at 33px); page scrollWidth
-//            390 = clientWidth. The 8-tab bar it replaced measured 4×2, cells 98×56, bar 113px.
-//   1440×900 one row of nine, cells 100×56 (the bar's max-w-4xl is what caps them), no page
-//            scroll. 640 ÷ 9 = 71px at the breakpoint's worst still clears the widest 46px label.
+// THE GROUPING IS READ OFF THE INFORMATION ARCHITECTURE, not off an arithmetic split. Ask of each
+// destination "what kind of thing is this?" and the nine fall into two kinds:
+//
+//   THE VOYAGE — the loop you are actually playing. You compose an order (Command) with the ships
+//   you own (Fleets), in the harbour you are docked at (Port), against its prices (Market), across
+//   the sea (Map). Every one of these is touched many times a session, and `docs/UI_DIRECTION.md`
+//   §3a is explicit that depth added to a frequent act is a DEFECT — the reference game's own
+//   convenience team exists to undo exactly that. So all five stay ONE TAP. None is grouped.
+//
+//   THE CABIN — what a captain keeps at his desk. The ledger he writes up, the standings he is
+//   listed in, the compendium he looks things up in, and the papers that say who he is. The kind
+//   they share is not "leftovers": **none of them acts on the world.** Ledger, Rank and Codex are
+//   read-only by construction (Codex's line above already says "it commands nothing"), and Profile
+//   is the account rather than the voyage. They are consulted, not played. One extra tap to reach a
+//   thing you consult is the trade the frequent five are being spared.
+//
+// The names were checked against the owner's "one word per idea across the whole game": CABIN
+// collides with nothing in the game's vocabulary. RECORDS was the obvious label and was rejected —
+// `Ledger` is already defined above as "the running record", so a group called Records containing a
+// tab called Ledger is two words for one idea. HARBOUR was likewise rejected as a group over
+// {Port, Market}: navTabs already glosses Port as "the harbour you are in", so the two words name
+// the same place — and Market is played too often to sit behind a tap anyway.
+//
+// MEASURED 2026-08-25, chromium against the built app (tests/nav.geometry.spec.ts prints the line
+// and asserts every number in it):
+//   390×844  six cells of 65×56 in a bar **56px tall**, one row. Every label's scrollWidth equals
+//            its clientWidth. Page scrollWidth 390 = clientWidth. The 9-tab bar it replaces
+//            measured 3 rows, cells 130×56, bar 168px — so the game gained 112px of screen.
+//   320×568  six cells of 53×56 in one row, widest label 46px, none shaved — clear of both the
+//            44px reach floor and the 46px COMMAND needs. This is why SIX and not seven: 320 ÷ 7 is
+//            45.7px, and COMMAND would be shaved by the arithmetic alone.
 
 export interface NavTab {
   to: string
@@ -41,43 +66,103 @@ export interface NavTab {
   icon: IconName
 }
 
-const ALL_TABS: readonly (NavTab & { enabled: boolean })[] = [
+/** The groups the bar may fold tabs into. A group is a CELL that REVEALS its members; it is never
+ *  a destination itself and it has no route — adding one here without adding members leaves an
+ *  empty cell, which `NAV_CELLS` cannot produce because a group exists only where a tab claims it. */
+export type NavGroupId = 'cabin'
+
+interface NavGroup {
+  label: string
+  /** The chevron, not a subject glyph. A group cell's honest graphic is "this opens" — every other
+   *  icon in this table names a place, and no single place-glyph is true of all four members (a
+   *  book is not a wreath is not an account). NavBar points it up when closed, down when open. */
+  icon: IconName
+}
+
+const GROUPS: Record<NavGroupId, NavGroup> = {
+  cabin: { label: 'Cabin', icon: 'chevron' },
+}
+
+const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] = [
   { to: '/command', label: 'Command', icon: 'compass', enabled: true },
   { to: '/fleets', label: 'Fleets', icon: 'ship', enabled: true },
   { to: '/port', label: 'Port', icon: 'anchor', enabled: true },
   { to: '/market', label: 'Market', icon: 'scales', enabled: true },
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
-  { to: '/ledger', label: 'Ledger', icon: 'ledger', enabled: true },
-  { to: '/rank', label: 'Rank', icon: 'wreath', enabled: true },
+  { to: '/ledger', label: 'Ledger', icon: 'ledger', enabled: true, group: 'cabin' },
+  { to: '/rank', label: 'Rank', icon: 'wreath', enabled: true, group: 'cabin' },
   // "Codex", not "Compendium": both mean the 도감, and the shorter word is the one that must fit a
-  // 71px cell at the `sm` breakpoint's worst. The screen's own title spells it out in full.
-  { to: '/compendium', label: 'Codex', icon: 'codex', enabled: true },
-  { to: '/profile', label: 'Profile', icon: 'profile', enabled: true },
+  // cell. The screen's own title spells it out in full.
+  { to: '/compendium', label: 'Codex', icon: 'codex', enabled: true, group: 'cabin' },
+  { to: '/profile', label: 'Profile', icon: 'profile', enabled: true, group: 'cabin' },
 ]
 
-/** The tabs NavBar renders, in order. `enabled: false` drops a destination entirely — DARK-FIRST:
- *  a tab may never lead to a screen that has nothing behind it yet. */
-export const NAV_TABS: readonly NavTab[] = ALL_TABS.filter((t) => t.enabled).map(
-  ({ to, label, icon }) => ({ to, label, icon }),
-)
+const ENABLED = ALL_TABS.filter((t) => t.enabled)
+
+/** Every destination the bar can reach, FLAT and in order, grouped or not. `enabled: false` drops
+ *  one entirely — DARK-FIRST: a tab may never lead to a screen that has nothing behind it yet.
+ *
+ *  NOT A SECOND TABLE, and not the thing the bar draws: since the grouping (2026-08-25) NavBar
+ *  renders `NAV_CELLS`, and both this and that are computed from `ALL_TABS` above. This list has no
+ *  caller in `src/` today — it is kept as the enumeration `docs/CORE_REUSE.md` names and as the
+ *  natural reading for anyone checking App.tsx's route table against the destinations. If a caller
+ *  ever wants "the tabs", it wants this; if it wants "what the bar draws", it wants NAV_CELLS. */
+export const NAV_TABS: readonly NavTab[] = ENABLED.map(({ to, label, icon }) => ({ to, label, icon }))
+
+/** What the BAR draws: either a destination, or a group that reveals several. */
+export type NavCell =
+  | { kind: 'tab'; label: string; icon: IconName; to: string }
+  | { kind: 'group'; id: NavGroupId; label: string; icon: IconName; members: readonly NavTab[] }
+
+/** THE BAR'S CELLS, DERIVED — never declared. A group's membership is a field on the tab, so there
+ *  is exactly one table and a tab cannot be listed in the bar and in a group, listed twice, or
+ *  listed nowhere. A second array naming the members is precisely the drift `docs/NO_SPAGHETTI.md`
+ *  forbids, and it is unbuildable here: this list is computed from `ALL_TABS` and nothing else.
+ *  Order follows the table, and a group takes the position of its FIRST member. */
+export const NAV_CELLS: readonly NavCell[] = (() => {
+  const cells: NavCell[] = []
+  const members = new Map<NavGroupId, NavTab[]>()
+  for (const t of ENABLED) {
+    const tab: NavTab = { to: t.to, label: t.label, icon: t.icon }
+    if (!t.group) {
+      cells.push({ kind: 'tab', ...tab })
+      continue
+    }
+    let list = members.get(t.group)
+    if (!list) {
+      list = []
+      members.set(t.group, list)
+      cells.push({ kind: 'group', id: t.group, ...GROUPS[t.group], members: list })
+    }
+    list.push(tab)
+  }
+  return cells
+})()
 
 /** The landing destination. Orders are the point of the game, so the app opens on Command. */
 export const HOME_TAB = '/command'
 
-/** The nav grid classes for a tab count. STATIC literals only — Tailwind scans source text, so a
- *  computed class name (`sm:grid-cols-${n}`) would be tree-shaken out of the stylesheet and the bar
- *  would silently collapse. The desktop row carries them all; the phone wraps — and the phone
- *  column count is chosen so NO row is left with an orphan cell: four across divides 8 and 12
- *  cleanly, three across divides 9 (see "NINE ON A PHONE" above). A count this table does not
- *  know falls back to four across, which at worst rags the last row — it never clips a cell. */
+/** The nav grid classes for a cell count. STATIC literals only — Tailwind scans source text, so a
+ *  computed class name (`grid-cols-${n}`) would be tree-shaken out of the stylesheet and the bar
+ *  would silently collapse.
+ *
+ *  ONE ROW AT EVERY WIDTH, which is the whole point of grouping: there is no phone column count
+ *  and no `sm:` variant any more, because there is no wrap to arrange. The arithmetic that decides
+ *  how many cells may exist is in "NINE DESTINATIONS, SIX CELLS" above — at 320px the narrowest
+ *  screen this app claims, six cells are 53px and seven are 45.7px, and the widest label needs 46px.
+ *
+ *  A count this table does not know falls back to the widest single row it does know, so a cell
+ *  count that has outgrown the bar WRAPS VISIBLY and `tests/nav.geometry.spec.ts` fails on the row
+ *  count with the instruction to group — rather than silently mis-columning. */
 export function navGridClass(count: number): string {
   const GRID: Record<number, string> = {
-    4: 'grid-cols-4 sm:grid-cols-4',
-    5: 'grid-cols-4 sm:grid-cols-5',
-    6: 'grid-cols-3 sm:grid-cols-6',
-    7: 'grid-cols-4 sm:grid-cols-7',
-    8: 'grid-cols-4 sm:grid-cols-8',
-    9: 'grid-cols-3 sm:grid-cols-9',
+    2: 'grid-cols-2',
+    3: 'grid-cols-3',
+    4: 'grid-cols-4',
+    5: 'grid-cols-5',
+    6: 'grid-cols-6',
+    7: 'grid-cols-7',
+    8: 'grid-cols-8',
   }
-  return GRID[count] ?? 'grid-cols-4 sm:grid-cols-8'
+  return GRID[count] ?? 'grid-cols-8'
 }
