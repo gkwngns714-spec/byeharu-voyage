@@ -213,7 +213,10 @@
 --       after, in this transaction. The new body must touch at most a THIRD of the buffers the
 --       old one did. A ratio has no units and no machine in it, so it cannot go flaky the way a
 --       millisecond does — and it fails the instant the read goes back to walking the
---       neighbourhood once per good. Measured ratio on a clean apply: 8.2x; the guard demands 3x,
+--       neighbourhood once per good. **The ratio is only reachable through the index section 0
+--       creates**: on PostgreSQL 17 without it the same body costs 127x and this guard reads the
+--       change as a regression, which is exactly what it did on 2026-08-25 before section 0
+--       existed. Measured ratio on a clean apply: 8.2x; the guard demands 3x,
 --       because the break-test harness reads 5.8x for the very same file and a guard is sized on
 --       the worst honest reading. The old shape scores about 1x, so 3x still refuses it outright.
 --   (c) THE SHAPE, read back off the DEPLOYED catalogue: world.market names
@@ -264,6 +267,39 @@ begin
   end if;
   execute v_def;
 end $$;
+
+-- ── 0. THE ACCESS PATH THE NEIGHBOURHOOD WALK HAS ALWAYS NEEDED ───────────────────────────────
+-- ADDED 2026-08-26, after this file passed on PGlite and FAILED on the engine production runs.
+--
+-- MEASURED ON POSTGRESQL 17.6 — `supabase/config.toml` pins `major_version = 17`, and the
+-- apply-proof job's disposable Supabase is the only PostgreSQL 17 this project can reach:
+--
+--     world.pct_of_neighbours_at(BOR), body LIFTED INLINE as a plain query     4,400 buffers
+--     the same body, called as a FUNCTION                                    298,087 buffers
+--     the same call, with this index in place                                  2,352 buffers
+--     one whole world.market(BOR) read, with this index                       23,158 buffers
+--                                        ... against the old body's          271,229 buffers
+--
+-- THE 127x IS NOT THE BODY AND IT IS NOT THE INLINING. `world.mid_from_terms` never appears as a
+-- node in the lifted plan, so the planner IS substituting it, exactly as guard (d) requires. The
+-- cost is `public.port_goods`, whose primary key is (port_id, good_id): the join `pg.good_id =
+-- h.good_id` inside `them` has NO index to walk, and the plan PostgreSQL 17 chooses for the
+-- function's cached, generically-parameterised body rescans the whole 54,432-row table where a
+-- single good has about forty rows. PostgreSQL 18 — PGlite, where this file was written and
+-- measured at 8.2x — hash-joins once and never pays it. That is the entire distance between
+-- "8.2x" and "the read got slower", and it was invisible until the file met a real 17.
+--
+-- So this index is NOT a knob added to make a guard pass. It is the access path DESIGN §E.4's
+-- neighbourhood walk has needed since 0005 created the table, and its absence was masked by a
+-- development engine that could plan around it. It is created BEFORE the pre-images below, so
+-- both sides of the buffer comparison are measured with it and the ratio stays honest.
+create index if not exists port_goods_good_id_idx on public.port_goods (good_id);
+comment on index public.port_goods_good_id_idx is
+  'The good-side access path for DESIGN E.4. port_goods'' primary key is (port_id, good_id), so '
+  '"every port that stocks THIS good" — what world.pct_of_neighbours_at asks once per quay — had '
+  'no index at all. Measured on PostgreSQL 17.6: 298,087 buffers without it, 2,352 with. Do not '
+  'drop it; 0053''s self-assert checks it is still there.';
+analyze public.port_goods;
 
 -- ── 1. THE PRE-IMAGES, captured before anything is replaced ────────────────────────────────────
 -- Within this transaction now() is frozen and the drift slot cannot roll, so parity below is
@@ -444,6 +480,14 @@ language sql
 stable
 security definer
 set search_path = public, pg_temp
+-- PLAN THIS FOR THE PORT IT IS ASKED ABOUT, EVERY TIME. Measured on PostgreSQL 17.6 (section 0):
+-- the first few calls are planned against the actual uuid and cost 2,352 buffers; after the fifth,
+-- PostgreSQL's plancache compares a GENERIC plan and keeps it, and the generic plan — which cannot
+-- know which port, so it cannot estimate the forty-odd rows a good has — rescans the whole 54,432
+-- row table and costs 298,087. Values never move, so nothing goes red; the read simply becomes two
+-- orders of magnitude more expensive on the sixth call of a session and stays there. PGlite's
+-- PostgreSQL 18 never showed this, which is why the file shipped measuring 8.2x.
+set plan_cache_mode = 'force_custom_plan'
 as $$
   -- The five knobs, read ONCE per call instead of once per (good, neighbour). `materialized` is
   -- load-bearing on all three fences below for 0019's reason: without it the planner substitutes
@@ -688,6 +732,20 @@ begin
   -- a target to hit.
   if v_after * 3 > v_before then
     raise exception '0053 self-assert FAIL: one world.market() read still touches % buffer(s) against the old body''s % — less than the 3x this file exists to buy. The read has gone back to walking the neighbourhood once per good.', v_after, v_before;
+  end if;
+
+  -- ── (b2) THE ACCESS PATH IS STILL THERE. The ratio above is only reachable through
+  --         port_goods_good_id_idx: without it the identical body costs 127x on PostgreSQL 17
+  --         (section 0's measurements) while every value it answers stays correct — which is the
+  --         quietest way this file could ever be undone.
+  if not exists (
+        select 1 from pg_proc p
+         where p.oid = 'world.pct_of_neighbours_at(uuid,uuid)'::regprocedure
+           and p.proconfig @> array['plan_cache_mode=force_custom_plan']) then
+    raise exception '0053 self-assert FAIL: world.pct_of_neighbours_at is no longer pinned to a custom plan — PostgreSQL 17 will switch it to a generic plan on the sixth call of a session and the read costs 127x while every value it answers stays correct';
+  end if;
+  if to_regclass('public.port_goods_good_id_idx') is null then
+    raise exception '0053 self-assert FAIL: public.port_goods_good_id_idx does not exist — the neighbourhood walk has no good-side access path and the read silently costs two orders of magnitude more on PostgreSQL 17';
   end if;
 
   -- ── (c) THE SHAPE, read back off the DEPLOYED catalogue, not off this file.
