@@ -1,6 +1,6 @@
 {
   "$doc": "../docs/WORLD_DATA.md",
-  "note": "Real port cities of the ~1500-1650 Age of Sail. lat/lon are Wikidata property P625 (CC0), fetched by scripts/fetch-coords.mjs and never hand-typed; `source` records the exact item each coordinate came from. `sea`, `region`, `tier`, `goods` and `notes` are editorial. See docs/WORLD_DATA.md.",
+  "note": "Real port cities of the ~1500-1650 Age of Sail. lat/lon are Wikidata property P625 (CC0), fetched by scripts/fetch-coords.mjs and never hand-typed; `source` records the exact item each coordinate came from. `sea`, `region`, `tier`, `goods` and `notes` are editorial. See docs/WORLD_DATA.md. Migration 20260818000058 (2026-08-26) rebalanced the roster to the owner's capital=10 / mid=4-8 / small=4 rule: 35 capital `goods` arrays gained deterministic filler entries (chosen by public.roster_rng, appended after the historically-researched entries) and 78 small-harbour arrays lost one entry each (the historically-researched entries otherwise stand). See that migration's header for the full account.",
   "coordinateSource": {
     "dataset": "Wikidata",
     "property": "P625 (coordinate location)",
@@ -54,7 +54,6 @@
         "Ga Mashie"
       ],
       "goods": [
-        "gold",
         "ivory",
         "grains-of-paradise",
         "kola-nuts",
@@ -110,7 +109,6 @@
         "Santa Cruz do Cabo de Gué"
       ],
       "goods": [
-        "sugar",
         "gold",
         "wax",
         "almonds",
@@ -146,7 +144,8 @@
         "sesame-oil",
         "senna",
         "safflower",
-        "linen"
+        "linen",
+        "salted-tuna"
       ],
       "notes": "Mediterranean outlet of the Red Sea spice route until the Cape route drew the trade away after 1500.",
       "source": {
@@ -235,7 +234,8 @@
         "glass-beads",
         "sea-charts",
         "vermilion",
-        "cheese"
+        "cheese",
+        "ramie-cloth"
       ],
       "notes": "Seat of the VOC chamber and the 1602 stock exchange; the Wisselbank followed in 1609.",
       "source": {
@@ -262,8 +262,7 @@
         "wool-cloth",
         "wax",
         "hides",
-        "wheat",
-        "olive-oil"
+        "wheat"
       ],
       "notes": "Papal free port on the Adriatic, linked by overland routes to Ragusa and the Ottoman Balkans.",
       "source": {
@@ -313,7 +312,6 @@
         "Satalia"
       ],
       "goods": [
-        "timber",
         "wheat",
         "carpets",
         "camlets",
@@ -349,7 +347,8 @@
         "tapestries",
         "firearms",
         "books",
-        "paintings"
+        "paintings",
+        "mastic"
       ],
       "notes": "Scheldt river port and Europe’s dominant commodity market until the 1585 Spanish siege and blockade.",
       "source": {
@@ -556,7 +555,9 @@
         "saffron",
         "olive-oil",
         "glassware",
-        "hides"
+        "hides",
+        "benzoin",
+        "cassava"
       ],
       "notes": "Catalan maritime capital whose medieval Consolat de Mar code shaped Mediterranean commercial law.",
       "source": {
@@ -641,8 +642,7 @@
         "cacao",
         "annatto",
         "parrots",
-        "rice",
-        "timber"
+        "rice"
       ],
       "notes": "Founded 1616 at the Amazon mouth to shut French and Dutch traders out of the river.",
       "source": {
@@ -728,7 +728,9 @@
         "woad",
         "rosin",
         "linen",
-        "dried-fruit"
+        "dried-fruit",
+        "sugar",
+        "wootz-steel"
       ],
       "notes": "Garonne river port and the historic source of the claret shipped to England in bulk.",
       "source": {
@@ -781,7 +783,6 @@
       ],
       "goods": [
         "sugar",
-        "cotton-raw",
         "tobacco",
         "rum",
         "molasses"
@@ -839,8 +840,7 @@
         "wool-cloth",
         "linen",
         "alum",
-        "wine",
-        "lace"
+        "wine"
       ],
       "notes": "Hanseatic kontor city whose Zwin channel silted up, shifting its trade to Antwerp by 1500.",
       "source": {
@@ -901,7 +901,9 @@
         "silver",
         "celadon",
         "tiger-skins",
-        "cotton-cloth"
+        "cotton-cloth",
+        "cowries",
+        "fustian"
       ],
       "notes": "Site of the Waegwan, the walled Japan House that was Joseon Korea’s only licensed trading post with Tsushima.",
       "source": {
@@ -932,7 +934,9 @@
         "sword-blades",
         "salted-tuna",
         "wool-raw",
-        "hides"
+        "hides",
+        "myrrh",
+        "silver-plate"
       ],
       "notes": "Atlantic outport of Seville and assembly point for the treasure fleets; raided by Drake in 1587.",
       "source": {
@@ -984,7 +988,6 @@
       ],
       "goods": [
         "ivory",
-        "palm-oil",
         "black-pepper",
         "camwood",
         "parrots"
@@ -1044,7 +1047,9 @@
         "cinchona-bark",
         "vicuna-wool",
         "wheat",
-        "hides"
+        "hides",
+        "majolica",
+        "mastic"
       ],
       "notes": "Port of Lima from 1537 and the loading point of the Potosi silver bound north for the Panama fairs.",
       "source": {
@@ -1069,7 +1074,6 @@
       ],
       "goods": [
         "gold",
-        "ivory",
         "grains-of-paradise",
         "kola-nuts",
         "salt"
@@ -1131,7 +1135,8 @@
         "emeralds",
         "tobacco",
         "pearls",
-        "cacao"
+        "cacao",
+        "rosewater"
       ],
       "notes": "Founded 1533; the fortified treasure port of the Tierra Firme fleet, sacked by Drake in 1586.",
       "source": {
@@ -1158,8 +1163,7 @@
         "gold",
         "tortoiseshell",
         "sharks-fin",
-        "mother-of-pearl",
-        "abaca"
+        "mother-of-pearl"
       ],
       "notes": "Magellan was killed on nearby Mactan in 1521; Legazpi founded the first Spanish settlement here in 1565.",
       "source": {
@@ -1271,7 +1275,6 @@
         "long-pepper",
         "rice",
         "sesame-oil",
-        "areca-nuts",
         "rhino-horn"
       ],
       "notes": "The \"Great Port of Bengal\", held by Arakan with Portuguese freebooters until the Mughal conquest of 1666.",
@@ -1297,7 +1300,6 @@
       "goods": [
         "salt",
         "cotton-cloth",
-        "hides",
         "orchil",
         "horses"
       ],
@@ -1360,7 +1362,8 @@
         "barley",
         "beer",
         "butter",
-        "dried-fish"
+        "dried-fish",
+        "camwood"
       ],
       "notes": "Danish capital commanding the Sound, where the Oresund toll was levied on all Baltic traffic from 1429.",
       "source": {
@@ -1411,7 +1414,6 @@
       ],
       "goods": [
         "salted-beef",
-        "butter",
         "cheese",
         "hides",
         "wool-raw"
@@ -1441,8 +1443,7 @@
         "pearls",
         "salt",
         "cacao",
-        "tobacco",
-        "annatto"
+        "tobacco"
       ],
       "notes": "Founded 1515 on the pearl coast opposite Cubagua, the earliest mainland Spanish town in South America.",
       "source": {
@@ -1468,8 +1469,7 @@
         "sandalwood",
         "wax",
         "barkcloth",
-        "trepang",
-        "rice"
+        "trepang"
       ],
       "notes": "Portuguese Timor’s coast, worked for sandalwood from the 1510s; Dili became the capital in 1769.",
       "source": {
@@ -1494,7 +1494,6 @@
       "goods": [
         "cotton-cloth",
         "indigo",
-        "horses",
         "silk-cloth",
         "cotton-raw"
       ],
@@ -1610,7 +1609,6 @@
       "goods": [
         "sugar",
         "cotton-raw",
-        "salt",
         "wine",
         "gold-thread"
       ],
@@ -1637,7 +1635,6 @@
         "Theodosia"
       ],
       "goods": [
-        "wheat",
         "salt",
         "furs",
         "caviar",
@@ -1720,7 +1717,6 @@
         "Minhou"
       ],
       "goods": [
-        "tea",
         "lacquerware",
         "cassia",
         "lychees",
@@ -1751,7 +1747,6 @@
         "cinnamon",
         "zedoary",
         "ebony",
-        "areca-nuts",
         "cowries"
       ],
       "notes": "Southern Sri Lankan harbour taken by the Dutch in 1640 and rebuilt as their island stronghold.",
@@ -1784,7 +1779,8 @@
         "beer",
         "potash",
         "rosin",
-        "hemp"
+        "hemp",
+        "celadon"
       ],
       "notes": "Vistula outlet through which Polish rye and naval stores fed the Dutch grain trade.",
       "source": {
@@ -1817,7 +1813,8 @@
         "gold-thread",
         "armour",
         "paper",
-        "marble"
+        "marble",
+        "mangrove-poles"
       ],
       "notes": "Republic whose Casa di San Giorgio financiers underwrote much of Habsburg Spain’s war debt.",
       "source": {
@@ -1871,8 +1868,7 @@
         "ivory",
         "hides",
         "wax",
-        "kola-nuts",
-        "ostrich-feathers"
+        "kola-nuts"
       ],
       "notes": "Island anchorage off Cape Verde peninsula, held in turn by Portugal, the Dutch from 1627 and France from 1677.",
       "source": {
@@ -1904,7 +1900,8 @@
         "cassia",
         "star-anise",
         "vermilion",
-        "sugar"
+        "sugar",
+        "ramie-cloth"
       ],
       "notes": "Pearl River city whose twice-yearly fairs were the licensed point of contact for foreign trade with China.",
       "source": {
@@ -1988,7 +1985,8 @@
         "clocks",
         "silver-plate",
         "stoneware",
-        "sword-blades"
+        "sword-blades",
+        "muslin"
       ],
       "notes": "Elbe river port that absorbed much Antwerp trade after 1585; its Bank opened in 1619.",
       "source": {
@@ -2016,8 +2014,7 @@
         "silk-raw",
         "lacquerware",
         "cassia",
-        "star-anise",
-        "rice"
+        "star-anise"
       ],
       "notes": "Red River capital of Trinh-ruled Tonkin; Dutch and English factories traded here through the downstream port of Pho Hien.",
       "source": {
@@ -2047,7 +2044,9 @@
         "timber",
         "salted-beef",
         "salt",
-        "cedar"
+        "cedar",
+        "brandy",
+        "guaiacum"
       ],
       "notes": "Assembly point where the New Spain and Tierra Firme fleets joined before the convoy run home to Seville.",
       "source": {
@@ -2159,7 +2158,6 @@
         "Tuen Mun"
       ],
       "goods": [
-        "salt",
         "frankincense",
         "pearls",
         "dried-fish",
@@ -2187,7 +2185,6 @@
         "Kou"
       ],
       "goods": [
-        "sandalwood",
         "salt",
         "coconuts",
         "barkcloth",
@@ -2246,7 +2243,6 @@
       "goods": [
         "cheese",
         "herring",
-        "butter",
         "baleen",
         "salted-beef"
       ],
@@ -2341,7 +2337,9 @@
         "black-pepper",
         "alum",
         "wool-raw",
-        "hides"
+        "hides",
+        "coir",
+        "timber"
       ],
       "notes": "Ottoman capital from 1453, straddling the Bosphorus between the Mediterranean and Black Sea trades.",
       "source": {
@@ -2395,7 +2393,6 @@
       ],
       "goods": [
         "chank-shells",
-        "pearls",
         "coconuts",
         "coir",
         "tobacco"
@@ -2430,7 +2427,9 @@
         "sugar",
         "batik",
         "arrack",
-        "rice"
+        "rice",
+        "chillies",
+        "herring"
       ],
       "notes": "Jan Pieterszoon Coen razed Jayakarta in 1619 and built Batavia, the VOC capital in Asia.",
       "source": {
@@ -2537,7 +2536,6 @@
         "Kagoshima"
       ],
       "goods": [
-        "sulphur",
         "sugar",
         "silver",
         "rice",
@@ -2565,7 +2563,6 @@
         "Twangste"
       ],
       "goods": [
-        "amber",
         "rye",
         "honey",
         "linseed",
@@ -2595,8 +2592,7 @@
         "black-pepper",
         "ginger",
         "cardamom",
-        "areca-nuts",
-        "coir"
+        "areca-nuts"
       ],
       "notes": "Seat of the Kolathiri rajas; Portugal’s St Angelo fort of 1505 was one of its earliest in India.",
       "source": {
@@ -2620,7 +2616,6 @@
         "Debal"
       ],
       "goods": [
-        "cotton-cloth",
         "indigo",
         "shawls",
         "ghee",
@@ -2681,7 +2676,6 @@
         "gold",
         "ivory",
         "ambergris",
-        "cotton-cloth",
         "mangrove-poles"
       ],
       "notes": "Swahili sultanate that controlled the Sofala gold trade before Portuguese sacking in 1505.",
@@ -2708,7 +2702,6 @@
       "goods": [
         "wool-cloth",
         "herring",
-        "barley",
         "coal",
         "lead"
       ],
@@ -2742,7 +2735,8 @@
         "teak",
         "coir",
         "cardamom",
-        "areca-nuts"
+        "areca-nuts",
+        "majolica"
       ],
       "notes": "Site of Fort Manuel, 1503, Portugal’s first Indian fort; the Dutch took the town in 1663.",
       "source": {
@@ -2767,7 +2761,6 @@
       ],
       "goods": [
         "black-pepper",
-        "ginger",
         "coconuts",
         "hemp",
         "coir"
@@ -2800,7 +2793,10 @@
         "cardamom",
         "turmeric",
         "timber",
-        "coir"
+        "coir",
+        "linen",
+        "pearls",
+        "vicuna-wool"
       ],
       "notes": "Vasco da Gama made landfall here in May 1498; the Zamorin’s city gave its name to calico cloth.",
       "source": {
@@ -2824,7 +2820,6 @@
       ],
       "goods": [
         "sandalwood",
-        "wax",
         "rice",
         "sharks-fin",
         "trepang"
@@ -2938,8 +2933,7 @@
         "wine",
         "wool-cloth",
         "salt",
-        "felt-hats",
-        "linen"
+        "felt-hats"
       ],
       "notes": "Founded by Francis I in 1517 as a purpose-built royal harbour at the Seine mouth.",
       "source": {
@@ -2963,7 +2957,6 @@
       ],
       "goods": [
         "wool-raw",
-        "salt",
         "herring",
         "barley",
         "coal"
@@ -2998,7 +2991,9 @@
         "porcelain",
         "cork",
         "dried-fish",
-        "sugar"
+        "sugar",
+        "opium",
+        "saffron"
       ],
       "notes": "Seat of the Casa da Índia; terminus of the Portuguese Carreira da Índia from 1501.",
       "source": {
@@ -3059,7 +3054,8 @@
         "cannon",
         "pewter",
         "gunpowder",
-        "beer"
+        "beer",
+        "cowries"
       ],
       "notes": "Thames river port; the Royal Exchange opened 1571 and the English East India Company was chartered here in 1600.",
       "source": {
@@ -3145,7 +3141,8 @@
         "rye",
         "beer",
         "smallwares",
-        "hops"
+        "hops",
+        "paintings"
       ],
       "notes": "Leading city of the Hanseatic League and the seat of its diets on the Trave river.",
       "source": {
@@ -3175,7 +3172,10 @@
         "silver",
         "musk",
         "china-root",
-        "tea"
+        "tea",
+        "ambergris",
+        "grains-of-paradise",
+        "paper"
       ],
       "notes": "Portuguese settlement tolerated from 1557; the pivot of the Macau-Nagasaki silk-for-silver run.",
       "source": {
@@ -3202,8 +3202,7 @@
         "chintz",
         "wootz-steel",
         "turmeric",
-        "tamarind",
-        "diamonds"
+        "tamarind"
       ],
       "notes": "Golconda’s port, famous for kalamkari painted cottons and as the outlet for Deccan diamonds.",
       "source": {
@@ -3263,7 +3262,10 @@
         "tin",
         "porcelain",
         "bezoar",
-        "rice"
+        "rice",
+        "cotton-raw",
+        "emeralds",
+        "ostrich-feathers"
       ],
       "notes": "Sultanate taken by Albuquerque in 1511; the strait chokepoint between the Indian Ocean and the China seas.",
       "source": {
@@ -3345,8 +3347,7 @@
         "ivory",
         "ambergris",
         "hemp",
-        "wheat",
-        "hides"
+        "wheat"
       ],
       "notes": "Its sultan allied with Vasco da Gama in 1498 and provided the pilot who guided him to India.",
       "source": {
@@ -3399,7 +3400,6 @@
       "goods": [
         "rice",
         "black-pepper",
-        "hemp",
         "sandalwood",
         "teak"
       ],
@@ -3433,7 +3433,8 @@
         "abaca",
         "rice",
         "tortoiseshell",
-        "mother-of-pearl"
+        "mother-of-pearl",
+        "ivory"
       ],
       "notes": "Spanish capital from 1571 and Asian terminus of the Acapulco galleon, exchanging American silver for Chinese silk.",
       "source": {
@@ -3465,7 +3466,8 @@
         "verdigris",
         "soap",
         "wine",
-        "almonds"
+        "almonds",
+        "tamarind"
       ],
       "notes": "France’s Mediterranean gateway and the base of its Levant trade under the Ottoman capitulations of 1536.",
       "source": {
@@ -3492,7 +3494,6 @@
         "ivory",
         "gold",
         "civet",
-        "hides",
         "salt"
       ],
       "notes": "Red Sea gateway to the Ethiopian highlands, taken by the Ottomans in 1557.",
@@ -3546,7 +3547,6 @@
       "goods": [
         "silk-raw",
         "dried-fruit",
-        "wine",
         "citrus",
         "salt"
       ],
@@ -3574,8 +3574,7 @@
         "wine",
         "salt",
         "says-serges",
-        "madder",
-        "wool-cloth"
+        "madder"
       ],
       "notes": "Zeeland capital, seat of the second-largest VOC chamber and a hub of the West India Company.",
       "source": {
@@ -3631,8 +3630,7 @@
         "cotton-cloth",
         "ivory",
         "frankincense",
-        "civet",
-        "myrrh"
+        "civet"
       ],
       "notes": "Benadir coast city long famous for the woven cotton cloth Arab writers called \"maqdishi\".",
       "source": {
@@ -3658,8 +3656,7 @@
         "rice",
         "cotton-cloth",
         "salt",
-        "seaweed",
-        "ramie-cloth"
+        "seaweed"
       ],
       "notes": "Southwestern harbour among the Jeolla islands; a Joseon garrison post guarding the grain-tribute sea route.",
       "source": {
@@ -3802,7 +3799,6 @@
         "Beik"
       ],
       "goods": [
-        "tin",
         "rubies",
         "sappanwood",
         "ivory",
@@ -3837,7 +3833,9 @@
         "sandalwood",
         "soy-sauce",
         "tea",
-        "dried-fish"
+        "dried-fish",
+        "isinglass",
+        "palm-sugar"
       ],
       "notes": "Opened to Portuguese ships in 1571; after 1641 the Dejima island factory was Japan’s only European window.",
       "source": {
@@ -3891,7 +3889,6 @@
         "南浦"
       ],
       "goods": [
-        "iron",
         "ginseng",
         "tiger-skins",
         "wheat",
@@ -4038,7 +4035,6 @@
       ],
       "goods": [
         "whale-oil",
-        "walrus-ivory",
         "furs",
         "sealskins",
         "narwhal-horn"
@@ -4073,7 +4069,8 @@
         "chillies",
         "bezoar",
         "arrack",
-        "coir"
+        "coir",
+        "star-anise"
       ],
       "notes": "Taken by Albuquerque in 1510 and made the capital of the Estado da India, \"Goa Dourada\".",
       "source": {
@@ -4131,7 +4128,8 @@
         "soy-sauce",
         "iron",
         "copper",
-        "lacquerware"
+        "lacquerware",
+        "sandalwood"
       ],
       "notes": "Hideyoshi’s castle town of 1583, which became the rice market and \"kitchen\" of Tokugawa Japan.",
       "source": {
@@ -4214,7 +4212,6 @@
       ],
       "goods": [
         "olive-oil",
-        "wine",
         "salt",
         "wool-cloth",
         "cheese"
@@ -4271,7 +4268,6 @@
       "goods": [
         "sugar",
         "tobacco",
-        "logwood",
         "cochineal",
         "cotton-raw"
       ],
@@ -4326,7 +4322,6 @@
         "black-pepper",
         "gold",
         "sappanwood",
-        "birds-nests",
         "rice"
       ],
       "notes": "Malay sultanate on the Gulf of Siam where the Dutch opened their first Southeast Asian factory in 1602.",
@@ -4432,7 +4427,6 @@
       "goods": [
         "sugar",
         "rum",
-        "allspice",
         "tortoiseshell",
         "logwood"
       ],
@@ -4545,7 +4539,6 @@
         "cotton-cloth",
         "indigo",
         "chintz",
-        "red-sanders",
         "salt"
       ],
       "notes": "Site of Fort Geldria, 1610, the first Dutch fortified factory on the Coromandel coast.",
@@ -4660,8 +4653,7 @@
         "dried-fish",
         "sulphur",
         "gyrfalcons",
-        "eiderdown",
-        "wool-raw"
+        "eiderdown"
       ],
       "notes": "Icelandic farm settlement under the Danish trade monopoly of 1602; chartered as a town in 1786.",
       "source": {
@@ -4799,7 +4791,6 @@
       "goods": [
         "sugar",
         "copper",
-        "morocco-leather",
         "honey",
         "wax"
       ],
@@ -4825,7 +4816,6 @@
         "Saint-Louis-du-Sénégal"
       ],
       "goods": [
-        "gum-arabic",
         "ivory",
         "hides",
         "gold",
@@ -4913,7 +4903,6 @@
         "hides",
         "wax",
         "wool-raw",
-        "dates",
         "morocco-leather"
       ],
       "notes": "Bou Regreg corsair republic of the 1620s-1660s, manned partly by Moriscos expelled from Spain.",
@@ -4944,7 +4933,9 @@
         "cassava",
         "cotton-raw",
         "whale-oil",
-        "ginger"
+        "ginger",
+        "chillies",
+        "dried-fruit"
       ],
       "notes": "Founded 1549 in the Bay of All Saints as the first capital of Brazil; briefly Dutch-held in 1624-1625.",
       "source": {
@@ -4969,7 +4960,6 @@
       ],
       "goods": [
         "sugar",
-        "ginger",
         "hides",
         "timber",
         "cacao"
@@ -5132,8 +5122,7 @@
         "salt",
         "wine",
         "dried-fish",
-        "olive-oil",
-        "cork"
+        "olive-oil"
       ],
       "notes": "Sado estuary salt pans supplied the salt that preserved northern European herring and cod catches.",
       "source": {
@@ -5166,7 +5155,8 @@
         "quicksilver",
         "silver-plate",
         "citrus",
-        "soap"
+        "soap",
+        "ginger"
       ],
       "notes": "Guadalquivir river port holding the Crown monopoly on the Indies trade through the Casa de Contratacion, 1503-1717.",
       "source": {
@@ -5193,7 +5183,6 @@
         "rice",
         "dried-fish",
         "salt",
-        "seaweed",
         "iron"
       ],
       "notes": "Guards the Kanmon Strait between Honshu and Kyushu, the funnel for all Inland Sea coastal traffic.",
@@ -5248,7 +5237,6 @@
         "ivory",
         "raffia-cloth",
         "camwood",
-        "salt",
         "copper"
       ],
       "notes": "Mpinda at the Congo river mouth, the port of the kingdom of Kongo and Diogo Cao’s landfall in 1483.",
@@ -5276,8 +5264,7 @@
         "wool-cloth",
         "wax",
         "hides",
-        "wine",
-        "salt"
+        "wine"
       ],
       "notes": "Venetian-held Dalmatian town; its scala from 1592 funnelled Ottoman caravan goods to Venice.",
       "source": {
@@ -5330,7 +5317,6 @@
         "tobacco",
         "ambergris",
         "cedar",
-        "salt",
         "dried-fish"
       ],
       "notes": "Settled after the Sea Venture wreck of 1609; a mid-Atlantic waypoint on the homeward sailing route from the Caribbean.",
@@ -5414,7 +5400,6 @@
         "gold",
         "ivory",
         "gum-arabic",
-        "senna",
         "hides"
       ],
       "notes": "Coral-built Ottoman harbour and a principal embarkation point for pilgrims crossing to Jeddah.",
@@ -5438,7 +5423,6 @@
         "al-Suways"
       ],
       "goods": [
-        "black-pepper",
         "coffee",
         "wheat",
         "copper",
@@ -5468,8 +5452,7 @@
         "rice",
         "cubeb",
         "batik",
-        "rattan",
-        "sugar"
+        "rattan"
       ],
       "notes": "East Java river port and shipbuilding town, subdued by Sultan Agung of Mataram in 1625.",
       "source": {
@@ -5501,7 +5484,8 @@
         "shawls",
         "carnelian",
         "cotton-raw",
-        "myrobalans"
+        "myrobalans",
+        "folding-fans"
       ],
       "notes": "Mughal India’s chief western port; the English factory of 1613 was their first foothold in India.",
       "source": {
@@ -5612,7 +5596,6 @@
       ],
       "goods": [
         "hides",
-        "wax",
         "wheat",
         "wool-raw",
         "honey"
@@ -5668,7 +5651,6 @@
       "goods": [
         "rubies",
         "martaban-jars",
-        "lac",
         "elephants",
         "teak"
       ],
@@ -5753,7 +5735,12 @@
         "lacquerware",
         "timber",
         "copper",
-        "dried-fish"
+        "dried-fish",
+        "caviar",
+        "gold-thread",
+        "lychees",
+        "molasses",
+        "sealskins"
       ],
       "notes": "Edo, seat of the Tokugawa shogunate from 1603 and supplied by coastal shipping into Edo Bay.",
       "source": {
@@ -5806,8 +5793,7 @@
         "dried-fish",
         "wool-cloth",
         "sealskins",
-        "eiderdown",
-        "wool-raw"
+        "eiderdown"
       ],
       "notes": "Faroese Tinganes assembly site and the islands’ single licensed trading harbour under Danish rule.",
       "source": {
@@ -5859,7 +5845,6 @@
       "goods": [
         "silk-raw",
         "copper",
-        "carpets",
         "hazelnuts",
         "timber"
       ],
@@ -5887,7 +5872,6 @@
       "goods": [
         "silk-raw",
         "soap",
-        "pistachios",
         "gallnuts",
         "cotton-raw"
       ],
@@ -5913,7 +5897,6 @@
         "Oea"
       ],
       "goods": [
-        "dates",
         "henna",
         "ostrich-feathers",
         "gold",
@@ -5942,7 +5925,6 @@
       ],
       "goods": [
         "dried-fish",
-        "copper",
         "timber",
         "whale-oil",
         "furs"
@@ -5971,7 +5953,6 @@
       "goods": [
         "ginseng",
         "silver",
-        "ramie-cloth",
         "dried-fish",
         "rice"
       ],
@@ -6026,7 +6007,6 @@
       ],
       "goods": [
         "tar",
-        "timber",
         "furs",
         "dried-fish",
         "hemp"
@@ -6054,7 +6034,6 @@
       ],
       "goods": [
         "whale-oil",
-        "dried-fish",
         "salt",
         "iron",
         "rice"
@@ -6141,7 +6120,6 @@
         "wheat",
         "wine",
         "hides",
-        "wax",
         "copper"
       ],
       "notes": "Port of Santiago from 1544, sending Chilean wheat north to Peru; raided by Drake in 1578.",
@@ -6200,7 +6178,8 @@
         "books",
         "glass-beads",
         "theriac",
-        "soap"
+        "soap",
+        "sassafras"
       ],
       "notes": "Lagoon republic whose state Arsenal could fit out a galley in a day at its 16th-century peak.",
       "source": {
@@ -6232,7 +6211,8 @@
         "maize",
         "sarsaparilla",
         "jalap",
-        "indigo"
+        "indigo",
+        "camphor"
       ],
       "notes": "New Spain’s Atlantic port, where Cortes landed in 1519 and the fortress of San Juan de Ulua sheltered the fleets.",
       "source": {
@@ -6257,7 +6237,6 @@
       "goods": [
         "wax",
         "furs",
-        "tar",
         "dried-fish",
         "timber"
       ],
@@ -6283,7 +6262,6 @@
         "Curaçao"
       ],
       "goods": [
-        "salt",
         "hides",
         "guaiacum",
         "salted-beef",
