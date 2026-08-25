@@ -625,6 +625,20 @@ function writeMigration(grid, recon, waterCells, unassigned, componentsNote) {
   w(`    ${recon.inChainTotal}, ${chainDis.length};`)
   w('end $$;')
   w('')
+  // NEVER OVERWRITE AN APPLIED MIGRATION. 0040 has run; editing it in place is the D23 defect
+  // (docs/DEV_LOG.md: production keeps the ORIGINAL bytes while every fresh rebuild gets the new
+  // ones, and nothing goes red). This guard became load-bearing on 2026-08-25, when migration 0052
+  // opened the Bristol Channel in the shared scripts/sea-grid.mjs: re-running this generator would
+  // now emit a 0040 whose bytes DIFFER from the applied one. A membership change goes in a new
+  // migration that supersedes 0040's data, exactly as 0052 did for 0046's.
+  if (existsSync(MIGRATION)) {
+    throw new Error(
+      `${MIGRATION} already exists and has been applied — refusing to rewrite it (README §1: never ` +
+        `edit an applied migration). Point MIGRATION at a NEW version and have the emitted SQL ` +
+        `UPDATE public.sea_cells / public.seas instead of seeding them, the way ` +
+        `scripts/build-sea-migration.mjs supersedes its own predecessor.`,
+    )
+  }
   writeFileSync(MIGRATION, L.join('\n'))
   console.log(`wrote ${MIGRATION} (${(L.join('\n').length / 1024).toFixed(0)} KiB)`)
 }
