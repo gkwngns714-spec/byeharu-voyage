@@ -5,8 +5,13 @@ Written 2026-08-24 for the owner, who asked to see the plan before anything is b
 > *"do all the work in appropriate order, after research, build what you think it is best without
 > ruining this game"*
 
-**Status of this document:** BUILT, 2026-08-24 — migrations 0038 (`the_water_knows_the_way`) and
-0039 (`the_sea_is_a_free_plane`), with the client in `src/lib/sea` + `src/domain/passage` and the
+**Status of this document:** BUILT, 2026-08-24 — landed as migrations **0046**
+(`the_water_knows_the_way`) and **0047** (`the_sea_is_a_free_plane`) — corrected 2026-08-25: this
+was originally cut in the `bv-mover` worktree as 0038/0039 against a 37-migration base, but generated migrations are
+regenerated against the current chain rather than textually merged, so the files that actually
+shipped on `main` are 0046 and 0047 (see `supabase/migrations/`; `docs/RESUME.md`'s "LANDED
+2026-08-24" section spells this out). Other 0038/0039 references below name the slice as it was
+planned, not the file that landed. With the client in `src/lib/sea` + `src/domain/passage` and the
 chart drawing the served course whole. `docs/DEV_LOG.md` D22 records what landed and what it
 measured; proof 09 (renumbered here: 08 is the sea-membership proof) holds the never-touch-land law and the Arctic door shut on every run. The
 prototype in `scripts/proto/` was CONSUMED by the build (the pathfinder moved into

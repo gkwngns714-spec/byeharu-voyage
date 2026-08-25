@@ -5,6 +5,54 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-25 — D26: pushed and deployed (site only), an outage that filled the disk, and a Postgres-17 blocker found on the way out
+
+Later the same day as D25. Three things happened, none of them a migration:
+
+**1. Pushed and deployed.** `origin/main` moved to `15bd8c3`. `Build`, `Acceptance` (run
+`32857651456`), and `Deploy (GitHub Pages)` all ran green; the owner drove the live site at
+`https://gkwngns714-spec.github.io/byeharu-voyage/` and confirmed the new one-row six-cell nav
+bar. **This is a frontend deploy only.** Production's database is unaffected by it — Supabase does
+not deploy migrations on a `git push`, and `supabase migration list --linked` still shows 0050 as
+the applied head, with 0051, 0052, 0053, 0055 and 0056 all carrying an empty remote column.
+
+**2. The outage.** The production Supabase project filled its 2 GB disk and Postgres put the whole
+project into **READ-ONLY mode**. Every write failed; `POST /auth/v1/token?grant_type=refresh_token`
+returned **500**, so no player could even hold a session, and the live game hung on loading
+skeletons. `supabase db push` and `supabase migration list` both died with
+`ERROR: 25006: cannot execute GRANT ROLE in a read-only transaction`.
+
+Cause, measured in the dashboard SQL editor: **`public.price_history` was 1,410 MB across 7,347,231
+rows — 98% of a 1.43 GB database**, where a freshly built world from the same chain is 21 MB. The
+owner upgraded the org to Pro and raised the disk from 2 GB to 8 GB; read-only cleared at 23:34 and
+the game came back.
+
+The underlying defect: `price_history_slots = 288` was calibrated for the 14,980-pair world 0003
+seeded, and migration 0041 grew the world to 54,432 pairs without resizing the retention window —
+a designed ceiling of **15.7M rows / ~3.0 GB**. Raising the disk quota bought time; it did not fix
+the ceiling. **Being fixed as migration 0057, by another agent, not yet landed on this branch as of
+writing.**
+
+**3. Migration 0053 fails on Postgres 17.** `supabase/config.toml` pins `major_version = 17`, which
+is what production runs; PGlite (the local gate) runs Postgres 18, where 0053 passes. CI's
+`disposable-chain` job boots a real Postgres 17 and caught it: run `32857650723`, job
+`disposable-chain`:
+
+```
+ERROR: 0053 self-assert FAIL: one world.market() read still touches 314337 buffer(s) against the
+old body's 270277 — less than the 3x this file exists to buy. The read has gone back to walking
+the neighbourhood once per good. (SQLSTATE P0001)
+```
+
+This blocks `supabase db push` at 0053, which in turn blocks every migration after it —
+0051, 0052, 0055, 0056 are not themselves at fault but cannot deploy until this clears. In flight in
+worktree `bv-pg17` / branch `pg17-0053` as of writing; not yet landed on `main`.
+
+See `docs/RESUME.md`'s anchor for the current state of all three. `docs/OWNER_REQUESTS.md`'s
+`DEPLOY STATE` note is corrected to match.
+
+---
+
 ## 2026-08-25 — D25: nine slices — and the number this project has quoted for a week was measuring the harness
 
 Five migrations (**0051, 0052, 0053, 0055, 0056**), one slice that took the number **0054** and turned
@@ -450,15 +498,23 @@ in every one.** The lottery is dead.
 
 ### WHERE IT IS
 
-**MERGED TO LOCAL `main`. NOT PUSHED. NOT DEPLOYED.** As of writing, local `main` is **25 commits
-ahead of `origin/main`**, which sits at `d3463da` — *"A refusal is two numbers and a verb"*, migration
-0050. Everything in this entry exists only in this checkout.
+> **CORRECTED by D26, above.** This section was true when written; it is not true any more. The
+> client code was pushed and the SITE deployed later the same day (`origin/main` at `15bd8c3`).
+> **The database line is still correct as written below** — production stayed on 0050 through the
+> push, and still does: pushing the frontend does not deploy migrations, and a later Postgres-17
+> blocker in 0053 (also D26) now stops the migration chain from reaching production at all until it
+> is fixed.
 
-What that means concretely: **production is running the 45-migration chain** that D24 recorded and
-probed with the anon key on 2026-08-25. **0051, 0052, 0053, 0055 and 0056 are not on it.** So the live
-game today is still paying the ~37 per cent first voyage, still tiering 54.7 per cent of its
-catalogue as exotic, still letting Bristol sail across Somerset, and still drawing a three-row nav
-bar. Nothing in this entry is visible to a player until this is pushed and deployed.
+**MERGED TO LOCAL `main`. NOT PUSHED. NOT DEPLOYED**, at the time this section was written. As of
+writing, local `main` was **25 commits ahead of `origin/main`**, which sat at `d3463da` — *"A
+refusal is two numbers and a verb"*, migration 0050.
+
+What that meant concretely: **production was running the 45-migration chain** that D24 recorded and
+probed with the anon key on 2026-08-25. **0051, 0052, 0053, 0055 and 0056 were not on it**, and,
+per D26, still are not — so the live game today is still paying the ~37 per cent first voyage,
+still tiering 54.7 per cent of its catalogue as exotic, still letting Bristol sail across Somerset.
+**The nav bar claim no longer holds**: the frontend deployed with D26, so the live site now draws
+the one-row six-cell bar even though the database it talks to is still on 0050.
 
 ---
 
