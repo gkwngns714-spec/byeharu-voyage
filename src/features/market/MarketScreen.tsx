@@ -7,9 +7,8 @@ import {
   Card,
   CardHeader,
   Explain,
+  EntryTileLine,
   GoodTile,
-  GoodTileLine,
-  goodTileGridClass,
   Input,
   Notice,
   PageHeader,
@@ -20,6 +19,7 @@ import {
   Skeleton,
   fineClass,
   rowLinkClass,
+  tileFieldClass,
 } from '../../components/ui'
 import { formatInt, formatPct, formatTuns, formatVoyageDays } from '../../lib/format'
 import { fold, foldedMatch } from '../../lib/text'
@@ -515,7 +515,7 @@ function GoodsBlock({
       >
         ▾ {label}
       </p>
-      <div className={goodTileGridClass()}>
+      <div className={tileFieldClass()}>
         {rows.map((good) => (good.available ? (
           <TradedTile
             key={good.good_id}
@@ -564,7 +564,7 @@ function TradedTile({
           and in migration 0009, and the player never reads the schema (the word is COMMAND's own
           pick, features/command/ArgPickers.tsx — one word for one figure across the game). The
           pill's tone is the SERVER'S `advice`; the line borrows it, so no fifth colour vocabulary. */}
-      <GoodTileLine label="nearby">
+      <EntryTileLine label="nearby">
         <PriceIndex pct={good.pct_nbr} advice={good.advice} />
         <Sparkline
           width={44}
@@ -572,24 +572,24 @@ function TradedTile({
           tone={good.advice === 'buy' ? 'cheap' : good.advice === 'sell' ? 'dear' : 'even'}
           label={`${good.name}: ${points?.length ?? 0} remembered price(s)`}
         />
-      </GoodTileLine>
+      </EntryTileLine>
       {/* TWO LINES, NOT ONE PAIR. `buy · sell — 364 · 334` wrapped mid-figure at 390px (measured:
           the pair plus its label is ~1px over a tile's 138px of content, and four-digit prices are
           well over). A figure is one token; two labelled lines cost the same height the wrap did
           and can never shear a number. */}
-      <GoodTileLine label="buy">{formatInt(good.buy)}</GoodTileLine>
-      <GoodTileLine label="sell">{formatInt(good.sell)}</GoodTileLine>
-      <GoodTileLine label="stock">
+      <EntryTileLine label="buy">{formatInt(good.buy)}</EntryTileLine>
+      <EntryTileLine label="sell">{formatInt(good.sell)}</EntryTileLine>
+      <EntryTileLine label="stock">
         <span
           className="text-ink-muted"
           title={`${formatTuns(good.stock)} of a ${formatTuns(good.stock_target)} target`}
         >
           {stockBar(good.stock_band)}
         </span>
-      </GoodTileLine>
+      </EntryTileLine>
       {/* WHERE IT PAYS — the port code and the margin in ducats, both the server's; the title
           carries the whole sentence. A dash is an honest dash: no port in reach pays more. */}
-      <GoodTileLine label="pays at">
+      <EntryTileLine label="pays at">
         {route ? (
           <span
             className="text-success"
@@ -600,7 +600,7 @@ function TradedTile({
         ) : (
           <span className="text-ink-faint">—</span>
         )}
-      </GoodTileLine>
+      </EntryTileLine>
     </GoodTile>
   )
 }

@@ -1,19 +1,20 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Badge,
   Button,
   buttonClasses,
   categoryLabel,
+  EntryTileLine,
   fineClass,
-  goodIcon,
+  GoodTile,
   HeroFigure,
-  Icon,
   Meter,
   PriceIndex,
-  RarityMark,
   SectionLabel,
   StatRow,
+  tileFieldClass,
+  useTileCols,
 } from '../../components/ui'
 import {
   formatDucats,
@@ -61,99 +62,37 @@ import { sellBound, type QtyBound } from './fleetLimits'
 const MAX_PORT_ROWS = 12
 
 /**
- * How many harbour tiles stand in one grid row: two on a phone, three from Tailwind's `sm`
- * (640px — the same boundary the old `sm:grid-cols-3` class drew, now read in JS because the
- * confirm fold must land after the ROW containing the chosen tile, and only the code that knows
- * where rows END can place it without moving the tiles beside her). The hook's value drives BOTH
- * the chunking and the grid's own template, so the two cannot disagree.
+ * HOW MANY TILES STAND IN ONE ROW — the design system's `useTileCols()` (components/ui/useTileCols),
+ * read here because BOTH tile pickers on this tab unfold a panel and a fold must land after the ROW
+ * containing the pressed tile: an element spanning the grid mid-row shoves the tiles beside it
+ * around, and nothing may move when a fold opens. Only the code that knows where a row ENDS can
+ * place it.
+ *
+ * IT WAS THIS FILE'S OWN HOOK UNTIL 2026-08-26, watching a single `(min-width: 640px)` and so able
+ * to answer only 2 or 3 — while `goodTileGridClass()`, drawing the same field on MARKET, went to 4
+ * at `xl`. Two answers to one question that differed above 1280px, which is docs/NO_SPAGHETTI.md §1
+ * question 3 ("can it disagree?") answered yes. There is now one table (components/ui/tileLayout.ts)
+ * and both the class and the number are read off it.
  */
-const TILE_COLS_QUERY = '(min-width: 640px)'
-function useTileCols(): number {
-  const [wide, setWide] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia(TILE_COLS_QUERY).matches,
-  )
-  useEffect(() => {
-    const mq = window.matchMedia(TILE_COLS_QUERY)
-    const read = () => setWide(mq.matches)
-    mq.addEventListener('change', read)
-    return () => mq.removeEventListener('change', read)
-  }, [])
-  return wide ? 3 : 2
+
+/** Chunk a list into ROWS of `cols`, so a fold can be placed after a whole row. Both pickers below
+ *  need it, so it is written once rather than twice in the same file. */
+function inRowsOf<T>(items: readonly T[], cols: number): T[][] {
+  const rows: T[][] = []
+  for (let i = 0; i < items.length; i += cols) rows.push(items.slice(i, i + cols))
+  return rows
 }
 
-function PickerRow({
-  onClick,
-  selected,
-  expanded,
-  mark,
-  left,
-  right,
-  hint,
-  under,
-}: {
-  onClick: () => void
-  selected: boolean
-  /** Given only by a row that UNFOLDS (GoodPicker). A row that commits on tap has nothing to
-   *  expand, so it says nothing — `aria-expanded={undefined}` is absent, not false. */
-  expanded?: boolean
-  /** A glyph at the head of the row. A good carries one (see GoodPicker); a port does not. */
-  mark?: ReactNode
-  left: ReactNode
-  right?: ReactNode
-  hint?: ReactNode
-  /** Rides under the head on its own line — and it MAY CARRY ACTIONS (a good row's buy and sell
-   *  cells are buttons since 2026-08-23), so it is never rendered inside the head's own button:
-   *  a button inside a button is not markup a browser will honour. A row with an `under` is a
-   *  chip-skinned box whose HEAD is the button; a row without one stays a single button. */
-  under?: ReactNode
-}) {
-  // ONE CONTROL, ONE RECIPE, in both states. This used to be hand-written with a note saying
-  // it was waiting on a soft-selected variant: the OFF arm was character for character the
-  // design system's `chip`, but the ON arm could not be `chip-on` — a picker row is a
-  // full-width ROW carrying a badge, a %NBR pill and a stock meter, and `chip-on`'s solid
-  // brass swallows all three. `chip-soft` (buttonStyles.ts) is that variant, and it is the
-  // same soft tint TabRow uses for a selected face, so a selected row and a selected tab
-  // cannot drift apart. The SAME call in both arms below, so the two shapes cannot drift either.
-  const skin = (extra: string) => buttonClasses(selected ? 'chip-soft' : 'chip', 'md', extra)
-  const face = (
-    <>
-      {mark}
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm">{left}</span>
-        {hint && <span className={fineClass('block')}>{hint}</span>}
-      </span>
-      {right && <span className="shrink-0 font-mono text-xs text-ink-muted">{right}</span>}
-    </>
-  )
-  if (under === undefined) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-expanded={expanded}
-        className={skin('flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left')}
-      >
-        {face}
-      </button>
-    )
-  }
-  return (
-    // The same classes the single-button arm wears, on a DIV: the skin is the row's, the button
-    // is only the head. `under` wraps onto its own line exactly as it did when it was a child of
-    // the one flex-wrap container — `w-full` is what breaks the line, then as now.
-    <div className={skin('flex w-full flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-left')}>
-      <button
-        type="button"
-        onClick={onClick}
-        aria-expanded={expanded}
-        className="flex min-h-11 w-full flex-wrap items-center gap-x-3 gap-y-1 text-left"
-      >
-        {face}
-      </button>
-      <span className="w-full">{under}</span>
-    </div>
-  )
-}
+// ── PickerRow, RETIRED 2026-08-26 ───────────────────────────────────────────────────────────────
+//
+// It drew a picker option as a full-width ROW — mark, name, hint, a figure on the right and an
+// `under` line for the good's price cells. Both callers are gone: harbours became tiles on
+// 2026-08-24 ("all the port is alligned by sentence. make it like a cube") and goods became tiles
+// on 2026-08-26 ("i told trade goods to be in grid like shape - organized not in lines"), so it is
+// DELETED rather than left standing beside the tiles as a second way to draw an option
+// (docs/NO_SPAGHETTI.md §1: retire the old). What it knew that had to survive — that a row whose
+// body carries buttons cannot itself be a button — moved into the design system as EntryTile's
+// `tapTarget="head"`, where the tile and the row can no longer drift apart.
 
 function FilterBox({
   value,
@@ -278,8 +217,7 @@ export function PortPicker({
   // The grid, as ROWS of `cols` tiles — chunked here because the confirm fold must land after
   // the WHOLE ROW containing the chosen tile: an element spanning the grid mid-row would push
   // the rest of that row's tiles around, and nothing may move when a fold opens.
-  const tileRows: (typeof shown)[] = []
-  for (let i = 0; i < shown.length; i += cols) tileRows.push(shown.slice(i, i + cols))
+  const tileRows = inRowsOf(shown, cols)
 
   return (
     <div className="space-y-2">
@@ -315,13 +253,12 @@ export function PortPicker({
           top rows. */}
       {tileRows.map((row) => (
         <Fragment key={row[0].port.code}>
-          <div
-            className="grid gap-2"
-            // The column count is the hook's ONE value — the same number that chunked the rows
-            // above — so the fold's placement and the CSS can never disagree about where a row
-            // ends. A Tailwind `sm:grid-cols-3` here would be a second author of that number.
-            style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-          >
+          {/* The design system's ONE field (tileLayout.ts) — the same table `useTileCols()` chunked
+              the rows above with, so the fold's placement and the CSS cannot disagree about where a
+              row ends. This was an inline `gridTemplateColumns` under a comment warning that a
+              Tailwind `sm:grid-cols-3` here "would be a second author of that number"; the warning
+              was right and the fix was to give the number ONE author, not to hand-roll the grid. */}
+          <div className={tileFieldClass()}>
             {row.map(({ port, nm }) => (
               <button
                 key={port.code}
@@ -388,40 +325,56 @@ export function PortPicker({
 // ── good ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * What to trade, priced. E.4's whole reading room in a row: what it costs, what it fetches, how
+ * What to trade, priced. E.4's whole reading room in a TILE: what it costs, what it fetches, how
  * that compares with the ports within 600 nm (%NBR), and the server's own buy/hold/sell advice —
  * so the choice is informed before it is made rather than explained after it.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
- * A ROW UNFOLDS TO BE READ; THE PRICE ITSELF IS THE ACT.
+ * GOODS ARE A FIELD OF TILES, NOT A COLUMN OF LINES.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * The owner, 2026-08-26: *"i told trade goods to be in grid like shape - organized not in lines.
+ * Yet this also did not occur."* Said twice, and they were right about this list: MARKET and the
+ * 도감 converted their goods to `GoodTile` on 2026-08-23 and this picker — the biggest list of
+ * trade goods in the game, and the only one you actually BUY from — did not. GoodTile's own header
+ * had named it "the named next caller" and it never arrived. MEASURED at 390px before this change:
+ * 243 goods as 324px full-width rows, a list 44,212px tall. It is now the design system's tile in
+ * the design system's field (`tileFieldClass`), two abreast at 390px, ~158px each.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════
+ * A TILE UNFOLDS TO BE READ; THE PRICE ITSELF IS THE ACT.
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * The owner, 2026-08-23, twice in one day:
  *   · *"click a trade good → it unfolds showing how much I can buy, and more."*
  *   · *"i want to be able to click on buy and sell itself and do trades. when pressed unfold
  *      another so that i can choose how much i buy."*
  *
- * So the row carries TWO kinds of tap and they never share a target: the HEAD opens the row for
+ * So the tile carries TWO kinds of tap and they never share a target: the HEAD opens the tile for
  * reading (capacity, the quay's stock), and the BUY / SELL figure cells are the trade itself.
  * Tapping a cell names both the verb and the good — through the one draft the composer already
- * writes — and opens THIS row's fold, where the quantity step is (GoodDetail). The list never
+ * writes — and opens THIS good's fold, where the quantity step is (GoodDetail). The list never
  * moves: an earlier shape answered the cell by unmounting all seventy rows and standing a qty row
  * where they had been, which is the "tab disappears and opens a new one" the owner refused four
  * times, and it is deleted. The `Choose <good>` button the fold used to carry is DELETED too, not
  * kept alongside: two ways to pick one good is two authorities for the pick
  * (docs/NO_SPAGHETTI.md §5).
  *
- * THREE RULES THIS KEEPS, and each of them is the reason the shape is what it is:
+ * FOUR RULES THIS KEEPS, and each of them is the reason the shape is what it is:
  *
- * 1. **One row open at a time.** The open code is held by the COMPOSER, not by this list, and it is
- *    a single value rather than a set. A list where every row can be open is a list nobody can
- *    scan, and seventy goods is a list that must stay scannable. It lives upstairs because the same
- *    open row is what `world.buy_capacity()` is asked about — see OrderComposer's `focusGood`.
+ * 1. **One good open at a time.** The open code is held by the COMPOSER, not by this list, and it is
+ *    a single value rather than a set. A list where every tile can be open is a list nobody can
+ *    scan, and 243 goods is a list that must stay scannable. It lives upstairs because the same
+ *    open good is what `world.buy_capacity()` is asked about — see OrderComposer's `focusGood`.
  * 2. **Opening never commits.** `onInspect` moves what is being LOOKED at; only a price cell
- *    answers the argument. Tapping an open row's head closes it again, which is the same gesture
+ *    answers the argument. Tapping an open tile's head closes it again, which is the same gesture
  *    undone rather than a second meaning for one tap.
  * 3. **Nothing folds behind a scroll box.** THE REACH LAW (CORE_REUSE §1.5) — the price cells are
  *    actions, so nothing between them and the page's own scroll may cap or clip. The fold has no
  *    `max-h` and no `overflow`; it simply makes the page longer, which is honest.
+ * 4. **THE FOLD LANDS AFTER THE WHOLE ROW OF TILES**, never beside the pressed one. A panel
+ *    spanning the grid mid-row re-flows that row and shoves its neighbour down — which is the
+ *    restructure-on-press the owner has refused three times (docs/OWNER_REQUESTS.md row 15: "when
+ *    pressing sail, stop folding the sail… don't restruct anything"). `useTileCols()` is how this
+ *    file knows where a row ends, and PortPicker above already answers SAIL's confirm the same way.
  *
  * EVERY FIGURE IN THE FOLD IS SERVED. Nothing here multiplies a price by a quantity: buying walks a
  * stepped book (§G.2), so the client's arithmetic would disagree with the charge. `max_qty`,
@@ -465,6 +418,7 @@ export function GoodPicker({
   onPickQty: (value: string) => void
 }) {
   const [filter, setFilter] = useState('')
+  const cols = useTileCols()
 
   const rows = useMemo(() => {
     const q = fold(filter.trim())
@@ -509,93 +463,80 @@ export function GoodPicker({
             : 'Nothing here answers to that.'}
         </p>
       )}
-      {shown.map((g) => {
-        const isOpen = inspecting === g.code
-        return (
-          // The row and its fold are ONE thing, so they are wrapped in one box. The fold is a
-          // sibling of the head rather than a child of it: the head is a <button> and the fold
-          // carries a <button>, and a button inside a button is not markup a browser will honour.
-          <div key={g.code}>
-            <PickerRow
-              // TWO STATES, ONE TINT, DELIBERATELY. `chip-soft` means "this row is the one you are
-              // dealing with" — whether that is because it is CHOSEN or because it is OPEN. They
-              // are never ambiguous in practice, because the mark on the right says which: an open
-              // row points down, a chosen row says "chosen", and an untouched one says "look".
-              selected={value === g.code || isOpen}
-              expanded={isOpen}
-              // OPENING, NOT CHOOSING. This tap used to call `onPick` and commit the argument.
-              onClick={() => onInspect(isOpen ? null : g.code)}
-              // A MARK PER GOOD, AND IT IS NOW LITERALLY PER GOOD (the owner, 2026-08-22: "i want a
-              // picture or an icon for each trade good"). `goodIcons.ts` carried the mark on the
-              // CATEGORY axis when this row was written — seven glyphs for seventy goods — and the
-              // comment here told the next reader not to reach for a seventy-row table. That table
-              // now EXISTS: every good in data/goods.json has its own drawn glyph, and the category
-              // is only the fallback for a good a migration adds before anybody draws one. The
-              // signature did not change, so this call did not; the advice did, and a comment
-              // arguing against the thing that shipped is worse than no comment.
-              //
-              // WHICH IS WHY THE NAME STAYS BESIDE THE MARK, and why `mark` is not an alternative to
-              // `left`. At 22px a handful of pairs — ivory/tea, nutmeg/cacao, silk cloth/muslin,
-              // musk/furs — are only just apart. The glyph is what makes a list of seventy rows
-              // scannable; the word is what makes it unambiguous. Neither replaces the other.
-              mark={<Icon name={goodIcon(g.code, g.category)} size={22} className="shrink-0 text-ink-faint" />}
-              left={g.name}
-              // THE NAME USED TO BE PRINTED TWICE. This slot held `g.code`, and the code is DERIVED
-              // from the name ("Black Pepper" → "black-pepper"), so the row read "Black Pepper
-              // black-pepper" and spent its second line saying nothing. The owner: "beside the name i
-              // see again, a name repeated … i want beside the name show category of what the trade
-              // good is in." Nothing is lost: the code is the parser's spelling, and the composed
-              // order line above still shows it (CommandScreen's "Order" block).
-              // THE KIND, AND HOW SCARCE IT IS — the two things about a good that are true
-              // everywhere, as against the three figures below, which are true only at this quay.
-              // `rarity` is SERVED (0032, derived from how many ports actually produce the good),
-              // so this row prints the server's answer and never a threshold of its own; the same
-              // field rides on the compendium's rows, which is why there is one RarityMark and not
-              // a second rendering here.
-              hint={
-                <span className="inline-flex items-center gap-1.5">
-                  {categoryLabel(g.category)}
-                  <RarityMark rarity={g.rarity} />
-                </span>
-              }
-              right={
-                <span className="flex items-center gap-2">
-                  <Badge tone={g.advice === 'buy' ? 'success' : g.advice === 'sell' ? 'accent' : 'neutral'}>
-                    {g.advice}
-                  </Badge>
-                  {/* THE SAME ASYMMETRY THE ARGUMENT ROWS USE (OrderComposer): open is a MARK,
-                      closed is a WORD. A closed row still has something to say — whether this good
-                      has been chosen — while an open one only has to point. The glyph is the design
-                      system's chevron turned down, the same one Collapsible.tsx uses for a fold. */}
-                  <span aria-hidden className="text-accent">
-                    {isOpen ? (
-                      <Icon name="chevron" size={14} className="rotate-90" />
-                    ) : value === g.code ? (
-                      'chosen'
-                    ) : (
-                      'look'
-                    )}
+      {/* THE FIELD OF GOODS — the design system's tile in the design system's field, chunked into
+          ROWS so the fold can land after a whole one (rule 4 in this component's header). The order
+          inside the field is unchanged: the quay's own advice first, then the price index. */}
+      {inRowsOf(shown, cols).map((row) => (
+        <Fragment key={row[0].code}>
+          <div className={tileFieldClass()}>
+            {row.map((g) => {
+              const isOpen = inspecting === g.code
+              return (
+                <GoodTile
+                  key={g.code}
+                  // A MARK PER GOOD, AND IT IS LITERALLY PER GOOD (the owner, 2026-08-22: "i want a
+                  // picture or an icon for each trade good") — the tile draws it from `code`, so
+                  // there is no second `goodIcon` call here. THE NAME STAYS BESIDE THE MARK: at
+                  // 18px a handful of pairs — ivory/tea, nutmeg/cacao, silk cloth/muslin, musk/furs
+                  // — are only just apart. The glyph makes 243 goods scannable; the word makes them
+                  // unambiguous. Neither replaces the other. `rarity` is SERVED (0032) and the tile
+                  // draws it in the corner through the one RarityMark, which is why nothing here
+                  // renders it a second time.
+                  code={g.code}
+                  category={g.category}
+                  name={g.name}
+                  rarity={g.rarity}
+                  // THE HEAD IS THE BUTTON, NOT THE TILE: the buy and sell cells below are buttons
+                  // of their own, and a button inside a button is not markup a browser will honour
+                  // (EntryTile.tsx's third tap shape).
+                  tapTarget="head"
+                  // TWO STATES, ONE TINT, DELIBERATELY. The soft tint means "this good is the one
+                  // you are dealing with" — whether that is because it is CHOSEN or because it is
+                  // OPEN. They are never ambiguous in practice, because the word under the name
+                  // says which: an open tile says "open", a chosen one says "chosen".
+                  selected={value === g.code || isOpen}
+                  expanded={isOpen}
+                  // OPENING, NOT CHOOSING. This tap used to call `onPick` and commit the argument.
+                  onTap={() => onInspect(isOpen ? null : g.code)}
+                  tapTitle={`${g.name} (${categoryLabel(g.category)}) — open to read what she can carry`}
+                  testId="good-pick-tile"
+                >
+                  {/* THE KIND, THE QUAY'S WORD, AND WHICH TILE THIS IS. The name is not printed
+                      twice: `g.code` is DERIVED from it ("Black Pepper" → "black-pepper"), and the
+                      composed order line above still carries the parser's spelling. */}
+                  <span className="flex w-full flex-wrap items-center gap-1.5">
+                    <span className={fineClass()}>{categoryLabel(g.category)}</span>
+                    <Badge tone={g.advice === 'buy' ? 'success' : g.advice === 'sell' ? 'accent' : 'neutral'}>
+                      {g.advice}
+                    </Badge>
+                    <span aria-hidden className="ml-auto font-mono text-[10px] uppercase tracking-wider text-accent">
+                      {isOpen ? 'open' : value === g.code ? 'chosen' : 'look'}
+                    </span>
                   </span>
-                </span>
-              }
-              under={
-                <GoodFigures
-                  good={g}
-                  aboard={aboard ? (aboard[g.code] ?? 0) : undefined}
-                  intent={intent}
-                  onTrade={(verb) => onTrade(verb, g.code)}
-                />
-              }
-            />
-            {isOpen && (
+                  <GoodFigures
+                    good={g}
+                    aboard={aboard ? (aboard[g.code] ?? 0) : undefined}
+                    intent={intent}
+                    onTrade={(verb) => onTrade(verb, g.code)}
+                  />
+                </GoodTile>
+              )
+            })}
+          </div>
+          {/* THE FOLD, AFTER THE WHOLE ROW holding the open tile — so the tile beside it holds
+              perfectly still and only what is BELOW moves down, which is what an unfold IS. Same
+              placement PortPicker gives SAIL's confirm, for the same reason. */}
+          {row.map((g) =>
+            inspecting === g.code ? (
               <GoodDetail
+                key={`${g.code}-fold`}
                 good={g}
                 intent={intent}
                 capacity={capacity}
-                // THE QUANTITY STEP RIDES IN THE CHOSEN ROW'S FOLD AND NOWHERE ELSE. Tapping a
+                // THE QUANTITY STEP RIDES IN THE CHOSEN GOOD'S FOLD AND NOWHERE ELSE. Tapping a
                 // price cell chooses the good AND opens this fold (the composer's `trade`), so
-                // "how much" appears right under the press — with the whole list still standing
-                // above and below it to change your mind with. A row merely being LOOKED at gets
+                // "how much" appears right under the press — with the whole field still standing
+                // above and below it to change your mind with. A good merely being LOOKED at gets
                 // the reading (capacity, the quay's stock) and no stepper: sizing an order is an
                 // act over the CHOSEN good only.
                 qty={
@@ -604,19 +545,20 @@ export function GoodPicker({
                     : null
                 }
               />
-            )}
-          </div>
-        )
-      })}
+            ) : null,
+          )}
+        </Fragment>
+      ))}
     </div>
   )
 }
 
 /**
- * THE UNFOLDED ROW — the reading, and, for the CHOSEN good only, the quantity step. Opening the
+ * THE UNFOLDED PANEL — the reading, and, for the CHOSEN good only, the quantity step. Opening the
  * fold is still looking (capacity, the quay's stock) and still commits nothing; choosing is still
- * the row's own price cells (GoodFigures). What the cells' tap opens is THIS fold, with "how much"
- * inside it, so the answer to the press appears under the press and the list never restructures.
+ * the tile's own price cells (GoodFigures). What the cells' tap opens is THIS fold — which lands
+ * after the whole ROW OF TILES holding the pressed one, so its neighbour holds still and only what
+ * is below moves down, and the field never restructures.
  * The `Choose <good>` button the fold once held stays deleted — a second way to pick a good is two
  * authorities for the pick (docs/NO_SPAGHETTI.md §5) — and the stepper is not a second way either:
  * it answers `qty`, not `good`, through the composer's one `answer`.
@@ -626,7 +568,7 @@ export function GoodPicker({
  *                           `bound_by`, the server's own PHRASE for what stops her. On a SELL the
  *                           ceiling is what is aboard, which is the fleet's own manifest and the
  *                           one quantity this side may count (fleetLimits.ts).
- *   ON THE QUAY             `stock` against `stock_target`, the figures behind the row's meter.
+ *   ON THE QUAY             `stock` against `stock_target`, the figures behind the tile's meter.
  *
  * ── AND WHAT IS DELIBERATELY NOT ───────────────────────────────────────────────────────────────
  *   · NO PRODUCT OF A PRICE AND A QUANTITY. A BUY reprices every `trade_step_tuns` (§G.2), so
@@ -667,7 +609,7 @@ function GoodDetail({
     <div className="mt-1 space-y-3 rounded-md border border-accent/40 bg-app p-3">
       {/* ── HOW MANY SHE CAN TAKE — BUY ONLY, AND THE ABSENCE ON SELL IS THE POINT ───────────────
           A SELL block here would print "20 t aboard" as a hero, and that number is ALREADY on the
-          row above it (GoodFigures' `20 t aboard`, beside the stock meter) and again in the
+          tile above it (GoodFigures' `aboard` line, under the stock meter) and again in the
           quantity stepper's caption ("up to 20 t — what is aboard stops you there"). Three
           renderings of one fact, so the two that were added here are the ones that go
           (docs/NO_SPAGHETTI.md §5). */}
@@ -750,16 +692,21 @@ function GoodDetail({
 
 
 /**
- * THE THREE FIGURES, EACH IN ITS OWN COLUMN — the owner, 2026-08-22: *"for each info - buy, sell,
- * 81% of neighbours i want a separate tab - graphics. bigger."*
+ * THE FIGURES INSIDE A GOOD'S TILE, EACH ON ITS OWN LINE — the owner, 2026-08-22: *"for each info -
+ * buy, sell, 81% of neighbours i want a separate tab - graphics. bigger."*
  *
  * They used to be one run-on mono line under the name — `buy 7 d./t · sell 6 d./t · 81% of
  * neighbours` — at 11px, which is docs/UI_DIRECTION.md §1's second diagnosis exactly: prose where
  * the game wants a number. Rule 2 says **the number is the hero**, so each figure gets its own
- * column: the label small-caps, mono and dim; the figure bright and a clear size larger than it.
+ * box: the label small-caps, mono and dim; the figure bright and a clear size larger than it.
+ *
+ * THREE COLUMNS ACROSS A ROW BECAME FOUR LINES DOWN A TILE on 2026-08-26, when the goods became a
+ * field (see GoodPicker's header). It is the same three figures — nothing was dropped and nothing
+ * was added — re-laid for a 158px box instead of a 324px one, and the measurement that forced it is
+ * on the stack below.
  *
  * THE UNIT RIDES SMALL BESIDE THE FIGURE rather than inside it. `formatUnitPrice` renders
- * "3,500 d./t", which at this size does not fit a third of a 390px row — and dropping the unit is
+ * "3,500 d./t", which at this size does not fit beside its own label — and dropping the unit is
  * not an option (EVE's rule, §3: units are always attached). So the figure is the grouped number
  * and the unit is a 10px suffix, which is the same shape NumberPicker already uses for its
  * suggestion chips.
@@ -776,8 +723,8 @@ function GoodDetail({
  *     "none aboard", on the cell — never a grey square with no explanation. `aboard` is the
  *     fleet's own manifest, the one quantity this side may count.
  *   · A BUY the purse cannot afford is NOT decided here. That answer is `world.buy_capacity()`'s,
- *     read once for the good in focus — never seventy times for seventy rows — and the quantity
- *     step names it in the server's own word ("purse allows none").
+ *     read once for the good in focus — never 243 times for 243 tiles — and the quantity step
+ *     names it in the server's own word ("purse allows none").
  */
 function GoodFigures({
   good,
@@ -793,44 +740,49 @@ function GoodFigures({
 }) {
   const sellDead = aboard !== undefined && aboard <= 0
   return (
-    <span className="mt-1.5 grid gap-2">
-      <span className="grid grid-cols-3 gap-2">
-        <Figure label="buy" title="Buy this here — what she pays, per tun" onPress={() => onTrade('BUY')}>
-          <span className="tabular-nums">{formatInt(good.buy)}</span>
-          <span className="ml-1 text-[10px] font-normal text-ink-faint">d./t</span>
-        </Figure>
-        <Figure
-          label="sell"
-          title="Sell this here — what this port pays her, per tun"
-          onPress={() => onTrade('SELL')}
-          disabled={sellDead}
-          note={sellDead ? 'none aboard' : undefined}
-        >
-          <span className="tabular-nums">{formatInt(good.sell)}</span>
-          <span className="ml-1 text-[10px] font-normal text-ink-faint">d./t</span>
-        </Figure>
-        {/* "nearby", NOT "neighbours". Measured at 390px: a third of the row is ~96px and
-            `neighbours` rendered as `NEIGHBOUR…` — a label truncated by its own cell, which is a
-            label that has stopped working. Not `%NBR` either: that is the column name in the data
-            and in migration 0009, and the map-UX rule is that the player never reads the schema. */}
-        <Figure label="nearby" title="This port's price as a percentage of the ports within 600 nm">
-          <PriceIndex pct={good.pct_nbr} advice={good.advice} />
-        </Figure>
-      </span>
-      <span className="flex items-center gap-2">
-        <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-ink-faint">stock</span>
+    <span className="mt-0.5 grid gap-1.5">
+      {/* THE TWO PRICE CELLS ARE STACKED, NOT SIDE BY SIDE — and that is a MEASUREMENT, not a
+          preference. A tile is 158px wide at 390px (tileLayout.ts), ~138px inside its padding; two
+          cells abreast leaves each ~48px of text, and a four-figure price in the mono face is 42px
+          before its `d./t`. MARKET's own tile learned this on 2026-08-23 and its header records it:
+          "`buy · sell — 364 · 334` wrapped mid-figure at 390px … a figure is one token". Full width
+          each, so no price can ever shear, and each cell is its own ≥44px tap target. */}
+      <Figure label="buy" title="Buy this here — what she pays, per tun" onPress={() => onTrade('BUY')}>
+        <span className="tabular-nums">{formatInt(good.buy)}</span>
+        <span className="ml-1 text-[10px] font-normal text-ink-faint">d./t</span>
+      </Figure>
+      <Figure
+        label="sell"
+        title="Sell this here — what this port pays her, per tun"
+        onPress={() => onTrade('SELL')}
+        disabled={sellDead}
+        note={sellDead ? 'none aboard' : undefined}
+      >
+        <span className="tabular-nums">{formatInt(good.sell)}</span>
+        <span className="ml-1 text-[10px] font-normal text-ink-faint">d./t</span>
+      </Figure>
+      {/* "nearby", NOT "neighbours". Measured at 390px: a third of the old row was ~96px and
+          `neighbours` rendered as `NEIGHBOUR…` — a label truncated by its own cell, which is a
+          label that has stopped working. Not `%NBR` either: that is the column name in the data
+          and in migration 0009, and the map-UX rule is that the player never reads the schema.
+          It is a LINE rather than a cell now: it is not an action, and giving a reading the same
+          44px box as the two acts beside it said it was one. */}
+      <EntryTileLine label="nearby">
+        <PriceIndex pct={good.pct_nbr} advice={good.advice} />
+      </EntryTileLine>
+      <EntryTileLine label="stock">
         <Meter
           pct={(good.stock_band / 6) * 100}
           tone={good.stock_band >= 4 ? 'success' : 'warning'}
-          className="min-w-0 flex-1"
+          className="w-14 min-w-0"
         />
-        {/* The aboard figure is a SELL list's caption, as it always was — on a BUY the manifest is
-            here only to reason about the sell cell, and printing "0 t aboard" on seventy buy rows
-            would be seventy answers to a question nobody asked. */}
-        {intent === 'sell' && aboard !== undefined && (
-          <span className="shrink-0 font-mono text-[11px] text-ink-muted">{formatTuns(aboard)} aboard</span>
-        )}
-      </span>
+      </EntryTileLine>
+      {/* The aboard figure is a SELL list's caption, as it always was — on a BUY the manifest is
+          here only to reason about the sell cell, and printing "0 t aboard" on 243 buy tiles would
+          be 243 answers to a question nobody asked. */}
+      {intent === 'sell' && aboard !== undefined && (
+        <EntryTileLine label="aboard">{formatTuns(aboard)}</EntryTileLine>
+      )}
     </span>
   )
 }
