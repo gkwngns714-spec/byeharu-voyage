@@ -10,7 +10,7 @@ under `LANDED 2026-08-24` and lower is older and is kept as record.**
 
 ## THE HEADLINE: PRODUCTION IS FULLY DEPLOYED
 
-**`supabase migration list --linked` reads 52 of 52 applied, head 0058, nothing outstanding.**
+**`supabase migration list --linked` reads 53 of 53 applied, head 0059, nothing outstanding.**
 Verified on the target on 2026-08-26, not inferred from a green exit code. Both blockers the
 2026-08-25 anchor named are gone:
 
@@ -39,7 +39,10 @@ actually holds, since `do nothing` can silently do nothing.
 0051 rarity re-tiered (171 goods moved) · 0052 Bristol snaps 0.00 nm and the overland course is
 refused · 0053 `world.market` 1,442 → 241 ms · 0055 ten encounter mixes, **still DARK** · 0056
 `drift_sigma` 0.020 so geography beats noise (1.17× → 1.64×) · 0057 `price_history` bounded at 57
-slots / 623,627,424 bytes · 0058 every harbour offers capital 10 / mid 4–8 / small exactly 4.
+slots / 623,627,424 bytes · 0058 every harbour offers capital 10 / mid 4–8 / small exactly 4 · **0059
+the encounter mix is LIT** — Barbary raid-days 43.0% → 20.4%, and `voyage.encounter_at` is dropped
+(probed on production: `PGRST202`, gone; `hazard_roll` and `sea_mix` answer `42501`, present and
+server-private).
 
 ## TWO DECISIONS TAKEN, WITH THEIR REASONS
 
@@ -69,9 +72,15 @@ only the roster would be 1,288 × 48 × 201 = **12.4 MB** and the free tier woul
 
 1. **Resolve row 48's reading** — does a city TRADE 4–10 goods, or trade 243 and SPECIALISE in
    4–10? Owner's call. It decides both whether row 48 is closed and whether Pro is forced.
-2. **Light 0055, or decide not to.** Now that 0055 is applied to production it is FROZEN — lighting
-   it means a new migration that re-cuts, never an edit. Measured cost: Barbary raid-days 43.0% →
-   20.4% of event-days. In flight as 0059.
+2. ~~Light 0055.~~ **DONE AND LIVE (0059, 2026-08-26).** PR #1 was the gate that mattered: the
+   authoring agent proved it on PGlite (Postgres 18) and explicitly did NOT prove it on 17, which is
+   the divergence that made 0053 fail its first push — `disposable-chain` went green on real
+   Postgres 17 before it was allowed onto `main`. Barbary raid-days **43.0% → 20.4%** measured by the
+   migration itself over all 10,000 points of [0,1). **The panel does not draw the mix yet** — that is
+   a client slice with its own spec, and 0059's header says so rather than implying otherwise.
+   0059 also caught a real bug worth remembering: **a fair wind of 24 h or more inverted the
+   schedule**, moving day d+1's boundary to or before day d's so `settle` resolved two checkpoints
+   where the player was told there was one. The gain is now bounded twice.
 3. **The other harbour snaps.** Bristol was one of a set that snap more than 20 nm to sailable water
    — same class of breach of the never-touch-land law, same fix shape as 0052. In flight as 0060.
    The figures in the old anchor (40 harbours, Longyearbyen 67.68 etc.) are UNVERIFIED and are being
