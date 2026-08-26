@@ -176,7 +176,21 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // whose 288-slot window was sized for a 14,980-pair world, grew to 7,347,231 rows / 1,410 MB in the
 // 54,432-pair one, filled production's disk and put the whole project into READ-ONLY mode; and 0058
 // makes a port's roster a law — capital 10, mid 4-8, small 4 — instead of 0041's hand-typed band.
-const LAST = '20260818000058_a_city_offers_what_its_size_earns.sql'
+// MOVED 2026-08-26 to 0060 FORTY HARBOURS STOP SAILING OVERLAND — the raster and the all-pairs
+// sailed distances re-cut again (0052's DATA superseded; 0046 and 0052 themselves untouched). 0052
+// fixed Bristol and left forty more: sea_reaches.snap_nm is the LAND-EXEMPT head allowance
+// voyage.path_refusal grants a course, so a harbour whose own 0.25 deg cell scan-filled as land was
+// handed a straight line over its own country — Longyearbyen 67.68 nm across Spitsbergen, Hanoi
+// 58.68 across Tonkin, Tokyo 47.69 across the Boso peninsula, Lisbon 23.30 over Estremadura. 38
+// CHANNELS entries now open water the last raster did not have (+106 cells, 0 closed), every one a
+// water a ship of the period worked. Measured: all 40 now snap at or under 20 nm, 43,632 of 56,406
+// directed pair readings identical, 12,718 moved at a fixed harbour and 56 elsewhere by no more
+// than 12.4 nm. The file NAMES two live defects it does not fix — six CHANNELS entries whose own
+// interpolation draws a canal (the worst joins the Andaman Sea to the Gulf of Thailand in 382 nm)
+// and a course proposer that lets a leg be straightened through land (Panama City to Port Royal is
+// served at 560.9 nm ACROSS the isthmus). Because of the second, proof 09 is RED with this file
+// applied and is right to be.
+const LAST = '20260818000060_forty_harbours_stop_sailing_overland.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

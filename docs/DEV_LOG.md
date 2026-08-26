@@ -5,6 +5,73 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-26 — D27: forty harbours stop sailing overland, and two worse breaches of the same law found and NOT fixed
+
+Migration **0060 `forty_harbours_stop_sailing_overland`**, on branch `osn-0060-harbour-snaps`.
+0052 fixed Bristol and left the rest of the ledger open. Re-measured from the running chain, not
+from the docs: **40 places still snapped more than 20 nm to sailable water, 13 of them more than
+30 nm** — Longyearbyen 67.68, Hanoi 58.68, Khambhat 57.77, Tokyo 47.69. `sea_reaches.snap_nm` is
+the **land-exempt head allowance** `voyage.path_refusal` grants a course, so every one of those
+harbours carried a corridor across the country it stands in.
+
+**The fix.** 38 of the 62 `CHANNELS` entries in `scripts/sea-grid.mjs` now open water the last
+raster did not have — 36 new entries and two extended in place (the Gulf of Khambhat to Cambay, the
+White Sea road up the Northern Dvina) — each one a water a ship of the period actually worked, each
+justified beside its own points. **+106 cells opened, 0 closed.** All 40 now snap at or under 20 nm;
+21 of them to 0.00.
+
+**Measured.** 43,632 of 56,406 directed pair readings identical; 12,718 moved at a fixed harbour;
+**56 elsewhere, none by more than 12.4 nm / 3.66%**. The six long ocean roads (Suez, Panama, the
+Horn from the east, the Roaring Forties, the Cape, Valparaiso) are unchanged to 0.1 nm and asserted
+so. All eight guards were broken on purpose and watched go red
+(`scripts/db/breaktest-0060.mjs`).
+
+**A channel became a canal during the build, and the guard caught it.** Carried the last twelve
+miles up the Trave to Lübeck's own quay, the fix put sailable water 22 nm from Hamburg's — inside
+the 27.5 nm approach the straightener exempts — and **Hamburg→Tallinn fell from 991.5 nm round
+Denmark to 611.0 nm straight over Schleswig: a Kiel Canal, 1895.** The channel now stops at
+Travemünde, where the seagoing water stopped.
+
+### Two live breaches of the same law found, measured, and deliberately NOT fixed here
+
+1. **Six `CHANNELS` entries draw a canal with their own interpolation.** An entry's points are
+   joined cell by cell, so an entry holding two unconnected waters opens the land between them.
+   `irrawaddy-sittaung` joins Yangon to the Chao Phraya across 330 nm and opens 30 land cells, one
+   85.6 nm up in the Tenasserim mountains — **the Gulf of Thailand reaches the Andaman Sea in 382 nm
+   instead of the ~2,300 nm round Singapore.** `elbe-weser`, `thames-scheldt`, `gironde`,
+   `baltic-gulfs` and `gambia-senegal` spill 31-63 nm inland the same way. Closing water can strand
+   a voyage already sailing it, so this needs a migration that deals with those fleets first.
+
+2. **The course proposer lets a leg be straightened THROUGH land, and this is the worse of the
+   two.** `src/lib/sea/pathfind.ts:segmentIsWater` samples a leg every half cell, which is
+   phase-dependent and skips land that falls inside an approach allowance. Consequences measured on
+   the raster 0060 supersedes:
+   * **Panama City→Port Royal is served at 560.9 nm.** The Isthmus of Panama is ~30 nm wide at
+     0.25° and Panama's allowance is 32.0 nm (snap 10.82 + one cell diagonal), so every land sample
+     on the straight line falls inside it and the whole 10,479.8 nm road round the Horn collapses
+     into one leg **across the isthmus**. A Panama Canal, 1914, in the live table. Panama→Santiago
+     de Cuba likewise, 1,944.6 nm for a road of 11,023.4. Neither canal control in the chain could
+     see it: Veracruz and Acapulco do not lie either side of the same 30 nm neck. 0060 **pins the
+     figure unchanged** so it cannot drift quietly.
+   * The same weakness makes the proposer disagree with the server's own land guard. A stored course
+     is re-split at every sea boundary (`voyage.segments_from_course`, 0047) and re-sampled in a
+     different phase, so a leg accepted as water can be refused as land. **With 0060 applied,
+     Lisbon→Nagasaki is one: legal as proposed, `E_LAND` at (23.23°, -16.48°) once stored.**
+
+**Therefore `npm run db:proof` is RED with 0060 applied — 8 of 9 files green, 59/62 markers,
+proof 09 `the_fleet_never_touches_land` failing — and it is right to be red: that course does touch
+land.** `npm run db:apply` is green (53 migrations, 53 receipts) and so are
+`db:check-versions`, `typecheck`, `tests/db.chain.spec.ts` and `tests/duplication.spec.ts`.
+
+**The repair was built in this worktree and deliberately not shipped.** Walking the cells a leg
+crosses instead of sampling points, plus forbidding A* the corner cuts a fixed-step sampler cannot
+judge, makes the proposer sound and kills the isthmus crossing — and it **moved 50,868 of 56,406
+readings and disconnected 10 ports** whose channels are only diagonally linked. That is a
+world-wide repricing and a re-authoring of the existing channel list; it needs its own migration,
+its own justifications and a balance pass, not a rider on a harbour fix.
+
+---
+
 ## 2026-08-25 — D26: pushed and deployed (site only), an outage that filled the disk, and a Postgres-17 blocker found on the way out
 
 Later the same day as D25. Three things happened, none of them a migration:
