@@ -5,6 +5,107 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-26 — D27: the migrations reach production — all 52 applied — and the reason they nearly did not
+
+**Production's database is no longer behind its client.** `supabase migration list --linked` reads
+**52 of 52 applied, head 0058, nothing outstanding.** Verified on the target, not inferred from a
+green exit code. The eight that had been stuck — 0051, 0052, 0053, 0055, 0056, 0057, 0058 — are all
+live. The Postgres-17 blocker D26 recorded is gone: `ffbaf9c` pinned the neighbourhood walk to a
+custom plan and 0053 applied to the real Postgres 17 without complaint.
+
+### THE ONE TO READ: both test engines were green on a precondition that could not hold
+
+The first production push applied 0051, 0052, 0053, 0055 and 0056 and then **died on 0057**:
+
+```
+ERROR: duplicate key value violates unique constraint "price_history_pkey" (SQLSTATE 23505)
+Key (port_id, good_id, slot)=(c205adb3-..., 4c69bf2d-..., 2979499) already exists.
+At statement: 9
+```
+
+0057's step 3 seeds a precondition — rows at slots `now-3`, `now-10` and `now-100` — so the prune
+below has something to prove itself against. **A fresh chain boots `price_history` EMPTY**, so
+nothing collides there, and a fresh chain is *every engine this project tests on*: PGlite locally,
+and CI's disposable Supabase. Production has a live tick that has been writing a row for every
+(port, good) every ten minutes for days. All three slots were already occupied. The INSERT could
+only fail.
+
+**The knowledge was already in the file and did not reach the statement.** The comment directly
+above the INSERT says, in these words: *"On production the equivalent excess already exists for
+real, at every pair"*. It then wrote a bare INSERT.
+
+The fix is `on conflict (port_id, good_id, slot) do nothing` — which is not a patch but **0013's own
+idempotence rule**, the same way `public.tick_price_snapshot` has always written. It makes step 3
+mean the same thing on both kinds of database: after it, rows exist at all three slots — written by
+this file on a fresh chain, by the live tick on production. **No assertion below weakens**, because
+every one of them reads the TABLE rather than this statement's row count; on production the ancient
+slot carries REAL rows the prune must remove, which is a *stronger* positive control than a
+synthetic one.
+
+And because `do nothing` can silently do nothing, the precondition is now **asserted rather than
+argued**: a new check raises unless the subject port carries both recent and ancient rows before the
+prune. On a fresh chain it reports `486 recent and 243 ancient`.
+
+**The lesson, and it is not specific to 0057:** *green on PGlite and green on the disposable
+Supabase does not mean it will apply to production*, because both boot empty and production does
+not. Any migration that WRITES a precondition rather than only reading one is exposed to exactly
+this. Editing 0057 was legitimate only because it had never applied anywhere real — the rollback was
+clean and it held no production state.
+
+### What is now live that was not
+
+| | what a player gets |
+|---|---|
+| **0051** | rarity re-tiered on the world's own mean producer count — 171 goods moved tier |
+| **0052** | Bristol snaps 0.00 nm instead of 64.55 nm over Devon; the overland course is REFUSED |
+| **0053** | `world.market` at Bordeaux 1,442 ms -> 241 ms, buffers 331,470 -> 40,530 |
+| **0055** | ten encounter mixes derived from each sea — **still DARK**, nothing draws from it yet |
+| **0056** | `drift_sigma` 0.040 -> 0.020; geography beats noise again (1.17x -> 1.64x) |
+| **0057** | `price_history` bounded at **57 slots / 623,627,424 bytes**, was headed for ~3.0 GB |
+| **0058** | every harbour offers **capital 10 / mid 4-8 / small exactly 4** — 78 offers dropped, 56 filled, 1,310 -> 1,288 |
+
+0057's self-assert ran INSIDE the production transaction and required the whole table's slot span to
+sit under the 57-slot window with rows still present. **It committed — so production's
+`price_history` is provably bounded now**, not merely expected to be.
+
+### VACUUM FULL: decided AGAINST, and the reason is not laziness
+
+0057's header correctly says the freed bytes are not returned to the disk until someone runs
+`VACUUM FULL` by hand. That step is **deliberately not being taken**:
+
+* The dead space (~800 MB) is already reusable by Postgres, and the table is now permanently
+  bounded, so the file cannot grow past what it already is.
+* `VACUUM FULL` takes an ACCESS EXCLUSIVE lock — it would block the price chart read *and*
+  `tick_price_snapshot` on a live game — and needs ~600 MB of transient disk.
+* It buys ~800 MB back on an 8 GB disk, against a database that now settles near 620 MB.
+
+Separately and independently: it is **not runnable from this machine at all**. The Supabase CLI has
+no arbitrary-SQL subcommand, and no database password is stored here — `db push` connects by
+provisioning a temporary login role from the access token ("Initialising login role..."). It would
+need the dashboard SQL editor. The decision above does not depend on that.
+
+### The plan question, answered with arithmetic
+
+Checked against supabase.com/pricing, not recalled: **Free is a 500 MB database; Pro is from
+$25/month with 8 GB disk included**, then $0.125/GB.
+
+Production's steady state after 0057 is `price_history` **595 MB** (623,627,424 bytes, the figure
+0057 asserts) plus `port_goods` 23 MB plus everything else under 2.3 MB — **about 620 MB**.
+
+**620 MB > 500 MB, so the free tier is unreachable — and it stays unreachable even at the floor.**
+At 48 slots, the minimum the chart itself requires, 54,432 pairs x 48 x 201 = **501 MB** of
+`price_history` alone, 526 MB with the rest. There is no setting of 0057's budget that fits 500 MB
+while the world samples 54,432 pairs. **Pro is forced.**
+
+The only lever that changes that arithmetic is the pair count, and it leads somewhere worth
+recording: **`port_goods` carries all 243 goods at all 224 ports (54,432 rows) — every port trades
+every good.** 0058 implemented row 48 as `port_specialties`, 1,288 rows, about 5.75 per port. So a
+city *specialises* in 4-10 goods; it still *offers* 243. If `price_history` sampled only the roster,
+1,288 pairs x 48 x 201 = **12.4 MB** and the free tier would fit with room to spare. That is a design
+question, not a disk question, and it is flagged on row 48 rather than decided here.
+
+---
+
 ## 2026-08-25 — D26: pushed and deployed (site only), an outage that filled the disk, and a Postgres-17 blocker found on the way out
 
 Later the same day as D25. Three things happened, none of them a migration:
