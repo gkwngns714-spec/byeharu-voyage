@@ -5,6 +5,115 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-26 — D28: the encounter mix is LIT (0059), and a fair wind that could fold the schedule
+
+**One migration, 0059 — `the_sea_decides_what_it_breeds`.** It is the lighting slice 0055's own
+header named, and nothing else: the four statements at
+`supabase/migrations/20260818000055_what_these_waters_breed.sql:132-143` are quoted verbatim at the
+top of 0059 and the file is those four statements.
+
+| statement | what landed |
+|---|---|
+| 1 | `voyage.hazard_roll`'s body IS `voyage.encounter_at`'s — **sliced, not retyped**: the deployed definition with only the function name in its header changed, so the two cannot differ by a character. `voyage.encounter_at` is **DROPPED in the same statement**; 0055 wrote it to BE this body, and a copy kept "for reference" is the second author §1 forbids. |
+| 2 | The flat draw is **deleted, not left beside the mix**: trigger `voyage_event_kinds_weights_close`, its function `public.tg_voyage_event_kind_weights`, and the columns `roll_weight`, `cedes_to`, `cede_fraction`. The cede columns go too, on **0055:427-430's own ruling** — *"the mix says it directly, so a second mechanism for the same sentence would be a second authority."* Then `is_rolled = true where in_sea_mix`, so `is_rolled` now means only "drawn". |
+| 3 | `voyage.settle` gains five arms by a **three-hunk slice**. FAIR_WIND gives back delay hours, FOUL_WATER starts water over the side, SHOAL_WATER takes durability, DERELICT and CONSORT touch no ship. `if v_delay > 0` becomes `<> 0`, because a fair wind moves the arrival EARLIER and the old test would have banked the hours. And the chain now ends `elsif h.occurred then raise E_KIND_ARM` (§7C) — before it, a drawn kind with no arm fell through to `else` and was **written down as a quiet watch**: a hazard silently deleted from the game, green everywhere. |
+| 4 | `voyage.waters_ahead` serves the mix as a fifth fact per row, `voyage.sea_mix`'s own shares. **The panel does not draw it yet** — `src/features/map/WatersAhead.tsx:41-44` names itself that reader and its spec forbids a row that reads like a forecast; that is a client slice and 0059's header says so rather than implying it. |
+
+### THE MEASUREMENT, and it is the migration's own
+
+Not quoted from 0055. 0059 captures the pre-image bands one statement before it deletes them and
+walks all 10,000 points of [0,1) twice — once through those bands, once through the deployed
+`voyage.sea_mix` — and prints both in its receipt:
+
+| sea (danger, piracy) | PIRATES share of event-days |
+|---|---|
+| home waters (1, 0.20) | 33.0 → **7.0** per cent |
+| **Mediterranean (3, 0.45)** | **43.0 → 20.4** per cent — the Barbary run |
+| Caribbean (4, 0.45) | 43.0 → 23.4 per cent |
+| Malacca (5, 0.45) | 43.0 → 25.8 per cent |
+| Arctic (4, 0.12) | 29.8 → 9.3 per cent |
+
+7,540 of 10,000 points of the Mediterranean draw now land somewhere other than the flat bands put
+them. **The frequency of event-days did not move at all**, and that is proved rather than asserted:
+over 34 voyage-days of a real 3,536 nm passage the lit draw matched DESIGN B.6's clamp and the three
+rng streams **recomputed independently of the deployed body** on every single day.
+
+### THE BUG THE PROBE CAUGHT, which is the entry to keep
+
+The first draft's fair wind gave back up to 48 hours. `voyage.day_ends_at(d)` is
+`departed_at + (d × 24 + delay_before_day(d)) × k`, so **a gain of 24 hours or more moves day d+1's
+boundary to or before day d's and the schedule INVERTS** — `voyage.settle` then resolves two
+checkpoints where the player was told there was one. The probe caught it as *"day 2 settled as
+FAIR_WIND … and the voyage stands at day 4"*. The gain is now bounded twice, and both bounds are
+load-bearing:
+
+* never more than `voyage.delay_before_day` (0006:475), because `voyages.delay_hours` is
+  `check (delay_hours >= 0)` (0006:67) and an unbounded gain aborts the settlement on a CHECK — and
+  would land a fleet before she could physically have sailed;
+* never a full voyage-day (6–22.8 h), so a fair wind **compresses** the schedule and never folds it.
+
+Both are asserted, the second by requiring day d+1 to still end after day d once the arm has fired.
+
+### THE SECOND BUG, which was in the probe rather than in the game
+
+The unarmed-kind probe inserted `PROBE_UNARMED` and pinned the mix to it and *then* went looking for
+a clean day to draw it on. The day-search settles the days it skips — so a skipped day drew
+`PROBE_UNARMED` **outside** the handler, and `E_KIND_ARM` doing exactly its job escaped as a
+migration failure. About a one-in-a-hundred lottery, and **it lost on the third full `db:apply`,
+after the break-test had gone green sixteen times.** The clean day is now found first, while the mix
+still holds only armed kinds. Worth writing down because it is `docs/NO_SPAGHETTI.md` §4's rule in a
+new costume: *a probe is deterministic and satisfies its own preconditions* — and a probe that is
+right 99 times out of 100 is a probe that will be wrong in CI.
+
+### PROVEN
+
+* `npm run db:apply` — 53 migrations, 53 self-assert receipts, world guard green.
+* `npm run db:proof` — every marker of all nine proofs.
+* `scripts/db/breaktest-0059.mjs` — **fifteen mutations, every one RED.** It caches the pre-0059
+  chain as a PGlite data directory keyed on the bytes that built it, so iterating on the migration
+  costs seconds instead of the ten minutes a cold chain takes; a changed earlier migration changes
+  the key, so the cache cannot go stale. Three of the first drafts
+  were mis-aimed and are written down here because the mistake is instructive: one edited text
+  *inside* the insertion (invisible to a byte comparison by design), one overflowed `numeric(6,4)`
+  and so was a SQL error rather than a legal wrong migration, and one deleted the `elsif h.occurred
+  then` line and thereby broke DERELICT's arm instead of testing the fallthrough it was aimed at. A
+  mutation that goes red for the wrong reason proves nothing.
+* `scripts/db/proofs/01_offline_equivalence.sql`'s `OFFLINE_EQUIV_ENCOUNTER` marker **follows the
+  body** to `voyage.hazard_roll` — it was gated on the dark function by the slice that authored it,
+  and it now covers the LIVE draw.
+
+### AND ONE FLAKE SEEN IN PASSING THAT IS NOT 0059's — migration 0047
+
+On one `db:proof` run the chain died inside **`20260818000047_the_sea_is_a_free_plane.sql`**:
+
+```
+E_DIVERT_FAILED: she did not come to rest at the turn (status SAILING)
+```
+
+0047 is untouched by this work, it runs eleven files before 0059, and the identical chain had
+applied cleanly in the `db:apply` seconds earlier and in every run before and after. `voyage.divert`
+truncates a voyage and then settles to `greatest(v_now, v_eta)`, so its own probe is sensitive to
+real wall-clock time against a compressed ETA — the same class of defect as the two above.
+**Recorded, not fixed, and not attributed to 0059**: it is a pre-existing intermittent in an applied
+migration's self-assert, it will eventually redden CI's disposable-chain job on an innocent PR, and
+whoever picks it up should start at `0047:1022`.
+
+### THE PRODUCTION QUESTION, asked out loud because 0057 was not
+
+0057 passed on PGlite and on CI's disposable Supabase and then **failed the real production push**,
+because both engines boot from an EMPTY database and production carries live data. So, explicitly:
+**0059 seeds nothing and inserts nothing.** Its only committed write is
+`update public.voyage_event_kinds set is_rolled = true where in_sea_mix` — an UPDATE of rows the
+chain itself put there, on a server-private table no client can write, so there is nothing for it to
+collide with. Every other statement is DDL or a `pg_temp.recut` slice, and a slice **refuses** rather
+than half-applies if production's deployed body is not what the hunks were cut against. Days already
+in `voyage_events` are never recomputed, so no day a player has been told about changes; for the days
+still ahead of a sailing fleet, 0055's assert (j) already proved the two bodies agree on whether
+something happens, its magnitude and its probability — she keeps her event days and her arrival, and
+only what befalls her on them may differ.
+
+**NOT DEPLOYED.** This is on a worktree branch, `osn-0059-light-encounters`. Production is on 0056;
+0057, 0058 and 0059 are all still un-pushed.
 ## 2026-08-26 — D27: the migrations reach production — all 52 applied — and the reason they nearly did not
 
 **Production's database is no longer behind its client.** `supabase migration list --linked` reads

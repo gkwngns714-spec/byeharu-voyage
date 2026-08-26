@@ -176,7 +176,12 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // whose 288-slot window was sized for a 14,980-pair world, grew to 7,347,231 rows / 1,410 MB in the
 // 54,432-pair one, filled production's disk and put the whole project into READ-ONLY mode; and 0058
 // makes a port's roster a law — capital 10, mid 4-8, small 4 — instead of 0041's hand-typed band.
-const LAST = '20260818000058_a_city_offers_what_its_size_earns.sql'
+// Moved deliberately 2026-08-26 to 0059, which LIGHTS the per-sea encounter mix 0055 landed dark:
+// voyage.hazard_roll's body becomes 0055's voyage.encounter_at (and that copy is deleted), the flat
+// roll_weight, the piracy cede and their closure trigger go with it, voyage.settle gains one arm per
+// new kind, and voyage.waters_ahead serves the mix. Measured by the migration itself: Barbary
+// raid-days 43.0 -> 20.4 per cent of event-days, home waters 33.0 -> 7.0.
+const LAST = '20260818000059_the_sea_decides_what_it_breeds.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

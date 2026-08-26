@@ -27,17 +27,20 @@
 -- @pass OFFLINE_EQUIV_IDENTICAL_BYTES  day_index, kind, payload and resolved_at match exactly
 -- @pass OFFLINE_EQUIV_SAME_PURSE       wages and hazard costs came to the same ducat
 -- @pass OFFLINE_EQUIV_SAME_ETA         the delays moved the arrival to the same instant
--- @pass OFFLINE_EQUIV_ENCOUNTER        voyage.encounter_at answers identically across both runs
+-- @pass OFFLINE_EQUIV_ENCOUNTER        the per-sea encounter mix answers identically across both runs
 --
--- WHY THE LAST ONE IS HERE, AND WHY IT IS HERE ALREADY (added with migration 0055)
---   0055 authored a per-sea encounter mix and landed it DARK: `voyage.encounter_at` is written to
---   BE `voyage.hazard_roll`'s next body, and today nothing calls it. On the day it is lit, the
---   whole of this file's claim rests on IT rather than on hazard_roll — so it is gated HERE, on
---   the same voyage and across the same two settlements, by the slice that AUTHORED it rather
---   than by the slice that lights it. A dark function that is offline-equivalent on the day it
---   goes live is a promise; one that has been proved so on every run since is a fact. The
---   comparison is over the full tuple (occurred, kind, magnitude), so it is not vacuous even on
---   a quiet day — and the voyage under test is pre-screened for a hazard anyway.
+-- WHY THE LAST ONE IS HERE, AND WHERE IT MOVED (added with 0055, repointed by 0059)
+--   0055 authored a per-sea encounter mix and landed it DARK, as `voyage.encounter_at`, and this
+--   marker was written against that function on the day it landed — deliberately gated by the
+--   slice that AUTHORED the mix rather than by the slice that would light it, because a dark
+--   function proved offline-equivalent on every run since is a fact where one proved on the day it
+--   goes live is only a promise.
+--   Migration 0059 LIT IT: `voyage.hazard_roll`'s body IS that function now, character for
+--   character, and `voyage.encounter_at` was deleted in the same statement rather than left beside
+--   it. So the marker follows the body — it names `voyage.hazard_roll`, which is the same code
+--   answering the same question, and it is now covering the LIVE draw instead of a dark one. The
+--   comparison is over the full tuple (occurred, kind, magnitude), so it is not vacuous even on a
+--   quiet day — and the voyage under test is pre-screened for a hazard anyway.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -138,13 +141,14 @@ begin
     select ducats into v_step_purse from public.players where id = v_player;
     select eta    into v_step_eta   from public.voyages where id = v_voyage;
 
-    -- 0055: what the SEA-decided mix would have made of the same days, read at the same moment of
-    -- the same settled voyage. Dark today; gated from today.
+    -- 0055, lit by 0059: what the SEA-decided mix makes of the same days, read at the same moment
+    -- of the same settled voyage. The body is 0055's voyage.encounter_at; the name is the live
+    -- draw's, because 0059 moved the one into the other and deleted the copy.
     select string_agg(coalesce(e.kind, '-') || ':' || e.magnitude, '|' order by g),
            count(*) filter (where e.occurred)
       into v_step_enc, v_enc_days
       from generate_series(1, v_days) g
-     cross join lateral voyage.encounter_at(v_voyage, g) e;
+     cross join lateral voyage.hazard_roll(v_voyage, g) e;
 
     -- Throw the entire settlement away. The voyage row itself was created BEFORE this
     -- subtransaction, so its id — and therefore every rng seed — is unchanged.
@@ -173,7 +177,7 @@ begin
   select string_agg(coalesce(e.kind, '-') || ':' || e.magnitude, '|' order by g)
     into v_lazy_enc
     from generate_series(1, v_days) g
-   cross join lateral voyage.encounter_at(v_voyage, g) e;
+   cross join lateral voyage.hazard_roll(v_voyage, g) e;
 
   if v_step_rows <> v_lazy_rows or v_step_rows = 0 then
     raise exception 'PROOF 1 FAILED: tick-by-tick resolved % checkpoint(s), lazy resolved %',
@@ -202,11 +206,11 @@ begin
     raise exception 'PROOF 1 FAILED: the encounter comparison read nothing on one of the two runs — it would have passed vacuously';
   end if;
   if v_step_enc is distinct from v_lazy_enc then
-    raise exception E'PROOF 1 FAILED: voyage.encounter_at differs across the two settlements.
+    raise exception E'PROOF 1 FAILED: the per-sea encounter mix (voyage.hazard_roll) differs across the two settlements.
   tick-by-tick: %
   lazy:         %',
       v_step_enc, v_lazy_enc;
   end if;
-  raise notice 'PASS: OFFLINE_EQUIV_ENCOUNTER — the per-sea mix (0055, dark) answers identically over all % voyage-day(s) of both settlements, % of them carrying an encounter; the day it replaces voyage.hazard_roll this file already covers it',
+  raise notice 'PASS: OFFLINE_EQUIV_ENCOUNTER — the per-sea mix (0055, LIT by 0059 and now voyage.hazard_roll''s own body) answers identically over all % voyage-day(s) of both settlements, % of them carrying an encounter',
     v_days, v_enc_days;
 end $$;
