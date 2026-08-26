@@ -112,8 +112,18 @@ still ahead of a sailing fleet, 0055's assert (j) already proved the two bodies 
 something happens, its magnitude and its probability — she keeps her event days and her arrival, and
 only what befalls her on them may differ.
 
-**NOT DEPLOYED.** This is on a worktree branch, `osn-0059-light-encounters`. Production is on 0056;
-0057, 0058 and 0059 are all still un-pushed.
+**NOT DEPLOYED — and the sentence this replaces was already stale when it was written.** This is on
+branch `osn-0059-light-encounters`. It said *"Production is on 0056; 0057, 0058 and 0059 are all
+still un-pushed"*; by then **0057 and 0058 had both applied** and production read 52 of 52, head
+0058 (D27, below). Only **0059** is outstanding. The agent that wrote this line was working from a
+`d6270f4` base and could not see the push — which is the ordinary hazard of a worktree, and the
+reason a deploy state is re-read from `supabase migration list --linked` rather than carried
+forward in prose.
+
+**Also corrected:** this entry's closing note called 0053's Postgres-17 failure a *"still-open
+blocker"*. It is not — `ffbaf9c` fixed it and 0053 applied to the real Postgres 17 in production on
+2026-08-26. The 17-vs-18 caution the note draws from it still stands on its own merits: PGlite is
+Postgres 18 and this migration has not been proven on 17, which is what the PR gate is for.
 ## 2026-08-26 — D27: the migrations reach production — all 52 applied — and the reason they nearly did not
 
 **Production's database is no longer behind its client.** `supabase migration list --linked` reads
