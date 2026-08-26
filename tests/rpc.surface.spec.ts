@@ -168,17 +168,34 @@ test('world.sea_raster() and world.reach() serve the free sea (0039)', async () 
   expect(reach.reaches[nagasaki.code]).toBeGreaterThan(12_000)
 })
 
-test('world.market() prices every good, with %NBR, stock band, availability and advice', async () => {
+test('world.market() prices the goods this city trades, with %NBR, stock band, availability and advice', async () => {
   const snap = expectOk(await worldSnapshot())
   const lis = snap.ports.find((p) => p.code === 'LIS')!
-  const tun = snap.ports.find((p) => p.code === 'TUN')!
 
   const market = expectOk(await worldMarket(lis.id))
   expect(market.port).not.toBeNull()
   expect(market.port!.code).toBe('LIS')
   expect(isNum(market.port!.tax_rate) && isNum(market.port!.spread)).toBe(true)
   expect(isNum(market.port!.dev_commerce) && isStr(market.port!.culture)).toBe(true)
-  expect(market.goods).toHaveLength(snap.goods.length)     // every good the world trades, priced
+
+  // Pin moved deliberately 2026-08-26 with migration 0061: this WAS
+  // `expect(market.goods).toHaveLength(snap.goods.length)` — "every good the world trades, priced"
+  // — and since 0061 a city sells only what its roster names (the owner, docs/OWNER_REQUESTS.md
+  // row 48: "min 4, max 10 trades goods per city"). The expected length is therefore DERIVED from
+  // the roster rather than pinned to a number, so it survives the restoration of data/ports.json's
+  // authored lists; the owner's own 4..10 band is asserted beside it. Nobody's fleet lies at LIS in
+  // this fixture, so `public.quay_shows`'s cargo half cannot widen the payload here.
+  const rosterHere = Number(
+    (await db.pg.query<{ n: number }>(`
+      select count(*)::int as n
+        from public.port_specialties s
+        join public.ports p on p.id = s.port_id
+       where p.code = 'LIS'`)).rows[0].n,
+  )
+  expect(rosterHere).toBeGreaterThanOrEqual(4)
+  expect(rosterHere).toBeLessThanOrEqual(10)
+  expect(market.goods).toHaveLength(rosterHere)
+  expect(market.goods.length).toBeLessThan(snap.goods.length)   // ... and that is FEWER than the catalogue
 
   // THE PRICES' OWN CLOCK (0029): two served instants a countdown subtracts — never a cadence
   // knob a client multiplies. `next_change_at` is strictly ahead of the payload's own `now`
@@ -206,13 +223,45 @@ test('world.market() prices every good, with %NBR, stock band, availability and 
     expect(g.stock_band).toBeGreaterThanOrEqual(0)
     expect(g.stock_band).toBeLessThanOrEqual(6)
     expect(typeof g.available).toBe('boolean')
+    // 0061: the ROSTER flag, beside the culture one. Every row of a payload read with no fleet of
+    // yours lying here is a good this city trades, so every one of them is offered.
+    expect(g.offered).toBe(true)
     expect(['buy', 'hold', 'sell']).toContain(g.advice)
   }
 
-  // The culture mask is a fact about the port, and it shows through as a flag, not as a price.
-  expect(market.goods.find((g) => g.code === 'wine')!.available).toBe(true)
-  const tunis = expectOk(await worldMarket(tun.id))
-  expect(tunis.goods.find((g) => g.code === 'wine')!.available).toBe(false)
+  // THE CULTURE MASK is a fact about the port and shows through as a flag, not as a price.
+  //
+  // Moved deliberately 2026-08-26 with migration 0061. This used to be two lines naming one pair —
+  // `wine` available at Lisboa, unavailable at Tunis. Since 0061 a market read carries only the
+  // goods a city TRADES, and Tunis does not trade wine, so that pair is no longer in either
+  // payload and the old lines would throw on `undefined`. It was NOT repointed onto "find me a
+  // roster good some city's culture refuses" either: only 2 such pairs exist in this world
+  // (measured), the roster's CONTENT is authored data that is being re-cut, and a check that
+  // depends on those 2 pairs surviving is a membership pin wearing a query's clothes.
+  //
+  // The property asserted instead cannot go vacuous and cannot be re-authored away: on every row
+  // of every quay sampled, the served flag must EQUAL what the catalogue's own mask implies for
+  // that port's culture. Hundreds of rows, both a port that blocks nothing and ports drawn from
+  // across the cultures. The FALSE side is separately proven inside the frozen chain, which runs
+  // before this spec ever loads a page: 0003's self-assert (wine refused at 2 Maghrebi ports,
+  // permitted at 10 Latin ones) and 0009's (`wine` UNAVAILABLE at Tunis through world.market
+  // itself, when world.market still served every good).
+  const maskOf = new Map(snap.goods.map((g) => [g.code, g.culture_mask ?? []]))
+  const sampled = snap.ports
+    .filter((p) => p.kind === 'HARBOUR')
+    .sort((a, b) => a.code.localeCompare(b.code))
+    .filter((_, i) => i % 40 === 0)          // a deterministic spread across the world, not a lottery
+    .slice(0, 6)
+  expect(sampled.length).toBeGreaterThan(1)
+  let flagRowsChecked = 0
+  for (const p of [lis, ...sampled]) {
+    const payload = expectOk(await worldMarket(p.id))
+    for (const g of payload.goods) {
+      expect(g.available).toBe(!maskOf.get(g.code)!.includes(payload.port!.culture))
+      flagRowsChecked += 1
+    }
+  }
+  expect(flagRowsChecked).toBeGreaterThan(20)   // ... and the loop above actually ran
 
   // A GRADIENT EXISTS, through the client seam. Which good and which pair is geography — 214 ports
   // and 14,980 derived prices decide it — so the spec asks the payload for one instead of naming
@@ -222,19 +271,34 @@ test('world.market() prices every good, with %NBR, stock band, availability and 
   for (const g of buys) expect(g.pct_nbr!).toBeLessThan(100)   // and the advice agrees with the number
 
   // The other end of the same gradient: the good this port marks as a BUY reads dearer somewhere
-  // one leg away, which is the entire proposition of the game.
+  // else, which is the entire proposition of the game.
   const cheapest = buys.sort((a, b) => (a.pct_nbr ?? 100) - (b.pct_nbr ?? 100))[0]
-  // 0039: "one leg away" became "nearest by sailed water", from the reach table.
+  //
+  // Moved deliberately 2026-08-26 with migration 0061: this used to scan the EIGHT NEAREST ports by
+  // sailed water (0039's own repoint of "one leg away"). Since 0061 a city sells only the goods on
+  // its roster, and a good is on the roster of a handful of cities in the whole world — which is
+  // the owner's stated point, "there should be a purpose to go to a city that is far away to get
+  // rare trade goods" (docs/OWNER_REQUESTS.md row 48). Eight neighbours will usually carry no row
+  // for this good at all, so the nearest-eight scan would now be asserting geography rather than
+  // the gradient. The spec therefore asks the world WHICH cities trade it — that set IS the
+  // proposition — and reads their quays, nearest first so a red names a near port rather than a
+  // random one.
   const reachHere = expectOk(await worldReach(lis.id)).reaches
-  const neighbours = Object.entries(reachHere)
-    .sort((a, b) => a[1] - b[1])
-    .slice(0, 8)
-    .map(([code]) => code)
+  const carriers = (await db.pg.query<{ code: string }>(`
+    select p.code
+      from public.port_specialties s
+      join public.ports p on p.id = s.port_id
+      join public.goods g on g.id = s.good_id
+     where g.code = $1 and p.code <> 'LIS'
+     order by p.code`, [cheapest.code])).rows
+    .map((r) => r.code)
+    .sort((a, b) => (reachHere[a] ?? Number.MAX_SAFE_INTEGER) - (reachHere[b] ?? Number.MAX_SAFE_INTEGER))
+  expect(carriers.length).toBeGreaterThan(0)   // ... and somebody out there does trade it
   let dearerSomewhere = false
-  for (const code of neighbours) {
+  for (const code of carriers) {
     const other = snap.ports.find((p) => p.code === code)!
-    const there = expectOk(await worldMarket(other.id)).goods.find((g) => g.code === cheapest.code)!
-    if (there.available && there.mid > cheapest.mid) { dearerSomewhere = true; break }
+    const there = expectOk(await worldMarket(other.id)).goods.find((g) => g.code === cheapest.code)
+    if (there && there.available && there.mid > cheapest.mid) { dearerSomewhere = true; break }
   }
   expect(dearerSomewhere).toBe(true)
 })

@@ -257,6 +257,14 @@ export interface MarketGood {
   stock_band: number
   /** False when the port's culture refuses the good outright (B.4). It is a fact, not a price. */
   available: boolean
+  /**
+   * 0061 — IS THIS GOOD ON THIS CITY'S QUAY? A city trades 4-10 goods (the owner,
+   * docs/OWNER_REQUESTS.md row 48) and `public.port_offers` is the one authority for which. A row
+   * with `offered: false` is in the payload only because a fleet of yours lies here CARRYING it:
+   * it may be SOLD on this quay and it may never be bought, and `cmd.do_buy` refuses it with
+   * E_UNAVAILABLE. Optional for the serve-order reason `rarity` is.
+   */
+  offered?: boolean
   advice: 'buy' | 'sell' | 'hold'
 }
 

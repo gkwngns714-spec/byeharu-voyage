@@ -171,8 +171,13 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
     // it means to test, rather than about money.
     if (candidate.buy * (spaceFor(candidate.code) + 20) >= opening) continue
     for (const port of neighbours) {
-      const there = expectOk(await worldMarket(port.id)).goods.find((g) => g.code === candidate.code)!
-      if (!there.available) continue
+      // 0061: A DESTINATION NEED NOT TRADE WHAT SHE IS CARRYING. Since a city sells only the 4-10
+      // goods on its roster, `world.market(there)` carries a row for this good only if that city
+      // trades it — so `find` legitimately returns undefined and this is a candidate to skip, not
+      // a crash. (She could still SELL it there — cmd.do_sell is deliberately unrestricted — but
+      // the payload has no price to plan a profit from, and a first session plans from the read.)
+      const there = expectOk(await worldMarket(port.id)).goods.find((g) => g.code === candidate.code)
+      if (!there || !there.available) continue
       const gain = (there.sell - candidate.buy) * tradeQty(candidate.code)
       if (gain > bestGain) {
         bestGain = gain

@@ -298,6 +298,15 @@ begin
         -- EXHAUSTIVE: every good this port trades against EVERY destination inside the same 600 nm
         -- the shortlisted scan searched, priced through the same quotes at the same capacity.
         -- No shortlist, no cap, no ranking. (0039: "one leg" became the sailed radius.)
+        --
+        -- "every good this port TRADES" is now literal — moved deliberately 2026-08-26 with
+        -- migration 0061, which made a city sell only the goods its roster names. Before it, every
+        -- harbour carried a market row for all 243 goods and this control scanned all of them; it
+        -- then found trades a player CANNOT MAKE (measured on the failing run: 1,070 d. on cloves
+        -- at Alexandria, a good Alexandria does not trade and cmd.do_buy refuses) and reddened
+        -- because world.trade_routes correctly refused to name them. The control is asked about the
+        -- same universe the shortlist is: what she could actually load. The DESTINATION is still
+        -- unfiltered, because selling is not gated by the roster.
         select count(*), max(x.p),
                (array_agg(x.g order by x.p desc))[1], (array_agg(x.d order by x.p desc))[1]
           into v_ctrl_pairs, v_ctrl_full, v_ctrl_good, v_ctrl_dest
@@ -311,6 +320,7 @@ begin
              cross join lateral world.quote(r_port.id, g.id, c.q, 'buy', null, v_fleet) qb
              cross join lateral world.quote(d2.id, g.id, qb.units, 'sell', null, v_fleet) qs
              where rf.nm <= 600
+               and public.port_offers(r_port.id, pg.good_id)
                and c.q >= 1 and qb.units > 0
                and voyage.sail_refusal(v_fleet, d2.id, null, rf.nm) is null
                and not (d2.culture = any(g.culture_mask))

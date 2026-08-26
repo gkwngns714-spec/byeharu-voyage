@@ -181,7 +181,15 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // roll_weight, the piracy cede and their closure trigger go with it, voyage.settle gains one arm per
 // new kind, and voyage.waters_ahead serves the mix. Measured by the migration itself: Barbary
 // raid-days 43.0 -> 20.4 per cent of event-days, home waters 33.0 -> 7.0.
-const LAST = '20260818000059_the_sea_decides_what_it_breeds.sql'
+// Moved deliberately 2026-08-26 to 0061, which makes a city SELL only what its roster names: 0058
+// gave every harbour a 4-10 good roster and the market table still carried all 243 goods at all 224
+// harbours, so every city sold everything. public.port_offers becomes the one authority for "is this
+// good on this city's quay?", cmd.do_buy refuses anything else with the E_UNAVAILABLE it already
+// raises for the culture mask, world.market serves the quay (plus whatever a fleet of the reader's
+// lies here carrying, so a hold is never stranded), and the price record follows: measured by the
+// migration itself, price_history's ceiling falls from ~594.7 MiB to ~14.1 MiB. cmd.do_sell and
+// public.port_goods are deliberately untouched.
+const LAST = '20260818000061_a_city_sells_only_what_its_roster_names.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
