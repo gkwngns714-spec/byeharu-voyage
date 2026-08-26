@@ -71,7 +71,15 @@ function drift(db_, want) {
   for (const g of want.goods) {
     const d = db_.goods.find((x) => x.code === g.code)
     if (!d) { say(`good ${g.code} (${g.name}) is in data/goods.json but not in the database`); continue }
-    const dMask = Array.isArray(d.culture_mask) ? d.culture_mask : String(d.culture_mask ?? '{}').replace(/[{}"]/g, '').split(',').filter(Boolean)
+    const arr = (v) => (Array.isArray(v) ? v : String(v ?? '{}').replace(/[{}"]/g, '').split(',').filter(Boolean))
+    const dMask = arr(d.culture_mask)
+    // 0062: origin/entrepot are world data like any other column — drift here is drift.
+    if (JSON.stringify(arr(d.origin_regions)) !== JSON.stringify(g.origin_regions)) {
+      say(`good ${g.code}.origin_regions: {${arr(d.origin_regions)}} vs {${g.origin_regions}}`)
+    }
+    if (JSON.stringify(arr(d.entrepot_ports)) !== JSON.stringify(g.entrepot_ports)) {
+      say(`good ${g.code}.entrepot_ports: {${arr(d.entrepot_ports)}} vs {${g.entrepot_ports}}`)
+    }
     if (d.name !== g.name) say(`good ${g.code}.name: database has ${d.name}, data says ${g.name}`)
     if (Math.abs(Number(d.base_value) - g.base_value) > 1e-9) say(`good ${g.code}.base_value: ${d.base_value} vs ${g.base_value}`)
     if (Math.abs(Number(d.bulk) - g.bulk) > 1e-9) say(`good ${g.code}.bulk: ${d.bulk} vs ${g.bulk}`)
@@ -145,7 +153,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       from public.ports p where p.kind = 'SEA_PLACE' order by p.code`)).rows
   db_.goods = (await db.query(`
     select code, name, base_value::float8 base_value, bulk::float8 bulk,
-           perishable_pct_day::float8 perishable_pct_day, category, culture_mask
+           perishable_pct_day::float8 perishable_pct_day, category, culture_mask,
+           origin_regions, entrepot_ports
       from public.goods order by code`)).rows
   db_.spec = (await db.query(`
     select p.code as port, g.code as good from public.port_specialties s

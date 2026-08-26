@@ -181,7 +181,13 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // roll_weight, the piracy cede and their closure trigger go with it, voyage.settle gains one arm per
 // new kind, and voyage.waters_ahead serves the mix. Measured by the migration itself: Barbary
 // raid-days 43.0 -> 20.4 per cent of event-days, home waters 33.0 -> 7.0.
-const LAST = '20260818000059_the_sea_decides_what_it_breeds.sql'
+// Moved deliberately 2026-08-26 to 0062, which gives every good the regions that PRODUCE it
+// (public.goods.origin_regions) and the ports that RE-EXPORT it (entrepot_ports), and retires
+// 0058's seeded-hash choice of WHICH goods a port sells — 0058's COUNT law (capital 10, mid 4-8,
+// small 4) is kept and called, not retyped. Measured by the migration itself: 1,288 offers, 1,241
+// native and 47 at a named entrepot, 0 neither; the 3 goods 0058 had left buyable nowhere on earth
+// (allspice, pistachios, lac) are back at their own sources.
+const LAST = '20260818000062_a_good_comes_from_somewhere.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
