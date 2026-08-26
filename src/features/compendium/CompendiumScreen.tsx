@@ -5,9 +5,11 @@ import {
   Button,
   Card,
   CardHeader,
+  EntryTile,
+  EntryTileLine,
   GoodTile,
-  GoodTileLine,
   HSCROLL_HINT,
+  Icon,
   Input,
   Notice,
   PageHeader,
@@ -22,11 +24,10 @@ import {
   Table,
   categoryLabel,
   fineClass,
-  goodTileGridClass,
   hScrollClass,
-  headRowClass,
   rarityLabel,
   scrollTableClass,
+  tileFieldClass,
   useClipped,
 } from '../../components/ui'
 import { formatDucats, formatFixed, formatInt, formatKnots, formatOfTotal, formatPct, formatPctPoints, formatTuns } from '../../lib/format'
@@ -101,7 +102,7 @@ const FACES: readonly FaceSpec[] = [
     label: 'Ships',
     noun: 'ship classes',
     title: 'Ship classes',
-    /* EVERY COLUMN GLOSSED FROM THE ONE TABLE. This was a prose paragraph explaining four of the
+    /* EVERY FIGURE GLOSSED FROM THE ONE TABLE. This was a prose paragraph explaining four of the
        ten figures in this face's own words; the sentences now come from domain/fleet's statGloss —
        the single authority FLEETS' ships table and PORT's draft badge also compose — so no two
        screens can explain a stat apart. BUILD and COST say out loud that no rule reads them yet
@@ -109,7 +110,7 @@ const FACES: readonly FaceSpec[] = [
     explain: (
       <>
         Every class of hull, as the shipwright rates her — before any officer or skill touches the
-        figures. What each column decides:
+        figures. What each figure decides:
         <StatLegend
           className="mt-1"
           items={shipStatItems([
@@ -574,23 +575,30 @@ function GoodsFace({
         {groups.map((group) => (
           <div key={group.category}>
             <SectionLabel>{categoryLabel(group.category)}</SectionLabel>
-            <div className={goodTileGridClass()}>
+            <div className={tileFieldClass()}>
               {group.rows.map((g) => (
-                <GoodTile key={g.code} code={g.code} category={g.category} name={g.name} rarity={g.rarity}>
+                <GoodTile
+                  key={g.code}
+                  code={g.code}
+                  category={g.category}
+                  name={g.name}
+                  rarity={g.rarity}
+                  testId="good-tile"
+                >
                   {/* Some anchors are half-ducat figures (82.50) — rounding them would misprint a
                       served value, so the halves keep one decimal and whole figures stay whole. */}
-                  <GoodTileLine label="base">
+                  <EntryTileLine label="base">
                     {g.base_value % 1 === 0 ? formatDucats(g.base_value) : `${formatFixed(g.base_value, 1)} d.`}
-                  </GoodTileLine>
-                  <GoodTileLine label="bulk">{formatTuns(g.bulk, 1)}</GoodTileLine>
-                  <GoodTileLine label="spoils">
+                  </EntryTileLine>
+                  <EntryTileLine label="bulk">{formatTuns(g.bulk, 1)}</EntryTileLine>
+                  <EntryTileLine label="spoils">
                     {g.perishable_pct_day > 0 ? (
                       `${formatPct(g.perishable_pct_day, 1)}/day`
                     ) : (
                       <span className="text-ink-faint">{'—'}</span>
                     )}
-                  </GoodTileLine>
-                  <GoodTileLine label="refused by">
+                  </EntryTileLine>
+                  <EntryTileLine label="refused by">
                     {g.culture_mask.length === 0 ? (
                       <span className="text-ink-faint">{'—'}</span>
                     ) : (
@@ -598,7 +606,7 @@ function GoodsFace({
                       // ports refuse this good outright, in the server's own words.
                       <span className="text-warning">{g.culture_mask.join(', ')}</span>
                     )}
-                  </GoodTileLine>
+                  </EntryTileLine>
                 </GoodTile>
               ))}
             </div>
@@ -652,47 +660,42 @@ function ShipsFace({
         query={query}
         applied={kind === null ? [] : [`the kind “${kind}”`]}
       />
+      {/* TILES, NOT A TABLE YOU MUST SWIPE (the owner, 2026-08-26: "i told trade goods to be in
+          grid like shape - organized not in lines"). MEASURED at 390px before the change: ten
+          columns rendered a table 680px wide inside a 332px box, so a ship class was a full-width
+          line with six of its ten figures behind a sideways swipe — docs/UI_DIRECTION.md §1's
+          second diagnosis and its "no data is hidden on a phone" law at the same time. As tiles it
+          is the SAME ten served figures, two classes abreast, every figure labelled in place and
+          nothing off the right edge. The field is the goods' own (tileFieldClass) — one field, not
+          a second grid recipe for ships. */}
       {rows.length > 0 && (
-        <Table scrollHint className={scrollTableClass()}>
-          <thead>
-            <tr>
-              <TH>Ship</TH>
-              <TH align="num">Tier</TH>
-              <TH align="num">Hold</TH>
-              <TH align="num">Crew</TH>
-              <TH align="num">Speed</TH>
-              <TH align="num">Guns</TH>
-              <TH align="num">Hull</TH>
-              <TH align="num">Draft</TH>
-              <TH align="num">Build</TH>
-              <TH align="num">Cost</TH>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((s) => (
-              <tr key={s.code}>
-                <TD>
-                  <span className="flex flex-col">
-                    <span>{s.name}</span>
-                    <span className={fineClass()}>
-                      {s.family} {'·'} {s.rig}
-                    </span>
-                  </span>
-                </TD>
-                <TD align="num">{formatInt(s.tier)}</TD>
-                <TD align="num">{formatTuns(s.hold)}</TD>
-                {/* crew she must have / berths she carries — two served figures, one pair. */}
-                <TD align="num">{formatOfTotal(s.crew_required, s.crew_max)}</TD>
-                <TD align="num">{formatKnots(s.speed_kn)}</TD>
-                <TD align="num">{formatInt(s.guns)}</TD>
-                <TD align="num">{formatInt(s.durability)}</TD>
-                <TD align="num">{formatInt(s.draft)}</TD>
-                <TD align="num">{formatInt(s.build_hours)} h</TD>
-                <TD align="num">{formatDucats(s.build_cost)}</TD>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+        <div className={tileFieldClass()}>
+          {rows.map((s) => (
+            <EntryTile
+              key={s.code}
+              name={s.name}
+              mark={<Icon name="ship" size={18} className="mt-0.5 shrink-0 text-ink-muted" />}
+              /* The tier is the catalogue's own ladder and the one figure that RANKS a hull, so it
+                 rides in the corner where a good's rarity rides — same slot, same meaning: how far
+                 up the scale this entry sits. */
+              corner={<Badge tone="neutral">{`T${formatInt(s.tier)}`}</Badge>}
+              testId="ship-tile"
+            >
+              <span className={fineClass('block')}>
+                {s.family} {'·'} {s.rig}
+              </span>
+              <EntryTileLine label="hold">{formatTuns(s.hold)}</EntryTileLine>
+              {/* crew she must have / berths she carries — two served figures, one pair. */}
+              <EntryTileLine label="crew">{formatOfTotal(s.crew_required, s.crew_max)}</EntryTileLine>
+              <EntryTileLine label="speed">{formatKnots(s.speed_kn)}</EntryTileLine>
+              <EntryTileLine label="guns">{formatInt(s.guns)}</EntryTileLine>
+              <EntryTileLine label="hull">{formatInt(s.durability)}</EntryTileLine>
+              <EntryTileLine label="draft">{formatInt(s.draft)}</EntryTileLine>
+              <EntryTileLine label="build">{formatInt(s.build_hours)} h</EntryTileLine>
+              <EntryTileLine label="cost">{formatDucats(s.build_cost)}</EntryTileLine>
+            </EntryTile>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -770,41 +773,64 @@ function CaptainsFace({
         query={query}
         applied={kind === null ? [] : [`the kind “${kind.toLowerCase()}”`]}
       />
-      <ul>
+      {/* TILES, NOT A COLUMN OF ENTRIES (the owner, 2026-08-26: "i told trade goods to be in grid
+          like shape - organized not in lines"). MEASURED at 390px before the change: every officer
+          was a 324px full-width block 107px tall — one per line, exactly the shape the goods face
+          left behind three days earlier and this face did not. The facts are unchanged and none is
+          dropped; they are aligned figure lines now instead of a run-on mono row, which is
+          docs/UI_DIRECTION.md §4 rule 2. Same field as the goods and the hulls (tileFieldClass). */}
+      <div className={tileFieldClass()}>
         {rows.map((o) => (
-          <li key={o.code} className="border-b border-edge/50 py-2.5 last:border-b-0">
-            <div className={headRowClass(true, 'mb-0')}>
-              <span className="font-serif text-base text-ink">{o.name}</span>
-              <span className="flex items-center gap-1.5">
-                <Badge tone={o.takes_effect ? 'accent' : 'neutral'}>{o.specialty}</Badge>
-                {/* SIGNED is a fact about the world, not an offer: whose house holds their mark,
-                    and which fleet they serve in, is read from the roster and only read. */}
-                {o.hired && <Badge tone="success">signed</Badge>}
-              </span>
-            </div>
-            <p className="mt-0.5 text-xs text-ink-muted">{o.blurb}</p>
-            <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 font-mono text-xs">
+          <EntryTile
+            key={o.code}
+            name={o.name}
+            mark={<Icon name="crew" size={18} className="mt-0.5 shrink-0 text-ink-muted" />}
+            /* SIGNED is a fact about the world, not an offer: whose house holds their mark, and
+               which fleet they serve in, is read from the roster and only read. */
+            corner={o.hired ? <Badge tone="success">signed</Badge> : undefined}
+            testId="officer-tile"
+          >
+            <span className="flex flex-wrap items-center gap-1.5">
+              <Badge tone={o.takes_effect ? 'accent' : 'neutral'}>{o.specialty}</Badge>
+            </span>
+            {/* The blurb is who they are — the one piece of prose the 도감 exists to carry. It
+                stays printed rather than going behind a dot: an Explain fold inside a grid cell
+                would move the tiles beside it on a press, and nothing may move on a press
+                (docs/OWNER_REQUESTS.md rows 15/25). */}
+            <span className="block text-xs text-ink-muted">{o.blurb}</span>
+            <EntryTileLine label="bonus">
               <span className={o.takes_effect ? 'text-success' : 'text-ink-faint'}>
                 +{formatPctPoints(o.bonus_pct)}
               </span>
-              {/* "signs for" is the server's own phrase (0015's refusal says it word for word). */}
-              <span className="text-ink-muted">signs for {formatDucats(o.wage)}</span>
-              <span className="text-ink-muted">
-                {o.port === null ? 'no fixed port' : `of ${portNameOf(portByCode, o.port)}`}
-              </span>
-              {o.nation !== null && (
-                <span className="text-ink-faint">{nationNameOf(nationByCode, o.nation)}</span>
+            </EntryTileLine>
+            {/* "signs for" is the server's own phrase (0015's refusal says it word for word) — it
+                is the LABEL now, which is where a name belongs, and the figure is the hero. */}
+            <EntryTileLine label="signs for">{formatDucats(o.wage)}</EntryTileLine>
+            <EntryTileLine label="port">
+              {o.port === null ? (
+                <span className="text-ink-faint">none fixed</span>
+              ) : (
+                portNameOf(portByCode, o.port)
               )}
-              {o.hired && <span className="text-accent">{o.fleet === null ? 'ashore' : `aboard ${o.fleet}`}</span>}
-            </div>
+            </EntryTileLine>
+            {o.nation !== null && (
+              <EntryTileLine label="nation">{nationNameOf(nationByCode, o.nation)}</EntryTileLine>
+            )}
+            {o.hired && (
+              <EntryTileLine label="serving">
+                <span className="text-accent">{o.fleet === null ? 'ashore' : o.fleet}</span>
+              </EntryTileLine>
+            )}
             {/* A bonus nothing reads is shown WITH that fact, never sold as working — the same
                 reading PortFaces keeps, on the day a migration authors ahead of its rule. */}
             {!o.takes_effect && (
-              <p className={fineClass('mt-1')}>no rule reads this specialty yet — the bonus changes nothing</p>
+              <span className={fineClass('block')}>
+                no rule reads this specialty yet — the bonus changes nothing
+              </span>
             )}
-          </li>
+          </EntryTile>
         ))}
-      </ul>
+      </div>
     </div>
   )
 }
