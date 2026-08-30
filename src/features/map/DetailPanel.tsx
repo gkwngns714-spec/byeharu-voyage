@@ -1,4 +1,4 @@
-import { formatInt, formatNm, formatRealShort } from '../../lib/format'
+import { formatInt, formatNm, formatRealShort, formatVoyageDays } from '../../lib/format'
 import type { VerbSpec } from '../../lib/rpc'
 import type { CommandIntent } from '../../domain/order'
 import { fleetsAtPort, fleetsBoundFor, type ChartModel, type MapPort, type MapSelection } from '../../chart'
@@ -160,6 +160,18 @@ export function DetailPanel({
             </>
           )
         )}
+        {/* HER STORES, WHEREVER SHE IS — the owner (row 50): "my provision depleting as the time
+            goes". The figure is SERVED (`endurance_days`, folded by voyage.endurance_days, 0016)
+            and this panel prints it and nothing else: no division by a burn rate, no client
+            countdown between reads. It falls on its own because `world.fleets()` SETTLES before it
+            answers, so each read is a fresh reading of a world that has moved.
+
+            It belongs on this panel and not only on FLEETS because it is the fact that decides
+            whether the next tap can happen at all: `world.trade_routes` strikes out every
+            destination `voyage.sail_refusal` would refuse, so a fleet short of stores is offered
+            no route and — until this line — was never told why on the screen she is drawn on. */}
+        <Line label="stores" value={formatVoyageDays(fleet.fleet.enduranceDays)} />
+
         {/* SHE IS WAITING FOR AN ORDER AND THE PANEL USED TO SAY NOTHING. See SendHint above for
             why this is a sentence rather than a second send path. The condition is the same one
             the two lines above test — lying at a quay, or at anchor — and NOT `!fleet.voyage`,

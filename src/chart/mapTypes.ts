@@ -96,11 +96,23 @@ export interface MapWater {
   readonly now: boolean
 }
 
+/**
+ * HER STORES, IN DAYS — the SERVED `endurance_days`, carried on every state because it is true in
+ * all three. The owner (OWNER_REQUESTS row 50): *"my provision depleting as the time goes"*.
+ *
+ * It is a fact about the fleet, not about where she is, which is why it sits outside the union's
+ * discriminated part. The chart NEVER divides stores by a burn rate to arrive at it — that fold
+ * is `voyage.endurance_days` (0016) and the client has exactly one job with the figure: print it.
+ * It steps down on its own because `world.fleets()` settles before it answers, so every read is a
+ * fresh reading rather than a client-side countdown.
+ */
+type FleetStores = { readonly enduranceDays: number }
+
 /** A fleet, in exactly one of the three states the chart can draw (0039 added the open anchor). */
 export type MapFleet =
-  | { readonly kind: 'docked'; readonly id: string; readonly name: string; readonly portCode: string }
-  | { readonly kind: 'sailing'; readonly id: string; readonly name: string; readonly voyage: MapVoyage }
-  | { readonly kind: 'anchored'; readonly id: string; readonly name: string; readonly at: LatLon }
+  | ({ readonly kind: 'docked'; readonly id: string; readonly name: string; readonly portCode: string } & FleetStores)
+  | ({ readonly kind: 'sailing'; readonly id: string; readonly name: string; readonly voyage: MapVoyage } & FleetStores)
+  | ({ readonly kind: 'anchored'; readonly id: string; readonly name: string; readonly at: LatLon } & FleetStores)
 
 /**
  * What the player has singled out to read about. ONE selection concept for the whole chart, so
