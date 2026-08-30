@@ -307,11 +307,37 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
     }
   })
 
+  // KEEP THE BOOT LOG, AND SAY IT WHEN THIS FAILS.
+  //
+  // 2026-08-31: this spec went red in CI with phases ["booting","applying","booting","applying",
+  // "seeding","ready"] — a doubled pair, which is localDb's ONE-SHOT RETRY (src/lib/db/localDb.ts
+  // :296-324): the first apply threw, the wreckage was demolished, and a second run from empty
+  // succeeded. The boot therefore ends `ready` with `error: null`, so every other assertion below
+  // passes and the ONLY witness is this array. And the reason was unknowable, because the log was
+  // thrown away here (`log: () => {}`) — the retry writes "BOOT FAILED — ..." with the real
+  // message into exactly the sink this line discarded. A gate that fails without saying why costs
+  // a CI round to learn nothing.
+  //
+  // So the log is kept and attached to the assertion. This is not a louder test, it is the
+  // difference between "it retried" and "it retried BECAUSE x".
+  const bootLog: string[] = []
   expect(channel.get().phase).toBe('idle')
-  const db = await openLocalDb({ loadChain, dataDir: 'memory://', channel, log: () => {} })
+  const db = await openLocalDb({
+    loadChain,
+    dataDir: 'memory://',
+    channel,
+    log: (...args: unknown[]) => {
+      bootLog.push(args.map((a) => String(a)).join(' '))
+    },
+  })
   stop()
 
-  expect(phases).toEqual(['booting', 'applying', 'seeding', 'ready'])
+  expect(phases, ['boot log:', ...bootLog].join('\n')).toEqual([
+    'booting',
+    'applying',
+    'seeding',
+    'ready',
+  ])
   expect(migrations).toEqual((await loadChain()).map((f) => f.name))
   const state = channel.get()
   expect(state.error).toBeNull()
