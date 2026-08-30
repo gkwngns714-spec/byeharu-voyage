@@ -71,7 +71,15 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   pglite-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 2026-08-31: RAISED 15 -> 30, and it is CAPACITY, not a slack limit. The chain takes ~13
+    # minutes on wasm Postgres and grows with the world; PR #3 was CANCELLED at 15m14s with no
+    # assertion failure at all -- the last receipt was 0056 and then nothing -- while
+    # disposable-chain (real Postgres 17) passed the SAME commit in 5m45s. A cancelled job reads
+    # exactly like a red one in the checks list, which is how a gate stops meaning anything.
+    # 30 matches disposable-chain's own limit below. If this is hit again the answer is a lighter
+    # fixture or a faster gate, NOT a bigger number -- the same ruling db.chain's 360 s spec
+    # carries. READ THE LOG before ever calling this job's red a defect.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
