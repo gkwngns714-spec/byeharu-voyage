@@ -33,6 +33,40 @@ import { WatersAhead } from './WatersAhead'
 // and there is still no argument picker on this screen, no quantity control, and no legality
 // check. See SendFleet.tsx for the flow and its rules.
 
+/**
+ * WHAT TO DO WITH THE SHIP YOU JUST TAPPED — the one sentence that was missing.
+ *
+ * ── WHY THIS IS A SENTENCE AND NOT A SEND BUTTON ───────────────────────────────────────────────
+ * The owner, playing production on 2026-08-31: *"i can't send a fleet in map."* Driven in the
+ * running game, the cause was not a broken control — it was NO control: tapping your own ship
+ * opened a panel carrying her name, her state and her position, and nothing else. The two
+ * branches below a fleet's (open sea, port) each end in `SendFleet`; the fleet's ended in a
+ * `Line`. Pressing the ship you want to send is the first thing anybody tries, and it was a
+ * silent dead end.
+ *
+ * The fix is NOT a second way to send, and that is the whole point. This screen sends
+ * DESTINATION-FIRST — tap where she should go, then choose which fleet goes — and `SendFleet` is
+ * the one authority for it (docs/NO_SPAGHETTI.md §7B: decide where a concept lives BEFORE the
+ * second caller exists). A "send from the ship" button would need its own destination picker, its
+ * own ratio control and its own issue path: a second mover on this screen, whose own header
+ * records what four movers cost this project. So the panel does the only honest thing left — it
+ * NAMES THE GESTURE, in the game's own words, and gets out of the way.
+ *
+ * Shown only when she can actually be sent (lying at a quay, or at anchor). A ship already under
+ * way is not waiting for an instruction, and telling her captain to tap somewhere would be a
+ * sentence the game will not honour — docs/UI_DIRECTION.md forbids printing one of those.
+ */
+function SendHint() {
+  return (
+    <p
+      className="mt-1.5 border-t border-rule pt-1.5 font-mono text-[10px] leading-snug text-ink-faint"
+      data-testid="map-send-hint"
+    >
+      Tap where she should go — a harbour, or any water.
+    </p>
+  )
+}
+
 /** One label/value line — the panel is a tiny table and nothing more. */
 function Line({ label, value }: { label: string; value: string }) {
   return (
@@ -126,6 +160,11 @@ export function DetailPanel({
             </>
           )
         )}
+        {/* SHE IS WAITING FOR AN ORDER AND THE PANEL USED TO SAY NOTHING. See SendHint above for
+            why this is a sentence rather than a second send path. The condition is the same one
+            the two lines above test — lying at a quay, or at anchor — and NOT `!fleet.voyage`,
+            which would also catch a fleet in the yard. */}
+        {(fleet.dockedAtCode || fleet.fleet.kind === 'anchored') && <SendHint />}
       </MapPanel>
     )
   }
