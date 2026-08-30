@@ -424,7 +424,13 @@ export function GoodPicker({
     const q = fold(filter.trim())
     return goods
       .filter((g) => g.available)
-      // A SELL list is what she carries; a BUY list is the whole book. `aboard` itself no longer
+      // 0061 — A BUY LIST IS THIS CITY'S QUAY, NOT THE CATALOGUE. `offered` is the server's one
+      // answer (public.port_offers) to "does this city trade this?", and cmd.do_buy refuses
+      // anything else with E_UNAVAILABLE, so a row the verb would refuse never reaches the list.
+      // A SELL list is deliberately NOT narrowed the same way: a city buys what is offered to it,
+      // and the market read carries the goods she is carrying here precisely so they can be sold.
+      .filter((g) => intent === 'sell' || g.offered !== false)
+      // A SELL list is what she carries; a BUY list is the whole quay. `aboard` itself no longer
       // decides — it is given on BUY too now, so the sell cells can say why they are dead.
       .filter((g) => (intent === 'sell' && aboard ? (aboard[g.code] ?? 0) > 0 : true))
       .filter((g) => foldedMatch(q, g.name, g.code, g.category))

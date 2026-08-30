@@ -181,6 +181,14 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // roll_weight, the piracy cede and their closure trigger go with it, voyage.settle gains one arm per
 // new kind, and voyage.waters_ahead serves the mix. Measured by the migration itself: Barbary
 // raid-days 43.0 -> 20.4 per cent of event-days, home waters 33.0 -> 7.0.
+// Moved deliberately 2026-08-26 to 0061, which makes a city SELL only what its roster names: 0058
+// gave every harbour a 4-10 good roster and the market table still carried all 243 goods at all 224
+// harbours, so every city sold everything. public.port_offers becomes the one authority for "is this
+// good on this city's quay?", cmd.do_buy refuses anything else with the E_UNAVAILABLE it already
+// raises for the culture mask, world.market serves the quay (plus whatever a fleet of the reader's
+// lies here carrying, so a hold is never stranded), and the price record follows: measured by the
+// migration itself, price_history's ceiling falls from ~594.7 MiB to ~14.1 MiB. cmd.do_sell and
+// public.port_goods are deliberately untouched.
 // Moved deliberately 2026-08-26 to 0062, which gives every good the regions that PRODUCE it
 // (public.goods.origin_regions) and the ports that RE-EXPORT it (entrepot_ports), and retires
 // 0058's seeded-hash choice of WHICH goods a port sells — 0058's COUNT law (capital 10, mid 4-8,
@@ -305,11 +313,37 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
     }
   })
 
+  // KEEP THE BOOT LOG, AND SAY IT WHEN THIS FAILS.
+  //
+  // 2026-08-31: this spec went red in CI with phases ["booting","applying","booting","applying",
+  // "seeding","ready"] — a doubled pair, which is localDb's ONE-SHOT RETRY (src/lib/db/localDb.ts
+  // :296-324): the first apply threw, the wreckage was demolished, and a second run from empty
+  // succeeded. The boot therefore ends `ready` with `error: null`, so every other assertion below
+  // passes and the ONLY witness is this array. And the reason was unknowable, because the log was
+  // thrown away here (`log: () => {}`) — the retry writes "BOOT FAILED — ..." with the real
+  // message into exactly the sink this line discarded. A gate that fails without saying why costs
+  // a CI round to learn nothing.
+  //
+  // So the log is kept and attached to the assertion. This is not a louder test, it is the
+  // difference between "it retried" and "it retried BECAUSE x".
+  const bootLog: string[] = []
   expect(channel.get().phase).toBe('idle')
-  const db = await openLocalDb({ loadChain, dataDir: 'memory://', channel, log: () => {} })
+  const db = await openLocalDb({
+    loadChain,
+    dataDir: 'memory://',
+    channel,
+    log: (...args: unknown[]) => {
+      bootLog.push(args.map((a) => String(a)).join(' '))
+    },
+  })
   stop()
 
-  expect(phases).toEqual(['booting', 'applying', 'seeding', 'ready'])
+  expect(phases, ['boot log:', ...bootLog].join('\n')).toEqual([
+    'booting',
+    'applying',
+    'seeding',
+    'ready',
+  ])
   expect(migrations).toEqual((await loadChain()).map((f) => f.name))
   const state = channel.get()
   expect(state.error).toBeNull()

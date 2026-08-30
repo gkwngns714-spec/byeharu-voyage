@@ -20,9 +20,13 @@ import { inlineFigureClass } from './typography'
 // `refusal.figures` — SERVED beside the sentence by the refusing migration (lib/rpc/result.ts).
 // The sentence is the server's prose and is NEVER parsed for numbers: a client that regexes
 // "2.9" out of a paragraph is a second author of the refusal, one wording change from lying.
-// Until the serving migration lands, `figures` is absent everywhere and this renders the
-// FALLBACK: code badge and the sentence, compact — the same forward contract `spec.note ??
-// spec.help` used while 0021 rolled out.
+// MIGRATION 0050 LANDED and is applied to production, so `figures` arrives on the arithmetic
+// refusals: `cmd.figures` (0050:195) serves them and `public.orders.error_figures` (0050:179)
+// keeps them for a failed order. The FALLBACK below — code badge and sentence, compact — is
+// still correct and still reached, because 0050 deliberately did NOT give figures to the
+// geometry refusals (E_LAND, E_OFF_COURSE, E_BAD_PATH, E_NO_COURSE …): those are a place, not a
+// quantity, and there is no honest bar to draw for them. So this renders two real cases, not one
+// real case and one waiting room.
 //
 // ── THE EXPLAIN BOUNDARY, AMENDED WITH THE LAW ─────────────────────────────────────────────────
 // Explain.tsx rules that a refusal may not go behind the dot, because hiding the refusal is

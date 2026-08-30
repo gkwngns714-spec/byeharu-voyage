@@ -64,7 +64,20 @@ jobs:
     # specs that each boot PGlite in Node. 25 leaves genuine headroom without letting a hung run
     # burn half an hour of runner time. If this number ever needs raising, find out WHY first —
     # a suite that got slower is usually a boot that got slower, and that is the player's boot.
-    timeout-minutes: 25
+    # 2026-08-31: RAISED 25 -> 40, and this is the THIRD gate today whose red was a clock rather
+    # than a defect (pglite-gate 15 -> 30 was the other two). PR #3's run was cancelled at exactly
+    # 25m15s -- no failing spec, no assertion, just the ceiling -- and a cancelled job is
+    # indistinguishable from a failed one in the checks list.
+    #
+    # THE REAL ANSWER IS NOT A BIGGER NUMBER, and it is written here so the next person does not
+    # have to rediscover it: the suite has no `workers` setting, so Playwright runs about half the
+    # runner's CPUs, and MORE THAN ONE spec builds the whole 243-good world (db.chain's cold boot,
+    # rpc.firstSession, the map fixtures). Two of those racing is why db.chain's cold boot took
+    # 5.0 min in CI against 1.8 min locally, and it is the likeliest cause of the one-shot retry
+    # that reddened it. Serialising the world-building specs -- or giving them one shared built
+    # world -- removes both the contention and most of the wall clock. THAT is the fix; this is
+    # headroom so the gate keeps meaning something until it is done.
+    timeout-minutes: 40
 
     steps:
       - uses: actions/checkout@v4
