@@ -7,6 +7,7 @@ import type { FleetView, PreviewResult, Refusal, SnapshotPort, VerbSpec } from '
 import {
   findVerb,
   fixAction,
+  isComplete,
   orderText,
   sailEstimate,
   useCommandDraft,
@@ -329,8 +330,47 @@ export function SendFleet({
   const nudge = (f: FleetView, by: number) =>
     setRatio({ key: destKey, fleetId: f.id, days: Math.max(1, ratioDays(f) + by) })
 
-  /** A refusal's fixes as real buttons: a composable fix loads the one composer; a queue fix acts
-   *  on the queue through the store's own cancel/clear. Never a dead line. */
+  /**
+   * A FIX THAT NEEDS NO CHOICE IS DONE HERE — the owner, 2026-08-31 (OWNER_REQUESTS row 51):
+   * *"when i press provision on map, it shouldn't go to a command page - no new page, but there
+   * should be provision settings on map as well, on the same page"*.
+   *
+   * That is rows 15/20/25/28/45/46 said again about the one hand-off this screen still had, and a
+   * repeated instruction means the wrong thing was built — so the hand-off GOES for the case it
+   * was wrong about, rather than gaining a wrapper. `PROVISION FULL` is a whole order already:
+   * the server's own grammar says so, and `isComplete` is the one authority that answers it.
+   *
+   * It is not a second way to provision. It goes down the SAME `cmd.issue` path with the SAME
+   * `orderText` line COMMAND would have sent — this screen still composes nothing and still owns
+   * no grammar. The only thing that changed is that it stopped navigating away to press a button
+   * the player had already pressed.
+   *
+   * THE HAND-OFF SURVIVES where it is honest: a fix with an argument still to choose (`SAIL TO
+   * <a nearer port>` — `fixAction` stops at the placeholder, so `args` is short) genuinely needs
+   * the composer, and sending her under a guessed argument would be worse than a screen change.
+   */
+  const runFix = (f: FleetView, verb: string, args: Record<string, string>) => {
+    const fixSpec = findVerb(verbs, verb)
+    if (!fixSpec || !isComplete(fixSpec, args)) {
+      onCompose({ fleetId: f.id, verb, args })
+      return
+    }
+    if (act?.state === 'busy') return
+    setAct({ key: destKey, fleetId: f.id, state: 'busy', refusal: null })
+    void (async () => {
+      const okay = await issue(f.id, orderText(fixSpec, args, f.name), null)
+      setAct({
+        key: destKey,
+        fleetId: f.id,
+        state: okay ? 'sent' : 'refused',
+        refusal: okay ? null : useWorld.getState().refusal,
+      })
+    })()
+  }
+
+  /** A refusal's fixes as real buttons: a composable fix is RUN here when it needs no choice and
+   *  loads the one composer when it does; a queue fix acts on the queue through the store's own
+   *  cancel/clear. Never a dead line. */
   const fixButtons = (f: FleetView, refusal: Refusal) => {
     if (refusal.fixes.length === 0) return null
     const actions = refusal.fixes
@@ -350,7 +390,7 @@ export function SendFleet({
                 return
               }
               if (action.kind === 'compose') {
-                onCompose({ fleetId: f.id, verb: action.verb, args: action.args })
+                runFix(f, action.verb, action.args)
               }
             }}
           >
