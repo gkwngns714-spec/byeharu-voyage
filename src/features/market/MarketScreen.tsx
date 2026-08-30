@@ -458,6 +458,7 @@ export function MarketScreen() {
         routes={routeView}
         portName={port?.name ?? 'this port'}
         fleetName={fleetHere?.name ?? null}
+        fleetDays={fleetHere?.endurance_days ?? null}
         onTap={tapRoute}
       />
 
@@ -634,11 +635,16 @@ function RoutesPanel({
   routes,
   portName,
   fleetName,
+  fleetDays,
   onTap,
 }: {
   routes: TradeRoutes | undefined
   portName: string
   fleetName: string | null
+  /** Her SERVED `endurance_days`, when a fleet of yours lies here. Only ever printed, never
+   *  compared against a threshold — the sail gate is the server's and this screen does not
+   *  re-derive it (see the empty-state note below). */
+  fleetDays: number | null
   onTap: (route: TradeRoute) => void
 }) {
   const shown = (routes?.routes ?? []).slice(0, 6)
@@ -663,10 +669,37 @@ function RoutesPanel({
           <Skeleton className="h-8 w-full" />
         </div>
       ) : shown.length === 0 ? (
-        <p className="text-sm text-ink-muted">
-          Nothing {portName} sells pays within {formatInt(routes.basis.radius_nm ?? 0)} sailed
-          miles — not after tax, spread and your own price impact.
-        </p>
+        /*
+         * AN EMPTY QUAY HAS TWO DIFFERENT REASONS AND THEY ARE NOT INTERCHANGEABLE.
+         *
+         * Found by playing production on 2026-08-31, right after the roster landed: Bilbao showed
+         * "0 ROUTES · Nothing Bilbao sells pays within 1,700 sailed miles", which reads as a
+         * verdict on the market and sent us hunting a defect in the roster. The market had never
+         * been consulted. `world.trade_routes`' reach CTE (0019:719-735) filters every candidate
+         * through `voyage.sail_refusal` — "a destination this fleet could not sail to is not a
+         * recommendation" — and Gaivota was lying there with 0.9 days of stores, so every port was
+         * struck out before a single price was read. `ports_considered` was 0.
+         *
+         * So: when NOTHING was considered, the economic sentence is not merely unhelpful, it is
+         * FALSE, and it hides the one fact that would fix it. The owner's law (OWNER_REQUESTS row
+         * 47): say the figures and the fix, concisely.
+         *
+         * This screen does NOT re-derive the sail gate to decide which sentence to show — that
+         * would be a second author of a server rule. It reads the server's own count: zero ports
+         * considered means the search never happened, whatever the reason.
+         */
+        routes.basis.ports_considered === 0 && routes.basis.qty_from === 'fleet' ? (
+          <p className="text-sm text-ink-muted">
+            {fleetName ?? 'Your fleet'} cannot sail from here
+            {fleetDays === null ? '' : ` — ${formatVoyageDays(fleetDays)} of stores aboard`}, so no
+            port was priced. Provision her on Command and the quay will name her a route.
+          </p>
+        ) : (
+          <p className="text-sm text-ink-muted">
+            Nothing {portName} sells pays within {formatInt(routes.basis.radius_nm ?? 0)} sailed
+            miles — not after tax, spread and your own price impact.
+          </p>
+        )
       ) : (
         <ul className="divide-y divide-edge">
           {shown.map((r) => (
