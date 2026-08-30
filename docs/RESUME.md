@@ -6,93 +6,109 @@ under `LANDED 2026-08-24` and lower is older and is kept as record.**
 
 ---
 
-# ▼ RESUME ANCHOR — 2026-08-26 ▼
+# ▼ RESUME ANCHOR — 2026-08-26, end of session ▼
 
-## THE HEADLINE: PRODUCTION IS FULLY DEPLOYED
+**Written as a handoff: the owner is moving to another computer. Everything below is pushed.**
 
-**`supabase migration list --linked` reads 53 of 53 applied, head 0059, nothing outstanding.**
-Verified on the target on 2026-08-26, not inferred from a green exit code. Both blockers the
-2026-08-25 anchor named are gone:
+## PRODUCTION — live and playable
 
-* **The Postgres-17 failure in 0053 is fixed** (`ffbaf9c` — the generic plan was the villain; the
-  neighbourhood walk is pinned to a custom plan). 0053 applied to the real Postgres 17.
-* **0057 landed**, after failing its first production push. See DEV_LOG D27 — it is the most
-  important thing written this week.
+* `supabase migration list --linked`: **53 of 53 applied, head 0059, nothing outstanding.** Verified
+  on the target, not inferred from a push.
+* The site is deployed and the database agrees with it:
+  **https://gkwngns714-spec.github.io/byeharu-voyage/**
+* Probed live: `voyage.encounter_at` -> `PGRST202` (0059's drop really happened), `hazard_roll` and
+  `sea_mix` -> `42501` (present, server-private), auth -> `400` not the outage's `500`.
+* **Nothing in the open PRs below is on production.** Prod is 0059 and only 0059.
 
-The site was already deployed and still is. **So for the first time the live client and the live
-database agree.** `docs/DEV_LOG.md` D27 is the full record.
+## `main` IS AT `642063c`
 
-## THE LESSON FROM D27 — read this before writing any migration that WRITES
+Merged today: **`docs/OWNER_AUDIT.md`** (all 48 owner instructions re-checked against the code) and
+the **goods grid** (COMMAND's buy/sell picker was 243 goods in a column **44,212 px tall**; the
+compendium's Ships face was a 680 px table inside a 332 px box).
 
-0057 was green on PGlite and green on CI's disposable Supabase, and could not apply to production.
-Both test engines **boot `price_history` empty**; production has a live tick that has been writing
-every ten minutes for days. 0057 seeded a precondition with a bare INSERT and hit a primary-key
-collision on the only database that matters.
+## THREE OPEN PULL REQUESTS — none merged, all pushed
 
-**"Green on both engines" is not evidence a migration will apply to production.** Any migration that
-WRITES a precondition rather than only reading one carries this exposure. The fix was
-`on conflict ... do nothing` — 0013's own idempotence rule — plus an assert that the precondition
-actually holds, since `do nothing` can silently do nothing.
+| PR | What | State |
+|---|---|---|
+| **#3** `osn-0062-regional-goods` | The 243 goods become regional. `origin_regions` + `entrepot_ports`; **every offer is native or a named entrepôt — 1,241 native, 47 entrepôt, 0 neither.** Repairs what 0058's hash did: Königsberg had lost amber; `allspice`, `pistachios` and `lac` had each lost their only port and were **buyable nowhere on earth**. `docs/REGIONAL_GOODS.md`, 1,164 lines. | `build` + **`disposable-chain` GREEN on PG17**, `acceptance` green; **`pglite-gate` RED — see the timeout below** |
+| **#4** `osn-0061-city-trades-its-roster` | A city SELLS only its roster (owner row 48). BUY gated through the `E_UNAVAILABLE` the chain already raises; **SELL deliberately NOT gated** or cargo strands. `world.market` 219.8 -> **57.4 ms**; price-history ceiling **594.7 MiB -> 14.1 MiB**. | CI running at handoff |
+| **#5** `osn-0060-harbour-snaps` | **DRAFT, BLOCKED ON PURPOSE.** All 40 harbours that snapped over 20 nm to water are fixed (Longyearbyen 67.68 -> 0.00). Its `db:proof` is RED and **the red is honest**. | do not merge until the land repair lands |
 
-## WHAT IS LIVE NOW THAT WAS NOT
+**Merge order matters:** 0061 applies before 0062 in the chain. 0062 was authored against a chain
+*without* 0061 — if any of its asserts assume `world.market` serves 243 goods or `price_history`
+holds 54,432 pairs, they need repointing where the branches meet.
 
-0051 rarity re-tiered (171 goods moved) · 0052 Bristol snaps 0.00 nm and the overland course is
-refused · 0053 `world.market` 1,442 → 241 ms · 0055 ten encounter mixes, **still DARK** · 0056
-`drift_sigma` 0.020 so geography beats noise (1.17× → 1.64×) · 0057 `price_history` bounded at 57
-slots / 623,627,424 bytes · 0058 every harbour offers capital 10 / mid 4–8 / small exactly 4 · **0059
-the encounter mix is LIT** — Barbary raid-days 43.0% → 20.4%, and `voyage.encounter_at` is dropped
-(probed on production: `PGRST202`, gone; `hazard_roll` and `sea_mix` answer `42501`, present and
-server-private).
+## THE BIGGEST OPEN DEFECT — the never-touch-land law is breached LIVE
 
-## TWO DECISIONS TAKEN, WITH THEIR REASONS
+The owner's law is absolute: *"i don't want the fleet to ever touch land"* (row 41).
 
-* **`VACUUM FULL` on `price_history`: NO.** The ~800 MB of dead space is already reusable and the
-  table is permanently bounded, so the file cannot grow past what it is. `VACUUM FULL` would take an
-  ACCESS EXCLUSIVE lock on a live game (blocking both the chart read and `tick_price_snapshot`) and
-  need ~600 MB transient disk, to buy ~800 MB back on an 8 GB disk. Separately, it is not runnable
-  from this machine: the CLI has no arbitrary-SQL subcommand and no DB password is stored here
-  (`db push` provisions a temporary login role from the access token). It would need the dashboard.
-* **Supabase Pro: STAY.** Checked against supabase.com/pricing: Free is a **500 MB** database, Pro is
-  from **$25/month with 8 GB** included. Production settles near **620 MB** (595 MB `price_history` +
-  23 MB `port_goods` + <2.3 MB). Even at the 48-slot floor the chart requires, `price_history` alone
-  is 501 MB. **No setting of 0057's budget fits 500 MB while the world samples 54,432 pairs.**
+1. **`src/lib/sea/pathfind.ts:317`** — `if (f * nm < headNm || (1 - f) * nm < tailNm) continue`
+   skips the land check entirely inside a segment's approach allowance. **Panama City -> Port Royal
+   is served at 560.9 nm ACROSS THE ISTHMUS OF PANAMA** against 10,479.8 round the Horn. A Panama
+   Canal, 1914. Panama -> Santiago de Cuba: 1,944.6 against 11,023.4. **This is live right now.**
+2. **Six `CHANNELS` entries draw a canal through land.** `irrawaddy-sittaung` opens 30 land cells,
+   one **85.6 nm up in the Tenasserim mountains**, joining the Gulf of Thailand to the Andaman Sea
+   in 382 nm instead of ~2,300. `elbe-weser`, `thames-scheldt`, `gironde`, `baltic-gulfs` and
+   `gambia-senegal` spill 31-63 nm inland.
+3. **The guard is not vacuous — it is UNDER-SCOPED.** Proof 09 is green on `main` (62/62) and its
+   control really bites (`NEVER_TOUCH_LAND_BITES`, a planted Iberia crossing refused). It checks
+   courses it plants itself and never asks about the courses the game actually serves. Fixing the
+   breach without fixing the scope resets the clock.
+4. **The sound repair moves 50,868 of 56,406 readings and DISCONNECTS 10 ports** whose channels are
+   only diagonally linked. It was built and deliberately reverted. It is a world repricing that
+   would invalidate 0048's price tuning — its own slice, its own justifications, its own balance
+   pass.
 
-## THE FINDING THAT DESERVES THE OWNER'S EYE — row 48 may not be satisfied
+A 15-agent workflow was authored for exactly this and stopped for machine memory before it ran.
+**The script is saved and can be re-run without re-authoring it** — look under the session's
+`workflows/scripts/never-touch-land-*.js` (measure -> judged design panel -> implement ->
+adversarial refute). Next free migration number is **0063**.
 
-`public.port_goods` carries **all 243 goods at all 224 ports = 54,432 rows. Every port trades every
-good.** 0058 implemented row 48 as `port_specialties` — **1,288 rows, about 5.75 per port**.
+## THE TIMEOUT THAT WILL KEEP BITING
 
-So a city **specialises** in 4–10 goods and still **offers** 243. Row 48's words are *"min 4, max 10
-trades goods per city … capital cities - 10 items, mid sized cities - 4~8, small cities 4"*, which
-reads more like what a city SELLS than what it is good at. **This is a real design question and it
-has not been put to the owner.** It is also the only lever on the plan arithmetic above: sampling
-only the roster would be 1,288 × 48 × 201 = **12.4 MB** and the free tier would fit easily.
+`pglite-gate` has **`timeout-minutes: 15`** (`.github/workflows/migrations-apply-proof.yml:74`) and
+the chain now takes ~13 minutes on wasm Postgres. PR #3 was **cancelled at 15m14s with no assertion
+failure** — the last receipt was 0056 and then nothing. `disposable-chain` (real Postgres 17, a
+30-minute limit) passed the same commit in 5m45s. **This is capacity, not a defect**, and it gets
+worse every time the world grows. Raise the limit or make the gate faster — but read the log
+before ever calling that job's red a defect.
 
-## WHAT THE NEXT WORK IS
+## THE LESSON THIS SESSION KEPT RE-LEARNING — read before writing any migration
 
-1. **Resolve row 48's reading** — does a city TRADE 4–10 goods, or trade 243 and SPECIALISE in
-   4–10? Owner's call. It decides both whether row 48 is closed and whether Pro is forced.
-2. ~~Light 0055.~~ **DONE AND LIVE (0059, 2026-08-26).** PR #1 was the gate that mattered: the
-   authoring agent proved it on PGlite (Postgres 18) and explicitly did NOT prove it on 17, which is
-   the divergence that made 0053 fail its first push — `disposable-chain` went green on real
-   Postgres 17 before it was allowed onto `main`. Barbary raid-days **43.0% → 20.4%** measured by the
-   migration itself over all 10,000 points of [0,1). **The panel does not draw the mix yet** — that is
-   a client slice with its own spec, and 0059's header says so rather than implying otherwise.
-   0059 also caught a real bug worth remembering: **a fair wind of 24 h or more inverted the
-   schedule**, moving day d+1's boundary to or before day d's so `settle` resolved two checkpoints
-   where the player was told there was one. The gain is now bounded twice.
-3. **The other harbour snaps.** Bristol was one of a set that snap more than 20 nm to sailable water
-   — same class of breach of the never-touch-land law, same fix shape as 0052. In flight as 0060.
-   The figures in the old anchor (40 harbours, Longyearbyen 67.68 etc.) are UNVERIFIED and are being
-   re-measured from the running chain rather than trusted.
-4. **`public.good_rarity`, 87 ms of the ~240 ms left in `world.market`** — the largest single item
-   left in that read, named by 0053 and left for its own slice.
-5. **Hit-test the label's box, not a radius** — `Strait of Gibraltar` is 119.6 px wide and its far
-   end is 129 px from the mark. Needs the label plan lifted out of `ChartCanvas`.
-6. **Drive the pre-built image in a browser.** Proven in Node only (`tests/db.image.spec.ts:5` says
-   so of itself). Nobody has watched a browser reach a live purse in 7.1 s.
-7. **Drive the map's ratio control on production**, and drive the newly-live economy generally —
-   0051/0056/0058 changed what a player sees and none of it has been driven since it went live.
+**Green on PGlite AND green on CI's disposable Supabase still does not mean it applies to
+production.** 0057 proved it twice in one day:
+
+* Its step-3 seed used a bare `INSERT`, which collided with rows a live tick had already written.
+  Fixed with `on conflict do nothing` — 0013's own idempotence rule.
+* Then a *second* assert in the same file demanded every good carry an identical point count, which
+  is only true where the table began empty. Green on PGlite (empty) and on production (a tick had
+  sampled everything uniformly), **red on a disposable Supabase** where the tick fires mid-chain and
+  any tick landing before 0041 grew the catalogue leaves the older goods one point ahead. It is now
+  a floor on the thinnest good, not an equality.
+
+Both edits touch a migration applied to production, which this project otherwise forbids. They are
+**assert-only** — no schema, function body or grant differs, so production is byte-identical
+either way — and the chain must be applicable from scratch or CI proves nothing.
+
+## WHAT THE OWNER IS STILL OWED
+
+* **Row 48 stays OPEN** under rule 2 — 0061 is built but has not been driven in the running game.
+* **Nobody has played the newly-live economy.** 0051/0056/0058/0059 changed what a player sees and
+  none of it has been driven since it went live.
+* **Gochujang** (row 38) is proposed in `REGIONAL_GOODS.md` §H, not silently added — a new good
+  moves `rarity_scale()`'s whole histogram. Korea has 21 goods in its origin but only `tiger-skins`
+  exclusively.
+* **Named spaghetti, not fixed:** `culture = any(g.culture_mask)` is written **five times** in the
+  live schema (`do_buy`, `do_sell`, `world.market`, `trade_routes`, `cmd.haggle`).
+* **The ledger no longer tallies** how many times an instruction had to be given; rule 5 forbids it.
+
+## STARTING ON THE OTHER MACHINE
+
+`docs/NEW_MACHINE.md` is the setup. Then read `docs/OWNER_AUDIT.md` (what is actually true),
+`docs/DEV_LOG.md` D27 and D28, and this anchor. **Re-read the deploy state from
+`supabase migration list --linked` rather than trusting any prose, including this file.**
+
+# ▲ RESUME ANCHOR ▲
 
 ---
 
