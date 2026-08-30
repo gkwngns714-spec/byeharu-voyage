@@ -355,10 +355,34 @@ export function SendFleet({
       onCompose({ fleetId: f.id, verb, args })
       return
     }
+    /*
+     * A PROVISION FIX FILLS TO HER STANDING ORDER, NOT TO THE BRIM.
+     *
+     * Driven on production 2026-08-31, immediately after this button first worked. The server's
+     * fix text is `PROVISION FULL`, and FULL means every spare ton: Gaivota went from 0.9 to
+     * **89.3 days** of stores for 81 ducats and came out **60/60 t, 0 t of hold free**. She could
+     * then sail anywhere and buy nothing — one dead end swapped for another, and the quay went on
+     * offering 0 routes because a hold with no room can carry no cargo.
+     *
+     * FULL is not wrong; it is the wrong DEFAULT for a one-tap fix on a fleet with an empty hold.
+     * The owner has a system for exactly this — row 24's adjustable, saveable provision presets
+     * (migration 0034) — and the fold two steps below already honours it. Only this button did not.
+     *
+     * `ratioDays` is that authority and it is reused rather than restated: her standing order
+     * first, then the SERVER's own `need` off this very refusal, then the house's deepest habit,
+     * then her present range. Every branch reads a served figure and none invents one, which is
+     * why the fix can be re-pointed here without a rule about how deep a hold should be provisioned
+     * appearing on the client.
+     *
+     * The verb's own grammar carries the shape: `mode` is an enum of FULL and DAYS (0008:186), so
+     * this swaps one served enum value for the other and adds the number the same schema asks for.
+     */
+    const runArgs =
+      verb === 'PROVISION' ? { mode: 'DAYS', days: String(ratioDays(f)) } : args
     if (act?.state === 'busy') return
     setAct({ key: destKey, fleetId: f.id, state: 'busy', refusal: null })
     void (async () => {
-      const okay = await issue(f.id, orderText(fixSpec, args, f.name), null)
+      const okay = await issue(f.id, orderText(fixSpec, runArgs, f.name), null)
       setAct({
         key: destKey,
         fleetId: f.id,
