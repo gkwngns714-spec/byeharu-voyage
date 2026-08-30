@@ -1247,6 +1247,28 @@ begin
     v_player := public.new_house(c_probe, 'Casa do Mar Livre', 'PRT');
     perform cmd.assume_identity(c_probe);
     select id into v_fleet from public.fleets where player_id = v_player;
+
+    -- THE WEATHER IS PINNED, OR THIS PROBE IS A LOTTERY — 2026-08-31, assert-only.
+    --
+    -- 0037 zeroes this for its own DIVERT probe and says why in as many words: "a lottery assert
+    -- has cost this project four CI rounds before that" (0037:323-327). This file RE-CUT that
+    -- probe and did not carry the pin across, so the divert below sails a real passage under real
+    -- weather. A hazard drawn on that passage delays her arrival past the instant cmd.divert
+    -- settles her to, she is still SAILING at the turn, and the file dies on its own
+    -- E_DIVERT_FAILED ("she did not come to rest at the turn") — a message about the divert,
+    -- for a fault that is the dice.
+    --
+    -- It is random per DATABASE, not per run: 0031 rotates world_secret to 128 hex characters
+    -- GENERATED ON THE TARGET, and voyage.rng is keyed on it. So the same chain passes on one
+    -- database and fails on the next, which is exactly what happened — green on this branch at
+    -- 10m10s, red on the next run with no migration changed between them.
+    --
+    -- Zeroed HERE, inside the subtransaction that rolls back at __PROBE_ROLLBACK__, so
+    -- the live world's weather is untouched. This adds no schema, no function body and no grant —
+    -- it is inside the self-assert only, the one kind of change this project permits to an applied
+    -- migration (0057's precedent, DEV_LOG D27), so production stays byte-identical either way.
+    update public.world_config set value = to_jsonb(0.0) where key = 'hazard_p_max';
+
     -- the probe owns its preconditions: watered, fed, fully crewed (README section 3)
     perform cmd.do_provision(v_fleet, jsonb_build_object('mode', 'FULL'));
     perform cmd.do_hire(v_fleet, jsonb_build_object('count',
