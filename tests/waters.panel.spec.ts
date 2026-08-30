@@ -13,7 +13,7 @@ import { sailingFleet, dockedFleet } from './mapWorld.fixture'
 //   · THE CONTRACT, as data. Every decision the panel makes lives in `watersRows.ts` and
 //     `dangerTiers.ts` with no React in either, so what a row SAYS is something a spec reads
 //     rather than something it greps out of markup. That is the same split `rarityTiers.ts` and
-//     `goodTileLayout.ts` already use here, and it is what lets these assertions be about the
+//     `tileLayout.ts` already use here, and it is what lets these assertions be about the
 //     owner's actual rules — "too long. make it very concise… Always show in graphics,
 //     concisely" — instead of about class names.
 //     (It is also the only split that WORKS: Playwright compiles JSX in anything a spec imports

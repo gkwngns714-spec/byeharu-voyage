@@ -68,10 +68,16 @@ export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
 // A mark for a trade good, and the human spelling of its category. Every good in data/goods.json
 // has its OWN drawn glyph — see goodIcons.ts for the table and for why seven was the wrong answer.
 export { goodIcon, categoryLabel } from './goodIcons'
-// A trade good as a BLOCK — icon + name + rarity over aligned figures. MARKET and the COMPENDIUM
-// compose it; COMMAND's good picker is the named next caller (see GoodTile.tsx for the boundary).
-export { GoodTile, GoodTileLine } from './GoodTile'
-export { goodTileGridClass } from './goodTileLayout'
+// A catalogued THING as a BLOCK — mark + name + corner over aligned figure lines, in three tap
+// shapes (see EntryTile.tsx). The compendium's ship classes and officers wear it directly; a trade
+// good wears it through GoodTile, which adds the two facts only a good has.
+export { EntryTile, EntryTileLine, type EntryTileTap } from './EntryTile'
+export { GoodTile } from './GoodTile'
+// The FIELD those tiles stand in — one table, read as CSS by `tileFieldClass()` and as a number by
+// `tileFieldCols()`/`useTileCols()`, so the grid and the code that must know where a row ENDS
+// cannot disagree (tileLayout.ts's header carries the two authorities this folded).
+export { tileFieldClass, tileFieldCols, TILE_FIELD, type TileFieldStep } from './tileLayout'
+export { useTileCols } from './useTileCols'
 // The one rendering of a good's SERVED rarity tier (0032): a colour token AND a shape per tier,
 // so the tier survives a colourblind player and a greyscale screenshot. See Rarity.tsx.
 export { RarityMark } from './Rarity'

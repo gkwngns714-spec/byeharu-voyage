@@ -368,12 +368,32 @@ begin
   select hist into v_before from payload_before_0057;
   select count(distinct pt ->> 'slot') into v_n
     from jsonb_each(v_before -> 'goods') g, lateral jsonb_array_elements(g.value) pt;
-  -- Every good this port trades must carry the SAME number of points — proven by MIN = MAX rather
-  -- than picked by an unordered `limit 1` (docs/NO_SPAGHETTI.md §4's lottery warning).
+  -- Every good this port trades must carry AT LEAST the two recent seeded slots. The floor is read
+  -- off the WEAKEST good (MIN), never off an unordered `limit 1` (docs/NO_SPAGHETTI.md §4's lottery
+  -- warning) — so a single thin good cannot hide behind a fat one.
+  --
+  -- ── WHY THIS IS A FLOOR AND NOT AN EQUALITY — 2026-08-26, the SECOND time this file assumed an
+  --    empty table ─────────────────────────────────────────────────────────────────────────────
+  -- It demanded MIN = MAX, and that is only true where price_history holds nothing but what step 3
+  -- seeded. It went RED on CI's disposable Supabase (real Postgres 17) with
+  --     `the seeded goods do not all carry the same point count (min 2 , max 3)`
+  -- while passing on PGlite and on production — the same split, and the same cause, as the bare
+  -- INSERT this file already had to fix at step 3. A database with a LIVE tick carries rows this
+  -- file did not write. On production every pair had been sampled for days, so the counts happened
+  -- to come out uniform; on a disposable project the tick fires DURING the chain, and any tick that
+  -- lands before 0041 grows the catalogue from 70 goods to 243 leaves the older goods carrying one
+  -- point more than the newer ones. Nothing is wrong in that database. The assertion was wrong.
+  --
+  -- Uniformity was never what the proof below needs. §(3) compares the payload served BEFORE the
+  -- recut with the payload served AFTER it, over IDENTICAL data — parity holds whatever else the
+  -- table carries, because both reads see the same rows. All this check owes that comparison is
+  -- that it did not run over nothing, and a FLOOR of two points on the thinnest good says exactly
+  -- that and no more. Demanding equality asserted a fact about the database's history rather than
+  -- about this migration, which is the whole class of defect 0057 exists to have learned.
   select min(jsonb_array_length(value)), max(jsonb_array_length(value)) into v_lo, v_hi
     from jsonb_each(v_before -> 'goods');
-  if v_lo is distinct from v_hi then
-    raise exception '0057 self-assert FAIL: the seeded goods do not all carry the same point count (min % , max %) — the precondition is not uniform enough to prove anything by count alone', v_lo, v_hi;
+  if v_lo is null or v_lo < 2 then
+    raise exception '0057 self-assert FAIL: the thinnest good at % carries % point(s), need >= 2 — the seeded precondition did not land and the parity check below would run over nothing', v_subj_code, coalesce(v_lo, 0);
   end if;
   v_slots_before := v_lo;
   if v_before is null or v_n < 2 then

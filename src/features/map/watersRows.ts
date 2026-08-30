@@ -4,7 +4,7 @@ import type { MapWater } from '../../chart'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE WATERS-AHEAD ROW MODEL — every decision the panel makes, as data, with no React in it.
 //
-// The same split `rarityTiers.ts` / `Rarity.tsx` and `goodTileLayout.ts` / `GoodTile.tsx` already
+// The same split `rarityTiers.ts` / `Rarity.tsx` and `tileLayout.ts` / `EntryTile.tsx` already
 // use in this repo, and it exists for the same two reasons: the contract becomes something a test
 // can READ rather than something a screenshot must be squinted at, and the component is left with
 // nothing in it but markup — so a change to WHAT a row says cannot hide inside a change to how it

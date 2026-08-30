@@ -235,3 +235,200 @@ test('MARKET puts complete priced goods above the fold, per K.1', async ({ page,
   ).toBeGreaterThanOrEqual(2)
   expect(fold.firstTileText).toMatch(/%/) // the nearby index really is on screen
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// A LIST OF THINGS IS A FIELD, NOT A COLUMN OF LINES
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// The owner, 2026-08-26: *"i told trade goods to be in grid like shape - organized not in lines.
+// Yet this also did not occur."* SAID TWICE — the first telling (2026-08-23, "make trade goods in
+// blocks as well, not all alligned in sentences — horizontally") converted MARKET and the
+// compendium's GOODS face and stopped there, and nothing in this repo could tell that it had
+// stopped. Three lists were still one entry per full-width line, MEASURED on the running build at
+// 390px before this spec existed:
+//
+//   · COMMAND's BUY/SELL good picker  — 243 goods as 324px rows, a list 44,212px tall. The
+//     biggest list of trade goods in the game and the only one you actually buy from.
+//   · the compendium's SHIPS face     — a ten-column table 680px wide inside a 332px box, so six
+//     of a hull's ten figures sat behind a sideways swipe.
+//   · the compendium's CAPTAINS face  — every officer a 324px block, 107px tall.
+//
+// So the rule gets a measurement instead of a paragraph. A FIELD means: at 390px, at least two
+// entries share a row. That is the whole assertion, and it is the one thing prose could not
+// enforce. It cannot be satisfied by a wrapper, a class name or a comment — only by two boxes with
+// the same top and different lefts.
+//
+// WHAT IT DELIBERATELY DOES NOT CLAIM. It says nothing about how TALL a tile is, and nothing about
+// the NATIONS face, which is a three-column code→name lookup that measured 324px inside a 332px
+// box — it fits, it does not scroll, and it is a lookup rather than a catalogue of entities. Two
+// tiles abreast would make it twice as tall and no denser. That one stays a table, on purpose.
+const FIELDS = [
+  // GOODS ARE HERE EVEN THOUGH THEY ALREADY PASS, and that is the point: this face converted on
+  // 2026-08-23 and had no assertion, which is exactly why nobody noticed that its two siblings had
+  // not. A guard that only covers the thing that broke will let the next one break silently.
+  { tab: 'compendium', face: 'Goods', testId: 'good-tile', noun: 'goods' },
+  { tab: 'compendium', face: 'Ships', testId: 'ship-tile', noun: 'ship classes' },
+  { tab: 'compendium', face: 'Captains', testId: 'officer-tile', noun: 'officers' },
+] as const
+
+/** HOW MANY ENTRIES SHARE A ROW. Self-contained on purpose: Playwright ships the source of this
+ *  function into the page, so it may not reach anything outside itself (the same rule
+ *  nav.geometry.spec.ts's MEASURE keeps). Tiles are grouped by their top edge, which is what "on
+ *  the same line" actually means — no class name, no container, no wrapper can fake it. */
+const MEASURE_FIELD = (testId: string) => {
+  const tiles = [...document.querySelectorAll(`[data-testid="${testId}"]`)] as HTMLElement[]
+  const perRow = new Map<number, number>()
+  for (const t of tiles) {
+    const top = Math.round(t.getBoundingClientRect().top)
+    perRow.set(top, (perRow.get(top) ?? 0) + 1)
+  }
+  const first = tiles[0]?.getBoundingClientRect()
+  return {
+    tiles: tiles.length,
+    maxPerRow: perRow.size === 0 ? 0 : Math.max(...perRow.values()),
+    rows: perRow.size,
+    tileWidth: first ? Math.round(first.width) : 0,
+    tileHeight: first ? Math.round(first.height) : 0,
+    pageScrollW: document.documentElement.scrollWidth,
+    pageClientW: document.documentElement.clientWidth,
+  }
+}
+
+/** Where every tile sits INSIDE the picker, not inside the viewport — so a rail above it
+ *  re-rendering its own figures cannot be mistaken for the list restructuring. */
+const MEASURE_OFFSETS = (testId: string) =>
+  ([...document.querySelectorAll(`[data-testid="${testId}"]`)] as HTMLElement[]).map((t) => ({
+    left: t.offsetLeft,
+    top: t.offsetTop,
+  }))
+
+for (const field of FIELDS) {
+  test(`COMPENDIUM ${field.face}: ${field.noun} stand in a field, not in lines, at ${PHONE.width}px`, async ({
+    page,
+    request,
+    baseURL,
+  }) => {
+    test.setTimeout(420_000)
+    test.skip(
+      !(await reachable(request, baseURL ?? '')),
+      `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+    )
+    await page.goto(field.tab)
+    await ready(page)
+    await page.getByRole('tab', { name: new RegExp(`^${field.face}`, 'i') }).first().click()
+    await page.waitForTimeout(400)
+
+    const report = await page.evaluate(MEASURE_FIELD, field.testId)
+    console.log(`${field.face} @${PHONE.width}px: ${JSON.stringify(report)}`)
+
+    // NON-VACUITY, the floor every check in this file carries: a face that rendered nothing would
+    // pass "no entry is on a line of its own" by having no entries.
+    expect(report.tiles, `no [data-testid="${field.testId}"] found — did the face render?`).toBeGreaterThan(1)
+    expect(
+      report.maxPerRow,
+      `every ${field.noun} entry is on a line of its own — ${report.tiles} tiles, ` +
+        `widest row ${report.maxPerRow}. The owner asked for a grid twice; ` +
+        `compose tileFieldClass() (src/components/ui/tileLayout.ts), do not write a second grid.`,
+    ).toBeGreaterThanOrEqual(2)
+    // A tile that is nearly the whole body is a line wearing a border.
+    expect(report.tileWidth, `a tile is ${report.tileWidth}px wide — that is a row, not a tile`).toBeLessThan(220)
+    expect(report.pageScrollW, 'the page shears sideways').toBeLessThanOrEqual(report.pageClientW)
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// COMMAND'S GOOD PICKER — a field, AND the price cells are still the trade
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Two owner rules meet on this one screen and the second is the reason the first is hard:
+//   · row 6  — *"i want to be able to click on buy and sell itself and do trades. when pressed
+//               unfold another so that i can choose how much i buy."* Every price is a real,
+//               labelled, 44px button, and a sell of what she does not carry says "none aboard"
+//               ON THE CELL rather than going silently dead.
+//   · row 15 — *"when pressing sail, stop folding the sail… don't restruct anything."* Said THREE
+//               times. A grid makes this sharper, not easier: a fold placed beside the pressed
+//               tile re-flows its row and shoves its neighbour out of the way, which is exactly
+//               the restructure-on-press being refused. The fold must land after the WHOLE ROW.
+test(`COMMAND: the good picker is a field, its price cells are the trade, and a press moves nothing beside it`, async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(420_000)
+  test.skip(
+    !(await reachable(request, baseURL ?? '')),
+    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+  )
+  await page.goto('command')
+  await ready(page)
+  await page.getByRole('button', { name: /^BUY/ }).first().click()
+  await page.waitForTimeout(1200)
+
+  const shape = await page.evaluate(MEASURE_FIELD, 'good-pick-tile')
+  const cellReport = await page.evaluate(() => {
+    // SCOPED TO THE TILES, not to the page: the verb cards at the head of the composer are also
+    // buttons whose text starts "BUY" and "SELL" (that is the whole point of them), and counting
+    // those made this read 488 cells over 243 goods. A price cell is a cell IN a good's tile.
+    const cells = [...document.querySelectorAll('[data-testid="good-pick-tile"] button')].filter((b) =>
+      /^(buy|sell)\b/i.test(((b as HTMLElement).innerText || '').trim()),
+    ) as HTMLButtonElement[]
+    return {
+      priceCells: cells.length,
+      shortestCell: cells.length ? Math.min(...cells.map((c) => c.getBoundingClientRect().height)) : 0,
+      unlabelledCells: cells.filter((c) => !/\d/.test(c.innerText || '')).length,
+      deadCellsSayingWhy: cells.filter((c) => (c as HTMLButtonElement).disabled && /none aboard/i.test(c.innerText || '')).length,
+      deadCellsSayingNothing: cells.filter((c) => (c as HTMLButtonElement).disabled && !/none aboard/i.test(c.innerText || '')).length,
+      chooseButtons: [...document.querySelectorAll('button')].filter((b) => /^choose /i.test((b.innerText || '').trim())).length,
+    }
+  })
+  const field = { ...shape, ...cellReport }
+  console.log(`COMMAND good picker @${PHONE.width}px: ${JSON.stringify(field)}`)
+
+  expect(field.tiles, 'no [data-testid="good-pick-tile"] found — did BUY open its good picker?').toBeGreaterThan(1)
+
+  // 1. A FIELD, NOT LINES — the assertion the owner had to ask for twice.
+  expect(
+    field.maxPerRow,
+    `every trade good is on a line of its own — ${field.tiles} goods, widest row ${field.maxPerRow}, ` +
+      `tile ${field.tileWidth}px wide. Compose tileFieldClass() (src/components/ui/tileLayout.ts).`,
+  ).toBeGreaterThanOrEqual(2)
+  expect(field.tileWidth, `a good tile is ${field.tileWidth}px wide — that is a row, not a tile`).toBeLessThan(220)
+
+  // 2. ROW 6 SURVIVED THE GRID. Two price cells per good, every one a real 44px labelled button,
+  //    and a dead one says why on its own face.
+  expect(field.priceCells, 'the price cells are gone — row 6 says the price IS the trade').toBe(field.tiles * 2)
+  expect(field.shortestCell, 'a price cell is under the 44px reach floor').toBeGreaterThanOrEqual(44)
+  expect(field.unlabelledCells, 'a price cell carries no figure').toBe(0)
+  expect(field.deadCellsSayingNothing, 'a disabled sell cell went grey without saying "none aboard"').toBe(0)
+  expect(field.deadCellsSayingWhy, 'no sell cell says "none aboard" — is `aboard` reaching the picker?').toBeGreaterThan(0)
+  expect(field.chooseButtons, 'a `Choose <good>` button is back — two authorities for the pick').toBe(0)
+
+  // 3. ROW 15 SURVIVED THE GRID. Press a price cell and NOTHING at or above the pressed tile's own
+  //    row may move inside the picker — least of all the tile beside it. What is BELOW moves down,
+  //    which is what an unfold IS. Offsets are read against the picker's own container, so a rail
+  //    above it re-rendering its figures cannot make this red for a reason it is not about.
+  const before = await page.evaluate(MEASURE_OFFSETS, 'good-pick-tile')
+  await page.evaluate(() => {
+    const cell = [...document.querySelectorAll('button')].find((b) => /^buy\b/i.test((b.innerText || '').trim()))
+    ;(cell as HTMLButtonElement | undefined)?.click()
+  })
+  await page.waitForTimeout(900)
+  const after = await page.evaluate(MEASURE_OFFSETS, 'good-pick-tile')
+
+  expect(after.length, 'the picker unmounted its goods on a press — that is the restructure row 15 forbids').toBe(
+    before.length,
+  )
+  // The pressed tile is the first, so its whole row is `cols` wide; everything in it must be where
+  // it was, and so must every tile above it (there are none above the first row — the assertion
+  // still holds the row-mate still, which is the tile a mid-row fold would have shoved).
+  const rowTop = before[0].top
+  const moved = before
+    .map((b, i) => ({ i, b, a: after[i] }))
+    .filter(({ b, a }) => b.top <= rowTop && (a.top !== b.top || a.left !== b.left))
+  expect(
+    moved.map(({ i, b, a }) => `tile#${i} ${b.left},${b.top} → ${a.left},${a.top}`),
+    'pressing a price cell MOVED a tile in the pressed tile\'s own row. The fold must land after ' +
+      'the WHOLE row (features/command/ArgPickers.tsx, GoodPicker rule 4) — the owner has refused ' +
+      'restructure-on-press three times.',
+  ).toEqual([])
+})
