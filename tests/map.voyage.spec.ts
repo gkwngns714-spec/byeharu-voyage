@@ -113,12 +113,30 @@ test.describe('the position is the server’s, copied', () => {
     const unplaced: FleetView = { ...AURORA, voyage: { ...AURORA.voyage!, position: null } }
     expect(mapFleetsOf([unplaced])).toHaveLength(0)
     // …and one that is simply in port is placed on its quay.
+    //
+    // `enduranceDays` rides on every state because her stores are a fact about the FLEET and not
+    // about where she is (mapTypes' FleetStores). It is asserted the way every other figure in
+    // this file is — READ OFF THE SERVED PAYLOAD, never restated — so this line goes on proving
+    // that the chart COPIES rather than computes, which is the whole point of the file.
     expect(mapFleetsOf([GAIVOTA])).toEqual([
-      { kind: 'docked', id: 'gaivota', name: 'Gaivota', portCode: 'LIS' },
+      {
+        kind: 'docked',
+        id: 'gaivota',
+        name: 'Gaivota',
+        portCode: 'LIS',
+        enduranceDays: GAIVOTA.endurance_days,
+      },
     ])
     // …and one at open anchor is drawn exactly where it holds (0039).
-    expect(mapFleetsOf([anchoredFleet('h', 'Holdfast', { lat: 33, lon: -15 })])).toEqual([
-      { kind: 'anchored', id: 'h', name: 'Holdfast', at: { lat: 33, lon: -15 } },
+    const holdfast = anchoredFleet('h', 'Holdfast', { lat: 33, lon: -15 })
+    expect(mapFleetsOf([holdfast])).toEqual([
+      {
+        kind: 'anchored',
+        id: 'h',
+        name: 'Holdfast',
+        at: { lat: 33, lon: -15 },
+        enduranceDays: holdfast.endurance_days,
+      },
     ])
   })
 })
