@@ -56,6 +56,8 @@ import {
   worldReach,
   worldSnapshot,
 } from '../src/lib/rpc'
+import type { MarketGood } from '../src/lib/rpc'
+import { buyableHere } from '../src/features/market/marketRows'
 import { courseBetween, seaNav } from './seaCourse.fixture'
 import { installMarketFixture } from '../scripts/db/market-fixture.mjs'
 
@@ -123,20 +125,44 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   // ── 0:20 — the MARKET tab, read the way a player reads it ────────────────────────────────────
   // What does this market mark BUY, and which port one leg away pays more for it?
   const here = expectOk(await worldMarket(lisboa.id))
+  // 0061: `buyableHere` (culture AND roster), not `available` (culture only) — the same one
+  // authority the market screen buys through. `world.market` already serves only what this quay
+  // shows, so at Lisboa on turn one the two agree; asking the narrower question anyway is what
+  // stops this line going quietly wrong the first time she reads a quay with cargo aboard.
   const buys = here.goods
-    .filter((g) => g.available && g.advice === 'buy')
+    .filter((g) => buyableHere(g) && g.advice === 'buy')
     .sort((a, b) => (a.pct_nbr ?? 100) - (b.pct_nbr ?? 100))
   expect(buys.length).toBeGreaterThan(0)
 
   // 0039: "one leg away" became "nearest by sailed water" — world.reach, the same distance
-  // table the endurance gate and the trade scan read. Eight nearest, like the old one-leg set.
+  // table the endurance gate and the trade scan read.
+  //
+  // ── 0061: EIGHT WAS AN AMBIENT OF THE OLD WORLD, AND IT BROKE HERE ───────────────────────────
+  // This line used to take the EIGHT nearest, "like the old one-leg set" — a leftover from the
+  // leg graph that migration 0049 deleted. It survived because when every port sold all 243
+  // goods, any eight ports were certain to contain a profitable round trip.
+  //
+  // Under the owner's roster rule they are not. Measured on this chain: Lisboa's six nearest
+  // harbours are all Iberian and all carry the same short roster — wine, olive oil, dried fish,
+  // salt — so there is no gradient between them. The only profitable outbound legs were Setubal
+  // and Porto, and neither has anything worth carrying home; Cadiz, Sevilla, Sanlucar and Tanger
+  // all pay LESS than Lisboa for everything Lisboa marks cheap.
+  //
+  // That is not a defect. It is the instruction working: *"there should be a purpose to go to a
+  // city that is far away to get rare trade goods"* (docs/OWNER_REQUESTS.md row 48). The gradient
+  // moved OUT, so the first session has to look further than the old graph's one leg. Twenty-four
+  // is still the near field — Lisboa to Sevilla and back is inside it — and it is the smallest
+  // number that restores the round trip on the pinned market rather than a round one chosen to be
+  // safe. If a future world moves the gradient further out again, THIS is the line that should
+  // move, and the comment above it says why.
   const reachHere = expectOk(await worldReach(lisboa.id)).reaches
   const neighbours = Object.entries(reachHere)
     .sort((a, b) => a[1] - b[1])
-    .slice(0, 8)
+    .slice(0, 24)
     .map(([code]) => snapshot.ports.find((p) => p.code === code)!)
     .filter((p) => p.kind === 'HARBOUR')
   expect(neighbours.length).toBeGreaterThan(0)
+
 
   // A STARTER'S constraints are part of the choice, not a detail to work around afterwards: the
   // hold is 60 tuns and the purse is 8,000 ducats. Porcelain is the best gradient out of Lisbon
@@ -163,16 +189,62 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   const CAP_SAFE = 20
   const tradeQty = (code: string) => Math.min(spaceFor(code), CAP_SAFE)
 
+  // ── 0061: A FIRST SESSION NEEDS A PORT THAT TRADES BOTH WAYS ─────────────────────────────────
+  // The market is held still by `installMarketFixture` above, so every quay read below is the same
+  // quay twice — these reads are cached for speed, not to dodge a moving price.
+  const quays = new Map<string, MarketGood[]>()
+  const quayAt = async (port: { id: string; code: string }) => {
+    const seen = quays.get(port.code)
+    if (seen) return seen
+    const goods = expectOk(await worldMarket(port.id)).goods
+    quays.set(port.code, goods)
+    return goods
+  }
+
+  /**
+   * THE BEST THING TO CARRY HOME FROM A QUAY — asked the way the GAME asks it.
+   *
+   * `buyableHere` is the market screen's own predicate (src/features/market/marketRows.ts): a good
+   * is buyable when the culture allows it AND the city's roster names it, and `cmd.do_buy` refuses
+   * everything else with `E_UNAVAILABLE`. This spec used to filter on `available` alone, which is
+   * only the culture half — under 0061 that can pick a good the very next BUY would refuse, so the
+   * old line was not merely too weak, it was wrong. One authority, both callers.
+   */
+  const homewardFrom = (goods: readonly MarketGood[]) =>
+    goods
+      .filter((g) => buyableHere(g) && g.advice === 'buy')
+      .sort((a, b) => (a.pct_nbr ?? 100) - (b.pct_nbr ?? 100))[0]
+
   let cargo = buys[0]
   let destination = neighbours[0]
   let bestGain = 0
-  for (const candidate of buys.slice(0, 12)) {
+  // EVERY CHEAP GOOD, NOT THE TWELVE CHEAPEST. `buys.slice(0, 12)` was calibrated when every port
+  // sold all 243 goods, so the twelve best gradients out of Lisboa were certain to include
+  // something the destination also traded. Under 0061 a neighbour carries 4-10 goods, and the
+  // overlap between "Lisboa's twelve cheapest" and "Cadiz's ten" is very often empty — measured on
+  // this chain, the only outbound matches inside the old twelve were at Setubal and Porto, the two
+  // neighbours with nothing worth carrying home. The scan is cheap (the quays are read once each,
+  // above), so it now considers the whole cheap list and lets the two-leg test do the narrowing.
+  for (const candidate of buys) {
     // Enough purse to overfill the hold — so the refusal beat below is about SPACE, which is what
     // it means to test, rather than about money.
     if (candidate.buy * (spaceFor(candidate.code) + 20) >= opening) continue
     for (const port of neighbours) {
-      const there = expectOk(await worldMarket(port.id)).goods.find((g) => g.code === candidate.code)!
-      if (!there.available) continue
+      // 0061: A DESTINATION NEED NOT TRADE WHAT SHE IS CARRYING. Since a city sells only the 4-10
+      // goods on its roster, `world.market(there)` carries a row for this good only if that city
+      // trades it — so `find` legitimately returns undefined and this is a candidate to skip, not
+      // a crash. (She could still SELL it there — cmd.do_sell is deliberately unrestricted — but
+      // the payload has no price to plan a profit from, and a first session plans from the read.)
+      const quay = await quayAt(port)
+      const there = quay.find((g) => g.code === candidate.code)
+      if (!there || !there.available) continue
+      // 0061: AND SHE MUST HAVE SOMETHING TO CARRY BACK. A 4-10 good roster means the port that
+      // pays best for this cargo may have nothing on its quay worth buying — a real shape of the
+      // owner's world, not a fault to route around. But §K.1 is the ROUND TRIP ("come home
+      // richer"), so the destination this spec picks has to support both legs. Choosing on the
+      // outbound gradient alone is exactly what made this spec red: it sailed to the best seller
+      // and then demanded a homeward cargo the roster had never promised.
+      if (!homewardFrom(quay)) continue
       const gain = (there.sell - candidate.buy) * tradeQty(candidate.code)
       if (gain > bestGain) {
         bestGain = gain
@@ -255,9 +327,10 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   expect(Math.abs(measured - quoted)).toBeLessThan(Math.max(0.5, quoted * 0.005))
 
   // ── 1:35 — "you queue the rest while it sails" ───────────────────────────────────────────────
-  const homeward = expectOk(await worldMarket(destination.id))
-    .goods.filter((g) => g.available && g.advice === 'buy')
-    .sort((a, b) => (a.pct_nbr ?? 100) - (b.pct_nbr ?? 100))[0]
+  // Read the quay FRESH — she has sailed since, and a spec that plans from a cached payload is
+  // planning from a world that no longer exists. `homewardFrom` is the same predicate the
+  // destination was chosen with, so this cannot be undefined unless the quay itself changed.
+  const homeward = homewardFrom(expectOk(await worldMarket(destination.id)).goods)
   expect(homeward).toBeDefined()
 
   expectOk(await cmdIssue(fleet.id, `SELL ${cargo.code} ALL`))

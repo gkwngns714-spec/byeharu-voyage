@@ -63,6 +63,7 @@ declare
   v_final  bigint;
   v_nbr_home numeric;
   v_nbr_away numeric;
+  v_roster_n int;      -- 0061: how many goods Lisboa TRADES — derived, never pinned
   v_r      jsonb;
   v_mkt    jsonb;
   v_routes jsonb;
@@ -246,22 +247,35 @@ begin
   v_mkt      := world.market(v_lis);
   v_nbr_home := world.pct_of_neighbours(v_lis, v_good);
   v_nbr_away := world.pct_of_neighbours(v_dest, v_good);
-  -- The prices screen still has to price EVERYTHING (that is what a reading room is), the good the
-  -- quay named has to be on it, and the margin it quoted has to be a real one at the fleet's own
-  -- quantity. %NBR is printed beside them as what it is — an index — and deliberately NOT required
-  -- to be in any band: a good can read below the buy threshold here and still lose money over
-  -- there, which is the whole reason the WHERE column exists.
-  if jsonb_array_length(v_mkt->'goods') <> (select count(*) from public.goods)
+  -- MOVED DELIBERATELY 2026-08-26 with migration 0061. This used to read "the prices screen still
+  -- has to price EVERYTHING (that is what a reading room is)" and asserted
+  -- `length(market.goods) = count(*) from public.goods`. Since 0061 a CITY SELLS ONLY WHAT ITS
+  -- ROSTER NAMES — the owner, docs/OWNER_REQUESTS.md row 48, "min 4, max 10 trades goods per
+  -- city" — so a quay prices its own roster, not the catalogue, and the old line asserted a world
+  -- the game no longer has. The expectation is DERIVED from public.port_specialties rather than
+  -- pinned, so it survives the re-authoring of the roster's contents, and the owner's own 4..10
+  -- band is checked beside it. Nobody's fleet lies at Lisboa in this read, so public.quay_shows's
+  -- cargo half cannot widen the payload here.
+  --
+  -- The rest of the claim is UNCHANGED and is the half that caught 0061's own defect: the good the
+  -- quay named has to be ON that market — a shortlist that names a cargo cmd.do_buy would refuse is
+  -- a quay promising what the verb will not do — and the margin it quoted has to be a real one at
+  -- the fleet's own quantity. %NBR is printed beside them as what it is — an index — and
+  -- deliberately NOT required to be in any band: a good can read below the buy threshold here and
+  -- still lose money over there, which is the whole reason the WHERE column exists.
+  select count(*)::int into v_roster_n from public.port_specialties where port_id = v_lis;
+  if jsonb_array_length(v_mkt->'goods') <> v_roster_n
+     or v_roster_n < 4 or v_roster_n > 10
      or (select count(*) from jsonb_array_elements(v_mkt->'goods') e where e->>'code' = v_good_code) <> 1
      or v_edge is null or v_edge <= 0
      or v_routes->'basis'->>'qty_from' <> 'fleet' then
-    raise exception 'PROOF 4 FAILED at 0:20 — the Lisboa market served % of % goods, % is on it % time(s), and the quay quoted a margin of % on the % basis',
-      jsonb_array_length(v_mkt->'goods'), (select count(*) from public.goods), v_good_code,
+    raise exception 'PROOF 4 FAILED at 0:20 — the Lisboa market served % good(s) for a roster of % (the owner''s band is 4..10, the catalogue holds %), % is on it % time(s), and the quay quoted a margin of % on the % basis',
+      jsonb_array_length(v_mkt->'goods'), v_roster_n, (select count(*) from public.goods), v_good_code,
       (select count(*) from jsonb_array_elements(v_mkt->'goods') e where e->>'code' = v_good_code),
       v_edge, v_routes->'basis'->>'qty_from';
   end if;
-  raise notice 'PASS: FIRST_SESSION_READS_MARKET — Lisboa prices all % goods, and the quay names % for % — % nm out, a quoted margin of % d.; %%NBR reads % here and % there, which is the index and not the reason',
-    jsonb_array_length(v_mkt->'goods'), v_good_code, v_dest_name, v_leg_nm, v_edge,
+  raise notice 'PASS: FIRST_SESSION_READS_MARKET — Lisboa prices the % good(s) it TRADES (of % in the catalogue), and the quay names % for % — % nm out, a quoted margin of % d.; %%NBR reads % here and % there, which is the index and not the reason',
+    jsonb_array_length(v_mkt->'goods'), (select count(*) from public.goods), v_good_code, v_dest_name, v_leg_nm, v_edge,
     round(v_nbr_home, 1), round(v_nbr_away, 1);
   select greatest(1, floor((c.hold - s.water_t - s.food_t) / g.bulk))
     into v_room

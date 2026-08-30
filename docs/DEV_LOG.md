@@ -5,6 +5,123 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-26 — D29: a city SELLS only what its roster names (0061)
+
+**The owner, `docs/OWNER_REQUESTS.md` row 48, said twice:** *"i told you, min 4, max 10 trades goods
+per city. there should be a purpose to go to a city that is far away to get rare trade goods."*
+
+**0058 answered the wrong half of it.** It made `public.port_specialties` obey the counts, and what
+that table decides is AFFINITY (`world.affinity_for`, 0005:196) — how DEAR a good is, not whether it
+is on the quay. `public.port_goods` still carried one row per (harbour, good): **54,432 = 224 x 243,
+measured on the applied chain**, so MARKET listed all 243 goods at every city and `cmd.do_buy` sold
+any of them anywhere. A repeated instruction always means the wrong thing shipped.
+
+### THE DECISION, and it is the whole entry: BUY is the roster, SELL is not
+
+Restricting SELL as well was considered and **refused, on measurements**: the roster names 1,288
+pairs over 243 goods, so a good is on the roster of **5.30 harbours on average** and three goods are
+on no roster at all. A city that also refused to BUY outside its roster would leave a hold with
+roughly five buyers in a world of 224 harbours, and cargo already afloat would be unsellable where
+it stood. So `cmd.do_sell` is **deliberately untouched**, and with it every `public.port_goods` row:
+the market row IS the price, and `world.quote` / `world.price` / `world.mid_price` all raise
+`E_NO_SUCH_GOOD` without one. A city buys what is offered to it and sells only what it trades.
+
+That decision is why this slice does NOT delete 53,144 market rows, which is what the brief that
+opened it expected. Deleting them would have taken SELL down with them.
+
+### THE MECHANISM — one authority, composed onto a refusal that already existed
+
+`public.port_offers(port, good)` answers *is this good on this city's quay?* by reading
+`public.port_specialties`. It **derives nothing**: no `roster_target_count`, no `roster_rng`, no
+count, no opinion about how many goods a city ought to name — because the roster's CONTENT is being
+restored to `data/ports.json`'s authored, historically-grounded lists in a separate slice, and every
+rule here has to survive that. `cmd.do_buy` gains ONE gate, raising the **`E_UNAVAILABLE: % is not
+traded in this port` it already raises for the culture mask** (0007:435-443), so `cmd.refusal_caught`
+and the client's refusal rendering are untouched by construction.
+
+`world.market` serves the quay through `public.quay_shows` — the roster **plus** whatever a fleet of
+the reader's lies here CARRYING. Without that second half SELL would be legal on the server and
+unreachable in the game: `src/features/command/ArgPickers.tsx:471` draws the SELL list from
+`world.market(port).goods`, and a row the read omits has no price to sell at. Those rows carry
+`offered: false` and may be sold, never bought.
+
+### AND THE RECORD FOLLOWED THE QUAY — the number the owner is paying for
+
+`public.tick_price_snapshot` now samples only offered pairs, and the rows it had already written for
+pairs no quay offers are deleted. **0057's window law and its 600 MiB budget are untouched.**
+
+| | pairs sampled | window | ceiling |
+|---|---:|---:|---:|
+| before | 54,432 | 57 slots | **~594.7 MiB** |
+| after | 1,288 | 57 slots | **~14.1 MiB** |
+
+**The seam is named rather than hidden.** 0057 divides its budget by `count(*) from port_goods`,
+which is now an UPPER BOUND on the pairs the record holds rather than the exact count — conservative,
+by 42x. Pointing `price_history_window()` at the offered count instead would raise the window to
+**2,430 slots** (measured: `price_history_window_for(1288)`) and put the ceiling straight back at
+~600 MiB, because a budget-filling law fills its budget. That is a decision about how much history is
+worth keeping and it belongs to whoever next revisits 0057's budget.
+
+### SPAGHETTI, NAMED AND NOT ADDED TO
+
+The culture predicate `culture = any(g.culture_mask)` is written **five times** in the live schema —
+`cmd.do_buy`, `cmd.do_sell`, `world.market`, `world.trade_routes`, `cmd.haggle`. It predates this
+slice and folding five live bodies in a migration about the roster would triple the blast radius on a
+live game, so it is written down here and 0061 refuses to become the sixth: `port_offers` answers the
+ROSTER question only. **Measured consequence of leaving it:** 2 (port, good) pairs are on a roster
+AND blocked by their port's culture, so 2 harbours offer one fewer BUYABLE good than their roster
+names. Content, not mechanism — which is why the migration asserts the owner's own **4..10** band
+rather than 0058's per-tier counts.
+
+On the client the same question got the same treatment: `buyableHere(good)` in
+`src/features/market/marketRows.ts` is the ONE reading of *can this be bought at this quay*, folding
+both reasons a city will not sell (culture, roster) behind the sentence the screen already said —
+**"not traded here"**. `MarketScreen`'s tap target, its tile split and its filter all ask it.
+
+### THE DEFECT A PROOF FOUND THAT REASONING DID NOT — and it is the entry to keep
+
+The first draft left `world.trade_routes` alone, on the written argument that it *"joins
+`public.port_goods` at BOTH ends"*. It does — **and every (harbour, good) pair still has a
+`port_goods` row, so that join restricts nothing.** The quay went on shortlisting cargoes a captain
+could no longer buy. `scripts/db/proofs/04_first_session.sql` read it straight back:
+
+```
+PROOF 4 FAILED at 0:20 — the Lisboa market served 10 of 243 goods,
+civet is on it 0 time(s)
+```
+
+That is `0017:50-55`'s scar in a new costume — a rule wired into one half and not the other — so the
+fix landed in **the same migration**, not a follow-up: `world.trade_routes`'s ORIGIN CTE now asks
+`public.port_offers`. The **destination is deliberately still unfiltered**, and for the same reason
+`cmd.do_sell` is: selling is not gated by the roster, so a city that does not trade a good may still
+be the best place to carry it — filtering both ends would have deleted the owner's own point by
+construction.
+
+`scripts/db/proofs/05_first_voyage_balance.sql` then found the mirror image: its EXHAUSTIVE control
+still scanned all 243 goods and so beat the shortlist with a trade nobody can make —
+*"at ALE the exhaustive scan found 1070 d. (cloves to HER) and world.trade_routes offered only
+614"*. Its comment already said "every good this port trades"; since 0061 that sentence is literal,
+and the control now asks the same authority the shortlist does.
+
+**Two proof pins moved deliberately**, both away from a membership pin and onto a derived one:
+proof 4's `length(market.goods) = count(*) from public.goods` became the port's own roster count
+with the owner's 4..10 band checked beside it, and `tests/rpc.surface.spec.ts`'s
+`toHaveLength(snap.goods.length)` became the same. Neither pins WHICH goods a city carries, because
+the roster's contents are being re-authored in 0062.
+
+### PROVEN
+
+* `npm run db:apply` / `npm run db:proof` — see below.
+* `scripts/db/breaktest-0061.mjs` — every mutation watched go red.
+* The migration's own receipt, on a real house at Lisboa in the transaction that applies it: a
+  queued BUY of `abaca` — **whose market row still exists** — is refused `E_UNAVAILABLE` and the
+  order recorded `failed`; `black-pepper` still fills 10 tuns for 1,295 d.; and **SELL of that same
+  `abaca` still pays 2,523 d. for 20 tuns**, so no hold is stranded. `world.market` at one harbour
+  per tier serves that harbour's roster exactly — ACC 4, ACA 6, ALE 10 — and exactly one row wider
+  when a hold carries something the city does not trade.
+
+---
+
 ## 2026-08-26 — D28: the encounter mix is LIT (0059), and a fair wind that could fold the schedule
 
 **One migration, 0059 — `the_sea_decides_what_it_breeds`.** It is the lighting slice 0055's own

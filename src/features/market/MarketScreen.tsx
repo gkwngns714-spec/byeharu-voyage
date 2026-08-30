@@ -47,6 +47,7 @@ import {
   type MarketBlock,
   type MarketFilter,
   type SortKey,
+  buyableHere,
   countRows,
   marketBlocks,
   sortWord,
@@ -235,7 +236,7 @@ export function MarketScreen() {
   // PURSE binds first. `ALL` is read when the order RUNS, so it is still right after a voyage
   // that changed the hold.
   const tap = (good: MarketGood) => {
-    if (!good.available) return
+    if (!buyableHere(good)) return
     const verb = verbFor(good)
     handOffTrade({
       fleetId: fleetHere?.id ?? fleets[0]?.id ?? null,
@@ -516,7 +517,7 @@ function GoodsBlock({
         ▾ {label}
       </p>
       <div className={tileFieldClass()}>
-        {rows.map((good) => (good.available ? (
+        {rows.map((good) => (buyableHere(good) ? (
           <TradedTile
             key={good.good_id}
             good={good}
