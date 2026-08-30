@@ -75,6 +75,10 @@ export function mapFleetsOf(fleets: readonly FleetView[]): MapFleet[] {
           // position always has an eta, so the null arm is unreachable here — it is spelt rather
           // than asserted because a second Date.parse is how the three copies happened.
           etaMs: voyageEtaMs(f) ?? 0,
+          // 0063: parsed HERE and once, beside the eta, for the reason the line above gives.
+          // `Date.parse` of an absent field is NaN, not 0 — a fleet whose server predates 0063
+          // must draw no elapsed figure rather than one counted from 1970.
+          departedMs: f.voyage.departed_at ? Date.parse(f.voyage.departed_at) : null,
           destinationCode: f.voyage.to,
           destPoint: f.voyage.dest_point
             ? { lat: f.voyage.dest_point[0], lon: f.voyage.dest_point[1] }

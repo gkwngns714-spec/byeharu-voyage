@@ -195,7 +195,11 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // small 4) is kept and called, not retyped. Measured by the migration itself: 1,288 offers, 1,241
 // native and 47 at a named entrepot, 0 neither; the 3 goods 0058 had left buyable nowhere on earth
 // (allspice, pistachios, lac) are back at their own sources.
-const LAST = '20260818000062_a_good_comes_from_somewhere.sql'
+// Moved deliberately 2026-08-31 to 0063, which puts `voyages.departed_at` on the wire so the map
+// can count UP from her departure as well as down to her arrival. One sliced hunk on
+// world.fleets(); no schema, no new function, no grant change, and the marker's cadence and the
+// served position are untouched.
+const LAST = '20260818000063_she_says_how_long_she_has_been_at_sea.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

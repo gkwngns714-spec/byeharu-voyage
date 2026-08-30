@@ -109,6 +109,29 @@ test.describe('the position is the server’s, copied', () => {
     expect(MODEL.fleets).toHaveLength(2)
   })
 
+  test('the instant she left is COPIED when served, and absent when it is not (0063)', () => {
+    // 0063 put `voyages.departed_at` on the wire so the map can count UP from it. The chart's
+    // job is to parse it once and carry it; the elapsed figure itself is one subtraction against
+    // the shell clock, exactly as `arrives` is.
+    const left = '2026-08-18T04:05:06.000Z'
+    const withDeparture: FleetView = {
+      ...AURORA,
+      voyage: { ...AURORA.voyage!, departed_at: left },
+    }
+    const mapped = mapFleetsOf([withDeparture])[0]
+    expect(mapped.kind).toBe('sailing')
+    if (mapped.kind !== 'sailing') throw new Error('unreachable')
+    expect(mapped.voyage.departedMs).toBe(Date.parse(left))
+
+    // AND THE OLDER SERVER CASE, which is the one that would go wrong quietly: an absent field
+    // must read null, never NaN and never 0 — a fleet counted from 1970 would print an elapsed
+    // time of fifty-odd years and look like a clock bug rather than a missing field.
+    const older = mapFleetsOf([AURORA])[0]
+    if (older.kind !== 'sailing') throw new Error('unreachable')
+    expect(AURORA.voyage!.departed_at).toBeUndefined()
+    expect(older.voyage.departedMs).toBeNull()
+  })
+
   test('a voyage the server did not place is not parked at a guessed coordinate', () => {
     const unplaced: FleetView = { ...AURORA, voyage: { ...AURORA.voyage!, position: null } }
     expect(mapFleetsOf([unplaced])).toHaveLength(0)

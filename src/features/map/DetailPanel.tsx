@@ -153,6 +153,20 @@ export function DetailPanel({
                 label="sailed"
                 value={`${formatInt(fleet.voyage.sailedNm)} / ${formatNm(fleet.voyage.totalNm)}`}
               />
+              {/* 0063 — HOW LONG SHE HAS BEEN ON THE SEA. The owner, row 50: "i need a real
+                  timer in map, telling me how long i've been on the sea".
+
+                  It is the mirror of `arrives` and made the same way: ONE subtraction against
+                  ONE served instant, using the same shell clock. It counts UP from
+                  `voyages.departed_at`, which 0063 put on the wire because it cannot be derived
+                  here — `eta` moves when a hazard delays her or a fair wind gives hours back, so
+                  arrival minus duration is not departure.
+
+                  Drawn only when the server serves the instant, so a build talking to an older
+                  server shows one fewer line rather than a figure counted from 1970. */}
+              {fleet.voyage.departedMs !== null && (
+                <Line label="at sea" value={formatRealShort(nowMs - fleet.voyage.departedMs)} />
+              )}
               <Line label="arrives" value={formatRealShort(fleet.voyage.etaMs - nowMs)} />
               {/* 0055 — WHAT WATER IS STILL IN FRONT OF HER, and how far off it is. A list of
                   places, never a forecast; see ./WatersAhead.tsx. */}
