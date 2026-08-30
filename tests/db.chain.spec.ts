@@ -189,7 +189,13 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // lies here carrying, so a hold is never stranded), and the price record follows: measured by the
 // migration itself, price_history's ceiling falls from ~594.7 MiB to ~14.1 MiB. cmd.do_sell and
 // public.port_goods are deliberately untouched.
-const LAST = '20260818000061_a_city_sells_only_what_its_roster_names.sql'
+// Moved deliberately 2026-08-26 to 0062, which gives every good the regions that PRODUCE it
+// (public.goods.origin_regions) and the ports that RE-EXPORT it (entrepot_ports), and retires
+// 0058's seeded-hash choice of WHICH goods a port sells — 0058's COUNT law (capital 10, mid 4-8,
+// small 4) is kept and called, not retyped. Measured by the migration itself: 1,288 offers, 1,241
+// native and 47 at a named entrepot, 0 neither; the 3 goods 0058 had left buyable nowhere on earth
+// (allspice, pistachios, lac) are back at their own sources.
+const LAST = '20260818000062_a_good_comes_from_somewhere.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

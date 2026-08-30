@@ -5,6 +5,96 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-08-26 — D29: a good comes from somewhere (0062), and what 0058's hash had quietly deleted
+
+**The request, verbatim:** *"Also the 243 trade goods, they should be regional, meaning that for
+example rice - was a main food in eastern asia and india, haggis for example is only in scotland,
+unique, etc. I want something like this not a bunch of list with randomness. I want uniqueness
+taylored to a location. make a list, make a table, file, and orgnize and show how you've organized"*
+
+**The deliverable the owner named is `docs/REGIONAL_GOODS.md`** — 1,120 lines: all 243 goods filed
+by region of origin, the 38 broad goods and the 83 region-locked ones kept apart, the 54 goods
+buyable at exactly one port on earth, the 47 entrepot offers defended one by one, and the whole of
+what 0058 broke reconstructed port by port.
+
+### What was already true, and what 0058 had done to it
+
+`data/ports.json` already carried a hand-researched roster for all 224 harbours — this was never a
+blank page. What `0058` did, to force the owner's own count law (capital 10 / mid 4-8 / small 4),
+was choose WHICH goods by `public.roster_rng(port_code || '|' || good_code)`, a seeded md5 rank.
+Its receipt: *"78 offer(s) dropped, 56 offer(s) filled"*. Measured by diffing `data/ports.json` at
+`6991814` against its parent:
+
+* **78 drops, all at small harbours, the casualty picked by hash.** Konigsberg lost **amber** — the
+  port whose own `notes` field reads *"ducal Prussian capital holding the Baltic amber monopoly"*
+  and the good whose own note reads *"worked at Konigsberg and Gdansk"*. Saint-Louis lost
+  **gum-arabic** (*"controlling the gum-arabic trade"*). Trondheim lost **copper** (*"outlet for
+  Roros copper from 1644"*). Willemstad lost **salt** (*"took Curacao in 1634 for its salt pans"*).
+  Machilipatnam lost **diamonds**, Jaffna **pearls**, Accra **gold**, Fuzhou **tea**.
+* **56 fills, all at capitals, drawn from the whole catalogue.** Tokyo gained caviar, gold thread,
+  lychees, molasses and sealskins — five of its ten. Jakarta gained North Sea herring. Copenhagen
+  gained Guinea camwood. Callao gained Tuscan majolica and Chian mastic.
+* **Three goods fell out of the world.** `allspice`, `pistachios` and `lac` each had exactly one
+  port; each lost it to the hash. Before 0058 all 243 goods had a producer; after it, 240 did — and
+  the other three stayed priced, stayed in the compendium, and were buyable **nowhere on earth**.
+  Nothing was red anywhere.
+
+### 0062 — the law, and why an entrepot list is the guard
+
+Two new columns on `public.goods`, both authored in `data/goods.json`: **`origin_regions`** (the
+regions that PRODUCE the good — never empty) and **`entrepot_ports`** (the ports outside them that
+historically RE-EXPORTED it). One sentence, no third case:
+
+> every offer is **native** (the port's region is in `origin_regions`) or a **named entrepot** (the
+> port's code is in `entrepot_ports`).
+
+**1,288 offers: 1,241 native, 47 entrepot, 0 neither.** The 47 are the age of sail — pepper at
+Lisbon and Alexandria, silver at Seville and Macau, wool at the Calais Staple, Korean ginseng at
+Tsushima — and every one had to be typed in by hand and defended by name in §D of the doc. That is
+the point: **a seeded hash can invent an offer, but it cannot write an entrepot row.**
+
+`0058`'s COUNT law is **kept and composed, not retyped** — assert (e) calls
+`public.roster_target_count` rather than restating 10 / 4-8 / 4. What is retired is the hash's job
+as an AUTHOR, and assert (j) is the positive control: 48 of its 56 picks must be gone. **8 survive
+on purpose** (Cadiz silver plate, Canton grasscloth, Havana lignum vitae, Istanbul's arsenal timber,
+Batavia's and Bahia's chillies, Macau's bamboo paper, Manila's carved ivory) because a blind draw
+can land on a true fact and deleting a true fact to tidy the story is its own dishonesty.
+
+### The rosters, rewritten by hand
+
+**35 of the 78 drops restored**, each with a weaker good going in its place so the count law still
+holds exactly; **43 accepted** with the reason written down. **48 of the 56 fills replaced** with a
+good defensible from that capital's own trade. Eight authored pairs that predate 0058 were also
+replaced because they could not be defended at all — Zanzibar's cloves are an 1818 transplant,
+Hong Kong's "frankincense" is Dongguan agarwood, Cartagena never had a diamond.
+
+### Two live incoherences the new assert found on its first run
+
+```
+0062 self-assert FAIL: 2 port(s) produce a good their own culture will not trade: FAM/wine, RHO/wine
+```
+
+Famagusta and Rhodes carried `islamic` by region and sold wine. `scripts/lib/world-derive.mjs`
+already overrides two Latin-ruled Greek islands for exactly this reason (`heraklion`, `chios`);
+Rhodes (Hospitaller to 1522) and Famagusta (Venetian to 1571) are the same case and were missed.
+The override was completed rather than the wine deleted — weakening a true fact to green is not a
+fix.
+
+### One authority moved
+
+`culture_mask` used to be a hand-typed table **inside a build script**
+(`scripts/lib/world-derive.mjs`, `const ALCOHOL_MASK`, six entries) — a second author for a fact
+about a good. It is deleted there and read from `data/goods.json`'s `cultureMask`, so one file now
+answers every geographic question about a good. It gains a seventh entry: `salted-beef`, masked from
+`indic` and `japanese`. Alcohol was deliberately **not** extended to `malay`, because arrack's own
+note names Batavia as its distillery.
+
+### Proven
+
+`npm run db:apply` green, 54 receipts, and **world-guard certifies** the applied world equals
+`data/*.json` (224 harbours, 243 goods, 1,288 offers, 54,432 market rows). `npm run db:proof` green.
+`scripts/db/breaktest-0062.mjs` watches 26 mutations, one at a time, against a real PostgreSQL 18 —
+every guard bit.
 ## 2026-08-26 — D29: a city SELLS only what its roster names (0061)
 
 **The owner, `docs/OWNER_REQUESTS.md` row 48, said twice:** *"i told you, min 4, max 10 trades goods

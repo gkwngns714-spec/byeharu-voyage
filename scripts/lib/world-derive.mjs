@@ -341,6 +341,11 @@ const CULTURE_OVERRIDE = {
   amsterdam: 'germanic', antwerp: 'germanic', rotterdam: 'germanic', bruges: 'germanic',
   athens: 'islamic', heraklion: 'latin',   // Ottoman Greece; Venetian Crete until 1669
   chios: 'latin',            // the Genoese Maona held the island until 1566
+  // Completed 2026-08-26 by 0062, which caught the gap: its mask assert found two harbours
+  // PRODUCING a good their own culture refuses. Rhodes and Famagusta are the same case Heraklion
+  // and Chios already carry — Latin-ruled Greek wine islands whose vineyards outlived the conquest.
+  rhodes: 'latin',           // Hospitaller until Suleiman took the fortress in 1522
+  famagusta: 'latin',        // Venetian Cyprus until the siege of 1571
   male: 'islamic',           // the Maldives, an Islamic sultanate since 1153
   'port-louis': 'guinean',   // like cape-town: a Dutch station on an ocean coast, not a Swahili port
 }
@@ -427,9 +432,11 @@ const PERISH = {
   'palm-sugar': 0.001, ghee: 0.002, 'sesame-oil': 0.001, 'palm-oil': 0.001, 'sharks-fin': 0.001,
   tamarind: 0.001,
 }
-/** DESIGN B.4/G.3: cultures that will not trade the good at all. ONE rule for every alcohol. */
-const ALCOHOL_MASK = ['islamic', 'swahili']
-const CULTURE_MASK = { wine: ALCOHOL_MASK, beer: ALCOHOL_MASK, sake: ALCOHOL_MASK, rum: ALCOHOL_MASK, brandy: ALCOHOL_MASK, arrack: ALCOHOL_MASK }
+// DESIGN B.4/G.3: cultures that will not trade the good at all.
+// Retired here 2026-08-26 by 0062: the mask used to be a hand-typed table in THIS file
+// (`ALCOHOL_MASK` over six spirits), a second authority beside data/goods.json for a fact about a
+// good. It now lives on the good itself, as `cultureMask` in data/goods.json, beside `origin` and
+// `entrepots` — one file answers every geographic question about a good. Read, not re-derived.
 
 /**
  * Derive the whole world from data/*.json — the rows the database should hold, keyed the way the
@@ -517,6 +524,10 @@ export function deriveWorld() {
     return { code, name, flag_char: flag, capital_port_code: capital ?? fallbackCapital }
   })
 
+  // 0062: `origin` (the regions that PRODUCE the good) and `entrepots` (the ports outside those
+  // regions that historically RE-EXPORTED it) are authored in data/goods.json and carried into the
+  // database as region codes and port codes, so the roster law — every offer is native or a named
+  // entrepot — is checkable in SQL rather than only on paper.
   const derivedGoods = goods.map((g) => ({
     code: g.id,
     name: g.name,
@@ -524,7 +535,17 @@ export function deriveWorld() {
     bulk: BULK[g.category] ?? 1.0,
     perishable_pct_day: PERISH[g.id] ?? 0,
     category: g.category,
-    culture_mask: CULTURE_MASK[g.id] ?? [],
+    culture_mask: g.cultureMask ?? [],
+    origin_regions: (g.origin ?? []).map((r) => {
+      const c = regionCode.get(r)
+      if (!c) throw new Error(`good ${g.id} names origin region "${r}", which data/regions.json does not define`)
+      return c
+    }).sort(),
+    entrepot_ports: (g.entrepots ?? []).map((p) => {
+      const c = portCode.get(p)
+      if (!c) throw new Error(`good ${g.id} names entrepot port "${p}", which data/ports.json does not define`)
+      return c
+    }).sort(),
   }))
 
   // (legs) RETIRED 2026-08-24 with migration 0049: public.legs and data/sea-routes.json are
