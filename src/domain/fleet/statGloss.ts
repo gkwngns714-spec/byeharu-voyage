@@ -76,7 +76,7 @@ export const SHIP_STATS = {
   crew: {
     term: 'crew',
     unit: 'needed / berths',
-    line: 'Short of the first figure she may not sail, and hands lost at sea slow her; the second is every berth there is to hire into.',
+    line: 'Short of the first figure she may not sail, and crew lost at sea slow her; the second is every berth there is to hire into.',
   },
   speed: {
     term: 'speed',
