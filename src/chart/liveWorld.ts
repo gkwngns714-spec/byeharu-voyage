@@ -64,6 +64,7 @@ export function mapFleetsOf(fleets: readonly FleetView[]): MapFleet[] {
         kind: 'sailing',
         id: f.id,
         name: f.name,
+        enduranceDays: f.endurance_days,
         voyage: {
           course: course.map(([lat, lon]) => ({ lat, lon })),
           segIndex: position.seg_index,
@@ -101,11 +102,19 @@ export function mapFleetsOf(fleets: readonly FleetView[]): MapFleet[] {
         kind: 'anchored',
         id: f.id,
         name: f.name,
+        enduranceDays: f.endurance_days,
         at: { lat: f.anchor[0], lon: f.anchor[1] },
       })
       continue
     }
-    if (f.port) out.push({ kind: 'docked', id: f.id, name: f.name, portCode: f.port })
+    if (f.port)
+      out.push({
+        kind: 'docked',
+        id: f.id,
+        name: f.name,
+        enduranceDays: f.endurance_days,
+        portCode: f.port,
+      })
   }
   return out
 }
