@@ -250,12 +250,6 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
     )
   }
 
-  const cheapHere = market
-    ? market.goods
-        .filter((g) => g.available && g.pct_nbr !== null)
-        .sort((a, b) => (a.pct_nbr ?? 0) - (b.pct_nbr ?? 0))
-        .slice(0, 3)
-    : []
   const worthBuying = market ? market.goods.filter((g) => g.available && g.advice === 'buy').slice(0, 4) : []
 
   return (
@@ -572,19 +566,21 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                        fair is not printed again here (PortFair.tsx says why). */
                     hint="The cut between what this port buys at and what it sells at. It narrows as a city's trade grows, and narrows again while a fair is on — this figure already has both in it."
                   />
-                  <DetailRow
-                    label="Cheapest here"
-                    value={
-                      cheapHere.length === 0
-                        ? marketLoaded
-                          ? 'nothing undercuts its neighbours'
-                          : 'reading…'
-                        : cheapHere
-                            .map((g) => `${g.name} ${formatPctPoints(g.pct_nbr ?? 0)}`)
-                            .join(' · ')
-                    }
-                    hint="What this port charges as a share of what its neighbours charge — today's market, not a list of what the town is famous for."
-                  />
+                  {/* "CHEAPEST HERE" IS GONE — the owner, 2026-09-01: *"there is no need info -
+                      cheapest here, the game is to challenge players for finding the best prices
+                      by themselves."*
+
+                      It is not a layout complaint, it is a rule about what this game IS. The row
+                      ranked the port's three best bargains against their neighbours and printed
+                      them, which is the answer to the question a trading game exists to ask. A
+                      screen that hands over the answer has not saved the player a step; it has
+                      removed the play.
+
+                      Deleted rather than hidden, and `cheapHere` with it, so nothing computes an
+                      answer nobody may read. What the city IS — how grown, the tax, the spread —
+                      stays: those are facts about the place, not a ranking of where the money is.
+                      The MARKET face beside it still prices every good on the quay, which is the
+                      evidence the player reads to find the answer for themselves. */}
                 </dl>
             </>
           )}
