@@ -268,9 +268,10 @@ export function GoodPicker({
                     <Badge tone={g.advice === 'buy' ? 'success' : g.advice === 'sell' ? 'accent' : 'neutral'}>
                       {g.advice}
                     </Badge>
-                    <span aria-hidden className="ml-auto font-mono text-[10px] uppercase tracking-wider text-accent">
-                      {isOpen ? 'open' : value === g.code ? 'chosen' : 'look'}
-                    </span>
+                    {/* THE AFFORDANCE WORD IS GONE — the owner, row 63: "look in trading goods,
+                        remove the word. no need." It printed `look` / `chosen` / `open` on every
+                        tile to say a tile could be opened. The tile already says both without a
+                        word: an open one has unfolded, and the chosen one carries its own ring. */}
                   </span>
                   <GoodFigures
                     good={g}
@@ -418,7 +419,15 @@ function GoodDetail({
           {intent === 'sell' ? (
             <QtyPicker bound={sellBound(qty.aboard)} step={qty.step} value={qty.value} onPick={qty.onPick} />
           ) : capacity.bound ? (
-            <QtyPicker bound={capacity.bound} step={qty.step} value={qty.value} onPick={qty.onPick} />
+            /* The gauge spans the QUAY'S PILE (row 63); the ceiling that clamps it is still the
+               server's own capacity fold. `good.stock` is served on every market row. */
+            <QtyPicker
+              bound={capacity.bound}
+              span={good.stock}
+              step={qty.step}
+              value={qty.value}
+              onPick={qty.onPick}
+            />
           ) : (
             <p className={fineClass()}>
               {capacity.loading
@@ -623,11 +632,21 @@ function Figure({
  */
 export function QtyPicker({
   bound,
+  span,
   step,
   value,
   onPick,
 }: {
   bound: QtyBound
+  /**
+   * HOW FAR THE GAUGE REACHES — the owner, row 63: *"the gauge max will be the stock it has in
+   * the market."* This is the market's stock, NOT the ceiling: `bound.max` is still what the
+   * player may actually take (the server's own purse-hold-stock fold), and dragging past it
+   * CLAMPS rather than going dead — row 16's law, "never a ceiling the server would then refuse."
+   * So the gauge shows the size of the pile and the caption says what stops you short of it.
+   * Absent (a SELL) the gauge spans the ceiling, which is what is aboard.
+   */
+  span?: number
   /** `config.trade_step_tuns` — the server reprices every step, so the stepper walks in them. */
   step: number
   value: string | undefined
@@ -635,6 +654,9 @@ export function QtyPicker({
 }) {
   const numeric = value && /^[0-9]+$/.test(value) ? Number(value) : null
   const max = bound.max
+  /** The gauge's extent. Never under the ceiling: a pile smaller than what she could take is
+   *  still the whole pile, and a gauge that stopped short of its own maximum would lie. */
+  const reach = Math.max(max, Math.floor(span ?? 0))
   const stepSize = Math.max(1, Math.round(step))
   const current = numeric ?? Math.min(max, stepSize)
 
@@ -649,20 +671,10 @@ export function QtyPicker({
             `chip` / `chip-on` variants (buttonStyles.ts). MAX has no ON state — it SETS the number
             rather than becoming the value — so it is always the OFF variant, and the disabled
             treatment it used to spell out (`disabled:opacity-45`) is already in the base recipe. */}
-        {(['ALL', 'HALF'] as const).map((token) => (
-          <button
-            key={token}
-            type="button"
-            onClick={() => onPick(token)}
-            className={buttonClasses(
-              value === token ? 'chip-on' : 'chip',
-              'md',
-              'font-mono text-xs uppercase tracking-wider',
-            )}
-          >
-            {token}
-          </button>
-        ))}
+        {/* ALL AND HALF ARE GONE — the owner, row 63: "all and max is same. remove all. remove
+            half." They were right that ALL and MAX name one number; HALF went with them. The
+            server's parser still reads both words, so a typed order is unaffected — what was
+            removed is two chips that said what the gauge and MAX already say. */}
         {/* JUST "MAX" (the owner, 2026-08-23: "what is max 12 in hire? just max is enough").
             The chip means "as much as possible"; the figure it lands on is already stated in the
             caption under the slider, and printing it on the chip too was two renderings of the
@@ -720,7 +732,7 @@ export function QtyPicker({
           <input
             type="range"
             min={0}
-            max={max}
+            max={reach}
             step={stepSize}
             value={numeric ?? 0}
             aria-label="Tuns"
