@@ -34,6 +34,21 @@
 --     hazards survived, say - would be worse than an honest zero: it would make the track look
 --     built.
 --
+-- -- WHAT THIS SUPERSEDES ------------------------------------------------------------------------
+-- public.player_fame, created at 0014. This file REPLACES its body: it kept its own count of
+-- ledger turnover and distinct ports, and now reads public.player_progress instead. Same name,
+-- same argument, same returned shape - the standings board (0025) and the house screen both read
+-- it and neither changes.
+--
+-- Why supersede rather than add beside: two functions counting the same ledger two ways is the
+-- defect this chain keeps removing, and the moment a third track existed there would have been
+-- two places to add it to. The self-assert proves the replacement is total - the new body does not
+-- mention the ledger at all - and proves the two agree.
+--
+-- The change is NOT a no-op: exploration now counts sea miles as well as landfalls, so a house
+-- that has sailed scores more than it did yesterday. That is the owner's ruling of "both", stated
+-- here so nobody later reads it as drift.
+--
 -- -- ONE DEFINITION, NOT TWO --------------------------------------------------------------------
 -- public.player_fame is RE-CUT to read this function rather than compute its own turnover and port
 -- count. Two functions counting the same ledger two ways is the defect this chain keeps removing;
