@@ -549,6 +549,7 @@ export function deriveWorld() {
     perishable_pct_day: PERISH[g.id] ?? 0,
     category: g.category,
     culture_mask: g.cultureMask ?? [],
+    industry: g.industry === true,
     origin_regions: (g.origin ?? []).map((r) => {
       const c = regionCode.get(r)
       if (!c) throw new Error(`good ${g.id} names origin region "${r}", which data/regions.json does not define`)

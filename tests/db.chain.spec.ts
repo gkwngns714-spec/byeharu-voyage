@@ -202,7 +202,10 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved deliberately 2026-09-01 to 0064, which re-files the catalogue into seventeen plain
 // categories and, in the same slice, moves `bulk` and the industrial flag off `category` and onto
 // the good -- so a renaming cannot move a hold or a port's development.
-const LAST = '20260818000064_a_category_is_a_word_a_player_would_say.sql'
+// Moved deliberately 2026-09-02 to 0065, which grows the catalogue to 523 goods so the owner's
+// rule -- no good in more than three cities -- can hold at all: 224 harbours need 1,288 offers,
+// and 243 goods capped at three could only ever supply 729.
+const LAST = '20260818000065_the_catalogue_grows_and_no_good_sits_in_four_cities.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

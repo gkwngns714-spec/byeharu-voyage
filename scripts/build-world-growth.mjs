@@ -256,9 +256,12 @@ w('')
 // 2. goods
 if (newGoods.length) {
   w(`-- ── 2. The ${newGoods.length} new goods ───────────────────────────────────────────────────────────────────`)
-  w('insert into public.goods (code, name, base_value, bulk, perishable_pct_day, category, culture_mask) values')
+  // 0062 gave every good its geography and 0064 gave it its industry flag; a growth that inserted
+  // a good without them would land it with an empty origin, which world-guard reads as drift and
+  // 0062's own law reads as a good buyable nowhere.
+  w('insert into public.goods (code, name, base_value, bulk, perishable_pct_day, category, culture_mask, origin_regions, entrepot_ports, industry) values')
   w(newGoods.map((g) =>
-    `  (${q(g.code)}, ${q(g.name)}, ${g.base_value.toFixed(2)}, ${g.bulk.toFixed(3)}, ${g.perishable_pct_day.toFixed(3)}, ${q(g.category)}, '{${g.culture_mask.join(',')}}')`,
+    `  (${q(g.code)}, ${q(g.name)}, ${g.base_value.toFixed(2)}, ${g.bulk.toFixed(3)}, ${g.perishable_pct_day.toFixed(3)}, ${q(g.category)}, '{${g.culture_mask.join(',')}}', '{${g.origin_regions.join(',')}}', '{${g.entrepot_ports.join(',')}}', ${g.industry ? 'true' : 'false'})`,
   ).join(',\n') + '\non conflict (code) do nothing;\n')
 }
 if (changedGoods.length) {
@@ -611,7 +614,7 @@ begin
     join lateral (select count(*) as c from public.port_specialties s where s.port_id = p.id) sc on true
     join lateral (select count(*) as c from public.port_specialties s
                     join public.goods g on g.id = s.good_id
-                   where s.port_id = p.id and g.category in ('metal', 'textile', 'naval-stores')) ic on true
+                   where s.port_id = p.id and g.industry) ic on true
    where p.kind = 'HARBOUR'
      and (p.dev_commerce <> greatest(0, least(20, round(p.size_tier * 2.4 + sc.c)))
        or p.dev_industry <> greatest(0, least(20, round(p.size_tier * 2.0 + ic.c * 1.5)))
@@ -623,17 +626,16 @@ begin
     from public.ports p
     join lateral (select count(*) as c from public.port_specialties s where s.port_id = p.id) sc on true
    where p.kind = 'HARBOUR'
-     and (sc.c < 4 or sc.c > 9
-       or (p.size_tier = 5 and sc.c > 9)
-       or (p.size_tier = 3 and sc.c > 7)
-       or (p.size_tier = 2 and sc.c not between 4 and 5));
+     and ((p.size_tier = 5 and sc.c <> 10)
+       or (p.size_tier = 3 and sc.c not between 4 and 8)
+       or (p.size_tier = 2 and sc.c <> 4));
   if v_n <> 0 then
     select string_agg(p.code, ', ') into v_list from public.ports p
       join lateral (select count(*) as c from public.port_specialties s where s.port_id = p.id) sc on true
      where p.kind = 'HARBOUR'
-       and (sc.c < 4 or sc.c > 9 or (p.size_tier = 5 and sc.c > 9)
-         or (p.size_tier = 3 and sc.c > 7) or (p.size_tier = 2 and sc.c not between 4 and 5));
-    raise exception '${shortNo} self-assert FAIL: % harbour(s) break the 4-9 offers-by-size rule: %', v_n, v_list;
+       and ((p.size_tier = 5 and sc.c <> 10)
+         or (p.size_tier = 3 and sc.c not between 4 and 8) or (p.size_tier = 2 and sc.c <> 4));
+    raise exception '${shortNo} self-assert FAIL: % harbour(s) break the roster count law (capital 10, mid 4-8, small 4): %', v_n, v_list;
   end if;
 
   ---------------------------------------------------------------------------------------------

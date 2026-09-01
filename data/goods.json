@@ -4753,6 +4753,4766 @@
       "entrepots": [],
       "bulk": 1.4,
       "industry": true
+    },
+    {
+      "id": "port-wine",
+      "name": "Port Wine",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        35,
+        53
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "sherry",
+      "name": "Sherry",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        50,
+        84
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "madeira-wine",
+      "name": "Madeira",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        66,
+        123
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "atlantic-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "canary-sack",
+      "name": "Canary Sack",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        40,
+        62
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "atlantic-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "malmsey",
+      "name": "Malmsey",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        55,
+        96
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "aegean-anatolia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "rhenish-wine",
+      "name": "Rhenish Wine",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        70,
+        135
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "claret",
+      "name": "Claret",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        44,
+        71
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "burgundy",
+      "name": "Burgundy",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        59,
+        106
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "chianti",
+      "name": "Chianti",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        75,
+        149
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-mediterranean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "retsina",
+      "name": "Retsina",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        49,
+        82
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "aegean-anatolia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "commandaria",
+      "name": "Commandaria",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        64,
+        118
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "levant"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "tokay",
+      "name": "Tokay",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        38,
+        58
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "adriatic-ionian"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "english-ale",
+      "name": "English Ale",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        53,
+        91
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "porter-beer",
+      "name": "Porter",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        68,
+        130
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "hamburg-beer",
+      "name": "Hamburg Beer",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        42,
+        67
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "kvass",
+      "name": "Kvass",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        58,
+        103
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "vodka",
+      "name": "Vodka",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        73,
+        143
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "whisky",
+      "name": "Whisky",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        47,
+        77
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "gin",
+      "name": "Genever",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        62,
+        113
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "aquavit",
+      "name": "Aquavit",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        36,
+        55
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "cognac",
+      "name": "Cognac",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        52,
+        88
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "grappa",
+      "name": "Grappa",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        67,
+        126
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-mediterranean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "rakia",
+      "name": "Rakia",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        41,
+        64
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "adriatic-ionian"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "ouzo",
+      "name": "Ouzo",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        56,
+        98
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "aegean-anatolia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "arak-levant",
+      "name": "Levantine Arak",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        71,
+        138
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "levant"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "baijiu",
+      "name": "Baijiu",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        45,
+        73
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "soju",
+      "name": "Soju",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        61,
+        110
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "shochu",
+      "name": "Shochu",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        76,
+        152
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "pulque",
+      "name": "Pulque",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        50,
+        84
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "chicha",
+      "name": "Chicha",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        65,
+        121
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "palm-wine",
+      "name": "Palm Wine",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        39,
+        60
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "cachaca",
+      "name": "Cachaca",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        54,
+        94
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "cider",
+      "name": "Cider",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        70,
+        134
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "perry",
+      "name": "Perry",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        44,
+        71
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "mead",
+      "name": "Mead",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        59,
+        106
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "toddy",
+      "name": "Toddy",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        74,
+        146
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "coconut-arrack",
+      "name": "Coconut Arrack",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        48,
+        80
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "sherbet",
+      "name": "Sherbet Syrup",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        63,
+        116
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "arabia-gulf"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "mint-tea",
+      "name": "Mint Tea",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        37,
+        57
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "maghreb"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "honeybush",
+      "name": "Honeybush Tea",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        53,
+        91
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "east-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "virginia-leaf",
+      "name": "Virginia Leaf",
+      "category": "tobacco",
+      "valueBand": 3,
+      "baseValue": [
+        197,
+        374
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "north-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "maryland-leaf",
+      "name": "Maryland Leaf",
+      "category": "tobacco",
+      "valueBand": 3,
+      "baseValue": [
+        121,
+        192
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "north-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "brazil-twist",
+      "name": "Brazil Twist",
+      "category": "tobacco",
+      "valueBand": 3,
+      "baseValue": [
+        165,
+        292
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "cuban-leaf",
+      "name": "Cuban Leaf",
+      "category": "tobacco",
+      "valueBand": 3,
+      "baseValue": [
+        210,
+        411
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "caribbean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "cigars",
+      "name": "Cigars",
+      "category": "tobacco",
+      "valueBand": 3,
+      "baseValue": [
+        134,
+        220
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "caribbean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "turkish-leaf",
+      "name": "Turkish Leaf",
+      "category": "tobacco",
+      "valueBand": 3,
+      "baseValue": [
+        179,
+        327
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "aegean-anatolia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "persian-tombak",
+      "name": "Persian Tombak",
+      "category": "tobacco",
+      "valueBand": 3,
+      "baseValue": [
+        102,
+        154
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "arabia-gulf"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "snuff",
+      "name": "Snuff",
+      "category": "tobacco",
+      "valueBand": 3,
+      "baseValue": [
+        147,
+        249
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "pipe-tobacco",
+      "name": "Pipe Tobacco",
+      "category": "tobacco",
+      "valueBand": 3,
+      "baseValue": [
+        192,
+        361
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "betel-quid",
+      "name": "Betel Quid",
+      "category": "tobacco",
+      "valueBand": 3,
+      "baseValue": [
+        116,
+        182
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "salmon",
+      "name": "Salmon",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        56,
+        98
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "cod",
+      "name": "Cod",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        71,
+        137
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "north-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "stockfish",
+      "name": "Stockfish",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        45,
+        73
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "tuna",
+      "name": "Tuna",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        60,
+        108
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-mediterranean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "sardines",
+      "name": "Sardines",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        75,
+        149
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "anchovies",
+      "name": "Anchovies",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        49,
+        82
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-mediterranean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "mackerel",
+      "name": "Mackerel",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        65,
+        121
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "smoked-eel",
+      "name": "Smoked Eel",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        39,
+        60
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "sturgeon",
+      "name": "Sturgeon",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        54,
+        93
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "bonito",
+      "name": "Bonito",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        69,
+        132
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "pollock",
+      "name": "Pollock",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        43,
+        69
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "halibut",
+      "name": "Halibut",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        59,
+        105
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "hake",
+      "name": "Hake",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        74,
+        146
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "pilchards",
+      "name": "Pilchards",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        48,
+        79
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "bacalhau",
+      "name": "Bacalhau",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        63,
+        116
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "katsuobushi",
+      "name": "Katsuobushi",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        37,
+        56
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "dried-squid",
+      "name": "Dried Squid",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        52,
+        89
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "salt-cod",
+      "name": "Salt Cod",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        68,
+        129
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "north-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "gochujang",
+      "name": "Gochujang",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        42,
+        66
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "doenjang",
+      "name": "Doenjang",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        57,
+        101
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "kimchi",
+      "name": "Kimchi",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        72,
+        140
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "miso",
+      "name": "Miso",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        46,
+        75
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "mirin",
+      "name": "Mirin",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        61,
+        111
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "rice-vinegar",
+      "name": "Rice Vinegar",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        35,
+        53
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "fish-sauce",
+      "name": "Fish Sauce",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        51,
+        86
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "shrimp-paste",
+      "name": "Shrimp Paste",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        66,
+        124
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "pickled-plums",
+      "name": "Pickled Plums",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        40,
+        62
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "olives",
+      "name": "Olives",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        55,
+        96
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-mediterranean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "capers",
+      "name": "Capers",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        70,
+        135
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-mediterranean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "harissa",
+      "name": "Harissa",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        44,
+        71
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "maghreb"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "couscous",
+      "name": "Couscous",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        60,
+        108
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "maghreb"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "maple-sugar",
+      "name": "Maple Sugar",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        75,
+        149
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "north-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "pemmican",
+      "name": "Pemmican",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        49,
+        82
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "north-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "charqui",
+      "name": "Charqui",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        64,
+        119
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "cassava-bread",
+      "name": "Cassava Bread",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        38,
+        59
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "caribbean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "plantains",
+      "name": "Plantains",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        54,
+        93
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "yams",
+      "name": "Yams",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        69,
+        132
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "shea-butter",
+      "name": "Shea Butter",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        43,
+        69
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "teff",
+      "name": "Teff",
+      "category": "grain",
+      "valueBand": 1,
+      "baseValue": [
+        19,
+        34
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "east-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "millet",
+      "name": "Millet",
+      "category": "grain",
+      "valueBand": 1,
+      "baseValue": [
+        25,
+        49
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "sorghum",
+      "name": "Sorghum",
+      "category": "grain",
+      "valueBand": 1,
+      "baseValue": [
+        15,
+        25
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "east-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "oats",
+      "name": "Oats",
+      "category": "grain",
+      "valueBand": 1,
+      "baseValue": [
+        21,
+        39
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "buckwheat",
+      "name": "Buckwheat",
+      "category": "grain",
+      "valueBand": 1,
+      "baseValue": [
+        11,
+        17
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "quinoa",
+      "name": "Quinoa",
+      "category": "grain",
+      "valueBand": 1,
+      "baseValue": [
+        17,
+        29
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "spelt",
+      "name": "Spelt",
+      "category": "grain",
+      "valueBand": 1,
+      "baseValue": [
+        23,
+        43
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "persian-carpet",
+      "name": "Persian Carpet",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        118,
+        186
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "arabia-gulf"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "kashmir-shawl",
+      "name": "Kashmir Shawl",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        163,
+        287
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "dhaka-muslin",
+      "name": "Dhaka Muslin",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        208,
+        405
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "eastern-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "patola-silk",
+      "name": "Patola Silk",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        131,
+        214
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "nankeen",
+      "name": "Nankeen Cloth",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        176,
+        319
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "shantung-silk",
+      "name": "Shantung Silk",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        100,
+        150
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "nishijin-brocade",
+      "name": "Nishijin Brocade",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        145,
+        244
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "ramie-korea",
+      "name": "Korean Ramie",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        190,
+        355
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "hemp-cloth",
+      "name": "Hemp Cloth",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        113,
+        176
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "holland-linen",
+      "name": "Holland Linen",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        158,
+        275
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "flanders-lace",
+      "name": "Flanders Lace",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        203,
+        391
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "irish-linen",
+      "name": "Irish Linen",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        127,
+        204
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "kersey",
+      "name": "Kersey",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        171,
+        307
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "worsted",
+      "name": "Worsted",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        216,
+        428
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "baize",
+      "name": "Baize",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        140,
+        233
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "russia-hemp",
+      "name": "Russia Hemp Cloth",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        185,
+        342
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "sailcloth",
+      "name": "Sailcloth",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        108,
+        166
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "kente-cloth",
+      "name": "Kente Cloth",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        153,
+        263
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "adire-cloth",
+      "name": "Adire Cloth",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        198,
+        377
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "kanga-cloth",
+      "name": "Kanga Cloth",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        122,
+        194
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "east-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "alpaca-wool",
+      "name": "Alpaca Wool",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        167,
+        296
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "tapa-cloth",
+      "name": "Tapa Cloth",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        211,
+        414
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "songket",
+      "name": "Songket",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        135,
+        222
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "ikat",
+      "name": "Ikat",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        180,
+        329
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "merino-wool",
+      "name": "Merino Wool",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        104,
+        158
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "damask",
+      "name": "Damask",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        148,
+        252
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "levant"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "mohair",
+      "name": "Mohair",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        193,
+        364
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "aegean-anatolia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "angora",
+      "name": "Angora Wool",
+      "category": "cloth",
+      "valueBand": 3,
+      "baseValue": [
+        117,
+        184
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "aegean-anatolia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "tin-ingots",
+      "name": "Tin Ingots",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        162,
+        284
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "swedish-iron",
+      "name": "Swedish Iron",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        206,
+        400
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "osmund-iron",
+      "name": "Osmund Iron",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        130,
+        211
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "japan-copper",
+      "name": "Japan Copper",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        175,
+        317
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "potosi-silver",
+      "name": "Potosi Silver",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        220,
+        439
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "zacatecas-silver",
+      "name": "Zacatecas Silver",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        144,
+        242
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "gold-dust",
+      "name": "Gold Dust",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        188,
+        351
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "antimony",
+      "name": "Antimony",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        112,
+        174
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "zinc-spelter",
+      "name": "Spelter",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        157,
+        272
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "eastern-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "bar-iron",
+      "name": "Bar Iron",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        202,
+        388
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "brass-ingots",
+      "name": "Brass Ingots",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        125,
+        201
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "steel-billets",
+      "name": "Steel Billets",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        170,
+        304
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "arabia-gulf"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "platinum",
+      "name": "Platinum",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        215,
+        425
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "lodestone",
+      "name": "Lodestone",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        139,
+        231
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "alum-shale",
+      "name": "Alum Shale",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        183,
+        338
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "aegean-anatolia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "cinnabar",
+      "name": "Cinnabar",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        107,
+        164
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "matchlocks",
+      "name": "Matchlocks",
+      "category": "guns",
+      "valueBand": 4,
+      "baseValue": [
+        442,
+        758
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "arquebus",
+      "name": "Arquebus",
+      "category": "guns",
+      "valueBand": 4,
+      "baseValue": [
+        564,
+        1072
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "culverin",
+      "name": "Culverin",
+      "category": "guns",
+      "valueBand": 4,
+      "baseValue": [
+        356,
+        564
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "falconet",
+      "name": "Falconet",
+      "category": "guns",
+      "valueBand": 4,
+      "baseValue": [
+        478,
+        846
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-mediterranean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "swivel-gun",
+      "name": "Swivel Gun",
+      "category": "guns",
+      "valueBand": 4,
+      "baseValue": [
+        600,
+        1173
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "adriatic-ionian"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "bombard",
+      "name": "Bombard",
+      "category": "guns",
+      "valueBand": 4,
+      "baseValue": [
+        392,
+        643
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "aegean-anatolia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "rocket-tubes",
+      "name": "Rocket Tubes",
+      "category": "guns",
+      "valueBand": 4,
+      "baseValue": [
+        515,
+        940
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "fire-lance",
+      "name": "Fire Lance",
+      "category": "guns",
+      "valueBand": 4,
+      "baseValue": [
+        307,
+        464
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "shot-and-ball",
+      "name": "Shot and Ball",
+      "category": "guns",
+      "valueBand": 4,
+      "baseValue": [
+        429,
+        727
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "slow-match",
+      "name": "Slow Match",
+      "category": "guns",
+      "valueBand": 4,
+      "baseValue": [
+        551,
+        1036
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.9
+    },
+    {
+      "id": "toledo-blades",
+      "name": "Toledo Blades",
+      "category": "weapons",
+      "valueBand": 3,
+      "baseValue": [
+        116,
+        182
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "damascus-blades",
+      "name": "Damascus Blades",
+      "category": "weapons",
+      "valueBand": 3,
+      "baseValue": [
+        161,
+        282
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "levant"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "katana",
+      "name": "Katana",
+      "category": "weapons",
+      "valueBand": 3,
+      "baseValue": [
+        205,
+        397
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "kris",
+      "name": "Kris",
+      "category": "weapons",
+      "valueBand": 3,
+      "baseValue": [
+        129,
+        209
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "talwar",
+      "name": "Talwar",
+      "category": "weapons",
+      "valueBand": 3,
+      "baseValue": [
+        174,
+        314
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "pike-heads",
+      "name": "Pike Heads",
+      "category": "weapons",
+      "valueBand": 3,
+      "baseValue": [
+        219,
+        436
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "crossbows",
+      "name": "Crossbows",
+      "category": "weapons",
+      "valueBand": 3,
+      "baseValue": [
+        142,
+        238
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "adriatic-ionian"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "war-bows",
+      "name": "War Bows",
+      "category": "weapons",
+      "valueBand": 3,
+      "baseValue": [
+        187,
+        348
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "milanese-armour",
+      "name": "Milanese Armour",
+      "category": "weapons",
+      "valueBand": 3,
+      "baseValue": [
+        111,
+        171
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-mediterranean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "shields",
+      "name": "Hide Shields",
+      "category": "weapons",
+      "valueBand": 3,
+      "baseValue": [
+        156,
+        270
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "east-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "kyoto-fans",
+      "name": "Kyoto Fans",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        574,
+        1099
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "imari-ware",
+      "name": "Imari Ware",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        366,
+        586
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "goryeo-celadon",
+      "name": "Goryeo Celadon",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        488,
+        871
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "mother-of-pearl-inlay",
+      "name": "Nacre Inlay",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        610,
+        1202
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "canton-enamel",
+      "name": "Canton Enamel",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        402,
+        665
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "cloisonne",
+      "name": "Cloisonne",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        524,
+        964
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "benin-bronzes",
+      "name": "Benin Bronzes",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        317,
+        483
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "ashanti-goldwork",
+      "name": "Ashanti Goldwork",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        439,
+        751
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "zanzibar-doors",
+      "name": "Carved Doors",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        561,
+        1063
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "east-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "damascene-work",
+      "name": "Damascene Work",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        353,
+        558
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "levant"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "iznik-tiles",
+      "name": "Iznik Tiles",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        475,
+        838
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "aegean-anatolia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "murano-glass",
+      "name": "Murano Glass",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        597,
+        1164
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "adriatic-ionian"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "venetian-mirrors",
+      "name": "Venetian Mirrors",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        389,
+        636
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "adriatic-ionian"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "delftware",
+      "name": "Delftware",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        511,
+        930
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "sheffield-plate",
+      "name": "Sheffield Plate",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        303,
+        456
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "amber-work",
+      "name": "Amber Work",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        425,
+        718
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "sami-craft",
+      "name": "Sami Craft",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        548,
+        1028
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "talavera",
+      "name": "Talavera",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        340,
+        530
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "featherwork",
+      "name": "Featherwork",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        462,
+        806
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "tortoiseshell-combs",
+      "name": "Tortoiseshell Combs",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        584,
+        1127
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "caribbean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "sandalwood-carving",
+      "name": "Sandalwood Carving",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        376,
+        607
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "bidriware",
+      "name": "Bidriware",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        498,
+        896
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "eastern-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "nipa-mats",
+      "name": "Nipa Mats",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        620,
+        1231
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "pandanus-mats",
+      "name": "Pandanus Mats",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        412,
+        688
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "azulejos",
+      "name": "Azulejos",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        534,
+        991
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "maghreb-brass",
+      "name": "Maghreb Brasswork",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        326,
+        502
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "maghreb"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "saffian-leather",
+      "name": "Saffian Leather",
+      "category": "crafts",
+      "valueBand": 4,
+      "baseValue": [
+        449,
+        775
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "maghreb"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "seed-pearls",
+      "name": "Seed Pearls",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        1612,
+        3079
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "arabia-gulf"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "golconda-diamonds",
+      "name": "Golconda Diamonds",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        988,
+        1576
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "eastern-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "ceylon-sapphires",
+      "name": "Ceylon Sapphires",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        1354,
+        2410
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "burma-rubies",
+      "name": "Burma Rubies",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        1721,
+        3382
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "jade",
+      "name": "Jade",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        1097,
+        1810
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "nephrite",
+      "name": "Nephrite",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        1463,
+        2685
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "emerald-muzo",
+      "name": "Muzo Emeralds",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        840,
+        1277
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "opals",
+      "name": "Opals",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        1206,
+        2056
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "baltic-amber",
+      "name": "Baltic Amber",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        1572,
+        2971
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "malachite",
+      "name": "Malachite",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        949,
+        1495
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "east-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "onyx",
+      "name": "Onyx",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        1315,
+        2314
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "maghreb"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "peridot",
+      "name": "Peridot",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        1681,
+        3270
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "arabia-gulf"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "black-coral",
+      "name": "Black Coral",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        1057,
+        1723
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "caribbean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.2
+    },
+    {
+      "id": "attar-of-roses",
+      "name": "Attar of Roses",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        176,
+        319
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "arabia-gulf"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "mumia",
+      "name": "Mumia",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        100,
+        150
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "levant"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "dragon-bone",
+      "name": "Dragon Bone",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        145,
+        244
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "ginseng-korea",
+      "name": "Korean Ginseng",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        190,
+        355
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "moxa",
+      "name": "Moxa",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        113,
+        176
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "kampo-herbs",
+      "name": "Kampo Herbs",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        158,
+        275
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "ayurvedic-oils",
+      "name": "Ayurvedic Oils",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        203,
+        391
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "neem",
+      "name": "Neem",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        127,
+        204
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "kino-gum",
+      "name": "Kino Gum",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        171,
+        307
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "eastern-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "patchouli",
+      "name": "Patchouli",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        216,
+        428
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "clove-oil",
+      "name": "Clove Oil",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        140,
+        233
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "copaiba",
+      "name": "Copaiba",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        185,
+        342
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "coca-leaf",
+      "name": "Coca Leaf",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        108,
+        166
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "tolu-balsam",
+      "name": "Tolu Balsam",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        153,
+        263
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "caribbean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "sassafras-root",
+      "name": "Sassafras Root",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        198,
+        377
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "north-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "witch-hazel",
+      "name": "Witch Hazel",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        122,
+        194
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "north-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "grains-paradise-oil",
+      "name": "Melegueta Oil",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        167,
+        296
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "myrrh-somali",
+      "name": "Somali Myrrh",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        211,
+        414
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "east-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "storax",
+      "name": "Storax",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        135,
+        222
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "aegean-anatolia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "theriaca-venetian",
+      "name": "Venetian Treacle",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        180,
+        329
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "adriatic-ionian"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "angelica-root",
+      "name": "Angelica Root",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        104,
+        158
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "juniper-berries",
+      "name": "Juniper Berries",
+      "category": "medicine",
+      "valueBand": 3,
+      "baseValue": [
+        148,
+        252
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "kermes",
+      "name": "Kermes",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        193,
+        364
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-mediterranean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "weld",
+      "name": "Weld",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        117,
+        184
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "dyers-broom",
+      "name": "Dyer's Broom",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        162,
+        284
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "archil-lichen",
+      "name": "Archil Lichen",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        206,
+        400
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "atlantic-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "sappan-java",
+      "name": "Java Sappan",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        130,
+        211
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "turmeric-dye",
+      "name": "Turmeric Dye",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        175,
+        317
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "eastern-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "persian-berries",
+      "name": "Persian Berries",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        220,
+        439
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "arabia-gulf"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "saffron-dye",
+      "name": "Saffron Dye",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        144,
+        242
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "aegean-anatolia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "sumac",
+      "name": "Sumac",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        188,
+        351
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "maghreb"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "tannin-bark",
+      "name": "Tannin Bark",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        112,
+        174
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "prussian-blue",
+      "name": "Prussian Blue",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        157,
+        272
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "smalt",
+      "name": "Smalt",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        202,
+        388
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "ochre",
+      "name": "Ochre",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        125,
+        201
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "west-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "ultramarine",
+      "name": "Ultramarine",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        170,
+        304
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "arabia-gulf"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "lead-white",
+      "name": "Lead White",
+      "category": "dye",
+      "valueBand": 3,
+      "baseValue": [
+        215,
+        425
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.7
+    },
+    {
+      "id": "riga-mast",
+      "name": "Riga Mast",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        15,
+        25
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "memel-fir",
+      "name": "Memel Fir",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        21,
+        39
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "baltic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "norway-spruce",
+      "name": "Norway Spruce",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        11,
+        17
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "stockholm-tar",
+      "name": "Stockholm Tar",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        17,
+        29
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "oakum",
+      "name": "Oakum",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        23,
+        44
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "cordage",
+      "name": "Cordage",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        13,
+        21
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "canvas-duck",
+      "name": "Canvas Duck",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        19,
+        34
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "live-oak",
+      "name": "Live Oak",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        25,
+        49
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "north-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "greenheart",
+      "name": "Greenheart",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        15,
+        25
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "lignum-vitae",
+      "name": "Lignum Vitae",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        21,
+        38
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "caribbean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "gutta-percha",
+      "name": "Gutta-percha",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        10,
+        15
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "southeast-asia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "coco-fibre",
+      "name": "Coco Fibre",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        16,
+        27
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "whale-bone-stays",
+      "name": "Baleen Stays",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        23,
+        43
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "copper-sheet",
+      "name": "Copper Sheathing",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        12,
+        19
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "ships-nails",
+      "name": "Ship's Nails",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        18,
+        32
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "portolan-charts",
+      "name": "Portolan Charts",
+      "category": "art",
+      "valueBand": 5,
+      "baseValue": [
+        1661,
+        3214
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "adriatic-ionian"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "flemish-panels",
+      "name": "Flemish Panels",
+      "category": "art",
+      "valueBand": 5,
+      "baseValue": [
+        1038,
+        1682
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "italian-canvases",
+      "name": "Italian Canvases",
+      "category": "art",
+      "valueBand": 5,
+      "baseValue": [
+        1404,
+        2534
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-mediterranean"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "ukiyo-e",
+      "name": "Ukiyo-e Prints",
+      "category": "art",
+      "valueBand": 5,
+      "baseValue": [
+        1770,
+        3522
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "scroll-paintings",
+      "name": "Scroll Paintings",
+      "category": "art",
+      "valueBand": 5,
+      "baseValue": [
+        1147,
+        1921
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "mughal-miniatures",
+      "name": "Mughal Miniatures",
+      "category": "art",
+      "valueBand": 5,
+      "baseValue": [
+        1513,
+        2814
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "astrolabes",
+      "name": "Astrolabes",
+      "category": "art",
+      "valueBand": 5,
+      "baseValue": [
+        889,
+        1374
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "arabia-gulf"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "armillary-spheres",
+      "name": "Armillary Spheres",
+      "category": "art",
+      "valueBand": 5,
+      "baseValue": [
+        1255,
+        2171
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "globes",
+      "name": "Terrestrial Globes",
+      "category": "art",
+      "valueBand": 5,
+      "baseValue": [
+        1622,
+        3106
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "nautical-clocks",
+      "name": "Nautical Clocks",
+      "category": "art",
+      "valueBand": 5,
+      "baseValue": [
+        998,
+        1597
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "korean-movable-type",
+      "name": "Movable Type",
+      "category": "books",
+      "valueBand": 4,
+      "baseValue": [
+        488,
+        871
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "korea"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.4
+    },
+    {
+      "id": "sutra-scrolls",
+      "name": "Sutra Scrolls",
+      "category": "books",
+      "valueBand": 4,
+      "baseValue": [
+        610,
+        1202
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "japan"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.4
+    },
+    {
+      "id": "block-printed-books",
+      "name": "Block-printed Books",
+      "category": "books",
+      "valueBand": 4,
+      "baseValue": [
+        402,
+        665
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.4
+    },
+    {
+      "id": "quran-manuscripts",
+      "name": "Quran Manuscripts",
+      "category": "books",
+      "valueBand": 4,
+      "baseValue": [
+        524,
+        964
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "maghreb"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.4
+    },
+    {
+      "id": "palm-leaf-manuscripts",
+      "name": "Palm-leaf Manuscripts",
+      "category": "books",
+      "valueBand": 4,
+      "baseValue": [
+        317,
+        483
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "eastern-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.4
+    },
+    {
+      "id": "antwerp-presses",
+      "name": "Antwerp Imprints",
+      "category": "books",
+      "valueBand": 4,
+      "baseValue": [
+        439,
+        751
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "france-low-countries"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.4
+    },
+    {
+      "id": "venetian-imprints",
+      "name": "Venetian Imprints",
+      "category": "books",
+      "valueBand": 4,
+      "baseValue": [
+        561,
+        1063
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "adriatic-ionian"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.4
+    },
+    {
+      "id": "parchment",
+      "name": "Parchment",
+      "category": "books",
+      "valueBand": 4,
+      "baseValue": [
+        353,
+        558
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "british-isles"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.4
+    },
+    {
+      "id": "rice-paper",
+      "name": "Rice Paper",
+      "category": "books",
+      "valueBand": 4,
+      "baseValue": [
+        475,
+        838
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.4
+    },
+    {
+      "id": "arabian-horses",
+      "name": "Arabian Horses",
+      "category": "animals",
+      "valueBand": 4,
+      "baseValue": [
+        597,
+        1164
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "arabia-gulf"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.5
+    },
+    {
+      "id": "andalusian-horses",
+      "name": "Andalusian Horses",
+      "category": "animals",
+      "valueBand": 4,
+      "baseValue": [
+        389,
+        636
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.5
+    },
+    {
+      "id": "camels",
+      "name": "Camels",
+      "category": "animals",
+      "valueBand": 4,
+      "baseValue": [
+        511,
+        930
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "maghreb"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.5
+    },
+    {
+      "id": "zebu-cattle",
+      "name": "Zebu Cattle",
+      "category": "animals",
+      "valueBand": 4,
+      "baseValue": [
+        303,
+        456
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "western-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.5
+    },
+    {
+      "id": "merino-sheep",
+      "name": "Merino Sheep",
+      "category": "animals",
+      "valueBand": 4,
+      "baseValue": [
+        425,
+        718
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "iberia"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.5
+    },
+    {
+      "id": "falcons",
+      "name": "Hunting Falcons",
+      "category": "animals",
+      "valueBand": 4,
+      "baseValue": [
+        548,
+        1028
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "scandinavia-arctic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.5
+    },
+    {
+      "id": "songbirds",
+      "name": "Songbirds",
+      "category": "animals",
+      "valueBand": 4,
+      "baseValue": [
+        340,
+        530
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "china-coast"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.5
+    },
+    {
+      "id": "macaws",
+      "name": "Macaws",
+      "category": "animals",
+      "valueBand": 4,
+      "baseValue": [
+        462,
+        806
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "south-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.5
+    },
+    {
+      "id": "civet-cats",
+      "name": "Civet Cats",
+      "category": "animals",
+      "valueBand": 4,
+      "baseValue": [
+        584,
+        1127
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "east-africa"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.5
+    },
+    {
+      "id": "peacocks",
+      "name": "Peacocks",
+      "category": "animals",
+      "valueBand": 4,
+      "baseValue": [
+        376,
+        607
+      ],
+      "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
+      "origin": [
+        "eastern-india"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.5
     }
   ]
 }

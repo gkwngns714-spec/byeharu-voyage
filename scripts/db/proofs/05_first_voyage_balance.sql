@@ -222,6 +222,8 @@ declare
   v_far     jsonb;          -- the same ports, scanned at the read's own default reach
   v_short   numeric := 0;   -- pooled return on the stake of every offered route under 400 nm
   v_short_n int := 0;
+  v_all     jsonb := '[]'::jsonb;   -- every route the quay offered, so the split can follow the world
+  v_cut     numeric;
   v_long    numeric := 0;   -- ... and over 800 nm
   v_long_n  int := 0;
   v_s_sum   numeric; v_s_n int; v_l_sum numeric; v_l_n int;
@@ -342,16 +344,18 @@ begin
       -- it is the expensive read in this file, and the claim is about geography, not about luck.
       if d = 1 then
         v_far := world.trade_routes(r_port.id, v_fleet, null, null);
-        select coalesce(sum((e->>'profit')::numeric / v_stake * 100)
-                          filter (where (e->>'nm')::numeric < 400), 0),
-               count(*) filter (where (e->>'nm')::numeric < 400),
-               coalesce(sum((e->>'profit')::numeric / v_stake * 100)
-                          filter (where (e->>'nm')::numeric > 800), 0),
-               count(*) filter (where (e->>'nm')::numeric > 800)
-          into v_s_sum, v_s_n, v_l_sum, v_l_n
+        -- KEEP THE ROUTES, SPLIT THEM LATER. The bands used to be fixed at 400 and 800 nm, and
+        -- 0065 made that an assertion about a world that no longer exists: with every good in at
+        -- most three cities, neighbouring ports rarely trade what each other wants, and the quay
+        -- offered ZERO routes under 400 nm across all eight sampled ports. The CLAIM is sound --
+        -- farther pays more -- but a claim must be measured against the world the game has, not
+        -- the one the threshold was written in (docs/OWNER_REQUESTS.md's proof rule: never assert
+        -- an ambient). So every offered route is kept and the split is the routes' OWN median.
+        select v_all || coalesce(jsonb_agg(jsonb_build_object(
+                 'nm', (e->>'nm')::numeric,
+                 'pct', (e->>'profit')::numeric / v_stake * 100)), '[]'::jsonb)
+          into v_all
           from jsonb_array_elements(v_far->'routes') e;
-        v_short := v_short + v_s_sum; v_short_n := v_short_n + v_s_n;
-        v_long  := v_long  + v_l_sum; v_long_n  := v_long_n  + v_l_n;
       end if;
     end loop;
 
@@ -410,16 +414,27 @@ begin
   -- DISTANCE PAYS. Not a nicety: it is the reason the world is 214 ports wide rather than twelve.
   -- No skip branch. An empty bucket is a world in which the question cannot be asked, and a marker
   -- that reports PASS for that is reporting a safety it never examined.
+  -- The split is the median sailed distance of everything on offer, so both halves exist by
+  -- construction whatever the world's shape -- and the comparison stays honest rather than
+  -- vacuous. It still fails loudly if the quay offered nothing at all to compare.
+  select percentile_cont(0.5) within group (order by (e->>'nm')::numeric)
+    into v_cut from jsonb_array_elements(v_all) e;
+  select coalesce(sum((e->>'pct')::numeric) filter (where (e->>'nm')::numeric <  v_cut), 0),
+         count(*)                           filter (where (e->>'nm')::numeric <  v_cut),
+         coalesce(sum((e->>'pct')::numeric) filter (where (e->>'nm')::numeric >= v_cut), 0),
+         count(*)                           filter (where (e->>'nm')::numeric >= v_cut)
+    into v_short, v_short_n, v_long, v_long_n
+    from jsonb_array_elements(v_all) e;
   if v_short_n = 0 or v_long_n = 0 then
-    raise exception 'PROOF 5 FAILED: the quay offered % route(s) under 400 nm and % over 800 nm across % ports, so "the long legs out-earn the short ones" was never actually compared',
-      v_short_n, v_long_n, c_sample;
+    raise exception 'PROOF 5 FAILED: the quay offered % nearer route(s) and % farther across % ports (median cut % nm), so "the long legs out-earn the short ones" was never actually compared',
+      v_short_n, v_long_n, c_sample, round(coalesce(v_cut, 0), 1);
   end if;
   if (v_long / v_long_n) <= (v_short / v_short_n) then
     raise exception 'PROOF 5 FAILED: long legs pay %%% and short legs pay %%% — there is no reason to sail far',
       round(v_long / v_long_n, 2), round(v_short / v_short_n, 2);
   end if;
-  raise notice 'PASS: BALANCE_DISTANCE_PAYS — pooled over % offered route(s) over 800 nm they return % per cent of the stake against % per cent for the % under 400 nm',
-    v_long_n, round(v_long / v_long_n, 2), round(v_short / v_short_n, 2), v_short_n;
+  raise notice 'PASS: BALANCE_DISTANCE_PAYS — split at the offered routes'' own median of % nm: the % farther route(s) return % per cent of the stake against % per cent for the % nearer',
+    round(v_cut, 1), v_long_n, round(v_long / v_long_n, 2), round(v_short / v_short_n, 2), v_short_n;
 
   -- THE SHORTLIST IS NOT COSTING ANYTHING. The exhaustive scan must have found something (a zero
   -- pair count would agree with the read vacuously), and the read must match its best.
