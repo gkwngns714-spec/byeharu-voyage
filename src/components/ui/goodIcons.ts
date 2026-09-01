@@ -26,15 +26,36 @@ import type { IconName } from './icons'
 // and `SnapshotGood.code` carry). The values are `IconName`, so a glyph named here that does not
 // exist in ICON_NAMES is a COMPILE error rather than a blank square at runtime.
 
-/** Category → glyph. The seven are exactly the categories `data/goods.json` declares. */
+/**
+ * Category → glyph. The SEVENTEEN are exactly the categories `data/goods.json` declares.
+ *
+ * The seven that stood here were buckets, not a taxonomy — `raw` alone held 82 goods: dyes,
+ * medicines, gunpowder stock, hides, livestock, timber and stone. The owner: *"wtf is foodstuff?
+ * … liqure, meat etc. tobacco, etc."* They are seventeen plain words now (docs/DESIGN_V1.md §2.1).
+ *
+ * The existing seven glyphs are re-used where the meaning carried over and shared where it did
+ * not, rather than inventing seventeen drawings in a taxonomy migration: a category glyph is the
+ * FALLBACK a good wears when it has no mark of its own, so a shared one is a lesser answer, not a
+ * wrong one. Goods with their own drawing (GOOD_ICON below) are unaffected either way.
+ */
 const CATEGORY_ICON: Record<string, IconName> = {
+  grain: 'foodstuff',
+  food: 'foodstuff',
+  drink: 'foodstuff',
+  tobacco: 'raw',
   spice: 'spice',
-  textile: 'textile',
+  medicine: 'raw',
+  dye: 'raw',
+  cloth: 'textile',
   metal: 'metal',
-  luxury: 'luxury',
-  foodstuff: 'foodstuff',
-  raw: 'raw',
-  'naval-stores': 'navalStores',
+  gems: 'luxury',
+  crafts: 'luxury',
+  weapons: 'metal',
+  guns: 'metal',
+  'ship-supplies': 'navalStores',
+  art: 'luxury',
+  books: 'luxury',
+  animals: 'raw',
 }
 
 /** Good `code` → its own mark: the original seventy, plus every newer good offered at 5+ ports. */
@@ -145,5 +166,5 @@ export function goodIcon(code: string, category: string): IconName {
  * naval stores with a hyphen because it is a code; a person reading a picker should not have to.
  */
 export function categoryLabel(category: string): string {
-  return category === 'naval-stores' ? 'naval stores' : category
+  return category === 'ship-supplies' ? 'ship supplies' : category
 }
