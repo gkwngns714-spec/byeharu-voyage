@@ -34,6 +34,7 @@ import {
   namedArgs,
   rpcLabel,
   setBackend,
+  worldBuyCapacity,
   worldFleets,
   worldHaggleState,
   worldLedger,
@@ -406,48 +407,72 @@ test('cmd.verb_schema() serves the eight V0 verbs, argument by argument', async 
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// WHAT DOES THIS QUAY ACTUALLY TRADE? — one authority, because four tests need the answer.
+// A SUBJECT FOR A TRADE — asked of the server, never named in the test.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// These tests used to name `salt` outright. Migration 0065 grew the catalogue to 523 goods and put
-// every one of them in ONE to THREE cities (the owner, docs/OWNER_REQUESTS.md: "4 cities cannot
-// have a same trade goods"), and salt stopped being on this port's roster — so four tests failed
-// with E_UNAVAILABLE while asserting E_HOLD_FULL. That is the seed-shaped assertion again: a test
-// that names a good asserts a WORLD, and the world is allowed to change. It must ASK.
+// These tests used to name `salt` outright and count in 40s and 60s. Both halves were assertions
+// about a WORLD rather than about a rule, and 0065 changed the world underneath them: every one of
+// 523 goods now sits in one to three cities ("4 cities cannot have a same trade goods"), salt left
+// this port's roster, and the orders were refused E_UNAVAILABLE while the tests asserted
+// E_HOLD_FULL.
 //
-// `bulk: 1` is not decoration. The hold arithmetic the callers rely on — 40 tuns fits, 60 does not —
-// is only true of a good that stows one tun to the unit, so the subject is chosen to make the
-// caller's own numbers mean what they say.
-async function aGoodTradedHere(fleet: { port: string | null }): Promise<string> {
-  if (!fleet.port) throw new Error('aGoodTradedHere needs a DOCKED fleet; this one is at sea')
+// The first repair — pick any good this quay trades, as long as it stows one tun to the unit — was
+// still a guess about the world, and a wrong one: Lisboa trades no such good, and a 60-tun hold
+// with stores aboard cannot take 40 tuns of anything at bulk 1.4 anyway.
+//
+// So BOTH the subject and the quantities come from the server. `world.buy_capacity` says how much
+// she can take and WHICH limit stops her; a good whose limit is the HOLD gives the pair these
+// tests actually want — `fits` is the most she can carry, and one more than that cannot fit by
+// definition. What is asserted is then the RULE (the hold binds, and says so) rather than a number
+// that happened to be true of salt in an older world.
+interface TradeSubject {
+  /** A good this quay trades, whose binding limit for this fleet is her hold. */
+  code: string
+  /** The most she can take — an order that must be accepted. */
+  fits: number
+  /** One more than her hold allows — an order that must be refused E_HOLD_FULL. */
+  tooMany: number
+}
+
+async function aTradeSubject(fleet: { id: string; port: string | null }): Promise<TradeSubject> {
+  if (!fleet.port) throw new Error('aTradeSubject needs a DOCKED fleet; this one is at sea')
   const snap = expectOk(await worldSnapshot())
   const port = snap.ports.find((p) => p.code === fleet.port)!
   const market = expectOk(await worldMarket(port.id))
-  const bulkOf = new Map(snap.goods.map((g) => [g.code, Number(g.bulk)]))
   // DETERMINISTIC: sorted by code, never whatever order the heap hands back.
-  const good = market.goods
-    .filter((g) => g.available && g.offered !== false && g.stock > 0 && bulkOf.get(g.code) === 1)
-    .sort((a, b) => a.code.localeCompare(b.code))[0]
-  if (!good) throw new Error(`no bulk-1 good is traded at ${fleet.port}; this test needs one`)
-  return good.code
+  const offered = market.goods
+    .filter((g) => g.available && g.offered !== false && g.stock > 0)
+    .sort((a, b) => a.code.localeCompare(b.code))
+
+  for (const good of offered) {
+    const cap = await worldBuyCapacity(fleet.id, good.good_id)
+    if (!cap.ok) continue
+    const max = Number(cap.value.max_qty)
+    // The hold has to be what stops her. Where the purse or the stock binds first, the refusal
+    // would be a different one and the test would be asserting the wrong rule.
+    if (cap.value.bound_by === 'hold' && max >= 1) {
+      return { code: good.code, fits: max, tooMany: max + 1 }
+    }
+  }
+  throw new Error(`no good at ${fleet.port} is bound by the hold; these tests need one`)
 }
 
 test('cmd.preview() estimates without moving a ducat, and refuses in the same words a commit would', async () => {
   const fleet = expectOk(await worldFleets())[0]
   const before = expectOk(await worldLedger()).ducats
-  const cargo = await aGoodTradedHere(fleet)
+  const subject = await aTradeSubject(fleet)
 
-  const ok = expectOk(await cmdPreview(fleet.id, `BUY ${cargo} 40`))
+  const ok = expectOk(await cmdPreview(fleet.id, `BUY ${subject.code} ${subject.fits}`))
   expect(ok.ok).toBe(true)
   expect(ok.parsed.verb).toBe('BUY')
   expect(ok.parsed.fleet_id).toBe(fleet.id)
   expect(ok.estimate).toBeDefined()
-  expect(ok.estimate!.qty).toBe(40)
-  expect(ok.estimate!.good).toBe(cargo)
+  expect(ok.estimate!.qty).toBe(subject.fits)
+  expect(ok.estimate!.good).toBe(subject.code)
   expect(Number(ok.estimate!.total)).toBeGreaterThan(0)
   expect(expectOk(await worldLedger()).ducats).toBe(before) // the dry run really was dry
 
-  const refused = await cmdPreview(fleet.id, `BUY ${cargo} 60`)
+  const refused = await cmdPreview(fleet.id, `BUY ${subject.code} ${subject.tooMany}`)
   expect(refused.ok).toBe(false)
   if (refused.ok) throw new Error('unreachable')
   expect(refused.refusal.code).toBe('E_HOLD_FULL')
@@ -456,8 +481,8 @@ test('cmd.preview() estimates without moving a ducat, and refuses in the same wo
 
 test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', async () => {
   const fleet = expectOk(await worldFleets())[0]
-  const cargo = await aGoodTradedHere(fleet)
-  const result = await cmdIssue(fleet.id, `BUY ${cargo} 60`, fleet.version)
+  const subject = await aTradeSubject(fleet)
+  const result = await cmdIssue(fleet.id, `BUY ${subject.code} ${subject.tooMany}`, fleet.version)
 
   // NOT a thrown string, NOT a null, NOT a silent no-op. The game refusing is the game working.
   expect(result.ok).toBe(false)
@@ -476,8 +501,14 @@ test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', as
   // asked for, and the sentence is free of the arithmetic because RefusalNote draws the bar.
   expect(r.figures).toBeDefined()
   expect(r.figures!.unit).toBe('t')
-  expect(r.figures!.need).toBe(60)
-  expect(r.figures!.have).toBeLessThan(60)
+  // `need` is the SPACE the order wants, in tuns — quantity times the good's bulk — and `have` is
+  // the space she has free. This used to read `toBe(60)`, which was only ever true because salt
+  // stows one tun to the unit, so the quantity and the space happened to be the same number. With
+  // a subject chosen by the server that coincidence is gone, and what is asserted is the contract
+  // itself: an arithmetic refusal says how much was wanted, how much there is, and the first
+  // exceeds the second — which is precisely why it refused.
+  expect(r.figures!.need).toBeGreaterThan(0)
+  expect(r.figures!.have).toBeLessThan(r.figures!.need)
   expect(r.sentence).not.toMatch(/\d/)
 
   // The queue comes back with the refusal, so a screen can redraw without a second round trip —
@@ -489,7 +520,7 @@ test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', as
 
   // …and the refused order is still in the queue as `failed`, exactly as the chain leaves it.
   const after = expectOk(await worldFleets())[0]
-  expect(after.queue.some((o) => o.status === 'failed' && o.text === `BUY ${cargo} 60`)).toBe(true)
+  expect(after.queue.some((o) => o.status === 'failed' && o.text === `BUY ${subject.code} ${subject.tooMany}`)).toBe(true)
 
   expectOk(await cmdClear(fleet.id))
   await db.pg.query("delete from public.orders where status = 'failed'")
@@ -497,10 +528,10 @@ test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', as
 
 test('the other refusal shapes are the same shape', async () => {
   const fleet = expectOk(await worldFleets())[0]
-  const cargo = await aGoodTradedHere(fleet)
+  const subject = await aTradeSubject(fleet)
 
   // A stale version — the F.3 rule that stops two devices double-issuing.
-  const stale = await cmdIssue(fleet.id, `BUY ${cargo} 10`, fleet.version + 99)
+  const stale = await cmdIssue(fleet.id, `BUY ${subject.code} 1`, fleet.version + 99)
   expect(stale.ok).toBe(false)
   if (stale.ok) throw new Error('unreachable')
   expect(stale.refusal.code).toBe('E_STALE')
@@ -523,7 +554,7 @@ test('the other refusal shapes are the same shape', async () => {
   expect(ambiguous.refusal.sentence.split(',').length).toBeGreaterThan(1)
 
   // A fleet that is not the player's: the ownership check, phrased as a refusal like any other.
-  const notMine = await cmdIssue('00000000-0000-4000-8000-0000000000ff', `BUY ${cargo} 10`)
+  const notMine = await cmdIssue('00000000-0000-4000-8000-0000000000ff', `BUY ${subject.code} 1`)
   expect(notMine.ok).toBe(false)
   if (notMine.ok) throw new Error('unreachable')
   expect(notMine.refusal.code).toBe('E_NO_SUCH_FLEET')
@@ -693,11 +724,11 @@ test('cmd.haggle() spends an attempt whether it wins or loses, and a win really 
 test('cmd.issue() / cmd.cancel_at() / cmd.clear() return the queue and the new version', async () => {
   const fleet = expectOk(await worldFleets())[0]
 
-  const cargo = await aGoodTradedHere(fleet)
-  const bought = expectOk(await cmdIssue(fleet.id, `BUY ${cargo} 10`, fleet.version))
+  const subject = await aTradeSubject(fleet)
+  const bought = expectOk(await cmdIssue(fleet.id, `BUY ${subject.code} 1`, fleet.version))
   expect(bought.order.status).toBe('done')
   expect(bought.order.seq).toBeGreaterThanOrEqual(1)
-  expect(bought.order.result).toMatchObject({ qty: 10, good: cargo })
+  expect(bought.order.result).toMatchObject({ qty: 1, good: subject.code })
   // The issue payload carries the order WITHOUT its text or verb; the queue beside it carries both.
   expect('verb' in bought.order).toBe(false)
   expect(bought.version).toBeGreaterThan(fleet.version)
@@ -713,7 +744,7 @@ test('cmd.issue() / cmd.cancel_at() / cmd.clear() return the queue and the new v
     await cmdIssue(fleet.id, 'SAIL Gaivota TO CAD', null, courseBetween(await seaNav(), lisPort, cadPort)),
   )
   expect(sailed.order.status).toBe('done')
-  const queued = expectOk(await cmdIssue(fleet.id, `SELL ${cargo} ALL`))
+  const queued = expectOk(await cmdIssue(fleet.id, `SELL ${subject.code} ALL`))
   expect(queued.order.status).toBe('pending')
   expectOk(await cmdIssue(fleet.id, 'BUY hides 10'))
 
