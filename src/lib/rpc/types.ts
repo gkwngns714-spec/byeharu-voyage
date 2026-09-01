@@ -248,6 +248,31 @@ export interface MarketPort {
   dev_commerce: number
 }
 
+// ── world.warehouse(port, fleet) — what this city is keeping for you (0070) ────────────────────
+
+/** One line of a shed, or one line of a hold — the same shape, because the screen moves between them. */
+export interface StoredGood {
+  good: string
+  name: string
+  qty: number
+  bulk: number
+  /** Space taken, qty x bulk. Present on what is ashore; a hold line does its own arithmetic. */
+  tuns?: number
+}
+
+export interface WarehouseView {
+  port_id: string
+  /** This city's warehouse tier, or null where it keeps none. */
+  tier: number | null
+  /** Tuns it holds in total. */
+  cap: number
+  /** Tuns of it you are using. */
+  used: number
+  stored: StoredGood[]
+  /** What the named fleet is carrying, or empty when none was named. */
+  aboard: StoredGood[]
+}
+
 // ── world.workstation(port, fleet) — what this city can make (0068) ───────────────────────────
 
 /** One input of a recipe, and what the named fleet has of it aboard. */

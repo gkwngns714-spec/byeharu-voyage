@@ -79,7 +79,7 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   expect('legs' in snap).toBe(false)
   expect(snap.goods.length).toBeGreaterThan(20)
   expect(snap.ship_classes).toHaveLength(3)
-  expect(snap.verbs).toHaveLength(9)
+  expect(snap.verbs).toHaveLength(11)
 
   const lisboa = snap.ports.find((p) => p.code === 'LIS')
   expect(lisboa).toBeDefined()
@@ -403,7 +403,7 @@ test('world.ledger() pages, reconciles, and carries the purse', async () => {
 
 // ── the commands ───────────────────────────────────────────────────────────────────────────────
 
-test('cmd.verb_schema() serves the nine verbs, argument by argument', async () => {
+test('cmd.verb_schema() serves the eleven verbs, argument by argument', async () => {
   const verbs = expectOk(await cmdVerbSchema())
   // 0068 added MAKE, and it sits beside REPAIR deliberately: both are things done ashore at a
   // building this city may or may not keep. The ORDER is the order the strip reads.
@@ -414,6 +414,8 @@ test('cmd.verb_schema() serves the nine verbs, argument by argument', async () =
     'PROVISION',
     'HIRE',
     'MAKE',
+    'STORE',
+    'TAKE',
     'REPAIR',
     'CANCEL',
     'CLEAR',
@@ -881,6 +883,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // It lands in the SAME commit as the face that reads it, which is 0022's lesson written
       // down: a complete server mechanic with no client at all is a door nobody opens.
       'worldWorkstation',
+      // 0070 — world.warehouse(p_port, p_fleet). A READ, no player id: what is ashore comes from
+      // current_player_id(), so naming another house's port tells you the shed's SIZE and nothing
+      // about what is in it. Lands with the face that reads it.
+      'worldWarehouse',
       // Pin moved deliberately 2026-08-23 with 0025 (the table of captains) and 0026 (the fair at
       // the quay). Both are READS and neither takes a player id.
       //

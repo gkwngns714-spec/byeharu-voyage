@@ -52,6 +52,14 @@ export const PORT_FACES = [
       'How far this place has grown, what the Mayor takes, and what it sells cheaper than its neighbours. Every figure is read from the market as it stands today.',
   },
   {
+    id: 'warehouse',
+    building: 'warehouse',
+    label: 'Warehouse',
+    title: 'The warehouse',
+    explain:
+      'Somewhere to leave a cargo. A warehouse belongs to the city it stands in — what you leave here cannot be reached from anywhere else, and it costs nothing to keep. How much it holds is how big this city is.',
+  },
+  {
     id: 'workstation',
     building: 'workstation',
     label: 'Workstation',
