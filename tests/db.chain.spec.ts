@@ -307,10 +307,22 @@ test('a migration that fails names the FILE and carries the SQLSTATE', async () 
 // ── booting the world ──────────────────────────────────────────────────────────────────────────
 
 test('a cold boot ends ready, seeded with the K.1 first session, and reports every phase', async () => {
-  // One full build of the 243-good world: ~2-3 min in Node PGlite (the 52,002-row price seed is
-  // 53 s of it alone — measured 2026-08-23, D21), more under parallel workers. The 120 s global
-  // timeout was sized for a smaller world and failed a correct chain.
-  test.setTimeout(360_000)
+  // One full build of the world: ~2-3 min in Node PGlite at 243 goods (the 52,002-row price seed
+  // was 53 s of it alone — measured 2026-08-23, D21), more under parallel workers. The 120 s
+  // global timeout was sized for a smaller world and failed a correct chain.
+  //
+  // RAISED AGAIN 2026-09-02, and the reason is arithmetic rather than a slowdown: migration 0065
+  // grew the catalogue from 243 goods to 523 to make the owner's "no good in more than three
+  // cities" rule possible at all, and the market went from 54,432 rows to 117,152 — 2.15x. A build
+  // that took 2-3 min takes 5-7. CI measured 6.9 min and failed at 360 s on the same chain that
+  // passed on a faster runner minutes earlier, which is a budget that decides by runner speed.
+  //
+  // This is the fallback path, not what a player waits for: the site ships a pre-built world image
+  // keyed by the chain (build.yml, src/lib/db/worldImage.ts), and this test measures the boot that
+  // happens when there is no image to load. If the number climbs again the answer really is a
+  // lighter fixture rather than a bigger budget — but a world that doubled is allowed to take
+  // twice as long.
+  test.setTimeout(900_000)
   const channel = createBootChannel()
   const phases: BootPhase[] = []
   const migrations: string[] = []
@@ -412,7 +424,9 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
   // ~6 min alone (one build measured 2-3 min in Node PGlite). So the number moves with the world
   // it measures, and the standing answer to "a test nobody runs" is the pre-built database image
   // D21 names, which would collapse both builds to a copy.
-  test.setTimeout(720_000)
+  // RAISED 2026-09-02 with the test above and for the same reason — this one builds the world
+  // TWICE, so 0065's 2.15x lands on it doubled. CI measured 12.2 min against a 720 s budget.
+  test.setTimeout(1_500_000)
   const dir = await scratchDataDir('rebuild')
   try {
     // 1. Build a world and put a mark in it that only survives if the data survives.
