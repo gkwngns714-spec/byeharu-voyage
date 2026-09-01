@@ -199,7 +199,10 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // can count UP from her departure as well as down to her arrival. One sliced hunk on
 // world.fleets(); no schema, no new function, no grant change, and the marker's cadence and the
 // served position are untouched.
-const LAST = '20260818000063_she_says_how_long_she_has_been_at_sea.sql'
+// Moved deliberately 2026-09-01 to 0064, which re-files the catalogue into seventeen plain
+// categories and, in the same slice, moves `bulk` and the industrial flag off `category` and onto
+// the good -- so a renaming cannot move a hold or a port's development.
+const LAST = '20260818000064_a_category_is_a_word_a_player_would_say.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

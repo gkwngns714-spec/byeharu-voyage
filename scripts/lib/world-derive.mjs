@@ -415,12 +415,25 @@ const SHALLOW = new Set([
   'bremen', 'antwerp', 'bruges', 'ayutthaya', 'thanlyin', 'basra', 'buenos-aires', 'belem',
   'gdansk', 'riga', 'arkhangelsk', 'chittagong', 'khambhat', 'suzhou', 'nanjing', 'hanoi',
 ])
-const INDUSTRY_CATEGORIES = new Set(['metal', 'textile', 'naval-stores'])
+// WHETHER MAKING A GOOD IS INDUSTRY is a fact about the GOOD, not about the shelf it sits on.
+// It used to be read off `category` (metal / textile / naval-stores), which quietly made the
+// taxonomy do two jobs: naming a thing, and deciding a port's development. When 0064 re-filed the
+// catalogue into seventeen plain categories the second job broke — 40 goods would have become
+// "industrial" because their SHELF changed, moving dev_industry at 264 harbours and, through it,
+// prices and repair costs. A renaming may not move an economy.
+//
+// So the flag lives on the good, frozen at the value the old rule produced for all 50 of them.
+// One authority per concept: `category` says what a thing IS, `industry` says what making it means.
+const isIndustrial = (g) => g.industry === true
 
 // ── GOODS ─────────────────────────────────────────────────────────────────────────────────────
 // base_value is the midpoint of the dataset's researched price band. bulk and spoilage are by
 // category: a tun of pepper is not a tun of timber, and fish rots while iron does not.
-const BULK = { spice: 0.6, textile: 0.9, metal: 0.8, luxury: 0.3, foodstuff: 1.0, raw: 1.2, 'naval-stores': 1.4 }
+// BULK IS A FACT ABOUT THE GOOD, for the same reason and by the same history: a tun of pepper is
+// not a tun of timber because of what pepper IS, not because of which list it appears on. It was
+// keyed on `category` until 0064, which would have changed how much of 212 goods fits in a hold as
+// a side effect of renaming a shelf. Frozen per good in data/goods.json at the value the old
+// category map produced.
 const PERISH = {
   'dried-fish': 0.004, herring: 0.004, cheese: 0.004, 'salted-beef': 0.003, 'dried-fruit': 0.003,
   wheat: 0.002, rice: 0.002, sugar: 0.001, 'olive-oil': 0.001, hides: 0.001, furs: 0.001,
@@ -477,7 +490,7 @@ export function deriveWorld() {
   function derivePort(p) {
     const size = SIZE_BY_TIER[p.tier]
     const specialties = (p.goods ?? []).filter((g) => goodById.has(g))
-    const industrial = specialties.filter((g) => INDUSTRY_CATEGORIES.has(goodById.get(g).category)).length
+    const industrial = specialties.filter((g) => isIndustrial(goodById.get(g))).length
     const yardTier = size === 5 ? 3 : size === 3 ? 1 : 0
     const clamp = (n) => Math.max(0, Math.min(20, Math.round(n)))
     return {
@@ -532,7 +545,7 @@ export function deriveWorld() {
     code: g.id,
     name: g.name,
     base_value: (g.baseValue[0] + g.baseValue[1]) / 2,
-    bulk: BULK[g.category] ?? 1.0,
+    bulk: g.bulk ?? 1.0,
     perishable_pct_day: PERISH[g.id] ?? 0,
     category: g.category,
     culture_mask: g.cultureMask ?? [],

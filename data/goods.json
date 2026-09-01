@@ -34,7 +34,8 @@
         "istanbul",
         "jeddah",
         "lisbon"
-      ]
+      ],
+      "bulk": 0.6
     },
     {
       "id": "cloves",
@@ -50,7 +51,8 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "nutmeg",
@@ -66,7 +68,8 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "mace",
@@ -82,7 +85,8 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "cinnamon",
@@ -102,7 +106,8 @@
         "kochi",
         "lisbon",
         "old-goa"
-      ]
+      ],
+      "bulk": 0.6
     },
     {
       "id": "ginger",
@@ -121,7 +126,8 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "cardamom",
@@ -137,7 +143,8 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "long-pepper",
@@ -153,7 +160,8 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "cubeb",
@@ -169,7 +177,8 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "grains-of-paradise",
@@ -185,7 +194,8 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "cassia",
@@ -202,7 +212,8 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "turmeric",
@@ -219,7 +230,8 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "saffron",
@@ -236,7 +248,8 @@
         "iberia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "chillies",
@@ -256,7 +269,8 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "vanilla",
@@ -272,7 +286,8 @@
         "caribbean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "anise",
@@ -290,7 +305,8 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "cumin",
@@ -307,7 +323,8 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "coriander",
@@ -324,7 +341,8 @@
         "levant"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "galangal",
@@ -340,7 +358,8 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "star-anise",
@@ -357,7 +376,8 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "allspice",
@@ -373,7 +393,8 @@
         "caribbean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "zedoary",
@@ -390,12 +411,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.6
     },
     {
       "id": "wool-cloth",
       "name": "Woollen Cloth",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -415,12 +437,14 @@
       "cultureMask": [],
       "entrepots": [
         "hamburg"
-      ]
+      ],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "linen",
       "name": "Linen",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         55,
@@ -434,12 +458,14 @@
         "levant"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "cotton-cloth",
       "name": "Cotton Cloth",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -459,12 +485,14 @@
       "cultureMask": [],
       "entrepots": [
         "jeddah"
-      ]
+      ],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "muslin",
       "name": "Muslin",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 4,
       "baseValue": [
         320,
@@ -475,12 +503,14 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "chintz",
       "name": "Chintz",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 3,
       "baseValue": [
         180,
@@ -491,12 +521,14 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "silk-cloth",
       "name": "Silk Cloth",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 4,
       "baseValue": [
         420,
@@ -517,12 +549,14 @@
       "entrepots": [
         "acapulco",
         "manila"
-      ]
+      ],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "silk-raw",
       "name": "Raw Silk",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 4,
       "baseValue": [
         380,
@@ -544,12 +578,14 @@
       "entrepots": [
         "fukuoka",
         "hirado"
-      ]
+      ],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "carpets",
       "name": "Carpets",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 4,
       "baseValue": [
         300,
@@ -561,12 +597,14 @@
         "arabia-gulf"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "ramie-cloth",
       "name": "Ramie Cloth",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -580,12 +618,14 @@
       "cultureMask": [],
       "entrepots": [
         "tsushima"
-      ]
+      ],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "says-serges",
       "name": "Says & Serges",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         65,
@@ -596,12 +636,14 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "velvet",
       "name": "Velvet",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 5,
       "baseValue": [
         750,
@@ -613,12 +655,14 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "lace",
       "name": "Lace",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 4,
       "baseValue": [
         400,
@@ -630,12 +674,14 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "tapestries",
       "name": "Tapestries",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 5,
       "baseValue": [
         800,
@@ -646,12 +692,14 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "batik",
       "name": "Batik Cloth",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 3,
       "baseValue": [
         150,
@@ -662,12 +710,14 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "raffia-cloth",
       "name": "Raffia Cloth",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -678,12 +728,14 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "barkcloth",
       "name": "Barkcloth",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 1,
       "baseValue": [
         35,
@@ -694,12 +746,14 @@
         "oceania"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "camlets",
       "name": "Camlets",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 3,
       "baseValue": [
         200,
@@ -710,12 +764,14 @@
         "aegean-anatolia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "quilts",
       "name": "Bengal Quilts",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 3,
       "baseValue": [
         220,
@@ -726,12 +782,14 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "shawls",
       "name": "Kashmir Shawls",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 5,
       "baseValue": [
         700,
@@ -742,12 +800,14 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "fustian",
       "name": "Fustian",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -759,12 +819,14 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "gold-thread",
       "name": "Gold Thread",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 4,
       "baseValue": [
         450,
@@ -776,12 +838,14 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "stockings",
       "name": "Knitted Stockings",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         80,
@@ -793,12 +857,14 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "felt-hats",
       "name": "Felt Hats",
-      "category": "textile",
+      "category": "cloth",
       "valueBand": 4,
       "baseValue": [
         280,
@@ -810,7 +876,9 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.9,
+      "industry": true
     },
     {
       "id": "gold",
@@ -832,7 +900,9 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "silver",
@@ -858,7 +928,9 @@
         "macau",
         "manila",
         "seville"
-      ]
+      ],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "copper",
@@ -881,7 +953,9 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "tin",
@@ -899,7 +973,9 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "iron",
@@ -922,7 +998,9 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "lead",
@@ -939,7 +1017,9 @@
         "british-isles"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "quicksilver",
@@ -957,7 +1037,9 @@
         "pacific-americas"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "wootz-steel",
@@ -974,12 +1056,14 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "firearms",
       "name": "Muskets",
-      "category": "metal",
+      "category": "guns",
       "valueBand": 4,
       "baseValue": [
         420,
@@ -991,12 +1075,14 @@
         "japan"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "cannon",
       "name": "Cannon",
-      "category": "metal",
+      "category": "guns",
       "valueBand": 4,
       "baseValue": [
         500,
@@ -1009,12 +1095,14 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "brassware",
       "name": "Brassware & Manillas",
-      "category": "metal",
+      "category": "crafts",
       "valueBand": 2,
       "baseValue": [
         80,
@@ -1026,12 +1114,14 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "pewter",
       "name": "Pewterware",
-      "category": "metal",
+      "category": "crafts",
       "valueBand": 2,
       "baseValue": [
         90,
@@ -1042,7 +1132,9 @@
         "british-isles"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "copper-cash",
@@ -1058,12 +1150,14 @@
         "china-coast"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "smallwares",
       "name": "Nuremberg Smallwares",
-      "category": "metal",
+      "category": "crafts",
       "valueBand": 2,
       "baseValue": [
         75,
@@ -1076,12 +1170,14 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "armour",
       "name": "Armour",
-      "category": "metal",
+      "category": "weapons",
       "valueBand": 4,
       "baseValue": [
         300,
@@ -1092,12 +1188,14 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "gunpowder",
       "name": "Gunpowder",
-      "category": "metal",
+      "category": "guns",
       "valueBand": 3,
       "baseValue": [
         200,
@@ -1110,12 +1208,14 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.8,
+      "industry": true
     },
     {
       "id": "porcelain",
       "name": "Porcelain",
-      "category": "luxury",
+      "category": "crafts",
       "valueBand": 4,
       "baseValue": [
         280,
@@ -1132,12 +1232,13 @@
         "acapulco",
         "lisbon",
         "old-goa"
-      ]
+      ],
+      "bulk": 0.3
     },
     {
       "id": "lacquerware",
       "name": "Lacquerware",
-      "category": "luxury",
+      "category": "crafts",
       "valueBand": 4,
       "baseValue": [
         260,
@@ -1151,12 +1252,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "glassware",
       "name": "Glassware",
-      "category": "luxury",
+      "category": "crafts",
       "valueBand": 3,
       "baseValue": [
         190,
@@ -1168,12 +1270,13 @@
         "iberia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "pearls",
       "name": "Pearls",
-      "category": "luxury",
+      "category": "gems",
       "valueBand": 5,
       "baseValue": [
         1100,
@@ -1189,12 +1292,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "diamonds",
       "name": "Diamonds",
-      "category": "luxury",
+      "category": "gems",
       "valueBand": 5,
       "baseValue": [
         1800,
@@ -1208,12 +1312,13 @@
       "cultureMask": [],
       "entrepots": [
         "antwerp"
-      ]
+      ],
+      "bulk": 0.3
     },
     {
       "id": "ivory",
       "name": "Ivory",
-      "category": "luxury",
+      "category": "gems",
       "valueBand": 4,
       "baseValue": [
         420,
@@ -1229,12 +1334,13 @@
       "cultureMask": [],
       "entrepots": [
         "lisbon"
-      ]
+      ],
+      "bulk": 0.3
     },
     {
       "id": "ambergris",
       "name": "Ambergris",
-      "category": "luxury",
+      "category": "medicine",
       "valueBand": 5,
       "baseValue": [
         2000,
@@ -1250,12 +1356,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "musk",
       "name": "Musk",
-      "category": "luxury",
+      "category": "medicine",
       "valueBand": 5,
       "baseValue": [
         1500,
@@ -1266,12 +1373,13 @@
         "china-coast"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "coral",
       "name": "Coral",
-      "category": "luxury",
+      "category": "gems",
       "valueBand": 3,
       "baseValue": [
         230,
@@ -1284,12 +1392,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "amber",
       "name": "Amber",
-      "category": "luxury",
+      "category": "gems",
       "valueBand": 4,
       "baseValue": [
         340,
@@ -1300,12 +1409,13 @@
         "baltic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "frankincense",
       "name": "Frankincense",
-      "category": "luxury",
+      "category": "medicine",
       "valueBand": 3,
       "baseValue": [
         200,
@@ -1317,12 +1427,13 @@
         "east-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "myrrh",
       "name": "Myrrh",
-      "category": "luxury",
+      "category": "medicine",
       "valueBand": 3,
       "baseValue": [
         210,
@@ -1334,12 +1445,13 @@
         "east-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "rubies",
       "name": "Rubies",
-      "category": "luxury",
+      "category": "gems",
       "valueBand": 5,
       "baseValue": [
         1600,
@@ -1350,12 +1462,13 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "emeralds",
       "name": "Emeralds",
-      "category": "luxury",
+      "category": "gems",
       "valueBand": 5,
       "baseValue": [
         1700,
@@ -1366,12 +1479,13 @@
         "caribbean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "carnelian",
       "name": "Carnelian & Agate",
-      "category": "luxury",
+      "category": "gems",
       "valueBand": 3,
       "baseValue": [
         200,
@@ -1382,12 +1496,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "books",
       "name": "Printed Books",
-      "category": "luxury",
+      "category": "books",
       "valueBand": 3,
       "baseValue": [
         230,
@@ -1399,12 +1514,13 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "paper",
       "name": "Paper",
-      "category": "luxury",
+      "category": "books",
       "valueBand": 2,
       "baseValue": [
         80,
@@ -1420,12 +1536,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "tortoiseshell",
       "name": "Tortoiseshell",
-      "category": "luxury",
+      "category": "gems",
       "valueBand": 4,
       "baseValue": [
         350,
@@ -1438,12 +1555,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "mastic",
       "name": "Mastic",
-      "category": "luxury",
+      "category": "medicine",
       "valueBand": 4,
       "baseValue": [
         400,
@@ -1454,12 +1572,13 @@
         "aegean-anatolia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "civet",
       "name": "Civet",
-      "category": "luxury",
+      "category": "medicine",
       "valueBand": 5,
       "baseValue": [
         1400,
@@ -1470,12 +1589,13 @@
         "east-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "rosewater",
       "name": "Rosewater",
-      "category": "luxury",
+      "category": "medicine",
       "valueBand": 3,
       "baseValue": [
         180,
@@ -1487,12 +1607,13 @@
         "levant"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "clocks",
       "name": "Clocks & Instruments",
-      "category": "luxury",
+      "category": "art",
       "valueBand": 5,
       "baseValue": [
         900,
@@ -1504,12 +1625,13 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "paintings",
       "name": "Paintings",
-      "category": "luxury",
+      "category": "art",
       "valueBand": 4,
       "baseValue": [
         420,
@@ -1520,12 +1642,13 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "bezoar",
       "name": "Bezoar Stones",
-      "category": "luxury",
+      "category": "medicine",
       "valueBand": 5,
       "baseValue": [
         1200,
@@ -1538,12 +1661,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "rhino-horn",
       "name": "Rhinoceros Horn",
-      "category": "luxury",
+      "category": "medicine",
       "valueBand": 4,
       "baseValue": [
         450,
@@ -1557,12 +1681,13 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "lapis-lazuli",
       "name": "Lapis Lazuli",
-      "category": "luxury",
+      "category": "gems",
       "valueBand": 5,
       "baseValue": [
         1300,
@@ -1573,12 +1698,13 @@
         "arabia-gulf"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "turquoise",
       "name": "Turquoise",
-      "category": "luxury",
+      "category": "gems",
       "valueBand": 4,
       "baseValue": [
         420,
@@ -1589,12 +1715,13 @@
         "arabia-gulf"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "folding-fans",
       "name": "Folding Fans",
-      "category": "luxury",
+      "category": "crafts",
       "valueBand": 3,
       "baseValue": [
         160,
@@ -1605,12 +1732,13 @@
         "japan"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "silver-plate",
       "name": "Silverware & Plate",
-      "category": "luxury",
+      "category": "crafts",
       "valueBand": 4,
       "baseValue": [
         500,
@@ -1622,12 +1750,13 @@
         "iberia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "majolica",
       "name": "Majolica",
-      "category": "luxury",
+      "category": "crafts",
       "valueBand": 3,
       "baseValue": [
         190,
@@ -1639,12 +1768,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "celadon",
       "name": "Celadon Ware",
-      "category": "luxury",
+      "category": "crafts",
       "valueBand": 4,
       "baseValue": [
         280,
@@ -1656,12 +1786,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "stoneware",
       "name": "Rhenish Stoneware",
-      "category": "luxury",
+      "category": "crafts",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -1673,12 +1804,13 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "martaban-jars",
       "name": "Martaban Jars",
-      "category": "luxury",
+      "category": "crafts",
       "valueBand": 3,
       "baseValue": [
         170,
@@ -1689,12 +1821,13 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "glass-beads",
       "name": "Trade Beads",
-      "category": "luxury",
+      "category": "crafts",
       "valueBand": 2,
       "baseValue": [
         75,
@@ -1706,12 +1839,13 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "sea-charts",
       "name": "Sea Charts & Globes",
-      "category": "luxury",
+      "category": "art",
       "valueBand": 5,
       "baseValue": [
         800,
@@ -1723,12 +1857,13 @@
         "iberia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "ink-sticks",
       "name": "Ink & Brushes",
-      "category": "luxury",
+      "category": "books",
       "valueBand": 3,
       "baseValue": [
         180,
@@ -1740,12 +1875,13 @@
         "korea"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "sword-blades",
       "name": "Sword Blades",
-      "category": "luxury",
+      "category": "weapons",
       "valueBand": 4,
       "baseValue": [
         480,
@@ -1758,12 +1894,13 @@
         "japan"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "theriac",
       "name": "Venice Treacle",
-      "category": "luxury",
+      "category": "medicine",
       "valueBand": 4,
       "baseValue": [
         400,
@@ -1774,12 +1911,13 @@
         "adriatic-ionian"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "parrots",
       "name": "Parrots & Monkeys",
-      "category": "luxury",
+      "category": "animals",
       "valueBand": 3,
       "baseValue": [
         200,
@@ -1791,12 +1929,13 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "gyrfalcons",
       "name": "Gyrfalcons",
-      "category": "luxury",
+      "category": "animals",
       "valueBand": 5,
       "baseValue": [
         1500,
@@ -1807,12 +1946,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "paradise-plumes",
       "name": "Bird-of-Paradise Plumes",
-      "category": "luxury",
+      "category": "crafts",
       "valueBand": 5,
       "baseValue": [
         900,
@@ -1824,12 +1964,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 0.3
     },
     {
       "id": "wheat",
       "name": "Wheat",
-      "category": "foodstuff",
+      "category": "grain",
       "valueBand": 1,
       "baseValue": [
         25,
@@ -1854,12 +1995,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "rice",
       "name": "Rice",
-      "category": "foodstuff",
+      "category": "grain",
       "valueBand": 1,
       "baseValue": [
         28,
@@ -1877,12 +2019,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "sugar",
       "name": "Sugar",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 3,
       "baseValue": [
         150,
@@ -1908,12 +2051,13 @@
         "antwerp",
         "lisbon",
         "nantes"
-      ]
+      ],
+      "bulk": 1
     },
     {
       "id": "salt",
       "name": "Salt",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 1,
       "baseValue": [
         20,
@@ -1944,12 +2088,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "olive-oil",
       "name": "Olive Oil",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -1965,12 +2110,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "wine",
       "name": "Wine",
-      "category": "foodstuff",
+      "category": "drink",
       "valueBand": 2,
       "baseValue": [
         80,
@@ -1992,12 +2138,13 @@
         "islamic",
         "swahili"
       ],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "dried-fish",
       "name": "Dried & Salt Fish",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 1,
       "baseValue": [
         35,
@@ -2023,12 +2170,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "herring",
       "name": "Herring",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         45,
@@ -2042,12 +2190,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "cheese",
       "name": "Cheese",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         55,
@@ -2062,12 +2211,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "salted-beef",
       "name": "Salt Meat",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -2088,12 +2238,13 @@
         "indic",
         "japanese"
       ],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "coffee",
       "name": "Coffee",
-      "category": "foodstuff",
+      "category": "drink",
       "valueBand": 4,
       "baseValue": [
         400,
@@ -2107,12 +2258,13 @@
       "entrepots": [
         "alexandria",
         "marseille"
-      ]
+      ],
+      "bulk": 1
     },
     {
       "id": "tea",
       "name": "Tea",
-      "category": "foodstuff",
+      "category": "drink",
       "valueBand": 4,
       "baseValue": [
         380,
@@ -2124,12 +2276,13 @@
         "japan"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "cacao",
       "name": "Cacao",
-      "category": "foodstuff",
+      "category": "drink",
       "valueBand": 3,
       "baseValue": [
         200,
@@ -2142,12 +2295,13 @@
         "south-america-atlantic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "dried-fruit",
       "name": "Raisins & Currants",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         65,
@@ -2165,12 +2319,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "rye",
       "name": "Rye",
-      "category": "foodstuff",
+      "category": "grain",
       "valueBand": 1,
       "baseValue": [
         22,
@@ -2181,12 +2336,13 @@
         "baltic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "barley",
       "name": "Barley",
-      "category": "foodstuff",
+      "category": "grain",
       "valueBand": 1,
       "baseValue": [
         22,
@@ -2199,12 +2355,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "beer",
       "name": "Beer",
-      "category": "foodstuff",
+      "category": "drink",
       "valueBand": 2,
       "baseValue": [
         50,
@@ -2220,12 +2377,13 @@
         "islamic",
         "swahili"
       ],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "sake",
       "name": "Sake",
-      "category": "foodstuff",
+      "category": "drink",
       "valueBand": 2,
       "baseValue": [
         80,
@@ -2239,12 +2397,13 @@
         "islamic",
         "swahili"
       ],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "rum",
       "name": "Rum",
-      "category": "foodstuff",
+      "category": "drink",
       "valueBand": 3,
       "baseValue": [
         140,
@@ -2258,12 +2417,13 @@
         "islamic",
         "swahili"
       ],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "brandy",
       "name": "Brandy",
-      "category": "foodstuff",
+      "category": "drink",
       "valueBand": 3,
       "baseValue": [
         150,
@@ -2277,12 +2437,13 @@
         "islamic",
         "swahili"
       ],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "arrack",
       "name": "Arrack",
-      "category": "foodstuff",
+      "category": "drink",
       "valueBand": 3,
       "baseValue": [
         130,
@@ -2298,12 +2459,13 @@
         "islamic",
         "swahili"
       ],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "butter",
       "name": "Butter",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         55,
@@ -2316,12 +2478,13 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "honey",
       "name": "Honey",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -2335,12 +2498,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "dates",
       "name": "Dates",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -2353,12 +2517,13 @@
         "maghreb"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "figs",
       "name": "Figs",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         55,
@@ -2372,12 +2537,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "citrus",
       "name": "Lemons & Oranges",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -2391,12 +2557,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "almonds",
       "name": "Almonds",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -2410,12 +2577,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "coconuts",
       "name": "Coconuts & Copra",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 1,
       "baseValue": [
         30,
@@ -2430,12 +2598,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "sago",
       "name": "Sago",
-      "category": "foodstuff",
+      "category": "grain",
       "valueBand": 1,
       "baseValue": [
         28,
@@ -2447,12 +2616,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "maize",
       "name": "Maize",
-      "category": "foodstuff",
+      "category": "grain",
       "valueBand": 1,
       "baseValue": [
         25,
@@ -2467,12 +2637,13 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "cassava",
       "name": "Cassava Flour",
-      "category": "foodstuff",
+      "category": "grain",
       "valueBand": 1,
       "baseValue": [
         25,
@@ -2485,12 +2656,13 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "caviar",
       "name": "Caviar",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 4,
       "baseValue": [
         300,
@@ -2502,12 +2674,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "salted-tuna",
       "name": "Salt Tuna",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         55,
@@ -2520,12 +2693,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "soy-sauce",
       "name": "Soy Sauce",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -2538,12 +2712,13 @@
         "korea"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "ghee",
       "name": "Ghee",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -2554,12 +2729,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "sesame-oil",
       "name": "Sesame Oil",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -2572,12 +2748,13 @@
         "levant"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "palm-oil",
       "name": "Palm Oil",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 1,
       "baseValue": [
         35,
@@ -2588,12 +2765,13 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "birds-nests",
       "name": "Edible Birds’ Nests",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 5,
       "baseValue": [
         800,
@@ -2604,12 +2782,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "sharks-fin",
       "name": "Shark Fin",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 3,
       "baseValue": [
         150,
@@ -2623,12 +2802,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "trepang",
       "name": "Trepang",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 3,
       "baseValue": [
         140,
@@ -2640,12 +2820,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "dried-abalone",
       "name": "Dried Abalone",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 3,
       "baseValue": [
         180,
@@ -2657,12 +2838,13 @@
         "korea"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "seaweed",
       "name": "Dried Seaweed",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 1,
       "baseValue": [
         25,
@@ -2674,12 +2856,13 @@
         "korea"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "palm-sugar",
       "name": "Palm Sugar",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 1,
       "baseValue": [
         30,
@@ -2692,12 +2875,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "molasses",
       "name": "Molasses",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         50,
@@ -2710,12 +2894,13 @@
         "south-america-atlantic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "tamarind",
       "name": "Tamarind",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         65,
@@ -2728,12 +2913,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "hazelnuts",
       "name": "Hazelnuts",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         50,
@@ -2744,12 +2930,13 @@
         "aegean-anatolia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "pistachios",
       "name": "Pistachios",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 3,
       "baseValue": [
         120,
@@ -2761,12 +2948,13 @@
         "levant"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "lychees",
       "name": "Dried Lychees",
-      "category": "foodstuff",
+      "category": "food",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -2777,12 +2965,13 @@
         "china-coast"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1
     },
     {
       "id": "tobacco",
       "name": "Tobacco",
-      "category": "raw",
+      "category": "tobacco",
       "valueBand": 3,
       "baseValue": [
         170,
@@ -2798,12 +2987,13 @@
         "south-america-atlantic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "indigo",
       "name": "Indigo",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 4,
       "baseValue": [
         400,
@@ -2822,12 +3012,13 @@
       "entrepots": [
         "bordeaux",
         "seville"
-      ]
+      ],
+      "bulk": 1.2
     },
     {
       "id": "cochineal",
       "name": "Cochineal",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 5,
       "baseValue": [
         900,
@@ -2841,12 +3032,13 @@
       "cultureMask": [],
       "entrepots": [
         "seville"
-      ]
+      ],
+      "bulk": 1.2
     },
     {
       "id": "brazilwood",
       "name": "Brazilwood",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 3,
       "baseValue": [
         160,
@@ -2857,12 +3049,13 @@
         "south-america-atlantic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "logwood",
       "name": "Logwood",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 3,
       "baseValue": [
         150,
@@ -2873,12 +3066,13 @@
         "caribbean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "alum",
       "name": "Alum",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 2,
       "baseValue": [
         80,
@@ -2893,12 +3087,13 @@
       "cultureMask": [],
       "entrepots": [
         "bruges"
-      ]
+      ],
+      "bulk": 1.2
     },
     {
       "id": "saltpetre",
       "name": "Saltpetre",
-      "category": "raw",
+      "category": "guns",
       "valueBand": 3,
       "baseValue": [
         190,
@@ -2910,12 +3105,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "sulphur",
       "name": "Sulphur",
-      "category": "raw",
+      "category": "guns",
       "valueBand": 2,
       "baseValue": [
         85,
@@ -2928,12 +3124,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "hides",
       "name": "Hides",
-      "category": "raw",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -2963,12 +3160,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "furs",
       "name": "Furs",
-      "category": "raw",
+      "category": "cloth",
       "valueBand": 4,
       "baseValue": [
         330,
@@ -2986,12 +3184,13 @@
       "entrepots": [
         "la-rochelle",
         "saint-malo"
-      ]
+      ],
+      "bulk": 1.2
     },
     {
       "id": "wax",
       "name": "Beeswax",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 2,
       "baseValue": [
         90,
@@ -3012,12 +3211,13 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "cotton-raw",
       "name": "Raw Cotton",
-      "category": "raw",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -3036,12 +3236,13 @@
       "cultureMask": [],
       "entrepots": [
         "marseille"
-      ]
+      ],
+      "bulk": 1.2
     },
     {
       "id": "wool-raw",
       "name": "Raw Wool",
-      "category": "raw",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         65,
@@ -3061,12 +3262,13 @@
       "cultureMask": [],
       "entrepots": [
         "calais"
-      ]
+      ],
+      "bulk": 1.2
     },
     {
       "id": "gum-arabic",
       "name": "Gum Arabic",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 3,
       "baseValue": [
         180,
@@ -3079,12 +3281,13 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "sandalwood",
       "name": "Sandalwood",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 4,
       "baseValue": [
         350,
@@ -3099,12 +3302,13 @@
       "cultureMask": [],
       "entrepots": [
         "nagasaki"
-      ]
+      ],
+      "bulk": 1.2
     },
     {
       "id": "ginseng",
       "name": "Ginseng",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 4,
       "baseValue": [
         420,
@@ -3118,12 +3322,13 @@
       "cultureMask": [],
       "entrepots": [
         "tsushima"
-      ]
+      ],
+      "bulk": 1.2
     },
     {
       "id": "horses",
       "name": "Horses",
-      "category": "raw",
+      "category": "animals",
       "valueBand": 4,
       "baseValue": [
         450,
@@ -3142,12 +3347,13 @@
       "entrepots": [
         "diu",
         "old-goa"
-      ]
+      ],
+      "bulk": 1.2
     },
     {
       "id": "potash",
       "name": "Potash",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 1,
       "baseValue": [
         35,
@@ -3159,12 +3365,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "tallow",
       "name": "Tallow",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 1,
       "baseValue": [
         30,
@@ -3179,12 +3386,13 @@
         "south-america-atlantic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "woad",
       "name": "Woad",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 2,
       "baseValue": [
         75,
@@ -3197,12 +3405,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "madder",
       "name": "Madder",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 2,
       "baseValue": [
         80,
@@ -3214,12 +3423,13 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "lac",
       "name": "Lac & Shellac",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 3,
       "baseValue": [
         150,
@@ -3230,12 +3440,13 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "annatto",
       "name": "Annatto",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 2,
       "baseValue": [
         80,
@@ -3247,12 +3458,13 @@
         "south-america-atlantic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "orchil",
       "name": "Orchil",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -3264,12 +3476,13 @@
         "maghreb"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "henna",
       "name": "Henna",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -3283,12 +3496,13 @@
         "maghreb"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "camphor",
       "name": "Borneo Camphor",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 5,
       "baseValue": [
         1000,
@@ -3300,12 +3514,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "benzoin",
       "name": "Benzoin",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 4,
       "baseValue": [
         350,
@@ -3316,12 +3531,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "aloeswood",
       "name": "Aloeswood",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 5,
       "baseValue": [
         1100,
@@ -3333,12 +3549,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "dragons-blood",
       "name": "Dragon’s Blood",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 4,
       "baseValue": [
         300,
@@ -3349,12 +3566,13 @@
         "arabia-gulf"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "socotra-aloes",
       "name": "Socotrine Aloes",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 3,
       "baseValue": [
         180,
@@ -3365,12 +3583,13 @@
         "arabia-gulf"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "myrobalans",
       "name": "Myrobalans",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -3382,12 +3601,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "sappanwood",
       "name": "Sappanwood",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 2,
       "baseValue": [
         90,
@@ -3401,12 +3621,13 @@
       "cultureMask": [],
       "entrepots": [
         "naha"
-      ]
+      ],
+      "bulk": 1.2
     },
     {
       "id": "red-sanders",
       "name": "Red Sanders",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 2,
       "baseValue": [
         85,
@@ -3417,12 +3638,13 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "camwood",
       "name": "Camwood",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 2,
       "baseValue": [
         80,
@@ -3433,12 +3655,13 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "ebony",
       "name": "Ebony",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 3,
       "baseValue": [
         160,
@@ -3450,12 +3673,13 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "rattan",
       "name": "Rattan",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 1,
       "baseValue": [
         30,
@@ -3466,12 +3690,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "opium",
       "name": "Opium",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 4,
       "baseValue": [
         400,
@@ -3483,12 +3708,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "areca-nuts",
       "name": "Areca Nuts",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 2,
       "baseValue": [
         55,
@@ -3501,12 +3727,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "kola-nuts",
       "name": "Kola Nuts",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 2,
       "baseValue": [
         65,
@@ -3517,12 +3744,13 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "sarsaparilla",
       "name": "Sarsaparilla",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 3,
       "baseValue": [
         170,
@@ -3533,12 +3761,13 @@
         "caribbean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "sassafras",
       "name": "Sassafras",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 2,
       "baseValue": [
         90,
@@ -3549,12 +3778,13 @@
         "north-america-atlantic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "senna",
       "name": "Senna",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 3,
       "baseValue": [
         150,
@@ -3567,12 +3797,13 @@
         "levant"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "rhubarb",
       "name": "Chinese Rhubarb",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 4,
       "baseValue": [
         400,
@@ -3583,12 +3814,13 @@
         "china-coast"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "china-root",
       "name": "China Root",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 3,
       "baseValue": [
         170,
@@ -3599,12 +3831,13 @@
         "china-coast"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "mother-of-pearl",
       "name": "Mother-of-Pearl",
-      "category": "raw",
+      "category": "gems",
       "valueBand": 3,
       "baseValue": [
         160,
@@ -3617,12 +3850,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "cowries",
       "name": "Cowrie Shells",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -3634,12 +3868,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "chank-shells",
       "name": "Chank Shells",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -3650,12 +3885,13 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "coir",
       "name": "Coir",
-      "category": "raw",
+      "category": "ship-supplies",
       "valueBand": 1,
       "baseValue": [
         30,
@@ -3668,12 +3904,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "gallnuts",
       "name": "Gallnuts",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 3,
       "baseValue": [
         140,
@@ -3686,12 +3923,13 @@
         "levant"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "cinchona-bark",
       "name": "Jesuit’s Bark",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 5,
       "baseValue": [
         700,
@@ -3702,12 +3940,13 @@
         "pacific-americas"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "ostrich-feathers",
       "name": "Ostrich Feathers",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 3,
       "baseValue": [
         200,
@@ -3719,12 +3958,13 @@
         "west-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "sponges",
       "name": "Sponges",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -3736,12 +3976,13 @@
         "aegean-anatolia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "baleen",
       "name": "Whalebone",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 3,
       "baseValue": [
         180,
@@ -3756,12 +3997,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "sealskins",
       "name": "Sealskins",
-      "category": "raw",
+      "category": "cloth",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -3774,12 +4016,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "walrus-ivory",
       "name": "Walrus Ivory",
-      "category": "raw",
+      "category": "gems",
       "valueBand": 4,
       "baseValue": [
         400,
@@ -3790,12 +4033,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "narwhal-horn",
       "name": "Narwhal Horn",
-      "category": "raw",
+      "category": "gems",
       "valueBand": 5,
       "baseValue": [
         1800,
@@ -3806,12 +4050,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "eiderdown",
       "name": "Eiderdown",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 3,
       "baseValue": [
         200,
@@ -3822,12 +4067,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "coal",
       "name": "Sea Coal",
-      "category": "raw",
+      "category": "metal",
       "valueBand": 1,
       "baseValue": [
         20,
@@ -3838,12 +4084,13 @@
         "british-isles"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "marble",
       "name": "Marble",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 2,
       "baseValue": [
         90,
@@ -3856,12 +4103,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "cork",
       "name": "Cork",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 1,
       "baseValue": [
         35,
@@ -3872,12 +4120,13 @@
         "iberia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "copal",
       "name": "Copal",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 3,
       "baseValue": [
         140,
@@ -3889,12 +4138,13 @@
         "east-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "tiger-skins",
       "name": "Tiger Skins",
-      "category": "raw",
+      "category": "cloth",
       "valueBand": 4,
       "baseValue": [
         400,
@@ -3905,12 +4155,13 @@
         "korea"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "isinglass",
       "name": "Isinglass",
-      "category": "raw",
+      "category": "food",
       "valueBand": 4,
       "baseValue": [
         280,
@@ -3923,12 +4174,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "russia-leather",
       "name": "Russia Leather",
-      "category": "raw",
+      "category": "cloth",
       "valueBand": 3,
       "baseValue": [
         200,
@@ -3941,12 +4193,13 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "morocco-leather",
       "name": "Morocco Leather",
-      "category": "raw",
+      "category": "cloth",
       "valueBand": 3,
       "baseValue": [
         190,
@@ -3957,12 +4210,13 @@
         "maghreb"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "peru-balsam",
       "name": "Balsam of Peru",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 4,
       "baseValue": [
         350,
@@ -3974,12 +4228,13 @@
         "pacific-americas"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "jalap",
       "name": "Jalap",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 3,
       "baseValue": [
         180,
@@ -3990,12 +4245,13 @@
         "caribbean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "vicuna-wool",
       "name": "Vicuña Wool",
-      "category": "raw",
+      "category": "cloth",
       "valueBand": 5,
       "baseValue": [
         700,
@@ -4006,12 +4262,13 @@
         "pacific-americas"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "guaiacum",
       "name": "Guaiacum",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 4,
       "baseValue": [
         300,
@@ -4022,12 +4279,13 @@
         "caribbean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "verdigris",
       "name": "Verdigris",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 3,
       "baseValue": [
         150,
@@ -4038,12 +4296,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "cobalt",
       "name": "Cobalt Blue",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 4,
       "baseValue": [
         400,
@@ -4054,12 +4313,13 @@
         "arabia-gulf"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "gamboge",
       "name": "Gamboge",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 3,
       "baseValue": [
         160,
@@ -4070,12 +4330,13 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "safflower",
       "name": "Safflower",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -4088,12 +4349,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "catechu",
       "name": "Catechu",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 2,
       "baseValue": [
         75,
@@ -4105,12 +4367,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "elephants",
       "name": "War Elephants",
-      "category": "raw",
+      "category": "animals",
       "valueBand": 5,
       "baseValue": [
         2000,
@@ -4121,12 +4384,13 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "spikenard",
       "name": "Spikenard",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 4,
       "baseValue": [
         350,
@@ -4137,12 +4401,13 @@
         "eastern-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "asafoetida",
       "name": "Asafoetida",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 3,
       "baseValue": [
         180,
@@ -4154,12 +4419,13 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "mecca-balsam",
       "name": "Balm of Mecca",
-      "category": "raw",
+      "category": "medicine",
       "valueBand": 5,
       "baseValue": [
         800,
@@ -4170,12 +4436,13 @@
         "arabia-gulf"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "linseed",
       "name": "Linseed",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 1,
       "baseValue": [
         30,
@@ -4186,12 +4453,13 @@
         "baltic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "hops",
       "name": "Hops",
-      "category": "raw",
+      "category": "drink",
       "valueBand": 1,
       "baseValue": [
         35,
@@ -4203,12 +4471,13 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "soap",
       "name": "Soap",
-      "category": "raw",
+      "category": "crafts",
       "valueBand": 2,
       "baseValue": [
         80,
@@ -4222,12 +4491,13 @@
         "western-mediterranean"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "vermilion",
       "name": "Vermilion",
-      "category": "raw",
+      "category": "dye",
       "valueBand": 4,
       "baseValue": [
         450,
@@ -4239,12 +4509,13 @@
         "france-low-countries"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.2
     },
     {
       "id": "timber",
       "name": "Timber",
-      "category": "naval-stores",
+      "category": "ship-supplies",
       "valueBand": 1,
       "baseValue": [
         30,
@@ -4271,12 +4542,14 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.4,
+      "industry": true
     },
     {
       "id": "naval-timber",
       "name": "Masts & Spars",
-      "category": "naval-stores",
+      "category": "ship-supplies",
       "valueBand": 3,
       "baseValue": [
         170,
@@ -4292,12 +4565,14 @@
       "cultureMask": [],
       "entrepots": [
         "portsmouth"
-      ]
+      ],
+      "bulk": 1.4,
+      "industry": true
     },
     {
       "id": "tar",
       "name": "Tar & Pitch",
-      "category": "naval-stores",
+      "category": "ship-supplies",
       "valueBand": 2,
       "baseValue": [
         55,
@@ -4309,12 +4584,14 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.4,
+      "industry": true
     },
     {
       "id": "hemp",
       "name": "Hemp & Cordage",
-      "category": "naval-stores",
+      "category": "ship-supplies",
       "valueBand": 2,
       "baseValue": [
         75,
@@ -4332,12 +4609,14 @@
       "cultureMask": [],
       "entrepots": [
         "portsmouth"
-      ]
+      ],
+      "bulk": 1.4,
+      "industry": true
     },
     {
       "id": "flax",
       "name": "Flax & Sailcloth",
-      "category": "naval-stores",
+      "category": "ship-supplies",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -4352,12 +4631,14 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.4,
+      "industry": true
     },
     {
       "id": "whale-oil",
       "name": "Whale & Train Oil",
-      "category": "naval-stores",
+      "category": "ship-supplies",
       "valueBand": 3,
       "baseValue": [
         160,
@@ -4374,12 +4655,14 @@
         "south-america-atlantic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.4,
+      "industry": true
     },
     {
       "id": "teak",
       "name": "Teak",
-      "category": "naval-stores",
+      "category": "ship-supplies",
       "valueBand": 2,
       "baseValue": [
         70,
@@ -4391,12 +4674,14 @@
         "western-india"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.4,
+      "industry": true
     },
     {
       "id": "rosin",
       "name": "Rosin & Turpentine",
-      "category": "naval-stores",
+      "category": "ship-supplies",
       "valueBand": 1,
       "baseValue": [
         35,
@@ -4409,12 +4694,14 @@
         "scandinavia-arctic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.4,
+      "industry": true
     },
     {
       "id": "cedar",
       "name": "Cedar Timber",
-      "category": "naval-stores",
+      "category": "ship-supplies",
       "valueBand": 2,
       "baseValue": [
         80,
@@ -4427,12 +4714,14 @@
         "north-america-atlantic"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.4,
+      "industry": true
     },
     {
       "id": "mangrove-poles",
       "name": "Mangrove Poles",
-      "category": "naval-stores",
+      "category": "ship-supplies",
       "valueBand": 1,
       "baseValue": [
         28,
@@ -4443,12 +4732,14 @@
         "east-africa"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.4,
+      "industry": true
     },
     {
       "id": "abaca",
       "name": "Manila Hemp",
-      "category": "naval-stores",
+      "category": "ship-supplies",
       "valueBand": 2,
       "baseValue": [
         60,
@@ -4459,7 +4750,9 @@
         "southeast-asia"
       ],
       "cultureMask": [],
-      "entrepots": []
+      "entrepots": [],
+      "bulk": 1.4,
+      "industry": true
     }
   ]
 }
