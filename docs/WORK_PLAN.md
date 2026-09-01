@@ -90,12 +90,18 @@ parallel **only** once stage 1 is merged, because only then do the shared concep
 
 | # | slice | concept it settles | why it must be first |
 |---|---|---|---|
-| 1 | **Taxonomy** | what a good's category *is* | Captain specialisations and the whole catalogue rest on it |
-| 2 | **Catalogue + 1–3 rule** | how many goods exist, and where | 430 goods, strict distribution, demand needs the spread |
-| 3 | **Demand** | where a good is *wanted* | The market slice and the price band both read it |
-| 4 | **Buildings** | what a building *is* | Storage, workstation, 건조소 and Inn all hang off it |
-| 5 | **Items** | what a player *owns N of* | 건조소 and captain promotion both spend them |
-| 6 | **Levels** | what playing *earns* | Captain promotion spends them |
+| 1 | ~~**Taxonomy**~~ | what a good's category *is* | **0064, merged.** 17 plain words; biggest bucket 82 → 33 |
+| 2 | ~~**Catalogue + 1–3 rule**~~ | how many goods exist, and where | **0065, PR #18.** 523 goods; every one in 1–3 cities |
+| 3 | ~~**Demand**~~ | where a good is *wanted* | **0066, PR #19.** 80 authored appetites; amplitude MEASURED to 0.30 against proof 05's band |
+| 4 | ~~**Buildings**~~ | what a building *is* | **0067, PR #20.** 7 kinds as rows; the face strip and both server gates now read them |
+| 5 | ~~**Items**~~ | what a player *owns N of* | **0068, PR #21.** 12 fittings, made at a workstation out of cargo; the grammar grew MAKE |
+| 6 | ~~**Levels**~~ | what playing *earns* | **0069, this branch.** Three tracks, no table, fame re-folded onto the one count |
+
+**Stage 1 is built.** Every slice landed with both sides of its contract and its own self-assert,
+and all nine proof files pass on the whole chain. What stage 2 may now assume: a category is a
+word a player would say; a good sits in 1–3 cities; a region wants a kind of good; a building is a
+row `(port, kind, tier)`; an item is owned, counted and standing at a port; and a level is
+re-read from the record, never granted.
 
 ### Stage 2 — parallel, disjoint file domains, one worktree each
 

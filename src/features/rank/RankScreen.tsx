@@ -116,6 +116,7 @@ function RankBody() {
   const shipCount = house?.ships ?? null
   const fleetCount = house?.fleets ?? null
   const fame = house?.fame ?? null
+  const levels = house?.levels ?? null
 
   return (
     <Screen>
@@ -201,11 +202,57 @@ function RankBody() {
           <StatRow
             label="Exploration fame"
             value={fame ? formatInt(fame.exploration) : '—'}
-            hint="25 for each DISTINCT port you have arrived at. A port is reached once; sailing between two of them for ever is trade, not exploration."
+            hint="25 for each DISTINCT port you have arrived at, and one more for every 100 sea miles sailed. A port is reached once, so a route you have worn smooth stops paying for the landfall and keeps paying for the distance."
           />
           <StatRow label="Total" value={fame ? formatInt(fame.total) : '—'} />
           <StatRow label="Ports reached" value={fame ? formatInt(fame.ports_reached) : '—'} />
           <StatRow label="Turned over" value={fame ? formatDucats(fame.turnover) : '—'} />
+        </dl>
+      </Card>
+
+      {/* ── THE THREE TRACKS (0069) ────────────────────────────────────────────────────────────
+          The owner: *"levels - the game will have 3 kinds of levels - exploration, trading,
+          combat"*.
+
+          Fame above and levels here are the SAME count — since 0069 `player_fame` is a view of
+          `player_progress` rather than a second reading of the ledger — so the two cards can never
+          disagree. What a level adds is a THRESHOLD: captain promotion is what will require one.
+
+          Combat prints its honest zero and the reason. A blank would read as "not loaded", and a
+          proxy — hazards survived, say — would make an unbuilt track look built. */}
+      <Card
+        head={
+          <CardHeader
+            flush
+            title="Levels"
+            explain="What playing has earned, in three tracks. Recomputed from your record every time, so nothing here can be inflated and nothing was lost before it was counted."
+          />
+        }
+      >
+        <dl className="space-y-2">
+          <StatRow
+            label="Trading"
+            value={levels ? `Level ${formatInt(levels.trading.level)}` : '—'}
+            hint={
+              levels
+                ? `${formatInt(levels.trading.points)} points, from ${formatDucats(levels.trading.turnover)} turned over.`
+                : undefined
+            }
+          />
+          <StatRow
+            label="Exploration"
+            value={levels ? `Level ${formatInt(levels.exploration.level)}` : '—'}
+            hint={
+              levels
+                ? `${formatInt(levels.exploration.points)} points, from ${formatInt(levels.exploration.ports_reached)} port(s) reached and ${formatInt(levels.exploration.nm_sailed)} nm sailed.`
+                : undefined
+            }
+          />
+          <StatRow
+            label="Combat"
+            value={levels ? `Level ${formatInt(levels.combat.level)}` : '—'}
+            hint="There is no combat in this game yet, so this track honestly reads nothing. It is here because it is one of the three, not because it is waiting to be found."
+          />
         </dl>
       </Card>
     </Screen>

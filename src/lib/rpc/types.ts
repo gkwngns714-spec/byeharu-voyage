@@ -839,6 +839,22 @@ export interface PlayerHouse {
    *  game, so this is reported as what it is rather than as a base. */
   lying_at: string | null
   fame: PlayerFame
+  /** 0069 — the three tracks. Fame is one number for a board; a LEVEL is what promotion requires. */
+  levels: PlayerLevels
+}
+
+/** One track of DESIGN 8. `level` is the same curve for all three, so "level 4" means one amount
+ *  of work whichever word comes before it. */
+export interface LevelTrack {
+  points: number
+  level: number
+}
+
+export interface PlayerLevels {
+  trading: LevelTrack & { turnover: number }
+  exploration: LevelTrack & { ports_reached: number; nm_sailed: number }
+  /** Reads zero, and says so: there is no combat in this game yet (migration 0035, deliberately). */
+  combat: LevelTrack & { playable: boolean }
 }
 
 /** `world.player()`. `player` is NULL for a signed-in account that has not signed the book yet —

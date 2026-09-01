@@ -5,6 +5,80 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-02 — D30: stage 1 built end to end (0066–0069), and the two gates that were right
+
+**The standing order, verbatim:** *"do stage 1 to 3 without asking me for confirmation. keep going
+until everything is made, then merge and deploy, then let me check first by playing the game
+itself. do not stop until it is ready for me to play in actual game"*
+
+Four slices landed, each with both sides of its contract, its own self-assert and a green run of
+all nine proof files: **0066** demand, **0067** buildings, **0068** items, **0069** levels.
+
+### The two things the gates caught, and why both were right to
+
+**1. Demand made the game too rich, and the supply knobs could not pay for it.**
+Proof 05 measures the pooled median opening voyage and holds it in a 13.0–20.0 band. The moment
+demand landed it read **21.1%**, because a price now moves along TWO gradients and both of them
+pay.
+
+The first instinct — flatten `affinity_span` — barely moved it: 22.5 → 21.8 across 0.76 → 0.62.
+The reason is worth writing down, because it will come up again: **the measured number is a MAX
+over every good and every destination.** Compress one gradient and the argmax simply relocates to a
+route where the other one is extreme. Paying for a demand overshoot out of the supply knobs would
+also have left `affinity_span` at a value whose only defensible reason was *tobacco in India*.
+
+So the term that caused the overshoot gives it back, through a `demand_amplitude` knob, and the
+setting is **measured, not argued** — proof 05 run at six amplitudes against this very chain:
+
+| amplitude | opening voyage |
+|---|---|
+| 0.00 | in band — the 0065 economy exactly, and the control |
+| 0.15 | in band |
+| **0.30** | **in band — shipped** |
+| 0.45 | 20.0% out |
+| 0.60 / 0.80 | 20.7% out |
+
+Widening the band to admit 21.1 was the other way to make the red go away, and it is the one
+NO_SPAGHETTI §7C forbids: moving the claim to fit the measurement.
+
+**2. `building_kinds` shipped without RLS**, and proof 03 refused it on both PGlite and the
+disposable Supabase. Read by everyone, written by nobody is the posture every world table here
+holds, and a new one did not.
+
+### The mistakes, which are the part worth keeping
+
+* **A generator that had stopped writing its output.** While escaping backticks in
+  `build-0066.mjs` I truncated the file and removed its own `fs.writeFileSync`. It exited 0 and
+  printed nothing wrong. I then read a green self-assert receipt and briefly believed it — the
+  receipt was from the PREVIOUS file. It was caught only because the receipt's wording did not
+  match the text I had just written. **A green receipt proves the code that ran, not the code you
+  think you wrote.**
+* **Eighteen authored reasons were sentence fragments.** `data/demand.json`'s prose had been
+  written as run-ons continuing the row above — `"and cloth"` — and read as nonsense alone. The
+  `check (length(why) > 12)` on `world.region_demand` caught them on the first apply. The fix was
+  to rewrite the data, not to loosen the check.
+* **0067 moved only the SCREENS onto the building rows** and left `cmd.do_repair` and
+  `cmd.study_skill` reading the booleans. That is the same two-authority seam the slice existed to
+  close, one layer down. Both are re-cut, and the academy gate is proven by BEHAVIOUR: plant the
+  row at a harbour that just refused, and the same call gets through.
+* **Four acceptance tests named `salt` outright** and failed with `E_UNAVAILABLE` once 0065 put
+  every good in 1–3 cities. Seed-shaped assertions again: a test that names a good asserts a
+  WORLD. They ask the quay now.
+* **`git worktree` background jobs die with the shell call.** Several long runs produced nothing
+  because `cmd &` does not outlive the tool invocation; they need the background flag.
+* **Acceptance kept reporting "fail" when it had been CANCELLED** — its concurrency group cancels
+  in-progress runs, and I was pushing faster than its ~40-minute cycle. Read the conclusion, not
+  the colour.
+
+### What stage 2 may now assume
+
+A category is a word a player would say · a good sits in 1–3 cities · a region wants a KIND of
+good, and the game never says where · a building is a row `(port, kind, tier)` and a face that
+names one is offered where it stands · an item is owned, counted, and standing at a PORT · a level
+is re-read from the record and never granted.
+
+---
+
 ## 2026-08-26 — D29: a good comes from somewhere (0062), and what 0058's hash had quietly deleted
 
 **The request, verbatim:** *"Also the 243 trade goods, they should be regional, meaning that for
