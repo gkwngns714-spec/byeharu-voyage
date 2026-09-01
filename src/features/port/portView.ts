@@ -52,6 +52,14 @@ export const PORT_FACES = [
       'How far this place has grown, what the Mayor takes, and what it sells cheaper than its neighbours. Every figure is read from the market as it stands today.',
   },
   {
+    id: 'workstation',
+    building: 'workstation',
+    label: 'Workstation',
+    title: 'The workstation',
+    explain:
+      'Where trade goods become a fitting for a ship. What it can make depends on how good this city is at it, and what it makes comes out of the hold of a ship lying here — a fitting made at Bilbao stays at Bilbao.',
+  },
+  {
     id: 'academy',
     building: 'academy',
     label: 'Academy',

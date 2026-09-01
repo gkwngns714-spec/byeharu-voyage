@@ -21,7 +21,8 @@ import { useCommandDraft } from '../../domain/order'
 import { AcademyFace } from './PortFaces'
 import { PortTrade } from './PortTrade'
 import { QuayToday } from './PortFair'
-import { buildingsOf, hasBuilding } from '../../domain/port'
+import { buildingsOf, buildingTier, hasBuilding } from '../../domain/port'
+import { PortWorkstation } from './PortWorkstation'
 import { PORT_FACES, usePortView } from './portView'
 import { harbourCode, useHarbour } from '../../store/harbour'
 import type { CommandIntent } from '../../domain/order'
@@ -449,6 +450,14 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                   </dl>
                 </div>
             </>
+          )}
+
+          {shownFace.id === 'workstation' && (
+            <PortWorkstation
+              portId={port.id}
+              fleet={acting}
+              tier={buildingTier(port, 'workstation')}
+            />
           )}
 
           {shownFace.id === 'academy' && <AcademyFace acting={acting} />}

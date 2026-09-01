@@ -26,6 +26,7 @@
 import { call } from './backend'
 import type { RpcResult } from './result'
 import type {
+  WorkstationView,
   SeaRasterPayload,
   ReachPayload,
   BuyCapacity,
@@ -60,7 +61,7 @@ import type {
 
 /**
  * The static world — 12 ports, 22 legs, 12 goods, 3 ship classes, the allow-listed config knobs
- * and the 8 verbs. Changes only when a migration changes it; safe to fetch once per session.
+ * and the 9 verbs. Changes only when a migration changes it; safe to fetch once per session.
  */
 export function worldSnapshot(): Promise<RpcResult<WorldSnapshot>> {
   return call<WorldSnapshot>('worldSnapshot')
@@ -74,6 +75,23 @@ export function worldSnapshot(): Promise<RpcResult<WorldSnapshot>> {
  */
 export function worldMarket(portId: string): Promise<RpcResult<MarketView>> {
   return call<MarketView>('worldMarket', [portId])
+}
+
+/**
+ * WHAT THIS CITY CAN MAKE (0068) — the twelve fittings, each with what it buys and what it spends,
+ * its recipe, whether this city's workstation is good enough for it, how much of each input is in
+ * her hold, and how many you already own HERE.
+ *
+ * One read, not four: "can she make this" is a rule, and a screen that worked it out from a recipe
+ * and a manifest would be a second implementation of the rule the server enforces.
+ *
+ * @param fleetId a fleet lying here, or null — without one the recipe lines say nothing about cargo.
+ */
+export function worldWorkstation(
+  portId: string,
+  fleetId: string | null,
+): Promise<RpcResult<WorkstationView>> {
+  return call<WorkstationView>('worldWorkstation', [portId, fleetId])
 }
 
 /**
@@ -241,7 +259,7 @@ export function cmdDivert(
   return call<DivertResult>('cmdDivert', [fleetId, destPortId, destPoint, path])
 }
 
-/** The grammar, for the tap-builder: the same 8 verbs `world.snapshot().verbs` carries. */
+/** The grammar, for the tap-builder: the same 9 verbs `world.snapshot().verbs` carries. */
 export function cmdVerbSchema(): Promise<RpcResult<VerbSpec[]>> {
   return call<VerbSpec[]>('cmdVerbSchema')
 }
