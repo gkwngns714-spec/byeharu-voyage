@@ -1,0 +1,486 @@
+{
+  "$doc": "WHERE A GOOD IS WANTED - the demand half of the price, authored by hand.",
+  "note": "The owner, 2026-09-01: 'trade goods that are needed in that region/ country will be sold higher. For example tobacco from america (cigarette etc) will be very popular in India since they like to smoke.' Price until now was supply-side only: affinity is distance to the nearest producer, so every port wanted every good equally. Each row is an APPETITE - a region, a category, and what that region pays as a multiple. Absent means 1.00. Hand-written and defended one line at a time, the way 0062's entrepots are, because a seeded number can invent a taste but it cannot mean one. AND THE GAME NEVER SAYS WHERE: nothing in this file reaches a screen. A player learns that India pays for tobacco by carrying tobacco to India.",
+  "demand": [
+    {
+      "region": "western-india",
+      "category": "tobacco",
+      "multiplier": 1.4,
+      "why": "the huqqa took hold across Mughal India within a generation of the leaf arriving"
+    },
+    {
+      "region": "eastern-india",
+      "category": "tobacco",
+      "multiplier": 1.32,
+      "why": "Bengal smoked what Coromandel landed"
+    },
+    {
+      "region": "arabia-gulf",
+      "category": "tobacco",
+      "multiplier": 1.35,
+      "why": "tombak and the water pipe"
+    },
+    {
+      "region": "aegean-anatolia",
+      "category": "tobacco",
+      "multiplier": 1.3,
+      "why": "Ottoman coffee houses ran on it"
+    },
+    {
+      "region": "china-coast",
+      "category": "tobacco",
+      "multiplier": 1.28,
+      "why": "smoked from the late Ming onward"
+    },
+    {
+      "region": "oceania",
+      "category": "tobacco",
+      "multiplier": 1.25,
+      "why": "it went ashore with the first boats"
+    },
+    {
+      "region": "japan",
+      "category": "guns",
+      "multiplier": 1.45,
+      "why": "Tanegashima: the matchlock was the century's import"
+    },
+    {
+      "region": "japan",
+      "category": "medicine",
+      "multiplier": 1.22,
+      "why": "kampo demand for imported drugs"
+    },
+    {
+      "region": "japan",
+      "category": "cloth",
+      "multiplier": 1.18,
+      "why": "raw silk and cotton drawn in against copper and silver"
+    },
+    {
+      "region": "korea",
+      "category": "books",
+      "multiplier": 1.35,
+      "why": "a scholar-official state bought texts before luxuries"
+    },
+    {
+      "region": "korea",
+      "category": "medicine",
+      "multiplier": 1.2,
+      "why": "the medicine markets of Daegu"
+    },
+    {
+      "region": "china-coast",
+      "category": "gems",
+      "multiplier": 1.3,
+      "why": "jade and stones drew silver out of Canton"
+    },
+    {
+      "region": "china-coast",
+      "category": "metal",
+      "multiplier": 1.26,
+      "why": "silver above all, and copper for cash"
+    },
+    {
+      "region": "china-coast",
+      "category": "spice",
+      "multiplier": 1.15,
+      "why": "pepper moved by the junk-load through Canton, the one spice the coast never made enough of"
+    },
+    {
+      "region": "western-india",
+      "category": "metal",
+      "multiplier": 1.28,
+      "why": "bullion in, cloth out - the standing imbalance of the India trade"
+    },
+    {
+      "region": "eastern-india",
+      "category": "metal",
+      "multiplier": 1.25,
+      "why": "the same account, settled in Bengal"
+    },
+    {
+      "region": "southeast-asia",
+      "category": "cloth",
+      "multiplier": 1.35,
+      "why": "Indian cloth WAS the currency of the spice islands"
+    },
+    {
+      "region": "southeast-asia",
+      "category": "metal",
+      "multiplier": 1.22,
+      "why": "iron and copper wanted where little is smelted"
+    },
+    {
+      "region": "southeast-asia",
+      "category": "guns",
+      "multiplier": 1.3,
+      "why": "the sultanates bought powder and shot"
+    },
+    {
+      "region": "iberia",
+      "category": "spice",
+      "multiplier": 1.35,
+      "why": "the whole point of the Carreira da India"
+    },
+    {
+      "region": "iberia",
+      "category": "crafts",
+      "multiplier": 1.2,
+      "why": "porcelain fetched what silver could not buy at home"
+    },
+    {
+      "region": "iberia",
+      "category": "gems",
+      "multiplier": 1.22,
+      "why": "Lisbon and Seville priced the stones of two Indies"
+    },
+    {
+      "region": "france-low-countries",
+      "category": "spice",
+      "multiplier": 1.32,
+      "why": "Antwerp and Amsterdam priced Europe's pepper"
+    },
+    {
+      "region": "france-low-countries",
+      "category": "drink",
+      "multiplier": 1.15,
+      "why": "a thirsty and wealthy coast"
+    },
+    {
+      "region": "france-low-countries",
+      "category": "crafts",
+      "multiplier": 1.25,
+      "why": "the cabinet of curiosities was a Dutch invention"
+    },
+    {
+      "region": "france-low-countries",
+      "category": "gems",
+      "multiplier": 1.28,
+      "why": "Antwerp cut and set the stones for half of Europe, and paid to keep the rough coming"
+    },
+    {
+      "region": "british-isles",
+      "category": "spice",
+      "multiplier": 1.28,
+      "why": "the Company's whole reason for sailing"
+    },
+    {
+      "region": "british-isles",
+      "category": "cloth",
+      "multiplier": 1.2,
+      "why": "the calico craze took London so hard that Parliament twice tried to legislate it away"
+    },
+    {
+      "region": "british-isles",
+      "category": "drink",
+      "multiplier": 1.22,
+      "why": "port, sherry and claret by the pipe"
+    },
+    {
+      "region": "baltic",
+      "category": "drink",
+      "multiplier": 1.25,
+      "why": "the wine trade ran north every year because the Baltic shore could not ripen a grape"
+    },
+    {
+      "region": "baltic",
+      "category": "spice",
+      "multiplier": 1.3,
+      "why": "furthest from the source, dearest on the quay"
+    },
+    {
+      "region": "baltic",
+      "category": "gems",
+      "multiplier": 1.18,
+      "why": "courts at Warsaw and Stockholm"
+    },
+    {
+      "region": "scandinavia-arctic",
+      "category": "grain",
+      "multiplier": 1.35,
+      "why": "the north never grew enough"
+    },
+    {
+      "region": "scandinavia-arctic",
+      "category": "drink",
+      "multiplier": 1.28,
+      "why": "spirits carried the long dark north, and were drunk against a winter nothing else answered"
+    },
+    {
+      "region": "scandinavia-arctic",
+      "category": "cloth",
+      "multiplier": 1.2,
+      "why": "wool and linen against the winter"
+    },
+    {
+      "region": "western-mediterranean",
+      "category": "grain",
+      "multiplier": 1.22,
+      "why": "Italy imported bread all century"
+    },
+    {
+      "region": "adriatic-ionian",
+      "category": "spice",
+      "multiplier": 1.25,
+      "why": "Venice sold on what Venice bought"
+    },
+    {
+      "region": "adriatic-ionian",
+      "category": "art",
+      "multiplier": 1.3,
+      "why": "the market that priced painting"
+    },
+    {
+      "region": "aegean-anatolia",
+      "category": "cloth",
+      "multiplier": 1.2,
+      "why": "the Ottoman court dressed on imports"
+    },
+    {
+      "region": "levant",
+      "category": "cloth",
+      "multiplier": 1.25,
+      "why": "Aleppo took European broadcloth for silk"
+    },
+    {
+      "region": "levant",
+      "category": "metal",
+      "multiplier": 1.22,
+      "why": "tin and lead had no local source"
+    },
+    {
+      "region": "maghreb",
+      "category": "cloth",
+      "multiplier": 1.28,
+      "why": "cloth for gold, the oldest Saharan account"
+    },
+    {
+      "region": "maghreb",
+      "category": "weapons",
+      "multiplier": 1.3,
+      "why": "the corsair ports armed from Europe"
+    },
+    {
+      "region": "maghreb",
+      "category": "grain",
+      "multiplier": 1.15,
+      "why": "the coast fed on shipped wheat in bad years"
+    },
+    {
+      "region": "west-africa",
+      "category": "metal",
+      "multiplier": 1.4,
+      "why": "brass and iron bars were the unit of account"
+    },
+    {
+      "region": "west-africa",
+      "category": "cloth",
+      "multiplier": 1.35,
+      "why": "cloth was one half of what the coast took in exchange, iron bar the other"
+    },
+    {
+      "region": "west-africa",
+      "category": "guns",
+      "multiplier": 1.38,
+      "why": "the coastal trade turned on powder and muskets"
+    },
+    {
+      "region": "west-africa",
+      "category": "drink",
+      "multiplier": 1.25,
+      "why": "rum and brandy landed with everything else"
+    },
+    {
+      "region": "east-africa",
+      "category": "cloth",
+      "multiplier": 1.32,
+      "why": "Gujarati cotton clothed the Swahili coast"
+    },
+    {
+      "region": "east-africa",
+      "category": "crafts",
+      "multiplier": 1.2,
+      "why": "porcelain in the walls of Kilwa"
+    },
+    {
+      "region": "east-africa",
+      "category": "metal",
+      "multiplier": 1.25,
+      "why": "worked metal against ivory and gold"
+    },
+    {
+      "region": "arabia-gulf",
+      "category": "grain",
+      "multiplier": 1.3,
+      "why": "rice and wheat into a coast that grows neither"
+    },
+    {
+      "region": "arabia-gulf",
+      "category": "cloth",
+      "multiplier": 1.22,
+      "why": "Indian cloth came up the Gulf in every season, the steadiest cargo Basra saw"
+    },
+    {
+      "region": "caribbean",
+      "category": "cloth",
+      "multiplier": 1.3,
+      "why": "everything wearable came by sea"
+    },
+    {
+      "region": "caribbean",
+      "category": "food",
+      "multiplier": 1.35,
+      "why": "a sugar island grows sugar and starves"
+    },
+    {
+      "region": "caribbean",
+      "category": "drink",
+      "multiplier": 1.18,
+      "why": "wine, since the rum went out"
+    },
+    {
+      "region": "caribbean",
+      "category": "guns",
+      "multiplier": 1.28,
+      "why": "contested water, taken and retaken, where every island wanted powder and shot before anything else"
+    },
+    {
+      "region": "north-america-atlantic",
+      "category": "cloth",
+      "multiplier": 1.28,
+      "why": "the colonies bought their clothing"
+    },
+    {
+      "region": "north-america-atlantic",
+      "category": "crafts",
+      "multiplier": 1.22,
+      "why": "the colonies were forbidden their own manufactures and so had to buy them shipped"
+    },
+    {
+      "region": "north-america-atlantic",
+      "category": "drink",
+      "multiplier": 1.2,
+      "why": "madeira above all, the one wine that crossed the Atlantic better than it kept at home"
+    },
+    {
+      "region": "south-america-atlantic",
+      "category": "cloth",
+      "multiplier": 1.3,
+      "why": "Brazil dressed on imports"
+    },
+    {
+      "region": "south-america-atlantic",
+      "category": "food",
+      "multiplier": 1.25,
+      "why": "the mining towns ate shipped provisions"
+    },
+    {
+      "region": "south-america-atlantic",
+      "category": "guns",
+      "multiplier": 1.22,
+      "why": "an interior held by force"
+    },
+    {
+      "region": "pacific-americas",
+      "category": "crafts",
+      "multiplier": 1.3,
+      "why": "the Manila galleon ran on Asian manufactures"
+    },
+    {
+      "region": "pacific-americas",
+      "category": "cloth",
+      "multiplier": 1.32,
+      "why": "silk landed at Acapulco and walked to Mexico"
+    },
+    {
+      "region": "pacific-americas",
+      "category": "spice",
+      "multiplier": 1.25,
+      "why": "the Manila galleon landed pepper on the Pacific coast and it never once went unsold"
+    },
+    {
+      "region": "oceania",
+      "category": "metal",
+      "multiplier": 1.45,
+      "why": "iron was the trade, everywhere in the Pacific"
+    },
+    {
+      "region": "oceania",
+      "category": "cloth",
+      "multiplier": 1.35,
+      "why": "cloth was the first thing asked for wherever a ship made a landfall in these waters"
+    },
+    {
+      "region": "atlantic-isles",
+      "category": "grain",
+      "multiplier": 1.3,
+      "why": "islands with no plain to plough import their bread or go without it"
+    },
+    {
+      "region": "atlantic-isles",
+      "category": "cloth",
+      "multiplier": 1.2,
+      "why": "a waystation buys its cloth from the ships that call, having no loom of its own"
+    },
+    {
+      "region": "western-india",
+      "category": "drink",
+      "multiplier": 0.8,
+      "why": "much of the coast does not drink"
+    },
+    {
+      "region": "arabia-gulf",
+      "category": "drink",
+      "multiplier": 0.72,
+      "why": "the Gulf ports kept the prohibition, and wine found no legal buyer on that shore"
+    },
+    {
+      "region": "maghreb",
+      "category": "drink",
+      "multiplier": 0.75,
+      "why": "the Barbary coast held to the same law, and a cargo of wine was worth little there"
+    },
+    {
+      "region": "levant",
+      "category": "drink",
+      "multiplier": 0.82,
+      "why": "a smaller appetite than Europe's"
+    },
+    {
+      "region": "east-africa",
+      "category": "drink",
+      "multiplier": 0.85,
+      "why": "the Swahili ports likewise"
+    },
+    {
+      "region": "china-coast",
+      "category": "cloth",
+      "multiplier": 0.82,
+      "why": "China made better cloth than anyone could sell it"
+    },
+    {
+      "region": "eastern-india",
+      "category": "cloth",
+      "multiplier": 0.78,
+      "why": "Bengal wove for the world and had no need to buy what it sold everywhere else"
+    },
+    {
+      "region": "western-india",
+      "category": "cloth",
+      "multiplier": 0.8,
+      "why": "Gujarat's looms supplied the whole Indian Ocean, so imported cloth met a closed market"
+    },
+    {
+      "region": "southeast-asia",
+      "category": "spice",
+      "multiplier": 0.72,
+      "why": "nobody sells pepper to the Moluccas"
+    },
+    {
+      "region": "china-coast",
+      "category": "crafts",
+      "multiplier": 0.75,
+      "why": "Jingdezhen fired porcelain for the whole world and had nothing to learn from an imported cup"
+    }
+  ]
+}

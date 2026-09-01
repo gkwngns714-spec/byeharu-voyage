@@ -17,14 +17,19 @@
 import { applyChain } from './apply-chain.mjs'
 
 const CANDIDATES = [
-  // 2026-08-24, the free-sea sweep: the honest 600 nm reach finds better-paying destinations than
-  // the old one-leg graph did, so the same knobs price a first voyage higher — proof 05 measured
-  // 14.7-17.8% against the 4-16 band. The sweep below re-measures the CURRENT knobs under the
-  // honest scan and two flatter candidates to pull the median back to mid-band.
-  { producer: 0.92, home: 0.99, span: 0.85, reach: 9000, curve: 0.80 },  // current (D21)
-  { producer: 0.92, home: 1.00, span: 0.80, reach: 9000, curve: 0.85 },
-  { producer: 0.93, home: 1.00, span: 0.76, reach: 9500, curve: 0.88 },
-  { producer: 0.94, home: 1.00, span: 0.72, reach: 9500, curve: 0.90 },
+  // 2026-09-02, the DEMAND sweep. Migration 0066 gave the mid a second gradient and proof 05 went
+  // to 21.1 per cent against its 13.0-20.0 band. The first sweep tried to pay for that out of the
+  // supply knobs and barely moved it — 22.5 to 21.8 across `span` 0.76 to 0.62 — because with an
+  // authored spread averaging 0.265 the appetites are now the LARGER of the two gradients.
+  //
+  // So the supply knobs are held exactly where 0065 left them and only `demand_amplitude` moves.
+  // The term that caused the overshoot gives it back, and `affinity_span` keeps a value whose
+  // reason is still the thing it was tuned for.
+  { producer: 0.93, home: 1.00, span: 0.76, reach: 9500, curve: 0.88, amp: 1.00 },
+  { producer: 0.93, home: 1.00, span: 0.76, reach: 9500, curve: 0.88, amp: 0.70 },
+  { producer: 0.93, home: 1.00, span: 0.76, reach: 9500, curve: 0.88, amp: 0.50 },
+  { producer: 0.93, home: 1.00, span: 0.76, reach: 9500, curve: 0.88, amp: 0.35 },
+  { producer: 0.93, home: 1.00, span: 0.76, reach: 9500, curve: 0.88, amp: 0.20 },
 ]
 
 const SAMPLE = Number(process.env.SAMPLE ?? 14)
@@ -71,7 +76,7 @@ for (const port of ports) {
   })
 }
 
-async function retune({ producer, home, span, reach, curve }) {
+async function retune({ producer, home, span, reach, curve, amp }) {
   await db.query(
     `update public.world_config set value = to_jsonb($1::numeric) where key = 'affinity_producer'`, [producer])
   await db.query(
@@ -82,6 +87,11 @@ async function retune({ producer, home, span, reach, curve }) {
     `update public.world_config set value = to_jsonb($1::numeric) where key = 'affinity_reach_nm'`, [reach])
   await db.query(
     `update public.world_config set value = to_jsonb($1::numeric) where key = 'affinity_curve'`, [curve])
+  await db.query(
+    `update public.world_config set value = to_jsonb($1::numeric) where key = 'demand_amplitude'`, [amp])
+  // 0066: re-derived through world.demand_for() for exactly the reason affinity is re-derived
+  // through world.affinity_for() — the sweep must price the game, never a copy of its formula.
+  await db.query(`update public.port_goods pg set demand = world.demand_for(pg.port_id, pg.good_id)`)
   // The SAME function the seed used, so the sweep measures the game and not a copy of it.
   await db.query(
     `update public.port_goods pg
@@ -108,7 +118,11 @@ async function bestVoyage(house) {
       where rf.nm <= 600
         and not (d.culture = any(g.culture_mask))
         and not ($2::text = any(g.culture_mask))
-      order by pg_away.affinity - pg_home.affinity desc
+      -- 0066: rank on the gradient the market actually has. affinity and demand are both plain
+      -- multipliers on base_value, so the sum of the two differences is the same shape the price
+      -- is. Ranking on affinity alone would have shortlisted the pre-demand world's best routes and
+      -- quietly under-measured every candidate — the proxy-constant class again.
+      order by (pg_away.affinity + pg_away.demand) - (pg_home.affinity + pg_home.demand) desc
       limit 40`,
     [house.port.id, house.port.culture],
   )
@@ -149,7 +163,7 @@ for (const c of CANDIDATES) {
   pcts.sort((a, b) => a - b)
   const at = (q) => pcts[Math.min(pcts.length - 1, Math.floor(q * pcts.length))]
   console.log(
-    `prod ${c.producer.toFixed(2)} home ${c.home.toFixed(2)} span ${c.span.toFixed(2)} reach ${String(c.reach).padStart(4)} curve ${c.curve.toFixed(2)}  ` +
+    `amp ${c.amp} prod ${c.producer.toFixed(2)} home ${c.home.toFixed(2)} span ${c.span.toFixed(2)} reach ${String(c.reach).padStart(4)} curve ${c.curve.toFixed(2)}  ` +
       `${at(0.5).toFixed(1).padStart(6)}% ${at(0.25).toFixed(1).padStart(5)}% ${at(0.75).toFixed(1).padStart(5)}% ` +
       `${pcts[0].toFixed(1).padStart(6)}% ${pcts[pcts.length - 1].toFixed(1).padStart(6)}%`,
   )
