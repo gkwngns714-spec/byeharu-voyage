@@ -112,6 +112,32 @@ update public.goods g
  where c.code = g.code
    and g.category is distinct from c.category;
 
+-- ── 2. WHETHER MAKING A GOOD IS INDUSTRY BECOMES A FACT ABOUT THE GOOD ────────────────────────
+-- The same split, on the server side. `ports.dev_industry` counts how many of a city's goods are
+-- industrial, and that test was `category in ('metal','textile','naval-stores')` -- so re-filing
+-- the shelves would have moved a port's development, and through it prices and repair costs.
+-- A renaming may not move an economy.
+--
+-- The flag is now carried on the good, seeded at exactly the value the retired rule produced for
+-- all 50 of them, and `scripts/lib/world-derive.mjs` and every future growth migration read THIS
+-- rather than re-deriving from a category name. One authority per concept.
+alter table public.goods add column if not exists industry boolean not null default false;
+
+comment on column public.goods.industry is
+  'Does MAKING this good count as industry for a port''s dev_industry? A fact about the good, not '
+  'about its category — 0064 split the two after the taxonomy re-file would otherwise have moved '
+  'dev_industry at 264 harbours. Authored in data/goods.json.';
+
+update public.goods set industry = true where code in (
+  'wool-cloth', 'linen', 'cotton-cloth', 'muslin', 'chintz', 'silk-cloth', 'silk-raw', 'carpets',
+  'ramie-cloth', 'says-serges', 'velvet', 'lace', 'tapestries', 'batik', 'raffia-cloth', 'barkcloth',
+  'camlets', 'quilts', 'shawls', 'fustian', 'gold-thread', 'stockings', 'felt-hats', 'gold',
+  'silver', 'copper', 'tin', 'iron', 'lead', 'quicksilver', 'wootz-steel', 'firearms',
+  'cannon', 'brassware', 'pewter', 'copper-cash', 'smallwares', 'armour', 'gunpowder', 'timber',
+  'naval-timber', 'tar', 'hemp', 'flax', 'whale-oil', 'teak', 'rosin', 'cedar',
+  'mangrove-poles', 'abaca'
+);
+
 -- ── SELF-ASSERT ────────────────────────────────────────────────────────────────────────────────
 do $$
 declare
@@ -172,6 +198,13 @@ begin
       v_name, v_biggest, v_total;
   end if;
 
-  raise notice '0064 self-assert ok: every one of % good(s) carries one of the seventeen plain categories the data names, 0 disagreeing with data/goods.json and 0 still on a retired shelf (raw/foodstuff/luxury/textile/naval-stores, positive control); % categories inhabited and the biggest, "%", holds % -- where the retired "raw" held 82. category is read by no server rule, so no price, roster, stock or affinity moved.',
+  -- (e) THE INDUSTRY FLAG LANDED ON EXACTLY THE 50 THE RETIRED RULE NAMED. A count is the only
+  --     thing that can prove a split did not move the thing it was splitting.
+  select count(*) into v_bad from public.goods where industry;
+  if v_bad <> 50 then
+    raise exception '0064 self-assert FAIL: % goods carry the industry flag, the retired rule named 50', v_bad;
+  end if;
+
+  raise notice '0064 self-assert ok: every one of % good(s) carries one of the seventeen plain categories the data names, 0 disagreeing with data/goods.json and 0 still on a retired shelf (raw/foodstuff/luxury/textile/naval-stores, positive control); % categories inhabited and the biggest, "%", holds % -- where the retired "raw" held 82. category no longer decides bulk or industry -- both are facts about the good now, 50 carrying the industry flag exactly as the retired rule named -- so no hold, no dev_industry, no price and no repair cost moved.',
     v_total, v_cats, v_name, v_biggest;
 end $$;
