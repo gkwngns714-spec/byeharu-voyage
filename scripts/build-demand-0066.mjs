@@ -51,6 +51,19 @@ const SQL = `-- ================================================================
 -- that law only ever deleted things; demand gives the player something to DISCOVER in the space
 -- the deletions leave.
 --
+-- -- WHAT THIS SUPERSEDES ------------------------------------------------------------------------
+-- world.mid_from_terms, created at 0005 with eleven arguments. This file REPLACES it with a
+-- twelve-argument form carrying p_demand, re-cuts its two callers (world.mid_price and
+-- world.pct_of_neighbours_at) to pass it, and DROPS the eleven-argument original in the same
+-- transaction. Dropped rather than left standing, deliberately: an old expression that still
+-- prices without an appetite is a second answer to "what is this worth here", and the day
+-- something calls it the two disagree. Nothing in the chain calls it afterwards, which the drop
+-- itself proves - Postgres would refuse the drop if a dependency remained.
+--
+-- The change is NOT a no-op when the new input is absent: a row with no authored appetite carries
+-- demand 1.000, and multiplying by 1.000 leaves the price exactly where 0005 put it. So every
+-- market row outside the 80 authored (region, category) pairs prices today as it did yesterday.
+--
 -- -- WHY IT MULTIPLIES THE MID, NOT THE SELL PRICE ----------------------------------------------
 -- A wanted good is dear to BUY there as well as dear to sell there, and that is what makes the
 -- gradient real: buy where a thing is not wanted, carry it to where it is. Lifting only the bid
