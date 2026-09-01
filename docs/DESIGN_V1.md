@@ -2,7 +2,7 @@
 
 **Written 2026-09-01, DESIGN ONLY. Nothing here is built and no migration exists.**
 
-This answers `docs/OWNER_REQUESTS.md` rows **57–69** together, because they are not thirteen
+This answers `docs/OWNER_REQUESTS.md` rows **57–70** together, because they are not thirteen
 features. They are one economy with one spine:
 
 ```
@@ -107,28 +107,34 @@ liquor, all the stimulants, salt meat, oils, fruit and Cantonese delicacies — 
 in `raw`**. `luxury` holds **41**, mixing gems, porcelain, aromatics, books, paintings, sword
 blades and live parrots.
 
-### 2.1 Sixteen categories
+### 2.1 Seventeen categories, in plain words
 
-Following 대항해시대, which is the reference the world was built against.
+The owner, on the first draft: *"where is liquir? indulgences? dyestuff? use simpler category i
+mean come on!"* — right on both counts. "Indulgences" and "Dyestuff" were a thesaurus talking, and
+liquor was buried inside a word nobody says.
 
-| category | English | examples already in the catalogue |
-|---|---|---|
-| 곡물 | **Grain** | wheat, rice, rye, barley, maize, cassava flour |
-| 식료품 | **Provisions** | salt meat, cheese, butter, herring, dried fish, ghee |
-| 기호품 | **Indulgences** | wine, beer, sake, rum, brandy, arrack, coffee, tea, cacao, **tobacco** |
-| 향신료 | **Spice** | pepper, cloves, cinnamon, nutmeg, cumin |
-| 약품 | **Medicine** | senna, Chinese rhubarb, Jesuit's bark, jalap, opium, bezoar |
-| 염료 | **Dyestuff** | indigo, cochineal, brazilwood, woad, madder, safflower |
-| 직물 | **Textile** | silk, linen, calico, broadcloth, says & serges |
-| 광석 | **Ore & metal** | iron, copper, tin, silver, quicksilver, saltpetre, sulphur |
-| 보석 | **Gem** | diamonds, rubies, emeralds, pearls, amber, lapis |
-| 공예품 | **Craftwork** | porcelain, lacquerware, glassware, majolica, celadon |
-| 무기 | **Arms** | sword blades, boarding gear |
-| 화기 | **Firearms** | (new — the crafted class the owner named: *"guns maybe"*) |
-| 조선용재 | **Naval stores** | timber, pitch, tar, hemp, canvas, cordage |
-| 미술품 | **Art** | paintings, sea charts & globes, clocks & instruments |
-| 서적 | **Books** | printed books, paper, ink & brushes |
-| 가축 | **Livestock** | horses, war elephants, gyrfalcons, parrots |
+| category | what goes in it |
+|---|---|
+| **Grain** | wheat, rice, rye, barley, maize, cassava flour |
+| **Food** | salt meat, cheese, butter, herring, dried fish, ghee, oils, fruit, nuts |
+| **Drink** | wine, beer, **vodka**, rum, brandy, sake, arrack, coffee, tea, cacao |
+| **Tobacco** | tobacco and its makes |
+| **Spice** | pepper, cloves, cinnamon, nutmeg, cumin |
+| **Medicine** | senna, Chinese rhubarb, Jesuit's bark, jalap, opium, bezoar |
+| **Dye** | indigo, cochineal, brazilwood, woad, madder, safflower |
+| **Cloth** | silk, linen, calico, broadcloth, says & serges, raw cotton, raw wool |
+| **Metal** | iron, copper, tin, silver, quicksilver, saltpetre, sulphur |
+| **Gems** | diamonds, rubies, emeralds, pearls, amber, lapis |
+| **Crafts** | porcelain, lacquerware, glassware, majolica, celadon |
+| **Weapons** | sword blades, boarding gear |
+| **Guns** | firearms — the crafted class the owner named |
+| **Ship supplies** | timber, pitch, tar, hemp, canvas, cordage |
+| **Art** | paintings, sea charts & globes, clocks & instruments |
+| **Books** | printed books, paper, ink & brushes |
+| **Animals** | horses, war elephants, gyrfalcons, parrots |
+
+Every name is a word a player would say out loud, which is the owner's standing rule: labels are
+NAMES, not vocabulary.
 
 **Trading captains specialise on exactly this axis** (§7), which is why the taxonomy has to land
 first: a "Provisions trader" is a real merchant; a "foodstuff trader" is three merchants wearing
@@ -159,23 +165,86 @@ cannot have a same trade goods."*
 Today **160 goods already comply**; **83 break the rule**, led by Salt 53, Dried & Salt Fish 50,
 Hides 45, Timber 39, Wheat 37, Wine 35.
 
-### 3.2 The ruling
+### 3.2 The ruling — STRICT, decided by the owner
 
-**Two tiers of good, one rule each.**
+*"strict 1-3 cities, make more trade goods."* No staple exemption. **Every good, including salt,
+sits in one to three cities.** The catalogue grows to **430** (+187), asserted per good by the
+migration that lands it.
 
-- **Staples** — value band 1, 27 goods, the bulk that historically *was* everywhere. Uncapped.
-  Salt in fifty ports is not a defect, it is the sixteenth century.
-- **Everything else** — **1 to 3 cities, hard**, asserted per good in the migration that lands it.
+**What the new goods are, from the owner's own list:**
 
-This is the arithmetic that finally justifies **row 37**, where the owner asked for a thousand
-goods and slot maths capped it at 243. The catalogue grows to **≈430**, which the sixteen
-categories give somewhere to put: firearms, art, books and livestock are nearly empty today.
+- **Drinks** — wine, beer, **vodka**, and the rest of the still-room
+- **Tobacco** — and its makes
+- **Named fish** — salmon, tuna, cod, herring: a catch is a place, and "dried & salt fish" in fifty
+  ports was one of the worst offenders
+- **Regional goods** — soy sauce, **chilli paste**, which is row 38's gochujang finally arriving
+
+Naming the fish is the pattern for all 187: **one generic good in fifty ports becomes several
+specific goods in three ports each**, which is the rule and the flavour arriving together.
 
 ### 3.3 What it does to the game
 
 It is the strongest single change in this document. At ≤3 cities a good, **every cargo worth
 carrying is a place you have to go**, which is row 48's stated purpose — *"there should be a
 purpose to go to a city that is far away"* — enforced by arithmetic instead of hoped for.
+
+---
+
+## 3A. DEMAND — where a good is WANTED
+
+The owner, and this is the largest single change in the document:
+
+> *"you can sell at any port you like, longer or trade goods that are needed in that region/
+> country will be sold higher. For example tobacco from america (cigarette etc) will be very
+> popular in India since they like to smoke. no need to give info on where to sell. The
+> information gaining will be part of the game for the future."*
+
+### 3A.1 What the game has, and what it lacks
+
+Price today is **supply-side only**: `affinity` is distance to the nearest producer, so a good is
+cheap where it is made and dear where it is not. That gives a gradient, but it is a gradient of
+**scarcity**, not of **appetite** — every port wants every good equally.
+
+There is no demand term anywhere in `world.mid_price`.
+
+### 3A.2 The model
+
+**A region wants what it wants.** Demand is a multiplier on the sell price, keyed on
+(good category or good, region or culture), authored like every other world fact and guarded like
+every other world fact.
+
+- Tobacco pays in India because India smokes — a **category × region** fact.
+- Some are finer: a specific good in a specific place. The authority allows both, most rows are
+  categories, and the exceptions are hand-written, exactly as 0062's entrepôts are.
+- **Distance still pays**, unchanged. Demand multiplies it; it does not replace it. A wanted good
+  carried far is the best trade in the game, which is the sentence the whole economy should make
+  true.
+
+### 3A.3 The rule that makes it a game and not a table
+
+> **The game never says where a good is wanted.**
+
+*"no need to give info on where to sell. The information gaining will be part of the game."*
+
+This is row 55 — *the game is to challenge players for finding the best prices by themselves* —
+given a **positive** form. Until now that law only ever deleted things: the best-bargain row, and
+next the NEARBY column, `pays at`, and `Where to sail`. Demand gives the player something to
+**discover** in the space those deletions leave. Without it, removing the hints just makes the game
+quieter; with it, removing them makes the game a game.
+
+**So: no demand map, no "wanted here" badge, no sort-by-demand.** The player learns that Indian
+ports pay for tobacco by carrying tobacco to an Indian port, and then remembers. That memory is the
+progression, and it is the only progression in this design that lives in the player rather than in
+a table.
+
+### 3A.4 What it must not break
+
+- **Prices stay bounded.** §10's −20%…+20% band is the *drift*; demand is a separate, static
+  multiplier on top, or the two random-walk together and no price means anything.
+- **Demand is authored, never derived from player behaviour.** A demand that responds to what
+  players carry is a feedback loop, and a feedback loop in a market is a farm.
+- **It must survive the read being the catch-up.** Demand is a fact about the world, not an event,
+  so it costs nothing at settle time.
 
 ---
 
@@ -238,10 +307,16 @@ Row 57, and the owner has legislated this before in their other game:
 5. **It may hold what the city does not trade.** 0061 gates BUY, never SELL, precisely so a hold is
    never stranded; a warehouse inherits that.
 
-### 5.2 Economics
+### 5.2 Storage costs nothing to keep
 
-`DESIGN.md` §F.2 already specifies **1 d./tun handling** and **0.5 d./tun/game-day rent**. Adopt
-them. Rent is the sink that stops a warehouse being a free second hold.
+`DESIGN.md` §F.2 proposed 0.5 d./tun/game-day rent and 1 d./tun handling, and an earlier draft of
+this document put those figures in front of the owner as though they were theirs. They were not.
+
+> *"wtf is warehoure's rent? i didn't say anything about this. remove"*
+
+**Removed. A warehouse costs nothing to keep.** The cap on it is its building tier, which is a
+limit on *space*, not a tax on time — and a per-day charge would also mean a player who stops
+playing comes back poorer, which no rule in this game does today.
 
 ### 5.3 The disk question, answered
 
@@ -327,9 +402,26 @@ cost a row, not a migration that re-cuts every function.
 | **Combat — close** | boarding | attack at low reach, crew losses |
 
 This **supersedes** `officers.specialty`, which is four ship-board jobs — navigator, quartermaster,
-surgeon, purser — each wired to one live rule. Role-plus-specialisation is a different axis; the
-four jobs become **skills a captain may know**, not the captain's identity. Replacing them silently
-would break speed, hold, spread and crew-losses at once.
+surgeon, purser — each wired to one live rule. Role-plus-specialisation is a different axis, and the
+owner has ruled: **the four jobs become skills a captain may know**, not the captain's identity.
+Replacing them silently would break speed, hold, spread and crew-losses at once.
+
+The owner also widened two of them, and the second is a new mechanic:
+
+> *"navigator could be increasing speed, or make wheather more fable etc, surgeon could be a healer
+> where captains may be homesick even crews"*
+
+- **Navigator** — speed, *or kinder weather*. Once climate exists (§9), a navigator shortens the
+  passage by finding the better wind rather than by multiplying a number.
+- **Surgeon** — a healer, and what she heals is **morale**. Captains and crew may become
+  **homesick**: a long voyage far from home wears on them. That is a figure the game does not have
+  today, and it gives the surgeon something to do outside a fight — which matters, because fights
+  do not exist yet.
+
+**Homesickness is the one genuinely new mechanic in this section.** It wants: a home for each
+person (captains already carry `nation_id` and `home_port_id`), a distance-and-time measure the
+voyage already produces, and an effect that is felt but not fatal. It must be *derived*, like
+everything else that moves on its own, or it becomes a counter to farm.
 
 ### 7.3 Cabins, and the collision
 
@@ -349,8 +441,9 @@ settles voyages while the player sleeps because every random thing is `immutable
 forbids it reading the clock. A captain who is *rolled and stored* can be re-rolled by refreshing
 until an S appears. Derived, they cannot.
 
-Weighting: highest in the captain's own nation's ports, lower in the same **region**, lowest
-elsewhere. S-tier rare everywhere.
+Weighting, and the owner's answer to *"what is a related field"* was **all of them**: highest in
+her own **nation's** ports, then the same **region**, then the same **culture**, lowest elsewhere.
+S-tier rare everywhere — the owner's *"not 100%, S tear especially."*
 
 ---
 
@@ -366,7 +459,7 @@ that wrote XP into a column would throw that away and hand the game its first fa
 | track | earned from | change from today |
 |---|---|---|
 | **Trading** | ledger turnover on completed buys and sells | none |
-| **Exploration** | **distance sailed** — `voyages.total_nm`, already recorded | today counts ports, not miles |
+| **Exploration** | **distance sailed AND ports reached** — the owner: *"both"*. Both are already in the record | today counts ports only |
 | **Combat** | combat that does not exist yet | reads **zero, honestly** |
 
 Levels are the requirement captain promotion spends (§7.1), which is why rows 61 and 62 are one
@@ -448,14 +541,18 @@ Crafting recipes (needs storage + regions + the producer ruling) · captain rank
 
 ---
 
-## 13. THE DECISIONS STILL OPEN
+## 13. THE DECISIONS — ANSWERED 2026-09-01
 
-Everything above is a recommendation. These are the ones where the owner's word changes the build:
+All seven were put to the owner and all seven came back. Recorded as row 70.
 
-1. Are the **sixteen categories** right, or is a different cut wanted?
-2. **Strict 1–3, or staples exempt?** (430 goods versus 361.)
-3. Does removing NEARBY also remove **`pays at`** and **`Where to sail`**? (§10 assumes yes.)
-4. Do the **four ship-board jobs** survive as skills under the new role axis? (§7.2 assumes yes.)
-5. Is **"related fields"** for captain spawning the region, the culture, or the nation's colonies?
-6. Exploration levels: **distance instead of ports, or both?**
-7. Are `DESIGN.md`'s **warehouse rent and handling fees** adopted as written?
+| # | question | ruling |
+|---|---|---|
+| 1 | Are the categories right? | **Simpler names.** Seventeen plain words (§2.1). Liquor is **Drink**. |
+| 2 | Strict 1–3, or staples exempt? | **Strict.** 430 goods, seeded from drinks, tobacco, named fish, regional goods (§3.2). |
+| 3 | Does NEARBY's removal take `pays at` and `Where to sail`? | **Yes** — and §3A gives the player something to discover in their place. |
+| 4 | Do the four ship-board jobs survive? | **Yes, as skills** — and navigator gains weather, surgeon gains **homesickness** (§7.2). |
+| 5 | What is a captain's "related field"? | **All of them** — nation, region and culture (§7.4). |
+| 6 | Exploration levels: distance or ports? | **Both** (§8). |
+| 7 | Warehouse rent? | **Removed.** It was never the owner's (§5.2). |
+
+**Nothing in this document is now waiting on a decision.** The order in §12 can begin.
