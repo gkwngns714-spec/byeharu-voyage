@@ -202,9 +202,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved deliberately 2026-09-01 to 0064, which re-files the catalogue into seventeen plain
 // categories and, in the same slice, moves `bulk` and the industrial flag off `category` and onto
 // the good -- so a renaming cannot move a hold or a port's development.
-// Moved deliberately 2026-09-02 to 0067, which makes a building a ROW rather than a boolean on
-// the port, so the owner's four remaining buildings are each one row and one entry.
-const LAST = '20260818000067_a_building_is_a_row_not_a_column.sql'
+// Moved deliberately 2026-09-02 to 0068, which gives the game its first countable owned thing:
+// twelve fittings, made at a workstation out of a hold full of trade goods.
+const LAST = '20260818000068_a_fitting_is_made_not_found.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
