@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Badge,
   Button,
   Card,
   CardHeader,
-  Collapsible,
   DetailRow,
   Explain,
-  Input,
   Notice,
   PageHeader,
   Screen,
@@ -24,9 +22,9 @@ import {
 import { formatInt, formatNm, formatPct, formatPctPoints, formatTuns, formatVoyageDays } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, MarketGood, MarketView, SnapshotPort, WorldSnapshot } from '../../lib/rpc'
-import { fold, foldedMatch } from '../../lib/text'
 import { useCommandDraft } from '../../domain/order'
 import { AcademyFace, OfficersFace } from './PortFaces'
+import { PortTrade } from './PortTrade'
 import { QuayToday } from './PortFair'
 import { PORT_FACES, usePortView } from './portView'
 import { harbourCode, useHarbour } from '../../store/harbour'
@@ -37,7 +35,6 @@ import {
   fleetCrew,
   fleetMaxDraft,
   fleetPortCode,
-  housePortCode,
   hullFraction,
   shipHoldUsed,
   shipStatItems,
@@ -121,8 +118,9 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   //
   // `harbourCode` (src/store/harbour.ts) is now the ONE spelling of pick-else-house-else-first-
   // port, composed on `housePortCode` (domain/fleet) — MARKET calls the same function, so the two
-  // tabs cannot derive different defaults.
-  const homeCode = housePortCode(fleets)
+  // tabs cannot derive different defaults. It still folds `housePortCode` internally; this screen
+  // no longer names the house port separately, because the panel that pinned it first — the
+  // harbour search — is gone (row 54).
   const portCode = harbourCode(picked, fleets, snapshot.ports)
   const port = portCode ? (portByCode[portCode] ?? null) : null
 
@@ -515,6 +513,21 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
             </>
           )}
 
+          {/* ROW 53 — TRADE HAPPENS ON THE QUAY YOU ARE STANDING ON. The market read is the one
+              this screen ALREADY makes (`markets[portId]`, above); the fold, the capacity read and
+              the order line are COMMAND's own, imported rather than copied. See PortTrade.tsx for
+              why this screen stopped being read-only. A fleet lying HERE is the one that trades:
+              `docked[0]`, not `acting`, because `acting` may be a fleet bound elsewhere and a quay
+              deals with the hull alongside it. */}
+          {shownFace.id === 'market' && (
+            <PortTrade
+              goods={market?.goods ?? []}
+              fleet={docked[0] ?? null}
+              verbs={snapshot.verbs}
+              step={snapshot.config.trade_step_tuns}
+            />
+          )}
+
           {shownFace.id === 'city' && (
             <>
                 {/* THE ROW RULE (see DetailRow.tsx): a short figure keeps the right-aligned two-column
@@ -706,12 +719,6 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         </div>
       </Card>
 
-      <ElsewherePanel
-        ports={snapshot.ports}
-        current={port.code}
-        home={homeCode}
-        onPick={setPicked}
-      />
     </Screen>
   )
 }
@@ -734,136 +741,6 @@ function hireCount(fleet: FleetView, port: SnapshotPort): number {
 // the server the word `ALL` (what the Quay does) or by asking `world.buy_capacity(fleet, good)`
 // (what the composer does, via features/command/useBuyCapacity.ts). See the BUY group above for
 // the measured refusals it produced.
-
-/**
- * READING A HARBOUR YOU ARE NOT IN — 214 ports, in the order they are PRINTED, behind one tap.
- *
- * ── THREE THINGS WERE WRONG WITH THE GRID THIS REPLACES ────────────────────────────────────────
- * 1. IT WAS SORTED BY A COLUMN IT DOES NOT SHOW. `world.snapshot()` serves the ports ordered by
- *    CODE and the buttons print NAMES, so the strip read *Antalya, Arkhangelsk, Antwerp* and
- *    *Barcelona, Bandar Abbas, Beirut* — alphabetical, in an alphabet the player cannot see, which
- *    reads as shuffled. Sorting by what is shown is the whole fix; `localeCompare` is used because
- *    the names carry diacritics (`Ávila` sorts under A, not after Z).
- * 2. THERE WAS NO WAY TO FIND ONE. 214 chips and no filter, while the Market tab's picker and the
- *    Command tab's have had one for weeks. It matches through `lib/text`'s `foldedMatch`, which is
- *    the same folding `cmd.fold()` does on the server — so a port found by typing `sao` is a port
- *    the parser will accept spelt that way, and this screen cannot drift from the other two the
- *    way MARKET's bare `toLowerCase()` once did.
- * 3. IT SAT UNDER EVERY FACE. The panel is outside the tabpanel, so all ~214 buttons were below
- *    the Quay, the City, Services, Alongside, Officers AND the Academy — a column of scroll between
- *    a player and the bottom of every face they open. It is folded now, and its header says how
- *    many are inside, so it costs one tap instead of a thousand pixels.
- *
- * IT IS PORT'S CHIP LIST, and it is deliberately not the row-picker `features/command/ArgPickers`
- * offers: that one answers "where shall she SAIL", so its rows carry a sailed distance, a draught
- * and a one-leg badge. This one answers "whose market am I reading", where the only thing that
- * matters is the name. The two are named as separate controls in docs/NO_SPAGHETTI.md §7's debt
- * list; what they must NOT do is match text two different ways, and they no longer can.
- */
-function ElsewherePanel({
-  ports,
-  current,
-  home,
-  onPick,
-}: {
-  ports: readonly SnapshotPort[]
-  /** The harbour being read now. */
-  current: string
-  /** Where the house is — pinned first, so getting back is one tap and not a search. */
-  home: string | null
-  onPick: (code: string) => void
-}) {
-  const [query, setQuery] = useState('')
-
-  const listed = useMemo(() => {
-    const needle = fold(query.trim())
-    return ports
-      .filter((p) => foldedMatch(needle, p.name, p.code, p.country, p.region))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [ports, query])
-
-  const homePort = home ? (ports.find((p) => p.code === home) ?? null) : null
-
-  return (
-    <Card>
-      {/* THE EYEBROW SITS OUTSIDE THE TOGGLE, not inside it. A Collapsible's header IS a <button>,
-          and <SectionLabel> is an <h3> — not phrasing content, so it may not go there. The
-          alternative was to hand-write the eyebrow's classes inside the span, which is how the
-          design system ended up with two copies of that recipe already (NO_SPAGHETTI §7). One tap
-          target, one label above it, no third copy. */}
-      <SectionLabel>Elsewhere</SectionLabel>
-      <Collapsible
-        defaultOpen={false}
-        storageKey="port.elsewhere"
-        header={
-          <span className="min-w-0 text-sm text-ink">
-            Read another harbour — {formatInt(ports.length)} of them
-          </span>
-        }
-        contentClassName="pt-3"
-      >
-        {/* "A reading only — orders still happen where your fleet is." STOOD HERE AND IS DELETED,
-            not folded. The moment a far harbour is picked, the banner at the top of the screen says
-            where orders actually run (and carries the reading-from-a-distance disclosure behind its
-            dot), and the Quay face refuses with "Nothing to order from here". A third statement of
-            one rule, printed before the player has even picked, is the duplication this sweep
-            exists to remove — moving it behind a dot would have kept two authorities for it. */}
-        <Input
-          size="sm"
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Find a harbour by name, code, country or region"
-          placeholder="Find a harbour by name, code, country or region"
-          spellCheck={false}
-          autoCorrect="off"
-        />
-        <p className={fineClass('mt-2')}>
-          {query.trim()
-            ? `${formatInt(listed.length)} of ${formatInt(ports.length)} match.`
-            : `All ${formatInt(ports.length)}, by name.`}
-        </p>
-
-        {/* ONE HARBOUR IS ALWAYS ONE TAP AWAY: the one the house is in. Without it, a player who
-            had wandered off to read Aden had to type their own port's name to get back. */}
-        {homePort && !query.trim() && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <SectionLabel className="mb-0">Your fleet</SectionLabel>
-            <Button
-              variant={homePort.code === current ? 'chip-on' : 'chip'}
-              onClick={() => onPick(homePort.code)}
-            >
-              {homePort.name}
-            </Button>
-          </div>
-        )}
-
-        {/* THE DESIGN SYSTEM'S CHIP, not a fourteenth hand-written copy of it. This grid used to
-            spell out its own `bg-accent text-app` / `border border-edge bg-surface-2` pair, which
-            is exactly the recipe `chip` / `chip-on` exists to be (buttonStyles.ts). It is also NOT
-            wrapped in a local `PortChip` component: MARKET already declares one
-            (features/market/MarketScreen.tsx:683) for the same job, and a second declaration of
-            that name is the silent copy docs/SECTIONS.md warns a boundary converts sharing into.
-            Two <Button>s composing one recipe is not a duplication; two components would be. */}
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {listed.map((p) => (
-            <Button
-              key={p.code}
-              variant={p.code === current ? 'chip-on' : 'chip'}
-              onClick={() => onPick(p.code)}
-            >
-              {p.name}
-            </Button>
-          ))}
-        </div>
-        {listed.length === 0 && (
-          <p className="text-sm text-ink-muted">No harbour matches. Clear the field for all {formatInt(ports.length)}.</p>
-        )}
-      </Collapsible>
-    </Card>
-  )
-}
-
 function buyNote(good: MarketGood): string {
   // "of nearby ports", matching the one word the game uses for this figure ("nearby" — COMMAND's
   // good rows and MARKET's tiles). "neighbours" was a third name for it on a third screen.

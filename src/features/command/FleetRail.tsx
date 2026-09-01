@@ -11,7 +11,7 @@ import {
 import type { FleetView, MarketView, SnapshotConfig, SnapshotPort } from '../../lib/rpc'
 import { fleetCrew, fleetHoldTotal, fleetStores, hullFraction, worstHullFraction } from '../../domain/fleet'
 import { useWorld } from '../../live/worldStore'
-import type { BuyCapacityState } from './useBuyCapacity'
+import type { BuyCapacityState } from '../../live/useBuyCapacity'
 import type { HaggleStateRead } from './useHaggleState'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
