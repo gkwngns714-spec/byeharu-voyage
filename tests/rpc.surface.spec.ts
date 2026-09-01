@@ -405,21 +405,49 @@ test('cmd.verb_schema() serves the eight V0 verbs, argument by argument', async 
   expect(snap.verbs).toEqual(verbs)
 })
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// WHAT DOES THIS QUAY ACTUALLY TRADE? — one authority, because four tests need the answer.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// These tests used to name `salt` outright. Migration 0065 grew the catalogue to 523 goods and put
+// every one of them in ONE to THREE cities (the owner, docs/OWNER_REQUESTS.md: "4 cities cannot
+// have a same trade goods"), and salt stopped being on this port's roster — so four tests failed
+// with E_UNAVAILABLE while asserting E_HOLD_FULL. That is the seed-shaped assertion again: a test
+// that names a good asserts a WORLD, and the world is allowed to change. It must ASK.
+//
+// `bulk: 1` is not decoration. The hold arithmetic the callers rely on — 40 tuns fits, 60 does not —
+// is only true of a good that stows one tun to the unit, so the subject is chosen to make the
+// caller's own numbers mean what they say.
+async function aGoodTradedHere(fleet: { port: string | null }): Promise<string> {
+  if (!fleet.port) throw new Error('aGoodTradedHere needs a DOCKED fleet; this one is at sea')
+  const snap = expectOk(await worldSnapshot())
+  const port = snap.ports.find((p) => p.code === fleet.port)!
+  const market = expectOk(await worldMarket(port.id))
+  const bulkOf = new Map(snap.goods.map((g) => [g.code, Number(g.bulk)]))
+  // DETERMINISTIC: sorted by code, never whatever order the heap hands back.
+  const good = market.goods
+    .filter((g) => g.available && g.offered !== false && g.stock > 0 && bulkOf.get(g.code) === 1)
+    .sort((a, b) => a.code.localeCompare(b.code))[0]
+  if (!good) throw new Error(`no bulk-1 good is traded at ${fleet.port}; this test needs one`)
+  return good.code
+}
+
 test('cmd.preview() estimates without moving a ducat, and refuses in the same words a commit would', async () => {
   const fleet = expectOk(await worldFleets())[0]
   const before = expectOk(await worldLedger()).ducats
+  const cargo = await aGoodTradedHere(fleet)
 
-  const ok = expectOk(await cmdPreview(fleet.id, 'BUY salt 40'))
+  const ok = expectOk(await cmdPreview(fleet.id, `BUY ${cargo} 40`))
   expect(ok.ok).toBe(true)
   expect(ok.parsed.verb).toBe('BUY')
   expect(ok.parsed.fleet_id).toBe(fleet.id)
   expect(ok.estimate).toBeDefined()
   expect(ok.estimate!.qty).toBe(40)
-  expect(ok.estimate!.good).toBe('salt')
+  expect(ok.estimate!.good).toBe(cargo)
   expect(Number(ok.estimate!.total)).toBeGreaterThan(0)
   expect(expectOk(await worldLedger()).ducats).toBe(before) // the dry run really was dry
 
-  const refused = await cmdPreview(fleet.id, 'BUY salt 60')
+  const refused = await cmdPreview(fleet.id, `BUY ${cargo} 60`)
   expect(refused.ok).toBe(false)
   if (refused.ok) throw new Error('unreachable')
   expect(refused.refusal.code).toBe('E_HOLD_FULL')
@@ -428,7 +456,8 @@ test('cmd.preview() estimates without moving a ducat, and refuses in the same wo
 
 test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', async () => {
   const fleet = expectOk(await worldFleets())[0]
-  const result = await cmdIssue(fleet.id, 'BUY salt 60', fleet.version)
+  const cargo = await aGoodTradedHere(fleet)
+  const result = await cmdIssue(fleet.id, `BUY ${cargo} 60`, fleet.version)
 
   // NOT a thrown string, NOT a null, NOT a silent no-op. The game refusing is the game working.
   expect(result.ok).toBe(false)
@@ -460,7 +489,7 @@ test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', as
 
   // …and the refused order is still in the queue as `failed`, exactly as the chain leaves it.
   const after = expectOk(await worldFleets())[0]
-  expect(after.queue.some((o) => o.status === 'failed' && o.text === 'BUY salt 60')).toBe(true)
+  expect(after.queue.some((o) => o.status === 'failed' && o.text === `BUY ${cargo} 60`)).toBe(true)
 
   expectOk(await cmdClear(fleet.id))
   await db.pg.query("delete from public.orders where status = 'failed'")
@@ -468,9 +497,10 @@ test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', as
 
 test('the other refusal shapes are the same shape', async () => {
   const fleet = expectOk(await worldFleets())[0]
+  const cargo = await aGoodTradedHere(fleet)
 
   // A stale version — the F.3 rule that stops two devices double-issuing.
-  const stale = await cmdIssue(fleet.id, 'BUY salt 10', fleet.version + 99)
+  const stale = await cmdIssue(fleet.id, `BUY ${cargo} 10`, fleet.version + 99)
   expect(stale.ok).toBe(false)
   if (stale.ok) throw new Error('unreachable')
   expect(stale.refusal.code).toBe('E_STALE')
@@ -493,7 +523,7 @@ test('the other refusal shapes are the same shape', async () => {
   expect(ambiguous.refusal.sentence.split(',').length).toBeGreaterThan(1)
 
   // A fleet that is not the player's: the ownership check, phrased as a refusal like any other.
-  const notMine = await cmdIssue('00000000-0000-4000-8000-0000000000ff', 'BUY salt 10')
+  const notMine = await cmdIssue('00000000-0000-4000-8000-0000000000ff', `BUY ${cargo} 10`)
   expect(notMine.ok).toBe(false)
   if (notMine.ok) throw new Error('unreachable')
   expect(notMine.refusal.code).toBe('E_NO_SUCH_FLEET')
@@ -663,10 +693,11 @@ test('cmd.haggle() spends an attempt whether it wins or loses, and a win really 
 test('cmd.issue() / cmd.cancel_at() / cmd.clear() return the queue and the new version', async () => {
   const fleet = expectOk(await worldFleets())[0]
 
-  const bought = expectOk(await cmdIssue(fleet.id, 'BUY salt 10', fleet.version))
+  const cargo = await aGoodTradedHere(fleet)
+  const bought = expectOk(await cmdIssue(fleet.id, `BUY ${cargo} 10`, fleet.version))
   expect(bought.order.status).toBe('done')
   expect(bought.order.seq).toBeGreaterThanOrEqual(1)
-  expect(bought.order.result).toMatchObject({ qty: 10, good: 'salt' })
+  expect(bought.order.result).toMatchObject({ qty: 10, good: cargo })
   // The issue payload carries the order WITHOUT its text or verb; the queue beside it carries both.
   expect('verb' in bought.order).toBe(false)
   expect(bought.version).toBeGreaterThan(fleet.version)
@@ -682,7 +713,7 @@ test('cmd.issue() / cmd.cancel_at() / cmd.clear() return the queue and the new v
     await cmdIssue(fleet.id, 'SAIL Gaivota TO CAD', null, courseBetween(await seaNav(), lisPort, cadPort)),
   )
   expect(sailed.order.status).toBe('done')
-  const queued = expectOk(await cmdIssue(fleet.id, 'SELL salt ALL'))
+  const queued = expectOk(await cmdIssue(fleet.id, `SELL ${cargo} ALL`))
   expect(queued.order.status).toBe('pending')
   expectOk(await cmdIssue(fleet.id, 'BUY hides 10'))
 
