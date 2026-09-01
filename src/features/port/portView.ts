@@ -39,6 +39,13 @@ export const PORT_FACES = [
       'Each line is the exact order it would become. Tapping one sends it to Command; nothing here issues anything.',
   },
   {
+    id: 'market',
+    label: 'Market',
+    title: 'The market',
+    explain:
+      'What this city trades, and the only place its prices become an order. A city deals in its own 4-10 goods (0061/0062), so the quay you are standing on is the one that decides — buy from what it offers, and sell it anything you carry.',
+  },
+  {
     id: 'city',
     label: 'City',
     title: 'The city',

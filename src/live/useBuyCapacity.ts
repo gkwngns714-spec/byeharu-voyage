@@ -17,17 +17,15 @@
 // shown: the picker waits instead.
 
 import { useEffect, useState } from 'react'
-import { worldBuyCapacity } from '../../lib/rpc'
-import { useWorld } from '../../live/worldStore'
-import type { QtyBound } from './fleetLimits'
+import { worldBuyCapacity } from '../lib/rpc'
+import { useWorld } from './worldStore'
+import type { BuyCapacityState } from '../lib/trade'
 
-export interface BuyCapacityState {
-  /** Null until the answer for THIS good arrives; the picker waits rather than offering a guess. */
-  bound: QtyBound | null
-  /** What the server says that many tuns would cost, at the stepped price. */
-  estTotal: number | null
-  loading: boolean
-}
+export type { BuyCapacityState }
+
+// `BuyCapacityState` moved to src/lib/trade 2026-09-01: the design system's picker takes it as a
+// prop and may not import the store, so the SHAPE lives below both of them. Re-exported above so
+// this file is still the one place a caller has to know about.
 
 const WAITING: BuyCapacityState = { bound: null, estTotal: null, loading: true }
 const IDLE: BuyCapacityState = { bound: null, estTotal: null, loading: false }

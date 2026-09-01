@@ -29,33 +29,13 @@
 // it is handed.
 
 import type { MarketGood, SnapshotConfig } from '../../lib/rpc'
+// `buyableHere` moved to domain/market 2026-09-01 — PORT trades through it too now.
+// Re-exported so this file stays the one import surface the market screen already uses.
+import { buyableHere, type MarketBlock } from '../../domain/market'
 
-/**
- * The four blocks the table is cut into. Three are §E.4's bands, read straight off the server's
- * `advice`. The fourth is not a band at all: `available: false` means the port's culture will not
- * trade the good AT ALL (§B.4 — wine in a Maghrebi port), which is a fact about the port and can
- * never be advice to buy it.
- */
-export type MarketBlock = 'buy' | 'sell' | 'hold' | 'unavailable'
+export { buyableHere }
+export type { MarketBlock }
 
-/**
- * 0061 — CAN THIS BE BOUGHT AT THIS QUAY AT ALL? THE one reading of that question on this screen;
- * everything that draws a price cell, a tap target or a block asks it rather than testing a field.
- *
- * There are two reasons a city will not sell a good and they are different facts about the port:
- * `available: false` is the CULTURE mask (§B.4 — wine in a Maghrebi port), and `offered: false` is
- * the ROSTER — a city trades 4-10 goods (the owner, docs/OWNER_REQUESTS.md row 48) and
- * `public.port_offers` is the server's one authority for which. `cmd.do_buy` refuses BOTH with the
- * same E_UNAVAILABLE, so this screen must not offer a buy for either; "not traded here" is already
- * the sentence it says, and it is true of both.
- *
- * A row can be `offered: false` and still be in the payload: `world.market` carries the goods a
- * fleet of yours is lying here CARRYING, so that they can be sold. Selling is composed on COMMAND,
- * whose sell list is deliberately not narrowed by this predicate.
- */
-export function buyableHere(good: MarketGood): boolean {
-  return good.available && good.offered !== false
-}
 
 export function blockOf(good: MarketGood): MarketBlock {
   return buyableHere(good) ? good.advice : 'unavailable'

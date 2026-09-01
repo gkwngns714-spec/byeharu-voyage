@@ -27,8 +27,9 @@ import type {
 // silent copy docs/NO_SPAGHETTI.md §2 calls worse than the import. src/chart/index.ts records why
 // the carve-out line falls where it does.
 import { SmallChart } from '../../chart'
-import { EnumPicker, GoodPicker, NumberPicker, PortPicker, PricePicker } from './ArgPickers'
-import { useBuyCapacity, type BuyCapacityState } from './useBuyCapacity'
+import { EnumPicker, NumberPicker, PortPicker, PricePicker } from './ArgPickers'
+import { GoodPicker } from '../../components/ui'
+import { useBuyCapacity, type BuyCapacityState } from '../../live/useBuyCapacity'
 import { FleetRail } from './FleetRail'
 import { railKind } from './railVerbs'
 import { HaggleBlock } from './HaggleBlock'

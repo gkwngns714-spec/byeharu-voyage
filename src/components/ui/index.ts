@@ -96,3 +96,9 @@ export { useExplainDisclosure, type ExplainDisclosure } from './explainState'
 // re-asks the server through useReaskAtEdge; the edge idiom lives once, in reaskAtEdge.ts.
 export { WallClock, Countdown } from './Clock'
 export { useReaskAtEdge } from './reaskAtEdge'
+
+// THE TRADE FOLD (2026-09-01) — the goods field, its price cells and the quantity step. It came
+// out of features/command so a second quay could trade through it (OWNER_REQUESTS row 53); see
+// tradePickers.tsx for why it is here and not there.
+export { GoodPicker, QtyPicker, FilterBox, TruncationNote } from './tradePickers'
+export { inRowsOf } from './inRows'
