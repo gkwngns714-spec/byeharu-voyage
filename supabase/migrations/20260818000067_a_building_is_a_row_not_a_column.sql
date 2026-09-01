@@ -89,6 +89,14 @@ insert into public.building_kinds (kind, name, does, sort) values
   ('academy',       'Academy',       'Study a trade, one level at a time.', 7)
 on conflict (kind) do update set name = excluded.name, does = excluded.does, sort = excluded.sort;
 
+-- READ BY EVERYONE, WRITTEN BY NOBODY - the posture every world table in this chain holds, and
+-- proof 03 refuses a table that does not (it caught this one missing).
+alter table public.building_kinds enable row level security;
+
+drop policy if exists building_kinds_read on public.building_kinds;
+create policy building_kinds_read on public.building_kinds
+  for select to anon, authenticated using (true);
+
 comment on table public.building_kinds is
   'The kinds of building a city can keep, one row each. A seventh building is an INSERT here plus '
   'rows in public.port_buildings - never a new column on public.ports, and never a hand-written '
@@ -149,6 +157,39 @@ select pg_temp.recut('world.snapshot()'::regprocedure, false,
           join public.building_kinds bk on bk.kind = pb.kind
          where pb.port_id = p.id))$s1$);
 
+-- -- 4. THE SERVER READS THE ROWS TOO -----------------------------------------------------------
+-- Moving only the SCREENS onto the rows would have left the seam exactly where it was, one layer
+-- down: the client asking the rows whether a yard is here while cmd.do_repair asks the boolean.
+-- Two authorities for one question is the defect, wherever the second one lives.
+--
+-- These are the only two server readers in the chain, and both are the same shape: "does this
+-- harbour keep one, and if not, name some that do".
+select pg_temp.recut('cmd.do_repair(uuid, jsonb)'::regprocedure, false,
+  $r0$  select has_yard, dev_industry into v_yard, v_dev from public.ports where id = f.port_id;$r0$,
+  $r1$  -- 0067: the ROW is the authority. The boolean is still the authored truth in data/ports.json
+  -- and 0067 proves the two equal, so this reads the same today - and keeps reading correctly the
+  -- day a player raises a yard, which a boolean cannot express.
+  select exists (select 1 from public.port_buildings b
+                  where b.port_id = f.port_id and b.kind = 'shipyard'),
+         p.dev_industry
+    into v_yard, v_dev
+    from public.ports p where p.id = f.port_id;$r1$);
+
+select pg_temp.recut('cmd.study_skill(text, uuid)'::regprocedure, false,
+  $a0$  select p.code, p.name, p.has_academy into v_port from public.ports p where p.id = v_fleet.port_id;
+  if not v_port.has_academy then$a0$,
+  $a1$  -- 0067: the row, not the column - see cmd.do_repair above.
+  select p.code, p.name,
+         exists (select 1 from public.port_buildings b
+                  where b.port_id = p.id and b.kind = 'academy') as has_academy
+    into v_port
+    from public.ports p where p.id = v_fleet.port_id;
+  if not v_port.has_academy then$a1$,
+  $a2$                  from (select code, name from public.ports where has_academy order by code limit 6) p));$a2$,
+  $a3$                  from (select p2.code, p2.name from public.ports p2
+                         join public.port_buildings b2 on b2.port_id = p2.id and b2.kind = 'academy'
+                        order by p2.code limit 6) p));$a3$);
+
 -- -- SELF-ASSERT ---------------------------------------------------------------------------------
 do $$
 declare
@@ -162,6 +203,11 @@ declare
   v_port    jsonb;
   v_before  text;
   v_grants  int;
+  v_probe_port   uuid;
+  v_probe_fleet  uuid;
+  v_probe_player uuid;
+  c_probe_uid constant uuid := '00000000-0067-4000-8000-000000000001';
+  v_code    text;
 begin
   select count(*) into v_kinds from public.building_kinds;
   if v_kinds <> 7 then
@@ -266,12 +312,41 @@ begin
     raise exception '0067 self-assert FAIL: the pre-image already served buildings';
   end if;
 
+  -- (e2) THE SERVER READS THE ROWS TOO. Proven by BEHAVIOUR, not by grepping the body: a fleet is
+  --      docked at a harbour that keeps no academy, its academy row is planted, and the same call
+  --      that refused must now get past the gate. If study_skill were still reading has_academy
+  --      the planted row would change nothing and this block would fail.
+  select p.id into v_probe_port from public.ports p
+   where p.kind = 'HARBOUR' and not p.has_academy order by p.code limit 1;
+  -- A house of its own, so the probe never borrows a real player's fleet. 0007 founds two the
+  -- same way. It stays afterwards; see the note at the foot of this block.
+  v_probe_player := public.new_house(c_probe_uid, 'Casa Obra', 'PRT');
+  select f.id into v_probe_fleet from public.fleets f where f.player_id = v_probe_player;
+  update public.fleets set port_id = v_probe_port where id = v_probe_fleet;
+  perform cmd.assume_identity(c_probe_uid);
+
+  select (cmd.study_skill('navigation', v_probe_fleet))->>'error_code' into v_code;
+  if v_code is distinct from 'E_NO_ACADEMY' then
+    raise exception '0067 self-assert FAIL: a harbour with no academy did not refuse study (got %)', coalesce(v_code, 'ok');
+  end if;
+  insert into public.port_buildings (port_id, kind, tier) values (v_probe_port, 'academy', 1);
+  select (cmd.study_skill('navigation', v_probe_fleet))->>'error_code' into v_code;
+  if v_code = 'E_NO_ACADEMY' then
+    raise exception '0067 self-assert FAIL: cmd.study_skill still reads ports.has_academy - planting the row changed nothing';
+  end if;
+  delete from public.port_buildings where port_id = v_probe_port and kind = 'academy';
+
+  -- THE PROBE HOUSE STAYS, and that is the game refusing rather than a loose end: founding one
+  -- writes to the ledger, and the ledger is append-only, so striking it out is exactly the thing
+  -- public.events is built to forbid. 0007 founds two the same way and leaves them. It is named
+  -- Casa Obra so anyone reading the players table knows what it is and which file made it.
+
   -- (f) POSTURE. A player may READ what a city keeps and may not write it.
   select count(*) into v_grants from public.client_write_grants();
   if v_grants <> 0 then
     raise exception '0067 self-assert FAIL: % client write grant(s)', v_grants;
   end if;
 
-  raise notice '0067 self-assert ok: A BUILDING IS A ROW. 7 kinds exist as rows rather than an enum, and % building(s) stand across % harbour(s) - a market and an inn at every one, % shipyard(s) and % academy(ies) - each DERIVED from the authored column that already said so and proven equal to it in BOTH directions, so nothing about the world changed today except where the answer is read from. No sea place keeps anything. The three buildings this slice does not build yet exist as kinds and stand nowhere, which is what "not built yet" looks like. The snapshot carries them on the port object it already built (positive control: a yardless harbour comes back WITHOUT a shipyard, so the read can say no), and every other byte of that function is its own pre-image; 0 client write grants.',
+  raise notice '0067 self-assert ok: A BUILDING IS A ROW. 7 kinds exist as rows rather than an enum, and % building(s) stand across % harbour(s) - a market and an inn at every one, % shipyard(s) and % academy(ies) - each DERIVED from the authored column that already said so and proven equal to it in BOTH directions, so nothing about the world changed today except where the answer is read from. No sea place keeps anything. The three buildings this slice does not build yet exist as kinds and stand nowhere, which is what "not built yet" looks like. The snapshot carries them on the port object it already built (positive control: a yardless harbour comes back WITHOUT a shipyard, so the read can say no), and every other byte of that function is its own pre-image. THE SERVER READS THE ROWS TOO: cmd.do_repair and cmd.study_skill were re-cut off the booleans, and study_skill''s gate is proven by BEHAVIOUR - a harbour with no academy refused, its academy row was planted, and the same call got past the gate, which it could not have done while the function still read ports.has_academy; 0 client write grants.',
     v_rows, v_harb, v_yard, v_acad;
 end $$;
