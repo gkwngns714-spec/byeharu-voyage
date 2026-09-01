@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Badge,
@@ -10,20 +10,14 @@ import {
   Notice,
   PageHeader,
   Screen,
-  SectionLabel,
   TabRow,
-  StatLegend,
-  TD,
-  TH,
-  Table,
-  scrollTableClass,
   fineClass,
 } from '../../components/ui'
-import { formatInt, formatNm, formatPct, formatPctPoints, formatTuns, formatVoyageDays } from '../../lib/format'
+import { formatInt, formatPct } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
-import type { FleetView, MarketGood, MarketView, SnapshotPort, WorldSnapshot } from '../../lib/rpc'
+import type { MarketView, WorldSnapshot } from '../../lib/rpc'
 import { useCommandDraft } from '../../domain/order'
-import { AcademyFace, OfficersFace } from './PortFaces'
+import { AcademyFace } from './PortFaces'
 import { PortTrade } from './PortTrade'
 import { QuayToday } from './PortFair'
 import { PORT_FACES, usePortView } from './portView'
@@ -32,13 +26,7 @@ import type { CommandIntent } from '../../domain/order'
 import { findVerb, orderText } from '../../domain/order'
 import {
   SHIP_STATS,
-  fleetCrew,
-  fleetMaxDraft,
   fleetPortCode,
-  hullFraction,
-  shipHoldUsed,
-  shipStatItems,
-  worstHullFraction,
 } from '../../domain/fleet'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
@@ -140,18 +128,9 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
     if (portId) void loadReach(portId)
   }, [portId, loadReach])
 
-  const draftOfClass = useMemo(() => {
-    const byName = new Map(snapshot.ship_classes.map((c) => [c.name, c.draft]))
-    return (className: string) => byName.get(className)
-  }, [snapshot.ship_classes])
-
   const docked = port ? fleets.filter((f) => f.port === port.code) : []
   const acting =
     docked[0] ?? fleets.find((f) => f.id === draftFleetId) ?? fleets[0] ?? null
-  // ONE reading of her hands, from the fleet section (domain/fleet). The Quay used to call
-  // `fleetCrew(acting)` twice in one template string and then spell "berths still empty" a THIRD
-  // way inside `hireCount` below — three foldings of one payload on one screen.
-  const actingCrew = acting ? fleetCrew(acting) : null
   // WHERE THE ACTING FLEET'S NEXT ORDER WOULD RUN — alongside, or the harbour she is bound for.
   // Read ONCE, from the fleet section, and used for both the banner and the gate on the Quay.
   const actingPortCode = acting ? fleetPortCode(acting) : null
@@ -250,7 +229,6 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
     )
   }
 
-  const worthBuying = market ? market.goods.filter((g) => g.available && g.advice === 'buy').slice(0, 4) : []
 
   return (
     <Screen>
@@ -329,20 +307,9 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
           <CardHeader
             flush
             title={shownFace.title}
-            /* THE ALONGSIDE FACE PRINTS SHIP COLUMNS (Hull · Crew · Hold), so its explanation
-               carries the ONE sentence each of those figures has — domain/fleet's statGloss,
-               the same lines FLEETS' ships table opens (docs/NO_SPAGHETTI.md §1: one authority,
-               two callers, never two spellings). The other faces keep their own line. */
-            explain={
-              shownFace.id === 'ships' ? (
-                <>
-                  {shownFace.explain}
-                  <StatLegend items={shipStatItems(['hull', 'crew', 'hold'])} className="mt-1" />
-                </>
-              ) : (
-                shownFace.explain
-              )
-            }
+            /* The Alongside face carried a ship-stat legend here; that face is gone (row 56),
+               so every remaining face is its own one line and there is no branch left to make. */
+            explain={shownFace.explain}
           />
         }
       >
@@ -359,153 +326,12 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
           tabs={offeredFaces.map((f) => ({
             id: f.id,
             label: f.label,
-            hint: f.id === 'ships' ? docked.length || undefined : undefined,
+            /* The Alongside face carried a count of your hulls here; that face is gone
+               (row 56) and no remaining face has a figure to put on its tab. */
           }))}
         />
 
         <div role="tabpanel">
-          {shownFace.id === 'quay' && (
-            <>
-              {/* THE QUAY ONLY OFFERS ORDERS FOR THE HARBOUR SHE IS ACTUALLY IN.
-                  Every line here composes an order for the ACTING fleet, and an order runs where
-                  she is — so printing `BUY porcelain …` under a port she is 10,000 nm from is the
-                  screen offering a trade at one market that would execute at another. Measured in
-                  the playtest: sailing Lisbon → Porto, Acapulco's buy line composed cleanly and
-                  would have run at Porto. Reading a far harbour is a real thing to want; giving it
-                  ORDERS is not, so the reading stays and the actions go. */}
-              {!acting ? (
-                <p className="text-sm text-ink-muted">No fleet to give an order to yet.</p>
-              ) : !actingIsHere ? (
-                <p className="text-sm text-ink-muted">
-                  Nothing to order from here — {acting.name} is elsewhere. City and Services still
-                  read this harbour.
-                </p>
-              ) : (
-                <>
-                  <p className="mb-3 text-xs text-ink-muted">
-                    Tap one to send it to Command as {acting.name}&apos;s order.
-                  </p>
-                  <div className="space-y-4">
-                    {/* AN ACTION THAT WOULD BE REFUSED IS NOT OFFERED. HIRE used to be printed
-                        unconditionally with `Math.max(1, …)` hands, so a fleet with every berth
-                        filled — or a port with an empty pool — was handed `HIRE 1`, which the
-                        server answers with E_CREW_MAX. REPAIR was printed beside a whole hull.
-                        Both are the same defect as the BUY line below and are gated the same way:
-                        the picker never offers what the server would refuse. */}
-                    <ActionGroup
-                      label="Supplies and crew"
-                      actions={[
-                        {
-                          intent: { verb: 'PROVISION', args: { mode: 'FULL' } },
-                          // "provision", not "range" — the same served figure carried three names
-                          // (endurance / range / provision) and FLEETS settled on the verb that
-                          // refills it. This note was the last "range" left on a screen.
-                          note: `provision ${formatVoyageDays(acting.endurance_days)}`,
-                        },
-                        ...(hireCount(acting, port) > 0
-                          ? [
-                              {
-                                intent: { verb: 'HIRE', args: { count: String(hireCount(acting, port)) } },
-                                // "at the inn", not "pool" — the Services face calls the same
-                                // figure the Inn's, and a schema word must not name it here.
-                                note: `berths ${formatInt(actingCrew?.aboard ?? 0)}/${formatInt(actingCrew?.max ?? 0)} · ${formatInt(port.crew_pool)} at the inn`,
-                              },
-                            ]
-                          : []),
-                        ...(port.has_yard && worstHullFraction(acting) < 1
-                          ? [
-                              {
-                                intent: { verb: 'REPAIR', args: { to_pct: '100' } },
-                                note: `worst hull ${formatPct(worstHullFraction(acting))} · shipyard tier ${port.yard_tier}`,
-                              },
-                            ]
-                          : []),
-                      ]}
-                      lineOf={lineOf}
-                      onPick={command}
-                    />
-
-                    {/* ═══════════════════════════════════════════════════════════════════════
-                        HOW MUCH TO BUY IS THE SERVER'S ANSWER. THE FOURTH COPY IS DELETED.
-                        ═══════════════════════════════════════════════════════════════════════
-                        This line used to carry a number from a private `affordableUnits(fleet,
-                        bulk)` — `floor(free_hold / bulk)`, floored at 1 — which was called
-                        "affordable" and never once read the purse. On a fresh 8,000 d. save, two
-                        of the four buys it offered were refused the instant they were issued:
-                        `BUY porcelain 186` → "cost 75701 d. and you hold 8000", `BUY black-pepper
-                        93` → "cost 12532 d. and you hold 8000". Its `Math.max(1, …)` also offered
-                        `BUY olive-oil 1` on a full hold, which refuses with E_HOLD_FULL.
-
-                        It was the FOURTH copy of a rule D10 was written to kill twice, and the
-                        answer is the one MarketScreen.tsx:168-175 records: hand over the word
-                        `ALL` and let `public.fleet_buy_capacity()` resolve it. That walks the same
-                        stepped book a committed trade walks (§G.2 — buying raises the price you
-                        are still buying at) and stops at whichever of hold, stock, daily cap or
-                        PURSE binds first. The copy is DELETED, not given a purse term: a fifth
-                        correct-today arithmetic is still a second authority.
-
-                        `ALL` is also read when the order RUNS rather than when it is made (F.2),
-                        so a buy queued from here is still right after a voyage that changed the
-                        hold. Nothing on this screen needs the figure; where one is ever needed,
-                        `world.buy_capacity(fleet, good)` is on the RPC surface and in the store
-                        (features/command/useBuyCapacity.ts). */}
-                    {/* THE HOLD IS ONE FACT, SO IT IS PRINTED ONCE. `… free in the hold` used to
-                        ride on EVERY buy row — the same four words and the same figure, four
-                        times, wrapping each row onto a second line (docs/UI_DIRECTION.md §4 rule
-                        3: one row, four facts). It is the GROUP's fact, not the row's, so it sits
-                        on the group's label. `free_hold` is still the SERVER's reading
-                        (public.fleet_free_hold, 0017:183) — the one a BUY is checked against. */}
-                    <ActionGroup
-                      label={marketLoaded ? 'Worth buying' : 'Trade'}
-                      note={
-                        marketLoaded && acting.free_hold > 0
-                          ? `${formatTuns(acting.free_hold, 0)} free in the hold`
-                          : undefined
-                      }
-                      actions={
-                        marketLoaded && acting.free_hold > 0
-                          ? worthBuying.map((good) => ({
-                              intent: {
-                                verb: 'BUY',
-                                // CODES, never display names: `cmd.parse()` splits on whitespace.
-                                args: { good: good.code, qty: 'ALL' },
-                              },
-                              note: buyNote(good),
-                            }))
-                          : []
-                      }
-                      empty={
-                        !marketLoaded
-                          ? 'Reading the market…'
-                          : acting.free_hold <= 0
-                            ? 'Hold full. Sell before you buy.'
-                            : 'Nothing cheap here — the Market tab has the whole list.'
-                      }
-                      lineOf={lineOf}
-                      onPick={command}
-                    />
-
-                    <ActionGroup
-                      label="Nearest by sea"
-                      actions={oneLeg.slice(0, 6).map(({ port: p, code, nm }) => ({
-                        intent: { verb: 'SAIL', args: { dest: code } },
-                        note: `${formatNm(nm)} · ${
-                          p === null
-                            ? 'unknown harbour'
-                            : p.max_draft < fleetMaxDraft(acting, draftOfClass)
-                              ? 'too shallow'
-                              : `draft ${p.max_draft}`
-                        }`,
-                      }))}
-                      empty="The distances are still being fetched."
-                      lineOf={lineOf}
-                      onPick={command}
-                    />
-                  </div>
-                </>
-              )}
-            </>
-          )}
 
           {/* ROW 53 — TRADE HAPPENS ON THE QUAY YOU ARE STANDING ON. The market read is the one
               this screen ALREADY makes (`markets[portId]`, above); the fold, the capacity read and
@@ -585,133 +411,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
             </>
           )}
 
-          {shownFace.id === 'services' && (
-            <>
-              {/* THE PARAGRAPH IS GONE AND NOTHING IT SAID IS. It ran three sentences over the
-                  rows to disclose that no port keeps a Bureau or a Mayor's office, and to point at
-                  two tabs that are one tap away and visible. The disclosure is now a ROW, in the
-                  same list as the shipyard and the inn — which is what rule 5 asks for anyway
-                  ("unavailable is shown with its reason") and what rule 3 asks for instead of a
-                  paragraph. The signposting to Officers and Academy is deleted: the tab strip is
-                  directly above, so it was telling the player what they could already see. */}
-                <dl className="space-y-1">
-                  <DetailRow
-                    label="Harbour"
-                    mono
-                    value={`${docked.length} alongside · draft ${port.max_draft}`}
-                    hint="Your own hulls only. What another house has lying here is not something a harbour will tell you."
-                  />
-                  {/* "Shipyard", not "Yard" — the owner's own example of the jargon sweep
-                      ("yard" → shipyard, 2026-08-23); migration 0033 made the served strings say
-                      the same word, and this label was the last "Yard" on a screen. */}
-                  <DetailRow
-                    label="Shipyard"
-                    mono
-                    value={port.has_yard ? `tier ${port.yard_tier}` : 'none'}
-                    hint={port.has_yard ? 'The shipyard prices a REPAIR when the order runs; PREVIEW it on Command for the quote.' : undefined}
-                  />
-                  {/* "crew", NOT "hands" (the owner, 2026-08-23: "change it like crew or
-                      something"). "a hand-day" was that jargon squared — a made-up unit built on a
-                      sailor's word. The rate is unchanged; only its unit is said in the player's
-                      words. The SERVER said "hands" too until migration 0030 sliced cmd.do_hire's three
-                      refusals, voyage.report_line's burial and short-ration prose and the HIRE
-                      verb's own help text; 0033 did the same for "yard". The wire says crew and
-                      shipyard now, so there is nothing left here for a client gloss to paper over
-                      — which is the point: a client gloss over served copy would have been a
-                      second author for the game's own words. */}
-                  <DetailRow
-                    label="Chandler"
-                    mono
-                    value={`water ${formatTuns(snapshot.config.water_per_crew_day, 2)} · food ${formatTuns(snapshot.config.food_per_crew_day, 3)} per crew member a day`}
-                    hint="What one crew member drinks and eats per voyage-day. What stores COST is settled when PROVISION runs — no chandler posts a price list on the quay, so PREVIEW the order on Command for the figure."
-                  />
-                  <DetailRow
-                    label="Inn"
-                    mono
-                    value={`${formatInt(port.crew_pool)} crew`}
-                    hint="Crew waiting to sign on. Take on more than the pool holds and the rest are found at short notice, at two and a half times the wage — quoted when HIRE runs."
-                  />
-                  <DetailRow label="Academy" mono value={port.has_academy ? 'yes' : 'none'} />
-                  <DetailRow
-                    label="Bureau"
-                    mono
-                    value="none"
-                    hint="No port keeps one open to callers yet. Nothing is being hidden from you — there is nothing there to visit."
-                  />
-                  <DetailRow
-                    label="Mayor"
-                    mono
-                    value="none"
-                    hint="No port keeps an office open to callers yet. Nothing is being hidden from you — there is nothing there to visit."
-                  />
-                  {port.is_ice_closed && <DetailRow label="Ice" mono value="CLOSED — nothing sails" />}
-                </dl>
-            </>
-          )}
-
-          {shownFace.id === 'officers' && <OfficersFace port={port} acting={acting} />}
-
           {shownFace.id === 'academy' && <AcademyFace acting={acting} />}
-
-          {shownFace.id === 'ships' && (
-            <>
-                {docked.length === 0 ? (
-                  <p className="text-sm text-ink-muted">
-                    No fleet of yours in {port.name}.{' '}
-                    {(() => {
-                      const atSea = fleets.filter((f) => f.status === 'SAILING')
-                      // ONE SENTENCE, NOT ONE PER HULL. This mapped every sailing fleet to its own
-                      // "X is at sea." and joined them, so a house with four fleets out printed
-                      // four sentences saying one thing.
-                      return atSea.length === 0
-                        ? ''
-                        : `${atSea.map((f) => f.name).join(', ')} at sea.`
-                    })()}
-                  </p>
-                ) : (
-                  /* THE FLEET COLUMN ONLY EXISTS WHEN THERE ARE TWO FLEETS TO TELL APART.
-                     A fleet is one to EIGHT hulls by design, so with one fleet alongside this
-                     column printed the same word eight times down a 390px table and pushed the
-                     hold off the right edge. Measured with eight hulls: 489px of table in a 332px
-                     box with the column, 411px without — the swipe stops being needed at all for
-                     a single fleet. It is not "hidden to save room": with a second fleet docked,
-                     which ship belongs to which is the only thing this table cannot say without
-                     it, so it comes back. */
-                  <Table scrollHint className={scrollTableClass()}>
-                    <thead>
-                      <tr>
-                        <TH>Ship</TH>
-                        {docked.length > 1 && <TH>Fleet</TH>}
-                        <TH align="num">Hull</TH>
-                        <TH align="num">Crew</TH>
-                        <TH align="num">Hold</TH>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {docked.flatMap((fleet) =>
-                        fleet.ships.map((ship) => (
-                          <tr key={ship.id}>
-                            <TD>
-                              {ship.name}
-                              {ship.is_flagship && <span className="ml-1 text-accent">⚑</span>}
-                              <span className="ml-2 text-xs text-ink-faint">{ship.class}</span>
-                            </TD>
-                            {docked.length > 1 && <TD>{fleet.name}</TD>}
-                            <TD align="num">{formatPct(hullFraction(ship))}</TD>
-                            <TD align="num">
-                              {formatInt(ship.crew)}/{formatInt(ship.crew_max)}
-                            </TD>
-                            <TD align="num">
-                              {formatTuns(shipHoldUsed(ship), 1)} / {formatTuns(ship.hold)}
-                            </TD>
-                          </tr>
-                        )),
-                      )}
-                    </tbody>
-                  </Table>
-                )}
-            </>
-          )}
         </div>
       </Card>
 
@@ -719,78 +419,5 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   )
 }
 
-/** How many hands the Inn can actually sign: berths still empty, capped by the pool it has.
- *  `berths` is `fleetCrew`'s — `sum(crew_max - crew)`, the spelling `cmd.do_hire` refuses on
- *  (0007:659). This used to compute it inline as `max(0, max - aboard)`, which is a different
- *  function once a hull is over-crewed and was one of two client spellings of the rule.
- *
- *  IT MAY RETURN ZERO, AND ZERO MEANS "DO NOT OFFER THIS". It used to floor at 1, which handed a
- *  fully-crewed fleet — or a port with an empty pool — a `HIRE 1` the server answers with
- *  E_CREW_MAX. The Quay reads the zero and leaves the line out; see the gate at the call site. */
-function hireCount(fleet: FleetView, port: SnapshotPort): number {
-  return Math.min(Math.floor(port.crew_pool), Math.max(0, fleetCrew(fleet).berths))
-}
 
-// `affordableUnits(fleet, bulk)` STOOD HERE AND IS DELETED, not corrected. It answered "the most
-// she can buy" from `floor(free_hold / bulk)` and never read the purse — the fourth copy of a rule
-// D10 killed twice. The one authority is `public.fleet_buy_capacity()`, reached either by handing
-// the server the word `ALL` (what the Quay does) or by asking `world.buy_capacity(fleet, good)`
-// (what the composer does, via features/command/useBuyCapacity.ts). See the BUY group above for
-// the measured refusals it produced.
-function buyNote(good: MarketGood): string {
-  // "of nearby ports", matching the one word the game uses for this figure ("nearby" — COMMAND's
-  // good rows and MARKET's tiles). "neighbours" was a third name for it on a third screen.
-  const nbr = good.pct_nbr === null ? 'alone on this coast' : `${formatPctPoints(good.pct_nbr)} of nearby ports`
-  return `${good.buy} d./t · ${nbr}`
-}
 
-function ActionGroup({
-  label,
-  note,
-  actions,
-  empty,
-  lineOf,
-  onPick,
-}: {
-  label: string
-  /** ONE live figure that is true of the whole group, printed once beside the label instead of
-   *  repeated on every row (the free hold, which used to ride on all four buy lines). */
-  note?: string
-  actions: readonly { intent: CommandIntent; note?: string }[]
-  /** What to say when there is nothing to offer — silence would read as a broken panel. */
-  empty?: string
-  /** The order line, composed by the ONE composer. The group never builds a string itself. */
-  lineOf: (intent: CommandIntent) => string
-  onPick: (intent: CommandIntent) => void
-}) {
-  if (actions.length === 0 && !empty) return null
-  return (
-    <div>
-      <SectionLabel>
-        {label}
-        {note && <span className="ml-2 normal-case text-ink-muted">{note}</span>}
-      </SectionLabel>
-      {actions.length === 0 ? (
-        <p className="text-sm text-ink-muted">{empty}</p>
-      ) : (
-        <ul className="space-y-1">
-          {actions.map((a) => {
-            const line = lineOf(a.intent)
-            return (
-              <li key={line}>
-                <button
-                  type="button"
-                  onClick={() => onPick(a.intent)}
-                  className="min-h-11 w-full rounded-md border border-edge bg-surface px-3 py-2 text-left transition hover:border-accent/60"
-                >
-                  <code className="block break-words font-mono text-xs text-accent">{line}</code>
-                  {a.note && <span className={fineClass('mt-0.5 block')}>{a.note}</span>}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </div>
-  )
-}
