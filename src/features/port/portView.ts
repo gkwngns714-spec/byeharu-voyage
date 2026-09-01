@@ -32,13 +32,6 @@ import { persist, createJSONStorage } from 'zustand/middleware'
  */
 export const PORT_FACES = [
   {
-    id: 'quay',
-    label: 'Quay',
-    title: 'The quayside',
-    explain:
-      'Each line is the exact order it would become. Tapping one sends it to Command; nothing here issues anything.',
-  },
-  {
     id: 'market',
     label: 'Market',
     title: 'The market',
@@ -51,27 +44,6 @@ export const PORT_FACES = [
     title: 'The city',
     explain:
       'How far this place has grown, what the Mayor takes, and what it sells cheaper than its neighbours. Every figure is read from the market as it stands today.',
-  },
-  {
-    id: 'services',
-    label: 'Services',
-    title: 'What the port keeps',
-    explain:
-      'The shipyard, the inn, the chandler and the school. What a service COSTS is set when the order runs, so PREVIEW on Command quotes it — no price is listed here.',
-  },
-  {
-    id: 'ships',
-    label: 'Alongside',
-    title: 'Your hulls alongside',
-    explain:
-      "Your own shipping in this harbour. Only your own: no harbour reports another house's hulls to you.",
-  },
-  {
-    id: 'officers',
-    label: 'Officers',
-    title: 'The hiring quay',
-    explain:
-      'An officer signs on where they live and serves in one fleet. Signing is immediate — it is not an order, so it does not go through the queue.',
   },
   {
     id: 'academy',
@@ -92,7 +64,9 @@ export interface PortViewState {
 export const usePortView = create<PortViewState>()(
   persist(
     (set) => ({
-      face: 'quay',
+      // MARKET opens first (row 56): with the Quay gone it is the face you came here to use,
+      // and a persisted 'quay' from an older build falls back through `offeredFaces` anyway.
+      face: 'market',
       turnTo: (face) => set({ face }),
     }),
     {
@@ -101,13 +75,14 @@ export const usePortView = create<PortViewState>()(
       name: 'byeharu-voyage.port.v1',
       storage: createJSONStorage(() => sessionStorage),
       partialize: (s) => ({ face: s.face }),
-      // A corrupt or half-written byte must open the Quay, never wedge the tab on a face that no
-      // longer exists.
+      // A corrupt or half-written byte must open a face that EXISTS, never wedge the tab on one
+      // that does not. It used to fall back to the Quay; row 56 removed that face, and this is
+      // exactly the line that would have kept a stale byte pointing at it.
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<PortViewState>
         return {
           ...current,
-          face: PORT_FACES.some((f) => f.id === p.face) ? (p.face as PortFace) : 'quay',
+          face: PORT_FACES.some((f) => f.id === p.face) ? (p.face as PortFace) : 'market',
         }
       },
     },
