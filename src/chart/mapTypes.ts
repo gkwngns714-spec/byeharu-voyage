@@ -65,6 +65,12 @@ export interface MapVoyage {
   readonly totalNm: number
   /** Arrival instant, epoch ms, from `voyage.eta`. A countdown is display; arrival is the server's. */
   readonly etaMs: number
+  /**
+   * 0063 — the instant she left, in ms, or null when the server does not serve it. Parsed ONCE in
+   * `mapFleetsOf`, the same discipline `etaMs` follows: a second `Date.parse` of a served string
+   * is how three copies of the ETA happened.
+   */
+  readonly departedMs: number | null
   /** The port the voyage ends at — null when she is bound for a bare point of open water. */
   readonly destinationCode: string | null
   /** The open-water destination; null when `destinationCode` names a port. Exactly one is set. */

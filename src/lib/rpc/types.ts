@@ -524,6 +524,15 @@ export interface FleetVoyage {
   course: [number, number][]
   /** ISO timestamp. */
   eta: string
+  /**
+   * 0063 — WHEN SHE LEFT, ISO. The anchor of the movement model: `voyage.progress_nm` measures
+   * every mile from it (0006:575-589). It is SERVED because it cannot be derived here — `eta`
+   * MOVES (a hazard delays her, a fair wind gives hours back, `voyage.recompute_eta` re-derives
+   * it when a knob moves), so arrival minus duration is not departure. Optional for the
+   * serve-order reason `waters` is: a build talking to a server that predates 0063 simply draws
+   * no elapsed figure.
+   */
+  departed_at?: string
   total_nm: number
   nm_done: number
   /** THE WATERS SHE STILL HAS TO CROSS (0055), in sailing order. Optional only for the sake of a
