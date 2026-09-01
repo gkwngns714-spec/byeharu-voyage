@@ -19,6 +19,7 @@ import {
 // destination's distance, and that number belongs to the server's leg (see PortPicker's header).
 import type { SnapshotPort } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
+import { hasBuilding } from '../../domain/port'
 
 // THE PICKERS — one per argument TYPE the server's verb schema declares (`port`, `good`, `qty`,
 // `number`, `price`, `enum`). Every one of them offers REAL options read out of the world, and
@@ -242,7 +243,7 @@ export function PortPicker({
                     must ask about is a bug (docs/UI_DIRECTION.md §3a trap 3). */}
                 <span className={fineClass('block')}>
                   {port.code} · {port.country}
-                  {port.has_yard ? ' · shipyard' : ''}
+                  {hasBuilding(port, 'shipyard') ? ' · shipyard' : ''}
                 </span>
               </button>
             ))}

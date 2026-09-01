@@ -15,6 +15,7 @@
 // quay to turn to.
 
 import { create } from 'zustand'
+import type { BuildingKind } from '../../lib/rpc'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
 /**
@@ -33,6 +34,10 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 export const PORT_FACES = [
   {
     id: 'market',
+    // 0067: which BUILDING this face is. `null` means the face is not a building and every
+    // harbour turns to it. A face that names a building is offered only where that building
+    // STANDS — one rule, read from the rows, replacing PortScreen's hand-written academy check.
+    building: 'market',
     label: 'Market',
     title: 'The market',
     explain:
@@ -40,6 +45,7 @@ export const PORT_FACES = [
   },
   {
     id: 'city',
+    building: null,
     label: 'City',
     title: 'The city',
     explain:
@@ -47,12 +53,20 @@ export const PORT_FACES = [
   },
   {
     id: 'academy',
+    building: 'academy',
     label: 'Academy',
     title: 'The academy',
     explain:
       'A trade is learned ashore, one level at a time. Only ports that keep an academy show this face at all.',
   },
-] as const
+] as const satisfies readonly {
+  id: string
+  /** 0067 — the building this face IS, or null for a face that is not one. */
+  building: BuildingKind | null
+  label: string
+  title: string
+  explain: string
+}[]
 
 export type PortFace = (typeof PORT_FACES)[number]['id']
 

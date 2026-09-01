@@ -10,6 +10,7 @@ import {
   Notice,
   PageHeader,
   Screen,
+  SectionLabel,
   TabRow,
   fineClass,
 } from '../../components/ui'
@@ -20,6 +21,7 @@ import { useCommandDraft } from '../../domain/order'
 import { AcademyFace } from './PortFaces'
 import { PortTrade } from './PortTrade'
 import { QuayToday } from './PortFair'
+import { buildingsOf, hasBuilding } from '../../domain/port'
 import { PORT_FACES, usePortView } from './portView'
 import { harbourCode, useHarbour } from '../../store/harbour'
 import type { CommandIntent } from '../../domain/order'
@@ -160,14 +162,23 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
 
   // WHICH FACES THIS HARBOUR HAS, and which of them is up. A persisted face can outlive the port
   // it was chosen on — turn to ACADEMY in Sagres, then read a harbour that keeps no school — so the
-  // shown face is derived from what is OFFERED rather than trusted from storage. Falling back to
-  // the Quay is the same rule as the tab list: never leave a face up that this port cannot host.
-  const offeredFaces = PORT_FACES.filter((f) => f.id !== 'academy' || port.has_academy)
+  // shown face is derived from what is OFFERED rather than trusted from storage: never leave a
+  // face up that this port cannot host.
+  //
+  // 0067: this line used to read `f.id !== 'academy' || port.has_academy` — one facility, named by
+  // hand, in a screen. It is now the general rule it always was: a face that names a BUILDING is
+  // offered where that building stands. The owner's warehouse, workstation, building yard and Inn
+  // are each one entry in PORT_FACES and one row per city, and no line here changes for any of
+  // them. That is the whole of what "a building is a concept" buys.
+  const offeredFaces = PORT_FACES.filter((f) => f.building === null || hasBuilding(port, f.building))
   const shownFace = offeredFaces.find((f) => f.id === face) ?? offeredFaces[0]
 
   // The nearest water from here — the server's sailed figures (world.reach, 0039: the same
   // distance table the endurance gate and the trade scan read; the approach detour is inside
   // every number). The old one-leg graph is gone; "near" is now simply near, by sea.
+  // 0067: the kinds, keyed once. The screen never names a building — the server does.
+  const kindByCode = Object.fromEntries(snapshot.building_kinds.map((k) => [k.kind, k]))
+
   const reachHere = reaches[port.id]?.reaches ?? null
   const oneLeg = (reachHere ? Object.entries(reachHere) : [])
     .map(([code, nm]) => ({ port: portByCode[code] ?? null, code, nm }))
@@ -408,6 +419,35 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                       The MARKET face beside it still prices every good on the quay, which is the
                       evidence the player reads to find the answer for themselves. */}
                 </dl>
+
+                {/* ── WHAT THIS CITY KEEPS (0067) ───────────────────────────────────────────
+                    The owner: *"buildings are market, a workstation where you can create ship
+                    related items - sail etc. inn where you can hire crew, find captains. etc. it
+                    is a concept."*
+
+                    This is the concept, visible. Every line is a ROW the server sent — the name
+                    and the sentence come from `building_kinds`, so nothing here knows what a
+                    workstation is, and a city that later builds one grows a line without this
+                    file changing. Bilbao shows Bilbao's; a small harbour shows fewer.
+
+                    A tier is printed only where it is above 1, because "Tier 1" on every line is
+                    a column of noise: what a player wants to see is which city is BETTER at
+                    something than the last one. */}
+                <div className="mt-4">
+                  <SectionLabel className="mb-1.5">What this city keeps</SectionLabel>
+                  <dl className="space-y-1">
+                    {buildingsOf(port).map((b) => {
+                      const kind = kindByCode[b.kind]
+                      return (
+                        <DetailRow
+                          key={b.kind}
+                          label={kind?.name ?? b.kind}
+                          value={`${kind?.does ?? ''}${b.tier > 1 ? ` · tier ${formatInt(b.tier)}` : ''}`}
+                        />
+                      )
+                    })}
+                  </dl>
+                </div>
             </>
           )}
 

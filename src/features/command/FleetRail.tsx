@@ -10,6 +10,7 @@ import {
 } from '../../lib/format'
 import type { FleetView, MarketView, SnapshotConfig, SnapshotPort } from '../../lib/rpc'
 import { fleetCrew, fleetHoldTotal, fleetStores, hullFraction, worstHullFraction } from '../../domain/fleet'
+import { buildingTier, hasBuilding } from '../../domain/port'
 import { useWorld } from '../../live/worldStore'
 import type { BuyCapacityState } from '../../live/useBuyCapacity'
 import type { HaggleStateRead } from './useHaggleState'
@@ -514,9 +515,9 @@ function HullsBlock({ fleet, port }: { fleet: FleetView; port: SnapshotPort | nu
         <SectionLabel className="mb-1.5">Shipyard</SectionLabel>
         {!port ? (
           <p className={fineClass()}>She is at sea. A hull is mended alongside.</p>
-        ) : port.has_yard ? (
+        ) : hasBuilding(port, 'shipyard') ? (
           <>
-            <HeroFigure value={`Tier ${formatInt(port.yard_tier)}`} />
+            <HeroFigure value={`Tier ${formatInt(buildingTier(port, 'shipyard'))}`} />
             <p className={fineClass('mt-1.5')}>
               {port.name} keeps a shipyard, where hulls are mended. A better one works better —
               what it charges for this hull is the port's own affair, and it is named when you
