@@ -245,6 +245,46 @@ export interface MarketPort {
   dev_commerce: number
 }
 
+// ── world.building_yard(port) — what this yard can lay down (0072) ─────────────────────────────
+
+/** One material a hull wants, and how much of it is ashore in this city. */
+export interface HullMaterial {
+  /** The good's code, or the fitting's. */
+  code: string
+  name: string
+  qty: number
+  /** How much you keep HERE — in the warehouse for a good, in your store for a fitting. */
+  have: number
+}
+
+export interface YardHull {
+  /** `ship_classes.code`. */
+  class: string
+  name: string
+  tier: number
+  note: string
+  /** The yard tier she wants. */
+  yard_tier: number
+  /** The yard's LABOUR, in ducats — not the price of a ship. */
+  ducats: number
+  hold: number
+  speed_kn: number
+  crew_required: number
+  durability: number
+  draft: number
+  /** Whether THIS yard is good enough. The server's rule, never re-derived here. */
+  buildable: boolean
+  goods: HullMaterial[]
+  items: HullMaterial[]
+}
+
+export interface BuildingYardView {
+  port_id: string
+  /** This city's building-yard tier, or null where it lays down nothing. */
+  tier: number | null
+  hulls: YardHull[]
+}
+
 // ── world.warehouse(port, fleet) — what this city is keeping for you (0070) ────────────────────
 
 /** One line of a shed, or one line of a hold — the same shape, because the screen moves between them. */

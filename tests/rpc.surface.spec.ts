@@ -79,7 +79,7 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   expect('legs' in snap).toBe(false)
   expect(snap.goods.length).toBeGreaterThan(20)
   expect(snap.ship_classes).toHaveLength(3)
-  expect(snap.verbs).toHaveLength(11)
+  expect(snap.verbs).toHaveLength(12)
 
   const lisboa = snap.ports.find((p) => p.code === 'LIS')
   expect(lisboa).toBeDefined()
@@ -412,7 +412,7 @@ test('world.ledger() pages, reconciles, and carries the purse', async () => {
 
 // ── the commands ───────────────────────────────────────────────────────────────────────────────
 
-test('cmd.verb_schema() serves the eleven verbs, argument by argument', async () => {
+test('cmd.verb_schema() serves the twelve verbs, argument by argument', async () => {
   const verbs = expectOk(await cmdVerbSchema())
   // 0068 added MAKE, and it sits beside REPAIR deliberately: both are things done ashore at a
   // building this city may or may not keep. The ORDER is the order the strip reads.
@@ -425,6 +425,7 @@ test('cmd.verb_schema() serves the eleven verbs, argument by argument', async ()
     'MAKE',
     'STORE',
     'TAKE',
+    'BUILD',
     'REPAIR',
     'CANCEL',
     'CLEAR',
@@ -897,6 +898,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // current_player_id(), so naming another house's port tells you the shed's SIZE and nothing
       // about what is in it. Lands with the face that reads it.
       'worldWarehouse',
+      // 0072 — world.building_yard(p_port). A READ, no player id and no FLEET: a hull is built out
+      // of the CITY, so what she is carrying is not part of the question. What YOU keep here comes
+      // from current_player_id().
+      'worldBuildingYard',
       // Pin moved deliberately 2026-08-23 with 0025 (the table of captains) and 0026 (the fair at
       // the quay). Both are READS and neither takes a player id.
       //

@@ -52,6 +52,14 @@ export const RPCS = {
       { name: 'p_fleet', type: 'uuid' },
     ],
   },
+  // 0072 — the building yard's ONE read: what this yard can lay down, what each hull wants, and
+  // how much of it is already ashore HERE. It takes no fleet: the materials come out of the city,
+  // not out of a hold, which is the whole point of the building.
+  worldBuildingYard: {
+    schema: 'world',
+    fn: 'building_yard',
+    args: [{ name: 'p_port', type: 'uuid' }],
+  },
   worldWorkstation: {
     schema: 'world',
     fn: 'workstation',

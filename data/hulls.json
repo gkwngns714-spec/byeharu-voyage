@@ -1,0 +1,63 @@
+{
+  "_": "WHAT A HULL IS MADE OF — the 건조소's recipes, one per ship class.",
+  "_why": "Authored here and guarded, for the same reason data/fittings.json is: a recipe that lives only inside a migration is exactly the drift world-guard exists to kill.",
+  "_where_from": "Materials come out of the WAREHOUSE in the yard's own city (0070), never out of a hold. A nau wants more timber than any ship afloat could carry, and that is the point: you ferry it in over several voyages and leave it ashore. It is what makes a warehouse worth having.",
+  "_ducats": "The ducat figure is the yard's LABOUR, not the price of a ship. ship_classes.build_cost is what a hull would cost if you simply bought one; here you bring the materials and pay for the work, which is roughly a quarter of it.",
+  "hulls": [
+    {
+      "class": "barca",
+      "yard_tier": 1,
+      "ducats": 3000,
+      "note": "A coaster. Two fittings and a stack of deal boards - the hull a house builds first.",
+      "goods": [
+        { "in": "timber", "qty": 40 },
+        { "in": "tar", "qty": 8 },
+        { "in": "cordage", "qty": 6 },
+        { "in": "ships-nails", "qty": 10 }
+      ],
+      "items": [
+        { "in": "suit-of-sails", "qty": 1 },
+        { "in": "anchor-and-cable", "qty": 1 }
+      ]
+    },
+    {
+      "class": "carlat",
+      "yard_tier": 2,
+      "ducats": 7000,
+      "note": "The lateen caravel: weatherly, and she wants a proper rudder and a headsail to prove it.",
+      "goods": [
+        { "in": "timber", "qty": 70 },
+        { "in": "naval-timber", "qty": 20 },
+        { "in": "tar", "qty": 12 },
+        { "in": "cordage", "qty": 10 },
+        { "in": "ships-nails", "qty": 18 }
+      ],
+      "items": [
+        { "in": "suit-of-sails", "qty": 2 },
+        { "in": "anchor-and-cable", "qty": 1 },
+        { "in": "rudder-and-helm", "qty": 1 },
+        { "in": "bowsprit-and-jib", "qty": 1 }
+      ]
+    },
+    {
+      "class": "nau",
+      "yard_tier": 3,
+      "ducats": 30000,
+      "note": "Four hundred tuns of hold. Live oak below the waterline, copper over it, and a year of somebody's life.",
+      "goods": [
+        { "in": "live-oak", "qty": 90 },
+        { "in": "naval-timber", "qty": 40 },
+        { "in": "timber", "qty": 60 },
+        { "in": "tar", "qty": 25 },
+        { "in": "ships-nails", "qty": 40 }
+      ],
+      "items": [
+        { "in": "suit-of-sails", "qty": 3 },
+        { "in": "anchor-and-cable", "qty": 2 },
+        { "in": "rudder-and-helm", "qty": 1 },
+        { "in": "hold-fittings", "qty": 2 },
+        { "in": "copper-sheathing", "qty": 1 }
+      ]
+    }
+  ]
+}
