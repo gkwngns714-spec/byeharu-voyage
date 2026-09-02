@@ -13,9 +13,28 @@
       "volume": 4,
       "ws_tier": 1,
       "recipe": [
-        { "in": "flax", "qty": 6 },
-        { "in": "cordage", "qty": 2 },
-        { "in": "tar", "qty": 1 }
+        {
+          "in": "flax",
+          "qty": 6
+        },
+        {
+          "in": "cordage",
+          "qty": 2
+        },
+        {
+          "in": "tar",
+          "qty": 1
+        }
+      ],
+      "effects": [
+        {
+          "stat": "speed",
+          "delta": 0.6
+        },
+        {
+          "stat": "handling",
+          "delta": -8
+        }
       ]
     },
     {
@@ -28,9 +47,32 @@
       "volume": 3,
       "ws_tier": 2,
       "recipe": [
-        { "in": "naval-timber", "qty": 3 },
-        { "in": "flax", "qty": 3 },
-        { "in": "cordage", "qty": 2 }
+        {
+          "in": "naval-timber",
+          "qty": 3
+        },
+        {
+          "in": "flax",
+          "qty": 3
+        },
+        {
+          "in": "cordage",
+          "qty": 2
+        }
+      ],
+      "effects": [
+        {
+          "stat": "handling",
+          "delta": 10
+        },
+        {
+          "stat": "speed",
+          "delta": 0.2
+        },
+        {
+          "stat": "durability",
+          "delta": -40
+        }
       ]
     },
     {
@@ -43,9 +85,28 @@
       "volume": 3,
       "ws_tier": 2,
       "recipe": [
-        { "in": "live-oak", "qty": 4 },
-        { "in": "ships-nails", "qty": 2 },
-        { "in": "lignum-vitae", "qty": 1 }
+        {
+          "in": "live-oak",
+          "qty": 4
+        },
+        {
+          "in": "ships-nails",
+          "qty": 2
+        },
+        {
+          "in": "lignum-vitae",
+          "qty": 1
+        }
+      ],
+      "effects": [
+        {
+          "stat": "handling",
+          "delta": 14
+        },
+        {
+          "stat": "hold",
+          "delta": -6
+        }
       ]
     },
     {
@@ -58,9 +119,28 @@
       "volume": 4,
       "ws_tier": 1,
       "recipe": [
-        { "in": "iron", "qty": 4 },
-        { "in": "hemp", "qty": 4 },
-        { "in": "tar", "qty": 1 }
+        {
+          "in": "iron",
+          "qty": 4
+        },
+        {
+          "in": "hemp",
+          "qty": 4
+        },
+        {
+          "in": "tar",
+          "qty": 1
+        }
+      ],
+      "effects": [
+        {
+          "stat": "handling",
+          "delta": 4
+        },
+        {
+          "stat": "hold",
+          "delta": -8
+        }
       ]
     },
     {
@@ -73,8 +153,28 @@
       "volume": 2,
       "ws_tier": 1,
       "recipe": [
-        { "in": "lead", "qty": 5 },
-        { "in": "timber", "qty": 2 }
+        {
+          "in": "lead",
+          "qty": 5
+        },
+        {
+          "in": "timber",
+          "qty": 2
+        }
+      ],
+      "effects": [
+        {
+          "stat": "handling",
+          "delta": 8
+        },
+        {
+          "stat": "armour",
+          "delta": 6
+        },
+        {
+          "stat": "speed",
+          "delta": -0.4
+        }
       ]
     },
     {
@@ -87,9 +187,32 @@
       "volume": 5,
       "ws_tier": 3,
       "recipe": [
-        { "in": "copper-sheet", "qty": 6 },
-        { "in": "ships-nails", "qty": 3 },
-        { "in": "tar", "qty": 2 }
+        {
+          "in": "copper-sheet",
+          "qty": 6
+        },
+        {
+          "in": "ships-nails",
+          "qty": 3
+        },
+        {
+          "in": "tar",
+          "qty": 2
+        }
+      ],
+      "effects": [
+        {
+          "stat": "armour",
+          "delta": 14
+        },
+        {
+          "stat": "durability",
+          "delta": 120
+        },
+        {
+          "stat": "speed",
+          "delta": -0.3
+        }
       ]
     },
     {
@@ -102,9 +225,36 @@
       "volume": 6,
       "ws_tier": 3,
       "recipe": [
-        { "in": "bar-iron", "qty": 6 },
-        { "in": "timber", "qty": 2 },
-        { "in": "ships-nails", "qty": 2 }
+        {
+          "in": "bar-iron",
+          "qty": 6
+        },
+        {
+          "in": "timber",
+          "qty": 2
+        },
+        {
+          "in": "ships-nails",
+          "qty": 2
+        }
+      ],
+      "effects": [
+        {
+          "stat": "attack",
+          "delta": 60
+        },
+        {
+          "stat": "reach",
+          "delta": 15
+        },
+        {
+          "stat": "hold",
+          "delta": -20
+        },
+        {
+          "stat": "handling",
+          "delta": -6
+        }
       ]
     },
     {
@@ -117,9 +267,28 @@
       "volume": 3,
       "ws_tier": 1,
       "recipe": [
-        { "in": "iron", "qty": 3 },
-        { "in": "hemp", "qty": 3 },
-        { "in": "timber", "qty": 1 }
+        {
+          "in": "iron",
+          "qty": 3
+        },
+        {
+          "in": "hemp",
+          "qty": 3
+        },
+        {
+          "in": "timber",
+          "qty": 1
+        }
+      ],
+      "effects": [
+        {
+          "stat": "attack",
+          "delta": 35
+        },
+        {
+          "stat": "reach",
+          "delta": -20
+        }
       ]
     },
     {
@@ -132,9 +301,36 @@
       "volume": 4,
       "ws_tier": 3,
       "recipe": [
-        { "in": "gunpowder", "qty": 4 },
-        { "in": "live-oak", "qty": 3 },
-        { "in": "copper-sheet", "qty": 1 }
+        {
+          "in": "gunpowder",
+          "qty": 4
+        },
+        {
+          "in": "live-oak",
+          "qty": 3
+        },
+        {
+          "in": "copper-sheet",
+          "qty": 1
+        }
+      ],
+      "effects": [
+        {
+          "stat": "attack",
+          "delta": 25
+        },
+        {
+          "stat": "accuracy",
+          "delta": 12
+        },
+        {
+          "stat": "hold",
+          "delta": -10
+        },
+        {
+          "stat": "durability",
+          "delta": -60
+        }
       ]
     },
     {
@@ -147,9 +343,28 @@
       "volume": 2,
       "ws_tier": 1,
       "recipe": [
-        { "in": "naval-timber", "qty": 2 },
-        { "in": "cordage", "qty": 2 },
-        { "in": "canvas-duck", "qty": 1 }
+        {
+          "in": "naval-timber",
+          "qty": 2
+        },
+        {
+          "in": "cordage",
+          "qty": 2
+        },
+        {
+          "in": "canvas-duck",
+          "qty": 1
+        }
+      ],
+      "effects": [
+        {
+          "stat": "sighting",
+          "delta": 5
+        },
+        {
+          "stat": "handling",
+          "delta": -4
+        }
       ]
     },
     {
@@ -162,9 +377,32 @@
       "volume": 3,
       "ws_tier": 2,
       "recipe": [
-        { "in": "timber", "qty": 5 },
-        { "in": "ships-nails", "qty": 3 },
-        { "in": "oakum", "qty": 2 }
+        {
+          "in": "timber",
+          "qty": 5
+        },
+        {
+          "in": "ships-nails",
+          "qty": 3
+        },
+        {
+          "in": "oakum",
+          "qty": 2
+        }
+      ],
+      "effects": [
+        {
+          "stat": "hold",
+          "delta": 25
+        },
+        {
+          "stat": "speed",
+          "delta": -0.35
+        },
+        {
+          "stat": "handling",
+          "delta": -5
+        }
       ]
     },
     {
@@ -177,10 +415,21 @@
       "volume": 2,
       "ws_tier": 2,
       "recipe": [
-        { "in": "cedar", "qty": 3 },
-        { "in": "tallow", "qty": 1 },
-        { "in": "lead", "qty": 1 }
-      ]
+        {
+          "in": "cedar",
+          "qty": 3
+        },
+        {
+          "in": "tallow",
+          "qty": 1
+        },
+        {
+          "in": "lead",
+          "qty": 1
+        }
+      ],
+      "effects": []
     }
-  ]
+  ],
+  "_effects": "What each fitting DOES, in the ten stats. DESIGN_V1 1.3: every fitting buys one stat and spends another - the prose `buys` and `spends` above say it in words and these say it in numbers, and migration 0074 asserts the two agree in SHAPE: everything except the figurehead has at least one positive and at least one negative effect. The figurehead is the deliberate exception (1.4): it costs no stat, only ducats, and until crew morale exists it changes nothing at all - which the row says rather than inventing an effect to look busy."
 }

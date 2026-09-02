@@ -1,0 +1,44 @@
+{
+  "_": "THE SIX STATS A HULL DID NOT HAVE — DESIGN_V1 §1.2's ten, minus the four the game already carried.",
+  "_already": "hold, speed_kn, draft and durability are columns on public.ship_classes since 0002 and are not touched here.",
+  "_guns": "`guns` stops being a stat and becomes what it always was: how many WEAPON fittings a hull can mount. §1.2 — 'that retires a dead column into a real one'.",
+  "_why_zero": "A barca carries no guns, so her attack, accuracy and reach are 0 and stay 0 until something is mounted. A stat that is honestly zero is better than a small number invented to avoid one.",
+  "classes": [
+    {
+      "class": "barca",
+      "handling": 70,
+      "armour": 5,
+      "attack": 0,
+      "accuracy": 0,
+      "reach": 20,
+      "sighting": 8,
+      "note": "A coaster: turns on a sixpence, carries nothing that shoots, and sees as far as her one short mast allows."
+    },
+    {
+      "class": "carlat",
+      "handling": 75,
+      "armour": 12,
+      "attack": 20,
+      "accuracy": 40,
+      "reach": 45,
+      "sighting": 10,
+      "note": "The lateen caravel — the handiest hull afloat, with two guns aboard because the coast is not always friendly."
+    },
+    {
+      "class": "nau",
+      "handling": 45,
+      "armour": 30,
+      "attack": 120,
+      "accuracy": 55,
+      "reach": 70,
+      "sighting": 14,
+      "note": "Four hundred tuns of ship: slow to answer the helm, hard to hurt, and she fights at a distance because she must."
+    }
+  ],
+  "_slots": "How many fittings of each kind a hull may carry, by tier. DESIGN_V1 §1.5, and the owner: 'for tier 1, sail, weapon, anchor would do. and 3 captain slot. it will grow as the tier of the ship grows'. Slots are TYPED, so a tier-3 hull is not simply more of anything.",
+  "slots": [
+    { "class": "barca",  "rig": 1, "weapon": 1, "ground-tackle": 1, "steering": 0, "hull": 0, "lookout": 0, "flourish": 0, "cabins": 3 },
+    { "class": "carlat", "rig": 1, "weapon": 2, "ground-tackle": 1, "steering": 1, "hull": 0, "lookout": 0, "flourish": 0, "cabins": 4 },
+    { "class": "nau",    "rig": 2, "weapon": 3, "ground-tackle": 1, "steering": 1, "hull": 1, "lookout": 1, "flourish": 1, "cabins": 5 }
+  ]
+}
