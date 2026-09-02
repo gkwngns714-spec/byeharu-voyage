@@ -245,6 +245,31 @@ export interface MarketPort {
   dev_commerce: number
 }
 
+// ── world.inn(port) — who is drinking here today (0073) ────────────────────────────────────────
+
+/** One officer in the room. `signed` is whether you already keep her, so nothing is offered twice. */
+export interface InnGuest {
+  code: string
+  name: string
+  specialty: OfficerSpecialty
+  bonus_pct: number
+  wage: number
+  blurb: string
+  /** Her nation's name, or null for someone who belongs to no crown. */
+  nation: string | null
+  /** The port she calls home — which is why she is likelier to be found near it. */
+  home: string | null
+  signed: boolean
+}
+
+export interface InnView {
+  port_id: string
+  has_inn: boolean
+  /** The world's own day. Present so a screen can say WHEN this room was true. */
+  game_day: number
+  present: InnGuest[]
+}
+
 // ── world.building_yard(port) — what this yard can lay down (0072) ─────────────────────────────
 
 /** One material a hull wants, and how much of it is ashore in this city. */

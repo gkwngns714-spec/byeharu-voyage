@@ -68,6 +68,14 @@ export const PORT_FACES = [
       'Where trade goods become a fitting for a ship. What it can make depends on how good this city is at it, and what it makes comes out of the hold of a ship lying here — a fitting made at Bilbao stays at Bilbao.',
   },
   {
+    id: 'inn',
+    building: 'inn',
+    label: 'Inn',
+    title: 'The inn',
+    explain:
+      'Who is drinking here today. Officers keep to their own coast, so a captain is likeliest to be found in her own nation’s ports and rarest far from home — and the better she is, the rarer she is anywhere. The room is the same for everybody and there is nothing to refresh: tomorrow it is a different room.',
+  },
+  {
     id: 'building_yard',
     building: 'building_yard',
     label: 'Yard',

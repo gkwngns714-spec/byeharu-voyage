@@ -902,6 +902,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // of the CITY, so what she is carrying is not part of the question. What YOU keep here comes
       // from current_player_id().
       'worldBuildingYard',
+      // 0073 — world.inn(p_port). A READ with no fleet and NO DAY argument: the day is the world's
+      // own, because an inn that took one could be asked about tomorrow, and looking ahead is the
+      // same defect as re-rolling. What YOU already keep comes from current_player_id().
+      'worldInn',
       // Pin moved deliberately 2026-08-23 with 0025 (the table of captains) and 0026 (the fair at
       // the quay). Both are READS and neither takes a player id.
       //

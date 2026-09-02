@@ -23,6 +23,7 @@ import { PortTrade } from './PortTrade'
 import { QuayToday } from './PortFair'
 import { buildingsOf, buildingTier, hasBuilding } from '../../domain/port'
 import { PortWarehouse } from './PortWarehouse'
+import { PortInn } from './PortInn'
 import { PortYard } from './PortYard'
 import { PortWorkstation } from './PortWorkstation'
 import { PORT_FACES, usePortView } from './portView'
@@ -463,6 +464,8 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
               tier={buildingTier(port, 'workstation')}
             />
           )}
+
+          {shownFace.id === 'inn' && <PortInn portId={port.id} fleet={acting} />}
 
           {shownFace.id === 'building_yard' && (
             <PortYard portId={port.id} fleet={acting} tier={buildingTier(port, 'building_yard')} />
