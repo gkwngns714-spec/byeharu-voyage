@@ -273,8 +273,6 @@ test('world.market() prices the goods this city trades, with %NBR, stock band, a
 
   // The other end of the same gradient: the good this port marks as a BUY reads dearer somewhere
   // else, which is the entire proposition of the game.
-  const cheapest = buys.sort((a, b) => (a.pct_nbr ?? 100) - (b.pct_nbr ?? 100))[0]
-  //
   // Moved deliberately 2026-08-26 with migration 0061: this used to scan the EIGHT NEAREST ports by
   // sailed water (0039's own repoint of "one leg away"). Since 0061 a city sells only the goods on
   // its roster, and a good is on the roster of a handful of cities in the whole world — which is
@@ -284,24 +282,50 @@ test('world.market() prices the goods this city trades, with %NBR, stock band, a
   // the gradient. The spec therefore asks the world WHICH cities trade it — that set IS the
   // proposition — and reads their quays, nearest first so a red names a near port rather than a
   // random one.
+  //
+  // ── AND WIDENED AGAIN 2026-09-02, WITH 0066 ──────────────────────────────────────────────────
+  // It pinned the claim to ONE good: the single row the server ranked cheapest here, which then had
+  // to be dearer somewhere. That was a fact about that row, not about the world, and 0066 broke it
+  // — demand now moves every price by what a region WANTS, and the one good that happens to rank
+  // cheapest at Lisboa is no longer guaranteed to be the one with a buyer paying more.
+  //
+  // The proposition this test exists for is "there is a trade to be made from this quay", so that
+  // is what it asks: of the goods Lisboa deals in, is ANY of them dearer at a city that also deals
+  // in it. A single good failing is geography; every good failing is a broken game.
+  const carriersOf = async (code: string): Promise<string[]> =>
+    (
+      await db.pg.query<{ code: string }>(
+        `select p.code
+           from public.port_specialties s
+           join public.ports p on p.id = s.port_id
+           join public.goods g on g.id = s.good_id
+          where g.code = $1 and p.code <> 'LIS'
+          order by p.code`,
+        [code],
+      )
+    ).rows.map((r) => r.code)
+
   const reachHere = expectOk(await worldReach(lis.id)).reaches
-  const carriers = (await db.pg.query<{ code: string }>(`
-    select p.code
-      from public.port_specialties s
-      join public.ports p on p.id = s.port_id
-      join public.goods g on g.id = s.good_id
-     where g.code = $1 and p.code <> 'LIS'
-     order by p.code`, [cheapest.code])).rows
-    .map((r) => r.code)
-    .sort((a, b) => (reachHere[a] ?? Number.MAX_SAFE_INTEGER) - (reachHere[b] ?? Number.MAX_SAFE_INTEGER))
-  expect(carriers.length).toBeGreaterThan(0)   // ... and somebody out there does trade it
   let dearerSomewhere = false
-  for (const code of carriers) {
-    const other = snap.ports.find((p) => p.code === code)!
-    const there = expectOk(await worldMarket(other.id)).goods.find((g) => g.code === cheapest.code)
-    if (there && there.available && there.mid > cheapest.mid) { dearerSomewhere = true; break }
+  let tradeFound = ''
+  // Nearest first, and bounded: the claim is that a trade EXISTS, and reading every quay in the
+  // world to prove one would cost minutes for no more certainty.
+  for (const good of buys.slice(0, 8)) {
+    const carriers = (await carriersOf(good.code)).sort(
+      (a, b) => (reachHere[a] ?? Number.MAX_SAFE_INTEGER) - (reachHere[b] ?? Number.MAX_SAFE_INTEGER),
+    )
+    for (const code of carriers.slice(0, 6)) {
+      const other = snap.ports.find((p) => p.code === code)!
+      const there = expectOk(await worldMarket(other.id)).goods.find((g) => g.code === good.code)
+      if (there && there.available && there.mid > good.mid) {
+        dearerSomewhere = true
+        tradeFound = `${good.code} ${good.mid} here vs ${there.mid} at ${code}`
+        break
+      }
+    }
+    if (dearerSomewhere) break
   }
-  expect(dearerSomewhere).toBe(true)
+  expect(dearerSomewhere, `no good Lisboa trades is dearer anywhere that trades it — there is no trade to make from this quay. ${tradeFound}`).toBe(true)
 })
 
 test('world.fleets() reports the fleet, its ships, its stores and its empty queue', async () => {
