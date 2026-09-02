@@ -6,6 +6,7 @@ import {
   Card,
   CardHeader,
   CollapsibleCard,
+  DetailRow,
   Explain,
   Gauge,
   Input,
@@ -558,8 +559,10 @@ function FleetDetail({
                 <SectionLabel>
                   Ships
                   <Explain label="Ships" dotClassName="ml-0.5">
-                    Speed is a FLEET figure — {formatKnots(fleet.speed_kn)}, the slowest hull with the
-                    formation penalty in it. The server reports no per-hull speed, so no column prints one.
+                    The fleet makes {formatKnots(fleet.speed_kn)} — the slowest hull with the
+                    formation penalty in it. Each hull now prints her OWN speed beside it (0074),
+                    because a fitting can change one ship and not the rest: a suit of sails buys
+                    speed and costs her the helm, and the column is where that shows.
                   </Explain>
                 </SectionLabel>
                 <Table scrollHint className={scrollTableClass()}>
@@ -569,6 +572,7 @@ function FleetDetail({
                       <TH>Class</TH>
                       <TH align="num">Hull</TH>
                       <TH align="num">Crew</TH>
+                      <TH align="num">Speed</TH>
                       <TH align="num">Hold</TH>
                       <TH align="num">Load</TH>
                       <TH align="num">Free</TH>
@@ -581,6 +585,48 @@ function FleetDetail({
                   </tbody>
                 </Table>
               </div>
+
+              {/* ── WHAT SHE CARRIES (0074) ──────────────────────────────────────────────────
+                  A READING, like everything else on this screen — FLEETS issues nothing. What
+                  mounts a fitting is the FIT verb on COMMAND, the same door BUY and SAIL go
+                  through, and the composer offers it there without this file knowing.
+
+                  Slots are printed FILLED OF TOTAL rather than as a list of empties, because the
+                  question a player has is "can I put another sail on her", and a bare count of
+                  free slots does not say which kind is free. */}
+              {fleet.ships.map((ship) => (
+                <div key={`fit-${ship.id}`}>
+                  <SectionLabel className="mb-1">{ship.name} — fitted</SectionLabel>
+                  {ship.fittings.length === 0 ? (
+                    <p className={fineClass()}>
+                      Nothing mounted. She sails as the shipwright rated her.
+                    </p>
+                  ) : (
+                    <dl className="space-y-1">
+                      {ship.fittings.map((f) => (
+                        <DetailRow
+                          key={f.code}
+                          label={f.name}
+                          value={`${f.slot}${f.qty > 1 ? ` x${formatInt(f.qty)}` : ''}`}
+                        />
+                      ))}
+                    </dl>
+                  )}
+                  <p className={fineClass('mt-1')}>
+                    {Object.entries(ship.slots)
+                      .filter(([, total]) => total > 0)
+                      .map(([slot, total]) => {
+                        const used = ship.fittings
+                          .filter((f) => f.slot === slot)
+                          .reduce((n, f) => n + f.qty, 0)
+                        return `${slot} ${formatInt(used)}/${formatInt(total)}`
+                      })
+                      .join(' · ')}
+                    {' · '}
+                    {formatInt(ship.cabins)} cabin(s)
+                  </p>
+                </div>
+              ))}
             </>
           )}
           {face === 'cargo' && (
@@ -788,6 +834,17 @@ function ShipRow({ ship }: { ship: FleetShip }) {
       <TD align="num">
         <span className={hull < 0.5 ? 'text-danger' : hull < 0.8 ? 'text-warning' : ''}>
           {formatPct(hull)}
+        </span>
+      </TD>
+      {/* 0074: HER OWN SPEED, and the hull's rating behind it when a fitting has moved it. Two
+          numbers only when they differ — printing "5.0 (5.0)" on every unfitted hull would be a
+          column of noise. */}
+      <TD align="num">
+        <span title={`rated ${formatKnots(ship.speed_rated)}`}>
+          {formatKnots(ship.speed)}
+          {ship.speed !== ship.speed_rated && (
+            <span className="ml-1 text-ink-faint">({formatKnots(ship.speed_rated)})</span>
+          )}
         </span>
       </TD>
       <TD align="num">

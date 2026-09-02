@@ -618,6 +618,15 @@ export interface HaggleAttempt {
 
 export type FleetStatus = 'DOCKED' | 'ANCHORED' | 'SAILING' | 'REPAIRING' | 'ADRIFT' | 'UNABLE_TO_SAIL'
 
+/** 0074 — one fitting mounted on a hull. It has LEFT the player's store at the port to be here. */
+export interface MountedFitting {
+  code: string
+  name: string
+  /** rig · weapon · ground-tackle · steering · hull · lookout · flourish. */
+  slot: string
+  qty: number
+}
+
 export interface FleetShip {
   id: string
   name: string
@@ -639,6 +648,25 @@ export interface FleetShip {
   /** What the shipwright built — `ship_classes.hold`, before any officer. For a card that wants to
    *  show the hull itself rather than what she can be made to carry. */
   hold_rated: number
+  /**
+   * 0074 — WHAT SHE ACTUALLY MAKES, and what the shipwright rated her at. Same shape as
+   * `hold`/`hold_rated` above: `speed` is `voyage.ship_speed`, which now reads the FITTED hull.
+   */
+  speed: number
+  speed_rated: number
+  /** The six stats a hull did not have until 0074, effective — base plus everything mounted. */
+  handling: number
+  armour: number
+  attack: number
+  accuracy: number
+  reach: number
+  sighting: number
+  /** What is mounted on her right now. */
+  fittings: MountedFitting[]
+  /** How many of each kind of slot she has. `weapon` is `ship_classes.guns`, retired into this. */
+  slots: Record<string, number>
+  /** How many captains she can berth. Nothing reads it yet — ranks and cabins are their own slice. */
+  cabins: number
   /** goods CODE → tuns aboard. `{}` when empty. Water and food are stores, not cargo. */
   cargo: Record<string, number>
   /** Tuns occupied, bulk applied. */

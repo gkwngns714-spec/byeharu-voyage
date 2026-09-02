@@ -79,7 +79,7 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   expect('legs' in snap).toBe(false)
   expect(snap.goods.length).toBeGreaterThan(20)
   expect(snap.ship_classes).toHaveLength(3)
-  expect(snap.verbs).toHaveLength(12)
+  expect(snap.verbs).toHaveLength(14)
 
   const lisboa = snap.ports.find((p) => p.code === 'LIS')
   expect(lisboa).toBeDefined()
@@ -412,7 +412,7 @@ test('world.ledger() pages, reconciles, and carries the purse', async () => {
 
 // ── the commands ───────────────────────────────────────────────────────────────────────────────
 
-test('cmd.verb_schema() serves the twelve verbs, argument by argument', async () => {
+test('cmd.verb_schema() serves the fourteen verbs, argument by argument', async () => {
   const verbs = expectOk(await cmdVerbSchema())
   // 0068 added MAKE, and it sits beside REPAIR deliberately: both are things done ashore at a
   // building this city may or may not keep. The ORDER is the order the strip reads.
@@ -426,6 +426,8 @@ test('cmd.verb_schema() serves the twelve verbs, argument by argument', async ()
     'STORE',
     'TAKE',
     'BUILD',
+    'FIT',
+    'UNFIT',
     'REPAIR',
     'CANCEL',
     'CLEAR',
