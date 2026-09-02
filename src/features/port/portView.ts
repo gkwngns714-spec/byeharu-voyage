@@ -68,6 +68,14 @@ export const PORT_FACES = [
       'Where trade goods become a fitting for a ship. What it can make depends on how good this city is at it, and what it makes comes out of the hold of a ship lying here — a fitting made at Bilbao stays at Bilbao.',
   },
   {
+    id: 'building_yard',
+    building: 'building_yard',
+    label: 'Yard',
+    title: 'The building yard',
+    explain:
+      'Where a hull is laid down. She is built out of THIS city — timber from the warehouse here, fittings from your store here — and never out of a hold, because no ship afloat carries what a big hull wants. It is not the shipyard, which mends.',
+  },
+  {
     id: 'academy',
     building: 'academy',
     label: 'Academy',

@@ -26,6 +26,7 @@
 import { call } from './backend'
 import type { RpcResult } from './result'
 import type {
+  BuildingYardView,
   WarehouseView,
   WorkstationView,
   SeaRasterPayload,
@@ -89,6 +90,17 @@ export function worldWarehouse(
   fleetId: string | null,
 ): Promise<RpcResult<WarehouseView>> {
   return call<WarehouseView>('worldWarehouse', [portId, fleetId])
+}
+
+/**
+ * WHAT THIS CITY CAN LAY DOWN (0072) — the hulls this yard is good enough for, what each one wants
+ * in timber and fittings, and how much of that is already ashore here.
+ *
+ * No fleet argument: a hull is built out of the CITY (the warehouse and your store in it), never
+ * out of a hold, so what she happens to be carrying is not part of the question.
+ */
+export function worldBuildingYard(portId: string): Promise<RpcResult<BuildingYardView>> {
+  return call<BuildingYardView>('worldBuildingYard', [portId])
 }
 
 /**
