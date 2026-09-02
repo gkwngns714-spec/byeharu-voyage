@@ -76,9 +76,12 @@ export function TruncationNote({ hidden }: { hidden: number }) {
 }
 
 /**
- * What to trade, priced. E.4's whole reading room in a TILE: what it costs, what it fetches, how
- * that compares with the ports within 600 nm (%NBR), and the server's own buy/hold/sell advice —
- * so the choice is informed before it is made rather than explained after it.
+ * What to trade, priced. The reading room in a TILE: what it costs, what it fetches, how far that
+ * price can move, and how much is on the quay — the facts, so the choice is made on evidence.
+ *
+ * 0071 removed the two things that were not facts: the comparison with the ports within 600 nm,
+ * and the buy/hold/sell advice cut from it. Those told the player the answer the game exists to
+ * make them find.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * GOODS ARE A FIELD OF TILES, NOT A COLUMN OF LINES.
@@ -204,7 +207,7 @@ export function GoodPicker({
         <p className={fineClass()}>
           {shown.length} {shown.length === 1 ? 'good' : 'goods'}
           {intent === 'sell' ? ' aboard and traded here' : ' traded here'}
-          {filter.trim() ? ' answer to that filter' : ", the quay's own advice first"}
+          {filter.trim() ? ' answer to that filter' : ', by name'}
         </p>
       )}
       {shown.length === 0 && (
@@ -216,7 +219,9 @@ export function GoodPicker({
       )}
       {/* THE FIELD OF GOODS — the design system's tile in the design system's field, chunked into
           ROWS so the fold can land after a whole one (rule 4 in this component's header). The order
-          inside the field is unchanged: the quay's own advice first, then the price index. */}
+          inside the field is unchanged. 0071: that order used to be the quay's own advice and then
+          the price index — the comparison the owner removed — and it is by NAME now, because the
+          top of a list is an answer. */}
       {inRowsOf(shown, cols).map((row) => (
         <Fragment key={row[0].code}>
           <div className={tileFieldClass()}>

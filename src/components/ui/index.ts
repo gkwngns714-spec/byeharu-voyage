@@ -11,7 +11,7 @@ export { fineClass, rowLinkClass, headRowClass, inlineFigureClass } from './typo
 export { Card, CardHeader, type CardTone } from './Card'
 export { Badge, type BadgeTone } from './Badge'
 // PriceIndex — the %NBR pill — was REMOVED in 0071 along with the number it rendered. It drew a
-// comparison between this quay and its neighbours, tinted by the server's buy/hold/sell advice,
+// comparison between this quay and its neighbours, tinted by the buy/hold/sell cut of that number,
 // and both are gone: that comparison is the answer the owner asked the game to make the player
 // find. A component with nothing left to render is not a component to keep for later.
 // The price LINE (0013 gave the server a memory to draw one from). See Sparkline.tsx for what it

@@ -11,12 +11,6 @@
 import type { MarketGood } from '../../lib/rpc'
 
 /**
- * The four blocks the table is cut into. Three are §E.4's bands, read straight off the server's
- * `advice`. The fourth is not a band at all: `available: false` means the port's culture will not
- * trade the good AT ALL (§B.4 — wine in a Maghrebi port), which is a fact about the port and can
- * never be advice to buy it.
- */
-/**
  * 0071 — WHAT A ROW IS, not what to do about it. These used to be `buy | sell | hold`, cut from
  * this quay's mid as a percentage of its neighbours. That comparison is the answer the game exists
  * to make the player find (the owner: *"the game is to challenge players for finding the best
