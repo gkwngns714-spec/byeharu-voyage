@@ -258,6 +258,10 @@ const UNUSED = {
   dev_industry: 8,
   dev_commerce: 8,
   dev_military: 8,
+  // 0067: it keeps NOTHING, for the reason this block already states — the map is never told what
+  // a city keeps, so a fixture that handed it a market or a shipyard would be measuring a world
+  // the map does not have.
+  buildings: [],
   // 0036: the fixture is the HARBOUR table verbatim — the 14 sea places are deliberately absent
   // here (they are 0036's rows, proven by 0036's own asserts and the live snapshot), so every
   // density/label measurement below stays a measurement of the same 214 harbours it pinned.

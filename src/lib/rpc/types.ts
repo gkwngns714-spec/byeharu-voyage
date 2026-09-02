@@ -46,6 +46,16 @@ export interface SnapshotPort {
   has_yard: boolean
   yard_tier: number
   has_academy: boolean
+  /**
+   * 0067 — WHAT THIS CITY KEEPS. A building is a row `(port, kind, tier)`, not a column, so a
+   * seventh building is an INSERT and not a new field here. `has_yard` and `has_academy` above are
+   * still the AUTHORED truth in `data/ports.json`; these rows are derived from them, and they are
+   * what the game READS — a tier a player raises has nowhere to live in a boolean.
+   *
+   * Ask it through `src/domain/port` and never by hand: three screens used to each carry their own
+   * `port.has_yard` check.
+   */
+  buildings: readonly PortBuilding[]
   is_ice_closed: boolean
   /** 0..0.08 — the Mayor's market tax (DESIGN H.3). */
   tax_rate: number
@@ -197,6 +207,9 @@ export interface WorldSnapshot {
   goods: SnapshotGood[]
   /** DESIGN B.1, served from 0028. The one reading of what a nation code is called. */
   nations: SnapshotNation[]
+  /** 0067 — what each kind of building is CALLED and what it DOES, once for the whole world. The
+   *  names live with the buildings, never hard-coded on a screen. */
+  building_kinds: SnapshotBuildingKind[]
   ship_classes: SnapshotShipClass[]
   config: SnapshotConfig
   /** The same eight verbs `cmd.verb_schema()` serves — one grammar, delivered with the world. */
@@ -234,6 +247,31 @@ export interface MarketPort {
   culture: string
   dev_commerce: number
 }
+
+/** 0067 — what a kind of building is called and what it does. Served once, read by every screen. */
+export interface SnapshotBuildingKind {
+  kind: BuildingKind
+  name: string
+  /** One sentence: what a player can do here. */
+  does: string
+}
+
+/** 0067 — one building standing in one city. `kind` is a row in `public.building_kinds`. */
+export interface PortBuilding {
+  kind: BuildingKind
+  /** 1..5 — how good this city is at it. Where "some cities can craft" lives. */
+  tier: number
+}
+
+/** The seven kinds a city can keep. `shipyard` REPAIRS; `building_yard` BUILDS. Never one word. */
+export type BuildingKind =
+  | 'market'
+  | 'warehouse'
+  | 'workstation'
+  | 'building_yard'
+  | 'inn'
+  | 'shipyard'
+  | 'academy'
 
 export interface MarketGood {
   good_id: string
