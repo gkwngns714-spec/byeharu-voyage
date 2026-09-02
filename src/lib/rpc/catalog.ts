@@ -60,23 +60,6 @@ export const RPCS = {
       { name: 'p_fleet', type: 'uuid' },
     ],
   },
-  // 0019 — the comparison. `p_fleet` is optional and is what makes the quantities REAL: name her
-  // and every row is priced at what she can actually afford and carry, and at what she may sail to.
-  worldTradeRoutes: {
-    schema: 'world',
-    fn: 'trade_routes',
-    args: [
-      { name: 'p_from', type: 'uuid' },
-      { name: 'p_fleet', type: 'uuid' },
-      // 0039: the reach is a RADIUS in sailed nautical miles over the distance table (null = the
-      // server's sea_scan_radius_nm knob). "Legs" died with the graph.
-      { name: 'p_radius_nm', type: 'numeric' },
-      { name: 'p_limit', type: 'int' },
-      // Pin the destination and the read answers the other question a trader has: not "where is
-      // this worth more" but "what should I carry THERE".
-      { name: 'p_to', type: 'uuid' },
-    ],
-  },
   // 0039 — THE FREE SEA. The raster the client's pathfinder proposes over (the same row the
   // server verifies by — one authority, fetched once per session), and one place's sailed
   // distances to everywhere (the SAIL picker's ordering and figures).

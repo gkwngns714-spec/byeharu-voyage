@@ -163,6 +163,18 @@ select pg_temp.recut('world.snapshot()'::regprocedure, false,
         'advice_sell_above',   public.wc_num('advice_sell_above')),$c0$,
   $c1$        'neighbour_radius_nm', public.wc_num('neighbour_radius_nm')),$c1$);
 
+-- -- 2b. AND "WHERE TO SAIL" GOES WITH IT ----------------------------------------------------------
+-- DESIGN_V1 §13, decision 3, put to the owner and answered: does NEARBY's removal take `pays at`
+-- and `Where to sail`? "Yes". Both were renderings of world.trade_routes, which ranks every
+-- harbour in reach by what it would pay for what is on this quay - the same comparison as the
+-- neighbour index, arriving at the same answer by a longer road.
+--
+-- The FUNCTION stays, because scripts/db/proofs/04 uses it to find a route worth testing and runs
+-- as postgres. What goes is the client's door to it: the grant is revoked, the catalogue entry is
+-- removed, and no screen reads it. Leaving the grant would have left exactly what 0022 shipped
+-- once and this chain has a test about - a complete server mechanic with a door nobody opens.
+revoke execute on function world.trade_routes(uuid, uuid, numeric, int, uuid) from authenticated;
+
 -- The neighbour walk itself. Nothing calls it once the quay stops; a scalar that answers a question
 -- the game has decided not to answer is the kind of thing a later session wires back in "because
 -- it was already there". Postgres refuses the drop if anything still depends on it, which is the
@@ -212,6 +224,9 @@ begin
 
   -- (b) THE COMPARISON IS GONE, ROOT AND BRANCH. Not "the field is absent from one payload": the
   --     function that computed it must not exist, or a later session finds it and wires it back.
+  if has_function_privilege('authenticated', 'world.trade_routes(uuid, uuid, numeric, int, uuid)', 'execute') then
+    raise exception '0071 self-assert FAIL: a client can still ask where to sail';
+  end if;
   if to_regprocedure('world.pct_of_neighbours_at(uuid)') is not null
      or to_regprocedure('world.pct_of_neighbours(uuid, uuid)') is not null then
     raise exception '0071 self-assert FAIL: a neighbour comparison still exists';

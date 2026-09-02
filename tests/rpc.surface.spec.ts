@@ -865,11 +865,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
     [
       'cmdCancel', 'cmdClear', 'cmdFoundHouse', 'cmdIssue', 'cmdPreview', 'cmdVerbSchema',
       'worldBuyCapacity', 'worldFleets', 'worldLedger', 'worldMarket', 'worldSnapshot',
-      // Added deliberately 2026-08-22 with migration 0019: `world.trade_routes`, the read that
-      // answers "where is this good worth more than it is here". It takes a port and OPTIONALLY a
-      // fleet id — the fleet is checked against auth.uid() server-side (0019), so naming somebody
-      // else's is E_NOT_YOURS rather than a disclosure.
-      'worldTradeRoutes',
+      // 0019's `worldTradeRoutes` was REMOVED 2026-09-02 with 0071. It ranked every port in reach
+      // by what it would pay for what is on this quay — the same comparison as the nearby index,
+      // and the same answer the owner asked the game to stop giving (DESIGN_V1 §13, decision 3:
+      // does NEARBY's removal take `pays at` and `Where to sail`? "Yes"). The catalogue entry goes
+      // with the screens that read it, and 0071 REVOKES the grant, so it is not left as a door
+      // nobody opens — which is the defect the note two blocks down was written about.
       // 0013-0016. Each of the three cmd.* entries takes NO player id — identity is the JWT's,
       // the same property that makes cmd.found_house safe for a browser to hold.
       'worldPriceHistory', 'worldPlayer', 'worldOfficers', 'worldSkills',
