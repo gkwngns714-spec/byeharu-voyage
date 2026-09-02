@@ -141,12 +141,9 @@ export interface SnapshotConfig {
   water_per_crew_day: number
   food_per_crew_day: number
   wage_per_crew_day: number
-  /** DESIGN E.4 — the radius %NBR compares against, and the two bands it is cut into. These were
-   *  declared on the client until 0019; they are the server's numbers and it serves them now, so a
-   *  caption cannot disagree with the computation behind it. */
+  /** The radius the reach table and the trade scan work in. The two advice bands that used to sit
+   *  beside it left with the comparison itself in 0071 — there is no cut left to agree with. */
   neighbour_radius_nm: number
-  advice_buy_below: number
-  advice_sell_above: number
 }
 
 export interface VerbArg {
@@ -349,8 +346,17 @@ export interface MarketGood {
   /** What the player RECEIVES (bid). */
   sell: number
   mid: number
-  /** DESIGN E.4 %NBR: this port's mid as a percentage of ports within 600 nm. Null if alone. */
-  pct_nbr: number | null
+  /**
+   * 0071 — HOW FAR THIS PRICE CAN TRAVEL, low and high, at this quay today. Priced through the one
+   * expression with the drift term held at each end of its own band and every other term of this
+   * row left as it is.
+   *
+   * It replaces `pct_nbr`, and the difference is the whole point: a range is a FACT about this
+   * good here, where a neighbour comparison was an ANSWER about somewhere else. The owner:
+   * *"price range when pressed for more info, no nearby price info needed"*.
+   */
+  range_lo: number
+  range_hi: number
   stock: number
   stock_target: number
   /** 0..6 — the six-block stock meter. */
@@ -365,7 +371,6 @@ export interface MarketGood {
    * E_UNAVAILABLE. Optional for the serve-order reason `rarity` is.
    */
   offered?: boolean
-  advice: 'buy' | 'sell' | 'hold'
 }
 
 /**

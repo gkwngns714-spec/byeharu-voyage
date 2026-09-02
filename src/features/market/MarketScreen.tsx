@@ -12,7 +12,6 @@ import {
   Input,
   Notice,
   PageHeader,
-  PriceIndex,
   Screen,
   Sparkline,
   SectionLabel,
@@ -133,7 +132,7 @@ export function MarketScreen() {
   const [loadError, setLoadError] = useState<{ portId: string; refusal: Refusal | null } | null>(
     null,
   )
-  const [sort, setSort] = useState<SortKey>('nbr')
+  const [sort, setSort] = useState<SortKey>('name')
   const [filter, setFilter] = useState<MarketFilter>('all')
   const [portsOpen, setPortsOpen] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
@@ -206,7 +205,7 @@ export function MarketScreen() {
   const config = snapshot?.config ?? null
 
   const blocks = useMemo(
-    () => (view && config ? marketBlocks(view.goods, sort, filter, config) : []),
+    () => (view && config ? marketBlocks(view.goods, sort, filter) : []),
     [view, sort, filter, config],
   )
 
@@ -343,7 +342,7 @@ export function MarketScreen() {
             <div className="space-y-2 border-t border-edge pt-3">
               <div className="flex flex-wrap items-center gap-1.5">
                 <SectionLabel className="mb-0">Sort</SectionLabel>
-                {(['nbr', 'name', 'price', 'stock'] as const).map((k) => (
+                {(['name', 'price', 'stock'] as const).map((k) => (
                   <Chip key={k} active={sort === k} onClick={() => setSort(k)}>
                     {sortWord(k)}
                   </Chip>
@@ -351,7 +350,10 @@ export function MarketScreen() {
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <SectionLabel className="mb-0">Filter</SectionLabel>
-                {(['all', 'buy', 'sell'] as const).map((f) => (
+                {/* 0071: these used to be all / buy / sell — the server's advice, offered as a
+                    filter. What is left is the one FACT worth narrowing by: whether this city
+                    deals in the row at all, or it is only here because she is carrying it. */}
+                {(['all', 'traded'] as const).map((f) => (
                   <Chip key={f} active={filter === f} onClick={() => setFilter(f)}>
                     {f}
                   </Chip>
@@ -508,11 +510,9 @@ function GoodsBlock({
       <p
         className={[
           'mb-1.5 border-b border-edge pb-1 font-mono text-[11px] uppercase tracking-wider',
-          block === 'buy'
-            ? 'text-success'
-            : block === 'sell'
-              ? 'text-accent'
-              : 'text-ink-faint',
+          // 0071: the colour said cheap/dear, which was the advice. A block is a fact now, so the
+          // heading is plain and only the block a player cannot trade in is faded.
+          block === 'traded' ? 'text-ink-muted' : 'text-ink-faint',
         ].join(' ')}
       >
         ▾ {label}
@@ -561,17 +561,22 @@ function TradedTile({
       tapTitle={`${verbFor(good)} ${good.name} (${good.category}) — load onto Command`}
       testId="good-tile"
     >
-      {/* THE PILL AND THE LINE SHARE THE FIRST ROW — the figure the game is played from and the
-          shape of where it has been. "nearby", never `%NBR`: that is the column name in the data
-          and in migration 0009, and the player never reads the schema (the word is COMMAND's own
-          pick, features/command/ArgPickers.tsx — one word for one figure across the game). The
-          pill's tone is the SERVER'S `advice`; the line borrows it, so no fifth colour vocabulary. */}
-      <EntryTileLine label="nearby">
-        <PriceIndex pct={good.pct_nbr} advice={good.advice} />
+      {/* 0071 — THE RANGE AND THE SHAPE OF WHERE IT HAS BEEN. This line was the neighbour index,
+          the one figure that answered "is this cheap compared with everywhere else". The owner
+          removed that answer twice over ("no nearby price info needed"; "the game is to challenge
+          players for finding the best prices by themselves"), so what stands here is a fact about
+          THIS price: the low and high the drift band allows it, at this quay, today.
+
+          The sparkline keeps its neutral tone. It used to borrow the advice's colour, which made
+          the shape of the past argue a case about the present. */}
+      <EntryTileLine label="range">
+        <span className="font-mono tabular-nums">
+          {formatInt(good.range_lo)}–{formatInt(good.range_hi)}
+        </span>
         <Sparkline
           width={44}
           values={(points ?? []).map((pt) => pt.mid)}
-          tone={good.advice === 'buy' ? 'cheap' : good.advice === 'sell' ? 'dear' : 'even'}
+          tone="even"
           label={`${good.name}: ${points?.length ?? 0} remembered price(s)`}
         />
       </EntryTileLine>

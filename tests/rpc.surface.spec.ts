@@ -219,7 +219,11 @@ test('world.market() prices the goods this city trades, with %NBR, stock band, a
     expect(g.sell).toBeGreaterThan(0)
     expect(g.buy).toBeGreaterThan(g.sell) // the spread, in the direction that costs the player
     expect(isNum(g.mid)).toBe(true)
-    expect(g.pct_nbr === null || isNum(g.pct_nbr)).toBe(true)
+    // 0071: the neighbour index is gone and the RANGE stands where it did. A range must contain
+    // the price it is the range of, which is the one property that cannot be true by accident.
+    expect(isNum(g.range_lo) && isNum(g.range_hi)).toBe(true)
+    expect(g.range_lo).toBeLessThanOrEqual(g.mid)
+    expect(g.range_hi).toBeGreaterThanOrEqual(g.mid)
     expect(isNum(g.stock) && isNum(g.stock_target)).toBe(true)
     expect(g.stock_band).toBeGreaterThanOrEqual(0)
     expect(g.stock_band).toBeLessThanOrEqual(6)
@@ -227,7 +231,6 @@ test('world.market() prices the goods this city trades, with %NBR, stock band, a
     // 0061: the ROSTER flag, beside the culture one. Every row of a payload read with no fleet of
     // yours lying here is a good this city trades, so every one of them is offered.
     expect(g.offered).toBe(true)
-    expect(['buy', 'hold', 'sell']).toContain(g.advice)
   }
 
   // THE CULTURE MASK is a fact about the port and shows through as a flag, not as a price.
@@ -267,12 +270,18 @@ test('world.market() prices the goods this city trades, with %NBR, stock band, a
   // A GRADIENT EXISTS, through the client seam. Which good and which pair is geography — 214 ports
   // and 14,980 derived prices decide it — so the spec asks the payload for one instead of naming
   // the pair a twelve-port design document once quoted.
-  const buys = market.goods.filter((g) => g.advice === 'buy' && g.available)
+  // 0071: this used to ask the payload which rows the server called cheap, and then check that the
+  // server's own number agreed with the server's own word — a circle. The comparison is gone, so
+  // the gradient is proven the only way that was ever worth anything: take the cheapest good this
+  // quay deals in and go and READ another port's price for it, below.
+  // Cheapest first, so the bounded scan below starts where a player would.
+  const buys = market.goods
+    .filter((g) => g.available && g.offered !== false)
+    .sort((a, b) => a.mid - b.mid)
   expect(buys.length).toBeGreaterThan(0)                       // somewhere here is worth loading
-  for (const g of buys) expect(g.pct_nbr!).toBeLessThan(100)   // and the advice agrees with the number
 
-  // The other end of the same gradient: the good this port marks as a BUY reads dearer somewhere
-  // else, which is the entire proposition of the game.
+  // The other end of the same gradient: something this port sells reads dearer at a city that also
+  // deals in it, which is the entire proposition of the game.
   // Moved deliberately 2026-08-26 with migration 0061: this used to scan the EIGHT NEAREST ports by
   // sailed water (0039's own repoint of "one leg away"). Since 0061 a city sells only the goods on
   // its roster, and a good is on the roster of a handful of cities in the whole world — which is

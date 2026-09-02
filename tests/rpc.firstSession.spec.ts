@@ -129,9 +129,12 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   // authority the market screen buys through. `world.market` already serves only what this quay
   // shows, so at Lisboa on turn one the two agree; asking the narrower question anyway is what
   // stops this line going quietly wrong the first time she reads a quay with cargo aboard.
-  const buys = here.goods
-    .filter((g) => buyableHere(g) && g.advice === 'buy')
-    .sort((a, b) => (a.pct_nbr ?? 100) - (b.pct_nbr ?? 100))
+  // 0071: this used to ask the server which rows were CHEAP HERE and rank them by the neighbour
+  // index. Both are gone — that comparison is the answer the game exists to make the player find —
+  // so the simulation reasons the way a player now has to: of what this quay actually deals in,
+  // start with the cheapest thing on it. No server opinion, and the gain below still has to be
+  // real for the test to pass, which is what was ever being measured.
+  const buys = here.goods.filter((g) => buyableHere(g)).sort((a, b) => a.mid - b.mid)
   expect(buys.length).toBeGreaterThan(0)
 
   // 0039: "one leg away" became "nearest by sailed water" — world.reach, the same distance
@@ -211,9 +214,7 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
    * old line was not merely too weak, it was wrong. One authority, both callers.
    */
   const homewardFrom = (goods: readonly MarketGood[]) =>
-    goods
-      .filter((g) => buyableHere(g) && g.advice === 'buy')
-      .sort((a, b) => (a.pct_nbr ?? 100) - (b.pct_nbr ?? 100))[0]
+    goods.filter((g) => buyableHere(g)).sort((a, b) => a.mid - b.mid)[0]
 
   let cargo = buys[0]
   let destination = neighbours[0]
@@ -253,8 +254,10 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
       }
     }
   }
+  // 0071: the second line here read `cargo.pct_nbr! < 100` — the server's own comparison agreeing
+  // with the server's own choice of cargo. It is gone with the comparison, and nothing is lost:
+  // `bestGain > 0` is the claim, and it was measured by actually pricing the sale at the other end.
   expect(bestGain).toBeGreaterThan(0)        // somewhere out there is worth sailing to
-  expect(cargo.pct_nbr!).toBeLessThan(100)   // and the %NBR column said so before we checked
 
   // Water the casks. §F.2 refuses a voyage the stores cannot cover, and a captain fills them at
   // the quay — that refusal is the game working, not an obstacle to route around.

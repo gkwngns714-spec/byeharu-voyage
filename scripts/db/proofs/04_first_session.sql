@@ -61,8 +61,8 @@ declare
   v_start  bigint;
   v_after_buy bigint;
   v_final  bigint;
-  v_nbr_home numeric;
-  v_nbr_away numeric;
+  v_mid_home numeric;
+  v_mid_away numeric;
   v_roster_n int;      -- 0061: how many goods Lisboa TRADES — derived, never pinned
   v_r      jsonb;
   v_mkt    jsonb;
@@ -245,8 +245,13 @@ begin
 
   select culture into v_dest_culture from public.ports where id = v_dest;
   v_mkt      := world.market(v_lis);
-  v_nbr_home := world.pct_of_neighbours(v_lis, v_good);
-  v_nbr_away := world.pct_of_neighbours(v_dest, v_good);
+  -- 0071: THE INDEX IS GONE, AND WITH IT THE ONLY THING THIS EVER PRINTED. world.pct_of_neighbours
+  -- compared this quay's mid with its neighbours' - the answer the owner asked the game to make
+  -- the player find - and it is dropped. What stands in its place is the same fact, read the way a
+  -- player now has to read it: the mid HERE and the mid THERE, for the good the quay named. Two
+  -- prices the player can actually see, rather than an index that pre-chewed them.
+  v_mid_home := world.mid_price(v_lis,  v_good, (select stock from public.port_goods where port_id = v_lis  and good_id = v_good));
+  v_mid_away := world.mid_price(v_dest, v_good, (select stock from public.port_goods where port_id = v_dest and good_id = v_good));
   -- MOVED DELIBERATELY 2026-08-26 with migration 0061. This used to read "the prices screen still
   -- has to price EVERYTHING (that is what a reading room is)" and asserted
   -- `length(market.goods) = count(*) from public.goods`. Since 0061 a CITY SELLS ONLY WHAT ITS
@@ -274,9 +279,9 @@ begin
       (select count(*) from jsonb_array_elements(v_mkt->'goods') e where e->>'code' = v_good_code),
       v_edge, v_routes->'basis'->>'qty_from';
   end if;
-  raise notice 'PASS: FIRST_SESSION_READS_MARKET — Lisboa prices the % good(s) it TRADES (of % in the catalogue), and the quay names % for % — % nm out, a quoted margin of % d.; %%NBR reads % here and % there, which is the index and not the reason',
+  raise notice 'PASS: FIRST_SESSION_READS_MARKET — Lisboa prices the % good(s) it TRADES (of % in the catalogue), and the quay names % for % — % nm out, a quoted margin of % d.; it mids at % here and % there, which is the gradient itself rather than an index of it',
     jsonb_array_length(v_mkt->'goods'), (select count(*) from public.goods), v_good_code, v_dest_name, v_leg_nm, v_edge,
-    round(v_nbr_home, 1), round(v_nbr_away, 1);
+    round(v_mid_home, 1), round(v_mid_away, 1);
   select greatest(1, floor((c.hold - s.water_t - s.food_t) / g.bulk))
     into v_room
     from public.ships s
