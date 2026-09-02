@@ -5,6 +5,61 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-03 — D31: the 건조소 and the Inn (0072, 0073)
+
+**The request, verbatim:** *"keep going with the 건조소 and the inn"*
+
+### 0072 — the chain closes
+
+    trade goods --> WORKSTATION --> fittings --> BUILDING YARD --> hull
+
+0068 built the middle of that sentence and said so: fittings could be made and not yet spent. This
+spends them.
+
+**The decision worth keeping: a hull is built out of the CITY, not out of a hold.** A nau wants 357
+tuns of timber and iron and nothing afloat in this game carries that, so you ferry it in over
+several voyages and leave it in the warehouse. It is the first thing that makes storage worth
+having, and the reason 0070 was built before 0072 rather than after.
+
+**The tier was measured twice, and my own assert refused the first answer.** All 35 yard cities are
+size 5, so size cannot tell them apart. I reached for the workstation's 13/9 thresholds and got
+ZERO tier-1 yards — the assert refused it in those words, *a tier every city passes is decoration*.
+Their industry runs 10–19; 15/12 cuts them 7/18/10.
+
+### 0073 — the first content in this game that is DERIVED rather than stored
+
+Who is in an inn is a pure function of `(officer, port, day, world_secret)`. Not rolled and written
+down. An officer who was stored could be re-rolled by closing the tab until a good one appeared;
+derived, they cannot. The screen offers **no refresh** — one would be honest, since it changes
+nothing, but it would teach the player that re-reading might help.
+
+To do it without a second random number, `voyage.rng_raw`'s arithmetic was lifted into
+`world.roll_raw(key, secret)` and rng_raw re-cut to call it. That supersedes the function deciding
+**every hazard in every settled voyage**, so it is proven: 1,200 rolls captured before, every one
+byte-identical after, with a positive control showing a different secret does change them.
+
+**The roster grew 8 → 51.** Eight officers were right for a twelve-port world. At 224 harbours
+almost every inn would be empty every night, and a building that is empty *by arithmetic* reads as
+broken rather than as rare. Measured after: the average harbour holds 2.33 people, the fullest 6,
+and an officer is ten times likelier in her own nation's ports (0.2511 vs 0.0255).
+
+**And the room became the gate.** `cmd.hire_officer` would sign anyone in the world from anywhere,
+which made the roster a menu rather than a place — that is what the Inn is FOR.
+
+### What went wrong on the way
+
+* **There is no `debit` in this game.** A payment is `credit(..., -amount)`: one direction, one
+  function. I invented a second and the parse refused it.
+* **A probe that set `players.ducats` directly** passed every assert in its own block and then
+  failed LEDGER RECONCILIATION two files later. The purse must equal the sum of its own ledger
+  movements; the probe funds itself through `credit` now.
+* **I wrote a vacuous assert.** 0073's room-gate check was originally an `if … then null; end if;`
+  that could not fail. It is now a real probe: a house standing at a quay is refused
+  `E_NOT_IN_THE_ROOM` for someone absent and then signs the one present — both halves, because
+  refusing everybody would pass the first alone.
+
+---
+
 ## 2026-09-02 — D30: stage 1 built end to end (0066–0069), and the two gates that were right
 
 **The standing order, verbatim:** *"do stage 1 to 3 without asking me for confirmation. keep going

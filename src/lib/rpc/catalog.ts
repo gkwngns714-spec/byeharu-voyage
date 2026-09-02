@@ -55,6 +55,14 @@ export const RPCS = {
   // 0072 — the building yard's ONE read: what this yard can lay down, what each hull wants, and
   // how much of it is already ashore HERE. It takes no fleet: the materials come out of the city,
   // not out of a hold, which is the whole point of the building.
+  // 0073 — who is drinking in this city's inn TODAY. A read with no fleet and no day argument: the
+  // day is the world's own (world.game_day()), because an inn that took the day as a parameter
+  // could be asked about tomorrow, and being able to look ahead is the same defect as re-rolling.
+  worldInn: {
+    schema: 'world',
+    fn: 'inn',
+    args: [{ name: 'p_port', type: 'uuid' }],
+  },
   worldBuildingYard: {
     schema: 'world',
     fn: 'building_yard',

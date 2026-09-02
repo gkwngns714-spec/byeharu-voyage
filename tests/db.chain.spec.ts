@@ -202,9 +202,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved deliberately 2026-09-01 to 0064, which re-files the catalogue into seventeen plain
 // categories and, in the same slice, moves `bulk` and the industrial flag off `category` and onto
 // the good -- so a renaming cannot move a hold or a port's development.
-// Moved deliberately 2026-09-03 to 0072, the 건조소: the end of the chain the owner asked for —
-// trade goods to a workstation to fittings to a YARD to a hull.
-const LAST = '20260818000072_a_hull_is_built_not_bought.sql'
+// Moved deliberately 2026-09-03 to 0073, the Inn — and the first thing in this game whose CONTENT
+// is derived rather than stored: who is in a room is a pure function of (port, day, world secret).
+const LAST = '20260818000073_who_is_drinking_here_today.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

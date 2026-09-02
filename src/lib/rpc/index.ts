@@ -26,6 +26,7 @@
 import { call } from './backend'
 import type { RpcResult } from './result'
 import type {
+  InnView,
   BuildingYardView,
   WarehouseView,
   WorkstationView,
@@ -90,6 +91,17 @@ export function worldWarehouse(
   fleetId: string | null,
 ): Promise<RpcResult<WarehouseView>> {
   return call<WarehouseView>('worldWarehouse', [portId, fleetId])
+}
+
+/**
+ * WHO IS DRINKING HERE TODAY (0073) — the officers in this city's inn, derived from (officer,
+ * port, day, world secret) and stored nowhere.
+ *
+ * The same room read twice shows the same faces, and there is deliberately nothing to refresh: an
+ * officer who could be re-rolled by reloading would make the good ones free.
+ */
+export function worldInn(portId: string): Promise<RpcResult<InnView>> {
+  return call<InnView>('worldInn', [portId])
 }
 
 /**
