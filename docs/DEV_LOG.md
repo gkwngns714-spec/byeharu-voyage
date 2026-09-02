@@ -70,6 +70,49 @@ holds, and a new one did not.
   in-progress runs, and I was pushing faster than its ~40-minute cycle. Read the conclusion, not
   the colour.
 
+### And then stage 2's first three (0070, 0071), and the one the gates found
+
+**0070, the warehouse.** Per-city storage, 150 tuns a tier, costing nothing to keep. The law is
+proven rather than described: with goods still ashore at the first city the fleet is moved to
+another and TAKE refuses `E_NONE_STORED`. STORE composes `fleet_unload` and TAKE composes
+`fleet_load` — a warehouse is exactly the feature that would tempt a second cargo mover, and there
+still is not one.
+
+**0071, the market.** `pct_nbr` and `advice` are one comparison wearing two hats, and it is the
+answer the owner asked the game to make the player find. Both gone, `world.pct_of_neighbours_at`
+and the scalar `world.pct_of_neighbours` dropped, the two band knobs deleted, the snapshot no
+longer advertising a band it cannot compute. What replaced it is a RANGE — how far this price can
+travel, here — priced through the one expression with the drift term at each end of its own band.
+
+**AND THE PART I GOT WRONG, WHICH A GATE CAUGHT.** I removed the index and left the answer.
+`PAYS AT HRN +421` was still on every tile and *Where to sail* still sat under the table — both
+renderings of `world.trade_routes`, which ranks every harbour in reach by what it would pay for
+what is on this quay. Same comparison, longer road, same answer. It is decision 3 of DESIGN_V1 §13,
+which the owner had already answered "yes" to.
+
+The layout gate is what said so, and its message was the whole diagnosis in one line:
+
+    "Aniseed RANGE 62–94 — BUY 79 SELL 73 STOCK ██████ PAYS AT HRN +421"
+
+It was found by BUILDING THE GAME AND LOOKING AT IT, not by reading the diff — and the gate that
+named it was a layout test that had been asserting the presence of a `%` since long before any of
+this. Removed root and branch on the client; the function stays for proof 04 and the grant to
+`authenticated` is revoked, so it is not left as a door nobody opens.
+
+### The process lessons from this half
+
+* **Squash-merging a stacked chain is not free.** Once 0065 landed on main as one commit, every
+  branch above it carried its own copy of that work and went `DIRTY`. The cure is
+  `git rebase --onto origin/main <old-parent>`, replaying only a branch's own commits — and doing it
+  for the whole stack, in order, every time one lands.
+* **Six PRs' CI at once will deadlock the disposable Supabase.** One `disposable-chain` failure was
+  `SQLSTATE 40P01`, on a job that had passed minutes earlier. Contention I caused.
+* **Read the conclusion, not the colour.** Acceptance reported `fail` several times when the run had
+  been `cancelled` by its own concurrency group, because I was pushing faster than its 40-minute
+  cycle.
+
+---
+
 ### What stage 2 may now assume
 
 A category is a word a player would say · a good sits in 1–3 cities · a region wants a KIND of

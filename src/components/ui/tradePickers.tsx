@@ -1,7 +1,6 @@
 import { Fragment, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
-  Badge,
   Button,
   buttonClasses,
   categoryLabel,
@@ -10,7 +9,6 @@ import {
   GoodTile,
   HeroFigure,
   Meter,
-  PriceIndex,
   SectionLabel,
   StatRow,
   tileFieldClass,
@@ -78,9 +76,12 @@ export function TruncationNote({ hidden }: { hidden: number }) {
 }
 
 /**
- * What to trade, priced. E.4's whole reading room in a TILE: what it costs, what it fetches, how
- * that compares with the ports within 600 nm (%NBR), and the server's own buy/hold/sell advice —
- * so the choice is informed before it is made rather than explained after it.
+ * What to trade, priced. The reading room in a TILE: what it costs, what it fetches, how far that
+ * price can move, and how much is on the quay — the facts, so the choice is made on evidence.
+ *
+ * 0071 removed the two things that were not facts: the comparison with the ports within 600 nm,
+ * and the buy/hold/sell advice cut from it. Those told the player the answer the game exists to
+ * make them find.
  *
  * ═══════════════════════════════════════════════════════════════════════════════════════════════
  * GOODS ARE A FIELD OF TILES, NOT A COLUMN OF LINES.
@@ -187,17 +188,11 @@ export function GoodPicker({
       // decides — it is given on BUY too now, so the sell cells can say why they are dead.
       .filter((g) => (intent === 'sell' && aboard ? (aboard[g.code] ?? 0) > 0 : true))
       .filter((g) => foldedMatch(q, g.name, g.code, g.category))
-      .sort((a, b) => {
-        // The advice the server gave, first: a BUY list opens on what is cheap here, a SELL list on
-        // what this port pays over the odds for.
-        const want = intent === 'buy' ? 'buy' : 'sell'
-        const rank = (g: MarketGood) => (g.advice === want ? 0 : g.advice === 'hold' ? 1 : 2)
-        const byAdvice = rank(a) - rank(b)
-        if (byAdvice !== 0) return byAdvice
-        const an = a.pct_nbr ?? 100
-        const bn = b.pct_nbr ?? 100
-        return intent === 'buy' ? an - bn : bn - an
-      })
+      // 0071: BY NAME. This used to open on what the server called cheap here and then rank by
+      // the neighbour index — which is the comparison the owner removed, and ranking by it was the
+      // strongest form of telling: the top of a list IS an answer. A list ordered by name states
+      // nothing, and the player reads the prices themselves, which is the game.
+      .sort((a, b) => a.name.localeCompare(b.name))
   }, [goods, filter, aboard, intent])
 
   // EVERY GOOD THIS PORT TRADES, not a page of them — see MAX_PORT_ROWS for why the ports list
@@ -212,7 +207,7 @@ export function GoodPicker({
         <p className={fineClass()}>
           {shown.length} {shown.length === 1 ? 'good' : 'goods'}
           {intent === 'sell' ? ' aboard and traded here' : ' traded here'}
-          {filter.trim() ? ' answer to that filter' : ", the quay's own advice first"}
+          {filter.trim() ? ' answer to that filter' : ', by name'}
         </p>
       )}
       {shown.length === 0 && (
@@ -224,7 +219,9 @@ export function GoodPicker({
       )}
       {/* THE FIELD OF GOODS — the design system's tile in the design system's field, chunked into
           ROWS so the fold can land after a whole one (rule 4 in this component's header). The order
-          inside the field is unchanged: the quay's own advice first, then the price index. */}
+          inside the field is unchanged. 0071: that order used to be the quay's own advice and then
+          the price index — the comparison the owner removed — and it is by NAME now, because the
+          top of a list is an answer. */}
       {inRowsOf(shown, cols).map((row) => (
         <Fragment key={row[0].code}>
           <div className={tileFieldClass()}>
@@ -265,9 +262,6 @@ export function GoodPicker({
                       composed order line above still carries the parser's spelling. */}
                   <span className="flex w-full flex-wrap items-center gap-1.5">
                     <span className={fineClass()}>{categoryLabel(g.category)}</span>
-                    <Badge tone={g.advice === 'buy' ? 'success' : g.advice === 'sell' ? 'accent' : 'neutral'}>
-                      {g.advice}
-                    </Badge>
                     {/* THE AFFORDANCE WORD IS GONE — the owner, row 63: "look in trading goods,
                         remove the word. no need." It printed `look` / `chosen` / `open` on every
                         tile to say a tile could be opened. The tile already says both without a
@@ -479,8 +473,9 @@ function GoodDetail({
  * and the unit is a 10px suffix, which is the same shape NumberPicker already uses for its
  * suggestion chips.
  *
- * %NBR IS <PriceIndex>, NOT A FOURTH RENDERING OF IT. The pill is the one treatment of that number
- * and its tone comes from the server's own `advice` (PriceIndex.tsx) — never from comparing `pct`
+ * 0071 — %NBR AND ITS PILL ARE GONE. This block used to explain that the neighbour index had one
+ * treatment and one authority for its tone. Both left with the comparison itself; what stands in
+ * its place is a RANGE, which is a fact about this price rather than a claim about another quay.
  * against a threshold here, because the thresholds live in migration 0009.
  *
  * THE BUY AND SELL CELLS ARE THE TRADE (the owner, 2026-08-23: "i want to be able to click on buy
@@ -535,8 +530,14 @@ function GoodFigures({
           and in migration 0009, and the map-UX rule is that the player never reads the schema.
           It is a LINE rather than a cell now: it is not an action, and giving a reading the same
           44px box as the two acts beside it said it was one. */}
-      <EntryTileLine label="nearby">
-        <PriceIndex pct={good.pct_nbr} advice={good.advice} />
+      {/* 0071 RANGE, where the neighbour index used to sit. The owner: "price range when pressed
+          for more info, no nearby price info needed". A range says how far THIS price can travel;
+          the index it replaces said where else to sell, which is the answer the game exists to
+          make the player find. */}
+      <EntryTileLine label="range">
+        <span className="font-mono tabular-nums">
+          {formatInt(good.range_lo)}–{formatInt(good.range_hi)}
+        </span>
       </EntryTileLine>
       <EntryTileLine label="stock">
         <Meter

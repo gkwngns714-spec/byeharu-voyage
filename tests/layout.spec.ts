@@ -213,8 +213,8 @@ test('MARKET puts complete priced goods above the fold, per K.1', async ({ page,
   // THE GOODS ARE TILES NOW (2026-08-23, the owner: "make trade goods in blocks as well, not all
   // alligned in sentences — horizontally"), so the fold is measured in complete TILES rather than
   // complete table rows. A tile carries MORE than the old 44px row did (the index, both prices,
-  // stock, trend and destination all at once), so two whole tiles above the fold say strictly more
-  // than three rows used to — the floor is 2 tiles, and the first must show its % index.
+  // stock and trend all at once), so two whole tiles above the fold say strictly more than three
+  // rows used to — the floor is 2 tiles, and the first must show its price RANGE.
   const fold = await page.evaluate(() => {
     const nav = document.querySelector('nav')
     const foldY = nav ? nav.getBoundingClientRect().top : window.innerHeight
@@ -233,7 +233,10 @@ test('MARKET puts complete priced goods above the fold, per K.1', async ({ page,
     fold.completeTilesAboveFold,
     `only ${fold.completeTilesAboveFold} complete good tiles above the fold at ${fold.foldY}px`,
   ).toBeGreaterThanOrEqual(2)
-  expect(fold.firstTileText).toMatch(/%/) // the nearby index really is on screen
+  // 0071: this used to require a `%` — the nearby index. That figure is gone, and with it the
+  // only thing on the tile that was a comparison rather than a fact. What must be on screen now is
+  // the RANGE, which is what replaced it: how far this price can travel, here.
+  expect(fold.firstTileText).toMatch(/RANGE\s+[\d,]+–[\d,]+/)
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════

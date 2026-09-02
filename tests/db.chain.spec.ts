@@ -202,9 +202,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved deliberately 2026-09-01 to 0064, which re-files the catalogue into seventeen plain
 // categories and, in the same slice, moves `bulk` and the industrial flag off `category` and onto
 // the good -- so a renaming cannot move a hold or a port's development.
-// Moved deliberately 2026-09-02 to 0070, the warehouse: the first thing in this game that makes a
-// city somewhere you KEEP something, and the first cargo that is not aboard a ship.
-const LAST = '20260818000070_a_warehouse_belongs_to_a_city.sql'
+// Moved deliberately 2026-09-02 to 0071, which takes the neighbour comparison out of the market
+// entirely: the price says what it is and how far it can move, and nothing about anywhere else.
+const LAST = '20260818000071_the_price_moves_like_a_stock_and_says_nothing_else.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

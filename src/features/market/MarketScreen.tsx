@@ -12,16 +12,14 @@ import {
   Input,
   Notice,
   PageHeader,
-  PriceIndex,
   Screen,
   Sparkline,
   SectionLabel,
   Skeleton,
   fineClass,
-  rowLinkClass,
   tileFieldClass,
 } from '../../components/ui'
-import { formatInt, formatPct, formatTuns, formatVoyageDays } from '../../lib/format'
+import { formatInt, formatPct, formatTuns } from '../../lib/format'
 import { fold, foldedMatch } from '../../lib/text'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
@@ -31,8 +29,6 @@ import type {
   PricePoint,
   Refusal,
   SnapshotPort,
-  TradeRoute,
-  TradeRoutes,
 } from '../../lib/rpc'
 import { handOffTrade } from '../../domain/order'
 import { housePortCode } from '../../domain/fleet'
@@ -42,7 +38,6 @@ import { harbourCode, useHarbour } from '../../store/harbour'
 // WHERE A GOOD IS WORTH MORE THAN IT IS HERE — a section, not this screen's. The Command tab's
 // unfolded good row names the same destination from the same read, so the index moved out of
 // ./marketRows into src/domain/trade rather than being copied across a screen boundary.
-import { routesByGood } from '../../domain/trade'
 import {
   type MarketBlock,
   type MarketFilter,
@@ -119,8 +114,6 @@ export function MarketScreen() {
   const loadMarket = useWorld((s) => s.loadMarket)
   const history = useWorld((s) => s.history)
   const loadHistory = useWorld((s) => s.loadHistory)
-  const routes = useWorld((s) => s.routes)
-  const loadRoutes = useWorld((s) => s.loadRoutes)
   const open = useWorld((s) => s.open)
 
   // WHICH HARBOUR — the ONE owner (src/store/harbour.ts), shared with PORT. This was a
@@ -133,7 +126,7 @@ export function MarketScreen() {
   const [loadError, setLoadError] = useState<{ portId: string; refusal: Refusal | null } | null>(
     null,
   )
-  const [sort, setSort] = useState<SortKey>('nbr')
+  const [sort, setSort] = useState<SortKey>('name')
   const [filter, setFilter] = useState<MarketFilter>('all')
   const [portsOpen, setPortsOpen] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
@@ -194,24 +187,17 @@ export function MarketScreen() {
     void loadHistory(portId)
   }, [portId, history, loadHistory])
 
-  // THE COMPARISON. A separate read from the prices because it is a separate question, and a
-  // separate cache key for the same reason. The fleet lying here is named when there is one: that
-  // is what turns "50 tuns, say" into what she can actually afford, carry and sail to.
-  const fleetHereId = fleetHere?.id ?? null
-  useEffect(() => {
-    if (!portId || routes[portId]) return
-    void loadRoutes(portId, fleetHereId)
-  }, [portId, routes, loadRoutes, fleetHereId])
+  // 0071: THE COMPARISON USED TO BE READ HERE — a second call to world.trade_routes, cached per
+  // port, that ranked every harbour in reach by what it would pay for what is on this quay. It is
+  // gone with "where to sail" and "pays at", which were its two renderings.
 
   const config = snapshot?.config ?? null
 
   const blocks = useMemo(
-    () => (view && config ? marketBlocks(view.goods, sort, filter, config) : []),
+    () => (view && config ? marketBlocks(view.goods, sort, filter) : []),
     [view, sort, filter, config],
   )
 
-  const routeView = portId ? routes[portId] : undefined
-  const routeOf = useMemo(() => routesByGood(routeView), [routeView])
   // THE SERVER'S FIGURE, AND THE END OF A THREE-YEAR-OLD LIE. This screen carried its own
   // `freeHold()` at the foot of the file — `Σ max(0, hold − cargo_tuns)` — which forgot that water
   // and food occupy the same hold, so a fleet provisioned for a long passage was told it had room
@@ -247,19 +233,6 @@ export function MarketScreen() {
     navigate('/command')
   }
 
-  /** A tap on a route is a tap on its BUY: the same hand-off a tap on a price row makes, for the
-   *  good the quay named. The destination is not composed into an order here — SAIL is its own
-   *  verb and the Command tab is where a queue is built — so this loads the leg that has to happen
-   *  first and the player composes the rest where orders are composed. */
-  const tapRoute = (route: TradeRoute) => {
-    handOffTrade({
-      fleetId: fleetHere?.id ?? fleets[0]?.id ?? null,
-      verb: 'BUY',
-      goodCode: route.code,
-      qty: 'ALL',
-    })
-    navigate('/command')
-  }
 
   // THE GATE, COMPOSED. Two calls where there used to be an inline eighteen-line refusal and a
   // local `MarketSkeleton`. `panels={2}` stands in for the controls card and the goods panel,
@@ -343,7 +316,7 @@ export function MarketScreen() {
             <div className="space-y-2 border-t border-edge pt-3">
               <div className="flex flex-wrap items-center gap-1.5">
                 <SectionLabel className="mb-0">Sort</SectionLabel>
-                {(['nbr', 'name', 'price', 'stock'] as const).map((k) => (
+                {(['name', 'price', 'stock'] as const).map((k) => (
                   <Chip key={k} active={sort === k} onClick={() => setSort(k)}>
                     {sortWord(k)}
                   </Chip>
@@ -351,7 +324,10 @@ export function MarketScreen() {
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <SectionLabel className="mb-0">Filter</SectionLabel>
-                {(['all', 'buy', 'sell'] as const).map((f) => (
+                {/* 0071: these used to be all / buy / sell — the server's advice, offered as a
+                    filter. What is left is the one FACT worth narrowing by: whether this city
+                    deals in the row at all, or it is only here because she is carrying it. */}
+                {(['all', 'traded'] as const).map((f) => (
                   <Chip key={f} active={filter === f} onClick={() => setFilter(f)}>
                     {f}
                   </Chip>
@@ -418,7 +394,6 @@ export function MarketScreen() {
                 block={b.block}
                 rows={b.rows}
                 history={portId ? history[portId] : undefined}
-                routeOf={routeOf}
                 onTap={tap}
               />
             ))}
@@ -452,15 +427,10 @@ export function MarketScreen() {
         </Card>
       )}
 
-      {/* THE ANSWER TO "WHAT DO I DO NOW", under the prices rather than over them: the goods table
-          is still the subject of this screen and still owns the top of it. */}
-      <RoutesPanel
-        routes={routeView}
-        portName={port?.name ?? 'this port'}
-        fleetName={fleetHere?.name ?? null}
-        fleetDays={fleetHere?.endurance_days ?? null}
-        onTap={tapRoute}
-      />
+      {/* 0071 — "WHERE TO SAIL" IS GONE. It ranked every port in reach by what it would pay for
+          what is on this quay, which is the same comparison as the nearby index and the same
+          answer: decision 3 of DESIGN_V1 §13, put to the owner and answered YES. A player finds
+          the trade by carrying a cargo and remembering what it fetched. */}
 
       {/* THE RULE IS THE TITLE; THE ESSAY IS BEHIND THE DOT. The old title here was "Below 90,
           buy. Above 110, sell." — read as an instruction, followed, and it lost money. The nearby
@@ -493,14 +463,12 @@ function GoodsBlock({
   block,
   rows,
   history,
-  routeOf,
   onTap,
 }: {
   label: string
   block: MarketBlock
   rows: readonly MarketGood[]
   history: PriceHistory | undefined
-  routeOf: Record<string, TradeRoute>
   onTap: (good: MarketGood) => void
 }) {
   return (
@@ -508,11 +476,9 @@ function GoodsBlock({
       <p
         className={[
           'mb-1.5 border-b border-edge pb-1 font-mono text-[11px] uppercase tracking-wider',
-          block === 'buy'
-            ? 'text-success'
-            : block === 'sell'
-              ? 'text-accent'
-              : 'text-ink-faint',
+          // 0071: the colour said cheap/dear, which was the advice. A block is a fact now, so the
+          // heading is plain and only the block a player cannot trade in is faded.
+          block === 'traded' ? 'text-ink-muted' : 'text-ink-faint',
         ].join(' ')}
       >
         ▾ {label}
@@ -523,7 +489,6 @@ function GoodsBlock({
             key={good.good_id}
             good={good}
             points={history?.goods[good.code]}
-            route={routeOf[good.code]}
             onTap={onTap}
           />
         ) : (
@@ -537,7 +502,6 @@ function GoodsBlock({
 function TradedTile({
   good,
   points,
-  route,
   onTap,
 }: {
   good: MarketGood
@@ -548,7 +512,6 @@ function TradedTile({
   /** Where this good is worth more than it is here, if anywhere in reach is (0019). Undefined
    *  while the read is in flight AND for a good no reachable port pays more for; the line prints
    *  a dash for both, because neither of those is a destination. */
-  route: TradeRoute | undefined
   onTap: (good: MarketGood) => void
 }) {
   return (
@@ -561,17 +524,22 @@ function TradedTile({
       tapTitle={`${verbFor(good)} ${good.name} (${good.category}) — load onto Command`}
       testId="good-tile"
     >
-      {/* THE PILL AND THE LINE SHARE THE FIRST ROW — the figure the game is played from and the
-          shape of where it has been. "nearby", never `%NBR`: that is the column name in the data
-          and in migration 0009, and the player never reads the schema (the word is COMMAND's own
-          pick, features/command/ArgPickers.tsx — one word for one figure across the game). The
-          pill's tone is the SERVER'S `advice`; the line borrows it, so no fifth colour vocabulary. */}
-      <EntryTileLine label="nearby">
-        <PriceIndex pct={good.pct_nbr} advice={good.advice} />
+      {/* 0071 — THE RANGE AND THE SHAPE OF WHERE IT HAS BEEN. This line was the neighbour index,
+          the one figure that answered "is this cheap compared with everywhere else". The owner
+          removed that answer twice over ("no nearby price info needed"; "the game is to challenge
+          players for finding the best prices by themselves"), so what stands here is a fact about
+          THIS price: the low and high the drift band allows it, at this quay, today.
+
+          The sparkline keeps its neutral tone. It used to borrow the advice's colour, which made
+          the shape of the past argue a case about the present. */}
+      <EntryTileLine label="range">
+        <span className="font-mono tabular-nums">
+          {formatInt(good.range_lo)}–{formatInt(good.range_hi)}
+        </span>
         <Sparkline
           width={44}
           values={(points ?? []).map((pt) => pt.mid)}
-          tone={good.advice === 'buy' ? 'cheap' : good.advice === 'sell' ? 'dear' : 'even'}
+          tone="even"
           label={`${good.name}: ${points?.length ?? 0} remembered price(s)`}
         />
       </EntryTileLine>
@@ -589,20 +557,6 @@ function TradedTile({
           {stockBar(good.stock_band)}
         </span>
       </EntryTileLine>
-      {/* WHERE IT PAYS — the port code and the margin in ducats, both the server's; the title
-          carries the whole sentence. A dash is an honest dash: no port in reach pays more. */}
-      <EntryTileLine label="pays at">
-        {route ? (
-          <span
-            className="text-success"
-            title={`${route.qty} tun(s) to ${route.to.name} — ${formatInt(route.nm)} nm sailed${route.days === null ? '' : `, ${route.days} voyage-days`}: pay ${formatInt(route.outlay)} d. here, receive ${formatInt(route.proceeds)} d. there. Wages are not in that margin.`}
-          >
-            {route.to.code} +{formatInt(route.profit)}
-          </span>
-        ) : (
-          <span className="text-ink-faint">—</span>
-        )}
-      </EntryTileLine>
     </GoodTile>
   )
 }
@@ -615,148 +569,6 @@ function UntradedTile({ good }: { good: MarketGood }) {
     <GoodTile code={good.code} category={good.category} name={good.name} rarity={good.rarity} muted>
       <span className={fineClass()}>not traded here</span>
     </GoodTile>
-  )
-}
-
-/**
- * WHERE TO SAIL — the answer this screen could not give until migration 0019.
- *
- * NOT A TABLE, deliberately. `tests/layout.spec.ts` counts the complete good tiles above the
- * fold; a table here would be a second thing competing for the same 390 px and the same
- * measurements. These are rows of a list, one tap target each, and they sit BELOW the goods
- * because the goods are the subject of this screen.
- *
- * EVERY NUMBER IS THE SERVER'S. `profit` is proceeds minus outlay at the stated quantity, both out
- * of `world.quote()`; `nm` is the distance actually sailed; `days` is her own speed. Nothing here
- * multiplies, divides or rounds a figure into a different figure — and where the server sent null
- * (no fleet named, so no speed and no days) the row prints the distance and stops.
- */
-function RoutesPanel({
-  routes,
-  portName,
-  fleetName,
-  fleetDays,
-  onTap,
-}: {
-  routes: TradeRoutes | undefined
-  portName: string
-  fleetName: string | null
-  /** Her SERVED `endurance_days`, when a fleet of yours lies here. Only ever printed, never
-   *  compared against a threshold — the sail gate is the server's and this screen does not
-   *  re-derive it (see the empty-state note below). */
-  fleetDays: number | null
-  onTap: (route: TradeRoute) => void
-}) {
-  const shown = (routes?.routes ?? []).slice(0, 6)
-
-  return (
-    <Card
-      head={
-        <CardHeader
-          flush
-          title="Where to sail"
-          explain="Every good this port sells, against every port in reach, priced end to end through the same quote your order executes at. The distance is the route actually sailed. The margin is the TRADE's — a voyage also pays its crew every day at sea, and that is not in it."
-          aside={
-            routes ? <Badge tone="accent">{routes.basis.routes_found} routes</Badge> : undefined
-          }
-        />
-      }
-    >
-      {!routes ? (
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
-      ) : shown.length === 0 ? (
-        /*
-         * AN EMPTY QUAY HAS TWO DIFFERENT REASONS AND THEY ARE NOT INTERCHANGEABLE.
-         *
-         * Found by playing production on 2026-08-31, right after the roster landed: Bilbao showed
-         * "0 ROUTES · Nothing Bilbao sells pays within 1,700 sailed miles", which reads as a
-         * verdict on the market and sent us hunting a defect in the roster. The market had never
-         * been consulted. `world.trade_routes`' reach CTE (0019:719-735) filters every candidate
-         * through `voyage.sail_refusal` — "a destination this fleet could not sail to is not a
-         * recommendation" — and Gaivota was lying there with 0.9 days of stores, so every port was
-         * struck out before a single price was read. `ports_considered` was 0.
-         *
-         * So: when NOTHING was considered, the economic sentence is not merely unhelpful, it is
-         * FALSE, and it hides the one fact that would fix it. The owner's law (OWNER_REQUESTS row
-         * 47): say the figures and the fix, concisely.
-         *
-         * This screen does NOT re-derive the sail gate to decide which sentence to show — that
-         * would be a second author of a server rule. It reads the server's own count: zero ports
-         * considered means the search never happened, whatever the reason.
-         */
-        routes.basis.ports_considered === 0 && routes.basis.qty_from === 'fleet' ? (
-          <p className="text-sm text-ink-muted">
-            {fleetName ?? 'Your fleet'} cannot sail from here
-            {fleetDays === null ? '' : ` — ${formatVoyageDays(fleetDays)} of stores aboard`}, so no
-            port was priced. Provision her on Command and the quay will name her a route.
-          </p>
-        ) : (
-          <p className="text-sm text-ink-muted">
-            Nothing {portName} sells pays within {formatInt(routes.basis.radius_nm ?? 0)} sailed
-            miles — not after tax, spread and your own price impact.
-          </p>
-        )
-      ) : (
-        <ul className="divide-y divide-edge">
-          {shown.map((r) => (
-            <li key={`${r.good_id}-${r.to.id}`}>
-              <button
-                type="button"
-                onClick={() => onTap(r)}
-                title={`Load BUY ${r.name} onto Command`}
-                className="flex min-h-11 w-full items-center gap-2 py-1.5 text-left"
-              >
-                <span className={rowLinkClass('flex-1 truncate')}>{r.name}</span>
-                <span className="shrink-0 font-mono text-xs text-ink-muted">
-                  → {r.to.name}
-                </span>
-                <span className="shrink-0 font-mono text-sm text-success">
-                  +{formatInt(r.profit)}
-                </span>
-              </button>
-              {/* SIX FACTS, NOT A SENTENCE ABOUT SIX FACTS. "pay 5,793 d. here, receive 7,001 d.
-                  there" spent five words on an arrow; at 390px the line wrapped to three. The
-                  figures are the row (docs/UI_DIRECTION.md §4 rule 2) and the words that told you
-                  which way the money goes are now the arrow that shows it. */}
-              <p className={fineClass('-mt-1 pb-1.5')}>
-                {formatTuns(r.qty)} · {formatInt(r.outlay)} → {formatInt(r.proceeds)} d. ·{' '}
-                {formatInt(r.nm)} nm
-                {/* `${r.days} voyage-days` printed the raw served numeric — "13.01 d" beside a
-                    game that says "15.0 d" everywhere else. `formatVoyageDays` is the one spelling
-                    of a voyage-day (lib/format/time.ts:38) and this row was the last caller not
-                    using it. */}
-                {r.days === null ? '' : ` · ${formatVoyageDays(r.days)}`}
-                {r.return_pct === null ? '' : ` · +${Math.round(r.return_pct)}%`}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* WHAT THE ANSWER WAS COMPUTED UNDER, printed rather than assumed. A profit without a
-          quantity is not a number, and a search without a stated reach is not a search. */}
-      {routes && (
-        <dl className={fineClass('mt-3 space-y-1')}>
-          <div>
-            {routes.basis.qty_from === 'fleet'
-              ? `Priced at what ${fleetName ?? 'your fleet'} can afford and carry.`
-              : `No fleet of yours here, so priced at ${routes.basis.tuns} tuns a time.`}
-          </div>
-          <div>
-            {/* The server reports null reach when a caller PINS a destination; this screen never
-                does, and printing "null nm" for a case that cannot arise is worse than not
-                printing the sentence. */}
-            {routes.basis.radius_nm === null
-              ? `${routes.basis.to ?? 'One port'} only · ${routes.basis.keep_per_good} destination(s) per good.`
-              : `${routes.basis.ports_considered} port(s) within ${formatInt(routes.basis.radius_nm)} sailed miles · ${routes.basis.keep_per_good} destination(s) per good.`}
-          </div>
-        </dl>
-      )}
-    </Card>
   )
 }
 

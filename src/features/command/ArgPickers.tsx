@@ -46,10 +46,14 @@ import { hasBuilding } from '../../domain/port'
  * The two lists are not the same question and that is why they no longer share an answer:
  *   · PORTS are the whole world — 214 today and 996 in an earlier chain — and no sort can put the
  *     one you mean near the top, so the FILTER is the way in and a cap is honest about that.
- *   · GOODS are one port's book. It is bounded by what this harbour actually trades, and the list
- *     is already sorted by the server's own `advice`, so the rows worth buying are at the top and
- *     the rest is the tail of a catalogue rather than a haystack. GoodPicker therefore renders
- *     every row it has, and keeps the filter for reaching one by name.
+ *   · GOODS are one port's book. It is bounded by what this harbour actually trades — four to ten
+ *     rows, not a catalogue — so every one of them fits on the screen and none has to be reached
+ *     for. GoodPicker therefore renders every row it has, and keeps the filter for naming one.
+ *
+ *     0071: this used to say the list was "already sorted by the server's own advice, so the rows
+ *     worth buying are at the top". That sort was the comparison the owner removed, and it was the
+ *     strongest form of telling — the top of a list IS an answer. The list is by NAME now, and the
+ *     reason every row still fits is the roster's size rather than a ranking.
  */
 const MAX_PORT_ROWS = 12
 

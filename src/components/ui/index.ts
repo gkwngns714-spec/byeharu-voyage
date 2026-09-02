@@ -10,9 +10,10 @@ export { buttonClasses, type ButtonVariant, type ButtonSize } from './buttonStyl
 export { fineClass, rowLinkClass, headRowClass, inlineFigureClass } from './typography'
 export { Card, CardHeader, type CardTone } from './Card'
 export { Badge, type BadgeTone } from './Badge'
-// Badge's numeric counterpart: the %NBR pill (see PriceIndex.tsx for the boundary — a
-// status WORD is a Badge, the figure the game is played from is a PriceIndex).
-export { PriceIndex, type PriceAdvice } from './PriceIndex'
+// PriceIndex — the %NBR pill — was REMOVED in 0071 along with the number it rendered. It drew a
+// comparison between this quay and its neighbours, tinted by the buy/hold/sell cut of that number,
+// and both are gone: that comparison is the answer the owner asked the game to make the player
+// find. A component with nothing left to render is not a component to keep for later.
 // The price LINE (0013 gave the server a memory to draw one from). See Sparkline.tsx for what it
 // deliberately refuses to do — interpolate, scale to zero, or draw a single point.
 export { Sparkline, type SparkTone } from './Sparkline'

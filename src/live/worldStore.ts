@@ -73,7 +73,6 @@ import {
   worldBuffs,
   worldSnapshot,
   worldProvisionPresets,
-  worldTradeRoutes,
   worldSeaRaster,
   worldReach,
 } from '../lib/rpc'
@@ -96,7 +95,6 @@ import type {
   BuffsView,
   SnapshotGood,
   SnapshotPort,
-  TradeRoutes,
   WorldSnapshot,
 } from '../lib/rpc'
 
@@ -142,10 +140,6 @@ export interface LiveWorld {
   events: LedgerEvent[]
   /** One port's prices, keyed by port id. Fetched on demand; the Market tab drives it. */
   markets: Record<string, MarketView>
-  /** Where each good is worth MORE than it is in that port (0019), keyed by port id. The prices and
-   *  the comparison are two reads because they are two questions: `world.market` is one quay's
-   *  book, `world.trade_routes` is that book against everything in reach. */
-  routes: Record<string, TradeRoutes>
 
   /** True while a refresh is in flight — for a quiet indicator, never for a blocking spinner. */
   busy: boolean
@@ -173,7 +167,6 @@ export interface LiveWorld {
   loadReach: (portId: string) => Promise<void>
   /** Fetch (and cache) where the goods of one port pay more. Naming the fleet lying there is what
    *  makes the quantities hers rather than the server's stated default. */
-  loadRoutes: (portId: string, fleetId: string | null) => Promise<void>
   /** Fetch the roster and the school. Idempotent; screens call them on mount. */
   loadOfficers: () => Promise<void>
   loadSkills: () => Promise<void>
@@ -296,7 +289,6 @@ export const useWorld = create<LiveWorld>((set, get) => ({
   ducats: null,
   events: [],
   markets: {},
-  routes: {},
   busy: false,
   refusal: null,
   readAt: null,
@@ -416,15 +408,6 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     set((s) => ({ reaches: { ...s.reaches, [portId]: r.value } }))
   },
 
-  // A FAILED COMPARISON IS SILENT, like the history read and for the same reason: the prices are
-  // still true and still worth showing. What must never happen is the screen inventing a
-  // destination in its place — an absent row prints nothing at all.
-  loadRoutes: async (portId, fleetId) => {
-    const r = await worldTradeRoutes(portId, fleetId)
-    if (!r.ok) return
-    set((s) => ({ routes: { ...s.routes, [portId]: r.value } }))
-  },
-
   loadOfficers: async () => {
     const r = await worldOfficers()
     if (r.ok) set({ officers: r.value })
@@ -437,7 +420,7 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     else set({ refusal: r.refusal })
   },
 
-  // A FAILED BOARD READ IS LOUD, unlike history and routes. Those two decorate a price that is true
+  // A FAILED BOARD READ IS LOUD, unlike the history read. That one decorates a price that is true
   // without them; the board IS the screen, so a RANK tab that silently kept yesterday's order would
   // be showing a standing nobody holds.
   loadStandings: async (limit = null) => {
@@ -567,10 +550,10 @@ export const useWorld = create<LiveWorld>((set, get) => ({
     // rather than patching a local copy of it — the server's answer is the only true one.
     await get().refresh()
     const port = fleet?.port ? get().portByCode[fleet.port] : null
-    // The order moved the book — the stock fell, the price stepped — so the comparison drawn from
-    // it is stale too. Both are re-read, or MARKET would print a profit computed against a price
-    // that no longer exists.
-    if (port) await Promise.all([get().loadMarket(port.id), get().loadRoutes(port.id, fleetId)])
+    // The order moved the book — the stock fell, the price stepped — so the market is re-read.
+    // 0071: the destination comparison that used to be re-read beside it is gone with the rest of
+    // "where to sail".
+    if (port) await get().loadMarket(port.id)
     return true
   },
 

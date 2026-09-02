@@ -28,7 +28,7 @@
 // computation behind it. They arrive in `world.snapshot().config` now and this module prints what
 // it is handed.
 
-import type { MarketGood, SnapshotConfig } from '../../lib/rpc'
+import type { MarketGood } from '../../lib/rpc'
 // `buyableHere` moved to domain/market 2026-09-01 — PORT trades through it too now.
 // Re-exported so this file stays the one import surface the market screen already uses.
 import { buyableHere, type MarketBlock } from '../../domain/market'
@@ -38,35 +38,33 @@ export type { MarketBlock }
 
 
 export function blockOf(good: MarketGood): MarketBlock {
-  return buyableHere(good) ? good.advice : 'unavailable'
+  return buyableHere(good) ? 'traded' : 'unavailable'
 }
 
-/** BUY at the top, always. The player who knows nothing must land on the rows that pay. */
-export const BLOCK_ORDER: readonly MarketBlock[] = ['buy', 'sell', 'hold', 'unavailable']
+/** What this city deals in, first. The rest is only here because she is carrying it. */
+export const BLOCK_ORDER: readonly MarketBlock[] = ['traded', 'unavailable']
 
-/** The heading over each block, in the server's own thresholds. */
-export function blockLabel(block: MarketBlock, config: SnapshotConfig): string {
-  switch (block) {
-    case 'buy':
-      return `CHEAP HERE  (< ${config.advice_buy_below}%)`
-    case 'sell':
-      return `DEAR HERE  (> ${config.advice_sell_above}%)`
-    case 'hold':
-      return 'about the local average'
-    case 'unavailable':
-      return 'not traded here'
-  }
+/**
+ * The heading over each block. 0071: these used to name the server's advice thresholds — "CHEAP
+ * HERE (< 90%)" — which is the comparison that has gone. A heading now states what the block IS.
+ */
+export function blockLabel(block: MarketBlock): string {
+  return block === 'traded' ? 'traded here' : 'not traded here — she is carrying it'
 }
 
-export type SortKey = 'nbr' | 'name' | 'price' | 'stock'
-export type MarketFilter = 'all' | 'buy' | 'sell'
+export type SortKey = 'name' | 'price' | 'stock'
+export type MarketFilter = 'all' | 'traded'
 
 /** The player's word for a sort key. `nbr` is the schema's name for the neighbour index and the
  *  player never reads the schema — the chip used to say `%↑`, which is a glyph you had to already
  *  understand. "nearby" is the word COMMAND's good rows chose for the same figure
  *  (features/command/ArgPickers.tsx), and one figure carries one name across the game. */
 export function sortWord(key: SortKey): string {
-  return key === 'nbr' ? 'nearby' : key
+  // 0071: this existed to translate the schema's `nbr` into the player's word "nearby". The
+  // neighbour comparison is gone and every remaining key is already the player's word, so it is
+  // the identity — kept as the one place a future key would be translated, rather than deleted
+  // and re-invented at the two call sites that read it.
+  return key
 }
 
 /** The six-cell block meter of §E.4, drawn from the server's 0..6 `stock_band`. A port under a
@@ -77,16 +75,8 @@ export function stockBar(band: number, cells = 6): string {
   return (short ? '▓' : '█').repeat(filled) + '░'.repeat(cells - filled)
 }
 
-/** A null %NBR means the port has no neighbour that trades the good — it has nothing to be a
- *  percentage OF, and 100 would be a lie. Sorted as if it were 100 so it does not head the table. */
-function nbr(good: MarketGood): number {
-  return good.pct_nbr ?? 100
-}
-
-function compare(key: SortKey, direction: 1 | -1): (a: MarketGood, b: MarketGood) => number {
+function compare(key: SortKey): (a: MarketGood, b: MarketGood) => number {
   switch (key) {
-    case 'nbr':
-      return (a, b) => (nbr(a) - nbr(b)) * direction
     case 'name':
       return (a, b) => a.name.localeCompare(b.name)
     case 'price':
@@ -94,12 +84,6 @@ function compare(key: SortKey, direction: 1 | -1): (a: MarketGood, b: MarketGood
     case 'stock':
       return (a, b) => b.stock_band - a.stock_band || b.stock - a.stock
   }
-}
-
-/** %NBR runs cheapest-first in the BUY block and dearest-first in the SELL block: in both cases
- *  the best row in the block is its first row. Every other sort key is one direction everywhere. */
-function directionFor(block: MarketBlock): 1 | -1 {
-  return block === 'sell' ? -1 : 1
 }
 
 export interface MarketBlockView {
@@ -116,15 +100,13 @@ export function marketBlocks(
   goods: readonly MarketGood[],
   sort: SortKey,
   filter: MarketFilter,
-  config: SnapshotConfig,
 ): MarketBlockView[] {
-  const kept =
-    filter === 'all' ? [...goods] : goods.filter((g) => buyableHere(g) && g.advice === filter)
+  const kept = filter === 'all' ? [...goods] : goods.filter((g) => buyableHere(g))
 
   return BLOCK_ORDER.map((block) => ({
     block,
-    label: blockLabel(block, config),
-    rows: kept.filter((g) => blockOf(g) === block).sort(compare(sort, directionFor(block))),
+    label: blockLabel(block),
+    rows: kept.filter((g) => blockOf(g) === block).sort(compare(sort)),
   })).filter((b) => b.rows.length > 0)
 }
 
@@ -134,15 +116,17 @@ export function marketBlocks(
 // forbids. So it moved out rather than being borrowed, and MarketScreen imports the section.
 
 /**
- * WHICH ORDER A TAP ON THIS ROW MEANS. The server advises `buy` / `hold` / `sell`; a tap has to
- * become one of two verbs, and "hold" resolves to BUY because the row is still an opportunity to
- * take a position rather than a reason to do nothing.
+ * WHICH ORDER A TAP ON THIS ROW MEANS. 0071: this used to read the server's advice, which is gone.
+ * It now reads the only fact left that decides between the two verbs, and the honest one: a good
+ * this quay DEALS in can be bought here, and a good that is in the payload only because she is
+ * carrying it can only be sold. That is `buyableHere` (0061), which is already the one authority
+ * for the question and is what `blockOf` above sorts by.
  *
- * It is here because the screen spelt the ternary twice — once for the hand-off and once for the
- * row's title — and the two would have had to be corrected together. One reading of the advice.
+ * It stays in one place because the screen spelt the ternary twice — once for the hand-off and
+ * once for the row's title — and the two would have had to be corrected together.
  */
 export function verbFor(good: MarketGood): 'BUY' | 'SELL' {
-  return good.advice === 'sell' ? 'SELL' : 'BUY'
+  return buyableHere(good) ? 'BUY' : 'SELL'
 }
 
 /** How many rows the table is showing, for the count badge. */

@@ -37,7 +37,7 @@ import { parsePointToken, pointLabel, proposeCourse, sailOrigin } from '../../do
 // There is no order input on this screen and there is no toggle that brings one back. The player
 // picks a fleet, a verb the server serves, and then each argument that verb declares — every one
 // of them a tap on something that really exists: a port in the snapshot, a good in THIS port's
-// market with its price and the server's own advice, a quantity bounded by the hold and the purse.
+// market with its price and the range it can move in, a quantity bounded by the hold and the purse.
 //
 // THE STRING IS STILL THE CONTRACT. F.4: "Submit sends the string, not a structured object. There
 // is exactly one parser." So the picks are assembled into the exact line `cmd.issue()` receives and
