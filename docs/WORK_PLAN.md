@@ -105,8 +105,21 @@ re-read from the record, never granted.
 
 ### Stage 2 — parallel, disjoint file domains, one worktree each
 
-Storage · Workstation · 건조소 · Inn · Market simplification · Ship stats and fittings ·
-Regions and the map split
+| slice | state |
+|---|---|
+| ~~**Workstation**~~ | **Built with 0068.** It had to land with items: the design's own §12 says items get *"one earn path (the workstation)"*, and a table nothing fills is half a slice |
+| ~~**Storage**~~ | **0070, PR #23.** Per-city warehouses, 150 tuns a tier, STORE and TAKE |
+| ~~**Market simplification**~~ | **0071, PR #24.** Nearby, advice, `pays at` and *Where to sail* all gone; range, 15 minutes, ±20% |
+| **건조소 / building yard** | not started — spends fittings and timber, which 0068 and 0070 now provide |
+| **Inn** | not started — HIRE already works everywhere; what it adds is captains, which is stage 3 |
+| **Ship stats and fittings** | not started — the twelve fittings can be MADE but not yet MOUNTED, and the ten stats do not exist |
+| **Regions and the map split** | not started |
+
+**A note for whoever picks this up.** The three that are built took one session together, not three
+sessions in parallel, and the reason is worth keeping: they turned out to share the PORT screen's
+face strip, and 0067 is what made that cheap. A slice that adds a face is now one entry in
+`PORT_FACES` and one row per city. That is what "a building is a concept" bought, and it is why
+the remaining four are smaller than they look.
 
 ### Stage 3 — last, because they consume stage 2
 
