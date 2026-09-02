@@ -110,16 +110,22 @@ re-read from the record, never granted.
 | ~~**Workstation**~~ | **Built with 0068.** It had to land with items: the design's own §12 says items get *"one earn path (the workstation)"*, and a table nothing fills is half a slice |
 | ~~**Storage**~~ | **0070, PR #23.** Per-city warehouses, 150 tuns a tier, STORE and TAKE |
 | ~~**Market simplification**~~ | **0071, PR #24.** Nearby, advice, `pays at` and *Where to sail* all gone; range, 15 minutes, ±20% |
-| **건조소 / building yard** | not started — spends fittings and timber, which 0068 and 0070 now provide |
-| **Inn** | not started — HIRE already works everywhere; what it adds is captains, which is stage 3 |
+| ~~**건조소 / building yard**~~ | **0072, merged and LIVE.** A hull out of the city's warehouse and store, never a hold. 35 yards, 7 good enough for a nau |
+| ~~**Inn**~~ | **0073, PR #26.** Who is drinking here today, derived from (officer, port, day, secret). Roster 8 → 51; hiring now needs her to be in the room |
 | **Ship stats and fittings** | not started — the twelve fittings can be MADE but not yet MOUNTED, and the ten stats do not exist |
 | **Regions and the map split** | not started |
 
-**A note for whoever picks this up.** The three that are built took one session together, not three
-sessions in parallel, and the reason is worth keeping: they turned out to share the PORT screen's
-face strip, and 0067 is what made that cheap. A slice that adds a face is now one entry in
-`PORT_FACES` and one row per city. That is what "a building is a concept" bought, and it is why
-the remaining four are smaller than they look.
+**A note for whoever picks this up.** Five of the seven took one session together, not five in
+parallel, and the reason is worth keeping: they share the PORT screen's face strip, and 0067 is
+what made that cheap. A slice that adds a face is one entry in `PORT_FACES` and one row per city —
+PortScreen itself has not changed shape since. That is what "a building is a concept" bought.
+
+**And they are not independent.** The order they landed in is the order they had to land in: items
+(0068) gave the yard something to spend, storage (0070) gave it somewhere to spend it FROM, and
+without both the 건조소 would have had to invent a materials store of its own. Two remain, and both
+depend on what is now built: ship stats need fittings to MOUNT (0068 makes them; 0072 spends them
+as raw material, which is deliberately not the same thing), and captain ranks need the Inn's
+roster to hang a ladder on.
 
 ### Stage 3 — last, because they consume stage 2
 
