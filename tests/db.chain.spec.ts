@@ -202,9 +202,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved deliberately 2026-09-01 to 0064, which re-files the catalogue into seventeen plain
 // categories and, in the same slice, moves `bulk` and the industrial flag off `category` and onto
 // the good -- so a renaming cannot move a hold or a port's development.
-// Moved deliberately 2026-09-03 to 0074, which finally MOUNTS the twelve fittings: until it, a
-// suit of sails was an object you could own and destroy and never once a sail.
-const LAST = '20260818000074_a_fitting_changes_the_ship.sql'
+// Moved deliberately 2026-09-03 to 0075, which corrects 0074: two authorities for one number left
+// a barca unable to mount the weapon the owner said she carries.
+const LAST = '20260818000075_one_authority_for_a_gun_slot.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
