@@ -248,6 +248,43 @@ export interface MarketPort {
   dev_commerce: number
 }
 
+// ── world.workstation(port, fleet) — what this city can make (0068) ───────────────────────────
+
+/** One input of a recipe, and what the named fleet has of it aboard. */
+export interface RecipeLine {
+  good: string
+  name: string
+  qty: number
+  /** Tuns in her hold, or null when no fleet was named. */
+  aboard: number | null
+}
+
+/** One fitting, as this city sees it. */
+export interface WorkstationItem {
+  code: string
+  name: string
+  slot: string
+  /** DESIGN 1.3 — every fitting buys one stat and spends another. Carried on the row. */
+  buys: string
+  spends: string
+  note: string
+  volume: number
+  /** The workstation tier a city needs to make it. */
+  ws_tier: number
+  /** Whether THIS city's workstation is good enough. The server's rule, never re-derived here. */
+  makeable: boolean
+  /** How many you already own in this city — items have a LOCATION. */
+  owned_here: number
+  recipe: RecipeLine[]
+}
+
+export interface WorkstationView {
+  port_id: string
+  /** This city's workstation tier, or null where it keeps none. */
+  tier: number | null
+  items: WorkstationItem[]
+}
+
 /** 0067 — what a kind of building is called and what it does. Served once, read by every screen. */
 export interface SnapshotBuildingKind {
   kind: BuildingKind

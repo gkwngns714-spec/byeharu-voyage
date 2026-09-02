@@ -38,6 +38,17 @@ export const RPCS = {
   worldSnapshot: { schema: 'world', fn: 'snapshot', args: [] },
   worldMarket: { schema: 'world', fn: 'market', args: [{ name: 'p_port', type: 'uuid' }] },
   worldFleets: { schema: 'world', fn: 'fleets', args: [] },
+  // 0068 — the workstation face's ONE read: what this city can make, what each costs, whether her
+  // hold carries it, and what you already own here. `p_fleet` is optional because the face is
+  // readable with no fleet alongside; name her and every recipe line says what is aboard.
+  worldWorkstation: {
+    schema: 'world',
+    fn: 'workstation',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_fleet', type: 'uuid' },
+    ],
+  },
   // 0019 — the comparison. `p_fleet` is optional and is what makes the quantities REAL: name her
   // and every row is priced at what she can actually afford and carry, and at what she may sail to.
   worldTradeRoutes: {

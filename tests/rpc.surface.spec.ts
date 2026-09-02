@@ -79,7 +79,7 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   expect('legs' in snap).toBe(false)
   expect(snap.goods.length).toBeGreaterThan(20)
   expect(snap.ship_classes).toHaveLength(3)
-  expect(snap.verbs).toHaveLength(8)
+  expect(snap.verbs).toHaveLength(9)
 
   const lisboa = snap.ports.find((p) => p.code === 'LIS')
   expect(lisboa).toBeDefined()
@@ -403,14 +403,17 @@ test('world.ledger() pages, reconciles, and carries the purse', async () => {
 
 // ── the commands ───────────────────────────────────────────────────────────────────────────────
 
-test('cmd.verb_schema() serves the eight V0 verbs, argument by argument', async () => {
+test('cmd.verb_schema() serves the nine verbs, argument by argument', async () => {
   const verbs = expectOk(await cmdVerbSchema())
+  // 0068 added MAKE, and it sits beside REPAIR deliberately: both are things done ashore at a
+  // building this city may or may not keep. The ORDER is the order the strip reads.
   expect(verbs.map((v) => v.verb)).toEqual([
     'SAIL',
     'BUY',
     'SELL',
     'PROVISION',
     'HIRE',
+    'MAKE',
     'REPAIR',
     'CANCEL',
     'CLEAR',
@@ -869,6 +872,15 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Neither takes a player id; both read `current_player_id()` and refuse a fleet that is not
       // yours, which is the same property that makes `cmd.found_house` safe for a browser to hold.
       'worldHaggleState', 'cmdHaggle',
+      // Pin moved deliberately 2026-09-02 with 0068, `a_fitting_is_made_not_found`:
+      // `world.workstation(p_port, p_fleet)`. It is a READ and takes no player id — what a player
+      // owns comes from `current_player_id()`, so naming somebody else's port tells you what the
+      // city can make and nothing about their stock. The fleet argument is optional and only
+      // decides whether the recipe lines say what is aboard.
+      //
+      // It lands in the SAME commit as the face that reads it, which is 0022's lesson written
+      // down: a complete server mechanic with no client at all is a door nobody opens.
+      'worldWorkstation',
       // Pin moved deliberately 2026-08-23 with 0025 (the table of captains) and 0026 (the fair at
       // the quay). Both are READS and neither takes a player id.
       //
