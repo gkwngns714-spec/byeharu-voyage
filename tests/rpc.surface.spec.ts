@@ -169,7 +169,7 @@ test('world.sea_raster() and world.reach() serve the free sea (0039)', async () 
   expect(reach.reaches[nagasaki.code]).toBeGreaterThan(12_000)
 })
 
-test('world.market() prices the goods this city trades, with %NBR, stock band, availability and advice', async () => {
+test('world.market() prices the goods this city trades, with the range, stock band and availability', async () => {
   const snap = expectOk(await worldSnapshot())
   const lis = snap.ports.find((p) => p.code === 'LIS')!
 

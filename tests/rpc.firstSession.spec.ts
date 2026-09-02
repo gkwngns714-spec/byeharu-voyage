@@ -213,8 +213,16 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
    * only the culture half — under 0061 that can pick a good the very next BUY would refuse, so the
    * old line was not merely too weak, it was wrong. One authority, both callers.
    */
-  const homewardFrom = (goods: readonly MarketGood[]) =>
-    goods.filter((g) => buyableHere(g)).sort((a, b) => a.mid - b.mid)[0]
+  //
+  // 0071: `except` is new and it is not a nicety. While this picked the good the SERVER called
+  // cheap, the outbound and homeward cargoes could not collide — the two quays advised differently.
+  // Choosing the cheapest thing on each quay can land on the SAME good at both ends, and then she
+  // sells a hold of it and immediately buys it back, which is not a round trip and left the
+  // assertion below reading 10 where it wanted 0.
+  const homewardFrom = (goods: readonly MarketGood[], except?: string) =>
+    goods
+      .filter((g) => buyableHere(g) && g.code !== except)
+      .sort((a, b) => a.mid - b.mid)[0]
 
   let cargo = buys[0]
   let destination = neighbours[0]
@@ -333,7 +341,7 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   // Read the quay FRESH — she has sailed since, and a spec that plans from a cached payload is
   // planning from a world that no longer exists. `homewardFrom` is the same predicate the
   // destination was chosen with, so this cannot be undefined unless the quay itself changed.
-  const homeward = homewardFrom(expectOk(await worldMarket(destination.id)).goods)
+  const homeward = homewardFrom(expectOk(await worldMarket(destination.id)).goods, cargo.code)
   expect(homeward).toBeDefined()
 
   expectOk(await cmdIssue(fleet.id, `SELL ${cargo.code} ALL`))
