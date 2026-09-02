@@ -26,6 +26,7 @@
 import { call } from './backend'
 import type { RpcResult } from './result'
 import type {
+  WarehouseView,
   WorkstationView,
   SeaRasterPayload,
   ReachPayload,
@@ -75,6 +76,20 @@ export function worldSnapshot(): Promise<RpcResult<WorldSnapshot>> {
  */
 export function worldMarket(portId: string): Promise<RpcResult<MarketView>> {
   return call<MarketView>('worldMarket', [portId])
+}
+
+/**
+ * WHAT THIS CITY IS KEEPING FOR YOU (0070) — the shed's size, how much of it you have used, what
+ * is ashore here, and what the named fleet is carrying that could join it.
+ *
+ * Both sides in one read. The screen's entire job is to move goods between a hold and a shed, and
+ * two reads could disagree by a trade landed in between.
+ */
+export function worldWarehouse(
+  portId: string,
+  fleetId: string | null,
+): Promise<RpcResult<WarehouseView>> {
+  return call<WarehouseView>('worldWarehouse', [portId, fleetId])
 }
 
 /**

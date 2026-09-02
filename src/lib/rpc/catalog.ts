@@ -41,6 +41,17 @@ export const RPCS = {
   // 0068 — the workstation face's ONE read: what this city can make, what each costs, whether her
   // hold carries it, and what you already own here. `p_fleet` is optional because the face is
   // readable with no fleet alongside; name her and every recipe line says what is aboard.
+  // 0070 — the warehouse face's ONE read: the shed's size, how full it is, what is ashore here and
+  // what she is carrying that could join it. Both sides in one read, because the screen's whole job
+  // is to move things between them and asking twice would let them disagree by a trade in between.
+  worldWarehouse: {
+    schema: 'world',
+    fn: 'warehouse',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_fleet', type: 'uuid' },
+    ],
+  },
   worldWorkstation: {
     schema: 'world',
     fn: 'workstation',

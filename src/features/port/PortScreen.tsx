@@ -22,6 +22,7 @@ import { AcademyFace } from './PortFaces'
 import { PortTrade } from './PortTrade'
 import { QuayToday } from './PortFair'
 import { buildingsOf, buildingTier, hasBuilding } from '../../domain/port'
+import { PortWarehouse } from './PortWarehouse'
 import { PortWorkstation } from './PortWorkstation'
 import { PORT_FACES, usePortView } from './portView'
 import { harbourCode, useHarbour } from '../../store/harbour'
@@ -451,6 +452,8 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
                 </div>
             </>
           )}
+
+          {shownFace.id === 'warehouse' && <PortWarehouse portId={port.id} fleet={acting} />}
 
           {shownFace.id === 'workstation' && (
             <PortWorkstation
