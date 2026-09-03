@@ -5,6 +5,119 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-03 — D32: "i can't send a fleet in map" — three silences on one path (row 49)
+
+**The request, verbatim:** *"i can't send a fleet in map. check why and tell me"* — reported live on
+production on 2026-08-31 while the owner was playing, and open ever since because **no test could
+reproduce it and nobody had driven it.** The ask names the deliverable: *check why and TELL me*.
+
+### How it was found: by playing, in ten seconds, where a player plays
+
+The suite was never going to find this. I opened the real game on production, tapped the harbour my
+own fleet was lying in — which is the first thing a thumb lands on, because her marker and that
+harbour's name are printed on top of each other — pressed **Send fleet**, and got a fold holding one
+row that said `lies here`, with nothing under it to press.
+
+Every row was individually honest. The fold as a whole was a dead end. **That is the difference
+between a rule and a screen**, and it is the whole of the owner's complaint: they pressed the one
+control the map offered and the map answered with nothing they could act on.
+
+### Two more silences on the same path, found by tracing it
+
+They are the same defect wearing other hats — *the send does nothing and says nothing* — so they are
+fixed in the same slice rather than left to be reported again.
+
+* **The busy guard was unstamped.** `send()` read `act?.state === 'busy'` with no key, while the
+  note that SHOWS `issuing the order…` is stamped with (destination, fleet). Nothing on this path
+  has a timeout — `supabase.ts` builds the client with no `AbortController` and `backend.ts` only
+  catches rejections — so **one request that never settled left every send on the map dead for the
+  rest of the session, with the spinner invisible because the player had moved to another
+  harbour.** Press, nothing. Press again, nothing. Both guards are stamped now.
+* **A refusal with no refusal rendered nothing at all.** The refused branch was guarded on
+  `acted.refusal`, and `orderOf`'s fail-closed path (the book misses an order it just wrote) sets
+  `refused` with the store's refusal slot *empty*. Zero output. It now says she did not sail.
+
+### The hypothesis that was killed rather than shipped
+
+The strongest candidate off the code trace was a **persisted collapse** of the detail panel: all
+three of its faces share `storageKey="map.detail"`, `Collapsible` unmounts its children when closed,
+and one tap on the header would hide the send control forever, on every reload, for good. It matches
+the owner's wording exactly — they did not say *it refuses*, they said they *can't*.
+
+It was probed in the owner's own browser before a line was written:
+`localStorage` holds no `byeharu-voyage.fold.v1:map.detail` key at all. **Not this.** A fix shipped
+for it would have been a fix for nothing, on top of a defect still live.
+
+### The seam that let it stand for three days against a green suite
+
+`tests/map.sendfleet.spec.ts` **stopped one press short of the act.** It asserted the fold opens,
+the ratio moves, and — deliberately, in its own words, ARMED NOT FIRED — that *nothing sailed*. It
+never once asserted that pressing send makes a voyage. The entire chain
+`savePreset → applyPreset → issue/divert → cmd.do_sail` was untested end to end, and that is exactly
+the region every candidate above lives in.
+
+It fires now, and the world is asked **twice**: her row in the fold flips out of `pressable` (which
+only the served payload can cause), and the corner panel — which reads the world payload and not the
+fold — turns her line into `→ Cadiz · <clock>`.
+
+**Measured, with the control watched to go red.** With the fix, all four tests in the file pass.
+With the `map-send-nowhere` line deleted and everything else identical, the drive fails on exactly
+that locator and nothing else. The dead end is asserted at the harbour she is BOUND for rather than
+the one she LIES in, and the reason is worth keeping: at 390 px the lies-here tap **cannot be
+reached at all**. The label engine drops the harbour's name in favour of the fleet's, and the
+surface's nearest-wins hit test then hands that spot to the FLEET, whose card carries no send
+control — a second face of the same complaint, and the one `DetailPanel`'s `SendHint` already
+answers. Both taps land on the same branch of the fold, so the fix is proven where a phone can
+actually stand.
+
+`data-port-code` was added to the port mark (`src/chart/PortsLayer.tsx`), beside the tier and kind
+already there, because of exactly that: a drive that can only aim by the printed word cannot aim at
+a harbour whose word has been decluttered away.
+
+### What went wrong on the way, which is the part worth keeping
+
+* **A skip that was a lie.** My first cut read her harbour off the fleets panel with
+  `innerText.split('
+')[1]` and got her NAME, so the drive skipped with the plausible sentence
+  *"Gaivota is not named in the opening frame"* and the file reported 3 passed, 1 skipped. **A green
+  with a shrunken denominator**, the exact failure this repo has already paid for twice. The read is
+  off the END of the row now, and it asserts the harbour is not the same string as the name.
+* **A stale coordinate, and then a tap that hit the card.** The dead-end tap first reused the (x, y)
+  DEFECT 1 had measured for Cadiz; she had sailed since and the chart re-framed, so it landed
+  elsewhere. Re-locating by name then failed because the name was gone. Re-locating by CODE then
+  read back a panel whose whole content was the word `Port` — the detail card is pinned bottom-right
+  **over** the chart, so a mark underneath it takes the tap as a press on the card's own header and
+  the card folds shut. The drive dismisses the card first, with the same ✕ a player has.
+* **The local preview was talking to the CLOUD.** `.env.local` carries the real Supabase keys, so a
+  plain `npm run build` produces a bundle that will not boot a local world, and the browser drive
+  timed out at 300 s waiting for ports that were never going to render. The local-engine build is
+  `VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npx vite build`.
+
+### Two defects found on this path and NOT fixed here, named rather than dropped
+
+* **The standing-order book is capped at 6 and the ratio mints a new order per distinct value.**
+  `provision_presets` allows six per house (0034); `Keep N & send` writes one whenever the book has
+  no order at N days. The seventh distinct value a player ever nudges to is refused `E_PRESET_CAP`,
+  whose only fix — *(strike an order from the book first)* — resolves to no button on the map. The
+  refusal IS visible (code badge + the server's sentence), so it is not a silence; and the book is
+  emptied from FLEETS, where `provision_preset_delete` already has a control. **Checked on the
+  owner's live house: 1 of 6, so this is not what they hit.** It needs a design answer, not a patch.
+* **`world.ship_stat` floors `hold` at 0 and `voyage.ship_speed` divides by it** (0074) — a fitting
+  set that drives a hull's hold to zero is a division by zero, a fault rather than a refusal, in
+  every read of that fleet. Nothing is fitted anywhere yet, so it is dark today.
+
+### Bookkeeping repaired in the same commit
+
+Six ledger rows still read `DESIGN ONLY — no implementation` for things that had been built and
+deployed: **57** (storage, 0070), **58** (건조소, 0068+0072), **60** (Inn, 0073), **62** (levels,
+0069), **68** (fittings and slots, 0068+0074) and **69** (the ten ship stats, 0074). A row that is
+not closed when the slice lands is the failure `OWNER_REQUESTS.md` exists to prevent, and it had
+started happening again. **Row 65 was checked and left DESIGN ONLY on purpose**: `ship_classes.tier`
+exists and 0074 gave slots by tier, but `family` carries *Western*, a culture — nothing in the chain
+knows a trading ship from a combat ship.
+
+---
+
 ## 2026-09-03 — D31: the 건조소 and the Inn (0072, 0073)
 
 **The request, verbatim:** *"keep going with the 건조소 and the inn"*
