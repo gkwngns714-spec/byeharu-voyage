@@ -112,8 +112,8 @@ re-read from the record, never granted.
 | ~~**Market simplification**~~ | **0071, PR #24.** Nearby, advice, `pays at` and *Where to sail* all gone; range, 15 minutes, ±20% |
 | ~~**건조소 / building yard**~~ | **0072, merged and LIVE.** A hull out of the city's warehouse and store, never a hold. 35 yards, 7 good enough for a nau |
 | ~~**Inn**~~ | **0073, PR #26.** Who is drinking here today, derived from (officer, port, day, secret). Roster 8 → 51; hiring now needs her to be in the room |
-| **Ship stats and fittings** | not started — the twelve fittings can be MADE but not yet MOUNTED, and the ten stats do not exist |
-| **Regions and the map split** | not started |
+| ~~**Ship stats and fittings**~~ | **0074, merged and LIVE.** Twelve fittings MOUNT, ten stats, slots typed and grown by tier |
+| **Regions and the map split** | not started — the last of stage 2 |
 
 **A note for whoever picks this up.** Five of the seven took one session together, not five in
 parallel, and the reason is worth keeping: they share the PORT screen's face strip, and 0067 is

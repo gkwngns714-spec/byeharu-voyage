@@ -58,6 +58,14 @@ export interface MapVoyage {
   readonly course: readonly LatLon[]
   /** Which segment of the course the position lies on (`voyage.position.seg_index`). */
   readonly segIndex: number
+  /** How far along that segment she is, 0–1 (`voyage.position.leg_frac`). Copied, never derived. */
+  readonly legFrac: number
+  /**
+   * 0075 — that segment's own length in nm, off the frozen path. Null when the server does not
+   * serve it, and ./drift.ts then draws her exactly where the server put her. It exists so the
+   * chart can walk `legFrac` forward between reads without ever measuring the course itself.
+   */
+  readonly segNm: number | null
   /** The closed-form position (§D.2). Copied from the server; never derived here. */
   readonly at: LatLon
   /** Whole-voyage progress, in nautical miles — the server's numbers, printed as given. */

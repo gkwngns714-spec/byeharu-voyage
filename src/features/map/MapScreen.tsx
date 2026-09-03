@@ -228,7 +228,16 @@ function Chart({
   const ports = useMemo(() => mapPortsOf(snapshotPorts), [snapshotPorts])
   const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
   const fleets = useMemo(() => mapFleetsOf(fleetViews), [fleetViews])
-  const model = useMemo(() => buildChartModel(fleets, ports), [fleets, ports])
+  // 0075 — THE MAP TAB IS THE ONE CALLER THAT PASSES A CLOCK, and this is where the marker stops
+  // teleporting. `nowMs` ticks once a second in the shell, so the model is rebuilt at that rate
+  // and a fleet at sea is drawn a little further along the leg the server put her on rather than
+  // standing still for the whole three seconds between reads. `./drift.ts` carries the law that
+  // makes this a finer reading of the server's answer and not a second one; it can never place her
+  // past the vertex the next read will hand back.
+  const model = useMemo(
+    () => buildChartModel(fleets, ports, [], { nowMs, readAtMs: readAt }),
+    [fleets, ports, nowMs, readAt],
+  )
 
   const [selection, setSelection] = useState<MapSelection>(null)
 

@@ -1,4 +1,11 @@
-import { formatInt, formatNm, formatRealShort, formatVoyageDays } from '../../lib/format'
+import {
+  formatCountdown,
+  formatInt,
+  formatNm,
+  formatVoyageDays,
+  realMsToVoyageDays,
+} from '../../lib/format'
+import { Meter } from '../../components/ui'
 import type { VerbSpec } from '../../lib/rpc'
 import type { CommandIntent } from '../../domain/order'
 import { fleetsAtPort, fleetsBoundFor, type ChartModel, type MapPort, type MapSelection } from '../../chart'
@@ -68,6 +75,36 @@ function SendHint() {
 }
 
 /** One label/value line — the panel is a tiny table and nothing more. */
+/**
+ * HER BARRELS AGAINST HER PASSAGE — the owner, row 50: *"my provision depleting as the time goes"*.
+ *
+ * A ratio of two SERVED figures and nothing else: what she carries (`voyage.endurance_days`, 0016)
+ * over what the passage still asks (her own served `eta`, in voyage-days). The client owns no burn
+ * rate — `water_per_crew_day` and `food_per_crew_day` are server-side knobs and are deliberately
+ * not on the wire — so there is nothing here that could disagree with the server about how fast
+ * she is eating.
+ *
+ * FULL IS ENOUGH, not full is full. The bar reads 100% the moment she carries the passage, because
+ * the question a player is asking is "will she make it", not "how deep is the hold". Short of it,
+ * the bar is the fraction she can cover and the tone says so.
+ */
+function EnduranceBar({ days, daysToRun }: { days: number; daysToRun: number }) {
+  if (!Number.isFinite(days) || !Number.isFinite(daysToRun) || daysToRun <= 0) return null
+  const covered = Math.max(0, Math.min(1, days / daysToRun))
+  return (
+    <div className="flex items-center gap-2 pb-0.5">
+      <Meter
+        pct={covered * 100}
+        tone={days < daysToRun ? 'danger' : 'accent'}
+        className="min-w-0 flex-1"
+      />
+      <span className="shrink-0 font-mono text-[10px] text-ink-faint">
+        {formatVoyageDays(daysToRun)} to run
+      </span>
+    </div>
+  )
+}
+
 function Line({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2 py-0.5">
@@ -164,10 +201,17 @@ export function DetailPanel({
 
                   Drawn only when the server serves the instant, so a build talking to an older
                   server shows one fewer line rather than a figure counted from 1970. */}
+              {/* AND IT TICKS. Both of these are clocks a player WATCHES, and both were drawn
+                  with `formatRealShort` — the four-character table form, whose own docstring says
+                  a countdown made with it "would only move once a minute and read as stuck".
+                  That is precisely what row 50 asked for and did not get: the owner said a REAL
+                  timer, and a figure that changes once a minute is not one. `formatCountdown` is
+                  the per-second face and already exists (0029); nothing new is invented here, the
+                  right one of two existing forms is used. */}
               {fleet.voyage.departedMs !== null && (
-                <Line label="at sea" value={formatRealShort(nowMs - fleet.voyage.departedMs)} />
+                <Line label="at sea" value={formatCountdown(nowMs - fleet.voyage.departedMs)} />
               )}
-              <Line label="arrives" value={formatRealShort(fleet.voyage.etaMs - nowMs)} />
+              <Line label="arrives" value={formatCountdown(fleet.voyage.etaMs - nowMs)} />
               {/* 0055 — WHAT WATER IS STILL IN FRONT OF HER, and how far off it is. A list of
                   places, never a forecast; see ./WatersAhead.tsx. */}
               <WatersAhead waters={fleet.voyage.waters} />
@@ -185,6 +229,27 @@ export function DetailPanel({
             destination `voyage.sail_refusal` would refuse, so a fleet short of stores is offered
             no route and — until this line — was never told why on the screen she is drawn on. */}
         <Line label="stores" value={formatVoyageDays(fleet.fleet.enduranceDays)} />
+
+        {/* AND WHAT THEY ARE MEASURED AGAINST. The figure alone answers "how many days" and never
+            "is it enough", which is the half of row 50 the word DEPLETING is about — the owner
+            wants to watch the barrels run down against the passage, not read a number.
+
+            Both ends are SERVED and neither is invented here: `enduranceDays` is
+            `voyage.endurance_days` (0016), and the days still to run are her own `eta` against the
+            one shell clock, put into voyage-days by the one conversion (`realMsToVoyageDays`,
+            which reads the served compression). No burn rate crosses the wire and none is
+            reconstructed — the bar is a RATIO of two served figures.
+
+            It is the same have-over-need bar `RefusalNote` draws for `E_ENDURANCE`, deliberately:
+            the refusal a short fleet would meet at the quay is the picture she now carries at sea,
+            so the warning and the reason look like the same thing. Danger-toned the moment she is
+            carrying less than the passage asks. */}
+        {fleet.voyage && (
+          <EnduranceBar
+            days={fleet.fleet.enduranceDays}
+            daysToRun={Math.max(0, realMsToVoyageDays(fleet.voyage.etaMs - nowMs))}
+          />
+        )}
 
         {/* SHE IS WAITING FOR AN ORDER AND THE PANEL USED TO SAY NOTHING. See SendHint above for
             why this is a sentence rather than a second send path. The condition is the same one

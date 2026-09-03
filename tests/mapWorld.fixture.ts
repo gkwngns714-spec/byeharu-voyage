@@ -374,6 +374,9 @@ export function sailingFleet(args: {
   totalNm?: number
   etaMs?: number
   legIndex?: number
+  /** 0075: the length of the leg she is on, as `world.fleets` serves it. Omitted = a server
+   *  predating 0075, which is a case the chart must survive by drawing her where she was put. */
+  segNm?: number
   /** 0055: the seas her frozen course still has to cross, exactly as world.fleets serves them.
    *  Omitted = a server predating 0055, which is a case the chart must survive. */
   waters?: FleetVoyage['waters']
@@ -416,6 +419,7 @@ export function sailingFleet(args: {
         total_nm: totalNm,
         lat: round4(aLat + (bLat - aLat) * args.legFrac),
         lon: round4(aLon + (bLon - aLon) * args.legFrac),
+        ...(args.segNm === undefined ? {} : { seg_nm: args.segNm }),
       },
     },
     ships: [],

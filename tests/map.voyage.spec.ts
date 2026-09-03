@@ -3,6 +3,7 @@ import { project, type ViewBox } from '../src/lib/geo'
 import {
   GLYPH,
   buildChartModel,
+  driftedPoint,
   hitTest,
   mapFleetsOf,
   mapPortsOf,
@@ -87,14 +88,127 @@ test.describe('the position is the server’s, copied', () => {
     expect(fleet.voyage.etaMs).toBe(Date.parse(AURORA.voyage!.eta))
   })
 
-  test('the model takes no clock, so there is nothing that can drift', () => {
+  test('given no clock, the model still takes none — nothing can drift on its own', () => {
     // Built twice, at whatever moments these two calls happen to run: identical. The old failure
     // mode — a glyph that moves because a frame fired — cannot exist, because no frame is an input.
+    //
+    // 0075 gave this function an OPTIONAL fourth argument, and this test is what pins the word
+    // optional: every caller that does not ask for drift gets the server's point, byte for byte,
+    // exactly as it did before that slice. Only the Map tab asks.
     const first = buildChartModel(mapFleetsOf([AURORA, GAIVOTA]), PORTS)
     const again = buildChartModel(mapFleetsOf([AURORA, GAIVOTA]), PORTS)
     expect(again.fleets.map((f) => f.at)).toEqual(first.fleets.map((f) => f.at))
     expect(again.fleets.map((f) => f.track)).toEqual(first.fleets.map((f) => f.track))
-    expect(buildChartModel.length).toBe(2) // (fleets, ports) — and no third argument
+    // (fleets, ports) — `considering` and `drift` both default, so neither is a required argument.
+    expect(buildChartModel.length).toBe(2)
+  })
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // 0075 — SHE MOVES BETWEEN READS, AND SHE CANNOT MOVE FURTHER THAN THE SERVER WILL
+  //
+  // OWNER_REQUESTS row 50: *"my ship marker should be updated more frequently"*. Measured on
+  // production before any of this was written: the marker held one pixel for three seconds, then
+  // jumped 25–68 px, six times in a twenty-second passage.
+  //
+  // The ledger's constraint on the fix is the thing these tests exist to hold: *"a faster marker
+  // must be a finer INTERPOLATION of the same authority, never a second mover."* Every property
+  // below is a way of saying that once.
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  test.describe('the marker between reads (0075)', () => {
+    /** Half a leg still to run, an hour of real time to run it in, and a leg 200 nm long. */
+    const DRIFTER: FleetView = sailingFleet({
+      id: 'drifter',
+      name: 'Drifter',
+      from: 'LIS',
+      to: 'CAD',
+      course: ['LIS', 'CAD', 'CEU'],
+      legFrac: 0.5,
+      sailedNm: 100,
+      totalNm: 300,
+      segNm: 200,
+      etaMs: 1_700_003_600_000,
+    })
+    const READ_AT = 1_700_000_000_000
+    const voyageOf = (f: FleetView) => {
+      const [m] = mapFleetsOf([f])
+      if (m.kind !== 'sailing') throw new Error('fixture is not at sea')
+      return m.voyage
+    }
+
+    test('the served leg and how far along it she is are COPIED, like everything else here', () => {
+      const v = voyageOf(DRIFTER)
+      expect(v.legFrac).toBe(DRIFTER.voyage!.position!.leg_frac)
+      expect(v.segNm).toBe(200)
+      // A server that does not serve it yields null, never 0 — 0 is a leg, null is no answer.
+      expect(voyageOf(AURORA).segNm).toBeNull()
+    })
+
+    test('she advances along the leg as the clock runs, and the advance is the served pace', () => {
+      const v = voyageOf(DRIFTER)
+      const still = driftedPoint(v, { nowMs: READ_AT, readAtMs: READ_AT })
+      expect(still).toEqual(v.at)
+
+      // 200 nm still to run in 3 600 000 ms. After 900 000 ms she has made 50 nm, which on a
+      // 200 nm leg is a quarter of it: 0.5 → 0.75. Worked here in the test's own words rather
+      // than by re-running the implementation's expression.
+      const later = driftedPoint(v, { nowMs: READ_AT + 900_000, readAtMs: READ_AT })
+      const a = v.course[v.segIndex]
+      const b = v.course[v.segIndex + 1]
+      expect(later.lat).toBeCloseTo(a.lat + (b.lat - a.lat) * 0.75, 9)
+      expect(later.lon).toBeCloseTo(a.lon + (b.lon - a.lon) * 0.75, 9)
+    })
+
+    test('THE CLAMP: she can never be drawn past the vertex the next read will hand back', () => {
+      const v = voyageOf(DRIFTER)
+      const b = v.course[v.segIndex + 1]
+      // A read that never came: an hour late, then a day late. Both stop dead on the vertex —
+      // this is the whole reason the file is not a second mover, so it is asserted at the edge
+      // and far beyond it rather than just inside.
+      for (const late of [3_600_000, 86_400_000, 86_400_000 * 30]) {
+        const p = driftedPoint(v, { nowMs: READ_AT + late, readAtMs: READ_AT })
+        expect(p.lat).toBeCloseTo(b.lat, 9)
+        expect(p.lon).toBeCloseTo(b.lon, 9)
+      }
+    })
+
+    test('she never goes backwards, and a clock behind the read moves nothing', () => {
+      const v = voyageOf(DRIFTER)
+      expect(driftedPoint(v, { nowMs: READ_AT - 60_000, readAtMs: READ_AT })).toEqual(v.at)
+      let last = 0
+      for (const ms of [0, 1_000, 60_000, 300_000, 900_000, 1_800_000]) {
+        const p = driftedPoint(v, { nowMs: READ_AT + ms, readAtMs: READ_AT })
+        const frac = (p.lat - v.course[v.segIndex].lat) /
+          (v.course[v.segIndex + 1].lat - v.course[v.segIndex].lat)
+        expect(frac).toBeGreaterThanOrEqual(last - 1e-9)
+        last = frac
+      }
+    })
+
+    test('with nothing to go on it draws her exactly where the server put her', () => {
+      const v = voyageOf(DRIFTER)
+      // No drift asked for; no read instant; and a server that serves no leg length. Three ways
+      // of having no licence to move her, and all three answer with the served point itself.
+      expect(driftedPoint(v, null)).toEqual(v.at)
+      expect(driftedPoint(v, { nowMs: READ_AT + 900_000, readAtMs: null })).toEqual(v.at)
+      expect(
+        driftedPoint(voyageOf(AURORA), { nowMs: READ_AT + 900_000, readAtMs: READ_AT }),
+      ).toEqual(voyageOf(AURORA).at)
+    })
+
+    test('the model moves the WHOLE fleet — glyph, track split and framing are one point', () => {
+      const model = buildChartModel(mapFleetsOf([DRIFTER]), PORTS, [], {
+        nowMs: READ_AT + 900_000,
+        readAtMs: READ_AT,
+      })
+      const [f] = model.fleets
+      const still = buildChartModel(mapFleetsOf([DRIFTER]), PORTS).fleets[0]
+      expect(f.at).not.toEqual(still.at)
+      // The split is taken AT the drifted point, not at the served one — otherwise the dot would
+      // sit off the end of its own sailed track and the panel would disagree with the glyph.
+      expect(f.track).not.toEqual(still.track)
+      expect(model.focusPoints).toContainEqual(f.at)
+      expect(model.motionPoints).toContainEqual(f.at)
+    })
   })
 
   test('only the player’s own fleets are in the model — there is no field for anyone else', () => {

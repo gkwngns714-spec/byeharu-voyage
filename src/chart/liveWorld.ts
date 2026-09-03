@@ -68,6 +68,14 @@ export function mapFleetsOf(fleets: readonly FleetView[]): MapFleet[] {
         voyage: {
           course: course.map(([lat, lon]) => ({ lat, lon })),
           segIndex: position.seg_index,
+          // 0075 — HOW FAR ALONG THIS LEG SHE IS, and HOW LONG THE LEG IS. Copied like everything
+          // else here. Together with `course` they are the whole licence the chart has to draw her
+          // between reads: `voyage.position` placed her linearly between `course[segIndex]` and
+          // `course[segIndex + 1]`, and these two numbers say where on that line and how much line
+          // there is. `segNm` is null on a server older than 0075, and ./drift.ts then leaves her
+          // exactly where the server put her.
+          legFrac: position.leg_frac,
+          segNm: typeof position.seg_nm === 'number' ? position.seg_nm : null,
           at: { lat: position.lat, lon: position.lon },
           sailedNm: position.nm_done,
           totalNm: position.total_nm,

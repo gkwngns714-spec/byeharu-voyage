@@ -5,6 +5,112 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-03 — D33: the map shows time passing (row 50, migration 0075)
+
+**The request, verbatim:** *"i need a real timer in map, telling me how long i've been on the sea,
+my provision depleting as the time goes, and my ship marker should be updated more frequently"*.
+
+### The ledger said none of it was built. Two thirds of it was, and it still was not done
+
+The row read **"OPEN — three parts, none built"** while migration **0063** — filename *she says how
+long she has been at sea* — had been live for two days, and the read cadence had been fixed on
+2026-08-24. The row's own body even quoted `read 0s ago` as evidence of a *slow* cadence; `read 0s
+ago` is what a fast one looks like. **A row nobody re-reads after the slice lands is worse than no
+row**, and this is the second time in two days that has cost a session its first hour.
+
+**And closing it on that basis would have been wrong too.** What shipped was not what was asked
+for, in all three parts:
+
+* **(a) The timer was drawn with the wrong one of two existing formatters.** `formatRealShort` is
+  the four-character table form and its own docstring says a countdown made with it *"would only
+  move once a minute and read as stuck"*. That is exactly what `at sea` and `arrives` did. The
+  owner said a **real** timer. Both now use `formatCountdown`, which has existed since 0029.
+  Nothing was invented; the right one of two was picked.
+* **(b) Stores answered "how many days" and never "is it enough".** The word in the request is
+  *depleting*, and a number that steps down behind a tap is not depletion the player can feel. The
+  line now carries a bar of what she holds against the days her passage still has to run. Both ends
+  are served — `voyage.endurance_days` (0016) and her own `eta` — and no burn rate crosses the wire,
+  which is deliberate: `water_per_crew_day` and `food_per_crew_day` are server knobs precisely so a
+  client cannot invent a second answer. It is the same have-over-need bar `RefusalNote` draws for
+  `E_ENDURANCE`, so the warning at sea and the refusal at the quay look like one thing.
+* **(c) The marker was measured before anything was written.** A fleet was put to sea on
+  production and her marker sampled every 600 ms for the whole passage:
+
+      0.0s 304,323 | 1.2s 267,332 | 2.1s 267,332 | 3.2s 267,332 | 4.1s 292,341 | 5.1s 292,341
+      6.2s 292,341 | 7.1s 255,350 | 8.1s 255,350 | 9.2s 255,350 | 10.1s 218,359 | …
+
+  Six jumps of 25–68 px in twenty seconds, three seconds frozen between each. The cadence was
+  already 3 000 ms and already derived from the compression knob; making it faster would have been
+  paying the server for a problem that is not the server's.
+
+### 0075 — one number, and the reason it had to be served
+
+The ledger's constraint on part (c) is the design: *"a faster marker must be a finer INTERPOLATION
+of the same authority, never a second mover."*
+
+`voyage.position` places her **linearly in lat/lon** between `course[seg_index]` and
+`course[seg_index+1]`, so a client walking `leg_frac` between those two points reproduces the
+server's arithmetic digit for digit. What it could not do is turn elapsed time into more
+`leg_frac`, because **the length of that leg was not on the wire** — `voyage.position` computes it
+and returns everything but, and `voyage.course_of` keeps the vertices and drops every `nm`.
+
+The client could have measured the leg itself. `haversineNm` and `cumulativeNm` sit in
+`src/lib/geo` with **zero** production callers, and that is not an accident: a second measurement
+of a course the server has already measured is the second mover by definition, and the
+disagreement compounds along the passage. So 0075 serves the number, off the frozen path itself —
+`v.path -> pos.seg_index ->> 'nm'`, the element `voyage.depart` wrote and nothing rewrites. One
+key, sliced into `world.fleets()` the way 0063 proved safe, no signature moved and no function
+dropped. **Nothing about where she is changed**: `voyage.position`, `voyage.progress_nm`, the speed
+profile and the read cadence are all untouched.
+
+### The clamp is the whole safety argument, so it is a test and not a sentence
+
+`src/chart/drift.ts` is the one authority, and what makes it not the mover this codebase already
+deleted once is a property rather than a promise:
+
+* it **cannot leave the segment** — `legFrac` is clamped to 1, so the furthest it can draw her is a
+  point the server is about to return; it cannot round a corner, skip a leg, or arrive;
+* it **cannot go backwards** — clamped below by the served value;
+* it **measures nothing**;
+* it is **thrown away on every read**, so no error accumulates.
+
+It also refuses `speed_kn` on purpose: that is a LIVE reading of a hull whose fittings 0074 can
+move mid-voyage, while the voyage settles against the profile frozen at departure. The pace is
+`(totalNm − sailedNm)` over `(etaMs − readAtMs)` — the server's own arrival defining its own rate.
+
+`buildChartModel` gained an **optional** fourth argument rather than a nudge inside the layer that
+draws the dot: the glyph, the sailed/ahead track split, her label's anchor, the framing and the
+minimap all read `FleetOnChart.at`, and a smoothing applied to one of them would be a second
+position the panel could then disagree with. Every caller but the Map tab omits it and gets the
+clock-free model this file was built to be — which is what the amended header now says, and what
+the existing "takes no clock" test still proves for that call.
+
+Six new tests, and the control was watched: delete `Math.max(legFrac, Math.min(1, advanced))` and
+**THE CLAMP** goes red on its own while everything else stays green.
+
+### What went wrong on the way
+
+* **My own self-assert was wrong, and it caught itself.** 0075's first apply failed on
+  *"the legs of the frozen path sum to 253.6900 but total_nm is 253.7000"*. Not a defect — legs and
+  `total_nm` are stored at different precisions, so summing the parts cannot reproduce the whole to
+  the last digit. The assertion now carries a measured 0.05 nm tolerance and says why it exists;
+  the fix was the claim, not the code.
+* **The local preview talks to the CLOUD.** `.env.local` carries the real keys, so a plain
+  `npm run build` cannot boot a local world and the browser drive times out waiting for ports.
+  Local-engine build: `VITE_SUPABASE_URL= VITE_SUPABASE_ANON_KEY= npx vite build`. Written down
+  here because it cost D32 an hour too.
+* **A STALE `vite preview` read as twenty-three broken tests.** After a migration lands, the world
+  image is rebuilt (`npm run db:image`) and `vite build` copies it into `dist/db/`. A preview
+  process started BEFORE that keeps serving the old pairing, and every spec that boots the chain in
+  the tab then fails — `db.chain`, `db.image`, all of `rpc.surface`, `rpc.firstSession`. It looks
+  exactly like a migration that broke the world. The single check that separates the two is cheap:
+  re-run ONE of the failures against a freshly started preview. It passed first time.
+  **`TaskStop` on the preview was not enough** — the port stayed bound and something went on
+  answering 200, which is worse than a dead server because the run looks legitimate. Kill the port,
+  not the task, and rebuild the image BEFORE starting the preview.
+
+---
+
 ## 2026-09-03 — D32: "i can't send a fleet in map" — three silences on one path (row 49)
 
 **The request, verbatim:** *"i can't send a fleet in map. check why and tell me"* — reported live on
