@@ -92,6 +92,8 @@ export {
 export { GLYPH, portMarkScale, portStrokeWidth, trianglePath } from './glyphs'
 export { toClosedRingsD, toPolylineD } from './svgPath'
 export { buildTrack, type TrackPaths } from './route'
+// 0075 — where to draw her BETWEEN reads. Exported so the drive can assert the clamp directly.
+export { driftedPoint, type Drift } from './drift'
 export {
   LABEL_PRIORITY,
   LABEL_SIDES,

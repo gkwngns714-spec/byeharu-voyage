@@ -7,6 +7,13 @@
 // arrives already computed (./liveWorld.ts), so the only thing left that a clock could change is
 // the wording of a countdown, and that belongs to the panel that prints it.
 //
+// AMENDED 2026-09-03, and the amendment is narrow on purpose. It takes an OPTIONAL pair of
+// instants now (`Drift`), and with it a fleet at sea is drawn a fraction further along the leg the
+// server put her on. That is not the mover this file deleted: `./drift.ts` cannot leave that
+// segment, cannot move her backwards, measures nothing, and is thrown away whole on every read.
+// Omit the argument and this module is exactly what the paragraph above describes — which is what
+// every caller but the Map tab does.
+//
 // It is also the ONE place that decides which ports are "in use", so the loud/quiet split (§E.5:
 // ports a fleet is not using are quieter) cannot be computed two different ways in two layers.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -14,6 +21,7 @@
 import { project, type LatLon, type ViewBox } from '../lib/geo'
 import type { MapFleet, MapPort, MapVoyage } from './mapTypes'
 import { buildTrack, type TrackPaths } from './route'
+import { driftedPoint, type Drift } from './drift'
 
 /** One fleet, resolved to ink. */
 export interface FleetOnChart {
@@ -91,6 +99,20 @@ export function buildChartModel(
    * Empty by default, which is the map tab: it draws what the world says, never what is being typed.
    */
   considering: readonly string[] = [],
+  /**
+   * 0075 — THE TWO INSTANTS, or null for the clock-free model this file was built to be.
+   *
+   * Omit it and every position is the server's, byte for byte, exactly as before: the read is the
+   * only thing that moves a glyph. Pass it and a fleet at sea is drawn where `./drift.ts` places
+   * her — the same point, advanced along the leg the server put her on and clamped at that leg's
+   * far vertex, so the model can be finer than the read without ever being ahead of it.
+   *
+   * It is a parameter here, on the ONE authority for "where is she on the paper", rather than a
+   * nudge applied by the layer that draws the dot. The dot, the sailed/ahead track split, her
+   * label's anchor, the minimap and the framing all read `FleetOnChart.at`; a smoothing applied to
+   * only one of them would be a second position, and the panel would then disagree with the glyph.
+   */
+  drift: Drift | null = null,
 ): ChartModel {
   const portsByCode = new Map(ports.map((p) => [p.code, p]))
   const roles = new Map<string, PortRole>()
@@ -164,14 +186,18 @@ export function buildChartModel(
       motion.push(voyage.destPoint)
     }
 
-    focus.push(voyage.at)
-    motion.push(voyage.at)
+    // ONE POSITION, and everything below reads it: the glyph, the track's split, her label's
+    // anchor, the framing and the minimap. With no drift given this IS `voyage.at`.
+    const at = driftedPoint(voyage, drift)
+
+    focus.push(at)
+    motion.push(at)
 
     drawn.push({
       fleet,
-      at: voyage.at,
+      at,
       voyage,
-      track: buildTrack(voyage.course, voyage.at, voyage.segIndex),
+      track: buildTrack(voyage.course, at, voyage.segIndex),
       destinationCode: voyage.destinationCode,
       dockedAtCode: null,
     })

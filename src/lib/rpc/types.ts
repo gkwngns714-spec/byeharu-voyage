@@ -685,6 +685,17 @@ export interface VoyagePosition {
   total_nm: number
   lat: number
   lon: number
+  /**
+   * 0075 — THE LENGTH OF THE LEG SHE IS ON, in nautical miles, read off the FROZEN path the same
+   * function measured. It is what lets the chart advance `leg_frac` between reads instead of
+   * letting the marker teleport once every three seconds, and it is served rather than measured
+   * here for one reason: a client that ran its own great-circle over `course` would be a SECOND
+   * measurement of a course the server has already measured, and the two need not agree.
+   *
+   * Optional only for serve-order — a build talking to a server older than 0075 draws a marker
+   * that steps, which is what every build did until now.
+   */
+  seg_nm?: number
 }
 
 /**
