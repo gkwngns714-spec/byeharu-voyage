@@ -186,8 +186,21 @@ export function SendFleet({
       ? f.voyage.to === dest.code
       : f.voyage.dest_point != null &&
         pointToken({ lat: f.voyage.dest_point[0], lon: f.voyage.dest_point[1] }) === destKey)
-  /** A row that can be SENT from a quay or an anchor — at-sea fleets turn instead (divert). */
-  const sendable = (f: FleetView) => f.voyage == null && !liesHere(f)
+  /** WHERE SHE STANDS RELATIVE TO THIS DESTINATION — the fold's ONE verdict about a fleet, read by
+   *  the dry runs, by the row, and by the line that says the whole list is dead. There were two
+   *  before this and they disagreed: a `sendable` that excluded every fleet at sea, and a row-local
+   *  `!lies && !bound` that called those same fleets pressable. Both were right about their own
+   *  question and neither could answer "can ANY of them go" — which is the question a player asks
+   *  by pressing the button.
+   *
+   *    send  — lying at a quay or an anchor somewhere else: a real passage, previewed
+   *    turn  — already at sea and bound elsewhere: her act is a divert, judged at the helm
+   *    lies  — she is already AT this destination
+   *    bound — she is already sailing to it
+   */
+  type Standing = 'send' | 'turn' | 'lies' | 'bound'
+  const standingOf = (f: FleetView): Standing =>
+    liesHere(f) ? 'lies' : boundHere(f) ? 'bound' : f.voyage != null ? 'turn' : 'send'
 
   // ── THE DRY RUNS — one per sendable fleet, once per destination, only while the list is open.
   // SEQUENTIAL, because every preview writes the store's one `refusal` slot and two in flight
@@ -195,7 +208,7 @@ export function SendFleet({
   // holding a fleet is what stops this re-asking on every world read.
   useEffect(() => {
     if (!open || !spec || !seaNav || !target) return
-    const todo = fleets.filter((f) => sendable(f) && byFleet[f.id] === undefined)
+    const todo = fleets.filter((f) => standingOf(f) === 'send' && byFleet[f.id] === undefined)
     if (todo.length === 0) return
     let alive = true
     void (async () => {
@@ -236,7 +249,13 @@ export function SendFleet({
   // when she is under way. Same authorities, same refusal channel, nothing decided on this side
   // of the wire — and a second entrance for the ratio would have been a second one of all three.
   const send = (f: FleetView, keep: Keep) => {
-    if (act?.state === 'busy') return
+    // ONE PRESS AT A TIME — but only for the press that is in flight. This guard used to read
+    // `act?.state === 'busy'` unstamped, while the note that SHOWS "issuing the order…" is stamped
+    // (`acted`, below) with the destination and the fleet. A request that never settles — and
+    // nothing on this path has a timeout — therefore left every OTHER send on the map dead, with
+    // its spinner invisible because the player had moved to a different harbour. Press, nothing,
+    // press again, nothing, for the rest of the session: OWNER_REQUESTS row 49's own words.
+    if (act?.state === 'busy' && act.key === destKey && act.fleetId === f.id) return
     if (!spec || !seaNav || !target) return
     setAct({ key: destKey, fleetId: f.id, state: 'busy', refusal: null })
     void (async () => {
@@ -379,7 +398,8 @@ export function SendFleet({
      */
     const runArgs =
       verb === 'PROVISION' ? { mode: 'DAYS', days: String(ratioDays(f)) } : args
-    if (act?.state === 'busy') return
+    // Stamped, for the same reason `send` is — this is the fix button on the same rows.
+    if (act?.state === 'busy' && act.key === destKey && act.fleetId === f.id) return
     setAct({ key: destKey, fleetId: f.id, state: 'busy', refusal: null })
     void (async () => {
       const okay = await issue(f.id, orderText(fixSpec, runArgs, f.name), null)
@@ -445,15 +465,29 @@ export function SendFleet({
         </p>
       )}
 
+      {/* THE DEAD END, NAMED. OWNER_REQUESTS row 49: *"i can't send a fleet in map."* A house with
+          ONE fleet taps the harbour she is lying in — which is the most natural tap on the map,
+          because her marker and her harbour's name are printed on top of each other — presses
+          "Send fleet", and gets a list in which nothing can be pressed. Every row said why on
+          itself, honestly, and the fold still read as broken: the player pressed SEND and no send
+          existed. It says so ONCE, at the top, before they hunt for the control. */}
+      {open && fleets.length > 0 && !fleets.some((f) => standingOf(f) !== 'lies' && standingOf(f) !== 'bound') && (
+        <p className={fineClass()} data-testid="map-send-nowhere">
+          {fleets.every((f) => standingOf(f) === 'lies')
+            ? `Nothing to send — ${fleets.length === 1 ? 'she is' : 'they are'} already at ${destName}.`
+            : `Nothing to send — every fleet is at ${destName} or bound for it.`}
+        </p>
+      )}
+
       {/* STEP TWO — her fleets, each row carrying its own verdict about THIS destination. */}
       {open && fleets.length > 0 && (
         <div className="space-y-1.5" data-testid="map-send-fleets">
           {fleets.map((f) => {
             const acted = act?.key === destKey && act.fleetId === f.id ? act : null
             const v = byFleet[f.id]
-            const lies = liesHere(f)
-            const bound = boundHere(f)
-            const pressable = !lies && !bound
+            const standing = standingOf(f)
+            const lies = standing === 'lies'
+            const pressable = standing === 'send' || standing === 'turn'
             const on = picked === f.id
             const current = presetOf(f.id)
             return (
@@ -626,6 +660,17 @@ export function SendFleet({
                       <RefusalNote refusal={acted.refusal} testId="map-send-issue-refusal">
                         {fixButtons(f, acted.refusal)}
                       </RefusalNote>
+                    )}
+                    {/* A REFUSAL THE SERVER DID NOT NAME still has to say she did not sail. The
+                        branch above is guarded on `acted.refusal`, so every path that fails
+                        WITHOUT one — `savePreset` returning false with the store's refusal slot
+                        empty is the live one — rendered absolutely nothing: the press was eaten,
+                        the fleet stayed, and the screen said neither. That is the silence row 49
+                        is about, and it is the same silence whatever caused it. */}
+                    {acted?.state === 'refused' && !acted.refusal && (
+                      <p className={fineClass()} data-testid="map-send-silent">
+                        She did not sail, and the server gave no reason — try once more.
+                      </p>
                     )}
                   </div>
                 )}

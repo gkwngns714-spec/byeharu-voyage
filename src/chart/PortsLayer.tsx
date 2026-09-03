@@ -57,8 +57,18 @@ export function PortsLayer({
         // weight rule, same everything else; the SHAPE is the one honest difference.
         const mark = port.kind === 'SEA_PLACE' ? lozengePath : trianglePath
 
+        // `data-port-code` is the mark's IDENTITY, beside the tier and kind that were already
+        // here. A harbour's printed NAME is a rendering decision — the declutterer drops it when a
+        // fleet's own label takes that spot, which is precisely the case OWNER_REQUESTS row 49
+        // lives in — so a drive that can only aim by the word can never aim at the harbour a fleet
+        // is standing in. The code can.
         return (
-          <g key={port.code} data-port-tier={port.sizeTier} data-port-kind={port.kind}>
+          <g
+            key={port.code}
+            data-port-code={port.code}
+            data-port-tier={port.sizeTier}
+            data-port-kind={port.kind}
+          >
             <path
               d={
                 active

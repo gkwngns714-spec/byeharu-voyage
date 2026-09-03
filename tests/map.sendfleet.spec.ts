@@ -233,5 +233,116 @@ test.describe('the whole send, driven on a phone', () => {
     await expect(page.getByTestId('map-send-ratio-send')).toBeEnabled()
 
     await page.screenshot({ path: 'map-fold-ratio-390.png' })
+
+    // ── HOW A HARBOUR IS AIMED AT FROM HERE ON ────────────────────────────────────────────────
+    // By CODE, off the mark, not by the printed word. DEFECT 1 above proves the word is tappable
+    // and that is its own assertion; but the declutterer drops a harbour's NAME when a fleet's
+    // label takes that spot, and the chart re-frames as she sails, so a saved coordinate or a
+    // search by text both go stale. The code does not.
+    const tapHarbour = async (code: string) => {
+      // DISMISS THE OPEN CARD FIRST. It is pinned bottom-right OVER the chart, so a mark that
+      // happens to lie under it takes the tap as a press on the card's own header and the card
+      // simply folds shut — which is how this assertion first failed, reading back a panel whose
+      // whole content was the word "Port". The player has the same ✕; the drive uses it.
+      const dismiss = page.getByTestId('map-detail-panel-close')
+      if ((await dismiss.count()) > 0 && (await dismiss.isVisible())) await dismiss.click()
+      const at = await chart.evaluate((svg, want: string) => {
+        const mark = svg.querySelector(`g[data-port-code="${want}"] path`)
+        if (!mark) return null
+        const r = (mark as SVGGeometryElement).getBoundingClientRect()
+        return { cx: r.x + r.width / 2, cy: r.y + r.height / 2 }
+      }, code)
+      if (!at) return false
+      await page.mouse.click(at.cx, at.cy)
+      // And if an earlier tap DID fold it, open it again — a folded card is not a missing card,
+      // and asserting against its header would be asserting against chrome.
+      const unfold = page.getByTestId('map-detail-panel-fold-toggle')
+      if ((await unfold.count()) > 0 && (await unfold.getAttribute('aria-expanded')) === 'false') {
+        await unfold.click()
+      }
+      return true
+    }
+
+    const fleetsPanel = page.getByTestId('map-fleets-panel')
+    // At 390 the panel starts FOLDED by design (FleetsPanel's defect-3 note); open it if it is.
+    const fold = page.getByTestId('map-fleets-panel-fold-toggle')
+    if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) === 'false') {
+      await fold.click()
+    }
+    const herRow = fleetsPanel.locator('li button').first()
+    await expect(herRow).toBeVisible()
+
+    // ── DEFECT 5: THE ACT ITSELF HAD NEVER BEEN PROVEN ────────────────────────────────────────
+    // Everything above this line, in every version of this file, stopped one press short: the
+    // suite asserted that the fold OPENS, that the ratio MOVES, and that nothing sailed. Not once
+    // did it assert that pressing send makes a voyage. That gap is why OWNER_REQUESTS row 49 could
+    // stand for three days against a green suite. It fires now, and the WORLD is asked, twice.
+    // The armed-not-fired readings above are complete before this line, so firing here takes
+    // nothing away from them — it adds the half that was missing.
+    await page.getByTestId('map-send-ratio-send').click()
+
+    // Reading 1: her row in the fold flips out of `pressable`, which happens only because the WORLD
+    // now says she has a voyage — the store is re-read from the server, never patched here.
+    await expect(page.getByTestId('map-send-row-note').first()).toContainText('Under way', {
+      timeout: 60_000,
+    })
+    // Reading 2, independent of the fold entirely: the corner panel derives her line from the world
+    // payload, and a fleet at sea reads "→ <destination> · <clock>".
+    await expect(herRow).toContainText('→ Cadiz', { timeout: 60_000 })
+
+    // ── DEFECT 4: "i can't send a fleet in map" — the dead end, OWNER_REQUESTS row 49 ──────────
+    // Reported live on production while playing, never reproduced by a test, and reproduced in ten
+    // seconds by driving the real game: tap a harbour where none of your fleets can be sent, press
+    // **Send fleet**, and the fold opens onto a list in which NOTHING is pressable. Every row is a
+    // note. A house with one fleet has pressed SEND and found no send. Each row was individually
+    // honest and the fold as a whole was a dead end — which is the difference between a rule and a
+    // screen.
+    //
+    // On production it was the harbour her fleet was LYING in: her marker and that harbour's name
+    // are printed on top of each other. **That exact tap is not reachable at 390.** The label
+    // engine drops the harbour's name in favour of the fleet's, and the surface's nearest-wins hit
+    // test then hands a tap on that spot to the FLEET, whose card carries no send control at all —
+    // a second face of the same complaint, and the one DetailPanel's `SendHint` already answers.
+    // So the state is reached the other way the fold reaches it, through the fleet she is BOUND
+    // for, which the press above just made true and which lands on the identical branch.
+    expect(await tapHarbour('CAD'), "Cadiz's mark is not on the glass").toBe(true)
+    await expect(detail).toContainText('Cadiz')
+    await page.getByTestId('map-send-fleet').click()
+
+    // THE FIX, MEASURED. Before it, `map-send-nowhere` did not exist and this fold held one row
+    // whose whole content was a note. The player had pressed the one control the screen offered
+    // and the screen had answered with nothing they could act on.
+    await expect(
+      page.getByTestId('map-send-nowhere'),
+      'the fold opened onto a list with nothing pressable in it and never said so — this is ' +
+        'exactly what "i cannot send a fleet in map" looks like from the other side of the glass',
+    ).toBeVisible()
+    // And it is the REAL dead end being named, not a line printed beside a working list.
+    await expect(page.getByTestId('map-send-row-head')).toHaveCount(0)
+    // Her row says which kind of dead end it is. WHICH of the two wordings stands depends on
+    // whether this fold still holds the press that sent her — `acted` is stamped with the
+    // destination and the fleet — so both are accepted here; the assertion is that the row is a
+    // NOTE and names her state, not that it names one particular one.
+    await expect(page.getByTestId('map-send-row-note').first()).toHaveText(
+      /Under way|already bound here/,
+    )
+
+    // POSITIVE CONTROL — the line must be ABSENT wherever a send IS possible, or it says nothing
+    // at all. Any other harbour on the glass will do: she is at sea and may TURN for it.
+    const other = await chart.evaluate((svg, taken: string) => {
+      const marks = Array.from(svg.querySelectorAll('g[data-port-code]'))
+      const hit = marks.find((g) => g.getAttribute('data-port-code') !== taken)
+      return hit ? hit.getAttribute('data-port-code') : null
+    }, 'CAD')
+    expect(
+      other,
+      'only one harbour is marked on the opening frame, so the positive control has nowhere to ' +
+        'aim — without it the assertion above proves only that a string can be rendered',
+    ).not.toBeNull()
+    expect(await tapHarbour(other!), `${other}'s mark went off the glass`).toBe(true)
+    await expect(page.getByTestId('map-send-fleet')).toBeVisible()
+    await page.getByTestId('map-send-fleet').click()
+    await expect(page.getByTestId('map-send-nowhere')).toHaveCount(0)
+    await expect(page.getByTestId('map-send-row-head').first()).toBeVisible()
   })
 })
