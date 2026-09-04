@@ -5,6 +5,178 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-04 — D34: a harbour is reached from its roads (row 72, migration 0076 — SERVER HALF)
+
+**The request, verbatim:** *"create a perpendicular helper line (dotted) that is the shortest point
+between the land city and nearby shore - sea. Then create a point there, and when the ship arrive at
+that point, consider it as the ship have landed on land"*.
+
+The design is `docs/DESIGN_ROADSTEAD.md`, decided and measured the same day. This entry is the
+SERVER half of building it — the generator, the migration, the proofs. A second slice owns
+`src/**` and `tests/**` and has not run yet, so **the game does not draw the dotted line or the
+point yet, and the client still proposes courses quay-to-quay.** Said plainly: 0076 is BUILT and
+locally green on this branch. It is not merged and it is not deployed.
+
+### What the concept is, and why it is not called an anchorage
+
+**The roadstead — the one point of open water a port is reached from.** `anchorage` was already
+taken: `src/chart/chartModel.ts:52` uses it for "one of your fleets lies in this port", and a
+second meaning inside one module is the §7B defect this project keeps paying for.
+
+### What landed
+
+* `public.sea_reaches` gains `roadstead_lat numeric(6,3)` / `roadstead_lon numeric(7,3)`, NOT NULL.
+  Not on `public.ports`, because `ports` is the AUTHORED world and `scripts/db/world-guard.mjs`
+  fails any apply whose world is not `data/*.json` — a raster-derived column there would either
+  break that guard or push the roadstead into a JSON file a hand edit could put on land.
+* **The fold that makes the rest checkable.** `voyage.water_snap_nm` computed the winning cell and
+  threw the coordinates away (0047:225-228), so nothing in SQL could say WHERE a place is reached
+  from. Its body moved down into `voyage.water_roadstead(lat, lon) returns (nm, lat, lon)` and
+  `water_snap_nm` is now one line over it. No signature moved, no function was dropped, three
+  callers untouched — and the migration can now cross-check the Node generator's column against the
+  SQL rule on all 238 rows, which is check (e) and the reason the fold exists.
+* `sea_reaches` is regenerated WHOLE — the 0052 delete-and-insert — with `reaches` measured
+  **roadstead to roadstead**, because that is the passage the mover now sells. Leaving it quay to
+  quay would have had `PortScreen` advertise Port Royal at 560.9 nm from Panama City while
+  `cmd.do_sail` refused the order.
+* Four hunks in `cmd.do_sail`: a port end is its ROADSTEAD, and its allowance is a flat 25 nm
+  instead of `snap_nm + 25`. One hunk in `voyage.assert_paths_water`. One in `world.snapshot()`,
+  which now serves `ports[].roadstead = { lat, lon, nm }`.
+* **`voyage.settle` was not touched, deliberately.** Arrival already docks her at `dest_port_id` on
+  the ETA (0027:409-416), so the moment the course ENDS at the roadstead the owner's sentence is
+  true by the mechanism shipping since 0007. A geometric arrival test would be a second authority
+  for "has she arrived" beside the ETA, and none was written.
+
+### What it MEASURED, this session, against this raster
+
+| | |
+|---|---|
+| places | 238 — **77** already stand on sailable water and ARE their own roadstead at 0 nm; **161** carry one off the quay |
+| off-quay distribution | >10 nm 139 · >20 nm 40 · >30 nm 13 · >50 nm 3 |
+| worst | LNG 67.68 · HAN 58.68 · KHA 57.77 · TOK 47.69 · PAT 47.21 · TRO 45.98 · IZM 40.29 · AMS 35.47 |
+| distinct roadstead cells | **235 for 238 places** — they are NOT unique |
+| distance effect, all 28,203 pairs | mean **−10.89 nm**, median −10.94 nm, **median −0.15 %**, 75.8 % of pairs move under 0.5 %, 1.78 % over 5 % |
+
+**Not a repricing.** 0048 moved PRICES; this moves DISTANCES by a seventh of a percent at the
+median, and no price knob is touched.
+
+**Five pairs move more than 500 nm, not four.** The design said four; the generator found five, and
+the extra one is the sharpest of them all:
+
+    Panama City → Portobelo       35.5  →  10,731.1 nm
+    Panama City → Veracruz     1,449.3  →  11,746.4 nm
+    Panama City → Port Royal     560.9  →  10,577.6 nm
+    Panama City → St Augustine 1,944.6  →  11,068.2 nm
+    Hamburg     → Lubeck          31.2  →     577.1 nm
+
+Panama City to Portobelo was a **35 nm** hop across the isthmus — the cheapest Panama Canal in the
+game, three and a half centuries early, and nobody had counted it. Seven ports lose a route; that
+is the repair, and it is a VISIBLE gameplay change.
+
+**The land guard measured at its own sampling, through `voyage.path_refusal` on the applied chain:**
+
+    Panama City → Port Royal   quay→quay 560.9 nm under 10.82+25 / 19.02+25 nm: ACCEPTED
+                               roads→roads under 25 / 25 nm: E_LAND near 9.35, -79.24
+    Hamburg     → Lubeck       quay→quay  31.2 nm under 31.33+25 / 46.68+25 nm: ACCEPTED
+                               roads→roads under 25 / 25 nm: E_LAND near 53.88, 10.50
+
+The Hamburg row is the worse of the two: the WHOLE 31.2 nm line lies inside head + tail = 78 nm, so
+the guard walks it and checks **zero samples**. It was not lenient there. It was switched off.
+
+**And the finding the break-test produced, which is the one worth keeping:** reverting ONLY the
+allowance — putting `snap_nm + 25` back while the course still runs roads to roads — leaves the
+isthmus line REFUSED. Panama is wider than 35.82 + 44.02 nm of exemption. **What closes Panama is
+the ROADSTEAD, not the flat 25.** The flat 25 matters for the other 28,198 pairs and for the
+Hamburg case; it is not what does the headline repair, and nothing now implies that it is.
+
+### Grandfathering, and the column that already knew
+
+`voyages.path`, `total_nm` and `speed_profile` are frozen at departure, so a fleet at sea when 0076
+applies finishes the voyage she bought. But `voyage.assert_paths_water` walks EVERY stored course,
+and with the tightened allowance it would have failed a passage a player legitimately paid for. No
+new column was invented: `voyages.departed_at` has been there since 0006:63. The re-cut guard gives
+the flat 25 nm only to voyages that departed **at or after the instant 0076 applied** — a literal
+written into the body by `format(…%L…, now())` at apply time — and everything older is judged by
+the rule it was sold under. Both directions are proven in the migration's own self-assert on ONE
+planted isthmus voyage: dated before the cutoff it is walked and accepted; dated after, refused
+E_LAND.
+
+### The mistakes, which are the valuable part
+
+1. **Two `cellLat`s with different signatures, and two guards that could not see it.**
+   `scripts/sea-grid.mjs` exports `cellLat(row)`; `src/lib/sea` exports `cellLat(nav, row)`. The
+   generator imported the first and called it like the second. Every one of the 161 off-quay
+   roadsteads came out `{NaN, NaN}` — **and both of the guards written to catch exactly that waved
+   it through**, because `Math.abs(NaN - NaN) > 1e-9` is false and so is every other `>` against a
+   NaN. It surfaced ninety seconds later as "ACA Acapulco: its own roadstead reaches no water",
+   which names the symptom and not the cause. The repair is a `Number.isFinite` check placed BEFORE
+   the comparisons, in the generator and in `proof-courses.mjs`, and the aliases `navCellLat` /
+   `navCellLon` so the two can never again be confused by eye.
+2. **Check (e) went red on its own first apply, on all 161 rows** — it compared
+   `water_roadstead`'s full-precision `nm` against a column that stores two decimals. Split into a
+   POINT half (exact equality, which is the real claim) and a DISTANCE half whose tolerance is the
+   column's own rounding.
+3. **The probe sailed to the wrong port, and the break-test caught it.** The self-assert's real
+   house first sailed Lisbon → Cádiz, and Cádiz's roadstead is 9.99 nm off her quay — INSIDE
+   `course_join_nm` (15 nm). So reverting the destination hunk changed nothing, the mutation
+   applied cleanly, and `breaktest-0076.mjs` reported that guard as decoration. It was. The probe
+   now sails to the worst-snapping harbour within 600 nm of Lisbon, picked by measurement rather
+   than named — Setúbal today, 26.17 nm out — so the hunk is load-bearing and reverting it is
+   `E_OFF_COURSE`.
+4. **A mutation stayed green and the guard was NOT weakened to match it**: see the Panama finding
+   above. The mutation was wrong; the assert was right.
+
+`scripts/db/breaktest-0076.mjs` now runs 21 mutations and every one goes red for the reason it is
+named after. Two halves are unreachable by any single-hunk mutation — check (c)'s first arm and
+check (e)'s distance arm are both shadowed by check (b) — and that is written on the file rather
+than left as a gap somebody rediscovers.
+
+### Where the design met the code and lost
+
+* **`docs/DESIGN_ROADSTEAD.md` §7 says proof 08 "reads reach/route figures; every asserted number
+  needs re-baselining". It does not.** `08_the_sea_answers.sql` is entirely about `voyage.sea_at`
+  membership and contains no reach figure at all. Nothing was re-baselined there and nothing needed
+  to be. Proofs 04 and 05 pin no distance either — they discover their itinerary — and both passed
+  unchanged.
+* **§0.6 says 234 distinct roadstead cells with four shared. Measured: 235, so three are shared.**
+* **§7 calls Suez, Bristol and Hanoi "the river ports".** Measured: Suez snaps **0.00** nm and
+  Bristol **0.00** (the Severn channel opened her in 0052). Only Hanoi still has an approach, at
+  58.68 nm. Proof 09's re-cut marker says so out loud rather than implying three.
+* **§0.3's "the only four pairs that move more than 500 nm"** — there are five, above.
+* Lisbon herself snaps **23.30 nm**. She is not an edge case; she is the probe's origin, and after
+  0076 the player's very first voyage begins 23 nm off the quay. That is exactly the change the
+  client's sentence in `SendFleet` exists to explain, and it has not been written yet.
+
+### Proof 09's marker was RE-CUT, not deleted
+
+`@pass INLAND_APPROACH_HONEST` used to read *"the river ports' water approach is measured and
+served … approach included"*, and printed "approach included" on every line. After 0076 that is
+**false**: the approach is not sailed. Its new law is *"every approach is measured, served and
+drawn — and no course sails it"*, and it now asserts the roadstead is served, is exactly `snap_nm`
+off the quay, and stands on sailable water; then that the worst-snapping port it holds a course to
+is reachable **under a flat 25 nm allowance with no snap exemption at either end**; then that the
+voyage it actually sailed ran roads to roads. Its planted straight-across-Iberia voyage is now
+dated `now()` rather than a day ago, so it is judged by the law the game runs on today rather than
+by the grandfathered one.
+
+`scripts/db/proof-courses.mjs` was re-cut too: it proposes ROADSTEAD to ROADSTEAD now, and its
+cache fingerprint gained a SHAPE token — the raster and the port set did not move, so nothing else
+would have told it its 4,260 stored proposals were the wrong shape.
+
+### What was NOT done, and what the client slice must now do
+
+Not done here, by scope: **anything under `src/` or `tests/`**. Three of the design's four callers
+are wired — the mover, the guard and the wire are all server-side and are done. The fourth is
+`src/domain/passage/index.ts`, and until it searches from the roadstead **every order the browser
+composes for a port that snaps more than 15 nm will be refused `E_OFF_COURSE`**. The served shape
+it reads is `world.snapshot().ports[].roadstead = { lat, lon, nm }`, never null.
+
+Also not done, deliberately: `voyage.settle`; `cellDiagNm`; any CHANNEL; any price knob. The ~21 nm
+(client) / 25 nm (server) sampling slack at each course end still stands, and shrinking it is the
+never-touch-land slice, not this one.
+
+---
+
 ## 2026-09-03 — D33: the map shows time passing (row 50, migration 0075)
 
 **The request, verbatim:** *"i need a real timer in map, telling me how long i've been on the sea,

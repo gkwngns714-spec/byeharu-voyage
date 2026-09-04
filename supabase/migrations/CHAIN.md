@@ -6,7 +6,11 @@ counting: the free-sea mover was cut as 0038/0039 in the helm worktree and LANDE
 0046/0047, and the slice that took the number 0054 on 2026-08-25 turned out to need **no migration at
 all** - it moved the balance proof onto a fixture (`scripts/db/market-fixture.mjs`) and changed no
 schema, so the number is spent and no file carries it, and **0060 is claimed by another branch**
-(the harbour-snap slice, deliberately blocked until the land repair lands). Counting the files
+(the harbour-snap slice, deliberately blocked until the land repair lands — and note, since
+**0076**, that when it is unblocked it must be **REGENERATED and not merged as drafted**:
+`scripts/build-sea-migration.mjs` now emits `sea_reaches.roadstead_lat/lon`, and a 0060 built
+before 0076 would `delete from sea_reaches` and re-insert without them, against columns 0076
+declares `not null`). Counting the files
 gives 58; counting the numbers gives 65, and only the first is the chain). Each one
 establishes **one concept**, and each one **proves its own effect in the same transaction that
 applies it** — see `README.md` §3 for the self-assert rules this chain follows. Since 0041, every
