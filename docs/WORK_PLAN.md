@@ -115,6 +115,8 @@ re-read from the record, never granted.
 | ~~**Ship stats and fittings**~~ | **0074, merged and LIVE.** Twelve fittings MOUNT, ten stats, slots typed and grown by tier |
 | **Regions and the map split** | not started — the last of stage 2 |
 
+**OUTSIDE THIS QUEUE, and the chain head is no longer 0075.** Owner row 72 landed as **0076 — a harbour is reached from its roads** (`docs/DESIGN_ROADSTEAD.md`, DEV_LOG D34/D34b): a port is now reached from its ROADSTEAD, the one point of open water off its quay, and the mover ends the course there instead of at the inland city. It is not a DESIGN_V1 slice — it is a bug the owner described as a drawing — but it moves `sea_reaches`, `cmd.do_sail`, the land guard and `world.snapshot()`, so **read it before touching navigation, distances or the chart.** Two consequences the next session must not rediscover the hard way: five passages that used to cross land are now the long way round (Panama City to Veracruz / Port Royal / St. Augustine / Portobelo, and Hamburg to Lubeck), and **migration 0060 must be REGENERATED rather than merged as drafted** — it rewrites `sea_reaches` and would silently null the two columns 0076 declares NOT NULL.
+
 **A note for whoever picks this up.** Five of the seven took one session together, not five in
 parallel, and the reason is worth keeping: they share the PORT screen's face strip, and 0067 is
 what made that cheap. A slice that adds a face is one entry in `PORT_FACES` and one row per city —
