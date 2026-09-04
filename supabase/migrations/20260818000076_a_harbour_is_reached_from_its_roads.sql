@@ -39,6 +39,20 @@
 --   6. world.snapshot().ports[] gains one key, `roadstead` — { lat, lon, nm } — so the chart
 --      draws the helper line off a SERVED number and never computes a snap of its own.
 --
+-- ── WHAT IT SUPERSEDES, AND WHY ────────────────────────────────────────────────────────────────
+--   voyage.water_snap_nm(numeric, numeric), created at 0047:199. This file SUPERSEDES it, and
+--   the supersede is a fold, not a change of rule: the body is moved down into
+--   voyage.water_roadstead(lat, lon) UNCHANGED but for keeping the point it already computed
+--   and threw away (0047:225-228), and water_snap_nm becomes one line over it. The SIGNATURE
+--   does not move, no function is dropped, and its three existing callers (0047:594, 0047:612,
+--   0047:1186-1189) are untouched and read the same numbers as before — so the supersede is a
+--   no-op for every caller that existed before this file. What it buys is one body answering
+--   "where is the water nearest this point, and how far", which is what lets self-assert (e)
+--   re-ask PostgreSQL the question the Node generator answered, for every row.
+--   cmd.do_sail, voyage.assert_paths_water and world.snapshot() are RE-CUT, not superseded:
+--   each is sliced hunk-by-hunk out of its DEPLOYED body through pg_get_functiondef, so the
+--   rest of every one of those bodies is carried across byte-identical.
+--
 -- ── AND WHAT IT DELIBERATELY DOES NOT ──────────────────────────────────────────────────────────
 --   * It does not touch voyage.settle. Arrival is ALREADY right: 0027:409-416 docks her at
 --     v.dest_port_id at the ETA, so the moment the course ENDS at the roadstead the owner's
@@ -580,7 +594,7 @@ revoke all on function cmd.do_sail(uuid, jsonb) from public, anon, authenticated
 revoke all on function voyage.assert_paths_water() from public, anon, authenticated;
 
 -- ── SELF-ASSERT ────────────────────────────────────────────────────────────────────────────────
-do $selfassert$
+do $$
 declare
   r          public.sea_raster%rowtype;
   c_probe    constant uuid := '00000000-0076-4000-8000-000000000001';
@@ -1004,4 +1018,4 @@ begin
   raise notice '0076 self-assert ok: A HARBOUR IS REACHED FROM ITS ROADS. % places carry a roadstead; 161 of them lie off the quay (worst LNG 67.68 nm, AMS 35.47 nm) and 77 stand on their own water at 0 nm and ARE their own roadstead. Every one of them is on sailable water, every one is exactly snap_nm from its quay so the helper line the chart draws is the distance the table measured, and every one equals what voyage.water_roadstead answers for the same coordinate — the Node generator and the SQL rule are one rule now, because water_snap_nm''s body moved down into it. Collapsing one roadstead onto its quay is FOUND, exactly once. The isthmus: PAN to POR quay-to-quay is still ACCEPTED under the old snap+25 allowance (so the defect was real) and roads-to-roads is refused %, with the table now quoting % nm the long way round. A real house sailed LIS to SET — whose roadstead lies 26.17 nm off her quay, further than the join tolerance, so nothing here would work from the quay — on a roadstead-to-roadstead course; her frozen path BEGAN at the LIS roads, ENDED at the SET roads, and voyage.settle — untouched — docked her at SET itself: the owner''s sentence, proven. The land guard walks her, GRANDFATHERS a pre-0076 isthmus voyage a player would already have bought, and refuses the same course dated after this file. Every place still reaches every other symmetrically and never under the great circle between their roadsteads; the Arctic is shut (LIS->NAG % nm), there is no Suez and no Panama; 13 raster control cells read back through get_bit; 0 client write grants, 0 client-executable writers.',
     v_ports, v_isthmus, (select (reaches->>'POR')::numeric from public.sea_reaches where code = 'PAN'),
     (select (reaches->>'NAG')::numeric from public.sea_reaches where code = 'LIS');
-end $selfassert$;
+end $$;
