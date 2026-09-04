@@ -69,6 +69,38 @@ export interface SnapshotPort {
   kind: 'HARBOUR' | 'SEA_PLACE'
   /** 0036: the lookout's line for a SEA_PLACE (the LANDFALL report speaks it); null for harbours. */
   approach: string | null
+  /** 0076 — the one point of open water this port is reached from. See {@link PortRoadstead}. */
+  roadstead: PortRoadstead
+}
+
+/**
+ * 0076 — THE ROADSTEAD: the one point of open water a port is reached from, and how far off the
+ * quay it lies. Two columns on `public.sea_reaches`, measured off the raster by the one snap rule
+ * (`voyage.water_roadstead`), served on every port.
+ *
+ * IT IS NOT AN "ANCHORAGE". That word is already taken twice on this side of the wire —
+ * `PortRole = 'anchorage'` on the chart means *one of your fleets lies in this port*, and
+ * `FleetView.anchor` is a fleet's held sea point. A second meaning for it is the defect
+ * `docs/NO_SPAGHETTI.md` §7B exists to prevent.
+ *
+ * NEVER NULL, and there is no fallback arm anywhere in the client for one: 0076 asserts a
+ * `sea_reaches` row for every port — and asserts the port count is non-zero first, so the check
+ * cannot pass over nothing — before anything relies on it.
+ *
+ * WHY IT MATTERS ON THE CLIENT: `cmd.do_sail` takes these two numbers as the course's endpoints
+ * and grants a flat 25 nm of slack at each end. A client that still proposed a course from the
+ * QUAY would hand the server a line beginning up to 67.7 nm from where it verifies she lies, and
+ * every order for a port snapping further than `course_join_nm` (15 nm) would come back
+ * `E_OFF_COURSE` — 139 of the world's 238 places, Lisbon among them. `src/domain/passage` is the
+ * one module that reads it for that purpose.
+ */
+export interface PortRoadstead {
+  lat: number
+  lon: number
+  /** How far the roads lie off the quay, in nautical miles (`sea_reaches.snap_nm`). 0 for a port
+   *  whose own cell is sailable water: she IS her own roadstead, and that is the correct answer
+   *  rather than a missing one (DESIGN_ROADSTEAD §2.4). */
+  nm: number
 }
 
 /**

@@ -42,6 +42,14 @@ export interface MapPort extends LatLon {
    * at exactly the scale a chart exists to be trusted at).
    */
   readonly kind: 'HARBOUR' | 'SEA_PLACE'
+  /** 0076 — THE ROADSTEAD: the one point of open water this port is reached from, and how far off
+   *  the quay it lies. Both SERVED (`world.snapshot().ports[].roadstead`), copied field-for-field.
+   *  For a port whose own cell is sailable water this IS the port's coordinate and `roadsteadNm` is
+   *  0 — the helper line has zero length and is not drawn, which is the correct picture of a port
+   *  that is its own roadstead, not a fallback. The chart never computes one: a client-side snap
+   *  would be a second answer to "where is this port reached from" (tests/duplication.spec.ts). */
+  readonly roadstead: LatLon
+  readonly roadsteadNm: number
 }
 
 /**

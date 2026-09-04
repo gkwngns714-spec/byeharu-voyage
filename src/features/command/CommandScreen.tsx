@@ -27,7 +27,7 @@ import { PreviewPanel, type CheckState } from './PreviewPanel'
 import { useCommandDraft } from '../../domain/order'
 import { composableVerbs, findVerb, isComplete, orderText, type FixAction } from '../../domain/order'
 import { fleetHoldTotal, fleetHoldUsed, fleetPortCode } from '../../domain/fleet'
-import { parsePointToken, pointLabel, proposeCourse, sailOrigin } from '../../domain/passage'
+import { pointLabel, proposeCourse, sailOrigin, sailTarget } from '../../domain/passage'
 
 // CMD — THE HEART. E.1, and the only tab that changes the world.
 //
@@ -202,14 +202,10 @@ export function CommandScreen() {
   // and the order committed are priced over the same water.
   const course = useMemo(() => {
     if (spec?.verb !== 'SAIL' || !fleet || !seaNav) return null
-    const destCode = args['dest']
-    const pointTok = args['dest_point']
-    const port = destCode ? portByCode[destCode] : undefined
-    const target = port
-      ? { lat: port.lat, lon: port.lon }
-      : pointTok
-        ? parsePointToken(pointTok)
-        : null
+    // 0076: a harbour's course endpoint is her ROADS, not her quay, and `domain/passage` is the one
+    // place that knows it — this screen and the map's send panel each held their own copy of this
+    // line until the roadstead needed changing in both.
+    const target = sailTarget(args, portByCode)
     const origin = sailOrigin(fleet, portByCode)
     if (!target || !origin) return null
     return proposeCourse(seaNav, origin, target)

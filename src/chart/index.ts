@@ -92,6 +92,11 @@ export {
 export { GLYPH, portMarkScale, portStrokeWidth, trianglePath } from './glyphs'
 export { toClosedRingsD, toPolylineD } from './svgPath'
 export { buildTrack, type TrackPaths } from './route'
+// 0076 — WHICH PORTS SHOW THEIR ROADS, AND WHERE THE TWO ENDS ARE. The DECISION, exported; the
+// layer that renders it is not, like every other layer in here (docs/SECTIONS.md:108). It is
+// exported for the same reason `buildTrack` and `planLabels` are: what appears on the paper is
+// data, and data is what a spec can hold to account without rendering a component.
+export { roadsteadMarks, type RoadsteadMark } from './roadsteads'
 // 0075 — where to draw her BETWEEN reads. Exported so the drive can assert the clamp directly.
 export { driftedPoint, type Drift } from './drift'
 export {

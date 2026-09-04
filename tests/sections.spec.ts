@@ -280,3 +280,33 @@ test('the chart has one entrance', () => {
       deep.join('\n'),
   ).toEqual([])
 })
+
+// ── ADDED 2026-09-04, WITH THE ROADSTEAD LAYER (0076) ──────────────────────────────────────────
+// A new SVG layer is the moment the rule above is easiest to break, because a layer is a component
+// and a component looks exportable. docs/SECTIONS.md:108 says what it costs: the layers are
+// "exported to nobody", and `ChartCanvas` being their ONLY composer "is what makes the paint order
+// a rule rather than a habit". Export `RoadsteadsLayer` and a screen can mount the roads with no
+// tracks under them and no port marks over them — two paint orders, which can disagree.
+//
+// This is written as a rule about ONE file rather than a general one because it can be: the layers
+// are a closed set that changes about twice a year, and a general "no .tsx in src/chart is
+// exported" rule would have to know which .tsx files are surfaces (`ChartCanvas`, `SmallChart`,
+// `Minimap`, `ViewControls`) and which are layers, which is a list either way.
+test('the roadstead layer is furniture: ChartCanvas composes it and nobody else can reach it', () => {
+  const entrance = readFileSync(path.join(SRC, 'chart', 'index.ts'), 'utf8')
+  expect(
+    entrance.includes('RoadsteadsLayer'),
+    `src/chart/index.ts exports RoadsteadsLayer. The SVG layers are exported to nobody — what a ` +
+      `caller may have is the DECISION (roadsteadMarks), not the paint.`,
+  ).toBe(false)
+
+  const importers = imports(path.join(SRC, 'chart'))
+    .filter((r) => r.spec === 'chart/RoadsteadsLayer')
+    .map((r) => r.from)
+  expect(
+    importers,
+    `RoadsteadsLayer is imported by something other than ChartCanvas. There is one composer, and ` +
+      `that is what makes the paint order — coastline, tracks, roadsteads, ports, fleets, names — ` +
+      `a rule instead of a habit.`,
+  ).toEqual(['chart/ChartCanvas.tsx'])
+})

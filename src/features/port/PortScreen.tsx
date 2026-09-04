@@ -18,6 +18,7 @@ import { formatInt, formatPct } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { MarketView, WorldSnapshot } from '../../lib/rpc'
 import { useCommandDraft } from '../../domain/order'
+import { roadsteadNote } from '../../domain/passage'
 import { AcademyFace } from './PortFaces'
 import { PortTrade } from './PortTrade'
 import { QuayToday } from './PortFair'
@@ -183,6 +184,12 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   // 0067: the kinds, keyed once. The screen never names a building — the server does.
   const kindByCode = Object.fromEntries(snapshot.building_kinds.map((k) => [k.kind, k]))
 
+  // 0076 — WHERE SHIPS ACTUALLY LIE TO REACH THIS HARBOUR. A served number turned into plain words
+  // by domain/passage, the same authority the map's send panel prints, so a harbour cannot be
+  // explained two ways. Null where the quay stands on its own water and there is nothing to say —
+  // 55 of the 214 harbours, and every one of the 14 sea places (see the SEA_PLACE view below).
+  const roads = roadsteadNote(port.roadstead.nm)
+
   const reachHere = reaches[port.id]?.reaches ?? null
   const oneLeg = (reachHere ? Object.entries(reachHere) : [])
     .map(([code, nm]) => ({ port: portByCode[code] ?? null, code, nm }))
@@ -224,6 +231,13 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         </Card>
         <Card>
           <CardHeader title="Sailing on" subtitle="The nearest water, by sailed miles." />
+          {/* 0076's ROADS LINE IS DELIBERATELY NOT HERE, and it is not an oversight. A sea place is
+              AUTHORED on strictly sailable water — scripts/build-sea-places.mjs asserts it and
+              never snaps one — so all fourteen of them measured 0.00 nm in 0076's own seed and ARE
+              their own roadstead. The sentence could never fire, and its words ("off the quay")
+              would be false here if it ever did: this screen's own line two cards up is "There is
+              no quay here". If a sea place is ever authored off its water, that is a decision
+              somebody makes on purpose, and it needs its own words. */}
           <div className="space-y-1">
             {oneLeg.map(({ port: p, code, nm }) => (
               <Button
@@ -260,6 +274,11 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         explain={SHIP_STATS.draft.line}
         actions={<Badge tone="neutral">draft {port.max_draft}</Badge>}
       />
+
+      {/* 0076 — WHERE SHIPS LIE TO REACH THIS HARBOUR. Directly under the header, because it is a
+          fact about the place itself and it is what explains a track that starts miles off the
+          quay. One line, plain words, and absent entirely where the quay is its own roadstead. */}
+      {roads && <p className={fineClass()}>{roads}</p>}
 
       {/* THE BANNER SAYS WHERE SHE IS, NOT WHERE A LIST OF FLEETS STARTS. It used to read "your
           NEAREST fleet is at X" off `fleets.find(f => f.port)`, which is neither nearest nor,

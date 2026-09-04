@@ -403,3 +403,111 @@ test('a migration that re-cuts an existing function declares the supersede in it
       `arithmetic (docs/NO_SPAGHETTI.md §3).\n` + offenders.join('\n'),
   ).toEqual([])
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// 5. ONE ANSWER TO "WHERE IS THE WATER NEAREST THIS POINT?" — 0076
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// There are THREE implementations of that question in this repository, and `docs/DESIGN_ROADSTEAD.md`
+// §2.1 MEASURED that two of them are not the same rule:
+//
+//   voyage.water_roadstead   (SQL, 0076)          12 rings, the MINIMUM-distance cell
+//   snapToNav                (src/lib/sea)        12 rings, the MINIMUM-distance cell   — agrees
+//   snapToWater              (scripts/sea-grid)    8 rings, the FIRST cell in scan order — DIFFERS
+//
+// Say it plainly: that is spaghetti, and the one authority is `snapToNav`. It is not folded here
+// because folding it means repointing `scripts/build-sea-places.mjs` at `findPath`, which
+// REGENERATES `data/sea-places.json` — a different slice with a different blast radius. 0076 names
+// it in its own header instead, and these two rules keep it from growing while it waits.
+//
+// THE CLIENT HALF IS THE SHARPER ONE. A port's roadstead is SERVED (`world.snapshot().ports[]`),
+// and `cmd.do_sail` verifies a course against those very numbers. A chart layer or a screen that
+// snapped for itself would be a SECOND answer to "where is this port reached from", and the line
+// drawn, the course proposed and the endpoint the server checks would become three answers that
+// drift the day the raster moves. The client keeps `snapToNav` for exactly one job — a point of
+// open water the player TAPPED (`domain/passage`'s `snapSeaPoint`) — so the guard cannot be
+// "delete it from the client"; it has to be a count, and this is the count.
+
+/** Files under `dir` with any of these extensions, as repo-relative POSIX paths from `ROOT`. */
+function filesUnder(dir: string, exts: RegExp): string[] {
+  const out: string[] = []
+  const walk = (d: string) => {
+    for (const name of readdirSync(d)) {
+      const full = path.join(d, name)
+      if (statSync(full).isDirectory()) walk(full)
+      else if (exts.test(name)) out.push(full)
+    }
+  }
+  walk(dir)
+  return out
+}
+
+/** The names an `import { … } from '…'` statement brings into a file. */
+function importedNames(text: string): Set<string> {
+  const names = new Set<string>()
+  for (const m of text.matchAll(/import\s+(?:type\s+)?\{([^}]*)\}\s*from/g)) {
+    for (const part of m[1].split(',')) {
+      const name = part.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]
+      if (name) names.add(name)
+    }
+  }
+  return names
+}
+
+test('snapToNav has ONE importer in src/, and none in the chart or in a screen', () => {
+  const importers = sourceFiles(SRC)
+    .filter((f) => importedNames(read(f)).has('snapToNav'))
+    .map(rel)
+    .sort()
+
+  expect(
+    importers,
+    `The client's one snap has moved or grown a second caller. It exists for exactly one job — a ` +
+      `point of open water the player TAPPED — and it lives behind domain/passage's snapSeaPoint. ` +
+      `A port is reached from its SERVED roadstead (world.snapshot().ports[].roadstead); snapping ` +
+      `for one here would be a second answer to a question the server also answers, and cmd.do_sail ` +
+      `refuses the course that disagrees (E_OFF_COURSE).\n` + importers.join('\n'),
+  ).toEqual(['domain/passage/index.ts'])
+
+  // Said twice on purpose: the equality above is the whole rule, and this is the half that names
+  // the two places it would actually be reached for — a layer that wanted to draw the line, and a
+  // screen that wanted to propose a course.
+  expect(
+    importers.filter((p) => p.startsWith('chart/') || p.startsWith('features/')),
+    `A chart layer or a screen imported snapToNav. The roadstead is SERVED — read it off MapPort ` +
+      `or off SnapshotPort.roadstead.`,
+  ).toEqual([])
+})
+
+test('snapToWater — the third snap rule — is called from exactly one file, and it is its own', () => {
+  const SCRIPTS = path.join(ROOT, 'scripts')
+  const callers: string[] = []
+  let callSites = 0
+  for (const f of filesUnder(SCRIPTS, /\.(mjs|js|ts)$/)) {
+    // Prose names it in several files (0076's own header does); only a CALL counts, and the
+    // declaration is not a call.
+    const code = read(f).replace(/^\s*\/\/[^\n]*$/gm, '')
+    const calls = [...code.matchAll(/(?<!function\s)\bsnapToWater\s*\(/g)]
+    if (calls.length > 0) {
+      callers.push(path.relative(SCRIPTS, f).split(path.sep).join('/'))
+      callSites += calls.length
+    }
+  }
+
+  expect(
+    callers,
+    `snapToWater has grown a caller. It is a THIRD, DIFFERENT snap rule (8 rings, first-in-scan-` +
+      `order) that can return a different cell from snapToNav and from voyage.water_roadstead, and ` +
+      `it is left standing only because folding it regenerates data/sea-places.json. Repoint the ` +
+      `new caller at findPath / snapToNav instead of adding to it.\n` + callers.join('\n'),
+  ).toEqual(['sea-grid.mjs'])
+  // Both of them are findSeaRoute's two endpoints (scripts/sea-grid.mjs:276-277). Pinned as a
+  // number so a third call inside the same file cannot hide behind the file list above.
+  expect(callSites, 'snapToWater is called somewhere new inside sea-grid.mjs').toBe(2)
+
+  // …and nothing on the client has ever heard of it.
+  expect(
+    sourceFiles(SRC).filter((f) => /\bsnapToWater\b/.test(read(f))).map(rel),
+    'snapToWater reached src/. It is a build-time script rule, and it is not the authority.',
+  ).toEqual([])
+})

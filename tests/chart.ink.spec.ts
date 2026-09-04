@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { portMarkScale, portStrokeWidth } from '../src/chart'
+import { GLYPH, portMarkScale, portStrokeWidth } from '../src/chart'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CHART'S INK — how far land is from water, and how loud a great port is beside a small one.
@@ -62,6 +62,29 @@ test.describe('a great harbour does not look like a roadstead', () => {
       expect(portStrokeWidth(bad), `weight(${bad})`).toBeGreaterThanOrEqual(portStrokeWidth(1))
       expect(portStrokeWidth(bad), `weight(${bad})`).toBeLessThanOrEqual(portStrokeWidth(5))
     }
+  })
+})
+
+// ── 1b. THE FOURTH MARK — the roadstead (0076), which must read as none of the other three ─────
+
+test.describe('the roadstead is not any other round thing on this chart', () => {
+  test('it is the smallest of them, and nowhere near the destination ring', () => {
+    // Three round marks were already on this sheet before 0076:
+    //   destination ring  r 11, dashed 3 3, brass   ·   fleet dot  r 4.4, FILLED brass, haloed
+    // The roads have to be readable as neither, and RADIUS is the channel they use — fill and ink
+    // are spoken for (a filled mark means "a fleet of yours", brass means "yours").
+    expect(GLYPH.roadsteadRadius).toBeLessThan(GLYPH.fleetDotRadius)
+    expect(GLYPH.destinationRingRadius / GLYPH.roadsteadRadius).toBeGreaterThanOrEqual(4)
+    // …and smaller than the quiet harbour mark at the tier both ramps are centred on, so a coast
+    // full of roadsteads still reads as a coast of ports: 5.2 px across against 7.2.
+    expect(2 * GLYPH.roadsteadRadius).toBeLessThan(2 * GLYPH.quietPortHalfWidth)
+  })
+
+  test('the zoom floor is the smallest LOUD mark this chart draws — the derivation, not the number', () => {
+    // glyphs.ts states 6 px as `2 × loudPortHalfWidth × portMarkScale(1)`. Asserting the DERIVATION
+    // rather than the literal is what makes it go red if either ramp is retuned — at which point
+    // somebody decides what the floor is, instead of it quietly ceasing to be the width of a mark.
+    expect(GLYPH.roadsteadMinPx).toBeCloseTo(2 * GLYPH.loudPortHalfWidth * portMarkScale(1), 9)
   })
 })
 

@@ -13,7 +13,15 @@ import {
   useCommandDraft,
   type CommandIntent,
 } from '../../domain/order'
-import { fleetNow, pointLabel, pointToken, proposeCourse, sailOrigin } from '../../domain/passage'
+import {
+  fleetNow,
+  pointLabel,
+  pointToken,
+  proposeCourse,
+  roadsteadCourseNote,
+  sailOrigin,
+  sailTarget,
+} from '../../domain/passage'
 import { portNameOf, useWorld } from '../../live/worldStore'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -162,14 +170,19 @@ export function SendFleet({
 
   const destName = dest.kind === 'port' ? dest.name : pointLabel(dest.at)
   const destKey = dest.kind === 'port' ? dest.code : pointToken(dest.at)
-  const target: LatLon | null =
-    dest.kind === 'port'
-      ? ((p) => (p ? { lat: p.lat, lon: p.lon } : null))(portByCode[dest.code])
-      : dest.at
 
   // THE ONE INTENT'S ARGS — the same tokens a hand-off would carry and the order line will read.
   const args: Record<string, string> =
     dest.kind === 'port' ? { dest: dest.code } : { dest_point: pointToken(dest.at) }
+  // WHERE THE PASSAGE ENDS, read off those same tokens by the ONE authority (domain/passage). For a
+  // harbour that is her ROADS and not her quay (0076): `cmd.do_sail` verifies the course against
+  // the roadstead, so a quay-to-quay proposal comes back E_OFF_COURSE for any port snapping more
+  // than 15 nm — 139 of the world's 238 places. This screen and the Command tab each held their
+  // own copy of this line until 0076 needed to change both.
+  const target: LatLon | null = sailTarget(args, portByCode)
+  // …and the plain sentence that says why the track will not touch the quay. Null for a port that
+  // stands on her own water, and for a bare point of open sea, which has no quay to lie off.
+  const roads = dest.kind === 'port' ? roadsteadCourseNote(portByCode[dest.code]?.roadstead.nm ?? 0) : null
   const spec = findVerb(verbs, 'SAIL')
 
   const open = flow?.key === destKey ? flow.open : false
@@ -447,6 +460,15 @@ export function SendFleet({
 
   return (
     <div className="mt-2 space-y-1.5" data-testid="map-send">
+      {/* WHY THE TRACK WILL NOT TOUCH THE QUAY (0076). One line under the destination's name,
+          BEFORE the act, because at departure the marker leaves the triangle for a point up to
+          67.7 nm out and a player who was not told reads that as a bug. The wording is
+          domain/passage's, the same authority the harbour screen prints. */}
+      {roads && (
+        <p className={fineClass()} data-testid="map-send-roads">
+          {roads}
+        </p>
+      )}
       {/* STEP ONE — the act's name, the owner's own words. Pressing it REVEALS (aria-expanded);
           pressing again is the same gesture undone. Never disabled. */}
       <Button

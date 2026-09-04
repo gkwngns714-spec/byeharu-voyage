@@ -5,6 +5,127 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-04 — D34b: the roads, drawn and sailed to (row 72, migration 0076 — CLIENT HALF)
+
+The other half of the entry below. The server half seeded the roadstead, served it and moved the
+course's endpoints onto it; **until this slice the client still proposed courses quay to quay, so
+every order for a port snapping further than the 15 nm join tolerance came back `E_OFF_COURSE`** —
+139 of the 238 places, Lisbon (23.30 nm) among them, which is the §K.1 opening house's own harbour.
+Said plainly: this is BUILT on `osn-0076-anchorage`. It is not merged and it is not deployed, and
+nobody has yet opened the running game and looked at the dotted line.
+
+### What landed
+
+* **The blocking one first.** `src/domain/passage` now searches ROADSTEAD to ROADSTEAD.
+  `sailOrigin` returns the port's roads for a fleet at a quay and for a queued order's origin (a
+  voyage to a port now ENDS in her roads, so that is where the next order starts), and a new
+  `sailTarget(args, portByCode)` answers where a SAIL arrives. A tapped point of open water still
+  goes through `snapSeaPoint` exactly as before.
+* **`sailTarget` is a FOLD, not a new function.** That line existed twice — `SendFleet.tsx` and
+  `CommandScreen.tsx` each turned a destination into `{ lat: p.lat, lon: p.lon }` — and 0076 is
+  exactly the change that had to be made in both on the same afternoon or one screen would have gone
+  on proposing courses the server refuses. It reads the ORDER'S OWN TOKENS (`dest`, `dest_point`),
+  which both screens already hold, so what the course is proposed over and what the order line says
+  cannot come apart.
+* **`SnapshotPort.roadstead` and `MapPort.roadstead` / `roadsteadNm`**, copied field for field off
+  the wire in `liveWorld.ts`. Nothing is derived and the chart owns no snap.
+* **`src/chart/RoadsteadsLayer.tsx`** — the dotted `1 5` helper line (the water-ahead dash, borrowed
+  from `FleetsLayer`, not invented) and a hollow r-2.6 circle in faint ink, composed by
+  `ChartCanvas` between the tracks and the ports and **exported to nobody**. The DECISION lives
+  beside it in `src/chart/roadsteads.ts` (`roadsteadMarks`), which is what makes it provable — see
+  the harness note below.
+* **Two sentences, one authority.** `roadsteadNote` and `roadsteadCourseNote` in `domain/passage`,
+  printed by `PortScreen` (both the harbour view and the sea-place view) and by `SendFleet`. They do
+  NOT touch `ports.approach`, which is a SEA_PLACE-only remark and would be a second meaning for
+  that word.
+* **`tests/mapWorld.fixture.ts`** gained the 214 harbours' roads as their own block, read out of
+  0076's own `VALUES` — 159 off the quay, 55 standing on their own water.
+
+### Where the design met the code and lost
+
+* **`DESIGN_ROADSTEAD` §8.3 asks for a spec that renders `RoadsteadsLayer` and counts its `<path>`
+  and `<circle>`. That is impossible in this harness** — Playwright compiles JSX in anything a spec
+  imports with its own component-testing pragma, so `renderToStaticMarkup` of an app component
+  throws; `tests/waters.panel.spec.ts:19-22` measured it on 2026-08-25 and says so. The layer was
+  therefore split the way `labels.ts`/`LabelsLayer` and `route.ts`/`FleetsLayer` already are: the
+  decision is data and the data is what is proved. The two facts that live only in the markup — the
+  dash and the paint order — are read off disk, the way `sections.spec.ts` reads the import graph.
+* **§4.3 says `roadsteadMinPx = 6` is "twice the quiet mark's `quietPortHalfWidth: 3.6`". Twice 3.6
+  is 7.2.** The value 6 is kept, with a derivation that is actually exact: `2 × loudPortHalfWidth ×
+  portMarkScale(1)` = 2 × 5 × 0.6 = **6.0**, the full width of the smallest mark this chart draws in
+  its loud weight. `chart.ink.spec.ts` asserts the derivation rather than the literal, so retuning
+  either ramp goes red instead of quietly detaching the floor from any mark.
+* **§4.3's "6 px ≈ 11 nm" is true only at the equator, and the consequence is bigger than it
+  sounds.** The threshold is on the DRAWN separation, and on an equirectangular sheet a degree is
+  the same length everywhere — so the same nautical mile buys more line the further north a harbour
+  lies. Measured over the fixture: at the world frame **0** of the 159 draw, at the opening frame
+  **132**, at the tightest zoom all **159**. The design's picture of "the ~40 over 20 nm show, the
+  ~100 under 11 nm do not" is wrong about which ports; the RULE is still right, because it is a rule
+  about the picture and it is stated in pixels.
+* **§5.4 puts the port-screen sentence "beside the reach list at `PortScreen.tsx:181-190`". That
+  block is the SEA_PLACE arm** — a harbour has no reach list on that screen at all. The sentence
+  went under the harbour's `PageHeader` instead. It was ALSO put beside the sea place's reach list,
+  where the design pointed, and then taken back out: a sea place is authored on strictly sailable
+  water (`build-sea-places.mjs` asserts it and never snaps one), so all fourteen measured **0.00 nm**
+  in 0076's own seed and the line could never fire — and its words ("off the quay") would have been
+  false there, on a screen whose own card says *"There is no quay here"*. A branch that can only
+  ever go one way, wearing wording that would be wrong if it went the other, is worse than no
+  branch; the reason it is absent is written where it would have been.
+* **§5.4's map sentence, "She sails from the roads, 35.5 nm out", is about the ORIGIN while the
+  panel it sits in is about the DESTINATION** — 35.5 is Amsterdam's figure, and Amsterdam is where
+  she is going. It reads `Her course ends in the roads, 35.5 nm off the quay.` instead: true of the
+  panel it is in, and the same fact the player needs.
+* **§8.3's control for the zero-distance rule — "make the layer draw unconditionally; the
+  zero-length case renders and the spec bites" — only bites through ONE of the two specs**, and it
+  is worth knowing which. Bristol's roads ARE her quay, so with the guard removed the pixel
+  threshold still culls her and her spec stays green; what goes red is the port served `nm = 0`
+  whose coordinates differ, which is the §7C claim itself (the SERVED number decides, never a
+  comparison of two floats). Watched, both ways.
+
+### The controls, every one WATCHED going red
+
+| control | what it printed |
+|---|---|
+| a fixture roadstead collapsed onto its quay | the mark vanished (`Expected length: 1, Received length: 0`) and at low zoom the degenerate `"M4.88 -52.37L4.88 -52.37"` appeared — the zero-length line, named |
+| the `roadsteadNm === 0` arm removed | *the SERVED number decides* went red: a port served 0 nm drew a line anyway |
+| the `roadsteadMinPx` threshold removed | the world frame drew **159** roads where it must draw **0** |
+| `ChartCanvas` handed the whole port table | the composition assertion bit on `ports={drawnPorts}` |
+| `RoadsteadsLayer` exported from `chart/index.ts` | *the SVG layers are exported to nobody* |
+| `snapToNav` imported into `PortsLayer.tsx` | the importer list came back `["chart/PortsLayer.tsx"]` |
+| a second file calling `snapToWater` | the caller list came back `["build-sea-places.mjs"]` |
+| `roadsteadRadius` set to the destination ring's 11 | `Expected: < 4.4, Received: 11` |
+| `buildChartModel` reading the roadstead | the model snapshot diverged AND `a fleet at anchor wins the tie with the port it lies in` went red too — a docked fleet's glyph would have left her harbour |
+| `SendFleet` aiming at the quay again | *does not read sailTarget* |
+| `db.chain`'s pinned last migration | that one was already red at HEAD: `Expected "…0075…", Received "…0076…"` |
+
+### THREE REDS IN THE SERVER HALF, found by running the suite that was never run on this branch
+
+They are outside this slice's scope (`supabase/**`) and were **not** touched. All three were red at
+`6a418f0` before a single line of client code was written:
+
+1. **`tests/duplication.spec.ts` cannot see 0076's self-assert at all.** The block is opened
+   `do $selfassert$` (`:583`); every other migration in the chain writes `do $$`, and the guard reads
+   `/do\s+\$\$/`. So the file that proves itself most thoroughly in the chain is reported as *"no
+   do $$ … $$ self-assert block at all"*. It contains no `$$` of its own, so the tag buys nothing.
+   **Fix: `do $selfassert$` → `do $$` and its closing tag.** The guard was NOT widened to match, on
+   purpose: never weaken an assertion to get a pass.
+2. **0076 re-cuts `voyage.water_snap_nm` without the word "supersede" in its header.** It genuinely
+   does supersede it — the body moved down into `voyage.water_roadstead` and the old name is now one
+   line over it, which is the fold the migration's own evidence rests on. **Fix: say so in the
+   header.**
+3. `tests/db.chain.spec.ts`'s pinned `LAST` still named 0075. That one IS in this slice's scope and
+   is fixed here, with the reason written beside it the way every previous move was.
+
+### What remains unproven, and needs a real browser
+
+Everything in `DESIGN_ROADSTEAD` §8.4. Nothing in this slice has been looked at in the running game:
+not the dotted line, not the circle, not either sentence, and not a real SAIL whose track begins at
+the circle rather than at the triangle. `proposeCourse`'s in-browser cost has also not been
+re-measured against the 166 ms budget, and the search now starts from a WATER cell instead of a land
+one, so the A* fan-out is genuinely different. Row 72 stays OPEN.
+
+---
+
 ## 2026-09-04 — D34: a harbour is reached from its roads (row 72, migration 0076 — SERVER HALF)
 
 **The request, verbatim:** *"create a perpendicular helper line (dotted) that is the shortest point
