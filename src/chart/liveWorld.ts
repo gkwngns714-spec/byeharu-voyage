@@ -43,6 +43,10 @@ export function mapPortsOf(ports: readonly SnapshotPort[]): MapPort[] {
     lon: p.lon,
     sizeTier: p.size_tier,
     kind: p.kind,
+    // 0076 — THE ROADS, field for field. `roadstead.nm` is the SERVED distance and the only thing
+    // that decides whether a helper line is drawn at all; this module has no snap and wants none.
+    roadstead: { lat: p.roadstead.lat, lon: p.roadstead.lon },
+    roadsteadNm: p.roadstead.nm,
   }))
 }
 

@@ -58,7 +58,7 @@ import {
 } from '../src/lib/rpc'
 import type { MarketGood } from '../src/lib/rpc'
 import { buyableHere } from '../src/features/market/marketRows'
-import { courseBetween, seaNav } from './seaCourse.fixture'
+import { courseBetweenPorts, seaNav } from './seaCourse.fixture'
 import { installMarketFixture } from '../scripts/db/market-fixture.mjs'
 
 let db: LocalDb
@@ -312,7 +312,7 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
       fleet.id,
       `SAIL Gaivota TO ${destination.code}`,
       fleet.version,
-      courseBetween(await seaNav(), lisboa, destination),
+      courseBetweenPorts(await seaNav(), lisboa, destination),
     ),
   )
   expect(sailed.order.status).toBe('done')
@@ -347,7 +347,7 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   expectOk(await cmdIssue(fleet.id, `SELL ${cargo.code} ALL`))
   expectOk(await cmdIssue(fleet.id, `BUY ${homeward.code} 10`))
   expectOk(
-    await cmdIssue(fleet.id, 'SAIL Gaivota TO LIS', null, courseBetween(await seaNav(), destination, lisboa)),
+    await cmdIssue(fleet.id, 'SAIL Gaivota TO LIS', null, courseBetweenPorts(await seaNav(), destination, lisboa)),
   )
 
   fleet = expectOk(await worldFleets())[0]

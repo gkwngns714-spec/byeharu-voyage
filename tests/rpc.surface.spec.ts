@@ -14,8 +14,9 @@ import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { isWaterAt, navFromServed } from '../src/lib/sea'
+import { haversineNm } from '../src/lib/geo'
 import { TIME_COMPRESSION } from '../src/lib/format'
-import { courseBetween, seaNav } from './seaCourse.fixture'
+import { courseBetweenPorts, seaNav } from './seaCourse.fixture'
 import {
   RPCS,
   backendKind,
@@ -102,6 +103,10 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   expect(isNum(lisboa!.dev_industry) && isNum(lisboa!.dev_commerce) && isNum(lisboa!.dev_military)).toBe(
     true,
   )
+  // 0076 — THE ROADS. Lisbon's own cell is land, and she is reached from a point 23.30 nm off her
+  // quay; the client reads exactly these three numbers and computes none of them.
+  expect(isNum(lisboa!.roadstead.lat) && isNum(lisboa!.roadstead.lon)).toBe(true)
+  expect(lisboa!.roadstead.nm).toBeGreaterThan(20)
 
   const sal = snap.goods.find((g) => g.code === 'salt')!
   expect(isStr(sal.id) && isStr(sal.name)).toBe(true)
@@ -167,6 +172,43 @@ test('world.sea_raster() and world.reach() serve the free sea (0039)', async () 
   // The Arctic fix, read through the client seam: Japan is priced round the Cape, not the pole.
   const nagasaki = snap.ports.find((p) => p.name === 'Nagasaki')!
   expect(reach.reaches[nagasaki.code]).toBeGreaterThan(12_000)
+})
+
+test('world.snapshot() gives EVERY port the roads it is reached from, and the line is the distance', async () => {
+  // 0076. The client draws a helper line from the quay to this point and proposes every course
+  // from it; `cmd.do_sail` verifies against the same two columns. So three things have to be true
+  // of the wire, and none of them can be checked by a type:
+  const snap = expectOk(await worldSnapshot())
+  expect(snap.ports.length).toBeGreaterThan(200)
+
+  // (a) NEVER NULL. There is no fallback arm in the client, deliberately — 0076 asserts a
+  //     sea_reaches row for every port, and this is that claim read back off the wire.
+  const missing = snap.ports
+    .filter((p) => !p.roadstead || !isNum(p.roadstead.lat) || !isNum(p.roadstead.lon) || !isNum(p.roadstead.nm))
+    .map((p) => p.code)
+  expect(missing, 'ports served without a roadstead — the client would have to compute one').toEqual([])
+
+  // (b) THE LINE DRAWN IS THE DISTANCE MEASURED (src/chart/route.ts:8-12). Measured HERE with the
+  //     client's own great circle, against the server's `snap_nm`: two implementations, one
+  //     number. The tolerance is the column's own rounding — snap_nm is numeric(_,2) and the
+  //     roadstead is numeric(_,3) — not a licence.
+  const drift = snap.ports
+    .map((p) => ({ code: p.code, off: Math.abs(haversineNm(p, p.roadstead) - p.roadstead.nm) }))
+    .filter((r) => r.off > 0.02)
+  expect(drift, 'a helper line whose length is not the served distance').toEqual([])
+
+  // (c) A PORT ON HER OWN WATER IS HER OWN ROADSTEAD, coordinate for coordinate — and it is not
+  //     the whole table, or (a) and (b) would both pass over a table of quay coordinates.
+  const ownWater = snap.ports.filter((p) => p.roadstead.nm === 0)
+  const offQuay = snap.ports.filter((p) => p.roadstead.nm > 0)
+  expect(ownWater.length).toBeGreaterThan(50)
+  expect(offQuay.length).toBeGreaterThan(100)
+  for (const p of ownWater) {
+    expect({ lat: p.roadstead.lat, lon: p.roadstead.lon }, `${p.code}`).toEqual({ lat: p.lat, lon: p.lon })
+  }
+  // Amsterdam is the named worst case in the north-west: 35.47 nm off her quay when 0076 measured
+  // her. A table of zeroes serves fine and draws nothing, so one real figure is pinned.
+  expect(snap.ports.find((p) => p.code === 'AMS')!.roadstead.nm).toBeGreaterThan(20)
 })
 
 test('world.market() prices the goods this city trades, with the range, stock band and availability', async () => {
@@ -782,7 +824,7 @@ test('cmd.issue() / cmd.cancel_at() / cmd.clear() return the queue and the new v
   const lisPort = expectOk(await worldSnapshot()).ports.find((p) => p.code === 'LIS')!
   const cadPort = expectOk(await worldSnapshot()).ports.find((p) => p.code === 'CAD')!
   const sailed = expectOk(
-    await cmdIssue(fleet.id, 'SAIL Gaivota TO CAD', null, courseBetween(await seaNav(), lisPort, cadPort)),
+    await cmdIssue(fleet.id, 'SAIL Gaivota TO CAD', null, courseBetweenPorts(await seaNav(), lisPort, cadPort)),
   )
   expect(sailed.order.status).toBe('done')
   const queued = expectOk(await cmdIssue(fleet.id, `SELL ${subject.code} ALL`))
@@ -824,10 +866,21 @@ test('a fleet at sea reports its voyage and its closed-form position', async () 
   expect(v.nm_done).toBeGreaterThanOrEqual(0)
   expect(v.nm_done).toBeLessThanOrEqual(v.total_nm)
   // THE WHOLE COURSE is served — the chart draws exactly this line (src/chart/route.ts).
+  //
+  // RE-CUT 2026-09-04 FOR 0076, and it is a STRONGER claim than the one it replaces, not a weaker
+  // one. It read `toBeCloseTo(lis.lat, 1)` — the QUAY, to one decimal — and after 0076 a course to
+  // or from a harbour begins and ends at her ROADS: Lisbon's own cell is land, and she is reached
+  // from 38.625, -9.625, which is 23.30 nm off her quay and 0.085° from it, so the old tolerance
+  // caught the change. The endpoint is now asserted EXACTLY, against the two numbers the wire
+  // serves, because that is the whole of what the owner's row 72 asked the mover to do: *"create a
+  // point there, and when the ship arrive at that point, consider it as the ship have landed on
+  // land."* The last point is checked too, or only half the passage would be proven.
   expect(Array.isArray(v.course)).toBe(true)
   expect(v.course.length).toBeGreaterThanOrEqual(2)
-  expect(v.course[0][0]).toBeCloseTo(lis.lat, 1)
-  expect(v.course[0][1]).toBeCloseTo(lis.lon, 1)
+  expect(lis.roadstead.nm).toBeGreaterThan(15) // …or the assertion below would prove nothing new
+  expect(v.course[0]).toEqual([lis.roadstead.lat, lis.roadstead.lon])
+  const cad = snap.ports.find((p) => p.code === 'CAD')!
+  expect(v.course[v.course.length - 1]).toEqual([cad.roadstead.lat, cad.roadstead.lon])
   const p = v.position!
   expect(p).not.toBeNull()
   expect(isNum(p.lat) && isNum(p.lon)).toBe(true)

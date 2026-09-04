@@ -5,6 +5,7 @@ import { project } from '../lib/geo'
 import { FleetsLayer, TracksLayer } from './FleetsLayer'
 import { LabelsLayer } from './LabelsLayer'
 import { PortsLayer } from './PortsLayer'
+import { RoadsteadsLayer } from './RoadsteadsLayer'
 import { visiblePorts, type ChartModel } from './chartModel'
 import { LABEL_SPAN_LIMIT, minTierForSpan } from './chartView'
 import { GLYPH } from './glyphs'
@@ -16,8 +17,9 @@ import type { ChromeBox } from './useChartSurface'
 // WHAT IS ON THE PAPER, AND IN WHAT ORDER — the whole chart, drawn once, wherever it is drawn.
 //
 // PAINT ORDER IS THE ONLY STACKING SVG HAS, so it is a RULE and not a preference: sea, coast,
-// lanes, tracks, port marks, fleet dots, names. Every name therefore sits on top of every mark and
-// no mark sits on a name; the lanes go under everything, because they are the paper's grain.
+// tracks, ROADSTEADS, port marks, fleet dots, names. Every name therefore sits on top of every mark
+// and no mark sits on a name; the roads go under the ports, because a dotted line crossing a
+// harbour should pass behind it.
 //
 // ── THE SEA IS PAINTED HERE, AND THAT IS NEW (2026-08-23) ──────────────────────────────────────
 // "Sea" used to be the first word of that list and no line of code. The chart drew straight onto
@@ -144,6 +146,12 @@ export function ChartCanvas({
       />
       <CoastlineLayer d={coastlineD} />
       <TracksLayer model={model} unitsPerPx={unitsPerPx} />
+      {/* THE ROADS (0076) — the dotted helper line out to the one point of open water each port is
+          reached from, and the hollow circle on it. UNDER the port marks, because a dotted line
+          crossing a harbour should pass behind it (FleetsLayer.tsx:6-9) and a city standing on its
+          own roads is the right picture. It is handed `drawnPorts`, the same list PortsLayer gets,
+          so a line can never run out of a mark that was not drawn. */}
+      <RoadsteadsLayer ports={drawnPorts} unitsPerPx={unitsPerPx} />
       {/* THE PINPOINT (0039) — the tapped spot of open water, marked exactly like a selected
           port is ringed, because it is the same act one step earlier: naming a destination. */}
       {selection?.kind === 'sea' &&

@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { fitToViewBox } from '../src/lib/geo'
 import { FIT_PADDING, openingBounds } from '../src/chart'
-import { REAL_PORTS } from './mapWorld.fixture'
+import { sailOrigin, sailTarget } from '../src/domain/passage'
+import { REAL_PORTS, dockedFleet, portAt } from './mapWorld.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MAP'S ONE ACT, DRIVEN — three defects found in a real browser on the running game, each one
@@ -98,6 +101,77 @@ test.describe('the opening frame is never a frame of empty water', () => {
     // 12° across is `OPENING_MIN_SPAN_DEG`'s own floor, untouched by the coast rule.
     expect(bounds.maxLon - bounds.minLon).toBeCloseTo(12, 6)
     expect(harboursIn(opensOn(lisbon)).length).toBeGreaterThan(1)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// 4. WHERE THE ORDER AIMS — the roadstead (0076), pure, no browser.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// A fourth defect of the same class as the three above: **an order that looks like it worked and
+// is refused.** After migration 0076 the server verifies a SAIL against the port's ROADSTEAD — the
+// one point of open water it is reached from — and grants a flat 25 nm of slack at each end. A
+// client still proposing quay to quay hands over a line beginning up to 67.7 nm from where the
+// server has her lying, and every order for a port snapping further than `course_join_nm` (15 nm)
+// comes back `E_OFF_COURSE`: 139 of the world's 238 places, Lisbon (23.30 nm) among them. Nothing
+// throws, nothing logs; the row just says no.
+
+const PORT_BY_CODE = Object.fromEntries(REAL_PORTS.map((p) => [p.code, p]))
+
+test.describe('a SAIL begins and ends in the roads, not at the quay', () => {
+  test('a harbour destination resolves to its SERVED roadstead', () => {
+    const ams = portAt('AMS')
+    expect(sailTarget({ dest: 'AMS' }, PORT_BY_CODE)).toEqual({ lat: 52.875, lon: 4.375 })
+    // …which is 35.47 nm from her quay, so this is not the same answer under another name.
+    expect(sailTarget({ dest: 'AMS' }, PORT_BY_CODE)).not.toEqual({ lat: ams.lat, lon: ams.lon })
+    expect(ams.roadstead.nm).toBe(35.47)
+  })
+
+  test('a fleet lying at a quay departs from that harbour’s roads', () => {
+    const gaivota = dockedFleet('g', 'Gaivota', 'LIS')
+    // Lisbon is the §K.1 opening house, and she snaps 23.30 nm — further than the 15 nm join
+    // tolerance. The player's very first voyage is the one this fix exists for.
+    expect(sailOrigin(gaivota, PORT_BY_CODE)).toEqual({ lat: 38.625, lon: -9.625 })
+    expect(portAt('LIS').roadstead.nm).toBe(23.3)
+  })
+
+  test('a port that stands on her own water is her own roadstead — the same answer as before', () => {
+    const brs = portAt('BRS')
+    expect(brs.roadstead.nm).toBe(0)
+    expect(sailTarget({ dest: 'BRS' }, PORT_BY_CODE)).toEqual({ lat: brs.lat, lon: brs.lon })
+  })
+
+  test('a tapped point of open water is untouched — it is already water by construction', () => {
+    expect(sailTarget({ dest_point: '33,-15' }, PORT_BY_CODE)).toEqual({ lat: 33, lon: -15 })
+    expect(sailTarget({}, PORT_BY_CODE)).toBeNull()
+    expect(sailTarget({ dest: 'NOPE' }, PORT_BY_CODE)).toBeNull()
+  })
+
+  test('both screens ask the ONE authority — neither builds a course target of its own', () => {
+    // This is the guard on the shape rather than on the answer. `SendFleet` and `CommandScreen`
+    // each held their own `{ lat: p.lat, lon: p.lon }` before 0076, which meant this slice had to
+    // be applied twice on the same afternoon or one screen would have gone on proposing courses
+    // the server refuses. They now read `domain/passage`'s `sailTarget`, and every proposal is
+    // made with its result.
+    const SRC = path.resolve(process.cwd(), 'src', 'features')
+    for (const file of ['map/SendFleet.tsx', 'command/CommandScreen.tsx']) {
+      const text = readFileSync(path.join(SRC, file), 'utf8')
+      const calls = [...text.matchAll(/proposeCourse\(([^)]*)\)/g)]
+      expect(calls.length, `${file} proposes no course at all — has it moved?`).toBeGreaterThan(0)
+      for (const call of calls) {
+        const args = call[1].split(',').map((s) => s.trim())
+        expect(
+          args[2],
+          `${file} proposes a course to something other than the one authority's answer. Where a ` +
+            `SAIL aims is domain/passage's sailTarget, and for a harbour that is her roadstead.`,
+        ).toBe('target')
+      }
+      expect(
+        text,
+        `${file} does not read sailTarget. A second answer to "where does this order aim" is how ` +
+          `this line came to be written twice in the first place.`,
+      ).toMatch(/const target[^=]*=\s*sailTarget\(/)
+    }
   })
 })
 

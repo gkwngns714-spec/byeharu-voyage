@@ -103,6 +103,35 @@ test.describe('the position is the server’s, copied', () => {
     expect(buildChartModel.length).toBe(2)
   })
 
+  test('the model is BLIND to the roadstead — 0076 put two fields on MapPort and no rule here', () => {
+    // 0076 gave every port the point of open water it is reached from. It is drawn by a layer of
+    // its own and read by domain/passage when an order is composed; the MODEL has no business with
+    // it. If it ever did, a docked fleet's glyph — or a track's first vertex — would move to a
+    // point the server did not put her at, and D33's "a pure function of the last read" would have
+    // quietly gained a second input.
+    //
+    // So: move every roadstead five degrees and call it 99 nm out. NOTHING may change.
+    const moved = PORTS.map((p) => ({
+      ...p,
+      roadstead: { lat: p.lat + 5, lon: p.lon + 5 },
+      roadsteadNm: 99,
+    }))
+    const shot = (fleetsAndPorts: ReturnType<typeof buildChartModel>) =>
+      JSON.stringify({
+        fleets: fleetsAndPorts.fleets,
+        roles: [...fleetsAndPorts.portRoles],
+        destinations: [...fleetsAndPorts.destinationPoints],
+        seaDestinations: fleetsAndPorts.destinationSeaPoints,
+        focus: fleetsAndPorts.focusPoints,
+        motion: fleetsAndPorts.motionPoints,
+      })
+    const served = buildChartModel(mapFleetsOf([AURORA, GAIVOTA]), PORTS)
+    expect(shot(buildChartModel(mapFleetsOf([AURORA, GAIVOTA]), moved))).toBe(shot(served))
+    // …and the fixture really does carry roads that differ from the quays, or the two port tables
+    // above would be the same table and this would prove nothing.
+    expect(PORTS.filter((p) => p.roadsteadNm > 0).length).toBeGreaterThan(100)
+  })
+
   // ═════════════════════════════════════════════════════════════════════════════════════════════
   // 0075 — SHE MOVES BETWEEN READS, AND SHE CANNOT MOVE FURTHER THAN THE SERVER WILL
   //

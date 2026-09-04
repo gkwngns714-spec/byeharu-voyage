@@ -238,6 +238,248 @@ YEO|Yeosu|South Korea|34.76|127.66|3
 ZAN|Zanzibar|Tanzania|-6.17|39.2|3
 `
 
+/**
+ * 0076 — WHERE EACH OF THOSE HARBOURS IS REACHED FROM: `code | roadstead lat | roadstead lon | nm`.
+ *
+ * The ROADSTEAD is the one point of open water a port is reached from, and it is a fact about the
+ * RASTER rather than about the city — which is why it lives on `public.sea_reaches` and not in
+ * `data/ports.json`, and why these three columns come from a different migration than the six
+ * above. They are the `sea_reaches` VALUES block of
+ * supabase/migrations/20260818000076_a_harbour_is_reached_from_its_roads.sql, reduced to the 214
+ * harbours this fixture carries and to the three fields `world.snapshot()` serves.
+ *
+ * 159 of the 214 lie off the quay; the other 55 stand on sailable water
+ * already and ARE their own roadstead at 0.00 nm, coordinate for coordinate (DESIGN_ROADSTEAD §2.4).
+ * `nm` is never null — 0076 asserts that for all 238 places before anything relies on it, so there
+ * is no null arm here and none in the client.
+ */
+const ROADSTEAD_ROWS = `
+ACA|16.625|-99.875|14.14
+ACC|5.375|-0.125|11.98
+ADE|12.625|45.125|11.89
+AGA|30.375|-9.875|15.51
+ALE|31.375|29.625|17.18
+ALG|36.78|3.06|0
+AMB|-3.7|128.18|0
+AMS|52.875|4.375|35.47
+ANC|43.62|13.52|0
+ANT|36.625|30.875|19.07
+ARP|51.22|4.4|0
+ARK|64.875|40.125|22.76
+AYU|14.36|100.58|0
+BAN|5.55|95.32|0
+BND|-4.51|129.9|0
+BAS|26.875|56.375|19.58
+BNT|-5.875|106.125|10.12
+BAR|41.125|2.125|15.51
+BSR|30.375|47.875|9.33
+BEI|34.125|35.375|15.63
+BEL|-1.46|-48.5|0
+BER|60.375|4.875|13.23
+BIL|43.625|-2.875|22.05
+BOR|44.84|-0.58|0
+BOS|42.375|-70.625|19.32
+BRI|13.1|-59.62|0
+BRS|51.45|-2.6|0
+BRU|51.375|3.125|10.53
+BUE|-34.6|-58.38|0
+BUS|35.125|129.375|15.33
+CAD|36.375|-6.375|9.99
+CAL|4.375|8.375|34.68
+CLS|51.125|1.875|10.52
+CLL|-12.125|-77.375|14.51
+CAP|4.875|-1.125|15.44
+CPT|-34.125|18.125|18.78
+CAR|10.625|-75.625|13.53
+CEB|10.375|124.125|14.24
+CEU|35.89|-5.3|0
+CHE|12.875|80.375|13.51
+CHI|22.125|91.625|17.22
+CID|14.92|-23.6|0
+COL|6.875|79.625|14.39
+COP|55.625|12.875|10.85
+COR|39.62|19.92|0
+CRK|51.625|-8.375|16.88
+CUM|10.875|-64.125|25.65
+DIL|-8.375|125.625|10.84
+DIU|20.71|70.98|0
+DUB|53.375|-5.875|13.88
+DBR|42.625|17.875|10.42
+ELM|4.875|-1.125|18.24
+FAM|35.125|34.125|8.6
+FEO|44.875|35.375|10.51
+FUK|33.625|130.125|13.91
+FNC|32.65|-16.92|0
+FUZ|25.625|119.625|32.77
+GAL|6.03|80.22|0
+GDA|54.625|18.875|18.28
+GOA|44.125|8.875|17.27
+GIB|35.875|-5.375|15.96
+GOR|14.625|-17.625|13.35
+GUA|23.13|113.26|0
+HAG|13.48|144.75|0
+HAM|53.625|9.875|6.33
+HAN|20.375|106.625|58.68
+HAV|23.375|-82.375|14.13
+HER|35.625|25.125|17.11
+HIR|33.375|129.375|8.78
+HOI|16.125|108.375|14.94
+HON|22.125|114.125|9.51
+HNL|21.125|-157.875|10.54
+HOO|22.91|88.4|0
+HRN|53.125|4.625|32.76
+HOR|26.875|56.375|12.56
+INC|37.125|126.375|24.02
+IST|40.875|28.875|8.98
+IZM|37.875|26.625|40.29
+JAF|9.625|79.875|8.84
+JAK|-5.875|106.875|18.51
+JAM|37.125|-76.125|31.75
+JED|21.625|38.875|16.9
+JEJ|33.51|126.52|0
+KAG|31.625|130.125|22.29
+KAL|55.125|20.375|24.7
+KAN|11.875|75.125|13.81
+KAR|24.625|66.875|15.91
+KHA|21.375|72.375|57.77
+KIL|-8.98|39.52|0
+KIN|53.875|0.125|18.05
+KOC|9.875|76.125|10.8
+KOL|8.875|76.375|12.79
+KOZ|11.125|75.625|11.82
+KUP|-10.375|123.625|13.18
+LAR|46.125|-1.375|9.59
+LAG|6.125|3.375|20.13
+LPA|28.13|-15.43|0
+LEH|49.625|-0.375|20.55
+LEI|56.125|-2.625|20.24
+LIS|38.625|-9.625|23.3
+LIV|43.625|10.125|9.6
+LON|51.375|-0.125|8.11
+LNG|77.125|14.375|67.68
+LUA|-8.625|12.875|24.71
+LUB|54.125|11.125|21.68
+MAC|22.19|113.54|0
+MCH|16.125|81.375|14.39
+MAK|-4.875|119.375|15.45
+MAL|2.125|102.125|8.45
+MLG|36.625|-4.125|15.31
+MLN|-3.125|40.375|16.32
+MAN|26.22|50.58|0
+MNG|12.875|74.625|12.59
+MNL|14.375|120.625|24.67
+MRS|43.125|5.375|10.51
+MAS|15.875|39.625|19.99
+MES|38.375|15.375|13.83
+MID|51.5|3.61|0
+MOC|13.125|43.125|13.8
+MOG|1.875|45.625|19.76
+MOK|34.875|126.125|14.02
+MOM|-4.125|39.875|13.08
+ISL|-15.125|40.875|9.83
+MUM|19.125|72.625|14.72
+MUS|23.625|58.875|15.7
+MYE|12.375|98.125|28.13
+NAG|32.625|129.625|14.91
+NAH|26.21|127.68|0
+NAM|38.625|124.875|25.4
+NAN|47.22|-1.55|0
+NAP|40.625|14.125|14.11
+NEW|40.625|-73.875|7.99
+NIN|30.125|121.875|22.4
+NUU|63.875|-52.125|21.05
+OLD|15.625|73.625|18.11
+ORA|35.875|-0.625|10.51
+OSA|34.375|135.125|26.49
+OUI|6.125|2.125|14.95
+PAL|38.12|13.36|0
+PLM|39.57|2.65|0
+PAN|8.875|-79.375|10.82
+PAR|6.125|-55.125|15.54
+PAT|37.625|21.125|47.21
+PTT|6.87|101.25|0
+PLY|50.125|-4.125|14.72
+PON|37.74|-25.67|0
+POR|17.625|-76.875|19.02
+OPO|41.125|-9.125|23.34
+PRT|9.55|-79.65|0
+PTH|50.625|-1.125|11.19
+PUL|13.625|80.375|12.72
+QUA|24.625|118.875|23.11
+QUE|46.82|-71.22|0
+REC|-8.125|-34.625|15.81
+REY|64.375|-22.125|14.43
+RHO|36.43|28.22|0
+RIG|56.95|24.11|0
+RIO|-23.125|-43.125|13.74
+ROT|52.125|3.875|25.52
+SAF|32.625|-9.375|21.98
+SAI|16.125|-16.625|9.19
+SNT|48.875|-2.125|14.02
+SAK|34.375|135.125|21.11
+SAL|34.125|-7.125|15.82
+SLV|-13.125|-38.375|11
+SAN|18.625|-66.125|9.31
+SNL|36.78|-6.35|0
+SGO|18.46|-69.94|0
+SOS|-24.125|-46.375|11.97
+SAO|0.34|6.73|0
+SET|38.125|-9.125|26.17
+SVQ|37.39|-5.99|0
+SHI|34.125|130.625|18.54
+SOF|-20.125|34.875|8.87
+SOY|-6.125|12.125|14.63
+SPL|43.375|16.125|15.95
+STA|29.875|-81.125|9.67
+STG|32.38|-64.68|0
+STJ|47.625|-52.375|14.11
+STO|59.375|18.375|9.72
+SUA|19.375|37.375|16.71
+SUE|29.97|32.53|0
+SUR|-7.125|112.875|11
+SRT|21.125|72.375|26.53
+SYD|-34.125|151.375|17.37
+TAI|22.875|119.875|18.74
+TAL|59.44|24.75|0
+TAN|35.77|-5.8|0
+TER|0.875|127.125|15.78
+THA|16.875|96.125|9.56
+THE|40.125|22.875|31.06
+TOK|35.125|140.375|47.69
+TON|34.85|128.42|0
+TOR|62.01|-6.77|0
+TOU|43.13|5.93|0
+TRA|41.01|39.72|0
+TRI|34.375|35.625|10.88
+TRP|32.875|13.375|9.37
+TRO|64.125|9.625|45.98
+TSU|34.2|129.29|0
+TUN|36.875|10.375|10.4
+TUR|60.375|22.125|6.23
+ULS|35.625|129.625|15.56
+VAL|39.375|0.125|24.11
+VLL|35.9|14.51|0
+VLP|-33.125|-71.875|13.59
+VAR|70.37|31.11|0
+VEN|45.375|12.625|13.03
+VER|19.375|-96.125|11.2
+VIS|57.63|18.31|0
+WIL|12.11|-68.93|0
+XIA|24.125|118.375|26.74
+YEO|34.625|127.875|13.35
+ZAN|-6.17|39.2|0
+`
+
+/** Every harbour's roads, by code. A missing code throws rather than serving a null. */
+const ROADSTEAD_BY_CODE = new Map(
+  ROADSTEAD_ROWS.trim()
+    .split('\n')
+    .map((line) => {
+      const [code, lat, lon, nm] = line.split('|')
+      return [code, { lat: Number(lat), lon: Number(lon), nm: Number(nm) }] as const
+    }),
+)
+
 /** How many ports the seeded world has. A guard, not a decoration. */
 export const REAL_PORT_COUNT = 214
 
@@ -269,6 +511,13 @@ const UNUSED = {
   approach: null,
 } as const
 
+/** The roads of one harbour, or a loud throw — see ROADSTEAD_ROWS. */
+function roadsteadOf(code: string): { lat: number; lon: number; nm: number } {
+  const r = ROADSTEAD_BY_CODE.get(code)
+  if (!r) throw new Error(`fixture: no roadstead for ${code}`)
+  return r
+}
+
 /** The 214 ports of the seeded world, in `world.snapshot().ports` shape. */
 export const REAL_PORTS: readonly SnapshotPort[] = PORT_ROWS.trim()
   .split('\n')
@@ -282,6 +531,9 @@ export const REAL_PORTS: readonly SnapshotPort[] = PORT_ROWS.trim()
       lat: Number(lat),
       lon: Number(lon),
       size_tier: Number(tier),
+      // 0076: served beside `kind` and `approach`, never derived. A code with no roads is a
+      // fixture that has drifted from the migration, and it throws instead of serving a null.
+      roadstead: roadsteadOf(code),
       ...UNUSED,
     }
   })

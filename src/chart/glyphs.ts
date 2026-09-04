@@ -16,6 +16,15 @@
 // rose, no scale bar with tick marks — every one of those is a thing to explain, and §E.5 asks for
 // a chart you understand without being told.
 //
+// 0076 ADDED A FOURTH MARK, and it is written here rather than left to be discovered: THE
+// ROADSTEAD, the one point of open water a port is reached from (OWNER_REQUESTS row 72, "create a
+// point there"). It earns its place on the sheet under the same test the three above pass — it is
+// a thing you understand without being told, because it is drawn at the far end of a dotted line
+// out of the harbour it belongs to, and because after 0076 the track of a real voyage STARTS and
+// ENDS there. A chart that showed a ship leaving from a point it never marked would be the thing
+// needing explanation. It is FURNITURE, not a glyph in §E.5's sense: faint ink like the coastline,
+// never brass, and it says nothing about whether a fleet of yours is anywhere near it.
+//
 // SIZES ARE IN CSS PIXELS AND STAY THERE. The layers multiply each by `unitsPerPx`, so a glyph is
 // the same size on screen at every zoom — the paper scales, the marks on it do not. The floor is
 // legibility on a 390 px phone, which is what these numbers were chosen against:
@@ -53,6 +62,34 @@ export const GLYPH = {
   destinationRingRadius: 11,
   fleetDotRadius: 4.4,
   fleetHaloRadius: 8,
+  /**
+   * 0076 — THE ROADSTEAD MARK: a small HOLLOW circle on the one point of open water a port is
+   * reached from, at the far end of its dotted helper line (./RoadsteadsLayer.tsx).
+   *
+   * 2.6 px is the quiet harbour mark's 3.6 px half-width less its stroke, so at the tier the two
+   * ramps are centred on the roads read as SMALLER than the port they belong to (5.2 px across
+   * against 7.2). It has to be none of the three round things already on this sheet, and radius is
+   * the channel it uses: the destination ring is r 11 dashed brass, the fleet dot r 4.4 FILLED
+   * brass and haloed, and this is the smallest, hollow, in ink rather than brass — because a
+   * roadstead is true of every harbour whether a fleet of yours uses it or not.
+   */
+  roadsteadRadius: 2.6,
+  /**
+   * 0076 — HOW SEPARATED THE ROADS MUST LOOK BEFORE THEY ARE DRAWN, in CSS pixels.
+   *
+   * 6 px is `2 × loudPortHalfWidth × portMarkScale(1)` — the full width of the SMALLEST mark this
+   * chart draws in its loud weight. A helper line shorter than a port mark is not a helper, it is
+   * a smudge on the mark it leaves, so below this the pair is not drawn at all.
+   *
+   * IT IS A RULE ABOUT THE PICTURE, AND IT IS IN PIXELS BECAUSE THE PICTURE IS. On this
+   * equirectangular sheet a degree is the same length everywhere, so the same nautical mile buys
+   * more line the further from the equator a harbour lies: at the opening frame (12° across a
+   * 390 px phone) 6 px is 0.185°, which is 11.1 nm at the equator and under 6 nm in the Baltic.
+   * Measured on this world (tests/map.roadsteads.spec.ts): of the 159 harbours with roads off the
+   * quay, NONE draws with the whole world in one frame, 132 draw at the opening frame, and all 159
+   * draw at the tightest zoom. Zoom is the precision control it already was (see `hitRadius`).
+   */
+  roadsteadMinPx: 6,
   /**
    * HOW FAR FROM A GLYPH A TAP STILL MEANS THAT GLYPH — 38 px, and every term is measured.
    *
