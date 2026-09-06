@@ -51,10 +51,11 @@ Until that is run, treat every "LIVE" claim about 0060 and later as UNPROVEN.
 
 | PR | what | state |
 |---|---|---|
-| **#28** `0075: one authority for a gun slot` | A real bug found by playing: `ship_classes.guns` and `public.class_slots` are two authorities for one number and `cmd.do_fit` read the wrong one, so a **barca could mount no weapon at all** and a nau would have taken twelve. | **CONFLICTING**, and its version `20260818000075` **collides** with `the_leg_she_is_on_has_a_length` already on `main`. Being regenerated as **0077**. |
+| **#30** `0077: one authority for a gun slot` | A real bug found by playing: `ship_classes.guns` and `public.class_slots` are two authorities for one number and `cmd.do_fit` read the wrong one, so a **barca could mount no weapon at all** and a nau would have taken twelve. | Green. Supersedes **#28**, which claimed a version already taken on `main` and was closed with its reasons. |
+| **0078** `the chain does not race its own clock` | The deadlock below, fixed at its cause. Adds `docs/DEPLOY_RUNBOOK.md`. | Stacked on #29 and #30 — **merge those two first**. |
 | **#5** `[BLOCKED] 0060: forty harbours stop sailing overland` | DRAFT, blocked on purpose | **Must be REGENERATED, not merged** — 0076 rewrote `sea_reaches` and 0060 as drafted would null the two columns 0076 declares NOT NULL. |
 
-## ⚠ PR #28's RED WAS DICE, AND THE DICE ARE STILL LOADED
+## THE DICE WERE LOADED, AND THEY ARE NOT ANY MORE (0078)
 
 `disposable-chain` failed on that branch (run **`33695216552`**) and **not for anything the branch
 changed**. The log reads:
@@ -70,8 +71,16 @@ At statement: 15
 firing mid-chain and deadlocking with the migration that is rewriting the same table. It is
 `WORK_PLAN.md` §6's *"a red that was dice"*, and it is worse than a wasted run: **a gate that fails
 at random teaches people to re-run reds instead of reading them**, which is precisely how the one
-red that matters gets waved through. The chain should not race the clock; fixing that is its own
-slice.
+red that matters gets waved through. It had already failed **`main`** the same evening
+(run `33691161924`).
+
+**FIXED 2026-09-06 by 0078** — 0012 now schedules its three jobs and leaves them **INACTIVE**, and no
+migration ever starts them, so the chain has no tick to race whatever lands later. `wind_the_clock()`
+and `unwind_the_clock()` are the two calls that make that operable, and **`docs/DEPLOY_RUNBOOK.md` is
+now the procedure for pushing to production** — which matters immediately, because four unpushed
+migrations (0062, 0065, 0066, 0071) write the tick's own tables and a deadlock during `db push`
+aborts the push part-way through the chain. **A database built from scratch now ends with its clock
+stopped**; that is the deliberate trade, and starting it is one call.
 
 ## WHAT THE OWNER IS STILL OWED
 

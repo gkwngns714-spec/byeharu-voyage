@@ -5,6 +5,122 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-06 — D36: the chain was racing its own clock, and it had already failed `main`
+
+### It was never the branch
+
+`Migrations — apply proof` had gone red twice, and both reds were read rather than re-run:
+
+| run | branch | died on |
+|---|---|---|
+| `33691161924` | **`main`** | `ERROR: deadlock detected (SQLSTATE 40P01)` |
+| `33695216552` | `osn-0075-one-authority-for-a-gun-slot` | the same error, the same statement |
+
+```
+At statement: 15
+-- ── 6. THE MARKET FOLLOWS THE WORLD: port_goods re-derived for every (harbour, good) pair
+```
+
+That statement belongs to **migration 0041**. The other process in the deadlock is **our own
+clock**: `0012` winds `pg_cron` at the twelfth migration, so `tick_market_drift` runs every drift
+slot for the entire rest of the apply — and twenty-nine migrations later 0041 rewrites
+`public.port_goods`, the very table that tick updates. Two writers, opposite lock orders.
+
+Neither branch had anything to do with it. Two of thirty real apply-proof runs died this way.
+
+### Why it was worth a slice rather than a re-run button
+
+**A gate that fails at random teaches people to re-run reds instead of reading them**, and that is
+exactly how the one red that matters gets waved through. `WORK_PLAN.md` §6 already lists *"a red
+that was dice"* among the things that have cost this project sessions.
+
+And the second reason is the one that actually decided it: **the same race is waiting on
+production.** The chain head there is behind `main`, and four of the unpushed migrations write the
+tick's own tables — **0062**, **0065**, **0066** (`port_goods`) and **0071** (`price_history`). On
+production the clock has been running since 0012 applied. In CI a deadlock costs a re-run; **during
+`supabase db push` it aborts the push part-way through the chain**, which leaves production sitting
+on a migration nobody chose.
+
+### Which side gives way was decided in 2026-08-18, not today
+
+`0010`'s header, written long before this defect existed:
+
+> *"The cron job is an OPTIMISATION FOR LEADERBOARD FRESHNESS, NOT A CORRECTNESS REQUIREMENT."*
+> *"If the ticks were load-bearing, a missed cron run would be a bug in the game rather than a delay
+> in a statistic."*
+
+Every read settles the fleets it reports (0009), so a database with a stopped clock is a **correct**
+database — only a fleet nobody is looking at goes stale. A rewrite of the world is not optional. The
+clock is. So the clock yields, and it yields by not having been started yet.
+
+### The fix is one statement in 0012 and a rule
+
+**0012 now schedules its three jobs and immediately leaves them `INACTIVE`, and no migration ever
+activates them.** Three things about that shape are worth keeping:
+
+* **It fixes the class, not the instance.** 0041 is not special; any future migration that rewrites
+  a table a tick writes was going to hit this. With the chain never running a tick there is nothing
+  to race, whatever lands later.
+* **It had to live in 0012.** A guard written after 0041 cannot protect 0041 — and 0078 applies
+  sixty-six migrations too late to help. This is the same shape as the *"a defence that arrives
+  after the attack is not a defence"* problem, and it is why the tick-takes-an-advisory-lock design
+  was written out and then rejected: a lock added to the tick bodies in 0078 could not have
+  protected the push of 0062/0065/0066/0071, because those apply first.
+* **It leaves the jobs DEFINED.** A stopped clock is still a clock; starting it is one call rather
+  than a crontab pasted out of a migration.
+
+**Editing 0012 is the case `NO_SPAGHETTI.md` §3 allows, and it is argued rather than assumed:** 0012
+is applied to production and will never run there again, so the edit changes nothing there. What it
+fixes is a **from-scratch** apply — which is the only thing CI ever proves. That is the same
+argument D27 used when it edited applied migrations for their asserts.
+
+### 0078 adds the two calls that make it operable
+
+A clock you cannot start is not a fix, it is an outage. And until now the cadence lived **only**
+inside 0012's inline block, so re-winding by hand meant copying a crontab out of a migration — a
+second answer to *"how often"*, which is the one thing 0012's own header went out of its way to
+forbid.
+
+* **`public.wind_the_clock()`** starts it, deriving the cadence the way 0012 does — from
+  `tick_cron_expression(wc_int('drift_slot_seconds'))`, never a literal — and re-schedules by name,
+  so it also repairs a database whose jobs were left on an older knob.
+* **`public.unwind_the_clock()`** stops it and answers how many were running.
+
+**No migration calls `wind_the_clock`**, deliberately. A migration that started the clock would be
+this very defect wearing a later number: a thing that starts a tick in the middle of an apply, for
+every migration that ever lands after it.
+
+`docs/DEPLOY_RUNBOOK.md` is new and carries the procedure: stop the clock, push, start the clock,
+then verify on the target and drive the game.
+
+### What was proven, and where
+
+**On a real scheduler, at the end of the whole chain** — 3 jobs **DEFINED** and **0 RUNNING**. That
+is the fix itself, asserted sixty-six migrations away from the line that makes it true rather than
+beside it, which is the only place the assertion means anything. Then: `wind` starts exactly 3 and
+the drift job's cadence **equals** `tick_cron_expression(drift_slot_seconds)` rather than a literal;
+`unwind` answers 3, leaves 0 running and still leaves **3 defined** (it stops a clock, it does not
+delete one — checked on the table, not only on the return value); and both are idempotent, because
+a runbook gets run twice by a careful person and half-run by an interrupted one. 0012 gained its own
+assert that **0 byeharu jobs are active** when it finishes, so the deactivation cannot silently stop
+working — a renamed column or a changed `alter_job` signature would otherwise show up only as a
+deadlock in CI once every twenty runs, which is the symptom that gets blamed on a branch.
+
+**Under PGlite there is no scheduler**, so both functions are exercised for their **honesty**
+instead: neither may claim a clock it has not got. Same discipline 0012 already held itself to.
+
+### The new cost, stated plainly
+
+**A database built from scratch now ends with its clock stopped, and somebody has to start it.**
+That is a real cost, and it is the honest trade against an apply that deadlocks at random. It is
+loud rather than silent — 0012 prints it on every apply, 0078 prints it again, and the world is
+correct in the meantime.
+
+No tick body, no cadence and no game behaviour changed. `db:apply` 70/70 receipts, `db:proof` 62/62,
+`tsc -b` and `eslint` clean.
+
+---
+
 ## 2026-09-06 — D35: the record had gone quiet about work that was done
 
 **No code changed in this slice.** It is `docs/` only, and it exists because three of the owner's
