@@ -18,6 +18,16 @@
 -- wrong. So the cron expression is COMPUTED from the knob, and the self-assert below proves the
 -- two agree.
 --
+-- ── IT SCHEDULES THE CLOCK; IT DOES NOT START IT (added by 0078) ───────────────────────────────
+-- This file runs at the TWELFTH migration, and everything it schedules would tick for the rest of
+-- the apply — including underneath 0041, which rewrites public.port_goods while tick_market_drift
+-- is updating it. That deadlocked the apply-proof twice. So the three jobs are scheduled and then
+-- left INACTIVE, and no migration ever activates them: public.wind_the_clock() (0078) is the one
+-- deliberate call that starts a clock, on a database whose chain has finished applying.
+--
+-- The fix has to live HERE, in the file that winds the clock, because a guard written after 0041
+-- could not have protected 0041. See 0078's header for the runs, the error and the argument.
+--
 -- Arrivals run every minute: a voyage-day is three real minutes (TIME_COMPRESSION 480), so a
 -- minute is fine enough that a fleet nobody is watching is never more than a third of a day stale.
 -- Reconciliation runs hourly and OFF the hour, so the read-only audit never lands on the same
@@ -88,7 +98,28 @@ begin
   perform cron.schedule('byeharu-voyage:drift',     v_drift_expr, 'select public.tick_market_drift()');
   perform cron.schedule('byeharu-voyage:reconcile', '7 * * * *',  'select public.tick_reconcile()');
 
-  raise notice '0012: pg_cron present — arrivals every minute, drift on "%" (from drift_slot_seconds = %), reconcile hourly at :07.',
+  -- 0078: DEFINED, BUT NOT RUNNING YET — and this is the whole of the deadlock fix.
+  --
+  -- This block runs at the TWELFTH migration. Everything scheduled here starts ticking
+  -- immediately, and then fifty-eight more migrations apply underneath it — including 0041, which
+  -- rewrites public.port_goods, the very table tick_market_drift updates. That is two writers in
+  -- opposite lock orders, and it has killed the apply-proof twice with
+  -- "ERROR: deadlock detected (SQLSTATE 40P01)" (runs 33691161924 on main, 33695216552 on a
+  -- branch), neither time for anything the branch under test had changed.
+  --
+  -- 0010's header is what decides which side gives way, and it was written long before this
+  -- defect: "The cron job is an OPTIMISATION FOR LEADERBOARD FRESHNESS, NOT A CORRECTNESS
+  -- REQUIREMENT." Every read settles the fleets it reports (0009), so a database with a stopped
+  -- clock is a CORRECT database. A rewrite of the world is not optional; the clock is.
+  --
+  -- So the chain leaves the clock DEFINED and INACTIVE, and no migration ever starts it. Starting
+  -- it is public.wind_the_clock() (0078) — one deliberate call on a database whose chain has
+  -- finished applying. That is why the fix lives here rather than in a later file: a guard added
+  -- after 0041 could not protect 0041.
+  perform cron.alter_job(jobid, active := false)
+    from cron.job where jobname like 'byeharu-voyage:%';
+
+  raise notice '0012: pg_cron present — arrivals every minute, drift on "%" (from drift_slot_seconds = %), reconcile hourly at :07 — all three SCHEDULED BUT INACTIVE, so the rest of the chain cannot deadlock against its own market tick (0078). The world is correct without them; start them with select public.wind_the_clock().',
     v_drift_expr, public.wc_int('drift_slot_seconds');
 end $$;
 
@@ -134,6 +165,14 @@ begin
     raise exception '0012 self-assert FAIL: arrivals are scheduled on "%", expected every minute', v_arrivals;
   end if;
 
+  -- 0078: AND NONE OF THEM IS RUNNING. Without this the deactivation above could silently stop
+  -- working — a renamed pg_cron column, a changed alter_job signature — and the only symptom would
+  -- be a deadlock in CI once every twenty runs, which is the symptom that gets blamed on a branch.
+  select count(*) into v_n from cron.job where jobname like 'byeharu-voyage:%' and active;
+  if v_n <> 0 then
+    raise exception '0012 self-assert FAIL: % byeharu job(s) are ACTIVE during the chain — the rest of the apply can now deadlock against the market tick', v_n;
+  end if;
+
   -- The scheduler is the SERVER's. A client that could read or write cron.job could read the
   -- world's rhythm, or stop it.
   select count(*) into v_exposed from information_schema.role_table_grants
@@ -145,6 +184,6 @@ begin
   select count(*) into v_grants from public.client_write_grants();
   if v_grants <> 0 then raise exception '0012 self-assert FAIL: % client write grant(s)', v_grants; end if;
 
-  raise notice '0012 self-assert ok: 3 jobs wound — arrivals on "%", drift on "%" which MATCHES drift_slot_seconds, reconcile hourly; tick_cron_expression REFUSED a 30-second slot and a 35-minute one; no client role holds a grant in the cron schema; 0 client write grants',
+  raise notice '0012 self-assert ok: 3 jobs DEFINED and 0 of them RUNNING — arrivals on "%", drift on "%" which MATCHES drift_slot_seconds, reconcile hourly, all three left INACTIVE so the fifty-eight migrations that apply after this one cannot deadlock against our own market tick (0078; it killed the apply-proof twice on 0041''s port_goods re-derive). The world is CORRECT with the clock stopped — every read settles the fleets it reports (0009) — and select public.wind_the_clock() is the one deliberate call that starts it. tick_cron_expression REFUSED a 30-second slot and a 35-minute one; no client role holds a grant in the cron schema; 0 client write grants',
     v_arrivals, v_drift;
 end $$;
