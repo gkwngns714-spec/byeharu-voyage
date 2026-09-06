@@ -122,6 +122,54 @@ disconnects 10 ports, is a **different** change and is not proposed here.)
 
 ---
 
+## 4A. THE REPAIR WAS ATTEMPTED AND STOPPED — and the reason is the useful part
+
+The one-record fix was made and the generator run, so the next person does not have to discover
+this the same way. **It does not stop at one raster.**
+
+Splitting the entry and running `node scripts/build-sea-migration.mjs` (with `MIGRATION` moved to
+0079 and `INTRODUCES_THE_ROADSTEAD` set false, as that file's header instructs) gets all the way
+through the grid, the ports and the roadsteads, and then **the generator's own cross-check refuses
+it**:
+
+```
+Error: sea-membership on water this mask closes OUTSIDE every ICE closure (23 cell(s)) —
+the two rasters disagree where no authored ice explains it:
+(16.63, 96.38), (16.63, 96.63), (15.88, 97.63), (15.63, 97.63), (15.63, 97.88), (15.38, 97.88),
+(15.38, 98.13), (15.13, 98.13), (15.13, 98.38), (14.88, 98.38), (14.88, 98.63), (14.88, 98.88)
+```
+
+Those coordinates are the canal. **There are TWO rasters and both were built with it open:**
+
+| raster | built by | what it answers |
+|---|---|---|
+| navigability | `scripts/sea-grid.mjs` (`CHANNELS`) | may a keel be here |
+| sea membership | `scripts/build-sea-raster.mjs` | *which sea* is this water |
+
+`build-sea-migration.mjs` refuses to emit a mask that closes water the membership raster still
+names — which is a **good** guard, and it is the reason this stopped rather than shipping half a
+change. The repair therefore has to move both rasters together, and the membership side feeds
+`sea_at` / `sea_cells` and proof 08's `SEA_NAMES_REAL_WATERS` and `SEA_AT_READS_THE_RASTER`.
+
+**So the repair is a two-raster slice with a balance pass, not a one-line edit** — which is exactly
+what `docs/WORK_PLAN.md` already says about draft migration 0060, and now it is known *why*. It was
+left unbuilt deliberately rather than landed half-done: the branch carries this document and no code.
+
+**What is already known, so it need not be re-derived:**
+
+1. The edit itself is two lines — split `irrawaddy-sittaung` into `yangon` and `chao-phraya` at
+   `scripts/sea-grid.mjs`. Nothing else in `CHANNELS` needs to move for the 309 pairs.
+2. `build-sea-migration.mjs` is driven by two constants: `MIGRATION` (move it to the next free
+   number) and `INTRODUCES_THE_ROADSTEAD` (**false** for any file after 0076 — leaving it true makes
+   the apply fail loudly at `pg_temp.recut`, which its header says and which is correct).
+3. The membership raster must be regenerated in the same slice, or the cross-check above fires.
+4. The roadstead measurement already ran clean on the split grid: 238 places, 77 on their own water,
+   161 off the quay, worst LNG 67.68 nm — unchanged from today, because no roadstead is anywhere
+   near the isthmus. **The canal does not move a single roadstead**, which usefully bounds the blast
+   radius of the change to `sea_reaches` distances alone.
+
+---
+
 ## 5. The guard did not catch this, and that is the second finding
 
 `scripts/db/proofs/09_the_fleet_never_touches_land.sql` is **green**, and its non-vacuity control
