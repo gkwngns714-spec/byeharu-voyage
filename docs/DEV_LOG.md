@@ -5,6 +5,75 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-06 — D35: the record had gone quiet about work that was done
+
+**No code changed in this slice.** It is `docs/` only, and it exists because three of the owner's
+rows and the whole RESUME anchor were saying things that were not true.
+
+### What was wrong
+
+**`docs/OWNER_REQUESTS.md` rows 51, 53 and 63 all read `OPEN` / `in progress`** while the work sat
+merged on `main` — two of them since 2026-09-01. Checked in the code before a word was rewritten,
+because a row asserted without checking is worse than no row:
+
+| row | the ask | where it actually is |
+|---|---|---|
+| **51** | provision on the map, not on a new page | `SendFleet.tsx`'s `runFix` — a fix that needs no choice goes straight down `cmd.issue` (PR #9); PR #11 then made it fill to her standing order rather than to the brim |
+| **53** | the market on the PORT tab | `PortScreen.tsx` renders the trade fold under the `market` face, off the market read the screen already makes (PR #13, refined by 0071/#24) |
+| **63** | no affordance word, no ALL, no HALF, a gauge that spans the stock | all four cuts in `src/components/ui/tradePickers.tsx` (PR #16) |
+
+**And `docs/RESUME.md`'s anchor was FALSE, not stale.** It said production was on `0059`, `main` was
+`642063c`, and #3/#4/#5 were the open PRs. By 2026-09-06 `main` was `728da87`, the chain ran to
+**0076**, #3 and #4 were merged, and the open PRs were **#28** and **#5**. Its cold-start pointer
+still sent a new reader to dev-log entries **D27 and D26** — eight entries and a month out of date.
+
+### The pattern, which is the useful half
+
+This is **rule 5 pointing the other way**. Rule 5 says an instruction that has to be given again is
+a bug report about the ledger; nobody had to repeat these three — the file simply went silent about
+work that was finished, which costs the next session a re-plan of something already built.
+
+**All three landed in CLIENT-ONLY pull requests.** A client-only PR touches no migration, and
+opening `supabase/migrations/` is the habit that reliably makes someone open the ledger and this
+log beside it. `DEV_LOG.md` has no entry for those same three PRs, for exactly the same reason. So
+the rule now written into `OWNER_REQUESTS.md`: **a slice with no migration owes the ledger and the
+dev log the same two edits a slice with one does.**
+
+### What this slice does NOT claim
+
+* **Rows 53 and 63 are marked BUILT and stay OPEN under rule 2.** They have not been driven in the
+  running game, and this slice did not drive them. Row 51 is closed because PR #11 was driven on
+  production on 2026-08-31 — that is how its brim defect was found.
+* **Production's migration head was NOT re-verified and the anchor says so.** This machine has no
+  Supabase access token (`supabase projects list` answers `LegacyPlatformAuthRequiredError`), so the
+  last recorded figure — 0059, 2026-08-26 — is reported as the last *recorded* figure and nothing
+  more. There is no deploy-migrations workflow in this repo; Pages deploys on merge and the database
+  does not, so the site being current says nothing about the chain. `supabase migration list
+  --linked` is the only answer and the anchor now opens with it.
+
+### Also recorded in the anchor, because it will cost the next session otherwise
+
+**PR #28's `disposable-chain` red is dice, and the dice are still loaded.** Run `33695216552` failed
+with `ERROR: deadlock detected (SQLSTATE 40P01)` inside **migration 0041**'s `port_goods` re-derive —
+the `pg_cron` market tick firing mid-chain against the migration rewriting the same table. Nothing
+to do with that branch's change. It is `WORK_PLAN.md` §6's *"a red that was dice"*, and the reason
+it is worth a slice of its own rather than a re-run is that **a gate which fails at random teaches
+people to re-run reds instead of reading them** — which is how the one red that matters gets waved
+through.
+
+**Two machine facts that cost time today** and are now in the anchor: Node **24+** is required, not
+preferred (`scripts/db/*` import `src/lib/sea/*.ts` and lean on Node's type stripping, default from
+23.6 — Node 20 cannot run `db:apply` at all), and `git config core.autocrlf false` comes before
+anything else.
+
+**Baseline re-proven on this machine before any of it was written**, so the corrections are measured
+against a green tree and not against a hope: `db:apply` 69/69 receipts, `db:proof` 62/62, `tsc -b`
+and `eslint` clean, browser suite **232 passed / 0 failed**. *(One earlier full run showed a single
+`chart.ink` failure that did not reproduce in isolation or on a second full run — contention on this
+machine, and named here rather than left as a rumour.)*
+
+---
+
 ## 2026-09-04 — D34b: the roads, drawn and sailed to (row 72, migration 0076 — CLIENT HALF)
 
 The other half of the entry below. The server half seeded the roadstead, served it and moved the
