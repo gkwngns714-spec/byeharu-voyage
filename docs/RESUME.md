@@ -91,6 +91,12 @@ stopped**; that is the deliberate trade, and starting it is one call.
 * **Nobody has driven the running game since 0070.** Rows 48, 52, 53, 63 and 72 are all built and
   none is verified under rule 2. **0076 in particular has never been looked at** — the dotted
   roadstead line, the mark, and a SAIL whose track begins at the roads rather than at the city.
+* **⚠ 309 PORT PAIRS ARE SOLD A ROUTE ACROSS THE MALAY PENINSULA.** One `CHANNELS` record names two
+  rivers and carves a canal through the Tenasserim mountains; Thanlyin → Ayutthaya answers 323 nm
+  against 1,977 nm of real sea. Measured 2026-09-06, `docs/LAND_CARVE_RECON.md`. **The repair is a
+  two-raster slice with a balance pass and the decision is the owner's** — it was attempted and
+  stopped at the generator's own cross-check rather than shipped half-done. `tests/seaCarve.spec.ts`
+  now pins the carve so it cannot change again unnoticed.
 * **Stage 2 has one slice left**: *Regions and the map split* (owner row 59), still design-only.
   Stage 3 is untouched: crafting recipes · captain ranks/roles/cabins (rows 61/66) · homesickness.
 * **Row 65's role half does not exist.** `ship_classes.tier` is real and 0074 gave slots by tier,

@@ -5,6 +5,120 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-06 — D37: 309 port pairs are sold a route across the Malay peninsula
+
+**No world change in this slice.** It is a measurement, the document that carries it, and the guard
+that would have caught it. The repair is deliberately not here, and §4A of
+`docs/LAND_CARVE_RECON.md` says why.
+
+### The finding
+
+> **Thanlyin → Ayutthaya is served at 323 nm. The actual sea between them is 1,977 nm. 84% short.**
+
+And it is not one pair: **309 of them.** Every Bay-of-Bengal harbour reaches the whole of East Asia
+through the Tenasserim mountains — Guangzhou, Macau, Hong Kong, Fuzhou, Xiamen, Ningbo, Hanoi, Hoi
+An, and every Korean port in the catalogue. Mean cheat over the 309: **415 nm**.
+
+This is a live breach of `OWNER_REQUESTS.md` row 41, which is absolute: *"i don't want the fleet to
+ever touch land."*
+
+### The cause is one malformed record, and the model is fine
+
+`scripts/sea-grid.mjs` carves *"the cells between **consecutive** points"* open. So a `CHANNELS`
+entry's points must lie along **one** water, in order. This one names two:
+
+```js
+{ id: 'irrawaddy-sittaung', name: 'the Yangon and Chao Phraya rivers',
+  points: [[16.3, 96.3], [16.6, 96.2], [16.8, 96.2],      // the Yangon river
+           [13.3, 100.6], [13.6, 100.6], [14.4, 100.6]] } // the Chao Phraya, 330 nm away
+```
+
+The jump between the third point and the fourth opens **29 cells that were land**, the deepest
+**89.3 nm inland** at 14.34°N 99.29°E. Every other entry — Malacca, Hormuz, the Bab-el-Mandeb, the
+Severn, the St Lawrence — is a single real water, several with a measurement in the comment beside
+them arguing the case. Those are not this.
+
+### The other five were NOT the same problem, and that is the useful correction
+
+`RESUME.md` had recorded *"six `CHANNELS` entries draw a canal through land"* and carried them as one
+lump. Measured separately, between the real ports each one joins:
+
+| entry | pair | served | real sea | verdict |
+|---|---|---|---|---|
+| **irrawaddy-sittaung** | thanlyin → ayutthaya | 323 nm | 1,977 nm | **1,654 nm — the defect** |
+| baltic-gulfs | tallinn → riga | 160 nm | 201 nm | 41 nm — real but small |
+| gironde | bordeaux → nantes | 170 nm | 180 nm | 11 nm — marginal |
+| thames-scheldt | london → antwerp | 172 nm | 172 nm | **no effect** |
+| elbe-weser | hamburg → lubeck | 31 nm | 31 nm | **no effect** |
+| gambia-senegal | goree → saint-louis | 103 nm | 103 nm | **no effect** |
+
+Three of the six shorten no route at all between the ports they join — the open sea already connects
+those pairs, so their carved land is inert. **The repair is one entry, not six**, which makes the
+decision far smaller than the one that doc had been carrying since 2026-08-26.
+
+**Control, and it is what makes the rest trustworthy:** Thanlyin → Singapore is **1,092.8 nm on both
+rasters**, unchanged to the digit.
+
+### The repair was attempted and stopped, and that is the second finding
+
+Splitting the record and running `build-sea-migration.mjs` gets through the grid, the ports and the
+roadsteads — and then **the generator's own cross-check refuses it**:
+
+```
+Error: sea-membership on water this mask closes OUTSIDE every ICE closure (23 cell(s)) —
+the two rasters disagree where no authored ice explains it: (16.63, 96.38), … (14.88, 98.88)
+```
+
+Those coordinates are the canal. **There are two rasters and both were built with it open** —
+navigability (`sea-grid.mjs`, "may a keel be here") and sea membership (`build-sea-raster.mjs`,
+"which sea is this water"). The guard is right to refuse a one-sided change, and it is the reason
+this stopped instead of shipping half a world.
+
+So the repair is a **two-raster slice with a balance pass**: distances feed `sea_reaches`, and 0048
+tuned the affinity knobs against honest distances. That is the owner's call, not an agent's — and it
+is the same sentence `WORK_PLAN.md` already carried about draft 0060, except now the reason is
+known rather than suspected.
+
+**Usefully bounded:** the roadstead measurement ran **clean** on the split grid — 238 places, 77 on
+their own water, 161 off the quay, worst LNG 67.68 nm, identical to today. **The canal moves no
+roadstead**, so the blast radius is `sea_reaches` distances alone.
+
+### The guard: an inventory, because no rule is possible
+
+`tests/seaCarve.spec.ts` pins every entry and exactly how many cells of dry land it opens — 26
+entries, 550 cells. Change the carve and a number moves and it goes red, and then a person decides
+whether the new water is real.
+
+**It is not an automatic classifier, and the numbers are why one cannot exist.** By longest hop the
+canal is first at 330.5 nm — with the Bab-el-Mandeb (277.6), Hormuz (142.3) and Malacca (124.8)
+right behind it, all real water. By how far inland a carve reaches, the Gulf of Suez (97.1), the St
+Lawrence (76.7) and the Severn (67.6) all sit *above* legitimate river carves, because a river IS
+far from open sea. **No threshold separates a strait from a canal.**
+
+The control is **exact**: planting a jump from the head of the Avon to Birmingham (68.2 nm) opens
+**seven** cells of dry England, and the test asserts 7 rather than "more than some number" — a
+control asserted loosely drifts into being satisfied by rounding. The first draft guessed `> 10` and
+went red against a real 7, which is the guard catching its own author.
+
+### Why proof 09 never saw any of this
+
+It is **green**, and its planted-Iberia control genuinely bites — it is not vacuous. It is
+**under-scoped**: it walks the courses **it sails itself** and plants **one** it knows should fail,
+and never asks about the courses **the game serves**. A course over the carved canal is water *by
+the raster's own account*, so `assert_paths_water` passes it and always would. **The raster is the
+thing that is wrong, and that guard only ever asks the raster.** Closing the class needs a
+generator-side check — which is what the new spec is, and it is why it lives in `tests/` rather than
+in `scripts/db/proofs/`.
+
+### One trap, recorded because it produced a wrong answer first
+
+`findSeaRoute` takes `{lat, lon}` objects and does its **own** snapping, and answers `{ nm, path }`.
+Feeding it the output of `snapToWater` returns `NO ROUTE` for **every** pair — including the
+controls, which is what gave it away. **If a measurement says a well-known sea lane does not exist,
+suspect the harness before the world.**
+
+---
+
 ## 2026-09-06 — D36: the chain was racing its own clock, and it had already failed `main`
 
 ### It was never the branch
