@@ -11,3 +11,7 @@ game that keeps the proven core (auth, shell, migration chain discipline, CI app
 - **The world is the real world:** real countries, real port cities, real coordinates.
 
 See `docs/DESIGN.md` for the game design and `docs/DEV_LOG.md` for the running record.
+
+> **Picking this up on another computer?** Read `docs/PICKUP_2026-09-07.md` first — it says what is
+> pushed, which pull requests are open and in what order they merge, and where production actually
+> stands.
