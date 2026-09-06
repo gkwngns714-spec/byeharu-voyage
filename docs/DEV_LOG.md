@@ -53,10 +53,55 @@ Every read settles the fleets it reports (0009), so a database with a stopped cl
 database — only a fleet nobody is looking at goes stale. A rewrite of the world is not optional. The
 clock is. So the clock yields, and it yields by not having been started yet.
 
+### The first cut of this fix was WRONG, and its own assert is what said so
+
+The migration originally guarded 0012 alone and asserted *"3 jobs defined at the end of the chain"*.
+CI answered:
+
+```
+ERROR: 0078 self-assert FAIL: 5 byeharu job(s) defined at the end of the chain, expected 3
+```
+
+**The clock is five jobs, not three.** Two more scheduling sites apply *after* 0012:
+
+| migration | job | what it writes |
+|---|---|---|
+| **0013** | `byeharu-voyage:price-snapshot` | `price_history` |
+| **0026** | `byeharu-voyage:buff-calendar` | buff rows |
+
+And **`price_history` is rewritten by 0071** — one of the four unpushed migrations. So there was a
+**second live race, on a different table**, and guarding 0012 alone would have left it open *while
+looking fixed*. A fix that looks complete is more dangerous than one that is obviously partial.
+
+The assert is now on the **NAMES**, not the count, because a count goes green again the day someone
+adds a sixth job and forgets the rule.
+
+### And a third thing fell out of it: there are two naming schemes
+
+`0010` schedules `voyage-tick-arrivals` and two siblings. `0012` replaced them with the
+`byeharu-voyage:` prefix — and its cleanup matches only that prefix, so **it cannot see them.**
+0012's own comment worries about precisely this case (*"an older chain may have left a job under a
+name this file no longer uses, and that one would keep running for ever"*) and then cannot match it.
+
+On a from-scratch chain they never exist, because pg_cron is not installed until 0012 and 0010
+checks `pg_extension` — which is why nobody had noticed. **On any database where pg_cron was already
+installed when 0010 applied, those three jobs were scheduled and nothing has ever removed them.**
+`public.clock_jobs()` now matches both schemes, so neither the migration nor the runbook can miss
+half the clock. *Whether production carries those orphans is UNVERIFIED — no token on this machine.
+`select * from public.clock_jobs();` answers it in one line after the push.*
+
+### One more thing CI taught, cheaply
+
+`clock_jobs()` was written `language sql` and the chain would not apply at all under PGlite:
+`relation "cron.job" does not exist`. A **`language sql` body is parsed and its relations resolved
+at CREATE time**, so naming a table from an extension that is absent fails immediately; plpgsql
+defers the plan to first execution, and the extension check means that execution never happens where
+the table is missing. Observed, not predicted.
+
 ### The fix is one statement in 0012 and a rule
 
-**0012 now schedules its three jobs and immediately leaves them `INACTIVE`, and no migration ever
-activates them.** Three things about that shape are worth keeping:
+**0012, 0013 and 0026 each now schedule their jobs and immediately leave them `INACTIVE`, and no
+migration ever activates them.** Three things about that shape are worth keeping:
 
 * **It fixes the class, not the instance.** 0041 is not special; any future migration that rewrites
   a table a tick writes was going to hit this. With the chain never running a tick there is nothing
@@ -81,9 +126,12 @@ inside 0012's inline block, so re-winding by hand meant copying a crontab out of
 second answer to *"how often"*, which is the one thing 0012's own header went out of its way to
 forbid.
 
-* **`public.wind_the_clock()`** starts it, deriving the cadence the way 0012 does — from
-  `tick_cron_expression(wc_int('drift_slot_seconds'))`, never a literal — and re-schedules by name,
-  so it also repairs a database whose jobs were left on an older knob.
+* **`public.wind_the_clock()`** starts them by **activating what the chain defined** — it does not
+  re-schedule. Five jobs are owned by three different migrations, each deriving its cadence from its
+  own knob, so a wind that re-scheduled from literals here would be a second answer to *"how
+  often"* **and** would silently drop any job it had not been told about. Activating keeps every
+  migration the single authority for its own job, and covers jobs added later without touching this
+  file.
 * **`public.unwind_the_clock()`** stops it and answers how many were running.
 
 **No migration calls `wind_the_clock`**, deliberately. A migration that started the clock would be
