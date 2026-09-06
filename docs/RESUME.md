@@ -1,112 +1,114 @@
 # RESUME — where the work stands
 
 **If you are picking this project up cold: read the anchor immediately below, then
-`docs/DEV_LOG.md`'s top two entries (D27, then D26), then `docs/OWNER_REQUESTS.md`. Everything
-under `LANDED 2026-08-24` and lower is older and is kept as record.**
+`docs/DEV_LOG.md`'s top two entries (D34b, then D34), then `docs/OWNER_REQUESTS.md`, then
+`docs/WORK_PLAN.md` §4 for which slice is next. Everything under `LANDED 2026-08-24` and lower
+is older and is kept as record.** *(This pointer named D27/D26 until 2026-09-06 — eight entries
+out of date. A cold-start pointer that names the wrong entries sends the reader to the wrong
+month, so it moves with the anchor.)*
 
 ---
 
-# ▼ RESUME ANCHOR — 2026-08-26, end of session ▼
+# ▼ RESUME ANCHOR — 2026-09-06 ▼
 
-**Written as a handoff: the owner is moving to another computer. Everything below is pushed.**
+**The anchor this replaces was written 2026-08-26 and had gone FALSE, not merely stale** — it said
+production was at `0059`, `main` was at `642063c`, and PRs **#3**, **#4** and **#5** were the open
+ones. Since then 0060–0076 were authored, #3 and #4 merged, and `main` moved fourteen commits. Every
+line below is labelled with how it was checked, and **anything not checked says so** rather than
+being asserted in the voice of something that was.
 
-## PRODUCTION — live and playable
+## `main` — VERIFIED 2026-09-06 by reading git and the GitHub API
 
-* `supabase migration list --linked`: **53 of 53 applied, head 0059, nothing outstanding.** Verified
-  on the target, not inferred from a push.
-* The site is deployed and the database agrees with it:
-  **https://gkwngns714-spec.github.io/byeharu-voyage/**
-* Probed live: `voyage.encounter_at` -> `PGRST202` (0059's drop really happened), `hazard_roll` and
-  `sea_mix` -> `42501` (present, server-private), auth -> `400` not the outage's `500`.
-* **Nothing in the open PRs below is on production.** Prod is 0059 and only 0059.
-
-## `main` IS AT `642063c`
-
-Merged today: **`docs/OWNER_AUDIT.md`** (all 48 owner instructions re-checked against the code) and
-the **goods grid** (COMMAND's buy/sell picker was 243 goods in a column **44,212 px tall**; the
-compendium's Ships face was a 680 px table inside a 332 px box).
-
-## THREE OPEN PULL REQUESTS — none merged, all pushed
-
-| PR | What | State |
+| | | how |
 |---|---|---|
-| **#3** `osn-0062-regional-goods` | The 243 goods become regional. `origin_regions` + `entrepot_ports`; **every offer is native or a named entrepôt — 1,241 native, 47 entrepôt, 0 neither.** Repairs what 0058's hash did: Königsberg had lost amber; `allspice`, `pistachios` and `lac` had each lost their only port and were **buyable nowhere on earth**. `docs/REGIONAL_GOODS.md`, 1,164 lines. | `build` + **`disposable-chain` GREEN on PG17**, `acceptance` green; **`pglite-gate` RED — see the timeout below** |
-| **#4** `osn-0061-city-trades-its-roster` | A city SELLS only its roster (owner row 48). BUY gated through the `E_UNAVAILABLE` the chain already raises; **SELL deliberately NOT gated** or cargo strands. `world.market` 219.8 -> **57.4 ms**; price-history ceiling **594.7 MiB -> 14.1 MiB**. | CI running at handoff |
-| **#5** `osn-0060-harbour-snaps` | **DRAFT, BLOCKED ON PURPOSE.** All 40 harbours that snapped over 20 nm to water are fixed (Longyearbyen 67.68 -> 0.00). Its `db:proof` is RED and **the red is honest**. | do not merge until the land repair lands |
+| `main` head | **`728da87`** — *"0076: a harbour is reached from its roads (row 72)"*, 2026-09-04 | `git log -1 main` |
+| Chain head | **0076** `a_harbour_is_reached_from_its_roads`, **69** migration files | listing `supabase/migrations/` |
+| CI on that head | **all green** — build · pglite-gate/disposable-chain · acceptance · Pages | `gh run list` |
+| Locally re-proven | `db:apply` **69/69 self-assert receipts** · `db:proof` **62/62** · `tsc -b` and `eslint` clean · browser suite **232 passed / 0 failed** | run on this machine 2026-09-06 |
 
-**Merge order matters:** 0061 applies before 0062 in the chain. 0062 was authored against a chain
-*without* 0061 — if any of its asserts assume `world.market` serves 243 goods or `price_history`
-holds 54,432 pairs, they need repointing where the branches meet.
+## ⚠ PRODUCTION'S DATABASE HEAD IS **UNVERIFIED**, AND IT IS ALMOST CERTAINLY BEHIND
 
-## THE BIGGEST OPEN DEFECT — the never-touch-land law is breached LIVE
+**Nothing here deploys a migration.** `.github/workflows/` has `build`, `acceptance`,
+`migrations-apply-proof` and `deploy-pages` — **no deploy-migrations job**. Pages has been deployed
+from every merge, so the SITE is current with `main` while the DATABASE need not be.
 
-The owner's law is absolute: *"i don't want the fleet to ever touch land"* (row 41).
+The last figure this repo actually recorded is **0059, on 2026-08-26**. Migrations **0060–0076**
+have no recorded deploy. **This was not re-checked on 2026-09-06 because the machine has no
+Supabase access token** (`supabase projects list` answers `LegacyPlatformAuthRequiredError`; the
+token noted in this file expired ~2026-09-23 and lived on the other machine).
 
-1. **`src/lib/sea/pathfind.ts:317`** — `if (f * nm < headNm || (1 - f) * nm < tailNm) continue`
-   skips the land check entirely inside a segment's approach allowance. **Panama City -> Port Royal
-   is served at 560.9 nm ACROSS THE ISTHMUS OF PANAMA** against 10,479.8 round the Horn. A Panama
-   Canal, 1914. Panama -> Santiago de Cuba: 1,944.6 against 11,023.4. **This is live right now.**
-2. **Six `CHANNELS` entries draw a canal through land.** `irrawaddy-sittaung` opens 30 land cells,
-   one **85.6 nm up in the Tenasserim mountains**, joining the Gulf of Thailand to the Andaman Sea
-   in 382 nm instead of ~2,300. `elbe-weser`, `thames-scheldt`, `gironde`, `baltic-gulfs` and
-   `gambia-senegal` spill 31-63 nm inland.
-3. **The guard is not vacuous — it is UNDER-SCOPED.** Proof 09 is green on `main` (62/62) and its
-   control really bites (`NEVER_TOUCH_LAND_BITES`, a planted Iberia crossing refused). It checks
-   courses it plants itself and never asks about the courses the game actually serves. Fixing the
-   breach without fixing the scope resets the clock.
-4. **The sound repair moves 50,868 of 56,406 readings and DISCONNECTS 10 ports** whose channels are
-   only diagonally linked. It was built and deliberately reverted. It is a world repricing that
-   would invalidate 0048's price tuning — its own slice, its own justifications, its own balance
-   pass.
+**So the first thing the next session does is find out, not assume:**
 
-A 15-agent workflow was authored for exactly this and stopped for machine memory before it ran.
-**The script is saved and can be re-run without re-authoring it** — look under the session's
-`workflows/scripts/never-touch-land-*.js` (measure -> judged design panel -> implement ->
-adversarial refute). Next free migration number is **0063**.
+```
+supabase login
+supabase migration list --linked      # the truth
+supabase db push --linked             # if it is behind
+```
 
-## THE TIMEOUT THAT WILL KEEP BITING
+Until that is run, treat every "LIVE" claim about 0060 and later as UNPROVEN.
 
-`pglite-gate` has **`timeout-minutes: 15`** (`.github/workflows/migrations-apply-proof.yml:74`) and
-the chain now takes ~13 minutes on wasm Postgres. PR #3 was **cancelled at 15m14s with no assertion
-failure** — the last receipt was 0056 and then nothing. `disposable-chain` (real Postgres 17, a
-30-minute limit) passed the same commit in 5m45s. **This is capacity, not a defect**, and it gets
-worse every time the world grows. Raise the limit or make the gate faster — but read the log
-before ever calling that job's red a defect.
+## OPEN PULL REQUESTS — verified 2026-09-06
 
-## THE LESSON THIS SESSION KEPT RE-LEARNING — read before writing any migration
+| PR | what | state |
+|---|---|---|
+| **#30** `0077: one authority for a gun slot` | A real bug found by playing: `ship_classes.guns` and `public.class_slots` are two authorities for one number and `cmd.do_fit` read the wrong one, so a **barca could mount no weapon at all** and a nau would have taken twelve. | Green. Supersedes **#28**, which claimed a version already taken on `main` and was closed with its reasons. |
+| **0078** `the chain does not race its own clock` | The deadlock below, fixed at its cause. Adds `docs/DEPLOY_RUNBOOK.md`. | Stacked on #29 and #30 — **merge those two first**. |
+| **#5** `[BLOCKED] 0060: forty harbours stop sailing overland` | DRAFT, blocked on purpose | **Must be REGENERATED, not merged** — 0076 rewrote `sea_reaches` and 0060 as drafted would null the two columns 0076 declares NOT NULL. |
 
-**Green on PGlite AND green on CI's disposable Supabase still does not mean it applies to
-production.** 0057 proved it twice in one day:
+## THE DICE WERE LOADED, AND THEY ARE NOT ANY MORE (0078)
 
-* Its step-3 seed used a bare `INSERT`, which collided with rows a live tick had already written.
-  Fixed with `on conflict do nothing` — 0013's own idempotence rule.
-* Then a *second* assert in the same file demanded every good carry an identical point count, which
-  is only true where the table began empty. Green on PGlite (empty) and on production (a tick had
-  sampled everything uniformly), **red on a disposable Supabase** where the tick fires mid-chain and
-  any tick landing before 0041 grew the catalogue leaves the older goods one point ahead. It is now
-  a floor on the thinnest good, not an equality.
+`disposable-chain` failed on that branch (run **`33695216552`**) and **not for anything the branch
+changed**. The log reads:
 
-Both edits touch a migration applied to production, which this project otherwise forbids. They are
-**assert-only** — no schema, function body or grant differs, so production is byte-identical
-either way — and the chain must be applicable from scratch or CI proves nothing.
+```
+ERROR: deadlock detected (SQLSTATE 40P01)
+Process 214 waits for ShareLock on transaction 1391; blocked by process 265.
+Process 265 waits for ShareLock on transaction 1372; blocked by process 214.
+At statement: 15
+```
+
+— inside **migration 0041**'s `port_goods` re-derive. That is the game's own `pg_cron` market tick
+firing mid-chain and deadlocking with the migration that is rewriting the same table. It is
+`WORK_PLAN.md` §6's *"a red that was dice"*, and it is worse than a wasted run: **a gate that fails
+at random teaches people to re-run reds instead of reading them**, which is precisely how the one
+red that matters gets waved through. It had already failed **`main`** the same evening
+(run `33691161924`).
+
+**FIXED 2026-09-06 by 0078** — 0012 now schedules its three jobs and leaves them **INACTIVE**, and no
+migration ever starts them, so the chain has no tick to race whatever lands later. `wind_the_clock()`
+and `unwind_the_clock()` are the two calls that make that operable, and **`docs/DEPLOY_RUNBOOK.md` is
+now the procedure for pushing to production** — which matters immediately, because four unpushed
+migrations (0062, 0065, 0066, 0071) write the tick's own tables and a deadlock during `db push`
+aborts the push part-way through the chain. **A database built from scratch now ends with its clock
+stopped**; that is the deliberate trade, and starting it is one call.
 
 ## WHAT THE OWNER IS STILL OWED
 
-* **Row 48 stays OPEN** under rule 2 — 0061 is built but has not been driven in the running game.
-* **Nobody has played the newly-live economy.** 0051/0056/0058/0059 changed what a player sees and
-  none of it has been driven since it went live.
-* **Gochujang** (row 38) is proposed in `REGIONAL_GOODS.md` §H, not silently added — a new good
-  moves `rarity_scale()`'s whole histogram. Korea has 21 goods in its origin but only `tiger-skins`
-  exclusively.
-* **Named spaghetti, not fixed:** `culture = any(g.culture_mask)` is written **five times** in the
-  live schema (`do_buy`, `do_sell`, `world.market`, `trade_routes`, `cmd.haggle`).
-* **The ledger no longer tallies** how many times an instruction had to be given; rule 5 forbids it.
+* **Rows 51, 53 and 63 were built and the ledger never said so** — corrected 2026-09-06, with the
+  pattern named in `OWNER_REQUESTS.md`'s rules: **all three landed in client-only PRs**, which touch
+  no migration and so slip past the habit that makes anyone open the ledger. The dev log missed the
+  same three for the same reason.
+* **Nobody has driven the running game since 0070.** Rows 48, 52, 53, 63 and 72 are all built and
+  none is verified under rule 2. **0076 in particular has never been looked at** — the dotted
+  roadstead line, the mark, and a SAIL whose track begins at the roads rather than at the city.
+* **Stage 2 has one slice left**: *Regions and the map split* (owner row 59), still design-only.
+  Stage 3 is untouched: crafting recipes · captain ranks/roles/cabins (rows 61/66) · homesickness.
+* **Row 65's role half does not exist.** `ship_classes.tier` is real and 0074 gave slots by tier,
+  but `family` carries a culture ('Western'), not trading/exploration/combat.
+* **Row 67 is unanswered**: the owner called the good categories a dump — *"wtf is foodstuff?"*
+* **Named spaghetti, still not fixed:** `culture = any(g.culture_mask)` is written **five** times in
+  the live schema (`do_buy`, `do_sell`, `world.market`, `trade_routes`, `cmd.haggle`).
+* **`pglite-gate` has `timeout-minutes: 15`** and the chain has been taking ~13. It gets worse with
+  every migration; the answer is a faster gate or a lighter fixture, not a bigger number.
 
-## STARTING ON THE OTHER MACHINE
+## STARTING ON A NEW MACHINE
 
-`docs/NEW_MACHINE.md` is the setup. Then read `docs/OWNER_AUDIT.md` (what is actually true),
-`docs/DEV_LOG.md` D27 and D28, and this anchor. **Re-read the deploy state from
-`supabase migration list --linked` rather than trusting any prose, including this file.**
+`docs/NEW_MACHINE.md` is the setup, with two things that cost time on 2026-09-06:
+
+* **Node 24+ is required, not optional** — `scripts/db/*` import `src/lib/sea/*.ts` and rely on
+  Node's type stripping (default from 23.6). Node 20 cannot run `db:apply` at all.
+* `git config core.autocrlf false` **before** anything else; the chain guard refuses CRLF.
+
 
 # ▲ RESUME ANCHOR ▲
 

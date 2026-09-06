@@ -5,6 +5,239 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-06 — D36: the chain was racing its own clock, and it had already failed `main`
+
+### It was never the branch
+
+`Migrations — apply proof` had gone red twice, and both reds were read rather than re-run:
+
+| run | branch | died on |
+|---|---|---|
+| `33691161924` | **`main`** | `ERROR: deadlock detected (SQLSTATE 40P01)` |
+| `33695216552` | `osn-0075-one-authority-for-a-gun-slot` | the same error, the same statement |
+
+```
+At statement: 15
+-- ── 6. THE MARKET FOLLOWS THE WORLD: port_goods re-derived for every (harbour, good) pair
+```
+
+That statement belongs to **migration 0041**. The other process in the deadlock is **our own
+clock**: `0012` winds `pg_cron` at the twelfth migration, so `tick_market_drift` runs every drift
+slot for the entire rest of the apply — and twenty-nine migrations later 0041 rewrites
+`public.port_goods`, the very table that tick updates. Two writers, opposite lock orders.
+
+Neither branch had anything to do with it. Two of thirty real apply-proof runs died this way.
+
+### Why it was worth a slice rather than a re-run button
+
+**A gate that fails at random teaches people to re-run reds instead of reading them**, and that is
+exactly how the one red that matters gets waved through. `WORK_PLAN.md` §6 already lists *"a red
+that was dice"* among the things that have cost this project sessions.
+
+And the second reason is the one that actually decided it: **the same race is waiting on
+production.** The chain head there is behind `main`, and four of the unpushed migrations write the
+tick's own tables — **0062**, **0065**, **0066** (`port_goods`) and **0071** (`price_history`). On
+production the clock has been running since 0012 applied. In CI a deadlock costs a re-run; **during
+`supabase db push` it aborts the push part-way through the chain**, which leaves production sitting
+on a migration nobody chose.
+
+### Which side gives way was decided in 2026-08-18, not today
+
+`0010`'s header, written long before this defect existed:
+
+> *"The cron job is an OPTIMISATION FOR LEADERBOARD FRESHNESS, NOT A CORRECTNESS REQUIREMENT."*
+> *"If the ticks were load-bearing, a missed cron run would be a bug in the game rather than a delay
+> in a statistic."*
+
+Every read settles the fleets it reports (0009), so a database with a stopped clock is a **correct**
+database — only a fleet nobody is looking at goes stale. A rewrite of the world is not optional. The
+clock is. So the clock yields, and it yields by not having been started yet.
+
+### The first cut of this fix was WRONG, and its own assert is what said so
+
+The migration originally guarded 0012 alone and asserted *"3 jobs defined at the end of the chain"*.
+CI answered:
+
+```
+ERROR: 0078 self-assert FAIL: 5 byeharu job(s) defined at the end of the chain, expected 3
+```
+
+**The clock is five jobs, not three.** Two more scheduling sites apply *after* 0012:
+
+| migration | job | what it writes |
+|---|---|---|
+| **0013** | `byeharu-voyage:price-snapshot` | `price_history` |
+| **0026** | `byeharu-voyage:buff-calendar` | buff rows |
+
+And **`price_history` is rewritten by 0071** — one of the four unpushed migrations. So there was a
+**second live race, on a different table**, and guarding 0012 alone would have left it open *while
+looking fixed*. A fix that looks complete is more dangerous than one that is obviously partial.
+
+The assert is now on the **NAMES**, not the count, because a count goes green again the day someone
+adds a sixth job and forgets the rule.
+
+### And a third thing fell out of it: there are two naming schemes
+
+`0010` schedules `voyage-tick-arrivals` and two siblings. `0012` replaced them with the
+`byeharu-voyage:` prefix — and its cleanup matches only that prefix, so **it cannot see them.**
+0012's own comment worries about precisely this case (*"an older chain may have left a job under a
+name this file no longer uses, and that one would keep running for ever"*) and then cannot match it.
+
+On a from-scratch chain they never exist, because pg_cron is not installed until 0012 and 0010
+checks `pg_extension` — which is why nobody had noticed. **On any database where pg_cron was already
+installed when 0010 applied, those three jobs were scheduled and nothing has ever removed them.**
+`public.clock_jobs()` now matches both schemes, so neither the migration nor the runbook can miss
+half the clock. *Whether production carries those orphans is UNVERIFIED — no token on this machine.
+`select * from public.clock_jobs();` answers it in one line after the push.*
+
+### One more thing CI taught, cheaply
+
+`clock_jobs()` was written `language sql` and the chain would not apply at all under PGlite:
+`relation "cron.job" does not exist`. A **`language sql` body is parsed and its relations resolved
+at CREATE time**, so naming a table from an extension that is absent fails immediately; plpgsql
+defers the plan to first execution, and the extension check means that execution never happens where
+the table is missing. Observed, not predicted.
+
+### The fix is one statement in 0012 and a rule
+
+**0012, 0013 and 0026 each now schedule their jobs and immediately leave them `INACTIVE`, and no
+migration ever activates them.** Three things about that shape are worth keeping:
+
+* **It fixes the class, not the instance.** 0041 is not special; any future migration that rewrites
+  a table a tick writes was going to hit this. With the chain never running a tick there is nothing
+  to race, whatever lands later.
+* **It had to live in 0012.** A guard written after 0041 cannot protect 0041 — and 0078 applies
+  sixty-six migrations too late to help. This is the same shape as the *"a defence that arrives
+  after the attack is not a defence"* problem, and it is why the tick-takes-an-advisory-lock design
+  was written out and then rejected: a lock added to the tick bodies in 0078 could not have
+  protected the push of 0062/0065/0066/0071, because those apply first.
+* **It leaves the jobs DEFINED.** A stopped clock is still a clock; starting it is one call rather
+  than a crontab pasted out of a migration.
+
+**Editing 0012 is the case `NO_SPAGHETTI.md` §3 allows, and it is argued rather than assumed:** 0012
+is applied to production and will never run there again, so the edit changes nothing there. What it
+fixes is a **from-scratch** apply — which is the only thing CI ever proves. That is the same
+argument D27 used when it edited applied migrations for their asserts.
+
+### 0078 adds the two calls that make it operable
+
+A clock you cannot start is not a fix, it is an outage. And until now the cadence lived **only**
+inside 0012's inline block, so re-winding by hand meant copying a crontab out of a migration — a
+second answer to *"how often"*, which is the one thing 0012's own header went out of its way to
+forbid.
+
+* **`public.wind_the_clock()`** starts them by **activating what the chain defined** — it does not
+  re-schedule. Five jobs are owned by three different migrations, each deriving its cadence from its
+  own knob, so a wind that re-scheduled from literals here would be a second answer to *"how
+  often"* **and** would silently drop any job it had not been told about. Activating keeps every
+  migration the single authority for its own job, and covers jobs added later without touching this
+  file.
+* **`public.unwind_the_clock()`** stops it and answers how many were running.
+
+**No migration calls `wind_the_clock`**, deliberately. A migration that started the clock would be
+this very defect wearing a later number: a thing that starts a tick in the middle of an apply, for
+every migration that ever lands after it.
+
+`docs/DEPLOY_RUNBOOK.md` is new and carries the procedure: stop the clock, push, start the clock,
+then verify on the target and drive the game.
+
+### What was proven, and where
+
+**On a real scheduler, at the end of the whole chain** — 3 jobs **DEFINED** and **0 RUNNING**. That
+is the fix itself, asserted sixty-six migrations away from the line that makes it true rather than
+beside it, which is the only place the assertion means anything. Then: `wind` starts exactly 3 and
+the drift job's cadence **equals** `tick_cron_expression(drift_slot_seconds)` rather than a literal;
+`unwind` answers 3, leaves 0 running and still leaves **3 defined** (it stops a clock, it does not
+delete one — checked on the table, not only on the return value); and both are idempotent, because
+a runbook gets run twice by a careful person and half-run by an interrupted one. 0012 gained its own
+assert that **0 byeharu jobs are active** when it finishes, so the deactivation cannot silently stop
+working — a renamed column or a changed `alter_job` signature would otherwise show up only as a
+deadlock in CI once every twenty runs, which is the symptom that gets blamed on a branch.
+
+**Under PGlite there is no scheduler**, so both functions are exercised for their **honesty**
+instead: neither may claim a clock it has not got. Same discipline 0012 already held itself to.
+
+### The new cost, stated plainly
+
+**A database built from scratch now ends with its clock stopped, and somebody has to start it.**
+That is a real cost, and it is the honest trade against an apply that deadlocks at random. It is
+loud rather than silent — 0012 prints it on every apply, 0078 prints it again, and the world is
+correct in the meantime.
+
+No tick body, no cadence and no game behaviour changed. `db:apply` 70/70 receipts, `db:proof` 62/62,
+`tsc -b` and `eslint` clean.
+
+---
+
+## 2026-09-06 — D35: the record had gone quiet about work that was done
+
+**No code changed in this slice.** It is `docs/` only, and it exists because three of the owner's
+rows and the whole RESUME anchor were saying things that were not true.
+
+### What was wrong
+
+**`docs/OWNER_REQUESTS.md` rows 51, 53 and 63 all read `OPEN` / `in progress`** while the work sat
+merged on `main` — two of them since 2026-09-01. Checked in the code before a word was rewritten,
+because a row asserted without checking is worse than no row:
+
+| row | the ask | where it actually is |
+|---|---|---|
+| **51** | provision on the map, not on a new page | `SendFleet.tsx`'s `runFix` — a fix that needs no choice goes straight down `cmd.issue` (PR #9); PR #11 then made it fill to her standing order rather than to the brim |
+| **53** | the market on the PORT tab | `PortScreen.tsx` renders the trade fold under the `market` face, off the market read the screen already makes (PR #13, refined by 0071/#24) |
+| **63** | no affordance word, no ALL, no HALF, a gauge that spans the stock | all four cuts in `src/components/ui/tradePickers.tsx` (PR #16) |
+
+**And `docs/RESUME.md`'s anchor was FALSE, not stale.** It said production was on `0059`, `main` was
+`642063c`, and #3/#4/#5 were the open PRs. By 2026-09-06 `main` was `728da87`, the chain ran to
+**0076**, #3 and #4 were merged, and the open PRs were **#28** and **#5**. Its cold-start pointer
+still sent a new reader to dev-log entries **D27 and D26** — eight entries and a month out of date.
+
+### The pattern, which is the useful half
+
+This is **rule 5 pointing the other way**. Rule 5 says an instruction that has to be given again is
+a bug report about the ledger; nobody had to repeat these three — the file simply went silent about
+work that was finished, which costs the next session a re-plan of something already built.
+
+**All three landed in CLIENT-ONLY pull requests.** A client-only PR touches no migration, and
+opening `supabase/migrations/` is the habit that reliably makes someone open the ledger and this
+log beside it. `DEV_LOG.md` has no entry for those same three PRs, for exactly the same reason. So
+the rule now written into `OWNER_REQUESTS.md`: **a slice with no migration owes the ledger and the
+dev log the same two edits a slice with one does.**
+
+### What this slice does NOT claim
+
+* **Rows 53 and 63 are marked BUILT and stay OPEN under rule 2.** They have not been driven in the
+  running game, and this slice did not drive them. Row 51 is closed because PR #11 was driven on
+  production on 2026-08-31 — that is how its brim defect was found.
+* **Production's migration head was NOT re-verified and the anchor says so.** This machine has no
+  Supabase access token (`supabase projects list` answers `LegacyPlatformAuthRequiredError`), so the
+  last recorded figure — 0059, 2026-08-26 — is reported as the last *recorded* figure and nothing
+  more. There is no deploy-migrations workflow in this repo; Pages deploys on merge and the database
+  does not, so the site being current says nothing about the chain. `supabase migration list
+  --linked` is the only answer and the anchor now opens with it.
+
+### Also recorded in the anchor, because it will cost the next session otherwise
+
+**PR #28's `disposable-chain` red is dice, and the dice are still loaded.** Run `33695216552` failed
+with `ERROR: deadlock detected (SQLSTATE 40P01)` inside **migration 0041**'s `port_goods` re-derive —
+the `pg_cron` market tick firing mid-chain against the migration rewriting the same table. Nothing
+to do with that branch's change. It is `WORK_PLAN.md` §6's *"a red that was dice"*, and the reason
+it is worth a slice of its own rather than a re-run is that **a gate which fails at random teaches
+people to re-run reds instead of reading them** — which is how the one red that matters gets waved
+through.
+
+**Two machine facts that cost time today** and are now in the anchor: Node **24+** is required, not
+preferred (`scripts/db/*` import `src/lib/sea/*.ts` and lean on Node's type stripping, default from
+23.6 — Node 20 cannot run `db:apply` at all), and `git config core.autocrlf false` comes before
+anything else.
+
+**Baseline re-proven on this machine before any of it was written**, so the corrections are measured
+against a green tree and not against a hope: `db:apply` 69/69 receipts, `db:proof` 62/62, `tsc -b`
+and `eslint` clean, browser suite **232 passed / 0 failed**. *(One earlier full run showed a single
+`chart.ink` failure that did not reproduce in isolation or on a second full run — contention on this
+machine, and named here rather than left as a rumour.)*
+
+---
+
 ## 2026-09-04 — D34b: the roads, drawn and sailed to (row 72, migration 0076 — CLIENT HALF)
 
 The other half of the entry below. The server half seeded the roadstead, served it and moved the
