@@ -218,7 +218,7 @@ revoke all on function public.wind_the_clock()   from public, anon, authenticate
 revoke all on function public.unwind_the_clock() from public, anon, authenticated;
 
 -- ── SELF-ASSERT ────────────────────────────────────────────────────────────────────────────────
-do $blk$
+do $$
 declare
   v_have_cron boolean;
   v_n         int;
@@ -316,4 +316,4 @@ begin
 
   raise notice '0078 self-assert ok: THE CHAIN DOES NOT RACE ITS OWN CLOCK. The apply-proof died twice on "ERROR: deadlock detected" inside 0041''s port_goods re-derive (runs 33691161924 on main and 33695216552 on a branch) — not a defect in either branch, but our OWN ticks, wound mid-chain and then racing the migrations that follow. THE CLOCK IS FIVE JOBS, NOT THREE: 0012 winds arrivals, drift and reconcile, and 0013 and 0026 then add price-snapshot and buff-calendar AFTER it — and tick_price_snapshot writes price_history, which 0071 rewrites, so that was a second live race. This file''s own first assert is what found them, by counting 5 where it expected 3; it now asserts the NAMES, so a sixth job cannot go green by arithmetic. All three scheduling files leave their jobs INACTIVE and nothing in the chain starts one. PROVEN at the end of the whole chain on a real scheduler: % jobs defined, [%], 0 running. wind_the_clock then starts every one — by ACTIVATING what the chain defined, never re-scheduling, so each migration stays the single authority for its own cadence — and unwind_the_clock answers %, leaves 0 running and still leaves % DEFINED (it stops a clock, it does not delete one); both idempotent. Start it with select public.wind_the_clock(). 0 client write grants: %',
     v_n, v_names, v_n, v_n, v_grants;
-end $blk$;
+end $$;
