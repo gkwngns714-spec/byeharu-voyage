@@ -73,8 +73,11 @@ caller arrives after the shape is fixed.
 
 ### 3.4 Landing
 
-- Merge, then **deploy the migration by hand**: `supabase db push --linked`. Nothing does this
-  automatically, and eight migrations once sat unapplied while the site looked updated.
+- Merge, then **deploy the migration by hand**, following `docs/DEPLOY_RUNBOOK.md`: stop the clock,
+  `supabase db push --linked`, start the clock. Nothing does this automatically, and eight
+  migrations once sat unapplied while the site looked updated. The clock step is not optional on a
+  database with rows in it — the market tick and a migration that re-derives `port_goods` are two
+  writers in opposite lock orders, and that deadlock has already been observed twice (0078).
 - **Verify on the target.** `supabase migration list --linked`, then drive the real game in a
   browser. An agent's report and a green tick are claims; the running game is proof.
 - Say the deploy state plainly: **built / merged / LIVE**, and which.
@@ -159,6 +162,13 @@ Each of these cost a real session.
 - **A red that was a clock.** Two CI timeouts and one cancelled job read as failures. Read the log.
 - **A red that was dice.** Migration 0047's probe sailed under real weather and failed on a hazard
   roll, randomly, per database. Pin the world before asserting on it.
+- **A red that was dice, and was OURS.** The apply-proof died twice on `ERROR: deadlock detected`
+  in 0041's `port_goods` re-derive — once on `main` itself. Neither branch had touched anything
+  near it: 0012 wound `pg_cron` at the twelfth migration and the market tick then ran under the
+  fifty-eight migrations that followed. Fixed by 0078 (the chain leaves the clock defined and
+  stopped). **The lesson is the diagnosis, not the fix:** both reds were read rather than
+  re-run, and reading them is the only reason the same race was found waiting on production,
+  where a deadlock aborts `db push` part-way through the chain. See `docs/DEPLOY_RUNBOOK.md`.
 - **A ledger row that was wrong.** Row 56 claimed a capability was "reachable only from Command"
   when it was reachable from nowhere. A row asserted without checking is worse than no row.
 - **A conflict that stopped CI silently.** A PR with a merge conflict never ran its checks at all,

@@ -208,7 +208,14 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved deliberately 2026-09-04 to 0076, which gives every place the one point of open water it is
 // reached from -- its ROADSTEAD -- seeds it, serves it, and ends a course there instead of on the
 // quay, so a fleet stops crossing land for `snap_nm + 25` nm at each end of every passage.
-const LAST = '20260818000076_a_harbour_is_reached_from_its_roads.sql'
+// Moved deliberately 2026-09-06 to 0077, which corrects 0074: `ship_classes.guns` and
+// `public.class_slots` were two authorities for one number and `cmd.do_fit` read the wrong one,
+// so a barca -- the tier-1 hull the owner said carries a weapon -- could mount none at all.
+// Moved again the same day to 0078, which stops the chain racing its own clock: 0012 wound
+// pg_cron at the twelfth migration and 0041 then rewrote port_goods underneath the market
+// tick, which deadlocked the apply-proof twice. 0012 now leaves the three jobs INACTIVE and
+// no migration starts them; public.wind_the_clock() is the one deliberate call that does.
+const LAST = '20260818000078_the_chain_does_not_race_its_own_clock.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

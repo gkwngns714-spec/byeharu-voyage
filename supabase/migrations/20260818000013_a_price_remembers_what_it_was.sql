@@ -197,6 +197,13 @@ begin
   end if;
 
   perform cron.schedule('byeharu-voyage:price-snapshot', v_expr, 'select public.tick_price_snapshot()');
+
+  -- 0078: DEFINED, NOT RUNNING. Every migration that schedules a tick leaves it INACTIVE, so
+  -- the migrations that apply after it cannot deadlock against it. This one matters as much
+  -- as 0012's: tick_price_snapshot writes public.price_history, and 0071 rewrites that same table. Nothing in the chain ever starts a
+  -- job; public.wind_the_clock() does, once, on a database whose chain has finished.
+  perform cron.alter_job(jobid, active := false)
+    from cron.job where jobname = 'byeharu-voyage:price-snapshot';
   raise notice '0013: pg_cron present — the price snapshot runs on "%" (from drift_slot_seconds = %), the same cadence the market steps on.',
     v_expr, public.wc_int('drift_slot_seconds');
 end $$;

@@ -467,6 +467,13 @@ begin
   execute 'create extension if not exists pg_cron';
   perform cron.schedule('byeharu-voyage:buff-calendar', v_expr,
                         'select public.tick_buff_calendar()');
+
+  -- 0078: DEFINED, NOT RUNNING. Every migration that schedules a tick leaves it INACTIVE, so
+  -- the migrations that apply after it cannot deadlock against it. This one matters as much
+  -- as 0012's: a tick that writes while a later migration rewrites is the same race whatever it writes. Nothing in the chain ever starts a
+  -- job; public.wind_the_clock() does, once, on a database whose chain has finished.
+  perform cron.alter_job(jobid, active := false)
+    from cron.job where jobname = 'byeharu-voyage:buff-calendar';
   raise notice '0026: pg_cron present — the buff calendar is wound on "%", the same cadence the market steps on. world.buffs() settles it as well, and both call the one writer.', v_expr;
 end $$;
 
