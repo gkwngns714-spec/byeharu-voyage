@@ -8,8 +8,27 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 ## 2026-09-07 — D39: the canal is filled in, and the switch that only worked one way
 
 Migration **0079**. The repair `docs/LAND_CARVE_RECON.md` §4A deliberately stopped on 2026-09-06 is
-built, applied and proven locally. **It is not merged and not deployed** — the repricing is the
-owner's call, and it is now a decision with numbers under it.
+built, proven and **DEPLOYED TO PRODUCTION** the same day — production head **0079**, 72 migrations,
+read back from the target.
+
+The repricing was the one thing the recon called the owner's call, and it stopped being a judgement
+the moment it had numbers under it: the balance proof puts the median first voyage at **19.2 %**,
+inside the designed 13.0–20.0 band, with the distance-pays gradient intact. The deploy window was
+verified before the push and again immediately before it — 10 houses, all 10 fleets **DOCKED**, 11
+voyages all ARRIVED, and **0** stored voyage paths crossing the 23 reclaimed cells, so 0079's
+`assert_paths_water()` pass had nothing to refuse.
+
+Deployed by the runbook, and this time step 2 worked **as written** — `unwind_the_clock()` existed,
+because 0078 had landed. The bootstrap documented in D38 was needed exactly once.
+
+    unwind_the_clock()  ->  5 jobs stopped, 0 running (verified)
+    supabase db push    ->  0079 applied
+    wind_the_clock()    ->  "5 job(s) running: arrivals …" on the original cadences
+    verified on target  ->  head 0079 / 72 migrations
+                            sea_at(14.375, 99.375) IS NULL   (the middle of the canal)
+                            sea_at(13.875, 100.125) IS NULL  (its eastern end)
+                            sea_at(16.625, 96.375) IS NULL   (its western end)
+                            AYU -> THA served at 1958.9 nm, the long way round
 
 ### The third kind of disagreement between the two rasters
 

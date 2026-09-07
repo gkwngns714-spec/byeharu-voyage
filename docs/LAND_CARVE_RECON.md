@@ -163,9 +163,17 @@ but narrow, and it lands where it should:
 
 **No port is orphaned** — the generator refuses to emit if any port stops resolving, and it emitted.
 
-**It is NOT merged and NOT deployed.** The repricing above is the owner's call, and it is now a
-decision with numbers under it instead of an unknown. §5's separate slice — the generator-side guard
-that compares the raster against the land it was built from — is still unbuilt.
+**MERGED AND DEPLOYED 2026-09-07.** Production head is **0079**; the three probe cells in the middle
+and at both ends of the canal answer `NULL` from `voyage.sea_at`, and Ayutthaya→Thanlyin is served at
+**1958.9 nm**. The repricing stopped being a judgement call once it had numbers: the balance proof
+puts the median first voyage at 19.2 %, inside the designed 13.0–20.0 band. The window was clean —
+no fleet at sea, no stored path over the canal.
+
+§5's separate slice is still unbuilt, and this file's own §1 header explains why it is not a
+threshold: sorted by longest hop the canal (330.5 nm) sits ahead of the Bab-el-Mandeb (277.6) but
+sorted by inland reach it (89.3 nm) sits *behind* the Gulf of Suez (97.1). **No threshold separates
+a strait from a canal.** The pinned inventory in `tests/seaCarve.spec.ts` is the honest guard, and it
+is the one that would have caught this on the day it was written.
 
 ---
 
