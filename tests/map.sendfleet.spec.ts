@@ -5,6 +5,7 @@ import { fitToViewBox } from '../src/lib/geo'
 import { FIT_PADDING, openingBounds } from '../src/chart'
 import { sailOrigin, sailTarget } from '../src/domain/passage'
 import { REAL_PORTS, dockedFleet, portAt } from './mapWorld.fixture'
+import { ready, reachable } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MAP'S ONE ACT, DRIVEN — three defects found in a real browser on the running game, each one
@@ -191,17 +192,21 @@ test.describe('the whole send, driven on a phone', () => {
     request,
     baseURL,
   }) => {
-    const reachable = await request
-      .get(baseURL ?? '')
-      .then((r) => r.ok())
-      .catch(() => false)
+    // THE ONE "IS THE APP UP" APPARATUS — tests/appReady.fixture.ts. This file used to carry its
+    // own copy: its own served-probe and its own boot wait keyed on the PORT MARKS. That copy could not
+    // do the one thing it had an /auth guard for. On a cloud build every route redirects to /auth,
+    // where no port is ever drawn, so the wait burned its full 300 s and FAILED — with the skip
+    // that was meant to catch it MISSING FROM THIS FILE ENTIRELY. The fixture's wait keys
+    // on the loading skeleton instead, which settles on /auth like anywhere else, so it reaches its
+    // own guard and skips with a reason. Measured 2026-09-07: 3 timeouts, 0 explained.
     test.skip(
-      !reachable,
+      !(await reachable(request, baseURL ?? '')),
       `nothing served at ${baseURL} — run \`npm run build && npm run preview\` (or set ` +
         `PLAYWRIGHT_BASE_URL) and re-run`,
     )
 
     await page.goto('map')
+    await ready(page)
     await page.waitForSelector('[data-testid="map-ports"] > g', { timeout: 300_000 })
     const chart = page.locator('svg[aria-label^="Chart of the world"]')
     await expect(chart.getByTestId('map-coastline')).toHaveCount(1)

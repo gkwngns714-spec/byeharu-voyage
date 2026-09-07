@@ -5,6 +5,80 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-07 — D38: the stack is on production, and two records that were wrong
+
+The 2026-09-06 stack (#29 → #30 → #31 → #32) is merged and **applied to production**. Production's
+head is **0078**, read back from the target. Along the way two written claims were found false and
+one gate was found unable to report what it measured.
+
+### Production was never behind
+
+`docs/PICKUP_2026-09-07.md` §4 said the last recorded head was **0059** and that 0060–0076 had no
+recorded deploy. `supabase migration list --linked` says otherwise: **every local migration through
+0076 was already applied**, 69 rows in `schema_migrations`, local and remote matching row for row.
+
+So the frightening part of the push — seventeen migrations including 0062, 0065, 0066 and 0071,
+which write the tick's own tables, going in against a running clock — **did not exist**. Only 0077
+and 0078 were unpushed, and neither writes a table any tick writes.
+
+What was behind was the *record*, and PICKUP had warned about exactly this one paragraph above the
+claim it got wrong: *"re-read the deploy state from the target, not from this file."* Both files are
+corrected in place, struck rather than deleted, because the rule 0078 argues is unchanged.
+
+### The runbook's first step could not be run
+
+`DEPLOY_RUNBOOK.md` step 2 said `select public.unwind_the_clock();`. **That function arrives with
+0078.** On any database below 0078 — which is every database that has ever needed this runbook — the
+first instruction was un-runnable. The bootstrap is now written out beside it: the same predicate by
+hand, the confirming select, and the reason to read the job **names** and not just the count.
+
+That mattered here. Pre-flight found all five jobs `active` on production, which would have aborted
+the push inside 0078's own self-assert — the guard working exactly as designed. Names matched the
+five 0078 expects, with no surviving `voyage-tick-%` from 0010.
+
+### The deploy, in order
+
+    5 jobs active  ->  cron.alter_job(..., active := false) x5  ->  0 active  (verified)
+    supabase db push --linked       0077, 0078 applied
+    select public.wind_the_clock()  "5 job(s) running: arrivals * * * * *, buff-calendar */10 …"
+    head 0078, 71 migrations        (verified on the target)
+
+0078's **real-scheduler branch ran for the first time here.** PGlite has no `pg_cron`, so every
+green tick this migration ever earned locally was its no-scheduler branch; production is the first
+place the wind/unwind/idempotency asserts executed against real jobs. They passed.
+
+And 0077's defect is gone where it lives: `class_slots` gives a barca **1 weapon slot**,
+`ship_classes.guns` stays 0 as the escort score it has been since 0006, and `guns` now appears in
+`cmd.do_fit` **only inside comments** — the branch is gone, not corrected.
+
+### The gate that could not report what it measured
+
+Local acceptance came back **3 failed, 14 skipped, 218 passed**. All three failures were the same
+300-second timeout, and all three were the same defect.
+
+`.env.local` is present on this machine, so the local build is a **cloud** build and every route
+redirects to `/auth`. `tests/appReady.fixture.ts` is built for that: its wait keys on the loading
+skeleton, which settles on `/auth` like anywhere else, so it reaches its own `/auth` guard and
+**skips with a reason**. That is the 14 skips, and they are honest.
+
+But three browser specs never used the fixture. Each carried its own served-probe and its own boot
+wait, keyed on the **purse** (`chart.ink`, `waters.panel`) or the **port marks**
+(`map.sendfleet`) — game furniture that does not exist on a sign-in page. So each waited the full
+300 s and failed. `chart.ink` and `waters.panel` both *had* the `/auth` guard; it sat on the line
+**after** the wait that could never finish. `map.sendfleet` had no guard at all.
+
+This is `docs/NO_SPAGHETTI.md`'s shape with a cost attached: four copies of one rule, and the three
+copies that drifted turned "skip, and say why" into a quarter-hour of red. All three now call
+`reachable()` and `ready()`. The wait exists in **one** file; the boot-wait grep returns only the
+fixture.
+
+**Proven by re-running the same three specs against the same cloud build: 3 skipped, 28 passed,
+exit 0, in 2.1 minutes** — where the run before spent 15 minutes timing out. Under CI, which builds
+without `.env.local`, they run for real as they always did; `acceptance.yml`'s no-skips floor is
+untouched.
+
+---
+
 ## 2026-09-06 — D37: 309 port pairs are sold a route across the Malay peninsula
 
 **No world change in this slice.** It is a measurement, the document that carries it, and the guard

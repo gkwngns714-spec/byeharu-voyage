@@ -4,6 +4,7 @@ import { DANGER_PIPS, DANGER_TIERS, dangerLabel, dangerPips, dangerTone } from '
 import { mapFleetsOf } from '../src/chart'
 import type { MapWater } from '../src/chart'
 import { sailingFleet, dockedFleet } from './mapWorld.fixture'
+import { ready, reachable } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE WATERS AHEAD — the map's answer to "the contacts panel with distances" (migration 0055)
@@ -196,14 +197,15 @@ test.describe('pressing a control selects, and never destroys the surface', () =
     // The measured cold-boot budget tests/layout.spec.ts and tests/chart.ink.spec.ts both carry:
     // the migration chain applies inside this tab.
     test.setTimeout(420_000)
-    let served: boolean
-    try {
-      served = (await request.get(baseURL ?? '')).ok()
-    } catch {
-      served = false
-    }
+    // THE ONE "IS THE APP UP" APPARATUS — tests/appReady.fixture.ts. This file used to carry its
+    // own copy: its own served-probe and its own boot wait keyed on the PURSE. That copy could not
+    // do the one thing it had an /auth guard for. On a cloud build every route redirects to /auth,
+    // where there is no purse at all, so the wait burned its full 300 s and FAILED — with the skip
+    // that was meant to catch it sitting on the line after, never reached. The fixture's wait keys
+    // on the loading skeleton instead, which settles on /auth like anywhere else, so it reaches its
+    // own guard and skips with a reason. Measured 2026-09-07: 3 timeouts, 0 explained.
     test.skip(
-      !served,
+      !(await reachable(request, baseURL ?? '')),
       `nothing served at ${baseURL} — run \`npm run build && npx vite preview --port 4323\`, then ` +
         `PLAYWRIGHT_BASE_URL=http://localhost:4323/byeharu-voyage/ and re-run. LOCALHOST, not ` +
         `127.0.0.1: vite preview binds the IPv6 loopback, and measured on this machine ` +
@@ -212,14 +214,7 @@ test.describe('pressing a control selects, and never destroys the surface', () =
     )
 
     await page.goto('map')
-    await page.waitForFunction(
-      () => !/—/.test(document.querySelector('[data-testid="purse"]')?.textContent ?? '—'),
-      undefined,
-      { timeout: 300_000 },
-    )
-    if (/\/auth$/.test(new URL(page.url()).pathname)) {
-      test.skip(true, 'this build is in CLOUD mode and redirected to /auth — build without .env.local')
-    }
+    await ready(page)
 
     // At 390 px the fleet list starts folded to its header chip (MapPanel's `defaultOpen`), so the
     // first press is the fold. That is itself the law under test: it opens, it does not dismiss.

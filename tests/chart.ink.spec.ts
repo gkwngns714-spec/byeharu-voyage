@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { GLYPH, portMarkScale, portStrokeWidth } from '../src/chart'
+import { ready, reachable } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CHART'S INK — how far land is from water, and how loud a great port is beside a small one.
@@ -147,29 +148,21 @@ test.describe('land reads as land at 390px', () => {
     // parallel load — and the old 180 s purse wait failed a CORRECT build. The standing cure is
     // the pre-built database image (DEV_LOG D21).
     test.setTimeout(420_000)
-    let served: boolean
-    try {
-      served = (await request.get(baseURL ?? '')).ok()
-    } catch {
-      served = false
-    }
+    // THE ONE "IS THE APP UP" APPARATUS — tests/appReady.fixture.ts. This file used to carry its
+    // own copy: its own served-probe and its own boot wait keyed on the PURSE. That copy could not
+    // do the one thing it had an /auth guard for. On a cloud build every route redirects to /auth,
+    // where there is no purse at all, so the wait burned its full 300 s and FAILED — with the skip
+    // that was meant to catch it sitting on the line after, never reached. The fixture's wait keys
+    // on the loading skeleton instead, which settles on /auth like anywhere else, so it reaches its
+    // own guard and skips with a reason. Measured 2026-09-07: 3 timeouts, 0 explained.
     test.skip(
-      !served,
+      !(await reachable(request, baseURL ?? '')),
       `nothing served at ${baseURL} — run \`npm run build && npm run preview\` (or set ` +
         `PLAYWRIGHT_BASE_URL) and re-run. A colour proof that measures no pixels is not a proof.`,
     )
 
     await page.goto('map')
-    // READY is the world open, not the bundle downloaded: the migration chain applies in this tab
-    // and the purse holds a dash until `world.snapshot()` answers.
-    await page.waitForFunction(
-      () => !/—/.test(document.querySelector('[data-testid="purse"]')?.textContent ?? '—'),
-      undefined,
-      { timeout: 300_000 },
-    )
-    if (/\/auth$/.test(new URL(page.url()).pathname)) {
-      test.skip(true, 'this build is in CLOUD mode and redirected to /auth — build without .env.local')
-    }
+    await ready(page)
     await page.waitForFunction(
       () => (document.querySelector('[data-testid="map-coastline"]')?.getAttribute('d') ?? '').length > 1000,
       undefined,
