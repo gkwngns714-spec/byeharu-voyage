@@ -5,6 +5,90 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-07 — D39: the canal is filled in, and the switch that only worked one way
+
+Migration **0079**. The repair `docs/LAND_CARVE_RECON.md` §4A deliberately stopped on 2026-09-06 is
+built, applied and proven locally. **It is not merged and not deployed** — the repricing is the
+owner's call, and it is now a decision with numbers under it.
+
+### The third kind of disagreement between the two rasters
+
+The repair stopped because `build-sea-migration.mjs` refused to emit: *"sea-membership on water this
+mask closes OUTSIDE every ICE closure (23 cell(s))"*. That guard is right, and the reason it had no
+answer is that it only knew two of the three ways the rasters can differ:
+
+| the mask… | 0040 says… | answer |
+|---|---|---|
+| OPENS water 0040 never saw | nothing (it was land) | **heal** — join the nearest named sea by water |
+| CLOSES water 0040 names, inside authored `ICE` | a sea | **allow, keep the name** — ice is sea nobody may sail |
+| CLOSES water 0040 names, because the carve was wrong | a sea | **had no answer, so it threw** |
+
+The third is the canal. 0040 was cut from the **carved** grid, so it dutifully named cells that were
+never water. Withdraw the carve and they are land — and land carries no sea, so their membership
+must be **zeroed**. That is the *opposite* action from ICE on the same fact, which is why it is a
+new authored list, `RECLAIMED` in `scripts/sea-grid.mjs`, and not a flag on the old one.
+
+It is **authored and never inferred**, for exactly the reason the generator refused in the first
+place: a silent membership delete is indistinguishable from a raster that has quietly lost an ocean.
+An entry states where, why, and **how many** cells it expects; the cells are **derived from
+CHANNELS**, so the list can never become a second opinion about where the water is. A claim whose
+count does not match refuses to emit, and so does a claim that reclaims nothing.
+
+### THE SWITCH ONLY EVER WORKED IN ONE DIRECTION
+
+`INTRODUCES_THE_ROADSTEAD` exists so a later raster migration can skip 0076's one-time work. Its
+header promised that leaving it **true** on a later run fails loudly rather than silently. It does.
+The symmetrical case had never been run: setting it **false** — which is the entire purpose of the
+switch — failed just as loudly, on the first attempt.
+
+    MIGRATION FAILED: 20260818000079_…
+      message: relation "defs_before_0079" does not exist
+      sqlstate: 42P01
+
+The pre-image comparison (*"world.snapshot is its own pre-image with exactly the declared hunk
+swapped in"*) reads a temp table that only the `true` path creates, and it sat **outside** both
+gates. So the switch covered the work but not the proof of the work. It covers both now.
+
+This is the ordinary shape of a flag that has only ever been exercised one way, and it is worth the
+paragraph: the file argued carefully about one direction failing loudly and never ran the other.
+
+### A migration must prove its own claim
+
+The first green apply of 0079 printed **0076's receipt** — the roadsteads, the Panama isthmus, the
+Arctic — and said nothing about the canal. Green, and unable to tell you what it had done. 0079 now
+proves its own headline, in the shape (g) already uses for Panama:
+
+1. every one of the **23** reclaimed cells answers `voyage.sea_at(...) is null` — asserted
+   coordinate by coordinate, so **both** rasters are proven to have moved, which is precisely what
+   stopped the first attempt;
+2. the straight line from the Ayutthaya roads to the Thanlyin roads is refused **E_LAND** — the
+   short way across the peninsula cannot be bought;
+3. the table quotes **1958.9 nm** the long way round, pinned to the measurement rather than to a
+   floor (a raster that closed the canal in the *wrong place* would clear any floor), and that is
+   more than **3×** the great circle — around a peninsula, not through one.
+
+### What it measured
+
+| | |
+|---|---|
+| cells reclaimed | **23**, exactly as authored — 0 opened |
+| the raster | 545,989 → **545,966** water cells |
+| roadsteads | **unmoved** — 238 places, 77 on their own water, worst LNG 67.68 nm |
+| carve inventory | `irrawaddy-sittaung` 37 → `yangon` 3 + `chao-phraya` 5; total 550 → **521** |
+| chain | **72 migrations, 72 receipts**, world-guard green |
+
+**The repricing, over all 28,203 pairs:** mean +14.90 nm, median **0.00 nm / 0.00 %**, **94.6 %** of
+pairs move under 0.5 %, **1.92 %** move over 5 %. Narrow, and it lands where it should —
+Ayutthaya→Thanlyin 364.5 → 1958.9 nm, Ayutthaya→Chittagong 859.3 → 2340.2 nm. No port is orphaned.
+
+### Still open
+
+§5's separate slice — the generator-side guard that compares the raster against the land data it was
+built **from**, rather than asking the raster about itself — is unbuilt. That is the one that stops
+the class coming back.
+
+---
+
 ## 2026-09-07 — D38: the stack is on production, and two records that were wrong
 
 The 2026-09-06 stack (#29 → #30 → #31 → #32) is merged and **applied to production**. Production's

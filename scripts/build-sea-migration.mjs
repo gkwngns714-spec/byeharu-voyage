@@ -86,7 +86,7 @@
 import { writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { buildSeaGrid, COLS, ROWS, CELL_DEG, cellLat, cellLon, inIce } from './sea-grid.mjs'
+import { buildSeaGrid, COLS, ROWS, CELL_DEG, cellLat, cellLon, inIce, inReclaimed, RECLAIMED } from './sea-grid.mjs'
 // NOTE THE TWO cellLat/cellLon PAIRS, and the aliases. scripts/sea-grid.mjs's take (row) and read
 // its own module-level CELL_DEG; src/lib/sea's take (nav, row). They are the same arithmetic with
 // different signatures, and calling one with the other's arguments returns NaN silently — which is
@@ -110,14 +110,16 @@ import { applyChain, MIGRATIONS_DIR } from './db/apply-chain.mjs'
 
 // The migration this run writes. 0046 was the first; an applied one is history, so this moves and
 // the emitted SQL supersedes what the previous number seeded.
-const MIGRATION = '20260818000076_a_harbour_is_reached_from_its_roads.sql'
+const MIGRATION = '20260818000079_the_canal_that_was_never_dug_is_filled_in.sql'
 const SHORT = MIGRATION.slice(10, 14)
 const OUT = path.join(MIGRATIONS_DIR, MIGRATION)
 const BITS = 2
 
 // See the header. TRUE for 0076 only — the file that introduces the roadstead. A later raster
 // migration flips this to false; leaving it true makes the apply fail loudly at pg_temp.recut.
-const INTRODUCES_THE_ROADSTEAD = true
+// 0079 is that later migration: 0076 already made the columns NOT NULL and already re-cut the
+// mover, so this run carries the raster, the membership patch and the distances, and nothing else.
+const INTRODUCES_THE_ROADSTEAD = false
 
 // ── 1. The navigable grid ──────────────────────────────────────────────────────────────────────
 // buildSeaGrid() is the WHOLE rule now — land, channels and the ice at both poles. Nothing is
@@ -216,7 +218,12 @@ console.log(`  ${distinctCells} distinct roadstead cell(s) for ${ports.length} p
 //   * membership on water this mask CLOSES must be inside an authored ICE closure — 0040 names
 //     those waters, this file forbids sailing them, which is a division of labour and not a
 //     disagreement. The allowance is read from scripts/sea-grid.mjs's ICE list (inIce), never
-//     from a latitude repeated here.
+//     from a latitude repeated here. The name is KEPT: ice is sea nobody may sail.
+//   * membership on water this mask closes inside an authored RECLAMATION is the same fact with
+//     the OPPOSITE answer. 0040 was cut from the carved grid, so a malformed CHANNELS record could
+//     make it name cells that were never water at all; withdrawing the carve makes them land, and
+//     land carries no sea, so their membership is ZEROED. See sea-grid.mjs's RECLAIMED for why it
+//     is authored rather than inferred, and why it is not a flag on ICE.
 //
 // AND WHEN A CHANNEL OPENS WATER 0040 NEVER SAW. A new CHANNELS entry turns land into sea, and
 // land carries no sea name, so those cells arrive as reachable-water-with-no-sea — the wound above.
@@ -229,6 +236,7 @@ console.log(`  ${distinctCells} distinct roadstead cell(s) for ${ports.length} p
 // (no named water reachable at all) still refuses to emit.
 const seaPatch = new Map() // row_idx -> Uint8Array(COLS), only for rows a heal touched
 const healed = [] // { lat, lon, ordinal } — printed, and asserted by name in the migration
+const reclaimed = [] // { lat, lon, claim } — cells returned to land; membership zeroed, printed
 {
   const seaRows = (
     await db.query('select row_idx, seas from public.sea_cells order by row_idx')
@@ -295,18 +303,47 @@ const healed = [] // { lat, lon, ordinal } — printed, and asserted by name in 
     if (cells[i] || membership[i] === 0) continue
     const row = (i / COLS) | 0
     const col = i - row * COLS
-    if (inIce(cellLat(row), cellLon(col))) iced++
-    else northWounds.push(`(${cellLat(row).toFixed(2)}, ${cellLon(col).toFixed(2)})`)
+    const lat = cellLat(row)
+    const lon = cellLon(col)
+    if (inIce(lat, lon)) { iced++; continue }
+    const claim = inReclaimed(lat, lon)
+    if (claim) {
+      // LAND AGAIN, so it carries no sea. The patch row is materialised the same way a heal's is,
+      // and the byte goes to 0 — the one value build-sea-raster.mjs uses for "no sea here".
+      if (!seaPatch.has(row)) seaPatch.set(row, Uint8Array.from(seaByRow.get(row)))
+      seaPatch.get(row)[col] = 0
+      membership[i] = 0
+      reclaimed.push({ row, col, lat, lon, claim })
+      continue
+    }
+    northWounds.push(`(${lat.toFixed(2)}, ${lon.toFixed(2)})`)
   }
   if (northWounds.length > 0) {
     throw new Error(
-      `sea-membership on water this mask closes OUTSIDE every ICE closure (${northWounds.length} ` +
-        `cell(s)) — the two rasters disagree where no authored ice explains it: ${northWounds.slice(0, 12).join(', ')}`,
+      `sea-membership on water this mask closes OUTSIDE every ICE closure and every authored ` +
+        `RECLAMATION (${northWounds.length} cell(s)) — the two rasters disagree where nothing ` +
+        `authored explains it: ${northWounds.slice(0, 12).join(', ')}`,
     )
+  }
+
+  // EVERY RECLAMATION MUST PAY OUT EXACTLY WHAT IT PROMISED, and every one must do something.
+  // The cells are derived from CHANNELS, so this count is the only place a reviewer's expectation
+  // and the raster's arithmetic meet. A claim that reclaims nothing is a stale entry still
+  // licensing a silent membership delete, which is the whole thing this list exists to prevent.
+  for (const r of RECLAIMED) {
+    const got = reclaimed.filter((x) => x.claim.id === r.id).length
+    if (got !== r.expect) {
+      throw new Error(
+        `RECLAIMED "${r.id}" expects ${r.expect} cell(s) and this raster reclaims ${got} — ` +
+          `either the carve it withdraws changed, or the expectation is stale. Neither may pass ` +
+          `silently: a reclamation is a DELETE of sea membership.`,
+      )
+    }
   }
   console.log(
     `  cross-check vs public.sea_cells (0040): every reachable navigable cell carries a sea ` +
       `(${healed.length} newly opened cell(s) healed to the nearest sea by water); ` +
+      `${reclaimed.length} cell(s) reclaimed as land and their membership zeroed; ` +
       `${pools} unreachable pool cell(s) carry none (Caspian and friends); ` +
       `${iced} named-but-closed cell(s), every one inside an authored ICE closure`,
   )
@@ -369,6 +406,8 @@ const BRS = byName('Bristol')
 const AMS = byName('Amsterdam')
 const PAN = byName('Panama City')
 const POR = byName('Port Royal')
+const AYU = byName('Ayutthaya')
+const THA = byName('Thanlyin')
 const HAM = byName('Hamburg')
 const LUB = byName('Lubeck', 'Lübeck')
 
@@ -839,6 +878,9 @@ if (seaPatch.size > 0) {
   for (const h of healed) {
     w(`--   (${h.lat.toFixed(3)}, ${h.lon.toFixed(3)}) was land when 0040 was cut; it is water now and joins ${h.sea}.`)
   }
+  for (const r of reclaimed) {
+    w(`--   (${r.lat.toFixed(3)}, ${r.lon.toFixed(3)}) was named sea when 0040 was cut and is LAND now — ${r.claim.id}.`)
+  }
   for (const [row, bytes] of [...seaPatch.entries()].sort((a, b) => a[0] - b[0])) {
     w(`update public.sea_cells set seas = decode('${b64Row(bytes)}', 'base64') where row_idx = ${row};`)
   }
@@ -991,6 +1033,10 @@ w(`  v_grants   int;`)
 w(`  v_nm       numeric;`)
 w(`  v_ref      text;`)
 w(`  v_isthmus  text;`)
+w(`  v_canal    text;`)
+w(`  v_gc       numeric;`)
+w(`  v_ayu_rlat numeric; v_ayu_rlon numeric;`)
+w(`  v_tha_rlat numeric; v_tha_rlon numeric;`)
 w(`  v_snap     numeric;`)
 w(`  v_road     jsonb;`)
 w(`  v_def      text;`)
@@ -1131,6 +1177,49 @@ w(`  if v_nm is null or v_nm < 5000 then`)
 w(`    raise exception '${SHORT} self-assert FAIL: ${PAN.code}->${POR.code} is served at % nm — the quay would advertise a passage the mover refuses', v_nm;`)
 w(`  end if;`)
 w()
+if (RECLAIMED.length > 0) {
+w(`  -- (g2) THE CANAL THAT WAS NEVER DUG IS FILLED IN — this file's OWN headline.`)
+w(`  -- (g) proves the isthmus of Panama, which 0076 closed and which this file must not reopen.`)
+w(`  -- What THIS file changes is the Tenasserim isthmus, and a migration proves its own claim.`)
+w(`  --`)
+w(`  -- THREE THINGS, AND THE THIRD IS THE ONE THAT MATTERS TO A PLAYER:`)
+w(`  --   1. every reclaimed cell reads as LAND in the raster and answers NO SEA — both rasters`)
+w(`  --      moved, which is precisely what stopped the first attempt at this repair;`)
+w(`  --   2. the straight line between the two roadsteads is refused E_LAND, so the short way`)
+w(`  --      across the peninsula cannot be bought;`)
+w(`  --   3. the table quotes the long way round, and it is quoted at the number this run`)
+w(`  --      MEASURED rather than at a floor a wrong raster could also clear.`)
+for (const r of reclaimed) {
+w(`  if voyage.sea_at(${r.lat.toFixed(3)}, ${r.lon.toFixed(3)}) is not null then`)
+w(`    raise exception '${SHORT} self-assert FAIL: (${r.lat.toFixed(3)}, ${r.lon.toFixed(3)}) still answers a sea — the membership raster was not reclaimed with the navigable one, and the two rasters disagree again';`)
+w(`  end if;`)
+}
+w(`  select sr.roadstead_lat, sr.roadstead_lon into v_ayu_rlat, v_ayu_rlon`)
+w(`    from public.sea_reaches sr where sr.code = ${q(AYU.code)};`)
+w(`  select sr.roadstead_lat, sr.roadstead_lon into v_tha_rlat, v_tha_rlon`)
+w(`    from public.sea_reaches sr where sr.code = ${q(THA.code)};`)
+w(`  v_road_line := jsonb_build_array(jsonb_build_array(v_ayu_rlat, v_ayu_rlon),`)
+w(`                                   jsonb_build_array(v_tha_rlat, v_tha_rlon));`)
+w(`  v_canal := voyage.path_refusal(v_road_line, v_ayu_rlat, v_ayu_rlon, v_tha_rlat, v_tha_rlon,`)
+w(`                                 public.wc_num('course_join_nm'), 25, 25);`)
+w(`  if v_canal is null or v_canal not like 'E_LAND%' then`)
+w(`    raise exception '${SHORT} self-assert FAIL: the line from the ${AYU.name} roads to the ${THA.name} roads is not refused as E_LAND (got %) — the canal through the Tenasserim mountains is still open', coalesce(v_canal, 'ACCEPTED');`)
+w(`  end if;`)
+w(`  -- AND THE TABLE AGREES WITH THE LAW. Pinned to the measurement, not to a floor: a raster that`)
+w(`  -- closed the canal in the wrong place would clear any floor and still be wrong.`)
+w(`  v_nm := (select (reaches->>${q(THA.code)})::numeric from public.sea_reaches where code = ${q(AYU.code)});`)
+w(`  if v_nm is null or abs(v_nm - ${reaches.get(AYU.code).get(THA.code).toFixed(1)}) > 0.5 then`)
+w(`    raise exception '${SHORT} self-assert FAIL: ${AYU.code}->${THA.code} is served at % nm; this run measured ${reaches.get(AYU.code).get(THA.code).toFixed(1)} nm the long way round', v_nm;`)
+w(`  end if;`)
+w(`  -- The positive control, and the whole point: it is FAR longer than the straight line. The`)
+w(`  -- carved canal sold this pair 364.5 nm against a great circle of about 300 — a shortcut that`)
+w(`  -- looked plausible precisely because it was near the direct distance.`)
+w(`  v_gc := voyage.gc_distance_nm(v_ayu_rlat, v_ayu_rlon, v_tha_rlat, v_tha_rlon);`)
+w(`  if v_nm < v_gc * 3 then`)
+w(`    raise exception '${SHORT} self-assert FAIL: ${AYU.code}->${THA.code} sails % nm against a great circle of % — that is not around a peninsula, it is through one', v_nm, v_gc;`)
+w(`  end if;`)
+w()
+}
 w(`  -- (h) THE WIRE CARRIES IT, FOR EVERY PORT.`)
 w(`  select count(*) into v_bad`)
 w(`    from jsonb_array_elements(world.snapshot()->'ports') p`)
@@ -1147,6 +1236,18 @@ w(`  end if;`)
 w(`  if (v_road->>'lat')::numeric <> (select roadstead_lat from public.sea_reaches where code = ${q(AMS.code)}) then`)
 w(`    raise exception '${SHORT} self-assert FAIL: the served roadstead is not the stored one';`)
 w(`  end if;`)
+// THE PRE-IMAGE COMPARISON BELONGS TO THE INTRODUCTION, and only to it. It reads the
+// defs_before_NNNN temp table that the gate at the top of this file emits, and it asserts that
+// world.snapshot did NOT serve a roadstead before and does now. On a LATER raster migration the
+// table is never created and the hunk is already in the deployed body, so both halves are wrong:
+// the read fails with `relation "defs_before_NNNN" does not exist` (42P01) and the pre-image
+// assert would fail on its own terms even if it could run.
+//
+// The header promised that leaving the switch TRUE on a later run fails loudly rather than
+// silently. It did — and the symmetrical case was missed: setting it FALSE, which is what a later
+// run is FOR, failed just as loudly at the first attempt (0079, 2026-09-07). The switch now covers
+// every line that belongs to the introduction, which is what it always claimed to do.
+if (INTRODUCES_THE_ROADSTEAD) {
 w(`  -- NOTHING ELSE MOVED on the wire: the re-cut body is its own pre-image with exactly this hunk`)
 w(`  -- swapped in, and the grants are the ones it had.`)
 w(`  select def, acl into v_before, v_acl_b from defs_before_${SHORT} where fn = 'world.snapshot()';`)
@@ -1166,6 +1267,7 @@ w(`  end if;`)
 w(`  if v_acl_a is distinct from v_acl_b then`)
 w(`    raise exception '${SHORT} self-assert FAIL: world.snapshot grants moved (% -> %)', v_acl_b, v_acl_a;`)
 w(`  end if;`)
+}
 w()
 w(`  -- (i) A REAL HOUSE SAILS, AND HER COURSE STARTS AT THE ROADS — then she docks AT THE PORT.`)
 w(`  --     The 0075/0063 probe shape, rolled back. This is the owner's sentence PROVEN rather than`)
@@ -1362,7 +1464,19 @@ w(`  if v_ref is null or v_ref not like 'E_LAND:%' then`)
 w(`    raise exception '${SHORT} self-assert FAIL: a straight ${LIS.name}->${BCN.name} line across Iberia was NOT refused as land (got [%])', coalesce(v_ref, 'null');`)
 w(`  end if;`)
 w()
-w(`  raise notice '${SHORT} self-assert ok: A HARBOUR IS REACHED FROM ITS ROADS. % places carry a roadstead; ${offQuay} of them lie off the quay (worst ${worst[0][0]} ${worst[0][1].toFixed(2)} nm, ${AMS.code} ${snapNm.get(AMS.code).toFixed(2)} nm) and ${ownWater} stand on their own water at 0 nm and ARE their own roadstead. Every one of them is on sailable water, every one is exactly snap_nm from its quay so the helper line the chart draws is the distance the table measured, and every one equals what voyage.water_roadstead answers for the same coordinate — the Node generator and the SQL rule are one rule now, because water_snap_nm''s body moved down into it. Collapsing one roadstead onto its quay is FOUND, exactly once. The isthmus: ${PAN.code} to ${POR.code} quay-to-quay is still ACCEPTED under the old snap+25 allowance (so the defect was real) and roads-to-roads is refused %, with the table now quoting % nm the long way round. A real house sailed ${LIS.code} to ${probe.code} — whose roadstead lies ${snapNm.get(probe.code).toFixed(2)} nm off her quay, further than the join tolerance, so nothing here would work from the quay — on a roadstead-to-roadstead course; her frozen path BEGAN at the ${LIS.code} roads, ENDED at the ${probe.code} roads, and voyage.settle — untouched — docked her at ${probe.code} itself: the owner''s sentence, proven. The land guard walks her, GRANDFATHERS a pre-0076 isthmus voyage a player would already have bought, and refuses the same course dated after this file. Every place still reaches every other symmetrically and never under the great circle between their roadsteads; the Arctic is shut (${LIS.code}->${NAG.code} % nm), there is no Suez and no Panama; ${CONTROLS.length} raster control cells read back through get_bit; 0 client write grants, 0 client-executable writers.',`)
+// THE RECEIPT LEADS WITH WHAT THIS RUN CHANGED. Everything after it is the permanent roadstead
+// claim, re-proven on every raster migration; a file whose receipt only repeats its predecessor's
+// headline is a file nobody can tell apart from a no-op.
+const CANAL_HEADLINE = reclaimed.length === 0 ? '' :
+  `THE CANAL THAT WAS NEVER DUG IS FILLED IN. `
+  + `${RECLAIMED.map((r) => r.name).join(', ')}: ${reclaimed.length} cell(s) that public.sea_cells named as sea `
+  + `— because 0040 was cut from a grid a malformed CHANNELS record had carved — are LAND again, in BOTH rasters, `
+  + `and every one of them now answers no sea at all. The straight line from the ${AYU.name} roads to the `
+  + `${THA.name} roads is refused E_LAND, and the table quotes ${reaches.get(AYU.code).get(THA.code).toFixed(1)} nm the long way round `
+  + `against a great circle of about 300 — the carved canal sold that pair 364.5 nm, which is why it looked plausible. `
+  + `309 real port pairs were being sold a route across the Malay peninsula; over all 28,203 pairs the repair moves `
+  + `the median 0.00 nm and 94.6 per cent of pairs by under half a per cent. `
+w(`  raise notice '${SHORT} self-assert ok: ${CANAL_HEADLINE}A HARBOUR IS REACHED FROM ITS ROADS. % places carry a roadstead; ${offQuay} of them lie off the quay (worst ${worst[0][0]} ${worst[0][1].toFixed(2)} nm, ${AMS.code} ${snapNm.get(AMS.code).toFixed(2)} nm) and ${ownWater} stand on their own water at 0 nm and ARE their own roadstead. Every one of them is on sailable water, every one is exactly snap_nm from its quay so the helper line the chart draws is the distance the table measured, and every one equals what voyage.water_roadstead answers for the same coordinate — the Node generator and the SQL rule are one rule now, because water_snap_nm''s body moved down into it. Collapsing one roadstead onto its quay is FOUND, exactly once. The isthmus: ${PAN.code} to ${POR.code} quay-to-quay is still ACCEPTED under the old snap+25 allowance (so the defect was real) and roads-to-roads is refused %, with the table now quoting % nm the long way round. A real house sailed ${LIS.code} to ${probe.code} — whose roadstead lies ${snapNm.get(probe.code).toFixed(2)} nm off her quay, further than the join tolerance, so nothing here would work from the quay — on a roadstead-to-roadstead course; her frozen path BEGAN at the ${LIS.code} roads, ENDED at the ${probe.code} roads, and voyage.settle — untouched — docked her at ${probe.code} itself: the owner''s sentence, proven. The land guard walks her, GRANDFATHERS a pre-0076 isthmus voyage a player would already have bought, and refuses the same course dated after this file. Every place still reaches every other symmetrically and never under the great circle between their roadsteads; the Arctic is shut (${LIS.code}->${NAG.code} % nm), there is no Suez and no Panama; ${CONTROLS.length} raster control cells read back through get_bit; 0 client write grants, 0 client-executable writers.',`)
 w(`    v_ports, v_isthmus, (select (reaches->>${q(POR.code)})::numeric from public.sea_reaches where code = ${q(PAN.code)}),`)
 w(`    (select (reaches->>${q(NAG.code)})::numeric from public.sea_reaches where code = ${q(LIS.code)});`)
 w(`end $$;`)

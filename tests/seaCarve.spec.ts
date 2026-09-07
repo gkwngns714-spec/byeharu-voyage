@@ -68,10 +68,12 @@ const landOpenedBy = (pre: Uint8Array, ch: Channel) =>
 
 // id → how many cells of DRY LAND it opens. Measured 2026-09-06 against main @ 728da87.
 const PINNED: Record<string, number> = {
-  // ⚠ THE DEFECT. Two waters in one record — the Yangon river and the Chao Phraya, 330 nm apart.
-  // See docs/LAND_CARVE_RECON.md. This number is expected to FALL when it is repaired, and the
-  // repair is a two-raster slice with a balance pass, not an edit to this file.
-  'irrawaddy-sittaung': 37,
+  // ⚠ WAS THE DEFECT, AND IS REPAIRED. One record named two rivers 330 nm apart and opened 37
+  // cells of dry land; it is now two records opening 8 between them. The 29 cells it stops opening
+  // are the canal through the Tenasserim mountains — 23 of which public.sea_cells had NAMED as
+  // sea, because 0040 was cut from the carved grid. Those 23 are scripts/sea-grid.mjs's RECLAIMED
+  // 'tenasserim' entry, and migration 0079 zeroes their membership. docs/LAND_CARVE_RECON.md.
+  'yangon': 3, 'chao-phraya': 5,
 
   'bab-el-mandeb': 84, 'malacca': 52, 'hormuz': 48, 'saint-lawrence': 33, 'baltic-gulfs': 31,
   'thames-scheldt': 26, 'danish-straits': 24, 'seto': 22, 'gironde': 20, 'turkish-straits': 20,
@@ -79,7 +81,7 @@ const PINNED: Record<string, number> = {
   'rio-de-la-plata': 12, 'hooghly': 12, 'sunda': 11, 'yangtze': 10, 'pearl-river': 8, 'severn': 7,
   'amazon-para': 6, 'shatt-al-arab': 6, 'khambhat': 6, 'kerch': 4, 'guadalquivir': 4,
 }
-const PINNED_TOTAL = 550
+const PINNED_TOTAL = 521
 
 test('every channel opens exactly the land it is on record for', () => {
   const pre = preChannelLand()
@@ -133,7 +135,6 @@ test('a channel that names two waters is a canal waiting to happen', () => {
     'elbe-weser',          // ⚠ two rivers; shortens no route between the ports it joins
     'gambia-senegal',      // ⚠ two rivers; shortens no route between the ports it joins
     'gironde',             // ⚠ two rivers; worth 11 nm on bordeaux→nantes
-    'irrawaddy-sittaung',  // ⚠ THE DEFECT — 309 pairs sold a route through the mountains
     'seto',                // the Kii and Bungo channels — both open onto the Inland Sea
     'severn',              // the Bristol Channel and the Avon — one continuous waterway
     'thames-scheldt',      // ⚠ two rivers; shortens no route between the ports it joins

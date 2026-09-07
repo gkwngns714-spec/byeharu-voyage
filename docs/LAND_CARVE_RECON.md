@@ -122,6 +122,53 @@ disconnects 10 ports, is a **different** change and is not proposed here.)
 
 ---
 
+## 4A-DONE. THE REPAIR IS BUILT (2026-09-07) — migration 0079
+
+Everything in §4A below is why it stopped. It is kept because the reasoning is the useful part and
+because it is the record of a decision, not a to-do. What follows is what unblocked it.
+
+**The third kind of disagreement.** `build-sea-migration.mjs` already answered two of the three ways
+the two rasters can differ: the mask OPENS water 0040 never saw (healed to the nearest named sea by
+water), and the mask CLOSES water 0040 names inside an authored `ICE` closure (allowed, and the name
+is KEPT, because ice is sea nobody may sail). The canal is the third: cells 0040 named **only
+because it was cut from the carved grid**. Withdraw the carve and they are land, and land carries no
+sea — so their membership must be **zeroed**, which is the opposite action from ICE on the same
+fact. That is why it is a new authored list, `RECLAIMED` in `scripts/sea-grid.mjs`, and not a flag
+on the old one.
+
+It is **authored** and never inferred, for the same reason the generator refused in the first place:
+a silent membership delete is indistinguishable from a raster that has quietly lost an ocean. An
+entry states where, why, and how many cells it expects; the cells themselves are **derived from
+CHANNELS**, so the list can never become a second opinion about where the water is. A claim whose
+count does not match refuses to emit, and so does a claim that reclaims nothing.
+
+**What it measured, on the way through:**
+
+| | |
+|---|---|
+| cells reclaimed | **23**, exactly as authored — 0 opened |
+| the raster | 545,989 → **545,966** water cells |
+| `sea_cells` rows patched | 11, and every one of the 23 cells named with its coordinates in the SQL |
+| roadsteads | **unmoved** — 238 places, 77 on their own water, 161 off the quay, worst LNG 67.68 nm |
+| the carve inventory | `irrawaddy-sittaung` 37 → `yangon` 3 + `chao-phraya` 5; total 550 → **521** |
+
+**The repricing, measured over all 28,203 pairs:** mean **+14.90 nm**, median **0.00 nm / 0.00 %**,
+**94.6 %** of pairs move less than 0.5 %, **1.92 %** move more than 5 %. The blast radius is real
+but narrow, and it lands where it should:
+
+    Ayutthaya -> Thanlyin      364.5 ->  1958.9 nm     (§1 predicted ~1,977 nm of real sea)
+    Ayutthaya -> Chittagong    859.3 ->  2340.2 nm
+    Ayutthaya -> Myeik         456.3 ->  1678.1 nm
+    Ayutthaya -> Hooghly      1018.9 ->  2489.8 nm
+
+**No port is orphaned** — the generator refuses to emit if any port stops resolving, and it emitted.
+
+**It is NOT merged and NOT deployed.** The repricing above is the owner's call, and it is now a
+decision with numbers under it instead of an unknown. §5's separate slice — the generator-side guard
+that compares the raster against the land it was built from — is still unbuilt.
+
+---
+
 ## 4A. THE REPAIR WAS ATTEMPTED AND STOPPED — and the reason is the useful part
 
 The one-record fix was made and the generator run, so the next person does not have to discover

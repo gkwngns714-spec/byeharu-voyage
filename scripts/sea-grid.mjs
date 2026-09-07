@@ -84,7 +84,13 @@ export const CHANNELS = [
   { id: 'guadalquivir', name: 'the Guadalquivir', points: [[36.8, -6.4], [37.0, -6.3], [37.2, -6.1], [37.4, -6.0]] },
   { id: 'pearl-river', name: 'the Pearl River', points: [[22.0, 114.0], [22.3, 113.8], [22.7, 113.6], [23.1, 113.3]] },
   { id: 'yangtze', name: 'the Yangtze and the Grand Canal mouth', points: [[31.2, 122.4], [31.4, 121.9], [31.5, 121.3], [32.0, 120.4]] },
-  { id: 'irrawaddy-sittaung', name: 'the Yangon and Chao Phraya rivers', points: [[16.3, 96.3], [16.6, 96.2], [16.8, 96.2], [13.3, 100.6], [13.6, 100.6], [14.4, 100.6]] },
+  // WAS ONE RECORD NAMING TWO RIVERS 330 nm APART, and the jump between them carved a canal
+  // through the Tenasserim mountains — 309 real port pairs sold a route across the Malay
+  // peninsula, worst Thanlyin -> Ayutthaya at 323 nm against 1,977 nm of real sea. A CHANNELS
+  // entry's points must lie along ONE water, in order; these are two waters and are now two
+  // records. docs/LAND_CARVE_RECON.md measured it; RECLAIMED below carries the consequence.
+  { id: 'yangon', name: 'the Yangon river', points: [[16.3, 96.3], [16.6, 96.2], [16.8, 96.2]] },
+  { id: 'chao-phraya', name: 'the Chao Phraya', points: [[13.3, 100.6], [13.6, 100.6], [14.4, 100.6]] },
   { id: 'shatt-al-arab', name: 'the Shatt al-Arab', points: [[29.9, 48.7], [30.2, 48.5], [30.5, 47.9]] },
   { id: 'rio-de-la-plata', name: 'the Río de la Plata', points: [[-35.5, -56.0], [-35.0, -57.0], [-34.7, -58.0], [-34.6, -58.4]] },
   { id: 'amazon-para', name: 'the Pará and the Amazon mouth', points: [[-0.5, -47.5], [-1.0, -48.0], [-1.4, -48.5]] },
@@ -152,6 +158,51 @@ export function inIce(lat, lon) {
   for (const ice of ICE) {
     if (row < iceRowFrom(ice) || row > iceRowTo(ice)) continue
     if (lon >= ice.lonFrom && lon <= ice.lonTo) return ice
+  }
+  return null
+}
+
+// ── THE RECLAIMED — land that a withdrawn carve had turned into water ─────────────────────────
+// THE THIRD KIND OF DISAGREEMENT BETWEEN THE TWO RASTERS, and the reason it needs authoring.
+//
+// scripts/build-sea-migration.mjs cross-checks the navigable mask against 0040's sea-membership
+// raster, and it already answers two of the three ways they can differ:
+//
+//   * the mask OPENS water 0040 never saw  -> healed, by joining the nearest named sea BY WATER.
+//     A new water cell must have a name, and the rule for choosing one already exists.
+//   * the mask CLOSES water 0040 names, inside an authored ICE closure -> allowed, and the name is
+//     KEPT. Ice is still sea; it is sea nobody may sail. Membership is not the mask's business.
+//
+// The third way had no answer and threw, which is why the canal repair stopped on 2026-09-06 with
+// "sea-membership on water this mask closes OUTSIDE every ICE closure (23 cell(s))". Those cells
+// are not a drift and not ice: 0040 was cut from the CARVED grid, so it dutifully named cells that
+// were only ever water because a malformed CHANNELS record said so. Withdraw the carve and they
+// are land again — and land carries NO sea, so their membership must go to ZERO.
+//
+// That is the opposite action from ICE on the same fact, which is exactly why it is a separate
+// authored list rather than a flag on that one. It is authored, and never inferred, for the reason
+// the generator refuses in the first place: silently deleting sea membership is indistinguishable
+// from a raster that has quietly lost an ocean. An entry states WHERE, WHY, and HOW MANY cells it
+// expects to reclaim; the cells themselves are DERIVED from CHANNELS, so this list can never
+// become a second opinion about where the water is.
+export const RECLAIMED = [
+  {
+    id: 'tenasserim',
+    name: 'the Tenasserim isthmus',
+    why: "0040 was cut when 'irrawaddy-sittaung' still joined the Yangon river to the Chao Phraya, "
+      + 'so it named the carved cells as sea. The record is now two records and the mountains are '
+      + 'mountains again.',
+    latFrom: 13.0, latTo: 17.0, lonFrom: 96.0, lonTo: 101.0,
+    expect: 23,
+  },
+]
+
+/** Is this cell inside an authored reclamation? The mirror of inIce: that one says "closed by hand
+ *  and STILL sea", this one says "closed by hand and NOT sea any more". Same shape on purpose, so
+ *  a generator reads both the same way and neither re-derives where the water is. */
+export function inReclaimed(lat, lon) {
+  for (const r of RECLAIMED) {
+    if (lat >= r.latFrom && lat <= r.latTo && lon >= r.lonFrom && lon <= r.lonTo) return r
   }
   return null
 }
