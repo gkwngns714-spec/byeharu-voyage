@@ -40,6 +40,32 @@ select public.unwind_the_clock();
 
 Run it in the Supabase SQL editor. It answers how many jobs were running.
 
+**THE FIRST TIME, THAT FUNCTION DOES NOT EXIST YET — it arrives WITH 0078.** On any database whose
+head is below 0078, step 2 has to be done by hand, with the predicate `clock_jobs()` will later
+own. This is the bootstrap, and it is needed exactly once per database:
+
+```sql
+select cron.alter_job(jobid, active := false)
+  from cron.job
+ where (jobname like 'byeharu-voyage:%' or jobname like 'voyage-tick-%')
+   and active;
+```
+
+Then confirm nothing is left running, because 0078's own self-assert will abort the push if
+anything is — which is the guard working, not a failure:
+
+```sql
+select jobname, active from cron.job
+ where jobname like 'byeharu-voyage:%' or jobname like 'voyage-tick-%' order by jobname;
+```
+
+**Check the NAMES here too, not just the count.** 0078 asserts the clock by name against
+`byeharu-voyage:arrivals, byeharu-voyage:buff-calendar, byeharu-voyage:drift,
+byeharu-voyage:price-snapshot, byeharu-voyage:reconcile`. If a job has been added, renamed or lost
+— or if an old `voyage-tick-%` job survives from 0010 — the push stops inside 0078 and somebody has
+to decide whether that job may run during an apply. Better to learn it from a select than from a
+half-applied chain.
+
 **Why this is not optional on a database with rows in it.** `pg_cron` is running
 `tick_market_drift` every drift slot, and that tick writes `public.port_goods`. A migration that
 re-derives the same table is a second writer, and the two take their locks in opposite orders. That
@@ -56,8 +82,12 @@ At statement: 15
 A deadlock in CI costs a re-run. **A deadlock during `db push` aborts the push part-way through the
 chain**, which leaves production on a migration nobody chose.
 
-Four migrations currently unpushed write the tick's own tables: **0062**, **0065**, **0066**
-(`port_goods`) and **0071** (`price_history`).
+0078's header names **0062**, **0065**, **0066** (`port_goods`) and **0071** (`price_history`) as
+unpushed migrations that write the tick's own tables. **That was true when it was written and is
+not true now** — read on 2026-09-07 straight from the target, production's applied head is
+**0076**, so all four are already on it and that particular collision has passed. It is recorded
+rather than deleted because the RULE it argues is unchanged: the next migration that rewrites a
+table a tick writes lands into the same race, and step 2 is what makes it a non-event.
 
 **Stopping the clock does not break the game.** `docs/DEV_LOG.md` and migration 0010's header both
 say why: the ticks are an optimisation for leaderboard freshness, not a correctness requirement.
