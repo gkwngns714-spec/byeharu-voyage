@@ -65,13 +65,16 @@
 // and this file reads that list instead of remembering the number. The water is unchanged: the
 // closure is the same parallel, measured cell-for-cell (0 cells differ).
 //
-// THE THIRD SNAP RULE, NAMED RATHER THAN FIXED: `snapToWater` (scripts/sea-grid.mjs:246) answers
-// "the nearest water cell" with a DIFFERENT rule from the one this file and the server use — 8
-// rings, first-in-scan-order, no distance — and can therefore return a different cell.
-// `snapToNav` (src/lib/sea/pathfind.ts:149) and `voyage.water_roadstead` are 12 rings and the
-// MINIMUM distance, and they agree. That is spaghetti and it is said plainly. Its whole reachable
-// graph is snapToWater ← findSeaRoute (sea-grid.mjs:274) ← scripts/build-sea-places.mjs:157, and
-// nothing else; folding it means regenerating data/sea-places.json, which is a different slice.
+// THE THIRD SNAP RULE IS RETIRED (2026-09-08). `snapToWater` answered "the nearest water cell"
+// with a DIFFERENT rule from the one this file and the server use — 8 rings, first-in-scan-order,
+// no distance — where `snapToNav` (src/lib/sea/pathfind.ts:149) and `voyage.water_roadstead` are
+// 12 rings and the MINIMUM distance, and agree. MEASURED over all 224 harbours before it moved:
+// the two pick a different cell for **87** of them, the scan-order rule always the farther —
+// Dublin 34.39 nm off the quay against 13.89, Bergen +18.49, Boston +17.12, worst +20.51.
+// It reached no live data: its spur legs went into public.legs, which 0049 dropped. So it moved
+// out of scripts/sea-grid.mjs into its one dead caller, scripts/build-sea-places.mjs, which
+// exports nothing and refuses to run. This module now imports a raster and an authored carve, and
+// there is no second snap rule to be careful of.
 //
 // THE MASK (2 bits per cell — passability is a property of (water, ship), coordinator 2026-08-24):
 //   bit 0  SEA    sailable water. The LAW gates on this alone today.
@@ -630,10 +633,12 @@ w(`--     same rule is src/lib/sea/pathfind.ts:317.`)
 w(`--   * public.sea_reaches records the snap DISTANCE and throws the point away (0046:79), and`)
 w(`--     voyage.water_snap_nm computes the winning cell (0047:225-228) and returns only the number.`)
 w(`--     No function in the chain could answer "WHERE is the water nearest this place".`)
-w(`--   * scripts/sea-grid.mjs:246 \`snapToWater\` is a THIRD, DIFFERENT snap rule — 8 rings, the`)
-w(`--     first water cell in scan order rather than the nearest — with exactly one build-time`)
-w(`--     caller (scripts/build-sea-places.mjs:157, through findSeaRoute). It is NAMED here rather`)
-w(`--     than fixed: folding it regenerates data/sea-places.json, which is its own slice.`)
+w(`--   * \`snapToWater\` WAS a THIRD, DIFFERENT snap rule — 8 rings, the first water cell in scan`)
+w(`--     order rather than the nearest — and it is RETIRED as of 2026-09-08. It differed from`)
+w(`--     snapToNav / voyage.water_roadstead on 87 of the world's 224 harbours, always the farther`)
+w(`--     cell (Dublin 34.39 nm against 13.89, worst +20.51), and it reached no live data: its one`)
+w(`--     caller was the spur-leg loop of scripts/build-sea-places.mjs, whose legs lived in`)
+w(`--     public.legs, which 0049 dropped. It now sits inside that retired file, unexported.`)
 w(`--`)
 w(`-- ── WHAT THIS DOES ─────────────────────────────────────────────────────────────────────────────`)
 w(`--   1. public.sea_reaches gains roadstead_lat/roadstead_lon (numeric(6,3)/(7,3), NOT NULL).`)

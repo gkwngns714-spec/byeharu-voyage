@@ -5,6 +5,74 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-08 — D42: the third snap rule is retired, and it was worse than the record said
+
+`docs/DESIGN_ROADSTEAD.md` §2.1 and 0076's own header both named a third answer to *"where is the
+water nearest this point"* and left it standing, because folding it looked like it meant
+regenerating `data/sea-places.json`. It did not. **No migration, no data regeneration, and the
+raster is untouched.**
+
+### How different the two rules actually are — measured over all 224 harbours
+
+The record said `snapToWater` (8 rings, the first water cell in scan order) *"can return a
+different cell"* from `snapToNav` / `voyage.water_roadstead` (12 rings, the minimum-distance cell).
+Nobody had ever measured how often. It does, for **87 of 224 harbours — 39% of the world** — and it
+picks the **farther** cell every single time:
+
+| harbour | `snapToWater` | the one authority | extra |
+|---|---|---|---|
+| Dublin | 34.39 nm | 13.89 nm | **+20.51** |
+| Jamestown | 50.63 | 31.63 | +19.00 |
+| Bergen | 31.84 | 13.34 | +18.49 |
+| Boston | 36.34 | 19.22 | +17.12 |
+| Kagoshima | 38.62 | 22.16 | +16.46 |
+| Cádiz | 25.79 | 10.31 | +15.48 |
+| Istanbul | 23.14 | 8.98 | +14.16 |
+
+### The regeneration it was left standing for was never owed
+
+Traced rather than assumed. `snapToWater`'s only consumer outside its own module was
+`findSeaRoute`, whose only caller was the spur-leg loop in `scripts/build-sea-places.mjs`. Those
+legs went into **`public.legs` — and 0049 dropped that table**, with zero readers, and nothing in
+the fourteen migrations since names it. That generator is wired into **no npm script and no
+workflow**, it already declares itself RETIRED in its own header (*"0049 dropped public.legs, where
+its spur legs lived"*), and it emits `insert into public.legs`, so running it today produces a
+migration that cannot apply.
+
+So the divergence above is real arithmetic that reaches **nothing the game reads**.
+
+### The fix was to MOVE it, which was neither option the record offered
+
+Deleting the file would have overridden a deliberate decision — 0049's author kept it as *"the
+record of how 0036 was made"*. Folding it would have meant regenerating data for a dead table. The
+spaghetti was never the dead file: it was that a **second, different snap rule lived in
+`scripts/sea-grid.mjs`, the module all four working generators import**. A rule sitting there is
+one careless import away from being load-bearing, which is exactly why the old guard existed.
+
+So `snapToWater`, `findSeaRoute`, `isWater` and the A*'s helpers moved out of `sea-grid.mjs` and
+into `build-sea-places.mjs`, **unexported**. `scripts/sea-grid.mjs` is now one subject with one
+authority — the raster and its authored carve — and its header no longer promises a router it does
+not have.
+
+### A census became a property
+
+`tests/duplication.spec.ts` used to COUNT `snapToWater`'s callers and pin them at one file and two
+call sites. That was right while the rule was load-bearing somewhere and is the wrong shape now:
+**a count says "it has not grown", where what can now be said is "it is not there."** A census also
+passes happily while the thing it counts sits in the worst possible place — which is precisely what
+it did for two weeks. The test now asserts `sea-grid.mjs` declares no snap rule and no router, that
+the retired file exports none of it back, and that exactly one file still calls it and it is the
+dead one. **Watched red before being trusted:** a planted `export function snapToWater` in
+`sea-grid.mjs` fails it on the stated message, and removing it goes green again.
+
+### Gates
+
+`buildSeaGrid()` still answers **545,966** water cells, unchanged · `duplication` **8/8** (the
+rewritten guard among them, watched red first) · `seaCarve` **5/5** · both scripts parse ·
+`tsc -b` clean.
+
+---
+
 ## 2026-09-08 — D41: one authority for a culture that will not trade, and the rule nobody can reach
 
 Migration **0080**. `docs/RESUME.md` has carried this under **"Named spaghetti, still not fixed"**

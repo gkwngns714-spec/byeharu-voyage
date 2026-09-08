@@ -1,17 +1,20 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE SEA, AS A GRID — and the shortest way through it between any two harbours.
+// THE SEA, AS A GRID — the water itself, and the authored carve that opens it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// The first version of this generator asked one question of a pair of ports: does the straight
-// line between them stay at sea? That is the wrong question, and it showed: Lisbon and Cádiz are
-// 188 nm apart and had NO leg between them, because the straight line clips the Algarve. Ships
-// went round Cape St Vincent and so should the game.
+// The Natural Earth land polygons, scan-filled into a 0.25° grid: one byte per cell, 1 = a keel
+// may be here. That is the whole of this module's subject.
 //
-// So the sea is rasterised — the Natural Earth land polygons scan-filled into a 0.25° grid — and a
-// route is an A* search over the WATER cells. The result is a path that rounds capes, follows
-// coasts and threads gulfs by itself, with no passage authored for any of it. The distance is the
-// length of that path, which is exactly what DESIGN §B.3 means by a leg that "MAY EXCEED the
-// great-circle figure where the real route detours".
+// **IT NO LONGER ROUTES, AND IT NO LONGER SNAPS.** It used to carry an A* search and its own
+// `snapToWater` — 8 rings, the first water cell in scan order — which made this a module with a
+// SECOND answer to "where is the water nearest this point", differing from the one 0076 landed
+// (`voyage.water_roadstead` in SQL, `snapToNav` on the client: 12 rings, the minimum-distance
+// cell). Measured over all 224 harbours the two picked a different cell for 87 of them, the
+// scan-order rule always the farther, worst +20.51 nm at Dublin. Its only caller was the spur-leg
+// loop in `scripts/build-sea-places.mjs`, whose legs went into `public.legs` — a table 0049
+// dropped — so on 2026-09-08 the router MOVED into that retired file rather than being folded or
+// deleted. What is left here is one subject with one authority, and the guard that keeps it that
+// way is a property, not a call count: this module declares no snap rule.
 //
 // ── WHAT IS STILL AUTHORED, AND WHY ─────────────────────────────────────────────────────────────
 // A 0.25° cell is about 15 nm. The Sound is two miles wide, the Bosphorus half of one, and at this
@@ -388,144 +391,4 @@ export function buildSeaGrid() {
   const { water, opened } = carveInventory()
   assertCarveDeclared(opened)
   return water
-}
-
-export const isWater = (water, row, col) => water[row * COLS + ((col % COLS) + COLS) % COLS] === 1
-
-/** The nearest water cell to a coordinate, searched outward. Harbours sit ON the coastline, so a
- *  port's own cell is often land at this resolution; that is expected, not an error. */
-export function snapToWater(water, lat, lon, maxRings = 8) {
-  const r0 = rowOf(lat)
-  const c0 = colOf(lon)
-  if (isWater(water, r0, c0)) return { row: r0, col: c0, ringsOut: 0 }
-  for (let ring = 1; ring <= maxRings; ring++) {
-    for (let dr = -ring; dr <= ring; dr++) {
-      for (let dc = -ring; dc <= ring; dc++) {
-        if (Math.max(Math.abs(dr), Math.abs(dc)) !== ring) continue
-        const row = r0 + dr
-        if (row < 0 || row >= ROWS) continue
-        const col = ((c0 + dc) % COLS + COLS) % COLS
-        if (isWater(water, row, col)) return { row, col, ringsOut: ring }
-      }
-    }
-  }
-  return null
-}
-
-// ── A*, over water cells ──────────────────────────────────────────────────────────────────────
-const NEIGHBOURS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]]
-
-/**
- * The shortest navigable path between two coordinates, or null if there is none.
- * Returns { nm, path } where path is the simplified polyline (lat/lon pairs) including both ends.
- *
- * The heuristic is the great circle to the goal, which never overestimates, so the first path A*
- * settles on is the shortest one the grid allows.
- */
-export function findSeaRoute(water, from, to, opts = {}) {
-  const limitNm = opts.limitNm ?? Infinity
-  const a = snapToWater(water, from.lat, from.lon)
-  const b = snapToWater(water, to.lat, to.lon)
-  if (!a || !b) return null
-  const start = a.row * COLS + a.col
-  const goal = b.row * COLS + b.col
-  if (start === goal) {
-    const nm = gcNm(from.lat, from.lon, to.lat, to.lon)
-    return { nm, path: [[from.lat, from.lon], [to.lat, to.lon]] }
-  }
-
-  const goalLat = cellLat(b.row)
-  const goalLon = cellLon(b.col)
-  const g = new Map([[start, 0]])
-  const cameFrom = new Map()
-  const open = [[gcNm(cellLat(a.row), cellLon(a.col), goalLat, goalLon), start]]
-  const closed = new Set()
-
-  const pop = () => {
-    // Binary heap would be tidier; a linear scan over a few thousand entries is fast enough and
-    // this runs offline. Kept simple on purpose.
-    let bestI = 0
-    for (let i = 1; i < open.length; i++) if (open[i][0] < open[bestI][0]) bestI = i
-    const [, node] = open[bestI]
-    open[bestI] = open[open.length - 1]
-    open.pop()
-    return node
-  }
-
-  while (open.length > 0) {
-    const current = pop()
-    if (closed.has(current)) continue
-    closed.add(current)
-    if (current === goal) break
-    const row = Math.floor(current / COLS)
-    const col = current % COLS
-    const lat = cellLat(row)
-    const lon = cellLon(col)
-    const cost = g.get(current)
-    if (cost > limitNm) continue
-    for (const [dr, dc] of NEIGHBOURS) {
-      const nrow = row + dr
-      if (nrow < 0 || nrow >= ROWS) continue
-      const ncol = ((col + dc) % COLS + COLS) % COLS
-      if (!isWater(water, nrow, ncol)) continue
-      const next = nrow * COLS + ncol
-      if (closed.has(next)) continue
-      const step = gcNm(lat, lon, cellLat(nrow), cellLon(ncol))
-      const tentative = cost + step
-      if (tentative >= (g.get(next) ?? Infinity)) continue
-      g.set(next, tentative)
-      cameFrom.set(next, current)
-      open.push([tentative + gcNm(cellLat(nrow), cellLon(ncol), goalLat, goalLon), next])
-    }
-  }
-
-  if (!g.has(goal)) return null
-
-  // Walk the path back, then straighten it: the grid's 45° staircase is an artefact of the raster,
-  // not of the sea. Line-of-sight simplification replaces runs of cells with the straight leg a
-  // ship would actually sail, as long as that straight leg stays in water.
-  const cells = []
-  for (let node = goal; node !== undefined; node = cameFrom.get(node)) {
-    cells.push(node)
-    if (node === start) break
-  }
-  cells.reverse()
-  const points = [[from.lat, from.lon], ...cells.map((n) => [cellLat(Math.floor(n / COLS)), cellLon(n % COLS)]), [to.lat, to.lon]]
-  const simplified = straighten(water, points)
-  let nm = 0
-  for (let i = 0; i + 1 < simplified.length; i++) {
-    nm += gcNm(simplified[i][0], simplified[i][1], simplified[i + 1][0], simplified[i + 1][1])
-  }
-  return { nm, path: simplified }
-}
-
-/** Is every cell along this straight segment water? The ends are exempt: a harbour is on land. */
-function segmentInWater(water, [lat1, lon1], [lat2, lon2], exemptEnds) {
-  const nm = gcNm(lat1, lon1, lat2, lon2)
-  const steps = Math.max(2, Math.ceil(nm / 8))
-  for (let s = 1; s < steps; s++) {
-    const f = s / steps
-    // Straight in lat/lon is close enough over the short spans this is used on, and it never
-    // wraps: the pathfinder's own points are always within a cell or two of each other.
-    if (Math.abs(lon2 - lon1) > 180) return false
-    const lat = lat1 + (lat2 - lat1) * f
-    const lon = lon1 + (lon2 - lon1) * f
-    if (exemptEnds && (f * nm < 25 || (1 - f) * nm < 25)) continue
-    if (!isWater(water, rowOf(lat), colOf(lon))) return false
-  }
-  return true
-}
-
-function straighten(water, points) {
-  const out = [points[0]]
-  let i = 0
-  while (i < points.length - 1) {
-    let j = points.length - 1
-    for (; j > i + 1; j--) {
-      if (segmentInWater(water, points[i], points[j], i === 0 || j === points.length - 1)) break
-    }
-    out.push(points[j])
-    i = j
-  }
-  return out
 }
