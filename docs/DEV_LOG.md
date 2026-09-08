@@ -5,6 +5,54 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-08 — D43: the chain pin went stale on main, and was deployed red
+
+`tests/db.chain.spec.ts`'s `LAST` names the migration the chain must end at. **0079 landed without
+moving it**, so from the moment 0079 merged, `the chain the client loads is the chain on disk, in
+apply order, LF-only` has been FAILING on `main` — and 0079 was pushed to production with it red.
+Found 2026-09-08 by running the browser suite locally before opening a PR:
+
+    Expected: "20260818000078_the_chain_does_not_race_its_own_clock.sql"
+    Received: "20260818000080_one_authority_for_a_culture_that_will_not_trade.sql"
+
+The pin is moved to 0080, with 0079's and 0080's entries added to the running note above it in the
+shape every earlier move used.
+
+**The stale string is not the interesting part.** The browser suite is not a check that gates a
+merge, and nothing else in the repo reads this number, so a pin that only a non-gating suite reads
+is a pin that will go stale again — it did so silently for a day across a production deploy. That
+is recorded here rather than quietly corrected, because the next person to add a migration will hit
+exactly the same edge and deserves to know it is a known one, not a mistake they made.
+
+### While confirming it: the 17 skipped specs are correct, and are not the trap they look like
+
+The same run reported **17 skipped**, which in this repo is a documented alarm — `playwright.config.ts`
+carries a paragraph about `vite preview` binding IPv6 only, `127.0.0.1` answering 000, and Playwright
+then SILENTLY SKIPPING every browser spec: *"a green with a shrunken denominator, which is worse than
+a red."* Two guesses at the cause were wrong and both were checked rather than believed:
+
+* **Not resource contention.** Re-run alone with nothing competing: the same 17 skip.
+* **Not the IPv6 trap.** Measured: `127.0.0.1:4173` answers **000** and `[::1]:4173` answers **200**,
+  so the binding really is v6-only — but Node resolves `localhost` to `::1` first, and a diagnostic
+  spec printing what the `request` fixture sees answers `status = 200, ok = true, reachable() = true`.
+  Pointing the base URL at the `[::1]` literal skipped the same tests anyway.
+
+The real cause is `tests/appReady.fixture.ts`'s `ready()`, and it is deliberate: **this machine has
+`.env.local`, so the build runs in CLOUD mode**, every route redirects to `/auth`, and there is no
+nav bar or table to measure. The layout, nav, chart and waters specs measure LOCAL play and skip
+themselves with a message saying exactly that. **CI has no `.env.local` — it is gitignored — so CI
+runs all 237.** A local run on a machine holding the cloud credentials cannot be quoted as full
+coverage, and this entry is the note that says so.
+
+### Gates
+
+Full suite on this machine: **220 passed, 0 failed, 17 skipped (cloud mode, by design)** — 219 + the
+chain spec this entry repairs. `db:apply` 73/73 · `db:proof` 62/62 · `duplication` 8/8 ·
+`seaCarve` 5/5 · `tsc -b` and `eslint` clean · `npm run build` green in 3m25s, the world image built
+from the chain **including 0080**.
+
+---
+
 ## 2026-09-08 — D42: the third snap rule is retired, and it was worse than the record said
 
 `docs/DESIGN_ROADSTEAD.md` §2.1 and 0076's own header both named a third answer to *"where is the

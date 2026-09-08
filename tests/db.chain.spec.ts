@@ -215,7 +215,21 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // pg_cron at the twelfth migration and 0041 then rewrote port_goods underneath the market
 // tick, which deadlocked the apply-proof twice. 0012 now leaves the three jobs INACTIVE and
 // no migration starts them; public.wind_the_clock() is the one deliberate call that does.
-const LAST = '20260818000078_the_chain_does_not_race_its_own_clock.sql'
+//
+// ⚠ 0079 LANDED WITHOUT MOVING THIS LINE, AND WAS DEPLOYED TO PRODUCTION WITH IT RED. Found
+// 2026-09-08: main's chain ended at 0079 while this pin still named 0078, so this spec had been
+// failing on main since 0079 merged — the browser suite is not one of the checks that gates a
+// merge, and nothing else reads this number. Recorded rather than quietly corrected, because the
+// interesting part is not the stale string: a pin that only a non-gating suite reads is a pin that
+// will go stale again. DEV_LOG D43.
+//
+// Moved 2026-09-07 to 0079, which fills in the canal that was never dug: one CHANNELS record
+// named two rivers 330 nm apart and carved 29 cells of land through the Tenasserim mountains, so
+// 309 real port pairs were sold a route across the Malay peninsula.
+// Moved 2026-09-08 to 0080, which folds the culture rule -- "port.culture = any(good.culture_mask)"
+// stood six times in five deployed bodies -- onto public.culture_refuses, and found on the way that
+// the rule is unreachable on the quay: 0062's origin-based roster shadows it at all 224 harbours.
+const LAST = '20260818000080_one_authority_for_a_culture_that_will_not_trade.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
