@@ -5,6 +5,91 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-08 — D40: the guard that was measuring the wrong thing, and now measures land
+
+`docs/LAND_CARVE_RECON.md` §5's separate slice — *"the generator-side guard that compares the
+raster against the land data it was built **from**, rather than asking the raster about itself"* —
+is built. **No migration, no schema change, and the raster is byte-identical to `HEAD`:** all
+1,036,800 cells compared, **0 differing bytes**, so nothing the chain emits moves.
+
+### The guard that existed was measuring the carve's own size
+
+`tests/seaCarve.spec.ts` was written on 2026-09-06 to pin *"every entry, and exactly how many cells
+of dry land it opens"*. It could not do that, and the reason is worth the paragraph because it is
+the same shape as the defect it was written for: it built its "pre-channel land" by taking the
+**finished** raster and closing every carved cell in it. Every carved cell therefore reads as land
+by construction, and the number it pinned was the carve's own SIZE. Measured for all 27 entries:
+the pinned figure equals the cell count exactly, every time, and the total it called *"cells of dry
+land"* — **521** — is the carve inventory.
+
+The information had been destroyed before the question was asked. `buildSeaGrid` applied the
+channels before returning, so no caller in the repo could obtain the land data the raster was built
+from. That is why the check reconstructed it, and why the reconstruction could not work.
+
+### The honest number is 202, and it re-orders the table
+
+| entry | cells carved | **cells of land** |
+|---|---|---|
+| `bab-el-mandeb` | 84 — the largest carve | **2** |
+| `malacca` | 52 | **11** |
+| `hormuz` | 48 | **3** |
+| `saint-lawrence` | 33 | **22** — the largest land carve there is |
+| **the canal, as shipped** | **37** | **30** |
+
+**521 cells carved, 202 of them land.** A channel exists to join water the raster is too coarse to
+draw, so most of its cells are water it merely re-states; only the land half is a claim about the
+world. And the ranking is near-inverted: the old measure put `bab-el-mandeb` — which opens **two**
+cells of dry land — at the top of the page, and put the canal fifth. On the honest measure the
+canal is **first, by 8 cells over the largest legitimate carve.** The guard would have put the
+defect on the first line the day it was written.
+
+### What was built
+
+* **`preCarveGrid()`** — the land data itself: scan-fill plus ICE, no carve. The question can now
+  be asked. `buildSeaGrid()` composes it; the scan-fill is not written twice.
+* **`carveInventory()`** — counts each channel against the grid as it stood BEFORE any channel ran,
+  never against the partly-carved grid. Channels share cells (the Bab-el-Mandeb and the Gulf of
+  Suez meet at 27.0N 34.5E), so a running total would hand a shared cell to whichever entry the
+  list reaches first. Counted this way the numbers are order-independent, and they are not a
+  re-derivation of the carve — they are what the carve did.
+* **`opensLand` on all 27 CHANNELS entries** — the authored declaration, the shape `RECLAIMED`
+  already uses.
+* **`assertCarveDeclared()`, called inside `buildSeaGrid()`** — so the refusal is not wired into
+  five generators that could each forget it (`build-sea-migration`, `build-sea-raster`,
+  `build-sea-places`, `gen-0047`, the specs). **The raster cannot be built with an undeclared
+  carve at all.** Watched refuse:
+
+      THE CARVE OPENS LAND IT DOES NOT DECLARE — refusing to build the raster.
+        severn: opens 12 cells of land, declares 5
+
+* **`tests/seaCarve.spec.ts`** is now the second READER of that one declaration rather than a
+  second opinion about it. It keeps its own independent walk of the points — a guard that called
+  the code it guards would go green on any change they made together — but it must not duplicate
+  the land data, because "the land the raster was built from" is exactly the thing that has one
+  author. Two totals are now named apart so they can never be confused again: `LAND_TOTAL` 202 and
+  `CARVE_TOTAL` 521.
+
+### It is still a review gate, and it says so
+
+No threshold separates a strait from a canal, and the numbers still say why: sorted by land opened,
+the St Lawrence (22), the Thames-Scheldt (17), the Gironde (15) and the Elbe-Weser and
+Gambia-Senegal (14 each) all sit above either half of the repaired river pair — because a river IS
+a line of land turned into water. A person has to look. What the refusal guarantees is that a
+person **has** looked at every number in the list, and that the world cannot be built until they do.
+
+### Gates
+
+`tsc -b` clean · `eslint` clean on the changed files · `seaCarve` **5/5** (two of them new: the
+generator's refusal, and the canal reconstructed and asserted to out-rank every surviving entry) ·
+`duplication` **8/8** · raster **byte-identical to `HEAD`**.
+
+*(`eslint .` across the whole tree reports 1,630 parser errors on this machine — nine stale agent
+worktrees under `.claude/worktrees/` give typescript-eslint multiple candidate `tsconfigRootDir`s.
+Pre-existing, environmental, and absent in CI, which clones fresh. Named here so the next reader
+does not mistake it for a regression.)*
+
+---
+
 ## 2026-09-07 — D39: the canal is filled in, and the switch that only worked one way
 
 Migration **0079**. The repair `docs/LAND_CARVE_RECON.md` §4A deliberately stopped on 2026-09-06 is
