@@ -5,6 +5,128 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-08 — D41: one authority for a culture that will not trade, and the rule nobody can reach
+
+Migration **0080**. `docs/RESUME.md` has carried this under **"Named spaghetti, still not fixed"**
+since 2026-08-26, and 0061 named it in its own header while refusing to become its sixth writer.
+It is folded.
+
+### Six sites, five bodies — and the site count was wrong in the record
+
+Read off the applied chain rather than off the source files:
+
+    cmd.do_buy           if v_culture = any(g.culture_mask) then
+    cmd.do_sell          if v_culture = any(g.culture_mask) then
+    cmd.haggle           if v_port.culture = any(g.culture_mask) then
+    world.market         'available', not (pr.culture = any(g.culture_mask)),
+    world.trade_routes   and not (p.culture = any(g.culture_mask))      -- the origin, a BUY
+    world.trade_routes   where not (d.culture = any(h.culture_mask))    -- the destination, a SELL
+
+Five functions, as the record said — but **six sites**, because `world.trade_routes` asks it twice.
+Two other live bodies mention `culture_mask` and are deliberately untouched, because neither
+applies the rule: `world.snapshot()` **serves** the column to the client, and `trade_routes`'s
+`here` CTE **selects** it so the second site can ask about it. A fold that swept those up would
+have changed the client's payload.
+
+It is now `public.culture_refuses(text, text[])` — `language sql`, `immutable`, `parallel safe`,
+no `security definer`, which is the shape 0061 chose for `public.port_offers` and for the same
+reason: PostgreSQL's `inline_function()` refuses a definer function, and `world.market` asks this
+once per good per port. Inlined, the planner sees the expression it saw before the file ran.
+
+The five bodies are **sliced, not retyped** — `pg_temp.recut` replaces a hunk that must occur
+exactly once and refuses otherwise — and every hunk is quoted without its leading whitespace, so a
+slice cannot fail on an indentation byte.
+
+### It is a no-op, proven three ways rather than argued
+
+* Both forms agree on **all 124,474 (port, good) pairs** of the real world, **254** of them
+  genuinely refused. The equality is not two constants: an **inverted** rule — the mask read as an
+  allow-list, which is the mistake `goods.culture_mask`'s comment exists to prevent — is caught by
+  that same query on 1,666 pairs.
+* Each of the five bodies is **its own pre-image with only the declared hunks swapped in, byte for
+  byte** — the whole definition reconstructed from the captured one and compared.
+* `world.snapshot()` is byte-identical, and 0 bodies still write the rule longhand while the
+  callers of the new authority are exactly the five named.
+
+Posture kept: `world.market` and `world.trade_routes` still execute for `authenticated`, `anon` has
+neither, `culture_refuses` is revoked from every client role, 0 client write grants. No mask,
+price, roster row or harbour was written.
+
+### THE FINDING: THE CULTURE RULE IS UNREACHABLE ON THE QUAY
+
+Folding a rule means reading every place it is asked, and doing that turned up something the repo
+did not know.
+
+| | |
+|---|---|
+| goods carrying a culture mask | **7** (two masks: `indic/japanese`, `islamic/swahili`) |
+| (port, good) pairs the culture refuses | **254** |
+| …of those, stocked in `port_goods` | **254 — all of them** |
+| …of those, on the port's roster | **0** |
+| rows `world.market` serves with `available = false`, whole world | **0** |
+| harbours whose culture some good refuses | **69**, none of which ever sees the flag |
+
+Two files that were each right on their own collided. **0062 made the roster origin-based** — a
+good is offered where it comes FROM, or at a named entrepot — and a culture that refuses a good is
+not a culture that produces it. So **0061's ROSTER gate now strictly shadows 0002's CULTURE gate**
+for BUY and for the market screen: `available` is `true` on every row the quay shows, at all 224
+harbours, and DESIGN B.4's wine-and-pork rule can no longer be *seen* to refuse anything.
+
+It stays live exactly where 0061 deliberately left selling un-rostered — `cmd.do_sell`,
+`cmd.haggle`, and `world.trade_routes`'s DESTINATION filter, which is that same sale seen from the
+quay. So a player still cannot sell wine in an Islamic port. They simply can never be shown that
+this is a rule.
+
+**0080 reports this in its receipt and asserts it nowhere, on purpose.** Pinning `0 unavailable
+rows` as correct would write a design decision into a guard, and this one is the owner's: is the
+culture mask meant to be a rule a player meets, or is being shadowed by geography the right
+outcome? The first draft of this migration *did* try to assert the flag going false on a real quay
+row, and **failed on apply** — which is how the finding was made. The refusal was right and the
+assert was wrong.
+
+### THE OTHER THING THIS FILE GOT WRONG: A SLICE THAT RE-STATES GRANTS CAN REVERT A DECISION
+
+`create or replace function` **preserves a function's ACL**, so a slice needs no grant statement at
+all. The first draft wrote them anyway — re-stating the postures it believed 0061 had landed — and
+was wrong in **both** directions:
+
+* It copied `cmd.do_buy`'s `revoke … from public, anon, authenticated` onto **`cmd.haggle`**. The
+  client calls `cmd.haggle` **directly**; it is not reached through `cmd.issue` the way the `do_`
+  verbs are. That line took the bargain away from every player, and `db:proof` caught it on the
+  next run — `06_haggle.sql`, marker `HAGGLE_CLIENT_PATH`, `permission denied for function haggle`
+  (42501).
+* It re-issued 0061's `grant execute on world.trade_routes to authenticated`. **0071 revoked that
+  grant on purpose** (`:176`): the owner's row 64 said *"no nearby price info needed"*, so the
+  function stays for proof 04 — which runs as `postgres` — and the client's door was shut. A
+  ten-migration-old grant, restated, would have silently reverted a later deliberate decision, and
+  **nothing would have failed.** No gate was watching that direction.
+
+The second is the frightening one, and it generalises past this file: *a migration that re-states a
+grant it did not verify is a migration that can undo an earlier decision without anyone noticing.*
+So 0080 issues no grant on any function it re-cuts. It captures every `proacl` in its pre-image
+table and asserts, after the slice, that **not one ACL moved in either direction** — a stronger
+claim than a grant statement can make, and one that cannot revoke anything while making it. The
+doors are then named individually, open **and shut**: `cmd.haggle` and `world.market` execute for
+`authenticated`, `world.trade_routes` stays closed exactly as 0071 closed it, and `anon`,
+`cmd.do_buy` and `culture_refuses` have nothing.
+
+Posture read off the applied chain while working this out, since the repo had it written nowhere:
+
+| | `authenticated` may execute |
+|---|---|
+| `cmd.haggle`, `cmd.issue`, `world.market`, `world.snapshot` | yes |
+| `cmd.do_buy`, `cmd.do_sell` — reached through `cmd.issue` | no |
+| `world.trade_routes` — 0071 shut this door | **no, and that is correct** |
+
+### Gates
+
+`db:apply` **73 migrations, 73 self-assert receipts**, world-guard green (224 harbours, 523 goods,
+1,288 offers, 117,152 market rows, positive control seen) · `db:proof` **62/62 markers, 9/9 files**
+· `duplication` 8/8 (including the two that police a migration's self-assert and its supersede
+declaration) · `seaCarve` 5/5.
+
+---
+
 ## 2026-09-08 — D40: the guard that was measuring the wrong thing, and now measures land
 
 `docs/LAND_CARVE_RECON.md` §5's separate slice — *"the generator-side guard that compares the
