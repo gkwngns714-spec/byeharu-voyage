@@ -223,8 +223,8 @@ What the spec **cannot** check, and you therefore must:
 * **Carry a positive control, and make it prove the AMOUNT.** `0014:243-244`: *"Trade once, and
   require fame to move BY THE DEFINED AMOUNT — not merely to be non-zero. A weight read from the
   wrong knob would still be non-zero."*
-* **Never let a probe pick its subject by lottery.** This has now happened **twice**, in two
-  different migrations, and both are written up in the files themselves:
+* **Never let a probe pick its subject by lottery.** This has now happened **three times**, in three
+  different migrations, and every one is written up in the file itself:
   * `0010:227-238` — the drift assert read ONE row before and after a tick and required it to
     change. `numeric(6,4)` rounds a small OU step to nothing, so it had roughly a **1-in-1,150**
     chance of failing a correct boot. Measured and repointed: 14,967 of 14,980 rows move, and the
@@ -233,9 +233,20 @@ What the spec **cannot** check, and you therefore must:
     **no `order by`**, so which good the probe bought depended on heap order, which varies because
     the seed writes rows keyed by `gen_random_uuid()`. It passed twice and failed on the third run
     on an unchanged chain.
-  * The fix in both cases is the same and is the rule: **a probe is deterministic and satisfies
+  * `0059:775` / `0059:909` — the arm probe pins the encounter mix to one kind and needs a day
+    whose kind-draw sits clear of the 0.0007 tail the other seven leave behind. It guarded that
+    with `voyage.rng(…, 'kind') >= 0.01`, on a comment that said the tail is one block at the
+    bottom. **It is two blocks.** `voyage.sea_mix` bands in ORDINAL order, so the kinds above the
+    pinned one sit at the TOP of `[0,1)` where every value passes `>= 0.01`; a day landing there is
+    called clean and then settles as something else. Right **624 times out of 625**, and CI run
+    `34314743369` was the one. Now `between 0.01 and 0.99`, and the comment states the true
+    premise. **Note what this one is not:** it is not a fix that made the odds longer. Two-sided,
+    the excluded window is 14× the widest tail that can exist, so no draw can reach it at all.
+  * The fix in every case is the same and is the rule: **a probe is deterministic and satisfies
     its own preconditions.** `order by` something stable, pick a subject the world will actually
-    let you use, and assert that the subject exists before asserting anything about it.
+    let you use, exclude EVERY window a random draw could land in rather than the one you pictured,
+    and assert that the subject exists before asserting anything about it. A probe with odds is a
+    probe with a bug; the number only decides how long you wait for it.
 * **A proof never asserts an ambient default it does not own.** Set the precondition yourself
   in-transaction, or follow the game. Growing the world from 12 ports to 214 set off every
   seed-shaped assertion in the chain at once — `= 144 rows`, `"188 nm, 1.6 days"`, *buy sal at
