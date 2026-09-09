@@ -587,10 +587,8 @@ test('sea-grid.mjs declares NO snap rule — the third answer is retired, not me
  *  Twenty-eight, less six, less eighteen: four. */
 const ARBITRARY_SIZE_DEBT: Record<string, number> = {
   'features/found/SignTheBook.tsx': 1,
-  'features/ledger/LedgerScreen.tsx': 1,
-  'features/market/MarketScreen.tsx': 2,
 }
-const ARBITRARY_SIZE_TOTAL = 4
+const ARBITRARY_SIZE_TOTAL = 1
 
 /** MEASURED 2026-09-09 on osn-ui-primitives: twelve. The nine skins §3 rule 4 names by file, plus
  *  the three more that a className-REGION reader finds and a grep for `border border-edge` does
@@ -617,10 +615,8 @@ const ARBITRARY_SIZE_TOTAL = 4
  *  MAP PAID ITS ONE THE SAME DAY (§7 step 8): `SendFleet.tsx`'s fleet row was a hand-drawn
  *  `rounded-md border … bg-app` block with an `accent` variant; it is a `Row` in a `Tray` now.
  *  FLEETS PAID ITS ONE TOO (§7 step 7). Twelve, less three, less five, less one, less one: two. */
-const INLINE_SKIN_DEBT: Record<string, number> = {
-  'features/market/MarketScreen.tsx': 2,
-}
-const INLINE_SKIN_TOTAL = 2
+const INLINE_SKIN_DEBT: Record<string, number> = {}
+const INLINE_SKIN_TOTAL = 0
 
 /** The ledger, read: every file under `src/features/` with more findings than it is allowed. */
 function overDebt(found: Map<string, string[]>, debt: Record<string, number>): string[] {
