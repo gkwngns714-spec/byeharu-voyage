@@ -136,18 +136,42 @@ export function TradeTray({
       title={`${good.name} · ${intent}`}
       data-testid="trade-tray"
       action={
-        <Button
-          variant="primary"
-          className="w-full"
-          onClick={act.send}
-          disabled={act.sending || chosen <= 0 || !act.ready}
-          busy={act.sending}
-          busyLabel="Sending…"
-          data-testid="trade-tray-send"
-        >
-          {`${verb} ${formatTuns(chosen)}`}
-          {act.total !== null ? ` · ${formatDucats(act.total)}` : ''}
-        </Button>
+        <>
+          {/* THE FIGURE THE DECISION TURNS ON RIDES WITH THE BUTTON THAT COMMITS IT.
+              It stood in the scrolling body until 2026-09-09, above the stepper, where it fits the
+              390x844 phone this project measures at — and CLIPS AT THE FOLD on a short desktop
+              window, which is where the owner reads the game. A profit that can hide is worse than
+              one that is merely low: it is the one number a sale is a decision ABOUT, and §6 gives
+              `Tray` a pinned action region precisely so the act and what it costs cannot scroll
+              apart. `Fetches` stays in the body, because the button already carries that figure.
+              Absent — not zero — when the cost is not on record, which is 0081's whole discipline. */}
+          {intent === 'sell' && chosen > 0 && act.sale !== null && act.sale.profit !== null && (
+            <Row
+              label={act.sale.profit < 0 ? 'Loss' : 'Profit'}
+              value={
+                <Figure
+                  value={formatDucatsDelta(act.sale.profit)}
+                  size="figure"
+                  tone={act.sale.profit < 0 ? 'danger' : act.sale.profit > 0 ? 'success' : 'ink'}
+                />
+              }
+              hairline={false}
+              data-testid="trade-tray-profit"
+            />
+          )}
+          <Button
+            variant="primary"
+            className="w-full"
+            onClick={act.send}
+            disabled={act.sending || chosen <= 0 || !act.ready}
+            busy={act.sending}
+            busyLabel="Sending…"
+            data-testid="trade-tray-send"
+          >
+            {`${verb} ${formatTuns(chosen)}`}
+            {act.total !== null ? ` · ${formatDucats(act.total)}` : ''}
+          </Button>
+        </>
       }
     >
       {refusedBy !== null && (
@@ -194,19 +218,6 @@ export function TradeTray({
           <>
             {act.sale.total !== null && (
               <Row label="Fetches" value={<Figure value={formatDucats(act.sale.total)} />} data-testid="trade-tray-fetches" />
-            )}
-            {act.sale.profit !== null && (
-              <Row
-                label={act.sale.profit < 0 ? 'Loss' : 'Profit'}
-                value={
-                  <Figure
-                    value={formatDucatsDelta(act.sale.profit)}
-                    size="figure"
-                    tone={act.sale.profit < 0 ? 'danger' : act.sale.profit > 0 ? 'success' : 'ink'}
-                  />
-                }
-                data-testid="trade-tray-profit"
-              />
             )}
           </>
         ) : (
