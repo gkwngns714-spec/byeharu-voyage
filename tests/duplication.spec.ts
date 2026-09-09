@@ -579,10 +579,11 @@ test('sea-grid.mjs declares NO snap rule — the third answer is retired, not me
 
 /** MEASURED 2026-09-09 on osn-ui-primitives, then LOWERED as each screen migrates. COMMAND paid
  *  its four on 2026-09-09 (§7 step 5): OrderComposer, ArgPickers, CommandScreen and OrderQueue are
- *  deleted or rewritten onto the scale, so their entries are gone and the total dropped by four. */
+ *  deleted or rewritten onto the scale, so their entries are gone and the total dropped by four.
+ *  LEDGER paid its one the same day (§7 step 9): the `text-[15px]` report paragraph is a
+ *  `text-t-label` line in a tray, so its entry is gone and the total is 21. PROFILE never had one. */
 const ARBITRARY_SIZE_DEBT: Record<string, number> = {
   'features/found/SignTheBook.tsx': 1,
-  'features/ledger/LedgerScreen.tsx': 1,
   'features/map/DetailPanel.tsx': 4,
   'features/map/FleetsPanel.tsx': 4,
   'features/map/MapPanel.tsx': 2,
@@ -590,7 +591,7 @@ const ARBITRARY_SIZE_DEBT: Record<string, number> = {
   'features/map/WatersAhead.tsx': 4,
   'features/market/MarketScreen.tsx': 2,
 }
-const ARBITRARY_SIZE_TOTAL = 22
+const ARBITRARY_SIZE_TOTAL = 21
 
 /** MEASURED 2026-09-09 on osn-ui-primitives: twelve. The nine skins §3 rule 4 names by file, plus
  *  the three more that a className-REGION reader finds and a grep for `border border-edge` does
