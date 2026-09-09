@@ -229,7 +229,10 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved 2026-09-08 to 0080, which folds the culture rule -- "port.culture = any(good.culture_mask)"
 // stood six times in five deployed bodies -- onto public.culture_refuses, and found on the way that
 // the rule is unreachable on the quay: 0062's origin-based roster shadows it at all 224 harbours.
-const LAST = '20260818000080_one_authority_for_a_culture_that_will_not_trade.sql'
+// Moved 2026-09-09 to 0081, which makes the cost of the cargo aboard a SERVER fact: ships.cargo_basis
+// (the average paid per tun, blended on load, unchanged on unload) is written by the one mover pair,
+// served on world.fleets(), and cmd.do_sell realises profit against it at the moment of sale.
+const LAST = '20260818000081_the_hold_knows_what_it_cost.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

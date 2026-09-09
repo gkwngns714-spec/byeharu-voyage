@@ -417,6 +417,9 @@ test('world.fleets() reports the fleet, its ships, its stores and its empty queu
   expect(s.hold_rated).toBe(60) // the shipwright's figure — never changes with an officer
   expect(typeof f.free_hold).toBe('number')
   expect(f.free_hold).toBeGreaterThan(0)
+  // 0081: what the cargo COST is served on the fleet, code -> average ducats per tun, and a hull
+  // that carries nothing bought knows nothing — an empty map, never a map of zeroes.
+  expect(f.cargo_basis).toEqual({})
 
   // AND THE RELATIONSHIP, not merely the presence. Free hold is the stowed capacity minus what is
   // already aboard — cargo AND stores — so on a provisioned hull with an empty cargo bay it must be

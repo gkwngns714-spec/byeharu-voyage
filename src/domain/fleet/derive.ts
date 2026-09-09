@@ -207,8 +207,9 @@ export interface CargoLine {
  * SELL, so the two copies in the Command screen are deleted and everything reads this.
  *
  * `FleetShip.cargo` is `Record<goodCode, qty>` — a MAP, not the fixture's list of lots — so there
- * is no per-lot purchase price to fold and no average cost to report. That column is not served
- * (README §4.9); the price paid lives in the ledger's `BOUGHT` events, and the Ledger tab reads it.
+ * is no per-lot purchase price to fold. What the cargo COST is not folded here either: since 0081
+ * the server serves it, already averaged, as `FleetView.cargo_basis`, and `paidPerTun` below is
+ * the one reading of it.
  */
 export function fleetCargoByCode(fleet: FleetView): Record<string, number> {
   const byGood: Record<string, number> = {}
@@ -221,6 +222,17 @@ export function fleetCargoByCode(fleet: FleetView): Record<string, number> {
     }
   }
   return byGood
+}
+
+/**
+ * WHAT SHE PAID, PER TUN, FOR THE GOOD ABOARD — the ONE reading of `FleetView.cargo_basis` (0081).
+ * Null when the fleet carries none of it, or when what it carries came aboard without a price;
+ * a screen prints nothing for a null, never a zero. The trade tray reads it for the buy and sell
+ * faces; a cargo table on FLEETS is the plausible second reader, and it reads THIS.
+ */
+export function paidPerTun(fleet: FleetView, code: string): number | null {
+  const paid = fleet.cargo_basis?.[code]
+  return typeof paid === 'number' && Number.isFinite(paid) ? paid : null
 }
 
 /** The same manifest as a stable, code-sorted list — what a cargo table prints. */

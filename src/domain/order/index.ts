@@ -18,8 +18,9 @@
 //   text.ts     the ONE composer from picks to the exact line `cmd.issue()` receives, walking the
 //               server's own verb schema — there is one parser (on the server) and one composer
 //   handOff.ts  a named INTENT another section can hand in, without touching the draft's shape
-//   estimate.ts the ONE reading of what `cmd.preview()` said a SAIL would be. COMMAND draws the
-//               full readout under the composer and MAP prints the passage beside "Sail here";
+//   estimate.ts the ONE reading of what `cmd.preview()` said a SAIL — and, since 0081, a SELL —
+//               would be. COMMAND draws the full readout under the composer, MAP prints the
+//               passage beside "Sail here", and the trade tray prints what a sale will realise;
 //               two readers of one estimate is fine, two READINGS of it is the disease
 //
 // ── WHAT IT MAY DEPEND ON ──────────────────────────────────────────────────────────────────────
@@ -43,4 +44,4 @@ export {
   type FixAction,
 } from './text'
 export { handOffTrade, type TradeIntent } from './handOff'
-export { sailEstimate, type SailEstimate } from './estimate'
+export { sailEstimate, saleEstimate, type SailEstimate, type SaleEstimate } from './estimate'

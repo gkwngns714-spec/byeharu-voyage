@@ -562,7 +562,9 @@ export function portAt(code: string): SnapshotPort {
 const EMPTY_HOLD_NO_OFFICERS = {
   free_hold: 0,
   officer_pct: { NAVIGATOR: 0, QUARTERMASTER: 0, SURGEON: 0, PURSER: 0 },
-} satisfies Pick<FleetView, 'free_hold' | 'officer_pct'>
+  // 0081: an empty hold has paid for nothing — an empty map, which is what the server serves.
+  cargo_basis: {},
+} satisfies Pick<FleetView, 'free_hold' | 'officer_pct' | 'cargo_basis'>
 
 /** A fleet lying in a port. */
 export function dockedFleet(id: string, name: string, portCode: string): FleetView {

@@ -5,6 +5,141 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-09 — the hold knows what it cost, and a sale says what it made (row 74, migration 0081)
+
+**The owner:** *"when trading i would like to know how much i bought the item, and by selling
+them i would like to see the profits of this trade"*. The slice in one noun phrase: **what the
+cargo in the hold COST, and what a sale MADE on it.**
+
+**The deciding constraint: cost basis is a SERVER fact, not a client memory.** What a hold cost is
+a property of the cargo aboard. It has to survive a reload, a second device and a voyage that
+settles with the tab shut, so it is written where the cargo is written and served — a client that
+remembered its own purchases would be a second ledger and would disagree with the game the first
+time a settlement ran offline. Nothing in the chain recorded it: `ships.cargo` (0004) is code →
+tuns, `src/lib/db/README.md` §4.9 said *"not served"*, `domain/fleet/derive.ts` said *"no average
+cost to report"*, and the ledger's BOUGHT events name a fleet by name and never say which tuns it
+still has, so nothing can be reconstructed after one sale, one STORE or one raid.
+
+**Where it lives.** `public.ships.cargo_basis` — goods.code → the AVERAGE ducats paid per tun, a
+JSON null meaning *unknown* — beside `cargo`, and `public.player_storage.basis` beside the shed's
+`qty`. The unit is the average because a hold does not keep its parcels apart: a buy blends into
+it, a sale leaves it unchanged. **It is kept EQUAL across every hull of the fleet that carries the
+good**: `fleet_load` writes the fleet's new average onto all of them after its loop, so the fleet
+is one hold for the arithmetic (the owner's fleet is one actor) and a partial sale from any hull
+realises exactly average × tuns. The alternative — a true per-hull average — keeps the books wrong
+by construction: 10 t at 100 on one hull and 10 t at 200 on the other, sell 10 from the first for a
+cost of 1,000, and the fleet then says the remaining 10 cost 2,000 — 3,000 accounted for 3,000
+paid only by luck of which hull the mover chose; equalised, it is 1,500 and 1,500 whichever hull
+unloads.
+
+**Who writes it, who reads it.** ONE writer pair: `public.fleet_load` — dropped and re-created with
+a fourth, defaulted argument `p_unit_cost` (a 3-arg twin beside a 4-arg default would make every
+existing 3-arg call ambiguous; the probes in 0061/0068/0070 and the proofs keep meaning *"no
+price"*) — and `public.fleet_unload`, which drops the key with the last tun. ONE reader,
+`public.fleet_cargo_basis(fleet, code)`: tun-weighted over the hulls carrying the good, null when
+none do or when any of them does not know. ONE blend, `public.blend_basis(q0, b0, q1, b1)`,
+`immutable`, null-propagating. Composed, never copied: `cmd.do_buy` passes `q.total / q.units` —
+the money `public.credit` takes two statements later, over the tuns; `cmd.do_sell` reads the basis
+BEFORE the tuns leave and realises `cost = round(basis × tuns)`, `profit = proceeds − cost` onto
+its result, the SOLD event and (through `cmd.preview`) the tray; `cmd.do_store` carries the fleet's
+figure ashore and blends it into the shed's; `cmd.do_take` loads at the shed's figure and leaves
+the shed's figure alone; `world.fleets()` serves `public.fleet_cargo_basis_map(fleet)` as
+`cargo_basis`, known goods only. Seven deployed bodies SLICED with `pg_temp.recut`, each proven
+to be its pre-image with only the declared hunks swapped in; `world.quote`, `world.market` and
+`world.snapshot` byte-identical; the column is named by exactly the five declared bodies and the
+reader has exactly four callers, asserted so a sixth writer fails the chain.
+
+**Unknown is a value, not a zero.** Tuns that arrive without a price — everything aboard on the
+day 0081 lands, because nothing recorded it; a parcel a probe hand-loads — carry no key, and a
+blend that touches an unknown IS unknown. The map omits the good, the sale's profit is null, the
+tray prints nothing (a number the game will not honour is never printed). It clears the moment that
+good is out of the hold. Cargo lost at sea (0027's STRIPPED writes `cargo = '{}'` directly) leaves
+stale keys that are never read, because the reader weights by the tuns in `cargo` — asserted with
+a control that empties one hull's cargo and requires the reading not to move.
+
+**The client reads, and subtracts nothing.** `FleetView.cargo_basis` is typed; `paidPerTun(fleet,
+code)` in `src/domain/fleet` is the one reading of it; `saleEstimate()` in `src/domain/order`
+holds the SELL estimate's keys once (COMMAND's check line already read a SELL estimate's
+`qty`/`total`/`avg_price` by hand at `features/command/orderCheck.tsx:135-150` — a screen file,
+left for the screen slice to fold onto `saleEstimate`). `src/live/useTrade.ts` — the one act behind
+the one tray (D47) — now also returns `paid` (the served basis for the open good) and `sale` (the
+result of `cmd.preview` on the exact SELL line the button will issue, keyed by fleet, good,
+quantity and last read, exactly as the buy ceiling is, so a stale answer is never shown). The
+`TradeTray` prints, on both quays that draw it: under **Aboard**, a **Paid** row — `87 d./t · for
+the 20 t aboard` — or, on a sell of a cargo whose cost is not on record, one muted line saying so;
+and on a sell, under the stepper, **Fetches** (the proceeds) and **Profit** / **Loss** in the one
+green or red §4.4 reserves for gain and loss, both `cmd.do_sell`'s own figures for the chosen
+quantity. The button gains the proceeds: `Sell 5 t · 407 d.`. No screen file was edited (they are
+the parallel slice's); the three screens pass `act` straight through, which is why the two new
+readings ride on it.
+
+**Measured, PGlite (PostgreSQL 18.3), the migration's own receipt — a real house with two hulls
+at LIS, the subject chosen by the picker's own authority:** bought **10 t of anise for 868 d.
+(86.84 d./t)** — split 4/6 across the two hulls, both reading one figure — then **10 t more for
+875 d. (87.49 d./t)**, so the hold reads **87.15 d./t**, the blend; a previewed `SELL anise 5`
+answered **basis 87.15 / cost 436 d. / profit −29 d. on 407 d. of proceeds** and moved nothing
+(purse and hold unchanged); the committed sale of 5 realised the **same −29 d.**, the purse rose by
+exactly **407 d.**, and the 15 that remained still read 87.15 d./t; STORE 4 put 87.15 d./t ashore
+and TAKE 4 brought it back unchanged; selling the last 15 for 1,213 d. dropped the key on every
+hull and off the wire. Unknown is unknown: 3 t loaded with no price read nothing, a 10 t buy
+(868 d.) on top of them read nothing, their sale of 13 t paid 1,048 d. with a null profit, and the
+next buy started fresh at its own 86.60 d./t. (Yes, selling back on the quay you bought from loses
+the spread — that is the honest number, and it is the first time the game has said it.) The
+positive control inside the file: one hull's figure bent by a ducat inside a rolled-back
+subtransaction moves the fleet's reading; a stale key on an emptied hull does not.
+
+**What this file does not do.** It does not backfill: what is aboard on the day it lands has no
+recorded cost and is served as nothing until that parcel is out of the hold. It does not fold
+COMMAND's hand-read of the SELL estimate (a screen file). It does not serve the shed's `basis` on
+`world.warehouse` — the column is there so a TAKE → SELL is honest; a warehouse face that wants to
+print it is a later slice. The probe house `Casa da Conta` stays in the world, as 0061's `Casa do
+Cais` does: `public.events` is append-only by 0004's trigger and a DELETE of the player cascades
+into it — measured, *"events is append-only: DELETE is not permitted"* — so the file asserts the
+house ends empty instead.
+
+**Gates, each run once and read (this machine, four chain applies running side by side, so the
+times are worse than a lone run's 7–8 min):**
+* `npm run db:apply` — **74 migrations apply, 74 self-assert receipts**, 0081 in **370 ms**,
+  `world-guard ok` (224 harbours, 523 goods, 1,288 offers, 117,152 market rows); 9m 0s. Exit 0.
+* `npm run db:proof` — **9 files, 62/62 PASS markers** (01 6/6, 02 6/6, 03 12/12, 04 9/9,
+  05 5/5, 06 9/9, 07 6/6, 08 5/5, 09 4/4), no proof changed committed state; 20m 46s. Exit 0.
+* `node scripts/db/breaktest-0081.mjs` — unmutated green with the full receipt, then **17
+  mutations, ALL GUARDS BITE**, each red with its own FAIL sentence (the blend that averages the
+  prices, the blend that forgets an unknown, the reader that reads only the flagship, "not on
+  record" read as zero, BUY without a price, the mover equalising one hull, the 3-arg `fleet_load`
+  left standing, profit realised against nothing, the cost off by a ducat, the basis read after
+  the tuns leave, unload keeping the key, STORE and TAKE losing the cost, the wire serving an
+  empty map, the reader granted to the browser, a write grant on ships, `world.fleets()` losing
+  its door); 3m 48s. Exit 0. **The harness itself had to be fixed first**: `String.replace` reads
+  `$$` in a replacement string as one `$`, so the reader mutation came back as a *syntax error* —
+  red for the wrong reason — until the replacement became a function; the migration was run
+  against that mutation by hand before the fix and it was red for the right reason (*"a hull
+  carrying a bent basis left the fleet reading at 87.15"*).
+* `npx tsc -b` clean · `npx eslint src` clean · `npx eslint .` clean.
+* `npm run build` — green, 9m 3s.
+* `npx vite preview --port 4182` + `PLAYWRIGHT_BASE_URL=… npx playwright test` — **244 passed,
+  0 failed, 0 skipped, 18.5 min**, including `rpc.surface`'s new `cargo_basis` pin, `db.chain`'s
+  head moved to 0081, and layout:355's good-picker press contract.
+* **Driven in the built app, headless chromium at 390×844, local PGlite world (3.8 s to ready):**
+  MARKET, Aniseed, `buy` → the tray reads no Paid row (nothing aboard) → `Buy 10 t` → the buy tray
+  reopened reads **`Paid · for the 10 t aboard · 76 d./t`**; `sell` → **`Paid 76 d./t` ·
+  `Fetches 709 d.` · `Loss −53 d.`**, button **`Sell 10 t · 709 d.`** → sold, tray closed, LEDGER:
+  *"Gaivota sold 10 Aniseed at 71 d. the tun."* under *"took aboard 10 Aniseed at 76 d. the
+  tun."* 0 page errors. The −53 is the server's: `709 − round(76.2 × 10)`. What the screenshot
+  then showed: at the tray's half height the Fetches/Loss rows sat **below the fold**, under the
+  stepper — so they moved above it, directly under Paid, and the build, the preview and the
+  tray-touching specs were run again: `npm run build` green in **4.8 s** (the world image
+  `world-80aa137068228121-74-82115d.tar.gz` is reused by fingerprint — the first build's 9 min
+  were the image), the same drive read the same four figures, the screenshot at the tray's half
+  height now shows **Aboard 10 t · Paid 76 d./t · Fetches 709 d. · Loss −53 d. · the stepper ·
+  `Sell 10 t · 709 d.`** with nothing below the fold, and layout + primitives.geometry +
+  nav.geometry + duplication + sections + format + tableLayout read **56 passed, 0 failed, 55 s**.
+  Not driven: the stepper's `−` (the drive could not find the control by its glyph), so the
+  re-serve on a changed quantity is covered by the hook's key and the migration's preview assert,
+  not by a screenshot.
+
+---
+
 ## 2026-09-09 — the map is a chart, two corners, and a tray
 
 **Step 8 of 10** of `docs/UI_DIRECTION.md` §7 — MAP, chrome only. The chart layer (`src/chart`) is
