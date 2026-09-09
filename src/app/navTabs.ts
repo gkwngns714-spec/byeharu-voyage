@@ -4,10 +4,11 @@ import type { IconName } from '../components/ui'
 // spec instead of read out of JSX. NavBar renders EXACTLY this list; there is no second table.
 //
 // ── THE NINE DESTINATIONS, and why each is its own screen ───────────────────────────────────────
-//   Command  compose orders. THE ONLY PLACE AN ORDER IS COMPOSED. Sail, load, unload, sell, buy.
-//            Four tabs HAND an order to it — Fleets, Port, Market and (2026-08-23) Map — and none
-//            of them composes one: they name an intent, `domain/order`'s draft holds it, and this
-//            tab turns it into the single line `cmd.issue()` receives.
+//   Command  whose orders, and what she has been told: her queue, the halt, cancel and clear.
+//            Since 2026-09-09 it composes NO verb — the owner: *"they should be located
+//            accordingly at different locations"* — every verb's doorway is on the face of the
+//            building whose act it is (PORT) or on the chart (SAIL). FLEETS' "Command her" still
+//            points it at a hull through `domain/order`'s draft; nothing hands it a verb.
 //   Fleets   what you own and where it is: ships, crew, hold, condition.
 //   Port     the harbour you are in — its services, its dues, its news.
 //   Market   prices here, prices remembered elsewhere, spreads.

@@ -1,17 +1,19 @@
 # CMD — orders are MADE, not typed
 
-> **REDRAWN 2026-09-09 — §7 step 5 of `docs/UI_DIRECTION.md`.** The screen below was rebuilt on the
-> twelve primitives. Its shape is now: a fleet chip row and a one-line fleet stat, a field of twelve
-> **verb tiles** (`VerbGrid.tsx`, icon + word only), and the chosen verb's ONE question —
-> `TradeQuestion.tsx` (BUY/SELL: the design-system `TradeTile` field, and `TradeTray` docked at the
-> bottom edge, shared with PORT), `SailQuestion.tsx` (the chart is the question, harbours below, a
-> passage tray on tap) or `StepQuestion.tsx` (HIRE/REPAIR/PROVISION: the reading, a `Stepper`, and
-> the priced-on-the-day check, in a tray). The queue is `QueueTray.tsx`. `OrderComposer`,
-> `FleetRail`, `PreviewPanel`, `HaggleBlock`, `ArgPickers`, `OrderQueue`, `railVerbs` and
-> `fleetLimits` were **deleted**; the good tile and the buy tray are `src/components/ui`'s, drawn
-> the one way on both quays. The check is `orderCheck.tsx`; the six 0068–0074 verbs draw a tile but
-> are not composed here yet (dark-first). Sections **1–11a below describe the OLD composer and rail
-> and are kept only as history** — the flow, the primitives and the file map above supersede them.
+> **THE VERBS LEFT THIS SCREEN — 2026-09-09.** The owner: *"In command, there are so many things,
+> like buy, sell, fit, take etc. Buy and sell should be in port - market. Get it? they should be
+> located accordingly at different locations - the command."* The twelve-tile verb grid, the trade
+> question, the sail question and the step question are **deleted from this folder**. A verb's
+> doorway is on the face of the building whose act it is — BUY/SELL and PROVISION on PORT's Trade
+> face (the quay is the chandler), STORE/TAKE on Store, MAKE on Craft, BUILD on Yard, HIRE on the
+> Inn, REPAIR at the Shipyard (`features/port/`), SAIL on the MAP (`features/map/`). The step
+> question moved to `features/port/StepQuestion.tsx` with its act in `useStepOrder.ts`; the bargain
+> row moved to `features/port/HaggleRow.tsx`. What stands here is `CommandScreen.tsx` (whose orders:
+> the fleet chips, her one line) and `Queue.tsx` (what she has been told: the rows, the halt,
+> CANCEL and CLEAR). The grammar, the door and the judge did not move — one `orderText`, one
+> `cmd.issue`, one `cmd.preview` — only the entry points did, and `tests/verbHomes.spec.ts` keeps
+> them where they are. **Everything below this line describes the composer as it stood before and
+> is kept as history**: the flow, the pickers, the rail and the chart on SAIL are no longer here.
 
 `DESIGN.md` §E.1 and §F are the specification. This file records what was built, what was deleted,
 and the handful of decisions a future reader could otherwise mistake for an accident.

@@ -1,56 +1,55 @@
 import { useEffect, useState } from 'react'
 import { Bar, Button, Figure, Note, Row, Stepper, Tray, type TrayDetent } from '../../components/ui'
-import { OrderCheck, type CheckState } from './orderCheck'
+import { OrderCheck } from './orderCheck'
+import type { StepOrder } from './useStepOrder'
 import { fleetCrew, fleetStores, worstHullFraction } from '../../domain/fleet'
 import { enumNaming } from '../../domain/order'
 import { buildingTier, hasBuilding } from '../../domain/port'
 import { formatInt, formatPct, formatVoyageDays } from '../../lib/format'
-import type { FleetView, SnapshotPort, VerbSpec } from '../../lib/rpc'
+import type { FleetView, SnapshotPort } from '../../lib/rpc'
 
 // HIRE · REPAIR · PROVISION — the three verbs whose question is a single quantity. §6: "the Stepper
 // is the question; the tray shows the server's cost line and the button."
 //
+// ── IT STANDS ON PORT NOW, AT THE BUILDING WHOSE ACT IT IS (2026-09-09) ────────────────────────
+// The owner: *"they should be located accordingly at different locations - the command."* This tray
+// used to open from COMMAND's verb grid for all three; the Inn asks it for HIRE, the Shipyard for
+// REPAIR and the quay for PROVISION. The tray is the same one, moved — the reading rows, the
+// stepper, the dry run and the one button — and the act behind it is `useStepOrder`. It reads no
+// store itself: the fleet, the port and the act arrive as props, so a face composes it without
+// the file learning which face it is on.
+//
 // Each is a decision about the fleet's own state, so the tray reads that state first — her crew,
 // her worst hull, her stores — then the stepper, then the server's dry run, then the one button.
-// This is the whole of what the old FleetRail (600 lines, four blocks, a sticky column) and the
-// number pickers were; the reading is rows now, and the cost is priced on the day by the server
-// (`lib/rpc/types.ts:18`), which is why no price is invented here — the dry run names it.
+// The cost is priced on the day by the server (`lib/rpc/types.ts:18`), which is why no price is
+// invented here — the dry run names it.
 
 export function StepQuestion({
   fleet,
-  spec,
   port,
-  args,
-  setArg,
-  check,
-  timeCompression,
-  issuing,
-  onIssue,
+  step,
   onClose,
 }: {
   fleet: FleetView
-  spec: VerbSpec
-  /** Where she lies (or is bound) — the snapshot port, for the yard and the idle men. Null at sea. */
+  /** Where she lies — the snapshot port, for the yard and the idle men. */
   port: SnapshotPort | null
-  args: Record<string, string>
-  setArg: (name: string, value: string | null) => void
-  check: CheckState
-  timeCompression: number
-  issuing: boolean
-  onIssue: () => void
+  step: StepOrder
   onClose: () => void
 }) {
+  const { spec, args, setArg, check, issuing, timeCompression } = step
   const [detent, setDetent] = useState<TrayDetent>('half')
-  const numberArg = spec.args.find((a) => a.type === 'number')
+  const numberArg = spec?.args.find((a) => a.type === 'number')
 
   // Seed the one default the server would otherwise supply, so the dry run runs and the button is
   // live: HIRE needs a count, REPAIR mends to whole. PROVISION is complete with FULL — no seed.
   useEffect(() => {
-    if (!numberArg) return
+    if (!spec || !numberArg) return
     if (args[numberArg.name] !== undefined) return
     if (spec.verb === 'HIRE') setArg('count', '1')
     else if (spec.verb === 'REPAIR') setArg('to_pct', '100')
-  }, [spec.verb, numberArg, args, setArg])
+  }, [spec, numberArg, args, setArg])
+
+  if (!spec) return null
 
   const bound = numberArg ? boundOf(numberArg.name, fleet) : null
   const raw = numberArg ? args[numberArg.name] : undefined
@@ -88,7 +87,7 @@ export function StepQuestion({
           disabled={issuing || refused || (bound !== null && bound.max <= 0)}
           busy={issuing}
           busyLabel="Issuing…"
-          onClick={onIssue}
+          onClick={step.send}
           data-testid="step-send"
         >
           {label}
@@ -107,6 +106,7 @@ export function StepQuestion({
             step={bound.step}
             unit={bound.unit}
             label={bound.label}
+            presets={presetsFor(spec.verb, Math.min(value, bound.max), bound)}
           />
         </div>
       ) : bound && bound.max <= 0 ? (
@@ -137,6 +137,35 @@ interface Bound {
   unit: string
   label: string
   empty: string
+}
+
+/**
+ * THE JUMPS THE OWNER ASKED FOR BY NAME — row 16: *"how many crew to hire, have it + 10, +100, max,
+ * make it more friendly"*, and row 29: *"what is max 12 in hire? just max is enough"*, which is why
+ * the last chip reads `Max` and not `Max 12`. The figure is already on the rail beside it.
+ *
+ * BOTH ROWS READ "DONE — verified" AND NEITHER WAS TRUE IN THE SHIPPED GAME. `Stepper` has carried
+ * a `presets` prop since it was written, `TradeTray`, `FleetStores` and the gallery all pass one,
+ * and this tray — the only place HIRE is asked — passed none. The screens were rebuilt on the
+ * twelve primitives (DEV_LOG D45-D52) and the chips did not come across. Found 2026-09-09 by
+ * reading who calls `presets`, not by looking at the screen.
+ *
+ * A JUMP IS RELATIVE AND THE CEILING IS ABSOLUTE, so `+10` is computed from where the player is
+ * now and `Max` is not. Jumps that would land at or past the end are dropped rather than shown as
+ * three chips that all mean the same thing, and `Stepper` clamps every one of them anyway.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO: row 16 also says MAX must be the smallest of berths free,
+ * the port's idle crew, and what the purse can pay. That is a SERVED ceiling — `Stepper`'s `cap`,
+ * whose own contract says it "is never recomputed here: this game has already had SEVEN answers to
+ * how much fits in this hull". No such figure is served for HIRE today, so this passes none and the
+ * server's dry run keeps refusing an over-large hire, as it does now. The served ceiling is owed.
+ */
+function presetsFor(verb: string, value: number, bound: Bound) {
+  if (verb !== 'HIRE' || bound.max <= 0) return undefined
+  const jumps = [10, 100]
+    .filter((n) => value + n < bound.max)
+    .map((n) => ({ label: `+${n}`, value: value + n }))
+  return [...jumps, { label: 'Max', value: bound.max }]
 }
 
 function boundOf(name: string, fleet: FleetView): Bound {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Chip, Field } from '../../components/ui'
 import type { SnapshotPort } from '../../lib/rpc'
 
@@ -19,6 +19,16 @@ import type { SnapshotPort } from '../../lib/rpc'
 // chips cancel `pointerdown` so that pressing one does not blur the field a beat before the click
 // lands: on a touch screen a button takes no focus, so `relatedTarget` would be null, the field
 // would close, and the chip would be gone before it was pressed. Enter takes the first chip.
+//
+// ── LEAVING IS ONE ACT, AND IT INCLUDES THE BLUR (2026-09-09) ──────────────────────────────────
+// Found on production, four times: pick a chip and the field worked exactly once per page load.
+// `Escape` and `Enter` both closed AND blurred; the chip path closed and did not. So `open` went
+// false while the input kept focus (the chips' `pointerdown` guard is what keeps it there, and that
+// guard is right), `value` reverted to the harbour's name, every keystroke fed a `query` nobody
+// read, and `onFocus` — the only road back to `open` — could never fire again on an element that
+// had never lost focus. Three exits, three spellings, one of them wrong. There is ONE exit now,
+// `leave()`, and it always gives the focus back: the next tap on the field is a fresh focus, the
+// chips return, and a reload is no longer the only way to read a second harbour.
 
 export function PortField({
   current,
@@ -33,21 +43,27 @@ export function PortField({
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const box = useRef<HTMLDivElement>(null)
   const listed = open ? offer(query) : []
 
-  const close = () => {
+  /** THE ONE EXIT from the open state: the field closes and gives the focus back, whichever of the
+   *  three roads (a pick, Escape, focus leaving the pair) was taken. */
+  const leave = () => {
     setOpen(false)
     setQuery('')
+    const input = box.current?.querySelector('input')
+    if (input && document.activeElement === input) input.blur()
   }
   const pick = (code: string) => {
     onPick(code)
-    close()
+    leave()
   }
 
   return (
     <div
+      ref={box}
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) close()
+        if (!e.currentTarget.contains(e.relatedTarget)) leave()
       }}
     >
       <Field
@@ -58,13 +74,8 @@ export function PortField({
           setOpen(true)
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            close()
-            e.currentTarget.blur()
-          } else if (e.key === 'Enter' && listed[0]) {
-            pick(listed[0].code)
-            e.currentTarget.blur()
-          }
+          if (e.key === 'Escape') leave()
+          else if (e.key === 'Enter' && listed[0]) pick(listed[0].code)
         }}
         onClear={open ? () => setQuery('') : undefined}
         aria-label="Find a port"

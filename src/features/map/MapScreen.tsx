@@ -1,12 +1,11 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { unproject, type Point, type ViewBox } from '../../lib/geo'
 import type { FleetView, SnapshotPort } from '../../lib/rpc'
 import type { SeaNav } from '../../lib/sea'
 import { pointToken, snapSeaPoint } from '../../domain/passage'
 import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
-// THE HAND-OFF SEAM — `domain/order`'s draft, the SAME one FLEETS, PORT and MARKET write into.
+// WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
 import { useCommandDraft } from '../../domain/order'
 // THE CHART IS A SECTION OF ITS OWN (src/chart) and this screen composes it; nothing here draws.
 import {
@@ -48,9 +47,9 @@ import { viewLeftFrame } from './frame'
 //
 //   NOTHING IN `features/map` MAY PICK AN ARGUMENT, BOUND A QUANTITY, OR JUDGE AN ORDER.
 // One composer, one grammar, one judge (`cmd.preview`, run and rolled back), one issue path. The
-// send flow here (useSendFleet.ts) is a second CALLER of each, never a second authority; the only
-// hand-off left is a refusal's fix that genuinely needs composing, through `domain/order`'s draft
-// — the seam the other three screens use — never a store field, router state or a search param.
+// send flow here (useSendFleet.ts) is a second CALLER of each, never a second authority. Nothing
+// is handed off any more (2026-09-09): SAIL's one doorway is this chart, and a refusal's fix that
+// still needs a choice is words in the refusal — the choice is made where its verb lives.
 //
 // Drawn: one coastline, the lanes close in, three glyphs, a dotted track for the CURRENT leg, two
 // corners, a tray when something is tapped. Absent: other players (§E.5), the route beyond the
@@ -99,18 +98,9 @@ function Chart({
 }) {
   // THE ONE CLOCK (src/app/shellState.ts): it ticks a countdown's wording and 0075's drift.
   const { nowMs } = useShellState()
-  const navigate = useNavigate()
 
   // WHICH HULL IS IN HAND is `domain/order`'s draft, app-wide; tapping a fleet here points it.
   const selectFleet = useCommandDraft((s) => s.selectFleet)
-  const handOff = useCommandDraft((s) => s.handOff)
-  const compose = useCallback(
-    (intent: Parameters<typeof handOff>[0]) => {
-      handOff(intent)
-      navigate('/command')
-    },
-    [handOff, navigate],
-  )
 
   const ports = useMemo(() => mapPortsOf(snapshotPorts), [snapshotPorts])
   const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
@@ -256,7 +246,6 @@ function Chart({
           dest={place.dest}
           line={place.port ? portLine(model, place.port) : 'Open sea'}
           onClose={() => setSelection(null)}
-          onCompose={compose}
         />
       )}
     </div>

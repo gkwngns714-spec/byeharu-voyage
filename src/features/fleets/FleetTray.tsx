@@ -19,10 +19,12 @@ import { keepDays, useStandingOrder } from './standingOrder'
 //
 // ── THE ONE BUTTON CHANGES WITH THE FACE ───────────────────────────────────────────────────────
 // A tray has one primary action, pinned under the scroll (§6). On SHIPS it is the hand-off this
-// tab has always had — "tapping a fleet copies her into the CMD line" — as a structured intent to
-// COMMAND. On CARGO there is none: every row IS the act (sell it). On STORES it is the commit of
-// the standing order, and it appears only when the stepper differs from what the server holds — a
-// primary button that is disabled every time it is first seen is §2 item 1's complaint.
+// tab has always had — "tapping a fleet copies her into the CMD line" — pointing COMMAND at her.
+// On CARGO there is none, and (2026-09-09) the rows no longer sell either: selling happens on the
+// quay she lies at, PORT's Trade face, which is BUY and SELL's one doorway now. On STORES it is
+// the commit of the standing order, and it appears only when the stepper differs from what the
+// server holds — a primary button that is disabled every time it is first seen is §2 item 1's
+// complaint.
 
 /** The three faces of one fleet. */
 type FleetFace = 'ships' | 'cargo' | 'stores'
@@ -115,14 +117,7 @@ export function FleetTray({ fleet, onClose }: { fleet: FleetView; onClose: () =>
 
       <div role="tabpanel" className="mt-3">
         {face === 'ships' && <FleetShips fleet={fleet} />}
-        {face === 'cargo' && (
-          <FleetCargo
-            fleet={fleet}
-            // A good travels as its CODE: the parser splits on whitespace and a display name like
-            // "black pepper" would arrive as two arguments.
-            onSell={(code) => command({ verb: 'SELL', fleetId: fleet.id, args: { good: code, qty: 'ALL' } })}
-          />
-        )}
+        {face === 'cargo' && <FleetCargo fleet={fleet} />}
         {face === 'stores' && (
           <FleetStores fleet={fleet} order={standing.order} book={standing.book} days={days} onDays={setDraft} />
         )}

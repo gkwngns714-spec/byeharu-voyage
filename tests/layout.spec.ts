@@ -345,7 +345,7 @@ for (const field of FIELDS) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// COMMAND'S GOOD PICKER — a field, AND the price cells are still the trade
+// PORT'S GOOD FIELD — a field, AND the price cells are still the trade
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // Two owner rules meet on this one screen and the second is the reason the first is hard:
@@ -357,7 +357,13 @@ for (const field of FIELDS) {
 //               times. A grid makes this sharper, not easier: a fold placed beside the pressed
 //               tile re-flows its row and shoves its neighbour out of the way, which is exactly
 //               the restructure-on-press being refused. The fold must land after the WHOLE ROW.
-test(`COMMAND: the good picker is a field, its price cells are the trade, and a press moves nothing beside it`, async ({
+// MOVED DELIBERATELY 2026-09-09, COMMAND → PORT. The owner: *"Buy and sell should be in port -
+// market … they should be located accordingly at different locations - the command."* COMMAND's
+// verb grid and its BUY question are deleted (tests/verbHomes.spec.ts holds that they stay gone);
+// the good field this proof measures is PORT's Trade face — the SAME `TradeTile` under the SAME
+// `good-pick-tile` id, opening the SAME `TradeTray` — so every assertion below stands unchanged.
+// The Trade face is the face PORT opens on (portView.ts), so nothing has to be pressed to reach it.
+test(`PORT: the good field's price cells are the trade, and a press moves nothing beside it`, async ({
   page,
   request,
   baseURL,
@@ -367,20 +373,13 @@ test(`COMMAND: the good picker is a field, its price cells are the trade, and a 
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('command')
+  await page.goto('port')
   await ready(page)
-  // CASE-INSENSITIVE since 2026-09-09 (§7 step 5): the verb tile read `BUY` in letter-spaced mono,
-  // which §4.1 deletes — no uppercase voice. The tile now reads "Buy", and this opens its good
-  // field exactly as before. The price-cell matchers below were already `/i` (they match "buy 78");
-  // only the tile opener was hard-cased to the old skin.
-  await page.getByRole('button', { name: /^buy/i }).first().click()
   await page.waitForTimeout(1200)
 
   const shape = await page.evaluate(MEASURE_FIELD, 'good-pick-tile')
   const cellReport = await page.evaluate(() => {
-    // SCOPED TO THE TILES, not to the page: the verb cards at the head of the composer are also
-    // buttons whose text starts "BUY" and "SELL" (that is the whole point of them), and counting
-    // those made this read 488 cells over 243 goods. A price cell is a cell IN a good's tile.
+    // SCOPED TO THE TILES, not to the page. A price cell is a cell IN a good's tile.
     const cells = [...document.querySelectorAll('[data-testid="good-pick-tile"] button')].filter((b) =>
       /^(buy|sell)\b/i.test(((b as HTMLElement).innerText || '').trim()),
     ) as HTMLButtonElement[]
@@ -394,9 +393,9 @@ test(`COMMAND: the good picker is a field, its price cells are the trade, and a 
     }
   })
   const field = { ...shape, ...cellReport }
-  console.log(`COMMAND good picker @${PHONE.width}px: ${JSON.stringify(field)}`)
+  console.log(`PORT good field @${PHONE.width}px: ${JSON.stringify(field)}`)
 
-  expect(field.tiles, 'no [data-testid="good-pick-tile"] found — did BUY open its good picker?').toBeGreaterThan(1)
+  expect(field.tiles, 'no [data-testid="good-pick-tile"] found — is PORT open on its Trade face with a fleet alongside?').toBeGreaterThan(1)
 
   // 1. A FIELD, NOT LINES — the assertion the owner had to ask for twice.
   expect(
@@ -439,8 +438,8 @@ test(`COMMAND: the good picker is a field, its price cells are the trade, and a 
     .filter(({ b, a }) => b.top <= rowTop && (a.top !== b.top || a.left !== b.left))
   expect(
     moved.map(({ i, b, a }) => `tile#${i} ${b.left},${b.top} → ${a.left},${a.top}`),
-    'pressing a price cell MOVED a tile in the pressed tile\'s own row. The fold must land after ' +
-      'the WHOLE row (features/command/ArgPickers.tsx, GoodPicker rule 4) — the owner has refused ' +
+    'pressing a price cell MOVED a tile in the pressed tile\'s own row. The tray is `fixed` and ' +
+      'inserts nothing into the grid (src/components/ui/TradeTray.tsx) — the owner has refused ' +
       'restructure-on-press three times.',
   ).toEqual([])
 })
