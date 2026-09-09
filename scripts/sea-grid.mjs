@@ -1,17 +1,20 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE SEA, AS A GRID — and the shortest way through it between any two harbours.
+// THE SEA, AS A GRID — the water itself, and the authored carve that opens it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// The first version of this generator asked one question of a pair of ports: does the straight
-// line between them stay at sea? That is the wrong question, and it showed: Lisbon and Cádiz are
-// 188 nm apart and had NO leg between them, because the straight line clips the Algarve. Ships
-// went round Cape St Vincent and so should the game.
+// The Natural Earth land polygons, scan-filled into a 0.25° grid: one byte per cell, 1 = a keel
+// may be here. That is the whole of this module's subject.
 //
-// So the sea is rasterised — the Natural Earth land polygons scan-filled into a 0.25° grid — and a
-// route is an A* search over the WATER cells. The result is a path that rounds capes, follows
-// coasts and threads gulfs by itself, with no passage authored for any of it. The distance is the
-// length of that path, which is exactly what DESIGN §B.3 means by a leg that "MAY EXCEED the
-// great-circle figure where the real route detours".
+// **IT NO LONGER ROUTES, AND IT NO LONGER SNAPS.** It used to carry an A* search and its own
+// `snapToWater` — 8 rings, the first water cell in scan order — which made this a module with a
+// SECOND answer to "where is the water nearest this point", differing from the one 0076 landed
+// (`voyage.water_roadstead` in SQL, `snapToNav` on the client: 12 rings, the minimum-distance
+// cell). Measured over all 224 harbours the two picked a different cell for 87 of them, the
+// scan-order rule always the farther, worst +20.51 nm at Dublin. Its only caller was the spur-leg
+// loop in `scripts/build-sea-places.mjs`, whose legs went into `public.legs` — a table 0049
+// dropped — so on 2026-09-08 the router MOVED into that retired file rather than being folded or
+// deleted. What is left here is one subject with one authority, and the guard that keeps it that
+// way is a property, not a call count: this module declares no snap rule.
 //
 // ── WHAT IS STILL AUTHORED, AND WHY ─────────────────────────────────────────────────────────────
 // A 0.25° cell is about 15 nm. The Sound is two miles wide, the Bosphorus half of one, and at this
@@ -53,49 +56,56 @@ export function gcNm(lat1, lon1, lat2, lon2) {
 }
 
 // ── THE CHANNELS — the water the map is too coarse to draw ─────────────────────────────────────
+// Each entry declares `opensLand`: how many cells of DRY LAND its carve turns into sea, measured
+// against `preCarveGrid()` — the scan-filled land data itself, before any channel runs.
+// `assertCarveDeclared` refuses to build the raster when the world disagrees with the number, so a
+// channel cannot quietly grow. The number is small for a real strait and large for a canal, but it
+// is NOT a threshold and must not be read as one: sorted by it, the St Lawrence (22), the
+// Thames-Scheldt (17) and the Gironde (15) are all bigger land carves than either half of the
+// river pair that shipped the canal. The number exists to make someone LOOK, not to decide.
 export const CHANNELS = [
-  { id: 'danish-straits', name: 'the Danish Straits', points: [[57.6, 10.6], [57.0, 11.3], [56.1, 12.6], [55.6, 12.9], [55.3, 13.5], [55.2, 15.0]] },
-  { id: 'turkish-straits', name: 'the Dardanelles and the Bosphorus', points: [[39.9, 25.8], [40.1, 26.2], [40.4, 26.8], [40.7, 28.2], [41.0, 29.0], [41.3, 29.3], [41.6, 30.0]] },
-  { id: 'kerch', name: 'the Strait of Kerch', points: [[44.8, 36.4], [45.1, 36.5], [45.4, 36.7]] },
-  { id: 'bab-el-mandeb', name: 'the Bab-el-Mandeb', points: [[12.3, 44.0], [12.6, 43.4], [13.2, 42.9], [15.0, 41.5], [17.5, 40.0], [20.0, 38.5], [24.0, 36.0], [27.0, 34.5]] },
+  { id: 'danish-straits', name: 'the Danish Straits', points: [[57.6, 10.6], [57.0, 11.3], [56.1, 12.6], [55.6, 12.9], [55.3, 13.5], [55.2, 15.0]], opensLand: 8 },
+  { id: 'turkish-straits', name: 'the Dardanelles and the Bosphorus', points: [[39.9, 25.8], [40.1, 26.2], [40.4, 26.8], [40.7, 28.2], [41.0, 29.0], [41.3, 29.3], [41.6, 30.0]], opensLand: 4 },
+  { id: 'kerch', name: 'the Strait of Kerch', points: [[44.8, 36.4], [45.1, 36.5], [45.4, 36.7]], opensLand: 1 },
+  { id: 'bab-el-mandeb', name: 'the Bab-el-Mandeb', points: [[12.3, 44.0], [12.6, 43.4], [13.2, 42.9], [15.0, 41.5], [17.5, 40.0], [20.0, 38.5], [24.0, 36.0], [27.0, 34.5]], opensLand: 2 },
   // Without this spur, Suez's nearest raster water is the MEDITERRANEAN, 72 nm north across the
   // isthmus — measured 2026-08-23, when suez->alexandria routed at 261 nm: a Suez Canal, three
   // centuries early. The gulf is 12-17 nm wide, under this raster's resolution, so it is a channel
   // like every other narrow water; the isthmus itself stays land and the two seas stay unjoined.
-  { id: 'gulf-of-suez', name: 'the Gulf of Suez', points: [[27.0, 34.5], [27.8, 33.8], [28.5, 33.3], [29.2, 32.9], [29.9, 32.6]] },
-  { id: 'hormuz', name: 'the Strait of Hormuz', points: [[24.8, 57.4], [25.8, 56.8], [26.3, 56.5], [26.4, 55.5], [26.4, 54.5], [27.2, 52.0], [28.6, 49.9], [29.6, 48.9], [30.0, 48.6]] },
-  { id: 'khambhat', name: 'the Gulf of Khambhat', points: [[20.6, 71.8], [21.0, 72.0], [21.4, 72.3]] },
-  { id: 'hooghly', name: 'the Hooghly approach', points: [[20.5, 88.3], [21.2, 88.2], [21.8, 88.1], [22.4, 88.2], [22.9, 88.4]] },
-  { id: 'malacca', name: 'the Strait of Malacca', points: [[6.0, 95.6], [5.8, 96.0], [5.4, 96.8], [4.8, 98.0], [4.2, 98.8], [3.0, 100.5], [2.0, 102.0], [1.5, 103.0], [1.3, 103.6], [1.2, 104.3], [1.2, 104.8]] },
-  { id: 'sunda', name: 'the Sunda Strait', points: [[-5.2, 105.8], [-5.7, 105.7], [-6.0, 105.6], [-6.4, 105.4], [-7.0, 105.2]] },
-  { id: 'seto', name: 'the Kii and Bungo channels', points: [[32.9, 132.4], [33.3, 132.2], [33.7, 132.5], [34.0, 133.0], [34.3, 133.8], [34.5, 134.6], [34.3, 135.0], [33.8, 135.2]] },
-  { id: 'white-sea', name: 'the Gorlo of the White Sea', points: [[68.8, 41.5], [67.8, 41.2], [66.8, 41.0], [66.0, 40.4], [65.6, 39.8], [64.9, 39.8]] },
-  { id: 'saint-lawrence', name: 'the River of Saint Lawrence', points: [[49.2, -64.5], [49.0, -65.5], [48.8, -66.5], [48.6, -67.6], [48.3, -68.8], [47.9, -69.6], [47.4, -70.2], [46.9, -70.9], [46.8, -71.2]] },
-  { id: 'gironde', name: 'the Gironde and the Loire', points: [[45.6, -1.3], [45.4, -1.0], [45.0, -0.7], [44.9, -0.6], [47.2, -2.4], [47.3, -2.1], [47.2, -1.7]] },
-  { id: 'thames-scheldt', name: 'the Thames and the Scheldt', points: [[51.5, 1.4], [51.5, 0.8], [51.5, 0.2], [51.5, -0.1], [51.6, 3.4], [51.4, 3.6], [51.3, 4.0], [51.2, 4.4]] },
+  { id: 'gulf-of-suez', name: 'the Gulf of Suez', points: [[27.0, 34.5], [27.8, 33.8], [28.5, 33.3], [29.2, 32.9], [29.9, 32.6]], opensLand: 12 },
+  { id: 'hormuz', name: 'the Strait of Hormuz', points: [[24.8, 57.4], [25.8, 56.8], [26.3, 56.5], [26.4, 55.5], [26.4, 54.5], [27.2, 52.0], [28.6, 49.9], [29.6, 48.9], [30.0, 48.6]], opensLand: 3 },
+  { id: 'khambhat', name: 'the Gulf of Khambhat', points: [[20.6, 71.8], [21.0, 72.0], [21.4, 72.3]], opensLand: 3 },
+  { id: 'hooghly', name: 'the Hooghly approach', points: [[20.5, 88.3], [21.2, 88.2], [21.8, 88.1], [22.4, 88.2], [22.9, 88.4]], opensLand: 5 },
+  { id: 'malacca', name: 'the Strait of Malacca', points: [[6.0, 95.6], [5.8, 96.0], [5.4, 96.8], [4.8, 98.0], [4.2, 98.8], [3.0, 100.5], [2.0, 102.0], [1.5, 103.0], [1.3, 103.6], [1.2, 104.3], [1.2, 104.8]], opensLand: 11 },
+  { id: 'sunda', name: 'the Sunda Strait', points: [[-5.2, 105.8], [-5.7, 105.7], [-6.0, 105.6], [-6.4, 105.4], [-7.0, 105.2]], opensLand: 4 },
+  { id: 'seto', name: 'the Kii and Bungo channels', points: [[32.9, 132.4], [33.3, 132.2], [33.7, 132.5], [34.0, 133.0], [34.3, 133.8], [34.5, 134.6], [34.3, 135.0], [33.8, 135.2]], opensLand: 9 },
+  { id: 'white-sea', name: 'the Gorlo of the White Sea', points: [[68.8, 41.5], [67.8, 41.2], [66.8, 41.0], [66.0, 40.4], [65.6, 39.8], [64.9, 39.8]], opensLand: 6 },
+  { id: 'saint-lawrence', name: 'the River of Saint Lawrence', points: [[49.2, -64.5], [49.0, -65.5], [48.8, -66.5], [48.6, -67.6], [48.3, -68.8], [47.9, -69.6], [47.4, -70.2], [46.9, -70.9], [46.8, -71.2]], opensLand: 22 },
+  { id: 'gironde', name: 'the Gironde and the Loire', points: [[45.6, -1.3], [45.4, -1.0], [45.0, -0.7], [44.9, -0.6], [47.2, -2.4], [47.3, -2.1], [47.2, -1.7]], opensLand: 15 },
+  { id: 'thames-scheldt', name: 'the Thames and the Scheldt', points: [[51.5, 1.4], [51.5, 0.8], [51.5, 0.2], [51.5, -0.1], [51.6, 3.4], [51.4, 3.6], [51.3, 4.0], [51.2, 4.4]], opensLand: 17 },
   // Without this, Bristol's nearest raster water is LYME BAY — 64.8 nm away, on the far side of
   // Devon, in the English Channel (measured 2026-08-25; DEV_LOG D22 logged the same 65 nm snap and
   // flagged the fix for this worktree). The Severn estuary narrows below one cell above Barry, so
   // the whole Bristol Channel east of 4°W scan-fills as land and John Cabot's home port answers
   // the wrong sea from the wrong side of a peninsula. The water is real and was sailed: square
   // riggers worked the channel to King Road and warped seven miles up the Avon to the quay.
-  { id: 'severn', name: 'the Bristol Channel and the Avon', points: [[51.4, -4.1], [51.4, -3.6], [51.4, -3.1], [51.5, -2.8], [51.5, -2.7], [51.45, -2.6]] },
-  { id: 'elbe-weser', name: 'the Elbe and the Weser', points: [[54.0, 8.2], [53.9, 8.7], [53.7, 9.2], [53.5, 9.9], [53.5, 8.6], [53.2, 8.5]] },
-  { id: 'guadalquivir', name: 'the Guadalquivir', points: [[36.8, -6.4], [37.0, -6.3], [37.2, -6.1], [37.4, -6.0]] },
-  { id: 'pearl-river', name: 'the Pearl River', points: [[22.0, 114.0], [22.3, 113.8], [22.7, 113.6], [23.1, 113.3]] },
-  { id: 'yangtze', name: 'the Yangtze and the Grand Canal mouth', points: [[31.2, 122.4], [31.4, 121.9], [31.5, 121.3], [32.0, 120.4]] },
+  { id: 'severn', name: 'the Bristol Channel and the Avon', points: [[51.4, -4.1], [51.4, -3.6], [51.4, -3.1], [51.5, -2.8], [51.5, -2.7], [51.45, -2.6]], opensLand: 5 },
+  { id: 'elbe-weser', name: 'the Elbe and the Weser', points: [[54.0, 8.2], [53.9, 8.7], [53.7, 9.2], [53.5, 9.9], [53.5, 8.6], [53.2, 8.5]], opensLand: 14 },
+  { id: 'guadalquivir', name: 'the Guadalquivir', points: [[36.8, -6.4], [37.0, -6.3], [37.2, -6.1], [37.4, -6.0]], opensLand: 4 },
+  { id: 'pearl-river', name: 'the Pearl River', points: [[22.0, 114.0], [22.3, 113.8], [22.7, 113.6], [23.1, 113.3]], opensLand: 6 },
+  { id: 'yangtze', name: 'the Yangtze and the Grand Canal mouth', points: [[31.2, 122.4], [31.4, 121.9], [31.5, 121.3], [32.0, 120.4]], opensLand: 8 },
   // WAS ONE RECORD NAMING TWO RIVERS 330 nm APART, and the jump between them carved a canal
   // through the Tenasserim mountains — 309 real port pairs sold a route across the Malay
   // peninsula, worst Thanlyin -> Ayutthaya at 323 nm against 1,977 nm of real sea. A CHANNELS
   // entry's points must lie along ONE water, in order; these are two waters and are now two
   // records. docs/LAND_CARVE_RECON.md measured it; RECLAIMED below carries the consequence.
-  { id: 'yangon', name: 'the Yangon river', points: [[16.3, 96.3], [16.6, 96.2], [16.8, 96.2]] },
-  { id: 'chao-phraya', name: 'the Chao Phraya', points: [[13.3, 100.6], [13.6, 100.6], [14.4, 100.6]] },
-  { id: 'shatt-al-arab', name: 'the Shatt al-Arab', points: [[29.9, 48.7], [30.2, 48.5], [30.5, 47.9]] },
-  { id: 'rio-de-la-plata', name: 'the Río de la Plata', points: [[-35.5, -56.0], [-35.0, -57.0], [-34.7, -58.0], [-34.6, -58.4]] },
-  { id: 'amazon-para', name: 'the Pará and the Amazon mouth', points: [[-0.5, -47.5], [-1.0, -48.0], [-1.4, -48.5]] },
-  { id: 'gambia-senegal', name: 'the Gambia and Senegal mouths', points: [[13.5, -16.8], [13.4, -16.5], [16.0, -16.6], [16.0, -16.4]] },
-  { id: 'baltic-gulfs', name: 'the Gulf of Finland and the Gulf of Riga', points: [[59.5, 22.0], [59.6, 23.5], [59.5, 24.8], [57.8, 22.5], [57.5, 23.5], [56.9, 24.0]] },
+  { id: 'yangon', name: 'the Yangon river', points: [[16.3, 96.3], [16.6, 96.2], [16.8, 96.2]], opensLand: 3 },
+  { id: 'chao-phraya', name: 'the Chao Phraya', points: [[13.3, 100.6], [13.6, 100.6], [14.4, 100.6]], opensLand: 4 },
+  { id: 'shatt-al-arab', name: 'the Shatt al-Arab', points: [[29.9, 48.7], [30.2, 48.5], [30.5, 47.9]], opensLand: 5 },
+  { id: 'rio-de-la-plata', name: 'the Río de la Plata', points: [[-35.5, -56.0], [-35.0, -57.0], [-34.7, -58.0], [-34.6, -58.4]], opensLand: 3 },
+  { id: 'amazon-para', name: 'the Pará and the Amazon mouth', points: [[-0.5, -47.5], [-1.0, -48.0], [-1.4, -48.5]], opensLand: 5 },
+  { id: 'gambia-senegal', name: 'the Gambia and Senegal mouths', points: [[13.5, -16.8], [13.4, -16.5], [16.0, -16.6], [16.0, -16.4]], opensLand: 14 },
+  { id: 'baltic-gulfs', name: 'the Gulf of Finland and the Gulf of Riga', points: [[59.5, 22.0], [59.6, 23.5], [59.5, 24.8], [57.8, 22.5], [57.5, 23.5], [56.9, 24.0]], opensLand: 9 },
 ]
 
 // ── THE ICE — the water the age of sail could never use ────────────────────────────────────────
@@ -221,11 +231,19 @@ function landPolygons() {
 }
 
 /**
- * THE GRID. One byte per cell: 1 = water, 0 = land.
- * Built by scan-filling each land polygon with the even-odd rule, so holes (the Caspian, inland
- * seas) come out as water without a second pass.
+ * THE LAND DATA, AS THE GRID SEES IT — scan-fill plus ICE, and NO carve.
+ *
+ * This is the thing a carve has to be justified against, and until 2026-09-08 nothing in the repo
+ * could ask for it: `buildSeaGrid` applied the channels before returning, so by the time anyone
+ * held a raster the answer to "was this cell land?" had already been overwritten. That is why
+ * `tests/seaCarve.spec.ts` reconstructed its "pre-channel land" by closing every carved cell in
+ * the FINISHED raster — which makes every carved cell read as land and turns the count it pins
+ * into the carve's own size. See `carveInventory` below for what that cost.
+ *
+ * One byte per cell: 1 = water, 0 = land. Built by scan-filling each land polygon with the
+ * even-odd rule, so holes (the Caspian, inland seas) come out as water without a second pass.
  */
-export function buildSeaGrid() {
+export function preCarveGrid() {
   const water = new Uint8Array(COLS * ROWS).fill(1)
   for (const rings of landPolygons()) {
     // Row range this polygon can touch.
@@ -268,164 +286,109 @@ export function buildSeaGrid() {
       }
     }
   }
-
-  // The channels: force their cells — and the cells between consecutive points — open.
-  for (const ch of CHANNELS) {
-    for (let i = 0; i < ch.points.length; i++) {
-      openCell(water, ch.points[i][0], ch.points[i][1])
-      if (i + 1 < ch.points.length) {
-        const [la, lo] = ch.points[i]
-        const [lb, lb2] = ch.points[i + 1]
-        const steps = Math.ceil(gcNm(la, lo, lb, lb2) / 5)
-        for (let s = 1; s < steps; s++) {
-          openCell(water, la + ((lb - la) * s) / steps, lo + ((lb2 - lo) * s) / steps)
-        }
-      }
-    }
-  }
   return water
 }
 
-function openCell(water, lat, lon) {
-  water[rowOf(lat) * COLS + colOf(lon)] = 1
-}
-
-export const isWater = (water, row, col) => water[row * COLS + ((col % COLS) + COLS) % COLS] === 1
-
-/** The nearest water cell to a coordinate, searched outward. Harbours sit ON the coastline, so a
- *  port's own cell is often land at this resolution; that is expected, not an error. */
-export function snapToWater(water, lat, lon, maxRings = 8) {
-  const r0 = rowOf(lat)
-  const c0 = colOf(lon)
-  if (isWater(water, r0, c0)) return { row: r0, col: c0, ringsOut: 0 }
-  for (let ring = 1; ring <= maxRings; ring++) {
-    for (let dr = -ring; dr <= ring; dr++) {
-      for (let dc = -ring; dc <= ring; dc++) {
-        if (Math.max(Math.abs(dr), Math.abs(dc)) !== ring) continue
-        const row = r0 + dr
-        if (row < 0 || row >= ROWS) continue
-        const col = ((c0 + dc) % COLS + COLS) % COLS
-        if (isWater(water, row, col)) return { row, col, ringsOut: ring }
+/** The cells one channel opens: its own points, and the cells BETWEEN consecutive points. That
+ *  "between" is the whole defect surface — it is what let one record naming two rivers 330 nm
+ *  apart cut a canal through the Tenasserim mountains. */
+function channelCells(ch) {
+  const cells = new Set()
+  for (let i = 0; i < ch.points.length; i++) {
+    const [la, lo] = ch.points[i]
+    cells.add(rowOf(la) * COLS + colOf(lo))
+    if (i + 1 < ch.points.length) {
+      const [lb, lb2] = ch.points[i + 1]
+      const steps = Math.ceil(gcNm(la, lo, lb, lb2) / 5)
+      for (let s = 1; s < steps; s++) {
+        cells.add(rowOf(la + ((lb - la) * s) / steps) * COLS + colOf(lo + ((lb2 - lo) * s) / steps))
       }
     }
   }
-  return null
+  return cells
 }
-
-// ── A*, over water cells ──────────────────────────────────────────────────────────────────────
-const NEIGHBOURS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]]
 
 /**
- * The shortest navigable path between two coordinates, or null if there is none.
- * Returns { nm, path } where path is the simplified polyline (lat/lon pairs) including both ends.
+ * THE CARVE, MEASURED AGAINST THE LAND IT OVERWRITES, BY THE ACT OF OVERWRITING IT.
  *
- * The heuristic is the great circle to the goal, which never overestimates, so the first path A*
- * settles on is the shortest one the grid allows.
+ * Every channel is counted against `pre` — the grid BEFORE any channel ran — and never against the
+ * partly-carved grid, because channels share cells (the Bab-el-Mandeb and the Gulf of Suez meet at
+ * 27.0N 34.5E) and a running total would hand the shared cell to whichever entry the list happens
+ * to reach first. Counted this way the numbers are order-independent, and they are not a
+ * re-derivation of the carve: they are what the carve actually did.
+ *
+ * WHAT THIS ANSWERS, AND WHY IT IS A DIFFERENT NUMBER FROM THE ONE THE REPO USED TO QUOTE. The
+ * carve opens 521 cells and always did; of those, **202 are dry land** and the rest were already
+ * water — a channel exists to join water the raster is too coarse to draw, so most of its cells
+ * are water it merely re-states. Only the land half is a claim about the world. Measured
+ * 2026-09-08, and the ranking is not the ranking the old figure gave:
+ *
+ *   * `bab-el-mandeb` carves 84 cells — the largest carve in the list — and opens **2** of land.
+ *   * `hormuz` carves 48 and opens **3**. `malacca` carves 52 and opens **11**.
+ *   * `saint-lawrence` carves 33 and opens **22**, which is the largest land carve there is.
+ *   * The canal, as shipped, carved 37 and opened **30** — FIRST by a wide margin on this measure,
+ *     and only fifth on the old one. The guard that would have caught it is this one.
  */
-export function findSeaRoute(water, from, to, opts = {}) {
-  const limitNm = opts.limitNm ?? Infinity
-  const a = snapToWater(water, from.lat, from.lon)
-  const b = snapToWater(water, to.lat, to.lon)
-  if (!a || !b) return null
-  const start = a.row * COLS + a.col
-  const goal = b.row * COLS + b.col
-  if (start === goal) {
-    const nm = gcNm(from.lat, from.lon, to.lat, to.lon)
-    return { nm, path: [[from.lat, from.lon], [to.lat, to.lon]] }
-  }
-
-  const goalLat = cellLat(b.row)
-  const goalLon = cellLon(b.col)
-  const g = new Map([[start, 0]])
-  const cameFrom = new Map()
-  const open = [[gcNm(cellLat(a.row), cellLon(a.col), goalLat, goalLon), start]]
-  const closed = new Set()
-
-  const pop = () => {
-    // Binary heap would be tidier; a linear scan over a few thousand entries is fast enough and
-    // this runs offline. Kept simple on purpose.
-    let bestI = 0
-    for (let i = 1; i < open.length; i++) if (open[i][0] < open[bestI][0]) bestI = i
-    const [, node] = open[bestI]
-    open[bestI] = open[open.length - 1]
-    open.pop()
-    return node
-  }
-
-  while (open.length > 0) {
-    const current = pop()
-    if (closed.has(current)) continue
-    closed.add(current)
-    if (current === goal) break
-    const row = Math.floor(current / COLS)
-    const col = current % COLS
-    const lat = cellLat(row)
-    const lon = cellLon(col)
-    const cost = g.get(current)
-    if (cost > limitNm) continue
-    for (const [dr, dc] of NEIGHBOURS) {
-      const nrow = row + dr
-      if (nrow < 0 || nrow >= ROWS) continue
-      const ncol = ((col + dc) % COLS + COLS) % COLS
-      if (!isWater(water, nrow, ncol)) continue
-      const next = nrow * COLS + ncol
-      if (closed.has(next)) continue
-      const step = gcNm(lat, lon, cellLat(nrow), cellLon(ncol))
-      const tentative = cost + step
-      if (tentative >= (g.get(next) ?? Infinity)) continue
-      g.set(next, tentative)
-      cameFrom.set(next, current)
-      open.push([tentative + gcNm(cellLat(nrow), cellLon(ncol), goalLat, goalLon), next])
+export function carveInventory() {
+  const pre = preCarveGrid()
+  const water = Uint8Array.from(pre)
+  const opened = new Map()
+  for (const ch of CHANNELS) {
+    let land = 0
+    for (const k of channelCells(ch)) {
+      if (pre[k] === 0) land++
+      water[k] = 1
     }
+    opened.set(ch.id, land)
   }
-
-  if (!g.has(goal)) return null
-
-  // Walk the path back, then straighten it: the grid's 45° staircase is an artefact of the raster,
-  // not of the sea. Line-of-sight simplification replaces runs of cells with the straight leg a
-  // ship would actually sail, as long as that straight leg stays in water.
-  const cells = []
-  for (let node = goal; node !== undefined; node = cameFrom.get(node)) {
-    cells.push(node)
-    if (node === start) break
-  }
-  cells.reverse()
-  const points = [[from.lat, from.lon], ...cells.map((n) => [cellLat(Math.floor(n / COLS)), cellLon(n % COLS)]), [to.lat, to.lon]]
-  const simplified = straighten(water, points)
-  let nm = 0
-  for (let i = 0; i + 1 < simplified.length; i++) {
-    nm += gcNm(simplified[i][0], simplified[i][1], simplified[i + 1][0], simplified[i + 1][1])
-  }
-  return { nm, path: simplified }
+  return { water, pre, opened }
 }
 
-/** Is every cell along this straight segment water? The ends are exempt: a harbour is on land. */
-function segmentInWater(water, [lat1, lon1], [lat2, lon2], exemptEnds) {
-  const nm = gcNm(lat1, lon1, lat2, lon2)
-  const steps = Math.max(2, Math.ceil(nm / 8))
-  for (let s = 1; s < steps; s++) {
-    const f = s / steps
-    // Straight in lat/lon is close enough over the short spans this is used on, and it never
-    // wraps: the pathfinder's own points are always within a cell or two of each other.
-    if (Math.abs(lon2 - lon1) > 180) return false
-    const lat = lat1 + (lat2 - lat1) * f
-    const lon = lon1 + (lon2 - lon1) * f
-    if (exemptEnds && (f * nm < 25 || (1 - f) * nm < 25)) continue
-    if (!isWater(water, rowOf(lat), colOf(lon))) return false
+/**
+ * THE REFUSAL. A carve that opens land the list does not declare is not emitted.
+ *
+ * `docs/LAND_CARVE_RECON.md` §5 says why this has to live on the generator side: a course over a
+ * carved canal is water by the raster's own account, so every SQL guard passes it and always
+ * would. The raster is the thing that is wrong, and only the data it was built FROM can say so.
+ *
+ * It is the shape RECLAIMED already uses — an authored claim, refused when the world disagrees —
+ * and it is deliberately NOT a threshold. No threshold separates a strait from a canal: sorted by
+ * land opened, the St Lawrence (22), the Thames-Scheldt (17) and the Gironde (15) all sit above
+ * what the canal's two halves open today. A person has to look. What this guarantees is that a
+ * person HAS looked at every number in the list, and that the raster cannot be built until they do.
+ */
+export function assertCarveDeclared(opened) {
+  const wrong = []
+  for (const ch of CHANNELS) {
+    if (typeof ch.opensLand !== 'number') {
+      wrong.push(`${ch.id}: declares no opensLand`)
+      continue
+    }
+    const got = opened.get(ch.id)
+    if (got !== ch.opensLand) wrong.push(`${ch.id}: opens ${got} cells of land, declares ${ch.opensLand}`)
   }
-  return true
+  if (wrong.length) {
+    throw new Error(
+      'THE CARVE OPENS LAND IT DOES NOT DECLARE — refusing to build the raster.\n  '
+      + wrong.join('\n  ')
+      + '\n\nEach CHANNELS entry declares `opensLand`: how many cells of DRY LAND it turns into sea,'
+      + '\nmeasured against the scan-filled land data (scripts/sea-grid.mjs preCarveGrid). If you'
+      + '\nmoved a point on purpose, LOOK at the new water on a map before you change the number —'
+      + '\nthat look is the entire guard. docs/LAND_CARVE_RECON.md §5.',
+    )
+  }
 }
 
-function straighten(water, points) {
-  const out = [points[0]]
-  let i = 0
-  while (i < points.length - 1) {
-    let j = points.length - 1
-    for (; j > i + 1; j--) {
-      if (segmentInWater(water, points[i], points[j], i === 0 || j === points.length - 1)) break
-    }
-    out.push(points[j])
-    i = j
-  }
-  return out
+/**
+ * THE GRID the game sails on: the land data, with the declared carve opened into it.
+ *
+ * The refusal is here rather than in each generator on purpose — five generators build this raster
+ * (`build-sea-migration`, `build-sea-raster`, `build-sea-places`, `gen-0047`, and the specs), and a
+ * guard wired into five callers is a guard four of them can forget. The raster cannot be built with
+ * an undeclared carve at all.
+ */
+export function buildSeaGrid() {
+  const { water, opened } = carveInventory()
+  assertCarveDeclared(opened)
+  return water
 }
