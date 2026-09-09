@@ -28,7 +28,7 @@ import { WatersAhead } from './WatersAhead'
 // on this screen (SendFleet.tsx is the one authority), the harbour under her is a tap away, and §6
 // cuts the hint. There is no send button here for the same reason there never was one: a second
 // mover with its own destination picker is what four movers cost this project.
-export function FleetTray({
+export function VoyageTray({
   fleet,
   portsByCode,
   nowMs,

@@ -34,7 +34,7 @@ import {
 } from '../../chart'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
-import { FleetTray } from './FleetTray'
+import { VoyageTray } from './VoyageTray'
 import { SendFleet } from './SendFleet'
 import { viewLeftFrame } from './frame'
 
@@ -242,7 +242,7 @@ function Chart({
 
       {/* THE TRAY — one at a time, keyed by what was tapped so the next tap starts it at peek. */}
       {selectedFleet && (
-        <FleetTray
+        <VoyageTray
           key={selectedFleet.fleet.id}
           fleet={selectedFleet}
           portsByCode={portsByCode}
