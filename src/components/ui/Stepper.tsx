@@ -21,6 +21,13 @@ import { Icon } from './Icon'
 // control is a rule in the wrong place. With both, the control draws the world and enforces the
 // server, and the caller passes two served numbers and no arithmetic.
 //
+// `min` IS THE FLOOR, and it exists because a caller already owned one the control ignored:
+// COMMAND's HIRE cannot sign on nobody and REPAIR cannot mend a hull DOWN, and StepQuestion has
+// carried both floors in its `Bound.min` since it was written — while this control let `−` walk
+// to "Hire 0" and "Mend to 40 %" on a hull at 60 %, leaving the server's dry run to say no. It
+// defaults to 0, which the trade tray means literally (nought tuns, and the button goes dead), and
+// it clamps exactly like `cap` does: the caller passes a number, never a rule.
+//
 // IT REPLACES `QtyPicker`, `NumberPicker`, `PricePicker` and the −/+ pairs written inline in
 // `SendFleet` and the galley presets. The `−` and `+` are `Icon`s, not the text glyphs §4.5 bans.
 //
@@ -32,6 +39,7 @@ export function Stepper({
   onChange,
   max,
   cap,
+  min = 0,
   step = 1,
   unit,
   presets,
@@ -45,6 +53,9 @@ export function Stepper({
   max: number
   /** The server's ceiling: what may be TAKEN. Drawn as a tick, and the clamp. Defaults to `max`. */
   cap?: number
+  /** The floor: the least that means anything (one hand to hire; a hull mended no lower than it
+   *  stands). Defaults to 0. */
+  min?: number
   step?: number
   unit?: ReactNode
   /** Chips over the slider — `max`, a keep-level, a common quantity. Optional. */
@@ -54,7 +65,10 @@ export function Stepper({
   className?: string
 } & { 'data-testid'?: string }) {
   const ceiling = Math.min(cap ?? max, max)
-  const clamp = (n: number) => Math.max(0, Math.min(ceiling, n))
+  // A floor above the ceiling is a caller's arithmetic gone wrong, not a control's: the floor
+  // yields, so the control can never demand more than may be taken.
+  const floor = Math.max(0, Math.min(min, ceiling))
+  const clamp = (n: number) => Math.max(floor, Math.min(ceiling, n))
   const tickPct = max > 0 ? (ceiling / max) * 100 : 100
 
   return (
@@ -64,7 +78,7 @@ export function Stepper({
           type="button"
           aria-label="Less"
           onClick={() => onChange(clamp(value - step))}
-          disabled={value <= 0}
+          disabled={value <= floor}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control bg-surface-2 text-ink disabled:opacity-45"
         >
           <Icon name="minus" size={20} />
@@ -100,6 +114,8 @@ export function Stepper({
             className="pointer-events-none absolute h-3 w-0.5 rounded-chip bg-warning"
           />
         )}
+        {/* The INPUT spans the whole track like the fill drawn under it does, so the thumb and
+            the fill agree; the floor is the clamp on what it may hand back, as the cap is. */}
         <input
           type="range"
           aria-label={label}

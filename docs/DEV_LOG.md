@@ -5,6 +5,63 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-09 — D47: two quays built the same tray, and now there is one
+
+**Steps 4 and 5 of `docs/UI_DIRECTION.md` §7 were built in parallel off the same primitives**, and
+each built the tray §6 describes. PORT (PR #39, merged first) wrote `features/port/TradeTray.tsx`
+and a private `PriceCell` inside `PortTrade.tsx`; COMMAND (PR #40) promoted `TradeTile` and
+`TradeTray` into `src/components/ui`. Same rows, same gauge, same button, same `orderText` at issue
+time — two files. §6 says in as many words that PORT's tray is *"identical to Command's buy tray
+(same component, same `issue`)"*, so the design-system pair is the intended shape and PORT's copies
+are deleted, not folded, not wrapped, not kept.
+
+**The contract, and why it is this one**
+
+* The design system may read nothing above it (`tests/sections.spec.ts`, *machinery knows nothing
+  above it* — a live test, not a preference), so COMMAND's shape stands: the capacity reading, the
+  quantity and the act arrive as **props**; PORT's tray had read the store at the leaf, and that
+  cannot move into `src/components/ui`.
+* But a prop-shaped act has to be spelt by every caller, and on the two branches it was: PORT's
+  tray and COMMAND's `TradeQuestion` each carried `findVerb → orderText → issue`, a `sending`, a
+  `refusal`, and the *"the total is the server's only when the quantity is the ceiling"* rule. Two
+  authorities for one act, one layer up. So the act is now **`src/live/useTrade.ts`**, one hook:
+  it reads the grammar, the trade step, the one door and `world.buy_capacity()` (through the one
+  hook that asks), and returns exactly the shape the tray takes — `{ capacity, step, act }`. Both
+  screens compose `<TradeTile>` + `<TradeTray capacity act>` and own only the field and the pick.
+  COMMAND keeps its quantity on the order draft; PORT keeps it in local state; neither spells the act.
+* The act carries the server's `refusal`, so the danger Note is drawn once, inside the tray.
+  `children` is now only what genuinely differs: COMMAND's Bargain row. `culture` is required — one
+  sentence for a refused good, not a fallback wording for a screen that did not pass it.
+* `TradeTray` also drew its hairline under the LAST row (`hairline={children === undefined}` is
+  backwards for a bottom border); it draws one only when something follows.
+
+**`Stepper` gained `min`**, because a caller already owned a floor the control ignored: COMMAND's
+`StepQuestion` has carried `Bound.min` (HIRE 1, REPAIR current-hull + 1) since it was written, while
+the control let `−` walk to *Hire 0* and *Mend to 40 %* on a hull at 60 %, leaving the server's dry
+run to refuse. Default 0; the trade tray means 0 literally (nought tuns, dead button). PROVISION's
+days floor is 0 rather than 1, because 0 IS an answer — *fill the barrels* — and a floor of 1 would
+have put it out of reach of `−` once a day count was chosen.
+
+**The ledger is lowered by both quays.** `tests/duplication.spec.ts`'s inline-skin pin was the one
+merge conflict: PORT had paid three (12 → 9), COMMAND five (12 → 7). Both payments stand: **4**.
+
+**Measured, 390×844, the built app, local PGlite, both schemes.** Aniseed bought from PORT and from
+COMMAND in fresh worlds: purse 8,000 → 7,243 d. on each, tray closed on send, no refusal, no page
+error. The tray rows are identical on the two screens save COMMAND's Bargain row. First tappable
+price: PORT 245 px, COMMAND 641 px (below the fleet chip, the one line and the 4×2 verb grid);
+neither moved by a pixel on the press. `src/features/command/` 1,744 → 1,698 lines,
+`src/features/port/` 1,747 → 1,516. One `TradeTray`, one `TradeTile` in the tree.
+`tsc --noEmit`, `eslint .` and `npm run build` all exit 0. The seven specs this can touch, on
+`localhost:4221` with `test-results/` wiped first: duplication + sections + format + tableLayout
+**37 passed / 0 failed / 0 skipped**; layout + primitives.geometry + nav.geometry **19 passed / 0
+failed / 0 skipped** (1.9 min), including layout:355's good-picker contract (10 tiles, 20 price
+cells, shortest 80 px, 0 unlabelled, 10 saying "none aboard", 0 saying nothing, 0 moved on the
+press) and primitives.geometry:206's docked-and-inline "moves nothing above it". The three
+`db.chain` specs were not run — wasm Postgres, ~40 min, and nothing here reaches a migration; CI
+runs the chain on the PR.
+
+---
+
 ## 2026-09-09 — D46: the probe’s tail had two ends, and the guard only watched one
 
 **One character of SQL, twice, inside 0059's self-assert.** CI run `34314743369` died on a

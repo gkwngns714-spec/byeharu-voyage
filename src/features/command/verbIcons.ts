@@ -1,16 +1,15 @@
 import type { IconName } from '../../components/ui'
 
-// THE MARK ON A VERB'S ACTION CARD — presentation, and nothing else.
+// THE MARK ON A VERB'S TILE — presentation, and nothing else.
 //
-// It is a map from a verb NAME to an icon name, and it deliberately does not know what a verb is,
-// what arguments it takes or whether it is legal. That is all the server's (F.4): the composer
-// walks `world.snapshot().verbs`, and a verb this table has never heard of still draws a card —
-// with its initial in place of a mark — rather than disappearing or throwing. Add a verb to the
-// chain and it appears; add a line here later if it deserves a glyph.
+// A map from a verb NAME to an icon name. It deliberately does not know what a verb is, what
+// arguments it takes or whether it is legal — that is all the server's (F.4): the grid walks
+// `world.snapshot().verbs`, and a verb this table has never heard of still draws a tile, with its
+// initial in place of a mark, rather than disappearing. Add a verb to the chain and it appears; add
+// a line here later if it earns a glyph.
 //
-// It lives in features/command because the composer is the only screen that draws a verb. The
-// moment a second screen wants it, it is neither screen's and moves to src/domain/order with an
-// entrance of its own (docs/SECTIONS.md).
+// The six 0068–0074 verbs (STORE/TAKE/MAKE/BUILD/FIT/UNFIT) have no glyph in `icons.ts` yet, so
+// they draw with their initial. Drawing six new marks is an icon-set change, not a COMMAND one.
 
 export const VERB_ICON: Record<string, IconName | undefined> = {
   SAIL: 'compass',
@@ -19,6 +18,10 @@ export const VERB_ICON: Record<string, IconName | undefined> = {
   PROVISION: 'cask',
   HIRE: 'crew',
   REPAIR: 'mallet',
-  CANCEL: 'close',
-  CLEAR: 'history',
+}
+
+/** The verb as a word: SAIL → "Sail", UNFIT → "Unfit". §4.1 bans the uppercase label the old
+ *  tiles wore; the word is title-case now, and the nav no longer shouts. */
+export function verbWord(verb: string): string {
+  return verb.charAt(0) + verb.slice(1).toLowerCase()
 }

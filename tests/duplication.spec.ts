@@ -560,6 +560,13 @@ test('sea-grid.mjs declares NO snap rule — the third answer is retired, not me
 // steps 4-9 rewrite whole. A ban that failed today would have to be turned off, and a guard that is
 // turned off is not a guard.
 //
+// STEP 3 WIDENED THE WALK TO `src/app` (the shell) rather than lowering a number, because the
+// shell had nothing to lower: the status strip, the tab rail and the rebuild note are composed
+// from the primitives and carry ZERO of either shape. §5 names the shell's three files as things
+// the primitives replace, so from this step they are held to the ban exactly like a screen is —
+// which is the ledger working the way it was meant to. The ledger below stays a `features/` list
+// because that is where the remaining debt is.
+//
 // So the ban is stated as a LEDGER OF DEBT rather than as a blanket:
 //   · a file NOT in the ledger must have ZERO. That is the half that bites immediately — every new
 //     file (features/gallery is the first) and every screen the migration touches is held to the
@@ -570,12 +577,10 @@ test('sea-grid.mjs declares NO snap rule — the third answer is retired, not me
 // 10 deletes the ledger with the last one. The counts below were MEASURED on this branch, not
 // remembered.
 
-/** MEASURED 2026-09-09 on osn-ui-primitives. Every entry names a screen §7 rewrites whole. */
+/** MEASURED 2026-09-09 on osn-ui-primitives, then LOWERED as each screen migrates. COMMAND paid
+ *  its four on 2026-09-09 (§7 step 5): OrderComposer, ArgPickers, CommandScreen and OrderQueue are
+ *  deleted or rewritten onto the scale, so their entries are gone and the total dropped by four. */
 const ARBITRARY_SIZE_DEBT: Record<string, number> = {
-  'features/command/ArgPickers.tsx': 2,
-  'features/command/CommandScreen.tsx': 1,
-  'features/command/OrderComposer.tsx': 1,
-  'features/command/OrderQueue.tsx': 2,
   'features/found/SignTheBook.tsx': 1,
   'features/ledger/LedgerScreen.tsx': 1,
   'features/map/DetailPanel.tsx': 4,
@@ -585,30 +590,30 @@ const ARBITRARY_SIZE_DEBT: Record<string, number> = {
   'features/map/WatersAhead.tsx': 4,
   'features/market/MarketScreen.tsx': 2,
 }
-const ARBITRARY_SIZE_TOTAL = 28
+const ARBITRARY_SIZE_TOTAL = 22
 
-/** MEASURED 2026-09-09 on osn-ui-primitives. The nine skins §3 rule 4 names by file, plus the
- *  three more that a className-REGION reader finds and a grep for `border border-edge` does not.
+/** MEASURED 2026-09-09 on osn-ui-primitives: twelve. The nine skins §3 rule 4 names by file, plus
+ *  the three more that a className-REGION reader finds and a grep for `border border-edge` does
+ *  not. Then LOWERED as each screen migrates, which is what the paragraph above promises:
  *
- *  PORT PAID ITS THREE ON 2026-09-09 (§7 step 4) and its two entries are gone with them, which is
- *  what the paragraph above promises each migrated screen will do:
+ *  PORT PAID ITS THREE ON 2026-09-09 (§7 step 4) and its two entries are gone with them:
  *    · `PortFaces.tsx` held two `bv-cut border border-edge bg-surface-2` cards — one in a component
  *      no screen had mounted since row 56. The file is deleted; the Academy face it also held is
  *      `PortAcademy.tsx`, drawn in `Tile`s.
  *    · `PortYard.tsx` held `rounded border border-line bg-surface` on the ship-name box — and
  *      `--color-line` has never existed in src/index.css, so that border never rendered at all. It
  *      is a `Field` now, which is the point of the ban: a hand-drawn surface is not merely
- *      inconsistent, it is unproved. */
+ *      inconsistent, it is unproved.
+ *
+ *  COMMAND PAID ITS FIVE THE SAME DAY (§7 step 5): FleetRail, HaggleBlock, OrderComposer (×2) and
+ *  OrderQueue are gone, drawn now from Sheet / Tile / Row / Note / Tray, so their entries leave the
+ *  ledger too. Twelve, less three, less five: four. */
 const INLINE_SKIN_DEBT: Record<string, number> = {
-  'features/command/FleetRail.tsx': 1,
-  'features/command/HaggleBlock.tsx': 1,
-  'features/command/OrderComposer.tsx': 2,
-  'features/command/OrderQueue.tsx': 1,
   'features/fleets/FleetsScreen.tsx': 1,
   'features/map/SendFleet.tsx': 1,
   'features/market/MarketScreen.tsx': 2,
 }
-const INLINE_SKIN_TOTAL = 9
+const INLINE_SKIN_TOTAL = 4
 
 /** The ledger, read: every file under `src/features/` with more findings than it is allowed. */
 function overDebt(found: Map<string, string[]>, debt: Record<string, number>): string[] {
@@ -622,12 +627,18 @@ function overDebt(found: Map<string, string[]>, debt: Record<string, number>): s
   return over.sort()
 }
 
-const featureFiles = () => sourceFiles(path.join(SRC, 'features'))
+/** What the two bans walk: the screens, and — since step 3 — the shell that stands over them.
+ *  `rel()` names each file from `src/`, so a ledger key reads `features/map/MapScreen.tsx` and an
+ *  `app/` file has no key at all, which is the point: it is allowed none. */
+const skinnedFiles = () => [
+  ...sourceFiles(path.join(SRC, 'features')),
+  ...sourceFiles(path.join(SRC, 'app')),
+]
 
 test('no arbitrary type size in a screen — the scale is six steps and it has no holes', () => {
   const found = new Map<string, string[]>()
   let total = 0
-  for (const f of featureFiles()) {
+  for (const f of skinnedFiles()) {
     const lines = read(f).split('\n')
     const hits: string[] = []
     for (let i = 0; i < lines.length; i++) {
@@ -659,7 +670,7 @@ test('no arbitrary type size in a screen — the scale is six steps and it has n
 test('no inline border+bg skin in a screen — a surface is a primitive, and it has no border', () => {
   const found = new Map<string, string[]>()
   let total = 0
-  for (const f of featureFiles()) {
+  for (const f of skinnedFiles()) {
     const hits: string[] = []
     for (const { region, line } of classNameRegions(read(f))) {
       const toks = [...utilityTokens(region)]
