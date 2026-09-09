@@ -5,6 +5,54 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-09 — the canary world, and how to get one on a machine that plays the live game
+
+**A METHOD, recorded because it was needed and did not exist.** Six owner rows were sitting on
+"built but never driven", and driving them means sailing — which on this machine means sailing the
+owner's own fleet in a live multiplayer world with their cargo aboard. The memory of destroying
+their Fleet 1 once is why that is not acceptable.
+
+**The trap first, because I fell into it.** This clone carries `.env.local`, so `npm run build`
+here produces a **CLOUD** client. `npx vite preview` on it is not a local sandbox — it is the live
+game on localhost. I opened it believing it was "a private world per browser" and said so out loud
+before checking. It is not, and anyone reading `byeharu-voyage-runs-sql-locally` should read this
+next to it.
+
+**Which also means a local `npm test` here is worthless as a gate**, and worse than worthless
+because it is GREEN. `tests/appReady.fixture.ts` detects the cloud build, sees the `/auth`
+redirect and calls `test.skip` — so every browser spec vanishes and the run passes with a shrunken
+denominator, the exact failure `playwright.config.ts` already warns about for the IPv4 case. CI
+builds without the file and is the only place these specs actually run.
+
+**The canary recipe:** move `.env.local` aside, `npm run build`, restore it, serve that `dist` on
+its own port. The world image is cached, so the second build takes about a second rather than
+seven minutes. What you get is a PGlite world in the browser that founds its own house — Gaivota
+at Lisbon with 8,000 d. — where every verb can be pressed without consequence.
+
+**What it bought, in one sitting:** rows 41, 45, 48, 52, 57, 60 and 72 closed on measured evidence.
+Lisbon→Cadiz quotes **249 nm** rather than a straight line's 188, because she rounds Cape St
+Vincent. The send tray prints *"Her course ends in the roads, 10.0 nm off the quay"*, and she
+sailed it and came to lie at the port — the roadstead IS landfall, which is row 72's server half
+and it had never been driven. Valencia's face strip is Trade · Town · Store · Inn where Dublin's is
+Trade · Town · Store · Craft · Inn, because a face is a building row and Valencia has no
+workstation. That is 0067 working, visible from the quay.
+
+**And it settled a false alarm with a stopwatch.** Production's ledger shows a 563 nm passage
+departing and arriving in the same minute, which reads as a broken mover. `time_compression` is
+**9,600** by 0045's deliberate hand — a voyage-day is **9 real seconds**. Cadiz→Valencia, quoted
+`448 nm · 3.8 days`, departed 14:17:12 UTC and lay at Valencia by 14:18:03: **≤51 s against an
+expected 34 s**. The mover is right. What is wrong is smaller and is the owner's own rule — the
+game asks for a decision on *"3.8 days"* when a day is nine seconds, and UI_DIRECTION forbids
+printing a number the game will not honour.
+
+**One real defect found, in `src/features/market/PortField.tsx`.** MARKET's port field works once
+per page load: `pick()` closes the search without the `blur()` that `Escape` and `Enter` both do,
+so the input keeps focus in its at-rest state and `onFocus` — the only thing that reopens it — can
+never fire again. Reproduced four times, by coordinate click, by element ref, and with `ctrl+a`.
+Handed to the slice that owns the file rather than fixed in a stray branch.
+
+---
+
 ## 2026-09-09 — D53: step 10 — the second vocabulary is deleted, not deprecated
 
 **UI_DIRECTION §7's last step, and the first thing this session did.** Steps 1–9 moved every tab
