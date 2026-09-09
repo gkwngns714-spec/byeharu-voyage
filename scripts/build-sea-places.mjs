@@ -51,7 +51,174 @@ console.error(
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { buildSeaGrid, findSeaRoute, gcNm, isWater, rowOf, colOf } from './sea-grid.mjs'
+import { buildSeaGrid, gcNm, rowOf, colOf, cellLat, cellLon, COLS, ROWS } from './sea-grid.mjs'
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE LEG-GRAPH ROUTER, MOVED HERE 2026-09-08 BECAUSE THIS IS THE ONLY THING THAT EVER USED IT
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// `snapToWater` and the A* below lived in `scripts/sea-grid.mjs` until today, and that made
+// sea-grid a module with TWO answers to "where is the water nearest this point" — the third rule
+// `tests/duplication.spec.ts` §5 and `docs/DESIGN_ROADSTEAD.md` §2.1 named and measured:
+//
+//   voyage.water_roadstead  (SQL, 0076)         12 rings, the MINIMUM-distance cell
+//   snapToNav               (src/lib/sea)       12 rings, the MINIMUM-distance cell   — agrees
+//   snapToWater             (here, was shared)   8 rings, the FIRST cell in scan order — DIFFERS
+//
+// MEASURED 2026-09-08 over all 224 harbours: the two rules pick a DIFFERENT cell for **87 of
+// them**, and the scan-order rule always picks the farther one — Dublin 34.39 nm from the quay
+// against 13.89, Bergen +18.49, Boston +17.12, Cádiz +15.48, worst +20.51.
+//
+// It reaches nothing. Its one caller is the spur-leg loop in THIS file, which is retired: those
+// legs went into `public.legs`, and **0049 dropped that table**. So the rule was not folded and
+// not deleted — it MOVED, out of the live module the four working generators import and into the
+// dead one that alone depended on it. `scripts/sea-grid.mjs` now holds the raster and its authored
+// carve and no snap rule at all, which is a property a guard can state without counting callers.
+//
+// Nothing here is exported. If a future sea place needs a sailed distance, it does NOT come from
+// this: it comes from the roadstead rule, through a regenerated reaches migration
+// (`scripts/build-sea-migration.mjs`), which is what the header above already says.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+const isWater = (water, row, col) => water[row * COLS + ((col % COLS) + COLS) % COLS] === 1
+
+/** The nearest water cell to a coordinate, searched outward. Harbours sit ON the coastline, so a
+ *  port's own cell is often land at this resolution; that is expected, not an error. */
+function snapToWater(water, lat, lon, maxRings = 8) {
+  const r0 = rowOf(lat)
+  const c0 = colOf(lon)
+  if (isWater(water, r0, c0)) return { row: r0, col: c0, ringsOut: 0 }
+  for (let ring = 1; ring <= maxRings; ring++) {
+    for (let dr = -ring; dr <= ring; dr++) {
+      for (let dc = -ring; dc <= ring; dc++) {
+        if (Math.max(Math.abs(dr), Math.abs(dc)) !== ring) continue
+        const row = r0 + dr
+        if (row < 0 || row >= ROWS) continue
+        const col = ((c0 + dc) % COLS + COLS) % COLS
+        if (isWater(water, row, col)) return { row, col, ringsOut: ring }
+      }
+    }
+  }
+  return null
+}
+
+// ── A*, over water cells ──────────────────────────────────────────────────────────────────────
+const NEIGHBOURS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]]
+
+/**
+ * The shortest navigable path between two coordinates, or null if there is none.
+ * Returns { nm, path } where path is the simplified polyline (lat/lon pairs) including both ends.
+ *
+ * The heuristic is the great circle to the goal, which never overestimates, so the first path A*
+ * settles on is the shortest one the grid allows.
+ */
+function findSeaRoute(water, from, to, opts = {}) {
+  const limitNm = opts.limitNm ?? Infinity
+  const a = snapToWater(water, from.lat, from.lon)
+  const b = snapToWater(water, to.lat, to.lon)
+  if (!a || !b) return null
+  const start = a.row * COLS + a.col
+  const goal = b.row * COLS + b.col
+  if (start === goal) {
+    const nm = gcNm(from.lat, from.lon, to.lat, to.lon)
+    return { nm, path: [[from.lat, from.lon], [to.lat, to.lon]] }
+  }
+
+  const goalLat = cellLat(b.row)
+  const goalLon = cellLon(b.col)
+  const g = new Map([[start, 0]])
+  const cameFrom = new Map()
+  const open = [[gcNm(cellLat(a.row), cellLon(a.col), goalLat, goalLon), start]]
+  const closed = new Set()
+
+  const pop = () => {
+    // Binary heap would be tidier; a linear scan over a few thousand entries is fast enough and
+    // this runs offline. Kept simple on purpose.
+    let bestI = 0
+    for (let i = 1; i < open.length; i++) if (open[i][0] < open[bestI][0]) bestI = i
+    const [, node] = open[bestI]
+    open[bestI] = open[open.length - 1]
+    open.pop()
+    return node
+  }
+
+  while (open.length > 0) {
+    const current = pop()
+    if (closed.has(current)) continue
+    closed.add(current)
+    if (current === goal) break
+    const row = Math.floor(current / COLS)
+    const col = current % COLS
+    const lat = cellLat(row)
+    const lon = cellLon(col)
+    const cost = g.get(current)
+    if (cost > limitNm) continue
+    for (const [dr, dc] of NEIGHBOURS) {
+      const nrow = row + dr
+      if (nrow < 0 || nrow >= ROWS) continue
+      const ncol = ((col + dc) % COLS + COLS) % COLS
+      if (!isWater(water, nrow, ncol)) continue
+      const next = nrow * COLS + ncol
+      if (closed.has(next)) continue
+      const step = gcNm(lat, lon, cellLat(nrow), cellLon(ncol))
+      const tentative = cost + step
+      if (tentative >= (g.get(next) ?? Infinity)) continue
+      g.set(next, tentative)
+      cameFrom.set(next, current)
+      open.push([tentative + gcNm(cellLat(nrow), cellLon(ncol), goalLat, goalLon), next])
+    }
+  }
+
+  if (!g.has(goal)) return null
+
+  // Walk the path back, then straighten it: the grid's 45° staircase is an artefact of the raster,
+  // not of the sea. Line-of-sight simplification replaces runs of cells with the straight leg a
+  // ship would actually sail, as long as that straight leg stays in water.
+  const cells = []
+  for (let node = goal; node !== undefined; node = cameFrom.get(node)) {
+    cells.push(node)
+    if (node === start) break
+  }
+  cells.reverse()
+  const points = [[from.lat, from.lon], ...cells.map((n) => [cellLat(Math.floor(n / COLS)), cellLon(n % COLS)]), [to.lat, to.lon]]
+  const simplified = straighten(water, points)
+  let nm = 0
+  for (let i = 0; i + 1 < simplified.length; i++) {
+    nm += gcNm(simplified[i][0], simplified[i][1], simplified[i + 1][0], simplified[i + 1][1])
+  }
+  return { nm, path: simplified }
+}
+
+/** Is every cell along this straight segment water? The ends are exempt: a harbour is on land. */
+function segmentInWater(water, [lat1, lon1], [lat2, lon2], exemptEnds) {
+  const nm = gcNm(lat1, lon1, lat2, lon2)
+  const steps = Math.max(2, Math.ceil(nm / 8))
+  for (let s = 1; s < steps; s++) {
+    const f = s / steps
+    // Straight in lat/lon is close enough over the short spans this is used on, and it never
+    // wraps: the pathfinder's own points are always within a cell or two of each other.
+    if (Math.abs(lon2 - lon1) > 180) return false
+    const lat = lat1 + (lat2 - lat1) * f
+    const lon = lon1 + (lon2 - lon1) * f
+    if (exemptEnds && (f * nm < 25 || (1 - f) * nm < 25)) continue
+    if (!isWater(water, rowOf(lat), colOf(lon))) return false
+  }
+  return true
+}
+
+function straighten(water, points) {
+  const out = [points[0]]
+  let i = 0
+  while (i < points.length - 1) {
+    let j = points.length - 1
+    for (; j > i + 1; j--) {
+      if (segmentInWater(water, points[i], points[j], i === 0 || j === points.length - 1)) break
+    }
+    out.push(points[j])
+    i = j
+  }
+  return out
+}
 import { applyChain } from './db/apply-chain.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')

@@ -479,31 +479,52 @@ test('snapToNav has ONE importer in src/, and none in the chart or in a screen',
   ).toEqual([])
 })
 
-test('snapToWater — the third snap rule — is called from exactly one file, and it is its own', () => {
+test('sea-grid.mjs declares NO snap rule — the third answer is retired, not merely counted', () => {
+  // ── WHAT THIS USED TO BE, AND WHY IT CHANGED ────────────────────────────────────────────────
+  // Until 2026-09-08 this test COUNTED snapToWater's callers and pinned them at one file and two
+  // call sites. That was the right guard while the rule was load-bearing somewhere, and it is the
+  // wrong shape now: a count says "it has not grown", where what can now be said is "it is not
+  // there". A property beats a census — a census has to be re-tuned every time the code moves,
+  // and it passes happily while the thing it counts sits in the worst possible place.
+  //
+  // snapToWater — 8 rings, the FIRST water cell in scan order — returns a different cell from
+  // snapToNav and voyage.water_roadstead (12 rings, the MINIMUM-distance cell) for **87 of the
+  // world's 224 harbours**, always the farther one: Dublin 34.39 nm off the quay against 13.89,
+  // Bergen +18.49, Boston +17.12, Cádiz +15.48, worst +20.51. Measured 2026-09-08 over every
+  // harbour, which is a thing the old count never asked.
+  //
+  // It reaches no live data. Its one caller was the spur-leg loop in scripts/build-sea-places.mjs,
+  // whose legs went into public.legs — and 0049 dropped that table. So it was neither folded nor
+  // deleted: it MOVED into that retired file, which exports nothing and refuses to run, leaving
+  // scripts/sea-grid.mjs — the module all four working generators import — holding the raster and
+  // its authored carve and no snap rule at all.
   const SCRIPTS = path.join(ROOT, 'scripts')
-  const callers: string[] = []
-  let callSites = 0
-  for (const f of filesUnder(SCRIPTS, /\.(mjs|js|ts)$/)) {
-    // Prose names it in several files (0076's own header does); only a CALL counts, and the
-    // declaration is not a call.
-    const code = read(f).replace(/^\s*\/\/[^\n]*$/gm, '')
-    const calls = [...code.matchAll(/(?<!function\s)\bsnapToWater\s*\(/g)]
-    if (calls.length > 0) {
-      callers.push(path.relative(SCRIPTS, f).split(path.sep).join('/'))
-      callSites += calls.length
-    }
-  }
+  const stripComments = (t: string) => t.replace(/^\s*\/\/[^\n]*$/gm, '')
+  const grid = stripComments(read(path.join(SCRIPTS, 'sea-grid.mjs')))
 
   expect(
-    callers,
-    `snapToWater has grown a caller. It is a THIRD, DIFFERENT snap rule (8 rings, first-in-scan-` +
-      `order) that can return a different cell from snapToNav and from voyage.water_roadstead, and ` +
-      `it is left standing only because folding it regenerates data/sea-places.json. Repoint the ` +
-      `new caller at findPath / snapToNav instead of adding to it.\n` + callers.join('\n'),
-  ).toEqual(['sea-grid.mjs'])
-  // Both of them are findSeaRoute's two endpoints (scripts/sea-grid.mjs:276-277). Pinned as a
-  // number so a third call inside the same file cannot hide behind the file list above.
-  expect(callSites, 'snapToWater is called somewhere new inside sea-grid.mjs').toBe(2)
+    /\bsnapToWater\b|\bfindSeaRoute\b/.test(grid),
+    'scripts/sea-grid.mjs has taken back a snap rule or a router. It is the module every working ' +
+      'generator imports, and a second answer to "where is the water nearest this point" living ' +
+      'there is exactly what docs/DESIGN_ROADSTEAD.md §2.1 measured and 0076 named. The one ' +
+      'authority is snapToNav / voyage.water_roadstead; a sailed distance comes from a regenerated ' +
+      'reaches migration, never from a private A*.',
+  ).toBe(false)
+
+  // The retired file may KEEP it — it is the record of how 0036 was made — but it must not hand it
+  // back to anyone. Nothing there is exported, so no future caller can reach it by import.
+  expect(
+    /export\s+(?:function|const)\s+(?:snapToWater|findSeaRoute|isWater)\b/
+      .test(read(path.join(SCRIPTS, 'build-sea-places.mjs'))),
+    'scripts/build-sea-places.mjs is exporting the retired router. It is kept as a record, not as ' +
+      'a library — exporting it is how a dead rule finds a live caller.',
+  ).toBe(false)
+
+  // …and the move did not scatter it: exactly one file still calls it, and it is the dead one.
+  const callers = filesUnder(SCRIPTS, /\.(mjs|js|ts)$/)
+    .filter((f) => /(?<!function\s)\bsnapToWater\s*\(/.test(stripComments(read(f))))
+    .map((f) => path.relative(SCRIPTS, f).split(path.sep).join('/'))
+  expect(callers, 'snapToWater is called somewhere new').toEqual(['build-sea-places.mjs'])
 
   // …and nothing on the client has ever heard of it.
   expect(

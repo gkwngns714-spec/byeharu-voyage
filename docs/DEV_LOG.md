@@ -5,6 +5,329 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-08 — D43: the chain pin went stale on main, and was deployed red
+
+`tests/db.chain.spec.ts`'s `LAST` names the migration the chain must end at. **0079 landed without
+moving it**, so from the moment 0079 merged, `the chain the client loads is the chain on disk, in
+apply order, LF-only` has been FAILING on `main` — and 0079 was pushed to production with it red.
+Found 2026-09-08 by running the browser suite locally before opening a PR:
+
+    Expected: "20260818000078_the_chain_does_not_race_its_own_clock.sql"
+    Received: "20260818000080_one_authority_for_a_culture_that_will_not_trade.sql"
+
+The pin is moved to 0080, with 0079's and 0080's entries added to the running note above it in the
+shape every earlier move used.
+
+**The stale string is not the interesting part.** The browser suite is not a check that gates a
+merge, and nothing else in the repo reads this number, so a pin that only a non-gating suite reads
+is a pin that will go stale again — it did so silently for a day across a production deploy. That
+is recorded here rather than quietly corrected, because the next person to add a migration will hit
+exactly the same edge and deserves to know it is a known one, not a mistake they made.
+
+### While confirming it: the 17 skipped specs are correct, and are not the trap they look like
+
+The same run reported **17 skipped**, which in this repo is a documented alarm — `playwright.config.ts`
+carries a paragraph about `vite preview` binding IPv6 only, `127.0.0.1` answering 000, and Playwright
+then SILENTLY SKIPPING every browser spec: *"a green with a shrunken denominator, which is worse than
+a red."* Two guesses at the cause were wrong and both were checked rather than believed:
+
+* **Not resource contention.** Re-run alone with nothing competing: the same 17 skip.
+* **Not the IPv6 trap.** Measured: `127.0.0.1:4173` answers **000** and `[::1]:4173` answers **200**,
+  so the binding really is v6-only — but Node resolves `localhost` to `::1` first, and a diagnostic
+  spec printing what the `request` fixture sees answers `status = 200, ok = true, reachable() = true`.
+  Pointing the base URL at the `[::1]` literal skipped the same tests anyway.
+
+The real cause is `tests/appReady.fixture.ts`'s `ready()`, and it is deliberate: **this machine has
+`.env.local`, so the build runs in CLOUD mode**, every route redirects to `/auth`, and there is no
+nav bar or table to measure. The layout, nav, chart and waters specs measure LOCAL play and skip
+themselves with a message saying exactly that. **CI has no `.env.local` — it is gitignored — so CI
+runs all 237.** A local run on a machine holding the cloud credentials cannot be quoted as full
+coverage, and this entry is the note that says so.
+
+### Gates
+
+Full suite on this machine: **220 passed, 0 failed, 17 skipped (cloud mode, by design)** — 219 + the
+chain spec this entry repairs. `db:apply` 73/73 · `db:proof` 62/62 · `duplication` 8/8 ·
+`seaCarve` 5/5 · `tsc -b` and `eslint` clean · `npm run build` green in 3m25s, the world image built
+from the chain **including 0080**.
+
+---
+
+## 2026-09-08 — D42: the third snap rule is retired, and it was worse than the record said
+
+`docs/DESIGN_ROADSTEAD.md` §2.1 and 0076's own header both named a third answer to *"where is the
+water nearest this point"* and left it standing, because folding it looked like it meant
+regenerating `data/sea-places.json`. It did not. **No migration, no data regeneration, and the
+raster is untouched.**
+
+### How different the two rules actually are — measured over all 224 harbours
+
+The record said `snapToWater` (8 rings, the first water cell in scan order) *"can return a
+different cell"* from `snapToNav` / `voyage.water_roadstead` (12 rings, the minimum-distance cell).
+Nobody had ever measured how often. It does, for **87 of 224 harbours — 39% of the world** — and it
+picks the **farther** cell every single time:
+
+| harbour | `snapToWater` | the one authority | extra |
+|---|---|---|---|
+| Dublin | 34.39 nm | 13.89 nm | **+20.51** |
+| Jamestown | 50.63 | 31.63 | +19.00 |
+| Bergen | 31.84 | 13.34 | +18.49 |
+| Boston | 36.34 | 19.22 | +17.12 |
+| Kagoshima | 38.62 | 22.16 | +16.46 |
+| Cádiz | 25.79 | 10.31 | +15.48 |
+| Istanbul | 23.14 | 8.98 | +14.16 |
+
+### The regeneration it was left standing for was never owed
+
+Traced rather than assumed. `snapToWater`'s only consumer outside its own module was
+`findSeaRoute`, whose only caller was the spur-leg loop in `scripts/build-sea-places.mjs`. Those
+legs went into **`public.legs` — and 0049 dropped that table**, with zero readers, and nothing in
+the fourteen migrations since names it. That generator is wired into **no npm script and no
+workflow**, it already declares itself RETIRED in its own header (*"0049 dropped public.legs, where
+its spur legs lived"*), and it emits `insert into public.legs`, so running it today produces a
+migration that cannot apply.
+
+So the divergence above is real arithmetic that reaches **nothing the game reads**.
+
+### The fix was to MOVE it, which was neither option the record offered
+
+Deleting the file would have overridden a deliberate decision — 0049's author kept it as *"the
+record of how 0036 was made"*. Folding it would have meant regenerating data for a dead table. The
+spaghetti was never the dead file: it was that a **second, different snap rule lived in
+`scripts/sea-grid.mjs`, the module all four working generators import**. A rule sitting there is
+one careless import away from being load-bearing, which is exactly why the old guard existed.
+
+So `snapToWater`, `findSeaRoute`, `isWater` and the A*'s helpers moved out of `sea-grid.mjs` and
+into `build-sea-places.mjs`, **unexported**. `scripts/sea-grid.mjs` is now one subject with one
+authority — the raster and its authored carve — and its header no longer promises a router it does
+not have.
+
+### A census became a property
+
+`tests/duplication.spec.ts` used to COUNT `snapToWater`'s callers and pin them at one file and two
+call sites. That was right while the rule was load-bearing somewhere and is the wrong shape now:
+**a count says "it has not grown", where what can now be said is "it is not there."** A census also
+passes happily while the thing it counts sits in the worst possible place — which is precisely what
+it did for two weeks. The test now asserts `sea-grid.mjs` declares no snap rule and no router, that
+the retired file exports none of it back, and that exactly one file still calls it and it is the
+dead one. **Watched red before being trusted:** a planted `export function snapToWater` in
+`sea-grid.mjs` fails it on the stated message, and removing it goes green again.
+
+### Gates
+
+`buildSeaGrid()` still answers **545,966** water cells, unchanged · `duplication` **8/8** (the
+rewritten guard among them, watched red first) · `seaCarve` **5/5** · both scripts parse ·
+`tsc -b` clean.
+
+---
+
+## 2026-09-08 — D41: one authority for a culture that will not trade, and the rule nobody can reach
+
+Migration **0080**. `docs/RESUME.md` has carried this under **"Named spaghetti, still not fixed"**
+since 2026-08-26, and 0061 named it in its own header while refusing to become its sixth writer.
+It is folded.
+
+### Six sites, five bodies — and the site count was wrong in the record
+
+Read off the applied chain rather than off the source files:
+
+    cmd.do_buy           if v_culture = any(g.culture_mask) then
+    cmd.do_sell          if v_culture = any(g.culture_mask) then
+    cmd.haggle           if v_port.culture = any(g.culture_mask) then
+    world.market         'available', not (pr.culture = any(g.culture_mask)),
+    world.trade_routes   and not (p.culture = any(g.culture_mask))      -- the origin, a BUY
+    world.trade_routes   where not (d.culture = any(h.culture_mask))    -- the destination, a SELL
+
+Five functions, as the record said — but **six sites**, because `world.trade_routes` asks it twice.
+Two other live bodies mention `culture_mask` and are deliberately untouched, because neither
+applies the rule: `world.snapshot()` **serves** the column to the client, and `trade_routes`'s
+`here` CTE **selects** it so the second site can ask about it. A fold that swept those up would
+have changed the client's payload.
+
+It is now `public.culture_refuses(text, text[])` — `language sql`, `immutable`, `parallel safe`,
+no `security definer`, which is the shape 0061 chose for `public.port_offers` and for the same
+reason: PostgreSQL's `inline_function()` refuses a definer function, and `world.market` asks this
+once per good per port. Inlined, the planner sees the expression it saw before the file ran.
+
+The five bodies are **sliced, not retyped** — `pg_temp.recut` replaces a hunk that must occur
+exactly once and refuses otherwise — and every hunk is quoted without its leading whitespace, so a
+slice cannot fail on an indentation byte.
+
+### It is a no-op, proven three ways rather than argued
+
+* Both forms agree on **all 124,474 (port, good) pairs** of the real world, **254** of them
+  genuinely refused. The equality is not two constants: an **inverted** rule — the mask read as an
+  allow-list, which is the mistake `goods.culture_mask`'s comment exists to prevent — is caught by
+  that same query on 1,666 pairs.
+* Each of the five bodies is **its own pre-image with only the declared hunks swapped in, byte for
+  byte** — the whole definition reconstructed from the captured one and compared.
+* `world.snapshot()` is byte-identical, and 0 bodies still write the rule longhand while the
+  callers of the new authority are exactly the five named.
+
+Posture kept: `world.market` and `world.trade_routes` still execute for `authenticated`, `anon` has
+neither, `culture_refuses` is revoked from every client role, 0 client write grants. No mask,
+price, roster row or harbour was written.
+
+### THE FINDING: THE CULTURE RULE IS UNREACHABLE ON THE QUAY
+
+Folding a rule means reading every place it is asked, and doing that turned up something the repo
+did not know.
+
+| | |
+|---|---|
+| goods carrying a culture mask | **7** (two masks: `indic/japanese`, `islamic/swahili`) |
+| (port, good) pairs the culture refuses | **254** |
+| …of those, stocked in `port_goods` | **254 — all of them** |
+| …of those, on the port's roster | **0** |
+| rows `world.market` serves with `available = false`, whole world | **0** |
+| harbours whose culture some good refuses | **69**, none of which ever sees the flag |
+
+Two files that were each right on their own collided. **0062 made the roster origin-based** — a
+good is offered where it comes FROM, or at a named entrepot — and a culture that refuses a good is
+not a culture that produces it. So **0061's ROSTER gate now strictly shadows 0002's CULTURE gate**
+for BUY and for the market screen: `available` is `true` on every row the quay shows, at all 224
+harbours, and DESIGN B.4's wine-and-pork rule can no longer be *seen* to refuse anything.
+
+It stays live exactly where 0061 deliberately left selling un-rostered — `cmd.do_sell`,
+`cmd.haggle`, and `world.trade_routes`'s DESTINATION filter, which is that same sale seen from the
+quay. So a player still cannot sell wine in an Islamic port. They simply can never be shown that
+this is a rule.
+
+**0080 reports this in its receipt and asserts it nowhere, on purpose.** Pinning `0 unavailable
+rows` as correct would write a design decision into a guard, and this one is the owner's: is the
+culture mask meant to be a rule a player meets, or is being shadowed by geography the right
+outcome? The first draft of this migration *did* try to assert the flag going false on a real quay
+row, and **failed on apply** — which is how the finding was made. The refusal was right and the
+assert was wrong.
+
+### THE OTHER THING THIS FILE GOT WRONG: A SLICE THAT RE-STATES GRANTS CAN REVERT A DECISION
+
+`create or replace function` **preserves a function's ACL**, so a slice needs no grant statement at
+all. The first draft wrote them anyway — re-stating the postures it believed 0061 had landed — and
+was wrong in **both** directions:
+
+* It copied `cmd.do_buy`'s `revoke … from public, anon, authenticated` onto **`cmd.haggle`**. The
+  client calls `cmd.haggle` **directly**; it is not reached through `cmd.issue` the way the `do_`
+  verbs are. That line took the bargain away from every player, and `db:proof` caught it on the
+  next run — `06_haggle.sql`, marker `HAGGLE_CLIENT_PATH`, `permission denied for function haggle`
+  (42501).
+* It re-issued 0061's `grant execute on world.trade_routes to authenticated`. **0071 revoked that
+  grant on purpose** (`:176`): the owner's row 64 said *"no nearby price info needed"*, so the
+  function stays for proof 04 — which runs as `postgres` — and the client's door was shut. A
+  ten-migration-old grant, restated, would have silently reverted a later deliberate decision, and
+  **nothing would have failed.** No gate was watching that direction.
+
+The second is the frightening one, and it generalises past this file: *a migration that re-states a
+grant it did not verify is a migration that can undo an earlier decision without anyone noticing.*
+So 0080 issues no grant on any function it re-cuts. It captures every `proacl` in its pre-image
+table and asserts, after the slice, that **not one ACL moved in either direction** — a stronger
+claim than a grant statement can make, and one that cannot revoke anything while making it. The
+doors are then named individually, open **and shut**: `cmd.haggle` and `world.market` execute for
+`authenticated`, `world.trade_routes` stays closed exactly as 0071 closed it, and `anon`,
+`cmd.do_buy` and `culture_refuses` have nothing.
+
+Posture read off the applied chain while working this out, since the repo had it written nowhere:
+
+| | `authenticated` may execute |
+|---|---|
+| `cmd.haggle`, `cmd.issue`, `world.market`, `world.snapshot` | yes |
+| `cmd.do_buy`, `cmd.do_sell` — reached through `cmd.issue` | no |
+| `world.trade_routes` — 0071 shut this door | **no, and that is correct** |
+
+### Gates
+
+`db:apply` **73 migrations, 73 self-assert receipts**, world-guard green (224 harbours, 523 goods,
+1,288 offers, 117,152 market rows, positive control seen) · `db:proof` **62/62 markers, 9/9 files**
+· `duplication` 8/8 (including the two that police a migration's self-assert and its supersede
+declaration) · `seaCarve` 5/5.
+
+---
+
+## 2026-09-08 — D40: the guard that was measuring the wrong thing, and now measures land
+
+`docs/LAND_CARVE_RECON.md` §5's separate slice — *"the generator-side guard that compares the
+raster against the land data it was built **from**, rather than asking the raster about itself"* —
+is built. **No migration, no schema change, and the raster is byte-identical to `HEAD`:** all
+1,036,800 cells compared, **0 differing bytes**, so nothing the chain emits moves.
+
+### The guard that existed was measuring the carve's own size
+
+`tests/seaCarve.spec.ts` was written on 2026-09-06 to pin *"every entry, and exactly how many cells
+of dry land it opens"*. It could not do that, and the reason is worth the paragraph because it is
+the same shape as the defect it was written for: it built its "pre-channel land" by taking the
+**finished** raster and closing every carved cell in it. Every carved cell therefore reads as land
+by construction, and the number it pinned was the carve's own SIZE. Measured for all 27 entries:
+the pinned figure equals the cell count exactly, every time, and the total it called *"cells of dry
+land"* — **521** — is the carve inventory.
+
+The information had been destroyed before the question was asked. `buildSeaGrid` applied the
+channels before returning, so no caller in the repo could obtain the land data the raster was built
+from. That is why the check reconstructed it, and why the reconstruction could not work.
+
+### The honest number is 202, and it re-orders the table
+
+| entry | cells carved | **cells of land** |
+|---|---|---|
+| `bab-el-mandeb` | 84 — the largest carve | **2** |
+| `malacca` | 52 | **11** |
+| `hormuz` | 48 | **3** |
+| `saint-lawrence` | 33 | **22** — the largest land carve there is |
+| **the canal, as shipped** | **37** | **30** |
+
+**521 cells carved, 202 of them land.** A channel exists to join water the raster is too coarse to
+draw, so most of its cells are water it merely re-states; only the land half is a claim about the
+world. And the ranking is near-inverted: the old measure put `bab-el-mandeb` — which opens **two**
+cells of dry land — at the top of the page, and put the canal fifth. On the honest measure the
+canal is **first, by 8 cells over the largest legitimate carve.** The guard would have put the
+defect on the first line the day it was written.
+
+### What was built
+
+* **`preCarveGrid()`** — the land data itself: scan-fill plus ICE, no carve. The question can now
+  be asked. `buildSeaGrid()` composes it; the scan-fill is not written twice.
+* **`carveInventory()`** — counts each channel against the grid as it stood BEFORE any channel ran,
+  never against the partly-carved grid. Channels share cells (the Bab-el-Mandeb and the Gulf of
+  Suez meet at 27.0N 34.5E), so a running total would hand a shared cell to whichever entry the
+  list reaches first. Counted this way the numbers are order-independent, and they are not a
+  re-derivation of the carve — they are what the carve did.
+* **`opensLand` on all 27 CHANNELS entries** — the authored declaration, the shape `RECLAIMED`
+  already uses.
+* **`assertCarveDeclared()`, called inside `buildSeaGrid()`** — so the refusal is not wired into
+  five generators that could each forget it (`build-sea-migration`, `build-sea-raster`,
+  `build-sea-places`, `gen-0047`, the specs). **The raster cannot be built with an undeclared
+  carve at all.** Watched refuse:
+
+      THE CARVE OPENS LAND IT DOES NOT DECLARE — refusing to build the raster.
+        severn: opens 12 cells of land, declares 5
+
+* **`tests/seaCarve.spec.ts`** is now the second READER of that one declaration rather than a
+  second opinion about it. It keeps its own independent walk of the points — a guard that called
+  the code it guards would go green on any change they made together — but it must not duplicate
+  the land data, because "the land the raster was built from" is exactly the thing that has one
+  author. Two totals are now named apart so they can never be confused again: `LAND_TOTAL` 202 and
+  `CARVE_TOTAL` 521.
+
+### It is still a review gate, and it says so
+
+No threshold separates a strait from a canal, and the numbers still say why: sorted by land opened,
+the St Lawrence (22), the Thames-Scheldt (17), the Gironde (15) and the Elbe-Weser and
+Gambia-Senegal (14 each) all sit above either half of the repaired river pair — because a river IS
+a line of land turned into water. A person has to look. What the refusal guarantees is that a
+person **has** looked at every number in the list, and that the world cannot be built until they do.
+
+### Gates
+
+`tsc -b` clean · `eslint` clean on the changed files · `seaCarve` **5/5** (two of them new: the
+generator's refusal, and the canal reconstructed and asserted to out-rank every surviving entry) ·
+`duplication` **8/8** · raster **byte-identical to `HEAD`**.
+
+*(`eslint .` across the whole tree reports 1,630 parser errors on this machine — nine stale agent
+worktrees under `.claude/worktrees/` give typescript-eslint multiple candidate `tsconfigRootDir`s.
+Pre-existing, environmental, and absent in CI, which clones fresh. Named here so the next reader
+does not mistake it for a regression.)*
+
+---
+
 ## 2026-09-07 — D39: the canal is filled in, and the switch that only worked one way
 
 Migration **0079**. The repair `docs/LAND_CARVE_RECON.md` §4A deliberately stopped on 2026-09-06 is
