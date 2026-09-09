@@ -598,17 +598,21 @@ const ARBITRARY_SIZE_TOTAL = 28
  *    · `PortYard.tsx` held `rounded border border-line bg-surface` on the ship-name box — and
  *      `--color-line` has never existed in src/index.css, so that border never rendered at all. It
  *      is a `Field` now, which is the point of the ban: a hand-drawn surface is not merely
- *      inconsistent, it is unproved. */
+ *      inconsistent, it is unproved.
+ *
+ *  FLEETS PAID ITS ONE ON 2026-09-09 (§7 step 7): the roster's phone block — `rounded-md border
+ *  border-edge bg-surface-2` on a `<button>` — was the fleet drawn as a hand-made card. The
+ *  fleet is a `Row` now and the file is out of the ledger; the eight-column ships table went
+ *  with it (FleetShips.tsx draws hulls as `Tile`s). */
 const INLINE_SKIN_DEBT: Record<string, number> = {
   'features/command/FleetRail.tsx': 1,
   'features/command/HaggleBlock.tsx': 1,
   'features/command/OrderComposer.tsx': 2,
   'features/command/OrderQueue.tsx': 1,
-  'features/fleets/FleetsScreen.tsx': 1,
   'features/map/SendFleet.tsx': 1,
   'features/market/MarketScreen.tsx': 2,
 }
-const INLINE_SKIN_TOTAL = 9
+const INLINE_SKIN_TOTAL = 8
 
 /** The ledger, read: every file under `src/features/` with more findings than it is allowed. */
 function overDebt(found: Map<string, string[]>, debt: Record<string, number>): string[] {
