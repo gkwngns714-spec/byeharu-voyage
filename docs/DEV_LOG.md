@@ -5,6 +5,32 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-09 — a profit that can hide is not a profit
+
+**Found by DRIVING, not by a spec, and the spec is why it was missed.** 0081's sell tray puts the
+reading in the order paid → fetches → profit, above the stepper, and that was measured to fit —
+**at 390x844**, the phone this project measures everything at. The owner reads the game in a desktop
+browser window about 735px tall, and there the `Loss` row fell below the tray's fold. Every geometry
+proof in the suite passed, because every one of them is pinned to the phone.
+
+**The fix is where the primitive already told us to put it.** `Tray` has a pinned `action` region
+outside the one scrolling box — §6's sketch says the action "never enters" the scroll — and the
+profit is not commentary, it is the number a sale is a decision ABOUT. So it rides with the button
+that commits it. Nothing else moved: `Fetches` stays in the body, because the button already carries
+that figure (`Sell 10 t · 1,439 d.`), and the row is still absent — not zero — when the cost is not
+on record.
+
+**Driven at the height that broke it** (1568x735, the shape that clipped it): bought 10 t of black
+pepper at Lisbon for 1,547 d., opened the sell tray, and `Loss −108 d.` stands in red directly above
+`Sell 10 t · 1,439 d.`, fully visible. 1,439 − 1,547 = −108, so the figure is right as well as
+present. Browser suite 203 passed / 0 failed.
+
+**The lesson worth keeping:** a suite that measures one viewport proves one viewport. The clipping
+was invisible to 203 green tests and obvious in ten seconds of looking at the real thing.
+
+---
+
+
 ## 2026-09-09 — the hold knows what it cost, and a sale says what it made (row 74, migration 0081)
 
 **The owner:** *"when trading i would like to know how much i bought the item, and by selling
