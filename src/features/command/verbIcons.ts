@@ -19,9 +19,3 @@ export const VERB_ICON: Record<string, IconName | undefined> = {
   HIRE: 'crew',
   REPAIR: 'mallet',
 }
-
-/** The verb as a word: SAIL → "Sail", UNFIT → "Unfit". §4.1 bans the uppercase label the old
- *  tiles wore; the word is title-case now, and the nav no longer shouts. */
-export function verbWord(verb: string): string {
-  return verb.charAt(0) + verb.slice(1).toLowerCase()
-}

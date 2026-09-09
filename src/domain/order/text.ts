@@ -137,6 +137,23 @@ export function isComplete(spec: VerbSpec, args: Record<string, string>): boolea
 }
 
 /**
+ * THE VERB AS A PLAYER'S WORD — `SAIL` reads `Sail`, `UNFIT` reads `Unfit`.
+ *
+ * §4.1 bans the uppercase label the old verb tiles wore, and §2 item 13 says a code is for a log,
+ * not a quay. So every screen that prints a server verb to a player prints it through here.
+ *
+ * IT LIVES BESIDE `orderText` BECAUSE IT IS THE SAME JOB at a different size: one is the whole
+ * line the server will read, this is one word of it the player will read. It was written twice on
+ * one day — `features/command/verbIcons.ts`'s `verbWord` for the verb tiles and
+ * `features/map/sendRules.ts`'s `fixWord` for the fix buttons, identical bodies — because a screen
+ * may not import another screen (tests/sections.spec.ts) and both screens were being rewritten at
+ * once. Neither was wrong; two of them was. Both twins are deleted and both callers read this.
+ */
+export function verbWord(verb: string): string {
+  return verb.charAt(0) + verb.slice(1).toLowerCase()
+}
+
+/**
  * THE LINE. What the server will be sent, character for character.
  *
  * @param fleetName the commanding fleet's name, emitted only where rule 1 above allows it. A name
