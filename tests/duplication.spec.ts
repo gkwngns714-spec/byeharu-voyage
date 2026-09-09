@@ -579,7 +579,9 @@ test('sea-grid.mjs declares NO snap rule — the third answer is retired, not me
 
 /** MEASURED 2026-09-09 on osn-ui-primitives, then LOWERED as each screen migrates. COMMAND paid
  *  its four on 2026-09-09 (§7 step 5): OrderComposer, ArgPickers, CommandScreen and OrderQueue are
- *  deleted or rewritten onto the scale, so their entries are gone and the total dropped by four. */
+ *  deleted or rewritten onto the scale, so their entries are gone and the total dropped by four.
+ *  MARKET paid its two the same day (§7 step 6): the `text-[10px]` port label and the `text-[11px]`
+ *  block heading went with the control card and the block headings themselves. */
 const ARBITRARY_SIZE_DEBT: Record<string, number> = {
   'features/found/SignTheBook.tsx': 1,
   'features/ledger/LedgerScreen.tsx': 1,
@@ -588,9 +590,8 @@ const ARBITRARY_SIZE_DEBT: Record<string, number> = {
   'features/map/MapPanel.tsx': 2,
   'features/map/MapScreen.tsx': 4,
   'features/map/WatersAhead.tsx': 4,
-  'features/market/MarketScreen.tsx': 2,
 }
-const ARBITRARY_SIZE_TOTAL = 22
+const ARBITRARY_SIZE_TOTAL = 20
 
 /** MEASURED 2026-09-09 on osn-ui-primitives: twelve. The nine skins §3 rule 4 names by file, plus
  *  the three more that a className-REGION reader finds and a grep for `border border-edge` does
@@ -607,13 +608,16 @@ const ARBITRARY_SIZE_TOTAL = 22
  *
  *  COMMAND PAID ITS FIVE THE SAME DAY (§7 step 5): FleetRail, HaggleBlock, OrderComposer (×2) and
  *  OrderQueue are gone, drawn now from Sheet / Tile / Row / Note / Tray, so their entries leave the
- *  ledger too. Twelve, less three, less five: four. */
+ *  ledger too. Twelve, less three, less five: four.
+ *
+ *  MARKET PAID ITS TWO (§7 step 6): the `PORT Lisbon ▾` and `name · all ▾` control buttons, each a
+ *  hand-drawn `border border-edge bg-surface-2` box, went with the control card they sat in — the
+ *  port picker is a `Field`, and there is no sort or filter to open. Four, less two: two. */
 const INLINE_SKIN_DEBT: Record<string, number> = {
   'features/fleets/FleetsScreen.tsx': 1,
   'features/map/SendFleet.tsx': 1,
-  'features/market/MarketScreen.tsx': 2,
 }
-const INLINE_SKIN_TOTAL = 4
+const INLINE_SKIN_TOTAL = 2
 
 /** The ledger, read: every file under `src/features/` with more findings than it is allowed. */
 function overDebt(found: Map<string, string[]>, debt: Record<string, number>): string[] {

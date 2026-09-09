@@ -212,18 +212,23 @@ test('MARKET puts complete priced goods above the fold, per K.1', async ({ page,
 
   // THE GOODS ARE TILES NOW (2026-08-23, the owner: "make trade goods in blocks as well, not all
   // alligned in sentences — horizontally"), so the fold is measured in complete TILES rather than
-  // complete table rows. A tile carries MORE than the old 44px row did (the index, both prices,
-  // stock and trend all at once), so two whole tiles above the fold say strictly more than three
-  // rows used to — the floor is 2 tiles, and the first must show its price RANGE.
+  // complete table rows. A tile carries MORE than the old 44px row did (both prices, the range,
+  // the stock all at once), so two whole tiles above the fold say strictly more than three rows
+  // used to — the floor is 2 tiles, and the first must show its price RANGE.
+  //
+  // SINCE §7 STEP 6 THE TILE IS THE DESIGN SYSTEM'S `TradeTile` — the same block PORT and COMMAND
+  // draw, under the same `good-pick-tile` id the picker contract below holds — and the range is no
+  // longer a `RANGE 62–94` line but a `Bar` labelled "<good> price range" with the two figures
+  // under it. The proof follows the primitive: the meter is what carries the range now.
   const fold = await page.evaluate(() => {
     const nav = document.querySelector('nav')
     const foldY = nav ? nav.getBoundingClientRect().top : window.innerHeight
-    const tiles = [...document.querySelectorAll('[data-testid="good-tile"]')]
+    const tiles = [...document.querySelectorAll('[data-testid="good-pick-tile"]')]
     const complete = tiles.filter((t) => t.getBoundingClientRect().bottom <= foldY)
     return {
       foldY: Math.round(foldY),
       completeTilesAboveFold: complete.length,
-      firstTileText: tiles[0] ? (tiles[0] as HTMLElement).innerText.replace(/\s+/g, ' ') : '',
+      firstTileHasRange: tiles[0]?.querySelector('[role="meter"][aria-label$="price range"]') !== null,
     }
   })
 
@@ -236,7 +241,7 @@ test('MARKET puts complete priced goods above the fold, per K.1', async ({ page,
   // 0071: this used to require a `%` — the nearby index. That figure is gone, and with it the
   // only thing on the tile that was a comparison rather than a fact. What must be on screen now is
   // the RANGE, which is what replaced it: how far this price can travel, here.
-  expect(fold.firstTileText).toMatch(/RANGE\s+[\d,]+–[\d,]+/)
+  expect(fold.firstTileHasRange, 'the first good tile carries no price-range bar').toBe(true)
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
