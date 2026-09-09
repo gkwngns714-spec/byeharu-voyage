@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Button, Hint, Row, Tray, type TrayDetent } from '../../components/ui'
 import { formatVoyageDays } from '../../lib/format'
-import type { CommandIntent } from '../../domain/order'
 import { CHART_CHROME } from '../../chart'
 import { MapTrayTitle } from './MapTrayTitle'
 import { SendFleetRow } from './SendFleetRow'
@@ -35,18 +34,15 @@ export function SendFleet({
   dest,
   line,
   onClose,
-  onCompose,
 }: {
   dest: SailDest
   /** The one line beside the name at peek — `Spain · Gaivota here`, `Open sea`. */
   line: string
   onClose: () => void
-  /** A fix with an argument still to choose hands off to the one composer. The send never calls it. */
-  onCompose: (intent: CommandIntent) => void
 }) {
   const [detent, setDetent] = useState<TrayDetent>('peek')
   const open = detent !== 'peek'
-  const flow = useSendFleet(dest, open, onCompose)
+  const flow = useSendFleet(dest, open)
   const { fleets } = flow
 
   const picked = fleets.find((f) => f.id === flow.picked) ?? null

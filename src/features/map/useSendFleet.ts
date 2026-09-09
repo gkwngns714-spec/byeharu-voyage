@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { formatVoyageDays } from '../../lib/format'
 import type { LatLon } from '../../lib/geo'
 import type { FleetView, Refusal, VerbSpec } from '../../lib/rpc'
-import { findVerb, fixAction, isComplete, orderText, useCommandDraft, type CommandIntent } from '../../domain/order'
+import { findVerb, fixAction, isComplete, orderText, useCommandDraft } from '../../domain/order'
 import { fleetNow, proposeCourse, roadsteadCourseNote, sailOrigin, sailTarget } from '../../domain/passage'
 import { useWorld } from '../../live/worldStore'
 import {
@@ -51,7 +51,7 @@ import {
 
 const NO_VERBS: readonly VerbSpec[] = []
 
-export function useSendFleet(dest: SailDest, open: boolean, onCompose: (intent: CommandIntent) => void) {
+export function useSendFleet(dest: SailDest, open: boolean) {
   const fleets = useWorld((s) => s.fleets)
   const preview = useWorld((s) => s.preview)
   const issue = useWorld((s) => s.issue)
@@ -194,18 +194,19 @@ export function useSendFleet(dest: SailDest, open: boolean, onCompose: (intent: 
   /**
    * A FIX THAT NEEDS NO CHOICE IS DONE HERE (OWNER_REQUESTS row 51: no new page for a provision
    * fix). `PROVISION FULL` is a whole order already — `isComplete` is the one authority — and it
-   * goes down the SAME `cmd.issue` path with the SAME `orderText` line COMMAND would send. It fills
+   * goes down the SAME `cmd.issue` path with the SAME `orderText` line every doorway sends. It fills
    * to her standing order (`daysOf`), not to the brim: FULL took Gaivota to 89.3 days and 0 t of
-   * hold free on production, 2026-08-31. The hand-off SURVIVES where it is honest — a fix with an
-   * argument still to choose (`SAIL TO <a nearer port>`) genuinely needs the composer.
+   * hold free on production, 2026-08-31.
+   *
+   * A FIX WITH AN ARGUMENT STILL TO CHOOSE IS NOT A BUTTON (2026-09-09). It used to hand off to
+   * COMMAND's composer; COMMAND composes nothing now (the owner: *"they should be located
+   * accordingly at different locations"*), and the choice such a fix asks for is made where its
+   * verb lives — `SAIL TO <a nearer port>` by tapping that harbour on this chart, `SELL <good> ALL`
+   * on PORT's Trade face. The refusal's own sentence names it; `fixesOf` offers no press for it.
    */
   const runFix = (f: FleetView, verb: string, fixArgs: Record<string, string>) => {
     const fixSpec = findVerb(verbs, verb)
-    if (!fixSpec || !isComplete(fixSpec, fixArgs)) {
-      onCompose({ fleetId: f.id, verb, args: fixArgs })
-      return
-    }
-    if (busyOn(f)) return
+    if (!fixSpec || !isComplete(fixSpec, fixArgs) || busyOn(f)) return
     const runArgs = verb === 'PROVISION' ? { mode: 'DAYS', days: String(daysOf(f)) } : fixArgs
     setAct({ fleetId: f.id, state: 'busy', refusal: null })
     void (async () => {
@@ -223,7 +224,8 @@ export function useSendFleet(dest: SailDest, open: boolean, onCompose: (intent: 
     })()
   }
 
-  /** A refusal's fixes as real presses: never a dead line. */
+  /** A refusal's fixes as real presses — every one of them runs here, whole; a fix that still
+   *  needs a choice is words in the refusal, not a dead button. */
   const fixesOf = (f: FleetView, refusal: Refusal): Fix[] =>
     refusal.fixes
       .map((fix) => fixAction(fix, verbs))
@@ -232,7 +234,11 @@ export function useSendFleet(dest: SailDest, open: boolean, onCompose: (intent: 
           const run = () => void (action.verb === 'CLEAR' ? clearQueue(f.id) : cancelOrder(f.id, action.index))
           return [{ label: fixWord(action.verb), run }]
         }
-        if (action.kind === 'compose') return [{ label: fixWord(action.verb), run: () => runFix(f, action.verb, action.args) }]
+        if (action.kind === 'compose') {
+          const fixSpec = findVerb(verbs, action.verb)
+          if (!fixSpec || !isComplete(fixSpec, action.args)) return []
+          return [{ label: fixWord(action.verb), run: () => runFix(f, action.verb, action.args) }]
+        }
         return []
       })
 

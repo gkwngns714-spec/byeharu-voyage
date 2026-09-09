@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Button,
   Icon,
@@ -43,9 +42,10 @@ import { PriceRows, PriceTray } from './PriceTray'
 // alongside the harbour being read.
 //   · alongside  → the design system's `TradeTray` on `useTrade`, the identical act PORT and
 //                  COMMAND issue through. Reading the quay you are on IS trading on it.
-//   · elsewhere  → `PriceTray`: the trend, the range, the stock, and `Sail here`, which hands a
-//                  SAIL intent to COMMAND the way PORT's anchorage rows and the map do. No order is
-//                  composed here (§5: `orderText()` is called at issue time, in `useTrade`).
+//   · elsewhere  → `PriceTray`: the trend, the range, the stock, and the passage as a figure. No
+//                  order is composed here (§5: `orderText()` is called at issue time, in
+//                  `useTrade`), and since 2026-09-09 no SAIL is handed anywhere from here either:
+//                  a passage is ordered on the MAP, where the owner drove it (rows 45/46).
 //
 // ── WHAT IT READS ──────────────────────────────────────────────────────────────────────────────
 // Which harbour: `src/store/harbour.ts`, the one owner PORT shares. Whose cargo: the fleet that
@@ -72,7 +72,6 @@ export function MarketScreen() {
 }
 
 function PricesBody({ snapshot }: { snapshot: WorldSnapshot }) {
-  const navigate = useNavigate()
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const markets = useWorld((s) => s.markets)
@@ -82,7 +81,6 @@ function PricesBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const reaches = useWorld((s) => s.reaches)
   const loadReach = useWorld((s) => s.loadReach)
   const readAt = useWorld((s) => s.readAt)
-  const handOff = useCommandDraft((s) => s.handOff)
   const draftFleetId = useCommandDraft((s) => s.fleetId)
   const picked = useHarbour((s) => s.picked)
   const choose = useHarbour((s) => s.pick)
@@ -97,7 +95,7 @@ function PricesBody({ snapshot }: { snapshot: WorldSnapshot }) {
 
   const docked = port ? (fleets.find((f) => f.port === port.code) ?? null) : null
   const acting = docked ?? fleets.find((f) => f.id === draftFleetId) ?? fleets[0] ?? null
-  // Where the chips are measured from, and where `Sail here` sails from.
+  // Where the chips are measured from, and where the passage figure is measured from.
   const anchorCode = acting ? fleetPortCode(acting) : (port?.code ?? null)
   const anchor = anchorCode ? (portByCode[anchorCode] ?? null) : null
   const reach = anchor ? reaches[anchor.id] : undefined
@@ -137,16 +135,9 @@ function PricesBody({ snapshot }: { snapshot: WorldSnapshot }) {
     portId ? history[portId]?.goods[good.code] : undefined
 
   const close = () => setPick(null)
-  const sailHere =
-    acting && port && !docked
-      ? {
-          nm: anchorCode === port.code ? undefined : reach?.reaches[port.code],
-          onSail: () => {
-            handOff({ fleetId: acting.id, verb: 'SAIL', args: { dest: port.code } })
-            navigate('/command')
-          },
-        }
-      : null
+  // The sailed distance to this quay from where she lies — a figure, never a passage ordered here.
+  const passage =
+    acting && port && !docked && anchorCode !== port.code ? (reach?.reaches[port.code] ?? null) : null
 
   return (
     <Sheet
@@ -228,7 +219,7 @@ function PricesBody({ snapshot }: { snapshot: WorldSnapshot }) {
           onClose={close}
         />
       ) : (
-        <PriceTray good={pick.good} points={points(pick.good)} sail={sailHere} onClose={close} />
+        <PriceTray good={pick.good} points={points(pick.good)} passage={passage} onClose={close} />
       ))}
     </Sheet>
   )

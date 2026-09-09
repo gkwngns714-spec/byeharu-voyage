@@ -156,7 +156,10 @@ test.describe('a SAIL begins and ends in the roads, not at the quay', () => {
     // the server refuses. They now read `domain/passage`'s `sailTarget`, and every proposal is
     // made with its result.
     const SRC = path.resolve(process.cwd(), 'src', 'features')
-    for (const file of ['map/useSendFleet.ts', 'command/CommandScreen.tsx']) {
+    // Moved deliberately 2026-09-09: `command/CommandScreen.tsx` left this list when COMMAND stopped
+    // composing SAIL (every verb's doorway is at its building or on the chart — tests/verbHomes.spec.ts).
+    // The chart is now the ONE screen that proposes a course, and it is held to the one authority.
+    for (const file of ['map/useSendFleet.ts']) {
       const text = readFileSync(path.join(SRC, file), 'utf8')
       const calls = [...text.matchAll(/proposeCourse\(([^)]*)\)/g)]
       expect(calls.length, `${file} proposes no course at all — has it moved?`).toBeGreaterThan(0)

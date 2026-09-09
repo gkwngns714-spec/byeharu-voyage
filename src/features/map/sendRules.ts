@@ -35,7 +35,7 @@ export interface Act {
   refusal: Refusal | null
 }
 
-/** A refusal's fix as a real press: a queue act, an order run in place, or the composer. */
+/** A refusal's fix as a real press: a queue act, or an order run in place. */
 export interface Fix {
   label: string
   run: () => void

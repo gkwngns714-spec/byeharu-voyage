@@ -5,6 +5,107 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-09 — a verb's doorway belongs where its act happens
+
+**The owner:** *"In command, there are so many things, like buy, sell, fit, take etc. Buy and sell
+should be in port - market. Get it? they should be located accordingly at different locations - the
+command."* COMMAND drew twelve verb tiles in one grid and a question for whichever was pressed.
+**What moved is the entry point, never the authority**: one `orderText`, one `cmd.preview`, one
+`cmd.issue`, one parser on the server, before and after. `tests/verbHomes.spec.ts` (3 static
+tests, watched red on the first commit — its own matcher counted a comment as a doorway) holds
+that COMMAND composes no verb, that no screen hands a VERB to COMMAND, and that the stepped
+question has ONE home.
+
+**Verb by verb — measured on `main` before touching anything, then done:**
+
+| verb | doorway before | doorway now | what this slice did |
+|---|---|---|---|
+| BUY · SELL | COMMAND tile + `TradeQuestion`; PORT Trade face | PORT Trade face (`PortTrade.tsx`) | **deleted from COMMAND** — the face already drew the same `TradeTile`/`TradeTray` on the same `useTrade` (D47) |
+| STORE · TAKE | COMMAND tile → a Note *"cannot be composed here yet"*; PORT Store face | PORT Store face (`PortWarehouse.tsx`) | **deleted from COMMAND** — already reachable, tile was a dead door |
+| MAKE | COMMAND tile → Note; PORT Craft face | PORT Craft face (`PortWorkstation.tsx`) | **deleted from COMMAND** — already reachable |
+| BUILD | COMMAND tile → Note; PORT Yard face | PORT Yard face (`PortYard.tsx`) | **deleted from COMMAND** — already reachable |
+| SAIL | COMMAND tile + `SailQuestion` (chart, harbour tiles, tray); MAP `Send fleet` (owner-driven, rows 45/46) | MAP only | **deleted from COMMAND**; the two SAIL hand-offs that led to it — PORT's sea-place *Sailing on* rows and MARKET's `Sail here` button — are gone with it (MARKET keeps the passage as a `Passage · 284 nm` row) |
+| HIRE | COMMAND tile + `StepQuestion` | **the Inn** (`PortInn.tsx`: a `Crew for hire · 400 idle ›` row, first on the face) | **moved** — owner row 60 says the Inn is where crew are hired; the face had only officers |
+| REPAIR | COMMAND tile + `StepQuestion` | **the Shipyard** — a NEW face (`PortShipyard.tsx`, one `PORT_FACES` entry, offered where 0067's `shipyard` row stands) | **moved** — there was no shipyard face at all; 0067: *"it is not the shipyard, which repairs"* |
+| PROVISION | COMMAND tile + `StepQuestion` | **the quay** — first row of PORT's Trade face (`Stores · 15.0 days ›`) | **moved** — the chandler is not a 0067 building; 0036 says a harbour has one by definition, so it stands on the quay |
+| FIT · UNFIT | COMMAND tile → Note; reachable **nowhere** | still nowhere; named on the Shipyard face's header as the next entry | **deleted from COMMAND, not built** — needs a read for "the fittings this house keeps in THIS city" outside `world.workstation`, which is a migration and not this slice's |
+
+So of twelve: six deletions of a door that already existed, three moves, two deletions of a dead
+tile (FIT/UNFIT), one deletion of a second doorway (SAIL, whose one door is the chart). COMMAND is
+`CommandScreen.tsx` (124 lines, was 319) + `Queue.tsx` (the queue as rows on the sheet, with the
+halt Note and Clear — it was a tray behind a pill because the grid stood on the sheet). Deleted:
+`VerbGrid`, `TradeQuestion`, `SailQuestion`, `verbIcons`, `QueueTray`; moved to `features/port`:
+`StepQuestion` (now a pure tray over a `StepOrder` prop), `orderCheck`, `useHaggleState` + a new
+`HaggleRow` (the bargain row rode only in COMMAND's tray — it is inside PORT's buy tray now, so
+0022's client half did not lose its only surface). New: `features/port/useStepOrder.ts`, the act
+behind the three stepped verbs (arguments, the debounced `cmd.preview`, `issue`) — it reads the
+store, so it cannot be a design-system file; PORT is its only caller and the header says why the
+MAP is not a second one. `src/features/command/` 1,305 → 262 lines of code (README aside);
+`src/features/port/` 1,516 → 2,268 across five new files.
+
+**The seams that had to close in the same slice, or the slice would have shipped half:** every
+hand-off that carried a VERB to COMMAND now landed on a screen that ignores verbs. Found by grep,
+four: PORT sea-place rows (deleted), MARKET `Sail here` (a `Passage` row), the MAP's `onCompose`
+for a refusal fix that still needs a choice (a fix that is not a whole order is no longer offered
+as a press — the refusal's sentence names it, and the choice is made where the verb lives; complete
+fixes still run in place), and **FLEETS' cargo rows**, which handed `SELL <good> ALL` to COMMAND.
+The last is outside this slice's named file domain (`features/fleets/FleetTray.tsx`,
+`FleetCargo.tsx`) and was edited anyway, minimally — the rows read and no longer press — because
+leaving a doorway that leads nowhere is exactly the half-slice rule forbids. Said plainly so the
+row-74 slice knows.
+
+**Also in this slice, from a production defect the coordinator reproduced four times:** MARKET's
+port field worked exactly once per page load. `PortField.tsx` had three exits from its open state
+and the chip path was the one that did not blur, so the input kept focus, `onFocus` could never
+fire again, and every keystroke fed a query nobody read. There is one exit now, `leave()`.
+Measured on the built app: pick Setubal → field reads `Setubal`, not focused, 0 chips; tap again →
+10 chips (Lisbon · Setubal · Porto …); type `sev` → 1 chip; pick → `Seville`, 10 tiles. Two picks
+without a reload.
+
+**Measured, 390×844, the built app, local PGlite, dark**, by a throwaway driver on one persistent
+profile (the whole first drive, cold, 88 s wall-clock; the second boot 1.5 s):
+* COMMAND: **0 verb buttons** (was 12), 7 interactive controls on the sheet, `Nothing queued.`
+  once, no order string anywhere. Press the fleet chip: **7 controls → 7**, scroll 0 → 0.
+* PORT face strip at Lisbon: `Trade · Town · Store · Craft · Inn · Yard · Shipyard · School` — eight,
+  one row, scrolling (Dublin, which keeps no shipyard, yard or school, shows five as before).
+* PORT Trade face: 10 goods as tiles, 20 price cells, **36 controls before a price press, 44 with
+  the tray open, 36 after it closed; 0 tiles moved** on either press. The buy tray carries the
+  bargain row (`haggle-row` present, 1). Press `Stores` → step tray `Provision her`: `Stores 15.0
+  days · Aboard 2 water · 2 food`, stepper at 0 (`Fill the barrels`), button live; 42 controls
+  open, 36 closed, 0 tiles moved.
+* PORT Inn face: `Crew for hire · 400 idle ›` (Lisbon's pool) first; press → `Sign on crew`:
+  `Crew 8 of 20 · Idle here 400`, stepper at 1, dry run `Signed on 1`, button `Hire 1` live;
+  21 controls → 27 open → 21 closed.
+* PORT Shipyard face (Lisbon keeps one, tier 3): `Worst hull · 100%` row; press → `Mend her
+  hulls`, dry run says *nothing aboard needs repair*, button `Mend to 100%` correctly dead.
+* MARKET, reading Seville from Lisbon: a price tray with **0 `Sail here` buttons** and a
+  `Passage · 284 nm` row.
+* Zero page errors across the whole drive.
+* NOT driven: FLEETS' cargo rows with cargo aboard (the fresh world's hold is empty — the driver
+  counted 0 rows and 0 row-buttons), a REPAIR on a damaged hull, and a HIRE actually issued.
+  The Shipyard face on a harbour with no fleet alongside was eyeballed in code, not rendered.
+
+**Gates, in order, all watched:** `npx tsc -b` exit 0 · `npx eslint src tests` exit 0 · `npm run
+build` exit 0 (4.8 s — the world image was cached) · `vite preview --port 4181` then every spec
+except the four that boot the chain in Node (`db.chain`, `db.image`, `rpc.firstSession`,
+`rpc.surface` — nothing here reaches a migration; CI runs the chain on the PR): **209 passed / 0
+failed / 0 skipped in 1.3 min**, `test-results/` wiped first. The preview server was killed
+afterwards (port 4181 confirmed free). `tests/layout.spec.ts`'s good-picker proof moved
+deliberately from COMMAND to PORT — same `good-pick-tile` id, same 20 cells, same "0 moved on the
+press" — and `tests/map.sendfleet.spec.ts`'s one-authority check drops `CommandScreen` from its
+list because COMMAND proposes no course now.
+
+**Folds owed, named:** `verbWord` is spelt in `features/command/Queue.tsx` and as `fixWord` in
+`features/map/sendRules.ts` (one `verbWord` in `domain/order` is the fold; `src/domain` is not this
+slice's). `useCommandDraft`'s `verb`/`args`/`chooseVerb`/`setArg`/`clear` and `handOffTrade` have
+no writer or reader on any screen now — dead fields in `domain/order`, to delete there.
+`src/chart`'s `SmallChart` lost its only caller with `SailQuestion`. **Should MARKET fold into
+PORT?** The market step (2026-09-09) already said yes; after this slice the case is stronger — with
+a fleet alongside, MARKET is PORT's Trade face under a port field, tile for tile, tray for tray, and
+now bargain row for bargain row is the one thing MARKET's quay tray still lacks. Not done here.
+
+---
+
 ## 2026-09-09 — the map is a chart, two corners, and a tray
 
 **Step 8 of 10** of `docs/UI_DIRECTION.md` §7 — MAP, chrome only. The chart layer (`src/chart`) is
