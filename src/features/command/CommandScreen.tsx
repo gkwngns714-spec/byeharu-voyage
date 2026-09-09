@@ -217,8 +217,6 @@ export function CommandScreen() {
               intent={spec.verb === 'BUY' ? 'buy' : 'sell'}
               fleet={fleet}
               market={market}
-              step={snapshot.config.trade_step_tuns}
-              verbs={snapshot.verbs}
               good={args.good}
               qty={args.qty && /^\d+$/.test(args.qty) ? Number(args.qty) : null}
               onTrade={(intent, code) => {

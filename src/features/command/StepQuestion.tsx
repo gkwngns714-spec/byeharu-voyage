@@ -102,6 +102,7 @@ export function StepQuestion({
           <Stepper
             value={Math.min(value, bound.max)}
             onChange={setValue}
+            min={bound.min}
             max={bound.max}
             step={bound.step}
             unit={bound.unit}
@@ -128,6 +129,8 @@ function actLabel(verb: string, value: number, provisionFull: boolean): string {
 }
 
 interface Bound {
+  /** The least that means anything — the stepper's floor, and the value shown before one is set.
+   *  For `days` it is 0, because 0 IS an answer: "fill her up" (mode FULL, the `n <= 0` arm above). */
   min: number
   max: number
   step: number
@@ -145,8 +148,9 @@ function boundOf(name: string, fleet: FleetView): Bound {
     const now = Math.round(worstHullFraction(fleet) * 100)
     return { min: Math.min(now + 1, 100), max: 100, step: 5, unit: '%', label: 'mend her to', empty: 'Every hull is whole.' }
   }
-  // days
-  return { min: 1, max: 120, step: 5, unit: 'days', label: 'days of stores', empty: '' }
+  // days — a floor of 0, not 1: nought days is FULL, and a floor of 1 would put "fill the barrels"
+  // out of reach of `−` the moment a day count had been chosen.
+  return { min: 0, max: 120, step: 5, unit: 'days', label: 'days of stores', empty: '' }
 }
 
 /** Her state, in rows — the one figure this verb is a decision about, and the port fact it needs. */

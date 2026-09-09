@@ -1,43 +1,33 @@
 import { useMemo, useState } from 'react'
-import {
-  Button,
-  Field,
-  Figure,
-  Note,
-  Row,
-  TileField,
-  TradeTile,
-  TradeTray,
-} from '../../components/ui'
-import { useBuyCapacity } from '../../live/useBuyCapacity'
+import { Button, Field, Figure, Note, Row, TileField, TradeTile, TradeTray } from '../../components/ui'
+import { useTrade } from '../../live/useTrade'
 import { useHaggleState } from './useHaggleState'
 import { fleetCargoByCode } from '../../domain/fleet'
 import { buyableHere } from '../../domain/market'
-import { findVerb, orderText } from '../../domain/order'
 import { fold, foldedMatch } from '../../lib/text'
 import { formatInt, formatPctPoints } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
-import type { FleetView, MarketView, Refusal, VerbSpec } from '../../lib/rpc'
+import type { FleetView, MarketView } from '../../lib/rpc'
 
 // BUY AND SELL — the goods field, and the tray a price cell opens. §6.
 //
 // This is the whole of what OrderComposer's `good` arm, its rail, its `HaggleBlock` and the trade
-// fold were. The tile and the tray are the design system's (TradeTile / TradeTray), the same ones
-// PORT draws — one market, drawn one way, on the two quays a player buys from. The FIELD is filtered
-// by intent exactly as the old GoodPicker was: a BUY field is this city's quay (`buyableHere`), a
-// SELL field is what she is carrying — so every live cell in a field is one the server will honour.
+// fold were. The tile and the tray are the design system's (TradeTile / TradeTray), the act is
+// `useTrade`'s — the same three PORT composes — so one market is drawn one way and issued one way
+// on the two quays a player buys from. The FIELD is filtered by intent exactly as the old
+// GoodPicker was: a BUY field is this city's quay (`buyableHere`), a SELL field is what she is
+// carrying — so every live cell in a field is one the server will honour.
 //
 // THE PRICE IS THE ACT (the owner, row 6): tapping a cell names the verb AND the good on the one
 // draft, and opens the tray under the press. Nothing in the field moves — the tray is `fixed`
-// (tests/layout.spec.ts holds this on `good-pick-tile`). The quantity, the ceiling and the cost are
-// the tray's; the haggle is one row inside it (§6: "Bargain · 3 left · 45 % [Try]").
+// (tests/layout.spec.ts holds this on `good-pick-tile`). The quantity is the draft's; the ceiling,
+// the cost and the refusal are the hook's; the haggle is one row inside the tray (§6: "Bargain ·
+// 3 left · 45 % [Try]") and it is the one thing on this screen PORT does not draw.
 
 export function TradeQuestion({
   intent,
   fleet,
   market,
-  step,
-  verbs,
   good,
   qty,
   onTrade,
@@ -47,8 +37,6 @@ export function TradeQuestion({
   intent: 'buy' | 'sell'
   fleet: FleetView
   market: MarketView
-  step: number
-  verbs: readonly VerbSpec[]
   /** The good chosen so far (the draft's `good`), or undefined while the field is open. */
   good: string | undefined
   /** The draft's `qty`, as a number — the one authority the tray steps and the line is issued from. */
@@ -59,9 +47,6 @@ export function TradeQuestion({
   onClose: () => void
 }) {
   const [filter, setFilter] = useState('')
-  const [refusal, setRefusal] = useState<Refusal | null>(null)
-  const [sending, setSending] = useState(false)
-  const issue = useWorld((s) => s.issue)
 
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
 
@@ -75,13 +60,8 @@ export function TradeQuestion({
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [market.goods, intent, aboard, filter])
 
-  const picked = good ? market.goods.find((g) => g.code === good) : undefined
-  const capacity = useBuyCapacity(intent === 'buy' && picked ? fleet.id : null, picked?.code ?? null)
-
-  const close = () => {
-    setRefusal(null)
-    onClose()
-  }
+  const picked = (good ? market.goods.find((g) => g.code === good) : undefined) ?? null
+  const { capacity, step, act } = useTrade(fleet, intent, picked, qty, onClose)
 
   return (
     <>
@@ -110,55 +90,27 @@ export function TradeQuestion({
               aboard={aboard[g.code] ?? 0}
               canBuy={buyableHere(g)}
               selected={good === g.code}
-              onBuy={() => {
-                setRefusal(null)
-                onTrade('buy', g.code)
-              }}
-              onSell={() => {
-                setRefusal(null)
-                onTrade('sell', g.code)
-              }}
+              onBuy={() => onTrade('buy', g.code)}
+              onSell={() => onTrade('sell', g.code)}
             />
           ))}
         </TileField>
       )}
 
-      {picked && (
+      {/* `market.port` is null only for a port id the server does not know, and then there are no
+          goods and no cell to press — so a tray can only ever open on a quay with a culture. */}
+      {picked && market.port && (
         <TradeTray
           pick={{ good: picked, intent }}
           aboard={aboard[picked.code] ?? 0}
           capacity={capacity}
           step={step}
           qty={{ value: qty, onChange: onSetQty }}
-          act={{
-            send: () => {
-              const spec = findVerb(verbs, intent === 'buy' ? 'BUY' : 'SELL')
-              const n = qty ?? 0
-              if (!spec || n <= 0 || sending) return
-              setRefusal(null)
-              setSending(true)
-              void (async () => {
-                const line = orderText(spec, { good: picked.code, qty: String(n) }, fleet.name)
-                const okay = await issue(fleet.id, line, null)
-                setSending(false)
-                if (okay) close()
-                else setRefusal(useWorld.getState().refusal)
-              })()
-            },
-            sending,
-            ready: (qty ?? 0) > 0,
-            total: intent === 'buy' && capacity.estTotal !== null && qty === (capacity.bound?.max ?? -1)
-              ? capacity.estTotal
-              : null,
-          }}
-          onClose={close}
+          act={act}
+          culture={market.port.culture}
+          onClose={onClose}
         >
           {intent === 'buy' && <HaggleRow fleetId={fleet.id} good={picked} />}
-          {refusal && (
-            <Note tone="danger" code={refusal.code} data-testid="trade-tray-refusal">
-              {refusal.sentence}
-            </Note>
-          )}
         </TradeTray>
       )}
     </>

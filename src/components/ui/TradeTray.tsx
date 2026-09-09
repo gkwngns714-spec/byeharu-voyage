@@ -7,7 +7,7 @@ import { Stepper } from './Stepper'
 import { Tray } from './Tray'
 import type { TrayDetent } from './trayDetents'
 import { formatDucats, formatInt, formatTuns } from '../../lib/format'
-import type { MarketGood } from '../../lib/rpc'
+import type { MarketGood, Refusal } from '../../lib/rpc'
 import type { BuyCapacityState } from '../../lib/trade'
 
 // THE TRADE TRAY — where a price becomes a quantity, and the quantity becomes an order.
@@ -18,7 +18,13 @@ import type { BuyCapacityState } from '../../lib/trade'
 // neither quay's. The design system may not read the store ("machinery knows nothing above it"),
 // so — exactly as the fold this replaces did (tradePickers.tsx) — the server's answer to "how much
 // can she take" arrives as a PROP, and the act arrives as a function. Each screen asks
-// `useBuyCapacity` once and hands the reading down.
+// `useTrade` (src/live/useTrade.ts) once and hands both down: that hook is the one spelling of the
+// act, so the two quays cannot issue the same line two ways.
+//
+// FOR ONE DAY THERE WERE TWO OF THESE. PORT was rewritten first (step 4) and built its own tray;
+// COMMAND (step 5) promoted this one into the design system in the same afternoon. Same rows,
+// same gauge, same button, two files — the shape the standing law forbids. PORT's copy is deleted
+// and PORT composes this, which is what §6 said in the first place.
 //
 // ── THE OWNER'S RULE, KEPT BY CONSTRUCTION ─────────────────────────────────────────────────────
 // *"when pressed unfold another so that i can choose how much i buy … don't restruct anything."*
@@ -66,13 +72,13 @@ export function TradeTray({
   /** `config.trade_step_tuns` — the server reprices every step, so the stepper walks in them. */
   step: number
   qty: { value: number | null; onChange: (next: number) => void }
-  /** The act: what pressing the ONE button does, whether it may fire yet, and — when the caller
-   *  has been served one — what the chosen quantity costs. */
-  act: { send: () => void; sending: boolean; ready: boolean; total: number | null }
+  /** The act: what pressing the ONE button does, whether it may fire yet, what the chosen quantity
+   *  costs when the caller has been served that figure, and what the server last answered. */
+  act: { send: () => void; sending: boolean; ready: boolean; total: number | null; refusal: Refusal | null }
   onClose: () => void
   /** This port's culture, for the one sentence that names it: a good the quay will not deal in. */
-  culture?: string
-  /** The caller's own rows under the stock — COMMAND's check and its bargain. */
+  culture: string
+  /** The caller's own rows under the stock — COMMAND's bargain. */
   children?: ReactNode
 }) {
   const { good, intent } = pick
@@ -95,7 +101,7 @@ export function TradeTray({
   // good can open: her hold is why it is in the payload at all (0061), and the buy cell is dead.
   const refusedBy =
     good.available === false
-      ? `${culture ? `A ${culture} quay` : 'This quay'} does not deal in ${good.name.toLowerCase()}. She may land it here; she may never take more on.`
+      ? `A ${culture} quay does not deal in ${good.name.toLowerCase()}. She may land it here; she may never take more on.`
       : good.offered === false
         ? `This city does not trade ${good.name.toLowerCase()}. She may land it here; she may never take more on.`
         : null
@@ -161,10 +167,18 @@ export function TradeTray({
       <Row
         label="On the quay"
         value={<Figure value={formatTuns(good.stock)} unit={`of ${formatTuns(good.stock_target)}`} />}
-        hairline={children === undefined}
+        hairline={children !== undefined || act.refusal !== null}
       />
 
       {children}
+
+      {/* The server's refusal, in the server's own sentence. The CODE goes to console.debug and
+          never to the quay (§5's Note contract, and §2 item 13: a code is for a log). */}
+      {act.refusal && (
+        <Note tone="danger" code={act.refusal.code} data-testid="trade-tray-refusal">
+          {act.refusal.sentence}
+        </Note>
+      )}
     </Tray>
   )
 }
