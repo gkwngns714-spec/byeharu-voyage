@@ -1,7 +1,7 @@
 # RESUME — where the work stands
 
 **If you are picking this project up cold: read the anchor immediately below, then
-`docs/DEV_LOG.md`'s top two entries (D34b, then D34), then `docs/OWNER_REQUESTS.md`, then
+`docs/DEV_LOG.md`'s entries for 2026-09-09, then `docs/OWNER_REQUESTS.md`, then
 `docs/WORK_PLAN.md` §4 for which slice is next. Everything under `LANDED 2026-08-24` and lower
 is older and is kept as record.** *(This pointer named D27/D26 until 2026-09-06 — eight entries
 out of date. A cold-start pointer that names the wrong entries sends the reader to the wrong
@@ -9,7 +9,116 @@ month, so it moves with the anchor.)*
 
 ---
 
-# ▼ RESUME ANCHOR — 2026-09-06 ▼
+# ▼ RESUME ANCHOR — 2026-09-09 ▼
+
+**The anchor below this one (2026-09-06) is now HISTORY.** Its central warning — *"production's
+database head is UNVERIFIED, and it is almost certainly behind"* — was resolved on 2026-09-09: the
+Supabase CLI on the 디폴리스 machine **is** authenticated and linked, and production was read,
+pushed and read back. Do not act on that warning again; act on this.
+
+Every line is labelled with how it was checked. **Anything not checked says so.**
+
+## The state of the world — VERIFIED 2026-09-09
+
+| | | how |
+|---|---|---|
+| `main` head | `352c130` | `git log origin/main -1` |
+| Chain head | **0080** `one_authority_for_a_culture_that_will_not_trade`, **73** migration files | listing `supabase/migrations/` |
+| **Production database head** | **0080 — IN STEP WITH `main`** | `supabase migration list --linked` after `supabase db push --linked`, read back from the target: `{"local":"20260818000080","remote":"20260818000080"}` |
+| Site | deployed from every merge to `main` | `deploy-pages.yml` runs on push |
+| Live URL | https://gkwngns714-spec.github.io/byeharu-voyage/ | fetched the deployed bundle and grepped it |
+| Branch protection on `main` | **`acceptance` + `build` required**; admin override ON (`enforce_admins: false`); force-push and deletion blocked | added 2026-09-09, `gh api .../branches/main/protection` |
+
+**Why only two checks are required, and do not "fix" this:** `migrations-apply-proof.yml` is
+path-filtered to `supabase/**`, `scripts/db/**` and `package.json`. A UI-only PR never produces
+`pglite-gate` or `disposable-chain`, so requiring them makes every UI PR wait forever for a check
+that will never run. This was tried and reverted within the hour. The apply-proofs still run on
+migration PRs and still gate by discipline — read them.
+
+## What landed 2026-09-09 — the UI remodel
+
+The owner's verdict on the running game was *"so many unnecessary info, old fashioned component
+structure."* An audit at 390x844 measured it: 81 explain-dots, 93 lines of fine print, 31 uppercase
+section labels, 33 bordered cards, ten type sizes, three families, and a 2008 admin-document
+structure under a brass skin. `docs/UI_DIRECTION.md` is that audit and the direction it produced; it
+**supersedes the 2026-08-20 version** and is the spec of record for any UI work.
+
+| step | what | measured result |
+|---|---|---|
+| 1 | Token layer | material deleted; one family, five type sizes, 8pt rhythm, both schemes first-class |
+| 2 | Twelve primitives | `Sheet` `Tray` `Corner` `Row` `Figure` `Tile` `Bar` `Chip` `Button` `Field`/`Stepper` `Note` `Hint` `Nav` |
+| 3 | Shell | TopBar to a 32px status strip; wordmark and telemetry dot gone |
+| 4 | PORT | first price **645px to 257px**; trade face 1,843 to 1,174px |
+| 5 | COMMAND | first price **~1,900px to 641px**; feature 3,459 to ~1,350 lines |
+| 6 | MARKET | port picker **5,566px / 238 chips to 1,246px / 10**, ordered by sailed distance |
+| 7 | FLEETS | **964px to 108px**; 14 elements shearing at 390px to **0**; the last data table gone |
+| 8 | MAP | unobstructed chart **78.0% to 85.1%**; `SendFleet` 753 lines to six files |
+| 9 | RANK, CODEX, LEDGER, PROFILE | RANK 1,236 to 844px and 36 shearing to 0; CODEX captains 6,370 to 3,314; LEDGER 393 to 165; PROFILE 986 to 578 |
+| — | one authority | PORT's and COMMAND's duplicate buy-trays folded into one `TradeTile`/`TradeTray` plus `src/live/useTrade.ts` |
+
+`INLINE_SKIN_DEBT` is **empty** and `INLINE_SKIN_TOTAL` is **0** — no file under `src/features/`
+draws its own surface any more. It was 12 when the ban was written that morning. One arbitrary size
+remains: `SignTheBook.tsx`'s 11px refusal code.
+
+## Also landed 2026-09-09
+
+- **Migration 0059's self-assert was non-deterministic and is now provably not.** It pinned one
+  weather kind and asserted that kind fired, guarding the day with a one-sided `rng >= 0.01`. But
+  `voyage.sea_mix` lays its bands out in **ordinal** order, so the unpinned tail sits in two pieces —
+  one below the pinned kind and one at the **top** of `[0,1)`, which the guard could not see. Under
+  a CALM pin, `SHOAL_WATER` occupies `[0.9999, 1.0)`. Both sites now read
+  `between 0.01 and 0.99`; margin 14x; residual failure probability **zero, not smaller**.
+  Reproduced on a hunted seed (RED before, GREEN after) and all 15 break-test mutations still bite.
+  It failed roughly 1 in 620 chain applies — including during a production `db push`.
+- **PR #5 closed** after two weeks blocked. Its defect was killed by 0076 (course endpoints moved to
+  the roadstead; `snap_nm + 25` became a flat 25) and 0079 (the canal). Measured: 1,429 real
+  client-proposed courses touching the forty harbours, judged at a flat 25nm, **zero land
+  refusals**; Panama City to Port Royal 560.9nm to 10,577.6nm. **Do not regenerate that branch** —
+  it still carries `irrawaddy-sittaung` and would re-dig the canal 0079 filled in. Its 36 historical
+  channel justifications are preserved in **issue #48**.
+
+## What is still open
+
+| | |
+|---|---|
+| **PR #47** | Six screens in one branch (MARKET, RANK, CODEX, MAP, LEDGER, PROFILE). Supersedes #43–#46. Waiting on `acceptance` with auto-merge armed. **Check whether it merged before doing anything else.** |
+| **Step 10** | Delete the now caller-free table apparatus (`Table.tsx`, `tableLayout.ts`, `scrollAffordance.ts`, `useClipped.ts`) and the deprecated primitives; fold the duplicate `verbWord` (COMMAND's `verbIcons.ts` vs MAP's `fixWord`) into one in `domain/order` beside `orderText`; assign the deferred DEV_LOG entry numbers. |
+| **MARKET into PORT fold** | Recommended by the agent that built both: with a fleet alongside, MARKET's body *is* PORT's trade face under a port field. Costs `PortTrade` a read-only mode (`TradeTile` has none, so every sell cell says "none aboard" on a distant quay). Gains one screen, one nav cell, one reader of the harbour store. **Owner's call, not taken.** |
+| **Issue #48** | Harvest 0060's channel research against today's generator. |
+
+## Procedures learned the hard way on 2026-09-09
+
+1. **A re-run is a diagnostic, never a verdict.** A proof that goes red then green on the same
+   commit is a broken proof, and the flakiness IS the finding. Re-running until green launders a
+   failure into a result.
+2. **Run everything in the FOREGROUND.** Four agents that day finished their code and then parked
+   themselves indefinitely waiting on a background build or test notification that never arrived.
+   If a build takes nine minutes, run it and wait nine minutes.
+3. **Parallel screens need ONE integration branch.** Six screens each lowering their own entries in
+   `tests/duplication.spec.ts` meant every merge invalidated the others' arithmetic — the same two
+   files conflicted six times. Merge them into one branch, resolve once, prove once. And state the
+   ledger from the **merged tree**, measured, not from whichever side of a conflict won.
+4. **Do not number DEV_LOG entries in a parallel branch.** Four agents each claimed the same
+   D-number. Write the date and title; number it at merge.
+5. **Never `git add -A` in a scratch clone.** One did, swept an unrelated embedded repository in as
+   a gitlink, and pushed it. Use explicit paths.
+6. **A name collision only appears at the merge.** FLEETS and MAP each wrote a `FleetTray` and
+   neither branch could see the other; `duplication.spec`'s same-name guard caught it in the
+   integration branch. The map's is now `VoyageTray`, which is what it always showed.
+7. **Kill your preview servers.** Sixteen abandoned `vite` processes were found running, one having
+   burned 21,060 CPU-seconds. Builds were taking 13 minutes instead of 9 because agents were
+   competing with the corpses of earlier agents.
+
+## Machine note
+
+The above was done on the **디폴리스** Windows machine. Paths quoted in agent reports under
+`C:\Users\디폴리스\` and any `.claude/worktrees/agent-*` are local to it and do not exist
+elsewhere. Everything that matters is on GitHub. On a new machine: `gh auth login`, then
+`supabase login` if `supabase projects list` fails, then `npm ci`.
+
+---
+
+# ▼ RESUME ANCHOR — 2026-09-06 (HISTORY) ▼
 
 **The anchor this replaces was written 2026-08-26 and had gone FALSE, not merely stale** — it said
 production was at `0059`, `main` was at `642063c`, and PRs **#3**, **#4** and **#5** were the open
@@ -53,7 +162,7 @@ Until that is run, treat every "LIVE" claim about 0060 and later as UNPROVEN.
 |---|---|---|
 | **#30** `0077: one authority for a gun slot` | A real bug found by playing: `ship_classes.guns` and `public.class_slots` are two authorities for one number and `cmd.do_fit` read the wrong one, so a **barca could mount no weapon at all** and a nau would have taken twelve. | Green. Supersedes **#28**, which claimed a version already taken on `main` and was closed with its reasons. |
 | **0078** `the chain does not race its own clock` | The deadlock below, fixed at its cause. Adds `docs/DEPLOY_RUNBOOK.md`. | Stacked on #29 and #30 — **merge those two first**. |
-| **#5** `[BLOCKED] 0060: forty harbours stop sailing overland` | DRAFT, blocked on purpose | **Must be REGENERATED, not merged** — 0076 rewrote `sea_reaches` and 0060 as drafted would null the two columns 0076 declares NOT NULL. |
+| **#5** `[BLOCKED] 0060: forty harbours stop sailing overland` | DRAFT, blocked on purpose | **CLOSED 2026-09-09 (see the top anchor). Was: must be regenerated, not merged** — 0076 rewrote `sea_reaches` and 0060 as drafted would null the two columns 0076 declares NOT NULL. |
 
 ## THE DICE WERE LOADED, AND THEY ARE NOT ANY MORE (0078)
 
