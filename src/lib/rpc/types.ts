@@ -830,6 +830,17 @@ export interface FleetView {
    * duplication 0017 folded on the server; the client's answer is now to READ this.
    */
   free_hold: number
+  /**
+   * WHAT THE CARGO ABOARD COST — goods CODE → the AVERAGE ducats paid per tun of that good, for
+   * every good aboard whose cost is KNOWN. `public.fleet_cargo_basis_map(fleet)` (0081), the wire
+   * shape of the one reading `public.fleet_cargo_basis`, which `cmd.do_sell` realises profit
+   * against. A good aboard that is NOT a key here came aboard without a price (everything aboard
+   * on the day 0081 landed; a parcel a probe hand-loaded), and a screen prints NOTHING for it —
+   * never zero. The unit is the average because a hold does not keep its parcels apart: a buy
+   * blends into it, a sale leaves it unchanged. Nothing on the client folds one: the price a
+   * screen prints is this, and the profit a screen prints is the server's own `profit`.
+   */
+  cargo_basis: Record<string, number>
   /** What this fleet's posted officers are actually worth, per specialty, in PERCENT — already
    *  summed within the specialty and clamped at `officer_bonus_cap_pct` by
    *  `public.fleet_officer_bonus` (0015). Nothing on the client sums `Officer.bonus_pct` itself. */

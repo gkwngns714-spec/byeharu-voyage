@@ -32,6 +32,8 @@ export {
   fleetStatusTone,
   fleetStores,
   housePortCode,
+  // WHAT SHE PAID PER TUN for a good aboard — the one reading of the served `cargo_basis` (0081).
+  paidPerTun,
   voyageEtaMs,
   hullFraction,
   shipHoldFree,

@@ -306,7 +306,7 @@ distance or invents a line of water.
 | `durability` | `durability` (+ `max_durability`) | the ratio no longer needs a class lookup |
 | `waterT`, `foodT` | `water_t`, `food_t` | |
 | `cargo: CargoLot[]` | `cargo: Record<goodCode, tuns>` | **shape change: a map, not a list.** |
-| `CargoLot.avgCost` | — | **not served.** The Fleets tab's average-cost column has no source. Purchase prices are in the ledger's `BOUGHT` events (`avg_price`), so it can be reconstructed — or dropped. |
+| `CargoLot.avgCost` | `FleetView.cargo_basis: Record<goodCode, ducatsPerTun>` | **served since 0081, on the FLEET, not the lot.** The average paid per tun of each good aboard whose cost is known (`public.fleet_cargo_basis`), blended on load and unchanged on unload; a good aboard with no key came aboard without a price and prints nothing. `cmd.do_sell` realises `profit` against it. (Before 0081 this row read "not served" and pointed at the ledger's `BOUGHT` events, which cannot be reconstructed into a hold after one sale.) |
 | — | `hold`, `cargo_tuns`, `crew_required`, `crew_max` | free space = `hold - cargo_tuns` |
 
 ### 4.10 Order queue

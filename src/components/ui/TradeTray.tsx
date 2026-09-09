@@ -6,7 +6,7 @@ import { Row } from './Row'
 import { Stepper } from './Stepper'
 import { Tray } from './Tray'
 import type { TrayDetent } from './trayDetents'
-import { formatDucats, formatInt, formatTuns } from '../../lib/format'
+import { formatDucats, formatDucatsDelta, formatInt, formatTuns, formatUnitPrice } from '../../lib/format'
 import type { MarketGood, Refusal } from '../../lib/rpc'
 import type { BuyCapacityState } from '../../lib/trade'
 
@@ -46,6 +46,16 @@ import type { BuyCapacityState } from '../../lib/trade'
 // can when that is less — and materialises it through `onChange`, so a caller never has to know
 // the rule and the "first tap on + takes the shown figure" behaviour the old stepper had is kept
 // without a second spelling.
+//
+// ── WHAT IT COST HER, AND WHAT A SALE MAKES (0081) ─────────────────────────────────────────────
+// The owner, row 74: *"when trading i would like to know how much i bought the item, and by
+// selling them i would like to see the profits of this trade."* Both arrive on `act`, SERVED:
+// `paid` is the average per tun the fleet's cargo cost (a property of the cargo, kept by the
+// server, so it survives a reload and an offline settlement), and `sale` is `cmd.do_sell`'s own
+// result for the chosen quantity, run and rolled back — proceeds, cost and profit, realised by the
+// same code the button commits. This file subtracts nothing. A good whose cost is not on record
+// (everything aboard the day 0081 landed) prints NOTHING for it — a number the game will not
+// honour is never printed, and a zero would be one.
 
 export interface TradePick {
   good: MarketGood
@@ -73,8 +83,19 @@ export function TradeTray({
   step: number
   qty: { value: number | null; onChange: (next: number) => void }
   /** The act: what pressing the ONE button does, whether it may fire yet, what the chosen quantity
-   *  costs when the caller has been served that figure, and what the server last answered. */
-  act: { send: () => void; sending: boolean; ready: boolean; total: number | null; refusal: Refusal | null }
+   *  costs when the caller has been served that figure, what the server last answered — and what
+   *  this good cost her per tun (`paid`) and what the chosen sale would realise (`sale`), both the
+   *  server's. `src/live/useTrade.ts` is the one spelling of this shape. */
+  act: {
+    send: () => void
+    sending: boolean
+    ready: boolean
+    total: number | null
+    refusal: Refusal | null
+    paid: number | null
+    sale: { total: number | null; cost: number | null; profit: number | null } | null
+    saleLoading: boolean
+  }
   onClose: () => void
   /** This port's culture, for the one sentence that names it: a good the quay will not deal in. */
   culture: string
@@ -149,6 +170,48 @@ export function TradeTray({
       ) : (
         <Row label="Aboard" value={<Figure value={formatTuns(aboard)} size="figure" />} />
       )}
+
+      {/* What this good cost her, per tun, for what is aboard — served, never remembered here.
+          Absent when nothing is aboard or its cost is not on record: nothing is printed, not 0. */}
+      {aboard > 0 && act.paid !== null && (
+        <Row label="Paid" value={<Figure value={formatUnitPrice(act.paid)} />} data-testid="trade-tray-paid">
+          <span className="block text-t-caption text-ink-faint">{`for the ${formatTuns(aboard)} aboard`}</span>
+        </Row>
+      )}
+      {intent === 'sell' && aboard > 0 && act.paid === null && (
+        <Row label="What it cost is not on record" tone="muted" data-testid="trade-tray-paid-unknown" />
+      )}
+
+      {/* THE SALE, AS THE SERVER WOULD REALISE IT for the quantity chosen: what it fetches, and the
+          profit against what she paid. Both are `cmd.do_sell`'s own figures (0081), previewed;
+          the profit is absent — not zero — when the cost is not on record. They stand ABOVE the
+          stepper, directly under Paid, so the reading runs paid → fetches → profit inside the
+          tray's half height (measured: under the stepper they sat below the fold at 390×844) and
+          the figures re-serve just above the control that moves them. */}
+      {intent === 'sell' &&
+        chosen > 0 &&
+        (act.sale !== null ? (
+          <>
+            {act.sale.total !== null && (
+              <Row label="Fetches" value={<Figure value={formatDucats(act.sale.total)} />} data-testid="trade-tray-fetches" />
+            )}
+            {act.sale.profit !== null && (
+              <Row
+                label={act.sale.profit < 0 ? 'Loss' : 'Profit'}
+                value={
+                  <Figure
+                    value={formatDucatsDelta(act.sale.profit)}
+                    size="figure"
+                    tone={act.sale.profit < 0 ? 'danger' : act.sale.profit > 0 ? 'success' : 'ink'}
+                  />
+                }
+                data-testid="trade-tray-profit"
+              />
+            )}
+          </>
+        ) : (
+          act.saleLoading && <Row label="Asking the quay what it fetches" tone="muted" />
+        ))}
 
       <div className="py-3">
         <Stepper
