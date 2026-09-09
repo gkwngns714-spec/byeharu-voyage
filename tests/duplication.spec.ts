@@ -605,15 +605,19 @@ const ARBITRARY_SIZE_TOTAL = 22
  *      is a `Field` now, which is the point of the ban: a hand-drawn surface is not merely
  *      inconsistent, it is unproved.
  *
+ *  FLEETS PAID ITS ONE ON 2026-09-09 (§7 step 7): the roster's phone block — `rounded-md border
+ *  border-edge bg-surface-2` on a `<button>` — was the fleet drawn as a hand-made card. The
+ *  fleet is a `Row` now and the file is out of the ledger; the eight-column ships table went
+ *  with it (FleetShips.tsx draws hulls as `Tile`s).
+ *
  *  COMMAND PAID ITS FIVE THE SAME DAY (§7 step 5): FleetRail, HaggleBlock, OrderComposer (×2) and
  *  OrderQueue are gone, drawn now from Sheet / Tile / Row / Note / Tray, so their entries leave the
- *  ledger too. Twelve, less three, less five: four. */
+ *  ledger too. Twelve, less three, less five, less one: three. */
 const INLINE_SKIN_DEBT: Record<string, number> = {
-  'features/fleets/FleetsScreen.tsx': 1,
   'features/map/SendFleet.tsx': 1,
   'features/market/MarketScreen.tsx': 2,
 }
-const INLINE_SKIN_TOTAL = 4
+const INLINE_SKIN_TOTAL = 3
 
 /** The ledger, read: every file under `src/features/` with more findings than it is allowed. */
 function overDebt(found: Map<string, string[]>, debt: Record<string, number>): string[] {
