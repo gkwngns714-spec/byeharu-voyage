@@ -5,6 +5,106 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-09 — D41: twelve primitives, and a tray that cannot move the grid
+
+**Step 2 of 10** of `docs/UI_DIRECTION.md` §7, and like step 1 it **changes no screen**. Step 1 put
+the tokens under the old screens without moving a box; this puts the primitives beside them. Steps
+3-9 swap each screen whole onto the twelve; step 10 deletes what is left.
+
+**The twelve, and what each one retires**
+
+| primitive | retires |
+|---|---|
+| `Sheet` / `SheetSection` | `Screen`, `PageHeader`, `Card`, `CardHeader`, `SectionLabel`, `Collapsible`, `screenLayout`, `EmptyState` |
+| `Tray` | `OverlayPanel`+`MapPanel` in the bottom slot, `Explain*`, the inline good fold, `inRowsOf`, `useTileCols`, `tileLayout` |
+| `Corner` | `OverlayPanel`, `overlayLayout`, `MapPanel`'s top slots |
+| `Row` | `StatRow`, `DetailRow`, `EntryTileLine`, `Line`, every inline `dl`, `Table/TH/TD`, `tableLayout`, `scrollAffordance`, `useClipped` |
+| `Figure` | `HeroFigure`, `inlineFigureClass`, 91 `font-mono … tabular-nums` spans |
+| `Tile` / `TileField` | `EntryTile`, `GoodTile`, the verb card, `PortPicker`'s chip-tiles, the Fleets phone block |
+| `Bar` | `Meter`, `Gauge`, the `▓▓░░` text bar, `DangerMark`, `EnduranceBar` |
+| `Chip` / `Segmented` | `buttonClasses`' three chip variants, the Market's private chip, `PortChip`, `TabRow` |
+| `Button` | `.bv-brass` and the bordered secondary |
+| `Field` / `FieldButton` / `Stepper` | `Input`, `FilterBox`, `QtyPicker`, `NumberPicker`, `PricePicker` |
+| `Note` | `Notice`, `RefusalNote`, `Badge`, every `code — sentence` |
+| `Hint` | `Explain`, `ExplainDot`, `ExplainPanel`, `explainState`, 57 `title=` attributes |
+| `Nav` | `NavBar`'s skin (the shell keeps the tab table) |
+
+Every deprecated export is still exported, each marked `@deprecated` beside the primitive that
+replaces it, so no screen changed an import.
+
+**The tray is the load-bearing one, and it keeps the owner's rule by construction**
+
+*"when pressing sail, stop folding the sail … don't restruct anything"* — said three times, built
+backwards twice. The docked tray is `position: fixed`, so opening one **cannot** move a tile. The old
+answer had to place the fold after the WHOLE row, which is why this repo computes a grid's column
+count in JavaScript in three places (`tileFieldCols`, `useTileCols`, `inRowsOf`). The new answer
+needs to know nothing, so all three die. `Tray` also ships an `inline` mode — in flow, folding under
+what it belongs to — because §7 leaves the docked-or-inline choice with the owner and the plan has
+to survive either answer. `tests/primitives.geometry.spec.ts` proves the tiles stand still in **both**.
+
+**What the measuring found**
+
+* The token scale was missing exactly one number: the tile field's minimum column. §5 spells the
+  grid as `repeat(auto-fill, minmax(160px, 1fr))` and that 160 was about to become an arbitrary
+  value inside a class string, so it is now `--spacing-tile-min`.
+* `Icon` had a `plus` and no `minus`, and §4.5 bans the text glyphs (`▾ ▓ ⚑ ✕ > −`) the steppers
+  were drawn with. A `−` character is that ban half-kept, so the glyph was drawn.
+* An `input[type=range]` is a **4px tap target** — twelve times under the 44px floor — and its track
+  and thumb are shadow pseudo-elements no utility can reach. `Stepper` lays 44px of transparent
+  input over the track it draws itself, and `.bv-range` in `src/index.css` dresses the thumb.
+* `Sheet`'s pinned header was opaque at rest, which reads as a header bar even at scrollTop 0 — the
+  exact thing §3 rule 1 deletes, reintroduced by the primitive that replaced it. Measured on the
+  gallery at 390×844; it is now opaque only while it is actually holding content back.
+* `features/port/PortYard.tsx:123` paints `border-line`. There is no `--color-line` token and there
+  never was, so that border has never rendered. Left alone — step 4 rewrites the file — and recorded
+  here so it is not "fixed" twice.
+
+**The gallery, and why it is a route**
+
+`/ui` (`src/features/gallery/GalleryScreen.tsx`), outside `RequireAuth` and outside `AppShell`. Step 2
+composes the twelve nowhere else, so without it the new set is never rendered and the first look at
+it would be halfway through step 4. It reads nothing from the store, so it renders instantly: the
+geometry spec costs seconds instead of the 78s cold chain, and it does not skip on a cloud build.
+
+**The two bans, scoped as a ledger rather than a blanket**
+
+§5 asks `tests/duplication.spec.ts` to fail on any inline `border … bg-` skin and any `text-[…px]`
+in `features/`. Both violations are still on disk — **28** arbitrary sizes in 12 files, **12** inline
+skins in 9 files — inside screens steps 4-9 rewrite whole, and a ban that failed today would have to
+be switched off. So each ban carries a **pinned per-file debt ledger**: a file not in the ledger must
+have zero (which is what holds the gallery, and every screen from the moment it migrates), a file in
+it may not exceed its pin, and the totals are pinned so the ledger cannot be padded. Both were
+break-tested — a `text-[13px]` and a `border … bg-app` added to the gallery turned both red.
+
+**One rename in a screen, and no other screen change.** `MarketScreen`'s private `Chip` became
+`SortChip`: the design system owns that name now, and `duplication.spec` refuses a screen a name a
+section owns. Nothing about it renders differently.
+
+`docs/UI_DIRECTION.md` is **replaced** by the 2026-09-09 audit-and-direction document — the one step
+1 was written from, which until now lived only in a session scratchpad. It supersedes the 2026-08-20
+version outright: that file's §2 and §4 rules 1-3 are the material this migration is deleting. Source
+comments that cite the old section numbering are stale until step 10 sweeps them.
+
+**Measured:** `tsc --noEmit` clean · `eslint` clean · `npm run build` green · full suite, local
+PGlite mode (no `.env.local`, so nothing skipped itself), **241 passed / 1 failed / 0 skipped** in
+32.8 min · `layout.spec.ts` **12/12** · `nav.geometry.spec.ts` **2/2** ·
+`primitives.geometry.spec.ts` **5/5**, with rows at 52px, 49 targets and none under 44, and tray
+detents read off the running build at **96 / 422 / 844** on an 844px glass · the gallery
+screenshotted at 390×844 in both schemes and looked at.
+
+A first run of the same tree read 235 / 7, and six of those seven were the artifact writer, not the
+game: `ENOENT … test-results\.playwright-artifacts-N\<hash>.zip` and one
+`browserContext.newPage: … has been closed`, left behind by two earlier runs of this suite that
+were killed mid-flight and collided in `test-results/`. Wiping that directory and re-running gave
+the numbers above, with the same one red. Recorded because a red that is the harness and not the
+code is exactly the kind that gets reported as a finding.
+
+The one red is **not this branch's**: `tests/db.chain.spec.ts` pins `LAST` to 0078 while the chain on
+disk ends at 0079. It is red on `origin/main` today and already repaired on PR #33. Left alone rather
+than fixed twice — the same one D40 reported.
+
+---
+
 ## 2026-09-09 — D40: the material is gone, and the game has a type scale
 
 The owner looked at the running game at 390×844 and said *"so many unnecessary info, old fashioned
