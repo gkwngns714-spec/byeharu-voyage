@@ -772,7 +772,7 @@ begin
       loop
         d := v.last_settled_day + 1;
         select h3.occurred into v_occurs from voyage.hazard_roll(v_voyage, d) h3;
-        exit when v_occurs and voyage.rng(v_voyage, d, 'kind') >= 0.01;
+        exit when v_occurs and voyage.rng(v_voyage, d, 'kind') between 0.01 and 0.99;
         v_skip := v_skip + 1;
         if v_skip > 6 or d > voyage.total_days(v_voyage) - 4 then
           raise exception '0059 self-assert FAIL: no clean day to fire % on within % skip(s) of day % of % — the arm would have been measured through a mix that was not pinned',
@@ -787,8 +787,17 @@ begin
       end if;
 
       -- PIN THE MIX to this kind alone. mix_base > 0 is a CHECK, so the others go to the smallest
-      -- weight numeric(6,4) can hold: seven times 0.0001 against 1.0000 is a tail of 0.0007, and
-      -- the day above was chosen to sit clear of it.
+      -- weight numeric(6,4) can hold: seven times 0.0001 against 1.0000 is a tail of 0.0007.
+      --
+      -- THAT TAIL IS IN TWO PIECES, NOT ONE, and the first draft of this guard got it wrong.
+      -- voyage.sea_mix lays its bands out in ORDINAL order (0055:394-400), not share order, so the
+      -- pinned kind sits wherever its own ordinal puts it: the unpinned kinds BELOW it take the
+      -- bottom of [0,1) and the unpinned kinds ABOVE it take the TOP. A one-sided `>= 0.01` sees
+      -- only the bottom piece. Under a CALM pin SHOAL_WATER's band is [0.999900, 1.000000) and
+      -- every value in it passes that guard, so the day is declared clean and then settles as
+      -- SHOAL_WATER — which is what CI run 34314743369 read back. BOTH ENDS are therefore excluded.
+      -- Neither piece can exceed 7 x 0.0001 / 1.0007 = 0.0006996, so 0.01 and 0.99 clear them by
+      -- fourteen times over and the probe's subject is chosen, not drawn.
       update public.voyage_event_kinds
          set mix_base = case when code = v_code then 1.0000 else 0.0001 end,
              mix_danger = 0, mix_raiders = 0
@@ -886,11 +895,18 @@ begin
     -- kind before the search means a skipped day settles it OUTSIDE the handler below, and
     -- E_KIND_ARM — the guard doing exactly its job — escapes as a migration failure. That is a
     -- one-in-a-hundred lottery, and it lost on the third full apply.
+    --
+    -- The guard below is the same two-sided one as the arm loop's, though only its lower end has
+    -- ever had work to do here: the day it picks is settled under the PROBE_UNARMED pin, and
+    -- PROBE_UNARMED goes in at ordinal 92 — the highest ordinal in the mix — so its band runs to
+    -- the top of [0,1) and there is no upper window to fall into. That is an accident of one
+    -- integer, not a property, and the next kind catalogued above 92 would quietly take it away.
+    -- Written two-sided, so the probe does not depend on where a future ordinal lands.
     v_skip := 0;
     loop
       d := v.last_settled_day + 1;
       select h3.occurred into v_occurs from voyage.hazard_roll(v_voyage, d) h3;
-      exit when v_occurs and voyage.rng(v_voyage, d, 'kind') >= 0.01;
+      exit when v_occurs and voyage.rng(v_voyage, d, 'kind') between 0.01 and 0.99;
       v_skip := v_skip + 1;
       if v_skip > 6 then
         raise exception '0059 self-assert FAIL: no clean day to draw an unarmed kind on';

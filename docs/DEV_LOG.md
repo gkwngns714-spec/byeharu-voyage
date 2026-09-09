@@ -5,6 +5,117 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-09 — D46: the probe’s tail had two ends, and the guard only watched one
+
+**One character of SQL, twice, inside 0059's self-assert.** CI run `34314743369` died on a
+migration nobody had touched:
+
+    0059 self-assert FAIL: day 1 of the probe settled as SHOAL_WATER with the mix pinned to CALM,
+    and the voyage stands at day 1 — the draw is not reading voyage.sea_mix
+
+A re-run of the identical commit went green, which is the shape of every entry in
+`docs/NO_SPAGHETTI.md` §4's lottery list.
+
+### THE MECHANISM, and it is a false sentence in a comment
+
+`voyage.sea_mix` lays its bands out in **`ordinal` order** (`…0055…:394-400`), not share order.
+0059's arm probe pins one kind to `mix_base = 1.0000` and the other seven to `0.0001`, and the
+comment above that pin said the resulting 0.0007 tail sits in **one block at the bottom** — so the
+day-search guarded itself with `voyage.rng(v_voyage, d, 'kind') >= 0.01` and called the day clean.
+
+The tail is in **two pieces**. The kinds whose ordinal is BELOW the pinned kind take the bottom of
+`[0,1)`; the kinds whose ordinal is ABOVE it take the **top** — and every value up there is
+`>= 0.01`, so the guard could not see it. Measured, with the mix pinned to CALM:
+
+    [0.000000, 0.000100)  STORM
+    [0.000100, 0.999400)  CALM         <- the pinned kind
+    [0.999400, 0.999500)  PIRATES
+    [0.999500, 0.999600)  FAIR_WIND
+    [0.999600, 0.999700)  CONSORT
+    [0.999700, 0.999800)  DERELICT
+    [0.999800, 0.999900)  FOUL_WATER
+    [0.999900, 1.000000)  SHOAL_WATER  <- and the CI message, verbatim
+
+A day whose kind-draw lands in that last window passes the guard, is declared clean, and then
+settles as SHOAL_WATER. **About 1 in 620 chain applies** — six of the eight kinds sit above CALM, so
+the exposed window under the first pin is 0.0006 wide, and each of the six arms rolls again.
+
+### THE FIX
+
+Both guard sites — the arm loop and the unarmed-kind search — become two-sided:
+
+    exit when v_occurs and voyage.rng(v_voyage, d, 'kind') between 0.01 and 0.99;
+
+and the comment that asserted the false premise is replaced by the true one. Neither piece of the
+tail can exceed `7 × 0.0001 / 1.0007 = 0.0006996`, so 0.01 and 0.99 clear it by **fourteen times
+over**: the residual failure probability is zero, not merely smaller. The alternative — pin first,
+then let the draw pick the day — was tried and **rejected**, because it changes what a skipped day
+settles under and trades a provable zero for an unaudited ~1e-6.
+
+The second site was sound before this change, but **only by the luck of one integer**:
+`PROBE_UNARMED` goes in at ordinal 92, the highest in the mix, so its band runs to the top of
+`[0,1)` and there is no upper window to fall into. The next kind catalogued above 92 would have
+taken that away silently. It is written two-sided anyway, and the comment says why.
+
+### IT IS AN IN-PLACE EDIT OF 0059, and that is the sanctioned case
+
+A later migration cannot change what 0059 executes when the chain replays from 0001, so a new file
+would buy nothing. `docs/DEPLOY_RUNBOOK.md:153` permits exactly this — *"never edit a migration that
+is already applied to production, except for the assert-only case"*, precedent 0012. Only the
+`do $$ … $$` block moved: every deployed object, every sliced body, every dropped column, every
+comment on a shipped object and every grant is byte-identical, so file-versus-production divergence
+stays zero. Production re-runs nothing; 0059 is recorded in `schema_migrations`.
+
+**What it does cost: every local-mode browser world.** `fingerprintChain` (`src/lib/db/chain.ts`)
+hashes each migration's full text, so one character moves the fingerprint, the pre-built world image
+regenerates at build, and every browser save in local mode is demolished and rebuilt from 0001.
+Measured: `1ff5936c957e04c8-73-8128b4` → `c57b72e1523e4b93-73-812e36`, so `dist/db/world-*.tar.gz`
+is a new file and no client can find the old one. **Production data is untouched** — the hosted
+project reads its own Postgres and never boots from an image.
+
+### PROVEN, on the failing seed rather than by argument
+
+* **The reproduction, rebuilt.** `voyage.rng` is `md5(voyage:day:stream:world_secret)`, and
+  `world_secret` is generated on the target — so the hunt has to run against the database.
+  Brute-forced a v4 UUID whose day-1 `kind` draw lands in `[0.9999, 1)`, pinned it as the
+  `public.voyages.id` default for one transaction, and ran 0059 verbatim:
+  * **RED before** — seed `c3098ab5-f2c1-4298-b2e7-f9b4afca0713`, `rng = 0.999987971`, and the
+    message is the CI one character for character. A second hunted seed, `1cb82a4d…`
+    (`0.999977756`), reds identically.
+  * **GREEN after** — same seed, same database, full receipt printed.
+* **`scripts/db/breaktest-0059.mjs` with the fix in the base text: unmutated green with its whole
+  receipt, and all fifteen mutations still RED.** No guard stopped biting.
+* **Ten pinned seeds green**: one hunted in the upper tail `[0.9999, 1)`, one in the lower tail
+  `[0, 0.0007)`, and eight ordinary uniform draws.
+* `npx tsc --noEmit` clean · `npm run lint` clean · `npm run build` green.
+
+The full 40-minute browser suite was **not** run; CI applies the whole chain on the PR, which is the
+layer that catches this class in the first place.
+
+### THE NEIGHBOUR OF THE SAME CLASS — 0047 — WAS ALREADY FIXED, AND THIS LOG SAID OTHERWISE
+
+D28 below closes with *"Recorded, not fixed … whoever picks it up should start at `0047:1022`."*
+**That is stale.** 0047's probe was pinned on 2026-08-31 in commit `1a215cc` (the 0061 PR): it now
+does `update public.world_config set value = to_jsonb(0.0) where key = 'hazard_p_max'` inside its
+own rolled-back subtransaction, with the reasoning written above it at `…0047…:1249-1268`.
+
+It is also **not the same shape** as 0059's, and the distinction is worth keeping. 0059's was a
+blind *window* — a guard watching one end of a two-ended interval. 0047's was a lottery on
+**whether a hazard occurred at all**: a drawn hazard delayed the arrival past the instant
+`cmd.divert` settles to, so she was still `SAILING` at the turn and the file died on its own
+`E_DIVERT_FAILED`. Same family (a probe that lets the dice pick its subject), different defect, and
+the fix it already has is the right one for it — zero the weather, so no hazard is drawn at all.
+Nothing carried over to this PR.
+
+### AND THE MORAL D28 DREW WAS TOO KIND TO ITSELF
+
+D28 wrote, of the *previous* lottery in this same file: *"a probe that is right 99 times out of 100
+is a probe that will be wrong in CI."* The `>= 0.01` guard **was** that fix — and it was right
+**624 times out of 625**. Two orders of magnitude better, and still wrong in CI, on a run that had
+nothing to do with the change that triggered it. The rule is not "make the odds long." It is the one
+`docs/NO_SPAGHETTI.md` §4 already states: **a probe is deterministic and satisfies its own
+preconditions.** A probe with odds is a probe with a bug; the number only decides how long you wait
+for it.
 ## 2026-09-09 — D45: twelve primitives, and a tray that cannot move the grid
 
 **Step 2 of 10** of `docs/UI_DIRECTION.md` §7, and like step 1 it **changes no screen**. Step 1 put
@@ -1961,6 +2072,13 @@ still holds only armed kinds. Worth writing down because it is `docs/NO_SPAGHETT
 new costume: *a probe is deterministic and satisfies its own preconditions* — and a probe that is
 right 99 times out of 100 is a probe that will be wrong in CI.
 
+> **Corrected 2026-09-09 (D45).** The fix this paragraph is praising — the day-search's
+> `voyage.rng(…, 'kind') >= 0.01` guard — was itself a lottery, because `voyage.sea_mix` bands in
+> ORDINAL order and that guard watched only the bottom end of the pinned tail. It was right **624
+> times out of 625**, and CI run `34314743369` was the one. Both guard sites are two-sided as of
+> D45. The lesson stands; the number in it was the wrong thing to take away, because long odds are
+> not determinism.
+
 ### PROVEN
 
 * `npm run db:apply` — 53 migrations, 53 self-assert receipts, world guard green.
@@ -1993,6 +2111,13 @@ real wall-clock time against a compressed ETA — the same class of defect as th
 **Recorded, not fixed, and not attributed to 0059**: it is a pre-existing intermittent in an applied
 migration's self-assert, it will eventually redden CI's disposable-chain job on an innocent PR, and
 whoever picks it up should start at `0047:1022`.
+
+> **Corrected 2026-09-09 (D45).** It **was** fixed, five days after this was written, and the record
+> never caught up. Commit `1a215cc` (2026-08-31, the 0061 PR) zeroes `hazard_p_max` inside 0047's
+> own rolled-back subtransaction — `…0047…:1249-1268`, an assert-only edit under the same rule 0012
+> and D45 use — so no hazard is drawn on the probe's passage and her arrival cannot slip past the
+> instant `cmd.divert` settles to. `0047:1022` is where the raise lives, not the defect; there is
+> nothing left there to pick up.
 
 ### THE PRODUCTION QUESTION, asked out loud because 0057 was not
 
