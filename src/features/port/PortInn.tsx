@@ -34,6 +34,13 @@ import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../../lib/rpc'
 // pressing it, with a fleet alongside, opens the same step tray (StepQuestion.tsx) that COMMAND
 // used to open: her crew, the idle men, the count, the server's price for the day.
 //
+// THE CREW ROW STANDS OUTSIDE THE ROOM'S READ, on purpose. The room re-reads on every world read
+// (`useInn` is keyed on `readAt`), and while it re-reads it draws a waiting line instead of the
+// room. A dry run of HIRE ends in exactly such a read (`cmd.preview` refreshes the world), so a
+// crew row mounted INSIDE the room would unmount its own tray the moment the server priced it —
+// which is what the first screenshot of this face showed: the tray gone, the counts unchanged.
+// The row and its tray are mounted above the room, so a re-read never touches them.
+//
 // ── THE ONE THING THIS SCREEN MUST NOT OFFER ───────────────────────────────────────────────────
 // A refresh. Who is in the room is derived from (officer, port, day, world secret): the same quay
 // on the same day shows the same faces to everybody, for ever. A button that re-read it would be
@@ -71,6 +78,54 @@ export function PortInn({
   /** A fleet of yours lying HERE, or null — crew sign on from the quay they are standing on. */
   alongside: FleetView | null
 }) {
+  return (
+    <div data-testid="port-inn">
+      {alongside ? (
+        <CrewRow port={port} fleet={alongside} />
+      ) : (
+        <Row
+          label="Crew for hire"
+          value={<Figure value={formatInt(port.crew_pool)} unit="idle" />}
+          tone="muted"
+          data-testid="inn-crew"
+        />
+      )}
+      <Room port={port} fleet={fleet} />
+    </div>
+  )
+}
+
+/** The idle men, and the press that signs some on — the HIRE verb's one doorway. Split so the
+ *  hook never runs for a room with nobody of yours alongside. */
+function CrewRow({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
+  const [open, setOpen] = useState(false)
+  const step = useStepOrder(fleet, 'HIRE', open, () => setOpen(false))
+  return (
+    <>
+      <Row
+        label="Crew for hire"
+        value={<Figure value={formatInt(port.crew_pool)} unit="idle" />}
+        chevron
+        onClick={() => setOpen(true)}
+        data-testid="inn-crew"
+      />
+      {open && (
+        <StepQuestion
+          fleet={fleet}
+          port={port}
+          step={step}
+          onClose={() => {
+            setOpen(false)
+            step.reset()
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+/** Tonight's room — the read, the faces, and the signing tray. */
+function Room({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) {
   const { view, loading } = useInn(port.id)
   const [open, setOpen] = useState<InnGuest | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('half')
@@ -96,22 +151,11 @@ export function PortInn({
     })()
   }
 
-  if (loading && !view) return <Note tone="neutral">Seeing who is in tonight…</Note>
-  if (!view || !view.has_inn) return <Note tone="neutral">This city keeps no inn.</Note>
+  if (loading && !view) return <Note tone="neutral" className="mt-3">Seeing who is in tonight…</Note>
+  if (!view || !view.has_inn) return <Note tone="neutral" className="mt-3">This city keeps no inn.</Note>
 
   return (
-    <div data-testid="port-inn">
-      {alongside ? (
-        <CrewRow port={port} fleet={alongside} />
-      ) : (
-        <Row
-          label="Crew for hire"
-          value={<Figure value={formatInt(port.crew_pool)} unit="idle" />}
-          tone="muted"
-          data-testid="inn-crew"
-        />
-      )}
-
+    <>
       <Note tone="neutral" className="my-3">
         Tonight&apos;s room. Come back tomorrow and it is a different one.
       </Note>
@@ -182,35 +226,6 @@ export function PortInn({
             </Note>
           )}
         </Tray>
-      )}
-    </div>
-  )
-}
-
-/** The idle men, and the press that signs some on — the HIRE verb's one doorway. Split so the
- *  hook never runs for a room with nobody of yours alongside. */
-function CrewRow({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
-  const [open, setOpen] = useState(false)
-  const step = useStepOrder(fleet, 'HIRE', open, () => setOpen(false))
-  return (
-    <>
-      <Row
-        label="Crew for hire"
-        value={<Figure value={formatInt(port.crew_pool)} unit="idle" />}
-        chevron
-        onClick={() => setOpen(true)}
-        data-testid="inn-crew"
-      />
-      {open && (
-        <StepQuestion
-          fleet={fleet}
-          port={port}
-          step={step}
-          onClose={() => {
-            setOpen(false)
-            step.reset()
-          }}
-        />
       )}
     </>
   )

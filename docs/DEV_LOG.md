@@ -74,8 +74,14 @@ profile (the whole first drive, cold, 88 s wall-clock; the second boot 1.5 s):
   days · Aboard 2 water · 2 food`, stepper at 0 (`Fill the barrels`), button live; 42 controls
   open, 36 closed, 0 tiles moved.
 * PORT Inn face: `Crew for hire · 400 idle ›` (Lisbon's pool) first; press → `Sign on crew`:
-  `Crew 8 of 20 · Idle here 400`, stepper at 1, dry run `Signed on 1`, button `Hire 1` live;
-  21 controls → 27 open → 21 closed.
+  `Crew 8 of 20 · Idle here 400`, stepper at 1, dry run `Signed on 1 · It costs 20 d.`, button
+  `Hire 1` live; 21 controls → 27 open → 21 closed. **The screenshot caught what the counts did
+  not:** on the first build the tray was gone by the time the picture was taken. `cmd.preview`
+  refreshes the world; `useInn` is keyed on `readAt` and answers *waiting* while it re-reads; the
+  face drew its waiting line instead of the room; the crew row was INSIDE the room, so it and its
+  tray unmounted the moment the server priced the hire. Fixed by mounting the crew row and its tray
+  above the room's read (`PortInn.tsx` header says why). Re-driven: tray up at 0.3 s, still up
+  when priced, still up 2.5 s later with all 6 guests drawn and no waiting line; 0 page errors.
 * PORT Shipyard face (Lisbon keeps one, tier 3): `Worst hull · 100%` row; press → `Mend her
   hulls`, dry run says *nothing aboard needs repair*, button `Mend to 100%` correctly dead.
 * MARKET, reading Seville from Lisbon: a price tray with **0 `Sail here` buttons** and a
