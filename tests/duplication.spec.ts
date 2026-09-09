@@ -588,7 +588,17 @@ const ARBITRARY_SIZE_DEBT: Record<string, number> = {
 const ARBITRARY_SIZE_TOTAL = 28
 
 /** MEASURED 2026-09-09 on osn-ui-primitives. The nine skins §3 rule 4 names by file, plus the
- *  three more that a className-REGION reader finds and a grep for `border border-edge` does not. */
+ *  three more that a className-REGION reader finds and a grep for `border border-edge` does not.
+ *
+ *  PORT PAID ITS THREE ON 2026-09-09 (§7 step 4) and its two entries are gone with them, which is
+ *  what the paragraph above promises each migrated screen will do:
+ *    · `PortFaces.tsx` held two `bv-cut border border-edge bg-surface-2` cards — one in a component
+ *      no screen had mounted since row 56. The file is deleted; the Academy face it also held is
+ *      `PortAcademy.tsx`, drawn in `Tile`s.
+ *    · `PortYard.tsx` held `rounded border border-line bg-surface` on the ship-name box — and
+ *      `--color-line` has never existed in src/index.css, so that border never rendered at all. It
+ *      is a `Field` now, which is the point of the ban: a hand-drawn surface is not merely
+ *      inconsistent, it is unproved. */
 const INLINE_SKIN_DEBT: Record<string, number> = {
   'features/command/FleetRail.tsx': 1,
   'features/command/HaggleBlock.tsx': 1,
@@ -597,10 +607,8 @@ const INLINE_SKIN_DEBT: Record<string, number> = {
   'features/fleets/FleetsScreen.tsx': 1,
   'features/map/SendFleet.tsx': 1,
   'features/market/MarketScreen.tsx': 2,
-  'features/port/PortFaces.tsx': 2,
-  'features/port/PortYard.tsx': 1,
 }
-const INLINE_SKIN_TOTAL = 12
+const INLINE_SKIN_TOTAL = 9
 
 /** The ledger, read: every file under `src/features/` with more findings than it is allowed. */
 function overDebt(found: Map<string, string[]>, debt: Record<string, number>): string[] {
