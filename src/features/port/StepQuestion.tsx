@@ -106,6 +106,7 @@ export function StepQuestion({
             step={bound.step}
             unit={bound.unit}
             label={bound.label}
+            presets={presetsFor(spec.verb, Math.min(value, bound.max), bound)}
           />
         </div>
       ) : bound && bound.max <= 0 ? (
@@ -136,6 +137,35 @@ interface Bound {
   unit: string
   label: string
   empty: string
+}
+
+/**
+ * THE JUMPS THE OWNER ASKED FOR BY NAME — row 16: *"how many crew to hire, have it + 10, +100, max,
+ * make it more friendly"*, and row 29: *"what is max 12 in hire? just max is enough"*, which is why
+ * the last chip reads `Max` and not `Max 12`. The figure is already on the rail beside it.
+ *
+ * BOTH ROWS READ "DONE — verified" AND NEITHER WAS TRUE IN THE SHIPPED GAME. `Stepper` has carried
+ * a `presets` prop since it was written, `TradeTray`, `FleetStores` and the gallery all pass one,
+ * and this tray — the only place HIRE is asked — passed none. The screens were rebuilt on the
+ * twelve primitives (DEV_LOG D45-D52) and the chips did not come across. Found 2026-09-09 by
+ * reading who calls `presets`, not by looking at the screen.
+ *
+ * A JUMP IS RELATIVE AND THE CEILING IS ABSOLUTE, so `+10` is computed from where the player is
+ * now and `Max` is not. Jumps that would land at or past the end are dropped rather than shown as
+ * three chips that all mean the same thing, and `Stepper` clamps every one of them anyway.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO: row 16 also says MAX must be the smallest of berths free,
+ * the port's idle crew, and what the purse can pay. That is a SERVED ceiling — `Stepper`'s `cap`,
+ * whose own contract says it "is never recomputed here: this game has already had SEVEN answers to
+ * how much fits in this hull". No such figure is served for HIRE today, so this passes none and the
+ * server's dry run keeps refusing an over-large hire, as it does now. The served ceiling is owed.
+ */
+function presetsFor(verb: string, value: number, bound: Bound) {
+  if (verb !== 'HIRE' || bound.max <= 0) return undefined
+  const jumps = [10, 100]
+    .filter((n) => value + n < bound.max)
+    .map((n) => ({ label: `+${n}`, value: value + n }))
+  return [...jumps, { label: 'Max', value: bound.max }]
 }
 
 function boundOf(name: string, fleet: FleetView): Bound {

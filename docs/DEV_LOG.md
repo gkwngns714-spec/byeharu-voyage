@@ -112,6 +112,37 @@ now bargain row for bargain row is the one thing MARKET's quay tray still lacks.
 
 ---
 
+## 2026-09-09 — the chips owner rows 16 and 29 asked for, which the ledger said were done
+
+**Found while reviewing the slice above, by reading who calls `presets` rather than by looking at a
+screen.** `Stepper` has carried a `presets` prop since it was written, and its own comment names the
+use: *"Chips over the slider — `max`, a keep-level, a common quantity."* `TradeTray`, `FleetStores`
+and the gallery all pass one. **`StepQuestion` — the only place HIRE is ever asked — passed none.**
+
+So owner row 16 (*"how many crew to hire, have it + 10, +100, max, make it more friendly"*) and row
+29 (*"what is max 12 in hire? just max is enough"*) both read **DONE — verified** in
+`OWNER_REQUESTS.md` while the controls were absent from the running game. They were not lost by the
+slice above; they were lost in the remodel (D45–D52), which rebuilt these screens on the twelve
+primitives, and nobody noticed because the tray still worked — it just took twelve presses.
+
+**The fix is two chips and no arithmetic.** A jump is relative and the ceiling is absolute, so
+`+10` is computed from where the player stands and `Max` is not; a jump that would land at or past
+the end is dropped rather than drawn as a second chip meaning "max". `Stepper` clamps all of them.
+
+**Driven, not asserted** — Lisbon, Gaivota, crew 8 of 20: the tray shows `+10` and `Max`; pressing
+`Max` sets **12**, not 20, because twelve is the berths free, and the tray reads `Signed on 12 · It
+costs 240 d.` over a `Hire 12` button. `+10` correctly disappears at that value. Row 29's actual ask
+is honoured by construction: the chip says **Max**, and the figure lives on the rail beside it.
+
+**What this deliberately does NOT do.** Row 16 also says MAX must be the smallest of berths free,
+the port's idle crew, and what the purse can pay. That is `Stepper`'s `cap`, and its contract is
+explicit that `cap` "is never recomputed here: this game has already had SEVEN answers to how much
+fits in this hull". No such ceiling is served for HIRE, so none is passed and the server's dry run
+goes on refusing an over-large hire. **A served hire ceiling is owed** and is a migration, not a
+control.
+
+---
+
 ## 2026-09-09 — the map is a chart, two corners, and a tray
 
 **Step 8 of 10** of `docs/UI_DIRECTION.md` §7 — MAP, chrome only. The chart layer (`src/chart`) is
