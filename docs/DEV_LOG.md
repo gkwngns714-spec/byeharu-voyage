@@ -54,6 +54,72 @@ three `db.chain` specs were not run here; CI runs the full chain on the PR.
 **No shared primitive changed.** One wanted and not made: `Row` has no way to put text in the
 value slot AND give the second line the whole band; the name/where stack in the label is the
 composition the primitive's own header allows, so it stayed a caller-side choice.
+## 2026-09-09 — the market is a field, a grid, and no lecture
+
+**Step 6 of `docs/UI_DIRECTION.md` §7.** MARKET's job after `docs/OWNER_REQUESTS.md` rows 64 and 70
+is one sentence: *read prices somewhere else*. What stays is the harbour, the grid, the range and
+the trend. What went, each measured in §2 before it was cut: the control card with its `PORT
+Lisbon ▾` and `name · all ▾` buttons and the SORT/FILTER chips behind them; *"Tap a good to send it
+to Command."*; the footer `tax 3.0% · spread 2.0% · trade 20/10 · latin culture ⓘ`; the accent card
+`HOW TO READ IT / NEARBY says cheap HERE`, which explained a figure migration 0071 deleted; and the
+**238 port chips** that opened the page to 5,566 px (§2 item 8). `marketRows.ts` — the sort keys,
+the filter, the block headings and the `▓▓░░` stock glyphs — is deleted with the controls that read
+it; `buyableHere` was already `domain/market`'s, and the one spec that still imported it through
+the screen's re-export now imports the section.
+
+**The same tile as the two quays that trade.** The grid is `TradeTile`, the design system's — so a
+good cannot look different on the tab you read it on and the tab you buy it on. What a price cell
+opens depends on one fact, whether a fleet of yours is alongside the harbour being read:
+* alongside → the design system's `TradeTray` on `useTrade`, the identical act PORT and COMMAND
+  issue through (`QuayTray` in `MarketScreen.tsx` is twenty lines that give the hook a non-null
+  fleet and pass the price rows in as `children`). Reading the quay you are on is trading on it.
+* elsewhere → `PriceTray.tsx`: buy, sell, the remembered line, the range as figures, the stock as
+  figures and a bar, and **`Sail here · 284 nm`** at the bottom edge — a SAIL intent handed to
+  COMMAND exactly as PORT's anchorage rows and the map hand one. It steps nothing, prices nothing
+  and issues nothing; it is not a third trade tray. `PriceRows` (trend + range) is one component
+  that rides inside both.
+
+**The port picker is a `Field` with the nearest ten under it.** `PortField.tsx`: at rest the field
+reads the harbour's name; focus empties it and ten chips appear; a pick, Escape, or focus leaving
+the pair closes it. Which ten is `nearby.ts`'s decision — harbours only, **by sailed distance from
+where she lies** (`world.reach`, the same figures the SAIL picker and the map print), the anchor
+pinned first, unreachable-or-unread ones after by name, and typing narrows through the one
+`foldedMatch` both pickers share. The chips cancel `pointerdown` so that pressing one does not blur
+the field a beat before the click lands — on a touch screen a button takes no focus, so the field
+would have closed and the chip vanished under the finger.
+
+**Measured, 390×844, the built app, local PGlite, both schemes** (the audit's figures for the old
+screen are quoted from §2, not re-measured): idle **1,090 px** (audit: 1,261); port picker open
+**1,246 px with 10 chips** (audit: 5,566 with 238); typing `sev` **1,142 px**, one chip; a distant
+harbour (Seville, 284 nm) read with 10 tiles, a good's tray open at half — **0 tiles moved** on the
+press; no page error in either scheme. Chips from Lisbon, in order: Lisbon · Setubal · Porto ·
+Cadiz · Sanlucar de Barrameda · Seville · Tangier · Sale · Gibraltar · Ceuta. `src/features/market/`
+907 → 508 lines across four files (the screen itself 772 → 271). Both `tests/duplication.spec.ts` ledgers lose their MARKET entry
+(22 → 20 arbitrary sizes, 4 → 2 inline skins). `tests/layout.spec.ts`'s MARKET fold proof follows
+the primitive: `good-pick-tile` and the `price range` meter, where it read `good-tile` and a
+`RANGE 62–94` line. `tsc --noEmit` (app and test projects), `eslint .`, `npm run build` all exit 0;
+layout + primitives.geometry + nav.geometry + duplication + sections + format + tableLayout on
+`localhost:4227` with `test-results/` wiped first: **56 passed / 0 failed / 0 skipped** (3.0 min).
+The three `db.chain` specs were not run; nothing here reaches a migration.
+
+**What the shared components lacked, stated rather than forked.** `TradeTile` has no read-only
+or whole-tile tap: its cells are the only targets, so on a distant quay every sell cell says
+*none aboard* — true, and ten times over. A `tap="whole"` mode, or an `aboard: null` meaning
+"nobody is here to sell", is the prop this screen wanted and did not add.
+
+**Should MARKET fold into PORT's Trade face?** Built both sides, the answer is yes, and the case is
+in the code: when a fleet is alongside, MARKET's body is `PortTrade` with a port field over it, and
+the two screens read the same `harbour` store, the same market, the same tile and the same tray.
+What folding costs is exactly two things, both small: `PortTrade` must draw the tiles read-only
+with `PriceTray` when nobody is alongside (today it prints one Note and stops), and PORT's other
+faces — Store, Craft, Inn, Yard — would swing to the distant harbour with the field, where each
+already prints its "she lies elsewhere" note. What it buys: one screen and one nav cell fewer, one
+reader of the harbour store instead of two, and the end of a tab whose whole content is another
+tab's face under a search box. Recommended; not done here, because §7 step 6 says decide it with
+the owner once both look the same, and they now do.
+
+---
+
 ## 2026-09-09 — D47: two quays built the same tray, and now there is one
 
 **Steps 4 and 5 of `docs/UI_DIRECTION.md` §7 were built in parallel off the same primitives**, and

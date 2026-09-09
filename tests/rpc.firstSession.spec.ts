@@ -57,7 +57,7 @@ import {
   worldSnapshot,
 } from '../src/lib/rpc'
 import type { MarketGood } from '../src/lib/rpc'
-import { buyableHere } from '../src/features/market/marketRows'
+import { buyableHere } from '../src/domain/market'
 import { courseBetweenPorts, seaNav } from './seaCourse.fixture'
 import { installMarketFixture } from '../scripts/db/market-fixture.mjs'
 
@@ -207,7 +207,9 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   /**
    * THE BEST THING TO CARRY HOME FROM A QUAY — asked the way the GAME asks it.
    *
-   * `buyableHere` is the market screen's own predicate (src/features/market/marketRows.ts): a good
+   * `buyableHere` is the market section's one predicate (src/domain/market — it was the market
+   * screen's until PORT needed it too, and §7 step 6 deleted the screen's re-export with the rest
+   * of marketRows.ts): a good
    * is buyable when the culture allows it AND the city's roster names it, and `cmd.do_buy` refuses
    * everything else with `E_UNAVAILABLE`. This spec used to filter on `available` alone, which is
    * only the culture half — under 0061 that can pick a good the very next BUY would refuse, so the
