@@ -75,7 +75,8 @@ interface NavGroup {
   label: string
   /** The chevron, not a subject glyph. A group cell's honest graphic is "this opens" — every other
    *  icon in this table names a place, and no single place-glyph is true of all four members (a
-   *  book is not a wreath is not an account). NavBar points it up when closed, down when open. */
+   *  book is not a wreath is not an account). The `Nav` primitive points it up while the tray is
+   *  shut and down while it is standing. */
   icon: IconName
 }
 
@@ -142,27 +143,30 @@ export const NAV_CELLS: readonly NavCell[] = (() => {
 /** The landing destination. Orders are the point of the game, so the app opens on Command. */
 export const HOME_TAB = '/command'
 
-/** The nav grid classes for a cell count. STATIC literals only — Tailwind scans source text, so a
- *  computed class name (`grid-cols-${n}`) would be tree-shaken out of the stylesheet and the bar
- *  would silently collapse.
+/** The URL a destination actually has in the browser. The router is mounted on
+ *  `import.meta.env.BASE_URL` (App.tsx passes it as the basename, and vite.config.ts sets it to
+ *  `/byeharu-voyage/` so the build serves as a GitHub Pages project site), so a bare `/command`
+ *  in an `href` is a 404 waiting for the first middle-click. Spelt ONCE, here, beside the table
+ *  that owns the paths — a second copy is a second answer to "where does this tab live". */
+export function tabHref(to: string): string {
+  return `${import.meta.env.BASE_URL.replace(/\/$/, '')}${to}`
+}
+
+/** THE SCREENS THAT READ PRICES — where the status strip carries the market countdown.
  *
- *  ONE ROW AT EVERY WIDTH, which is the whole point of grouping: there is no phone column count
- *  and no `sm:` variant any more, because there is no wrap to arrange. The arithmetic that decides
- *  how many cells may exist is in "NINE DESTINATIONS, SIX CELLS" above — at 320px the narrowest
- *  screen this app claims, six cells are 53px and seven are 45.7px, and the widest label needs 46px.
+ *  §6: the top bar is "a 32px status strip: purse `Figure` on the right, the market countdown on
+ *  the left when on a trade screen, nothing else". A countdown to the next price move is a fact
+ *  about a decision you are in the middle of; on the chart, on the standings or in the cabin it is
+ *  a number with nothing to do, which is precisely what §2 counted 93 lines of.
  *
- *  A count this table does not know falls back to the widest single row it does know, so a cell
- *  count that has outgrown the bar WRAPS VISIBLY and `tests/nav.geometry.spec.ts` fails on the row
- *  count with the instruction to group — rather than silently mis-columning. */
-export function navGridClass(count: number): string {
-  const GRID: Record<number, string> = {
-    2: 'grid-cols-2',
-    3: 'grid-cols-3',
-    4: 'grid-cols-4',
-    5: 'grid-cols-5',
-    6: 'grid-cols-6',
-    7: 'grid-cols-7',
-    8: 'grid-cols-8',
-  }
-  return GRID[count] ?? 'grid-cols-8'
+ *  These three are the screens that hold a market payload (each calls `loadMarket`): Command
+ *  composes the trade, Port shows the quay's own prices, Market reads them elsewhere. Derived
+ *  from nothing — it is a JUDGEMENT about which screens are about prices, so it is written down
+ *  once rather than re-decided in the bar. */
+export const TRADE_ROUTES: readonly string[] = ['/command', '/port', '/market']
+
+/** Is this pathname one of the price screens? Takes the router's `pathname`, basename already
+ *  stripped, which is what `useLocation()` serves. */
+export function isTradeRoute(pathname: string): boolean {
+  return TRADE_ROUTES.includes(pathname)
 }
