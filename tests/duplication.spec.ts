@@ -556,12 +556,10 @@ test('snapToWater — the third snap rule — is called from exactly one file, a
 // 10 deletes the ledger with the last one. The counts below were MEASURED on this branch, not
 // remembered.
 
-/** MEASURED 2026-09-09 on osn-ui-primitives. Every entry names a screen §7 rewrites whole. */
+/** MEASURED 2026-09-09 on osn-ui-primitives, then LOWERED as each screen migrates. COMMAND paid
+ *  its four on 2026-09-09 (§7 step 5): OrderComposer, ArgPickers, CommandScreen and OrderQueue are
+ *  deleted or rewritten onto the scale, so their entries are gone and the total dropped by four. */
 const ARBITRARY_SIZE_DEBT: Record<string, number> = {
-  'features/command/ArgPickers.tsx': 2,
-  'features/command/CommandScreen.tsx': 1,
-  'features/command/OrderComposer.tsx': 1,
-  'features/command/OrderQueue.tsx': 2,
   'features/found/SignTheBook.tsx': 1,
   'features/ledger/LedgerScreen.tsx': 1,
   'features/map/DetailPanel.tsx': 4,
@@ -571,22 +569,20 @@ const ARBITRARY_SIZE_DEBT: Record<string, number> = {
   'features/map/WatersAhead.tsx': 4,
   'features/market/MarketScreen.tsx': 2,
 }
-const ARBITRARY_SIZE_TOTAL = 28
+const ARBITRARY_SIZE_TOTAL = 22
 
-/** MEASURED 2026-09-09 on osn-ui-primitives. The nine skins §3 rule 4 names by file, plus the
- *  three more that a className-REGION reader finds and a grep for `border border-edge` does not. */
+/** MEASURED 2026-09-09 on osn-ui-primitives, then LOWERED as each screen migrates. COMMAND paid its
+ *  five inline skins on 2026-09-09 (§7 step 5): FleetRail, HaggleBlock, OrderComposer (×2) and
+ *  OrderQueue are gone, drawn now from Sheet / Tile / Row / Note / Tray, so their entries leave the
+ *  ledger and the total drops by five. */
 const INLINE_SKIN_DEBT: Record<string, number> = {
-  'features/command/FleetRail.tsx': 1,
-  'features/command/HaggleBlock.tsx': 1,
-  'features/command/OrderComposer.tsx': 2,
-  'features/command/OrderQueue.tsx': 1,
   'features/fleets/FleetsScreen.tsx': 1,
   'features/map/SendFleet.tsx': 1,
   'features/market/MarketScreen.tsx': 2,
   'features/port/PortFaces.tsx': 2,
   'features/port/PortYard.tsx': 1,
 }
-const INLINE_SKIN_TOTAL = 12
+const INLINE_SKIN_TOTAL = 7
 
 /** The ledger, read: every file under `src/features/` with more findings than it is allowed. */
 function overDebt(found: Map<string, string[]>, debt: Record<string, number>): string[] {

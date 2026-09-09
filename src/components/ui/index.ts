@@ -72,6 +72,19 @@ export { Hint } from './Hint'
 export { Nav, type NavItem } from './Nav'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+// COMPOSITIONS OF THE TWELVE that two screens draw — docs/UI_DIRECTION.md §6: "TRAY: identical
+// to Command's buy tray (same component, same `issue`)". Neither quay owns them, and
+// tests/sections.spec.ts will not let one quay import the other's, so they stand here. Like the
+// trade fold they replace (tradePickers.tsx), they read nothing: the server's capacity answer
+// and the act arrive as props.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+//     TRADE TILE — a good with its two prices as its two acts, its range and its stock.
+export { TradeTile } from './TradeTile'
+//     TRADE TRAY — the quantity, the ceiling, the stock, and the ONE button at the bottom edge.
+export { TradeTray, type TradePick } from './TradeTray'
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
 // KEPT — these are not replaced by anything, and §5 says so by name
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 

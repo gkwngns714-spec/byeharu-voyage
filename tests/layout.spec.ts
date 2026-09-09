@@ -364,7 +364,11 @@ test(`COMMAND: the good picker is a field, its price cells are the trade, and a 
   )
   await page.goto('command')
   await ready(page)
-  await page.getByRole('button', { name: /^BUY/ }).first().click()
+  // CASE-INSENSITIVE since 2026-09-09 (§7 step 5): the verb tile read `BUY` in letter-spaced mono,
+  // which §4.1 deletes — no uppercase voice. The tile now reads "Buy", and this opens its good
+  // field exactly as before. The price-cell matchers below were already `/i` (they match "buy 78");
+  // only the tile opener was hard-cased to the old skin.
+  await page.getByRole('button', { name: /^buy/i }).first().click()
   await page.waitForTimeout(1200)
 
   const shape = await page.evaluate(MEASURE_FIELD, 'good-pick-tile')
