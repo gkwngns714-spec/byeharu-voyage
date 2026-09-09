@@ -10,19 +10,36 @@ import {
   Tray,
   type TrayDetent,
 } from '../../components/ui'
+import { StepQuestion } from './StepQuestion'
+import { useStepOrder } from './useStepOrder'
 import { useInn } from '../../live/useInn'
 import { useWorld } from '../../live/worldStore'
 import { cmdHireOfficer } from '../../lib/rpc'
 import { formatDucats, formatInt } from '../../lib/format'
-import type { FleetView, InnGuest, Refusal } from '../../lib/rpc'
+import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE INN — who is drinking here today (0073), as a field of faces.
+// THE INN — crew for hire, and who is drinking here today (0073), as a row and a field of faces.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The owner: *"i want a buliding called Inn, where you can hire crew, and also captains"*, and
 // *"captains should also have country of origin, and should be randomly appear in inn (not 100%,
 // S tear especially) on their country land, or related fields."*
+//
+// ── CREW FIRST (2026-09-09) ───────────────────────────────────────────────────────────────────
+// Row 60 named the Inn as where crew are hired, and 0067's own line for it reads "Hire crew, and
+// meet the captains". Until this slice the HIRE verb's only doorway was a tile on COMMAND's grid;
+// the owner: *"they should be located accordingly at different locations."* So the idle men are
+// the first row of this face — a fact about the inn a player reads even from a distant quay — and
+// pressing it, with a fleet alongside, opens the same step tray (StepQuestion.tsx) that COMMAND
+// used to open: her crew, the idle men, the count, the server's price for the day.
+//
+// THE CREW ROW STANDS OUTSIDE THE ROOM'S READ, on purpose. The room re-reads on every world read
+// (`useInn` is keyed on `readAt`), and while it re-reads it draws a waiting line instead of the
+// room. A dry run of HIRE ends in exactly such a read (`cmd.preview` refreshes the world), so a
+// crew row mounted INSIDE the room would unmount its own tray the moment the server priced it —
+// which is what the first screenshot of this face showed: the tray gone, the counts unchanged.
+// The row and its tray are mounted above the room, so a re-read never touches them.
 //
 // ── THE ONE THING THIS SCREEN MUST NOT OFFER ───────────────────────────────────────────────────
 // A refresh. Who is in the room is derived from (officer, port, day, world secret): the same quay
@@ -31,7 +48,7 @@ import type { FleetView, InnGuest, Refusal } from '../../lib/rpc'
 // the room says outright that it is today's room, in ONE line, and that is the whole of the
 // three-paragraph preamble §6 cut.
 //
-// ── HIRING IS A DIRECT CALL, NOT AN ORDER ──────────────────────────────────────────────────────
+// ── HIRING AN OFFICER IS A DIRECT CALL, NOT AN ORDER ───────────────────────────────────────────
 // `cmd.hire_officer` is not one of the twelve verbs and never has been (0015): signing somebody is
 // not something a fleet does at sea, it is something a house does standing in a room. So this
 // screen calls it and then asks the world to re-read, rather than composing a line.
@@ -50,8 +67,66 @@ function whereFrom(guest: InnGuest): string {
   return 'nowhere anyone can name'
 }
 
-export function PortInn({ portId, fleet }: { portId: string; fleet: FleetView | null }) {
-  const { view, loading } = useInn(portId)
+export function PortInn({
+  port,
+  fleet,
+  alongside,
+}: {
+  port: SnapshotPort
+  /** The fleet an officer signs with — the acting fleet, wherever she lies (`cmd.hire_officer`). */
+  fleet: FleetView | null
+  /** A fleet of yours lying HERE, or null — crew sign on from the quay they are standing on. */
+  alongside: FleetView | null
+}) {
+  return (
+    <div data-testid="port-inn">
+      {alongside ? (
+        <CrewRow port={port} fleet={alongside} />
+      ) : (
+        <Row
+          label="Crew for hire"
+          value={<Figure value={formatInt(port.crew_pool)} unit="idle" />}
+          tone="muted"
+          data-testid="inn-crew"
+        />
+      )}
+      <Room port={port} fleet={fleet} />
+    </div>
+  )
+}
+
+/** The idle men, and the press that signs some on — the HIRE verb's one doorway. Split so the
+ *  hook never runs for a room with nobody of yours alongside. */
+function CrewRow({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
+  const [open, setOpen] = useState(false)
+  const step = useStepOrder(fleet, 'HIRE', open, () => setOpen(false))
+  return (
+    <>
+      <Row
+        label="Crew for hire"
+        value={<Figure value={formatInt(port.crew_pool)} unit="idle" />}
+        chevron
+        onClick={() => setOpen(true)}
+        data-testid="inn-crew"
+      />
+      {open && (
+        <StepQuestion
+          fleet={fleet}
+          port={port}
+          step={step}
+          onClose={() => {
+            setOpen(false)
+            step.reset()
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+/** Tonight's room — the read, the faces, and the signing tray. */
+function Room({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) {
+  const { view, loading } = useInn(port.id)
   const [open, setOpen] = useState<InnGuest | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('half')
   const [signing, setSigning] = useState(false)
@@ -76,12 +151,12 @@ export function PortInn({ portId, fleet }: { portId: string; fleet: FleetView | 
     })()
   }
 
-  if (loading && !view) return <Note tone="neutral">Seeing who is in tonight…</Note>
-  if (!view || !view.has_inn) return <Note tone="neutral">This city keeps no inn.</Note>
+  if (loading && !view) return <Note tone="neutral" className="mt-3">Seeing who is in tonight…</Note>
+  if (!view || !view.has_inn) return <Note tone="neutral" className="mt-3">This city keeps no inn.</Note>
 
   return (
-    <div data-testid="port-inn">
-      <Note tone="neutral" className="mb-3">
+    <>
+      <Note tone="neutral" className="my-3">
         Tonight&apos;s room. Come back tomorrow and it is a different one.
       </Note>
 
@@ -152,6 +227,6 @@ export function PortInn({ portId, fleet }: { portId: string; fleet: FleetView | 
           )}
         </Tray>
       )}
-    </div>
+    </>
   )
 }

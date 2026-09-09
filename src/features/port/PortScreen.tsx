@@ -1,8 +1,6 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Button,
-  Figure,
   Icon,
   Note,
   Row,
@@ -10,7 +8,6 @@ import {
   Sheet,
   SheetSection,
 } from '../../components/ui'
-import { formatNm } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { MarketView, WorldSnapshot } from '../../lib/rpc'
 import { useCommandDraft } from '../../domain/order'
@@ -23,6 +20,7 @@ import { PortWarehouse } from './PortWarehouse'
 import { PortInn } from './PortInn'
 import { PortYard } from './PortYard'
 import { PortWorkstation } from './PortWorkstation'
+import { PortShipyard } from './PortShipyard'
 import { PORT_FACES, usePortView } from './portView'
 import { harbourCode, useHarbour } from '../../store/harbour'
 import { fleetPortCode } from '../../domain/fleet'
@@ -44,10 +42,14 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 //   · "nothing is on" is news about nothing (PortFair.tsx).
 // What is left is the harbour's name, who of yours is lying in it, and the faces.
 //
-// ── THIS SCREEN NEVER PRINTS AN ORDER STRING ANY MORE ──────────────────────────────────────────
-// The sea-place list used to draw `SAIL Gaivota TO CAD` on its buttons — the wire contract as UI
-// (§2 item 14). A row now says where and how far, and the hand-off carries a structured INTENT to
-// COMMAND, which is what it always was underneath.
+// ── EVERY VERB'S DOORWAY IS ON THE FACE OF THE BUILDING WHOSE ACT IT IS (2026-09-09) ──────────
+// The owner: *"Buy and sell should be in port - market. Get it? they should be located accordingly
+// at different locations - the command."* COMMAND's twelve-tile grid is gone; what it composed
+// now composes here — BUY/SELL and PROVISION on the Trade face (the quay is the chandler), STORE
+// and TAKE on Store, MAKE on Craft, BUILD on Yard, HIRE on the Inn, REPAIR at the Shipyard — and
+// SAIL on the MAP. The sea-place view's "Sailing on" rows, which handed a SAIL to COMMAND, went
+// with the composer they led to: a passage from an anchorage is ordered where every passage is,
+// by tapping the harbour on the chart.
 export function PortScreen() {
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
@@ -66,11 +68,7 @@ export function PortScreen() {
 function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
-  const reaches = useWorld((s) => s.reaches)
-  const loadReach = useWorld((s) => s.loadReach)
   const markets = useWorld((s) => s.markets)
-  const navigate = useNavigate()
-  const handOff = useCommandDraft((s) => s.handOff)
   const draftFleetId = useCommandDraft((s) => s.fleetId)
   const loadMarket = useWorld((s) => s.loadMarket)
 
@@ -97,9 +95,6 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   useEffect(() => {
     if (portId && !marketLoaded && !isSeaPlace) void loadMarket(portId)
   }, [portId, marketLoaded, isSeaPlace, loadMarket])
-  useEffect(() => {
-    if (portId) void loadReach(portId)
-  }, [portId, loadReach])
 
   const docked = port ? fleets.filter((f) => f.port === port.code) : []
   const acting = docked[0] ?? fleets.find((f) => f.id === draftFleetId) ?? fleets[0] ?? null
@@ -118,10 +113,6 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   // 0036: A SEA PLACE HAS NO SHORE, so it gets the anchorage view and none of the harbour faces.
   // The served `kind` decides — the screen never infers "no quay" from an empty market.
   if (port.kind === 'SEA_PLACE') {
-    const legs = (reaches[port.id]?.reaches ? Object.entries(reaches[port.id].reaches) : [])
-      .map(([code, nm]) => ({ port: portByCode[code] ?? null, code, nm }))
-      .filter((r) => r.port !== null && r.port.kind === 'HARBOUR')
-      .sort((a, b) => a.nm - b.nm)
     return (
       <Sheet title={port.name} data-testid="port">
         {port.approach && <Note tone="neutral">{port.approach}</Note>}
@@ -133,21 +124,6 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
               <Row key={f.id} label={f.name} value="holding station" hairline={i < docked.length - 1} />
             ))
           )}
-        </SheetSection>
-        <SheetSection heading="Sailing on">
-          {legs.map(({ port: p, code, nm }, i) => (
-            <Row
-              key={code}
-              label={p?.name ?? code}
-              value={<Figure value={formatNm(nm)} unit="nm" />}
-              chevron
-              onClick={() => {
-                handOff({ fleetId: acting?.id ?? null, verb: 'SAIL', args: { dest: code } })
-                navigate('/command')
-              }}
-              hairline={i < legs.length - 1}
-            />
-          ))}
         </SheetSection>
       </Sheet>
     )
@@ -216,14 +192,15 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
             that trades: `docked[0]`, not `acting`, because `acting` may be bound elsewhere and a
             quay deals with the hull alongside it. */}
         {shownFace.id === 'market' && (
-          <PortTrade goods={market?.goods ?? []} fleet={docked[0] ?? null} culture={port.culture} />
+          <PortTrade goods={market?.goods ?? []} fleet={docked[0] ?? null} port={port} />
         )}
         {shownFace.id === 'city' && <PortTown port={port} onOpenFace={setFace} />}
         {shownFace.id === 'warehouse' && <PortWarehouse portId={port.id} fleet={acting} />}
         {shownFace.id === 'workstation' && (
           <PortWorkstation portId={port.id} fleet={acting} tier={buildingTier(port, 'workstation')} />
         )}
-        {shownFace.id === 'inn' && <PortInn portId={port.id} fleet={acting} />}
+        {shownFace.id === 'inn' && <PortInn port={port} fleet={acting} alongside={docked[0] ?? null} />}
+        {shownFace.id === 'shipyard' && <PortShipyard port={port} fleet={docked[0] ?? null} />}
         {shownFace.id === 'building_yard' && (
           <PortYard
             portId={port.id}
