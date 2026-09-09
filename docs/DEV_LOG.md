@@ -5,6 +5,68 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-09 — the map is a chart, two corners, and a tray
+
+**Step 8 of 10** of `docs/UI_DIRECTION.md` §7 — MAP, chrome only. The chart layer (`src/chart`) is
+untouched; `src/features/map` is rewritten onto `Corner`, `Tray`, `Row`, `Figure`, `Bar`, `Chip`,
+`Button`, `Note`, `Hint` and `Icon`, and nothing else. `DetailPanel`, `FleetsPanel` and `MapPanel`
+are deleted; `OverlayPanel`, `Collapsible`, `Meter`, `Gauge`, `HeroFigure`, `RefusalNote`,
+`SectionLabel`, `Explain`, `DangerMark`, `fineClass` and `overlaySlotClass` have no caller left in
+the folder.
+
+**What the owner sees.** The fleets panel is a pill (`⛵ 1`) that opens a `Corner` list of rows.
+A tap on a harbour, a spot of open water or a fleet rises a `Tray` from the bottom edge at its
+96px peek — the name, one line (`Spain`, `Open sea`, `to Cadiz · 14s`) and, on a place, the
+`Send fleet` press. Pressing it stands the tray at half: her fleets as rows with the passage's own
+figures (`249 nm · 2.1 days`) or the server's refusal as a `Note`; press a row and the keep control
+unfolds under it (`Keep 15 days`, a bar of what she carries against it, `−` `+`, the house's presets
+as chips that SET the days); the one pinned button sends: `Send Gaivota · keep 15 days`. The minimap
+appears only once the view has left the opening frame (zoom or pan) and leaves again on ⌖.
+
+**Cut**, as §2 item 20 lists them: the caption bar (`1 min = 160 h sail · read 2s ago`), the docked
+fleet's *"Tap where she should go — a harbour, or any water."*, the `KEEP & SEND ⓘ` label with its
+paragraph, and the `None` preset chip — the days figure is the one control now, so there is nothing
+for `None` to set; a fleet under no standing order is cleared on FLEETS. Also gone with the
+primitives: `→` and `▲`/`•` as text glyphs (a word and an `Icon`), `font-mono text-[10px]` ×18.
+
+**Measured at 390×844 on the built app, dark and light, before (origin/main) and after**, with a
+throwaway driver that rasterises the chart box minus every `CHART_CHROME` box, the caption and the
+tray. Idle: **78.0% → 85.1%** of the viewport is unobstructed chart (88.6% → 96.6% of the 289,770px²
+chart area); the chrome went from four boxes (pill 112×62, zoom column 44×140, minimap 144×52,
+caption 390×32) to two (pill 81×44, zoom column). A tapped harbour: 61.0% → 80.5% (the old card was
+289×206 at the centre-right; the peek is 96px at the bottom edge). The send flow open with a fleet
+picked: 34.2% → 41.8%, and the middle of the glass is clear — the old fold ran 289×510 from y 233.
+Driven, not just built: tap the sea (`42.1°N 14.1°W · Open sea`), tap Cadiz, press Send fleet, pick
+Gaivota, press send — the corner row reads `to Cadiz · 16s` off the world's own read-back and her
+tray at half reads `To Cadiz · Sailed 60 / 249 nm · At sea 0:05 · Arrives 0:13 · Stores 15.0 days`.
+
+**The split.** `SendFleet.tsx` was 753 lines in one component with 12 selectors, 5 `useState`s and
+the async closures inline. It is `sendRules.ts` (87, pure: the destination, the standing, the
+day-rounding), `useSendFleet.ts` (258, the selectors, the dry runs, the one send path, the fixes),
+`SendFleet.tsx` (125, the tray), `SendFleetRow.tsx` (141), `KeepAndSend.tsx` (93) and
+`MapTrayTitle.tsx` (33, the 44px peek row both trays share). `MapScreen.tsx` 471 → 264, with
+`ChartMessage`, `FleetsCorner`, `FleetTray`, `fleetLine.ts` and `frame.ts` (the minimap gate) beside
+it. The folder is 2,009 → 1,418 lines; the largest component is 141. Two things found while driving:
+a sent fleet said "Under way" twice (row line and a Note — the Note is gone), and the dead-end line
+printed in the frame after the player's own send emptied the list (suppressed for that frame). A fix
+that runs in place (`Provision`) now forgets the row's verdict so the dry run re-asks, instead of
+leaving the refusal it just answered beside the button that answered it.
+
+**One fold owed, named rather than hidden.** The rebase onto main met COMMAND's new
+`verbIcons.ts`, which exports `verbWord` — the same two-line "server verb → title-case word" the
+map's fix buttons need. A screen may not import another screen and COMMAND was being rewritten the
+same day, so the map's copy is `fixWord` in `sendRules.ts` with the twin named in its comment. The
+fold is one `verbWord` in `domain/order` beside `orderText`, both screens reading it; it touches
+`features/command` and is left for the merge.
+
+**The ledger is lowered, not loosened.** `tests/duplication.spec.ts` loses all five `features/map`
+entries in `ARBITRARY_SIZE_DEBT` and the one in `INLINE_SKIN_DEBT`; with COMMAND's and PORT's
+payments on main the pins stand at 4 and 3.
+`map.sendfleet.spec.ts` and `waters.panel.spec.ts` drive the new chrome (peek height is asserted
+against `TRAY_PEEK`, the ladder is stepped from the keyboard, the corner is measured as a corner).
+
+---
+
 ## 2026-09-09 — fleets is a list, a tray, and no table at all
 
 **docs/UI_DIRECTION.md §7 step 7.** FLEETS was the screen that showed one fleet three times
