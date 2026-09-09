@@ -539,6 +539,13 @@ test('snapToWater — the third snap rule — is called from exactly one file, a
 // steps 4-9 rewrite whole. A ban that failed today would have to be turned off, and a guard that is
 // turned off is not a guard.
 //
+// STEP 3 WIDENED THE WALK TO `src/app` (the shell) rather than lowering a number, because the
+// shell had nothing to lower: the status strip, the tab rail and the rebuild note are composed
+// from the primitives and carry ZERO of either shape. §5 names the shell's three files as things
+// the primitives replace, so from this step they are held to the ban exactly like a screen is —
+// which is the ledger working the way it was meant to. The ledger below stays a `features/` list
+// because that is where the remaining debt is.
+//
 // So the ban is stated as a LEDGER OF DEBT rather than as a blanket:
 //   · a file NOT in the ledger must have ZERO. That is the half that bites immediately — every new
 //     file (features/gallery is the first) and every screen the migration touches is held to the
@@ -593,12 +600,18 @@ function overDebt(found: Map<string, string[]>, debt: Record<string, number>): s
   return over.sort()
 }
 
-const featureFiles = () => sourceFiles(path.join(SRC, 'features'))
+/** What the two bans walk: the screens, and — since step 3 — the shell that stands over them.
+ *  `rel()` names each file from `src/`, so a ledger key reads `features/map/MapScreen.tsx` and an
+ *  `app/` file has no key at all, which is the point: it is allowed none. */
+const skinnedFiles = () => [
+  ...sourceFiles(path.join(SRC, 'features')),
+  ...sourceFiles(path.join(SRC, 'app')),
+]
 
 test('no arbitrary type size in a screen — the scale is six steps and it has no holes', () => {
   const found = new Map<string, string[]>()
   let total = 0
-  for (const f of featureFiles()) {
+  for (const f of skinnedFiles()) {
     const lines = read(f).split('\n')
     const hits: string[] = []
     for (let i = 0; i < lines.length; i++) {
@@ -630,7 +643,7 @@ test('no arbitrary type size in a screen — the scale is six steps and it has n
 test('no inline border+bg skin in a screen — a surface is a primitive, and it has no border', () => {
   const found = new Map<string, string[]>()
   let total = 0
-  for (const f of featureFiles()) {
+  for (const f of skinnedFiles()) {
     const hits: string[] = []
     for (const { region, line } of classNameRegions(read(f))) {
       const toks = [...utilityTokens(region)]
