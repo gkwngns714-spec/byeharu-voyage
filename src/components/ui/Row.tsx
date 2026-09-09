@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { Icon } from './Icon'
 
 // THE ROW — 52px, and it is what a table was.
@@ -35,6 +35,13 @@ import { Icon } from './Icon'
 // Pass `onClick` and the row renders a real `<button>` (`href` renders an `<a>`), so the whole
 // 52px band is the target and a keyboard reaches it. A row that merely *looks* pressable is the
 // defect this avoids by construction.
+//
+// THE TWO MAY BE PASSED TOGETHER, and that pairing is what a single-page router needs: the row
+// stays a real `<a href>` — middle-click, long-press and assistive technology all keep working —
+// while the plain left-click is handed to `onClick`, which calls `preventDefault()` and routes.
+// (`Nav.tsx` carries the same pairing for the same reason. This app's database lives in the
+// browser; a genuine anchor navigation re-opens PGlite.) The handler is given the event because
+// there is no other way to refuse the browser's own navigation.
 
 export type RowTone = 'default' | 'accent' | 'muted'
 
@@ -70,7 +77,8 @@ export function Row({
   tone?: RowTone
   /** The 1px `edge` parting rule under the row. Off for the last row of a group. */
   hairline?: boolean
-  onClick?: () => void
+  /** May be passed WITH `href`, in which case the row stays an anchor and this answers the click. */
+  onClick?: (event: MouseEvent<HTMLElement>) => void
   href?: string
   disabled?: boolean
   className?: string
@@ -100,7 +108,7 @@ export function Row({
 
   if (href !== undefined) {
     return (
-      <a href={href} className={shell} {...rest}>
+      <a href={href} onClick={onClick} className={shell} {...rest}>
         {body}
       </a>
     )

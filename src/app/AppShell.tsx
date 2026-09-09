@@ -100,12 +100,13 @@ export function AppShell() {
           over it, so the horizon stays put the way it would from a deck. The bar and the tab rail
           paint their own opaque material on top. */}
       <div className="bv-sea flex h-[100dvh] flex-col text-ink">
-        {/* The persistent game chrome: wordmark, the live-read dot, and the purse. TopBar.tsx
-            explains why it carries exactly one figure and no back chevron. */}
+        {/* The persistent game chrome, and since step 3 it is a 32px STATUS STRIP: the purse, and
+            the market countdown while you are on a trade screen. TopBar.tsx carries what the
+            wordmark and the live-read dot were costing, and why neither is missed. */}
         <TopBar />
 
-        {/* A world that was demolished and rebuilt says so, once, above everything — see
-            RebuildNotice.tsx. It renders nothing on an ordinary boot. */}
+        {/* A world that was demolished and rebuilt says so, once, above everything — one `Note`,
+            see RebuildNotice.tsx. It renders nothing on an ordinary boot. */}
         <RebuildNotice />
 
         {/* A SIGNED-IN CAPTAIN WITH NO HOUSE GETS ONE DOOR, NOT EIGHT TABS.
