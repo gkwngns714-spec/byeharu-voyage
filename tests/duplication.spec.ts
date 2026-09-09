@@ -580,18 +580,15 @@ test('sea-grid.mjs declares NO snap rule — the third answer is retired, not me
 /** MEASURED 2026-09-09 on osn-ui-primitives, then LOWERED as each screen migrates. COMMAND paid
  *  its four on 2026-09-09 (§7 step 5): OrderComposer, ArgPickers, CommandScreen and OrderQueue are
  *  deleted or rewritten onto the scale, so their entries are gone and the total dropped by four.
- *  LEDGER paid its one the same day (§7 step 9): the `text-[15px]` report paragraph is a
- *  `text-t-label` line in a tray, so its entry is gone and the total is 21. PROFILE never had one. */
+ *
+ *  MAP PAID ITS EIGHTEEN THE SAME DAY (§7 step 8): `DetailPanel`, `FleetsPanel` and `MapPanel`
+ *  are deleted (a `Tray` and a `Corner` are what they were), and the caption bar and the coastline
+ *  note in `MapScreen` and every `text-[10px]`/`text-[11px]` in `WatersAhead` are on the scale.
+ *  Twenty-eight, less six, less eighteen: four. */
 const ARBITRARY_SIZE_DEBT: Record<string, number> = {
   'features/found/SignTheBook.tsx': 1,
-  'features/map/DetailPanel.tsx': 4,
-  'features/map/FleetsPanel.tsx': 4,
-  'features/map/MapPanel.tsx': 2,
-  'features/map/MapScreen.tsx': 4,
-  'features/map/WatersAhead.tsx': 4,
-  'features/market/MarketScreen.tsx': 2,
 }
-const ARBITRARY_SIZE_TOTAL = 21
+const ARBITRARY_SIZE_TOTAL = 1
 
 /** MEASURED 2026-09-09 on osn-ui-primitives: twelve. The nine skins §3 rule 4 names by file, plus
  *  the three more that a className-REGION reader finds and a grep for `border border-edge` does
@@ -613,12 +610,13 @@ const ARBITRARY_SIZE_TOTAL = 21
  *
  *  COMMAND PAID ITS FIVE THE SAME DAY (§7 step 5): FleetRail, HaggleBlock, OrderComposer (×2) and
  *  OrderQueue are gone, drawn now from Sheet / Tile / Row / Note / Tray, so their entries leave the
- *  ledger too. Twelve, less three, less five, less one: three. */
-const INLINE_SKIN_DEBT: Record<string, number> = {
-  'features/map/SendFleet.tsx': 1,
-  'features/market/MarketScreen.tsx': 2,
-}
-const INLINE_SKIN_TOTAL = 3
+ *  ledger too.
+ *
+ *  MAP PAID ITS ONE THE SAME DAY (§7 step 8): `SendFleet.tsx`'s fleet row was a hand-drawn
+ *  `rounded-md border … bg-app` block with an `accent` variant; it is a `Row` in a `Tray` now.
+ *  FLEETS PAID ITS ONE TOO (§7 step 7). Twelve, less three, less five, less one, less one: two. */
+const INLINE_SKIN_DEBT: Record<string, number> = {}
+const INLINE_SKIN_TOTAL = 0
 
 /** The ledger, read: every file under `src/features/` with more findings than it is allowed. */
 function overDebt(found: Map<string, string[]>, debt: Record<string, number>): string[] {

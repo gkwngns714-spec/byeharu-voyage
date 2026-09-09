@@ -5,6 +5,67 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-09 — the map is a chart, two corners, and a tray
+
+**Step 8 of 10** of `docs/UI_DIRECTION.md` §7 — MAP, chrome only. The chart layer (`src/chart`) is
+untouched; `src/features/map` is rewritten onto `Corner`, `Tray`, `Row`, `Figure`, `Bar`, `Chip`,
+`Button`, `Note`, `Hint` and `Icon`, and nothing else. `DetailPanel`, `FleetsPanel` and `MapPanel`
+are deleted; `OverlayPanel`, `Collapsible`, `Meter`, `Gauge`, `HeroFigure`, `RefusalNote`,
+`SectionLabel`, `Explain`, `DangerMark`, `fineClass` and `overlaySlotClass` have no caller left in
+the folder.
+
+**What the owner sees.** The fleets panel is a pill (`⛵ 1`) that opens a `Corner` list of rows.
+A tap on a harbour, a spot of open water or a fleet rises a `Tray` from the bottom edge at its
+96px peek — the name, one line (`Spain`, `Open sea`, `to Cadiz · 14s`) and, on a place, the
+`Send fleet` press. Pressing it stands the tray at half: her fleets as rows with the passage's own
+figures (`249 nm · 2.1 days`) or the server's refusal as a `Note`; press a row and the keep control
+unfolds under it (`Keep 15 days`, a bar of what she carries against it, `−` `+`, the house's presets
+as chips that SET the days); the one pinned button sends: `Send Gaivota · keep 15 days`. The minimap
+appears only once the view has left the opening frame (zoom or pan) and leaves again on ⌖.
+
+**Cut**, as §2 item 20 lists them: the caption bar (`1 min = 160 h sail · read 2s ago`), the docked
+fleet's *"Tap where she should go — a harbour, or any water."*, the `KEEP & SEND ⓘ` label with its
+paragraph, and the `None` preset chip — the days figure is the one control now, so there is nothing
+for `None` to set; a fleet under no standing order is cleared on FLEETS. Also gone with the
+primitives: `→` and `▲`/`•` as text glyphs (a word and an `Icon`), `font-mono text-[10px]` ×18.
+
+**Measured at 390×844 on the built app, dark and light, before (origin/main) and after**, with a
+throwaway driver that rasterises the chart box minus every `CHART_CHROME` box, the caption and the
+tray. Idle: **78.0% → 85.1%** of the viewport is unobstructed chart (88.6% → 96.6% of the 289,770px²
+chart area); the chrome went from four boxes (pill 112×62, zoom column 44×140, minimap 144×52,
+caption 390×32) to two (pill 81×44, zoom column). A tapped harbour: 61.0% → 80.5% (the old card was
+289×206 at the centre-right; the peek is 96px at the bottom edge). The send flow open with a fleet
+picked: 34.2% → 41.8%, and the middle of the glass is clear — the old fold ran 289×510 from y 233.
+Driven, not just built: tap the sea (`42.1°N 14.1°W · Open sea`), tap Cadiz, press Send fleet, pick
+Gaivota, press send — the corner row reads `to Cadiz · 16s` off the world's own read-back and her
+tray at half reads `To Cadiz · Sailed 60 / 249 nm · At sea 0:05 · Arrives 0:13 · Stores 15.0 days`.
+
+**The split.** `SendFleet.tsx` was 753 lines in one component with 12 selectors, 5 `useState`s and
+the async closures inline. It is `sendRules.ts` (87, pure: the destination, the standing, the
+day-rounding), `useSendFleet.ts` (258, the selectors, the dry runs, the one send path, the fixes),
+`SendFleet.tsx` (125, the tray), `SendFleetRow.tsx` (141), `KeepAndSend.tsx` (93) and
+`MapTrayTitle.tsx` (33, the 44px peek row both trays share). `MapScreen.tsx` 471 → 264, with
+`ChartMessage`, `FleetsCorner`, `FleetTray`, `fleetLine.ts` and `frame.ts` (the minimap gate) beside
+it. The folder is 2,009 → 1,418 lines; the largest component is 141. Two things found while driving:
+a sent fleet said "Under way" twice (row line and a Note — the Note is gone), and the dead-end line
+printed in the frame after the player's own send emptied the list (suppressed for that frame). A fix
+that runs in place (`Provision`) now forgets the row's verdict so the dry run re-asks, instead of
+leaving the refusal it just answered beside the button that answered it.
+
+**One fold owed, named rather than hidden.** The rebase onto main met COMMAND's new
+`verbIcons.ts`, which exports `verbWord` — the same two-line "server verb → title-case word" the
+map's fix buttons need. A screen may not import another screen and COMMAND was being rewritten the
+same day, so the map's copy is `fixWord` in `sendRules.ts` with the twin named in its comment. The
+fold is one `verbWord` in `domain/order` beside `orderText`, both screens reading it; it touches
+`features/command` and is left for the merge.
+
+**The ledger is lowered, not loosened.** `tests/duplication.spec.ts` loses all five `features/map`
+entries in `ARBITRARY_SIZE_DEBT` and the one in `INLINE_SKIN_DEBT`; with COMMAND's and PORT's
+payments on main the pins stand at 4 and 3.
+`map.sendfleet.spec.ts` and `waters.panel.spec.ts` drive the new chrome (peek height is asserted
+against `TRAY_PEEK`, the ladder is stepped from the keyboard, the corner is measured as a corner).
+
+---
 ## 2026-09-09 — LEDGER is rows and PROFILE is a house line, two bars and a switch
 
 **`docs/UI_DIRECTION.md` §7 step 9, the LEDGER and PROFILE halves.** Both screens are swapped
@@ -123,6 +184,150 @@ three `db.chain` specs were not run here; CI runs the full chain on the PR.
 **No shared primitive changed.** One wanted and not made: `Row` has no way to put text in the
 value slot AND give the second line the whole band; the name/where stack in the label is the
 composition the primitive's own header allows, so it stayed a caller-side choice.
+## 2026-09-09 — the market is a field, a grid, and no lecture
+
+**Step 6 of `docs/UI_DIRECTION.md` §7.** MARKET's job after `docs/OWNER_REQUESTS.md` rows 64 and 70
+is one sentence: *read prices somewhere else*. What stays is the harbour, the grid, the range and
+the trend. What went, each measured in §2 before it was cut: the control card with its `PORT
+Lisbon ▾` and `name · all ▾` buttons and the SORT/FILTER chips behind them; *"Tap a good to send it
+to Command."*; the footer `tax 3.0% · spread 2.0% · trade 20/10 · latin culture ⓘ`; the accent card
+`HOW TO READ IT / NEARBY says cheap HERE`, which explained a figure migration 0071 deleted; and the
+**238 port chips** that opened the page to 5,566 px (§2 item 8). `marketRows.ts` — the sort keys,
+the filter, the block headings and the `▓▓░░` stock glyphs — is deleted with the controls that read
+it; `buyableHere` was already `domain/market`'s, and the one spec that still imported it through
+the screen's re-export now imports the section.
+
+**The same tile as the two quays that trade.** The grid is `TradeTile`, the design system's — so a
+good cannot look different on the tab you read it on and the tab you buy it on. What a price cell
+opens depends on one fact, whether a fleet of yours is alongside the harbour being read:
+* alongside → the design system's `TradeTray` on `useTrade`, the identical act PORT and COMMAND
+  issue through (`QuayTray` in `MarketScreen.tsx` is twenty lines that give the hook a non-null
+  fleet and pass the price rows in as `children`). Reading the quay you are on is trading on it.
+* elsewhere → `PriceTray.tsx`: buy, sell, the remembered line, the range as figures, the stock as
+  figures and a bar, and **`Sail here · 284 nm`** at the bottom edge — a SAIL intent handed to
+  COMMAND exactly as PORT's anchorage rows and the map hand one. It steps nothing, prices nothing
+  and issues nothing; it is not a third trade tray. `PriceRows` (trend + range) is one component
+  that rides inside both.
+
+**The port picker is a `Field` with the nearest ten under it.** `PortField.tsx`: at rest the field
+reads the harbour's name; focus empties it and ten chips appear; a pick, Escape, or focus leaving
+the pair closes it. Which ten is `nearby.ts`'s decision — harbours only, **by sailed distance from
+where she lies** (`world.reach`, the same figures the SAIL picker and the map print), the anchor
+pinned first, unreachable-or-unread ones after by name, and typing narrows through the one
+`foldedMatch` both pickers share. The chips cancel `pointerdown` so that pressing one does not blur
+the field a beat before the click lands — on a touch screen a button takes no focus, so the field
+would have closed and the chip vanished under the finger.
+
+**Measured, 390×844, the built app, local PGlite, both schemes** (the audit's figures for the old
+screen are quoted from §2, not re-measured): idle **1,090 px** (audit: 1,261); port picker open
+**1,246 px with 10 chips** (audit: 5,566 with 238); typing `sev` **1,142 px**, one chip; a distant
+harbour (Seville, 284 nm) read with 10 tiles, a good's tray open at half — **0 tiles moved** on the
+press; no page error in either scheme. Chips from Lisbon, in order: Lisbon · Setubal · Porto ·
+Cadiz · Sanlucar de Barrameda · Seville · Tangier · Sale · Gibraltar · Ceuta. `src/features/market/`
+907 → 508 lines across four files (the screen itself 772 → 271). Both `tests/duplication.spec.ts` ledgers lose their MARKET entry
+(22 → 20 arbitrary sizes, 4 → 2 inline skins). `tests/layout.spec.ts`'s MARKET fold proof follows
+the primitive: `good-pick-tile` and the `price range` meter, where it read `good-tile` and a
+`RANGE 62–94` line. `tsc --noEmit` (app and test projects), `eslint .`, `npm run build` all exit 0;
+layout + primitives.geometry + nav.geometry + duplication + sections + format + tableLayout on
+`localhost:4227` with `test-results/` wiped first: **56 passed / 0 failed / 0 skipped** (3.0 min).
+The three `db.chain` specs were not run; nothing here reaches a migration.
+
+**What the shared components lacked, stated rather than forked.** `TradeTile` has no read-only
+or whole-tile tap: its cells are the only targets, so on a distant quay every sell cell says
+*none aboard* — true, and ten times over. A `tap="whole"` mode, or an `aboard: null` meaning
+"nobody is here to sell", is the prop this screen wanted and did not add.
+
+**Should MARKET fold into PORT's Trade face?** Built both sides, the answer is yes, and the case is
+in the code: when a fleet is alongside, MARKET's body is `PortTrade` with a port field over it, and
+the two screens read the same `harbour` store, the same market, the same tile and the same tray.
+What folding costs is exactly two things, both small: `PortTrade` must draw the tiles read-only
+with `PriceTray` when nobody is alongside (today it prints one Note and stops), and PORT's other
+faces — Store, Craft, Inn, Yard — would swing to the distant harbour with the field, where each
+already prints its "she lies elsewhere" note. What it buys: one screen and one nav cell fewer, one
+reader of the harbour store instead of two, and the end of a tab whose whole content is another
+tab's face under a search box. Recommended; not done here, because §7 step 6 says decide it with
+the owner once both look the same, and they now do.
+
+---
+
+## 2026-09-09 — RANK and CODEX stand on the twelve, and the table apparatus has no caller in either
+
+**§7 step 9 of `docs/UI_DIRECTION.md`, the two table-bearing screens.** RANK and CODEX were the
+last two callers of `Table`/`TH`/`TD`, `scrollTableClass`, `hScrollClass` and `useClipped` in
+`src/features/rank` and `src/features/compendium`. Both are rewritten whole onto `Sheet`,
+`SheetSection`, `Segmented`, `Field`, `Row`, `Figure`, `Tile`, `TileField`, `Tray`, `Note`, `Hint`,
+`Skeleton`, `Icon` and `RarityMark` — and nothing else. The apparatus itself is NOT deleted: step 10
+does that with its last caller, which after this is `features/fleets/FleetsScreen.tsx` alone (an
+import-level scan of `src/features`, not a word grep — the word `Table` still appears in a comment).
+
+### RANK — one list, you pinned
+
+Cut (§2 item 17): the 5-column table that sheared at `TRA…` with "Swipe the table for the rest."
+under it; the House card (a purse the status strip prints, fleet/ship LIMITS with a gauge captioned
+"hulls the house may still own"); the five-way Fame card; the Levels card, whose third row printed
+`Combat — Level 0` beside a sentence admitting there is no combat. Eleven ⓘ dots. What stands: the
+title with `settled just now` trailing (the server's `age_seconds`, never this browser's clock), your
+row pinned in accent with a chevron, and every other house as a `Row` — place · name · flag · fame.
+Your row opens a `Tray`: trade fame, exploration fame, ports reached, fame, one `Hint` with the
+scoring rule. The tie mark `=2` (§4.5 bans the glyph) is the word `tied` in the row's caption.
+
+One clock now. The old screen printed live `world.player()` figures beside the settled board and
+had to explain why they disagreed; everything here is the photograph, so the explanation is gone.
+The levels belong on PROFILE as bars (§6), which is that screen's slice.
+
+### CODEX — one field, one segmented, one figure a tile
+
+Cut (§2 item 16): the 90-word paragraph behind the title's dot; both sideways chip strips (17 kinds
+× 4 rarities) and their "Swipe for the rest."; `523 of 523 goods`; `SPOILS —` and `REFUSED BY —`,
+an em-dash on most of 523 goods; ship `build 40 h` / `cost 2,400 d.` (hulls no order can commission,
+`domain/fleet/statGloss.ts`) and `guns` (no combat); the captain tile's fine-print line "no rule
+reads this specialty yet — the bonus changes nothing", printed fifty-one times. `TabRow`,
+`CatalogueControls`, `ChipStrip`, `CatalogueCount`, `EntryTile`, `GoodTile`, `StatLegend`,
+`tileFieldClass` — none is imported here any more.
+
+What stands: `Segmented` Goods · Ships · Captains · Nations; one `Field` that answers to a name, a
+kind word and a rarity word alike (so "spices" and "rare" still filter, without the strips); the
+kind as a `SheetSection` heading. A good tile is mark · name · rarity · base; its tray carries kind,
+rarity, base, bulk, and ONLY when true a `Spoils` row and a `Refused at … ports` note — an absent
+fact is not a row. Ships: hold · speed · crew on the tile; hold, speed, crew, draft, hull, tier in
+the tray (draft and hull are read by rules; build, cost and guns are not). Captains: specialty and
+bonus; a specialty no rule reads is a MUTED tile with the reason as a `Note` in its tray, beside the
+wage, port, flag and blurb. Nations: rows, name and capital — the three-letter code is a filter
+word, no longer a column. `CompendiumScreen.tsx` 899 lines → 124, with the four faces as files
+(`GoodsFace`, `ShipsFace`, `CaptainsFace`, `NationsFace`, 44–135 lines; `NoAnswer` is the one empty
+row). Every leaf reads its own store fields; the widest prop list is two.
+
+### MEASURED at 390×844 on the built app, both schemes, before → after
+
+| screen | tallest scroll box | elements ending past 390px |
+|---|---|---|
+| RANK | 1,236 px → **844 px** (fits the glass) | 36 → **0** |
+| CODEX goods | 39,365 px → **32,930 px** | 14 → **0** |
+| CODEX ships | 873 px → 844 px | 0 → 0 |
+| CODEX captains | 6,370 px → **3,314 px** | 2 → 0 |
+| CODEX nations | 1,140 px → 1,242 px (52-px rows, 20 of them) | 0 → 0 |
+
+Goods is still tall, and honestly so: 523 tiles two abreast at the tile floor (`--spacing-tile-min`
+gives 175 × 112 px, `tests/layout.spec.ts` prints it) is 265 rows, and that is the catalogue's size,
+not chrome — the 6,435 px that went was the chrome. Shorter needs a shorter tile or three columns,
+which is the primitive's decision, not this screen's. Every tray opened in both schemes; zero page
+errors on every face.
+
+### PROVEN
+
+`tsc --noEmit` clean · `eslint .` clean · `vite build` green (1.33 s, world image cached).
+`duplication` 10/10 · `sections` 8/8 · `format` 15/15 · `tableLayout` 6/6 · `primitives.geometry`
+5/5 · `nav.geometry` 2/2 · `layout` 12/12 (523 / 3 / 51 tiles, two per row, 175 px wide; rank and
+compendium each render a nav rail and no table). 56 passed, 0 failed, 0 skipped, `localhost:4229`,
+local PGlite mode, `test-results/` wiped first. `ARBITRARY_SIZE_DEBT` and `INLINE_SKIN_DEBT` carried
+no `features/rank` or `features/compendium` entry to lower — checked, not assumed — and the two
+bans pass on the new files.
+
+### What the owner may want back
+
+The purse, fleet and ship counts (all elsewhere); turnover in ducats (it is the trade-fame figure
+÷ 100); the three level tracks (PROFILE's slice); ship guns, build hours and build cost; the
+per-good culture list as a printed line rather than a tray note; the nation code column.
 ## 2026-09-09 — D47: two quays built the same tray, and now there is one
 
 **Steps 4 and 5 of `docs/UI_DIRECTION.md` §7 were built in parallel off the same primitives**, and

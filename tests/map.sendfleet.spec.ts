@@ -5,6 +5,7 @@ import { fitToViewBox } from '../src/lib/geo'
 import { FIT_PADDING, openingBounds } from '../src/chart'
 import { sailOrigin, sailTarget } from '../src/domain/passage'
 import { REAL_PORTS, dockedFleet, portAt } from './mapWorld.fixture'
+import { TRAY_PEEK } from '../src/components/ui'
 import { ready, reachable } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -155,7 +156,7 @@ test.describe('a SAIL begins and ends in the roads, not at the quay', () => {
     // the server refuses. They now read `domain/passage`'s `sailTarget`, and every proposal is
     // made with its result.
     const SRC = path.resolve(process.cwd(), 'src', 'features')
-    for (const file of ['map/SendFleet.tsx', 'command/CommandScreen.tsx']) {
+    for (const file of ['map/useSendFleet.ts', 'command/CommandScreen.tsx']) {
       const text = readFileSync(path.join(SRC, file), 'utf8')
       const calls = [...text.matchAll(/proposeCourse\(([^)]*)\)/g)]
       expect(calls.length, `${file} proposes no course at all — has it moved?`).toBeGreaterThan(0)
@@ -171,7 +172,9 @@ test.describe('a SAIL begins and ends in the roads, not at the quay', () => {
         text,
         `${file} does not read sailTarget. A second answer to "where does this order aim" is how ` +
           `this line came to be written twice in the first place.`,
-      ).toMatch(/const target[^=]*=\s*sailTarget\(/)
+        // Either spelling of "read it": a bare call, or the memoised one the map's hook uses so
+        // its dry-run effect does not restart on every render (the target is one of its deps).
+      ).toMatch(/const target[^=]*=\s*(useMemo\(\(\) => )?sailTarget\(/)
     }
   })
 })
@@ -259,16 +262,29 @@ test.describe('the whole send, driven on a phone', () => {
     expect(name, 'Cadiz was not named on the opening frame — nothing was aimed at').not.toBeNull()
     await page.mouse.click(name!.cx, name!.cy)
 
-    const detail = page.getByTestId('map-detail-panel')
-    await expect(detail).toBeVisible()
+    // THE TRAY, NOT A CORNER CARD (docs/UI_DIRECTION.md §6, step 8): a tap on a place rises a
+    // `Tray` from the bottom edge at its PEEK — the name, one line, and the `Send fleet` press —
+    // and the chart above it is untouched. Measured against the primitive's own stop, not a
+    // number typed here: `TRAY_PEEK` is the 96px the detent ladder defines.
+    const tray = page.getByTestId('map-detail-tray')
+    await expect(tray).toBeVisible()
     await expect(
-      detail,
+      tray,
       'a tap on the word "Cadiz" did not select Cadiz — the harbour a player sees is the mark AND ' +
         'its name, and missing it silently offers a different destination',
     ).toContainText('Cadiz')
+    await expect(tray).toHaveAttribute('data-tray-detent', 'peek')
+    await expect(async () => {
+      const box = await tray.boundingBox()
+      expect(box).not.toBeNull()
+      expect(Math.round(box!.height)).toBe(TRAY_PEEK)
+      expect(Math.round(box!.y + box!.height)).toBe(PHONE.height)
+    }).toPass()
 
-    // ── DEFECT 2: the fold can now WRITE a ratio, and writing it is not sailing ────────────────
+    // ── DEFECT 2: the fold can WRITE a ratio, and writing it is not sailing ───────────────────
+    // Step one of the owner's flow: `Send fleet` stands the tray at half and unfolds her fleets.
     await page.getByTestId('map-send-fleet').click()
+    await expect(tray).toHaveAttribute('data-tray-detent', 'half')
     const row = page.getByTestId('map-send-row-head').first()
     await expect(row).toBeVisible()
     const her = (await row.innerText()).split('\n')[0]
@@ -279,7 +295,7 @@ test.describe('the whole send, driven on a phone', () => {
     const ratio = page.getByTestId('map-send-ratio')
     await expect(
       ratio,
-      'the fold offers no way to SET a ratio, so a house with no standing order must leave the ' +
+      'the tray offers no way to SET a ratio, so a house with no standing order must leave the ' +
         'map to write one — the screen-hop OWNER_REQUESTS row 45 exists to delete',
     ).toBeVisible()
 
@@ -302,14 +318,18 @@ test.describe('the whole send, driven on a phone', () => {
     // she was.
     await expect(page.getByTestId('map-send-row-head').first()).toContainText(her)
 
-    // NOTHING WAS COLLAPSED, REPLACED OR DESTROYED — the owner's standing rule. Every step of the
-    // fold that was open before the ratio moved is open after it.
-    await expect(page.getByTestId('map-send-fleet')).toHaveAttribute('aria-expanded', 'true')
+    // NOTHING WAS COLLAPSED, REPLACED OR DESTROYED — the owner's standing rule. The tray still
+    // stands at half; the list and the keep control that were open before the ratio moved are
+    // open after it.
+    await expect(tray).toHaveAttribute('data-tray-detent', 'half')
     await expect(page.getByTestId('map-send-fleets')).toBeVisible()
     await expect(keep).toBeVisible()
-    await expect(page.getByTestId('map-send-keep-none')).toBeVisible()
-    // And the one control that WILL sail her is present, named, and separate.
-    await expect(page.getByTestId('map-send-ratio-send')).toBeEnabled()
+    // And the one control that WILL sail her is present, PINNED to the tray's bottom edge (never
+    // inside the scroll), separate from the steppers, and named for both halves of what it does.
+    const sendPress = page.getByTestId('map-send-ratio-send')
+    await expect(sendPress).toBeEnabled()
+    await expect(sendPress).toContainText(her)
+    await expect(sendPress).toContainText(/keep/)
 
     await page.screenshot({ path: 'map-fold-ratio-390.png' })
 
@@ -319,12 +339,11 @@ test.describe('the whole send, driven on a phone', () => {
     // label takes that spot, and the chart re-frames as she sails, so a saved coordinate or a
     // search by text both go stale. The code does not.
     const tapHarbour = async (code: string) => {
-      // DISMISS THE OPEN CARD FIRST. It is pinned bottom-right OVER the chart, so a mark that
-      // happens to lie under it takes the tap as a press on the card's own header and the card
-      // simply folds shut — which is how this assertion first failed, reading back a panel whose
-      // whole content was the word "Port". The player has the same ✕; the drive uses it.
-      const dismiss = page.getByTestId('map-detail-panel-close')
-      if ((await dismiss.count()) > 0 && (await dismiss.isVisible())) await dismiss.click()
+      // DISMISS THE TRAY FIRST. Docked over the bottom of the chart, a mark that happens to lie
+      // under it takes the tap as a press on the tray. The player has the same ✕; the drive uses
+      // it — and the tray's own close is the ONE dismiss, so there is no fold state to restore.
+      const close = tray.getByTestId('tray-close')
+      if ((await close.count()) > 0 && (await close.isVisible())) await close.click()
       const at = await chart.evaluate((svg, want: string) => {
         const mark = svg.querySelector(`g[data-port-code="${want}"] path`)
         if (!mark) return null
@@ -333,75 +352,57 @@ test.describe('the whole send, driven on a phone', () => {
       }, code)
       if (!at) return false
       await page.mouse.click(at.cx, at.cy)
-      // And if an earlier tap DID fold it, open it again — a folded card is not a missing card,
-      // and asserting against its header would be asserting against chrome.
-      const unfold = page.getByTestId('map-detail-panel-fold-toggle')
-      if ((await unfold.count()) > 0 && (await unfold.getAttribute('aria-expanded')) === 'false') {
-        await unfold.click()
-      }
       return true
     }
 
-    const fleetsPanel = page.getByTestId('map-fleets-panel')
-    // At 390 the panel starts FOLDED by design (FleetsPanel's defect-3 note); open it if it is.
-    const fold = page.getByTestId('map-fleets-panel-fold-toggle')
-    if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) === 'false') {
-      await fold.click()
-    }
-    const herRow = fleetsPanel.locator('li button').first()
+    // THE FLEETS CORNER — a pill at rest, and a list when pressed. It is glass over the top-left
+    // of the chart while open, so the drive folds it back before aiming at a harbour.
+    const corner = page.getByTestId('map-fleets-corner')
+    const pill = corner.locator('button[aria-expanded]')
+    await expect(pill).toHaveAttribute('aria-expanded', 'false')
+    await pill.click()
+    const herRow = page.getByTestId('map-fleet-row').first()
     await expect(herRow).toBeVisible()
+    await pill.click()
+    await expect(page.getByTestId('map-fleet-row')).toHaveCount(0)
 
     // ── DEFECT 5: THE ACT ITSELF HAD NEVER BEEN PROVEN ────────────────────────────────────────
     // Everything above this line, in every version of this file, stopped one press short: the
     // suite asserted that the fold OPENS, that the ratio MOVES, and that nothing sailed. Not once
     // did it assert that pressing send makes a voyage. That gap is why OWNER_REQUESTS row 49 could
     // stand for three days against a green suite. It fires now, and the WORLD is asked, twice.
-    // The armed-not-fired readings above are complete before this line, so firing here takes
-    // nothing away from them — it adds the half that was missing.
-    await page.getByTestId('map-send-ratio-send').click()
+    await sendPress.click()
 
-    // Reading 1: her row in the fold flips out of `pressable`, which happens only because the WORLD
+    // Reading 1: her row in the tray flips out of `pressable`, which happens only because the WORLD
     // now says she has a voyage — the store is re-read from the server, never patched here.
     await expect(page.getByTestId('map-send-row-note').first()).toContainText('Under way', {
       timeout: 60_000,
     })
-    // Reading 2, independent of the fold entirely: the corner panel derives her line from the world
-    // payload, and a fleet at sea reads "→ <destination> · <clock>".
-    await expect(herRow).toContainText('→ Cadiz', { timeout: 60_000 })
+    // Reading 2, independent of the tray entirely: the corner derives her line from the world
+    // payload, and a fleet at sea reads "to <destination> · <clock>".
+    await pill.click()
+    await expect(page.getByTestId('map-fleet-row').first()).toContainText('to Cadiz', { timeout: 60_000 })
+    await pill.click()
 
     // ── DEFECT 4: "i can't send a fleet in map" — the dead end, OWNER_REQUESTS row 49 ──────────
     // Reported live on production while playing, never reproduced by a test, and reproduced in ten
     // seconds by driving the real game: tap a harbour where none of your fleets can be sent, press
-    // **Send fleet**, and the fold opens onto a list in which NOTHING is pressable. Every row is a
-    // note. A house with one fleet has pressed SEND and found no send. Each row was individually
-    // honest and the fold as a whole was a dead end — which is the difference between a rule and a
-    // screen.
-    //
-    // On production it was the harbour her fleet was LYING in: her marker and that harbour's name
-    // are printed on top of each other. **That exact tap is not reachable at 390.** The label
-    // engine drops the harbour's name in favour of the fleet's, and the surface's nearest-wins hit
-    // test then hands a tap on that spot to the FLEET, whose card carries no send control at all —
-    // a second face of the same complaint, and the one DetailPanel's `SendHint` already answers.
-    // So the state is reached the other way the fold reaches it, through the fleet she is BOUND
-    // for, which the press above just made true and which lands on the identical branch.
+    // **Send fleet**, and the list opens with NOTHING pressable in it. A house with one fleet has
+    // pressed SEND and found no send. The state is reached through the harbour she is BOUND for,
+    // which the press above just made true and which lands on the identical branch.
     expect(await tapHarbour('CAD'), "Cadiz's mark is not on the glass").toBe(true)
-    await expect(detail).toContainText('Cadiz')
+    await expect(tray).toContainText('Cadiz')
     await page.getByTestId('map-send-fleet').click()
 
-    // THE FIX, MEASURED. Before it, `map-send-nowhere` did not exist and this fold held one row
-    // whose whole content was a note. The player had pressed the one control the screen offered
-    // and the screen had answered with nothing they could act on.
+    // THE FIX, MEASURED. Before it, `map-send-nowhere` did not exist and the list held one row
+    // whose whole content was a note.
     await expect(
       page.getByTestId('map-send-nowhere'),
-      'the fold opened onto a list with nothing pressable in it and never said so — this is ' +
-        'exactly what "i cannot send a fleet in map" looks like from the other side of the glass',
+      'the list opened with nothing pressable in it and never said so — this is exactly what ' +
+        '"i cannot send a fleet in map" looks like from the other side of the glass',
     ).toBeVisible()
     // And it is the REAL dead end being named, not a line printed beside a working list.
     await expect(page.getByTestId('map-send-row-head')).toHaveCount(0)
-    // Her row says which kind of dead end it is. WHICH of the two wordings stands depends on
-    // whether this fold still holds the press that sent her — `acted` is stamped with the
-    // destination and the fleet — so both are accepted here; the assertion is that the row is a
-    // NOTE and names her state, not that it names one particular one.
     await expect(page.getByTestId('map-send-row-note').first()).toHaveText(
       /Under way|already bound here/,
     )
