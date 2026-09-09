@@ -232,7 +232,10 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved 2026-09-09 to 0081, which makes the cost of the cargo aboard a SERVER fact: ships.cargo_basis
 // (the average paid per tun, blended on load, unchanged on unload) is written by the one mover pair,
 // served on world.fleets(), and cmd.do_sell realises profit against it at the moment of sale.
-const LAST = '20260818000081_the_hold_knows_what_it_cost.sql'
+// Moved 2026-09-10 to 0082, which opens the books for what was already aboard when 0081 landed: the
+// ledger is replayed per (house, fleet, good) with 0081's one blend, and a basis is written only where
+// the replay provably agrees with the hold — everything else is refused, with its reason, and stays unknown.
+const LAST = '20260818000082_the_books_are_opened_for_what_is_already_aboard.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
