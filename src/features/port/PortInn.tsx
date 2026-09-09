@@ -1,5 +1,15 @@
 import { useState } from 'react'
-import { Button, DetailRow, RefusalNote, SectionLabel, fineClass } from '../../components/ui'
+import {
+  Button,
+  Figure,
+  Icon,
+  Note,
+  Row,
+  Tile,
+  TileField,
+  Tray,
+  type TrayDetent,
+} from '../../components/ui'
 import { useInn } from '../../live/useInn'
 import { useWorld } from '../../live/worldStore'
 import { cmdHireOfficer } from '../../lib/rpc'
@@ -7,7 +17,7 @@ import { formatDucats, formatInt } from '../../lib/format'
 import type { FleetView, InnGuest, Refusal } from '../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE INN — who is drinking here today (0073).
+// THE INN — who is drinking here today (0073), as a field of faces.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The owner: *"i want a buliding called Inn, where you can hire crew, and also captains"*, and
@@ -17,9 +27,9 @@ import type { FleetView, InnGuest, Refusal } from '../../lib/rpc'
 // ── THE ONE THING THIS SCREEN MUST NOT OFFER ───────────────────────────────────────────────────
 // A refresh. Who is in the room is derived from (officer, port, day, world secret): the same quay
 // on the same day shows the same faces to everybody, for ever. A button that re-read it would be
-// honest — it would change nothing — but it would TEACH the player that re-reading might help, and
-// they would sit there pressing it. So the screen says outright that the room is today's, and that
-// coming back tomorrow is the only thing that changes it.
+// honest — it would change nothing — but it would TEACH the player that re-reading might help. So
+// the room says outright that it is today's room, in ONE line, and that is the whole of the
+// three-paragraph preamble §6 cut.
 //
 // ── HIRING IS A DIRECT CALL, NOT AN ORDER ──────────────────────────────────────────────────────
 // `cmd.hire_officer` is not one of the twelve verbs and never has been (0015): signing somebody is
@@ -42,21 +52,21 @@ function whereFrom(guest: InnGuest): string {
 
 export function PortInn({ portId, fleet }: { portId: string; fleet: FleetView | null }) {
   const { view, loading } = useInn(portId)
-  const [signing, setSigning] = useState<string | null>(null)
+  const [open, setOpen] = useState<InnGuest | null>(null)
+  const [detent, setDetent] = useState<TrayDetent>('half')
+  const [signing, setSigning] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
-  const [signed, setSigned] = useState<string | null>(null)
   const refresh = useWorld((s) => s.refresh)
 
   const sign = (guest: InnGuest) => {
     if (signing) return
-    setSigning(guest.code)
+    setSigning(true)
     setRefusal(null)
-    setSigned(null)
     void (async () => {
       const r = await cmdHireOfficer(guest.code, fleet?.id ?? null)
-      setSigning(null)
+      setSigning(false)
       if (r.ok) {
-        setSigned(guest.name)
+        setOpen(null)
         // Re-read the world, not the inn: signing her changes the house's books, and the room
         // itself cannot change — which is the whole design.
         await refresh()
@@ -66,63 +76,82 @@ export function PortInn({ portId, fleet }: { portId: string; fleet: FleetView | 
     })()
   }
 
-  if (loading && !view) return <p className={fineClass()}>Seeing who is in tonight…</p>
-  if (!view || !view.has_inn) return <p className={fineClass()}>This city keeps no inn.</p>
+  if (loading && !view) return <Note tone="neutral">Seeing who is in tonight…</Note>
+  if (!view || !view.has_inn) return <Note tone="neutral">This city keeps no inn.</Note>
 
   return (
-    <div className="space-y-3" data-testid="port-inn">
-      <p className={fineClass()}>
-        Who is drinking here today. The same room shows the same faces to everybody, and there is
-        nothing to refresh — come back tomorrow and it is a different room. People keep to their own
-        coast, so look for a captain near her home.
-      </p>
+    <div data-testid="port-inn">
+      <Note tone="neutral" className="mb-3">
+        Tonight&apos;s room. Come back tomorrow and it is a different one.
+      </Note>
 
       {view.present.length === 0 ? (
-        <p className="text-sm text-ink-muted">
-          Nobody worth hiring is in tonight. That is the room, not a fault — try again tomorrow, or
-          try a quay closer to the sort of officer you want.
-        </p>
+        <Row
+          label="Nobody worth hiring is in tonight. Try a quay closer to the sort of officer you want."
+          tone="muted"
+          hairline={false}
+        />
       ) : (
-        view.present.map((guest) => (
-          <div key={guest.code} className="border-t border-line pt-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <SectionLabel>{guest.name}</SectionLabel>
-              <span className={fineClass()}>{formatDucats(guest.wage)} a voyage</span>
-            </div>
-            <p className={fineClass('mt-0.5')}>{guest.blurb}</p>
-
-            <dl className="mt-1 space-y-1">
-              <DetailRow
-                label="Rates as"
-                value={`${guest.specialty.toLowerCase()} · ${SPECIALTY_DOES[guest.specialty] ?? ''} by ${formatInt(guest.bonus_pct)}%`}
-              />
-              <DetailRow label="Out of" value={whereFrom(guest)} />
-            </dl>
-
-            <div className="mt-1.5">
-              {guest.signed ? (
-                <p className={fineClass()}>Already in your service.</p>
-              ) : (
-                <Button
-                  variant="primary"
-                  onClick={() => sign(guest)}
-                  disabled={signing !== null}
-                  data-testid={`sign-${guest.code}`}
-                >
-                  {signing === guest.code ? 'Signing…' : `Sign ${guest.name.split(' ')[0]}`}
-                </Button>
-              )}
-            </div>
-          </div>
-        ))
+        <TileField>
+          {view.present.map((guest) => (
+            <Tile
+              key={guest.code}
+              mark={<Icon name="crew" size={20} />}
+              name={guest.name}
+              meta={guest.specialty.toLowerCase()}
+              state={guest.signed ? 'muted' : 'rest'}
+              tap="whole"
+              onClick={() => {
+                setRefusal(null)
+                setDetent('half')
+                setOpen(guest)
+              }}
+              figure={<Figure value={formatDucats(guest.wage)} unit="a voyage" />}
+              data-testid={`guest-${guest.code}`}
+            />
+          ))}
+        </TileField>
       )}
 
-      {signed && (
-        <p className="font-mono text-xs text-sea" data-testid="port-inn-signed">
-          signed: {signed}
-        </p>
+      {open && (
+        <Tray
+          detent={detent}
+          onDetentChange={(next) => (next === 'closed' ? setOpen(null) : setDetent(next))}
+          title={open.name}
+          data-testid="inn-tray"
+          action={
+            open.signed ? undefined : (
+              <Button
+                variant="primary"
+                className="w-full"
+                busy={signing}
+                busyLabel="Signing…"
+                onClick={() => sign(open)}
+                data-testid={`sign-${open.code}`}
+              >
+                {`Sign ${open.name.split(' ')[0]} for ${formatDucats(open.wage)}`}
+              </Button>
+            )
+          }
+        >
+          <Row
+            label="Rates as"
+            value={`${open.specialty.toLowerCase()} · ${SPECIALTY_DOES[open.specialty] ?? ''}`}
+          />
+          <Row
+            label="Worth to a fleet"
+            value={<Figure value={`+${formatInt(open.bonus_pct)}%`} tone="success" />}
+          />
+          <Row label="Out of" value={whereFrom(open)} hairline={!open.signed} />
+          {open.signed && <Row label="Already in your service." tone="muted" hairline={false} />}
+          <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
+          {refusal && (
+            <Note tone="danger" code={refusal.code}>
+              {refusal.sentence}
+            </Note>
+          )}
+        </Tray>
       )}
-      {refusal && <RefusalNote refusal={refusal} />}
     </div>
   )
 }

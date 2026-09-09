@@ -1,12 +1,23 @@
 import { useState } from 'react'
-import { Button, DetailRow, RefusalNote, SectionLabel, fineClass } from '../../components/ui'
+import {
+  Button,
+  Field,
+  Figure,
+  Icon,
+  Note,
+  Row,
+  Tile,
+  TileField,
+  Tray,
+  type TrayDetent,
+} from '../../components/ui'
 import { useBuildingYard } from '../../live/useBuildingYard'
 import { useWorld } from '../../live/worldStore'
 import { formatDucats, formatInt } from '../../lib/format'
 import type { FleetView, HullMaterial, Refusal, YardHull } from '../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE BUILDING YARD — where a hull is laid down (0072).
+// THE YARD — where a hull is laid down (0072), as a field of tiles.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The owner: *"i want another building - a 건조소 in korean, where you can create ships. Building
@@ -15,13 +26,25 @@ import type { FleetView, HullMaterial, Refusal, YardHull } from '../../lib/rpc'
 // ── THE ONE THING THIS SCREEN HAS TO MAKE OBVIOUS ──────────────────────────────────────────────
 // The materials come out of THIS CITY — the warehouse for timber, your store for fittings — and
 // never out of her hold. A player who does not understand that will carry 40 tuns of timber to the
-// yard, watch the order refuse, and conclude the game is broken. So every material line prints
-// what is ashore HERE against what she wants, and the shortfall says "ashore" in words.
+// yard, watch the order refuse, and conclude the game is broken. So every material row prints what
+// is ashore HERE against what she wants.
+//
+// ── WHERE DRAFT LIVES NOW (docs/UI_DIRECTION.md §2 item 9) ─────────────────────────────────────
+// `DRAFT 5` was a badge in the port header, on every visit, deciding nothing: you are already
+// lying in the harbour you are reading. It appears HERE, and only when it refuses something — a
+// hull that draws more than this quay takes. That is not a rule invented on this side: the sailing
+// gate refuses a destination whose `max_draft` is under the DEEPEST hull in the fleet (migration
+// 0019:436-439), and a new hull joins the fleet that ordered her, so laying one down too deep for
+// this harbour shuts the whole fleet out of it.
+//
+// ── A BORDER THAT NEVER RENDERED ───────────────────────────────────────────────────────────────
+// The name box was `rounded border border-line bg-surface`. There has never been a `--color-line`
+// token in `src/index.css` — the border was invisible from the day it was written, which is what a
+// hand-drawn skin buys you (§3 rule 4). It is a `Field` now: one recipe, one focus ring, one 44px
+// floor, and no token that has to exist for it to look right.
 //
 // ── WHAT THIS FILE DOES NOT KNOW ───────────────────────────────────────────────────────────────
-// Whether a hull can be built here. All of that is `cmd.do_build`'s and arrives answered. This
-// file owns no recipe arithmetic and no legality check; it shows what the server said and sends
-// one line through the one door.
+// Whether a hull can be built here. All of that is `cmd.do_build`'s and arrives answered.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 /** What is missing, in the server's own numbers, or null when everything is to hand. */
@@ -31,40 +54,37 @@ function shortfall(hull: YardHull): string | null {
   return short.map((m) => `${m.name} ${formatInt(m.have)}/${formatInt(m.qty)}`).join(' · ')
 }
 
-function materials(list: readonly HullMaterial[]): string {
-  return list.map((m) => `${m.name} ${formatInt(m.qty)}`).join(' · ')
-}
-
 export function PortYard({
   portId,
   fleet,
   tier,
+  maxDraft,
 }: {
   portId: string
   /** A fleet of yours lying here, or null — a new hull joins the fleet that ordered her. */
   fleet: FleetView | null
   /** This city's building-yard tier, from the port's own building row. */
   tier: number
+  /** The deepest hull this harbour takes. Printed only where it refuses one. */
+  maxDraft: number
 }) {
   const { view, loading } = useBuildingYard(portId)
-  const [naming, setNaming] = useState<string | null>(null)
+  const [open, setOpen] = useState<YardHull | null>(null)
+  const [detent, setDetent] = useState<TrayDetent>('half')
   const [name, setName] = useState('')
   const [sending, setSending] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
-  const [launched, setLaunched] = useState<string | null>(null)
   const issue = useWorld((s) => s.issue)
 
   const build = (hull: YardHull) => {
     if (!fleet || sending || name.trim().length < 3) return
     setSending(true)
     setRefusal(null)
-    setLaunched(null)
     void (async () => {
       const okay = await issue(fleet.id, `BUILD ${hull.class} ${name.trim()}`, null)
       setSending(false)
       if (okay) {
-        setLaunched(name.trim())
-        setNaming(null)
+        setOpen(null)
         setName('')
       } else {
         setRefusal(useWorld.getState().refusal)
@@ -72,86 +92,127 @@ export function PortYard({
     })()
   }
 
-  if (loading && !view) return <p className={fineClass()}>Asking the yard what it can lay down…</p>
-  if (!view) return <p className={fineClass()}>This city lays down no hulls.</p>
+  if (loading && !view) return <Note tone="neutral">Asking the yard what it can lay down…</Note>
+  if (!view) return <Note tone="neutral">This city lays down no hulls.</Note>
+
+  const short = open ? shortfall(open) : null
+  const tooDeep = open !== null && open.draft > maxDraft
+  const ready = open !== null && open.buildable && fleet !== null && short === null
 
   return (
-    <div className="space-y-3" data-testid="port-yard">
-      <p className={fineClass()}>
-        A tier {formatInt(tier)} yard. What she is built from comes out of this city — timber from
-        the warehouse here, fittings from your store here — and never out of a hold.
-      </p>
-
+    <div data-testid="port-yard">
       {!fleet && (
-        <p className="text-sm text-ink-muted">
+        <Note tone="warning" className="mb-3">
           No fleet of yours lies here, and a new hull joins the fleet that ordered her.
-        </p>
+        </Note>
       )}
 
-      {view.hulls.map((hull) => {
-        const short = shortfall(hull)
-        const ready = hull.buildable && fleet !== null && short === null
-        return (
-          <div key={hull.class} className="border-t border-line pt-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <SectionLabel>{hull.name}</SectionLabel>
-              <span className={fineClass()}>{formatDucats(hull.ducats)} for the work</span>
-            </div>
-            <p className={fineClass('mt-0.5')}>{hull.note}</p>
+      <TileField>
+        {view.hulls.map((hull) => (
+          <Tile
+            key={hull.class}
+            mark={<Icon name="ship" size={20} />}
+            name={hull.name}
+            meta={`${formatInt(hull.hold)} tuns`}
+            state={hull.buildable ? 'rest' : 'muted'}
+            tap="whole"
+            onClick={() => {
+              setRefusal(null)
+              setDetent('half')
+              setOpen(hull)
+            }}
+            figure={<Figure value={formatDucats(hull.ducats)} unit="for the work" />}
+            data-testid={`hull-${hull.class}`}
+          />
+        ))}
+      </TileField>
 
-            <dl className="mt-1 space-y-1">
-              <DetailRow
-                label="She is"
-                value={`${formatInt(hull.hold)} tuns · ${hull.speed_kn} kn · ${formatInt(hull.crew_required)} hands · draft ${formatInt(hull.draft)}`}
-              />
-              <DetailRow label="Timber" value={materials(hull.goods)} />
-              <DetailRow label="Fittings" value={materials(hull.items)} />
-            </dl>
+      {open && (
+        <Tray
+          detent={detent}
+          onDetentChange={(next) => (next === 'closed' ? setOpen(null) : setDetent(next))}
+          title={open.name}
+          data-testid="yard-tray"
+          action={
+            ready ? (
+              <Button
+                variant="primary"
+                className="w-full"
+                busy={sending}
+                busyLabel="Laying down…"
+                disabled={name.trim().length < 3}
+                onClick={() => build(open)}
+                data-testid={`lay-down-${open.class}`}
+              >
+                Lay her down
+              </Button>
+            ) : undefined
+          }
+        >
+          <Row label="Hold" value={<Figure value={formatInt(open.hold)} unit="t" />} />
+          <Row label="Speed" value={<Figure value={open.speed_kn} unit="kn" />} />
+          <Row label="Hands" value={<Figure value={formatInt(open.crew_required)} />} />
+          <Materials label="Timber" list={open.goods} />
+          <Materials label="Fittings" list={open.items} />
 
-            <div className="mt-1.5">
-              {!hull.buildable ? (
-                <p className={fineClass()}>
-                  Wants a tier {formatInt(hull.yard_tier)} yard. This one is tier {formatInt(tier)}.
-                </p>
-              ) : short !== null ? (
-                <p className={fineClass()}>Ashore here: {short}.</p>
-              ) : naming === hull.class ? (
-                // THE NAME IS THE PLAYER'S, and it is asked for before the order is sent rather
-                // than invented — a ship you did not name is not yours.
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    className="rounded border border-line bg-surface px-2 py-1 font-mono text-sm text-ink"
-                    placeholder="Name her"
-                    value={name}
-                    maxLength={24}
-                    onChange={(e) => setName(e.target.value)}
-                    data-testid="yard-name"
-                  />
-                  <Button
-                    variant="primary"
-                    onClick={() => build(hull)}
-                    disabled={sending || name.trim().length < 3}
-                    data-testid={`lay-down-${hull.class}`}
-                  >
-                    {sending ? 'Laying down…' : 'Lay her down'}
-                  </Button>
-                </div>
-              ) : ready ? (
-                <Button onClick={() => setNaming(hull.class)} data-testid={`name-${hull.class}`}>
-                  Build a {hull.name}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        )
-      })}
+          {/* THE REFUSAL DRAFT ACTUALLY MAKES, said where it is made. */}
+          {tooDeep && (
+            <Note tone="warning" data-testid="yard-draft">
+              {`She draws ${formatInt(open.draft)} and this harbour takes ${formatInt(maxDraft)}. The fleet she joins could never sail back in.`}
+            </Note>
+          )}
+          {!open.buildable && (
+            <Note tone="warning">
+              {`She wants a tier ${formatInt(open.yard_tier)} yard. This one is tier ${formatInt(tier)}.`}
+            </Note>
+          )}
+          {open.buildable && short !== null && (
+            <Note tone="warning">{`Ashore here: ${short}.`}</Note>
+          )}
 
-      {launched && (
-        <p className="font-mono text-xs text-sea" data-testid="port-yard-launched">
-          laid down: {launched}
-        </p>
+          {ready && (
+            /* THE NAME IS THE PLAYER'S, and it is asked for before the order is sent rather than
+               invented — a ship you did not name is not yours. */
+            <Field
+              icon={null}
+              value={name}
+              maxLength={24}
+              placeholder="Name her"
+              onChange={(e) => setName(e.target.value)}
+              className="mt-3"
+              aria-label="Name her"
+              data-testid="yard-name"
+            />
+          )}
+          {refusal && (
+            <Note tone="danger" code={refusal.code}>
+              {refusal.sentence}
+            </Note>
+          )}
+        </Tray>
       )}
-      {refusal && <RefusalNote refusal={refusal} />}
     </div>
+  )
+}
+
+/** One material line: what she wants, against what is ashore in this city. */
+function Materials({ label, list }: { label: string; list: readonly HullMaterial[] }) {
+  if (list.length === 0) return null
+  return (
+    <>
+      {list.map((m, i) => (
+        <Row
+          key={m.name}
+          label={i === 0 ? `${label} · ${m.name}` : m.name}
+          value={
+            <Figure
+              value={formatInt(m.qty)}
+              unit={`ashore ${formatInt(m.have)}`}
+              tone={m.have < m.qty ? 'warning' : 'ink'}
+            />
+          }
+        />
+      ))}
+    </>
   )
 }

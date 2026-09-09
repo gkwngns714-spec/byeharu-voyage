@@ -317,9 +317,9 @@ export function MarketScreen() {
               <div className="flex flex-wrap items-center gap-1.5">
                 <SectionLabel className="mb-0">Sort</SectionLabel>
                 {(['name', 'price', 'stock'] as const).map((k) => (
-                  <Chip key={k} active={sort === k} onClick={() => setSort(k)}>
+                  <SortChip key={k} active={sort === k} onClick={() => setSort(k)}>
                     {sortWord(k)}
-                  </Chip>
+                  </SortChip>
                 ))}
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
@@ -328,9 +328,9 @@ export function MarketScreen() {
                     filter. What is left is the one FACT worth narrowing by: whether this city
                     deals in the row at all, or it is only here because she is carrying it. */}
                 {(['all', 'traded'] as const).map((f) => (
-                  <Chip key={f} active={filter === f} onClick={() => setFilter(f)}>
+                  <SortChip key={f} active={filter === f} onClick={() => setFilter(f)}>
                     {f}
-                  </Chip>
+                  </SortChip>
                 ))}
               </div>
             </div>
@@ -740,11 +740,14 @@ function SkeletonTable({ note }: { note: string }) {
   )
 }
 
-/** The SORT and FILTER tokens. Same primitive as PortChip above, for the same reason: one chip
+/** The SORT and FILTER tokens. RENAMED from `Chip` in step 2 of docs/UI_DIRECTION.md §7: the
+ *  design system now owns the name (src/components/ui/Chip.tsx), and tests/duplication.spec.ts
+ *  refuses a screen a name a section owns. Nothing else about it changed; step 6 replaces it with
+ *  the primitive outright. Same primitive as PortChip above, for the same reason: one chip
  *  vocabulary per screen, and this one was reaching for `primary` — which docs/UI_DIRECTION.md §2
  *  reserves for the ONE brass action on a screen, not for four sort keys and three filters. Same
  *  `md` box, so nothing above the fold moves. */
-function Chip({
+function SortChip({
   active,
   onClick,
   children,

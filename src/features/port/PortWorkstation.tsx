@@ -1,31 +1,37 @@
 import { useState } from 'react'
-import { Button, DetailRow, RefusalNote, SectionLabel, fineClass } from '../../components/ui'
+import {
+  Button,
+  Figure,
+  Icon,
+  Note,
+  Row,
+  Tile,
+  TileField,
+  Tray,
+  type TrayDetent,
+} from '../../components/ui'
 import { useWorkstation } from '../../live/useWorkstation'
 import { useWorld } from '../../live/worldStore'
 import { formatInt } from '../../lib/format'
 import type { FleetView, Refusal, WorkstationItem } from '../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE WORKSTATION — where trade goods become a fitting (0068).
+// THE CRAFT — where trade goods become a fitting (0068), as a field of tiles.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The owner: *"a workstation where you can create ship related items - sail etc."*
 //
+// ── WHY IT IS A GRID NOW ───────────────────────────────────────────────────────────────────────
+// It was a column of full-width blocks, each with three `DetailRow`s and a sentence: 3,279px, the
+// tallest face on the screen, for eleven fittings. §6 makes the faces a `Tile` grid with one
+// figure each and the act in a tray. Two abreast, the catalogue is on one screen and the recipe —
+// which is what you read AFTER choosing what to make — is one tap down.
+//
 // ── WHAT THIS FILE DOES NOT KNOW ───────────────────────────────────────────────────────────────
-// Whether a fitting can be made here. Whether her hold carries the materials. What a suit of sails
+// Whether a fitting can be made here, whether her hold carries the materials, what a suit of sails
 // is made of. All three come down the wire from `world.workstation(port, fleet)`, because all three
-// are rules `cmd.do_make` enforces — and a screen that worked them out separately would be a second
-// implementation that disagrees with the server the first day either changes.
-//
-// So this file owns NO recipe arithmetic and NO legality check. It shows what the server said, and
-// sends one line through the one door (`cmd.issue`) when the player presses.
-//
-// ── WHY EVERY FITTING IS LISTED, INCLUDING THE ONES THIS CITY CANNOT MAKE ──────────────────────
-// Hiding them would make the catalogue look smaller than it is and leave a player wondering where
-// copper sheathing went. A fitting this city is not good enough for says so, with the tier it
-// wants — which is how a player learns that a workstation has a size at all, and starts looking for
-// a better one. That is the same rule the market face follows: show the fact, let them find the
-// answer.
+// are rules `cmd.do_make` enforces. A fitting this city is not good enough for still SHOWS, muted,
+// with the tier it wants in its tray — hiding it would make the catalogue look smaller than it is.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 /** What is missing from her hold for one of these, in the server's own numbers. */
@@ -47,102 +53,120 @@ export function PortWorkstation({
   tier: number
 }) {
   const { view, loading } = useWorkstation(portId, fleet?.id ?? null)
-  const [sending, setSending] = useState<string | null>(null)
+  const [open, setOpen] = useState<WorkstationItem | null>(null)
+  const [detent, setDetent] = useState<TrayDetent>('half')
+  const [sending, setSending] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
-  const [made, setMade] = useState<string | null>(null)
   const issue = useWorld((s) => s.issue)
 
   const make = (item: WorkstationItem) => {
     if (!fleet || sending) return
-    setSending(item.code)
+    setSending(true)
     setRefusal(null)
-    setMade(null)
     void (async () => {
-      // The line the server will read, in the player's own grammar — the same door every other
-      // order goes through. There is no second way an order comes into being.
+      // One line through the one door. There is no second way an order comes into being.
       const okay = await issue(fleet.id, `MAKE ${item.code}`, null)
-      setSending(null)
-      if (okay) setMade(item.name)
+      setSending(false)
+      if (okay) setOpen(null)
       else setRefusal(useWorld.getState().refusal)
     })()
   }
 
-  if (loading && !view) {
-    return <p className={fineClass()}>Asking the workstation what it can do…</p>
-  }
-  if (!view) {
-    return <p className={fineClass()}>This city keeps no workstation.</p>
-  }
+  if (loading && !view) return <Note tone="neutral">Asking the workstation what it can do…</Note>
+  if (!view) return <Note tone="neutral">This city keeps no workstation.</Note>
+
+  const short = open && fleet ? shortfall(open) : null
+  const ready = open !== null && open.makeable && fleet !== null && short === null
 
   return (
-    <div className="space-y-3" data-testid="port-workstation">
-      <p className={fineClass()}>
-        A tier {formatInt(tier)} workstation. What it makes comes out of the hold of a ship lying
-        here, and stays in this city.
-      </p>
-
+    <div data-testid="port-workstation">
       {!fleet && (
-        <p className="text-sm text-ink-muted">
+        <Note tone="warning" className="mb-3">
           No fleet of yours lies here, so there is nothing to make a fitting out of.
-        </p>
+        </Note>
       )}
 
-      {view.items.map((item) => {
-        const short = fleet ? shortfall(item) : null
-        // The button appears only when the SERVER says this city can make it and her hold holds
-        // it. Everything else states the reason instead — a control that always refuses is worse
-        // than no control.
-        const ready = item.makeable && fleet !== null && short === null
-        return (
-          <div key={item.code} className="border-t border-line pt-2">
-            <div className="flex items-baseline justify-between gap-2">
-              <SectionLabel>{item.name}</SectionLabel>
-              {item.owned_here > 0 && (
-                <span className={fineClass()}>{formatInt(item.owned_here)} here</span>
-              )}
-            </div>
-
-            {/* DESIGN 1.3 on the row where a player reads it: every fitting buys one stat and
-                spends another, so the choice is a choice and not a shopping list. */}
-            <dl className="mt-1 space-y-1">
-              <DetailRow label="Buys" value={item.buys} />
-              <DetailRow label="Spends" value={item.spends} />
-              <DetailRow
-                label="Made of"
-                value={item.recipe.map((r) => `${r.name} ${formatInt(r.qty)}`).join(' · ')}
+      <TileField>
+        {view.items.map((item) => (
+          <Tile
+            key={item.code}
+            mark={<Icon name="mallet" size={20} />}
+            name={item.name}
+            meta={item.buys}
+            state={item.makeable ? 'rest' : 'muted'}
+            tap="whole"
+            onClick={() => {
+              setRefusal(null)
+              setDetent('half')
+              setOpen(item)
+            }}
+            /* HOW MANY YOU ALREADY HAVE IN THIS CITY, always — including none. It is the figure a
+               player wants before making another, and a zero is an answer rather than an absence
+               (which is what §2 item 16 objects to in a printed dash). */
+            figure={
+              <Figure
+                value={formatInt(item.owned_here)}
+                unit="here"
+                tone={item.owned_here > 0 ? 'ink' : 'faint'}
               />
-            </dl>
+            }
+            data-testid={`fitting-${item.code}`}
+          />
+        ))}
+      </TileField>
 
-            <div className="mt-1.5">
-              {!item.makeable ? (
-                <p className={fineClass()}>
-                  Needs a tier {formatInt(item.ws_tier)} workstation. This one is tier{' '}
-                  {formatInt(tier)}.
-                </p>
-              ) : short !== null ? (
-                <p className={fineClass()}>Short of {short}.</p>
-              ) : ready ? (
-                <Button
-                  variant="primary"
-                  onClick={() => make(item)}
-                  disabled={sending !== null}
-                  data-testid={`make-${item.code}`}
-                >
-                  {sending === item.code ? 'Making…' : `Make ${item.name}`}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        )
-      })}
-
-      {made && (
-        <p className="font-mono text-xs text-sea" data-testid="port-workstation-made">
-          made: {made}
-        </p>
+      {open && (
+        <Tray
+          detent={detent}
+          onDetentChange={(next) => (next === 'closed' ? setOpen(null) : setDetent(next))}
+          title={open.name}
+          data-testid="craft-tray"
+          action={
+            ready ? (
+              <Button
+                variant="primary"
+                className="w-full"
+                busy={sending}
+                busyLabel="Making…"
+                onClick={() => make(open)}
+                data-testid={`make-${open.code}`}
+              >
+                {`Make ${open.name}`}
+              </Button>
+            ) : undefined
+          }
+        >
+          {/* DESIGN 1.3, where a player reads it: every fitting buys one stat and spends another,
+              so the choice is a choice and not a shopping list. */}
+          <Row label="Buys" value={open.buys} />
+          <Row label="Spends" value={open.spends} />
+          {open.recipe.map((r, i) => (
+            <Row
+              key={r.name}
+              label={r.name}
+              value={
+                <Figure
+                  value={formatInt(r.qty)}
+                  unit={r.aboard === null ? undefined : `aboard ${formatInt(r.aboard)}`}
+                  tone={r.aboard !== null && r.aboard < r.qty ? 'warning' : 'ink'}
+                />
+              }
+              hairline={i < open.recipe.length - 1}
+            />
+          ))}
+          {!open.makeable && (
+            <Note tone="warning">
+              {`It wants a tier ${formatInt(open.ws_tier)} workstation. This one is tier ${formatInt(tier)}.`}
+            </Note>
+          )}
+          {open.makeable && short !== null && <Note tone="warning">{`Short of ${short}.`}</Note>}
+          {refusal && (
+            <Note tone="danger" code={refusal.code}>
+              {refusal.sentence}
+            </Note>
+          )}
+        </Tray>
       )}
-      {/* A refusal is the server's, drawn by the ONE renderer every other surface uses (0050). */}
-      {refusal && <RefusalNote refusal={refusal} />}
     </div>
   )
 }
