@@ -5,7 +5,61 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
-## 2026-09-09 — the map is a chart, two corners, and a tray
+## 2026-09-09 — D53: step 10 — the second vocabulary is deleted, not deprecated
+
+**UI_DIRECTION §7's last step, and the first thing this session did.** Steps 1–9 moved every tab
+onto the twelve primitives and left the old set standing behind an `@deprecated` comment. A comment
+is not a deletion: the old vocabulary was still exported, still importable, and still the shortest
+path for the next person in a hurry. Step 10 removes the path.
+
+**What was measured before anything was deleted.** A caller audit that reads real `import` bindings
+rather than word occurrences — the distinction matters, because `RankScreen.tsx` mentions `Table`,
+`TH`, `TD`, `scrollTableClass` and `useClipped` five times and imports none of them: D48 had already
+replaced the table with rows and left a comment saying so. Word-grep called that screen a caller.
+It was not.
+
+| | before | after |
+|---|---|---|
+| deprecated exports | 71 | 10 |
+| of those, with NO caller | **59** | **0** |
+| files under `src/components/ui/` | 64 | 41 |
+
+**23 files deleted**, plus `tests/tableLayout.spec.ts`, which existed only to guard `Table.tsx`'s
+`w-full` against a shear that no longer has a table to happen in. **2,398 lines gone, 78 added.**
+
+**Three files were kept and gutted instead, because a module and its export are not the same
+thing.** `buttonStyles.ts`, `screenLayout.ts` and `explainState.ts` lost their entries in the import
+surface and kept their bodies: each is still read *inside* `src/components/ui/` by a primitive that
+survives (`Button`, `Screen`, and `Card`/`Explain`/`PageHeader`). Deleting a file because its
+re-export is dead would have broken three primitives that are not. The reverse case is
+`typography.ts` and `overlayLayout.ts`, where the file survives and the dead functions inside it did
+not: `rowLinkClass`, `inlineFigureClass`, `headRowClass`, `overlayPanelClass` and its `TONE` table
+are gone, because `Row`, `Figure`, `Sheet` and `Corner` own those jobs now and a recipe with no cook
+is a second authority waiting for a caller.
+
+**The ten that survive are a to-do list written as code.** Eight of them stand on `AuthPage`,
+`SignTheBook` and `WorldGate` — the three surfaces a player meets BEFORE the tab shell, which the
+migration never reached because it walked the tabs. The other two are `fineClass` on the chart and
+`overlaySlotClass` under the chart's view controls. Every remaining line in the file's deprecated
+block now NAMES its screens, so it cannot go stale quietly: when a caller goes, the line goes with
+it, and the day the list is empty the block deletes itself.
+
+**And the twin that was named rather than hidden is folded.** `features/command/verbIcons.ts`
+exported `verbWord` and `features/map/sendRules.ts` exported `fixWord`, with byte-identical bodies
+(`verb.charAt(0) + verb.slice(1).toLowerCase()`). Neither was wrong: a screen may not import another
+screen (`tests/sections.spec.ts`) and both screens were being rewritten on the same day, so the map
+wrote the twin, put a comment on it saying exactly what it was, and left the fold owed. It is now
+one `verbWord` in `domain/order/text.ts` beside `orderText` — the same job at a different size, one
+the whole line the server reads, one a single word the player reads — and both screens import it
+from the section they were always allowed to import.
+
+**DEV_LOG numbers D48–D52 assigned.** The six UI screens were built in parallel branches and, per
+the rule the same day produced, none of them numbered its own entry — four agents had previously
+claimed the same D-number. They are numbered here, at the merge, from the merged tree.
+
+---
+
+## 2026-09-09 — D52: the map is a chart, two corners, and a tray
 
 **Step 8 of 10** of `docs/UI_DIRECTION.md` §7 — MAP, chrome only. The chart layer (`src/chart`) is
 untouched; `src/features/map` is rewritten onto `Corner`, `Tray`, `Row`, `Figure`, `Bar`, `Chip`,
@@ -66,7 +120,7 @@ payments on main the pins stand at 4 and 3.
 against `TRAY_PEEK`, the ladder is stepped from the keyboard, the corner is measured as a corner).
 
 ---
-## 2026-09-09 — LEDGER is rows and PROFILE is a house line, two bars and a switch
+## 2026-09-09 — D51: LEDGER is rows and PROFILE is a house line, two bars and a switch
 
 **`docs/UI_DIRECTION.md` §7 step 9, the LEDGER and PROFILE halves.** Both screens are swapped
 whole onto the twelve primitives; neither keeps a `Card`, a `PageHeader`, a `Badge`, a `StatRow`,
@@ -135,7 +189,7 @@ minutes were the `byeharu:world-image` hook on a contended CPU). On `localhost:4
 skipped**; layout + primitives.geometry + nav.geometry **19 passed / 0 failed / 0 skipped**
 (2.4 min). The three `db.chain` specs were not run: nothing here reaches a migration.
 
-## 2026-09-09 — fleets is a list, a tray, and no table at all
+## 2026-09-09 — D50: fleets is a list, a tray, and no table at all
 
 **docs/UI_DIRECTION.md §7 step 7.** FLEETS was the screen that showed one fleet three times
 (§2 item 11): a roster block, the same data again as a seven-column table from 640px, and a
@@ -184,7 +238,7 @@ three `db.chain` specs were not run here; CI runs the full chain on the PR.
 **No shared primitive changed.** One wanted and not made: `Row` has no way to put text in the
 value slot AND give the second line the whole band; the name/where stack in the label is the
 composition the primitive's own header allows, so it stayed a caller-side choice.
-## 2026-09-09 — the market is a field, a grid, and no lecture
+## 2026-09-09 — D49: the market is a field, a grid, and no lecture
 
 **Step 6 of `docs/UI_DIRECTION.md` §7.** MARKET's job after `docs/OWNER_REQUESTS.md` rows 64 and 70
 is one sentence: *read prices somewhere else*. What stays is the harbour, the grid, the range and
@@ -250,7 +304,7 @@ the owner once both look the same, and they now do.
 
 ---
 
-## 2026-09-09 — RANK and CODEX stand on the twelve, and the table apparatus has no caller in either
+## 2026-09-09 — D48: RANK and CODEX stand on the twelve, and the table apparatus has no caller in either
 
 **§7 step 9 of `docs/UI_DIRECTION.md`, the two table-bearing screens.** RANK and CODEX were the
 last two callers of `Table`/`TH`/`TD`, `scrollTableClass`, `hScrollClass` and `useClipped` in

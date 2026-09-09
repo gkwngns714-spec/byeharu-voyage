@@ -79,17 +79,3 @@ export function canGo(standing: Standing): boolean {
 export function atLeastOneDay(days: number): number {
   return Number.isFinite(days) ? Math.max(1, Math.ceil(days)) : 1
 }
-
-/**
- * The server's verb as a player's word on a fix button — `PROVISION` reads `Provision`. §2 item 13:
- * a code is for a log, not a quay.
- *
- * A KNOWN TWIN, NAMED RATHER THAN HIDDEN: `features/command/verbIcons.ts` exports `verbWord`
- * with this exact body for the verb tiles. A screen may not import another screen
- * (tests/sections.spec.ts), and COMMAND was being rewritten on the same day this was, so the
- * fold — one `verbWord` in `domain/order`, beside `orderText`, with both screens reading it — is
- * owed and recorded in docs/DEV_LOG.md, not done here under another screen's feet.
- */
-export function fixWord(verb: string): string {
-  return verb.charAt(0) + verb.slice(1).toLowerCase()
-}

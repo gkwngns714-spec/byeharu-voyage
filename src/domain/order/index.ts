@@ -39,6 +39,7 @@ export {
   missingArgs,
   orderText,
   refusalOfOrder,
+  verbWord,
   visibleArgs,
   type FixAction,
 } from './text'
