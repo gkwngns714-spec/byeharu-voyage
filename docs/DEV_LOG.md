@@ -120,6 +120,84 @@ the owner once both look the same, and they now do.
 
 ---
 
+## 2026-09-09 — RANK and CODEX stand on the twelve, and the table apparatus has no caller in either
+
+**§7 step 9 of `docs/UI_DIRECTION.md`, the two table-bearing screens.** RANK and CODEX were the
+last two callers of `Table`/`TH`/`TD`, `scrollTableClass`, `hScrollClass` and `useClipped` in
+`src/features/rank` and `src/features/compendium`. Both are rewritten whole onto `Sheet`,
+`SheetSection`, `Segmented`, `Field`, `Row`, `Figure`, `Tile`, `TileField`, `Tray`, `Note`, `Hint`,
+`Skeleton`, `Icon` and `RarityMark` — and nothing else. The apparatus itself is NOT deleted: step 10
+does that with its last caller, which after this is `features/fleets/FleetsScreen.tsx` alone (an
+import-level scan of `src/features`, not a word grep — the word `Table` still appears in a comment).
+
+### RANK — one list, you pinned
+
+Cut (§2 item 17): the 5-column table that sheared at `TRA…` with "Swipe the table for the rest."
+under it; the House card (a purse the status strip prints, fleet/ship LIMITS with a gauge captioned
+"hulls the house may still own"); the five-way Fame card; the Levels card, whose third row printed
+`Combat — Level 0` beside a sentence admitting there is no combat. Eleven ⓘ dots. What stands: the
+title with `settled just now` trailing (the server's `age_seconds`, never this browser's clock), your
+row pinned in accent with a chevron, and every other house as a `Row` — place · name · flag · fame.
+Your row opens a `Tray`: trade fame, exploration fame, ports reached, fame, one `Hint` with the
+scoring rule. The tie mark `=2` (§4.5 bans the glyph) is the word `tied` in the row's caption.
+
+One clock now. The old screen printed live `world.player()` figures beside the settled board and
+had to explain why they disagreed; everything here is the photograph, so the explanation is gone.
+The levels belong on PROFILE as bars (§6), which is that screen's slice.
+
+### CODEX — one field, one segmented, one figure a tile
+
+Cut (§2 item 16): the 90-word paragraph behind the title's dot; both sideways chip strips (17 kinds
+× 4 rarities) and their "Swipe for the rest."; `523 of 523 goods`; `SPOILS —` and `REFUSED BY —`,
+an em-dash on most of 523 goods; ship `build 40 h` / `cost 2,400 d.` (hulls no order can commission,
+`domain/fleet/statGloss.ts`) and `guns` (no combat); the captain tile's fine-print line "no rule
+reads this specialty yet — the bonus changes nothing", printed fifty-one times. `TabRow`,
+`CatalogueControls`, `ChipStrip`, `CatalogueCount`, `EntryTile`, `GoodTile`, `StatLegend`,
+`tileFieldClass` — none is imported here any more.
+
+What stands: `Segmented` Goods · Ships · Captains · Nations; one `Field` that answers to a name, a
+kind word and a rarity word alike (so "spices" and "rare" still filter, without the strips); the
+kind as a `SheetSection` heading. A good tile is mark · name · rarity · base; its tray carries kind,
+rarity, base, bulk, and ONLY when true a `Spoils` row and a `Refused at … ports` note — an absent
+fact is not a row. Ships: hold · speed · crew on the tile; hold, speed, crew, draft, hull, tier in
+the tray (draft and hull are read by rules; build, cost and guns are not). Captains: specialty and
+bonus; a specialty no rule reads is a MUTED tile with the reason as a `Note` in its tray, beside the
+wage, port, flag and blurb. Nations: rows, name and capital — the three-letter code is a filter
+word, no longer a column. `CompendiumScreen.tsx` 899 lines → 124, with the four faces as files
+(`GoodsFace`, `ShipsFace`, `CaptainsFace`, `NationsFace`, 44–135 lines; `NoAnswer` is the one empty
+row). Every leaf reads its own store fields; the widest prop list is two.
+
+### MEASURED at 390×844 on the built app, both schemes, before → after
+
+| screen | tallest scroll box | elements ending past 390px |
+|---|---|---|
+| RANK | 1,236 px → **844 px** (fits the glass) | 36 → **0** |
+| CODEX goods | 39,365 px → **32,930 px** | 14 → **0** |
+| CODEX ships | 873 px → 844 px | 0 → 0 |
+| CODEX captains | 6,370 px → **3,314 px** | 2 → 0 |
+| CODEX nations | 1,140 px → 1,242 px (52-px rows, 20 of them) | 0 → 0 |
+
+Goods is still tall, and honestly so: 523 tiles two abreast at the tile floor (`--spacing-tile-min`
+gives 175 × 112 px, `tests/layout.spec.ts` prints it) is 265 rows, and that is the catalogue's size,
+not chrome — the 6,435 px that went was the chrome. Shorter needs a shorter tile or three columns,
+which is the primitive's decision, not this screen's. Every tray opened in both schemes; zero page
+errors on every face.
+
+### PROVEN
+
+`tsc --noEmit` clean · `eslint .` clean · `vite build` green (1.33 s, world image cached).
+`duplication` 10/10 · `sections` 8/8 · `format` 15/15 · `tableLayout` 6/6 · `primitives.geometry`
+5/5 · `nav.geometry` 2/2 · `layout` 12/12 (523 / 3 / 51 tiles, two per row, 175 px wide; rank and
+compendium each render a nav rail and no table). 56 passed, 0 failed, 0 skipped, `localhost:4229`,
+local PGlite mode, `test-results/` wiped first. `ARBITRARY_SIZE_DEBT` and `INLINE_SKIN_DEBT` carried
+no `features/rank` or `features/compendium` entry to lower — checked, not assumed — and the two
+bans pass on the new files.
+
+### What the owner may want back
+
+The purse, fleet and ship counts (all elsewhere); turnover in ducats (it is the trade-fame figure
+÷ 100); the three level tracks (PROFILE's slice); ship guns, build hours and build cost; the
+per-good culture list as a printed line rather than a tray note; the nation code column.
 ## 2026-09-09 — D47: two quays built the same tray, and now there is one
 
 **Steps 4 and 5 of `docs/UI_DIRECTION.md` §7 were built in parallel off the same primitives**, and
