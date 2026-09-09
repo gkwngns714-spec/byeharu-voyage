@@ -67,6 +67,55 @@ against `TRAY_PEEK`, the ladder is stepped from the keyboard, the corner is meas
 
 ---
 
+## 2026-09-09 — fleets is a list, a tray, and no table at all
+
+**docs/UI_DIRECTION.md §7 step 7.** FLEETS was the screen that showed one fleet three times
+(§2 item 11): a roster block, the same data again as a seven-column table from 640px, and a
+collapsible card per fleet with an eight-column ships table that sheared at CREW and printed
+"Swipe the table for the rest." It is now `src/features/fleets/FleetsScreen.tsx` (156 lines,
+was 883) and six files beside it, 667 lines in all: `FleetTray.tsx` (Ships · Cargo · Stores on a `Segmented`,
+one primary button that changes with the face), `FleetShips.tsx` (hulls as `Tile`s — hull `Bar`,
+crew, hold), `FleetCargo.tsx` (rows, each the act of selling), `FleetStores.tsx` (four rows and
+the standing order as a `Stepper`), `fleetLine.ts` (where she is / when, pure) and
+`standingOrder.ts` (one number → the book operations that make it true, pure plan + hook).
+
+**Measured at 390×844 on the built app, both schemes.** Content height 964px → 108px (title +
+one 58px row; the sheet no longer scrolls). Elements past the right edge at 390px: 14 → 0 — the
+old ships table reached x=620. Opening the tray moves nothing: the row's top is 94px before and
+after, on every face.
+
+**Cut, and why each went.** The header counts `1/2 fleets · 1/8 ships` (limits are not assets;
+RANK printed them too). The ≥640px table duplicate (the same served fleet drawn twice). The
+"Standing orders / The book is empty. Not an error — a state." card — the order is `Keep 15 days
+[−][+]` on the fleet's stores face, and the book's names are never on screen: `planKeep` puts her
+under an existing order at those days, re-days her own if she alone sails under it, writes a new
+one while the book has room, recycles an order nobody sails under, and otherwise lets the server
+refuse `E_PRESET_CAP` in its own sentence. The per-ship "FITTED / Nothing mounted…" paragraph and
+its `rig 0/1 · weapon 0/1 · 3 cabin(s)` line (mounted fittings still print, one caption line, only
+where something is mounted). The galley `dl` and its "a day" row (crew × a config knob — §5, no
+screen prints a config knob). The `Read 1s ago · local` footer. Load and Free, which were Hold
+twice. Every ⓘ. The `⚑` and `✕` glyphs.
+
+**Two things the first screenshots caught.** `formatTuns` / `formatNm` / `formatVoyageDays` carry
+their own unit word, so a `Figure` given one of them printed the unit twice ("15.0 days days",
+"2.4 t t") — Figures take the bare number now. And a `Row` with its `value` slot filled squeezes
+the caption line under the label to the label's width: the hold and hull bars measured 12px. The
+where/ETA rides on the name's line as a stack instead, and the bars measure 46 and 52px.
+
+**FLEETS was NOT the last `Table` caller.** `CompendiumScreen.tsx` (goods, ships, nations —
+plus `hScrollClass` and `useClipped`) and `RankScreen.tsx` still import `Table`/`TH`/`TD`/
+`scrollTableClass`; step 10 cannot delete the apparatus until step 9 lands. `tests/duplication
+.spec.ts`: the `features/fleets/FleetsScreen.tsx` inline-skin entry is gone and the pin is 9 → 8.
+
+**Measured on the branch after the fast-forward onto `main` (7f460f4).** `tsc --noEmit` clean,
+`eslint .` clean, `npm run build` green. `test-results/` wiped, `vite preview --port 4223`,
+`localhost` base: layout 12 · primitives.geometry 5 · nav.geometry 2 · duplication 9 ·
+sections 8 · format 13 · tableLayout 7 — **56 passed / 0 failed / 0 skipped** in 3.3 min. The
+three `db.chain` specs were not run here; CI runs the full chain on the PR.
+
+**No shared primitive changed.** One wanted and not made: `Row` has no way to put text in the
+value slot AND give the second line the whole band; the name/where stack in the label is the
+composition the primitive's own header allows, so it stayed a caller-side choice.
 ## 2026-09-09 — D47: two quays built the same tray, and now there is one
 
 **Steps 4 and 5 of `docs/UI_DIRECTION.md` §7 were built in parallel off the same primitives**, and
