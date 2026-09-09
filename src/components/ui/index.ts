@@ -2,18 +2,20 @@
 // Screens import from here, never from the individual files, so the set stays one authority.
 //
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THIS FILE IS IN TWO HALVES, AND THE SECOND ONE IS DYING
+// THE SECOND HALF IS DEAD. TEN LINES OF IT ARE LEFT, AND EACH ONE NAMES ITS OWN SCREEN
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // docs/UI_DIRECTION.md §7 is a ten-step migration. Step 1 rewrote the tokens under the old screens
-// without moving a class string. STEP 2 — this — adds the twelve primitives §5 names and CHANGES
-// NO SCREEN. Steps 3-9 swap each screen whole, onto the twelve. Step 10 deletes everything under
-// DEPRECATED below, together with its last caller.
+// without moving a class string; step 2 added the twelve primitives §5 names and changed no
+// screen; steps 3-9 swapped each tab whole onto the twelve. STEP 10 — done — deleted every
+// deprecated export whose last caller had gone: twenty-three files, and tests/tableLayout.spec.ts
+// with them.
 //
-// So for the length of one migration this entrance exports two vocabularies, and the comment on
-// each deprecated export names the primitive that replaces it. That is deliberate and it is
-// bounded: the app is never a mix of two skins on ONE SCREEN, which is the property §7 is built to
-// keep — a screen is on the old set or on the new one, and it changes in a single PR.
+// What survives at the foot of this file is the ten the twelve have NOT reached, and eight of them
+// are on the three surfaces a player meets before the tab shell — AuthPage, SignTheBook, WorldGate
+// — which the migration never covered because it walked the TABS. The property §7 was built to
+// keep still holds and is why the remainder is safe: the app is never a mix of two skins on ONE
+// screen. A screen is on the old set or on the new one, and it changes in a single PR.
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TWELVE (docs/UI_DIRECTION.md §5)
@@ -111,82 +113,36 @@ export { rarityLabel, RARITY_TIERS } from './rarityTiers'
 export { dangerLabel, dangerPips, dangerTone, DANGER_PIPS, DANGER_TIERS } from './dangerTiers'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// DEPRECATED — step 10 deletes each of these with its last caller. Nothing new may use them.
+// WHAT IS LEFT OF THE DEPRECATED HALF, AFTER STEP 10
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Step 10 deleted every deprecated export that had lost its last caller — twenty-three files, and
+// tests/tableLayout.spec.ts with them, because that spec existed only to guard Table.tsx's
+// `w-full`. The header above this one used to say the second half was dying. It has died.
+//
+// What is below is NOT a leftover vocabulary. It is the exact set the twelve have not reached, and
+// every line names the screen that still holds it. Eight of the ten live on AuthPage, SignTheBook
+// and WorldGate — the three surfaces a player meets BEFORE the tab shell, which the §7 migration
+// never covered because it walked the tabs. That is the next step's list, written as code rather
+// than as a plan, so it cannot go stale: when a caller goes, its line goes with it.
+//
+// Nothing new may use any of them.
 
-/** @deprecated → `Field`. */
+/** @deprecated → `Field`. AuthPage, SignTheBook. */
 export { Input } from './Input'
-/** @deprecated → `Button` / `Chip`. Still the one author of the legacy chip look (Button.tsx). */
-export { buttonClasses, type ButtonVariant, type ButtonSize } from './buttonStyles'
-/** @deprecated → `Hint` (fine print), `Row` (label · value), `Sheet` (the head row), `Figure`. */
-export { fineClass, rowLinkClass, headRowClass, inlineFigureClass } from './typography'
-/** @deprecated → `Sheet` + `SheetSection`. A card is a box, and §4.3 forbids a box. */
-export { Card, CardHeader, type CardTone } from './Card'
-/** @deprecated → `Note`. Twenty-one status badges is §2 item 5's count. */
-export { Badge, type BadgeTone } from './Badge'
-/** @deprecated → `Bar`. */
-export { Meter, type MeterTone } from './Meter'
-/** @deprecated → `Bar` with `of`. */
-export { Gauge, type GaugeTone } from './Gauge'
-/** @deprecated → `Note`. */
-export { Notice, type NoticeTone } from './Notice'
-/** @deprecated → `Note` with a `Bar` as its figure; the code goes to console.debug. */
-export { RefusalNote } from './RefusalNote'
-/** @deprecated → `SheetSection`'s heading. §2 item 15: 31 uppercase letter-spaced labels. */
-export { SectionLabel } from './SectionLabel'
-/** @deprecated → `Sheet`'s own title. */
+/** @deprecated → `Hint`, the fine-print voice. SmallChart, SignTheBook. */
+export { fineClass } from './typography'
+/** @deprecated → `Sheet` + `SheetSection`. A card is a box, and §4.3 forbids a box. AuthPage, SignTheBook, WorldGate. */
+export { Card, CardHeader } from './Card'
+/** @deprecated → `Note`. AuthPage, SignTheBook, WorldGate. */
+export { Notice } from './Notice'
+/** @deprecated → `Sheet`'s own title. SignTheBook, WorldGate. */
 export { PageHeader } from './PageHeader'
-/** @deprecated → `Figure` at `size="hero"`. */
-export { HeroFigure } from './HeroFigure'
-/** @deprecated → `Row`. */
-export { StatRow } from './StatRow'
-/** @deprecated → a `Tray` of `Row`s. */
-export { StatLegend, type StatLegendItem } from './StatLegend'
-/** @deprecated → `Row`. */
-export { DetailRow } from './DetailRow'
-/** @deprecated → `Sheet`. */
+/** @deprecated → `Sheet`. SignTheBook, WorldGate. */
 export { Screen } from './Screen'
-/** @deprecated → `Sheet`. The two-pane split dies with the rail it laid out (§2 item 2). */
-export { screenBodyClass, splitClass, splitMainClass, splitRailClass } from './screenLayout'
-/** @deprecated → one `Row` of `ink-3` text. */
-export { EmptyState } from './EmptyState'
-/** @deprecated → `Row`. With it goes the whole survive-a-phone apparatus below. */
-export { Table, TH, TD } from './Table'
-/** @deprecated → `Row`. A row does not scroll sideways. */
-export { scrollTableClass, TABLE_SCROLL_HINT } from './tableLayout'
-/** @deprecated → `Row` / `Segmented`. */
-export { hScrollClass, HSCROLL_HINT } from './scrollAffordance'
-/** @deprecated → nothing. Nothing measures its own clipping once nothing clips. */
-export { useClipped } from './useClipped'
-/** @deprecated → `Segmented`. Seven faces wrapped to two rows at 390px (§2 item 9). */
-export { TabRow, type TabSpec } from './TabRow'
-/** @deprecated → `Corner` (top slots) / `Tray` (the bottom slot). */
-export { OverlayPanel } from './OverlayPanel'
-/** @deprecated → `Corner`. */
-export {
-  overlayPanelClass,
-  overlaySlotClass,
-  OVERLAY_SLOTS,
-  type OverlaySlot,
-  type OverlayTone,
-} from './overlayLayout'
-/** @deprecated → `Tile`. */
-export { EntryTile, EntryTileLine, type EntryTileTap } from './EntryTile'
-/** @deprecated → `Tile`. */
-export { GoodTile } from './GoodTile'
-/** @deprecated → `TileField`. The grid is CSS; nothing needs to know where a row ends any more. */
-export { tileFieldClass, tileFieldCols, TILE_FIELD, type TileFieldStep } from './tileLayout'
-/** @deprecated → `TileField`. */
-export { useTileCols } from './useTileCols'
-/** @deprecated → `Bar` with `of`. */
-export { DangerMark } from './DangerMark'
-/** @deprecated → `Tray`. */
-export { Collapsible, CollapsibleCard } from './Collapsible'
-/** @deprecated → `Hint`, and a `Tray` when the text is genuinely long. 81 ⓘ dots (§2 item 5). */
-export { Explain, ExplainDot, ExplainPanel } from './Explain'
-/** @deprecated → `Hint`. */
-export { useExplainDisclosure, type ExplainDisclosure } from './explainState'
-/** @deprecated → `Tile` + `TileField` + `Tray`. The trade fold, 2026-09-01. */
-export { GoodPicker, QtyPicker, FilterBox, TruncationNote } from './tradePickers'
-/** @deprecated → nothing: with a docked `Tray` there is no fold to place after a row. */
-export { inRowsOf } from './inRows'
+/** @deprecated → `SheetSection`'s heading. WorldGate. */
+export { SectionLabel } from './SectionLabel'
+/** @deprecated → `Hint`, and a `Tray` when the text is genuinely long. WorldGate. */
+export { Explain } from './Explain'
+/** @deprecated → `Corner`. The chart's view controls read the corner table straight. ViewControls. */
+export { overlaySlotClass } from './overlayLayout'

@@ -1,6 +1,6 @@
 import { Button, Figure, Icon, Note, Row } from '../../components/ui'
 import { voyageEtaMs } from '../../domain/fleet'
-import { refusalOfOrder } from '../../domain/order'
+import { refusalOfOrder, verbWord } from '../../domain/order'
 import { formatNm, formatRealShort } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, QueuedOrder } from '../../lib/rpc'
@@ -118,12 +118,6 @@ export function Queue({
       )}
     </>
   )
-}
-
-/** The verb as a word: SAIL → "Sail". §4.1 bans the uppercase voice. A known twin stands in
- *  `features/map/sendRules.ts` (`fixWord`); the fold is one `verbWord` in `domain/order`, owed. */
-function verbWord(verb: string): string {
-  return verb.charAt(0) + verb.slice(1).toLowerCase()
 }
 
 function statusWord(status: QueuedOrder['status']): string {

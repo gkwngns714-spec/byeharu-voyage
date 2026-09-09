@@ -143,7 +143,109 @@ control.
 
 ---
 
-## 2026-09-09 — the map is a chart, two corners, and a tray
+## 2026-09-09 — the canary world, and how to get one on a machine that plays the live game
+
+**A METHOD, recorded because it was needed and did not exist.** Six owner rows were sitting on
+"built but never driven", and driving them means sailing — which on this machine means sailing the
+owner's own fleet in a live multiplayer world with their cargo aboard. The memory of destroying
+their Fleet 1 once is why that is not acceptable.
+
+**The trap first, because I fell into it.** This clone carries `.env.local`, so `npm run build`
+here produces a **CLOUD** client. `npx vite preview` on it is not a local sandbox — it is the live
+game on localhost. I opened it believing it was "a private world per browser" and said so out loud
+before checking. It is not, and anyone reading `byeharu-voyage-runs-sql-locally` should read this
+next to it.
+
+**Which also means a local `npm test` here is worthless as a gate**, and worse than worthless
+because it is GREEN. `tests/appReady.fixture.ts` detects the cloud build, sees the `/auth`
+redirect and calls `test.skip` — so every browser spec vanishes and the run passes with a shrunken
+denominator, the exact failure `playwright.config.ts` already warns about for the IPv4 case. CI
+builds without the file and is the only place these specs actually run.
+
+**The canary recipe:** move `.env.local` aside, `npm run build`, restore it, serve that `dist` on
+its own port. The world image is cached, so the second build takes about a second rather than
+seven minutes. What you get is a PGlite world in the browser that founds its own house — Gaivota
+at Lisbon with 8,000 d. — where every verb can be pressed without consequence.
+
+**What it bought, in one sitting:** rows 41, 45, 48, 52, 57, 60 and 72 closed on measured evidence.
+Lisbon→Cadiz quotes **249 nm** rather than a straight line's 188, because she rounds Cape St
+Vincent. The send tray prints *"Her course ends in the roads, 10.0 nm off the quay"*, and she
+sailed it and came to lie at the port — the roadstead IS landfall, which is row 72's server half
+and it had never been driven. Valencia's face strip is Trade · Town · Store · Inn where Dublin's is
+Trade · Town · Store · Craft · Inn, because a face is a building row and Valencia has no
+workstation. That is 0067 working, visible from the quay.
+
+**And it settled a false alarm with a stopwatch.** Production's ledger shows a 563 nm passage
+departing and arriving in the same minute, which reads as a broken mover. `time_compression` is
+**9,600** by 0045's deliberate hand — a voyage-day is **9 real seconds**. Cadiz→Valencia, quoted
+`448 nm · 3.8 days`, departed 14:17:12 UTC and lay at Valencia by 14:18:03: **≤51 s against an
+expected 34 s**. The mover is right. What is wrong is smaller and is the owner's own rule — the
+game asks for a decision on *"3.8 days"* when a day is nine seconds, and UI_DIRECTION forbids
+printing a number the game will not honour.
+
+**One real defect found, in `src/features/market/PortField.tsx`.** MARKET's port field works once
+per page load: `pick()` closes the search without the `blur()` that `Escape` and `Enter` both do,
+so the input keeps focus in its at-rest state and `onFocus` — the only thing that reopens it — can
+never fire again. Reproduced four times, by coordinate click, by element ref, and with `ctrl+a`.
+Handed to the slice that owns the file rather than fixed in a stray branch.
+
+---
+
+## 2026-09-09 — D53: step 10 — the second vocabulary is deleted, not deprecated
+
+**UI_DIRECTION §7's last step, and the first thing this session did.** Steps 1–9 moved every tab
+onto the twelve primitives and left the old set standing behind an `@deprecated` comment. A comment
+is not a deletion: the old vocabulary was still exported, still importable, and still the shortest
+path for the next person in a hurry. Step 10 removes the path.
+
+**What was measured before anything was deleted.** A caller audit that reads real `import` bindings
+rather than word occurrences — the distinction matters, because `RankScreen.tsx` mentions `Table`,
+`TH`, `TD`, `scrollTableClass` and `useClipped` five times and imports none of them: D48 had already
+replaced the table with rows and left a comment saying so. Word-grep called that screen a caller.
+It was not.
+
+| | before | after |
+|---|---|---|
+| deprecated exports | 71 | 10 |
+| of those, with NO caller | **59** | **0** |
+| files under `src/components/ui/` | 64 | 41 |
+
+**23 files deleted**, plus `tests/tableLayout.spec.ts`, which existed only to guard `Table.tsx`'s
+`w-full` against a shear that no longer has a table to happen in. **2,398 lines gone, 78 added.**
+
+**Three files were kept and gutted instead, because a module and its export are not the same
+thing.** `buttonStyles.ts`, `screenLayout.ts` and `explainState.ts` lost their entries in the import
+surface and kept their bodies: each is still read *inside* `src/components/ui/` by a primitive that
+survives (`Button`, `Screen`, and `Card`/`Explain`/`PageHeader`). Deleting a file because its
+re-export is dead would have broken three primitives that are not. The reverse case is
+`typography.ts` and `overlayLayout.ts`, where the file survives and the dead functions inside it did
+not: `rowLinkClass`, `inlineFigureClass`, `headRowClass`, `overlayPanelClass` and its `TONE` table
+are gone, because `Row`, `Figure`, `Sheet` and `Corner` own those jobs now and a recipe with no cook
+is a second authority waiting for a caller.
+
+**The ten that survive are a to-do list written as code.** Eight of them stand on `AuthPage`,
+`SignTheBook` and `WorldGate` — the three surfaces a player meets BEFORE the tab shell, which the
+migration never reached because it walked the tabs. The other two are `fineClass` on the chart and
+`overlaySlotClass` under the chart's view controls. Every remaining line in the file's deprecated
+block now NAMES its screens, so it cannot go stale quietly: when a caller goes, the line goes with
+it, and the day the list is empty the block deletes itself.
+
+**And the twin that was named rather than hidden is folded.** `features/command/verbIcons.ts`
+exported `verbWord` and `features/map/sendRules.ts` exported `fixWord`, with byte-identical bodies
+(`verb.charAt(0) + verb.slice(1).toLowerCase()`). Neither was wrong: a screen may not import another
+screen (`tests/sections.spec.ts`) and both screens were being rewritten on the same day, so the map
+wrote the twin, put a comment on it saying exactly what it was, and left the fold owed. It is now
+one `verbWord` in `domain/order/text.ts` beside `orderText` — the same job at a different size, one
+the whole line the server reads, one a single word the player reads — and both screens import it
+from the section they were always allowed to import.
+
+**DEV_LOG numbers D48–D52 assigned.** The six UI screens were built in parallel branches and, per
+the rule the same day produced, none of them numbered its own entry — four agents had previously
+claimed the same D-number. They are numbered here, at the merge, from the merged tree.
+
+---
+
+## 2026-09-09 — D52: the map is a chart, two corners, and a tray
 
 **Step 8 of 10** of `docs/UI_DIRECTION.md` §7 — MAP, chrome only. The chart layer (`src/chart`) is
 untouched; `src/features/map` is rewritten onto `Corner`, `Tray`, `Row`, `Figure`, `Bar`, `Chip`,
@@ -204,7 +306,7 @@ payments on main the pins stand at 4 and 3.
 against `TRAY_PEEK`, the ladder is stepped from the keyboard, the corner is measured as a corner).
 
 ---
-## 2026-09-09 — LEDGER is rows and PROFILE is a house line, two bars and a switch
+## 2026-09-09 — D51: LEDGER is rows and PROFILE is a house line, two bars and a switch
 
 **`docs/UI_DIRECTION.md` §7 step 9, the LEDGER and PROFILE halves.** Both screens are swapped
 whole onto the twelve primitives; neither keeps a `Card`, a `PageHeader`, a `Badge`, a `StatRow`,
@@ -273,7 +375,7 @@ minutes were the `byeharu:world-image` hook on a contended CPU). On `localhost:4
 skipped**; layout + primitives.geometry + nav.geometry **19 passed / 0 failed / 0 skipped**
 (2.4 min). The three `db.chain` specs were not run: nothing here reaches a migration.
 
-## 2026-09-09 — fleets is a list, a tray, and no table at all
+## 2026-09-09 — D50: fleets is a list, a tray, and no table at all
 
 **docs/UI_DIRECTION.md §7 step 7.** FLEETS was the screen that showed one fleet three times
 (§2 item 11): a roster block, the same data again as a seven-column table from 640px, and a
@@ -322,7 +424,7 @@ three `db.chain` specs were not run here; CI runs the full chain on the PR.
 **No shared primitive changed.** One wanted and not made: `Row` has no way to put text in the
 value slot AND give the second line the whole band; the name/where stack in the label is the
 composition the primitive's own header allows, so it stayed a caller-side choice.
-## 2026-09-09 — the market is a field, a grid, and no lecture
+## 2026-09-09 — D49: the market is a field, a grid, and no lecture
 
 **Step 6 of `docs/UI_DIRECTION.md` §7.** MARKET's job after `docs/OWNER_REQUESTS.md` rows 64 and 70
 is one sentence: *read prices somewhere else*. What stays is the harbour, the grid, the range and
@@ -388,7 +490,7 @@ the owner once both look the same, and they now do.
 
 ---
 
-## 2026-09-09 — RANK and CODEX stand on the twelve, and the table apparatus has no caller in either
+## 2026-09-09 — D48: RANK and CODEX stand on the twelve, and the table apparatus has no caller in either
 
 **§7 step 9 of `docs/UI_DIRECTION.md`, the two table-bearing screens.** RANK and CODEX were the
 last two callers of `Table`/`TH`/`TD`, `scrollTableClass`, `hScrollClass` and `useClipped` in

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { formatVoyageDays } from '../../lib/format'
 import type { LatLon } from '../../lib/geo'
 import type { FleetView, Refusal, VerbSpec } from '../../lib/rpc'
-import { findVerb, fixAction, isComplete, orderText, useCommandDraft } from '../../domain/order'
+import { findVerb, fixAction, isComplete, orderText, useCommandDraft, verbWord } from '../../domain/order'
 import { fleetNow, proposeCourse, roadsteadCourseNote, sailOrigin, sailTarget } from '../../domain/passage'
 import { useWorld } from '../../live/worldStore'
 import {
@@ -10,7 +10,6 @@ import {
   destArgs,
   destName,
   standingOf as standingFor,
-  fixWord,
   type Act,
   type Fix,
   type SailDest,
@@ -232,12 +231,12 @@ export function useSendFleet(dest: SailDest, open: boolean) {
       .flatMap((action) => {
         if (action.kind === 'queue') {
           const run = () => void (action.verb === 'CLEAR' ? clearQueue(f.id) : cancelOrder(f.id, action.index))
-          return [{ label: fixWord(action.verb), run }]
+          return [{ label: verbWord(action.verb), run }]
         }
         if (action.kind === 'compose') {
           const fixSpec = findVerb(verbs, action.verb)
           if (!fixSpec || !isComplete(fixSpec, action.args)) return []
-          return [{ label: fixWord(action.verb), run: () => runFix(f, action.verb, action.args) }]
+          return [{ label: verbWord(action.verb), run: () => runFix(f, action.verb, action.args) }]
         }
         return []
       })
