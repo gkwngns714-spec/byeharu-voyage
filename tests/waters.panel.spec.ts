@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { HERE, WATERS_SHOWN, watersView } from '../src/features/map/watersRows'
-import { DANGER_PIPS, DANGER_TIERS, dangerLabel, dangerPips, dangerTone } from '../src/components/ui'
+import { DANGER_PIPS, DANGER_TIERS, TRAY_PEEK, dangerLabel, dangerPips, dangerTone } from '../src/components/ui'
 import { mapFleetsOf } from '../src/chart'
 import type { MapWater } from '../src/chart'
 import { sailingFleet, dockedFleet } from './mapWorld.fixture'
@@ -189,7 +189,7 @@ test.describe('the wire, turned into the panel', () => {
 test.describe('pressing a control selects, and never destroys the surface', () => {
   test.use({ viewport: PHONE })
 
-  test('the fleet detail opens on a selection and survives its own fold', async ({
+  test('the fleet tray opens on a selection and survives its own ladder', async ({
     page,
     request,
     baseURL,
@@ -216,33 +216,51 @@ test.describe('pressing a control selects, and never destroys the surface', () =
     await page.goto('map')
     await ready(page)
 
-    // At 390 px the fleet list starts folded to its header chip (MapPanel's `defaultOpen`), so the
-    // first press is the fold. That is itself the law under test: it opens, it does not dismiss.
-    const fleets = page.getByTestId('map-fleets-panel')
-    await expect(fleets).toBeVisible()
-    await page.getByTestId('map-fleets-panel-fold').click()
-    await expect(fleets).toBeVisible()
+    // THE FLEETS CORNER IS A PILL AT REST (docs/UI_DIRECTION.md §6: `⛵ 1`), so the first press is
+    // the fold. That is itself the law under test: it opens, it does not dismiss.
+    const corner = page.getByTestId('map-fleets-corner')
+    await expect(corner).toBeVisible()
+    const pill = corner.locator('button[aria-expanded]')
+    await expect(pill).toHaveAttribute('aria-expanded', 'false')
+    await pill.click()
+    await expect(corner).toBeVisible()
+    await expect(pill).toHaveAttribute('aria-expanded', 'true')
 
-    // Selecting a fleet fills the OTHER panel. A selection is a view change and nothing else.
-    await fleets.locator('button[aria-pressed]').first().click()
-    const detail = page.getByTestId('map-detail-panel')
-    await expect(detail).toBeVisible()
+    // Selecting a fleet rises the tray. A selection is a view change and nothing else.
+    await page.getByTestId('map-fleet-row').first().click()
+    const tray = page.getByTestId('map-detail-tray')
+    await expect(tray).toBeVisible()
+    await expect(tray).toHaveAttribute('data-tray-detent', 'peek')
 
-    // …and folding the detail keeps it on the glass, twice over. This is the assertion the data
-    // half cannot make, and the reason this file boots a browser at all.
-    await page.getByTestId('map-detail-panel-fold').click()
-    await expect(detail).toBeVisible()
-    await page.getByTestId('map-detail-panel-fold').click()
-    await expect(detail).toBeVisible()
+    // …and stepping the tray up its ladder and back keeps it on the glass, twice over. The grab
+    // handle is a real button — ↑ and ↓ step the same detents a drag snaps to. This is the
+    // assertion the data half cannot make, and the reason this file boots a browser at all.
+    const handle = tray.getByRole('button', { name: 'Resize' })
+    await handle.focus()
+    await page.keyboard.press('ArrowUp')
+    await expect(tray).toHaveAttribute('data-tray-detent', 'half')
+    await expect(tray).toBeVisible()
+    await page.keyboard.press('ArrowDown')
+    await expect(tray).toHaveAttribute('data-tray-detent', 'peek')
+    await expect(tray).toBeVisible()
 
     // A house's first fleet lies in her home port, so there is no water ahead of her and the
     // section is ABSENT rather than empty — the same rule `watersView([])` states above.
     await expect(page.getByTestId('map-waters')).toHaveCount(0)
 
-    // The chart is still under it, and the panel is still a CORNER panel: it may not cover the
-    // whole glass at 390 px, which is the defect MapPanel's compact mode exists to prevent.
-    const box = await detail.boundingBox()
-    expect(box).not.toBeNull()
-    expect(box!.width).toBeLessThan(PHONE.width * 0.8)
+    // The chart is still under it. At peek the tray is exactly the primitive's stop — `TRAY_PEEK`,
+    // 96px — docked to the bottom edge, so at 390×844 the other 748px of glass are the chart's.
+    await expect(async () => {
+      const box = await tray.boundingBox()
+      expect(box).not.toBeNull()
+      expect(Math.round(box!.height)).toBe(TRAY_PEEK)
+      expect(Math.round(box!.y + box!.height)).toBe(PHONE.height)
+    }).toPass()
+
+    // And the corner is still a CORNER while it is open: never the centre, never the whole glass.
+    const cornerBox = await corner.boundingBox()
+    expect(cornerBox).not.toBeNull()
+    expect(cornerBox!.width).toBeLessThan(PHONE.width * 0.7 + 1)
+    expect(cornerBox!.x).toBeLessThan(PHONE.width / 2)
   })
 })
