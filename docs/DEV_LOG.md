@@ -5,6 +5,112 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-10 — the books are opened for what is already aboard (row 74, the first of "fix both", migration 0082)
+
+**The owner, after driving the game on production (2026-09-09):** the cargo already in their hold
+shows **no cost at all**. *"fix both of those"* — this is the first. The slice in one noun phrase:
+**the books are opened for what is already aboard.**
+
+**What said the opposite.** 0081 records a basis only from the next purchase onward — its own
+header: *"everything aboard TODAY, because nothing recorded it — carry no key"*, and its assert
+(a) requires every hull to carry an empty map on the day it lands. So the 35 t of olive oil and
+the 3 t of clocks the owner had bought before 0081 are served as nothing until they are sold out.
+
+**The insight that makes this a reconstruction, not a guess: a sale never moves the average**
+(0081's own rule — a buy blends, a sale leaves the average unchanged). So the average cost of what
+REMAINS in a hold is the weighted average of everything ever BOUGHT into it, provided every
+acquisition was priced and the ledger is complete — and `public.events` is append-only by 0004's
+trigger and carries `fleet`, `good`, `qty`, `total` on every BOUGHT. Replaying it per (house,
+fleet, good) with 0081's ONE blend, `public.blend_basis`, yields the figure 0081 would have written
+had it been there.
+
+**Where it lives, and §7B.** In migration 0082 ONLY, as a one-shot `pg_temp.replay_0082(ledger,
+house)` that fills a verdict table and then ceases to exist; the one write goes onto
+`ships.cargo_basis` — 0081's column — exactly as 0081's mover writes it, the fleet's figure onto
+EVERY hull carrying the good. It is deliberately not a catalogued function: a standing
+"recompute the basis from the ledger" would be a second authority beside `fleet_load` /
+`fleet_unload`, and 0082 re-asserts 0081's count (the column named by exactly five bodies, the
+reader with exactly four callers) unchanged. Second caller: none by design — once opened, a hold
+is on the books and the ledger is never replayed again; a second caller would mean the ledger had
+become a second source of truth for the hold, which is the defect.
+
+**The method, and the STORE/TAKE half nobody could have guessed.** BOUGHT blends `qty` tuns at
+`total / qty` (what `cmd.do_buy` passes); SOLD lowers the quantity and leaves the figure; STORED
+moves tuns into a per-(house, CITY, good) shed bucket at the fleet's figure of that moment; TAKEN
+brings them back at the bucket's figure. STORED and TAKEN carry **no port** (0070 writes only
+fleet, good, qty), so the city is read the way the game moves a fleet: the latest `VOYAGE_REPORT`
+with a `to` at or before the event, else — for the founding fleet only — the `FOUNDED` port. A
+fleet docks only by arriving; the direct `update fleets set port_id` sites in the chain are all
+inside self-assert probes.
+
+**The guards — refusing is the feature.** A basis is written ONLY where it is provably right;
+everything else stays unknown, which 0081 prints as nothing, never as zero. (1) The replayed
+quantity must EQUAL the tuns in the hold, else the ledger is incomplete (a probe's hand-load, a
+raid, a transfer). (2) An unpriced acquisition poisons it — `blend_basis` propagates null, and a
+null is never written. (3) A shed that cannot be placed in one city refuses — no arrival for a
+fleet that is not the founding one, two arrivals sharing an instant, a TAKE from a bucket the
+ledger never filled — and the replayed sheds must EQUAL `public.player_storage` city for city.
+(4) **Inside one instant the order is unrecoverable**: `created_at` is the transaction's `now()`
+and `id` is random, so every event one transaction writes shares an instant (0070's probe, queued
+orders run at an arrival). A purchase and a sale of one good sharing an instant refuse; two
+purchases or two sales commute and pass. (5) Written onto every hull carrying the good, and only
+where no hull carrying it has an entry — a key 0081 wrote, JSON null included, is KEPT, never
+overwritten. (6) Every verdict is printed by name in the receipt with its reason.
+
+**The self-assert, two ledgers.** A FIXTURE ledger — a temporary relation shaped like
+`public.events`, never rows in the game's ledger — for a probe house at distinct instants, twelve
+goods with twelve predicted verdicts: **the owner's own production figures** (BOUGHT 55 for 4,447,
+SOLD 20, BOUGHT 3 for 3,817) open **35 t at 80.8545 d./t** and **3 t at 1272.3333 d./t**; a round
+trip through a shed in another city (20 @100, arrive, STORE 10, BUY 10 @160, TAKE 5) opens 25 t at
+exactly 124; sold out and bought again opens at the new price alone; and a same-instant
+buy-and-sell, a TAKE from an unfilled shed, two arrivals in one instant, an unpriced purchase, a
+STORE from an unplaceable fleet, a STORE no city remembers, and a hold of 12 against a ledger of
+10 each REFUSE with their stated reason, while a key already on the books is KEPT. Then the REAL
+ledger: a second probe house buys through the real verbs on the real quay (0081's worked example,
+two hulls, the parcel split 4/6), a third good on the same hull, and a fourth good 5 t bought plus
+3 t hand-loaded; **0081's own recorded figures are struck from every hull**, so the house is in
+exactly the owner's state, and the replay must find the SAME figures again — to 1e-9 — write them
+onto both hulls, serve them on `world.fleets()`, and let a previewed and a committed SELL realise
+profit against them; the hand-loaded good refuses by quantity. The ten 0081 bodies and their ACLs
+are proven byte-identical; the world untouched.
+
+**What the break-test found in my own write, before it could reach production.**
+`scripts/db/breaktest-0082.mjs` (0081's pattern) mutates every guard and requires a red. One
+mutation went red for the WRONG reason — a not-null violation, not the guard — and reading it
+exposed a real defect: the write was `UPDATE ships … FROM books_0082`, which applies ONE join
+row per target row, so a hull carrying TWO opened goods would have been opened for only one. **The
+owner's flagship carries two** (olive oil and clocks). No fixture hull had carried two opened
+goods, so the self-assert could not see it. The write now aggregates every opened key of a hull
+in one `jsonb_object_agg`, house 1 gained its third good so one hull carries two opened goods
+beside a refused one, and the old one-row write is kept in the harness as a named mutation so it
+cannot come back.
+
+**Measured, PGlite (PostgreSQL 18.3) — the migration's own receipt on the local chain:** 3 pairs
+OPENED, 2 REFUSED, 0 KEPT. `Casa do Cais` (0061's probe) opened 10 t of its subject at its own
+total-over-tuns; `Casa dos Livros` (the fixture) opened 20 t of anise at **81.90 d./t** — bought 10 t for
+816 d. and 10 t for 822 d. through the real verbs, (816+822)/(10+10), the figure 0081 had recorded
+and then had struck from both hulls — and 5 t of cork for 252 d. at **50.40** on the same hull; `Casa Almacen` (0070's probe, the "anise: 20" house on production)
+REFUSED: its STORE/TAKE/STORE all share one instant and its shed row was set by hand, and its 20 t
+were hand-loaded with no BOUGHT at all — on production that house will refuse for the same
+reasons. **Prediction for the production receipt:** JOOHOON HA opens `olive-oil` 35 t at
+**80.8545** d./t and `nautical-clocks` 3 t at **1272.3333** d./t; the `dried-fish` house opens
+10 t at **50.80**; the `anise` house refuses.
+
+**What this file does not do.** It does not write `player_storage.basis` (the ask is the hold);
+it does not order events inside an instant by `ctid` (a heap can place a later, smaller tuple in
+an earlier page's gap, so `ctid` order is not insertion order and would not have been provable);
+it does not touch the client — 0081 already serves and prints the basis, and the buy tray reads
+`Paid` from `FleetView.cargo_basis` the moment the key exists.
+
+**Gates, each run once and read:**
+* `npm run db:apply` — **75 migrations apply, 75 self-assert receipts**, 0082 in **122 ms**, `world-guard ok` (224 harbours, 523 goods, 1,288 offers, 117,152 market rows); 2m 44s. Exit 0. (One earlier run went red on a plpgsql name clash — the loop record `e` shadowing a `jsonb_each` alias — read, fixed, re-run once.)
+* `node scripts/db/breaktest-0082.mjs` — unmutated green with the full receipt, then **18 mutations, ALL GUARDS BITE**, each red with its own FAIL sentence (a sale that moves the average, a shed that loses the cost, a TAKE at the hold's figure, the ledger replayed backwards, a figure rounded on the way in, guard 1 waved through, an unpriced purchase called free, two arrivals placed by picking one, the founding port for any fleet, the sheds never compared, a same-instant buy-and-sell ordered by luck, a key overwritten, a write onto one hull, a write past the verdict, **the one-row-per-hull write this harness found**, the reader granted to the browser, a write grant on ships, a 0081 body moved); 3m 13s. Exit 0. The first pass had one mutation red for the WRONG reason (a not-null violation); it was read, reshaped, and it is what exposed the write defect above.
+* `npm run db:proof` — **9 files, 62/62 PASS markers** (01 6/6, 02 6/6, 03 12/12, 04 9/9, 05 5/5, 06 9/9, 07 6/6, 08 5/5, 09 4/4), no proof changed committed state; 13m 03s. Exit 0.
+* `npx tsc -b` clean · `npx eslint src` clean · `npx eslint .` clean.
+* `npm run build` — green, 3m 40s; the world image rebuilt from 75 migrations (chain `a95f0cc840e9cd8d-75-82f09b`, applied in 211 s, 7.82 MB gzipped, certified 238 port rows / 523 goods / 117,152 market rows).
+* `npx vite preview --port 4188` + `PLAYWRIGHT_BASE_URL=http://localhost:4188/byeharu-voyage/ npx playwright test` — **241 passed, 0 failed, 0 skipped, 17.0 min**, `db.chain`'s head moved to 0082 (that spec applies the whole chain, 0082 included, in-process). Preview killed afterwards.
+* Not done here: the PostgreSQL 17 apply — PGlite is 18; CI's `disposable-chain` is the PG17 gate and this PR is what runs it. Not done here: production. **Nothing was pushed to production**; the deploy is by hand from the main clone.
+
 ## 2026-09-09 — the hold knows what it cost, and a sale says what it made (row 74, migration 0081)
 
 **The owner:** *"when trading i would like to know how much i bought the item, and by selling
