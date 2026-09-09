@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Bar, Field, Figure, goodIcon, Icon, Note, Tile, TileField } from '../../components/ui'
+import { Field, Note, TileField, TradeTile, TradeTray, type TradePick } from '../../components/ui'
 import { fleetCargoByCode } from '../../domain/fleet'
 import { buyableHere } from '../../domain/market'
-import { formatInt } from '../../lib/format'
+import { useTrade } from '../../live/useTrade'
 import { fold, foldedMatch } from '../../lib/text'
 import type { FleetView, MarketGood } from '../../lib/rpc'
-import { TradeTray, type TradePick } from './TradeTray'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE, ON THE QUAY YOU ARE STANDING ON — docs/OWNER_REQUESTS.md row 53, redrawn to §6.
@@ -14,6 +13,18 @@ import { TradeTray, type TradePick } from './TradeTray'
 // The owner: *"since each port, city will have different market - trade goods, i want buy and sell
 // on port tab, the market in port tab - where i press market, then choose to trade."* 0061 and 0062
 // made the market a fact about the PORT, so what is on the quay belongs on the harbour.
+//
+// ── WHAT IS DRAWN HERE IS NOT THIS SCREEN'S ───────────────────────────────────────────────────
+// §6, on this face: *"TRAY: identical to Command's buy tray (same component, same `issue`)"*. The
+// tile is `TradeTile`, the tray is `TradeTray`, both the design system's; the act — the grammar,
+// the door, the ceiling, the server's refusal — is `useTrade`'s. COMMAND's BUY/SELL question
+// composes exactly the same three, so a good cannot look different, step differently or be issued
+// differently on the two quays a player buys from. What this file owns is the FIELD — which goods
+// this harbour shows — and the pick.
+//
+// For one day (2026-09-09) it owned more: its own TradeTray.tsx and its own price cell, written in
+// step 4 before step 5 promoted the same tray into the design system. Two spellings of one tray is
+// the shape the standing law forbids; the private copies are deleted and nothing of them is kept.
 //
 // ── WHAT §6 DELETED HERE, AND WHY EACH ONE WENT ────────────────────────────────────────────────
 //   THE BUY/SELL SUB-TABS.  *"the tile has both prices; the tap zone decides"*. Two faces over one
@@ -24,7 +35,7 @@ import { TradeTray, type TradePick } from './TradeTray'
 //   THE COUNT LINE.  `10 goods traded here, by name` — the list is on the screen, and a sentence
 //     counting what the eye can see is §2 item 6's whole complaint.
 //   THE ORDER LINE + `Issue this order`.  §5: no screen prints the order string. The tray's own
-//     button is the act, and `orderText` is composed at issue time (TradeTray.tsx).
+//     button is the act, and `orderText` is composed at issue time (src/live/useTrade.ts).
 //   THE FOLD, and `inRowsOf` / `useTileCols` with it. The quantity opens in a `Tray` docked to the
 //     bottom edge, so nothing above the press moves — the owner's rule kept exactly, without the
 //     row arithmetic that existed only to insert a box into a grid (§5).
@@ -32,7 +43,7 @@ import { TradeTray, type TradePick } from './TradeTray'
 // ── WHAT IT STILL DOES NOT OWN ─────────────────────────────────────────────────────────────────
 // No price arithmetic, no legality check, no grammar, no quantity rule. `buyableHere` is 0061's
 // one answer to "can this be bought at this quay"; `fleetCargoByCode` is the one fold of a
-// manifest; the tray owns the capacity read and the one door (`cmd.issue`).
+// manifest; `useTrade` owns the capacity read and the one door (`cmd.issue`).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export function PortTrade({
@@ -47,10 +58,27 @@ export function PortTrade({
   /** This port's culture — printed only where it refuses a good (§6). */
   culture: string
 }) {
+  if (!fleet) {
+    return (
+      <Note tone="neutral">
+        No fleet of yours lies here, so there is nothing to trade with. Send one and this quay will
+        deal.
+      </Note>
+    )
+  }
+  return <QuayField goods={goods} fleet={fleet} culture={culture} />
+}
+
+/** The field and the pick, once there is a fleet to trade with — split so the hooks below never
+ *  run for a quay with nobody alongside. */
+function QuayField({ goods, fleet, culture }: { goods: readonly MarketGood[]; fleet: FleetView; culture: string }) {
   const [filter, setFilter] = useState('')
   const [pick, setPick] = useState<TradePick | null>(null)
+  // The quantity is this screen's (COMMAND keeps its own on the order draft); the tray owns the
+  // default and materialises it through `onChange`, so no rule is spelt here.
+  const [qty, setQty] = useState<number | null>(null)
 
-  const aboard = useMemo(() => (fleet ? fleetCargoByCode(fleet) : {}), [fleet])
+  const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
   const shown = useMemo(() => {
     const q = fold(filter.trim())
     return goods
@@ -61,14 +89,16 @@ export function PortTrade({
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [goods, filter, aboard])
 
-  if (!fleet) {
-    return (
-      <Note tone="neutral">
-        No fleet of yours lies here, so there is nothing to trade with. Send one and this quay will
-        deal.
-      </Note>
-    )
+  const close = () => {
+    setPick(null)
+    setQty(null)
   }
+  const open = (good: MarketGood, intent: 'buy' | 'sell') => {
+    setQty(null)
+    setPick({ good, intent })
+  }
+
+  const { capacity, step, act } = useTrade(fleet, pick?.intent ?? 'buy', pick?.good ?? null, qty, close)
 
   return (
     <>
@@ -88,107 +118,32 @@ export function PortTrade({
         </Note>
       ) : (
         <TileField className="mt-3">
-          {shown.map((g) => {
-            const carried = aboard[g.code] ?? 0
-            const canBuy = buyableHere(g)
-            return (
-              /* THE ID IS THE ONE `tests/layout.spec.ts:355-437` MEASURES. The spec is written
-                 against COMMAND, which still draws the old picker; it keeps that id so that when
-                 step 5 swaps the composer onto this tile the proof travels with it — the field
-                 shape, the 44px cells, the labelled figures and "none aboard" are the same four
-                 assertions either way. */
-              <Tile
-                key={g.code}
-                mark={<Icon name={goodIcon(g.code, g.category)} size={20} />}
-                name={g.name}
-                state={canBuy ? 'rest' : 'muted'}
-                data-testid="good-pick-tile"
-              >
-                <span className="grid grid-cols-2 gap-1">
-                  <PriceCell
-                    label="buy"
-                    price={g.buy}
-                    onPress={() => setPick({ good: g, intent: 'buy' })}
-                    dead={canBuy ? null : 'not traded here'}
-                  />
-                  <PriceCell
-                    label="sell"
-                    price={g.sell}
-                    onPress={() => setPick({ good: g, intent: 'sell' })}
-                    dead={carried > 0 ? null : 'none aboard'}
-                  />
-                </span>
-
-                {/* HOW FAR THIS PRICE CAN TRAVEL (0071), as the bar §6 draws it: where today's
-                    ask stands between the low and the high this quay can reach. */}
-                <Bar
-                  pct={span(g)}
-                  tone="neutral"
-                  label={`${g.name} price range`}
-                  className="mt-1"
-                />
-                <span className="flex items-center justify-between text-t-caption text-ink-faint">
-                  <span className="tabular-nums">{formatInt(g.range_lo)}</span>
-                  <span className="tabular-nums">{formatInt(g.range_hi)}</span>
-                </span>
-
-                {/* The stock, in the six blocks the server bands it into. NEUTRAL until it is
-                    nearly out: §4.4 reserves green and red for cheap-and-dear, and a full quay
-                    painted green on every tile spends the one colour that means "gain" on a
-                    quantity. Warning is the state a trader actually has to act on. */}
-                <Bar
-                  value={g.stock_band}
-                  of={6}
-                  tone={g.stock_band <= 1 ? 'warning' : 'neutral'}
-                  label={`${g.name} in stock`}
-                />
-              </Tile>
-            )
-          })}
+          {shown.map((g) => (
+            <TradeTile
+              key={g.code}
+              good={g}
+              aboard={aboard[g.code] ?? 0}
+              canBuy={buyableHere(g)}
+              selected={pick?.good.code === g.code}
+              onBuy={() => open(g, 'buy')}
+              onSell={() => open(g, 'sell')}
+            />
+          ))}
         </TileField>
       )}
 
       {pick && (
-        <TradeTray pick={pick} fleet={fleet} culture={culture} onClose={() => setPick(null)} />
+        <TradeTray
+          pick={pick}
+          aboard={aboard[pick.good.code] ?? 0}
+          capacity={capacity}
+          step={step}
+          qty={{ value: qty, onChange: setQty }}
+          act={act}
+          culture={culture}
+          onClose={close}
+        />
       )}
     </>
-  )
-}
-
-/** Where today's ask stands inside the range, 0–100. A band of zero width reads as full. */
-function span(g: MarketGood): number {
-  const width = g.range_hi - g.range_lo
-  if (!(width > 0)) return 100
-  return ((g.buy - g.range_lo) / width) * 100
-}
-
-/**
- * ONE PRICE, AND THE TAP THAT MAKES IT A TRADE — the owner's row 6, kept literally: the price IS
- * the button. A dead cell says WHY on its own face ("none aboard"), because a control that goes
- * grey without a reason is the thing `tests/layout.spec.ts` was written to stop.
- */
-function PriceCell({
-  label,
-  price,
-  onPress,
-  dead,
-}: {
-  label: 'buy' | 'sell'
-  price: number
-  onPress: () => void
-  /** The reason this cell cannot be pressed, or null when it can. */
-  dead: string | null
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={dead !== null}
-      className="min-h-11 rounded-control bg-surface-2 px-2 py-1 text-left disabled:opacity-45"
-    >
-      <span className="block text-t-caption text-ink-faint">{label}</span>
-      <Figure value={formatInt(price)} />
-      {dead !== null && <span className="block text-t-caption text-ink-faint">{dead}</span>}
-    </button>
   )
 }

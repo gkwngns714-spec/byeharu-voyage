@@ -1,5 +1,18 @@
 # CMD — orders are MADE, not typed
 
+> **REDRAWN 2026-09-09 — §7 step 5 of `docs/UI_DIRECTION.md`.** The screen below was rebuilt on the
+> twelve primitives. Its shape is now: a fleet chip row and a one-line fleet stat, a field of twelve
+> **verb tiles** (`VerbGrid.tsx`, icon + word only), and the chosen verb's ONE question —
+> `TradeQuestion.tsx` (BUY/SELL: the design-system `TradeTile` field, and `TradeTray` docked at the
+> bottom edge, shared with PORT), `SailQuestion.tsx` (the chart is the question, harbours below, a
+> passage tray on tap) or `StepQuestion.tsx` (HIRE/REPAIR/PROVISION: the reading, a `Stepper`, and
+> the priced-on-the-day check, in a tray). The queue is `QueueTray.tsx`. `OrderComposer`,
+> `FleetRail`, `PreviewPanel`, `HaggleBlock`, `ArgPickers`, `OrderQueue`, `railVerbs` and
+> `fleetLimits` were **deleted**; the good tile and the buy tray are `src/components/ui`'s, drawn
+> the one way on both quays. The check is `orderCheck.tsx`; the six 0068–0074 verbs draw a tile but
+> are not composed here yet (dark-first). Sections **1–11a below describe the OLD composer and rail
+> and are kept only as history** — the flow, the primitives and the file map above supersede them.
+
 `DESIGN.md` §E.1 and §F are the specification. This file records what was built, what was deleted,
 and the handful of decisions a future reader could otherwise mistake for an accident.
 
