@@ -5,6 +5,64 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-09 — D44: the material is gone, and the game has a type scale
+
+The owner looked at the running game at 390×844 and said *"so many unnecessary info, old fashioned
+component structure."* The audit that followed measured it — 81 ⓘ dots, 93 lines of fine print, 31
+uppercase section labels, 33 bordered cards, ten type sizes, three families — and named the cause:
+the 2026-08-20 **material** (brass gradients, 7px clipped corners, brown header bars, a system
+serif for titles, mono as the label voice) is a 2008 browser-game skin laid over a web-admin
+document. The density lesson from 대항해시대 오리진 was right; copying its *material* is what reads
+as old.
+
+The fix is a ten-step migration, and **this is step 1 of 10: the token layer, and nothing else.**
+No screen changed a class string. `src/index.css` is rewritten; the same layouts came back flat.
+
+**What became true**
+
+* One family. `--font-serif` and `--font-mono` both resolve to the Inter stack, so the fourteen
+  serif titles and the 130 `font-mono` sites keep their class names and lose the voice. Figures
+  keep the one job mono was carrying: `.font-mono` still sets `tabular-nums`.
+* A type scale exists for the first time: `--text-t-caption|label|body|title|figure|hero`
+  (12/16 · 14/20 · 16/22 · 20/26 · 24/28 · 34/38), each carrying its own line-height and weight.
+  Nothing uses them yet — step 2's primitives do.
+* Two schemes, both first-class. Dark is the default night sea; `prefers-color-scheme: light` is a
+  day sea, measured rather than translated. Four of the direction's own light values did not clear
+  AA at the sizes this game prints and were moved: accent 3.59 → 5.58, success 3.44 → 4.57,
+  warning **2.94 → 5.00**, danger 4.38 → 5.46.
+* `playwright.config.ts` pins `colorScheme: 'dark'`. Playwright's default is to emulate a LIGHT
+  system preference, which would have silently repointed every colour proof at a palette nobody
+  sees first — `chart.ink.spec` would have measured the day chart and called it the chart.
+* The day chart inverts the pen, and that is a finding, not a preference. At night the land is INK
+  mixed into deep water. By day the water is the darker body and the land is PAPER: mixing ink into
+  a pale sea reaches **1.24 : 1**, which is the 2026-08 land-and-sea-are-one-object defect all over
+  again. Measured day chart: land 2.02 : 1, coast 3.68 : 1, quiet mark on land 3.51 : 1.
+* `--color-ink-faint` is the ONE place the direction's §4.4 table was refused outright. Its #6c7684
+  measures 3.73 : 1 on the surface — below AA for the 10-11px text it colours at 93 sites — and it
+  breaks the chart: the quiet port mark is `stroke-ink-faint/85`, and at that value the mark stops
+  out-contrasting the land it stands on (1.88 : 1 against a 2.05 : 1 ground). The shipped value is
+  kept and the land/coast mixes are retuned to 42% / 65% around it.
+* MATERIAL is deleted: `--color-brass|brass-2|brass-rim`, `panel-head-2`, `sea-deep|sea-lit|sky`,
+  `haze`, and the gradient/chamfer/rim compositions. `.bv-cut`, `.bv-brass` and `.bv-panel-head`
+  survive **one PR** as flat shims onto the new tokens, because deleting the names would not
+  flatten their twelve call sites — it would undress them: a card with no corner and no parting
+  rule, and a primary button with no fill at all. Step 2 replaces the call sites; step 10 deletes
+  the shims.
+
+**Measured:** `tsc --noEmit` clean · `npm run build` green (9m10s) · full suite, local PGlite mode,
+**234 passed / 1 failed / 0 skipped** in 38.9 min · `layout.spec.ts` **12/12** in 1.5 min · five
+screens screenshotted at 390×844 in both schemes, **0 page errors**.
+
+The one red is **not this branch's**: `tests/db.chain.spec.ts:218` pins `LAST` to 0078 while the
+chain on disk ends at 0079. It is red on `origin/main` today and already repaired on
+`osn-retire-the-third-snap-rule` (PR #33), which moves it to 0080. Left alone rather than fixed
+twice.
+
+**Still open, found while grepping and deliberately not fixed here:** four screens print a
+confirmation line in `text-sea` (`PortTrade.tsx:181`, `PortInn.tsx:121`, `PortWorkstation.tsx:140`,
+`PortYard.tsx:150`) — the sea colour on a panel, ~1.1 : 1, invisible before this change and
+invisible after it. Making the `sea` token mean "ink" to rescue them would plant a lie in the token
+layer; the audit deletes those four lines in step 2 with the parser string they print.
 ## 2026-09-08 — D43: the chain pin went stale on main, and was deployed red
 
 `tests/db.chain.spec.ts`'s `LAST` names the migration the chain must end at. **0079 landed without

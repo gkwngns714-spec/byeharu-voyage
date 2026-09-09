@@ -38,8 +38,8 @@ import { hScrollClass } from './scrollAffordance'
  *  SURFACE THE TABLE SITS ON, or the scrolling columns show through the pinned one.
  *
  *  THE DEFAULT CHANGED ON 2026-08-22, and it was a real regression: D12 made a Card's body
- *  `bg-panel` (`--color-panel` is `color-mix(surface 88%, #3a2a1c)` — warmer than `--color-surface`,
- *  not equal to it) while this default still painted `bg-surface`. Every table in the game sits in
+ *  `bg-panel` (then `color-mix(surface 88%, #3a2a1c)` — warmer than `--color-surface`, not equal
+ *  to it) while this default still painted `bg-surface`. Every table in the game sits in
  *  a Card, so every sticky first column was painting the wrong colour and the columns sliding under
  *  it were faintly visible. Found by reading the tokens, not the screen — which is why the default
  *  now names the surface that actually exists rather than the one that used to. */

@@ -18,9 +18,11 @@ export type ButtonVariant =
 export type ButtonSize = 'sm' | 'md' | 'icon'
 
 const VARIANT: Record<ButtonVariant, string> = {
-  // PRIMARY IS BRASS, not a flat fill (docs/UI_DIRECTION.md §2): the reference's one-per-screen
-  // action is a lit metal plate, and a flat swatch beside a chamfered panel reads as a web form.
-  // `.bv-brass` (src/index.css) owns the gradient, rim and lit top edge, so there is one recipe.
+  // PRIMARY WAS BRASS — a lit metal plate with a rim, because the 2026-08-20 material said a flat
+  // swatch beside a chamfered panel reads as a web form. The 2026-09-09 audit said the material is
+  // what reads as old, so `.bv-brass` (src/index.css) is now a flat accent fill and survives only
+  // as the name this one call site still says. Step 2 replaces this variant with the `Button`
+  // primitive and the name goes with it.
   primary: 'bv-brass text-app font-medium',
   secondary: 'border border-edge bg-surface-2 text-ink hover:border-ink-faint/60',
   ghost: 'text-ink-muted hover:bg-surface-2 hover:text-ink',

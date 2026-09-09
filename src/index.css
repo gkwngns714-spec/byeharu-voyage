@@ -6,160 +6,313 @@
    in src/components/ui/, which consume ONLY these tokens. Tailwind v4 @theme turns each token
    into utilities (bg-surface, text-ink-muted, border-edge, text-accent, rounded-card, …).
 
-   Skin     "Ship's ledger" — a dark chart table at night: cold ink-blue layers, warm parchment
-            text, brass accent.
+   Skin     "An instrument over a living sea." The world is the ground on every tab; everything
+            the player reads sits on flat, quiet sheets; type is ONE family; colour is reserved
+            for meaning; there is no border where a hairline or a tone step will do. The number
+            is the loudest thing on the screen because nothing else is allowed to be loud.
 
-            ⚠ DOCTRINE CHANGED 2026-08-20. This block used to read "TEXT-FIRST … the type carries
-            the design and the chrome stays quiet", and the owner overruled it: *"this is not a
-            proper game … make the UI the same [as 대항해시대 오리진], or even better."* The palette
-            above survives — it was never what was wrong. What changed: the chrome must be MADE OF
-            SOMETHING, and the world must be visible behind it. docs/UI_DIRECTION.md carries the
-            evidence and the eight rules; the tokens serving it are the MATERIAL block below.
+            ⚠ DOCTRINE CHANGED 2026-09-09, and this is the SECOND change to this block. It read
+            "TEXT-FIRST" until 2026-08-20, when the owner asked for 대항해시대 오리진's chrome and
+            it became MATERIAL — brass gradients, clipped corners, brown header bars, a system
+            serif for titles, mono as the label voice. On 2026-09-09 the owner looked at the
+            running game at 390×844 and said: *"so many unnecessary info, old fashioned component
+            structure."* The audit that followed named the material by name: copied as MATERIAL
+            rather than as DENSITY, it reads as a decade-old browser game. So the material is
+            gone. What survives is the density lesson and the palette's job — one accent, three
+            inks, semantic colour — restated flat.
 
-   Layers   app < surface < surface-2 — a deep blue-black ramp (never pure black).
-   Text     ink (parchment, primary) / ink-muted (secondary) / ink-faint (small labels). All three
-            are picked for AA contrast on every layer.
-   Accent   brass — the ONE interactive family. Semantic: success (sea green) / warning (lamp
-            amber) / danger (signal red), each with a -hover step and a -soft alpha tint.
-   Type     THREE roles, and the split is load-bearing on a ledger:
-              --font-mono   JetBrains Mono — every number, code, coordinate, table cell and
-                            micro-label. Tabular figures line up in a column; proportional ones
-                            do not, and a manifest that does not line up cannot be scanned.
-              --font-sans   Inter — prose, controls, body copy.
-              --font-serif  system serif stack (Georgia et al., no download) — display titles and
-                            the log's voice. Deliberately NOT a webfont: it must never be the
-                            thing that makes a phone wait for a heading.
-            Conventions: page title text-2xl font-serif · panel title text-lg · body text-sm ·
-            metadata text-xs · micro-labels text-xs uppercase tracking-wider font-mono ink-faint.
-   Shape    rounded-card (0.75rem — squarer than a space UI; this is paper, not a HUD) for panels,
-            rounded-md inside. shadow-card = soft elevation + a hairline top highlight.
+            THIS FILE IS STEP 1 OF 10 and it is deliberately structural-free: same layouts, new
+            visual language. Steps 2-9 replace the primitives and then each screen; step 10
+            deletes what this file still shims. The direction, in full, is the audit document
+            §4 (atmosphere), §5 (primitives) and §7 (migration order).
+
+   Layers   bg < surface < surface-2 — separation by TONE STEP, and where a step will not do, by
+            a 1px `edge` hairline. Not by a box.
+   Text     ink (primary) / ink-muted (secondary) / ink-faint (units, disabled, placeholders).
+            Never a fourth. Every one measured for AA on every layer it is used on.
+   Accent   gold — the ONE interactive colour: selected, primary action, your fleet on the chart.
+            Semantic: success (cheap/gain/safe) / danger (dear/loss) / warning (short, halted) /
+            info (moving). Green-red ONLY ever mean cheap-dear or gain-loss.
+   Type     ONE family, Inter, self-hosted. Six sizes, `--text-t-*`, §4.1. No serif, no mono, no
+            uppercase voice, no letter-spacing. Figures are tabular.
+   Space    4-pt base, 8-pt rhythm: 4 · 8 · 12 · 16 · 24 · 32 · 48 and nothing else.
+   Shape    sheet 16 · tile 12 · control 10 · chip 999. NO cut corners.
+   Motion   240ms rise, 180ms fold, one curve, and nothing else animates.
+   Schemes  BOTH ARE FIRST-CLASS. Dark is the default (a night sea); `prefers-color-scheme: light`
+            selects the day sea. Every light value below is measured, not translated.
    Mobile   every interactive target is ≥44px; the shell is 100dvh with its own scroll regions.
    ═══════════════════════════════════════════════════════════════════════════════════════════ */
 @theme {
-  /* color layers — deep chart-blue, never pure black */
-  --color-app: #070b11;
-  --color-surface: #0d141d;
-  --color-surface-2: #16202c;
-  --color-edge: #253547;
+  /* ── COLOUR — the night sea (default). The day sea is the media query further down. ─────────
+     Both palettes are stated as flat literals in ONE place each. A token that is a var() of
+     another token (below: panel, hairline, cheap, …) tracks the scheme for free. */
 
-  /* text — warm parchment on cold ink */
-  --color-ink: #f1ebdd;
-  --color-ink-muted: #b3bcc7;
+  /* ground and world layer. `bg` is under everything; sea-1 → sea-2 is the gradient `.bv-sea`
+     paints, and sea-2 is also the chart's own water. */
+  --color-bg: #0a1018;
+  --color-sea-1: #0e1b2b;
+  --color-sea-2: #070c14;
+
+  /* sheets. surface is a sheet or a tile; surface-2 is an inset cell or a chip at rest. */
+  --color-surface: #131c27;
+  --color-surface-2: #1b2634;
+
+  /* the hairline. An alpha, not a colour, so it works on every layer it is drawn over. */
+  --color-edge: rgb(255 255 255 / 0.08);
+
+  /* the three inks, and only three. Measured on --color-surface:
+       ink        15.72 : 1     ink-muted   8.09 : 1     ink-faint   6.06 : 1
+     ink-faint is the ONE deviation from the direction's §4.4 table, which asks for #6c7684. That
+     value measures 3.73 : 1 on this surface — below AA for the 10-11px text it is used on at 93
+     sites — and it also breaks the chart: the quiet port mark is `stroke-ink-faint/85`, and at
+     #6c7684 the mark stops out-contrasting the land it sits on (measured 1.88 : 1 against a
+     2.05 : 1 ground, which tests/chart.ink.spec.ts fails on purpose). The value kept is the one
+     the tree already shipped and the chart is already tuned against. */
+  --color-ink: #f3f5f8;
+  --color-ink-muted: #a9b3c0;
   --color-ink-faint: #8b97a5;
 
-  /* accent + semantic — brass lamp-light on a night chart */
-  --color-accent: #e2ab52;
-  --color-accent-hover: #f2c479;
-  --color-success: #5cc48d;
-  --color-success-hover: #86d8ac;
-  --color-warning: #e8bd53;
-  --color-warning-hover: #f3d485;
-  --color-danger: #ef7f74;
-  --color-danger-hover: #f7a49b;
+  /* the one interactive colour, and the four meanings. Measured on --color-surface, and as the
+     ground under a `text-bg` label when the colour is a button FILL:
+       accent  8.93 / 9.92    success 8.38 / 9.31    danger 5.49 / 6.10
+       warning 9.59 / 10.66   info    7.04 / 7.82 */
+  --color-accent: #e2b45c;
+  --color-accent-hover: #efc880;
+  --color-success: #4fcb8b;
+  --color-success-hover: #7fddaf;
+  --color-warning: #f2b84b;
+  --color-warning-hover: #f7ce86;
+  --color-danger: #f0655a;
+  --color-danger-hover: #f58f87;
+  --color-info: #6aa9f5;
 
-  /* soft alpha tints — subtle panel washes (bg-accent-soft, …). Derived via color-mix so they
-     TRACK their semantic token: retune --color-accent once and these follow. */
-  --color-accent-soft: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  --color-success-soft: color-mix(in srgb, var(--color-success) 10%, transparent);
-  --color-warning-soft: color-mix(in srgb, var(--color-warning) 10%, transparent);
-  --color-danger-soft: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  /* soft alpha tints — the selected wash. Derived via color-mix so they TRACK their semantic
+     token AND the scheme: retune --color-accent once, or switch to the day sea, and these
+     follow. §4.3: a selected tile is this wash plus an accent hairline, never a box. */
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  --color-success-soft: color-mix(in srgb, var(--color-success) 14%, transparent);
+  --color-warning-soft: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  --color-danger-soft: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  --color-info-soft: color-mix(in srgb, var(--color-info) 14%, transparent);
 
   /* ── THE CHART'S THREE INKS ─────────────────────────────────────────────────────────────────
-     The read-only chart layer consumes these and never raw hex. THE SEA IS THE GROUND: since
-     2026-08-23 `ChartCanvas` paints `--color-chart-sea` as the first thing on the sheet, so this
-     token is what is actually behind every coast, every mark and every label halo. Before that the
-     chart was drawn straight onto the `.bv-sea` gradient and this token was a colour the eye never
-     met — while `stroke-chart-sea` (the label halo) punched a hole in a backdrop that was not there.
+     THE SEA IS THE GROUND: `ChartCanvas` paints `--color-chart-sea` as the first thing on the
+     sheet, so it is what is actually behind every coast, every mark and every label halo. The
+     other two are ONE PEN mixed into that water, so the whole chart is one water colour and one
+     pen and retuning either retunes the sheet.
 
-     THE OTHER TWO ARE MIXES OF ONE INK INTO IT, so the whole chart palette is one water colour and
-     one pen, and retuning either retunes the sheet (the MATERIAL block's rule: a literal here would
-     be a second palette). The percentages are not taste — they are contrast ratios, MEASURED in the
-     running game at 390 px against the sea:
+     The percentages are not taste — they are contrast ratios, and tests/chart.ink.spec.ts
+     MEASURES them in the running game at 390px rather than trusting this comment:
+       land   ink-faint 42%   #3e4651   2.05 : 1   the BODY of the land. A step you can see, and
+                                                   deliberately far below the port marks: the
+                                                   coast is ground, the marks are the subject.
+                                                   The spec holds it inside [1.9, 2.6).
+       coast  ink-faint 65%   #5d6672   3.37 : 1   the BOUNDARY, at WCAG 1.4.11's 3 : 1 floor for
+                                                   a graphic that carries meaning.
+     …and the quiet port mark (`stroke-ink-faint/85`) then reads 2.75 : 1 against that land,
+     which is the third assertion: a mark must always out-shout the ground it sits on.
 
-       land   42%  #404a58   2.09 : 1   the BODY of the land. A step you can see, and deliberately
-                                        far below the 4.9 : 1 a port mark gets: the coast is the
-                                        ground, the marks are the subject.
-       coast  62%  #5a6472   3.12 : 1   the BOUNDARY, at WCAG 1.4.11's 3 : 1 floor for a meaningful
-                                        graphic. §E.5 asks for "a single pale stroke"; this is the
-                                        value that makes that sentence true rather than aspirational.
-
-     WHAT THIS REPLACED, and why it had to. Land was #1b2635 on #0a1220 — 1.23 : 1, which its own
-     layer described in its header as "a ~5% value step". On screen it was worse: the chart had no
-     sea of its own, so land sat on `.bv-sea`, whose top stop `--color-sky` (#142438) put Iberia
-     against the Atlantic at 1.03 : 1. Two bodies one part in thirty apart is not a chart. */
-  --color-chart-sea: #0a1220;
+     THE DAY CHART INVERTS THE PEN, and that is why these three are restated in the light block
+     rather than derived once. At night the land is INK mixed into deep water. By day the water
+     is the darker body and the land is PAPER: mixing ink into a pale sea can only reach 1.24 : 1
+     (measured against the direction's own §4.4 light values), which is the 2026-08 defect all
+     over again. One rule cannot spell both polarities, so each scheme states its own pen. */
+  --color-chart-sea: var(--color-sea-2);
   --color-chart-land: color-mix(in srgb, var(--color-ink-faint) 42%, var(--color-chart-sea));
-  --color-chart-coast: color-mix(in srgb, var(--color-ink-faint) 62%, var(--color-chart-sea));
-
-  /* typography (Inter + JetBrains Mono self-hosted via @fontsource, imported in src/main.tsx;
-     the serif is a system stack on purpose — zero bytes, always present) */
-  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Menlo, Consolas, monospace;
-  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, ui-serif, 'Times New Roman', serif;
-
-  /* ── MATERIAL ───────────────────────────────────────────────────────────────────────────────
-     Added 2026-08-20 with the doctrine change above. These are the tokens that let a panel be
-     made of something. Read off reference captures (docs/UI_DIRECTION.md §2): a panel is a warm
-     dark body under a browner header bar, parted by a gold hairline; the primary action is brass
-     with a darker rim; the world behind it is a lit sea, never a flat colour.
-
-     Every one of these is DERIVED from the palette above via color-mix, so retuning --color-accent
-     retunes the material with it. A literal here would be a second palette. */
-
-  /* panel body + header — the ink layers pushed warm, toward oiled wood */
-  --color-panel: color-mix(in srgb, var(--color-surface) 88%, #3a2a1c);
-  --color-panel-2: color-mix(in srgb, var(--color-surface-2) 88%, #3a2a1c);
-  --color-panel-head: color-mix(in srgb, var(--color-surface-2) 62%, #43301f);
-  --color-panel-head-2: color-mix(in srgb, var(--color-surface) 62%, #2a1d12);
-  /* the 1px rule under every panel header, and the quieter one between rows */
-  --color-hairline: color-mix(in srgb, var(--color-accent) 55%, transparent);
-  --color-rule: color-mix(in srgb, var(--color-edge) 80%, transparent);
-
-  /* brass — the primary action's fill, rim and lit top edge */
-  --color-brass: color-mix(in srgb, var(--color-accent) 78%, #6d4a16);
-  --color-brass-2: color-mix(in srgb, var(--color-accent) 42%, #3a2609);
-  --color-brass-rim: color-mix(in srgb, var(--color-accent) 65%, #201400);
-
-  /* the world layer — sea and sky behind the glass, and the haze the panels sit on */
-  --color-sea-deep: #060d18;
-  --color-sea: #0b1b2c;
-  --color-sea-lit: color-mix(in srgb, var(--color-accent) 9%, #12283f);
-  --color-sky: #142438;
-  --color-haze: color-mix(in srgb, var(--color-app) 72%, transparent);
-
-  /* price index — one meaning per colour (rule 7). cheap = you should BUY, dear = you should SELL */
-  --color-cheap: var(--color-success);
-  --color-dear: var(--color-danger);
-  --color-even: var(--color-ink-faint);
+  --color-chart-coast: color-mix(in srgb, var(--color-ink-faint) 65%, var(--color-chart-sea));
 
   /* ── RARITY — the four tiers of 0032, served on every good ──────────────────────────────────
      Three GENUINELY NEW meanings (the sanctioned reason for a new base literal — see
-     tests/duplication.spec.ts §1): rule 7's existing colours are all spoken for (gold = act,
-     green = gain, red = danger, blue = information), so the tiers take the three hues the game
-     does not otherwise use — sea-glass, violet, orchid — and `common` stays the quiet ink the
-     rest of the ledger already speaks in. Colour is never the only channel: every tier also has
-     its own glyph shape (icons.ts, rarityCommon…rarityExotic), so the tier survives a
-     colourblind player and a greyscale screenshot.
-
-     Contrast, MEASURED against bg-panel rgb(18,23,29) — the surface every table row sits on
-     (Card.tsx) — all clear of WCAG AA's 4.5:1 for the small text these colour:
-       common    #8b97a5  6.06 : 1   (the ink-faint token itself)
-       uncommon  #5ec9b4  9.00 : 1
-       rare      #b39df2  7.74 : 1
-       exotic    #e59ad5  8.50 : 1  */
+     tests/duplication.spec.ts §1): the four meanings above are all spoken for, so the tiers take
+     the three hues the game does not otherwise use — sea-glass, violet, orchid — and `common`
+     stays the quiet ink the rest of the game already speaks in. Colour is never the only channel:
+     every tier also has its own glyph shape (icons.ts, rarityCommon…rarityExotic), so the tier
+     survives a colourblind player and a greyscale screenshot.
+     Measured on --color-surface: uncommon 8.58, rare 7.38, exotic 8.11 — all clear of AA. */
   --color-rarity-common: var(--color-ink-faint);
   --color-rarity-uncommon: #5ec9b4;
   --color-rarity-rare: #b39df2;
   --color-rarity-exotic: #e59ad5;
 
-  /* shape + elevation */
-  --radius-card: 0.75rem;
-  --shadow-card: inset 0 1px 0 0 rgb(255 255 255 / 0.04), 0 10px 30px -18px rgb(0 0 0 / 0.75);
-  --shadow-overlay: 0 16px 48px -16px rgb(0 0 0 / 0.85), 0 0 0 1px color-mix(in srgb, var(--color-accent) 12%, transparent);
+  /* price index — one meaning per colour. cheap = you should BUY, dear = you should SELL. */
+  --color-cheap: var(--color-success);
+  --color-dear: var(--color-danger);
+  --color-even: var(--color-ink-faint);
+
+  /* ── TYPE — one family, six sizes ───────────────────────────────────────────────────────────
+     Inter, self-hosted via @fontsource (imported in src/main.tsx). §4.1: no serif, no mono, no
+     uppercase, no letter-spacing, no italics. The scale is the whole vocabulary — a screen that
+     needs a seventh size has a layout problem, not a type problem.
+
+       t-caption  12/16  500   units, secondary meta, chip text
+       t-label    14/20  400   row labels, body copy, a tile's second line
+       t-body     16/22  500   row values, tile name, button text
+       t-title    20/26  600   sheet title, section heading
+       t-figure   24/28  600   the ONE figure a block is about (price, ETA, purse)
+       t-hero     34/38  600   the headline figure of a sheet (capacity, passage days)
+
+     Figures are tabular: `t-figure` and `t-hero` carry `tabular-nums` themselves (further down),
+     and Tailwind's own `tabular-nums` utility is available anywhere else a column must line up. */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --text-t-caption: 0.75rem;
+  --text-t-caption--line-height: 1rem;
+  --text-t-caption--font-weight: 500;
+  --text-t-label: 0.875rem;
+  --text-t-label--line-height: 1.25rem;
+  --text-t-label--font-weight: 400;
+  --text-t-body: 1rem;
+  --text-t-body--line-height: 1.375rem;
+  --text-t-body--font-weight: 500;
+  --text-t-title: 1.25rem;
+  --text-t-title--line-height: 1.625rem;
+  --text-t-title--font-weight: 600;
+  --text-t-figure: 1.5rem;
+  --text-t-figure--line-height: 1.75rem;
+  --text-t-figure--font-weight: 600;
+  --text-t-hero: 2.125rem;
+  --text-t-hero--line-height: 2.375rem;
+  --text-t-hero--font-weight: 600;
+
+  /* ── SPACE — 4-pt base, 8-pt rhythm ─────────────────────────────────────────────────────────
+     4 · 8 · 12 · 16 · 24 · 32 · 48, which is `1 2 3 4 6 8 12` on this base and nothing between.
+     The three measurements that recur get a name so a screen never spells them as arithmetic:
+     the screen gutter and sheet padding (16), the row height (52 = the 44px reach floor + 8) and
+     the tile minimum (112). */
+  --spacing: 0.25rem;
+  --spacing-gutter: 1rem;
+  --spacing-row: 3.25rem;
+  --spacing-tile: 7rem;
+
+  /* ── SHAPE ──────────────────────────────────────────────────────────────────────────────────
+     A radius per role, and no cut corners: a 4px chamfer read as metal, which is exactly the
+     material this step deletes. `--radius-md` is repointed at the control radius so the fourteen
+     `rounded-md` controls already in the tree land on the scale without being touched. */
+  --radius-sheet: 1rem;
+  --radius-tile: 0.75rem;
+  --radius-control: 0.625rem;
+  --radius-chip: 999px;
+  --radius-md: var(--radius-control);
+
+  /* ── ELEVATION — exactly two levels, and a card is neither ──────────────────────────────────
+     A docked sheet casts upward from the bottom edge; a floating corner panel casts down. Every
+     other surface is separated by TONE, which is why `--shadow-card` below is `none`: thirty-
+     three drop-shadowed boxes is the "page with panels" look this step is here to end. */
+  --shadow-sheet: 0 -8px 32px -16px rgb(0 0 0 / 0.45);
+  --shadow-float: 0 8px 24px -12px rgb(0 0 0 / 0.5);
+
+  /* ── MOTION ─────────────────────────────────────────────────────────────────────────────────
+     One curve. Sheets rise and fall in 240ms; a fold opens in 180ms; nothing else animates.
+     `--default-transition-*` repoints every `transition` utility already in the tree at the house
+     curve, so the shell moves as one thing without a single class changing.
+     `prefers-reduced-motion` collapses all of it to zero at the bottom of this file. */
+  --ease-sheet: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-sheet: 240ms;
+  --duration-fold: 180ms;
+  --default-transition-duration: var(--duration-fold);
+  --default-transition-timing-function: var(--ease-sheet);
+
+  /* ── THE NAMES THE SCREENS ALREADY SAY ──────────────────────────────────────────────────────
+     Step 1 changes no screen's class strings, so every utility name the tree uses today has to
+     keep resolving. These are the old names REMAPPED onto the tokens above — never a second
+     value, always a var() of the one authority, so they track both the palette and the scheme.
+     Step 10 deletes them together with their last caller.
+
+       app        the ground              → bg
+       panel      a card body             → surface        (the warm oiled-wood mix is deleted)
+       panel-2    a card foot             → surface-2
+       panel-head a card's header bar     → surface        (flat; the hairline does the parting)
+       hairline   the gold rule under it  → edge           (a hairline is not a colour)
+       rule       the quieter row rule    → edge           (there was only ever one hairline)
+       sea        the world layer         → sea-1
+       font-serif display titles          → the one family (the serif VOICE is what is deleted)
+       font-mono  the label voice         → the one family (see the .font-mono rule below)
+       radius-card                        → tile
+       shadow-card                        → none
+       shadow-overlay                     → float
+
+     DELETED OUTRIGHT, because nothing reads them: brass / brass-2 / brass-rim, panel-head-2,
+     sea-deep / sea-lit / sky (folded into sea-1 → sea-2), haze. */
+  --color-app: var(--color-bg);
+  --color-panel: var(--color-surface);
+  --color-panel-2: var(--color-surface-2);
+  --color-panel-head: var(--color-surface);
+  --color-hairline: var(--color-edge);
+  --color-rule: var(--color-edge);
+  --color-sea: var(--color-sea-1);
+  --font-mono: var(--font-sans);
+  --font-serif: var(--font-sans);
+  --radius-card: var(--radius-tile);
+  --shadow-card: none;
+  --shadow-overlay: var(--shadow-float);
 }
 
 :root {
   color-scheme: dark;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   THE DAY SEA — the light scheme, measured rather than translated.
+   Only the flat literals are restated; everything derived (the soft washes, cheap/dear/even,
+   every old name in the block above) is a var() and follows on its own.
+
+   Every value here was measured against the surface it is used on, and four of the direction's
+   §4.4 light values were moved because they did not clear AA at the sizes this game prints:
+     accent  #b07e1f → #8a6011   3.59 → 5.58 on white, and 4.96 under a `text-app` button label
+     success #1e9e5f → #12874d   3.44 → 4.57
+     warning #c98a1b → #96660c   2.94 → 5.00   (the worst of them: below AA-large as shipped)
+     danger  #d64545 → #c13636   4.38 → 5.46
+   The rarity hues are restated for the same reason — sea-glass, violet and orchid measure
+   2.0-2.3 : 1 on white, which is a decoration and not a tier.
+   ═══════════════════════════════════════════════════════════════════════════════════════════ */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+
+    --color-bg: #eef2f6;
+    --color-sea-1: #dce8f2;
+    --color-sea-2: #c9dae8;
+
+    --color-surface: #ffffff;
+    --color-surface-2: #f2f5f8;
+
+    /* 14%, not the direction's 8%: on white an 8% rule is a rumour, and thirty-three cards in
+       the tree are still parted by `border-edge` until step 2 replaces them. */
+    --color-edge: rgb(16 24 40 / 0.14);
+
+    /* ink 17.74 : 1 · ink-muted 7.56 : 1 · ink-faint 4.83 : 1, all on --color-surface. */
+    --color-ink: #111827;
+    --color-ink-muted: #4b5563;
+    --color-ink-faint: #6b7280;
+
+    /* By day a hover DARKENS: the ink gets heavier on paper rather than brighter in the dark. */
+    --color-accent: #8a6011;
+    --color-accent-hover: #6e4c0d;
+    --color-success: #12874d;
+    --color-success-hover: #0f7a45;
+    --color-warning: #96660c;
+    --color-warning-hover: #7e5509;
+    --color-danger: #c13636;
+    --color-danger-hover: #a82c2c;
+    --color-info: #215fc0;
+
+    /* THE DAY CHART, and the inverted pen the dark block explains: a paper coast on blue water,
+       the coastline drawn in ink. The sea is deeper than the app's own sea-2 on purpose — a
+       chart at [sea-2] cannot put land 1.9 : 1 clear of its water without going darker than the
+       page it sits on. Measured: land 2.02 : 1 · coast 3.68 : 1 · quiet mark on land 3.51 : 1. */
+    --color-chart-sea: #95b8d6;
+    --color-chart-land: color-mix(in srgb, var(--color-surface) 96%, var(--color-chart-sea));
+    --color-chart-coast: color-mix(in srgb, var(--color-ink) 62%, var(--color-chart-sea));
+
+    /* uncommon 4.16 · rare 5.71 · exotic 5.06, on white. */
+    --color-rarity-uncommon: #0f8c7a;
+    --color-rarity-rare: #6d4fd0;
+    --color-rarity-exotic: #b4409b;
+
+    /* The night sea's elevation is a black cast; on paper it has to be a softer, cooler one. */
+    --shadow-sheet: 0 -8px 32px -16px rgb(16 24 40 / 0.18);
+    --shadow-float: 0 8px 24px -12px rgb(16 24 40 / 0.22);
+  }
 }
 
 html,
@@ -170,63 +323,77 @@ body,
 
 body {
   margin: 0;
-  background-color: var(--color-app);
+  background-color: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Numbers in a ledger must line up in a column. Every mono run gets tabular, slashed-zero
-   figures — this is why `font-mono` is the house rule for values, not a stylistic preference. */
-.font-mono {
-  font-variant-numeric: tabular-nums slashed-zero;
+/* ── COMPOSITIONS ────────────────────────────────────────────────────────────────────────────
+   Tailwind's @theme gives us the tokens as utilities; what follows is the handful of things no
+   single utility expresses. They live in `@layer components` so that a utility on the same
+   element always wins — the old unlayered rules could out-rank `rounded-md` and did not.
+   ──────────────────────────────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* A FIGURE LINES UP IN A COLUMN. This was the whole argument for a mono family, and Inter's
+     tabular figures make it without a second download or a second voice — which is why
+     `--font-mono` is now the sans stack and the 130 `font-mono` sites in the tree keep their
+     one real job while losing the typewriter look. */
+  .font-mono,
+  .text-t-figure,
+  .text-t-hero {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* THE WORLD LAYER — the sea behind everything. Pure CSS on purpose: this repo has no art, and
+     a gradient that ships in the stylesheet costs zero bytes and never 404s. Retuned to the two
+     sea tokens: a horizon band lit by the accent, falling to deep water. */
+  .bv-sea {
+    background-image:
+      radial-gradient(
+        120% 60% at 50% 0%,
+        color-mix(in srgb, var(--color-accent) 8%, var(--color-sea-1)) 0%,
+        transparent 60%
+      ),
+      linear-gradient(to bottom, var(--color-sea-1) 0%, var(--color-sea-2) 100%);
+  }
+
+  /* Quiet entrance for newly-arrived log lines (the Ledger feed). */
+  .bv-fade-in {
+    animation: bv-fade-in var(--duration-fold) var(--ease-sheet);
+  }
+
+  /* ── DEPRECATED, and dated ────────────────────────────────────────────────────────────────
+     These three ARE the material: a chamfered frame, a brass fill, a brown header bar. The
+     material is what the owner called old-fashioned, so it is gone — but the class names are
+     still written at twelve call sites (Card, EntryTile, OrderComposer, FleetRail, HaggleBlock,
+     PortFaces ×2, overlayLayout, buttonStyles, TopBar), and step 1 changes no screen. Deleting
+     the names outright would not flatten those twelve places, it would UNDRESS them: a card with
+     no corner and no parting rule, and a primary button with no fill at all.
+
+     So each one survives for exactly one PR as a thin shim onto the new tokens — the shape
+     without the material. Step 2 replaces the call sites with `Sheet` / `Tile` / `Button`, and
+     step 10 deletes these three rules with them. Nothing new may use them. */
+
+  /* was: a 7px clip-path chamfer on every frame */
+  .bv-cut {
+    border-radius: var(--radius-tile);
+  }
+
+  /* was: a lit-to-dark brass gradient with a rim and an inset top highlight */
+  .bv-brass {
+    background-color: var(--color-accent);
+    border: 1px solid var(--color-accent);
+  }
+
+  /* was: a brown gradient bar parted from the body by a gold hairline */
+  .bv-panel-head {
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-edge);
+  }
 }
 
-/* ── MATERIAL COMPOSITION ─────────────────────────────────────────────────────────────────────
-   Tailwind's @theme gives us the colours as utilities; the three things below are compositions
-   (a gradient, a clipped corner, a lit rim) that no single utility expresses. They live here so
-   the primitives in src/components/ui can be plain className strings and there is still exactly
-   ONE definition of what a panel is made of. Screens never use these directly — GamePanel and
-   Button do. See docs/UI_DIRECTION.md §2. */
-
-/* the browner bar at the top of every panel, parted from the body by a gold hairline */
-.bv-panel-head {
-  background-image: linear-gradient(to bottom, var(--color-panel-head), var(--color-panel-head-2));
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-/* cut corners, not rounded ones — the reference frames are clipped, and a 4px chamfer reads as
-   metal where a 12px radius reads as a web card */
-.bv-cut {
-  clip-path: polygon(
-    7px 0,
-    100% 0,
-    100% calc(100% - 7px),
-    calc(100% - 7px) 100%,
-    0 100%,
-    0 7px
-  );
-}
-
-/* brass fill for the one primary action on a screen: lit along the top, dark at the rim */
-.bv-brass {
-  background-image: linear-gradient(to bottom, var(--color-brass), var(--color-brass-2));
-  border: 1px solid var(--color-brass-rim);
-  box-shadow:
-    inset 0 1px 0 0 color-mix(in srgb, var(--color-accent-hover) 45%, transparent),
-    0 1px 0 0 rgb(0 0 0 / 0.35);
-}
-
-/* the sea behind the glass — a lit horizon band over deep water. Pure CSS on purpose: this repo
-   has no art, and a gradient that ships in the stylesheet costs zero bytes and never 404s. */
-.bv-sea {
-  background-image:
-    radial-gradient(120% 60% at 50% 0%, var(--color-sea-lit) 0%, transparent 60%),
-    linear-gradient(to bottom, var(--color-sky) 0%, var(--color-sea) 38%, var(--color-sea-deep) 100%);
-}
-
-/* Quiet entrance for newly-arrived log lines (the Ledger feed). */
 @keyframes bv-fade-in {
   from {
     opacity: 0;
@@ -237,12 +404,22 @@ body {
     transform: none;
   }
 }
-.bv-fade-in {
-  animation: bv-fade-in 0.25s ease-out;
-}
 
+/* §4.6: reduced motion collapses ALL of it to zero — the tokens first, so anything that reads
+   them is already still, and then the sweep for whatever does not. */
 @media (prefers-reduced-motion: reduce) {
-  .bv-fade-in {
-    animation: none;
+  :root {
+    --duration-sheet: 0ms;
+    --duration-fold: 0ms;
+    --default-transition-duration: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
   }
 }
