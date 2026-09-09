@@ -22,7 +22,6 @@
 export const OVERLAY_SLOTS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const
 export type OverlaySlot = (typeof OVERLAY_SLOTS)[number]
 
-export type OverlayTone = 'default' | 'accent' | 'success' | 'warning' | 'danger'
 
 // Corner anchor (inset 0.75rem — just inside the chart's rounded-card border).
 const SLOT_POS: Record<OverlaySlot, string> = {
@@ -45,34 +44,8 @@ export function overlaySlotClass(slot: OverlaySlot): string {
   return SLOT_POS[slot]
 }
 
-// Border tint per tone — mirrors Card's TONE alphas so identity reads the same language.
-const TONE: Record<OverlayTone, string> = {
-  default: 'border-edge',
-  accent: 'border-accent/25',
-  success: 'border-success/25',
-  warning: 'border-warning/25',
-  danger: 'border-danger/25',
-}
 
-/** The overlay chrome classes (pure). `slot` self-positions the panel in a corner of its
- *  `relative` chart box; `inert` (the default posture for map chrome) makes it pointer-transparent
- *  so it can never swallow a pan/zoom gesture. */
-export function overlayPanelClass(tone: OverlayTone = 'default', slot?: OverlaySlot, extra = '', inert = true): string {
-  return [
-    inert ? 'pointer-events-none' : 'pointer-events-auto',
-    // MATERIAL, D12: the map's corner chrome is a panel like every other panel — the warm body and
-    // the 7px chamfer, not a rounded web card floating over the chart. It keeps its translucency
-    // and blur, which the flat panels do not have: this one sits ON the world and has to let the
-    // coastline under it stay legible.
-    //
-    // The blur is deliberately NOT applied to the flat screens. CCP measured window blur at up to
-    // 32 ms a frame and drop it entirely at low shader quality; two small corner panels over a
-    // static SVG is a budget that survives it, a whole screen of panels is not.
-    'bv-cut border bg-panel/90 p-2 shadow-overlay backdrop-blur',
-    TONE[tone],
-    slot ? `absolute z-10 ${overlaySlotClass(slot)}` : '',
-    extra,
-  ]
-    .filter(Boolean)
-    .join(' ')
-}
+// overlayPanelClass and its TONE table stood here until step 10, with OverlayTone. They dressed
+// OverlayPanel, which the MAP remodel replaced with `Corner` — so the chrome went and only the
+// ANCHOR TABLE stayed, which is the half that was ever load-bearing: one spelling of where a
+// corner is, read by the chart's own view controls.

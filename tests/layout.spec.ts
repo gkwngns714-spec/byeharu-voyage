@@ -336,7 +336,7 @@ for (const field of FIELDS) {
       report.maxPerRow,
       `every ${field.noun} entry is on a line of its own — ${report.tiles} tiles, ` +
         `widest row ${report.maxPerRow}. The owner asked for a grid twice; ` +
-        `compose tileFieldClass() (src/components/ui/tileLayout.ts), do not write a second grid.`,
+        `compose <TileField> (src/components/ui/Tile.tsx), do not write a second grid.`,
     ).toBeGreaterThanOrEqual(2)
     // A tile that is nearly the whole body is a line wearing a border.
     expect(report.tileWidth, `a tile is ${report.tileWidth}px wide — that is a row, not a tile`).toBeLessThan(220)
@@ -402,7 +402,7 @@ test(`COMMAND: the good picker is a field, its price cells are the trade, and a 
   expect(
     field.maxPerRow,
     `every trade good is on a line of its own — ${field.tiles} goods, widest row ${field.maxPerRow}, ` +
-      `tile ${field.tileWidth}px wide. Compose tileFieldClass() (src/components/ui/tileLayout.ts).`,
+      `tile ${field.tileWidth}px wide. Compose <TileField> (src/components/ui/Tile.tsx).`,
   ).toBeGreaterThanOrEqual(2)
   expect(field.tileWidth, `a good tile is ${field.tileWidth}px wide — that is a row, not a tile`).toBeLessThan(220)
 

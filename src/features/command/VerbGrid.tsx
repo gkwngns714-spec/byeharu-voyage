@@ -1,5 +1,6 @@
 import { Button, Icon } from '../../components/ui'
-import { VERB_ICON, verbWord } from './verbIcons'
+import { VERB_ICON } from './verbIcons'
+import { verbWord } from '../../domain/order'
 import type { VerbSpec } from '../../lib/rpc'
 
 // THE TWELVE VERBS, AS A FIELD OF ACTION BUTTONS — icon and word, and nothing else.

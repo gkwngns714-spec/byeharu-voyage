@@ -34,57 +34,9 @@ export function fineClass(extra = ''): string {
   return `font-mono text-[11px] text-ink-faint${extra ? ` ${extra}` : ''}`
 }
 
-/** Text that is a tap target inside a row. The tap FLOOR is the caller's button, not this. */
-export function rowLinkClass(extra = ''): string {
-  return `text-sm text-accent underline-offset-4 hover:underline${extra ? ` ${extra}` : ''}`
-}
 
-/**
- * THE FIGURE BESIDE THE BAR — mono, tabular, full-strength ink, at reading size.
- *
- * Found by `tests/duplication.spec.ts` at 100% across two files that had never met:
- * `RefusalNote.tsx`'s `2.9 / 33` beside its danger Meter, and `HaggleBlock.tsx`'s odds percentage
- * beside its own. Both had hand-written `shrink-0 font-mono text-sm tabular-nums text-ink`, and
- * both were right — which is precisely the shape the twelve chip copies started in
- * (`buttonStyles.ts:31-35`). One recipe, one place, before a third one landed.
- *
- * `tabular-nums` is the load-bearing token and the reason this is not just "small mono text": the
- * figure sits in a flex row whose other child is a `Meter` that grows, so a proportional `9` and a
- * proportional `1` would shift the bar's end every time the number ticked. Fixed-width digits make
- * the figure's box a function of its DIGIT COUNT and nothing else.
- *
- * The FLEX BEHAVIOUR is the caller's, not this recipe's — the same boundary `rowLinkClass` keeps
- * with the 44 px floor. Both callers today pass `shrink-0` because both sit beside a `min-w-0
- * flex-1` Meter, but a figure standing on its own line needs no such thing, and a recipe that
- * baked it in would have to be un-baked by the first caller that did.
- */
-export function inlineFigureClass(extra = ''): string {
-  return `font-mono text-sm tabular-nums text-ink${extra ? ` ${extra}` : ''}`
-}
-
-/**
- * THE HEAD ROW OF A PANEL — a name on the left, its meta on the right, and it WRAPS.
- *
- * Found by `tests/duplication.spec.ts` at 83% similarity across two screens that had never met:
- * the Ledger's entry head (time · fleet · kind · when) and the haggle block's head (title ·
- * attempts left). Neither was wrong; both were the same idea typed twice, which is how the twelve
- * chip copies started.
- *
- * `flex-wrap` with `items-baseline` is the load-bearing part, and it is the same reasoning
- * `CardHeader` records: the right-hand side is meta that must not truncate, so without wrapping the
- * row's MINIMUM width is left + gap + right — a number made of glyphs, which differs per platform
- * and can push a 320px page sideways. Wrapping makes the minimum the WIDER OF THE TWO instead of
- * their sum, and is a no-op whenever they fit.
- *
- * `spread` is the only choice a caller gets: `true` pushes the meta to the far edge
- * (`justify-between`), `false` lets it sit straight after the title.
- */
-export function headRowClass(spread = true, extra = ''): string {
-  return [
-    'mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1',
-    spread ? 'justify-between' : '',
-    extra,
-  ]
-    .filter(Boolean)
-    .join(' ')
-}
+// rowLinkClass, inlineFigureClass and headRowClass stood here until step 10. All three were
+// written for the OLD screens — a tap-target inside a table row, the figure beside a Meter, the
+// head row of a Card — and all three lost their last caller when the twelve landed: `Row` owns
+// the tappable row, `Figure` owns the read figure, and `Sheet` owns the head. Deleted rather
+// than kept "in case", per NO_SPAGHETTI §5: a recipe with no cook is a second authority waiting.
