@@ -38,8 +38,10 @@
    Space    4-pt base, 8-pt rhythm: 4 · 8 · 12 · 16 · 24 · 32 · 48 and nothing else.
    Shape    sheet 16 · tile 12 · control 10 · chip 999. NO cut corners.
    Motion   240ms rise, 180ms fold, one curve, and nothing else animates.
-   Schemes  BOTH ARE FIRST-CLASS. Dark is the default (a night sea); `prefers-color-scheme: light`
-            selects the day sea. Every light value below is measured, not translated.
+   Schemes  BOTH ARE FIRST-CLASS. Dark is the default (a night sea); `:root[data-theme='light']`
+            selects the day sea. ONE resolver writes that attribute — src/features/profile/
+            appearance.ts: the device's `prefers-color-scheme` by default, the Cabin's Appearance
+            control over it. Every light value below is measured, not translated.
    Mobile   every interactive target is ≥44px; the shell is 100dvh with its own scroll regions.
    ═══════════════════════════════════════════════════════════════════════════════════════════ */
 @theme {
@@ -263,6 +265,12 @@
    Only the flat literals are restated; everything derived (the soft washes, cheap/dear/even,
    every old name in the block above) is a var() and follows on its own.
 
+   SELECTED BY AN ATTRIBUTE, NOT A MEDIA QUERY (2026-09-09). A media query cannot be toggled, and
+   the Cabin's Appearance control (docs/UI_DIRECTION.md §4.4, "the Cabin toggles") must have the
+   last word over the device. The device's preference is read by the one resolver
+   (src/features/profile/appearance.ts) and written here as the same attribute a chosen scheme
+   writes, so these values are stated ONCE and reached by both roads.
+
    Every value here was measured against the surface it is used on, and four of the direction's
    §4.4 light values were moved because they did not clear AA at the sizes this game prints:
      accent  #b07e1f → #8a6011   3.59 → 5.58 on white, and 4.96 under a `text-app` button label
@@ -272,8 +280,7 @@
    The rarity hues are restated for the same reason — sea-glass, violet and orchid measure
    2.0-2.3 : 1 on white, which is a decoration and not a tier.
    ═══════════════════════════════════════════════════════════════════════════════════════════ */
-@media (prefers-color-scheme: light) {
-  :root {
+:root[data-theme='light'] {
     color-scheme: light;
 
     --color-bg: #eef2f6;
@@ -319,7 +326,6 @@
     /* The night sea's elevation is a black cast; on paper it has to be a softer, cooler one. */
     --shadow-sheet: 0 -8px 32px -16px rgb(16 24 40 / 0.18);
     --shadow-float: 0 8px 24px -12px rgb(16 24 40 / 0.22);
-  }
 }
 
 html,

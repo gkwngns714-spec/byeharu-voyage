@@ -66,6 +66,74 @@ payments on main the pins stand at 4 and 3.
 against `TRAY_PEEK`, the ladder is stepped from the keyboard, the corner is measured as a corner).
 
 ---
+## 2026-09-09 — LEDGER is rows and PROFILE is a house line, two bars and a switch
+
+**`docs/UI_DIRECTION.md` §7 step 9, the LEDGER and PROFILE halves.** Both screens are swapped
+whole onto the twelve primitives; neither keeps a `Card`, a `PageHeader`, a `Badge`, a `StatRow`,
+a chip recipe or an explain-dot. `src/features/ledger/` is `LedgerScreen.tsx` (180 lines, was 483)
+plus `headline.ts` (181) — the one headline composer, moved out unchanged so the screen file keeps
+the ≤ 250-line rule; `src/features/profile/` is `ProfileScreen.tsx` (178 lines, was 242) plus
+`appearance.ts` (68).
+
+**LEDGER (§2 item 19).** Rows, not cards: the clock, one sentence, the movement as a `Figure`
+(green or red by meaning, no unit — the purse in the strip says `d.` once). Cut: the filter card
+with `1 of 1 entries / read just now`, the second timestamp on every row, `balance 8,000 d.` on
+every row, and the footer notice that the balances do not sum to the purse. The purse is on every
+tab; a balance beside every row was the same fact restated, and the notice explained a column
+that is no longer printed — the rule it stated (WAGES move the purse with no event behind them,
+0007:855) is still true and still asserted by `tests/rpc.firstSession.spec.ts`; nothing here adds
+rows up, so nothing here has to say so. A `Segmented` — All · Trade · Voyage · Crew — sits in the
+sheet header. *The faces are a grouping, not a second name:* the old header refused a mapping
+layer because it would rename every event; `FACE_OF` files the server's kinds under four faces and
+the headline still says what the event was. A kind the table does not know shows under All only.
+An event with served report lines (`payload.lines`) opens them in a `Tray` at half, the headline
+as its title.
+
+**PROFILE (§2 item 18).** Cut entirely: `This world` (mode, phase, port count, good count,
+`9,600x`) and `Not in the game yet` (three bullets of unbuilt features). Kept: the house line
+(`Casa de Aveiro · Portugal · since Sep 9`), the level tracks as `Bar`s, an Appearance control,
+sign-out with its reason. **The hand-off from RANK:** PR #44 cut Trading / Exploration / Combat
+from RANK because §6 sends them here. Trading and Exploration are countable `Bar`s — the level
+over the curve's cap of 20 (`public.level_from_points`, 0069:111), mirrored for display the way
+`TIME_COMPRESSION` mirrors a served knob; when `world.snapshot().config` serves the cap, the
+constant goes. **Combat is not drawn as a track.** 0069 serves it with `playable: false` on
+purpose, and a bar at level 1 of an unbuilt track would make it look built. The served flag
+decides: the day it flips, the row is the third bar with no edit here; until then one muted row
+says *no fighting at sea yet*, once. Also gone: `company_level` (read by no rule), `Lying at`
+(FLEETS says where she is), the cloud session's user-id and signed-in-at. Kept on purpose: the
+local-mode data-loss sentence, as the disabled Sign out's reason, on one line; the cloud account's
+email beside its Sign out.
+
+**Appearance, and the one shared-file change.** §4.4 says *"`prefers-color-scheme` picks, the
+Cabin toggles"* — but `src/index.css` selected the day sea with a media query, and a media query
+cannot be toggled from a control. The light block's selector is now `:root[data-theme='light']`
+(three lines of CSS and two comments; every light value still stated once, reached by both roads)
+and **one resolver**, `src/features/profile/appearance.ts`, writes that attribute: the device's
+preference through `matchMedia` by default, followed live on `change`, or the kept choice. Dark
+and Light are kept in `localStorage`; Auto is kept as the absence of a choice. The module paints
+at import — `App.tsx` imports `ProfileScreen` statically, so a light device has its palette before
+the first render. Boot belongs to the shell; when `src/app` takes the call it moves, and the rule
+does not get a second copy. The storage key is never printed.
+
+**The ledger is lowered.** `LedgerScreen.tsx`'s one `text-[15px]` (the report paragraph) is a
+`text-t-label` line in the tray; its entry is deleted from `tests/duplication.spec.ts` and the
+arbitrary-size pin is **21**. PROFILE never had an entry.
+
+**Measured, 390×844, the built app, local PGlite, both schemes**, by a driver that waited for the
+house's name before reading. Content extent of the tab's sheet: **LEDGER 393 → 165 px** with the
+one FOUNDED row (274 px with three rows, after a 38 nm passage to Setubal); **PROFILE 986 →
+578 px**. The "before" is the audit's own `:4199` dev server, which serves the main checkout's
+working tree — older than `origin/main` (it still prints the wordmark) — so it is the audit's state
+and not `c531bd7`'s; §1 of the direction gives no px figure for either screen. Faces: All 3 ·
+Voyage 2 · Trade 0 · Crew 0. The report tray opened at half with the served line *"Day 1. A quiet
+watch; nothing to report."* and closed on ✕. Light: body `rgb(10,16,24)` → `rgb(238,242,246)`,
+ink `rgb(243,245,248)` → `rgb(17,24,39)`, on PROFILE and on LEDGER after a navigation; Dark and
+Auto back again; a fresh light-device context on Auto paints light. Two level bars, one Combat
+row, zero page errors. `tsc --noEmit`, `eslint .` and `npm run build` exit 0 (the build's 13
+minutes were the `byeharu:world-image` hook on a contended CPU). On `localhost:4231` with
+`test-results/` wiped: duplication + sections + format + tableLayout **37 passed / 0 failed / 0
+skipped**; layout + primitives.geometry + nav.geometry **19 passed / 0 failed / 0 skipped**
+(2.4 min). The three `db.chain` specs were not run: nothing here reaches a migration.
 
 ## 2026-09-09 — fleets is a list, a tray, and no table at all
 
