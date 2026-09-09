@@ -183,6 +183,13 @@
   --spacing-gutter: 1rem;
   --spacing-row: 3.25rem;
   --spacing-tile: 7rem;
+  /* ADDED IN STEP 2, and it is the one measurement §4.2 did not name. §5's `Tile` says the field
+     is CSS `repeat(auto-fill, minmax(160px, 1fr))` and nothing else — that 160 is the number the
+     grid is built on (two tiles abreast at 390px with a 16px gutter and an 8px gap, three at 560),
+     and it was about to be written as an arbitrary value inside a class string. It is a spacing
+     token for the same reason `--spacing-row` is: a field spelled 160px in one file and 10rem in
+     another is two fields. */
+  --spacing-tile-min: 10rem;
 
   /* ── SHAPE ──────────────────────────────────────────────────────────────────────────────────
      A radius per role, and no cut corners: a 4px chamfer read as metal, which is exactly the
@@ -357,6 +364,34 @@ body {
         transparent 60%
       ),
       linear-gradient(to bottom, var(--color-sea-1) 0%, var(--color-sea-2) 100%);
+  }
+
+  /* THE SLIDER, and it is here because it cannot be anywhere else. An `input[type=range]` is drawn
+     by two shadow pseudo-elements — its track and its thumb — which no utility class can reach, and
+     a 4px-tall track is a 4px-tall TAP TARGET, twelve times under the 44px reach floor this project
+     holds every control to. So `Stepper` lays 44px of transparent input over the 4px `Bar`-shaped
+     track it draws itself, and the thumb is dressed here, in the one file that owns the tokens it
+     is dressed in. Added in step 2 with the `Stepper` primitive; unlike the three rules below it,
+     this one is not deprecated — it is the composition rule doing its job. */
+  .bv-range {
+    appearance: none;
+    width: 100%;
+    height: 2.75rem;
+    background: transparent;
+  }
+  .bv-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: var(--radius-chip);
+    background: var(--color-accent);
+  }
+  .bv-range::-moz-range-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 0;
+    border-radius: var(--radius-chip);
+    background: var(--color-accent);
   }
 
   /* Quiet entrance for newly-arrived log lines (the Ledger feed). */

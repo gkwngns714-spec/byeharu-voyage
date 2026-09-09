@@ -532,3 +532,152 @@ test('sea-grid.mjs declares NO snap rule — the third answer is retired, not me
     'snapToWater reached src/. It is a build-time script rule, and it is not the authority.',
   ).toEqual([])
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// 6. THE TWO BANS OF THE DESIGN DIRECTION — docs/UI_DIRECTION.md §5
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// §5, in its own words: "`tests/duplication.spec.ts` is repointed to fail on any inline
+// `border … bg-` skin or any `text-[…px]` in `features/`."
+//
+// ── WHAT EACH ONE IS ABOUT ─────────────────────────────────────────────────────────────────────
+//   THE SKIN.  §3 rule 4 counted NINE bordered skins still written inline in screens while a design
+//              system existed, and §3 rule 5 counted three different "selectable block" recipes
+//              coexisting. A `border … bg-` pair in a screen IS a surface — a card, a tile, a
+//              panel — hand-drawn beside the primitives that draw surfaces. §4.3 goes further and
+//              says a surface has no border at all: separation is a TONE STEP, or a 1px hairline
+//              between rows. So the pair is the tell, and the cure is `Sheet` / `Tile` / `Row` /
+//              `Note`, not a tidier pair.
+//   THE SIZE.  §3 rule 6 counted TEN distinct type sizes in use, four of them arbitrary
+//              (`text-[10px]` ×26, `text-[11px]` ×15, `text-[13px]`, `text-[15px]`). A scale with
+//              a hole punched in it is not a scale. The six steps are `text-t-caption` …
+//              `text-t-hero` (src/index.css §4.1); anything else is a layout problem wearing a
+//              font size.
+//
+// ── HOW THEY ARE SCOPED SO THEY PASS TODAY AND TIGHTEN AS SCREENS MIGRATE ──────────────────────
+// Step 2 adds the primitives and CHANGES NO SCREEN, so every one of these violations is still on
+// disk — 28 arbitrary sizes in 12 files, 12 inline skins in 9 files, all of them inside screens
+// steps 4-9 rewrite whole. A ban that failed today would have to be turned off, and a guard that is
+// turned off is not a guard.
+//
+// So the ban is stated as a LEDGER OF DEBT rather than as a blanket:
+//   · a file NOT in the ledger must have ZERO. That is the half that bites immediately — every new
+//     file (features/gallery is the first) and every screen the migration touches is held to the
+//     rule from its first line.
+//   · a file IN the ledger must not EXCEED its pinned count. Debt may be paid; it may not grow.
+//   · the totals are pinned too, so the ledger cannot be quietly padded.
+// Each of steps 4-9 lowers its screen's entries to zero and deletes them from the ledger, and step
+// 10 deletes the ledger with the last one. The counts below were MEASURED on this branch, not
+// remembered.
+
+/** MEASURED 2026-09-09 on osn-ui-primitives. Every entry names a screen §7 rewrites whole. */
+const ARBITRARY_SIZE_DEBT: Record<string, number> = {
+  'features/command/ArgPickers.tsx': 2,
+  'features/command/CommandScreen.tsx': 1,
+  'features/command/OrderComposer.tsx': 1,
+  'features/command/OrderQueue.tsx': 2,
+  'features/found/SignTheBook.tsx': 1,
+  'features/ledger/LedgerScreen.tsx': 1,
+  'features/map/DetailPanel.tsx': 4,
+  'features/map/FleetsPanel.tsx': 4,
+  'features/map/MapPanel.tsx': 2,
+  'features/map/MapScreen.tsx': 4,
+  'features/map/WatersAhead.tsx': 4,
+  'features/market/MarketScreen.tsx': 2,
+}
+const ARBITRARY_SIZE_TOTAL = 28
+
+/** MEASURED 2026-09-09 on osn-ui-primitives. The nine skins §3 rule 4 names by file, plus the
+ *  three more that a className-REGION reader finds and a grep for `border border-edge` does not. */
+const INLINE_SKIN_DEBT: Record<string, number> = {
+  'features/command/FleetRail.tsx': 1,
+  'features/command/HaggleBlock.tsx': 1,
+  'features/command/OrderComposer.tsx': 2,
+  'features/command/OrderQueue.tsx': 1,
+  'features/fleets/FleetsScreen.tsx': 1,
+  'features/map/SendFleet.tsx': 1,
+  'features/market/MarketScreen.tsx': 2,
+  'features/port/PortFaces.tsx': 2,
+  'features/port/PortYard.tsx': 1,
+}
+const INLINE_SKIN_TOTAL = 12
+
+/** The ledger, read: every file under `src/features/` with more findings than it is allowed. */
+function overDebt(found: Map<string, string[]>, debt: Record<string, number>): string[] {
+  const over: string[] = []
+  for (const [file, hits] of found) {
+    const allowed = debt[file] ?? 0
+    if (hits.length > allowed) {
+      over.push(`${file}: ${hits.length} found, ${allowed} allowed\n    ${hits.join('\n    ')}`)
+    }
+  }
+  return over.sort()
+}
+
+const featureFiles = () => sourceFiles(path.join(SRC, 'features'))
+
+test('no arbitrary type size in a screen — the scale is six steps and it has no holes', () => {
+  const found = new Map<string, string[]>()
+  let total = 0
+  for (const f of featureFiles()) {
+    const lines = read(f).split('\n')
+    const hits: string[] = []
+    for (let i = 0; i < lines.length; i++) {
+      for (const m of lines[i].matchAll(/text-\[\d+px\]/g)) hits.push(`:${i + 1}  ${m[0]}`)
+    }
+    if (hits.length > 0) {
+      found.set(rel(f), hits)
+      total += hits.length
+    }
+  }
+  expect(found.size, 'no feature files were read at all — the walker is broken').toBeGreaterThan(0)
+
+  expect(
+    overDebt(found, ARBITRARY_SIZE_DEBT),
+    `An arbitrary type size in a screen. The scale is text-t-caption / t-label / t-body / t-title / ` +
+      `t-figure / t-hero (src/index.css, docs/UI_DIRECTION.md §4.1) — six steps, each with its own ` +
+      `line-height and weight. A seventh size is a layout problem, not a type problem. If the file ` +
+      `below is already in the ledger at the top of §6, you ADDED one: the debt may be paid, never ` +
+      `grown.\n`,
+  ).toEqual([])
+  expect(
+    total,
+    `the arbitrary-size ledger says ${ARBITRARY_SIZE_TOTAL} and the tree has ${total}. If you paid ` +
+      `some down, lower the pin (and delete the file's entry when it reaches zero) — a ledger that ` +
+      `over-states the debt lets a new one hide inside it.`,
+  ).toBeLessThanOrEqual(ARBITRARY_SIZE_TOTAL)
+})
+
+test('no inline border+bg skin in a screen — a surface is a primitive, and it has no border', () => {
+  const found = new Map<string, string[]>()
+  let total = 0
+  for (const f of featureFiles()) {
+    const hits: string[] = []
+    for (const { region, line } of classNameRegions(read(f))) {
+      const toks = [...utilityTokens(region)]
+      const border = toks.filter((t) => /^border(-|$)/.test(t))
+      const bg = toks.filter((t) => /^bg-/.test(t))
+      if (border.length > 0 && bg.length > 0) {
+        hits.push(`:${line}  ${border.sort().join(' ')} + ${bg.sort().join(' ')}`)
+      }
+    }
+    if (hits.length > 0) {
+      found.set(rel(f), hits)
+      total += hits.length
+    }
+  }
+
+  expect(
+    overDebt(found, INLINE_SKIN_DEBT),
+    `A screen is drawing its own surface. A "border … bg-" pair in a className IS a card, a tile or ` +
+      `a panel, hand-written beside the primitives whose whole job is to draw one — and ` +
+      `docs/UI_DIRECTION.md §4.3 says a surface has no border at all: separation is a tone step, or ` +
+      `a 1px hairline between rows. Compose Sheet / SheetSection / Tile / Row / Note / Tray from ` +
+      `src/components/ui instead (docs/NO_SPAGHETTI.md §5).\n`,
+  ).toEqual([])
+  expect(
+    total,
+    `the inline-skin ledger says ${INLINE_SKIN_TOTAL} and the tree has ${total}. Lower the pin as ` +
+      `each screen migrates; delete the entry when it reaches zero.`,
+  ).toBeLessThanOrEqual(INLINE_SKIN_TOTAL)
+})
