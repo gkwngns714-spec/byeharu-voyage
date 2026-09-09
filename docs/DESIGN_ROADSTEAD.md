@@ -182,6 +182,26 @@ slice.** 0076 does NOT touch it; it NAMES it in its header as a known second aut
 build-time caller, and `tests/duplication.spec.ts` gains a rule pinning that caller count at 1 so it
 cannot grow a second while it waits.
 
+> ### ▲ RESOLVED 2026-09-08 — and the resolution was neither of the two options above
+>
+> **How different, measured over all 224 harbours rather than argued:** the two rules pick a
+> **different cell for 87 of them**, and the scan-order rule picks the **farther** one every time —
+> Dublin **34.39 nm** off the quay against **13.89**, Bergen +18.49, Boston +17.12, Cádiz +15.48,
+> Istanbul +14.16, worst **+20.51**. So "can return a different cell" understated it: it does, for
+> **39%** of the world.
+>
+> **And it reaches nothing.** The `findSeaRoute` spur legs went into `public.legs`, and **0049
+> dropped that table**; `scripts/build-sea-places.mjs` is wired into no npm script and no workflow,
+> already declares itself RETIRED in its own header, and emits `insert into public.legs` — so it
+> cannot even be run. The regeneration this section feared was never owed.
+>
+> So the rule was **neither folded nor deleted — it MOVED**, out of `scripts/sea-grid.mjs`, the
+> module all four working generators import, and into the one dead file that used it, where nothing
+> is exported. `sea-grid.mjs` now holds the raster and its authored carve and **no snap rule at
+> all**, and `tests/duplication.spec.ts` asserts that as a **property** instead of pinning a caller
+> count — a census passes happily while the thing it counts sits in the worst possible place, and a
+> property does not. Watched red before being trusted. **DEV_LOG D42.**
+
 **What 0076 DOES fold, and it is the important one:** `voyage.water_snap_nm`'s body moves down into
 
 ```sql

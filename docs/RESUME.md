@@ -102,8 +102,17 @@ stopped**; that is the deliberate trade, and starting it is one call.
 * **Row 65's role half does not exist.** `ship_classes.tier` is real and 0074 gave slots by tier,
   but `family` carries a culture ('Western'), not trading/exploration/combat.
 * **Row 67 is unanswered**: the owner called the good categories a dump — *"wtf is foodstuff?"*
-* **Named spaghetti, still not fixed:** `culture = any(g.culture_mask)` is written **five** times in
-  the live schema (`do_buy`, `do_sell`, `world.market`, `trade_routes`, `cmd.haggle`).
+* ~~**Named spaghetti, still not fixed:** `culture = any(g.culture_mask)` is written **five** times in
+  the live schema (`do_buy`, `do_sell`, `world.market`, `trade_routes`, `cmd.haggle`).~~
+  **FOLDED 2026-09-08 by migration 0080** into `public.culture_refuses(text, text[])` — and the
+  count was five FUNCTIONS but **six SITES**, because `world.trade_routes` asks it twice. Proven a
+  no-op on all 124,474 (port, good) pairs, each body its own pre-image with only the declared hunks
+  swapped in. **On a branch, not merged, not deployed.** DEV_LOG D41. It also found something the
+  repo did not know: **the culture rule is unreachable on the quay** — 254 refused pairs, all
+  stocked, **0** on any roster, so `world.market` serves `available = true` on every row at all 224
+  harbours. 0062's origin-based roster strictly shadows 0002's culture gate for BUY and the market
+  screen; it stays live for SELL, haggle and `trade_routes`'s destination. **That is a design
+  question for the owner and 0080 deliberately asserts nothing about it.**
 * **`pglite-gate` has `timeout-minutes: 15`** and the chain has been taking ~13. It gets worse with
   every migration; the answer is a faster gate or a lighter fixture, not a bigger number.
 

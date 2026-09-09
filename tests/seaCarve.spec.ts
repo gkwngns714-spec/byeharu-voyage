@@ -9,36 +9,49 @@
 // `scripts/sea-grid.mjs` opens named narrow waters the 0.25° raster is too coarse to see, and its
 // carve is "the cells between CONSECUTIVE points". So an entry's points must lie along ONE water,
 // in order. On 2026-09-06 one did not: `irrawaddy-sittaung` named the Yangon river AND the Chao
-// Phraya, 330 nm apart, and the jump between them cut a canal through the Tenasserim mountains —
-// 29 land cells, the deepest 89.3 nm inland. **309 real port pairs were sold a route across it**,
-// worst Thanlyin → Ayutthaya at 323 nm against 1,977 nm of actual sea. The owner's law is absolute
-// (`OWNER_REQUESTS.md` row 41: "i don't want the fleet to ever touch land").
-// `docs/LAND_CARVE_RECON.md` carries the measurements and the method.
+// Phraya, 330 nm apart, and the jump between them cut a canal through the Tenasserim mountains.
+// **309 real port pairs were sold a route across it**, worst Thanlyin → Ayutthaya at 323 nm against
+// 1,977 nm of actual sea. The owner's law is absolute (`OWNER_REQUESTS.md` row 41: "i don't want
+// the fleet to ever touch land"). `docs/LAND_CARVE_RECON.md` carries the measurements.
+//
+// ── THIS FILE USED TO PIN A NUMBER THAT WAS NOT THE NUMBER IT SAID IT WAS ──────────────────────
+// Until 2026-09-08 it built its "pre-channel land" by taking the FINISHED raster and closing every
+// carved cell in it. That makes every carved cell read as land by construction, so the figure it
+// pinned as "cells of DRY LAND opened" was the carve's own SIZE — 521 — for all 27 entries, and
+// the per-entry table was identical to the carve inventory. It still bit on any change, so it was
+// a working review gate; but the thing a reviewer was asked to review was the wrong quantity, and
+// it ranked the entries in almost the reverse of the honest order:
+//
+//   * `bab-el-mandeb` headed the old table at 84. It opens **2** cells of dry land.
+//   * `hormuz` sat third at 48. It opens **3**. `malacca` sat second at 52; it opens **11**.
+//   * `saint-lawrence` sat fourth at 33 and is in truth the **largest land carve in the world**, 22.
+//   * The canal, as shipped, carved 37 — fifth on the old table — and opened **30** cells of land,
+//     which is FIRST by a wide margin. The honest measure puts the defect at the top of the page.
+//
+// `preCarveGrid()` now exists (scan-fill + ICE, no carve), so the question can actually be asked,
+// and `assertCarveDeclared` refuses to BUILD a raster whose carve is undeclared — the generator-
+// side guard `docs/LAND_CARVE_RECON.md` §5 asked for, which is where it has to live: a course over
+// a carved canal is water by the raster's own account, so every SQL guard passes it and always
+// would. This spec is now the second reader of that one declaration, not a second opinion about it.
 //
 // ── WHAT THIS CAN AND CANNOT DO, STATED HONESTLY ───────────────────────────────────────────────
-// It is NOT an automatic classifier, and the numbers say why one is not possible. Sorted by the
-// longest hop between consecutive points, the canal sits first at 330.5 nm — but the Bab-el-Mandeb
-// (277.6), Hormuz (142.3) and Malacca (124.8) are right behind it and every one of them is real
-// water. Sorted by how far inland a carve reaches, the Gulf of Suez (97.1 nm), the St Lawrence
-// (76.7) and the Severn (67.6) all sit ABOVE legitimate river carves, because a river IS far from
-// open sea. **No threshold separates a strait from a canal.** A person has to look.
-//
-// So this is a REVIEW GATE, and it works the way a review gate can: the inventory is PINNED. Every
-// entry, and exactly how many cells of dry land it opens. Change the carve and a number moves and
-// this goes red — and then a human decides whether the new water is real, which is the only place
-// that decision can honestly be made. It would have caught the canal on the day it was written.
-//
-// The counts below are TODAY'S, canal included. They are a baseline, not an endorsement: the
-// `irrawaddy-sittaung` row is the defect, it is named as such, and the number moves when it is
-// repaired.
+// It is NOT an automatic classifier, and the numbers still say why one is not possible. Sorted by
+// land opened, the St Lawrence (22), the Thames-Scheldt (17), the Gironde (15) and the Elbe-Weser
+// and Gambia-Senegal (14 each) all sit ABOVE either half of the repaired river pair, because a
+// river IS a line of land turned into water. **No threshold separates a strait from a canal.** A
+// person has to look. So this stays a REVIEW GATE: the inventory is PINNED, a number moves when
+// the carve moves, and a human decides whether the new water is real.
 
 import { test, expect } from '@playwright/test'
-import { CHANNELS, buildSeaGrid, gcNm, rowOf, colOf, COLS } from '../scripts/sea-grid.mjs'
+import { CHANNELS, preCarveGrid, carveInventory, assertCarveDeclared, gcNm, rowOf, colOf, COLS }
+  from '../scripts/sea-grid.mjs'
 import type { Channel } from '../scripts/sea-grid.mjs'
 
 /** Every cell an entry opens — its own points and the cells between consecutive points, which is
- *  exactly what `sea-grid.mjs:222-234` does. Duplicated here on purpose: a guard that called the
- *  code it guards would go green on any change they made together. */
+ *  exactly what `sea-grid.mjs`'s `channelCells` does. Duplicated here on purpose: a guard that
+ *  called the code it guards would go green on any change they made together. The LAND DATA below
+ *  is not duplicated, and must not be — "the land the raster was built from" has exactly one
+ *  author, and the whole point of the slice is that the carve is checked against it. */
 function cellsOpenedBy(ch: Channel): Set<number> {
   const s = new Set<number>()
   for (let i = 0; i < ch.points.length; i++) {
@@ -55,52 +68,60 @@ function cellsOpenedBy(ch: Channel): Set<number> {
   return s
 }
 
-/** The land the carve overwrote: the built raster with every carved cell closed again. */
-function preChannelLand(): Uint8Array {
-  const carved = buildSeaGrid()
-  const pre = Uint8Array.from(carved)
-  for (const ch of CHANNELS) for (const k of cellsOpenedBy(ch)) pre[k] = 0
-  return pre
-}
-
 const landOpenedBy = (pre: Uint8Array, ch: Channel) =>
   [...cellsOpenedBy(ch)].filter((k) => pre[k] !== 1).length
 
-// id → how many cells of DRY LAND it opens. Measured 2026-09-06 against main @ 728da87.
-const PINNED: Record<string, number> = {
-  // ⚠ WAS THE DEFECT, AND IS REPAIRED. One record named two rivers 330 nm apart and opened 37
-  // cells of dry land; it is now two records opening 8 between them. The 29 cells it stops opening
-  // are the canal through the Tenasserim mountains — 23 of which public.sea_cells had NAMED as
-  // sea, because 0040 was cut from the carved grid. Those 23 are scripts/sea-grid.mjs's RECLAIMED
-  // 'tenasserim' entry, and migration 0079 zeroes their membership. docs/LAND_CARVE_RECON.md.
-  'yangon': 3, 'chao-phraya': 5,
+/** Cells of DRY LAND opened, in total, across the whole list. Measured 2026-09-08. This is the
+ *  number a reviewer can hold in their head, and it is what makes "the world grew some water" a
+ *  sentence rather than a diff of twenty-seven rows. */
+const LAND_TOTAL = 202
 
-  'bab-el-mandeb': 84, 'malacca': 52, 'hormuz': 48, 'saint-lawrence': 33, 'baltic-gulfs': 31,
-  'thames-scheldt': 26, 'danish-straits': 24, 'seto': 22, 'gironde': 20, 'turkish-straits': 20,
-  'white-sea': 20, 'gulf-of-suez': 17, 'elbe-weser': 16, 'gambia-senegal': 14,
-  'rio-de-la-plata': 12, 'hooghly': 12, 'sunda': 11, 'yangtze': 10, 'pearl-river': 8, 'severn': 7,
-  'amazon-para': 6, 'shatt-al-arab': 6, 'khambhat': 6, 'kerch': 4, 'guadalquivir': 4,
-}
-const PINNED_TOTAL = 521
+/** Cells CARVED in total — land and water together. A different fact, kept because it is the
+ *  figure `docs/DEV_LOG.md` D39 and `docs/LAND_CARVE_RECON.md` quote, and because a carve that
+ *  grew only over existing water still changed. Named separately so the two can never be confused
+ *  again, which is the whole history of this file. */
+const CARVE_TOTAL = 521
 
-test('every channel opens exactly the land it is on record for', () => {
-  const pre = preChannelLand()
-  const channels = CHANNELS
+test('every channel opens exactly the land it declares', () => {
+  const pre = preCarveGrid()
 
-  // THE SET FIRST. An entry added or removed must be seen even if the totals happen to agree.
-  expect(channels.map((c) => c.id).sort()).toEqual(Object.keys(PINNED).sort())
-
+  // THE DECLARATION IS THE DATA. Recomputed here from an independent walk of the points, and
+  // compared against what each entry says about itself — so this is a second reader of one number,
+  // never a second copy of it.
   const actual: Record<string, number> = {}
-  for (const ch of channels) actual[ch.id] = landOpenedBy(pre, ch)
-  expect(actual).toEqual(PINNED)
+  const declared: Record<string, number> = {}
+  for (const ch of CHANNELS) {
+    actual[ch.id] = landOpenedBy(pre, ch)
+    declared[ch.id] = ch.opensLand
+  }
+  expect(actual).toEqual(declared)
+  expect(Object.values(actual).reduce((a, b) => a + b, 0)).toBe(LAND_TOTAL)
 
-  // The total is not redundant: it is the number a reviewer can hold in their head, and it is what
-  // makes "the world grew some water" a sentence rather than a diff of twenty-six rows.
-  expect(Object.values(actual).reduce((a, b) => a + b, 0)).toBe(PINNED_TOTAL)
+  // The carve's SIZE, the other fact. 521 cells opened, of which 202 are land.
+  const carved = CHANNELS.reduce((n, ch) => n + cellsOpenedBy(ch).size, 0)
+  expect(carved).toBe(CARVE_TOTAL)
+  expect(LAND_TOTAL).toBeLessThan(CARVE_TOTAL) // a channel is mostly water it merely re-states
+})
+
+test('the generator itself refuses an undeclared carve — the raster cannot be built', () => {
+  // This is the half that lives where it matters. `assertCarveDeclared` is what `buildSeaGrid`
+  // calls, so a planted canal does not produce a raster at all, in any of the five generators.
+  const { opened } = carveInventory()
+  expect(() => assertCarveDeclared(opened)).not.toThrow()
+
+  const planted = new Map(opened)
+  planted.set('severn', (opened.get('severn') as number) + 7)
+  expect(() => assertCarveDeclared(planted)).toThrow(/severn: opens 12 cells of land, declares 5/)
+
+  // A channel that declares nothing is refused too — otherwise a new entry could be added with the
+  // field simply left off, which is exactly how a guard becomes optional.
+  const missing = new Map(opened)
+  missing.delete('kerch')
+  expect(() => assertCarveDeclared(missing)).toThrow(/kerch: opens undefined cells of land/)
 })
 
 test('the pin BITES — a planted canal changes the count it is pinned to', () => {
-  const pre = preChannelLand()
+  const pre = preCarveGrid()
   const real = CHANNELS.find((c) => c.id === 'severn') as Channel
   const before = landOpenedBy(pre, real)
 
@@ -113,10 +134,32 @@ test('the pin BITES — a planted canal changes the count it is pinned to', () =
   // EXACT, not "more than some number". The hop from the head of the Avon (51.45, -2.6) to
   // Birmingham (52.5, -1.9) is 68.2 nm and opens SEVEN cells of dry England — measured, and pinned
   // for the same reason every other number in this file is: a control asserted loosely drifts into
-  // being satisfied by rounding. The first draft of this line guessed "> 10" and went red against a
-  // real 7, which is the guard catching its own author.
-  expect(after).toBeGreaterThan(before)
+  // being satisfied by rounding.
+  expect(before).toBe(5)
+  expect(after).toBe(12)
   expect(after - before).toBe(7)
+})
+
+test('the canal that shipped would have been the top row of this table', () => {
+  // The defect, reconstructed exactly as `irrawaddy-sittaung` stood: the Yangon river's three
+  // points followed by the Chao Phraya's three, one record, 330 nm between them. It is not in
+  // CHANNELS any more — 0079 filled it in — so this plants it to keep the measurement that says
+  // WHY the honest quantity is the one worth pinning.
+  const pre = preCarveGrid()
+  const canal: Channel = {
+    id: 'irrawaddy-sittaung',
+    name: 'the Irrawaddy and the Sittaung',
+    points: [[16.3, 96.3], [16.6, 96.2], [16.8, 96.2], [13.3, 100.6], [13.6, 100.6], [14.4, 100.6]],
+    opensLand: 0, // it declared nothing, which is the point
+  }
+  expect(cellsOpenedBy(canal).size).toBe(37)
+  expect(landOpenedBy(pre, canal)).toBe(30)
+
+  // FIRST by a wide margin against every entry that survives, where the old measure ranked it
+  // fifth. That gap is the value of the slice, and it is asserted rather than described.
+  const worst = Math.max(...CHANNELS.map((c) => c.opensLand))
+  expect(worst).toBe(22)           // saint-lawrence
+  expect(landOpenedBy(pre, canal)).toBeGreaterThan(worst)
 })
 
 test('a channel that names two waters is a canal waiting to happen', () => {

@@ -242,6 +242,36 @@ was built from, on the generator side — not on the SQL side.
 
 That is a separate slice from the repair, and it is the one that stops the class coming back.
 
+### BUILT 2026-09-08 — and the check written that day was measuring the carve, not the land
+
+**DEV_LOG D40.** No migration; the raster is byte-identical to the one this document describes
+(1,036,800 cells compared, 0 differing bytes).
+
+`tests/seaCarve.spec.ts`, written the same day as this recon, set out to pin *"how many cells of
+dry land each entry opens"* and could not: it reconstructed its "pre-channel land" from the
+**finished** raster by closing every carved cell, which makes every carved cell read as land by
+construction. Its per-entry figures were the carve's own cell counts — measured, identical for all
+27 entries — and its **521** was the carve inventory, not a land figure. The information was
+destroyed before the question was asked, because `buildSeaGrid` applied the channels before
+returning and no caller could obtain the land data underneath.
+
+`preCarveGrid()` now exposes that land data (scan-fill + ICE, no carve), `carveInventory()` counts
+every channel against it — against the grid before ANY channel ran, so channels that share a cell
+cannot rob one another — and each `CHANNELS` entry declares `opensLand`. `assertCarveDeclared()`
+runs inside `buildSeaGrid()` itself, so the refusal cannot be forgotten by one of the five
+generators that build the raster: **an undeclared carve does not produce a world.**
+
+The honest total is **202 cells of dry land** out of 521 carved, and it re-orders §3's table:
+`bab-el-mandeb` carves the most cells in the list (84) and opens **2** of land; `saint-lawrence`
+opens **22**, the largest legitimate land carve; and the canal as shipped opened **30** of its 37 —
+**first by eight cells**, where the old measure ranked it fifth. That gap is the slice: the guard
+puts the defect on the first line of the page instead of halfway down it.
+
+It is still a REVIEW gate and still cannot classify — the St Lawrence (22), Thames-Scheldt (17) and
+Gironde (15) all out-carve either half of the repaired river pair, because a river is a line of
+land turned into water. What the refusal guarantees is that a person has looked at every number,
+and that the world cannot be built until they do.
+
 ---
 
 ## 6. How to reproduce any number here
