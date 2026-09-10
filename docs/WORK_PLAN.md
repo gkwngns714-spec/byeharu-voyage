@@ -118,7 +118,23 @@ re-read from the record, never granted.
 | ~~**Ship stats and fittings**~~ | **0074, merged and LIVE.** Twelve fittings MOUNT, ten stats, slots typed and grown by tier |
 | **Regions and the map split** | not started — the last of stage 2 |
 
-**OUTSIDE THIS QUEUE, and the chain head is no longer 0075.** Owner row 72 landed as **0076 — a harbour is reached from its roads** (`docs/DESIGN_ROADSTEAD.md`, DEV_LOG D34/D34b): a port is now reached from its ROADSTEAD, the one point of open water off its quay, and the mover ends the course there instead of at the inland city. It is not a DESIGN_V1 slice — it is a bug the owner described as a drawing — but it moves `sea_reaches`, `cmd.do_sail`, the land guard and `world.snapshot()`, so **read it before touching navigation, distances or the chart.** Two consequences the next session must not rediscover the hard way: five passages that used to cross land are now the long way round (Panama City to Veracruz / Port Royal / St. Augustine / Portobelo, and Hamburg to Lubeck), and **migration 0060 must be REGENERATED rather than merged as drafted** — it rewrites `sea_reaches` and would silently null the two columns 0076 declares NOT NULL.
+**OUTSIDE THIS QUEUE, and the chain head is 0082 as of 2026-09-10** — production is on it too
+(`supabase migration list --linked`, read on the target that day: local and remote both
+`20260818000082`, 75 migration files). This paragraph said *"no longer 0075"* when it was written and
+that had stopped being useful; the head is a figure, so it is stated as one. Owner row 72 landed as **0076 — a harbour is reached from its roads** (`docs/DESIGN_ROADSTEAD.md`, DEV_LOG D34/D34b): a port is now reached from its ROADSTEAD, the one point of open water off its quay, and the mover ends the course there instead of at the inland city. It is not a DESIGN_V1 slice — it is a bug the owner described as a drawing — but it moves `sea_reaches`, `cmd.do_sail`, the land guard and `world.snapshot()`, so **read it before touching navigation, distances or the chart.** Two consequences the next session must not rediscover the hard way: five passages that used to cross land are now the long way round (Panama City to Veracruz / Port Royal / St. Augustine / Portobelo, and Hamburg to Lubeck), and **migration 0060 must be REGENERATED rather than merged as drafted** — it rewrites `sea_reaches` and would silently null the two columns 0076 declares NOT NULL.
+
+**ALSO OUTSIDE THIS QUEUE, and landed since: what a hold COST (owner row 74).** Two migrations, both
+live on production. **0081 — the hold knows what it cost**: `ships.cargo_basis`, the average ducats
+per tun carried beside the cargo, written only by the one mover pair and kept equal across a fleet's
+hulls, with `cmd.do_sell` realising the profit at the moment of sale (DEV_LOG 2026-09-09; client half
+PR #52, the pinned Loss row PR #53). **0082 — the books are opened for what is already aboard**:
+a one-shot replay of the house's own event log for cargo bought before 0081 existed, exact because a
+sale never moves the average, writing a basis ONLY where the replayed quantity equals the hold and
+refusing everywhere else (DEV_LOG 2026-09-10). It is deliberately **not** a catalogued function — a
+standing "recompute the basis from the ledger" would be a second authority beside `fleet_load` /
+`fleet_unload`, so once a hold is opened the ledger is never replayed again. **Read 0081 before
+touching cargo, a sale, or anything that writes a hold**, and do not add a second reader of the
+ledger for cost.
 
 **A note for whoever picks this up.** Five of the seven took one session together, not five in
 parallel, and the reason is worth keeping: they share the PORT screen's face strip, and 0067 is

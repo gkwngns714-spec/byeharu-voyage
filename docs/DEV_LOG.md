@@ -5,6 +5,32 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-10 — 0082 is on production (the deploy record, not a slice)
+
+**This is the deploy of the entry below, and it exists because that entry ends *"Nothing was pushed
+to production"* — which stopped being true today.** No code changed; nothing here is new work.
+
+Pushed by hand from the main clone per `docs/DEPLOY_RUNBOOK.md`, because the chain must not race its
+own clock (0078): `unwind_the_clock()` returned **5**, `supabase db push --linked` applied **0082**
+green, `wind_the_clock()` restarted all five `byeharu-voyage:*` jobs and **each was re-read
+`active: true`** rather than assumed. `supabase migration list --linked` then reads local and remote
+both **`20260818000082`** — 75 migration files, production in step with `main` at `de428ea`.
+
+**Verified on the target, against the prediction written BEFORE the push.** `public.ships.cargo_basis`
+was read on production and every figure the entry below predicted came back to the digit: `olive-oil`
+**35 t at 80.85454545454546** and `nautical-clocks` **3 t at 1272.3333333333333** on the owner's
+flagship, `dried-fish` **10 t at 50.8**, and the `anise` hold wrote **`{}`** — REFUSED, exactly as
+designed, because its tuns were hand-loaded and the ledger holds no BOUGHT for them. Three holds
+opened, one refused, and the refusal is the half that proves the guard rather than the arithmetic.
+
+**What this does NOT do.** It does not drive the game. The figures above were read from the
+DATABASE; nobody has looked at Olive Oil's sell tray on the live site since, so owner row 74 stays
+OPEN under rule 2. And it does not close row 74 for a second reason: the owner said *"fix both of
+those"*, the entry below is the first, and **the second is recorded nowhere in this repo** — now
+carried as `docs/OWNER_REQUESTS.md` **row 75**, to be asked rather than guessed.
+
+---
+
 ## 2026-09-10 — the books are opened for what is already aboard (row 74, the first of "fix both", migration 0082)
 
 **The owner, after driving the game on production (2026-09-09):** the cargo already in their hold

@@ -1,15 +1,79 @@
 # RESUME — where the work stands
 
 **If you are picking this project up cold: read the anchor immediately below, then
-`docs/DEV_LOG.md`'s entries for 2026-09-09, then `docs/OWNER_REQUESTS.md`, then
+`docs/DEV_LOG.md`'s entries for 2026-09-10 and 2026-09-09, then `docs/OWNER_REQUESTS.md`, then
 `docs/WORK_PLAN.md` §4 for which slice is next. Everything under `LANDED 2026-08-24` and lower
 is older and is kept as record.** *(This pointer named D27/D26 until 2026-09-06 — eight entries
-out of date. A cold-start pointer that names the wrong entries sends the reader to the wrong
-month, so it moves with the anchor.)*
+out of date — and named 2026-09-09 alone until 2026-09-10. A cold-start pointer that names the wrong
+entries sends the reader to the wrong month, so it moves with the anchor.)*
 
 ---
 
-# ▼ RESUME ANCHOR — 2026-09-09 ▼
+# ▼ RESUME ANCHOR — 2026-09-10 ▼
+
+**The anchor below this one (2026-09-09) is now HISTORY.** Its state-of-the-world table said `main`
+was at `352c130` and the chain head was `0080`; both had moved — 24 commits and two migrations — and
+its "what is still open" table lists row 74 and migration 0082 as outstanding when 0082 is now
+deployed. Do not act on those lines; act on this.
+
+Every line is labelled with how it was checked. **Anything not checked says so.**
+
+## The state of the world — VERIFIED 2026-09-10
+
+| | | how |
+|---|---|---|
+| `main` head | **`de428ea`** | `git log` on this checkout, on `main`, working tree clean — read 2026-09-10 |
+| Chain head | **0082** `the_books_are_opened_for_what_is_already_aboard`, **75** migration files | listing `supabase/migrations/` |
+| **Production database head** | **0082 — IN STEP WITH `main`** | `supabase migration list --linked` read on the target: local and remote both `20260818000082` |
+| `0060` | **NOT IN THE CHAIN — the number is SKIPPED** | the same listing: 0059 is followed by 0061. The draft is unmerged on `osn-0060-harbour-snaps` and `docs/WORK_PLAN.md` §4 says it must be **REGENERATED, not merged** — it rewrites `sea_reaches` and would null two columns 0076 declares NOT NULL |
+| Site | deployed from every merge to `main` | `deploy-pages.yml` runs on push — **not re-fetched today** |
+| Live URL | https://gkwngns714-spec.github.io/byeharu-voyage/ | carried from the 2026-09-09 anchor, **not re-checked today** |
+| Branch protection on `main` | `acceptance` + `build` required; admin override ON | carried from the 2026-09-09 anchor, **not re-read today** |
+
+## The 0082 deploy — done by hand on 2026-09-10 and read back
+
+`docs/DEPLOY_RUNBOOK.md` is the procedure and it was followed as written, because the chain must not
+race its own clock (0078, DEV_LOG D36):
+
+* `unwind_the_clock()` — returned **5**, the five `byeharu-voyage:*` cron jobs stopped.
+* `supabase db push --linked` — **0082 applied green**.
+* `wind_the_clock()` — all five restarted, and **each was re-read `active: true`** rather than
+  assumed. A deploy that stops the clock and does not restart it stops the game.
+* `supabase migration list --linked` — local and remote both `20260818000082`.
+
+**The result was verified on the target, not inferred from the push**: `public.ships.cargo_basis`
+was read on production and **every figure matches the prediction written into DEV_LOG's 0082 entry
+before the deploy** — `olive-oil` **35 t at 80.85454545454546** and `nautical-clocks` **3 t at
+1272.3333333333333** on the owner's flagship, `dried-fish` **10 t at 50.8**, and the `anise` hold
+wrote **`{}`** — REFUSED, exactly as designed, its tuns having been hand-loaded with no BOUGHT event
+in the ledger. Three holds opened, one refused, and the refusal is the one that proves the guard.
+
+## What is still open
+
+| | |
+|---|---|
+| **Nobody has driven the running game since the 0082 deploy** | The basis figures were read off the DATABASE, which is not the same act as looking at the game. Owner row 74's Olive Oil tray should now read `Paid 80.85 d./t` with a real profit beside the button; **that is what the served figure makes true, not something anyone has seen.** Rule 2 wants the look. |
+| **HALF OF THE OWNER'S *"fix both of those"* IS UNRECORDED** | DEV_LOG's 0082 entry calls itself *"the first of 'fix both'"*. **The second is written down in no place this repo can be searched** — not the dev log, not the ledger, not a branch, PR or commit. It is carried as **`OWNER_REQUESTS.md` row 75** with a state of UNRECORDED. **ASK THE OWNER before closing row 74**, and do not read it as a duplicate of a follow-up already recorded. |
+| ~~**Owner row 73**~~ | **CLOSED 2026-09-09** — driven on production, PR #51, closing commit `010ea71`. |
+| **FIT and UNFIT still have no doorway** | Row 73's own leftover. It needs a server read for the fittings a house keeps in a CITY. **The number the last anchor gave it — 0082 — was taken by row 74's ledger replay**, so this is a LATER migration and is unwritten. |
+| **The served HIRE ceiling (owner row 16's other half)** | Unchanged from the last anchor: MAX must be a SERVED figure (`Stepper`'s `cap`), nothing serves it for HIRE, and it is a migration. |
+| **Rows 48, 52 and 72 said their migrations were undeployed** | **Corrected 2026-09-10** — 0061, 0062 and 0076 are all on production. All three stay OPEN, because a deploy is not a drive (rule 2), and **row 48 additionally needs the owner's ruling on which reading is meant**: does a city SELL only its roster, or only SPECIALISE in it? Nobody may close it on their behalf. |
+| **MARKET into PORT fold** | Unchanged from the last anchor: argued for by three independent things, costed, recommended, **not built** — its own slice. |
+| **Issue #48** | Harvest 0060's channel research against today's generator. Unchanged. |
+| **Dead after PR #51** | `handOffTrade`, `useCommandDraft`'s `verb`/`args`/`chooseVerb`, `src/chart`'s `SmallChart` — no caller outside their own folder. Its own slice. Unchanged, **not re-checked today**. |
+| **A suite that measures ONE viewport proves ONE viewport** | The lesson of PR #53 and it stands: the geometry suite is a phone proof at 390×844, the owner reads the game at ~1568×735, and a desktop check is a separate act. |
+| **A passage is quoted in a unit the player cannot feel** | Unchanged from the last anchor: the mover is correct, and *"3.8 days"* at the moment of decision is 34 real seconds. |
+
+## Machine note
+
+Unchanged: the above was done on the **디폴리스** Windows machine. Local paths under
+`C:\Users\디폴리스\` do not exist elsewhere; everything that matters is on GitHub. On a new machine:
+`gh auth login`, then `supabase login` if `supabase projects list` fails, then `npm ci`. And
+`git config core.autocrlf false` **before** anything else — the chain guard refuses CRLF.
+
+---
+
+# ▼ RESUME ANCHOR — 2026-09-09 (HISTORY) ▼
 
 **The anchor below this one (2026-09-06) is now HISTORY.** Its central warning — *"production's
 database head is UNVERIFIED, and it is almost certainly behind"* — was resolved on 2026-09-09: the
