@@ -25,9 +25,11 @@ opened, one refused, and the refusal is the half that proves the guard rather th
 
 **What this does NOT do.** It does not drive the game. The figures above were read from the
 DATABASE; nobody has looked at Olive Oil's sell tray on the live site since, so owner row 74 stays
-OPEN under rule 2. And it does not close row 74 for a second reason: the owner said *"fix both of
-those"*, the entry below is the first, and **the second is recorded nowhere in this repo** — now
-carried as `docs/OWNER_REQUESTS.md` **row 75**, to be asked rather than guessed.
+OPEN under rule 2. The owner said *"fix both of those"* and the entry below is the first; the
+second reached no file in this repo. It was raised as `docs/OWNER_REQUESTS.md` **row 75** and the
+owner **released it the same day** — *"row 75 - if there is no issue, forget it"* — so that row is
+CLOSED by decision and the phrase above is not a loose thread. **Do not re-raise it.** Row 74 now
+turns on its one remaining condition: nobody has driven the running game since this deploy.
 
 ---
 
