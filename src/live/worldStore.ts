@@ -61,6 +61,7 @@ import {
   cmdProvisionPresetDelete,
   cmdProvisionPresetSave,
   cmdStudySkill,
+  cmdTradeBasket,
   initRpc,
   worldFleets,
   worldLedger,
@@ -81,6 +82,8 @@ import type {
   FleetView,
   HaggleAttempt,
   LedgerEvent,
+  ManifestLine,
+  ManifestReceipt,
   MarketView,
   OfficerRoster,
   PlayerHouse,
@@ -200,6 +203,11 @@ export interface LiveWorld {
    *  string a keyboard would. A SAIL also carries its PROPOSED course (0039), which the server
    *  verifies and measures itself. Refreshes on success so the queue and purse are never stale. */
   issue: (fleetId: string, text: string, path?: [number, number][] | null) => Promise<boolean>
+  /** THE MANIFEST (0083): several buy and sell lines at the quay she lies at, landing together or
+   *  not at all. Returns the served receipt, or null when the quay refused — the refusal (with
+   *  `line`, the input index that refused) lands in `refusal` as every verb's does. Re-reads the
+   *  world and the market on success exactly as `issue` does: one post-trade read, not two. */
+  issueManifest: (fleetId: string, lines: readonly ManifestLine[]) => Promise<ManifestReceipt | null>
   /** Dry-run the same string: the server executes the real verb and rolls it back (F.5 layer 3). */
   preview: (
     fleetId: string,
@@ -271,7 +279,23 @@ export function nationNameOf(
   return nationByCode[code]?.name ?? code
 }
 
-export const useWorld = create<LiveWorld>((set, get) => ({
+export const useWorld = create<LiveWorld>((set, get) => {
+  /**
+   * WHAT IS READ BACK AFTER A TRADE — the one spelling, for the two verbs that trade (`issue` and
+   * `issueManifest`, 0083). The order may have executed already (a docked fleet acts at once), so
+   * the world is read back rather than a local copy patched — the server's answer is the only
+   * true one. `refresh()` re-reads the fleets (hold, cargo, version), the ledger (the purse) and
+   * the house; then the market she lies at, because the trade moved the book — the stock fell,
+   * the price stepped. 0071: the destination comparison that used to be re-read beside it is
+   * gone with the rest of "where to sail". Not exported: it is this store's own tail, not a verb.
+   */
+  const afterTrade = async (fleet: FleetView | undefined): Promise<void> => {
+    await get().refresh()
+    const port = fleet?.port ? get().portByCode[fleet.port] : null
+    if (port) await get().loadMarket(port.id)
+  }
+
+  return {
   phase: 'idle',
   fatal: null,
   mode: null,
@@ -546,15 +570,20 @@ export const useWorld = create<LiveWorld>((set, get) => ({
       return false
     }
     set({ refusal: null })
-    // The order may have executed already (a docked fleet acts at once), so read the world back
-    // rather than patching a local copy of it — the server's answer is the only true one.
-    await get().refresh()
-    const port = fleet?.port ? get().portByCode[fleet.port] : null
-    // The order moved the book — the stock fell, the price stepped — so the market is re-read.
-    // 0071: the destination comparison that used to be re-read beside it is gone with the rest of
-    // "where to sail".
-    if (port) await get().loadMarket(port.id)
+    await afterTrade(fleet)
     return true
+  },
+
+  issueManifest: async (fleetId, lines) => {
+    const fleet = get().fleets.find((f) => f.id === fleetId)
+    const r = await cmdTradeBasket(fleetId, lines, fleet?.version ?? null)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return null
+    }
+    set({ refusal: null })
+    await afterTrade(fleet)
+    return r.value
   },
 
   preview: async (fleetId, text, path = null) => {
@@ -602,4 +631,5 @@ export const useWorld = create<LiveWorld>((set, get) => ({
   },
 
   dismissRefusal: () => set({ refusal: null }),
-}))
+  }
+})

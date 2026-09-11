@@ -69,3 +69,12 @@ export interface BuyCapacityState {
   estTotal: number | null
   loading: boolean
 }
+
+/**
+ * HOW LONG A CHOSEN QUANTITY MUST STAND STILL before the server is asked to price it — a dry run
+ * is a real write, rolled back, and a slider drag reports every step. Long enough that a drag is
+ * one ask; short enough that a tap on + reads as immediate. ONE constant for the two hooks that
+ * ask (`useTrade` for a line, `useManifestPreview` for a manifest); it lives here, the layer both
+ * stand on, so the two trays cannot settle at different speeds.
+ */
+export const PREVIEW_SETTLE_MS = 200

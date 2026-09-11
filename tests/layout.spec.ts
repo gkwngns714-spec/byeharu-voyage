@@ -529,3 +529,97 @@ test(`PORT: the port field is on the sheet, and a harbour with nobody alongside 
   await page.locator('[data-testid="port-field"] ~ button[aria-label="Clear"]').click()
   await expect(field).toHaveValue(home)
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// PORT'S MANIFEST — a line staged instead of traded; one tray; nothing above the press moves
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ADDED 2026-09-11 with slice 2 of the Quay Ledger (docs/QUAY_LEDGER.md §3 C/E, migration 0083).
+// A price cell's tray now carries `Add to manifest` beside its one button. Pressing it closes the
+// pick and mounts the MANIFEST tray at PEEK — the title is the whole manifest in one line — and
+// nothing at or above the pressed row moves (row 15, the same measurement as the trade test). Every
+// control in the manifest tray clears the 44px floor. Dragged to half, `Trade N lines` lands the
+// manifest through cmd.trade_basket and the same tray turns over to the RECEIPT, whose rows are the
+// server's own settled figures. The in-tab PGlite world is disposable, so a real trade here is fine.
+test(`PORT: a line staged onto the manifest opens the one tray at peek, moves nothing, and lands as a receipt`, async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(420_000)
+  test.skip(
+    !(await reachable(request, baseURL ?? '')),
+    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+  )
+  await page.goto('port')
+  await ready(page)
+  await page.waitForTimeout(1200)
+
+  const rows = page.locator('[data-testid="trade-row"]')
+  expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet alongside?').toBeGreaterThan(1)
+  await expect(page.locator('[data-testid="quay-hold"]'), 'no hold gauge on the board').toBeVisible()
+
+  const before = await page.evaluate(MEASURE_OFFSETS, 'trade-row')
+  // Press the first live BUY cell; the trade tray opens with `Add to manifest` beside its button.
+  await page.evaluate(() => {
+    const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) =>
+      /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()),
+    )
+    ;(cell as HTMLButtonElement | undefined)?.click()
+  })
+  const stage = page.locator('[data-testid="trade-tray-stage"]')
+  await expect(stage).toBeVisible()
+  // The dry run must price the quantity first — the stage button is disabled until the act is ready.
+  await expect(stage).toBeEnabled({ timeout: 20_000 })
+  await stage.click()
+
+  // ONE tray: the pick is gone and the manifest stands in its place, at PEEK, its title the line.
+  await expect(page.locator('[data-testid="trade-tray"]')).toHaveCount(0)
+  const manifest = page.locator('[data-testid="manifest-tray"]')
+  await expect(manifest).toBeVisible()
+  expect(await manifest.getAttribute('data-tray-detent')).toBe('peek')
+  await expect(manifest.locator('h2')).toHaveText(/^Manifest · 1 line/)
+
+  // Row 15: staging moved nothing in the ledger.
+  await page.waitForTimeout(600)
+  const after = await page.evaluate(MEASURE_OFFSETS, 'trade-row')
+  expect(after.length, 'the ledger unmounted its goods when a line was staged').toBe(before.length)
+  expect(
+    before.map((b, i) => ({ b, a: after[i] })).filter(({ b, a }) => a.top !== b.top || a.left !== b.left).length,
+    'staging a line MOVED the ledger — the manifest tray is `fixed` and inserts nothing',
+  ).toBe(0)
+
+  // Up to half: the lines, the served totals and the one button. Every control clears the floor.
+  await manifest.locator('button[aria-label="Resize"]').focus()
+  await page.keyboard.press('ArrowUp')
+  await expect(manifest).toHaveAttribute('data-tray-detent', 'half')
+  await expect(manifest.locator('[data-testid="manifest-line"]')).toHaveCount(1)
+  const send = manifest.locator('[data-testid="manifest-send"]')
+  await expect(send, 'the manifest was never priced — cmd.preview_basket did not answer').toBeEnabled({ timeout: 20_000 })
+  expect(await manifest.locator('[data-testid="manifest-total"]').count(), 'no served totals rows').toBeGreaterThanOrEqual(4)
+  await expect(manifest.locator('h2')).toHaveText(/^Manifest · 1 line · [−+]?[\d,]+ d\.$/)
+  const short = await manifest.evaluate((el) =>
+    [...el.querySelectorAll('button')]
+      .map((b) => ({ text: (b.innerText || b.getAttribute('aria-label') || '').slice(0, 24), r: b.getBoundingClientRect() }))
+      .filter(({ r }) => r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44))
+      .map(({ text, r }) => `${text} ${Math.round(r.width)}×${Math.round(r.height)}`),
+  )
+  expect(short, 'a control in the manifest tray is under the 44px reach floor').toEqual([])
+  // The staged tuns are drawn back onto the hold gauge as a wash.
+  await expect(page.locator('[data-testid="quay-hold"] [data-bar-pending]')).toHaveCount(1)
+
+  // Trade it. The same tray turns over to the receipt: the settled line, tax, spread, net, purse,
+  // trading — the server's own figures, at least four rows of them.
+  await send.click()
+  const receipt = page.locator('[data-testid="receipt-tray"]')
+  await expect(receipt).toBeVisible({ timeout: 30_000 })
+  await expect(receipt.locator('h2')).toHaveText(/^Settled · \d\d:\d\d$/)
+  expect(await receipt.locator('[data-testid="receipt-row"]').count()).toBeGreaterThanOrEqual(4)
+  await expect(page.locator('[data-testid="manifest-tray"]')).toHaveCount(0)
+  // …and the wash is gone: nothing is staged any more.
+  await expect(page.locator('[data-testid="quay-hold"] [data-bar-pending]')).toHaveCount(0)
+  // Dismissed, nothing stands, and the ledger beneath is still the ledger.
+  await receipt.locator('[data-testid="tray-close"]').click()
+  await expect(receipt).toHaveCount(0)
+  expect(await rows.count()).toBe(before.length)
+})

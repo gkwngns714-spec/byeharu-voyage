@@ -1,15 +1,19 @@
 import { useMemo, useState } from 'react'
 import { Field, Figure, Note, Row, TradeTray, type TradePick } from '../../components/ui'
 import { HaggleRow } from './HaggleRow'
+import { ManifestTray } from './ManifestTray'
+import { QuayHold } from './QuayHold'
 import { QuayLedger } from './QuayLedger'
 import { StepQuestion } from './StepQuestion'
 import { useStepOrder } from './useStepOrder'
 import { fleetCargoByCode } from '../../domain/fleet'
+import { useManifestPreview } from '../../live/useManifestPreview'
 import { usePortHistory } from '../../live/usePortHistory'
 import { useTrade } from '../../live/useTrade'
 import { fold, foldedMatch } from '../../lib/text'
 import { formatVoyageDays } from '../../lib/format'
-import type { FleetView, MarketGood, SnapshotPort } from '../../lib/rpc'
+import type { FleetView, ManifestLine, MarketGood, SnapshotPort } from '../../lib/rpc'
+import { linesFor, useManifest } from '../../store/manifest'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE, ON THE QUAY YOU ARE STANDING ON — the Quay Ledger's board (owner row 76), on the face
@@ -31,11 +35,22 @@ import type { FleetView, MarketGood, SnapshotPort } from '../../lib/rpc'
 // tray, docked to the bottom edge, so nothing above the finger moves — the owner's rule, kept by
 // construction.
 //
+// ── THE MANIFEST (slice 2, QUAY_LEDGER §3 C/E) ─────────────────────────────────────────────────
+// A line may be TRADED from its tray or STAGED onto the manifest (store/manifest.ts), and ONE tray
+// stands at a time — this file's one table:
+//     a pick is open                → TradeTray, at half
+//     no pick, a receipt stands     → ManifestTray's receipt face, at half
+//     no pick, lines are staged     → ManifestTray's manifest face, at peek (the title is the line)
+//     otherwise                     → nothing
+// The manifest is priced ONCE here (`useManifestPreview`) and the same answer feeds the tray's
+// totals and the hold gauge's staged wash (QuayHold) — two readers of one estimate, never two asks.
+//
 // ── WHAT IS DRAWN HERE IS NOT THIS SCREEN'S ───────────────────────────────────────────────────
 // The ledger is `QuayLedger`, shared with the read-only face; the row and the tray are the design
 // system's; the act — the grammar, the door, the ceiling, the dry run, the server's refusal — is
-// `useTrade`'s; the trend is `usePortHistory`'s. What this file owns is the text FILTER, the pick,
-// the quantity, and the chandler's row.
+// `useTrade`'s; the trend is `usePortHistory`'s; the manifest's face and receipt are
+// `ManifestTray`'s. What this file owns is the text FILTER, the pick, the quantity, the chandler's
+// row, and which tray stands.
 //
 // ── WHAT IT DOES NOT OWN ───────────────────────────────────────────────────────────────────────
 // No price arithmetic, no legality check, no grammar, no quantity rule, no ledger order.
@@ -85,10 +100,29 @@ export function PortTrade({
   const trade = useTrade(fleet, pick?.intent ?? 'buy', pick?.good ?? null, qty, close)
   const provision = useStepOrder(fleet, 'PROVISION', stores, () => setStores(false))
 
+  // THE MANIFEST: this fleet's lines at this quay, priced once. `chosen` on the stage press is the
+  // quantity the tray materialised through `onChange` — the same figure on the tray's button.
+  const lines = useManifest((s) => linesFor(s, fleet.id, port.code))
+  const receipt = useManifest((s) => s.receipt)
+  const stageOnManifest = useManifest((s) => s.stage)
+  const preview = useManifestPreview(fleet, lines)
+  const stage = () => {
+    if (!pick || qty === null || qty <= 0) return
+    stageOnManifest(fleet.id, port.code, { side: pick.intent, good: pick.good.code, qty })
+    close()
+  }
+  const edit = (line: ManifestLine) => {
+    const good = goods.find((g) => g.code === line.good)
+    if (!good) return
+    open(good, line.side)
+    setQty(line.qty)
+  }
+
   return (
     <>
       {/* THE CHANDLER — her stores, and the press that fills them. One tray at a time: opening
-          this closes a price tray, and a price cell closes this. */}
+          this closes a price tray, and a price cell closes this. HER HOLD rides on the same row's
+          second line (QuayHold), with the staged manifest's tuns washed onto it. */}
       <Row
         label="Stores"
         value={<Figure value={formatVoyageDays(fleet.endurance_days)} />}
@@ -98,7 +132,9 @@ export function PortTrade({
           setStores(true)
         }}
         data-testid="quay-stores"
-      />
+      >
+        <QuayHold fleet={fleet} staged={preview.estimate?.hold.tuns_delta ?? null} />
+      </Row>
 
       <Field
         value={filter}
@@ -130,9 +166,14 @@ export function PortTrade({
           trade={trade}
           qty={{ value: qty, onChange: setQty }}
           onClose={close}
+          onStage={stage}
         >
           {pick.intent === 'buy' && <HaggleRow fleetId={fleet.id} good={pick.good} />}
         </TradeTray>
+      )}
+
+      {!pick && (receipt !== null || lines.length > 0) && (
+        <ManifestTray fleet={fleet} port={port} goods={goods} preview={preview} onEdit={edit} />
       )}
 
       {stores && (
