@@ -403,6 +403,11 @@ test(`PORT: the ledger's price cells are the trade, and a press moves nothing ab
     return {
       priceCells: cells.length,
       shortestCell: cells.length ? Math.min(...cells.map((c) => c.getBoundingClientRect().height)) : 0,
+      // The column must not zig-zag: every cell one width, every cell one height, whether or not
+      // it carries a reason line. Measured after the first canary drive (2026-09-11) showed a row
+      // with cargo aboard shrinking narrower and shorter than its neighbours.
+      distinctCellWidths: new Set(cells.map((c) => Math.round(c.getBoundingClientRect().width))).size,
+      distinctCellHeights: new Set(cells.map((c) => Math.round(c.getBoundingClientRect().height))).size,
       unlabelledCells: cells.filter((c) => !/\d/.test(c.innerText || '')).length,
       deadCellsSayingWhy: cells.filter((c) => (c as HTMLButtonElement).disabled && /none aboard/i.test(c.innerText || '')).length,
       deadCellsSayingNothing: cells.filter((c) => (c as HTMLButtonElement).disabled && !/none aboard/i.test(c.innerText || '')).length,
@@ -428,6 +433,8 @@ test(`PORT: the ledger's price cells are the trade, and a press moves nothing ab
   expect(field.priceCells, 'the price cells are gone — row 6 says the price IS the trade').toBe(field.tiles * 2)
   expect(field.shortestCell, 'a price cell is under the 44px reach floor').toBeGreaterThanOrEqual(44)
   expect(field.unlabelledCells, 'a price cell carries no figure').toBe(0)
+  expect(field.distinctCellWidths, 'price cells differ in width — the column zig-zags (the TradeRow cell is a fixed box)').toBe(1)
+  expect(field.distinctCellHeights, 'price cells differ in height — a live cell must stand as tall as a dead one').toBe(1)
   expect(field.deadCellsSayingNothing, 'a disabled sell cell went grey without saying "none aboard"').toBe(0)
   expect(field.deadCellsSayingWhy, 'no sell cell says "none aboard" — is `aboard` reaching the picker?').toBeGreaterThan(0)
   expect(field.chooseButtons, 'a `Choose <good>` button is back — two authorities for the pick').toBe(0)
