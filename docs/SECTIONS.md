@@ -151,6 +151,19 @@ trays draw (Trend, Range) went DOWN a layer to `src/components/ui/PriceRows.tsx`
 not import a screen, so the shared rows moved rather than being copied, which is rule 3 below at
 work. The good is one `TradeRow` (components/ui) on both faces of the fold.
 
+**The manifest (2026-09-11, owner row 76 slice 2, migration 0083) — who owns what.** The staged
+lines are a CHOICE, so they live in `src/store/manifest.ts` beside the harbour (not persisted: a
+manifest is priced against a market that steps). The one reading of `cmd.preview_basket` is
+`src/live/useManifestPreview.ts`; the one post-trade read for both trading verbs is worldStore's
+`afterTrade`, and `issueManifest` is the door. The receipt's numerics are normalised ONCE at the
+boundary in `src/lib/rpc/manifest.ts` (`readManifestReceipt`); `Refusal.line` (result.ts) is the
+server's word for which input line refused. The faces are PORT's: `features/port/ManifestTray.tsx`
+(manifest + receipt shell), `ReceiptFace.tsx` (the chit's rows), `QuayHold.tsx` (the hold gauge
+with the staged tuns washed on, from the served `hold.tuns_delta`). What went DOWN a layer because
+two callers wanted it: `deltaTone` (components/ui — the sign of a figure, spelt once for TradeTray,
+the manifest and the receipt), `PREVIEW_SETTLE_MS` (lib/trade — one settle for both dry runs),
+`Bar.pending` (the wash). `native` on a ledger row is the served 0084 flag as a caption word.
+
 ### What the spec checks, as of 2026-08-23
 
 Every rule below was proved to bite by breaking it on purpose and watching it go red. A guard nobody

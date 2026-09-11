@@ -56,6 +56,36 @@ the ledger, XP honest, one line per good, breakdown adds up, version guard, clie
 `docs/DEPLOY_RUNBOOK.md` (stop the clock, `db push`, start the clock, read the head back).** No screen
 reads the two verbs yet; that is the frontend half of this slice.
 
+**The frontend half (same day, branch `osn-quay-tray`, off the server branch).** The trade tray
+gained `Add to manifest` beside its one button; a staged line goes to `store/manifest.ts` (one
+key = (fleet, port), one line per good, not persisted) and PortTrade's one table decides which tray
+stands: a pick → TradeTray; a receipt → the receipt face; staged lines → the manifest face at PEEK,
+whose title is the manifest in one line (`Manifest · 2 lines · −2,256 d.`); else nothing.
+`useManifestPreview` asks `cmd.preview_basket` ONCE (settled by the same `PREVIEW_SETTLE_MS` the
+line dry run uses, now in lib/trade) and its answer feeds both the tray's served totals (goods at
+mid, tax, spread, haggle saved, profit vs paid, net, purse after, hold after) and the hold gauge on
+the Stores row (`QuayHold`, `Bar.pending` = the served `hold.tuns_delta` as a wash). `Trade N lines`
+→ worldStore `issueManifest` → `cmd.trade_basket` with the fleet's version → the same tray turns over
+to the receipt (`ReceiptFace`: lines, tax, spread, haggle saved, profit vs paid, net, purse before →
+after, `Trading +N xp`; stamped with the ledger's HH:MM, not `game_day`, which is an epoch counter).
+`refusal.line` (the input index the server names) puts the ONE `Note` under the refusing line;
+`E_BUSY` offers `Try again`. Numerics are normalised once at the boundary (`readManifestReceipt`).
+`native` (0084) is a caption word on the ledger row, never a tag. `deltaTone` folded TradeTray's
+sign ternary and the two new faces onto one function. What was NOT done as the blueprint drew it:
+the hold gauge is the Stores row's second line, not a row of its own — a 52px row cost the board its
+fifth good above the fold (layout.spec K.1 measured 4); `deltaTone` lives in `deltaTone.ts`, not in
+Figure.tsx (a component file exporting a helper breaks Fast Refresh, trayDetents.ts's rule).
+
+Gates: `tsc -b`, `eslint src tests` clean · pure specs 35/35 (sections, duplication, format,
+manifest.store) · `rpc.surface` 22/22 over PGlite, two new tests (preview moves nothing and names
+`line`; a mixed two-good manifest lands, `purse.after − purse.before === totals.net ===` the ledger's
+pair, E_STALE on the old version, E_MANIFEST_DUPLICATE at line 1, the world sold back clean) ·
+`npm run build` (image rebuilt for the 77-file chain) · browser specs 20/20, 0 skipped, incl. the new
+layout test (stage → peek, offsets unmoved, 44px floor, wash present, trade → receipt ≥ 4 rows, wash
+gone). **State: BUILT in the worktree, not committed, not merged, not driven on production** — the
+two verbs are still undeployed, so on prod this face would refuse with E_NO_SUCH_RPC until 0083/0084
+land.
+
 ---
 
 ## 2026-09-11 — The Quay board: MARKET folds into PORT, the tile grid becomes a ledger (owner row 76, slice 1 of 4)

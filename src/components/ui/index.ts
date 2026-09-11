@@ -46,6 +46,8 @@ export { Row, type RowTone } from './Row'
 
 // 5. FIGURE — value + unit, tabular, in three of the six type steps. Every number in the game.
 export { Figure, type FigureSize, type FigureTone } from './Figure'
+//    The tone a SIGNED figure takes — gain, loss, or plain ink at zero. One rule for every delta.
+export { deltaTone } from './deltaTone'
 
 // 6. TILE — the selectable block, and TileField, the CSS grid it stands in.
 export { Tile, TileField, type TileState } from './Tile'

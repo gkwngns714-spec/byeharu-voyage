@@ -35,12 +35,9 @@ import { paidPerTun } from '../domain/fleet'
 import { findVerb, orderText, saleEstimate, type SaleEstimate } from '../domain/order'
 import { cmdPreview } from '../lib/rpc'
 import type { FleetView, MarketGood, Refusal } from '../lib/rpc'
+import { PREVIEW_SETTLE_MS } from '../lib/trade'
 import { useBuyCapacity } from './useBuyCapacity'
 import { useWorld } from './worldStore'
-
-/** How long a chosen quantity must stand still before the server is asked to price it. Long
- *  enough that a slider drag is one ask; short enough that a tap on + reads as immediate. */
-const PREVIEW_SETTLE_MS = 200
 
 export function useTrade(
   fleet: FleetView,

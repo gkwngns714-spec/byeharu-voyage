@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Button } from './Button'
+import { deltaTone } from './deltaTone'
 import { Figure } from './Figure'
 import { Note } from './Note'
 import { PriceRows } from './PriceRows'
@@ -117,6 +118,7 @@ export function TradeTray({
   trade,
   qty,
   onClose,
+  onStage,
   children,
 }: {
   /** What was tapped: the good, and which of its two prices. */
@@ -125,6 +127,10 @@ export function TradeTray({
   trade: TradeControls
   qty: { value: number | null; onChange: (next: number) => void }
   onClose: () => void
+  /** Put this line on the MANIFEST instead of trading it now (QUAY_LEDGER §3 B, slice 2). The
+   *  caller stages `{side, good, qty}` and closes the pick; nothing is bought until the manifest's
+   *  own button. Absent on a quay with no manifest (the read-only face never mounts this tray). */
+  onStage?: () => void
   /** The caller's own rows under the stepper — the bargain. */
   children?: ReactNode
 }) {
@@ -179,25 +185,41 @@ export function TradeTray({
                 <Figure
                   value={formatDucatsDelta(act.preview.profit)}
                   size="figure"
-                  tone={act.preview.profit < 0 ? 'danger' : act.preview.profit > 0 ? 'success' : 'ink'}
+                  tone={deltaTone(act.preview.profit)}
                 />
               }
               hairline={false}
               data-testid="trade-tray-profit"
             />
           )}
-          <Button
-            variant="primary"
-            className="w-full"
-            onClick={act.send}
-            disabled={act.sending || chosen <= 0 || !act.ready}
-            busy={act.sending}
-            busyLabel="Sending…"
-            data-testid="trade-tray-send"
-          >
-            {`${verb} ${formatTuns(chosen)}`}
-            {act.total !== null ? ` · ${formatDucats(act.total)}` : ''}
-          </Button>
+          {/* TWO ACTS, ONE ROW: trade this line now, or stage it. The primary keeps the whole width
+              when there is no manifest to stage into; both are disabled by the same condition, so
+              a line that cannot be traded cannot be staged either. */}
+          <div className={onStage ? 'grid grid-cols-2 gap-2' : ''}>
+            {onStage && (
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={onStage}
+                disabled={act.sending || chosen <= 0 || !act.ready}
+                data-testid="trade-tray-stage"
+              >
+                Add to manifest
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={act.send}
+              disabled={act.sending || chosen <= 0 || !act.ready}
+              busy={act.sending}
+              busyLabel="Sending…"
+              data-testid="trade-tray-send"
+            >
+              {`${verb} ${formatTuns(chosen)}`}
+              {act.total !== null ? ` · ${formatDucats(act.total)}` : ''}
+            </Button>
+          </div>
         </>
       }
     >
