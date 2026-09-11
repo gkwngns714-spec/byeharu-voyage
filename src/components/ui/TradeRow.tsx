@@ -95,7 +95,13 @@ function tidePct(g: MarketGood): number {
 
 /** One price, and the tap that makes it a trade. The label and the figure are what layout.spec
  *  counts; the reason line is what keeps a dead cell honest. Moved unchanged from TradeTile, plus
- *  the accent wash while its tray is open. */
+ *  the accent wash while its tray is open.
+ *
+ *  The cell is a fixed box — `w-28 min-h-14` — and not sized by its text, because a ledger is read
+ *  down a column. The first canary drive (2026-09-11) showed why: a good with 10 t aboard lost its
+ *  "none aboard" line and its whole row shrank narrower and shorter than its neighbours, so the
+ *  price column zig-zagged. 7rem holds "not traded here" on ONE line at t-caption (5.5rem wrapped it and every cell grew to 78px); 3.5rem is label + figure
+ *  + reason, so a live cell stands as tall as a dead one. */
 function PriceCell({
   label,
   price,
@@ -116,7 +122,7 @@ function PriceCell({
       onClick={onPress}
       disabled={dead !== null}
       aria-pressed={selected}
-      className={`min-h-11 rounded-control px-2 py-1 text-left disabled:opacity-45 ${selected ? 'bg-accent-soft' : 'bg-surface-2'}`}
+      className={`w-28 min-h-14 rounded-control px-2 py-1 text-left disabled:opacity-45 ${selected ? 'bg-accent-soft' : 'bg-surface-2'}`}
     >
       <span className="block text-t-caption text-ink-faint">{label}</span>
       <Figure value={formatInt(price)} />

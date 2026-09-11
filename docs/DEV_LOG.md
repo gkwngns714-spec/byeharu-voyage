@@ -37,8 +37,18 @@ and pin-or-follow were each spelt twice. All folded.
 (`PORT ledger @390px: maxPerRow 1, 20 price cells, shortest 62 px, 10 dead cells all saying why`) ·
 `npm run build` green. Net −474 lines.
 
-**State: BUILT on `osn-quay-board`. Not merged, not deployed (no migration to deploy), NOT DRIVEN.**
-Slice 1's own "done when" is a single-good buy and sell on production through the new row.
+**MERGED as PR #55 (`df502a3`) and LIVE on Pages the same morning** — the served bundle carries
+`trade-row` / `quay-ledger`, no `/market` route, no "All she can". **Driven on the CANARY** (a
+PGlite build, DEV_LOG 2026-09-09's recipe): Aniseed at Lisbon — `Buy 10 t · 829 d.` took the purse
+8,000 → 7,171, the row read `· 10 t aboard` and its ask moved 83 → 84; the sell tray read `Paid 83
+d./t · Fetches 772 d. · Loss −57 d.` and `Sell 10 t · 772 d.` took it to 7,943. Not driven on
+PRODUCTION — that spends the owner's ducats (WORK_PLAN §7); their next play is that drive.
+
+**One defect the drive found, fixed the same day (`osn-quay-cells`):** a row with cargo aboard
+lost its "none aboard" line and shrank narrower and shorter than its neighbours, so the price column
+zig-zagged. The cell is now a fixed box (`w-28 min-h-14` — 5.5rem wrapped the reason and grew every
+cell to 78 px, leaving four rows above the fold; 7 rem holds it on one line, 62 px, five rows), and
+`tests/layout.spec.ts` asserts one width and one height across every price cell.
 
 ---
 
