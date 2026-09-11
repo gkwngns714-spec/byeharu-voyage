@@ -1,15 +1,83 @@
 # RESUME — where the work stands
 
 **If you are picking this project up cold: read the anchor immediately below, then
-`docs/DEV_LOG.md`'s entries for 2026-09-10 and 2026-09-09, then `docs/OWNER_REQUESTS.md`, then
-`docs/WORK_PLAN.md` §4 for which slice is next. Everything under `LANDED 2026-08-24` and lower
+`docs/DEV_LOG.md`'s three entries for 2026-09-11, then `docs/QUAY_LEDGER.md` (owner row 76 — the
+work in progress), then `docs/OWNER_REQUESTS.md`. Everything under `LANDED 2026-08-24` and lower
 is older and is kept as record.** *(This pointer named D27/D26 until 2026-09-06 — eight entries
 out of date — and named 2026-09-09 alone until 2026-09-10. A cold-start pointer that names the wrong
 entries sends the reader to the wrong month, so it moves with the anchor.)*
 
 ---
 
-# ▼ RESUME ANCHOR — 2026-09-10 ▼
+# ▼ RESUME ANCHOR — 2026-09-11 ▼
+
+**The anchor below this one (2026-09-10) is now HISTORY.** Its head lines (0082 / 75 files) were
+corrected in place today but its "what is still open" table predates owner row 76. Act on this.
+
+## The one thing in progress — owner row 76, THE QUAY LEDGER
+
+The owner brought nine screenshots of the Uncharted Waters Origin trade house and said *"make this
+in game"* — then *"do what is best, don't leave anything out, fix it when necessary, make everything
+clean"*. The design is `docs/QUAY_LEDGER.md` (read it; §6 is the four-slice plan). Method per slice:
+architect (read-only, file:line) → implementer in its own worktree → adversarial reviewer → gates →
+PR → CI → admin merge → hand deploy per `docs/DEPLOY_RUNBOOK.md` → verify on the target.
+
+| slice | state — VERIFIED 2026-09-11 | how |
+|---|---|---|
+| **1 · the board** (MARKET folded into PORT, ledger rows, tray as the unfolded row) | **LIVE on Pages** — PR #55 `df502a3`, cell-width fix PR #56 `8729be0` | served bundle grepped: `trade-row`/`quay-ledger` present, no `/market`, no "All she can"; driven on the CANARY (Aniseed buy 829 d. → sell 772 d.) |
+| **2 · server** — 0083 `a_manifest_is_one_order`, 0084 `a_good_is_native_where_it_grows` | **LIVE on production** — PR #57 `161d076`, hand-deployed | `select max(version) from supabase_migrations.schema_migrations` = `20260818000084`; grants read back (doors open to `authenticated` only); Lisbon serves 7 native of 10 |
+| **2 · frontend** — the manifest tray | **BUILT, NOT MERGED — draft PR #59 on `osn-quay-tray` (`dc52c20`)** | every gate green at that commit (tsc, eslint, 35 pure, 22 PGlite RPC specs incl. real `trade_basket`, 20 browser specs 0 skipped, build). **An adversarial review was in flight when the session stopped and was never applied.** |
+| **3 · haggle thread both sides + real price chart** | NOT started — an architect blueprint was in flight, not received | — |
+| **4 · contracts** (`trade_contracts`, new system) | NOT started | — |
+
+## What the next session does, in order
+
+1. `git pull`; read this, `docs/DEV_LOG.md`'s 2026-09-11 entries (three of them), `docs/QUAY_LEDGER.md`.
+2. **Slice 2 frontend:** `git fetch && git worktree add ../bv-quay-tray osn-quay-tray` (or check the
+   branch out), then run an ADVERSARIAL REVIEW of `dc52c20` before anything else — the attack list
+   that was issued: second authorities (client sums, hold maths beyond presenting the served
+   `tuns_delta`, a second refusal renderer, a second post-trade reload), the PortTrade face state
+   machine (pick × lines × receipt), the preview hook re-asking on every `readAt` beat, the
+   `fleet.version` sent to `trade_basket` after a single-line `issue` bumped it, `refusal.line`
+   pointing at the right row after a REMOVE, the implementer's named deviations (hold gauge as the
+   Stores row's child; `deltaTone.ts`; `Settled · HH:MM`; closing the manifest face CLEARS it;
+   `Profit vs paid` only when `totals.sold > 0`), and whether DEV_LOG's paragraph still says 0083/0084
+   are "undeployed" (they are deployed — fix the sentence). Apply findings, re-run the gates, mark
+   PR #59 ready, merge, **drive it on the canary** (3-line mixed manifest → refusal naming the line →
+   atomic trade → receipt equals the purse delta), then log it.
+3. **Slice 3**, then **slice 4**, per `docs/QUAY_LEDGER.md` §6. Slice 3's implementer must wait for
+   slice 2's merge (same tray files). `cmd.haggle` already accepts `side='sell'`; `world.haggle_state`
+   already serves `attempts_left`, `concession`, `next_odds_pct` (0022:641-652) — check before adding
+   a migration.
+
+## Rules learned or re-learned today (do not rediscover)
+
+* **Never drive a real buy/sell on production** — it spends the owner's ducats (`WORK_PLAN.md` §7).
+  Drive the CANARY: `.env.local` aside → `npm run build` → restore → `npx vite preview --port <free>`
+  (DEV_LOG 2026-09-09 recipe). Production's drive is the owner's own play.
+* **Never `taskkill /IM node.exe`** — it kills every running agent's gate. Stop a preview by port.
+* **Prod SQL from this machine** (no psql): a scratch `pg` client — the runbook's `unwind_the_clock()`
+  / `wind_the_clock()` were run that way today, and re-read `active` each time. Pooler host
+  `aws-0-ap-northeast-2.pooler.supabase.com:5432`, user `postgres.<ref>`, password in
+  `supabase.credentials.local`. `supabase db push --linked --yes` needs `SUPABASE_DB_PASSWORD` in the env.
+* **Acceptance takes 28–40 min**; build 0.5–7 min; pglite-gate ~16 min; disposable chain ~7 min.
+* **Owner rule reversed on record:** the 2026-08-26 "grid like shape — organized not in lines" (row 34)
+  is superseded by row 76's one-row-per-good board; `tests/layout.spec.ts` asserts `maxPerRow === 1`.
+
+## The state of the world — VERIFIED 2026-09-11
+
+| | | how |
+|---|---|---|
+| `main` head | **`161d076`** (+ this docs PR when merged) | `git log` after merging #57 |
+| Chain head | **0084**, 77 migration files | `ls supabase/migrations/` |
+| **Production database head** | **0084 — IN STEP WITH `main`** | read on the target after the hand deploy |
+| Clock | 5 `byeharu-voyage:*` jobs, each re-read `active: true` after `wind_the_clock()` | `cron.job` on the target |
+| Open branches | `osn-quay-tray` (draft PR #59, WIP), `osn-deploy-0084` (docs PR #58) | `gh pr list` |
+| Worktrees on the 디폴리스 machine | `bv-quay-tray`, `bv-deploy-0084` (+ a stale locked `bv-quay-cells` dir, already unregistered — delete when unlocked) | `git worktree list` |
+
+---
+
+# ▼ RESUME ANCHOR — 2026-09-10 (HISTORY) ▼
 
 **The anchor below this one (2026-09-09) is now HISTORY.** Its state-of-the-world table said `main`
 was at `352c130` and the chain head was `0080`; both had moved — 24 commits and two migrations — and
