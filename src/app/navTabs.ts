@@ -3,15 +3,17 @@ import type { IconName } from '../components/ui'
 // THE TAB TABLE — pure data + policy (no React), so the navigation contract can be pinned by a
 // spec instead of read out of JSX. NavBar renders EXACTLY this list; there is no second table.
 //
-// ── THE NINE DESTINATIONS, and why each is its own screen ───────────────────────────────────────
+// ── THE EIGHT DESTINATIONS, and why each is its own screen ──────────────────────────────────────
 //   Command  whose orders, and what she has been told: her queue, the halt, cancel and clear.
 //            Since 2026-09-09 it composes NO verb — the owner: *"they should be located
 //            accordingly at different locations"* — every verb's doorway is on the face of the
 //            building whose act it is (PORT) or on the chart (SAIL). FLEETS' "Command her" still
 //            points it at a hull through `domain/order`'s draft; nothing hands it a verb.
 //   Fleets   what you own and where it is: ships, crew, hold, condition.
-//   Port     the harbour you are in — its services, its dues, its news.
-//   Market   prices here, prices remembered elsewhere, spreads.
+//   Port     the harbour you are in — its prices, and prices read elsewhere through its port
+//            field — its services, its dues, its news. MARKET folded into it on 2026-09-11 (owner
+//            row 76, docs/QUAY_LEDGER.md): the two tabs drew one ledger, one tray and one harbour
+//            choice, and reading a distant market from a second tab moved PORT off her quay.
 //   Map      WHERE THINGS ARE — and, since 2026-08-23, where you can act on that: tapping a harbour
 //            offers `Sail here`, which is a HAND-OFF to Command, never a second composer. This line
 //            read "Read-only, always"; MapScreen's header carries why that was the wrong rule.
@@ -21,7 +23,7 @@ import type { IconName } from '../components/ui'
 //            or not you have met it. A reference — it commands nothing.
 //   Profile  account, session, preferences.
 //
-// ── NINE DESTINATIONS, SIX CELLS (2026-08-25) ───────────────────────────────────────────────────
+// ── NINE DESTINATIONS, SIX CELLS (2026-08-25); EIGHT AND FIVE SINCE 2026-09-11 ─────────────────
 // Nine cells in one row at 390px is 43px each — under the 44px reach floor, and under the 46px the
 // widest label (COMMAND) needs. The bar therefore WRAPPED: three rows of three, MEASURED at
 // 390×844 as nine cells of 130×56 in a bar **168px tall**, which is 19.9% of the screen spent on
@@ -33,10 +35,11 @@ import type { IconName } from '../components/ui'
 // destination "what kind of thing is this?" and the nine fall into two kinds:
 //
 //   THE VOYAGE — the loop you are actually playing. You compose an order (Command) with the ships
-//   you own (Fleets), in the harbour you are docked at (Port), against its prices (Market), across
-//   the sea (Map). Every one of these is touched many times a session, and `docs/UI_DIRECTION.md`
-//   §3a is explicit that depth added to a frequent act is a DEFECT — the reference game's own
-//   convenience team exists to undo exactly that. So all five stay ONE TAP. None is grouped.
+//   you own (Fleets), in the harbour you are docked at (Port — its prices, and any other quay's,
+//   since MARKET folded in), across the sea (Map). Every one of these is touched many times a
+//   session, and `docs/UI_DIRECTION.md` §3a is explicit that depth added to a frequent act is a
+//   DEFECT — the reference game's own convenience team exists to undo exactly that. So all four
+//   stay ONE TAP. None is grouped.
 //
 //   THE CABIN — what a captain keeps at his desk. The ledger he writes up, the standings he is
 //   listed in, the compendium he looks things up in, and the papers that say who he is. The kind
@@ -50,7 +53,8 @@ import type { IconName } from '../components/ui'
 // `Ledger` is already defined above as "the running record", so a group called Records containing a
 // tab called Ledger is two words for one idea. HARBOUR was likewise rejected as a group over
 // {Port, Market}: navTabs already glosses Port as "the harbour you are in", so the two words name
-// the same place — and Market is played too often to sit behind a tap anyway.
+// the same place — and Market was played too often to sit behind a tap anyway (it has since been
+// folded into Port for a different reason: they were one screen drawn twice).
 //
 // MEASURED 2026-08-25, chromium against the built app (tests/nav.geometry.spec.ts prints the line
 // and asserts every number in it):
@@ -60,6 +64,8 @@ import type { IconName } from '../components/ui'
 //   320×568  six cells of 53×56 in one row, widest label 46px, none shaved — clear of both the
 //            44px reach floor and the 46px COMMAND needs. This is why SIX and not seven: 320 ÷ 7 is
 //            45.7px, and COMMAND would be shaved by the arithmetic alone.
+// SINCE 2026-09-11 the bar draws FIVE cells (Market gone); nav.geometry.spec pins the count and
+// re-measures the row on every run.
 
 export interface NavTab {
   to: string
@@ -89,7 +95,6 @@ const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] =
   { to: '/command', label: 'Command', icon: 'compass', enabled: true },
   { to: '/fleets', label: 'Fleets', icon: 'ship', enabled: true },
   { to: '/port', label: 'Port', icon: 'anchor', enabled: true },
-  { to: '/market', label: 'Market', icon: 'scales', enabled: true },
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
   { to: '/ledger', label: 'Ledger', icon: 'ledger', enabled: true, group: 'cabin' },
   { to: '/rank', label: 'Rank', icon: 'wreath', enabled: true, group: 'cabin' },
@@ -160,11 +165,11 @@ export function tabHref(to: string): string {
  *  about a decision you are in the middle of; on the chart, on the standings or in the cabin it is
  *  a number with nothing to do, which is precisely what §2 counted 93 lines of.
  *
- *  These three are the screens that hold a market payload (each calls `loadMarket`): Command
- *  composes the trade, Port shows the quay's own prices, Market reads them elsewhere. Derived
- *  from nothing — it is a JUDGEMENT about which screens are about prices, so it is written down
- *  once rather than re-decided in the bar. */
-export const TRADE_ROUTES: readonly string[] = ['/command', '/port', '/market']
+ *  These two are the screens that hold a market payload: Command (whose queue prices its orders)
+ *  and Port, which shows the quay's own prices and, through its port field, any other harbour's
+ *  (MARKET folded into it 2026-09-11). Derived from nothing — it is a JUDGEMENT about which
+ *  screens are about prices, so it is written down once rather than re-decided in the bar. */
+export const TRADE_ROUTES: readonly string[] = ['/command', '/port']
 
 /** Is this pathname one of the price screens? Takes the router's `pathname`, basename already
  *  stripped, which is what `useLocation()` serves. */

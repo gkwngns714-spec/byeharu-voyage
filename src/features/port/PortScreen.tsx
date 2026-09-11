@@ -7,11 +7,15 @@ import {
   Segmented,
   Sheet,
   SheetSection,
+  Skeleton,
 } from '../../components/ui'
 import { portNameOf, useWorld } from '../../live/worldStore'
-import type { MarketView, WorldSnapshot } from '../../lib/rpc'
+import { usePortMarket } from '../../live/usePortMarket'
+import type { WorldSnapshot } from '../../lib/rpc'
 import { useCommandDraft } from '../../domain/order'
 import { PortAcademy } from './PortAcademy'
+import { PortField } from './PortField'
+import { PortPrices } from './PortPrices'
 import { PortTrade } from './PortTrade'
 import { PortTown } from './PortTown'
 import { QuayFair } from './PortFair'
@@ -22,7 +26,7 @@ import { PortYard } from './PortYard'
 import { PortWorkstation } from './PortWorkstation'
 import { PortShipyard } from './PortShipyard'
 import { PORT_FACES, usePortView } from './portView'
-import { harbourCode, useHarbour } from '../../store/harbour'
+import { harbourCode, harbourPick, useHarbour } from '../../store/harbour'
 import { fleetPortCode } from '../../domain/fleet'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
@@ -50,6 +54,13 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 // SAIL on the MAP. The sea-place view's "Sailing on" rows, which handed a SAIL to COMMAND, went
 // with the composer they led to: a passage from an anchorage is ordered where every passage is,
 // by tapping the harbour on the chart.
+//
+// ── MARKET FOLDED IN (2026-09-11, owner row 76 — docs/QUAY_LEDGER.md §6 slice 1) ──────────────
+// MARKET read prices at a harbour you are not standing on with the same rows, tray and harbour
+// choice as this screen (RESUME.md measured them drifting). It is gone: the port field stands
+// under the faces, the Trade face is the ledger either way, and ONE fact decides what a cell opens
+// — a fleet of yours ALONGSIDE the harbour on screen (`docked`, the one spelling) trades through
+// the tray; nobody alongside reads through PortPrices. `null` in the harbour store follows her.
 export function PortScreen() {
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
@@ -68,34 +79,33 @@ export function PortScreen() {
 function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
-  const markets = useWorld((s) => s.markets)
   const draftFleetId = useCommandDraft((s) => s.fleetId)
-  const loadMarket = useWorld((s) => s.loadMarket)
 
-  // WHICH HARBOUR — the ONE owner (src/store/harbour.ts), shared with MARKET, so a harbour picked
-  // on either tab is the harbour both read. WHICH FACE — this screen's own chrome (portView.ts).
+  // WHICH HARBOUR — the ONE owner (src/store/harbour.ts); the MAP is its named next caller.
+  // WHICH FACE — this screen's own chrome (portView.ts).
   const picked = useHarbour((s) => s.picked)
   const setPicked = useHarbour((s) => s.pick)
   const face = usePortView((s) => s.face)
   const setFace = usePortView((s) => s.turnTo)
 
   // THE DEFAULT IS WHERE THE HOUSE IS, AND A FLEET AT SEA IS SOMEWHERE. `harbourCode` is the ONE
-  // spelling of pick-else-house-else-first-port; MARKET calls the same function, so the two tabs
-  // cannot derive different defaults.
-  const portCode = harbourCode(picked, fleets, snapshot.ports)
+  // spelling of pick-else-house-else-first-port. A pick the served world no longer names (session
+  // storage outliving a world rebuild) is a stale byte, not a harbour: it falls through to the
+  // house's own quay and is cleared, so the player is never stranded on "no ports".
+  const stalePick = picked !== null && portByCode[picked] === undefined
+  useEffect(() => {
+    if (stalePick) setPicked(null)
+  }, [stalePick, setPicked])
+  const portCode = harbourCode(stalePick ? null : picked, fleets, snapshot.ports)
   const port = portCode ? (portByCode[portCode] ?? null) : null
 
-  // The market is fetched per port, on demand — the store caches it. Never for a SEA PLACE (0036):
-  // open water keeps no book, and asking for one would cache an empty market that looks exactly
-  // like a real market with nothing in it.
-  const isSeaPlace = port?.kind === 'SEA_PLACE'
+  // The market is read per port and re-read on the world's beat (usePortMarket). Never for a SEA
+  // PLACE (0036): open water keeps no book, and asking for one would cache an empty market that
+  // looks exactly like a real market with nothing in it.
   const portId = port?.id ?? null
-  const market: MarketView | undefined = portId ? markets[portId] : undefined
-  const marketLoaded = market !== undefined
-  useEffect(() => {
-    if (portId && !marketLoaded && !isSeaPlace) void loadMarket(portId)
-  }, [portId, marketLoaded, isSeaPlace, loadMarket])
+  const quay = usePortMarket(port?.kind === 'HARBOUR' ? portId : null)
 
+  // THE ONE "ALONGSIDE HERE" TEST. Read-only ⇔ nobody is.
   const docked = port ? fleets.filter((f) => f.port === port.code) : []
   const acting = docked[0] ?? fleets.find((f) => f.id === draftFleetId) ?? fleets[0] ?? null
   // WHERE THE ACTING FLEET'S NEXT ORDER WOULD RUN — alongside, or the harbour she is bound for.
@@ -165,15 +175,19 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
           every face at once. One accent row, only when one is running. */}
       <QuayFair portId={portId} />
 
+      {/* WHICH HARBOUR IS READ — a leaf that reads the store itself (PortField.tsx). */}
+      <PortField current={port} anchor={actingPortCode} />
+
       {/* READING A HARBOUR YOU ARE NOT LYING IN. Two states, because they are two situations: a
           hull alongside somewhere else can be sailed here; a hull at sea is committed until she
-          arrives. One line, and one button that takes you to where she actually is. */}
+          arrives. One line, and one button that takes you back to where she actually is —
+          `harbourPick` (store/harbour.ts) decides whether that is a clear or a pin. */}
       {acting && !actingIsHere && (
         <Note
           tone="warning"
           action={
             actingPortCode ? (
-              <Button size="sm" onClick={() => setPicked(actingPortCode)}>
+              <Button size="sm" onClick={() => setPicked(harbourPick(actingPortCode, fleets, snapshot.ports))}>
                 {`Read ${portNameOf(portByCode, actingPortCode)}`}
               </Button>
             ) : undefined
@@ -190,10 +204,30 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
       <div role="tabpanel" className="mt-3">
         {/* ROW 53 — TRADE HAPPENS ON THE QUAY YOU ARE STANDING ON. A fleet lying HERE is the one
             that trades: `docked[0]`, not `acting`, because `acting` may be bound elsewhere and a
-            quay deals with the hull alongside it. */}
-        {shownFace.id === 'market' && (
-          <PortTrade goods={market?.goods ?? []} fleet={docked[0] ?? null} port={port} />
-        )}
+            quay deals with the hull alongside it. Nobody alongside → the read-only ledger, read
+            against the acting fleet's hold. Until the market lands, the one loading placeholder. */}
+        {shownFace.id === 'market' &&
+          (quay.market === undefined ? (
+            quay.refusal !== null ? (
+              <Note
+                tone="danger"
+                code={quay.refusal.code}
+                action={
+                  <Button size="sm" onClick={quay.retry}>
+                    Try again
+                  </Button>
+                }
+              >
+                {quay.refusal.sentence}
+              </Note>
+            ) : (
+              <Skeleton className="h-28 w-full" />
+            )
+          ) : docked[0] ? (
+            <PortTrade goods={quay.market.goods} fleet={docked[0]} port={port} />
+          ) : (
+            <PortPrices goods={quay.market.goods} port={port} reader={acting} />
+          ))}
         {shownFace.id === 'city' && <PortTown port={port} onOpenFace={setFace} />}
         {shownFace.id === 'warehouse' && <PortWarehouse portId={port.id} fleet={acting} />}
         {shownFace.id === 'workstation' && (

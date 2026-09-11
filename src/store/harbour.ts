@@ -14,15 +14,16 @@
 // nothing and this decides nothing either — it remembers a choice).
 //
 // ── THE CALLERS, NAMED ──────────────────────────────────────────────────────────────────────────
-//   1. PORT    reads it for which harbour's faces to show.
-//   2. MARKET  reads it for whose prices to fetch.
-//   3. THE MAP is the named NEXT caller: "read this harbour's market" from a tapped port is
+//   1. PORT    reads it for which harbour's faces and prices to show, and its port field writes
+//              it. MARKET was the second reader until 2026-09-11, when it folded into PORT (owner
+//              row 76): one screen, one harbour, and `pick(null)` is "back to her quay".
+//   2. THE MAP is the named NEXT caller: "read this harbour's market" from a tapped port is
 //      `pick(code)` + navigate — a button the map could not offer while the choice was
 //      component-local, because it would have landed the player on the default port regardless.
 //
 // ── THE DECISIONS, DEFENDED ─────────────────────────────────────────────────────────────────────
-// * ONE choice for both screens. A player who picked Cádiz on PORT has answered "which harbour?"
-//   and must not be asked again on MARKET. The two tabs are two faces of one reading.
+// * ONE choice, app-wide. A player who picked Cádiz has answered "which harbour?" and must not be
+//   asked again on any screen that reads a harbour (the MAP, next).
 // * By PORT CODE, not id. The code is the world's stable name (`portByCode` resolves it), it is
 //   what PORT already persisted, and what `cmd`'s own parser speaks. MARKET converted from id.
 // * SESSION STORAGE, so it survives a reload but dies with the browser tab — portView.ts's
@@ -31,7 +32,7 @@
 //   being interesting three voyages ago.
 // * `null` means "nothing chosen", and the fallback is the house's own harbour — `harbourCode`
 //   below is the ONE spelling of that fallback, composed on `housePortCode` (domain/fleet), so
-//   the two screens cannot derive different defaults the way PORT once fell through to Acapulco.
+//   no screen can derive a different default the way PORT once fell through to Acapulco.
 //
 // ── WHAT IT IS NOT ──────────────────────────────────────────────────────────────────────────────
 // It is NOT where a fleet's orders happen. That is `fleetPortCode` (domain/fleet): an order runs
@@ -71,7 +72,7 @@ export const useHarbour = create<HarbourState>()(
 /**
  * THE HARBOUR BEING READ — the pick, or the house's own harbour, or (for a house with no fleet at
  * all) the world's first port so a screen still opens on a real market. The ONE spelling of the
- * fallback: PORT and MARKET both call this, so they cannot disagree about the default.
+ * fallback, so no two callers can disagree about the default.
  */
 export function harbourCode(
   picked: string | null,
@@ -79,4 +80,20 @@ export function harbourCode(
   ports: readonly SnapshotPort[],
 ): string | null {
   return picked ?? housePortCode(fleets) ?? ports[0]?.code ?? null
+}
+
+/**
+ * WHAT TO STORE SO THAT THE BOARD READS `code` — the ONE spelling of "does null already reach
+ * her?" (2026-09-11). `null` FOLLOWS the fleet: it is the house's own harbour today and wherever
+ * she lies tomorrow. So choosing the quay she is at must store `null`, not pin her code — a pinned
+ * home is the RESUME.md strand (reading a distant market, then finding PORT stuck off her quay
+ * after she sails) re-created in one tap. Any other harbour is a pick. Every writer of the pick
+ * that names a harbour — the port field's chips, PORT's "Read X" button — goes through this.
+ */
+export function harbourPick(
+  code: string,
+  fleets: readonly FleetView[],
+  ports: readonly SnapshotPort[],
+): string | null {
+  return harbourCode(null, fleets, ports) === code ? null : code
 }

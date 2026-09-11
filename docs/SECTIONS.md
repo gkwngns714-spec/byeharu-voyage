@@ -144,6 +144,13 @@ border crossing.
 
 Cross-screen imports today: **zero**, and the spec keeps it that way.
 
+**`src/features/market/` no longer exists (2026-09-11).** The MARKET tab folded into PORT (owner
+row 76, `docs/QUAY_LEDGER.md` §6 slice 1): `PortField.tsx`, `nearby.ts` and the read-only
+`PriceTray.tsx` moved to `src/features/port/`, `MarketScreen.tsx` was deleted, and the two rows both
+trays draw (Trend, Range) went DOWN a layer to `src/components/ui/PriceRows.tsx` — a component may
+not import a screen, so the shared rows moved rather than being copied, which is rule 3 below at
+work. The good is one `TradeRow` (components/ui) on both faces of the fold.
+
 ### What the spec checks, as of 2026-08-23
 
 Every rule below was proved to bite by breaking it on purpose and watching it go red. A guard nobody

@@ -253,7 +253,6 @@ export function GalleryScreen() {
                 { id: 'command', label: 'Command', icon: 'compass', href: '#' },
                 { id: 'fleets', label: 'Fleets', icon: 'ship', href: '#' },
                 { id: 'port', label: 'Port', icon: 'anchor', href: '#' },
-                { id: 'market', label: 'Market', icon: 'scales', href: '#' },
                 { id: 'map', label: 'Map', icon: 'chart', href: '#' },
                 { id: 'cabin', label: 'Cabin', icon: 'profile' },
               ]}

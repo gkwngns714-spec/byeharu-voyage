@@ -9,7 +9,6 @@ import { GalleryScreen } from '../features/gallery/GalleryScreen'
 import { CommandScreen } from '../features/command/CommandScreen'
 import { FleetsScreen } from '../features/fleets/FleetsScreen'
 import { PortScreen } from '../features/port/PortScreen'
-import { MarketScreen } from '../features/market/MarketScreen'
 import { MapScreen } from '../features/map/MapScreen'
 import { LedgerScreen } from '../features/ledger/LedgerScreen'
 import { RankScreen } from '../features/rank/RankScreen'
@@ -50,7 +49,6 @@ export function App() {
           <Route path="/command" element={<CommandScreen />} />
           <Route path="/fleets" element={<FleetsScreen />} />
           <Route path="/port" element={<PortScreen />} />
-          <Route path="/market" element={<MarketScreen />} />
           <Route path="/map" element={<MapScreen />} />
           <Route path="/ledger" element={<LedgerScreen />} />
           <Route path="/rank" element={<RankScreen />} />

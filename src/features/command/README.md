@@ -65,7 +65,7 @@ Every argument picker offers what actually exists **now**:
   disabled and says why (“none aboard”). The fold's “where it pays more” block —
   `world.trade_routes()` — was removed by the owner's instruction (2026-08-23: *"where it pays
   more does not need to be given in buy"*); the comparison lives on the Market tab, which still
-  reads 0019. **A fold states the ceiling once**: the row being looked at gets the capacity
+  reads 0019. *(Historical: the Market tab folded into PORT on 2026-09-11 — owner row 76.)* **A fold states the ceiling once**: the row being looked at gets the capacity
   reading, the row that was chosen gets the stepper (whose caption states the same ceiling and
   binding), never both.
 * **qty** — ALL / HALF / MAX and a stepper that walks in `config.trade_step_tuns`, bounded by the
@@ -128,7 +128,7 @@ composer flow that do the same job. Both reach the same `cmd.cancel_at()` / `cmd
 ## 5. The hand-off from other tabs
 
 `commandDraft.ts` is the one authority for "the order being made", and MARKET / PORT / FLEETS write
-into it. On 2026-08-19 it changed from a half-typed **string** to a structured **intent** (fleet +
+into it. *(Historical: MARKET no longer exists — folded into PORT 2026-09-11, owner row 76.)* On 2026-08-19 it changed from a half-typed **string** to a structured **intent** (fleet +
 verb + a value per argument NAME, as the server's schema names them). The file's header carries the
 before/after for every caller; `features/market/handOff.ts` is the market's whole side of that seam.
 

@@ -52,7 +52,9 @@ import { PHONE, ready, reachable } from './appReady.fixture'
 // 'compendium' joined 2026-08-23, the day the tab shipped — with three scrolling tables (goods,
 // ships, nations) it is exactly the combination this guard exists for, and 'rank' had to be added
 // AFTER its screen shipped because this list was not grown in the same slice. Not this time.
-const TABS = ['command', 'fleets', 'port', 'market', 'ledger', 'rank', 'compendium'] as const
+// 'market' LEFT 2026-09-11: the tab folded into PORT (owner row 76, docs/QUAY_LEDGER.md), whose
+// entry below now measures what MARKET's used to.
+const TABS = ['command', 'fleets', 'port', 'ledger', 'rank', 'compendium'] as const
 
 test.use({ viewport: PHONE })
 
@@ -196,7 +198,11 @@ for (const tab of TABS) {
   })
 }
 
-test('MARKET puts complete priced goods above the fold, per K.1', async ({ page, request, baseURL }) => {
+// RETARGETED 2026-09-11, MARKET → PORT. The MARKET tab folded into PORT (owner row 76, the Quay
+// Ledger), and the good is ONE ROW now rather than a tile: `TradeRow` under `trade-row`. The proof
+// is the same proof — complete priced goods above the fold, the first carrying its range as a
+// meter — measured on the screen that draws them.
+test('PORT puts complete priced goods above the fold, per K.1', async ({ page, request, baseURL }) => {
   // The same measured budget its sibling tests carry (line ~133): a cold boot builds the whole
   // chain in the tab — ~100 s at 39 migrations, more under parallel load, and 0041's 52k-row
   // affinity recompute adds to it — so the global 120 s timeout fails a CORRECT build. The
@@ -207,41 +213,47 @@ test('MARKET puts complete priced goods above the fold, per K.1', async ({ page,
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('market')
+  await page.goto('port')
   await ready(page)
+  await page.waitForTimeout(1200)
 
-  // THE GOODS ARE TILES NOW (2026-08-23, the owner: "make trade goods in blocks as well, not all
-  // alligned in sentences — horizontally"), so the fold is measured in complete TILES rather than
-  // complete table rows. A tile carries MORE than the old 44px row did (both prices, the range,
-  // the stock all at once), so two whole tiles above the fold say strictly more than three rows
-  // used to — the floor is 2 tiles, and the first must show its price RANGE.
-  //
-  // SINCE §7 STEP 6 THE TILE IS THE DESIGN SYSTEM'S `TradeTile` — the same block PORT and COMMAND
-  // draw, under the same `good-pick-tile` id the picker contract below holds — and the range is no
-  // longer a `RANGE 62–94` line but a `Bar` labelled "<good> price range" with the two figures
-  // under it. The proof follows the primitive: the meter is what carries the range now.
+  // THE GOODS WERE TILES from 2026-08-23 ("make trade goods in blocks") to 2026-09-11, when the
+  // owner's row 76 approved the Quay Ledger: ONE ROW per good — name, rarity mark, `N t aboard`,
+  // the tide inside the served range as a `Bar` labelled "<good> price range", and the two price
+  // cells. A row is ~79px where a tile was ~112px and two abreast, so a floor of 2 would be
+  // near-vacuous: MEASURED 2026-09-11 on the local fixture at 390×844, the fold (the nav's top)
+  // is at 787px, the first row starts at 322px under title · faces · port field · Stores · filter,
+  // and FIVE complete rows fit above it. The floor is that measured figure; the first row must
+  // carry its range meter, and so must every other.
   const fold = await page.evaluate(() => {
     const nav = document.querySelector('nav')
     const foldY = nav ? nav.getBoundingClientRect().top : window.innerHeight
-    const tiles = [...document.querySelectorAll('[data-testid="good-pick-tile"]')]
-    const complete = tiles.filter((t) => t.getBoundingClientRect().bottom <= foldY)
+    const rows = [...document.querySelectorAll('[data-testid="trade-row"]')]
+    const complete = rows.filter((t) => t.getBoundingClientRect().bottom <= foldY)
     return {
       foldY: Math.round(foldY),
-      completeTilesAboveFold: complete.length,
-      firstTileHasRange: tiles[0]?.querySelector('[role="meter"][aria-label$="price range"]') !== null,
+      firstRowTop: Math.round(rows[0]?.getBoundingClientRect().top ?? 0),
+      rowHeight: Math.round(rows[0]?.getBoundingClientRect().height ?? 0),
+      completeRowsAboveFold: complete.length,
+      firstRowHasRange: rows[0]?.querySelector('[role="meter"][aria-label$="price range"]') !== null,
+      rowsWithoutRange: rows.filter((r) => r.querySelector('[role="meter"][aria-label$="price range"]') === null).length,
     }
   })
 
-  // K.1's beat: "MARKET tab. Sal is 62% of its neighbours. The BUY block is at the top; you did not
-  // have to know anything to see it." If you have to scroll first, the game has said nothing.
+  console.log(`PORT fold @${PHONE.width}px: ${JSON.stringify(fold)}`)
+
+  // K.1's beat: "Sal is 62% of its neighbours. The BUY block is at the top; you did not have to
+  // know anything to see it." If you have to scroll first, the game has said nothing.
   expect(
-    fold.completeTilesAboveFold,
-    `only ${fold.completeTilesAboveFold} complete good tiles above the fold at ${fold.foldY}px`,
-  ).toBeGreaterThanOrEqual(2)
+    fold.completeRowsAboveFold,
+    `only ${fold.completeRowsAboveFold} complete good rows above the fold at ${fold.foldY}px ` +
+      `(first row at ${fold.firstRowTop}px, ${fold.rowHeight}px each) — five fit on 2026-09-11`,
+  ).toBeGreaterThanOrEqual(5)
   // 0071: this used to require a `%` — the nearby index. That figure is gone, and with it the
-  // only thing on the tile that was a comparison rather than a fact. What must be on screen now is
-  // the RANGE, which is what replaced it: how far this price can travel, here.
-  expect(fold.firstTileHasRange, 'the first good tile carries no price-range bar').toBe(true)
+  // only thing on the row that was a comparison rather than a fact. What must be on screen now is
+  // the RANGE, which is what replaced it: how far this price can travel, here — on EVERY row.
+  expect(fold.firstRowHasRange, 'the first good row carries no price-range bar').toBe(true)
+  expect(fold.rowsWithoutRange, 'a good row carries no price-range bar — the tide is the row\'s second line').toBe(0)
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -345,25 +357,30 @@ for (const field of FIELDS) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// PORT'S GOOD FIELD — a field, AND the price cells are still the trade
+// PORT'S LEDGER — one row per good, AND the price cells are still the trade
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// Two owner rules meet on this one screen and the second is the reason the first is hard:
+// Two owner rules meet on this one screen:
 //   · row 6  — *"i want to be able to click on buy and sell itself and do trades. when pressed
 //               unfold another so that i can choose how much i buy."* Every price is a real,
 //               labelled, 44px button, and a sell of what she does not carry says "none aboard"
 //               ON THE CELL rather than going silently dead.
 //   · row 15 — *"when pressing sail, stop folding the sail… don't restruct anything."* Said THREE
-//               times. A grid makes this sharper, not easier: a fold placed beside the pressed
-//               tile re-flows its row and shoves its neighbour out of the way, which is exactly
-//               the restructure-on-press being refused. The fold must land after the WHOLE ROW.
+//               times. Nothing at or above the pressed row may move when a cell is pressed.
 // MOVED DELIBERATELY 2026-09-09, COMMAND → PORT. The owner: *"Buy and sell should be in port -
 // market … they should be located accordingly at different locations - the command."* COMMAND's
-// verb grid and its BUY question are deleted (tests/verbHomes.spec.ts holds that they stay gone);
-// the good field this proof measures is PORT's Trade face — the SAME `TradeTile` under the SAME
-// `good-pick-tile` id, opening the SAME `TradeTray` — so every assertion below stands unchanged.
+// verb grid and its BUY question are deleted (tests/verbHomes.spec.ts holds that they stay gone).
+//
+// RETARGETED 2026-09-11 — THE GRID RULE IS REVERSED BY OWNER ROW 76 (the Quay Ledger,
+// docs/QUAY_LEDGER.md). The 2026-08-26 telling ("grid like shape - organized not in lines") was
+// pinned here as `maxPerRow ≥ 2` and `tileWidth < 220`. The approved board is ONE ROW PER GOOD —
+// `TradeRow` under `trade-row` — so those two assertions are replaced by their honest opposites
+// (`maxPerRow === 1`, a row at least 300px wide), and everything about the CELLS stands unchanged:
+// two per good, 44px, a figure on each, a dead one says why, no `Choose`, and a press moves
+// nothing at or above its own row. The COMPENDIUM field proofs above keep the grid rule for the
+// catalogue faces the owner has not spoken about since.
 // The Trade face is the face PORT opens on (portView.ts), so nothing has to be pressed to reach it.
-test(`PORT: the good field's price cells are the trade, and a press moves nothing beside it`, async ({
+test(`PORT: the ledger's price cells are the trade, and a press moves nothing above it`, async ({
   page,
   request,
   baseURL,
@@ -377,10 +394,10 @@ test(`PORT: the good field's price cells are the trade, and a press moves nothin
   await ready(page)
   await page.waitForTimeout(1200)
 
-  const shape = await page.evaluate(MEASURE_FIELD, 'good-pick-tile')
+  const shape = await page.evaluate(MEASURE_FIELD, 'trade-row')
   const cellReport = await page.evaluate(() => {
-    // SCOPED TO THE TILES, not to the page. A price cell is a cell IN a good's tile.
-    const cells = [...document.querySelectorAll('[data-testid="good-pick-tile"] button')].filter((b) =>
+    // SCOPED TO THE ROWS, not to the page. A price cell is a cell IN a good's row.
+    const cells = [...document.querySelectorAll('[data-testid="trade-row"] button')].filter((b) =>
       /^(buy|sell)\b/i.test(((b as HTMLElement).innerText || '').trim()),
     ) as HTMLButtonElement[]
     return {
@@ -393,19 +410,20 @@ test(`PORT: the good field's price cells are the trade, and a press moves nothin
     }
   })
   const field = { ...shape, ...cellReport }
-  console.log(`PORT good field @${PHONE.width}px: ${JSON.stringify(field)}`)
+  console.log(`PORT ledger @${PHONE.width}px: ${JSON.stringify(field)}`)
 
-  expect(field.tiles, 'no [data-testid="good-pick-tile"] found — is PORT open on its Trade face with a fleet alongside?').toBeGreaterThan(1)
+  expect(field.tiles, 'no [data-testid="trade-row"] found — is PORT open on its Trade face with a fleet alongside?').toBeGreaterThan(1)
 
-  // 1. A FIELD, NOT LINES — the assertion the owner had to ask for twice.
+  // 1. ONE ROW PER GOOD — owner row 76 (2026-09-11), reversing the 2026-08-26 grid rule. A ledger
+  //    row spans the sheet; two goods sharing a line is the tile grid coming back.
   expect(
     field.maxPerRow,
-    `every trade good is on a line of its own — ${field.tiles} goods, widest row ${field.maxPerRow}, ` +
-      `tile ${field.tileWidth}px wide. Compose <TileField> (src/components/ui/Tile.tsx).`,
-  ).toBeGreaterThanOrEqual(2)
-  expect(field.tileWidth, `a good tile is ${field.tileWidth}px wide — that is a row, not a tile`).toBeLessThan(220)
+    `${field.maxPerRow} goods share one line — the Quay Ledger is one row per good (docs/QUAY_LEDGER.md §3 A). ` +
+      `Compose <TradeRow> (src/components/ui/TradeRow.tsx), not a grid.`,
+  ).toBe(1)
+  expect(field.tileWidth, `a good row is ${field.tileWidth}px wide — that is a tile, not a row`).toBeGreaterThanOrEqual(300)
 
-  // 2. ROW 6 SURVIVED THE GRID. Two price cells per good, every one a real 44px labelled button,
+  // 2. ROW 6 SURVIVED THE LEDGER. Two price cells per good, every one a real 44px labelled button,
   //    and a dead one says why on its own face.
   expect(field.priceCells, 'the price cells are gone — row 6 says the price IS the trade').toBe(field.tiles * 2)
   expect(field.shortestCell, 'a price cell is under the 44px reach floor').toBeGreaterThanOrEqual(44)
@@ -414,32 +432,93 @@ test(`PORT: the good field's price cells are the trade, and a press moves nothin
   expect(field.deadCellsSayingWhy, 'no sell cell says "none aboard" — is `aboard` reaching the picker?').toBeGreaterThan(0)
   expect(field.chooseButtons, 'a `Choose <good>` button is back — two authorities for the pick').toBe(0)
 
-  // 3. ROW 15 SURVIVED THE GRID. Press a price cell and NOTHING at or above the pressed tile's own
-  //    row may move inside the picker — least of all the tile beside it. What is BELOW moves down,
-  //    which is what an unfold IS. Offsets are read against the picker's own container, so a rail
-  //    above it re-rendering its figures cannot make this red for a reason it is not about.
-  const before = await page.evaluate(MEASURE_OFFSETS, 'good-pick-tile')
+  // 3. ROW 15 SURVIVED THE LEDGER. Press a price cell and NOTHING at or above the pressed row may
+  //    move inside the ledger. What is BELOW may move down, which is what an unfold IS (the tray
+  //    is `fixed`, so in practice nothing moves at all). Offsets are read against the ledger's own
+  //    container, so a rail above it re-rendering its figures cannot make this red for a reason
+  //    it is not about.
+  const before = await page.evaluate(MEASURE_OFFSETS, 'trade-row')
   await page.evaluate(() => {
     const cell = [...document.querySelectorAll('button')].find((b) => /^buy\b/i.test((b.innerText || '').trim()))
     ;(cell as HTMLButtonElement | undefined)?.click()
   })
   await page.waitForTimeout(900)
-  const after = await page.evaluate(MEASURE_OFFSETS, 'good-pick-tile')
+  const after = await page.evaluate(MEASURE_OFFSETS, 'trade-row')
 
-  expect(after.length, 'the picker unmounted its goods on a press — that is the restructure row 15 forbids').toBe(
+  expect(after.length, 'the ledger unmounted its goods on a press — that is the restructure row 15 forbids').toBe(
     before.length,
   )
-  // The pressed tile is the first, so its whole row is `cols` wide; everything in it must be where
-  // it was, and so must every tile above it (there are none above the first row — the assertion
-  // still holds the row-mate still, which is the tile a mid-row fold would have shoved).
+  // The pressed cell is on the first row; it and everything above it must be where it was.
   const rowTop = before[0].top
   const moved = before
     .map((b, i) => ({ i, b, a: after[i] }))
     .filter(({ b, a }) => b.top <= rowTop && (a.top !== b.top || a.left !== b.left))
   expect(
-    moved.map(({ i, b, a }) => `tile#${i} ${b.left},${b.top} → ${a.left},${a.top}`),
-    'pressing a price cell MOVED a tile in the pressed tile\'s own row. The tray is `fixed` and ' +
-      'inserts nothing into the grid (src/components/ui/TradeTray.tsx) — the owner has refused ' +
-      'restructure-on-press three times.',
+    moved.map(({ i, b, a }) => `row#${i} ${b.left},${b.top} → ${a.left},${a.top}`),
+    'pressing a price cell MOVED the pressed row. The tray is `fixed` and inserts nothing into ' +
+      'the ledger (src/components/ui/TradeTray.tsx) — the owner has refused restructure-on-press ' +
+      'three times.',
   ).toEqual([])
+  // And what it opened is the TRADE tray — a fleet is alongside, so a price is an order.
+  await expect(page.locator('[data-testid="trade-tray"]')).toBeVisible()
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// PORT READS ELSEWHERE — the port field, and a quay with nobody alongside is read-only
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ADDED 2026-09-11 with the fold of MARKET into PORT (owner row 76). MARKET's one job — read the
+// prices at a harbour you are not standing on — is PORT's now, through the same port field it
+// carried. ONE fact decides what a price cell opens: a fleet of yours alongside the harbour on
+// screen. Alongside → `trade-tray` (proved above). Nobody alongside → `price-tray`, which steps
+// nothing and issues nothing. This proof picks a harbour where nobody is (the local world has one
+// house with one fleet, so any chip that is not the current harbour is such a place) and presses
+// a cell.
+test(`PORT: the port field is on the sheet, and a harbour with nobody alongside opens the read-only tray`, async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(420_000)
+  test.skip(
+    !(await reachable(request, baseURL ?? '')),
+    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+  )
+  await page.goto('port')
+  await ready(page)
+  await page.waitForTimeout(1200)
+
+  const field = page.locator('[data-testid="port-field"]')
+  await expect(field, 'no port field on PORT — MARKET folded into PORT and brought its field').toBeVisible()
+  const home = await field.inputValue()
+  expect(home, 'the port field names no harbour at rest').not.toBe('')
+
+  // Focus opens the nearest-ten chips; the current harbour is the `on` chip. Take another.
+  await field.focus()
+  const chips = page.locator('[data-testid="port-chip"]')
+  await expect(chips.first()).toBeVisible()
+  const other = chips.filter({ hasNotText: home }).first()
+  const there = (await other.innerText()).trim()
+  await other.click()
+  await expect(field).toHaveValue(there)
+  // The market for the picked harbour is fetched on demand; wait for the placeholder to go.
+  await ready(page)
+  await page.waitForTimeout(600)
+
+  // No hull of yours lies there, and the ledger is the SAME ledger (QuayLedger under
+  // `quay-ledger`). Its floor is the owner's own: a city trades at least FOUR goods
+  // (docs/OWNER_REQUESTS.md row 48, migration 0061), so fewer than four rows means the read did
+  // not land, not a small quay.
+  const rows = page.locator('[data-testid="trade-row"]')
+  await expect(page.locator('[data-testid="quay-ledger"]'), `${there} drew no ledger`).toBeVisible()
+  expect(await rows.count(), `${there} drew fewer than the four goods every city trades`).toBeGreaterThanOrEqual(4)
+
+  // Press the first live cell: it opens the READ-ONLY tray, never the trade tray.
+  await rows.locator('button:enabled').first().click()
+  await expect(page.locator('[data-testid="price-tray"]')).toBeVisible()
+  await expect(page.locator('[data-testid="trade-tray"]')).toHaveCount(0)
+
+  // The closed field's ✕ is "back to her quay": the pick clears and the board follows the fleet.
+  await page.locator('[data-testid="port-field"] ~ button[aria-label="Clear"]').click()
+  await expect(field).toHaveValue(home)
 })

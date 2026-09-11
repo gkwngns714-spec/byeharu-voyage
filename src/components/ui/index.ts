@@ -74,17 +74,21 @@ export { Hint } from './Hint'
 export { Nav, type NavItem } from './Nav'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// COMPOSITIONS OF THE TWELVE that two screens draw — docs/UI_DIRECTION.md §6: "TRAY: identical
-// to Command's buy tray (same component, same `issue`)". Neither quay owns them, and
-// tests/sections.spec.ts will not let one quay import the other's, so they stand here. Like the
-// trade fold they replace (tradePickers.tsx), they read nothing: the server's capacity answer
-// and the act arrive as props.
+// COMPOSITIONS OF THE TWELVE that two faces draw — docs/QUAY_LEDGER.md (owner row 76): the quay
+// she lies at trades through them, and a quay she is not on is read through the same row. They
+// stand here because a good may not look different on the two, and because a component that two
+// trays compose (PriceRows) may not live in a screen (tests/sections.spec.ts). Like the trade fold
+// they replace, they read nothing: the server's capacity answer and the act arrive as props.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-//     TRADE TILE — a good with its two prices as its two acts, its range and its stock.
-export { TradeTile } from './TradeTile'
-//     TRADE TRAY — the quantity, the ceiling, the stock, and the ONE button at the bottom edge.
-export { TradeTray, type TradePick } from './TradeTray'
+//     TRADE ROW — a good with its two prices as its two acts, and the tide inside its range.
+//     Replaced TRADE TILE on 2026-09-11 (one row per good; the 2026-08-26 grid rule is reversed).
+export { TradeRow } from './TradeRow'
+//     PRICE ROWS — Trend and Range, the two rows under a good wherever it is unfolded.
+export { PriceRows } from './PriceRows'
+//     TRADE TRAY — the row unfolded: trend, range, stock, paid, the ceiling, the stepper, and the
+//     ONE button at the bottom edge.
+export { TradeTray, type TradeAct, type TradeControls, type TradePick, type TradeQuay } from './TradeTray'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // KEPT — these are not replaced by anything, and §5 says so by name
