@@ -5,6 +5,29 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-11 — 0083 and 0084 are on production (the deploy record, not a slice)
+
+**This is the deploy of the two entries below; no code changed.** Pushed by hand per
+`docs/DEPLOY_RUNBOOK.md` from the main clone: `supabase migration list --linked` read the target at
+**0082** with 0083/0084 absent on the remote; `unwind_the_clock()` returned **5** and a re-read of
+`cron.job` showed **0** `byeharu-voyage:*` jobs active; `supabase db push --linked` applied **0083**
+and **0084** green, each printing its self-assert receipt on the real database (0083's example house
+sold 5 t for 368 d., bought 10 t for 607 d., was refused E_HOLD_FULL at line 1 with nothing moved, and
+closed through the verbs with the quay's stock at 670.00 / 670.00 exactly where it began; 0084 read
+ALE at 9 native of 10); `wind_the_clock()` restarted all five and **each was re-read `active: true`**.
+
+**Verified on the target after the push, not inferred:** head `20260818000084`;
+`cmd.trade_basket(uuid, jsonb, integer)` and `cmd.preview_basket(uuid, jsonb)` executable by
+`authenticated` and NOT by `anon`; `cmd.run_manifest`, `world.quote`, `world.spread_effective`
+executable by neither; the 3-arg `spread_effective` twin gone; `client_rpc_entry_points()` lists the
+two doors; `world.market(Lisbon)` serves **7 native rows of 10**.
+
+**What this does NOT do.** No screen calls the two verbs yet — the manifest tray is the frontend
+half, being built on `osn-quay-tray`. Until it merges the two doors stand open and unused, which is
+the dark-first shape and is deliberate.
+
+---
+
 ## 2026-09-11 — 0083 a manifest is one order · 0084 a good is native where it grows (row 76, slice 2 server half)
 
 **The concept:** a manifest — buy and sell lines for ONE fleet at ONE port, previewed as one served
