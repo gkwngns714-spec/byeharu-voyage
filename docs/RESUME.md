@@ -26,29 +26,22 @@ PR → CI → admin merge → hand deploy per `docs/DEPLOY_RUNBOOK.md` → verif
 |---|---|---|
 | **1 · the board** (MARKET folded into PORT, ledger rows, tray as the unfolded row) | **LIVE on Pages** — PR #55 `df502a3`, cell-width fix PR #56 `8729be0` | served bundle grepped: `trade-row`/`quay-ledger` present, no `/market`, no "All she can"; driven on the CANARY (Aniseed buy 829 d. → sell 772 d.) |
 | **2 · server** — 0083 `a_manifest_is_one_order`, 0084 `a_good_is_native_where_it_grows` | **LIVE on production** — PR #57 `161d076`, hand-deployed | `select max(version) from supabase_migrations.schema_migrations` = `20260818000084`; grants read back (doors open to `authenticated` only); Lisbon serves 7 native of 10 |
-| **2 · frontend** — the manifest tray | **BUILT, NOT MERGED — draft PR #59 on `osn-quay-tray` (`dc52c20`)** | every gate green at that commit (tsc, eslint, 35 pure, 22 PGlite RPC specs incl. real `trade_basket`, 20 browser specs 0 skipped, build). **An adversarial review was in flight when the session stopped and was never applied.** |
-| **3 · haggle thread both sides + real price chart** | NOT started — an architect blueprint was in flight, not received | — |
+| **2 · frontend** — the manifest tray | **BUILT, NOT MERGED — draft PR #59 on `osn-quay-tray` (`dc52c20`)** | every gate green at that commit (tsc, eslint, 35 pure, 22 PGlite RPC specs incl. real `trade_basket`, 20 browser specs 0 skipped, build). **The adversarial review LANDED after the stop and its findings are written into PR #59's description — 3 MUST-FIX (a 3-second preview re-ask that blanks the tray; a sticky global receipt face; Stores + manifest trays mounting together), 5 SHOULD, NITs. NOT applied.** |
+| **3 · haggle thread both sides + real price chart** | NOT started — **blueprint received and kept as `docs/QUAY_LEDGER.md` Appendix A** (no migration needed) | — |
 | **4 · contracts** (`trade_contracts`, new system) | NOT started | — |
 
 ## What the next session does, in order
 
 1. `git pull`; read this, `docs/DEV_LOG.md`'s 2026-09-11 entries (three of them), `docs/QUAY_LEDGER.md`.
-2. **Slice 2 frontend:** `git fetch && git worktree add ../bv-quay-tray osn-quay-tray` (or check the
-   branch out), then run an ADVERSARIAL REVIEW of `dc52c20` before anything else — the attack list
-   that was issued: second authorities (client sums, hold maths beyond presenting the served
-   `tuns_delta`, a second refusal renderer, a second post-trade reload), the PortTrade face state
-   machine (pick × lines × receipt), the preview hook re-asking on every `readAt` beat, the
-   `fleet.version` sent to `trade_basket` after a single-line `issue` bumped it, `refusal.line`
-   pointing at the right row after a REMOVE, the implementer's named deviations (hold gauge as the
-   Stores row's child; `deltaTone.ts`; `Settled · HH:MM`; closing the manifest face CLEARS it;
-   `Profit vs paid` only when `totals.sold > 0`), and whether DEV_LOG's paragraph still says 0083/0084
-   are "undeployed" (they are deployed — fix the sentence). Apply findings, re-run the gates, mark
-   PR #59 ready, merge, **drive it on the canary** (3-line mixed manifest → refusal naming the line →
-   atomic trade → receipt equals the purse delta), then log it.
-3. **Slice 3**, then **slice 4**, per `docs/QUAY_LEDGER.md` §6. Slice 3's implementer must wait for
-   slice 2's merge (same tray files). `cmd.haggle` already accepts `side='sell'`; `world.haggle_state`
-   already serves `attempts_left`, `concession`, `next_odds_pct` (0022:641-652) — check before adding
-   a migration.
+2. **Slice 2 frontend:** `git fetch && git worktree add ../bv-quay-tray osn-quay-tray`, then APPLY the
+   review findings written into **PR #59's description** (they were verified at file:line — do not
+   re-run the review from scratch; a second reviewer pass AFTER the fixes is the right move). Re-run
+   the gates, fix `docs/DEV_LOG.md`'s stale "still undeployed" sentence (0083/0084 ARE on production),
+   mark PR #59 ready, merge, **drive it on the canary** (3-line mixed manifest → refusal naming the
+   line → atomic trade → receipt equals the purse delta), then log it.
+3. **Slice 3** — its blueprint is `docs/QUAY_LEDGER.md` **Appendix A** (no migration needed; the
+   server already serves everything; `HaggleThread` replaces `HaggleRow` on both sides; `PriceChart` in
+   `components/ui`). Its implementer must wait for slice 2's merge (same tray files). Then **slice 4**.
 
 ## Rules learned or re-learned today (do not rediscover)
 
