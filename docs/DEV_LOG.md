@@ -5,6 +5,59 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-11 — 0083 a manifest is one order · 0084 a good is native where it grows (row 76, slice 2 server half)
+
+**The concept:** a manifest — buy and sell lines for ONE fleet at ONE port, previewed as one served
+breakdown and executed as ONE atomic transaction that returns a receipt. It is the reference's
+right-hand basket and its 정산 popup, as two server verbs.
+
+**What 0083 does, and what it composes rather than re-derives.** `cmd.run_manifest` (no client
+grant) validates only the SHAPE of the lines — a JSON array, each `{side, good, qty}` with `good` an
+exact `goods.code`, `qty` a positive whole number, one line per good — locks the quay's `port_goods`
+rows in `good_id` order, then loops **sells first, then buys**, each line calling the same
+`cmd.do_sell` / `cmd.do_buy` body `cmd.issue` runs, with `cmd.parse`'s argument shape. No pre-check of
+purse, hold or cap: the leaves refuse. Two skins: `cmd.trade_basket(fleet, lines, expected_version)`
+mirrors `cmd.issue`'s head, settles, and runs the manifest inside ONE savepoint — a refusal on any
+line unwinds every earlier line's writes, PostgreSQL's own atomicity, no compensation loop — and
+`cmd.preview_basket(fleet, lines)` runs the same body under `cmd.preview`'s `__PREVIEW_ROLLBACK__`.
+Which line refused rides in the re-raised HINT and is read by one `cmd.manifest_refused`, which
+also maps a lock collision (40P01 / 55P03) to a retryable `E_BUSY`. The E_STALE check moved INSIDE
+the savepoint as one locked `update … where version = expected` — a double-tap on the same version
+lands once (`cmd.issue`'s two-statement window is inherited, named, not fixed here).
+
+**The breakdown had to come from the one price authority.** Nothing decided "tax / spread / haggle
+saved" per line, and because the mid moves per 10-unit step the split is exact only INSIDE
+`world.quote`'s loop — so `world.quote` grew four additive columns (`mid_total`, `tax_total`,
+`spread_total`, `haggle_saved`; 500 pre-image quotes unchanged on the old four), `world.spread_effective`
+took `p_with_bargain` (3-arg twin dropped) so the bargain can be isolated, and `do_buy`/`do_sell`
+carry the four figures on their result and on the BOUGHT/SOLD event. The receipt's totals are sums of
+served line fields; `purse.after` and `hold.free_after` are READ back, never computed; the trading
+delta is `player_progress` before and after, in-transaction.
+
+**0084** adds `native` to `world.market` rows — 0062's own word, the port's region among the good's
+origin_regions — one hunk, parity byte-equal; `demand` stays unserved (0066).
+
+**A manifest is not the "second grammar" 0008 forbids.** It carries no words and writes no
+`public.orders` row; like `cmd.haggle` it is a quay verb, and the record of what happened is the
+BOUGHT/SOLD events, which the receipt equals (asserted).
+
+**Review caught, before merge:** E_STALE outside the row lock; N row locks with no fixed order
+(new deadlock exposure vs another manifest and vs the market tick); fractional tuns accepted (0.0073 t
+sold for 1 d.); the self-assert leaving a ghost house with cargo while claiming the world untouched;
+a parity mutation the breaktest never showed biting. All fixed; the example now closes through the
+verbs with the quay's stock exactly where it began.
+
+**Gates:** `db:apply` 77 migrations / 77 receipts · `db:proof` 10 files, 72/72 markers
+(`10_manifest.sql` — preview moves nothing, lines are the verbs, sells fund buys, atomic, receipt is
+the ledger, XP honest, one line per good, breakdown adds up, version guard, client path) ·
+`breaktest-0083` 26 mutations, all red · chain/image/duplication specs 27 passed.
+
+**State: BUILT on `osn-quay-manifest`. Not merged. NOT DEPLOYED — 0083/0084 are a hand deploy per
+`docs/DEPLOY_RUNBOOK.md` (stop the clock, `db push`, start the clock, read the head back).** No screen
+reads the two verbs yet; that is the frontend half of this slice.
+
+---
+
 ## 2026-09-11 — The Quay board: MARKET folds into PORT, the tile grid becomes a ledger (owner row 76, slice 1 of 4)
 
 **Request.** The owner brought nine screenshots of the Uncharted Waters Origin trade house and asked

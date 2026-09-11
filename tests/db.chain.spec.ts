@@ -235,7 +235,7 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved 2026-09-10 to 0082, which opens the books for what was already aboard when 0081 landed: the
 // ledger is replayed per (house, fleet, good) with 0081's one blend, and a basis is written only where
 // the replay provably agrees with the hold — everything else is refused, with its reason, and stays unknown.
-const LAST = '20260818000082_the_books_are_opened_for_what_is_already_aboard.sql'
+const LAST = '20260818000084_a_good_is_native_where_it_grows.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
