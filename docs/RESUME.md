@@ -23,8 +23,8 @@ Every line is labelled with how it was checked. **Anything not checked says so.*
 | | | how |
 |---|---|---|
 | `main` head | **`de428ea`** | `git log` on this checkout, on `main`, working tree clean — read 2026-09-10 |
-| Chain head | **0082** `the_books_are_opened_for_what_is_already_aboard`, **75** migration files | listing `supabase/migrations/` |
-| **Production database head** | **0082 — IN STEP WITH `main`** | `supabase migration list --linked` read on the target: local and remote both `20260818000082` |
+| Chain head | **0084** `a_good_is_native_where_it_grows`, **77** migration files — *(updated 2026-09-11; the rest of this anchor is the 2026-09-10 reading)* | listing `supabase/migrations/` |
+| **Production database head** | **0084 — IN STEP WITH `main`** *(2026-09-11)* | `select max(version) from supabase_migrations.schema_migrations` read on the target after the hand deploy: `20260818000084`; deploy record in DEV_LOG 2026-09-11 |
 | `0060` | **NOT IN THE CHAIN — the number is SKIPPED** | the same listing: 0059 is followed by 0061. The draft is unmerged on `osn-0060-harbour-snaps` and `docs/WORK_PLAN.md` §4 says it must be **REGENERATED, not merged** — it rewrites `sea_reaches` and would null two columns 0076 declares NOT NULL |
 | Site | deployed from every merge to `main` | `deploy-pages.yml` runs on push — **not re-fetched today** |
 | Live URL | https://gkwngns714-spec.github.io/byeharu-voyage/ | carried from the 2026-09-09 anchor, **not re-checked today** |
