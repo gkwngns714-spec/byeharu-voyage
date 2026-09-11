@@ -101,3 +101,60 @@ server").
 Each slice: architect (read-only, file:line) → implementer in its own worktree → adversarial
 review → `tsc -b`, `eslint`, `db:apply`/`db:proof` → PR → CI (build, pglite-gate, disposable
 chain, acceptance) → merge → hand deploy per `docs/DEPLOY_RUNBOOK.md` → verify on the target.
+
+---
+
+## Appendix A — Slice 3 blueprint (architect, 2026-09-11; read-only, nothing built)
+
+Received after the session had to stop; kept here so the next session starts from it. Refs are
+file:line on main `65cff64` + draft PR #59's tree.
+
+**Server truth.** `cmd.haggle(fleet, good, side)` 0022:430-581 — both sides share one body/row/odds/
+concession (side gates: buy needs stock, sell needs cargo); 3 attempts/day (`haggle_attempts_per_day`
+0022:208) in `haggle_daily (player, port, good, game_day)`; odds = `haggle_odds` 0022:276-301; the
+concession is a fraction of the PUBLISHED spread, folded by `spread_effective` with a floor; spent
+on the next trade of that good at that port, either side (0022:670-673). Return 0022:558-580 carries
+a **server-written merchant sentence `message`** (won / won-at-cap / lost) — the thread prints it
+verbatim, no client templates. `world.haggle_state` 0022:594-659 already serves `attempts_used/left/
+max, wins, concession(_pct), next_odds(_pct), spread_published, spread_effective, spread_floor,
+at_floor, spent_on` — **no migration is needed**. `world.price_history` 0013:139-172 serves
+`{slot, at, mid}` per point (**no `stock`** — §1 row 3 above overstated it), `slot_seconds` = 600, so
+48 slots = **8 h**, not the mockup's 12 h; window = `price_history_window()` (57 today).
+
+**Frontend today.** `HaggleRow.tsx:39` calls `'buy'` only; mounted at `PortTrade.tsx:171` on BUY only;
+`useHaggleState` re-reads on `readAt`; `worldStore.haggle` deliberately does not re-read the market, so
+`MarketGood.buy/sell` never reflect a bargain — only `cmd.preview` does; `saleEstimate`
+(`src/domain/order/estimate.ts:45-53`) drops the served `avg_price` and `haggle_saved` — add both.
+`src/chart/*` is the nautical chart; `SmallChart` is dead map code (own deletion slice) — the price
+chart goes in `components/ui` beside `Sparkline`.
+
+**A · `HaggleThread`** (`features/port`, 4 props: fleetId, good, side, preview) replaces `HaggleRow`,
+mounted on BOTH sides. Folded by default as one `Row` `Bargain · N left · P%` (+ caption "x% off his
+cut, held"); tap → thread expands inside the same tray body. Turns: opening line keyed on the served
+`preview.avg_price` ("He names 412 d./t for 80 t."), then the server's `message` per attempt, refusals
+via `Note`. Stake rows, all served: `Port's cut` published → effective (`formatPct`), `Per tun` served
+avg_price with a remembered before → after across a won attempt, `On this lot` = `preview.haggle_saved`
+when > 0, `Attempts` as the segmented `Bar` (tries left), `Odds of another step` = `next_odds_pct`
+(muted at floor). Actions: `Take N` (collapse) · `Press on` (`haggle(fleet, good, side)`).
+
+**B · `PriceChart`** (`components/ui`; `priceChartModel.ts` pure + `PriceChart.tsx`, 3 props):
+viewBox 340×170, y ticks = served min / round(mid) / max, x ticks in hours from `at` ending `now`,
+area + line, low (danger) / high (success) / now (accent ring) marks, token utilities only, legend
+`low · now · high`. Opens in place from the Trend row in `PriceRows` (toggle; Sparkline is the
+folded form). No cross-port figure (row 55).
+
+**Files.** CREATE `features/port/HaggleThread.tsx`, `components/ui/{priceChartModel.ts,PriceChart.tsx}`;
+MODIFY `components/ui/{index.ts,PriceRows.tsx,TradeTray.tsx}`, `domain/order/estimate.ts`,
+`features/port/PortTrade.tsx`, `live/useTrade.ts` comment; DELETE `features/port/HaggleRow.tsx`.
+Docs: §1 row 3 here, `SECTIONS.md`, `DEV_LOG.md`, row 76.
+
+**Tests.** layout.spec: bargain row on BUY and on SELL (buy 1 t first in the disposable in-tab world),
+thread expands with nothing above moving, both buttons ≥ 44 px, `Press on` adds a turn; chart opens
+from Trend with ≥ 3 y labels and an `−Nh … now` axis, closes back to the sparkline. rpc.surface:
+`cmd.haggle(…,'sell')` with the forced-win knobs (`:924-926` pattern) → SELL preview total rises and
+`haggle_saved ≈ Δ` within 1. New pure `priceChart.spec.ts` for the model. Proof 06: add
+`HAGGLE_SELL_SIDE_MOVES_THE_BID`.
+
+**Tripwires.** Client odds; client spread maths; client "price after" or `good.buy/sell` shown as the
+bargained figure; a second history loader; a second path builder; any outcome sentence not the served
+`message`; a `12 h` / `48` literal in axis wording.
