@@ -13,49 +13,34 @@
 //
 // WHAT IT READS: the verb grammar and the trade step off the snapshot, the one door (`issue`),
 // `world.buy_capacity()` through the one hook that asks it, what the fleet PAID for the good
-// (served on the fleet, 0081 — never remembered here), and, while SELLING, `cmd.preview()` of the
-// exact line the button will issue, so the profit the tray prints is the server's own arithmetic.
-// WHAT IT RETURNS is exactly the shape the tray takes, so a screen composes
-// `<TradeTray … capacity={capacity} act={act}>` and owns nothing but the pick and the quantity —
-// COMMAND keeps the quantity on its order draft, PORT in local state, and neither spells the act.
+// (served on the fleet, 0081 — never remembered here), and `cmd.preview()` of the exact line the
+// button will issue — on BOTH sides since 2026-09-11 — so every figure the tray prints is the
+// server's own arithmetic for the quantity chosen. WHAT IT RETURNS is exactly the shape the tray
+// takes (`TradeControls`, declared beside the tray), so a screen composes
+// `<TradeTray … trade={useTrade(…)}>` and owns nothing but the pick and the quantity.
 //
 // NO PRICE IS MULTIPLIED OUT HERE, AND NOTHING IS SUBTRACTED. Buying walks a stepped book (§G.2),
-// so the only total ever named is the server's own `est_total`, and only where it is the total OF
-// the quantity chosen — which is when the chosen quantity is the ceiling the server priced. A
-// sale's proceeds, cost and profit are `cmd.do_sell`'s own result, run and rolled back by
-// `cmd.preview` for the chosen quantity (the owner's row 74: *"by selling them i would like to see
-// the profits of this trade"*). A client that subtracted the served basis from the served bid
-// would be a second ledger wearing a smaller hat, and it would be wrong by the book's steps.
+// so a total is only ever a SERVED total for the quantity it is printed against. Until 2026-09-11
+// the buy side had one such figure — `est_total`, priced by `world.buy_capacity` at the ceiling —
+// so the button read `Buy 20 t` with no figure at every other quantity. The dry run that already
+// priced a sale prices a buy the same way (`cmd.do_buy`'s own `{qty, total}`, run and rolled back;
+// 0008:692 reads exactly that key off a previewed BUY), and `est_total` remains the fallback at
+// the ceiling while the dry run is in flight. A sale's proceeds, cost and profit are
+// `cmd.do_sell`'s own result (the owner's row 74). A client that subtracted the served basis from
+// the served bid would be a second ledger wearing a smaller hat, and wrong by the book's steps.
 
 import { useEffect, useState } from 'react'
+import type { TradeControls } from '../components/ui'
 import { paidPerTun } from '../domain/fleet'
 import { findVerb, orderText, saleEstimate, type SaleEstimate } from '../domain/order'
 import { cmdPreview } from '../lib/rpc'
 import type { FleetView, MarketGood, Refusal } from '../lib/rpc'
-import type { BuyCapacityState } from '../lib/trade'
 import { useBuyCapacity } from './useBuyCapacity'
 import { useWorld } from './worldStore'
 
-/** What pressing the tray's one button does, whether it may fire yet, what the chosen quantity
- *  costs when the server has priced it, what the server last answered — and, since 0081, what
- *  the good aboard COST her and what the chosen sale would REALISE, both served. */
-export interface TradeAct {
-  send: () => void
-  sending: boolean
-  ready: boolean
-  total: number | null
-  refusal: Refusal | null
-  /** The average ducats per tun she paid for what is aboard of this good — `FleetView.cargo_basis`
-   *  through the one reading. Null when none is aboard or its cost is not on record; a screen
-   *  prints nothing for it, never zero. */
-  paid: number | null
-  /** The SELL the button would issue, run for real and rolled back: tuns, proceeds, cost and
-   *  profit, all the server's. Null while buying, while the answer for THIS quantity is still on
-   *  its way, or when the quay refused the dry run (the press then states the refusal in full). */
-  sale: SaleEstimate | null
-  /** True while a sale for the chosen quantity has been asked and not yet answered. */
-  saleLoading: boolean
-}
+/** How long a chosen quantity must stand still before the server is asked to price it. Long
+ *  enough that a slider drag is one ask; short enough that a tap on + reads as immediate. */
+const PREVIEW_SETTLE_MS = 200
 
 export function useTrade(
   fleet: FleetView,
@@ -66,7 +51,7 @@ export function useTrade(
   qty: number | null,
   /** Called once the order is issued: the tray closes, the pick is cleared. */
   onDone: () => void,
-): { capacity: BuyCapacityState; step: number; act: TradeAct } {
+): TradeControls {
   const issue = useWorld((s) => s.issue)
   // A SELECTOR RETURNS A SERVED REFERENCE, never a fresh literal: `?? []` builds a new array on
   // every read and zustand compares by identity, which is a render loop (React error #185).
@@ -90,33 +75,40 @@ export function useTrade(
   const n = qty ?? 0
   const ready = spec !== undefined && good !== null && n > 0
 
-  // THE SALE, PREVIEWED. Keyed by (fleet, good, quantity, last read), exactly as the buy ceiling
-  // is, so an answer for another quantity — or from before the world was read again — is never
-  // shown: the tray waits instead. The line previewed is the line the button issues, composed by
-  // the same `orderText`, so the figure printed and the figure realised cannot be two figures.
-  const saleKey =
-    intent === 'sell' && spec !== undefined && good !== null && n > 0
-      ? `${fleet.id}:${good.code}:${n}:${readAt ?? 0}`
-      : null
-  const [saleAnswer, setSaleAnswer] = useState<{ key: string; sale: SaleEstimate | null } | null>(null)
+  // THE ORDER, PREVIEWED — either side. Keyed by (fleet, side, good, quantity, last read), exactly
+  // as the buy ceiling is, so an answer for another quantity — or from before the world was read
+  // again — is never shown: the tray waits instead. The line previewed is the line the button
+  // issues, composed by the same `orderText`, so the figure printed and the figure realised cannot
+  // be two figures. `saleEstimate` reads the keys both verbs share (`qty`, `total`) and the three a
+  // sale adds (`basis`, `cost`, `profit`), which a buy leaves null.
+  const previewKey =
+    spec !== undefined && good !== null && n > 0 ? `${fleet.id}:${intent}:${good.code}:${n}:${readAt ?? 0}` : null
+  const [answer, setAnswer] = useState<{ key: string; estimate: SaleEstimate | null } | null>(null)
   useEffect(() => {
-    if (!saleKey || !spec || !good) return
+    if (!previewKey || !spec || !good) return
+    // A DRY RUN IS A REAL WRITE, ROLLED BACK. The stepper's slider reports every step of a drag,
+    // and each report is a new quantity, so an un-debounced effect turned a 50-step drag into 50
+    // `cmd.do_buy` round-trips. The ask waits until the finger has rested for PREVIEW_SETTLE_MS;
+    // the `live` guard still discards an answer that arrives after the key has moved on.
     let live = true
-    void cmdPreview(fleet.id, orderText(spec, { good: good.code, qty: String(n) }, fleet.name), null).then((r) => {
-      if (!live) return
-      // A refusal here is not the tray's to render: the press states it in full. A fleet at sea
-      // is QUEUEABLE and returns no estimate — there is nothing realised to print yet.
-      const estimate = r.ok && r.value.estimate ? saleEstimate(r.value.estimate) : null
-      setSaleAnswer({ key: saleKey, sale: estimate })
-    })
+    const timer = setTimeout(() => {
+      void cmdPreview(fleet.id, orderText(spec, { good: good.code, qty: String(n) }, fleet.name), null).then((r) => {
+        if (!live) return
+        // A refusal here is not the tray's to render: the press states it in full. A fleet at sea
+        // is QUEUEABLE and returns no estimate — there is nothing realised to print yet.
+        const estimate = r.ok && r.value.estimate ? saleEstimate(r.value.estimate) : null
+        setAnswer({ key: previewKey, estimate })
+      })
+    }, PREVIEW_SETTLE_MS)
     return () => {
       live = false
+      clearTimeout(timer)
     }
-    // `spec`, `good` and `n` are folded into `saleKey`; `fleet.name` only decorates the line.
+    // `spec`, `good`, `intent` and `n` are folded into `previewKey`; `fleet.name` only decorates the line.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saleKey, fleet.id])
-  const sale = saleKey !== null && saleAnswer?.key === saleKey ? saleAnswer.sale : null
-  const saleLoading = saleKey !== null && saleAnswer?.key !== saleKey
+  }, [previewKey, fleet.id])
+  const preview = previewKey !== null && answer?.key === previewKey ? answer.estimate : null
+  const previewLoading = previewKey !== null && answer?.key !== previewKey
 
   const send = () => {
     if (!spec || !good || !key || n <= 0 || sending) return
@@ -133,14 +125,15 @@ export function useTrade(
     })()
   }
 
+  // The served total for THIS quantity: the dry run's, else — while it is in flight, and only at
+  // the ceiling `world.buy_capacity` priced — the capacity read's own `est_total`.
   const total =
-    intent === 'buy'
-      ? capacity.estTotal !== null && capacity.bound !== null && n === capacity.bound.max
-        ? capacity.estTotal
-        : null
-      : (sale?.total ?? null)
+    preview?.total ??
+    (intent === 'buy' && capacity.estTotal !== null && capacity.bound !== null && n === capacity.bound.max
+      ? capacity.estTotal
+      : null)
 
   const paid = good ? paidPerTun(fleet, good.code) : null
 
-  return { capacity, step, act: { send, sending, ready, total, refusal, paid, sale, saleLoading } }
+  return { capacity, step, act: { send, sending, ready, total, refusal, paid, preview, previewLoading } }
 }

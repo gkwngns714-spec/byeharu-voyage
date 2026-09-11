@@ -35,7 +35,7 @@ The shell wraps every screen (`src/app/AppShell.tsx:102-136`):
 |---|---|---|
 | TopBar | wordmark `BYEHARU VOYAGE` (a link to Profile), a "live read" dot, purse `◎ 8,000 D.` | `src/app/TopBar.tsx:28-70` |
 | RebuildNotice | a warning card (2–3 paragraphs, 2 ⓘ, 1–2 buttons) when the local world was rebuilt | `src/app/RebuildNotice.tsx:44-134` |
-| NavBar | 6 cells: COMMAND · FLEETS · PORT · MARKET · MAP · CABIN (▲). Cabin reveals LEDGER · RANK · CODEX · PROFILE in a panel above the bar | `src/app/NavBar.tsx:109-183`, `src/app/navTabs.ts:86-98` |
+| NavBar | 6 cells: COMMAND · FLEETS · PORT · MARKET · MAP · CABIN (▲). Cabin reveals LEDGER · RANK · CODEX · PROFILE in a panel above the bar. *(Audit as of 2026-08; five cells since 2026-09-11 — MARKET folded into PORT, owner row 76, `docs/QUAY_LEDGER.md`.)* | `src/app/NavBar.tsx:109-183`, `src/app/navTabs.ts` (`ALL_TABS`) |
 
 Each screen, top to bottom, exactly as it renders on the phone.
 
@@ -72,6 +72,7 @@ Each screen, top to bottom, exactly as it renders on the phone.
    - Academy: `X's captain sits the course.` + skill cards with gauge, blurb, `+N% per level`, button (`PortFaces.tsx:179-233`).
 
 ### MARKET (`src/features/market/MarketScreen.tsx:255-423`) — 1,261 px; 5,566 px with the port picker open
+*(Audit history. The tab and `src/features/market/` were deleted on 2026-09-11 — folded into PORT's Trade face with its port field, owner row 76, `docs/QUAY_LEDGER.md` §6 slice 1.)*
 1. Header `TRADE / Market · Lisbon ⓘ` (`:257-261`).
 2. Card of controls: `PORT Lisbon ▾` and `name · all ▾`; the port picker opens to a search field, `All 238 ports — Iberia first.`, `YOUR FLEET` chip, and **238 port chips** in a wrap (`:264-333, 563-606`); the options open to `SORT name price stock` and `FILTER all traded` chips.
 3. Card with header bar `Goods ⓘ` + badge `10 GOODS`; `Tap a good to send it to Command.`; block label `▾ TRADED HERE`; tiles with `RANGE 62–94 ─`(sparkline), `BUY 78`, `SELL 72`, `STOCK ▓▓▓░░░` (`:356-402, 469-514`); footer `tax 3.0% · spread 2.0% · trade 20/10 · latin culture ⓘ` and `Gaivota is here — 56 t of hold free.` (`:384-399`).
@@ -307,6 +308,8 @@ Stays: faces, the trade grid, warehouse/workstation/inn/yard. Cut: eyebrow/title
 Town face = rows: `Tax 3 %`, `Port's cut 2 %`, `Draft 5`, then building rows `Warehouse · tier 5 ›`. Culture appears only as a `Note` on a refused good. Inn/Yard/Craft faces are `Tile` grids with one figure each and a tray for the act.
 
 ### MARKET
+*(Superseded 2026-09-11: the fold the last line of this section recommends was taken — MARKET is PORT's Trade face with the port field under the faces, one row per good (`TradeRow`), and a quay with nobody alongside opens the read-only `PriceTray`. Owner row 76, `docs/QUAY_LEDGER.md`. The sketch below is kept as the record of what was folded.)*
+
 Its job after row 64/70 (`docs/OWNER_REQUESTS.md`): read prices somewhere else. Stays: port choice, the grid, range + trend. Cut: the control card, sort/filter chips, "Tap a good…", the footer line, the how-to-read card, 238 chips. Folded: the port picker is a `Field` at the top with the nearest ten as chips under it while typing.
 
 ```

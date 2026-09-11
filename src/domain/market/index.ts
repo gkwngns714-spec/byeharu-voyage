@@ -39,3 +39,13 @@ export type MarketBlock = 'traded' | 'unavailable'
 export function buyableHere(good: MarketGood): boolean {
   return good.available && good.offered !== false
 }
+
+/**
+ * 0061 — IS THIS ROW ON THE LEDGER AT ALL? What is on this quay, PLUS what she is carrying: a hold
+ * is never stranded, so she may sell here what this city does not deal in. Spelt ONCE, 2026-09-11,
+ * because the quay she lies at and a quay she is only reading both list their goods by it — the
+ * second spelling is the one docs/NO_SPAGHETTI.md §1 says becomes a function.
+ */
+export function listedHere(good: MarketGood, aboard: number): boolean {
+  return good.available || aboard > 0
+}

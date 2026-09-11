@@ -1,56 +1,48 @@
 import { useMemo, useState } from 'react'
-import { Field, Figure, Note, Row, TileField, TradeTile, TradeTray, type TradePick } from '../../components/ui'
+import { Field, Figure, Note, Row, TradeTray, type TradePick } from '../../components/ui'
 import { HaggleRow } from './HaggleRow'
+import { QuayLedger } from './QuayLedger'
 import { StepQuestion } from './StepQuestion'
 import { useStepOrder } from './useStepOrder'
 import { fleetCargoByCode } from '../../domain/fleet'
-import { buyableHere } from '../../domain/market'
+import { usePortHistory } from '../../live/usePortHistory'
 import { useTrade } from '../../live/useTrade'
 import { fold, foldedMatch } from '../../lib/text'
 import { formatVoyageDays } from '../../lib/format'
 import type { FleetView, MarketGood, SnapshotPort } from '../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// TRADE, ON THE QUAY YOU ARE STANDING ON — docs/OWNER_REQUESTS.md row 53, redrawn to §6.
+// TRADE, ON THE QUAY YOU ARE STANDING ON — the Quay Ledger's board (owner row 76), on the face
+// row 53 put it on, redrawn to docs/QUAY_LEDGER.md §3 A.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The owner: *"since each port, city will have different market - trade goods, i want buy and sell
 // on port tab, the market in port tab - where i press market, then choose to trade."* 0061 and 0062
-// made the market a fact about the PORT, so what is on the quay belongs on the harbour. And on
-// 2026-09-09, the same rule said again for every verb: *"Buy and sell should be in port - market.
-// Get it? they should be located accordingly at different locations."* So this is now the ONLY
-// place a good is bought or sold from — COMMAND's BUY/SELL question is deleted, and the two things
-// it drew that this face did not came here with it:
-//   THE BARGAIN — `HaggleRow`, one row inside the buy tray (0022's client half).
-//   THE CHANDLER — PROVISION. 0036 says a harbour is *"a settlement with a shore — market,
-//     chandler, crew"*: the chandler is not a building 0067 keeps a row for, it is the quay itself.
-//     So her stores stand as the first row of this face, and pressing it opens the step tray
-//     (StepQuestion.tsx) that COMMAND used to open from a tile.
+// made the market a fact about the PORT, so what is on the quay belongs on the harbour, and since
+// 2026-09-09 (*"Buy and sell should be in port - market"*) this is the ONLY place a good is bought
+// or sold from. The two things that came with that: THE BARGAIN (`HaggleRow`, one row inside the
+// buy tray) and THE CHANDLER (PROVISION — her stores as the first row, opening the step tray).
+//
+// ── ONE ROW PER GOOD (2026-09-11) ──────────────────────────────────────────────────────────────
+// The tile grid is gone. Row 76's approved board is a ledger (QuayLedger.tsx): a `TradeRow` per
+// good — the name, the served rarity mark, `N t aboard`, the tide inside the range, and the two
+// price cells that are the two acts (row 6). The 2026-08-26 grid rule this reverses is annotated
+// where it was pinned (tests/layout.spec.ts, docs/OWNER_REQUESTS.md row 34). A press opens the ONE
+// tray, docked to the bottom edge, so nothing above the finger moves — the owner's rule, kept by
+// construction.
 //
 // ── WHAT IS DRAWN HERE IS NOT THIS SCREEN'S ───────────────────────────────────────────────────
-// §6, on this face: *"TRAY: identical to Command's buy tray (same component, same `issue`)"*. The
-// tile is `TradeTile`, the tray is `TradeTray`, both the design system's; the act — the grammar,
-// the door, the ceiling, the server's refusal — is `useTrade`'s. What this file owns is the FIELD
-// — which goods this harbour shows — and the pick.
+// The ledger is `QuayLedger`, shared with the read-only face; the row and the tray are the design
+// system's; the act — the grammar, the door, the ceiling, the dry run, the server's refusal — is
+// `useTrade`'s; the trend is `usePortHistory`'s. What this file owns is the text FILTER, the pick,
+// the quantity, and the chandler's row.
 //
-// ── WHAT §6 DELETED HERE, AND WHY EACH ONE WENT ────────────────────────────────────────────────
-//   THE BUY/SELL SUB-TABS.  *"the tile has both prices; the tap zone decides"*. Two faces over one
-//     list cost a tap, a piece of state and 52px, and they hid half the information: a player
-//     reading the BUY face could not see what the quay pays. Both figures are on the tile now and
-//     the CELL that is pressed is the intent — which is also row 6 in the owner's own words
-//     (*"i want to be able to click on buy and sell itself and do trades"*).
-//   THE COUNT LINE.  `10 goods traded here, by name` — the list is on the screen, and a sentence
-//     counting what the eye can see is §2 item 6's whole complaint.
-//   THE ORDER LINE + `Issue this order`.  §5: no screen prints the order string. The tray's own
-//     button is the act, and `orderText` is composed at issue time (src/live/useTrade.ts).
-//   THE FOLD, and `inRowsOf` / `useTileCols` with it. The quantity opens in a `Tray` docked to the
-//     bottom edge, so nothing above the press moves — the owner's rule kept exactly, without the
-//     row arithmetic that existed only to insert a box into a grid (§5).
-//
-// ── WHAT IT STILL DOES NOT OWN ─────────────────────────────────────────────────────────────────
-// No price arithmetic, no legality check, no grammar, no quantity rule. `buyableHere` is 0061's
-// one answer to "can this be bought at this quay"; `fleetCargoByCode` is the one fold of a
-// manifest; `useTrade` owns the capacity read and the one door (`cmd.issue`).
+// ── WHAT IT DOES NOT OWN ───────────────────────────────────────────────────────────────────────
+// No price arithmetic, no legality check, no grammar, no quantity rule, no ledger order.
+// `fleetCargoByCode` is the one fold of a manifest; `useTrade` owns the capacity read, the dry run
+// and the one door (`cmd.issue`). A quay with nobody of yours alongside is not this file's at all —
+// PortScreen mounts the read-only ledger (PortPrices.tsx) instead, so no hook here ever runs
+// without a hull to trade with.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export function PortTrade({
@@ -60,25 +52,11 @@ export function PortTrade({
 }: {
   /** `world.market(port)`'s goods for THIS harbour — the read PortScreen already makes. */
   goods: readonly MarketGood[]
-  /** A fleet of yours lying here, or null. Without one there is nothing to trade with. */
-  fleet: FleetView | null
+  /** The fleet of yours lying here — the one that trades (`docked[0]`, PortScreen). */
+  fleet: FleetView
   /** This harbour — its culture, printed only where it refuses a good (§6). */
   port: SnapshotPort
 }) {
-  if (!fleet) {
-    return (
-      <Note tone="neutral">
-        No fleet of yours lies here, so there is nothing to trade with. Send one and this quay will
-        deal.
-      </Note>
-    )
-  }
-  return <QuayField goods={goods} fleet={fleet} port={port} />
-}
-
-/** The field and the pick, once there is a fleet to trade with — split so the hooks below never
- *  run for a quay with nobody alongside. */
-function QuayField({ goods, fleet, port }: { goods: readonly MarketGood[]; fleet: FleetView; port: SnapshotPort }) {
   const [filter, setFilter] = useState('')
   const [pick, setPick] = useState<TradePick | null>(null)
   // The quantity is this screen's; the tray owns the default and materialises it through
@@ -86,16 +64,13 @@ function QuayField({ goods, fleet, port }: { goods: readonly MarketGood[]; fleet
   const [qty, setQty] = useState<number | null>(null)
   const [stores, setStores] = useState(false)
 
+  const history = usePortHistory(port.id, pick?.good.code ?? null)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
-  const shown = useMemo(() => {
+  // THE TEXT FILTER is this face's chrome; the ledger's own membership and order are QuayLedger's.
+  const matching = useMemo(() => {
     const q = fold(filter.trim())
-    return goods
-      // WHAT IS ON THIS QUAY, PLUS WHAT SHE IS CARRYING. 0061 makes those two different sets: a
-      // hold is never stranded, so she may sell here what this city does not deal in.
-      .filter((g) => g.available || (aboard[g.code] ?? 0) > 0)
-      .filter((g) => foldedMatch(q, g.name, g.code, g.category))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [goods, filter, aboard])
+    return goods.filter((g) => foldedMatch(q, g.name, g.code, g.category))
+  }, [goods, filter])
 
   const close = () => {
     setPick(null)
@@ -107,7 +82,7 @@ function QuayField({ goods, fleet, port }: { goods: readonly MarketGood[]; fleet
     setPick({ good, intent })
   }
 
-  const { capacity, step, act } = useTrade(fleet, pick?.intent ?? 'buy', pick?.good ?? null, qty, close)
+  const trade = useTrade(fleet, pick?.intent ?? 'buy', pick?.good ?? null, qty, close)
   const provision = useStepOrder(fleet, 'PROVISION', stores, () => setStores(false))
 
   return (
@@ -136,35 +111,24 @@ function QuayField({ goods, fleet, port }: { goods: readonly MarketGood[]; fleet
         className="mt-3"
       />
 
-      {shown.length === 0 ? (
-        <Note tone="neutral" className="mt-3">
-          Nothing here answers to that.
-        </Note>
-      ) : (
-        <TileField className="mt-3">
-          {shown.map((g) => (
-            <TradeTile
-              key={g.code}
-              good={g}
-              aboard={aboard[g.code] ?? 0}
-              canBuy={buyableHere(g)}
-              selected={pick?.good.code === g.code}
-              onBuy={() => open(g, 'buy')}
-              onSell={() => open(g, 'sell')}
-            />
-          ))}
-        </TileField>
-      )}
+      <QuayLedger
+        goods={matching}
+        aboard={aboard}
+        pick={pick}
+        onPick={open}
+        empty={
+          <Note tone="neutral" className="mt-3">
+            Nothing here answers to that.
+          </Note>
+        }
+      />
 
       {pick && (
         <TradeTray
           pick={pick}
-          aboard={aboard[pick.good.code] ?? 0}
-          capacity={capacity}
-          step={step}
+          quay={{ aboard: aboard[pick.good.code] ?? 0, culture: port.culture, history }}
+          trade={trade}
           qty={{ value: qty, onChange: setQty }}
-          act={act}
-          culture={port.culture}
           onClose={close}
         >
           {pick.intent === 'buy' && <HaggleRow fleetId={fleet.id} good={pick.good} />}

@@ -5,6 +5,43 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-11 — The Quay board: MARKET folds into PORT, the tile grid becomes a ledger (owner row 76, slice 1 of 4)
+
+**Request.** The owner brought nine screenshots of the Uncharted Waters Origin trade house and asked
+for *"the same design plan, but different and modern"*, then *"make this in game"*. The design is
+recorded in `docs/QUAY_LEDGER.md`; this is its first slice, **frontend only, no migration**.
+
+**What changed.** The MARKET tab is gone (`navTabs.ts`, `App.tsx`); reading prices elsewhere now
+lives inside PORT › Trade behind the port field, as the read-only state when no fleet of yours is
+alongside (`PortPrices`), which closes the shared-harbour strand named in `RESUME.md`. The 2-col
+`TradeTile` grid is replaced by one `TradeRow` per good — name, rarity mark, `· N t aboard`, a 4-px
+tide `Bar` for where mid sits in the served range, and the two price cells as the tap targets. The
+one tray is now the unfolded row: Trend · Range · On the quay (`PriceRows`, composed by both trays)
+→ Paid (three states, including *none aboard*) → At most / Aboard → Fetches → the gauge → Bargain →
+the one button. `useTrade` now dry-runs BUY through `cmd.preview` too (debounced 200 ms) so the button
+carries the served total at every quantity, not only at the ceiling. **"All she can" died** — owner
+row 63's word; chips carry tun figures. `PortField`, `PriceTray`, `nearby` moved to `features/port`;
+`PriceRows` promoted to `components/ui`; `features/market/` deleted. One `QuayLedger` owns the list's
+order and filter for both states; one `usePortMarket` re-reads on every `readAt` beat and keeps the
+refusal for a retry Note; one `harbourPick` decides pin-or-follow for the field and the Read button.
+
+**One owner rule reversed, on purpose and on record:** the 2026-08-26 *"grid like shape — organized
+not in lines"* telling (row 34) is superseded by row 76's approved one-row-per-good board;
+`tests/layout.spec.ts` now asserts `maxPerRow === 1` and says why in its header.
+
+**Review caught, before merge:** the distant-quay read loaded once and never again (and a refused
+read was a spinner forever); BUY previewed on every slider tick; the ledger list, "On the quay",
+and pin-or-follow were each spelt twice. All folded.
+
+**Gates:** `tsc -b` 0 · eslint 0 · pure specs 34 passed · browser specs 19 passed, 0 skipped
+(`PORT ledger @390px: maxPerRow 1, 20 price cells, shortest 62 px, 10 dead cells all saying why`) ·
+`npm run build` green. Net −474 lines.
+
+**State: BUILT on `osn-quay-board`. Not merged, not deployed (no migration to deploy), NOT DRIVEN.**
+Slice 1's own "done when" is a single-good buy and sell on production through the new row.
+
+---
+
 ## 2026-09-10 — 0082 is on production (the deploy record, not a slice)
 
 **This is the deploy of the entry below, and it exists because that entry ends *"Nothing was pushed

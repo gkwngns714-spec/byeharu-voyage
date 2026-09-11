@@ -139,6 +139,16 @@ test(`nav: one row, every cell reachable, no label shaved at ${PHONE.width}px`, 
       '"did you mean" page, which passes every check here by having no content at all.',
   ).toBeGreaterThanOrEqual(3)
 
+  // 0b. THE COUNT, PINNED. Six cells from 2026-08-25; FIVE since 2026-09-11, when MARKET folded
+  //     into PORT (owner row 76, docs/QUAY_LEDGER.md) — Command · Fleets · Port · Map · Cabin. A
+  //     cell labelled Market is the old tab coming back; a sixth cell of any name is a new
+  //     destination that did not go through src/app/navTabs.ts's grouping argument.
+  expect(
+    report.cells.map((c) => c.label),
+    'a nav cell is labelled Market — that tab folded into PORT on 2026-09-11',
+  ).not.toContain('Market')
+  expect(report.cells.length, `the bar draws ${report.cells.length} cells; five since the MARKET fold`).toBe(5)
+
   // 1. ONE ROW. The decision this file pins: at nine tabs the bar wrapped to 3×3 and ate 168px of
   //    an 844px screen. The cure was grouping, not a second row, so a second row is a failure.
   const rows = [...new Set(report.cells.map((c) => c.rect.y))].sort((a, b) => a - b)

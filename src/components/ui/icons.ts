@@ -16,7 +16,6 @@ export const ICON_NAMES = [
   'compass',
   'chart',
   'ship',
-  'scales',
   'ledger',
   'wreath',
   'profile',
@@ -163,7 +162,6 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   // Hull with a mast and sail — Fleets.
   ship: ['M3 17.5h18l-2 3.5H5l-2-3.5Z', 'M12 3v14.5', 'M12 5c3 1 5 2.5 6 4.5h-6', 'M12 8c-2 .8-3.5 1.5-4.5 3H12'],
   // Balance — Market.
-  scales: ['M12 4v16', 'M6 20h12', 'M4.5 8h15', 'M4.5 8 2 14h5l-2.5-6Z', 'M19.5 8 17 14h5l-2.5-6Z'],
   // Open book — Ledger.
   ledger: ['M12 6.5C10.5 5 8.5 4.5 6 4.5H3.5v13H6c2.5 0 4.5.5 6 2', 'M12 6.5c1.5-1.5 3.5-2 6-2H20.5v13H18c-2.5 0-4.5.5-6 2', 'M12 6.5v15'],
   // Laurel-ringed marker — Rank.
