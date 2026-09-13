@@ -1,6 +1,8 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { Icon } from './Icon'
 import { detentHeight, nearestDetent, stepDetent, TRAY_PEEK, type TrayDetent } from './trayDetents'
+import { trayDockWideClass } from './screenLayout'
+import { useWide } from './useWide'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TRAY — the load-bearing primitive of the whole direction
@@ -88,6 +90,10 @@ export function Tray({
   // the rest of the time it is one of the three CSS stops above.
   const [dragHeight, setDragHeight] = useState<number | null>(null)
   const drag = useRef<{ startY: number; startHeight: number } | null>(null)
+  // ON A WIDE GLASS A DOCKED TRAY IS A SIDE PANEL (screenLayout.ts, "the wide glass"): it stands
+  // beside the column at full height, so the detent ladder — a bottom-edge idea — does not apply.
+  // `detent` still says open or closed; the height is the panel's.
+  const side = useWide() && mode === 'docked'
 
   if (detent === 'closed') return null
 
@@ -112,7 +118,7 @@ export function Tray({
     if (landed !== detent) onDetentChange(landed)
   }
 
-  const height = dragHeight !== null ? `${dragHeight}px` : HEIGHT[detent]
+  const height = side ? undefined : dragHeight !== null ? `${dragHeight}px` : HEIGHT[detent]
 
   return (
     <section
@@ -125,7 +131,7 @@ export function Tray({
       className={[
         'z-40 flex flex-col overflow-hidden rounded-t-sheet bg-surface shadow-sheet',
         'transition-[height] duration-sheet ease-sheet',
-        mode === 'docked' ? 'fixed inset-x-0 bottom-0' : 'relative w-full',
+        mode === 'docked' ? `fixed inset-x-0 bottom-0 ${trayDockWideClass()}` : 'relative w-full',
         className,
       ].join(' ')}
       {...rest}
@@ -134,21 +140,27 @@ export function Tray({
           pointer is unreachable from a keyboard, so it is a button: ↑ and ↓ step the detent
           ladder, which is the same ladder the drag snaps to. */}
       <div className="flex items-center gap-2 px-gutter pt-2">
-        <button
-          type="button"
-          aria-label="Resize"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowUp') onDetentChange(stepDetent(detent, 1))
-            if (e.key === 'ArrowDown') onDetentChange(stepDetent(detent, -1))
-          }}
-          className="flex h-11 flex-1 cursor-grab touch-none items-center justify-center"
-        >
-          <span className="h-1 w-9 rounded-chip bg-ink-faint" />
-        </button>
+        {/* A side panel has nothing to drag: the handle gives way to a spacer and the close button
+            keeps its place at the right. */}
+        {side ? (
+          <span className="flex-1" />
+        ) : (
+          <button
+            type="button"
+            aria-label="Resize"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp') onDetentChange(stepDetent(detent, 1))
+              if (e.key === 'ArrowDown') onDetentChange(stepDetent(detent, -1))
+            }}
+            className="flex h-11 flex-1 cursor-grab touch-none items-center justify-center"
+          >
+            <span className="h-1 w-9 rounded-chip bg-ink-faint" />
+          </button>
+        )}
         <button
           type="button"
           aria-label="Close"

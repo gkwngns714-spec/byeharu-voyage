@@ -33,10 +33,10 @@ const IDLE: BuyCapacityState = { bound: null, estTotal: null, loading: false }
 /** The server's phrase for what stops her, as the slider's caption reads it. */
 function captionFor(boundBy: string): string {
   switch (boundBy) {
-    case 'hold': return 'the hold'
-    case 'stock': return 'the stock here'
+    case 'hold': return 'cargo space'
+    case 'stock': return 'stock here'
     case 'daily cap': return "today's trading limit"
-    case 'purse': return 'your purse'
+    case 'purse': return 'your money'
     case 'at sea': return 'being at sea'
     default: return boundBy
   }
