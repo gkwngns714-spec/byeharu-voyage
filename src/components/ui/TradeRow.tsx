@@ -64,7 +64,7 @@ export function TradeRow({
           <span className="max-w-full truncate">{good.name}</span>
           <RarityMark rarity={good.rarity} />
           {(aboard > 0 || good.native === true) && (
-            <span className="whitespace-nowrap text-t-caption text-ink-faint">
+            <span className="text-t-caption text-ink-faint">
               {[aboard > 0 ? `${formatUnits(aboard)} on board` : null, good.native === true ? 'native' : null]
                 .filter(Boolean)
                 .map((w) => `· ${w}`)
