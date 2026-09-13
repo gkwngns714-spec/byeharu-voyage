@@ -55,10 +55,13 @@
 
 import { project, type Point, type ViewBox } from '../lib/geo'
 import type { ChartModel, PortRole } from './chartModel'
+import { GREAT_PORT_TIER } from './chartView'
+import { GLYPH } from './glyphs'
 import type { MapPort, MapSelection } from './mapTypes'
 
-/** What a label is FOR, which is also how it is coloured. */
-export type LabelTone = 'fleet' | 'port-active' | 'port-quiet'
+/** What a label is FOR, which is also how it is coloured. `sea` (row 90) is a water's name set on
+ *  the water itself — ground, not a place to go, and drawn under every other name. */
+export type LabelTone = 'fleet' | 'port-active' | 'port-quiet' | 'sea'
 
 /** Which side of the glyph a label ended up on. Tried in this order: the cardinals the map reads
  *  most naturally, then the diagonals as a last resort before dropping it. */
@@ -72,7 +75,9 @@ export const LABEL_SIDES = [
   'left-above',
   'left-below',
 ] as const
-export type LabelSide = (typeof LABEL_SIDES)[number]
+/** `centre` is the one placement a CENTRED request has (see `LabelRequest.placement`): the
+ *  name sits on its anchor, and if that does not fit, it is not drawn. */
+export type LabelSide = (typeof LABEL_SIDES)[number] | 'centre'
 
 /** A rectangle in chart units. */
 export interface Rect {
@@ -93,6 +98,19 @@ export interface LabelRequest {
   /** Placed even if it collides — used for the selected thing, which must always be named.
    *  It still has to fit inside the viewport; nothing is ever drawn off the edge. */
   readonly force?: boolean
+  /**
+   * ROW 90 — how the label is SET, when it is not the default beside-a-glyph name:
+   *   `sizePx`     its own type size, in CSS pixels (a great harbour and an ocean are set larger;
+   *                default `fontSizePx`).
+   *   `spacingEm`  letter-spacing, in em, added to every glyph's advance so the measured box is
+   *                the drawn box (default 0).
+   *   `placement`  `'beside'` (default) tries the eight sides of a glyph; `'centred'` has NO
+   *                glyph — a sea's name sits on its anchor, and it is that one box or nothing.
+   *                A centred request registers no glyph obstacle, because there is no glyph.
+   */
+  readonly sizePx?: number
+  readonly spacingEm?: number
+  readonly placement?: 'beside' | 'centred'
 }
 
 export interface PlacedLabel {
@@ -107,6 +125,9 @@ export interface PlacedLabel {
   /** The box it occupies, in chart units — what the collision rule was decided on, and what a
    *  test can assert against. */
   readonly box: Rect
+  /** How it is set — carried through so the layer draws exactly the box that was planned. */
+  readonly sizePx: number
+  readonly spacingEm: number
 }
 
 export interface LabelLayoutOptions {
@@ -156,6 +177,11 @@ export const LABEL_PRIORITY = {
    * using can therefore never lose its name to a big port your fleet is nowhere near.
    */
   quiet: 10,
+  /**
+   * A SEA'S NAME (row 90). Below the quietest harbour: it is ground, and ground gives way to
+   * every place a player might tap. Placed last, it can only ever fill water no name has claimed.
+   */
+  sea: 5,
 } as const
 
 /** JetBrains Mono's advance is 0.6 em; the extra 6% is headroom for a wider fallback face. */
@@ -262,7 +288,6 @@ export function planLabels(
   options: LabelLayoutOptions,
 ): PlacedLabel[] {
   const u = options.unitsPerPx
-  const fontSize = (options.fontSizePx ?? DEFAULTS.fontSizePx) * u
   const gap = (options.gapPx ?? DEFAULTS.gapPx) * u
   const glyph = (options.glyphRadiusPx ?? DEFAULTS.glyphRadiusPx) * u
   const inset = (options.edgeInsetPx ?? DEFAULTS.edgeInsetPx) * u
@@ -284,10 +309,14 @@ export function planLabels(
   // SQUARE while being outside the round mark itself (offset × √2 > radius). Counting a label's
   // own glyph against it is what silently dropped "Aurora" at 390×844 even after the diagonals
   // were added: all eight candidates were rejected, four of them by the fleet's own dot.
-  const glyphBoxes: { id: string; rect: Rect }[] = requests.map((r) => ({
-    id: r.id,
-    rect: { x: r.at.x - glyph, y: r.at.y - glyph, width: 2 * glyph, height: 2 * glyph },
-  }))
+  //
+  // A CENTRED request has no glyph (row 90: a sea's name sits on water), so it registers none.
+  const glyphBoxes: { id: string; rect: Rect }[] = requests
+    .filter((r) => r.placement !== 'centred')
+    .map((r) => ({
+      id: r.id,
+      rect: { x: r.at.x - glyph, y: r.at.y - glyph, width: 2 * glyph, height: 2 * glyph },
+    }))
 
   // Highest priority first; ties broken by id so the layout is deterministic, not insertion-order
   // dependent (a chart that reshuffles its labels between frames is worse than one that drops them).
@@ -297,8 +326,14 @@ export function planLabels(
   const placed: PlacedLabel[] = []
 
   for (const request of ordered) {
-    const width = request.text.length * ADVANCE_EM * fontSize
-    const options_ = candidates(request.at, width, fontSize, gap)
+    const sizePx = request.sizePx ?? options.fontSizePx ?? DEFAULTS.fontSizePx
+    const spacingEm = request.spacingEm ?? 0
+    const size = sizePx * u
+    const width = request.text.length * (ADVANCE_EM + spacingEm) * size
+    const options_ =
+      request.placement === 'centred'
+        ? [centred(request.at, width, size)]
+        : candidates(request.at, width, size, gap)
 
     let chosen: (typeof options_)[number] | null = null
     for (const candidate of options_) {
@@ -326,10 +361,27 @@ export function planLabels(
       y: chosen.y,
       anchor: chosen.anchor,
       box: chosen.box,
+      sizePx,
+      spacingEm,
     })
   }
 
   return placed
+}
+
+/** The one placement a centred label has: its box centred on the anchor. */
+function centred(
+  at: Point,
+  width: number,
+  height: number,
+): { side: LabelSide; x: number; y: number; anchor: PlacedLabel['anchor']; box: Rect } {
+  return {
+    side: 'centre',
+    x: at.x,
+    y: at.y,
+    anchor: 'middle',
+    box: { x: at.x - width / 2, y: at.y - height / 2, width, height },
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -369,7 +421,11 @@ export function mapLabelRequests(
 
   for (const port of ports) {
     const role = model.portRoles.get(port.code)
-    if (!role && !showQuietPorts) continue
+    // ROW 90: a GREAT harbour asks for its name at every zoom, the globe included — the world
+    // view drew 35 marks and named none of them, which is a picture of nowhere. Everything
+    // smaller still waits for `showQuietPorts` (DESIGN §E.5's zoom rule).
+    const great = port.sizeTier >= GREAT_PORT_TIER
+    if (!role && !showQuietPorts && !great) continue
     const selected = selection?.kind === 'port' && selection.code === port.code
     requests.push({
       id: `port:${port.code}`,
@@ -382,6 +438,9 @@ export function mapLabelRequests(
           : LABEL_PRIORITY.quiet + port.sizeTier,
       tone: role ? 'port-active' : 'port-quiet',
       force: selected,
+      // The hierarchy the marks carry (glyphs.ts's two ramps) reaches the names too: a great
+      // harbour's name is set a size up, so at the opening frame Lisbon reads before Setúbal.
+      sizePx: great ? GLYPH.greatLabelSize : undefined,
     })
   }
 

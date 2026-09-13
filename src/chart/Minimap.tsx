@@ -9,8 +9,9 @@ import {
   type ViewBox,
 } from '../lib/geo'
 import type { ChartModel } from './chartModel'
+import type { CoastlineData } from './coastlineBuild'
 import { CoastlineLayer } from './CoastlineLayer'
-import { GLYPH, trianglePath } from './glyphs'
+import { GLYPH, shipPath, trianglePath } from './glyphs'
 import type { MapPort } from './mapTypes'
 import { CHART_CHROME } from './useChartSurface'
 import { useElementSize } from './useElementSize'
@@ -95,7 +96,7 @@ const VIEWPORT_MIN_PX = 6
 export function Minimap({
   model,
   ports,
-  coastlineD,
+  coast,
   viewport,
   onJump,
   ariaLabel,
@@ -105,8 +106,8 @@ export function Minimap({
   model: ChartModel
   /** The whole port table, used ONLY to bound the world frame. No port mark is drawn (see header). */
   ports: readonly MapPort[]
-  /** The one backdrop, or '' while it loads or when it failed — the inset works without it. */
-  coastlineD: string
+  /** The one backdrop, or null while it loads or when it failed — the inset works without it. */
+  coast: CoastlineData | null
   /** Where the main chart is currently looking. Null before the surface is measured. */
   viewport: ViewBox | null
   /** The tapped place — the caller's one camera move (`surface.centreOn`). Omit for an inert inset. */
@@ -182,7 +183,8 @@ export function Minimap({
             height={box.height}
             className="fill-chart-sea"
           />
-          <CoastlineLayer d={coastlineD} />
+          {/* A coast, not a picture: no shallows and no relief at 144 px (CoastlineLayer's header). */}
+          <CoastlineLayer coast={coast} relief={false} />
 
           {/* THE WINDOW — what turns a picture into an instrument. Parchment ink, because it is
               information about the VIEW, and brass on this sheet already means "yours". */}
@@ -222,7 +224,13 @@ export function Minimap({
                     strokeWidth={GLYPH.glyphStroke}
                     vectorEffect="non-scaling-stroke"
                   />
-                  <circle cx={x} cy={y} r={px(GLYPH.fleetDotRadius)} className="fill-accent" />
+                  {/* The SAME hull the main chart draws (row 90), at the inset's mark scale, turned
+                      to the same served heading — one path, every fleet, every surface. */}
+                  <path
+                    d={shipPath(GLYPH.shipHalfLength)}
+                    transform={`translate(${x} ${y}) rotate(${f.heading ?? 0}) scale(${unitsPerPx * MARK_SCALE})`}
+                    className="fill-accent"
+                  />
                 </g>
               )
             })}

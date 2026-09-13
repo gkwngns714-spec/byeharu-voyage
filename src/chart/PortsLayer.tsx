@@ -1,5 +1,6 @@
 import { project } from '../lib/geo'
 import type { PortRole } from './chartModel'
+import { GREAT_PORT_TIER } from './chartView'
 import { GLYPH, lozengePath, portMarkScale, portStrokeWidth, trianglePath } from './glyphs'
 import type { MapPort } from './mapTypes'
 
@@ -85,6 +86,22 @@ export function PortsLayer({
               vectorEffect="non-scaling-stroke"
               pointerEvents="none"
             />
+
+            {/* ROW 90 — A GREAT HARBOUR WEARS A RING. The two ramps make Lisbon 1.75× Setúbal,
+                which is a difference you measure; a thin ring round the 35 tier-5 marks is one
+                you see from across the room. Hollow, faint ink, never brass: brass is "yours". */}
+            {port.sizeTier >= GREAT_PORT_TIER && (
+              <circle
+                cx={x}
+                cy={y}
+                r={px(GLYPH.greatPortRingRadius)}
+                className="fill-none stroke-ink-faint/45"
+                strokeWidth={GLYPH.glyphStroke * 0.7}
+                vectorEffect="non-scaling-stroke"
+                pointerEvents="none"
+                data-testid="map-port-ring"
+              />
+            )}
 
             {selected && (
               <circle

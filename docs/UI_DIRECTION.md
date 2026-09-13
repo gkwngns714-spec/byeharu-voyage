@@ -355,6 +355,8 @@ Stays: list, detail, stores, cargo, standing orders. Cut: header counts, roster/
 ### MAP
 Already closest. Keep the chart, the corner controls, the minimap (only when zoomed past the world frame). Cut: caption bar, the hint sentence, `KEEP & SEND` label. Fold: the Fleets panel to a pill `⛵ 1` that opens a `Corner` list; the detail panel becomes a `Tray` (peek shows name + one line; half shows Send).
 
+*(The chrome above landed 2026-09-09. The CHART itself — the ground under it — was then the owner's row 90, 2026-09-13: "map should be much more graphic... it is too blank." The picture is `docs/MAP_ATMOSPHERE.md`: the audit that counted THREE fills on the opening frame, and the layers that answer it — a sea with depth and a graticule, shallows and relief along a coast whose weight follows the zoom and whose inland borders are gone, the seas' names set on the water by the one label planner, rings on the great harbours, a fleet at sea drawn as a hull on its heading with a solid passage made, a dashed course ahead and an arrowhead where it ends. Both schemes, five new `chart-*` tokens, the three pinned ones untouched. Nothing in the centre, no new chrome, no new word.)*
+
 ```
  ⛵ 1                          + − ⌖   ← corners only
                  (chart)
