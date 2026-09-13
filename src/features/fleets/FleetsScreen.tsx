@@ -133,6 +133,7 @@ function FleetRow({
           read exactly is a mood ring, and this is a ledger. */}
       <span className="mt-1 flex items-center gap-3 text-t-caption text-ink-faint" data-testid="fleet-row-bars">
         <span className="shrink-0 tabular-nums">{formatVoyageDays(fleet.endurance_days)} of supplies</span>
+        <span className="shrink-0">cargo</span>
         <Bar
           pct={total > 0 ? (used / total) * 100 : 0}
           tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}
