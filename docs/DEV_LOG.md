@@ -5,7 +5,7 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
-## 2026-09-14 — A port asks for what it does not sell: the request board, slice 4 of the Quay Ledger (owner row 76 — migration 0087, built on `osn-slice4-contracts`, NOT merged, NOT deployed, NOT driven on production)
+## 2026-09-14 — A port asks for what it does not sell: the request board, slice 4 of the Quay Ledger (owner row 76 — migration 0087, built on PR #78, `osn-slice4-contracts`, NOT merged, NOT deployed, NOT driven on production)
 
 **The instruction.** Row 76's last screen: the reference's 의뢰 board — a port asks for goods,
 names a deadline, pays over the odds when they arrive. `docs/QUAY_LEDGER.md` §1 called it the one
