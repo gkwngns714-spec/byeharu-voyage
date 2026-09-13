@@ -35,11 +35,12 @@ import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../../lib/rpc'
 // used to open: her crew, the idle men, the count, the server's price for the day.
 //
 // THE CREW ROW STANDS OUTSIDE THE ROOM'S READ, on purpose. The room re-reads on every world read
-// (`useInn` is keyed on `readAt`), and while it re-reads it draws a waiting line instead of the
-// room. A dry run of HIRE ends in exactly such a read (`cmd.preview` refreshes the world), so a
-// crew row mounted INSIDE the room would unmount its own tray the moment the server priced it —
+// (`useInn` rides `readAt` through useServedRead.ts), and a dry run of HIRE ends in exactly such
+// a read (`cmd.preview` refreshes the world). The room used to blank to a waiting line on every
+// re-read — a crew row mounted INSIDE it unmounted its own tray the moment the server priced it,
 // which is what the first screenshot of this face showed: the tray gone, the counts unchanged.
-// The row and its tray are mounted above the room, so a re-read never touches them.
+// useServedRead now keeps the last room on screen while it re-asks, but the men idle on the quay
+// are still not a fact ABOUT the room, so the row keeps its own place above it.
 //
 // ── THE ONE THING THIS SCREEN MUST NOT OFFER ───────────────────────────────────────────────────
 // A refresh. Who is in the room is derived from (officer, port, day, world secret): the same quay
