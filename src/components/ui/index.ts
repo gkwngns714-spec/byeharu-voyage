@@ -89,8 +89,15 @@ export { Nav, type NavItem } from './Nav'
 //     TRADE ROW — a good with its two prices as its two acts, and the tide inside its range.
 //     Replaced TRADE TILE on 2026-09-11 (one row per good; the 2026-08-26 grid rule is reversed).
 export { TradeRow } from './TradeRow'
-//     PRICE ROWS — Trend and Range, the two rows under a good wherever it is unfolded.
-export { PriceRows } from './PriceRows'
+//     PRICE ROWS — Trend, Range and In stock, the rows under a good wherever it is unfolded; the
+//     Trend row folds between the Sparkline and the PriceChart. `PriceTrend` is the shape the
+//     history hook hands both trays (points + the served cadence).
+export { PriceRows, type PriceTrend } from './PriceRows'
+//     PRICE CHART — the sparkline unfolded: the same served line with a three-figure scale, an
+//     axis in hours before now, and the low / high / now marks (owner row 76, slice 3). The
+//     geometry is `priceChartModel`, pure, so tests/priceChart.spec.ts proves the axis in Node.
+export { PriceChart } from './PriceChart'
+export { priceChartModel, PRICE_CHART_H, PRICE_CHART_W, type PriceChartModel } from './priceChartModel'
 //     TRADE TRAY — the row unfolded: trend, range, stock, paid, the ceiling, the stepper, and the
 //     ONE button at the bottom edge.
 export { TradeTray, type TradeAct, type TradeControls, type TradePick, type TradeQuay } from './TradeTray'

@@ -31,6 +31,7 @@
 -- @pass HAGGLE_ODDS_ARE_HONEST       2,000 fixed-key draws land within 4.5 sigma of the advertised chance
 -- @pass HAGGLE_IS_WORTH_DOING       a fully bargained round trip is worth a stated slice of a voyage's margin, and every attempt of the day can improve it
 -- @pass HAGGLE_CLIENT_PATH           as `authenticated`: the two entry points work, the internal folds are refused 42501, and RLS shows the house exactly its own bargain
+-- @pass HAGGLE_SELL_SIDE_MOVES_THE_BID  a won SELL-side bargain raises what the quay pays this house for the lot it carries, by exactly haggle_saved, and moves the published bid by nothing
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -74,6 +75,13 @@ declare
   v_expect  numeric;
   v_err     text;
   v_streams text[];
+  -- the sell side (slice 3)
+  v_purse   bigint;
+  v_qty     int;
+  v_q0      record;
+  v_q1      record;
+  v_sgood   uuid;
+  v_sgood_c text;
 begin
   -- ════════════════════════════════════════════════════════════════════════════════════════════
   -- 1. OPT-IN MEANS INERT. Recompute DESIGN G.1's ask and bid from the PUBLISHED spread, the tax
@@ -383,4 +391,94 @@ begin
   end;
   raise notice 'PASS: HAGGLE_CLIENT_PATH — as `authenticated`, world.haggle_state read % attempts and cmd.haggle spent one and the read saw it; public.haggle_odds and world.spread_effective were both REFUSED with 42501, so the folds stayed on the server; and RLS showed the house EXACTLY its own 1 bargain row and none of anybody else''s — an assertion this file could not make until 0023 repaired the policy grant that 0018 had swept away, a defect this proof is where it was found',
     k_tries;
+
+  -- ════════════════════════════════════════════════════════════════════════════════════════════
+  -- 9. THE SELL SIDE MOVES THE BID (slice 3, 2026-09-13 — docs/QUAY_LEDGER.md Appendix A).
+  --    `cmd.haggle` has taken `p_side = 'sell'` since 0022, gated on the CARGO rather than the
+  --    stock (0022:470-486), and until this block nothing in the proofs had ever bargained to
+  --    sell. The client now mounts the thread on the SELL face and stakes `haggle_saved` on the
+  --    dry run, so this is the contract it draws: with the good ON BOARD — a precondition this
+  --    block OWNS by buying it here — a certain win raises what the quay pays this house for the
+  --    lot, by exactly `haggle_saved` (0083's own tolerance: the rounding one unit price carries),
+  --    narrows only the spread part of the breakdown, and moves the PUBLISHED bid by nothing.
+  -- ════════════════════════════════════════════════════════════════════════════════════════════
+  delete from public.haggle_daily where player_id = v_player;
+  update public.world_config set value = to_jsonb(1.0) where key = 'haggle_base_success';
+  update public.world_config set value = to_jsonb(1.0) where key = 'haggle_success_max';
+  update public.world_config set value = to_jsonb(0.0) where key = 'haggle_hardening_per_fail';
+
+  -- THE SUBJECT SHE CAN BUY HERE. Since 0061 a city SELLS only what its roster names
+  -- (public.port_specialties), while the good the blocks above bargained over was found in
+  -- port_goods — which prices every good, including ones the quay will not sell (this block's
+  -- first run met E_UNAVAILABLE on exactly that). So the sell-side subject is the first
+  -- rostered, un-masked, in-stock good by code: deterministic, and one cmd.do_buy will take.
+  select ps.good_id, g.code into v_sgood, v_sgood_c
+    from public.port_specialties ps
+    join public.port_goods pg on pg.port_id = ps.port_id and pg.good_id = ps.good_id
+    join public.goods g on g.id = ps.good_id
+    join public.ports p on p.id = ps.port_id
+   where ps.port_id = v_port and pg.stock > 0 and not (p.culture = any(g.culture_mask))
+   order by g.code limit 1;
+  if v_sgood is null then
+    raise exception 'PROOF 6 FAILED: the starting port''s roster names nothing in stock, so the sell side cannot be exercised';
+  end if;
+
+  -- A lot she can afford: one step of the book if the purse covers it, else a single unit — priced
+  -- through the same quote the buy walks, never a proxy constant (docs/NO_SPAGHETTI.md §4).
+  select ducats into v_purse from public.players where id = v_player;
+  select total into v_q0 from world.quote(v_port, v_sgood, 10, 'buy', null, v_fleet);
+  v_qty := case when v_q0.total <= v_purse then 10 else 1 end;
+  v_res := cmd.issue(v_fleet, 'BUY ' || v_sgood_c || ' ' || v_qty);
+  if (v_res->>'ok')::boolean is not true or public.fleet_cargo_qty(v_fleet, v_sgood_c) < v_qty then
+    raise exception 'PROOF 6 FAILED: could not put % of % aboard to bargain over on the sell side: %', v_qty, v_sgood_c, v_res;
+  end if;
+
+  select mid, ask, bid into v_mid0, v_ask0, v_bid0 from world.price(v_port, v_sgood);
+  select * into v_q0 from world.quote(v_port, v_sgood, v_qty, 'sell', null, v_fleet);
+  if v_q0.haggle_saved <> 0 then
+    raise exception 'PROOF 6 FAILED: with no bargain open the SELL quote already says it saved %', v_q0.haggle_saved;
+  end if;
+
+  v_res := cmd.haggle(v_fleet, v_sgood, 'sell');
+  if (v_res->>'ok')::boolean is not true or (v_res->>'won')::boolean is not true or v_res->>'side' <> 'sell' then
+    raise exception 'PROOF 6 FAILED: a certain SELL-side bargain did not win: %', v_res;
+  end if;
+  if length(coalesce(v_res->>'message', '')) < 20 then
+    raise exception 'PROOF 6 FAILED: the SELL-side win carries no sentence for the thread to print: %', v_res;
+  end if;
+
+  select * into v_q1 from world.quote(v_port, v_sgood, v_qty, 'sell', null, v_fleet);
+  select mid, ask, bid into v_mid1, v_ask1, v_bid1 from world.price(v_port, v_sgood);
+  if v_q1.units <> v_q0.units or v_q1.total <= v_q0.total or v_q1.avg_price <= v_q0.avg_price then
+    raise exception 'PROOF 6 FAILED: a won SELL bargain did not raise what the quay pays — % units at % (% each) before, % units at % (% each) after',
+      v_q0.units, v_q0.total, v_q0.avg_price, v_q1.units, v_q1.total, v_q1.avg_price;
+  end if;
+  if v_q1.haggle_saved <= 0 or abs(v_q1.haggle_saved - (v_q1.total - v_q0.total)) > 1 then
+    raise exception 'PROOF 6 FAILED: haggle_saved on the SELL quote is % and the bid moved by % — it is not what the bargain took off',
+      v_q1.haggle_saved, v_q1.total - v_q0.total;
+  end if;
+  -- WHICH PART MOVED. The mid is the world's and cannot move. The spread part must narrow. The tax
+  -- part is NOT pinned still on this side — DESIGN G.1 levies the sell-side tax on what is left
+  -- after the port's cut (`bid = mid × (1 − spread/2) × (1 − tax)`), so a narrower cut leaves a
+  -- larger base and the tax rises by a sliver of what the spread gave up (measured on the first
+  -- run of this block: 23.90 → 23.96 against a spread of 8.05 → 6.03). Pinned as a BOUND: it may
+  -- not fall, and it may not rise by more than the spread fell — anything else is a different
+  -- formula from the one the quay publishes.
+  if v_q1.mid_total <> v_q0.mid_total or v_q1.spread_total >= v_q0.spread_total
+     or v_q1.tax_total < v_q0.tax_total
+     or v_q1.tax_total - v_q0.tax_total > v_q0.spread_total - v_q1.spread_total then
+    raise exception 'PROOF 6 FAILED: the SELL bargain moved the wrong part of the breakdown — mid % -> %, tax % -> %, spread % -> %',
+      v_q0.mid_total, v_q1.mid_total, v_q0.tax_total, v_q1.tax_total, v_q0.spread_total, v_q1.spread_total;
+  end if;
+  if (v_mid1, v_ask1, v_bid1) is distinct from (v_mid0, v_ask0, v_bid0) then
+    raise exception 'PROOF 6 FAILED: a SELL-side bargain moved the published price — mid % -> %, ask % -> %, bid % -> %',
+      v_mid0, v_mid1, v_ask0, v_ask1, v_bid0, v_bid1;
+  end if;
+  raise notice 'PASS: HAGGLE_SELL_SIDE_MOVES_THE_BID — with % of % on board, one certain SELL-side win took what the quay pays this house from % to % (% -> % each), haggle_saved % against a move of %; the mid part unchanged at %, the spread part % -> %, the tax part % -> % (levied on what is left after the cut, G.1), while world.price() still publishes bid % to everyone',
+    v_qty, v_sgood_c, v_q0.total, v_q1.total, v_q0.avg_price, v_q1.avg_price, v_q1.haggle_saved, v_q1.total - v_q0.total,
+    v_q1.mid_total, v_q0.spread_total, v_q1.spread_total, v_q0.tax_total, v_q1.tax_total, v_bid1;
+
+  update public.world_config set value = to_jsonb(k_base)   where key = 'haggle_base_success';
+  update public.world_config set value = to_jsonb(0.85)     where key = 'haggle_success_max';
+  update public.world_config set value = to_jsonb(k_harden) where key = 'haggle_hardening_per_fail';
 end $$;
