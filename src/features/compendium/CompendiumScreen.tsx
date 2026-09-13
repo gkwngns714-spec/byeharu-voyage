@@ -55,11 +55,11 @@ export function CompendiumScreen() {
   const fatal = useWorld((s) => s.fatal)
 
   if (phase === 'failed') {
-    return <WorldFailed eyebrow="Reference" title="Codex" refusal={fatal} />
+    return <WorldFailed title="Codex" refusal={fatal} />
   }
   if (phase !== 'ready') {
     return (
-      <WorldLoading eyebrow="Reference" title="Codex" subtitle="Everything in the game." panels={2} />
+      <WorldLoading title="Codex" />
     )
   }
   return <CompendiumBody />
