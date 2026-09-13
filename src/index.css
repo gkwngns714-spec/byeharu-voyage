@@ -123,6 +123,26 @@
   --color-chart-land: color-mix(in srgb, var(--color-ink-faint) 42%, var(--color-chart-sea));
   --color-chart-coast: color-mix(in srgb, var(--color-ink-faint) 65%, var(--color-chart-sea));
 
+  /* ── THE PICTURE (2026-09-13, owner row 90: "map should be much more graphic... it is too
+     blank") — five more chart inks, and the three above are UNCHANGED, because
+     tests/chart.ink.spec.ts pins their contrast and the picture is built around them, not on
+     top of them. docs/MAP_ATMOSPHERE.md is the design; every one of these is restated in the
+     day block below, and tests/map.atmosphere.spec.ts refuses a chart token that one scheme
+     defines and the other does not.
+       deep      the open ocean — a vignette darker than the water at the frame's edge
+       shallow   the water within a few miles of a coast — the sea's one tone step, mixed from
+                 `info` (blue is water and movement on this palette) into the sea
+       relief    the land's inner shadow along the coast, clipped to the land: a step DOWN from
+                 the land body toward the water, so the coast reads as an edge with a side
+       grid      the graticule, a hairline at low alpha — furniture, quieter than the coast
+       sea-name  the type a sea's name is set in on the water: paler than a port's name, so a
+                 name that is ground never competes with a name that is a place to go */
+  --color-chart-deep: #03060b;
+  --color-chart-shallow: color-mix(in srgb, var(--color-info) 22%, var(--color-chart-sea));
+  --color-chart-relief: color-mix(in srgb, var(--color-chart-sea) 55%, var(--color-chart-land));
+  --color-chart-grid: color-mix(in srgb, var(--color-ink-faint) 16%, transparent);
+  --color-chart-sea-name: color-mix(in srgb, var(--color-ink-faint) 62%, var(--color-chart-sea));
+
   /* ── RARITY — the four tiers of 0032, served on every good ──────────────────────────────────
      Three GENUINELY NEW meanings (the sanctioned reason for a new base literal — see
      tests/duplication.spec.ts §1): the four meanings above are all spoken for, so the tiers take
@@ -317,6 +337,15 @@
     --color-chart-sea: #95b8d6;
     --color-chart-land: color-mix(in srgb, var(--color-surface) 96%, var(--color-chart-sea));
     --color-chart-coast: color-mix(in srgb, var(--color-ink) 62%, var(--color-chart-sea));
+
+    /* THE DAY PICTURE — the same five inks, in the day's polarity (row 90; the dark block says
+       what each one is). Deep water is darker than the sea, shallows paler; the relief is a step
+       down from paper toward the water; the grid and the sea names are ink thinned into the sea. */
+    --color-chart-deep: #7ea6c9;
+    --color-chart-shallow: color-mix(in srgb, var(--color-surface) 30%, var(--color-chart-sea));
+    --color-chart-relief: color-mix(in srgb, var(--color-chart-coast) 30%, var(--color-chart-land));
+    --color-chart-grid: color-mix(in srgb, var(--color-ink) 12%, transparent);
+    --color-chart-sea-name: color-mix(in srgb, var(--color-ink) 52%, var(--color-chart-sea));
 
     /* uncommon 4.16 · rare 5.71 · exotic 5.06, on white. */
     --color-rarity-uncommon: #0f8c7a;

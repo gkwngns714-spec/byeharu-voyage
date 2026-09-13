@@ -63,12 +63,18 @@ export {
   type PortRole,
 } from './chartModel'
 export { mapFleetsOf, mapPortsOf } from './liveWorld'
+// ROW 90 — the seas' names: how data/seas.json is read, and which waters ask to be named at a
+// zoom. The DECISION, exported for the same reason `roadsteadMarks` is; the paint is LabelsLayer's.
+export { mapSeasOf, seaNameRequests } from './seaNames'
+export type { MapSea } from './mapTypes'
 
 // ── the view: pan, zoom, and the three density rules that answer 214 ports on one sheet ────────
 export {
   CHART_CAPTION,
   COMPACT_WIDTH_PX,
   FIT_PADDING,
+  GREAT_PORT_TIER,
+  SEA_NAME_SPAN_LIMIT,
   LABEL_SPAN_LIMIT,
   MAX_SPAN_X,
   MIN_SPAN_X,
@@ -89,7 +95,18 @@ export {
 } from './chartView'
 
 // ── ink: the glyph metrics, the lines, the names, and what a tap lands on ──────────────────────
-export { GLYPH, portMarkScale, portStrokeWidth, trianglePath } from './glyphs'
+// Row 90 added the ship, the arrowhead, the heading and the zoom-scaled coast weight — all here,
+// so a spec can hold "one hull for every fleet" and "the pen thickens as you zoom" as arithmetic.
+export {
+  arrowPath,
+  coastStrokeWidth,
+  GLYPH,
+  headingDeg,
+  portMarkScale,
+  portStrokeWidth,
+  shipPath,
+  trianglePath,
+} from './glyphs'
 export { toClosedRingsD, toPolylineD } from './svgPath'
 export { buildTrack, type TrackPaths } from './route'
 // 0076 — WHICH PORTS SHOW THEIR ROADS, AND WHERE THE TWO ENDS ARE. The DECISION, exported; the
@@ -119,12 +136,12 @@ export {
   buildCoastline,
   type CoastlineData,
 } from './coastlineBuild'
-// `loadCoastline` is DELIBERATELY NOT HERE. It is the one module in the section a bundler has to
-// resolve (`…/world-110m.json?url`), and re-exporting it would put that edge in this file's static
-// graph — which makes the whole entrance unloadable by a plain Node process, and the pure specs
-// that measure this section's own figures are plain Node processes. `useCoastline` reaches it
-// dynamically, inside its effect; see ./useCoastline.ts.
-export { useCoastline, type CoastlineState } from './useCoastline'
+// `loadBackdrop` is DELIBERATELY NOT HERE. It is the one module in the section a bundler has to
+// resolve (`…/world-110m.json?url`, `…/seas.json?raw`), and re-exporting it would put that edge in
+// this file's static graph — which makes the whole entrance unloadable by a plain Node process,
+// and the pure specs that measure this section's own figures are plain Node processes.
+// `useBackdrop` reaches it dynamically, inside its effect; see ./useBackdrop.ts.
+export { useBackdrop, type BackdropState } from './useBackdrop'
 
 // ── the surfaces a screen mounts ───────────────────────────────────────────────────────────────
 // `chromeBoxes` on the returned surface is the ONE thing a screen must now hand back to

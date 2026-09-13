@@ -154,6 +154,21 @@ export function minTierForSpan(spanX: number): number {
   return PORT_TIER_BANDS[PORT_TIER_BANDS.length - 1].minTier
 }
 
+/**
+ * A GREAT HARBOUR (row 90): the tier that wears a ring round its mark and asks for its name at
+ * EVERY zoom, the globe included. The same column and the same top band as `PORT_TIER_BANDS`
+ * — the 35 ports the world view already draws are the 35 it now also names and rings — so this
+ * is the existing rule made visible, not a second idea of importance.
+ */
+export const GREAT_PORT_TIER = 5
+
+/**
+ * WHERE THE SEAS ARE NAMED (row 90). An OCEAN's name is set at every zoom; a SEA's only once the
+ * frame is this narrow, so the globe carries six words and a coast carries the waters around it.
+ * Above `LABEL_SPAN_LIMIT` so the water is named a step before the quiet harbours are.
+ */
+export const SEA_NAME_SPAN_LIMIT = 110
+
 
 /**
  * THE FLOOR ON THE OPENING FRAME, in degrees of longitude.

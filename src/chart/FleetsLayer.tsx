@@ -1,6 +1,6 @@
 import { project } from '../lib/geo'
 import type { ChartModel } from './chartModel'
-import { GLYPH } from './glyphs'
+import { arrowPath, GLYPH, shipPath } from './glyphs'
 
 // GLYPHS 2 AND 3 — THE FLEET AND ITS DESTINATION — plus the track between them.
 //
@@ -30,25 +30,40 @@ import { GLYPH } from './glyphs'
 export function TracksLayer({ model, unitsPerPx }: { model: ChartModel; unitsPerPx: number }) {
   return (
     <g pointerEvents="none" data-testid="map-tracks">
+      {/* THE COURSE (row 90): the passage made is SOLID, the water ahead is DASHED, and the
+          water ahead ends in an arrowhead at the course's last vertex, turned along its last
+          segment. Both halves are the served polyline (./route.ts); the arrow's tip and turn are
+          two of its own points. The roadstead's `1 5` dot is no longer borrowed from here. */}
       {model.fleets.map((f) =>
         f.track ? (
           <g key={f.fleet.id}>
             <path
               d={f.track.aheadD}
-              className="fill-none stroke-accent/25"
+              className="fill-none stroke-accent/45"
               strokeWidth={GLYPH.trackStroke}
-              strokeDasharray="1 5"
+              strokeDasharray="5 4"
               strokeLinecap="round"
               vectorEffect="non-scaling-stroke"
             />
             <path
               d={f.track.sailedD}
-              className="fill-none stroke-accent/75"
-              strokeWidth={GLYPH.trackStroke}
-              strokeDasharray="1 3"
+              className="fill-none stroke-accent/85"
+              strokeWidth={GLYPH.trackStroke + 0.4}
               strokeLinecap="round"
               vectorEffect="non-scaling-stroke"
             />
+            {f.track.endHeading !== null && (
+              <path
+                d={arrowPath(GLYPH.arrowHalfWidth)}
+                transform={`translate(${f.track.end.x} ${f.track.end.y}) rotate(${f.track.endHeading}) scale(${unitsPerPx})`}
+                className="fill-none stroke-accent/85"
+                strokeWidth={GLYPH.trackStroke + 0.4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+                data-testid="map-track-arrow"
+              />
+            )}
           </g>
         ) : null,
       )}
@@ -91,7 +106,12 @@ export function TracksLayer({ model, unitsPerPx }: { model: ChartModel; unitsPer
   )
 }
 
-/** GLYPH 2 — the fleet at sea. A fleet at anchor draws nothing here; it IS its port's loud mark. */
+/**
+ * GLYPH 2 — the fleet at sea, AS A SHIP (row 90): `shipPath`, the one hull, turned to her course
+ * heading (`FleetOnChart.heading`, the served segment's) inside the same sea-coloured halo the dot
+ * wore. A fleet at an open anchor is the same hull pointing north. A fleet in port draws nothing
+ * here; it IS its port's loud mark.
+ */
 export function FleetsLayer({
   model,
   selectedId,
@@ -111,7 +131,7 @@ export function FleetsLayer({
         const selected = selectedId === f.fleet.id
 
         return (
-          <g key={f.fleet.id}>
+          <g key={f.fleet.id} data-fleet-heading={f.heading ?? 0}>
             <circle
               cx={x}
               cy={y}
@@ -120,7 +140,15 @@ export function FleetsLayer({
               strokeWidth={GLYPH.glyphStroke}
               vectorEffect="non-scaling-stroke"
             />
-            <circle cx={x} cy={y} r={px(GLYPH.fleetDotRadius)} className="fill-accent" />
+            <path
+              d={shipPath(GLYPH.shipHalfLength)}
+              transform={`translate(${x} ${y}) rotate(${f.heading ?? 0}) scale(${unitsPerPx})`}
+              className="fill-accent stroke-chart-sea"
+              strokeWidth={GLYPH.glyphStroke * 0.6}
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+              data-testid="map-ship"
+            />
           </g>
         )
       })}

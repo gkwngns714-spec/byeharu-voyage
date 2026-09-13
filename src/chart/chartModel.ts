@@ -22,6 +22,7 @@ import { project, type LatLon, type ViewBox } from '../lib/geo'
 import type { MapFleet, MapPort, MapVoyage } from './mapTypes'
 import { buildTrack, type TrackPaths } from './route'
 import { driftedPoint, type Drift } from './drift'
+import { headingDeg } from './glyphs'
 
 /** One fleet, resolved to ink. */
 export interface FleetOnChart {
@@ -33,6 +34,14 @@ export interface FleetOnChart {
   readonly voyage: MapVoyage | null
   /** Null unless she is on a passage: the served course, split at the served position. */
   readonly track: TrackPaths | null
+  /**
+   * WHICH WAY HER BOW POINTS (row 90): the heading of the served segment she is on, degrees
+   * clockwise from north, for the ship glyph's turn. Null when she is not under way (docked, or
+   * at an open anchor) — a ship that is going nowhere points north, and the layer says so. Read
+   * off `course[segIndex] → course[segIndex + 1]`, the same two vertices `voyage.position` placed
+   * her between; nothing is measured and nothing moves her.
+   */
+  readonly heading: number | null
   /** The PORT she is bound for, if she is bound for one (a point-bound voyage has none). */
   readonly destinationCode: string | null
   /** The port it lies in, if it lies in one. */
@@ -147,6 +156,7 @@ export function buildChartModel(
         at,
         voyage: null,
         track: null,
+        heading: null,
         destinationCode: null,
         dockedAtCode: fleet.portCode,
       })
@@ -162,6 +172,7 @@ export function buildChartModel(
         at: fleet.at,
         voyage: null,
         track: null,
+        heading: null,
         destinationCode: null,
         dockedAtCode: null,
       })
@@ -193,11 +204,16 @@ export function buildChartModel(
     focus.push(at)
     motion.push(at)
 
+    // The served segment she is on — the same clamp `buildTrack` splits the course at.
+    const cut = Math.min(Math.max(voyage.segIndex, 0), voyage.course.length - 2)
+    const segFrom = voyage.course[cut]
+    const segTo = voyage.course[cut + 1]
     drawn.push({
       fleet,
       at,
       voyage,
       track: buildTrack(voyage.course, at, voyage.segIndex),
+      heading: segFrom && segTo ? headingDeg(project(segFrom), project(segTo)) : null,
       destinationCode: voyage.destinationCode,
       dockedAtCode: null,
     })

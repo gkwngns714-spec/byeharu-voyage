@@ -23,8 +23,8 @@ import {
   minTierForSpan,
   openingBounds,
   toggleSelection,
+  useBackdrop,
   useChartSurface,
-  useCoastline,
   ViewControls,
   visiblePorts,
   type ChartModel,
@@ -141,7 +141,7 @@ function Chart({
 
   const surface = useChartSurface(chartRef, frameBounds, onTap)
   const box = surface.viewBox
-  const coastline = useCoastline()
+  const backdrop = useBackdrop()
 
   // THE MINIMAP ONLY WHEN THE PLAYER HAS LEFT THE OPENING FRAME (./frame.ts says why).
   const aspect = surface.width > 0 && surface.height > 0 ? surface.width / surface.height : null
@@ -177,7 +177,8 @@ function Chart({
           ports={ports}
           box={box}
           unitsPerPx={surface.unitsPerPx}
-          coastlineD={coastline.data?.d ?? ''}
+          coast={backdrop.coast}
+          seas={backdrop.seas}
           selection={selection}
           // Every `CHART_CHROME` box, so no harbour's name prints under the pill, the zoom column,
           // the minimap or the tray.
@@ -213,14 +214,14 @@ function Chart({
           testId="map-view-controls"
         />
 
-        {(zoomed || coastline.error) && (
+        {(zoomed || backdrop.error) && (
           <div className="pointer-events-auto absolute bottom-3 left-3 flex flex-col items-start gap-1">
-            {coastline.error && <p className="text-t-caption text-ink-faint">coastline unavailable</p>}
+            {backdrop.error && <p className="text-t-caption text-ink-faint">coastline unavailable</p>}
             {zoomed && (
               <Minimap
                 model={model}
                 ports={ports}
-                coastlineD={coastline.data?.d ?? ''}
+                coast={backdrop.coast}
                 viewport={box}
                 onJump={surface.centreOn}
                 ariaLabel="The whole world, your fleets marked on it, and the part of it this chart is showing. Tap a place to look there."

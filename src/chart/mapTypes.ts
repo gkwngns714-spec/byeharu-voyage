@@ -119,6 +119,21 @@ export interface MapWater {
 }
 
 /**
+ * A NAMED WATER, as the chart needs it (row 90): a name and the one place to set it. `at` is
+ * data/seas.json's `centroid`, which that file describes as "a hand-placed label anchor for map
+ * rendering, NOT a surveyed centroid" — exactly the thing a name is set on, copied. `kind`
+ * decides at which zooms the name is set (./chartView.ts `SEA_NAME_SPAN_LIMIT`); ./seaNames.ts
+ * says how it is read. Nothing here is served: the seas are a backdrop like the coast, loaded by
+ * ./backdrop.ts, and the sea a VOYAGE is in stays `MapWater`, which is the server's.
+ */
+export interface MapSea {
+  readonly id: string
+  readonly name: string
+  readonly at: LatLon
+  readonly kind: 'ocean' | 'sea'
+}
+
+/**
  * HER STORES, IN DAYS — the SERVED `endurance_days`, carried on every state because it is true in
  * all three. The owner (OWNER_REQUESTS row 50): *"my provision depleting as the time goes"*.
  *

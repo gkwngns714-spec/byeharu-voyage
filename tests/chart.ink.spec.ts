@@ -74,7 +74,10 @@ test.describe('the roadstead is not any other round thing on this chart', () => 
     //   destination ring  r 11, dashed 3 3, brass   ·   fleet dot  r 4.4, FILLED brass, haloed
     // The roads have to be readable as neither, and RADIUS is the channel they use — fill and ink
     // are spoken for (a filled mark means "a fleet of yours", brass means "yours").
-    expect(GLYPH.roadsteadRadius).toBeLessThan(GLYPH.fleetDotRadius)
+    // Pin moved deliberately 2026-09-13 (owner row 90): the fleet's dot became a HULL, and its
+    // size is `shipHalfLength` (6.5 px from centre to bow). The property is the same — the roads
+    // are smaller than the fleet's own mark — measured against the mark that is drawn now.
+    expect(GLYPH.roadsteadRadius).toBeLessThan(GLYPH.shipHalfLength)
     expect(GLYPH.destinationRingRadius / GLYPH.roadsteadRadius).toBeGreaterThanOrEqual(4)
     // …and smaller than the quiet harbour mark at the tier both ramps are centred on, so a coast
     // full of roadsteads still reads as a coast of ports: 5.2 px across against 7.2.
@@ -176,8 +179,13 @@ test.describe('land reads as land at 390px', () => {
     // means anything.
     const ink = await page.evaluate(() => {
       const coast = document.querySelector('[data-testid="map-coastline"]')
+      // Pin moved deliberately 2026-09-13 (owner row 90): the coast STROKE is its own element
+      // now — `map-coast`, the outline with the inland borders dropped — because a country file's
+      // shared edges cannot be stroked on the same element as the body without drawing borders.
+      // The body's fill is still `map-coastline`; the stroke's token is measured where it is drawn.
+      const line = document.querySelector('[data-testid="map-coast"]')
       const sea = document.querySelector('[data-testid="map-sea"]')
-      if (!coast || !sea) return null
+      if (!coast || !line || !sea) return null
 
       const canvas = document.createElement('canvas')
       canvas.width = 1
@@ -204,7 +212,7 @@ test.describe('land reads as land at 390px', () => {
       return {
         sea: solidSea,
         land,
-        stroke: over(getComputedStyle(coast).stroke, solidSea),
+        stroke: over(getComputedStyle(line).stroke, solidSea),
         markOnLand: quiet ? over(getComputedStyle(quiet).stroke, land) : null,
       }
     })
