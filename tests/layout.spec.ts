@@ -843,17 +843,17 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
     }
     await trend.click()
     await expect(chart).toBeVisible()
+    // A RECORD THAT HAS NOT MOVED IS STILL A RECORD. A fresh world (CI's disposable one) has two or
+    // more slots of the same mid for every good, so the chart draws ONE y label there; asserting
+    // three would assert a world that has traded (docs/NO_SPAGHETTI.md's "proofs never assert
+    // ambient defaults", which is exactly how this test was first red). Three labels are required
+    // only of a record that moved; the axis, the marks and the fold are required of any record.
     const yLabels = await chart.locator('[data-testid="price-chart-y"]').count()
-    if (yLabels < 3) {
-      tried.push(`${name}: flat (${yLabels} label)`)
-      await trend.click()
-      await expect(chart).toHaveCount(0)
-      await tray.locator('[data-testid="tray-close"]').click()
-      await expect(tray).toHaveCount(0)
-      continue
-    }
+    const moved = yLabels >= 3
+    tried.push(`${name}: ${moved ? 'moved' : `flat (${yLabels} label)`}`)
     found = name
-    // THE AXES SAY WHAT WAS SERVED. Three y labels; `−Nh` on the left, `now` on the right.
+    expect(yLabels).toBeGreaterThanOrEqual(1)
+    // THE AXES SAY WHAT WAS SERVED. `−Nh` on the left, `now` on the right.
     // SVG <text> has no innerText; textContent is the label.
     const xs = await chart.locator('[data-testid="price-chart-x"]').allTextContents()
     expect(xs).toHaveLength(3)
@@ -870,6 +870,6 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
     await tray.locator('[data-testid="tray-close"]').click()
     await expect(tray).toHaveCount(0)
   }
-  expect(found, `no good on this ledger has a price record that moved — tried: ${tried.join('; ')}`).not.toBeNull()
+  expect(found, `no good on this ledger has a price record of two points or more — tried: ${tried.join('; ')}`).not.toBeNull()
   console.log(`PORT chart @${PHONE.width}px: opened on ${found} after [${tried.join('; ')}]`)
 })
