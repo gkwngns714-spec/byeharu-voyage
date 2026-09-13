@@ -1,4 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
+import { sheetBodyClass, sheetColumnClass } from './screenLayout'
 
 // THE SHEET — the one scrolling surface of a tab, and the end of the admin document.
 //
@@ -63,6 +64,7 @@ export function Sheet({
         data-pinned={pinned}
         className={[
           'sticky top-0 z-10 flex items-center justify-between gap-3 px-gutter pb-2 pt-4',
+          sheetColumnClass(),
           // AT REST THE TITLE STANDS ON THE WORLD; PINNED, IT IS A BAR. Measured on the gallery at
           // 390×844 (shots dark-1/light-1): an always-opaque header reads as a title bar even at
           // scrollTop 0, which is a header bar — the thing §3 rule 1 deletes — reintroduced by the
@@ -73,7 +75,9 @@ export function Sheet({
         <h1 className={pinned ? 'truncate text-t-body' : 'truncate text-t-title'}>{title}</h1>
         {trailing !== undefined && <div className="shrink-0">{trailing}</div>}
       </header>
-      <div className="px-gutter pb-8">{children}</div>
+      {/* THE READABLE COLUMN. On a phone it is the glass; from `lg` it is SHEET_REM at most with
+          the tray's space kept clear at its right — screenLayout.ts, "the wide glass". */}
+      <div className={sheetBodyClass()}>{children}</div>
     </div>
   )
 }

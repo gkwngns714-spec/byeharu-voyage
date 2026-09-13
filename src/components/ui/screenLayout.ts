@@ -8,65 +8,67 @@ export function screenBodyClass(wide = false): string {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE SPLIT — a list you work down, and a panel that watches you do it
+// THE WIDE GLASS — a column you read, and the tray beside it instead of over it
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// The predecessor of this idiom (`screenSplitClass()` / `screenRailClass()`) was deleted on
-// 2026-08-22 with no caller ever written, because it had been invented for a desktop layout nobody
-// had asked for. It comes back here in the shape of the screen that finally needed it — the owner,
-// 2026-08-22: *"When buy, i want all the trade goods on left side, and my fleet info on the right
-// side, showing how much room, how much negotiation can be done."* COMMAND's BUY composer is the
-// first caller and these three are written against it.
+// The app is built phone-first (390 px is the viewport every geometry test is pinned to) and until
+// 2026-09-13 it had NO rule for a wide window: every `Sheet` stretched to the glass, so on the
+// owner's 1,545-px window a Trade row was a name at the left edge, two price cells at the right
+// edge and a thousand pixels of nothing between. The owner: *"look. too much blank space."* The
+// same day, on the same screen: *"i showed you the pictures and this is not what i've asked for"*
+// — the reference (docs/QUAY_LEDGER.md §1) has the goods list on the LEFT and the basket with the
+// hold bar on the RIGHT, and the owner had already said so on 2026-08-22: *"When buy, i want all
+// the trade goods on left side, and my fleet info on the right side."* A `splitClass()` trio was
+// written for that and never called by any screen; it is deleted here, and the rule it was meant to
+// carry is these three numbers.
 //
-// ── WHY FLEX AND NOT GRID (the reasoning docs/CORE_REUSE.md:103 kept when it dropped the code) ──
-// A grid states both tracks in one place — `grid-cols-[1fr_20rem]` — which reads well and then
-// costs twice:
-//   * the rail's width becomes a magic number in the PARENT, so the rail can no longer decide how
-//     wide it wants to be, and a second split elsewhere has to restate it;
-//   * a grid track does not shrink below its content by default, so a wide child (a table, a long
-//     mono order line) silently pushes the whole grid past the viewport instead of scrolling
-//     inside its own pane. `min-w-0 flex-1` is the idiom that keeps that contained, and it belongs
-//     to the pane, not to the container.
-// Flex also collapses to one column with a single `flex-col` → `md:flex-row` switch, so the phone
-// layout is the DEFAULT and the split is the enhancement, which is the direction this app is built
-// in.
+// ── THE RULE ───────────────────────────────────────────────────────────────────────────────────
+// From `lg` (1024 px), a Sheet's content is a column of at most SHEET_REM, and a docked Tray is a
+// SIDE PANEL of TRAY_REM standing to the column's right with GAP_REM between — the pair centred on
+// the glass. Below `lg` nothing changes: the column is the glass and the tray rises from the bottom
+// edge, exactly as every phone test proves. One breakpoint, one pair of widths, and BOTH the Sheet
+// and the Tray read them from here, so the tray's left edge and the column's right edge cannot
+// drift apart.
 //
-// ── WHY `md` (768px) AND NOT `sm` ───────────────────────────────────────────────────────────────
-// The rail needs 288–320px to print a figure and its label without wrapping, and a market row on
-// the left needs ~360px to keep `buy · sell · %NBR` as three legible columns (ArgPickers.tsx's
-// `GoodFigures`). 320 + 16 + 360 = 696px of CONTENT, and the Screen body spends 48px on its own
-// padding. At `sm` (640px) the left pane would be ~290px and those three columns would wrap —
-// which is precisely the "crushed column" signature `tests/layout.spec.ts` fails a build over. So
-// the split opens at `md`, and everything narrower stays the single column that is already proven.
-//
-// ── THE RAIL IS INFORMATION, NEVER A CONTROL ────────────────────────────────────────────────────
-// `md:sticky` keeps the panel beside a long list, and a sticky element TALLER than the viewport
-// pins its top and leaves its foot unreachable. That is survivable for figures and would be a
-// straight violation of the reach law (CORE_REUSE 1.5, "an action may never live inside a region
-// that can scroll or clip it") for a button. So: no actions in the rail. Put them in the main pane,
-// which is never sticky, never capped and never scrolled.
+// ── WHY THE CLASSES ARE LITERAL STRINGS ────────────────────────────────────────────────────────
+// Tailwind scans source for class names and cannot see a name built at runtime from a number, so
+// the arbitrary values below are typed out. The numbers they encode are stated once, beside them,
+// and `tests/wide.layout.spec.ts` parses the strings and asserts the arithmetic — which is the
+// only way a literal class can be held to a constant.
 
-/**
- * The split container. One column on a phone; two, top-aligned, from `md` up.
- *
- * ── THE RAIL COMES FIRST IN THE DOM, AND THAT IS NOT AN ACCIDENT ───────────────────────────────
- * MEASURED: with COMMAND's BUY composer offering every good a port trades, the working pane is
- * 11,875px tall at 390px. A rail written after it in the DOM is therefore ELEVEN THOUSAND PIXELS
- * below the list it is meant to be read beside — which is the same defect as hiding it. So the
- * summary is written first (it reads first, on a phone and to a screen reader) and `md:order-last`
- * moves it to the right-hand side once there are two columns to have sides.
- */
-export function splitClass(): string {
-  return 'flex flex-col gap-4 md:flex-row md:items-start'
+/** The Sheet column's greatest width, in rem. 48 rem = 768 px: a Trade row keeps its name, mark,
+ *  tide bar and two cells legible without a gulf between them. */
+export const SHEET_REM = 48
+/** The side tray's width, in rem. 26 rem = 416 px: a quantity stepper, its chips and a two-column
+ *  figure row fit without wrapping. */
+export const TRAY_REM = 26
+/** Air between the column and the tray. */
+export const GAP_REM = 1.5
+/** The pair, centred: SHEET + GAP + TRAY. */
+export const PAIR_REM = SHEET_REM + GAP_REM + TRAY_REM
+
+/** The one media query the wide glass turns on. `lg` in Tailwind's scale; `useWide()` mirrors it. */
+export const WIDE_QUERY = '(min-width: 1024px)'
+
+/** The Sheet's content wrapper: full width on a phone; from `lg`, a centred block of PAIR_REM whose
+ *  right TRAY_REM + GAP_REM is left empty for the tray to stand in, so the readable column is
+ *  SHEET_REM at most and sits where the tray expects it. */
+export function sheetColumnClass(): string {
+  // 75.5rem = PAIR_REM · 27.5rem = TRAY_REM + GAP_REM
+  return 'lg:mx-auto lg:w-full lg:max-w-[75.5rem] lg:pr-[27.5rem]'
 }
 
-/** The working pane — the list, the pickers, every control. `min-w-0` so a wide child scrolls
- *  inside its own pane instead of widening the page (see the header). */
-export function splitMainClass(): string {
-  return 'min-w-0 flex-1'
+/** The Sheet's body — the column, padded. The header takes `sheetColumnClass()` on its own so the
+ *  title stands over the column it titles, not over the whole glass. */
+export function sheetBodyClass(): string {
+  return `px-gutter pb-8 ${sheetColumnClass()}`
 }
 
-/** The rail — figures only. Above the working pane on a phone, to its right and sticky from `md`. */
-export function splitRailClass(): string {
-  return 'w-full shrink-0 md:order-last md:sticky md:top-0 md:w-72 lg:w-80'
+/** The docked Tray from `lg`: a side panel between the status strip (top-8) and the nav
+ *  (bottom-14), TRAY_REM wide, its right edge where the centred pair's right edge is —
+ *  `max(0, 50% − PAIR_REM/2)` from the glass's right — so it stands exactly in the space
+ *  `sheetBodyClass` leaves. Square top corners, rounded on the side that faces the column. */
+export function trayDockWideClass(): string {
+  // 37.75rem = PAIR_REM / 2 · 26rem = TRAY_REM
+  return 'lg:inset-auto lg:top-8 lg:bottom-14 lg:right-[max(0px,calc(50%-37.75rem))] lg:w-[26rem] lg:h-auto lg:rounded-t-none lg:rounded-l-sheet'
 }
