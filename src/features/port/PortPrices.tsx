@@ -43,7 +43,7 @@ export function PortPrices({
   const portByCode = useWorld((s) => s.portByCode)
   const reaches = useWorld((s) => s.reaches)
   const [pick, setPick] = useState<TradePick | null>(null)
-  const points = usePortHistory(port.id, pick?.good.code ?? null)
+  const trend = usePortHistory(port.id, pick?.good.code ?? null)
 
   // Where she lies (or is bound), and the sailed distance from there to this quay — a figure,
   // never a passage ordered here.
@@ -67,7 +67,7 @@ export function PortPrices({
           </Note>
         }
       />
-      {pick && <PriceTray good={pick.good} points={points} passage={passage} onClose={() => setPick(null)} />}
+      {pick && <PriceTray good={pick.good} trend={trend} passage={passage} onClose={() => setPick(null)} />}
     </>
   )
 }

@@ -23,8 +23,11 @@
 // show (the fleet left, the city keeps no such house). A caller draws `view` when it has one, and
 // its waiting line only when `loading && !view` — the first ask.
 //
-// This is a VIEW read. A CEILING read (useBuyCapacity, useHaggleState) is deliberately not this:
-// a ceiling shown a beat late is the lie those hooks were written to remove, so they still wait.
+// This is a VIEW read. A CEILING read (useBuyCapacity) is deliberately not this: a ceiling shown a
+// beat late is the lie that hook was written to remove, so it still waits. `useHaggleState` joined
+// the view reads in slice 3 (2026-09-13): its figures are a conversation's standing — tries left,
+// the bargain held, the odds — and a thread that blanked on every 3-s beat was row 77's defect
+// again; the thread shows `loading` on the re-ask and never a blank.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'

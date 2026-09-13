@@ -771,6 +771,241 @@ test(`PORT: a line staged onto the basket docks the one tray at peek, moves noth
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+// PORT'S HAGGLE IS A THREAD, ON BOTH SIDES — it unfolds in place, moves nothing above it, and a
+// press adds the merchant's turn (owner row 76, slice 3; docs/QUAY_LEDGER.md §3 D, Appendix A)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ADDED 2026-09-13. The trade tray carries one `Haggle` row (`Haggle · 3 / 3 tries left · 45%`)
+// under the stepper on BOTH its faces. A press on the row unfolds the thread INSIDE the tray body:
+// the stake rows (Port fee, Price, Tries, Next try) and two buttons on the 44px floor — and nothing
+// at or above the row moves (the Trend row and the stepper are measured). `Haggle` asks the server
+// for one attempt and its answer lands as a turn in the server's own sentence, the folded figure
+// re-reads (`2 / 3 tries left`) without ever going blank, and the button now reads `Try again`.
+// Then the good is BOUGHT — one step of the book, the tray's own default — so its SELL cell comes
+// alive, and the same row stands on the SELL face and takes a press there too. The in-tab PGlite
+// world is disposable, so real attempts and a real buy are fine here.
+test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, moves nothing, and a press adds a turn`, async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(420_000)
+  test.skip(
+    !(await reachable(request, baseURL ?? '')),
+    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+  )
+  await page.goto('port')
+  await ready(page)
+  await page.waitForTimeout(1200)
+
+  const rows = page.locator('[data-testid="trade-row"]')
+  expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
+
+  // Press the first live BUY cell and remember whose row it is.
+  const pressed = await page.evaluate(() => {
+    const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) =>
+      /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()),
+    ) as HTMLButtonElement | undefined
+    const row = cell?.closest('[data-testid="trade-row"]') as HTMLElement | null
+    cell?.click()
+    return row ? (row.innerText || '').split('\n')[0].trim() : ''
+  })
+  expect(pressed, 'no live buy cell to press').not.toBe('')
+  const tray = page.locator('[data-testid="trade-tray"]')
+  await expect(tray).toBeVisible()
+  await expect(tray.locator('h2').first()).toHaveText(/· buy$/)
+
+  // textContent runs a Figure's value and unit together (two spans, no whitespace between), so
+  // the unit is matched with optional whitespace before it.
+  const TRIES = /(\d+) \/ (\d+)\s*tries left/
+  const threadOn = async (face: 'buy' | 'sell') => {
+    const row = tray.locator('[data-testid="haggle-row"]')
+    await expect(row, `no haggle row on the ${face} face`).toBeVisible({ timeout: 20_000 })
+    // The folded form: the label, the tries as a share of their whole, the odds as a percentage.
+    await expect(row).toHaveText(/Haggle[\s\S]*\d+ \/ \d+\s*tries left[\s\S]*\d+%/)
+    const foldedTries = TRIES.exec((await row.textContent()) ?? '')
+    expect(foldedTries).not.toBeNull()
+    const leftBefore = Number(foldedTries![1])
+    const max = Number(foldedTries![2])
+    expect(max).toBeGreaterThan(0)
+    expect(leftBefore).toBeGreaterThan(0)
+
+    // ROW 15 INSIDE THE TRAY: what stands ABOVE the haggle row — the Trend row, the stepper, the
+    // row itself — must be exactly where it was once the thread unfolds. Measured against the
+    // tray body's own scroll, not the glass: the click scrolls the row into view, and a scroll is
+    // not a restructure.
+    const above = () =>
+      page.evaluate(() => {
+        const scrollerOf = (el: Element) => {
+          let p = el.parentElement
+          while (p) {
+            if (/auto|scroll/.test(getComputedStyle(p).overflowY)) return p
+            p = p.parentElement
+          }
+          return document.scrollingElement
+        }
+        return ['trend-row', 'trade-tray-qty', 'haggle-row'].map((id) => {
+          const el = document.querySelector(`[data-testid="${id}"]`)
+          if (!el) return { id, top: -1, left: -1 }
+          const r = el.getBoundingClientRect()
+          return { id, top: Math.round(r.top + (scrollerOf(el)?.scrollTop ?? 0)), left: Math.round(r.left) }
+        })
+      })
+    // Let the tray settle first: the ceiling, the dry run and the cargo-space row all land after
+    // the first paint, and each of those is the tray's own row, not the thread's. The button
+    // carries the served figure once the dry run has answered.
+    const button = tray.locator('[data-testid="trade-tray-send"]')
+    await expect(button).toBeEnabled({ timeout: 20_000 })
+    await expect(button).toHaveText(/· [\d,]+ d\.$/, { timeout: 20_000 })
+    await page.waitForTimeout(600)
+    const before = await above()
+    expect(before.every((b) => b.top >= 0), 'a row above the thread was not found').toBe(true)
+    await row.click()
+    const thread = tray.locator('[data-testid="haggle-thread"]')
+    await expect(thread).toBeVisible()
+    await page.waitForTimeout(400)
+    expect(await above(), 'unfolding the haggle thread MOVED what stands above it').toEqual(before)
+
+    // The stake, every figure served: the port's fee, the price for the quantity on the button.
+    await expect(thread.locator('[data-testid="haggle-fee"]')).toHaveText(/\d+(\.\d)?%/)
+    await expect(thread.locator('[data-testid="haggle-price"]')).toHaveText(/\d[\d,]* d\. each/, { timeout: 20_000 })
+    await expect(thread.locator('[data-testid="haggle-odds"]')).toHaveText(/\d+%/)
+    // Both buttons on the reach floor.
+    const short = await thread.evaluate((el) =>
+      [...el.querySelectorAll('button')]
+        .map((b) => ({ text: (b.innerText || '').slice(0, 24), r: b.getBoundingClientRect() }))
+        .filter(({ r }) => r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44))
+        .map(({ text, r }) => `${text} ${Math.round(r.width)}×${Math.round(r.height)}`),
+    )
+    expect(short, 'a haggle button is under the 44px reach floor').toEqual([])
+    const press = thread.locator('[data-testid="haggle-press"]')
+    await expect(press).toHaveText(/^(Haggle|Try again)$/)
+    await expect(thread.locator('[data-testid="haggle-take"]')).toHaveText('Take it')
+
+    // A PRESS ADDS A TURN — the server's sentence — and the folded figure re-reads one try down
+    // without ever blanking (the row is present at every step).
+    const turnsBefore = await thread.locator('[data-testid="haggle-turn"]').count()
+    await press.click()
+    await expect(thread.locator('[data-testid="haggle-turn"]')).toHaveCount(turnsBefore + 1, { timeout: 20_000 })
+    const turn = (await thread.locator('[data-testid="haggle-turn"]').last().innerText()).trim()
+    expect(turn.length, 'the turn is not a sentence').toBeGreaterThan(20)
+    await expect(press).toHaveText('Try again')
+    await expect(row).toHaveText(new RegExp(`${leftBefore - 1} / ${max}\\s*tries left`), { timeout: 20_000 })
+    await expect(row).toBeVisible()
+    // `Take it` folds the thread and leaves the tray standing.
+    await thread.locator('[data-testid="haggle-take"]').click()
+    await expect(thread).toHaveCount(0)
+    await expect(row).toBeVisible()
+  }
+
+  await threadOn('buy')
+
+  // BUY the good — the tray's own default quantity, priced by the server — so it is on board.
+  const send = tray.locator('[data-testid="trade-tray-send"]')
+  await expect(send).toBeEnabled({ timeout: 20_000 })
+  await expect(send).toHaveText(/^Buy \d+ units? · [\d,]+ d\.$/)
+  await send.click()
+  await expect(tray).toHaveCount(0, { timeout: 30_000 })
+  const bought = rows.filter({ hasText: pressed }).first()
+  await expect(bought).toContainText(/\d+ units? on board/, { timeout: 20_000 })
+
+  // …and its SELL cell is alive: the same thread stands on the SELL face. (Found by innerText,
+  // as the cell tests above do — a cell's textContent runs "Sell" straight into its figure.)
+  const sold = await bought.evaluate((row) => {
+    const cell = [...row.querySelectorAll('button:enabled')].find((b) =>
+      /^sell\b/i.test(((b as HTMLElement).innerText || '').trim()),
+    ) as HTMLButtonElement | undefined
+    cell?.click()
+    return cell !== undefined
+  })
+  expect(sold, 'the bought good has no live SELL cell').toBe(true)
+  await expect(tray).toBeVisible()
+  await expect(tray.locator('h2').first()).toHaveText(/· sell$/)
+  await threadOn('sell')
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE TREND OPENS AS A CHART, AND CLOSES BACK TO THE SPARKLINE (owner row 76, slice 3)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ADDED 2026-09-13. The Trend row's folded form is the sparkline; a press unfolds the same served
+// line as `PriceChart` — at least three y labels (the served min, midpoint and max), an x axis in
+// hours before now (`−Nh … now`, DERIVED from the points and `slot_seconds`, never a literal), the
+// low · now · high legend — and a second press folds it back to the sparkline. A fresh in-tab
+// world carries two snapshots per (port, good) (measured 2026-09-13 on the applied chain: two
+// slots at every port), and a good whose two mids happen to agree draws a flat line with ONE label,
+// which is the honest answer for it; so this proof walks the rows for the first good whose record
+// MOVED, and requires that there is one.
+test(`PORT: the Trend row opens the price chart with an axis, and closes back to the sparkline`, async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(420_000)
+  test.skip(
+    !(await reachable(request, baseURL ?? '')),
+    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+  )
+  await page.goto('port')
+  await ready(page)
+  await page.waitForTimeout(1200)
+
+  const rows = page.locator('[data-testid="trade-row"]')
+  const n = await rows.count()
+  expect(n, 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
+  const tray = page.locator('[data-testid="trade-tray"]')
+  const trend = tray.locator('[data-testid="trend-row"]')
+  const chart = tray.locator('[data-testid="price-chart"]')
+
+  let found: string | null = null
+  const tried: string[] = []
+  for (let i = 0; i < Math.min(n, 12) && found === null; i++) {
+    const row = rows.nth(i)
+    const name = (await row.innerText()).split('\n')[0].trim()
+    await row.locator('button:enabled').first().click()
+    await expect(tray).toBeVisible()
+    await expect(trend).toBeVisible()
+    // No record yet, or a record of one point: no sparkline, nothing to unfold.
+    if ((await trend.locator('svg[role="img"]').count()) === 0) {
+      tried.push(`${name}: no history`)
+      await tray.locator('[data-testid="tray-close"]').click()
+      await expect(tray).toHaveCount(0)
+      continue
+    }
+    await trend.click()
+    await expect(chart).toBeVisible()
+    // A RECORD THAT HAS NOT MOVED IS STILL A RECORD. A fresh world (CI's disposable one) has two or
+    // more slots of the same mid for every good, so the chart draws ONE y label there; asserting
+    // three would assert a world that has traded (docs/NO_SPAGHETTI.md's "proofs never assert
+    // ambient defaults", which is exactly how this test was first red). Three labels are required
+    // only of a record that moved; the axis, the marks and the fold are required of any record.
+    const yLabels = await chart.locator('[data-testid="price-chart-y"]').count()
+    const moved = yLabels >= 3
+    tried.push(`${name}: ${moved ? 'moved' : `flat (${yLabels} label)`}`)
+    found = name
+    expect(yLabels).toBeGreaterThanOrEqual(1)
+    // THE AXES SAY WHAT WAS SERVED. `−Nh` on the left, `now` on the right.
+    // SVG <text> has no innerText; textContent is the label.
+    const xs = await chart.locator('[data-testid="price-chart-x"]').allTextContents()
+    expect(xs).toHaveLength(3)
+    expect(xs[0], `the left x label is "${xs[0]}", not hours before now`).toMatch(/^−\d+(\.\d)?h$/)
+    expect(xs[2]).toBe('now')
+    await expect(chart.locator('[data-testid="price-chart-low"]')).toHaveCount(1)
+    await expect(chart.locator('[data-testid="price-chart-high"]')).toHaveCount(1)
+    await expect(chart.locator('[data-testid="price-chart-now"]')).toHaveCount(1)
+    await expect(chart.locator('[data-testid="price-chart-legend"]')).toHaveText(/low[\s\S]*now[\s\S]*high/)
+    // And back: a second press folds it to the sparkline.
+    await trend.click()
+    await expect(chart).toHaveCount(0)
+    await expect(trend.locator('svg[role="img"]')).toHaveCount(1)
+    await tray.locator('[data-testid="tray-close"]').click()
+    await expect(tray).toHaveCount(0)
+  }
+  expect(found, `no good on this ledger has a price record of two points or more — tried: ${tried.join('; ')}`).not.toBeNull()
+  console.log(`PORT chart @${PHONE.width}px: opened on ${found} after [${tried.join('; ')}]`)
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
 // PORT'S STORAGE FACE — drawn like the trade board: a cell is the act, a press opens the one tray
 // with a stepper, nothing above the press moves, and the count on the button is the count moved
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
