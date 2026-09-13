@@ -38,7 +38,12 @@ server").
 3. **Haggle as a thread.** Short merchant turns templated from `world.haggle_state`; the stake
    written out — spread points, then the per-tun figure — attempts as pips, odds once, under 100.
    Buy and sell.
-4. **Phone-first, one column.** Ledger list + bottom tray; desktop docks the tray. Same components.
+4. **Phone-first, one column — and on a wide glass the basket IS the right-hand panel.** Ledger
+   list + bottom tray on a phone. From `lg` (`src/components/ui/screenLayout.ts`, 2026-09-13) the
+   Sheet is a 48-rem column and a docked Tray is a 26-rem side panel to its right; on PORT › Trade
+   that slot ALWAYS shows the basket (empty, with lines, or as the receipt), and a price press
+   puts the unfolded row in the same slot. Same components, one `Tray`, no desktop tree — this is
+   the reference's left/right split, which row 80 named as what slice 1 lacked.
 5. **Chart-ink on chalk.** The repo's tokens; gain/loss keep their semantic colours and are never
    the accent; tabular figures everywhere (`Figure`).
 
@@ -52,12 +57,18 @@ server").
   `Paid` avg/tun or "none aboard", the `Stepper` (gauge max = quay stock / aboard; server cap as the
   red tick with its binding word), tun-figure chips, HaggleRow on buy, ONE button whose label is
   the order (`Buy 80 t · 33,180`). Slice 2 adds `Add to manifest` beside it.
-* **C · The manifest** — the tray's other face: lines from either side, served totals (goods at
-  mid, market tax, spread after haggle, profit vs paid, net to purse, purse after), hold-after
-  drawn back onto the top gauge, one button `Trade N lines` — atomic.
+* **C · The basket** (`features/port/ManifestPanel.tsx`, built 2026-09-13) — the panel in the
+  tray's slot: the ship's cargo bar with the staged change washed on (from the served
+  `hold.free_after`), lines from either side (`good · units · d. each · signed total`), the totals
+  block once (Market tax · Port fee · Haggle saved · Profit vs bought at · Net), and ONE button
+  whose words are the basket's verb and served figure — `Buy 3 lines · 1,420 d.`, `Sell 2 lines ·
+  980 d.`, `Trade 3 lines · +440 d.` — atomic (`cmd.trade_basket`). Empty, it says so in one
+  sentence and still shows the cargo bar. Words per `docs/WORDS.md`: "basket", never "manifest",
+  in anything a player reads.
 * **D · Haggle, as a thread** — inside the tray for a haggle-able line; `Take N` / `Press on`.
-* **E · The receipt** — the settlement chit after the atomic trade: per-line settled figures,
-  tax, spread, haggle saved, profit vs paid, net, purse before → after, `Trading +N xp`.
+* **E · The receipt** (`ReceiptFace.tsx`) — the settlement after the atomic trade, in the SAME
+  slot: per-line settled figures, the same totals block, ducats before → after, `Trading +N xp`;
+  dismissed by one press, dropped by the next line staged, never shown on another board.
   No reputation line until a reputation authority exists.
 * **F · Contracts + the real chart** — third segment: what this port pays a premium for, by
   when, how much is already aboard; and the 48-slot price history drawn with an axis.
@@ -94,7 +105,7 @@ server").
 | slice | what | done when |
 |---|---|---|
 | **1** frontend only — `osn-quay-board` | fold MARKET into PORT (closes RESUME.md's open fold; one harbour source); ledger row replaces the tile grid; the tray becomes the unfolded row (B) | a single-good buy and sell on production round-trip through the new row via the same `cmd.issue`; MARKET is gone from `navTabs.ts` |
-| **2** migration 0083 — `osn-quay-manifest` | `cmd.preview_basket` + `cmd.trade_basket` composed from the existing primitives; `native` on `world.market`; manifest face; receipt | a 3-line mixed manifest lands atomically on production and its receipt equals the ledger's BOUGHT/SOLD rows; a refused line refuses the whole basket |
+| **2** migration 0083 — `osn-quay-manifest` (server, LIVE on production 2026-09-11) + `osn-manifest-panel` (frontend, 2026-09-13; supersedes the bottom-tray cut on PR #59) | `cmd.preview_basket` + `cmd.trade_basket` composed from the existing primitives; `native` on `world.market`; the basket as the right-hand panel at wide and the bottom tray on a phone; receipt | a 3-line mixed basket lands atomically on production and its receipt equals the ledger's BOUGHT/SOLD rows; a refused line refuses the whole basket |
 | **3** frontend (+ a migration only if `haggle_state` lacks fields) | haggle thread, both sides; chart with axis | a sell-side haggle narrows the spread on production; "haggle saved" is non-zero on a receipt |
 | **4** migration — contracts | `trade_contracts`, spawn/expiry on the day tick, premium through `trade_basket`; third segment | one contract fulfilled on production, premium as its own receipt line |
 

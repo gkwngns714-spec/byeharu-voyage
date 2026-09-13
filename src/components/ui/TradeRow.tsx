@@ -27,9 +27,13 @@ import type { MarketGood } from '../../lib/rpc'
 // press OPENS is the caller's affair; this row inserts nothing into the list it stands in, which
 // is what lets the ledger hold still under the finger.
 //
-// `native` IS NOT DRAWN. The payload does not carry it yet (QUAY_LEDGER §5 names it for slice 2);
-// a tag for a field the server has not served would be a placeholder, and there are none here.
-// The rarity mark IS drawn, mark only, when the tier is served — never as a text tag.
+// `native` IS A CAPTION WORD, NOT A TAG (0084, slice 2). The served flag — "this is grown here",
+// 0062's own word — is appended to the caption the row already carries (`· 40 units on board ·
+// native`), in the caption voice. Not a coloured tag: docs/UI_DIRECTION.md §4.4 gives rarity its
+// hues as a 10-px MARK only and never as text colour, and a second badge vocabulary beside it
+// would be a second one. A server predating 0084 sends no flag and the row draws nothing — never
+// a guess from origin_regions on this side of the wire. The rarity mark IS drawn, mark only, when
+// the tier is served — never as a text tag.
 
 export function TradeRow({
   good,
@@ -52,11 +56,20 @@ export function TradeRow({
   return (
     <Row
       label={
-        <span className="flex items-center gap-1.5 text-t-body">
-          <span className="truncate">{good.name}</span>
+        // THE CAPTION WRAPS UNDER THE NAME WHEN IT DOES NOT FIT, and never squeezes it: at 390px a
+        // row with cargo on board once read `◇ · 10 units on board` with the name truncated to
+        // nothing (seen in the basket proof's end frame, 2026-09-13). `flex-wrap` keeps a short
+        // caption on the name's line (`· native` fits), so no other row's height moves.
+        <span className="flex flex-wrap items-center gap-x-1.5 text-t-body">
+          <span className="max-w-full truncate">{good.name}</span>
           <RarityMark rarity={good.rarity} />
-          {aboard > 0 && (
-            <span className="whitespace-nowrap text-t-caption text-ink-faint">{`· ${formatUnits(aboard)} on board`}</span>
+          {(aboard > 0 || good.native === true) && (
+            <span className="text-t-caption text-ink-faint">
+              {[aboard > 0 ? `${formatUnits(aboard)} on board` : null, good.native === true ? 'native' : null]
+                .filter(Boolean)
+                .map((w) => `· ${w}`)
+                .join(' ')}
+            </span>
           )}
         </span>
       }

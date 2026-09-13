@@ -51,6 +51,9 @@ export function useTrade(
   qty: number | null,
   /** Called once the order is issued: the tray closes, the pick is cleared. */
   onDone: () => void,
+  /** THE BASKET'S DOOR (slice 2): stage this line for the chosen quantity instead of issuing it.
+   *  Given by a quay with a basket; absent, the tray draws no `Add to basket`. */
+  onStage?: (qty: number) => void,
 ): TradeControls {
   const issue = useWorld((s) => s.issue)
   // A SELECTOR RETURNS A SERVED REFERENCE, never a fresh literal: `?? []` builds a new array on
@@ -135,5 +138,8 @@ export function useTrade(
 
   const paid = good ? paidPerTun(fleet, good.code) : null
 
-  return { capacity, step, act: { send, sending, ready, total, refusal, paid, preview, previewLoading } }
+  // The same quantity `send` would issue, staged instead. The tray gates both on one condition.
+  const stage = onStage ? () => onStage(n) : undefined
+
+  return { capacity, step, act: { send, stage, sending, ready, total, refusal, paid, preview, previewLoading } }
 }

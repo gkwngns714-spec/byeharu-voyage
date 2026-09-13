@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Bar, Row, Sheet } from '../../components/ui'
-import { formatOfTotal, formatPct, formatVoyageDays } from '../../lib/format'
+import { Bar, CargoBar, Row, Sheet } from '../../components/ui'
+import { formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView } from '../../lib/rpc'
@@ -133,14 +133,9 @@ function FleetRow({
           read exactly is a mood ring, and this is a ledger. */}
       <span className="mt-1 flex items-center gap-3 text-t-caption text-ink-faint" data-testid="fleet-row-bars">
         <span className="shrink-0 tabular-nums">{formatVoyageDays(fleet.endurance_days)} of supplies</span>
-        <span className="shrink-0">cargo</span>
-        <Bar
-          pct={total > 0 ? (used / total) * 100 : 0}
-          tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}
-          label={`cargo, ${formatOfTotal(used, total)} tons`}
-          figure={<span className="tabular-nums">{formatOfTotal(used, total)} tons</span>}
-          className="min-w-0 flex-1"
-        />
+        {/* ONE cargo gauge for the game (CargoBar): the basket panel on PORT draws the same one
+            with its staged change washed on. */}
+        <CargoBar used={used} total={total} free={fleet.free_hold} className="min-w-0 flex-1" />
         {/* §4.4: a hull that is merely sound is NEUTRAL — green is for gain, and a whole fleet
             painted green spends the one colour that means "cheap" on a hull that is fine. */}
         <span className="shrink-0">hull</span>

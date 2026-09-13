@@ -46,12 +46,17 @@ export { Row, type RowTone } from './Row'
 
 // 5. FIGURE — value + unit, tabular, in three of the six type steps. Every number in the game.
 export { Figure, type FigureSize, type FigureTone } from './Figure'
+//    The tone a SIGNED figure takes — gain, loss, or plain ink at zero. One rule for every delta.
+export { deltaTone } from './deltaTone'
 
 // 6. TILE — the selectable block, and TileField, the CSS grid it stands in.
 export { Tile, TileField, type TileState } from './Tile'
 
 // 7. BAR — one proportion, 4px, continuous or countable. Meter + Gauge + stockBar + pips, folded.
 export { Bar, type BarTone } from './Bar'
+//    THE CARGO BAR — `51 / 60 tons` with a staged basket washed on. One recipe for FLEETS and the
+//    basket panel (PR #59 review SHOULD 4c: it had been hand-written twice).
+export { CargoBar } from './CargoBar'
 
 // 8. CHIP / SEGMENTED — one token in a set; one set of faces.
 export { Chip, Segmented, type SegmentSpec } from './Chip'
@@ -108,6 +113,10 @@ export { useReaskAtEdge } from './reaskAtEdge'
 // The price LINE (0013 gave the server a memory to draw one from). §5 names it `Bar.trend`
 // eventually; the fold waits for the screen that needs both in one place.
 export { Sparkline, type SparkTone } from './Sparkline'
+// THE ONE READING OF "IS THIS A WIDE GLASS?" (screenLayout.ts). The Tray reads it to stand as a
+// side panel; a screen reads it when what a tray MEANS differs by glass — the basket panel is
+// permanent beside the column and puts itself away only on a phone (ManifestPanel.tsx).
+export { useWide } from './useWide'
 // The one rendering of a good's SERVED rarity tier (0032): a colour token AND a shape per tier,
 // so the tier survives a colourblind player and a greyscale screenshot. §5 keeps the MARK.
 export { RarityMark } from './Rarity'

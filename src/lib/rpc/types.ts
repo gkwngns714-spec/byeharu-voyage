@@ -468,6 +468,12 @@ export interface MarketGood {
    * E_UNAVAILABLE. Optional for the serve-order reason `rarity` is.
    */
   offered?: boolean
+  /**
+   * 0084 — IS THIS GOOD GROWN HERE? 0062's own word: the port's region is among the good's
+   * `origin_regions`. A fact about the row, served, so the client never joins `goods` to `regions`
+   * to say it. Optional: a server predating 0084 says nothing and the row draws nothing.
+   */
+  native?: boolean
 }
 
 /**
@@ -891,6 +897,89 @@ export interface PreviewResult {
   immediate?: boolean
   /** The fleet is at sea, so the order is queueable rather than executable now. */
   queued?: boolean
+}
+
+// ── the manifest (0083) ────────────────────────────────────────────────────────────────────────
+//
+// SEVERAL LINES AT ONE QUAY, LANDING TOGETHER OR NOT AT ALL, receipted as one. `cmd.preview_basket`
+// runs the real verbs and rolls them back; `cmd.trade_basket` commits them inside one savepoint.
+// Every figure below is READ from the server's leaves inside that transaction — the purse after,
+// the hold after, the trading points — never summed on this side of the wire. Numerics may arrive
+// as numbers or as strings by transport (lib/json.ts), so `readManifestReceipt` (./manifest.ts)
+// normalises them ONCE at the boundary and every caller reads numbers.
+
+/** One line of a manifest as the CLIENT stages it: an exact `goods.code`, whole tuns. */
+export interface ManifestLine {
+  side: 'buy' | 'sell'
+  good: string
+  qty: number
+}
+
+/** One line as the server EXECUTED it. `index` is the line's position in the input array; the
+ *  array itself comes back in execution order (sells first, then buys). */
+export interface ManifestReceiptLine {
+  index: number
+  side: 'buy' | 'sell'
+  good: string
+  name: string
+  qty: number
+  /** What the purse moved by for this line — the ONLY figure it moved by. */
+  total: number
+  avg_price: number
+  /** `world.quote`'s breakdown of `total`: at mid, the tax, the quay's cut, what the bargain saved. */
+  mid_total: number
+  tax_total: number
+  spread_total: number
+  haggle_saved: number
+  concession_spent: number
+  /** A sale's cost basis per tun, its cost and its profit (0081); null when not on record, and
+   *  always null on a buy. */
+  basis: number | null
+  cost: number | null
+  profit: number | null
+}
+
+export interface ManifestReceipt {
+  ok: true
+  kind: 'manifest'
+  port: string
+  fleet: string
+  game_day: number
+  /** ISO timestamp. */
+  at: string
+  lines: ManifestReceiptLine[]
+  totals: {
+    goods_at_mid: number
+    tax: number
+    spread: number
+    haggle_saved: number
+    /** Null when any sold line's basis was not on record. */
+    profit: number | null
+    bought: number
+    sold: number
+    /** `sold − bought` — what the purse moved by, signed. */
+    net: number
+  }
+  /** READ back from `players.ducats`, before and after. */
+  purse: { before: number; after: number }
+  /** `public.fleet_free_hold` before and after; `tuns_delta` is what the hold took ON (negative
+   *  when she lightened). */
+  hold: { free_before: number; free_after: number; tuns_delta: number }
+  trading: {
+    points_before: number
+    points_after: number
+    delta: number
+    level_before: number
+    level_after: number
+    turnover_after: number
+  }
+  /** Present on a COMMITTED receipt: the fleet's version after the bump. Absent on a preview. */
+  version?: number
+}
+
+export interface ManifestPreview {
+  ok: true
+  estimate: ManifestReceipt
 }
 
 /**

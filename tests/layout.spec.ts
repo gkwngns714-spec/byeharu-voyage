@@ -529,3 +529,110 @@ test(`PORT: the port field is on the sheet, and a harbour with nobody alongside 
   await page.locator('[data-testid="port-field"] ~ button[aria-label="Clear"]').click()
   await expect(field).toHaveValue(home)
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// PORT'S BASKET ON A PHONE — a line staged instead of traded; one tray; nothing above the press
+// moves; the basket lands as a receipt and the world is read back
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ADDED 2026-09-13 with slice 2 of the Quay Ledger (docs/QUAY_LEDGER.md §3 C/E, migration 0083;
+// owner rows 76 and 80). A price cell's tray carries `Add to basket` beside its one button.
+// Pressing it closes the pick and docks the BASKET at PEEK — the title is the whole basket in one
+// line — and nothing at or above the pressed row moves (row 15, the same measurement as the trade
+// test). Every control in the basket clears the 44px floor. Dragged to half, the one button lands
+// the basket through cmd.trade_basket and the same tray turns over to the RECEIPT, whose rows are
+// the server's own settled figures; the ledger row of the good then says what is ON BOARD, which
+// proves the world was read back and not patched (PR #59 review SHOULD 8). The in-tab PGlite
+// world is disposable, so a real trade here is fine.
+test(`PORT: a line staged onto the basket docks the one tray at peek, moves nothing, and lands as a receipt`, async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(420_000)
+  test.skip(
+    !(await reachable(request, baseURL ?? '')),
+    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+  )
+  await page.goto('port')
+  await ready(page)
+  await page.waitForTimeout(1200)
+
+  const rows = page.locator('[data-testid="trade-row"]')
+  expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
+  // On a phone an EMPTY basket docks nothing: there is nothing to say.
+  await expect(page.locator('[data-testid="basket-panel"]')).toHaveCount(0)
+
+  const before = await page.evaluate(MEASURE_OFFSETS, 'trade-row')
+  // Press the first live BUY cell and remember whose row it is; the trade tray opens with
+  // `Add to basket` beside its button.
+  const pressed = await page.evaluate(() => {
+    const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) =>
+      /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()),
+    ) as HTMLButtonElement | undefined
+    const row = cell?.closest('[data-testid="trade-row"]') as HTMLElement | null
+    cell?.click()
+    return row ? (row.innerText || '').split('\n')[0].trim() : ''
+  })
+  expect(pressed, 'no live buy cell to press').not.toBe('')
+  const stage = page.locator('[data-testid="trade-tray-stage"]')
+  await expect(stage).toBeVisible()
+  // The dry run must price the quantity first — the stage button is disabled until the act is ready.
+  await expect(stage).toBeEnabled({ timeout: 20_000 })
+  await stage.click()
+
+  // ONE tray: the pick is gone and the basket stands in its place, at PEEK, its title the line.
+  await expect(page.locator('[data-testid="trade-tray"]')).toHaveCount(0)
+  const basket = page.locator('[data-testid="basket-panel"]')
+  await expect(basket).toBeVisible()
+  expect(await basket.getAttribute('data-tray-detent')).toBe('peek')
+  await expect(basket.locator('h2')).toHaveText(/^Buy 1 line/)
+
+  // Row 15: staging moved nothing in the ledger.
+  await page.waitForTimeout(600)
+  const after = await page.evaluate(MEASURE_OFFSETS, 'trade-row')
+  expect(after.length, 'the ledger unmounted its goods when a line was staged').toBe(before.length)
+  expect(
+    before.map((b, i) => ({ b, a: after[i] })).filter(({ b, a }) => a.top !== b.top || a.left !== b.left).length,
+    'staging a line MOVED the ledger — the basket is `fixed` and inserts nothing',
+  ).toBe(0)
+
+  // Up to half: the cargo bar, the line, the served totals and the one button. Every control
+  // clears the floor. The button carries the served figure and stays enabled across the world's
+  // 3-second re-read (PR #59 MUST-FIX 1): it is checked, then checked again after a beat.
+  await basket.locator('button[aria-label="Resize"]').focus()
+  await page.keyboard.press('ArrowUp')
+  await expect(basket).toHaveAttribute('data-tray-detent', 'half')
+  await expect(basket.locator('[data-testid="cargo-bar"]')).toBeVisible()
+  await expect(basket.locator('[data-testid="basket-line"]')).toHaveCount(1)
+  const send = basket.locator('[data-testid="basket-send"]')
+  await expect(send, 'the basket was never priced — cmd.preview_basket did not answer').toBeEnabled({ timeout: 20_000 })
+  await expect(send).toHaveText(/^Buy 1 line · [\d,]+ d\.$/)
+  expect(await basket.locator('[data-testid="basket-total"]').count(), 'no served totals rows').toBeGreaterThanOrEqual(3)
+  await page.waitForTimeout(3_500)
+  await expect(send, 'the button went dead on the world\'s re-read — the estimate was thrown away').toBeEnabled()
+  await expect(send).toHaveText(/^Buy 1 line · [\d,]+ d\.$/)
+  const short = await basket.evaluate((el) =>
+    [...el.querySelectorAll('button')]
+      .map((b) => ({ text: (b.innerText || b.getAttribute('aria-label') || '').slice(0, 24), r: b.getBoundingClientRect() }))
+      .filter(({ r }) => r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44))
+      .map(({ text, r }) => `${text} ${Math.round(r.width)}×${Math.round(r.height)}`),
+  )
+  expect(short, 'a control in the basket is under the 44px reach floor').toEqual([])
+  // The staged units are drawn back onto the cargo bar as a wash.
+  await expect(basket.locator('[data-testid="cargo-bar"] [data-bar-pending]')).toHaveCount(1)
+
+  // Trade it. The same tray turns over to the receipt: the settled line, tax, fee, net, ducats,
+  // trading — the server's own figures, at least five rows of them — dismissed by ONE press.
+  await send.click()
+  const receipt = page.locator('[data-testid="receipt-panel"]')
+  await expect(receipt).toBeVisible({ timeout: 30_000 })
+  await expect(receipt.locator('h2')).toHaveText(/^Traded · \d\d:\d\d$/)
+  expect(await receipt.locator('[data-testid="receipt-row"]').count()).toBeGreaterThanOrEqual(5)
+  await expect(page.locator('[data-testid="basket-panel"]')).toHaveCount(0)
+  // …and the world was READ BACK: the pressed good's own row now says what is on board.
+  await expect(rows.filter({ hasText: pressed }).first()).toContainText(/\d units? on board/, { timeout: 20_000 })
+  await receipt.locator('[data-testid="receipt-done"]').click()
+  await expect(receipt).toHaveCount(0)
+  expect(await rows.count()).toBe(before.length)
+})

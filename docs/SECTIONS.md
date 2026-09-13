@@ -151,6 +151,26 @@ trays draw (Trend, Range) went DOWN a layer to `src/components/ui/PriceRows.tsx`
 not import a screen, so the shared rows moved rather than being copied, which is rule 3 below at
 work. The good is one `TradeRow` (components/ui) on both faces of the fold.
 
+**The basket (2026-09-13, owner rows 76 and 80, slice 2 frontend over migration 0083) — who owns
+what.** The staged lines are a CHOICE, so they live in `src/store/manifest.ts` beside the harbour
+(not persisted: a basket is priced against a market that steps), and the receipt lives there too,
+keyed to the (fleet, port) it was settled at. The one reading of `cmd.preview_basket` is
+`src/live/useManifestPreview.ts`, which is a one-line doorway onto `useServedRead` — the basket
+keeps its last estimate while the world's 3-second re-read is on the wire, the same rule the
+shed, the inn, the workshop and the yard read by. The one post-trade read for both trading verbs
+is worldStore's `afterTrade`, and `issueManifest` is the door. The receipt's numerics are
+normalised ONCE at the boundary in `src/lib/rpc/manifest.ts` (`readManifestReceipt`), and the
+sign of a line (`lineDelta`) is spelt there once for both faces; `Refusal.line` (result.ts) is the
+server's word for which input line refused. The faces are PORT's: `features/port/ManifestPanel.tsx`
+(the one panel — empty, lines, receipt — that stands in the wide glass's side slot and rides the
+bottom Tray on a phone), `ManifestTotals.tsx` (the totals block, spelt once for the basket and
+the receipt), `ReceiptFace.tsx` (the chit's line rows). Which tray stands is ONE state in
+`PortTrade.tsx` (`slot`: basket · supplies · pick · none), never two booleans. What went DOWN a
+layer because two callers wanted it: `deltaTone` (components/ui — the sign of a figure, spelt once
+for TradeTray, the basket and the receipt), `CargoBar` (components/ui — the `51 / 60 tons` gauge
+FLEETS draws and the basket washes its staged change onto), `Bar.pending` (the wash). `native` on
+a ledger row is the served 0084 flag as a caption word.
+
 ### What the spec checks, as of 2026-08-23
 
 Every rule below was proved to bite by breaking it on purpose and watching it go red. A guard nobody
