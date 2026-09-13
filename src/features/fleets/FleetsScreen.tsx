@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Bar, CargoBar, Row, Sheet } from '../../components/ui'
 import { formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
@@ -6,7 +6,7 @@ import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView } from '../../lib/rpc'
 import { fleetHoldTotal, fleetHoldUsed, fleetStatusTone, worstHullFraction } from '../../domain/fleet'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
-import { FleetTray } from './FleetTray'
+import { FleetFold } from './FleetFold'
 import { fleetDue, fleetWhere } from './fleetLine'
 
 // FLEETS — what you own, one row each, redrawn to docs/UI_DIRECTION.md §6 (§7 step 7).
@@ -18,7 +18,21 @@ import { fleetDue, fleetWhere } from './fleetLine'
 // printed "Swipe the table for the rest." Plus `1/2 fleets · 1/8 ships` in the header, which RANK
 // also printed. Now a fleet is one `Row` — status mark, name, where she is or where she is bound
 // and when, and one caption line of the three figures that decide the next order: stores, hold,
-// hull. Tapping the row opens her in a `Tray` (FleetTray.tsx); nothing on the list moves.
+// hull.
+//
+// ── PRESSING THE ROW UNFOLDS HER UNDER IT (owner row 89, 2026-09-13) ──────────────────────────
+// "fleets, i want to be folded not creating a new pop up page when clicking a ship/fleet. when
+// folded, ships cargo supplies should be in one page with three columns." The docked tray
+// (FleetTray.tsx, deleted) is gone: a press mounts `FleetFold` IMMEDIATELY AFTER the pressed row —
+// ships, cargo and supplies together, three columns on a wide glass, stacked on a phone — and a
+// second press folds it. The row and everything above it stay where they were; what is below
+// moves down, which is what an unfold is (rows 6, 15, 25, 28, 45).
+//
+// ANY NUMBER OF FLEETS MAY STAND UNFOLDED, and that is the rule deciding it, not a preference: if
+// only one could, pressing a row BELOW an open one would fold the open one and move the pressed
+// row up under the finger — the restructure-on-press the owner has refused three times. A press
+// therefore only ever adds or removes the region directly under its own row. The open set is by
+// ID, not by reference, because the store hands out a new FleetView every half minute.
 //
 // ── WHAT WENT, AND WHY ─────────────────────────────────────────────────────────────────────────
 // The header counts (limits are not assets; a refusal says so when one bites). The ≥640px table
@@ -42,10 +56,10 @@ export function FleetsScreen() {
   const snapshot = useWorld((s) => s.snapshot)
 
   if (phase === 'failed') {
-    return <WorldFailed eyebrow="Assets" title="Fleets" refusal={fatal} />
+    return <WorldFailed title="Fleets" refusal={fatal} />
   }
   if (phase !== 'ready' || !snapshot) {
-    return <WorldLoading eyebrow="Assets" title="Fleets" subtitle="Your ships, and how they are doing." panels={3} />
+    return <WorldLoading title="Fleets" />
   }
   return <FleetsBody />
 }
@@ -54,11 +68,15 @@ function FleetsBody() {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const { nowMs } = useShellState()
-  // WHICH FLEET IS OPEN, BY ID — not by reference. The store re-reads the world every half minute
-  // and hands out a new FleetView each time; looking her up by id on every render is what keeps
-  // the open tray reading the live fleet rather than the one that was tapped.
-  const [openId, setOpenId] = useState<string | null>(null)
-  const open = openId ? (fleets.find((f) => f.id === openId) ?? null) : null
+  // WHICH FLEETS ARE UNFOLDED, BY ID (see the header). A new Set on every toggle, because React
+  // compares state by reference and a mutated Set would not re-render.
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(() => new Set())
+  const toggle = (id: string) =>
+    setUnfolded((was) => {
+      const next = new Set(was)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
   // The one authority for code → name (worldStore.portNameOf).
   const portName = (code: string | null) => (code ? portNameOf(portByCode, code) : null)
 
@@ -67,18 +85,25 @@ function FleetsBody() {
       {fleets.length === 0 ? (
         <Row label="No fleets yet." tone="muted" hairline={false} />
       ) : (
-        fleets.map((fleet, i) => (
-          <FleetRow
-            key={fleet.id}
-            fleet={fleet}
-            where={[fleetWhere(fleet, portName), fleetDue(fleet, nowMs)].filter(Boolean).join(' · ')}
-            last={i === fleets.length - 1}
-            onOpen={() => setOpenId(fleet.id)}
-          />
-        ))
+        fleets.map((fleet, i) => {
+          const open = unfolded.has(fleet.id)
+          return (
+            <Fragment key={fleet.id}>
+              <FleetRow
+                fleet={fleet}
+                where={[fleetWhere(fleet, portName), fleetDue(fleet, nowMs)].filter(Boolean).join(' · ')}
+                open={open}
+                /* The hairline does not depend on the fold: MEASURED on the first run of
+                   tests/layout.spec.ts — giving the last row a hairline when it opened grew its
+                   box from 58 to 59 px, which is the row moving under the finger. */
+                last={i === fleets.length - 1}
+                onToggle={() => toggle(fleet.id)}
+              />
+              {open && <FleetFold fleet={fleet} />}
+            </Fragment>
+          )
+        })
       )}
-
-      {open && <FleetTray fleet={open} onClose={() => setOpenId(null)} />}
     </Sheet>
   )
 }
@@ -96,14 +121,17 @@ const MARK: Record<ReturnType<typeof fleetStatusTone>, string> = {
 function FleetRow({
   fleet,
   where,
+  open,
   last,
-  onOpen,
+  onToggle,
 }: {
   fleet: FleetView
   /** `Lisbon`, `to Cádiz · 1.2 d`, `Lisbon · 2 h` — fleetLine.ts's words, joined by the caller. */
   where: string
+  /** Unfolded under this row. The row reads `accent` — §4.4: gold is "selected, yours". */
+  open: boolean
   last: boolean
-  onOpen: () => void
+  onToggle: () => void
 }) {
   const used = fleetHoldUsed(fleet)
   const total = fleetHoldTotal(fleet)
@@ -123,7 +151,8 @@ function FleetRow({
         </span>
       }
       chevron
-      onClick={onOpen}
+      tone={open ? 'accent' : 'default'}
+      onClick={onToggle}
       hairline={!last}
       data-testid="fleet-row"
     >

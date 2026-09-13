@@ -88,7 +88,7 @@ export { Nav, type NavItem } from './Nav'
 
 //     TRADE ROW — a good with its two prices as its two acts, and the tide inside its range.
 //     Replaced TRADE TILE on 2026-09-11 (one row per good; the 2026-08-26 grid rule is reversed).
-export { TradeRow } from './TradeRow'
+export { PriceCell, TradeRow } from './TradeRow'
 //     PRICE ROWS — Trend, Range and In stock, the rows under a good wherever it is unfolded; the
 //     Trend row folds between the Sparkline and the PriceChart. `PriceTrend` is the shape the
 //     history hook hands both trays (points + the served cadence).

@@ -69,6 +69,43 @@ by PID afterwards. **State: BUILT on PR #72 — NOT merged, NOT driven on produc
 receipt) waits on the canary drive after merge. Slice 4 (contracts) is untouched.
 
 ---
+## 2026-09-13 — FLEETS unfolds under the row instead of opening a tray (row 89, built, not merged)
+
+**The owner:** *"fleets, i want to be folded not creating a new pop up page when clicking a
+ship/fleet. when folded, ships cargo supplies should be in one page with three columns."* FLEETS
+had been rows + a docked `FleetTray` with three faces behind a `Segmented` control since §7 step 7 —
+a fleet's detail was a pop-up, and only one face of it at a time.
+
+**What it is now.** A press on a fleet row mounts `src/features/fleets/FleetFold.tsx` immediately
+after that row: the voyage row while there is one, then Ships, Cargo and Supplies as three
+`SheetSection`s — side by side from `lg` (a three-column grid inside the 48 rem column of the wide
+glass), stacked in that order on a phone — and `Command <fleet>` as a button at the foot, in flow.
+The three faces' content is unchanged (`FleetShips`, `FleetCargo`, `FleetStores`); only the
+doorway moved. The Supplies column keeps the keep-level stepper, and the keep button appears in
+that column only when the stepper differs from what the server holds. A second press folds it.
+`FleetTray.tsx` is deleted, and with it FLEETS' only use of `Segmented`.
+
+**Two decisions, and why.** (1) A plain region, not `Tray mode="inline"`: the inline tray is in
+flow, which is the half of the rule that matters, but it still carries a detent ladder, a drag
+handle, a ✕, an inner scroll box and a pinned action — none of which an unfold wants. An unfold is
+as tall as what it holds and closes by pressing the row it hangs from. (2) Any number of fleets may
+stand unfolded, and that is the owner's own rule deciding it rather than a preference: with
+one-at-a-time, pressing a row BELOW an open one folds the open one and moves the pressed row up
+under the finger — restructure-on-press, refused three times (rows 6, 15, 25, 28, 45). A press
+therefore only ever adds or removes the region directly under its own row.
+
+**What many-at-once exposed.** `FleetStores` read the store's one last `refusal`; with two fleets
+unfolded, a keep refused on one would have printed under the other's stepper too. The refusal
+belongs to the act: `useStandingOrder.keep` now takes the refusal the verb left in the store and
+keeps it for its own fold, and dismissing clears both. The face reads nothing.
+
+**Proved.** `tests/layout.spec.ts` at 390×844: the fold's top edge is the pressed row's bottom edge,
+the row and the sheet title have identical boxes before and after, the three sections stack in
+order inside the sheet, every control clears 44 px, one step on the stepper shows `Keep 1 day` and
+pressing it commits (the button goes once the server holds the level), and a second press leaves
+no `fleet-fold` in the DOM. `tests/wide.layout.spec.ts` at 1440×900: three boxes whose x ranges do
+not overlap, tops within 2 px, all inside the row's own column, no tray standing, and a second
+press folds. Words: `tests/words.spec.ts` green. **Not merged, not on production.**
 
 ## 2026-09-13 — Three owner complaints in one sitting: the flicker, the words, the blank space (rows 77–80), and London's ring (row 78, built, not deployed)
 

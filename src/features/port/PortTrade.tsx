@@ -204,6 +204,7 @@ export function PortTrade({
           goods={goods}
           preview={preview}
           onEdit={edit}
+          onBuy={(good) => open(good, 'buy')}
           onSell={(good) => open(good, 'sell')}
           onClose={() => setSlot({ kind: 'none' })}
         />
