@@ -4,7 +4,7 @@ import { OrderCheck } from './orderCheck'
 import type { StepOrder } from './useStepOrder'
 import { fleetCrew, fleetStores, worstHullFraction } from '../../domain/fleet'
 import { enumNaming } from '../../domain/order'
-import { buildingTier, hasBuilding } from '../../domain/port'
+import { hasBuilding } from '../../domain/port'
 import { formatInt, formatPct, formatVoyageDays } from '../../lib/format'
 import type { FleetView, SnapshotPort } from '../../lib/rpc'
 
@@ -175,7 +175,7 @@ function boundOf(name: string, fleet: FleetView): Bound {
   }
   if (name === 'to_pct') {
     const now = Math.round(worstHullFraction(fleet) * 100)
-    return { min: Math.min(now + 1, 100), max: 100, step: 5, unit: '%', label: 'repair to', empty: 'All ships are at full hull.' }
+    return { min: Math.min(now + 1, 100), max: 100, step: 5, unit: '%', label: 'repair to', empty: 'No ship is damaged.' }
   }
   // days — a floor of 0, not 1: nought days is FULL, and a floor of 1 would put "fill up"
   // out of reach of `−` the moment a day count had been chosen.
@@ -200,11 +200,12 @@ function Reading({ fleet, port, verb }: { fleet: FleetView; port: SnapshotPort |
     const yard = port && hasBuilding(port, 'shipyard')
     return (
       <>
-        <Row label="Hull (worst ship)" value={<Figure value={formatPct(worst / 100, 0)} tone={worst < 50 ? 'danger' : 'ink'} size="figure" />} />
+        {/* Row 86: damage TAKEN, as PortShipyard prints it — `13% damaged` is a reading; `87%` was a quiz. */}
+        <Row label="Damage" value={<Figure value={formatPct(1 - worst / 100, 0)} unit="damaged" tone={worst < 50 ? 'danger' : 'ink'} size="figure" />} />
         <Row
-          label="Shipyard"
+          label="Repair here"
           tone={yard ? 'default' : 'muted'}
-          value={port ? (yard ? `Level ${buildingTier(port, 'shipyard')}` : 'none here') : 'at sea'}
+          value={port ? (yard ? 'yes' : 'no repair here') : 'at sea'}
           hairline={false}
         />
       </>
