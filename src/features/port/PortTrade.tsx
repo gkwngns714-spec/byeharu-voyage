@@ -6,6 +6,7 @@ import { StepQuestion } from './StepQuestion'
 import { useStepOrder } from './useStepOrder'
 import { fleetCargoByCode } from '../../domain/fleet'
 import { usePortHistory } from '../../live/usePortHistory'
+import { useWorld } from '../../live/worldStore'
 import { useTrade } from '../../live/useTrade'
 import { fold, foldedMatch } from '../../lib/text'
 import { formatVoyageDays } from '../../lib/format'
@@ -65,6 +66,8 @@ export function PortTrade({
   const [stores, setStores] = useState(false)
 
   const history = usePortHistory(port.id, pick?.good.code ?? null)
+  // A unit's bulk is a catalogue fact; the market row does not carry it, the snapshot does.
+  const goodByCode = useWorld((s) => s.goodByCode)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
   // THE TEXT FILTER is this face's chrome; the ledger's own membership and order are QuayLedger's.
   const matching = useMemo(() => {
@@ -87,10 +90,10 @@ export function PortTrade({
 
   return (
     <>
-      {/* THE CHANDLER — her stores, and the press that fills them. One tray at a time: opening
+      {/* SUPPLIES — how many days it has, and the press that buys more. One tray at a time: opening
           this closes a price tray, and a price cell closes this. */}
       <Row
-        label="Stores"
+        label="Supplies"
         value={<Figure value={formatVoyageDays(fleet.endurance_days)} />}
         chevron
         onClick={() => {
@@ -118,7 +121,7 @@ export function PortTrade({
         onPick={open}
         empty={
           <Note tone="neutral" className="mt-3">
-            Nothing here answers to that.
+            No goods match.
           </Note>
         }
       />
@@ -126,7 +129,7 @@ export function PortTrade({
       {pick && (
         <TradeTray
           pick={pick}
-          quay={{ aboard: aboard[pick.good.code] ?? 0, culture: port.culture, history }}
+          quay={{ aboard: aboard[pick.good.code] ?? 0, bulk: goodByCode[pick.good.code]?.bulk ?? 1, culture: port.culture, history }}
           trade={trade}
           qty={{ value: qty, onChange: setQty }}
           onClose={close}

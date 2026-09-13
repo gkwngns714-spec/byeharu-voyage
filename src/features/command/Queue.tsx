@@ -1,7 +1,7 @@
 import { Button, Figure, Icon, Note, Row } from '../../components/ui'
 import { voyageEtaMs } from '../../domain/fleet'
 import { refusalOfOrder, verbWord } from '../../domain/order'
-import { formatNm, formatRealShort } from '../../lib/format'
+import { formatMiles, formatRealShort } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, QueuedOrder } from '../../lib/rpc'
 
@@ -53,24 +53,24 @@ export function Queue({
     <>
       {failedRefusal && (
         <Note tone="danger" code={failedRefusal.code} data-testid="queue-halt">
-          {fleet.name} has halted at order {failed?.seq} and will not skip past it. {failedRefusal.sentence}
+          {fleet.name} stopped at order {failed?.seq} and will not skip it. {failedRefusal.sentence}
         </Note>
       )}
 
       {fleet.voyage && (
         <Row
           mark={<Icon name="ship" size={18} className="text-info" />}
-          label={`At sea → ${fleet.voyage.to ? portNameOf(portByCode, fleet.voyage.to) : 'open sea'}`}
+          label={`Sailing → ${fleet.voyage.to ? portNameOf(portByCode, fleet.voyage.to) : 'open sea'}`}
           value={etaMs !== null ? <Figure value={formatRealShort(etaMs)} tone="info" /> : undefined}
         >
           <span className="block text-t-caption text-ink-faint">
-            {formatNm(fleet.voyage.nm_done)} of {formatNm(fleet.voyage.total_nm)}
+            {formatMiles(fleet.voyage.nm_done)} of {formatMiles(fleet.voyage.total_nm)}
           </span>
         </Row>
       )}
 
       {orders.length === 0 ? (
-        <Row label="Nothing queued." tone="muted" hairline={false} />
+        <Row label="No orders queued." tone="muted" hairline={false} />
       ) : (
         orders.map((order, i) => {
           const live = order.status === 'pending' || order.status === 'active'
@@ -113,7 +113,7 @@ export function Queue({
           onClick={onClear}
           data-testid="queue-clear"
         >
-          {failed ? 'Clear the halt' : 'Clear her queue'}
+          {failed ? 'Clear the stopped order' : 'Clear all orders'}
         </Button>
       )}
     </>

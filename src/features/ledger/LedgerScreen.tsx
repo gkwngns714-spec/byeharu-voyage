@@ -74,14 +74,14 @@ export function LedgerScreen() {
   const fatal = useWorld((s) => s.fatal)
 
   if (phase === 'failed') {
-    return <WorldFailed eyebrow="Record" title="Ledger" refusal={fatal} />
+    return <WorldFailed eyebrow="Record" title="History" refusal={fatal} />
   }
   if (phase !== 'ready') {
     return (
       <WorldLoading
         eyebrow="Record"
-        title="Ledger"
-        subtitle="Everything that happened, in the order it happened."
+        title="History"
+        subtitle="Everything that happened, in order."
         panels={4}
       />
     )
@@ -109,9 +109,9 @@ function LedgerBody() {
 
   return (
     <Sheet
-      title="Ledger"
+      title="History"
       data-testid="ledger"
-      trailing={<Segmented segments={FACES} value={face} onChange={setFace} label="Ledger" />}
+      trailing={<Segmented segments={FACES} value={face} onChange={setFace} label="History" />}
     >
       {events.length === 0 ? (
         <Row label="Nothing has happened yet." tone="muted" hairline={false} />

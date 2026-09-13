@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Bar, Figure, Row, Tray, type TrayDetent } from '../../components/ui'
-import { formatCountdown, formatFixed, formatInt, formatNm, formatVoyageDays, realMsToVoyageDays } from '../../lib/format'
+import { formatCountdown, formatFixed, formatInt, formatMiles, formatVoyageDays, realMsToVoyageDays } from '../../lib/format'
 import { pointLabel } from '../../domain/passage'
 import { CHART_CHROME, type FleetOnChart, type MapPort } from '../../chart'
 import { fleetLine } from './fleetLine'
@@ -53,7 +53,7 @@ export function VoyageTray({
       data-testid="map-detail-tray"
       {...CHART_CHROME}
     >
-      {fleet.fleet.kind === 'anchored' && <Row label="At anchor" value={pointLabel(fleet.at)} />}
+      {fleet.fleet.kind === 'anchored' && <Row label="Anchored at" value={pointLabel(fleet.at)} />}
       {voyage && (
         <>
           {/* 0039: a destination is a port, or a pinpointed spot of open water. */}
@@ -68,8 +68,8 @@ export function VoyageTray({
             }
           />
           <Row
-            label="Sailed"
-            value={<Figure value={`${formatInt(voyage.sailedNm)} / ${formatNm(voyage.totalNm)}`} />}
+            label="Departed"
+            value={<Figure value={`${formatInt(voyage.sailedNm)} / ${formatMiles(voyage.totalNm)}`} />}
           />
           {voyage.departedMs !== null && (
             <Row label="At sea" value={<Figure value={formatCountdown(nowMs - voyage.departedMs)} />} />
@@ -77,12 +77,12 @@ export function VoyageTray({
           <Row label="Arrives" value={<Figure value={formatCountdown(voyage.etaMs - nowMs)} />} />
         </>
       )}
-      <Row label="Stores" value={<Figure value={formatFixed(stores, 1)} unit="days" />} hairline={false}>
+      <Row label="Supplies" value={<Figure value={formatFixed(stores, 1)} unit="days" />} hairline={false}>
         {voyage && daysToRun > 0 && Number.isFinite(stores) && (
           <Bar
             pct={Math.min(1, stores / daysToRun) * 100}
             tone={stores < daysToRun ? 'warning' : 'success'}
-            label="stores against the passage"
+            label="supplies against the voyage"
             className="mt-1"
             figure={<span className="text-t-caption text-ink-faint">{`${formatVoyageDays(daysToRun)} to run`}</span>}
           />

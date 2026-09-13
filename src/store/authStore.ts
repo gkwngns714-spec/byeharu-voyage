@@ -29,7 +29,7 @@ interface AuthState {
   init: () => () => void
 }
 
-const NO_CLOUD = 'This build has no cloud project configured, so there is nobody to sign in as.'
+const NO_CLOUD = 'This build has no online server configured, so there is nothing to sign in to.'
 
 export const useAuthStore = create<AuthState>((set) => ({
   mode: hasCloud ? 'cloud' : 'local',

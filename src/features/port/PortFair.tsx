@@ -71,7 +71,7 @@ export function QuayFair({ portId }: { portId: string | null }) {
       mark={<Icon name="wreath" size={20} />}
       label={`${live.map((r) => r.name).join(' · ')} — ends ${formatRelative(Date.parse(live[0].ends_at), nowMs)}`}
       value={
-        <Figure value={formatPctPoints(buffs.port.buff_pct)} unit="off the cut" tone="accent" />
+        <Figure value={formatPctPoints(buffs.port.buff_pct)} unit="off fees" tone="accent" />
       }
       data-testid="quay-fair"
     />

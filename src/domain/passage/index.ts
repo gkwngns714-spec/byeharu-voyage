@@ -35,7 +35,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import type { LatLon } from '../../lib/geo'
-import { formatNm } from '../../lib/format'
+import { formatMiles } from '../../lib/format'
 import {
   cellLat,
   cellLon,
@@ -135,14 +135,14 @@ export function sailTarget(
  */
 export function roadsteadNote(nm: number): string | null {
   if (!(nm > 0)) return null
-  return `The roads lie ${formatNm(nm, 1)} off the quay. Ships anchor there; a pilot takes them in.`
+  return `Ships anchor ${formatMiles(nm, 1)} offshore and are taken into port from there.`
 }
 
 /** The same fact where an ORDER is being composed: why the track she is about to buy will not
  *  touch the quay. Shorter, because it sits under a destination's name on the chart's own glass. */
 export function roadsteadCourseNote(nm: number): string | null {
   if (!(nm > 0)) return null
-  return `Her course ends in the roads, ${formatNm(nm, 1)} off the quay.`
+  return `The route ends at the anchorage, ${formatMiles(nm, 1)} offshore.`
 }
 
 /** Where the fleet IS right now — for a DIVERT, which turns where she stands. The served

@@ -47,7 +47,7 @@ export const PORT_FACES = [
   { id: 'warehouse', building: 'warehouse', label: 'Store' },
   { id: 'workstation', building: 'workstation', label: 'Craft' },
   { id: 'inn', building: 'inn', label: 'Inn' },
-  { id: 'building_yard', building: 'building_yard', label: 'Yard' },
+  { id: 'building_yard', building: 'building_yard', label: 'Build' },
   // 2026-09-09: REPAIR's doorway, moved off COMMAND's grid to the building whose act it is. Its
   // label is the server's own name for the building (0067) — one word, and not the Yard's word.
   { id: 'shipyard', building: 'shipyard', label: 'Shipyard' },

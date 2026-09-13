@@ -66,64 +66,64 @@ export const SHIP_STATS = {
   tier: {
     term: 'tier',
     unit: null,
-    line: 'Her rate on the shipyard’s ladder — and a term in her fleet’s escort score when pirates close.',
+    line: 'The ship’s class rating — also counts toward the fleet’s defence when pirates attack.',
   },
   hold: {
-    term: 'hold',
-    unit: 'tuns',
-    line: 'How much she can carry. Cargo, water and food share these same tuns, and the fuller she is, the slower she sails.',
+    term: 'cargo',
+    unit: 'tons',
+    line: 'How much it can carry. Cargo, water and food share this space, and a fuller ship sails slower.',
   },
   crew: {
     term: 'crew',
-    unit: 'needed / berths',
-    line: 'Short of the first figure she may not sail, and crew lost at sea slow her; the second is every berth there is to hire into.',
+    unit: 'needed / max',
+    line: 'Below the first number the ship cannot sail, and crew lost at sea slow it down; the second is the most it can carry.',
   },
   speed: {
     term: 'speed',
     unit: 'knots',
-    line: 'Her pace in fair trim — damage, a full hold and missing crew all take from it, and a fleet sails at its slowest hull’s pace.',
+    line: 'Speed in good condition — damage, a full cargo and missing crew all lower it, and a fleet sails at its slowest ship’s speed.',
   },
   guns: {
     term: 'guns',
     unit: 'broadside pieces',
-    line: 'Guns and crew decide how a raid goes: they make the fleet’s escort score, weighed against the raiders of the sea she is crossing.',
+    line: 'Guns and crew decide how a pirate attack goes: together they make the fleet’s defence, weighed against the pirates of that sea.',
   },
   hull: {
     term: 'hull',
     unit: 'points',
-    line: 'The damage she can take from storms and pirates. She slows as she wears, and a flagship at zero pins her whole fleet in port until repaired.',
+    line: 'How much damage it can take from storms and pirates. A damaged ship slows down, and a flagship at zero keeps its whole fleet in port until repaired.',
   },
   draft: {
     term: 'draft',
     unit: null,
-    line: 'The water she needs. A port’s own draft figure is the deepest hull its harbour takes — a fleet whose deepest hull draws more is refused.',
+    line: 'How deep the water must be. Each port has a depth limit — a fleet with a ship deeper than that cannot enter.',
   },
   build: {
     term: 'build',
     unit: 'hours',
-    line: 'The shipyard’s clock for laying her down. No order can commission a hull yet, so no rule reads this figure today.',
+    line: 'How long the shipyard takes to build it. Nothing uses this number yet.',
   },
   cost: {
     term: 'cost',
     unit: 'ducats',
-    line: 'The shipyard’s bill for laying her down. No order can commission a hull yet, so no rule reads this figure today.',
+    line: 'What the shipyard charges to build it. Nothing uses this number yet.',
   },
   lineage: {
     term: 'family · rig',
     unit: null,
-    line: 'Her line and her sail plan. The rig is meant to court the wind, but the wind is pinned fair for now — no rule reads either yet.',
+    line: 'Ship type and sail plan. The rig is meant to affect how it uses the wind, but wind is not in the game yet — nothing uses either.',
   },
   /** FLEETS' and PORT's per-hull columns — derived here on the client (shipHoldUsed/shipHoldFree),
    *  so their sentences live beside the hull stats they are made of. */
   load: {
     term: 'load',
-    unit: 'tuns',
-    line: 'What this hull carries right now — trade cargo plus the water and food that share her tuns.',
+    unit: 'tons',
+    line: 'What this ship carries right now — trade goods plus the water and food that share the space.',
   },
   free: {
     term: 'free',
-    unit: 'tuns',
-    line: 'Room left in this hull. What a BUY is actually checked against is the fleet’s free figure, which the server reckons itself.',
+    unit: 'tons',
+    line: 'Space left in this ship. A purchase is checked against the whole fleet’s free space, which the server works out.',
   },
 } as const satisfies Record<string, ShipStatGloss>
 

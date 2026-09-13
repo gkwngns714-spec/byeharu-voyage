@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Figure, PriceRows, Row, Tray, type TrayDetent } from '../../components/ui'
-import { formatInt, formatNm } from '../../lib/format'
+import { formatInt, formatMiles } from '../../lib/format'
 import type { MarketGood, PricePoint } from '../../lib/rpc'
 
 // A GOOD, READ ON A QUAY SHE IS NOT ON — the tray a price cell opens when nobody of yours is
@@ -43,8 +43,8 @@ export function PriceTray({
       <PriceRows good={good} points={points} />
       {passage !== null && (
         <Row
-          label="Passage"
-          value={<Figure value={formatNm(passage)} />}
+          label="Distance"
+          value={<Figure value={formatMiles(passage)} />}
           hairline={false}
           data-testid="price-tray-passage"
         />

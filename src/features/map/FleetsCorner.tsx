@@ -43,7 +43,7 @@ export function FleetsCorner({
       {...CHART_CHROME}
     >
       {fleets.length === 0 ? (
-        <Row tone="muted" hairline={false} label="None at sea or in port." />
+        <Row tone="muted" hairline={false} label="No fleets." />
       ) : (
         fleets.map((f, i) => (
           <Row

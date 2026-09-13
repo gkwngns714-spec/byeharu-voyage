@@ -49,15 +49,15 @@ export function SignTheBook() {
   return (
     <Screen>
       <PageHeader
-        eyebrow="The register"
-        title="Sign the book"
+        eyebrow="New game"
+        title="Start your company"
         subtitle="Every captain begins the same way."
-        explain="One Barca — Gaivota — alongside at Lisbon, and 8,000 ducats to trade with. The port, the ship and the purse are the server's to decide (DESIGN K.1); the name is yours."
+        explain="You start with one ship — Gaivota, a Barca — docked at Lisbon, and 8,000 ducats to trade with. The port, the ship and the money are set by the game; the name is yours."
       />
 
       <Card>
         <label htmlFor="house-name" className="block text-sm text-ink-muted">
-          What will your house trade as?
+          What is your company called?
         </label>
         {/* The house's name is typed in the game's display face, not the UI face: this is the one
             field in the app that is a SIGNATURE. `Input` owns the chrome; the serif is this
@@ -98,7 +98,7 @@ export function SignTheBook() {
 
         <div className="mt-4">
           <Button variant="primary" disabled={busy || name.trim().length === 0} onClick={() => void sign()}>
-            {busy ? 'Signing…' : 'Sign the book'}
+            {busy ? 'Starting…' : 'Start'}
           </Button>
         </div>
       </Card>

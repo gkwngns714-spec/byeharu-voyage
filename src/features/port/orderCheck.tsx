@@ -3,10 +3,10 @@ import {
   formatDucats,
   formatFixed,
   formatInt,
-  formatNm,
+  formatMiles,
   formatRealShort,
-  formatTuns,
   formatUnitPrice,
+  formatUnits,
   formatVoyageDays,
 } from '../../lib/format'
 import { num, str } from '../../lib/json'
@@ -43,7 +43,7 @@ export function OrderCheck({
   if (check.status === 'idle') return null
 
   if (check.status === 'checking') {
-    return <Row label="Asking the quay what this would do" tone="muted" hairline={false} />
+    return <Row label="Checking…" tone="muted" hairline={false} />
   }
 
   if (check.status === 'refused') {
@@ -59,8 +59,8 @@ export function OrderCheck({
     return (
       <Note tone="info">
         {result.queued
-          ? 'She is at sea, so this waits in her queue and runs the moment she is alongside.'
-          : 'This acts at once.'}
+          ? 'The fleet is at sea, so this is queued and runs when it reaches port.'
+          : 'This runs right away.'}
       </Note>
     )
   }
@@ -86,10 +86,10 @@ function Estimate({
       const realMs = days === null ? null : (days * 24 * 60 * 60 * 1000) / Math.max(timeCompression, 1)
       return (
         <>
-          {nm !== null && <Row label="Distance" value={<Figure value={formatNm(nm)} />} />}
-          {days !== null && <Row label="Passage" value={<Figure value={formatVoyageDays(days)} />} />}
+          {nm !== null && <Row label="Distance" value={<Figure value={formatMiles(nm)} />} />}
+          {days !== null && <Row label="Voyage" value={<Figure value={formatVoyageDays(days)} />} />}
           {realMs !== null && (
-            <Row label="You wait" value={<Figure value={formatRealShort(realMs)} />} hairline={false} />
+            <Row label="Real time" value={<Figure value={formatRealShort(realMs)} />} hairline={false} />
           )}
         </>
       )
@@ -102,7 +102,7 @@ function Estimate({
           {cost !== null && <Row label="It costs" value={<Figure value={formatDucats(cost)} />} />}
           {endurance !== null && (
             <Row
-              label="Endurance after"
+              label="Supplies after"
               value={<Figure value={formatVoyageDays(endurance)} tone="success" />}
               hairline={false}
             />
@@ -115,7 +115,7 @@ function Estimate({
       const cost = num(estimate, 'cost')
       return (
         <>
-          {hired !== null && <Row label="Signed on" value={<Figure value={formatInt(hired)} />} />}
+          {hired !== null && <Row label="Hired" value={<Figure value={formatInt(hired)} />} />}
           {cost !== null && <Row label="It costs" value={<Figure value={formatDucats(cost)} />} hairline={false} />}
         </>
       )
@@ -125,7 +125,7 @@ function Estimate({
       const cost = num(estimate, 'cost')
       return (
         <>
-          {points !== null && <Row label="Hull mended" value={<Figure value={formatFixed(points, 1)} />} />}
+          {points !== null && <Row label="Hull repaired" value={<Figure value={formatFixed(points, 1)} />} />}
           {cost !== null && <Row label="It costs" value={<Figure value={formatDucats(cost)} />} hairline={false} />}
         </>
       )
@@ -138,12 +138,12 @@ function Estimate({
       return (
         <>
           {qty !== null && (
-            <Row label={verb === 'BUY' ? 'Aboard' : 'Landed'} value={<Figure value={formatTuns(qty)} />} />
+            <Row label={verb === 'BUY' ? 'Bought' : 'Sold'} value={<Figure value={formatUnits(qty)} />} />
           )}
           {avg !== null && <Row label="Average" value={<Figure value={formatUnitPrice(avg)} />} />}
           {total !== null && (
             <Row
-              label={verb === 'BUY' ? 'It costs' : 'It fetches'}
+              label={verb === 'BUY' ? 'It costs' : 'You get'}
               value={<Figure value={formatDucats(total)} />}
               hairline={false}
             />

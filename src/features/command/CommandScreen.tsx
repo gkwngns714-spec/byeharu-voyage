@@ -2,7 +2,8 @@ import { useEffect, useMemo } from 'react'
 import { Chip, Note, Row, Sheet, SheetSection } from '../../components/ui'
 import { Queue } from './Queue'
 import { useCommandDraft } from '../../domain/order'
-import { formatInt, formatVoyageDays } from '../../lib/format'
+import { formatOfTotal, formatVoyageDays } from '../../lib/format'
+import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, SnapshotPort } from '../../lib/rpc'
 
@@ -68,21 +69,21 @@ export function CommandScreen() {
   if (!snapshot) {
     return (
       <Sheet title="Command">
-        <Row label="Opening the world…" tone="muted" hairline={false} />
+        <Row label="Loading…" tone="muted" hairline={false} />
       </Sheet>
     )
   }
   if (fleets.length === 0) {
     return (
       <Sheet title="Command">
-        <Note tone="neutral">There is nothing to command yet. A house founds its first fleet before it can give an order.</Note>
+        <Note tone="neutral">No fleets yet. Start your company to get your first one.</Note>
       </Sheet>
     )
   }
 
   return (
     <Sheet title="Command" data-testid="command">
-      {/* WHOSE ORDERS — fleet chips scroll sideways; pressing one SELECTS her and moves nothing. */}
+      {/* WHOSE ORDERS — fleet chips scroll sideways; pressing one SELECTS it and moves nothing. */}
       <div className="-mx-gutter flex gap-2 overflow-x-auto px-gutter pb-1">
         {fleets.map((f) => (
           <Chip key={f.id} on={f.id === fleetId} onClick={() => selectFleet(f.id)} className="shrink-0 whitespace-nowrap">
@@ -93,7 +94,8 @@ export function CommandScreen() {
 
       {fleet && (
         <>
-          {/* HER ONE LINE: how far she can sail, and her room. */}
+          {/* ITS ONE LINE: how long it can sail, and its cargo — each figure with what it is out of
+              (docs/WORDS.md law 2). */}
           <Row label={fleetLine(fleet)} hairline={false} data-testid="command-line" />
           <SheetSection heading="Orders" data-testid="command-queue">
             <Queue
@@ -110,15 +112,16 @@ export function CommandScreen() {
   )
 }
 
-/** Where a fleet lies or is bound, in a word — for the chip. */
+/** Where a fleet is or is heading, in a word — for the chip. */
 function whereOf(f: FleetView, portByCode: Record<string, SnapshotPort>): string {
   if (f.port) return portNameOf(portByCode, f.port)
   if (f.voyage) return `→ ${f.voyage.to ? portNameOf(portByCode, f.voyage.to) : 'sea'}`
-  if (f.anchor) return `at anchor`
+  if (f.anchor) return `anchored`
   return f.status.toLowerCase()
 }
 
-/** The two facts a first glance wants: how far she can sail, and her room. */
+/** The two facts a first glance wants: how long it can sail, and how full its cargo is. Cargo is
+ *  a SHARE, so it prints with its whole — "51 / 60 tons" — never "9 t free" (docs/WORDS.md). */
 function fleetLine(fleet: FleetView): string {
-  return `${formatVoyageDays(fleet.endurance_days)} stores · ${formatInt(fleet.free_hold)} t free`
+  return `Supplies ${formatVoyageDays(fleet.endurance_days)} · Cargo ${formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} tons`
 }

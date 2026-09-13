@@ -115,7 +115,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   if (!port) {
     return (
       <Sheet title="Port">
-        <Note tone="warning">The world served no ports.</Note>
+        <Note tone="warning">No ports loaded.</Note>
       </Sheet>
     )
   }
@@ -126,12 +126,12 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
     return (
       <Sheet title={port.name} data-testid="port">
         {port.approach && <Note tone="neutral">{port.approach}</Note>}
-        <SheetSection heading="At anchor">
+        <SheetSection heading="Anchored here">
           {docked.length === 0 ? (
-            <Row label="None of your hulls are lying here." tone="muted" hairline={false} />
+            <Row label="None of your fleets are here." tone="muted" hairline={false} />
           ) : (
             docked.map((f, i) => (
-              <Row key={f.id} label={f.name} value="holding station" hairline={i < docked.length - 1} />
+              <Row key={f.id} label={f.name} value="anchored" hairline={i < docked.length - 1} />
             ))
           )}
         </SheetSection>
@@ -188,16 +188,16 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
           action={
             actingPortCode ? (
               <Button size="sm" onClick={() => setPicked(harbourPick(actingPortCode, fleets, snapshot.ports))}>
-                {`Read ${portNameOf(portByCode, actingPortCode)}`}
+                {`Go to ${portNameOf(portByCode, actingPortCode)}`}
               </Button>
             ) : undefined
           }
         >
           {acting.status === 'SAILING' && acting.voyage
-            ? `${acting.name} is at sea, bound for ${acting.voyage.to ? portNameOf(portByCode, acting.voyage.to) : 'open water'}. Orders run there.`
+            ? `${acting.name} is sailing to ${acting.voyage.to ? portNameOf(portByCode, acting.voyage.to) : 'open sea'}. Orders will run there.`
             : actingPortCode
-              ? `${acting.name} lies at ${portNameOf(portByCode, actingPortCode)}. Orders run there.`
-              : `${acting.name} is alongside nowhere.`}
+              ? `${acting.name} is docked at ${portNameOf(portByCode, actingPortCode)}. Orders will run there.`
+              : `${acting.name} is not in any port.`}
         </Note>
       )}
 

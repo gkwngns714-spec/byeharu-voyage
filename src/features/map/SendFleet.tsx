@@ -92,7 +92,7 @@ export function SendFleet({
       {flow.roads && <Hint data-testid="map-send-roads">{flow.roads}</Hint>}
 
       {open && fleets.length === 0 && (
-        <Row tone="muted" hairline={false} label="No fleets yet — a house founds one before it can sail." data-testid="map-send-none" />
+        <Row tone="muted" hairline={false} label="No fleets yet — start your company to get one." data-testid="map-send-none" />
       )}
 
       {/* THE DEAD END, NAMED (OWNER_REQUESTS row 49: "i can't send a fleet in map"): a list in which
@@ -102,8 +102,8 @@ export function SendFleet({
           tone="muted"
           label={
             fleets.every((f) => flow.standingOf(f) === 'lies')
-              ? `Nothing to send — ${fleets.length === 1 ? 'she is' : 'they are'} already at ${flow.destName}.`
-              : `Nothing to send — every fleet is at ${flow.destName} or bound for it.`
+              ? `Nothing to send — ${fleets.length === 1 ? 'it is' : 'they are'} already at ${flow.destName}.`
+              : `Nothing to send — every fleet is at ${flow.destName} or heading there.`
           }
           data-testid="map-send-nowhere"
         />

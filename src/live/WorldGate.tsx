@@ -31,14 +31,14 @@ export function WorldFailed({
 }) {
   return (
     <Screen>
-      <PageHeader eyebrow={eyebrow} title={title} subtitle="The world did not open." />
+      <PageHeader eyebrow={eyebrow} title={title} subtitle="The game could not load." />
       <Card tone="danger">
         <Notice tone="danger">
           <span className="font-mono text-xs uppercase tracking-wider">
             {refusal?.code ?? 'E_UNKNOWN'}
           </span>
           <span className="mt-1 block">
-            {refusal?.sentence ?? 'The world did not open, and did not say why.'}
+            {refusal?.sentence ?? 'The game could not load, and gave no reason.'}
           </span>
         </Notice>
         {refusal && refusal.fixes.length > 0 && (

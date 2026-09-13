@@ -62,7 +62,7 @@ export function PortAcademy({ acting }: { acting: FleetView | null }) {
     <div data-testid="port-academy">
       {!acting && (
         <Note tone="warning" className="mb-3">
-          Name a fleet and her captain sits the course.
+          Pick a fleet to train its captain.
         </Note>
       )}
 
@@ -104,17 +104,17 @@ export function PortAcademy({ acting }: { acting: FleetView | null }) {
                 className="w-full"
                 disabled={!acting}
                 busy={busy}
-                busyLabel="Studying…"
+                busyLabel="Training…"
                 onClick={() => study(open)}
                 data-testid={`study-${open.code}`}
               >
-                {`Study to ${open.level + 1} · ${formatInt(open.next_cost)} d.`}
+                {`Train to level ${open.level + 1} · ${formatInt(open.next_cost)} d.`}
               </Button>
             )
           }
         >
           <Row
-            label="Each level is worth"
+            label="Per level"
             value={
               <Figure
                 value={`+${open.pct_per_level}%`}
@@ -123,13 +123,13 @@ export function PortAcademy({ acting }: { acting: FleetView | null }) {
             }
           />
           <Row
-            label="Learned"
+            label="Level"
             value={<Figure value={`${open.level}`} unit={`/ ${book.max_level}`} />}
             hairline={false}
           />
           <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
           {open.next_cost === null && (
-            <Note tone="neutral">She is taught as far as this trade goes.</Note>
+            <Note tone="neutral">Max level reached.</Note>
           )}
           {refusal && (
             <Note tone="danger" code={refusal.code}>

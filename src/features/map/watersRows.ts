@@ -1,4 +1,4 @@
-import { formatNm } from '../../lib/format'
+import { formatMiles } from '../../lib/format'
 import type { MapWater } from '../../chart'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -58,7 +58,7 @@ export function watersView(waters: readonly MapWater[]): WatersView {
     code: w.code,
     name: w.name,
     danger: w.danger,
-    figure: w.now ? HERE : formatNm(w.nmTo),
+    figure: w.now ? HERE : formatMiles(w.nmTo),
     note: w.now ? w.note : null,
   }))
   return { rows, total: waters.length, hidden: Math.max(0, waters.length - rows.length) }

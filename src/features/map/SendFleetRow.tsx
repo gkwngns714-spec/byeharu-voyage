@@ -1,5 +1,5 @@
 import { Bar, Button, Figure, Icon, Note, Row } from '../../components/ui'
-import { formatNm, formatVoyageDays } from '../../lib/format'
+import { formatMiles, formatVoyageDays } from '../../lib/format'
 import type { FleetView, PreviewResult, Refusal, SnapshotPort } from '../../lib/rpc'
 import { sailEstimate } from '../../domain/order'
 import { pointLabel } from '../../domain/passage'
@@ -27,14 +27,14 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
 
   const line = !pressable
     ? standing === 'lies'
-      ? 'lies here'
+      ? 'docked here'
       : acted?.state === 'sent'
-        ? `Under way — she makes for ${flow.destName}.`
-        : 'already bound here'
+        ? `Under way — sailing to ${flow.destName}.`
+        : 'already heading here'
     : f.voyage != null
-      ? 'at sea — she turns where she is'
+      ? 'at sea — turns from where it is'
       : v === undefined
-        ? `${where} · checking the passage…`
+        ? `${where} · checking the route…`
         : where
   const passage = pressable && v?.kind === 'ok' ? passageOf(v.result) : null
 
@@ -101,7 +101,7 @@ function Refused({ refusal, fixes, testId }: { refusal: Refusal; fixes: Fix[]; t
             <Bar
               pct={figures.need > 0 ? (figures.have / figures.need) * 100 : 0}
               tone="danger"
-              label={`${figures.unit}, have against need`}
+              label={`${figures.unit}, have / need`}
               figure={<Figure value={`${figures.have} / ${figures.need}`} unit={figures.unit} />}
             />
           ) : undefined
@@ -135,7 +135,7 @@ function whereOf(f: FleetView, portByCode: Record<string, SnapshotPort>): string
 function passageOf(result: PreviewResult): string | null {
   const { nm, days } = sailEstimate(result.estimate)
   if (nm === null && days === null) return null
-  return [nm === null ? null : formatNm(nm), days === null ? null : formatVoyageDays(days)]
+  return [nm === null ? null : formatMiles(nm), days === null ? null : formatVoyageDays(days)]
     .filter(Boolean)
     .join(' · ')
 }

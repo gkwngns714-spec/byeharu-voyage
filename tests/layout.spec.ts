@@ -409,8 +409,8 @@ test(`PORT: the ledger's price cells are the trade, and a press moves nothing ab
       distinctCellWidths: new Set(cells.map((c) => Math.round(c.getBoundingClientRect().width))).size,
       distinctCellHeights: new Set(cells.map((c) => Math.round(c.getBoundingClientRect().height))).size,
       unlabelledCells: cells.filter((c) => !/\d/.test(c.innerText || '')).length,
-      deadCellsSayingWhy: cells.filter((c) => (c as HTMLButtonElement).disabled && /none aboard/i.test(c.innerText || '')).length,
-      deadCellsSayingNothing: cells.filter((c) => (c as HTMLButtonElement).disabled && !/none aboard/i.test(c.innerText || '')).length,
+      deadCellsSayingWhy: cells.filter((c) => (c as HTMLButtonElement).disabled && /none on board/i.test(c.innerText || '')).length,
+      deadCellsSayingNothing: cells.filter((c) => (c as HTMLButtonElement).disabled && !/none on board/i.test(c.innerText || '')).length,
       chooseButtons: [...document.querySelectorAll('button')].filter((b) => /^choose /i.test((b.innerText || '').trim())).length,
     }
   })
@@ -435,8 +435,8 @@ test(`PORT: the ledger's price cells are the trade, and a press moves nothing ab
   expect(field.unlabelledCells, 'a price cell carries no figure').toBe(0)
   expect(field.distinctCellWidths, 'price cells differ in width — the column zig-zags (the TradeRow cell is a fixed box)').toBe(1)
   expect(field.distinctCellHeights, 'price cells differ in height — a live cell must stand as tall as a dead one').toBe(1)
-  expect(field.deadCellsSayingNothing, 'a disabled sell cell went grey without saying "none aboard"').toBe(0)
-  expect(field.deadCellsSayingWhy, 'no sell cell says "none aboard" — is `aboard` reaching the picker?').toBeGreaterThan(0)
+  expect(field.deadCellsSayingNothing, 'a disabled sell cell went grey without saying "none on board"').toBe(0)
+  expect(field.deadCellsSayingWhy, 'no sell cell says "none on board" — is `aboard` reaching the picker?').toBeGreaterThan(0)
   expect(field.chooseButtons, 'a `Choose <good>` button is back — two authorities for the pick').toBe(0)
 
   // 3. ROW 15 SURVIVED THE LEDGER. Press a price cell and NOTHING at or above the pressed row may

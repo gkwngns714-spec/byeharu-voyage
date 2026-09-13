@@ -59,7 +59,7 @@ export function CompendiumScreen() {
   }
   if (phase !== 'ready') {
     return (
-      <WorldLoading eyebrow="Reference" title="Codex" subtitle="Everything that exists in this world." panels={2} />
+      <WorldLoading eyebrow="Reference" title="Codex" subtitle="Everything in the game." panels={2} />
     )
   }
   return <CompendiumBody />

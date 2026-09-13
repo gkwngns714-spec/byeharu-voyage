@@ -7,7 +7,7 @@ import { Row } from './Row'
 import { Stepper } from './Stepper'
 import { Tray } from './Tray'
 import type { TrayDetent } from './trayDetents'
-import { formatDucats, formatDucatsDelta, formatInt, formatTuns, formatUnitPrice } from '../../lib/format'
+import { formatDucats, formatDucatsDelta, formatInt, formatTons, formatUnitPrice, formatUnits } from '../../lib/format'
 import type { MarketGood, PricePoint, Refusal } from '../../lib/rpc'
 import type { BuyCapacityState } from '../../lib/trade'
 
@@ -85,10 +85,13 @@ export interface TradeAct {
   previewLoading: boolean
 }
 
-/** What the caller knows about THIS quay and THIS hold — three served facts, folded once. */
+/** What the caller knows about THIS market and THIS ship — four served facts, folded once. */
 export interface TradeQuay {
-  /** Tuns of this good aboard — the SELL ceiling, and the one quantity this side may count. */
+  /** UNITS of this good on board — the SELL ceiling, and the one quantity this side may count. */
   aboard: number
+  /** Tons of cargo space ONE unit takes (`SnapshotGood.bulk`) — so the tray can say what the
+   *  chosen quantity does to the ship's `51 / 60 tons`, which is the number the player has. */
+  bulk: number
   /** This port's culture, for the one sentence that names it: a good the quay will not deal in. */
   culture: string
   /** `world.price_history` for this good at this port, oldest first; undefined until it lands. */
@@ -129,7 +132,7 @@ export function TradeTray({
   children?: ReactNode
 }) {
   const { good, intent } = pick
-  const { aboard, culture, history } = quay
+  const { aboard, bulk, culture, history } = quay
   const { capacity, step, act } = trade
   const [detent, setDetent] = useState<TrayDetent>('half')
 
@@ -150,17 +153,17 @@ export function TradeTray({
   // good can open: her hold is why it is in the payload at all (0061), and the buy cell is dead.
   const refusedBy =
     good.available === false
-      ? `A ${culture} quay does not deal in ${good.name.toLowerCase()}. She may land it here; she may never take more on.`
+      ? `${culture} ports do not trade ${good.name.toLowerCase()}. You can sell it here, but not buy it.`
       : good.offered === false
-        ? `This city does not trade ${good.name.toLowerCase()}. She may land it here; she may never take more on.`
+        ? `This port does not sell ${good.name.toLowerCase()}. You can sell it here, but not buy it.`
         : null
 
-  // TUN-FIGURE CHIPS: one step, a lot, the ceiling — whichever of those are distinct and within
-  // reach. Never a word.
+  // QUANTITY CHIPS: one step, a lot, the ceiling — whichever of those are distinct and within
+  // reach. A bare count: the stepper's own unit word says what it counts.
   const presets = [...new Set([stepSize, LOT_STEPS * stepSize, ceiling])]
     .filter((v) => v > 0 && v <= ceiling)
     .sort((a, b) => a - b)
-    .map((v) => ({ label: formatTuns(v), value: v }))
+    .map((v) => ({ label: formatInt(v), value: v }))
 
   const verb = intent === 'buy' ? 'Buy' : 'Sell'
 
@@ -195,7 +198,7 @@ export function TradeTray({
             busyLabel="Sending…"
             data-testid="trade-tray-send"
           >
-            {`${verb} ${formatTuns(chosen)}`}
+            {`${verb} ${formatUnits(chosen)}`}
             {act.total !== null ? ` · ${formatDucats(act.total)}` : ''}
           </Button>
         </>
@@ -212,28 +215,28 @@ export function TradeTray({
       {/* What this good cost her, per tun, for what is aboard — served, never remembered here.
           Always a row, so the eye finds the same line: the figure, or why there is none. */}
       {aboard === 0 ? (
-        <Row label="Paid" tone="muted" value="none aboard" data-testid="trade-tray-paid-none" />
+        <Row label="Bought at" tone="muted" value="none on board" data-testid="trade-tray-paid-none" />
       ) : act.paid !== null ? (
-        <Row label="Paid" value={<Figure value={formatUnitPrice(act.paid)} />} data-testid="trade-tray-paid">
-          <span className="block text-t-caption text-ink-faint">{`for the ${formatTuns(aboard)} aboard`}</span>
+        <Row label="Bought at" value={<Figure value={formatUnitPrice(act.paid)} />} data-testid="trade-tray-paid">
+          <span className="block text-t-caption text-ink-faint">{`for the ${formatUnits(aboard)} on board`}</span>
         </Row>
       ) : (
-        <Row label="What it cost is not on record" tone="muted" data-testid="trade-tray-paid-unknown" />
+        <Row label="Purchase price unknown" tone="muted" data-testid="trade-tray-paid-unknown" />
       )}
 
       {intent === 'buy' ? (
         capacity.bound ? (
-          <Row label="At most" value={<Figure value={formatInt(capacity.bound.max)} unit="t" size="figure" />}>
-            <span className="block text-t-caption text-ink-faint">{`stopped by ${capacity.bound.binding}`}</span>
+          <Row label="Max" value={<Figure value={formatUnits(capacity.bound.max)} size="figure" />}>
+            <span className="block text-t-caption text-ink-faint">{`limited by ${capacity.bound.binding}`}</span>
           </Row>
         ) : (
           <Row
-            label={capacity.loading ? 'Asking the quay what she can take' : 'The most she can take is not known'}
+            label={capacity.loading ? 'Checking how much you can buy…' : 'Max amount unknown'}
             tone="muted"
           />
         )
       ) : (
-        <Row label="Aboard" value={<Figure value={formatTuns(aboard)} size="figure" />} />
+        <Row label="On board" value={<Figure value={formatUnits(aboard)} size="figure" />} />
       )}
 
       {/* THE SALE, AS THE SERVER WOULD REALISE IT for the quantity chosen (0081). On a buy the
@@ -243,11 +246,11 @@ export function TradeTray({
         (act.preview !== null ? (
           <>
             {act.preview.total !== null && (
-              <Row label="Fetches" value={<Figure value={formatDucats(act.preview.total)} />} data-testid="trade-tray-fetches" />
+              <Row label="You get" value={<Figure value={formatDucats(act.preview.total)} />} data-testid="trade-tray-fetches" />
             )}
           </>
         ) : (
-          act.previewLoading && <Row label="Asking the quay what it fetches" tone="muted" />
+          act.previewLoading && <Row label="Checking the price…" tone="muted" />
         ))}
 
       <div className="py-3">
@@ -257,12 +260,23 @@ export function TradeTray({
           max={track}
           cap={ceiling}
           step={stepSize}
-          unit="t"
-          label={`tuns of ${good.name}`}
+          unit="units"
+          label={`units of ${good.name}`}
           presets={presets.length > 0 ? presets : undefined}
           data-testid="trade-tray-qty"
         />
       </div>
+      {/* WHAT IT DOES TO THE SHIP — the chosen count in the unit the ship is measured in. This is
+          the line that lets "Buy 20 units" be read against "Cargo 51 / 60 tons" on COMMAND. */}
+      {chosen > 0 && (
+        <Row
+          label="Cargo space"
+          tone="muted"
+          value={<Figure value={formatTons(chosen * bulk, 1)} />}
+          hairline={false}
+          data-testid="trade-tray-space"
+        />
+      )}
 
       {children}
 

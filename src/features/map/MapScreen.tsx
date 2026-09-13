@@ -80,7 +80,7 @@ function portLine(model: ChartModel, port: MapPort): string {
   const here = fleetsAtPort(model, port.code).map((f) => f.fleet.name)
   const bound = fleetsBoundFor(model, port.code).map((f) => f.fleet.name)
   if (here.length > 0) return `${port.country} · ${here.join(', ')} here`
-  if (bound.length > 0) return `${port.country} · ${bound.join(', ')} bound here`
+  if (bound.length > 0) return `${port.country} · ${bound.join(', ')} heading here`
   return port.country
 }
 

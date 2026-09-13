@@ -13,7 +13,7 @@ import {
 } from '../../components/ui'
 import { useBuildingYard } from '../../live/useBuildingYard'
 import { useWorld } from '../../live/worldStore'
-import { formatDucats, formatInt } from '../../lib/format'
+import { formatDucats, formatInt, formatTons } from '../../lib/format'
 import type { FleetView, HullMaterial, Refusal, YardHull } from '../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -92,8 +92,8 @@ export function PortYard({
     })()
   }
 
-  if (loading && !view) return <Note tone="neutral">Asking the yard what it can lay down…</Note>
-  if (!view) return <Note tone="neutral">This city lays down no hulls.</Note>
+  if (loading && !view) return <Note tone="neutral">Loading…</Note>
+  if (!view) return <Note tone="neutral">This port does not build ships.</Note>
 
   const short = open ? shortfall(open) : null
   const tooDeep = open !== null && open.draft > maxDraft
@@ -103,7 +103,7 @@ export function PortYard({
     <div data-testid="port-yard">
       {!fleet && (
         <Note tone="warning" className="mb-3">
-          No fleet of yours lies here, and a new hull joins the fleet that ordered her.
+          None of your fleets are here. A new ship joins the fleet that orders it.
         </Note>
       )}
 
@@ -113,7 +113,7 @@ export function PortYard({
             key={hull.class}
             mark={<Icon name="ship" size={20} />}
             name={hull.name}
-            meta={`${formatInt(hull.hold)} tuns`}
+            meta={formatTons(hull.hold)}
             state={hull.buildable ? 'rest' : 'muted'}
             tap="whole"
             onClick={() => {
@@ -121,7 +121,7 @@ export function PortYard({
               setDetent('half')
               setOpen(hull)
             }}
-            figure={<Figure value={formatDucats(hull.ducats)} unit="for the work" />}
+            figure={<Figure value={formatDucats(hull.ducats)} unit="to build" />}
             data-testid={`hull-${hull.class}`}
           />
         ))}
@@ -139,7 +139,7 @@ export function PortYard({
                 variant="primary"
                 className="w-full"
                 busy={sending}
-                busyLabel="Laying down…"
+                busyLabel="Building…"
                 disabled={name.trim().length < 3}
                 onClick={() => build(open)}
                 data-testid={`lay-down-${open.class}`}
@@ -149,25 +149,25 @@ export function PortYard({
             ) : undefined
           }
         >
-          <Row label="Hold" value={<Figure value={formatInt(open.hold)} unit="t" />} />
-          <Row label="Speed" value={<Figure value={open.speed_kn} unit="kn" />} />
-          <Row label="Hands" value={<Figure value={formatInt(open.crew_required)} />} />
-          <Materials label="Timber" list={open.goods} />
-          <Materials label="Fittings" list={open.items} />
+          <Row label="Cargo" value={<Figure value={formatInt(open.hold)} unit="tons" />} />
+          <Row label="Speed" value={<Figure value={open.speed_kn} unit="knots" />} />
+          <Row label="Crew needed" value={<Figure value={formatInt(open.crew_required)} />} />
+          <Materials label="Materials" list={open.goods} />
+          <Materials label="Parts" list={open.items} />
 
           {/* THE REFUSAL DRAFT ACTUALLY MAKES, said where it is made. */}
           {tooDeep && (
             <Note tone="warning" data-testid="yard-draft">
-              {`She draws ${formatInt(open.draft)} and this harbour takes ${formatInt(maxDraft)}. The fleet she joins could never sail back in.`}
+              {`It needs ${formatInt(open.draft)} of depth and this port only has ${formatInt(maxDraft)}. The fleet it joins could never sail back in.`}
             </Note>
           )}
           {!open.buildable && (
             <Note tone="warning">
-              {`She wants a tier ${formatInt(open.yard_tier)} yard. This one is tier ${formatInt(tier)}.`}
+              {`Needs a level ${formatInt(open.yard_tier)} shipyard. This one is level ${formatInt(tier)}.`}
             </Note>
           )}
           {open.buildable && short !== null && (
-            <Note tone="warning">{`Ashore here: ${short}.`}</Note>
+            <Note tone="warning">{`Missing from the warehouse: ${short}.`}</Note>
           )}
 
           {ready && (
@@ -177,10 +177,10 @@ export function PortYard({
               icon={null}
               value={name}
               maxLength={24}
-              placeholder="Name her"
+              placeholder="Ship name"
               onChange={(e) => setName(e.target.value)}
               className="mt-3"
-              aria-label="Name her"
+              aria-label="Ship name"
               data-testid="yard-name"
             />
           )}
@@ -207,7 +207,7 @@ function Materials({ label, list }: { label: string; list: readonly HullMaterial
           value={
             <Figure
               value={formatInt(m.qty)}
-              unit={`ashore ${formatInt(m.have)}`}
+              unit={`· ${formatInt(m.have)} in the warehouse`}
               tone={m.have < m.qty ? 'warning' : 'ink'}
             />
           }

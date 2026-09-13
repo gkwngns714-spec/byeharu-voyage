@@ -44,7 +44,7 @@ function ShipTile({ ship }: { ship: FleetShip }) {
           tone={short ? 'danger' : 'ink'}
         />
       }
-      second={<Figure value={formatOfTotal(used, ship.hold)} unit="t" />}
+      second={<Figure value={formatOfTotal(used, ship.hold)} unit="tons" />}
       bar={
         <Bar
           pct={hull * 100}

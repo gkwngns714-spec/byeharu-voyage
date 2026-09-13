@@ -88,7 +88,7 @@ interface NavGroup {
 }
 
 const GROUPS: Record<NavGroupId, NavGroup> = {
-  cabin: { label: 'Cabin', icon: 'chevron' },
+  cabin: { label: 'Menu', icon: 'chevron' },
 }
 
 const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] = [
@@ -96,7 +96,7 @@ const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] =
   { to: '/fleets', label: 'Fleets', icon: 'ship', enabled: true },
   { to: '/port', label: 'Port', icon: 'anchor', enabled: true },
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
-  { to: '/ledger', label: 'Ledger', icon: 'ledger', enabled: true, group: 'cabin' },
+  { to: '/ledger', label: 'History', icon: 'ledger', enabled: true, group: 'cabin' },
   { to: '/rank', label: 'Rank', icon: 'wreath', enabled: true, group: 'cabin' },
   // "Codex", not "Compendium": both mean the 도감, and the shorter word is the one that must fit a
   // cell. The screen's own title spells it out in full.

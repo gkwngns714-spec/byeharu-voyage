@@ -31,11 +31,11 @@ export function PortShipyard({
   fleet,
 }: {
   port: SnapshotPort
-  /** A fleet of yours lying here, or null — a hull is mended alongside. */
+  /** A fleet of yours docked here, or null — a ship is repaired in port. */
   fleet: FleetView | null
 }) {
   if (!fleet) {
-    return <Note tone="neutral">No fleet of yours lies here, and a hull is mended alongside.</Note>
+    return <Note tone="neutral">None of your fleets are here. Ships are repaired in port.</Note>
   }
   return <Repair port={port} fleet={fleet} />
 }
@@ -49,7 +49,7 @@ function Repair({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
   return (
     <div data-testid="port-shipyard">
       <Row
-        label="Worst hull"
+        label="Hull (worst ship)"
         value={<Figure value={formatPct(worst, 0)} tone={worst < 0.5 ? 'danger' : 'ink'} size="figure" />}
         chevron
         onClick={() => setOpen(true)}

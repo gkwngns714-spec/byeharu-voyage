@@ -8,9 +8,11 @@
 //   · A negative money figure uses U+2212 MINUS SIGN, not the hyphen-minus: in JetBrains Mono the
 //     hyphen sits at text height and reads as a dash between two figures. The minus sits on the
 //     maths axis, aligned with the digits, which is what a column of deltas needs.
-//   · Ducats are suffixed "d." (the period abbreviation the design document uses throughout).
-//   · Cargo is "t" (tuns — the period unit, ~954 L; NOT metric tonnes).
-//   · Distance is "nm" (nautical miles). Speed is "kn".
+//   · Ducats are suffixed "d." — the one abbreviation kept, because it is the currency mark and
+//     stands beside every price (docs/WORDS.md, law 2).
+//   · Every other unit is SPELLED: "tons", "miles", "knots", "days". The owner asked twice —
+//     2026-08-22 "stores? t? kn? what are these" and 2026-09-13 "9t free? 9t free out of what?"
+//     — and the second time is the rule: a unit a player has to decode is not a unit.
 //
 // Pure: no React, no DOM, no clock, no locale lookup (the separator is fixed, not Intl-derived —
 // a player's locale must not silently change what a shared leaderboard figure looks like).
@@ -52,24 +54,39 @@ export function formatDucatsDelta(n: number): string {
   return `${rounded > 0 ? '+' : MINUS}${group(Math.abs(rounded).toString())} d.`
 }
 
-/** A unit price: "7 d./t" — the figure a trader actually compares. */
+/** A unit price: "7 d. each" — the figure a trader actually compares. PER UNIT, not per ton: a
+ *  trade quantity is a COUNT of units (`qty`), and a unit of a good takes `bulk` tons of space —
+ *  126 of 523 goods have bulk 1.0, so "per ton" was wrong for the other 397. */
 export function formatUnitPrice(n: number): string {
-  return `${formatInt(n)} d./t`
+  return `${formatInt(n)} d. each`
 }
 
-/** Cargo and stores, in tuns. 60 → "60 t"; 4.2 → "4.2 t" with dp=1. */
-export function formatTuns(n: number, dp = 0): string {
-  return `${dp > 0 ? formatFixed(n, dp) : formatInt(n)} t`
+/** A trade quantity: 20 → "20 units", 1 → "1 unit". The count the server trades in; the space it
+ *  takes is `formatTons(qty * bulk)`, and the two are never confused (docs/WORDS.md law 2). */
+export function formatUnits(n: number): string {
+  const rounded = Math.round(n)
+  return `${formatInt(rounded)} ${Math.abs(rounded) === 1 ? 'unit' : 'units'}`
 }
 
-/** Distance: 188.4 → "188 nm". */
-export function formatNm(n: number, dp = 0): string {
-  return `${dp > 0 ? formatFixed(n, dp) : formatInt(n)} nm`
+/** THE WORD FOR THE CARGO UNIT, pluralised — the one place it is spelled. 1 → "ton", else "tons". */
+export function tonsWord(n: number): string {
+  return Math.abs(n) === 1 ? 'ton' : 'tons'
 }
 
-/** Speed: 3.5695 → "3.6 kn". */
+/** Cargo and supplies, in tons. 60 → "60 tons"; 1 → "1 ton"; 4.2 → "4.2 tons" with dp=1. */
+export function formatTons(n: number, dp = 0): string {
+  const figure = dp > 0 ? formatFixed(n, dp) : formatInt(n)
+  return `${figure} ${tonsWord(dp > 0 ? n : Math.round(n))}`
+}
+
+/** Distance at sea: 188.4 → "188 miles". (Nautical miles — the word a player reads is "miles".) */
+export function formatMiles(n: number, dp = 0): string {
+  return `${dp > 0 ? formatFixed(n, dp) : formatInt(n)} miles`
+}
+
+/** Speed: 3.5695 → "3.6 knots". */
 export function formatKnots(n: number): string {
-  return `${formatFixed(n, 1)} kn`
+  return `${formatFixed(n, 1)} knots`
 }
 
 /** A FRACTION (0.62) as a percentage: "62%". Use for shares, fills, hull condition. */
@@ -93,7 +110,7 @@ export function formatPctDelta(fraction: number): string {
   return `${pts > 0 ? '+' : MINUS}${Math.abs(pts)}%`
 }
 
-/** "98 / 120" — a used/total pair, for hold and crew. */
+/** "98 / 120" — a used/total pair, for cargo and crew. A share never prints without its whole. */
 export function formatOfTotal(used: number, total: number): string {
   return `${formatInt(used)} / ${formatInt(total)}`
 }

@@ -94,23 +94,23 @@ export function GoodsFace({ query }: { query: string }) {
           {open.rarity && <Row label="Rarity" value={<RarityLine rarity={open.rarity} />} />}
           <Row label="Base" value={<Figure value={anchor(open.base_value)} unit="d." />} />
           <Row
-            label="Bulk"
-            value={<Figure value={formatFixed(open.bulk, 1)} unit="t" />}
+            label="Weight"
+            value={<Figure value={formatFixed(open.bulk, 1)} unit="tons" />}
             hairline={open.perishable_pct_day > 0}
           />
           {open.perishable_pct_day > 0 && (
             <Row
               label="Spoils"
-              value={<Figure value={formatPct(open.perishable_pct_day, 1)} unit="a day" tone="warning" />}
+              value={<Figure value={formatPct(open.perishable_pct_day, 1)} unit="per day" tone="warning" />}
               hairline={false}
             />
           )}
           {open.culture_mask.length > 0 && (
             // UNAVAILABLE IS SHOWN WITH ITS REASON: the cultures whose ports refuse this good
             // outright, in the server's own words (DESIGN B.4).
-            <Note tone="warning" className="mt-2">{`Refused at ${open.culture_mask.join(', ')} ports.`}</Note>
+            <Note tone="warning" className="mt-2">{`Not traded at ${open.culture_mask.join(', ')} ports.`}</Note>
           )}
-          <Hint className="mt-2">Base is the catalogue's anchor, not a price. Prices are per port.</Hint>
+          <Hint className="mt-2">Base is a reference value, not a price. Prices differ per port.</Hint>
         </Tray>
       )}
     </>
