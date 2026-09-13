@@ -49,11 +49,11 @@ export function RankScreen() {
   const fatal = useWorld((s) => s.fatal)
 
   if (phase === 'failed') {
-    return <WorldFailed eyebrow="Standings" title="Rank" refusal={fatal} />
+    return <WorldFailed title="Rank" refusal={fatal} />
   }
   if (phase !== 'ready') {
     return (
-      <WorldLoading eyebrow="Standings" title="Rank" subtitle="How you compare to other players." panels={2} />
+      <WorldLoading title="Rank" />
     )
   }
   return <RankBody />

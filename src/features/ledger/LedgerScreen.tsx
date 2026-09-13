@@ -74,16 +74,11 @@ export function LedgerScreen() {
   const fatal = useWorld((s) => s.fatal)
 
   if (phase === 'failed') {
-    return <WorldFailed eyebrow="Record" title="History" refusal={fatal} />
+    return <WorldFailed title="History" refusal={fatal} />
   }
   if (phase !== 'ready') {
     return (
-      <WorldLoading
-        eyebrow="Record"
-        title="History"
-        subtitle="Everything that happened, in order."
-        panels={4}
-      />
+      <WorldLoading title="History" />
     )
   }
   return <LedgerBody />

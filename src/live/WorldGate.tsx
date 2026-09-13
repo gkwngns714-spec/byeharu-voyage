@@ -1,4 +1,4 @@
-import { Card, Explain, Notice, PageHeader, Screen, SectionLabel, Skeleton } from '../components/ui'
+import { Hint, Note, Row, Sheet, SheetSection, Skeleton } from '../components/ui'
 import type { Refusal } from '../lib/rpc'
 
 // THE TWO NON-READY STATES OF A SCREEN, written once.
@@ -20,90 +20,46 @@ import type { Refusal } from '../lib/rpc'
 // domain is the three screens; moving it is a one-line import change for whoever owns `src/live/`.
 
 /** The world could not be opened. Show what the chain said, in the chain's own words. */
-export function WorldFailed({
-  eyebrow,
-  title,
-  refusal,
-}: {
-  eyebrow: string
-  title: string
-  refusal: Refusal | null
-}) {
+export function WorldFailed({ title, refusal }: { title: string; refusal: Refusal | null }) {
   return (
-    <Screen>
-      <PageHeader eyebrow={eyebrow} title={title} subtitle="The game could not load." />
-      <Card tone="danger">
-        <Notice tone="danger">
-          <span className="font-mono text-xs uppercase tracking-wider">
-            {refusal?.code ?? 'E_UNKNOWN'}
-          </span>
-          <span className="mt-1 block">
-            {refusal?.sentence ?? 'The game could not load, and gave no reason.'}
-          </span>
-        </Notice>
-        {refusal && refusal.fixes.length > 0 && (
-          <div className="mt-3">
-            <SectionLabel>Try</SectionLabel>
-            <ul className="space-y-1">
-              {refusal.fixes.map((fix) => (
-                <li key={fix} className="font-mono text-xs text-ink-muted">
-                  → {fix}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {/* THE DETAIL IS A DEVELOPER'S NOTE, so it goes behind the dot rather than on the screen.
-            It was printed in full, and on a real failure it read:
-              "sqlstate: P0001 context: PL/pgSQL function inline_code_block line 266 at RAISE"
-            A player cannot act on a PL/pgSQL line number, and a stack trace on the one screen that
-            appears when the game is already broken reads as the game being MORE broken. The
-            `sentence` above is what a player needs; this is what I need, and it is one tap away —
-            deleting it outright would be worse, because a bug report with it is worth ten without. */}
-        {refusal?.detail && (
-          <div className="mt-3">
-            <Explain label="What the server said">
-              <span className="font-mono text-[11px] break-words">{refusal.detail}</span>
-            </Explain>
-          </div>
-        )}
-        <p className="mt-3 text-sm text-ink-muted">
-          Nothing was lost: the world is a database in this tab, and it is still on disk. Reload to
-          open it again.
-        </p>
-      </Card>
-    </Screen>
+    <Sheet title={title}>
+      {/* THE ONE NOTE: the sentence a player is owed. The code goes to console.debug (Note's own
+          rule), never to the screen — §2 item 13, a code is for a log. */}
+      <Note tone="danger" code={refusal?.code ?? 'E_UNKNOWN'}>
+        {refusal?.sentence ?? 'The game could not load, and gave no reason.'}
+      </Note>
+      {refusal && refusal.fixes.length > 0 && (
+        <SheetSection heading="Try">
+          {refusal.fixes.map((fix, i) => (
+            <Row key={fix} label={fix} hairline={i < refusal.fixes.length - 1} />
+          ))}
+        </SheetSection>
+      )}
+      {/* THE DETAIL IS A DEVELOPER'S NOTE, one tap away rather than on the screen: a PL/pgSQL line
+          number on the one screen that appears when the game is already broken reads as the game
+          being MORE broken — and a bug report with it is worth ten without. */}
+      <Hint className="mt-4" more={refusal?.detail ? <span className="font-mono break-words">{refusal.detail}</span> : undefined} moreTitle="What the server said">
+        Nothing was lost — the game is still saved. Reload to open it again.
+      </Hint>
+    </Sheet>
   )
 }
 
-/** The world is opening. Blocks where the panels will be — never an endless spinner. */
-export function WorldLoading({
-  eyebrow,
-  title,
-  subtitle,
-  panels = 2,
-}: {
-  eyebrow: string
-  title: string
-  subtitle?: string
-  /** How many card-shaped blocks to stand in for. */
-  panels?: number
-}) {
+/** The world is opening. Rows where the rows will be — never an endless spinner, and no chrome
+ *  the screen itself does not draw: it was an eyebrow, a subtitle and three bordered cards, the
+ *  §2 item 15 / §4.3 chrome the redesign deleted everywhere else, flashing on every cold load. */
+export function WorldLoading({ title, rows = 6 }: { title: string; rows?: number }) {
   return (
-    <Screen>
-      <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
+    <Sheet title={title}>
       <p className="sr-only" role="status">
         Opening the world.
       </p>
-      {Array.from({ length: panels }, (_, i) => (
-        <Card key={i}>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex min-h-row items-center justify-between gap-3 border-b border-edge">
           <Skeleton className="h-4 w-40" />
-          <Skeleton className="mt-3 h-3 w-full" />
-          <Skeleton className="mt-2 h-3 w-5/6" />
-          <Skeleton className="mt-2 h-3 w-2/3" />
-        </Card>
+          <Skeleton className="h-4 w-16" />
+        </div>
       ))}
-    </Screen>
+    </Sheet>
   )
 }
-

@@ -68,10 +68,10 @@ export function PortScreen() {
   const snapshot = useWorld((s) => s.snapshot)
 
   if (phase === 'failed') {
-    return <WorldFailed eyebrow="Harbour" title="Port" refusal={fatal} />
+    return <WorldFailed title="Port" refusal={fatal} />
   }
   if (phase !== 'ready' || !snapshot) {
-    return <WorldLoading eyebrow="Harbour" title="Port" subtitle="Where you are, and what is here." panels={3} />
+    return <WorldLoading title="Port" />
   }
   return <PortBody snapshot={snapshot} />
 }

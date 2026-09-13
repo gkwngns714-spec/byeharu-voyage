@@ -42,10 +42,10 @@ export function FleetsScreen() {
   const snapshot = useWorld((s) => s.snapshot)
 
   if (phase === 'failed') {
-    return <WorldFailed eyebrow="Assets" title="Fleets" refusal={fatal} />
+    return <WorldFailed title="Fleets" refusal={fatal} />
   }
   if (phase !== 'ready' || !snapshot) {
-    return <WorldLoading eyebrow="Assets" title="Fleets" subtitle="Your ships, and how they are doing." panels={3} />
+    return <WorldLoading title="Fleets" />
   }
   return <FleetsBody />
 }
