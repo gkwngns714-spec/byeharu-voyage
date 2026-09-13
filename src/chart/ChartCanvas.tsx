@@ -6,11 +6,14 @@ import { FleetsLayer, TracksLayer } from './FleetsLayer'
 import { LabelsLayer } from './LabelsLayer'
 import { PortsLayer } from './PortsLayer'
 import { RoadsteadsLayer } from './RoadsteadsLayer'
+import { SeaLayer } from './SeaLayer'
 import { visiblePorts, type ChartModel } from './chartModel'
+import type { CoastlineData } from './coastlineBuild'
 import { LABEL_SPAN_LIMIT, minTierForSpan } from './chartView'
-import { GLYPH } from './glyphs'
+import { coastStrokeWidth, GLYPH } from './glyphs'
 import { mapLabelRequests, planLabels, type Rect } from './labels'
-import type { MapPort, MapSelection } from './mapTypes'
+import type { MapPort, MapSea, MapSelection } from './mapTypes'
+import { seaNameRequests } from './seaNames'
 import type { ChromeBox } from './useChartSurface'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -57,12 +60,16 @@ import type { ChromeBox } from './useChartSurface'
 // place orders come from, and there is exactly one (`docs/DESIGN.md`, MapScreen's own header).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+/** One frozen empty list, so a chart handed no seas does not allocate one per frame. */
+const NO_SEAS: readonly MapSea[] = []
+
 export function ChartCanvas({
   model,
   ports,
   box,
   unitsPerPx,
-  coastlineD,
+  coast,
+  seas = NO_SEAS,
   selection,
   keepOut,
   ariaLabel,
@@ -74,8 +81,11 @@ export function ChartCanvas({
   box: ViewBox
   /** Chart units per CSS pixel — every glyph and label size is in pixels and scaled by it. */
   unitsPerPx: number
-  /** The world's land as one `d`, or '' while it is still being fetched (./useCoastline.ts). */
-  coastlineD: string
+  /** The world's land, built, or null while it is still being fetched (./useBackdrop.ts). */
+  coast: CoastlineData | null
+  /** The named waters (row 90), or none while the backdrop is still being fetched — which draws
+   *  no names, truthfully. Which of them are set at this zoom is ./seaNames.ts's decision. */
+  seas?: readonly MapSea[]
   selection: MapSelection
   /**
    * OPAQUE CHROME THE SCREEN HAS PUT OVER THIS CHART, in CSS pixels from the chart's top-left
@@ -110,17 +120,26 @@ export function ChartCanvas({
     }))
   }, [keepOut, box, unitsPerPx])
 
+  // ONE plan for every name on the sheet — the places AND the waters (row 90). The seas' requests
+  // are appended, not merged in a second planner: they carry the lowest priority, so `planLabels`
+  // places them last and a water's name can only ever fill water no port has claimed.
   const labels = useMemo(
     () =>
-      planLabels(mapLabelRequests(model, drawnPorts, selection, box.width <= LABEL_SPAN_LIMIT), {
-        viewBox: box,
-        unitsPerPx,
-        fontSizePx: GLYPH.labelSize,
-        gapPx: GLYPH.labelGapX,
-        glyphRadiusPx: GLYPH.fleetHaloRadius,
-        keepOut: keepOutUnits,
-      }),
-    [model, drawnPorts, selection, box, unitsPerPx, keepOutUnits],
+      planLabels(
+        [
+          ...mapLabelRequests(model, drawnPorts, selection, box.width <= LABEL_SPAN_LIMIT),
+          ...seaNameRequests(seas, box),
+        ],
+        {
+          viewBox: box,
+          unitsPerPx,
+          fontSizePx: GLYPH.labelSize,
+          gapPx: GLYPH.labelGapX,
+          glyphRadiusPx: GLYPH.fleetHaloRadius,
+          keepOut: keepOutUnits,
+        },
+      ),
+    [model, drawnPorts, seas, selection, box, unitsPerPx, keepOutUnits],
   )
 
   const selectedFleetId = selection?.kind === 'fleet' ? selection.id : null
@@ -133,18 +152,12 @@ export function ChartCanvas({
       role="img"
       aria-label={ariaLabel}
     >
-      {/* THE SEA — the ground everything else is measured against. It is the whole viewBox, so it
-          moves with the paper and there is never an unpainted edge mid-pan. */}
-      <rect
-        x={box.x}
-        y={box.y}
-        width={box.width}
-        height={box.height}
-        className="fill-chart-sea"
-        pointerEvents="none"
-        data-testid="map-sea"
-      />
-      <CoastlineLayer d={coastlineD} />
+      {/* THE SEA — the ground everything else is measured against, its depth, and the graticule
+          (./SeaLayer.tsx). Then the coast: shallows, body, relief, and a stroke at this zoom's
+          weight (./CoastlineLayer.tsx). Row 90 made both a picture; the tokens the ink spec pins
+          did not move. */}
+      <SeaLayer box={box} />
+      <CoastlineLayer coast={coast} strokeWidth={coastStrokeWidth(box.width)} />
       <TracksLayer model={model} unitsPerPx={unitsPerPx} />
       {/* THE ROADS (0076) — the dotted helper line out to the one point of open water each port is
           reached from, and the hollow circle on it. UNDER the port marks, because a dotted line

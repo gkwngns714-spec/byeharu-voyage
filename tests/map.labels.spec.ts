@@ -3,6 +3,7 @@ import { WORLD_BOUNDS, project, type ViewBox } from '../src/lib/geo'
 import {
   buildChartModel,
   GLYPH,
+  GREAT_PORT_TIER,
   LABEL_PRIORITY,
   LABEL_SPAN_LIMIT,
   fitView,
@@ -209,15 +210,30 @@ test.describe('the zoom decides how much world is drawn', () => {
     for (const label of placed) expect(drawable.has(label.id)).toBe(true)
   })
 
-  test('pulled back past LABEL_SPAN_LIMIT, only ports your fleets use ask for a name', () => {
+  test('pulled back past LABEL_SPAN_LIMIT, only ports your fleets use — and the great harbours — ask for a name', () => {
+    // Pin moved deliberately 2026-09-13 (owner row 90, "it is too blank"): the world view drew
+    // 35 tier-5 marks and named none of them. A GREAT harbour (GREAT_PORT_TIER) now asks at every
+    // zoom, at quiet priority, so the planner still drops it for anything of yours. Everything
+    // smaller keeps §E.5's zoom rule exactly as before.
     const viewBox: ViewBox = { x: -60, y: -70, width: 120, height: 80 }
     const drawn = visiblePorts(PORTS, MODEL.portRoles, viewBox, minTierForSpan(viewBox.width))
     const requests = mapLabelRequests(MODEL, drawn, null, viewBox.width <= LABEL_SPAN_LIMIT)
     expect(viewBox.width).toBeGreaterThan(LABEL_SPAN_LIMIT)
+    let great = 0
     for (const request of requests) {
       if (!request.id.startsWith('port:')) continue
-      expect(MODEL.portRoles.has(request.id.slice(5)), request.text).toBe(true)
+      const code = request.id.slice(5)
+      const port = PORTS.find((p) => p.code === code)!
+      if (port.sizeTier >= GREAT_PORT_TIER && !MODEL.portRoles.has(code)) {
+        great++
+        // …and it asks BELOW every port of yours, so the old rule's spirit holds in a crowd.
+        expect(request.priority, request.text).toBeLessThan(LABEL_PRIORITY.route)
+        continue
+      }
+      expect(MODEL.portRoles.has(code), request.text).toBe(true)
     }
+    // Non-vacuous: this frame holds great harbours nothing of yours touches, and they asked.
+    expect(great).toBeGreaterThan(0)
   })
 })
 

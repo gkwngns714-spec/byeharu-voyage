@@ -7,8 +7,8 @@ import { buildChartModel } from './chartModel'
 import { openingBounds } from './chartView'
 import { mapFleetsOf, mapPortsOf } from './liveWorld'
 import type { MapSelection } from './mapTypes'
+import { useBackdrop } from './useBackdrop'
 import { useChartSurface } from './useChartSurface'
-import { useCoastline } from './useCoastline'
 import { ViewControls } from './ViewControls'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -105,7 +105,7 @@ export function SmallChart({
   className?: string
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
-  const coastline = useCoastline()
+  const backdrop = useBackdrop()
 
   const chartPorts = useMemo(() => mapPortsOf(ports), [ports])
   const chartFleets = useMemo(() => mapFleetsOf(fleets), [fleets])
@@ -178,7 +178,8 @@ export function SmallChart({
           ports={chartPorts}
           box={box}
           unitsPerPx={surface.unitsPerPx}
-          coastlineD={coastline.data?.d ?? ''}
+          coast={backdrop.coast}
+          seas={backdrop.seas}
           selection={selection}
           // The zoom column is opaque and sits on the glass; these are its measured boxes, so the
           // label planner never prints a harbour's name underneath it (the Saint-Malo defect, found

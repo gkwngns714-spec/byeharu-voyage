@@ -27,16 +27,22 @@
 // in practice it cannot be seen.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { project, type LatLon } from '../lib/geo'
+import { project, type LatLon, type Point } from '../lib/geo'
+import { headingDeg } from './glyphs'
 import { toPolylineD } from './svgPath'
 
-/** The two halves of a track, ready for two <path> elements. */
+/** The two halves of a track, ready for two <path> elements — and where the far end points. */
 export interface TrackPaths {
   /** Departure → the fleet: the passage already made. */
   readonly sailedD: string
   /** The fleet → the course's end: the WHOLE remaining course — the server serves it all now,
    *  so nothing beyond the current segment has to be left undrawn any more. */
   readonly aheadD: string
+  /** The course's last vertex, projected — where the arrowhead's tip goes (row 90). */
+  readonly end: Point
+  /** The last segment's heading, degrees clockwise from north, for the arrowhead's turn. Null
+   *  when the course ends where it stands, in which case no arrowhead is drawn. */
+  readonly endHeading: number | null
 }
 
 /**
@@ -48,9 +54,13 @@ export function buildTrack(course: readonly LatLon[], at: LatLon, segIndex: numb
   // course[i]..course[i+1] is segment i: the sailed half is points 0..segIndex then the ship, and
   // the water ahead is the ship then points segIndex+1..end. A degenerate course (fewer than two
   // points) draws two empty halves rather than inventing a line.
-  if (course.length < 2) return { sailedD: '', aheadD: '' }
+  if (course.length < 2) return { sailedD: '', aheadD: '', end: project(at), endHeading: null }
   const cut = Math.min(Math.max(segIndex, 0), course.length - 2)
   const sailed = [...course.slice(0, cut + 1), at].map(project)
   const ahead = [at, ...course.slice(cut + 1)].map(project)
-  return { sailedD: toPolylineD(sailed), aheadD: toPolylineD(ahead) }
+  // The arrowhead points the way the LAST segment of the water ahead runs — from the vertex
+  // before the end to the end. Both are the served course's own points.
+  const end = ahead[ahead.length - 1]
+  const before = ahead[ahead.length - 2]
+  return { sailedD: toPolylineD(sailed), aheadD: toPolylineD(ahead), end, endHeading: headingDeg(before, end) }
 }

@@ -19,9 +19,10 @@ import { roadsteadMarks } from './roadsteads'
 // `ChartCanvas` is the only composer, and this file is exported to nobody (src/chart/index.ts,
 // docs/SECTIONS.md:108).
 //
-// THE DASH IS `1 5`, borrowed rather than invented — it is the water AHEAD of a fleet
-// (FleetsLayer.tsx:40), the sparsest dot in the vocabulary, and it already means *"a line not yet
-// made good"*. Not `1 3` (the passage she has SAILED) and not `3 3` (a destination ring).
+// THE DASH IS `1 5`, the sparsest dot in the vocabulary. It was borrowed from the water AHEAD of a
+// fleet; row 90 (2026-09-13) redrew the course — the passage made SOLID, the water ahead a `5 4`
+// dash with an arrowhead — so the dot is the roadstead's own now, and it still means *"a line not
+// yet made good"*. Not `3 3` (a destination ring), and never solid (a passage sailed).
 //
 // THE INK IS FAINT, NOT ACCENT. Brass means *yours* on this chart; a roadstead is true of every
 // harbour whether you use it or not, so it is drawn like the coastline is.

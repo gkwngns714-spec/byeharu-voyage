@@ -5,6 +5,53 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-13 — The map became a picture (row 90, BUILT on a PR, not merged, not driven on production)
+
+**The owner:** *"map should be much more graphic... it is too blank."* Audited before touching
+anything (`docs/MAP_ATMOSPHERE.md` §1): the opening frame at 390×844 and at 1440×900, both
+schemes, counted off the DOM — **three fills** (the sea rectangle, the land body, one brass
+triangle), everything else a hairline; 33 strokes and 10 names on the phone, 18 and 7 on the
+desktop; no sea names, no grid, no relief, no ship. Frame cost 33.6 / 33.3 ms per zoom step. The
+blankness was three rules doing their jobs — §E.5's austerity written for twelve harbours, the ink
+spec pinning the only three colours, the tier bands drawing 35 great ports and naming none — and
+two things nobody had named: the coast stroked a COUNTRIES file whole, so inland borders read as
+coasts, and a fleet at sea was a dot, which has no heading.
+
+**What was built, all in `src/chart/**`, `src/features/map/**` and the `chart-*` tokens** (the
+three pinned tokens did not move; five were added in both schemes; `tests/map.atmosphere.spec.ts`
+refuses a chart token one scheme lacks): a `SeaLayer` — the flat pinned ground, a radial vignette
+to `chart-deep` at the frame's edge, a 15° graticule as one hairline path; `CoastlineLayer` drawn
+from ONE file as TWO paths — the body (every ring, filled) and the LINE (`coastD`, the outline with
+the 2,664 shared border segments left out, simplified run by run and canonically on borders so the
+line sits on the body's edge and neighbours' edges coincide) — three non-scaling shallows strokes
+under the body, a clipped relief stroke on it, and the coast at `coastStrokeWidth(spanX)`, 0.9 →
+1.7 px; the 51 seas of `data/seas.json` read inside the same lazy chunk as the coast
+(`backdrop.ts`, `useBackdrop` — `coastline.ts`/`useCoastline.ts` renamed, not duplicated) and set
+on their anchors as `LabelRequest`s to the ONE planner (extended with `sizePx`, `spacingEm`,
+`placement: 'centred'`), at priority 5 below the quietest harbour, dropped never moved; a ring on
+every tier-5 harbour, its name at 12 px, and a great harbour asking for its name at every zoom (one
+pin in `tests/map.labels.spec.ts` moved deliberately); the fleet at sea as `shipPath`, one hull
+turned to `FleetOnChart.heading` (the served segment's), drawn by `FleetsLayer` and the minimap;
+the passage made solid, the water ahead a `5 4` dash, an open arrowhead at `TrackPaths.end` on
+`endHeading`. `GLYPH.fleetDotRadius` is gone; `shipHalfLength` is the fleet mark's size.
+
+**Measured after** (§7): fills 4, strokes 41, names 10, one sea name at the phone's opening frame;
+frame cost 41.0 / 44.3 then 31.1 / 33.3 ms per step on the rebuilt bundle — level with before, not
+doubled. Driven on the canary world, Lisbon → Amsterdam: hull at heading −8°, arrow at Amsterdam's
+ring turned 59°, "Bay of Biscay" and "North Sea" on the water, ten rings. `buildCoastline` 36.6 ms
+once per open (was 8.3): body 78.9 KB, line 42.8 KB in 271 runs.
+
+**Rejected** (§4): a blur filter (re-rasterises 6,000 points per frame); a second text layer for
+the seas (two planners disagree); dissolving countries (a library for what forty lines of
+shared-segment removal does exactly); any mark that would need a legend.
+
+**The one exception recorded** (§6): the seas' names carry 0.14 em of spacing — cartographic
+convention for water, on the chart only, quieter than every port's name. §4.1 otherwise stands.
+
+**Gates, all watched:** `npx tsc -b` 0 · `npx eslint src tests` 0 · pure specs 130 passed ·
+browser specs against the served local build (map.sendfleet, map.voyage, waters.panel, layout,
+chart.ink) — the PR body carries the verbatim output. **NOT merged, NOT driven on production.**
+
 ## 2026-09-13 — Three owner complaints in one sitting: the flicker, the words, the blank space (rows 77–80), and London's ring (row 78, built, not deployed)
 
 **The owner opened the game after `git pull` and said, in order:** *"why is store keep refreshing?"* ·

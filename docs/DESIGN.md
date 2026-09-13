@@ -642,10 +642,21 @@ icons, no jargon, panels in the corners not the centre, everything foldable.
 
 Rendering rules, binding:
 
+- **AMENDED 2026-09-13, owner row 90 — *"map should be much more graphic... it is too blank."*** The
+  two rules below were written for twelve invented harbours on a phone and were measured out of
+  the game on 214: the opening frame held THREE fills. What binds now is `docs/MAP_ATMOSPHERE.md`:
+  the three glyphs are still the only things that MEAN anything (a port, a fleet, a destination),
+  but the fleet at sea is a **hull on its heading** rather than a dot, its course is solid behind
+  and dashed ahead with an arrowhead at its end, a great harbour wears a ring, and the sheet
+  carries the world's own furniture — depth, shallows, relief along the coast, a graticule, the
+  names of the seas — none of which needs a legend. "No borders" is TRUE for the first time: the
+  coast line is the outline with the countries' shared edges left out. The contrast numbers in the
+  next rule are unchanged and still pinned.
 - **Three glyphs only.** `▲` a port, `▲` filled + label a fleet at anchor, a moving dot on a dotted track
-  for a fleet at sea. Nothing else is drawn.
+  for a fleet at sea. Nothing else is drawn. *(Superseded by the amendment above — the dot is a hull,
+  and the furniture is listed there.)*
 - **Coastlines are a single pale stroke on a quiet body.** No terrain, no bathymetry, no borders, no
-  relief, no second land colour. **Amended 2026-08-23, from "no fill".** The original ban was written
+  relief, no second land colour. *(Relief and depth: see the amendment above.)* **Amended 2026-08-23, from "no fill".** The original ban was written
   for austerity and it was measured out of the game: an outline alone leaves the player deciding
   which side of a line is water, and the values shipped in its place put land at **1.23 : 1** against
   the chart's sea — **1.03 : 1** against what was actually behind it, because the chart painted no
