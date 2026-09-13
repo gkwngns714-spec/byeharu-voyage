@@ -235,7 +235,12 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved 2026-09-10 to 0082, which opens the books for what was already aboard when 0081 landed: the
 // ledger is replayed per (house, fleet, good) with 0081's one blend, and a basis is written only where
 // the replay provably agrees with the hold — everything else is refused, with its reason, and stays unknown.
-const LAST = '20260818000084_a_good_is_native_where_it_grows.sql'
+// Moved 2026-09-13 to 0085, which puts a roadstead ON the channel that carved its cell instead of at
+// that cell's centre — London's ring was 8 nm into Kent, inside the coastline polygon — and gives the
+// river ports the carve reaches (Antwerp, Seville, Nantes, Bordeaux, twelve more) a roadstead off
+// the quay for the first time. The channels cross the wire as voyage.channels; sea_reaches is
+// re-seeded whole.
+const LAST = '20260818000085_a_roadstead_lies_on_the_channel.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

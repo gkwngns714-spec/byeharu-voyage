@@ -204,6 +204,12 @@ export const RECLAIMED = [
       + 'mountains again.',
     latFrom: 13.0, latTo: 17.0, lonFrom: 96.0, lonTo: 101.0,
     expect: 23,
+    // A reclamation is a ONE-SHOT delete of sea membership, and 0079 carried it: the 23 cells are
+    // zero in every chain from that file on, so a later run finds nothing left to reclaim. That
+    // is not a stale entry — it is a landed one, and the generator asserts it the other way
+    // round for a landed claim: ZERO cells to reclaim, or the membership has grown back. Found
+    // the loud way on 2026-09-13, when the 0085 run refused to emit over "expects 23, reclaims 0".
+    landed: '20260818000079',
   },
 ]
 
@@ -218,7 +224,12 @@ export function inReclaimed(lat, lon) {
 }
 
 // ── the land, scan-filled into the grid ───────────────────────────────────────────────────────
-function landPolygons() {
+/** THE LAND DATA ITSELF — every polygon ring of data/world-110m.json, as [lon, lat] rings, outer
+ *  and holes together per polygon. Exported (2026-09-13, 0085) so a generator can ask the land data
+ *  a question the raster cannot answer: "is this point inside a coastline?" A raster cell that a
+ *  CHANNEL carved reads as sea while the polygon it sits in says land, and only the polygons can
+ *  say so. This hands out the data; it decides nothing about where any roadstead is. */
+export function landPolygons() {
   const fc = JSON.parse(readFileSync(join(DATA, 'world-110m.json'), 'utf8'))
   const polys = []
   for (const f of fc.features) {
@@ -333,15 +344,28 @@ export function carveInventory() {
   const pre = preCarveGrid()
   const water = Uint8Array.from(pre)
   const opened = new Map()
+  // THE CARVED CELLS THEMSELVES, per channel — the cells of DRY LAND each entry turned into sea,
+  // as cell indices (row * COLS + col), in scan order. `opened` is their count; this is the list.
+  // It exists because a roadstead that lands in one of these cells is standing on water the map
+  // does not draw — the raster says sea, the land data says land — and the generator has to know
+  // WHICH channel put it there to answer where on that channel the roadstead lies
+  // (scripts/build-sea-migration.mjs, 0085). This module states what the carve DID; it does not
+  // say where any roadstead is — that rule has one home and it is not here.
+  const carved = new Map()
   for (const ch of CHANNELS) {
     let land = 0
+    const cells = []
     for (const k of channelCells(ch)) {
-      if (pre[k] === 0) land++
+      if (pre[k] === 0) {
+        land++
+        cells.push(k)
+      }
       water[k] = 1
     }
     opened.set(ch.id, land)
+    carved.set(ch.id, cells.sort((a, b) => a - b))
   }
-  return { water, pre, opened }
+  return { water, pre, opened, carved }
 }
 
 /**
@@ -388,7 +412,19 @@ export function assertCarveDeclared(opened) {
  * an undeclared carve at all.
  */
 export function buildSeaGrid() {
-  const { water, opened } = carveInventory()
-  assertCarveDeclared(opened)
-  return water
+  return buildSeaCarve().water
+}
+
+/**
+ * THE SAME GRID, WITH ITS CARVE INVENTORY BESIDE IT — `{ water, pre, opened, carved }` from
+ * `carveInventory`, behind the same refusal `buildSeaGrid` applies. One guard, two entrances:
+ * `buildSeaGrid()` for the four generators that only want the raster, this for the one that also
+ * has to know which cells the carve opened and which channel opened each of them
+ * (scripts/build-sea-migration.mjs, since 0085: a roadstead in a carved cell lies on that channel).
+ * It is NOT a second way to build the water — `buildSeaGrid` is one line over it.
+ */
+export function buildSeaCarve() {
+  const inv = carveInventory()
+  assertCarveDeclared(inv.opened)
+  return inv
 }
