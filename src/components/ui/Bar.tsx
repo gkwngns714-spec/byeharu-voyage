@@ -50,6 +50,7 @@ export function Bar({
   value,
   of,
   pending,
+  pendingTone = 'accent',
   tone = 'accent',
   figure,
   label,
@@ -60,6 +61,9 @@ export function Bar({
   /** CONTINUOUS form only: a staged CHANGE to `pct`, in points, may be negative. Drawn as a wash
    *  over the stretch between now and then; the figure beside the bar says which way. */
   pending?: number
+  /** The wash's tone. Accent by default (a staged change); success or danger when the stretch
+   *  MEANS a gain or a loss — the cargo bar stays accent, a profit bar goes green or red. */
+  pendingTone?: BarTone
   /** SEGMENTED form: how many segments are filled. */
   value?: number
   /** SEGMENTED form: how many segments there are. Its presence chooses the form. */
@@ -109,7 +113,7 @@ export function Bar({
             {pending !== undefined && washTo > washFrom && (
               <span
                 data-bar-pending
-                className="absolute inset-y-0 rounded-chip bg-accent opacity-40"
+                className={`absolute inset-y-0 rounded-chip opacity-40 ${FILL[pendingTone]}`}
                 style={{ left: `${washFrom}%`, width: `${washTo - washFrom}%` }}
               />
             )}

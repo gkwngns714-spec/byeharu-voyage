@@ -115,7 +115,7 @@ function tidePct(g: MarketGood): number {
  *  "none aboard" line and its whole row shrank narrower and shorter than its neighbours, so the
  *  price column zig-zagged. 7rem holds "not traded here" on ONE line at t-caption (5.5rem wrapped it and every cell grew to 78px); 3.5rem is label + figure
  *  + reason, so a live cell stands as tall as a dead one. */
-function PriceCell({
+export function PriceCell({
   label,
   price,
   onPress,

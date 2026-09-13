@@ -21,7 +21,7 @@ import { fleetCargo } from '../../domain/fleet'
 // and bulk (0.2–1.5 t a unit across data/goods.json) is applied by the server into `cargo_tuns`.
 // Printing the count with a `t` after it would be wrong by the bulk on 397 of 523 goods, so the
 // count rides bare and the hold-space truth — the served tuns — is the one closing row, where it
-// agrees with the hold figures the tray prints elsewhere. No average-cost column: the server
+// agrees with the hold figures the fold prints elsewhere. No average-cost column: the server
 // carries what is aboard, not what it cost; the price paid is on the Ledger.
 
 export function FleetCargo({ fleet }: { fleet: FleetView }) {

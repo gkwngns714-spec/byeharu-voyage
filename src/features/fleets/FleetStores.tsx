@@ -1,7 +1,6 @@
 import { Button, Figure, Hint, Note, Row, SheetSection, Stepper } from '../../components/ui'
 import { formatFixed, formatInt, formatVoyageDays } from '../../lib/format'
-import { useWorld } from '../../live/worldStore'
-import type { FleetView, ProvisionPreset, ProvisionPresetBook } from '../../lib/rpc'
+import type { FleetView, ProvisionPreset, ProvisionPresetBook, Refusal } from '../../lib/rpc'
 import { fleetCrew, fleetStores } from '../../domain/fleet'
 import { keepDays } from './standingOrder'
 
@@ -19,6 +18,11 @@ import { keepDays } from './standingOrder'
 // another fleet is kept at is one tap here; the days-to-book operations are standingOrder.ts's
 // rule and this face never sees a name. The slider's end is a chosen scale, not a rule — the
 // server takes 1 to 999 (0034) and says so itself if asked for more.
+//
+// ── THE REFUSAL IS THIS FLEET'S, HANDED IN (row 89) ────────────────────────────────────────────
+// This face used to read the store's one last refusal. Now that any number of fleets may stand
+// unfolded at once, that would print another fleet's refusal under this stepper; standingOrder.ts
+// keeps the refusal of the keep pressed HERE, and passes it down. This face reads nothing.
 
 /** The stepper's end. Two months of supplies is more than any ship in the game can carry. */
 const KEEP_SCALE = 60
@@ -29,6 +33,8 @@ export function FleetStores({
   book,
   days,
   onDays,
+  refusal,
+  onDismissRefusal,
 }: {
   fleet: FleetView
   /** The order she sails under, or null. */
@@ -37,9 +43,10 @@ export function FleetStores({
   /** The stepper's figure — the draft, or the served days when there is none. */
   days: number
   onDays: (days: number) => void
+  /** The refusal the last keep pressed on THIS fleet drew, or null. */
+  refusal: Refusal | null
+  onDismissRefusal: () => void
 }) {
-  const refusal = useWorld((s) => s.refusal)
-  const dismissRefusal = useWorld((s) => s.dismissRefusal)
   const stores = fleetStores(fleet)
   const crew = fleetCrew(fleet)
   // Docked under an order she no longer meets — the "hire 20 at Cádiz and her range collapses"
@@ -95,7 +102,7 @@ export function FleetStores({
             code={refusal.code}
             className="mt-2"
             action={
-              <Button variant="quiet" size="sm" onClick={dismissRefusal}>
+              <Button variant="quiet" size="sm" onClick={onDismissRefusal}>
                 Dismiss
               </Button>
             }
