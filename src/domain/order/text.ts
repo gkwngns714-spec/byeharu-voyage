@@ -157,8 +157,8 @@ export function verbWord(verb: string): string {
     REPAIR: 'Repair',
     MAKE: 'Craft',
     BUILD: 'Build ship',
-    STORE: 'Store',
-    TAKE: 'Load',
+    STORE: 'Put in storage',
+    TAKE: 'Take on board',
     FIT: 'Fit',
     UNFIT: 'Unfit',
   }

@@ -5,6 +5,7 @@ import {
   Icon,
   Note,
   Row,
+  SheetSection,
   Tile,
   TileField,
   Tray,
@@ -33,6 +34,33 @@ import type { FleetView, Refusal, WorkstationItem } from '../../lib/rpc'
 // are rules `cmd.do_make` enforces. A fitting this city is not good enough for still SHOWS, muted,
 // with the tier it wants in its tray — hiding it would make the catalogue look smaller than it is.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+// ── GROUPED BY WHAT KIND OF FITTING IT IS (2026-09-13, owner row 84) ──────────────────────────
+// *"crafting should be grouped into categories."* The category is the SERVED `slot` — the kind
+// of slot a fitting goes into (`item_kinds.slot`, 0068: rig, steering, ground-tackle, hull,
+// weapon, lookout, flourish), which is also the rule `cmd.do_fit` counts against (0074). Nothing
+// is invented on this side: the groups are the served codes in the served order, and the heading
+// is that code printed as a word (hyphens to spaces, a capital). The server serves no NAME for a
+// slot today — `SnapshotBuildingKind` names buildings, nothing names slots — so a served heading
+// is a migration, and the day it lands this word-of-the-code goes with it (docs/NO_SPAGHETTI.md
+// §7C: a code is at least true; a client table of prettier words would be a second author).
+
+/** The served items, in one group per served slot, in the order the server first names each. */
+function groupsBySlot(items: readonly WorkstationItem[]): [string, WorkstationItem[]][] {
+  const groups = new Map<string, WorkstationItem[]>()
+  for (const item of items) {
+    const group = groups.get(item.slot)
+    if (group) group.push(item)
+    else groups.set(item.slot, [item])
+  }
+  return [...groups.entries()]
+}
+
+/** The served slot code as a heading — `ground-tackle` → `Ground tackle`. Formatting, not naming. */
+function slotWord(slot: string): string {
+  const words = slot.replace(/[-_]+/g, ' ').trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
 
 /** What is missing from her hold for one of these, in the server's own numbers. */
 function shortfall(item: WorkstationItem): string | null {
@@ -86,34 +114,40 @@ export function PortWorkstation({
         </Note>
       )}
 
-      <TileField>
-        {view.items.map((item) => (
-          <Tile
-            key={item.code}
-            mark={<Icon name="mallet" size={20} />}
-            name={item.name}
-            meta={item.buys}
-            state={item.makeable ? 'rest' : 'muted'}
-            tap="whole"
-            onClick={() => {
-              setRefusal(null)
-              setDetent('half')
-              setOpen(item)
-            }}
-            /* HOW MANY YOU ALREADY HAVE IN THIS CITY, always — including none. It is the figure a
-               player wants before making another, and a zero is an answer rather than an absence
-               (which is what §2 item 16 objects to in a printed dash). */
-            figure={
-              <Figure
-                value={formatInt(item.owned_here)}
-                unit="here"
-                tone={item.owned_here > 0 ? 'ink' : 'faint'}
+      {/* GROUPED BY THE SERVED SLOT (owner row 84). One section per kind of fitting, in the order
+          the server lists them, the same tiles inside. */}
+      {groupsBySlot(view.items).map(([slot, items]) => (
+        <SheetSection key={slot} heading={slotWord(slot)} data-testid={`craft-group-${slot}`}>
+          <TileField>
+            {items.map((item) => (
+              <Tile
+                key={item.code}
+                mark={<Icon name="mallet" size={20} />}
+                name={item.name}
+                meta={item.buys}
+                state={item.makeable ? 'rest' : 'muted'}
+                tap="whole"
+                onClick={() => {
+                  setRefusal(null)
+                  setDetent('half')
+                  setOpen(item)
+                }}
+                /* HOW MANY YOU ALREADY HAVE IN THIS CITY, always — including none. It is the
+                   figure a player wants before making another, and a zero is an answer rather
+                   than an absence (which is what §2 item 16 objects to in a printed dash). */
+                figure={
+                  <Figure
+                    value={formatInt(item.owned_here)}
+                    unit="here"
+                    tone={item.owned_here > 0 ? 'ink' : 'faint'}
+                  />
+                }
+                data-testid={`fitting-${item.code}`}
               />
-            }
-            data-testid={`fitting-${item.code}`}
-          />
-        ))}
-      </TileField>
+            ))}
+          </TileField>
+        </SheetSection>
+      ))}
 
       {open && (
         <Tray

@@ -5,6 +5,81 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-13 — The port's faces, in the owner's words: no levels, crafts in groups, Repair and Damage, ONE word for storage, and storage drawn like the trade board (rows 83, 84, 86, 87, 88 — built on PR #73, not merged, not driven on production)
+
+**The owner, reading the port after the words pass:** *"in town, trade level? what is this? market
+level? inn level? who designed this? remove levels."* · *"crafting should be grouped into
+categories."* · *"wtf is shipyard and hull (worst ship)? use easy words."* · *"there is warehourse
+and there is store. unify."* · *"and on your ship, make it like trading graphic, where i can put, or
+pull? whatever that is most necessary."* Five rows in `docs/OWNER_REQUESTS.md`, one PR, no
+migration — so this file and that one owe the same two edits a migration slice does.
+
+**Row 83 — the levels are deleted, not explained.** `PortTown.tsx` printed `Trade level 3 / 20`
+and `Craft level 2 / 20` with bars, and `level N` beside a building. Each is a reading of a figure
+the server already folds into something the player sees where it bites — the Port fee row, a
+fitting's *Needs a level N workshop*, the yard's *This port can build up to level N* — and a level
+printed on its own asks the player to know what it decides. The owner did not, which is the
+finding. The rows and the bars went; Market tax, Port fee and the building rows stay.
+
+**Row 84 — grouped by the served slot.** `world.workstation` serves `slot` per fitting (0068:
+`rig`, `steering`, `ground-tackle`, `hull`, `weapon`, `lookout`, `flourish` — the same code
+`cmd.do_fit` counts slots by). The Craft face is one `SheetSection` per slot in the server's
+order, the same tiles inside. **Nothing serves a slot NAME**, so the heading is the served code
+printed as a word (`Ground tackle`); a client table of prettier words would be a second author,
+and a served name is a migration — `PortWorkstation.tsx` says so at the group.
+
+**Row 86 — Repair and Damage.** The tab says `Repair` (the act; the id stays `shipyard`, the
+served kind). The row says `Damage` with the figure as what the worst ship has taken —
+`13% damaged`, printed as `1 − worst hull fraction`, a formatting of the served hull. The step
+tray's three REPAIR strings live in `StepQuestion.tsx`, in the inn slice's hands that day; the
+PR lists the exact change (`Hull (worst ship)` → `Damage`) for the lead, and the
+`hull (worst ship)` ban joins `tests/words.spec.ts` the day it lands rather than reddening a file
+this slice may not touch.
+
+**Row 87 — ONE word: Storage.** The tab, the Town face's building row, the heading, the acts
+(`Put in storage` / `Take on board`), the yard's material notes, History's verb words. **The
+server serves `Warehouse` as the building's name** (0067 `building_kinds.name`) and the strip said
+`Store` — two words for one building, and the owner read both. The Town row now prints the FACE
+LABEL from `PORT_FACES` (`portView.ts`), which is the one client word map, and reads the served
+name only for a kind no face names. `PortWarehouse.tsx` → `PortStorage.tsx`, `useWarehouse` →
+`useStorage`; the RPC `world.warehouse` keeps the wire's name. `docs/WORDS.md` row rewritten;
+`warehouse`, `shed` and `shipyard` banned in player text (two `statGloss.ts` glosses that called
+the build yard a shipyard now say `build yard`).
+
+**Row 88 — storage drawn like the trade board.** One row per good you have here, on either side:
+the name, `N units · N tons in storage · N units · N tons on board` under it, and two cells where
+the ledger has its two prices — `Put in storage` carrying the count on board, `Take on board` the
+count in storage, a cell with nothing to move dead with its reason. **The cell is the ledger's
+own**: `TradeRow`'s private `PriceCell` was wanted a second time, so its box moved down to
+`components/ui/ActCell.tsx` and both compose it (written twice → a function). A press opens the
+one Tray: `In storage` / `On board`, a `Stepper` for the COUNT (max = what is there, an `All`
+chip), the trade tray's `Cargo space` row, the ship's `CargoBar`, ONE button.
+
+**The STORE/TAKE quantity finding.** 0070 §5: STORE and TAKE parse *exactly as BUY and SELL do — a
+good, then a quantity or ALL*, and its self-assert issues `STORE <good> 10`. So the face is built
+on a COUNT, not on ALL: the exact line `STORE <good> <n>` is composed by `orderText` (with NO
+fleet name — a leading name would be read as the good) and previewed through `cmd.preview` by a
+new `src/live/useOrderPreview.ts` (keyed to the line and the world's `readAt`, 200 ms settle,
+returns the refusal instead of swallowing it). The verb's estimate `{good, qty, stored_here}` is
+read once in `domain/order/moveEstimate.ts` — its own file only because `estimate.ts` was in the
+slice-3 helper's hands; the fold is a move. `qty` is what would ACTUALLY move (a TAKE takes what
+fits, `fleet_load` returns what fitted), so a partial TAKE says `Only N units fit on board` before
+the press, and a refused dry run shows its sentence with the button dead. **Nothing serves "tons
+on board after" for STORE/TAKE** — neither `world.warehouse` nor the estimate — so the `CargoBar`
+is drawn without `after` rather than with `used ± n × bulk` worked out on the client.
+
+**Spaghetti named, not hidden.** `useTrade.ts` carries the same preview-debounce mechanism inline
+(`previewKey` / `PREVIEW_SETTLE_MS`) for BUY/SELL. That is now two copies of one rule.
+`useOrderPreview.ts`'s header names `useTrade.ts` as its second caller; the fold is the slice that
+owns that file.
+
+**Proof.** `tests/layout.spec.ts` gains *PORT › Storage*: buys through the trade tray (the in-tab
+world is disposable), opens Storage, counts two cells per row and no dead cell without a reason,
+presses `Put in storage`, requires the tray with a range input and the cargo bar, requires no row
+at or above the press to have moved, requires the button to read `Put N units in storage`, presses
+it, and requires the row to say `… in storage` — the world read back, not patched.
+
+
 ## 2026-09-13 — The map became a picture (row 90, BUILT on a PR, not merged, not driven on production)
 
 **The owner:** *"map should be much more graphic... it is too blank."* Audited before touching

@@ -171,6 +171,18 @@ for TradeTray, the basket and the receipt), `CargoBar` (components/ui — the `5
 FLEETS draws and the basket washes its staged change onto), `Bar.pending` (the wash). `native` on
 a ledger row is the served 0084 flag as a caption word.
 
+**Storage (2026-09-13, owner rows 87 and 88) — two files moved, two went down a layer.**
+`features/port/PortWarehouse.tsx` is `PortStorage.tsx` and `live/useWarehouse.ts` is
+`live/useStorage.ts`: ONE player word for the building, the tab and the act; the RPC keeps the
+wire's name (`world.warehouse`, `worldWarehouse` in the catalogue). What went DOWN: `ActCell`
+(components/ui — the ledger's fixed price cell, promoted when the storage rows wanted the same box
+for `Put in storage` / `Take on board`; `TradeRow`'s `PriceCell` composes it), and
+`live/useOrderPreview.ts` (one order LINE dry-run through `cmd.preview`, keyed to the line and the
+world's read, with the settle delay spelt once — the Storage face is its first caller and
+`live/useTrade.ts`, which still carries the same mechanism inline, is its named second). The
+reading of a STORE/TAKE estimate is `domain/order/moveEstimate.ts`, exported through the
+section's `index.ts`; it belongs beside `saleEstimate` in `estimate.ts` and moves there when that
+file is free (its header says so).
 **The haggle thread and the price chart (2026-09-13, owner row 76, slice 3 — frontend only, no
 migration) — who owns what.** The thread is PORT's: `features/port/HaggleThread.tsx`, mounted by
 `PortTrade.tsx` under the stepper on BOTH faces of the trade tray (keyed per pick), replacing

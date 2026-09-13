@@ -20,7 +20,7 @@ import { PortTrade } from './PortTrade'
 import { PortTown } from './PortTown'
 import { QuayFair } from './PortFair'
 import { buildingTier, hasBuilding } from '../../domain/port'
-import { PortWarehouse } from './PortWarehouse'
+import { PortStorage } from './PortStorage'
 import { PortInn } from './PortInn'
 import { PortYard } from './PortYard'
 import { PortWorkstation } from './PortWorkstation'
@@ -229,7 +229,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
             <PortPrices goods={quay.market.goods} port={port} reader={acting} />
           ))}
         {shownFace.id === 'city' && <PortTown port={port} onOpenFace={setFace} />}
-        {shownFace.id === 'warehouse' && <PortWarehouse portId={port.id} fleet={acting} />}
+        {shownFace.id === 'warehouse' && <PortStorage portId={port.id} fleet={acting} />}
         {shownFace.id === 'workstation' && (
           <PortWorkstation portId={port.id} fleet={acting} tier={buildingTier(port, 'workstation')} />
         )}

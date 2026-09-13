@@ -1,3 +1,4 @@
+import { ActCell } from './ActCell'
 import { Bar } from './Bar'
 import { Figure } from './Figure'
 import { RarityMark } from './Rarity'
@@ -110,11 +111,12 @@ function tidePct(g: MarketGood): number {
  *  counts; the reason line is what keeps a dead cell honest. Moved unchanged from TradeTile, plus
  *  the accent wash while its tray is open.
  *
- *  The cell is a fixed box — `w-28 min-h-14` — and not sized by its text, because a ledger is read
- *  down a column. The first canary drive (2026-09-11) showed why: a good with 10 t aboard lost its
- *  "none aboard" line and its whole row shrank narrower and shorter than its neighbours, so the
- *  price column zig-zagged. 7rem holds "not traded here" on ONE line at t-caption (5.5rem wrapped it and every cell grew to 78px); 3.5rem is label + figure
- *  + reason, so a live cell stands as tall as a dead one. */
+ *  THE BOX IS `ActCell` (2026-09-13): the fixed `w-28 min-h-14` cell — 7rem holds "not traded
+ *  here" on one line at t-caption, 3.5rem is label + figure + reason so a live cell stands as
+ *  tall as a dead one and the column never zig-zags (the first canary drive, 2026-09-11) — was
+ *  written here and wanted a second time by the Storage face (owner row 88), so it moved down to
+ *  its own file and this is one of its two callers. What stays here is what a PRICE cell is: the
+ *  figure is a price. */
 export function PriceCell({
   label,
   price,
@@ -129,17 +131,5 @@ export function PriceCell({
   dead: string | null
   selected: boolean
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={dead !== null}
-      aria-pressed={selected}
-      className={`w-28 min-h-14 rounded-control px-2 py-1 text-left disabled:opacity-45 ${selected ? 'bg-accent-soft' : 'bg-surface-2'}`}
-    >
-      <span className="block text-t-caption text-ink-faint">{label}</span>
-      <Figure value={formatInt(price)} />
-      {dead !== null && <span className="block text-t-caption text-ink-faint">{dead}</span>}
-    </button>
-  )
+  return <ActCell label={label} figure={<Figure value={formatInt(price)} />} onPress={onPress} dead={dead} selected={selected} />
 }
