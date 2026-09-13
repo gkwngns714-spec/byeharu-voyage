@@ -56,8 +56,12 @@ export function TradeRow({
   return (
     <Row
       label={
-        <span className="flex items-center gap-1.5 text-t-body">
-          <span className="truncate">{good.name}</span>
+        // THE CAPTION WRAPS UNDER THE NAME WHEN IT DOES NOT FIT, and never squeezes it: at 390px a
+        // row with cargo on board once read `◇ · 10 units on board` with the name truncated to
+        // nothing (seen in the basket proof's end frame, 2026-09-13). `flex-wrap` keeps a short
+        // caption on the name's line (`· native` fits), so no other row's height moves.
+        <span className="flex flex-wrap items-center gap-x-1.5 text-t-body">
+          <span className="max-w-full truncate">{good.name}</span>
           <RarityMark rarity={good.rarity} />
           {(aboard > 0 || good.native === true) && (
             <span className="whitespace-nowrap text-t-caption text-ink-faint">

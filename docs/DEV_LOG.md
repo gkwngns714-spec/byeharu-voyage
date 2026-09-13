@@ -67,8 +67,8 @@ press on the board brings it back.
 manifest.store, format, wide.layout's class proof) 37 passed · `rpc.surface` over PGlite with the
 two basket contracts (a preview moves nothing and names the refusing line; a mixed two-good basket
 lands and its receipt IS the ledger) · browser specs against a served local-PGlite build (layout,
-wide.layout, primitives.geometry) — the counts are in the PR. **State: BUILT on the PR this entry
-is filed with — NOT merged, NOT driven on production.**
+wide.layout, primitives.geometry) — the counts are in the PR. **State: BUILT on PR #64 — NOT merged, NOT driven
+on production.**
 
 ---
 
