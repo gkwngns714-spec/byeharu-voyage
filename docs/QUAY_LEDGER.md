@@ -20,7 +20,7 @@ server").
 |---|---|---|
 | Buy / Sell tabs + goods card list (index % badge, unit price with base) | keep, reshape | `world.market(p_port)` — buy, sell, mid, range_lo/hi, stock_band, offered, rarity (0071:49-95) |
 | right-hand basket + 선창 hold bar, one big button with the total | keep, **new verb** | hold from `world.fleets` (hold, free_hold, cargo_tuns); the basket is ABSENT — `cmd.issue` takes one BUY/SELL — so `cmd.preview_basket` + `cmd.trade_basket` (0083) |
-| item-info popup (description, price line, hi/lo, calc panel, −/+ slider, 담기) | keep, **inline** | `world.price_history` (≥48 slots), `world.buy_capacity` (cap + binding word), `Stepper`. Becomes the tray under the press, never a modal |
+| item-info popup (description, price line, hi/lo, calc panel, −/+ slider, 담기) | keep, **inline** | `world.price_history` — `{slot, at, mid}` per point and `slot_seconds` on the payload, **no stock** (0013:139-172; this row overstated it until slice 3), `world.buy_capacity` (cap + binding word), `Stepper`. Becomes the tray under the press, never a modal |
 | 판매 확인 table (원가 · 관세 · 할증 · 판매 금액) | keep as **receipt** | `cmd.preview` already returns profit vs `cargo_basis` (0081); the basket preview returns the breakdown per line |
 | 협상 haggle scene (7 chances, +49%, success gauge) | keep, **both sides** | `cmd.haggle`, `world.haggle_state`, `haggle_daily` (0022/0024). Sell side exists server-side; `HaggleRow.tsx:36` only calls `'buy'`. Concession is a slice of the SPREAD, never of mid |
 | 정산 settlement (XP, 공헌도, 거래 점수, 명성; totals; purse after) | keep, **trimmed** | trading XP = `player_progress.trading` (0069). Contribution / reputation are ABSENT and are not faked |
@@ -35,9 +35,10 @@ server").
 2. **Price + tide, not `96% · 1,124 (1,110)`.** Each row shows the served buy and sell figures as
    its two tap cells (owner row 6), and a 4-px tide `Bar`: where mid sits inside the served
    `range_lo … range_hi`. Row 64's ±20 % band becomes a shape, not an index.
-3. **Haggle as a thread.** Short merchant turns templated from `world.haggle_state`; the stake
-   written out — spread points, then the per-tun figure — attempts as pips, odds once, under 100.
-   Buy and sell.
+3. **Haggle as a thread.** The merchant's turns are `cmd.haggle`'s own `message`, verbatim (no
+   client template — corrected 2026-09-13 when slice 3 was built; `world.haggle_state` serves the
+   STANDING, not the sentences); the stake written out — the fee as served percentages, then the
+   per-unit figure — attempts as pips, odds once, under 100. Buy and sell.
 4. **Phone-first, one column — and on a wide glass the basket IS the right-hand panel.** Ledger
    list + bottom tray on a phone. From `lg` (`src/components/ui/screenLayout.ts`, 2026-09-13) the
    Sheet is a 48-rem column and a docked Tray is a 26-rem side panel to its right; on PORT › Trade
@@ -65,7 +66,18 @@ server").
   980 d.`, `Trade 3 lines · +440 d.` — atomic (`cmd.trade_basket`). Empty, it says so in one
   sentence and still shows the cargo bar. Words per `docs/WORDS.md`: "basket", never "manifest",
   in anything a player reads.
-* **D · Haggle, as a thread** — inside the tray for a haggle-able line; `Take N` / `Press on`.
+* **D · Haggle, as a thread** (`features/port/HaggleThread.tsx`, built 2026-09-13) — one `Row`
+  under the stepper on BOTH faces of the trade tray, folded as `Haggle · 3 / 3 tries left · 45%`;
+  a press unfolds it in place into the merchant's turns (each one `cmd.haggle`'s own `message`,
+  verbatim — no client sentence), the stake in served figures (Port fee published → effective,
+  Price `d. each` from `cmd.preview` before → after a won attempt, Haggle saved on this lot,
+  Tries as the segmented bar, Next try muted at the floor), and `Take it` / `Haggle` → `Try
+  again`. Words per `docs/WORDS.md`: haggle, never bargain; Port fee, never the port's cut.
+* **F′ · The chart** (`components/ui/PriceChart.tsx` over the pure `priceChartModel.ts`, built
+  2026-09-13) — the Trend row's unfolded form: 340×170, y = served min · round(mid) · max, x in
+  hours before now derived from the points and `slot_seconds` (never a `12 h` / `48` literal),
+  area + line, low (danger) · high (success) · now (accent ring) marks, legend `low · now · high`.
+  Opens in place from the Trend row in `PriceRows`; the Sparkline is the folded form.
 * **E · The receipt** (`ReceiptFace.tsx`) — the settlement after the atomic trade, in the SAME
   slot: per-line settled figures, the same totals block, ducats before → after, `Trading +N xp`;
   dismissed by one press, dropped by the next line staged, never shown on another board.
@@ -106,7 +118,7 @@ server").
 |---|---|---|
 | **1** frontend only — `osn-quay-board` | fold MARKET into PORT (closes RESUME.md's open fold; one harbour source); ledger row replaces the tile grid; the tray becomes the unfolded row (B) | a single-good buy and sell on production round-trip through the new row via the same `cmd.issue`; MARKET is gone from `navTabs.ts` |
 | **2** migration 0083 — `osn-quay-manifest` (server, LIVE on production 2026-09-11) + `osn-manifest-panel` (frontend, 2026-09-13; supersedes the bottom-tray cut on PR #59) | `cmd.preview_basket` + `cmd.trade_basket` composed from the existing primitives; `native` on `world.market`; the basket as the right-hand panel at wide and the bottom tray on a phone; receipt | a 3-line mixed basket lands atomically on production and its receipt equals the ledger's BOUGHT/SOLD rows; a refused line refuses the whole basket |
-| **3** frontend (+ a migration only if `haggle_state` lacks fields) | haggle thread, both sides; chart with axis | a sell-side haggle narrows the spread on production; "haggle saved" is non-zero on a receipt |
+| **3** frontend only — `osn-slice3-haggle-chart` (built 2026-09-13; no migration — `haggle_state` already served every field) | `HaggleThread` on both faces of the trade tray (replaces `HaggleRow`, deleted); `PriceChart` from the Trend row; `saleEstimate` reads the served `avg_price` + `haggle_saved`; `useHaggleState` and `useTrade`'s dry run folded onto `useServedRead` (row 77's rule); proof 06 gains `HAGGLE_SELL_SIDE_MOVES_THE_BID`; rpc.surface proves a won SELL bargain raises the SELL preview by exactly `haggle_saved` | a sell-side haggle narrows the spread on production; "haggle saved" is non-zero on a receipt — **NOT yet driven on production** |
 | **4** migration — contracts | `trade_contracts`, spawn/expiry on the day tick, premium through `trade_basket`; third segment | one contract fulfilled on production, premium as its own receipt line |
 
 Each slice: architect (read-only, file:line) → implementer in its own worktree → adversarial

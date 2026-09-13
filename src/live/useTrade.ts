@@ -28,14 +28,29 @@
 // the ceiling while the dry run is in flight. A sale's proceeds, cost and profit are
 // `cmd.do_sell`'s own result (the owner's row 74). A client that subtracted the served basis from
 // the served bid would be a second ledger wearing a smaller hat, and wrong by the book's steps.
+//
+// ── THE DRY RUN IS A DOORWAY ONTO useServedRead (slice 3, 2026-09-13) ──────────────────────────
+// Until slice 3 this hook kept its own copy of "ask again when the world is read, and throw the
+// old answer away meanwhile": the preview's key carried `readAt`, so every 3 s (AppShell.tsx,
+// READ_MIN_MS) the `You get` row and the button's figure went blank until the re-ask landed — row
+// 77's defect, in the one tray that had not been folded. The haggle thread stakes this preview's
+// `avg_price` on both sides and a thread cannot blink. So the dry run is one subject and one ask
+// on `useServedRead`: the SUBJECT is (fleet, side, good, the SETTLED quantity), a re-read of the
+// same subject keeps the last answer on screen and marks it `loading`, and a new quantity shows
+// nothing of the old one. The settle timer survives as a settled COPY of the quantity — the
+// stepper's slider reports every step of a drag, and each step is a new subject, so the subject
+// only moves once the finger has rested PREVIEW_SETTLE_MS. The figure printed is still the figure
+// for the quantity on the button: the answer is exposed only while the settled quantity IS the
+// button's.
 
 import { useEffect, useState } from 'react'
 import type { TradeControls } from '../components/ui'
 import { paidPerTun } from '../domain/fleet'
 import { findVerb, orderText, saleEstimate, type SaleEstimate } from '../domain/order'
-import { cmdPreview } from '../lib/rpc'
+import { cmdPreview, ok } from '../lib/rpc'
 import type { FleetView, MarketGood, Refusal } from '../lib/rpc'
 import { useBuyCapacity } from './useBuyCapacity'
+import { useServedRead } from './useServedRead'
 import { useWorld } from './worldStore'
 
 /** How long a chosen quantity must stand still before the server is asked to price it. Long
@@ -60,8 +75,6 @@ export function useTrade(
   // every read and zustand compares by identity, which is a render loop (React error #185).
   const verbs = useWorld((s) => s.snapshot?.verbs)
   const step = useWorld((s) => s.snapshot?.config.trade_step_tuns ?? 1)
-  // Re-asked whenever the world is read again — the same key useBuyCapacity turns on.
-  const readAt = useWorld((s) => s.readAt)
 
   // ONE reading of world.buy_capacity(), and only while BUYING — a sell has no purse ceiling.
   const capacity = useBuyCapacity(intent === 'buy' && good ? fleet.id : null, good?.code ?? null)
@@ -78,40 +91,38 @@ export function useTrade(
   const n = qty ?? 0
   const ready = spec !== undefined && good !== null && n > 0
 
-  // THE ORDER, PREVIEWED — either side. Keyed by (fleet, side, good, quantity, last read), exactly
-  // as the buy ceiling is, so an answer for another quantity — or from before the world was read
-  // again — is never shown: the tray waits instead. The line previewed is the line the button
-  // issues, composed by the same `orderText`, so the figure printed and the figure realised cannot
-  // be two figures. `saleEstimate` reads the keys both verbs share (`qty`, `total`) and the three a
-  // sale adds (`basis`, `cost`, `profit`), which a buy leaves null.
-  const previewKey =
-    spec !== undefined && good !== null && n > 0 ? `${fleet.id}:${intent}:${good.code}:${n}:${readAt ?? 0}` : null
-  const [answer, setAnswer] = useState<{ key: string; estimate: SaleEstimate | null } | null>(null)
+  // THE ORDER, PREVIEWED — either side. A DRY RUN IS A REAL WRITE, ROLLED BACK, so the quantity
+  // is SETTLED first: the stepper's slider reports every step of a drag, and an un-debounced ask
+  // turned a 50-step drag into 50 `cmd.do_buy` round-trips. `settled` follows `n` after the finger
+  // has rested PREVIEW_SETTLE_MS, and only the settled quantity is a subject.
+  const [settled, setSettled] = useState(n)
   useEffect(() => {
-    if (!previewKey || !spec || !good) return
-    // A DRY RUN IS A REAL WRITE, ROLLED BACK. The stepper's slider reports every step of a drag,
-    // and each report is a new quantity, so an un-debounced effect turned a 50-step drag into 50
-    // `cmd.do_buy` round-trips. The ask waits until the finger has rested for PREVIEW_SETTLE_MS;
-    // the `live` guard still discards an answer that arrives after the key has moved on.
-    let live = true
-    const timer = setTimeout(() => {
-      void cmdPreview(fleet.id, orderText(spec, { good: good.code, qty: String(n) }, fleet.name), null).then((r) => {
-        if (!live) return
-        // A refusal here is not the tray's to render: the press states it in full. A fleet at sea
-        // is QUEUEABLE and returns no estimate — there is nothing realised to print yet.
-        const estimate = r.ok && r.value.estimate ? saleEstimate(r.value.estimate) : null
-        setAnswer({ key: previewKey, estimate })
-      })
-    }, PREVIEW_SETTLE_MS)
-    return () => {
-      live = false
-      clearTimeout(timer)
-    }
-    // `spec`, `good`, `intent` and `n` are folded into `previewKey`; `fleet.name` only decorates the line.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewKey, fleet.id])
-  const preview = previewKey !== null && answer?.key === previewKey ? answer.estimate : null
-  const previewLoading = previewKey !== null && answer?.key !== previewKey
+    const timer = setTimeout(() => setSettled(n), PREVIEW_SETTLE_MS)
+    return () => clearTimeout(timer)
+  }, [n])
+  // The SUBJECT is (fleet, side, good, settled quantity) — exactly as the buy ceiling is keyed — so
+  // an answer for another quantity is never shown; a re-read of the world keeps the last answer
+  // (useServedRead). The line previewed is the line the button issues, composed by the same
+  // `orderText`, so the figure printed and the figure realised cannot be two figures.
+  // `saleEstimate` reads the keys both verbs share (`qty`, `total`, `avg_price`, `haggle_saved`)
+  // and the three a sale adds (`basis`, `cost`, `profit`), which a buy leaves null.
+  const line =
+    spec !== undefined && good !== null && settled > 0
+      ? orderText(spec, { good: good.code, qty: String(settled) }, fleet.name)
+      : null
+  const subject = line !== null && good !== null ? `${fleet.id}:${intent}:${good.code}:${settled}` : null
+  const dryRun = useServedRead<SaleEstimate | null>(subject, async () => {
+    // A refusal here is not the tray's to render: the press states it in full. A fleet at sea
+    // is QUEUEABLE and returns no estimate — there is nothing realised to print yet. Both are
+    // folded into ONE served value (null) so the read keeps standing rather than clearing.
+    const r = await cmdPreview(fleet.id, line as string, null)
+    return ok<SaleEstimate | null>(r.ok && r.value.estimate ? saleEstimate(r.value.estimate) : null)
+  })
+  // Exposed only while the settled quantity IS the button's: the figure printed is always the
+  // figure for the quantity chosen.
+  const current = subject !== null && settled === n
+  const preview = current ? dryRun.view : null
+  const previewLoading = spec !== undefined && good !== null && n > 0 && (!current || (dryRun.loading && dryRun.view === null))
 
   const send = () => {
     if (!spec || !good || !key || n <= 0 || sending) return

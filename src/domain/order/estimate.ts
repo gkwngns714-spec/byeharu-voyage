@@ -16,13 +16,14 @@
 // each screen's own chrome, which is legitimately different.
 //
 // SAIL, AND SINCE 0081 SELL. The other verbs' estimates have exactly one reader each
-// (`features/command/orderCheck.tsx`), and folding a thing that is not duplicated would be
+// (`features/port/orderCheck.tsx`), and folding a thing that is not duplicated would be
 // inventing a home rather than finding one. SELL gained a second reader on 2026-09-09: the trade
 // tray (through `src/live/useTrade.ts`) previews the real sale to print what it will realise —
 // the owner's row 74, *"by selling them i would like to see the profits of this trade"* — and
 // COMMAND's check line already read the same estimate's `qty` / `total` / `avg_price`. So the
-// keys of a sale live here now, once. (orderCheck.tsx still spells its three by hand; folding it
-// onto `saleEstimate` is a screen-file edit and belongs to the slice that owns the screens.)
+// keys of a sale live here now, once. SINCE SLICE 3 (2026-09-13) two more served keys are read
+// here — `avg_price` and `haggle_saved` (0083) — because the haggle thread stakes them on both
+// sides, and a thread that read them by hand would be the second reading this file exists to end.
 
 import { num } from '../../lib/json'
 
@@ -39,9 +40,18 @@ export interface SaleEstimate {
   /** `total − cost`, realised by `cmd.do_sell` against the basis — the profit the owner asked to
    *  see. Null exactly when `basis` is. Never computed on this side of the wire. */
   profit: number | null
+  /** The served figure PER UNIT for this quantity — `world.quote`'s `avg_price`, the stepped
+   *  book's own average, on both sides (0007). This is the ONLY figure a screen may show as "what
+   *  he names" once a bargain is open: `world.market`'s buy/sell never reflect one (0022 refused
+   *  to move the published price), and `cmd.preview` is the one authority that does. */
+  avg_price: number | null
+  /** What today's open bargain took off THIS lot, in ducats — `world.quote`'s `haggle_saved`
+   *  (0083), accumulated per step inside the same walk that priced it. 0 with no bargain. */
+  haggle_saved: number | null
 }
 
-/** Read a SELL estimate — `cmd.do_sell`'s own result, run and rolled back by `cmd.preview`. */
+/** Read a trade estimate — `cmd.do_sell`'s (or `cmd.do_buy`'s) own result, run and rolled back by
+ *  `cmd.preview`. A buy leaves `basis`, `cost` and `profit` null and fills the rest. */
 export function saleEstimate(estimate: Record<string, unknown> | undefined): SaleEstimate {
   return {
     qty: num(estimate, 'qty'),
@@ -49,6 +59,8 @@ export function saleEstimate(estimate: Record<string, unknown> | undefined): Sal
     basis: num(estimate, 'basis'),
     cost: num(estimate, 'cost'),
     profit: num(estimate, 'profit'),
+    avg_price: num(estimate, 'avg_price'),
+    haggle_saved: num(estimate, 'haggle_saved'),
   }
 }
 

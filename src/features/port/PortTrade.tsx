@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Field, Figure, Note, Row, TradeTray, useWide, type TradePick } from '../../components/ui'
-import { HaggleRow } from './HaggleRow'
+import { HaggleThread } from './HaggleThread'
 import { ManifestPanel } from './ManifestPanel'
 import { QuayLedger } from './QuayLedger'
 import { StepQuestion } from './StepQuestion'
@@ -24,8 +24,9 @@ import { linesFor, useManifest } from '../../store/manifest'
 // on port tab, the market in port tab - where i press market, then choose to trade."* 0061 and 0062
 // made the market a fact about the PORT, so what is on the market belongs on the harbour, and since
 // 2026-09-09 (*"Buy and sell should be in port - market"*) this is the ONLY place a good is bought
-// or sold from. The two things that came with that: THE HAGGLE (`HaggleRow`, one row inside the
-// buy tray) and RESUPPLY (the supplies row, opening the step tray).
+// or sold from. The two things that came with that: THE HAGGLE (`HaggleThread`, one row inside
+// the tray that unfolds into the merchant's turns — on BOTH sides since slice 3, 2026-09-13) and
+// RESUPPLY (the supplies row, opening the step tray).
 //
 // ── ONE ROW PER GOOD (2026-09-11) ──────────────────────────────────────────────────────────────
 // The tile grid is gone. Row 76's approved board is a ledger (QuayLedger.tsx): a `TradeRow` per
@@ -173,7 +174,14 @@ export function PortTrade({
           qty={{ value: qty, onChange: setQty }}
           onClose={toBasket}
         >
-          {pick.intent === 'buy' && <HaggleRow fleetId={fleet.id} good={pick.good} />}
+          {/* Keyed per pick, so a thread never carries another good's (or the other side's) turns. */}
+          <HaggleThread
+            key={`${pick.good.code}:${pick.intent}`}
+            fleetId={fleet.id}
+            good={pick.good}
+            side={pick.intent}
+            preview={trade.act.preview}
+          />
         </TradeTray>
       )}
 

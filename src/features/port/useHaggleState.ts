@@ -12,52 +12,39 @@
 // differ"). Nothing here recomputes a chance, counts an attempt, or predicts an outcome. A client
 // that guessed `attempts_left` would be inventing a rule the server already keeps.
 //
-// SHAPED AFTER ./useBuyCapacity.ts, DELIBERATELY. Same question shape — one answer about (fleet,
-// good) as of the last read — so it is keyed the same way and stales the same way. When the world
-// is read again the key changes and the answer is re-asked, which is what makes a won bargain show
-// up: `worldStore.haggle()` calls `refresh()`, `refresh()` moves `readAt`, and this asks again.
+// ── A DOORWAY ONTO useServedRead, NOT A SECOND HOOK (slice 3, 2026-09-13) ──────────────────────
+// Until slice 3 this file kept its own copy of "ask again when the world is read" and answered
+// `{state: null, loading: true}` every time `readAt` moved — the shell reads the world every 3 s
+// (AppShell.tsx, READ_MIN_MS), so the bargain row went blank and repainted on that beat. That is
+// the defect owner row 77 named in four other port hooks (*"why is store keep refreshing?"*), and
+// a haggle THREAD — several turns of a conversation — cannot be a thing that blanks every three
+// seconds. So this is one line of subject and one line of ask on `useServedRead`: the SUBJECT is
+// (fleet, good), a re-read of the same subject keeps the last answer on screen and marks it
+// `loading` until the fresh one lands, and a new subject shows nothing of the old one. A won
+// attempt reaches the screen through the same beat: `worldStore.haggle()` calls `refresh()`,
+// `refresh()` moves `readAt`, and this re-asks — the count and the odds arrive one read later,
+// which the thread shows as `loading`, never as a blank.
 //
 // AT SEA IS A STATE, NOT A FAILURE. `world.haggle_state` answers `{docked:false, why}` rather than
-// refusing, and `why` is a sentence written for a player. It is rendered as-is.
+// refusing, and `why` is a sentence written for a player. It is rendered as-is. A REFUSAL here
+// (E_NO_PLAYER, E_NOT_YOURS) is not the player's problem to solve from a tray: `useServedRead`
+// clears the view, the thread does not draw, and the verb's own refusal states the reason if
+// they press anyway.
 
-import { useEffect, useState } from 'react'
 import { worldHaggleState, type HaggleState } from '../../lib/rpc'
+import { useServedRead } from '../../live/useServedRead'
 import { useWorld } from '../../live/worldStore'
 
 export interface HaggleStateRead {
-  /** Null until the answer for THIS (fleet, good, read) has arrived. */
+  /** The last answer for this (fleet, good), or null before the first one (or after a refusal). */
   state: HaggleState | null
+  /** True while an ask is on the wire — the first one, or a re-ask on the world's beat. */
   loading: boolean
 }
 
-const WAITING: HaggleStateRead = { state: null, loading: true }
-const IDLE: HaggleStateRead = { state: null, loading: false }
-
 export function useHaggleState(fleetId: string | null, goodCode: string | null): HaggleStateRead {
   const goodId = useWorld((s) => (goodCode ? (s.goodByCode[goodCode]?.id ?? null) : null))
-  const readAt = useWorld((s) => s.readAt)
-  const key = fleetId && goodId ? `${fleetId}:${goodId}:${readAt ?? 0}` : null
-
-  const [answer, setAnswer] = useState<{ key: string; state: HaggleState } | null>(null)
-
-  useEffect(() => {
-    if (!key || !fleetId || !goodId) return
-    let live = true
-    void worldHaggleState(fleetId, goodId).then((r) => {
-      if (!live) return
-      // A REFUSAL HERE IS NOT THE PLAYER'S PROBLEM TO SOLVE. `haggle_state` refuses only for
-      // E_NO_PLAYER and E_NOT_YOURS — neither of which a player can act on from a picker — so the
-      // block simply does not draw, and the verb's own refusal states the reason in full if they
-      // press anyway. Swallowing it here would be wrong for anything the player CAN fix; none of
-      // these are.
-      if (!r.ok) return
-      setAnswer({ key, state: r.value })
-    })
-    return () => {
-      live = false
-    }
-  }, [key, fleetId, goodId])
-
-  if (!key) return IDLE
-  return answer?.key === key ? { state: answer.state, loading: false } : WAITING
+  const subject = fleetId && goodId ? `${fleetId}:${goodId}` : null
+  const read = useServedRead<HaggleState>(subject, () => worldHaggleState(fleetId as string, goodId as string))
+  return { state: read.view, loading: read.loading }
 }

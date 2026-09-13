@@ -3,13 +3,13 @@ import { Button } from './Button'
 import { deltaTone } from './deltaTone'
 import { Figure } from './Figure'
 import { Note } from './Note'
-import { PriceRows } from './PriceRows'
+import { PriceRows, type PriceTrend } from './PriceRows'
 import { Row } from './Row'
 import { Stepper } from './Stepper'
 import { Tray } from './Tray'
 import type { TrayDetent } from './trayDetents'
 import { formatDucats, formatDucatsDelta, formatInt, formatTons, formatUnitPrice, formatUnits } from '../../lib/format'
-import type { MarketGood, PricePoint, Refusal } from '../../lib/rpc'
+import type { MarketGood, Refusal } from '../../lib/rpc'
 import type { BuyCapacityState } from '../../lib/trade'
 
 // THE TRADE TRAY — the ledger row, unfolded: where a price becomes a quantity, and the quantity
@@ -33,8 +33,8 @@ import type { BuyCapacityState } from '../../lib/trade'
 // cleverer (§5).
 //
 // ── THE BODY, TOP TO BOTTOM (QUAY_LEDGER §3 B) ─────────────────────────────────────────────────
-//   refused · Trend · Range · On the quay · Paid · At most (or Aboard) · Fetches · the Stepper ·
-//   the caller's rows (the bargain) · the server's refusal. The Profit row and the ONE button ride
+//   refused · Trend · Range · In stock · Bought at · Max (or On board) · You get · the Stepper ·
+//   the caller's rows (the haggle thread) · the server's refusal. The Profit row and the ONE button ride
 //   in the pinned action region, so the figure a sale is a decision ABOUT cannot scroll apart from
 //   the button that commits it (row 74's follow-up, measured on a short desktop window).
 //
@@ -84,10 +84,19 @@ export interface TradeAct {
   /** The average ducats per tun she paid for what is aboard of this good — `FleetView.cargo_basis`
    *  through the one reading. Null when none is aboard or its cost is not on record. */
   paid: number | null
-  /** The order the button would issue, run for real and rolled back: tuns and total on either
-   *  side; cost and profit on a sale. Null while the answer for THIS quantity is on its way, or
-   *  when the quay refused the dry run (the press then states the refusal in full). */
-  preview: { qty: number | null; total: number | null; cost: number | null; profit: number | null } | null
+  /** The order the button would issue, run for real and rolled back: units and total on either
+   *  side; cost and profit on a sale; and since 0083 the served per-unit figure (`avg_price`) and
+   *  what an open bargain took off this very lot (`haggle_saved`) — the two figures the haggle
+   *  thread stakes. Null while the answer for THIS quantity is on its way, or when the market
+   *  refused the dry run (the press then states the refusal in full). */
+  preview: {
+    qty: number | null
+    total: number | null
+    cost: number | null
+    profit: number | null
+    avg_price: number | null
+    haggle_saved: number | null
+  } | null
   /** True while a dry run for the chosen quantity has been asked and not yet answered. */
   previewLoading: boolean
 }
@@ -101,8 +110,9 @@ export interface TradeQuay {
   bulk: number
   /** This port's culture, for the one sentence that names it: a good the quay will not deal in. */
   culture: string
-  /** `world.price_history` for this good at this port, oldest first; undefined until it lands. */
-  history: readonly PricePoint[] | undefined
+  /** `world.price_history` for this good at this port — the points and their cadence, as the one
+   *  history hook reads them; the points are undefined until the read lands. */
+  history: PriceTrend
 }
 
 /** What `useTrade` returns, passed down whole. */
@@ -228,7 +238,7 @@ export function TradeTray({
         </Note>
       )}
 
-      <PriceRows good={good} points={history} />
+      <PriceRows good={good} trend={history} />
 
       {/* What this good cost her, per tun, for what is aboard — served, never remembered here.
           Always a row, so the eye finds the same line: the figure, or why there is none. */}
