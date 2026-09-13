@@ -74,11 +74,11 @@ test.describe('the panel says what water is ahead, in figures', () => {
     const figures = watersView(WATERS).rows.map((r) => r.figure)
     // EVE's number rule (docs/UI_DIRECTION.md §3): the unit is always attached and the figure is
     // grouped — `240 nm`, `2,170 nm`, never a bare 2170.
-    expect(figures).toEqual([HERE, '240 nm', '2,170 nm', '2,810 nm'])
+    expect(figures).toEqual([HERE, '240 miles', '2,170 miles', '2,810 miles'])
     // A distance of zero printed as a figure reads as a broken number, so the water she is IN gets
     // a NAME instead. One word; not a sentence.
     expect(HERE.split(' ')).toHaveLength(1)
-    for (const f of figures.slice(1)) expect(f.endsWith(' nm')).toBe(true)
+    for (const f of figures.slice(1)) expect(f.endsWith(' miles')).toBe(true)
   })
 
   test('the tier and the name are the server’s, copied — nothing here derives one', () => {
@@ -170,7 +170,7 @@ test.describe('the wire, turned into the panel', () => {
       { code: 'NOR', name: 'North Atlantic Ocean', danger: 2, note: 'wide grey swells', nmTo: 240.5, nmIn: 1930.25, now: false },
     ])
     // …and the row model prints what arrived, to the digit the server rounded to.
-    expect(watersView(fleet.voyage.waters).rows.map((r) => r.figure)).toEqual([HERE, '241 nm'])
+    expect(watersView(fleet.voyage.waters).rows.map((r) => r.figure)).toEqual([HERE, '241 miles'])
   })
 
   test('a server that predates 0055 leaves the chart drawing a voyage with no waters, not crashing', () => {
