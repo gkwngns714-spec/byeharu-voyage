@@ -53,9 +53,7 @@ const BANNED: { word: RegExp; say: string }[] = [
   // tab — Storage — and the repair face names the ACT and the DAMAGE, not the building and the hull.
   { word: /\bwarehouses?\b/i, say: 'storage' },
   { word: /\bshipyard\b/i, say: 'Repair (the face) / build yard (the building that builds)' },
-  // `hull (worst ship)` → `Damage` joins this list the day StepQuestion.tsx says `Damage` (the
-  // Repair face already does); banning it first would make the suite red on a file another
-  // slice owns.
+  { word: /\bhull \(worst ship\)/i, say: 'Damage' },
 ]
 
 /** Literals the crude rule catches that are NOT player text, each with its reason. */
