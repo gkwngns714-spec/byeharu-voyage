@@ -586,7 +586,9 @@ test(`PORT: a line staged onto the basket docks the one tray at peek, moves noth
   const basket = page.locator('[data-testid="basket-panel"]')
   await expect(basket).toBeVisible()
   expect(await basket.getAttribute('data-tray-detent')).toBe('peek')
-  await expect(basket.locator('h2')).toHaveText(/^Buy 1 line/)
+  // `.first()`: the tray's title is its first h2; the On-board section under the lines (row 81)
+  // carries a heading of its own.
+  await expect(basket.locator('h2').first()).toHaveText(/^Buy 1 line/)
 
   // Row 15: staging moved nothing in the ledger.
   await page.waitForTimeout(600)
