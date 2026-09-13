@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useWorld } from '../../live/worldStore'
-import type { FleetView, ProvisionPreset, ProvisionPresetBook } from '../../lib/rpc'
+import type { FleetView, ProvisionPreset, ProvisionPresetBook, Refusal } from '../../lib/rpc'
 
 // THE STANDING ORDER, AS ONE NUMBER — "keep her at N days of stores".
 //
@@ -59,51 +59,74 @@ export function planKeep(book: ProvisionPresetBook, fleetId: string, days: numbe
 
 /**
  * The fleet's standing order, read and written. `keep(days)` runs the plan; it answers false when
- * the server refused, and the refusal itself is in the store (`refusal`) for the face to print.
+ * the server refused, and THAT refusal is `refusal` here — this fleet's, for this fleet's face.
+ *
+ * WHY THE REFUSAL IS HELD HERE AND NOT READ OFF THE STORE (row 89). The store keeps ONE last
+ * refusal for the whole world. While a fleet's detail was a tray there could be only one face on
+ * screen, so the store's refusal was always the tray's own. A fleet unfolds under its row now
+ * and any number of fleets may stand unfolded at once, so a face reading the store would print
+ * the refusal of a keep pressed on ANOTHER fleet's column — one refusal drawn twice, under the
+ * wrong stepper. The refusal belongs to the act, and the act happened in one fold: `keep` takes
+ * the refusal the verb left in the store and keeps it for its own caller; dismissing clears both.
  */
 export function useStandingOrder(fleet: FleetView) {
   const book = useWorld((s) => s.presets)
   const loadPresets = useWorld((s) => s.loadPresets)
   const savePreset = useWorld((s) => s.savePreset)
   const applyPreset = useWorld((s) => s.applyPreset)
+  const dismissStoreRefusal = useWorld((s) => s.dismissRefusal)
   const [busy, setBusy] = useState(false)
+  const [refusal, setRefusal] = useState<Refusal | null>(null)
 
   // The server fires standing orders on arrival whether or not anyone looks, so the read is
-  // display, not mechanism: one fetch when the tray opens is enough (each verb re-reads after it).
+  // display, not mechanism: one fetch when the fold opens is enough (each verb re-reads after it).
   useEffect(() => {
     void loadPresets()
   }, [loadPresets])
 
   const order = fleetOrder(book, fleet.id)
 
-  const keep = async (days: number): Promise<boolean> => {
-    if (!book || busy) return false
+  const run = async (days: number): Promise<boolean> => {
+    if (!book) return false
     const plan = planKeep(book, fleet.id, days)
     if (!plan) return true
+    switch (plan.kind) {
+      case 'lift':
+        return await applyPreset(fleet.id, null)
+      case 'apply':
+        return await applyPreset(fleet.id, plan.presetId)
+      case 'adjust': {
+        const saved = await savePreset(plan.presetId, plan.rename ? orderName(days) : null, days)
+        if (!saved) return false
+        return plan.apply ? await applyPreset(fleet.id, plan.presetId) : true
+      }
+      case 'create': {
+        const saved = await savePreset(null, plan.name, days)
+        if (!saved) return false
+        // `savePreset` re-reads the book before it answers; the written order is in it by days.
+        const written = useWorld.getState().presets?.presets.find((p) => p.days === days)
+        return written ? await applyPreset(fleet.id, written.id) : false
+      }
+    }
+  }
+
+  const keep = async (days: number): Promise<boolean> => {
+    if (!book || busy) return false
     setBusy(true)
     try {
-      switch (plan.kind) {
-        case 'lift':
-          return await applyPreset(fleet.id, null)
-        case 'apply':
-          return await applyPreset(fleet.id, plan.presetId)
-        case 'adjust': {
-          const saved = await savePreset(plan.presetId, plan.rename ? orderName(days) : null, days)
-          if (!saved) return false
-          return plan.apply ? await applyPreset(fleet.id, plan.presetId) : true
-        }
-        case 'create': {
-          const saved = await savePreset(null, plan.name, days)
-          if (!saved) return false
-          // `savePreset` re-reads the book before it answers; the written order is in it by days.
-          const written = useWorld.getState().presets?.presets.find((p) => p.days === days)
-          return written ? await applyPreset(fleet.id, written.id) : false
-        }
-      }
+      const ok = await run(days)
+      // The verbs leave their refusal in the store; the one that refused THIS act is ours.
+      setRefusal(ok ? null : useWorld.getState().refusal)
+      return ok
     } finally {
       setBusy(false)
     }
   }
 
-  return { book, order, busy, keep }
+  const dismissRefusal = () => {
+    setRefusal(null)
+    dismissStoreRefusal()
+  }
+
+  return { book, order, busy, keep, refusal, dismissRefusal }
 }
