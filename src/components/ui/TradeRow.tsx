@@ -117,7 +117,7 @@ function tidePct(g: MarketGood): number {
  *  written here and wanted a second time by the Storage face (owner row 88), so it moved down to
  *  its own file and this is one of its two callers. What stays here is what a PRICE cell is: the
  *  figure is a price. */
-function PriceCell({
+export function PriceCell({
   label,
   price,
   onPress,

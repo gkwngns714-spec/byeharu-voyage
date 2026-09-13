@@ -3,7 +3,7 @@ import { pointLabel } from '../../domain/passage'
 import { formatRealShort } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
 
-// ONE LINE ABOUT WHERE SHE IS — the words the fleet row and the fleet tray both print.
+// ONE LINE ABOUT WHERE SHE IS — the words the fleet row and the fleet fold both print.
 //
 // Pure. Every figure is the server's: `port` is a CODE and null at sea, `anchor` is the bare point
 // of water she is holding at (0039), `voyage.to` / `voyage.dest_point` is where she is bound, and
