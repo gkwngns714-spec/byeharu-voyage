@@ -145,7 +145,7 @@ export function ManifestPanel({
       <Tray
         detent={detent}
         onDetentChange={(next) => (next === 'closed' ? done() : setDetent(next))}
-        title={`Traded · ${Number.isFinite(atMs) ? formatClock(atMs) : '--:--'}`}
+        title={`${receipt.kind === 'fulfil' ? 'Fulfilled' : 'Traded'} · ${Number.isFinite(atMs) ? formatClock(atMs) : '--:--'}`}
         data-testid="receipt-panel"
         action={
           atPeek ? undefined : (

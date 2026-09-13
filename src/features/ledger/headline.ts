@@ -153,6 +153,17 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     }
     case 'WAGES':
       return `Wages paid to ${fleet}.`
+    // 0087: a request met. The SOLD event beside it says what the sale paid; this line says what
+    // the request paid over it, from the payload's own `premium` — never re-derived here.
+    case 'FULFILLED': {
+      const qty = num(p, 'qty')
+      const good = str(p, 'good') ?? 'cargo'
+      const port = str(p, 'port')
+      const premium = num(p, 'premium')
+      return `${fleet} delivered ${qty === null ? 'some' : formatQty(qty)} ${good} on ${port ? `${portName(port)}'s` : 'the'} request${
+        premium === null ? '' : ` — ${formatInt(premium)} d. premium`
+      }.`
+    }
     default: {
       const named = str(p, 'fleet')
       const what = kindWords(event.kind)

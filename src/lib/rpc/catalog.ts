@@ -166,6 +166,29 @@ export const RPCS = {
       { name: 'p_expected_version', type: 'int' },
     ],
   },
+  // 0087 — THE REQUEST BOARD. `world.contracts(p_port)` is a READ with no fleet and no player id:
+  // a request is a fact about a port, and reading it is what winds the board there (the read is
+  // the catch-up). `cmd.preview_fulfil` runs the delivery and rolls it back; `cmd.fulfil` commits
+  // it in one savepoint and takes the fleet's version like trade_basket, so a double-tap delivers
+  // once (E_STALE). Both refuse a fleet that is not yours with cmd.issue's own E_NO_SUCH_FLEET.
+  worldContracts: { schema: 'world', fn: 'contracts', args: [{ name: 'p_port', type: 'uuid' }] },
+  cmdPreviewFulfil: {
+    schema: 'cmd',
+    fn: 'preview_fulfil',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_contract', type: 'uuid' },
+    ],
+  },
+  cmdFulfil: {
+    schema: 'cmd',
+    fn: 'fulfil',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_contract', type: 'uuid' },
+      { name: 'p_expected_version', type: 'int' },
+    ],
+  },
   cmdCancel: {
     schema: 'cmd',
     fn: 'cancel_at',

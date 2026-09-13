@@ -26,10 +26,12 @@ import {
   cmdCancel,
   cmdClear,
   cmdFoundHouse,
+  cmdFulfil,
   cmdHaggle,
   cmdIssue,
   cmdPreview,
   cmdPreviewBasket,
+  cmdPreviewFulfil,
   cmdTradeBasket,
   cmdVerbSchema,
   createLocalBackend,
@@ -40,6 +42,7 @@ import {
   rpcLabel,
   setBackend,
   worldBuyCapacity,
+  worldContracts,
   worldFleets,
   worldHaggleState,
   worldLedger,
@@ -717,6 +720,129 @@ test('cmd.trade_basket() lands a mixed manifest atomically, and the receipt IS t
   expect(clean[other.code] ?? 0).toBe(0)
 })
 
+// ── the request board (migration 0087) ─────────────────────────────────────────────────────────
+//
+// A PORT ASKS FOR WHAT IT DOES NOT SELL. Reading the board is what winds it (the read is the
+// catch-up), so the first `world.contracts` on a fresh world IS "a request exists after a day
+// tick": the window's worth of requests appears, none for a good the port offers. The delivery is
+// proven through the doors a browser holds: the dry run refuses a lot not all on board with
+// have / need in UNITS and moves nothing; with the whole lot aboard it serves the board's own
+// premium; the commit pays the sale AND the premium — the premium as its own ledger row on a
+// FULFILLED event — and the receipt's net is the purse's movement; the request leaves the board
+// and a second delivery is E_CONTRACT_DONE; a passed request is E_CONTRACT_EXPIRED.
+//
+// THE PRECONDITION THIS TEST OWNS: the requested good is, by the rule, not sold here, so the only
+// way to carry it at this quay is to have brought it — the lot is put aboard through the server's
+// own mover (`public.fleet_load`), as 0087's self-assert does, with no cost basis (profit null).
+// DOCKED is the other precondition, stated: this runs before the fleet goes to sea.
+test('world.contracts() posts requests for goods a port does not sell, and cmd.fulfil delivers one with the premium as its own ledger row', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  expect(fleet.status).toBe('DOCKED')
+  const snap = expectOk(await worldSnapshot())
+  const port = snap.ports.find((p) => p.code === fleet.port)!
+  const market = expectOk(await worldMarket(port.id))
+
+  // (1) THE BOARD, wound by the read. Every field TradeRequest declares, off a real payload.
+  const board = expectOk(await worldContracts(port.id))
+  expect(board.port).toBe(port.code)
+  expect(isNum(board.game_day) && isNum(board.deadline_days)).toBe(true)
+  expect(board.deadline_days).toBeGreaterThan(0)
+  expect(board.contracts.length, 'a fresh port posted no request — the wind did not run').toBeGreaterThan(0)
+  expect(board.contracts.length).toBeLessThanOrEqual(board.deadline_days * 3)
+  const offeredHere = new Set(market.goods.filter((g) => g.offered !== false).map((g) => g.code))
+  for (const r of board.contracts) {
+    expect(isStr(r.id) && isStr(r.good) && isStr(r.name) && isStr(r.category)).toBe(true)
+    expect(isNum(r.bulk) && r.bulk > 0).toBe(true)
+    expect(r.qty).toBeGreaterThan(0)
+    expect(r.premium_pct).toBeGreaterThan(0)
+    expect(r.premium_per_unit).toBeGreaterThan(0)
+    expect(r.premium_ducats).toBeGreaterThan(0)
+    expect(r.mid_at_post).toBeGreaterThan(0)
+    expect(r.expires_day).toBeGreaterThan(r.posted_day)
+    expect(r.days_left).toBe(r.expires_day - board.game_day)
+    expect(r.days_left).toBeGreaterThanOrEqual(1)
+    expect(Date.parse(r.expires_at)).toBeGreaterThan(Date.now())
+    // NEVER a good this port sells — the rule that keeps a request from being an arbitrage on
+    // one quay (0087's header).
+    expect(offeredHere.has(r.good), `${r.good} is on this port's roster AND on its board`).toBe(false)
+  }
+
+  // (2) THE SUBJECT: the request that takes the least room, and it must fit a fresh hold.
+  const req = [...board.contracts].sort((a, b) => a.qty * a.bulk - b.qty * b.bulk)[0]
+  expect(req.qty * req.bulk).toBeLessThanOrEqual(fleet.free_hold)
+
+  // (3) TOO LITTLE CARGO: refused with the two figures in units, and the purse did not move.
+  const purse0 = expectOk(await worldLedger()).ducats!
+  const short = await cmdPreviewFulfil(fleet.id, req.id)
+  expect(short.ok).toBe(false)
+  if (short.ok) throw new Error('unreachable')
+  expect(short.refusal.code).toBe('E_CONTRACT_SHORT')
+  expect(short.refusal.source).toBe('server')
+  expect(short.refusal.figures).toEqual({ have: 0, need: req.qty, unit: 'units' })
+  expect(short.refusal.line).toBeUndefined()
+  expect(expectOk(await worldLedger()).ducats).toBe(purse0)
+
+  // (4) THE WHOLE LOT ABOARD: the dry run moves nothing and serves the board's own premium.
+  await db.pg.query('select public.fleet_load($1::uuid, $2::text, $3::numeric)', [fleet.id, req.good, req.qty])
+  expect(fleetCargoByCode(expectOk(await worldFleets())[0])[req.good]).toBe(req.qty)
+  const est = expectOk(await cmdPreviewFulfil(fleet.id, req.id)).estimate
+  expect(est.kind).toBe('fulfil')
+  expect(est.contract?.id).toBe(req.id)
+  expect(est.contract?.good).toBe(req.good)
+  expect(est.lines).toHaveLength(1)
+  expect(est.lines[0].side).toBe('sell')
+  expect(est.lines[0].qty).toBe(req.qty)
+  expect(isNum(est.lines[0].total) && est.lines[0].total > 0).toBe(true)
+  expect(est.totals.premium).toBe(req.premium_ducats)
+  expect(est.totals.net).toBe(est.totals.sold + est.totals.premium)
+  expect(est.purse.after - est.purse.before).toBe(est.totals.net)
+  expect(est.hold.tuns_delta).toBeLessThan(0) // she lightens
+  expect(expectOk(await worldLedger()).ducats).toBe(purse0) // the dry run really was dry
+
+  // (5) THE DELIVERY LANDS: the version bumps once, the purse moves by net, the ledger carries the
+  //     premium as its OWN row on a FULFILLED event, the request leaves the board, the cargo is gone.
+  const fresh = expectOk(await worldFleets())[0]
+  const landed = expectOk(await cmdFulfil(fresh.id, req.id, fresh.version))
+  expect(landed.kind).toBe('fulfil')
+  expect(landed.version).toBe(fresh.version + 1)
+  expect(landed.totals.premium).toBe(req.premium_ducats)
+  expect(landed.totals.net).toBe(landed.totals.sold + req.premium_ducats)
+  expect(landed.purse.before).toBe(purse0)
+  expect(landed.purse.after - landed.purse.before).toBe(landed.totals.net)
+  const ledger = expectOk(await worldLedger())
+  expect(ledger.ducats).toBe(landed.purse.after)
+  const paid = ledger.events.find((e) => e.kind === 'FULFILLED')
+  expect(paid, 'no FULFILLED event on the ledger').toBeDefined()
+  expect(paid!.ducats_delta).toBe(req.premium_ducats)
+  expect(paid!.payload).toMatchObject({ port: port.code, premium: req.premium_ducats, qty: req.qty })
+  const sold = ledger.events.find((e) => e.kind === 'SOLD' && e.at === paid!.at)
+  expect(sold, 'the sale is not on the ledger beside the premium').toBeDefined()
+  expect(sold!.ducats_delta).toBe(landed.totals.sold)
+  expect(expectOk(await worldContracts(port.id)).contracts.find((r) => r.id === req.id)).toBeUndefined()
+  expect(fleetCargoByCode(expectOk(await worldFleets())[0])[req.good] ?? 0).toBe(0)
+
+  // (6) THE REFUSALS: the same request again is done; a passed one is expired; a fleet that is
+  //     not yours is cmd.issue's own E_NO_SUCH_FLEET. None moves the purse.
+  const again = await cmdFulfil(fresh.id, req.id, landed.version)
+  expect(again.ok).toBe(false)
+  if (again.ok) throw new Error('unreachable')
+  expect(again.refusal.code).toBe('E_CONTRACT_DONE')
+  const other = board.contracts.find((r) => r.id !== req.id)
+  if (other) {
+    await db.pg.query("update public.trade_contracts set status = 'expired' where id = $1", [other.id])
+    const expired = await cmdPreviewFulfil(fresh.id, other.id)
+    expect(expired.ok).toBe(false)
+    if (expired.ok) throw new Error('unreachable')
+    expect(expired.refusal.code).toBe('E_CONTRACT_EXPIRED')
+    await db.pg.query("update public.trade_contracts set status = 'open' where id = $1", [other.id])
+  }
+  const notMine = await cmdPreviewFulfil('00000000-0000-4000-8000-0000000000ff', req.id)
+  expect(notMine.ok).toBe(false)
+  if (notMine.ok) throw new Error('unreachable')
+  expect(notMine.refusal.code).toBe('E_NO_SUCH_FLEET')
+  expect(expectOk(await worldLedger()).ducats).toBe(landed.purse.after)
+})
+
 test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', async () => {
   const fleet = expectOk(await worldFleets())[0]
   const subject = await aTradeSubject(fleet)
@@ -1137,6 +1263,13 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // door nobody opens. Neither takes a player id; both refuse a fleet that is not yours with
       // cmd.issue's own E_NO_SUCH_FLEET.
       'cmdPreviewBasket', 'cmdTradeBasket',
+      // Pin moved deliberately 2026-09-14 with migration 0087 (a port asks for what it does not
+      // sell): the request board — `world.contracts(p_port)`, a READ with no fleet and no player
+      // id that also WINDS the board on that port (the read is the catch-up) — and the delivery's
+      // two doors, `cmd.preview_fulfil` / `cmd.fulfil`, quay verbs like the basket's: client-direct,
+      // no orders row, a fleet that is not yours refused with E_NO_SUCH_FLEET. Landed WITH the face
+      // that reads them (PORT › Trade › Requests), never as a door nobody opens.
+      'worldContracts', 'cmdPreviewFulfil', 'cmdFulfil',
       'worldBuyCapacity', 'worldFleets', 'worldLedger', 'worldMarket', 'worldSnapshot',
       // 0019's `worldTradeRoutes` was REMOVED 2026-09-02 with 0071. It ranked every port in reach
       // by what it would pay for what is on this quay — the same comparison as the nearby index,

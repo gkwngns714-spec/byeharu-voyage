@@ -183,6 +183,26 @@ world's read, with the settle delay spelt once — the Storage face is its first
 reading of a STORE/TAKE estimate is `domain/order/moveEstimate.ts`, exported through the
 section's `index.ts`; it belongs beside `saleEstimate` in `estimate.ts` and moves there when that
 file is free (its header says so).
+**The request board (2026-09-14, owner row 76, slice 4 over migration 0087) — who owns what.**
+A request is a fact about a PORT and every rule about it is the server's: `public.trade_contracts`
+is the board, `public.contract_draw` the one draw, `public.tick_contracts` the one writer (reached
+by the read and by the delivery; no cron job), `cmd.run_fulfil` the one body of a delivery — it
+SELLS through 0083's `cmd.run_manifest` and pays the premium through `public.credit`, so nothing
+about a sale is written twice. On the client: the catalogue rows and the typed wire
+(`TradeRequest`, `RequestBoard`, `ReceiptContract`, and `ManifestReceipt.kind = 'fulfil'` with
+`totals.premium`) in `lib/rpc`; `live/useRequests.ts` (the board, on `useServedRead`);
+`live/useFulfilPreview.ts` (the dry run) — a one-line doorway onto **`live/usePreviewRead.ts`**,
+which is the fold of "an estimate, or a refusal, as one served value" that `useManifestPreview`
+carried inline and now composes too (written a second time → a function). The faces are PORT's:
+`features/port/tradeFace.ts` (ONE store for Buy · Sell · Requests, session-persisted like
+`portView.ts`), `TradeFaces.tsx` (the strip, composed by `PortTrade.tsx` and `PortPrices.tsx`),
+`RequestBoard.tsx` (the rows — `Row` + `ActCell` + `Figure` + `RarityMark`, the ledger's own
+shapes), `FulfilTray.tsx` (the tray in the one slot; `slot.kind = 'request'` in `PortTrade.tsx`).
+The premium row is `ManifestTotals.tsx`'s — the ONE totals block, now read by the basket, the
+receipt and the delivery tray — and the receipt's title reads `kind`. History's sentence for
+`FULFILLED` is `features/ledger/headline.ts`'s, from the payload's own `premium`. The words are
+`docs/WORDS.md`'s (request · Requests · Fulfil · premium; `contract` banned in player text).
+
 **The haggle thread and the price chart (2026-09-13, owner row 76, slice 3 — frontend only, no
 migration) — who owns what.** The thread is PORT's: `features/port/HaggleThread.tsx`, mounted by
 `PortTrade.tsx` under the stepper on BOTH faces of the trade tray (keyed per pick), replacing

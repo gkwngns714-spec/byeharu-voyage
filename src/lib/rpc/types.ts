@@ -939,9 +939,27 @@ export interface ManifestReceiptLine {
   profit: number | null
 }
 
+/**
+ * 0087 — THE REQUEST a delivery met, as the receipt carries it. The premium is the board's own
+ * figure for the lot (`premium_ducats` on the row), paid as its own ledger movement beside the
+ * sale; `totals.premium` says the same number and `totals.net` has it in.
+ */
+export interface ReceiptContract {
+  id: string
+  good: string
+  name: string
+  qty: number
+  premium_pct: number
+  premium_per_unit: number
+  premium: number
+  expires_day: number
+}
+
 export interface ManifestReceipt {
   ok: true
-  kind: 'manifest'
+  /** `manifest` from the basket (0083); `fulfil` from a delivery (0087) — 0083's receipt with the
+   *  sale as its one line, the premium on the totals, and `contract` beside it. */
+  kind: 'manifest' | 'fulfil'
   port: string
   fleet: string
   game_day: number
@@ -957,9 +975,13 @@ export interface ManifestReceipt {
     profit: number | null
     bought: number
     sold: number
-    /** `sold − bought` — what the purse moved by, signed. */
+    /** 0087 — the request's premium, paid as its own PREMIUM movement. 0 on a basket. */
+    premium: number
+    /** `sold − bought` (+ `premium` on a delivery) — what the purse moved by, signed. */
     net: number
   }
+  /** Present on a delivery's receipt (`kind: 'fulfil'`). */
+  contract?: ReceiptContract
   /** READ back from `players.ducats`, before and after. */
   purse: { before: number; after: number }
   /** `public.fleet_free_hold` before and after; `tuns_delta` is what the hold took ON (negative
@@ -980,6 +1002,50 @@ export interface ManifestReceipt {
 export interface ManifestPreview {
   ok: true
   estimate: ManifestReceipt
+}
+
+// ── the request board (0087) — world.contracts(port) ───────────────────────────────────────────
+//
+// A PORT ASKS FOR WHAT IT DOES NOT SELL: N units of a good not on its roster, open until a day on
+// the calendar clock, paying a premium per unit over the mid it was posted at when the WHOLE lot
+// lands. Every figure below was read out of `20260818000087_…sql`'s `world.contracts` and is the
+// server's: the client prints them and never sizes, prices or expires a request itself.
+
+export interface TradeRequest {
+  id: string
+  /** The good's CODE, and its name and category as the market rows carry them. */
+  good: string
+  name: string
+  category: string
+  /** The same served tier `MarketGood.rarity` carries (0032's `good_rarity`). */
+  rarity?: GoodRarity
+  /** Tons one unit takes (`goods.bulk`), so a tray can say what the lot does to the ship. */
+  bulk: number
+  /** The whole lot asked for, in units. A delivery is the whole lot or nothing. */
+  qty: number
+  /** The premium as a fraction of the posting mid (0.12 = 12%), per unit, and for the lot. */
+  premium_pct: number
+  premium_per_unit: number
+  premium_ducats: number
+  mid_at_post: number
+  /** Calendar days (`world.game_day`): posted, and the first day it is no longer open. */
+  posted_day: number
+  expires_day: number
+  /** `expires_day − today`, at least 1 for an open request. */
+  days_left: number
+  /** The instant it closes, ISO — `expires_day` on the calendar clock. Printed relative to now,
+   *  the way the fair row prints its end; never as "days" the voyage clock would be read on. */
+  expires_at: string
+}
+
+export interface RequestBoard {
+  /** The port's CODE, or null for an id the world does not know. */
+  port: string | null
+  game_day: number
+  /** How many calendar days a request stays open — the knob, served. */
+  deadline_days: number
+  /** The OPEN requests, soonest to close first. */
+  contracts: TradeRequest[]
 }
 
 /**

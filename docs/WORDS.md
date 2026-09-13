@@ -63,6 +63,9 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | loading | **Loading…** | asking the shed what it holds…, seeing who is in tonight… |
 | empty | **No cargo** / **No fleets** / **Nothing here** | her hold is empty, nothing that floats |
 | a refusal with no reason | **The server refused, without a reason.** | — |
+| a port's posted ask for goods (the reference's 의뢰) | **request** (tab: **Requests**; `This port is asking for nothing today.`) — added 2026-09-14 with slice 4 of `docs/QUAY_LEDGER.md` (migration 0087); the wire says `contract` (`trade_contracts`, `world.contracts`) and the player never reads it | contract, commission, order (that is a queued verb) |
+| delivering on one | **Fulfil** (`Fulfil · 1,420 d.`; the receipt's title `Fulfilled · 14:32`; History: `… delivered 20 pepper on Lisbon's request — 200 d. premium.`) | complete, deliver on, honour |
+| what a request pays over the market | **premium** (`+12% over the market`; a receipt row `Premium +200 d.`) | bonus, bounty |
 
 ## Where the words are checked
 

@@ -5,6 +5,103 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-14 — A port asks for what it does not sell: the request board, slice 4 of the Quay Ledger (owner row 76 — migration 0087, built on `osn-slice4-contracts`, NOT merged, NOT deployed, NOT driven on production)
+
+**The instruction.** Row 76's last screen: the reference's 의뢰 board — a port asks for goods,
+names a deadline, pays over the odds when they arrive. `docs/QUAY_LEDGER.md` §1 called it the one
+part of the design with nothing under it (*"nothing exists"*) and §6 made it slice 4:
+`trade_contracts`, the read, the verb, *"premium as its own receipt line"*.
+
+**What says the opposite, and what was decided.** Nothing in the chain could WANT a good: a port
+pays its bid for anything and asks for nothing. And there is no day tick to spawn on — `world.
+game_day` is a pure function of the clock (0005) and 0078 names the five cron jobs by name, so a
+sixth would red that assert on every real scheduler. So the board is wound the way this chain
+winds its other calendars (0026/0028/0029): ONE writer, `public.tick_contracts(port)`, reached by
+`world.contracts` before it answers and by the delivery before it judges. It back-fills every day
+still inside the deadline window, so a port nobody read for three days shows the requests those
+three days posted — and it can, because the draw is PURE: `public.contract_draw(port, day, seq)` is
+three `voyage.rng` streams over (port, day, seq, world secret), the same on every replay. A row
+materialised late is the same row. Unlike the fair calendar it is NOT wound on `world.fleets()`: a
+request is a fact about one port, and the wind belongs on that port's read, not on the
+three-second read every player makes.
+
+**The rules, as knobs.** A harbour posts `contract_posts_per_day` (1) requests a game-day, open
+`contract_deadline_days` (4); a request asks for a good the port does NOT offer (0061's roster)
+and its culture trades (0080), in `contract_qty_steps_min..max` (1..3) trade steps — and never
+more than the port's BASE daily allowance for that good lets a fresh house sell in a day
+(`world.daily_cap_remaining` with no house named: a request is never impossible by construction),
+at `contract_premium_pct_min..max` (8%..20%) of the posting mid per unit, fixed on the row so the
+figure the board shows is the figure the delivery pays. **A port never asks for what it sells**,
+because that would be bought at the ask and delivered at the bid plus the premium on one quay with
+no voyage in between; 0087's (b) asserts it over every row it posts.
+
+**The delivery is one body, and the sale inside it is 0083's.** `cmd.run_fulfil` guards (docked
+here; the request exists, is this port's, is open, is not done; the WHOLE lot is on board —
+`E_CONTRACT_SHORT` with have / need in units), then runs the sale as a one-line manifest through
+`cmd.run_manifest` — so the bid, the daily cap, the culture, the bargain being spent, the cost basis
+and the breakdown are the verbs' own and nothing about a sale is written a second time — then pays
+the premium through `public.credit` as its OWN ledger movement (`PREMIUM`, on a `FULFILLED` event
+beside the `SOLD` one), marks the row, and returns 0083's receipt with `kind = 'fulfil'`, a
+`contract` object, `totals.premium`, `net = sold + premium − bought` and `purse.after` READ back.
+`cmd.fulfil` and `cmd.preview_fulfil` are the two skins, `trade_basket`'s and `preview_basket`'s
+shapes to the line (ownership, settle, ONE savepoint, the version guard under the row lock,
+E_BUSY). No grammar verb: FULFIL is a quay verb like the basket and the bargain — client-direct,
+no `orders` row — and that is also why nothing here touches `cmd.parse` / `verb_schema` /
+`execute_order` / `preview`, which 0086 (`cmd.do_dismiss`, PR #75, unmerged) re-cuts; the
+catalogue is sliced after the `preview_basket` row where 0086's hunk is on `reach`, so the two land
+in either order. Trading XP and fame read BOUGHT/SOLD; the premium counts toward neither, and the
+receipt's `trading` block is the sale's — stated, not hidden.
+
+**The screen.** PORT › Trade carries `Segmented` Buy · Sell · Requests on BOTH boards (the quay she
+lies at and a quay she is only reading; ONE session-persisted store, `tradeFace.ts`, and ONE strip,
+`TradeFaces.tsx`). Buy and Sell are two faces of the one ledger — every row keeps both cells
+(row 6); Sell narrows to what she carries. Requests is `RequestBoard.tsx`: one row per request in
+the ledger's own shapes — the good and its rarity mark, `20 units · ends in 2 h` (the calendar
+clock, printed like the fair's end through `formatRelative` from the served `expires_at` — never
+"days" the voyage clock would be read on, 0028's finding), `+12% over the market · 0 / 20 units on
+board`, and ONE `ActCell` `fulfil` carrying the served premium for the lot, dead with its reason
+(`0 / 20 units on board`; `no ship here` on the read-only board). A press opens `FulfilTray.tsx` in
+the one slot (`slot.kind = 'request'`): the cargo bar with the served room after, Requested, On
+board, Premium, You get (the sale line's served total and per-unit figure), the SAME totals block
+the basket and the receipt print (`ManifestTotals` — Market tax, Port fee, **Premium** as its own
+row, Profit vs bought at, Net) and one button `Fulfil · 1,420 d.`; on success the receipt is
+settled onto the basket store and the slot turns over to `Fulfilled · 14:32` with the premium line
+on it. History says `Gaivota delivered 20 pepper on Lisbon's request — 200 d. premium.`
+
+**Spaghetti prevented, not found.** `useManifestPreview` carried the fold "an estimate, or a
+refusal, as one served value" inline; the delivery's dry run wanted it too, so it is
+`live/usePreviewRead.ts` now and both are one-line doorways onto it. The premium row was NOT written
+in the tray and again in the receipt: it is the one totals block's.
+
+**Words** (`docs/WORDS.md`): request · Requests · Fulfil · Fulfilled · premium; `contract` is the
+wire's word and is now banned in player text (`tests/words.spec.ts`).
+
+**Proof.** 0087's self-assert (a fresh house, thrown away): the wind posts exactly the window's
+rows and re-mints nothing on a second wind; every row equals the one draw recomputed, names a good
+the port neither offers nor refuses, is a whole number of steps inside the band and under the
+allowance; a passed row is expired and pruned; the read serves every field; one unit short is
+`E_CONTRACT_SHORT` with the figures and moves nothing; the preview moves nothing and serves the
+board's own premium; the delivery lands with net = sold + premium, the PREMIUM ledger row equal to
+the served figure beside the SOLD one, the FULFILLED event, the row marked and gone from the read,
+the cargo gone, the version bumped once; E_STALE, E_CONTRACT_DONE, E_CONTRACT_EXPIRED,
+E_CONTRACT_ELSEWHERE, E_NO_SUCH_CONTRACT; the catalogue is 0083's plus three rows; posture on every
+side. `scripts/db/breaktest-0087.mjs` mutates it and every guard bites — two of them only after the
+break-test and the proof run caught the self-assert itself: (1) a finding compared against a field a
+mutation had STRIPPED read null, and `if not null` is silence, so the (e1) mutation applied green —
+every finding is now judged `is not true`, a null finding is a red; (2) `db:proof` reddened on a row
+whose `premium_per_unit` was struck from the unrounded mid while the row keeps the mid to the cent —
+two mids, off by half a cent at a rounding edge — so the mid is rounded ONCE at posting and the
+premium computed from that figure. `tests/rpc.surface.spec.ts`
+proves the same through the doors a browser holds; `tests/layout.spec.ts` and
+`tests/wide.layout.spec.ts` prove the third face's rows, the dead reasons, and that turning a face
+moves nothing above the board. **What the browser proofs do NOT do, said plainly:** press a live
+`fulfil`. The fixture fleet carries none of what its port asks for BY THE RULE (a port never asks
+for what it sells, and the only way to carry such a good here is to have brought it), so the live
+press — the tray in the slot, the preview, the delivery — is proven in rpc.surface and 0087, where
+the lot can be put aboard through the server's own mover. **NOT merged, NOT deployed, NOT driven.**
+
+---
+
 ## 2026-09-13 — The port's faces, in the owner's words: no levels, crafts in groups, Repair and Damage, ONE word for storage, and storage drawn like the trade board (rows 83, 84, 86, 87, 88 — built on PR #73, not merged, not driven on production)
 
 **The owner, reading the port after the words pass:** *"in town, trade level? what is this? market

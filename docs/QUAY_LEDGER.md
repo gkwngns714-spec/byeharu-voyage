@@ -51,7 +51,9 @@ server").
 ## 3. Screens
 
 * **A · The board** — PORT › Trade after absorbing MARKET. Port + purse in the bar; hold gauge with
-  the staged tuns hatched; `Segmented` Buy · Sell · Contracts; a ledger `Row` per good: name, tag
+  the staged tuns hatched; `Segmented` Buy · Sell · Requests (`docs/WORDS.md`: "Requests", never
+  "Contracts" — built 2026-09-14, slice 4; Buy and Sell are two faces of ONE ledger, Sell narrowed
+  to what she carries); a ledger `Row` per good: name, tag
   (`rare` from served rarity; `native` only once the payload carries it), tide bar, `aboard N t`
   caption, two price cells. Dead cells stay visible, dimmed, with today's texts.
 * **B · The row, unfolded** — the tray: served trend sparkline, `Range lo – hi`, `On the quay N t`,
@@ -82,8 +84,23 @@ server").
   slot: per-line settled figures, the same totals block, ducats before → after, `Trading +N xp`;
   dismissed by one press, dropped by the next line staged, never shown on another board.
   No reputation line until a reputation authority exists.
-* **F · Contracts + the real chart** — third segment: what this port pays a premium for, by
-  when, how much is already aboard; and the 48-slot price history drawn with an axis.
+* **F · Requests** (`features/port/RequestBoard.tsx` + `FulfilTray.tsx` over migration 0087,
+  built 2026-09-14) — the third segment: what this port asks for, one row per request shaped like
+  the ledger's — the good and its rarity mark, `20 units · ends in 2 h` (the calendar clock,
+  printed like the fair's end — never "days" the voyage clock would be read on, 0028), `+12% over
+  the market · 0 / 20 units on board`, and ONE cell `fulfil` carrying the served premium for the
+  lot (`+1,420 d.`), dead with its reason (`0 / 20 units on board`, `no ship here` on a quay she
+  is only reading). A press opens the one tray in the same slot with the served dry run
+  (`cmd.preview_fulfil`): the cargo bar with the served room after, Requested, On board, Premium,
+  You get (the sale line's total and per-unit figure), and the SAME totals block the basket and the
+  receipt print — Market tax, Port fee, **Premium** as its own row, Profit vs bought at, Net — and
+  one button `Fulfil · 1,420 d.` (the net). On success the receipt (0083's, `kind: 'fulfil'`,
+  titled `Fulfilled · 14:32`) stands in the slot with the premium line on it. The rules are 0087's
+  header: a port posts `contract_posts_per_day` requests a game-day, open `contract_deadline_days`,
+  for a good it does NOT offer and its culture trades, a whole lot of `contract_qty_steps_min..max`
+  trade steps sized under the port's base daily allowance, at `contract_premium_pct_min..max` of the
+  posting mid per unit — drawn by `voyage.rng` over (port, day, seq, world secret), so the board is
+  a fact about the world. The chart half of the old "F" is slice 3's `F′` above.
 
 ## 4. Laws this design is built inside
 
@@ -110,7 +127,7 @@ server").
 | Trade N lines | `cmd.issue` | **new** `cmd.trade_basket(lines[])` — one transaction, composed from `do_buy`/`do_sell`, returns the receipt |
 | haggle thread | `cmd.haggle(side)`, `world.haggle_state` | expose `side='sell'`; serve odds / attempts if missing |
 | receipt XP | `player_progress.trading` | delta in the receipt |
-| contracts | absent | **new** `trade_contracts`, `world.contracts`, `cmd.fulfil` |
+| requests (the wire says contracts) | absent → **0087** | `public.trade_contracts` (the board), `public.contract_draw` (THE draw), `public.tick_contracts` (THE writer — reached by the read; no cron job, 0078 names five), `world.contracts(p_port)`, `cmd.run_fulfil` (the one body: the sale through `cmd.run_manifest`, the premium through `public.credit` as a `PREMIUM` row on a `FULFILLED` event) under `cmd.fulfil` / `cmd.preview_fulfil`; six `contract_*` knobs |
 
 ## 6. Build order — four slices, each dark until proven
 
@@ -119,7 +136,7 @@ server").
 | **1** frontend only — `osn-quay-board` | fold MARKET into PORT (closes RESUME.md's open fold; one harbour source); ledger row replaces the tile grid; the tray becomes the unfolded row (B) | a single-good buy and sell on production round-trip through the new row via the same `cmd.issue`; MARKET is gone from `navTabs.ts` |
 | **2** migration 0083 — `osn-quay-manifest` (server, LIVE on production 2026-09-11) + `osn-manifest-panel` (frontend, 2026-09-13; supersedes the bottom-tray cut on PR #59) | `cmd.preview_basket` + `cmd.trade_basket` composed from the existing primitives; `native` on `world.market`; the basket as the right-hand panel at wide and the bottom tray on a phone; receipt | a 3-line mixed basket lands atomically on production and its receipt equals the ledger's BOUGHT/SOLD rows; a refused line refuses the whole basket |
 | **3** frontend only — `osn-slice3-haggle-chart` (built 2026-09-13; no migration — `haggle_state` already served every field) | `HaggleThread` on both faces of the trade tray (replaces `HaggleRow`, deleted); `PriceChart` from the Trend row; `saleEstimate` reads the served `avg_price` + `haggle_saved`; `useHaggleState` and `useTrade`'s dry run folded onto `useServedRead` (row 77's rule); proof 06 gains `HAGGLE_SELL_SIDE_MOVES_THE_BID`; rpc.surface proves a won SELL bargain raises the SELL preview by exactly `haggle_saved` | a sell-side haggle narrows the spread on production; "haggle saved" is non-zero on a receipt — **NOT yet driven on production** |
-| **4** migration — contracts | `trade_contracts`, spawn/expiry on the day tick, premium through `trade_basket`; third segment | one contract fulfilled on production, premium as its own receipt line |
+| **4** migration **0087** — `osn-slice4-contracts` (built 2026-09-14; NOT merged, NOT deployed, NOT driven) | `trade_contracts` + `contract_draw` + `tick_contracts` (posts a game-day's requests per harbour and back-fills the deadline window, expires, prunes — wound by `world.contracts` and by the delivery itself, because there is no day tick: `world.game_day` is pure time and 0078 names the five jobs); `cmd.fulfil` / `cmd.preview_fulfil` over ONE body that runs the sale through 0083's `cmd.run_manifest` and pays the premium as its OWN ledger row (`PREMIUM` on a `FULFILLED` event) — the receipt is 0083's with `kind: 'fulfil'`, `totals.premium` and `contract`; the third segment `Requests` on PORT › Trade (both boards), `RequestBoard` rows + `FulfilTray` in the one slot, the receipt with the premium line; `Segmented` Buy · Sell · Requests | rpc.surface proves the board after a wind, the short refusal with figures, the dry run's premium, the delivery's ledger rows, DONE / EXPIRED / not-yours; layout + wide.layout prove the face's rows and dead reasons and that nothing above the board moves; `scripts/db/breaktest-0087.mjs` bites; **NOT yet driven on production — leaves this row only when one request is fulfilled there with the premium on the receipt** |
 
 Each slice: architect (read-only, file:line) → implementer in its own worktree → adversarial
 review → `tsc -b`, `eslint`, `db:apply`/`db:proof` → PR → CI (build, pglite-gate, disposable

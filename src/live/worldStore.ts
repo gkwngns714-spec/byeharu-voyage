@@ -52,6 +52,7 @@ import {
   cmdCancel,
   cmdClear,
   cmdDivert,
+  cmdFulfil,
   cmdHaggle,
   cmdHireOfficer,
   cmdIssue,
@@ -208,6 +209,11 @@ export interface LiveWorld {
    *  `line`, the input index that refused) lands in `refusal` as every verb's does. Re-reads the
    *  world and the market on success exactly as `issue` does: one post-trade read, not two. */
   issueManifest: (fleetId: string, lines: readonly ManifestLine[]) => Promise<ManifestReceipt | null>
+  /** A DELIVERY (0087): the whole lot a request asks for, sold at this port's bid with the premium
+   *  paid beside it, together or not at all. Returns the served receipt (0083's, with the premium
+   *  on it), or null when the server refused — the refusal lands in `refusal` as every verb's
+   *  does. Reads the world and the market back on success exactly as `issue` does. */
+  fulfil: (fleetId: string, contractId: string) => Promise<ManifestReceipt | null>
   /** Dry-run the same string: the server executes the real verb and rolls it back (F.5 layer 3). */
   preview: (
     fleetId: string,
@@ -582,6 +588,20 @@ export const useWorld = create<LiveWorld>((set, get) => {
       // E_STALE means the version this tab holds is behind the server's (another tab traded, or a
       // read is in flight). Read the world back NOW, so the player's next press sends the fresh
       // version instead of the same stale one again (PR #59 review SHOULD 7).
+      if (r.refusal.code === 'E_STALE') await get().refresh()
+      return null
+    }
+    set({ refusal: null })
+    await afterTrade(fleet)
+    return r.value
+  },
+
+  // The same door-shape as issueManifest: version from the fleet in hand, E_STALE read back now.
+  fulfil: async (fleetId, contractId) => {
+    const fleet = get().fleets.find((f) => f.id === fleetId)
+    const r = await cmdFulfil(fleetId, contractId, fleet?.version ?? null)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
       if (r.refusal.code === 'E_STALE') await get().refresh()
       return null
     }

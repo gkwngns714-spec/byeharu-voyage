@@ -53,6 +53,10 @@ const BANNED: { word: RegExp; say: string }[] = [
   // tab — Storage — and the repair face names the ACT and the DAMAGE, not the building and the hull.
   { word: /\bwarehouses?\b/i, say: 'storage' },
   { word: /\bshipyard\b/i, say: 'Repair (the face) / build yard (the building that builds)' },
+  // 2026-09-14, owner row 76 slice 4 (docs/QUAY_LEDGER.md §3 F): the reference's 의뢰 board is
+  // REQUESTS on the tab and a REQUEST in a sentence; `contract` is the wire's word
+  // (`trade_contracts`, `world.contracts`) and never the player's.
+  { word: /\bcontracts?\b/i, say: 'request(s)' },
   // `hull (worst ship)` → `Damage` joins this list the day StepQuestion.tsx says `Damage` (the
   // Repair face already does); banning it first would make the suite red on a file another
   // slice owns.

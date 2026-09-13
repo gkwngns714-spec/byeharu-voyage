@@ -1,18 +1,23 @@
 import { useMemo, useState } from 'react'
 import { Field, Figure, Note, Row, TradeTray, useWide, type TradePick } from '../../components/ui'
+import { FulfilTray } from './FulfilTray'
 import { HaggleThread } from './HaggleThread'
 import { ManifestPanel } from './ManifestPanel'
 import { QuayLedger } from './QuayLedger'
+import { RequestBoard } from './RequestBoard'
 import { StepQuestion } from './StepQuestion'
+import { TradeFaces } from './TradeFaces'
+import { useTradeFace } from './tradeFace'
 import { useStepOrder } from './useStepOrder'
 import { fleetCargoByCode } from '../../domain/fleet'
 import { useManifestPreview } from '../../live/useManifestPreview'
 import { usePortHistory } from '../../live/usePortHistory'
+import { useRequests } from '../../live/useRequests'
 import { useWorld } from '../../live/worldStore'
 import { useTrade } from '../../live/useTrade'
 import { fold, foldedMatch } from '../../lib/text'
 import { formatVoyageDays } from '../../lib/format'
-import type { FleetView, ManifestLine, MarketGood, SnapshotPort } from '../../lib/rpc'
+import type { FleetView, ManifestLine, MarketGood, SnapshotPort, TradeRequest } from '../../lib/rpc'
 import { linesFor, useManifest } from '../../store/manifest'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -49,6 +54,18 @@ import { linesFor, useManifest } from '../../store/manifest'
 //                              never shows an empty slot, so there 'none' reads as 'basket'.
 // The basket is priced ONCE here (`useManifestPreview`) and the panel prints that answer.
 //
+// ── THE THREE FACES, AND THE REQUEST BOARD (slice 4, 2026-09-14, migration 0087) ────────────────
+// docs/QUAY_LEDGER.md §3 A: `Segmented` Buy · Sell · Requests. Buy and Sell are two faces of the
+// ONE ledger — every row keeps both its cells (owner row 6); Sell narrows the rows to what the
+// ship carries, so a captain with cargo to move sees only that. Requests is the reference's 의뢰
+// board: what this port asks for (`world.contracts`, read by `useRequests` on the world's beat),
+// one row per request shaped like the ledger's, ONE cell `fulfil` carrying the premium, dead with
+// its reason when the lot is not all on board. A press opens `FulfilTray` in the SAME slot —
+//     slot.kind = 'request'  → FulfilTray for that request, at half
+// and on success the served receipt (0083's, with the premium as its own line) is settled onto the
+// basket store so the slot turns over to the RECEIPT face exactly as a landed basket does. Which
+// face is up is `useTradeFace` (tradeFace.ts), shared with the read-only board.
+//
 // ── WHAT IS DRAWN HERE IS NOT THIS SCREEN'S ───────────────────────────────────────────────────
 // The ledger is `QuayLedger`, shared with the read-only face; the row and the trays are the design
 // system's; the act — the grammar, the door, the ceiling, the dry run, the server's refusal — is
@@ -62,7 +79,12 @@ import { linesFor, useManifest } from '../../store/manifest'
 // docked is not this file's at all — PortScreen mounts the read-only ledger (PortPrices.tsx).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-type Slot = { kind: 'basket' } | { kind: 'none' } | { kind: 'supplies' } | { kind: 'pick'; pick: TradePick }
+type Slot =
+  | { kind: 'basket' }
+  | { kind: 'none' }
+  | { kind: 'supplies' }
+  | { kind: 'pick'; pick: TradePick }
+  | { kind: 'request'; request: TradeRequest }
 
 const BASKET: Slot = { kind: 'basket' }
 
@@ -90,11 +112,23 @@ export function PortTrade({
   // A unit's bulk is a catalogue fact; the market row does not carry it, the snapshot does.
   const goodByCode = useWorld((s) => s.goodByCode)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
+  // WHICH FACE — shared with the read-only board (tradeFace.ts). The request board is read on
+  // the world's beat whatever face is up: a fresh board on turning to it is the reader's due.
+  const face = useTradeFace((s) => s.face)
+  const board = useRequests(port.id)
   // THE TEXT FILTER is this face's chrome; the ledger's own membership and order are QuayLedger's.
-  const matching = useMemo(() => {
-    const q = fold(filter.trim())
-    return goods.filter((g) => foldedMatch(q, g.name, g.code, g.category))
-  }, [goods, filter])
+  // On the Sell face the same rows are narrowed to what the ship carries — a filter, not a second
+  // ledger; on Requests it narrows the board by the same three words.
+  const q = fold(filter.trim())
+  const matching = useMemo(
+    () => goods.filter((g) => foldedMatch(q, g.name, g.code, g.category) && (face !== 'sell' || (aboard[g.code] ?? 0) > 0)),
+    [goods, q, face, aboard],
+  )
+  const requests = useMemo(
+    () => (board.view ? board.view.contracts.filter((r) => foldedMatch(q, r.name, r.good, r.category)) : null),
+    [board.view, q],
+  )
+  const settleReceipt = useManifest((s) => s.settle)
 
   // CLOSING ANYTHING RETURNS TO THE BASKET — the one rule, for the pick, the supplies and the
   // receipt alike.
@@ -143,6 +177,8 @@ export function PortTrade({
         data-testid="quay-stores"
       />
 
+      <TradeFaces />
+
       <Field
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
@@ -154,17 +190,44 @@ export function PortTrade({
         className="mt-3"
       />
 
-      <QuayLedger
-        goods={matching}
-        aboard={aboard}
-        pick={pick}
-        onPick={open}
-        empty={
-          <Note tone="neutral" className="mt-3">
-            No goods match.
-          </Note>
-        }
-      />
+      {face === 'requests' ? (
+        <RequestBoard
+          requests={requests}
+          loading={board.loading}
+          aboard={aboard}
+          docked
+          pick={slot.kind === 'request' ? slot.request.id : null}
+          onPick={(request) => {
+            setQty(null)
+            setSlot({ kind: 'request', request })
+          }}
+        />
+      ) : (
+        <QuayLedger
+          goods={matching}
+          aboard={aboard}
+          pick={pick}
+          onPick={open}
+          empty={
+            <Note tone="neutral" className="mt-3">
+              {face === 'sell' ? 'No cargo to sell.' : 'No goods match.'}
+            </Note>
+          }
+        />
+      )}
+
+      {slot.kind === 'request' && (
+        <FulfilTray
+          fleet={fleet}
+          request={slot.request}
+          aboard={aboard[slot.request.good] ?? 0}
+          onClose={toBasket}
+          onSettled={(receipt) => {
+            settleReceipt(fleet.id, port.code, receipt)
+            toBasket()
+          }}
+        />
+      )}
 
       {pick && (
         <TradeTray

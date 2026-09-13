@@ -240,7 +240,13 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // river ports the carve reaches (Antwerp, Seville, Nantes, Bordeaux, twelve more) a roadstead off
 // the quay for the first time. The channels cross the wire as voyage.channels; sea_reaches is
 // re-seeded whole.
-const LAST = '20260818000085_a_roadstead_lies_on_the_channel.sql'
+// Moved 2026-09-14 to 0087, the request board (owner row 76, slice 4): a harbour posts a request
+// for N units of a good it does NOT sell, open until a calendar day, paying a premium per unit over
+// the posting mid when the whole lot lands — `trade_contracts`, `world.contracts` (the read winds
+// the board), `cmd.fulfil` / `cmd.preview_fulfil` over ONE body that sells through 0083's
+// `cmd.run_manifest` and pays the premium as its own PREMIUM ledger row. 0086 (`cmd.do_dismiss`,
+// PR #75) is on its own branch and lands before it; nothing here touches what it touches.
+const LAST = '20260818000087_a_port_asks_for_what_it_does_not_sell.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
