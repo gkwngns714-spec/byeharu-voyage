@@ -5,6 +5,69 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-13 — Three owner complaints in one sitting: the flicker, the words, the blank space (rows 77–80), and London's ring (row 78, built, not deployed)
+
+**The owner opened the game after `git pull` and said, in order:** *"why is store keep refreshing?"* ·
+*"also inn"* · *"in map, the circle should point out to ocean, but london for example the circle is
+in land. What is the point of the circle then?"* · *"54.3 days stores? wtf is this? the wording is
+too old fashioned. 9t free? 9t free out of what?"* · *"find similar crappy wordings, and make them
+new"* · *"and trade, i showed you the pictures and this is not what ive asked for. and look. too much
+blank space."* Each is a row (77–80) in `docs/OWNER_REQUESTS.md`, in their words.
+
+**Row 77 — the flicker (PR #62, LIVE).** Diagnosed from the running game, not the code: the network
+log under the Store face showed `fleets → ledger → player → warehouse → market` six times in nine
+seconds. The shell reads the world every 3 s on this clock (`READ_MIN_MS`, a voyage-day being nine
+real seconds), every read bumps `readAt`, and FOUR port hooks — warehouse, inn, workstation, yard —
+were four copies of one hook that threw its answer away on every `readAt` and reported `loading`.
+The face blanked to "Asking the shed what it holds…" every 3 s. `PortInn.tsx` had even grown a
+workaround (its crew row mounted outside the room so the blank would not unmount its tray) — a
+defect documented as a rule. Ripped out: ONE `src/live/useServedRead.ts` keeps the last answer for
+the same subject while the re-ask is on the wire; the four hooks are one-line doorways. Proven in
+Chrome: 25 warehouse reads under the face, the shed present at every sample, zero blanks. **The same
+disease was MUST-FIX #1 on PR #59** (the manifest preview) and was folded onto the same hook.
+
+**Row 79 — the words (PR #62, LIVE).** `src/lib/format/time.ts` recorded the owner asking on
+2026-08-22 *"common words — stores? t? kn? what are these"* and the code answering by spelling
+"days" and keeping "stores" and "t" as "unambiguous". They were not. A repeated instruction means
+the wrong thing was built, so the words went, not the argument: `docs/WORDS.md` is the law (plain
+modern words — a ship is *it*; no alongside, quay, shed, the house, sign on, mend, lay down,
+provision, tuns, stores; no share printed without its whole; units spelled once in `src/lib/format`)
+and `tests/words.spec.ts` fails the suite on any banned word in player text. ~140 strings across 45
+files. COMMAND's line: `54.3 days stores · 9 t free` → `Supplies 54.3 days · Cargo 51 / 60 tons`.
+
+**A numbers defect the sweep surfaced.** A trade quantity is a COUNT of units and a unit takes
+`bulk` tons — only 126 of 523 goods have bulk 1.0 — but the trade UI printed quantities as tons and
+prices as per-ton. Nautical Clocks read `3 tons on board` on Trade and `1 ton` in the Store at the
+same moment. Quantities print as `units`, prices as `d. each`, and the trade tray gained a `Cargo
+space` row (qty × bulk) so a buy reads against the ship's `51 / 60 tons`.
+
+**Row 80 — the blank space (PR #63, LIVE; then PR #64, LIVE).** The app was phone-first and had no
+rule for a wide window; on the owner's 1,545-px glass a Trade row was a name at the left edge, two
+cells at the right edge, a thousand pixels between. Three numbers in `screenLayout.ts` (SHEET 48rem,
+TRAY 26rem, GAP 1.5rem): from `lg` a Sheet is a centred column and a docked Tray is a side panel
+beside it — the reference's goods-left / basket-right shape, which the owner had also asked for on
+2026-08-22 (a `splitClass()` trio was written for it then and never called; deleted). Proven at
+1440×900 by `tests/wide.layout.spec.ts`. On that ground slice 2 (the basket) was rebuilt clean from
+PR #59 with its review applied — the entry above this one.
+
+**Row 78 — London's ring (PR #65, MERGED, NOT DEPLOYED).** A background diagnosis read the served
+roadstead: `(51.375, −0.125)`, the CENTRE of a 0.25° cell that is water only because the authored
+Thames channel carved it — 8 nm south of the river, 36 nm inside the coastline. The chart draws it
+exactly where served, so the defect is the derivation. Systemic: 8 off-quay roadsteads on land
+(BSR COP HAM KHA LON OSA SAK THA), 5 river ports with no ring at all. Migration
+`0085_a_roadstead_lies_on_the_channel` puts a carved cell's roadstead ON the channel polyline
+nearest the quay, seeds the channels as `voyage.channels` so `water_roadstead` answers the same
+point in SQL, and its land check went RED on exactly those 8 against the applied table before
+going green. London: `51.5, −0.1`, 1.27 nm off the quay, on the Thames. **Production still reads
+0084** — the push needs the runbook's two clock calls and the database password file is not on
+this machine (`docs/NEW_MACHINE.md` §0). Left with the owner as a stated wall and a one-time fix.
+
+**Rules re-learned.** Diagnose from the running state first (the network log found row 77 in one
+look). A defect in four copies is spaghetti even when each copy is short. A REPEATED instruction is
+not a request for an adapter. Every share prints its whole.
+
+---
+
 ## 2026-09-13 — The basket is the right-hand panel: slice 2's frontend, rebuilt clean on the wide glass (owner rows 76 and 80)
 
 **The instruction, said twice.** Row 76 brought nine screenshots of the reference trade house —

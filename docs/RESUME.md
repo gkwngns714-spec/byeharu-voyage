@@ -1,11 +1,66 @@
 # RESUME — where the work stands
 
 **If you are picking this project up cold: read the anchor immediately below, then
-`docs/DEV_LOG.md`'s three entries for 2026-09-11, then `docs/QUAY_LEDGER.md` (owner row 76 — the
-work in progress), then `docs/OWNER_REQUESTS.md`. Everything under `LANDED 2026-08-24` and lower
-is older and is kept as record.** *(This pointer named D27/D26 until 2026-09-06 — eight entries
-out of date — and named 2026-09-09 alone until 2026-09-10. A cold-start pointer that names the wrong
-entries sends the reader to the wrong month, so it moves with the anchor.)*
+`docs/DEV_LOG.md`'s two entries for 2026-09-13, then `docs/WORDS.md` (the vocabulary law), then
+`docs/OWNER_REQUESTS.md` rows 76–80. Everything under the 2026-09-11 anchor and lower is older and
+is kept as record.**
+
+---
+
+# ▼ RESUME ANCHOR — 2026-09-13 ▼
+
+**The anchor below this one (2026-09-11) is now HISTORY.** Its "what the next session does" list is
+done or superseded: slice 2's frontend is LIVE (PR #64, rebuilt clean — PR #59 is superseded and
+kept open only as the review record).
+
+## The state of the world — VERIFIED 2026-09-13
+
+| | | how |
+|---|---|---|
+| `main` head | **`395c26b`** (PR #65 merged) | `git log origin/main -1` |
+| Chain head | **0085** `a_roadstead_lies_on_the_channel`, 78 migration files | `ls supabase/migrations/` |
+| **Production database head** | **0084 — ONE BEHIND `main`.** 0085 is merged and NOT pushed. | `supabase migration list --linked` read on the target: every row through `20260818000084` paired, `20260818000085` local-only; `supabase db push --linked --dry-run` names it as the one push |
+| Site | **LIVE at `b17e217`** = main minus 0085 (0085 has no client change, so the Pages build at `395c26b` serves the same client) | Pages run green; the served bundle grepped for `Your basket is empty`, `Add to basket`, `Supplies`, `Cargo space` |
+| Live URL | https://gkwngns714-spec.github.io/byeharu-voyage/ | fetched |
+
+## THE ONE THING WAITING — deploy 0085 (owner row 78, London's ring)
+
+`docs/DEPLOY_RUNBOOK.md`, exactly: `select public.unwind_the_clock();` (expect 5) → `supabase db push
+--linked` (applies 0085, prints its receipt) → `select public.wind_the_clock();` → `supabase migration
+list --linked` reads `20260818000085` paired → open MAP, zoom on London: the ring is on the Thames,
+1.27 nm off the mark (below the draw floor at the opening zoom — it appears when zoomed in), and
+Hamburg / Copenhagen / Antwerp / Seville have rings in water. **Why it did not happen today:** the CLI on
+this PC is logged in (the dry-run authenticates), but `supabase.credentials.local` is not on this
+machine, so the two clock calls could not be run from here, and reading the password out of the
+credential store was (rightly) refused. The owner was told and given the two fixes (run the three
+steps, or place the file).
+
+## What landed today, and where it is
+
+| owner row | what | state |
+|---|---|---|
+| 77 flicker | `src/live/useServedRead.ts` — four hooks became one; Store/Inn/Craft/Shipyard keep their answer across the 3-s beat | LIVE (PR #62) |
+| 79 words | `docs/WORDS.md` + `tests/words.spec.ts`; ~140 strings; units spelled; quantities are UNITS, prices `d. each`, `Cargo space` row | LIVE (PR #62) |
+| 80 blank space | `screenLayout.ts` "the wide glass": 48rem column + 26rem side tray from `lg`; `tests/wide.layout.spec.ts` at 1440×900 | LIVE (PR #63) |
+| 76/80 basket | `features/port/ManifestPanel.tsx` + `ManifestTotals` + `ReceiptFace` + `components/ui/CargoBar.tsx`; one `slot` state in `PortTrade`; preview rides `useServedRead` | LIVE (PR #64) — NOT driven on production (a basket trade spends the owner's ducats); driven on the local-PGlite build in CI and by hand in Chrome up to the button |
+| 78 London ring | migration 0085 + generator rule + `voyage.channels`; RED-then-GREEN land check | MERGED (PR #65), **NOT DEPLOYED** |
+
+## What the next session does, in order
+
+1. **Deploy 0085** by the runbook (above) and verify on the target and on the map. Close row 78 only after the look.
+2. **Ask nothing about rows 77/79/80 — they are live.** Row 76 stays OPEN under rule 2 until the owner has traded through the basket on production (their own play); do not drive a real trade.
+3. Slice 3 (haggle thread both sides + price chart) per `docs/QUAY_LEDGER.md` Appendix A; slice 4 (contracts) after.
+4. Two small leftovers seen today, not done: `WorldLoading`'s skeleton still prints an uppercase eyebrow (`HARBOUR` / `Port` / "Where you are, and what is here.") on a cold load of PORT — §2 item 15 chrome that survived; and the chart's coastline decimation (`COASTLINE_TOLERANCE_DEG = 0.2`) leaves 10 rings in raw-polygon water but inside the DRAWN coast (PR #65's follow-up note) — a draw decision, not a roadstead one.
+5. The nine reference screenshots for row 76 are NOT in the repo (pasted in chat on 09-11). If the owner drops them in `design/reference/`, hold the Trade face to them.
+
+## Rules learned or re-learned today
+
+* **Diagnose from the running state first.** The network log under the Store face found row 77 in one look; the code alone would have looked reasonable.
+* **A defect in N short copies is still spaghetti**, and the same defect was already a MUST-FIX on the open PR — one hook fixed both.
+* **A repeated instruction means the wrong thing was built** — the 2026-08-22 "stores? t? kn?" was on record in a code comment as *answered*; it was not.
+* **A share never prints without its whole**, and a unit never prints for a count that is not in that unit (the qty-vs-tons class).
+* **The wide glass is one rule, two readers**: literal Tailwind classes held to named constants by a pure spec, because Tailwind cannot see a class built from a number.
+* **Do not pull a password out of the credential store** to get a deploy done; state the wall and the one-time fix.
 
 ---
 
