@@ -194,4 +194,82 @@ test.describe('wide glass', () => {
     // The goods column has not moved through any of it.
     expect(await offsets()).toEqual(before)
   })
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // FLEETS — the fold is THREE COLUMNS on a wide glass (owner row 89, 2026-09-13): *"when folded,
+  // ships cargo supplies should be in one page with three columns."* The fold mounts under the
+  // pressed row (tests/layout.spec.ts proves the phone stack and that nothing above moves); here
+  // its three sections must stand SIDE BY SIDE — three boxes whose x ranges do not overlap, whose
+  // tops agree within 2px, all inside the 48rem column — and a second press folds it.
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  test(`FLEETS at ${WIDE.width}px: a fleet unfolds into three columns inside the 48rem column, and folds again`, async ({
+    page,
+    request,
+    baseURL,
+  }) => {
+    test.setTimeout(420_000)
+    test.skip(
+      !(await reachable(request, baseURL ?? '')),
+      `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+    )
+    await page.goto('fleets')
+    await ready(page)
+    await page.waitForTimeout(600)
+
+    const rows = page.locator('[data-testid="fleet-row"]')
+    expect(await rows.count(), 'no fleet rows — did the world found a company with a fleet?').toBeGreaterThan(0)
+    const remPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
+    const rowBox = (await rows.first().boundingBox())!
+    // The row itself is no wider than the column (the wide glass, proved for PORT above).
+    expect(rowBox.width).toBeLessThanOrEqual(SHEET_REM * remPx + 1)
+
+    // PRESS. Nothing at or above the row moves (row 15) — the row's own box is the witness.
+    await rows.first().click()
+    const fold = page.locator('[data-testid="fleet-fold"]')
+    await expect(fold).toBeVisible()
+    await page.waitForTimeout(600)
+    expect(await rows.first().boundingBox(), 'pressing the row moved it').toEqual(rowBox)
+
+    const sections = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-testid="fleet-fold-section"]')].map((s) => {
+        const r = s.getBoundingClientRect()
+        return {
+          heading: (s.querySelector('h2')?.textContent ?? '').trim(),
+          left: Math.round(r.left),
+          right: Math.round(r.right),
+          top: Math.round(r.top),
+          width: Math.round(r.width),
+        }
+      }),
+    )
+    console.log(`FLEETS fold @${WIDE.width}px: ${JSON.stringify(sections)}`)
+    expect(sections.map((s) => s.heading)).toEqual(['Ships', 'Cargo', 'Supplies'])
+
+    // 1. SIDE BY SIDE: three x ranges that do not overlap, left to right in the owner's order.
+    for (let i = 1; i < sections.length; i++) {
+      expect(
+        sections[i].left,
+        `${sections[i].heading} overlaps ${sections[i - 1].heading} — the sections are not three columns`,
+      ).toBeGreaterThanOrEqual(sections[i - 1].right)
+    }
+    // 2. ONE LINE: the tops agree within 2px — a column that starts lower is a stack in disguise.
+    for (const s of sections) {
+      expect(Math.abs(s.top - sections[0].top), `${s.heading}'s top is not on the line`).toBeLessThanOrEqual(2)
+    }
+    // 3. INSIDE THE COLUMN: every box within the pressed row's own x range, which is the 48rem
+    //    column at most — the fold does not reach into the tray's slot or off the glass.
+    for (const s of sections) {
+      expect(s.left, `${s.heading} starts left of the column`).toBeGreaterThanOrEqual(Math.floor(rowBox.x))
+      expect(s.right, `${s.heading} runs past the column`).toBeLessThanOrEqual(Math.ceil(rowBox.x + rowBox.width))
+      expect(s.width, `${s.heading} is too narrow to read`).toBeGreaterThan(160)
+    }
+    // No tray stands: the fold IS the detail now (FleetTray.tsx is deleted).
+    await expect(page.locator('[data-tray-mode]')).toHaveCount(0)
+
+    // PRESS AGAIN: folded, no fold in the DOM, the row where it was.
+    await rows.first().click()
+    await expect(page.locator('[data-testid="fleet-fold"]')).toHaveCount(0)
+    await page.waitForTimeout(400)
+    expect(await rows.first().boundingBox()).toEqual(rowBox)
+  })
 })

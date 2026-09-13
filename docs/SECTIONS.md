@@ -190,6 +190,16 @@ The three that were extended or added on 2026-08-23 were each shown failing firs
 the crossing named in the message: `domain/fleet/derive.ts -> chart`,
 `chart/glyphs.ts -> live/worldStore`, and `features/map/MapScreen.tsx -> chart/PortsLayer`.
 
+**FLEETS' fold (2026-09-13, owner row 89) — who owns what.** A fleet's detail is no longer a tray:
+`src/features/fleets/FleetTray.tsx` is DELETED and `src/features/fleets/FleetFold.tsx` is the one
+doorway, mounted by `FleetsScreen` immediately after the pressed row. It composes the three faces
+that already existed (`FleetShips`, `FleetCargo`, `FleetStores`) as three `SheetSection`s — a
+three-column grid from `lg`, a stack below — and owns nothing of its own but the layout and the
+two buttons. It stays in `features/fleets/` because no second screen unfolds a fleet; if one ever
+does, it composes `FleetFold`, and the grid line does not get copied. The standing-order refusal
+moved from the store's one slot into `useStandingOrder` (`standingOrder.ts`), because any number of
+fleets may stand unfolded and each face must print only its own.
+
 **A known seam, named rather than enforced:** four `src/features/*` files import
 `src/app/shellState` (`FleetsScreen`, `LedgerScreen`, `MapScreen`) and `src/app/navTabs`
 (`AuthPage`) while `src/app` renders the screens — a folder-level cycle. That state is not the
