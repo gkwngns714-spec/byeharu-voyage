@@ -407,7 +407,7 @@ test.describe('the whole send, driven on a phone', () => {
     // And it is the REAL dead end being named, not a line printed beside a working list.
     await expect(page.getByTestId('map-send-row-head')).toHaveCount(0)
     await expect(page.getByTestId('map-send-row-note').first()).toHaveText(
-      /Under way|already bound here/,
+      /Under way|already heading here/,
     )
 
     // POSITIVE CONTROL — the line must be ABSENT wherever a send IS possible, or it says nothing

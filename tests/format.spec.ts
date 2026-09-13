@@ -17,7 +17,7 @@ import {
   formatGameDate,
   formatInt,
   formatKnots,
-  formatNm,
+  formatMiles,
   formatOfTotal,
   formatPct,
   formatPctDelta,
@@ -25,9 +25,10 @@ import {
   formatRealDuration,
   formatRealShort,
   formatRelative,
-  formatTuns,
+  formatTons,
   formatTwoClocks,
   formatUnitPrice,
+  formatUnits,
   formatVoyageDays,
   gameDate,
   realMsToVoyageDays,
@@ -60,12 +61,16 @@ test('non-finite input degrades to an em dash rather than NaN', () => {
 })
 
 test('units print as the design document writes them', () => {
-  expect(formatTuns(60)).toBe('60 t')
-  expect(formatTuns(4.1, 1)).toBe('4.1 t')
-  expect(formatNm(188.4)).toBe('188 nm')
-  expect(formatNm(11736)).toBe('11,736 nm')
-  expect(formatKnots(3.5695)).toBe('3.6 kn')
-  expect(formatUnitPrice(7)).toBe('7 d./t')
+  // docs/WORDS.md law 2: every unit but the currency mark is SPELLED.
+  expect(formatTons(60)).toBe('60 tons')
+  expect(formatTons(1)).toBe('1 ton')
+  expect(formatTons(4.1, 1)).toBe('4.1 tons')
+  expect(formatMiles(188.4)).toBe('188 miles')
+  expect(formatMiles(11736)).toBe('11,736 miles')
+  expect(formatKnots(3.5695)).toBe('3.6 knots')
+  expect(formatUnitPrice(7)).toBe('7 d. each')
+  expect(formatUnits(20)).toBe('20 units')
+  expect(formatUnits(1)).toBe('1 unit')
   expect(formatOfTotal(98, 120)).toBe('98 / 120')
 })
 

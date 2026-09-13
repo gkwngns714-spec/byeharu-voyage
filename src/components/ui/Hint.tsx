@@ -58,7 +58,7 @@ export function Hint({
         )}
       </p>
       {more !== undefined && (
-        <Tray detent={detent} onDetentChange={setDetent} title={moreTitle ?? 'About this'}>
+        <Tray detent={detent} onDetentChange={setDetent} title={moreTitle ?? 'More'}>
           <p className="text-t-label text-ink-muted">{more}</p>
         </Tray>
       )}

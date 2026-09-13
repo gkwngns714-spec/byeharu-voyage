@@ -117,7 +117,7 @@ export function fromPayload<T>(payload: unknown): RpcResult<T> {
       sentence:
         typeof p.error_message === 'string' && p.error_message
           ? p.error_message
-          : 'The server refused that, without saying why.',
+          : 'The server refused, without a reason.',
       fixes: Array.isArray(p.fixes) ? p.fixes.filter((f): f is string => typeof f === 'string') : [],
       figures: readFigures(p.figures),
       source: 'server',

@@ -150,7 +150,19 @@ export function isComplete(spec: VerbSpec, args: Record<string, string>): boolea
  * once. Neither was wrong; two of them was. Both twins are deleted and both callers read this.
  */
 export function verbWord(verb: string): string {
-  return verb.charAt(0) + verb.slice(1).toLowerCase()
+  // The server's verbs are period words; the player reads the modern one (docs/WORDS.md).
+  const PLAYER: Record<string, string> = {
+    PROVISION: 'Resupply',
+    HIRE: 'Hire crew',
+    REPAIR: 'Repair',
+    MAKE: 'Craft',
+    BUILD: 'Build ship',
+    STORE: 'Store',
+    TAKE: 'Load',
+    FIT: 'Fit',
+    UNFIT: 'Unfit',
+  }
+  return PLAYER[verb] ?? verb.charAt(0) + verb.slice(1).toLowerCase()
 }
 
 /**
@@ -268,7 +280,7 @@ export function refusalOfOrder(order: QueuedOrder): Refusal | null {
   if (order.status !== 'failed' || !order.error_code) return null
   return {
     code: order.error_code,
-    sentence: order.error_message ?? 'The server refused that, without saying why.',
+    sentence: order.error_message ?? 'The server refused, without a reason.',
     // The fixes ride on the ISSUE envelope, not on the order row — a row read back later has no
     // fix attached, and inventing one here would be a second author of "→ do this instead".
     fixes: [],

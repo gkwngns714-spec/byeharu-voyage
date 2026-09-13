@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Bar, Figure, Row } from '../../components/ui'
 import { buildingsOf } from '../../domain/port'
-import { formatInt, formatPct } from '../../lib/format'
+import { formatInt, formatOfTotal, formatPct } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
 import type { SnapshotPort } from '../../lib/rpc'
 import { PORT_FACES, type PortFace } from './portView'
@@ -48,13 +48,13 @@ export function PortTown({
     <>
       <Row label="Market tax" value={<Figure value={formatPct(port.tax_rate, 1)} />} />
       <Row
-        label="Port's cut"
+        label="Port fee"
         value={<Figure value={spread === null ? '—' : formatPct(spread, 1)} tone={spread === null ? 'faint' : 'ink'} />}
       />
-      <Row label="Trade" value={<Figure value={formatInt(port.dev_commerce)} unit="/ 20" />}>
+      <Row label="Trade level" value={<Figure value={formatOfTotal(port.dev_commerce, 20)} />}>
         <Bar pct={(port.dev_commerce / 20) * 100} label="how far trade has grown" className="mt-1" />
       </Row>
-      <Row label="Crafts" value={<Figure value={formatInt(port.dev_industry)} unit="/ 20" />} hairline={buildings.length > 0}>
+      <Row label="Craft level" value={<Figure value={formatOfTotal(port.dev_industry, 20)} />} hairline={buildings.length > 0}>
         <Bar pct={(port.dev_industry / 20) * 100} label="how far the crafts have grown" className="mt-1" />
       </Row>
 
@@ -66,7 +66,7 @@ export function PortTown({
             label={nameOfKind[b.kind] ?? b.kind}
             // A tier is printed only above 1: "tier 1" on every line is a column of noise, and
             // what a player wants to see is which city is BETTER at something than the last one.
-            value={b.tier > 1 ? <Figure value={`tier ${formatInt(b.tier)}`} tone="muted" /> : undefined}
+            value={b.tier > 1 ? <Figure value={`level ${formatInt(b.tier)}`} tone="muted" /> : undefined}
             chevron={face !== undefined}
             onClick={face ? () => onOpenFace(face.id) : undefined}
             hairline={i < buildings.length - 1}

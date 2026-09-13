@@ -57,7 +57,7 @@ export function RebuildNotice() {
   // fault in the BUILD, and it goes to the log with its evidence attached.
   const rebuilt = boot.rebuilt
   const line = rebuilt
-    ? 'The world was rebuilt from the first migration.'
+    ? 'The game world was rebuilt from scratch.'
     : 'A ready-made world that did not match this build was discarded, and the world was built here.'
 
   return (

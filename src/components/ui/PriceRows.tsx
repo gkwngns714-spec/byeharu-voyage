@@ -2,7 +2,7 @@ import { Bar } from './Bar'
 import { Figure } from './Figure'
 import { Row } from './Row'
 import { Sparkline } from './Sparkline'
-import { formatInt, formatTuns } from '../../lib/format'
+import { formatInt, formatOfTotal } from '../../lib/format'
 import type { MarketGood, PricePoint } from '../../lib/rpc'
 
 // WHAT A PRICE HAS BEEN, HOW FAR IT CAN GO, AND HOW MUCH IS THERE — the three rows under a good,
@@ -37,21 +37,21 @@ export function PriceRows({
     <>
       <Row label="Trend" tone={mids.length < 2 ? 'muted' : 'default'}>
         {mids.length < 2 ? (
-          <span className="block text-t-caption">Not remembered here yet.</span>
+          <span className="block text-t-caption">No price history yet.</span>
         ) : (
           <Sparkline
             values={mids}
             width={320}
             height={40}
             className="mt-1 h-10 w-full"
-            label={`${good.name}: ${mids.length} remembered prices, ${formatInt(Math.min(...mids))} to ${formatInt(Math.max(...mids))}`}
+            label={`${good.name}: ${mids.length} past prices, ${formatInt(Math.min(...mids))} to ${formatInt(Math.max(...mids))}`}
           />
         )}
       </Row>
       <Row label="Range" value={<Figure value={`${formatInt(good.range_lo)}–${formatInt(good.range_hi)}`} />} />
       <Row
-        label="On the quay"
-        value={<Figure value={formatTuns(good.stock)} unit={`of ${formatTuns(good.stock_target)}`} />}
+        label="In stock"
+        value={<Figure value={formatOfTotal(good.stock, good.stock_target)} unit="units" />}
         data-testid="quay-stock"
       >
         <Bar

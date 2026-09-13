@@ -53,7 +53,7 @@ export function RankScreen() {
   }
   if (phase !== 'ready') {
     return (
-      <WorldLoading eyebrow="Standings" title="Rank" subtitle="Where you stand among the captains." panels={2} />
+      <WorldLoading eyebrow="Standings" title="Rank" subtitle="How you compare to other players." panels={2} />
     )
   }
   return <RankBody />
@@ -126,7 +126,7 @@ function Board({
 
   if (!board) {
     return answered ? (
-      <Note tone="warning">The board could not be read just now. It will be tried again in a moment.</Note>
+      <Note tone="warning">Could not load the rankings. Retrying shortly.</Note>
     ) : (
       <div className="space-y-2">
         <Skeleton className="h-12 w-full" />
@@ -138,7 +138,7 @@ function Board({
   if (board.board.length === 0) {
     return (
       <Row
-        label={board.why ?? 'The board came back empty with no reason given.'}
+        label={board.why ?? 'The rankings are empty, with no reason given.'}
         tone="muted"
         hairline={false}
       />
@@ -146,7 +146,7 @@ function Board({
   }
 
   const you = board.you
-  const yourName = house?.company_name ?? 'Your house'
+  const yourName = house?.company_name ?? 'Your company'
   // YOUR LINE IS PINNED, so it is not drawn a second time in the list; a captain below the cut is
   // carried by `you` whether or not she placed, which is why 0025 serves it.
   const others = board.board.filter((r) => !r.is_you)
@@ -155,7 +155,7 @@ function Board({
   return (
     <>
       {you === null ? (
-        <Row label="No line here is yours yet — a house takes its place once it is founded." tone="muted" />
+        <Row label="You are not ranked yet — start a company to appear here." tone="muted" />
       ) : (
         <>
           <Row
@@ -191,10 +191,10 @@ function Board({
 
       {you !== null && (
         <Tray detent={detent} onDetentChange={setDetent} title={yourName} data-testid="fame-tray">
-          <Row label="Trade fame" value={<Figure value={formatInt(you.trade_fame)} />} />
-          <Row label="Exploration fame" value={<Figure value={formatInt(you.exploration_fame)} />} />
+          <Row label="Trade score" value={<Figure value={formatInt(you.trade_fame)} />} />
+          <Row label="Exploration score" value={<Figure value={formatInt(you.exploration_fame)} />} />
           <Row label="Ports reached" value={<Figure value={formatInt(you.ports_reached)} />} />
-          <Row label="Fame" value={<Figure value={formatInt(you.total_fame)} tone="accent" />} hairline={false} />
+          <Row label="Total score" value={<Figure value={formatInt(you.total_fame)} tone="accent" />} hairline={false} />
           <Hint className="mt-2">
             One point per 100 ducats turned over; 25 for each new port, and one per 100 sea miles.
           </Hint>

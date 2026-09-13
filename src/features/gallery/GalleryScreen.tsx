@@ -254,7 +254,7 @@ export function GalleryScreen() {
                 { id: 'fleets', label: 'Fleets', icon: 'ship', href: '#' },
                 { id: 'port', label: 'Port', icon: 'anchor', href: '#' },
                 { id: 'map', label: 'Map', icon: 'chart', href: '#' },
-                { id: 'cabin', label: 'Cabin', icon: 'profile' },
+                { id: 'cabin', label: 'Menu', icon: 'profile' },
               ]}
             />
           </div>

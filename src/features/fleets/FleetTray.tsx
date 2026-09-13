@@ -32,7 +32,7 @@ type FleetFace = 'ships' | 'cargo' | 'stores'
 const FACES = [
   { id: 'ships', label: 'Ships' },
   { id: 'cargo', label: 'Cargo' },
-  { id: 'stores', label: 'Stores' },
+  { id: 'stores', label: 'Supplies' },
 ] as const satisfies readonly { id: FleetFace; label: string }[]
 
 export function FleetTray({ fleet, onClose }: { fleet: FleetView; onClose: () => void }) {
@@ -75,11 +75,11 @@ export function FleetTray({ fleet, onClose }: { fleet: FleetView; onClose: () =>
         variant="primary"
         className="w-full"
         busy={standing.busy}
-        busyLabel="Writing…"
+        busyLabel="Saving…"
         onClick={commit}
         data-testid="fleet-keep"
       >
-        {days === 0 ? 'Lift the order' : `Keep ${keepDays(days)}`}
+        {days === 0 ? 'Stop keeping supplies' : `Keep ${keepDays(days)}`}
       </Button>
     ) : undefined
 
@@ -91,16 +91,16 @@ export function FleetTray({ fleet, onClose }: { fleet: FleetView; onClose: () =>
       action={action}
       data-testid="fleet-tray"
     >
-      {/* THE PASSAGE, only while there is one: where she is bound, how far along, and when. The
+      {/* THE VOYAGE, only while there is one: where it is heading, how far along, and when. The
           ETA is the server's and the position its closed form — nothing here interpolates. */}
       {fleet.voyage && fraction !== null && (
         <Row label={`to ${bound}`} value={fleetDue(fleet, nowMs)} hairline={false} data-testid="fleet-passage">
           <Bar
             pct={fraction * 100}
             tone="info"
-            label="how far along the passage"
+            label="how far along the voyage"
             figure={
-              <Figure value={formatOfTotal(fleet.voyage.nm_done, fleet.voyage.total_nm)} unit="nm" />
+              <Figure value={formatOfTotal(fleet.voyage.nm_done, fleet.voyage.total_nm)} unit="miles" />
             }
             className="mt-1"
           />

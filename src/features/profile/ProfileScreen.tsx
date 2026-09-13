@@ -69,7 +69,7 @@ export function ProfileScreen() {
           />
         ) : (
           <Row
-            label="This account keeps no house yet. The register is where one is opened."
+            label="No company yet. Start one to play."
             tone="muted"
             hairline={false}
           />
@@ -114,7 +114,7 @@ export function ProfileScreen() {
           <Row
             tone="muted"
             hairline={false}
-            label="Nobody is signed in — this house lives in this browser, and clearing its storage ends it."
+            label="Not signed in — this game lives in this browser, and clearing its storage ends it."
             value={
               <Button variant="secondary" disabled data-testid="sign-out">
                 Sign out

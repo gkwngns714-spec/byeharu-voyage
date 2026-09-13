@@ -13,8 +13,8 @@ import type { FleetOnChart, MapPort } from '../../chart'
 // shell clock, through `formatRealShort` — the map does not own a second way to say "4m".
 export function fleetLine(f: FleetOnChart, portsByCode: ReadonlyMap<string, MapPort>, nowMs: number): string {
   if (f.dockedAtCode) return portsByCode.get(f.dockedAtCode)?.name ?? f.dockedAtCode
-  // 0039: at a bare-water anchor she is somewhere, going nowhere — say the spot, not a dash.
-  if (f.fleet.kind === 'anchored') return `at anchor · ${pointLabel(f.at)}`
+  // 0039: anchored at a bare point of water it is somewhere, going nowhere — say the spot, not a dash.
+  if (f.fleet.kind === 'anchored') return `anchored · ${pointLabel(f.at)}`
   const destination = f.destinationCode
     ? (portsByCode.get(f.destinationCode)?.name ?? f.destinationCode)
     : f.voyage?.destPoint

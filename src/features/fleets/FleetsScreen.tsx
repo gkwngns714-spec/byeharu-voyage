@@ -45,7 +45,7 @@ export function FleetsScreen() {
     return <WorldFailed eyebrow="Assets" title="Fleets" refusal={fatal} />
   }
   if (phase !== 'ready' || !snapshot) {
-    return <WorldLoading eyebrow="Assets" title="Fleets" subtitle="What you own, and the state it is in." panels={3} />
+    return <WorldLoading eyebrow="Assets" title="Fleets" subtitle="Your ships, and how they are doing." panels={3} />
   }
   return <FleetsBody />
 }
@@ -65,7 +65,7 @@ function FleetsBody() {
   return (
     <Sheet title="Fleets" data-testid="fleets">
       {fleets.length === 0 ? (
-        <Row label="The house owns nothing that floats." tone="muted" hairline={false} />
+        <Row label="No fleets yet." tone="muted" hairline={false} />
       ) : (
         fleets.map((fleet, i) => (
           <FleetRow
@@ -128,16 +128,16 @@ function FleetRow({
       data-testid="fleet-row"
     >
       {/* THE THREE FACTS THAT DECIDE THE NEXT ORDER, on one caption line: whether to sail is
-          "how many days of stores", whether to buy is "how much room is left", whether to repair
-          is "how sound is the worst hull". The figure stays beside each bar — a bar you cannot
+          "how many days of supplies", whether to buy is "how much cargo space is left", whether to
+          repair is "how sound is the worst hull". The figure stays beside each bar — a bar you cannot
           read exactly is a mood ring, and this is a ledger. */}
       <span className="mt-1 flex items-center gap-3 text-t-caption text-ink-faint" data-testid="fleet-row-bars">
-        <span className="shrink-0 tabular-nums">{formatVoyageDays(fleet.endurance_days)}</span>
+        <span className="shrink-0 tabular-nums">{formatVoyageDays(fleet.endurance_days)} of supplies</span>
         <Bar
           pct={total > 0 ? (used / total) * 100 : 0}
           tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}
-          label={`hold, ${formatOfTotal(used, total)} tuns`}
-          figure={<span className="tabular-nums">{formatOfTotal(used, total)} t</span>}
+          label={`cargo, ${formatOfTotal(used, total)} tons`}
+          figure={<span className="tabular-nums">{formatOfTotal(used, total)} tons</span>}
           className="min-w-0 flex-1"
         />
         {/* §4.4: a hull that is merely sound is NEUTRAL — green is for gain, and a whole fleet

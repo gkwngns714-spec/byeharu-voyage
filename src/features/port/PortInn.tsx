@@ -56,16 +56,16 @@ import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../../lib/rpc'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 const SPECIALTY_DOES: Record<string, string> = {
-  NAVIGATOR: 'shortens a passage',
-  QUARTERMASTER: 'finds room in a full hold',
-  SURGEON: 'keeps the crew on their feet',
-  PURSER: 'shaves the spread on every trade',
+  NAVIGATOR: 'faster voyages',
+  QUARTERMASTER: 'more cargo space',
+  SURGEON: 'healthier crew',
+  PURSER: 'better prices on every trade',
 }
 
 function whereFrom(guest: InnGuest): string {
   if (guest.nation && guest.home) return `${guest.nation} · ${guest.home}`
-  if (guest.home) return `${guest.home}, and no crown`
-  return 'nowhere anyone can name'
+  if (guest.home) return guest.home
+  return 'Unknown'
 }
 
 export function PortInn({
@@ -85,8 +85,8 @@ export function PortInn({
         <CrewRow port={port} fleet={alongside} />
       ) : (
         <Row
-          label="Crew for hire"
-          value={<Figure value={formatInt(port.crew_pool)} unit="idle" />}
+          label="Crew available"
+          value={<Figure value={formatInt(port.crew_pool)} unit="people" />}
           tone="muted"
           data-testid="inn-crew"
         />
@@ -104,8 +104,8 @@ function CrewRow({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
   return (
     <>
       <Row
-        label="Crew for hire"
-        value={<Figure value={formatInt(port.crew_pool)} unit="idle" />}
+        label="Crew available"
+        value={<Figure value={formatInt(port.crew_pool)} unit="people" />}
         chevron
         onClick={() => setOpen(true)}
         data-testid="inn-crew"
@@ -152,18 +152,18 @@ function Room({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) 
     })()
   }
 
-  if (loading && !view) return <Note tone="neutral" className="mt-3">Seeing who is in tonight…</Note>
-  if (!view || !view.has_inn) return <Note tone="neutral" className="mt-3">This city keeps no inn.</Note>
+  if (loading && !view) return <Note tone="neutral" className="mt-3">Loading…</Note>
+  if (!view || !view.has_inn) return <Note tone="neutral" className="mt-3">No inn in this port.</Note>
 
   return (
     <>
       <Note tone="neutral" className="my-3">
-        Tonight&apos;s room. Come back tomorrow and it is a different one.
+        Officers available today. Tomorrow there will be different ones.
       </Note>
 
       {view.present.length === 0 ? (
         <Row
-          label="Nobody worth hiring is in tonight. Try a quay closer to the sort of officer you want."
+          label="No officers available today. Try a port closer to the kind of officer you want."
           tone="muted"
           hairline={false}
         />
@@ -182,7 +182,7 @@ function Room({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) 
                 setDetent('half')
                 setOpen(guest)
               }}
-              figure={<Figure value={formatDucats(guest.wage)} unit="a voyage" />}
+              figure={<Figure value={formatDucats(guest.wage)} unit="per voyage" />}
               data-testid={`guest-${guest.code}`}
             />
           ))}
@@ -201,25 +201,25 @@ function Room({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) 
                 variant="primary"
                 className="w-full"
                 busy={signing}
-                busyLabel="Signing…"
+                busyLabel="Hiring…"
                 onClick={() => sign(open)}
                 data-testid={`sign-${open.code}`}
               >
-                {`Sign ${open.name.split(' ')[0]} for ${formatDucats(open.wage)}`}
+                {`Hire ${open.name.split(' ')[0]} for ${formatDucats(open.wage)}`}
               </Button>
             )
           }
         >
           <Row
-            label="Rates as"
+            label="Role"
             value={`${open.specialty.toLowerCase()} · ${SPECIALTY_DOES[open.specialty] ?? ''}`}
           />
           <Row
-            label="Worth to a fleet"
+            label="Bonus"
             value={<Figure value={`+${formatInt(open.bonus_pct)}%`} tone="success" />}
           />
-          <Row label="Out of" value={whereFrom(open)} hairline={!open.signed} />
-          {open.signed && <Row label="Already in your service." tone="muted" hairline={false} />}
+          <Row label="From" value={whereFrom(open)} hairline={!open.signed} />
+          {open.signed && <Row label="Already working for you." tone="muted" hairline={false} />}
           <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
           {refusal && (
             <Note tone="danger" code={refusal.code}>

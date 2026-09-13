@@ -160,6 +160,11 @@ What is *not* wrong and must be kept: the store shape (one world, selectors per 
 
 ## 4. Atmosphere — what "modern" means here, and the numbers
 
+**Words are `docs/WORDS.md`'s.** This document decides how a screen is BUILT; what it SAYS is the
+vocabulary law — plain modern words, no number without its whole, units spelled once in
+`src/lib/format` — and `tests/words.spec.ts` is its teeth. Added 2026-09-13 after the owner's second
+complaint about the same words; nothing below overrides it.
+
 **Commit: an instrument over a living sea.** Not a ledger, not a brass console. The world (sea, coast, ports) is the ground on every tab; everything the player reads sits on flat, translucent sheets that rise from the bottom edge or hang in a corner; type is one family, quiet and tabular; colour is reserved for meaning; there is no border where a hairline or a tone step will do. The number is the loudest thing on the screen because nothing else is allowed to be loud.
 
 Reference points, and what is taken from each:

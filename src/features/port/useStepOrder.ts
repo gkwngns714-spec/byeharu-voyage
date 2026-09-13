@@ -28,7 +28,7 @@ import type { CheckState } from './orderCheck'
 
 const FALLBACK_REFUSAL: Refusal = {
   code: 'E_REFUSED',
-  sentence: 'The server refused that, without saying why.',
+  sentence: 'The server refused, without a reason.',
   fixes: [],
   source: 'server',
 }

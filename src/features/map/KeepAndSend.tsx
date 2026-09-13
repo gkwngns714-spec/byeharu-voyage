@@ -61,7 +61,7 @@ export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFl
               <Button
                 variant="secondary"
                 size="icon"
-                aria-label={`fewer days of stores for ${f.name}`}
+                aria-label={`fewer days of supplies for ${f.name}`}
                 onClick={() => flow.nudge(f, -1)}
                 data-testid="map-send-ratio-less"
               >
@@ -70,7 +70,7 @@ export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFl
               <Button
                 variant="secondary"
                 size="icon"
-                aria-label={`more days of stores for ${f.name}`}
+                aria-label={`more days of supplies for ${f.name}`}
                 onClick={() => flow.nudge(f, 1)}
                 data-testid="map-send-ratio-more"
               >
@@ -82,7 +82,7 @@ export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFl
           <Bar
             pct={Math.min(1, have / keep) * 100}
             tone={have >= keep ? 'success' : 'accent'}
-            label={`stores, ${formatFixed(have, 1)} of ${keep} days`}
+            label={`supplies, ${formatFixed(have, 1)} of ${keep} days`}
             className="mt-1"
             figure={<span className="text-t-caption text-ink-faint">{`${formatFixed(have, 1)} now`}</span>}
           />

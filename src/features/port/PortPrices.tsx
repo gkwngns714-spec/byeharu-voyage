@@ -63,7 +63,7 @@ export function PortPrices({
         onPick={(good, intent) => setPick({ good, intent })}
         empty={
           <Note tone="neutral" className="mt-3">
-            Nothing is traded on this quay.
+            Nothing is traded here.
           </Note>
         }
       />

@@ -86,7 +86,7 @@ export function StepQuestion({
           className="w-full"
           disabled={issuing || refused || (bound !== null && bound.max <= 0)}
           busy={issuing}
-          busyLabel="Issuing…"
+          busyLabel="Sending…"
           onClick={step.send}
           data-testid="step-send"
         >
@@ -119,13 +119,13 @@ export function StepQuestion({
 }
 
 function title(verb: string): string {
-  return verb === 'HIRE' ? 'Sign on crew' : verb === 'REPAIR' ? 'Mend her hulls' : 'Provision her'
+  return verb === 'HIRE' ? 'Hire crew' : verb === 'REPAIR' ? 'Repair ships' : 'Resupply'
 }
 
 function actLabel(verb: string, value: number, provisionFull: boolean): string {
   if (verb === 'HIRE') return `Hire ${formatInt(value)}`
-  if (verb === 'REPAIR') return `Mend to ${formatInt(value)}%`
-  return provisionFull ? 'Fill the barrels' : `Provision ${formatInt(value)} days`
+  if (verb === 'REPAIR') return `Repair to ${formatInt(value)}%`
+  return provisionFull ? 'Fill up' : `Resupply ${formatInt(value)} days`
 }
 
 interface Bound {
@@ -171,15 +171,15 @@ function presetsFor(verb: string, value: number, bound: Bound) {
 function boundOf(name: string, fleet: FleetView): Bound {
   if (name === 'count') {
     const berths = fleetCrew(fleet).berths
-    return { min: 1, max: berths, step: 1, unit: 'crew', label: 'crew to sign on', empty: 'Every berth in this fleet is filled.' }
+    return { min: 1, max: berths, step: 1, unit: 'crew', label: 'crew to hire', empty: 'This fleet has no free crew slots.' }
   }
   if (name === 'to_pct') {
     const now = Math.round(worstHullFraction(fleet) * 100)
-    return { min: Math.min(now + 1, 100), max: 100, step: 5, unit: '%', label: 'mend her to', empty: 'Every hull is whole.' }
+    return { min: Math.min(now + 1, 100), max: 100, step: 5, unit: '%', label: 'repair to', empty: 'All ships are at full hull.' }
   }
-  // days — a floor of 0, not 1: nought days is FULL, and a floor of 1 would put "fill the barrels"
+  // days — a floor of 0, not 1: nought days is FULL, and a floor of 1 would put "fill up"
   // out of reach of `−` the moment a day count had been chosen.
-  return { min: 0, max: 120, step: 5, unit: 'days', label: 'days of stores', empty: '' }
+  return { min: 0, max: 120, step: 5, unit: 'days', label: 'days of supplies', empty: '' }
 }
 
 /** Her state, in rows — the one figure this verb is a decision about, and the port fact it needs. */
@@ -191,7 +191,7 @@ function Reading({ fleet, port, verb }: { fleet: FleetView; port: SnapshotPort |
         <Row label="Crew" value={<Figure value={formatInt(crew.aboard)} unit={`of ${formatInt(crew.max)}`} size="figure" />}>
           <Bar value={crew.aboard} of={10} tone={crew.short > 0 ? 'danger' : 'success'} label="crew" className="mt-1" />
         </Row>
-        <Row label="Idle here" value={<Figure value={port ? formatInt(port.crew_pool) : '—'} />} hairline={false} />
+        <Row label="Available here" value={<Figure value={port ? formatInt(port.crew_pool) : '—'} />} hairline={false} />
       </>
     )
   }
@@ -200,11 +200,11 @@ function Reading({ fleet, port, verb }: { fleet: FleetView; port: SnapshotPort |
     const yard = port && hasBuilding(port, 'shipyard')
     return (
       <>
-        <Row label="Worst hull" value={<Figure value={formatPct(worst / 100, 0)} tone={worst < 50 ? 'danger' : 'ink'} size="figure" />} />
+        <Row label="Hull (worst ship)" value={<Figure value={formatPct(worst / 100, 0)} tone={worst < 50 ? 'danger' : 'ink'} size="figure" />} />
         <Row
           label="Shipyard"
           tone={yard ? 'default' : 'muted'}
-          value={port ? (yard ? `Tier ${buildingTier(port, 'shipyard')}` : 'none here') : 'at sea'}
+          value={port ? (yard ? `Level ${buildingTier(port, 'shipyard')}` : 'none here') : 'at sea'}
           hairline={false}
         />
       </>
@@ -213,10 +213,10 @@ function Reading({ fleet, port, verb }: { fleet: FleetView; port: SnapshotPort |
   const stores = fleetStores(fleet)
   return (
     <>
-      <Row label="Stores" value={<Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />} />
+      <Row label="Supplies" value={<Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />} />
       <Row
-        label="Aboard"
-        value={<Figure value={`${stores.waterT.toFixed(0)} water · ${stores.foodT.toFixed(0)} food`} />}
+        label="On board"
+        value={<Figure value={`${stores.waterT.toFixed(0)} tons water · ${stores.foodT.toFixed(0)} tons food`} />}
         hairline={false}
       />
     </>

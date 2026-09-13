@@ -72,8 +72,8 @@ export function PortWorkstation({
     })()
   }
 
-  if (loading && !view) return <Note tone="neutral">Asking the workstation what it can do…</Note>
-  if (!view) return <Note tone="neutral">This city keeps no workstation.</Note>
+  if (loading && !view) return <Note tone="neutral">Loading…</Note>
+  if (!view) return <Note tone="neutral">No workshop in this port.</Note>
 
   const short = open && fleet ? shortfall(open) : null
   const ready = open !== null && open.makeable && fleet !== null && short === null
@@ -82,7 +82,7 @@ export function PortWorkstation({
     <div data-testid="port-workstation">
       {!fleet && (
         <Note tone="warning" className="mb-3">
-          No fleet of yours lies here, so there is nothing to make a fitting out of.
+          None of your fleets are here. Crafting uses materials from your ship.
         </Note>
       )}
 
@@ -127,19 +127,19 @@ export function PortWorkstation({
                 variant="primary"
                 className="w-full"
                 busy={sending}
-                busyLabel="Making…"
+                busyLabel="Crafting…"
                 onClick={() => make(open)}
                 data-testid={`make-${open.code}`}
               >
-                {`Make ${open.name}`}
+                {`Craft ${open.name}`}
               </Button>
             ) : undefined
           }
         >
           {/* DESIGN 1.3, where a player reads it: every fitting buys one stat and spends another,
               so the choice is a choice and not a shopping list. */}
-          <Row label="Buys" value={open.buys} />
-          <Row label="Spends" value={open.spends} />
+          <Row label="Gives" value={open.buys} />
+          <Row label="Uses" value={open.spends} />
           {open.recipe.map((r, i) => (
             <Row
               key={r.name}
@@ -147,7 +147,7 @@ export function PortWorkstation({
               value={
                 <Figure
                   value={formatInt(r.qty)}
-                  unit={r.aboard === null ? undefined : `aboard ${formatInt(r.aboard)}`}
+                  unit={r.aboard === null ? undefined : `· ${formatInt(r.aboard)} on board`}
                   tone={r.aboard !== null && r.aboard < r.qty ? 'warning' : 'ink'}
                 />
               }
@@ -156,10 +156,10 @@ export function PortWorkstation({
           ))}
           {!open.makeable && (
             <Note tone="warning">
-              {`It wants a tier ${formatInt(open.ws_tier)} workstation. This one is tier ${formatInt(tier)}.`}
+              {`Needs a level ${formatInt(open.ws_tier)} workshop. This one is level ${formatInt(tier)}.`}
             </Note>
           )}
-          {open.makeable && short !== null && <Note tone="warning">{`Short of ${short}.`}</Note>}
+          {open.makeable && short !== null && <Note tone="warning">{`Missing: ${short}.`}</Note>}
           {refusal && (
             <Note tone="danger" code={refusal.code}>
               {refusal.sentence}

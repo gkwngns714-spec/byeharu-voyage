@@ -49,8 +49,8 @@ export function ShipsFace({ query }: { query: string }) {
             mark={<Icon name="ship" size={20} />}
             name={s.name}
             meta={`${s.family} · ${s.rig}`}
-            figure={<Figure value={formatInt(s.hold)} unit="t" />}
-            second={<Figure value={formatFixed(s.speed_kn, 1)} unit="kn" />}
+            figure={<Figure value={formatInt(s.hold)} unit="tons" />}
+            second={<Figure value={formatFixed(s.speed_kn, 1)} unit="knots" />}
             tap="whole"
             onClick={() => {
               setDetent('half')
@@ -70,14 +70,14 @@ export function ShipsFace({ query }: { query: string }) {
           title={open.name}
           data-testid="ship-tray"
         >
-          <Row label="Hold" value={<Figure value={formatInt(open.hold)} unit="t" />} />
-          <Row label="Speed" value={<Figure value={formatFixed(open.speed_kn, 1)} unit="kn" />} />
+          <Row label="Cargo" value={<Figure value={formatInt(open.hold)} unit="tons" />} />
+          <Row label="Speed" value={<Figure value={formatFixed(open.speed_kn, 1)} unit="knots" />} />
           {/* crew she must have / berths she carries — two served figures, one pair. */}
-          <Row label="Crew" value={<Figure value={formatOfTotal(open.crew_required, open.crew_max)} />} />
-          <Row label="Draft" value={<Figure value={formatInt(open.draft)} />} />
+          <Row label="Crew (needed / max)" value={<Figure value={formatOfTotal(open.crew_required, open.crew_max)} />} />
+          <Row label="Depth needed" value={<Figure value={formatInt(open.draft)} />} />
           <Row label="Hull" value={<Figure value={formatInt(open.durability)} />} />
-          <Row label="Tier" value={<Figure value={formatInt(open.tier)} />} hairline={false} />
-          <Hint className="mt-2">As the shipwright rates her, before any officer or skill touches the figures.</Hint>
+          <Row label="Class" value={<Figure value={formatInt(open.tier)} />} hairline={false} />
+          <Hint className="mt-2">Base figures, before any officer or skill bonus.</Hint>
         </Tray>
       )}
     </>

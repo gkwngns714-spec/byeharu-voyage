@@ -1,4 +1,4 @@
-import { formatInt, formatNm, formatPctPoints } from '../../lib/format'
+import { formatInt, formatMiles, formatPctPoints } from '../../lib/format'
 import { parsePointToken, pointLabel } from '../../domain/passage'
 // THE ONE READER OF A JSONB FIELD (2026-08-23). `num`/`str` were declared here AND in
 // features/command/PreviewPanel.tsx, and they had already drifted; docs/NO_SPAGHETTI.md §2 listed
@@ -48,24 +48,24 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
 
   switch (event.kind) {
     case 'FOUNDED': {
-      const company = str(p, 'company') ?? 'The house'
+      const company = str(p, 'company') ?? 'Your company'
       const port = str(p, 'port')
-      return `${company} opens its books${port ? ` at ${portName(port)}` : ''}.`
+      return `${company} founded${port ? ` at ${portName(port)}` : ''}.`
     }
     case 'BOUGHT': {
       const qty = num(p, 'qty')
       const good = str(p, 'good') ?? 'cargo'
       const price = num(p, 'avg_price')
-      return `${fleet} took aboard ${qty === null ? 'a parcel of' : formatQty(qty)} ${good}${
-        price === null ? '' : ` at ${Math.round(price)} d. the tun`
+      return `${fleet} bought ${qty === null ? 'some' : formatQty(qty)} ${good}${
+        price === null ? '' : ` at ${Math.round(price)} d. each`
       }.`
     }
     case 'SOLD': {
       const qty = num(p, 'qty')
       const good = str(p, 'good') ?? 'cargo'
       const price = num(p, 'avg_price')
-      return `${fleet} sold ${qty === null ? 'a parcel of' : formatQty(qty)} ${good}${
-        price === null ? '' : ` at ${Math.round(price)} d. the tun`
+      return `${fleet} sold ${qty === null ? 'some' : formatQty(qty)} ${good}${
+        price === null ? '' : ` at ${Math.round(price)} d. each`
       }.`
     }
     case 'DEPARTED': {
@@ -75,7 +75,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
       const dest = str(p, 'dest')
       const destPoint = dest ? parsePointToken(dest) : null
       const bound = dest ? ` for ${destPoint ? pointLabel(destPoint) : portName(dest)}` : ''
-      return `${fleet} put to sea${bound}${nm === null ? '' : ` — ${formatNm(nm)}`}.`
+      return `${fleet} departed${bound}${nm === null ? '' : ` — ${formatMiles(nm)}`}.`
     }
     case 'VOYAGE_REPORT': {
       const from = str(p, 'from')
@@ -90,16 +90,16 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
           ? ` to ${pointLabel({ lat: Number(toPoint[0]), lon: Number(toPoint[1]) })}`
           : ''
       const leg = from ? ` from ${portName(from)}` : ''
-      return `${fleet} came in${toLabel}${leg}${nm === null ? '' : ` — ${formatNm(nm)} sailed`}.`
+      return `${fleet} arrived${toLabel}${leg}${nm === null ? '' : ` — ${formatMiles(nm)} sailed`}.`
     }
     case 'PROVISIONED': {
-      // "provisioned", not "watered and victualled" — sailor's cant reads as period flavour to
-      // whoever writes it and as nonsense to whoever plays it (the owner's plain-words rule,
-      // 2026-08-23). PROVISION is the verb the player pressed; the report uses their own word.
+      // "resupplied", not "watered and victualled" and not "provisioned" — sailor's cant reads as
+      // period flavour to whoever writes it and as nonsense to whoever plays it (the owner's
+      // plain-words rule, 2026-08-23, said again 2026-09-13; docs/WORDS.md).
       const water = num(p, 'water_t')
       const food = num(p, 'food_t')
-      return `${fleet} provisioned${
-        water === null || food === null ? '' : ` — ${water.toFixed(1)} t of water, ${food.toFixed(1)} t of food`
+      return `${fleet} resupplied${
+        water === null || food === null ? '' : ` — ${water.toFixed(1)} tons of water, ${food.toFixed(1)} tons of food`
       }.`
     }
     // A STANDING ORDER THAT COULD NOT RUN IS AN EVENT, not a silence. 0034 writes this row when a
@@ -109,8 +109,8 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     case 'PROVISION_REFUSED': {
       const preset = str(p, 'preset')
       const reason = str(p, 'reason')
-      return `${fleet} made port under her ${preset ?? 'standing'} order, but ${
-        reason ?? 'she could not be provisioned'
+      return `${fleet} arrived with a ${preset ?? 'standing'} resupply order, but ${
+        reason ?? 'could not be resupplied'
       }.`
     }
     case 'HIRED': {
@@ -118,16 +118,16 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
       const urgent = p['urgent'] === true || num(p, 'urgent') === 1
       // "crew", NOT "hands" — the owner's no-jargon rule (2026-08-23). This headline is composed
       // CLIENT-side, so the word is this file's to choose; the served `payload.lines` prose is not.
-      return `${count === null ? 'Crew' : `${formatQty(count)} crew`} signed for ${fleet}${
+      return `${count === null ? 'Crew' : `${formatQty(count)} crew`} hired for ${fleet}${
         urgent ? ', at the urgent rate' : ''
       }.`
     }
     case 'REPAIRING': {
       const points = num(p, 'points')
-      return `${fleet} went into the shipyard${points === null ? '' : ` for ${Math.round(points)} points of hull`}.`
+      return `${fleet} is being repaired${points === null ? '' : ` — ${Math.round(points)} hull points`}.`
     }
     case 'REPAIRED':
-      return `${fleet} came out of the shipyard, sound again.`
+      return `${fleet} repaired.`
     case 'SIGNED_OFFICER': {
       // Who, what they are, what they are worth. The wage is deliberately absent — it is the
       // movement printed beside this sentence, and saying it twice would make one movement look
@@ -137,17 +137,17 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
       const officer = str(p, 'officer') ?? 'An officer'
       const specialty = str(p, 'specialty')
       const bonus = num(p, 'bonus_pct')
-      return `${officer} signed on${specialty ? ` as ${specialty.toLowerCase()}` : ''}${
-        bonus === null ? '' : `, worth +${formatPctPoints(bonus)}`
+      return `${officer} hired${specialty ? ` as ${specialty.toLowerCase()}` : ''}${
+        bonus === null ? '' : `, +${formatPctPoints(bonus)} bonus`
       }.`
     }
     case 'STUDIED': {
       // The SKILL is the subject: the payload has no captain in it and this house has exactly one,
       // so "The captain studied…" would add a word carrying no information.
-      const skill = str(p, 'skill') ?? 'A trade'
+      const skill = str(p, 'skill') ?? 'A skill'
       const level = num(p, 'level')
       const port = str(p, 'port')
-      return `${skill} studied${level === null ? '' : ` to level ${formatInt(level)}`}${
+      return `${skill} trained${level === null ? '' : ` to level ${formatInt(level)}`}${
         port ? ` at ${portName(port)}` : ''
       }.`
     }

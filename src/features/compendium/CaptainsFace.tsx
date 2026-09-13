@@ -48,7 +48,7 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
 
   if (officers === null) {
     return answered ? (
-      <Note tone="warning">The roster could not be read just now. It will be tried again in a moment.</Note>
+      <Note tone="warning">Could not load the captains. Retrying shortly.</Note>
     ) : (
       <div className="space-y-2">
         <Skeleton className="h-28 w-full" />
@@ -100,7 +100,7 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
             }
           />
           {/* "signs for" is the server's own phrase (0015's refusal says it word for word). */}
-          <Row label="Signs for" value={<Figure value={formatInt(open.wage)} unit="d. a voyage" />} />
+          <Row label="Wage" value={<Figure value={formatInt(open.wage)} unit="d. per voyage" />} />
           <Row
             label="Port"
             value={open.port === null ? 'none fixed' : portNameOf(portByCode, open.port)}
@@ -108,12 +108,12 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
           />
           {open.nation !== null && <Row label="Nation" value={nationNameOf(nationByCode, open.nation)} />}
           {open.hired && (
-            <Row label="Serving" value={open.fleet ?? 'ashore'} tone="accent" hairline={false} />
+            <Row label="Working for" value={open.fleet ?? 'nobody'} tone="accent" hairline={false} />
           )}
           <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
           {!open.takes_effect && (
             <Note tone="neutral" className="mt-2">
-              No rule reads this specialty yet. The bonus changes nothing.
+              This role has no effect in the game yet. The bonus changes nothing.
             </Note>
           )}
         </Tray>

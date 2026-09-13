@@ -2,7 +2,7 @@ import { Bar } from './Bar'
 import { Figure } from './Figure'
 import { RarityMark } from './Rarity'
 import { Row } from './Row'
-import { formatInt, formatTuns } from '../../lib/format'
+import { formatInt, formatUnits } from '../../lib/format'
 import type { MarketGood } from '../../lib/rpc'
 
 // THE LEDGER ROW — one good, its two prices as its two acts, and the tide. docs/QUAY_LEDGER.md §3
@@ -56,7 +56,7 @@ export function TradeRow({
           <span className="truncate">{good.name}</span>
           <RarityMark rarity={good.rarity} />
           {aboard > 0 && (
-            <span className="whitespace-nowrap text-t-caption text-ink-faint">{`· ${formatTuns(aboard)} aboard`}</span>
+            <span className="whitespace-nowrap text-t-caption text-ink-faint">{`· ${formatUnits(aboard)} on board`}</span>
           )}
         </span>
       }
@@ -73,7 +73,7 @@ export function TradeRow({
             label="sell"
             price={good.sell}
             onPress={onSell}
-            dead={aboard > 0 ? null : 'none aboard'}
+            dead={aboard > 0 ? null : 'none on board'}
             selected={selected === 'sell'}
           />
         </span>

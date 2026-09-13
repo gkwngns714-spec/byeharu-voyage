@@ -29,7 +29,7 @@ export function FleetCargo({ fleet }: { fleet: FleetView }) {
   const cargo = fleetCargo(fleet)
 
   if (cargo.length === 0) {
-    return <Row label="Her hold is empty." tone="muted" hairline={false} />
+    return <Row label="No cargo on board." tone="muted" hairline={false} />
   }
 
   return (
@@ -47,9 +47,9 @@ export function FleetCargo({ fleet }: { fleet: FleetView }) {
         )
       })}
       <Row
-        label="Stowed"
+        label="Total"
         tone="muted"
-        value={<Figure value={formatFixed(fleet.ships.reduce((n, s) => n + s.cargo_tuns, 0), 1)} unit="t" />}
+        value={<Figure value={formatFixed(fleet.ships.reduce((n, s) => n + s.cargo_tuns, 0), 1)} unit="tons" />}
         hairline={false}
       />
     </>

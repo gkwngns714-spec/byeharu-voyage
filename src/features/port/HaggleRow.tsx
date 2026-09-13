@@ -23,11 +23,11 @@ export function HaggleRow({ fleetId, good }: { fleetId: string; good: MarketGood
 
   return (
     <Row
-      label="Bargain"
+      label="Haggle"
       data-testid="haggle-row"
       value={
         <span className="flex items-center gap-3">
-          <Figure value={formatInt(quay.attempts_left)} unit="left" tone="muted" />
+          <Figure value={formatInt(quay.attempts_left)} unit="tries left" tone="muted" />
           <Figure value={formatPctPoints(quay.next_odds_pct, 0)} tone={quay.next_odds_pct >= 45 ? 'success' : 'warning'} />
           <Button
             variant="secondary"

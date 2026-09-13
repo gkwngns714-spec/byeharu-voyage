@@ -20,7 +20,7 @@ import { keepDays } from './standingOrder'
 // rule and this face never sees a name. The slider's end is a chosen scale, not a rule — the
 // server takes 1 to 999 (0034) and says so itself if asked for more.
 
-/** The stepper's end. Two months of stores is more than any hull in the game can stow. */
+/** The stepper's end. Two months of supplies is more than any ship in the game can carry. */
 const KEEP_SCALE = 60
 
 export function FleetStores({
@@ -52,31 +52,31 @@ export function FleetStores({
 
   return (
     <>
-      {/* BARE FIGURES, THE UNIT ON THE FIGURE. lib/format's `formatTuns` / `formatVoyageDays`
+      {/* BARE FIGURES, THE UNIT ON THE FIGURE. lib/format's `formatTons` / `formatVoyageDays`
           carry their own unit word; `Figure` sets the unit small and dim beside the value, so a
           Figure is given the number alone or the unit prints twice — measured ("15.0 days days"). */}
       <Row
-        label="Stores"
+        label="Supplies"
         value={<Figure value={formatFixed(fleet.endurance_days, 1)} unit="days" tone={short ? 'warning' : 'ink'} />}
         data-testid="fleet-stores-days"
       />
-      <Row label="Water" value={<Figure value={formatFixed(stores.waterT, 1)} unit="t" />} />
-      <Row label="Food" value={<Figure value={formatFixed(stores.foodT, 1)} unit="t" />} />
+      <Row label="Water" value={<Figure value={formatFixed(stores.waterT, 1)} unit="tons" />} />
+      <Row label="Food" value={<Figure value={formatFixed(stores.foodT, 1)} unit="tons" />} />
       <Row
         label="Crew"
         value={
           <Figure
             value={`${formatInt(crew.aboard)}/${formatInt(crew.max)}`}
-            unit="aboard"
+            unit="on board"
             tone={crew.short > 0 ? 'danger' : 'ink'}
           />
         }
         hairline={false}
       />
 
-      <SheetSection heading="Keep her at">
+      <SheetSection heading="Keep supplies at">
         <Stepper
-          label={`days of stores to keep ${fleet.name} at`}
+          label={`days of supplies to keep ${fleet.name} at`}
           value={days}
           onChange={onDays}
           max={KEEP_SCALE}
@@ -86,8 +86,8 @@ export function FleetStores({
         />
         <Hint className="mt-2">
           {short && order
-            ? `She is under her ${formatVoyageDays(order.days)} order and short of it.`
-            : 'Topped up to this on every arrival, and charged to the purse.'}
+            ? `Set to keep ${formatVoyageDays(order.days)}, and currently below it.`
+            : 'Topped up to this at every port, charged to your money.'}
         </Hint>
         {refusal && (
           <Note
