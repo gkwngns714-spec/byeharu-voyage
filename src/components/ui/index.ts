@@ -88,7 +88,7 @@ export { Nav, type NavItem } from './Nav'
 
 //     TRADE ROW — a good with its two prices as its two acts, and the tide inside its range.
 //     Replaced TRADE TILE on 2026-09-11 (one row per good; the 2026-08-26 grid rule is reversed).
-export { TradeRow } from './TradeRow'
+export { PriceCell, TradeRow } from './TradeRow'
 //     PRICE ROWS — Trend and Range, the two rows under a good wherever it is unfolded.
 export { PriceRows } from './PriceRows'
 //     TRADE TRAY — the row unfolded: trend, range, stock, paid, the ceiling, the stepper, and the

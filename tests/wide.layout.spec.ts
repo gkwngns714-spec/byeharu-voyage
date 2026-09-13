@@ -149,6 +149,16 @@ test.describe('wide glass', () => {
     expect(basketBox.height, 'the basket is a bottom sheet, not a side panel').toBeGreaterThan(WIDE.height * 0.7)
     // No ✕ on a fixture: there is nothing to close it to.
     await expect(basket.locator('[data-testid="tray-close"]')).toHaveCount(0)
+    // ROWS 81/82: what the ship carries stands under the basket, as board-shaped rows. The fixture
+    // fleet sails with cargo (0003's flagship); a lot this market lists draws its sale as a bar and
+    // the served profit beside it — a meter and a signed figure, not a sentence.
+    const onBoard = basket.locator('[data-testid="on-board"]')
+    await expect(onBoard).toBeVisible()
+    const sale = basket.locator('[data-testid^="on-board-sale-"]').first()
+    if ((await sale.count()) > 0) {
+      await expect(sale.locator('[role="meter"]')).toHaveCount(1)
+      await expect(sale, 'the sale line has no served profit figure').toContainText(/[+−][\d,]+ d\./, { timeout: 20_000 })
+    }
 
     // 2. PRESS A PRICE. The trade tray takes the SAME slot — same x, same width — and the basket
     //    is not standing beside or under it (one tray at a time, PR #59 MUST-FIX 3).
