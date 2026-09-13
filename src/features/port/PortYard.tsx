@@ -24,7 +24,7 @@ import type { FleetView, HullMaterial, Refusal, YardHull } from '../../lib/rpc'
 // ships will require not only some of the trading goods, but some items."*
 //
 // ── THE ONE THING THIS SCREEN HAS TO MAKE OBVIOUS ──────────────────────────────────────────────
-// The materials come out of THIS CITY — the warehouse for timber, your store for fittings — and
+// The materials come out of THIS CITY — its storage for timber, your store for fittings — and
 // never out of her hold. A player who does not understand that will carry 40 tuns of timber to the
 // yard, watch the order refuse, and conclude the game is broken. So every material row prints what
 // is ashore HERE against what she wants.
@@ -163,11 +163,11 @@ export function PortYard({
           )}
           {!open.buildable && (
             <Note tone="warning">
-              {`Needs a level ${formatInt(open.yard_tier)} shipyard. This one is level ${formatInt(tier)}.`}
+              {`This port can build up to level ${formatInt(tier)}. This ship needs level ${formatInt(open.yard_tier)}.`}
             </Note>
           )}
           {open.buildable && short !== null && (
-            <Note tone="warning">{`Missing from the warehouse: ${short}.`}</Note>
+            <Note tone="warning">{`Missing from storage: ${short}.`}</Note>
           )}
 
           {ready && (
@@ -207,7 +207,7 @@ function Materials({ label, list }: { label: string; list: readonly HullMaterial
           value={
             <Figure
               value={formatInt(m.qty)}
-              unit={`· ${formatInt(m.have)} in the warehouse`}
+              unit={`· ${formatInt(m.have)} in storage`}
               tone={m.have < m.qty ? 'warning' : 'ink'}
             />
           }

@@ -41,10 +41,12 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | a trip | **voyage** | passage |
 | distance | **miles** (`188 miles`) | nm, sea miles |
 | speed | **knots** (`4.9 knots`) | kn |
-| the port's storage building | **warehouse** (tab: **Store**) | shed |
-| put cargo in it / take it out | **Store here** / **Load onto ship** | land it, take it aboard |
+| the port's storage building | **storage** (tab: **Storage**; `In storage`) — ONE word for the building, the tab and the act (owner row 87, 2026-09-13: *"there is warehourse and there is store. unify."*) | warehouse, shed, store |
+| put cargo in it / take it out | **Put in storage** / **Take on board** (`Put 20 units in storage`) | Store here, Load onto ship, land it, take it aboard |
 | the crafting building | **workshop** (tab: **Craft**) | workstation |
-| the ship-building building | **shipyard** (tab: **Shipyard**); the repair face is **Repair** | yard, lay down |
+| the ship-building building | **build yard** (tab: **Build**; `This port can build up to level 3`) | shipyard, yard, lay down |
+| the repairing building | the face is **Repair** (owner row 86, 2026-09-13: *"wtf is shipyard … use easy words"*) | shipyard |
+| how badly a ship is hurt | **Damage** (`13% damaged`, the worst ship) | hull (worst ship), hull % |
 | build a ship | **Build ship** | lay her down |
 | repair | **Repair** (`Repair to 100%`) | mend |
 | hire | **Hire** (`Hire crew`, `Hire officer`) | sign on |

@@ -46,3 +46,6 @@ export {
 } from './text'
 export { handOffTrade, type TradeIntent } from './handOff'
 export { sailEstimate, saleEstimate, type SailEstimate, type SaleEstimate } from './estimate'
+// The STORE / TAKE reading (0070's `{good, qty, stored_here}`), kept beside the other two; its
+// own file only until estimate.ts is free to take it (moveEstimate.ts's header).
+export { moveEstimate, type MoveEstimate } from './moveEstimate'

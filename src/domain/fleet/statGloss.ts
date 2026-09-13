@@ -101,12 +101,12 @@ export const SHIP_STATS = {
   build: {
     term: 'build',
     unit: 'hours',
-    line: 'How long the shipyard takes to build it. Nothing uses this number yet.',
+    line: 'How long the build yard takes to build it. Nothing uses this number yet.',
   },
   cost: {
     term: 'cost',
     unit: 'ducats',
-    line: 'What the shipyard charges to build it. Nothing uses this number yet.',
+    line: 'What the build yard charges to build it. Nothing uses this number yet.',
   },
   lineage: {
     term: 'family · rig',

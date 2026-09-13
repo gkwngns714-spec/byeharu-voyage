@@ -17,9 +17,9 @@ import { worldWarehouse } from '../lib/rpc'
 import type { WarehouseView } from '../lib/rpc'
 import { useServedRead, type ServedRead } from './useServedRead'
 
-export type WarehouseState = ServedRead<WarehouseView>
+export type StorageState = ServedRead<WarehouseView>
 
-export function useWarehouse(portId: string | null, fleetId: string | null): WarehouseState {
+export function useStorage(portId: string | null, fleetId: string | null): StorageState {
   return useServedRead(portId ? `${portId}:${fleetId ?? '-'}` : null, () =>
     worldWarehouse(portId as string, fleetId),
   )

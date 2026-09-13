@@ -30,9 +30,18 @@ import { persist, createJSONStorage } from 'zustand/middleware'
  * renders is data the next reader has to disprove, so they go with the thing that printed them
  * (docs/NO_SPAGHETTI.md §5).
  *
- * `label` is what the tab says, and it is now ONE WORD — §6's strip is `[Trade][Town][Store]
- * [Craft][Inn][Yard]` on a single scrolling row, where the old labels wrapped to two rows at
- * 390px. The ORDER of this array is the order of the strip.
+ * `label` is what the tab says, and it is now ONE WORD — §6's strip is `[Trade][Town][Storage]
+ * [Craft][Inn][Build][Repair]` on a single scrolling row, where the old labels wrapped to two rows
+ * at 390px. The ORDER of this array is the order of the strip.
+ *
+ * ── THE LABEL IS THE BUILDING'S ONE PLAYER WORD (2026-09-13, owner rows 86 and 87) ─────────────
+ * *"there is warehourse and there is store. unify."* and *"wtf is shipyard and hull (worst ship)?
+ * use easy words."* The server names a building kind once (0067: `Warehouse`, `Shipyard`) and the
+ * face strip named it a second time (`Store`, `Shipyard`) — two words for one building, and the
+ * owner read both. This table is now the ONE client word map: the Town face's building rows print
+ * `label` for a kind that has a face here, so the row a player presses says the same word as the
+ * tab it opens. The served `building_kinds.name` is what a building is called on the wire, and it
+ * is read only for a kind this table does not name (none today).
  */
 export const PORT_FACES = [
   {
@@ -44,13 +53,16 @@ export const PORT_FACES = [
     label: 'Trade',
   },
   { id: 'city', building: null, label: 'Town' },
-  { id: 'warehouse', building: 'warehouse', label: 'Store' },
+  // The id stays `warehouse` (it is the served building kind and a persisted byte); the player's
+  // word is Storage — owner row 87.
+  { id: 'warehouse', building: 'warehouse', label: 'Storage' },
   { id: 'workstation', building: 'workstation', label: 'Craft' },
   { id: 'inn', building: 'inn', label: 'Inn' },
   { id: 'building_yard', building: 'building_yard', label: 'Build' },
-  // 2026-09-09: REPAIR's doorway, moved off COMMAND's grid to the building whose act it is. Its
-  // label is the server's own name for the building (0067) — one word, and not the Yard's word.
-  { id: 'shipyard', building: 'shipyard', label: 'Shipyard' },
+  // 2026-09-09: REPAIR's doorway, moved off COMMAND's grid to the building whose act it is. The
+  // label is the ACT, not the building's period name — owner row 86: *"wtf is shipyard"*. The id
+  // stays `shipyard` (the served kind); one word, and not the Build face's word.
+  { id: 'shipyard', building: 'shipyard', label: 'Repair' },
   { id: 'academy', building: 'academy', label: 'School' },
 ] as const satisfies readonly {
   id: string

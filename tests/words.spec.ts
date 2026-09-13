@@ -34,7 +34,7 @@ const BANNED: { word: RegExp; say: string }[] = [
   { word: /\bprovision(?:ed|s|ing)?\b/i, say: 'resupply' },
   { word: /\balongside\b/i, say: 'docked / in port' },
   { word: /\bquay\b/i, say: 'market / here / port' },
-  { word: /\bshed\b/i, say: 'warehouse' },
+  { word: /\bshed\b/i, say: 'storage' },
   { word: /\b(?:the|your|a|this) house\b/i, say: 'you / your company' },
   { word: /\bsign(?:ed)? on\b/i, say: 'hire' },
   { word: /\bmend(?:ed|s|ing)?\b/i, say: 'repair' },
@@ -48,6 +48,14 @@ const BANNED: { word: RegExp; say: string }[] = [
   { word: /\d\s?nm\b/, say: 'N miles' },
   { word: /\d\s?kn\b/, say: 'N knots' },
   { word: /\bd\.\/t\b/, say: 'd. per ton' },
+  // 2026-09-13, owner rows 86 and 87: *"there is warehourse and there is store. unify."* and
+  // *"wtf is shipyard and hull (worst ship)? use easy words."* ONE word for the building and the
+  // tab — Storage — and the repair face names the ACT and the DAMAGE, not the building and the hull.
+  { word: /\bwarehouses?\b/i, say: 'storage' },
+  { word: /\bshipyard\b/i, say: 'Repair (the face) / build yard (the building that builds)' },
+  // `hull (worst ship)` → `Damage` joins this list the day StepQuestion.tsx says `Damage` (the
+  // Repair face already does); banning it first would make the suite red on a file another
+  // slice owns.
 ]
 
 /** Literals the crude rule catches that are NOT player text, each with its reason. */

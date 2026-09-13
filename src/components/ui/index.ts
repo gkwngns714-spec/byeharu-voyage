@@ -86,6 +86,10 @@ export { Nav, type NavItem } from './Nav'
 // they replace, they read nothing: the server's capacity answer and the act arrive as props.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+//     ACT CELL — one act on a row with the figure it is about, dead with its reason when it is.
+//     TradeRow's price cell, promoted 2026-09-13 when the Storage face wanted the same box for
+//     `Put in storage` / `Take on board` (owner row 88). Two callers, one box.
+export { ActCell } from './ActCell'
 //     TRADE ROW — a good with its two prices as its two acts, and the tide inside its range.
 //     Replaced TRADE TILE on 2026-09-11 (one row per good; the 2026-08-26 grid rule is reversed).
 export { TradeRow } from './TradeRow'
