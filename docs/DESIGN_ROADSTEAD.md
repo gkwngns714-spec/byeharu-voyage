@@ -235,6 +235,37 @@ roadstead_lon numeric(7,3) not null    -- ±180, same
 not an issue: `voyage.segments_from_course` rounds path vertices to 4 dp (0047:302) and
 `course_join_nm` is 15 nm (0047:106); 3 dp ≈ 0.06 nm.
 
+> ### ▲ AMENDED 2026-09-13 — 0085: a roadstead lies ON the channel that carved its cell
+>
+> The owner (row 78): *"in map, the circle should point out to ocean, but london for example the
+> circle is in land. What is the point of the circle then?"* The cell-centre rule below is correct
+> only where the raster and the land data agree that the cell is water. A cell an authored CHANNEL
+> carved (`scripts/sea-grid.mjs` `preCarveGrid` = land, final grid = water) is water the map does
+> not draw, and its centre is a point on nothing — London's was (51.375, −0.125), 8 nm south of the
+> Thames, inside the GB polygon of `data/world-110m.json`. **Measured over all 238 places: 25 snap
+> to a carved cell** — 9 off the quay (8 of them inside a coastline polygon) and 16 whose OWN cell is
+> carved (Antwerp, Seville, Nantes, Bordeaux, Bristol and eleven more river ports, all seeded at
+> snap 0, so no line and no ring was ever drawn for them).
+>
+> **The rule since 0085**, one function each side (`roadsteadOf` in
+> `scripts/build-sea-migration.mjs`, `voyage.water_roadstead` in SQL): find the nearest sailable
+> cell as before; if the land data also calls it water, §2.4 stands; if the carve opened it, the
+> roadstead is **the point on the carving channel's polyline nearest the quay**, at 3 dp, with
+> `snap_nm` measured to that point — so §6.4(b) `gc(quay, roadstead) = snap_nm` still holds on
+> every row. The channels cross the wire as `voyage.channels` (polyline + the carved cells, which
+> SQL cannot re-derive), `voyage.channel_foot` is the foot, and (e) still cross-checks all 238 rows.
+> The land-polygon proof runs in the generator (SQL holds no polygons): an off-quay roadstead is
+> outside every coastline polygon OR on a channel — a river IS inside the polygon, so the absolute
+> rule is that disjunction, and SQL proves the channel half. **§0.5's "3 dp is exact" is true of
+> cell centres and quays; a channel roadstead is DEFINED as the 3-dp rounding of the foot.**
+> `scripts/db/proof-courses.mjs` had a second copy of the rule and now reads `sea_reaches`.
+>
+> Not chosen, measured: walking a river roadstead seaward to the coastline polygon would put
+> London's 52 nm out and leave Seville with no such point at all (the whole Guadalquivir channel is
+> inside Spain's polygon) — a movement-model change, not this row. And the ~10 roadsteads in polygon
+> water but inside the DRAWN coast are `src/chart/coastlineBuild.ts`'s decimation, left for its own
+> change.
+
 ### 2.4 A port already ON water — the rule
 
 **The roadstead of a port whose own cell is sailable water IS THE PORT'S OWN COORDINATE, `snap_nm = 0`,

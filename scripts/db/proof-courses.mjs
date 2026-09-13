@@ -26,15 +26,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import {
-  navFromServed,
-  floodFrom,
-  floodPathTo,
-  findPath,
-  snapToNav,
-  cellLat,
-  cellLon,
-} from '../../src/lib/sea/index.ts'
+import { navFromServed, floodFrom, floodPathTo, findPath } from '../../src/lib/sea/index.ts'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const CACHE = path.join(HERE, '.proof-courses.json')
@@ -48,32 +40,21 @@ const COVER_NM = 1900
 
 /** Bumped whenever the SHAPE of a stored proposal changes, so a cache built under the old shape is
  *  regenerated rather than trusted. The raster/port fingerprint below cannot see this: 0076 moved
- *  every course end from the quay to the ROADSTEAD without moving one water cell or one port. */
-const SHAPE = '0076-roadstead'
+ *  every course end from the quay to the ROADSTEAD without moving one water cell or one port.
+ *  0085 moved 25 roadsteads onto their channels without moving a cell or a port either — the
+ *  fingerprint now covers the served roadsteads too, and the shape is bumped for the same reason. */
+const SHAPE = '0085-served-roadstead'
 
 /**
- * THE ROADSTEAD a place is reached from — the same rule migration 0076 seeded into
- * public.sea_reaches, and the same one call: `snapToNav` answers how far the water is and where it
- * is at once. A place whose own cell is sailable water IS its own roadstead. Read from the served
- * raster here rather than from sea_reaches, so a proposal is still produced by the one pathfinder
- * over the very raster the chain serves — but the two must AGREE, and `proof.courses` is only
- * findable, never legal: cmd.do_sail re-verifies every segment against the roadsteads it holds.
+ * THE ROADSTEAD a place is reached from is READ, never re-derived. Until 0085 this file kept its
+ * own copy of the rule — a `roadsteadOf` snapping the served raster with `snapToNav` and taking the
+ * cell centre — which was a SECOND author of "where is this port reached from" beside the one the
+ * chain seeds into public.sea_reaches (docs/NO_SPAGHETTI.md §1, question 3: can it disagree? It
+ * did, for the 25 places 0085 moved onto their channels, and every proposal to them would have
+ * been refused E_OFF_COURSE). Now the endpoints are the served `roadstead_lat/lon`, exactly the
+ * numbers cmd.do_sail verifies a course against, and `proof.courses` stays what it always was:
+ * findable, never legal — the server still refuses land and measures the miles.
  */
-function roadsteadOf(nav, p) {
-  const s = snapToNav(nav, p.lat, p.lon)
-  if (!s) throw new Error(`proof-courses: ${p.code} cannot reach water`)
-  const at =
-    s.snapNm === 0
-      ? { lat: p.lat, lon: p.lon }
-      : { lat: Number(cellLat(nav, s.row).toFixed(3)), lon: Number(cellLon(nav, s.col).toFixed(3)) }
-  // Guarded because a non-finite coordinate is silent: it snaps to nothing, finds no course, and
-  // every proof that sails then fails somewhere far from the cause (build-sea-migration.mjs's own
-  // first run made exactly this mistake with two same-named helpers of different signatures).
-  if (!Number.isFinite(at.lat) || !Number.isFinite(at.lon)) {
-    throw new Error(`proof-courses: ${p.code} measured a roadstead at (${at.lat}, ${at.lon})`)
-  }
-  return at
-}
 
 export async function installProofCourses(db, { log = console.log } = {}) {
   const raster = (
@@ -83,12 +64,23 @@ export async function installProofCourses(db, { log = console.log } = {}) {
   ).rows[0]
   if (!raster) throw new Error('proof-courses: the chain serves no sea raster — is 0038 applied?')
   const ports = (
-    await db.query(`select code, lat::float8 as lat, lon::float8 as lon from public.ports order by code`)
+    await db.query(`select p.code, p.lat::float8 as lat, p.lon::float8 as lon,
+                           sr.roadstead_lat::float8 as rlat, sr.roadstead_lon::float8 as rlon
+                      from public.ports p
+                      left join public.sea_reaches sr on sr.port_id = p.id
+                     order by p.code`)
   ).rows
+  // A place served no roadstead cannot be sailed from or to; refused here, where the cause is,
+  // rather than as a far-off E_OFF_COURSE in whichever proof reaches it first.
+  for (const p of ports) {
+    if (!Number.isFinite(p.rlat) || !Number.isFinite(p.rlon)) {
+      throw new Error(`proof-courses: ${p.code} is served no roadstead (${p.rlat}, ${p.rlon}) — is 0076 applied?`)
+    }
+  }
   const fingerprint = createHash('md5')
     .update(SHAPE)
     .update(raster.cells_base64)
-    .update(ports.map((p) => `${p.code}:${p.lat}:${p.lon}`).join('|'))
+    .update(ports.map((p) => `${p.code}:${p.lat}:${p.lon}:${p.rlat}:${p.rlon}`).join('|'))
     .digest('hex')
 
   let cache = null
@@ -110,7 +102,8 @@ export async function installProofCourses(db, { log = console.log } = {}) {
     // 0076: ROADSTEAD to ROADSTEAD, because that is the passage cmd.do_sail verifies. A proposal
     // that still began at the quay would be refused E_OFF_COURSE for every place whose roadstead
     // lies further from it than `course_join_nm` (15 nm, 0047:106) — a large minority of them.
-    const roads = new Map(ports.map((p) => [p.code, roadsteadOf(nav, p)]))
+    // 0085: the roadstead is the SERVED one, read above, not a snap of our own.
+    const roads = new Map(ports.map((p) => [p.code, { lat: p.rlat, lon: p.rlon }]))
     const courses = {}
     for (let i = 0; i < ports.length; i++) {
       const a = ports[i]
