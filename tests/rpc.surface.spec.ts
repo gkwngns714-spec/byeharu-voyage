@@ -39,6 +39,7 @@ import {
   rpcLabel,
   setBackend,
   worldBuyCapacity,
+  worldCrewCost,
   worldFleets,
   worldHaggleState,
   worldLedger,
@@ -84,7 +85,8 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   expect('legs' in snap).toBe(false)
   expect(snap.goods.length).toBeGreaterThan(20)
   expect(snap.ship_classes).toHaveLength(3)
-  expect(snap.verbs).toHaveLength(14)
+  // Pin moved deliberately 2026-09-13 with migration 0086: DISMISS is the fifteenth verb.
+  expect(snap.verbs).toHaveLength(15)
 
   const lisboa = snap.ports.find((p) => p.code === 'LIS')
   expect(lisboa).toBeDefined()
@@ -459,18 +461,95 @@ test('world.ledger() pages, reconciles, and carries the purse', async () => {
   expect(capped.events).toHaveLength(1)
 })
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE CREW, HIRED AND LET GO, AND WHAT THEY COST PER DAY — migration 0086 (owner row 85)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Three claims the Inn's face stands on, each read off the real chain: HIRE n raises the crew by
+// n and writes a HIRED event; DISMISS n lowers it by n, writes a DISMISSED event and moves NO
+// money; one below the complement is refused E_CREW_REQUIRED with the two figures. And the
+// caption's figure: `world.crew_cost(fleet, n)` is one sum that never falls as n rises, and for
+// the crew aboard it equals the tick's own arithmetic — `crew × wage_per_crew_day` on full
+// rations, read from the served knob (0027:300-302, folded into public.crew_wages by 0086).
+// The migration's own self-assert settles a REAL voyage-day and matches the WAGES row to the
+// quote; this spec reads the wire. The fleet ends where it began (crew = complement) so the
+// tests below it see the ship they expect.
+test('HIRE and DISMISS move the crew through the one door, and world.crew_cost() is the tick\'s sum', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  const config = expectOk(await worldSnapshot()).config
+  const crew0 = fleet.ships.reduce((n, s) => n + s.crew, 0)
+  const required = fleet.ships.reduce((n, s) => n + s.crew_required, 0)
+  const max = fleet.ships.reduce((n, s) => n + s.crew_max, 0)
+  expect(crew0).toBe(required) // a new hull sails at its complement — the precondition, stated
+  expect(max - required).toBeGreaterThanOrEqual(2)
+  const purse0 = expectOk(await worldLedger()).ducats
+  if (typeof purse0 !== 'number') throw new Error('the ledger served no purse; nothing below could measure a price')
+
+  // THE CAPTION'S FIGURE, for the crew aboard: the tick's arithmetic, within a ducat of rounding.
+  const now = expectOk(await worldCrewCost(fleet.id))
+  expect(now.crew).toBe(crew0)
+  expect(Math.abs(now.per_day - crew0 * config.wage_per_crew_day)).toBeLessThanOrEqual(1)
+  expect(now.per_day_short_rations).toBeGreaterThanOrEqual(now.per_day)
+  // …and for ANY count: monotone in n, never a fabricated figure.
+  let prev = -1
+  for (let n = 0; n <= max; n += 1) {
+    const c = expectOk(await worldCrewCost(fleet.id, n))
+    expect(c.crew).toBe(n)
+    expect(c.per_day).toBeGreaterThanOrEqual(prev)
+    expect(Math.abs(c.per_day - n * config.wage_per_crew_day)).toBeLessThanOrEqual(1)
+    prev = c.per_day
+  }
+
+  // HIRE 2: crew +2, a HIRED event of 2, the purse down (the price is the server's).
+  const hired = expectOk(await cmdIssue(fleet.id, 'HIRE 2', fleet.version))
+  expect(hired.order.status).toBe('done')
+  expect(hired.order.result).toMatchObject({ hired: 2 })
+  const afterHire = expectOk(await worldFleets())[0]
+  expect(afterHire.ships.reduce((n, s) => n + s.crew, 0)).toBe(crew0 + 2)
+  const ledgerAfterHire = expectOk(await worldLedger())
+  expect(ledgerAfterHire.events.find((e) => e.kind === 'HIRED')?.payload).toMatchObject({ count: 2 })
+  expect(ledgerAfterHire.ducats).toBeLessThan(purse0)
+
+  // DISMISS 1: crew −1, a DISMISSED event of 1, and NOT ONE DUCAT back.
+  const dismissed = expectOk(await cmdIssue(fleet.id, 'DISMISS 1', afterHire.version))
+  expect(dismissed.order.status).toBe('done')
+  expect(dismissed.order.result).toMatchObject({ dismissed: 1, crew: crew0 + 1 })
+  const afterDismiss = expectOk(await worldFleets())[0]
+  expect(afterDismiss.ships.reduce((n, s) => n + s.crew, 0)).toBe(crew0 + 1)
+  const ledgerAfterDismiss = expectOk(await worldLedger())
+  expect(ledgerAfterDismiss.events.find((e) => e.kind === 'DISMISSED')?.payload).toMatchObject({ count: 1, crew: crew0 + 1 })
+  expect(ledgerAfterDismiss.ducats).toBe(ledgerAfterHire.ducats)
+
+  // ONE BELOW THE COMPLEMENT IS REFUSED, in the server's code, with the two figures.
+  const refused = await cmdIssue(fleet.id, 'DISMISS 2', afterDismiss.version)
+  expect(refused.ok).toBe(false)
+  if (refused.ok) throw new Error('unreachable')
+  expect(refused.refusal.code).toBe('E_CREW_REQUIRED')
+  expect(refused.refusal.figures).toMatchObject({ have: 1, need: 2, unit: 'crew' })
+  // A failed order HALTS the queue (F.3): clear it, or the next test's orders would sit pending.
+  expectOk(await cmdClear(fleet.id))
+
+  // Back to the complement, so the ship the tests below expect is the ship they get.
+  const home = expectOk(await worldFleets())[0]
+  expectOk(await cmdIssue(fleet.id, 'DISMISS 1', home.version))
+  expect(expectOk(await worldFleets())[0].ships.reduce((n, s) => n + s.crew, 0)).toBe(crew0)
+})
+
 // ── the commands ───────────────────────────────────────────────────────────────────────────────
 
-test('cmd.verb_schema() serves the fourteen verbs, argument by argument', async () => {
+test('cmd.verb_schema() serves the fifteen verbs, argument by argument', async () => {
   const verbs = expectOk(await cmdVerbSchema())
   // 0068 added MAKE, and it sits beside REPAIR deliberately: both are things done ashore at a
   // building this city may or may not keep. The ORDER is the order the strip reads.
+  // Pin moved deliberately 2026-09-13 with migration 0086: DISMISS sits right after HIRE, with
+  // HIRE's own two arguments — the same sentence in the other direction.
   expect(verbs.map((v) => v.verb)).toEqual([
     'SAIL',
     'BUY',
     'SELL',
     'PROVISION',
     'HIRE',
+    'DISMISS',
     'MAKE',
     'STORE',
     'TAKE',
@@ -1081,6 +1160,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // cmd.issue's own E_NO_SUCH_FLEET.
       'cmdPreviewBasket', 'cmdTradeBasket',
       'worldBuyCapacity', 'worldFleets', 'worldLedger', 'worldMarket', 'worldSnapshot',
+      // Pin moved deliberately 2026-09-13 with migration 0086 (crew are let go in port, and the
+      // wage is one sum): `world.crew_cost(p_fleet, p_crew)` — a READ, no player id (a fleet
+      // that is not yours is E_NOT_YOURS), what a crew of N costs per voyage-day at sea from the
+      // SAME function voyage.settle charges. It lands WITH the face that reads it (the Inn's
+      // caption), and the verb it pairs with — DISMISS — is a row of the grammar, not a door here.
+      'worldCrewCost',
       // 0019's `worldTradeRoutes` was REMOVED 2026-09-02 with 0071. It ranked every port in reach
       // by what it would pay for what is on this quay — the same comparison as the nearby index,
       // and the same answer the owner asked the game to stop giving (DESIGN_V1 §13, decision 3:

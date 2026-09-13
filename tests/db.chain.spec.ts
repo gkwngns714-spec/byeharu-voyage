@@ -240,7 +240,11 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // river ports the carve reaches (Antwerp, Seville, Nantes, Bordeaux, twelve more) a roadstead off
 // the quay for the first time. The channels cross the wire as voyage.channels; sea_reaches is
 // re-seeded whole.
-const LAST = '20260818000085_a_roadstead_lies_on_the_channel.sql'
+// Moved 2026-09-13 to 0086, which gives the grammar DISMISS (crew let go in port, never below a
+// hull's complement, back onto the port's crew_pool, no refund) and makes the wage ONE sum:
+// public.crew_wages is what voyage.settle charges per settled day and what world.crew_cost quotes
+// for any crew count, so the Inn's caption and the tick cannot be two arithmetics.
+const LAST = '20260818000086_crew_are_let_go_in_port_and_the_wage_is_one_sum.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

@@ -154,6 +154,7 @@ export function verbWord(verb: string): string {
   const PLAYER: Record<string, string> = {
     PROVISION: 'Resupply',
     HIRE: 'Hire crew',
+    DISMISS: 'Dismiss crew',
     REPAIR: 'Repair',
     MAKE: 'Craft',
     BUILD: 'Build ship',

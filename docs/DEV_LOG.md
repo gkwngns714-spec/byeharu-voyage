@@ -5,6 +5,59 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-13 — The Inn is a stepper: crew hired and let go from one control, priced per day by the tick's own sum (row 85; migration 0086, built, not merged)
+
+**The owner:** *"inn, it should be like trade, where you can hire, dismiss crews, and by doing so
+show how much it will consume everyday."* Row 85.
+
+**The server truth, read before anything was built.** HIRE existed (`cmd.do_hire`, 0007:632 —
+`hire_crew_rate` a head out of the port's `crew_pool`, ×2.5 beyond it). DISMISS did not: no verb, no
+function, no event, so a fleet that hired to its crew slots paid for them for ever. WAGES are
+charged by `voyage.settle` once per settled voyage-day and AT SEA ONLY — `sum(crew) ×
+wage_per_crew_day × (short rations ? 1.5 : 1)`, floored at the purse (0027:300-308); in port
+nothing is charged. And no daily crew cost was SERVED anywhere: the snapshot carries the RATE
+knob, and a caption that multiplied it by the crew would have been a second author of the tick's
+arithmetic — the defect NO_SPAGHETTI §1 names, one knob-change from lying.
+
+**Migration 0086 — one sum, one new word.** `public.crew_wages(crew, short)` is the tick's own
+expression moved into a function, rounded once as the tick's bigint assignment rounded;
+`voyage.settle` is SLICED (one hunk) to read it, so the quote and the charge are one function by
+construction. `world.crew_cost(fleet, n)` serves `{crew, per_day, per_day_short_rations}` for ANY
+count. `cmd.do_dismiss` / `DISMISS n`: in port only, never below any hull's `crew_required` folded
+PER HULL, takes from the hulls with the most to spare, puts the men back on the port's `crew_pool`
+(the mirror of do_hire's draw-down), NO REFUND, one DISMISSED event. The parser's HIRE branch
+reads both words (folded, not copied); the schema serves DISMISS right after HIRE; the dispatcher
+and the dry run gain the arm; the entry point is registered. The self-assert sails a probe fleet
+from Lisbon's roads to Funchal's, settles a REAL day and requires the WAGES row to equal the figure
+`world.crew_cost` quoted before she sailed — 10 d. for a Barca's ten.
+
+**Three things the proof taught, each written into the file.** (1) A refused order at the head of
+the queue HALTS it (F.3): the first apply's SAIL sat pending behind the refused `DISMISS 3` with the
+fleet still docked — the probe now clears its own failed order. (2) A settled day's `short_rations`
+is on `public.voyage_events`, not on an event — the VOYAGE_REPORT comes only with the arrival.
+(3) `breaktest-0086` found the per-hull fold's guard passing when the surplus was folded per FLEET:
+on one hull the two folds are the same number. The probe now puts a second hull two above its
+complement beside a flagship one below hers; DISMISS 2 must be accepted and taken from the second
+hull only. 26 mutations, all bite.
+
+**The face (`PortInn.tsx`), shaped like Trade.** `Crew 8 / 20 crew` with the bar and the change
+washed on (`Bar.pending`, the basket's own idiom); a stepper from the complement to the crew slots;
+`Wages 9 d. per day at sea` from `world.crew_cost` for the count under the finger (`useCrewCost`:
+debounced like the trade dry run, keyed by count, answers kept so the caption never blanks between
+two known figures, NOT re-keyed on the world's beat because an explicit count does not depend on
+it); the dry run's `Hired 1 · It costs 20 d.` through `useStepOrder`; ONE button — `Hire N` up,
+`Dismiss N` down, `No change` at rest. ONE `useStepOrder` serves both verbs: they share their one
+argument, so the count is DERIVED and handed in (`given`), never copied into state — which is also
+what kept `react-hooks/set-state-in-effect` quiet. The HIRE tray is DELETED from StepQuestion (one
+doorway per verb); REPAIR's `Hull (worst ship)` row is now `Damage · 13% damaged`.
+
+**Gates, watched:** `tsc -b` 0 · `eslint src tests` 0 · pure specs 32/32 · `db:apply` green with
+the 0086 receipt · `db:proof` 10/10 files, 72/72 markers · `breaktest-0086` 26/26 · `rpc.surface`
+23/23 · `layout.spec` 14/14 on a local-PGlite preview (port 4386) · screenshots at 1440×900 and
+390×844. Not merged, not deployed, not driven on production.
+
+---
+
 ## 2026-09-13 — Three owner complaints in one sitting: the flicker, the words, the blank space (rows 77–80), and London's ring (row 78, built, not deployed)
 
 **The owner opened the game after `git pull` and said, in order:** *"why is store keep refreshing?"* ·

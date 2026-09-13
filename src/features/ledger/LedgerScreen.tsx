@@ -62,6 +62,7 @@ const FACE_OF: Record<string, Exclude<Face, 'all'>> = {
   REPAIRING: 'voyage',
   REPAIRED: 'voyage',
   HIRED: 'crew',
+  DISMISSED: 'crew',
   SIGNED_OFFICER: 'crew',
   STUDIED: 'crew',
   WAGES: 'crew',

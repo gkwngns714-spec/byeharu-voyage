@@ -564,6 +564,19 @@ export interface BuyCapacity {
   bound_by: string
 }
 
+/** `world.crew_cost(fleet, crew)` — migration 0086. What a crew of `crew` costs per voyage-day at
+ *  sea, from `public.crew_wages`, the ONE sum `voyage.settle` charges. Wages are charged at sea
+ *  only, once per settled voyage-day; nothing is charged in port. Both rations are served so the
+ *  screen never guesses which one a day will charge (the tick decides, from what is aboard). */
+export interface CrewCost {
+  /** The count priced — the argument, or the crew aboard now when none was given. */
+  crew: number
+  /** Ducats per voyage-day on full rations. */
+  per_day: number
+  /** Ducats per voyage-day on short rations (`short_rations_wage_mult`, 0001). */
+  per_day_short_rations: number
+}
+
 // ── world.haggle_state(fleet, good) · cmd.haggle(fleet, good, side) — migration 0022 ───────────
 //
 // EVERY FIELD BELOW WAS READ OUT OF `20260818000022_a_bargain_is_struck_on_the_quay.sql`, from the

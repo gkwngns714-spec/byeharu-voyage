@@ -638,3 +638,100 @@ test(`PORT: a line staged onto the basket docks the one tray at peek, moves noth
   await expect(receipt).toHaveCount(0)
   expect(await rows.count()).toBe(before.length)
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// PORT'S INN ON A PHONE — the crew as Trade draws a good: the figure, the stepper, the served
+// cost moving under it, one button, and nothing above the press moves
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ADDED 2026-09-13 with migration 0086 (owner row 85: *"inn, it should be like trade, where you
+// can hire, dismiss crews, and by doing so show how much it will consume everyday"*). The Inn
+// face reads `Crew N / max crew` (WORDS law 2: a share prints its whole), a stepper from the
+// complement to the crew slots, a wages row that is `world.crew_cost(fleet, n)` for the count
+// under the finger — so pressing `More` must CHANGE it, from the server — and ONE button whose
+// word follows the direction (`Hire 1` up, `Dismiss 1` down). Every control clears 44px. Row 15:
+// the rows above the stepper stay exactly where they were when `More` is pressed.
+test(`PORT: the Inn's crew face is a figure, a stepper, a served daily cost and one button, and a press moves nothing above it`, async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(420_000)
+  test.skip(
+    !(await reachable(request, baseURL ?? '')),
+    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+  )
+  await page.goto('port')
+  await ready(page)
+  await page.getByRole('tab', { name: /^Inn/i }).first().click()
+  await page.waitForTimeout(600)
+
+  const face = page.locator('[data-testid="inn-crew-face"]')
+  await expect(face, 'no crew face — is a fleet docked at the port PORT opened on?').toBeVisible()
+  // 1. THE FIGURE PRINTS ITS WHOLE: `N / max crew`, never a bare count.
+  await expect(page.locator('[data-testid="inn-crew"]')).toContainText(/\d+\s*\/\s*\d+\s*crew/)
+  // 2. THE STEPPER, and the served cost for the count it stands at.
+  const stepper = page.locator('[data-testid="inn-crew-stepper"]')
+  await expect(stepper).toBeVisible()
+  const cost = page.locator('[data-testid="inn-crew-cost"]')
+  await expect(cost, 'the wages row never arrived — world.crew_cost did not answer').toBeVisible({ timeout: 20_000 })
+  await expect(cost).toContainText(/\d+ d\.\s*per day at sea/)
+  // THE FIGURE, not the row's text: `Figure` lays its value and unit out as sibling spans, so the
+  // text content carries no space between them and the innerText does — comparing prose would
+  // compare layout. The number is what the server served, and the number is what must move.
+  const figureOf = async () => (await cost.textContent())?.match(/([\d,]+) d\./)?.[1] ?? null
+  const costBefore = await figureOf()
+  expect(costBefore).not.toBeNull()
+  // 3. ONE BUTTON, dead while nothing has changed.
+  const send = page.locator('[data-testid="inn-crew-send"]')
+  await expect(send).toBeVisible()
+  await expect(send).toBeDisabled()
+  await expect(send).toHaveText('No change')
+
+  // Row 15: remember where everything above the stepper sits, press More, and require it not to
+  // have moved. Offsets are read against the face's own box.
+  const above = () =>
+    face.evaluate((el, id) => {
+      const stepperEl = el.querySelector(`[data-testid="${id}"]`) as HTMLElement | null
+      const stepTop = stepperEl ? stepperEl.getBoundingClientRect().top : Infinity
+      return [...el.querySelectorAll<HTMLElement>('[data-testid]')]
+        .filter((n) => n.getBoundingClientRect().top < stepTop)
+        .map((n) => `${n.dataset.testid}@${Math.round(n.getBoundingClientRect().left)},${Math.round(n.getBoundingClientRect().top)}`)
+    }, 'inn-crew-stepper')
+  const before = await above()
+  expect(before.length, 'nothing stands above the stepper — the figure rows are missing').toBeGreaterThanOrEqual(2)
+  await stepper.getByRole('button', { name: 'More' }).click()
+  await page.waitForTimeout(900)
+  expect(await above(), 'pressing More MOVED a row above the stepper — restructure-on-press, which the owner has refused three times').toEqual(before)
+
+  // 4. THE COST MOVED WITH THE STEPPER, and the button now says what one more crew is: a hire.
+  await expect.poll(figureOf, { timeout: 20_000 }).not.toBe(costBefore)
+  const costUp = await figureOf()
+  await expect(send).toHaveText('Hire 1')
+  // Hire the one — the in-tab PGlite world is disposable — and the ship follows: the figure reads
+  // one more crew, the stepper stands at what is true, and the button goes quiet again.
+  const crewBefore = (await page.locator('[data-testid="inn-crew"]').innerText()).match(/(\d+)\s*\/\s*(\d+)/)!
+  await expect(send).toBeEnabled({ timeout: 20_000 })
+  await send.click()
+  await expect(page.locator('[data-testid="inn-crew"]')).toContainText(
+    new RegExp(`${Number(crewBefore[1]) + 1}\\s*/\\s*${crewBefore[2]}\\s*crew`),
+    { timeout: 30_000 },
+  )
+  await expect(send).toHaveText('No change')
+  // …and one step back down from what is now aboard, the word turns over: a dismissal, and the
+  // cost is the served figure for the smaller count — the one the hire was quoted against.
+  await stepper.getByRole('button', { name: 'Less' }).click()
+  await page.waitForTimeout(900)
+  await expect(send).toHaveText('Dismiss 1')
+  await expect.poll(figureOf, { timeout: 20_000 }).toBe(costBefore)
+  expect(costUp).not.toBe(costBefore)
+
+  // 5. EVERY CONTROL ON THE FACE CLEARS THE 44PX FLOOR — the two stepper buttons and the one button.
+  const short = await face.evaluate((el) =>
+    [...el.querySelectorAll('button')]
+      .map((b) => ({ text: (b.innerText || b.getAttribute('aria-label') || '').slice(0, 24), r: b.getBoundingClientRect() }))
+      .filter(({ r }) => r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44))
+      .map(({ text, r }) => `${text} ${Math.round(r.width)}×${Math.round(r.height)}`),
+  )
+  expect(short, 'a control on the Inn face is under the 44px reach floor').toEqual([])
+})
