@@ -51,6 +51,70 @@ convention for water, on the chart only, quieter than every port's name. §4.1 o
 **Gates, all watched:** `npx tsc -b` 0 · `npx eslint src tests` 0 · pure specs 130 passed ·
 browser specs against the served local build (map.sendfleet, map.voyage, waters.panel, layout,
 chart.ink) — the PR body carries the verbatim output. **NOT merged, NOT driven on production.**
+## 2026-09-13 — The haggle is a thread on both sides, and the trend opens as a chart: slice 3 of the Quay Ledger (owner row 76)
+
+**The instruction.** Row 76: *"make this in game"* — the reference's 협상 scene (seven chances, a
+success gauge, the merchant answering each press) and its price line with an axis. Slice 3 of
+`docs/QUAY_LEDGER.md`, built to **Appendix A** as it was written on 2026-09-11, with no migration:
+`world.haggle_state` (0022) already served attempts, wins, the concession, the odds and the three
+spreads, and `cmd.haggle` already took `p_side = 'sell'` — nothing on the client had ever called it.
+
+**What stands now.** `HaggleRow` (buy side only, one figure, one `Try`) is deleted;
+`features/port/HaggleThread.tsx` stands under the stepper on BOTH faces of the trade tray, keyed
+per pick. Folded it is one row — `Haggle · 3 / 3 tries left · 45%`. A press unfolds it in the same
+tray body (nothing above it moves — the Trend row and the stepper are measured) into the merchant's
+turns, the stake and two buttons. **Every turn is the server's `message`, verbatim**; this file
+composes no outcome sentence, because a client template beside the server's would be two authors
+for what the merchant said. **Every figure is served**: Port fee published → effective
+(`formatPct` of the served fractions), Price `d. each` from `cmd.preview`'s `avg_price` — the ONLY
+figure that reflects an open bargain, since 0022 refused to move the published price — shown
+before → after across a won attempt, Haggle saved on this lot (`haggle_saved`, 0083), Tries as the
+segmented `Bar`, Next try from `public.haggle_odds` and muted at the floor. `Take it` folds;
+`Haggle` / `Try again` asks the server for one attempt.
+
+The Trend row's folded form is still the `Sparkline`; a press unfolds `components/ui/PriceChart`
+over the pure `priceChartModel`: 340×170, the y scale is the served min · midpoint · max, the x
+axis is hours before now DERIVED from the points and `slot_seconds` — the mockup's "12 h" was
+wrong (0013's default is 48 slots, and the applied chain's cadence is 900 s today, not 600), so
+there is no literal window anywhere; the low, high and latest points are marked and the legend
+names them in words. `usePortHistory` hands both trays ONE shape, `PriceTrend` (points + cadence).
+
+**Two hooks folded onto `useServedRead` (row 77's rule).** `useHaggleState` kept its own copy of
+"re-ask on `readAt` and throw the old answer away" — a thread that blanks every 3 s is a
+conversation that blinks. And `useTrade`'s dry run was the one tray still doing it: the `You get`
+row and the button's figure went blank on every beat. Both are one-line doorways now; the dry run
+settles the quantity first and exposes the answer only while the settled quantity is the button's,
+so the figure printed is always the figure for the quantity chosen. `saleEstimate` reads the two
+served keys the thread stakes, `avg_price` and `haggle_saved`, once.
+
+**Proofs.** `tests/priceChart.spec.ts` (pure): the plane, the three-figure scale, the derived axis
+(48 × 600 s reads `−8h`, 48 × 300 s `−4h`, 96 × 600 s `−16h`), the marks, and what is refused.
+`layout.spec`: the thread on BUY, a real buy of the tray's default lot, the thread on SELL; the
+unfold moves nothing above it; a press adds a turn and the folded figure re-reads without ever
+blanking; the chart opens from Trend with three y labels and a `−Nh … now` axis and folds back —
+walking the rows for the first good whose record MOVED, because a fresh world carries two
+snapshots per (port, good) and a good whose two mids agree draws one label, honestly.
+`rpc.surface`: `cmd.haggle(…, 'sell')` with the forced-win knobs raises the SELL preview and
+`haggle_saved` is the difference within 1. Proof 06 gains `HAGGLE_SELL_SIDE_MOVES_THE_BID`, and its
+first run taught two things: the good the earlier blocks bargain over is not one the quay SELLS
+(0061 — the sell-side subject is found on the roster), and on the SELL side the tax part RISES by
+a sliver when the spread narrows (G.1 levies the sell-side tax on what is left after the cut:
+22.71 → 22.77 against a spread of 7.65 → 5.73) — bound, not pinned still.
+
+**Words.** Haggle, Port fee, `d. each`, tries, units; no bargain, no the port's cut, no per tun.
+`tests/words.spec.ts` green. Appendix A's "buy 1 t first" could not be done as written: the tray
+steps in `trade_step_tuns` (10 units) and cannot express 1, so the browser proof buys the tray's
+own default lot.
+
+**Gates, this run:** `tsc -b` 0 · `eslint src tests` 0 · pure specs (words, duplication, sections,
+format, priceChart, wide.layout's class proof) 33 passed · `rpc.surface` over PGlite 23 passed
+(8.0 m) · `db:proof` 10/10 files, 73/73 markers · browser specs (layout, wide.layout,
+primitives.geometry) 23 passed (1.6 m) against a served local-PGlite build on port 4331, stopped
+by PID afterwards. **State: BUILT on PR #72 — NOT merged, NOT driven on production.** The §6
+"done when" (a sell-side haggle narrowing the spread on production; "haggle saved" non-zero on a
+receipt) waits on the canary drive after merge. Slice 4 (contracts) is untouched.
+
+---
 ## 2026-09-13 — FLEETS unfolds under the row instead of opening a tray (row 89, built, not merged)
 
 **The owner:** *"fleets, i want to be folded not creating a new pop up page when clicking a

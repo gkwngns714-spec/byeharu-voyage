@@ -171,6 +171,24 @@ for TradeTray, the basket and the receipt), `CargoBar` (components/ui — the `5
 FLEETS draws and the basket washes its staged change onto), `Bar.pending` (the wash). `native` on
 a ledger row is the served 0084 flag as a caption word.
 
+**The haggle thread and the price chart (2026-09-13, owner row 76, slice 3 — frontend only, no
+migration) — who owns what.** The thread is PORT's: `features/port/HaggleThread.tsx`, mounted by
+`PortTrade.tsx` under the stepper on BOTH faces of the trade tray (keyed per pick), replacing
+`HaggleRow.tsx`, which is deleted. Its sentences are the server's `message` from `cmd.haggle`,
+verbatim; its figures are `world.haggle_state` (through `useHaggleState`, now a one-line doorway
+onto `useServedRead` so the thread never blanks on the world's 3-s beat) and the tray's own dry run
+(`TradeAct.preview`, which since this slice carries the served `avg_price` and `haggle_saved` —
+read ONCE in `domain/order/estimate.ts`'s `saleEstimate`, the one reading of a trade estimate).
+`useTrade`'s dry run is itself a doorway onto `useServedRead` now, for the same reason. The chart
+is the design system's: `components/ui/priceChartModel.ts` (pure geometry — the y scale is the
+served min · midpoint · max, the x axis hours before now derived from the points and
+`slot_seconds`; proved in Node by `tests/priceChart.spec.ts`) and `components/ui/PriceChart.tsx`
+(the paint), composed by `PriceRows`, whose Trend row folds between the `Sparkline` and the chart.
+The history hook (`live/usePortHistory.ts`) hands both trays ONE shape, `PriceTrend` (points +
+the served cadence), declared in the design system below both callers — not a second loader. Not
+in `src/chart/`: that layer is the nautical chart, and a price line has nothing to say to a
+coastline.
+
 ### What the spec checks, as of 2026-08-23
 
 Every rule below was proved to bite by breaking it on purpose and watching it go red. A guard nobody

@@ -18,6 +18,7 @@ import { haversineNm } from '../src/lib/geo'
 import { TIME_COMPRESSION } from '../src/lib/format'
 import { courseBetweenPorts, seaNav } from './seaCourse.fixture'
 import { fleetCargoByCode } from '../src/domain/fleet'
+import { saleEstimate } from '../src/domain/order'
 import {
   RPCS,
   backendKind,
@@ -955,6 +956,62 @@ test('cmd.haggle() spends an attempt whether it wins or loses, and a win really 
     await knob('haggle_success_max', 0.85)
     await knob('haggle_hardening_per_fail', 0.25)
     await db.pg.query('delete from public.haggle_daily')
+  }
+})
+
+// THE SELL SIDE (owner row 76, slice 3 — docs/QUAY_LEDGER.md Appendix A). `p_side = 'sell'` has
+// been in the verb since 0022, gated on the CARGO rather than the stock, and until slice 3 no
+// client and no test ever called it. The thread now stands on the SELL face and stakes two served
+// figures from the dry run — `avg_price` and `haggle_saved` (0083) — so this is the contract it
+// draws: a won sell-side bargain RAISES what the quay pays for the same lot, and `haggle_saved` on
+// the SELL preview IS that difference. Same forced-win knobs as above; the precondition this test
+// owns — she must carry the good — is bought here and sold back in `finally`.
+test('cmd.haggle(…, "sell") moves the bid: a won sell-side bargain raises the SELL preview, and haggle_saved is the difference', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  expect(fleet.status).toBe('DOCKED')
+  const subject = await aTradeSubject(fleet)
+  const port = expectOk(await worldSnapshot()).ports.find((p) => p.code === fleet.port)!
+  const good = expectOk(await worldMarket(port.id)).goods.find((g) => g.code === subject.code)!
+  const qty = Math.min(10, subject.fits)
+  expectOk(await cmdIssue(fleet.id, `BUY ${subject.code} ${qty}`))
+
+  const knob = async (key: string, v: number) =>
+    db.pg.query('update public.world_config set value = $1::jsonb where key = $2', [String(v), key])
+  const sellLine = `SELL ${subject.code} ${qty}`
+  const est = (r: Awaited<ReturnType<typeof cmdPreview>>) => saleEstimate(expectOk(r).estimate)
+  const before = est(await cmdPreview(fleet.id, sellLine))
+  expect(before.qty).toBe(qty)
+  expect(before.total).toBeGreaterThan(0)
+  // The two keys slice 3 added to the one reading of a trade estimate, served on a SELL.
+  expect(before.avg_price).toBeGreaterThan(0)
+  expect(before.haggle_saved).toBe(0)
+
+  try {
+    await knob('haggle_base_success', 1)
+    await knob('haggle_success_max', 1)
+    await knob('haggle_hardening_per_fail', 0)
+    const won = expectOk(await cmdHaggle(fleet.id, good.good_id, 'sell'))
+    expect(won.won).toBe(true)
+    expect(won.side).toBe('sell')
+    expect(isStr(won.message)).toBe(true)
+    expect(won.spread_effective).toBeLessThan(won.spread_published)
+
+    const after = est(await cmdPreview(fleet.id, sellLine))
+    expect(after.qty).toBe(qty)
+    // THE BID MOVED, for this house, on this lot: more ducats and more per unit than before.
+    expect(after.total!).toBeGreaterThan(before.total!)
+    expect(after.avg_price!).toBeGreaterThan(before.avg_price!)
+    // …and `haggle_saved` says by how much, to the rounding the unit price carries (0083's own
+    // tolerance for the same claim on the BUY side).
+    expect(after.haggle_saved!).toBeGreaterThan(0)
+    expect(Math.abs(after.haggle_saved! - (after.total! - before.total!))).toBeLessThanOrEqual(1)
+  } finally {
+    await knob('haggle_base_success', 0.45)
+    await knob('haggle_success_max', 0.85)
+    await knob('haggle_hardening_per_fail', 0.25)
+    await db.pg.query('delete from public.haggle_daily')
+    // The hold goes back the way it was found, so the tests after this one meet the fleet they expect.
+    expectOk(await cmdIssue(fleet.id, `SELL ${subject.code} ALL`))
   }
 })
 

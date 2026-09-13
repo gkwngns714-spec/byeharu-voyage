@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Figure, PriceRows, Row, Tray, type TrayDetent } from '../../components/ui'
+import { Figure, PriceRows, Row, Tray, type PriceTrend, type TrayDetent } from '../../components/ui'
 import { formatInt, formatMiles } from '../../lib/format'
-import type { MarketGood, PricePoint } from '../../lib/rpc'
+import type { MarketGood } from '../../lib/rpc'
 
 // A GOOD, READ ON A QUAY SHE IS NOT ON — the tray a price cell opens when nobody of yours is
 // alongside. MOVED 2026-09-11 from features/market/ with the MARKET tab, which folded into PORT
@@ -20,12 +20,13 @@ import type { MarketGood, PricePoint } from '../../lib/rpc'
 
 export function PriceTray({
   good,
-  points,
+  trend,
   passage,
   onClose,
 }: {
   good: MarketGood
-  points: readonly PricePoint[] | undefined
+  /** The remembered prices here, and their cadence — `usePortHistory`'s one reading. */
+  trend: PriceTrend
   /** The sailed distance from where she lies to this quay, or null when there is no figure. */
   passage: number | null
   onClose: () => void
@@ -40,7 +41,7 @@ export function PriceTray({
     >
       <Row label="Buy" value={<Figure value={formatInt(good.buy)} size="figure" />} />
       <Row label="Sell" value={<Figure value={formatInt(good.sell)} size="figure" />} />
-      <PriceRows good={good} points={points} />
+      <PriceRows good={good} trend={trend} />
       {passage !== null && (
         <Row
           label="Distance"
