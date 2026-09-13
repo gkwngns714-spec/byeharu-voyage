@@ -1,9 +1,69 @@
 # RESUME — where the work stands
 
 **If you are picking this project up cold: read the anchor immediately below, then
-`docs/DEV_LOG.md`'s two entries for 2026-09-13, then `docs/WORDS.md` (the vocabulary law), then
-`docs/OWNER_REQUESTS.md` rows 76–80. Everything under the 2026-09-11 anchor and lower is older and
-is kept as record.**
+`docs/DEV_LOG.md`'s entries for 2026-09-13/14, then `docs/WORDS.md`, then `docs/OWNER_REQUESTS.md`
+rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is kept as record.**
+
+---
+
+# ▼ RESUME ANCHOR — 2026-09-14 ▼
+
+**The anchor below this one (2026-09-13) is now HISTORY.** Its "one thing waiting" (deploy 0085) is
+still waiting, and a second migration (0086, the inn) now waits with it.
+
+## The state of the world — VERIFIED 2026-09-14
+
+| | | how |
+|---|---|---|
+| `main` head | **`745ebb2`** (PR #73 merged; PR #76 in CI) | `git log origin/main -1` |
+| Chain head on `main` | **0085** (78 files). **0086** lives only on PR #75 (`osn-inn-crew`). | `ls supabase/migrations/` |
+| **Production database head** | **0084 — ONE BEHIND `main`, TWO behind the built work.** | `supabase migration list --linked` read on the target |
+| Site | **LIVE at `745ebb2`** — every client-only row of 2026-09-13 is on it | Pages run green; served bundle grepped for `Put in storage`, `Haggle`, `price-chart`, `fleet-fold`, `Storage`, `Damage` |
+| Live URL | https://gkwngns714-spec.github.io/byeharu-voyage/ | fetched; MAP looked at |
+
+## THE ONE WALL — the database push is blocked from this session
+
+`docs/DEPLOY_RUNBOOK.md` steps 2 and 4 (stop / start the clock) RUN from here through
+`supabase db query --linked` (the CLI's own login; no password file needed — both were run on
+2026-09-13: `unwind_the_clock()` → 5, all five jobs re-read `active: false`; then `wind_the_clock()`
+and all five `active: true` again). **Step 3, `supabase db push --linked`, was refused by the tool's
+safety classifier**, and must not be worked around. The owner was told the fix: add
+`"Bash(supabase db push:*)"` under `permissions.allow` in the user settings.json, or type the push
+themselves (`! cd <clone> && supabase db push --linked --yes`) between my clock-stop and clock-start.
+**Until then: 0085 (London's ring, PR #65 merged) is not on production, and PR #75 (the inn crew
+screen, migration 0086) must NOT be merged** — its client calls `world.crew_cost` / `DISMISS`, which
+production does not serve; merging would ship a client ahead of its database (the 2026-09-11 law).
+Deploy 0085 + 0086 together, in one runbook pass, then merge #75 (it needs a merge with main first —
+`StepQuestion.tsx` and the ledger rows moved on main after it branched).
+
+## What landed 2026-09-13/14 (owner rows), all LIVE unless said
+
+| row | what | PR |
+|---|---|---|
+| 77 flicker · 79 words + units | `useServedRead`; `docs/WORDS.md`; quantities are UNITS, prices `d. each` | #62 |
+| 80 wide glass · 76 basket | column + side tray; the basket panel | #63, #64 |
+| 81 on board · 82 the sale as a picture | `OnBoard.tsx`, `useSellEstimate` (SELL-all preview, keyed on lot + price) | #67, #70 |
+| 78 London ring | migration 0085 — MERGED, **NOT DEPLOYED** | #65 |
+| 76 slice 3 | `HaggleThread` both sides, `PriceChart` from Trend; `useTrade`/`useHaggleState` ride `useServedRead` | #72 |
+| 83/84/86/87/88 port faces | Town without levels; Craft by category; **Repair** + `Damage`; ONE word **Storage**; storage rows with `Put in storage` / `Take on board` + amount tray (`useOrderPreview`, `moveEstimate`) | #73 (+ #76 for the step tray's words) |
+| 89 fleets fold | `FleetFold.tsx`, three columns from lg; `FleetTray` deleted | #71 |
+| 90 map | `docs/MAP_ATMOSPHERE.md`; land fill, shallows, relief, coast weight, sea names, ship glyph, course arrow | #74 |
+| 85 inn crew | migration 0086 + `PortInn` as a crew screen — **BUILT on PR #75, NOT merged (see the wall)** | #75 |
+
+## What the next session does, in order
+
+1. **Deploy 0085 and 0086** by the runbook the moment the push is allowed; verify heads on the target; look at London on MAP and the Inn's wage line.
+2. Merge PR #75 after a merge with main (expect conflicts in `StepQuestion.tsx`, `OWNER_REQUESTS.md`, `DEV_LOG.md`, `CHAIN.md`).
+3. Slice 4 of `docs/QUAY_LEDGER.md` — the request board (`trade_contracts`) — is the last unbuilt part of row 76; it is a migration too.
+4. Known small leftovers: the fleet ROW's caption overlaps at 390px (`4 / 60 tons` over `hull`); the chart's coastline decimation leaves 10 rings inside the drawn coast (draw decision); `docs/QUAY_LEDGER.md` cites `slot_seconds` 600 — a fresh chain serves 900; four older reads (`world.inn`, `warehouse`, `workstation`, `building_yard`) are granted but absent from `client_rpc_entry_points` (PR #75's finding).
+5. `useOrderPreview` (PR #73) and `useTrade`'s preview (now on `useServedRead`, PR #72) are two doorways for one dry-run rule — fold `useOrderPreview` onto `useServedRead`; move `moveEstimate.ts` beside `saleEstimate` in `estimate.ts`.
+
+## Rules learned or re-learned 2026-09-14
+
+* **Five helpers on disjoint file domains, each in a worktree off main, each opening its own PR, merged in order with a conflict pass by the lead** — the day's whole list landed. Docs files (`DEV_LOG`, `OWNER_REQUESTS`, `SECTIONS`, `CHAIN`) conflict every time; keep both sides, dedupe ledger rows by number keeping the BUILT line.
+* **A test that assumes prices have moved is a seed-shaped assertion** (#72's one red): require a record, not a record that moved.
+* **A test locator on `h2` inside a tray breaks the day a section heading joins it** — `.first()` for the title.
+* **A background build does not re-invoke a helper** — tell helpers to wait in the foreground.
 
 ---
 
