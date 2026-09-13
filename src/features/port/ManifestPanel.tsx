@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button, CargoBar, Figure, Icon, Note, Row, Tray, useWide, type TrayDetent } from '../../components/ui'
 import { ManifestTotals } from './ManifestTotals'
+import { OnBoard } from './OnBoard'
 import { ReceiptFace } from './ReceiptFace'
 import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
 import { formatClock, formatDucats, formatDucatsDelta, formatInt, formatUnitPrice, formatUnits } from '../../lib/format'
@@ -67,6 +68,7 @@ export function ManifestPanel({
   goods,
   preview,
   onEdit,
+  onSell,
   onClose,
 }: {
   fleet: FleetView
@@ -77,6 +79,8 @@ export function ManifestPanel({
   preview: ManifestPreviewState
   /** Re-open the line's price cell with its quantity, to change it. */
   onEdit: (line: ManifestLine) => void
+  /** A good on board that this market lists — open its SELL side (row 81's "show what i own"). */
+  onSell: (good: MarketGood) => void
   /** The player put the panel away (a phone), or dismissed the receipt. */
   onClose: () => void
 }) {
@@ -158,6 +162,7 @@ export function ManifestPanel({
       <Tray detent={detent} onDetentChange={setDetent} title="Basket" dismissible={false} data-testid="basket-panel">
         {cargo}
         <Row label="Your basket is empty. Press a price to add goods." tone="muted" hairline={false} data-testid="basket-empty" />
+        <OnBoard fleet={fleet} goods={goods} onSell={onSell} />
       </Tray>
     )
   }
@@ -244,6 +249,9 @@ export function ManifestPanel({
 
       {preview.loading && !estimate && <Row label="Loading…" tone="muted" hairline={false} />}
       {estimate && <ManifestTotals totals={estimate.totals} testId="basket-total" />}
+      {/* Under the lines, not above them: the basket is what the press is about; the hold is what
+          the next line may come from. */}
+      <OnBoard fleet={fleet} goods={goods} onSell={onSell} />
     </Tray>
   )
 }
