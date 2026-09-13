@@ -23,6 +23,13 @@ import type { ReactNode } from 'react'
 // `warning`; a bar that is merely *there* is `neutral`. The default is `accent` because the
 // commonest bar in this game is one of yours.
 //
+// `pending` IS THE PART IN FLUX (2026-09-11, the manifest's hold gauge, QUAY_LEDGER §3 C). A
+// second span, `accent` at 40 %, over the stretch of track the bar WOULD cover once a staged
+// change lands: from the fill's edge outward when she takes on, back over the fill when she
+// lightens. Solid is what stays either way; the wash is what the manifest moves. A tonal wash is
+// this repo's whole vocabulary for "not yet" (`accent-soft`, `disabled:opacity-45`); a striped
+// gradient would be a second one, and a palette literal besides.
+//
 // IT IS NOT THE TREND LINE. `Sparkline` draws a price's memory and stays its own component
 // (index.ts keeps it); §5 names it `Bar.trend` as an eventual home, and the fold waits for the
 // screen that needs both in one place.
@@ -42,6 +49,7 @@ export function Bar({
   pct,
   value,
   of,
+  pending,
   tone = 'accent',
   figure,
   label,
@@ -49,6 +57,9 @@ export function Bar({
 }: {
   /** CONTINUOUS form: 0–100, clamped. Ignored when `of` is given. */
   pct?: number
+  /** CONTINUOUS form only: a staged CHANGE to `pct`, in points, may be negative. Drawn as a wash
+   *  over the stretch between now and then; the figure beside the bar says which way. */
+  pending?: number
   /** SEGMENTED form: how many segments are filled. */
   value?: number
   /** SEGMENTED form: how many segments there are. Its presence chooses the form. */
@@ -65,6 +76,12 @@ export function Bar({
   const clamped = segmented
     ? (filled / (of as number)) * 100
     : Math.max(0, Math.min(100, pct ?? 0))
+  // The wash: from the lower of (now, then) to the higher, both clamped to the track. Solid fill
+  // stops at the lower edge, so what she keeps is solid and what the change touches is washed.
+  const then = Math.max(0, Math.min(100, clamped + (pending ?? 0)))
+  const washFrom = Math.min(clamped, then)
+  const washTo = Math.max(clamped, then)
+  const solidTo = segmented || pending === undefined ? clamped : washFrom
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
@@ -84,11 +101,18 @@ export function Bar({
             />
           ))
         ) : (
-          <span className="h-full w-full rounded-chip bg-surface-2">
+          <span className="relative block h-full w-full rounded-chip bg-surface-2">
             <span
               className={`block h-full rounded-chip transition-[width] ${FILL[tone]}`}
-              style={{ width: `${clamped}%` }}
+              style={{ width: `${solidTo}%` }}
             />
+            {pending !== undefined && washTo > washFrom && (
+              <span
+                data-bar-pending
+                className="absolute inset-y-0 rounded-chip bg-accent opacity-40"
+                style={{ left: `${washFrom}%`, width: `${washTo - washFrom}%` }}
+              />
+            )}
           </span>
         )}
       </div>

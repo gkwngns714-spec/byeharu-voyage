@@ -24,7 +24,8 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { call } from './backend'
-import type { RpcResult } from './result'
+import { readManifestReceipt } from './manifest'
+import { ok, type RpcResult } from './result'
 import type {
   InnView,
   BuildingYardView,
@@ -43,6 +44,9 @@ import type {
   HiredOfficer,
   IssueResult,
   LedgerPage,
+  ManifestLine,
+  ManifestPreview,
+  ManifestReceipt,
   MarketView,
   OfficerRoster,
   PlayerView,
@@ -241,6 +245,34 @@ export function cmdPreview(
   return call<PreviewResult>('cmdPreview', [fleetId, rawText, path])
 }
 
+/**
+ * THE MANIFEST'S DRY RUN (0083): every line through the real verbs, rolled back. The estimate is
+ * what `cmdTradeBasket` would do, because it is what the server just did. A refusal names the
+ * INPUT index of the line that refused in `refusal.line` (absent when no line did).
+ */
+export async function cmdPreviewBasket(
+  fleetId: string,
+  lines: readonly ManifestLine[],
+): Promise<RpcResult<ManifestPreview>> {
+  const r = await call<{ estimate: unknown }>('cmdPreviewBasket', [fleetId, lines])
+  return r.ok ? ok<ManifestPreview>({ ok: true, estimate: readManifestReceipt(r.value.estimate) }) : r
+}
+
+/**
+ * THE MANIFEST, COMMITTED (0083): sells first, then buys, inside ONE savepoint — every line lands
+ * or none does, and the receipt equals the ledger's BOUGHT / SOLD rows. Takes the fleet's
+ * `version` as `cmdIssue` does: a stale one is `E_STALE`, so a double-tap trades once. `E_BUSY` is
+ * a lock collision with the market's own clock — retryable, nothing moved.
+ */
+export async function cmdTradeBasket(
+  fleetId: string,
+  lines: readonly ManifestLine[],
+  expectedVersion: number | null = null,
+): Promise<RpcResult<ManifestReceipt>> {
+  const r = await call<unknown>('cmdTradeBasket', [fleetId, lines, expectedVersion])
+  return r.ok ? ok(readManifestReceipt(r.value)) : r
+}
+
 /** Cancel one queued order by its 1-based index, or the head of the queue when index is null. */
 export function cmdCancel(fleetId: string, index: number | null = null): Promise<RpcResult<CancelResult>> {
   return call<CancelResult>('cmdCancel', [fleetId, index])
@@ -285,6 +317,7 @@ export { createCloudBackend } from './cloudBackend'
 export { RPCS, rpcLabel, localSql, namedArgs } from './catalog'
 export type { RpcName, RpcSpec } from './catalog'
 export { expectOk, fromError, fromPayload, ok, refused } from './result'
+export { lineDelta, readManifestReceipt } from './manifest'
 export type { Refusal, RefusalFigures, RpcResult } from './result'
 export type * from './types'
 

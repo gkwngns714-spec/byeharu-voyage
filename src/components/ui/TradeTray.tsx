@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Button } from './Button'
+import { deltaTone } from './deltaTone'
 import { Figure } from './Figure'
 import { Note } from './Note'
 import { PriceRows } from './PriceRows'
@@ -69,6 +70,12 @@ export interface TradePick {
  *  `src/live/useTrade.ts` is the one spelling of this shape; it imports the type from here. */
 export interface TradeAct {
   send: () => void
+  /** Put this line on the BASKET instead of trading it now (docs/QUAY_LEDGER.md §3 B, slice 2):
+   *  the caller stages `{side, good, qty}` for the quantity chosen and the pick closes; nothing is
+   *  bought until the basket's own button. Absent where there is no basket to stage into (the
+   *  read-only face never mounts this tray). Beside `send` so the one condition that gates a
+   *  trade gates a stage too (PR #59 review SHOULD 6). */
+  stage?: () => void
   sending: boolean
   ready: boolean
   /** What the chosen quantity comes to, when the server has priced exactly that quantity. */
@@ -166,6 +173,8 @@ export function TradeTray({
     .map((v) => ({ label: formatInt(v), value: v }))
 
   const verb = intent === 'buy' ? 'Buy' : 'Sell'
+  // THE ONE CONDITION for both acts: a line that cannot be traded cannot be staged either.
+  const live = !act.sending && chosen > 0 && act.ready
 
   return (
     <Tray
@@ -182,25 +191,34 @@ export function TradeTray({
                 <Figure
                   value={formatDucatsDelta(act.preview.profit)}
                   size="figure"
-                  tone={act.preview.profit < 0 ? 'danger' : act.preview.profit > 0 ? 'success' : 'ink'}
+                  tone={deltaTone(act.preview.profit)}
                 />
               }
               hairline={false}
               data-testid="trade-tray-profit"
             />
           )}
-          <Button
-            variant="primary"
-            className="w-full"
-            onClick={act.send}
-            disabled={act.sending || chosen <= 0 || !act.ready}
-            busy={act.sending}
-            busyLabel="Sending…"
-            data-testid="trade-tray-send"
-          >
-            {`${verb} ${formatUnits(chosen)}`}
-            {act.total !== null ? ` · ${formatDucats(act.total)}` : ''}
-          </Button>
+          {/* TWO ACTS, ONE ROW: trade this line now, or stage it on the basket. The primary keeps
+              the whole width where there is no basket to stage into. */}
+          <div className={act.stage ? 'grid grid-cols-2 gap-2' : ''}>
+            {act.stage && (
+              <Button variant="secondary" className="w-full" onClick={act.stage} disabled={!live} data-testid="trade-tray-stage">
+                Add to basket
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={act.send}
+              disabled={!live}
+              busy={act.sending}
+              busyLabel="Sending…"
+              data-testid="trade-tray-send"
+            >
+              {`${verb} ${formatUnits(chosen)}`}
+              {act.total !== null ? ` · ${formatDucats(act.total)}` : ''}
+            </Button>
+          </div>
         </>
       }
     >

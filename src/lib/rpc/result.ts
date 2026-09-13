@@ -57,6 +57,10 @@ export interface Refusal {
   /** Present on refusals from cmd.*: the queue as it stands after the refusal. */
   queue?: QueuedOrder[]
   parsed?: ParsedCommand
+  /** 0083: the 0-based INPUT index of the manifest line that refused, from `cmd.preview_basket` /
+   *  `cmd.trade_basket`. Absent for a refusal no line caused (E_MANIFEST_EMPTY, E_BUSY, E_STALE)
+   *  and on every other verb. Read, never inferred from the sentence. */
+  line?: number
 }
 
 export type RpcResult<T> = { ok: true; value: T } | { ok: false; refusal: Refusal }
@@ -111,6 +115,7 @@ export function fromPayload<T>(payload: unknown): RpcResult<T> {
       figures?: unknown
       queue?: unknown
       parsed?: unknown
+      line?: unknown
     }
     return refused({
       code: typeof p.error_code === 'string' && p.error_code ? p.error_code : 'E_REFUSED',
@@ -123,6 +128,7 @@ export function fromPayload<T>(payload: unknown): RpcResult<T> {
       source: 'server',
       queue: Array.isArray(p.queue) ? (p.queue as QueuedOrder[]) : undefined,
       parsed: (p.parsed as ParsedCommand | undefined) ?? undefined,
+      line: typeof p.line === 'number' ? p.line : undefined,
     })
   }
   return ok(payload as T)

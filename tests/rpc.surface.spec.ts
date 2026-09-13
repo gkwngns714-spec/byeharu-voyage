@@ -17,6 +17,7 @@ import { isWaterAt, navFromServed } from '../src/lib/sea'
 import { haversineNm } from '../src/lib/geo'
 import { TIME_COMPRESSION } from '../src/lib/format'
 import { courseBetweenPorts, seaNav } from './seaCourse.fixture'
+import { fleetCargoByCode } from '../src/domain/fleet'
 import {
   RPCS,
   backendKind,
@@ -27,6 +28,8 @@ import {
   cmdHaggle,
   cmdIssue,
   cmdPreview,
+  cmdPreviewBasket,
+  cmdTradeBasket,
   cmdVerbSchema,
   createLocalBackend,
   expectOk,
@@ -48,6 +51,7 @@ import {
   worldSeaRaster,
   worldReach,
 } from '../src/lib/rpc'
+import type { ManifestLine } from '../src/lib/rpc'
 
 let db: LocalDb
 
@@ -565,6 +569,153 @@ test('cmd.preview() estimates without moving a ducat, and refuses in the same wo
   expect(refused.refusal.source).toBe('server')
 })
 
+// ── the manifest (migration 0083) ──────────────────────────────────────────────────────────────
+//
+// Several lines at one quay, landing together or not at all, receipted as one. The subject and
+// the quantities are the server's (`aTradeSubject`); what is asserted is the CONTRACT the client
+// stands on: a preview moves nothing and names the refusing INPUT line; a commit's `purse.after -
+// purse.before` IS `totals.net` IS the ledger's movement; and numerics reach the client as numbers
+// whatever the transport did (readManifestReceipt, the one boundary). The world is left as found:
+// what is bought is sold back at the end, through the same door.
+test('cmd.preview_basket() prices the manifest without moving a ducat, and names the line it refuses', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  const subject = await aTradeSubject(fleet)
+  const before = expectOk(await worldLedger()).ducats!
+
+  const ok = expectOk(await cmdPreviewBasket(fleet.id, [{ side: 'buy', good: subject.code, qty: subject.fits }]))
+  expect(ok.ok).toBe(true)
+  expect(ok.estimate.kind).toBe('manifest')
+  expect(ok.estimate.port).toBe(fleet.port)
+  expect(ok.estimate.lines).toHaveLength(1)
+  expect(ok.estimate.lines[0].index).toBe(0)
+  expect(ok.estimate.lines[0].good).toBe(subject.code)
+  expect(ok.estimate.lines[0].qty).toBe(subject.fits)
+  // NUMBERS, not numeric strings: the whole reason the receipt is read once at the boundary.
+  expect(isNum(ok.estimate.lines[0].total)).toBe(true)
+  expect(isNum(ok.estimate.lines[0].mid_total)).toBe(true)
+  expect(isNum(ok.estimate.totals.net)).toBe(true)
+  expect(isNum(ok.estimate.hold.tuns_delta)).toBe(true)
+  expect(ok.estimate.totals.net).toBe(-ok.estimate.totals.bought)
+  expect(ok.estimate.totals.net).toBeLessThan(0)
+  // She takes the good ON, so the hold's delta is positive and the room after is less.
+  expect(ok.estimate.hold.tuns_delta).toBeGreaterThan(0)
+  expect(ok.estimate.hold.free_after).toBeLessThan(ok.estimate.hold.free_before)
+  // The purse is read back INSIDE the dry run, and the dry run really was dry.
+  expect(ok.estimate.purse.before - ok.estimate.purse.after).toBe(ok.estimate.totals.bought)
+  expect(expectOk(await worldLedger()).ducats).toBe(before)
+  expect('version' in ok.estimate).toBe(false)
+
+  // One line too many refuses the WHOLE manifest, and says WHICH line - the input index.
+  const refused = await cmdPreviewBasket(fleet.id, [{ side: 'buy', good: subject.code, qty: subject.tooMany }])
+  expect(refused.ok).toBe(false)
+  if (refused.ok) throw new Error('unreachable')
+  expect(refused.refusal.code).toBe('E_HOLD_FULL')
+  expect(refused.refusal.line).toBe(0)
+  expect(refused.refusal.source).toBe('server')
+  expect(expectOk(await worldLedger()).ducats).toBe(before)
+
+  // Nothing staged is nothing to price - and no line is named.
+  const empty = await cmdPreviewBasket(fleet.id, [])
+  expect(empty.ok).toBe(false)
+  if (empty.ok) throw new Error('unreachable')
+  expect(empty.refusal.code).toBe('E_MANIFEST_EMPTY')
+  expect(empty.refusal.line).toBeUndefined()
+
+  // The same door refuses a fleet that is not the player's, in the same code cmd.issue uses.
+  const notMine = await cmdPreviewBasket('00000000-0000-4000-8000-0000000000ff', [{ side: 'buy', good: subject.code, qty: 1 }])
+  expect(notMine.ok).toBe(false)
+  if (notMine.ok) throw new Error('unreachable')
+  expect(notMine.refusal.code).toBe('E_NO_SUCH_FLEET')
+})
+
+test('cmd.trade_basket() lands a mixed manifest atomically, and the receipt IS the ledger', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  const subject = await aTradeSubject(fleet)
+  const q1 = Math.max(1, Math.floor(subject.fits / 2))
+
+  // (1) A one-line buy, so that there is something aboard to sell.
+  const purse0 = expectOk(await worldLedger()).ducats!
+  const bought = expectOk(await cmdTradeBasket(fleet.id, [{ side: 'buy', good: subject.code, qty: q1 }], fleet.version))
+  expect(bought.kind).toBe('manifest')
+  expect(bought.version).toBe(fleet.version + 1)
+  expect(bought.lines).toHaveLength(1)
+  expect(bought.purse.before).toBe(purse0)
+  expect(bought.purse.after - bought.purse.before).toBe(bought.totals.net)
+  expect(expectOk(await worldLedger()).ducats).toBe(bought.purse.after)
+  const held = expectOk(await worldFleets())[0]
+  expect(held.version).toBe(bought.version)
+  expect(fleetCargoByCode(held)[subject.code]).toBe(q1)
+
+  // (2) The same tap again - the OLD version - is E_STALE and moves nothing (a double-tap trades once).
+  const stale = await cmdTradeBasket(fleet.id, [{ side: 'buy', good: subject.code, qty: 1 }], fleet.version)
+  expect(stale.ok).toBe(false)
+  if (stale.ok) throw new Error('unreachable')
+  expect(stale.refusal.code).toBe('E_STALE')
+  expect(expectOk(await worldLedger()).ducats).toBe(bought.purse.after)
+
+  // (3) ONE line per good is the rule, either side: the second line for the same good is refused
+  //     by INPUT index, and nothing before it has moved.
+  const qSell = Math.max(1, Math.floor(q1 / 2))
+  const dup = await cmdPreviewBasket(held.id, [
+    { side: 'buy', good: subject.code, qty: 1 },
+    { side: 'sell', good: subject.code, qty: qSell },
+  ])
+  expect(dup.ok).toBe(false)
+  if (dup.ok) throw new Error('unreachable')
+  expect(dup.refusal.code).toBe('E_MANIFEST_DUPLICATE')
+  expect(dup.refusal.line).toBe(1)
+
+  // (4) A MIXED manifest across two goods: buy one tun of another good the quay offers, sell some
+  //     of what (1) put aboard. Sells run first - the served lines come back in EXECUTION order,
+  //     each carrying its INPUT index - and the receipt's net is exactly what the ledger moved by.
+  const snap = expectOk(await worldSnapshot())
+  const market = expectOk(await worldMarket(snap.ports.find((p) => p.code === held.port)!.id))
+  const other = market.goods
+    .filter((g) => g.code !== subject.code && g.available && g.offered !== false && g.stock >= 1)
+    .sort((a, b) => a.code.localeCompare(b.code))[0]
+  expect(other, 'the quay offers no second good').toBeDefined()
+  const lines: ManifestLine[] = [
+    { side: 'buy', good: other.code, qty: 1 },
+    { side: 'sell', good: subject.code, qty: qSell },
+  ]
+  const est = expectOk(await cmdPreviewBasket(held.id, lines)).estimate
+  expect(est.lines.map((l) => l.side)).toEqual(['sell', 'buy'])
+  expect(est.lines.map((l) => l.index)).toEqual([1, 0])
+  expect(est.totals.net).toBe(est.totals.sold - est.totals.bought)
+  // A sold line whose cost is on record realises a profit figure (0081) - a number, possibly negative.
+  expect(isNum(est.lines[0].basis)).toBe(true)
+  expect(isNum(est.lines[0].profit)).toBe(true)
+  expect(isNum(est.totals.profit)).toBe(true)
+
+  const landed = expectOk(await cmdTradeBasket(held.id, lines, held.version))
+  expect(landed.lines.map((l) => `${l.side}:${l.good}:${l.qty}`)).toEqual(est.lines.map((l) => `${l.side}:${l.good}:${l.qty}`))
+  expect(landed.purse.after - landed.purse.before).toBe(landed.totals.net)
+  const ledger = expectOk(await worldLedger())
+  expect(ledger.ducats).toBe(landed.purse.after)
+  // THE RECEIPT IS THE LEDGER: the two newest money rows are its two lines - the sell (a credit)
+  // and the buy (a debit) - stamped with ONE instant, because they are one transaction. Their
+  // order within that instant is not a contract, so they are compared as a pair.
+  const moved = ledger.events.filter((e) => e.ducats_delta !== null).slice(0, 2)
+  expect(moved.map((e) => e.ducats_delta).sort((a, b) => a! - b!)).toEqual(
+    [-landed.lines[1].total, landed.lines[0].total].sort((a, b) => a - b),
+  )
+  expect(new Set(moved.map((e) => e.at)).size).toBe(1)
+  expect(landed.trading.points_after - landed.trading.points_before).toBe(landed.trading.delta)
+  expect(landed.trading.delta).toBeGreaterThan(0)
+
+  // (5) Leave the world as found: sell back everything this test put aboard.
+  const after = expectOk(await worldFleets())[0]
+  const aboard = fleetCargoByCode(after)
+  const back: ManifestLine[] = [
+    { side: 'sell', good: subject.code, qty: aboard[subject.code] },
+    { side: 'sell', good: other.code, qty: aboard[other.code] },
+  ]
+  expectOk(await cmdTradeBasket(after.id, back, after.version))
+  const clean = fleetCargoByCode(expectOk(await worldFleets())[0])
+  expect(clean[subject.code] ?? 0).toBe(0)
+  expect(clean[other.code] ?? 0).toBe(0)
+})
+
 test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', async () => {
   const fleet = expectOk(await worldFleets())[0]
   const subject = await aTradeSubject(fleet)
@@ -923,6 +1074,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
   expect(names.sort()).toEqual(
     [
       'cmdCancel', 'cmdClear', 'cmdFoundHouse', 'cmdIssue', 'cmdPreview', 'cmdVerbSchema',
+      // Pin moved deliberately 2026-09-11 with migration 0083 (a manifest is one order): the
+      // manifest's dry run and its commit. Quay verbs like cmd.haggle - client-direct, no orders
+      // row - and, like it, landed WITH the face that reads them (ManifestTray) rather than as a
+      // door nobody opens. Neither takes a player id; both refuse a fleet that is not yours with
+      // cmd.issue's own E_NO_SUCH_FLEET.
+      'cmdPreviewBasket', 'cmdTradeBasket',
       'worldBuyCapacity', 'worldFleets', 'worldLedger', 'worldMarket', 'worldSnapshot',
       // 0019's `worldTradeRoutes` was REMOVED 2026-09-02 with 0071. It ranked every port in reach
       // by what it would pay for what is on this quay — the same comparison as the nearby index,

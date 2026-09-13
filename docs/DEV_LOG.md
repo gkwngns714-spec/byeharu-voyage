@@ -5,6 +5,73 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-13 — The basket is the right-hand panel: slice 2's frontend, rebuilt clean on the wide glass (owner rows 76 and 80)
+
+**The instruction, said twice.** Row 76 brought nine screenshots of the reference trade house —
+goods on the left, a basket on the right with the ship's cargo bar and ONE big button carrying the
+total, a settlement chit after — and asked for *"the same design plan, but different and modern"*.
+Row 80, on seeing slice 1 at desktop width: *"i showed you the pictures and this is not what i've
+asked for. and look. too much blank space."* The wide glass (PR #63, same day) answered the blank
+space and put the tray beside the column. What was still missing was the CENTRE of the reference:
+the basket. PR #59 had built it as a bottom tray, forked before the day's merges, and its
+adversarial review found three MUST-FIXes and five SHOULDs. This entry is that slice rebuilt on
+`main`, taking from #59 what survived review and redoing what did not.
+
+**What stands now.** On PORT › Trade from `lg`, the right-hand slot ALWAYS shows the basket
+(`features/port/ManifestPanel.tsx`): empty — the cargo bar and *"Your basket is empty. Press a
+price to add goods."* — or with lines, each `good · units · d. each · signed total`, the totals
+block ONCE (`ManifestTotals.tsx`: Market tax · Port fee · Haggle saved · Profit vs bought at ·
+Net), and ONE button whose words are the basket's verb and served figure (`Buy 3 lines ·
+1,420 d.`, `Sell 2 lines · 980 d.`, `Trade 3 lines · +440 d.`). A price press opens the trade tray
+IN THAT SLOT (same x, same width — asserted) with two acts, the single-good button and `Add to
+basket`; closing the pick returns to the basket. On a phone the same component rides the bottom
+`Tray` at peek, its title the whole basket in one line. There is no second component tree for the
+desktop: `Tray` docks itself (`screenLayout.ts`). After `cmd.trade_basket` lands, the same slot
+turns over to the receipt (`ReceiptFace.tsx`: the settled lines, the same totals block, ducats
+before → after, `Trading +N xp`), dismissed by one press.
+
+**The three MUST-FIXes, and how each was resolved.** (1) *The preview re-asked every 3 s and
+blanked the tray* — `useManifestPreview` is now a one-line doorway onto `useServedRead`, the hook
+written the same day for the shed, the inn, the workshop and the yard: the last estimate stands
+while the world's re-read is on the wire, and the button is never disabled on `loading`. The
+phone proof waits a full beat and requires the button still enabled with its figure. A refusal is
+folded INTO the served value (an estimate, or a refusal naming a line), because for a basket the
+refusal is what to draw. (2) *A sticky global receipt hid the basket behind an old chit* — the
+receipt is keyed to the (fleet, port) it was settled at, `stage()` drops it, and a basket with
+lines is always the face shown. (3) *Two docked trays at once* — which tray stands is ONE state in
+`PortTrade.tsx` (`slot`: pick · supplies · basket · none), never three booleans; the wide proof
+requires the basket gone while the pick stands.
+
+**The SHOULDs.** The totals block and the sign of a line were each spelt twice → `ManifestTotals`
+and `lineDelta` (at the RPC boundary) once. The cargo gauge was FLEETS' recipe hand-written a
+second time → `CargoBar` in the design system, composed by both, with the staged change as
+`Bar.pending` washed on and the figure `51 → 63 / 60 tons` from the SERVED `hold.free_after`. The
+pinned action is not rendered at peek. `stage` rides in `TradeAct` beside `send`, so the tray
+gates both on one condition and keeps six props. `E_STALE` re-reads the world inside
+`issueManifest` and the basket offers `Try again` for it as for `E_BUSY`. The phone proof asserts
+the pressed good's row reads `N units on board` after the trade — the world was read back, not
+patched. `Trading +0 xp` is plain ink, not green.
+
+**Words.** Every string obeys `docs/WORDS.md`: basket, units, `d. each`, on board, Port fee,
+Bought at, Loading…; no manifest, tuns, quay, aboard or paid in player text. `tests/words.spec.ts`
+green.
+
+**What was NOT done.** No production drive — the two verbs are live on production (0083/0084, the
+entry two below), but a basket trade spends the owner's ducats and moves the owner's fleet; the
+drive is the CANARY's (a local-PGlite build). Slice 3 (the haggle thread, both sides; the chart)
+and slice 4 (contracts) are untouched; `docs/QUAY_LEDGER.md` Appendix A still holds slice 3's
+blueprint. The closing ✕ of the basket on a phone puts it away rather than discarding it; the next
+press on the board brings it back.
+
+**Gates, this run:** `tsc -b` 0 · `eslint src tests` 0 · pure specs (words, duplication, sections,
+manifest.store, format, wide.layout's class proof) 37 passed · `rpc.surface` over PGlite with the
+two basket contracts (a preview moves nothing and names the refusing line; a mixed two-good basket
+lands and its receipt IS the ledger) · browser specs against a served local-PGlite build (layout,
+wide.layout, primitives.geometry) — the counts are in the PR. **State: BUILT on the PR this entry
+is filed with — NOT merged, NOT driven on production.**
+
+---
+
 ## 2026-09-11 — 0083 and 0084 are on production (the deploy record, not a slice)
 
 **This is the deploy of the two entries below; no code changed.** Pushed by hand per

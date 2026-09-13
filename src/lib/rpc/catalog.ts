@@ -145,6 +145,27 @@ export const RPCS = {
       { name: 'p_path', type: 'jsonb' },
     ],
   },
+  // 0083 — THE MANIFEST: several lines at one quay as one order. `p_lines` is a JSON array of
+  // `{side, good, qty}` (ManifestLine), which rides as jsonb exactly as cmdIssue's p_path does.
+  // preview_basket runs the verbs and rolls them back; trade_basket commits them in one savepoint
+  // and takes the fleet's version like cmd.issue, so a double-tap trades once (E_STALE).
+  cmdPreviewBasket: {
+    schema: 'cmd',
+    fn: 'preview_basket',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_lines', type: 'jsonb' },
+    ],
+  },
+  cmdTradeBasket: {
+    schema: 'cmd',
+    fn: 'trade_basket',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_lines', type: 'jsonb' },
+      { name: 'p_expected_version', type: 'int' },
+    ],
+  },
   cmdCancel: {
     schema: 'cmd',
     fn: 'cancel_at',

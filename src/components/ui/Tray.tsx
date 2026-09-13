@@ -72,6 +72,7 @@ export function Tray({
   title,
   mode = 'docked',
   action,
+  dismissible = true,
   children,
   className = '',
   ...rest
@@ -83,6 +84,10 @@ export function Tray({
   mode?: 'docked' | 'inline'
   /** The ONE primary button, pinned to the bottom edge and never inside the scroll. */
   action?: ReactNode
+  /** False for a tray that is a FIXTURE of its slot rather than an answer to a tap — the basket
+   *  panel beside the column on a wide glass (ManifestPanel.tsx), which has nothing to close to.
+   *  The ✕ is not drawn; the caller still receives `'closed'` from a drag or the keyboard. */
+  dismissible?: boolean
   children?: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
@@ -161,15 +166,17 @@ export function Tray({
             <span className="h-1 w-9 rounded-chip bg-ink-faint" />
           </button>
         )}
-        <button
-          type="button"
-          aria-label="Close"
-          data-testid="tray-close"
-          onClick={() => onDetentChange('closed')}
-          className="flex h-11 w-11 items-center justify-center rounded-control text-ink-muted"
-        >
-          <Icon name="close" size={20} />
-        </button>
+        {dismissible && (
+          <button
+            type="button"
+            aria-label="Close"
+            data-testid="tray-close"
+            onClick={() => onDetentChange('closed')}
+            className="flex h-11 w-11 items-center justify-center rounded-control text-ink-muted"
+          >
+            <Icon name="close" size={20} />
+          </button>
+        )}
       </div>
 
       <h2 className="shrink-0 px-gutter pb-2 text-t-title">{title}</h2>
