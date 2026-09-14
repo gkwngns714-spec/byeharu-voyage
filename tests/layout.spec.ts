@@ -830,12 +830,14 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
     expect(max).toBeGreaterThan(0)
     expect(leftBefore).toBeGreaterThan(0)
 
-    // ROW 15 INSIDE THE TRAY: what stands ABOVE the haggle row — the Trend row, the stepper, the
+    // ROW 15 INSIDE THE TRAY: what stands ABOVE the haggle row — the stepper, a price row, the
     // row itself — must be exactly where it was once the thread unfolds. Measured against the
     // tray body's own scroll, not the glass: the click scrolls the row into view, and a scroll is
-    // not a restructure.
+    // not a restructure. The rows differ by face since 2026-09-14 (owner row 92): SELL carries no
+    // Trend row at all — the count, then `Bought at`; BUY has the Trend row below the count.
+    const rowsAbove = face === 'buy' ? ['trend-row', 'trade-tray-qty', 'haggle-row'] : ['trade-tray-qty', 'trade-tray-paid', 'haggle-row']
     const above = () =>
-      page.evaluate(() => {
+      page.evaluate((ids) => {
         const scrollerOf = (el: Element) => {
           let p = el.parentElement
           while (p) {
@@ -844,13 +846,13 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
           }
           return document.scrollingElement
         }
-        return ['trend-row', 'trade-tray-qty', 'haggle-row'].map((id) => {
+        return ids.map((id) => {
           const el = document.querySelector(`[data-testid="${id}"]`)
           if (!el) return { id, top: -1, left: -1 }
           const r = el.getBoundingClientRect()
           return { id, top: Math.round(r.top + (scrollerOf(el)?.scrollTop ?? 0)), left: Math.round(r.left) }
         })
-      })
+      }, rowsAbove)
     // Let the tray settle first: the ceiling, the dry run and the cargo-space row all land after
     // the first paint, and each of those is the tray's own row, not the thread's. The button
     // carries the served figure once the dry run has answered.

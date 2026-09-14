@@ -23,11 +23,18 @@
 // show (the fleet left, the city keeps no such house). A caller draws `view` when it has one, and
 // its waiting line only when `loading && !view` — the first ask.
 //
-// This is a VIEW read. A CEILING read (useBuyCapacity) is deliberately not this: a ceiling shown a
-// beat late is the lie that hook was written to remove, so it still waits. `useHaggleState` joined
-// the view reads in slice 3 (2026-09-13): its figures are a conversation's standing — tries left,
-// the bargain held, the odds — and a thread that blanked on every 3-s beat was row 77's defect
-// again; the thread shows `loading` on the re-ask and never a blank.
+// `useHaggleState` joined the view reads in slice 3 (2026-09-13): its figures are a conversation's
+// standing — tries left, the bargain held, the odds — and a thread that blanked on every 3-s beat
+// was row 77's defect again; the thread shows `loading` on the re-ask and never a blank.
+//
+// THE CEILING'S EXEMPTION IS RETIRED (2026-09-14). This header used to say a CEILING read
+// (useBuyCapacity) was "deliberately not this: a ceiling shown a beat late is the lie that hook was
+// written to remove, so it still waits". That was wrong: the server re-checks the ceiling on
+// `cmd.issue` anyway and its refusal is shown, while a ceiling that blanks to 0 every 3 s — the
+// `Max` row unmounting and the stepper clamping to nought on every beat — is the worse lie. The
+// owner, 2026-09-14: *"when i press buy, the max keeps refreshing."* The ceiling, the storage
+// tray's dry run (useOrderPreview) and the on-board sale estimate (useSellEstimate) are all
+// doorways onto this rule now; nothing in src/live keys its own answer on `readAt` any more.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'
@@ -37,22 +44,35 @@ import { useWorld } from './worldStore'
 export interface ServedRead<V> {
   /** The last answer for this subject, or null before the first one (or after a refusal). */
   view: V | null
-  /** True while an ask is on the wire — the first one, or a re-ask on the world's beat. */
+  /** True while an ask is on the wire — the first one, a re-ask on the world's beat, or a new
+   *  question. */
   loading: boolean
+  /** True while `view` answers an EARLIER question than the one now asked — the figures on screen
+   *  are this subject's, but not yet for what was just chosen. Always false when the question is
+   *  the subject. A caller dims such a view; it never prints it as the answer to the new question. */
+  stale: boolean
 }
 
-const IDLE = { view: null, loading: false }
-const WAITING = { view: null, loading: true }
+const IDLE = { view: null, loading: false, stale: false }
+const WAITING = { view: null, loading: true, stale: false }
 
 /**
- * @param subject  What the question is about, as ONE string — `${portId}:${fleetId ?? '-'}` — or
- *                 null for "nothing to ask" (no port picked). A change of subject drops the answer.
- * @param ask      The RPC. Read through a ref, so a caller may pass a fresh closure every render
- *                 without re-arming the read; only `subject` and the world's `readAt` re-ask.
+ * @param subject   What the answer is FOR, as ONE string — `${portId}:${fleetId ?? '-'}` — or
+ *                  null for "nothing to ask" (no port picked). A change of subject drops the answer.
+ * @param ask       The RPC. Read through a ref, so a caller may pass a fresh closure every render
+ *                  without re-arming the read; only `question` and the world's `readAt` re-ask.
+ * @param question  What is ASKED, when that is finer than the subject (2026-09-14): the trade
+ *                  tray's dry run is FOR (fleet, side, good) but asks about a QUANTITY, and the
+ *                  owner will not have the sale's figures blink on every press of + — so a new
+ *                  question re-asks and the last answer for the same subject stands, `loading`,
+ *                  until the new one lands. Defaults to the subject: one string, one ask, as the
+ *                  four port faces use it. Null with a subject means "nothing to ask right now"
+ *                  (a quantity of nought); the last answer still stands.
  */
 export function useServedRead<V>(
   subject: string | null,
   ask: () => Promise<RpcResult<V>>,
+  question: string | null = subject,
 ): ServedRead<V> {
   const readAt = useWorld((s) => s.readAt) ?? 0
 
@@ -61,25 +81,30 @@ export function useServedRead<V>(
     askRef.current = ask
   })
 
-  const [answer, setAnswer] = useState<{ subject: string; readAt: number; view: V | null } | null>(
-    null,
-  )
+  const [answer, setAnswer] = useState<{
+    subject: string
+    question: string
+    readAt: number
+    view: V | null
+  } | null>(null)
 
   useEffect(() => {
-    if (subject === null) return
+    if (subject === null || question === null) return
     let live = true
     void askRef.current().then((r) => {
       if (!live) return
-      setAnswer({ subject, readAt, view: r.ok ? r.value : null })
+      setAnswer({ subject, question, readAt, view: r.ok ? r.value : null })
     })
     return () => {
       live = false
     }
-  }, [subject, readAt])
+  }, [subject, question, readAt])
 
   if (subject === null) return IDLE
   // Nothing of THIS subject's has been answered yet: wait, and show none of another subject's.
   if (answer === null || answer.subject !== subject) return WAITING
-  // The last answer stands while the next read of the same subject is on the wire.
-  return { view: answer.view, loading: answer.readAt !== readAt }
+  // The last answer stands while the next read of the same subject — the same question on the
+  // world's beat, or a new question — is on the wire.
+  const stale = answer.question !== question
+  return { view: answer.view, loading: stale || answer.readAt !== readAt, stale }
 }

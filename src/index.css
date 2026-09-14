@@ -408,25 +408,47 @@ body {
      track it draws itself, and the thumb is dressed here, in the one file that owns the tokens it
      is dressed in. Added in step 2 with the `Stepper` primitive; unlike the three rules below it,
      this one is not deprecated — it is the composition rule doing its job. */
+  /* THE SLIDER (Stepper.tsx). The track and the fill are drawn by the control under a transparent
+     input, so the thumb is all this dresses: 28 px across (the reach floor is 44 px and the row it
+     sits in is; the thumb itself must be big enough to find with a thumb), a surface-coloured rim
+     so it reads on the accent fill in either scheme, a float shadow, and a ring when focused by
+     keyboard. `touch-action: pan-y`: a sideways drag moves the slider, an up-down drag still
+     scrolls the tray. The owner, 2026-09-14: "the marker when selling unit is shitty". */
   .bv-range {
     appearance: none;
     width: 100%;
     height: 2.75rem;
     background: transparent;
+    touch-action: pan-y;
+    cursor: pointer;
   }
   .bv-range::-webkit-slider-thumb {
     appearance: none;
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 3px solid var(--color-surface);
     border-radius: var(--radius-chip);
     background: var(--color-accent);
+    box-shadow: var(--shadow-float);
   }
   .bv-range::-moz-range-thumb {
-    width: 1.25rem;
-    height: 1.25rem;
-    border: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 3px solid var(--color-surface);
     border-radius: var(--radius-chip);
     background: var(--color-accent);
+    box-shadow: var(--shadow-float);
+  }
+  .bv-range:focus-visible {
+    outline: none;
+  }
+  .bv-range:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  .bv-range:focus-visible::-moz-range-thumb {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 
   /* Quiet entrance for newly-arrived log lines (the Ledger feed). */
