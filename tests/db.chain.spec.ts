@@ -240,7 +240,11 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // river ports the carve reaches (Antwerp, Seville, Nantes, Bordeaux, twelve more) a roadstead off
 // the quay for the first time. The channels cross the wire as voyage.channels; sea_reaches is
 // re-seeded whole.
-const LAST = '20260818000085_a_roadstead_lies_on_the_channel.sql'
+// Moved 2026-09-14 to 0088, which makes the sea round: a course segment straddling the antimeridian
+// is read the short way by path_refusal, segments_from_course and position through the one rule
+// voyage.lon_lerp, so Tokyo → Callao crosses the South Pacific instead of being refused. (0086 and
+// 0087 are claimed by open PRs; whichever lands after this one moves the pin again.)
+const LAST = '20260818000088_the_sea_is_round.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

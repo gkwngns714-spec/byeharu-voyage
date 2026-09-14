@@ -150,10 +150,41 @@ export function fitToViewBox(bounds: GeoBounds, aspect: number, padding = 0.08):
   return { x: cx - width / 2, y: cy - height / 2, width, height }
 }
 
+// ── THE SEA IS ROUND: longitude is modular, and a segment is read the SHORT way ─────────────────
+//
+// THE COURSE CONVENTION (2026-09-14, migration 0088 — docs/NAVIGATION_PLAN.md §7):
+//   · every vertex of a course lies in [−180, 180];
+//   · a segment MAY straddle the antimeridian — its two vertices on opposite sides of ±180 — and
+//     it is ALWAYS read the short way round: the way whose |Δlon| ≤ 180. There is no long way.
+//   · every reader interpolates longitude through ONE rule — `lonLerp` here, `voyage.lon_lerp`
+//     on the server — and never through `a + (b − a) · f` on raw degrees, which for a straddling
+//     segment sweeps the whole world instead of the 0.25° it sails.
+// The three server interpolators (path_refusal, segments_from_course, position) and the client's
+// segment sampler (src/lib/sea/pathfind.ts) all compose this rule; the chart's track and drift
+// are the readers that still owe it (src/chart/route.ts, src/chart/drift.ts — the chart slice).
+
+/** The signed longitude step from `from` to `to` the SHORT way round: always in [−180, 180].
+ *  179 → −179 is +2, not −358. The one modular rule every other function here composes. */
+export function shortLonDelta(from: number, to: number): number {
+  return to - from - 360 * Math.round((to - from) / 360)
+}
+
+/** Bring a longitude back into [−180, 180] after one step past the seam. A value already in
+ *  range — 180 and −180 included — is returned untouched, so a vertex is never rewritten. */
+export function wrapLon(lon: number): number {
+  return lon > 180 ? lon - 360 : lon < -180 ? lon + 360 : lon
+}
+
+/** Longitude `f` of the way from `a` to `b` along the short way, wrapped back into range. THE
+ *  longitude interpolation of a course segment — the client twin of `voyage.lon_lerp`. */
+export function lonLerp(a: number, b: number, f: number): number {
+  return wrapLon(a + shortLonDelta(a, b) * f)
+}
+
 /**
  * Make a run of longitudes continuous, so a line that crosses the antimeridian is drawn as one
  * short hop rather than a stripe sweeping the whole chart. Each point is moved by whole turns of
- * 360° to sit within half a turn of the point before it.
+ * 360° to sit within half a turn of the point before it — `shortLonDelta`, accumulated.
  *
  * (Natural Earth's 110m rings are already clipped at ±180, so this matters for ROUTES, not for the
  * coastline — but it is geometry, so it lives with the projection.)
@@ -162,8 +193,7 @@ export function unwrapLongitudes(points: readonly LatLon[]): LatLon[] {
   const out: LatLon[] = []
   let previousLon: number | null = null
   for (const p of points) {
-    let lon = p.lon
-    if (previousLon !== null) lon -= 360 * Math.round((lon - previousLon) / 360)
+    const lon: number = previousLon === null ? p.lon : previousLon + shortLonDelta(previousLon, p.lon)
     out.push({ lat: p.lat, lon })
     previousLon = lon
   }

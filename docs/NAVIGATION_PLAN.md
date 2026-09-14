@@ -181,3 +181,52 @@ which it is.
 **Sea places and diverting (0036, 0037) already landed** and compose the current model. `cmd.divert`
 turns at the far node of the leg she is on; under free movement it becomes a supersede that turns
 where she stands. That is a normal supersede, not rework.
+
+---
+
+## 7. THE SEA IS ROUND — the course convention at the antimeridian (0088, 2026-09-14)
+
+The owner, row 91: *"the map should be continuous on left to right, and the ship going from tokyo
+to callao should cross south pacific ocean."*
+
+**What was measured first.** The grid was always round — `colOf`/`isWater` wrap the column
+(`src/lib/sea/grid.ts:66`), the A* neighbour expansion wraps, every server cell lookup wraps — and
+the search FOUND the Pacific: Tokyo → Acapulco came back `[[35.13,140.38],[39.13,179.88],
+[39.13,-179.88],[16.63,-99.88]]`, 6,223.5 nm. Two readers then refused to believe it:
+`segmentIsWater` returned false for any |Δlon| > 180 (so the straightener left that kink at the
+seam), and `voyage.path_refusal` (0046:443) answered the 0.25° hop with *"segment 1 jumps the
+antimeridian the long way round"* — a Pacific crossing could be found and drawn and never sailed.
+Two more readers would have swept the world had that refusal not stood in front of them:
+`segments_from_course` (500-nm pieces by `lon1 + (lon2 − lon1)·k/n`) and `position`
+(`a + (b − a)·frac`) both walk 359.75° westward on such a segment.
+
+**THE CONVENTION — one rule, written on both sides of the wire:**
+
+1. Every vertex of a course lies in **[−180, 180]**.
+2. A segment **MAY straddle the antimeridian** — its two vertices on opposite sides of ±180 — and
+   it is **ALWAYS read the short way round**, the way whose |Δlon| ≤ 180. There is no long way;
+   nothing can express one.
+3. Every reader steps longitude through **ONE rule**: `voyage.lon_lerp(lon1, lon2, f)` on the
+   server, `lonLerp` in `src/lib/geo` on the client (`shortLonDelta` is the step;
+   `unwrapLongitudes` is that step accumulated). Never `a + (b − a)·f` on raw degrees again.
+
+Rejected: forbidding straddles and having the pathfinder split a crossing into `[lat, 180]`,
+`[lat, −180]`. That makes a zero-length segment which `segments_from_course` drops, after which
+`course_of` re-joins the two sides into exactly the straddling segment it meant to avoid, and
+`position`/drift would divide by that zero length. A rule every reader must special-case is not one
+rule.
+
+**Who composes it today:** `path_refusal`, `segments_from_course`, `position` (server, 0088);
+`segmentIsWater` (client). **Who still owes it — the chart slice:** `src/chart/route.ts` projects a
+straddling segment as a stripe across the sheet, and `src/chart/drift.ts` steps
+`a.lon + (b.lon − a.lon)·frac`. Both compose `unwrapLongitudes` / `lonLerp` from `src/lib/geo`;
+`route.ts`'s job is `unwrapLongitudes(course)` before `project` (and the wrapped second copy is the
+continuous sheet's business). The served `position.lon` is always in range; `seg_index` still
+names the straddling segment she is on.
+
+**Measured on the applied chain, 2026-09-14** (`tests/sea.dateline.spec.ts` re-measures live):
+Tokyo's roads → Callao's roads is ONE straight segment: chord 8,337.3 nm on an 8,337.3 nm great
+circle (×1.000); the 17 pieces she sails sum to 8,615.2 nm (×1.033 — 0047 measures the lat/lon-
+straight line, not the arc; on the short segments of every earlier course the two agree within
+0.1 %); one straddle, no vertex left on the seam; Lisbon → Amsterdam byte-identical. Before: the
+same search proposed 8,358.4 nm with a kink on the seam and the server refused it.
