@@ -54,10 +54,20 @@ server").
   the staged tuns hatched; `Segmented` Buy · Sell · Contracts; a ledger `Row` per good: name, tag
   (`rare` from served rarity; `native` only once the payload carries it), tide bar, `aboard N t`
   caption, two price cells. Dead cells stay visible, dimmed, with today's texts.
-* **B · The row, unfolded** — the tray: served trend sparkline, `Range lo – hi`, `On the quay N t`,
-  `Paid` avg/tun or "none aboard", the `Stepper` (gauge max = quay stock / aboard; server cap as the
-  red tick with its binding word), tun-figure chips, HaggleRow on buy, ONE button whose label is
-  the order (`Buy 80 t · 33,180`). Slice 2 adds `Add to manifest` beside it.
+* **B · The row, unfolded** — the tray, in two faces since 2026-09-14 (owner: *"show necessary
+  info only … i will be able to choose first how many i sell, then it will show only how much
+  bought price, selling price with underneath showing the percentage"*).
+  **SELL:** the `Stepper` FIRST (gauge max = what is on board, its `All` chip is the on-board
+  figure — no separate `On board` row), then `Bought at` (served per unit; the served cost of the
+  chosen units under it), `Sells at` (served per unit for THIS quantity — `cmd.preview`'s
+  `avg_price`), `You get` (served total) with the gain as a share of the cost under it
+  (`profit ÷ cost`, both served, both on the face), the haggle thread. No trend, range, stock or
+  cargo-space row on a sale. The pinned action region carries `Profit` / `Loss` as ducats AND the
+  share, and ONE button (`Sell 1 unit · 75 d.`). **BUY:** `Max` (server cap and its binding
+  word), the `Stepper`, `Cargo space`, `Bought at`, then the market's context — trend sparkline,
+  `Range lo – hi`, `In stock` — BELOW the count, and the haggle thread. The stepper walks by ONE
+  on both faces (the server's 10-unit step is the book's repricing, not a rule about the count);
+  chips are one lot and the ceiling; the figure is typed. `Add to basket` beside the button.
 * **C · The basket** (`features/port/ManifestPanel.tsx`, built 2026-09-13) — the panel in the
   tray's slot: the ship's cargo bar with the staged change washed on (from the served
   `hold.free_after`), lines from either side (`good · units · d. each · signed total`), the totals
