@@ -50,7 +50,12 @@ buy cell must open its tray and the picker must then be folded with the name bac
 into the field then the same; a chip still picks and Escape still leaves; a sweep across the board
 ending on the nav bar then a nav press must route. Against the unfixed build: **2 failed / 2
 passed** (the two dead presses). Against the fixed build: **4 passed**, served bundle
-md5-identical to `dist/`. `tsc -b` 0, `eslint .` 0. The other suites: see the PR.
+md5-identical to `dist/`. `tsc -b` 0, `eslint .` 0. `layout` + `wide.layout` + `words` +
+`duplication` on the fixed build: **31 passed / 1 failed / 0 skipped** (15.9 min). The one red is
+`layout.spec.ts:787` (the haggle thread "moves nothing above it": `haggle-row` 994 → 889 inside
+the trade tray's own scroller) — and it is red with main's `PortField.tsx` swapped back into the
+bundle, same numbers, so it is not this change: it is the trade tray's ceiling row re-flowing
+between the two measurements, the Max-flicker another hand is fixing today. Not re-run to green.
 
 ---
 
