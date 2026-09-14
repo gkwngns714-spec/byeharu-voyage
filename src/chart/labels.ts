@@ -60,8 +60,9 @@ import { GLYPH } from './glyphs'
 import type { MapPort, MapSelection } from './mapTypes'
 
 /** What a label is FOR, which is also how it is coloured. `sea` (row 90) is a water's name set on
- *  the water itself — ground, not a place to go, and drawn under every other name. */
-export type LabelTone = 'fleet' | 'port-active' | 'port-quiet' | 'sea'
+ *  the water itself — ground, not a place to go, and drawn under every other name. `region`
+ *  (row 92) is a region's name on its tint, only while the regions filter is on: ground too. */
+export type LabelTone = 'fleet' | 'port-active' | 'port-quiet' | 'sea' | 'region'
 
 /** Which side of the glyph a label ended up on. Tried in this order: the cardinals the map reads
  *  most naturally, then the diagonals as a last resort before dropping it. */
@@ -177,6 +178,12 @@ export const LABEL_PRIORITY = {
    * using can therefore never lose its name to a big port your fleet is nowhere near.
    */
   quiet: 10,
+  /**
+   * A REGION'S NAME (row 92), only while the regions filter is on. Below the quietest harbour —
+   * ground gives way to every place — and above a sea's, because the filter was turned on to
+   * read the regions, so where the two would touch it is the sea's name that goes.
+   */
+  region: 7,
   /**
    * A SEA'S NAME (row 90). Below the quietest harbour: it is ground, and ground gives way to
    * every place a player might tap. Placed last, it can only ever fill water no name has claimed.

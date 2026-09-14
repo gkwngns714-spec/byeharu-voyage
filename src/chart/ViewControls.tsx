@@ -1,4 +1,5 @@
 import { Button, Icon, overlaySlotClass } from '../components/ui'
+import { setRegionsFilter, useRegionsFilter } from './regionsFilter'
 import { CHART_CHROME, type ChartSurface } from './useChartSurface'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -20,6 +21,16 @@ import { CHART_CHROME, type ChartSurface } from './useChartSurface'
 // (useChartSurface's `fit`), so there is only ever one definition of where a chart opens; what
 // that frame HOLDS differs by surface (the tab: your fleets; SmallChart: her berth and the
 // harbours of the order), which is why the aria sentence is the caller's to say.
+//
+// ── THE FOURTH BUTTON: REGIONS (row 92, 2026-09-14) ────────────────────────────────────────────
+// The owner: *"make filter so that i can choose to apply color, or return to the current state."*
+// One toggle, under the three, right-aligned in the same column, 44 px tall: the `regions` glyph
+// and the one word "Regions" — the owner's map rule allows an icon and a short word, and a
+// filter with no word is a button nobody can name. Pressed = on: `aria-pressed`, and the accent
+// on its border and ink (brass means "yours/on" everywhere on this chart). It reads and writes the ONE store
+// in ./regionsFilter.ts, so both surfaces flip together and a reload finds it where it was left.
+// It is here, not on a screen, for the reason the other three are: two surfaces wear this
+// column, and a switch that lived on one of them would be a second switch on the other.
 //
 // ── WHY IT IS SAFE TO SIT ON THE GLASS ─────────────────────────────────────────────────────────
 // `CHART_CHROME` makes it invisible to every gesture (a press here never pans), the corner is
@@ -82,6 +93,26 @@ export function ViewControls({
       >
         <Icon name="locate" size={16} />
       </Button>
+      <RegionsToggle />
     </div>
+  )
+}
+
+/** The regions filter's one button — its own component so the store subscription re-renders
+ *  the button alone, not the column. */
+function RegionsToggle() {
+  const on = useRegionsFilter()
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      aria-pressed={on}
+      onClick={() => setRegionsFilter(!on)}
+      className={`min-h-11 gap-1.5 self-end bg-surface/90 backdrop-blur ${on ? 'border-accent text-accent' : ''}`}
+      data-testid="map-regions-toggle"
+    >
+      <Icon name="regions" size={16} />
+      Regions
+    </Button>
   )
 }

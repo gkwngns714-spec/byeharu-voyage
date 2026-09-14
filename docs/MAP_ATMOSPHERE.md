@@ -166,3 +166,95 @@ Screenshots: `after-390x844-{dark,light}-{opening,zoom}.png`, `after-1440x900-{d
 * `tests/map.roadsteads.spec.ts`, `tests/map.coastline.spec.ts`, `tests/map.voyage.spec.ts`,
   `tests/map.sendfleet.spec.ts`, `tests/waters.panel.spec.ts`, `tests/layout.spec.ts` — green,
   untouched.
+
+---
+
+## 9. The regions layer, the landfall, and every harbour (rows 91–93, 2026-09-14)
+
+Three instructions in one day, all about the same sheet, all measured before they were built.
+The full measurements are in `docs/DEV_LOG.md` (2026-09-14); this section is what the picture
+gained and the rules it kept.
+
+### 9.1 The landfall (row 91: *"some cities are in the ocean"*)
+
+79 of the 224 harbours stood in the water the chart DRAWS — the 110m countries decimated at
+0.2° — because a city's coordinate is true and the 110m polygon is coarse. Now a harbour's mark
+is set on the drawn shore: `src/chart/landfall.ts` (pure), applied ONCE in `useBackdrop` the
+frame the coast arrives, so the mark, the name, the tap target, the roadstead's dotted line and a
+docked fleet's hull all read one moved coordinate off `MapPort`. The cap is 10 nm, chosen in the
+gap the measurement found (widest coarseness move 8.6 nm; nearest island-with-no-polygon 14.3 nm).
+The 28 harbours beyond it are islands the file has no polygon for; each wears an **islet** — a
+speck of land, `GLYPH.isletRadius` (4 px) in `chart-land` with the coast's stroke, painted by
+`CoastlineLayer` after the coast and under every port. `ports.lat/lon` on the server is untouched.
+
+### 9.2 Every harbour, at every zoom (row 93)
+
+The tier bands are unchanged and mean something new: they are the ladder a DOT climbs to become
+the marker. `portMarks` (`chartModel.ts`) puts every port on the glass on the sheet, FULL (the
+triangle or lozenge, its ring if great, its roads, its name) when its tier clears the band or it
+is yours, else a DOT — `GLYPH.portDotRadius` (1.6 px), quiet ink, nameless, roadless, and NOT a
+tap target: measured, a tappable dot 5 px north of Cádiz stole the tap on the word *Cadiz*
+(`tests/map.sendfleet.spec.ts`), so the hit test reads the full half; zoom in and the dot is the
+marker, tap and all.
+`visiblePorts` is the full half and keeps its pins. The countries were never culled: the body is
+every kept ring of the file at every zoom, and the spec now pins that (175 coded countries, all
+in the one body path).
+
+### 9.3 The regions (row 92) — a layer that is OFF by default, and off is §7's sheet exactly
+
+| layer | what | where it lives | from |
+|---|---|---|---|
+| **water tint** | one path per region of axis-aligned 0.25° cell rectangles, `crispEdges`, in the region's token at `WATER_TINT_ALPHA` (0.32), painted FIRST under the shallows | `CoastlineLayer.tsx` step 0 | `data/region-tint.json` (derived) |
+| **land tint** | one path per region of the BODY'S OWN rings for the countries it holds, `evenodd`, in the same token at `LAND_TINT_ALPHA` (0.42), inside the body clip, after the body and under the relief and the coast | `CoastlineLayer.tsx` step 2b | `CoastlineData.countries` (the same rings as `d`, grouped by `ISO_A2_EH`) |
+| **region names** | 25 `LabelRequest`s at `LABEL_PRIORITY.region` (7 — above the seas' 5, below the quietest harbour's 11), centred on the mean of the region's harbours, 13 px, spaced like water, in `chart-sea-name` | `regions.ts` (the decision), `LabelsLayer.tsx` (the paint, in the ground group) | `data/region-tint.json` |
+| **the filter** | a fourth button under +/−/find: the `regions` globe glyph and the one word *Regions*, `aria-pressed`, accent border and ink when on; one `useSyncExternalStore` store in `regionsFilter.ts`, key `byeharu-voyage.map.regions.v1`, read and written in try/catch | `ViewControls.tsx` | — |
+| **the 25 tokens** | `--color-chart-region-<id>`, both schemes, `oklch` at one chroma and two lightness steps; classes written out in `REGION_FILL` so the JIT sees them | `src/index.css`, `regions.ts` | measured (below) |
+
+**What the water is.** Every navigable cell of the game's own raster (`public.sea_cells` —
+0040, patched by 0052 and 0079), replayed from the chain's bytes by `scripts/build-region-tint.mjs`
+and never re-rasterised, takes the region of the harbour it is nearest to BY WATER (a
+multi-source breadth-first search through the water cells, the method 0040 itself attaches
+unnamed water to a sea with). 6,015 rectangles, 647,194 of 647,208 cells tinted (the 14 are pools
+no harbour reaches). *"Each sea takes its harbours' majority region"* was measured first and
+rejected: on the North Atlantic it is a three-way tie (6 · 6 · 6) decided by file order, and it
+paints the whole Mediterranean one region with four regions' harbours on its shore.
+`tests/map.regions.spec.ts` rebuilds the file from the chain and demands the committed copy is
+byte-identical.
+
+**What the land is.** A country is tinted by the region most of its harbours belong to; a
+country with none is not tinted. Twelve are split (Spain 7·2·1·1, France 6·2, Greece 4·3, India
+10·4, Italy 6·2, Indonesia 9·1, Portugal 3·3, Egypt 1·1, Mexico 1·1, Panama 1·1, Russia 1·1, the
+US 4·1) and take their majority — v1, and the Atlantic Isles therefore hold no drawn land (their
+islands are Portugal's and Spain's, and Cape Verde has no 110m polygon).
+
+**The palette, measured not eyeballed.** The 45 pairs of regions that touch on the water were
+graph-coloured over eight hues × two lightness steps so no touching pair shares a class, then
+every touching pair was run through the dataviz palette validator (OKLab ΔE under simulated
+protanopia and deuteranopia): worst touching pair **ΔE 9.0 CVD · 15.7 normal at night, 8.1 · 16.0
+by day**, both above the 8 / 15 floors. Within a class the members drift ±7° so all 25 stay
+distinct, and every region is NAMED on its tint, so colour is never the only channel. The
+validator's lightness band (0.48–0.67 dark) is exceeded by the L 0.80 step on purpose: the tint is
+painted at a third strength over a dark sea, and a mark-band lightness would vanish into it.
+
+### 9.4 What did not change
+
+The three pinned inks and their contrasts (`tests/chart.ink.spec.ts` measures the same
+elements); the five inks of row 90; the sea names and their rule; the hit test's nearest-wins;
+the roadstead rule (the line now starts at the landfall-moved quay, which is where the mark is);
+the minimap (no tint, no dots — a 144 px locator); nothing in the centre of the glass, no new word
+but *Regions*, which the owner asked for by name.
+
+### 9.5 Proofs
+
+* `tests/map.landfall.spec.ts` — the table over the real file (79 · 51 · 28, cap in the gap);
+  `landfallPorts` keeps identity, never moves a sea place or a roadstead; in the browser at both
+  glasses, at the opening frame and the world view, every harbour mark is inside the land body
+  (`isPointInFill`, the body's own `evenodd`) or on an islet. Red on `main` (79 in water).
+* `tests/map.regions.spec.ts` — the derived file is the build; 25 regions, 25 tokens in both
+  schemes, 25 classes; names through the one planner; the filter's reader; in the browser at both
+  glasses and both schemes: off by default and the sheet as it was, on tints and names with the
+  pinned inks unchanged, off again identical, kept across a reload; frame cost printed.
+* `tests/map.marks.spec.ts` — `portMarks` and `visiblePorts` (35 · 114 · all), a port of yours
+  full at every zoom, the countries all in the body; in the browser: 224 harbour marks at the
+  world view (35 full, 189 dots), a dot zoomed in wears its marker; frame cost at the world view
+  printed.

@@ -27,6 +27,7 @@ export const ICON_NAMES = [
   'info',
   'search',
   'locate',
+  'regions',
   'history',
   'coin',
   'cask',
@@ -192,6 +193,13 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
     'M2.5 12H5',
     'M19 12h2.5',
     'M12 10.8a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z',
+  ],
+  // A globe parted into regions — the chart's Regions filter (ViewControls, owner row 92). Not
+  // the folded chart: that mark already means the Map tab.
+  regions: [
+    'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z',
+    'M3.6 9.5c2.8 1.8 5.6.2 8.4 1.6s5.6 3 8.4 1.2',
+    'M12 3c-3.2 4.2-3.2 13.8 0 18',
   ],
   // Clock with a back-arrow tick — the log.
   history: ['M12 3a9 9 0 1 0 9 9', 'M12 3 8.5 5.5 12 8', 'M12 7.5V12l3.5 2.5'],

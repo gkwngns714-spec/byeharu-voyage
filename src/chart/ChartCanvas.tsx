@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { ViewBox } from '../lib/geo'
+import type { Point, ViewBox } from '../lib/geo'
 import { CoastlineLayer } from './CoastlineLayer'
 import { project } from '../lib/geo'
 import { FleetsLayer, TracksLayer } from './FleetsLayer'
@@ -7,12 +7,13 @@ import { LabelsLayer } from './LabelsLayer'
 import { PortsLayer } from './PortsLayer'
 import { RoadsteadsLayer } from './RoadsteadsLayer'
 import { SeaLayer } from './SeaLayer'
-import { visiblePorts, type ChartModel } from './chartModel'
+import { portMarks, type ChartModel } from './chartModel'
 import type { CoastlineData } from './coastlineBuild'
 import { LABEL_SPAN_LIMIT, minTierForSpan } from './chartView'
 import { coastStrokeWidth, GLYPH } from './glyphs'
 import { mapLabelRequests, planLabels, type Rect } from './labels'
 import type { MapPort, MapSea, MapSelection } from './mapTypes'
+import { regionNameRequests, type RegionTint } from './regions'
 import { seaNameRequests } from './seaNames'
 import type { ChromeBox } from './useChartSurface'
 
@@ -43,15 +44,23 @@ import type { ChromeBox } from './useChartSurface'
 //
 // The three derivations that decide what is drawn ride with it for the same reason. Each one is a
 // rule about density, not about a screen:
-//   · WHICH PORTS      `visiblePorts` — on the glass, and either big enough for this zoom
-//                      (`minTierForSpan`) or one of yours. ONE list, consumed by the marks and by
-//                      the label planner, so a name can never float over a mark that was not drawn.
+//   · WHICH PORTS      `portMarks` — EVERY port on the glass (row 93), each FULL when it is big
+//                      enough for this zoom (`minTierForSpan`) or one of yours, else a DOT. ONE
+//                      list: the marks layer draws it whole, the label planner and the roads read
+//                      its full half, so a name can never float over a mark drawn as a dot.
 //   · (the lane layer is GONE — 0039: there are no fixed sea lanes on a free sea; the only lines
 //      are TRACKS, the verified courses fleets are actually sailing)
 //   · WHICH NAMES      planned as a SET over the drawn ports (./labels.ts), which is the only way
 //                      two labels can know about each other.
-// MapScreen's hit test asks `visiblePorts` the same question with the same box at the moment of a
-// tap, which is what keeps "what you can touch" and "what you can see" the same list.
+// MapScreen's hit test asks `visiblePorts` — the full half — the same question with the same box
+// at the moment of a tap, which is what keeps "what you can touch" and "what wears a name" the
+// same list (a dot is a picture; chartModel.ts records the tap that decided it).
+//
+// ── ROW 92: THE REGIONS, ONLY WHEN HANDED IN ───────────────────────────────────────────────────
+// `regions` is null unless the surface's filter is on. Null reaches CoastlineLayer as "paint no
+// tint" and this file as "ask for no region name", so the filter off is the chart exactly as it
+// was — element for element (tests/map.regions.spec.ts holds that). On, the tints are painted
+// with the coast and the 25 names join the ONE plan below every harbour's, above the seas'.
 //
 // ── IT IS A PICTURE ────────────────────────────────────────────────────────────────────────────
 // There is no handler on this component and no prop that could carry one. Selection is resolved by
@@ -62,6 +71,7 @@ import type { ChromeBox } from './useChartSurface'
 
 /** One frozen empty list, so a chart handed no seas does not allocate one per frame. */
 const NO_SEAS: readonly MapSea[] = []
+const NO_ISLETS: readonly Point[] = []
 
 export function ChartCanvas({
   model,
@@ -70,13 +80,16 @@ export function ChartCanvas({
   unitsPerPx,
   coast,
   seas = NO_SEAS,
+  regions = null,
+  islets = NO_ISLETS,
   selection,
   keepOut,
   ariaLabel,
   className,
 }: {
   model: ChartModel
-  /** The WHOLE port table. What is drawn out of it is this component's decision, not the caller's. */
+  /** The WHOLE port table, as `useBackdrop` hands it (set on the drawn shore, row 91). What is
+   *  drawn out of it is this component's decision, not the caller's. */
   ports: readonly MapPort[]
   box: ViewBox
   /** Chart units per CSS pixel — every glyph and label size is in pixels and scaled by it. */
@@ -86,6 +99,11 @@ export function ChartCanvas({
   /** The named waters (row 90), or none while the backdrop is still being fetched — which draws
    *  no names, truthfully. Which of them are set at this zoom is ./seaNames.ts's decision. */
   seas?: readonly MapSea[]
+  /** The regions' tints and names (row 92) — null while the filter is off, which is the default
+   *  and the map exactly as it was. */
+  regions?: readonly RegionTint[] | null
+  /** Harbours the drawn coast has no land for (row 91): a speck of land is painted under each. */
+  islets?: readonly Point[]
   selection: MapSelection
   /**
    * OPAQUE CHROME THE SCREEN HAS PUT OVER THIS CHART, in CSS pixels from the chart's top-left
@@ -101,10 +119,12 @@ export function ChartCanvas({
   ariaLabel: string
   className?: string
 }) {
-  const drawnPorts = useMemo(
-    () => visiblePorts(ports, model.portRoles, box, minTierForSpan(box.width)),
+  const marks = useMemo(
+    () => portMarks(ports, model.portRoles, box, minTierForSpan(box.width)),
     [ports, model.portRoles, box],
   )
+  // The FULL half — what asks for a name and shows its roads (chartModel.ts, `visiblePorts`).
+  const fullPorts = useMemo(() => marks.filter((m) => m.full).map((m) => m.port), [marks])
 
   // THE SCREEN'S PIXELS, TURNED INTO CHART UNITS — the one line of arithmetic the keep-out contract
   // needs, done here so no screen ever has to hold a scale or a viewBox origin. `unitsPerPx` is the
@@ -127,7 +147,8 @@ export function ChartCanvas({
     () =>
       planLabels(
         [
-          ...mapLabelRequests(model, drawnPorts, selection, box.width <= LABEL_SPAN_LIMIT),
+          ...mapLabelRequests(model, fullPorts, selection, box.width <= LABEL_SPAN_LIMIT),
+          ...(regions ? regionNameRequests(regions, box) : []),
           ...seaNameRequests(seas, box),
         ],
         {
@@ -139,7 +160,7 @@ export function ChartCanvas({
           keepOut: keepOutUnits,
         },
       ),
-    [model, drawnPorts, seas, selection, box, unitsPerPx, keepOutUnits],
+    [model, fullPorts, seas, regions, selection, box, unitsPerPx, keepOutUnits],
   )
 
   const selectedFleetId = selection?.kind === 'fleet' ? selection.id : null
@@ -157,14 +178,21 @@ export function ChartCanvas({
           weight (./CoastlineLayer.tsx). Row 90 made both a picture; the tokens the ink spec pins
           did not move. */}
       <SeaLayer box={box} />
-      <CoastlineLayer coast={coast} strokeWidth={coastStrokeWidth(box.width)} />
+      <CoastlineLayer
+        coast={coast}
+        strokeWidth={coastStrokeWidth(box.width)}
+        regions={regions}
+        islets={islets}
+        unitsPerPx={unitsPerPx}
+      />
       <TracksLayer model={model} unitsPerPx={unitsPerPx} />
       {/* THE ROADS (0076) — the dotted helper line out to the one point of open water each port is
           reached from, and the hollow circle on it. UNDER the port marks, because a dotted line
           crossing a harbour should pass behind it (FleetsLayer.tsx:6-9) and a city standing on its
           own roads is the right picture. It is handed `drawnPorts`, the same list PortsLayer gets,
-          so a line can never run out of a mark that was not drawn. */}
-      <RoadsteadsLayer ports={drawnPorts} unitsPerPx={unitsPerPx} />
+          so a line can never run out of a mark that was not drawn — its FULL half, because a
+          dot (row 93) has no roads. */}
+      <RoadsteadsLayer ports={fullPorts} unitsPerPx={unitsPerPx} />
       {/* THE PINPOINT (0039) — the tapped spot of open water, marked exactly like a selected
           port is ringed, because it is the same act one step earlier: naming a destination. */}
       {selection?.kind === 'sea' &&
@@ -185,7 +213,7 @@ export function ChartCanvas({
           )
         })()}
       <PortsLayer
-        ports={drawnPorts}
+        marks={marks}
         portRoles={model.portRoles}
         selectedCode={selectedPortCode}
         unitsPerPx={unitsPerPx}

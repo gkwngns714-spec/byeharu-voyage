@@ -179,7 +179,12 @@ test.describe('the layer is furniture, and it says so in the file', () => {
     // passes BEHIND it, and the city mark on top of its own roads is the right picture.
     expect(roads).toBeGreaterThan(tracks)
     expect(roads).toBeLessThan(ports)
-    // …and it is handed the SAME list PortsLayer is handed, never the whole port table.
-    expect(canvas).toMatch(/<RoadsteadsLayer\s+ports=\{drawnPorts\}/)
+    // …and it is handed the FULL half of the SAME list PortsLayer is handed, never the whole port
+    // table. Pin moved deliberately 2026-09-14 (owner row 93): PortsLayer now draws every port
+    // on the glass — a DOT below the zoom's tier floor — and `fullPorts` is `portMarks`' full
+    // half (chartModel.ts); a dot has no roads, so the roads read the half that wears a mark.
+    expect(canvas).toMatch(/<RoadsteadsLayer\s+ports=\{fullPorts\}/)
+    expect(canvas).toMatch(/<PortsLayer\s+marks=\{marks\}/)
+    expect(canvas).toContain('const fullPorts = useMemo(() => marks.filter((m) => m.full).map((m) => m.port), [marks])')
   })
 })

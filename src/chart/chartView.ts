@@ -125,30 +125,33 @@ export function unitsPerPixel(view: ChartView, pixelWidth: number): number {
 export const LABEL_SPAN_LIMIT = 70
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// 214 PORTS ON ONE SHEET — the zoom decides how much of the world is drawn at all.
+// 224 PORTS ON ONE SHEET — the zoom decides which of them wear their FULL mark.
 //
-// The world is no longer twelve Iberian harbours; it is 214 of them, from Arkhangelsk to Nagasaki,
-// joined by 782 sea lanes. Drawn flat, all of it, all the time, that is not a chart — it is a
-// texture. So the sheet gets coarser as you pull back, by ONE rule keyed on ONE column.
+// The world is no longer twelve Iberian harbours; it is 224 of them, from Arkhangelsk to Nagasaki.
+// Drawn full, all of it, all the time, that is not a chart — it is a texture. So the sheet gets
+// coarser as you pull back, by ONE rule keyed on ONE column:
 //
 //   the world   (> 45° across)   the 35 great ports          size_tier 5
 //   a sea       (> 12° across)   + the 79 middling ones       size_tier 3
-//   a coast     (≤ 12° across)   + all 100 small ones         size_tier 2 — and the sea lanes
+//   a coast     (≤ 12° across)   + all the small ones         size_tier 2
 //
-// The counts are the real ones: migration 0003 seeds 35 ports at tier 5, 79 at tier 3 and 100 at
-// tier 2. YOUR ports are exempt at every zoom — an anchorage or a destination is drawn whatever
-// size it is, because it is the reason the tab was opened (`visiblePorts`, ./chartModel.ts).
+// Until row 93 (2026-09-14) a port below the band was NOT DRAWN. The owner: *"all the ports in
+// the game when i zoom out, it can be a dot, then once zoomed in i will be able to see the
+// marker"* — so a port below the band is a DOT now, and these bands are the ladder it climbs
+// to become the marker (`portMarks`, ./chartModel.ts). The counts are the real ones: 35 ports at
+// tier 5, 79 at tier 3, the rest at tier 2. YOUR ports are full at every zoom — an anchorage or a
+// destination wears its mark whatever size it is, because it is the reason the tab was opened.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-/** Span (degrees of longitude on screen) → the smallest `size_tier` that earns a mark at it.
- *  Ordered tightest first; the first row whose `maxSpanX` covers the view wins. */
+/** Span (degrees of longitude on screen) → the smallest `size_tier` that earns its FULL mark at
+ *  it (below: a dot). Ordered tightest first; the first row whose `maxSpanX` covers the view wins. */
 export const PORT_TIER_BANDS: readonly { readonly maxSpanX: number; readonly minTier: number }[] = [
   { maxSpanX: 12, minTier: 1 },
   { maxSpanX: 45, minTier: 3 },
   { maxSpanX: Infinity, minTier: 5 },
 ]
 
-/** The smallest port drawn at this zoom. */
+/** The smallest port drawn FULL at this zoom; smaller ones are dots (row 93). */
 export function minTierForSpan(spanX: number): number {
   for (const band of PORT_TIER_BANDS) if (spanX <= band.maxSpanX) return band.minTier
   return PORT_TIER_BANDS[PORT_TIER_BANDS.length - 1].minTier

@@ -68,9 +68,31 @@ export interface CoastlineData {
   readonly sharedSegmentCount: number
   /** Length of `d` in bytes — the rendered path size, measured rather than estimated. */
   readonly pathBytes: number
+  /**
+   * THE BODY'S OWN RINGS, as points (2026-09-14, rows 91 and 92) — exactly the rings `d` is
+   * written from, in the same order, so a rule that asks "is this point on DRAWN land" (the
+   * landfall, ./landfall.ts) reads the geometry the eye sees and never re-parses a string or
+   * re-decimates the file. `fill-rule: evenodd` is the body's rule, so it is the reader's too.
+   */
+  readonly rings: readonly (readonly Point[])[]
+  /**
+   * THE SAME RINGS, GROUPED BY THE COUNTRY THE FILE DREW THEM FOR (row 92, the regions' tint):
+   * one entry per feature that kept at least one ring, `iso` = Natural Earth's `ISO_A2_EH` (the
+   * one code column the file fills for every state — `ISO_A2` reads "-99" for France and Norway),
+   * `d` = that country's rings closed, written by the same builder as `d`. A tint painted from
+   * these is painted on the body's own edge, so it can never spill into the water or leave a
+   * sliver of untinted shore. Nothing else about the country — its name, its continent — is read.
+   */
+  readonly countries: readonly CoastCountry[]
   /** What it was before decimation, so the trade is visible. */
   readonly rawRingCount: number
   readonly rawPointCount: number
+}
+
+/** One country's share of the body — see `CoastlineData.countries`. */
+export interface CoastCountry {
+  readonly iso: string
+  readonly d: string
 }
 
 // The minimum of GeoJSON this module is willing to believe. Anything that does not match is
@@ -81,20 +103,29 @@ interface RingSource {
 }
 interface FeatureSource {
   readonly geometry?: RingSource
+  readonly properties?: { readonly ISO_A2_EH?: unknown }
+}
+
+/** A raw ring and the country code of the feature it came from ('' when the file gives none). */
+interface SourceRing {
+  readonly points: LatLon[]
+  readonly iso: string
 }
 
 const isNumberPair = (v: unknown): v is [number, number] =>
   Array.isArray(v) && v.length >= 2 && typeof v[0] === 'number' && typeof v[1] === 'number'
 
 /** Pull every linear ring out of a FeatureCollection of Polygon / MultiPolygon, as lon/lat pairs. */
-function extractRings(json: unknown): LatLon[][] {
+function extractRings(json: unknown): SourceRing[] {
   const features = (json as { features?: unknown })?.features
   if (!Array.isArray(features)) return []
 
-  const rings: LatLon[][] = []
+  const rings: SourceRing[] = []
   for (const feature of features as FeatureSource[]) {
     const geometry = feature?.geometry
     if (!geometry || !Array.isArray(geometry.coordinates)) continue
+    const isoRaw = feature.properties?.ISO_A2_EH
+    const iso = typeof isoRaw === 'string' && /^[A-Z]{2}$/.test(isoRaw) ? isoRaw : ''
     // Polygon: [ring][point]. MultiPolygon: [polygon][ring][point]. Normalise to the latter.
     const polygons =
       geometry.type === 'Polygon' ? [geometry.coordinates] : (geometry.coordinates as unknown[])
@@ -106,7 +137,7 @@ function extractRings(json: unknown): LatLon[][] {
         for (const position of ring) {
           if (isNumberPair(position)) points.push({ lon: position[0], lat: position[1] })
         }
-        if (points.length >= 3) rings.push(points)
+        if (points.length >= 3) rings.push({ points, iso })
       }
     }
   }
@@ -118,7 +149,8 @@ function extractRings(json: unknown): LatLon[][] {
  * DOM — so the decimation can be measured and pinned without a network.
  */
 export function buildCoastline(json: unknown): CoastlineData {
-  const rawRings = extractRings(json)
+  const sourceRings = extractRings(json)
+  const rawRings = sourceRings.map((r) => r.points)
   const rawPointCount = rawRings.reduce((sum, ring) => sum + ring.length, 0)
 
   // ── WHICH SEGMENTS ARE BORDERS (row 90) ──────────────────────────────────────────────────────
@@ -174,11 +206,12 @@ export function buildCoastline(json: unknown): CoastlineData {
   }
 
   const kept: Point[][] = []
+  const keptIso: string[] = []
   let pointCount = 0
   let coastD = ''
   let coastPointCount = 0
-  for (const ring of rawRings) {
-    const pts = closedPoints(ring)
+  for (const source of sourceRings) {
+    const pts = closedPoints(source.points)
     if (pts.length < 3) continue
     const projected = pts.map(project)
     const span = boundingSpan(projected)
@@ -217,6 +250,7 @@ export function buildCoastline(json: unknown): CoastlineData {
       // A ring that collapses below a triangle is no longer a shape; drawing it is a stray tick.
       if (simplified.length < 4) continue
       kept.push(simplified)
+      keptIso.push(source.iso)
       pointCount += simplified.length
       if (!shared[0]) {
         coastD += toPolylineD(simplified) + 'Z'
@@ -253,10 +287,25 @@ export function buildCoastline(json: unknown): CoastlineData {
     if (body.length > 1 && body[0].x === body[body.length - 1].x && body[0].y === body[body.length - 1].y) body.pop()
     if (body.length < 3) continue
     kept.push(body)
+    keptIso.push(source.iso)
     pointCount += body.length
   }
 
   const d = toClosedRingsD(kept)
+
+  // THE COUNTRIES (row 92): the kept rings regrouped by the code they came in under, written by
+  // the same builder. A ring the file gave no code ('') belongs to no country and is left out
+  // here — it is still in `d` and `rings`; only a tint has nothing to key it by.
+  const byIso = new Map<string, Point[][]>()
+  kept.forEach((ring, i) => {
+    const iso = keptIso[i]
+    if (iso === '') return
+    const list = byIso.get(iso)
+    if (list) list.push(ring)
+    else byIso.set(iso, [ring])
+  })
+  const countries: CoastCountry[] = [...byIso].map(([iso, rings]) => ({ iso, d: toClosedRingsD(rings) }))
+
   return {
     d,
     coastD,
@@ -265,6 +314,8 @@ export function buildCoastline(json: unknown): CoastlineData {
     coastPointCount,
     sharedSegmentCount,
     pathBytes: d.length,
+    rings: kept,
+    countries,
     rawRingCount: rawRings.length,
     rawPointCount,
   }

@@ -246,17 +246,34 @@ export function buildChartModel(
 }
 
 /**
- * WHICH PORTS ARE ON THE PAPER AT ALL — the first half of the answer to 214 harbours.
- *
- * A port is drawn when it is on the glass AND it is either big enough for this zoom (`minTier`,
- * decided by ./chartView.ts) or one of yours (it has a role — your anchorage is drawn at every
- * zoom, whatever size it is).
- *
- * ONE list, consumed three times: the marks layer draws it, the label planner plans it, and the
- * hit test tests it. That is deliberate — a port you can tap but cannot see, or a name floating
- * over a mark that was never drawn, are both the same bug, and this is where it is made impossible.
+ * ONE HARBOUR'S MARK AT THIS ZOOM (row 93, 2026-09-14: *"i want to see all the countries, all the
+ * ports in the game when i zoom out, it can be a dot, then once zoomed in i will be able to see
+ * the marker"*). `full` = the triangle (or lozenge), its ring if great, its roads and its name;
+ * not full = a DOT in the quiet ink and nothing else. The same harbour, the same `data-port-code`,
+ * one rendering or the other — never two layers.
  */
-export function visiblePorts(
+export interface PortMark {
+  readonly port: MapPort
+  readonly full: boolean
+}
+
+/**
+ * EVERY PORT ON THE PAPER, and how each is drawn — the whole answer to 224 harbours on one sheet.
+ *
+ * A port is on the sheet when it is on the glass. FULL when it is big enough for this zoom
+ * (`minTier`, decided by ./chartView.ts) or one of yours (a role — your anchorage wears its full
+ * mark at every zoom, whatever size it is); otherwise a dot. Before row 93 a port below the tier
+ * floor was not drawn at all; now it is drawn small, so the globe shows every harbour there is.
+ *
+ * ONE list. The marks layer draws every entry (full or dot); `visiblePorts` below is its FULL
+ * half — what asks for a name, shows its roads, and answers a tap. A DOT IS A PICTURE, NOT A
+ * TARGET, and that was measured, not assumed: with dots in the hit test, at the phone's opening
+ * frame a tap on the word "Cadiz" opened Sanlúcar — a tier-2 dot 5 px north of the Cádiz mark
+ * was nearer to the name than the mark it names (tests/map.sendfleet.spec.ts caught it). The
+ * owner's sentence has the order right: a dot when zoomed out, the marker — and its tap — once
+ * zoomed in.
+ */
+export function portMarks(
   ports: readonly MapPort[],
   roles: ReadonlyMap<string, PortRole>,
   view: ViewBox,
@@ -264,7 +281,7 @@ export function visiblePorts(
   /** A little beyond the edge, so a mark half off the glass still blocks a label that would
    *  otherwise be printed across it. */
   margin = 0.06,
-): MapPort[] {
+): PortMark[] {
   const padX = view.width * margin
   const padY = view.height * margin
   const minX = view.x - padX
@@ -272,13 +289,36 @@ export function visiblePorts(
   const minY = view.y - padY
   const maxY = view.y + view.height + padY
 
-  const out: MapPort[] = []
+  const out: PortMark[] = []
   for (const port of ports) {
-    if (port.sizeTier < minTier && !roles.has(port.code)) continue
     const at = project(port)
     if (at.x < minX || at.x > maxX || at.y < minY || at.y > maxY) continue
-    out.push(port)
+    out.push({ port, full: port.sizeTier >= minTier || roles.has(port.code) })
   }
+  return out
+}
+
+/**
+ * WHICH PORTS WEAR THEIR FULL MARK AT THIS ZOOM — `portMarks`' full half, as a plain list.
+ *
+ * This is the list the label planner plans (./labels.ts: a dot has no name), the roadstead
+ * layer draws roads for (./roadsteads.ts: a dot has no roads) and the hit test tests
+ * (./hitTest.ts: a dot has no tap). It is derived from `portMarks`, never computed beside it, so
+ * a name can never be asked for a port drawn as a dot and a full mark can never go unnamed for
+ * want of being in the list.
+ *
+ * Before row 93 this was the whole drawn set; the pins in tests/map.labels.spec.ts (35 on the
+ * globe, 114 on a sea, all of them on a coast) are the same numbers with the same meaning.
+ */
+export function visiblePorts(
+  ports: readonly MapPort[],
+  roles: ReadonlyMap<string, PortRole>,
+  view: ViewBox,
+  minTier: number,
+  margin = 0.06,
+): MapPort[] {
+  const out: MapPort[] = []
+  for (const mark of portMarks(ports, roles, view, minTier, margin)) if (mark.full) out.push(mark.port)
   return out
 }
 
