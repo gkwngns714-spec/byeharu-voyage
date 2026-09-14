@@ -18,13 +18,13 @@ import {
   GLYPH,
   hitTest,
   mapFleetsOf,
-  mapPortsOf,
   Minimap,
   minTierForSpan,
   openingBounds,
   toggleSelection,
   useBackdrop,
   useChartSurface,
+  useRegionsFilter,
   ViewControls,
   visiblePorts,
   type ChartModel,
@@ -102,7 +102,10 @@ function Chart({
   // WHICH HULL IS IN HAND is `domain/order`'s draft, app-wide; tapping a fleet here points it.
   const selectFleet = useCommandDraft((s) => s.selectFleet)
 
-  const ports = useMemo(() => mapPortsOf(snapshotPorts), [snapshotPorts])
+  // THE PORTS AS THE CHART DRAWS THEM (row 92): served, then set on the drawn shore the moment
+  // the coast arrives — one list, read by the model, the hit test, the frame and the picture.
+  const backdrop = useBackdrop(snapshotPorts)
+  const ports = backdrop.ports
   const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
   const fleets = useMemo(() => mapFleetsOf(fleetViews), [fleetViews])
   const model = useMemo(
@@ -126,6 +129,8 @@ function Chart({
   // SELECTS that water, snapped to the nearest sailable cell (0039) — water by construction.
   const onTap = useCallback(
     (at: Point, unitsPerPx: number, view: ViewBox) => {
+      // The FULL marks (row 94): a dot is a picture, not a target — measured, a tappable dot
+      // 5 px from a named harbour stole the tap meant for the name (chartModel.ts, `portMarks`).
       const tappable = visiblePorts(ports, model.portRoles, view, minTierForSpan(view.width))
       const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx)
       if (hit?.kind === 'fleet') selectFleet(hit.id)
@@ -141,7 +146,8 @@ function Chart({
 
   const surface = useChartSurface(chartRef, frameBounds, onTap)
   const box = surface.viewBox
-  const backdrop = useBackdrop()
+  // THE REGIONS FILTER (row 93): off is the map as it was; on hands the tints to the picture.
+  const regionsOn = useRegionsFilter()
 
   // THE MINIMAP ONLY WHEN THE PLAYER HAS LEFT THE OPENING FRAME (./frame.ts says why).
   const aspect = surface.width > 0 && surface.height > 0 ? surface.width / surface.height : null
@@ -179,6 +185,8 @@ function Chart({
           unitsPerPx={surface.unitsPerPx}
           coast={backdrop.coast}
           seas={backdrop.seas}
+          regions={regionsOn ? backdrop.regions : null}
+          islets={backdrop.islets}
           selection={selection}
           // Every `CHART_CHROME` box, so no harbour's name prints under the pill, the zoom column,
           // the minimap or the tray.

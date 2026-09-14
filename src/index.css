@@ -143,6 +143,44 @@
   --color-chart-grid: color-mix(in srgb, var(--color-ink-faint) 16%, transparent);
   --color-chart-sea-name: color-mix(in srgb, var(--color-ink-faint) 62%, var(--color-chart-sea));
 
+  /* ── THE REGIONS' TINTS (2026-09-14, owner row 93: "create regions on map, show it using
+     different color of the sea and country") — one token per region of data/regions.json,
+     painted at low alpha over the water and over the land ONLY while the Regions filter is on
+     (src/chart/regions.ts; docs/MAP_ATMOSPHERE.md §9). The three pinned inks and the five of
+     row 90 did not move. CHOSEN BY MEASUREMENT, NOT BY EYE: the 45 pairs of regions that touch
+     on the water (scripts/build-region-tint.mjs prints them) were graph-coloured over eight
+     hues × two lightness steps so that no two touching regions share a class, then every
+     touching pair was run through the dataviz palette validator (OKLab ΔE under simulated
+     protanopia/deuteranopia): worst touching pair ΔE 9.0 CVD · 15.7 normal at night, 8.1 · 16.0
+     by day — both above the 8 / 15 floors. Within a class the members drift ±7° of hue so all
+     25 stay distinct; a region is NAMED on its tint, so the colour is never the only channel.
+     oklch, because the whole set is a lightness, a chroma and a hue, and a reader can see that. */
+  --color-chart-region-iberia: oklch(0.8 0.11 105);
+  --color-chart-region-atlantic-isles: oklch(0.64 0.11 255);
+  --color-chart-region-british-isles: oklch(0.64 0.11 295);
+  --color-chart-region-france-low-countries: oklch(0.8 0.11 255);
+  --color-chart-region-baltic: oklch(0.64 0.11 288);
+  --color-chart-region-scandinavia-arctic: oklch(0.64 0.11 55);
+  --color-chart-region-western-mediterranean: oklch(0.64 0.11 302);
+  --color-chart-region-adriatic-ionian: oklch(0.64 0.11 48);
+  --color-chart-region-aegean-anatolia: oklch(0.8 0.11 98);
+  --color-chart-region-levant: oklch(0.64 0.11 248);
+  --color-chart-region-maghreb: oklch(0.8 0.11 295);
+  --color-chart-region-west-africa: oklch(0.8 0.11 288);
+  --color-chart-region-east-africa: oklch(0.64 0.11 165);
+  --color-chart-region-arabia-gulf: oklch(0.8 0.11 248);
+  --color-chart-region-western-india: oklch(0.8 0.11 112);
+  --color-chart-region-eastern-india: oklch(0.64 0.11 20);
+  --color-chart-region-southeast-asia: oklch(0.8 0.11 262);
+  --color-chart-region-china-coast: oklch(0.64 0.11 262);
+  --color-chart-region-korea: oklch(0.8 0.11 20);
+  --color-chart-region-japan: oklch(0.64 0.11 105);
+  --color-chart-region-caribbean: oklch(0.64 0.11 98);
+  --color-chart-region-north-america-atlantic: oklch(0.8 0.11 165);
+  --color-chart-region-south-america-atlantic: oklch(0.8 0.11 55);
+  --color-chart-region-pacific-americas: oklch(0.64 0.11 241);
+  --color-chart-region-oceania: oklch(0.8 0.11 48);
+
   /* ── RARITY — the four tiers of 0032, served on every good ──────────────────────────────────
      Three GENUINELY NEW meanings (the sanctioned reason for a new base literal — see
      tests/duplication.spec.ts §1): the four meanings above are all spoken for, so the tiers take
@@ -346,6 +384,34 @@
     --color-chart-relief: color-mix(in srgb, var(--color-chart-coast) 30%, var(--color-chart-land));
     --color-chart-grid: color-mix(in srgb, var(--color-ink) 12%, transparent);
     --color-chart-sea-name: color-mix(in srgb, var(--color-ink) 52%, var(--color-chart-sea));
+
+    /* THE DAY TINTS — the same 25 hues a step darker, so a tint reads on paper land and on the
+       day's blue water (validated the same way; the dark block says how). */
+    --color-chart-region-iberia: oklch(0.64 0.12 105);
+    --color-chart-region-atlantic-isles: oklch(0.48 0.12 255);
+    --color-chart-region-british-isles: oklch(0.48 0.12 295);
+    --color-chart-region-france-low-countries: oklch(0.64 0.12 255);
+    --color-chart-region-baltic: oklch(0.48 0.12 288);
+    --color-chart-region-scandinavia-arctic: oklch(0.48 0.12 55);
+    --color-chart-region-western-mediterranean: oklch(0.48 0.12 302);
+    --color-chart-region-adriatic-ionian: oklch(0.48 0.12 48);
+    --color-chart-region-aegean-anatolia: oklch(0.64 0.12 98);
+    --color-chart-region-levant: oklch(0.48 0.12 248);
+    --color-chart-region-maghreb: oklch(0.64 0.12 295);
+    --color-chart-region-west-africa: oklch(0.64 0.12 288);
+    --color-chart-region-east-africa: oklch(0.48 0.12 165);
+    --color-chart-region-arabia-gulf: oklch(0.64 0.12 248);
+    --color-chart-region-western-india: oklch(0.64 0.12 112);
+    --color-chart-region-eastern-india: oklch(0.48 0.12 20);
+    --color-chart-region-southeast-asia: oklch(0.64 0.12 262);
+    --color-chart-region-china-coast: oklch(0.48 0.12 262);
+    --color-chart-region-korea: oklch(0.64 0.12 20);
+    --color-chart-region-japan: oklch(0.48 0.12 105);
+    --color-chart-region-caribbean: oklch(0.48 0.12 98);
+    --color-chart-region-north-america-atlantic: oklch(0.64 0.12 165);
+    --color-chart-region-south-america-atlantic: oklch(0.64 0.12 55);
+    --color-chart-region-pacific-americas: oklch(0.48 0.12 241);
+    --color-chart-region-oceania: oklch(0.64 0.12 48);
 
     /* uncommon 4.16 · rare 5.71 · exotic 5.06, on white. */
     --color-rarity-uncommon: #0f8c7a;
