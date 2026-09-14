@@ -5,7 +5,7 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
-## 2026-09-14 — The sea is round: Tokyo → Callao crosses the South Pacific (row 91; migration 0088 on branch `osn-cross-the-dateline`, PR pending, NOT merged, NOT deployed)
+## 2026-09-14 — The sea is round: Tokyo → Callao crosses the South Pacific (row 98; migration 0088 on branch `osn-cross-the-dateline`, PR pending, NOT merged, NOT deployed)
 
 **The owner:** *"the map should be continuous on left to right, and the ship going from tokyo to
 callao should cross south pacific ocean."* Two halves. This entry is the SERVER + PATHFINDER
@@ -70,7 +70,7 @@ divide by that zero length. A rule every reader must special-case is not one rul
 - `tests/sea.dateline.spec.ts`: pure Node; re-proposes Tokyo → Callao live through
   `seaCourse.fixture`, asks the server's verifier directly, pins Lisbon → Amsterdam to the
   6-vertex 1,123.2 nm course recorded before the change. **RED on main's code** (see below).
-- `docs/OWNER_REQUESTS.md` row 91; `supabase/migrations/CHAIN.md` (seventy-nine; 0086/0087
+- `docs/OWNER_REQUESTS.md` row 98; `supabase/migrations/CHAIN.md` (seventy-nine; 0086/0087
   claimed); `docs/NAVIGATION_PLAN.md` §7.
 
 **Tokyo → Callao, before / after.** Before: proposed 8,358.4 nm with the seam kink, REFUSED

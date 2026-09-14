@@ -186,7 +186,7 @@ where she stands. That is a normal supersede, not rework.
 
 ## 7. THE SEA IS ROUND — the course convention at the antimeridian (0088, 2026-09-14)
 
-The owner, row 91: *"the map should be continuous on left to right, and the ship going from tokyo
+The owner, row 98: *"the map should be continuous on left to right, and the ship going from tokyo
 to callao should cross south pacific ocean."*
 
 **What was measured first.** The grid was always round — `colOf`/`isWater` wrap the column

@@ -2,7 +2,7 @@
 // THE SEA IS ROUND — a course from Tokyo to Callao crosses the South Pacific, and the server sails it
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// The owner, docs/OWNER_REQUESTS.md row 91 (2026-09-14): *"the map should be continuous on left to
+// The owner, docs/OWNER_REQUESTS.md row 98 (2026-09-14): *"the map should be continuous on left to
 // right, and the ship going from tokyo to callao should cross south pacific ocean."*
 //
 // WHAT WAS WRONG, measured on main 2209a92 before the fix (docs/DEV_LOG.md 2026-09-14): the grid

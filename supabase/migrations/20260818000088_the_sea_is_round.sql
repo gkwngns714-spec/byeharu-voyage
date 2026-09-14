@@ -6,7 +6,7 @@
 --        crosses the South Pacific; it is no longer refused as "the long way round".
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
--- ── THE OWNER, VERBATIM (docs/OWNER_REQUESTS.md row 91, 2026-09-14) ────────────────────────────
+-- ── THE OWNER, VERBATIM (docs/OWNER_REQUESTS.md row 98, 2026-09-14) ────────────────────────────
 --   "the map should be continuous on left to right, and the ship going from tokyo to callao
 --    should cross south pacific ocean."
 --
