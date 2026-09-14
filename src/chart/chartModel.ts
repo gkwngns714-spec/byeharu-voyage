@@ -246,7 +246,7 @@ export function buildChartModel(
 }
 
 /**
- * ONE HARBOUR'S MARK AT THIS ZOOM (row 93, 2026-09-14: *"i want to see all the countries, all the
+ * ONE HARBOUR'S MARK AT THIS ZOOM (row 94, 2026-09-14: *"i want to see all the countries, all the
  * ports in the game when i zoom out, it can be a dot, then once zoomed in i will be able to see
  * the marker"*). `full` = the triangle (or lozenge), its ring if great, its roads and its name;
  * not full = a DOT in the quiet ink and nothing else. The same harbour, the same `data-port-code`,
@@ -262,7 +262,7 @@ export interface PortMark {
  *
  * A port is on the sheet when it is on the glass. FULL when it is big enough for this zoom
  * (`minTier`, decided by ./chartView.ts) or one of yours (a role — your anchorage wears its full
- * mark at every zoom, whatever size it is); otherwise a dot. Before row 93 a port below the tier
+ * mark at every zoom, whatever size it is); otherwise a dot. Before row 94 a port below the tier
  * floor was not drawn at all; now it is drawn small, so the globe shows every harbour there is.
  *
  * ONE list. The marks layer draws every entry (full or dot); `visiblePorts` below is its FULL
@@ -307,7 +307,7 @@ export function portMarks(
  * a name can never be asked for a port drawn as a dot and a full mark can never go unnamed for
  * want of being in the list.
  *
- * Before row 93 this was the whole drawn set; the pins in tests/map.labels.spec.ts (35 on the
+ * Before row 94 this was the whole drawn set; the pins in tests/map.labels.spec.ts (35 on the
  * globe, 114 on a sea, all of them on a coast) are the same numbers with the same meaning.
  */
 export function visiblePorts(

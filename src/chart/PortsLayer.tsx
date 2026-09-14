@@ -27,7 +27,7 @@ import { GLYPH, lozengePath, portMarkScale, portStrokeWidth, trianglePath } from
 // the zoom's tier floor. This layer draws exactly what it is handed and makes no decision of its
 // own about what belongs on the sheet.
 //
-// ROW 93 (2026-09-14, the owner: "all the ports in the game when i zoom out, it can be a dot,
+// ROW 94 (2026-09-14, the owner: "all the ports in the game when i zoom out, it can be a dot,
 // then once zoomed in i will be able to see the marker"): a port below the zoom's tier floor is
 // not left off the sheet any more — it is drawn as a DOT, `GLYPH.portDotRadius`, in the quiet
 // ink, no ring, no name, no roads, no tap. Same `<g data-port-code>`, same identity, the dot is that
@@ -36,7 +36,7 @@ import { GLYPH, lozengePath, portMarkScale, portStrokeWidth, trianglePath } from
 //
 // THE MARK'S POSITION IS WRITTEN ON THE GROUP (`data-port-x`, `data-port-y`, chart units) for
 // the same reason `data-port-code` is: a mark's `d` is a shape and not a coordinate, and the
-// landfall spec (row 91) has to read where each harbour was actually drawn.
+// landfall spec (row 92) has to read where each harbour was actually drawn.
 //
 // THIS LAYER DRAWS MARKS AND NOTHING ELSE. No text (labels are placed as a set by ./labels.ts and
 // drawn by LabelsLayer — a label placed here could not know what the next port is about to print)

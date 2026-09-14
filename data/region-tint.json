@@ -1,5 +1,5 @@
 {
- "$doc": "DERIVED — do not edit. Which region each country and each 0.25° cell of water belongs to, for the chart's regions tint (OWNER_REQUESTS row 92). Rebuilt by `node scripts/build-region-tint.mjs`; tests/map.regions.spec.ts fails if this file and the build disagree. The water is the chain's own public.sea_cells (0040, patched by 0052 and 0079) — never a Voronoi, never drawn by hand — each cell the region of the harbour nearest to it by water; the countries are keyed by Natural Earth ISO_A2_EH.",
+ "$doc": "DERIVED — do not edit. Which region each country and each 0.25° cell of water belongs to, for the chart's regions tint (OWNER_REQUESTS row 93). Rebuilt by `node scripts/build-region-tint.mjs`; tests/map.regions.spec.ts fails if this file and the build disagree. The water is the chain's own public.sea_cells (0040, patched by 0052 and 0079) — never a Voronoi, never drawn by hand — each cell the region of the harbour nearest to it by water; the countries are keyed by Natural Earth ISO_A2_EH.",
  "cellDeg": 0.25,
  "cols": 1440,
  "rows": 720,

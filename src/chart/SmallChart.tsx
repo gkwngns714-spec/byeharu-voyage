@@ -106,11 +106,11 @@ export function SmallChart({
   className?: string
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
-  // The ports as the chart draws them — set on the drawn shore (row 91), the same list the Map
+  // The ports as the chart draws them — set on the drawn shore (row 92), the same list the Map
   // tab draws — and the backdrop they stand on.
   const backdrop = useBackdrop(ports)
   const chartPorts = backdrop.ports
-  // The same switch the Map tab wears (row 92): one store, both surfaces.
+  // The same switch the Map tab wears (row 93): one store, both surfaces.
   const regionsOn = useRegionsFilter()
   const chartFleets = useMemo(() => mapFleetsOf(fleets), [fleets])
   const model = useMemo(

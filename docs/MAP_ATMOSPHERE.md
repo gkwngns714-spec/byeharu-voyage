@@ -169,13 +169,13 @@ Screenshots: `after-390x844-{dark,light}-{opening,zoom}.png`, `after-1440x900-{d
 
 ---
 
-## 9. The regions layer, the landfall, and every harbour (rows 91–93, 2026-09-14)
+## 9. The regions layer, the landfall, and every harbour (rows 92–94, 2026-09-14)
 
 Three instructions in one day, all about the same sheet, all measured before they were built.
 The full measurements are in `docs/DEV_LOG.md` (2026-09-14); this section is what the picture
 gained and the rules it kept.
 
-### 9.1 The landfall (row 91: *"some cities are in the ocean"*)
+### 9.1 The landfall (row 92: *"some cities are in the ocean"*)
 
 79 of the 224 harbours stood in the water the chart DRAWS — the 110m countries decimated at
 0.2° — because a city's coordinate is true and the 110m polygon is coarse. Now a harbour's mark
@@ -187,7 +187,7 @@ The 28 harbours beyond it are islands the file has no polygon for; each wears an
 speck of land, `GLYPH.isletRadius` (4 px) in `chart-land` with the coast's stroke, painted by
 `CoastlineLayer` after the coast and under every port. `ports.lat/lon` on the server is untouched.
 
-### 9.2 Every harbour, at every zoom (row 93)
+### 9.2 Every harbour, at every zoom (row 94)
 
 The tier bands are unchanged and mean something new: they are the ladder a DOT climbs to become
 the marker. `portMarks` (`chartModel.ts`) puts every port on the glass on the sheet, FULL (the
@@ -200,7 +200,7 @@ marker, tap and all.
 every kept ring of the file at every zoom, and the spec now pins that (175 coded countries, all
 in the one body path).
 
-### 9.3 The regions (row 92) — a layer that is OFF by default, and off is §7's sheet exactly
+### 9.3 The regions (row 93) — a layer that is OFF by default, and off is §7's sheet exactly
 
 | layer | what | where it lives | from |
 |---|---|---|---|

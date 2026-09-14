@@ -12,7 +12,7 @@ import type { LabelTone, PlacedLabel } from './labels'
 //
 // ROW 90: the seas' names are in the SAME plan — placed last, at the lowest priority, centred on
 // their anchors (./seaNames.ts) — and painted FIRST here, in their own group, so a water's name
-// is ground under every place's name. ROW 92: a region's name (./regions.ts) is ground the same
+// is ground under every place's name. ROW 93: a region's name (./regions.ts) is ground the same
 // way, in the same group, and is only in the plan while the regions filter is on. Each label
 // carries the size and spacing it was planned at
 // (`sizePx`, `spacingEm`), so the box the planner kept clear is the box that is drawn.
@@ -22,7 +22,7 @@ const TONE: Record<LabelTone, string> = {
   'port-active': 'fill-ink',
   'port-quiet': 'fill-ink-faint',
   sea: 'fill-chart-sea-name',
-  // A region's name (row 92) is ground like a sea's, in the same thinned ink, a size up.
+  // A region's name (row 93) is ground like a sea's, in the same thinned ink, a size up.
   region: 'fill-chart-sea-name',
 }
 

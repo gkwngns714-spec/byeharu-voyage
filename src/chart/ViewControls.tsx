@@ -22,7 +22,7 @@ import { CHART_CHROME, type ChartSurface } from './useChartSurface'
 // that frame HOLDS differs by surface (the tab: your fleets; SmallChart: her berth and the
 // harbours of the order), which is why the aria sentence is the caller's to say.
 //
-// ── THE FOURTH BUTTON: REGIONS (row 92, 2026-09-14) ────────────────────────────────────────────
+// ── THE FOURTH BUTTON: REGIONS (row 93, 2026-09-14) ────────────────────────────────────────────
 // The owner: *"make filter so that i can choose to apply color, or return to the current state."*
 // One toggle, under the three, right-aligned in the same column, 44 px tall: the `regions` glyph
 // and the one word "Regions" — the owner's map rule allows an icon and a short word, and a

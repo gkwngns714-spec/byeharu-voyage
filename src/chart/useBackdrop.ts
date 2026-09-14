@@ -14,7 +14,7 @@ import type { RegionTint } from './regions'
 //
 // It was ./useCoastline.ts; row 90 widened what it carries, not what it does.
 //
-// ── AND SINCE ROW 91 (2026-09-14) IT ALSO SETS THE PORTS ON THE SHORE ──────────────────────────
+// ── AND SINCE ROW 92 (2026-09-14) IT ALSO SETS THE PORTS ON THE SHORE ──────────────────────────
 // "Some cities are in the ocean." The harbour table is served with the cities' true coordinates
 // and the coast is drawn from a 110m file, and at 110m a true coordinate can fall a few miles
 // into drawn water (./landfall.ts measures it: 79 of 224 harbours, 52 of them within 10 nm of
@@ -54,10 +54,10 @@ export interface BackdropState {
   readonly coast: CoastlineData | null
   /** The seas' names — empty until the backdrop has arrived, which draws no names, truthfully. */
   readonly seas: readonly MapSea[]
-  /** The regions' tints (row 92) — empty until the backdrop has arrived. Painted only when a
+  /** The regions' tints (row 93) — empty until the backdrop has arrived. Painted only when a
    *  surface hands them to `ChartCanvas`, which it does only while the filter is on. */
   readonly regions: readonly RegionTint[]
-  /** THE PORT TABLE AS THIS CHART DRAWS IT (row 91): `mapPortsOf` the served rows, every harbour
+  /** THE PORT TABLE AS THIS CHART DRAWS IT (row 92): `mapPortsOf` the served rows, every harbour
    *  set on the drawn shore once the coast is here. The one list every layer, the hit test and
    *  the frame read. */
   readonly ports: readonly MapPort[]

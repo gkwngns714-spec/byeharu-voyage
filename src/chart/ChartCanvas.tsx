@@ -44,7 +44,7 @@ import type { ChromeBox } from './useChartSurface'
 //
 // The three derivations that decide what is drawn ride with it for the same reason. Each one is a
 // rule about density, not about a screen:
-//   · WHICH PORTS      `portMarks` — EVERY port on the glass (row 93), each FULL when it is big
+//   · WHICH PORTS      `portMarks` — EVERY port on the glass (row 94), each FULL when it is big
 //                      enough for this zoom (`minTierForSpan`) or one of yours, else a DOT. ONE
 //                      list: the marks layer draws it whole, the label planner and the roads read
 //                      its full half, so a name can never float over a mark drawn as a dot.
@@ -56,7 +56,7 @@ import type { ChromeBox } from './useChartSurface'
 // at the moment of a tap, which is what keeps "what you can touch" and "what wears a name" the
 // same list (a dot is a picture; chartModel.ts records the tap that decided it).
 //
-// ── ROW 92: THE REGIONS, ONLY WHEN HANDED IN ───────────────────────────────────────────────────
+// ── ROW 93: THE REGIONS, ONLY WHEN HANDED IN ───────────────────────────────────────────────────
 // `regions` is null unless the surface's filter is on. Null reaches CoastlineLayer as "paint no
 // tint" and this file as "ask for no region name", so the filter off is the chart exactly as it
 // was — element for element (tests/map.regions.spec.ts holds that). On, the tints are painted
@@ -88,7 +88,7 @@ export function ChartCanvas({
   className,
 }: {
   model: ChartModel
-  /** The WHOLE port table, as `useBackdrop` hands it (set on the drawn shore, row 91). What is
+  /** The WHOLE port table, as `useBackdrop` hands it (set on the drawn shore, row 92). What is
    *  drawn out of it is this component's decision, not the caller's. */
   ports: readonly MapPort[]
   box: ViewBox
@@ -99,10 +99,10 @@ export function ChartCanvas({
   /** The named waters (row 90), or none while the backdrop is still being fetched — which draws
    *  no names, truthfully. Which of them are set at this zoom is ./seaNames.ts's decision. */
   seas?: readonly MapSea[]
-  /** The regions' tints and names (row 92) — null while the filter is off, which is the default
+  /** The regions' tints and names (row 93) — null while the filter is off, which is the default
    *  and the map exactly as it was. */
   regions?: readonly RegionTint[] | null
-  /** Harbours the drawn coast has no land for (row 91): a speck of land is painted under each. */
+  /** Harbours the drawn coast has no land for (row 92): a speck of land is painted under each. */
   islets?: readonly Point[]
   selection: MapSelection
   /**
@@ -191,7 +191,7 @@ export function ChartCanvas({
           crossing a harbour should pass behind it (FleetsLayer.tsx:6-9) and a city standing on its
           own roads is the right picture. It is handed `drawnPorts`, the same list PortsLayer gets,
           so a line can never run out of a mark that was not drawn — its FULL half, because a
-          dot (row 93) has no roads. */}
+          dot (row 94) has no roads. */}
       <RoadsteadsLayer ports={fullPorts} unitsPerPx={unitsPerPx} />
       {/* THE PINPOINT (0039) — the tapped spot of open water, marked exactly like a selected
           port is ringed, because it is the same act one step earlier: naming a destination. */}

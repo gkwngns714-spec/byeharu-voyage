@@ -15,7 +15,7 @@ import { buildRegionTint, regionTintText } from '../scripts/lib/region-tint.mjs'
 import { ready, reachable, zoomStepMs } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE REGIONS — owner row 92 (2026-09-14): "i told you to create regions on map, show it using
+// THE REGIONS — owner row 93 (2026-09-14): "i told you to create regions on map, show it using
 // different color of the sea and country, make filter so that i can choose to apply color, or
 // return to the current state."
 //

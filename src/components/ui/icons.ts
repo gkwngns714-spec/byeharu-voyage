@@ -194,7 +194,7 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
     'M19 12h2.5',
     'M12 10.8a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z',
   ],
-  // A globe parted into regions — the chart's Regions filter (ViewControls, owner row 92). Not
+  // A globe parted into regions — the chart's Regions filter (ViewControls, owner row 93). Not
   // the folded chart: that mark already means the Map tab.
   regions: [
     'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z',

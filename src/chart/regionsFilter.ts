@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE REGIONS FILTER — one switch, kept in this browser, read by every chart surface at once.
 //
-// The owner (row 92): *"make filter so that i can choose to apply color, or return to the
+// The owner (row 93): *"make filter so that i can choose to apply color, or return to the
 // current state."* OFF is the default and OFF is the current map exactly (./regions.ts's header);
 // ON tints the water and the land and names the regions.
 //

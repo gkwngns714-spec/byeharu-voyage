@@ -143,7 +143,7 @@
   --color-chart-grid: color-mix(in srgb, var(--color-ink-faint) 16%, transparent);
   --color-chart-sea-name: color-mix(in srgb, var(--color-ink-faint) 62%, var(--color-chart-sea));
 
-  /* ── THE REGIONS' TINTS (2026-09-14, owner row 92: "create regions on map, show it using
+  /* ── THE REGIONS' TINTS (2026-09-14, owner row 93: "create regions on map, show it using
      different color of the sea and country") — one token per region of data/regions.json,
      painted at low alpha over the water and over the land ONLY while the Regions filter is on
      (src/chart/regions.ts; docs/MAP_ATMOSPHERE.md §9). The three pinned inks and the five of

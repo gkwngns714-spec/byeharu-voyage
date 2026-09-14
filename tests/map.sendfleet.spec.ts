@@ -412,7 +412,7 @@ test.describe('the whole send, driven on a phone', () => {
 
     // POSITIVE CONTROL — the line must be ABSENT wherever a send IS possible, or it says nothing
     // at all. Any other harbour WEARING ITS MARK on the glass will do: she is at sea and may TURN
-    // for it. Pin moved deliberately 2026-09-14 (owner row 93): every harbour is on the sheet now,
+    // for it. Pin moved deliberately 2026-09-14 (owner row 94): every harbour is on the sheet now,
     // the small ones as DOTS, and a dot is a picture, not a target — the first `g[data-port-code]`
     // after Cádiz was Agadir's dot, which has no path to aim at. `data-port-mark="full"` is the
     // harbour a player can tap.

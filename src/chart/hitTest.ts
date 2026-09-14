@@ -41,7 +41,7 @@ function distance(a: Point, b: Point): number {
  * reach stays the same number of SCREEN pixels at every zoom while the paper under it scales.
  *
  * `ports` is the FULL half of the sheet (chartModel.visiblePorts — the marks that wear a name and
- * their roads; a DOT, row 93, is a picture and not a target, and chartModel.ts records the tap
+ * their roads; a DOT, row 94, is a picture and not a target, and chartModel.ts records the tap
  * that proved it). A port not on the sheet is not tappable, which is the only answer that can
  * never surprise anyone: with 224 harbours in the table, hit-testing ports the player cannot see
  * would open a detail card for a mark that is not there.

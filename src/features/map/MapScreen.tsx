@@ -102,7 +102,7 @@ function Chart({
   // WHICH HULL IS IN HAND is `domain/order`'s draft, app-wide; tapping a fleet here points it.
   const selectFleet = useCommandDraft((s) => s.selectFleet)
 
-  // THE PORTS AS THE CHART DRAWS THEM (row 91): served, then set on the drawn shore the moment
+  // THE PORTS AS THE CHART DRAWS THEM (row 92): served, then set on the drawn shore the moment
   // the coast arrives — one list, read by the model, the hit test, the frame and the picture.
   const backdrop = useBackdrop(snapshotPorts)
   const ports = backdrop.ports
@@ -129,7 +129,7 @@ function Chart({
   // SELECTS that water, snapped to the nearest sailable cell (0039) — water by construction.
   const onTap = useCallback(
     (at: Point, unitsPerPx: number, view: ViewBox) => {
-      // The FULL marks (row 93): a dot is a picture, not a target — measured, a tappable dot
+      // The FULL marks (row 94): a dot is a picture, not a target — measured, a tappable dot
       // 5 px from a named harbour stole the tap meant for the name (chartModel.ts, `portMarks`).
       const tappable = visiblePorts(ports, model.portRoles, view, minTierForSpan(view.width))
       const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx)
@@ -146,7 +146,7 @@ function Chart({
 
   const surface = useChartSurface(chartRef, frameBounds, onTap)
   const box = surface.viewBox
-  // THE REGIONS FILTER (row 92): off is the map as it was; on hands the tints to the picture.
+  // THE REGIONS FILTER (row 93): off is the map as it was; on hands the tints to the picture.
   const regionsOn = useRegionsFilter()
 
   // THE MINIMAP ONLY WHEN THE PLAYER HAS LEFT THE OPENING FRAME (./frame.ts says why).

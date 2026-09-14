@@ -7,7 +7,7 @@ import { REAL_PORTS, dockedFleet } from './mapWorld.fixture'
 import { ready, reachable, zoomStepMs } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// EVERY HARBOUR ON THE SHEET — owner row 93 (2026-09-14): "i want to see all the countries, all
+// EVERY HARBOUR ON THE SHEET — owner row 94 (2026-09-14): "i want to see all the countries, all
 // the ports in the game when i zoom out, it can be a dot, then once zoomed in i will be able to
 // see the marker".
 //

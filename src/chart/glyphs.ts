@@ -197,18 +197,18 @@ export const GLYPH = {
   seaNameSize: 11.5,
   oceanNameSize: 14,
   seaNameSpacingEm: 0.14,
-  /** A REGION'S NAME (row 92), set on its tint while the filter is on: between a sea and an
+  /** A REGION'S NAME (row 93), set on its tint while the filter is on: between a sea and an
    *  ocean, spaced like water — it is ground, and a bigger piece of ground than a sea. */
   regionNameSize: 13,
   /**
-   * THE DOT (row 93, 2026-09-14: "all the ports in the game when i zoom out, it can be a dot"):
+   * THE DOT (row 94, 2026-09-14: "all the ports in the game when i zoom out, it can be a dot"):
    * a harbour below this zoom's full-mark tier is drawn as a filled dot of this radius, in the
    * quiet ink, with no name. 1.6 px — the smallest thing on the sheet after the roadstead ring
    * (hollow, 2.6), so 224 of them on the globe read as a scatter of ports and not as marks.
    */
   portDotRadius: 1.6,
   /**
-   * AN ISLET (row 91): the speck of land drawn under a harbour whose island the 110m coast file
+   * AN ISLET (row 92): the speck of land drawn under a harbour whose island the 110m coast file
    * has no polygon for at all (Malta, Bermuda, the Azores… 28 of them, ./landfall.ts). A filled
    * circle in the land token with the coast's stroke, 4 px — under the quiet mark's 7.2 px width
    * and inside the great ring, so it is ground under the mark, never a mark of its own.

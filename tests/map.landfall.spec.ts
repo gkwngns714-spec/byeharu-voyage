@@ -17,7 +17,7 @@ import { REAL_PORTS } from './mapWorld.fixture'
 import { ready, reachable } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// LANDFALL — owner row 91 (2026-09-14): "some cities are in the ocean, not on land such as
+// LANDFALL — owner row 92 (2026-09-14): "some cities are in the ocean, not on land such as
 // istanbul. I want you to fix it."
 //
 // The pure half MEASURES: every harbour the database holds (deriveWorld(), the rows world-guard
@@ -208,7 +208,7 @@ for (const viewport of [
       )
       expect(wetOpening, 'harbours drawn in water at the opening frame').toEqual([])
       expect(wet, 'harbours drawn in water at the world view').toEqual([])
-      // Row 93: at the world view EVERY harbour is on the sheet, so this was the whole table.
+      // Row 94: at the world view EVERY harbour is on the sheet, so this was the whole table.
       expect(world!.marks.length).toBe(224)
     })
   })

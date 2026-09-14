@@ -4,7 +4,7 @@
 // tests/map.regions.spec.ts rebuilds it and demands the committed file is byte-identical.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// The owner, 2026-09-14 (OWNER_REQUESTS row 92): *"i told you to create regions on map, show it
+// The owner, 2026-09-14 (OWNER_REQUESTS row 93): *"i told you to create regions on map, show it
 // using different color of the sea and country, make filter so that i can choose to apply color,
 // or return to the current state."*
 //
@@ -296,7 +296,7 @@ export function buildRegionTint(root) {
   const file = {
     $doc:
       'DERIVED — do not edit. Which region each country and each 0.25° cell of water belongs to, for the ' +
-      'chart\'s regions tint (OWNER_REQUESTS row 92). Rebuilt by `node scripts/build-region-tint.mjs`; ' +
+      'chart\'s regions tint (OWNER_REQUESTS row 93). Rebuilt by `node scripts/build-region-tint.mjs`; ' +
       'tests/map.regions.spec.ts fails if this file and the build disagree. The water is the chain\'s own ' +
       'public.sea_cells (0040, patched by 0052 and 0079) — never a Voronoi, never drawn by hand — ' +
       'each cell the region of the harbour nearest to it by water; the countries are keyed by Natural Earth ISO_A2_EH.',

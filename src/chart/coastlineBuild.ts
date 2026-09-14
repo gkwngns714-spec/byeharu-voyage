@@ -69,14 +69,14 @@ export interface CoastlineData {
   /** Length of `d` in bytes — the rendered path size, measured rather than estimated. */
   readonly pathBytes: number
   /**
-   * THE BODY'S OWN RINGS, as points (2026-09-14, rows 91 and 92) — exactly the rings `d` is
+   * THE BODY'S OWN RINGS, as points (2026-09-14, rows 92 and 93) — exactly the rings `d` is
    * written from, in the same order, so a rule that asks "is this point on DRAWN land" (the
    * landfall, ./landfall.ts) reads the geometry the eye sees and never re-parses a string or
    * re-decimates the file. `fill-rule: evenodd` is the body's rule, so it is the reader's too.
    */
   readonly rings: readonly (readonly Point[])[]
   /**
-   * THE SAME RINGS, GROUPED BY THE COUNTRY THE FILE DREW THEM FOR (row 92, the regions' tint):
+   * THE SAME RINGS, GROUPED BY THE COUNTRY THE FILE DREW THEM FOR (row 93, the regions' tint):
    * one entry per feature that kept at least one ring, `iso` = Natural Earth's `ISO_A2_EH` (the
    * one code column the file fills for every state — `ISO_A2` reads "-99" for France and Norway),
    * `d` = that country's rings closed, written by the same builder as `d`. A tint painted from
@@ -293,7 +293,7 @@ export function buildCoastline(json: unknown): CoastlineData {
 
   const d = toClosedRingsD(kept)
 
-  // THE COUNTRIES (row 92): the kept rings regrouped by the code they came in under, written by
+  // THE COUNTRIES (row 93): the kept rings regrouped by the code they came in under, written by
   // the same builder. A ring the file gave no code ('') belongs to no country and is left out
   // here — it is still in `d` and `rings`; only a tint has nothing to key it by.
   const byIso = new Map<string, Point[][]>()

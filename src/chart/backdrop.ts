@@ -4,7 +4,7 @@
 // on the water, and the seas are a backdrop exactly as the coast is — authored data, not the
 // server's — so they arrive through the same door, in the same fetch cycle, and the chart has
 // ONE notion of "the backdrop has arrived" instead of two hooks that could disagree about it.
-// Row 92 (2026-09-14) added the regions' tints the same way: derived data (./regions.ts says
+// Row 93 (2026-09-14) added the regions' tints the same way: derived data (./regions.ts says
 // from what), joined to the coast's own rings HERE, once, so the land tint is the body's edge.
 //
 // It is separated from ./coastlineBuild.ts and ./seaNames.ts on purpose: those are pure (data
@@ -25,7 +25,7 @@ import worldUrl from '../../data/world-110m.json?url'
 // The seas are 7.7 KB, so they ride INSIDE this lazy chunk as text rather than costing a second
 // round trip: `?raw` is a string at build time, parsed once here, and never in the main bundle.
 import seasRaw from '../../data/seas.json?raw'
-// The regions' tint (row 92) rides the same way: 120 KB of text (32 KB over the wire), parsed
+// The regions' tint (row 93) rides the same way: 120 KB of text (32 KB over the wire), parsed
 // once here, never in the main bundle, and only ever painted while the filter is on.
 import regionTintRaw from '../../data/region-tint.json?raw'
 

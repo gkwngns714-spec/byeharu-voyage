@@ -162,7 +162,7 @@ export {
 // itself, so an embedded chart arrives with its zoom already on board.
 export { ViewControls } from './ViewControls'
 export { useElementSize, type ElementSize } from './useElementSize'
-// ROW 91 — where a harbour's mark is SET: on the drawn shore, never in drawn water. The decision,
+// ROW 92 — where a harbour's mark is SET: on the drawn shore, never in drawn water. The decision,
 // exported so tests/map.landfall.spec.ts can run it over the real file; applied once, in
 // `useBackdrop`.
 export {
@@ -174,7 +174,7 @@ export {
   type Landfall,
   type LandfallResult,
 } from './landfall'
-// ROW 92 — the regions as ink, and the one switch that shows them. The decisions are exported
+// ROW 93 — the regions as ink, and the one switch that shows them. The decisions are exported
 // for the same reason `seaNameRequests` is; the paint is CoastlineLayer's and LabelsLayer's.
 export { REGION_FILL, regionNameRequests, regionTintsOf, type RegionTint } from './regions'
 export { readRegionsFilter, REGIONS_FILTER_KEY, setRegionsFilter, useRegionsFilter } from './regionsFilter'

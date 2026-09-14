@@ -24,7 +24,7 @@ import type { LatLon } from '../lib/geo'
  * A port as the chart needs it: a name to print, a place to print it, and how big a mark it earns.
  *
  * `lat`/`lon` are WHERE THE MARK IS SET — the served coordinate, except that a harbour whose
- * served point falls in the water the chart draws is set on the drawn shore instead (row 91,
+ * served point falls in the water the chart draws is set on the drawn shore instead (row 92,
  * ./landfall.ts, applied once in ./useBackdrop.ts). This is the shape of a view: the server's
  * `ports.lat/lon` is not moved, and `roadstead` below is served and never moved either.
  */

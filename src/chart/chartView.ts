@@ -135,7 +135,7 @@ export const LABEL_SPAN_LIMIT = 70
 //   a sea       (> 12° across)   + the 79 middling ones       size_tier 3
 //   a coast     (≤ 12° across)   + all the small ones         size_tier 2
 //
-// Until row 93 (2026-09-14) a port below the band was NOT DRAWN. The owner: *"all the ports in
+// Until row 94 (2026-09-14) a port below the band was NOT DRAWN. The owner: *"all the ports in
 // the game when i zoom out, it can be a dot, then once zoomed in i will be able to see the
 // marker"* — so a port below the band is a DOT now, and these bands are the ladder it climbs
 // to become the marker (`portMarks`, ./chartModel.ts). The counts are the real ones: 35 ports at
@@ -151,7 +151,7 @@ export const PORT_TIER_BANDS: readonly { readonly maxSpanX: number; readonly min
   { maxSpanX: Infinity, minTier: 5 },
 ]
 
-/** The smallest port drawn FULL at this zoom; smaller ones are dots (row 93). */
+/** The smallest port drawn FULL at this zoom; smaller ones are dots (row 94). */
 export function minTierForSpan(spanX: number): number {
   for (const band of PORT_TIER_BANDS) if (spanX <= band.maxSpanX) return band.minTier
   return PORT_TIER_BANDS[PORT_TIER_BANDS.length - 1].minTier

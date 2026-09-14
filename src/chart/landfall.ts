@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // LANDFALL — a harbour's mark is set on the DRAWN shore, never in the drawn water. PURE.
 //
-// The owner, 2026-09-14 (OWNER_REQUESTS row 91): *"some cities are in the ocean, not on land
+// The owner, 2026-09-14 (OWNER_REQUESTS row 92): *"some cities are in the ocean, not on land
 // such as istanbul. I want you to fix it."*
 //
 // ── WHAT WAS MEASURED (tests/map.landfall.spec.ts prints the table; docs/DEV_LOG.md keeps it) ──
