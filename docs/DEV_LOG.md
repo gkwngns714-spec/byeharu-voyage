@@ -5,7 +5,7 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
-## 2026-09-14 — The left side of America has cities: 14 harbours from San Francisco to Concepción and Hobart, 32 regional goods, one rule for a harbour's buildings, and the water to reach them (owner row 91 — migrations 0089/0090/0091, built on PR #83, not merged, not deployed)
+## 2026-09-14 — The left side of America has cities: 14 harbours from San Francisco to Concepción and Hobart, 32 regional goods, one rule for a harbour's buildings, and the water to reach them (owner row 99 — migrations 0089/0090/0091, built on PR #83, not merged, not deployed)
 
 **The owner, verbatim:** *"I see no cities on the left side of america, the number of cities are
 weird. Check"*. Checked first. The census below is the fact; the owner is right.

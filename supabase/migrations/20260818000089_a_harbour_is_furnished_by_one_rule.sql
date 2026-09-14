@@ -4,7 +4,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- ── WHY NOW ─────────────────────────────────────────────────────────────────────────────────────
--- The owner, 2026-09-14 (docs/OWNER_REQUESTS.md row 91): *"I see no cities on the left side of
+-- The owner, 2026-09-14 (docs/OWNER_REQUESTS.md row 99): *"I see no cities on the left side of
 -- america, the number of cities are weird. Check"*. The check found FIVE harbours on the whole
 -- Pacific coast of the Americas and the growth that follows (0090) adds fourteen. A new harbour
 -- needs its buildings, and there was no one place that says which buildings a harbour keeps.

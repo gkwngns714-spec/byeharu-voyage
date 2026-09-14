@@ -1165,7 +1165,7 @@ count, the native/entrepot split, the single-region and broad counts, the mask c
 
 ## J. THE PACIFIC AMERICAS GROWTH (2026-09-14) — 14 harbours, 32 goods, 9 origins extended, 0 new entrepots
 
-> The owner, 2026-09-14, verbatim (`docs/OWNER_REQUESTS.md` row 91): *"I see no cities on the left
+> The owner, 2026-09-14, verbatim (`docs/OWNER_REQUESTS.md` row 99): *"I see no cities on the left
 > side of america, the number of cities are weird. Check"*
 
 Checked, and right: the whole Pacific seaboard of the Americas held **five** harbours (Acapulco,
