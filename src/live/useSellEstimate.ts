@@ -14,15 +14,17 @@ import { useWorld } from './worldStore'
 // bigger than one step. So the figure is `cmd.preview` of `SELL <good> <all of it>` — run for real
 // and rolled back — read through `saleEstimate`, exactly as the trade tray's button is priced.
 //
-// ── A DOORWAY ONTO useServedRead (2026-09-14) ──────────────────────────────────────────────────
+// ── A DOORWAY ONTO useServedRead, IN ITS 'subject' MODE (2026-09-14) ───────────────────────────
 // Until 2026-09-14 this was a third private copy of "keep an answer keyed to its subject": its own
 // `useState<{key, estimate}>`, its own "keep the last figure while the key moves". The SUBJECT is
 // (fleet, good, the lot, the market's sell price) — what the answer depends on — and the rule that
 // keeps the last answer while the next ask is on the wire is useServedRead's, not a second one
-// here. That rule also re-asks on the world's beat, which this file used to refuse ("N goods would
-// be N dry runs every 3 s"): the cost is real and named here, and it is paid because the answer
-// DOES move with the world — a won bargain changes what a sale realises without the lot or the
-// price moving — and a second mechanism to save the asks is the spaghetti the law forbids.
+// here. NOT on the world's 3-second beat: this is a LIST, and each ask is `cmd.preview` — a real
+// write, rolled back — so an open list of eight goods would be eight writes every 3 s per player
+// on a live ~30-player database, for answers that cannot move unless the SUBJECT moves: the lot
+// (units on board) or the served sell price, and the subject carries exactly those. So
+// `reask: 'subject'` — asked once per subject, re-asked by a change of subject alone. That mode is
+// the one authority's parameter (useServedRead.ts header), not a second hook.
 
 const IDLE: { estimate: SaleEstimate | null; loading: boolean } = { estimate: null, loading: false }
 
@@ -43,7 +45,7 @@ export function useSellEstimate(
     // standing rather than clearing.
     const r = await cmdPreview(fleet.id, line as string, null)
     return ok<SaleEstimate | null>(r.ok && r.value.estimate ? saleEstimate(r.value.estimate) : null)
-  })
+  }, { reask: 'subject' })
   if (subject === null) return IDLE
   return { estimate: read.view, loading: read.loading }
 }

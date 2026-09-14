@@ -39,7 +39,7 @@
 // FOR — and the SETTLED quantity is the QUESTION: a re-read of the world or a new quantity re-asks,
 // and the last served figures stand (`previewLoading`, drawn dimmed) until the new ones land; only
 // another good shows nothing of this one's. Until then the quantity was part of the subject, and
-// every press of + blanked the rows for the settle plus the wire (row 92). The settle timer
+// every press of + blanked the rows for the settle plus the wire (row 96). The settle timer
 // survives as a settled COPY of the quantity — the stepper's slider reports every step of a drag,
 // and each step is a new question, so the question only moves once the finger has rested
 // PREVIEW_SETTLE_MS. The total on the button is printed only once it is the total for the quantity
@@ -97,7 +97,7 @@ export function useTrade(
   // has rested (useSettled — the one timer), and only the settled quantity is a subject.
   const settled = useSettled(n)
   // The SUBJECT is (fleet, side, good) — what the figures are FOR — and the QUESTION is the settled
-  // quantity (useServedRead's third argument, 2026-09-14). A new quantity re-asks and the last
+  // quantity (useServedRead's `question` option, 2026-09-14). A new quantity re-asks and the last
   // served figures STAND, marked `previewLoading`, until the new ones land; a re-read of the world
   // keeps them the same way; another good shows nothing of this one's. Until 2026-09-14 the
   // quantity was part of the subject, so every press of + blanked the `You get` row and drew a
@@ -121,7 +121,7 @@ export function useTrade(
       const r = await cmdPreview(fleet.id, line as string, null)
       return ok<SaleEstimate | null>(r.ok && r.value.estimate ? saleEstimate(r.value.estimate) : null)
     },
-    question,
+    { question },
   )
   // The figures on screen are the last served for this good; `previewLoading` says they are not
   // yet the figures for the quantity on the button — the finger has not rested, or the answer for

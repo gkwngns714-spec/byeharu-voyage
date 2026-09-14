@@ -63,6 +63,11 @@ export async function call<T>(name: RpcName, values: readonly unknown[] = []): P
       },
     }
   }
+  // ONE LINE PER ASK, at debug level, on both backends (2026-09-14). It is how a spec COUNTS the
+  // asks a screen makes (tests/trade.ceiling.spec.ts: an open on-board list must make none on the
+  // world's beat, an open tray at most one) — a dry run is a real write rolled back, and a hook
+  // that re-asked a list every 3 s (owner rows 95-97) was invisible until something printed it.
+  console.debug('[rpc]', rpcLabel(name))
   try {
     return fromPayload<T>(await backend.invoke(name, values))
   } catch (err) {

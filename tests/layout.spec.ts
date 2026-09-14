@@ -833,7 +833,7 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
     // ROW 15 INSIDE THE TRAY: what stands ABOVE the haggle row — the stepper, a price row, the
     // row itself — must be exactly where it was once the thread unfolds. Measured against the
     // tray body's own scroll, not the glass: the click scrolls the row into view, and a scroll is
-    // not a restructure. The rows differ by face since 2026-09-14 (owner row 92): SELL carries no
+    // not a restructure. The rows differ by face since 2026-09-14 (owner row 96): SELL carries no
     // Trend row at all — the count, then `Bought at`; BUY has the Trend row below the count.
     const rowsAbove = face === 'buy' ? ['trend-row', 'trade-tray-qty', 'haggle-row'] : ['trade-tray-qty', 'trade-tray-paid', 'haggle-row']
     const above = () =>

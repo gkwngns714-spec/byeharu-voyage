@@ -370,3 +370,50 @@ test(`PORT › Trade (sell): count first, then three prices and the share; no "c
   await expect(tray).toHaveCount(0, { timeout: 30_000 })
   await expect(row).toContainText(new RegExp(`${aboardBefore - 1} units? on board`), { timeout: 20_000 })
 })
+
+test(`PORT › Trade: an open on-board list makes NO dry run on the world's beat; an open sell tray makes at most one per beat`, async ({ page, request, baseURL }) => {
+  // THE COST THAT MUST NOT BE PAID. `cmd.preview` is a real write rolled back, and the on-board
+  // list is a LIST: folded onto useServedRead in its default mode it would have made N writes every
+  // 3 s per player on a live ~30-player database. `useSellEstimate` asks in 'subject' mode — once
+  // per (fleet, good, lot, price), never on the beat — and this counts the asks off the ONE debug
+  // line `src/lib/rpc/backend.ts` prints per RPC. A sell tray ('beat' mode) may ask once per beat.
+  const rows = await openPort(page, request, baseURL)
+  let previews = 0
+  page.on('console', (m) => {
+    if (m.type() === 'debug' && /\[rpc\] cmd\.preview\(/.test(m.text())) previews += 1
+  })
+
+  // Something on board, so the list has a row with a sale estimate.
+  const name = await pressBuy(page)
+  const tray = page.locator('[data-testid="trade-tray"]')
+  const send = tray.locator('[data-testid="trade-tray-send"]')
+  await expect(send).toBeEnabled({ timeout: 20_000 })
+  await send.click()
+  await expect(tray).toHaveCount(0, { timeout: 30_000 })
+  const row = rows.filter({ hasText: name }).first()
+  await expect(row).toContainText(/\d units? on board/, { timeout: 20_000 })
+  await expect(
+    page.locator('[data-testid^="on-board-sale-"]').first(),
+    'no on-board sale row — is the basket panel showing the list?',
+  ).toBeVisible({ timeout: 20_000 })
+  // Let the first answers land, then count over more than three beats with no interaction.
+  await page.waitForTimeout(2_000)
+  const before = previews
+  await page.waitForTimeout(10_500)
+  const listAsks = previews - before
+  console.log(`PORT on-board list @${PHONE.width}px: ${listAsks} cmd.preview asks in 10.5 s at rest (${previews} since boot)`)
+  expect(listAsks, "the on-board list re-asked its sale estimates on the world's beat").toBe(0)
+
+  // The sell tray, open and at rest: one dry run per beat at most — and at least two in three
+  // beats, or the world is not being read and the count above proves nothing.
+  await row.locator('button', { hasText: /^sell/i }).first().click()
+  await expect(tray).toBeVisible()
+  await expect(send).toHaveText(/^Sell \d+ units? · [\d,]+ d\.$/, { timeout: 20_000 })
+  await page.waitForTimeout(1_000)
+  const beforeTray = previews
+  await page.waitForTimeout(10_500)
+  const trayAsks = previews - beforeTray
+  console.log(`PORT sell tray @${PHONE.width}px: ${trayAsks} cmd.preview asks in 10.5 s at rest`)
+  expect(trayAsks, 'the open sell tray asked more than once per 3-s beat').toBeLessThanOrEqual(4)
+  expect(trayAsks, 'the open sell tray never re-asked on the beat — is the world being read?').toBeGreaterThanOrEqual(2)
+})

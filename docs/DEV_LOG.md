@@ -5,7 +5,7 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
-## 2026-09-14 — The trade tray holds still: the ceiling's exemption is retired, the sell face is the count and three prices, and one unit means one (rows 91, 92, 93 — built on `osn-fix-max-flicker`, not merged, not driven on production)
+## 2026-09-14 — The trade tray holds still: the ceiling's exemption is retired, the sell face is the count and three prices, and one unit means one (rows 95, 96, 97 — built on `osn-fix-max-flicker`, not merged, not driven on production)
 
 **The owner, three times in one sitting:** *"when i press buy, the max keeps refreshing."* ·
 *"when selling, a refresh sign of checking the price... keeps showing up. show necessary info only.
@@ -14,7 +14,7 @@ price, selling price with underneath showing the percentage. right now units? in
 man."* · *"the marker when selling unit is shitty. and it only moves in like 10? wtf. i should be
 able to sell only 1. make it so that i can type the quantity, and also scroll but better than this."*
 
-**Row 91 — root cause, and it was row 77 again.** The shell reads the world every 3 s
+**Row 95 — root cause, and it was row 77 again.** The shell reads the world every 3 s
 (`AppShell.tsx`, `READ_MIN_MS`; the local world's compression of 9600 clamps to that floor).
 `useBuyCapacity` keyed its answer on `${fleet}:${good}:${readAt}` and returned `{bound: null,
 loading: true}` whenever the key moved — so every beat the ceiling was thrown away, `TradeTray`
@@ -29,15 +29,23 @@ three private `useState<{key, …}>` holders; the readAt in their keys; the head
 the two copies of the 200 ms settle timer (`useTrade.ts` and `useOrderPreview.ts` each had a
 `PREVIEW_SETTLE_MS` and its own `setTimeout`). **Left:** `useBuyCapacity`, `useOrderPreview` and
 `useSellEstimate` are each a subject and an ask on `useServedRead`; `src/live/useSettled.ts` is
-the one settle (`useSettled(value, ms)`; `PREVIEW_SETTLE_MS` exported from there only). The
-`useSellEstimate` fold has a named cost: the on-board list now re-asks N dry runs on every beat,
-which its old header refused; it is paid because the answer does move with the world (a won
-bargain changes a sale) and a second mechanism to save the asks is the spaghetti the law forbids.
+the one settle (`useSettled(value, ms)`; `PREVIEW_SETTLE_MS` exported from there only). **The
+list does not ride the beat.** The first cut of the `useSellEstimate` fold accepted N dry runs
+every 3 s for the on-board list; the lead refused it — on the live ~30-player database each
+`cmd.preview` is a real write rolled back, and eight goods open is eight writes per beat per
+player. So the ONE authority took a parameter rather than a second hook: `useServedRead(subject,
+ask, {reask: 'beat' | 'subject'})` — `'beat'` re-asks on every world read and keeps the last
+answer (one open tray or face: the ceiling, the trade tray's dry run, the storage tray's, the
+shed); `'subject'` asks once per subject and never on the beat (the list: its subject already
+carries the lot and the served sell price, so what matters re-asks by itself). Written in the
+header, dated. Counted, not asserted: `src/lib/rpc/backend.ts` prints one `console.debug('[rpc]',
+…)` per ask on both backends, and the spec counts `cmd.preview(` over 10.5 s at rest — the open
+on-board list must make 0, the open sell tray at most 4 and at least 2.
 Checked and NOT the defect: `usePortMarket`, `CompendiumScreen.tsx:79`, `RankScreen.tsx:77` all
 re-read INTO the store (`set` only on `ok`, never nulled first, `answered` never reset), so they do
 not blank.
 
-**Row 92 — the sell face.** The `Checking the price…` line is deleted, and the thing it stood
+**Row 96 — the sell face.** The `Checking the price…` line is deleted, and the thing it stood
 for is gone: `useServedRead` gained a QUESTION beside its SUBJECT. The dry run is FOR (fleet,
 side, good) and asks about a quantity; a new quantity re-asks and the last served figures STAND,
 `stale`, until the new ones land — the tray dims them, never blanks them, and the button prints
@@ -54,7 +62,7 @@ buy-side refusal note. On BUY the market's context moved BELOW the count and the
 a buy is read against the trend but decided on the ceiling and the count. The pinned `Profit` /
 `Loss` row reads ducats AND the share. `docs/QUAY_LEDGER.md` §3 B rewritten.
 
-**Row 93 — one means one.** `trade_step_tuns` = 10 is how the server's BOOK reprices, not a rule
+**Row 97 — one means one.** `trade_step_tuns` = 10 is how the server's BOOK reprices, not a rule
 about what may be chosen: `cmd.do_buy` / `cmd.do_sell` refuse only `qty <= 0` (0007:211,
 0007:447) and the basket asks for a whole number (0083:400). The trade trays pass `step = 1`; the
 10 survives as the lot chip and as PageUp / PageDown. `Stepper.tsx` (the ONE control; FleetStores,
@@ -79,7 +87,7 @@ unit · N d.`; the sale lands and one unit leaves the hold. `tsc -b` and `eslint
 **Numbers, raw.** The five named suites (trade.ceiling, layout, wide.layout, words, duplication)
 against the served build: 33 passed, 1 failed, 0 skipped — the red was `layout.spec.ts`'s
 haggle-thread proof measuring `trend-row` as a row above the thread on the SELL face, which row
-92 removed on purpose; the proof is face-aware now (SELL: the count, `Bought at`, the thread) and
+96 removed on purpose; the proof is face-aware now (SELL: the count, `Bought at`, the thread) and
 green on re-run. The full suite once, 8 workers, 1.8 h on a loaded machine (other agents' node
 processes alongside): 250 passed, 31 failed, 0 skipped. Of the 31: (1) `primitives.geometry` —
 a REAL finding, the new typed figure was a 28 px-tall control under the 44 px reach floor; fixed
