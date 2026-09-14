@@ -713,7 +713,16 @@ specs on the merged build (**13 passed**), and none of the fourteen stands in dr
 world view. `db.chain` on the merged build: 7 of 8 passed; *"a chain change rebuilds the stored
 world"* (two whole-chain builds) hit its 25-min budget at 27.4 min on this shared machine, where
 it had passed at 23.6 min earlier the same day — the chain grew by 0088 and ~6 % since; CI's
-runner is the honest measure of that budget.
+runner is the honest measure of that budget. CI on the merged head: build, disposable-chain (real Postgres, 8 min) green;
+pglite-gate green at 19 min on one runner, then the identical bytes hit the job's 30-min ceiling on a
+2× slower runner (apply 8 min instead of 4.5, proof 02 alone 9 min instead of 5.5) — the gate's
+budget is runner-speed; re-run. Acceptance: **322 passed, 1 failed, 0 skipped** — the one was PR
+#80's `tests/map.regions.spec.ts`: `data/region-tint.json` is a BUILD from the chain's
+`sea_cells` writes and the harbours (nearest harbour by water), so 0091's 5 healed rows and the
+14 harbours change it. Rebuilt with `node scripts/build-region-tint.mjs` (writes 0040/0052/0079/
+**0091** = 720/1/11/**5** rows; water cells 647,208 → 647,214; tinted 647,194 → 647,200; 95
+countries with a harbour), pins moved deliberately, `map.regions` + `map.landfall` + `map.marks`
+**24 passed** against the rebuilt preview.
 
 ---
 
