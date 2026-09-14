@@ -110,7 +110,7 @@ export {
   trianglePath,
 } from './glyphs'
 export { toClosedRingsD, toPolylineD } from './svgPath'
-export { buildTrack, type TrackPaths } from './route'
+export { buildTrack, sheetPieces, type TrackPaths } from './route'
 // 0076 — WHICH PORTS SHOW THEIR ROADS, AND WHERE THE TWO ENDS ARE. The DECISION, exported; the
 // layer that renders it is not, like every other layer in here (docs/SECTIONS.md:108). It is
 // exported for the same reason `buildTrack` and `planLabels` are: what appears on the paper is

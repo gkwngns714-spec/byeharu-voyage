@@ -240,11 +240,15 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // river ports the carve reaches (Antwerp, Seville, Nantes, Bordeaux, twelve more) a roadstead off
 // the quay for the first time. The channels cross the wire as voyage.channels; sea_reaches is
 // re-seeded whole.
+// Moved 2026-09-14 to 0088, which makes the sea round: a course segment straddling the antimeridian
+// is read the short way by path_refusal, segments_from_course and position through the one rule
+// voyage.lon_lerp, so Tokyo → Callao crosses the South Pacific instead of being refused. (0086 and
+// 0087 are claimed by open PRs; whichever lands after this one moves the pin again.)
 // Moved 2026-09-14 to 0091, the water of the Pacific Americas growth: 0089 states the buildings a
 // harbour keeps as ONE rule, 0090 grows the world by fourteen harbours (San Francisco to Concepción,
 // and Hobart) and thirty-two goods, and 0091 gives every new place its roadstead and its sailed
-// distances, carving the Golden Gate and the Guayas on the way. (0086-0088 belong to PRs #75, #78
-// and the dateline slice; whichever merges last moves this pin to the highest number.)
+// distances, carving the Golden Gate and the Guayas on the way. (0086 and 0087 belong to PRs #75 and #78;
+// whichever merges last moves this pin to the highest number.)
 const LAST = '20260818000091_the_water_reaches_the_new_harbours.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
