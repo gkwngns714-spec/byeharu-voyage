@@ -159,9 +159,10 @@ export function fitToViewBox(bounds: GeoBounds, aspect: number, padding = 0.08):
 //   · every reader interpolates longitude through ONE rule — `lonLerp` here, `voyage.lon_lerp`
 //     on the server — and never through `a + (b − a) · f` on raw degrees, which for a straddling
 //     segment sweeps the whole world instead of the 0.25° it sails.
-// The three server interpolators (path_refusal, segments_from_course, position) and the client's
-// segment sampler (src/lib/sea/pathfind.ts) all compose this rule; the chart's track and drift
-// are the readers that still owe it (src/chart/route.ts, src/chart/drift.ts — the chart slice).
+// The three server interpolators (path_refusal, segments_from_course, position), the client's
+// segment sampler (src/lib/sea/pathfind.ts), the chart's track (src/chart/route.ts `sheetPieces`,
+// which cuts a straddling segment at ±180 into two pieces on the one sheet) and its drift
+// (src/chart/drift.ts) all compose this rule. The continuous left-to-right sheet is the next slice.
 
 /** The signed longitude step from `from` to `to` the SHORT way round: always in [−180, 180].
  *  179 → −179 is +2, not −358. The one modular rule every other function here composes. */

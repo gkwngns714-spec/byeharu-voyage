@@ -291,7 +291,9 @@ divide by that zero length. A rule every reader must special-case is not one rul
   segment over Fiji's Vanua Levu refused `E_LAND`; Lisbon → Barcelona overland still refused.
 - `tests/sea.dateline.spec.ts`: pure Node; re-proposes Tokyo → Callao live through
   `seaCourse.fixture`, asks the server's verifier directly, pins Lisbon → Amsterdam to the
-  6-vertex 1,123.2 nm course recorded before the change. **RED on main's code** (see below).
+  6-vertex 1,123.2 nm course recorded before the change, and pins the chart's pieces, track and
+  drift across the seam. **RED on main's code** (see below).
+- `src/chart/route.ts` (`sheetPieces`, `buildTrack`), `src/chart/drift.ts` — see below.
 - `docs/OWNER_REQUESTS.md` row 98; `supabase/migrations/CHAIN.md` (seventy-nine; 0086/0087
   claimed); `docs/NAVIGATION_PLAN.md` §7.
 
@@ -309,12 +311,32 @@ parameter, not the arc — 450 nm off Japan, 529 nm on the equator. Both asserte
 `public.sea_reaches` keeps its figures (measured over the same round grid; the seam kink is
 ≤ 0.25°); the next generated sea migration re-measures them with the straightener merged.
 
-**Owed to the chart slice** (`src/chart/**`, not touched here): `route.ts` still projects a
-straddling segment as a stripe across the sheet — with the pathfinder now emitting one
-8,000-nm straddling segment for Tokyo → Callao, the CURRENT chart draws that course the long
-way round the sheet; `drift.ts:94` still steps `a.lon + (b.lon − a.lon)·frac`. Both compose
-`unwrapLongitudes` / `lonLerp` from `src/lib/geo`; `route.ts`'s job is `unwrapLongitudes(course)`
-before `project`, and the wrapped second copy is the continuous sheet's business.
+**The chart's half, same PR (after PR #80's chart rewrite merged and `src/chart/**` was
+handed over).** With the pathfinder emitting one 8,000-nm straddling segment for Tokyo → Callao,
+`route.ts` would have projected it as a stripe the long way round the sheet. Now `sheetPieces`
+cuts a straddling segment at ±180 into two pieces on the one unrolled sheet — off the right edge
+at (180, lat*), back in at (−180, lat*), lat* the lat/lon-linear crossing latitude, the line
+`voyage.position` places her on — so the track leaves the sheet at Japan's edge and comes back at
+America's; `buildTrack`'s sailed and ahead halves are each a `d` of subpaths, and the arrowhead
+reads its heading over `unwrapLongitudes` so a last segment that straddles points across the seam,
+not back round the world. `drift.ts` steps her through `lonLerp` — a fleet that was at 178.8°E at
+the read is drawn at 134°W a moment later, in range, across. No second lon rule in the chart:
+`shortLonDelta`, `unwrapLongitudes`, `lonLerp` from `src/lib/geo`, composed. Four pure tests in
+`tests/sea.dateline.spec.ts` pin the pieces, the one-piece case, the track halves and heading,
+and the drift.
+
+**The continuous left-to-right sheet — the owner's FIRST sentence — measured and deferred, not
+half-built.** `chartView.ts`'s `clampView` keeps the visible box inside the world (`cx` clamped
+to ±(180 − span/2); at the world span the centre is pinned to 0), so today the view cannot pan
+past ±180 and the seam always sits at the sheet's two edges, every layer drawn once at x = lon.
+A wrapped view needs the view's x to be periodic, every layer to draw a ±360°-shifted copy when
+the box touches the seam, and every "is this point on the glass" question to answer for the copy
+— and that question is written FOUR times (`chartModel.ts:295`, `seaNames.ts:77`,
+`regions.ts:169`, `SmallChart.tsx:161`), beside `labels.ts`'s clipping, `hitTest.ts`, the
+minimap's viewport and `openingBounds`, which frames Tokyo + Callao the long way (217°, clamped
+to the globe). Twelve files, and the four copies are a NO_SPAGHETTI §1 finding of their own: the
+next slice folds them into ONE `onGlass(point, box)` first, then makes that one periodic.
+`docs/NAVIGATION_PLAN.md` §7 carries the measurement.
 
 **Proof.** `npm run db:check-versions` OK (79 files, 79 versions). `npm run db:apply` — CHAIN APPLIED: 79 migration(s), 79 self-assert receipt(s), 0088's receipt printed, world-guard ok. `npm run db:proof` — 10/10 proof files green, 73/73 declared PASS markers, exit 0. `npx tsc -b` clean; `npx eslint .` clean. `npm run build` — world image certified for the 79-file chain (built in 18m 30s under load). Playwright against `vite preview --port 4193` (baseURL `localhost`): run 1 over `sea.dateline`, `seaCarve`, `db.chain`, `db.image`, `map.voyage`, `map.sendfleet` = 72 tests, 65 passed / 3 failed / 0 skipped when it was stopped at 68 of 72 — the three: the `LAST` pin in `db.chain.spec.ts` (moved to 0088), a sign error in this spec's Callao → Tokyo test (west is a negative short-way step; fixed), and `db.chain`'s cold boot at its 15-min timeout on a machine running four other agents' chains; run 2 over the two corrected files = 19 passed / 0 failed / 0 skipped (54.4 m; the cold boot 7.7 m). Per file across both runs: sea.dateline 9/9, seaCarve 5/5, db.chain 10/10, db.image 7/7, map.voyage 32/32, map.sendfleet 9/9. **RED on main's code, run once unfixed** (main's `pathfind.ts`, no 0088): the four rule tests pass (they test the new helpers, present in both states), then `the proposed course straddles the seam once…` FAILED — two vertices `[36.375, 179.875]`, `[36.375, −179.875]` left on the seam — and `the server accepts it…` FAILED — `E_BAD_PATH: segment 1 jumps the antimeridian the long way round`; stopped there because each failure restarts a worker that re-applies the chain (~30 min under load).
 

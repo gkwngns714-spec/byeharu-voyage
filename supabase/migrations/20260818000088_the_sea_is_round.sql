@@ -67,10 +67,11 @@
 --   * It does not re-cut cmd.do_sail, cmd.divert, voyage.assert_paths_water or world.fleets:
 --     each composes path_refusal / segments_from_course / position by name and inherits the
 --     reading.
---   * It does not touch the chart. src/chart/route.ts still projects a straddling segment as a
---     stripe across the sheet and src/chart/drift.ts still steps `a.lon + (b.lon − a.lon) · f`;
---     the continuous left-to-right sheet is the chart slice, and it composes `unwrapLongitudes` /
---     `lonLerp` from src/lib/geo onto this convention (docs/NAVIGATION_PLAN.md §7).
+--   * It does not change how the chart is PANNED. The chart's track and drift compose the same
+--     rule in the same PR (src/chart/route.ts `sheetPieces` cuts a straddling segment at ±180
+--     into two pieces on the one sheet; src/chart/drift.ts steps through `lonLerp`); the
+--     continuous left-to-right sheet — a wrapped copy of the world beside the seam so the two
+--     pieces meet under the finger — is the next slice (docs/NAVIGATION_PLAN.md §7).
 --   * It moves no water, no price, no player row, no voyage in flight: a stored path is a list
 --     of pieces with their own nm, and every piece stored before this file has |Δlon| ≤ 180
 --     (the old verifier refused anything else), for which the new reading is byte-identical.

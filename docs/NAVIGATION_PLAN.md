@@ -217,12 +217,28 @@ Rejected: forbidding straddles and having the pathfinder split a crossing into `
 rule.
 
 **Who composes it today:** `path_refusal`, `segments_from_course`, `position` (server, 0088);
-`segmentIsWater` (client). **Who still owes it — the chart slice:** `src/chart/route.ts` projects a
-straddling segment as a stripe across the sheet, and `src/chart/drift.ts` steps
-`a.lon + (b.lon − a.lon)·frac`. Both compose `unwrapLongitudes` / `lonLerp` from `src/lib/geo`;
-`route.ts`'s job is `unwrapLongitudes(course)` before `project` (and the wrapped second copy is the
-continuous sheet's business). The served `position.lon` is always in range; `seg_index` still
-names the straddling segment she is on.
+`segmentIsWater` (client); `src/chart/route.ts` — `sheetPieces` cuts a straddling segment at ±180
+into two pieces on the one unrolled sheet, off the right edge at (180, lat*) and back in at
+(−180, lat*), lat* being the lat/lon-linear crossing latitude, and the arrowhead's heading is read
+over `unwrapLongitudes` so a last segment that straddles points across the seam; `src/chart/drift.ts`
+steps her through `lonLerp`. The served `position.lon` is always in range; `seg_index` still names
+the straddling segment she is on.
+
+**The continuous left-to-right sheet — measured 2026-09-14, and it is the NEXT slice, not this
+one.** What `chartView.ts` does at the seam today: `clampView` keeps the visible box INSIDE the
+world (`cx` clamped to ±(180 − span/2); at the world span the centre is pinned to 0), so the view
+cannot pan past ±180 and the seam always sits at the sheet's two edges; the coastline, tints,
+islets, ports, roads, fleets and names are each drawn ONCE at x = lon. A wrapped view means: the
+view's x becomes periodic (`clampView` wraps `cx` instead of clamping it); every layer draws a
+±360°-shifted copy of the same paths when the box touches the seam; and every "is this point on
+the glass" question answers for the copy too. That question is written **four times today** —
+`chartModel.ts:295` (`portMarks`), `seaNames.ts:77`, `regions.ts:169`, `SmallChart.tsx:161` — plus
+`labels.ts`'s viewBox clipping, `hitTest.ts`'s distance, the minimap's viewport rectangle
+(`Minimap.tsx`), and `openingBounds`/`withCoastInView`, which frame Tokyo + Callao the long way
+round (`boundsOf` spans 140 → −77 as 217°, and the clamp turns it into the globe). Twelve files,
+and the four copies are a `docs/NO_SPAGHETTI.md` §1 finding in their own right: the slice folds
+them into ONE `onGlass(point, box)` first, then makes that one periodic. Half of that in this PR
+would have been a second lon rule in the chart; none of it is.
 
 **Measured on the applied chain, 2026-09-14** (`tests/sea.dateline.spec.ts` re-measures live):
 Tokyo's roads → Callao's roads is ONE straight segment: chord 8,337.3 nm on an 8,337.3 nm great

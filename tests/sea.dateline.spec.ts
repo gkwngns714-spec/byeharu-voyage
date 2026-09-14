@@ -40,6 +40,7 @@ import {
   type SnapshotPort,
 } from '../src/lib/rpc'
 import { courseBetweenPorts, seaNav } from './seaCourse.fixture'
+import { buildTrack, driftedPoint, sheetPieces, type MapVoyage } from '../src/chart'
 
 let db: LocalDb
 let portByCode: Record<string, SnapshotPort>
@@ -209,6 +210,104 @@ test.describe('Tokyo → Callao crosses the South Pacific', () => {
       ['[[-16.375,178.5],[-16.375,-178.5]]', -16.375, 178.5, -16.375, -178.5],
     )
     expect(r.rows[0].ref).toMatch(/^E_LAND:/)
+  })
+})
+
+// ── the chart draws the short way, on the one unrolled sheet ───────────────────────────────────
+
+test.describe('the chart draws a straddling segment the short way', () => {
+  /** The served Tokyo → Callao course after 0088: ONE segment, straddling the seam. */
+  const TOKYO = { lat: 35.125, lon: 140.375 }
+  const CALLAO = { lat: -12.125, lon: -77.375 }
+
+  test('sheetPieces cuts the segment at ±180 into two pieces at the seam latitude', () => {
+    const pieces = sheetPieces([TOKYO, CALLAO])
+    expect(pieces.length).toBe(2)
+    // The crossing latitude is the lat/lon-LINEAR one — the line she is placed on. 39.625° of the
+    // 142.25° short-way step lie before the seam: f = 0.27856, lat* = 35.125 − 47.25·f = 21.964.
+    const latAtSeam = 35.125 + (-12.125 - 35.125) * ((180 - 140.375) / 142.25)
+    expect(pieces[0].map((p) => [p.x, p.y])).toEqual([
+      [140.375, -35.125],
+      [180, -latAtSeam],
+    ])
+    expect(pieces[1].map((p) => [p.x, p.y])).toEqual([
+      [-180, -latAtSeam],
+      [-77.375, 12.125],
+    ])
+    // Every drawn x is on the sheet, and nothing was drawn across it: no piece spans more than
+    // half a turn.
+    for (const piece of pieces) {
+      for (const p of piece) expect(Math.abs(p.x)).toBeLessThanOrEqual(180)
+      const xs = piece.map((p) => p.x)
+      expect(Math.max(...xs) - Math.min(...xs)).toBeLessThan(180)
+    }
+    // Going the other way the pieces mirror: off the LEFT edge, back in on the right.
+    const back = sheetPieces([CALLAO, TOKYO])
+    expect(back.length).toBe(2)
+    expect(back[0][1].x).toBe(-180)
+    expect(back[1][0].x).toBe(180)
+    expect(back[0][1].y).toBeCloseTo(-latAtSeam, 9)
+  })
+
+  test('a course that never nears the seam is one piece, exactly what project gave', () => {
+    const lisAms = [
+      { lat: 38.625, lon: -9.625 },
+      { lat: 40.375, lon: -9.875 },
+      { lat: 52.875, lon: 4.375 },
+    ]
+    const pieces = sheetPieces(lisAms)
+    expect(pieces.length).toBe(1)
+    expect(pieces[0].map((p) => [p.x, p.y])).toEqual(lisAms.map((p) => [p.lon, -p.lat]))
+  })
+
+  test('the track of a fleet mid-Pacific is two subpaths a side, and the arrowhead points across the seam', () => {
+    // Served position: 60 % along the one segment, placed the way voyage.position places her.
+    const at = { lat: 35.125 + (-12.125 - 35.125) * 0.6, lon: lonLerp(140.375, -77.375, 0.6) }
+    expect(at.lon).toBeCloseTo(-134.275, 9) // past the seam, in range
+    const track = buildTrack([TOKYO, CALLAO], at, 0)
+    // The sailed half: Tokyo → (180, lat*) | (−180, lat*) → her. Two subpaths, one `M` each.
+    expect(track.sailedD.match(/M/g)?.length).toBe(2)
+    expect(track.sailedD).toContain('L180 ')
+    expect(track.sailedD).toContain('M-180 ')
+    // The water ahead is all west of the seam: one subpath, her → Callao.
+    expect(track.aheadD.match(/M/g)?.length).toBe(1)
+    expect(track.end).toEqual({ x: -77.375, y: 12.125 })
+    // Heading from her to Callao: east-south-east, so between 90° (east) and 180° (south).
+    expect(track.endHeading).not.toBeNull()
+    expect(track.endHeading!).toBeGreaterThan(90)
+    expect(track.endHeading!).toBeLessThan(180)
+    // Before the crossing the arrowhead's heading is the same eastward reading — a last segment
+    // that straddles the seam must not point back round the world (west).
+    const early = buildTrack([TOKYO, CALLAO], { lat: 30, lon: 160 }, 0)
+    expect(early.endHeading!).toBeGreaterThan(90)
+    expect(early.endHeading!).toBeLessThan(180)
+    expect(early.aheadD.match(/M/g)?.length).toBe(2)
+  })
+
+  test('driftedPoint advances her the short way and never off the sheet', () => {
+    const voyage: MapVoyage = {
+      course: [TOKYO, CALLAO],
+      segIndex: 0,
+      legFrac: 0.27,
+      segNm: 8615.2,
+      at: { lat: 35.125 + (-12.125 - 35.125) * 0.27, lon: lonLerp(140.375, -77.375, 0.27) },
+      sailedNm: 0.27 * 8615.2,
+      totalNm: 8615.2,
+      etaMs: 1_000_000,
+      departedMs: 0,
+      destinationCode: 'CLL',
+      destPoint: null,
+      waters: [],
+    }
+    // Half of the remaining time has passed since the read: she is drawn 0.27 + 0.365 of the way.
+    const drawn = driftedPoint(voyage, { readAtMs: 0, nowMs: 500_000 })
+    const frac = 0.27 + 0.5 * (1 - 0.27)
+    expect(drawn.lon).toBeCloseTo(lonLerp(140.375, -77.375, frac), 9)
+    expect(Math.abs(drawn.lon)).toBeLessThanOrEqual(180)
+    // She started east of the seam (178.8°E at 0.27) and is drawn west of it — across, not around.
+    expect(voyage.at.lon).toBeGreaterThan(170)
+    expect(drawn.lon).toBeLessThan(-90)
+    expect(drawn.lat).toBeCloseTo(35.125 + (-12.125 - 35.125) * frac, 9)
   })
 })
 
