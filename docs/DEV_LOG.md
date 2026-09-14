@@ -228,6 +228,110 @@ inks) off, on, and off again, and demands the two offs are `toEqual`.
 
 ---
 
+## 2026-09-14 — The trade tray holds still: the ceiling's exemption is retired, the sell face is the count and three prices, and one unit means one (rows 95, 96, 97 — built on `osn-fix-max-flicker`, not merged, not driven on production)
+
+**The owner, three times in one sitting:** *"when i press buy, the max keeps refreshing."* ·
+*"when selling, a refresh sign of checking the price... keeps showing up. show necessary info only.
+For example i will be able to choose first how many i sell, then it will show only how much bought
+price, selling price with underneath showing the percentage. right now units? in stock? range? WTF
+man."* · *"the marker when selling unit is shitty. and it only moves in like 10? wtf. i should be
+able to sell only 1. make it so that i can type the quantity, and also scroll but better than this."*
+
+**Row 95 — root cause, and it was row 77 again.** The shell reads the world every 3 s
+(`AppShell.tsx`, `READ_MIN_MS`; the local world's compression of 9600 clamps to that floor).
+`useBuyCapacity` keyed its answer on `${fleet}:${good}:${readAt}` and returned `{bound: null,
+loading: true}` whenever the key moved — so every beat the ceiling was thrown away, `TradeTray`
+read `capacity.bound?.max ?? 0`, the `Max` row gave way to the waiting line, the stepper clamped to
+nought and the Buy button died until the re-ask landed. `useServedRead` had fixed exactly this in
+four port hooks on 09-13 — and its own header EXEMPTED the ceiling ("a ceiling shown a beat late is
+the lie that hook was written to remove"). The exemption was wrong: `cmd.issue` re-checks the
+ceiling on the press and shows its refusal; a ceiling that blanks every 3 s is the worse lie. The
+same disease sat in `useOrderPreview` (the Storage tray's dry run — estimate and refusal dropped on
+the beat) and as a third private copy of the mechanism in `useSellEstimate`. **Ripped out:** the
+three private `useState<{key, …}>` holders; the readAt in their keys; the header's exemption; and
+the two copies of the 200 ms settle timer (`useTrade.ts` and `useOrderPreview.ts` each had a
+`PREVIEW_SETTLE_MS` and its own `setTimeout`). **Left:** `useBuyCapacity`, `useOrderPreview` and
+`useSellEstimate` are each a subject and an ask on `useServedRead`; `src/live/useSettled.ts` is
+the one settle (`useSettled(value, ms)`; `PREVIEW_SETTLE_MS` exported from there only). **The
+list does not ride the beat.** The first cut of the `useSellEstimate` fold accepted N dry runs
+every 3 s for the on-board list; the lead refused it — on the live ~30-player database each
+`cmd.preview` is a real write rolled back, and eight goods open is eight writes per beat per
+player. So the ONE authority took a parameter rather than a second hook: `useServedRead(subject,
+ask, {reask: 'beat' | 'subject'})` — `'beat'` re-asks on every world read and keeps the last
+answer (one open tray or face: the ceiling, the trade tray's dry run, the storage tray's, the
+shed); `'subject'` asks once per subject and never on the beat (the list: its subject already
+carries the lot and the served sell price, so what matters re-asks by itself). Written in the
+header, dated. Counted, not asserted: `src/lib/rpc/backend.ts` prints one `console.debug('[rpc]',
+…)` per ask on both backends, and the spec counts `cmd.preview(` over 10.5 s at rest — the open
+on-board list must make 0, the open sell tray at most 4 and at least 2.
+Checked and NOT the defect: `usePortMarket`, `CompendiumScreen.tsx:79`, `RankScreen.tsx:77` all
+re-read INTO the store (`set` only on `ok`, never nulled first, `answered` never reset), so they do
+not blank.
+
+**Row 96 — the sell face.** The `Checking the price…` line is deleted, and the thing it stood
+for is gone: `useServedRead` gained a QUESTION beside its SUBJECT. The dry run is FOR (fleet,
+side, good) and asks about a quantity; a new quantity re-asks and the last served figures STAND,
+`stale`, until the new ones land — the tray dims them, never blanks them, and the button prints
+its total only once it is for the quantity chosen. A re-ask of the same quantity on the beat is
+neither stale nor blank. The face is the count first; then `Bought at` (per unit; the served
+`cost` of the chosen units under it), `Sells at` (the served `avg_price` for this quantity — the
+one price a screen may show once a bargain is open), `You get` (the served `total`) with
+`+N% on what it cost` under it. The share is `profit ÷ cost` — two served figures, both printed on
+the face (WORDS.md law 2). **No served `margin_pct` exists** (grepped 0081/0083: `basis`, `cost`,
+`profit`, `total`, `qty`, `avg_price`, `haggle_saved`); a served one would be the cleaner
+authority and is a migration for a later slice, not this one. Gone from SELL: Trend, Range, In
+stock, Cargo space, On board (the stepper's end and `All` chip are the on-board figure), and the
+buy-side refusal note. On BUY the market's context moved BELOW the count and the cargo-space row:
+a buy is read against the trend but decided on the ceiling and the count. The pinned `Profit` /
+`Loss` row reads ducats AND the share. `docs/QUAY_LEDGER.md` §3 B rewritten.
+
+**Row 97 — one means one.** `trade_step_tuns` = 10 is how the server's BOOK reprices, not a rule
+about what may be chosen: `cmd.do_buy` / `cmd.do_sell` refuse only `qty <= 0` (0007:211,
+0007:447) and the basket asks for a whole number (0083:400). The trade trays pass `step = 1`; the
+10 survives as the lot chip and as PageUp / PageDown. `Stepper.tsx` (the ONE control; FleetStores,
+GalleryScreen, KeepAndSend, PortStorage, StepQuestion untouched): the figure is a typed input
+(`inputMode="numeric"`; Enter or blur commits, clamped; nonsense reverts; the slider does not move
+while a figure is typed), the slider is the one `<input type="range">` with a 28 px rimmed thumb
+on a visible track, `touch-action: pan-y`, a non-passive wheel listener bound on the slider only
+(React's `onWheel` is passive and refuses `preventDefault`), Home / End to floor / ceiling. The
+floor on a sale is 1. `.bv-range` in `index.css` is the one place the slider is dressed, both
+schemes.
+
+**What proves it.** `tests/trade.ceiling.spec.ts`, two tests, in the browser against the local
+PGlite build. It WATCHES the DOM with a `MutationObserver` rather than sampling it — the first cut
+polled every 250 ms and went green against the OLD hook, because PGlite answers in-tab within a
+few ms and the blank fell between samples every time (on production the Seoul round-trip is what
+made it visible). Against the old hook the watcher logged the blank on the beat exactly: 87, 3088,
+6087, 9078 ms (stepper 10 → 0, button dead, ~75 ms each). Against the fix: buy tray watched
+10.5 s, 0 moves; storage tray 7.5 s, 0 moves; sell tray 10.5 s with a − and a + pressed, 0 moves,
+no `Checking`; body order on both faces; one unit chosen by −, by typing, by ArrowLeft; `Sell 1
+unit · N d.`; the sale lands and one unit leaves the hold. `tsc -b` and `eslint .` clean.
+
+**Numbers, raw.** The five named suites (trade.ceiling, layout, wide.layout, words, duplication)
+against the served build: 33 passed, 1 failed, 0 skipped — the red was `layout.spec.ts`'s
+haggle-thread proof measuring `trend-row` as a row above the thread on the SELL face, which row
+96 removed on purpose; the proof is face-aware now (SELL: the count, `Bought at`, the thread) and
+green on re-run. The full suite once, 8 workers, 1.8 h on a loaded machine (other agents' node
+processes alongside): 250 passed, 31 failed, 0 skipped. Of the 31: (1) `primitives.geometry` —
+a REAL finding, the new typed figure was a 28 px-tall control under the 44 px reach floor; fixed
+(`h-11`), rebuilt, green. (2) `waters.panel` fleet-tray — green on re-run against the rebuilt
+fix, alongside primitives and trade.ceiling: 20 passed, 0 failed, 0 skipped. (3) The other 29
+are every test in `db.chain`, `db.image`, `rpc.surface` and `rpc.firstSession` — all of them
+build the world in Node PGlite, and under that load the builds ran 21–38 min against 6–25 min
+caps and timed out (rpc.surface's `beforeAll` cascades into its 23 tests). No SQL, no RPC and no
+migration changed in this slice; `rpc.firstSession` alone re-ran green (26.5 s). A green full run
+needs an idle machine, and this entry says so rather than claiming one. Later the same day:
+`rpc.surface` + `rpc.firstSession` re-run serially — 24 passed, 0 failed, 0 skipped (53 min under
+the same load) — so those 24 reds were the load. After the `reask` parameter and the merge of
+main (665e9ab, rows 91–94): the count test first read 9 asks in a window that held 3 — Playwright
+delivers console events in batches, so asks from before a window can land inside it — and now
+stamps every `[rpc]` line with `performance.now()` in the page and windows on the page's clock.
+Measured: the open on-board list 0 `cmd.preview` over 10.5 s at rest with the world read at 0.2,
+3.2, 6.2, 9.2 s; the open sell tray exactly one per beat (4 in 10.5 s). trade.ceiling ×3 +
+selection.lock + map.marks against the merged build: 16 passed, 0 failed, 0 skipped.
+
+---
+
 ## 2026-09-13 — The port's faces, in the owner's words: no levels, crafts in groups, Repair and Damage, ONE word for storage, and storage drawn like the trade board (rows 83, 84, 86, 87, 88 — built on PR #73, not merged, not driven on production)
 
 **The owner, reading the port after the words pass:** *"in town, trade level? what is this? market

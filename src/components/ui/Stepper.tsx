@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Chip } from './Chip'
-import { Figure } from './Figure'
 import { Icon } from './Icon'
 
 // THE STEPPER — how much, and the gauge the owner asked for by name.
@@ -33,6 +32,24 @@ import { Icon } from './Icon'
 //
 // THE FIGURE IS THE SUBJECT. `t-figure`, tabular, with the unit beside it — the whole reason to
 // touch this control is to read the number it is making, so nothing else on it is louder.
+//
+// ── THE FIGURE IS TYPED, THE THUMB IS BIG, AND ONE MEANS ONE (2026-09-14) ──────────────────────
+// The owner: *"the marker when selling unit is shitty. and it only moves in like 10? wtf. i should
+// be able to sell only 1. make it so that i can type the quantity, and also scroll but better than
+// this."* Three things, in this control and not in any caller:
+//   · THE FIGURE IS AN INPUT. Tap it, type, Enter or leave commits, clamped to the floor and the
+//     ceiling; empty or nonsense reverts to the last good figure. `inputMode="numeric"` raises the
+//     number pad on a phone. The slider does not move while a figure is being typed — the draft is
+//     local until it commits — so the thumb cannot jitter under the finger.
+//   · THE SLIDER IS ONE `<input type="range">` (keyboard and screen reader for free), dressed by
+//     `.bv-range` (index.css): a thumb 28 px across, a visible track with the fill drawn under it,
+//     `touch-action: pan-y` so a sideways drag moves it and an up-down drag still scrolls the tray.
+//     A wheel over it steps by one (the listener is non-passive, bound here, so the page does not
+//     scroll while the pointer is on the slider and only then). Arrows step by one, Home and End
+//     go to the floor and the ceiling (native, then clamped), PageUp and PageDown step by the LOT —
+//     the caller's round quantity (the trade's repricing step), when it passes one.
+//   · THE STEP IS THE CALLER'S, and the trade trays pass 1: the server reprices every ten but takes
+//     any count (TradeTray.tsx, UNIT_STEP).
 
 export function Stepper({
   value,
@@ -41,6 +58,7 @@ export function Stepper({
   cap,
   min = 0,
   step = 1,
+  lot,
   unit,
   presets,
   label,
@@ -56,11 +74,14 @@ export function Stepper({
   /** The floor: the least that means anything (one hand to hire; a hull mended no lower than it
    *  stands). Defaults to 0. */
   min?: number
+  /** What `−`, `+`, the arrows and the wheel move by. Defaults to 1. */
   step?: number
+  /** A round quantity — PageUp / PageDown move by it. Defaults to `step`. */
+  lot?: number
   unit?: ReactNode
   /** Chips over the slider — `max`, a keep-level, a common quantity. Optional. */
   presets?: readonly { label: ReactNode; value: number }[]
-  /** Names the quantity for assistive tech ("tuns of aniseed"). */
+  /** Names the quantity for assistive tech ("tuns of aniseed"). Not drawn. */
   label: string
   className?: string
 } & { 'data-testid'?: string }) {
@@ -70,6 +91,37 @@ export function Stepper({
   const floor = Math.max(0, Math.min(min, ceiling))
   const clamp = (n: number) => Math.max(floor, Math.min(ceiling, n))
   const tickPct = max > 0 ? (ceiling / max) * 100 : 100
+  const leap = Math.max(step, lot ?? step)
+
+  // THE TYPED DRAFT — digits only, local until it commits. Null means "show the value".
+  const [draft, setDraft] = useState<string | null>(null)
+  const commit = () => {
+    if (draft === null) return
+    const n = Number.parseInt(draft, 10)
+    if (Number.isFinite(n)) onChange(clamp(n))
+    setDraft(null)
+  }
+
+  // THE WHEEL. React binds `wheel` passively, where `preventDefault` is refused, so the listener
+  // is bound here — non-passive, on the slider only. The latest value and clamp are read through
+  // a ref so the listener is bound once and never goes stale.
+  const rangeRef = useRef<HTMLInputElement>(null)
+  const latest = useRef({ value, step, clamp, onChange })
+  useEffect(() => {
+    latest.current = { value, step, clamp, onChange }
+  })
+  useEffect(() => {
+    const el = rangeRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return
+      e.preventDefault()
+      const { value, step, clamp, onChange } = latest.current
+      onChange(clamp(value + (e.deltaY < 0 ? step : -step)))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   return (
     <div className={`flex flex-col gap-2 ${className}`} {...rest}>
@@ -83,8 +135,35 @@ export function Stepper({
         >
           <Icon name="minus" size={20} />
         </button>
-        <div className="min-w-0 flex-1 text-center">
-          <Figure value={value.toLocaleString()} unit={unit} size="figure" />
+        <div className="flex min-w-0 flex-1 items-baseline justify-center gap-1">
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            aria-label={`${label}, typed`}
+            value={draft ?? value.toLocaleString()}
+            onFocus={(e) => {
+              setDraft(String(value))
+              e.currentTarget.select()
+            }}
+            onChange={(e) => setDraft(e.target.value.replace(/\D/g, ''))}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                commit()
+                e.currentTarget.blur()
+              } else if (e.key === 'Escape') {
+                setDraft(null)
+                e.currentTarget.blur()
+              }
+            }}
+            size={Math.max(2, (draft ?? value.toLocaleString()).length)}
+            // h-11: the figure is a tap target now, and every target clears 44 px (§5,
+            // tests/primitives.geometry.spec.ts).
+            className="h-11 min-w-0 rounded-control bg-transparent px-1 text-center text-t-figure tabular-nums text-ink outline-none focus:bg-surface-2 focus-visible:ring-2 focus-visible:ring-accent"
+            data-testid="stepper-figure"
+          />
+          {unit !== undefined && <span className="text-t-caption text-ink-faint">{unit}</span>}
         </div>
         <button
           type="button"
@@ -101,11 +180,11 @@ export function Stepper({
           you. A slider whose end IS the clamp hides the difference between "there is no more" and
           "you may not have more", and those are two different refusals. */}
       <div className="relative flex h-11 items-center">
-        <span aria-hidden="true" className="absolute h-1 w-full rounded-chip bg-surface-2" />
+        <span aria-hidden="true" className="absolute h-1.5 w-full rounded-chip border border-edge bg-surface-2" />
         <span
           aria-hidden="true"
           style={{ width: `${max > 0 ? (value / max) * 100 : 0}%` }}
-          className="absolute h-1 rounded-chip bg-accent"
+          className="absolute h-1.5 rounded-chip bg-accent"
         />
         {tickPct < 100 && (
           <span
@@ -117,6 +196,7 @@ export function Stepper({
         {/* The INPUT spans the whole track like the fill drawn under it does, so the thumb and
             the fill agree; the floor is the clamp on what it may hand back, as the cap is. */}
         <input
+          ref={rangeRef}
           type="range"
           aria-label={label}
           min={0}
@@ -124,6 +204,12 @@ export function Stepper({
           step={step}
           value={value}
           onChange={(e) => onChange(clamp(Number(e.target.value)))}
+          onKeyDown={(e) => {
+            if (e.key === 'PageUp' || e.key === 'PageDown') {
+              e.preventDefault()
+              onChange(clamp(value + (e.key === 'PageUp' ? leap : -leap)))
+            }
+          }}
           className="bv-range relative"
         />
       </div>

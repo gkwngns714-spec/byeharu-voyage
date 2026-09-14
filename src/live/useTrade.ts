@@ -35,15 +35,18 @@
 // READ_MIN_MS) the `You get` row and the button's figure went blank until the re-ask landed — row
 // 77's defect, in the one tray that had not been folded. The haggle thread stakes this preview's
 // `avg_price` on both sides and a thread cannot blink. So the dry run is one subject and one ask
-// on `useServedRead`: the SUBJECT is (fleet, side, good, the SETTLED quantity), a re-read of the
-// same subject keeps the last answer on screen and marks it `loading`, and a new quantity shows
-// nothing of the old one. The settle timer survives as a settled COPY of the quantity — the
-// stepper's slider reports every step of a drag, and each step is a new subject, so the subject
-// only moves once the finger has rested PREVIEW_SETTLE_MS. The figure printed is still the figure
-// for the quantity on the button: the answer is exposed only while the settled quantity IS the
-// button's.
+// on `useServedRead`. Since 2026-09-14 the SUBJECT is (fleet, side, good) — what the figures are
+// FOR — and the SETTLED quantity is the QUESTION: a re-read of the world or a new quantity re-asks,
+// and the last served figures stand (`previewLoading`, drawn dimmed) until the new ones land; only
+// another good shows nothing of this one's. Until then the quantity was part of the subject, and
+// every press of + blanked the rows for the settle plus the wire (row 96). The settle timer
+// survives as a settled COPY of the quantity — the stepper's slider reports every step of a drag,
+// and each step is a new question, so the question only moves once the finger has rested
+// PREVIEW_SETTLE_MS. The total on the button is printed only once it is the total for the quantity
+// on the button. The settled copy is `useSettled` since 2026-09-14 — this hook and useOrderPreview
+// each kept their own timer and their own constant until then; there is one of each now.
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { TradeControls } from '../components/ui'
 import { paidPerTun } from '../domain/fleet'
 import { findVerb, orderText, saleEstimate, type SaleEstimate } from '../domain/order'
@@ -51,11 +54,8 @@ import { cmdPreview, ok } from '../lib/rpc'
 import type { FleetView, MarketGood, Refusal } from '../lib/rpc'
 import { useBuyCapacity } from './useBuyCapacity'
 import { useServedRead } from './useServedRead'
+import { useSettled } from './useSettled'
 import { useWorld } from './worldStore'
-
-/** How long a chosen quantity must stand still before the server is asked to price it. Long
- *  enough that a slider drag is one ask; short enough that a tap on + reads as immediate. */
-const PREVIEW_SETTLE_MS = 200
 
 export function useTrade(
   fleet: FleetView,
@@ -94,35 +94,44 @@ export function useTrade(
   // THE ORDER, PREVIEWED — either side. A DRY RUN IS A REAL WRITE, ROLLED BACK, so the quantity
   // is SETTLED first: the stepper's slider reports every step of a drag, and an un-debounced ask
   // turned a 50-step drag into 50 `cmd.do_buy` round-trips. `settled` follows `n` after the finger
-  // has rested PREVIEW_SETTLE_MS, and only the settled quantity is a subject.
-  const [settled, setSettled] = useState(n)
-  useEffect(() => {
-    const timer = setTimeout(() => setSettled(n), PREVIEW_SETTLE_MS)
-    return () => clearTimeout(timer)
-  }, [n])
-  // The SUBJECT is (fleet, side, good, settled quantity) — exactly as the buy ceiling is keyed — so
-  // an answer for another quantity is never shown; a re-read of the world keeps the last answer
-  // (useServedRead). The line previewed is the line the button issues, composed by the same
-  // `orderText`, so the figure printed and the figure realised cannot be two figures.
-  // `saleEstimate` reads the keys both verbs share (`qty`, `total`, `avg_price`, `haggle_saved`)
-  // and the three a sale adds (`basis`, `cost`, `profit`), which a buy leaves null.
+  // has rested (useSettled — the one timer), and only the settled quantity is a subject.
+  const settled = useSettled(n)
+  // The SUBJECT is (fleet, side, good) — what the figures are FOR — and the QUESTION is the settled
+  // quantity (useServedRead's `question` option, 2026-09-14). A new quantity re-asks and the last
+  // served figures STAND, marked `previewLoading`, until the new ones land; a re-read of the world
+  // keeps them the same way; another good shows nothing of this one's. Until 2026-09-14 the
+  // quantity was part of the subject, so every press of + blanked the `You get` row and drew a
+  // `Checking the price…` line for the settle plus the wire — the owner: *"when selling, a refresh
+  // sign of checking the price... keeps showing up."* The line previewed is the line the button
+  // issues, composed by the same `orderText`, so the figure printed and the figure realised cannot
+  // be two figures. `saleEstimate` reads the keys both verbs share (`qty`, `total`, `avg_price`,
+  // `haggle_saved`) and the three a sale adds (`basis`, `cost`, `profit`), which a buy leaves null.
   const line =
     spec !== undefined && good !== null && settled > 0
       ? orderText(spec, { good: good.code, qty: String(settled) }, fleet.name)
       : null
-  const subject = line !== null && good !== null ? `${fleet.id}:${intent}:${good.code}:${settled}` : null
-  const dryRun = useServedRead<SaleEstimate | null>(subject, async () => {
-    // A refusal here is not the tray's to render: the press states it in full. A fleet at sea
-    // is QUEUEABLE and returns no estimate — there is nothing realised to print yet. Both are
-    // folded into ONE served value (null) so the read keeps standing rather than clearing.
-    const r = await cmdPreview(fleet.id, line as string, null)
-    return ok<SaleEstimate | null>(r.ok && r.value.estimate ? saleEstimate(r.value.estimate) : null)
-  })
-  // Exposed only while the settled quantity IS the button's: the figure printed is always the
-  // figure for the quantity chosen.
-  const current = subject !== null && settled === n
-  const preview = current ? dryRun.view : null
-  const previewLoading = spec !== undefined && good !== null && n > 0 && (!current || (dryRun.loading && dryRun.view === null))
+  const subject = spec !== undefined && good !== null ? `${fleet.id}:${intent}:${good.code}` : null
+  const question = line !== null ? `${settled}` : null
+  const dryRun = useServedRead<SaleEstimate | null>(
+    subject,
+    async () => {
+      // A refusal here is not the tray's to render: the press states it in full. A fleet at sea
+      // is QUEUEABLE and returns no estimate — there is nothing realised to print yet. Both are
+      // folded into ONE served value (null) so the read keeps standing rather than clearing.
+      const r = await cmdPreview(fleet.id, line as string, null)
+      return ok<SaleEstimate | null>(r.ok && r.value.estimate ? saleEstimate(r.value.estimate) : null)
+    },
+    { question },
+  )
+  // The figures on screen are the last served for this good; `previewLoading` says they are not
+  // yet the figures for the quantity on the button — the finger has not rested, or the answer for
+  // the settled quantity is still on the wire (`stale`). A re-ask of the SAME quantity on the
+  // world's beat is neither: the figures stand undimmed. The tray dims stale figures; the button
+  // prints its total only once they are current, so a total is never printed against the wrong
+  // quantity.
+  const preview = n > 0 ? dryRun.view : null
+  const previewLoading =
+    n > 0 && subject !== null && (settled !== n || dryRun.stale || (dryRun.view === null && dryRun.loading))
 
   const send = () => {
     if (!spec || !good || !key || n <= 0 || sending) return
@@ -139,10 +148,11 @@ export function useTrade(
     })()
   }
 
-  // The served total for THIS quantity: the dry run's, else — while it is in flight, and only at
-  // the ceiling `world.buy_capacity` priced — the capacity read's own `est_total`.
+  // The served total for THIS quantity: the dry run's once it is for this quantity, else — while
+  // it is in flight, and only at the ceiling `world.buy_capacity` priced — the capacity read's own
+  // `est_total`. A stale total is never put on the button.
   const total =
-    preview?.total ??
+    (!previewLoading ? preview?.total : null) ??
     (intent === 'buy' && capacity.estTotal !== null && capacity.bound !== null && n === capacity.bound.max
       ? capacity.estTotal
       : null)
