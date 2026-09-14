@@ -630,7 +630,7 @@ good's origin regions and holds it as a named entrepot (§D).
 
 ### Pacific Americas
 
-*4 ports — 1 capital, 2 mid, 1 small. 6 goods have their origin here.*
+*4 ports — 1 capital, 2 mid, 1 small. 6 goods have their origin here.* **Grown 2026-09-14 to 17 ports and 44 origin goods — see §J; this table is 0062's receipt and is left as it was.**
 
 | good | origin | ports that sell it | why here |
 |---|---|---|---|
@@ -643,7 +643,7 @@ good's origin regions and holds it as a named entrepot (§D).
 
 ### Oceania & the Far Pacific
 
-*5 ports — 0 capital, 0 mid, 5 small. 7 goods have their origin here.*
+*5 ports — 0 capital, 0 mid, 5 small. 7 goods have their origin here.* **Grown 2026-09-14 to 6 ports and 11 origin goods (Hobart) — see §J.**
 
 | good | origin | ports that sell it | why here |
 |---|---|---|---|
@@ -1162,3 +1162,109 @@ Four steps, in this order, or the build goes red — which is the point.
 rot. Re-read it any time with `npm run db:apply` — the last line of 0062's block prints the offer
 count, the native/entrepot split, the single-region and broad counts, the mask count and how many of
 0058's hash picks survive. If a figure here ever disagrees with that line, the receipt is right.
+
+## J. THE PACIFIC AMERICAS GROWTH (2026-09-14) — 14 harbours, 32 goods, 9 origins extended, 0 new entrepots
+
+> The owner, 2026-09-14, verbatim (`docs/OWNER_REQUESTS.md` row 91): *"I see no cities on the left
+> side of america, the number of cities are weird. Check"*
+
+Checked, and right: the whole Pacific seaboard of the Americas held **five** harbours (Acapulco,
+Panama City, Callao, Valparaiso, and Honolulu filed under Oceania). The census is in
+`docs/DEV_LOG.md` 2026-09-14. Migrations **0090** (the growth) and **0091** (its water) carry what
+follows; every figure below is 0090's own receipt. **The §0 law is unchanged and every new offer is
+NATIVE** — the Pacific Americas region now spans the coast from the Bay of San Francisco to the Bay
+of Concepción (`data/regions.json` blurb), so nothing here needed an entrepot row. The Pacific
+Americas table in §A grows from 6 origin goods to 44 and its ports from 4 to 17; Oceania from 7
+goods and 5 ports to 11 and 6.
+
+### J.1 — the harbours and their rosters (0058's count law: mid 4–8, small 4)
+
+| harbour | tier | roster | why these |
+|---|---|---|---|
+| **San Francisco** (Yerba Buena) | mid | sea-otter-pelts, redwood, california-hides, salmon, mission-wine | Outside the 1500–1650 window like Honolulu and Sydney, and says so in its note. The otter trade to Canton, redwood planking, the hide trade, Sacramento salmon, the mission grape. |
+| **Monterey** | small | sea-otter-pelts, abalone-shell, california-hides, salmon | Vizcaíno's 1602 galleon haven; otter skins, the Monterey abalone fishery, Dana's hide droghers, the bay's salmon. |
+| **San Diego** | small | california-hides, mission-wine, sea-otter-pelts, brea | The hide depot of the hide-and-tallow trade; the first mission's vines; otters; the asphalt seeps sold to ships for caulking. |
+| **Mazatlan** | small | baja-pearls, zacatecas-silver, mezcal, dried-shrimp | The Sinaloa outlet of the Copala–Rosario silver camps; the Gulf of California pearl banks; Sinaloa mezcal; the lagoon shrimp. |
+| **Navidad** (Barra de Navidad) | small | mezcal, featherwork, pulque, coconut-wine | Legazpi's 1564 departure port. Jalisco mezcal; Mexican featherwork; pulque; and the *vino de cocos* of Colima — distilled by the Filipino sailors the galleon left there in the 1570s. |
+| **Huatulco** | small | soconusco-cacao, anil, mezcal, talavera | New Spain's chief Pacific port before Acapulco: the Soconusco cacao it shipped to Peru, Oaxacan indigo, Oaxacan mezcal, and Puebla's talavera ware bound for the South Sea. |
+| **Realejo** | small | anil, pine-pitch, hammocks, cordage | The Pacific shipyard of Central America (1532): Nicaraguan indigo, the pitch and cabuya cordage its yards consumed, and the hammocks every crew slept in. |
+| **Buenaventura** | small | platinum, gold-dust, balsa-wood, hammocks | The Chocó's outlet: placer gold dust and the platinum found with it, the balsa rafts of the Pacific coast, Cauca hammocks. |
+| **Guayaquil** | mid | guayaquil-cacao, toquilla-straw, balsa-wood, cinchona-bark, mangrove-bark | The shipyard of the South Sea: Guayas cacao, Montecristi straw, balsa, the Loja fever bark the Jesuits carried to Rome, and mangrove tan-bark for Lima's tanneries. |
+| **Paita** | small | pisco, goatskins, piura-cotton, chicha | The northern port of Peru: Ica brandy landed on the run north, the *cordobanes* of Piura, native Piura cotton, and chicha. |
+| **Arica** | mid | potosi-silver, vicuna-wool, coca-leaf, chuno, pisco, alpaca-wool | The port of Potosí from 1545: the silver itself, and everything that went up and came down the llama road — vicuña and alpaca fleece, coca for the miners, chuño rations, Ica pisco. |
+| **Coquimbo** | small | chilean-copper, chilean-wine, andacollo-gold, mules | La Serena's bay: Norte Chico copper, the País grape, the Andacollo placers, and the mule trains bred for the Potosí road. |
+| **Concepcion** (Penco) | small | chilean-wine, alerce-timber, charqui, araucaria-nuts | The southern garrison of Chile: wine and charqui for Lima, alerce boards from the south, the Mapuche piñón. |
+| **Hobart** (Oceania) | small | huon-pine, sperm-oil, wattle-bark, kangaroo-skins | Outside the window like Sydney, and says so. The Derwent's whaling, Huon pine, wattle tan-bark, kangaroo hides. |
+
+### J.2 — the 32 new goods, and where each is sold
+
+All 32 name `pacific-americas` as their only origin, except the four Hobart goods, which name
+`oceania`. Each sits in 1–3 cities (0065). Notes for every one are in `data/goods.json`.
+
+| good | band | cities |
+|---|---:|---|
+| `sea-otter-pelts` Sea Otter Pelts | 5 | San Francisco, Monterey, San Diego |
+| `redwood` Redwood | 1 | San Francisco |
+| `california-hides` California Hides | 2 | San Francisco, Monterey, San Diego |
+| `abalone-shell` Abalone Shell | 3 | Monterey |
+| `mission-wine` Mission Wine | 2 | San Francisco, San Diego |
+| `brea` Brea | 1 | San Diego |
+| `baja-pearls` Baja Pearls | 5 | Mazatlan |
+| `dried-shrimp` Dried Shrimp | 2 | Mazatlan |
+| `mezcal` Mezcal | 2 | Mazatlan, Navidad, Huatulco |
+| `coconut-wine` Coconut Wine | 2 | Navidad |
+| `soconusco-cacao` Soconusco Cacao | 4 | Huatulco |
+| `anil` Anil | 4 | Huatulco, Realejo |
+| `pine-pitch` Pine Pitch | 1 | Realejo |
+| `hammocks` Hammocks | 2 | Realejo, Buenaventura |
+| `balsa-wood` Balsa Wood | 1 | Buenaventura, Guayaquil |
+| `guayaquil-cacao` Guayaquil Cacao | 3 | Guayaquil |
+| `toquilla-straw` Toquilla Straw | 2 | Guayaquil |
+| `mangrove-bark` Mangrove Bark | 2 | Guayaquil |
+| `pisco` Pisco | 2 | Paita, Arica |
+| `goatskins` Goatskins | 2 | Paita |
+| `piura-cotton` Piura Cotton | 2 | Paita |
+| `chuno` Chuño | 1 | Arica |
+| `chilean-copper` Chilean Copper | 3 | Coquimbo |
+| `chilean-wine` Chilean Wine | 2 | Coquimbo, Concepcion |
+| `alerce-timber` Alerce Timber | 2 | Concepcion |
+| `araucaria-nuts` Araucaria Nuts | 1 | Concepcion |
+| `andacollo-gold` Andacollo Gold | 4 | Coquimbo |
+| `mules` Mules | 3 | Coquimbo |
+| `huon-pine` Huon Pine | 2 | Hobart |
+| `sperm-oil` Sperm Oil | 3 | Hobart |
+| `wattle-bark` Wattle Bark | 2 | Hobart |
+| `kangaroo-skins` Kangaroo Skins | 2 | Hobart |
+
+### J.3 — the nine goods whose origin gained `pacific-americas`, defended one by one
+
+The §0 law says an offer is native or an entrepot, and the honest way to put an Andean good on an
+Andean quay is to fix its origin, not to name the quay an entrepot for a thing grown behind it.
+Each extension below is a fact about where the good comes from; each is carried into
+`public.goods.origin_regions` by 0090 and asserted equal to the data.
+
+| good | was | now also | the fact | new seller |
+|---|---|---|---|---|
+| `potosi-silver` | South America, Atlantic Coast (the Buenos Aires contraband road) | Pacific Americas | Potosí's silver went DOWN to the Pacific by llama train to Arica, and north to Callao and the Panama fairs — the legal road; the Plata road was the contraband one. | Arica |
+| `coca-leaf` | South America, Atlantic Coast | Pacific Americas | Coca is the Andean leaf; Potosí's miners chewed it and the Yungas grew it. | Arica |
+| `alpaca-wool` | South America, Atlantic Coast | Pacific Americas | Alpaca is an animal of the Peruvian and Bolivian altiplano; its fleece came down to the Pacific coast. | Arica |
+| `charqui` | South America, Atlantic Coast | Pacific Americas | *Ch'arki* is a Quechua word; Chile's charqui went north to Lima from Concepción and the Maule. | Concepcion |
+| `chicha` | South America, Atlantic Coast | Pacific Americas | Maize chicha is the drink of the whole Andean world, coast included. | Paita |
+| `platinum` | South America, Atlantic Coast | Pacific Americas | *Platina del Pinto*: the metal is from the Chocó placers on Colombia's Pacific slope, and was first described from there. | Buenaventura |
+| `gold-dust` | West Africa | Pacific Americas | The Chocó placers washed gold dust as Elmina's did; Buenaventura was their outlet. | Buenaventura |
+| `salmon` | Scandinavia & the Arctic | Pacific Americas | The Sacramento and the Pacific rivers ran with salmon; it fed the Bay and Monterey and was salted for sale. | San Francisco, Monterey |
+| `cordage` | British Isles | Pacific Americas | Nicaraguan cabuya (agave fibre) was twisted into the rigging of the Realejo yards. | Realejo |
+
+### J.4 — what was NOT done, and why
+
+* **No entrepot rows.** The obvious candidates — Manila-galleon silk and porcelain at Monterey, silver
+  at Guayaquil — were not added: Monterey never received a galleon's cargo (Vizcaíno proposed it;
+  nobody landed one), and Guayaquil shipped cacao and hulls, not bullion. The model has one entrepot
+  register (§D) and it stays defended, not padded.
+* **No Chilean wheat, Chilean tallow, Chilean hides.** Each of `wheat`, `tallow` and `hides` already sits
+  in three cities (0065's ceiling), and a regional variant of a BULK grain or a hide is exactly the fold
+  `docs/WORLD_DATA.md` §6 forbids. Chile's real trade to Lima is represented by what a merchant priced
+  as its own article — the wine, the charqui, the alerce.
+* **The California and Hobart harbours are outside 1500–1650** and their notes say so, on the precedent
+  of Honolulu, Sydney and Longyearbyen (`docs/WORLD_DATA.md` §6). The owner's reference game has San
+  Francisco; the coast is otherwise empty of European harbours for the whole period.

@@ -22,6 +22,7 @@
 -- @pass SEA_NAMES_REAL_WATERS     six real waters from the Channel to the Sea of Japan answer by name
 -- @pass SEA_AT_READS_THE_RASTER   corrupting one cell in-txn changes the answer (the lookup is live, not baked)
 -- @pass SEA_WALL_HOLDS            no client role can execute sea_at or select sea_cells
+-- @pass REACH_TOTAL_AT_EVERY_PORT every ports row carries a sea_reaches row naming every other port (the 0046 family, held past every growth)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -130,4 +131,36 @@ begin
     raise exception 'SEA proof FAIL: a client role can reach the sea raster directly';
   end if;
   raise notice 'PASS: SEA_WALL_HOLDS — no client role can execute sea_at or select sea_cells';
+
+  -----------------------------------------------------------------------------------------------
+  -- (f) EVERY PORT HAS ITS WATER — the 0046 family's property, held against the FINISHED chain.
+  --     Added 2026-09-14 with the first growth to add a harbour since the leg graph retired
+  --     (0090 / 0091). A growth migration inserts harbours; the sea migration that seeds their
+  --     roadstead and sailed distances is cut from the applied chain and so comes AFTER it. The
+  --     growth's own self-assert (g) can therefore only name the harbours awaiting their water at
+  --     its position; THIS is where "and the water arrived" is proven, once, over the whole chain:
+  --     every port — harbour or sea place — has a sea_reaches row, and that row names every
+  --     other port. Derived from the tables as they stand, never a seed count.
+  -----------------------------------------------------------------------------------------------
+  declare
+    v_ports    int;
+    v_full     int;
+    v_missing  text;
+  begin
+    select count(*) into v_ports from public.ports;
+    select count(*) into v_full from public.sea_reaches sr
+     where (select count(*) from jsonb_object_keys(sr.reaches)) = v_ports - 1
+       and sr.roadstead_lat is not null and sr.roadstead_lon is not null;
+    if v_ports = 0 then
+      raise exception 'SEA proof is VACUOUS: the ports table is empty';
+    end if;
+    if v_full <> v_ports then
+      select string_agg(p.code, ', ' order by p.code) into v_missing from public.ports p
+       where not exists (select 1 from public.sea_reaches sr where sr.port_id = p.id
+                            and (select count(*) from jsonb_object_keys(sr.reaches)) = v_ports - 1);
+      raise exception 'SEA proof FAIL: % of % ports carry a full reach row; without one: % — a growth landed without its sea migration (scripts/build-sea-migration.mjs)',
+        v_full, v_ports, coalesce(v_missing, '(rows exist but are short)');
+    end if;
+    raise notice 'PASS: REACH_TOTAL_AT_EVERY_PORT — all % ports carry a roadstead and a reach row naming the other %', v_ports, v_ports - 1;
+  end;
 end $$;

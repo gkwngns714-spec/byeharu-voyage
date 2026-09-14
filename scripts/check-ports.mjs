@@ -36,6 +36,7 @@ const COUNTRY_BBOX = {
   DK: [8.094, 54.5686, 15.1514, 57.7512],      // Denmark
   DO: [-72.0098, 17.5456, -68.3286, 19.9377],  // Dominican Republic
   DZ: [-8.6824, 18.9756, 11.9689, 37.0939],    // Algeria
+  EC: [-92.0116, -5.0114, -75.2273, 1.6644],   // Ecuador
   EE: [21.8324, 57.5158, 28.1865, 59.6709],    // Estonia
   EG: [24.6883, 21.9944, 36.8992, 31.6565],    // Egypt
   ER: [36.4236, 12.36, 43.1239, 18.0048],      // Eritrea
@@ -77,6 +78,7 @@ const COUNTRY_BBOX = {
   MY: [99.6452, 0.8514, 119.2781, 7.3558],     // Malaysia
   MZ: [30.2138, -26.8603, 40.848, -10.469],    // Mozambique
   NG: [2.6711, 4.2722, 14.6699, 13.8803],      // Nigeria
+  NI: [-87.6858, 10.7135, -82.7257, 15.031],   // Nicaragua
   NL: [-68.4174, 12.022, 7.1985, 53.5581],     // Netherlands (incl. Caribbean)
   NO: [-9.1174, -54.4625, 33.6404, 80.7701],   // Norway (incl. Svalbard, Bouvet)
   OM: [51.9786, 16.6424, 59.8446, 26.386],     // Oman
@@ -228,27 +230,42 @@ for (const r of regionIds) if (!usedRegions.has(r)) warn(`region "${r}" is defin
 for (const g of goodIds) if (!usedGoods.has(g)) warn(`good "${g}" is defined but no port produces it`);
 console.log(`[ ok ] vocabulary coverage — ${usedSeas.size}/${seaIds.size} seas, ${usedRegions.size}/${regionIds.size} regions, ${usedGoods.size}/${goodIds.size} goods in use`);
 
-// ---- 7b. the 4-9 goods band, keyed to tier (owner, 2026-08-23) ----
-// The owner's words: "big cities like capital, major trade cities should have 9. smaller cities
-// should have something like 4. Min 4, max 9."
-//
-// EXACT-PER-TIER WAS STRICTER THAN THAT, and it was wrong. "Something like 4" permits variation,
-// and forcing every tier-2 port to precisely 6 would mean re-authoring rosters to hit a number
-// rather than to say what a place actually traded - which is how 173 goods came to be orphaned in
-// the first place. So the band is a BAND: 4 to 9 for everyone, and the tiers must stay ORDERED,
-// which is the part that carries the owner's meaning. A tier-3 fishing harbour out-offering a tier-1
-// entrepot is the real defect; Yeosu offering five rather than six is not.
-const CEIL = { 1: 9, 2: 7, 3: 5 };
-const FLOOR = { 1: 5, 2: 4, 3: 4 };
+// ---- 7b. the roster count, keyed to tier (owner, docs/OWNER_REQUESTS.md row 48) ----
+// "capital cities - 10 items, mid sized cities - 4~8, small cities 4". The ONE authority for these
+// three numbers is public.roster_target_count() in migration 0058, which every chain migration
+// since calls rather than retypes; this offline validator cannot call SQL, so it restates the law
+// as a CHECK and says so. Until 2026-09-14 this block still carried 0041's retired 4-9 band and
+// had been red on all 35 capitals since 0058 landed - a validator nobody ran. Repointed with the
+// Pacific Americas growth; 0062's law (every offer native or a named entrepot) and 0065's (no
+// good in four cities) are checked in 7c below for the same reason.
+const FLOOR = { 1: 10, 2: 4, 3: 4 };
+const CEIL = { 1: 10, 2: 8, 3: 4 };
 const beforeBand = fails.length;
 for (const p of ports) {
   const n = (p.goods ?? []).length;
-  if (n < 4 || n > 9) fail(`${p.id}: ${n} goods is outside the 4-9 band`);
-  else if (n > CEIL[p.tier]) fail(`${p.id}: tier ${p.tier} offers ${n}, more than a tier-${p.tier} port should (${CEIL[p.tier]})`);
-  else if (n < FLOOR[p.tier]) fail(`${p.id}: tier ${p.tier} offers only ${n}, fewer than a tier-${p.tier} port should (${FLOOR[p.tier]})`);
+  if (n > CEIL[p.tier]) fail(`${p.id}: tier ${p.tier} offers ${n}, more than the law allows (${CEIL[p.tier]})`);
+  else if (n < FLOOR[p.tier]) fail(`${p.id}: tier ${p.tier} offers only ${n}, fewer than the law requires (${FLOOR[p.tier]})`);
   if (new Set(p.goods ?? []).size !== n) fail(`${p.id}: duplicate goods`);
 }
-console.log(`[${fails.length > beforeBand ? 'FAIL' : ' ok '}] goods band — tier 1 offers 9, tier 2 offers 6, tier 3 offers 4 (min 4, max 9)`);
+console.log(`[${fails.length > beforeBand ? 'FAIL' : ' ok '}] roster count law — capital 10, mid 4-8, small 4 (0058)`);
+
+// ---- 7c. every offer is native or a named entrepot (0062), and no good sits in four cities (0065) ----
+const beforeLaw = fails.length;
+const goodById = new Map(goodsDoc.goods.map(g => [g.id, g]));
+const cities = {};
+for (const p of ports) {
+  for (const gid of p.goods ?? []) {
+    cities[gid] = (cities[gid] ?? 0) + 1;
+    const g = goodById.get(gid);
+    if (!g) continue;
+    if (!(g.origin ?? []).includes(p.region) && !(g.entrepots ?? []).includes(p.id)) fail(`${p.id} · ${gid}: neither native (${p.region} not in origin) nor a named entrepot`);
+  }
+}
+for (const g of goodsDoc.goods) {
+  if (!(g.origin ?? []).length) fail(`good "${g.id}" names no origin region`);
+  if ((cities[g.id] ?? 0) > 3) fail(`good "${g.id}" sits in ${cities[g.id]} cities (max 3)`);
+}
+console.log(`[${fails.length > beforeLaw ? 'FAIL' : ' ok '}] every offer native or a named entrepot (0062); no good in four cities (0065)`);
 
 // ---- 8. distribution ----
 const byRegion = {};

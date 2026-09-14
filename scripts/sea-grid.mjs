@@ -106,6 +106,16 @@ export const CHANNELS = [
   { id: 'amazon-para', name: 'the Pará and the Amazon mouth', points: [[-0.5, -47.5], [-1.0, -48.0], [-1.4, -48.5]], opensLand: 5 },
   { id: 'gambia-senegal', name: 'the Gambia and Senegal mouths', points: [[13.5, -16.8], [13.4, -16.5], [16.0, -16.6], [16.0, -16.4]], opensLand: 14 },
   { id: 'baltic-gulfs', name: 'the Gulf of Finland and the Gulf of Riga', points: [[59.5, 22.0], [59.6, 23.5], [59.5, 24.8], [57.8, 22.5], [57.5, 23.5], [56.9, 24.0]], opensLand: 9 },
+  // THE PACIFIC AMERICAS GROWTH (2026-09-14, migration 0091). Natural Earth 1:110m draws no San
+  // Francisco Bay at all — three vertices along the outer coast — so at 0.25° the whole bay is
+  // land and San Francisco's nearest water was 22.4 nm out in the Pacific off Point Reyes. The
+  // Golden Gate is a mile wide and the bay behind it is the largest harbour on the coast; it is a
+  // channel like the Thames. Measured before carving: SFR snap 22.42 nm → on the channel.
+  { id: 'golden-gate', name: 'the Golden Gate and San Francisco Bay', points: [[37.7, -122.8], [37.8, -122.55], [37.8, -122.4]], opensLand: 3 },
+  // Guayaquil stands 40 nm up the Guayas; the 110m polygon keeps the Gulf of Guayaquil but the
+  // river and the Puná channel scan-fill as land, so the quay snapped 29.75 nm to the gulf. The
+  // yard that built the Armada del Mar del Sur floated its galleons down this water.
+  { id: 'guayas', name: 'the Guayas river and the Puná channel', points: [[-2.7, -80.2], [-2.5, -80.0], [-2.3, -79.9], [-2.19, -79.89]], opensLand: 3 },
 ]
 
 // ── THE ICE — the water the age of sail could never use ────────────────────────────────────────
