@@ -40,9 +40,10 @@ function distance(a: Point, b: Point): number {
  * converts the touch reach from pixels (`GLYPH.hitRadius`, derived there and measured), so the
  * reach stays the same number of SCREEN pixels at every zoom while the paper under it scales.
  *
- * `ports` is the VISIBLE set (chartModel.visiblePorts) — the same list the marks layer drew and the
- * label planner planned. A port not on the sheet is not tappable, which is the only answer that can
- * never surprise anyone: with 214 harbours in the table, hit-testing ports the player cannot see
+ * `ports` is the FULL half of the sheet (chartModel.visiblePorts — the marks that wear a name and
+ * their roads; a DOT, row 94, is a picture and not a target, and chartModel.ts records the tap
+ * that proved it). A port not on the sheet is not tappable, which is the only answer that can
+ * never surprise anyone: with 224 harbours in the table, hit-testing ports the player cannot see
  * would open a detail card for a mark that is not there.
  *
  * Returns `null` when the tap landed on open water, which clears the selection: tapping the sea to
