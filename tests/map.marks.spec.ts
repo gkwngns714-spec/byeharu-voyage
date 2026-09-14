@@ -132,9 +132,11 @@ for (const scheme of ['dark', 'light'] as const) {
         for (let i = 0; i < 12; i++) await page.getByRole('button', { name: 'Zoom out' }).click()
         await page.waitForTimeout(300)
         const world = await marksOnSheet(page)
-        expect(world.harbours, 'every harbour is on the sheet at the world view').toBe(224)
+        // Moved deliberately 2026-09-14: 224 → 238 harbours (the Pacific Americas growth, 0090);
+        // the 35 great harbours are unchanged — every new one is mid or small.
+        expect(world.harbours, 'every harbour is on the sheet at the world view').toBe(238)
         expect(world.full).toBe(35)
-        expect(world.dots).toBe(224 - 35)
+        expect(world.dots).toBe(238 - 35)
         // The whole body is drawn at the world view — the same path as at the opening frame.
         expect(world.coastBytes).toBe(opening.coastBytes)
         expect(world.coastBytes).toBeGreaterThan(70_000)

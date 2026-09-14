@@ -700,6 +700,21 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 * `scripts/coords.cache.json` records that Banda Neira's Wikidata coordinate moved 0.005° since
   2026-08-18; `data/ports.json` keeps the applied one, deliberately.
 
+**Merged forward the same day** (main `3886f42` = PRs #79/#80/#81, then `origin/osn-cross-the-dateline`
+= 0088, PR #82): owner row renumbered 91 → **99**; `LAST` stays 0091. The merged chain: `db:apply`
+**82/82 receipts, world-guard ok**; `db:proof` **10/10, 74/74** — 0088's re-cuts (`lon_lerp`,
+`path_refusal`, `segments_from_course`, `position`) and 0091's re-seeded `sea_reaches` /
+`channels` compose; 0088's Tokyo → Callao control reads the roadsteads 0091 seeds (unchanged, 0
+moved). `tsc`, `eslint` 0; `seaCarve`/`sea.dateline`/`duplication`/`sections` 36 passed.
+PR #80's measurement pins moved deliberately with the 14 harbours: `tests/map.landfall.spec.ts`
+224 → 238, in drawn water 79 → 80, moved onto the shore 51 → 52 (widest 8.58 nm), islets 28;
+`tests/map.marks.spec.ts` 224 → 238 marks, 35 great harbours unchanged — re-measured by the
+specs on the merged build (**13 passed**), and none of the fourteen stands in drawn water at the
+world view. `db.chain` on the merged build: 7 of 8 passed; *"a chain change rebuilds the stored
+world"* (two whole-chain builds) hit its 25-min budget at 27.4 min on this shared machine, where
+it had passed at 23.6 min earlier the same day — the chain grew by 0088 and ~6 % since; CI's
+runner is the honest measure of that budget.
+
 ---
 
 ## 2026-09-13 — The port's faces, in the owner's words: no levels, crafts in groups, Repair and Damage, ONE word for storage, and storage drawn like the trade board (rows 83, 84, 86, 87, 88 — built on PR #73, not merged, not driven on production)
