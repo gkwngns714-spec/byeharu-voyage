@@ -371,7 +371,13 @@ test(`PORT › Trade (sell): count first, then three prices and the share; no "c
   await expect(row).toContainText(new RegExp(`${aboardBefore - 1} units? on board`), { timeout: 20_000 })
 })
 
-test(`PORT › Trade: an open on-board list makes NO dry run on the world's beat; an open sell tray makes at most one per beat`, async ({ page, request, baseURL }) => {
+// THE WIDE GLASS, for the count: on a phone an EMPTY basket docks nothing (ManifestPanel.tsx), so
+// the on-board list — the thing being counted — only stands at rest in the right-hand slot of a
+// 1440×900 glass, where the basket panel always shows.
+test.describe('the asks, counted', () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
+
+  test(`PORT › Trade: an open on-board list makes NO dry run on the world's beat; an open sell tray makes at most one per beat`, async ({ page, request, baseURL }) => {
   // THE COST THAT MUST NOT BE PAID. `cmd.preview` is a real write rolled back, and the on-board
   // list is a LIST: folded onto useServedRead in its default mode it would have made N writes every
   // 3 s per player on a live ~30-player database. `useSellEstimate` asks in 'subject' mode — once
@@ -392,6 +398,7 @@ test(`PORT › Trade: an open on-board list makes NO dry run on the world's beat
   await expect(tray).toHaveCount(0, { timeout: 30_000 })
   const row = rows.filter({ hasText: name }).first()
   await expect(row).toContainText(/\d units? on board/, { timeout: 20_000 })
+  await expect(page.locator('[data-testid="basket-panel"]')).toBeVisible({ timeout: 20_000 })
   await expect(
     page.locator('[data-testid^="on-board-sale-"]').first(),
     'no on-board sale row — is the basket panel showing the list?',
@@ -401,7 +408,7 @@ test(`PORT › Trade: an open on-board list makes NO dry run on the world's beat
   const before = previews
   await page.waitForTimeout(10_500)
   const listAsks = previews - before
-  console.log(`PORT on-board list @${PHONE.width}px: ${listAsks} cmd.preview asks in 10.5 s at rest (${previews} since boot)`)
+  console.log(`PORT on-board list @1440px: ${listAsks} cmd.preview asks in 10.5 s at rest (${previews} since boot)`)
   expect(listAsks, "the on-board list re-asked its sale estimates on the world's beat").toBe(0)
 
   // The sell tray, open and at rest: one dry run per beat at most — and at least two in three
@@ -413,7 +420,8 @@ test(`PORT › Trade: an open on-board list makes NO dry run on the world's beat
   const beforeTray = previews
   await page.waitForTimeout(10_500)
   const trayAsks = previews - beforeTray
-  console.log(`PORT sell tray @${PHONE.width}px: ${trayAsks} cmd.preview asks in 10.5 s at rest`)
+  console.log(`PORT sell tray @1440px: ${trayAsks} cmd.preview asks in 10.5 s at rest`)
   expect(trayAsks, 'the open sell tray asked more than once per 3-s beat').toBeLessThanOrEqual(4)
   expect(trayAsks, 'the open sell tray never re-asked on the beat — is the world being read?').toBeGreaterThanOrEqual(2)
+})
 })
