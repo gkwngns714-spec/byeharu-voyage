@@ -5,6 +5,60 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-14 — "i can't seem to press anything else": the port field folded on a blur, under the press (row 91 — built on PR, not merged, not driven on production)
+
+**The owner, desktop Chrome, ~1545 px:** *"when i drag to copy paste multiple words, i can't seem
+to press anything else."*
+
+**Reproduced first, not guessed.** A disposable spec drove the built app (local PGlite, Chromium,
+1545×900) through twenty-three mouse selections — across the trade board, ending on the nav bar,
+starting on a buy label, inside the open trade tray and out across its border, across the Menu
+tray's Resize handle and starting on it, across the chart from text outside it, on Command, the
+Storage face, the Codex tiles and an open Codex tray, Fleets' fold, History, Rank, Profile; plus
+Ctrl+C after the drag, double- and triple-click selections, a drag that leaves the viewport, and a
+press on already-selected text (Chrome's text drag). Every following press acted. Six of the same
+flows were then driven on the LIVE site in the owner's own Chrome (London; nav, the Storage face,
+a buy cell opening its tray, the tray's ✕, a Menu row, the map) — every press acted; nothing was
+bought. One "lock" in the first pass was the spec's own fault (`locator.boundingBox()` on a
+testid that does not exist waited out the whole test budget) and is recorded here so nobody
+chases it.
+
+**One thing failed, deterministically, and it is the port field.** `src/features/port/
+PortField.tsx`: focus empties the field (so a drag inside it, to copy the harbour's name, selects
+nothing) and stands ten harbour chips under it IN FLOW, so the whole board drops — the first live
+buy cell from **y = 330 to y = 434**. The field's exit was *focus leaving the pair*, and a blur is
+fired by the **mousedown** of whatever is pressed next: the chips unmounted, the board jumped back
+up 104 px under the pointer, and the **mouseup** landed on another element. Chrome fires no click
+across two elements. Measured: press the cell where it stands → `trade-tray` count 0,
+`aria-pressed=false`. One dead press per visit to the field, on every visit. The owner's collapse
+rule (*"pressing a control SELECTS. It never collapses, re-flows … the surface it was pressed
+on"*) broken under a press in progress — by a fold nobody pressed for.
+
+**What was ripped out, and the one decision that replaces it.** The blur road is gone: no
+`onBlur` on the pair, no Escape on the input's own `onKeyDown`, and no `pointerdown` cancel on the
+chips (it existed only to stop that same blur closing the field a beat before a chip's click).
+The picker now folds on a pick, on Escape, or on a `click` that lands OUTSIDE the pair — a
+document listener that lives only while `open`, so the pressed control answers first and the
+fold comes after. Mouse and touch now agree: a touch press never blurred the field at all, so on a
+phone the chips simply stayed until a pick. `leave()` is still the one exit. Not touched: the
+field still empties on focus (the documented design; it is why a drag inside it copies nothing)
+— named here as the other half of the owner's sentence, not fixed by this PR.
+
+**What proves it.** `tests/selection.lock.spec.ts`, four proofs at 1545×900 that press where the
+control STANDS at the moment of the press: a drag inside the field then a press on the first live
+buy cell must open its tray and the picker must then be folded with the name back; a plain press
+into the field then the same; a chip still picks and Escape still leaves; a sweep across the board
+ending on the nav bar then a nav press must route. Against the unfixed build: **2 failed / 2
+passed** (the two dead presses). Against the fixed build: **4 passed**, served bundle
+md5-identical to `dist/`. `tsc -b` 0, `eslint .` 0. `layout` + `wide.layout` + `words` +
+`duplication` on the fixed build: **31 passed / 1 failed / 0 skipped** (15.9 min). The one red is
+`layout.spec.ts:787` (the haggle thread "moves nothing above it": `haggle-row` 994 → 889 inside
+the trade tray's own scroller) — and it is red with main's `PortField.tsx` swapped back into the
+bundle, same numbers, so it is not this change: it is the trade tray's ceiling row re-flowing
+between the two measurements, the Max-flicker another hand is fixing today. Not re-run to green.
+
+---
+
 ## 2026-09-13 — The port's faces, in the owner's words: no levels, crafts in groups, Repair and Damage, ONE word for storage, and storage drawn like the trade board (rows 83, 84, 86, 87, 88 — built on PR #73, not merged, not driven on production)
 
 **The owner, reading the port after the words pass:** *"in town, trade level? what is this? market
