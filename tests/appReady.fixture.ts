@@ -77,3 +77,30 @@ export async function ready(page: import('@playwright/test').Page) {
     )
   }
 }
+
+/**
+ * THE FRAME COST OF A ZOOM STEP, in ms — row 90's apparatus, run INSIDE the page: twelve wheel
+ * steps (six in, six out) dispatched on the chart element, two animation frames awaited after
+ * each, `performance.now()` around the lot. Nothing in the timed loop crosses to Playwright, so
+ * the figure is the chart's, not the driver's round trips (which cost ~150 ms a step on a loaded
+ * machine and swamped the first measurement on 2026-09-14).
+ */
+export async function zoomStepMs(page: import('@playwright/test').Page): Promise<number> {
+  return page.evaluate(async () => {
+    const chart = document.querySelector('[data-testid="map-chart"]') as HTMLElement
+    const svg = chart.querySelector('svg') as SVGSVGElement
+    const rect = chart.getBoundingClientRect()
+    const frame = () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
+    const step = async (deltaY: number) => {
+      const before = svg.getAttribute('viewBox')
+      svg.dispatchEvent(
+        new WheelEvent('wheel', { deltaY, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, bubbles: true, cancelable: true }),
+      )
+      await frame()
+      if (svg.getAttribute('viewBox') === before) throw new Error('the wheel did not zoom the chart')
+    }
+    const t0 = performance.now()
+    for (let i = 0; i < 12; i++) await step(i < 6 ? -120 : 120)
+    return (performance.now() - t0) / 12
+  })
+}

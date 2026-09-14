@@ -43,9 +43,10 @@ export interface RoadsteadMark {
 /**
  * WHICH PORTS SHOW THEIR ROADS, AT THIS ZOOM.
  *
- * `ports` is the VISIBLE set (`visiblePorts`) — the same list `PortsLayer` is handed, so a line can
- * never run out of a mark that was not drawn (./chartModel.ts's header: *"a port you can tap but
- * cannot see, or a name floating over a mark that was never drawn, are both the same bug"*).
+ * `ports` is the FULL half of the sheet (`visiblePorts` — `portMarks`' entries that wear their
+ * mark, row 94; a dot has no roads), so a line can never run out of a mark that was not drawn
+ * (./chartModel.ts's header: *"a port you can tap but cannot see, or a name floating over a mark
+ * that was never drawn, are both the same bug"*).
  *
  * TWO REASONS A PORT DRAWS NOTHING, and neither is a fallback:
  *

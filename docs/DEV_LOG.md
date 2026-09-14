@@ -5,6 +5,333 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-14 — "i can't seem to press anything else": the port field folded on a blur, under the press (row 91 — built on PR, not merged, not driven on production)
+
+**The owner, desktop Chrome, ~1545 px:** *"when i drag to copy paste multiple words, i can't seem
+to press anything else."*
+
+**Reproduced first, not guessed.** A disposable spec drove the built app (local PGlite, Chromium,
+1545×900) through twenty-three mouse selections — across the trade board, ending on the nav bar,
+starting on a buy label, inside the open trade tray and out across its border, across the Menu
+tray's Resize handle and starting on it, across the chart from text outside it, on Command, the
+Storage face, the Codex tiles and an open Codex tray, Fleets' fold, History, Rank, Profile; plus
+Ctrl+C after the drag, double- and triple-click selections, a drag that leaves the viewport, and a
+press on already-selected text (Chrome's text drag). Every following press acted. Six of the same
+flows were then driven on the LIVE site in the owner's own Chrome (London; nav, the Storage face,
+a buy cell opening its tray, the tray's ✕, a Menu row, the map) — every press acted; nothing was
+bought. One "lock" in the first pass was the spec's own fault (`locator.boundingBox()` on a
+testid that does not exist waited out the whole test budget) and is recorded here so nobody
+chases it.
+
+**One thing failed, deterministically, and it is the port field.** `src/features/port/
+PortField.tsx`: focus empties the field (so a drag inside it, to copy the harbour's name, selects
+nothing) and stands ten harbour chips under it IN FLOW, so the whole board drops — the first live
+buy cell from **y = 330 to y = 434**. The field's exit was *focus leaving the pair*, and a blur is
+fired by the **mousedown** of whatever is pressed next: the chips unmounted, the board jumped back
+up 104 px under the pointer, and the **mouseup** landed on another element. Chrome fires no click
+across two elements. Measured: press the cell where it stands → `trade-tray` count 0,
+`aria-pressed=false`. One dead press per visit to the field, on every visit. The owner's collapse
+rule (*"pressing a control SELECTS. It never collapses, re-flows … the surface it was pressed
+on"*) broken under a press in progress — by a fold nobody pressed for.
+
+**What was ripped out, and the one decision that replaces it.** The blur road is gone: no
+`onBlur` on the pair, no Escape on the input's own `onKeyDown`, and no `pointerdown` cancel on the
+chips (it existed only to stop that same blur closing the field a beat before a chip's click).
+The picker now folds on a pick, on Escape, or on a `click` that lands OUTSIDE the pair — a
+document listener that lives only while `open`, so the pressed control answers first and the
+fold comes after. Mouse and touch now agree: a touch press never blurred the field at all, so on a
+phone the chips simply stayed until a pick. `leave()` is still the one exit. Not touched: the
+field still empties on focus (the documented design; it is why a drag inside it copies nothing)
+— named here as the other half of the owner's sentence, not fixed by this PR.
+
+**What proves it.** `tests/selection.lock.spec.ts`, four proofs at 1545×900 that press where the
+control STANDS at the moment of the press: a drag inside the field then a press on the first live
+buy cell must open its tray and the picker must then be folded with the name back; a plain press
+into the field then the same; a chip still picks and Escape still leaves; a sweep across the board
+ending on the nav bar then a nav press must route. Against the unfixed build: **2 failed / 2
+passed** (the two dead presses). Against the fixed build: **4 passed**, served bundle
+md5-identical to `dist/`. `tsc -b` 0, `eslint .` 0. `layout` + `wide.layout` + `words` +
+`duplication` on the fixed build: **31 passed / 1 failed / 0 skipped** (15.9 min). The one red is
+`layout.spec.ts:787` (the haggle thread "moves nothing above it": `haggle-row` 994 → 889 inside
+the trade tray's own scroller) — and it is red with main's `PortField.tsx` swapped back into the
+bundle, same numbers, so it is not this change: it is the trade tray's ceiling row re-flowing
+between the two measurements, the Max-flicker another hand is fixing today. Not re-run to green.
+
+---
+
+## 2026-09-14 — Istanbul on the shore, every harbour on the globe, and the regions painted behind a switch (rows 92, 93, 94 — built on the `osn-map-regions-and-landfall` PR, not merged)
+
+**The owner, three times in one day, all about the same sheet:** *"some cities are in the ocean,
+not on land such as istanbul. I want you to fix it."* · *"i told you to create regions on map,
+show it using different color of the sea and country, make filter so that i can choose to apply
+color, or return to the current state."* · *"i want to see all the countries, all the ports in
+the game when i zoom out, it can be a dot, then once zoomed in i will be able to see the marker"*.
+The second is row 59 said again — that row was closed on 2026-09-01 as *DESIGN ONLY* and nothing
+was built, which `docs/OWNER_REQUESTS.md` rule 5 calls a bug report about the row; it is repaired
+there. No migration; frontend only; three new specs; `docs/MAP_ATMOSPHERE.md` §9 holds the design.
+
+### Row 92 — measured first: 79 harbours in the water the chart draws
+
+`tests/map.landfall.spec.ts` runs every harbour the database holds (`deriveWorld()`, the rows
+`world-guard` proves the applied world equals) through a point-in-polygon over the rings the chart
+actually draws (`buildCoastline` over `data/world-110m.json`, the same 0.2° decimation, even-odd
+like the fill). **224 harbours; 79 in drawn water.** Not a data error: every coordinate is the
+city's true one, and at 110m the Bosporus does not exist, so Istanbul (41.01, 28.96) is 7.06 nm
+off the polygon Turkey is drawn with; Algiers 7.71, Tripoli 8.58, Matsumae 8.50, Mumbai 7.50,
+Cádiz 3.22, Alexandria 0.30. **51 lie within 8.6 nm of the drawn shore.** The other **28 are
+islands the file has no polygon for at all** — Malta, Bermuda, Barbados, the Azores, Madeira, the
+Canaries, Cape Verde, the Faroes, Gotland, Jeju, Tsushima, Okinawa, Rhodes, Chios, Zakynthos,
+Zanzibar, Ambon, Banda, Socotra, Guam, Malé, Mauritius, São Tomé, Bahrain, Curaçao, Mallorca —
+nearest foreign shore 14.31 nm (Rhodes, to Anatolia), most hundreds of miles.
+
+**The cap is 10 nm and it was measured into the gap.** At the brief's 15 nm Rhodes would have
+been set on Turkey, which is a lie at the scale a chart is read. Widest coarseness move 8.58,
+nearest island 14.31; 10 sits between. `LANDFALL_CAP_NM` says so on the line.
+
+**A finer coast was measured and rejected.** NE 50m countries (3 MB, fetched into the scratchpad,
+not committed), built by the same `buildCoastline`: 336 ms and 131 KB of path against 37 ms and
+79 KB; **99 harbours in drawn water — more, not fewer** (a finer coast has finer bays for a true
+coordinate to fall outside of); 13 still stranded; and **32 of the 238 roadsteads of 0085 would
+draw inside 50m land** — the same 32 that sit inside 110m land today, because those are channel and
+river ports whose roads are a fact about the raster, not the polygon. A finer coast moves the
+problem and adds a fetch; it is the wrong fix, as the brief suspected.
+
+**What was built.** `src/chart/landfall.ts` — pure: `onDrawnLand` (even-odd over the body
+rings, which `CoastlineData` now exposes as `rings`), `landfallPoint` (nearest shore segment,
+0.005° inside it, confirmed on land), `landfallPorts` (the table, harbours moved, sea places and
+`roadstead` untouched, list identity kept when nothing moves). Applied ONCE in `useBackdrop`, which
+now takes the served rows and returns `ports` — so the Map tab and `SmallChart` get their ports
+from the one place the served table and the drawn coast meet, and the mark, the name, the tap
+target (`hitTest`), the roadstead's dotted line (`roadsteads.ts` starts at the moved quay) and a
+docked fleet's hull (`chartModel` places her at the port's `MapPort` coordinate) all read the one
+moved point. `ports.lat/lon` on the server — sailing, roadsteads, `voyage.sea_at` — is untouched;
+`MapPort`'s header says so. The 28 islands get an **islet**: a 4 px speck in `chart-land` with the
+coast's stroke, painted by `CoastlineLayer` after the coast and under every port (`GLYPH.isletRadius`).
+"A harbour is where land meets water" is the rule `openingBounds` already framed by.
+
+### Row 94 — every harbour, as a dot, and the countries were never culled
+
+`visiblePorts` used to drop a port below the zoom's tier band; now `portMarks` (`chartModel.ts`)
+puts every port on the glass on the sheet, `full` when its tier clears `minTierForSpan` or it is
+yours, else a **dot** — `GLYPH.portDotRadius` 1.6 px, quiet ink, the same `<g data-port-code>`,
+`data-port-mark="dot"`, no ring, no name, no roads — **and no tap.** The first build made dots
+tappable, and the suite caught what that does on a phone: at the opening frame a tap on the word
+*Cadiz* opened **Sanlúcar**, a tier-2 dot 5 px north of the Cádiz mark, nearer to the name than the
+mark it names (`tests/map.sendfleet.spec.ts`, its defect-1 assertion, red). So a dot is a picture
+and the hit test reads the full half; the owner's sentence has the order right — a dot zoomed
+out, the marker once zoomed in — and `tests/map.marks.spec.ts` pins the hit test to `visiblePorts`.
+`visiblePorts` is now `portMarks`' full half and keeps every pin (35 on the globe, 114 on a sea,
+all on a coast — `tests/map.labels.spec.ts` untouched). The label planner, the roads and the hit
+test read the full half; `tests/map.roadsteads.spec.ts`'s one pin moved deliberately to `fullPorts`. The
+countries: `CoastlineLayer` always drew the whole body path; measured, all 175 coded countries of
+the file keep at least one ring above `COASTLINE_MIN_SPAN_DEG`, and `tests/map.marks.spec.ts` pins
+that against `CoastlineData.countries`.
+
+### Row 93 — the regions, measured before painted
+
+**The ambiguity tables** (`node scripts/build-region-tint.mjs` prints them):
+
+*country → region, by majority of its harbours (12 of 93 split):* ES → iberia [7 · atlantic-isles
+2 · maghreb 1 · western-mediterranean 1] · FR → france-low-countries [6 · western-mediterranean 2]
+· GR → aegean-anatolia [4 · adriatic-ionian 3] · IN → western-india [10 · eastern-india 4] · IT →
+western-mediterranean [6 · adriatic-ionian 2] · ID → southeast-asia [9 · oceania 1] · PT → iberia
+[3 · atlantic-isles 3, tie → file order] · EG → levant [1 · arabia-gulf 1] · MX → caribbean [1 ·
+pacific-americas 1] · PA → caribbean [1 · pacific-americas 1] · RU → baltic [1 ·
+scandinavia-arctic 1] · US → north-america-atlantic [4 · oceania 1]. A country is one polygon and
+cannot be split without clipping it; v1 tints by the majority, and the Atlantic Isles therefore
+hold no drawn land (Madeira, the Azores and the Canaries go with their crowns; Cape Verde has no
+110m polygon). Turkey is NOT split (its four harbours are all aegean-anatolia). 14 port countries
+have no 110m feature at all (the island states plus GI, HK, MO) and no land to tint.
+
+*sea → region, by majority (measured, then REJECTED for the water):* north-atlantic →
+[atlantic-isles 6 · iberia 6 · north-america-atlantic 6 · maghreb 3 · british-isles 2 ·
+scandinavia-arctic 2 · west-africa 2 · south-america-atlantic 1] — **a three-way tie decided by
+file order**; mediterranean-sea → western-mediterranean [10 · maghreb 6 · iberia 4 · levant 4 ·
+aegean-anatolia 2] — the whole Mediterranean one colour with four regions' harbours on its shore;
+north-sea → france-low-countries [6 · british-isles 3 · baltic 1]; english-channel →
+france-low-countries [3 · british-isles 2]; east-china-sea → japan [4 · china-coast 1 · korea 1];
+sea-of-japan → korea [1 · japan 1]; and nine more. A rule that ties on the biggest sea is not a
+rule the data makes.
+
+**What the water is instead.** The brief's fallback assumed `seaOf` is a nearest-centroid rule;
+it is not — `voyage.sea_at` (0040) reads `public.sea_cells`, a 0.25° raster rasterised from
+Natural Earth's marine polygons with unnamed water attached to its sea BY WATER, server-private,
+patched by 0052 (1 row) and 0079 (11 rows). `scripts/lib/region-tint.mjs` **replays those three
+migrations' own base64 rows** — 720 + 1 + 11 — never re-rasterising, and gives every navigable
+cell the region of the harbour it is **nearest to by water**: a multi-source breadth-first search
+from every harbour's water cell (all 224 seed within 8 rings, 0040's bound), 8-connected, columns
+wrapping, ties to `ports.json` order. That is 0040's own method for the water it did not name,
+and for the same reason: a seam found by water never leaks across an isthmus, and where two regions
+meet mid-ocean the seam is where no player can see it. Result: 647,194 of 647,208 water cells
+tinted (14 are landlocked pools no harbour reaches), packed as **6,015 axis-aligned rectangles**
+(row runs merged vertically) in `data/region-tint.json` — 120 KB, 32 KB gzipped, riding in the
+backdrop chunk as `?raw` beside `seas.json`. Rectangles, not traced polygons, because two
+neighbours simplified separately leave slivers; `shape-rendering: crispEdges` so the tiles do not
+show their seams. `tests/map.regions.spec.ts` rebuilds the file from the chain and demands the
+committed copy is byte-identical, so the tint and the raster the game sails cannot drift apart.
+
+**The land** is the body's own rings: `buildCoastline` now tags every kept ring with the feature's
+`ISO_A2_EH` (the one code column the file fills for France and Norway) and returns `countries`
+— the same rings `d` is written from, grouped — so a region's land `d` is a substring of the body
+and the tint sits exactly on the coast's edge, painted inside the body clip under the relief and
+the coast stroke. The pinned inks did not move (`tests/chart.ink.spec.ts` measures the same
+elements; the regions spec asserts the same computed colours on, off and on).
+
+**The palette.** 25 tokens `--color-chart-region-<id>` in both schemes, `oklch`. Chosen by
+measurement: the builder reports the **45 pairs of regions that touch on the water**; those were
+graph-coloured (most-constrained first, the class maximising the OKLab distance from every
+coloured neighbour) over eight hues × two lightness steps, then every touching pair was run through
+the dataviz skill's `validate_palette.js` (OKLab ΔE under Machado protanopia/deuteranopia):
+**worst touching pair ΔE 9.0 CVD · 15.7 normal (night), 8.1 · 16.0 (day)**, both above the 8 / 15
+floors, 0 weak pairs in either scheme. Within a class the members drift ±7° so all 25 stay distinct;
+a region is named on its tint, so colour is never the only channel. Stated deviations: the dark
+L 0.80 step exceeds the validator's mark band (0.48–0.67) because the tint is painted at
+`WATER_TINT_ALPHA` 0.32 / `LAND_TINT_ALPHA` 0.42 over a dark sea; one day hue reads chroma 0.099
+against the 0.10 floor. The first attempt — 25 golden-angle hues in file order — was validated and
+thrown away: 26 weak touching pairs, worst ΔE 0.7.
+
+**The names** are `LabelRequest`s to the ONE planner at `LABEL_PRIORITY.region` = 7 (above the
+seas' 5, below the quietest harbour's 11), centred on the mean of the region's harbours, 13 px,
+spaced like water, in the sea-name ink, painted in the ground group under every place's name.
+
+**The filter.** A fourth button under +/−/find in `ViewControls` — the `regions` globe glyph
+(one entry added to `icons.ts`) and the one word *Regions*, `aria-pressed`, accent border and ink
+when on. State is ONE `useSyncExternalStore` store (`regionsFilter.ts`, key
+`byeharu-voyage.map.regions.v1`, try/catch both ways), so the Map tab and the Command tab's small
+chart flip together and a reload finds it where it was left. Default OFF, and off is the chart as
+it was: `ChartCanvas` is handed `null`, `CoastlineLayer` paints no tint group, no region name is
+requested — the spec snapshots the sheet (element count, layer list, tint counts, names, the three
+inks) off, on, and off again, and demands the two offs are `toEqual`.
+
+### What proves it
+
+* `tests/map.landfall.spec.ts` — the table (79 · 51 · 28, cap in the gap), `landfallPorts`'
+  contract, and in the browser at 390×844 and 1440×900: at the opening frame and at the world view
+  (all 224 on the sheet) every harbour mark is inside the body (`SVGGeometryElement.isPointInFill`
+  on the body's own `evenodd` path) or on an islet. **Unfixed run, against a `vite build` of `main`
+  (2209a92) served on :4192: **2 failed of 2** — at 390×844 the opening frame drew 3 harbours in water (CAD FNC LPA) and the world view 8 of the 35 it drew (ALE CAD CAR CLL IST MAC SLV VER); at 1440×900, 1 (CAD) and the same 8. Fixed run: **4 passed** (2 pure, 2 browser) — opening frame 25 and 12 harbours drawn, 0 in water; world view 224 drawn, 28 islets, 0 in water, at both glasses.**
+* `tests/map.regions.spec.ts` — **11 passed** (7 pure, 4 browser: dark and light × 390×844 and 1440×900) — off by default, `aria-pressed=false`, 0 tint paths, 0 region names; on: 25 water paths, 24 land paths, `Iberia` named at the opening frame, `map-sea`/`map-coastline`/`map-coast` the same computed colours; off again `toEqual` the first sheet (164 elements at 390, 122 at 1440; 216 and 174 with the filter on); kept across a reload. Frame cost of a zoom step, measured IN-PAGE (`zoomStepMs` in `tests/appReady.fixture.ts` — twelve synthetic wheel steps, two frames each, `performance.now()` around the lot; the first apparatus timed Playwright's own round trips and read ~150 ms a step of driver latency) at the opening frame, after the merge onto `main` with the machine quiet: **1440×900 dark OFF 48.6 · ON 49.4 ms; light OFF 47.8 · ON 48.3 ms; 390×844 dark OFF 30.9 · ON 31.4 ms; light OFF 31.5 · ON 30.9 ms** — the tint costs under 1 ms a step, and the OFF figures sit on row 90's 31–44. (The first measurement, taken with five other agents' builds and suites running, read 183–207 ms a step ON and OFF alike, and `main`'s own build 185–242 ms on the same apparatus in the same minute — machine load, not the layer; recorded so the number is not mistaken for a regression.)
+* `tests/map.marks.spec.ts` — **9 passed** (5 pure, 4 browser) — at the world view 224 harbour marks in the DOM, 35 full and 189 dots, at both glasses in both schemes (opening frame 25 harbours at 390 — 15 full, 10 dots — and 12 at 1440 — 6 and 6); the whole body path (78.9 KB) at the world view as at the opening; a dot (Acapulco) wheel-zoomed in on wears `data-port-mark="full"`. Frame cost at the world view with all 224 marks on the sheet, in-page, machine quiet: **1440×900 dark 52.7 · light 49.4 ms; 390×844 light 31.5 ms** (one 390 dark read of 106 ms with a build finishing beside it) — level with the opening frame's own figures, so the dots cost nothing the eye can measure.
+* The guards: `npx tsc -b` clean · `npx eslint .` clean · `npm run build` ✓ (the first, with the world image rebuilt: 13 m 58 s; the second 1.18 s) · the full brief suite (`tests/map.*.spec.ts chart.ink layout wide.layout words duplication`, 204 tests, 2 workers, `localhost:4191`): **203 passed, 1 failed, 0 skipped** in 10.5 min — the one red was `map.sendfleet`'s positive control, which took the first `g[data-port-code]` after Cádiz as "any other harbour" and got Agadir's DOT, which has no path to aim at; the drive now aims at `data-port-mark="full"` (pin moved deliberately, dated in the file) and `map.sendfleet` re-ran **9 passed** on the same build. After the merge onto `main` (PR #79) the build was re-cut and `map.landfall`, `map.regions`, `map.marks` and `selection.lock` ran together on it: **28 passed, 0 failed, 0 skipped** (3.3 min). The earlier full run against the same code had caught the real finding this section records above — a tap on *Cadiz* opening Sanlúcar with dots in the hit test — which is why dots are pictures now.
+
+### Deliberately not done
+
+* No second coastline resolution; no edit to `data/ports.json` or `data/world-110m.json`; no
+  migration (the server's coordinates and the raster are the truth the picture is set on).
+* Countries are tinted whole by majority — a per-harbour split of Spain or India would need
+  polygon clipping and a decision about where a region's land ends, which is design, not v1.
+* The minimap draws neither tint nor dots — a 144 px locator.
+* The islet is a speck, not a drawn island: the file has no shape to draw and the chart does not
+  invent one.
+* The tint's seams are the raster's own 0.25° cells (15 nm): honest, since the game's own "which
+  water am I in" changes exactly there; a traced, simplified boundary would be a smoother lie.
+
+---
+
+## 2026-09-14 — The trade tray holds still: the ceiling's exemption is retired, the sell face is the count and three prices, and one unit means one (rows 95, 96, 97 — built on `osn-fix-max-flicker`, not merged, not driven on production)
+
+**The owner, three times in one sitting:** *"when i press buy, the max keeps refreshing."* ·
+*"when selling, a refresh sign of checking the price... keeps showing up. show necessary info only.
+For example i will be able to choose first how many i sell, then it will show only how much bought
+price, selling price with underneath showing the percentage. right now units? in stock? range? WTF
+man."* · *"the marker when selling unit is shitty. and it only moves in like 10? wtf. i should be
+able to sell only 1. make it so that i can type the quantity, and also scroll but better than this."*
+
+**Row 95 — root cause, and it was row 77 again.** The shell reads the world every 3 s
+(`AppShell.tsx`, `READ_MIN_MS`; the local world's compression of 9600 clamps to that floor).
+`useBuyCapacity` keyed its answer on `${fleet}:${good}:${readAt}` and returned `{bound: null,
+loading: true}` whenever the key moved — so every beat the ceiling was thrown away, `TradeTray`
+read `capacity.bound?.max ?? 0`, the `Max` row gave way to the waiting line, the stepper clamped to
+nought and the Buy button died until the re-ask landed. `useServedRead` had fixed exactly this in
+four port hooks on 09-13 — and its own header EXEMPTED the ceiling ("a ceiling shown a beat late is
+the lie that hook was written to remove"). The exemption was wrong: `cmd.issue` re-checks the
+ceiling on the press and shows its refusal; a ceiling that blanks every 3 s is the worse lie. The
+same disease sat in `useOrderPreview` (the Storage tray's dry run — estimate and refusal dropped on
+the beat) and as a third private copy of the mechanism in `useSellEstimate`. **Ripped out:** the
+three private `useState<{key, …}>` holders; the readAt in their keys; the header's exemption; and
+the two copies of the 200 ms settle timer (`useTrade.ts` and `useOrderPreview.ts` each had a
+`PREVIEW_SETTLE_MS` and its own `setTimeout`). **Left:** `useBuyCapacity`, `useOrderPreview` and
+`useSellEstimate` are each a subject and an ask on `useServedRead`; `src/live/useSettled.ts` is
+the one settle (`useSettled(value, ms)`; `PREVIEW_SETTLE_MS` exported from there only). **The
+list does not ride the beat.** The first cut of the `useSellEstimate` fold accepted N dry runs
+every 3 s for the on-board list; the lead refused it — on the live ~30-player database each
+`cmd.preview` is a real write rolled back, and eight goods open is eight writes per beat per
+player. So the ONE authority took a parameter rather than a second hook: `useServedRead(subject,
+ask, {reask: 'beat' | 'subject'})` — `'beat'` re-asks on every world read and keeps the last
+answer (one open tray or face: the ceiling, the trade tray's dry run, the storage tray's, the
+shed); `'subject'` asks once per subject and never on the beat (the list: its subject already
+carries the lot and the served sell price, so what matters re-asks by itself). Written in the
+header, dated. Counted, not asserted: `src/lib/rpc/backend.ts` prints one `console.debug('[rpc]',
+…)` per ask on both backends, and the spec counts `cmd.preview(` over 10.5 s at rest — the open
+on-board list must make 0, the open sell tray at most 4 and at least 2.
+Checked and NOT the defect: `usePortMarket`, `CompendiumScreen.tsx:79`, `RankScreen.tsx:77` all
+re-read INTO the store (`set` only on `ok`, never nulled first, `answered` never reset), so they do
+not blank.
+
+**Row 96 — the sell face.** The `Checking the price…` line is deleted, and the thing it stood
+for is gone: `useServedRead` gained a QUESTION beside its SUBJECT. The dry run is FOR (fleet,
+side, good) and asks about a quantity; a new quantity re-asks and the last served figures STAND,
+`stale`, until the new ones land — the tray dims them, never blanks them, and the button prints
+its total only once it is for the quantity chosen. A re-ask of the same quantity on the beat is
+neither stale nor blank. The face is the count first; then `Bought at` (per unit; the served
+`cost` of the chosen units under it), `Sells at` (the served `avg_price` for this quantity — the
+one price a screen may show once a bargain is open), `You get` (the served `total`) with
+`+N% on what it cost` under it. The share is `profit ÷ cost` — two served figures, both printed on
+the face (WORDS.md law 2). **No served `margin_pct` exists** (grepped 0081/0083: `basis`, `cost`,
+`profit`, `total`, `qty`, `avg_price`, `haggle_saved`); a served one would be the cleaner
+authority and is a migration for a later slice, not this one. Gone from SELL: Trend, Range, In
+stock, Cargo space, On board (the stepper's end and `All` chip are the on-board figure), and the
+buy-side refusal note. On BUY the market's context moved BELOW the count and the cargo-space row:
+a buy is read against the trend but decided on the ceiling and the count. The pinned `Profit` /
+`Loss` row reads ducats AND the share. `docs/QUAY_LEDGER.md` §3 B rewritten.
+
+**Row 97 — one means one.** `trade_step_tuns` = 10 is how the server's BOOK reprices, not a rule
+about what may be chosen: `cmd.do_buy` / `cmd.do_sell` refuse only `qty <= 0` (0007:211,
+0007:447) and the basket asks for a whole number (0083:400). The trade trays pass `step = 1`; the
+10 survives as the lot chip and as PageUp / PageDown. `Stepper.tsx` (the ONE control; FleetStores,
+GalleryScreen, KeepAndSend, PortStorage, StepQuestion untouched): the figure is a typed input
+(`inputMode="numeric"`; Enter or blur commits, clamped; nonsense reverts; the slider does not move
+while a figure is typed), the slider is the one `<input type="range">` with a 28 px rimmed thumb
+on a visible track, `touch-action: pan-y`, a non-passive wheel listener bound on the slider only
+(React's `onWheel` is passive and refuses `preventDefault`), Home / End to floor / ceiling. The
+floor on a sale is 1. `.bv-range` in `index.css` is the one place the slider is dressed, both
+schemes.
+
+**What proves it.** `tests/trade.ceiling.spec.ts`, two tests, in the browser against the local
+PGlite build. It WATCHES the DOM with a `MutationObserver` rather than sampling it — the first cut
+polled every 250 ms and went green against the OLD hook, because PGlite answers in-tab within a
+few ms and the blank fell between samples every time (on production the Seoul round-trip is what
+made it visible). Against the old hook the watcher logged the blank on the beat exactly: 87, 3088,
+6087, 9078 ms (stepper 10 → 0, button dead, ~75 ms each). Against the fix: buy tray watched
+10.5 s, 0 moves; storage tray 7.5 s, 0 moves; sell tray 10.5 s with a − and a + pressed, 0 moves,
+no `Checking`; body order on both faces; one unit chosen by −, by typing, by ArrowLeft; `Sell 1
+unit · N d.`; the sale lands and one unit leaves the hold. `tsc -b` and `eslint .` clean.
+
+**Numbers, raw.** The five named suites (trade.ceiling, layout, wide.layout, words, duplication)
+against the served build: 33 passed, 1 failed, 0 skipped — the red was `layout.spec.ts`'s
+haggle-thread proof measuring `trend-row` as a row above the thread on the SELL face, which row
+96 removed on purpose; the proof is face-aware now (SELL: the count, `Bought at`, the thread) and
+green on re-run. The full suite once, 8 workers, 1.8 h on a loaded machine (other agents' node
+processes alongside): 250 passed, 31 failed, 0 skipped. Of the 31: (1) `primitives.geometry` —
+a REAL finding, the new typed figure was a 28 px-tall control under the 44 px reach floor; fixed
+(`h-11`), rebuilt, green. (2) `waters.panel` fleet-tray — green on re-run against the rebuilt
+fix, alongside primitives and trade.ceiling: 20 passed, 0 failed, 0 skipped. (3) The other 29
+are every test in `db.chain`, `db.image`, `rpc.surface` and `rpc.firstSession` — all of them
+build the world in Node PGlite, and under that load the builds ran 21–38 min against 6–25 min
+caps and timed out (rpc.surface's `beforeAll` cascades into its 23 tests). No SQL, no RPC and no
+migration changed in this slice; `rpc.firstSession` alone re-ran green (26.5 s). A green full run
+needs an idle machine, and this entry says so rather than claiming one. Later the same day:
+`rpc.surface` + `rpc.firstSession` re-run serially — 24 passed, 0 failed, 0 skipped (53 min under
+the same load) — so those 24 reds were the load. After the `reask` parameter and the merge of
+main (665e9ab, rows 91–94): the count test first read 9 asks in a window that held 3 — Playwright
+delivers console events in batches, so asks from before a window can land inside it — and now
+stamps every `[rpc]` line with `performance.now()` in the page and windows on the page's clock.
+Measured: the open on-board list 0 `cmd.preview` over 10.5 s at rest with the world read at 0.2,
+3.2, 6.2, 9.2 s; the open sell tray exactly one per beat (4 in 10.5 s). trade.ceiling ×3 +
+selection.lock + map.marks against the merged build: 16 passed, 0 failed, 0 skipped.
+
+---
+
 ## 2026-09-14 — The left side of America has cities: 14 harbours from San Francisco to Concepción and Hobart, 32 regional goods, one rule for a harbour's buildings, and the water to reach them (owner row 99 — migrations 0089/0090/0091, built on PR #83, not merged, not deployed)
 
 **The owner, verbatim:** *"I see no cities on the left side of america, the number of cities are
