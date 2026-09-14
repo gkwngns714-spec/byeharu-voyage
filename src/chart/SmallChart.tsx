@@ -5,8 +5,9 @@ import type { FleetView, SnapshotPort } from '../lib/rpc'
 import { ChartCanvas } from './ChartCanvas'
 import { buildChartModel } from './chartModel'
 import { openingBounds } from './chartView'
-import { mapFleetsOf, mapPortsOf } from './liveWorld'
+import { mapFleetsOf } from './liveWorld'
 import type { MapSelection } from './mapTypes'
+import { useRegionsFilter } from './regionsFilter'
 import { useBackdrop } from './useBackdrop'
 import { useChartSurface } from './useChartSurface'
 import { ViewControls } from './ViewControls'
@@ -105,9 +106,12 @@ export function SmallChart({
   className?: string
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
-  const backdrop = useBackdrop()
-
-  const chartPorts = useMemo(() => mapPortsOf(ports), [ports])
+  // The ports as the chart draws them — set on the drawn shore (row 92), the same list the Map
+  // tab draws — and the backdrop they stand on.
+  const backdrop = useBackdrop(ports)
+  const chartPorts = backdrop.ports
+  // The same switch the Map tab wears (row 93): one store, both surfaces.
+  const regionsOn = useRegionsFilter()
   const chartFleets = useMemo(() => mapFleetsOf(fleets), [fleets])
   const model = useMemo(
     () => buildChartModel(chartFleets, chartPorts, considering),
@@ -180,6 +184,8 @@ export function SmallChart({
           unitsPerPx={surface.unitsPerPx}
           coast={backdrop.coast}
           seas={backdrop.seas}
+          regions={regionsOn ? backdrop.regions : null}
+          islets={backdrop.islets}
           selection={selection}
           // The zoom column is opaque and sits on the glass; these are its measured boxes, so the
           // label planner never prints a harbour's name underneath it (the Saint-Malo defect, found

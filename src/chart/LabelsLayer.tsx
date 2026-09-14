@@ -12,7 +12,9 @@ import type { LabelTone, PlacedLabel } from './labels'
 //
 // ROW 90: the seas' names are in the SAME plan — placed last, at the lowest priority, centred on
 // their anchors (./seaNames.ts) — and painted FIRST here, in their own group, so a water's name
-// is ground under every place's name. Each label carries the size and spacing it was planned at
+// is ground under every place's name. ROW 93: a region's name (./regions.ts) is ground the same
+// way, in the same group, and is only in the plan while the regions filter is on. Each label
+// carries the size and spacing it was planned at
 // (`sizePx`, `spacingEm`), so the box the planner kept clear is the box that is drawn.
 
 const TONE: Record<LabelTone, string> = {
@@ -20,6 +22,8 @@ const TONE: Record<LabelTone, string> = {
   'port-active': 'fill-ink',
   'port-quiet': 'fill-ink-faint',
   sea: 'fill-chart-sea-name',
+  // A region's name (row 93) is ground like a sea's, in the same thinned ink, a size up.
+  region: 'fill-chart-sea-name',
 }
 
 function Name({ label, unitsPerPx }: { label: PlacedLabel; unitsPerPx: number }) {
@@ -42,12 +46,12 @@ function Name({ label, unitsPerPx }: { label: PlacedLabel; unitsPerPx: number })
 }
 
 export function LabelsLayer({ labels, unitsPerPx }: { labels: readonly PlacedLabel[]; unitsPerPx: number }) {
-  const seas = labels.filter((l) => l.tone === 'sea')
-  const places = labels.filter((l) => l.tone !== 'sea')
+  const ground = labels.filter((l) => l.tone === 'sea' || l.tone === 'region')
+  const places = labels.filter((l) => l.tone !== 'sea' && l.tone !== 'region')
   return (
     <>
       <g pointerEvents="none" data-testid="map-sea-names">
-        {seas.map((label) => (
+        {ground.map((label) => (
           <Name key={label.id} label={label} unitsPerPx={unitsPerPx} />
         ))}
       </g>
