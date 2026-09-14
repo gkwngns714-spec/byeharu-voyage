@@ -384,10 +384,27 @@ test.describe('the asks, counted', () => {
   // per (fleet, good, lot, price), never on the beat — and this counts the asks off the ONE debug
   // line `src/lib/rpc/backend.ts` prints per RPC. A sell tray ('beat' mode) may ask once per beat.
   const rows = await openPort(page, request, baseURL)
-  let previews = 0
-  page.on('console', (m) => {
-    if (m.type() === 'debug' && /\[rpc\] cmd\.preview\(/.test(m.text())) previews += 1
+  // COUNTED IN THE PAGE, on the page's clock. Playwright hands console events over in batches,
+  // so an ask made before a window opened can be DELIVERED inside it (measured: nine "asks" in a
+  // window that held three). The wrapper below stamps each `[rpc]` line with `performance.now()`
+  // as it is printed, and a window is two page-side marks.
+  await page.evaluate(() => {
+    const log: { at: number; label: string }[] = []
+    const debug = console.debug.bind(console)
+    console.debug = (...args: unknown[]) => {
+      if (args[0] === '[rpc]' && typeof args[1] === 'string') log.push({ at: performance.now(), label: args[1].replace(/\(.*$/, '') })
+      debug(...args)
+    }
+    ;(window as unknown as { __rpcLog: typeof log }).__rpcLog = log
   })
+  const mark = () => page.evaluate(() => performance.now())
+  const asksBetween = (from: number, to: number) =>
+    page.evaluate(
+      ([a, b]) => (window as unknown as { __rpcLog: { at: number; label: string }[] }).__rpcLog.filter((e) => e.at >= a && e.at < b),
+      [from, to] as const,
+    )
+  const previewsIn = (asks: { label: string }[]) => asks.filter((e) => e.label === 'cmd.preview').length
+  const line = (asks: { at: number; label: string }[], from: number) => asks.map((e) => `${((e.at - from) / 1000).toFixed(1)}s ${e.label}`).join(' · ')
 
   // Something on board, so the list has a row with a sale estimate.
   const name = await pressBuy(page)
@@ -405,11 +422,12 @@ test.describe('the asks, counted', () => {
   ).toBeVisible({ timeout: 20_000 })
   // Let the first answers land, then count over more than three beats with no interaction.
   await page.waitForTimeout(2_000)
-  const before = previews
+  const listFrom = await mark()
   await page.waitForTimeout(10_500)
-  const listAsks = previews - before
-  console.log(`PORT on-board list @1440px: ${listAsks} cmd.preview asks in 10.5 s at rest (${previews} since boot)`)
-  expect(listAsks, "the on-board list re-asked its sale estimates on the world's beat").toBe(0)
+  const listAsks = await asksBetween(listFrom, await mark())
+  console.log(`PORT on-board list @1440px: ${previewsIn(listAsks)} cmd.preview asks in 10.5 s at rest — ${line(listAsks, listFrom)}`)
+  expect(previewsIn(listAsks), "the on-board list re-asked its sale estimates on the world's beat").toBe(0)
+  expect(listAsks.filter((e) => e.label === 'world.fleets').length, 'the world was not read during the window — the count proves nothing').toBeGreaterThanOrEqual(2)
 
   // The sell tray, open and at rest: one dry run per beat at most — and at least two in three
   // beats, or the world is not being read and the count above proves nothing.
@@ -417,11 +435,12 @@ test.describe('the asks, counted', () => {
   await expect(tray).toBeVisible()
   await expect(send).toHaveText(/^Sell \d+ units? · [\d,]+ d\.$/, { timeout: 20_000 })
   await page.waitForTimeout(1_000)
-  const beforeTray = previews
+  const trayFrom = await mark()
   await page.waitForTimeout(10_500)
-  const trayAsks = previews - beforeTray
-  console.log(`PORT sell tray @1440px: ${trayAsks} cmd.preview asks in 10.5 s at rest`)
-  expect(trayAsks, 'the open sell tray asked more than once per 3-s beat').toBeLessThanOrEqual(4)
-  expect(trayAsks, 'the open sell tray never re-asked on the beat — is the world being read?').toBeGreaterThanOrEqual(2)
+  const trayAsks = await asksBetween(trayFrom, await mark())
+  const trayPreviews = previewsIn(trayAsks)
+  console.log(`PORT sell tray @1440px: ${trayPreviews} cmd.preview asks in 10.5 s at rest — ${line(trayAsks, trayFrom)}`)
+  expect(trayPreviews, 'the open sell tray asked more than once per 3-s beat').toBeLessThanOrEqual(4)
+  expect(trayPreviews, 'the open sell tray never re-asked on the beat — is the world being read?').toBeGreaterThanOrEqual(2)
 })
 })

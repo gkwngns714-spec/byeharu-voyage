@@ -320,7 +320,15 @@ are every test in `db.chain`, `db.image`, `rpc.surface` and `rpc.firstSession` �
 build the world in Node PGlite, and under that load the builds ran 21–38 min against 6–25 min
 caps and timed out (rpc.surface's `beforeAll` cascades into its 23 tests). No SQL, no RPC and no
 migration changed in this slice; `rpc.firstSession` alone re-ran green (26.5 s). A green full run
-needs an idle machine, and this entry says so rather than claiming one.
+needs an idle machine, and this entry says so rather than claiming one. Later the same day:
+`rpc.surface` + `rpc.firstSession` re-run serially — 24 passed, 0 failed, 0 skipped (53 min under
+the same load) — so those 24 reds were the load. After the `reask` parameter and the merge of
+main (665e9ab, rows 91–94): the count test first read 9 asks in a window that held 3 — Playwright
+delivers console events in batches, so asks from before a window can land inside it — and now
+stamps every `[rpc]` line with `performance.now()` in the page and windows on the page's clock.
+Measured: the open on-board list 0 `cmd.preview` over 10.5 s at rest with the world read at 0.2,
+3.2, 6.2, 9.2 s; the open sell tray exactly one per beat (4 in 10.5 s). trade.ceiling ×3 +
+selection.lock + map.marks against the merged build: 16 passed, 0 failed, 0 skipped.
 
 ---
 
