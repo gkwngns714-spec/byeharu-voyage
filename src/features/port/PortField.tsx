@@ -23,9 +23,25 @@ import { nearbyHarbours } from './nearby'
 // ── AT REST IT READS THE HARBOUR; FOCUSED, IT IS A SEARCH ──────────────────────────────────────
 // One control, two states, one piece of state (`open`). Closed, the field's value is the harbour's
 // name. Focus empties it — the placeholder says what to do — and the chips appear. A pick, Escape,
-// or focus leaving the pair closes it and the name comes back. The chips cancel `pointerdown` so
-// that pressing one does not blur the field a beat before the click lands. Enter takes the first
+// or a press that LANDS somewhere else closes it and the name comes back. Enter takes the first
 // chip.
+//
+// ── IT NEVER FOLDS ON A BLUR (2026-09-14, owner: "i can't seem to press anything else") ────────
+// The chips stand IN FLOW under the field — the inline unfold of Tray.tsx's rule: what is below
+// moves down, and nothing moves at or above. The exit used to be "focus leaving the pair", and a
+// blur is fired by the MOUSEDOWN of whatever the player presses next — so the chips unmounted and
+// the whole board jumped back up between that mousedown and its mouseup. Chrome fires no click
+// when the two land on different elements, and the press died: measured at 1545 px, a drag in
+// this field (to copy the harbour's name) then a press on the first live buy cell — the cell had
+// stood 104 px lower while the field was open, and the press opened nothing. That is the owner's
+// collapse rule broken under a press in progress: "pressing a control SELECTS. It never collapses,
+// re-flows … the surface it was pressed on."
+//
+// So the fold is tied to the press LANDING, not to the focus leaving: a `click` anywhere outside
+// the pair closes the picker AFTER the pressed control has answered it. Mouse and touch now agree
+// (a touch press never blurred the field at all, so on a phone the chips simply stayed). The
+// chips no longer need to cancel `pointerdown` — that existed only to stop a blur closing the
+// field a beat before a chip's own click. tests/selection.lock.spec.ts holds the line.
 //
 // ── THE CLEAR IS "BACK TO HER QUAY", AND SO IS HER OWN CHIP ────────────────────────────────────
 // While a harbour is PICKED, the closed field's ✕ clears the pick, and `null` follows the fleet
@@ -75,13 +91,33 @@ export function PortField({
   const listed = open ? offer(query) : []
 
   /** THE ONE EXIT from the open state: the field closes and gives the focus back, whichever of the
-   *  three roads (a pick, Escape, focus leaving the pair) was taken. */
-  const leave = () => {
+   *  three roads (a pick, Escape, a press landing outside the pair) was taken. */
+  const leave = useCallback(() => {
     setOpen(false)
     setQuery('')
     const input = box.current?.querySelector('input')
     if (input && document.activeElement === input) input.blur()
-  }
+  }, [])
+
+  // A press that lands OUTSIDE the pair closes the picker — after it has landed. `click` is the
+  // event that says a press completed on one element; a blur says only that focus moved, and it
+  // says so on the mousedown, with the mouseup still to come (see the head of this file). Escape
+  // is the keyboard's press-outside, and it works from wherever the focus has gone.
+  useEffect(() => {
+    if (!open) return
+    const onClick = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) leave()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') leave()
+    }
+    document.addEventListener('click', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('click', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open, leave])
   // A chip that names the quay she is at stores NULL (follow her), any other a pick — one rule,
   // spelt in the store (`harbourPick`), shared with PORT's "Read X" button.
   const choose = (code: string) => {
@@ -90,13 +126,7 @@ export function PortField({
   }
 
   return (
-    <div
-      ref={box}
-      className="mt-3"
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) leave()
-      }}
-    >
+    <div ref={box} className="mt-3">
       <Field
         value={open ? query : (current?.name ?? '')}
         onChange={(e) => setQuery(e.target.value)}
@@ -105,8 +135,7 @@ export function PortField({
           setOpen(true)
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') leave()
-          else if (e.key === 'Enter' && listed[0]) choose(listed[0].code)
+          if (e.key === 'Enter' && listed[0]) choose(listed[0].code)
         }}
         onClear={open ? () => setQuery('') : picked !== null ? () => pick(null) : undefined}
         aria-label="Find a port"
@@ -118,7 +147,7 @@ export function PortField({
         data-testid="port-field"
       />
       {open && (
-        <div className="mt-2 flex flex-wrap gap-2" onPointerDown={(e) => e.preventDefault()}>
+        <div className="mt-2 flex flex-wrap gap-2">
           {listed.map((p) => (
             <Chip key={p.id} on={p.code === current?.code} onClick={() => choose(p.code)} data-testid="port-chip">
               {p.name}
