@@ -1,79 +1,46 @@
-// Compose data/ports.json from the roster (editorial fields) + scripts/coords.cache.json
-// (coordinates fetched from Wikidata). Country names come from Natural Earth NAME_LONG.
-// Run: node scripts/build-ports.mjs
-import { readFileSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// RETIRED (2026-09-14). data/ports.json is the AUTHORED roster and this script would overwrite it
+// with a copy that has been stale since migration 0058 — so it exists only to refuse, out loud.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// This script used to compose data/ports.json from scripts/roster/*.mjs (the editorial fields)
+// plus scripts/coords.cache.json (the Wikidata coordinates). That was correct exactly until the
+// roster's `goods` arrays stopped being the authority: 0058 rebalanced them to the owner's count
+// law, 0062 restored the researched lists and gave every offer its geography, 0065 spread the
+// catalogue so no good sits in four cities — all three edited data/ports.json directly, and
+// docs/REGIONAL_GOODS.md §I says so: *"`data/ports.json` is the authorship"*. The roster files
+// were never brought along. Measured 2026-09-14: the roster still says Acapulco sells silk-cloth
+// and porcelain, which 0062 moved off its quay; running this script would have put them back,
+// world-guard would have gone red against the applied chain, and the "fix" would have been a
+// migration carrying a regression. Two authors for one roster is spaghetti (docs/NO_SPAGHETTI.md
+// §1); the copy that lost is this one.
+//
+// WHAT THE ROSTER FILES ARE NOW: the FETCH MANIFEST for scripts/fetch-coords.mjs — id, enwiki
+// title (or a pinned qid) and country, so a NEW port's coordinate can be resolved and cross-
+// checked. Their `goods` fields are inert; new entries carry none (scripts/roster/americas.mjs,
+// the Pacific Americas growth, is the first written that way).
+//
+// HOW A NEW PORT SHIPS NOW (the 2026-09-14 growth is the worked example, docs/DEV_LOG.md):
+//   1. add its manifest entry to scripts/roster/<area>.mjs and run node scripts/fetch-coords.mjs
+//      — the coordinate is still never typed by hand; it lands in scripts/coords.cache.json
+//   2. write its record into data/ports.json in the file's shape, taking lat/lon/source from the
+//      cache, and its pinned code into PORT_CODES (scripts/lib/world-derive.mjs)
+//   3. node scripts/check-ports.mjs — the offline validator (count law, native-or-entrepot, no
+//      good in four cities, bbox)
+//   4. node scripts/build-world-growth.mjs <version> <name> — the growth migration; then
+//      node scripts/build-sea-migration.mjs — its roadstead and sailed distances, cut AFTER the
+//      growth because it reads the ports out of the applied chain
+//   5. npm run db:apply && npm run db:proof
+//
+// The last working copy of the composer is in git (commit 1573fa4).
 
-import europe from './roster/europe.mjs';
-import afrIo from './roster/africa-indian-ocean.mjs';
-import easia from './roster/east-asia.mjs';
-import americas from './roster/americas.mjs';
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(HERE, '..');
-const roster = [...europe, ...afrIo, ...easia, ...americas];
-
-const cache = JSON.parse(readFileSync(join(HERE, 'coords.cache.json'), 'utf8'));
-const bboxes = JSON.parse(readFileSync(join(HERE, 'country-bbox.generated.json'), 'utf8')).countries;
-
-// Natural Earth's short forms, adjusted to the names this project uses in prose.
-const NAME_OVERRIDE = {
-  CV: 'Cape Verde', FO: 'Faroe Islands', MO: 'Macau', KR: 'South Korea', KP: 'North Korea',
-  CD: 'DR Congo', TL: 'Timor-Leste', CI: "Côte d'Ivoire", GB: 'United Kingdom', US: 'United States',
-  AE: 'United Arab Emirates', TZ: 'Tanzania', MM: 'Myanmar', VN: 'Vietnam', LA: 'Laos',
-  RU: 'Russia', IR: 'Iran', SY: 'Syria', VE: 'Venezuela', BO: 'Bolivia', MD: 'Moldova',
-};
-
-const missingName = [];
-const ports = roster.map(p => {
-  const c = cache.entries[p.id];
-  if (!c) throw new Error(`no resolved coordinate for ${p.id} — run scripts/fetch-coords.mjs`);
-  const countryName = NAME_OVERRIDE[p.country] ?? bboxes[p.country]?.name;
-  if (!countryName) missingName.push(p.country);
-  return {
-    id: p.id,
-    name: p.name,
-    localName: p.localName,
-    country: p.country,
-    countryName: countryName ?? null,
-    lat: Math.round(c.lat * 1e6) / 1e6,
-    lon: Math.round(c.lon * 1e6) / 1e6,
-    sea: p.sea,
-    region: p.region,
-    tier: p.tier,
-    historicalNames: p.historicalNames,
-    goods: p.goods,
-    notes: p.notes,
-    source: { wikidata: c.qid, enwiki: c.wikiResolved },
-  };
-});
-
-if (missingName.length) {
-  console.error(`no country name for: ${[...new Set(missingName)].join(', ')}`);
-  process.exit(1);
-}
-
-ports.sort((a, b) => a.id.localeCompare(b.id));
-
-const doc = {
-  $doc: '../docs/WORLD_DATA.md',
-  note: 'Real port cities of the ~1500-1650 Age of Sail. lat/lon are Wikidata property P625 (CC0), fetched by scripts/fetch-coords.mjs and never hand-typed; `source` records the exact item each coordinate came from. `sea`, `region`, `tier`, `goods` and `notes` are editorial. See docs/WORLD_DATA.md.',
-  coordinateSource: {
-    dataset: 'Wikidata',
-    property: 'P625 (coordinate location)',
-    licence: 'CC0 1.0 Universal',
-    url: 'https://www.wikidata.org/',
-    fetchedAt: cache.fetchedAt,
-  },
-  count: ports.length,
-  ports,
-};
-
-const out = join(ROOT, 'data', 'ports.json');
-writeFileSync(out, JSON.stringify(doc, null, 2) + '\n');
-console.log(`wrote ${out} — ${ports.length} ports`);
-
-const byTier = ports.reduce((m, p) => (m[p.tier] = (m[p.tier] ?? 0) + 1, m), {});
-console.log('tiers:', JSON.stringify(byTier));
-console.log('countries:', new Set(ports.map(p => p.country)).size);
+console.error(
+  'REFUSED: data/ports.json is the authored roster since migration 0058, and scripts/roster/*.mjs\n' +
+    'has been a stale copy of it since then. Composing the file from the roster would silently\n' +
+    'undo 0058/0062/0065 and fail world-guard against the applied chain.\n\n' +
+    'To add a port: manifest entry in scripts/roster/*.mjs → node scripts/fetch-coords.mjs →\n' +
+    'write the record into data/ports.json from scripts/coords.cache.json → pin its code in\n' +
+    'scripts/lib/world-derive.mjs → node scripts/check-ports.mjs → build-world-growth.mjs and\n' +
+    'build-sea-migration.mjs. See the header of this file.',
+)
+process.exit(1)

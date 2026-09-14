@@ -227,6 +227,127 @@ inks) off, on, and off again, and demands the two offs are `toEqual`.
   water am I in" changes exactly there; a traced, simplified boundary would be a smoother lie.
 
 ---
+## 2026-09-14 — The sea is round: Tokyo → Callao crosses the South Pacific (row 98; migration 0088 on branch `osn-cross-the-dateline`, PR pending, NOT merged, NOT deployed)
+
+**The owner:** *"the map should be continuous on left to right, and the ship going from tokyo to
+callao should cross south pacific ocean."* Two halves. This entry is the SERVER + PATHFINDER
+half; the chart half — a continuous left-to-right sheet with the track drawn across the seam — is
+the chart slice's and is not in this PR.
+
+**Measured first, on main `2209a92`, with a throwaway probe over the applied chain.** The brief
+said the course was routed the long way round the world. It was not, and the difference matters
+for what had to change. The grid was always round: `colOf`/`isWater` wrap the column
+(`src/lib/sea/grid.ts:66`), the A* neighbour expansion wraps (`pathfind.ts:256`), and so does
+every server cell lookup. The search FOUND the Pacific. Tokyo's roads → Callao's roads came back
+`[[35.125,140.375],[36.375,179.875],[36.375,-179.875],[-12.125,-77.375]]` — 8,358.4 nm, one
+straddling hop of 0.25° at the seam — and `public.sea_reaches` already carried 8,358.4 for that
+pair (the Dijkstra flood took the short way too). Two readers then refused to believe it:
+
+- `segmentIsWater` (`pathfind.ts:312`) returned false for any |Δlon| > 180, so the straightener
+  could never merge across the seam — hence the two vertices ON it;
+- `voyage.path_refusal` (0046:443) answered that 0.25° hop with `E_BAD_PATH: segment 1 jumps
+  the antimeridian the long way round`. `cmd.do_sail` raises the refusal. **A Pacific crossing
+  could be found, drawn, and never sailed** — the fleet stayed where she was.
+
+And two more readers would have swept the world had that refusal not stood in front of them:
+`voyage.segments_from_course` (0047:274) cuts a segment into pieces by
+`lon1 + (lon2 − lon1)·k/n`, and `voyage.position` (0047:536) places her by `a + (b − a)·frac`;
+on 179.875 → −179.875 both walk 359.75° westward through three continents. The measure was never
+wrong: `voyage.gc_distance_nm` is the haversine, whose sin²(Δλ/2) is periodic, so 0.2° across
+the seam has always been 12 nm (asserted now).
+
+**THE CONVENTION — decided, and written on both sides of the wire** (`docs/NAVIGATION_PLAN.md`
+§7, `src/lib/geo/projection.ts`, 0088's header):
+
+1. every vertex of a course lies in **[−180, 180]**;
+2. a segment **MAY straddle the antimeridian** and is **ALWAYS read the short way round** — the
+   way whose |Δlon| ≤ 180; there is no long way, nothing can express one;
+3. every reader steps longitude through **ONE rule**: `voyage.lon_lerp(lon1, lon2, f)` on the
+   server, `lonLerp` in `src/lib/geo` on the client (`shortLonDelta` is the step;
+   `unwrapLongitudes`, which already existed with no production caller, is that step
+   accumulated). Never `a + (b − a)·f` on raw degrees again.
+
+Rejected: forbidding straddles and splitting a crossing into `[lat, 180]`, `[lat, −180]`. That
+makes a zero-length segment which `segments_from_course` drops, after which `course_of` re-joins
+the two sides into exactly the straddling segment it meant to avoid, and `position`/drift would
+divide by that zero length. A rule every reader must special-case is not one rule.
+
+**What landed.**
+
+- `src/lib/geo/projection.ts`: `shortLonDelta`, `wrapLon`, `lonLerp`; `unwrapLongitudes`
+  composes `shortLonDelta`. Exported from `src/lib/geo`.
+- `src/lib/sea/pathfind.ts`: `segmentIsWater` samples through `lonLerp`; the |Δlon| > 180
+  refusal is gone. Tokyo → Callao now straightens to **ONE segment**,
+  `[[35.125,140.375],[-12.125,-77.375]]` — every half-cell sample of it is water.
+- `supabase/migrations/20260818000088_the_sea_is_round.sql` (0086/0087 are PR #75's and #78's):
+  `voyage.lon_lerp` (IMMUTABLE, server-only; endpoints returned as given, the step wrapped);
+  `path_refusal`, `segments_from_course`, `position` SLICED with `pg_temp.recut` (hunks
+  occur-exactly-once, pre-images captured, ACLs asserted unmoved — nothing dropped, grants
+  re-issued anyway). Self-asserts: the rule at the seam; the periodic haversine; `sea_at` at
+  (30, ±179.9) = North Pacific and (−20, ±179.9) = South Pacific; the Tokyo → Callao course
+  ACCEPTED under `cmd.do_sail`'s own figures (join = `course_join_nm`, head/tail = 25),
+  chord 8,337.3 nm on an 8,337.3 nm great circle and the 17 pieces she sails summing to
+  8,615.2 nm (×1.033), every piece in range, in a sea, exactly one straddling; a straddling
+  segment over Fiji's Vanua Levu refused `E_LAND`; Lisbon → Barcelona overland still refused.
+- `tests/sea.dateline.spec.ts`: pure Node; re-proposes Tokyo → Callao live through
+  `seaCourse.fixture`, asks the server's verifier directly, pins Lisbon → Amsterdam to the
+  6-vertex 1,123.2 nm course recorded before the change, and pins the chart's pieces, track and
+  drift across the seam. **RED on main's code** (see below).
+- `src/chart/route.ts` (`sheetPieces`, `buildTrack`), `src/chart/drift.ts` — see below.
+- `docs/OWNER_REQUESTS.md` row 98; `supabase/migrations/CHAIN.md` (seventy-nine; 0086/0087
+  claimed); `docs/NAVIGATION_PLAN.md` §7.
+
+**Tokyo → Callao, before / after.** Before: proposed 8,358.4 nm with the seam kink, REFUSED
+(`E_BAD_PATH`) — not sailable at all. After: one straight segment, chord 8,337.3 nm (= the great
+circle between the two roads), accepted; the line she sails is 8,615.2 nm.
+
+**Two findings that are 0047's, stated and not moved.** (1) `voyage.path_nm` sums each vertex
+pair's great-circle chord; the pieces `segments_from_course` cuts — the figure `cmd.do_sail`
+gates, prices and stores as `total_nm` — sum to the length of the lat/lon-STRAIGHT line she
+sails, judges and is drawn on. On the short segments every pre-0088 course is made of the two
+agree within 0.1 %; on one 8,000-nm segment the line is 3.3 % longer than the arc (Tokyo →
+Acapulco: 6,181.8 vs 6,534.8, 5.7 %). (2) A piece's own nm is not ≤ 500: 0047 divides the
+parameter, not the arc — 450 nm off Japan, 529 nm on the equator. Both asserted as they are.
+`public.sea_reaches` keeps its figures (measured over the same round grid; the seam kink is
+≤ 0.25°); the next generated sea migration re-measures them with the straightener merged.
+
+**The chart's half, same PR (after PR #80's chart rewrite merged and `src/chart/**` was
+handed over).** With the pathfinder emitting one 8,000-nm straddling segment for Tokyo → Callao,
+`route.ts` would have projected it as a stripe the long way round the sheet. Now `sheetPieces`
+cuts a straddling segment at ±180 into two pieces on the one unrolled sheet — off the right edge
+at (180, lat*), back in at (−180, lat*), lat* the lat/lon-linear crossing latitude, the line
+`voyage.position` places her on — so the track leaves the sheet at Japan's edge and comes back at
+America's; `buildTrack`'s sailed and ahead halves are each a `d` of subpaths, and the arrowhead
+reads its heading over `unwrapLongitudes` so a last segment that straddles points across the seam,
+not back round the world. `drift.ts` steps her through `lonLerp` — a fleet that was at 178.8°E at
+the read is drawn at 134°W a moment later, in range, across. No second lon rule in the chart:
+`shortLonDelta`, `unwrapLongitudes`, `lonLerp` from `src/lib/geo`, composed. Four pure tests in
+`tests/sea.dateline.spec.ts` pin the pieces, the one-piece case, the track halves and heading,
+and the drift.
+
+**The continuous left-to-right sheet — the owner's FIRST sentence — measured and deferred, not
+half-built.** `chartView.ts`'s `clampView` keeps the visible box inside the world (`cx` clamped
+to ±(180 − span/2); at the world span the centre is pinned to 0), so today the view cannot pan
+past ±180 and the seam always sits at the sheet's two edges, every layer drawn once at x = lon.
+A wrapped view needs the view's x to be periodic, every layer to draw a ±360°-shifted copy when
+the box touches the seam, and every "is this point on the glass" question to answer for the copy
+— and that question is written FOUR times (`chartModel.ts:295`, `seaNames.ts:77`,
+`regions.ts:169`, `SmallChart.tsx:161`), beside `labels.ts`'s clipping, `hitTest.ts`, the
+minimap's viewport and `openingBounds`, which frames Tokyo + Callao the long way (217°, clamped
+to the globe). Twelve files, and the four copies are a NO_SPAGHETTI §1 finding of their own: the
+next slice folds them into ONE `onGlass(point, box)` first, then makes that one periodic.
+`docs/NAVIGATION_PLAN.md` §7 carries the measurement.
+
+**Proof, on the merged head (main `3886f42` merged in — rows 91–97 taken, so this is row 98).**
+`npx tsc -b` clean · `npx eslint .` clean · `db:check-versions` OK (79) · `npm run db:apply`
+79/79 receipts, 0088's printed, world-guard ok · `npm run build` ✓, world image certified for the
+79-file chain (9 m 20 s) · Playwright against `vite preview --port 4193` (`localhost`) over
+`sea.dateline`, `map.voyage`, `map.sendfleet`, `map.marks`, `map.landfall`, `map.regions`,
+`chart.ink`: **87 passed / 0 failed / 0 skipped** in 11.6 min — sea.dateline 13/13 (the four
+chart tests among them), map.voyage 32/32, map.sendfleet 9/9, map.marks 9/9, map.landfall 4/4,
+map.regions 11/11, chart.ink 9/9.
+
+**Proof, first pass (before the merge, at `2209a92`).** `npm run db:check-versions` OK (79 files, 79 versions). `npm run db:apply` — CHAIN APPLIED: 79 migration(s), 79 self-assert receipt(s), 0088's receipt printed, world-guard ok. `npm run db:proof` — 10/10 proof files green, 73/73 declared PASS markers, exit 0. `npx tsc -b` clean; `npx eslint .` clean. `npm run build` — world image certified for the 79-file chain (built in 18m 30s under load). Playwright against `vite preview --port 4193` (baseURL `localhost`): run 1 over `sea.dateline`, `seaCarve`, `db.chain`, `db.image`, `map.voyage`, `map.sendfleet` = 72 tests, 65 passed / 3 failed / 0 skipped when it was stopped at 68 of 72 — the three: the `LAST` pin in `db.chain.spec.ts` (moved to 0088), a sign error in this spec's Callao → Tokyo test (west is a negative short-way step; fixed), and `db.chain`'s cold boot at its 15-min timeout on a machine running four other agents' chains; run 2 over the two corrected files = 19 passed / 0 failed / 0 skipped (54.4 m; the cold boot 7.7 m). Per file across both runs: sea.dateline 9/9, seaCarve 5/5, db.chain 10/10, db.image 7/7, map.voyage 32/32, map.sendfleet 9/9. **RED on main's code, run once unfixed** (main's `pathfind.ts`, no 0088): the four rule tests pass (they test the new helpers, present in both states), then `the proposed course straddles the seam once…` FAILED — two vertices `[36.375, 179.875]`, `[36.375, −179.875]` left on the seam — and `the server accepts it…` FAILED — `E_BAD_PATH: segment 1 jumps the antimeridian the long way round`; stopped there because each failure restarts a worker that re-applies the chain (~30 min under load).
 
 ## 2026-09-14 — The trade tray holds still: the ceiling's exemption is retired, the sell face is the count and three prices, and one unit means one (rows 95, 96, 97 — built on `osn-fix-max-flicker`, not merged, not driven on production)
 
@@ -329,6 +450,279 @@ stamps every `[rpc]` line with `performance.now()` in the page and windows on th
 Measured: the open on-board list 0 `cmd.preview` over 10.5 s at rest with the world read at 0.2,
 3.2, 6.2, 9.2 s; the open sell tray exactly one per beat (4 in 10.5 s). trade.ceiling ×3 +
 selection.lock + map.marks against the merged build: 16 passed, 0 failed, 0 skipped.
+
+---
+
+## 2026-09-14 — The left side of America has cities: 14 harbours from San Francisco to Concepción and Hobart, 32 regional goods, one rule for a harbour's buildings, and the water to reach them (owner row 99 — migrations 0089/0090/0091, built on PR #83, not merged, not deployed)
+
+**The owner, verbatim:** *"I see no cities on the left side of america, the number of cities are
+weird. Check"*. Checked first. The census below is the fact; the owner is right.
+
+### The census (data/ports.json at `2209a92`, 224 harbours, tier 1 / 2 / 3 = capital / mid / small)
+
+By region (`data/regions.json`, 25):
+
+| region | harbours | tier 1 / 2 / 3 | after this PR |
+|---|---:|---|---:|
+| iberia | 11 | 4 / 4 / 3 | 11 |
+| atlantic-isles | 6 | 0 / 3 / 3 | 6 |
+| british-isles | 8 | 1 / 4 / 3 | 8 |
+| france-low-countries | 12 | 3 / 4 / 5 | 12 |
+| baltic | 10 | 4 / 3 / 3 | 10 |
+| scandinavia-arctic | 8 | 0 / 2 / 6 | 8 |
+| western-mediterranean | 10 | 2 / 4 / 4 | 10 |
+| adriatic-ionian | 7 | 1 / 1 / 5 | 7 |
+| aegean-anatolia | 9 | 1 / 3 / 5 | 9 |
+| levant | 4 | 1 / 1 / 2 | 4 |
+| maghreb | 9 | 0 / 2 / 7 | 9 |
+| west-africa | 11 | 0 / 2 / 9 | 11 |
+| east-africa | 11 | 0 / 4 / 7 | 11 |
+| arabia-gulf | 10 | 0 / 7 / 3 | 10 |
+| western-india | 12 | 4 / 2 / 6 | 12 |
+| eastern-india | 10 | 0 / 3 / 7 | 10 |
+| southeast-asia | 16 | 3 / 8 / 5 | 16 |
+| china-coast | 8 | 2 / 4 / 2 | 8 |
+| korea | 8 | 1 / 2 / 5 | 8 |
+| japan | 11 | 3 / 4 / 4 | 11 |
+| caribbean | 10 | 3 / 2 / 5 | 10 |
+| north-america-atlantic | 7 | 0 / 5 / 2 | 7 |
+| south-america-atlantic | 7 | 1 / 3 / 3 | 7 |
+| pacific-americas | 4 | 1 / 2 / 1 | **17** |
+| oceania | 5 | 0 / 0 / 5 | **6** |
+
+By sea (`data/seas.json`, 51) — the 16 seas with 4 or more harbours or touched by the growth; the
+other 35 seas hold 1–3 harbours each and are unchanged:
+
+| sea | harbours | tier 1 / 2 / 3 | after this PR |
+|---|---:|---|---:|
+| north-atlantic | 28 | 3 / 9 / 16 | 28 |
+| south-atlantic | 9 | 1 / 5 / 3 | 9 |
+| indian-ocean | 7 | 0 / 2 / 5 | 7 |
+| north-pacific | 4 | 1 / 2 / 1 | **12** |
+| south-pacific | 2 | 1 / 0 / 1 | **7** |
+| north-sea | 10 | 4 / 1 / 5 | 10 |
+| baltic-sea | 9 | 3 / 3 / 3 | 9 |
+| mediterranean-sea | 26 | 4 / 10 / 12 | 26 |
+| banda-sea | 3 | 0 / 2 / 1 | 3 |
+| timor-sea | 1 | 0 / 0 / 1 | 1 |
+| south-china-sea | 5 | 3 / 1 / 1 | 5 |
+| philippine-sea | 1 | 0 / 0 / 1 | 1 |
+| east-china-sea | 6 | 1 / 3 / 2 | 6 |
+| caribbean-sea | 9 | 2 / 2 / 5 | 9 |
+| gulf-of-mexico | 1 | 1 / 0 / 0 | 1 |
+| tasman-sea | 1 | 0 / 0 / 1 | **2** |
+
+**What the census says.** The entire Pacific coast of the Americas — some 15,000 km from the Golden
+Gate to the Bay of Concepción — held **four** harbours in `pacific-americas` (Acapulco, Panama City,
+Callao, Valparaiso) plus Honolulu filed under Oceania: nothing in California, nothing on Mexico's
+west coast but Acapulco, nothing in Central America, Ecuador, Pacific Colombia or northern Chile.
+`north-pacific` had 4 harbours and `south-pacific` 2, against `north-atlantic` 28 and
+`mediterranean-sea` 26. By country: India 14 (22 across its two regions), Spain 11, Japan 11,
+Indonesia 10, Italy 8, France 8; Mexico 2, Chile 1, Peru 1, Ecuador, Colombia (Pacific) and Nicaragua
+0, the United States 5 all on the Atlantic. The owner's reference (대항해시대 오리진) has San
+Francisco, Acapulco, Panama, Guayaquil, Lima/Callao and Valparaíso on that coast. **Second gap:
+`oceania` — 5 harbours, all small, 0 mid, 0 capital, and one harbour for the whole of Australia.**
+Every other region is between 6 and 16 harbours with a mid or a capital in it; `levant` (4) is
+small but its coastline is 600 km, not 15,000. Two regions fixed, nothing else rebalanced.
+
+### What was authored, and why each harbour
+
+Fourteen harbours, all real, every coordinate fetched from Wikidata by `scripts/fetch-coords.mjs`
+(238 of 238 resolved; the run is in the entry's receipts), none typed. `region` is
+`pacific-americas` for the thirteen on the coast — the region already existed and its blurb now
+says it spans the Bay of San Francisco to the Bay of Concepción; no region was minted — and
+`oceania` for Hobart. Tier is the game-design judgement `docs/WORLD_DATA.md` §6 says it is.
+
+| harbour | code | sea | tier | why it is here |
+|---|---|---|---|---|
+| San Francisco (Yerba Buena) | SFR | north-pacific | 2 | The bay inside the Golden Gate; outside the 1500–1650 window (presidio 1776, Yerba Buena 1835) on the Honolulu/Sydney precedent, and its note says so. The reference game has it. |
+| Monterey | MTY | north-pacific | 3 | Vizcaíno's 1602 survey named it and proposed it as the galleon's haven; the presidio is 1770. |
+| San Diego | SDG | north-pacific | 3 | Cabrillo anchored 1542, Vizcaíno named it 1602; presidio and first mission 1769. |
+| Mazatlan | MZT | north-pacific | 3 | Spanish landing 1531 below the Copala–Rosario silver camps; a working port from the 18th century. |
+| Navidad (Barra de Navidad) | NAV | north-pacific | 3 | The yard Villalobos (1542) and Legazpi (1564) sailed from for the Philippines — the galleon's first port. |
+| Huatulco | HUA | north-pacific | 3 | New Spain's chief Pacific port in the 1530s–1570s; Drake 1579, Cavendish 1587. |
+| Realejo (El Realejo) | REA | north-pacific | 3 | Founded 1532; the shipyard and main port of Central America's Pacific coast until the 19th century. |
+| Buenaventura | BUV | north-pacific | 3 | Founded 1540, the Pacific outlet of Cali and the Chocó placers. |
+| Guayaquil | GYE | south-pacific | 2 | Founded 1537 up the Guayas; the shipyard of the South Sea. `SHALLOW` (max_draft 2) like Seville. |
+| Paita | PAI | south-pacific | 3 | Northern Peru's port from 1532; the Lima–Panama run watered there; Cavendish 1587. |
+| Arica | ARI | south-pacific | 2 | The port of Potosí from 1545 — the silver's legal road to the sea. |
+| Coquimbo | COQ | south-pacific | 3 | La Serena's bay, 1544; copper and gold of the Norte Chico; Drake 1578. |
+| Concepcion (Penco) | CON | south-pacific | 3 | Founded 1550 at Penco on the bay; the city moved inland after 1751, so the coordinate is Penco's (Wikidata Q51093), the period site, as `docs/WORLD_DATA.md` §6 does for Sofala and Jamestown. |
+| Hobart | HOB | tasman-sea (oceania) | 3 | 1804, outside the window like Sydney, and says so; the second Australian harbour. |
+
+Nation: Mexico, Nicaragua, Colombia, Ecuador, Peru and Chile fly `ESP` (`NATION_BY_COUNTRY` gained
+`EC` and `NI`); the three Californian harbours and Hobart carry no 1550 power (`null`), which is the
+honest answer the derivation already gives for such places.
+
+**The goods (32 new, 9 origins extended, 0 new entrepots).** The three laws bind: 0058's count
+(capital 10 / mid 4–8 / small 4), 0062's native-or-entrepot, 0065's no-good-in-four-cities. Under
+0065 almost every Pacific good was already at its three cities, so the coast needed its own
+catalogue — the 0065 arithmetic again. Every new offer is NATIVE; `docs/REGIONAL_GOODS.md` §J lists
+the rosters, the 32 goods with their cities, and defends the nine origin extensions one by one
+(potosi-silver, coca-leaf, alpaca-wool, charqui, chicha, platinum, gold-dust, salmon, cordage — each
+a fact about where the thing comes from, not an entrepot claim). Offers 1,288 → 1,348; goods
+523 → 555; `tier 1: 35, tier 2: 82, tier 3: 121`.
+
+### The two channels (scripts/sea-grid.mjs)
+
+Measured before deciding, over the pre-carve grid: every candidate snaps to water on the right side
+of its coast within 30 nm — except that **San Francisco's nearest water was 22.42 nm out in the
+Pacific off Point Reyes**, because Natural Earth 1:110m draws no San Francisco Bay at all (three
+vertices on the outer coast), and **Guayaquil's was 29.75 nm down in the Gulf**, the river and the
+Puná channel scan-filling as land. Both are real navigable water the raster is too coarse to draw —
+the Thames case exactly — so two CHANNELS entries: `golden-gate` (3 cells of land opened: the Gate,
+the central Bay, the sea off Ocean Beach) and `guayas` (3: the river from the gulf to the quay).
+Each number was looked at on the raster before it was written; `tests/seaCarve.spec.ts` pins
+moved deliberately 202 → 208 land cells, 521 → 529 carved. After the carve both quays stand on
+sailable water and their roadsteads lie on the channel by 0085's rule (SFR 1.20 nm on
+`golden-gate`, GYE 0.00 — its quay is the channel's last vertex, like Bristol's nm on `guayas`).
+
+### Spaghetti found on the way, and what was done with it
+
+* **`scripts/roster/*.mjs` vs `data/ports.json` — two authors of every port's `goods`.** Since 0058
+  the roster is a stale copy (it still says Acapulco sells silk-cloth and porcelain); running
+  `scripts/build-ports.mjs` would have regressed 0058/0062/0065 and gone red in world-guard.
+  `build-ports.mjs` is now a refusal stub on the `build-world-seed.mjs` precedent; the roster files
+  are the FETCH MANIFEST for `fetch-coords.mjs` and nothing else, and the fourteen new entries carry
+  no `goods` at all. `docs/WORLD_DATA.md` §1 says so.
+* **`scripts/check-ports.mjs` carried 0041's retired 4–9 band** and had been red on all 35 capitals
+  since 0058 — a validator nobody ran. Repointed to the count law and taught 0062's and 0065's laws
+  (check 7c); broken on purpose with a Hobart `cloves` and a Paita `salt` and watched go red, then
+  green again.
+* **The buildings a harbour keeps were written four times, inline, in four applied files**
+  (0067 market/inn/shipyard/academy, 0068 workstation, 0070 warehouse, 0072 building_yard), none of
+  which runs for a harbour inserted later. Migration **0089** folds them into
+  `public.harbour_buildings(port)` (the rule) and `public.furnish_harbours()` (the writer, insert-only
+  — a kept row is the game's, 0067's own words about raised tiers) and proves the fold is the
+  deployed rule: 0 disagreements over every harbour's rows, 0 rows written on the furnished world,
+  and both halves made to bite (a deleted inn refurnished at the rule's tier; a raised market tier
+  left alone).
+* **The growth generator predates 0062/0064/0066/0067–0072.** It would have landed 14 harbours with
+  `demand = 1.000` on 7,770 market rows, no buildings, and would not have carried a changed `origin`
+  at all (world-guard would have refused the apply). `scripts/build-world-growth.mjs` now detects
+  each of those from the baseline: the port_goods insert asks `world.demand_for()` for every new
+  pair, the migration calls `public.furnish_harbours()`, goods carry `origin_regions` /
+  `entrepot_ports` / `industry` in change detection, the update and assert (c), and assert (f)
+  gained 0062's, 0065's and 0089's laws over every live row.
+* **The growth's assert (g) was a wall, not a guard.** It demanded a full reach row for every port
+  at the growth's own position, which no growth with a new harbour can satisfy: the sea generator
+  reads the ports out of the APPLIED chain, so its migration necessarily comes after. Re-cut to what
+  is true there — every pre-existing port keeps its reach row over the pre-existing world, and the
+  ports without one are EXACTLY the harbours this file inserted, by name — and the finished-chain
+  property moved to where it can be held: `scripts/db/proofs/08` gained
+  `REACH_TOTAL_AT_EVERY_PORT` (every port carries a roadstead and a reach row naming every other),
+  so a growth pushed without its sea migration is red in `db:proof`.
+
+### The three migrations
+
+| # | what | self-asserts |
+|---|---|---|
+| **0089** `a_harbour_is_furnished_by_one_rule` | the rule and the writer above | A HARBOUR IS FURNISHED BY ONE RULE. public.harbour_buildings names, for all 224 harbours, exactly the 927 building rows 0067/0068/0070/0072 seeded (kind and tier, both directions, 7 kinds, 0 disagreements) and names none for a sea place; public.furnish_harbours is a fixed point on this world (0 rows written) and BITES both ways — ACC's deleted inn came back at tier 2, its market raised to 3 was left at 3; neither function is executable by a client; 0 client write grants, 0 client-executable writers, 0 read-wall gaps. |
+| **0090** `the_pacific_coast_of_the_americas_has_cities` (GENERATED) | +14 harbours, +32 goods, 9 goods' origins, +60 offers, port_goods re-derived with demand, buildings furnished | THE WORLD EQUALS THE DATA — 238 harbours (+14 over the world this file found) and 555 goods (+32) with every column equal to data/*.json (origin and entrepot columns included); the offer set equals every roster as a set (positive control: a planted bogus offer WAS seen, then removed); dev_* restate every roster, all 238 harbours satisfy the roster count law (capital 10 / mid 4-8 / small 4), every offer is native or a named entrepot, every good is buyable at a producer, no good sits in four cities, no harbour lacks a building the one rule names; all 238 pre-existing ports carry a reach row and the 14 inserted harbour(s) await the sea migration that follows; 132090 market rows = harbours × goods (14938 more than the 117152 this file found), every affinity re-derivable from the one formula, 0005's stock arithmetic holding on every row, every new row carrying its city's demand; knobs at curve 0.88, home 1.00, producer 0.93, reach_nm 9500, span 0.76; 0 client write grants, 0 client-executable writers, 0 read-wall gaps |
+| **0091** `the_water_reaches_the_new_harbours` (GENERATED) | raster rewritten with the two channels, sea_cells healed, channels table, the 0085 rule re-emitted, sea_reaches replaced whole (252 places: 238 harbours + 14 sea places) | THE WATER REACHES THE NEW HARBOURS. 14 place(s) the growth before this file inserted had no reach row and now carry a roadstead (ARI 18.48 · BUV 20.67 · CON 9.48 · COQ 15.50 · GYE 0.00 on guayas · HOB 19.89 · HUA 8.11 · MTY 11.42 · MZT 13.17 · NAV 12.18 · PAI 15.99 · REA 15.58 · SDG 12.27 · SFR 1.20 on golden-gate nm) and a sailed distance to every other place; 6 cell(s) of water opened by the carve and named; 0 existing roadstead(s) move and the existing pairs move a median -0.00 nm. A ROADSTEAD LIES ON THE CHANNEL. 27 places snap to a cell the authored carve opened — sea in the raster, land in data/world-110m.json — and every one of them now takes its roadstead ON the polyline of that channel, nearest the quay: London is reached from (51.5, -0.1) on the Thames, 1.27 nm off the quay, where 0079 seeded (51.375, -0.125), 8.11 nm into Kent. 0 roadsteads move against the applied table; 0 river ports that were their own roadstead at 0 nm now carry one off the quay, so their dotted line and ring exist for the first time (the quay at Bristol is itself a vertex of the Severn and stays at 0). The land data itself was asked in the generator: 20 off-quay roadsteads of the applied table stood inside a coastline polygon (ARP AYU BEL BOR BSR BUE COP GUA HAM HOO KHA LON NAN QUE RIG SNL SUE SVQ TAL THA); 0 do now unless a channel runs under them, and (q) proves each channel roadstead is on its line. (then 0085's standing roadstead claims, re-proven: every place reaches every other, never under the great circle, no Suez, no Panama, the Arctic shut, 13 control cells, the LIS→SET house sailed roadstead to roadstead.) |
+
+0090 writes `public.port_goods` for every (harbour, good) pair — the runbook's §2 clock-stop applies
+on production exactly as it did for 0041 and 0065.
+
+### What proves it
+
+Everything below was run in this worktree on 2026-09-14, on a machine that four other agents were
+using at the same time (free memory under 1 GB for most of the day; a whole-chain apply that takes
+6–7 minutes in CI took 23–36 minutes here — the per-migration figures are in the receipts).
+
+* `node scripts/check-ports.mjs` — **PASS**, 238 ports, 555 goods, 0 failures, 0 warnings (the
+  output is pasted into `docs/WORLD_DATA.md` §4). Broken on purpose (a Hobart `cloves`, a Paita
+  `salt`) and watched go red on both new checks, then restored.
+* `node scripts/build-world-growth.mjs 20260818000090 …` — baseline 79 migrations applied to a
+  scratch PostgreSQL; `delta: +14 ports (~0 updated) · +32 goods (~9 updated) · offers +60/-0`;
+  146 KB of SQL, LF.
+* `node scripts/build-sea-migration.mjs` — chain applied through 0090; 252 places (238 harbours);
+  27 places on a carved cell; 6 cells healed to a sea (ordinals 5 and 6 — North and South Pacific);
+  252 floods in 131 s; raster +6 opened, -0 closed; reach diff over the 28,203 existing pairs
+  `mean -0.00 nm, median -0.00 nm, 100.0 % under 0.5 %`; 0 existing roadsteads move; the land
+  check finds 0 off-quay roadsteads inside a coastline polygon without a channel; 1239 KiB, LF.
+  Three header sentences and one control were hand-edited AFTER generation, and the generator was
+  given the identical text first, so a re-run emits the same file: the "RED" wording of the land
+  check (every counted roadstead is on a channel), the receipt leading with the new places, and the
+  coastwise control repointed from SFR→HOB (an ocean crossing to another growth's harbour) to
+  SFR→CON at the measured 5254.3 nm. Not re-run end to end: it is a 40-minute apply on this machine
+  and the file is proven by `db:apply` below, not by its own regeneration.
+* `npm run db:apply` — **CHAIN APPLIED: 81 migration(s), 81 self-assert receipt(s)**;
+  `world-guard ok: the applied world EQUALS data/*.json — 238 harbours, 555 goods, 1348 offers,
+  14 sea places, 132090 market rows`. 0089 288 ms, 0090 74.5 s, 0091 5.3 s (0065 took 332 s on
+  the same run).
+* `npm run db:proof` — first run **red**: proof 08's new block ended `end $;` — a `$` swallowed
+  by `String.replace` in the edit that inserted it (a replacement-pattern `$` is a literal `# byeharu-voyage — Dev Log
+
+Running record of **requests**, **decisions**, **work done**, **bugs**, and **fixes**.
+Newest entries at the top. Dates are absolute (YYYY-MM-DD).
+
+).
+  Fixed; second run **PROOFS PASSED: 10 file(s), 74/74 PASS markers**, including
+  `PASS: REACH_TOTAL_AT_EVERY_PORT — all 252 ports carry a roadstead and a reach row naming the
+  other 251`.
+* **Every new guard broken on purpose** against the applied world (restored from the build's own
+  `dist/db/world-*.tar.gz`, which `tests/db.image.spec.ts` certifies equals the chain): a missing
+  inn at SFR → 0090 (f) red; a new harbour's demand reset to 1.000 → 0090 (h) red (146 rows; the
+  first probe reset a category Pacific Americas has no appetite for and proved nothing — re-aimed);
+  a Hobart `cloves` → 0062's law red; a Paita `salt` → 0065's law red; GYE's reach row deleted, and
+  separately one key removed from LIS's → proof 08 red both times; a building_yard planted at HOB →
+  0089 (a) red; 0091 (u)'s expression fed the pre-carve 22.42 nm → red. Then green on the untouched
+  world, and the fourteen rosters, roadsteads and building rows read back from it.
+* `npx tsc -b` — exit 0. `npx eslint .` — exit 0. `npm run build` — exit 0 (emits
+  `dist/db/world-57911c82e8318bb3-81-a6c8b7.tar.gz`, the 81-migration world).
+* `npx playwright test tests/db.*.spec.ts tests/rpc.*.spec.ts tests/map.*.spec.ts tests/words.spec.ts
+  tests/duplication.spec.ts` against `npx vite preview --port 4195` (`localhost`, not
+  `127.0.0.1`): first run **183 passed, 1 failed, 0 skipped** in 1.6 h — the failure was
+  `db.chain › a cold boot ends ready` at its 900 s budget while 8 workers, `db:proof` and the other
+  agents shared the machine. Re-run of `tests/db.chain.spec.ts tests/db.image.spec.ts` alone:
+  **17 passed, 0 failed, 0 skipped** (cold boot 12.9 min; "the world grows under a live house" 10.3
+  min; a full chain apply 12.1 min). The cold-boot budget is 15 min and this chain costs ~6 % more
+  than the last one; on a quiet runner it is not near it. `tests/seaCarve.spec.ts`,
+  `sections.spec.ts`, `words.spec.ts`, `duplication.spec.ts` — 24 passed.
+* **In the browser** (local PGlite world, no `.env.local`, the preview on 4195): the MAP draws
+  **San Francisco** on the coast at the sea-zoom and **San Diego** with its roadstead ring and
+  dotted line at the coast-zoom (a small harbour is drawn at ≤ 12° across, `chartView.ts`); PORT's
+  field, typed `San Fran` and the chip taken, reads **San Francisco — Trade · Town · Storage · Inn ·
+  Repair — California Hides · native 80/73, Mission Wine · native 51/46, Redwood · native 33/30,
+  Salmon · native 72/65, Sea Otter Pelts · native 1,367/1,242** — the roster 0090 seeded, every row
+  native, the prices `world.market` derives.
+
+### Not done, said plainly
+
+* Not merged, not deployed, not driven on production; the runbook pass is the lead's.
+* `tests/db.chain.spec.ts` `LAST` moved to 0091; PRs #75 (0086), #78 (0087) and the dateline slice
+  (0088) each move the same pin — whichever merges last owns the highest number.
+* The drawn coastline (`src/chart`) still has no San Francisco Bay, so SFR's ring will draw inside
+  the drawn coast — the same class 0085 left for its own change (`src/**` is not this slice's).
+* The roster files' stale `goods` on the 224 older entries were left as they are (inert); deleting
+  them is a 400-line diff with no behaviour, not for this PR.
+* `scripts/coords.cache.json` records that Banda Neira's Wikidata coordinate moved 0.005° since
+  2026-08-18; `data/ports.json` keeps the applied one, deliberately.
+
+**Merged forward the same day** (main `3886f42` = PRs #79/#80/#81, then `origin/osn-cross-the-dateline`
+= 0088, PR #82): owner row renumbered 91 → **99**; `LAST` stays 0091. The merged chain: `db:apply`
+**82/82 receipts, world-guard ok**; `db:proof` **10/10, 74/74** — 0088's re-cuts (`lon_lerp`,
+`path_refusal`, `segments_from_course`, `position`) and 0091's re-seeded `sea_reaches` /
+`channels` compose; 0088's Tokyo → Callao control reads the roadsteads 0091 seeds (unchanged, 0
+moved). `tsc`, `eslint` 0; `seaCarve`/`sea.dateline`/`duplication`/`sections` 36 passed.
+PR #80's measurement pins moved deliberately with the 14 harbours: `tests/map.landfall.spec.ts`
+224 → 238, in drawn water 79 → 80, moved onto the shore 51 → 52 (widest 8.58 nm), islets 28;
+`tests/map.marks.spec.ts` 224 → 238 marks, 35 great harbours unchanged — re-measured by the
+specs on the merged build (**13 passed**), and none of the fourteen stands in drawn water at the
+world view. `db.chain` on the merged build: 7 of 8 passed; *"a chain change rebuilds the stored
+world"* (two whole-chain builds) hit its 25-min budget at 27.4 min on this shared machine, where
+it had passed at 23.6 min earlier the same day — the chain grew by 0088 and ~6 % since; CI's
+runner is the honest measure of that budget. CI on the merged head: build, disposable-chain (real Postgres, 8 min) green;
+pglite-gate green at 19 min on one runner, then the identical bytes hit the job's 30-min ceiling on a
+2× slower runner (apply 8 min instead of 4.5, proof 02 alone 9 min instead of 5.5) — the gate's
+budget is runner-speed; re-run. Acceptance: **322 passed, 1 failed, 0 skipped** — the one was PR
+#80's `tests/map.regions.spec.ts`: `data/region-tint.json` is a BUILD from the chain's
+`sea_cells` writes and the harbours (nearest harbour by water), so 0091's 5 healed rows and the
+14 harbours change it. Rebuilt with `node scripts/build-region-tint.mjs` (writes 0040/0052/0079/
+**0091** = 720/1/11/**5** rows; water cells 647,208 → 647,214; tinted 647,194 → 647,200; 95
+countries with a harbour), pins moved deliberately, `map.regions` + `map.landfall` + `map.marks`
+**24 passed** against the rebuilt preview.
 
 ---
 

@@ -1,8 +1,8 @@
 {
-  "fetchedAt": "2026-08-18T08:40:20.399Z",
+  "fetchedAt": "2026-09-14T00:32:13.870Z",
   "source": "Wikidata wbgetentities API; coordinate property P625, country property P17 -> P297",
   "licence": "CC0 1.0 Universal (Wikidata data)",
-  "count": 224,
+  "count": 238,
   "entries": {
     "acapulco": {
       "qid": "Q81398",
@@ -136,6 +136,17 @@
       "wikidataCountryIso": "BE",
       "wikidataCountryLabel": "Belgium"
     },
+    "arica": {
+      "qid": "Q2203",
+      "wikiResolved": "Arica",
+      "label": "Arica",
+      "lat": -18.47838888888889,
+      "lon": -70.32122222222222,
+      "precision": 0.0000277778,
+      "countryQid": "Q298",
+      "wikidataCountryIso": "CL",
+      "wikidataCountryLabel": "Chile"
+    },
     "arkhangelsk": {
       "qid": "Q1851",
       "wikiResolved": "Arkhangelsk",
@@ -173,9 +184,9 @@
       "qid": "Q2882109",
       "wikiResolved": "Banda Neira",
       "label": "Neira Island",
-      "lat": -4.5122194,
-      "lon": 129.903,
-      "precision": 0.00001,
+      "lat": -4.5175,
+      "lon": 129.9025,
+      "precision": 0.0002777777777777778,
       "countryQid": "Q252",
       "wikidataCountryIso": "ID",
       "wikidataCountryLabel": "Indonesia"
@@ -212,6 +223,17 @@
       "countryQid": "Q29",
       "wikidataCountryIso": "ES",
       "wikidataCountryLabel": "Spain"
+    },
+    "barra-de-navidad": {
+      "qid": "Q1156217",
+      "wikiResolved": "Barra de Navidad",
+      "label": "Barra de Navidad",
+      "lat": 19.208055555555557,
+      "lon": -104.68055555555556,
+      "precision": 0.0002777777777777778,
+      "countryQid": "Q96",
+      "wikidataCountryIso": "MX",
+      "wikidataCountryLabel": "Mexico"
     },
     "basra": {
       "qid": "Q48195",
@@ -322,6 +344,17 @@
       "countryQid": "Q31",
       "wikidataCountryIso": "BE",
       "wikidataCountryLabel": "Belgium"
+    },
+    "buenaventura": {
+      "qid": "Q996581",
+      "wikiResolved": "Buenaventura, Valle del Cauca",
+      "label": "Buenaventura",
+      "lat": 3.8772222222222,
+      "lon": -77.026666666667,
+      "precision": 0.00027777777777778,
+      "countryQid": "Q739",
+      "wikidataCountryIso": "CO",
+      "wikidataCountryLabel": "Colombia"
     },
     "buenos-aires": {
       "qid": "Q1486",
@@ -510,6 +543,17 @@
       "wikidataCountryIso": "LK",
       "wikidataCountryLabel": "Sri Lanka"
     },
+    "concepcion": {
+      "qid": "Q51093",
+      "wikiResolved": "Penco",
+      "label": "Penco",
+      "lat": -36.73861111111111,
+      "lon": -72.99388888888889,
+      "precision": 0.0002777777777777778,
+      "countryQid": "Q298",
+      "wikidataCountryIso": "CL",
+      "wikidataCountryLabel": "Chile"
+    },
     "copenhagen": {
       "qid": "Q1748",
       "wikiResolved": "Copenhagen",
@@ -520,6 +564,17 @@
       "countryQid": "Q35",
       "wikidataCountryIso": "DK",
       "wikidataCountryLabel": "Denmark"
+    },
+    "coquimbo": {
+      "qid": "Q3871",
+      "wikiResolved": "Coquimbo",
+      "label": "Coquimbo",
+      "lat": -29.9532,
+      "lon": -71.338,
+      "precision": 0.0001,
+      "countryQid": "Q298",
+      "wikidataCountryIso": "CL",
+      "wikidataCountryLabel": "Chile"
     },
     "corfu": {
       "qid": "Q205832",
@@ -597,6 +652,17 @@
       "countryQid": "Q224",
       "wikidataCountryIso": "HR",
       "wikidataCountryLabel": "Croatia"
+    },
+    "el-realejo": {
+      "qid": "Q368227",
+      "wikiResolved": "El Realejo",
+      "label": "El Realejo",
+      "lat": 12.5431,
+      "lon": -87.16571666666667,
+      "precision": 0.000277778,
+      "countryQid": "Q811",
+      "wikidataCountryIso": "NI",
+      "wikidataCountryLabel": "Nicaragua"
     },
     "elmina": {
       "qid": "Q968662",
@@ -730,6 +796,17 @@
       "wikidataCountryIso": "CN",
       "wikidataCountryLabel": "People's Republic of China"
     },
+    "guayaquil": {
+      "qid": "Q43509",
+      "wikiResolved": "Guayaquil",
+      "label": "Guayaquil",
+      "lat": -2.19,
+      "lon": -79.8875,
+      "precision": 0.0002777777777777778,
+      "countryQid": "Q736",
+      "wikidataCountryIso": "EC",
+      "wikidataCountryLabel": "Ecuador"
+    },
     "hadibu": {
       "qid": "Q1015916",
       "wikiResolved": "Hadibu",
@@ -807,6 +884,17 @@
       "wikidataCountryIso": "JP",
       "wikidataCountryLabel": "Japan"
     },
+    "hobart": {
+      "qid": "Q40191",
+      "wikiResolved": "Hobart",
+      "label": "Hobart",
+      "lat": -42.883333333333,
+      "lon": 147.31666666667,
+      "precision": 0.016666666666667,
+      "countryQid": "Q408",
+      "wikidataCountryIso": "AU",
+      "wikidataCountryLabel": "Australia"
+    },
     "hoi-an": {
       "qid": "Q36160",
       "wikiResolved": "Hội An (city)",
@@ -872,6 +960,17 @@
       "countryQid": "Q794",
       "wikidataCountryIso": "IR",
       "wikidataCountryLabel": "Iran"
+    },
+    "huatulco": {
+      "qid": "Q96620931",
+      "wikiResolved": "Huatulco",
+      "label": "Huatulco",
+      "lat": 15.759444444444444,
+      "lon": -96.12277777777778,
+      "precision": 0.0002777777777777778,
+      "countryQid": "Q96",
+      "wikidataCountryIso": "MX",
+      "wikidataCountryLabel": "Mexico"
     },
     "incheon": {
       "qid": "Q20934",
@@ -1346,6 +1445,17 @@
       "wikidataCountryIso": "JP",
       "wikidataCountryLabel": "Japan"
     },
+    "mazatlan": {
+      "qid": "Q40194",
+      "wikiResolved": "Mazatlán",
+      "label": "Mazatlán",
+      "lat": 23.216666666666665,
+      "lon": -106.40833333333333,
+      "precision": 0.0002777777777777778,
+      "countryQid": "Q96",
+      "wikidataCountryIso": "MX",
+      "wikidataCountryLabel": "Mexico"
+    },
     "messina": {
       "qid": "Q13666",
       "wikiResolved": "Messina",
@@ -1411,6 +1521,17 @@
       "countryQid": "Q114",
       "wikidataCountryIso": "KE",
       "wikidataCountryLabel": "Kenya"
+    },
+    "monterey": {
+      "qid": "Q487315",
+      "wikiResolved": "Monterey, California",
+      "label": "Monterey",
+      "lat": 36.60024,
+      "lon": -121.89468,
+      "precision": 0.11189568070432,
+      "countryQid": "Q30",
+      "wikidataCountryIso": "US",
+      "wikidataCountryLabel": "United States"
     },
     "mozambique-island": {
       "qid": "Q331099",
@@ -1587,6 +1708,17 @@
       "countryQid": "Q962",
       "wikidataCountryIso": "BJ",
       "wikidataCountryLabel": "Benin"
+    },
+    "paita": {
+      "qid": "Q1026270",
+      "wikiResolved": "Paita",
+      "label": "Paita",
+      "lat": -5.085164,
+      "lon": -81.113679,
+      "precision": 0.000001,
+      "countryQid": "Q419",
+      "wikidataCountryIso": "PE",
+      "wikidataCountryLabel": "Peru"
     },
     "palermo": {
       "qid": "Q2656",
@@ -1895,6 +2027,28 @@
       "countryQid": "Q155",
       "wikidataCountryIso": "BR",
       "wikidataCountryLabel": "Brazil"
+    },
+    "san-diego": {
+      "qid": "Q16552",
+      "wikiResolved": "San Diego",
+      "label": "San Diego",
+      "lat": 32.715,
+      "lon": -117.1625,
+      "precision": 0.00027777777777778,
+      "countryQid": "Q30",
+      "wikidataCountryIso": "US",
+      "wikidataCountryLabel": "United States"
+    },
+    "san-francisco": {
+      "qid": "Q62",
+      "wikiResolved": "San Francisco",
+      "label": "San Francisco",
+      "lat": 37.775,
+      "lon": -122.41944444444445,
+      "precision": 0.0002777777777777778,
+      "countryQid": "Q30",
+      "wikidataCountryIso": "US",
+      "wikidataCountryLabel": "United States"
     },
     "san-juan": {
       "qid": "Q41211",

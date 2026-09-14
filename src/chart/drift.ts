@@ -40,7 +40,7 @@
 // own arrival that defines it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import type { LatLon } from '../lib/geo'
+import { lonLerp, type LatLon } from '../lib/geo'
 import type { MapVoyage } from './mapTypes'
 
 /**
@@ -86,11 +86,14 @@ export function driftedPoint(voyage: MapVoyage, drift: Drift | null): LatLon {
   const frac = Math.max(legFrac, Math.min(1, advanced))
   if (!Number.isFinite(frac)) return voyage.at
 
-  // The SAME linear placement `voyage.position` uses (0047:535-536), on the same two vertices —
-  // which migration 0075's self-assert re-derives from the served figures to four decimals, so
-  // this is not a claim about the server's arithmetic but a measured fact about it.
+  // The SAME linear placement `voyage.position` uses (0047:535-536, longitude through
+  // `voyage.lon_lerp` since 0088), on the same two vertices — which migration 0075's self-assert
+  // re-derives from the served figures to four decimals, so this is not a claim about the
+  // server's arithmetic but a measured fact about it. `lonLerp` is the client twin of
+  // `voyage.lon_lerp`: on a segment that straddles the antimeridian she advances the short way
+  // round and stays in [−180, 180], instead of sweeping the sheet (docs/NAVIGATION_PLAN.md §7).
   return {
     lat: a.lat + (b.lat - a.lat) * frac,
-    lon: a.lon + (b.lon - a.lon) * frac,
+    lon: lonLerp(a.lon, b.lon, frac),
   }
 }

@@ -8,7 +8,7 @@
     "url": "https://www.wikidata.org/",
     "fetchedAt": "2026-08-18T08:40:20.399Z"
   },
-  "count": 224,
+  "count": 238,
   "ports": [
     {
       "id": "acapulco",
@@ -357,6 +357,34 @@
       }
     },
     {
+      "id": "arica",
+      "name": "Arica",
+      "localName": "Arica",
+      "country": "CL",
+      "countryName": "Chile",
+      "lat": -18.478389,
+      "lon": -70.321222,
+      "sea": "south-pacific",
+      "region": "pacific-americas",
+      "tier": 2,
+      "historicalNames": [
+        "San Marcos de Arica"
+      ],
+      "goods": [
+        "potosi-silver",
+        "vicuna-wool",
+        "coca-leaf",
+        "chuno",
+        "pisco",
+        "alpaca-wool"
+      ],
+      "notes": "The port of Potosí from 1545: the silver came down by llama train to Arica and went north to Callao and the Panama fairs.",
+      "source": {
+        "wikidata": "Q2203",
+        "enwiki": "Arica"
+      }
+    },
+    {
       "id": "arkhangelsk",
       "name": "Arkhangelsk",
       "localName": "Архангельск",
@@ -563,6 +591,32 @@
       "source": {
         "wikidata": "Q1492",
         "enwiki": "Barcelona"
+      }
+    },
+    {
+      "id": "barra-de-navidad",
+      "name": "Navidad",
+      "localName": "Barra de Navidad",
+      "country": "MX",
+      "countryName": "Mexico",
+      "lat": 19.208056,
+      "lon": -104.680556,
+      "sea": "north-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "Puerto de la Navidad"
+      ],
+      "goods": [
+        "mezcal",
+        "featherwork",
+        "pulque",
+        "coconut-wine"
+      ],
+      "notes": "The shipyard bay from which Villalobos sailed for the Philippines in 1542 and Legazpi in 1564, before Acapulco took the galleon.",
+      "source": {
+        "wikidata": "Q1156217",
+        "enwiki": "Barra de Navidad"
       }
     },
     {
@@ -846,6 +900,32 @@
       "source": {
         "wikidata": "Q12994",
         "enwiki": "Bruges"
+      }
+    },
+    {
+      "id": "buenaventura",
+      "name": "Buenaventura",
+      "localName": "Buenaventura",
+      "country": "CO",
+      "countryName": "Colombia",
+      "lat": 3.877222,
+      "lon": -77.026667,
+      "sea": "north-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "San Buenaventura"
+      ],
+      "goods": [
+        "platinum",
+        "gold-dust",
+        "balsa-wood",
+        "hammocks"
+      ],
+      "notes": "Founded 1540 as the Pacific outlet of Cali and the Chocó gold placers; a mangrove harbour that stayed small under the isthmus route.",
+      "source": {
+        "wikidata": "Q996581",
+        "enwiki": "Buenaventura, Valle del Cauca"
       }
     },
     {
@@ -1339,6 +1419,33 @@
       }
     },
     {
+      "id": "concepcion",
+      "name": "Concepcion",
+      "localName": "Concepción",
+      "country": "CL",
+      "countryName": "Chile",
+      "lat": -36.738611,
+      "lon": -72.993889,
+      "sea": "south-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "Concepción del Nuevo Extremo",
+        "Penco"
+      ],
+      "goods": [
+        "chilean-wine",
+        "alerce-timber",
+        "charqui",
+        "araucaria-nuts"
+      ],
+      "notes": "Founded 1550 at Penco on the Bay of Concepción, the southern garrison of Chile against the Mapuche; the city moved inland to the Biobío after the earthquake of 1751.",
+      "source": {
+        "wikidata": "Q51093",
+        "enwiki": "Penco"
+      }
+    },
+    {
       "id": "copenhagen",
       "name": "Copenhagen",
       "localName": "København",
@@ -1369,6 +1476,33 @@
       "source": {
         "wikidata": "Q1748",
         "enwiki": "Copenhagen"
+      }
+    },
+    {
+      "id": "coquimbo",
+      "name": "Coquimbo",
+      "localName": "Coquimbo",
+      "country": "CL",
+      "countryName": "Chile",
+      "lat": -29.9532,
+      "lon": -71.338,
+      "sea": "south-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "La Serena",
+        "Puerto de Coquimbo"
+      ],
+      "goods": [
+        "chilean-copper",
+        "chilean-wine",
+        "andacollo-gold",
+        "mules"
+      ],
+      "notes": "The bay below La Serena, founded 1544; the copper and gold outlet of the Norte Chico, raided by Drake in 1578 and Sharp in 1680.",
+      "source": {
+        "wikidata": "Q3871",
+        "enwiki": "Coquimbo"
       }
     },
     {
@@ -1560,6 +1694,33 @@
       "source": {
         "wikidata": "Q1722",
         "enwiki": "Dubrovnik"
+      }
+    },
+    {
+      "id": "el-realejo",
+      "name": "Realejo",
+      "localName": "El Realejo",
+      "country": "NI",
+      "countryName": "Nicaragua",
+      "lat": 12.5431,
+      "lon": -87.165717,
+      "sea": "north-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "El Realejo",
+        "Puerto de la Posesión"
+      ],
+      "goods": [
+        "anil",
+        "pine-pitch",
+        "hammocks",
+        "cordage"
+      ],
+      "notes": "Founded 1532; the shipyard of the Pacific coast of Central America, building galleons from Nicaraguan cedar and pitch, and its main port until the 19th century.",
+      "source": {
+        "wikidata": "Q368227",
+        "enwiki": "El Realejo"
       }
     },
     {
@@ -1910,6 +2071,33 @@
       }
     },
     {
+      "id": "guayaquil",
+      "name": "Guayaquil",
+      "localName": "Guayaquil",
+      "country": "EC",
+      "countryName": "Ecuador",
+      "lat": -2.19,
+      "lon": -79.8875,
+      "sea": "south-pacific",
+      "region": "pacific-americas",
+      "tier": 2,
+      "historicalNames": [
+        "Santiago de Guayaquil"
+      ],
+      "goods": [
+        "guayaquil-cacao",
+        "toquilla-straw",
+        "balsa-wood",
+        "cinchona-bark",
+        "mangrove-bark"
+      ],
+      "notes": "Founded 1537 up the Guayas river; the shipyard of the South Sea, building the Armada del Mar del Sur, and the outlet of Ecuador cacao.",
+      "source": {
+        "wikidata": "Q43509",
+        "enwiki": "Guayaquil"
+      }
+    },
+    {
       "id": "hadibu",
       "name": "Hadibu",
       "localName": "حديبو",
@@ -2113,6 +2301,33 @@
       }
     },
     {
+      "id": "hobart",
+      "name": "Hobart",
+      "localName": "Hobart",
+      "country": "AU",
+      "countryName": "Australia",
+      "lat": -42.883333,
+      "lon": 147.316667,
+      "sea": "tasman-sea",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Hobart Town",
+        "Sullivans Cove"
+      ],
+      "goods": [
+        "huon-pine",
+        "sperm-oil",
+        "wattle-bark",
+        "kangaroo-skins"
+      ],
+      "notes": "Settled 1804 on the Derwent estuary; a whaling and sealing port of the southern ocean, outside the 1500-1650 era like Sydney.",
+      "source": {
+        "wikidata": "Q40191",
+        "enwiki": "Hobart"
+      }
+    },
+    {
       "id": "hoi-an",
       "name": "Hoi An",
       "localName": "Hội An",
@@ -2280,6 +2495,33 @@
       "source": {
         "wikidata": "Q695265",
         "enwiki": "Hormuz Island"
+      }
+    },
+    {
+      "id": "huatulco",
+      "name": "Huatulco",
+      "localName": "Santa Cruz Huatulco",
+      "country": "MX",
+      "countryName": "Mexico",
+      "lat": 15.759444,
+      "lon": -96.122778,
+      "sea": "north-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "Santa Cruz Huatulco",
+        "Guatulco"
+      ],
+      "goods": [
+        "soconusco-cacao",
+        "anil",
+        "mezcal",
+        "talavera"
+      ],
+      "notes": "The chief Pacific port of New Spain in the 1530s-1570s, shipping Oaxaca cochineal and cacao to Peru; sacked by Drake in 1579 and Cavendish in 1587.",
+      "source": {
+        "wikidata": "Q96620931",
+        "enwiki": "Huatulco"
       }
     },
     {
@@ -3530,6 +3772,33 @@
       }
     },
     {
+      "id": "mazatlan",
+      "name": "Mazatlan",
+      "localName": "Mazatlán",
+      "country": "MX",
+      "countryName": "Mexico",
+      "lat": 23.216667,
+      "lon": -106.408333,
+      "sea": "north-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "Mazatlán",
+        "Puerto de Mazatlán"
+      ],
+      "goods": [
+        "baja-pearls",
+        "zacatecas-silver",
+        "mezcal",
+        "dried-shrimp"
+      ],
+      "notes": "Spanish landing of 1531 below the Sierra Madre silver camps of Copala and Rosario; a working harbour from the 18th century.",
+      "source": {
+        "wikidata": "Q40194",
+        "enwiki": "Mazatlán"
+      }
+    },
+    {
       "id": "messina",
       "name": "Messina",
       "localName": "Messina",
@@ -3692,6 +3961,32 @@
       "source": {
         "wikidata": "Q225641",
         "enwiki": "Mombasa"
+      }
+    },
+    {
+      "id": "monterey",
+      "name": "Monterey",
+      "localName": "Monterey",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 36.60024,
+      "lon": -121.89468,
+      "sea": "north-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "Puerto de Monterrey"
+      ],
+      "goods": [
+        "sea-otter-pelts",
+        "abalone-shell",
+        "california-hides",
+        "salmon"
+      ],
+      "notes": "Vizcaíno surveyed and named the bay in 1602 as a haven for the Manila galleon; the presidio and capital of Alta California followed in 1770.",
+      "source": {
+        "wikidata": "Q487315",
+        "enwiki": "Monterey, California"
       }
     },
     {
@@ -4163,6 +4458,32 @@
       "source": {
         "wikidata": "Q850031",
         "enwiki": "Ouidah"
+      }
+    },
+    {
+      "id": "paita",
+      "name": "Paita",
+      "localName": "Paita",
+      "country": "PE",
+      "countryName": "Peru",
+      "lat": -5.085164,
+      "lon": -81.113679,
+      "sea": "south-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "San Francisco de Paita"
+      ],
+      "goods": [
+        "pisco",
+        "goatskins",
+        "piura-cotton",
+        "chicha"
+      ],
+      "notes": "The northern port of Peru from 1532, where ships on the Lima-Panama run watered; burned by Cavendish in 1587 and Anson in 1741.",
+      "source": {
+        "wikidata": "Q1026270",
+        "enwiki": "Paita"
       }
     },
     {
@@ -4941,6 +5262,61 @@
       "source": {
         "wikidata": "Q36947",
         "enwiki": "Salvador, Bahia"
+      }
+    },
+    {
+      "id": "san-diego",
+      "name": "San Diego",
+      "localName": "San Diego",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 32.715,
+      "lon": -117.1625,
+      "sea": "north-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "San Miguel",
+        "San Diego de Alcalá"
+      ],
+      "goods": [
+        "california-hides",
+        "mission-wine",
+        "sea-otter-pelts",
+        "brea"
+      ],
+      "notes": "Cabrillo anchored in the bay in 1542 and Vizcaíno named it in 1602; the presidio and first Alta California mission were founded in 1769.",
+      "source": {
+        "wikidata": "Q16552",
+        "enwiki": "San Diego"
+      }
+    },
+    {
+      "id": "san-francisco",
+      "name": "San Francisco",
+      "localName": "San Francisco",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 37.775,
+      "lon": -122.419444,
+      "sea": "north-pacific",
+      "region": "pacific-americas",
+      "tier": 2,
+      "historicalNames": [
+        "Yerba Buena",
+        "San Francisco de Asís"
+      ],
+      "goods": [
+        "sea-otter-pelts",
+        "redwood",
+        "california-hides",
+        "salmon",
+        "mission-wine"
+      ],
+      "notes": "The bay inside the Golden Gate; the presidio and mission date from 1776 and the Yerba Buena anchorage from 1835, outside the 1500-1650 era.",
+      "source": {
+        "wikidata": "Q62",
+        "enwiki": "San Francisco"
       }
     },
     {
