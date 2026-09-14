@@ -1,12 +1,95 @@
 # RESUME — where the work stands
 
 **If you are picking this project up cold: read the anchor immediately below, then
-`docs/DEV_LOG.md`'s entries for 2026-09-13/14, then `docs/WORDS.md`, then `docs/OWNER_REQUESTS.md`
-rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is kept as record.**
+`docs/DEV_LOG.md`'s entries for 2026-09-14, then `docs/WORDS.md`, then `docs/OWNER_REQUESTS.md`
+rows 76–99. Everything under the 2026-09-14 (evening) anchor is older and is kept as record.**
 
 ---
 
-# ▼ RESUME ANCHOR — 2026-09-14 ▼
+# ▼ RESUME ANCHOR — 2026-09-14 (evening, machine hand-off) ▼
+
+## The state of the world — VERIFIED on the targets 2026-09-14
+
+| | | how |
+|---|---|---|
+| `main` head | **`3886f42`** (PR #81 merged last) | `git log origin/main -1` |
+| Chain head on `main` | **0085** | `ls supabase/migrations/` |
+| **Production database head** | **0085** — deployed today by the runbook (clock stopped 5 → push → clock started 5; London `51.500,-0.100` 1.27 nm, Hamburg `53.5,9.9`, Antwerp `51.203,4.389` read back from `public.sea_reaches`) | `supabase migration list --linked` + a `select` on the target |
+| Site | **LIVE at `3886f42`** (Pages deploy of #81 completed; served bundle grepped for `on what it cost`) | `curl` of the live index + bundle |
+| Live URL | https://gkwngns714-spec.github.io/byeharu-voyage/ | |
+
+## What landed 2026-09-14 (owner rows), all LIVE
+
+| row | what | PR |
+|---|---|---|
+| 78 | London/Hamburg/Antwerp roadsteads — **0085 DEPLOYED to production** | #65 (deploy today) |
+| 91 | port-picker dead press after a drag in "Find a port" (`PortField.tsx`: blur-exit ripped out) | #79 |
+| 92 | cities in the ocean: `src/chart/landfall.ts` (79 of 224 in drawn water → 51 moved ≤10 nm, 28 islands get an islet) | #80 |
+| 93 | REGIONS on the map: `Regions` toggle (default off = old map), land by country→region, water by nearest-harbour-by-water from the chain's own `sea_cells` | #80 |
+| 94 | every port as a dot at the world view, marker when zoomed in; dots not tappable | #80 |
+| 95 | Max flicker: `useBuyCapacity`/`useOrderPreview`/`useSellEstimate` folded onto `useServedRead` (`{question, reask:'beat'|'subject'}`), ONE `useSettled` | #81 |
+| 96 | sell face: stepper → Bought at → Sells at → You get + `+N% on what it cost`; no Trend/Range/In stock/Cargo space | #81 |
+| 97 | quantity picker: step 1, typed figure, real slider; sell exactly 1 | #81 |
+
+## OPEN, GREEN, NOT MERGED — blocked on ONE thing: the production push
+
+| PR | what | state |
+|---|---|---|
+| **#82** `osn-cross-the-dateline` (row 98) | migration **0088** `the_sea_is_round` (`voyage.lon_lerp`; `path_refusal`/`segments_from_course`/`position` read the seam the short way) + client `lonLerp`/`shortLonDelta` + chart track cut at ±180. Tokyo→Callao: refused before, **accepted, 8,337 nm** after. | **all 4 checks GREEN** on `b3cc155` (main merged in). HELD from merge: merging deploys the client while prod still refuses the seam (2026-09-11 law: never ship a client ahead of its database). |
+| **#83** `osn-pacific-americas-ports` (row 99) | 14 Pacific-Americas harbours + Hobart, 32 goods, migrations **0089** (one furnishing rule), **0090** (harbours/goods/offers, re-derives `port_goods`), **0091** (raster + roadsteads re-emitted, `LAST` pin). | was merging main + #82 at hand-off — read the PR head; the agent was told to push a consistent state. Owns the `LAST` pin (0091). |
+| #75 (0086 inn), #78 (0087 contracts) | older; 0086/0087 numbers are theirs | not merged; #75 must not merge before 0086 is on prod |
+
+## THE ONE WALL — the production push, and how it was refused today
+
+`supabase db push --linked` for 0085 RAN from this session (Claude Code, bypass mode) and succeeded. The
+SECOND push (0088) was refused by Claude Code's **auto-mode classifier** ("Production Deploy") — not by the
+repo, not by Supabase. Same wall the 2026-09-13 session hit. **Fix is on the owner's side, once:** add to
+the user `settings.json` `permissions.allow`: `"Bash(npx --no-install supabase db push:*)"` and
+`"Bash(node *q.mjs*)"` — or type the three runbook lines yourself with the `!` prefix.
+
+**The push needs `supabase.credentials.local` (project ref + DB password).** It EXISTS on the Windows PC
+(`C:\Users\디폴리스\byeharu-voyage\`, dated 2026-08-20). The 2026-09-13 session's note that it was
+"not on this machine" was written on the OTHER computer. Carry it across by hand (USB / password
+manager — never a chat window) or reset the password in the dashboard (NEW_MACHINE.md §0). `.env.local`
+likewise.
+
+**The runbook pass, exactly (DEPLOY_RUNBOOK.md):** `supabase migration list --linked -p <pw>` (read the
+head off the target) → `select public.unwind_the_clock()` (5) → `npx --no-install supabase db push --linked
+-p <pw> --include-all` → `select public.wind_the_clock()` (5) → `migration list` again → drive the game.
+SQL without psql: a scratch `pg` client — `npm i pg@8` in a scratch dir, connect to
+`aws-0-ap-northeast-2.pooler.supabase.com:5432`, user `postgres.<ref>`, db `postgres`, ssl
+`rejectUnauthorized:false`; it worked today (the 2026-09-13 session's `supabase db query --linked` path
+also works with the CLI login).
+
+## What the next session does, in order
+
+1. **Push 0088–0091 to production in ONE runbook pass** — but only the migrations that are MERGED: merge
+   #82 first (green) and push 0088; then finish/merge #83 (after its CI on the merged chain) and push
+   0089–0091 (0090 rewrites `port_goods` — the clock MUST be stopped, §2). Verify heads on the target
+   both times. Then drive: Tokyo → Callao plots across the Pacific and is accepted; San Francisco has a
+   roster and a ring on MAP.
+2. **The continuous left-to-right sheet** (the rest of row 98). Measured by #82 and deliberately not
+   half-built: `clampView` pins the view inside ±180, and "is this point on the glass" is written FOUR
+   times — `chartModel.ts:295`, `seaNames.ts:77`, `regions.ts:169`, `SmallChart.tsx:161` (a NO_SPAGHETTI
+   §1 finding). The slice: fold them into one `onGlass(point, box)`, make it periodic, a ±360° copy of
+   each layer when the box touches the seam, periodic view x, hit test/labels/minimap/`openingBounds`
+   follow. Proof: pan east past Japan and the Americas continue; Tokyo→Callao one unbroken line.
+3. #75 / #78 (0086 / 0087) — merge with main, deploy, merge; #75 must not ship before 0086 is on prod.
+4. Leftovers named today: a served `margin_pct` for the sell face (client prints `profit ÷ cost` of two
+   served figures for now); SFR's ring draws inside the *drawn* coast (`src/chart` has no SF Bay —
+   0085's known class); 224 older roster entries in `data/ports.json` carry a stale `goods` copy (inert);
+   `build-ports.mjs` retired.
+
+## Method that worked today (keep)
+
+Five agents in parallel, **disjoint file domains, own worktrees**, each PR with a spec that is RED on
+main's code before the fix; docs rows numbered at merge time (91–99 today, renumbered twice); plain
+`gh pr merge` after green CI (the classifier now refuses `--admin`). Every "LIVE" above was read off
+the served bundle or the database, not off a green tick.
+
+---
+
+# ▼ RESUME ANCHOR — 2026-09-14 (morning) — HISTORY ▼
 
 **The anchor below this one (2026-09-13) is now HISTORY.** Its "one thing waiting" (deploy 0085) is
 still waiting, and a second migration (0086, the inn) now waits with it.
