@@ -39,7 +39,7 @@ import {
 
 // The mark is the COIN (owner row 102, 2026-09-18: "d. lets change it, to a coin"), and the space
 // before it is a NO-BREAK space: a figure never parts from its coin at a line's end.
-const C = ` ${COIN}`
+const C = `\u00a0${COIN}`
 
 test('ducats group on thousands and carry the coin', () => {
   expect(COIN).toBe('🪙')
