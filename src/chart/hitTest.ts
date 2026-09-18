@@ -23,6 +23,15 @@
 // wins, which is a fact about the world and cannot be reordered by a later read. It matters more
 // since the reach grew to 38 px (./glyphs.ts): more pairs are inside it at once.
 //
+// A DOT IS A CITY TOO (row 104, 2026-09-18), AT A SHORTER REACH. The names keep the full reach
+// (`GLYPH.hitRadius`, mark + gap + word); a dot answers only within `GLYPH.dotHitRadius` — half
+// a touch — because there is nothing beside it to aim at. Between a name and a dot both within
+// their reach: the name wins outright when the thumb is within half a touch of its MARK, else
+// the nearer of the two. So the owner's zoomed-out tap on a lone dot opens that city instead of
+// the sea's coordinates, and the Cádiz/Sanlúcar theft (a dot 5 px north of the mark, nearer to
+// the WORD "Cadiz" than the mark it names, row 94) cannot recur: that tap is well within half a
+// touch of Cádiz's mark, so Cádiz it is.
+//
 // This is selection, and selection is a VIEW change (DESIGN §E.5). It cannot issue an order — the
 // only value it can return is a `MapSelection`, which is a name, not a verb.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -41,10 +50,11 @@ function distance(a: Point, b: Point): number {
  * reach stays the same number of SCREEN pixels at every zoom while the paper under it scales.
  *
  * `ports` is the FULL half of the sheet (chartModel.visiblePorts — the marks that wear a name and
- * their roads; a DOT, row 94, is a picture and not a target, and chartModel.ts records the tap
- * that proved it). A port not on the sheet is not tappable, which is the only answer that can
- * never surprise anyone: with 224 harbours in the table, hit-testing ports the player cannot see
- * would open a detail card for a mark that is not there.
+ * their roads), within `radius`. `dots` is the other half (chartModel.dotPorts), within
+ * `dotRadius` — a smaller reach, because a dot has no name beside it to aim at — and behind a
+ * name whose mark is within `dotRadius` of the thumb (see the header). A port not on the sheet at all is not tappable, which is the only
+ * answer that can never surprise anyone: with 224 harbours in the table, hit-testing ports the
+ * player cannot see would open a detail card for a mark that is not there.
  *
  * Returns `null` when the tap landed on open water, which clears the selection: tapping the sea to
  * dismiss is the gesture every map has, and it costs nothing.
@@ -54,6 +64,8 @@ export function hitTest(
   ports: readonly MapPort[],
   at: Point,
   radius: number,
+  dots: readonly MapPort[] = [],
+  dotRadius = 0,
 ): MapSelection {
   let nearestFleet: { id: string; d: number } | null = null
   for (const f of model.fleets) {
@@ -61,20 +73,31 @@ export function hitTest(
     if (d <= radius && (!nearestFleet || d < nearestFleet.d)) nearestFleet = { id: f.fleet.id, d }
   }
 
-  let nearestPort: { port: MapPort; d: number } | null = null
-  for (const p of ports) {
-    const d = distance(project(p), at)
-    if (d > radius) continue
-    if (!nearestPort || d < nearestPort.d || (d === nearestPort.d && beats(p, nearestPort.port))) {
-      nearestPort = { port: p, d }
-    }
-  }
+  const named = nearestOf(ports, at, radius)
+  const dot = nearestOf(dots, at, dotRadius)
+  // A name within HALF A TOUCH of its mark is what the thumb meant, whatever dot is nearer (the
+  // Cádiz/Sanlúcar theft: the name's word lies to the right of the mark, the dot 5 px north).
+  // Beyond that — the thumb out on the tail of a word, or in open water inside the name's wide
+  // reach — a dot under it is the nearer thing, and the nearer thing wins as it does everywhere.
+  const nearestPort = !dot ? named : !named ? dot : named.d <= dotRadius || named.d <= dot.d ? named : dot
 
   if (nearestFleet && (!nearestPort || nearestFleet.d <= nearestPort.d)) {
     return { kind: 'fleet', id: nearestFleet.id }
   }
   if (nearestPort) return { kind: 'port', code: nearestPort.port.code }
   return null
+}
+
+/** The nearest of `ports` to `at` within `radius`, ties broken by `beats` — the one rule for
+ *  choosing among harbours, asked of the named half and then of the dots. */
+function nearestOf(ports: readonly MapPort[], at: Point, radius: number): { port: MapPort; d: number } | null {
+  let nearest: { port: MapPort; d: number } | null = null
+  for (const p of ports) {
+    const d = distance(project(p), at)
+    if (d > radius) continue
+    if (!nearest || d < nearest.d || (d === nearest.d && beats(p, nearest.port))) nearest = { port: p, d }
+  }
+  return nearest
 }
 
 /** Which of two EXACTLY equidistant harbours the tap meant — see the header. Never consulted for

@@ -5,6 +5,46 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-18 — a dot is a city, and a region's name stands at its centre (rows 104, 105 — client only)
+
+**Row 104 — "when i zoom out i see dot, when i click i see coordinates. it should be the
+corresponding city or location."** Row 94 had made every harbour below the zoom's tier a dot and,
+measured, kept dots OUT of the hit test: a tap on the word "Cadiz" opened Sanlúcar, a tier-2 dot
+5 px north of the mark. The owner now taps a dot in open water and gets the sea's coordinates.
+ONE rule, in the one hit test (`src/chart/hitTest.ts`): the named half of the sheet answers at
+the full reach (`GLYPH.hitRadius`, mark + gap + word); the dot half (`dotPorts`, the complement
+of `visiblePorts` over the same `portMarks` call) answers at `GLYPH.dotHitRadius` — half a touch,
+22 px, because a dot has nothing beside it to aim at; between a name and a dot both within reach,
+the name wins outright when the thumb is within half a touch of its MARK, else the nearer. The
+Cádiz tap is 14 px from Cádiz's mark, so Cádiz. `tests/map.voyage.spec.ts` drives both facts on
+the phone's world view and on Iberia; `tests/map.marks.spec.ts` pins the two halves as a
+partition. The area-centroid alternative for a "region centre" is recorded below.
+
+**Row 105 — "in map, regions, i want you to adjust the name of regions and make it at center of
+each region."** Three things were wrong, and each is one change:
+1. *Where.* The anchor was the MEAN of the region's harbours — on the shore where they crowd, and
+   for Oceania (harbours either side of the dateline) averaged to lon 77, the Indian Ocean. It is
+   now the centre of the region's spread: the middle of the box its harbours span, longitudes
+   unwrapped around their mean (`scripts/lib/region-tint.mjs`; `data/region-tint.json` rebuilt).
+   Measured and REJECTED first: the area-weighted centroid of the paint itself (water cells +
+   country rings) — the Baltic's fell in Siberia (Russia is painted whole), East Africa's in the
+   Southern Ocean, the Pacific Americas' mid-Pacific: the middle of the paint is not the middle
+   of the place.
+2. *Rank.* `LABEL_PRIORITY.region` 7 → 20: above every quiet harbour's name (`quiet + tier`, at
+   most 15), below every port of yours (`route` 70+). The filter is on to READ the regions; a
+   quiet harbour keeps its mark and its tap and gives up its word.
+3. *Give.* A centred label had one box or nothing, so one mark under a region's middle dropped
+   the name. `LabelRequest.slackLines` (regions ask 3; seas keep 0): the anchor, then one line
+   up, one down, two up, two down, three up, three down. Measured at the 1440 world view: 8 of
+   25 names set before all three, 20 after (France & the Low Countries, Western Mediterranean,
+   Adriatic, Eastern India and Oceania still give way there and set on zoom).
+
+**The words of the names are not changed.** They are rows in the database too — 0003 seeds
+`regions` by name and 0066 keys demand tables by the same names — so "Caribbean & the Spanish
+Main" → "Caribbean" is a migration with two dependents, not a client edit; listed under KNOWN.
+
+---
+
 ## 2026-09-14 — "i can't seem to press anything else": the port field folded on a blur, under the press (row 91 — built on PR, not merged, not driven on production)
 
 **The owner, desktop Chrome, ~1545 px:** *"when i drag to copy paste multiple words, i can't seem

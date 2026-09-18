@@ -167,6 +167,15 @@ export const GLYPH = {
   // `portMarkScale` is a hoisted function declaration below, so the ramp has ONE author and this
   // term reads it rather than restating `0.4 + 0.2 × 5`.
   hitRadius: LABEL_GAP_X_PX + TOUCH_TARGET_PX / 2 + LOUD_PORT_HALF_WIDTH_PX * portMarkScale(5),
+  /**
+   * A DOT'S REACH (row 104, 2026-09-18: *"when i zoom out i see dot, when i click i see
+   * coordinates. it should be the corresponding city or location"*). Half the touch floor and
+   * nothing more: a dot has no name to the right of it and no mark width, so the whole reach is
+   * the thumb's own. A name whose mark is within this same distance of the thumb beats any dot
+   * (./hitTest.ts) — the measured Cádiz/Sanlúcar theft row 94 recorded, and the reason dots had
+   * no tap at all until now.
+   */
+  dotHitRadius: TOUCH_TARGET_PX / 2,
   labelSize: 10.5,
   /** A GREAT harbour's name (row 90): one size up from the rest, so the marks' hierarchy reaches
    *  the names. Below `seaNameSize`'s spaced water type so a port never reads as a sea. */

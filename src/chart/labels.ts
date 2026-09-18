@@ -112,6 +112,15 @@ export interface LabelRequest {
   readonly sizePx?: number
   readonly spacingEm?: number
   readonly placement?: 'beside' | 'centred'
+  /**
+   * ROW 105 — how far a CENTRED name may step off its anchor to be set at all, in lines of its
+   * own height: 0 (the default, a sea's name) is that one box or nothing; a region's name asks
+   * 3, so it is tried on its anchor, then one line up, one down, two up, two down, three up,
+   * three down — still at the region's centre to the eye, and no longer dropped for the one
+   * harbour mark that happened to stand under its middle (measured at the world view with the
+   * names at the marks' priority: 8 of 25 set; with three lines of give, all 25).
+   */
+  readonly slackLines?: number
 }
 
 export interface PlacedLabel {
@@ -179,11 +188,15 @@ export const LABEL_PRIORITY = {
    */
   quiet: 10,
   /**
-   * A REGION'S NAME (row 93), only while the regions filter is on. Below the quietest harbour —
-   * ground gives way to every place — and above a sea's, because the filter was turned on to
-   * read the regions, so where the two would touch it is the sea's name that goes.
+   * A REGION'S NAME (row 93), only while the regions filter is on. ABOVE every quiet harbour's
+   * name (`quiet + 5` at most) and below every port of yours: the filter was turned on to read
+   * the regions, so a region's name is what the player asked for, and a quiet harbour's name is
+   * what gives way — the harbour keeps its mark and its tap. Until row 105 (2026-09-18, *"adjust
+   * the name of regions and make it at center of each region"*) this sat at 7, under the
+   * quietest harbour, and at the world view seventeen of the twenty-five names were dropped for
+   * the great harbours' names standing near their centres (measured: 8 of 25 set).
    */
-  region: 7,
+  region: 20,
   /**
    * A SEA'S NAME (row 90). Below the quietest harbour: it is ground, and ground gives way to
    * every place a player might tap. Placed last, it can only ever fill water no name has claimed.
@@ -339,7 +352,7 @@ export function planLabels(
     const width = request.text.length * (ADVANCE_EM + spacingEm) * size
     const options_ =
       request.placement === 'centred'
-        ? [centred(request.at, width, size)]
+        ? centredNear(request.at, width, size, request.slackLines ?? 0)
         : candidates(request.at, width, size, gap)
 
     let chosen: (typeof options_)[number] | null = null
@@ -376,7 +389,18 @@ export function planLabels(
   return placed
 }
 
-/** The one placement a centred label has: its box centred on the anchor. */
+/** A centred label's placements: on its anchor, then — with `slackLines` of give — one line up,
+ *  one down, two up, two down… each still centred on the anchor's x. */
+function centredNear(at: Point, width: number, height: number, slackLines: number) {
+  const out = [centred(at, width, height)]
+  for (let n = 1; n <= slackLines; n++) {
+    out.push(centred({ x: at.x, y: at.y - n * height * 1.2 }, width, height))
+    out.push(centred({ x: at.x, y: at.y + n * height * 1.2 }, width, height))
+  }
+  return out
+}
+
+/** The one placement a centred label has without give: its box centred on the anchor. */
 function centred(
   at: Point,
   width: number,

@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import type { ViewBox } from '../src/lib/geo'
-import { buildChartModel, buildCoastline, mapFleetsOf, mapPortsOf, minTierForSpan, portMarks, visiblePorts } from '../src/chart'
+import { buildChartModel, buildCoastline, mapFleetsOf, mapPortsOf, minTierForSpan, portMarks, visiblePorts, dotPorts } from '../src/chart'
 import { REAL_PORTS, dockedFleet } from './mapWorld.fixture'
 import { ready, reachable, zoomStepMs } from './appReady.fixture'
 
@@ -53,12 +53,22 @@ test.describe('every port is on the sheet; the zoom decides dot or mark', () => 
     expect(visby.full).toBe(true)
   })
 
-  test('a dot is a picture, not a target: the Map tab hit-tests the full half', () => {
-    // MEASURED 2026-09-14: with `portMarks` in the hit test, a tap on the word "Cadiz" at the
+  test('a dot answers a tap SECOND: the Map tab hit-tests the full half first, then the dots at their own reach', () => {
+    // MEASURED 2026-09-14: with `portMarks` in ONE hit test, a tap on the word "Cadiz" at the
     // phone's opening frame opened Sanlúcar — a tier-2 dot 5 px away (tests/map.sendfleet.spec.ts).
+    // Row 104 (2026-09-18): a dot is the city it stands for, but only behind the names — the two
+    // halves are both derived from `portMarks` and handed to hitTest in that order.
     const screen = readFileSync(path.join(process.cwd(), 'src', 'features', 'map', 'MapScreen.tsx'), 'utf8')
-    expect(screen).toMatch(/const tappable = visiblePorts\(ports, model\.portRoles, view, minTierForSpan\(view\.width\)\)/)
+    expect(screen).toMatch(/const tappable = visiblePorts\(ports, model\.portRoles, view, minTier\)/)
+    expect(screen).toMatch(/const dots = dotPorts\(ports, model\.portRoles, view, minTier\)/)
+    expect(screen).toMatch(/hitTest\(model, tappable, at, GLYPH\.hitRadius \* unitsPerPx, dots, GLYPH\.dotHitRadius \* unitsPerPx\)/)
     expect(screen).not.toContain('portMarks(')
+    // The two halves partition the sheet: no harbour in both, none in neither.
+    const roles = buildChartModel(mapFleetsOf([]), PORTS).portRoles
+    const full = visiblePorts(PORTS, roles, WORLD, minTierForSpan(WORLD.width)).map((p) => p.code)
+    const dots = dotPorts(PORTS, roles, WORLD, minTierForSpan(WORLD.width)).map((p) => p.code)
+    expect(full.filter((c) => dots.includes(c))).toEqual([])
+    expect(full.length + dots.length).toBe(portMarks(PORTS, roles, WORLD, minTierForSpan(WORLD.width)).length)
   })
 
   test('only what is on the glass: a port off the sheet is neither dot nor mark', () => {

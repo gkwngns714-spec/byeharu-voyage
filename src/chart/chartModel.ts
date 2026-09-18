@@ -266,12 +266,14 @@ export interface PortMark {
  * floor was not drawn at all; now it is drawn small, so the globe shows every harbour there is.
  *
  * ONE list. The marks layer draws every entry (full or dot); `visiblePorts` below is its FULL
- * half — what asks for a name, shows its roads, and answers a tap. A DOT IS A PICTURE, NOT A
- * TARGET, and that was measured, not assumed: with dots in the hit test, at the phone's opening
- * frame a tap on the word "Cadiz" opened Sanlúcar — a tier-2 dot 5 px north of the Cádiz mark
- * was nearer to the name than the mark it names (tests/map.sendfleet.spec.ts caught it). The
- * owner's sentence has the order right: a dot when zoomed out, the marker — and its tap — once
- * zoomed in.
+ * half — what asks for a name, shows its roads, and answers a tap at the full reach; `dotPorts`
+ * is the other half — what answers a tap at half a touch, behind a name whose mark is as near. The
+ * order was measured,
+ * not assumed: with dots in the SAME hit test as the names, at the phone's opening frame a tap
+ * on the word "Cadiz" opened Sanlúcar — a tier-2 dot 5 px north of the Cádiz mark was nearer to
+ * the name than the mark it names (tests/map.sendfleet.spec.ts caught it, row 94), and dots had
+ * no tap at all until row 104 (2026-09-18: *"when i click i see coordinates. it should be the
+ * corresponding city"*) gave them their own, tighter reach (./hitTest.ts).
  */
 export function portMarks(
   ports: readonly MapPort[],
@@ -302,10 +304,10 @@ export function portMarks(
  * WHICH PORTS WEAR THEIR FULL MARK AT THIS ZOOM — `portMarks`' full half, as a plain list.
  *
  * This is the list the label planner plans (./labels.ts: a dot has no name), the roadstead
- * layer draws roads for (./roadsteads.ts: a dot has no roads) and the hit test tests
- * (./hitTest.ts: a dot has no tap). It is derived from `portMarks`, never computed beside it, so
- * a name can never be asked for a port drawn as a dot and a full mark can never go unnamed for
- * want of being in the list.
+ * layer draws roads for (./roadsteads.ts: a dot has no roads) and the hit test tests at the
+ * full reach (./hitTest.ts: a dot answers at half a touch, and never over a mark as near). It is derived from `portMarks`, never
+ * computed beside it, so a name can never be asked for a port drawn as a dot and a full mark
+ * can never go unnamed for want of being in the list.
  *
  * Before row 94 this was the whole drawn set; the pins in tests/map.labels.spec.ts (35 on the
  * globe, 114 on a sea, all of them on a coast) are the same numbers with the same meaning.
@@ -319,6 +321,24 @@ export function visiblePorts(
 ): MapPort[] {
   const out: MapPort[] = []
   for (const mark of portMarks(ports, roles, view, minTier, margin)) if (mark.full) out.push(mark.port)
+  return out
+}
+
+/**
+ * WHICH PORTS ARE DOTS AT THIS ZOOM — `portMarks`' other half, the complement of `visiblePorts`
+ * over the same call, so the two can never overlap or leave a drawn harbour out. The hit test
+ * reads it at the dot's own reach (./hitTest.ts): a dot is the city it stands for (row 104), but
+ * a name whose mark is within half a touch of the thumb is what the tap meant.
+ */
+export function dotPorts(
+  ports: readonly MapPort[],
+  roles: ReadonlyMap<string, PortRole>,
+  view: ViewBox,
+  minTier: number,
+  margin = 0.06,
+): MapPort[] {
+  const out: MapPort[] = []
+  for (const mark of portMarks(ports, roles, view, minTier, margin)) if (!mark.full) out.push(mark.port)
   return out
 }
 
