@@ -237,7 +237,7 @@ export function TradeTray({
     <Tray
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
-      title={`${good.name} · ${intent}`}
+      title={good.name}
       data-testid="trade-tray"
       action={
         <>
@@ -257,7 +257,9 @@ export function TradeTray({
           )}
           {/* TWO ACTS, ONE ROW: trade this line now, or stage it on the basket. The primary keeps
               the whole width where there is no basket to stage into. */}
-          <div className={act.stage ? 'grid grid-cols-2 gap-2' : ''}>
+          {/* The basket button takes its own width; the send button, which carries the count and
+              the price, takes the rest — halves wrapped `Buy 10 units · 822 🪙` onto two lines. */}
+          <div className={act.stage ? 'grid grid-cols-[auto_1fr] gap-2' : ''}>
             {act.stage && (
               <Button variant="secondary" className="w-full" onClick={act.stage} disabled={!live} data-testid="trade-tray-stage">
                 Add to basket
@@ -327,7 +329,15 @@ export function TradeTray({
               refreshing". tests/trade.ceiling.spec.ts watches it across three world reads. */}
           {capacity.bound ? (
             <Row label="Max" value={<Figure value={formatUnits(capacity.bound.max)} size="figure" />} data-testid="trade-tray-max">
-              <span className="block text-t-caption text-ink-faint">{`limited by ${capacity.bound.binding}`}</span>
+              {/* The ceiling in the ship's own measure — the owner, 2026-09-18: "Max limited by
+                  cargo space. Just show cargo space of how much it is in max." When something
+                  other than the hold binds (money, stock, the day's limit) that reason still
+                  follows the figure, since the figure alone would read as free space. */}
+              <span className="block text-t-caption text-ink-faint" data-testid="trade-tray-max-space">
+                {capacity.bound.binding === 'cargo space'
+                  ? `${formatTons(capacity.bound.max * bulk, 1)} of cargo space`
+                  : `${formatTons(capacity.bound.max * bulk, 1)} of cargo space · limited by ${capacity.bound.binding}`}
+              </span>
             </Row>
           ) : (
             <Row

@@ -151,13 +151,13 @@ test.describe('wide glass', () => {
     await expect(basket.locator('[data-testid="tray-close"]')).toHaveCount(0)
     // ROWS 81/82: what the ship carries stands under the basket, as board-shaped rows. The fixture
     // fleet sails with cargo (0003's flagship); a lot this market lists draws its sale as a bar and
-    // the served profit beside it — a meter and a signed figure, not a sentence.
+    // the gap of the two prices, for one unit, beside it — a meter and a signed figure, not a sentence.
     const onBoard = basket.locator('[data-testid="on-board"]')
     await expect(onBoard).toBeVisible()
     const sale = basket.locator('[data-testid^="on-board-sale-"]').first()
     if ((await sale.count()) > 0) {
       await expect(sale.locator('[role="meter"]')).toHaveCount(1)
-      await expect(sale, 'the sale line has no served profit figure').toContainText(/[+−][\d,]+ d\./, { timeout: 20_000 })
+      await expect(sale, 'the sale line has no per-unit gap figure').toContainText(/[+−][\d,]+\s🪙\s*each/, { timeout: 20_000 })
     }
 
     // 2. PRESS A PRICE. The trade tray takes the SAME slot — same x, same width — and the basket
@@ -188,7 +188,7 @@ test.describe('wide glass', () => {
     await expect(basket.locator('[data-testid="basket-line"]')).toHaveCount(1)
     const send = basket.locator('[data-testid="basket-send"]')
     await expect(send, 'the basket was never priced — cmd.preview_basket did not answer').toBeEnabled({ timeout: 20_000 })
-    await expect(send).toHaveText(/^Buy 1 line · [\d,]+ d\.$/)
+    await expect(send).toHaveText(/^Buy 1 line · [\d,]+\s🪙$/)
     expect(await basket.locator('[data-testid="basket-total"]').count()).toBeGreaterThanOrEqual(3)
     await expect(basket.locator('[data-testid="cargo-bar"] [data-bar-pending]')).toHaveCount(1)
     // The goods column has not moved through any of it.

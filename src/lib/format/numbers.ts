@@ -8,8 +8,9 @@
 //   · A negative money figure uses U+2212 MINUS SIGN, not the hyphen-minus: in JetBrains Mono the
 //     hyphen sits at text height and reads as a dash between two figures. The minus sits on the
 //     maths axis, aligned with the digits, which is what a column of deltas needs.
-//   · Ducats are suffixed "d." — the one abbreviation kept, because it is the currency mark and
-//     stands beside every price (docs/WORDS.md, law 2).
+//   · Ducats are suffixed with the COIN mark, spelled ONCE below — the owner, 2026-09-18: "the
+//     currency is ... i don't like it. d. lets change it, to a coin". Every screen and every
+//     ledger line that names money composes onto `COIN`; no file writes the mark itself.
 //   · Every other unit is SPELLED: "tons", "miles", "knots", "days". The owner asked twice —
 //     2026-08-22 "stores? t? kn? what are these" and 2026-09-13 "9t free? 9t free out of what?"
 //     — and the second time is the rule: a unit a player has to decode is not a unit.
@@ -41,24 +42,30 @@ function group(digits: string): string {
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
-/** Money as the game writes it: 8180 → "8,180 d." */
+/** THE COIN — the one place the currency mark is spelled (a coin, never a letter). */
+export const COIN = '🪙'
+/** A figure and its coin never part: the space between them is a no-break space, so a button or a
+ *  ledger line wraps before the number, never between the number and its mark. */
+const NBSP = '\u00a0'
+
+/** Money as the game writes it: 8180 → "8,180 🪙" */
 export function formatDucats(n: number): string {
-  return `${formatInt(n)} d.`
+  return `${formatInt(n)}${NBSP}${COIN}`
 }
 
-/** A ledger movement, always signed: 600 → "+600 d.", -420 → "−420 d.", 0 → "0 d." */
+/** A ledger movement, always signed: 600 → "+600 🪙", -420 → "−420 🪙", 0 → "0 🪙" */
 export function formatDucatsDelta(n: number): string {
   if (!Number.isFinite(n)) return '—'
   const rounded = Math.round(n)
-  if (rounded === 0) return '0 d.'
-  return `${rounded > 0 ? '+' : MINUS}${group(Math.abs(rounded).toString())} d.`
+  if (rounded === 0) return `0${NBSP}${COIN}`
+  return `${rounded > 0 ? '+' : MINUS}${group(Math.abs(rounded).toString())}${NBSP}${COIN}`
 }
 
-/** A unit price: "7 d. each" — the figure a trader actually compares. PER UNIT, not per ton: a
+/** A unit price: "7 🪙 each" — the figure a trader actually compares. PER UNIT, not per ton: a
  *  trade quantity is a COUNT of units (`qty`), and a unit of a good takes `bulk` tons of space —
  *  126 of 523 goods have bulk 1.0, so "per ton" was wrong for the other 397. */
 export function formatUnitPrice(n: number): string {
-  return `${formatInt(n)} d. each`
+  return `${formatInt(n)}${NBSP}${COIN} each`
 }
 
 /** A trade quantity: 20 → "20 units", 1 → "1 unit". The count the server trades in; the space it

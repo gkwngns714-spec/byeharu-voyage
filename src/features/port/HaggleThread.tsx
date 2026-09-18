@@ -108,7 +108,7 @@ export function HaggleThread({
   return (
     <>
       <Row
-        label="Haggle"
+        label="Bargain"
         chevron
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
@@ -137,7 +137,7 @@ export function HaggleThread({
             <Row label="Price" value={<Figure value={price} />} data-testid="haggle-price" />
           )}
           {saved > 0 && (
-            <Row label="Haggle saved" value={<Figure value={formatDucats(saved)} tone="success" />} data-testid="haggle-saved" />
+            <Row label="Bargain saved" value={<Figure value={formatDucats(saved)} tone="success" />} data-testid="haggle-saved" />
           )}
           <Row label="Tries" value={<Figure value={formatOfTotal(quay.attempts_left, quay.attempts_max)} unit="tries" />}>
             <Bar value={quay.attempts_left} of={quay.attempts_max} tone="accent" label="tries left" className="mt-1" />
@@ -153,7 +153,7 @@ export function HaggleThread({
               Take it
             </Button>
             <Button variant="primary" className="w-full" busy={busy} busyLabel="…" onClick={press} data-testid="haggle-press">
-              {turns.length === 0 ? 'Haggle' : 'Try again'}
+              {turns.length === 0 ? 'Bargain' : 'Try again'}
             </Button>
           </div>
         </div>

@@ -33,7 +33,7 @@ export function ManifestTotals({
       <Row label="Market tax" value={<Figure value={formatDucats(totals.tax)} />} data-testid={testId} />
       <Row label="Port fee" value={<Figure value={formatDucats(totals.spread)} />} data-testid={testId} />
       {totals.haggle_saved > 0 && (
-        <Row label="Haggle saved" value={<Figure value={formatDucats(totals.haggle_saved)} tone="success" />} data-testid={testId} />
+        <Row label="Bargain saved" value={<Figure value={formatDucats(totals.haggle_saved)} tone="success" />} data-testid={testId} />
       )}
       {totals.sold > 0 &&
         (totals.profit !== null ? (

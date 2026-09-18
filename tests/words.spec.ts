@@ -54,6 +54,13 @@ const BANNED: { word: RegExp; say: string }[] = [
   { word: /\bwarehouses?\b/i, say: 'storage' },
   { word: /\bshipyard\b/i, say: 'Repair (the face) / build yard (the building that builds)' },
   { word: /\bhull \(worst ship\)/i, say: 'Damage' },
+  // 2026-09-18, owner row 100: *"haggle is a weird word. bargain? or something like this, more
+  // user friendly word please"* — the row, the button and the receipt line all say Bargain.
+  { word: /\bhaggl(?:e|ed|es|ing)\b/i, say: 'Bargain' },
+  // 2026-09-18, owner row 102: *"the currency is ... i don't like it. d. lets change it, to a
+  // coin"* — money carries the COIN mark from src/lib/format, never the letter.
+  { word: /\d\s?d\.(?=\s|$)/, say: 'N 🪙 (formatDucats / COIN)' },
+  { word: /\bd\. (?:each|per)\b/, say: '🪙 each / 🪙 per … (COIN)' },
 ]
 
 /** Literals the crude rule catches that are NOT player text, each with its reason. */
