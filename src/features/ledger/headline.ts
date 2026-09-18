@@ -1,4 +1,4 @@
-import { formatInt, formatMiles, formatPctPoints } from '../../lib/format'
+import { formatInt, formatMiles, formatPctPoints, formatUnitPrice } from '../../lib/format'
 import { parsePointToken, pointLabel } from '../../domain/passage'
 // THE ONE READER OF A JSONB FIELD (2026-08-23). `num`/`str` were declared here AND in
 // features/command/PreviewPanel.tsx, and they had already drifted; docs/NO_SPAGHETTI.md §2 listed
@@ -57,7 +57,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
       const good = str(p, 'good') ?? 'cargo'
       const price = num(p, 'avg_price')
       return `${fleet} bought ${qty === null ? 'some' : formatQty(qty)} ${good}${
-        price === null ? '' : ` at ${Math.round(price)} d. each`
+        price === null ? '' : ` at ${formatUnitPrice(price)}`
       }.`
     }
     case 'SOLD': {
@@ -65,7 +65,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
       const good = str(p, 'good') ?? 'cargo'
       const price = num(p, 'avg_price')
       return `${fleet} sold ${qty === null ? 'some' : formatQty(qty)} ${good}${
-        price === null ? '' : ` at ${Math.round(price)} d. each`
+        price === null ? '' : ` at ${formatUnitPrice(price)}`
       }.`
     }
     case 'DEPARTED': {

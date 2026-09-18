@@ -54,7 +54,7 @@ export function Figure({
 }: {
   /** The served number, already formatted (lib/format owns the formatting, this owns the voice). */
   value: ReactNode
-  /** `d.`, `t`, `kn`, `days`. Rides small and dim; never inside the value. */
+  /** The coin mark, `tons`, `knots`, `days`. Rides small and dim; never inside the value. */
   unit?: ReactNode
   size?: FigureSize
   tone?: FigureTone

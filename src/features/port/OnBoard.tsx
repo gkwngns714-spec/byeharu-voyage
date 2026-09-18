@@ -3,7 +3,6 @@ import { fleetCargo, paidPerTun } from '../../domain/fleet'
 import { buyableHere } from '../../domain/market'
 import { formatDucatsDelta, formatInt, formatTons, formatUnits } from '../../lib/format'
 import type { FleetView, MarketGood } from '../../lib/rpc'
-import { useSellEstimate } from '../../live/useSellEstimate'
 import { useWorld } from '../../live/worldStore'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -15,13 +14,16 @@ import { useWorld } from '../../live/worldStore'
 // graphic not in words ordered in line"* (row 82). So each good on board that this market lists is
 // a row of the board's own shape — the name, the lot, the two price cells as the tap targets — and
 // under it THE SALE AS A PICTURE: a bar from what it was bought at to what it sells for now, green
-// past the cost or red short of it, with the served profit of selling the whole lot beside it.
+// past the cost or red short of it, with the gap between the two prices beside it, PER UNIT.
 //
 // ── WHAT IS SERVED, WHAT IS DRAWN ──────────────────────────────────────────────────────────────
-// Bought-at is `FleetView.cargo_basis` through `paidPerTun`; the sell price is the market row's;
-// the profit is `cmd.preview` of SELL-all (useSellEstimate.ts) — never `(sell − paid) × units` on
-// this side of the wire, because a sale walks the book. The bar only PLACES the two served prices
-// on one track: the larger of the two fills it, so the wash is exactly the gap between them.
+// Bought-at is `FleetView.cargo_basis` through `paidPerTun`; the sell price is the market row's.
+// The figure beside the bar is the difference of those two served unit prices — `sell − paid` for
+// ONE unit, the same two figures the bar places, so the number and the picture cannot disagree.
+// Until 2026-09-18 it was the served profit of selling the WHOLE lot (`cmd.preview` SELL-all,
+// `useSellEstimate`, deleted with this): the owner — *"the gap is little bit weird. it accounts
+// for the total number of that item, but i want it to show a price diff for only one item"*. What
+// a whole sale would fetch, walking the book, is the sell tray's own `You get` (useTrade).
 //
 // A good this market does not list has no price here: its row is the lot and `not traded here`,
 // and no cell. A lot whose cost is not on record draws the sell price alone and says so.
@@ -86,9 +88,9 @@ function OnBoardRow({
   onSell: (good: MarketGood) => void
 }) {
   const paid = paidPerTun(fleet, code)
-  const sale = useSellEstimate(fleet, here, units)
-  const profit = sale.estimate?.profit ?? null
-  const gain = profit === null ? null : profit >= 0
+  // THE GAP FOR ONE UNIT: the two prices drawn on the bar, subtracted — nothing else.
+  const gap = paid !== null && here ? here.sell - paid : null
+  const gain = gap === null ? null : gap >= 0
   // THE PICTURE: both prices on one track; the larger fills it; the wash is the gap, in the sign's
   // colour. Placement only — no figure on screen comes from this arithmetic.
   const track = here ? Math.max(paid ?? 0, here.sell) : 0
@@ -130,7 +132,7 @@ function OnBoardRow({
             className="min-w-0 flex-1"
           />
           <span className="shrink-0 text-t-caption text-ink-faint">{`sells ${formatInt(here.sell)}`}</span>
-          {profit !== null && <Figure value={formatDucatsDelta(profit)} tone={gain ? 'success' : 'danger'} />}
+          {gap !== null && <Figure value={formatDucatsDelta(gap)} unit="each" tone={gain ? 'success' : 'danger'} />}
         </div>
       )}
     </div>

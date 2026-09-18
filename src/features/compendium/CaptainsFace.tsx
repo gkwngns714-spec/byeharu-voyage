@@ -10,7 +10,7 @@ import {
   Tray,
   type TrayDetent,
 } from '../../components/ui'
-import { formatInt, formatPctPoints } from '../../lib/format'
+import { COIN, formatInt, formatPctPoints } from '../../lib/format'
 import type { Officer } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
@@ -100,7 +100,7 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
             }
           />
           {/* "signs for" is the server's own phrase (0015's refusal says it word for word). */}
-          <Row label="Wage" value={<Figure value={formatInt(open.wage)} unit="d. per voyage" />} />
+          <Row label="Wage" value={<Figure value={formatInt(open.wage)} unit={`${COIN} per voyage`} />} />
           <Row
             label="Port"
             value={open.port === null ? 'none fixed' : portNameOf(portByCode, open.port)}

@@ -2,6 +2,7 @@
 // two modules directly, so there is exactly one place to look for "how does this game print a
 // number" and exactly one place a new rule can be added.
 export {
+  COIN,
   MINUS,
   formatInt,
   formatFixed,

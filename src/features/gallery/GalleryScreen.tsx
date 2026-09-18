@@ -21,6 +21,7 @@ import {
   Tray,
   type TrayDetent,
 } from '../../components/ui'
+import { COIN } from '../../lib/format'
 
 // THE GALLERY — every primitive, in every state, on one page at 390×844.
 //
@@ -65,13 +66,13 @@ export function GalleryScreen() {
       >
         <SheetSection heading="Figure">
           <div className="flex flex-wrap items-baseline gap-4">
-            <Figure value="8,000" unit="d." size="hero" />
+            <Figure value="8,000" unit={COIN} size="hero" />
             <Figure value="78" unit="d./t" size="figure" />
             <Figure value="15.0" unit="days" tone="success" />
             <Figure value="4" unit="/ 60 t" tone="muted" />
             <Figure value="0" unit="kn" tone="faint" />
             <Figure value="1.9" unit="d" tone="info" />
-            <Figure value="−320" unit="d." tone="danger" />
+            <Figure value="−320" unit={COIN} tone="danger" />
           </div>
         </SheetSection>
 
@@ -308,7 +309,7 @@ export function GalleryScreen() {
         }
       >
         <Stepper label="tuns" value={qty} onChange={setQty} max={120} cap={40} unit="t" />
-        <Row label="costs" value={<Figure value={(qty * 78).toLocaleString()} unit="d." />} />
+        <Row label="costs" value={<Figure value={(qty * 78).toLocaleString()} unit={COIN} />} />
         <Row label="the hold stops you at" value={<Figure value="40" unit="t" tone="warning" />} />
         <Row label="Bargain" value={<Figure value="45" unit="%" />} hairline={false} />
       </Tray>

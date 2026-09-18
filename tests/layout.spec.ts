@@ -740,11 +740,11 @@ test(`PORT: a line staged onto the basket docks the one tray at peek, moves noth
   await expect(basket.locator('[data-testid="basket-line"]')).toHaveCount(1)
   const send = basket.locator('[data-testid="basket-send"]')
   await expect(send, 'the basket was never priced — cmd.preview_basket did not answer').toBeEnabled({ timeout: 20_000 })
-  await expect(send).toHaveText(/^Buy 1 line · [\d,]+ d\.$/)
+  await expect(send).toHaveText(/^Buy 1 line · [\d,]+\s🪙$/)
   expect(await basket.locator('[data-testid="basket-total"]').count(), 'no served totals rows').toBeGreaterThanOrEqual(3)
   await page.waitForTimeout(3_500)
   await expect(send, 'the button went dead on the world\'s re-read — the estimate was thrown away').toBeEnabled()
-  await expect(send).toHaveText(/^Buy 1 line · [\d,]+ d\.$/)
+  await expect(send).toHaveText(/^Buy 1 line · [\d,]+\s🪙$/)
   const short = await basket.evaluate((el) =>
     [...el.querySelectorAll('button')]
       .map((b) => ({ text: (b.innerText || b.getAttribute('aria-label') || '').slice(0, 24), r: b.getBoundingClientRect() }))
@@ -813,7 +813,9 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
   expect(pressed, 'no live buy cell to press').not.toBe('')
   const tray = page.locator('[data-testid="trade-tray"]')
   await expect(tray).toBeVisible()
-  await expect(tray.locator('h2').first()).toHaveText(/· buy$/)
+  // The tray's title is the good's name alone (owner row 101, 2026-09-18: "Beer · buy — remove
+  // buy"); the SIDE is read off the send button's verb.
+  await expect(tray.locator('[data-testid="trade-tray-send"]')).toHaveText(/^Buy /, { timeout: 20_000 })
 
   // textContent runs a Figure's value and unit together (two spans, no whitespace between), so
   // the unit is matched with optional whitespace before it.
@@ -822,7 +824,7 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
     const row = tray.locator('[data-testid="haggle-row"]')
     await expect(row, `no haggle row on the ${face} face`).toBeVisible({ timeout: 20_000 })
     // The folded form: the label, the tries as a share of their whole, the odds as a percentage.
-    await expect(row).toHaveText(/Haggle[\s\S]*\d+ \/ \d+\s*tries left[\s\S]*\d+%/)
+    await expect(row).toHaveText(/Bargain[\s\S]*\d+ \/ \d+\s*tries left[\s\S]*\d+%/)
     const foldedTries = TRIES.exec((await row.textContent()) ?? '')
     expect(foldedTries).not.toBeNull()
     const leftBefore = Number(foldedTries![1])
@@ -858,7 +860,7 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
     // carries the served figure once the dry run has answered.
     const button = tray.locator('[data-testid="trade-tray-send"]')
     await expect(button).toBeEnabled({ timeout: 20_000 })
-    await expect(button).toHaveText(/· [\d,]+ d\.$/, { timeout: 20_000 })
+    await expect(button).toHaveText(/· [\d,]+\s🪙$/, { timeout: 20_000 })
     await page.waitForTimeout(600)
     const before = await above()
     expect(before.every((b) => b.top >= 0), 'a row above the thread was not found').toBe(true)
@@ -870,7 +872,7 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
 
     // The stake, every figure served: the port's fee, the price for the quantity on the button.
     await expect(thread.locator('[data-testid="haggle-fee"]')).toHaveText(/\d+(\.\d)?%/)
-    await expect(thread.locator('[data-testid="haggle-price"]')).toHaveText(/\d[\d,]* d\. each/, { timeout: 20_000 })
+    await expect(thread.locator('[data-testid="haggle-price"]')).toHaveText(/\d[\d,]*\s🪙 each/, { timeout: 20_000 })
     await expect(thread.locator('[data-testid="haggle-odds"]')).toHaveText(/\d+%/)
     // Both buttons on the reach floor.
     const short = await thread.evaluate((el) =>
@@ -881,7 +883,7 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
     )
     expect(short, 'a haggle button is under the 44px reach floor').toEqual([])
     const press = thread.locator('[data-testid="haggle-press"]')
-    await expect(press).toHaveText(/^(Haggle|Try again)$/)
+    await expect(press).toHaveText(/^(Bargain|Try again)$/)
     await expect(thread.locator('[data-testid="haggle-take"]')).toHaveText('Take it')
 
     // A PRESS ADDS A TURN — the server's sentence — and the folded figure re-reads one try down
@@ -905,7 +907,7 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
   // BUY the good — the tray's own default quantity, priced by the server — so it is on board.
   const send = tray.locator('[data-testid="trade-tray-send"]')
   await expect(send).toBeEnabled({ timeout: 20_000 })
-  await expect(send).toHaveText(/^Buy \d+ units? · [\d,]+ d\.$/)
+  await expect(send).toHaveText(/^Buy \d+ units? · [\d,]+\s🪙$/)
   await send.click()
   await expect(tray).toHaveCount(0, { timeout: 30_000 })
   const bought = rows.filter({ hasText: pressed }).first()
@@ -922,7 +924,7 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
   })
   expect(sold, 'the bought good has no live SELL cell').toBe(true)
   await expect(tray).toBeVisible()
-  await expect(tray.locator('h2').first()).toHaveText(/· sell$/)
+  await expect(tray.locator('[data-testid="trade-tray-send"]')).toHaveText(/^Sell /, { timeout: 20_000 })
   await threadOn('sell')
 })
 
