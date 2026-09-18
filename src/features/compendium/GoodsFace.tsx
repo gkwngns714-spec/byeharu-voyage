@@ -15,7 +15,7 @@ import {
   rarityLabel,
   type TrayDetent,
 } from '../../components/ui'
-import { formatFixed, formatInt, formatPct } from '../../lib/format'
+import { COIN, formatFixed, formatInt, formatPct } from '../../lib/format'
 import type { SnapshotGood } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { useWorld } from '../../live/worldStore'
@@ -70,7 +70,7 @@ export function GoodsFace({ query }: { query: string }) {
                 mark={<Icon name={goodIcon(g.code, g.category)} size={20} />}
                 name={g.name}
                 meta={<RarityLine rarity={g.rarity} />}
-                figure={<Figure value={anchor(g.base_value)} unit="d." />}
+                figure={<Figure value={anchor(g.base_value)} unit={COIN} />}
                 tap="whole"
                 onClick={() => {
                   setDetent('half')
@@ -92,7 +92,7 @@ export function GoodsFace({ query }: { query: string }) {
         >
           <Row label="Kind" value={categoryLabel(open.category)} />
           {open.rarity && <Row label="Rarity" value={<RarityLine rarity={open.rarity} />} />}
-          <Row label="Base" value={<Figure value={anchor(open.base_value)} unit="d." />} />
+          <Row label="Base" value={<Figure value={anchor(open.base_value)} unit={COIN} />} />
           <Row
             label="Weight"
             value={<Figure value={formatFixed(open.bulk, 1)} unit="tons" />}

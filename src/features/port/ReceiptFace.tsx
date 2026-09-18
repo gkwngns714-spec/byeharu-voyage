@@ -1,6 +1,6 @@
 import { deltaTone, Figure, Row } from '../../components/ui'
 import { ManifestTotals } from './ManifestTotals'
-import { formatDucatsDelta, formatInt, formatUnitPrice, formatUnits } from '../../lib/format'
+import { COIN, formatDucatsDelta, formatInt, formatUnitPrice, formatUnits } from '../../lib/format'
 import { lineDelta, type ManifestReceipt } from '../../lib/rpc'
 
 // THE RECEIPT — the settlement, after the basket has landed. docs/QUAY_LEDGER.md §3 E (owner row
@@ -36,7 +36,7 @@ export function ReceiptFace({ receipt }: { receipt: ManifestReceipt }) {
       <ManifestTotals totals={totals} testId="receipt-row" />
       <Row
         label="Ducats"
-        value={<Figure value={`${formatInt(purse.before)} → ${formatInt(purse.after)}`} unit="d." />}
+        value={<Figure value={`${formatInt(purse.before)} → ${formatInt(purse.after)}`} unit={COIN} />}
         data-testid="receipt-row"
       />
       {/* A small basket earns 0 xp, and 0 painted green would say "gain" about nothing — deltaTone

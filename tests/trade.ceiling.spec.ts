@@ -276,9 +276,8 @@ test(`PORT › Trade (sell): count first, then three prices and the share; no "c
   await row.locator('button', { hasText: /^sell/i }).first().click()
   const tray = page.locator('[data-testid="trade-tray"]')
   await expect(tray).toBeVisible()
-  await expect(tray, 'the tray is not the sell tray').toContainText(/· sell/i)
   const sendSell = tray.locator('[data-testid="trade-tray-send"]')
-  await expect(sendSell).toHaveText(/^Sell \d+ units? · [\d,]+ d\.$/, { timeout: 20_000 })
+  await expect(sendSell).toHaveText(/^Sell \d+ units? · [\d,]+\s🪙$/, { timeout: 20_000 })
   await expect(tray.locator('[data-testid="trade-tray-fetches"]')).toBeVisible()
   await page.waitForTimeout(600)
 
@@ -302,8 +301,8 @@ test(`PORT › Trade (sell): count first, then three prices and the share; no "c
   expect(text).not.toMatch(/Checking/i)
   await page.screenshot({ path: testInfo.outputPath('sell-tray.png') })
   // THE SHARE, with its whole on the same face: profit d. · +N% in the pinned row, the cost under Bought at.
-  await expect(tray.locator('[data-testid="trade-tray-profit"]')).toHaveText(/[+−-][\d,]+ d\. · [+−-]?\d+%|0 d\. · 0%/)
-  await expect(tray.locator('[data-testid="trade-tray-paid"]')).toContainText(/[\d,]+ d\. for \d+ units?/)
+  await expect(tray.locator('[data-testid="trade-tray-profit"]')).toHaveText(/[+−-][\d,]+\s🪙 · [+−-]?\d+%|0\s🪙 · 0%/)
+  await expect(tray.locator('[data-testid="trade-tray-paid"]')).toContainText(/[\d,]+\s🪙 for \d+ units?/)
   await expect(tray.locator('[data-testid="trade-tray-gain-share"]')).toHaveText(/^[+−-]?\d+% on what it cost$/)
 
   // NO "CHECKING" LINE, across three beats AND two presses: the figures stand (dimmed while the
@@ -325,7 +324,7 @@ test(`PORT › Trade (sell): count first, then three prices and the share; no "c
     moved.map((m) => `${m.at}ms: ${m.what}`),
     'the sell tray moved — a "Checking" line, a row unmounted, or the button died (owner: "a refresh sign of checking the price... keeps showing up")',
   ).toEqual([])
-  await expect(sendSell).toHaveText(/^Sell \d+ units? · [\d,]+ d\.$/, { timeout: 20_000 })
+  await expect(sendSell).toHaveText(/^Sell \d+ units? · [\d,]+\s🪙$/, { timeout: 20_000 })
 
   // ONE UNIT, THREE WAYS. The figure input and the slider are the one control (Stepper.tsx).
   const figure = tray.locator('[data-testid="stepper-figure"]')
@@ -336,7 +335,7 @@ test(`PORT › Trade (sell): count first, then three prices and the share; no "c
   for (let i = start; i > 1; i--) await less.click()
   await expect(figure).toHaveValue('1')
   await expect(less, '− walks below one').toBeDisabled()
-  await expect(sendSell).toHaveText(/^Sell 1 unit · [\d,]+ d\.$/, { timeout: 20_000 })
+  await expect(sendSell).toHaveText(/^Sell 1 unit · [\d,]+\s🪙$/, { timeout: 20_000 })
   // (b) typed: back to the lot by chip, then type 1 and Enter.
   await tray.locator('[data-testid="trade-tray-qty"] button', { hasText: /^\d+$/ }).last().click()
   await expect(figure).not.toHaveValue('1')
@@ -345,7 +344,7 @@ test(`PORT › Trade (sell): count first, then three prices and the share; no "c
   await figure.press('Enter')
   await expect(figure).toHaveValue('1')
   await expect(range).toHaveValue('1')
-  await expect(sendSell).toHaveText(/^Sell 1 unit · [\d,]+ d\.$/, { timeout: 20_000 })
+  await expect(sendSell).toHaveText(/^Sell 1 unit · [\d,]+\s🪙$/, { timeout: 20_000 })
   // (c) the slider by keyboard: type 2, then ArrowLeft steps by ONE.
   await figure.click()
   await figure.fill('2')
@@ -355,7 +354,7 @@ test(`PORT › Trade (sell): count first, then three prices and the share; no "c
   await range.press('ArrowLeft')
   await expect(range).toHaveValue('1')
   await expect(figure).toHaveValue('1')
-  await expect(sendSell).toHaveText(/^Sell 1 unit · [\d,]+ d\.$/, { timeout: 20_000 })
+  await expect(sendSell).toHaveText(/^Sell 1 unit · [\d,]+\s🪙$/, { timeout: 20_000 })
   // Nonsense reverts; Home clamps to the floor of one, not nought.
   await figure.click()
   await figure.fill('')
@@ -380,8 +379,9 @@ test.describe('the asks, counted', () => {
   test(`PORT › Trade: an open on-board list makes NO dry run on the world's beat; an open sell tray makes at most one per beat`, async ({ page, request, baseURL }) => {
   // THE COST THAT MUST NOT BE PAID. `cmd.preview` is a real write rolled back, and the on-board
   // list is a LIST: folded onto useServedRead in its default mode it would have made N writes every
-  // 3 s per player on a live ~30-player database. `useSellEstimate` asks in 'subject' mode — once
-  // per (fleet, good, lot, price), never on the beat — and this counts the asks off the ONE debug
+  // 3 s per player on a live ~30-player database. Since 2026-09-18 the on-board list makes NO ask
+  // at all — its figure is the gap of two prices already served (OnBoard.tsx) — and this counts
+  // the asks off the ONE debug
   // line `src/lib/rpc/backend.ts` prints per RPC. A sell tray ('beat' mode) may ask once per beat.
   const rows = await openPort(page, request, baseURL)
   // COUNTED IN THE PAGE, on the page's clock. Playwright hands console events over in batches,
@@ -433,7 +433,7 @@ test.describe('the asks, counted', () => {
   // beats, or the world is not being read and the count above proves nothing.
   await row.locator('button', { hasText: /^sell/i }).first().click()
   await expect(tray).toBeVisible()
-  await expect(send).toHaveText(/^Sell \d+ units? · [\d,]+ d\.$/, { timeout: 20_000 })
+  await expect(send).toHaveText(/^Sell \d+ units? · [\d,]+\s🪙$/, { timeout: 20_000 })
   await page.waitForTimeout(1_000)
   const trayFrom = await mark()
   await page.waitForTimeout(10_500)

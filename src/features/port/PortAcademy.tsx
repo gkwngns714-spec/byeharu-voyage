@@ -11,7 +11,7 @@ import {
   Tray,
   type TrayDetent,
 } from '../../components/ui'
-import { formatInt } from '../../lib/format'
+import { formatDucats } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
 import type { FleetView, Skill } from '../../lib/rpc'
 
@@ -108,7 +108,7 @@ export function PortAcademy({ acting }: { acting: FleetView | null }) {
                 onClick={() => study(open)}
                 data-testid={`study-${open.code}`}
               >
-                {`Train to level ${open.level + 1} · ${formatInt(open.next_cost)} d.`}
+                {`Train to level ${open.level + 1} · ${formatDucats(open.next_cost)}`}
               </Button>
             )
           }

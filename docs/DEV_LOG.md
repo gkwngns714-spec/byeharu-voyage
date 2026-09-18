@@ -5,6 +5,57 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-18 — "haggle is a weird word": the trade tray says Bargain (row 100 — client only)
+
+**The owner:** *"in trade- haggle is a weird word. bargain? or something like this, more user
+friendly word please."* Took the word he offered: the server has called it a bargain since 0022
+(*a bargain is struck on the quay*; `haggle_concession_step`'s own comment says "one won bargain"),
+so the screen now uses the same word as the rule it shows.
+
+**What changed.** `src/features/port/HaggleThread.tsx` — the folded row `Bargain · 2 / 3 tries
+left · 45%`, the first press **Bargain** (then **Try again**), and the receipt line `Bargain saved`;
+`src/features/port/ManifestTotals.tsx` — the basket's `Bargain saved`. `docs/WORDS.md` row flipped:
+**Bargain**, never *haggle*; `tests/words.spec.ts` bans `haggl(e|ed|es|ing)` in player text so it
+cannot come back; `tests/layout.spec.ts` reads the new word. Identifiers, test ids, RPC names and
+the server's `haggle_saved` column keep their names — the word law is for what the player reads.
+
+**Same session, row 101 — "Beer · buy. remove buy. … Max limited by cargo space. Just show cargo
+space of how much it is in max."** `src/components/ui/TradeTray.tsx`: the title is `good.name`
+alone (the send button already says *Buy 20 units · 1,580 d.* / *Sell …*); the Max row's caption
+is `formatTons(max × bulk)` — `40.0 tons of cargo space` — and when the server says something
+other than the hold binds (`bound_by` purse / stock / daily cap), that reason follows the figure
+(`… · limited by your money`), because the bare figure would read as free space. `tests/
+layout.spec.ts` and `tests/trade.ceiling.spec.ts` read the tray's side off `trade-tray-send`
+instead of the `h2`. `GalleryScreen`'s demo tray keeps its `Aniseed · buy` title — it is the
+design gallery, not the player's screen.
+
+**Row 102 — "the currency is ... i don't like it. d. lets change it, to a coin."** The mark
+is `🪙`, spelled once: `COIN` in `src/lib/format/numbers.ts`, which `formatDucats`,
+`formatDucatsDelta` and `formatUnitPrice` compose onto. Eight places wrote the letter by hand
+(`TopBar` unit, `ReceiptFace` purse unit, `GoodsFace` ×2, `CaptainsFace` "d. per voyage",
+`PortAcademy`'s train line, two History headlines in `headline.ts`, the gallery) — each now takes
+`COIN` or the formatter, so the mark cannot drift again. `docs/WORDS.md` law 2 no longer keeps
+"the one abbreviation"; `tests/words.spec.ts` bans `N d.` and `d. each` / `d. per`. Twenty-nine
+test regexes that matched ` d\.` now match the coin.
+
+**Row 103 — "the gap is little bit weird. it accounts for the total number of that item, but i
+want it to show a price diff for only one item."** `OnBoard.tsx`'s figure beside the bar was the
+SERVED profit of selling the whole lot (`useSellEstimate` → `cmd.preview` SELL-all, one rolled-back
+write per on-board row, asked once per subject). It is now `here.sell − paid` for ONE unit —
+`+12 🪙 each` — the very two served prices the bar places, so the number and the picture cannot
+disagree, and it is a subtraction of two figures on one face (the gain-share precedent, WORDS.md
+law 2), not a price worked out on the client. `useSellEstimate.ts` is deleted; `useServedRead`'s
+`reask: 'subject'` mode, which existed only for it, is retired (one mode again; the header says
+what to bring back if a LIST of served-write asks ever returns). The whole sale's take, walking
+the book, stays where it was already served: the sell tray's `You get`.
+
+**Not changed, on record.** `cmd.haggle`'s refusal *fixes* (`(haggle to buy)` at 0022:465,
+`(haggle to sell instead)` 501, `(haggle to buy instead)` 508) are server prose and need a
+migration; they surface only on E_NO_STOCK / E_NO_CARGO, which the tray's fixed side already
+prevents a player from reaching.
+
+---
+
 ## 2026-09-14 — "i can't seem to press anything else": the port field folded on a blur, under the press (row 91 — built on PR, not merged, not driven on production)
 
 **The owner, desktop Chrome, ~1545 px:** *"when i drag to copy paste multiple words, i can't seem

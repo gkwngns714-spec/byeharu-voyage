@@ -3,6 +3,7 @@ import { Countdown, Figure } from '../components/ui'
 import { useWorld } from '../live/worldStore'
 import { isTradeRoute } from './navTabs'
 import { useShellState } from './shellState'
+import { COIN } from '../lib/format'
 
 // THE STATUS STRIP — 32px, two facts, and nothing that says the obvious.
 //
@@ -73,7 +74,7 @@ export function TopBar() {
           column's width, so the bar does not jump by the width of a number the moment the first
           read lands. */}
       <span data-testid="purse" className="shrink-0">
-        <Figure value={ducats === null ? '—' : ducats.toLocaleString()} unit="d." />
+        <Figure value={ducats === null ? '—' : ducats.toLocaleString()} unit={COIN} />
       </span>
     </header>
   )

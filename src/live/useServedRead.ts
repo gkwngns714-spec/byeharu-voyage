@@ -33,19 +33,18 @@
 // `cmd.issue` anyway and its refusal is shown, while a ceiling that blanks to 0 every 3 s — the
 // `Max` row unmounting and the stepper clamping to nought on every beat — is the worse lie. The
 // owner, 2026-09-14: *"when i press buy, the max keeps refreshing."* The ceiling, the storage
-// tray's dry run (useOrderPreview) and the on-board sale estimate (useSellEstimate) are all
-// doorways onto this rule now; nothing in src/live keys its own answer on `readAt` any more.
+// tray's dry run (useOrderPreview) are doorways onto this rule now; nothing in src/live keys its
+// own answer on `readAt` any more. (The on-board sale estimate, `useSellEstimate`, was a third
+// doorway until 2026-09-18, when the on-board figure became the per-unit gap of two served
+// prices and the hook was deleted.)
 //
-// ── TWO MODES OF RE-ASKING, ONE HOOK (2026-09-14, the same day) ────────────────────────────────
-// `reask: 'beat'` (the default, and everything above) asks again on every world read and keeps
-// the last answer meanwhile — right for ONE open tray or face: the ceiling, a dry run, the shed.
-// `reask: 'subject'` asks ONCE per subject and never on the beat — for a LIST of subjects whose
-// asks are real writes rolled back (`cmd.preview`): the on-board list with eight goods open would
-// be eight writes every 3 s per player on a live ~30-player database, for answers that cannot
-// have moved unless the SUBJECT moved (units on board, the market's served sell price), and the
-// subject carries exactly those, so a change re-asks by itself. This is a parameter on the one
-// authority and not a second hook, because the rule — keep the last answer for the same subject
-// while the ask is on the wire, show nothing of another subject's — is the same in both modes.
+// ONE MODE OF RE-ASKING. Every read asks again on the world's beat and keeps the last answer
+// meanwhile — right for ONE open tray or face: the ceiling, a dry run, the shed. A second mode,
+// `reask: 'subject'` (ask once per subject, never on the beat), was added 2026-09-14 for the
+// on-board list's SELL-all estimate — a LIST of `cmd.preview` asks that must not ride the beat —
+// and retired 2026-09-18 with that estimate (the on-board figure is now the gap of two prices
+// already served; OnBoard.tsx). A list of served-write asks must not come back through this hook
+// without that mode coming back with it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'
@@ -75,25 +74,22 @@ export interface ServedReadOptions {
    *  one ask, as the four port faces use it. Null with a subject means "nothing to ask right now"
    *  (a quantity of nought); the last answer still stands. */
   question?: string | null
-  /** When to ask again — see the header. Defaults to 'beat'. */
-  reask?: 'beat' | 'subject'
 }
 
 /**
  * @param subject   What the answer is FOR, as ONE string — `${portId}:${fleetId ?? '-'}` — or
  *                  null for "nothing to ask" (no port picked). A change of subject drops the answer.
  * @param ask       The RPC. Read through a ref, so a caller may pass a fresh closure every render
- *                  without re-arming the read; only the subject, the question and (in 'beat' mode)
- *                  the world's `readAt` re-ask.
+ *                  without re-arming the read; only the subject, the question and the world's
+ *                  `readAt` re-ask.
  */
 export function useServedRead<V>(
   subject: string | null,
   ask: () => Promise<RpcResult<V>>,
-  { question = subject, reask = 'beat' }: ServedReadOptions = {},
+  { question = subject }: ServedReadOptions = {},
 ): ServedRead<V> {
-  const readAt = useWorld((s) => s.readAt) ?? 0
-  // The beat this answer is for: the world's read in 'beat' mode, or a constant that never moves.
-  const beat = reask === 'beat' ? readAt : 0
+  // The beat this answer is for: the world's read.
+  const beat = useWorld((s) => s.readAt) ?? 0
 
   const askRef = useRef(ask)
   useEffect(() => {

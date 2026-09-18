@@ -17,8 +17,9 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 2. **No number without what it is out of.** A figure that is a SHARE prints its whole beside it:
    `51 / 60 tons`, `12 / 20 crew`, `3 / 6 tries`, never `9 t free`. A figure that is not a share
    (a price, a distance, a count of days) prints its unit spelled: `54 days`, `188 miles`, `4.9
-   knots`, `71 d. per ton`. The one abbreviation kept is the currency mark `d.`, because it is the
-   currency and appears beside every price.
+   knots`, `71 🪙 each`. Money carries no letter at all: the currency mark is the COIN, `🪙`,
+   spelled once as `COIN` in `src/lib/format/numbers.ts` (owner, 2026-09-18: *"the currency is
+   ... i don't like it. d. lets change it, to a coin"*) — `8,180 🪙`, `+600 🪙`, `7 🪙 each`.
 3. **One word per thing, spelled in `src/lib/format`.** Units are printed by the formatters
    (`formatTons`, `formatKnots`, `formatMiles`, `formatVoyageDays`, `formatOfTotal`,
    `formatUnitPrice`) and by nothing else; a screen never writes a unit string of its own. A
@@ -55,7 +56,8 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | price paid | **Bought at** | paid, basis |
 | sale proceeds | **You get** | fetches |
 | a price ceiling from the server | **Max** | at most |
-| haggle | **Haggle** | bargain |
+| ask for a better price | **Bargain** (row: `Bargain · 2 / 3 tries left · 45%`; button **Bargain** / **Try again**; `Bargain saved`) — owner row 100, 2026-09-18: *"haggle is a weird word. bargain? … more user friendly"* | haggle, haggling |
+| money | **🪙** (`8,180 🪙`, `7 🪙 each`, `+600 🪙`) — the `COIN` mark, never a letter (owner row 102, 2026-09-18) | d., ducats as a unit mark |
 | port fee | **Port fee** | the port's cut |
 | the event log | **History** (tab) | ledger |
 | the top-right menu | **Menu** | cabin |
