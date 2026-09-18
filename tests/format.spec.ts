@@ -6,6 +6,7 @@
 
 import { test, expect } from '@playwright/test'
 import {
+  COIN,
   MINUS,
   REAL_MS_PER_VOYAGE_DAY,
   TIME_COMPRESSION,
@@ -36,21 +37,26 @@ import {
   voyageDaysToRealMs,
 } from '../src/lib/format'
 
-test('ducats group on thousands and carry the period abbreviation', () => {
-  expect(formatDucats(8180)).toBe('8,180 d.')
-  expect(formatDucats(0)).toBe('0 d.')
-  expect(formatDucats(1234567)).toBe('1,234,567 d.')
+// The mark is the COIN (owner row 102, 2026-09-18: "d. lets change it, to a coin"), and the space
+// before it is a NO-BREAK space: a figure never parts from its coin at a line's end.
+const C = ` ${COIN}`
+
+test('ducats group on thousands and carry the coin', () => {
+  expect(COIN).toBe('🪙')
+  expect(formatDucats(8180)).toBe(`8,180${C}`)
+  expect(formatDucats(0)).toBe(`0${C}`)
+  expect(formatDucats(1234567)).toBe(`1,234,567${C}`)
   expect(formatInt(999)).toBe('999')
   expect(formatInt(1000)).toBe('1,000')
 })
 
 test('a money delta is always signed, and a loss uses U+2212 not a hyphen', () => {
-  expect(formatDucatsDelta(600)).toBe('+600 d.')
-  expect(formatDucatsDelta(-420)).toBe(`${MINUS}420 d.`)
-  expect(formatDucatsDelta(0)).toBe('0 d.')
+  expect(formatDucatsDelta(600)).toBe(`+600${C}`)
+  expect(formatDucatsDelta(-420)).toBe(`${MINUS}420${C}`)
+  expect(formatDucatsDelta(0)).toBe(`0${C}`)
   // The distinction is the whole point: a hyphen-minus would sit at text height in a mono column.
   expect(MINUS).not.toBe('-')
-  expect(formatDucatsDelta(-1104)).toBe('−' + '1,104 d.')
+  expect(formatDucatsDelta(-1104)).toBe('−' + `1,104${C}`)
 })
 
 test('non-finite input degrades to an em dash rather than NaN', () => {
@@ -61,14 +67,14 @@ test('non-finite input degrades to an em dash rather than NaN', () => {
 })
 
 test('units print as the design document writes them', () => {
-  // docs/WORDS.md law 2: every unit but the currency mark is SPELLED.
+  // docs/WORDS.md law 2: every unit is SPELLED; money carries the coin, no letter.
   expect(formatTons(60)).toBe('60 tons')
   expect(formatTons(1)).toBe('1 ton')
   expect(formatTons(4.1, 1)).toBe('4.1 tons')
   expect(formatMiles(188.4)).toBe('188 miles')
   expect(formatMiles(11736)).toBe('11,736 miles')
   expect(formatKnots(3.5695)).toBe('3.6 knots')
-  expect(formatUnitPrice(7)).toBe('7 d. each')
+  expect(formatUnitPrice(7)).toBe(`7${C} each`)
   expect(formatUnits(20)).toBe('20 units')
   expect(formatUnits(1)).toBe('1 unit')
   expect(formatOfTotal(98, 120)).toBe('98 / 120')
