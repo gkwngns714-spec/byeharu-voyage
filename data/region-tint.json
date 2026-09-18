@@ -8,8 +8,8 @@
    "id": "iberia",
    "name": "Iberia",
    "at": {
-    "lat": 38.73,
-    "lon": -5.11
+    "lat": 39.7,
+    "lon": -3.48
    },
    "harbours": 11
   },
@@ -17,8 +17,8 @@
    "id": "atlantic-isles",
    "name": "Atlantic Isles",
    "at": {
-    "lat": 30.09,
-    "lon": -20.85
+    "lat": 26.79,
+    "lon": -21.32
    },
    "harbours": 6
   },
@@ -26,8 +26,8 @@
    "id": "british-isles",
    "name": "British Isles",
    "at": {
-    "lat": 52.39,
-    "lon": -3.27
+    "lat": 53.18,
+    "lon": -4.3
    },
    "harbours": 8
   },
@@ -35,8 +35,8 @@
    "id": "france-low-countries",
    "name": "France & the Low Countries",
    "at": {
-    "lat": 49.85,
-    "lon": 1.86
+    "lat": 48.75,
+    "lon": 1.52
    },
    "harbours": 12
   },
@@ -44,8 +44,8 @@
    "id": "baltic",
    "name": "Baltic & the Hanse",
    "at": {
-    "lat": 56.6,
-    "lon": 17.99
+    "lat": 57,
+    "lon": 17.37
    },
    "harbours": 10
   },
@@ -53,8 +53,8 @@
    "id": "scandinavia-arctic",
    "name": "Scandinavia & the Arctic",
    "at": {
-    "lat": 65.91,
-    "lon": 2.82
+    "lat": 69.3,
+    "lon": -5.6
    },
    "harbours": 8
   },
@@ -62,8 +62,8 @@
    "id": "western-mediterranean",
    "name": "Western Mediterranean",
    "at": {
-    "lat": 40.62,
-    "lon": 10
+    "lat": 40.15,
+    "lon": 9.1
    },
    "harbours": 10
   },
@@ -71,8 +71,8 @@
    "id": "adriatic-ionian",
    "name": "Adriatic & Ionian",
    "at": {
-    "lat": 41.55,
-    "lon": 17.54
+    "lat": 41.62,
+    "lon": 17.03
    },
    "harbours": 7
   },
@@ -80,8 +80,8 @@
    "id": "aegean-anatolia",
    "name": "Aegean, Anatolia & Black Sea",
    "at": {
-    "lat": 39.24,
-    "lon": 29.36
+    "lat": 40.19,
+    "lon": 31.33
    },
    "harbours": 9
   },
@@ -89,8 +89,8 @@
    "id": "levant",
    "name": "Levant & Egypt",
    "at": {
-    "lat": 33.66,
-    "lon": 33.8
+    "lat": 33.16,
+    "lon": 32.86
    },
    "harbours": 4
   },
@@ -98,8 +98,8 @@
    "id": "maghreb",
    "name": "Maghreb",
    "at": {
-    "lat": 34.51,
-    "lon": -1.22
+    "lat": 33.61,
+    "lon": 1.8
    },
    "harbours": 9
   },
@@ -107,8 +107,8 @@
    "id": "west-africa",
    "name": "West Africa",
    "at": {
-    "lat": 4.51,
-    "lon": 0.86
+    "lat": 3.6,
+    "lon": -2.08
    },
    "harbours": 11
   },
@@ -116,8 +116,8 @@
    "id": "east-africa",
    "name": "East Africa & the Horn",
    "at": {
-    "lat": -6.81,
-    "lon": 39.27
+    "lat": -7.41,
+    "lon": 37.96
    },
    "harbours": 11
   },
@@ -125,8 +125,8 @@
    "id": "arabia-gulf",
    "name": "Arabia & the Gulf",
    "at": {
-    "lat": 22.49,
-    "lon": 48.37
+    "lat": 21.58,
+    "lon": 45.56
    },
    "harbours": 10
   },
@@ -134,8 +134,8 @@
    "id": "western-india",
    "name": "Western India",
    "at": {
-    "lat": 15.22,
-    "lon": 73.55
+    "lat": 14.52,
+    "lon": 71.8
    },
    "harbours": 12
   },
@@ -143,8 +143,8 @@
    "id": "eastern-india",
    "name": "Eastern India, Ceylon & Burma",
    "at": {
-    "lat": 13.97,
-    "lon": 85.69
+    "lat": 14.47,
+    "lon": 89.23
    },
    "harbours": 10
   },
@@ -152,8 +152,8 @@
    "id": "southeast-asia",
    "name": "Southeast Asia",
    "at": {
-    "lat": 3.71,
-    "lon": 113.53
+    "lat": 6.89,
+    "lon": 112.61
    },
    "harbours": 16
   },
@@ -161,8 +161,8 @@
    "id": "china-coast",
    "name": "China Coast",
    "at": {
-    "lat": 24.49,
-    "lon": 117.33
+    "lat": 26.03,
+    "lon": 117.4
    },
    "harbours": 8
   },
@@ -170,8 +170,8 @@
    "id": "korea",
    "name": "Korea",
    "at": {
-    "lat": 35.6,
-    "lon": 127.43
+    "lat": 36.12,
+    "lon": 127.36
    },
    "harbours": 8
   },
@@ -180,7 +180,7 @@
    "name": "Japan & the Ryukyus",
    "at": {
     "lat": 33.82,
-    "lon": 132.64
+    "lon": 133.89
    },
    "harbours": 11
   },
@@ -188,8 +188,8 @@
    "id": "caribbean",
    "name": "Caribbean & the Spanish Main",
    "at": {
-    "lat": 15.28,
-    "lon": -73.93
+    "lat": 16.35,
+    "lon": -77.89
    },
    "harbours": 10
   },
@@ -197,8 +197,8 @@
    "id": "north-america-atlantic",
    "name": "North America, Atlantic Coast",
    "at": {
-    "lat": 39.56,
-    "lon": -70.25
+    "lat": 38.73,
+    "lon": -67.01
    },
    "harbours": 7
   },
@@ -206,8 +206,8 @@
    "id": "south-america-atlantic",
    "name": "South America, Atlantic Coast",
    "at": {
-    "lat": -14.01,
-    "lon": -46.42
+    "lat": -14.37,
+    "lon": -46.63
    },
    "harbours": 7
   },
@@ -215,8 +215,8 @@
    "id": "pacific-americas",
    "name": "Pacific Americas",
    "at": {
-    "lat": -4.82,
-    "lon": -82.05
+    "lat": -8.09,
+    "lon": -85.75
    },
    "harbours": 4
   },
@@ -224,8 +224,8 @@
    "id": "oceania",
    "name": "Oceania & the Far Pacific",
    "at": {
-    "lat": -3.56,
-    "lon": 77.45
+    "lat": -6.28,
+    "lon": 162.86
    },
    "harbours": 5
   }

@@ -43,8 +43,18 @@
 //                      decided by file order, and it paints the whole Mediterranean one region
 //                      while four regions' harbours stand on its shore. The build still prints
 //                      that table so the rejection stays a measurement.
-//   a region's name    data/regions.json's `name`, anchored at the mean of its harbours' served
-//                      coordinates — where the region's shore is, which is where it reads.
+//   a region's name    data/regions.json's `name`, anchored at the CENTRE of the region's spread:
+//                      the middle of the box its harbours span, in the chart's own degrees (row
+//                      105, 2026-09-18: *"make it at center of each region"*). Until then it was
+//                      the MEAN of the harbours, which sits where most of them crowd — "Caribbean"
+//                      read off Hispaniola while its harbours run from Florida to the Orinoco.
+//                      MEASURED AND REJECTED first: the area centroid of the paint (water cells +
+//                      country rings). The tint runs to wherever the nearest harbour by water is,
+//                      and a country is painted whole, so that centre fell in Siberia for the
+//                      Baltic (Russia's land), in the Southern Ocean for East Africa, mid-Pacific
+//                      for the Pacific Americas — the middle of the paint is not the middle of
+//                      the place a player means. Longitudes are unwrapped around the harbours'
+//                      mean so a region across the antimeridian centres on itself.
 //
 // ── THE SHAPE OF THE WATER ─────────────────────────────────────────────────────────────────────
 // Per region, a list of axis-aligned rectangles of 0.25° cells `[col, row, w, h]` — each row's
@@ -285,11 +295,16 @@ export function buildRegionTint(root) {
     }
   }
 
-  // The names and where they are set.
+  // The names and where they are set: the centre of the region's SPREAD (see the header).
   const regionRows = regions.map((r) => {
     const mine = ports.filter((p) => p.region === r.id)
-    const lat = mine.reduce((s, p) => s + p.lat, 0) / mine.length
-    const lon = mine.reduce((s, p) => s + p.lon, 0) / mine.length
+    const refLon = mine.reduce((s, p) => s + p.lon, 0) / mine.length
+    const unwrap = (lon) => lon - 360 * Math.round((lon - refLon) / 360)
+    const lons = mine.map((p) => unwrap(p.lon))
+    const lats = mine.map((p) => p.lat)
+    const lat = (Math.min(...lats) + Math.max(...lats)) / 2
+    const lonRaw = (Math.min(...lons) + Math.max(...lons)) / 2
+    const lon = lonRaw - 360 * Math.round(lonRaw / 360)
     return { id: r.id, name: r.name, at: { lat: Math.round(lat * 100) / 100, lon: Math.round(lon * 100) / 100 }, harbours: mine.length }
   })
 

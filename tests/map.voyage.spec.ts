@@ -11,7 +11,9 @@ import {
   openingBounds,
   toggleSelection,
   visiblePorts,
+  dotPorts,
 } from '../src/chart'
+import type { LatLon } from '../src/lib/geo'
 import type { FleetView } from '../src/lib/rpc'
 import { REAL_PORTS, anchoredFleet, dockedFleet, portAt, sailingFleet } from './mapWorld.fixture'
 
@@ -444,14 +446,66 @@ test.describe('hitTest — nearest wins, at every zoom, over the ports actually 
     expect(hitTest(MODEL, DRAWN, project(LISBON), REACH)).toEqual({ kind: 'fleet', id: 'gaivota' })
   })
 
-  test('a port the chart is not drawing cannot be tapped', () => {
-    // At world zoom only the 35 great ports (and yours) are on the sheet, so a tap on a tier-2
-    // harbour finds nothing — which is right: there is no mark there to have meant.
+  test('a port drawn as a dot is not in the named half, and without the dots handed over it cannot be tapped', () => {
+    // At world zoom only the 35 great ports (and yours) wear a name; a tier-2 harbour is a dot.
     const world: ViewBox = { x: -180, y: -90, width: 360, height: 180 }
     const drawnFar = visiblePorts(PORTS, MODEL.portRoles, world, minTierForSpan(world.width))
     const roadstead = portAt('BRI') // Bridgetown, tier 2, nothing of yours near it
     expect(drawnFar.map((p) => p.code)).not.toContain('BRI')
     expect(hitTest(MODEL, drawnFar, project(roadstead), 1)).toBeNull()
+  })
+
+  test('row 104: a tap on a dot at the world view opens THAT city — not the sea under it', () => {
+    // The owner, 2026-09-18: "when i zoom out i see dot, when i click i see coordinates. it
+    // should be the corresponding city or location". A 390 px phone at the world view: 360°
+    // across, 1 px = 0.92°; the named reach is GLYPH.hitRadius px, the dot's GLYPH.dotHitRadius.
+    const world: ViewBox = { x: -180, y: -90, width: 360, height: 180 }
+    const upp = world.width / 390
+    const named = visiblePorts(PORTS, MODEL.portRoles, world, minTierForSpan(world.width))
+    const dots = dotPorts(PORTS, MODEL.portRoles, world, minTierForSpan(world.width))
+    const dotReach = GLYPH.dotHitRadius * upp
+    const apart = (a: LatLon, b: LatLon) => Math.hypot(project(a).x - project(b).x, project(a).y - project(b).y)
+    // A dot standing clear of every named mark by more than half a touch — the case the owner
+    // met: nothing named under the thumb, a dot under it, and the sea's coordinates came up.
+    const clear = dots.filter((d) => named.every((n) => apart(n, d) > dotReach))
+    expect(clear.length, 'no dot stands clear of the names at the world view').toBeGreaterThan(0)
+    for (const dot of clear.slice(0, 20)) {
+      // ON the dot: the city.
+      expect(hitTest(MODEL, named, project(dot), GLYPH.hitRadius * upp, dots, dotReach)).toEqual({ kind: 'port', code: dot.code })
+    }
+    // A dot within half a touch of a named MARK is that name's: the thumb cannot tell them apart,
+    // and the mark is the thing drawn to be aimed at (Bridgetown lies 17 px from Cartagena here).
+    const bridgetown = portAt('BRI')
+    expect(dots.map((p) => p.code)).toContain('BRI')
+    const nearestName = named.reduce(
+      (best, n) => (apart(n, bridgetown) < best.d ? { code: n.code, d: apart(n, bridgetown) } : best),
+      { code: '', d: Number.POSITIVE_INFINITY },
+    )
+    const onBridgetown = hitTest(MODEL, named, project(bridgetown), GLYPH.hitRadius * upp, dots, dotReach)
+    expect(onBridgetown).toEqual({ kind: 'port', code: nearestName.d <= dotReach ? nearestName.code : 'BRI' })
+    // Past the dot's reach, with no name's mark near: nothing — the sea, as before.
+    const lone = clear[0]
+    const off = { x: project(lone).x, y: project(lone).y + dotReach * 1.5 }
+    const hitOff = hitTest(MODEL, named, off, GLYPH.hitRadius * upp, dots, dotReach)
+    expect(hitOff === null || hitOff.kind !== 'port' || hitOff.code !== lone.code).toBe(true)
+  })
+
+  test('row 104 keeps row 94: a name within reach always beats a dot, however near the dot is', () => {
+    // Iberia on the phone (VIEW): Cádiz wears its name, Sanlúcar is a dot 5 px north of it. A
+    // tap on the WORD "Cadiz" — to the right of the mark, nearer the dot than the mark — is Cádiz.
+    const named = visiblePorts(PORTS, MODEL.portRoles, VIEW, minTierForSpan(VIEW.width))
+    const dots = dotPorts(PORTS, MODEL.portRoles, VIEW, minTierForSpan(VIEW.width))
+    const cadiz = project(CADIZ)
+    const sanlucar = project(portAt('SNL'))
+    const upp = VIEW.width / 390
+    if (dots.some((p) => p.code === 'SNL') && named.some((p) => p.code === 'CAD')) {
+      // A point on the name: 14 px east of the mark, nudged toward the dot.
+      const onName = { x: cadiz.x + 14 * upp, y: cadiz.y + (sanlucar.y - cadiz.y) * 0.6 }
+      expect(hitTest(MODEL, named, onName, GLYPH.hitRadius * upp, dots, GLYPH.dotHitRadius * upp)).toEqual({ kind: 'port', code: 'CAD' })
+    } else {
+      // Both wear names at this zoom: nearest wins and the dots are never asked.
+      expect(hitTest(MODEL, named, sanlucar, GLYPH.hitRadius * upp, dots, GLYPH.dotHitRadius * upp)).toEqual({ kind: 'port', code: 'SNL' })
+    }
   })
 
   test('open water selects nothing', () => {
