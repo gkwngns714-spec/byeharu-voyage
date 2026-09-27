@@ -214,7 +214,9 @@ test.describe('the whole send, driven on a phone', () => {
     await page.goto('map')
     await ready(page)
     await page.waitForSelector('[data-testid="map-ports"] > g', { timeout: 300_000 })
-    const chart = page.locator('svg[aria-label^="Chart of the world"]')
+    // The chart is ONE picture on three sheets since 2026-09-27 (the map-lag fix, ChartCanvas.tsx):
+    // the labelled element is their wrapper, and the view's viewBox is on its first `<svg>`.
+    const chart = page.locator('[aria-label^="Chart of the world"]')
     await expect(chart.getByTestId('map-coastline')).toHaveCount(1)
 
     // ── DEFECT 3, at the glass ────────────────────────────────────────────────────────────────
@@ -224,7 +226,7 @@ test.describe('the whole send, driven on a phone', () => {
     // to "is this spot land". Nothing in this measurement comes from the app's own arithmetic.
     const grid = await chart.evaluate((svg) => {
       const path = svg.querySelector('[data-testid="map-coastline"]') as SVGGeometryElement | null
-      const box = (svg as SVGSVGElement).viewBox.baseVal
+      const box = (svg.querySelector('svg') as SVGSVGElement).viewBox.baseVal
       if (!path || box.width <= 0) return { samples: 0, land: 0 }
       const step = 24
       let samples = 0

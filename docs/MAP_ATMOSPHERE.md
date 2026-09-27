@@ -258,3 +258,86 @@ but *Regions*, which the owner asked for by name.
   full at every zoom, the countries all in the body; in the browser: 224 harbour marks at the
   world view (35 full, 189 dots), a dot zoomed in wears its marker; frame cost at the world view
   printed.
+
+---
+
+## 10. The lag (owner, 2026-09-27: *"check the map lag"*)
+
+Measured on the live site before any change (desktop Chrome, 1545×784): a pan at ≈22 fps (30
+pointermoves in 1,340 ms, frames averaging 34 ms, worst 67 ms); a zoom click ≈33 ms.
+
+### 10.1 What the time was — measured, one layer at a time
+
+A harness (Playwright driving Chrome through real mouse input, a Chrome trace per gesture, rAF
+intervals and a `MutationObserver` in the page) on a local build of `main` at `4dbf593`, then the
+same pan with one layer removed from the live DOM:
+
+| 1545×784, Chrome with GPU raster (headed) | frame mean | p95 | max | GPU main thread / frame |
+|---|---:|---:|---:|---:|
+| pan at the opening frame, as shipped | 25.4 ms | 33.4 | 66.6 | 33.5 ms |
+| — coast group removed | 16.7 | 16.8 | 16.8 | 2.9 |
+| — the three shallows removed | 16.7 | 16.8 | 16.8 | 16.6 |
+| pan at the world view, as shipped | 55.2 | 83.5 | 100.1 | 77.0 |
+
+React was never the cost: 2–5 ms of main thread a frame, the coast's `d` strings were not rewritten
+by a pan (0 mutations — `CoastlineLayer` was already memoised), only the graticule's `d` (one
+hairline) changed per frame. **The cost was the GPU re-rasterising the whole coast on every frame**,
+because every pointermove changed the one `<svg>`'s viewBox and a viewBox change repaints everything
+under it — three 40/22/10 px round-joined strokes of a 3,251-point line, the 6,111-point body, the
+clipped relief and the line. With the coast gone the same pan held the display's 16.7 ms.
+
+First load: the chart's own work on opening /map is small — `loadBackdrop` + `landfallPorts` ≈ 10 ms
+of script in a CPU profile; the longest tasks (200–470 ms) are the PGlite boot (a local build only;
+live boots no PGlite). **The >30 s unresponsive renderer seen once on live was NOT reproduced** in
+any local run at either glass; live needs a signed-in session this measurement did not have.
+
+### 10.2 The fix — the coast is its own sheet, and a pan moves it
+
+`ChartCanvas` draws the one picture on three stacked sheets, in the same paint order as before:
+
+1. the SEA (`SeaLayer` — flat ground, vignette, graticule) in an `<svg>` whose viewBox is the view;
+2. the COAST (`CoastlineLayer`, unchanged) in its own `<svg>` inside a `will-change: transform`
+   div — its own compositor layer — drawn over `paperOf(view)`: the view grown by a quarter on each
+   side, snapped to a half-view grid (`src/chart/chartView.ts`). A pan changes only the div's
+   `translate`, so the compositor moves the already-rasterised coast; the sheet is re-based (one
+   repaint) once per half a glass of travel;
+3. the MARKS (tracks, roads, pinpoint, ports, fleets, names) in an `<svg>` whose viewBox is the view.
+
+A zoom repaints the coast whatever it is on (a new scale is new pixels), and the cost is the sheet's
+area: measured, drawing the wide sheet on every zoom step took 39–53 ms of GPU against 12–15 ms for
+the view alone, so a wheel or pinch fell to 20 fps. `nextCoastPaper` therefore draws the coast over
+exactly the view just after a zoom, and grows the sheet back on the first pan or `PAPER_SETTLE_MS`
+(250 ms) after the zoom stops. Zoom costs what it cost before; a pan costs almost nothing.
+
+Nothing on the sheet changed: the same layers, tokens, widths and order; the sheet's offset is
+snapped to the device pixel (≤ ½ device px from the marks). Screenshots before/after at both glasses
+differ only by that sub-pixel edge along the coast, and by one thing the fix cannot avoid: **the
+names are now painted above a compositor layer, so Chrome sets them in greyscale anti-aliasing
+instead of LCD sub-pixel** (visible as the loss of colour fringes at 1×; the same greys at 2×).
+
+### 10.3 After — the same harness
+
+| Chrome, GPU raster, headless | before: frame mean / p95 / GPU per frame | after |
+|---|---|---|
+| 1545×784 @2×, pan at the opening frame | 16.7 / 16.7 / 17.6 ms | 16.7 / 16.7 / **3.6 ms** |
+| 1545×784 @2×, pan zoomed in two steps | 16.7 / 16.8 / 14.0 | 16.7 / 16.7 / **4.5** |
+| 1545×784 @2×, pan at the world view | **28.9 / 50.0** / 35.7 | **16.7 / 16.8 / 2.3** |
+| 1545×784 @2×, zoom click / wheel step (GPU) | 15.5 / 14.5 | 13.8 / 15.0 |
+| 390×844 @3×, pan at the opening frame | 17.1 / 16.8 / 19.5 | 16.9 / 16.7 / **6.5** |
+| 390×844 @3×, pan zoomed in / world view | 16.7 / 16.7 / 15.0 · 4.0 | 16.7 / 16.7 / **4.0 · 1.1** |
+| 390×844 @3×, zoom click / wheel step (GPU) | 17.5 / 17.1 | 13.5 / 14.0 |
+
+The headless GPU runs faster than the owner's machine, so the frame columns saturate at the 60 Hz
+vsync at the opening frame either way; the GPU column is the machine-independent figure, and it is
+what the owner's 34 ms frames were made of.
+
+### 10.4 Proofs
+
+* `tests/map.lag.spec.ts` — pure: every view is inside its sheet; a pan keeps the identical sheet
+  until it has travelled half a glass; a zoom draws over the view and a pan or the settle brings the
+  wide sheet back. Browser at 1545×784 and 390×844: the coast sheet is a compositor layer; during a
+  real drag of a fifth of the glass the coast's path data is rewritten 0 times and its sheet re-based
+  at most once while the view's viewBox changes every step; the sheet covers the glass at every
+  step; a zoom click draws over exactly the view, then settles wide. No wall-clock threshold.
+* `tests/map.sendfleet.spec.ts` — the labelled chart element is the three sheets' wrapper now; the
+  view's viewBox is read off its first `<svg>`. Every other chart spec is unchanged.

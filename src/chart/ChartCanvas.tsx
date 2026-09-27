@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { memo, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { Point, ViewBox } from '../lib/geo'
 import { CoastlineLayer } from './CoastlineLayer'
 import { project } from '../lib/geo'
@@ -9,7 +9,15 @@ import { RoadsteadsLayer } from './RoadsteadsLayer'
 import { SeaLayer } from './SeaLayer'
 import { portMarks, type ChartModel } from './chartModel'
 import type { CoastlineData } from './coastlineBuild'
-import { LABEL_SPAN_LIMIT, minTierForSpan } from './chartView'
+import {
+  coastPaperBox,
+  LABEL_SPAN_LIMIT,
+  minTierForSpan,
+  nextCoastPaper,
+  PAPER_SETTLE_MS,
+  settleCoastPaper,
+  type CoastPaper,
+} from './chartView'
 import { coastStrokeWidth, GLYPH } from './glyphs'
 import { mapLabelRequests, planLabels, type Rect } from './labels'
 import type { MapPort, MapSea, MapSelection } from './mapTypes'
@@ -163,63 +171,166 @@ export function ChartCanvas({
     [model, fullPorts, seas, regions, selection, box, unitsPerPx, keepOutUnits],
   )
 
+  // THE COAST'S SHEET (./chartView.ts, `paperOf` and `nextCoastPaper`) — wide at rest and in a pan,
+  // the view itself just after a zoom. The state is only "was the last change a zoom": it is advanced
+  // during render (the documented derive-from-the-previous-render pattern; `nextCoastPaper` returns
+  // the same object when nothing changed, so this sets state only on a transition) and settled wide
+  // by a timer once a zoom has stopped.
+  const [paperState, setPaperState] = useState<CoastPaper | null>(null)
+  const coastPaper = nextCoastPaper(paperState, box)
+  if (coastPaper !== paperState) setPaperState(coastPaper)
+  const narrow = coastPaper.narrow !== null
+  useEffect(() => {
+    if (!narrow) return
+    const timer = setTimeout(() => setPaperState(settleCoastPaper), PAPER_SETTLE_MS)
+    return () => clearTimeout(timer)
+  }, [narrow, coastPaper.width])
+  // The same OBJECT for as long as it holds the same four numbers, which is every frame of a pan
+  // until the view has travelled half a glass. The sheet is memoised on it, so between those frames
+  // React re-renders no coast and the browser moves its composited layer instead of repainting it.
+  const sheet = coastPaperBox(coastPaper, box)
+  const paper = useMemo<ViewBox>(
+    () => ({ x: sheet.x, y: sheet.y, width: sheet.width, height: sheet.height }),
+    [sheet.x, sheet.y, sheet.width, sheet.height],
+  )
+
   const selectedFleetId = selection?.kind === 'fleet' ? selection.id : null
   const selectedPortCode = selection?.kind === 'port' ? selection.code : null
 
+  // Where the coast's sheet sits on the glass, in CSS pixels: its top-left corner relative to the
+  // view's, rounded to the DEVICE pixel so the composited layer is never sampled between pixels
+  // (a layer moved by a fraction of a pixel is resampled, and a 0.9 px hairline goes soft). The
+  // rounding is at most half a device pixel; the marks are drawn exactly, and nothing on this sheet
+  // is aligned to a mark closer than that.
+  const dpr = typeof window !== 'undefined' && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1
+  const snap = (px: number) => Math.round(px * dpr) / dpr
+  const sheetLeft = snap((paper.x - box.x) / unitsPerPx)
+  const sheetTop = snap((paper.y - box.y) / unitsPerPx)
+
+  // THREE SHEETS, ONE PICTURE, in the one paint order (header). The first and last are the view:
+  // their viewBox is `box` and they re-render with it, which costs nothing — the sea is two rects
+  // and a hairline, the marks are small. The middle one is the coast, the only expensive thing on
+  // the paper (measured: every frame of a pan re-rasterised it, 25–55 ms of GPU time): drawn over
+  // `paper`, not the view, and moved by a CSS transform, so a pan MOVES it on the compositor and
+  // repaints it only when the view crosses into the next half-glass of the grid (`paperOf`) or
+  // zooms (docs/MAP_ATMOSPHERE.md §10).
   return (
-    <svg
-      className={className}
-      viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
-      role="img"
-      aria-label={ariaLabel}
-    >
-      {/* THE SEA — the ground everything else is measured against, its depth, and the graticule
-          (./SeaLayer.tsx). Then the coast: shallows, body, relief, and a stroke at this zoom's
-          weight (./CoastlineLayer.tsx). Row 90 made both a picture; the tokens the ink spec pins
-          did not move. */}
-      <SeaLayer box={box} />
-      <CoastlineLayer
+    <div className={className} role="img" aria-label={ariaLabel}>
+      <svg
+        className="absolute inset-0 h-full w-full"
+        viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
+        aria-hidden="true"
+      >
+        {/* THE SEA — the ground everything else is measured against, its depth, and the graticule
+            (./SeaLayer.tsx). Row 90 made it a picture; the token the ink spec pins did not move. */}
+        <SeaLayer box={box} />
+      </svg>
+      <CoastSheet
         coast={coast}
+        paper={paper}
+        left={sheetLeft}
+        top={sheetTop}
         strokeWidth={coastStrokeWidth(box.width)}
         regions={regions}
         islets={islets}
         unitsPerPx={unitsPerPx}
       />
-      <TracksLayer model={model} unitsPerPx={unitsPerPx} />
-      {/* THE ROADS (0076) — the dotted helper line out to the one point of open water each port is
-          reached from, and the hollow circle on it. UNDER the port marks, because a dotted line
-          crossing a harbour should pass behind it (FleetsLayer.tsx:6-9) and a city standing on its
-          own roads is the right picture. It is handed `drawnPorts`, the same list PortsLayer gets,
-          so a line can never run out of a mark that was not drawn — its FULL half, because a
-          dot (row 94) has no roads. */}
-      <RoadsteadsLayer ports={fullPorts} unitsPerPx={unitsPerPx} />
-      {/* THE PINPOINT (0039) — the tapped spot of open water, marked exactly like a selected
-          port is ringed, because it is the same act one step earlier: naming a destination. */}
-      {selection?.kind === 'sea' &&
-        (() => {
-          const at = project(selection.at)
-          return (
-            <g pointerEvents="none" data-testid="map-sea-point">
-              <circle
-                cx={at.x}
-                cy={at.y}
-                r={GLYPH.destinationRingRadius * unitsPerPx}
-                className="fill-none stroke-ink/70"
-                strokeWidth={GLYPH.glyphStroke}
-                vectorEffect="non-scaling-stroke"
-              />
-              <circle cx={at.x} cy={at.y} r={2 * unitsPerPx} className="fill-ink/70" />
-            </g>
-          )
-        })()}
-      <PortsLayer
-        marks={marks}
-        portRoles={model.portRoles}
-        selectedCode={selectedPortCode}
-        unitsPerPx={unitsPerPx}
-      />
-      <FleetsLayer model={model} selectedId={selectedFleetId} unitsPerPx={unitsPerPx} />
-      <LabelsLayer labels={labels} unitsPerPx={unitsPerPx} />
-    </svg>
+      <svg
+        className="absolute inset-0 h-full w-full"
+        viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
+        aria-hidden="true"
+      >
+        <TracksLayer model={model} unitsPerPx={unitsPerPx} />
+        {/* THE ROADS (0076) — the dotted helper line out to the one point of open water each port is
+            reached from, and the hollow circle on it. UNDER the port marks, because a dotted line
+            crossing a harbour should pass behind it (FleetsLayer.tsx:6-9) and a city standing on its
+            own roads is the right picture. It is handed `drawnPorts`, the same list PortsLayer gets,
+            so a line can never run out of a mark that was not drawn — its FULL half, because a
+            dot (row 94) has no roads. */}
+        <RoadsteadsLayer ports={fullPorts} unitsPerPx={unitsPerPx} />
+        {/* THE PINPOINT (0039) — the tapped spot of open water, marked exactly like a selected
+            port is ringed, because it is the same act one step earlier: naming a destination. */}
+        {selection?.kind === 'sea' &&
+          (() => {
+            const at = project(selection.at)
+            return (
+              <g pointerEvents="none" data-testid="map-sea-point">
+                <circle
+                  cx={at.x}
+                  cy={at.y}
+                  r={GLYPH.destinationRingRadius * unitsPerPx}
+                  className="fill-none stroke-ink/70"
+                  strokeWidth={GLYPH.glyphStroke}
+                  vectorEffect="non-scaling-stroke"
+                />
+                <circle cx={at.x} cy={at.y} r={2 * unitsPerPx} className="fill-ink/70" />
+              </g>
+            )
+          })()}
+        <PortsLayer
+          marks={marks}
+          portRoles={model.portRoles}
+          selectedCode={selectedPortCode}
+          unitsPerPx={unitsPerPx}
+        />
+        <FleetsLayer model={model} selectedId={selectedFleetId} unitsPerPx={unitsPerPx} />
+        <LabelsLayer labels={labels} unitsPerPx={unitsPerPx} />
+      </svg>
+    </div>
   )
 }
+
+/**
+ * THE COAST'S SHEET — the coast (./CoastlineLayer.tsx: shallows, body, relief, line, tints,
+ * islets) in its own `<svg>` over `paper`, on its own compositor layer (`will-change: transform`),
+ * placed by a translate of `left`/`top` CSS pixels. Memoised, and CoastlineLayer inside it too, so a
+ * pan — which changes only `left`/`top` — writes one `transform` and the browser moves the layer. The svg's viewBox IS
+ * `paper` and its size is `paper` in pixels, so a chart unit is exactly the pixel it is on the view
+ * sheets and every coordinate inside is the chart's own.
+ */
+const CoastSheet = memo(function CoastSheet({
+  coast,
+  paper,
+  left,
+  top,
+  strokeWidth,
+  regions,
+  islets,
+  unitsPerPx,
+}: {
+  coast: CoastlineData | null
+  paper: ViewBox
+  /** Where the sheet's top-left corner is on the glass, in CSS pixels (device-pixel snapped). */
+  left: number
+  top: number
+  strokeWidth: number
+  regions: readonly RegionTint[] | null
+  islets: readonly Point[]
+  unitsPerPx: number
+}) {
+  const style: CSSProperties = {
+    width: paper.width / unitsPerPx,
+    height: paper.height / unitsPerPx,
+    transform: `translate(${left}px, ${top}px)`,
+  }
+  return (
+    <div className="absolute top-0 left-0 will-change-transform" style={style} data-testid="map-coast-sheet">
+      {/* The svg's own viewport clips at `paper` (an inline svg is overflow: hidden), which is what
+          bounds the layer to 1.5 views square instead of the whole world at harbour zoom. */}
+      <svg
+        className="block h-full w-full"
+        viewBox={`${paper.x} ${paper.y} ${paper.width} ${paper.height}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <CoastlineLayer
+          coast={coast}
+          strokeWidth={strokeWidth}
+          regions={regions}
+          islets={islets}
+          unitsPerPx={unitsPerPx}
+        />
+      </svg>
+    </div>
+  )
+})
