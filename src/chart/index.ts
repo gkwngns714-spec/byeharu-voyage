@@ -59,6 +59,7 @@ export {
   fleetsBoundFor,
   portMarks,
   visiblePorts,
+  dotPorts,
   type ChartModel,
   type FleetOnChart,
   type PortMark,

@@ -118,7 +118,7 @@ test.describe('data/region-tint.json is the build, not a hand', () => {
 
 // ── 2. THE NAMES GO THROUGH THE ONE PLANNER ────────────────────────────────────────────────────
 
-test.describe('a region\'s name is a request, below every harbour, above the seas', () => {
+test.describe('a region\'s name is a request, above every quiet harbour and the seas, below every port of yours', () => {
   test('on the glass it asks, centred, in the region tone; off the glass it does not', () => {
     const world: ViewBox = { x: -180, y: -90, width: 360, height: 180 }
     const atWorld = regionNameRequests(REGIONS, world)
@@ -129,7 +129,10 @@ test.describe('a region\'s name is a request, below every harbour, above the sea
       expect(r.priority).toBe(LABEL_PRIORITY.region)
     }
     expect(LABEL_PRIORITY.region).toBeGreaterThan(LABEL_PRIORITY.sea)
-    expect(LABEL_PRIORITY.region).toBeLessThan(LABEL_PRIORITY.quiet + 1)
+    // Row 105: the filter is on to READ the regions — a region's name beats the loudest quiet
+    // harbour (quiet + tier 5) and loses to any port a fleet of yours is using.
+    expect(LABEL_PRIORITY.region).toBeGreaterThan(LABEL_PRIORITY.quiet + 5)
+    expect(LABEL_PRIORITY.region).toBeLessThan(LABEL_PRIORITY.route)
     const iberia: ViewBox = { x: -12, y: -45, width: 12, height: 10 }
     expect(regionNameRequests(REGIONS, iberia).map((r) => r.text)).toEqual(['Iberia'])
     expect(regionNameRequests([], iberia)).toEqual([])

@@ -75,7 +75,7 @@ export const REGION_FILL: Readonly<Record<string, string>> = {
 export interface RegionTint {
   readonly id: string
   readonly name: string
-  /** Where the name is set: the mean of the region's harbours (the file's `at`), projected. */
+  /** Where the name is set: the centre of the region's spread (the file's `at`, row 105), projected. */
   readonly at: Point
   /** The land: the coast's own rings for the countries this region holds, closed. '' = none. */
   readonly landD: string
@@ -157,10 +157,12 @@ export function regionTintsOf(json: unknown, coast: Pick<CoastlineData, 'countri
 
 /**
  * The names the regions ask for — every region whose anchor is on the glass, CENTRED on it, in
- * the region tone at the region size, at `LABEL_PRIORITY.region`: above a sea's name (the
- * filter is on to see the regions), below every harbour's, so the ONE planner drops a region's
- * name rather than let it touch a mark or a place's name. Nothing here is set while the filter
- * is off, because nothing calls it then.
+ * the region tone at the region size, at `LABEL_PRIORITY.region`: above a sea's name and above
+ * every quiet harbour's (the filter is on to read the regions — row 105), below every port of
+ * yours, so the ONE planner drops a quiet harbour's name rather than a region's, and a region's
+ * rather than touch the name of a port a fleet is using. The anchor is the centre of the
+ * region's spread (scripts/lib/region-tint.mjs). Nothing here is set while the filter is off,
+ * because nothing calls it then.
  */
 export function regionNameRequests(regions: readonly RegionTint[], view: ViewBox): LabelRequest[] {
   const requests: LabelRequest[] = []
@@ -174,6 +176,7 @@ export function regionNameRequests(regions: readonly RegionTint[], view: ViewBox
       priority: LABEL_PRIORITY.region,
       tone: 'region',
       placement: 'centred',
+      slackLines: 3,
       sizePx: GLYPH.regionNameSize,
       spacingEm: GLYPH.seaNameSpacingEm,
     })

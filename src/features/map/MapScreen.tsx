@@ -16,6 +16,7 @@ import {
   fleetsAtPort,
   fleetsBoundFor,
   GLYPH,
+  dotPorts,
   hitTest,
   mapFleetsOf,
   Minimap,
@@ -129,10 +130,13 @@ function Chart({
   // SELECTS that water, snapped to the nearest sailable cell (0039) — water by construction.
   const onTap = useCallback(
     (at: Point, unitsPerPx: number, view: ViewBox) => {
-      // The FULL marks (row 94): a dot is a picture, not a target — measured, a tappable dot
-      // 5 px from a named harbour stole the tap meant for the name (chartModel.ts, `portMarks`).
-      const tappable = visiblePorts(ports, model.portRoles, view, minTierForSpan(view.width))
-      const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx)
+      // The FULL marks answer at the full reach; the DOTS at half a touch, behind a mark as
+      // near (row 104: a dot is the city it stands for — but never at a named harbour's
+      // expense, the theft row 94 measured; chartModel.ts `portMarks`, hitTest.ts).
+      const minTier = minTierForSpan(view.width)
+      const tappable = visiblePorts(ports, model.portRoles, view, minTier)
+      const dots = dotPorts(ports, model.portRoles, view, minTier)
+      const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx)
       if (hit?.kind === 'fleet') selectFleet(hit.id)
       if (hit) {
         setSelection((current) => toggleSelection(current, hit))
