@@ -5,6 +5,36 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-27 — the deploy branch: 0086-0091 merged onto main as ONE PR (PRs #75 #78 #82 #83 — NOT merged, NOT deployed)
+
+**Why one branch.** Four PRs each carried a migration and each conflicted with `main` (head
+`4dbf593`, production at 0085). Their clients call RPCs production does not serve, so none may
+merge before `supabase db push`; merging them one at a time would have meant four conflict passes
+and four pushes. Branch `osn-deploy-0086-0091` merges them in chain order: #75 (0086, the inn crew),
+#78 (0087, the request board), #83 (0088-0091, which carries #82's 0088).
+
+**The chain.** 0086..0091 each present once, contiguous after 0085, all ADDED (no earlier file
+edited). The only function two of them re-cut is `public.client_rpc_entry_points` (0086 and 0087);
+0087's slice anchors on the `preview_basket` row and 0086's on `reach`, and the local apply shows
+0087 applying on top of 0086's body with every self-assert green. 0088 re-cuts `path_refusal` /
+`position` / `segments_from_course`, 0091 re-creates `water_roadstead` / `channel_foot` — none of
+which 0086/0087 touch. `npm run db:apply`: 84 files, 84 receipts; world-guard 238 harbours / 555 goods.
+
+**Conflicts, and how each went.**
+* Docs (`DEV_LOG`, `OWNER_REQUESTS`, `CHAIN.md`, `db.chain.spec`'s LAST pin) — both sides kept;
+  ledger rows deduped by number keeping the BUILT line (row 85); rows 98/99 slotted before 100-105.
+* `StepQuestion.tsx` — main's Repair rows (row 86: `Damage` as `N% damaged`, `Repair here`) kept
+  exactly; #75's removal of the HIRE branch kept (the Inn owns HIRE/DISMISS now).
+* `layout.spec.ts` — main's Bargain-thread test and #75's Inn test both kept.
+* `words.spec.ts` — main's Bargain / coin bans and #78's `contract` ban both kept.
+* `data/region-tint.json` — GENERATED, so neither side was picked: rebuilt with
+  `scripts/build-region-tint.mjs` from main's row-105 centre rule and #83's 14 harbours.
+* WORDS law on the PRs' new text (row 102, the coin): the FULFILLED history line wrote
+  `N d. premium` and now uses `formatDucats`; `docs/WORDS.md`'s request examples and the layout
+  specs that matched `d.` (the Inn wages, the fulfil cells) read `🪙`.
+
+**Production must receive `supabase db push` (0086-0091) BEFORE this PR merges.**
+
 ## 2026-09-18 — a dot is a city, and a region's name stands at its centre (rows 104, 105 — client only)
 
 **Row 104 — "when i zoom out i see dot, when i click i see coordinates. it should be the
