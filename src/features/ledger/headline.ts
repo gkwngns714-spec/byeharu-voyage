@@ -122,6 +122,15 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
         urgent ? ', at the urgent rate' : ''
       }.`
     }
+    case 'DISMISSED': {
+      // 0086: crew let go in port. No money moved, so there is no movement beside this line;
+      // `crew` is what stays aboard, served on the event so nothing is subtracted here.
+      const count = num(p, 'count')
+      const crew = num(p, 'crew')
+      return `${count === null ? 'Crew' : `${formatQty(count)} crew`} dismissed from ${fleet}${
+        crew === null ? '' : ` — ${formatQty(crew)} crew stay on board`
+      }.`
+    }
     case 'REPAIRING': {
       const points = num(p, 'points')
       return `${fleet} is being repaired${points === null ? '' : ` — ${Math.round(points)} hull points`}.`

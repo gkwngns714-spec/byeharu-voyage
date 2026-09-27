@@ -120,6 +120,12 @@ function Estimate({
         </>
       )
     }
+    case 'DISMISS': {
+      // 0086: no money moves on a dismissal, so the only figure is who goes. What the crew that
+      // stay will cost per day is the Inn's own caption (world.crew_cost), not the dry run's.
+      const dismissed = num(estimate, 'dismissed')
+      return <>{dismissed !== null && <Row label="Dismissed" value={<Figure value={formatInt(dismissed)} />} hairline={false} />}</>
+    }
     case 'REPAIR': {
       const points = num(estimate, 'points')
       const cost = num(estimate, 'cost')

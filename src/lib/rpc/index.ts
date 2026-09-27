@@ -36,6 +36,7 @@ import type {
   BuyCapacity,
   CancelResult,
   ClearResult,
+  CrewCost,
   DivertResult,
   FleetView,
   FoundedHouse,
@@ -143,6 +144,18 @@ export function worldWorkstation(
  */
 export function worldBuyCapacity(fleetId: string, goodId: string): Promise<RpcResult<BuyCapacity>> {
   return call<BuyCapacity>('worldBuyCapacity', [fleetId, goodId])
+}
+
+/**
+ * WHAT A CREW OF N COSTS PER DAY AT SEA (0086) — `{crew, per_day, per_day_short_rations}`, for
+ * any count, from `public.crew_wages`: the same sum `voyage.settle` charges on every settled
+ * voyage-day. Wages are charged at sea only; in port nothing is charged, and this read says
+ * what the next day at sea will.
+ *
+ * @param crew the count to price, or null for the crew aboard now.
+ */
+export function worldCrewCost(fleetId: string, crew: number | null = null): Promise<RpcResult<CrewCost>> {
+  return call<CrewCost>('worldCrewCost', [fleetId, crew])
 }
 
 /**
