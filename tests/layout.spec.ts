@@ -446,7 +446,7 @@ test(`PORT: the ledger's price cells are the trade, and a press moves nothing ab
   //    it is not about.
   const before = await page.evaluate(MEASURE_OFFSETS, 'trade-row')
   await page.evaluate(() => {
-    const cell = [...document.querySelectorAll('button')].find((b) => /^buy\b/i.test((b.innerText || '').trim()))
+    const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) => /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()))
     ;(cell as HTMLButtonElement | undefined)?.click()
   })
   await page.waitForTimeout(900)
@@ -1010,6 +1010,116 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+// PORT'S REQUEST BOARD — the third face of the trade board: rows shaped like the ledger, a Fulfil
+// cell that is dead with its reason, and turning a face moves nothing above the board
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ADDED 2026-09-14 with slice 4 of the Quay Ledger (docs/QUAY_LEDGER.md §3 F, migration 0087;
+// owner row 76). The trade board carries `Segmented` Buy · Sell · Requests. Requests lists what
+// this port asks for — goods it does NOT sell — one row per request: the good, `N units · ends in
+// …` (the calendar clock, printed like the fair's end), `+P% over the market · have / need units
+// on board`, and ONE cell `fulfil` carrying the served premium. The fixture fleet carries nothing
+// of what its port asks for BY THE RULE (a port never asks for what it sells, and the only way to
+// carry a good this port does not sell is to have brought it), so on this proof every cell is
+// dead — and a dead cell says WHY on its own face, which is what tests/layout.spec.ts was written
+// to stop going silent. The live press — the tray in the slot, the served preview, the premium
+// line, the delivery — is proven end to end in tests/rpc.surface.spec.ts and 0087's self-assert,
+// where the lot can be put aboard through the server's own mover.
+test(`PORT › Requests: the third face lists this port's requests as board rows, a dead fulfil cell says why, and turning faces moves nothing above the board`, async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(420_000)
+  test.skip(
+    !(await reachable(request, baseURL ?? '')),
+    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+  )
+  await page.goto('port')
+  await ready(page)
+  await page.waitForTimeout(1200)
+
+  // The three faces stand in one strip, Buy up first, and the ledger is under it.
+  const faces = page.getByRole('tablist', { name: 'Trade faces' })
+  await expect(faces).toBeVisible()
+  await expect(faces.getByRole('tab')).toHaveText(['Buy', 'Sell', 'Requests'])
+  expect(await page.locator('[data-testid="trade-row"]').count()).toBeGreaterThan(1)
+
+  // Everything AT OR ABOVE the board: the sheet's title, the supplies row, the port field, the
+  // faces strip. By viewport rect — a face turn does not scroll the sheet.
+  const ABOVE = () =>
+    page.evaluate(() => {
+      const rect = (el: Element | null) => {
+        if (!el) return null
+        const r = el.getBoundingClientRect()
+        return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }
+      }
+      return {
+        header: rect(document.querySelector('[data-testid="sheet-header"]')),
+        supplies: rect(document.querySelector('[data-testid="quay-stores"]')),
+        field: rect(document.querySelector('[data-testid="port-field"]')),
+        faces: rect(document.querySelector('[role="tablist"][aria-label="Trade faces"]')),
+      }
+    })
+  const before = await ABOVE()
+  expect(before.faces, 'the faces strip has no box').not.toBeNull()
+
+  // TURN TO REQUESTS. The board appears under the strip; nothing above it moved.
+  await faces.getByRole('tab', { name: /^Requests$/ }).click()
+  const rows = page.locator('[data-testid="request-row"]')
+  await expect(rows.first(), 'no request rows — the board did not read, or this port posted nothing').toBeVisible({ timeout: 30_000 })
+  await page.waitForTimeout(600)
+  expect(await ABOVE(), 'turning to Requests MOVED what stands above the board').toEqual(before)
+  await expect(page.locator('[data-testid="trade-row"]')).toHaveCount(0)
+
+  const report = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('[data-testid="request-row"]')] as HTMLElement[]
+    const cells = [...document.querySelectorAll('[data-testid="request-fulfil"]')] as HTMLButtonElement[]
+    const text = (el: HTMLElement) => (el.innerText || '').replace(/\s+/g, ' ').trim()
+    return {
+      rows: rows.length,
+      rowsWithLot: rows.filter((r) => /\d+ units? · ends (in |just now)/.test(text(r))).length,
+      rowsWithPremium: rows.filter((r) => /[+−]\d+% over the market/.test(text(r))).length,
+      rowsWithShare: rows.filter((r) => /\d+ \/ \d+ units on board/.test(text(r))).length,
+      cells: cells.length,
+      shortestCell: cells.length ? Math.min(...cells.map((c) => c.getBoundingClientRect().height)) : 0,
+      cellsSayingFulfil: cells.filter((c) => /^fulfil\b/i.test(text(c))).length,
+      cellsWithFigure: cells.filter((c) => /[+−]?[\d,]+\s🪙/.test(text(c))).length,
+      deadCells: cells.filter((c) => c.disabled).length,
+      deadSayingWhy: cells.filter((c) => c.disabled && /\d+ \/ \d+ units on board|no ship here/.test(text(c))).length,
+      rowWidth: rows[0] ? Math.round(rows[0].getBoundingClientRect().width) : 0,
+      pageScrollW: document.documentElement.scrollWidth,
+      pageClientW: document.documentElement.clientWidth,
+    }
+  })
+  console.log(`PORT requests @${PHONE.width}px: ${JSON.stringify(report)}`)
+  expect(report.rows).toBeGreaterThan(0)
+  expect(report.rowsWithLot, 'a request row does not say its lot and when it ends').toBe(report.rows)
+  expect(report.rowsWithPremium, 'a request row does not say its premium as a served percentage').toBe(report.rows)
+  expect(report.rowsWithShare, 'a request row does not say what is on board as a share of the lot').toBe(report.rows)
+  expect(report.cells, 'a request row does not carry exactly one cell').toBe(report.rows)
+  expect(report.cellsSayingFulfil).toBe(report.rows)
+  expect(report.cellsWithFigure, 'a fulfil cell carries no served premium figure').toBe(report.rows)
+  expect(report.shortestCell, 'a fulfil cell is under the 44px reach floor').toBeGreaterThanOrEqual(44)
+  expect(report.deadSayingWhy, 'a dead fulfil cell went grey without saying why').toBe(report.deadCells)
+  expect(report.rowWidth, 'a request row is not a board row').toBeGreaterThanOrEqual(300)
+  expect(report.pageScrollW, 'the page shears sideways').toBeLessThanOrEqual(report.pageClientW)
+  // Nothing is docked: no tray opened by turning a face, and on a phone an empty basket docks nothing.
+  await expect(page.locator('[data-testid="fulfil-tray"]')).toHaveCount(0)
+  await expect(page.locator('[data-testid="basket-panel"]')).toHaveCount(0)
+
+  // SELL is the same ledger narrowed to what she carries — nothing, on a fresh hull — and BUY
+  // brings every row back; neither turn moves what stands above.
+  await faces.getByRole('tab', { name: /^Sell$/ }).click()
+  await expect(page.locator('[data-testid="request-row"]')).toHaveCount(0)
+  await expect(page.getByText('No cargo to sell.')).toBeVisible()
+  await faces.getByRole('tab', { name: /^Buy$/ }).click()
+  await expect(page.locator('[data-testid="trade-row"]').first()).toBeVisible()
+  await page.waitForTimeout(400)
+  expect(await ABOVE(), 'turning back to Buy MOVED what stands above the board').toEqual(before)
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
 // PORT'S STORAGE FACE — drawn like the trade board: a cell is the act, a press opens the one tray
 // with a stepper, nothing above the press moves, and the count on the button is the count moved
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -1110,4 +1220,101 @@ test(`PORT › Storage: a cell opens the one tray with a stepper, moves nothing 
   await act.click()
   await expect(tray).toHaveCount(0, { timeout: 30_000 })
   await expect(storageRows.first()).toContainText(/\d units? · [\d.]+ tons? in storage/, { timeout: 20_000 })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// PORT'S INN ON A PHONE — the crew as Trade draws a good: the figure, the stepper, the served
+// cost moving under it, one button, and nothing above the press moves
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// ADDED 2026-09-13 with migration 0086 (owner row 85: *"inn, it should be like trade, where you
+// can hire, dismiss crews, and by doing so show how much it will consume everyday"*). The Inn
+// face reads `Crew N / max crew` (WORDS law 2: a share prints its whole), a stepper from the
+// complement to the crew slots, a wages row that is `world.crew_cost(fleet, n)` for the count
+// under the finger — so pressing `More` must CHANGE it, from the server — and ONE button whose
+// word follows the direction (`Hire 1` up, `Dismiss 1` down). Every control clears 44px. Row 15:
+// the rows above the stepper stay exactly where they were when `More` is pressed.
+test(`PORT: the Inn's crew face is a figure, a stepper, a served daily cost and one button, and a press moves nothing above it`, async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(420_000)
+  test.skip(
+    !(await reachable(request, baseURL ?? '')),
+    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+  )
+  await page.goto('port')
+  await ready(page)
+  await page.getByRole('tab', { name: /^Inn/i }).first().click()
+  await page.waitForTimeout(600)
+
+  const face = page.locator('[data-testid="inn-crew-face"]')
+  await expect(face, 'no crew face — is a fleet docked at the port PORT opened on?').toBeVisible()
+  // 1. THE FIGURE PRINTS ITS WHOLE: `N / max crew`, never a bare count.
+  await expect(page.locator('[data-testid="inn-crew"]')).toContainText(/\d+\s*\/\s*\d+\s*crew/)
+  // 2. THE STEPPER, and the served cost for the count it stands at.
+  const stepper = page.locator('[data-testid="inn-crew-stepper"]')
+  await expect(stepper).toBeVisible()
+  const cost = page.locator('[data-testid="inn-crew-cost"]')
+  await expect(cost, 'the wages row never arrived — world.crew_cost did not answer').toBeVisible({ timeout: 20_000 })
+  await expect(cost).toContainText(/\d[\d,]*\s🪙\s*per day at sea/)
+  // THE FIGURE, not the row's text: `Figure` lays its value and unit out as sibling spans, so the
+  // text content carries no space between them and the innerText does — comparing prose would
+  // compare layout. The number is what the server served, and the number is what must move.
+  const figureOf = async () => (await cost.textContent())?.match(/([\d,]+)\s🪙/)?.[1] ?? null
+  const costBefore = await figureOf()
+  expect(costBefore).not.toBeNull()
+  // 3. ONE BUTTON, dead while nothing has changed.
+  const send = page.locator('[data-testid="inn-crew-send"]')
+  await expect(send).toBeVisible()
+  await expect(send).toBeDisabled()
+  await expect(send).toHaveText('No change')
+
+  // Row 15: remember where everything above the stepper sits, press More, and require it not to
+  // have moved. Offsets are read against the face's own box.
+  const above = () =>
+    face.evaluate((el, id) => {
+      const stepperEl = el.querySelector(`[data-testid="${id}"]`) as HTMLElement | null
+      const stepTop = stepperEl ? stepperEl.getBoundingClientRect().top : Infinity
+      return [...el.querySelectorAll<HTMLElement>('[data-testid]')]
+        .filter((n) => n.getBoundingClientRect().top < stepTop)
+        .map((n) => `${n.dataset.testid}@${Math.round(n.getBoundingClientRect().left)},${Math.round(n.getBoundingClientRect().top)}`)
+    }, 'inn-crew-stepper')
+  const before = await above()
+  expect(before.length, 'nothing stands above the stepper — the figure rows are missing').toBeGreaterThanOrEqual(2)
+  await stepper.getByRole('button', { name: 'More' }).click()
+  await page.waitForTimeout(900)
+  expect(await above(), 'pressing More MOVED a row above the stepper — restructure-on-press, which the owner has refused three times').toEqual(before)
+
+  // 4. THE COST MOVED WITH THE STEPPER, and the button now says what one more crew is: a hire.
+  await expect.poll(figureOf, { timeout: 20_000 }).not.toBe(costBefore)
+  const costUp = await figureOf()
+  await expect(send).toHaveText('Hire 1')
+  // Hire the one — the in-tab PGlite world is disposable — and the ship follows: the figure reads
+  // one more crew, the stepper stands at what is true, and the button goes quiet again.
+  const crewBefore = (await page.locator('[data-testid="inn-crew"]').innerText()).match(/(\d+)\s*\/\s*(\d+)/)!
+  await expect(send).toBeEnabled({ timeout: 20_000 })
+  await send.click()
+  await expect(page.locator('[data-testid="inn-crew"]')).toContainText(
+    new RegExp(`${Number(crewBefore[1]) + 1}\\s*/\\s*${crewBefore[2]}\\s*crew`),
+    { timeout: 30_000 },
+  )
+  await expect(send).toHaveText('No change')
+  // …and one step back down from what is now aboard, the word turns over: a dismissal, and the
+  // cost is the served figure for the smaller count — the one the hire was quoted against.
+  await stepper.getByRole('button', { name: 'Less' }).click()
+  await page.waitForTimeout(900)
+  await expect(send).toHaveText('Dismiss 1')
+  await expect.poll(figureOf, { timeout: 20_000 }).toBe(costBefore)
+  expect(costUp).not.toBe(costBefore)
+
+  // 5. EVERY CONTROL ON THE FACE CLEARS THE 44PX FLOOR — the two stepper buttons and the one button.
+  const short = await face.evaluate((el) =>
+    [...el.querySelectorAll('button')]
+      .map((b) => ({ text: (b.innerText || b.getAttribute('aria-label') || '').slice(0, 24), r: b.getBoundingClientRect() }))
+      .filter(({ r }) => r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44))
+      .map(({ text, r }) => `${text} ${Math.round(r.width)}×${Math.round(r.height)}`),
+  )
+  expect(short, 'a control on the Inn face is under the 44px reach floor').toEqual([])
 })

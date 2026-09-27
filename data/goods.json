@@ -5258,6 +5258,7 @@
       ],
       "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
       "origin": [
+        "pacific-americas",
         "south-america-atlantic"
       ],
       "cultureMask": [],
@@ -5615,6 +5616,7 @@
       ],
       "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
       "origin": [
+        "pacific-americas",
         "scandinavia-arctic"
       ],
       "cultureMask": [],
@@ -6176,6 +6178,7 @@
       ],
       "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
       "origin": [
+        "pacific-americas",
         "south-america-atlantic"
       ],
       "cultureMask": [],
@@ -6720,6 +6723,7 @@
       ],
       "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
       "origin": [
+        "pacific-americas",
         "south-america-atlantic"
       ],
       "cultureMask": [],
@@ -6924,6 +6928,7 @@
       ],
       "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
       "origin": [
+        "pacific-americas",
         "south-america-atlantic"
       ],
       "cultureMask": [],
@@ -6958,6 +6963,7 @@
       ],
       "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
       "origin": [
+        "pacific-americas",
         "west-africa"
       ],
       "cultureMask": [],
@@ -7060,6 +7066,7 @@
       ],
       "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
       "origin": [
+        "pacific-americas",
         "south-america-atlantic"
       ],
       "cultureMask": [],
@@ -8352,6 +8359,7 @@
       ],
       "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
       "origin": [
+        "pacific-americas",
         "south-america-atlantic"
       ],
       "cultureMask": [],
@@ -8862,7 +8870,8 @@
       ],
       "note": "Added 2026-09-02 with the catalogue growth: the owner asked that no good sit in more than three cities, which needs a bigger catalogue.",
       "origin": [
-        "british-isles"
+        "british-isles",
+        "pacific-americas"
       ],
       "cultureMask": [],
       "entrepots": [],
@@ -9513,6 +9522,550 @@
       "cultureMask": [],
       "entrepots": [],
       "bulk": 1.5
+    },
+    {
+      "id": "sea-otter-pelts",
+      "name": "Sea Otter Pelts",
+      "category": "cloth",
+      "valueBand": 5,
+      "baseValue": [
+        900,
+        1700
+      ],
+      "note": "The \"soft gold\" of the California and Northwest coast, carried to Canton where a single pelt bought a chest of tea; the trade that first drew ships into Monterey and the Bay.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "redwood",
+      "name": "Redwood",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        24,
+        48
+      ],
+      "note": "Coast redwood from the hills behind the Bay: straight, rot-proof planking and shingles, cut for every house and wharf on the shore.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "california-hides",
+      "name": "California Hides",
+      "category": "cloth",
+      "valueBand": 2,
+      "baseValue": [
+        55,
+        105
+      ],
+      "note": "Dried cattle hides, the \"California banknote\" of the hide-and-tallow trade; Boston ships loaded them by the thousand at San Diego and Monterey.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "abalone-shell",
+      "name": "Abalone Shell",
+      "category": "crafts",
+      "valueBand": 3,
+      "baseValue": [
+        120,
+        220
+      ],
+      "note": "Red abalone from the Monterey kelp beds, the iridescent shell sought by Chinese and Californian craftsmen for inlay.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.5
+    },
+    {
+      "id": "mission-wine",
+      "name": "Mission Wine",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        40,
+        70
+      ],
+      "note": "The black Mission grape planted at San Diego de Alcalá and every mission north of it, the first wine of California.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "brea",
+      "name": "Brea",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        18,
+        36
+      ],
+      "note": "Natural asphalt of the California seeps, dug at the tar pits and sold to ships for caulking and to the missions for roofing.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "baja-pearls",
+      "name": "Baja Pearls",
+      "category": "gems",
+      "valueBand": 5,
+      "baseValue": [
+        1100,
+        2000
+      ],
+      "note": "The pearl banks of La Paz and the Gulf of California, fished under Spanish licence from 1533 and sold through the Sinaloa coast.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "dried-shrimp",
+      "name": "Dried Shrimp",
+      "category": "food",
+      "valueBand": 2,
+      "baseValue": [
+        45,
+        85
+      ],
+      "note": "Sun-dried shrimp of the Mazatlán lagoons, the salted staple of the Sinaloa coast and a Lenten food inland.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "mezcal",
+      "name": "Mezcal",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        40,
+        72
+      ],
+      "note": "Agave spirit distilled in Jalisco, Sinaloa and Oaxaca from the late 1500s, once Spanish stills met the pulque maguey.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "coconut-wine",
+      "name": "Coconut Wine",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        38,
+        68
+      ],
+      "note": "Tuba distilled by the Filipino sailors who settled Colima off the Manila galleon in the 1570s: the vino de cocos the Crown tried and failed to ban.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "soconusco-cacao",
+      "name": "Soconusco Cacao",
+      "category": "drink",
+      "valueBand": 4,
+      "baseValue": [
+        300,
+        560
+      ],
+      "note": "The finest cacao of New Spain, from the Soconusco lowlands, tributed to the Aztec court and later shipped from Huatulco to Peru and Mexico.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "anil",
+      "name": "Anil",
+      "category": "dye",
+      "valueBand": 4,
+      "baseValue": [
+        300,
+        600
+      ],
+      "note": "Central American indigo, the anil of Guatemala, Salvador and Nicaragua, the great export of the Pacific lowlands after 1560.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "pine-pitch",
+      "name": "Pine Pitch",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        20,
+        40
+      ],
+      "note": "Pitch boiled from Nicaraguan pine for the Realejo yards, caulking every hull built on the coast.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "hammocks",
+      "name": "Hammocks",
+      "category": "crafts",
+      "valueBand": 2,
+      "baseValue": [
+        50,
+        95
+      ],
+      "note": "Cotton hammocks woven in Nicaragua and the Cauca, the bed of every Spanish ship’s crew after Columbus saw them in the Indies.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "balsa-wood",
+      "name": "Balsa Wood",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        18,
+        36
+      ],
+      "note": "The feather-light logs of the Guayas and Chocó coast, lashed into the sailing rafts Pizarro’s pilots met in 1526.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "guayaquil-cacao",
+      "name": "Guayaquil Cacao",
+      "category": "drink",
+      "valueBand": 3,
+      "baseValue": [
+        180,
+        340
+      ],
+      "note": "The cheap, plentiful cacao of the Guayas plains, shipped to Acapulco and Peru against the Crown’s own bans from the 1600s.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "toquilla-straw",
+      "name": "Toquilla Straw",
+      "category": "crafts",
+      "valueBand": 2,
+      "baseValue": [
+        45,
+        90
+      ],
+      "note": "Fine palm straw of Montecristi and Jipijapa, plaited into the hats later miscalled Panama, and sold through Guayaquil.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "mangrove-bark",
+      "name": "Mangrove Bark",
+      "category": "dye",
+      "valueBand": 2,
+      "baseValue": [
+        38,
+        72
+      ],
+      "note": "Tannin bark stripped in the Guayas mangroves and shipped to the tanneries of Lima.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "pisco",
+      "name": "Pisco",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        40,
+        72
+      ],
+      "note": "Grape brandy of the Ica valleys, distilled from the 1610s and shipped from the port that named it to every quay of the South Sea.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "goatskins",
+      "name": "Goatskins",
+      "category": "cloth",
+      "valueBand": 2,
+      "baseValue": [
+        50,
+        95
+      ],
+      "note": "The cordobanes of Piura: goat leather tanned on the dry northern coast of Peru and shipped from Paita.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "piura-cotton",
+      "name": "Piura Cotton",
+      "category": "cloth",
+      "valueBand": 2,
+      "baseValue": [
+        50,
+        95
+      ],
+      "note": "The native long-staple cotton of the Piura valleys, spun on the coast since before the Inca and traded up and down the South Sea.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "chuno",
+      "name": "Chuño",
+      "category": "grain",
+      "valueBand": 1,
+      "baseValue": [
+        15,
+        30
+      ],
+      "note": "Freeze-dried potato of the altiplano, the ration that fed Potosí’s mines and came down to the coast with the silver.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "chilean-copper",
+      "name": "Chilean Copper",
+      "category": "metal",
+      "valueBand": 3,
+      "baseValue": [
+        170,
+        310
+      ],
+      "note": "Copper of the Norte Chico, smelted at La Serena and shipped from Coquimbo to cast the bronze guns of Lima and Manila.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "chilean-wine",
+      "name": "Chilean Wine",
+      "category": "drink",
+      "valueBand": 2,
+      "baseValue": [
+        38,
+        68
+      ],
+      "note": "The País grape planted from 1550 in the central valley, shipped north to Peru from the 1600s.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "alerce-timber",
+      "name": "Alerce Timber",
+      "category": "ship-supplies",
+      "valueBand": 2,
+      "baseValue": [
+        60,
+        115
+      ],
+      "note": "The rot-proof cypress of Chiloé and the south, split into boards and shingles and shipped to Lima.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "araucaria-nuts",
+      "name": "Araucaria Nuts",
+      "category": "food",
+      "valueBand": 1,
+      "baseValue": [
+        14,
+        28
+      ],
+      "note": "The piñones of the Araucanian forests, the Mapuche winter staple, bartered across the Biobío frontier.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "andacollo-gold",
+      "name": "Andacollo Gold",
+      "category": "metal",
+      "valueBand": 4,
+      "baseValue": [
+        400,
+        760
+      ],
+      "note": "Placer gold of Andacollo above Coquimbo, washed by Indian and later mestizo miners from the 1540s.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "mules",
+      "name": "Mules",
+      "category": "animals",
+      "valueBand": 3,
+      "baseValue": [
+        150,
+        280
+      ],
+      "note": "The mule trains of Coquimbo and Tucumán, bred for the Potosí road, where every ounce of silver and every jar of wine went up by mule.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.5
+    },
+    {
+      "id": "huon-pine",
+      "name": "Huon Pine",
+      "category": "ship-supplies",
+      "valueBand": 2,
+      "baseValue": [
+        60,
+        115
+      ],
+      "note": "The slow-grown, rot-proof pine of the Tasmanian rivers, cut for boatbuilding from the 1810s.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "sperm-oil",
+      "name": "Sperm Oil",
+      "category": "ship-supplies",
+      "valueBand": 3,
+      "baseValue": [
+        150,
+        280
+      ],
+      "note": "Oil of the sperm whale, hunted from the Derwent and the southern grounds; the finest lamp oil and lubricant of its age.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "wattle-bark",
+      "name": "Wattle Bark",
+      "category": "dye",
+      "valueBand": 2,
+      "baseValue": [
+        40,
+        80
+      ],
+      "note": "Tannin bark of the black wattle, stripped in Van Diemen’s Land for the tanneries of England.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "kangaroo-skins",
+      "name": "Kangaroo Skins",
+      "category": "cloth",
+      "valueBand": 2,
+      "baseValue": [
+        50,
+        95
+      ],
+      "note": "Light, tough hides of the island’s kangaroo, an early export of the Derwent settlement.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
     }
   ]
 }

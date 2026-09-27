@@ -97,6 +97,17 @@ export const RPCS = {
       { name: 'p_good', type: 'uuid' },
     ],
   },
+  // 0086 — what a crew of N costs per voyage-day at sea, for ANY count: the Inn's caption as its
+  // stepper moves. `p_crew` null means the crew aboard now. It is `public.crew_wages`, the sum
+  // `voyage.settle` charges, so the client multiplies nothing (docs/NO_SPAGHETTI.md §1).
+  worldCrewCost: {
+    schema: 'world',
+    fn: 'crew_cost',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_crew', type: 'int' },
+    ],
+  },
   // 0022 — THE BARGAIN. The read and the verb are named here together because they are one feature,
   // and because 0022 grants EXECUTE to `authenticated` on exactly the entry points this catalogue
   // declares (0018's sweep reads it BY NAME). A grant with no row here is a door nobody opens —
@@ -163,6 +174,29 @@ export const RPCS = {
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_lines', type: 'jsonb' },
+      { name: 'p_expected_version', type: 'int' },
+    ],
+  },
+  // 0087 — THE REQUEST BOARD. `world.contracts(p_port)` is a READ with no fleet and no player id:
+  // a request is a fact about a port, and reading it is what winds the board there (the read is
+  // the catch-up). `cmd.preview_fulfil` runs the delivery and rolls it back; `cmd.fulfil` commits
+  // it in one savepoint and takes the fleet's version like trade_basket, so a double-tap delivers
+  // once (E_STALE). Both refuse a fleet that is not yours with cmd.issue's own E_NO_SUCH_FLEET.
+  worldContracts: { schema: 'world', fn: 'contracts', args: [{ name: 'p_port', type: 'uuid' }] },
+  cmdPreviewFulfil: {
+    schema: 'cmd',
+    fn: 'preview_fulfil',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_contract', type: 'uuid' },
+    ],
+  },
+  cmdFulfil: {
+    schema: 'cmd',
+    fn: 'fulfil',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_contract', type: 'uuid' },
       { name: 'p_expected_version', type: 'int' },
     ],
   },

@@ -20,7 +20,7 @@
 // ONE PARSER, ON THE SERVER. `orderText` walks `cmd.verb_schema()` to the exact line; `preview`
 // runs the REAL verb in a subtransaction and rolls it back (F.5); `issue` is the one door.
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { findVerb, isComplete, orderText } from '../../domain/order'
 import { useWorld } from '../../live/worldStore'
 import type { FleetView, Refusal, VerbSpec } from '../../lib/rpc'
@@ -33,7 +33,14 @@ const FALLBACK_REFUSAL: Refusal = {
   source: 'server',
 }
 
-export type StepVerb = 'HIRE' | 'REPAIR' | 'PROVISION'
+/** ONE frozen empty map, so a caller that derives nothing does not hand a fresh literal per render. */
+const NOTHING_GIVEN: Record<string, string> = Object.freeze({})
+
+// DISMISS joined 2026-09-13 (0086, owner row 85). It is HIRE said in the other direction — the
+// same `count` argument, the same door — so the Inn runs ONE instance of this hook and hands it
+// whichever verb the stepper's direction names; the `count` it set for one is the count the other
+// sends, because the argument is the same argument.
+export type StepVerb = 'HIRE' | 'DISMISS' | 'REPAIR' | 'PROVISION'
 
 export interface StepOrder {
   /** The served grammar for this verb; undefined until the snapshot has it. */
@@ -56,6 +63,10 @@ export function useStepOrder(
   open: boolean,
   /** Called once the order is issued: the caller closes its tray. */
   onDone: () => void,
+  /** Arguments the caller DERIVES rather than asks for — the Inn's `count`, which is the distance
+   *  its stepper moved from the crew aboard. Merged over the stored ones on every render, so they
+   *  are never copied into state and never go stale against what they were derived from. */
+  given: Record<string, string> = NOTHING_GIVEN,
 ): StepOrder {
   // A selector returns a SERVED reference, never a fresh literal (React #185 — worldStore rule).
   const verbs = useWorld((s) => s.snapshot?.verbs)
@@ -63,17 +74,26 @@ export function useStepOrder(
   const preview = useWorld((s) => s.preview)
   const issue = useWorld((s) => s.issue)
 
-  const [args, setArgs] = useState<Record<string, string>>({})
+  const [stored, setArgs] = useState<Record<string, string>>({})
+  // What the caller derived wins over what was asked for, and is never stored: `given` is
+  // recomputed by the caller every render from the thing it follows.
+  const args = given === NOTHING_GIVEN ? stored : { ...stored, ...given }
   const [checked, setChecked] = useState<{ text: string; state: CheckState } | null>(null)
   const [issuing, setIssuing] = useState(false)
 
-  const setArg = (name: string, value: string | null) =>
-    setArgs((s) => {
-      const next = { ...s }
-      if (value === null || value === '') delete next[name]
-      else next[name] = value
-      return next
-    })
+  // STABLE, so a caller may name it in an effect's dependencies: the Inn derives `count` from its
+  // stepper and writes it here as the stepper moves (PortInn.tsx), and an identity that changed
+  // every render would re-arm that effect every render.
+  const setArg = useCallback(
+    (name: string, value: string | null) =>
+      setArgs((s) => {
+        const next = { ...s }
+        if (value === null || value === '') delete next[name]
+        else next[name] = value
+        return next
+      }),
+    [],
+  )
 
   const spec = findVerb(verbs ?? [], verb)
   const text = spec ? orderText(spec, args, fleet.name) : ''

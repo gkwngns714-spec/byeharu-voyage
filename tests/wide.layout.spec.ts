@@ -79,7 +79,7 @@ test.describe('wide glass', () => {
       }),
     )
     await page.evaluate(() => {
-      const cell = [...document.querySelectorAll('button')].find((b) => /^buy\b/i.test((b.innerText || '').trim()))
+      const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) => /^buy\b/i.test(((b as HTMLElement).innerText || '').trim()))
       ;(cell as HTMLButtonElement | undefined)?.click()
     })
     await page.waitForTimeout(900)
@@ -193,6 +193,66 @@ test.describe('wide glass', () => {
     await expect(basket.locator('[data-testid="cargo-bar"] [data-bar-pending]')).toHaveCount(1)
     // The goods column has not moved through any of it.
     expect(await offsets()).toEqual(before)
+  })
+
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  // THE REQUEST BOARD ON A WIDE GLASS (owner row 76, slice 4, 2026-09-14; migration 0087). The
+  // third face of the trade board lists rows in the same 48rem column the ledger uses, and the
+  // right-hand slot keeps the basket standing while the board is read — a face turn is a SELECT,
+  // it moves nothing above the board and docks nothing new. (A live fulfil press — the tray in
+  // the same slot — is proven in rpc.surface and 0087; the fixture fleet carries none of what
+  // its port asks for, by the rule.)
+  // ═════════════════════════════════════════════════════════════════════════════════════════════
+  test(`PORT › Requests at ${WIDE.width}px: the board's rows sit in the column, and the basket keeps the slot`, async ({
+    page,
+    request,
+    baseURL,
+  }) => {
+    test.setTimeout(420_000)
+    test.skip(
+      !(await reachable(request, baseURL ?? '')),
+      `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+    )
+    await page.goto('port')
+    await ready(page)
+    await page.getByRole('tab', { name: /^Trade/i }).first().click()
+    await page.waitForTimeout(400)
+
+    const remPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
+    const faces = page.getByRole('tablist', { name: 'Trade faces' })
+    await expect(faces).toBeVisible()
+    const facesBox = (await faces.boundingBox())!
+    const basket = page.locator('[data-testid="basket-panel"]')
+    await expect(basket).toBeVisible()
+    const basketBox = (await basket.boundingBox())!
+
+    await faces.getByRole('tab', { name: /^Requests$/ }).click()
+    const rows = page.locator('[data-testid="request-row"]')
+    await expect(rows.first(), 'no request rows on the wide glass').toBeVisible({ timeout: 30_000 })
+    await page.waitForTimeout(600)
+
+    // 1. THE COLUMN: every row no wider than SHEET_REM, and inside the strip's own x range.
+    const boxes = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-testid="request-row"]')].map((r) => {
+        const b = r.getBoundingClientRect()
+        return { left: Math.round(b.left), width: Math.round(b.width) }
+      }),
+    )
+    for (const b of boxes) {
+      expect(b.width, `a request row is ${b.width}px wide — the column cap is not applied`).toBeLessThanOrEqual(SHEET_REM * remPx + 1)
+      expect(Math.abs(b.left - Math.round(facesBox.x)), 'a request row does not share the column\'s left edge').toBeLessThanOrEqual(1)
+    }
+    // 2. THE STRIP DID NOT MOVE, and the basket still stands in the slot where it stood.
+    expect((await faces.boundingBox())!, 'turning to Requests moved the faces strip').toEqual(facesBox)
+    await expect(basket).toBeVisible()
+    const stillBox = (await basket.boundingBox())!
+    expect(Math.abs(stillBox.x - basketBox.x)).toBeLessThanOrEqual(1)
+    expect(Math.abs(stillBox.width - basketBox.width)).toBeLessThanOrEqual(1)
+    // 3. The board's rows never reach into the slot.
+    for (const b of boxes) {
+      expect(b.left + b.width, 'a request row reaches into the tray\'s slot').toBeLessThanOrEqual(Math.round(basketBox.x))
+    }
+    await expect(page.locator('[data-testid="fulfil-tray"]')).toHaveCount(0)
   })
 
   // ═════════════════════════════════════════════════════════════════════════════════════════════

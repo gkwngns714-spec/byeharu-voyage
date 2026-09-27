@@ -49,8 +49,8 @@
     { "id": "south-america-atlantic", "name": "South America, Atlantic Coast", "parentSea": "south-atlantic",
       "blurb": "Brazil's sugar captaincies and dyewood coast, and the Rio de la Plata's contraband road to Potosi." },
     { "id": "pacific-americas", "name": "Pacific Americas", "parentSea": "south-pacific",
-      "blurb": "Callao, Panama and Acapulco: the Peruvian silver route and the American end of the Manila galleon." },
+      "blurb": "The whole Pacific seaboard from the Bay of San Francisco to the Bay of Concepción: the Peruvian silver road from Arica and Callao to Panama, the yards of Guayaquil and Realejo, and the American end of the Manila galleon at Acapulco." },
     { "id": "oceania", "name": "Oceania & the Far Pacific", "parentSea": "south-pacific",
-      "blurb": "The sandalwood islands of Timor, the galleon waypoint at Guam, and the still-uncharted southern continent." }
+      "blurb": "The sandalwood islands of Timor, the galleon waypoint at Guam, Hawaii, and the two harbours of the southern continent at Port Jackson and the Derwent." }
   ]
 }

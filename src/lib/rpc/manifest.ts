@@ -13,7 +13,7 @@
 // magnitude) or null (a basis, a profit — where null is a meaning), and that is the whole rule.
 
 import { num, str } from '../json'
-import type { ManifestReceipt, ManifestReceiptLine } from './types'
+import type { ManifestReceipt, ManifestReceiptLine, ReceiptContract } from './types'
 
 type Obj = Record<string, unknown>
 
@@ -52,6 +52,22 @@ export function lineDelta(line: Pick<ManifestReceiptLine, 'side' | 'total'>): nu
   return line.side === 'sell' ? line.total : -line.total
 }
 
+/** 0087 — the request a delivery met, or undefined on a basket's receipt. */
+function readContract(raw: unknown): ReceiptContract | undefined {
+  const c = obj(raw)
+  if (!c) return undefined
+  return {
+    id: str(c, 'id') ?? '',
+    good: str(c, 'good') ?? '',
+    name: str(c, 'name') ?? '',
+    qty: n0(c, 'qty'),
+    premium_pct: n0(c, 'premium_pct'),
+    premium_per_unit: n0(c, 'premium_per_unit'),
+    premium: n0(c, 'premium'),
+    expires_day: n0(c, 'expires_day'),
+  }
+}
+
 /** The served receipt (a preview's `estimate` or a commit's whole payload), numerics normalised. */
 export function readManifestReceipt(payload: unknown): ManifestReceipt {
   const r = obj(payload)
@@ -60,9 +76,11 @@ export function readManifestReceipt(payload: unknown): ManifestReceipt {
   const hold = obj(r?.hold)
   const trading = obj(r?.trading)
   const version = num(r, 'version')
+  const contract = readContract(r?.contract)
   return {
     ok: true,
-    kind: 'manifest',
+    // 0087: a delivery is 0083's receipt with `kind: 'fulfil'`; anything else reads as a basket.
+    kind: str(r, 'kind') === 'fulfil' ? 'fulfil' : 'manifest',
     port: str(r, 'port') ?? '',
     fleet: str(r, 'fleet') ?? '',
     game_day: n0(r, 'game_day'),
@@ -76,8 +94,10 @@ export function readManifestReceipt(payload: unknown): ManifestReceipt {
       profit: num(totals, 'profit'),
       bought: n0(totals, 'bought'),
       sold: n0(totals, 'sold'),
+      premium: n0(totals, 'premium'),
       net: n0(totals, 'net'),
     },
+    ...(contract !== undefined ? { contract } : {}),
     purse: { before: n0(purse, 'before'), after: n0(purse, 'after') },
     hold: {
       free_before: n0(hold, 'free_before'),

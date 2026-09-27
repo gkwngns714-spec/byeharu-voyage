@@ -36,6 +36,7 @@ import type {
   BuyCapacity,
   CancelResult,
   ClearResult,
+  CrewCost,
   DivertResult,
   FleetView,
   FoundedHouse,
@@ -57,6 +58,7 @@ import type {
   PreviewResult,
   PriceHistory,
   ProvisionPresetBook,
+  RequestBoard,
   SkillBook,
   StandingsBoard,
   BuffsView,
@@ -143,6 +145,18 @@ export function worldWorkstation(
  */
 export function worldBuyCapacity(fleetId: string, goodId: string): Promise<RpcResult<BuyCapacity>> {
   return call<BuyCapacity>('worldBuyCapacity', [fleetId, goodId])
+}
+
+/**
+ * WHAT A CREW OF N COSTS PER DAY AT SEA (0086) — `{crew, per_day, per_day_short_rations}`, for
+ * any count, from `public.crew_wages`: the same sum `voyage.settle` charges on every settled
+ * voyage-day. Wages are charged at sea only; in port nothing is charged, and this read says
+ * what the next day at sea will.
+ *
+ * @param crew the count to price, or null for the crew aboard now.
+ */
+export function worldCrewCost(fleetId: string, crew: number | null = null): Promise<RpcResult<CrewCost>> {
+  return call<CrewCost>('worldCrewCost', [fleetId, crew])
 }
 
 /**
@@ -270,6 +284,42 @@ export async function cmdTradeBasket(
   expectedVersion: number | null = null,
 ): Promise<RpcResult<ManifestReceipt>> {
   const r = await call<unknown>('cmdTradeBasket', [fleetId, lines, expectedVersion])
+  return r.ok ? ok(readManifestReceipt(r.value)) : r
+}
+
+/**
+ * THE REQUEST BOARD of one harbour (0087): its open requests — the good, the whole lot, the
+ * premium per unit and for the lot, when it closes. Reading it WINDS the board there (the read is
+ * the catch-up), so a face that shows requests is also what makes them exist on that port.
+ *
+ * @param portId `SnapshotPort.id` — a uuid, NOT the three-letter code.
+ */
+export function worldContracts(portId: string): Promise<RpcResult<RequestBoard>> {
+  return call<RequestBoard>('worldContracts', [portId])
+}
+
+/**
+ * A DELIVERY'S DRY RUN (0087): the sale through the real verb and the premium, rolled back. The
+ * estimate is 0083's receipt with the premium on it — what `cmdFulfil` would do, because it is
+ * what the server just did. A refusal (E_CONTRACT_SHORT with have / need in units,
+ * E_CONTRACT_EXPIRED, …) arrives typed.
+ */
+export async function cmdPreviewFulfil(fleetId: string, contractId: string): Promise<RpcResult<ManifestPreview>> {
+  const r = await call<{ estimate: unknown }>('cmdPreviewFulfil', [fleetId, contractId])
+  return r.ok ? ok<ManifestPreview>({ ok: true, estimate: readManifestReceipt(r.value.estimate) }) : r
+}
+
+/**
+ * THE DELIVERY, COMMITTED (0087): the whole lot sold at the port's bid and the premium paid as its
+ * own ledger movement, inside ONE savepoint — both land or neither does. Takes the fleet's
+ * `version` as `cmdIssue` does: a stale one is `E_STALE`, so a double-tap delivers once.
+ */
+export async function cmdFulfil(
+  fleetId: string,
+  contractId: string,
+  expectedVersion: number | null = null,
+): Promise<RpcResult<ManifestReceipt>> {
+  const r = await call<unknown>('cmdFulfil', [fleetId, contractId, expectedVersion])
   return r.ok ? ok(readManifestReceipt(r.value)) : r
 }
 

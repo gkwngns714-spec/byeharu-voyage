@@ -26,10 +26,12 @@ import {
   cmdCancel,
   cmdClear,
   cmdFoundHouse,
+  cmdFulfil,
   cmdHaggle,
   cmdIssue,
   cmdPreview,
   cmdPreviewBasket,
+  cmdPreviewFulfil,
   cmdTradeBasket,
   cmdVerbSchema,
   createLocalBackend,
@@ -40,6 +42,8 @@ import {
   rpcLabel,
   setBackend,
   worldBuyCapacity,
+  worldContracts,
+  worldCrewCost,
   worldFleets,
   worldHaggleState,
   worldLedger,
@@ -85,7 +89,8 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   expect('legs' in snap).toBe(false)
   expect(snap.goods.length).toBeGreaterThan(20)
   expect(snap.ship_classes).toHaveLength(3)
-  expect(snap.verbs).toHaveLength(14)
+  // Pin moved deliberately 2026-09-13 with migration 0086: DISMISS is the fifteenth verb.
+  expect(snap.verbs).toHaveLength(15)
 
   const lisboa = snap.ports.find((p) => p.code === 'LIS')
   expect(lisboa).toBeDefined()
@@ -460,18 +465,95 @@ test('world.ledger() pages, reconciles, and carries the purse', async () => {
   expect(capped.events).toHaveLength(1)
 })
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE CREW, HIRED AND LET GO, AND WHAT THEY COST PER DAY — migration 0086 (owner row 85)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// Three claims the Inn's face stands on, each read off the real chain: HIRE n raises the crew by
+// n and writes a HIRED event; DISMISS n lowers it by n, writes a DISMISSED event and moves NO
+// money; one below the complement is refused E_CREW_REQUIRED with the two figures. And the
+// caption's figure: `world.crew_cost(fleet, n)` is one sum that never falls as n rises, and for
+// the crew aboard it equals the tick's own arithmetic — `crew × wage_per_crew_day` on full
+// rations, read from the served knob (0027:300-302, folded into public.crew_wages by 0086).
+// The migration's own self-assert settles a REAL voyage-day and matches the WAGES row to the
+// quote; this spec reads the wire. The fleet ends where it began (crew = complement) so the
+// tests below it see the ship they expect.
+test('HIRE and DISMISS move the crew through the one door, and world.crew_cost() is the tick\'s sum', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  const config = expectOk(await worldSnapshot()).config
+  const crew0 = fleet.ships.reduce((n, s) => n + s.crew, 0)
+  const required = fleet.ships.reduce((n, s) => n + s.crew_required, 0)
+  const max = fleet.ships.reduce((n, s) => n + s.crew_max, 0)
+  expect(crew0).toBe(required) // a new hull sails at its complement — the precondition, stated
+  expect(max - required).toBeGreaterThanOrEqual(2)
+  const purse0 = expectOk(await worldLedger()).ducats
+  if (typeof purse0 !== 'number') throw new Error('the ledger served no purse; nothing below could measure a price')
+
+  // THE CAPTION'S FIGURE, for the crew aboard: the tick's arithmetic, within a ducat of rounding.
+  const now = expectOk(await worldCrewCost(fleet.id))
+  expect(now.crew).toBe(crew0)
+  expect(Math.abs(now.per_day - crew0 * config.wage_per_crew_day)).toBeLessThanOrEqual(1)
+  expect(now.per_day_short_rations).toBeGreaterThanOrEqual(now.per_day)
+  // …and for ANY count: monotone in n, never a fabricated figure.
+  let prev = -1
+  for (let n = 0; n <= max; n += 1) {
+    const c = expectOk(await worldCrewCost(fleet.id, n))
+    expect(c.crew).toBe(n)
+    expect(c.per_day).toBeGreaterThanOrEqual(prev)
+    expect(Math.abs(c.per_day - n * config.wage_per_crew_day)).toBeLessThanOrEqual(1)
+    prev = c.per_day
+  }
+
+  // HIRE 2: crew +2, a HIRED event of 2, the purse down (the price is the server's).
+  const hired = expectOk(await cmdIssue(fleet.id, 'HIRE 2', fleet.version))
+  expect(hired.order.status).toBe('done')
+  expect(hired.order.result).toMatchObject({ hired: 2 })
+  const afterHire = expectOk(await worldFleets())[0]
+  expect(afterHire.ships.reduce((n, s) => n + s.crew, 0)).toBe(crew0 + 2)
+  const ledgerAfterHire = expectOk(await worldLedger())
+  expect(ledgerAfterHire.events.find((e) => e.kind === 'HIRED')?.payload).toMatchObject({ count: 2 })
+  expect(ledgerAfterHire.ducats).toBeLessThan(purse0)
+
+  // DISMISS 1: crew −1, a DISMISSED event of 1, and NOT ONE DUCAT back.
+  const dismissed = expectOk(await cmdIssue(fleet.id, 'DISMISS 1', afterHire.version))
+  expect(dismissed.order.status).toBe('done')
+  expect(dismissed.order.result).toMatchObject({ dismissed: 1, crew: crew0 + 1 })
+  const afterDismiss = expectOk(await worldFleets())[0]
+  expect(afterDismiss.ships.reduce((n, s) => n + s.crew, 0)).toBe(crew0 + 1)
+  const ledgerAfterDismiss = expectOk(await worldLedger())
+  expect(ledgerAfterDismiss.events.find((e) => e.kind === 'DISMISSED')?.payload).toMatchObject({ count: 1, crew: crew0 + 1 })
+  expect(ledgerAfterDismiss.ducats).toBe(ledgerAfterHire.ducats)
+
+  // ONE BELOW THE COMPLEMENT IS REFUSED, in the server's code, with the two figures.
+  const refused = await cmdIssue(fleet.id, 'DISMISS 2', afterDismiss.version)
+  expect(refused.ok).toBe(false)
+  if (refused.ok) throw new Error('unreachable')
+  expect(refused.refusal.code).toBe('E_CREW_REQUIRED')
+  expect(refused.refusal.figures).toMatchObject({ have: 1, need: 2, unit: 'crew' })
+  // A failed order HALTS the queue (F.3): clear it, or the next test's orders would sit pending.
+  expectOk(await cmdClear(fleet.id))
+
+  // Back to the complement, so the ship the tests below expect is the ship they get.
+  const home = expectOk(await worldFleets())[0]
+  expectOk(await cmdIssue(fleet.id, 'DISMISS 1', home.version))
+  expect(expectOk(await worldFleets())[0].ships.reduce((n, s) => n + s.crew, 0)).toBe(crew0)
+})
+
 // ── the commands ───────────────────────────────────────────────────────────────────────────────
 
-test('cmd.verb_schema() serves the fourteen verbs, argument by argument', async () => {
+test('cmd.verb_schema() serves the fifteen verbs, argument by argument', async () => {
   const verbs = expectOk(await cmdVerbSchema())
   // 0068 added MAKE, and it sits beside REPAIR deliberately: both are things done ashore at a
   // building this city may or may not keep. The ORDER is the order the strip reads.
+  // Pin moved deliberately 2026-09-13 with migration 0086: DISMISS sits right after HIRE, with
+  // HIRE's own two arguments — the same sentence in the other direction.
   expect(verbs.map((v) => v.verb)).toEqual([
     'SAIL',
     'BUY',
     'SELL',
     'PROVISION',
     'HIRE',
+    'DISMISS',
     'MAKE',
     'STORE',
     'TAKE',
@@ -715,6 +797,129 @@ test('cmd.trade_basket() lands a mixed manifest atomically, and the receipt IS t
   const clean = fleetCargoByCode(expectOk(await worldFleets())[0])
   expect(clean[subject.code] ?? 0).toBe(0)
   expect(clean[other.code] ?? 0).toBe(0)
+})
+
+// ── the request board (migration 0087) ─────────────────────────────────────────────────────────
+//
+// A PORT ASKS FOR WHAT IT DOES NOT SELL. Reading the board is what winds it (the read is the
+// catch-up), so the first `world.contracts` on a fresh world IS "a request exists after a day
+// tick": the window's worth of requests appears, none for a good the port offers. The delivery is
+// proven through the doors a browser holds: the dry run refuses a lot not all on board with
+// have / need in UNITS and moves nothing; with the whole lot aboard it serves the board's own
+// premium; the commit pays the sale AND the premium — the premium as its own ledger row on a
+// FULFILLED event — and the receipt's net is the purse's movement; the request leaves the board
+// and a second delivery is E_CONTRACT_DONE; a passed request is E_CONTRACT_EXPIRED.
+//
+// THE PRECONDITION THIS TEST OWNS: the requested good is, by the rule, not sold here, so the only
+// way to carry it at this quay is to have brought it — the lot is put aboard through the server's
+// own mover (`public.fleet_load`), as 0087's self-assert does, with no cost basis (profit null).
+// DOCKED is the other precondition, stated: this runs before the fleet goes to sea.
+test('world.contracts() posts requests for goods a port does not sell, and cmd.fulfil delivers one with the premium as its own ledger row', async () => {
+  const fleet = expectOk(await worldFleets())[0]
+  expect(fleet.status).toBe('DOCKED')
+  const snap = expectOk(await worldSnapshot())
+  const port = snap.ports.find((p) => p.code === fleet.port)!
+  const market = expectOk(await worldMarket(port.id))
+
+  // (1) THE BOARD, wound by the read. Every field TradeRequest declares, off a real payload.
+  const board = expectOk(await worldContracts(port.id))
+  expect(board.port).toBe(port.code)
+  expect(isNum(board.game_day) && isNum(board.deadline_days)).toBe(true)
+  expect(board.deadline_days).toBeGreaterThan(0)
+  expect(board.contracts.length, 'a fresh port posted no request — the wind did not run').toBeGreaterThan(0)
+  expect(board.contracts.length).toBeLessThanOrEqual(board.deadline_days * 3)
+  const offeredHere = new Set(market.goods.filter((g) => g.offered !== false).map((g) => g.code))
+  for (const r of board.contracts) {
+    expect(isStr(r.id) && isStr(r.good) && isStr(r.name) && isStr(r.category)).toBe(true)
+    expect(isNum(r.bulk) && r.bulk > 0).toBe(true)
+    expect(r.qty).toBeGreaterThan(0)
+    expect(r.premium_pct).toBeGreaterThan(0)
+    expect(r.premium_per_unit).toBeGreaterThan(0)
+    expect(r.premium_ducats).toBeGreaterThan(0)
+    expect(r.mid_at_post).toBeGreaterThan(0)
+    expect(r.expires_day).toBeGreaterThan(r.posted_day)
+    expect(r.days_left).toBe(r.expires_day - board.game_day)
+    expect(r.days_left).toBeGreaterThanOrEqual(1)
+    expect(Date.parse(r.expires_at)).toBeGreaterThan(Date.now())
+    // NEVER a good this port sells — the rule that keeps a request from being an arbitrage on
+    // one quay (0087's header).
+    expect(offeredHere.has(r.good), `${r.good} is on this port's roster AND on its board`).toBe(false)
+  }
+
+  // (2) THE SUBJECT: the request that takes the least room, and it must fit a fresh hold.
+  const req = [...board.contracts].sort((a, b) => a.qty * a.bulk - b.qty * b.bulk)[0]
+  expect(req.qty * req.bulk).toBeLessThanOrEqual(fleet.free_hold)
+
+  // (3) TOO LITTLE CARGO: refused with the two figures in units, and the purse did not move.
+  const purse0 = expectOk(await worldLedger()).ducats!
+  const short = await cmdPreviewFulfil(fleet.id, req.id)
+  expect(short.ok).toBe(false)
+  if (short.ok) throw new Error('unreachable')
+  expect(short.refusal.code).toBe('E_CONTRACT_SHORT')
+  expect(short.refusal.source).toBe('server')
+  expect(short.refusal.figures).toEqual({ have: 0, need: req.qty, unit: 'units' })
+  expect(short.refusal.line).toBeUndefined()
+  expect(expectOk(await worldLedger()).ducats).toBe(purse0)
+
+  // (4) THE WHOLE LOT ABOARD: the dry run moves nothing and serves the board's own premium.
+  await db.pg.query('select public.fleet_load($1::uuid, $2::text, $3::numeric)', [fleet.id, req.good, req.qty])
+  expect(fleetCargoByCode(expectOk(await worldFleets())[0])[req.good]).toBe(req.qty)
+  const est = expectOk(await cmdPreviewFulfil(fleet.id, req.id)).estimate
+  expect(est.kind).toBe('fulfil')
+  expect(est.contract?.id).toBe(req.id)
+  expect(est.contract?.good).toBe(req.good)
+  expect(est.lines).toHaveLength(1)
+  expect(est.lines[0].side).toBe('sell')
+  expect(est.lines[0].qty).toBe(req.qty)
+  expect(isNum(est.lines[0].total) && est.lines[0].total > 0).toBe(true)
+  expect(est.totals.premium).toBe(req.premium_ducats)
+  expect(est.totals.net).toBe(est.totals.sold + est.totals.premium)
+  expect(est.purse.after - est.purse.before).toBe(est.totals.net)
+  expect(est.hold.tuns_delta).toBeLessThan(0) // she lightens
+  expect(expectOk(await worldLedger()).ducats).toBe(purse0) // the dry run really was dry
+
+  // (5) THE DELIVERY LANDS: the version bumps once, the purse moves by net, the ledger carries the
+  //     premium as its OWN row on a FULFILLED event, the request leaves the board, the cargo is gone.
+  const fresh = expectOk(await worldFleets())[0]
+  const landed = expectOk(await cmdFulfil(fresh.id, req.id, fresh.version))
+  expect(landed.kind).toBe('fulfil')
+  expect(landed.version).toBe(fresh.version + 1)
+  expect(landed.totals.premium).toBe(req.premium_ducats)
+  expect(landed.totals.net).toBe(landed.totals.sold + req.premium_ducats)
+  expect(landed.purse.before).toBe(purse0)
+  expect(landed.purse.after - landed.purse.before).toBe(landed.totals.net)
+  const ledger = expectOk(await worldLedger())
+  expect(ledger.ducats).toBe(landed.purse.after)
+  const paid = ledger.events.find((e) => e.kind === 'FULFILLED')
+  expect(paid, 'no FULFILLED event on the ledger').toBeDefined()
+  expect(paid!.ducats_delta).toBe(req.premium_ducats)
+  expect(paid!.payload).toMatchObject({ port: port.code, premium: req.premium_ducats, qty: req.qty })
+  const sold = ledger.events.find((e) => e.kind === 'SOLD' && e.at === paid!.at)
+  expect(sold, 'the sale is not on the ledger beside the premium').toBeDefined()
+  expect(sold!.ducats_delta).toBe(landed.totals.sold)
+  expect(expectOk(await worldContracts(port.id)).contracts.find((r) => r.id === req.id)).toBeUndefined()
+  expect(fleetCargoByCode(expectOk(await worldFleets())[0])[req.good] ?? 0).toBe(0)
+
+  // (6) THE REFUSALS: the same request again is done; a passed one is expired; a fleet that is
+  //     not yours is cmd.issue's own E_NO_SUCH_FLEET. None moves the purse.
+  const again = await cmdFulfil(fresh.id, req.id, landed.version)
+  expect(again.ok).toBe(false)
+  if (again.ok) throw new Error('unreachable')
+  expect(again.refusal.code).toBe('E_CONTRACT_DONE')
+  const other = board.contracts.find((r) => r.id !== req.id)
+  if (other) {
+    await db.pg.query("update public.trade_contracts set status = 'expired' where id = $1", [other.id])
+    const expired = await cmdPreviewFulfil(fresh.id, other.id)
+    expect(expired.ok).toBe(false)
+    if (expired.ok) throw new Error('unreachable')
+    expect(expired.refusal.code).toBe('E_CONTRACT_EXPIRED')
+    await db.pg.query("update public.trade_contracts set status = 'open' where id = $1", [other.id])
+  }
+  const notMine = await cmdPreviewFulfil('00000000-0000-4000-8000-0000000000ff', req.id)
+  expect(notMine.ok).toBe(false)
+  if (notMine.ok) throw new Error('unreachable')
+  expect(notMine.refusal.code).toBe('E_NO_SUCH_FLEET')
+  expect(expectOk(await worldLedger()).ducats).toBe(landed.purse.after)
 })
 
 test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', async () => {
@@ -1137,7 +1342,20 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // door nobody opens. Neither takes a player id; both refuse a fleet that is not yours with
       // cmd.issue's own E_NO_SUCH_FLEET.
       'cmdPreviewBasket', 'cmdTradeBasket',
+      // Pin moved deliberately 2026-09-14 with migration 0087 (a port asks for what it does not
+      // sell): the request board — `world.contracts(p_port)`, a READ with no fleet and no player
+      // id that also WINDS the board on that port (the read is the catch-up) — and the delivery's
+      // two doors, `cmd.preview_fulfil` / `cmd.fulfil`, quay verbs like the basket's: client-direct,
+      // no orders row, a fleet that is not yours refused with E_NO_SUCH_FLEET. Landed WITH the face
+      // that reads them (PORT › Trade › Requests), never as a door nobody opens.
+      'worldContracts', 'cmdPreviewFulfil', 'cmdFulfil',
       'worldBuyCapacity', 'worldFleets', 'worldLedger', 'worldMarket', 'worldSnapshot',
+      // Pin moved deliberately 2026-09-13 with migration 0086 (crew are let go in port, and the
+      // wage is one sum): `world.crew_cost(p_fleet, p_crew)` — a READ, no player id (a fleet
+      // that is not yours is E_NOT_YOURS), what a crew of N costs per voyage-day at sea from the
+      // SAME function voyage.settle charges. It lands WITH the face that reads it (the Inn's
+      // caption), and the verb it pairs with — DISMISS — is a row of the grammar, not a door here.
+      'worldCrewCost',
       // 0019's `worldTradeRoutes` was REMOVED 2026-09-02 with 0071. It ranked every port in reach
       // by what it would pay for what is on this quay — the same comparison as the nearby index,
       // and the same answer the owner asked the game to stop giving (DESIGN_V1 §13, decision 3:

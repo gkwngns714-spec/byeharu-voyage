@@ -1,4 +1,4 @@
-import { formatInt, formatMiles, formatPctPoints, formatUnitPrice } from '../../lib/format'
+import { formatDucats, formatInt, formatMiles, formatPctPoints, formatUnitPrice } from '../../lib/format'
 import { parsePointToken, pointLabel } from '../../domain/passage'
 // THE ONE READER OF A JSONB FIELD (2026-08-23). `num`/`str` were declared here AND in
 // features/command/PreviewPanel.tsx, and they had already drifted; docs/NO_SPAGHETTI.md §2 listed
@@ -122,6 +122,15 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
         urgent ? ', at the urgent rate' : ''
       }.`
     }
+    case 'DISMISSED': {
+      // 0086: crew let go in port. No money moved, so there is no movement beside this line;
+      // `crew` is what stays aboard, served on the event so nothing is subtracted here.
+      const count = num(p, 'count')
+      const crew = num(p, 'crew')
+      return `${count === null ? 'Crew' : `${formatQty(count)} crew`} dismissed from ${fleet}${
+        crew === null ? '' : ` — ${formatQty(crew)} crew stay on board`
+      }.`
+    }
     case 'REPAIRING': {
       const points = num(p, 'points')
       return `${fleet} is being repaired${points === null ? '' : ` — ${Math.round(points)} hull points`}.`
@@ -153,6 +162,17 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     }
     case 'WAGES':
       return `Wages paid to ${fleet}.`
+    // 0087: a request met. The SOLD event beside it says what the sale paid; this line says what
+    // the request paid over it, from the payload's own `premium` — never re-derived here.
+    case 'FULFILLED': {
+      const qty = num(p, 'qty')
+      const good = str(p, 'good') ?? 'cargo'
+      const port = str(p, 'port')
+      const premium = num(p, 'premium')
+      return `${fleet} delivered ${qty === null ? 'some' : formatQty(qty)} ${good} on ${port ? `${portName(port)}'s` : 'the'} request${
+        premium === null ? '' : ` — ${formatDucats(premium)} premium`
+      }.`
+    }
     default: {
       const named = str(p, 'fleet')
       const what = kindWords(event.kind)
