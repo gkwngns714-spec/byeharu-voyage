@@ -84,10 +84,18 @@ let db
 try {
   const chain = await applyChain({ quiet: true })
   db = chain.db
-  console.log(
-    `chain: ${chain.applied.length} migration(s) applied, ` +
-      `${selfAssertReceipts(chain.notices)} self-assert receipt(s)`,
-  )
+  const receipts = selfAssertReceipts(chain.notices)
+  console.log(`chain: ${chain.applied.length} migration(s) applied, ${receipts} self-assert receipt(s)`)
+  // The SAME non-vacuity floor `npm run db:apply` enforces (apply-chain.mjs): every migration
+  // must print its "self-assert ok:" receipt. Enforced HERE too since 2026-09-27, so this one run
+  // is a complete gate on its own and CI no longer applies the whole chain twice (pglite-gate hit
+  // its 30-minute ceiling on the 0086-0091 deploy branch doing exactly that — see the workflow).
+  if (receipts < chain.applied.length) {
+    throw new Error(
+      `FAIL: ${chain.applied.length} migration(s) applied but only ${receipts} printed a ` +
+        `"self-assert ok:" receipt. Every migration must prove itself out loud.`,
+    )
+  }
   // The same world guard `npm run db:apply` runs: the applied world must EQUAL data/*.json
   // before any proof is allowed to certify anything about it (scripts/db/world-guard.mjs,
   // 2026-08-24 — the day 0003 turned out to have been edited after production applied it).

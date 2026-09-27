@@ -33,6 +33,14 @@ which 0086/0087 touch. `npm run db:apply`: 84 files, 84 receipts; world-guard 23
   `N d. premium` and now uses `formatDucats`; `docs/WORDS.md`'s request examples and the layout
   specs that matched `d.` (the Inn wages, the fulfil cells) read `🪙`.
 
+**CI's pglite-gate hit its 30-minute ceiling — green, not red.** Every receipt and marker it
+reached passed; it was CANCELLED inside proof 05 (PR #83 alone had been cancelled the same way
+three times). The job applied the chain twice: `npm run db:apply`, then `npm run db:proof`, which
+applies it again from nothing. Main at 0085 already took 27 of its 30 minutes. Per the workflow's
+own ruling (*a faster gate, not a bigger number*): `proof.mjs` now enforces the receipts floor
+`db:apply` enforced (it already ran the world guard), and the workflow's separate apply step is
+gone — the chain is applied once, and nothing is checked less.
+
 **Production must receive `supabase db push` (0086-0091) BEFORE this PR merges.**
 
 ## 2026-09-18 — a dot is a city, and a region's name stands at its centre (rows 104, 105 — client only)

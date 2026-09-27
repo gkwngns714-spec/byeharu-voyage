@@ -98,14 +98,21 @@ jobs:
       - name: Migration versions are unique
         run: npm run db:check-versions
 
-      # Every migration applies in order AND prints its own self-assert receipt.
-      - name: Apply the whole chain to PGlite (real PostgreSQL 18, no Docker)
-        run: npm run db:apply
-
-      # Offline equivalence · ledger reconciliation · grant lockdown · the K.1 first session.
-      # Fails if any declared PASS marker is missing, if a proof declares none, or if a proof
-      # leaves committed rows behind.
-      - name: Run every proof (declared PASS markers must all appear)
+      # ONE APPLY, NOT TWO (2026-09-27). This job used to run `npm run db:apply` and then
+      # `npm run db:proof` — but proof.mjs applies the whole chain itself (a fresh PGlite), runs
+      # the same world guard, and now enforces the same every-migration-prints-its-receipt floor.
+      # The separate apply step was the chain applied TWICE, ~7 minutes of pure duplication, and
+      # on the 0086-0091 deploy branch (84 files, 238 harbours, 555 goods) it pushed the job past
+      # its 30-minute ceiling while every receipt and every marker it had reached was green —
+      # cancelled during proof 05 with no assertion failure. Per the ruling above: a faster gate,
+      # not a bigger number. Nothing is checked less: the apply, the receipts floor and the world
+      # guard all run inside the step below, and a failure in any of them fails it.
+      #
+      # Every migration applies in order AND prints its own self-assert receipt; then offline
+      # equivalence · ledger reconciliation · grant lockdown · the K.1 first session, and the rest.
+      # Fails if any migration printed no receipt, if any declared PASS marker is missing, if a
+      # proof declares none, or if a proof leaves committed rows behind.
+      - name: Apply the whole chain to PGlite, then run every proof (declared PASS markers must all appear)
         run: npm run db:proof
 
   # ═══════════════════════════════════════════════════════════════════════════════════════════
