@@ -110,6 +110,85 @@ export function panBy(view: ChartView, aspect: number, dxUnits: number, dyUnits:
   return clampView({ cx: view.cx - dxUnits, cy: view.cy - dyUnits, spanX: view.spanX }, aspect)
 }
 
+/**
+ * THE COAST'S SHEET — how much of the world the coast layer is drawn over while the chart RESTS or
+ * PANS, as a fraction of the view's width and height added on EACH side. See `paperOf`.
+ */
+export const PAPER_MARGIN = 0.25
+
+/** How long after the last zoom the coast's sheet grows from the view to `paperOf` it — long
+ *  enough that a wheel or a pinch in progress is never interrupted by the wider repaint. */
+export const PAPER_SETTLE_MS = 250
+
+/**
+ * THE RECTANGLE THE COAST IS PAINTED OVER for a view at rest or in a pan (owner, 2026-09-27:
+ * "check the map lag").
+ *
+ * MEASURED: a pan re-rasterised the whole coast on every frame — three 40/22/10 px shallows, the
+ * body, the relief and the line, 3,251–6,111 points each — because every pointermove changed the
+ * viewBox and a viewBox change repaints everything under it. Taking the coast off the chart left a
+ * pan at the display's 16.7 ms; with it a frame cost 18–36 ms of GPU raster (docs/MAP_ATMOSPHERE.md
+ * §10). The coast is therefore its own composited sheet (ChartCanvas, `CoastSheet`), drawn over
+ * THIS rectangle: while the view stays inside it a pan only MOVES the sheet, which costs the
+ * compositor nothing.
+ *
+ * A PURE FUNCTION OF THE VIEW, snapped to a grid half a view wide: the sheet is the view grown by
+ * `PAPER_MARGIN` on each side, centred on the grid point nearest the view's centre. Every view whose
+ * centre rounds to the same grid point gets the IDENTICAL rectangle (same numbers — nothing re-renders)
+ * and is covered by it, since the centre is at most a quarter-view from the grid point and the sheet
+ * reaches a quarter-view past the view's edge. So the coast is re-painted once per half a glass of
+ * travel and never on the frames in between.
+ */
+export function paperOf(box: ViewBox): ViewBox {
+  const stepX = box.width * 2 * PAPER_MARGIN
+  const stepY = box.height * 2 * PAPER_MARGIN
+  const width = box.width * (1 + 2 * PAPER_MARGIN)
+  const height = box.height * (1 + 2 * PAPER_MARGIN)
+  if (!(stepX > 0) || !(stepY > 0)) return box
+  const cx = Math.round((box.x + box.width / 2) / stepX) * stepX
+  const cy = Math.round((box.y + box.height / 2) / stepY) * stepY
+  return { x: cx - width / 2, y: cy - height / 2, width, height }
+}
+
+/**
+ * WHICH SHEET THE COAST IS ON — the wide one (`paperOf`) or, just after a zoom, the view itself.
+ *
+ * A zoom repaints the coast whatever it is drawn over (a new scale is new pixels), and the repaint
+ * costs what the sheet's AREA costs: measured, the wide sheet (2.25× the glass) took 39–53 ms of GPU
+ * a zoom step against 12–15 ms for the view alone — a wheel or a pinch fell from 60 to 20 fps. So a
+ * zoom draws the coast over exactly the view (`narrow`), which is what it cost before the sheet
+ * existed, and the sheet grows back to `paperOf` either when the view first MOVES (a pan wants the
+ * margin at once) or `PAPER_SETTLE_MS` after the zoom (the caller's timer, `settleCoastPaper`), when
+ * nobody is waiting on the frame.
+ *
+ * `null` in, the opening frame: wide. Returns `prev` itself when nothing changes, so a caller that
+ * keeps it in state sets state only on a real transition.
+ */
+export interface CoastPaper {
+  /** The view width the coast was last drawn for — a different width is a zoom. */
+  readonly width: number
+  /** The view at the zoom, while the coast is drawn over just that; null = the wide sheet. */
+  readonly narrow: ViewBox | null
+}
+
+export function nextCoastPaper(prev: CoastPaper | null, box: ViewBox): CoastPaper {
+  if (!prev) return { width: box.width, narrow: null }
+  if (box.width !== prev.width) return { width: box.width, narrow: box }
+  const n = prev.narrow
+  if (n && (box.x !== n.x || box.y !== n.y || box.height !== n.height)) return { width: box.width, narrow: null }
+  return prev
+}
+
+/** The zoom has settled: the wide sheet again. */
+export function settleCoastPaper(prev: CoastPaper | null): CoastPaper | null {
+  return prev && prev.narrow ? { width: prev.width, narrow: null } : prev
+}
+
+/** The rectangle the coast is drawn over in a state. */
+export function coastPaperBox(state: CoastPaper, box: ViewBox): ViewBox {
+  return state.narrow ?? paperOf(box)
+}
+
 /** Chart units per CSS pixel at this view — the number that keeps glyphs and labels a constant
  *  size on screen while the paper under them scales. */
 export function unitsPerPixel(view: ChartView, pixelWidth: number): number {
