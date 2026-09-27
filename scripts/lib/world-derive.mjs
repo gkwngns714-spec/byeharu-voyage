@@ -290,6 +290,23 @@ const PORT_CODES = {
   'yeosu': 'YEO',
   'zakynthos': 'ZAK',
   'zanzibar': 'ZAN',
+  // The Pacific Americas growth, 2026-09-14 (owner: "I see no cities on the left side of america,
+  // the number of cities are weird"): thirteen harbours from San Francisco to Concepción and
+  // Hobart for the far Pacific. Authored free codes, first shipped by 0090; never change one.
+  'san-francisco': 'SFR',
+  'monterey': 'MTY',
+  'san-diego': 'SDG',
+  'mazatlan': 'MZT',
+  'barra-de-navidad': 'NAV',
+  'huatulco': 'HUA',
+  'el-realejo': 'REA',
+  'buenaventura': 'BUV',
+  'guayaquil': 'GYE',
+  'paita': 'PAI',
+  'arica': 'ARI',
+  'coquimbo': 'COQ',
+  'concepcion': 'CON',
+  'hobart': 'HOB',
 }
 
 const fold = (s) =>
@@ -387,6 +404,7 @@ const NATION_BY_COUNTRY = {
   MX: 'ESP', CU: 'ESP', DO: 'ESP', PA: 'ESP', CO: 'ESP', VE: 'ESP', PE: 'ESP', CL: 'ESP',
   AR: 'ESP', UY: 'ESP', PH: 'ESP', BR: 'PRT', AO: 'PRT', MZ: 'PRT', CV: 'PRT', GH: 'PRT',
   BD: 'MUG', PK: 'MUG',
+  EC: 'ESP', NI: 'ESP', // Guayaquil (1537) and Realejo (1532) were Spanish from their founding; the Pacific Americas growth
 }
 const NATION_OVERRIDE = {
   venice: 'VEN', genoa: 'GEN', naples: 'ESP', palermo: 'ESP', messina: 'ESP',
@@ -414,6 +432,7 @@ const SHALLOW = new Set([
   'seville', 'hooghly', 'quebec-city', 'guangzhou', 'london', 'nantes', 'bordeaux', 'hamburg',
   'bremen', 'antwerp', 'bruges', 'ayutthaya', 'thanlyin', 'basra', 'buenos-aires', 'belem',
   'gdansk', 'riga', 'arkhangelsk', 'chittagong', 'khambhat', 'suzhou', 'nanjing', 'hanoi',
+  'guayaquil', // 40 nm up the Guayas, over the bar at Puná — the yard built galleons and floated them out light
 ])
 // WHETHER MAKING A GOOD IS INDUSTRY is a fact about the GOOD, not about the shelf it sits on.
 // It used to be read off `category` (metal / textile / naval-stores), which quietly made the

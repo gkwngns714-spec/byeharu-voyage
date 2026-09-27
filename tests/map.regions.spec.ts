@@ -45,11 +45,14 @@ test.describe('data/region-tint.json is the build, not a hand', () => {
     const { file, report } = buildRegionTint(ROOT)
     expect(regionTintText(file)).toBe(TINT_RAW)
     // The water came from the chain's own writes — all three of them, in order.
-    expect(report.writes.map((w) => w.file.slice(10, 14))).toEqual(['0040', '0052', '0079'])
-    expect(report.writes.map((w) => w.rows)).toEqual([720, 1, 11])
+    // Moved deliberately 2026-09-14 with the Pacific Americas growth (0090/0091): 0091 carves the
+    // Golden Gate and the Guayas and heals their 6 opened cells into the North and South Pacific
+    // (5 sea_cells rows), and 14 new harbours seed the nearest-harbour-by-water search.
+    expect(report.writes.map((w) => w.file.slice(10, 14))).toEqual(['0040', '0052', '0079', '0091'])
+    expect(report.writes.map((w) => w.rows)).toEqual([720, 1, 11, 5])
     // Every navigable cell but the pools no harbour can reach is tinted.
-    expect(report.waterCells).toBe(647208)
-    expect(report.tintedCells).toBe(647194)
+    expect(report.waterCells).toBe(647214)
+    expect(report.tintedCells).toBe(647200)
     // Every harbour seeded the search: none was more than 8 rings from water (0040's own bound).
     expect(report.unseeded).toEqual([])
     console.log(

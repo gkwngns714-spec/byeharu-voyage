@@ -250,7 +250,16 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // the board), `cmd.fulfil` / `cmd.preview_fulfil` over ONE body that sells through 0083's
 // `cmd.run_manifest` and pays the premium as its own PREMIUM ledger row. 0086 (`cmd.do_dismiss`,
 // PR #75) is on its own branch and lands before it; nothing here touches what it touches.
-const LAST = '20260818000087_a_port_asks_for_what_it_does_not_sell.sql'
+// Moved 2026-09-14 to 0088, which makes the sea round: a course segment straddling the antimeridian
+// is read the short way by path_refusal, segments_from_course and position through the one rule
+// voyage.lon_lerp, so Tokyo → Callao crosses the South Pacific instead of being refused. (0086 and
+// 0087 are claimed by open PRs; whichever lands after this one moves the pin again.)
+// Moved 2026-09-14 to 0091, the water of the Pacific Americas growth: 0089 states the buildings a
+// harbour keeps as ONE rule, 0090 grows the world by fourteen harbours (San Francisco to Concepción,
+// and Hobart) and thirty-two goods, and 0091 gives every new place its roadstead and its sailed
+// distances, carving the Golden Gate and the Guayas on the way. (0086 and 0087 — PRs #75 and #78 — were
+// merged ahead of it on the deploy branch osn-deploy-0086-0091, so the chain applies 0086-0091 in order.)
+const LAST = '20260818000091_the_water_reaches_the_new_harbours.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

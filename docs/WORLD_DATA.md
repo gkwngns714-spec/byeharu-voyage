@@ -1,8 +1,10 @@
-# World data — provenance280,378 schema, validation
+# World data — provenance, schema, validation
 
-The geographic dataset behind `byeharu-voyage`: 214 real port cities, the seas and regions
-that connect them, the 243 goods they traded in roughly 1500–1650, and the country outlines
-the map is drawn from.
+The geographic dataset behind `byeharu-voyage`: 238 real port cities (214 seeded by 0003, ten
+islands by 0041, fourteen Pacific harbours by 0090), the seas and regions that connect them, the
+555 goods they traded in roughly 1500–1650 (243 → 523 by 0065, +32 by 0090), and the country
+outlines the map is drawn from. **Counts elsewhere in this file are the figures of the pass that
+wrote the paragraph**; the validator output in §4 is the current one.
 
 **The rule this dataset was built under: no coordinate was typed by hand.** Every `lat`/`lon`
 in `data/ports.json` was fetched from Wikidata by a script and carries, in the record itself,
@@ -15,10 +17,10 @@ traded* — not where it is.
 
 | File | Bytes | What it is |
 |---|---:|---|
-| `data/ports.json` | 147,730 | 214 port cities, with coordinates, sea, region, tier, goods and a note |
+| `data/ports.json` | — | 238 port cities, with coordinates, sea, region, tier, goods and a note. **The authored roster**: since 0058 its `goods` arrays are edited here and nowhere else |
 | `data/seas.json` | 5,263 | 51 named seas and oceans, each with a label anchor |
 | `data/regions.json` | 5,540 | 25 trading regions, each tied to a parent sea |
-| `data/goods.json` | 54,296 | 243 tradeable commodities with category, value band and origin note |
+| `data/goods.json` | — | 555 tradeable commodities with category, value band, origin regions, entrepot ports and a note |
 | `data/world-110m.json` | 280,378 | Country outlines for the map (Natural Earth 1:110m, property bag slimmed) |
 | ~~`data/sea-routes.json`~~ | — | **DELETED with the fixed leg graph (0047/0049).** What water connects to what is the raster (migration 0046, `scripts/build-sea-migration.mjs`) and the sailed distance between every pair of places is `sea_reaches`, derived from it by the one pathfinder (`src/lib/sea`); see §7 |
 | `data/sea-places.json` | ~11,000 | **14 sea places** — named waters a fleet can sail to (banks, straits, wind belts). AUTHORED; see §8 |
@@ -27,30 +29,31 @@ Build and check scripts live in `scripts/`. None of them are needed at runtime.
 
 | Script | Network? | Purpose |
 |---|---|---|
-| `scripts/roster/*.mjs` | — | The editorial roster: which ports exist, and everything about them except position |
+| `scripts/roster/*.mjs` | — | The FETCH MANIFEST for `fetch-coords.mjs`: id, enwiki title (or a pinned qid) and country. Its `goods` fields are a stale copy of `data/ports.json` (inert since 0058); new entries carry none |
 | `scripts/fetch-coords.mjs` | yes | Resolves every roster entry to a Wikidata item and pulls P625 + P17 |
 | `scripts/build-world.mjs` | yes | Downloads Natural Earth, vendors `world-110m.json`, generates the country bbox table |
 | `scripts/normalise-goods.mjs` | — | Folds the roster's free-hand goods terms onto the canonical goods ids |
-| `scripts/build-ports.mjs` | — | Composes `data/ports.json` from roster + coordinate cache |
-| `scripts/check-ports.mjs` | **no** | The validator. Offline, self-contained, exits non-zero on failure |
+| `scripts/build-ports.mjs` | — | **RETIRED 2026-09-14 — refuses to run.** It would overwrite the authored rosters of 0058/0062/0065 with the roster's stale copy. A new port's record is written into `data/ports.json` by hand, taking lat/lon/source from the cache (its header says how) |
+| `scripts/check-ports.mjs` | **no** | The validator. Offline, self-contained, exits non-zero on failure. Since 2026-09-14 it checks 0058's count law, 0062's native-or-entrepot law and 0065's no-good-in-four-cities law (it had carried 0041's retired 4–9 band and been red on 35 capitals since 0058) |
 | `scripts/check-coastal.mjs` | yes | Audits how far each port is from a coastline |
 | `scripts/project.mjs` | — | Reference implementation of the recommended projection |
 | `scripts/sea-grid.mjs` | **no** | THE routing rule: the sea as a 0.25° raster, and A* through water. §7 |
 | ~~`scripts/build-sea-routes.mjs`~~ | — | DELETED (0049). `scripts/build-sea-migration.mjs` emits the raster + all-pairs distances as migration 0046 |
-| `scripts/build-world-seed.mjs` | **no** | Writes migration 0003 from all of the above. The chain's world IS this data |
+| `scripts/build-world-seed.mjs` | **no** | RETIRED — refuses to run (0003 is applied). A world change is a GROWTH migration: `scripts/build-world-growth.mjs <version> <name>` (0041, 0065, 0090) |
 | `scripts/build-sea-places.mjs` | **no** | Writes migration 0036 from `data/sea-places.json`: the places, and their spur legs by the §7 rule. §8 |
 | `scripts/build-sea-raster.mjs` | first run only | Writes migration 0040: WHICH SEA every water cell is in, from Natural Earth marine polygons. §9 |
 
 Regenerate everything with:
 
 ```
-node scripts/fetch-coords.mjs      # refresh coordinates from Wikidata
-node scripts/build-world.mjs       # refresh country outlines and bbox table
-node scripts/build-ports.mjs       # compose data/ports.json
-node scripts/check-ports.mjs       # validate
-node scripts/build-sea-migration.mjs  # the sea itself: raster + all-pairs sailed distances (emits a NEW migration)
-node scripts/build-world-seed.mjs  # rewrite migration 0003 from the data
-npm run db:apply                   # and prove the result applies
+# to ADD a port (the 2026-09-14 Pacific Americas growth is the worked example, DEV_LOG that day):
+node scripts/fetch-coords.mjs      # after adding its manifest entry to scripts/roster/*.mjs — Wikidata resolves it
+#   write its record into data/ports.json from scripts/coords.cache.json; pin its code in
+#   scripts/lib/world-derive.mjs PORT_CODES; author its goods (data/goods.json if new)
+node scripts/check-ports.mjs       # validate: laws of 0058, 0062, 0065, the bbox
+node scripts/build-world-growth.mjs <version14> <name>   # the growth migration (ports, goods, offers, market, buildings)
+node scripts/build-sea-migration.mjs                     # THEN its water — cut AFTER the growth, it reads the applied chain
+npm run db:apply && npm run db:proof                     # the world guard holds the chain equal to data/*.json
 ```
 
 ---
@@ -67,7 +70,7 @@ npm run db:apply                   # and prove the result applies
 - **Licence:** Wikidata content is released under the **Creative Commons CC0 1.0 Universal
   public domain dedication**. <https://www.wikidata.org/wiki/Wikidata:Licensing>
 - **Fetched:** see the `coordinateSource.fetchedAt` field at the top of `data/ports.json`.
-- **Coverage:** 214 of 214 roster entries resolved to an item carrying a `P625` coordinate.
+- **Coverage:** 238 of 238 roster entries resolved to an item carrying a `P625` coordinate (re-fetched 2026-09-14 for the Pacific Americas growth; one existing item, Banda Neira, had moved 0.005° on Wikidata and `data/ports.json` keeps the coordinate the chain applied).
   Every port record stores the exact item in `source.wikidata` (for example
   `"source": { "wikidata": "Q597", "enwiki": "Lisbon" }`), so any single coordinate can be
   re-checked at `https://www.wikidata.org/wiki/Q597`.
@@ -192,26 +195,28 @@ A standard GeoJSON `FeatureCollection` of 177 country polygons, plus a non-stand
 
 ## 4. Validator output
 
-`node scripts/check-ports.mjs`, run against the committed data. It reads only the four JSON
+`node scripts/check-ports.mjs`, run against the committed data (2026-09-14). It reads only the four JSON
 files and its own embedded bbox table — no network:
 
 ```
 byeharu-voyage world data check
 ==================================================================
-ports 214   seas 51   regions 25   goods 243
+ports 238   seas 51   regions 25   goods 555
 
-[ ok ] unique kebab-case ids — 214 distinct
+[ ok ] unique kebab-case ids — 238 distinct
 [ ok ] required fields, types, tier range
 [ ok ] lat in [-90,90], lon in [-180,180], no (0,0)
 [ ok ] no duplicate or near-duplicate coordinates (threshold 0.005°)
 [ ok ] every sea, region, parentSea and good id resolves
 [ ok ] every port inside its country bbox (tolerance 0.05°); worst margin 0.0000°
        note: RU, US span the antimeridian, so their longitude test is weak
-[ ok ] vocabulary coverage — 51/51 seas, 25/25 regions, 243/243 goods in use
-[ ok ] every region has ports — tier 1: 35, tier 2: 79, tier 3: 100
-       countries represented: 91
+[ ok ] vocabulary coverage — 51/51 seas, 25/25 regions, 555/555 goods in use
+[ ok ] roster count law — capital 10, mid 4-8, small 4 (0058)
+[ ok ] every offer native or a named entrepot (0062); no good in four cities (0065)
+[ ok ] every region has ports — tier 1: 35, tier 2: 82, tier 3: 121
+       countries represented: 95
 
-RESULT: PASS — 214 ports, 51 seas, 25 regions, 243 goods, 0 failures, 0 warnings.
+RESULT: PASS — 238 ports, 51 seas, 25 regions, 555 goods, 0 failures, 0 warnings.
 ```
 
 Exit code `0`.
@@ -417,10 +422,15 @@ A second resolver detail worth recording: Wikidata marks `P297 = NL` on Q55 (Net
 resolver prefers a live statement but falls back to a deprecated one rather than reporting no
 code, so the four Dutch ports do not show up as false disagreements.
 
-**Three ports sit outside the 1500–1650 window and say so in their own `notes`.** Honolulu
+**Seven ports sit outside the 1500–1650 window and say so in their own `notes`.** Honolulu
 (no European contact until 1778), Sydney (settled 1788) and Longyearbyen (founded 1906) are
 present because the coverage brief asked for Australia, the Pacific and the Arctic, and there
-were no European-frequented harbours on those exact sites in the period. Their notes state the
+were no European-frequented harbours on those exact sites in the period. The 2026-09-14 growth
+added four more on the same footing, because the owner's reference game has California and the
+coast held no European harbour in the period: San Francisco (presidio 1776, Yerba Buena 1835),
+Monterey (Vizcaíno's survey of 1602 is in-window; the presidio is 1770), San Diego (Cabrillo's
+landing of 1542 is in-window; the presidio is 1769) and Hobart (1804). Mazatlán's harbour is
+in-window as a Spanish landing (1531) and out of it as a port. Their notes state the
 real dates rather than implying otherwise. Several other ports are late within the window
 rather than outside it — Cape Town (1652), Port Royal (1655), Gothenburg (1621), Saint-Louis
 (1659) — and their notes give the founding year.
@@ -497,11 +507,13 @@ that quietly starts digging Suez is worse than one that fails outright.
 A 0.25° cell is about 15 nm. The Øresund is 2 nm wide and the Bosphorus half of one: at this
 resolution they are simply land, and refusing them would delete the Baltic grain trade, Istanbul,
 the Red Sea and the Gulf from a game about the age of sail. So `CHANNELS` in `scripts/sea-grid.mjs`
-lists **fifteen named straits and river approaches** whose cells are forced open before the search
+lists **twenty-nine named straits and river approaches** whose cells are forced open before the search
 runs — the Danish Straits, the Dardanelles and the Bosphorus, Kerch, Bab-el-Mandeb, Hormuz, the
 Shatt al-Arab, Khambhat, the Hooghly, Malacca, Sunda, the Seto Inland Sea, the White Sea, the
 St Lawrence, the Gironde and Loire, the Thames and Scheldt, the Elbe and Weser, the Guadalquivir,
-the Pearl River, the Yangtze, the Río de la Plata, the Pará, and the Gambia and Senegal mouths.
+the Pearl River, the Yangtze, the Río de la Plata, the Pará, the Gambia and Senegal mouths, and
+since 2026-09-14 the Golden Gate and the Guayas (each declares the cells of dry land it opens; the
+generator refuses the raster if the number is wrong).
 
 **That list is the whole of the game's "you may pass here" authority.** There is deliberately no
 Suez and no Panama in it.

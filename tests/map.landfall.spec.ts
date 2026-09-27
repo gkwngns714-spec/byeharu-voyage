@@ -77,9 +77,13 @@ test.describe('landfall, measured over the real world file', () => {
     // MEASURED 2026-09-14 over data/world-110m.json at COASTLINE_TOLERANCE_DEG 0.2 and the 224
     // harbours of data/ports.json. These are pins of a measurement, not laws: a new harbour or a
     // new coast file moves them, and the move is made here, deliberately, with a date.
-    expect(PORTS.length).toBe(224)
-    expect(inWater).toBe(79)
-    expect(moved).toBe(51)
+    // Moved deliberately 2026-09-14 with the Pacific Americas growth (migration 0090, owner row 99):
+    // 224 → 238 harbours; ONE of the fourteen falls in drawn water and is moved onto the shore
+    // (79 → 80 in water, 51 → 52 moved, widest move 8.58 nm); the islets stay 28. Re-measured by
+    // this very test on the merged chain, not remembered.
+    expect(PORTS.length).toBe(238)
+    expect(inWater).toBe(80)
+    expect(moved).toBe(52)
     expect(islets).toBe(28)
     // The cap sits in the gap the measurement found: every coarseness move is under it, every
     // island the file lacks is over it. If either side crosses the cap, the cap is wrong — or a
@@ -209,7 +213,8 @@ for (const viewport of [
       expect(wetOpening, 'harbours drawn in water at the opening frame').toEqual([])
       expect(wet, 'harbours drawn in water at the world view').toEqual([])
       // Row 94: at the world view EVERY harbour is on the sheet, so this was the whole table.
-      expect(world!.marks.length).toBe(224)
+      // Moved deliberately 2026-09-14: 224 → 238 harbours (the Pacific Americas growth, 0090).
+      expect(world!.marks.length).toBe(238)
     })
   })
 }

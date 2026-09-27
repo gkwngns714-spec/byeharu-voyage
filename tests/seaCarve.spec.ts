@@ -73,14 +73,19 @@ const landOpenedBy = (pre: Uint8Array, ch: Channel) =>
 
 /** Cells of DRY LAND opened, in total, across the whole list. Measured 2026-09-08. This is the
  *  number a reviewer can hold in their head, and it is what makes "the world grew some water" a
- *  sentence rather than a diff of twenty-seven rows. */
-const LAND_TOTAL = 202
+ *  sentence rather than a diff of twenty-seven rows.
+ *  Moved deliberately 2026-09-14, 202 -> 208, with the Pacific Americas growth (migration 0091):
+ *  `golden-gate` opens 3 cells of land (the Gate and the central Bay, which Natural Earth 1:110m
+ *  does not draw at all) and `guayas` opens 3 (the river and the Puná channel up to the quay),
+ *  each looked at on the raster before the number was written — the look is the guard. */
+const LAND_TOTAL = 208
 
 /** Cells CARVED in total — land and water together. A different fact, kept because it is the
  *  figure `docs/DEV_LOG.md` D39 and `docs/LAND_CARVE_RECON.md` quote, and because a carve that
  *  grew only over existing water still changed. Named separately so the two can never be confused
  *  again, which is the whole history of this file. */
-const CARVE_TOTAL = 521
+// Moved deliberately 2026-09-14, 521 -> 529, with the same two channels (8 cells carved, 6 of them land).
+const CARVE_TOTAL = 529
 
 test('every channel opens exactly the land it declares', () => {
   const pre = preCarveGrid()
@@ -97,7 +102,7 @@ test('every channel opens exactly the land it declares', () => {
   expect(actual).toEqual(declared)
   expect(Object.values(actual).reduce((a, b) => a + b, 0)).toBe(LAND_TOTAL)
 
-  // The carve's SIZE, the other fact. 521 cells opened, of which 202 are land.
+  // The carve's SIZE, the other fact. 529 cells opened, of which 208 are land.
   const carved = CHANNELS.reduce((n, ch) => n + cellsOpenedBy(ch).size, 0)
   expect(carved).toBe(CARVE_TOTAL)
   expect(LAND_TOTAL).toBeLessThan(CARVE_TOTAL) // a channel is mostly water it merely re-states
@@ -178,6 +183,8 @@ test('a channel that names two waters is a canal waiting to happen', () => {
     'elbe-weser',          // ⚠ two rivers; shortens no route between the ports it joins
     'gambia-senegal',      // ⚠ two rivers; shortens no route between the ports it joins
     'gironde',             // ⚠ two rivers; worth 11 nm on bordeaux→nantes
+    'golden-gate',         // the Golden Gate and San Francisco Bay — one continuous waterway (added 2026-09-14, looked at)
+    'guayas',              // the Guayas river and the Puná channel — one estuary (added 2026-09-14, looked at)
     'seto',                // the Kii and Bungo channels — both open onto the Inland Sea
     'severn',              // the Bristol Channel and the Avon — one continuous waterway
     'thames-scheldt',      // ⚠ two rivers; shortens no route between the ports it joins

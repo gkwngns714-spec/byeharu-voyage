@@ -34,6 +34,7 @@
 //      distance of the snap to open water is reported so nothing hides it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+import { lonLerp } from '../geo/index.ts'
 import { cellLat, cellLon, colOf, gcNm, rowOf, type SeaNav } from './grid.ts'
 
 const NM_PER_DEG = 60
@@ -252,6 +253,9 @@ export function findPath(
     for (let k = 0; k < 8; k++) {
       const nrow = row + D[k][0]
       if (nrow < 0 || nrow >= ROWS) continue
+      // The column wraps: the sea is round, and the search crosses the antimeridian like any
+      // other cell edge (grid.ts `isWater`). The straightener and the server read the segment it
+      // emits there the short way (segmentIsWater, voyage.lon_lerp).
       const ncol = (((col + D[k][1]) % COLS) + COLS) % COLS
       const next = nrow * COLS + ncol
       if (!nav.cells[next]) continue
@@ -298,9 +302,15 @@ export function findPath(
 
 /**
  * Every sample along this segment is sailable water. The ENDS are exempt only by the head/tail
- * allowance actually measured (a harbour approach), never by a fixed figure. A segment whose two
- * ends straddle the antimeridian the long way round is refused — the search never emits one, and
- * the server's verifier applies the same reading.
+ * allowance actually measured (a harbour approach), never by a fixed figure.
+ *
+ * THE SEA IS ROUND (0088). A segment whose two ends straddle the antimeridian — 179.875° to
+ * −179.875° — is 0.25° of water, not 359.75° of world, and it is sampled the SHORT way round
+ * through `lonLerp`, the one longitude rule (src/lib/geo). Until 0088 this function refused any
+ * |Δlon| > 180 outright, so the straightener could never merge across the seam and the server
+ * refused the 0.25° hop the search emits there as "the long way round" — a Pacific crossing
+ * could be FOUND but never SAILED. The server's `voyage.path_refusal` now applies this same
+ * reading through `voyage.lon_lerp`, so the line judged here and the line judged there are one.
  */
 export function segmentIsWater(
   nav: SeaNav,
@@ -309,14 +319,13 @@ export function segmentIsWater(
   headNm = 0,
   tailNm = 0,
 ): boolean {
-  if (Math.abs(lon2 - lon1) > 180) return false
   const nm = gcNm(lat1, lon1, lat2, lon2)
   const steps = Math.max(2, Math.ceil(nm / (nav.cellDeg * NM_PER_DEG * 0.5)))
   for (let s = 1; s < steps; s++) {
     const f = s / steps
     if (f * nm < headNm || (1 - f) * nm < tailNm) continue
     const lat = lat1 + (lat2 - lat1) * f
-    const lon = lon1 + (lon2 - lon1) * f
+    const lon = lonLerp(lon1, lon2, f)
     if (!nav.cells[rowOf(nav, lat) * nav.cols + colOf(nav, lon)]) return false
   }
   return true
