@@ -63,7 +63,7 @@ test('the store: a new key drops the old lines, remove empties the key, settle s
 
   s.stage('f1', 'LIS', buy('pepper', 80))
   const receipt = { ok: true as const, kind: 'manifest' as const, port: 'LIS', fleet: 'f1', game_day: 1, at: '', lines: [],
-    totals: { goods_at_mid: 0, tax: 0, spread: 0, haggle_saved: 0, profit: null, bought: 0, sold: 0, net: 0 },
+    totals: { goods_at_mid: 0, tax: 0, spread: 0, haggle_saved: 0, profit: null, bought: 0, sold: 0, premium: 0, net: 0 },
     purse: { before: 0, after: 0 }, hold: { free_before: 0, free_after: 0, tuns_delta: 0 },
     trading: { points_before: 0, points_after: 0, delta: 0, level_before: 0, level_after: 0, turnover_after: 0 } }
   s.settle('f1', 'LIS', receipt)

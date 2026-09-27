@@ -3,9 +3,13 @@ import { Note, type TradePick } from '../../components/ui'
 import { fleetCargoByCode, fleetPortCode } from '../../domain/fleet'
 import type { FleetView, MarketGood, SnapshotPort } from '../../lib/rpc'
 import { usePortHistory } from '../../live/usePortHistory'
+import { useRequests } from '../../live/useRequests'
 import { useWorld } from '../../live/worldStore'
 import { PriceTray } from './PriceTray'
 import { QuayLedger } from './QuayLedger'
+import { RequestBoard } from './RequestBoard'
+import { TradeFaces } from './TradeFaces'
+import { useTradeFace } from './tradeFace'
 
 // THE LEDGER, READ-ONLY — a quay none of yours is lying at. docs/QUAY_LEDGER.md §3 A: *"the board
 // opens on the quay a fleet lies at; elsewhere is read-only"*. This is the MARKET tab's one job
@@ -27,6 +31,11 @@ import { QuayLedger } from './QuayLedger'
 // answer to order its chips; two callers on first paint were two round-trips for one figure
 // (the store guards its cache, not a read in flight). Until that read lands there is no figure,
 // and no Passage row — a truthful, lesser answer.
+//
+// THE SAME THREE FACES AS THE QUAY THAT TRADES (tradeFace.ts, slice 4): Buy, Sell (what she
+// carries, narrowed) and Requests — this port's board, READ-ONLY: every `fulfil` cell is dead with
+// `no ship here`, because a request is delivered on the quay it was posted at (0087). Reading a
+// distant port's requests is the point of reading it at all: it is where the next voyage goes.
 
 export function PortPrices({
   goods,
@@ -53,20 +62,38 @@ export function PortPrices({
     anchorPort && anchorCode !== port.code ? (reaches[anchorPort.id]?.reaches[port.code] ?? null) : null
 
   const aboard = useMemo(() => (reader ? fleetCargoByCode(reader) : {}), [reader])
+  const face = useTradeFace((s) => s.face)
+  const board = useRequests(port.id)
+  const shown = useMemo(
+    () => (face === 'sell' ? goods.filter((g) => (aboard[g.code] ?? 0) > 0) : goods),
+    [goods, face, aboard],
+  )
 
   return (
     <>
-      <QuayLedger
-        goods={goods}
-        aboard={aboard}
-        pick={pick}
-        onPick={(good, intent) => setPick({ good, intent })}
-        empty={
-          <Note tone="neutral" className="mt-3">
-            Nothing is traded here.
-          </Note>
-        }
-      />
+      <TradeFaces />
+      {face === 'requests' ? (
+        <RequestBoard
+          requests={board.view?.contracts ?? null}
+          loading={board.loading}
+          aboard={aboard}
+          docked={false}
+          pick={null}
+          onPick={() => undefined}
+        />
+      ) : (
+        <QuayLedger
+          goods={shown}
+          aboard={aboard}
+          pick={pick}
+          onPick={(good, intent) => setPick({ good, intent })}
+          empty={
+            <Note tone="neutral" className="mt-3">
+              {face === 'sell' ? 'No cargo to sell.' : 'Nothing is traded here.'}
+            </Note>
+          }
+        />
+      )}
       {pick && <PriceTray good={pick.good} trend={trend} passage={passage} onClose={() => setPick(null)} />}
     </>
   )

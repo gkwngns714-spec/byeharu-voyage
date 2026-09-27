@@ -61,6 +61,10 @@ const BANNED: { word: RegExp; say: string }[] = [
   // coin"* — money carries the COIN mark from src/lib/format, never the letter.
   { word: /\d\s?d\.(?=\s|$)/, say: 'N 🪙 (formatDucats / COIN)' },
   { word: /\bd\. (?:each|per)\b/, say: '🪙 each / 🪙 per … (COIN)' },
+  // 2026-09-14, owner row 76 slice 4 (docs/QUAY_LEDGER.md §3 F): the reference's 의뢰 board is
+  // REQUESTS on the tab and a REQUEST in a sentence; `contract` is the wire's word
+  // (`trade_contracts`, `world.contracts`) and never the player's.
+  { word: /\bcontracts?\b/i, say: 'request(s)' },
 ]
 
 /** Literals the crude rule catches that are NOT player text, each with its reason. */

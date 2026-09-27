@@ -55,6 +55,7 @@ const FACES: readonly { id: Face; label: string }[] = [
 const FACE_OF: Record<string, Exclude<Face, 'all'>> = {
   BOUGHT: 'trade',
   SOLD: 'trade',
+  FULFILLED: 'trade',
   DEPARTED: 'voyage',
   VOYAGE_REPORT: 'voyage',
   PROVISIONED: 'voyage',

@@ -31,36 +31,22 @@
 // trade tray by `useTrade`), so the subject moves once per press and there is nothing to debounce.
 // No `reask()`: `E_BUSY` — the market's clock held the rows — is re-asked by the world's next beat.
 
-import { cmdPreviewBasket, ok } from '../lib/rpc'
-import type { ManifestLine, ManifestReceipt, Refusal } from '../lib/rpc'
-import { useServedRead } from './useServedRead'
+import { cmdPreviewBasket } from '../lib/rpc'
+import type { ManifestLine } from '../lib/rpc'
+import { usePreviewRead, type PreviewRead } from './usePreviewRead'
 
-export interface ManifestPreviewState {
-  /** The receipt the commit would produce, for THESE lines as of the last read. Null until the
-   *  first answer lands, or when the market refused. */
-  estimate: ManifestReceipt | null
-  /** Why the market would refuse this basket, with `line` naming the input line where one did. */
-  refusal: Refusal | null
-  /** True while an ask is on the wire — the first one, or a re-ask on the world's beat. */
-  loading: boolean
-}
-
-/** What the market said about these lines: an estimate, or a refusal naming a line. */
-interface Priced {
-  estimate: ManifestReceipt | null
-  refusal: Refusal | null
-}
+/** The basket's answer: the receipt the commit would produce for THESE lines, or why the market
+ *  would refuse them (`refusal.line` names the input line where one did). */
+export type ManifestPreviewState = PreviewRead
 
 /** The one spelling of "these lines" as a subject: side, good and units, in input order. */
 function linesKey(lines: readonly ManifestLine[]): string {
   return lines.map((l) => `${l.side}:${l.good}:${l.qty}`).join(',')
 }
 
+// The fold of "an estimate, or a refusal, as one served value" moved to usePreviewRead.ts on
+// 2026-09-14 when the delivery's dry run (0087) needed it too; this is one subject and one ask.
 export function useManifestPreview(fleetId: string, portCode: string, lines: readonly ManifestLine[]): ManifestPreviewState {
   const subject = lines.length > 0 ? `${fleetId}:${portCode}:${linesKey(lines)}` : null
-  const read = useServedRead<Priced>(subject, async () => {
-    const r = await cmdPreviewBasket(fleetId, lines)
-    return ok<Priced>(r.ok ? { estimate: r.value.estimate, refusal: null } : { estimate: null, refusal: r.refusal })
-  })
-  return { estimate: read.view?.estimate ?? null, refusal: read.view?.refusal ?? null, loading: read.loading }
+  return usePreviewRead(subject, () => cmdPreviewBasket(fleetId, lines))
 }
