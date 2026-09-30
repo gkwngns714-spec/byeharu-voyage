@@ -55,6 +55,8 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
   // ONE press at a time across the fold's buttons: Start / Delete on a spare route, Clear, Pause /
   // Resume, Delete. A press awaits the world read that re-lists the routes, so a second press on a
   // stale book is dropped rather than queued.
+  // Edit waits it out too: opened mid-Delete it would edit a route that is going away — a flip the
+  // player's own press causes, never the beat.
   const press = usePress()
 
   // THE ROUTES RIDE THE WORLD'S BEAT: `refresh()` reads the book with the fleets and keeps the last
@@ -117,7 +119,7 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
                     <Button variant="secondary" size="sm" className="flex-1" busy={press.pending} onClick={() => void act(() => assignRoute(r.id, fleet.id))}>
                       Start
                     </Button>
-                    <Button variant="secondary" size="sm" className="flex-1" onClick={() => setEditing(r.id)}>
+                    <Button variant="secondary" size="sm" className="flex-1" disabled={press.pending} onClick={() => setEditing(r.id)}>
                       Edit
                     </Button>
                     <Button variant="quiet" size="sm" className="flex-1" busy={press.pending} onClick={() => void act(() => deleteRoute(r.id))}>
@@ -184,7 +186,7 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
                 >
                   {route.state === 'paused' ? 'Resume' : 'Pause'}
                 </Button>
-                <Button variant="secondary" className="flex-1" onClick={() => setEditing('own')}>
+                <Button variant="secondary" className="flex-1" disabled={press.pending} onClick={() => setEditing('own')}>
                   Edit
                 </Button>
                 <Button variant="quiet" className="flex-1" busy={press.pending} onClick={() => void act(() => deleteRoute(route.id))}>

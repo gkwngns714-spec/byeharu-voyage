@@ -80,7 +80,7 @@ interface Moved {
 
 declare global {
   interface Window {
-    __blinkWatch?: { log: Moved[]; stop: () => void }
+    __blinkWatch?: { log: Moved[]; reads: number[]; stop: () => void }
   }
 }
 
@@ -147,13 +147,23 @@ test('COMMAND: no button greys and Start route never leaves across three beats',
       }
     })
     obs.observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ['disabled'], attributeOldValue: true })
-    window.__blinkWatch = { log, stop: () => obs.disconnect() }
+    // NON-VACUITY: count the world reads that land inside the window, off the ONE debug line
+    // src/lib/rpc/backend.ts prints per RPC (tests/trade.ceiling.spec.ts's method). An empty log
+    // over a window with no beat in it would prove nothing.
+    const reads: number[] = []
+    const debug = console.debug.bind(console)
+    console.debug = (...args: unknown[]) => {
+      if (args[0] === '[rpc]' && typeof args[1] === 'string' && args[1].startsWith('world.fleets')) reads.push(Date.now() - t0)
+      debug(...args)
+    }
+    window.__blinkWatch = { log, reads, stop: () => obs.disconnect() }
   })
   await page.waitForTimeout(WINDOW_MS)
-  const log = await page.evaluate(() => {
+  const { log, reads } = await page.evaluate(() => {
     window.__blinkWatch?.stop()
-    return window.__blinkWatch?.log ?? []
+    return { log: window.__blinkWatch?.log ?? [], reads: window.__blinkWatch?.reads ?? [] }
   })
+  expect(reads.length, `the world was read ${reads.length} times in the window — the empty log would prove nothing`).toBeGreaterThanOrEqual(3)
   expect(log).toEqual([])
   await expect(start).toBeEnabled()
 })
