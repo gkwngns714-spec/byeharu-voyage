@@ -1,10 +1,11 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Bar, CargoBar, Row, Sheet } from '../../components/ui'
 import { formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView } from '../../lib/rpc'
 import { fleetHoldTotal, fleetHoldUsed, fleetStatusTone, worstHullFraction } from '../../domain/fleet'
+import { routeCaption, routeOfFleet } from '../../domain/route'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { FleetFold } from './FleetFold'
 import { fleetDue, fleetWhere } from './fleetLine'
@@ -68,6 +69,14 @@ function FleetsBody() {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const { nowMs } = useShellState()
+  // 0092: THE ROUTE'S WORD on her row (`On route` / `Stopped` / `Paused`) — a READING of the served
+  // route (src/domain/route), never a column: the route itself is COMMAND's (RouteFold.tsx).
+  const routes = useWorld((s) => s.routes)
+  const loadRoutes = useWorld((s) => s.loadRoutes)
+  const readAt = useWorld((s) => s.readAt)
+  useEffect(() => {
+    void loadRoutes()
+  }, [loadRoutes, readAt])
   // WHICH FLEETS ARE UNFOLDED, BY ID (see the header). A new Set on every toggle, because React
   // compares state by reference and a mutated Set would not re-render.
   const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(() => new Set())
@@ -91,7 +100,9 @@ function FleetsBody() {
             <Fragment key={fleet.id}>
               <FleetRow
                 fleet={fleet}
-                where={[fleetWhere(fleet, portName), fleetDue(fleet, nowMs)].filter(Boolean).join(' · ')}
+                where={[fleetWhere(fleet, portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
+                  .filter(Boolean)
+                  .join(' · ')}
                 open={open}
                 /* The hairline does not depend on the fold: MEASURED on the first run of
                    tests/layout.spec.ts — giving the last row a hairline when it opened grew its

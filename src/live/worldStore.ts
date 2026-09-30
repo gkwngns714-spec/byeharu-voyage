@@ -61,6 +61,10 @@ import {
   cmdProvisionPresetApply,
   cmdProvisionPresetDelete,
   cmdProvisionPresetSave,
+  cmdStandingRouteAssign,
+  cmdStandingRouteDelete,
+  cmdStandingRoutePause,
+  cmdStandingRouteSave,
   cmdStudySkill,
   cmdTradeBasket,
   initRpc,
@@ -75,6 +79,7 @@ import {
   worldBuffs,
   worldSnapshot,
   worldProvisionPresets,
+  worldStandingRoutes,
   worldSeaRaster,
   worldReach,
 } from '../lib/rpc'
@@ -92,6 +97,8 @@ import type {
   PriceHistory,
   ProvisionPresetBook,
   Refusal,
+  StandingRouteBook,
+  StandingRouteStopDraft,
   ReachPayload,
   SkillBook,
   SnapshotNation,
@@ -134,6 +141,9 @@ export interface LiveWorld {
   /** The book of standing orders (0034). Null until FLEETS asks for it — it is that tab's card,
    *  and the server tops fleets up on arrival whether or not anyone is looking. */
   presets: ProvisionPresetBook | null
+  /** The company's standing routes (0092). Null until COMMAND or FLEETS asks — a route runs on the
+   *  server whether or not anyone is looking; this is only the reading of it. */
+  routes: StandingRouteBook | null
   /** What is on at the quay (0026), keyed by port id — a fair is a PORT's fact, not the world's. */
   buffs: Record<string, BuffsView>
   /** One port's remembered prices, keyed by port id (0013). Fetched beside its market. */
@@ -185,6 +195,16 @@ export interface LiveWorld {
   /** Put a fleet under an order, or clear it with null. Nothing is bought now — the order fires
    *  when she makes port, and only there — so only the book is re-read, never the fleets. */
   applyPreset: (fleetId: string, presetId: string | null) => Promise<boolean>
+  /** Read the routes (0092). COMMAND's RouteFold and FLEETS' caption call it; every route verb
+   *  re-reads it, because the server's answer is the only true one. */
+  loadRoutes: () => Promise<void>
+  /** Write a route (routeId null) or replace its stops. Returns the route's id, or null when the
+   *  server refused — the refusal lands in `refusal`. */
+  saveRoute: (routeId: string | null, name: string | null, stops: readonly StandingRouteStopDraft[]) => Promise<string | null>
+  deleteRoute: (routeId: string) => Promise<boolean>
+  /** Give a route to a fleet (it starts at once, so the world is read back), or take it off with null. */
+  assignRoute: (routeId: string, fleetId: string | null) => Promise<boolean>
+  pauseRoute: (routeId: string, paused: boolean) => Promise<boolean>
   /** Sign an officer, post one, or study a level. Each re-reads what it changed, because the
    *  server's answer is the only true one — no local patching (the `issue` rule). */
   hireOfficer: (code: string, fleetId: string | null) => Promise<boolean>
@@ -314,6 +334,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
   skills: null,
   standings: null,
   presets: null,
+  routes: null,
   buffs: {},
   history: {},
   ducats: null,
@@ -508,6 +529,60 @@ export const useWorld = create<LiveWorld>((set, get) => {
     }
     set({ refusal: null })
     await get().loadPresets()
+    return true
+  },
+
+  // A FAILED ROUTE READ IS QUIET, and it does not keep yesterday's book: it runs on every world read
+  // from two tabs (COMMAND's fold, FLEETS' caption), so a refusal set here would overwrite the one a
+  // verb just drew on another screen. The fold then reads "Loading…" rather than a stale lap.
+  loadRoutes: async () => {
+    const r = await worldStandingRoutes()
+    set({ routes: r.ok ? r.value : null })
+  },
+
+  saveRoute: async (routeId, name, stops) => {
+    const r = await cmdStandingRouteSave(routeId, name, stops)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return null
+    }
+    set({ refusal: null })
+    await get().loadRoutes()
+    return r.value.id
+  },
+
+  deleteRoute: async (routeId) => {
+    const r = await cmdStandingRouteDelete(routeId)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return false
+    }
+    set({ refusal: null })
+    await get().loadRoutes()
+    return true
+  },
+
+  // ASSIGN AND RESUME MOVE THE FLEET NOW (the route writes her orders and the queue runs them), so
+  // both read the world back — the queue, the purse and the route — never a local patch.
+  assignRoute: async (routeId, fleetId) => {
+    const r = await cmdStandingRouteAssign(routeId, fleetId)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return false
+    }
+    set({ refusal: null })
+    await Promise.all([get().refresh(), get().loadRoutes()])
+    return true
+  },
+
+  pauseRoute: async (routeId, paused) => {
+    const r = await cmdStandingRoutePause(routeId, paused)
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      return false
+    }
+    set({ refusal: null })
+    await Promise.all([get().refresh(), get().loadRoutes()])
     return true
   },
 

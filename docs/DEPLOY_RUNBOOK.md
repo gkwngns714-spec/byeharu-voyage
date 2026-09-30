@@ -123,6 +123,14 @@ and stopped**, and a person starts it.
 
 ---
 
+**Standing routes (0092) need this step.** A route fleet moves between stops only when something
+settles it: the arrivals job, or a read. With the clock stopped a route advances one stop per read
+and trades at the moment of the read, so `standing_routes_enabled` must never be switched on while
+`public.clock_jobs()` shows any job inactive (docs/TRADE_ROUTES.md §4.4, §10 "Before the switch goes
+on").
+
+---
+
 ## 5. Verify on the target, not on a green tick
 
 ```

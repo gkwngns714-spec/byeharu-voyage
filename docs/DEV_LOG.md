@@ -5,6 +5,62 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-30 — a route is a standing order that sails (row 106, slice 1 — migration 0092, NOT merged, NOT deployed, DARK)
+
+**The request, verbatim:** *"i want this game to be a simulating based - meaning i set up route,
+trade routes - going back and forth, afk, running all the time"*. The plan is `docs/TRADE_ROUTES.md`
+(NO_SPAGHETTI §7B; decisions D1-D7 are the owner's and carry the plan's defaults).
+
+**Deploy reality read first (2026-09-30):** production is at 0091 (0086-0091 WERE pushed — the entry
+below still says they must be, so this log was behind production); the live site is `a613a05`; and
+**all five pg_cron jobs on production read `active: false`** — the clock was not re-wound after that
+push (`docs/DEPLOY_RUNBOOK.md` step 4). Nothing on production was written by this work.
+
+**What was built (branch `osn-trade-routes`).** Migration
+`20260818000092_a_route_is_a_standing_order_that_sails.sql` — ADDED, no earlier file edited:
+* Tables `standing_routes` / `_stops` / `_lines` / `_laps` (read-own RLS, no client write, caps as
+  table triggers), `orders.route_lap_id`, six knobs with `standing_routes_enabled` **false**.
+* `cmd.enqueue` — cmd.issue's inline enqueue SLICED out (the one enqueuer; the player's door and the
+  route both call it). 18 `cmd.issue` answers byte-identical to the pre-image, E_QUEUE_FULL at 13.
+* `cmd.advance` re-cut: at the queue-dry exit a standing route refills ONCE
+  (`cmd.run_standing_route`, contained in its own exception block so a bug pauses that route, never
+  the tick); a refused ROUTE trade line is `skipped` and written on the lap (D1), a refused route
+  SAIL halts by 0007's law and the read says `stopped`.
+* `cmd.run_standing_provision` stands aside for a running route; `public.keep_level_met` is the
+  one "keep level met?" judge both use. `tick_arrivals` gains one loop that wakes a paced route —
+  no new job.
+* `world.standing_routes()` and `cmd.standing_route_save / _delete / _assign / _pause`, five rows
+  in the catalogue after `preview_fulfil`. One `ROUTE_LAP` event per lap (figures summed from the
+  executors' own results and the settled days' wages), `ROUTE_PAUSED` when a guard stops a route.
+* Client: `RouteFold` (one row above COMMAND's queue, unfolds in place) and `RouteEditor` (two stops,
+  Sell all, one BUY with units and Max); FLEETS' row caption (`On route` / `Stopped` / `Paused`);
+  History headlines for both kinds; the words live in `src/domain/route`. **The one port picker
+  MOVED** (`features/port/PortField.tsx` → `src/live/PortField.tsx`, `nearby.ts` →
+  `src/domain/port`) because a screen may not import another screen and a copy is spaghetti.
+
+**Proven locally (PGlite, real Postgres):** 0092's self-assert — six ticks of `tick_arrivals` ALONE
+run three laps of a Lisbon ⇄ Funchal route, every BOUGHT/SOLD a done route order, older laps' orders
+pruned; paced at 1/game-day the route waits and **the purse had moved exactly the four laps' net**;
+the woken lap skipped an empty BUY (E_NO_STOCK) and sailed; an unfit flagship STOPPED it
+(E_FLAGSHIP_DISABLED) and CLEAR released it; reserve / losing / off-route guards; the cap; every line
+kind round-trips `cmd.parse`; a broken stop pauses its route while the same tick settles another
+fleet; dark refuses all four verbs. Two deliberate mutations (a no-op skip note; net without wages)
+were each caught. Proof 11 drives it as `authenticated` (RLS, 42501 on the server-only functions,
+four AFK laps, books balance, dark).
+
+**Measured, and worth the owner's eye:** that probe route (20 iron, Lisbon → Funchal) LOST money in
+every run — −152 🪙 over four laps on one apply (wages 80 🪙 a lap), −543 🪙 over four laps in the full
+`db:proof` run (each apply deals a different market). A route is not profitable by construction; §8's saturation
+measurement (slice 4) is still owed before the switch goes on for everyone.
+
+**Not done (said plainly):** slices 2-4 (rich editor, D3 `SELL ALL` sizing, map line, balance and
+rank D4); the D5 production size read; the keep level is set on FLEETS, not in the route editor; the
+local build ships DARK too, so the browser specs measure the dark row's fold, and the full flow is
+exercised through the RPC layer in `tests/rpc.surface.spec.ts` instead of in the browser.
+
+**Production must receive `supabase db push` (0092) BEFORE this PR merges, and the switch stays off
+until the clock is wound (`select public.wind_the_clock();`) and D5 is read.**
+
 ## 2026-09-27 — the deploy branch: 0086-0091 merged onto main as ONE PR (PRs #75 #78 #82 #83 — NOT merged, NOT deployed)
 
 **Why one branch.** Four PRs each carried a migration and each conflicted with `main` (head

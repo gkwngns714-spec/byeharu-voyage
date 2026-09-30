@@ -393,3 +393,27 @@ hands it to `domain/order`'s draft, exactly as FLEETS, PORT and MARKET do, and t
 
 None of that touches the chart in THIS rail, which is unchanged: the destination is picked from the
 list, the chart shows where she is and where that is, and nothing on it is tappable (see point 2).
+
+## 12. The standing route (0092) — a queue that refills itself
+
+Owner row 106 (2026-09-30): *"i want this game to be a simulating based - meaning i set up route,
+trade routes - going back and forth, afk, running all the time"*. The plan is
+`docs/TRADE_ROUTES.md`; this is slice 1's client.
+
+- **Where.** `RouteFold.tsx` is one row ABOVE the queue on this sheet. It unfolds in place (the row
+  and everything above it stay put; the queue moves down), measured by `tests/layout.spec.ts` at
+  390×844 and `tests/wide.layout.spec.ts` at 1440×900. A route is a standing ORDER, so it is here and
+  not in FLEETS' fold, whose header names "an order queue" as the wrong fourth thing.
+- **What it composes.** The route never trades by itself: the server writes the next stop's orders
+  into THIS queue when it runs dry in port, and the same executor runs them. So the queue below it
+  shows a route's orders like any other, and a route that is **Stopped** is a failed order in this
+  queue — cleared by the same `Clear`.
+- **The editor** (`RouteEditor.tsx`, slice 1): two stops — where the fleet lies and one harbour picked
+  with THE port field (`src/live/PortField.tsx`, moved there from PORT so both screens compose it) —
+  `Sell all`, and one BUY per stop from that port's served market (units, Max each). Each leg's course
+  is `proposeCourse` between the two roadsteads (`standingRouteDraft.ts`), the way a typed SAIL
+  proposes one. The keep level is FLEETS' control; without one the server refuses `E_NO_KEEP`.
+- **No figures here.** Lap net, sold, bought, supplies, wages and the next-lap time are served by
+  `world.standing_routes()`; the words are `src/domain/route`, shared with FLEETS' caption.
+- **Dark.** While `standing_routes_enabled` is false the row reads `Route · Not open yet` and every
+  verb refuses `E_UNAVAILABLE`.

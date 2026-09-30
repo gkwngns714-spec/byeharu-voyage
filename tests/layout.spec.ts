@@ -612,6 +612,76 @@ test(`FLEETS: a fleet unfolds directly under its row at ${PHONE.width}px, three 
 // nothing and issues nothing. This proof picks a harbour where nobody is (the local world has one
 // house with one fleet, so any chip that is not the current harbour is such a place) and presses
 // a cell.
+// 0092 (owner row 106): COMMAND's route row stands ABOVE the queue and unfolds IN PLACE — the owner's
+// fold rule (rows 6, 15, 25, 28, 45): the press moves nothing at or above the row, the unfold hangs
+// directly under it, and the queue below moves down by exactly what was opened. The local build ships
+// with routes DARK, so what unfolds here is the one line that says so; the geometry is the same fold.
+test(`COMMAND: the route row unfolds in place above the queue at ${PHONE.width}px, moves nothing above it, and folds again`, async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(420_000)
+  test.skip(
+    !(await reachable(request, baseURL ?? '')),
+    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+  )
+  await page.goto('command')
+  await ready(page)
+  const row = page.getByTestId('route-row')
+  await expect(row).toBeVisible()
+  // The route book has landed (the label names what it read), so no late text moves the row.
+  await expect(row).toContainText(/Not open yet|No route|Route ·/)
+  await page.waitForTimeout(400)
+
+  const MEASURE = () => {
+    const rect = (sel: string) => {
+      const el = document.querySelector(sel)
+      if (!el) return null
+      const r = el.getBoundingClientRect()
+      return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }
+    }
+    return {
+      header: rect('[data-testid="sheet-header"]'),
+      line: rect('[data-testid="command-line"]'),
+      row: rect('[data-testid="route-row"]'),
+      queue: rect('[data-testid="command-queue"]'),
+      unfold: rect('[data-testid="route-unfold"]'),
+      pageScrollW: document.documentElement.scrollWidth,
+      pageClientW: document.documentElement.clientWidth,
+    }
+  }
+  const before = await page.evaluate(MEASURE)
+  expect(before.row, 'no route row').not.toBeNull()
+  expect(before.queue, 'no queue section').not.toBeNull()
+  expect(before.unfold, 'a route unfold stands before anything was pressed').toBeNull()
+  expect(before.row!.top + before.row!.height, 'the route row is not ABOVE the queue').toBeLessThanOrEqual(before.queue!.top)
+
+  // 1. PRESS: nothing at or above the row moves; the unfold hangs directly under it; the queue moves
+  //    down by the unfold's own height; the page never scrolls sideways.
+  await row.click()
+  await expect(page.getByTestId('route-unfold')).toBeVisible()
+  await page.waitForTimeout(400)
+  const open = await page.evaluate(MEASURE)
+  console.log(`COMMAND route fold @${PHONE.width}px: ${JSON.stringify(open)}`)
+  expect({ header: open.header, line: open.line, row: open.row }, 'the press MOVED the row or something above it').toEqual({
+    header: before.header,
+    line: before.line,
+    row: before.row,
+  })
+  expect(Math.abs(open.unfold!.top - (open.row!.top + open.row!.height)), 'the unfold does not hang directly under the row').toBeLessThanOrEqual(1)
+  expect(Math.abs(open.queue!.top - before.queue!.top - open.unfold!.height), 'the queue did not move down by exactly the unfold').toBeLessThanOrEqual(1)
+  expect(open.pageScrollW).toBeLessThanOrEqual(open.pageClientW)
+
+  // 2. PRESS AGAIN: folded, nothing left in the DOM, the queue back where it was.
+  await row.click()
+  await expect(page.getByTestId('route-unfold')).toHaveCount(0)
+  await page.waitForTimeout(400)
+  const closed = await page.evaluate(MEASURE)
+  expect(closed.queue).toEqual(before.queue)
+  expect(closed.row).toEqual(before.row)
+})
+
 test(`PORT: the port field is on the sheet, and a harbour with nobody alongside opens the read-only tray`, async ({
   page,
   request,

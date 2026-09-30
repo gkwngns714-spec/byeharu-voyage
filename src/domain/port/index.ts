@@ -57,3 +57,6 @@ export function buildingTier(port: Keeper | null | undefined, kind: BuildingKind
 export function buildingsOf(port: Keeper | null | undefined): readonly PortBuilding[] {
   return port?.buildings ?? []
 }
+
+// Which harbours the port field offers — moved here 2026-09-30 with its second caller (0092).
+export { nearbyHarbours, NEAR_PORTS } from './nearby'

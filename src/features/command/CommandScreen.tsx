@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { Chip, Note, Row, Sheet, SheetSection } from '../../components/ui'
 import { Queue } from './Queue'
+import { RouteFold } from './RouteFold'
 import { useCommandDraft } from '../../domain/order'
 import { formatOfTotal, formatVoyageDays } from '../../lib/format'
 import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
@@ -29,6 +30,9 @@ import type { FleetView, SnapshotPort } from '../../lib/rpc'
 // itself owns (CANCEL, CLEAR — domain/order's QUEUE_VERBS). The grammar, the door (`cmd.issue`)
 // and the judge (`cmd.preview`) did not move: every doorway still composes through `domain/order`
 // and issues through `worldStore.issue`. Only the entry points moved.
+//
+// 2026-09-30 (0092, owner row 106): her STANDING ROUTE stands above the queue as one folded row —
+// the one thing on this sheet that writes orders by itself, and only into this same queue.
 //
 // `useCommandDraft` still holds WHICH FLEET is in hand (the map's tap and FLEETS' "Command her"
 // point it here); its verb and argument fields have no writer left on any screen.
@@ -97,6 +101,9 @@ export function CommandScreen() {
           {/* ITS ONE LINE: how long it can sail, and its cargo — each figure with what it is out of
               (docs/WORDS.md law 2). */}
           <Row label={fleetLine(fleet)} hairline={false} data-testid="command-line" />
+          {/* 0092: HER ROUTE, one row above her queue — the standing order that writes the queue when
+              it runs dry in port (RouteFold.tsx). It folds in place; the queue moves down. */}
+          <RouteFold fleet={fleet} />
           <SheetSection heading="Orders" data-testid="command-queue">
             <Queue
               fleet={fleet}

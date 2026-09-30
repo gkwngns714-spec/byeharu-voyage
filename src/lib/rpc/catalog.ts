@@ -292,6 +292,44 @@ export const RPCS = {
       { name: 'p_preset', type: 'uuid' },
     ],
   },
+  // 0092 — STANDING ROUTES (docs/TRADE_ROUTES.md, slice 1). One read and four verbs, landed with the
+  // migration's catalogue rows and with the face that reads them (COMMAND's RouteFold), because a
+  // grant with no catalogue entry is a door nobody opens (0022). None takes a player id. Assign with
+  // a null fleet takes the route off its fleet — that is not a fifth verb. A route never trades by
+  // itself: it writes its fleet's next orders into the one queue when the queue runs dry in port.
+  worldStandingRoutes: { schema: 'world', fn: 'standing_routes', args: [] },
+  cmdStandingRouteSave: {
+    schema: 'cmd',
+    fn: 'standing_route_save',
+    args: [
+      { name: 'p_route', type: 'uuid' },
+      { name: 'p_name', type: 'text' },
+      { name: 'p_stops', type: 'jsonb' },
+      { name: 'p_reserve', type: 'bigint' },
+      { name: 'p_losing', type: 'int' },
+    ],
+  },
+  cmdStandingRouteDelete: {
+    schema: 'cmd',
+    fn: 'standing_route_delete',
+    args: [{ name: 'p_route', type: 'uuid' }],
+  },
+  cmdStandingRouteAssign: {
+    schema: 'cmd',
+    fn: 'standing_route_assign',
+    args: [
+      { name: 'p_route', type: 'uuid' },
+      { name: 'p_fleet', type: 'uuid' },
+    ],
+  },
+  cmdStandingRoutePause: {
+    schema: 'cmd',
+    fn: 'standing_route_pause',
+    args: [
+      { name: 'p_route', type: 'uuid' },
+      { name: 'p_paused', type: 'boolean' },
+    ],
+  },
   // 0039: the helm order at sea — she turns WHERE SHE IS. The destination is a port OR any point
   // of open water, and the proposed onward course rides along (bridged server-side to her true
   // position and verified as water like every other course). Not a verb: it acts on the queue and

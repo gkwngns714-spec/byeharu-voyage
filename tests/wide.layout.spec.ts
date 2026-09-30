@@ -332,4 +332,40 @@ test.describe('wide glass', () => {
     await page.waitForTimeout(400)
     expect(await rows.first().boundingBox()).toEqual(rowBox)
   })
+
+  // 0092: COMMAND's route row at the desktop's width — inside the 48rem column, and the unfold stays
+  // inside the row's own x range; pressing it moves the row not at all.
+  test(`COMMAND › Route at ${WIDE.width}px: the route row sits in the column and unfolds inside it`, async ({
+    page,
+    request,
+    baseURL,
+  }) => {
+    test.setTimeout(420_000)
+    test.skip(
+      !(await reachable(request, baseURL ?? '')),
+      `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
+    )
+    await page.goto('command')
+    await ready(page)
+    const row = page.getByTestId('route-row')
+    await expect(row).toContainText(/Not open yet|No route|Route ·/)
+    await page.waitForTimeout(400)
+    const remPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
+    const rowBox = (await row.boundingBox())!
+    expect(rowBox.width).toBeLessThanOrEqual(SHEET_REM * remPx + 1)
+
+    await row.click()
+    const unfold = page.getByTestId('route-unfold')
+    await expect(unfold).toBeVisible()
+    await page.waitForTimeout(400)
+    expect(await row.boundingBox(), 'pressing the route row moved it').toEqual(rowBox)
+    const box = (await unfold.boundingBox())!
+    console.log(`COMMAND route fold @${WIDE.width}px: row ${JSON.stringify(rowBox)} unfold ${JSON.stringify(box)}`)
+    expect(box.x).toBeGreaterThanOrEqual(Math.floor(rowBox.x))
+    expect(box.x + box.width).toBeLessThanOrEqual(Math.ceil(rowBox.x + rowBox.width))
+
+    await row.click()
+    await expect(page.getByTestId('route-unfold')).toHaveCount(0)
+    expect(await row.boundingBox()).toEqual(rowBox)
+  })
 })

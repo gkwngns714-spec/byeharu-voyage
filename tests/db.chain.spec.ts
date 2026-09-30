@@ -259,7 +259,10 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // and Hobart) and thirty-two goods, and 0091 gives every new place its roadstead and its sailed
 // distances, carving the Golden Gate and the Guayas on the way. (0086 and 0087 — PRs #75 and #78 — were
 // merged ahead of it on the deploy branch osn-deploy-0086-0091, so the chain applies 0086-0091 in order.)
-const LAST = '20260818000091_the_water_reaches_the_new_harbours.sql'
+// Moved 2026-09-30 to 0092, a route is a standing order that sails (owner row 106, docs/TRADE_ROUTES.md
+// slice 1): a company-owned loop of harbours refills its fleet's queue when it runs dry in port, through
+// cmd.enqueue (sliced out of cmd.issue) and the one executor; dark behind standing_routes_enabled.
+const LAST = '20260818000092_a_route_is_a_standing_order_that_sails.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
