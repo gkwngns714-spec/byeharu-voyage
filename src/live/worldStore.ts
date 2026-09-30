@@ -32,8 +32,8 @@
 // forbids on its own account — and this one also has a cost that can be measured.
 //
 // `useWorld()` with no selector subscribes to the WHOLE store object, and zustand replaces that
-// object on every `set()`. `refresh()` alone sets twice — `{busy: true}` on the way in, the
-// payload on the way out — so ONE read re-rendered every bare subscriber twice over, whether or
+// object on every `set()`. `refresh()` alone sets three times — `{busy: true}` on the way in, the
+// routes book, the payload on the way out — so ONE read re-rendered every bare subscriber three times over, whether or
 // not a field it draws had moved. That is not theoretical here: reading IS how time passes (rule
 // 1), issuing an order from Command refreshes the world, and the Ledger's list is long.
 //
@@ -141,8 +141,9 @@ export interface LiveWorld {
   /** The book of standing orders (0034). Null until FLEETS asks for it — it is that tab's card,
    *  and the server tops fleets up on arrival whether or not anyone is looking. */
   presets: ProvisionPresetBook | null
-  /** The company's standing routes (0092). Null until COMMAND or FLEETS asks — a route runs on the
-   *  server whether or not anyone is looking; this is only the reading of it. */
+  /** The company's standing routes (0092). Null until the first world read lands — `refresh()`
+   *  reads them with the fleets, on the same beat. A route runs on the server whether or not
+   *  anyone is looking; this is only the reading of it. */
   routes: StandingRouteBook | null
   /** What is on at the quay (0026), keyed by port id — a fair is a PORT's fact, not the world's. */
   buffs: Record<string, BuffsView>
@@ -195,8 +196,8 @@ export interface LiveWorld {
   /** Put a fleet under an order, or clear it with null. Nothing is bought now — the order fires
    *  when she makes port, and only there — so only the book is re-read, never the fleets. */
   applyPreset: (fleetId: string, presetId: string | null) => Promise<boolean>
-  /** Read the routes (0092). COMMAND's RouteFold and FLEETS' caption call it; every route verb
-   *  re-reads it, because the server's answer is the only true one. */
+  /** Read the routes (0092) ALONE — for a verb that moved only the book (save, delete). The
+   *  beat's reading of them is `refresh()`'s, never a screen's `readAt` effect. */
   loadRoutes: () => Promise<void>
   /** Write a route (routeId null) or replace its stops. Returns the route's id, or null when the
    *  server refused — the refusal lands in `refusal`. */
@@ -321,6 +322,34 @@ export const useWorld = create<LiveWorld>((set, get) => {
     if (port) await get().loadMarket(port.id)
   }
 
+  /**
+   * THE ONE READER OF THE ROUTES BOOK (0092) — the beat's reading (`refresh()`) and the re-read
+   * after a verb that moved the book alone (`loadRoutes`) are both this, so its two rules are
+   * written once:
+   *
+   * A FAILED READ IS QUIET AND KEEPS THE LAST BOOK — the rule of every read that rides the beat
+   * (loadMarket, loadOfficers, loadStandings, loadPresets): the next read corrects it. It sets no
+   * refusal, because a refusal set here would overwrite the one a verb just drew. Until 2026-09-30
+   * it blanked the book to null instead, so a failed read made the fold blink to "Loading…".
+   *
+   * AN OLDER ANSWER NEVER OVERWRITES A NEWER ONE. Reads are numbered as they are issued, and an
+   * answer is applied only if no later-issued read has been applied already. Without this a
+   * background beat that left before a save, delete, assign or pause and landed after it would
+   * put the OLD book back over the verb's read-back — a deleted route reappearing for a beat, a
+   * blink of its own. A read issued earlier can still carry a NEWER book (the verb committed
+   * before it ran on the server); that is applied, and the verb's own read then lands the same
+   * or a newer one — the book never goes backwards.
+   */
+  let routesAsked = 0
+  let routesApplied = 0
+  const readRoutes = async (): Promise<void> => {
+    const seq = ++routesAsked
+    const r = await worldStandingRoutes()
+    if (!r.ok || seq < routesApplied) return
+    routesApplied = seq
+    set({ routes: r.value })
+  }
+
   return {
   phase: 'idle',
   fatal: null,
@@ -423,6 +452,16 @@ export const useWorld = create<LiveWorld>((set, get) => {
       set({ busy: false, fatal: fleets.refusal, phase: 'failed' })
       return
     }
+    // THE ROUTES RIDE THE SAME BEAT (2026-09-30), for the same reason: COMMAND's fold and FLEETS'
+    // caption each re-read them on `readAt`, a second and third clock. AFTER the fleets, never
+    // beside them: `world.fleets()` (0009) and `world.standing_routes()` (0092) each settle every
+    // fleet they serve, and `voyage.settle` takes `for update` on the fleet row (0007:916) in
+    // whatever order the loop yields — two such transactions in flight at once, over two or more
+    // route fleets, can deadlock, and if the fleets read is the one Postgres kills this refresh
+    // sets `phase: 'failed'` and the shell stops reading for good. Read one after the other and
+    // the routes read's settle is a no-op. On the fatal branch above the routes are not read at
+    // all and the last book stands.
+    await readRoutes()
     set({
       fleets: fleets.value,
       // A failed player read leaves the house NULL rather than fatal, for the same reason a failed
@@ -532,13 +571,9 @@ export const useWorld = create<LiveWorld>((set, get) => {
     return true
   },
 
-  // A FAILED ROUTE READ IS QUIET, and it does not keep yesterday's book: it runs on every world read
-  // from two tabs (COMMAND's fold, FLEETS' caption), so a refusal set here would overwrite the one a
-  // verb just drew on another screen. The fold then reads "Loading…" rather than a stale lap.
-  loadRoutes: async () => {
-    const r = await worldStandingRoutes()
-    set({ routes: r.ok ? r.value : null })
-  },
+  // The re-read after a verb that moved the book alone (save, delete). The beat's reading is
+  // `refresh()`'s; both are `readRoutes`, the one reader.
+  loadRoutes: () => readRoutes(),
 
   saveRoute: async (routeId, name, stops) => {
     const r = await cmdStandingRouteSave(routeId, name, stops)
@@ -571,7 +606,8 @@ export const useWorld = create<LiveWorld>((set, get) => {
       return false
     }
     set({ refusal: null })
-    await Promise.all([get().refresh(), get().loadRoutes()])
+    // refresh() reads the routes with the fleets — one read, not two racing.
+    await get().refresh()
     return true
   },
 
@@ -582,7 +618,8 @@ export const useWorld = create<LiveWorld>((set, get) => {
       return false
     }
     set({ refusal: null })
-    await Promise.all([get().refresh(), get().loadRoutes()])
+    // refresh() reads the routes with the fleets — one read, not two racing.
+    await get().refresh()
     return true
   },
 

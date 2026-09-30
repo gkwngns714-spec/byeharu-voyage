@@ -38,7 +38,7 @@ interface Priced {
 /**
  * @param subject  ONE string naming what is previewed, or null for "nothing to ask". A new
  *                 subject shows nothing of the old one; a re-read of the same subject keeps the
- *                 last answer and marks it `loading`.
+ *                 last answer, and is not `loading` (useServedRead.ts).
  * @param ask      The dry-run RPC — read through a ref by useServedRead, so a fresh closure per
  *                 render is fine.
  */

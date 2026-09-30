@@ -5,6 +5,74 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-30 — one no-blink rule, Domain A1 (branch `osn-no-blink`, NOT merged)
+
+Owner row 107: *"i see multiple cases where a bar (Start route in command for example) blinks
+occasionally on its own."* The audits and the plan are `docs/HANDOFF_ROUTE_STOPS_AND_BLINKS.md`;
+this entry is what A1 landed and what it did not.
+
+**Root cause, one flag.** `worldStore.busy` is true for the length of every background world read
+— every 3 s (`AppShell.tsx`, READ_MIN_MS) — and eleven controls in COMMAND wore it as `disabled`.
+`Button` fades a disabled button to `opacity-45` over 180 ms, so each of them dimmed and came back
+on every beat (measured: 16–20 toggles per 30 s). The flag answers "is the world being read?"; the
+buttons wanted "is MY press still going?".
+
+**What A1 is (files, all in `src/live` and outside COMMAND):**
+* `src/live/usePress.ts` (A0, NEW): the one gate a control wears while its own press is on the
+  wire — `{pending, run}`, one instance per group of controls that act on the same thing (the
+  queue, a route fold, the editor), a press made while one is pending is dropped, an unmounted
+  component is never written to. Consumers write `<Button busy={press.pending} onClick={() =>
+  void press.run(act)}>`.
+* `src/live/useServedRead.ts`: **a re-ask on the world's beat is not `loading`.** It was — the
+  hook returned `loading: stale || answer.beat !== beat`, so a subject whose answer was a refusal
+  (no `view`) mounted its `loading && !view` waiting line on every beat: "No requests." ↔
+  "Loading…" on the request board, "Max amount unknown" ↔ "Checking how much you can buy…" in the
+  trade tray, the manifest's "Loading…" row, the haggle thread's tries re-toning. Now `loading` is
+  the first ask for a subject or a new question, never the beat; `WAITING` still covers the first
+  ask; `useTrade.ts:134` keeps its meaning (first ask only). Every caller corrected with no edit.
+* `src/live/worldStore.ts`: `refresh()` reads the standing routes WITH the fleets, on the same
+  beat, and a failed read keeps the last book (`routes.ok ? routes.value : get().routes`) — the
+  rule `loadMarket`/`loadOfficers`/`loadStandings`/`loadPresets` already follow. `loadRoutes` no
+  longer nulls the book on a refusal and survives only for the verbs that move the book alone
+  (`saveRoute`, `deleteRoute`); `assignRoute` and `pauseRoute` await `refresh()` alone instead of
+  two reads racing. `FleetsScreen.tsx` no longer re-reads the routes on `readAt`.
+* `src/features/map/WatersAhead.tsx`: the row key carried the distance, which shrinks on every
+  read while she sails, so every row ahead remounted every beat. Verified against 0055 before
+  changing it: `voyage.waters_ahead` folds only ADJACENT segments into a run and its probe (h)
+  counts runs and distinct seas separately, so a course can leave a sea and re-enter it and the
+  plan's bare `row.code` would have collided. The key is `${code}:${run}` in sailing order.
+* Comment-only: `TradeTray.tsx`, `useBuyCapacity.ts`, `useManifestPreview.ts`,
+  `useOrderPreview.ts`, `usePreviewRead.ts`, `useRequests.ts`, `useHaggleState.ts` no longer
+  describe the beat's re-ask as `loading`.
+
+**Gates run on this branch (each once, local PGlite build, no `.env.local`):** `tsc -b` clean,
+`eslint .` clean, `vite build` clean; Playwright against `vite preview --port 4411` on `localhost`
+for `words`, `sections`, `duplication`, `layout`, `wide.layout`, `trade.ceiling`,
+`selection.lock`: **52 passed, 0 failed, 0 skipped** (52 of 52 ran; the skipped count was read,
+not assumed — a `127.0.0.1` baseURL skips them all silently).
+
+**Review of `85514c3`, applied in the next commit.** (1) MUST-FIX: the routes read ran in the same
+`Promise.all` as the fleets read — two concurrent transactions, each settling every fleet it serves
+with `for update` on the fleet row (0007:916) in loop order, no ORDER BY in either `world.fleets()`
+(0009) or `world.standing_routes()` (0092): a lock-order deadlock with two or more route fleets,
+and if the fleets read is the victim `refresh()` sets `phase: 'failed'` and the shell stops reading
+for good. The routes are now read AFTER the fleets resolve, so their settle is a no-op. (2) A
+background beat that left before a save/delete/assign/pause and landed after it put the OLD book
+back for a beat — a deleted route reappearing, a blink of its own. ONE reader now, `readRoutes` in
+the store closure: reads are numbered as issued and an answer is dropped if a later-issued read
+has already been applied; `refresh()` and `loadRoutes` both compose onto it. (3) Two comments cited
+`tests/flicker.spec.ts` as if it existed; it is A2's. Gates re-run once after these, results below.
+
+**NOT in A1, said plainly:** the eleven `disabled={busy}` sites themselves are Domain B's files
+(`src/features/command/*`, branch `osn-route-stop-face`) and still blink until B lands; A2 — the
+rename of `busy` to `reading` so no screen can select it, `AppShell.tsx`, and
+`tests/flicker.spec.ts` (static guards + a MutationObserver count of 0 flips across three reads) —
+runs after B merges, because the rename fails to compile while B's files still read `s.busy`.
+`RouteFold.tsx:53-57` still calls `loadRoutes()` on `readAt` (B deletes it; harmless meanwhile,
+since the read now keeps the last book). `HaggleThread.tsx:118`'s `read.loading ? 'faint' :
+'muted'` is now a dead branch (the view is never drawn while loading) — left for the sweep that
+retires it with the rest.
+
 ## 2026-09-30 — the route driven in a real browser; two defects fixed forward as 0094 (NOT merged, NOT deployed, DARK)
 
 **How it was driven.** `vite preview --port 4394` of this branch, no `.env.local` (PGlite in the tab),
@@ -52,8 +120,20 @@ pairs with a positive one-way margin: Beirut → Tripoli pistachios +41.5 % over
 Portobelo sarsaparilla +8.7 %, Gdańsk → Stockholm tar +3.8 %; most are a few percent, and the
 return leg of each of those three loses (−10.9 %, −9.3 %, −2.2 %). With wages about 32 🪙 per 158-mile leg, a route pays only on
 such a pair, sized under the price impact (the Max stops a lap from buying into a loss). 0092's own
-probe printed, in one apply, +32 🪙 over three LIS ⇄ FNC iron laps and −53 🪙 over four. See the PR for the drive
-of a profitable pair.
+probe printed, in one apply, +32 🪙 over three LIS ⇄ FNC iron laps and −53 🪙 over four.
+
+**Driven on that pair (rebuilt with 0094; the fleet moved to Beirut by SQL for the drive only):**
+Beirut ⇄ Tripoli, Beirut Sell all + Buy Pistachios 30, Max 180; Tripoli Sell all; pacing 0. Laps
+**+2,531, +1,399, +250, −18 🪙** — +4,162 🪙 in four laps, the purse 7,767 → 11,919. Each lap bought
+into Beirut's rising price until the Max refused the fourth (`E_PRICE_LIMIT`, stepped over). So a
+route IS profitable with sensible settings on a real margin, and it saturates within a few laps
+unpaced; at the default pace (one lap per game-day) the market regenerates between laps, which is
+what §8's saturation measurement still has to put a number on.
+
+**0094 re-driven in the browser on the rebuilt build:** Lisbon ⇄ Porto lost −126, −33, −36 and
+paused (`losing`); Resume ran lap 4 at once with ONE ROUTE_PAUSED in History; Delete mid-lap wrote
+lap 4's line (−20 🪙, one leg's wages). `npm run db:apply` green three times in a row (87 receipts),
+`npm run db:proof` 11 files, 78/78 PASS (proof 11: four AFK laps, −378 🪙, books balance).
 
 ## 2026-09-30 — the review of 0092, applied forward as 0093 (NOT merged, NOT deployed, DARK)
 

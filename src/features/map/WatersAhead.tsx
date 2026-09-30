@@ -31,13 +31,20 @@ function barTone(tier: number): BarTone {
 export function WatersAhead({ waters }: { waters: readonly MapWater[] }) {
   const { rows, total, hidden } = watersView(waters)
   if (rows.length === 0) return null
+  // A ROW'S IDENTITY IS ITS WATER, NEVER ITS FIGURE (2026-09-30). The key used to carry the
+  // distance, which shrinks on every world read while she sails — so every row ahead was a new
+  // row on every beat, unmounted and mounted again: a bar blinking on its own. A course can leave
+  // a sea and enter it again (the runs are contiguous, 0055 (h), not one per sea), so the key is
+  // the sea and which of its runs this is, counted in sailing order.
+  const seen: Record<string, number> = {}
+  const keys = rows.map((row) => `${row.code}:${(seen[row.code] = (seen[row.code] ?? -1) + 1)}`)
 
   return (
     <div className="mt-6" data-testid="map-waters">
       <Row label="Ahead" value={<Figure value={<span data-testid="map-waters-count">{total}</span>} />} />
-      {rows.map((row) => (
+      {rows.map((row, i) => (
         <Row
-          key={`${row.code}-${row.figure}`}
+          key={keys[i]}
           mark={
             <Bar
               of={DANGER_PIPS}

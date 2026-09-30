@@ -15,8 +15,8 @@
 // its net and its one button went dead (the adversarial review's MUST-FIX 1). That is exactly the
 // defect `useServedRead` was written to end, in four other port hooks, the same day. So this hook
 // is one line of subject and one line of ask on that rule: the SUBJECT is (fleet, port, the lines
-// in input order), a re-read of the same subject keeps the last answer on screen and marks it
-// `loading`, and a new subject — a line added, removed or re-quantified — shows nothing of the old
+// in input order), a re-read of the same subject keeps the last answer on screen (the beat's
+// re-ask is not `loading`), and a new subject — a line added, removed or re-quantified — shows nothing of the old
 // one. The button is never disabled on `loading`.
 //
 // ── A REFUSAL IS THE ANSWER HERE, NOT THE ABSENCE OF ONE ───────────────────────────────────────

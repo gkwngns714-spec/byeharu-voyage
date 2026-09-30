@@ -9,8 +9,8 @@
 // Until that day COMMAND's Start route, the route fold's buttons, every queue ✕ and Clear wore
 // `disabled={busy}`, where `busy` was the world store's in-flight flag for `refresh()` — and the
 // shell calls `refresh()` on its own every few seconds (AppShell.tsx, READ_MIN_MS). So every beat
-// greyed every one of those buttons to `disabled:opacity-45` and back (tests/flicker.spec.ts
-// counts the flips). The flag answered "is the world being read?"; the buttons wanted
+// greyed every one of those buttons to `disabled:opacity-45` and back (A2 adds
+// tests/flicker.spec.ts, which counts the flips). The flag answered "is the world being read?"; the buttons wanted
 // "is MY press still going?". This hook is the second question, asked once.
 //
 // ONE INSTANCE PER GROUP OF CONTROLS THAT ACT ON THE SAME THING — the queue (every ✕ and Clear),
