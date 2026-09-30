@@ -43,7 +43,6 @@ export function CommandScreen() {
   const snapshot = useWorld((s) => s.snapshot)
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
-  const busy = useWorld((s) => s.busy)
   const readAt = useWorld((s) => s.readAt)
   const open = useWorld((s) => s.open)
   const cancel = useWorld((s) => s.cancel)
@@ -104,13 +103,15 @@ export function CommandScreen() {
           {/* 0092: HER ROUTE, one row above her queue — the standing order that writes the queue when
               it runs dry in port (RouteFold.tsx). It folds in place; the queue moves down. */}
           <RouteFold fleet={fleet} />
+          {/* The queue's ✕ and Clear are busy only while their own press is on the wire (Queue.tsx
+              wears the one `usePress`), so the verbs hand their promise down rather than a
+              world-read flag — a background read never greys a control (owner, 2026-09-30). */}
           <SheetSection heading="Orders" data-testid="command-queue">
             <Queue
               fleet={fleet}
-              busy={busy}
               readAt={readAt}
-              onCancel={(seq) => void cancel(fleet.id, seq)}
-              onClear={() => void clearQueue(fleet.id)}
+              onCancel={(seq) => cancel(fleet.id, seq)}
+              onClear={() => clearQueue(fleet.id)}
             />
           </SheetSection>
         </>

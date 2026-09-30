@@ -143,7 +143,10 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   await page.goto('fleets')
   await ready(page)
   await page.getByTestId('fleet-row').first().click()
-  await page.getByLabel(/days of supplies to keep .* at, typed/).fill('10')
+  // The stepper's typed figure commits on Enter or blur (Stepper.tsx), never on the keystroke.
+  const typed = page.getByLabel(/days of supplies to keep .* at, typed/)
+  await typed.fill('10')
+  await typed.press('Enter')
   await page.getByTestId('fleet-keep').click()
   await expect(page.getByTestId('fleet-keep')).toHaveCount(0, { timeout: 60_000 })
   await page.getByTestId('fleet-command').click()

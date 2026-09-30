@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button, Chip, Field, Hint, Icon, Note, goodIcon } from '../../components/ui'
 import { routeStopQuiet, stopLine, type StopLine } from '../../domain/route'
 import { PortField } from '../../live/PortField'
+import { usePress } from '../../live/usePress'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, Refusal, StandingRoute } from '../../lib/rpc'
 import { draftOfRoute, emptyStop, routeName, routePayload, type RouteStopDraft } from './standingRouteDraft'
@@ -36,9 +37,11 @@ export function RouteEditor({
   const markets = useWorld((s) => s.markets)
   const goodByCode = useWorld((s) => s.goodByCode)
   const loadMarket = useWorld((s) => s.loadMarket)
-  const busy = useWorld((s) => s.busy)
   const saveRoute = useWorld((s) => s.saveRoute)
   const assignRoute = useWorld((s) => s.assignRoute)
+  // Start / Save is busy only while ITS press is on the wire — never on the world's beat (the
+  // owner, 2026-09-30: "Start route in command ... blinks occasionally on its own").
+  const press = usePress()
 
   const home = fleet.port
   const [stops, setStops] = useState<RouteStopDraft[]>(() =>
@@ -198,7 +201,14 @@ export function RouteEditor({
         </Note>
       )}
       <div className="mt-3 flex gap-2">
-        <Button variant="primary" className="flex-1" disabled={busy || !complete || !seaNav} onClick={() => void start()} data-testid="route-start">
+        <Button
+          variant="primary"
+          className="flex-1"
+          disabled={!complete || !seaNav}
+          busy={press.pending}
+          onClick={() => void press.run(start)}
+          data-testid="route-start"
+        >
           {route?.fleet ? 'Save route' : 'Start route'}
         </Button>
         <Button variant="quiet" className="flex-1" onClick={onDone}>
