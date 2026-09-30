@@ -30,7 +30,9 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 2. **"Command's sell all / buy all is in one line, not distinguished, too simple"**: the route stop face shows
    SELL and BUY as separate lines in trade-face tones. **WIP `osn-route-stop-face` (`e4cfcd8`), gates NOT run.**
 3. **"Bars (e.g. Start route in COMMAND) blink on their own. Find all cases and fix"**: one shared no-blink rule
-   (keep the last served value while re-reading; `usePress` gate). **WIP `osn-no-blink` (`dcea399`), gates NOT run.**
+   (keep the last served value while re-reading; `usePress` gate). **Domain A0+A1 DONE on `osn-no-blink`, gates run
+   (tsc, eslint, build, 52/52 specs); A2 (the `busy` → `reading` rename, AppShell, `tests/flicker.spec.ts`) waits for
+   domain B to merge — see DEV_LOG 2026-09-30 "one no-blink rule".**
    Audits + plan + the A/B file partition: `docs/HANDOFF_ROUTE_STOPS_AND_BLINKS.md`.
 
 ## What the next session does, in order

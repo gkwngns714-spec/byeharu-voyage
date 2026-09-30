@@ -16,8 +16,8 @@
 //
 // ── THE RULE ───────────────────────────────────────────────────────────────────────────────────
 // The SUBJECT (port, fleet) decides what an answer is FOR. A new read of the same subject keeps
-// the last answer on screen and marks it `loading` until the fresh one lands; a new SUBJECT shows
-// nothing of the old one — Dublin's shed is never drawn under Lisbon's heading.
+// the last answer on screen, silently, until the fresh one lands; a new SUBJECT shows nothing of
+// the old one — Dublin's shed is never drawn under Lisbon's heading.
 //
 // A refusal is an answer: it clears the view, because the server just said there is nothing to
 // show (the fleet left, the city keeps no such house). A caller draws `view` when it has one, and
@@ -37,7 +37,7 @@
 //
 // `useHaggleState` joined the view reads in slice 3 (2026-09-13): its figures are a conversation's
 // standing — tries left, the bargain held, the odds — and a thread that blanked on every 3-s beat
-// was row 77's defect again; the thread shows `loading` on the re-ask and never a blank.
+// was row 77's defect again; the thread keeps its last figures across the re-ask and never blanks.
 //
 // THE CEILING'S EXEMPTION IS RETIRED (2026-09-14). This header used to say a CEILING read
 // (useBuyCapacity) was "deliberately not this: a ceiling shown a beat late is the lie that hook was

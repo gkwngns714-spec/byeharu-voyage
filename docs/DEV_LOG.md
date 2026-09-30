@@ -5,6 +5,62 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-30 — one no-blink rule, Domain A1 (branch `osn-no-blink`, NOT merged)
+
+Owner row 107: *"i see multiple cases where a bar (Start route in command for example) blinks
+occasionally on its own."* The audits and the plan are `docs/HANDOFF_ROUTE_STOPS_AND_BLINKS.md`;
+this entry is what A1 landed and what it did not.
+
+**Root cause, one flag.** `worldStore.busy` is true for the length of every background world read
+— every 3 s (`AppShell.tsx`, READ_MIN_MS) — and eleven controls in COMMAND wore it as `disabled`.
+`Button` fades a disabled button to `opacity-45` over 180 ms, so each of them dimmed and came back
+on every beat (measured: 16–20 toggles per 30 s). The flag answers "is the world being read?"; the
+buttons wanted "is MY press still going?".
+
+**What A1 is (files, all in `src/live` and outside COMMAND):**
+* `src/live/usePress.ts` (A0, NEW): the one gate a control wears while its own press is on the
+  wire — `{pending, run}`, one instance per group of controls that act on the same thing (the
+  queue, a route fold, the editor), a press made while one is pending is dropped, an unmounted
+  component is never written to. Consumers write `<Button busy={press.pending} onClick={() =>
+  void press.run(act)}>`.
+* `src/live/useServedRead.ts`: **a re-ask on the world's beat is not `loading`.** It was — the
+  hook returned `loading: stale || answer.beat !== beat`, so a subject whose answer was a refusal
+  (no `view`) mounted its `loading && !view` waiting line on every beat: "No requests." ↔
+  "Loading…" on the request board, "Max amount unknown" ↔ "Checking how much you can buy…" in the
+  trade tray, the manifest's "Loading…" row, the haggle thread's tries re-toning. Now `loading` is
+  the first ask for a subject or a new question, never the beat; `WAITING` still covers the first
+  ask; `useTrade.ts:134` keeps its meaning (first ask only). Every caller corrected with no edit.
+* `src/live/worldStore.ts`: `refresh()` reads the standing routes WITH the fleets, on the same
+  beat, and a failed read keeps the last book (`routes.ok ? routes.value : get().routes`) — the
+  rule `loadMarket`/`loadOfficers`/`loadStandings`/`loadPresets` already follow. `loadRoutes` no
+  longer nulls the book on a refusal and survives only for the verbs that move the book alone
+  (`saveRoute`, `deleteRoute`); `assignRoute` and `pauseRoute` await `refresh()` alone instead of
+  two reads racing. `FleetsScreen.tsx` no longer re-reads the routes on `readAt`.
+* `src/features/map/WatersAhead.tsx`: the row key carried the distance, which shrinks on every
+  read while she sails, so every row ahead remounted every beat. Verified against 0055 before
+  changing it: `voyage.waters_ahead` folds only ADJACENT segments into a run and its probe (h)
+  counts runs and distinct seas separately, so a course can leave a sea and re-enter it and the
+  plan's bare `row.code` would have collided. The key is `${code}:${run}` in sailing order.
+* Comment-only: `TradeTray.tsx`, `useBuyCapacity.ts`, `useManifestPreview.ts`,
+  `useOrderPreview.ts`, `usePreviewRead.ts`, `useRequests.ts`, `useHaggleState.ts` no longer
+  describe the beat's re-ask as `loading`.
+
+**Gates run on this branch (each once, local PGlite build, no `.env.local`):** `tsc -b` clean,
+`eslint .` clean, `vite build` clean; Playwright against `vite preview --port 4411` on `localhost`
+for `words`, `sections`, `duplication`, `layout`, `wide.layout`, `trade.ceiling`,
+`selection.lock`: **52 passed, 0 failed, 0 skipped** (52 of 52 ran; the skipped count was read,
+not assumed — a `127.0.0.1` baseURL skips them all silently).
+
+**NOT in A1, said plainly:** the eleven `disabled={busy}` sites themselves are Domain B's files
+(`src/features/command/*`, branch `osn-route-stop-face`) and still blink until B lands; A2 — the
+rename of `busy` to `reading` so no screen can select it, `AppShell.tsx`, and
+`tests/flicker.spec.ts` (static guards + a MutationObserver count of 0 flips across three reads) —
+runs after B merges, because the rename fails to compile while B's files still read `s.busy`.
+`RouteFold.tsx:53-57` still calls `loadRoutes()` on `readAt` (B deletes it; harmless meanwhile,
+since the read now keeps the last book). `HaggleThread.tsx:118`'s `read.loading ? 'faint' :
+'muted'` is now a dead branch (the view is never drawn while loading) — left for the sweep that
+retires it with the rest.
+
 ## 2026-09-30 — the route driven in a real browser; two defects fixed forward as 0094 (NOT merged, NOT deployed, DARK)
 
 **How it was driven.** `vite preview --port 4394` of this branch, no `.env.local` (PGlite in the tab),
