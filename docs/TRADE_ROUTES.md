@@ -738,3 +738,26 @@ and **the two are pushed together or not at all**.
 | NIT 11 | Edit dropped lines the editor cannot show. | **Fixed:** the draft carries REPAIR, the sell-all floor and every other line through untouched. |
 | (found in the re-cut) | A REFUSED assign to another fleet had already released the old fleet's pending route orders. | **Fixed:** every check runs before anything changes. |
 
+### 13.2 Driven in a browser, fixed forward as 0094 (2026-09-30)
+
+The branch was driven as a player in Chrome against `vite preview` with PGlite in the tab (switch
+turned on in the tab's own database for the drive; no migration edited). Everything in slice 1's
+client scope worked: set up, the refused Start listed as `No fleet`, Start, laps by themselves,
+History lap lines, Pause / Resume / Edit / Delete, `Blocked`. Two defects, fixed by migration
+`20260818000094_a_resumed_route_sails_and_a_deleted_one_closes_its_lap.sql` (0092/0093 not edited;
+the three are pushed together):
+
+| # | Finding | Outcome |
+|---|---|---|
+| 1 | After a `losing` pause, Resume re-judged the same closed laps and paused again on the spot; no lap ran, and only Delete got out. | **Fixed.** The loss guard is judged only when the call has just closed a lap. Resume sails one more lap; if it loses too, the route pauses again at its end. |
+| 2 | Delete mid-lap cascaded the open lap away with no ROUTE_LAP line, so its trades had no lap in History. | **Fixed.** Delete closes the open lap with the one closer first. |
+
+**Measured profitability.** Lisbon ⇄ Porto (cork) lost every lap (−210, −259, −36, −455 🪙 on the
+first build). Beirut ⇄ Tripoli (pistachios, Max 180, unpaced) made **+2,531, +1,399, +250, −18 🪙**:
+a route pays on a real margin and saturates in about three laps without pacing. The §8 saturation
+measurement at the default pace is still owed.
+
+**Seen, not this PR's code:** an UNABLE_TO_SAIL fleet cannot be repaired in port (REPAIR stays
+pending; Port → Repair says the fleet is at sea), so `Blocked` has no way out in play; History ties
+within one transaction are unordered; FLEETS prints `hull`; History says `arrived to`.
+
