@@ -328,7 +328,7 @@ export function TradeTray({
               "when i press buy, the max keeps refreshing". tests/trade.ceiling.spec.ts watches it
               across three world reads. The beat's re-ask is not `capacity.loading` either
               (useServedRead.ts, 2026-09-30), so an UNKNOWN ceiling below holds its words too
-              instead of flipping to "Checking…" on every read (tests/flicker.spec.ts). */}
+              instead of flipping to "Checking…" on every read (A2 adds tests/flicker.spec.ts). */}
           {capacity.bound ? (
             <Row label="Max" value={<Figure value={formatUnits(capacity.bound.max)} size="figure" />} data-testid="trade-tray-max">
               {/* The ceiling in the ship's own measure — the owner, 2026-09-18: "Max limited by

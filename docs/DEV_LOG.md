@@ -51,6 +51,18 @@ for `words`, `sections`, `duplication`, `layout`, `wide.layout`, `trade.ceiling`
 `selection.lock`: **52 passed, 0 failed, 0 skipped** (52 of 52 ran; the skipped count was read,
 not assumed — a `127.0.0.1` baseURL skips them all silently).
 
+**Review of `85514c3`, applied in the next commit.** (1) MUST-FIX: the routes read ran in the same
+`Promise.all` as the fleets read — two concurrent transactions, each settling every fleet it serves
+with `for update` on the fleet row (0007:916) in loop order, no ORDER BY in either `world.fleets()`
+(0009) or `world.standing_routes()` (0092): a lock-order deadlock with two or more route fleets,
+and if the fleets read is the victim `refresh()` sets `phase: 'failed'` and the shell stops reading
+for good. The routes are now read AFTER the fleets resolve, so their settle is a no-op. (2) A
+background beat that left before a save/delete/assign/pause and landed after it put the OLD book
+back for a beat — a deleted route reappearing, a blink of its own. ONE reader now, `readRoutes` in
+the store closure: reads are numbered as issued and an answer is dropped if a later-issued read
+has already been applied; `refresh()` and `loadRoutes` both compose onto it. (3) Two comments cited
+`tests/flicker.spec.ts` as if it existed; it is A2's. Gates re-run once after these, results below.
+
 **NOT in A1, said plainly:** the eleven `disabled={busy}` sites themselves are Domain B's files
 (`src/features/command/*`, branch `osn-route-stop-face`) and still blink until B lands; A2 — the
 rename of `busy` to `reading` so no screen can select it, `AppShell.tsx`, and

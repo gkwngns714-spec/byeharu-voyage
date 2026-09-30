@@ -32,8 +32,8 @@
 // forbids on its own account — and this one also has a cost that can be measured.
 //
 // `useWorld()` with no selector subscribes to the WHOLE store object, and zustand replaces that
-// object on every `set()`. `refresh()` alone sets twice — `{busy: true}` on the way in, the
-// payload on the way out — so ONE read re-rendered every bare subscriber twice over, whether or
+// object on every `set()`. `refresh()` alone sets three times — `{busy: true}` on the way in, the
+// routes book, the payload on the way out — so ONE read re-rendered every bare subscriber three times over, whether or
 // not a field it draws had moved. That is not theoretical here: reading IS how time passes (rule
 // 1), issuing an order from Command refreshes the world, and the Ledger's list is long.
 //
@@ -322,6 +322,34 @@ export const useWorld = create<LiveWorld>((set, get) => {
     if (port) await get().loadMarket(port.id)
   }
 
+  /**
+   * THE ONE READER OF THE ROUTES BOOK (0092) — the beat's reading (`refresh()`) and the re-read
+   * after a verb that moved the book alone (`loadRoutes`) are both this, so its two rules are
+   * written once:
+   *
+   * A FAILED READ IS QUIET AND KEEPS THE LAST BOOK — the rule of every read that rides the beat
+   * (loadMarket, loadOfficers, loadStandings, loadPresets): the next read corrects it. It sets no
+   * refusal, because a refusal set here would overwrite the one a verb just drew. Until 2026-09-30
+   * it blanked the book to null instead, so a failed read made the fold blink to "Loading…".
+   *
+   * AN OLDER ANSWER NEVER OVERWRITES A NEWER ONE. Reads are numbered as they are issued, and an
+   * answer is applied only if no later-issued read has been applied already. Without this a
+   * background beat that left before a save, delete, assign or pause and landed after it would
+   * put the OLD book back over the verb's read-back — a deleted route reappearing for a beat, a
+   * blink of its own. A read issued earlier can still carry a NEWER book (the verb committed
+   * before it ran on the server); that is applied, and the verb's own read then lands the same
+   * or a newer one — the book never goes backwards.
+   */
+  let routesAsked = 0
+  let routesApplied = 0
+  const readRoutes = async (): Promise<void> => {
+    const seq = ++routesAsked
+    const r = await worldStandingRoutes()
+    if (!r.ok || seq < routesApplied) return
+    routesApplied = seq
+    set({ routes: r.value })
+  }
+
   return {
   phase: 'idle',
   fatal: null,
@@ -419,21 +447,21 @@ export const useWorld = create<LiveWorld>((set, get) => {
     set({ busy: true })
     // The house rides along with the fleets: it is the same read cadence (fame is derived from the
     // ledger, so it moves whenever the ledger does) and a separate poll would be a second clock.
-    // THE ROUTES RIDE TOO (2026-09-30), for the same reason: COMMAND's fold and FLEETS' caption
-    // each re-read them on `readAt`, a second and third clock, and each read that failed set the
-    // book to null — the fold's row fell back to 'Route' and its body to "Loading…" until the next
-    // one landed. One reader now, and a failed read KEEPS the last book, as every other beat read
-    // in this file does.
-    const [fleets, ledger, player, routes] = await Promise.all([
-      worldFleets(),
-      worldLedger(),
-      worldPlayer(),
-      worldStandingRoutes(),
-    ])
+    const [fleets, ledger, player] = await Promise.all([worldFleets(), worldLedger(), worldPlayer()])
     if (!fleets.ok) {
       set({ busy: false, fatal: fleets.refusal, phase: 'failed' })
       return
     }
+    // THE ROUTES RIDE THE SAME BEAT (2026-09-30), for the same reason: COMMAND's fold and FLEETS'
+    // caption each re-read them on `readAt`, a second and third clock. AFTER the fleets, never
+    // beside them: `world.fleets()` (0009) and `world.standing_routes()` (0092) each settle every
+    // fleet they serve, and `voyage.settle` takes `for update` on the fleet row (0007:916) in
+    // whatever order the loop yields — two such transactions in flight at once, over two or more
+    // route fleets, can deadlock, and if the fleets read is the one Postgres kills this refresh
+    // sets `phase: 'failed'` and the shell stops reading for good. Read one after the other and
+    // the routes read's settle is a no-op. On the fatal branch above the routes are not read at
+    // all and the last book stands.
+    await readRoutes()
     set({
       fleets: fleets.value,
       // A failed player read leaves the house NULL rather than fatal, for the same reason a failed
@@ -441,7 +469,6 @@ export const useWorld = create<LiveWorld>((set, get) => {
       player: player.ok ? player.value.player : null,
       ducats: ledger.ok ? (ledger.value.ducats ?? null) : null,
       events: ledger.ok ? ledger.value.events : [],
-      routes: routes.ok ? routes.value : get().routes,
       busy: false,
       readAt: Date.now(),
     })
@@ -544,16 +571,9 @@ export const useWorld = create<LiveWorld>((set, get) => {
     return true
   },
 
-  // A FAILED ROUTE READ IS QUIET AND KEEPS THE LAST BOOK — the rule of every read that rides the
-  // beat (loadMarket, loadOfficers, loadStandings, loadPresets): the next read corrects it. It sets
-  // no refusal, because a refusal set here would overwrite the one a verb just drew. Until
-  // 2026-09-30 it blanked the book to null instead, so a failed read made the fold blink to
-  // "Loading…"; the beat's reading moved into `refresh()` that day and this is now only the
-  // re-read after a verb that moved the book alone.
-  loadRoutes: async () => {
-    const r = await worldStandingRoutes()
-    if (r.ok) set({ routes: r.value })
-  },
+  // The re-read after a verb that moved the book alone (save, delete). The beat's reading is
+  // `refresh()`'s; both are `readRoutes`, the one reader.
+  loadRoutes: () => readRoutes(),
 
   saveRoute: async (routeId, name, stops) => {
     const r = await cmdStandingRouteSave(routeId, name, stops)
