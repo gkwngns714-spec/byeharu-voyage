@@ -23,6 +23,18 @@
 // show (the fleet left, the city keeps no such house). A caller draws `view` when it has one, and
 // its waiting line only when `loading && !view` — the first ask.
 //
+// A RE-ASK ON THE WORLD'S BEAT IS NOT LOADING (2026-09-30). Until then `loading` was also true
+// while the SAME question was re-asked on the beat, so every 3 s it went true and false again —
+// and the sentence above was not true: a subject whose answer was a refusal (or a null served
+// value) has no `view`, so `loading && !view` mounted its waiting line on every beat and unmounted
+// it when the re-ask landed. The request board flipped "No requests." to "Loading…", the trade
+// tray's unknown `Max` to "Checking how much you can buy…", the manifest's refused basket grew a
+// "Loading…" row, the haggle thread's tries re-toned — each a bar blinking on its own, the owner's
+// words that day: *"i see multiple cases where a bar … blinks occasionally on its own"*. Now
+// `loading` means only what a caller can act on: nothing of this subject has been answered yet
+// (the first ask), or the figures on screen answer an earlier question (`stale`). The beat's
+// re-ask is silent; its answer simply replaces the last one when it lands.
+//
 // `useHaggleState` joined the view reads in slice 3 (2026-09-13): its figures are a conversation's
 // standing — tries left, the bargain held, the odds — and a thread that blanked on every 3-s beat
 // was row 77's defect again; the thread shows `loading` on the re-ask and never a blank.
@@ -54,8 +66,8 @@ import { useWorld } from './worldStore'
 export interface ServedRead<V> {
   /** The last answer for this subject, or null before the first one (or after a refusal). */
   view: V | null
-  /** True while an ask is on the wire — the first one, a re-ask on the world's beat, or a new
-   *  question. */
+  /** True while the first ask for this subject, or a new question, is on the wire. NEVER for the
+   *  re-ask of the same question on the world's beat — that one is silent (see the header). */
   loading: boolean
   /** True while `view` answers an EARLIER question than the one now asked — the figures on screen
    *  are this subject's, but not yet for what was just chosen. Always false when the question is
@@ -88,7 +100,7 @@ export function useServedRead<V>(
   ask: () => Promise<RpcResult<V>>,
   { question = subject }: ServedReadOptions = {},
 ): ServedRead<V> {
-  // The beat this answer is for: the world's read.
+  // The world's read: a new one re-asks the same question.
   const beat = useWorld((s) => s.readAt) ?? 0
 
   const askRef = useRef(ask)
@@ -99,7 +111,6 @@ export function useServedRead<V>(
   const [answer, setAnswer] = useState<{
     subject: string
     question: string
-    beat: number
     view: V | null
   } | null>(null)
 
@@ -108,18 +119,20 @@ export function useServedRead<V>(
     let live = true
     void askRef.current().then((r) => {
       if (!live) return
-      setAnswer({ subject, question, beat, view: r.ok ? r.value : null })
+      setAnswer({ subject, question, view: r.ok ? r.value : null })
     })
     return () => {
       live = false
     }
+    // `beat` is not read in the body: it is here only so the world's read re-asks.
   }, [subject, question, beat])
 
   if (subject === null) return IDLE
   // Nothing of THIS subject's has been answered yet: wait, and show none of another subject's.
   if (answer === null || answer.subject !== subject) return WAITING
   // The last answer stands while the next read of the same subject — the same question on the
-  // world's beat, or a new question — is on the wire.
+  // world's beat, or a new question — is on the wire. Only the new question is `loading`; the
+  // beat's re-ask is not (the header's 2026-09-30 paragraph).
   const stale = answer.question !== question
-  return { view: answer.view, loading: stale || answer.beat !== beat, stale }
+  return { view: answer.view, loading: stale, stale }
 }

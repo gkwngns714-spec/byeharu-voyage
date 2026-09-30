@@ -7,8 +7,8 @@
 // is the thing that makes them exist on that port — the draw is pure in (port, day, secret), so a
 // board wound late is the same board.
 //
-// ONE subject — the port — on `useServedRead`: a re-read keeps the last board on screen and marks
-// it `loading`; another port shows nothing of this one's. A refusal clears it (there is nothing to
+// ONE subject — the port — on `useServedRead`: a re-read keeps the last board on screen, silently
+// (a re-ask on the beat is not `loading` — useServedRead.ts, 2026-09-30); another port shows nothing of this one's. A refusal clears it (there is nothing to
 // draw), which is the read family's rule.
 
 import { worldContracts } from '../lib/rpc'

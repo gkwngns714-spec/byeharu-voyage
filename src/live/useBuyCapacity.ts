@@ -19,7 +19,7 @@
 // stepper clamped to a ceiling of nought, and the row repainted when the re-ask landed. The owner:
 // *"when i press buy, the max keeps refreshing."* That is row 77's defect once more, in the one
 // hook `useServedRead`'s header had exempted. The SUBJECT is (fleet, good); a re-read of the same
-// subject keeps the last ceiling on screen and marks it `loading`; a new good shows nothing of the
+// subject keeps the last ceiling on screen, and the beat's re-ask is not `loading`; a new good shows nothing of the
 // old one. The ceiling is still re-asked on every beat — a purse spent elsewhere, or stock another
 // house took, changes the answer — and `cmd.issue` re-checks it on the press regardless.
 

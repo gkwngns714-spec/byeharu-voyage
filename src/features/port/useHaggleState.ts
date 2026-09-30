@@ -19,11 +19,12 @@
 // the defect owner row 77 named in four other port hooks (*"why is store keep refreshing?"*), and
 // a haggle THREAD — several turns of a conversation — cannot be a thing that blanks every three
 // seconds. So this is one line of subject and one line of ask on `useServedRead`: the SUBJECT is
-// (fleet, good), a re-read of the same subject keeps the last answer on screen and marks it
-// `loading` until the fresh one lands, and a new subject shows nothing of the old one. A won
-// attempt reaches the screen through the same beat: `worldStore.haggle()` calls `refresh()`,
-// `refresh()` moves `readAt`, and this re-asks — the count and the odds arrive one read later,
-// which the thread shows as `loading`, never as a blank.
+// (fleet, good), a re-read of the same subject keeps the last answer on screen until the fresh one lands, and a
+// new subject shows nothing of the old one. A won attempt reaches the screen through the same
+// beat: `worldStore.haggle()` calls `refresh()`, `refresh()` moves `readAt`, and this re-asks —
+// the count and the odds arrive one read later, never as a blank. That re-ask is not `loading`
+// (useServedRead.ts, 2026-09-30): the tries figure used to re-tone on every beat, a bar blinking
+// on its own; `loading` is now true only before this good's first answer.
 //
 // AT SEA IS A STATE, NOT A FAILURE. `world.haggle_state` answers `{docked:false, why}` rather than
 // refusing, and `why` is a sentence written for a player. It is rendered as-is. A REFUSAL here
