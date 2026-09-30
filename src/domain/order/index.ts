@@ -24,7 +24,8 @@
 //               two readers of one estimate is fine, two READINGS of it is the disease
 //
 // ── WHAT IT MAY DEPEND ON ──────────────────────────────────────────────────────────────────────
-// `lib/rpc` types and `lib/json`'s payload readers, and nothing else in the app. It knows no
+// `lib/rpc` types, `lib/json`'s payload readers and `lib/format` (a trade line's words carry its
+// units and its coin), and nothing else in the app. It knows no
 // screen, no store beyond its own, and no other section. That is what makes it safe for every
 // screen to import.
 export { useCommandDraft, type CommandIntent, type CommandDraftState } from './draft'
@@ -39,10 +40,14 @@ export {
   isQueueVerb,
   missingArgs,
   orderText,
+  queuedOrderWords,
   refusalOfOrder,
+  tradeLineWords,
   verbWord,
   visibleArgs,
   type FixAction,
+  type TradeLineInput,
+  type TradeLineWords,
 } from './text'
 export { handOffTrade, type TradeIntent } from './handOff'
 export { sailEstimate, saleEstimate, type SailEstimate, type SaleEstimate } from './estimate'

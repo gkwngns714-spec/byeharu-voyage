@@ -4,7 +4,9 @@
 //
 // §7B (docs/NO_SPAGHETTI.md), answered before the first line:
 //   CONCEPT       "how a served standing route (migration 0092) is said to a player": its one-word
-//                 state, the sentence a pause is explained with, and one stop in a line.
+//                 state, the sentence a pause is explained with, and one stop as its sell and buy
+//                 lines (owner, 2026-09-30: "sell all buy all is ... in one line and not
+//                 distinguished" — each line is said by domain/order's `tradeLineWords`).
 //   LIVES HERE    src/domain/route — pure, no React, no store. It READS `world.standing_routes()`'s
 //                 served shape and computes no figure: the lap net, the next-lap time and every
 //                 price are the server's, formatted by src/lib/format.
@@ -17,12 +19,14 @@
 // Words obey docs/WORDS.md: Route, Lap, Paused / Resume, Stopped, Blocked, Next lap 14:32.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { formatClock, formatUnitPrice, formatUnits } from '../../lib/format'
+import { formatClock } from '../../lib/format'
+import { tradeLineWords, type TradeLineWords } from '../order'
 import type {
   SnapshotGood,
   SnapshotPort,
   StandingRoute,
   StandingRouteBook,
+  StandingRouteLine,
   StandingRoutePausedReason,
   StandingRouteStop,
 } from '../../lib/rpc'
@@ -121,21 +125,53 @@ export function routePorts(route: StandingRoute, portByCode: Record<string, Snap
   return route.stops.map((s) => portByCode[s.port]?.name ?? s.port).join(' ⇄ ')
 }
 
-/** One stop in a line: `Sell all · Buy Iron, 20 units, Max 12 🪙 each`. */
-export function routeStopWords(stop: StandingRouteStop, goodByCode: Record<string, SnapshotGood>): string {
-  const parts: string[] = []
-  for (const l of stop.lines) {
-    const good = l.good ? (goodByCode[l.good]?.name ?? l.good) : null
-    if (l.kind === 'SELL') {
-      parts.push(good ? `Sell ${good}` : 'Sell all')
-    } else {
-      parts.push(
-        [`Buy ${good ?? ''}`, l.qty !== null ? formatUnits(l.qty) : null, l.price_limit !== null ? `Max ${formatUnitPrice(l.price_limit)}` : null]
-          .filter(Boolean)
-          .join(', '),
-      )
-    }
+/** One trade line of a stop, ready to draw: the good (null for everything on board) and its words. */
+export type StopLine = {
+  key: string
+  /** Good CODE, or null for "everything on board". */
+  code: string | null
+  /** The good's category (its fallback mark), or null. */
+  category: string | null
+  name: string
+} & TradeLineWords
+
+/** One served (or drafted) trade line as a StopLine. The route editor draws the lines it carries
+ *  but has no control for through this too, so nothing a route does is hidden (0093 NIT 11). */
+export function stopLine(
+  l: Pick<StandingRouteLine, 'ord' | 'kind' | 'good' | 'qty' | 'price_limit' | 'at_profit'>,
+  goodByCode: Record<string, SnapshotGood>,
+): StopLine {
+  const good = l.good ? goodByCode[l.good] : undefined
+  return {
+    key: `${l.kind}-${l.ord}`,
+    code: l.good,
+    category: good?.category ?? null,
+    name: l.good ? (good?.name ?? l.good) : 'Everything on board',
+    ...tradeLineWords(l),
   }
-  if (stop.repair) parts.push('Repair')
-  return parts.length > 0 ? parts.join(' · ') : 'Trade nothing'
+}
+
+/**
+ * One stop as the player reads it: what it SELLS, what it BUYS, and the quiet line under both. The
+ * server runs a stop in this order — sell, resupply, repair, buy (0092 `cmd.standing_route_lines`)
+ * — and the face draws sell above buy for the same reason. Resupply is fleet-wide and runs at every
+ * stop when the fleet is below its keep level (a route cannot start without one, E_NO_KEEP), so the
+ * quiet line says so at every stop; Repair only where the stop asks for it.
+ */
+export function routeStopLines(
+  stop: StandingRouteStop,
+  goodByCode: Record<string, SnapshotGood>,
+): { sell: StopLine[]; buy: StopLine[]; quiet: string } {
+  const line = (l: StandingRouteLine) => stopLine(l, goodByCode)
+  return {
+    sell: stop.lines.filter((l) => l.kind === 'SELL').map(line),
+    buy: stop.lines.filter((l) => l.kind === 'BUY').map(line),
+    quiet: routeStopQuiet(stop.repair),
+  }
+}
+
+/** The quiet line under a stop's trade: resupply (every stop, when below the keep level) and repair
+ *  (where the stop asks for it). One author, so the running face and the editor say it alike. */
+export function routeStopQuiet(repair: boolean): string {
+  return repair ? 'Resupply if low · Repair' : 'Resupply if low'
 }

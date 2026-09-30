@@ -410,13 +410,17 @@ trade routes - going back and forth, afk, running all the time"*. The plan is
   queue — cleared by the same `Clear`.
 - **The editor** (`RouteEditor.tsx`, slice 1): two stops — where the fleet lies and one harbour picked
   with THE port field (`src/live/PortField.tsx`, moved there from PORT so both screens compose it) —
-  `Sell all`, and one BUY per stop from that port's served market (units, Max each). Each leg's course
+  each stop drawn as `RouteStop.tsx`'s block — a **Sell** group (`Everything on board`) above a
+  **Buy** group (one good from that port's served market; Units and Max each, always drawn and
+  enabled by a picked good, so a press moves nothing). The running route's stops are the same block,
+  read-only, and each line's words are domain/order's `tradeLineWords` — the queue's rows too. Each leg's course
   is `proposeCourse` between the two roadsteads (`standingRouteDraft.ts`), the way a typed SAIL
   proposes one. The keep level is FLEETS' control; without one the server refuses `E_NO_KEEP`.
 - **No route is hidden** (0093). A route no fleet runs — a Start the server refused, or one taken off
   its fleet — is listed under the fleet's `No route` row with Start (on this fleet, by the route's
   id), Edit and Delete. Names are labels, not keys: two fleets may run the same two ports. Edit
-  carries every line the slice-1 editor cannot show (REPAIR, a floor, a second BUY) through untouched.
+  carries every line the slice-1 editor cannot change (REPAIR, a floor, a second BUY) through
+  untouched, and draws each read-only in its group so none is hidden.
 - **Blocked** (0093): a fleet that cannot move on by itself (unable to sail, adrift, anchored) reads
   `Blocked`, with one sentence saying it goes on once it is in port and fit to sail.
 - **No figures here.** Lap net, sold, bought, supplies, wages and the next-lap time are served by

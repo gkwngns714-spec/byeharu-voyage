@@ -24,6 +24,7 @@
 // If the server ever adds a verb or an argument, this file needs no edit: it walks whatever
 // schema arrived.
 
+import { formatUnitPrice, formatUnits, formatVoyageDays } from '../../lib/format'
 import type { QueuedOrder, Refusal, VerbArg, VerbSpec } from '../../lib/rpc'
 
 /**
@@ -288,4 +289,105 @@ export function refusalOfOrder(order: QueuedOrder): Refusal | null {
     figures: order.figures ?? undefined,
     source: 'server',
   }
+}
+
+// ── ONE TRADE LINE, IN THE PLAYER'S WORDS ──────────────────────────────────────────────────────
+// The owner, 2026-09-30: *"right now command sell all buy all is ... in one line and not
+// distinguished which is confusing and looks very simple."* A SELL or a BUY line — a route's stop
+// (src/domain/route's `routeStopLines`) or an order the route wrote into her queue
+// (`queuedOrderWords` below) — is said HERE, once, as three words: which side, how much, and the
+// limit. A buy CAPS (`Max`), a sell FLOORS (`Min`, or `Only sell above cost`, docs/WORDS.md). No
+// figure is made: the amount and the limit are the served line's own, formatted by src/lib/format.
+
+/** The served shape of one trade line, as much of it as the words need. */
+export interface TradeLineInput {
+  kind: 'SELL' | 'BUY'
+  /** Units; null = ALL (every unit on board for a SELL, as many as fit for a BUY). */
+  qty: number | null
+  /** BUY: the most each. SELL: the least each. Null = no limit. */
+  price_limit: number | null
+  /** SELL only: the floor is what the goods cost (served per good, at the stop). */
+  at_profit: boolean
+}
+
+export interface TradeLineWords {
+  side: 'Sell' | 'Buy'
+  /** `All`, `All that fit`, `20 units`. */
+  amount: string
+  /** `Max 12 🪙 each`, `Min 14 🪙 each`, `Only sell above cost`, `Any price`. */
+  limit: string
+}
+
+export function tradeLineWords(line: TradeLineInput): TradeLineWords {
+  const sell = line.kind === 'SELL'
+  const amount = line.qty !== null ? formatUnits(line.qty) : sell ? 'All' : 'All that fit'
+  const limit =
+    sell && line.at_profit
+      ? 'Only sell above cost'
+      : line.price_limit === null
+        ? 'Any price'
+        : `${sell ? 'Min' : 'Max'} ${formatUnitPrice(line.price_limit)}`
+  return { side: sell ? 'Sell' : 'Buy', amount, limit }
+}
+
+/**
+ * ONE QUEUED ORDER, IN THE PLAYER'S WORDS — the queue row's label. The server keeps the line it
+ * will run (`SELL iron ALL AT >= 12.5`, `PROVISION DAYS 5`, `SAIL Gaivota TO CAD`); the player reads
+ * `Sell Iron · All · Min 13 🪙 each`, `Resupply to 5 days`, `Sail Cádiz`. A trade line is said by
+ * `tradeLineWords`, so a route's stop and the order it wrote read the same. Anything else drops the
+ * fleet's name and the grammar's joining words and names each port and good — what the queue did
+ * before this was the one place it was said.
+ */
+export function queuedOrderWords(
+  order: QueuedOrder,
+  fleetName: string,
+  portByCode: Record<string, { name: string }>,
+  goodByCode: Record<string, { name: string }>,
+): string {
+  const tokens = order.text
+    .trim()
+    .split(/\s+/)
+    .slice(1)
+    .filter((t) => t !== fleetName)
+  const verb = order.verb.toUpperCase()
+
+  if (verb === 'SELL' || verb === 'BUY') {
+    const trade = tradeOfTokens(verb, tokens)
+    if (trade) {
+      const w = tradeLineWords(trade.line)
+      return [`${w.side} ${goodByCode[trade.good]?.name ?? trade.good}`, w.amount, w.limit].join(' · ')
+    }
+  }
+  if (verb === 'PROVISION') {
+    const mode = tokens[0]?.toUpperCase()
+    const days = Number(tokens[1])
+    if (mode === 'DAYS' && Number.isFinite(days)) return `${verbWord(verb)} to ${formatVoyageDays(days, 0)}`
+    if (mode === 'FULL') return `${verbWord(verb)} to full`
+  }
+
+  const KEYWORDS = new Set(['TO', 'AT', 'VIA', 'ON'])
+  const parts = [verbWord(order.verb)]
+  for (const t of tokens) {
+    if (KEYWORDS.has(t.toUpperCase())) continue
+    parts.push(portByCode[t]?.name ?? goodByCode[t]?.name ?? t)
+  }
+  return parts.join(' ')
+}
+
+/** `<good> <n|ALL> [AT [op] <p>]` — the shape cmd.parse() reads for BUY and SELL (0008, and the
+ *  route's writer in 0092). Null for any other shape, which is then said word by word. */
+function tradeOfTokens(verb: 'SELL' | 'BUY', tokens: string[]): { good: string; line: TradeLineInput } | null {
+  const words = tokens.filter((t) => !/^(?:FOR|FROM)$/i.test(t))
+  const [good, qtyToken, ...rest] = words
+  if (!good || !qtyToken) return null
+  const qty = qtyToken.toUpperCase() === 'ALL' ? null : Number(qtyToken)
+  if (qty !== null && !Number.isFinite(qty)) return null
+  let price: number | null = null
+  if (rest.length > 0) {
+    if (rest[0].toUpperCase() !== 'AT') return null
+    const figure = rest.slice(1).join('').replace(/^[<>]=?/, '')
+    price = Number(figure)
+    if (figure === '' || !Number.isFinite(price)) return null
+  }
+  return { good, line: { kind: verb, qty, price_limit: price, at_profit: false } }
 }

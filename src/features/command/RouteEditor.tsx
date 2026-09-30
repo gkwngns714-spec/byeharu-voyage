@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Chip, Field, Hint, Note, Row } from '../../components/ui'
+import { Button, Chip, Field, Hint, Icon, Note, goodIcon } from '../../components/ui'
+import { routeStopQuiet, stopLine, type StopLine } from '../../domain/route'
 import { PortField } from '../../live/PortField'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, Refusal, StandingRoute } from '../../lib/rpc'
 import { draftOfRoute, emptyStop, routeName, routePayload, type RouteStopDraft } from './standingRouteDraft'
+import { RouteStopBlock, StopLineRow, StopPortRow } from './RouteStop'
 
 // THE ROUTE EDITOR — inside RouteFold, in place (docs/TRADE_ROUTES.md §7). Slice 1's scope, and
 // no more: two stops — where the fleet lies, and one port picked with THE port field (the same
 // field PORT uses, src/live/PortField.tsx) — and at each stop "sell all" and one BUY (a good this
-// port's market offers, how many units, the Max each). The keep level is FLEETS' own control; the
+// port's market offers, how many units, the Max each). Each stop is RouteStop.tsx's block — its
+// SELL group above its BUY group, the same skeleton the running route is read in (owner,
+// 2026-09-30: "sell all buy all is ... in one line and not distinguished"). The keep level is FLEETS' own control; the
 // server refuses a fleet without one (E_NO_KEEP) and the refusal is printed here in its words.
 //
 // NO FIGURES ARE MADE HERE. The goods offered at a stop are the port's served market; the course of
@@ -30,6 +34,7 @@ export function RouteEditor({
   const portByCode = useWorld((s) => s.portByCode)
   const seaNav = useWorld((s) => s.seaNav)
   const markets = useWorld((s) => s.markets)
+  const goodByCode = useWorld((s) => s.goodByCode)
   const loadMarket = useWorld((s) => s.loadMarket)
   const busy = useWorld((s) => s.busy)
   const saveRoute = useWorld((s) => s.saveRoute)
@@ -91,61 +96,92 @@ export function RouteEditor({
     <div data-testid="route-editor">
       {stops.map((stop, i) => {
         const market = portByCode[stop.port] ? markets[portByCode[stop.port].id] : undefined
+        const carried = carriedLines(stop, goodByCode)
         return (
-          <div key={i} className="mt-3" data-testid="route-editor-stop">
-            {i === 0 || route ? (
-              <Row label={portNameOf(portByCode, stop.port)} hairline={false} />
-            ) : (
-              <PortField
-                current={stop.port ? (portByCode[stop.port] ?? null) : null}
-                anchor={home}
-                onPick={(code) => set(i, { port: code, buyGood: null })}
-              />
-            )}
-            {stop.port !== '' && (
-              <>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Chip on={stop.sellAll} onClick={() => set(i, { sellAll: !stop.sellAll })}>
-                    Sell all
-                  </Chip>
+          <div key={i} className="mt-3">
+            <RouteStopBlock
+              data-testid="route-editor-stop"
+              last={i === stops.length - 1}
+              header={
+                i === 0 || route ? (
+                  <StopPortRow port={stop.port} />
+                ) : (
+                  <PortField
+                    current={stop.port ? (portByCode[stop.port] ?? null) : null}
+                    anchor={home}
+                    onPick={(code) => set(i, { port: code, buyGood: null })}
+                  />
+                )
+              }
+              sell={
+                <>
+                  <div className="py-2">
+                    <Chip
+                      on={stop.sellAll}
+                      onClick={() => set(i, { sellAll: !stop.sellAll })}
+                      data-testid="route-sell-all"
+                    >
+                      <Icon name="ship" size={16} />
+                      Everything on board
+                    </Chip>
+                  </div>
+                  {carried.sell.map((l) => (
+                    <StopLineRow key={l.key} line={l} />
+                  ))}
+                </>
+              }
+              buy={
+                <>
                   {/* Only what THIS market sells: a row with `offered: false` is a good a fleet here is
                       carrying (do_buy refuses it, E_UNAVAILABLE), and `available: false` is refused by
-                      the port's culture — a BUY of either would be stepped over on every lap. */}
-                  {(market?.goods ?? []).filter((g) => g.offered !== false && g.available).map((g) => (
-                    <Chip
-                      key={g.code}
-                      on={stop.buyGood === g.code}
-                      onClick={() => set(i, { buyGood: stop.buyGood === g.code ? null : g.code })}
-                      data-testid="route-buy-good"
-                    >
-                      Buy {g.name}
-                    </Chip>
-                  ))}
-                </div>
-                {stop.buyGood && (
-                  <div className="mt-2 flex gap-2">
-                    <Field
-                      icon={null}
-                      inputMode="numeric"
-                      aria-label="Units to buy"
-                      placeholder="Units (blank: all that fit)"
-                      value={stop.buyUnits === null ? '' : String(stop.buyUnits)}
-                      onChange={(e) => set(i, { buyUnits: wholeOrNull(e.target.value) })}
-                      className="flex-1"
-                    />
-                    <Field
-                      icon={null}
-                      inputMode="numeric"
-                      aria-label="Max price each"
-                      placeholder="Max each (blank: any)"
-                      value={stop.buyMax === null ? '' : String(stop.buyMax)}
-                      onChange={(e) => set(i, { buyMax: wholeOrNull(e.target.value) })}
-                      className="flex-1"
-                    />
+                      the port's culture — a BUY of either would be stepped over on every lap. The group
+                      already says Buy, so each chip is the good alone, with its own mark. */}
+                  <div className="flex min-h-15 flex-wrap gap-2 py-2">
+                    {(market?.goods ?? []).filter((g) => g.offered !== false && g.available).map((g) => (
+                      <Chip
+                        key={g.code}
+                        on={stop.buyGood === g.code}
+                        onClick={() => set(i, { buyGood: stop.buyGood === g.code ? null : g.code })}
+                        data-testid="route-buy-good"
+                      >
+                        <Icon name={goodIcon(g.code, g.category)} size={16} />
+                        {g.name}
+                      </Chip>
+                    ))}
                   </div>
-                )}
-              </>
-            )}
+                  {carried.buy.map((l) => (
+                    <StopLineRow key={l.key} line={l} />
+                  ))}
+                  {/* ALWAYS DRAWN once a port is picked, and only enabled by a picked good: pressing a
+                      chip must not push the page down (owner row 15). */}
+                  {stop.port !== '' && (
+                    <div className="flex gap-2 pb-2" data-testid="route-buy-fields">
+                      <Field
+                        icon={null}
+                        inputMode="numeric"
+                        aria-label="Units to buy"
+                        placeholder="Units (blank: all that fit)"
+                        disabled={!stop.buyGood}
+                        value={stop.buyUnits === null ? '' : String(stop.buyUnits)}
+                        onChange={(e) => set(i, { buyUnits: wholeOrNull(e.target.value) })}
+                        className="flex-1"
+                      />
+                      <Field
+                        icon={null}
+                        inputMode="numeric"
+                        aria-label="Max price each"
+                        placeholder="Max each (blank: any)"
+                        disabled={!stop.buyGood}
+                        value={stop.buyMax === null ? '' : String(stop.buyMax)}
+                        onChange={(e) => set(i, { buyMax: wholeOrNull(e.target.value) })}
+                        className="flex-1"
+                      />
+                    </div>
+                  )}
+                </>
+              }
+              quiet={routeStopQuiet(stop.repair)}
+            />
           </div>
         )
       })}
@@ -171,6 +207,20 @@ export function RouteEditor({
       </div>
     </div>
   )
+}
+
+/** What a stop does that the editor has no control for (0093 NIT 11), drawn read-only so nothing
+ *  a route does is hidden: a named SELL, a floor on "everything on board", a second BUY. */
+function carriedLines(
+  stop: RouteStopDraft,
+  goodByCode: Parameters<typeof stopLine>[1],
+): { sell: StopLine[]; buy: StopLine[] } {
+  const floor = stop.sellAllFloor
+  const sell = stop.kept.filter((l) => l.kind === 'SELL').map((l) => stopLine(l, goodByCode))
+  if (stop.sellAll && (floor.price_limit !== null || floor.at_profit)) {
+    sell.push(stopLine({ ord: -1, kind: 'SELL', good: null, qty: null, ...floor }, goodByCode))
+  }
+  return { sell, buy: stop.kept.filter((l) => l.kind === 'BUY').map((l) => stopLine(l, goodByCode)) }
 }
 
 /** A typed whole number, or null for blank / not a number. The server judges whether it is sane. */

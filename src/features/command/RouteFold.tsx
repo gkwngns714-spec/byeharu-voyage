@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Button, Figure, Hint, Note, Row, deltaTone } from '../../components/ui'
 import { formatDucats, formatDucatsDelta } from '../../lib/format'
-import { portNameOf, useWorld } from '../../live/worldStore'
+import { useWorld } from '../../live/worldStore'
 import {
   routeOfFleet,
   routePausedSentence,
   routePorts,
   routesWithoutFleet,
   routeStateWord,
-  routeStopWords,
 } from '../../domain/route'
 import type { FleetView, Refusal } from '../../lib/rpc'
 import { RouteEditor } from './RouteEditor'
+import { RouteStopFace } from './RouteStop'
 
 // THE ROUTE, FOLDED ABOVE HER QUEUE — owner, 2026-09-30: *"i want this game to be a simulating
 // based - meaning i set up route, trade routes - going back and forth, afk, running all the time"*.
@@ -36,7 +36,6 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
   const loadRoutes = useWorld((s) => s.loadRoutes)
   const readAt = useWorld((s) => s.readAt)
   const portByCode = useWorld((s) => s.portByCode)
-  const goodByCode = useWorld((s) => s.goodByCode)
   const busy = useWorld((s) => s.busy)
   const pauseRoute = useWorld((s) => s.pauseRoute)
   const deleteRoute = useWorld((s) => s.deleteRoute)
@@ -146,15 +145,9 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
                 </Note>
               )}
 
-              {route.stops.map((s) => (
-                <Row
-                  key={s.ord}
-                  label={portNameOf(portByCode, s.port)}
-                  hairline={false}
-                  data-testid="route-stop"
-                >
-                  <span className="block text-t-caption text-ink-faint">{routeStopWords(s, goodByCode)}</span>
-                </Row>
+              {/* EACH STOP AS ITS SELL AND BUY LINES (owner, 2026-09-30) — RouteStop.tsx. */}
+              {route.stops.map((s, i) => (
+                <RouteStopFace key={s.ord} stop={s} last={i === route.stops.length - 1} />
               ))}
 
               {route.laps.slice(0, 3).map((l) => (
