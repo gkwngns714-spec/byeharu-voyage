@@ -52,8 +52,20 @@ pairs with a positive one-way margin: Beirut → Tripoli pistachios +41.5 % over
 Portobelo sarsaparilla +8.7 %, Gdańsk → Stockholm tar +3.8 %; most are a few percent, and the
 return leg of each of those three loses (−10.9 %, −9.3 %, −2.2 %). With wages about 32 🪙 per 158-mile leg, a route pays only on
 such a pair, sized under the price impact (the Max stops a lap from buying into a loss). 0092's own
-probe printed, in one apply, +32 🪙 over three LIS ⇄ FNC iron laps and −53 🪙 over four. See the PR for the drive
-of a profitable pair.
+probe printed, in one apply, +32 🪙 over three LIS ⇄ FNC iron laps and −53 🪙 over four.
+
+**Driven on that pair (rebuilt with 0094; the fleet moved to Beirut by SQL for the drive only):**
+Beirut ⇄ Tripoli, Beirut Sell all + Buy Pistachios 30, Max 180; Tripoli Sell all; pacing 0. Laps
+**+2,531, +1,399, +250, −18 🪙** — +4,162 🪙 in four laps, the purse 7,767 → 11,919. Each lap bought
+into Beirut's rising price until the Max refused the fourth (`E_PRICE_LIMIT`, stepped over). So a
+route IS profitable with sensible settings on a real margin, and it saturates within a few laps
+unpaced; at the default pace (one lap per game-day) the market regenerates between laps, which is
+what §8's saturation measurement still has to put a number on.
+
+**0094 re-driven in the browser on the rebuilt build:** Lisbon ⇄ Porto lost −126, −33, −36 and
+paused (`losing`); Resume ran lap 4 at once with ONE ROUTE_PAUSED in History; Delete mid-lap wrote
+lap 4's line (−20 🪙, one leg's wages). `npm run db:apply` green three times in a row (87 receipts),
+`npm run db:proof` 11 files, 78/78 PASS (proof 11: four AFK laps, −378 🪙, books balance).
 
 ## 2026-09-30 — the review of 0092, applied forward as 0093 (NOT merged, NOT deployed, DARK)
 

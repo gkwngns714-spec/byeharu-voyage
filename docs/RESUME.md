@@ -6,6 +6,47 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 
 ---
 
+# ▼ RESUME ANCHOR — 2026-09-30 ▼
+
+**Handed off mid-work for a machine change. Everything below the 2026-09-14 anchor is HISTORY.**
+
+## The state of the world — VERIFIED 2026-09-30
+
+| | | how |
+|---|---|---|
+| `main` | `a613a05` (PR #87: 0086-0091; PR #88: map lag) | `git log origin/main -1` |
+| **Production DB head** | **0091**. Matches `main`. | `supabase migration list --linked` |
+| **Production clock** | **RUNNING.** It had been left stopped after the 0086-0091 push. `wind_the_clock()` was run on 2026-09-30, and `cron.job_run_details` read back 228 arrivals runs with 0 failures | runbook step 4 |
+| Site | LIVE at `a613a05` | Pages run on a613a05 green |
+
+## Owner requests open
+
+1. **"Simulation-based: I set up trade routes, going back and forth, AFK, running all the time"** (the pivot).
+   Design: `docs/TRADE_ROUTES.md`. Built on **PR #89 `osn-trade-routes`** (draft). Migrations **0092 + 0093 + 0094**,
+   all dark behind `standing_routes_enabled` (off). A route only REFILLS the fleet's existing queue when it runs dry,
+   and `cmd.advance` stays the one executor. The route was driven in a browser on local PGlite. Lisbon-Porto cork lost
+   money on every lap. Beirut-Tripoli pistachios made +2,531 / +1,399 / +250 / -18 on its laps (commit `79aaa20`).
+   CI was green at 0ab0d8b. **Re-check CI on the head before merging.**
+2. **"Command's sell all / buy all is in one line, not distinguished, too simple"**: the route stop face shows
+   SELL and BUY as separate lines in trade-face tones. **WIP `osn-route-stop-face` (`e4cfcd8`), gates NOT run.**
+3. **"Bars (e.g. Start route in COMMAND) blink on their own. Find all cases and fix"**: one shared no-blink rule
+   (keep the last served value while re-reading; `usePress` gate). **WIP `osn-no-blink` (`dcea399`), gates NOT run.**
+   Audits + plan + the A/B file partition: `docs/HANDOFF_ROUTE_STOPS_AND_BLINKS.md`.
+
+## What the next session does, in order
+
+1. Finish `osn-no-blink` (domain A) and `osn-route-stop-face` (domain B) against the plan. Run their gates. The blink spec
+   idles on each tab with a MutationObserver and must fail before the fix and pass after. Have both adversarially reviewed.
+   Merge both into `osn-trade-routes`, then wait for CI on PR #89 to go green.
+2. Deploy: runbook (clock off → `supabase db push` of 0092-0094 → clock ON and read back `cron.job` +
+   `job_run_details`). The classifier has refused `db push` before. The fix: allow-rule
+   `"Bash(npx --no-install supabase db push:*)"`, or the owner types the push with `!`.
+3. Merge PR #89, turn on `standing_routes_enabled`, and drive it on production with an expendable fleet.
+4. Leftovers seen in the drive (not this PR's code): UNABLE_TO_SAIL has no way out; History tie order; `hull`
+   caption; the wording `arrived to`.
+
+---
+
 # ▼ RESUME ANCHOR — 2026-09-14 ▼
 
 **The anchor below this one (2026-09-13) is now HISTORY.** Its "one thing waiting" (deploy 0085) is
