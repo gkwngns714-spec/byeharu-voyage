@@ -265,7 +265,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved 2026-09-30 to 0093, the review of 0092 applied forward before either is deployed: a route is
 // known by its id (the name index dropped, a refused Start no longer hides a route), the route verbs
 // lock the fleet before the route, pause sentences name ports, `blocked` is served.
-const LAST = '20260818000093_a_route_is_known_by_its_id_and_waits_behind_its_fleet.sql'
+// Moved 2026-09-30 to 0094, found by driving the route in a browser: Resume after a losing pause
+// sails one more lap instead of re-pausing on the spot, and Delete closes the open lap.
+const LAST = '20260818000094_a_resumed_route_sails_and_a_deleted_one_closes_its_lap.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

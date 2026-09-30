@@ -5,6 +5,56 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-30 — the route driven in a real browser; two defects fixed forward as 0094 (NOT merged, NOT deployed, DARK)
+
+**How it was driven.** `vite preview --port 4394` of this branch, no `.env.local` (PGlite in the tab),
+Chrome. The switch was turned on FOR THE DRIVE ONLY, in the tab's own database, by importing the
+built `db-*.js` chunk and calling `localDbIfReady().pg.query("update public.world_config set value =
+'true' where key = 'standing_routes_enabled'")` — no migration touched. Pacing was then set to 0
+(`standing_route_laps_per_game_day`) the same way so laps follow each other; the local build sails
+a 158-mile leg in about 15 s, so no clock warp was needed beyond waking the one paced lap.
+
+**What was seen (Casa de Aveiro, Gaivota, Lisbon ⇄ Porto: Lisbon Sell all + Buy Cork 40, Max 50; Porto Sell all).**
+* Start before a keep level: the editor printed `Set how many days of supplies to keep first.` and
+  the fold listed the route as `No fleet` with Start / Edit / Delete (0093's MUST 1 holds). Keep 10
+  days on FLEETS, Start: the fleet bought, sailed, sold at Porto and sailed home by itself.
+* Laps (the purse moved exactly the laps' net every time, 8,000 → 7,495 after three):
+  lap 1 −210 🪙 (sold 1,748, bought 1,926 for 40 cork, wages 32); lap 2 −259 🪙 (the Max filled
+  only 30 cork); lap 3 −36 🪙 (the BUY stepped over, `E_PRICE_LIMIT`, the fleet sailed empty);
+  lap 4 at Max 56 −455 🪙. History carries one `finished lap N` line per lap with every term.
+* After three losing laps the route paused itself (`Paused: the last laps lost money.`).
+* Pause mid-leg: the fleet made Porto and waited with its cargo. Resume: it sold and sailed on.
+  Edit: Max 50 → 56 saved on the same route. Delete: the route went, the fleet kept its cargo.
+* `Blocked` appeared (fold and FLEETS caption) when the flagship reached Lisbon unfit to sail.
+
+**Two defects, fixed forward in `20260818000094_a_resumed_route_sails_and_a_deleted_one_closes_its_lap.sql`:**
+1. **Resume did nothing after a `losing` pause** — the guard re-judged the same three closed laps
+   at once and paused again, with no lap run (two ROUTE_PAUSED rows, 06:44 and 06:47). Only Delete
+   got out. The guard now judges only at a lap the call has just closed.
+2. **Delete mid-lap dropped the open lap's line** — lap 5's 2,038 🪙 BUY was in History with no lap
+   that owned it. Delete now closes the open lap with the one closer first.
+Both watched go red under a one-line mutation (the guard ungated; the closer skipped).
+
+**Seen and NOT fixed here (not this PR's code, said plainly):**
+* A fleet UNABLE_TO_SAIL has no way back in the game: REPAIR queues and never runs (cmd.advance
+  runs only DOCKED/ANCHORED), and Port → Repair says `The fleet is at sea` while it is in Lisbon. The
+  route's Blocked sentence ("goes on once it is in port and fit to sail") therefore waits for good.
+  Recovered in the drive by SQL.
+* History orders events of one transaction by `created_at` alone, so an arrival, the sale, the
+  resupply and the departure written together come out shuffled (`sold` above `arrived`).
+* FLEETS still prints `hull` (WORDS says Damage); History says `arrived to Porto`.
+* The editor's two number boxes lose their labels once filled (`40`, `50`); Delete asks nothing.
+* A route paused at its first stop leaves the fleet below its keep level (8 of 10 days).
+
+**Can a route make money?** Lisbon ⇄ Porto cannot: no good Lisbon sells fetches more at Porto. A scan
+of every harbour pair within 700 km in the tab's world (238 harbours, markets as served) found 40
+pairs with a positive one-way margin: Beirut → Tripoli pistachios +41.5 % over 68 km, Cartagena →
+Portobelo sarsaparilla +8.7 %, Gdańsk → Stockholm tar +3.8 %; most are a few percent, and the
+return leg of each of those three loses (−10.9 %, −9.3 %, −2.2 %). With wages about 32 🪙 per 158-mile leg, a route pays only on
+such a pair, sized under the price impact (the Max stops a lap from buying into a loss). 0092's own
+probe printed, in one apply, +32 🪙 over three LIS ⇄ FNC iron laps and −53 🪙 over four. See the PR for the drive
+of a profitable pair.
+
 ## 2026-09-30 — the review of 0092, applied forward as 0093 (NOT merged, NOT deployed, DARK)
 
 An adversarial review of PR #89 found one MUST-FIX, five SHOULDs and five NITs; every one is
