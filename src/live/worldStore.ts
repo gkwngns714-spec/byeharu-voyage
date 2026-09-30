@@ -32,7 +32,7 @@
 // forbids on its own account — and this one also has a cost that can be measured.
 //
 // `useWorld()` with no selector subscribes to the WHOLE store object, and zustand replaces that
-// object on every `set()`. `refresh()` alone sets three times — `{busy: true}` on the way in, the
+// object on every `set()`. `refresh()` alone sets three times — `{reading: true}` on the way in, the
 // routes book, the payload on the way out — so ONE read re-rendered every bare subscriber three times over, whether or
 // not a field it draws had moved. That is not theoretical here: reading IS how time passes (rule
 // 1), issuing an order from Command refreshes the world, and the Ledger's list is long.
@@ -157,7 +157,7 @@ export interface LiveWorld {
   markets: Record<string, MarketView>
 
   /** True while a refresh is in flight — for a quiet indicator, never for a blocking spinner. */
-  busy: boolean
+  reading: boolean
   /** The last refusal any command produced, for the screen that issued it to render. */
   refusal: Refusal | null
   /** When the last successful read landed (ms since epoch), so a screen can say "as of". */
@@ -369,7 +369,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
   ducats: null,
   events: [],
   markets: {},
-  busy: false,
+  reading: false,
   refusal: null,
   readAt: null,
   portByCode: {},
@@ -444,12 +444,12 @@ export const useWorld = create<LiveWorld>((set, get) => {
   },
 
   refresh: async () => {
-    set({ busy: true })
+    set({ reading: true })
     // The house rides along with the fleets: it is the same read cadence (fame is derived from the
     // ledger, so it moves whenever the ledger does) and a separate poll would be a second clock.
     const [fleets, ledger, player] = await Promise.all([worldFleets(), worldLedger(), worldPlayer()])
     if (!fleets.ok) {
-      set({ busy: false, fatal: fleets.refusal, phase: 'failed' })
+      set({ reading: false, fatal: fleets.refusal, phase: 'failed' })
       return
     }
     // THE ROUTES RIDE THE SAME BEAT (2026-09-30), for the same reason: COMMAND's fold and FLEETS'
@@ -469,7 +469,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
       player: player.ok ? player.value.player : null,
       ducats: ledger.ok ? (ledger.value.ducats ?? null) : null,
       events: ledger.ok ? ledger.value.events : [],
-      busy: false,
+      reading: false,
       readAt: Date.now(),
     })
   },

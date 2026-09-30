@@ -5,6 +5,31 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-30 — the stop face and the rest of the no-blink rule land on PR #89 (rows 107, 108 — NOT deployed)
+
+**Row 108, the stop face.** A route stop read as one faint caption (`Sell all · Buy Iron, 20 units,
+Max 12 🪙 each`). It is now a Sell group above a Buy group, one row per line, in the trade face's
+own idiom — the side word, the amount, the limit — and no new colour (`src/features/command/RouteStop.tsx`,
+`routeStopLines` in `src/domain/route`). The editor draws Sell and Buy as separate groups with their
+fields always drawn, so pressing a good moves nothing below it. The queue says a route's orders in
+words (`queuedOrderWords` in `src/domain/order/text.ts`): no raw `ALL`, no `>=`, a floor is `Min`.
+
+**Row 107, finished.** COMMAND's buttons (Start / Save route, the fold's Start / Clear / Pause /
+Resume / Delete, each order's ✕, Clear all orders) wear `usePress` — busy only while their own press
+is on the wire. RouteFold no longer re-reads the routes on `readAt`; `refresh()` is the one reader.
+A2: the store's flag is renamed `reading`, and only `AppShell` reads it (to dedupe its own beat).
+`tests/flicker.spec.ts` holds the rule: three static guards (who reads `reading`, no `s.busy`,
+`loadRoutes(` only in the store) and a MutationObserver over COMMAND for 10.5 s. **Break-tested:**
+with `disabled={reading || …}` put back on Start route it logged six flips and went RED; without it,
+GREEN. The routes-on world image moved into `tests/routesOn.fixture.ts`, shared by both specs.
+
+**Gates, once, on the combined branch:** `tsc -b` 0, `eslint .` 0, build ok. Playwright against
+`vite preview` on `localhost:4412` (flicker, route.stopface, words, sections, duplication, layout,
+wide.layout, trade.ceiling, selection.lock): **58 passed, 1 failed, 0 skipped.** The one red is
+`layout.spec.ts:205` "five complete rows above the fold": Lisbon had a fair on (`The Fair — ends in
+3 h`, a real-clock calendar, 0026/0028), and its banner took a row's height — 4 rows fit. It is
+time-of-day shaped, not this change; reported, not re-run.
+
 ## 2026-09-30 — one no-blink rule, Domain A1 (branch `osn-no-blink`, NOT merged)
 
 Owner row 107: *"i see multiple cases where a bar (Start route in command for example) blinks

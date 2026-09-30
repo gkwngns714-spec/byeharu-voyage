@@ -23,12 +23,12 @@
 // Screenshots land in this test's output folder, and also in $STOPFACE_SHOTS when it is set.
 
 import { test, expect, type Page } from '@playwright/test'
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, ready, reachable } from './appReady.fixture'
+import { serveRoutesOn } from './routesOn.fixture'
 import { queuedOrderWords, tradeLineWords } from '../src/domain/order'
 import { routeStopLines } from '../src/domain/route'
-import { asWorldImageFile } from '../src/lib/db/worldImage'
 import type { QueuedOrder, SnapshotGood, StandingRouteStop } from '../src/lib/rpc'
 
 // ── 1. THE WORDS ─────────────────────────────────────────────────────────────────────────────────
@@ -96,25 +96,6 @@ test('a stop is its sell lines and its buy lines, apart', () => {
 
 const WIDE = { width: 1440, height: 900 }
 
-/** The shipped image with routes switched on, built once per run. */
-let routesOnImage: Buffer | null = null
-async function routesOn(): Promise<Buffer> {
-  if (routesOnImage) return routesOnImage
-  const dir = path.resolve('dist', 'db')
-  const name = existsSync(dir) ? readdirSync(dir).find((f) => /^world-.*\.tar\.gz$/.test(f)) : undefined
-  if (!name) throw new Error(`no world image under ${dir} — run \`npm run build\` first`)
-  const { PGlite } = await import('@electric-sql/pglite')
-  const pg = await PGlite.create({ loadDataDir: asWorldImageFile(new Uint8Array(readFileSync(path.join(dir, name)))) })
-  try {
-    const r = await pg.query(`update public.world_config set value = 'true'::jsonb where key = 'standing_routes_enabled' returning key`)
-    if (r.rows.length !== 1) throw new Error('world_config has no standing_routes_enabled row')
-    routesOnImage = Buffer.from(await (await pg.dumpDataDir('gzip')).arrayBuffer())
-  } finally {
-    await pg.close()
-  }
-  return routesOnImage
-}
-
 async function shot(page: Page, name: string, info: import('@playwright/test').TestInfo) {
   const file = info.outputPath(name)
   await page.screenshot({ path: file, fullPage: true })
@@ -136,8 +117,7 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
 }, info) => {
   test.setTimeout(600_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-  const image = await routesOn()
-  await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body: image, contentType: 'application/gzip' }))
+  await serveRoutesOn(page)
 
   // A route cannot start without a keep level (E_NO_KEEP) — set one on FLEETS, the way a player does.
   await page.goto('fleets')
