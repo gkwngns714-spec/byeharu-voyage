@@ -1447,3 +1447,121 @@ export interface PresetApplied {
   preset: string | null
   days: number | null
 }
+
+// ── STANDING ROUTES (0092) ──────────────────────────────────────────────────────────────────────
+// A route is a loop of harbours that writes its fleet's next orders into the ONE queue whenever the
+// queue runs dry in port; the executor that runs them is the same one a typed order meets. Every
+// figure below — a lap's sold / bought / wages / net, when the next lap may start — is SERVED by
+// `world.standing_routes()`. Nothing on this side adds, subtracts or predicts any of it.
+
+/** One trade line at a stop, as saved. `good` null on a SELL = everything on board. */
+export interface StandingRouteLine {
+  ord: number
+  kind: 'SELL' | 'BUY'
+  /** Good CODE, or null for "sell everything". */
+  good: string | null
+  /** Units; null = ALL. */
+  qty: number | null
+  /** BUY: the Max price each. SELL: an explicit floor. */
+  price_limit: number | null
+  /** SELL only: the floor is what it cost (the served basis). */
+  at_profit: boolean
+}
+
+export interface StandingRouteStop {
+  ord: number
+  /** Port CODE. */
+  port: string
+  /** The proposed course of the leg FROM this stop TO the next — [[lat, lon], …]. */
+  course: [number, number][]
+  repair: boolean
+  lines: StandingRouteLine[]
+}
+
+/** One closed lap, every figure served (0092 §6: summed from the executors' own results). */
+export interface StandingRouteLap {
+  lap_no: number
+  started_at: string
+  closed_at: string | null
+  stops_done: number
+  sold: number
+  bought: number
+  supplies: number
+  repairs: number
+  wages: number
+  net: number
+  /** The refused trade lines that were stepped over, in the server's own words. */
+  skipped: { port?: string; line: string; verb?: string; code: string; sentence?: string }[]
+}
+
+/** Derived on the server, never stored: `stopped` IS a failed order in the fleet's queue; `blocked`
+ *  (0093) is a fleet that cannot move on by itself (unable to sail, adrift, anchored). */
+export type StandingRouteState = 'off' | 'unassigned' | 'paused' | 'stopped' | 'blocked' | 'waiting' | 'sailing' | 'in_port'
+
+export type StandingRoutePausedReason = 'player' | 'reserve' | 'losing' | 'off_route' | 'error' | 'edited'
+
+export interface StandingRoute {
+  id: string
+  name: string
+  reserve: number
+  stop_after_losing_laps: number
+  fleet: { id: string; name: string } | null
+  cursor: number
+  lap_no: number
+  state: StandingRouteState
+  paused_reason: StandingRoutePausedReason | null
+  /** When a paced route may start its next lap (ISO time), or null. */
+  next_lap_at: string | null
+  /** The halted order's refusal when `state` is `stopped`. */
+  stopped: { seq: number; line: string; code: string; sentence?: string; figures?: RefusalFigures } | null
+  /** The stop the fleet is at or bound for, by port CODE. */
+  heading_to: string | null
+  stops: StandingRouteStop[]
+  /** The lap in progress, if one is open. */
+  lap: { lap_no: number; started_at: string; stops_done: number; skipped: number } | null
+  /** The last ten closed laps, newest first. */
+  laps: StandingRouteLap[]
+}
+
+/** What `world.standing_routes()` serves: the company's routes and the knobs they live under. */
+export interface StandingRouteBook {
+  /** The dark-first switch. False: every verb refuses E_UNAVAILABLE and no route moves. */
+  enabled: boolean
+  max: number
+  stop_max: number
+  line_max: number
+  laps_per_game_day: number
+  routes: StandingRoute[]
+}
+
+/** The payload `cmd.standing_route_save` takes for one stop. */
+export interface StandingRouteStopDraft {
+  port: string
+  course: [number, number][]
+  repair?: boolean
+  lines: { kind: 'SELL' | 'BUY'; good?: string | null; qty?: number | null; price_limit?: number | null; at_profit?: boolean }[]
+}
+
+export interface StandingRouteSaved {
+  ok: true
+  id: string
+  name: string
+  stops: number
+}
+
+export interface StandingRouteDeleted {
+  ok: true
+  deleted: string
+}
+
+export interface StandingRouteAssigned {
+  ok: true
+  route: string
+  fleet: string | null
+}
+
+export interface StandingRoutePaused {
+  ok: true
+  route: string
+  paused: boolean
+}

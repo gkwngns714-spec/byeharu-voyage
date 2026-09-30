@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { Chip, Note, Row, Sheet, SheetSection } from '../../components/ui'
 import { Queue } from './Queue'
+import { RouteFold } from './RouteFold'
 import { useCommandDraft } from '../../domain/order'
 import { formatOfTotal, formatVoyageDays } from '../../lib/format'
 import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
@@ -30,6 +31,9 @@ import type { FleetView, SnapshotPort } from '../../lib/rpc'
 // and the judge (`cmd.preview`) did not move: every doorway still composes through `domain/order`
 // and issues through `worldStore.issue`. Only the entry points moved.
 //
+// 2026-09-30 (0092, owner row 106): her STANDING ROUTE stands above the queue as one folded row —
+// the one thing on this sheet that writes orders by itself, and only into this same queue.
+//
 // `useCommandDraft` still holds WHICH FLEET is in hand (the map's tap and FLEETS' "Command her"
 // point it here); its verb and argument fields have no writer left on any screen.
 
@@ -39,7 +43,6 @@ export function CommandScreen() {
   const snapshot = useWorld((s) => s.snapshot)
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
-  const busy = useWorld((s) => s.busy)
   const readAt = useWorld((s) => s.readAt)
   const open = useWorld((s) => s.open)
   const cancel = useWorld((s) => s.cancel)
@@ -97,13 +100,18 @@ export function CommandScreen() {
           {/* ITS ONE LINE: how long it can sail, and its cargo — each figure with what it is out of
               (docs/WORDS.md law 2). */}
           <Row label={fleetLine(fleet)} hairline={false} data-testid="command-line" />
+          {/* 0092: HER ROUTE, one row above her queue — the standing order that writes the queue when
+              it runs dry in port (RouteFold.tsx). It folds in place; the queue moves down. */}
+          <RouteFold fleet={fleet} />
+          {/* The queue's ✕ and Clear are busy only while their own press is on the wire (Queue.tsx
+              wears the one `usePress`), so the verbs hand their promise down rather than a
+              world-read flag — a background read never greys a control (owner, 2026-09-30). */}
           <SheetSection heading="Orders" data-testid="command-queue">
             <Queue
               fleet={fleet}
-              busy={busy}
               readAt={readAt}
-              onCancel={(seq) => void cancel(fleet.id, seq)}
-              onClear={() => void clearQueue(fleet.id)}
+              onCancel={(seq) => cancel(fleet.id, seq)}
+              onClear={() => clearQueue(fleet.id)}
             />
           </SheetSection>
         </>

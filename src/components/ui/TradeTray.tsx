@@ -322,11 +322,13 @@ export function TradeTray({
             </Note>
           )}
 
-          {/* THE CEILING STAYS DRAWN while it is re-asked on the world's beat (`capacity.loading`
-              with a bound present): useBuyCapacity keeps the last answer for the same good, so
-              this row only gives way to the waiting line before the FIRST answer. Until
-              2026-09-14 it unmounted every 3 s — the owner: "when i press buy, the max keeps
-              refreshing". tests/trade.ceiling.spec.ts watches it across three world reads. */}
+          {/* THE CEILING STAYS DRAWN while it is re-asked on the world's beat: useBuyCapacity
+              keeps the last answer for the same good, so this row only gives way to the waiting
+              line before the FIRST answer. Until 2026-09-14 it unmounted every 3 s — the owner:
+              "when i press buy, the max keeps refreshing". tests/trade.ceiling.spec.ts watches it
+              across three world reads. The beat's re-ask is not `capacity.loading` either
+              (useServedRead.ts, 2026-09-30), so an UNKNOWN ceiling below holds its words too
+              instead of flipping to "Checking…" on every read (A2 adds tests/flicker.spec.ts). */}
           {capacity.bound ? (
             <Row label="Max" value={<Figure value={formatUnits(capacity.bound.max)} size="figure" />} data-testid="trade-tray-max">
               {/* The ceiling in the ship's own measure — the owner, 2026-09-18: "Max limited by

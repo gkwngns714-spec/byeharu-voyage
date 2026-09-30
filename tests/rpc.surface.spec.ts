@@ -49,6 +49,11 @@ import {
   worldLedger,
   worldMarket,
   worldProvisionPresets,
+  worldStandingRoutes,
+  cmdStandingRouteSave,
+  cmdStandingRouteAssign,
+  cmdStandingRoutePause,
+  cmdStandingRouteDelete,
   cmdProvisionPresetSave,
   cmdProvisionPresetDelete,
   cmdProvisionPresetApply,
@@ -1433,6 +1438,13 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // nothing legal, only findable), cmd.divert gained a dest_point and a course, and
       // world.trade_routes' third argument became a sailed radius in nm.
       'worldSeaRaster', 'worldReach',
+      // Pin moved deliberately 2026-09-30 with migration 0092 (a route is a standing order that
+      // sails): the company's routes — one read and four verbs, landed WITH the face that reads
+      // them (COMMAND's RouteFold). None takes a player id; assign with a null fleet takes a route
+      // off its fleet, so that is not a sixth entry point. The refill, the enqueuer and the renderer
+      // are server-only and are not here.
+      'worldStandingRoutes', 'cmdStandingRouteSave', 'cmdStandingRouteDelete', 'cmdStandingRouteAssign',
+      'cmdStandingRoutePause',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')
@@ -1571,4 +1583,90 @@ test('the book of standing orders round-trips: write, adjust, apply, clear, stri
   expect(struck.deleted).toBe('Spec Order II')
   expect(struck.detached_fleets).toBe(0)
   expect(expectOk(await worldProvisionPresets()).presets.length).toBe(before)
+})
+
+// 0092 — THE STANDING ROUTE THROUGH THE CLIENT'S OWN DOORS. Every field StandingRouteBook declares is
+// read back off a real answer. The switch ships OFF (dark-first), so this test turns it on in its own
+// database, proves the dark refusal first, and turns it off again. It sails the house's fleet, so it
+// stands LAST in this file.
+test('a standing route round-trips: dark refusal, save, assign, the served state, pause, take off, delete', async () => {
+  // Earlier tests sailed the house's fleet; bring any voyage in (a warp in this test's own database,
+  // the idiom the chain's probes use) and clear her queue, so the route starts from a quay.
+  await db.pg.query(
+    `update public.voyages set departed_at = departed_at - (eta - now()) - interval '1 minute',
+                               eta = now() - interval '1 minute' where status = 'SAILING'`,
+  )
+  const first = expectOk(await worldFleets())[0]
+  expectOk(await cmdClear(first.id))
+  const fleet = expectOk(await worldFleets())[0]
+  expect(fleet.status).toBe('DOCKED')
+  const snap = expectOk(await worldSnapshot())
+  const from = snap.ports.find((p) => p.code === fleet.port)!
+  const to = snap.ports.find((p) => p.code === (from.code === 'FNC' ? 'LIS' : 'FNC'))!
+  const nav = await seaNav()
+  const stops = [
+    { port: from.code, course: courseBetweenPorts(nav, from, to), lines: [{ kind: 'SELL' as const }] },
+    { port: to.code, course: courseBetweenPorts(nav, to, from), lines: [{ kind: 'SELL' as const }] },
+  ]
+
+  // DARK: the switch as it ships.
+  const dark = expectOk(await worldStandingRoutes())
+  expect(dark.enabled).toBe(false)
+  const refused = await cmdStandingRouteSave(null, 'Spec Route', stops)
+  expect(refused.ok).toBe(false)
+  if (refused.ok) throw new Error('unreachable')
+  expect(refused.refusal.code).toBe('E_UNAVAILABLE')
+
+  await db.pg.query(`update public.world_config set value = 'true'::jsonb where key = 'standing_routes_enabled'`)
+  try {
+    const saved = expectOk(await cmdStandingRouteSave(null, 'Spec Route', stops))
+    expect(isStr(saved.id)).toBe(true)
+    expect(saved.stops).toBe(2)
+
+    // No keep level yet: the server refuses, typed, with a sentence.
+    const nokeep = await cmdStandingRouteAssign(saved.id, fleet.id)
+    expect(nokeep.ok).toBe(false)
+    if (nokeep.ok) throw new Error('unreachable')
+    expect(nokeep.refusal.code).toBe('E_NO_KEEP')
+    expect(nokeep.refusal.sentence.length).toBeGreaterThan(10)
+
+    const keep = expectOk(await cmdProvisionPresetSave(null, 'Spec Keep', 12))
+    expectOk(await cmdProvisionPresetApply(fleet.id, keep.id))
+    const assigned = expectOk(await cmdStandingRouteAssign(saved.id, fleet.id))
+    expect(assigned.fleet).toBe(fleet.name)
+
+    const book = expectOk(await worldStandingRoutes())
+    expect(book.enabled).toBe(true)
+    for (const k of ['max', 'stop_max', 'line_max', 'laps_per_game_day'] as const) expect(isNum(book[k])).toBe(true)
+    const route = book.routes.find((r) => r.id === saved.id)!
+    expect(route.name).toBe('Spec Route')
+    expect(route.fleet).toEqual({ id: fleet.id, name: fleet.name })
+    expect(route.state).toBe('sailing')
+    expect(route.heading_to).toBe(to.code)
+    expect(route.lap_no).toBe(1)
+    expect(route.lap?.lap_no).toBe(1)
+    expect(route.laps).toEqual([])
+    expect(route.stops.map((s) => s.port)).toEqual([from.code, to.code])
+    expect(route.stops[0].lines[0]).toEqual({ ord: 0, kind: 'SELL', good: null, qty: null, price_limit: null, at_profit: false })
+    expect(Array.isArray(route.stops[0].course)).toBe(true)
+    expect(route.paused_reason).toBeNull()
+    expect(route.stopped).toBeNull()
+    // The route's orders ARE the fleet's queue — the one queue, read by world.fleets.
+    const sailing = expectOk(await worldFleets()).find((f) => f.id === fleet.id)!
+    expect(sailing.status).toBe('SAILING')
+
+    const paused = expectOk(await cmdStandingRoutePause(saved.id, true))
+    expect(paused.paused).toBe(true)
+    const pausedRoute = expectOk(await worldStandingRoutes()).routes.find((r) => r.id === saved.id)!
+    expect(pausedRoute.state).toBe('paused')
+    expect(pausedRoute.paused_reason).toBe('player')
+
+    expect(expectOk(await cmdStandingRouteAssign(saved.id, null)).fleet).toBeNull()
+    expect(expectOk(await cmdStandingRouteDelete(saved.id)).deleted).toBe('Spec Route')
+    expect(expectOk(await worldStandingRoutes()).routes.find((r) => r.id === saved.id)).toBeUndefined()
+    expectOk(await cmdProvisionPresetApply(fleet.id, null))
+    expectOk(await cmdProvisionPresetDelete(keep.id))
+  } finally {
+    await db.pg.query(`update public.world_config set value = 'false'::jsonb where key = 'standing_routes_enabled'`)
+  }
 })

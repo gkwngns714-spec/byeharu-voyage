@@ -59,6 +59,12 @@ import type {
   PriceHistory,
   ProvisionPresetBook,
   RequestBoard,
+  StandingRouteAssigned,
+  StandingRouteBook,
+  StandingRouteDeleted,
+  StandingRoutePaused,
+  StandingRouteSaved,
+  StandingRouteStopDraft,
   SkillBook,
   StandingsBoard,
   BuffsView,
@@ -489,4 +495,42 @@ export function cmdProvisionPresetApply(
   presetId: string | null,
 ): Promise<RpcResult<PresetApplied>> {
   return call<PresetApplied>('cmdProvisionPresetApply', [fleetId, presetId])
+}
+
+// ── STANDING ROUTES (0092) ──────────────────────────────────────────────────────────────────────
+
+/** The company's routes — stops, lines, the served state, the open lap and the last ten laps with
+ *  every figure — and the knobs. Reading it settles each route fleet first (the read is the
+ *  catch-up), exactly as `worldFleets` does. */
+export function worldStandingRoutes(): Promise<RpcResult<StandingRouteBook>> {
+  return call<StandingRouteBook>('worldStandingRoutes')
+}
+
+/** Write a route (routeId null) or replace its stops whole. Each stop carries the course of the
+ *  leg that LEAVES it, proposed by the one course author and re-verified at every departure. */
+export function cmdStandingRouteSave(
+  routeId: string | null,
+  name: string | null,
+  stops: readonly StandingRouteStopDraft[],
+  reserve: number | null = null,
+  losingLaps: number | null = null,
+): Promise<RpcResult<StandingRouteSaved>> {
+  return call<StandingRouteSaved>('cmdStandingRouteSave', [routeId, name, stops, reserve, losingLaps])
+}
+
+export function cmdStandingRouteDelete(routeId: string): Promise<RpcResult<StandingRouteDeleted>> {
+  return call<StandingRouteDeleted>('cmdStandingRouteDelete', [routeId])
+}
+
+/** Give the route to a fleet docked at one of its stops — it starts at once — or take it off its
+ *  fleet with `null`. */
+export function cmdStandingRouteAssign(
+  routeId: string,
+  fleetId: string | null,
+): Promise<RpcResult<StandingRouteAssigned>> {
+  return call<StandingRouteAssigned>('cmdStandingRouteAssign', [routeId, fleetId])
+}
+
+export function cmdStandingRoutePause(routeId: string, paused: boolean): Promise<RpcResult<StandingRoutePaused>> {
+  return call<StandingRoutePaused>('cmdStandingRoutePause', [routeId, paused])
 }

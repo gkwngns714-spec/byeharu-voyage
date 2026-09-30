@@ -19,7 +19,7 @@
 // went true until the re-ask landed — and a second `PREVIEW_SETTLE_MS` with its own `setTimeout`.
 // That is the same disease `useBuyCapacity` had the same day (the owner: *"when i press buy, the
 // max keeps refreshing"*), so both are one thing now: the SUBJECT is (fleet, the SETTLED line), a
-// re-read of the same subject keeps the last answer and marks it `loading`, a new line shows
+// re-read of the same subject keeps the last answer (not `loading` — the beat is silent), a new line shows
 // nothing of the old one, and the settle is `useSettled` — the one timer.
 //
 // ── WHAT IT RETURNS, AND WHAT IT DELIBERATELY DOES NOT ─────────────────────────────────────────

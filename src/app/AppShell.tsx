@@ -66,7 +66,7 @@ export function AppShell() {
       const world = useWorld.getState()
       // Only when the world is up, and never on top of a read already in flight: a second read
       // would settle the same voyages twice for nothing and race the first one's answer.
-      if (world.phase === 'ready' && !world.busy) void world.refresh()
+      if (world.phase === 'ready' && !world.reading) void world.refresh()
     }, every)
     return () => window.clearInterval(id)
   }, [compression])
@@ -76,7 +76,7 @@ export function AppShell() {
   useEffect(() => {
     const onVisible = () => {
       const world = useWorld.getState()
-      if (document.visibilityState === 'visible' && world.phase === 'ready' && !world.busy) {
+      if (document.visibilityState === 'visible' && world.phase === 'ready' && !world.reading) {
         void world.refresh()
       }
     }

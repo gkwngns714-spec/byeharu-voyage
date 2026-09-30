@@ -1,7 +1,8 @@
 import { Button, Figure, Icon, Note, Row } from '../../components/ui'
 import { voyageEtaMs } from '../../domain/fleet'
-import { refusalOfOrder, verbWord } from '../../domain/order'
+import { queuedOrderWords, refusalOfOrder } from '../../domain/order'
 import { formatMiles, formatRealShort } from '../../lib/format'
+import { usePress } from '../../live/usePress'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, QueuedOrder } from '../../lib/rpc'
 
@@ -10,44 +11,38 @@ import type { FleetView, QueuedOrder } from '../../lib/rpc'
 // It was a `Tray` behind a `queued` pill because the verb grid stood on the sheet (§6). The grid
 // is gone (CommandScreen.tsx says where each verb went), so the queue is the sheet's own content:
 // a halted queue is one Note at the top, the passage is one row while there is one, every order is
-// a row in the player's words with a trailing cancel, and the Clear button follows the last row.
+// a row in the player's words (domain/order's `queuedOrderWords` — a route's SELL and BUY read as
+// its stop does) with a trailing cancel, and the Clear button follows the last row.
 // CANCEL and CLEAR are still the server's verbs (domain/order's QUEUE_VERBS), composed here and
 // nowhere else. The `> SAIL Gaivota TO CAD` parser line is never printed (§5, §2 item 14).
+//
+// ONE PRESS AT A TIME, ACROSS THE QUEUE (src/live/usePress.ts). Every ✕ and the Clear button used
+// to wear the store's world-read flag as `disabled`, so they greyed on every beat (the owner,
+// 2026-09-30: "a bar ... blinks occasionally on its own"). Now the queue wears one gate: a CANCEL
+// addresses its order by `seq` and awaits the read that renumbers them, so while one press is on
+// the wire no other ✕ may fire on a stale seq — and outside a press, nothing greys anything.
 
 export function Queue({
   fleet,
-  busy,
   readAt,
   onCancel,
   onClear,
 }: {
   fleet: FleetView
-  busy: boolean
   readAt: number | null
-  onCancel: (seq: number) => void
-  onClear: () => void
+  /** The verbs, as promises: a press is busy until its own act settles (worldStore's cancel/clear). */
+  onCancel: (seq: number) => Promise<boolean>
+  onClear: () => Promise<boolean>
 }) {
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
+  const press = usePress()
 
   const orders = fleet.queue
   const failed = orders.find((o) => o.status === 'failed')
   const failedRefusal = failed ? refusalOfOrder(failed) : null
   const eta = voyageEtaMs(fleet)
   const etaMs = eta !== null && readAt !== null ? Math.max(0, eta - readAt) : null
-
-  const humanize = (order: QueuedOrder): string => {
-    const tokens = order.text.trim().split(/\s+/)
-    const KEYWORDS = new Set(['TO', 'AT', 'VIA', 'ON'])
-    const parts = [verbWord(order.verb)]
-    for (const t of tokens.slice(1)) {
-      if (t === fleet.name || KEYWORDS.has(t.toUpperCase())) continue
-      const port = portByCode[t]
-      const good = goodByCode[t]
-      parts.push(port ? port.name : good ? good.name : t)
-    }
-    return parts.join(' ')
-  }
 
   return (
     <>
@@ -77,7 +72,7 @@ export function Queue({
           return (
             <Row
               key={order.id}
-              label={humanize(order)}
+              label={queuedOrderWords(order, fleet.name, portByCode, goodByCode)}
               tone={order.status === 'failed' ? 'muted' : order.status === 'active' ? 'accent' : 'default'}
               hairline={i < orders.length - 1}
               data-testid="queue-row"
@@ -86,9 +81,9 @@ export function Queue({
                   <Button
                     variant="quiet"
                     size="icon"
-                    disabled={busy}
+                    busy={press.pending}
                     aria-label={`Cancel order ${order.seq}`}
-                    onClick={() => onCancel(order.seq)}
+                    onClick={() => void press.run(() => onCancel(order.seq))}
                   >
                     <Icon name="close" size={18} />
                   </Button>
@@ -109,8 +104,8 @@ export function Queue({
         <Button
           variant={failed ? 'destructive' : 'secondary'}
           className="mt-3 w-full"
-          disabled={busy}
-          onClick={onClear}
+          busy={press.pending}
+          onClick={() => void press.run(onClear)}
           data-testid="queue-clear"
         >
           {failed ? 'Clear the stopped order' : 'Clear all orders'}

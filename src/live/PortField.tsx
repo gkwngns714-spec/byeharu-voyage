@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Chip, Field } from '../../components/ui'
-import type { SnapshotPort } from '../../lib/rpc'
-import { useWorld } from '../../live/worldStore'
-import { harbourPick, useHarbour } from '../../store/harbour'
-import { nearbyHarbours } from './nearby'
+import { Chip, Field } from '../components/ui'
+import type { SnapshotPort } from '../lib/rpc'
+import { nearbyHarbours } from '../domain/port'
+import { harbourPick, useHarbour } from '../store/harbour'
+import { useWorld } from './worldStore'
 
 // THE PORT FIELD — one line that names the harbour being read, and the ten nearest under it while
 // you type. docs/UI_DIRECTION.md §6: `[🔍 Lisbon ▾]  Porto · Cádiz · Seville`.
@@ -56,16 +56,29 @@ import { nearbyHarbours } from './nearby'
 // Found on production, four times: pick a chip and the field worked exactly once per page load —
 // three exits, three spellings, one of them did not blur, so `onFocus` could never fire again.
 // There is ONE exit now, `leave()`, and it always gives the focus back.
+//
+// ── A SECOND CALLER: THE ROUTE EDITOR (0092, 2026-09-30) ───────────────────────────────────────
+// COMMAND's route editor needs "pick a harbour" and nothing else, and this is the one port picker
+// the client has. A screen may not import another screen (tests/sections.spec.ts), and a copy is
+// the silent spaghetti that rule warns about — so the field MOVED from features/port/ to src/live/
+// (beside WorldGate: a leaf that reads the store, for any screen), and its pure ranking
+// (`nearbyHarbours`) moved to src/domain/port. It is COMPOSED: given `onPick`, the pick goes to the
+// caller and
+// PORT's harbour choice (`src/store/harbour.ts`) is left alone; the clear then only empties the
+// search. The field, the ten nearest by sea and the one exit are unchanged for both callers.
 
 export function PortField({
   current,
   anchor,
+  onPick,
 }: {
   /** The harbour being read. Null only when the world served no ports. */
   current: SnapshotPort | null
   /** The harbour she is in or bound for, by CODE — pinned first in the chips, and where the sailed
    *  distances are measured from. Null when the house has no fleet. */
   anchor: string | null
+  /** Given: the pick is the caller's (the route editor), and PORT's harbour choice is untouched. */
+  onPick?: (code: string) => void
 }) {
   const ports = useWorld((s) => s.snapshot?.ports)
   const fleets = useWorld((s) => s.fleets)
@@ -121,7 +134,8 @@ export function PortField({
   // A chip that names the quay she is at stores NULL (follow her), any other a pick — one rule,
   // spelt in the store (`harbourPick`), shared with PORT's "Read X" button.
   const choose = (code: string) => {
-    pick(harbourPick(code, fleets, ports ?? []))
+    if (onPick) onPick(code)
+    else pick(harbourPick(code, fleets, ports ?? []))
     leave()
   }
 
@@ -137,7 +151,7 @@ export function PortField({
         onKeyDown={(e) => {
           if (e.key === 'Enter' && listed[0]) choose(listed[0].code)
         }}
-        onClear={open ? () => setQuery('') : picked !== null ? () => pick(null) : undefined}
+        onClear={open ? () => setQuery('') : !onPick && picked !== null ? () => pick(null) : undefined}
         aria-label="Find a port"
         aria-expanded={open}
         placeholder="Find a port"

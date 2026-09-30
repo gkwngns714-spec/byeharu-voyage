@@ -65,6 +65,18 @@ const BANNED: { word: RegExp; say: string }[] = [
   // REQUESTS on the tab and a REQUEST in a sentence; `contract` is the wire's word
   // (`trade_contracts`, `world.contracts`) and never the player's.
   { word: /\bcontracts?\b/i, say: 'request(s)' },
+  // 2026-09-30, owner row 106 (docs/TRADE_ROUTES.md §7, decision D6): the loop of ports a fleet sails
+  // by itself is a ROUTE, one turn of it a LAP; not running by choice is PAUSED, halted by a refusal
+  // is STOPPED. The wire says `standing_route`; the player never reads it.
+  { word: /\btrade routes?\b/i, say: 'Route' },
+  { word: /\bstanding routes?\b/i, say: 'Route' },
+  { word: /\bcircuits?\b/i, say: 'Route / Lap' },
+  { word: /\btemplates?\b/i, say: 'Route' },
+  { word: /\bcycles?\b/i, say: 'Lap' },
+  { word: /\bsuspended\b/i, say: 'Paused' },
+  { word: /\bcooldown\b/i, say: 'Next lap 14:32' },
+  { word: /\bfatigue\b/i, say: 'Next lap 14:32' },
+  { word: /\bat profit\b/i, say: 'Only sell above cost' },
 ]
 
 /** Literals the crude rule catches that are NOT player text, each with its reason. */

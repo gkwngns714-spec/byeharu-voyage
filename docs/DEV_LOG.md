@@ -5,6 +5,245 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-30 — the stop face and the rest of the no-blink rule land on PR #89 (rows 107, 108 — NOT deployed)
+
+**Row 108, the stop face.** A route stop read as one faint caption (`Sell all · Buy Iron, 20 units,
+Max 12 🪙 each`). It is now a Sell group above a Buy group, one row per line, in the trade face's
+own idiom — the side word, the amount, the limit — and no new colour (`src/features/command/RouteStop.tsx`,
+`routeStopLines` in `src/domain/route`). The editor draws Sell and Buy as separate groups with their
+fields always drawn, so pressing a good moves nothing below it. The queue says a route's orders in
+words (`queuedOrderWords` in `src/domain/order/text.ts`): no raw `ALL`, no `>=`, a floor is `Min`.
+
+**Row 107, finished.** COMMAND's buttons (Start / Save route, the fold's Start / Clear / Pause /
+Resume / Delete, each order's ✕, Clear all orders) wear `usePress` — busy only while their own press
+is on the wire. RouteFold no longer re-reads the routes on `readAt`; `refresh()` is the one reader.
+A2: the store's flag is renamed `reading`, and only `AppShell` reads it (to dedupe its own beat).
+`tests/flicker.spec.ts` holds the rule: three static guards (who reads `reading`, no `s.busy`,
+`loadRoutes(` only in the store) and a MutationObserver over COMMAND for 10.5 s. **Break-tested:**
+with `disabled={reading || …}` put back on Start route it logged six flips and went RED; without it,
+GREEN. The routes-on world image moved into `tests/routesOn.fixture.ts`, shared by both specs.
+
+**Gates, once, on the combined branch:** `tsc -b` 0, `eslint .` 0, build ok. Playwright against
+`vite preview` on `localhost:4412` (flicker, route.stopface, words, sections, duplication, layout,
+wide.layout, trade.ceiling, selection.lock): **58 passed, 1 failed, 0 skipped.** The one red is
+`layout.spec.ts:205` "five complete rows above the fold": Lisbon had a fair on (`The Fair — ends in
+3 h`, a real-clock calendar, 0026/0028), and its banner took a row's height — 4 rows fit. It is
+time-of-day shaped, not this change; reported, not re-run.
+
+## 2026-09-30 — one no-blink rule, Domain A1 (branch `osn-no-blink`, NOT merged)
+
+Owner row 107: *"i see multiple cases where a bar (Start route in command for example) blinks
+occasionally on its own."* The audits and the plan are `docs/HANDOFF_ROUTE_STOPS_AND_BLINKS.md`;
+this entry is what A1 landed and what it did not.
+
+**Root cause, one flag.** `worldStore.busy` is true for the length of every background world read
+— every 3 s (`AppShell.tsx`, READ_MIN_MS) — and eleven controls in COMMAND wore it as `disabled`.
+`Button` fades a disabled button to `opacity-45` over 180 ms, so each of them dimmed and came back
+on every beat (measured: 16–20 toggles per 30 s). The flag answers "is the world being read?"; the
+buttons wanted "is MY press still going?".
+
+**What A1 is (files, all in `src/live` and outside COMMAND):**
+* `src/live/usePress.ts` (A0, NEW): the one gate a control wears while its own press is on the
+  wire — `{pending, run}`, one instance per group of controls that act on the same thing (the
+  queue, a route fold, the editor), a press made while one is pending is dropped, an unmounted
+  component is never written to. Consumers write `<Button busy={press.pending} onClick={() =>
+  void press.run(act)}>`.
+* `src/live/useServedRead.ts`: **a re-ask on the world's beat is not `loading`.** It was — the
+  hook returned `loading: stale || answer.beat !== beat`, so a subject whose answer was a refusal
+  (no `view`) mounted its `loading && !view` waiting line on every beat: "No requests." ↔
+  "Loading…" on the request board, "Max amount unknown" ↔ "Checking how much you can buy…" in the
+  trade tray, the manifest's "Loading…" row, the haggle thread's tries re-toning. Now `loading` is
+  the first ask for a subject or a new question, never the beat; `WAITING` still covers the first
+  ask; `useTrade.ts:134` keeps its meaning (first ask only). Every caller corrected with no edit.
+* `src/live/worldStore.ts`: `refresh()` reads the standing routes WITH the fleets, on the same
+  beat, and a failed read keeps the last book (`routes.ok ? routes.value : get().routes`) — the
+  rule `loadMarket`/`loadOfficers`/`loadStandings`/`loadPresets` already follow. `loadRoutes` no
+  longer nulls the book on a refusal and survives only for the verbs that move the book alone
+  (`saveRoute`, `deleteRoute`); `assignRoute` and `pauseRoute` await `refresh()` alone instead of
+  two reads racing. `FleetsScreen.tsx` no longer re-reads the routes on `readAt`.
+* `src/features/map/WatersAhead.tsx`: the row key carried the distance, which shrinks on every
+  read while she sails, so every row ahead remounted every beat. Verified against 0055 before
+  changing it: `voyage.waters_ahead` folds only ADJACENT segments into a run and its probe (h)
+  counts runs and distinct seas separately, so a course can leave a sea and re-enter it and the
+  plan's bare `row.code` would have collided. The key is `${code}:${run}` in sailing order.
+* Comment-only: `TradeTray.tsx`, `useBuyCapacity.ts`, `useManifestPreview.ts`,
+  `useOrderPreview.ts`, `usePreviewRead.ts`, `useRequests.ts`, `useHaggleState.ts` no longer
+  describe the beat's re-ask as `loading`.
+
+**Gates run on this branch (each once, local PGlite build, no `.env.local`):** `tsc -b` clean,
+`eslint .` clean, `vite build` clean; Playwright against `vite preview --port 4411` on `localhost`
+for `words`, `sections`, `duplication`, `layout`, `wide.layout`, `trade.ceiling`,
+`selection.lock`: **52 passed, 0 failed, 0 skipped** (52 of 52 ran; the skipped count was read,
+not assumed — a `127.0.0.1` baseURL skips them all silently).
+
+**Review of `85514c3`, applied in the next commit.** (1) MUST-FIX: the routes read ran in the same
+`Promise.all` as the fleets read — two concurrent transactions, each settling every fleet it serves
+with `for update` on the fleet row (0007:916) in loop order, no ORDER BY in either `world.fleets()`
+(0009) or `world.standing_routes()` (0092): a lock-order deadlock with two or more route fleets,
+and if the fleets read is the victim `refresh()` sets `phase: 'failed'` and the shell stops reading
+for good. The routes are now read AFTER the fleets resolve, so their settle is a no-op. (2) A
+background beat that left before a save/delete/assign/pause and landed after it put the OLD book
+back for a beat — a deleted route reappearing, a blink of its own. ONE reader now, `readRoutes` in
+the store closure: reads are numbered as issued and an answer is dropped if a later-issued read
+has already been applied; `refresh()` and `loadRoutes` both compose onto it. (3) Two comments cited
+`tests/flicker.spec.ts` as if it existed; it is A2's. Gates re-run once after these, results below.
+
+**NOT in A1, said plainly:** the eleven `disabled={busy}` sites themselves are Domain B's files
+(`src/features/command/*`, branch `osn-route-stop-face`) and still blink until B lands; A2 — the
+rename of `busy` to `reading` so no screen can select it, `AppShell.tsx`, and
+`tests/flicker.spec.ts` (static guards + a MutationObserver count of 0 flips across three reads) —
+runs after B merges, because the rename fails to compile while B's files still read `s.busy`.
+`RouteFold.tsx:53-57` still calls `loadRoutes()` on `readAt` (B deletes it; harmless meanwhile,
+since the read now keeps the last book). `HaggleThread.tsx:118`'s `read.loading ? 'faint' :
+'muted'` is now a dead branch (the view is never drawn while loading) — left for the sweep that
+retires it with the rest.
+
+## 2026-09-30 — the route driven in a real browser; two defects fixed forward as 0094 (NOT merged, NOT deployed, DARK)
+
+**How it was driven.** `vite preview --port 4394` of this branch, no `.env.local` (PGlite in the tab),
+Chrome. The switch was turned on FOR THE DRIVE ONLY, in the tab's own database, by importing the
+built `db-*.js` chunk and calling `localDbIfReady().pg.query("update public.world_config set value =
+'true' where key = 'standing_routes_enabled'")` — no migration touched. Pacing was then set to 0
+(`standing_route_laps_per_game_day`) the same way so laps follow each other; the local build sails
+a 158-mile leg in about 15 s, so no clock warp was needed beyond waking the one paced lap.
+
+**What was seen (Casa de Aveiro, Gaivota, Lisbon ⇄ Porto: Lisbon Sell all + Buy Cork 40, Max 50; Porto Sell all).**
+* Start before a keep level: the editor printed `Set how many days of supplies to keep first.` and
+  the fold listed the route as `No fleet` with Start / Edit / Delete (0093's MUST 1 holds). Keep 10
+  days on FLEETS, Start: the fleet bought, sailed, sold at Porto and sailed home by itself.
+* Laps (the purse moved exactly the laps' net every time, 8,000 → 7,495 after three):
+  lap 1 −210 🪙 (sold 1,748, bought 1,926 for 40 cork, wages 32); lap 2 −259 🪙 (the Max filled
+  only 30 cork); lap 3 −36 🪙 (the BUY stepped over, `E_PRICE_LIMIT`, the fleet sailed empty);
+  lap 4 at Max 56 −455 🪙. History carries one `finished lap N` line per lap with every term.
+* After three losing laps the route paused itself (`Paused: the last laps lost money.`).
+* Pause mid-leg: the fleet made Porto and waited with its cargo. Resume: it sold and sailed on.
+  Edit: Max 50 → 56 saved on the same route. Delete: the route went, the fleet kept its cargo.
+* `Blocked` appeared (fold and FLEETS caption) when the flagship reached Lisbon unfit to sail.
+
+**Two defects, fixed forward in `20260818000094_a_resumed_route_sails_and_a_deleted_one_closes_its_lap.sql`:**
+1. **Resume did nothing after a `losing` pause** — the guard re-judged the same three closed laps
+   at once and paused again, with no lap run (two ROUTE_PAUSED rows, 06:44 and 06:47). Only Delete
+   got out. The guard now judges only at a lap the call has just closed.
+2. **Delete mid-lap dropped the open lap's line** — lap 5's 2,038 🪙 BUY was in History with no lap
+   that owned it. Delete now closes the open lap with the one closer first.
+Both watched go red under a one-line mutation (the guard ungated; the closer skipped).
+
+**Seen and NOT fixed here (not this PR's code, said plainly):**
+* A fleet UNABLE_TO_SAIL has no way back in the game: REPAIR queues and never runs (cmd.advance
+  runs only DOCKED/ANCHORED), and Port → Repair says `The fleet is at sea` while it is in Lisbon. The
+  route's Blocked sentence ("goes on once it is in port and fit to sail") therefore waits for good.
+  Recovered in the drive by SQL.
+* History orders events of one transaction by `created_at` alone, so an arrival, the sale, the
+  resupply and the departure written together come out shuffled (`sold` above `arrived`).
+* FLEETS still prints `hull` (WORDS says Damage); History says `arrived to Porto`.
+* The editor's two number boxes lose their labels once filled (`40`, `50`); Delete asks nothing.
+* A route paused at its first stop leaves the fleet below its keep level (8 of 10 days).
+
+**Can a route make money?** Lisbon ⇄ Porto cannot: no good Lisbon sells fetches more at Porto. A scan
+of every harbour pair within 700 km in the tab's world (238 harbours, markets as served) found 40
+pairs with a positive one-way margin: Beirut → Tripoli pistachios +41.5 % over 68 km, Cartagena →
+Portobelo sarsaparilla +8.7 %, Gdańsk → Stockholm tar +3.8 %; most are a few percent, and the
+return leg of each of those three loses (−10.9 %, −9.3 %, −2.2 %). With wages about 32 🪙 per 158-mile leg, a route pays only on
+such a pair, sized under the price impact (the Max stops a lap from buying into a loss). 0092's own
+probe printed, in one apply, +32 🪙 over three LIS ⇄ FNC iron laps and −53 🪙 over four.
+
+**Driven on that pair (rebuilt with 0094; the fleet moved to Beirut by SQL for the drive only):**
+Beirut ⇄ Tripoli, Beirut Sell all + Buy Pistachios 30, Max 180; Tripoli Sell all; pacing 0. Laps
+**+2,531, +1,399, +250, −18 🪙** — +4,162 🪙 in four laps, the purse 7,767 → 11,919. Each lap bought
+into Beirut's rising price until the Max refused the fourth (`E_PRICE_LIMIT`, stepped over). So a
+route IS profitable with sensible settings on a real margin, and it saturates within a few laps
+unpaced; at the default pace (one lap per game-day) the market regenerates between laps, which is
+what §8's saturation measurement still has to put a number on.
+
+**0094 re-driven in the browser on the rebuilt build:** Lisbon ⇄ Porto lost −126, −33, −36 and
+paused (`losing`); Resume ran lap 4 at once with ONE ROUTE_PAUSED in History; Delete mid-lap wrote
+lap 4's line (−20 🪙, one leg's wages). `npm run db:apply` green three times in a row (87 receipts),
+`npm run db:proof` 11 files, 78/78 PASS (proof 11: four AFK laps, −378 🪙, books balance).
+
+## 2026-09-30 — the review of 0092, applied forward as 0093 (NOT merged, NOT deployed, DARK)
+
+An adversarial review of PR #89 found one MUST-FIX, five SHOULDs and five NITs; every one is
+answered in `docs/TRADE_ROUTES.md` §13.1. **0092 is not edited**: migration
+`20260818000093_a_route_is_known_by_its_id_and_waits_behind_its_fleet.sql` supersedes it forward
+and the two must be pushed together.
+
+* **MUST 1 — a refused Start no longer hides a route.** The name index is dropped (a route is found
+  by its id); `RouteFold` lists routes with no fleet (Start / Edit / Delete).
+* **One lock order**: assign / pause / delete lock the fleet before the route (the tick, settle,
+  issue and the read already did), so a press cannot deadlock the minute tick.
+* **Words**: pause sentences name ports and carry no bare figure; History words ROUTE_PAUSED from
+  the reason (`src/domain/route`); lap lines list every term of the net.
+* **`blocked`** is served for a fleet that cannot move on (unable to sail, adrift, anchored).
+* **The arrival order resupplies** unless the route is about to refill right there.
+* The skip rule is dark with the switch; assign closes the open lap; a refused assign changes
+  nothing; the editor offers only goods the port sells and keeps lines it cannot show.
+* **Rejected:** NIT 8 (CLEAR does not run the queue) — the app re-reads after CLEAR; recorded.
+
+0093's self-assert proves each on a thrown-away house (switch on, rolled back) and reverses each of
+its thirteen hunks back to the pre-image. `scripts/db/breaktest-0093.mjs` puts each defect back as a
+one-line mutation and watched all ten guards go red — after it caught one of them HOLLOW: the
+refused-assign check called the verb and read the order back in the SAME `if`, so the sub-select
+read the statement's starting snapshot and passed whatever the verb wrote. The verb now runs in its
+own statement. The gates and CI are in the PR.
+
+---
+
+## 2026-09-30 — a route is a standing order that sails (row 106, slice 1 — migration 0092, NOT merged, NOT deployed, DARK)
+
+**The request, verbatim:** *"i want this game to be a simulating based - meaning i set up route,
+trade routes - going back and forth, afk, running all the time"*. The plan is `docs/TRADE_ROUTES.md`
+(NO_SPAGHETTI §7B; decisions D1-D7 are the owner's and carry the plan's defaults).
+
+**Deploy reality read first (2026-09-30):** production is at 0091 (0086-0091 WERE pushed — the entry
+below still says they must be, so this log was behind production); the live site is `a613a05`; and
+**all five pg_cron jobs on production read `active: false`** — the clock was not re-wound after that
+push (`docs/DEPLOY_RUNBOOK.md` step 4). Nothing on production was written by this work.
+
+**What was built (branch `osn-trade-routes`).** Migration
+`20260818000092_a_route_is_a_standing_order_that_sails.sql` — ADDED, no earlier file edited:
+* Tables `standing_routes` / `_stops` / `_lines` / `_laps` (read-own RLS, no client write, caps as
+  table triggers), `orders.route_lap_id`, six knobs with `standing_routes_enabled` **false**.
+* `cmd.enqueue` — cmd.issue's inline enqueue SLICED out (the one enqueuer; the player's door and the
+  route both call it). 18 `cmd.issue` answers byte-identical to the pre-image, E_QUEUE_FULL at 13.
+* `cmd.advance` re-cut: at the queue-dry exit a standing route refills ONCE
+  (`cmd.run_standing_route`, contained in its own exception block so a bug pauses that route, never
+  the tick); a refused ROUTE trade line is `skipped` and written on the lap (D1), a refused route
+  SAIL halts by 0007's law and the read says `stopped`.
+* `cmd.run_standing_provision` stands aside for a running route; `public.keep_level_met` is the
+  one "keep level met?" judge both use. `tick_arrivals` gains one loop that wakes a paced route —
+  no new job.
+* `world.standing_routes()` and `cmd.standing_route_save / _delete / _assign / _pause`, five rows
+  in the catalogue after `preview_fulfil`. One `ROUTE_LAP` event per lap (figures summed from the
+  executors' own results and the settled days' wages), `ROUTE_PAUSED` when a guard stops a route.
+* Client: `RouteFold` (one row above COMMAND's queue, unfolds in place) and `RouteEditor` (two stops,
+  Sell all, one BUY with units and Max); FLEETS' row caption (`On route` / `Stopped` / `Paused`);
+  History headlines for both kinds; the words live in `src/domain/route`. **The one port picker
+  MOVED** (`features/port/PortField.tsx` → `src/live/PortField.tsx`, `nearby.ts` →
+  `src/domain/port`) because a screen may not import another screen and a copy is spaghetti.
+
+**Proven locally (PGlite, real Postgres):** 0092's self-assert — six ticks of `tick_arrivals` ALONE
+run three laps of a Lisbon ⇄ Funchal route, every BOUGHT/SOLD a done route order, older laps' orders
+pruned; paced at 1/game-day the route waits and **the purse had moved exactly the four laps' net**;
+the woken lap skipped an empty BUY (E_NO_STOCK) and sailed; an unfit flagship STOPPED it
+(E_FLAGSHIP_DISABLED) and CLEAR released it; reserve / losing / off-route guards; the cap; every line
+kind round-trips `cmd.parse`; a broken stop pauses its route while the same tick settles another
+fleet; dark refuses all four verbs. Two deliberate mutations (a no-op skip note; net without wages)
+were each caught. Proof 11 drives it as `authenticated` (RLS, 42501 on the server-only functions,
+four AFK laps, books balance, dark).
+
+**Measured, and worth the owner's eye:** that probe route (20 iron, Lisbon → Funchal) LOST money in
+every run — −152 🪙 over four laps on one apply (wages 80 🪙 a lap), −543 🪙 over four laps in the full
+`db:proof` run (each apply deals a different market). A route is not profitable by construction; §8's saturation
+measurement (slice 4) is still owed before the switch goes on for everyone.
+
+**Not done (said plainly):** slices 2-4 (rich editor, D3 `SELL ALL` sizing, map line, balance and
+rank D4); the D5 production size read; the keep level is set on FLEETS, not in the route editor; the
+local build ships DARK too, so the browser specs measure the dark row's fold, and the full flow is
+exercised through the RPC layer in `tests/rpc.surface.spec.ts` instead of in the browser.
+
+**Production must receive `supabase db push` (0092 and 0093 together) BEFORE this PR merges, and the switch stays off
+until the clock is wound (`select public.wind_the_clock();`) and D5 is read.**
+
 ## 2026-09-27 — the deploy branch: 0086-0091 merged onto main as ONE PR (PRs #75 #78 #82 #83 — NOT merged, NOT deployed)
 
 **Why one branch.** Four PRs each carried a migration and each conflicted with `main` (head

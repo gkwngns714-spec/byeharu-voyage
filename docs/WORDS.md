@@ -68,6 +68,20 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | a port's posted ask for goods (the reference's 의뢰) | **request** (tab: **Requests**; `This port is asking for nothing today.`) — added 2026-09-14 with slice 4 of `docs/QUAY_LEDGER.md` (migration 0087); the wire says `contract` (`trade_contracts`, `world.contracts`) and the player never reads it | contract, commission, order (that is a queued verb) |
 | delivering on one | **Fulfil** (`Fulfil · 1,420 🪙`; the receipt's title `Fulfilled · 14:32`; History: `… delivered 20 pepper on Lisbon's request — 200 🪙 premium.`) | complete, deliver on, honour |
 | what a request pays over the market | **premium** (`+12% over the market`; a receipt row `Premium +200 🪙`) | bonus, bounty |
+| a loop of ports a fleet sails and trades by itself (0092, owner row 106) | **Route** (`Set up route`, `Route · Lisbon ⇄ Funchal`) — the wire says `standing_route` (`world.standing_routes`) and the player never reads it | trade route, circuit, template, standing route |
+| one full turn of it | **Lap** (`Lap 12 · +1,240 🪙`) | circuit, round, cycle |
+| a route not running by the player's choice | **Paused** / **Resume** | suspended, idle |
+| a route halted by a refusal | **Stopped** + the refusal's own sentence | failed, halted, error |
+| a route whose fleet cannot move on by itself (unable to sail, adrift, anchored; 0093) | **Blocked** (`… cannot sail on by itself.`) | stuck, disabled |
+| pacing | `Next lap 14:32` | cooldown, fatigue |
+| money kept back (slice 2) | **Keep at least** `5,000 🪙` | reserve, floor |
+| "only sell at a profit" (slice 2) | **Only sell above cost** | at profit, basis |
+| a route stop's two groups (owner, 2026-09-30: *"sell all buy all is ... in one line and not distinguished"*) | **Sell** above **Buy**, each word once in the stop's left column | Sell all · Buy … in one line |
+| a price floor the player sets on a sale | **Min** (`Min 14 🪙 each`) — the mirror of **Max** | at least, >= |
+| sell every good on board | **Everything on board** (amount `All`) | Sell all, ALL |
+| buy as many as the cargo holds | **All that fit** | ALL, max qty |
+| no price limit on a line | **Any price** | no cap, market |
+| resupply at a route stop (every stop, when below the keep level) | **Resupply if low** · queue row **Resupply to 5 days** | PROVISION DAYS 5 |
 
 ## Where the words are checked
 

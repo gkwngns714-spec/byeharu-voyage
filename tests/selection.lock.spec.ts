@@ -17,7 +17,7 @@ import { ready, reachable } from './appReady.fixture'
 // the MOUSEUP landed on something else — Chrome fires no click across two elements, and the press
 // opened nothing. One dead press per visit to the field, each time.
 //
-// The fix is in `src/features/port/PortField.tsx` and it is one decision: the picker folds on a
+// The fix is in `src/live/PortField.tsx` (moved from features/port/ 2026-09-30) and it is one decision: the picker folds on a
 // pick, on Escape, or AFTER a press has landed outside it (`click`) — never on a blur, which is a
 // mousedown-time signal. These proofs press where the control STANDS at the moment of the press,
 // exactly as a hand does, and require the press to have acted.

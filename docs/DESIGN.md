@@ -431,6 +431,10 @@ identical results to one whose ticks all ran on time**, because the hazard RNG i
 leaderboard freshness, not a correctness requirement. This is verified by a CI apply-proof test that
 disables cron, sleeps a simulated interval, and asserts the settled state matches the ticked state exactly.
 
+> **2026-09-30 (0092, docs/TRADE_ROUTES.md §4.4):** this holds for voyage hazards (seeded) and does **not**
+> hold for a standing route's trades, which price at the moment the fleet is settled. For a route fleet the
+> arrivals job is load-bearing, not an optimisation.
+
 ### D.3 Why two clocks
 
 One clock cannot serve both. If the calendar ran at voyage speed (480×), a game year would elapse in 1.9
@@ -932,6 +936,9 @@ academy; the discovery is unreported. Fails `E_ALREADY_REPORTED`, `E_NO_ACADEMY`
 - **Templates.** A queue can be saved as a **Route** (`SAVE ROUTE <name>`) and re-applied to any fleet
   (`RUN ROUTE <name> WITH <fleet>`), with port and quantity slots re-bound. This is the mechanism that
   makes commanding six fleets tolerable, and it is the main V2 quality-of-life feature.
+  *2026-09-30: built instead as the STANDING ROUTE (0092, docs/TRADE_ROUTES.md) — a loop the server runs
+  by itself, refilling the queue when it runs dry in port. A refused route TRADE line is stepped over and
+  noted on the lap (decision D1, a bounded exception to the halt rule above); a refused route SAIL halts.*
 - **Concurrency.** Every mutating RPC takes the fleet's `version` and fails `E_STALE` on mismatch, so two
   devices cannot double-issue.
 
@@ -1111,7 +1118,8 @@ Bindings, all server-side:
    always a loss. Round-tripping a port is structurally unprofitable.
 5. **Route fatigue:** the *fame* (not the ducats) from repeating an identical `(origin, destination, good)`
    triple decays 15% per repetition within a rolling 24 real hours, recovering at 25%/day. Money keeps
-   flowing; the ladder stops rewarding a macro.
+   flowing; the ladder stops rewarding a macro. *(Never built. Standing routes (0092) make it urgent:
+   decision D4 in docs/TRADE_ROUTES.md §11.)*
 6. **No player-to-player trading of ducats or goods at V1.** The classic exploit vector. If introduced at
    V2+, only as a taxed, logged, capped consignment market with a floor price.
 7. **Server-side wallet only.** The client never computes a price it then submits. Every price is derived

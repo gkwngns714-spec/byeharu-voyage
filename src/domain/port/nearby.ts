@@ -1,5 +1,7 @@
 // WHICH HARBOURS THE FIELD OFFERS — pure, no React, and never all of them.
-// MOVED 2026-09-11 from features/market/ with the port field, when MARKET folded into PORT (row 76).
+// MOVED 2026-09-11 from features/market/ with the port field, when MARKET folded into PORT (row 76),
+// and 2026-09-30 from features/port/ into src/domain/port, when the field gained its second caller
+// (COMMAND's route editor, 0092) and moved to src/live/PortField.tsx.
 //
 // docs/UI_DIRECTION.md §2 item 8, measured: the port picker opened onto 238 chips and the page
 // grew to 5,566px, "the search's failure mode made permanent". §6 redraws it as "a `Field` at the
