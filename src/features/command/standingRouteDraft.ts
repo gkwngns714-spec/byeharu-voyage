@@ -18,9 +18,9 @@
 
 import { proposeCourse, sailTarget } from '../../domain/passage'
 import type { SeaNav } from '../../lib/sea'
-import type { SnapshotPort, StandingRoute, StandingRouteStopDraft } from '../../lib/rpc'
+import type { SnapshotPort, StandingRoute, StandingRouteLine, StandingRouteStopDraft } from '../../lib/rpc'
 
-/** One stop as the editor holds it. Slice 1: sell everything or not, and at most one BUY. */
+/** One stop as the editor holds it. Slice 1 SHOWS: sell everything or not, and at most one BUY. */
 export interface RouteStopDraft {
   /** Port CODE. */
   port: string
@@ -31,23 +31,45 @@ export interface RouteStopDraft {
   buyUnits: number | null
   /** The most to pay per unit; null = no cap. */
   buyMax: number | null
+  /**
+   * WHAT THE EDITOR DOES NOT SHOW, CARRIED THROUGH UNTOUCHED (0093 review, NIT 11): a route saved
+   * with more than slice 1's editor can say — a named SELL, "only above cost", a second BUY, REPAIR,
+   * a floor on "sell everything" — keeps it when the stop is edited, instead of losing it silently.
+   */
+  repair: boolean
+  sellAllFloor: { price_limit: number | null; at_profit: boolean }
+  kept: StandingRouteLine[]
 }
 
 /** A fresh stop: sell everything that is on board, buy nothing. */
 export function emptyStop(port: string): RouteStopDraft {
-  return { port, sellAll: true, buyGood: null, buyUnits: null, buyMax: null }
+  return {
+    port,
+    sellAll: true,
+    buyGood: null,
+    buyUnits: null,
+    buyMax: null,
+    repair: false,
+    sellAllFloor: { price_limit: null, at_profit: false },
+    kept: [],
+  }
 }
 
-/** The editor's draft of a served route — for Edit. Reads the saved lines back, nothing more. */
+/** The editor's draft of a served route — for Edit. Reads the saved lines back, and keeps every
+ *  line the editor has no control for. */
 export function draftOfRoute(route: StandingRoute): RouteStopDraft[] {
   return route.stops.map((s) => {
     const buy = s.lines.find((l) => l.kind === 'BUY') ?? null
+    const sellAll = s.lines.find((l) => l.kind === 'SELL' && l.good === null) ?? null
     return {
       port: s.port,
-      sellAll: s.lines.some((l) => l.kind === 'SELL' && l.good === null),
+      sellAll: sellAll !== null,
       buyGood: buy?.good ?? null,
       buyUnits: buy?.qty ?? null,
       buyMax: buy?.price_limit ?? null,
+      repair: s.repair,
+      sellAllFloor: { price_limit: sellAll?.price_limit ?? null, at_profit: sellAll?.at_profit ?? false },
+      kept: s.lines.filter((l) => l !== buy && l !== sellAll),
     }
   })
 }
@@ -81,12 +103,19 @@ export function routePayload(
     const to = sailTarget({ dest: next.port }, portByCode)
     const course = from && to ? proposeCourse(nav, from, to) : null
     if (!course) return { ok: false, noCourseFrom: here.port }
-    const lines: StandingRouteStopDraft['lines'] = []
-    if (here.sellAll) lines.push({ kind: 'SELL' })
+    const carried = (kind: 'SELL' | 'BUY'): StandingRouteStopDraft['lines'] =>
+      here.kept
+        .filter((l) => l.kind === kind)
+        .map((l) => ({ kind: l.kind, good: l.good, qty: l.qty, price_limit: l.price_limit, at_profit: l.at_profit }))
+    const lines: StandingRouteStopDraft['lines'] = [...carried('SELL')]
+    if (here.sellAll) {
+      lines.push({ kind: 'SELL', price_limit: here.sellAllFloor.price_limit, at_profit: here.sellAllFloor.at_profit })
+    }
     if (here.buyGood) {
       lines.push({ kind: 'BUY', good: here.buyGood, qty: here.buyUnits, price_limit: here.buyMax })
     }
-    out.push({ port: here.port, course, lines })
+    lines.push(...carried('BUY'))
+    out.push({ port: here.port, course, repair: here.repair, lines })
   }
   return { ok: true, stops: out }
 }

@@ -72,6 +72,7 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | one full turn of it | **Lap** (`Lap 12 · +1,240 🪙`) | circuit, round, cycle |
 | a route not running by the player's choice | **Paused** / **Resume** | suspended, idle |
 | a route halted by a refusal | **Stopped** + the refusal's own sentence | failed, halted, error |
+| a route whose fleet cannot move on by itself (unable to sail, adrift, anchored; 0093) | **Blocked** (`… cannot sail on by itself.`) | stuck, disabled |
 | pacing | `Next lap 14:32` | cooldown, fatigue |
 | money kept back (slice 2) | **Keep at least** `5,000 🪙` | reserve, floor |
 | "only sell at a profit" (slice 2) | **Only sell above cost** | at profit, basis |

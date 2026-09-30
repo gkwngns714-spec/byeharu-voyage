@@ -14,7 +14,7 @@
 //                 route line (slice 3) is the third.
 //   WRONG SHAPE   a derived figure (a profit, a count of units that "fit"), or a state the server
 //                 did not serve — `stopped` IS a failed order in her queue, and only the server says so.
-// Words obey docs/WORDS.md: Route, Lap, Paused / Resume, Stopped, Next lap 14:32.
+// Words obey docs/WORDS.md: Route, Lap, Paused / Resume, Stopped, Blocked, Next lap 14:32.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { formatClock, formatUnitPrice, formatUnits } from '../../lib/format'
@@ -32,6 +32,12 @@ export function routeOfFleet(book: StandingRouteBook | null, fleetId: string): S
   return book?.routes.find((r) => r.fleet?.id === fleetId) ?? null
 }
 
+/** The company's routes that no fleet runs (a Start that was refused, or a route taken off its
+ *  fleet). Listed so that none is ever hidden: each still counts toward the served `max`. */
+export function routesWithoutFleet(book: StandingRouteBook | null): StandingRoute[] {
+  return book?.routes.filter((r) => r.fleet === null) ?? []
+}
+
 /** The FLEETS caption word, or null when there is nothing to say (no route, or routes are off). */
 export function routeCaption(route: StandingRoute | null): string | null {
   if (!route) return null
@@ -42,6 +48,8 @@ export function routeCaption(route: StandingRoute | null): string | null {
       return 'On route'
     case 'stopped':
       return 'Stopped'
+    case 'blocked':
+      return 'Blocked'
     case 'paused':
       return 'Paused'
     default:
@@ -56,6 +64,8 @@ export function routeStateWord(route: StandingRoute, portByCode: Record<string, 
       return 'Paused'
     case 'stopped':
       return 'Stopped'
+    case 'blocked':
+      return 'Blocked'
     case 'waiting':
       return route.next_lap_at ? `Next lap ${formatClock(Date.parse(route.next_lap_at))}` : 'Next lap soon'
     case 'sailing':
@@ -69,24 +79,41 @@ export function routeStateWord(route: StandingRoute, portByCode: Record<string, 
   }
 }
 
-/** Why a paused route is paused, in one sentence. The reason is the server's; the words are here. */
-export function routePausedSentence(reason: StandingRoutePausedReason | null): string {
+/** Why a paused route is paused, as a clause. The reason is the server's; the words are here, and
+ *  they carry no figure (docs/WORDS.md law 2: a bare number is never printed). */
+export function routePauseReason(reason: string | null): string {
   switch (reason) {
     case 'player':
-      return 'You paused this route.'
+      return 'you paused it'
     case 'reserve':
-      return 'Paused: your company has less than it keeps back.'
+      return 'your company has less than it keeps back'
     case 'losing':
-      return 'Paused: the last laps lost money.'
+      return 'the last laps lost money'
     case 'off_route':
-      return 'Paused: the fleet is not at a stop of this route.'
+      return 'the fleet is not at a stop of this route'
     case 'edited':
-      return 'Paused: the fleet is not at a stop of the changed route.'
+      return 'the fleet is not at a stop of the changed route'
     case 'error':
-      return 'Paused: this route could not run. Change it and resume.'
+      return 'this route could not run. Change it and resume'
     default:
-      return 'Paused.'
+      return 'it was paused'
   }
+}
+
+/** Why a paused route is paused, in one sentence (the fold's note). */
+export function routePausedSentence(reason: StandingRoutePausedReason | null): string {
+  return reason === 'player' ? 'You paused this route.' : `Paused: ${routePauseReason(reason)}.`
+}
+
+/**
+ * The History line of a ROUTE_PAUSED event (0092, worded by 0093's review). For `error` the
+ * server's own sentence says what broke — the refusal it caught; every other reason is worded here
+ * from the reason alone, so no port code and no bare figure from the payload's prose reaches the
+ * player (docs/WORDS.md law 2).
+ */
+export function routePausedEventWords(route: string, reason: string | null, sentence: string | null): string {
+  if (reason === 'error' && sentence) return `${route} paused. ${sentence}`
+  return `${route} paused: ${routePauseReason(reason)}.`
 }
 
 /** The ports of a route in order, joined by the loop mark: `Lisbon ⇄ Funchal`. */

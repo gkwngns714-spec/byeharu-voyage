@@ -1494,8 +1494,9 @@ export interface StandingRouteLap {
   skipped: { port?: string; line: string; verb?: string; code: string; sentence?: string }[]
 }
 
-/** Derived on the server, never stored: `stopped` IS a failed order in the fleet's queue. */
-export type StandingRouteState = 'off' | 'unassigned' | 'paused' | 'stopped' | 'waiting' | 'sailing' | 'in_port'
+/** Derived on the server, never stored: `stopped` IS a failed order in the fleet's queue; `blocked`
+ *  (0093) is a fleet that cannot move on by itself (unable to sail, adrift, anchored). */
+export type StandingRouteState = 'off' | 'unassigned' | 'paused' | 'stopped' | 'blocked' | 'waiting' | 'sailing' | 'in_port'
 
 export type StandingRoutePausedReason = 'player' | 'reserve' | 'losing' | 'off_route' | 'error' | 'edited'
 

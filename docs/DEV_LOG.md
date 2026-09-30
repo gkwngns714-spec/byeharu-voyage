@@ -5,6 +5,34 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-30 — the review of 0092, applied forward as 0093 (NOT merged, NOT deployed, DARK)
+
+An adversarial review of PR #89 found one MUST-FIX, five SHOULDs and five NITs; every one is
+answered in `docs/TRADE_ROUTES.md` §13.1. **0092 is not edited**: migration
+`20260818000093_a_route_is_known_by_its_id_and_waits_behind_its_fleet.sql` supersedes it forward
+and the two must be pushed together.
+
+* **MUST 1 — a refused Start no longer hides a route.** The name index is dropped (a route is found
+  by its id); `RouteFold` lists routes with no fleet (Start / Edit / Delete).
+* **One lock order**: assign / pause / delete lock the fleet before the route (the tick, settle,
+  issue and the read already did), so a press cannot deadlock the minute tick.
+* **Words**: pause sentences name ports and carry no bare figure; History words ROUTE_PAUSED from
+  the reason (`src/domain/route`); lap lines list every term of the net.
+* **`blocked`** is served for a fleet that cannot move on (unable to sail, adrift, anchored).
+* **The arrival order resupplies** unless the route is about to refill right there.
+* The skip rule is dark with the switch; assign closes the open lap; a refused assign changes
+  nothing; the editor offers only goods the port sells and keeps lines it cannot show.
+* **Rejected:** NIT 8 (CLEAR does not run the queue) — the app re-reads after CLEAR; recorded.
+
+0093's self-assert proves each on a thrown-away house (switch on, rolled back) and reverses each of
+its thirteen hunks back to the pre-image. `scripts/db/breaktest-0093.mjs` puts each defect back as a
+one-line mutation and watched all ten guards go red — after it caught one of them HOLLOW: the
+refused-assign check called the verb and read the order back in the SAME `if`, so the sub-select
+read the statement's starting snapshot and passed whatever the verb wrote. The verb now runs in its
+own statement. The gates and CI are in the PR.
+
+---
+
 ## 2026-09-30 — a route is a standing order that sails (row 106, slice 1 — migration 0092, NOT merged, NOT deployed, DARK)
 
 **The request, verbatim:** *"i want this game to be a simulating based - meaning i set up route,
@@ -58,7 +86,7 @@ rank D4); the D5 production size read; the keep level is set on FLEETS, not in t
 local build ships DARK too, so the browser specs measure the dark row's fold, and the full flow is
 exercised through the RPC layer in `tests/rpc.surface.spec.ts` instead of in the browser.
 
-**Production must receive `supabase db push` (0092) BEFORE this PR merges, and the switch stays off
+**Production must receive `supabase db push` (0092 and 0093 together) BEFORE this PR merges, and the switch stays off
 until the clock is wound (`select public.wind_the_clock();`) and D5 is read.**
 
 ## 2026-09-27 — the deploy branch: 0086-0091 merged onto main as ONE PR (PRs #75 #78 #82 #83 — NOT merged, NOT deployed)

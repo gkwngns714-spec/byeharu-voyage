@@ -40,7 +40,8 @@ export function RouteEditor({
     route ? draftOfRoute(route) : home ? [emptyStop(home), emptyStop('')] : [],
   )
   // A route saved but not yet started (its assign was refused) is saved AGAIN on the next press,
-  // never duplicated: the id is kept here.
+  // never duplicated: the id is kept here. Once this editor closes, the fold lists that route
+  // under "No fleet" (routesWithoutFleet) and it is started, edited or deleted from there.
   const [savedId, setSavedId] = useState<string | null>(route?.id ?? null)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   const [noCourse, setNoCourse] = useState<string | null>(null)
@@ -107,7 +108,10 @@ export function RouteEditor({
                   <Chip on={stop.sellAll} onClick={() => set(i, { sellAll: !stop.sellAll })}>
                     Sell all
                   </Chip>
-                  {(market?.goods ?? []).map((g) => (
+                  {/* Only what THIS market sells: a row with `offered: false` is a good a fleet here is
+                      carrying (do_buy refuses it, E_UNAVAILABLE), and `available: false` is refused by
+                      the port's culture — a BUY of either would be stepped over on every lap. */}
+                  {(market?.goods ?? []).filter((g) => g.offered !== false && g.available).map((g) => (
                     <Chip
                       key={g.code}
                       on={stop.buyGood === g.code}
@@ -159,7 +163,7 @@ export function RouteEditor({
       )}
       <div className="mt-3 flex gap-2">
         <Button variant="primary" className="flex-1" disabled={busy || !complete || !seaNav} onClick={() => void start()} data-testid="route-start">
-          {route ? 'Save route' : 'Start route'}
+          {route?.fleet ? 'Save route' : 'Start route'}
         </Button>
         <Button variant="quiet" className="flex-1" onClick={onDone}>
           Cancel

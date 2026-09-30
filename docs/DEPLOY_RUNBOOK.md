@@ -123,6 +123,9 @@ and stopped**, and a person starts it.
 
 ---
 
+**0092 and 0093 are pushed together** — 0093 is the review of 0092 applied forward (no-edit law);
+neither may reach production without the other.
+
 **Standing routes (0092) need this step.** A route fleet moves between stops only when something
 settles it: the arrivals job, or a read. With the clock stopped a route advances one stop per read
 and trades at the moment of the read, so `standing_routes_enabled` must never be switched on while

@@ -6,6 +6,7 @@ import {
   routeOfFleet,
   routePausedSentence,
   routePorts,
+  routesWithoutFleet,
   routeStateWord,
   routeStopWords,
 } from '../../domain/route'
@@ -39,10 +40,13 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
   const busy = useWorld((s) => s.busy)
   const pauseRoute = useWorld((s) => s.pauseRoute)
   const deleteRoute = useWorld((s) => s.deleteRoute)
+  const assignRoute = useWorld((s) => s.assignRoute)
   const clearQueue = useWorld((s) => s.clear)
 
   const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState(false)
+  // WHICH route the editor is open on: this fleet's own ('own'), a route no fleet runs (its id), a
+  // new one ('new'), or none.
+  const [editing, setEditing] = useState<string | null>(null)
   // THIS fold's last refusal — never the store's, which may belong to another screen's press.
   const [refusal, setRefusal] = useState<Refusal | null>(null)
 
@@ -53,6 +57,10 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
   }, [loadRoutes, readAt])
 
   const route = routeOfFleet(book, fleet.id)
+  // NONE IS HIDDEN (0093 review, MUST 1): a route whose Start was refused, or that was taken off its
+  // fleet, is listed here — started on THIS fleet by its id, edited, or deleted.
+  const spare = routesWithoutFleet(book)
+  const editRoute = editing === 'own' ? route : (spare.find((r) => r.id === editing) ?? null)
   const act = async (done: Promise<boolean>) => {
     setRefusal((await done) ? null : useWorld.getState().refusal)
   }
@@ -89,14 +97,32 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
             <Row label="Loading…" tone="muted" hairline={false} />
           ) : !book.enabled ? (
             <Hint>Routes are not open yet. A fleet will sail a loop of ports and trade by itself.</Hint>
-          ) : editing || !route ? (
-            editing ? (
-              <RouteEditor fleet={fleet} route={route} onDone={() => setEditing(false)} />
-            ) : (
-              <Button variant="primary" className="mt-2 w-full" onClick={() => setEditing(true)} data-testid="route-setup">
+          ) : editing ? (
+            <RouteEditor key={editing} fleet={fleet} route={editRoute} onDone={() => setEditing(null)} />
+          ) : !route ? (
+            <>
+              {spare.map((r) => (
+                <div key={r.id} data-testid="route-spare">
+                  <Row label={r.name} hairline={false}>
+                    <span className="block text-t-caption text-ink-faint">{routeStateWord(r, portByCode)}</span>
+                  </Row>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" className="flex-1" disabled={busy} onClick={() => void act(assignRoute(r.id, fleet.id))}>
+                      Start
+                    </Button>
+                    <Button variant="secondary" size="sm" className="flex-1" disabled={busy} onClick={() => setEditing(r.id)}>
+                      Edit
+                    </Button>
+                    <Button variant="quiet" size="sm" className="flex-1" disabled={busy} onClick={() => void act(deleteRoute(r.id))}>
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <Button variant="primary" className="mt-2 w-full" onClick={() => setEditing('new')} data-testid="route-setup">
                 Set up route
               </Button>
-            )
+            </>
           ) : (
             <>
               {route.state === 'stopped' && route.stopped && (
@@ -114,6 +140,11 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
                 </Note>
               )}
               {route.state === 'paused' && <Note tone="neutral">{routePausedSentence(route.paused_reason)}</Note>}
+              {route.state === 'blocked' && (
+                <Note tone="neutral" data-testid="route-blocked">
+                  {fleet.name} cannot sail on by itself. The route goes on once it is in port and fit to sail.
+                </Note>
+              )}
 
               {route.stops.map((s) => (
                 <Row
@@ -135,8 +166,8 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
                   data-testid="route-lap"
                 >
                   <span className="block text-t-caption text-ink-faint">
-                    Sold {formatDucats(l.sold)} · Bought {formatDucats(l.bought)} · Supplies {formatDucats(l.supplies)} · Wages{' '}
-                    {formatDucats(l.wages)}
+                    Sold {formatDucats(l.sold)} · Bought {formatDucats(l.bought)} · Supplies {formatDucats(l.supplies)}
+                    {l.repairs > 0 ? ` · Repairs ${formatDucats(l.repairs)}` : ''} · Wages {formatDucats(l.wages)}
                     {l.skipped.length > 0 ? ` · ${l.skipped.length} skipped` : ''}
                   </span>
                 </Row>
@@ -152,7 +183,7 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
                 >
                   {route.state === 'paused' ? 'Resume' : 'Pause'}
                 </Button>
-                <Button variant="secondary" className="flex-1" disabled={busy} onClick={() => setEditing(true)}>
+                <Button variant="secondary" className="flex-1" disabled={busy} onClick={() => setEditing('own')}>
                   Edit
                 </Button>
                 <Button variant="quiet" className="flex-1" disabled={busy} onClick={() => void act(deleteRoute(route.id))}>

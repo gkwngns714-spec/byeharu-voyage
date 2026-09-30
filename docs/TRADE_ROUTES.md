@@ -716,3 +716,25 @@ was measured**: −152 🪙 over four laps on one apply (wages 80 🪙 a lap), �
 full `npm run db:proof` run (each apply deals a different market). The purse moved exactly the laps'
 net, to the ducat, in both. This is one route with one good, not the §8 saturation measurement — it
 only shows that a route is not profitable by construction, and that the lap line is the money.
+
+### 13.1 The adversarial review of 0092, applied forward as 0093 (2026-09-30)
+
+0092 was reviewed before it was merged or deployed. It is **not edited** (the no-edit law); migration
+`20260818000093_a_route_is_known_by_its_id_and_waits_behind_its_fleet.sql` supersedes it forward,
+and **the two are pushed together or not at all**.
+
+| # | Finding | Outcome |
+|---|---|---|
+| MUST 1 | A refused Start (`E_NO_KEEP`) left a route with no fleet that the fold never listed; the next Start (same generated name) was `E_NAME_TAKEN` with no way out, and it held a place under the cap of 3. | **Fixed.** The name index is dropped (a name is a label; every verb takes the id) and save's `E_NAME_TAKEN` arm goes with it. `RouteFold` lists routes without a fleet (`routesWithoutFleet`) with Start (on this fleet, by id), Edit and Delete. Two fleets may now run the same pair of ports. |
+| SHOULD 2 | assign / pause locked the route, then the fleet (via `cmd.advance`); settle, issue, the tick and the read lock the fleet, then the route — a deadlock with the minute tick. | **Fixed.** assign, pause and delete lock the fleet(s) first (in id order), then the route; a route that changed fleets in between answers `E_BUSY`. The read settles its fleets in id order. The lock at `run_standing_route`'s head was left where it is: with one lock order it no longer waits in the wrong direction. |
+| SHOULD 3 | Pause sentences printed port codes and a bare number; `E_ROUTE_BROKEN` sentences printed raw order text and error codes. | **Fixed.** Server sentences name ports and carry no figure; `E_ROUTE_BROKEN` says what happened in words. History words `ROUTE_PAUSED` from the REASON in `src/domain/route` (the server sentence only for `error`). |
+| SHOULD 4 | A fleet unable to sail read "On route" for ever. | **Fixed.** The read serves `blocked` for any status but DOCKED / SAILING / REPAIRING; the fold says so; FLEETS says `Blocked`. |
+| SHOULD 5 | The arrival order stood aside whenever a route was running, even when the route would not refill (the player's own onward order queued, or an off-route port) — the fleet sailed unsupplied. | **Fixed.** It stands aside only when nothing is pending or failed in the queue and the fleet is at the stop the route is bound for. |
+| SHOULD 6 | The editor offered goods the port does not sell (`offered:false`, `available:false`). | **Fixed** in `RouteEditor`. |
+| NIT 7 | The skip rule ran with the switch off. | **Fixed:** gated on `standing_routes_on()`. |
+| NIT 8 | After CLEAR only a read (or an order) restarts the route. | **Not changed.** `cmd.clear` is 0007's and every client CLEAR re-reads the world (`worldStore.clear` → `refresh`); a caller other than the app must read or issue. Recorded here. |
+| NIT 9 | Lap summaries did not add up to the net. | **Fixed:** History lists supplies and repairs; the fold's lap line lists repairs when there were any. |
+| NIT 10 | Assign cleared `lap_id` without closing the lap. | **Fixed:** the one closer runs when a route changes fleet or is taken off one. |
+| NIT 11 | Edit dropped lines the editor cannot show. | **Fixed:** the draft carries REPAIR, the sell-all floor and every other line through untouched. |
+| (found in the re-cut) | A REFUSED assign to another fleet had already released the old fleet's pending route orders. | **Fixed:** every check runs before anything changes. |
+

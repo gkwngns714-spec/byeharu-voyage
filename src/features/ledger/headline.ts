@@ -1,5 +1,6 @@
 import { formatDucats, formatDucatsDelta, formatInt, formatMiles, formatPctPoints, formatUnitPrice } from '../../lib/format'
 import { parsePointToken, pointLabel } from '../../domain/passage'
+import { routePausedEventWords } from '../../domain/route'
 // THE ONE READER OF A JSONB FIELD (2026-08-23). `num`/`str` were declared here AND in
 // features/command/PreviewPanel.tsx, and they had already drifted; docs/NO_SPAGHETTI.md §2 listed
 // the pair as debt to fold. See src/lib/json.ts for why the stronger version is the one that
@@ -22,7 +23,7 @@ import type { LedgerEvent } from '../../lib/rpc'
 //   SIGNED_OFFICER {officer, code, specialty, bonus_pct, cost}   (0015:231 — NO fleet key)
 //   STUDIED       {skill, code, level, port, cost}               (0016:239 — port is a CODE)
 //   ROUTE_LAP     {route, fleet, lap, stops, sold, bought, supplies, repairs, wages, net, skipped, skipped_lines}  (0092)
-//   ROUTE_PAUSED  {route, fleet, reason, code?, sentence?}        (0092)
+//   ROUTE_PAUSED  {route, fleet, reason, code?, sentence?}        (0092; 0093: sentence names ports)
 //
 // An unknown kind falls through to the kind itself rather than to an invented sentence — a new
 // migration's event shows up as a legible row on the day it lands, without lying about its content.
@@ -181,7 +182,8 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
       const route = str(p, 'route') ?? 'its route'
       const lap = num(p, 'lap')
       const net = num(p, 'net')
-      const parts = (['sold', 'bought', 'wages'] as const)
+      // Every term of the net, so the figures beside it add up to it (0093 review, NIT 9).
+      const parts = (['sold', 'bought', 'supplies', 'repairs', 'wages'] as const)
         .map((k) => [k, num(p, k)] as const)
         .filter(([, v]) => v !== null)
         .map(([k, v]) => `${k} ${formatDucats(v as number)}`)
@@ -190,12 +192,11 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
         net === null ? '' : ` — ${formatDucatsDelta(net)}`
       }${parts.length > 0 ? ` (${parts.join(', ')})` : ''}${skipped ? ` · ${formatInt(skipped)} skipped` : ''}.`
     }
-    // A ROUTE THAT STOPPED ITSELF WHILE YOU WERE AWAY SAYS SO — the served reason, in plain words.
-    case 'ROUTE_PAUSED': {
-      const route = str(p, 'route') ?? 'A route'
-      const sentence = str(p, 'sentence')
-      return `${route} paused${sentence ? `: ${sentence}` : '.'}`
-    }
+    // A ROUTE THAT STOPPED ITSELF WHILE YOU WERE AWAY SAYS SO — the served REASON, worded in
+    // src/domain/route (the one wording, shared with COMMAND's fold); the server's sentence only
+    // for `error`, where it is the caught refusal's own.
+    case 'ROUTE_PAUSED':
+      return routePausedEventWords(str(p, 'route') ?? 'A route', str(p, 'reason'), str(p, 'sentence'))
     default: {
       const named = str(p, 'fleet')
       const what = kindWords(event.kind)

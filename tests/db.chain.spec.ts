@@ -262,7 +262,10 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved 2026-09-30 to 0092, a route is a standing order that sails (owner row 106, docs/TRADE_ROUTES.md
 // slice 1): a company-owned loop of harbours refills its fleet's queue when it runs dry in port, through
 // cmd.enqueue (sliced out of cmd.issue) and the one executor; dark behind standing_routes_enabled.
-const LAST = '20260818000092_a_route_is_a_standing_order_that_sails.sql'
+// Moved 2026-09-30 to 0093, the review of 0092 applied forward before either is deployed: a route is
+// known by its id (the name index dropped, a refused Start no longer hides a route), the route verbs
+// lock the fleet before the route, pause sentences name ports, `blocked` is served.
+const LAST = '20260818000093_a_route_is_known_by_its_id_and_waits_behind_its_fleet.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
