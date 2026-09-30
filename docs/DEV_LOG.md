@@ -5,6 +5,20 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-09-30 — DEPLOYED: routes (0092-0094, dark), the stop face and the no-blink rule are LIVE (PR #89)
+
+Read on the target, not taken from a green tick:
+- Clock stopped (`unwind_the_clock()`, all five jobs read `active: false`) → `supabase db push --linked`
+  (typed by the owner; the classifier refused it from the session) applied 0092, 0093, 0094 →
+  `wind_the_clock()` → all five `byeharu-voyage:*` jobs read `active: true`.
+- `supabase migration list --linked`: 0092, 0093, 0094 paired. **Production head 0094 = main.**
+- `standing_routes_enabled` reads `false` on production — routes are DARK. Turning them on is the
+  next owner-approved write (after the D5 size read, docs/TRADE_ROUTES.md §9).
+- PR #89 merged as `b88e0de`; the Pages run for it succeeded; the served bundle
+  (`assets/index-B8Pkoq3A.js`) carries `route-stop-sell`, `Everything on board`, `Only sell above cost`
+  and `standing_route_assign`.
+- CI on the PR head `5a95d3a`: Build, Migrations apply proof, Acceptance — all green.
+
 ## 2026-09-30 — the stop face and the rest of the no-blink rule land on PR #89 (rows 107, 108 — NOT deployed)
 
 **Row 108, the stop face.** A route stop read as one faint caption (`Sell all · Buy Iron, 20 units,
