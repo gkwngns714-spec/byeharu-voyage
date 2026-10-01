@@ -1,6 +1,8 @@
 import { ActCell } from './ActCell'
 import { Bar } from './Bar'
 import { Figure } from './Figure'
+import { Icon } from './Icon'
+import { goodIcon } from './goodIcons'
 import { RarityMark } from './Rarity'
 import { Row } from './Row'
 import { formatInt, formatUnits } from '../../lib/format'
@@ -61,17 +63,29 @@ export function TradeRow({
         // row with cargo on board once read `◇ · 10 units on board` with the name truncated to
         // nothing (seen in the basket proof's end frame, 2026-09-13). `flex-wrap` keeps a short
         // caption on the name's line (`· native` fits), so no other row's height moves.
-        <span className="flex flex-wrap items-center gap-x-1.5 text-t-body">
-          <span className="max-w-full truncate">{good.name}</span>
-          <RarityMark rarity={good.rarity} />
-          {(aboard > 0 || good.native === true) && (
-            <span className="text-t-caption text-ink-faint">
-              {[aboard > 0 ? `${formatUnits(aboard)} on board` : null, good.native === true ? 'native' : null]
-                .filter(Boolean)
-                .map((w) => `· ${w}`)
-                .join(' ')}
-            </span>
-          )}
+        // THE GOOD'S OWN MARK LEADS THE NAME (2026-10-01, owner: "it is like a text game"). The 96
+        // hand-drawn goods marks were already drawn on the Codex and the cargo rows, and missing
+        // from the one list a player reads most — so the ledger was a column of words. It rides
+        // INSIDE the name's line rather than in Row's `mark` slot: that slot's 12px gap would take
+        // 32px from a name that has ~118px at 390, and `Black Pepper` would truncate. The icon
+        // holds the first line; the name, its mark and its caption flow as TEXT beside it, so a
+        // long name wraps under itself (never under the icon, never truncated) — two lines still
+        // stand inside the height the price cells already give the row.
+        <span className="flex items-start gap-1.5 text-t-body">
+          <Icon name={goodIcon(good.code, good.category)} size={18} className="mt-0.5 shrink-0 text-ink-muted" />
+          <span className="min-w-0 break-words">
+            {good.name} <RarityMark rarity={good.rarity} />
+            {/* Each caption word keeps its dot — a no-break space, so `·` never ends a line alone. */}
+            {(aboard > 0 || good.native === true) && (
+              <span className="text-t-caption text-ink-faint">
+                {' '}
+                {[aboard > 0 ? `${formatUnits(aboard)} on board` : null, good.native === true ? 'native' : null]
+                  .filter(Boolean)
+                  .map((w) => `·${NBSP}${w}`)
+                  .join(' ')}
+              </span>
+            )}
+          </span>
         </span>
       }
       value={
@@ -98,6 +112,9 @@ export function TradeRow({
     </Row>
   )
 }
+
+/** A no-break space, spelled as an escape so the source carries no invisible character. */
+const NBSP = String.fromCharCode(0xa0)
 
 /** WHERE TODAY'S MID STANDS INSIDE THE SERVED RANGE, 0–100 — pure formatting of three served
  *  figures, spelt in this ONE place. A band of zero width reads as full. */

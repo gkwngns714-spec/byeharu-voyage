@@ -110,7 +110,7 @@ export { TradeTray, type TradeAct, type TradeControls, type TradePick, type Trad
 // KEPT — these are not replaced by anything, and §5 says so by name
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-export { Icon } from './Icon'
+export { Icon, IconDisc, type IconDiscTone } from './Icon'
 export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
 // A mark for a trade good, and the human spelling of its category. Every good in data/goods.json
 // has its OWN drawn glyph — see goodIcons.ts for the table and for why seven was the wrong answer.

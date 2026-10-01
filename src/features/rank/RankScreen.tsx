@@ -157,7 +157,9 @@ function Board({
       {you === null ? (
         <Row label="You are not ranked yet — start a company to appear here." tone="muted" />
       ) : (
-        <>
+        // YOUR LINE ON ITS OWN PANEL, the board on another (2026-10-01): one tone step each, so
+        // the pinned row reads as pinned rather than as the first line of a printout.
+        <SheetSection surface>
           <Row
             mark={<Place position={you.position} mine />}
             label={yourName}
@@ -169,13 +171,13 @@ function Board({
           >
             <Standing nation={flag(house?.nation ?? null)} tied={you.tied} />
           </Row>
-          {!you.on_board && (
-            <Hint className="mt-2">{`The board shows the top ${formatInt(board.board_size)}. You are below it.`}</Hint>
-          )}
-        </>
+        </SheetSection>
+      )}
+      {you !== null && !you.on_board && (
+        <Hint className="mt-2">{`The board shows the top ${formatInt(board.board_size)}. You are below it.`}</Hint>
       )}
 
-      <SheetSection>
+      <SheetSection surface>
         {others.map((r, i) => (
           <Row
             key={`${r.position}-${r.company_name}`}

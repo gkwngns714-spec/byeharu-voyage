@@ -5,6 +5,65 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-01 — design pass: "it is like a text game" (branch `osn-design-pass`, client only)
+
+**The request.** Owner, 2026-10-01: *"maybe do a quick audit and fix the design of this game. it is
+like a text game."* Audited in local mode (no `.env.local`, PGlite world, `vite preview`) at 390×844
+and 1280×800 over Command, Fleets, Port, Map, History, Rank, Codex and Profile. Before/after
+captures: `docs/design-audit-2026-10-01/` (`before-*.png`, `after-*.png`).
+
+**What the audit found (ranked).**
+1. Every list stood straight on the sea with only a hairline between lines — History, Rank,
+   Profile and Command's queue read as a printout. No surface anywhere but the Codex tiles.
+2. Section headings (`Orders`, `Levels`, `Appearance`) were `t-label` in `ink-muted`: the same 14px
+   grey voice as the rows under them, so a sheet had no middle step between its title and its rows.
+3. PORT's trade rows — the most-read list in the game — carried no goods mark, although the 96
+   hand-drawn marks were already drawn on the Codex and on cargo rows.
+4. COMMAND's two deciding numbers were one sentence: `Supplies 15.0 days · Cargo 4 / 60 tons`.
+5. History led every line with a bare clock; Fleets led with a 10px dot. No visual anchor per row.
+6. FLEETS at 390: the caption line's `4 / 60 tons` was printed ON TOP of `hull` (the two bars were
+   squeezed below their figures' width) — a real overlap bug, visible in `before-fleets-390.png`.
+7. Desktop (1280): every sheet is a 48rem column on the left with the right half empty except on
+   PORT, where the basket uses it. NOT changed here (the wide-glass rule is tested and owner-set).
+8. Not a defect, recorded so nobody "fixes" it: no parchment, no serif, no uppercase, no brass —
+   `docs/UI_DIRECTION.md` §4 retired that material on 2026-09-09 as what read old-fashioned.
+
+**What changed — through the design layer first, one authority per concept.**
+- `SheetSection` (`src/components/ui/Sheet.tsx`): the heading is `t-body` 600 in `ink` (title →
+  heading → row is now three visible steps), and a new `surface` prop seats a section of ROWS on one
+  `surface` panel at the tile radius (the tone step §4.3 already prescribes; never for tiles — a
+  surface inside a surface). Zero vertical padding, so grouping a list moves nothing.
+- `IconDisc` (`src/components/ui/Icon.tsx`, exported from `components/ui`): an `Icon` on a 32px
+  `surface-2` circle, coloured only by a meaning the caller holds. The one recipe for a row's mark.
+- `TradeRow` (`src/components/ui/TradeRow.tsx`): the good's own mark leads its name; the name wraps
+  under itself instead of truncating (`Black Pepper` at 390 stays whole, inside the row height the
+  price cells already set); a caption's `·` is tied to its word with a no-break space.
+- History (`src/features/ledger/LedgerScreen.tsx`): one panel; each row's mark is its FACE's mark
+  (coin / ship / crew, the book for a line no face holds — derived from `FACE_OF`, not a second
+  table); the clock moves to the caption under the headline.
+- Fleets (`src/features/fleets/FleetsScreen.tsx`): the status dot is a ship disc in the same status
+  tone; the caption line wraps (supplies on its own line on a phone, each gauge with a floor) — the
+  overlap is gone. One line again from `sm`.
+- Command (`src/features/command/CommandScreen.tsx`): `FleetFigures` — Supplies and Cargo as
+  `t-figure` numbers under captions, the cargo share as a bar, in EXACTLY the 52px the sentence
+  occupied; the queue sits on a panel. A first cut put the figures on a panel too (+56px): that
+  pushed the route editor's port chips out of the glass, so a press there scrolled the sheet and
+  `tests/route.stopface.spec.ts` (owner row 15, "a press moves nothing") went red — diagnosed against
+  a main build served on a second port (identical scroll numbers once the block was back to 52px),
+  and the design was changed, not the test.
+- Rank and Profile: the pinned row, the board, the house line, Levels and Sign out sit on panels.
+
+**No new colour, no new word, no new number, no new type size.** Tokens unchanged.
+
+**Gates (each read, on this branch's build served at `http://localhost:4423`):**
+- `npx tsc -b` exit 0 · `npx eslint .` exit 0 · `npx vite build` exit 0.
+- Playwright: `layout`, `words`, `sections`, `duplication`, `wide.layout`, `primitives.geometry`,
+  `route.stopface`, `flicker`, `trade.ceiling` — **60 passed, 0 failed, 0 skipped** (layout.spec:205,
+  the fold test, passed — no fair banner was up).
+
+**Not done:** the desktop right-hand space (item 7); Port's header stack (field + supplies row +
+segmented + filter above the first price) was left alone because the fold test has ~6px of slack.
+
 ## 2026-09-30 — DEPLOYED: routes (0092-0094, dark), the stop face and the no-blink rule are LIVE (PR #89)
 
 Read on the target, not taken from a green tick:
