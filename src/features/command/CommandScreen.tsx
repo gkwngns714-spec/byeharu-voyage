@@ -1,9 +1,9 @@
 import { useEffect, useMemo } from 'react'
-import { Chip, Note, Row, Sheet, SheetSection } from '../../components/ui'
+import { Bar, Chip, Figure, Note, Row, Sheet, SheetSection } from '../../components/ui'
 import { Queue } from './Queue'
 import { RouteFold } from './RouteFold'
 import { useCommandDraft } from '../../domain/order'
-import { formatOfTotal, formatVoyageDays } from '../../lib/format'
+import { formatOfTotal, formatVoyageDays, tonsWord } from '../../lib/format'
 import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, SnapshotPort } from '../../lib/rpc'
@@ -97,16 +97,19 @@ export function CommandScreen() {
 
       {fleet && (
         <>
-          {/* ITS ONE LINE: how long it can sail, and its cargo — each figure with what it is out of
-              (docs/WORDS.md law 2). */}
-          <Row label={fleetLine(fleet)} hairline={false} data-testid="command-line" />
+          {/* ITS TWO FIGURES: how long it can sail, and its cargo — each with what it is out of
+              (docs/WORDS.md law 2). They were ONE SENTENCE (`Supplies 15.0 days · Cargo 4 / 60
+              tons`) until 2026-10-01, when the owner said the game "is like a text game": two
+              numbers that decide the next order are figures, not prose, and cargo is a share, so
+              it is also a bar. */}
+          <FleetFigures fleet={fleet} />
           {/* 0092: HER ROUTE, one row above her queue — the standing order that writes the queue when
               it runs dry in port (RouteFold.tsx). It folds in place; the queue moves down. */}
           <RouteFold fleet={fleet} />
           {/* The queue's ✕ and Clear are busy only while their own press is on the wire (Queue.tsx
               wears the one `usePress`), so the verbs hand their promise down rather than a
               world-read flag — a background read never greys a control (owner, 2026-09-30). */}
-          <SheetSection heading="Orders" data-testid="command-queue">
+          <SheetSection heading="Orders" surface data-testid="command-queue">
             <Queue
               fleet={fleet}
               readAt={readAt}
@@ -120,16 +123,43 @@ export function CommandScreen() {
   )
 }
 
+/** The fleet's two deciding figures, side by side — a caption over each, the cargo share drawn as a
+ *  bar beside its figure (warning once the served free hold is gone).
+ *
+ *  EXACTLY THE ROW'S 52px, ON THE SHEET, NOT ON A PANEL. A first cut seated these on a `surface`
+ *  panel with the figures at `t-figure` over a bar: 56px taller, and that was enough to push the
+ *  route editor's port chips out of the glass, so a press there scrolled the sheet and the stops
+ *  under the finger moved (tests/route.stopface.spec.ts, owner row 15). Caption 16 + figure 28 +
+ *  8 of padding is the 52 the sentence stood in, so nothing below it moved by one pixel. */
+function FleetFigures({ fleet }: { fleet: FleetView }) {
+  const used = fleetHoldUsed(fleet)
+  const total = fleetHoldTotal(fleet)
+  return (
+    <div className="grid min-h-row grid-cols-2 gap-4 py-1" data-testid="command-line">
+      <div>
+        <span className="block text-t-caption text-ink-faint">Supplies</span>
+        <Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />
+      </div>
+      <div className="min-w-0">
+        <span className="block text-t-caption text-ink-faint">Cargo</span>
+        <span className="flex items-center gap-2">
+          <Figure value={formatOfTotal(used, total)} unit={tonsWord(total)} size="figure" />
+          <Bar
+            pct={total > 0 ? (used / total) * 100 : 0}
+            tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}
+            label={`cargo, ${formatOfTotal(used, total)} ${tonsWord(total)}`}
+            className="min-w-0 flex-1"
+          />
+        </span>
+      </div>
+    </div>
+  )
+}
+
 /** Where a fleet is or is heading, in a word — for the chip. */
 function whereOf(f: FleetView, portByCode: Record<string, SnapshotPort>): string {
   if (f.port) return portNameOf(portByCode, f.port)
   if (f.voyage) return `→ ${f.voyage.to ? portNameOf(portByCode, f.voyage.to) : 'sea'}`
   if (f.anchor) return `anchored`
   return f.status.toLowerCase()
-}
-
-/** The two facts a first glance wants: how long it can sail, and how full its cargo is. Cargo is
- *  a SHARE, so it prints with its whole — "51 / 60 tons" — never "9 t free" (docs/WORDS.md). */
-function fleetLine(fleet: FleetView): string {
-  return `Supplies ${formatVoyageDays(fleet.endurance_days)} · Cargo ${formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} tons`
 }

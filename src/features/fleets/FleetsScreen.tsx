@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { Bar, CargoBar, Row, Sheet } from '../../components/ui'
+import { Bar, CargoBar, IconDisc, Row, Sheet, type IconDiscTone } from '../../components/ui'
 import { formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
@@ -116,13 +116,15 @@ function FleetsBody() {
 }
 
 /** The status mark's colour is the meaning domain/fleet gives the status — the same five names
- *  the design system's tones carry, so a section that knows no component can still say "trouble". */
-const MARK: Record<ReturnType<typeof fleetStatusTone>, string> = {
-  neutral: 'bg-ink-faint',
-  accent: 'bg-accent',
-  success: 'bg-success',
-  warning: 'bg-warning',
-  danger: 'bg-danger',
+ *  the design system's tones carry, so a section that knows no component can still say "trouble".
+ *  Since 2026-10-01 the mark is a SHIP on a disc in that colour rather than a 10px dot: the same
+ *  meaning, and a fleet now looks like a fleet ("it is like a text game"). */
+const MARK: Record<ReturnType<typeof fleetStatusTone>, IconDiscTone> = {
+  neutral: 'muted',
+  accent: 'accent',
+  success: 'success',
+  warning: 'warning',
+  danger: 'danger',
 }
 
 function FleetRow({
@@ -146,7 +148,7 @@ function FleetRow({
 
   return (
     <Row
-      mark={<span aria-label={fleet.status.toLowerCase()} className={`h-2.5 w-2.5 rounded-chip ${MARK[fleetStatusTone(fleet.status)]}`} />}
+      mark={<IconDisc name="ship" tone={MARK[fleetStatusTone(fleet.status)]} label={fleet.status.toLowerCase()} />}
       /* WHERE SHE IS RIDES ON THE NAME'S LINE, not in the row's value slot. The value slot stands
          beside the WHOLE band, so with it filled the caption line under the name was squeezed to
          the label's width and the bars measured 12px — a mood ring. Composed as a stack (Row's
@@ -167,21 +169,28 @@ function FleetRow({
           "how many days of supplies", whether to buy is "how much cargo space is left", whether to
           repair is "how sound is the worst hull". The figure stays beside each bar — a bar you cannot
           read exactly is a mood ring, and this is a ledger. */}
-      <span className="mt-1 flex items-center gap-3 text-t-caption text-ink-faint" data-testid="fleet-row-bars">
-        <span className="shrink-0 tabular-nums">{formatVoyageDays(fleet.endurance_days)} of supplies</span>
+      {/* THE LINE WRAPS RATHER THAN OVERLAPS (2026-10-01). At 390px the three groups did not fit
+          one line, the two bars were squeezed to nothing and `4 / 60 tons` was printed on top of
+          `hull` (seen in the design pass's before-shot). On a phone the supplies figure takes its
+          own line and each gauge keeps a floor — the width its word, a bar you can read and its
+          figure need — so cargo and hull stack under it; from `sm` all three share one line. */}
+      <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-t-caption text-ink-faint" data-testid="fleet-row-bars">
+        <span className="shrink-0 basis-full tabular-nums sm:basis-auto">{formatVoyageDays(fleet.endurance_days)} of supplies</span>
         {/* ONE cargo gauge for the game (CargoBar): the basket panel on PORT draws the same one
             with its staged change washed on. */}
-        <CargoBar used={used} total={total} free={fleet.free_hold} className="min-w-0 flex-1" />
+        <CargoBar used={used} total={total} free={fleet.free_hold} className="min-w-48 flex-1" />
         {/* §4.4: a hull that is merely sound is NEUTRAL — green is for gain, and a whole fleet
             painted green spends the one colour that means "cheap" on a hull that is fine. */}
-        <span className="shrink-0">hull</span>
-        <Bar
-          pct={hull * 100}
-          tone={hull < 0.4 ? 'danger' : hull < 0.75 ? 'warning' : 'neutral'}
-          label={`worst hull, ${formatPct(hull)}`}
-          figure={<span className="tabular-nums">{formatPct(hull)}</span>}
-          className="min-w-0 flex-1"
-        />
+        <span className="flex min-w-32 flex-1 items-center gap-3">
+          <span className="shrink-0">hull</span>
+          <Bar
+            pct={hull * 100}
+            tone={hull < 0.4 ? 'danger' : hull < 0.75 ? 'warning' : 'neutral'}
+            label={`worst hull, ${formatPct(hull)}`}
+            figure={<span className="tabular-nums">{formatPct(hull)}</span>}
+            className="min-w-0 flex-1"
+          />
+        </span>
       </span>
     </Row>
   )

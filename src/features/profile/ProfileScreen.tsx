@@ -54,7 +54,7 @@ export function ProfileScreen() {
 
   return (
     <Sheet title="Profile" data-testid="profile">
-      <SheetSection>
+      <SheetSection surface>
         {player ? (
           <Row
             data-testid="house-line"
@@ -77,7 +77,7 @@ export function ProfileScreen() {
       </SheetSection>
 
       {player && (
-        <SheetSection heading="Levels" data-testid="levels">
+        <SheetSection heading="Levels" surface data-testid="levels">
           <Track name="Trading" track={player.levels.trading} />
           <Track name="Exploration" track={player.levels.exploration} />
           {/* COMBAT READS NOTHING AND IS NOT DRAWN AS A TRACK. 0069 serves it with `playable:
@@ -109,7 +109,7 @@ export function ProfileScreen() {
         />
       </SheetSection>
 
-      <SheetSection>
+      <SheetSection surface>
         {authMode === 'local' ? (
           <Row
             tone="muted"
