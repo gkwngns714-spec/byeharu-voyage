@@ -5,6 +5,48 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-01 — price_history_pkey was 738 MB: a high-water mark, not a leak; 0095 sweeps the record every tick (branch `osn-price-history-bloat`, NOT deployed)
+
+**Measured on production** (by the lead): `price_history` heap 14 MB / 113k rows, its only index
+`price_history_pkey` **738 MB**, 54M index scans, database 841 MB against the Free plan's 500 MB.
+`reindex index concurrently public.price_history_pkey` brought the index to 7.3 MB and the database
+to 110 MB, rows unchanged (126,528).
+
+**Root cause, measured locally rather than argued.** The writer at its latest definition
+(`tick_price_snapshot`, 0013:97 as re-cut by 0057:302 and 0061:361 — nothing later touches it) is an
+insert-and-prune queue on the key `(port_id, good_id, slot)`: no UPDATE, so no HOT; every tick adds
+an index entry per offered pair and leaves one dead. Driven on PGlite, 10-minute ticks:
+
+| drive | index |
+|---|---|
+| roster as today, VACUUM every 2 ticks | 6.2 MB, flat to tick 250 |
+| roster as today, VACUUM every 10 ticks (≈ the default trigger) | 7.2 MB, flat to tick 300 |
+| roster as today, never vacuumed | 8.1 → 24.8 MB over 250 ticks, unbounded |
+| dense era (40 ports whole, 80 ticks), then 0061's cut | heap 112 → **7.0 MB**, index **95.2 MB, stays** |
+
+The last row is production's signature: VACUUM truncates the heap's emptied tail, a btree never
+gives pages back. 738 MB is the pre-0057/0061 dense record's peak (7.3M rows), kept by the index;
+the 54M scans are that era's ON CONFLICT probes (54,432 pairs a tick). **The reindex was the fix
+for the 738 MB, and the current writer does not rebuild it while autovacuum reaches the table.**
+
+**Tried and rejected: a ring.** Re-keying `(port_id, good_id, slot mod window)` with an in-place
+HOT overwrite was written, applied (its self-assert passed) and driven: index 6.8 MB (no better than
+7.2 MB), heap 18.6 MB (2.8x) — a tick's rows share pages, so a tick updates whole pages and most
+updates cannot stay on their page. Not shipped.
+
+**0095 `the_price_record_is_swept_every_tick`:** `alter table public.price_history set
+(autovacuum_vacuum_scale_factor = 0, autovacuum_vacuum_threshold = 1000)` — the default trigger is
+50 + 20% of rows (~22,700 on production, ~10 ticks, and longer as the table grows); 1,000 is under one
+tick's prune (~2,400 on production, 1,348 locally), so the sweep follows every tick at any size. The
+writer and the read are asserted byte-identical; the probe drives one tick a window later on an
+emptied, rolled-back record and requires its prune to reach the trigger.
+
+**Not done here:** no deploy, no merge (the lead runs the clock-off / db push / clock-on runbook).
+If the record ever grows a lot and shrinks again, the index keeps that peak again and
+`reindex index concurrently` is again the remedy — a migration cannot run it.
+
+---
+
 ## 2026-09-30 — DEPLOYED: routes (0092-0094, dark), the stop face and the no-blink rule are LIVE (PR #89)
 
 Read on the target, not taken from a green tick:
