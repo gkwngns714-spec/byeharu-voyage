@@ -267,7 +267,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // lock the fleet before the route, pause sentences name ports, `blocked` is served.
 // Moved 2026-09-30 to 0094, found by driving the route in a browser: Resume after a losing pause
 // sails one more lap instead of re-pausing on the spot, and Delete closes the open lap.
-const LAST = '20260818000094_a_resumed_route_sails_and_a_deleted_one_closes_its_lap.sql'
+// Moved 2026-10-01 to 0095: public.price_history gets its own autovacuum trigger (about one tick's
+// prune), so the snapshot's insert-and-prune queue is swept every tick; the writer is unchanged.
+const LAST = '20260818000095_the_price_record_is_swept_every_tick.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
