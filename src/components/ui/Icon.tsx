@@ -32,3 +32,44 @@ export function Icon({
     </svg>
   )
 }
+
+/** The meanings a disc may carry, plus the quiet default — the same names `Figure` speaks. */
+export type IconDiscTone = 'muted' | 'accent' | 'success' | 'warning' | 'danger' | 'info'
+
+const DISC_TONE: Record<IconDiscTone, string> = {
+  muted: 'text-ink-muted',
+  accent: 'text-accent',
+  success: 'text-success',
+  warning: 'text-warning',
+  danger: 'text-danger',
+  info: 'text-info',
+}
+
+/**
+ * A ROW'S MARK AS A DISC — an `Icon` seated on a 32px `surface-2` circle (2026-10-01, owner: "it
+ * is like a text game"). History, Fleets and Command led every line with a bare clock, a 10px dot
+ * or nothing, so the eye had no anchor and every row was a sentence. The disc is the anchor: the
+ * same stroke set, on the inset tone §4.4 gives a chip at rest, coloured only by a meaning the
+ * caller already holds (a fleet's status tone — never decoration). 32px sits inside the 52px row,
+ * so a row that gains one grows by nothing. ONE recipe, here, so no screen hand-rolls a circle.
+ */
+export function IconDisc({
+  name,
+  tone = 'muted',
+  label,
+}: {
+  name: IconName
+  tone?: IconDiscTone
+  /** Set when the disc carries meaning on its own (a status); otherwise it is decoration. */
+  label?: string
+}) {
+  return (
+    <span
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-chip bg-surface-2 ${DISC_TONE[tone]}`}
+      role={label === undefined ? undefined : 'img'}
+      aria-label={label}
+    >
+      <Icon name={name} size={18} />
+    </span>
+  )
+}

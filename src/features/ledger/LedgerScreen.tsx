@@ -1,5 +1,15 @@
 import { useState } from 'react'
-import { Figure, Row, Segmented, Sheet, Tray, type TrayDetent } from '../../components/ui'
+import {
+  Figure,
+  IconDisc,
+  Row,
+  Segmented,
+  Sheet,
+  SheetSection,
+  Tray,
+  type IconName,
+  type TrayDetent,
+} from '../../components/ui'
 import { MINUS, formatClock, formatInt } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
@@ -72,6 +82,18 @@ const FACE_OF: Record<string, Exclude<Face, 'all'>> = {
   WAGES: 'crew',
 }
 
+/** A row's mark is its FACE's mark — the grouping above, drawn, not a second table of kinds. A
+ *  kind no face holds (FOUNDED, or one not filed yet) wears the book. */
+const FACE_ICON: Record<Exclude<Face, 'all'>, IconName> = {
+  trade: 'coin',
+  voyage: 'ship',
+  crew: 'crew',
+}
+const markOf = (kind: string): IconName => {
+  const face = FACE_OF[kind]
+  return face === undefined ? 'ledger' : FACE_ICON[face]
+}
+
 export function LedgerScreen() {
   // FIELDS, NOT THE STORE (worldStore.ts rule 4). The Ledger is the screen that made the rule: it
   // is the longest list in the game and it re-rendered whole, twice, on every read.
@@ -118,25 +140,30 @@ function LedgerBody() {
       ) : shown.length === 0 ? (
         <Row label="Nothing here yet." tone="muted" hairline={false} />
       ) : (
-        shown.map((event) => {
-          const atMs = Date.parse(event.at)
-          const report = payloadLines(event.payload)
-          return (
-            <Row
-              key={event.id}
-              data-testid="ledger-row"
-              mark={
-                <span className="w-11 text-t-caption tabular-nums text-ink-faint">
+        // ONE PANEL, AND A MARK PER LINE (2026-10-01, owner: "it is like a text game"). Each entry
+        // is led by what KIND of thing happened — coin, ship, crew — and the clock drops to the
+        // caption under the headline, where a time belongs: read when wanted, never the anchor.
+        <SheetSection surface>
+          {shown.map((event) => {
+            const atMs = Date.parse(event.at)
+            const report = payloadLines(event.payload)
+            return (
+              <Row
+                key={event.id}
+                data-testid="ledger-row"
+                mark={<IconDisc name={markOf(event.kind)} />}
+                label={headline(event, portName)}
+                value={movement(event.ducats_delta)}
+                chevron={report.length > 0}
+                onClick={report.length > 0 ? () => show(event) : undefined}
+              >
+                <span className="block text-t-caption tabular-nums text-ink-faint">
                   {Number.isFinite(atMs) ? formatClock(atMs) : '--:--'}
                 </span>
-              }
-              label={headline(event, portName)}
-              value={movement(event.ducats_delta)}
-              chevron={report.length > 0}
-              onClick={report.length > 0 ? () => show(event) : undefined}
-            />
-          )
-        })
+              </Row>
+            )
+          })}
+        </SheetSection>
       )}
 
       {/* THE REPORT IS READ, NOT SCANNED. The served prose is whole sentences about a night under

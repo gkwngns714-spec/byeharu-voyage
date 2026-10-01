@@ -10,7 +10,7 @@ import { sheetBodyClass, sheetColumnClass } from './screenLayout'
 // one tap target. That is the Bootstrap-era "page with panels" template, and it is what the owner
 // meant by *"old fashioned component structure."*
 //
-// A SHEET IS ONE SURFACE. Sections are separated by 24px of space and a `t-label` heading — never
+// A SHEET IS ONE SURFACE. Sections are separated by 24px of space and a heading — never
 // by a box, never by a border, never by a header bar. §4.3 states the rule this enforces: "never a
 // surface inside a surface". `Tile` and `Row` are the one level of nesting allowed, and they sit
 // ON the sheet rather than in a card on it.
@@ -82,12 +82,27 @@ export function Sheet({
   )
 }
 
-/** A section of a sheet: 24px of air above it and a `t-label` heading, and no box of any kind.
+/** A section of a sheet: 24px of air above it and a heading, and no BORDER of any kind.
  *  `heading` is optional — an unnamed section is the commonest kind, and a label nobody needs is
- *  §2 item 15 growing back. */
+ *  §2 item 15 growing back.
+ *
+ *  THE HEADING IS A HEADING (2026-10-01, owner: "it is like a text game"). It was `t-label` in
+ *  `ink-muted` — 14px grey, the same voice as a row's own label — so a section's name read as one
+ *  more line of the list under it, and every sheet was a single column of same-weight text. It is
+ *  now `t-body` at 600 in `ink`: below the sheet's `t-title`, above every row label, which is the
+ *  three-step ladder §4.1 draws (title → section heading → row) and the screen did not show.
+ *
+ *  `surface` GROUPS A LIST OF ROWS ON ONE TONE STEP (same date, same complaint). Rows standing
+ *  straight on the sea with only a hairline between them are what made History, Rank and Command
+ *  read as a printout. §4.3 already names the answer — "separation is by tone step (`surface` on
+ *  `bg`)" — so a section of ROWS may sit on one `surface` rectangle at the tile radius, padded to
+ *  the gutter, its last hairline dropped. ROWS ONLY: a section holding `Tile`s must not ask for it,
+ *  because a tile is itself `surface` and §4.3 forbids a surface inside a surface. It adds no
+ *  vertical padding — a row brings its own — so a list moves nothing by being grouped. */
 export function SheetSection({
   heading,
   trailing,
+  surface = false,
   children,
   className = '',
   ...rest
@@ -95,6 +110,8 @@ export function SheetSection({
   heading?: ReactNode
   /** One control belonging to this section — a filter chip, a count. */
   trailing?: ReactNode
+  /** Seat the section's rows on one `surface` panel. Rows only — never tiles (see above). */
+  surface?: boolean
   children: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
@@ -102,11 +119,11 @@ export function SheetSection({
     <section className={`mt-6 first:mt-2 ${className}`} {...rest}>
       {(heading !== undefined || trailing !== undefined) && (
         <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
-          {heading !== undefined && <h2 className="text-t-label text-ink-muted">{heading}</h2>}
+          {heading !== undefined && <h2 className="text-t-body font-semibold text-ink">{heading}</h2>}
           {trailing !== undefined && <div className="shrink-0">{trailing}</div>}
         </div>
       )}
-      {children}
+      {surface ? <div className="rounded-tile bg-surface px-4 [&>*:last-child]:border-b-0">{children}</div> : children}
     </section>
   )
 }
