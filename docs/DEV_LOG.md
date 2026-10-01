@@ -5,6 +5,14 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-01 — DEPLOYED: 0095 (price record swept every tick); routes switched ON
+
+Read on the target: `reindex index concurrently public.price_history_pkey` (738 MB → 7.3 MB, DB 841 → 110 MB,
+rows unchanged 126,528) · `standing_routes_enabled` set `true` and read back · PR #91 merged as `8e44f81` after
+CI green on `59b5710` · `unwind_the_clock()` = 5, all five jobs `active: false` → `supabase db push --linked`
+applied 0095 → `wind_the_clock()`, all five `active: true`. **Production head 0095 = main.** `price_history`
+reloptions read back `autovacuum_vacuum_scale_factor=0, autovacuum_vacuum_threshold=1000`; pkey 11 MB, DB 113 MB.
+
 ## 2026-10-01 — design pass: "it is like a text game" (branch `osn-design-pass`, client only)
 
 **The request.** Owner, 2026-10-01: *"maybe do a quick audit and fix the design of this game. it is
