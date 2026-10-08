@@ -1,0 +1,255 @@
+{
+  "about": "AUTHORED merchant roster for docs/NPC_TRADERS.md §3.2. scripts/build-npc-0098.mjs reads this file, measures every candidate loop on the applied chain through the ONE executor, chooses each fleet's loop (the runner-up becomes its alternate), trims hulls by the steady-state rule, sizes capital, writes the blurbs from the measured lines, and emits supabase/migrations/20260818000098_the_merchant_companies_are_founded.sql plus data/npc-routes.generated.json. Loops are space-separated harbour codes, stop 0 = home; the FIRST loop listed is the one the 2026-10-08 measurement chose. officers = specialties wanted (picked from the catalogue by home port on the loop, then nation, then bonus). skills = SEAMANSHIP/NAVIGATION/ACCOUNTING/HAGGLING levels. ink = the nation family the map paints the hull in. wares = the goods the planner prefers (it falls back to any paying good only when none of these pays).",
+  "inks": { "PRT": "prt", "ESP": "esp", "NLD": "nld", "ENG": "eng", "FRA": "eng", "DNK": "eng", "HAN": "han", "GEN": "ita", "VEN": "ita", "OTT": "ott", "MUG": "ott", "PER": "ott", "MNG": "east", "JPN": "east", "JOS": "east", "AYU": "east" },
+  "lesser_officers": [
+    { "code": "NPCPILOTPRT", "name": "Gonçalo Pires", "specialty": "NAVIGATOR", "bonus_pct": 4.0, "wage": 600, "nation": "PRT", "home": "OPO", "blurb": "A Porto pilot who knows the bar at Lisbon and every shoal of the Algarve." },
+    { "code": "NPCPURSERESP", "name": "Diego de Arana", "specialty": "PURSER", "bonus_pct": 4.5, "wage": 620, "nation": "ESP", "home": "BIL", "blurb": "A Basque factor who counts iron and wool in the same breath." },
+    { "code": "NPCQMNLD", "name": "Pieter Hooft", "specialty": "QUARTERMASTER", "bonus_pct": 5.0, "wage": 680, "nation": "NLD", "home": "MID", "blurb": "Stows a Zeeland hold so tight the cooper weeps." },
+    { "code": "NPCSURGENG", "name": "Thomas Ward", "specialty": "SURGEON", "bonus_pct": 4.0, "wage": 560, "nation": "ENG", "home": "PTH", "blurb": "Ship's surgeon out of Portsmouth; lemons in every chest." },
+    { "code": "NPCQMHAN", "name": "Hinrich Castorp", "specialty": "QUARTERMASTER", "bonus_pct": 4.5, "wage": 600, "nation": "HAN", "home": "BER", "blurb": "Kept the Bryggen stores for the Kontor eleven winters." },
+    { "code": "NPCPILOTGEN", "name": "Luca Spinola", "specialty": "NAVIGATOR", "bonus_pct": 4.0, "wage": 580, "nation": "GEN", "home": "NAP", "blurb": "Knows the Tyrrhenian by its colours at dawn." },
+    { "code": "NPCPURSERVEN", "name": "Marin Contarini", "specialty": "PURSER", "bonus_pct": 5.0, "wage": 700, "nation": "VEN", "home": "DBR", "blurb": "Keeps the Muda's books in the Rialto's own hand." },
+    { "code": "NPCSURGFRA", "name": "Jean Lambert", "specialty": "SURGEON", "bonus_pct": 4.0, "wage": 560, "nation": "FRA", "home": "NAN", "blurb": "A Nantes barber-surgeon with a steady saw." },
+    { "code": "NPCPILOTOTT", "name": "Seydi Ali", "specialty": "NAVIGATOR", "bonus_pct": 5.0, "wage": 690, "nation": "OTT", "home": "ALE", "blurb": "Has sailed the Alexandria run since the reed beds were young." },
+    { "code": "NPCPURSERMUG", "name": "Virji Vora", "specialty": "PURSER", "bonus_pct": 6.0, "wage": 800, "nation": "MUG", "home": "SRT", "blurb": "The richest broker on the Surat waterfront lends to his own captains." },
+    { "code": "NPCPILOTMNG", "name": "Lin Daoqian", "specialty": "NAVIGATOR", "bonus_pct": 4.5, "wage": 640, "nation": "MNG", "home": "QUA", "blurb": "Reads the monsoon off the Zayton quays." },
+    { "code": "NPCQMJPN", "name": "Suminokura Ryōi", "specialty": "QUARTERMASTER", "bonus_pct": 5.0, "wage": 660, "nation": "JPN", "home": "NAG", "blurb": "Fits out red-seal ships for the southern seas." }
+  ],
+  "houses": [
+    { "company": "Casa da Índia", "alt_company": "Casa da India", "nation": "PRT", "master": "Capitão-mor Fernão Lopes", "patience": 0.30,
+      "skills": { "SEAMANSHIP": 3, "NAVIGATION": 3, "ACCOUNTING": 2, "HAGGLING": 2 },
+      "wares": ["quicksilver", "silk-cloth", "silk-raw", "civet-cats", "malachite", "shawls", "bezoar", "sandalwood-carving", "civet", "black-pepper", "cinnamon", "cardamom"],
+      "fleets": [
+        { "name": "Carreira da Índia", "class": "nau", "hulls": 3, "officers": ["NAVIGATOR", "QUARTERMASTER", "SURGEON"],
+          "ships": ["São Gabriel", "São Rafael", "Santa Catarina", "Flor de la Mar"],
+          "loops": ["LIS CPT KOC OLD ISL", "LIS ELM CPT OLD KOC", "LIS ELM CPT KOC", "LIS CPT KOZ KOC"] },
+        { "name": "Carreira do Brasil", "class": "carlat", "hulls": 2, "officers": ["PURSER"],
+          "ships": ["Bom Jesus", "Santo Antônio", "Nossa Senhora"],
+          "loops": ["LIS SLV ELM", "LIS LPA SLV", "LIS SLV REC", "LIS FNC SLV"] }
+      ] },
+    { "company": "Casa da Guiné", "alt_company": "Casa da Guine", "nation": "PRT", "master": "Feitor Duarte Pacheco", "patience": 0.15,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 2, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["quicksilver", "silk-raw", "silk-cloth", "benin-bronzes", "gold-dust", "yams", "copper"],
+      "fleets": [
+        { "name": "Carreira da Guiné", "class": "carlat", "hulls": 2, "officers": ["QUARTERMASTER"],
+          "ships": ["São Jorge da Mina", "Santiago", "Conceição"],
+          "loops": ["LIS ELM LUA", "LIS LPA ELM SAO", "LIS ELM SAO LPA", "LIS SAO ELM"] }
+      ] },
+    { "company": "Capitania de Macau", "alt_company": "Capitania do Japão", "nation": "PRT", "master": "Capitão-mor Leonel de Sousa", "patience": 0.25,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 3, "ACCOUNTING": 1, "HAGGLING": 2 },
+      "wares": ["musk", "scroll-paintings", "rice-paper", "katana", "kyoto-fans", "mace", "silk-raw", "silver"],
+      "fleets": [
+        { "name": "Nau do Trato", "class": "nau", "hulls": 2, "officers": ["NAVIGATOR", "PURSER"],
+          "ships": ["Nau do Trato", "Santa Cruz", "Madre de Deus"],
+          "loops": ["MAC NAG MNL", "MAC NAG", "MAC MNL NAG", "MAC NAG OSA"] }
+      ] },
+    { "company": "Kamer Amsterdam", "alt_company": "Kamer van Amsterdam", "nation": "NLD", "master": "Commandeur Joris van Spilbergen", "patience": 0.30,
+      "skills": { "SEAMANSHIP": 3, "NAVIGATION": 3, "ACCOUNTING": 3, "HAGGLING": 2 },
+      "wares": ["sea-charts", "vermilion", "pike-heads", "malachite", "civet-cats", "myrrh", "aloeswood", "nutmeg", "cloves", "gamboge", "baltic-amber", "amber", "amber-work", "camphor"],
+      "fleets": [
+        { "name": "Retourvloot", "class": "nau", "hulls": 3, "officers": ["NAVIGATOR", "QUARTERMASTER", "SURGEON"],
+          "ships": ["Mauritius", "Hollandia", "Amsterdam", "Batavia"],
+          "loops": ["AMS CPT MAL JAK", "AMS CPT JAK BNT", "AMS CPT JAK BNT ELM", "AMS CPT JAK"] },
+        { "name": "Oostzeevaart", "class": "carlat", "hulls": 2, "officers": ["QUARTERMASTER"],
+          "ships": ["Vergulde Valk", "Witte Zwaan", "Grote Visser"],
+          "loops": ["AMS GDA COP", "AMS GDA", "AMS COP GDA RIG", "AMS HAM GDA"] }
+      ] },
+    { "company": "Kamer Zeeland", "alt_company": "Kamer van Zeeland", "nation": "NLD", "master": "Schipper Cornelis Lampsins", "patience": 0.15,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 2, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["antwerp-presses", "woad", "silk-cloth", "quicksilver", "silk-raw", "salt", "wine"],
+      "fleets": [
+        { "name": "Zeeuwse Vaart", "class": "carlat", "hulls": 2, "officers": ["NAVIGATOR"],
+          "ships": ["Zeelandia", "Walcheren", "Vlissingen"],
+          "loops": ["MID BOR LIS", "MID LAR BIL LIS", "MID LIS CAD BOR", "MID NAN LIS"] }
+      ] },
+    { "company": "Casa de Contratación", "alt_company": "Casa de Contratacion", "nation": "ESP", "master": "General Pedro Menéndez", "patience": 0.30,
+      "skills": { "SEAMANSHIP": 3, "NAVIGATION": 2, "ACCOUNTING": 2, "HAGGLING": 2 },
+      "wares": ["sword-blades", "merino", "indigo", "sugar", "archil-lichen", "allspice", "pearls", "vanilla", "emeralds", "tortoiseshell-combs", "silver", "cinchona-bark", "vicuna-wool", "mace", "musk", "scroll-paintings", "jade", "cochineal", "quicksilver"],
+      "fleets": [
+        { "name": "Flota de Indias", "class": "nau", "hulls": 3, "officers": ["NAVIGATOR", "SURGEON"],
+          "ships": ["Nuestra Señora", "San Pedro", "Santa Margarita", "San Felipe"],
+          "loops": ["CAD LPA CAR HAV", "CAD LPA VER HAV", "CAD HAV VER", "CAD LPA HAV CAR"] },
+        { "name": "Galeón de Manila", "class": "nau", "hulls": 2, "officers": ["PURSER"],
+          "ships": ["San Pablo", "Espíritu Santo", "Santo Cristo"],
+          "loops": ["ACA MNL MAC", "ACA MNL", "ACA MAC MNL", "ACA CLL MNL"] }
+      ] },
+    { "company": "East India Company", "alt_company": "Governor and Company", "nation": "ENG", "master": "Captain James Lancaster", "patience": 0.30,
+      "skills": { "SEAMANSHIP": 3, "NAVIGATION": 3, "ACCOUNTING": 2, "HAGGLING": 1 },
+      "wares": ["culverin", "baize", "benin-bronzes", "civet-cats", "malachite", "bezoar", "shawls", "saltpetre", "carnelian", "steel-billets", "socotra-aloes", "black-pepper", "indigo"],
+      "fleets": [
+        { "name": "Indiamen", "class": "nau", "hulls": 3, "officers": ["NAVIGATOR", "QUARTERMASTER", "SURGEON"],
+          "ships": ["Red Dragon", "Hector", "Ascension", "Susan"],
+          "loops": ["PTH ELM CPT KOC SRT", "PTH CPT SRT KOC", "PTH CPT KOC SRT", "PLY CPT SRT KOC"] },
+        { "name": "Country Ships", "class": "carlat", "hulls": 2, "officers": ["PURSER"],
+          "ships": ["Globe", "Expedition", "Thomasine"],
+          "loops": ["SRT HOR DIU", "SRT HOR MUS", "SRT DIU HOR MUS", "SRT MUS HOR DIU"] }
+      ] },
+    { "company": "Levant Company", "alt_company": "Turkey Company", "nation": "ENG", "master": "Captain William Harborne", "patience": 0.20,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 2, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["cannon", "tin", "sheffield-plate", "wool-cloth", "damascene-work", "carpets", "silk-raw", "mastic"],
+      "fleets": [
+        { "name": "Turkey Fleet", "class": "carlat", "hulls": 3, "officers": ["QUARTERMASTER"],
+          "ships": ["Royal Exchange", "Hercules", "Toby", "Centurion"],
+          "loops": ["LON ALE IZM LIV", "LON LIV IZM", "LON LIV IZM ALE", "PLY LIV IZM IST"] }
+      ] },
+    { "company": "Merchant Adventurers", "alt_company": "Fellowship of Adventurers", "nation": "ENG", "master": "Governor John Wheeler", "patience": 0.15,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 1, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["cannon", "tin", "tapestries", "clocks", "beer", "silver-plate", "wool-cloth"],
+      "fleets": [
+        { "name": "Cloth Fleet", "class": "carlat", "hulls": 2, "officers": ["PURSER"],
+          "ships": ["Mary Rose", "Jesus of Lubeck", "Primrose"],
+          "loops": ["LON ARP COP HAM", "LON ARP HAM", "LON BRU HAM COP", "LON HAM ARP"] }
+      ] },
+    { "company": "Hanse zu Lübeck", "alt_company": "Hanse zu Luebeck", "nation": "HAN", "master": "Schiffer Hinrich Castorp", "patience": 0.15,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 2, "ACCOUNTING": 2, "HAGGLING": 1 },
+      "wares": ["herring", "salt", "wax", "furs", "hemp", "russia-hemp", "shot-and-ball", "stoneware", "smallwares", "amber", "beer"],
+      "fleets": [
+        { "name": "Bergenfahrer", "class": "carlat", "hulls": 2, "officers": ["QUARTERMASTER"],
+          "ships": ["Adler von Lübeck", "Peter von Danzig", "Marienknecht"],
+          "loops": ["LUB BER HAM", "LUB BER", "LUB COP BER", "LUB BER STO"] },
+        { "name": "Rigafahrer", "class": "barca", "hulls": 2, "officers": [],
+          "ships": ["Jesus Hulk", "Sankt Jürgen", "Bunte Kuh"],
+          "loops": ["LUB GDA RIG STO", "LUB RIG", "LUB RIG STO VIS", "LUB STO RIG"] }
+      ] },
+    { "company": "Hamburger Kontor", "alt_company": "Hamburger Flandernfahrer", "nation": "HAN", "master": "Schiffer Simon von Utrecht", "patience": 0.15,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 1, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["silver-plate", "smallwares", "diamonds", "clocks", "woad", "weld", "beer", "salt"],
+      "fleets": [
+        { "name": "Flandernfahrer", "class": "carlat", "hulls": 2, "officers": ["PURSER"],
+          "ships": ["Wapen von Hamburg", "Elbe", "Bunte Kuh"],
+          "loops": ["HAM ARP LAR BOR", "HAM BRU LAR", "HAM LON BRU", "HAM BOR ARP"] }
+      ] },
+    { "company": "Banco di San Giorgio", "alt_company": "Casa di San Giorgio", "nation": "GEN", "master": "Patrono Ansaldo Grimaldi", "patience": 0.10,
+      "skills": { "SEAMANSHIP": 1, "NAVIGATION": 1, "ACCOUNTING": 0, "HAGGLING": 0 },
+      "wares": ["gold-thread", "velvet", "kermes", "citrus", "italian-canvases", "quicksilver", "sword-blades", "merino-sheep", "andalusian-horses"],
+      "fleets": [
+        { "name": "Coppia Genovese", "class": "barca", "hulls": 2, "officers": [],
+          "ships": ["San Lorenzo", "Santa Maria di Castello"],
+          "loops": ["GOA NAP PAL", "GOA PAL", "GOA LIV PAL NAP", "GOA MRS BAR"] },
+        { "name": "Linea di Cadice", "class": "carlat", "hulls": 2, "officers": ["PURSER"],
+          "ships": ["San Giorgio", "Lanterna", "Superba"],
+          "loops": ["GOA CAD BAR", "GOA VAL CAD", "GOA BAR VAL CAD", "GOA CAD LIS MRS"] }
+      ] },
+    { "company": "Mude di Venezia", "alt_company": "Galere di Mercato", "nation": "VEN", "master": "Capitano Alvise Cadamosto", "patience": 0.20,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 2, "ACCOUNTING": 2, "HAGGLING": 2 },
+      "wares": ["velvet", "lace", "gunpowder", "damask", "cumin", "pistachios", "theriac", "soap", "sword-blades", "quicksilver", "porcelain", "silk-raw", "glass"],
+      "fleets": [
+        { "name": "Muda d'Alessandria", "class": "carlat", "hulls": 3, "officers": ["NAVIGATOR"],
+          "ships": ["Leone di San Marco", "Bucintoro", "Santa Fosca", "Redentore"],
+          "loops": ["VEN ALE BEI DBR", "VEN DBR ALE", "VEN DBR ALE COR", "VEN COR ALE"] },
+        { "name": "Muda di Fiandra", "class": "carlat", "hulls": 2, "officers": ["SURGEON"],
+          "ships": ["San Nicolò", "Lido", "Arsenale"],
+          "loops": ["VEN MES CAD LIS BRU", "VEN PAL CAD LIS", "VEN MES LIS MID", "VEN CAD LIS NAP"] }
+      ] },
+    { "company": "Marchands de Marseille", "alt_company": "Négociants de Marseille", "nation": "FRA", "master": "Patron Jacques Cœur", "patience": 0.15,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 1, "ACCOUNTING": 1, "HAGGLING": 2 },
+      "wares": ["velvet", "silk-cloth", "carpets", "mastic", "iznik-tiles", "isinglass", "coral"],
+      "fleets": [
+        { "name": "Caravane du Levant", "class": "carlat", "hulls": 2, "officers": [],
+          "ships": ["Notre-Dame", "Saint-Victor", "La Joliette"],
+          "loops": ["MRS IZM IST", "MRS CHS IST", "MRS ALE IZM", "MRS IST ALE"] },
+        { "name": "Barques d'Alger", "class": "barca", "hulls": 2, "officers": [],
+          "ships": ["Sainte-Baume", "Frioul"],
+          "loops": ["MRS TUN PAL", "MRS ALG TUN", "MRS ALG BAR", "MRS TUN ALG"] }
+      ] },
+    { "company": "Tüccar-ı İstanbul", "alt_company": "Tuccar-i Istanbul", "nation": "OTT", "master": "Reis Murad Pasha", "patience": 0.20,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 1, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["mastic", "gallnuts", "alum", "damask", "cumin", "pistachios", "cotton-raw", "coffee"],
+      "fleets": [
+        { "name": "Mısır Kervanı", "class": "carlat", "hulls": 3, "officers": ["PURSER"],
+          "ships": ["Hilal", "Yıldız", "Mahmudiye", "Kartal"],
+          "loops": ["IST ALE BEI", "IST IZM ALE BEI", "IST BEI ALE RHO", "IST ALE IZM"] }
+      ] },
+    { "company": "Mercadores de Surat", "alt_company": "Banias of Surat", "nation": "MUG", "master": "Nakhuda Abdul Ghafur", "patience": 0.15,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 1, "ACCOUNTING": 1, "HAGGLING": 2 },
+      "wares": ["shawls", "bezoar", "saltpetre", "attar-of-roses", "myrrh", "dragons-blood", "persian-berries", "coffee", "indigo"],
+      "fleets": [
+        { "name": "Mocha Fleet", "class": "carlat", "hulls": 2, "officers": ["PURSER"],
+          "ships": ["Ganj-i-Sawai", "Rahimi", "Fath-i-Mubarak"],
+          "loops": ["SRT JED ADE", "SRT ADE JED", "SRT ADE HOR", "SRT HOR ADE"] }
+      ] },
+    { "company": "Tujjar al-Basra", "alt_company": "Tujjar of Basra", "nation": "PER", "master": "Nakhuda Yusuf al-Basri", "patience": 0.10,
+      "skills": { "SEAMANSHIP": 1, "NAVIGATION": 1, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["peridot", "horses", "persian-berries", "cowries", "dates", "pearls"],
+      "fleets": [
+        { "name": "Gulf Fleet", "class": "barca", "hulls": 2, "officers": ["SURGEON"],
+          "ships": ["Fath al-Khayr", "Najm"],
+          "loops": ["BSR DIU HOR", "BSR HOR DIU", "BSR HOR MUS", "BSR MUS HOR"] }
+      ] },
+    { "company": "Juncos de Quanzhou", "alt_company": "Zayton Junk Masters", "nation": "MNG", "master": "Chuanzhu Lin Feng", "patience": 0.20,
+      "skills": { "SEAMANSHIP": 2, "NAVIGATION": 2, "ACCOUNTING": 1, "HAGGLING": 2 },
+      "wares": ["musk", "nankeen", "china-root", "mace", "abaca", "tea", "cloisonne", "burma-rubies", "ceylon-sapphires", "birds-nests", "porcelain", "silk-raw"],
+      "fleets": [
+        { "name": "Rota de Luzon", "class": "carlat", "hulls": 3, "officers": ["NAVIGATOR"],
+          "ships": ["Fu Shun", "Jin Bao", "Tian Fei", "Hai Long"],
+          "loops": ["QUA MAC MNL", "QUA MNL", "QUA MNL MAC", "QUA HOI MNL"] },
+        { "name": "Costa de Cantão", "class": "barca", "hulls": 2, "officers": ["SURGEON"],
+          "ships": ["Chun Feng", "Ping An"],
+          "loops": ["QUA GUA HOI", "QUA HOI GUA MAC", "QUA MAC GUA", "QUA GUA MAC"] }
+      ] },
+    { "company": "Shuinsen de Nagasaki", "alt_company": "Red Seal Ship Masters", "nation": "JPN", "master": "Funaosa Araki Sōtarō", "patience": 0.15,
+      "skills": { "SEAMANSHIP": 1, "NAVIGATION": 2, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["kyoto-fans", "matchlocks", "katana", "sappanwood", "burma-rubies", "aloeswood", "birds-nests", "silver", "copper"],
+      "fleets": [
+        { "name": "Shuinsen", "class": "carlat", "hulls": 2, "officers": ["QUARTERMASTER"],
+          "ships": ["Araki Maru", "Suetsugu Maru", "Suminokura Maru"],
+          "loops": ["NAG AYU HOI", "NAG HOI AYU", "NAG MAC HOI", "NAG MNL HOI"] }
+      ] },
+    { "company": "Waegwan Traders", "alt_company": "Tsushima Waegwan", "nation": "JOS", "master": "Seonjang Kim Yeo-il", "patience": 0.10,
+      "skills": { "SEAMANSHIP": 1, "NAVIGATION": 1, "ACCOUNTING": 0, "HAGGLING": 1 },
+      "wares": ["tiger-skins", "katana", "sutra-scrolls", "ginseng", "copper"],
+      "fleets": [
+        { "name": "Tsushima Run", "class": "barca", "hulls": 2, "officers": ["NAVIGATOR"],
+          "ships": ["Haedong", "Pungmun"],
+          "loops": ["BUS NAG SAK", "BUS HIR SAK", "BUS SAK HIR", "BUS HIR NAG"] }
+      ] },
+    { "company": "Krom Phra Khlang", "alt_company": "Phra Khlang Junks", "nation": "AYU", "master": "Nai Ruea Ok-Ya Phiphat", "patience": 0.15,
+      "skills": { "SEAMANSHIP": 1, "NAVIGATION": 1, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["ceylon-sapphires", "benzoin", "gamboge", "bezoar", "aloeswood", "sappan-java", "sappanwood", "deerskins"],
+      "fleets": [
+        { "name": "Siam Junks", "class": "carlat", "hulls": 2, "officers": [],
+          "ships": ["Suphannahong", "Ayothaya", "Chao Phraya"],
+          "loops": ["AYU BNT MAL", "AYU MAL BNT", "AYU MAL JAK", "AYU HOI MAL"] }
+      ] },
+    { "company": "Dansk Kompagni", "alt_company": "Dansk Handelskompagni", "nation": "DNK", "master": "Skipper Jens Munk", "patience": 0.15,
+      "skills": { "SEAMANSHIP": 1, "NAVIGATION": 2, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["amber-work", "beer", "pewter", "herring", "stockfish", "timber"],
+      "fleets": [
+        { "name": "Øresund Fleet", "class": "carlat", "hulls": 2, "officers": ["SURGEON"],
+          "ships": ["Christianus Quartus", "Gideon", "Lindormen"],
+          "loops": ["COP BER LON", "COP LON BRU", "COP HAM LON", "COP LON HAM"] }
+      ] },
+    { "company": "Consulado de Bilbao", "alt_company": "Consulado de Vizcaya", "nation": "ESP", "master": "Maestre Juan de Garay", "patience": 0.10,
+      "skills": { "SEAMANSHIP": 1, "NAVIGATION": 1, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["arquebus", "woad", "tapestries", "snuff", "quicksilver", "porcelain", "silk-cloth", "iron", "wool-cloth"],
+      "fleets": [
+        { "name": "Flota de Vizcaya", "class": "carlat", "hulls": 2, "officers": [],
+          "ships": ["San Juan", "Santa Ana", "La Magdalena"],
+          "loops": ["BIL BOR NAN LIS", "BIL NAN LIS", "BIL LAR BOR", "BIL LIS BOR"] }
+      ] },
+    { "company": "Armateurs de Nantes", "alt_company": "Négociants de Nantes", "nation": "FRA", "master": "Capitaine René Montaudoin", "patience": 0.10,
+      "skills": { "SEAMANSHIP": 1, "NAVIGATION": 1, "ACCOUNTING": 1, "HAGGLING": 1 },
+      "wares": ["tapestries", "sword-blades", "silk-raw", "porcelain", "quicksilver", "wine", "salt"],
+      "fleets": [
+        { "name": "Flotte de Nantes", "class": "carlat", "hulls": 2, "officers": [],
+          "ships": ["La Loire", "Saint-Similien", "L'Hermine"],
+          "loops": ["NAN CAD LIS", "NAN LIS CAD", "NAN BIL LIS", "NAN LAR LIS"] }
+      ] },
+    { "company": "Consolat de Barcelona", "alt_company": "Consolat de Mar", "nation": "ESP", "master": "Patró Joan Cerdà", "patience": 0.10,
+      "skills": { "SEAMANSHIP": 1, "NAVIGATION": 1, "ACCOUNTING": 0, "HAGGLING": 1 },
+      "wares": ["armillary-spheres", "andalusian-horses", "bacalhau", "hemp", "almonds", "wine", "olive-oil"],
+      "fleets": [
+        { "name": "Nau Catalana", "class": "carlat", "hulls": 2, "officers": [],
+          "ships": ["Santa Eulàlia", "Sant Jordi", "Montjuïc"],
+          "loops": ["BAR PAL NAP", "BAR VAL PAL", "BAR MRS GOA", "BAR ALG VAL"] }
+      ] },
+    { "company": "Mercadores do Porto", "alt_company": "Mercadores da Ribeira", "nation": "PRT", "master": "Mestre Álvaro Cabral", "patience": 0.10,
+      "skills": { "SEAMANSHIP": 1, "NAVIGATION": 1, "ACCOUNTING": 0, "HAGGLING": 1 },
+      "wares": ["wool-cloth", "sword-blades", "quicksilver", "salted-tuna", "wine", "port-wine", "cork"],
+      "fleets": [
+        { "name": "Costa do Algarve", "class": "barca", "hulls": 2, "officers": [],
+          "ships": ["Rabelo", "Senhora da Hora"],
+          "loops": ["OPO LIS CAD", "OPO LIS SET", "OPO BIL LIS", "OPO LIS MLG"] }
+      ] }
+  ]
+}
