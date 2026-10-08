@@ -269,7 +269,10 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // sails one more lap instead of re-pausing on the spot, and Delete closes the open lap.
 // Moved 2026-10-01 to 0095: public.price_history gets its own autovacuum trigger (about one tick's
 // prune), so the snapshot's insert-and-prune queue is swept every tick; the writer is unchanged.
-const LAST = '20260818000095_the_price_record_is_swept_every_tick.sql'
+// Moved 2026-10-08 to 0097, merchant companies (owner rows 109-111, docs/NPC_TRADERS.md): 0096 slices
+// the founding, officer, skill, preset, route and clear doors into server-only p_player cores and
+// makes the route pace an interval; 0097 builds the dark merchant machinery (switch off).
+const LAST = '20260818000097_a_company_the_world_keeps.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
