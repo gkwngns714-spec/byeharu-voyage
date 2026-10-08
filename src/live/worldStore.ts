@@ -119,7 +119,9 @@ export interface LiveWorld {
   /** Which backend answered. Display only — nothing branches on it. */
   mode: 'local' | 'cloud' | null
 
-  /** The static world: ports, goods, ship classes, config knobs, the verb grammar. */
+  /** The static world: ports, goods, ship classes, config knobs, the verb grammar. Published in
+   *  the same `set()` as the first fleets read and `phase: 'ready'` (see `open`), so non-null
+   *  means the fleets have been read — a screen may take `fleets: []` beside it as an answer. */
   snapshot: WorldSnapshot | null
   /** THE NAVIGABLE SEA (0039) — the served raster, unpacked once for the pathfinder. The same
    *  row the server verifies every course against, so client and server cannot hold different
@@ -428,19 +430,29 @@ export const useWorld = create<LiveWorld>((set, get) => {
     const nationByCode: Record<string, SnapshotNation> = {}
     for (const nat of snap.value.nations) nationByCode[nat.code] = nat
 
+    // THE WORLD IS PUBLISHED WITH ITS FLEETS, IN ONE `set()` (2026-10-08). This used to publish the
+    // snapshot first and THEN await the first read, so for the whole of that read the store said
+    // "the world is here, and you own no fleets" — `snapshot` set, `fleets: []`, `readAt: null`.
+    // COMMAND gates on the snapshot, and a captain who owns Gaivota was told "No fleets yet. Start
+    // your company…" on a cold load of the live site (tests/firstRead.empty.spec.ts watches it).
+    // The read does not need the snapshot (it is fleets, ledger, house and routes), so it runs
+    // first and the world appears with its fleets already in it: there is no state in which a
+    // screen can see `snapshot` without the first fleets read having landed. `phase: 'ready'`
+    // lands in the same `set()`, so the two readings of "the world is up" cannot disagree.
+    const seaNav = navFromServed(sea.value)
+    await get().refresh()
     set({
       snapshot: snap.value,
-      seaNav: navFromServed(sea.value),
+      seaNav,
       portByCode,
       portById,
       goodByCode,
       nationByCode,
       mode,
+      // A world that answered snapshot() but not fleets() is still a world worth showing: the
+      // failure is already in `fatal` (refresh set `phase: 'failed'`) and the screens render it.
+      ...(get().phase === 'failed' ? {} : { phase: 'ready' as const }),
     })
-    await get().refresh()
-    // A world that answered snapshot() but not fleets() is still a world worth showing: the
-    // failure is already in `fatal` and the screens render it in place.
-    if (get().phase !== 'failed') set({ phase: 'ready' })
   },
 
   refresh: async () => {

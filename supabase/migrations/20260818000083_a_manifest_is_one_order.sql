@@ -1048,14 +1048,32 @@ begin
   end if;
 
   -- (i) THE BREAKDOWN ADDS UP, to the rounding the unit price carries, on the executed lines ...
+  --
+  --     THE TOLERANCE IS A PROVEN BOUND, NOT A GUESS — 2026-10-08, assert-only (the 0047/0059
+  --     precedent: no schema, no body, no grant moves; production stays byte-identical).
+  --     It was `0.005·qty + 0.5` and went red on CI (main, run 36808560643) on a 5 t SELL:
+  --     386.83 − 11.49 − 3.87 = 371.47 against a total of 372, residual 0.53 > 0.525. Green on the
+  --     commit before — the residual is a function of the randomised market state, so the old
+  --     bound was a lottery. world.quote (section 2 above) builds, per step k of n_k tuns, the
+  --     exact parts from the SAME v_mid / v_tax / v_spread the unit price is built from, so
+  --       BUY   m + m·t + m·s/2               = m·(1 + t + s/2)          (exact)
+  --       SELL  m − m·(1 − s/2)·t − m·s/2     = m·(1 − s/2)·(1 − t)      (exact)
+  --     (numeric products and sums are exact in PostgreSQL; v_spread / 2 is the same value in
+  --     both expressions). The residual parts-vs-total therefore has exactly three sources:
+  --       1. v_unit = round(exact, 2), |error| ≤ 0.005 per tun     → Σ ≤ 0.005 · qty
+  --       2. total  = round(Σ v_unit·n_k) to the ducat             → ≤ 0.5
+  --       3. mid_total, tax_total, spread_total each round(·, 2)   → ≤ 3 × 0.005 = 0.015
+  --     The old bound forgot term 3. The proven bound is 0.005·qty + 0.515; at qty 5 that is
+  --     0.54, and the CI residual of 0.53 sits inside it. A wrong part of more than 2·bound
+  --     (1.08 d at 5 t) is always caught; scripts/db/breaktest-0083.mjs watches it bite.
   if abs((v_lb->>'mid_total')::numeric + (v_lb->>'tax_total')::numeric + (v_lb->>'spread_total')::numeric - (v_lb->>'total')::numeric)
-       > 0.005 * (v_lb->>'qty')::numeric + 0.5
+       > 0.005 * (v_lb->>'qty')::numeric + 0.515
      or (v_lb->>'mid_total')::numeric <= 0 or (v_lb->>'tax_total')::numeric < 0 or (v_lb->>'spread_total')::numeric <= 0 then
     raise exception '0083 self-assert FAIL: BUY line mid % + tax % + spread % is not its total % within the unit rounding',
       v_lb->>'mid_total', v_lb->>'tax_total', v_lb->>'spread_total', v_lb->>'total';
   end if;
   if abs((v_la->>'mid_total')::numeric - (v_la->>'tax_total')::numeric - (v_la->>'spread_total')::numeric - (v_la->>'total')::numeric)
-       > 0.005 * (v_la->>'qty')::numeric + 0.5
+       > 0.005 * (v_la->>'qty')::numeric + 0.515
      or (v_la->>'mid_total')::numeric <= 0 or (v_la->>'spread_total')::numeric <= 0 then
     raise exception '0083 self-assert FAIL: SELL line mid % - tax % - spread % is not its total % within the unit rounding',
       v_la->>'mid_total', v_la->>'tax_total', v_la->>'spread_total', v_la->>'total';

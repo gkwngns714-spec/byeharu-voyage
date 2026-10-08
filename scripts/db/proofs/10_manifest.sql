@@ -359,10 +359,12 @@ begin
   -- ════════════════════════════════════════════════════════════════════════════════════════════
   -- 8. THE BREAKDOWN ADDS UP — and a bargain WON through cmd.haggle shows as haggle_saved.
   -- ════════════════════════════════════════════════════════════════════════════════════════════
+  -- The tolerance 0.005·qty + 0.515 is the proven bound derived at 0083's assert (i): per-tun
+  -- unit rounding + the ducat rounding of total + the three 2-dp roundings of the parts.
   if abs((v_lb->>'mid_total')::numeric + (v_lb->>'tax_total')::numeric + (v_lb->>'spread_total')::numeric - (v_lb->>'total')::numeric)
-       > 0.005 * (v_lb->>'qty')::numeric + 0.5
+       > 0.005 * (v_lb->>'qty')::numeric + 0.515
      or abs((v_la->>'mid_total')::numeric - (v_la->>'tax_total')::numeric - (v_la->>'spread_total')::numeric - (v_la->>'total')::numeric)
-       > 0.005 * (v_la->>'qty')::numeric + 0.5
+       > 0.005 * (v_la->>'qty')::numeric + 0.515
      or (v_lb->>'haggle_saved')::numeric is distinct from 0 or (v_la->>'haggle_saved')::numeric is distinct from 0 then
     raise exception 'PROOF 10 FAILED: the landed lines'' breakdowns do not add up: BUY % / SELL %', v_lb, v_la;
   end if;

@@ -124,6 +124,10 @@ const MUTATIONS = [
     "      v_tax_t := v_tax_t + v_mid * v_tax * v_n;\n      v_spr_t := v_spr_t + v_mid * (v_spread / 2) * v_n;\n      v_hag_t := v_hag_t + (round(v_mid * (1 + v_tax + v_nohag / 2), 2) - v_unit) * v_n;",
     "      v_tax_t := v_tax_t + v_mid * v_tax * v_n * 2;\n      v_spr_t := v_spr_t + v_mid * (v_spread / 2) * v_n * 0;\n      v_hag_t := v_hag_t + (round(v_mid * (1 + v_tax + v_nohag / 2), 2) - v_unit) * v_n;"],
 
+  ['(i) the sell tax is left out of its breakdown — the parts no longer add up to the total',
+    "      v_tax_t := v_tax_t + v_mid * (1 - v_spread / 2) * v_tax * v_n;",
+    "      v_tax_t := v_tax_t + 0;"],
+
   // ── (g) XP ──────────────────────────────────────────────────────────────────────────────────
   ['(g) trading.delta is invented rather than read from player_progress',
     "      'delta',         (v_prog1->'trading'->>'points')::int - (v_prog0->'trading'->>'points')::int,",
