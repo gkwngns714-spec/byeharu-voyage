@@ -41,6 +41,31 @@ export async function npcOn(): Promise<Buffer> {
     if (!sw.rows[0].j.enabled || sw.rows[0].j.tend.started < 10) {
       throw new Error(`the switch did not put the merchants to sea: ${JSON.stringify(sw.rows[0].j)}`)
     }
+    // A FEW LAPS ALREADY SAILED, so the sheet has earnings to print. The merchants' passages are
+    // rewound as the cron would see them and the arrivals tick runs — the executor does the rest —
+    // with the merchant pace lifted only for this warp and put back after it (a fixture knob, the
+    // same lever proof 12 uses), so the page opens on merchants mid-passage with laps behind them.
+    await pg.exec(`update public.standing_routes sr set laps_per_game_day = 0
+                     from public.players p where p.id = sr.player_id and p.is_npc`)
+    // Three legs: enough for the short loops to close a lap on a fresh market, few enough that no
+    // sink is glutted by laps that, rewound, took no time at all (the market regenerates in real
+    // time, and a warp that regenerated it too would rewrite every market row and swell the image
+    // the page must load — measured: 170 MB against the shipped 9 MB). The daily cap rolls over per
+    // leg, as a real leg's hours would roll it.
+    for (let i = 1; i <= 3; i++) {
+      await pg.exec(`
+        update public.voyages v set departed_at = v.departed_at - (v.eta - now()) - interval '1 minute', eta = now() - interval '1 minute'
+          from public.fleets f join public.players p on p.id = f.player_id and p.is_npc
+         where v.fleet_id = f.id and v.status = 'SAILING';
+        select public.tick_arrivals(now());
+        delete from public.trade_daily where player_id in (select id from public.players where is_npc);`)
+    }
+    await pg.exec(`update public.standing_routes sr set laps_per_game_day = public.wc_int('npc_laps_per_game_day')
+                     from public.players p where p.id = sr.player_id and p.is_npc`)
+    const laps = await pg.query<{ n: number }>(
+      `select count(*)::int as n from public.standing_route_laps x join public.npc_fleets nf on nf.route_id = x.route_id where x.closed_at is not null`,
+    )
+    if (laps.rows[0].n < 5) throw new Error(`the warp closed only ${laps.rows[0].n} merchant laps`)
     npcOnImage = Buffer.from(await (await pg.dumpDataDir('gzip')).arrayBuffer())
   } finally {
     await pg.close()

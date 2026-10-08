@@ -115,11 +115,11 @@ async function merchantsInView(page: Page): Promise<{ total: number; inView: num
 
 
 /** A merchant hull whose centre is on the chart's glass, so a tap can land on it. */
-async function hullInView(page: Page, sailing: boolean): Promise<string> {
+async function hullInView(page: Page, sailing: boolean | null): Promise<string> {
   const id = await page.evaluate((wantSailing) => {
     const chart = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
     for (const h of document.querySelectorAll('[data-testid="map-merchant"]')) {
-      if ((h.getAttribute('data-merchant-docked') === 'false') !== wantSailing) continue
+      if (wantSailing !== null && (h.getAttribute('data-merchant-docked') === 'false') !== wantSailing) continue
       const r = h.getBoundingClientRect()
       const cx = r.left + r.width / 2
       const cy = r.top + r.height / 2
@@ -129,7 +129,7 @@ async function hullInView(page: Page, sailing: boolean): Promise<string> {
     }
     return null
   }, sailing)
-  if (!id) throw new Error(`no ${sailing ? 'sailing' : 'docked'} merchant hull on the glass`)
+  if (!id) throw new Error(`no ${sailing === null ? '' : sailing ? 'sailing ' : 'docked '}merchant hull on the glass`)
   return id
 }
 
@@ -225,7 +225,8 @@ test.describe('wide', () => {
     await ready(page)
     await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
     await page.screenshot({ path: path.join(SHOTS, 'map-merchants-1280.png') })
-    await tapHull(page, await hullInView(page, true))
+    // the wide frame sits close on Lisbon: whichever merchant is on the glass, at sea or at anchor
+    await tapHull(page, await hullInView(page, null))
     await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
     await page.waitForTimeout(800)
     await page.screenshot({ path: path.join(SHOTS, 'merchant-sheet-1280.png') })
