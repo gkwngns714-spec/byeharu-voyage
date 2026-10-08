@@ -412,8 +412,11 @@ begin
   if not public.npc_traders_on() then
     return jsonb_build_object('enabled', false);
   end if;
-  create temporary table if not exists npc_plan_buyers (port_id uuid, good_id uuid, primary key (port_id, good_id))
-    on commit drop;
+  -- (checked first, so the hourly pass does not print "already exists" once per route)
+  if to_regclass('pg_temp.npc_plan_buyers') is null then
+    create temporary table npc_plan_buyers (port_id uuid, good_id uuid, primary key (port_id, good_id))
+      on commit drop;
+  end if;
   if p_route is null then
     delete from npc_plan_buyers;
   end if;
