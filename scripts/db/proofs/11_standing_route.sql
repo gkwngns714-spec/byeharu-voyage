@@ -25,7 +25,7 @@
 --
 -- @pass ROUTE_CLIENT_PATH    as authenticated: the read and the four verbs answer, the server-only route functions are refused 42501, a direct table write is refused, and RLS shows a company exactly its own route rows
 -- @pass ROUTE_AFK_LAPS       tick_arrivals alone ran a two-stop route for at least three laps: every arrival refilled the queue and departed, ducats moved, and every closed lap is a ROUTE_LAP line in world.ledger
--- @pass ROUTE_BOOKS_BALANCE  at the paced hold the purse had moved exactly the sum of the closed laps' net, and the route waited for the next game-day with an empty queue
+-- @pass ROUTE_BOOKS_BALANCE  at the paced hold the purse had moved exactly the sum of the closed laps' net, and the route waited one game-day after its last lap started (0096's interval) with an empty queue
 -- @pass ROUTE_DARK           with the switch off the four verbs refuse E_UNAVAILABLE through the door and a woken tick writes no order
 -- @pass ROUTE_0096_DOOR      (0096) through the client door: a route calling at one harbour twice saves, a stop's crew_up is saved and served, and SELL <good> ALL over the day's allowance sells the allowance while an explicit quantity over it refuses whole
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -190,7 +190,10 @@ begin
     v_ticks, v_laps, v_dep1 - v_dep0, v_sold, v_p0, v_p1, v_seen, v_orders;
 
   -- ── 3. THE BOOKS BALANCE, AT THE PACED HOLD ──────────────────────────────────────────────────
-  v_hold := to_timestamp(((world.game_day(now()) + 1) * public.wc_num('game_day_seconds'))::double precision);
+  -- 0096 (docs/NPC_TRADERS.md §4.2): THE PACE IS AN INTERVAL — the next lap may start one game-day
+  -- (at one lap a game-day) after the LAST lap started, not at the next calendar boundary.
+  v_hold := (select max(x.started_at) from public.standing_route_laps x where x.route_id = v_route)
+            + make_interval(secs => public.wc_num('game_day_seconds')::double precision);
   if v_p1 - v_p0 <> v_net
      or (select hold_until from public.standing_routes where id = v_route) is distinct from v_hold
      or (select status from public.fleets where id = v_fleet) <> 'DOCKED'
