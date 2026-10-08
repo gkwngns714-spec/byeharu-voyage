@@ -1,9 +1,7 @@
-import { Figure, goodIcon, Icon, Row } from '../../components/ui'
-import { formatFixed, formatInt } from '../../lib/format'
+import { CargoRows } from '../../components/ui'
 import { useWorld } from '../../live/worldStore'
 import type { FleetView } from '../../lib/rpc'
 import { fleetCargo } from '../../domain/fleet'
-
 // WHAT SHE CARRIES, AS ROWS.
 //
 // It was a three-column table (Good · Units · Bulk) with the name as a link and a `stowed` total
@@ -24,34 +22,19 @@ import { fleetCargo } from '../../domain/fleet'
 // agrees with the hold figures the fold prints elsewhere. No average-cost column: the server
 // carries what is aboard, not what it cost; the price paid is on the Ledger.
 
+// THE ROWS THEMSELVES are the design system's `CargoRows` since 2026-10-08 (a merchant's sheet
+// prints the same rows); the names are resolved here, through the world's goods.
 export function FleetCargo({ fleet }: { fleet: FleetView }) {
   const goodByCode = useWorld((s) => s.goodByCode)
-  const cargo = fleetCargo(fleet)
-
-  if (cargo.length === 0) {
-    return <Row label="No cargo on board." tone="muted" hairline={false} />
-  }
-
   return (
-    <>
-      {cargo.map((line) => {
-        const good = goodByCode[line.code]
-        return (
-          <Row
-            key={line.code}
-            mark={<Icon name={goodIcon(line.code, good?.category ?? '')} size={20} />}
-            label={good?.name ?? line.code}
-            value={<Figure value={formatInt(line.qty)} />}
-            data-testid="fleet-cargo-row"
-          />
-        )
-      })}
-      <Row
-        label="Total"
-        tone="muted"
-        value={<Figure value={formatFixed(fleet.ships.reduce((n, s) => n + s.cargo_tuns, 0), 1)} unit="tons" />}
-        hairline={false}
-      />
-    </>
+    <CargoRows
+      rows={fleetCargo(fleet).map((line) => ({
+        code: line.code,
+        name: goodByCode[line.code]?.name ?? line.code,
+        category: goodByCode[line.code]?.category ?? '',
+        qty: line.qty,
+      }))}
+      totalTons={fleet.ships.reduce((n, s) => n + s.cargo_tuns, 0)}
+    />
   )
 }

@@ -51,6 +51,13 @@ export { deltaTone } from './deltaTone'
 
 // 6. TILE — the selectable block, and TileField, the CSS grid it stands in.
 export { Tile, TileField, type TileState } from './Tile'
+//    THE FOUR TILES TWO FACES SHARE (2026-10-08, docs/NPC_TRADERS.md §8.3): a hull, a fleet's cargo
+//    rows, an officer, a skill — moved out of FLEETS, the Codex and the Academy so a merchant's
+//    sheet prints the SAME shapes. Pure props: the callers derive, these print.
+export { ShipTile } from './ShipTile'
+export { CargoRows } from './CargoRows'
+export { OfficerTile } from './OfficerTile'
+export { SkillTile } from './SkillTile'
 
 // 7. BAR — one proportion, 4px, continuous or countable. Meter + Gauge + stockBar + pips, folded.
 export { Bar, type BarTone } from './Bar'
