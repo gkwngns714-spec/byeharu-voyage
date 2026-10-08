@@ -1338,6 +1338,23 @@ Presence is textual and ambient. It never interrupts.
 - **RANK:** your position among named players.
 - **MAP:** **only your own fleets are ever drawn.** Other players never appear on the map. Adding them
   would turn the map into a targeting surface, which is exactly what law 3 forbids.
+  **DECIDED 2026-10-08 — one owner-ordered exception, and it is not about players.** The owner:
+  *"add npc to and show movement on map to make this game feel more alive"* and *"by clicking the npc
+  ship, it will show how much it is earning per day or so"*. MERCHANT companies (NPC houses that trade
+  through the same executor as everyone) ARE drawn — the same full-size hull as yours, filled in the
+  company's NATION ink with no halo, at sea and at the port's roadstead when docked — and a tap opens
+  a read-only card (and draws that one fleet's current leg while it is selected). Rival PLAYERS are
+  still never drawn: the rule above protected players' positions, and a merchant has none to protect.
+  The plan, the privacy filter and the guards are `docs/NPC_TRADERS.md` (§1.4, §7, §8; revised after
+  the 2026-10-08 design checks, §14 there).
+  **DECIDED 2026-10-08 — the spice geography is a random roll, and merchants will make it visible.**
+  0058 re-rolled `public.port_specialties` to the owner's per-city counts ("randomly distributed",
+  OWNER_REQUESTS row 48; 0061:14-18). Measured on the applied chain: black-pepper is produced at
+  Elmina, Lagos and Lisbon and not at Kochi; cinnamon at Chennai, Lisbon and Old Goa; quicksilver at
+  Cádiz, Lisbon and Seville. The merchant layer therefore names its fleets after ROUTES and writes its
+  blurbs from measured cargo, never from history. Whether the producer roster is re-authored to the
+  historical map is the OWNER's decision and a HELD gameplay migration (`port_goods.affinity` is
+  re-derived under live players holding cargo); nothing in the merchant plan changes it.
 
 ### J.4 Companies (guilds) — V2
 
@@ -1434,7 +1451,7 @@ Every one of these has a default. **Nothing here blocks the build.**
 | 4 | Should the order queue skip a failed order or halt? | **Halt.** A queue that quietly continues past a failed `BUY` sends an empty ship to Malacca. Halting is legible and recoverable. |
 | 5 | Real-time or turn-based season boundaries? | **Real-time**, calendar clock at 1 real day = 1 game month (§D.1). No lockstep turn a player can miss. |
 | 6 | How hard should provisions bite? | **Bite on opportunity cost, not on death.** Running out is `ADRIFT` + a 30% salvage fee, never account loss (§B.6). |
-| 7 | Should other players appear on the MAP tab? | **No.** Drawing rivals turns the map into a targeting surface, which law 3 forbids. Presence is textual, in PORT / MARKET / LEDGER (§J.3). |
+| 7 | Should other players appear on the MAP tab? | **No.** Drawing rivals turns the map into a targeting surface, which law 3 forbids. Presence is textual, in PORT / MARKET / LEDGER (§J.3). **Amended 2026-10-08:** MERCHANT companies (NPC traders, `docs/NPC_TRADERS.md`) are drawn by the owner's order, at sea and at their roadsteads, in nation ink; they are not players and hold no position a rival could target. Players: still no. |
 | 8 | Uncapped Mayor tax like Origin? | **No — band it 0–8%** (§H.3). Origin's uncapped version is a griefing lever over other players' economies. |
 | 9 | Player-to-player trading? | **Not at V1.** It is the standard exploit vector. Revisit at V2 only as a taxed, capped, logged consignment market. |
 | 10 | Investment season length? | **3 months**, matching Origin, with **the decay rule published on day one** rather than changed between seasons (§H.6). |
