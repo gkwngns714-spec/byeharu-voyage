@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Button,
   Icon,
@@ -29,6 +29,12 @@ import { PORT_FACES, usePortView } from './portView'
 import { harbourCode, harbourPick, useHarbour } from '../../store/harbour'
 import { fleetPortCode } from '../../domain/fleet'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
+// 0099 — merchants in port: the same sheet MAP opens, read through the same card.
+import { MerchantSheet } from '../../live/MerchantSheet'
+import { merchantLine } from '../../live/merchantLine'
+import { useMerchantCard } from '../../live/useMerchantCard'
+import { useShellState } from '../../app/shellState'
+import type { TrafficFleet } from '../../lib/rpc'
 
 // PORT — E.3, redrawn to docs/UI_DIRECTION.md §6. Where you are, what is here, what you can do.
 //
@@ -80,6 +86,13 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const draftFleetId = useCommandDraft((s) => s.fleetId)
+  // THE MERCHANTS (0099, docs/NPC_TRADERS.md §8.4): the SAME traffic MAP reads — no read of its own.
+  const traffic = useWorld((s) => s.traffic)
+  const wantTraffic = useWorld((s) => s.wantTraffic)
+  useEffect(() => wantTraffic(), [wantTraffic])
+  const [merchantId, setMerchantId] = useState<string | null>(null)
+  const { card: merchantCard } = useMerchantCard(merchantId)
+  const { nowMs } = useShellState()
 
   // WHICH HARBOUR — the ONE owner (src/store/harbour.ts); the MAP is its named next caller.
   // WHICH FACE — this screen's own chrome (portView.ts).
@@ -201,6 +214,27 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         </Note>
       )}
 
+      {/* MERCHANTS IN PORT (0099) — the world's own companies lying here, named, because they are
+          the harbour's furniture and not somebody's position. A section, never the `trailing`
+          slot (that is about YOU). Hidden when none is here. A row opens the read-only sheet. */}
+      <MerchantsHere
+        rows={traffic?.enabled ? traffic.fleets.filter((t) => t.voyage === null && t.port === port.code) : []}
+        portName={(c) => portNameOf(portByCode, c)}
+        nowMs={nowMs}
+        onOpen={setMerchantId}
+      />
+      {merchantId && (
+        <MerchantSheet
+          key={merchantId}
+          card={merchantCard && merchantCard.fleet.id === merchantId ? merchantCard : null}
+          line={(() => {
+            const row = traffic?.fleets.find((t) => t.id === merchantId)
+            return row ? merchantLine(row, (c) => portNameOf(portByCode, c), nowMs) : ''
+          })()}
+          onClose={() => setMerchantId(null)}
+        />
+      )}
+
       <div role="tabpanel" className="mt-3">
         {/* ROW 53 — TRADE HAPPENS ON THE QUAY YOU ARE STANDING ON. A fleet lying HERE is the one
             that trades: `docked[0]`, not `acting`, because `acting` may be bound elsewhere and a
@@ -246,5 +280,39 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         {shownFace.id === 'academy' && <PortAcademy acting={acting} />}
       </div>
     </Sheet>
+  )
+}
+
+/** "Merchants in port" — one row per merchant fleet lying here (0099). Absent when there is none. */
+function MerchantsHere({
+  rows,
+  portName,
+  nowMs,
+  onOpen,
+}: {
+  rows: readonly TrafficFleet[]
+  portName: (code: string) => string
+  nowMs: number
+  onOpen: (fleetId: string) => void
+}) {
+  if (rows.length === 0) return null
+  return (
+    <SheetSection heading="Merchants in port" data-testid="port-merchants">
+      {rows.map((t, i) => (
+        <Row
+          key={t.id}
+          label={
+            <span className="block min-w-0">
+              <span className="block truncate">{`${t.company} · ${t.name}`}</span>
+              <span className="block truncate text-t-caption text-ink-faint">{merchantLine(t, portName, nowMs)}</span>
+            </span>
+          }
+          chevron
+          onClick={() => onOpen(t.id)}
+          hairline={i < rows.length - 1}
+          data-testid="port-merchant-row"
+        />
+      ))}
+    </SheetSection>
   )
 }
