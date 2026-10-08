@@ -82,6 +82,7 @@ import {
   worldStandingRoutes,
   worldSeaRaster,
   worldReach,
+  worldSeaTraffic,
 } from '../lib/rpc'
 import { navFromServed, type SeaNav } from '../lib/sea'
 import type {
@@ -100,6 +101,7 @@ import type {
   StandingRouteBook,
   StandingRouteStopDraft,
   ReachPayload,
+  SeaTraffic,
   SkillBook,
   SnapshotNation,
   StandingsBoard,
@@ -147,6 +149,15 @@ export interface LiveWorld {
    *  reads them with the fleets, on the same beat. A route runs on the server whether or not
    *  anyone is looking; this is only the reading of it. */
   routes: StandingRouteBook | null
+  /** THE MERCHANTS AT SEA AND IN PORT (0099, docs/NPC_TRADERS.md §8.1) — the last
+   *  `world.sea_traffic()` reading, or null before the first. Read by `refresh()` on the shell's
+   *  beat, AFTER the routes, and ONLY while a screen wants it (`trafficWanted > 0`): a captain on the
+   *  Ledger does not pay for merchants he cannot see. A failed read keeps the last reading — a map
+   *  without merchants is still a map. Dark (`enabled: false`) it is an empty list. */
+  traffic: SeaTraffic | null
+  /** How many mounted screens want the traffic (MAP, PORT). The one seam a screen has into the
+   *  cadence; it is never a second clock. */
+  trafficWanted: number
   /** What is on at the quay (0026), keyed by port id — a fair is a PORT's fact, not the world's. */
   buffs: Record<string, BuffsView>
   /** One port's remembered prices, keyed by port id (0013). Fetched beside its market. */
@@ -254,6 +265,10 @@ export interface LiveWorld {
     destPoint?: { lat: number; lon: number } | null,
     path?: [number, number][] | null,
   ) => Promise<boolean>
+  /** A screen that draws merchants calls this on mount and the returned function on unmount
+   *  (`useEffect(() => wantTraffic(), [wantTraffic])`). The first want reads at once, so the
+   *  merchants arrive with the screen rather than one beat later; after that the beat reads. */
+  wantTraffic: () => () => void
   /** Drop the last refusal — a screen calls this when the player moves on. */
   dismissRefusal: () => void
 }
@@ -352,6 +367,21 @@ export const useWorld = create<LiveWorld>((set, get) => {
     set({ routes: r.value })
   }
 
+  /**
+   * THE ONE READER OF THE SEA TRAFFIC (0099) — `refresh()`'s, and the first want's. The routes
+   * book's two rules hold here for the same reasons: a failed read is quiet and keeps the last
+   * reading, and an older answer never overwrites a newer one.
+   */
+  let trafficAsked = 0
+  let trafficApplied = 0
+  const readTraffic = async (): Promise<void> => {
+    const seq = ++trafficAsked
+    const r = await worldSeaTraffic()
+    if (!r.ok || seq < trafficApplied) return
+    trafficApplied = seq
+    set({ traffic: r.value })
+  }
+
   return {
   phase: 'idle',
   fatal: null,
@@ -366,6 +396,8 @@ export const useWorld = create<LiveWorld>((set, get) => {
   standings: null,
   presets: null,
   routes: null,
+  traffic: null,
+  trafficWanted: 0,
   buffs: {},
   history: {},
   ducats: null,
@@ -474,6 +506,10 @@ export const useWorld = create<LiveWorld>((set, get) => {
     // the routes read's settle is a no-op. On the fatal branch above the routes are not read at
     // all and the last book stands.
     await readRoutes()
+    // THE MERCHANTS RIDE THE SAME BEAT, after the routes and only while a screen wants them. This
+    // read takes no lock, but it keeps the one order (fleets → routes → traffic) so the deadlock
+    // rule above stays one rule.
+    if (get().trafficWanted > 0) await readTraffic()
     set({
       fleets: fleets.value,
       // A failed player read leaves the house NULL rather than fatal, for the same reason a failed
@@ -776,6 +812,17 @@ export const useWorld = create<LiveWorld>((set, get) => {
     set({ refusal: null })
     await get().refresh()
     return true
+  },
+
+  wantTraffic: () => {
+    set((s) => ({ trafficWanted: s.trafficWanted + 1 }))
+    if (get().trafficWanted === 1 && get().phase === 'ready') void readTraffic()
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+      set((s) => ({ trafficWanted: Math.max(0, s.trafficWanted - 1) }))
+    }
   },
 
   dismissRefusal: () => set({ refusal: null }),

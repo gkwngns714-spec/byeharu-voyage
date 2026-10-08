@@ -195,6 +195,7 @@ export function ChartCanvas({
   )
 
   const selectedFleetId = selection?.kind === 'fleet' ? selection.id : null
+  const selectedMerchantId = selection?.kind === 'merchant' ? selection.id : null
   const selectedPortCode = selection?.kind === 'port' ? selection.code : null
 
   // Where the coast's sheet sits on the glass, in CSS pixels: its top-left corner relative to the
@@ -273,7 +274,12 @@ export function ChartCanvas({
           selectedCode={selectedPortCode}
           unitsPerPx={unitsPerPx}
         />
-        <FleetsLayer model={model} selectedId={selectedFleetId} unitsPerPx={unitsPerPx} />
+        <FleetsLayer
+          model={model}
+          selectedId={selectedFleetId}
+          selectedMerchantId={selectedMerchantId}
+          unitsPerPx={unitsPerPx}
+        />
         <LabelsLayer labels={labels} unitsPerPx={unitsPerPx} />
       </svg>
     </div>

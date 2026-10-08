@@ -1,6 +1,7 @@
 import { project } from '../lib/geo'
 import type { ChartModel } from './chartModel'
 import { arrowPath, GLYPH, shipPath } from './glyphs'
+import type { MerchantInk } from './mapTypes'
 
 // GLYPHS 2 AND 3 — THE FLEET AND ITS DESTINATION — plus the track between them.
 //
@@ -22,9 +23,27 @@ import { arrowPath, GLYPH, shipPath } from './glyphs'
 // targeting surface, and this game has no PvP (§J.2). There is no prop on this layer that could
 // carry one — the omission is structural, not a setting.
 //
+// MERCHANT COMPANIES are the owner's 2026-10-08 exception (DESIGN Q7, docs/NPC_TRADERS.md §8.2):
+// companies the world keeps, not players. They arrive only through `model.traffic` — the SAME hull
+// at the SAME size as yours, filled in the company's nation ink, with no halo (the halo and the gold
+// are how "yours" stays loud), at sea and, when she lies in port, at the port's served roadstead,
+// bow north. The one merchant whose card is open draws her leg, faint.
+//
 // Everything here is a pure function of `model`, and `model` is a pure function of the last read
 // (./chartModel.ts). There is no animation state and no clock on this layer, so there is nothing to
 // drift — and no handler either: taps are resolved once, on the surface, by ./hitTest.ts.
+
+/** The nation inks as WHOLE class names, so Tailwind sees every one (no assembled strings). */
+const NATION_FILL: Record<MerchantInk, string> = {
+  prt: 'fill-nation-prt',
+  esp: 'fill-nation-esp',
+  nld: 'fill-nation-nld',
+  eng: 'fill-nation-eng',
+  han: 'fill-nation-han',
+  ita: 'fill-nation-ita',
+  ott: 'fill-nation-ott',
+  east: 'fill-nation-east',
+}
 
 /** Tracks and destination rings — painted UNDER the port marks. */
 export function TracksLayer({ model, unitsPerPx }: { model: ChartModel; unitsPerPx: number }) {
@@ -64,6 +83,30 @@ export function TracksLayer({ model, unitsPerPx }: { model: ChartModel; unitsPer
                 data-testid="map-track-arrow"
               />
             )}
+          </g>
+        ) : null,
+      )}
+
+      {/* 0099 — THE OPEN MERCHANT'S LEG: the one traffic row that carries her full served course
+          (her card is open), drawn faint through the same track paths, no arrow, no ring. */}
+      {model.traffic.map((t) =>
+        t.track ? (
+          <g key={`merchant-${t.fleet.id}`} data-testid="map-merchant-track">
+            <path
+              d={t.track.aheadD}
+              className="fill-none stroke-ink-faint/50"
+              strokeWidth={GLYPH.trackStroke}
+              strokeDasharray="5 4"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+            <path
+              d={t.track.sailedD}
+              className="fill-none stroke-ink-faint/70"
+              strokeWidth={GLYPH.trackStroke}
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
           </g>
         ) : null,
       )}
@@ -115,16 +158,39 @@ export function TracksLayer({ model, unitsPerPx }: { model: ChartModel; unitsPer
 export function FleetsLayer({
   model,
   selectedId,
+  selectedMerchantId = null,
   unitsPerPx,
 }: {
   model: ChartModel
   selectedId: string | null
+  /** 0099 — the merchant whose card is open, outlined in ink. */
+  selectedMerchantId?: string | null
   unitsPerPx: number
 }) {
   const px = (n: number) => n * unitsPerPx
 
   return (
     <g pointerEvents="none" data-testid="map-fleets">
+      {/* 0099 — THE MERCHANTS, UNDER yours: the same `shipPath` at the same size, nation ink, no
+          halo. A docked merchant lies at the roadstead, bow north. */}
+      {model.traffic.map((t) => {
+        const { x, y } = project(t.at)
+        const selected = selectedMerchantId === t.fleet.id
+        return (
+          <path
+            key={`merchant-${t.fleet.id}`}
+            d={shipPath(GLYPH.shipHalfLength)}
+            transform={`translate(${x} ${y}) rotate(${t.heading ?? 0}) scale(${unitsPerPx})`}
+            className={`${NATION_FILL[t.merchant.ink]} ${selected ? 'stroke-ink' : 'stroke-chart-sea'}`}
+            strokeWidth={GLYPH.glyphStroke * (selected ? 1.2 : 0.6)}
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+            data-testid="map-merchant"
+            data-merchant-id={t.fleet.id}
+            data-merchant-docked={t.merchant.docked ? 'true' : 'false'}
+          />
+        )
+      })}
       {model.fleets.map((f) => {
         if (f.dockedAtCode !== null) return null
         const { x, y } = project(f.at)

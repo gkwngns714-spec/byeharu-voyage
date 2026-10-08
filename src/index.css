@@ -143,6 +143,20 @@
   --color-chart-grid: color-mix(in srgb, var(--color-ink-faint) 16%, transparent);
   --color-chart-sea-name: color-mix(in srgb, var(--color-ink-faint) 62%, var(--color-chart-sea));
 
+  /* ── THE NATION INKS (0099, docs/NPC_TRADERS.md §8.2) — the hull fill of a MERCHANT fleet, by
+     the nation family its company sails for (npc_houses.ink, served; never chosen on the client).
+     Eight families, hues spread round the wheel AWAY from the accent's gold (yours stay the only
+     gold hulls on the sea), one lightness and chroma so no family shouts over another. Measured
+     against --color-chart-sea in both schemes by tests/map.merchants.spec.ts (≥ 3 : 1). */
+  --color-nation-prt: oklch(0.76 0.14 150);
+  --color-nation-esp: oklch(0.72 0.15 25);
+  --color-nation-nld: oklch(0.78 0.14 55);
+  --color-nation-eng: oklch(0.74 0.14 330);
+  --color-nation-han: oklch(0.74 0.12 250);
+  --color-nation-ita: oklch(0.78 0.11 200);
+  --color-nation-ott: oklch(0.8 0.14 118);
+  --color-nation-east: oklch(0.74 0.14 295);
+
   /* ── THE REGIONS' TINTS (2026-09-14, owner row 93: "create regions on map, show it using
      different color of the sea and country") — one token per region of data/regions.json,
      painted at low alpha over the water and over the land ONLY while the Regions filter is on
@@ -384,6 +398,16 @@
     --color-chart-relief: color-mix(in srgb, var(--color-chart-coast) 30%, var(--color-chart-land));
     --color-chart-grid: color-mix(in srgb, var(--color-ink) 12%, transparent);
     --color-chart-sea-name: color-mix(in srgb, var(--color-ink) 52%, var(--color-chart-sea));
+
+    /* THE DAY NATION INKS — the same eight hues, dark enough to stand on the day's blue water. */
+    --color-nation-prt: oklch(0.42 0.13 150);
+    --color-nation-esp: oklch(0.42 0.15 25);
+    --color-nation-nld: oklch(0.45 0.13 55);
+    --color-nation-eng: oklch(0.42 0.15 330);
+    --color-nation-han: oklch(0.38 0.13 260);
+    --color-nation-ita: oklch(0.4 0.09 210);
+    --color-nation-ott: oklch(0.42 0.11 118);
+    --color-nation-east: oklch(0.4 0.15 295);
 
     /* THE DAY TINTS — the same 25 hues a step darker, so a tint reads on paper land and on the
        day's blue water (validated the same way; the dark block says how). */

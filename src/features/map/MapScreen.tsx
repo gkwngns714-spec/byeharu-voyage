@@ -1,10 +1,14 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { unproject, type Point, type ViewBox } from '../../lib/geo'
-import type { FleetView, SnapshotPort } from '../../lib/rpc'
+import type { FleetView, SnapshotPort, TrafficFleet } from '../../lib/rpc'
 import type { SeaNav } from '../../lib/sea'
 import { pointToken, snapSeaPoint } from '../../domain/passage'
 import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
+// THE MERCHANTS (0099): their sheet and its card are live-data React shared with PORT.
+import { MerchantSheet } from '../../live/MerchantSheet'
+import { merchantLine } from '../../live/merchantLine'
+import { useMerchantCard } from '../../live/useMerchantCard'
 // WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
 import { useCommandDraft } from '../../domain/order'
 // THE CHART IS A SECTION OF ITS OWN (src/chart) and this screen composes it; nothing here draws.
@@ -19,6 +23,7 @@ import {
   dotPorts,
   hitTest,
   mapFleetsOf,
+  mapTrafficOf,
   Minimap,
   minTierForSpan,
   openingBounds,
@@ -67,13 +72,26 @@ export function MapScreen() {
   const seaNav = useWorld((s) => s.seaNav)
   const fleets = useWorld((s) => s.fleets)
   const readAt = useWorld((s) => s.readAt)
+  // THE MERCHANTS (0099, docs/NPC_TRADERS.md §8.1): read on the shell's beat while this screen is
+  // up — the one seam a screen has into the cadence, never a clock of its own.
+  const traffic = useWorld((s) => s.traffic)
+  const wantTraffic = useWorld((s) => s.wantTraffic)
+  useEffect(() => wantTraffic(), [wantTraffic])
 
   // A FAILURE IS RENDERED, NEVER SPUN ON (DESIGN §F.5); an opening is one quiet line on the sea.
   if (phase === 'failed') return <ChartMessage refusal={fatal} />
   if (phase !== 'ready' || !snapshot || !seaNav) return <ChartMessage refusal={null} />
 
   // The chart mounts ONLY with the world in hand, so it can freeze its opening frame on real fleets.
-  return <Chart ports={snapshot.ports} seaNav={seaNav} fleets={fleets} readAt={readAt} />
+  return (
+    <Chart
+      ports={snapshot.ports}
+      seaNav={seaNav}
+      fleets={fleets}
+      traffic={traffic?.enabled ? traffic.fleets : NO_TRAFFIC}
+      readAt={readAt}
+    />
+  )
 }
 
 /** The one line beside a harbour's name at peek: its country, and which of yours are there. */
@@ -85,12 +103,17 @@ function portLine(model: ChartModel, port: MapPort): string {
   return port.country
 }
 
+const NO_TRAFFIC: readonly TrafficFleet[] = []
+
 function Chart({
   ports: snapshotPorts,
   seaNav,
   fleets: fleetViews,
+  traffic: trafficRows,
   readAt,
 }: {
+  /** Merchant fleets (0099) — never in `fleets`, so nothing about YOUR fleets sees one. */
+  traffic: readonly TrafficFleet[]
   ports: readonly SnapshotPort[]
   /** The served navigable-water grid — the tap-on-open-water snap reads it (0039). */
   seaNav: SeaNav
@@ -109,12 +132,24 @@ function Chart({
   const ports = backdrop.ports
   const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
   const fleets = useMemo(() => mapFleetsOf(fleetViews), [fleetViews])
-  const model = useMemo(
-    () => buildChartModel(fleets, ports, [], { nowMs, readAtMs: readAt }),
-    [fleets, ports, nowMs, readAt],
-  )
-
   const [selection, setSelection] = useState<MapSelection>(null)
+
+  // THE OPEN MERCHANT'S CARD — read once here, for the sheet AND for her leg on the chart (the
+  // card serves her full course; every other merchant is served the current segment only).
+  const merchantId = selection?.kind === 'merchant' ? selection.id : null
+  const { card } = useMerchantCard(merchantId)
+  const traffic = useMemo(
+    () =>
+      mapTrafficOf(
+        trafficRows,
+        card && card.fleet.id === merchantId ? { id: card.fleet.id, voyage: card.fleet.voyage } : null,
+      ),
+    [trafficRows, card, merchantId],
+  )
+  const model = useMemo(
+    () => buildChartModel(fleets, ports, [], { nowMs, readAtMs: readAt }, traffic),
+    [fleets, ports, nowMs, readAt, traffic],
+  )
 
   // THE OPENING VIEW frames WHAT YOU HAVE, taken from the model AT MOUNT, once: it is the frame
   // ⌖ returns to, and a frame that moved with the fleets would re-frame the chart on every read.
@@ -137,6 +172,7 @@ function Chart({
       const tappable = visiblePorts(ports, model.portRoles, view, minTier)
       const dots = dotPorts(ports, model.portRoles, view, minTier)
       const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx)
+      // A MERCHANT IS READ, NEVER COMMANDED: her tap selects her and leaves the command draft alone.
       if (hit?.kind === 'fleet') selectFleet(hit.id)
       if (hit) {
         setSelection((current) => toggleSelection(current, hit))
@@ -163,6 +199,7 @@ function Chart({
   // WHAT THE TRAY IS ABOUT. A stable object per selection, so the send flow's effects key on it.
   const selectedFleet =
     selection?.kind === 'fleet' ? (model.fleets.find((f) => f.fleet.id === selection.id) ?? null) : null
+  const selectedMerchant = merchantId ? (trafficRows.find((t) => t.id === merchantId) ?? null) : null
   const place = useMemo(() => {
     if (selection?.kind === 'port') {
       const port = portsByCode.get(selection.code)
@@ -250,6 +287,14 @@ function Chart({
           fleet={selectedFleet}
           portsByCode={portsByCode}
           nowMs={nowMs}
+          onClose={() => setSelection(null)}
+        />
+      )}
+      {selectedMerchant && (
+        <MerchantSheet
+          key={selectedMerchant.id}
+          card={card && card.fleet.id === selectedMerchant.id ? card : null}
+          line={merchantLine(selectedMerchant, (c) => portsByCode.get(c)?.name ?? c, nowMs)}
           onClose={() => setSelection(null)}
         />
       )}

@@ -54,6 +54,33 @@ export const PLAYER_TABLES = [
   'ledger',
 ] as const
 
+/**
+ * THE SEED IS WORLD DATA (0098, docs/NPC_TRADERS.md §8.5). A world built since 0098 carries the
+ * merchant companies the world keeps — `players.is_npc` — and every row they own sits in the same
+ * tables as yours. They are rebuilt by the chain like any port; rescuing them would grow every
+ * rescue by the whole seed, overflow the one localStorage slot and drop YOUR rows. So each table
+ * is read for the companies that are not merchants, by THE one predicate. A world from an older
+ * chain has no `is_npc` column and no merchants, and is read whole, as before.
+ */
+async function merchantFilter(pg: Pick<PGlite, 'query'>, table: string): Promise<string> {
+  const col = await pg.query<{ present: boolean }>(
+    `select exists (select 1 from information_schema.columns
+                     where table_schema = 'public' and table_name = 'players' and column_name = 'is_npc') as present`,
+  )
+  if (!col.rows[0]?.present) return ''
+  const yours = `(select p.id from public.players p where not p.is_npc)`
+  switch (table) {
+    case 'players':
+      return ' where not t.is_npc'
+    case 'voyages':
+      return ` where t.fleet_id in (select f.id from public.fleets f where f.player_id in ${yours})`
+    case 'voyage_events':
+      return ` where t.voyage_id in (select v.id from public.voyages v join public.fleets f on f.id = v.fleet_id where f.player_id in ${yours})`
+    default:
+      return ` where t.player_id in ${yours}`
+  }
+}
+
 /** localStorage key for the most recent rescue. One slot: a rescue supersedes the last one. */
 export const RESCUE_KEY = 'byeharu-voyage.rescued.v1'
 
@@ -119,7 +146,7 @@ export async function rescuePlayerRows(
         [`public.${table}`],
       )
       if (!exists.rows[0]?.present) continue
-      const r = await pg.query<Record<string, unknown>>(`select * from public.${table}`)
+      const r = await pg.query<Record<string, unknown>>(`select * from public.${table} t${await merchantFilter(pg, table)}`)
       if (r.rows.length === 0) continue
       rescue.tables[table] = r.rows
       rescue.rows += r.rows.length

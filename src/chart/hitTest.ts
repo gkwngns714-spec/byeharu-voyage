@@ -84,6 +84,17 @@ export function hitTest(
   if (nearestFleet && (!nearestPort || nearestFleet.d <= nearestPort.d)) {
     return { kind: 'fleet', id: nearestFleet.id }
   }
+  // 0099 — A MERCHANT, by the same reach, AFTER your fleets (one of yours already won any tie
+  // above) and only when nearer than the nearest harbour: a merchant at anchor lies at the roads,
+  // a few pixels off the port's mark, and a tap ON the mark still means the port.
+  let nearestMerchant: { id: string; d: number } | null = null
+  for (const t of model.traffic) {
+    const d = distance(project(t.at), at)
+    if (d <= radius && (!nearestMerchant || d < nearestMerchant.d)) nearestMerchant = { id: t.fleet.id, d }
+  }
+  if (nearestMerchant && (!nearestPort || nearestMerchant.d < nearestPort.d)) {
+    return { kind: 'merchant', id: nearestMerchant.id }
+  }
   if (nearestPort) return { kind: 'port', code: nearestPort.port.code }
   return null
 }
@@ -114,6 +125,7 @@ export function toggleSelection(current: MapSelection, next: MapSelection): MapS
   if (current && current.kind === next.kind) {
     if (current.kind === 'fleet' && next.kind === 'fleet' && current.id === next.id) return null
     if (current.kind === 'port' && next.kind === 'port' && current.code === next.code) return null
+    if (current.kind === 'merchant' && next.kind === 'merchant' && current.id === next.id) return null
   }
   return next
 }

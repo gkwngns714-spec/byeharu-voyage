@@ -298,6 +298,11 @@ export const RPCS = {
   // a null fleet takes the route off its fleet — that is not a fifth verb. A route never trades by
   // itself: it writes its fleet's next orders into the one queue when the queue runs dry in port.
   worldStandingRoutes: { schema: 'world', fn: 'standing_routes', args: [] },
+  // 0099 — MERCHANTS (docs/NPC_TRADERS.md §7). Two reads, no player id, dark until the owner's
+  // switch: where every merchant fleet is (read on the shell's beat while MAP or PORT is up), and
+  // one merchant fleet's card (read at a tap). Neither answers for a player's fleet.
+  worldSeaTraffic: { schema: 'world', fn: 'sea_traffic', args: [] },
+  worldNpcFleetCard: { schema: 'world', fn: 'npc_fleet_card', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdStandingRouteSave: {
     schema: 'cmd',
     fn: 'standing_route_save',

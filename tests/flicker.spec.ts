@@ -68,6 +68,12 @@ test('the routes book has one reader: the store', () => {
   expect(where(/\bloadRoutes\(/)).toEqual(['src/live/worldStore.ts'])
 })
 
+// 2026-10-08, docs/NPC_TRADERS.md §8.1: the merchants' traffic rides the shell's beat, read in ONE
+// place. A screen wants it (`wantTraffic`), it never reads it; a second reader would be a second clock.
+test('the sea traffic has one reader: the store', () => {
+  expect(where(/(?<!function )\bworldSeaTraffic\(/)).toEqual(['src/live/worldStore.ts'])
+})
+
 // ── 2. BROWSER ───────────────────────────────────────────────────────────────────────────────────
 
 /** Longer than three of the shell's 3-s reads, with slack for a read itself to land. */

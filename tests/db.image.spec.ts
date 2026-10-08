@@ -47,6 +47,7 @@ import { imageRefusal, readStoredChain } from '../src/lib/db/appLocal'
 import { asWorldImageFile, worldImageUrl } from '../src/lib/db/worldImage'
 import { openLocalDb, LOCAL_AUTH_UID } from '../src/lib/db/localDb'
 import { createBootChannel, type BootPhase } from '../src/lib/db/bootState'
+import { rescuePlayerRows, RESCUE_KEY, type Rescue } from '../src/lib/db/rescue'
 import {
   loadChain,
   removeScratchDataDir,
@@ -313,3 +314,40 @@ async function woundedImage(): Promise<{ bytes: Uint8Array; chain: string; stamp
     await pg.close()
   }
 }
+
+// 2026-10-08, docs/NPC_TRADERS.md §8.5: SINCE 0098 THE IMAGE CARRIES THE MERCHANT COMPANIES — world
+// data, rebuilt by the chain. A rescue over this world must store the local captain's rows ONLY; the
+// seed in the one localStorage slot would overflow it and drop the captain's own voyage.
+test('a rescue over the seeded image stores only the local captain’s rows, never the merchants’', async () => {
+  test.setTimeout(300_000)
+  const { bytes, fingerprint } = emittedImage()
+  const db = await openLocalDb({
+    loadChain,
+    dataDir: 'memory://',
+    log: () => {},
+    loadImage: () =>
+      Promise.resolve({ blob: asWorldImageFile(bytes), url: 'test://image', bytes: bytes.length, note: null }),
+  })
+  try {
+    const merchants = await db.pg.query<{ n: number }>(`select count(*)::int as n from public.players where is_npc`)
+    expect(merchants.rows[0].n, 'the image carries the founded merchant companies').toBeGreaterThan(20)
+    const store = new Map<string, string>()
+    const storage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    }
+    const receipt = await rescuePlayerRows(db.pg, fingerprint, storage)
+    expect(receipt.stored).toBe(true)
+    const rescue = JSON.parse(store.get(RESCUE_KEY)!) as Rescue
+    const players = rescue.tables.players as { auth_uid: string | null; is_npc: boolean }[]
+    expect(players).toHaveLength(1)
+    expect(players[0].auth_uid).toBe(LOCAL_AUTH_UID)
+    const own = new Set(players.map((p) => (p as unknown as { id: string }).id))
+    for (const t of ['fleets', 'ships', 'orders', 'events', 'ledger'] as const) {
+      for (const row of (rescue.tables[t] ?? []) as { player_id: string }[]) expect(own.has(row.player_id), t).toBe(true)
+    }
+  } finally {
+    await db.close()
+  }
+})
