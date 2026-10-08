@@ -1445,12 +1445,70 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // are server-only and are not here.
       'worldStandingRoutes', 'cmdStandingRouteSave', 'cmdStandingRouteDelete', 'cmdStandingRouteAssign',
       'cmdStandingRoutePause',
+      // Pin moved deliberately 2026-10-08 with migration 0099 (merchant companies, owner rows
+      // 109-111, docs/NPC_TRADERS.md §7): where the merchants are, and one merchant fleet's card.
+      // Both READS, no player id, dark until the owner's switch; neither answers for a player's
+      // fleet. Landed WITH the faces that read them (the chart's merchant hulls, the merchant sheet,
+      // PORT's "Merchants in port"). The founding, planning and upkeep cores are server-only and
+      // are not here.
+      'worldSeaTraffic', 'worldNpcFleetCard',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')
   expect(JSON.stringify(RPCS)).not.toContain('assume_identity')
   expect(JSON.stringify(RPCS)).not.toContain('settle')
   expect(JSON.stringify(RPCS)).not.toContain('tick_')
+})
+
+// 2026-10-08, 0096 (docs/NPC_TRADERS.md §3.1): THE REGISTRY AND THE GRANTS ARE ONE SET. Until 0096
+// a registry row that `authenticated` could NOT execute passed unseen — `world.trade_routes`, revoked
+// by the owner in 0071, sat in `client_rpc_entry_points()` for five weeks. Now both directions are
+// asserted: every registry row is executable by `authenticated`, and every function `authenticated`
+// can execute that WRITES is a registry row. And the server-only cores a merchant is made of — the
+// sliced founding, officer, skill, preset, route and clear cores, and every npc_* function — are
+// executable by nobody but the server.
+test('the registry and the client grants are one set, and the merchant cores are server-only', async () => {
+  const notGranted = await db.callAs<string[] | null>(
+    `select jsonb_agg(coalesce(e.fn::text, e.schema_name || '.' || e.function_name)) as result
+       from public.client_rpc_entry_points() e
+      where e.fn is null or not has_function_privilege('authenticated', e.fn, 'execute')`,
+  )
+  expect(notGranted ?? []).toEqual([])
+  expect(await db.callAs<number>(`select count(*)::int as result from public.client_executable_writers()`)).toBe(0)
+  const names = await db.callAs<string[]>(`select jsonb_agg(function_name) as result from public.client_rpc_entry_points()`)
+  expect(names).toContain('sea_traffic')
+  expect(names).toContain('npc_fleet_card')
+  expect(names).not.toContain('trade_routes')
+  const cores = [
+    'public.new_house(uuid, text, text, text, text, text, text, bigint, boolean)',
+    'public.commission_ship(uuid, uuid, text, text, boolean, boolean)',
+    'public.form_fleet(uuid, text, uuid)',
+    'public.sign_officer(uuid, text, uuid)',
+    'public.post_officer_to(uuid, text, uuid)',
+    'public.raise_skill(uuid, text, text)',
+    'cmd.provision_preset_save_for(uuid, uuid, text, integer)',
+    'cmd.provision_preset_apply_for(uuid, uuid, uuid)',
+    'cmd.standing_route_save_for(uuid, uuid, text, jsonb, bigint, integer, integer)',
+    'cmd.standing_route_assign_for(uuid, uuid, uuid)',
+    'cmd.standing_route_pause_for(uuid, uuid, boolean, text, text)',
+    'cmd.clear_for(uuid, uuid, boolean)',
+    'public.npc_found(jsonb)',
+    'public.npc_plan(timestamptz, uuid)',
+    'public.npc_tend(timestamptz, uuid)',
+    'public.npc_compact(timestamptz)',
+    'public.npc_traders_switch(boolean)',
+    'public.route_earnings(uuid)',
+    'public.npc_buy_ceiling(uuid, uuid, numeric)',
+    'public.fleet_crew_shortfall(uuid)',
+    'world.voyage_view(uuid, boolean)',
+    'public.tick_arrivals(timestamptz)',
+  ]
+  const reachable = await db.callAs<string[] | null>(
+    `select jsonb_agg(f) as result from unnest($1::text[]) f
+      where has_function_privilege('anon', f, 'execute') or has_function_privilege('authenticated', f, 'execute')`,
+    [cores],
+  )
+  expect(reachable ?? []).toEqual([])
 })
 
 test('a fault crosses the boundary as a refusal, not as a stack trace', async () => {

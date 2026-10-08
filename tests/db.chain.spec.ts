@@ -272,7 +272,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // Moved 2026-10-08 to 0097, merchant companies (owner rows 109-111, docs/NPC_TRADERS.md): 0096 slices
 // the founding, officer, skill, preset, route and clear doors into server-only p_player cores and
 // makes the route pace an interval; 0097 builds the dark merchant machinery (switch off).
-const LAST = '20260818000097_a_company_the_world_keeps.sql'
+// Moved 2026-10-08 to 0099: 0098 founds the merchant companies (generated from data/npc-houses.json by
+// scripts/build-npc-0098.mjs, dark), and 0099 serves them to the chart and the merchant sheet.
+const LAST = '20260818000099_the_sea_shows_who_else_sails.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
