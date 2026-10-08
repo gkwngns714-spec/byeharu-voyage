@@ -82,6 +82,14 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | buy as many as the cargo holds | **All that fit** | ALL, max qty |
 | no price limit on a line | **Any price** | no cap, market |
 | resupply at a route stop (every stop, when below the keep level) | **Resupply if low** · queue row **Resupply to 5 days** | PROVISION DAYS 5 |
+| a trading company the world keeps (0096-0099, owner rows 109-111, `docs/NPC_TRADERS.md` §8.6) | **merchant** / **merchant company** (`Merchants in port`) — the wire says `npc` (`players.is_npc`, `world.sea_traffic`) and the player never reads it | NPC, bot, AI trader, house |
+| its fleet on the map | the fleet's own name, with the company beside it (`Carreira da Índia · Casa da Índia`) | NPC ship |
+| what it makes | **≈ 37,200 🪙 a day** · **A lap ≈ 1,240 🪙** · **So far today** before a whole day of laps · **Last laps** `+1,240 🪙 · −18 🪙 · …` | earnings/day, per game-day, income |
+| its money | **Fortune** | purse, treasury |
+| a merchant put back on its feet | **refounded** (`refounded twice, last 09:40`) | bailed out, reset |
+| a merchant that cannot sail on | **laid up** | stranded, dead |
+| the company's four levels (the Academy and the merchant sheet) | **Skills** — the Academy's note is *"Pick a fleet docked at an academy to study."* | Captain (for a set of bars) |
+| the person in charge of a fleet | **captain** = the player, for their own fleets; a merchant fleet's named **Master** (flavour only) | — |
 
 ## Where the words are checked
 

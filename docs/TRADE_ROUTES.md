@@ -761,3 +761,19 @@ measurement at the default pace is still owed.
 pending; Port → Repair says the fleet is at sea), so `Blocked` has no way out in play; History ties
 within one transaction are unordered; FLEETS prints `hull`; History says `arrived to`.
 
+
+### 13.3 Built by the merchant work (0096, 2026-10-08, `docs/NPC_TRADERS.md`) — and a stated change for live players
+
+- **D3 is built.** `SELL <good> ALL` over the day's allowance now sells what the allowance takes instead
+  of refusing the whole parcel (one hunk in `cmd.do_sell`); an EXPLICIT quantity over the allowance still
+  refuses whole, byte-identically. Self-asserted in 0096.
+- **THE PACING RULE IS AN INTERVAL, NOT A CALENDAR.** 0092 held every route until the next game-day
+  BOUNDARY — one instant for every route on earth. 0096 re-cuts that one hunk: a lap may start
+  `game_day_seconds / N` after the LAST lap started (N = the route's own `laps_per_game_day`, else the
+  knob, 1). **For a player the number is unchanged — one lap per game-day — but its anchor moves from
+  the calendar to the lap.** 0092's "six unpaced ticks run three laps" is re-stated for the interval form.
+- **`crew_up`** — a stop option (hire back to `crew_required` before sailing on), rendered by ONE tail
+  (`cmd.standing_route_tail`) that both refill branches now call, so the sail-on branch can hire too. The
+  editor carries the flag through untouched, as it does `repair`, until it gains the checkbox.
+- **The repeated-harbour anchor** (`min(ord)` in save and assign) prefers the stop the cursor names, so a
+  loop that calls at one harbour twice no longer resets to the first visit on an edit.

@@ -5,6 +5,59 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-08 — merchant companies: built, measured, dark (branch `osn-npc-traders`, NOT pushed, NOT merged, NOT deployed)
+
+Owner rows 109-111: *"this game will now turn into simulator, of trades. add npc to and show movement on
+map"*, *"by clicking the npc ship, it will show how much it is earning per day"*, *"it should be fleet as
+well … see ships, captains, skills"*. Plan `docs/NPC_TRADERS.md`; where the build departs from it, §15
+(X1-X16). Resumed after the owner's PC lost power mid-implementation: 0096/0097 were on disk
+uncommitted; both were re-applied on the chain (self-asserts pass) and committed first.
+
+**What exists now (all dark — `npc_traders_enabled` = false).**
+- **0096** the same hands: the founding / ship / fleet / officer / skill / preset / route / clear doors
+  sliced into server-only `p_player` cores; interval pacing; `crew_up` + one tail renderer; D3; the
+  repeated-harbour anchor; `cmd.clear`/`cancel_at` ownership gates; the stale `trade_routes` registry row gone.
+- **0097** the machinery: switch + knobs, `npc_houses`/`npc_fleets`, `npc_found`, `npc_plan`, `npc_tend`,
+  `npc_compact`, `route_earnings`, Rank exclusion, the compactor's one delete exemption, upkeep inside
+  `tick_reconcile`.
+- **0098 GENERATED** by `scripts/build-npc-0098.mjs` (measured through the one executor): **23 companies,
+  32 fleets, 64 hulls**, 14 loops crossing Lisbon's opening frame. 12 lesser officers added.
+- **0099** `world.sea_traffic` / `world.npc_fleet_card` (authenticated-only, registered, dark), with
+  `world.voyage_view` and `public.standing_route_state` sliced out of `world.fleets` / `world.standing_routes`.
+- **Client**: merchants on the chart (same hull, nation ink, no halo, at sea and at the roadstead), the
+  read-only `MerchantSheet` (earnings, laps, route, fortune, ships, cargo, officers, Skills), "Merchants in
+  port" on PORT. The four shared tiles moved to the design system.
+
+**Measured locally (PGlite; slice 6's laptop half — production's soak is still owed before the switch).**
+| figure | value | how |
+|---|---|---|
+| merchant rows per closed lap | **141.6** (proof 12: 142.4) | `scripts/db/measure-merchants.mjs`, 20 rewound ticks + 4 reconciles: 16,425 rows / 116 laps |
+| rows retained after `npc_compact` | **1,017** (proof 12: 1,452; budget 100,000) | the 6-h window passed |
+| `world.sea_traffic()` | **13.0 ms/call** (explain analyze 9.3 ms), 12.4 KB, 32 fleets at sea; 0099's own receipt read 27.7 ms on a busier machine | PGlite is WebAssembly on one connection — **production's figure decides the memo (X15)** |
+| `world.npc_fleet_card()` | 3.2 ms/call | same |
+| merchant hulls in Lisbon's 390 × 844 opening frame | **mean 4.8, min 2** over 21 samples | the same geometry the build checks |
+| build measurement | 4 candidate sets + 5 trim passes, 32 min | seeded drift; freeze-on-pass (X14) |
+
+**Two findings for the owner, not fixed here.**
+1. **A route's first lap reads as a loss when it buys on its last leg** (X16): the lap closes on arrival at
+   stop 0, before the home sales, so the cost lands on lap N and the revenue on lap N+1. Shared with every
+   player route (0092). The card's "a lap" and "so far today" read low in a merchant's first hours.
+2. **The trim rule, applied naively, ratchets on noise** (X14): an unseeded re-judging run left 14 / 16 / 21
+   of 26 / 35 / 78. Shipped with the seeded freeze-on-pass rule; a few kept fleets show a negative LAST
+   measurement in 0098's header. The production soak is the judge.
+
+**Gates run on this branch (2026-10-08):** `npm run db:apply` — 92 migrations, 92 self-assert receipts,
+world-guard ok · `npm run db:proof` — 12 proof files, 85/85 PASS markers (proof 11 re-stated for the interval pace; proof 12 new) · `npm run db:check-versions`
+OK (92) · `npm run lint` clean · `npm run build` (incl. `tsc -b`) ok · Playwright against `vite preview
+--port 4291` on localhost: `map.merchants` 7/7, `layout` + `flicker` + `route.stopface` 28/28, 0 skipped ·
+`rpc.surface` 27/27. Screenshots: `docs/npc-traders/`.
+
+**Before deploy (the owner's reads/actions):** regenerate 0098 with `--taken` (production's
+`select company_name from public.players`); the production soak of §12 slice 6; then
+`select public.npc_traders_switch(true);` — `false` is the rollback.
+
+---
+
 ## 2026-10-08 — two fixes: 0083's breakdown assert had a lottery tolerance; COMMAND said "No fleets yet" to a captain with a fleet (branch `osn-fix-0083-and-empty-flash`, NOT deployed — nothing to deploy server-side)
 
 ### 1. 0083 self-assert (i): the tolerance is now a proven bound (assert-only edit of an applied migration)

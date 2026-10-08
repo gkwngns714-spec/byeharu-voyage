@@ -393,6 +393,9 @@ One list, you pinned. Cut: House/Fame/Levels cards, the gauge, the limits. Fold:
 ### CODEX
 Cut: the paragraph, the two chip strips, the count, dash figures, unread stats. Fold: one filter field + one `Segmented` (Goods · Ships · Captains · Nations); category as a t-label heading; tile shows mark, name, rarity, **one** figure (base); everything else in a tray. Ships: hold · speed · crew only. Captains: specialty + bonus only; the "no rule reads this" ones are muted with the reason in the tray. Nations: rows.
 
+### MAP — the merchant tray (2026-10-08, `docs/NPC_TRADERS.md` §8.3)
+A tapped merchant hull opens a `Tray` with `CHART_CHROME`, exactly as yours does. Peek: her name, her company, one line (`to Kochi · 11m`, or `Lisbon · sails at 14:32`). Half: **A day** `≈ 37,200 🪙` (or **So far today**), **A lap**, **Last laps** (the seven nets), the loop of ports with the laps done, **Fortune**, the one-line blurb. Full: **Ships** (`ShipTile`), **Cargo** (`CargoRows`), **Officers** (`OfficerTile`, home port named), **Skills** (`SkillTile` × 4), **Last lap** (what was passed over, in words). No `Button`, no `Stepper`, no hand-off: the only thing to do is close it. PORT lists **Merchants in port** as a section (never the title's `trailing`, which is about you) and opens the same tray.
+
 ### PROFILE (in Cabin)
 ```
  Casa de Aveiro · Portugal · since 9 Sep
