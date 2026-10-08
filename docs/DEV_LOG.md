@@ -5,6 +5,60 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-08 — two fixes: 0083's breakdown assert had a lottery tolerance; COMMAND said "No fleets yet" to a captain with a fleet (branch `osn-fix-0083-and-empty-flash`, NOT deployed — nothing to deploy server-side)
+
+### 1. 0083 self-assert (i): the tolerance is now a proven bound (assert-only edit of an applied migration)
+
+**The red.** CI "Build" on main, run 36808560643: `0083 self-assert FAIL: SELL line mid 386.83 - tax 11.49 -
+spread 3.87 is not its total 372 within the unit rounding`. Residual 0.53 against `0.005·qty + 0.5` = 0.525 at
+5 t. Green on the commit before: `world_secret` is generated per database (0031), so the market state the assert
+sees is random per run.
+
+**The derivation** (`world.quote`, live body read back from the applied chain). Each 10-tun step builds its parts
+from the same `v_mid`/`v_tax`/`v_spread` as the unit price, and the identities are exact in numeric arithmetic —
+BUY `m + m·t + m·s/2 = m(1+t+s/2)`, SELL `m − m(1−s/2)t − m·s/2 = m(1−s/2)(1−t)`. So the residual has exactly
+three sources: `v_unit = round(·,2)` (≤ 0.005 per tun → 0.005·qty), `total = round(Σ)` to the ducat (≤ 0.5), and
+the three 2-dp roundings of `mid_total`/`tax_total`/`spread_total` (≤ 0.015). **The old bound left out the
+third term. Proven bound: `0.005·qty + 0.515`** (0.54 at 5 t; the CI residual 0.53 is inside it).
+
+**Measured, not just argued** (temporary harness, deleted): from a snapshot of the chain up to 0083, 400,000
+`world.quote` calls (2,500 sampled market rows × qty {1,3,5,7,10,13,25,40} × buy/sell × 10 randomised states:
+stock ×U(0.5,1.5), tax U(0,0.08)). Worst |residual| / proven bound = **0.991** (BUY 10 t, residual 0.56 against
+0.565) — never over, and the bound is nearly tight. The OLD bound was exceeded on **225 of 400,000** quotes; a
+5 t BUY with residual exactly 0.53 turned up in the first state. 0083 itself applied green under 80 randomised
+states; with the assert's `total` perturbed by +1 / −1 / ±1.1 ducats it went red 80 / 79 / 80 / 80 times (a 1-d
+error is caught whichever its sign on 83% of quotes; anything over 2 × bound — 1.08 d at 5 t — always). New
+`breaktest-0083.mjs` mutation *"the sell tax is left out of its breakdown"* goes RED on (i) (`SELL line mid
+379.19 - tax 0.00 - spread 3.79 is not its total 364`).
+
+**Why in place.** `docs/DEPLOY_RUNBOOK.md` "What is never done here" + `docs/NO_SPAGHETTI.md` §3: an assert-only
+edit is the one sanctioned change to an applied migration (precedents 0012, 0047, 0059). Only the `do $$` block
+moved; no body, grant or comment on a shipped object changed, so production stays byte-identical and re-runs
+nothing. Cost: the chain fingerprint moves, so local-mode worlds rebuild once. Same tolerance mirrored in
+`scripts/db/proofs/10_manifest.sql` §8 (comment points at 0083's derivation).
+
+### 2. "No fleets yet" on a cold load — the store published the world before its fleets
+
+**Root cause.** `src/live/worldStore.ts` `open()` did `set({ snapshot, … })` and *then* `await get().refresh()`.
+For the whole first fleets read the store read `snapshot` set, `fleets: []`. COMMAND gates "loaded" on the
+snapshot (`src/features/command/CommandScreen.tsx:72`) and then took the empty list as an answer (`:79`).
+FLEETS, PORT, MAP, History, Rank and Codex gate on `phase === 'ready'`, which was set only after the read, and
+the shell's register gate does too — so only COMMAND showed it, but the false state was the store's.
+
+**Fix, at the one authority.** `open()` now runs the first `refresh()` and then publishes the snapshot, its
+lookups and `phase: 'ready'` in ONE `set()`: no state exists in which the world is visible without its fleets,
+and the two readings of "the world is up" (`snapshot`, `phase`) cannot disagree. The `snapshot` field's doc says
+so. No screen changed.
+
+**Proof.** `tests/firstRead.empty.spec.ts`: a MutationObserver installed before the first script records every
+moment "No fleets yet" is in the document during a cold load of COMMAND and of FLEETS, and requires it never was
+(non-vacuity: it must have seen the world opening). Against the unfixed build: COMMAND **red 4 of 4**
+(`"CommandNo fleets yet. Start your company…"` at ~10.6 s), FLEETS green. Against the fixed build: 12 of 12 green.
+
+**Gates on this branch:** lint, typecheck, build, `db:check-versions`, `db:proof` (exit 0, no FAIL), and
+`tests/layout.spec.ts` + `tests/flicker.spec.ts` + `tests/firstRead.empty.spec.ts` (26 passed, 0 skipped),
+`tests/sections.spec.ts` + `tests/duplication.spec.ts` (18 passed).
+
 ## 2026-10-01 — DEPLOYED: 0095 (price record swept every tick); routes switched ON
 
 Read on the target: `reindex index concurrently public.price_history_pkey` (738 MB → 7.3 MB, DB 841 → 110 MB,
