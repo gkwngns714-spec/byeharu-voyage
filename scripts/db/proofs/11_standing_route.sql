@@ -27,6 +27,7 @@
 -- @pass ROUTE_AFK_LAPS       tick_arrivals alone ran a two-stop route for at least three laps: every arrival refilled the queue and departed, ducats moved, and every closed lap is a ROUTE_LAP line in world.ledger
 -- @pass ROUTE_BOOKS_BALANCE  at the paced hold the purse had moved exactly the sum of the closed laps' net, and the route waited for the next game-day with an empty queue
 -- @pass ROUTE_DARK           with the switch off the four verbs refuse E_UNAVAILABLE through the door and a woken tick writes no order
+-- @pass ROUTE_0096_DOOR      (0096) through the client door: a route calling at one harbour twice saves, a stop's crew_up is saved and served, and SELL <good> ALL over the day's allowance sells the allowance while an explicit quantity over it refuses whole
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -220,4 +221,79 @@ begin
     raise exception 'PROOF 11 FAILED: with the switch off the woken tick wrote an order or moved the fleet';
   end if;
   raise notice 'PASS: ROUTE_DARK — switch off: the four verbs answered E_UNAVAILABLE through the door, the read says off, and a tick past the hold plus an advance wrote no order';
+end $$;
+
+-- ── 5. WHAT 0096 GAVE A PLAYER'S ROUTE, THROUGH THE DOOR ─────────────────────────────────────────
+do $$
+declare
+  c_auth  constant uuid := '00000000-0f11-4000-8000-000000000096';
+  v_player uuid;
+  v_fleet  uuid;
+  v_lis    uuid;
+  v_good   text;
+  v_good_id uuid;
+  v_lf jsonb; v_fl jsonb; v_fc jsonb; v_cf jsonb;
+  v_res    jsonb;
+  v_cap    numeric;
+  v_fail   text;
+  v_sold   numeric;
+begin
+  update public.world_config set value = 'true'::jsonb where key = 'standing_routes_enabled';
+  update public.world_config set value = to_jsonb(0.0) where key = 'hazard_p_max';
+  select id into v_lis from public.ports where code = 'LIS';
+  v_player := public.new_house(c_auth, 'Casa da Porta', 'PRT');
+  select id into v_fleet from public.fleets where player_id = v_player;
+  select jsonb_build_array(jsonb_build_array(a.roadstead_lat, a.roadstead_lon), jsonb_build_array(b.roadstead_lat, b.roadstead_lon))
+    into v_lf from public.sea_reaches a, public.sea_reaches b where a.code = 'LIS' and b.code = 'FNC';
+  v_fl := jsonb_build_array(v_lf->1, v_lf->0);
+  select jsonb_build_array(jsonb_build_array(a.roadstead_lat, a.roadstead_lon), jsonb_build_array(b.roadstead_lat, b.roadstead_lon))
+    into v_fc from public.sea_reaches a, public.sea_reaches b where a.code = 'FNC' and b.code = 'CAD';
+  v_cf := jsonb_build_array(v_fc->1, v_fc->0);
+
+  perform cmd.assume_identity(c_auth);
+  set local role authenticated;
+  -- a loop that calls at Funchal twice, crew_up on the second visit
+  v_res := cmd.standing_route_save(null, 'Twice Funchal', jsonb_build_array(
+    jsonb_build_object('port', 'LIS', 'course', v_lf),
+    jsonb_build_object('port', 'FNC', 'course', v_fc),
+    jsonb_build_object('port', 'CAD', 'course', v_cf),
+    jsonb_build_object('port', 'FNC', 'course', v_fl, 'crew_up', true)), 0, 20);
+  if not coalesce((v_res->>'ok')::boolean, false) then
+    raise exception 'PROOF 11 FAILED: a loop calling twice at one harbour was refused through the door: %', v_res;
+  end if;
+  if (select (x->'stops'->3->>'crew_up')::boolean from jsonb_array_elements(world.standing_routes()->'routes') x
+       where x->>'name' = 'Twice Funchal') is not true
+     or (select (x->'stops'->1->>'crew_up')::boolean from jsonb_array_elements(world.standing_routes()->'routes') x
+       where x->>'name' = 'Twice Funchal') is not false then
+    raise exception 'PROOF 11 FAILED: crew_up was not saved and served per stop';
+  end if;
+  reset role;
+
+  -- D3 through the door: a good she carries, the day's allowance cut to 10
+  select gl->>'code' into v_good
+    from jsonb_array_elements(world.market(v_lis)->'goods') gl
+   where (gl->>'offered')::boolean and (gl->>'available')::boolean
+   order by gl->>'code' limit 1;
+  select id into v_good_id from public.goods where code = v_good;
+  perform public.fleet_load(v_fleet, v_good, 20, 1);
+  insert into public.trade_daily (player_id, port_id, good_id, game_day, qty)
+  select v_player, v_lis, v_good_id, world.game_day(),
+         greatest(0, public.wc_num('daily_cap_fraction') * pg.stock_target - 10)
+    from public.port_goods pg where pg.port_id = v_lis and pg.good_id = v_good_id
+  on conflict (player_id, port_id, good_id, game_day) do update set qty = excluded.qty;
+  v_cap := floor(world.daily_cap_remaining(v_player, v_lis, v_good_id));
+  perform cmd.assume_identity(c_auth);
+  set local role authenticated;
+  v_res := cmd.issue(v_fleet, format('SELL %s 15', v_good));
+  v_fail := coalesce(v_res->>'error_code', (select o.error_code from public.orders o where o.fleet_id = v_fleet and o.verb = 'SELL' order by o.seq desc limit 1));
+  perform cmd.clear(v_fleet, false);
+  v_res := cmd.issue(v_fleet, format('SELL %s ALL', v_good));
+  reset role;
+  select coalesce((o.result->>'qty')::numeric, 0) into v_sold from public.orders o
+   where o.fleet_id = v_fleet and o.verb = 'SELL' and o.status = 'done' order by o.seq desc limit 1;
+  if v_cap <> 10 or v_fail is distinct from 'E_DAILY_CAP' or v_sold <> v_cap then
+    raise exception 'PROOF 11 FAILED: D3 through the door — allowance %, an explicit 15 answered %, ALL sold %', v_cap, v_fail, v_sold;
+  end if;
+  raise notice 'PASS: ROUTE_0096_DOOR — through the door: a loop calling twice at Funchal saved, crew_up served on its 4th stop only, and with an allowance of % an explicit SELL 15 answered % while SELL ALL sold %',
+    v_cap, v_fail, v_sold;
 end $$;

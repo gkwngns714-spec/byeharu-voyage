@@ -37,6 +37,8 @@ export interface RouteStopDraft {
    * a floor on "sell everything" — keeps it when the stop is edited, instead of losing it silently.
    */
   repair: boolean
+  /** 0096: hire back to strength before sailing on — carried through untouched, as `repair` is. */
+  crewUp: boolean
   sellAllFloor: { price_limit: number | null; at_profit: boolean }
   kept: StandingRouteLine[]
 }
@@ -50,6 +52,7 @@ export function emptyStop(port: string): RouteStopDraft {
     buyUnits: null,
     buyMax: null,
     repair: false,
+    crewUp: false,
     sellAllFloor: { price_limit: null, at_profit: false },
     kept: [],
   }
@@ -68,6 +71,7 @@ export function draftOfRoute(route: StandingRoute): RouteStopDraft[] {
       buyUnits: buy?.qty ?? null,
       buyMax: buy?.price_limit ?? null,
       repair: s.repair,
+      crewUp: s.crew_up ?? false,
       sellAllFloor: { price_limit: sellAll?.price_limit ?? null, at_profit: sellAll?.at_profit ?? false },
       kept: s.lines.filter((l) => l !== buy && l !== sellAll),
     }
@@ -115,7 +119,7 @@ export function routePayload(
       lines.push({ kind: 'BUY', good: here.buyGood, qty: here.buyUnits, price_limit: here.buyMax })
     }
     lines.push(...carried('BUY'))
-    out.push({ port: here.port, course, repair: here.repair, lines })
+    out.push({ port: here.port, course, repair: here.repair, crew_up: here.crewUp, lines })
   }
   return { ok: true, stops: out }
 }

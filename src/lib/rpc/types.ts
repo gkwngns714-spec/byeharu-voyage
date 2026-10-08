@@ -1475,6 +1475,9 @@ export interface StandingRouteStop {
   /** The proposed course of the leg FROM this stop TO the next — [[lat, lon], …]. */
   course: [number, number][]
   repair: boolean
+  /** 0096: hire back to `crew_required` before sailing on (`HIRE n`, rendered by the one tail).
+   *  Optional for serve-order: a server older than 0096 does not serve it. */
+  crew_up?: boolean
   lines: StandingRouteLine[]
 }
 
@@ -1498,7 +1501,17 @@ export interface StandingRouteLap {
  *  (0093) is a fleet that cannot move on by itself (unable to sail, adrift, anchored). */
 export type StandingRouteState = 'off' | 'unassigned' | 'paused' | 'stopped' | 'blocked' | 'waiting' | 'sailing' | 'in_port'
 
-export type StandingRoutePausedReason = 'player' | 'reserve' | 'losing' | 'off_route' | 'error' | 'edited'
+export type StandingRoutePausedReason =
+  | 'player'
+  | 'reserve'
+  | 'losing'
+  | 'off_route'
+  | 'error'
+  | 'edited'
+  /** 0096 — the world's own pauses of a MERCHANT route (docs/NPC_TRADERS.md §4.5); a player's
+   *  route never carries them, but the word table is one. */
+  | 'dark'
+  | 'laid_up'
 
 export interface StandingRoute {
   id: string
@@ -1508,6 +1521,8 @@ export interface StandingRoute {
   fleet: { id: string; name: string } | null
   cursor: number
   lap_no: number
+  /** 0096: this route's own pace (null = the knob). Read-only; the editor never writes it. */
+  laps_per_game_day?: number | null
   state: StandingRouteState
   paused_reason: StandingRoutePausedReason | null
   /** When a paced route may start its next lap (ISO time), or null. */
@@ -1539,6 +1554,7 @@ export interface StandingRouteStopDraft {
   port: string
   course: [number, number][]
   repair?: boolean
+  crew_up?: boolean
   lines: { kind: 'SELL' | 'BUY'; good?: string | null; qty?: number | null; price_limit?: number | null; at_profit?: boolean }[]
 }
 
@@ -1564,4 +1580,128 @@ export interface StandingRoutePaused {
   ok: true
   route: string
   paused: boolean
+}
+
+// ── MERCHANTS (0099, docs/NPC_TRADERS.md §7) ───────────────────────────────────────────────────
+// A merchant company is a company the world keeps (`players.is_npc`). These are the ONLY shapes in
+// which one reaches a client: where its fleets are (`world.sea_traffic`) and one fleet's card
+// (`world.npc_fleet_card`). Neither carries a queue, a cost basis, a version or a ledger line.
+
+/** The nation family a merchant's hull is inked in (`npc_houses.ink`, authored world data). */
+export type MerchantInk = 'prt' | 'esp' | 'nld' | 'eng' | 'han' | 'ita' | 'ott' | 'east'
+
+/** One merchant fleet on the sea, in the voyage shape the chart already draws. At sea `voyage` is
+ *  the CURRENT SEGMENT only (two points, `position.seg_index` 0) — all the drift needs. */
+export interface TrafficFleet {
+  id: string
+  company: string
+  nation_code: string | null
+  ink: MerchantInk
+  name: string
+  status: FleetStatus
+  /** Hulls in the fleet. */
+  ships: number
+  /** Port CODE she lies in, or null at sea. */
+  port: string | null
+  /** The SERVED roadstead of that port, [lat, lon] — where the chart draws her at anchor. */
+  roadstead: [number, number] | null
+  anchor: [number, number] | null
+  /** No `id`: a served voyage id would be a callable handle. */
+  voyage: Omit<FleetVoyage, 'id'> | null
+  /** When her next lap may start (ISO), while she is held in port; else null. */
+  next_lap_at: string | null
+}
+
+export interface SeaTraffic {
+  /** The dark-first switch (`npc_traders_enabled`). False: `fleets` is empty. */
+  enabled: boolean
+  at: string
+  fleets: TrafficFleet[]
+}
+
+/** `public.route_earnings` — a route's laps, summed by the server. Never summed here. */
+export interface RouteEarnings {
+  /** Σ net of the laps closed in the last 24 real hours. */
+  day: number
+  day_laps: number
+  /** The oldest of those laps' close (ISO), or null. */
+  day_since: string | null
+  /** True once a whole real day of laps is held — before that `day` is "so far today". */
+  day_full: boolean
+  /** Average net of the last seven closed laps; null until one has closed. */
+  lap: number | null
+  /** The last seven nets, newest first. */
+  laps_recent: number[]
+  laps_done: number
+}
+
+export interface MerchantShip {
+  name: string
+  class: string
+  is_flagship: boolean
+  durability: number
+  max_durability: number
+  crew: number
+  crew_required: number
+  crew_max: number
+  hold: number
+  hold_rated: number
+  speed: number
+  speed_rated: number
+  cargo: Record<string, number>
+  cargo_tuns: number
+  fittings: { name: string; qty: number }[]
+}
+
+export interface MerchantOfficer {
+  name: string
+  specialty: OfficerSpecialty
+  bonus_pct: number
+  nation: string | null
+  home_port: string | null
+}
+
+export interface MerchantSkill {
+  code: string
+  name: string
+  level: number
+  max: number
+}
+
+/** `world.npc_fleet_card(fleet)` — everything a player may know about ONE merchant fleet. */
+export interface MerchantCard {
+  company: {
+    name: string
+    nation_code: string | null
+    ink: MerchantInk
+    blurb: string
+    master: string
+    /** The company's purse. A merchant has no privacy; its fortune rising and falling is the show. */
+    fortune: number
+    refounded: number
+    refounded_at: string | null
+  }
+  fleet: {
+    id: string
+    name: string
+    status: FleetStatus
+    port: string | null
+    roadstead: [number, number] | null
+    anchor: [number, number] | null
+    /** The FULL voyage — the tapped fleet alone, so the chart can draw her leg. */
+    voyage: FleetVoyage | null
+  }
+  route: {
+    name: string
+    stops: string[]
+    lap_no: number
+    state: StandingRouteState
+    next_lap_at: string | null
+    paused_reason: StandingRoutePausedReason | null
+    last_skipped: StandingRouteLap['skipped']
+  } | null
+  earnings: RouteEarnings | null
+  ships: MerchantShip[]
+  officers: MerchantOfficer[]
+  skills: MerchantSkill[]
 }
