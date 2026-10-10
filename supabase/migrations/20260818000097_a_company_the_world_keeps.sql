@@ -65,8 +65,10 @@ insert into public.world_config (key, value, description) values
    '0097: the dark-first switch for merchant companies (docs/NPC_TRADERS.md §9). false = merchant routes '
    'are paused dark, world.sea_traffic / world.npc_fleet_card answer nothing. Flip with '
    'public.npc_traders_switch(true), never by hand: the switch also tends at once.'),
-  ('npc_fleet_max', to_jsonb(40),
-   '0097: how many merchant fleets may sail, in roster order; the rest stay dark. The live lever if the sea looks crowded.'),
+  ('npc_fleet_max', to_jsonb(120),
+   '0097: how many merchant fleets may sail, in roster order; the rest stay dark. The live lever if the sea looks crowded. '
+   'Raised from 40 to 120 on 2026-10-10: the owner read the map and said the sea must look busy, so the roster was grown '
+   'threefold (docs/NPC_TRADERS.md §3.2) and a cap of 40 would have left two thirds of it dark.'),
   ('npc_laps_per_game_day', to_jsonb(6),
    '0097: the pace every merchant route is saved with (an interval of game_day_seconds / N between lap starts).'),
   ('npc_lines_per_stop', to_jsonb(3),
@@ -204,8 +206,12 @@ as $$
   -- purchase and no sale and is a large loss by construction (a probe merchant read −116,690 on a
   -- lap whose cargo fetched +139,165 the next lap), lap 2..N each hold one sale and one purchase
   -- and are the honest figure, and the open leg's cargo is in no lap at all. One closed lap can
-  -- say what that lap's books did; it cannot say what a lap EARNS, so `lap` is null until a second
-  -- lap has closed and `lap_basis` says how many laps the average stands on. Shifting the boundary
+  -- say what that lap's books did; it cannot say what a lap EARNS. So LAP 1 IS NOT AVERAGED AT ALL —
+  -- moving the threshold to two laps was not enough, because the poisoned lap stayed inside the
+  -- seven-lap window and dragged the figure with it (a probe route with nets [-10397, +7532]
+  -- printed -1433 a lap for a steady +7532: the 2026-10-10 review). `lap` is the mean of the closed
+  -- laps FROM THE SECOND ONWARDS, null until one of those exists, and `lap_basis` says how many it
+  -- stands on. Shifting the boundary
   -- itself would change what every PLAYER's route history means and is not this slice's to do —
   -- recorded in docs/NPC_TRADERS.md §7.4 and docs/OWNER_REQUESTS.md.
   select jsonb_build_object(
@@ -217,12 +223,12 @@ as $$
                    where x.route_id = p_route and x.closed_at > now() - interval '24 hours'),
     'day_full',  exists (select 1 from public.standing_route_laps x
                           where x.route_id = p_route and x.closed_at <= now() - interval '24 hours'),
-    'lap',       (select case when count(*) >= 2 then round(avg(y.net)) end
+    'lap',       (select case when count(*) >= 1 then round(avg(y.net)) end
                     from (select x.net from public.standing_route_laps x
-                   where x.route_id = p_route and x.closed_at is not null
+                   where x.route_id = p_route and x.closed_at is not null and x.lap_no >= 2
                    order by x.lap_no desc limit 7) y),
     'lap_basis', (select count(*) from (select 1 from public.standing_route_laps x
-                   where x.route_id = p_route and x.closed_at is not null
+                   where x.route_id = p_route and x.closed_at is not null and x.lap_no >= 2
                    order by x.lap_no desc limit 7) y),
     'laps_recent', coalesce((select jsonb_agg(y.net order by y.lap_no desc) from (select x.net, x.lap_no
                    from public.standing_route_laps x where x.route_id = p_route and x.closed_at is not null
@@ -687,7 +693,13 @@ begin
         -- one route, so planned = 0 means she was NOT re-planned — laid up again (nothing pays),
         -- busy, or failed — and she waits. Both arms are acceptable outcomes (NO_SPAGHETTI §7C):
         -- resume on fresh lines, or wait; she is never resumed on stale ones.
-        if sr.paused_reason = 'laid_up' and coalesce((v_res->>'planned')::int, 0) = 0 then
+        --
+        -- AND THAT HOLDS FOR EVERY PAUSE, not only 'laid_up' (the 2026-10-10 review): a dark or
+        -- losing route whose plan RAISED would otherwise have been resumed on week-old lines, which
+        -- is the very thing the sentence above claims never happens. Counted in the notes, so a
+        -- route that is never planned is visible in the receipt rather than silently stuck.
+        if coalesce((v_res->>'planned')::int, 0) = 0 then
+          v_notes := v_notes || jsonb_build_object('route', sr.name, 'not_planned', coalesce(sr.paused_reason, 'unstarted'));
           continue;
         end if;
         if sr.fleet_id is null then
@@ -929,30 +941,22 @@ $h$begin
     return old;
   end if;
   raise exception '% is append-only: % is not permitted', tg_table_name, tg_op$h$),
-('cmd.standing_route_tail(uuid, integer, uuid)', 1,
-$h$  if coalesce(v_crew, false) then
-    v_short := public.fleet_crew_shortfall(p_fleet);
-    if v_short > 0 then$h$,
-$h$  if coalesce(v_crew, false) then
-    v_short := public.fleet_crew_shortfall(p_fleet);
-    -- 0097: A MERCHANT NEVER TAKES THE LAST HANDS OFF A QUAY. Every merchant stop carries crew_up,
-    -- hazards are on in production, and NO tick regenerates ports.crew_pool (only do_hire and
-    -- do_dismiss write it) — so 32 merchant fleets hiring after every raid loss would drain, for
-    -- good, the pools players hire from. A merchant hires only out of the hands ABOVE
-    -- npc_crew_pool_floor; because her ask is then never more than the pool, she also never
-    -- recruits at the urgent rate (do_hire, 0007:669). A player''s HIRE is not touched by this.
-    if v_short > 0 and exists (select 1 from public.fleets f join public.players p on p.id = f.player_id
-                                where f.id = p_fleet and p.is_npc) then
-      -- coalesce, not a join that may yield no row: a fleet at sea has no port_id, and the answer
-      -- there must be "no hands from here" (a HIRE would be refused E_NOT_DOCKED anyway) rather
-      -- than a null that silently skips the cap.
-      v_short := least(v_short, greatest(0, coalesce((select po.crew_pool
-                                                        from public.fleets f
-                                                        join public.ports po on po.id = f.port_id
-                                                       where f.id = p_fleet), 0)
-                                            - public.wc_int('npc_crew_pool_floor')));
-    end if;
-    if v_short > 0 then$h$),
+('cmd.do_hire(uuid, jsonb)', 1,
+$h$  select crew_pool into v_pool from public.ports where id = f.port_id;
+  v_norm := least(v_count, v_pool);$h$,
+$h$  select crew_pool into v_pool from public.ports where id = f.port_id;
+  -- 0097: A MERCHANT NEVER TAKES THE LAST HANDS OFF A QUAY — AND IS NEVER STRANDED FOR WANT OF
+  -- THEM. The rule lives HERE, where the pool is drawn, and nowhere else. Only the hands ABOVE
+  -- npc_crew_pool_floor are drawn from the quay for a merchant company; the rest of her ask is
+  -- recruited at the URGENT rate, which costs crew_urgent_multiplier times as much and takes
+  -- NOTHING off the quay — exactly what already happens to anyone hiring beyond the pool. So the
+  -- quays players hire from cannot be drained by 32 merchant fleets re-crewing after raid losses
+  -- (no tick regenerates crew_pool), and a merchant at a drained quay still sails, poorer.
+  -- `v_pool` itself is left alone, so E_CREW_POOL below still means "this port has no hands at
+  -- all" for everyone. A player''s HIRE is untouched.
+  v_norm := least(v_count, case when exists (select 1 from public.players p where p.id = f.player_id and p.is_npc)
+                                then greatest(0, v_pool - public.wc_int('npc_crew_pool_floor'))
+                                else v_pool end);$h$),
 ('public.tick_reconcile()', 1,
 $h$  v_grants int;
 begin
@@ -1311,13 +1315,18 @@ begin
         v_ceiling, v_code2, v_q, v_unlim,
         (select q.avg_price from world.quote(v_lis, v_good2, greatest(1, v_q), 'buy', null, null) q);
     end if;
-    -- AND THE CAP BOUNDS THE PARCEL, which is the other half of §4.3 and what the old assert was
-    -- reaching for: whatever the ceiling allows, one company may not take more of one good at one
-    -- port in a game-day than the knob's fraction of the port's target.
-    if world.daily_cap_remaining(v_m1, v_lis, v_good2)
-       > public.wc_num('daily_cap_fraction') * v_target + 0.001 then
-      raise exception '0097 self-assert FAIL: the daily cap left % of a target of % at Lisbon',
-        world.daily_cap_remaining(v_m1, v_lis, v_good2), v_target;
+    -- AND THE CAP BOUNDS THE PARCEL THE PLANNER ACTUALLY WROTE, which is the other half of §4.3.
+    -- (Asserting `daily_cap_remaining <= fraction × target` would restate that function's own
+    -- definition and read no parcel at all — the same vacuity under a new name, caught by the
+    -- 2026-10-10 review.) The probe route's own BUY line at Lisbon is measured against what the
+    -- company could still take there when it was planned.
+    select sum(l.qty) into v_q from public.standing_route_lines l
+      join public.standing_route_stops s on s.route_id = l.route_id and s.ord = l.stop_ord
+     where l.route_id = v_route and l.kind = 'BUY' and s.port_id = v_lis;
+    if v_q is null or v_q < 1
+       or v_q > public.wc_num('daily_cap_fraction') * v_target + 0.001 then
+      raise exception '0097 self-assert FAIL: the planner wrote a parcel of % at Lisbon against a cap of % × %',
+        v_q, public.wc_num('daily_cap_fraction'), v_target;
     end if;
 
     -- ONE MERCHANT BUYER PER (port, good): a second merchant on the same pair buys something else.
@@ -1390,8 +1399,31 @@ begin
     if (select count(*) from public.ledger where player_id = v_m1 and kind = 'NPC_CARRIED') <> 1
        or public.ledger_sum(v_m1) <> v_purse
        or (select ducats from public.players where id = v_m1) <> v_purse
+       or (select balance_after from public.ledger where player_id = v_m1 and kind = 'NPC_CARRIED') <> v_purse
        or exists (select 1 from public.ledger where player_id = v_player and kind = 'NPC_CARRIED') then
-      raise exception '0097 self-assert FAIL: the roll-up broke the books: % (purse %, ledger %)', v_res, v_purse, public.ledger_sum(v_m1);
+      raise exception '0097 self-assert FAIL: the roll-up broke the books: % (purse %, ledger %, carried balance %)',
+        v_res, v_purse, public.ledger_sum(v_m1),
+        (select balance_after from public.ledger where player_id = v_m1 and kind = 'NPC_CARRIED');
+    end if;
+    -- THE CASE THAT USED TO GET IT WRONG, run on purpose: a CREDIT and a DEBIT inside ONE
+    -- transaction. Both rows carry the same created_at (it is the transaction's now()), so the old
+    -- `order by created_at desc, balance_after desc` picked the HIGHER balance — the +500 row —
+    -- rather than the last one, and carried a running balance 700 above the purse. Nothing raised,
+    -- because assert_ledger_reconciles only ever checked Σ delta. Computed from the purse, the
+    -- carried balance cannot depend on an order that does not exist.
+    perform public.credit(v_m1, 'PROBE', 500);
+    perform public.credit(v_m1, 'PROBE', -700);
+    select ducats into v_purse from public.players where id = v_m1;
+    if (select max(balance_after) from public.ledger where player_id = v_m1) <= v_purse then
+      raise exception '0097 self-assert FAIL: the probe did not leave a higher balance earlier in the tick (max %, purse %)',
+        (select max(balance_after) from public.ledger where player_id = v_m1), v_purse;
+    end if;
+    v_res := public.npc_compact(now() + interval '14 hours');
+    if (select balance_after from public.ledger where player_id = v_m1 and kind = 'NPC_CARRIED') <> v_purse
+       or public.ledger_sum(v_m1) <> v_purse then
+      raise exception '0097 self-assert FAIL: the carried balance is % and the purse is % (ledger %)',
+        (select balance_after from public.ledger where player_id = v_m1 and kind = 'NPC_CARRIED'),
+        v_purse, public.ledger_sum(v_m1);
     end if;
 
     -- ERROR IS LEFT ALONE BY THE PLAN, AND RESUMED ONCE BY THE UPKEEP AFTER SIX HOURS.
@@ -1507,45 +1539,57 @@ begin
       if sqlerrm like '0097 self-assert FAIL%' then raise; end if;
     end;
 
-    -- A MERCHANT LEAVES HANDS ON THE QUAY, AND A PLAYER'S HIRE IS UNTOUCHED (§13). Both fleets are
-    -- put in Lisbon ten hands short of their complements, and the tail is asked four times with
-    -- Lisbon's pool moved under it. The tail takes the route and the fleet as two arguments and
-    -- checks no relation between them, so the SAME route and stop can be rendered for a player's
-    -- fleet — which is the control that this is a merchant rule and not a new rule for everyone.
+    -- A MERCHANT LEAVES HANDS ON THE QUAY, AND IS NEVER STRANDED FOR WANT OF THEM (§13), WITH THE
+    -- PLAYER AS THE CONTROL. The rule lives in cmd.do_hire, where the pool is drawn, so that is
+    -- what is asked — three times, with Lisbon's pool moved under it. An earlier cut of this rule
+    -- capped the HIRE line instead, which protected the quay and left a crew-short merchant unable
+    -- to sail for ever (no tick regenerates crew_pool): the 2026-10-10 review.
     select id into v_pfleet from public.fleets where player_id = v_player order by created_at limit 1;
     update public.fleets set port_id = v_lis, status = 'DOCKED' where id in (v_fleet, v_pfleet);
     update public.ships set crew = greatest(0, crew - 10) where fleet_id in (v_fleet, v_pfleet);
-    v_short := public.fleet_crew_shortfall(v_fleet);
-    if v_pfleet is null or v_short < 4 or public.fleet_crew_shortfall(v_pfleet) < 1
-       or (select crew_up from public.standing_route_stops where route_id = v_route and ord = 0) is not true then
-      raise exception '0097 self-assert FAIL: the crew-pool probe has nothing to ask about (short %, player fleet %)',
-        v_short, v_pfleet;
-    end if;
-    -- (1) AT THE FLOOR she asks for nothing. (2) Three hands above it she asks for exactly three.
-    -- (3) With the quay full she asks for her whole shortfall — so the clause caps, never suppresses.
-    update public.ports set crew_pool = public.wc_int('npc_crew_pool_floor') where id = v_lis;
-    if array_to_string(cmd.standing_route_tail(v_route, 0, v_fleet), ' ') like '%HIRE%' then
-      raise exception '0097 self-assert FAIL: a merchant hired at the crew-pool floor: %',
-        cmd.standing_route_tail(v_route, 0, v_fleet);
-    end if;
-    update public.ports set crew_pool = public.wc_int('npc_crew_pool_floor') + 3 where id = v_lis;
-    if (cmd.standing_route_tail(v_route, 0, v_fleet))[1] <> 'HIRE 3' then
-      raise exception '0097 self-assert FAIL: a merchant did not stop at the hands above the floor: %',
-        cmd.standing_route_tail(v_route, 0, v_fleet);
-    end if;
-    update public.ports set crew_pool = public.wc_int('npc_crew_pool_floor') + 1000 where id = v_lis;
-    if (cmd.standing_route_tail(v_route, 0, v_fleet))[1] <> format('HIRE %s', v_short) then
-      raise exception '0097 self-assert FAIL: a merchant on a full quay did not ask for her shortfall %: %',
-        v_short, cmd.standing_route_tail(v_route, 0, v_fleet);
-    end if;
-    -- (4) THE CONTROL: a PLAYER's fleet, same route, same stop, the quay back at the floor.
-    update public.ports set crew_pool = public.wc_int('npc_crew_pool_floor') where id = v_lis;
-    if (cmd.standing_route_tail(v_route, 0, v_pfleet))[1]
-       <> format('HIRE %s', public.fleet_crew_shortfall(v_pfleet)) then
-      raise exception '0097 self-assert FAIL: the merchant crew rule reached a player''s fleet: %',
-        cmd.standing_route_tail(v_route, 0, v_pfleet);
+    perform public.credit(v_m1, 'PROBE', 100000);
+    perform public.credit(v_player, 'PROBE', 100000);
+    if v_pfleet is null or public.fleet_crew_shortfall(v_fleet) < 5
+       or public.fleet_crew_shortfall(v_pfleet) < 5 then
+      raise exception '0097 self-assert FAIL: the crew probe has no room to hire (merchant %, player %)',
+        public.fleet_crew_shortfall(v_fleet), public.fleet_crew_shortfall(v_pfleet);
     end if;
 
+    -- (1) AT THE FLOOR: a merchant hires her five, the quay keeps every hand, and she pays the
+    -- urgent rate for all five.
+    update public.ports set crew_pool = public.wc_int('npc_crew_pool_floor') where id = v_lis;
+    select ducats into v_purse from public.players where id = v_m1;
+    v_res := cmd.do_hire(v_fleet, jsonb_build_object('count', 5));
+    if (v_res->>'urgent')::int <> 5
+       or (select crew_pool from public.ports where id = v_lis) <> public.wc_int('npc_crew_pool_floor')
+       or (select ducats from public.players where id = v_m1)
+          <> v_purse - round(5 * public.wc_num('hire_crew_rate') * public.wc_num('crew_urgent_multiplier'))::bigint then
+      raise exception '0097 self-assert FAIL: at the floor a merchant took % hand(s) off the quay (pool %, receipt %)',
+        5 - (v_res->>'urgent')::int, (select crew_pool from public.ports where id = v_lis), v_res;
+    end if;
+
+    -- (2) THREE HANDS ABOVE THE FLOOR: exactly those three come off the quay and the other two are
+    -- urgent — so the floor is a floor, not a ban.
+    update public.ports set crew_pool = public.wc_int('npc_crew_pool_floor') + 3 where id = v_lis;
+    v_res := cmd.do_hire(v_fleet, jsonb_build_object('count', 5));
+    if (v_res->>'urgent')::int <> 2
+       or (select crew_pool from public.ports where id = v_lis) <> public.wc_int('npc_crew_pool_floor') then
+      raise exception '0097 self-assert FAIL: three hands above the floor gave % urgent and left the pool at %',
+        (v_res->>'urgent')::int, (select crew_pool from public.ports where id = v_lis);
+    end if;
+
+    -- (3) THE CONTROL: a PLAYER at the same quay, at the floor, draws from the pool as she always
+    -- did and pays the ordinary rate. This is a merchant rule and nobody else's.
+    update public.ports set crew_pool = public.wc_int('npc_crew_pool_floor') where id = v_lis;
+    select ducats into v_purse from public.players where id = v_player;
+    v_res := cmd.do_hire(v_pfleet, jsonb_build_object('count', 5));
+    if (v_res->>'urgent')::int <> 0
+       or (select crew_pool from public.ports where id = v_lis) <> public.wc_int('npc_crew_pool_floor') - 5
+       or (select ducats from public.players where id = v_player)
+          <> v_purse - round(5 * public.wc_num('hire_crew_rate'))::bigint then
+      raise exception '0097 self-assert FAIL: the merchant crew rule reached a player: % (pool %)',
+        v_res, (select crew_pool from public.ports where id = v_lis);
+    end if;
     -- OFF AGAIN: every assigned merchant route is dark.
     v_res := public.npc_traders_switch(false);
     if public.npc_traders_on() or exists (select 1 from public.standing_routes sr join public.players p on p.id = sr.player_id
@@ -1573,5 +1617,5 @@ begin
     raise exception '0097 self-assert FAIL: % of the five churned tables carry the sweep', v_rows;
   end if;
 
-  raise notice '0097 self-assert ok: A COMPANY THE WORLD KEEPS. settle_standings, forbid_mutation and tick_reconcile reverse to their pre-images hunk by hunk, ACLs unmoved; every npc_* function, the ceiling and the earnings reading are server-only and the world data is unreadable to clients; the upkeep scan saw its positive control and found no executor write and no waiting lock in npc_tend or npc_plan; npc_plan names no mid_price, one ranking call and one limited sell quote; no live function spells a merchant as auth_uid is null (positive control seen). On probe merchants founded by npc_found (purse = capital, ships, flagship, officer, skills, a route with no lines): dark, nothing moved; the switch planned and started one in a call; the ceiling at target stock was the ask × 1.30 to the cent; the listed ware was bought over an unlisted one, sized by the sink; the stock stayed above its floor; a second merchant took no shared (port, good); the planning start moved with the hour; the arrivals tick alone closed a lap whose net is the day''s earnings; Rank kept the player and not the merchant; the compactor could not open a player''s ledger with its GUC nor a merchant''s without it, and rolled the books into one carried row that reconciles; an error route was left by the plan and resumed once after seven hours; three clears laid a route up; three refounds a week were paid and the fourth laid the company up on its alternate loop; reconcile ran the upkeep and still caught a falsified purse; off made every merchant route dark. Rolled back; the switch ships OFF.';
+  raise notice '0097 self-assert ok: A COMPANY THE WORLD KEEPS. settle_standings, forbid_mutation and tick_reconcile reverse to their pre-images hunk by hunk, ACLs unmoved; every npc_* function, the ceiling and the earnings reading are server-only and the world data is unreadable to clients; the upkeep scan saw its positive control and found no executor write and no waiting lock in npc_tend or npc_plan; npc_plan names no mid_price, one ranking call and one limited sell quote; no live function spells a merchant as auth_uid is null (positive control seen). On probe merchants founded by npc_found (purse = capital, ships, flagship, officer, skills, a route with no lines): dark, nothing moved; the switch planned and started one in a call; the ceiling at target stock was the ask × 1.30 to the cent; the listed ware was bought over an unlisted one, sized by the sink; the BUY ceiling bound the fill where no limit did and the planner''s parcel stayed inside the daily cap; a merchant hired at the quay''s floor without taking a hand off it while a player drew from the pool as always; a laid-up route on a dead market stayed laid up and was taken up again the moment the market paid; the compactor rolled nothing while dark and carried an exact running balance; a second merchant took no shared (port, good); the planning start moved with the hour; the arrivals tick alone closed a lap whose net is the day''s earnings; Rank kept the player and not the merchant; the compactor could not open a player''s ledger with its GUC nor a merchant''s without it, and rolled the books into one carried row that reconciles; an error route was left by the plan and resumed once after seven hours; three clears laid a route up; three refounds a week were paid and the fourth laid the company up on its alternate loop; reconcile ran the upkeep and still caught a falsified purse; off made every merchant route dark. Rolled back; the switch ships OFF.';
 end $$;

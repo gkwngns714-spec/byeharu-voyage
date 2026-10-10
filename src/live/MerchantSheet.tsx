@@ -15,7 +15,7 @@ import {
 } from '../components/ui'
 import { CHART_CHROME } from '../chart'
 import { useShellState } from '../app/shellState'
-import { formatDucats, formatDucatsDelta, formatClock, formatInt, formatRealShort } from '../lib/format'
+import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../lib/format'
 import { hullFraction } from '../domain/fleet'
 import { skippedWords } from '../domain/route'
 import type { MerchantCard } from '../lib/rpc'
@@ -122,8 +122,10 @@ function MerchantBody({
               unit={
                 e && e.day_full
                   ? 'a day'
-                  : e && e.day_since
-                    ? `since ${formatClock(Date.parse(e.day_since))}`
+                  : // A SPAN, NOT A CLOCK TIME: `day_since` can be up to 24 h old, and "since 13:05"
+                    // read as this afternoon (the same defect the Fortune line had).
+                    e && e.day_since
+                    ? `over the last ${formatRealShort(nowMs - Date.parse(e.day_since))}`
                     : undefined
               }
             />
@@ -138,7 +140,16 @@ function MerchantBody({
           label="A lap"
           value={
             <Figure
-              value={e && e.lap !== null ? `≈ ${formatDucats(e.lap)}` : e && e.laps_done > 0 ? 'first lap under way' : 'no lap yet'}
+              // `laps_done` counts CLOSED laps and lap numbering starts at 1, so `laps_done === 1`
+              // means her first lap is behind her and the second is under way — which is also the
+              // one the server will not average, because a lap closes before the home sale.
+              value={
+                e && e.lap !== null
+                  ? `≈ ${formatDucats(e.lap)}`
+                  : e && e.laps_done > 0
+                    ? 'one lap closed'
+                    : 'first lap under way'
+              }
               unit={e && e.lap !== null ? `over ${e.lap_basis} laps` : undefined}
             />
           }

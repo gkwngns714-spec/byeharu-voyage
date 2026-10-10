@@ -378,6 +378,15 @@ export const useWorld = create<LiveWorld>((set, get) => {
    */
   let trafficAsked = 0
   let trafficApplied = 0
+  /** THE LAST WANTER ALSO CANCELS WHAT IS ALREADY ON THE WIRE. Clearing `traffic` on release is not
+   *  enough on its own: a read issued before the release lands after it and re-fills the store with
+   *  a reading nobody is watching and nothing will refresh, which a remounted MAP then paints as
+   *  the present — the teleport again, by a longer road (the 2026-10-10 review). Retiring the
+   *  sequence here makes every read older than this moment a no-op, through the same ordering
+   *  mechanism the reader already uses. */
+  const dropTrafficInFlight = (): void => {
+    trafficApplied = ++trafficAsked
+  }
   const readTraffic = async (): Promise<void> => {
     const seq = ++trafficAsked
     const r = await worldSeaTraffic()
@@ -838,10 +847,13 @@ export const useWorld = create<LiveWorld>((set, get) => {
       // and then every hull teleported when the first fresh reading landed. A chart with no
       // merchants on it for one beat is honest; a chart with merchants in last session's places is
       // not (worldStore rule 1: a read is the catch-up).
+      let last = false
       set((s) => {
         const left = Math.max(0, s.trafficWanted - 1)
-        return left === 0 ? { trafficWanted: 0, traffic: null } : { trafficWanted: left }
+        last = left === 0
+        return last ? { trafficWanted: 0, traffic: null } : { trafficWanted: left }
       })
+      if (last) dropTrafficInFlight()
     }
   },
 
