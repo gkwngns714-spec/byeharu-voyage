@@ -73,13 +73,82 @@ test('merchants live in their own list and nothing about your fleets sees them',
   expect(traffic[1].berthCode).toBe('LIS')
   // NO TRACK for a merchant served the current segment only; one for the open merchant's full course
   expect(withTraffic.traffic[0].track).toBeNull()
-  const open = mapTrafficOf(rows, {
+  const openRows = [sailingRow('m-1', [[38.6, -9.4], [36, -12]], [37.1, -11.3]), dockedRow]
+  const open = mapTrafficOf(openRows, {
     id: 'm-1',
-    voyage: { ...rows[0].voyage!, id: 'v-1', course: [[38.6, -9.4], [36, -12], [32.6, -16.95]] },
+    voyage: { ...openRows[0].voyage!, course: [[38.6, -9.4], [36, -12], [32.6, -16.95]] },
   })
   const openModel = buildChartModel([OWN], [LIS, FNC], [], null, open)
   expect(openModel.traffic[0].track).not.toBeNull()
   expect(openModel.traffic[1].track).toBeNull()
+})
+
+// THE CARD LENDS A TRACK AND NEVER A POSITION. The card is re-asked on the beat and lands after it,
+// so a selected hull placed from the card's own voyage stepped BACKWARDS on every beat and then
+// leapt forward when the new card arrived (measured at 390: -25.2 / -20.0 / -6.5 px, each followed
+// ~70 ms later by a +20.9..+24.6 px leap; no unselected hull ever moved backwards). These two hold
+// the rule: the position is the beat's, the polyline may be the card's, and a card that does not
+// contain the served segment lends nothing at all.
+test('the open merchant takes her TRACK from the card and her POSITION from the beat', () => {
+  const row = sailingRow('m-1', [[38.6, -9.4], [36, -12]], [37.1, -11.3])
+  const stale = {
+    ...row.voyage!,
+    course: [[38.6, -9.4], [36, -12], [32.6, -16.95]] as [number, number][],
+    // the card is a beat behind AND further along: neither figure may reach the chart
+    position: { ...row.voyage!.position!, seg_index: 1, leg_frac: 0.8, lat: 34.2, lon: -14.1 },
+  }
+  const [m] = mapTrafficOf([row], { id: 'm-1', voyage: stale })
+  if (m.kind !== 'sailing') throw new Error('the probe merchant is at sea')
+  expect(m.voyage.at).toEqual({ lat: 37.1, lon: -11.3 })
+  expect(m.voyage.legFrac).toBe(0.25)
+  // the WHOLE course, with the served segment located inside it
+  expect(m.voyage.course).toHaveLength(3)
+  expect(m.voyage.segIndex).toBe(0)
+  const model = buildChartModel([OWN], [LIS, FNC], [], null, [m])
+  expect(model.traffic[0].at).toEqual({ lat: 37.1, lon: -11.3 })
+  expect(model.traffic[0].track).not.toBeNull()
+})
+
+test('a card that does not hold the served segment lends nothing', () => {
+  // she has moved on to the next leg; the card still carries the one before it
+  const row = sailingRow('m-1', [[36, -12], [32.6, -16.95]], [34, -14])
+  const behind = {
+    ...row.voyage!,
+    course: [[38.6, -9.4], [36, -12]] as [number, number][],
+    position: { ...row.voyage!.position!, lat: 38, lon: -10 },
+  }
+  const [m] = mapTrafficOf([row], { id: 'm-1', voyage: behind })
+  if (m.kind !== 'sailing') throw new Error('the probe merchant is at sea')
+  expect(m.voyage.course).toEqual([{ lat: 36, lon: -12 }, { lat: 32.6, lon: -16.95 }])
+  expect(m.voyage.at).toEqual({ lat: 34, lon: -14 })
+  expect(m.voyage.segIndex).toBe(0)
+})
+
+test('merchants lying at one berth are fanned, and the harbour keeps its own dot', () => {
+  const second: TrafficFleet = { ...dockedRow, id: 'm-dock-2', name: 'Prova Doca II' }
+  const third: TrafficFleet = { ...dockedRow, id: 'm-dock-3', name: 'Prova Doca III' }
+  const traffic = mapTrafficOf([dockedRow, second, third])
+  // the first lies exactly where the server put her; the others take their own places
+  expect(traffic.map((t) => t.berthIndex)).toEqual([0, 1, 2])
+  const at = traffic.map((t) => (t.kind === 'anchored' ? `${t.at.lat},${t.at.lon}` : 'sailing'))
+  expect(at[0]).toBe('38.6,-9.4')
+  expect(new Set(at).size).toBe(3)
+  // and each of the three can be opened from the chart, which a stack of three could not be
+  const model = buildChartModel([], [LIS, FNC], [], null, traffic)
+  const opened = new Set<string>()
+  for (const t of model.traffic) {
+    const hit = hitTest(model, [], project(t.at), 1)
+    if (hit?.kind === 'merchant') opened.add(hit.id)
+  }
+  expect(opened).toEqual(new Set(['m-dock', 'm-dock-2', 'm-dock-3']))
+  // THE DOT CITY KEEPS ITS TAP: Lisbon is drawn as a dot, a merchant is moored on it, and a tap on
+  // the mark opens the PORT — the hull answers only at the dot's own reach.
+  const onLisbon = mapTrafficOf([{ ...dockedRow, roadstead: [LIS.lat, LIS.lon] }])
+  const dotModel = buildChartModel([], [LIS, FNC], [], null, onLisbon)
+  expect(hitTest(dotModel, [], project({ lat: LIS.lat, lon: LIS.lon }), 40, [LIS], 20)).toEqual({
+    kind: 'port',
+    code: 'LIS',
+  })
 })
 
 test('an own fleet wins a tie with a merchant; a merchant wins over open water', () => {
@@ -115,29 +184,96 @@ async function merchantsInView(page: Page): Promise<{ total: number; inView: num
 
 
 /** A merchant hull whose centre is on the chart's glass, so a tap can land on it. */
-async function hullInView(page: Page, sailing: boolean | null): Promise<string> {
-  const id = await page.evaluate((wantSailing) => {
-    const chart = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
-    for (const h of document.querySelectorAll('[data-testid="map-merchant"]')) {
-      if (wantSailing !== null && (h.getAttribute('data-merchant-docked') === 'false') !== wantSailing) continue
-      const r = h.getBoundingClientRect()
-      const cx = r.left + r.width / 2
-      const cy = r.top + r.height / 2
-      if (cx > chart.left + 60 && cx < chart.right - 120 && cy > chart.top + 100 && cy < chart.bottom - 120) {
-        return h.getAttribute('data-merchant-id')
+async function hullInView(page: Page, sailing: boolean | null, skip: ReadonlySet<string> = new Set()): Promise<string> {
+  const id = await page.evaluate(
+    ({ wantSailing, seen }) => {
+      const chart = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
+      for (const h of document.querySelectorAll('[data-testid="map-merchant"]')) {
+        if (wantSailing !== null && (h.getAttribute('data-merchant-docked') === 'false') !== wantSailing) continue
+        const mid = h.getAttribute('data-merchant-id')
+        if (mid && seen.includes(mid)) continue
+        const r = h.getBoundingClientRect()
+        const cx = r.left + r.width / 2
+        const cy = r.top + r.height / 2
+        if (cx > chart.left + 60 && cx < chart.right - 120 && cy > chart.top + 100 && cy < chart.bottom - 120) {
+          return mid
+        }
       }
-    }
-    return null
-  }, sailing)
-  if (!id) throw new Error(`no ${sailing === null ? '' : sailing ? 'sailing ' : 'docked '}merchant hull on the glass`)
-  return id
+      return null
+    },
+    { wantSailing: sailing, seen: [...skip] },
+  )
+  if (!id && skip.size === 0) {
+    throw new Error(`no ${sailing === null ? '' : sailing ? 'sailing ' : 'docked '}merchant hull on the glass`)
+  }
+  return id ?? ''
 }
 
-/** Tap a merchant hull where it is drawn NOW (it drifts between frames). */
+/**
+ * Open a merchant the record can say something about — one with a LAP AVERAGE on her sheet.
+ *
+ * The owner read `docs/npc-traders/merchant-sheet-1280.png` on 2026-10-08 and found an earnings
+ * sheet showing `0` and `no lap yet`: a true reading of a merchant that had not finished anything,
+ * and a useless picture of the feature. The fixture warps a few legs, so WHICH merchants have laps
+ * behind them depends on their loops; this tries the hulls on the glass until one of them has a
+ * figure, and settles for the last one if none has (the shot is still taken, the test still
+ * passes — a screenshot is not an assertion).
+ *
+ * Returns the id that is open.
+ */
+async function openMerchantWorthReading(page: Page, sailing: boolean | null): Promise<string> {
+  const tried = new Set<string>()
+  let last = ''
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const id = await hullInView(page, sailing, tried)
+    if (!id) break
+    tried.add(id)
+    last = id
+    await tapHull(page, id)
+    await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
+    const lap = await page.getByTestId('merchant-earnings-lap').textContent()
+    // a lap average is printed as `≈ <figure>`; the two absences say so in words
+    if (lap && lap.includes('≈')) return id
+    // Only give this one up for a candidate that EXISTS: closing the sheet and then finding nothing
+    // else on the glass would leave the caller with no sheet at all, which is how this helper went
+    // red on its first run.
+    if (attempt === 3 || !(await hullInView(page, sailing, tried))) break
+    const close = page.getByTestId('tray-close')
+    if (await close.isVisible().catch(() => false)) await close.click()
+  }
+  if (!last) throw new Error('no merchant hull on the glass to open')
+  // Whatever the path above took, the caller is handed an OPEN sheet.
+  if (!(await page.getByTestId('merchant-sheet').isVisible().catch(() => false))) await tapHull(page, last)
+  await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
+  return last
+}
+
+/**
+ * Tap a merchant hull where it is drawn NOW, and PROVE the tap landed on her.
+ *
+ * A hull at sea drifts every frame, so a click aimed at a box measured a moment ago can land beside
+ * her — and if she has drifted over one of YOUR fleets, the chart gives the tap to your fleet by its
+ * own tie rule (hitTest.ts: an own fleet wins a tie). That is correct behaviour and a race this
+ * suite used to lose about one run in five, opening `Gaivota · Lisbon` instead of the sheet. So the
+ * tap is AIMED AGAIN at her new place, with whatever else it selected closed first, instead of
+ * being asserted once and hoped for.
+ */
 async function tapHull(page: Page, id: string): Promise<void> {
-  const box = await page.locator(`[data-merchant-id="${id}"]`).boundingBox()
-  if (!box) throw new Error('the hull has no box')
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+  const sheet = page.getByTestId('merchant-sheet')
+  for (let aim = 1; aim <= 6; aim++) {
+    const box = await page.locator(`[data-merchant-id="${id}"]`).boundingBox()
+    if (!box) throw new Error(`merchant ${id} has no hull on the glass`)
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+    try {
+      await sheet.waitFor({ state: 'visible', timeout: 3_000 })
+      return
+    } catch {
+      // something else took the tap: close it, and aim at where she is now.
+      const close = page.getByTestId('tray-close')
+      if (await close.isVisible().catch(() => false)) await close.click()
+    }
+  }
+  throw new Error(`six taps at merchant ${id} never opened her sheet`)
 }
 
 test('the merchants sail on the chart, and a tap opens a read-only sheet', async ({ page, request, baseURL }) => {
@@ -160,8 +296,9 @@ test('the merchants sail on the chart, and a tap opens a read-only sheet', async
   const t0 = await hull.getAttribute('transform')
   await expect.poll(async () => hull.getAttribute('transform'), { timeout: 30_000 }).not.toBe(t0)
 
-  // A TAP OPENS THE SHEET — and never the player's own fleet tray.
-  await tapHull(page, sailingId)
+  // A TAP OPENS THE SHEET — and never the player's own fleet tray. The merchant opened is one with
+  // something in her books if any hull on the glass has (the shots below are the feature's record).
+  await openMerchantWorthReading(page, true)
   const sheet = page.getByTestId('merchant-sheet')
   await expect(sheet).toBeVisible({ timeout: 30_000 })
   await expect(page.getByTestId('map-detail-tray')).toHaveCount(0)
@@ -225,9 +362,9 @@ test.describe('wide', () => {
     await ready(page)
     await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
     await page.screenshot({ path: path.join(SHOTS, 'map-merchants-1280.png') })
-    // the wide frame sits close on Lisbon: whichever merchant is on the glass, at sea or at anchor
-    await tapHull(page, await hullInView(page, null))
-    await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
+    // the wide frame sits close on Lisbon: whichever merchant is on the glass, at sea or at anchor —
+    // preferring one whose sheet has a lap figure to show (see openMerchantWorthReading)
+    await openMerchantWorthReading(page, null)
     await page.waitForTimeout(800)
     await page.screenshot({ path: path.join(SHOTS, 'merchant-sheet-1280.png') })
   })
