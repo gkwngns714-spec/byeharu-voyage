@@ -195,7 +195,7 @@ export async function openLocalDb(options: OpenLocalDbOptions): Promise<LocalDb>
         // standing in it, and until 2026-08-20 it took them silently and irrecoverably — a purse
         // that had bought cargo was back at 8,000 ducats with no word said (DEV_LOG D11c). This
         // cannot throw; a failed rescue is reported, never fatal.
-        const rescued = await rescuePlayerRows(pg, stored.fingerprint)
+        const rescued = await rescuePlayerRows(pg, stored.fingerprint, authUid)
         if (rescued.rows > 0) {
           log(
             rescued.stored

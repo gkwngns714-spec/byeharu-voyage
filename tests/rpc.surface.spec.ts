@@ -139,7 +139,8 @@ test('world.snapshot() carries the whole static world, and not the world secret'
 
   // 0045 x20: the served knob and the client's display mirror are ONE number, asserted equal
   // here so neither can move without the other (the mirror lives in src/lib/format/time.ts).
-  expect(snap.config.time_compression).toBe(9600)
+  // 0100 handed back the x20 that 0045 took "for faster testing": a voyage-day is 90 real seconds.
+  expect(snap.config.time_compression).toBe(960)
   expect(snap.config.time_compression).toBe(TIME_COMPRESSION)
   expect(snap.config.order_queue_max).toBe(12)
   for (const key of [

@@ -274,7 +274,7 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // makes the route pace an interval; 0097 builds the dark merchant machinery (switch off).
 // Moved 2026-10-08 to 0099: 0098 founds the merchant companies (generated from data/npc-houses.json by
 // scripts/build-npc-0098.mjs, dark), and 0099 serves them to the chart and the merchant sheet.
-const LAST = '20260818000099_the_sea_shows_who_else_sails.sql'
+const LAST = '20260818000100_the_world_runs_ten_times_slower.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

@@ -55,23 +55,31 @@ export const PLAYER_TABLES = [
 ] as const
 
 /**
- * THE SEED IS WORLD DATA (0098, docs/NPC_TRADERS.md §8.5). A world built since 0098 carries the
- * merchant companies the world keeps — `players.is_npc` — and every row they own sits in the same
- * tables as yours. They are rebuilt by the chain like any port; rescuing them would grow every
- * rescue by the whole seed, overflow the one localStorage slot and drop YOUR rows. So each table
- * is read for the companies that are not merchants, by THE one predicate. A world from an older
- * chain has no `is_npc` column and no merchants, and is read whole, as before.
+ * A RESCUE IS YOUR ROWS, AND ONLY YOURS.
+ *
+ * Two kinds of company live in `public.players` beside you, and neither is worth a byte of the one
+ * localStorage slot this rescue has:
+ *
+ *   * THE MERCHANT COMPANIES THE WORLD KEEPS (0098, docs/NPC_TRADERS.md §8.5) — `players.is_npc`.
+ *     Sixty of them, with their fleets, ships, orders and books in the same tables as yours. They
+ *     are rebuilt by the chain like any port; rescuing them would grow every rescue by the whole
+ *     seed, overflow the slot and drop YOUR rows.
+ *   * THIRTEEN PROBE HOUSES the chain's own self-asserts left behind over fifty migrations —
+ *     Casa do Azeite, Casa do Manifesto, Casa Estalagem and the rest. They are not merchants and
+ *     they are not you; a filter on `is_npc` alone hands them to the rescue, which is how this was
+ *     found (tests/db.image.spec.ts, 2026-10-11: the rescue carried 14 players).
+ *
+ * So the filter is not "everyone who is not a merchant" but THE CAPTAIN THIS BROWSER IS: one
+ * `auth_uid`, the only identity a local world ever signs in as (`LOCAL_AUTH_UID`). A world from an
+ * older chain has no `is_npc` column; it is still filtered to that captain, because the reason was
+ * never really the merchants — it is that a rescue of somebody else's rows is not a rescue.
  */
-async function merchantFilter(pg: Pick<PGlite, 'query'>, table: string): Promise<string> {
-  const col = await pg.query<{ present: boolean }>(
-    `select exists (select 1 from information_schema.columns
-                     where table_schema = 'public' and table_name = 'players' and column_name = 'is_npc') as present`,
-  )
-  if (!col.rows[0]?.present) return ''
-  const yours = `(select p.id from public.players p where not p.is_npc)`
+function yoursOnly(table: string, authUid: string): string {
+  const uid = `'${authUid.replace(/'/g, "''")}'`
+  const yours = `(select p.id from public.players p where p.auth_uid = ${uid})`
   switch (table) {
     case 'players':
-      return ' where not t.is_npc'
+      return ` where t.auth_uid = ${uid}`
     case 'voyages':
       return ` where t.fleet_id in (select f.id from public.fleets f where f.player_id in ${yours})`
     case 'voyage_events':
@@ -132,6 +140,10 @@ function defaultStorage(): Storage | null {
 export async function rescuePlayerRows(
   pg: Pick<PGlite, 'query'>,
   fingerprint: string,
+  /** WHOSE ROWS. Passed in rather than read from a constant here: the caller knows which captain
+   *  this world is signed in as (localDb), and a second module holding that identity is a second
+   *  authority for it — and an import cycle besides. */
+  authUid: string,
   storage: Storage | null = defaultStorage(),
   now: () => Date = () => new Date(),
 ): Promise<RescueReceipt> {
@@ -146,7 +158,7 @@ export async function rescuePlayerRows(
         [`public.${table}`],
       )
       if (!exists.rows[0]?.present) continue
-      const r = await pg.query<Record<string, unknown>>(`select * from public.${table} t${await merchantFilter(pg, table)}`)
+      const r = await pg.query<Record<string, unknown>>(`select * from public.${table} t${yoursOnly(table, authUid)}`)
       if (r.rows.length === 0) continue
       rescue.tables[table] = r.rows
       rescue.rows += r.rows.length

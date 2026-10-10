@@ -337,7 +337,7 @@ test('a rescue over the seeded image stores only the local captain’s rows, nev
       setItem: (k: string, v: string) => void store.set(k, v),
       removeItem: (k: string) => void store.delete(k),
     }
-    const receipt = await rescuePlayerRows(db.pg, fingerprint, storage)
+    const receipt = await rescuePlayerRows(db.pg, fingerprint, LOCAL_AUTH_UID, storage)
     expect(receipt.stored).toBe(true)
     const rescue = JSON.parse(store.get(RESCUE_KEY)!) as Rescue
     const players = rescue.tables.players as { auth_uid: string | null; is_npc: boolean }[]

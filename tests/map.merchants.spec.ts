@@ -228,8 +228,26 @@ async function merchantsInView(page: Page): Promise<{ total: number; inView: num
 
 /** A merchant hull whose centre is on the chart's glass, so a tap can land on it. */
 async function hullInView(page: Page, sailing: boolean | null, skip: ReadonlySet<string> = new Set()): Promise<string> {
+  // OPEN WATER FIRST, THEN ANYWHERE. A hull within a harbour's reach loses the tap to the harbour —
+  // correctly — so a hull clear of every mark is the one to aim at. But on a frame where every
+  // visible merchant is lying at a quay there is no such hull, and refusing to pick one at all
+  // turned a crowded sea into "no merchant hull on the glass" (CI, 2026-10-11). So the clear ones
+  // are preferred and the rest are the fallback; `tapHull` proves the tap landed either way.
+  return (
+    (await hullInViewClearOf(page, sailing, skip, 48)) ||
+    (await hullInViewClearOf(page, sailing, skip, 20)) ||
+    (await hullInViewClearOf(page, sailing, skip, 0))
+  )
+}
+
+async function hullInViewClearOf(
+  page: Page,
+  sailing: boolean | null,
+  skip: ReadonlySet<string>,
+  clearPx: number,
+): Promise<string> {
   const id = await page.evaluate(
-    ({ wantSailing, seen }) => {
+    ({ wantSailing, seen, clear }) => {
       const chart = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
       for (const h of document.querySelectorAll('[data-testid="map-merchant"]')) {
         if (wantSailing !== null && (h.getAttribute('data-merchant-docked') === 'false') !== wantSailing) continue
@@ -245,20 +263,33 @@ async function hullInView(page: Page, sailing: boolean | null, skip: ReadonlySet
         // enough that a spec which ignores it taps a port six times and calls the feature broken.
         // The tie rule has its own unit test; this one is about opening a merchant.
         let nearMark = false
-        for (const p of document.querySelectorAll('[data-port-code]')) {
-          const pr = p.getBoundingClientRect()
-          if (pr.width === 0 && pr.height === 0) continue
-          const dx = pr.left + pr.width / 2 - cx
-          const dy = pr.top + pr.height / 2 - cy
-          if (Math.hypot(dx, dy) < 48) { nearMark = true; break }
+        if (clear > 0) {
+          // YOUR OWN FLEETS COUNT AS MARKS HERE. An own fleet wins a tie with a merchant by the
+          // chart's own rule (hitTest.ts), so a merchant drifting over Gaivota at her quay cannot
+          // be opened — correctly — and a spec that aims there taps the player's own tray six times.
+          for (const own of document.querySelectorAll('[data-testid="map-ship"]')) {
+            const orr = own.getBoundingClientRect()
+            if (orr.width === 0 && orr.height === 0) continue
+            const dx = orr.left + orr.width / 2 - cx
+            const dy = orr.top + orr.height / 2 - cy
+            if (Math.hypot(dx, dy) < clear) { nearMark = true; break }
+          }
+          if (nearMark) continue
+          for (const p of document.querySelectorAll('[data-port-code]')) {
+            const pr = p.getBoundingClientRect()
+            if (pr.width === 0 && pr.height === 0) continue
+            const dx = pr.left + pr.width / 2 - cx
+            const dy = pr.top + pr.height / 2 - cy
+            if (Math.hypot(dx, dy) < clear) { nearMark = true; break }
+          }
         }
         if (!nearMark) return mid
       }
       return null
     },
-    { wantSailing: sailing, seen: [...skip] },
+    { wantSailing: sailing, seen: [...skip], clear: clearPx },
   )
-  if (!id && skip.size === 0) {
+  if (!id && skip.size === 0 && clearPx === 0) {
     throw new Error(`no ${sailing === null ? '' : sailing ? 'sailing ' : 'docked '}merchant hull on the glass`)
   }
   return id ?? ''
