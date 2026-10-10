@@ -153,7 +153,11 @@ export interface LiveWorld {
    *  `world.sea_traffic()` reading, or null before the first. Read by `refresh()` on the shell's
    *  beat, AFTER the routes, and ONLY while a screen wants it (`trafficWanted > 0`): a captain on the
    *  Ledger does not pay for merchants he cannot see. A failed read keeps the last reading — a map
-   *  without merchants is still a map. Dark (`enabled: false`) it is an empty list. */
+   *  without merchants is still a map. Dark (`enabled: false`) it is an empty list.
+   *
+   *  BACK TO NULL WHEN THE LAST SCREEN THAT WANTED IT GOES (2026-10-10): a reading nobody has
+   *  refreshed since the player left the tab would otherwise be painted as the present on remount.
+   *  See `wantTraffic`. */
   traffic: SeaTraffic | null
   /** How many mounted screens want the traffic (MAP, PORT). The one seam a screen has into the
    *  cadence; it is never a second clock. */
@@ -816,12 +820,28 @@ export const useWorld = create<LiveWorld>((set, get) => {
 
   wantTraffic: () => {
     set((s) => ({ trafficWanted: s.trafficWanted + 1 }))
-    if (get().trafficWanted === 1 && get().phase === 'ready') void readTraffic()
+    // THE FIRST WANT RIDES A BEAT; IT NEVER READS ALONE (2026-10-10). A lone read lands AFTER the
+    // beat's `readAt`, so 0075's drift then extrapolates the merchants from an instant EARLIER than
+    // the positions it was given and overshoots until the next beat pulls them back: measured on
+    // an in-app Map → Fleets → Map, all 32 hulls leapt 40-195 px when the mount-time reading landed
+    // and nearly every one stepped 5-20 px BACK half a second later. `refresh()` reads the traffic
+    // inside the same beat that sets `readAt` (it is already counted now, the counter is up), so
+    // the position and the instant it is drifted from come from one reading. Never on top of a read
+    // in flight — AppShell's own beat states the reason; that read will pick the traffic up anyway.
+    if (get().trafficWanted === 1 && get().phase === 'ready' && !get().reading) void get().refresh()
     let released = false
     return () => {
       if (released) return
       released = true
-      set((s) => ({ trafficWanted: Math.max(0, s.trafficWanted - 1) }))
+      // THE LAST WANTER TAKES THE READING WITH IT. Keeping it meant a remounted MAP or PORT painted
+      // the merchants where they were MINUTES ago — the chart draws `traffic` the moment it mounts —
+      // and then every hull teleported when the first fresh reading landed. A chart with no
+      // merchants on it for one beat is honest; a chart with merchants in last session's places is
+      // not (worldStore rule 1: a read is the catch-up).
+      set((s) => {
+        const left = Math.max(0, s.trafficWanted - 1)
+        return left === 0 ? { trafficWanted: 0, traffic: null } : { trafficWanted: left }
+      })
     }
   },
 

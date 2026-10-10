@@ -87,10 +87,17 @@ export function hitTest(
   // 0099 — A MERCHANT, by the same reach, AFTER your fleets (one of yours already won any tie
   // above) and only when nearer than the nearest harbour: a merchant at anchor lies at the roads,
   // a few pixels off the port's mark, and a tap ON the mark still means the port.
+  // A MERCHANT LYING AT A DOT CITY'S BERTH ANSWERS AT THE DOT'S OWN REACH (2026-10-10). At wide
+  // zooms her 13-px hull covers the harbour's dot completely, and she carried the full mark reach
+  // while the dot answered only within half a touch — so she took taps plainly meant for the city
+  // she is moored at. Named harbours are unaffected: they answer at the full reach themselves.
+  const dotCodes = new Set(dots.map((p) => p.code))
   let nearestMerchant: { id: string; d: number } | null = null
   for (const t of model.traffic) {
     const d = distance(project(t.at), at)
-    if (d <= radius && (!nearestMerchant || d < nearestMerchant.d)) nearestMerchant = { id: t.fleet.id, d }
+    const berthed = t.merchant.docked && t.merchant.berthCode !== null && dotCodes.has(t.merchant.berthCode)
+    const reach = berthed && dotRadius > 0 ? Math.min(radius, dotRadius) : radius
+    if (d <= reach && (!nearestMerchant || d < nearestMerchant.d)) nearestMerchant = { id: t.fleet.id, d }
   }
   if (nearestMerchant && (!nearestPort || nearestMerchant.d < nearestPort.d)) {
     return { kind: 'merchant', id: nearestMerchant.id }

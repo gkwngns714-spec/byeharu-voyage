@@ -204,7 +204,11 @@ export function skippedWords(
     case 'E_NOT_ENOUGH_STOCK':
     case 'E_OUT_OF_STOCK':
       return `no ${good} to be had${at}`
+    // THE PLAIN FORM, for a code with no line of its own. "a sale of the cargo passed over at
+    // Lisbon" was read by the owner (2026-10-08) as though a sale had been skipped over by
+    // someone — it says the right thing in the wrong voice. What happened is simply that she did
+    // not trade, so that is what it says.
     default:
-      return `${verb === 'BUY' ? 'a purchase' : 'a sale'} of ${good} passed over${at}`
+      return `${verb === 'BUY' ? 'did not buy' : 'did not sell'} ${good}${at}`
   }
 }

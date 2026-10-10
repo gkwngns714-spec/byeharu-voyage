@@ -37,6 +37,8 @@ import {
   type MapPort,
   type MapSelection,
 } from '../../chart'
+// The one table that says where a side tray stands, and therefore where the chrome stops.
+import { chromeAsideTrayClass } from '../../components/ui'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
@@ -238,8 +240,14 @@ function Chart({
       )}
 
       {/* THE CHROME LAYER — corners only; pointer-transparent itself so it can never swallow a
-          pan, and each child that is meant to be pressed turns pointer events back on. */}
-      <div className="pointer-events-none absolute inset-0 z-10">
+          pan, and each child that is meant to be pressed turns pointer events back on.
+          ITS RIGHT EDGE GIVES WAY TO AN OPEN SIDE TRAY (screenLayout.ts `chromeAsideTrayClass`),
+          so the zoom column and Regions are never left underneath the panel on a wide glass. */}
+      <div
+        className={`pointer-events-none absolute inset-0 z-10 ${
+          selectedFleet || selectedMerchant ? chromeAsideTrayClass() : ''
+        }`}
+      >
         {surface.width > 0 && (
           <FleetsCorner
             model={model}

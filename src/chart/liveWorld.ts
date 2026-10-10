@@ -84,20 +84,27 @@ export function mapFleetsOf(fleets: readonly FleetView[]): MapFleet[] {
  * merchant lying in port is drawn AT ANCHOR at the port's served roadstead point — copied, like
  * every position here. `selected` is the open card's FULL course for one fleet: that row alone
  * carries more than the current segment, so her leg can be drawn while she is selected.
+ *
+ * THE CARD LENDS A TRACK AND NEVER A POSITION (see `trackedVoyage`).
  */
 export function mapTrafficOf(
   traffic: readonly TrafficFleet[],
-  selected: { readonly id: string; readonly voyage: FleetView['voyage'] } | null = null,
+  selected: { readonly id: string; readonly voyage: Omit<FleetView['voyage'] & object, 'id'> | null } | null = null,
 ): MapTraffic[] {
   const out: MapTraffic[] = []
+  // DOCKED MERCHANTS ARE FANNED, NOT STACKED: how many lie at each berth, so the nth takes the nth
+  // place on the ring below. Counted from the served rows, in the order the server set.
+  const atBerth = new Map<string, number>()
   for (const t of traffic) {
     const docked = t.voyage === null && t.port !== null && t.roadstead !== null
-    const voyage = selected && selected.id === t.id && selected.voyage && t.voyage ? selected.voyage : t.voyage
+    const voyage = selected && selected.id === t.id && t.voyage ? trackedVoyage(t.voyage, selected.voyage) : t.voyage
+    const berthIndex = docked ? (atBerth.get(t.port!) ?? 0) : 0
+    if (docked) atBerth.set(t.port!, berthIndex + 1)
     const m = mapFleetOf({
       id: t.id,
       name: t.name,
       voyage,
-      anchor: docked ? t.roadstead : t.anchor,
+      anchor: docked ? fannedBerth(t.roadstead!, berthIndex) : t.anchor,
       port: null,
     })
     if (!m) continue
@@ -109,9 +116,68 @@ export function mapTrafficOf(
       docked,
       berthCode: docked ? t.port : null,
       nextLapAtMs: Number.isFinite(nextLap) ? nextLap : null,
+      berthIndex,
     })
   }
   return out
+}
+
+/**
+ * THE SELECTED MERCHANT'S WHOLE LEG, WITHOUT LETTING THE CARD MOVE HER (2026-10-10).
+ *
+ * `world.sea_traffic` serves every merchant the CURRENT SEGMENT only — course `[p[seg], p[seg+1]]`,
+ * `seg_index` re-based to 0 — which is all ./drift.ts needs. `world.npc_fleet_card` serves the open
+ * merchant's FULL course, so her remaining leg can be drawn. The card is re-asked on the beat and
+ * lands AFTER it, so taking the card's `position` as well made the ONE hull the player is looking at
+ * jump backwards on every beat and then leap forward when the new card arrived (measured at 390px:
+ * −25.2 / −20.0 / −6.5 px, each followed ~70 ms later by a +20.9…+24.6 px leap; no other hull ever
+ * moved backwards). That is the teleport ./drift.ts exists to remove, reintroduced for the selected
+ * hull alone.
+ *
+ * So: the POSITION is always the traffic row's — the same row every other merchant is placed from,
+ * on the same beat as `readAt`. The card contributes nothing but the polyline, and only when the
+ * row's own segment can be FOUND in it; if the card is a beat behind across a segment change (or
+ * names another voyage), the row's two points stand and she is drawn exactly where she was served.
+ */
+function trackedVoyage(
+  row: NonNullable<ServedFleet['voyage']>,
+  card: Omit<FleetView['voyage'] & object, 'id'> | null,
+): NonNullable<ServedFleet['voyage']> {
+  const full = card?.course
+  if (!full || full.length < 2 || row.course.length < 2 || !row.position) return row
+  const seg = segmentIn(full, row.course[0], row.course[1])
+  if (seg === null) return row
+  return { ...row, course: full, position: { ...row.position, seg_index: seg } }
+}
+
+/** Where `[a, b]` sits in `course` as a consecutive pair, or null. Exact equality: both points are
+ *  copies of the same served numbers, never re-derived on either side of the wire. */
+function segmentIn(course: readonly [number, number][], a: [number, number], b: [number, number]): number | null {
+  for (let i = 0; i + 1 < course.length; i++) {
+    if (course[i][0] === a[0] && course[i][1] === a[1] && course[i + 1][0] === b[0] && course[i + 1][1] === b[1]) {
+      return i
+    }
+  }
+  return null
+}
+
+/** How far off her roadstead the nth merchant at one berth lies, in degrees. Small enough that she
+ *  is plainly AT that harbour at every zoom the hull is drawn at, large enough that two hulls are
+ *  two hulls — and deterministic, so nothing creeps between reads. */
+const BERTH_FAN_DEG = 0.055
+
+/** The nth place on a ring round a berth. 0 IS the roadstead (one merchant in port is drawn exactly
+ *  where the server put her); 1.. fan clockwise from north, a second ring further out after six. */
+function fannedBerth(roadstead: [number, number], n: number): [number, number] {
+  if (n <= 0) return roadstead
+  const ring = Math.floor((n - 1) / 6) + 1
+  const slot = (n - 1) % 6
+  const theta = (slot / 6) * 2 * Math.PI
+  const r = BERTH_FAN_DEG * ring
+  // lon is scaled by the latitude so the ring stays a ring on a Mercator-ish chart near the poles.
+  const lat = roadstead[0] + r * Math.cos(theta)
+  const lon = roadstead[1] + (r * Math.sin(theta)) / Math.max(0.2, Math.cos((roadstead[0] * Math.PI) / 180))
+  return [lat, lon]
 }
 
 /** ONE served fleet, in the chart's words — the body both lists above are made of. */

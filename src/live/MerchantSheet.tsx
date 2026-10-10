@@ -14,7 +14,8 @@ import {
   type TrayDetent,
 } from '../components/ui'
 import { CHART_CHROME } from '../chart'
-import { formatDucats, formatDucatsDelta, formatClock, formatInt } from '../lib/format'
+import { useShellState } from '../app/shellState'
+import { formatDucats, formatDucatsDelta, formatClock, formatInt, formatRealShort } from '../lib/format'
 import { hullFraction } from '../domain/fleet'
 import { skippedWords } from '../domain/route'
 import type { MerchantCard } from '../lib/rpc'
@@ -31,6 +32,8 @@ import { portNameOf, useWorld } from './worldStore'
 //   peek  the fleet and its company, and the caller's one line (where she is going, or when she sails)
 //   half  what she EARNS — a real day's laps summed by the server (`public.route_earnings`), the
 //         average lap, the last seven laps themselves — her route, the company's fortune, the blurb
+//         (and NOT a figure the server will not stand behind: a lap average needs two closed laps,
+//          because a lap closes before the home sale — see `RouteEarnings.lap`)
 //   full  her SHIPS, CARGO, OFFICERS and the company's SKILLS — the same tiles FLEETS, the Codex
 //         and the Academy print — and what her last lap passed over, in words
 //
@@ -89,6 +92,9 @@ function MerchantBody({
   goodName: (code: string) => string
   goodCategory: (code: string) => string
 }) {
+  // THE ONE CLOCK (src/app/shellState.ts): the Fortune line counts a span from it, never from a
+  // Date.now() read during a render.
+  const { nowMs } = useShellState()
   const e = card.earnings
   const cargo = useMemo(() => {
     const sum = new Map<string, number>()
@@ -103,26 +109,47 @@ function MerchantBody({
   return (
     <div data-testid="merchant-sheet-body">
       <SheetSection>
-        {/* WHAT SHE EARNS. A real day, because that is the day the player lives in; "so far today"
-            until a whole day of laps is held — a truthful lesser answer, never an extrapolation. */}
+        {/* WHAT SHE EARNS. A real day, because that is the day the player lives in; before a whole
+            day of laps is held the figure is what it is — the laps SINCE a named hour — and it says
+            so, rather than calling a partial window "today". A truthful lesser answer, never an
+            extrapolation. */}
         <Row
           data-testid="merchant-earnings-day"
-          label={e && e.day_full ? 'A day' : 'So far today'}
+          label={e && e.day_full ? 'A day' : 'So far'}
           value={
             <Figure
               value={e ? `${e.day_full ? '≈ ' : ''}${formatDucats(e.day)}` : '—'}
-              unit={e && e.day_full ? 'a day' : undefined}
+              unit={
+                e && e.day_full
+                  ? 'a day'
+                  : e && e.day_since
+                    ? `since ${formatClock(Date.parse(e.day_since))}`
+                    : undefined
+              }
             />
           }
         />
+        {/* A LAP IS NOT GUESSED FROM ONE LAP. The server returns `lap` null until two have closed,
+            because a lap closes on arrival home BEFORE the home sale, so the first lap is a
+            purchase with no sale and reads as a huge loss (RouteEarnings.lap carries the whole
+            derivation). While that is the case the row says what is true: she is on her first lap. */}
         <Row
           data-testid="merchant-earnings-lap"
           label="A lap"
-          value={<Figure value={e && e.lap !== null ? `≈ ${formatDucats(e.lap)}` : 'no lap yet'} />}
+          value={
+            <Figure
+              value={e && e.lap !== null ? `≈ ${formatDucats(e.lap)}` : e && e.laps_done > 0 ? 'first lap under way' : 'no lap yet'}
+              unit={e && e.lap !== null ? `over ${e.lap_basis} laps` : undefined}
+            />
+          }
         />
         {e && e.laps_recent.length > 0 && (
           <Row
-            label="Last laps"
+            label={
+              <span>
+                Last laps <span className="text-ink-faint">newest first</span>
+              </span>
+            }
             value={
               <span className="text-t-caption tabular-nums" data-testid="merchant-laps-recent">
                 {e.laps_recent.map((n) => formatDucatsDelta(n)).join(' · ')}
@@ -143,9 +170,14 @@ function MerchantBody({
             <Figure
               value={formatDucats(card.company.fortune)}
               unit={
+                // A CLOCK TIME IS ONLY HONEST WITHIN TODAY. A refound may be days old, and
+                // "last 14:32" read as though it had happened this afternoon. The span is the
+                // same form the rest of the sheet counts in.
                 card.company.refounded > 0
                   ? `refounded ${card.company.refounded === 1 ? 'once' : `${card.company.refounded} times`}${
-                      card.company.refounded_at ? `, last ${formatClock(Date.parse(card.company.refounded_at))}` : ''
+                      card.company.refounded_at
+                        ? `, last ${formatRealShort(nowMs - Date.parse(card.company.refounded_at))} ago`
+                        : ''
                     }`
                   : undefined
               }

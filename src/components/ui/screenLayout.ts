@@ -72,3 +72,19 @@ export function trayDockWideClass(): string {
   // 37.75rem = PAIR_REM / 2 · 26rem = TRAY_REM
   return 'lg:inset-auto lg:top-8 lg:bottom-14 lg:right-[max(0px,calc(50%-37.75rem))] lg:w-[26rem] lg:h-auto lg:rounded-t-none lg:rounded-l-sheet'
 }
+
+/**
+ * THE RIGHT EDGE A CHART'S CORNER CHROME KEEPS WHILE A SIDE TRAY STANDS BESIDE IT — the mirror of
+ * `trayDockWideClass`, built from the same two numbers so the two can never drift apart.
+ *
+ * A full-bleed picture with a floating side panel puts its top-RIGHT corner under that panel: at
+ * 1280 the merchant sheet covered the Regions toggle completely (2026-10-08, the owner's reading of
+ * `docs/npc-traders/merchant-sheet-1280.png`). A corner that cannot be reached is the defect
+ * `overlayLayout.ts` exists to prevent, so the chrome layer moves instead of the panel. Only from
+ * `lg`, where a tray IS a side panel; below it the tray is at the bottom edge and a top corner is
+ * clear anyway.
+ */
+export function chromeAsideTrayClass(): string {
+  // 26rem = TRAY_REM · 37.75rem = PAIR_REM / 2 — the tray's own left edge, measured from the right.
+  return 'lg:right-[calc(26rem+max(0px,50%-37.75rem))]'
+}

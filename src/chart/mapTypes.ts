@@ -178,6 +178,10 @@ export type MapTraffic = MapFleet & {
   readonly docked: boolean
   /** The port she lies in, by code, when docked. */
   readonly berthCode: string | null
+  /** Her place in the fan at that berth — 0 is the roadstead itself, 1.. ring round it. Docked
+   *  merchants used to be drawn on top of one another at the single roadstead point, where the hit
+   *  test could only ever answer with the first of them (./liveWorld.ts `fannedBerth`). */
+  readonly berthIndex: number
   /** When she may start her next lap, epoch ms, while held in port; else null. */
   readonly nextLapAtMs: number | null
 }

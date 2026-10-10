@@ -135,6 +135,10 @@ export { Sparkline, type SparkTone } from './Sparkline'
 // side panel; a screen reads it when what a tray MEANS differs by glass — the basket panel is
 // permanent beside the column and puts itself away only on a phone (ManifestPanel.tsx).
 export { useWide } from './useWide'
+// WHERE A SIDE TRAY STANDS, and therefore where a chart's corner chrome has to stop (MAP's zoom
+// column and Regions were drawn UNDER the merchant sheet at 1280). The table is screenLayout.ts's;
+// this is the entrance a screen reads it through.
+export { chromeAsideTrayClass } from './screenLayout'
 // The one rendering of a good's SERVED rarity tier (0032): a colour token AND a shape per tier,
 // so the tier survives a colourblind player and a greyscale screenshot. §5 keeps the MARK.
 export { RarityMark } from './Rarity'

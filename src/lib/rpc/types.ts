@@ -1628,9 +1628,16 @@ export interface RouteEarnings {
   day_since: string | null
   /** True once a whole real day of laps is held — before that `day` is "so far today". */
   day_full: boolean
-  /** Average net of the last seven closed laps; null until one has closed. */
+  /**
+   * Average net of the last seven closed laps, and NULL until TWO have closed. A lap closes on
+   * arrival home BEFORE the home stop's own SELL runs, so a leg's cargo is bought on lap N and
+   * sold on lap N+1: one closed lap is a purchase with no sale and says nothing about what a lap
+   * earns (`public.route_earnings` carries the derivation). Print the absence, never the figure.
+   */
   lap: number | null
-  /** The last seven nets, newest first. */
+  /** How many closed laps `lap` stands on (0-7). */
+  lap_basis: number
+  /** The last seven nets, NEWEST FIRST. */
   laps_recent: number[]
   laps_done: number
 }
@@ -1688,8 +1695,10 @@ export interface MerchantCard {
     port: string | null
     roadstead: [number, number] | null
     anchor: [number, number] | null
-    /** The FULL voyage — the tapped fleet alone, so the chart can draw her leg. */
-    voyage: FleetVoyage | null
+    /** The FULL voyage — the tapped fleet alone, so the chart can draw her leg. No `id`: a served
+     *  voyage id is a callable handle (`voyage.position(uuid)` is executable by authenticated), and
+     *  0099's own header says the card must not serve one. */
+    voyage: Omit<FleetVoyage, 'id'> | null
   }
   route: {
     name: string
