@@ -20,7 +20,7 @@
 
 import { project, type LatLon, type ViewBox } from '../lib/geo'
 import type { MapFleet, MapPort, MapTraffic, MapVoyage } from './mapTypes'
-import { buildTrack, type TrackPaths } from './route'
+import { buildTrack, loopD as loopPathD, type TrackPaths } from './route'
 import { driftedPoint, type Drift } from './drift'
 import { headingDeg } from './glyphs'
 
@@ -72,6 +72,9 @@ export type PortRole = 'anchorage' | 'destination' | 'route'
  */
 export interface TrafficOnChart extends FleetOnChart {
   readonly merchant: MapTraffic
+  /** HER WHOLE LOOP as one SVG path, when her card is open and served it (0099, owner row 112);
+   *  null for every other merchant. The leg she is ON is `track`, drawn over this. */
+  readonly loopD: string | null
 }
 
 /** The whole picture. */
@@ -225,8 +228,12 @@ export function buildChartModel(
   // THE MERCHANTS: the same placement, their own list, and nothing else touched.
   const merchants: TrafficOnChart[] = []
   for (const m of traffic) {
+    // HER LOOP IS DRAWN WHETHER SHE IS AT SEA OR IN PORT: a route is what she runs, not what she
+    // happens to be doing this minute, and a merchant held at her home quay is exactly when a
+    // player most wants to see where she goes (owner row 112).
+    const loopD = m.loop && m.loop.length > 0 ? loopPathD(m.loop) : null
     if (m.kind === 'sailing') {
-      merchants.push({ ...placeSailing(m, m.voyage, drift, m.voyage.course.length > 2), merchant: m })
+      merchants.push({ ...placeSailing(m, m.voyage, drift, m.voyage.course.length > 2), merchant: m, loopD })
     } else if (m.kind === 'anchored') {
       merchants.push({
         fleet: m,
@@ -237,6 +244,7 @@ export function buildChartModel(
         destinationCode: null,
         dockedAtCode: null,
         merchant: m,
+        loopD,
       })
     }
   }

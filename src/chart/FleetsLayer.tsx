@@ -87,6 +87,25 @@ export function TracksLayer({ model, unitsPerPx }: { model: ChartModel; unitsPer
         ) : null,
       )}
 
+      {/* OWNER ROW 112 — THE OPEN MERCHANT'S WHOLE ROUTE: every leg of the loop she runs, drawn
+          as the baked water it is (0099 serves the courses on her card). Quieter than the leg she
+          is on, and under it, so "where she goes" and "where she is going now" read as two things.
+          Drawn for a merchant in port as well — a route is what she runs, not what she is doing. */}
+      {model.traffic.map((t) =>
+        t.loopD ? (
+          <path
+            key={`merchant-loop-${t.fleet.id}`}
+            data-testid="map-merchant-loop"
+            d={t.loopD}
+            className="fill-none stroke-ink-faint/30"
+            strokeWidth={GLYPH.trackStroke}
+            strokeDasharray="2 6"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        ) : null,
+      )}
+
       {/* 0099 — THE OPEN MERCHANT'S LEG: the one traffic row that carries her full served course
           (her card is open), drawn faint through the same track paths, no arrow, no ring. */}
       {model.traffic.map((t) =>

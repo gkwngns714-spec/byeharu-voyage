@@ -144,7 +144,9 @@ function Chart({
     () =>
       mapTrafficOf(
         trafficRows,
-        card && card.fleet.id === merchantId ? { id: card.fleet.id, voyage: card.fleet.voyage } : null,
+        card && card.fleet.id === merchantId
+          ? { id: card.fleet.id, voyage: card.fleet.voyage, legs: card.route?.legs ?? null }
+          : null,
       ),
     [trafficRows, card, merchantId],
   )

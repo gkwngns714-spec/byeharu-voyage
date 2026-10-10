@@ -174,6 +174,9 @@ export type MerchantInk = 'prt' | 'esp' | 'nld' | 'eng' | 'han' | 'ita' | 'ott' 
 export type MapTraffic = MapFleet & {
   readonly company: string
   readonly ink: MerchantInk
+  /** HER WHOLE LOOP, leg by leg, when her card is open — the baked water each leg sails (0099).
+   *  Null for every other merchant: the loop is served on the card alone, at tap time. */
+  readonly loop: readonly (readonly LatLon[])[] | null
   /** True when she lies in port (drawn at the roadstead, bow north). */
   readonly docked: boolean
   /** The port she lies in, by code, when docked. */

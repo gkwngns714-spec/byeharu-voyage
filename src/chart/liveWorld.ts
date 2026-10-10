@@ -81,25 +81,35 @@ export function mapFleetsOf(fleets: readonly FleetView[]): MapFleet[] {
 
 /**
  * THE MERCHANTS (0099, docs/NPC_TRADERS.md §8.2), through the SAME per-fleet mapping as yours. A
- * merchant lying in port is drawn AT ANCHOR at the port's served roadstead point — copied, like
- * every position here. `selected` is the open card's FULL course for one fleet: that row alone
+ * merchant at sea is placed from the served position, copied, like every position here. A merchant
+ * lying IN PORT is drawn at her own BERTH on the served roads: the anchorage is an area and the
+ * server serves one point for it, so each hull takes her own deterministic place on a small ring
+ * round that point (`fannedBerth`). That is the one place this module puts a mark somewhere the
+ * server did not name, it is bounded by BERTH_FAN_DEG, and it exists because hulls drawn on one
+ * pinpoint are one hull to the eye and to the hit test. `selected` is the open card's FULL course for one fleet: that row alone
  * carries more than the current segment, so her leg can be drawn while she is selected.
  *
  * THE CARD LENDS A TRACK AND NEVER A POSITION (see `trackedVoyage`).
  */
 export function mapTrafficOf(
   traffic: readonly TrafficFleet[],
-  selected: { readonly id: string; readonly voyage: Omit<FleetView['voyage'] & object, 'id'> | null } | null = null,
+  selected: {
+    readonly id: string
+    readonly voyage: Omit<FleetView['voyage'] & object, 'id'> | null
+    /** Her whole loop, leg by leg (0099, owner row 112) — the card's, so only ever the open one. */
+    readonly legs?: readonly { readonly course: readonly [number, number][] }[] | null
+  } | null = null,
 ): MapTraffic[] {
   const out: MapTraffic[] = []
-  // DOCKED MERCHANTS ARE FANNED, NOT STACKED: how many lie at each berth, so the nth takes the nth
-  // place on the ring below. Counted from the served rows, in the order the server set.
-  const atBerth = new Map<string, number>()
   for (const t of traffic) {
     const docked = t.voyage === null && t.port !== null && t.roadstead !== null
     const voyage = selected && selected.id === t.id && t.voyage ? trackedVoyage(t.voyage, selected.voyage) : t.voyage
-    const berthIndex = docked ? (atBerth.get(t.port!) ?? 0) : 0
-    if (docked) atBerth.set(t.port!, berthIndex + 1)
+    // DOCKED MERCHANTS ARE FANNED, NOT STACKED — and the place is HERS, not her neighbours'. A
+    // first cut counted her position in the served list, so a hull shifted along the ring whenever
+    // another merchant docked at or left the same harbour (measured: ~6 px in the 1280 Lisbon
+    // frame, more when zoomed in — the 2026-10-10 review). Derived from her own id, a merchant
+    // keeps one place at a berth for as long as she exists, whoever else is lying there.
+    const berthIndex = docked ? berthSlotOf(t.id) : 0
     const m = mapFleetOf({
       id: t.id,
       name: t.name,
@@ -117,6 +127,15 @@ export function mapTrafficOf(
       berthCode: docked ? t.port : null,
       nextLapAtMs: Number.isFinite(nextLap) ? nextLap : null,
       berthIndex,
+      // THE LOOP SHE RUNS, not merely the leg she is on (owner row 112). Copied leg by leg from the
+      // card, like every other position here; a leg of fewer than two points draws nothing rather
+      // than a guessed line.
+      loop:
+        selected && selected.id === t.id && selected.legs
+          ? selected.legs
+              .filter((l) => l.course.length >= 2)
+              .map((l) => l.course.map(([lat, lon]) => ({ lat, lon })))
+          : null,
     })
   }
   return out
@@ -161,13 +180,30 @@ function segmentIn(course: readonly [number, number][], a: [number, number], b: 
   return null
 }
 
-/** How far off her roadstead the nth merchant at one berth lies, in degrees. Small enough that she
- *  is plainly AT that harbour at every zoom the hull is drawn at, large enough that two hulls are
- *  two hulls — and deterministic, so nothing creeps between reads. */
-const BERTH_FAN_DEG = 0.055
+/** How far off her roadstead a berthed merchant lies, in degrees. Small enough that she is plainly
+ *  AT that harbour at every zoom the hull is drawn at, large enough that two hulls are two hulls —
+ *  and deterministic, so nothing creeps between reads. */
+const BERTH_FAN_DEG = 0.045
 
-/** The nth place on a ring round a berth. 0 IS the roadstead (one merchant in port is drawn exactly
- *  where the server put her); 1.. fan clockwise from north, a second ring further out after six. */
+/** HOW MANY PLACES THERE ARE round a berth: twelve, two rings of six. More places means two
+ *  merchants share one less often; they are only ever drawn where the harbour is, so the ring stays
+ *  small whatever the count. */
+const BERTH_SLOTS = 12
+
+/** HER OWN PLACE AT A BERTH, from her own id and nothing else — so a hull never moves because a
+ *  neighbour arrived or sailed. Two merchants can draw the same slot and overlap, which is the
+ *  stack this replaced and no worse than it; the harbour is what the picture is telling you. */
+function berthSlotOf(fleetId: string): number {
+  let h = 2166136261
+  for (let i = 0; i < fleetId.length; i++) {
+    h ^= fleetId.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return Math.abs(h) % BERTH_SLOTS
+}
+
+/** One of the places on the rings round a berth. 0 IS the roadstead itself — where the server put
+ *  her — and 1.. fan clockwise from north, a second ring further out after six. */
 function fannedBerth(roadstead: [number, number], n: number): [number, number] {
   if (n <= 0) return roadstead
   const ring = Math.floor((n - 1) / 6) + 1

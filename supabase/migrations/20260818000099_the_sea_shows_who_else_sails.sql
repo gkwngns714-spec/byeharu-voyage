@@ -292,6 +292,24 @@ begin
       'stops', (select coalesce(jsonb_agg(po.code order by s.ord), '[]'::jsonb)
                   from public.standing_route_stops s join public.ports po on po.id = s.port_id
                  where s.route_id = sr.id),
+      -- HER WHOLE LOOP, LEG BY LEG (owner row 112, 2026-10-10: "show routes for the ships of npcs
+      -- as well"). Every leg is the BAKED course the route sails — the same verified water path
+      -- cmd.do_sail hands to voyage.depart, authored once by 0098 and never re-derived — so the
+      -- chart draws the water she actually follows rather than a straight line between two dots.
+      -- Served on the CARD, which is read at tap time, and never on world.sea_traffic, which is
+      -- read on every beat by every player with the map open: a loop is a polyline of hundreds of
+      -- points and that is the difference between a 12 KB read and a 2 MB one.
+      'legs', (select coalesce(jsonb_agg(jsonb_build_object(
+                        'from', pf.code,
+                        'to', pt.code,
+                        'course', s.course) order by s.ord), '[]'::jsonb)
+                 from public.standing_route_stops s
+                 join public.ports pf on pf.id = s.port_id
+                 join public.standing_route_stops s2
+                   on s2.route_id = s.route_id
+                  and s2.ord = (s.ord + 1) % (select count(*) from public.standing_route_stops s3 where s3.route_id = sr.id)
+                 join public.ports pt on pt.id = s2.port_id
+                where s.route_id = sr.id and s.course is not null),
       'lap_no', sr.lap_no,
       'state', public.standing_route_state(sr.id, public.standing_routes_on()),
       'next_lap_at', case when sr.hold_until > now() then sr.hold_until end,
@@ -564,7 +582,15 @@ begin
        or pg_temp.okeys_0099(v_card->'fleet')
          <> array['anchor', 'id', 'name', 'port', 'roadstead', 'status', 'voyage']
        or pg_temp.okeys_0099(v_card->'route')
-         <> array['lap_no', 'last_skipped', 'name', 'next_lap_at', 'paused_reason', 'state', 'stops']
+         <> array['lap_no', 'last_skipped', 'legs', 'name', 'next_lap_at', 'paused_reason', 'state', 'stops']
+       -- HER LOOP IS WHOLE AND IT IS THE BAKED WATER: one leg per stop, each one's `from` the stop
+       -- before and `to` the stop after it round the ring, each course a polyline of at least two
+       -- points. A loop drawn from anything but these is a line over land.
+       or jsonb_array_length(v_card->'route'->'legs') <> jsonb_array_length(v_card->'route'->'stops')
+       or exists (select 1 from jsonb_array_elements(v_card->'route'->'legs') l
+                   where jsonb_array_length(l->'course') < 2
+                      or pg_temp.okeys_0099(l) <> array['course', 'from', 'to'])
+       or (v_card->'route'->'legs'->0->>'from') <> (v_card->'route'->'stops'->>0)
        or pg_temp.okeys_0099(v_card->'earnings')
          <> array['day', 'day_full', 'day_laps', 'day_since', 'lap', 'lap_basis', 'laps_done', 'laps_recent']
        -- THE CARD'S VOYAGE, KEY FOR KEY: the full object MINUS the voyage id. Written out rather than

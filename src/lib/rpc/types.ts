@@ -1703,6 +1703,10 @@ export interface MerchantCard {
   route: {
     name: string
     stops: string[]
+    /** HER WHOLE LOOP, leg by leg, in sailing order — each `course` the BAKED water path that leg
+     *  sails, which is what the chart draws. Served on the card alone (0099): a loop is hundreds of
+     *  points and `world.sea_traffic` is read on every beat. */
+    legs: { from: string; to: string; course: [number, number][] }[]
     lap_no: number
     state: StandingRouteState
     next_lap_at: string | null
