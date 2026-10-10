@@ -279,7 +279,13 @@ begin
       'roadstead', (select jsonb_build_array(rs.roadstead_lat, rs.roadstead_lon)
                       from public.sea_reaches rs where rs.port_id = f.port_id),
       'anchor', case when f.lat is not null then jsonb_build_array(f.lat, f.lon) end,
-      'voyage', (select world.voyage_view(v.id, true) from public.voyages v
+      -- THE FULL COURSE, AND NOT THE VOYAGE'S ID. voyage_view(…, true) is the whole object world.fleets
+      -- serves a player about her own fleet, and it carries the voyage `id` — a CALLABLE handle
+      -- (voyage.position(uuid) is executable by authenticated, 0088:184), which this file's own header
+      -- and §7.1 say the card must not serve. Stripped here, and the card's voyage key set is asserted
+      -- exactly below so it cannot come back (the deep forbidden-key scan cannot ban 'id': fleet.id is
+      -- served on purpose).
+      'voyage', (select world.voyage_view(v.id, true) - 'id' from public.voyages v
                   where v.fleet_id = f.id and v.status = 'SAILING')),
     'route', case when sr.id is not null then jsonb_build_object(
       'name', sr.name,
@@ -560,7 +566,11 @@ begin
        or pg_temp.okeys_0099(v_card->'route')
          <> array['lap_no', 'last_skipped', 'name', 'next_lap_at', 'paused_reason', 'state', 'stops']
        or pg_temp.okeys_0099(v_card->'earnings')
-         <> array['day', 'day_full', 'day_laps', 'day_since', 'lap', 'laps_done', 'laps_recent']
+         <> array['day', 'day_full', 'day_laps', 'day_since', 'lap', 'lap_basis', 'laps_done', 'laps_recent']
+       -- THE CARD'S VOYAGE, KEY FOR KEY: the full object MINUS the voyage id. Written out rather than
+       -- left to the forbidden-key scan, which cannot ban 'id' (the fleet's own id is served).
+       or pg_temp.okeys_0099(v_card->'fleet'->'voyage')
+         <> array['course', 'departed_at', 'dest_point', 'eta', 'nm_done', 'position', 'to', 'total_nm', 'waters']
        or pg_temp.okeys_0099(v_card->'ships'->0)
          <> array['cargo', 'cargo_tuns', 'class', 'crew', 'crew_max', 'crew_required', 'durability', 'fittings',
                   'hold', 'hold_rated', 'is_flagship', 'max_durability', 'name', 'speed', 'speed_rated']
