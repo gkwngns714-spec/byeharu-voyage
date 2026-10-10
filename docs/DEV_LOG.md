@@ -5,6 +5,112 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-10 (later) — the owner opened the game: three times the merchants, a sea ten times slower, and their routes drawn
+
+The owner opened the build, saw no merchants (the switch ships dark, by design), and then gave five
+instructions in an hour. They are rows 109(b), 112 and 113 of `docs/OWNER_REQUESTS.md`, in their own
+words. This entry is what was done about them.
+
+### *"i see no npcs"* — and what the number actually was
+
+The shipped build is dark: `npc_traders_enabled` is false until the owner flips it, which is the
+whole dark-first design. A second preview was built with the switch ON (`dist-npc-demo`, never
+committed, never `dist/`) so the owner could see the feature rather than read about it. The roster
+as it stood: **23 companies, 32 fleets, 64 hulls**, authored as 26/35/78 and trimmed by the
+measurement that drops any fleet which cannot pay its own wages.
+
+### *"make the npc counts 3 time larger"* and *"there are no trades seen between different continents"*
+
+`data/npc-houses.json` grew from 26 companies / 35 fleets to **70 companies / 107 fleets / 224
+hulls** — 44 new companies, and a second fleet for 28 of them, because the chart draws one hull per
+FLEET and fleets are therefore what make the sea look busy. The new houses are weighted two ways
+the owner's two sentences asked for:
+
+* **the frame a new captain actually looks at** — eight houses working Iberia, Morocco, Madeira and
+  the Canaries, where every new company is founded (Lisbon) and where the opening frame sits;
+* **ocean crossings** — eleven houses whose loops are intercontinental by construction: Pernambuco
+  and Bahia to Lisbon, the Tierra Firme galleons to Cartagena and Portobelo, Manila to Acapulco,
+  Delft to Colombo and Malacca, the Cape line to Mombasa, Angola to Brazil, Virginia and Québec.
+
+Wares are not invented: each fleet's `wares` are the goods its own loop's harbours actually offer
+(`data/ports.json`), so the planner's preference is a fact about the route rather than decoration.
+`npc_fleet_max` rose 40 → 120 in the same breath, because a cap of 40 would have left two thirds of
+the new roster dark and the count would have been a lie.
+
+The generator is the judge, as before: it validates every authored loop against the SERVER's own
+rules and refuses rather than silently dropping (3 candidate loops were refused — Guayaquil cannot
+take a nau's draft; Osaka↔Sakai is a zero-length course — and every one of the 107 fleets kept at
+least one candidate), then measures each loop through the one executor and trims what cannot pay.
+
+**What it founded: 60 companies, 76 fleets, 131 hulls** — against 23 / 32 / 64 before, so **2.4×
+the fleets on the water**, not the 3× authored. The gap is 29 drops and they are the rule working
+rather than failing: a loop that cannot pay its own wages over laps 3-6, with the whole roster
+competing in one market, is not seeded on hope. **The Lisbon opening frame is crossed by 21 loops,
+up from 14**, which is the number the owner's sentence was really about — what moves where a new
+captain is looking. Six trim passes ran before the roster stopped changing; each one re-measures
+the whole world, which is why the generation took hours rather than minutes.
+
+### *"change the speed of the ship at least 10 times slower"* — migration 0100
+
+`time_compression` 9600 → 960: a voyage-day was 9 real seconds and is now 90. **The hull's knots are
+deliberately untouched**, and the file says why at length: dividing `voyage.ship_speed` by ten
+multiplies every passage's VOYAGE-DAYS by ten, stores are consumed per voyage-day, and
+`voyage.sail_refusal` refuses a sail the fleet cannot provision for — so a Lisbon→Kochi leg would
+need 110 days of water in a hold that carries twelve. Every ocean route in the game would refuse to
+sail, in the same hour the owner said there was not enough trade between continents. The clock does
+what was asked and breaks nothing: the passage is still 11 voyage-days and still wants 12 days of
+stores; the player simply watches it for ten times longer.
+
+0045 had made the world twenty times faster "for faster testing" in its own words. This hands that
+back, with 0045's own trap handled facing the other way: every fleet at sea is re-ETAd through
+`voyage.recompute_eta`, the one ETA authority, or she would arrive with days of her passage
+unresolved. The self-assert puts a real house to sea, moves the knob BOTH ways, and requires the
+arrival to follow it both times and the passage to be exactly ten times as long at the new rate.
+`game_day_seconds` (2880) is untouched and that is stated: the market drifts and the caps roll at
+the real-world rate they always did.
+
+### *"show routes for the ships of npcs as well"* — row 112
+
+A merchant drew only the leg she was on, and only while her sheet was open; a player's own fleets
+draw the whole course they sail. Now `world.npc_fleet_card` serves `route.legs` — **the baked
+courses of her whole loop**, the same verified water paths `cmd.do_sail` hands to `voyage.depart` —
+and the chart draws them under the leg she is on, quieter and dashed, for a merchant in port as
+well as one at sea: a route is what she runs, not what she happens to be doing this minute.
+
+The loop is served on the CARD, which is read at tap time, and never on `world.sea_traffic`, which
+every player with the map open reads on every beat. That is the difference between a 12 KB read and
+a megabyte one, and it is written into the migration where someone will be tempted to move it.
+
+### The adversarial review of the morning's fix pass, and what it found
+
+Eleven findings, all real, all fixed — the ones worth naming here:
+
+* **`lap` still averaged lap 1.** The morning's fix moved the threshold to two laps but left the
+  poisoned lap inside the seven-lap window, so a route with nets `[−10397, +7532]` printed `≈ −1,433
+  a lap` for a steady `+7,532`. The first closed lap is now excluded from the average outright.
+* **The crew-pool floor could strand a merchant for ever.** Capping her HIRE protected the quay and
+  left a crew-short fleet unable to sail, clearing and laying up in a loop no tick could break. The
+  rule moved to where the pool is actually drawn (`cmd.do_hire`): a merchant draws only the hands
+  ABOVE the floor and recruits the rest at the urgent rate, which costs more and takes nothing off
+  the quay. She sails, poorer; the quay keeps its hands.
+* **A traffic read already on the wire could land after the release** and re-fill a store nobody was
+  watching — the teleport again, by a longer road. The release now retires the read sequence.
+* **A docked merchant's drawn place moved when a NEIGHBOUR docked or sailed**, because her slot was
+  her index in the served list. It is derived from her own id now, so her berth is hers for as long
+  as she exists.
+* Plus: the receipt gate now protects every pause reason and not only `laid_up`; the carried ledger
+  balance has the positive control it lacked (the +500/−700-in-one-tick case that used to carry the
+  wrong figure); the "cap bounds the parcel" assert reads the planner's actual parcel instead of
+  restating a function's definition; `first lap under way` was off by one lap; `since 13:05` became
+  a span, because `day_since` can be a day old.
+
+### Still open, and deliberately so
+
+Row 113 — levels, requirements, captain traits, and restrictions by route length, carrying capacity
+and region entry — is designed in the ledger and **is the next slice, as its own migration**. It was
+not bolted onto this one: the owner's own instruction in the same hour was to merge and deploy a big
+project when it is finished, and holding a finished project hostage to a new one is the opposite.
+
 ## 2026-10-10 — the merchant companies' review findings are FIXED (branch `osn-npc-traders`, still dark, still unpushed)
 
 Picked up the hand-off `docs/RESUME_NPC_TRADERS.md`: 0096-0099 built, the Fable adversarial review

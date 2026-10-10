@@ -1,5 +1,8 @@
 node_modules/
 dist/
+# a merchants-ON copy of dist, built by hand so the owner can look at a dark feature (2026-10-10).
+# Never shipped, never a second world: it is dist/ with one world image swapped in.
+dist-npc-demo/
 .env.local
 .DS_Store
 *.local

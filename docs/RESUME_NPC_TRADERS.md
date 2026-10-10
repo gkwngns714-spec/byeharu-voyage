@@ -3,13 +3,26 @@
 Stopped by the owner 2026-10-08 17:12 KST; the review's findings were **fixed 2026-10-10**. This
 file is the resume anchor; delete it in the commit that opens the PR.
 
-## State — 2026-10-10
+## State — 2026-10-10 (evening)
 
-- Branch: 0096-0099, proof 12, the chart and the sheet, plus the fix pass below. Plan =
-  `docs/NPC_TRADERS.md`. Dark behind `npc_traders_enabled`. **Nothing pushed, nothing merged,
-  nothing deployed; production head is still 0095.**
-- **Every Fable review finding is fixed** — 1 blocker, 4 majors, 6 minors — each with a self-assert
-  or a spec that was watched to fail. The whole account is `docs/DEV_LOG.md` 2026-10-10.
+- Branch: **0096-0100**, proof 12, the chart and the sheet. Plan = `docs/NPC_TRADERS.md`. Dark behind
+  `npc_traders_enabled`. **Production head is still 0095.**
+- **The owner opened the game mid-session and gave five more instructions** (rows 109(b), 112, 113).
+  Done: the roster grown threefold (26 → 70 companies, 35 → 107 fleets authored; `npc_fleet_max`
+  40 → 120), **0100** the sea ten times slower (`time_compression` 9600 → 960 — the CLOCK, not the
+  hull's knots, and 0100's header argues why at length), and **row 112** the merchants' whole routes
+  drawn on the chart from the baked courses their card now serves.
+- **Row 113 — levels, requirements, captain traits, and restrictions by route length, carrying
+  capacity and region entry — is DESIGNED IN THE LEDGER AND NOT BUILT.** It is the next slice and a
+  migration of its own (0101). It was deliberately not bolted onto this one.
+- A second preview with the merchants switched ON is built by hand for looking at a dark feature:
+  `node <scratch>/make-npc-demo.mjs` writes `dist-npc-demo/` (git-ignored) and
+  `vite preview --outDir dist-npc-demo --port 4174` serves it.
+- **TWO adversarial reviews, and every finding of both is fixed** — the first 1 blocker + 4 majors +
+  6 minors, the second 11 more (lap 1 was still inside the lap average; the crew-pool floor could
+  strand a merchant for ever; a traffic read already on the wire could land after its release; a
+  docked merchant's drawn place moved when a NEIGHBOUR docked). The account is `docs/DEV_LOG.md`
+  2026-10-10, both entries.
 - The owner-visible problems from the screenshots are fixed too, except the one named below.
 - The two test edits the hand-off asked to audit (`a038f69` proof 11, `feeec66` the merchant spec)
   were audited and **both stand**; the reasons are in the dev log.

@@ -88,6 +88,8 @@ declare
   v_lis     uuid;
   v_dest    uuid;
   v_dep     timestamptz;
+  v_course  jsonb;
+  v_segs    jsonb;
   v_res     jsonb;
   f_probe   boolean := false;
   v_dest_code text;
@@ -118,22 +120,30 @@ begin
     v_player := public.new_house('00000000-0000-4000-8000-000000000100'::uuid, 'Casa Lenta', 'PRT');
     select f.id into v_fleet from public.fleets f where f.player_id = v_player limit 1;
 
-    -- The nearest harbour out of Lisbon that her draft can enter — a one-leg hop is inside any
-    -- fleet's stores by construction, which is the trap 0045's own probe fell into first.
-    select l.to_port_id into v_dest
-      from public.legs l
-      join public.ports p on p.id = l.to_port_id
-     where l.from_port_id = v_lis
-       and p.max_draft >= (select max(c.draft) from public.ships s
-                             join public.ship_classes c on c.id = s.class_id
-                            where s.fleet_id = v_fleet)
-     order by l.distance_nm, p.code
-     limit 1;
-    select count(*) into v_legs from public.legs where from_port_id = v_lis;
-    select code into v_dest_code from public.ports where id = v_dest;
+    -- LISBON → SETÚBAL, ROADSTEAD TO ROADSTEAD. 0045's probe asked public.legs for a neighbour and
+    -- called voyage.route to plan the hop; 0047 dropped that mover and 0049 dropped that table, so
+    -- copying the probe forward without reading what it stands on fails on a relation that has not
+    -- existed for fifty migrations (this file did exactly that, once). The modern shape: a COURSE
+    -- of verified water, measured into segments by the server's own authority, handed to depart.
+    -- This pair is not a guess — 0085's own self-assert sailed a real house LIS → SET on the
+    -- roadstead-to-roadstead line and walked it with the land guard — and it is one short hop,
+    -- inside any fleet's stores by construction (the trap 0045's probe fell into first).
+    select id into v_dest from public.ports where code = 'SET';
+    v_dest_code := 'SET';
+    select jsonb_build_array(
+             jsonb_build_array(a.roadstead_lat, a.roadstead_lon),
+             jsonb_build_array(b.roadstead_lat, b.roadstead_lon))
+      into v_course
+      from public.sea_reaches a, public.sea_reaches b
+     where a.port_id = v_lis and b.port_id = v_dest;
+    select count(*) into v_legs from public.sea_reaches where port_id in (v_lis, v_dest);
+    if v_course is null or v_dest is null then
+      raise exception '0100 self-assert FAIL: Lisbon or Setubal has no served roadstead to sail between (% row(s))', v_legs;
+    end if;
 
     -- Departed through voyage.depart, not cmd.issue: a migration has no auth.uid() (0045's note).
-    v_res := to_jsonb(voyage.depart(v_fleet, voyage.route(v_lis, v_dest), now()));
+    v_segs := voyage.segments_from_course(v_course);
+    v_res := to_jsonb(voyage.depart(v_fleet, v_segs, v_lis, v_dest, now()));
     select id, eta, departed_at into v_voy, v_eta_old, v_dep
       from public.voyages where fleet_id = v_fleet and status = 'SAILING';
 
@@ -168,7 +178,10 @@ begin
 
   if not f_probe then
     raise exception '0100 self-assert FAIL: the probe never got a fleet to sea (dest %, legs out of LIS %, depart said %) — nothing here was proven',
-      coalesce(v_dest_code, '(none chosen)'), v_legs, coalesce(v_res::text, '(null)');
+      coalesce(v_dest_code, '(none chosen)'), v_legs, left(coalesce(v_res::text, '(null)'), 200);
+  end if;
+  if v_eta_fast is null then
+    raise exception '0100 self-assert FAIL: the probe never re-ETAd the voyage it put to sea';
   end if;
 
   -- 4. THE PROBE LEFT NOTHING BEHIND — a delta, never a count (production carries real houses).

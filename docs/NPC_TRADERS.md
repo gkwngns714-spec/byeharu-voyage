@@ -306,6 +306,29 @@ flagship uniqueness, the ships composite FK, the ledger invariant).
 
 ### 3.2 The roster (`data/npc-houses.json`, authored; §11 slice 2 bakes it)
 
+> **GROWN THREEFOLD, 2026-10-10.** The owner opened the map and said *"make the npc counts 3 time
+> larger"* and *"there are no trades seen between different continents"*. The authored roster went
+> from 26 companies / 35 fleets / 78 hulls to **70 companies / 107 fleets / 224 hulls** — 44 new
+> companies, 28 of them with a second fleet, because the chart draws one hull per FLEET and fleets
+> are what make the sea look busy. The new houses are weighted at the two things those two
+> sentences name: eight work the Iberia-Morocco-Madeira-Canaries frame every new captain is founded
+> into, and eleven are intercontinental by construction (Pernambuco and Bahia to Lisbon, the Tierra
+> Firme galleons, Manila to Acapulco, Delft to Colombo and Malacca, the Cape line to Mombasa,
+> Angola to Brazil, Virginia, Québec). Each new fleet's `wares` are the goods its own loop's
+> harbours actually offer (`data/ports.json`), never a guess. `npc_fleet_max` rose 40 → 120 in the
+> same breath, or two thirds of the roster would have stayed dark and the count would have been a
+> lie. **The measurement is still the judge**: the generator refuses an unsailable loop (it refused
+> three — Guayaquil cannot take a nau's draft, Osaka↔Sakai is a zero-length course) and trims any
+> fleet that cannot pay its own wages.
+>
+> **WHAT THE MEASUREMENT ACTUALLY FOUNDED: 60 companies, 76 fleets, 131 hulls** — against 23 / 32 /
+> 64 before, so **2.4× the fleets on the water** rather than the 3× authored. The difference is 29
+> drops, and they are the rule working: a loop that could not pay its own wages over laps 3-6, with
+> the whole roster competing in the same market, is not seeded on hope. **The Lisbon opening frame
+> is crossed by 21 loops, up from 14.** Six trim passes ran before the roster stopped changing. The table below is the FIRST roster, kept as the record of
+> how the rule was applied; the numbers the chain actually founds are in
+> `supabase/migrations/20260818000098_*.sql`'s own header, which the generator writes.
+
 Real nations (`nations`, 0003:35-55; every roster code exists), real harbours (codes verified
 against the applied chain's `ports`), the three hulls that exist (`barca` 60 t · 8 crew · 5.0 kn ·
 draft 1; `carlat` 90 t · 12 · 6.0 · 1; `nau` 400 t · 60 · 4.4 · **draft 3**; 0003:2086-2091).
