@@ -72,11 +72,14 @@ export async function migrationFiles() {
  *
  * @returns {Promise<{db: import('@electric-sql/pglite').PGlite, applied: string[], notices: Map<string,string[]>}>}
  */
-export async function applyChain({ quiet = false, log = console.log } = {}) {
+export async function applyChain({ quiet = false, log = console.log, stopBefore = null } = {}) {
   const { PGlite } = await import('@electric-sql/pglite')
   const db = await new PGlite()
 
-  const files = await migrationFiles()
+  // `stopBefore` (a filename prefix, e.g. '20260818000098'): apply only the files that sort before
+  // it. For a GENERATOR that must measure the chain its own output will be appended to
+  // (scripts/build-npc-0098.mjs) — never for a gate, which always applies the whole chain.
+  const files = (await migrationFiles()).filter((f) => !stopBefore || f < stopBefore)
   const notices = new Map()
   const applied = []
 

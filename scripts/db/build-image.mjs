@@ -124,6 +124,9 @@ export async function buildWorldImage({ log = console.log } = {}) {
   // The stamp the browser reads back. Same DDL, same row, same reader as a browser-applied world.
   // `auth_uid` stays null: an image is a WORLD, not a house. §K.1's opening is founded in the
   // player's own browser, by the chain's own `new_house()`, exactly as it always was.
+  // Since 0098 the world carries the MERCHANT companies the chain founds (`players.is_npc`,
+  // docs/NPC_TRADERS.md §8.5): they are world data like a port, rebuilt by the chain, never a
+  // house of the player's — the rescue (src/lib/db/rescue.ts) skips them by the same predicate.
   await recordChain(pg, { fingerprint, names: files.map((f) => f.name), authUid: null })
 
   // Compact, then trim the log. `vacuum full` matters: the chain UPDATEs port_goods repeatedly

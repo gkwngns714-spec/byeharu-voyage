@@ -51,6 +51,13 @@ export { deltaTone } from './deltaTone'
 
 // 6. TILE — the selectable block, and TileField, the CSS grid it stands in.
 export { Tile, TileField, type TileState } from './Tile'
+//    THE FOUR TILES TWO FACES SHARE (2026-10-08, docs/NPC_TRADERS.md §8.3): a hull, a fleet's cargo
+//    rows, an officer, a skill — moved out of FLEETS, the Codex and the Academy so a merchant's
+//    sheet prints the SAME shapes. Pure props: the callers derive, these print.
+export { ShipTile } from './ShipTile'
+export { CargoRows } from './CargoRows'
+export { OfficerTile } from './OfficerTile'
+export { SkillTile } from './SkillTile'
 
 // 7. BAR — one proportion, 4px, continuous or countable. Meter + Gauge + stockBar + pips, folded.
 export { Bar, type BarTone } from './Bar'
@@ -128,6 +135,10 @@ export { Sparkline, type SparkTone } from './Sparkline'
 // side panel; a screen reads it when what a tray MEANS differs by glass — the basket panel is
 // permanent beside the column and puts itself away only on a phone (ManifestPanel.tsx).
 export { useWide } from './useWide'
+// WHERE A SIDE TRAY STANDS, and therefore where a chart's corner chrome has to stop (MAP's zoom
+// column and Regions were drawn UNDER the merchant sheet at 1280). The table is screenLayout.ts's;
+// this is the entrance a screen reads it through.
+export { chromeAsideTrayClass } from './screenLayout'
 // The one rendering of a good's SERVED rarity tier (0032): a colour token AND a shape per tier,
 // so the tier survives a colourblind player and a greyscale screenshot. §5 keeps the MARK.
 export { RarityMark } from './Rarity'

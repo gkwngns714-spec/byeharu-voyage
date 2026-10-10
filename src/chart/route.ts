@@ -94,6 +94,15 @@ export function sheetPieces(points: readonly LatLon[]): Point[][] {
 const piecesD = (points: readonly LatLon[]): string => sheetPieces(points).map(toPolylineD).join('')
 
 /**
+ * A WHOLE LOOP AS ONE PATH — every leg of a standing route, each drawn through the same seam-aware
+ * pieces a voyage's track uses (owner row 112: *"show routes for the ships of npcs as well"*).
+ * The legs are the BAKED courses the route sails, so this is the water, not a line between dots.
+ */
+export function loopD(legs: readonly (readonly LatLon[])[]): string {
+  return legs.filter((l) => l.length >= 2).map(piecesD).join('')
+}
+
+/**
  * Split the served course at where the server says the fleet is. `segIndex` is
  * `voyage.position.seg_index` — which segment of the course the position lies on — served, never
  * derived here. The two halves meet exactly at the fleet, so the bright half is the passage made.

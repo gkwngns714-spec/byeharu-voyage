@@ -5,6 +5,269 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-10 (later) — the owner opened the game: three times the merchants, a sea ten times slower, and their routes drawn
+
+The owner opened the build, saw no merchants (the switch ships dark, by design), and then gave five
+instructions in an hour. They are rows 109(b), 112 and 113 of `docs/OWNER_REQUESTS.md`, in their own
+words. This entry is what was done about them.
+
+### *"i see no npcs"* — and what the number actually was
+
+The shipped build is dark: `npc_traders_enabled` is false until the owner flips it, which is the
+whole dark-first design. A second preview was built with the switch ON (`dist-npc-demo`, never
+committed, never `dist/`) so the owner could see the feature rather than read about it. The roster
+as it stood: **23 companies, 32 fleets, 64 hulls**, authored as 26/35/78 and trimmed by the
+measurement that drops any fleet which cannot pay its own wages.
+
+### *"make the npc counts 3 time larger"* and *"there are no trades seen between different continents"*
+
+`data/npc-houses.json` grew from 26 companies / 35 fleets to **70 companies / 107 fleets / 224
+hulls** — 44 new companies, and a second fleet for 28 of them, because the chart draws one hull per
+FLEET and fleets are therefore what make the sea look busy. The new houses are weighted two ways
+the owner's two sentences asked for:
+
+* **the frame a new captain actually looks at** — eight houses working Iberia, Morocco, Madeira and
+  the Canaries, where every new company is founded (Lisbon) and where the opening frame sits;
+* **ocean crossings** — eleven houses whose loops are intercontinental by construction: Pernambuco
+  and Bahia to Lisbon, the Tierra Firme galleons to Cartagena and Portobelo, Manila to Acapulco,
+  Delft to Colombo and Malacca, the Cape line to Mombasa, Angola to Brazil, Virginia and Québec.
+
+Wares are not invented: each fleet's `wares` are the goods its own loop's harbours actually offer
+(`data/ports.json`), so the planner's preference is a fact about the route rather than decoration.
+`npc_fleet_max` rose 40 → 120 in the same breath, because a cap of 40 would have left two thirds of
+the new roster dark and the count would have been a lie.
+
+The generator is the judge, as before: it validates every authored loop against the SERVER's own
+rules and refuses rather than silently dropping (3 candidate loops were refused — Guayaquil cannot
+take a nau's draft; Osaka↔Sakai is a zero-length course — and every one of the 107 fleets kept at
+least one candidate), then measures each loop through the one executor and trims what cannot pay.
+
+**What it founded: 60 companies, 76 fleets, 131 hulls** — against 23 / 32 / 64 before, so **2.4×
+the fleets on the water**, not the 3× authored. The gap is 29 drops and they are the rule working
+rather than failing: a loop that cannot pay its own wages over laps 3-6, with the whole roster
+competing in one market, is not seeded on hope. **The Lisbon opening frame is crossed by 21 loops,
+up from 14**, which is the number the owner's sentence was really about — what moves where a new
+captain is looking. Six trim passes ran before the roster stopped changing; each one re-measures
+the whole world, which is why the generation took hours rather than minutes.
+
+### *"change the speed of the ship at least 10 times slower"* — migration 0100
+
+`time_compression` 9600 → 960: a voyage-day was 9 real seconds and is now 90. **The hull's knots are
+deliberately untouched**, and the file says why at length: dividing `voyage.ship_speed` by ten
+multiplies every passage's VOYAGE-DAYS by ten, stores are consumed per voyage-day, and
+`voyage.sail_refusal` refuses a sail the fleet cannot provision for — so a Lisbon→Kochi leg would
+need 110 days of water in a hold that carries twelve. Every ocean route in the game would refuse to
+sail, in the same hour the owner said there was not enough trade between continents. The clock does
+what was asked and breaks nothing: the passage is still 11 voyage-days and still wants 12 days of
+stores; the player simply watches it for ten times longer.
+
+0045 had made the world twenty times faster "for faster testing" in its own words. This hands that
+back, with 0045's own trap handled facing the other way: every fleet at sea is re-ETAd through
+`voyage.recompute_eta`, the one ETA authority, or she would arrive with days of her passage
+unresolved. The self-assert puts a real house to sea, moves the knob BOTH ways, and requires the
+arrival to follow it both times and the passage to be exactly ten times as long at the new rate.
+`game_day_seconds` (2880) is untouched and that is stated: the market drifts and the caps roll at
+the real-world rate they always did.
+
+### *"show routes for the ships of npcs as well"* — row 112
+
+A merchant drew only the leg she was on, and only while her sheet was open; a player's own fleets
+draw the whole course they sail. Now `world.npc_fleet_card` serves `route.legs` — **the baked
+courses of her whole loop**, the same verified water paths `cmd.do_sail` hands to `voyage.depart` —
+and the chart draws them under the leg she is on, quieter and dashed, for a merchant in port as
+well as one at sea: a route is what she runs, not what she happens to be doing this minute.
+
+The loop is served on the CARD, which is read at tap time, and never on `world.sea_traffic`, which
+every player with the map open reads on every beat. That is the difference between a 12 KB read and
+a megabyte one, and it is written into the migration where someone will be tempted to move it.
+
+### The adversarial review of the morning's fix pass, and what it found
+
+Eleven findings, all real, all fixed — the ones worth naming here:
+
+* **`lap` still averaged lap 1.** The morning's fix moved the threshold to two laps but left the
+  poisoned lap inside the seven-lap window, so a route with nets `[−10397, +7532]` printed `≈ −1,433
+  a lap` for a steady `+7,532`. The first closed lap is now excluded from the average outright.
+* **The crew-pool floor could strand a merchant for ever.** Capping her HIRE protected the quay and
+  left a crew-short fleet unable to sail, clearing and laying up in a loop no tick could break. The
+  rule moved to where the pool is actually drawn (`cmd.do_hire`): a merchant draws only the hands
+  ABOVE the floor and recruits the rest at the urgent rate, which costs more and takes nothing off
+  the quay. She sails, poorer; the quay keeps its hands.
+* **A traffic read already on the wire could land after the release** and re-fill a store nobody was
+  watching — the teleport again, by a longer road. The release now retires the read sequence.
+* **A docked merchant's drawn place moved when a NEIGHBOUR docked or sailed**, because her slot was
+  her index in the served list. It is derived from her own id now, so her berth is hers for as long
+  as she exists.
+* Plus: the receipt gate now protects every pause reason and not only `laid_up`; the carried ledger
+  balance has the positive control it lacked (the +500/−700-in-one-tick case that used to carry the
+  wrong figure); the "cap bounds the parcel" assert reads the planner's actual parcel instead of
+  restating a function's definition; `first lap under way` was off by one lap; `since 13:05` became
+  a span, because `day_since` can be a day old.
+
+### Still open, and deliberately so
+
+Row 113 — levels, requirements, captain traits, and restrictions by route length, carrying capacity
+and region entry — is designed in the ledger and **is the next slice, as its own migration**. It was
+not bolted onto this one: the owner's own instruction in the same hour was to merge and deploy a big
+project when it is finished, and holding a finished project hostage to a new one is the opposite.
+
+## 2026-10-10 — the merchant companies' review findings are FIXED (branch `osn-npc-traders`, still dark, still unpushed)
+
+Picked up the hand-off `docs/RESUME_NPC_TRADERS.md`: 0096-0099 built, the Fable adversarial review
+done, **no fix applied**. This entry is that fix pass. Nothing merged, nothing deployed; production
+head is still 0095 and `npc_traders_enabled` ships false.
+
+### The blocker: a laid-up merchant could never be taken up again
+
+`npc_tend` decided "the plan has just laid her up" from `standing_routes.updated_at` — which
+`cmd.standing_route_save_for` sets to `now()` on every successful plan. At `p_now = now()` the test
+`updated_at >= p_now - npc_laid_up_hours` was therefore **always true after a plan**, so every
+laid-up route was skipped and the `resumed` / `started` branches under it were unreachable. Every
+path that lays a route up is affected — nothing pays at the switch minute, the third consecutive
+clear, the refound cap's re-cut — so over days every briefly unprofitable merchant would have
+collected in `laid_up` for ever.
+
+**Fixed at the source of truth: the plan's own receipt.** `planned = 0` means she was not
+re-planned (laid up again, busy, or failed) and she waits; `planned = 1` means she has fresh lines
+and the existing assign/resume branches run. Both arms are acceptable outcomes (NO_SPAGHETTI §7C) —
+she is never resumed on stale lines.
+
+**Proven, with its positive control, in 0097's self-assert** (`npc_tend(now(), v_route)`, pinned to
+one route): with BOTH quays emptied the plan lays her up again and she is NOT taken up
+(`resumed 0, started 0`); with the probe market put back — and the ranking checked, not assumed —
+ONE pass takes her up. The negative arm bit on its first run and taught something: emptying only
+Lisbon is not "nothing pays", because **a port with no stock is a desperate sink**, so the Funchal →
+Lisbon leg still paid and she was rightly resumed.
+
+### Three more majors, and six minors
+
+| what | where | fix |
+|---|---|---|
+| **The card moved the selected hull.** The open merchant was placed from her CARD's voyage, which is re-asked on the beat and lands after `readAt`: the one hull the player is looking at stepped backwards on every beat (−25.2 / −20.0 / −6.5 px measured at 390) and then leapt forward. The teleport `drift.ts` exists to remove. | `src/chart/liveWorld.ts` | The card lends a TRACK and never a POSITION: the traffic row's position always stands, and the card's full course is used only when the row's own 2-point segment is FOUND inside it (`trackedVoyage` / `segmentIn`). A card a beat behind lends nothing. |
+| **Stale traffic painted on return to MAP.** `wantTraffic`'s release kept the last reading and the chart drew it on mount; the mount-time lone read then landed after `readAt`, so drift extrapolated from an older instant than the served position and overshot (32 hulls leapt 40-195 px, then stepped 5-20 px back). | `src/live/worldStore.ts` | The last wanter takes the reading with it (`traffic: null`), and the first want rides a `refresh()` rather than reading alone — so the position and the instant it is drifted from come from one beat. Never on top of a read in flight, for AppShell's own reason. |
+| **`A lap ≈ −116,690` on a merchant whose cargo fetched +139,165 next lap.** A lap closes on arrival home BEFORE the home stop's SELL, so lap 1 is a purchase with no sale. | `public.route_earnings` (0097) + `MerchantSheet.tsx` | `lap` is NULL below two closed laps and `lap_basis` says what the average stands on; the sheet prints `first lap under way`, labels the day row by its real window (`So far · since 13:05`), and says `newest first` on the lap list. **Moving the boundary itself would change every PLAYER's route history on a deployed feature — recorded for the owner, not done here** (NPC_TRADERS §7.4, ledger row 110). |
+| **Flag-off was not inert.** `npc_compact` had no switch gate and `tick_reconcile` calls it hourly from the moment 0098 lands: six hours after the deploy, still dark, it would have rolled the 23 seeded companies' founding ledger rows into one carried row each — exercising the append-only ledger's DELETE exemption on production before the owner flipped anything. | 0097 | Gated like the planner and the upkeep. 0097's DARK assert now also requires `npc_compact(now() + 7 h)` to roll nothing and leave the founding rows intact, reading the row count FIRST so it cannot pass vacuously. |
+| Docked merchants were all drawn at the single roadstead point, so three at Lisbon looked like one and only the first could ever be opened; and a hull covering a dot city's mark took taps meant for the city. | `liveWorld.ts`, `hitTest.ts` | Fanned round the berth deterministically by index (`fannedBerth`); a merchant berthed at a DOT city answers only at the dot's reach, so the harbour keeps its own tap. |
+| `refounded once, last 14:32` — a clock time for an event that may be days old. | `MerchantSheet.tsx` | The relative form the rest of the sheet counts in, off the ONE clock (`useShellState`), not a `Date.now()` in a render. |
+| The card served `voyage.id` — a callable handle (`voyage.position(uuid)` is executable by `authenticated`), which 0099's own header forbids; the forbidden-key scan could not ban `id` because `fleet.id` is served on purpose. | 0099 | `world.voyage_view(v.id, true) - 'id'`, and the card's voyage key set is now asserted exactly. |
+| The carried ledger row's `balance_after` was picked by `order by created_at desc, balance_after desc` — every row written in one tick shares `created_at`, so the HIGHEST balance won, not the last (+500 then −700 in one transaction carried 104,500 on a purse of 103,800). `assert_ledger_reconciles` checks only Σ delta, so nothing raised. | 0097 | Computed, not picked: the purse now, less every delta booked after the cut — exact by construction, whatever the order inside a tick. |
+| The "stock floor" self-assert could not fail for the reason it named (the daily cap keeps stock above that floor whether or not the ceiling works), and never asked the ceiling a question. | 0097 | Replaced by a direct proof at the authority that sizes every parcel: at target stock a BUY for the whole target fills FEWER units with the ceiling than without one, and what it fills was never dearer than the ceiling — plus the cap asserted as the cap. |
+| 32 merchant fleets hiring after every raid loss would drain `ports.crew_pool`, which NO tick regenerates, from the quays players hire from. | `cmd.standing_route_tail`, re-cut by 0097 | New knob `npc_crew_pool_floor` (25): a merchant hires only out of the hands ABOVE it, so a player always finds that many standing — and because her ask is then never more than the pool she never recruits at the urgent rate either. Asserted four ways: nothing at the floor, exactly three when three stand above it, her whole shortfall on a full quay, and — the control — a PLAYER's fleet rendered through the SAME route and stop still asks for her whole shortfall. |
+
+### The owner's own readings of the screenshots
+
+- *"a sale of the cargo passed over at Lisbon"* read as though someone had skipped it. It now says
+  what happened: `did not sell the cargo at Lisbon` (`src/domain/route/index.ts`).
+- At 1280 the merchant sheet covered the **Regions** toggle completely. The chrome layer's right
+  edge now gives way to an open side tray — `chromeAsideTrayClass()` in `screenLayout.ts`, the
+  mirror of `trayDockWideClass()`, built from the same two numbers. It fixes the player's own
+  VoyageTray at 1280 as well, which had the same defect.
+- The "empty outlined box" round the drag handle at 390 was the browser's focus ring on the
+  full-width grab button. Same idiom as `.bv-range`: the control keeps the reach, the drawn pill
+  carries the ring.
+- **"The sea must look busy" is NOT fixed, and it is the one thing here that is the owner's call.**
+  Measured on the built roster (`scripts/db/measure-merchants.mjs`, 23 companies / 32 fleets, driven
+  UNPACED, which is the ceiling the pace lever can buy): the Lisbon 12° frame holds **mean 3.4
+  hulls, min 2, max 5**. So the design's target is met and is also the ceiling — the binding
+  constraint is the ROSTER, not `npc_laps_per_game_day`. The room exists (161.9 rows a lap, **1,076
+  rows retained** against a budget of 100,000; `world.sea_traffic()` **7.07 ms/call**, 12.7 KB, at
+  32 fleets at sea), but more fleets means a roster past this plan's own maxima and more hands in
+  the market players trade in. Recorded in NPC_TRADERS §3.3 and ledger row 109; not invented here.
+
+### The two test edits the hand-off asked to audit — both stand
+
+- `a038f69`, proof 11's `ROUTE_BOOKS_BALANCE`: 0096 changed route pacing from a calendar boundary to
+  an INTERVAL (0096:198 — `max(started_at) + game_day_seconds / laps_per_game_day`), so the proof's
+  expected `hold_until` had to follow the code. It is still an EXACT equality against an
+  independently computed value, not a loosened one. The proof follows the design, not the reverse.
+- `feeec66`, the merchant spec's `hullInView(page, null)`: the relaxation is confined to the 1280
+  SCREENSHOT test, whose claim — a tap at 1280 opens the sheet — does not depend on the merchant
+  being at sea. The 390 test still demands a SAILING hull, that she moves between beats, and that
+  her track is drawn. Nothing the suite proves got smaller.
+
+### Gates
+
+| gate | result |
+|---|---|
+| `npm run db:apply` | **exit 0** — the whole chain on PGlite, every self-assert run, 0096-0099 green with the new probes |
+| `npm run db:proof` | **12 files, 85/85 PASS markers** |
+| `npm run db:check-versions` | 92 migrations, no collisions, positive control seen |
+| `npx tsc -b` · `npx eslint .` · `vite build` | 0 · 0 · 0 |
+| `tests/map.merchants.spec.ts` | **10 / 10**, screenshots re-shot |
+| `layout` · `words` · `sections` · `duplication` · `flicker` · `route.stopface` · `trade.ceiling` · `wide.layout` · `firstRead.empty` · `primitives.geometry` | green (see the note below) |
+
+**Proof 12 now reads `87 merchant laps closed by 33 of 33 fleets`** — before the blocker fix it
+tolerated fleets left laid up for want of a paying cargo, which is exactly the state no merchant
+could ever leave. **Proof 12's `MERCHANT_EARNINGS` exercises the new reading**: *"the probe
+merchant's card says −2865 a day over 2 lap(s), the hand sum of its laps is −2865, and its recent
+nets [−10397, 7532] are the laps' own"*.
+
+**A note on reading a red here.** Run as ONE batch of eleven spec files while `db:proof`'s PGlite
+chain had the CPU, four tests went red — COMMAND and the `/ui` gallery never finished booting inside
+60 s, and PORT never reached a usable state. Run again with the machine to themselves, **18 / 18
+green**. The local-mode boot builds a whole PGlite world in the browser; it loses that race, not the
+code. One of those four WAS real and is fixed: `sections.spec.ts` "the design system has one
+entrance" caught `MapScreen` importing `screenLayout` directly, and the import now goes through
+`components/ui`.
+
+**An environment note worth keeping:** `vite build` fails on this machine's default Node 20
+(`TypeError: Unknown file extension ".ts"` out of the `byeharu:world-image` plugin) and succeeds on
+Node 26 — it fails the same way on a clean `main`, so it is the toolchain, not the branch.
+`TOOLCHAIN.md` records Node 24. Build with `nvm use 26.2.0` (or point PATH at it) on this PC.
+
+## 2026-10-08 — merchant companies: built, measured, dark (branch `osn-npc-traders`, NOT pushed, NOT merged, NOT deployed)
+
+Owner rows 109-111: *"this game will now turn into simulator, of trades. add npc to and show movement on
+map"*, *"by clicking the npc ship, it will show how much it is earning per day"*, *"it should be fleet as
+well … see ships, captains, skills"*. Plan `docs/NPC_TRADERS.md`; where the build departs from it, §15
+(X1-X16). Resumed after the owner's PC lost power mid-implementation: 0096/0097 were on disk
+uncommitted; both were re-applied on the chain (self-asserts pass) and committed first.
+
+**What exists now (all dark — `npc_traders_enabled` = false).**
+- **0096** the same hands: the founding / ship / fleet / officer / skill / preset / route / clear doors
+  sliced into server-only `p_player` cores; interval pacing; `crew_up` + one tail renderer; D3; the
+  repeated-harbour anchor; `cmd.clear`/`cancel_at` ownership gates; the stale `trade_routes` registry row gone.
+- **0097** the machinery: switch + knobs, `npc_houses`/`npc_fleets`, `npc_found`, `npc_plan`, `npc_tend`,
+  `npc_compact`, `route_earnings`, Rank exclusion, the compactor's one delete exemption, upkeep inside
+  `tick_reconcile`.
+- **0098 GENERATED** by `scripts/build-npc-0098.mjs` (measured through the one executor): **23 companies,
+  32 fleets, 64 hulls**, 14 loops crossing Lisbon's opening frame. 12 lesser officers added.
+- **0099** `world.sea_traffic` / `world.npc_fleet_card` (authenticated-only, registered, dark), with
+  `world.voyage_view` and `public.standing_route_state` sliced out of `world.fleets` / `world.standing_routes`.
+- **Client**: merchants on the chart (same hull, nation ink, no halo, at sea and at the roadstead), the
+  read-only `MerchantSheet` (earnings, laps, route, fortune, ships, cargo, officers, Skills), "Merchants in
+  port" on PORT. The four shared tiles moved to the design system.
+
+**Measured locally (PGlite; slice 6's laptop half — production's soak is still owed before the switch).**
+| figure | value | how |
+|---|---|---|
+| merchant rows per closed lap | **141.6** (proof 12: 142.4) | `scripts/db/measure-merchants.mjs`, 20 rewound ticks + 4 reconciles: 16,425 rows / 116 laps |
+| rows retained after `npc_compact` | **1,017** (proof 12: 1,452; budget 100,000) | the 6-h window passed |
+| `world.sea_traffic()` | **13.0 ms/call** (explain analyze 9.3 ms), 12.4 KB, 32 fleets at sea; 0099's own receipt read 27.7 ms on a busier machine | PGlite is WebAssembly on one connection — **production's figure decides the memo (X15)** |
+| `world.npc_fleet_card()` | 3.2 ms/call | same |
+| merchant hulls in Lisbon's 390 × 844 opening frame | **mean 4.8, min 2** over 21 samples | the same geometry the build checks |
+| build measurement | 4 candidate sets + 5 trim passes, 32 min | seeded drift; freeze-on-pass (X14) |
+
+**Two findings for the owner, not fixed here.**
+1. **A route's first lap reads as a loss when it buys on its last leg** (X16): the lap closes on arrival at
+   stop 0, before the home sales, so the cost lands on lap N and the revenue on lap N+1. Shared with every
+   player route (0092). The card's "a lap" and "so far today" read low in a merchant's first hours.
+2. **The trim rule, applied naively, ratchets on noise** (X14): an unseeded re-judging run left 14 / 16 / 21
+   of 26 / 35 / 78. Shipped with the seeded freeze-on-pass rule; a few kept fleets show a negative LAST
+   measurement in 0098's header. The production soak is the judge.
+
+**Gates run on this branch (2026-10-08):** `npm run db:apply` — 92 migrations, 92 self-assert receipts,
+world-guard ok · `npm run db:proof` — 12 proof files, 85/85 PASS markers (proof 11 re-stated for the interval pace; proof 12 new) · `npm run db:check-versions`
+OK (92) · `npm run lint` clean · `npm run build` (incl. `tsc -b`) ok · Playwright against `vite preview
+--port 4291` on localhost: `map.merchants` 7/7, `layout` + `flicker` + `route.stopface` 28/28, 0 skipped ·
+`rpc.surface` 27/27. Screenshots: `docs/npc-traders/`.
+
+**Before deploy (the owner's reads/actions):** regenerate 0098 with `--taken` (production's
+`select company_name from public.players`); the production soak of §12 slice 6; then
+`select public.npc_traders_switch(true);` — `false` is the rollback.
+
+---
+
 ## 2026-10-08 — two fixes: 0083's breakdown assert had a lottery tolerance; COMMAND said "No fleets yet" to a captain with a fleet (branch `osn-fix-0083-and-empty-flash`, NOT deployed — nothing to deploy server-side)
 
 ### 1. 0083 self-assert (i): the tolerance is now a proven bound (assert-only edit of an applied migration)

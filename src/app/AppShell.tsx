@@ -29,8 +29,18 @@ import { useWorld } from '../live/worldStore'
  *
  *  Clamped at both ends: never faster than 3 s (a read settles voyages server-side, and hammering
  *  it buys nothing a player can see), never slower than 30 s (the old cadence remains the floor on
- *  a slow world, so nothing can arrive unnoticed). */
-const READS_PER_VOYAGE_DAY = 4
+ *  a slow world, so nothing can arrive unnoticed).
+ *
+ *  HOW MANY IS "SEVERAL", AND WHY IT ROSE TO TWELVE (2026-10-11). Four was enough while a
+ *  voyage-day was nine real seconds: the arithmetic gave 2.25 s and the 3-s floor took over, so the
+ *  number did nothing. 0100 made a voyage-day NINETY real seconds, and four reads of it is a
+ *  twenty-two-second beat — a player watching a hull creep sees her correct her course four times a
+ *  passage, and an arrival they are waiting for can sit unread for twenty seconds. Twelve gives a
+ *  7.5-second beat at the current clock AND lands under the 3-s floor at every clock this game has
+ *  shipped before, so nothing that was tuned against the old speed moves. The RULE is still "read
+ *  several times per voyage-day" and it is still derived from the served knob; only the reading of
+ *  "several" is now one a slow world can live with. */
+const READS_PER_VOYAGE_DAY = 12
 const READ_MIN_MS = 3_000
 const READ_MAX_MS = 30_000
 

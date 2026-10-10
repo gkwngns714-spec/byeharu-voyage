@@ -161,9 +161,14 @@ export function Tray({
               if (e.key === 'ArrowUp') onDetentChange(stepDetent(detent, 1))
               if (e.key === 'ArrowDown') onDetentChange(stepDetent(detent, -1))
             }}
-            className="flex h-11 flex-1 cursor-grab touch-none items-center justify-center"
+            // THE RING BELONGS TO THE HANDLE, NOT TO ITS REACH. The button is a full-width grab
+            // surface on purpose, so the browser's own focus box drew an empty rectangle across
+            // the whole head of the sheet (read on docs/npc-traders/merchant-sheet-full-390.png,
+            // 2026-10-08). Same idiom as `.bv-range` in index.css: the control carries the reach,
+            // the drawn thing carries the ring.
+            className="group flex h-11 flex-1 cursor-grab touch-none items-center justify-center outline-none"
           >
-            <span className="h-1 w-9 rounded-chip bg-ink-faint" />
+            <span className="h-1 w-9 rounded-chip bg-ink-faint group-focus-visible:ring-2 group-focus-visible:ring-accent" />
           </button>
         )}
         {dismissible && (

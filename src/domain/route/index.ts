@@ -99,6 +99,10 @@ export function routePauseReason(reason: string | null): string {
       return 'the fleet is not at a stop of the changed route'
     case 'error':
       return 'this route could not run. Change it and resume'
+    case 'dark':
+      return 'the merchants keep to port'
+    case 'laid_up':
+      return 'it is laid up'
     default:
       return 'it was paused'
   }
@@ -174,4 +178,37 @@ export function routeStopLines(
  *  (where the stop asks for it). One author, so the running face and the editor say it alike. */
 export function routeStopQuiet(repair: boolean): string {
   return repair ? 'Resupply if low · Repair' : 'Resupply if low'
+}
+
+/**
+ * A STEPPED-OVER LINE OF A MERCHANT'S LAST LAP, in words (0099, docs/NPC_TRADERS.md §8.3: *"quicksilver
+ * too dear at Lisbon"*). The served skip carries the line's text, its verb and its refusal code;
+ * the good is the line's second word. Names are the caller's (goods and ports by code).
+ */
+export function skippedWords(
+  skip: { port?: string; line: string; verb?: string; code: string },
+  goodName: (code: string) => string,
+  portName: (code: string) => string,
+): string {
+  const verb = (skip.verb ?? skip.line.split(/\s+/)[0] ?? '').toUpperCase()
+  const word = skip.line.split(/\s+/)[1] ?? ''
+  const good = word && word.toUpperCase() !== 'ALL' ? goodName(word) : 'the cargo'
+  const at = skip.port ? ` at ${portName(skip.port)}` : ''
+  switch (skip.code) {
+    case 'E_PRICE_LIMIT':
+      return verb === 'BUY' ? `${good} too dear${at}` : `${good} would not sell above cost${at}`
+    case 'E_DAILY_CAP':
+      return `no more ${good} today${at}`
+    case 'E_QUEUE_FULL':
+      return `${good} kept on board${at}`
+    case 'E_NOT_ENOUGH_STOCK':
+    case 'E_OUT_OF_STOCK':
+      return `no ${good} to be had${at}`
+    // THE PLAIN FORM, for a code with no line of its own. "a sale of the cargo passed over at
+    // Lisbon" was read by the owner (2026-10-08) as though a sale had been skipped over by
+    // someone — it says the right thing in the wrong voice. What happened is simply that she did
+    // not trade, so that is what it says.
+    default:
+      return `${verb === 'BUY' ? 'did not buy' : 'did not sell'} ${good}${at}`
+  }
 }

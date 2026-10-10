@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react'
 import {
   Figure,
-  Icon,
   Note,
   Row,
   Skeleton,
-  Tile,
+  OfficerTile,
   TileField,
   Tray,
   type TrayDetent,
@@ -62,23 +61,21 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
     <>
       <TileField>
         {rows.map((o) => (
-          <Tile
+          // THE TILE is the design system's `OfficerTile` since 2026-10-08 (a merchant's sheet prints
+          // the same officer). SIGNED is a fact about the world, not an offer: whose house holds
+          // their mark is read from the roster and only read. Home port is new here (0015:63).
+          <OfficerTile
             key={o.code}
-            mark={<Icon name="crew" size={20} />}
             name={o.name}
-            /* SIGNED is a fact about the world, not an offer: whose house holds their mark is
-               read from the roster and only read. */
-            meta={o.hired ? `${o.specialty.toLowerCase()} · signed` : o.specialty.toLowerCase()}
-            figure={
-              <Figure value={`+${formatPctPoints(o.bonus_pct)}`} tone={o.takes_effect ? 'success' : 'faint'} />
-            }
-            state={o.takes_effect ? 'rest' : 'muted'}
-            tap="whole"
+            specialty={o.specialty}
+            bonusPct={o.bonus_pct}
+            homePort={o.port ? portNameOf(portByCode, o.port) : null}
+            signed={o.hired}
+            takesEffect={o.takes_effect}
             onClick={() => {
               setDetent('half')
               setOpen(o)
             }}
-            data-testid="officer-tile"
           />
         ))}
       </TileField>

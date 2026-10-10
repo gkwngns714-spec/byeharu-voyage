@@ -70,6 +70,7 @@ src/components/ui the design system.   One import surface, already a section in 
 | **`chart`** | **the picture of the world**: the read model, the projection and the density rules, the SVG layers, the paint order, the pan/zoom surface, and the two things a screen mounts — `ChartCanvas` (a picture at a given view) and `SmallChart` (a whole framed one) | `chart/index.ts` |
 | `domain/passage` | the course a client PROPOSES for a SAIL or a DIVERT (0039): where she departs from, the snapped water point a map tap becomes, the `lat,lon` token the grammar reads, and the one wording of a point on a screen. It proposes; the SERVER verifies and measures — this section decides nothing | `domain/passage/index.ts` |
 | `lib/sea` | the navigable-water grid and the pathfinder over it (0039) — machinery with no game opinion, consumed by the browser, the Node generators and the proof harness, so all three search the same water the same way. The AUTHORITY on what the grid contains is the served `public.sea_raster` row | `lib/sea/index.ts` |
+| `live/MerchantSheet` (+ `live/useMerchantCard`, `live/merchantLine`) | **one merchant fleet, read-only** (0099, `docs/NPC_TRADERS.md` §8.3): the sheet MAP opens on a tapped hull and PORT opens from "Merchants in port" — earnings, route, fortune, ships, cargo, officers, Skills — composed of the design system's `ShipTile`, `CargoRows`, `OfficerTile`, `SkillTile` (moved out of FLEETS, the Codex and the Academy so both faces print one shape). No action but closing. The traffic itself is the store's one reader (`worldStore.traffic`, read on the beat while a screen wants it) | `live/MerchantSheet.tsx` |
 
 The `domain/*` ones are pure and derive from served payloads. **Neither they nor the chart decide
 anything** — the server owns every rule; these only read what a payload already says.
@@ -291,6 +292,7 @@ is worth being honest about rather than tidy about:
 | voyages | `voyages` `voyage_events` (0006) | `voyage.settle`, closed-form position (0006) |
 | orders | `orders` (0007) | the verb grammar and parser (0007, 0008) |
 | the clock | — | ticks (0010) · **schedule** (0012) |
+| merchant companies | `players.is_npc` (0096) · `npc_houses` `npc_fleets` (0097) · the roster (0098, generated) | founded by `public.npc_found` through the 0096 cores; planned by `public.npc_plan`, tended by `npc_tend`, compacted by `npc_compact` — all three inside `tick_reconcile` (0097: **0010's "reads only" is superseded**); read by `world.sea_traffic` / `world.npc_fleet_card` (0099). They trade only through the one executor |
 
 **0010 and 0012 are the pattern to copy.** 0010 owns what a tick *does*; 0012 owns *when it runs*.
 Two files, two questions, no overlap — and 0012 derives its cadence from `drift_slot_seconds` rather

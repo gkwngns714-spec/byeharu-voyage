@@ -52,7 +52,7 @@ export { SmallChart } from './SmallChart'
 export { Minimap } from './Minimap'
 
 // ── the read model: what a chart is told, and what it makes of it ──────────────────────────────
-export type { MapFleet, MapPort, MapSelection, MapVoyage, MapWater } from './mapTypes'
+export type { MapFleet, MapPort, MapSelection, MapVoyage, MapWater, MapTraffic, MerchantInk } from './mapTypes'
 export {
   buildChartModel,
   fleetsAtPort,
@@ -62,10 +62,12 @@ export {
   dotPorts,
   type ChartModel,
   type FleetOnChart,
+  type TrafficOnChart,
   type PortMark,
   type PortRole,
 } from './chartModel'
-export { mapFleetsOf, mapPortsOf } from './liveWorld'
+// 0099 — the merchants, through the same per-fleet mapping (docs/NPC_TRADERS.md §8.2).
+export { mapFleetsOf, mapPortsOf, mapTrafficOf } from './liveWorld'
 // ROW 90 — the seas' names: how data/seas.json is read, and which waters ask to be named at a
 // zoom. The DECISION, exported for the same reason `roadsteadMarks` is; the paint is LabelsLayer's.
 export { mapSeasOf, seaNameRequests } from './seaNames'

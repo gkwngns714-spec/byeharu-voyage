@@ -9,6 +9,9 @@
 // THREE THINGS ARE ABSENT ON PURPOSE:
 //   · Other players. DESIGN §E.5 forbids drawing them: rivals on a chart make it a targeting
 //     surface, and this game has no PvP (§J.2). There is no field here that could carry one.
+//     MERCHANT COMPANIES are the owner's 2026-10-08 exception (DESIGN §J.3 / Q7, docs/NPC_TRADERS.md):
+//     companies the world keeps, not players, and they arrive ONLY as `MapTraffic` below, in their
+//     own list — never in the fleet list, so nothing that is about YOUR fleets can ever see one.
 //   · Any callback that changes the world. The only events this chart raises are selections, and a
 //     selection is a VIEW change. Orders are composed on the Command tab, in words.
 //   · Any way to DERIVE a position. A fleet at sea arrives here already placed — `MapVoyage.at`
@@ -158,6 +161,34 @@ export type MapFleet =
   | ({ readonly kind: 'sailing'; readonly id: string; readonly name: string; readonly voyage: MapVoyage } & FleetStores)
   | ({ readonly kind: 'anchored'; readonly id: string; readonly name: string; readonly at: LatLon } & FleetStores)
 
+/** The nation family a merchant hull is inked in — `npc_houses.ink`, served; never derived here. */
+export type MerchantInk = 'prt' | 'esp' | 'nld' | 'eng' | 'han' | 'ita' | 'ott' | 'east'
+
+/**
+ * A MERCHANT FLEET (0099), in the same three states a fleet of yours is drawn in — at sea with a
+ * served voyage, or, when she lies in port, `anchored` at the port's SERVED roadstead point (where
+ * a ship at anchor is drawn; no legend needed). Her voyage course is the CURRENT SEGMENT only,
+ * except for the one merchant whose card is open: that row carries her full served course, so her
+ * leg can be drawn while she is selected. Position copied, never computed (./liveWorld.ts).
+ */
+export type MapTraffic = MapFleet & {
+  readonly company: string
+  readonly ink: MerchantInk
+  /** HER WHOLE LOOP, leg by leg, when her card is open — the baked water each leg sails (0099).
+   *  Null for every other merchant: the loop is served on the card alone, at tap time. */
+  readonly loop: readonly (readonly LatLon[])[] | null
+  /** True when she lies in port (drawn at the roadstead, bow north). */
+  readonly docked: boolean
+  /** The port she lies in, by code, when docked. */
+  readonly berthCode: string | null
+  /** Her place in the fan at that berth — 0 is the roadstead itself, 1.. ring round it. Docked
+   *  merchants used to be drawn on top of one another at the single roadstead point, where the hit
+   *  test could only ever answer with the first of them (./liveWorld.ts `fannedBerth`). */
+  readonly berthIndex: number
+  /** When she may start her next lap, epoch ms, while held in port; else null. */
+  readonly nextLapAtMs: number | null
+}
+
 /**
  * What the player has singled out to read about. ONE selection concept for the whole chart, so
  * there is exactly one detail panel and it can never disagree with itself.
@@ -169,4 +200,6 @@ export type MapSelection =
   /** A pinpointed spot of open water (0039) — already SNAPPED to sailable sea by the screen that
    *  made it, so what the panel offers to sail to is water by construction. */
   | { readonly kind: 'sea'; readonly at: LatLon }
+  /** A merchant fleet (0099) — read-only: selecting one never touches the command draft. */
+  | { readonly kind: 'merchant'; readonly id: string }
   | null

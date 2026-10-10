@@ -114,6 +114,14 @@ glass; the corners hold exactly what they held; no word of chrome was added.
 * The hit test, the reach, the roadstead rule and its `1 5` dot, the tracks' geometry (the served
   polyline, split at the served position), `visiblePorts`, the tier bands, the keep-out rule.
 * No screen prints a new word; the sea names are the data's own.
+* **The merchant hull (2026-10-08, owner rows 109-111, `docs/NPC_TRADERS.md` §8.2).** Merchant fleets
+  are drawn with the SAME `shipPath` at the SAME `shipHalfLength` as yours — 0.7 × would be the retired
+  8.8 px dot — filled in their company's NATION ink (`--color-nation-*`, eight families, hues held away
+  from the accent's gold, ≥ 3 : 1 against the sea in both schemes, `tests/map.merchants.spec.ts`), with
+  NO halo: the halo and the gold are how yours stays loud. At sea she points along her served segment;
+  lying in port she is drawn AT ANCHOR at the port's served roadstead, bow north — a ship at anchor
+  needs no legend (§4). No label, no ring, no track — except the one merchant whose card is open, whose
+  current leg is drawn faint (`stroke-ink-faint`), with no arrow.
 
 ## 6. The one exception to §4.1, stated
 

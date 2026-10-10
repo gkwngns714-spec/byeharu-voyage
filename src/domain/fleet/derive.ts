@@ -104,7 +104,7 @@ export function housePortCode(fleets: readonly FleetView[]): string | null {
 }
 
 /** Hull condition, 0–1. `durability` and `max_durability` are both served; the ratio is not. */
-export function hullFraction(ship: FleetShip): number {
+export function hullFraction(ship: Pick<FleetShip, 'durability' | 'max_durability'>): number {
   return ship.max_durability > 0 ? ship.durability / ship.max_durability : 0
 }
 
@@ -251,7 +251,8 @@ export function voyageFraction(fleet: FleetView): number | null {
 }
 
 /** The arrival instant, in ms. `eta` is an ISO STRING (not ms) — Date.parse is the whole of it. */
-export function voyageEtaMs(fleet: FleetView): number | null {
+/** Structural: a merchant's served voyage (0099) carries the same `eta` and is read by the same parse. */
+export function voyageEtaMs(fleet: { readonly voyage: { readonly eta: string } | null }): number | null {
   const v = fleet.voyage
   if (!v) return null
   const ms = Date.parse(v.eta)

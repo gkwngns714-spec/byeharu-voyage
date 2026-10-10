@@ -245,6 +245,10 @@ test.describe('the position is the server’s, copied', () => {
   test('only the player’s own fleets are in the model — there is no field for anyone else', () => {
     expect(Object.keys(MODEL)).toEqual([
       'fleets',
+      // 0099 — THE MERCHANTS, in their OWN field and nowhere else. The claim this test makes is not
+      // that the model has no field for anyone else; it is that nothing about YOUR fleets can see
+      // one. `traffic` is empty here (no merchants were passed) and the assertions below say so.
+      'traffic',
       'portRoles',
       'destinationPoints',
       'destinationSeaPoints',
@@ -252,6 +256,7 @@ test.describe('the position is the server’s, copied', () => {
       'motionPoints',
     ])
     expect(MODEL.fleets).toHaveLength(2)
+    expect(MODEL.traffic).toHaveLength(0)
   })
 
   test('the instant she left is COPIED when served, and absent when it is not (0063)', () => {

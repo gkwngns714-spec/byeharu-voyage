@@ -91,26 +91,30 @@ test('percentages: fractions and already-in-points both have a formatter, and th
   expect(formatPctDelta(-0.135)).toBe(`${MINUS}13%`)
 })
 
-test('the compression constant is 9600 and one voyage-day is nine real seconds (D.1, 0045)', () => {
-  // Pin moved deliberately 2026-08-24 with migration 0045 (the world runs twenty times faster):
-  // the served knob went 480 -> 9600, and this client mirror moves WITH it — rpc.surface.spec
-  // asserts the two are equal, so neither can move alone again.
-  expect(TIME_COMPRESSION).toBe(9600)
-  expect(REAL_MS_PER_VOYAGE_DAY).toBe(9_000)
-  expect(voyageDaysToRealMs(1)).toBe(9 * 1000)
-  expect(realMsToVoyageDays(9_000)).toBe(1)
+test('the compression constant is 960 and one voyage-day is ninety real seconds (D.1, 0100)', () => {
+  // Pin moved deliberately TWICE. 2026-08-24, migration 0045: 480 -> 9600, "the world runs twenty
+  // times faster", for testing. 2026-10-11, migration 0100: 9600 -> 960, the owner handing that
+  // testing speed back — "change the speed of the ship at least 10 times slower". The client mirror
+  // moves WITH the served knob, and rpc.surface.spec asserts the two are equal, so neither can move
+  // alone again.
+  expect(TIME_COMPRESSION).toBe(960)
+  expect(REAL_MS_PER_VOYAGE_DAY).toBe(90_000)
+  expect(voyageDaysToRealMs(1)).toBe(90 * 1000)
+  expect(realMsToVoyageDays(90_000)).toBe(1)
 })
 
-test('B.3 worked distances reproduce their real times at the 0045 clock', () => {
-  // The B.3 table was published at compression 480; at 9600 (0045) the same voyage-days land
-  // twenty times sooner. The DAYS are unchanged — only the real-time twin moved with the knob.
-  // Lisboa -> Cadiz, 188 nm at 5 kn = 1.567 voyage-days = 14 s real.
+test('B.3 worked distances reproduce their real times at the 0100 clock', () => {
+  // The B.3 table was published at compression 480, read at 9600 under 0045, and reads at 960 now
+  // (0100). THE VOYAGE-DAYS NEVER MOVE — a passage is the same passage; only its real-time twin
+  // follows the knob, which is the whole reason the two clocks are printed together (D.3).
+  // Lisboa -> Cadiz, 188 nm at 5 kn = 1.567 voyage-days = 2.4 min real.
   const days = 188 / 5 / 24
-  expect(formatRealDuration(voyageDaysToRealMs(days))).toBe('14 s')
-  // Cadiz -> Havana, 3,944 nm at 5 kn = 32.9 days = 4.9 min.
-  expect(formatRealDuration(voyageDaysToRealMs(3944 / 5 / 24))).toBe('4.9 min')
-  // Lisboa -> Malaca, 11,736 nm at 5 kn = 97.8 days = 14.7 min.
-  expect(formatRealDuration(voyageDaysToRealMs(11736 / 5 / 24))).toBe('14.7 min')
+  expect(formatRealDuration(voyageDaysToRealMs(days))).toBe('2.4 min')
+  // Cadiz -> Havana, 3,944 nm at 5 kn = 32.9 days = 49.3 min.
+  expect(formatRealDuration(voyageDaysToRealMs(3944 / 5 / 24))).toBe('49.3 min')
+  // Lisboa -> Malaca, 11,736 nm at 5 kn = 97.8 days = 2 h 27 min — an ocean crossing you leave and
+  // come back to, which is what an idle trade sim is for.
+  expect(formatRealDuration(voyageDaysToRealMs(11736 / 5 / 24))).toBe('2 h 27 min')
 })
 
 test('durations have a long form and a table-cell form', () => {
@@ -123,7 +127,7 @@ test('durations have a long form and a table-cell form', () => {
 })
 
 test('the two clocks are printed together, because one of them is a lie on its own (D.3)', () => {
-  expect(formatTwoClocks(1.567)).toBe('1.6 voyage-days · 14 s real')
+  expect(formatTwoClocks(1.567)).toBe('1.6 voyage-days · 2.4 min real')
   // Pin moved deliberately 2026-08-22: "9.4 d" collided with formatDucats' "8,000 d." — one
   // letter, two units, side by side on two screens. The word is spelled now.
   expect(formatVoyageDays(9.44)).toBe('9.4 days')

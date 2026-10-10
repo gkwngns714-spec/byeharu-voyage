@@ -75,6 +75,12 @@ const BANNED: { word: RegExp; say: string }[] = [
   { word: /\bcycles?\b/i, say: 'Lap' },
   { word: /\bsuspended\b/i, say: 'Paused' },
   { word: /\bcooldown\b/i, say: 'Next lap 14:32' },
+  // 2026-10-08, owner rows 109-111 (docs/NPC_TRADERS.md §8.6): the companies the world keeps are
+  // MERCHANTS — a merchant company, a merchant fleet. `npc` is the wire's word and never the player's.
+  { word: /\bNPCs?\b/, say: 'merchant' },
+  { word: /\bbots?\b/i, say: 'merchant' },
+  { word: /\bAI traders?\b/i, say: 'merchant' },
+  { word: /\bbailed out\b/i, say: 'refounded' },
   { word: /\bfatigue\b/i, say: 'Next lap 14:32' },
   { word: /\bat profit\b/i, say: 'Only sell above cost' },
 ]

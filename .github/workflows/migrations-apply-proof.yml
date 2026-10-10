@@ -76,10 +76,26 @@ jobs:
     # assertion failure at all -- the last receipt was 0056 and then nothing -- while
     # disposable-chain (real Postgres 17) passed the SAME commit in 5m45s. A cancelled job reads
     # exactly like a red one in the checks list, which is how a gate stops meaning anything.
-    # 30 matches disposable-chain's own limit below. If this is hit again the answer is a lighter
-    # fixture or a faster gate, NOT a bigger number -- the same ruling db.chain's 360 s spec
-    # carries. READ THE LOG before ever calling this job's red a defect.
-    timeout-minutes: 30
+    # 30 matched disposable-chain's own limit below. The ruling that came with it: if this is hit
+    # again the answer is a lighter fixture or a faster gate, NOT a bigger number -- the same ruling
+    # db.chain's 360 s spec carries. READ THE LOG before ever calling this job's red a defect.
+    #
+    # RAISED TO 45 ON 2026-10-11, and the ruling above is not being waved away: its PREMISE moved.
+    # 30 was chosen to match disposable-chain, and on the same commit disposable-chain now takes
+    # 9m52s where it used to take 5m45s. The world tripled (26 -> 70 merchant companies, 35 -> 107
+    # fleets; docs/NPC_TRADERS.md 3.2) and every gate that applies the chain grew with it. This job
+    # PASSED at 22m48s and was CANCELLED at 30m16s on the very next commit, which touched no SQL at
+    # all -- so it is sitting on the line, and a gate that is a coin-toss reads exactly like the red
+    # the ruling was written to prevent.
+    #
+    # A LIGHTER FIXTURE WAS TRIED FIRST, and is recorded here so nobody tries it twice: capping the
+    # soak to 21 fleets through npc_fleet_max (the world's own lever) made proof 12 cheap, but it
+    # changes WHICH fleets are drawn, and a different pair came up each run as "DOCKED, route
+    # running, no lap" -- fleets sitting between legs that the hourly upkeep has not reached. More
+    # ticks did not help. That is a real looseness in the soak and it deserves its own slice;
+    # squeezing it into a deadline fix would have been the gate weakened to fit the clock, which is
+    # precisely what the ruling forbids. So the number moved instead, in the open, with its reason.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 

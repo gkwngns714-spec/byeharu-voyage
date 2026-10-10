@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import {
-  Bar,
   Button,
   Figure,
   Note,
   Row,
   Skeleton,
-  Tile,
+  SkillTile,
   TileField,
   Tray,
   type TrayDetent,
@@ -62,31 +61,24 @@ export function PortAcademy({ acting }: { acting: FleetView | null }) {
     <div data-testid="port-academy">
       {!acting && (
         <Note tone="warning" className="mb-3">
-          Pick a fleet to train its captain.
+          Pick a fleet docked at an academy to study.
         </Note>
       )}
 
       <TileField>
         {book.skills.map((sk) => (
-          <Tile
+          // THE TILE is the design system's `SkillTile` since 2026-10-08 (a merchant's sheet prints
+          // the company's four Skills the same way, docs/NPC_TRADERS.md §8.3).
+          <SkillTile
             key={sk.code}
+            code={sk.code}
             name={sk.name}
-            state={sk.level > 0 ? 'selected' : 'rest'}
-            tap="whole"
+            level={sk.level}
+            max={book.max_level}
             onClick={() => {
               setDetent('half')
               setOpen(sk)
             }}
-            figure={<Figure value={`${sk.level}`} unit={`/ ${book.max_level}`} />}
-            bar={
-              <Bar
-                value={sk.level}
-                of={book.max_level}
-                tone={sk.level > 0 ? 'accent' : 'neutral'}
-                label={`${sk.name}, level ${sk.level} of ${book.max_level}`}
-              />
-            }
-            data-testid={`skill-${sk.code}`}
           />
         ))}
       </TileField>

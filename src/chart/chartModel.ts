@@ -19,8 +19,8 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { project, type LatLon, type ViewBox } from '../lib/geo'
-import type { MapFleet, MapPort, MapVoyage } from './mapTypes'
-import { buildTrack, type TrackPaths } from './route'
+import type { MapFleet, MapPort, MapTraffic, MapVoyage } from './mapTypes'
+import { buildTrack, loopD as loopPathD, type TrackPaths } from './route'
 import { driftedPoint, type Drift } from './drift'
 import { headingDeg } from './glyphs'
 
@@ -63,9 +63,25 @@ export interface FleetOnChart {
  */
 export type PortRole = 'anchorage' | 'destination' | 'route'
 
+/**
+ * A MERCHANT FLEET, resolved to ink (0099, docs/NPC_TRADERS.md §8.2) — placed by the SAME code as
+ * a fleet of yours (`placeSailing`), and kept in its own list: nothing that is about YOUR fleets
+ * (roles, rings, the opening frame, labels, the fleets corner, the minimap) ever reads it.
+ * `track` is null unless her served course has more than two points — the one merchant whose
+ * card is open; every other merchant is served the current segment only and draws no line.
+ */
+export interface TrafficOnChart extends FleetOnChart {
+  readonly merchant: MapTraffic
+  /** HER WHOLE LOOP as one SVG path, when her card is open and served it (0099, owner row 112);
+   *  null for every other merchant. The leg she is ON is `track`, drawn over this. */
+  readonly loopD: string | null
+}
+
 /** The whole picture. */
 export interface ChartModel {
   readonly fleets: readonly FleetOnChart[]
+  /** Merchant fleets (0099). Never in `fleets`, `portRoles`, the rings or the frame. */
+  readonly traffic: readonly TrafficOnChart[]
   /** Ports any fleet is using, and why. Absent = quiet. */
   readonly portRoles: ReadonlyMap<string, PortRole>
   /** Ports some fleet is STILL bound for, with where they are — one entry per port, so two fleets
@@ -122,6 +138,12 @@ export function buildChartModel(
    * only one of them would be a second position, and the panel would then disagree with the glyph.
    */
   drift: Drift | null = null,
+  /**
+   * 0099 — THE MERCHANTS, optional and last, so every caller that is about the player's own fleets
+   * is unchanged (and `buildChartModel.length` stays 2). They are PLACED here, by the same code, and
+   * returned in `traffic` alone: they feed no role, no ring, no focus point and no motion point.
+   */
+  traffic: readonly MapTraffic[] = [],
 ): ChartModel {
   const portsByCode = new Map(ports.map((p) => [p.code, p]))
   const roles = new Map<string, PortRole>()
@@ -197,26 +219,34 @@ export function buildChartModel(
       motion.push(voyage.destPoint)
     }
 
-    // ONE POSITION, and everything below reads it: the glyph, the track's split, her label's
-    // anchor, the framing and the minimap. With no drift given this IS `voyage.at`.
-    const at = driftedPoint(voyage, drift)
+    const placed = placeSailing(fleet, voyage, drift, true)
+    focus.push(placed.at)
+    motion.push(placed.at)
+    drawn.push(placed)
+  }
 
-    focus.push(at)
-    motion.push(at)
-
-    // The served segment she is on — the same clamp `buildTrack` splits the course at.
-    const cut = Math.min(Math.max(voyage.segIndex, 0), voyage.course.length - 2)
-    const segFrom = voyage.course[cut]
-    const segTo = voyage.course[cut + 1]
-    drawn.push({
-      fleet,
-      at,
-      voyage,
-      track: buildTrack(voyage.course, at, voyage.segIndex),
-      heading: segFrom && segTo ? headingDeg(project(segFrom), project(segTo)) : null,
-      destinationCode: voyage.destinationCode,
-      dockedAtCode: null,
-    })
+  // THE MERCHANTS: the same placement, their own list, and nothing else touched.
+  const merchants: TrafficOnChart[] = []
+  for (const m of traffic) {
+    // HER LOOP IS DRAWN WHETHER SHE IS AT SEA OR IN PORT: a route is what she runs, not what she
+    // happens to be doing this minute, and a merchant held at her home quay is exactly when a
+    // player most wants to see where she goes (owner row 112).
+    const loopD = m.loop && m.loop.length > 0 ? loopPathD(m.loop) : null
+    if (m.kind === 'sailing') {
+      merchants.push({ ...placeSailing(m, m.voyage, drift, m.voyage.course.length > 2), merchant: m, loopD })
+    } else if (m.kind === 'anchored') {
+      merchants.push({
+        fleet: m,
+        at: m.at,
+        voyage: null,
+        track: null,
+        heading: null,
+        destinationCode: null,
+        dockedAtCode: null,
+        merchant: m,
+        loopD,
+      })
+    }
   }
 
   // AFTER the fleets, so a port that is BOTH — she lies there and it is also the one being
@@ -234,6 +264,7 @@ export function buildChartModel(
 
   return {
     fleets: drawn,
+    traffic: merchants,
     portRoles: roles,
     destinationPoints: destinations,
     destinationSeaPoints: seaDestinations,
@@ -242,6 +273,30 @@ export function buildChartModel(
     // player with nothing gets to look at.
     focusPoints: focus,
     motionPoints: motion,
+  }
+}
+
+/**
+ * ONE FLEET AT SEA, PLACED — the one placement for a fleet of yours and a merchant's alike (0099
+ * factored it out of `buildChartModel` so the merchants are placed by THIS code, never a copy).
+ * ONE POSITION, and everything reads it: the glyph, the track's split, the label's anchor, the
+ * framing and the minimap. With no drift given this IS `voyage.at`. `withTrack` false skips the
+ * track: a merchant served only her current segment draws no line.
+ */
+function placeSailing(fleet: MapFleet, voyage: MapVoyage, drift: Drift | null, withTrack: boolean): FleetOnChart {
+  const at = driftedPoint(voyage, drift)
+  // The served segment she is on — the same clamp `buildTrack` splits the course at.
+  const cut = Math.min(Math.max(voyage.segIndex, 0), voyage.course.length - 2)
+  const segFrom = voyage.course[cut]
+  const segTo = voyage.course[cut + 1]
+  return {
+    fleet,
+    at,
+    voyage,
+    track: withTrack ? buildTrack(voyage.course, at, voyage.segIndex) : null,
+    heading: segFrom && segTo ? headingDeg(project(segFrom), project(segTo)) : null,
+    destinationCode: voyage.destinationCode,
+    dockedAtCode: null,
   }
 }
 

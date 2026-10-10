@@ -61,6 +61,8 @@ import type {
   RequestBoard,
   StandingRouteAssigned,
   StandingRouteBook,
+  SeaTraffic,
+  MerchantCard,
   StandingRouteDeleted,
   StandingRoutePaused,
   StandingRouteSaved,
@@ -533,4 +535,17 @@ export function cmdStandingRouteAssign(
 
 export function cmdStandingRoutePause(routeId: string, paused: boolean): Promise<RpcResult<StandingRoutePaused>> {
   return call<StandingRoutePaused>('cmdStandingRoutePause', [routeId, paused])
+}
+
+// ── MERCHANTS (0099) ───────────────────────────────────────────────────────────────────────────
+
+/** Where every merchant fleet is right now — the voyage shape the chart draws. Dark: empty. */
+export function worldSeaTraffic(): Promise<RpcResult<SeaTraffic>> {
+  return call<SeaTraffic>('worldSeaTraffic')
+}
+
+/** One merchant fleet's card. A player's fleet, a stranger uuid and a dark world all refuse
+ *  E_NOT_FOUND in the same words. */
+export function worldNpcFleetCard(fleetId: string): Promise<RpcResult<MerchantCard>> {
+  return call<MerchantCard>('worldNpcFleetCard', [fleetId])
 }
