@@ -472,6 +472,35 @@ inside the opening frame, averaged over 5 minutes of warped clock. **The lever i
 empty is `npc_laps_per_game_day` (higher = more often at sea), paid for in rows (§5); the lever if
 it looks crowded is `npc_fleet_max`.** Both are live knobs.
 
+**MEASURED ON THE BUILT ROSTER, 2026-10-10** (`node scripts/db/measure-merchants.mjs --ticks 20`,
+the applied chain, switch on, 23 companies / 32 fleets). The script drives the roster UNPACED
+(`npc_laps_per_game_day` 0 — every fleet starts her next lap the moment she can), which is the
+**upper bound** of what the pace lever can buy:
+
+| | |
+|---|---|
+| hulls inside the Lisbon 12° frame, after each of 21 ticks | `5 2 4 2 4 4 3 2 4 2 4 2 5 2 2 5 4 3 4 3 5` — **mean 3.4, min 2, max 5** |
+| merchant rows written | 16,516 for 102 closed laps = **161.9 a lap**; 4,230 an hour of sea-time |
+| retained after `npc_compact` | **1,076 rows** against the `npc_row_budget` of 100,000 |
+| `world.sea_traffic()` | **7.07 ms/call** over 50 calls, 12,715 bytes served, 32 fleets at sea |
+| `world.npc_fleet_card()` | 2.38 ms/call over 20 |
+
+So the design's own target ("on average, two to four that are moving") is met and is also the
+CEILING: **raising `npc_laps_per_game_day` cannot make the frame busier than ~3-5 hulls, because
+the binding constraint is the roster, not the pace** — and the owner, reading
+`docs/npc-traders/map-merchants-1280.png` on 2026-10-08, said the sea must look busier than that.
+The cost figures above say the room exists (1,076 retained rows against 100,000; 7 ms a read), so
+what a busier sea needs is MORE FLEETS — a roster past this plan's own maxima of 26 companies /
+35 fleets (§14 N3), re-measured and re-generated through `scripts/build-npc-0098.mjs`. That is a
+gameplay decision with the economy at stake (every added fleet trades in the market players trade
+in), so it is **the owner's call and is not taken here**; it is `docs/OWNER_REQUESTS.md` row 109's
+open half.
+
+One thing that DID make a harbour look busier was a defect, now fixed: merchants lying in one port
+were all drawn at the single roadstead point, one hull on top of another, so three merchants at
+Lisbon looked like one (and only the first could ever be opened). They are fanned round the berth
+(`src/chart/liveWorld.ts` `fannedBerth`).
+
 ---
 
 ## 4. Routes: baked where they must be, planned where they should be
@@ -824,9 +853,24 @@ polyline per fleet on every beat. Both outcomes are true readings (§7C).
 ### 7.4 Earnings: `public.route_earnings(p_route)` — the window, and why
 
 Returns `{ day: Σ net of laps closed in the last 24 real hours, day_laps: n, day_since: the
-oldest such lap's closed_at, lap: avg net of the last 7 closed laps (null until one closed),
-laps_recent: [net × ≤ 7, newest first], laps_done: lap_no }`, all from `standing_route_laps`
-(sold, bought, supplies, repairs, wages, net, closed_at; 0092:196).
+oldest such lap's closed_at, lap: avg net of the last 7 closed laps (null until TWO have closed),
+lap_basis: how many laps that average stands on, laps_recent: [net × ≤ 7, newest first],
+laps_done: lap_no }`, all from `standing_route_laps` (sold, bought, supplies, repairs, wages, net,
+closed_at; 0092:196).
+
+- **WHY `lap` NEEDS TWO CLOSED LAPS — the lap boundary, found 2026-10-08 and corrected 2026-10-10.**
+  A lap closes on arrival at the home stop (0092's one closer) BEFORE that stop's own SELL lines
+  run, so the cargo a leg buys on lap N is sold on lap N+1. Lap 1 is therefore a purchase with no
+  sale and is a large loss by construction — the committed screenshot of Carreira do Brasil read
+  `So far today −116,690 🪙 / A lap ≈ −116,690 🪙` for a lap whose cargo fetched +139,165 on the
+  next one — laps 2..N each hold one sale and one purchase and are the honest figure, and the open
+  leg's cargo is in no lap at all. One closed lap can say what that lap's books did; it cannot say
+  what a lap EARNS. So `lap` is null below two laps and the sheet prints `first lap under way`,
+  and the day row is labelled by its real window (`So far · since 13:05`) rather than "today".
+  **Moving the boundary itself** — closing a lap after the home sale, or attributing a leg's
+  purchase to the lap that sells it — would change what every PLAYER's route history means, on a
+  deployed feature ~30 players already use, so it is NOT done here: it is a decision for the owner
+  and a slice of its own (`docs/OWNER_REQUESTS.md` row 110).
 
 - **A real day, because that is the day the player lives in.** Thirty game-days pass in it
   (`game_day_seconds` 2880), History shows real clock times, and a player compares a merchant
