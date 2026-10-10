@@ -5,6 +5,54 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-11 — MERGED: PR #93, the merchant companies are on `main` (35f5092). The DATABASE is not deployed.
+
+Four CI jobs green on `7111a4f` — build 36 s, disposable-chain 9m40s, pglite-gate 22m50s,
+acceptance 29m5s (362 tests) — then merged. **Production's chain is still at 0095**: the migrations
+0096-0100 are merged and NOT pushed to the database, and `npc_traders_enabled` ships false.
+
+### What the client on Pages does with a database that is five migrations behind
+
+Nothing visible, and that is checked rather than hoped: `world.sea_traffic` and
+`world.npc_fleet_card` do not exist on production, both reads fail, and the store's rule for a
+failed traffic read is to keep the last reading — which is none. MAP draws no merchants and PORT
+shows no "Merchants in port" section, exactly as it does today with the switch off. **The one
+thing a player WILL see is the slower clock, and they will not see it yet either**: 0100 is a
+`world_config` row, so the served `time_compression` stays 9600 until the chain is pushed, and the
+client's mirror — which the suite forces to equal the served knob — says 960. That disagreement is
+not cosmetic: `rpc.surface.spec` exists to catch exactly it. **So the deploy is not optional and it
+is not "whenever": the chain must be pushed before anyone reads a voyage time off the live site.**
+
+### The deploy, which could not be run from this machine
+
+There is no Supabase access token here (`~/.supabase` holds telemetry and nothing else), so
+`supabase db push --linked` and the two clock calls cannot run from this session. The runbook, in
+order, from a shell that is logged in:
+
+```
+select public.unwind_the_clock();          -- expect 5; every cron job reads active:false
+supabase db push --linked                  -- applies 0096, 0097, 0098, 0099, 0100
+select public.wind_the_clock();            -- all five read active:true again
+supabase migration list --linked           -- 20260818000100 paired; production head = main
+```
+
+Then, and only after the soak numbers are in this log, the one owner action:
+
+```
+select public.npc_traders_switch(true);
+```
+
+### What to watch on the first hours of the soak
+
+* `world.sea_traffic()` ms/call with the roster at sea — the laptop measured 7.07 ms at 32 fleets;
+  76 should land near 15 ms and the read is per-screen, not per-player-per-beat.
+* Retained merchant rows after `npc_compact` against `npc_row_budget` (100,000). The laptop held
+  1,076 rows at 32 fleets over a 10-hour soak.
+* `ports.crew_pool` minima at the busiest quays — the floor is `npc_crew_pool_floor` (25) and a
+  merchant may not draw below it; a quay that still falls is the thing to catch.
+* Whether any merchant route sits `laid_up` for longer than `npc_laid_up_hours` — the blocker fixed
+  on 2026-10-10 was exactly that state never lifting, and the soak is where it would show again.
+
 ## 2026-10-10 (later) — the owner opened the game: three times the merchants, a sea ten times slower, and their routes drawn
 
 The owner opened the build, saw no merchants (the switch ships dark, by design), and then gave five

@@ -1,7 +1,33 @@
-# RESUME — NPC traders (branch `osn-npc-traders`)
+# RESUME — NPC traders: MERGED, AND THE DATABASE IS NOT DEPLOYED
 
-Stopped by the owner 2026-10-08 17:12 KST; the review's findings were **fixed 2026-10-10**. This
-file is the resume anchor; delete it in the commit that opens the PR.
+**PR #93 is merged to `main` as `35f5092`** (2026-10-11), with all four CI jobs green: build 36 s,
+disposable-chain 9m40s, pglite-gate 22m50s, acceptance 29m5s over 362 tests.
+
+## THE ONE THING LEFT, AND IT CANNOT WAIT INDEFINITELY
+
+**Production's chain is still 0095. Migrations 0096-0100 are merged and NOT pushed.** The merchant
+half of that is harmless — the two reads do not exist on production, both fail quietly, and the map
+simply draws no merchants. **0100 is not harmless**: it is a `world_config` row, so the live world
+still runs at `time_compression` 9600 while the client shipped to Pages carries the mirror 960, and
+every voyage time printed on the live site is wrong by a factor of ten until the chain is pushed.
+`rpc.surface.spec` exists to catch precisely that disagreement.
+
+There is no Supabase token on the machine this was built on, so the push could not be run from
+there. From a shell that is logged in:
+
+```
+select public.unwind_the_clock();          -- expect 5; all five cron jobs read active:false
+supabase db push --linked                  -- applies 0096, 0097, 0098, 0099, 0100
+select public.wind_the_clock();            -- all five read active:true again
+supabase migration list --linked           -- 20260818000100 paired; production head = main
+```
+
+Then, after the soak numbers are in `docs/DEV_LOG.md`, the one owner action:
+`select public.npc_traders_switch(true);`
+
+---
+
+*(What follows is the record of how it was built.)*
 
 ## State — 2026-10-10 (evening)
 
