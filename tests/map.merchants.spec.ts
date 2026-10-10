@@ -309,29 +309,40 @@ async function hullInViewClearOf(
  */
 async function openMerchantWorthReading(page: Page, sailing: boolean | null): Promise<string> {
   const tried = new Set<string>()
-  let last = ''
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  let opened = ''
+  let seen = 0
+  // WALK THE HULLS, not one hull repeatedly. A tap can be lost to a harbour or to one of your own
+  // fleets — both outrank a merchant by the chart's own rule — and no amount of re-aiming at that
+  // hull will win it. So each candidate gets a few aims and then the NEXT hull is tried; the first
+  // that opens is kept, and the first that ALSO has a lap average to show is preferred, because
+  // these screenshots are the record of the feature (the owner read `0 / no lap yet` off one).
+  for (let attempt = 1; attempt <= 8; attempt++) {
     const id = await hullInView(page, sailing, tried)
     if (!id) break
     tried.add(id)
-    last = id
-    await tapHull(page, id)
+    seen += 1
+    if (!(await tapHull(page, id))) continue
     await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
+    opened = id
     const lap = await page.getByTestId('merchant-earnings-lap').textContent()
     // a lap average is printed as `≈ <figure>`; the two absences say so in words
     if (lap && lap.includes('≈')) return id
-    // Only give this one up for a candidate that EXISTS: closing the sheet and then finding nothing
-    // else on the glass would leave the caller with no sheet at all, which is how this helper went
-    // red on its first run.
-    if (attempt === 3 || !(await hullInView(page, sailing, tried))) break
+    // Keep this one unless there is another to try: a closed sheet and no candidate left would
+    // hand the caller nothing, which is how this helper went red on its first run.
+    if (!(await hullInView(page, sailing, tried))) break
     const close = page.getByTestId('tray-close')
     if (await close.isVisible().catch(() => false)) await close.click()
+    opened = ''
   }
-  if (!last) throw new Error('no merchant hull on the glass to open')
-  // Whatever the path above took, the caller is handed an OPEN sheet.
-  if (!(await page.getByTestId('merchant-sheet').isVisible().catch(() => false))) await tapHull(page, last)
+  if (!opened) {
+    if (seen === 0) throw new Error('no merchant hull on the glass to open')
+    throw new Error(`${seen} merchant hull(s) were tapped and none opened her sheet`)
+  }
+  if (!(await page.getByTestId('merchant-sheet').isVisible().catch(() => false))) {
+    if (!(await tapHull(page, opened))) throw new Error(`merchant ${opened} would not re-open`)
+  }
   await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
-  return last
+  return opened
 }
 
 /**
@@ -344,22 +355,25 @@ async function openMerchantWorthReading(page: Page, sailing: boolean | null): Pr
  * tap is AIMED AGAIN at her new place, with whatever else it selected closed first, instead of
  * being asserted once and hoped for.
  */
-async function tapHull(page: Page, id: string): Promise<void> {
+async function tapHull(page: Page, id: string): Promise<boolean> {
   const sheet = page.getByTestId('merchant-sheet')
-  for (let aim = 1; aim <= 6; aim++) {
+  for (let aim = 1; aim <= 3; aim++) {
     const box = await page.locator(`[data-merchant-id="${id}"]`).boundingBox()
-    if (!box) throw new Error(`merchant ${id} has no hull on the glass`)
+    if (!box) return false
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
     try {
       await sheet.waitFor({ state: 'visible', timeout: 3_000 })
-      return
+      return true
     } catch {
-      // something else took the tap: close it, and aim at where she is now.
+      // Something else took the tap. Close it and aim again at where she is NOW — she drifts — but
+      // only a few times: if the thing that took it is a harbour or one of your own fleets, which
+      // both outrank a merchant by the chart's own rule, aiming at the same hull again will keep
+      // losing. The caller moves to a DIFFERENT hull, which is the only thing that can help.
       const close = page.getByTestId('tray-close')
       if (await close.isVisible().catch(() => false)) await close.click()
     }
   }
-  throw new Error(`six taps at merchant ${id} never opened her sheet`)
+  return false
 }
 
 test('the merchants sail on the chart, and a tap opens a read-only sheet', async ({ page, request, baseURL }) => {
