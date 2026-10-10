@@ -35,9 +35,16 @@ import { PHONE, ready, reachable } from './appReady.fixture'
 
 test.use({ viewport: PHONE })
 
-/** Longer than three of the shell's 3-s reads, with slack for the re-ask itself to land. */
-const CEILING_WINDOW_MS = 10_500
-const STORAGE_WINDOW_MS = 7_500
+/**
+ * HOW LONG "NOTHING MOVED" IS WATCHED FOR. These were 10.5 s and 7.5 s — three of the shell's 3-s
+ * reads and a bit. 0100 made the world ten times slower and the beat is derived from it
+ * (`readIntervalMs`), so those windows would now hold NO read and the claim would be about an idle
+ * page rather than about a page being re-read under the watcher. These are a lower bound on the
+ * watch — long enough to contain three beats at the current clock — not a copy of the cadence: the
+ * two counting tests below wait for the reads themselves, which is the form that needs no number.
+ */
+const CEILING_WINDOW_MS = 75_000
+const STORAGE_WINDOW_MS = 75_000
 
 /** What the watcher writes down: one line per thing that moved, with the ms since it was armed. */
 interface Moved {
@@ -398,6 +405,21 @@ test.describe('the asks, counted', () => {
     ;(window as unknown as { __rpcLog: typeof log }).__rpcLog = log
   })
   const mark = () => page.evaluate(() => performance.now())
+  /**
+   * WAIT FOR BEATS, NOT FOR A STOPWATCH. These windows were 10.5 s — "more than three beats" when
+   * the shell read every 3 s. The beat is DERIVED from the served `time_compression` (AppShell
+   * `readIntervalMs`) and 0100 made the world ten times slower, so 10.5 s now holds no read at all
+   * and the counts below proved nothing — which the specs' own non-vacuity checks said out loud.
+   * Watching until the reads themselves have landed is the same claim with no copy of the cadence
+   * in it.
+   */
+  const waitForBeats = async (from: number, n: number) => {
+    await expect
+      .poll(async () => (await asksBetween(from, await mark())).filter((e) => e.label === 'world.fleets').length, {
+        timeout: 180_000,
+      })
+      .toBeGreaterThanOrEqual(n)
+  }
   const asksBetween = (from: number, to: number) =>
     page.evaluate(
       ([a, b]) => (window as unknown as { __rpcLog: { at: number; label: string }[] }).__rpcLog.filter((e) => e.at >= a && e.at < b),
@@ -423,9 +445,9 @@ test.describe('the asks, counted', () => {
   // Let the first answers land, then count over more than three beats with no interaction.
   await page.waitForTimeout(2_000)
   const listFrom = await mark()
-  await page.waitForTimeout(10_500)
+  await waitForBeats(listFrom, 3)
   const listAsks = await asksBetween(listFrom, await mark())
-  console.log(`PORT on-board list @1440px: ${previewsIn(listAsks)} cmd.preview asks in 10.5 s at rest — ${line(listAsks, listFrom)}`)
+  console.log(`PORT on-board list @1440px: ${previewsIn(listAsks)} cmd.preview asks over three beats at rest — ${line(listAsks, listFrom)}`)
   expect(previewsIn(listAsks), "the on-board list re-asked its sale estimates on the world's beat").toBe(0)
   expect(listAsks.filter((e) => e.label === 'world.fleets').length, 'the world was not read during the window — the count proves nothing').toBeGreaterThanOrEqual(2)
 
@@ -436,7 +458,7 @@ test.describe('the asks, counted', () => {
   await expect(send).toHaveText(/^Sell \d+ units? · [\d,]+\s🪙$/, { timeout: 20_000 })
   await page.waitForTimeout(1_000)
   const trayFrom = await mark()
-  await page.waitForTimeout(10_500)
+  await waitForBeats(trayFrom, 3)
   const trayAsks = await asksBetween(trayFrom, await mark())
   const trayPreviews = previewsIn(trayAsks)
   console.log(`PORT sell tray @1440px: ${trayPreviews} cmd.preview asks in 10.5 s at rest — ${line(trayAsks, trayFrom)}`)

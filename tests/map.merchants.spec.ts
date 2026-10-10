@@ -238,9 +238,21 @@ async function hullInView(page: Page, sailing: boolean | null, skip: ReadonlySet
         const r = h.getBoundingClientRect()
         const cx = r.left + r.width / 2
         const cy = r.top + r.height / 2
-        if (cx > chart.left + 60 && cx < chart.right - 120 && cy > chart.top + 100 && cy < chart.bottom - 120) {
-          return mid
+        if (!(cx > chart.left + 60 && cx < chart.right - 120 && cy > chart.top + 100 && cy < chart.bottom - 120)) continue
+        // AND IN OPEN WATER. A hull lying within a harbour's own reach loses the tap to the
+        // harbour — correctly: a mark as near as a hull is the city (hitTest.ts, and a berthed
+        // merchant answers only at the dot's reach). With 76 fleets on the sea that case is common
+        // enough that a spec which ignores it taps a port six times and calls the feature broken.
+        // The tie rule has its own unit test; this one is about opening a merchant.
+        let nearMark = false
+        for (const p of document.querySelectorAll('[data-port-code]')) {
+          const pr = p.getBoundingClientRect()
+          if (pr.width === 0 && pr.height === 0) continue
+          const dx = pr.left + pr.width / 2 - cx
+          const dy = pr.top + pr.height / 2 - cy
+          if (Math.hypot(dx, dy) < 48) { nearMark = true; break }
         }
+        if (!nearMark) return mid
       }
       return null
     },

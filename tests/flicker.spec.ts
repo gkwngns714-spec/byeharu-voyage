@@ -76,8 +76,18 @@ test('the sea traffic has one reader: the store', () => {
 
 // ── 2. BROWSER ───────────────────────────────────────────────────────────────────────────────────
 
-/** Longer than three of the shell's 3-s reads, with slack for a read itself to land. */
-const WINDOW_MS = 10_500
+/**
+ * HOW LONG TO WATCH: until THREE of the shell's reads have landed, not a stopwatch.
+ *
+ * This was 10_500 ms — "longer than three of the shell's 3-s reads". The shell's beat is DERIVED
+ * from the served `time_compression` (AppShell `readIntervalMs`), and 0100 made the world ten times
+ * slower, so the beat went from 3 s to 22.5 s and a ten-second window contained no read at all.
+ * The test then failed on its own non-vacuity check — correctly: it was proving nothing. A window
+ * written in seconds is a second copy of the cadence; waiting for the BEATS themselves is the same
+ * claim with no copy in it, and it survives the next change to the clock.
+ */
+const BEATS_WATCHED = 3
+const WATCH_CAP_MS = 180_000
 
 interface Moved {
   at: number
@@ -164,7 +174,9 @@ test('COMMAND: no button greys and Start route never leaves across three beats',
     }
     window.__blinkWatch = { log, reads, stop: () => obs.disconnect() }
   })
-  await page.waitForTimeout(WINDOW_MS)
+  await expect
+    .poll(async () => page.evaluate(() => window.__blinkWatch?.reads.length ?? 0), { timeout: WATCH_CAP_MS })
+    .toBeGreaterThanOrEqual(BEATS_WATCHED)
   const { log, reads } = await page.evaluate(() => {
     window.__blinkWatch?.stop()
     return { log: window.__blinkWatch?.log ?? [], reads: window.__blinkWatch?.reads ?? [] }
