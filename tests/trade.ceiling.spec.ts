@@ -43,8 +43,8 @@ test.use({ viewport: PHONE })
  * watch — long enough to contain three beats at the current clock — not a copy of the cadence: the
  * two counting tests below wait for the reads themselves, which is the form that needs no number.
  */
-const CEILING_WINDOW_MS = 75_000
-const STORAGE_WINDOW_MS = 75_000
+const CEILING_WINDOW_MS = 25_000
+const STORAGE_WINDOW_MS = 25_000
 
 /** What the watcher writes down: one line per thing that moved, with the ms since it was armed. */
 interface Moved {
