@@ -172,9 +172,9 @@ capping `npc_fleet_max` makes any prefix a proportional spread — and the readi
 answer to "what does the world do at that ceiling".
 
 **What the sample actually came to, and what it cost.** `npc_fleet_max` at 76 + 120 started **40 of
-0105's routes**, and all 75 started routes (40 of 0105's, 35 of 0098's) were driven: **284 arrivals
+0105's routes**, and all 75 started routes (40 of 0105's, 35 of 0098's) were driven: **279 arrivals
 over 139 simulated hours in 25 minutes of wall clock**, at which point the sail's own budget stopped
-it with every sample route short of three laps — 38 of the 40 had closed one, none had closed three.
+it with every sample route short of three laps — 37 of the 40 had closed one, none had closed three.
 The budget is deliberate and the receipt says it bit: a build that cannot finish cannot be re-run by
 the next person, and reporting fewer laps as though they were all it meant to take is the thing this
 file refuses to do. An earlier run without a budget drove one short coastal loop round and round for
@@ -183,9 +183,9 @@ longer being measured.
 
 **What the sample VALIDATES.** Derived capital ÷ 1.5 × the dearest single leg the sailed first lap
 actually bought — like for like, the same rule the derivation sizes on — over the 35 routes that
-closed a lap: **p10 1.01×, median 1.93×, p90 15.9×, and 3 of 38 under 1×**. So the derivation is
+closed a lap: **p10 1.04×, median 1.93×, p90 15.9×, and 2 of 37 under 1×**. So the derivation is
 GENEROUS, by about twofold at the median: `npc_plan` plans a bigger parcel than the market actually
-fills on the day, and the 1.5 floor sits on top of that. Three of the 38 were under-funded,
+fills on the day, and the 1.5 floor sits on top of that. Two of the 37 were under-funded,
 which is the honest residual — the plan at derivation time is not the plan at lap time, because the
 market has drifted and a different merchant has taken the cargo. A merchant short of capital is not
 stranded: she buys less. Over-funding by 3× a leg is a purse figure in world data, not an

@@ -233,14 +233,14 @@
    "npc_fleet_max": 120,
    "started": 47,
    "sailing": 47,
-   "tick_arrivals_idle_ms": 28,
-   "tick_arrivals_a_minute_on_ms": 147,
+   "tick_arrivals_idle_ms": 26,
+   "tick_arrivals_a_minute_on_ms": 142,
    "tick_arrivals_a_minute_on_fleets": 47,
-   "tick_arrivals_burst_ms": 1681,
+   "tick_arrivals_burst_ms": 1660,
    "tick_arrivals_burst_fleets": 47,
-   "npc_plan_hourly_ms": 9677,
+   "npc_plan_hourly_ms": 9636,
    "npc_tend_ms": 17,
-   "sea_traffic_whole_ms": 63,
+   "sea_traffic_whole_ms": 62,
    "sea_traffic_window_ms": 59,
    "sea_traffic_served": 240,
    "sea_traffic_total": 837,
@@ -252,15 +252,15 @@
    "npc_fleet_max": 837,
    "started": 296,
    "sailing": 296,
-   "tick_arrivals_idle_ms": 57,
-   "tick_arrivals_a_minute_on_ms": 295,
+   "tick_arrivals_idle_ms": 56,
+   "tick_arrivals_a_minute_on_ms": 291,
    "tick_arrivals_a_minute_on_fleets": 295,
-   "tick_arrivals_burst_ms": 18111,
+   "tick_arrivals_burst_ms": 17868,
    "tick_arrivals_burst_fleets": 295,
-   "npc_plan_hourly_ms": 9666,
-   "npc_tend_ms": 24,
-   "sea_traffic_whole_ms": 172,
-   "sea_traffic_window_ms": 168,
+   "npc_plan_hourly_ms": 9646,
+   "npc_tend_ms": 23,
+   "sea_traffic_whole_ms": 173,
+   "sea_traffic_window_ms": 169,
    "sea_traffic_served": 240,
    "sea_traffic_total": 837,
    "sea_traffic_omitted": 597,
@@ -286,12 +286,12 @@
   "stopped_on": "the 25-minute wall-clock budget",
   "sample_routes_short_of_their_laps": 40,
   "sim_hours": 139,
-  "arrivals": 284,
-  "wall_seconds": 1501,
+  "arrivals": 279,
+  "wall_seconds": 1507,
   "merchant_rows": {
-   "ledger": 7870,
-   "events": 18871,
-   "voyages": 333
+   "ledger": 7752,
+   "events": 19911,
+   "voyages": 324
   },
   "results": [
    {
@@ -304,7 +304,7 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     -40
+     -75
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
@@ -325,7 +325,7 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     219
+     275
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
@@ -334,7 +334,7 @@
     "derived_biggest_leg_outlay": 38452,
     "derived_capital": 58000,
     "derived_lap_wages": 169,
-    "paused_reason": null
+    "paused_reason": "laid_up"
    },
    {
     "roster_ord": 1014,
@@ -346,7 +346,7 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     -113
+     -85
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
@@ -409,11 +409,11 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     1039
+     429
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 20424,
+    "measured_lap1_bought": 20481,
     "measured_lap1_biggest_leg": 12552,
     "derived_biggest_leg_outlay": 17344,
     "derived_capital": 27000,
@@ -451,7 +451,7 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     724
+     737
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
@@ -493,12 +493,12 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     18580
+     7662
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 274573,
-    "measured_lap1_biggest_leg": 216277,
+    "measured_lap1_bought": 274817,
+    "measured_lap1_biggest_leg": 216784,
     "derived_biggest_leg_outlay": 215930,
     "derived_capital": 324000,
     "derived_lap_wages": 9398,
@@ -575,12 +575,12 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     -109414
+     -106363
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 128760,
-    "measured_lap1_biggest_leg": 111443,
+    "measured_lap1_bought": 125651,
+    "measured_lap1_biggest_leg": 108455,
     "derived_biggest_leg_outlay": 134327,
     "derived_capital": 202000,
     "derived_lap_wages": 477,
@@ -647,7 +647,7 @@
     "derived_biggest_leg_outlay": 14766,
     "derived_capital": 23000,
     "derived_lap_wages": 245,
-    "paused_reason": null
+    "paused_reason": "laid_up"
    },
    {
     "roster_ord": 1054,
@@ -668,7 +668,7 @@
     "derived_biggest_leg_outlay": 8261,
     "derived_capital": 13000,
     "derived_lap_wages": 273,
-    "paused_reason": null
+    "paused_reason": "laid_up"
    },
    {
     "roster_ord": 1055,
@@ -680,7 +680,7 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     3026
+     3041
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
@@ -689,7 +689,7 @@
     "derived_biggest_leg_outlay": 53252,
     "derived_capital": 80000,
     "derived_lap_wages": 190,
-    "paused_reason": null
+    "paused_reason": "laid_up"
    },
    {
     "roster_ord": 1059,
@@ -701,12 +701,12 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     232
+     -101
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 3796,
-    "measured_lap1_biggest_leg": 3796,
+    "measured_lap1_bought": 3792,
+    "measured_lap1_biggest_leg": 3792,
     "derived_biggest_leg_outlay": 48393,
     "derived_capital": 73000,
     "derived_lap_wages": 349,
@@ -722,11 +722,11 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     32193
+     32086
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 252494,
+    "measured_lap1_bought": 252326,
     "measured_lap1_biggest_leg": 142451,
     "derived_biggest_leg_outlay": 221469,
     "derived_capital": 333000,
@@ -743,11 +743,11 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     -20853
+     -21384
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 70018,
+    "measured_lap1_bought": 65335,
     "measured_lap1_biggest_leg": 25915,
     "derived_biggest_leg_outlay": 28531,
     "derived_capital": 43000,
@@ -764,12 +764,12 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     11972
+     9743
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 75168,
-    "measured_lap1_biggest_leg": 55990,
+    "measured_lap1_bought": 73859,
+    "measured_lap1_biggest_leg": 53965,
     "derived_biggest_leg_outlay": 79531,
     "derived_capital": 120000,
     "derived_lap_wages": 1160,
@@ -785,12 +785,12 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     -296726
+     -207642
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 319479,
-    "measured_lap1_biggest_leg": 292093,
+    "measured_lap1_bought": 230455,
+    "measured_lap1_biggest_leg": 203159,
     "derived_biggest_leg_outlay": 380074,
     "derived_capital": 571000,
     "derived_lap_wages": 7626,
@@ -806,7 +806,7 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     127
+     -79
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
@@ -825,18 +825,16 @@
     "len": 7,
     "class": "carlat",
     "hulls": 1,
-    "laps": 1,
-    "nets": [
-     43799
-    ],
+    "laps": 0,
+    "nets": [],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 246739,
-    "measured_lap1_biggest_leg": 146905,
+    "measured_lap1_bought": null,
+    "measured_lap1_biggest_leg": null,
     "derived_biggest_leg_outlay": 143479,
     "derived_capital": 216000,
     "derived_lap_wages": 2116,
-    "paused_reason": null
+    "paused_reason": "laid_up"
    },
    {
     "roster_ord": 1069,
@@ -848,7 +846,7 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     2515
+     2674
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
@@ -878,7 +876,7 @@
     "derived_biggest_leg_outlay": 34718,
     "derived_capital": 53000,
     "derived_lap_wages": 7626,
-    "paused_reason": "laid_up"
+    "paused_reason": null
    },
    {
     "roster_ord": 1074,
@@ -890,12 +888,12 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     2795
+     -529
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 12480,
-    "measured_lap1_biggest_leg": 12480,
+    "measured_lap1_bought": 12939,
+    "measured_lap1_biggest_leg": 12939,
     "derived_biggest_leg_outlay": 19454,
     "derived_capital": 30000,
     "derived_lap_wages": 1254,
@@ -909,14 +907,12 @@
     "len": 6,
     "class": "nau",
     "hulls": 1,
-    "laps": 1,
-    "nets": [
-     -4304
-    ],
+    "laps": 0,
+    "nets": [],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 49354,
-    "measured_lap1_biggest_leg": 27075,
+    "measured_lap1_bought": null,
+    "measured_lap1_biggest_leg": null,
     "derived_biggest_leg_outlay": 166341,
     "derived_capital": 250000,
     "derived_lap_wages": 8319,
@@ -932,11 +928,11 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     1572
+     -1525
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 124699,
+    "measured_lap1_bought": 109140,
     "measured_lap1_biggest_leg": 84758,
     "derived_biggest_leg_outlay": 84758,
     "derived_capital": 128000,
@@ -953,16 +949,16 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     -209
+     -1
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 8353,
-    "measured_lap1_biggest_leg": 8353,
+    "measured_lap1_bought": 11496,
+    "measured_lap1_biggest_leg": 8333,
     "derived_biggest_leg_outlay": 11853,
     "derived_capital": 18000,
     "derived_lap_wages": 1160,
-    "paused_reason": "laid_up"
+    "paused_reason": null
    },
    {
     "roster_ord": 1085,
@@ -974,12 +970,12 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     5393
+     5031
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 39022,
-    "measured_lap1_biggest_leg": 20896,
+    "measured_lap1_bought": 37749,
+    "measured_lap1_biggest_leg": 19623,
     "derived_biggest_leg_outlay": 14847,
     "derived_capital": 23000,
     "derived_lap_wages": 2116,
@@ -995,7 +991,7 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     23
+     25
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
@@ -1016,12 +1012,12 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     -33707
+     -56808
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 83254,
-    "measured_lap1_biggest_leg": 57094,
+    "measured_lap1_bought": 120990,
+    "measured_lap1_biggest_leg": 70843,
     "derived_biggest_leg_outlay": 73060,
     "derived_capital": 110000,
     "derived_lap_wages": 12803,
@@ -1037,11 +1033,11 @@
     "hulls": 1,
     "laps": 1,
     "nets": [
-     8592
+     12350
     ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": 134462,
+    "measured_lap1_bought": 134540,
     "measured_lap1_biggest_leg": 62145,
     "derived_biggest_leg_outlay": 85591,
     "derived_capital": 129000,
@@ -1056,16 +1052,18 @@
     "len": 6,
     "class": "carlat",
     "hulls": 1,
-    "laps": 0,
-    "nets": [],
+    "laps": 1,
+    "nets": [
+     -1143
+    ],
     "measured_mean_net": null,
     "measured_mean_wages": null,
-    "measured_lap1_bought": null,
-    "measured_lap1_biggest_leg": null,
+    "measured_lap1_bought": 2930,
+    "measured_lap1_biggest_leg": 2930,
     "derived_biggest_leg_outlay": 36841,
     "derived_capital": 56000,
     "derived_lap_wages": 1160,
-    "paused_reason": "laid_up"
+    "paused_reason": null
    },
    {
     "roster_ord": 1107,
@@ -1132,9 +1130,9 @@
    }
   ],
   "validation": {
-   "compared": 38,
-   "under_1": 3,
-   "p10": 1.01,
+   "compared": 37,
+   "under_1": 2,
+   "p10": 1.04,
    "median": 1.93,
    "p90": 15.89
   }
@@ -38376,8 +38374,8 @@
     "ACCOUNTING": 1
    },
    "patience": 0.12,
-   "capital_derived": 46000,
-   "derived_biggest_leg_outlay": 30547,
+   "capital_derived": 41000,
+   "derived_biggest_leg_outlay": 26782,
    "derived_lap_wages": 5577
   },
   {

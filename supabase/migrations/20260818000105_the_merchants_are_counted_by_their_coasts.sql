@@ -74,10 +74,14 @@
 -- buys there, so at 3.5 fleets a loop the quay's best cargo goes to whoever the roster
 -- names first and the rest must find something else. That contention is real and it is kept.
 --
--- MEASURED, for 40 routes: actually sailed, 3 laps, through the one executor — npc_found,
+-- MEASURED: 40 of these routes were actually SAILED through the one executor — npc_found,
 -- npc_traders_switch(true), voyage.settle at every arrival, tick_market_drift on its own 15-minute
 -- slots, the daily cap rolled at every game-day boundary, npc_plan + npc_tend on the hour, hazards
--- off. 284 arrivals over 139 simulated hours.
+-- off — with 0098's roster driven beside them, so the market they traded in is a real one.
+-- 279 arrivals over 139 simulated hours. The sail was asked for 3 laps and did NOT
+-- get them: it stopped on the 25-minute wall-clock budget, with 40 of the 40 short of 3 laps.
+-- A build that cannot finish cannot be re-run by the next person, so the sail carries a budget and
+-- this line says when the budget is what stopped it rather than quietly reporting the laps it got.
 --
 -- WHAT IS THEREFORE NOT KNOWN, said here rather than discovered later: there is no per-fleet
 -- measurement of the whole roster over many laps. 0098 did that for 107 fleets and it took hours;
@@ -85,9 +89,12 @@
 -- What it gives up is the whole-roster market INTERACTION over a long soak — which was always the
 -- deploy's job (docs/NPC_TRADERS.md §5.1), and the switch is still off when this file lands.
 --
--- THE DERIVATION WAS VALIDATED AGAINST THE SAMPLE. Derived capital ÷ what the sailed first lap
--- actually bought, over 38 sampled routes: p10 1.01×, median 1.93×, p90 15.89×, with
--- 3 under 1× (under-funded). The floor of 1.5 is why the median sits where it does.
+-- THE DERIVATION WAS VALIDATED AGAINST THE SAMPLE, like for like: derived capital ÷ 1.5 × the
+-- DEAREST SINGLE LEG the sailed first lap really bought — which is the same quantity and the same
+-- 1.5 the derivation sizes on, so a ratio of 1 means the derivation got it exactly right. Over the
+-- 37 sampled routes that closed a lap: p10 1.04×, median 1.93×, p90 15.89×, and 2 under 1×. The
+-- derivation is GENEROUS — npc_plan plans a bigger parcel than the market fills on the day — and a
+-- merchant short of her purse is not stranded by it: she buys less.
 --
 -- ── 4. WHAT THE CLOCK COSTS, MEASURED AT EACH CEILING ──────────────────────────────────────────
 --
@@ -96,8 +103,8 @@
 -- be ticked gets shipped, so it was measured on the built image (PGlite, this machine, one
 -- transaction a call, hazards off, the switch on):
 --
---   npc_fleet_max  120   47 routes running  tick_arrivals   147 ms a minute on (47 fleets),   1681 ms if every one of them arrived at once  npc_plan (hourly)   9677 ms  npc_tend    17 ms  sea_traffic   63 ms serving 240/837
---   npc_fleet_max  837  296 routes running  tick_arrivals   295 ms a minute on (295 fleets),  18111 ms if every one of them arrived at once  npc_plan (hourly)   9666 ms  npc_tend    24 ms  sea_traffic  172 ms serving 240/837
+--   npc_fleet_max  120   47 routes running  tick_arrivals   142 ms a minute on (47 fleets),   1660 ms if every one of them arrived at once  npc_plan (hourly)   9636 ms  npc_tend    17 ms  sea_traffic   62 ms serving 240/837
+--   npc_fleet_max  837  296 routes running  tick_arrivals   291 ms a minute on (295 fleets),  17868 ms if every one of them arrived at once  npc_plan (hourly)   9646 ms  npc_tend    23 ms  sea_traffic  173 ms serving 240/837
 --
 -- tick_arrivals runs EVERY MINUTE on pg_cron (0010) and npc_plan + npc_tend hourly inside
 -- tick_reconcile. The figure that decides the ceiling is tick_arrivals, because it is the one with
@@ -138,9 +145,9 @@ update public.world_config
    set value = to_jsonb(861),
        description = '0105: the most merchant fleets that may sail at once, counted in npc_fleets.roster_ord '
                      'order (npc_tend pauses the rest "dark"). Raised from 120 for the 761-fleet roster 0105 '
-                     'founds. MEASURED on the built image at this count: tick_arrivals 295 ms a minute on with '
+                     'founds. MEASURED on the built image at this count: tick_arrivals 291 ms a minute on with '
                      '295 fleets at sea (it runs every '
-                     'minute), npc_plan 9666 ms and npc_tend 24 ms (hourly). The roster order is '
+                     'minute), npc_plan 9646 ms and npc_tend 23 ms (hourly). The roster order is '
                      'STRATIFIED across nations, so lowering this knob thins the world evenly instead of '
                      'leaving one nation''s flag on every hull.'
  where key = 'npc_fleet_max';
@@ -882,7 +889,7 @@ insert into npc_roster_0105 (ord, route_ord, spec) values
   (507, 79, $r${"company":"Casa de Magalhães","alt_company":"Casa de Magalhaes","nation":"PRT","ink":"prt","master":"Mestre Gonçalo Freitas","blurb":"Attar of roses from Jeddah to Kupang; cloves and kris from Jakarta to Jeddah — under Mestre Gonçalo Freitas.","capital":16000,"patience":0.1,"wares":["attar-of-roses","cloves","kris","nutmeg","batik","gamboge","wax","asafoetida"],"skills":{"NAVIGATION":2,"ACCOUNTING":1},"roster_ord":1507,"blurb_goods":["attar-of-roses","cloves","kris"],"route_ord":79,"fleets":[{"name":"Carreira Fuzhou","roster_ord":1507,"days":75,"ships":[{"class":"nau","name":"Anunciada"}],"officers":["CABRALNAV"],"route_ord":79}]}$r$::jsonb),
   (508, 38, $r${"company":"Casa de Solís","alt_company":"Casa de Solis","nation":"ESP","ink":"esp","master":"Maestre Hernán Gálvez","blurb":"Guayaquil cacao and mangrove bark from Guayaquil to Realejo; pine pitch from Realejo to Guayaquil — under Maestre Hernán Gálvez.","capital":5000,"patience":0.25,"wares":["guayaquil-cacao","mangrove-bark","pine-pitch","toquilla-straw","balsa-wood","cinchona-bark","gold","pearls"],"skills":{"HAGGLING":1},"roster_ord":1508,"blurb_goods":["guayaquil-cacao","mangrove-bark","pine-pitch"],"route_ord":38,"fleets":[{"name":"Carrera Guayaquil","roster_ord":1508,"days":12,"ships":[{"class":"carlat","name":"San Antonio"}],"officers":[],"route_ord":38}]}$r$::jsonb),
   (509, 127, $r${"company":"Hishi Shokai","alt_company":"Hishi Shokai & Co","nation":"JPN","ink":"east","master":"Toji Ichibei Mitsui","blurb":"Rice, tiger skins and soju from Busan to Quanzhou — under Toji Ichibei Mitsui.","capital":5000,"patience":0.23,"wares":["rice","tiger-skins","soju","antimony","kampo-herbs","lychees","ginseng-korea","katana"],"skills":{"ACCOUNTING":1,"HAGGLING":1},"roster_ord":1509,"blurb_goods":["rice","tiger-skins","soju"],"route_ord":127,"fleets":[{"name":"Kairo Quanzhou","roster_ord":1509,"days":9,"ships":[{"class":"carlat","name":"Tsurumaru"}],"officers":["SAKAIPURSER"],"route_ord":127}]}$r$::jsonb),
-  (510, 108, $r${"company":"Kasımoğlu Ortaklığı","alt_company":"Kasimoglu Ortakligi","nation":"OTT","ink":"ott","master":"Hoca Hasan Barbaros","blurb":"Eiderdown from Torshavn to Goree; kente cloth and kola nuts from Goree to Torshavn — under Hoca Hasan Barbaros.","capital":46000,"patience":0.12,"wares":["eiderdown","kente-cloth","kola-nuts","millet","sealskins","swedish-iron","tannin-bark","grains-paradise-oil"],"skills":{"NAVIGATION":2,"ACCOUNTING":1},"roster_ord":1510,"blurb_goods":["eiderdown","kente-cloth","kola-nuts"],"route_ord":108,"fleets":[{"name":"Hat Goree","roster_ord":1510,"days":48,"ships":[{"class":"nau","name":"Rüzgâr"}],"officers":["NPCPILOTOTT"],"route_ord":108}]}$r$::jsonb),
+  (510, 108, $r${"company":"Kasımoğlu Ortaklığı","alt_company":"Kasimoglu Ortakligi","nation":"OTT","ink":"ott","master":"Hoca Hasan Barbaros","blurb":"Eiderdown from Torshavn to Goree; kente cloth and kola nuts from Goree to Torshavn — under Hoca Hasan Barbaros.","capital":41000,"patience":0.12,"wares":["eiderdown","kente-cloth","kola-nuts","millet","sealskins","swedish-iron","tannin-bark","grains-paradise-oil"],"skills":{"NAVIGATION":2,"ACCOUNTING":1},"roster_ord":1510,"blurb_goods":["eiderdown","kente-cloth","kola-nuts"],"route_ord":108,"fleets":[{"name":"Hat Goree","roster_ord":1510,"days":48,"ships":[{"class":"nau","name":"Rüzgâr"}],"officers":["NPCPILOTOTT"],"route_ord":108}]}$r$::jsonb),
   (511, 39, $r${"company":"Casa Sarmiento y Cía","alt_company":"Casa Sarmiento y Cia","nation":"ESP","ink":"esp","master":"Capitán Íñigo Arellano","blurb":"Salt cod, sassafras root and virginia leaf from St. John's to Cape Town — under Capitán Íñigo Arellano.","capital":31000,"patience":0.16,"wares":["salt-cod","sassafras-root","virginia-leaf","myrrh-somali","kanga-cloth","malachite","black-coral","cassava-bread"],"skills":{"NAVIGATION":2,"ACCOUNTING":1},"roster_ord":1511,"blurb_goods":["salt-cod","sassafras-root","virginia-leaf"],"route_ord":39,"fleets":[{"name":"Carrera Cape Town","roster_ord":1511,"days":48,"ships":[{"class":"nau","name":"San Lorenzo"}],"officers":["ELCANO"],"route_ord":39}]}$r$::jsonb),
   (512, 79, $r${"company":"Armação de Belem","alt_company":"Armacao de Belem","nation":"PRT","ink":"prt","master":"Mestre Gaspar Teixeira","blurb":"Coconut arrack, fish sauce and gutta-percha from Jakarta to Sofala — under Mestre Gaspar Teixeira.","capital":16000,"patience":0.11,"wares":["coconut-arrack","fish-sauce","gutta-percha","ikat","ayurvedic-oils","coco-fibre","areca-nuts","cardamom"],"skills":{"NAVIGATION":2,"ACCOUNTING":1},"roster_ord":1512,"blurb_goods":["coconut-arrack","fish-sauce","gutta-percha"],"route_ord":79,"fleets":[{"name":"Viagem Fuzhou","roster_ord":1512,"days":75,"ships":[{"class":"nau","name":"Garça"}],"officers":["CABRALNAV"],"route_ord":79}]}$r$::jsonb),
   (513, 184, $r${"company":"Fraterna Ziani","alt_company":"Fraterna Ziani & Co","nation":"VEN","ink":"ita","master":"Capitano Jacopo Marcello","blurb":"Gallnuts and isinglass from Istanbul to Corfu; olive oil from Corfu to Istanbul — under Capitano Jacopo Marcello.","capital":5000,"patience":0.19,"wares":["gallnuts","isinglass","olive-oil","rakia","swivel-gun","theriaca-venetian","angora","camlets"],"skills":{"HAGGLING":1},"roster_ord":1513,"blurb_goods":["gallnuts","isinglass","olive-oil"],"route_ord":184,"fleets":[{"name":"Corso Istanbul","roster_ord":1513,"days":7,"ships":[{"class":"carlat","name":"Mocenigo"}],"officers":[],"route_ord":184}]}$r$::jsonb),
@@ -1448,7 +1455,7 @@ begin
       public.wc_int('npc_fleet_max'), (select count(*) from public.npc_fleets);
   end if;
 
-  raise notice '0105 self-assert ok: THE MERCHANTS ARE COUNTED BY THEIR COASTS. % more companies, % fleets, % hulls over 219 distinct loops, beside the 76 fleets 0098 founded. Every nation''s fleet count equals round(760 x its harbours'' dev_commerce + dev_industry / the world''s), re-derived here from public.ports (the test saw its positive control on all % nations), and every company homes at a harbour of its own nation. Every purse is its capital and its ledger; every course from a served roadstead passes voyage.path_refusal as cmd.do_sail calls it; harbours only, none twice in a loop, every loop 2 to % stops with at least six of the seven lengths used; every loop of five stops or more takes in two regions and calls at least 2500 nm from home; no fleet draws more than a stop takes (the test refused its nau-at-Seville control); every quay can crew a fifth of its merchant back above npc_crew_pool_floor (and a quay is a PRICE to a merchant, not a budget — 0097 leaves crew_pool itself alone — so there is deliberately no test here that a home quay is not over-homed); every company has a nation, a name no other holds and no two hulls alike; every blurb names only goods its own loop produces at one stop and sells dearer at another (the test saw its positive control); nothing assigned, everyone docked at home with no lines, the switch OFF; npc_fleet_max raised to % with tick_arrivals measured at 295 ms a minute on, 295 fleets at sea, at this count.',
+  raise notice '0105 self-assert ok: THE MERCHANTS ARE COUNTED BY THEIR COASTS. % more companies, % fleets, % hulls over 219 distinct loops, beside the 76 fleets 0098 founded. Every nation''s fleet count equals round(760 x its harbours'' dev_commerce + dev_industry / the world''s), re-derived here from public.ports (the test saw its positive control on all % nations), and every company homes at a harbour of its own nation. Every purse is its capital and its ledger; every course from a served roadstead passes voyage.path_refusal as cmd.do_sail calls it; harbours only, none twice in a loop, every loop 2 to % stops with at least six of the seven lengths used; every loop of five stops or more takes in two regions and calls at least 2500 nm from home; no fleet draws more than a stop takes (the test refused its nau-at-Seville control); every quay can crew a fifth of its merchant back above npc_crew_pool_floor (and a quay is a PRICE to a merchant, not a budget — 0097 leaves crew_pool itself alone — so there is deliberately no test here that a home quay is not over-homed); every company has a nation, a name no other holds and no two hulls alike; every blurb names only goods its own loop produces at one stop and sells dearer at another (the test saw its positive control); nothing assigned, everyone docked at home with no lines, the switch OFF; npc_fleet_max raised to % with tick_arrivals measured at 291 ms a minute on, 295 fleets at sea, at this count.',
     v_n, v_fleets, v_hulls,
     (select count(*) from public.nations n where exists (select 1 from public.ports p where p.kind = 'HARBOUR' and p.nation_id = n.id)),
     public.wc_int('standing_route_stop_max'), public.wc_int('npc_fleet_max');

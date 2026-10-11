@@ -1246,10 +1246,14 @@ ${shareTable}
 -- buys there, so at ${(fleets.length / routes.length).toFixed(1)} fleets a loop the quay's best cargo goes to whoever the roster
 -- names first and the rest must find something else. That contention is real and it is kept.
 --
--- MEASURED, for ${sample.skipped ? 0 : sample.routes} routes: actually sailed, ${LAPS} laps, through the one executor — npc_found,
+-- MEASURED: ${sample.skipped ? 0 : sample.routes} of these routes were actually SAILED through the one executor — npc_found,
 -- npc_traders_switch(true), voyage.settle at every arrival, tick_market_drift on its own 15-minute
 -- slots, the daily cap rolled at every game-day boundary, npc_plan + npc_tend on the hour, hazards
--- off.${sample.skipped ? '' : ` ${sample.arrivals} arrivals over ${sample.sim_hours} simulated hours.`}
+-- off — with 0098's roster driven beside them, so the market they traded in is a real one.
+${sample.skipped ? '--' : `-- ${sample.arrivals} arrivals over ${sample.sim_hours} simulated hours. The sail was asked for ${LAPS} laps and did NOT
+-- get them: it stopped on ${sample.stopped_on}, with ${sample.sample_routes_short_of_their_laps} of the ${sample.routes} short of ${LAPS} laps.
+-- A build that cannot finish cannot be re-run by the next person, so the sail carries a budget and
+-- this line says when the budget is what stopped it rather than quietly reporting the laps it got.`}
 --
 -- WHAT IS THEREFORE NOT KNOWN, said here rather than discovered later: there is no per-fleet
 -- measurement of the whole roster over many laps. 0098 did that for 107 fleets and it took hours;
@@ -1257,9 +1261,12 @@ ${shareTable}
 -- What it gives up is the whole-roster market INTERACTION over a long soak — which was always the
 -- deploy's job (docs/NPC_TRADERS.md §5.1), and the switch is still off when this file lands.
 ${sample.skipped || !sample.validation ? '--' : `--
--- THE DERIVATION WAS VALIDATED AGAINST THE SAMPLE. Derived capital ÷ what the sailed first lap
--- actually bought, over ${sample.validation.compared} sampled routes: p10 ${sample.validation.p10}×, median ${sample.validation.median}×, p90 ${sample.validation.p90}×, with
--- ${sample.validation.under_1} under 1× (under-funded). The floor of 1.5 is why the median sits where it does.`}
+-- THE DERIVATION WAS VALIDATED AGAINST THE SAMPLE, like for like: derived capital ÷ 1.5 × the
+-- DEAREST SINGLE LEG the sailed first lap really bought — which is the same quantity and the same
+-- 1.5 the derivation sizes on, so a ratio of 1 means the derivation got it exactly right. Over the
+-- ${sample.validation.compared} sampled routes that closed a lap: p10 ${sample.validation.p10}×, median ${sample.validation.median}×, p90 ${sample.validation.p90}×, and ${sample.validation.under_1} under 1×. The
+-- derivation is GENEROUS — npc_plan plans a bigger parcel than the market fills on the day — and a
+-- merchant short of her purse is not stranded by it: she buys less.`}
 --
 -- ── 4. WHAT THE CLOCK COSTS, MEASURED AT EACH CEILING ──────────────────────────────────────────
 --
