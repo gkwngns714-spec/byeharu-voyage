@@ -60,6 +60,8 @@ test('a chart viewBox becomes the water it is showing', () => {
 })
 
 test("a harbour asks for its own coast, and a degenerate ask is the world", () => {
+  // Rounded to four decimals on the way out, which is why `-9.14 + 6` reads as -3.14 and not as
+  // -3.1400000000000006 — see `round4`, and the pan it keeps from counting as a new window.
   expect(seaWindowAround({ lat: 38.7, lon: -9.14 }, 6)).toEqual({
     south: 32.7,
     north: 44.7,
@@ -85,13 +87,17 @@ test('the union covers every wanter, and one wanter wanting the world wins', () 
   expect(seaWindowUnion([null])).toBeNull()
   expect(seaWindowUnion([map, null])).toBeNull()
 
-  // TWO WINDOWS EITHER SIDE OF THE ANTIMERIDIAN union to most of the globe and are then the world.
-  // Not clever, and stated in the file: the clever answer is two windows on the wire, and this
-  // world has no harbour within 10° of ±180 for it to matter to.
-  expect(seaWindowUnion([
-    { south: -10, north: 10, west: 170, east: 178 },
-    { south: -10, north: 10, west: -178, east: -170 },
-  ])).toBeNull()
+  // TWO WINDOWS EITHER SIDE OF THE ANTIMERIDIAN union to a band that spans nearly every longitude
+  // — the long way round, not through the seam. That is a SUPERSET of both, which is all the union
+  // promises, and it is the honest cost of not wrapping: stated in the file, because the clever
+  // answer is two windows on the wire and a second window is a second thing to be wrong about for
+  // a case this world (no harbour within 10° of ±180) cannot reach.
+  expect(
+    seaWindowUnion([
+      { south: -10, north: 10, west: 170, east: 178 },
+      { south: -10, north: 10, west: -178, east: -170 },
+    ]),
+  ).toEqual({ south: -10, north: 10, west: -178, east: 178 })
 })
 
 test('an equal window is the same window, so a pan that changes nothing writes nothing', () => {

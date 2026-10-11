@@ -27,8 +27,13 @@ import type { SeaWindow } from '../lib/rpc/types'
  *  adds (10°), narrowing the request buys nothing and only risks an edge case at ±180. */
 const WORLD_SLACK_DEG = 10
 
-const clampLat = (v: number): number => Math.min(90, Math.max(-90, v))
-const clampLon = (v: number): number => Math.min(180, Math.max(-180, v))
+/** Four decimals is about eleven metres — far finer than any merchant's berth and far coarser than
+ *  the arithmetic noise a pan leaves behind (38.7 − 6 is 32.699999999999996 in binary). Rounding
+ *  here is what makes `sameSeaWindow` mean what it says: a drag of a millionth of a degree must not
+ *  count as a new window and send every subscriber of the store a re-render. */
+const round4 = (v: number): number => Math.round(v * 1e4) / 1e4
+const clampLat = (v: number): number => round4(Math.min(90, Math.max(-90, v)))
+const clampLon = (v: number): number => round4(Math.min(180, Math.max(-180, v)))
 
 /**
  * The window a lat/lon rectangle asks for, or null when it may as well be the world.
@@ -69,11 +74,12 @@ export function seaWindowAround(at: LatLon, deg: number): SeaWindow | null {
  * one wanter that wants the world — makes the union the world, and no windows at all is the world
  * too, because a wanter with nothing to say about where it is looking has not narrowed anything.
  *
- * It does not wrap the antimeridian. A pair of windows either side of ±180 unions to something that
- * spans most of the globe and is then reduced to null by `seaWindowOf` — the world, which is
- * correct, if not clever. The clever version is two windows on the wire, and a second window is a
- * second thing to be wrong about for a case the chart cannot reach (there is no harbour within 10°
- * of ±180 in this world).
+ * It does not wrap the antimeridian: a pair of windows either side of ±180 unions to a band taking
+ * in nearly every longitude, the long way round rather than through the seam. That is still a
+ * superset of both, which is all this promises — it just asks for more sea than it needs. The
+ * clever version is two windows on the wire, and a second window is a second thing to be wrong
+ * about for a case the chart cannot reach: there is no harbour within 10° of ±180 in this world,
+ * so no screen ever asks for a pair that straddles it.
  */
 export function seaWindowUnion(windows: readonly (SeaWindow | null)[]): SeaWindow | null {
   if (windows.length === 0 || windows.some((w) => w === null)) return null
