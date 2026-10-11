@@ -278,7 +278,12 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // 0101 gives a lap a two-week rest at its home stop and raises a loop to eight calls; 0102 gives
 // world.sea_traffic a viewport and a cap, because 760 merchant fleets cannot ship on a read that
 // serves them all on every beat.
-const LAST = '20260818000102_the_sea_is_read_through_a_window.sql'
+// Moved again 2026-10-11, the same day: 0104 gives a HARBOUR the merchants it concerns and what
+// each is doing there (owner row 121), and 0106 puts every lane the world sails on one ranked board
+// (owner row 115). 0103 and 0105 are deliberately absent — 0105 is the generated ×10 roster, built
+// in its own worktree and not landed here yet, and the chain is ordered by filename and not by the
+// order anyone happened to author in.
+const LAST = '20260818000106_every_lane_the_world_sails_on_one_board.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

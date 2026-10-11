@@ -39,12 +39,18 @@
 -- what the world honestly holds then.
 --
 -- ── WHAT THIS SUPERSEDES ────────────────────────────────────────────────────────────────────────
--- `public.client_rpc_entry_points` (0018, re-cut by every file that adds a door) and nothing else:
--- the board is a NEW read, and the registry is re-cut only to name it, by one hunk, with the
--- pre-image and the ACL asserted unmoved below. No existing function's body changes — the
--- distance comes from the new `public.route_nm` and the earnings from 0097's `public.route_earnings`
--- exactly as it stands. With no caller the change is invisible: a client that never asks for the
--- board sees a registry one row longer and the same answers to everything else.
+-- `public.client_rpc_entry_points` (0018, re-cut by every file that adds a door), to name the
+-- board; and `cmd.standing_route_save_for` (0096, THE one writer of every route column), by two
+-- hunks, so the stop it writes carries the leg's measured length — §1 below says why that had to
+-- move to the write, with the 4,543 ms a call that made it necessary. Both re-cuts are proven
+-- below to be their pre-images plus only this file's hunks, with their ACLs unmoved.
+--
+-- Nothing else moves, and the earnings reading is untouched: `public.route_earnings` (0097) is
+-- called exactly as it stands. WHEN THE NEW INPUT IS ABSENT the save door behaves as it did — a
+-- course it cannot measure stores null and the save still succeeds, because that door has already
+-- verified the leg through `voyage.path_refusal` and a function that only measures has no business
+-- issuing a second, harsher opinion. A client that never asks for the board sees a registry one
+-- row longer and the same answers to everything else.
 --
 -- ── THE CAP, AND WHOSE ROUTES SURVIVE IT ────────────────────────────────────────────────────────
 -- `route_board_max` (400) bounds the payload, and `total` / `omitted` are served, the posture 0102
@@ -61,7 +67,62 @@ insert into public.world_config (key, value, description) values
    'caller''s own routes are never dropped; beyond those the longest survive. The read serves '
    '`total` and `omitted`, so a cap is never a silent truncation.');
 
--- ── 1. HOW LONG A LOOP IS — one reading ────────────────────────────────────────────────────────
+-- ── 1. HOW LONG A LEG IS — MEASURED ONCE, WHERE IT IS WRITTEN ──────────────────────────────────
+-- The first cut of this file measured every loop's baked course on every read, and the cost went
+-- on the record the way this chain's costs are supposed to: **4,543 ms a call** over ten calls, at
+-- a roster of 77 routes. That is not a slow read, it is an unusable one, and at the roster the
+-- owner has asked for (~220 routes, docs/NPC_FLEET_SCALE.md slice C) it would be some thirteen
+-- seconds.
+--
+-- The cost is not the board. `voyage.segments_from_course` walks a course point by point and asks
+-- `voyage.sea_near` which sea each segment is in, and that walks rings of the 1440 × 720 raster —
+-- so a three-stop loop of hundred-point courses is some three hundred raster walks, and seventy-
+-- seven of them are twenty-three thousand. Per read. For a figure that cannot change unless
+-- somebody rewrites the course.
+--
+-- So the measure moves to the WRITE. `standing_route_stops.course_nm` is the leg's length in
+-- nautical miles, set by `cmd.standing_route_save_for` — THE one writer of every route column
+-- (0096) — out of the same `voyage.segments_from_course` the read used to call. `public.route_nm`
+-- then sums a column.
+--
+-- THAT IS A SECOND COPY OF A DERIVABLE FACT, and this chain's rule for one of those is that it must
+-- be checked rather than trusted: the self-assert below re-measures EVERY stop in the world and
+-- requires zero disagreements, and bends a course through the save door to prove the stored figure
+-- follows. A stop whose course the sea disputes stores null (`segments_from_course` raises), and a
+-- route holding one of those measures null — the absence the board prints and ranks last.
+alter table public.standing_route_stops add column course_nm numeric
+  constraint standing_route_stops_course_nm_sane check (course_nm is null or course_nm >= 0);
+
+comment on column public.standing_route_stops.course_nm is
+  '0106: how far the leg LEAVING this stop sails, nautical miles, measured by '
+  'voyage.segments_from_course when the stop is written (cmd.standing_route_save_for, the one '
+  'writer). Null when the sea disputes the course. A stored derivation, kept honest by 0106''s '
+  'self-assert, which re-measures every stop in the world and requires no disagreement: measuring '
+  'it on every read of the board cost 4,543 ms a call at 77 routes.';
+
+-- The stops that already exist, measured once here.
+do $$
+declare
+  st     record;
+  v_nm   numeric;
+  v_done int := 0;
+  v_dark int := 0;
+begin
+  for st in select route_id, ord, course from public.standing_route_stops loop
+    begin
+      select sum((x->>'nm')::numeric) into v_nm
+        from jsonb_array_elements(voyage.segments_from_course(st.course)) x;
+    exception when others then
+      v_nm := null;
+    end;
+    update public.standing_route_stops s set course_nm = v_nm
+     where s.route_id = st.route_id and s.ord = st.ord;
+    if v_nm is null then v_dark := v_dark + 1; else v_done := v_done + 1; end if;
+  end loop;
+  raise notice '0106 backfill: % stop(s) measured, % the sea disputes', v_done, v_dark;
+end $$;
+
+-- ── 2. HOW LONG A LOOP IS — one reading ────────────────────────────────────────────────────────
 create or replace function public.route_nm(p_route uuid)
 returns numeric
 language plpgsql
@@ -74,35 +135,31 @@ as $$
 -- voyage's ETA is built from. Every stop carries the course for the leg FROM it TO the next and
 -- the loop closes on stop 0, so summing every stop's course is the whole loop exactly once.
 --
+-- IT SUMS A COLUMN AND DOES NOT WALK THE SEA. `standing_route_stops.course_nm` is measured where
+-- the stop is WRITTEN (§1 above says why, with the 4,543 ms that made it necessary), by the same
+-- voyage.segments_from_course this used to call on every read.
+--
 -- NULL FOR A LOOP IT CANNOT MEASURE, AND WHY THAT IS NOT A SHRUG. voyage.segments_from_course
 -- RAISES on a course the two rasters disagree about (E_NO_SEA: 0040's membership against 0046's
 -- passability) — found here by this file's own positive control, which bent a baked course and
--- brought the whole migration down from inside the board's read. A route is validated at the door
--- it is saved through and again at every departure, so a baked course the sea disputes is a FAULT
--- and not a game state; but the board is a read of every route in the world, and one faulted loop
--- must not blank all of them. So the measure is taken per stop, and a stop it cannot measure makes
--- the whole route's figure null — "the server will not say how far this is" — which the board
--- prints as an absence and ranks last. Null also for a route that does not exist. 0 is a real
--- answer and is neither of those.
+-- brought the whole migration down from inside the board's read. Such a stop stores null, and a
+-- route holding one measures null. A route is validated at the door it is saved through and again
+-- at every departure, so a course the sea disputes is a FAULT and not a game state; but the board
+-- is a read of EVERY route in the world, and one faulted loop must not blank all of them. So the
+-- figure is "the server will not say how far this is" — an absence the board prints and ranks
+-- last. Null also for a route that does not exist. 0 is a real answer and is neither of those.
 declare
-  st    record;
-  v_nm  numeric;
-  v_sum numeric := 0;
+  v_sum  numeric;
+  v_dark int;
 begin
   if not exists (select 1 from public.standing_routes r where r.id = p_route) then
     return null;
   end if;
-  for st in select s.course from public.standing_route_stops s where s.route_id = p_route loop
-    begin
-      select sum((x->>'nm')::numeric) into v_nm
-        from jsonb_array_elements(voyage.segments_from_course(st.course)) x;
-    exception when others then
-      return null;
-    end;
-    if v_nm is null then return null; end if;
-    v_sum := v_sum + v_nm;
-  end loop;
-  return v_sum;
+  select sum(s.course_nm), count(*) filter (where s.course_nm is null)
+    into v_sum, v_dark
+    from public.standing_route_stops s where s.route_id = p_route;
+  if v_dark > 0 then return null; end if;
+  return coalesce(v_sum, 0);
 end $$;
 
 comment on function public.route_nm(uuid) is
@@ -112,7 +169,7 @@ comment on function public.route_nm(uuid) is
   'for one whose baked course the sea disputes (segments_from_course raises): one faulted loop must '
   'not blank a board of every route in the world. Server-only.';
 
--- ── 2. THE BOARD ───────────────────────────────────────────────────────────────────────────────
+-- ── 3. THE BOARD ───────────────────────────────────────────────────────────────────────────────
 create or replace function world.route_board()
 returns jsonb
 language plpgsql
@@ -193,11 +250,34 @@ comment on function world.route_board() is
   'touches, its state and public.route_earnings. Never another player''s route. Capped at '
   'route_board_max with `total` and `omitted`; her own routes never drop. A READ: no order.';
 
--- ── 3. THE REGISTRY ────────────────────────────────────────────────────────────────────────────
+-- ── 4. THE REGISTRY, AND THE ONE WRITER ────────────────────────────────────────────────────────
 create temporary table hunks_0106 (fn text not null, n int not null, old text not null, new text not null);
 create temporary table defs_before_0106 (fn text primary key, def text not null, acl text not null);
 
 insert into hunks_0106 values
+('cmd.standing_route_save_for(uuid, uuid, text, jsonb, bigint, integer, integer)', 1,
+$h$      insert into public.standing_route_stops (route_id, ord, port_id, course, repair, crew_up)
+      values (sr.id, k, v_port.id, s->'course', coalesce((s->>'repair')::boolean, false),
+              coalesce((s->>'crew_up')::boolean, false));$h$,
+$h$      -- 0106: THE LEG IS MEASURED HERE, where it is written, and never again on a read of it.
+      -- public.route_nm sums course_nm; measuring every loop's course on every read of the board
+      -- cost 4,543 ms a call at 77 routes, because segments_from_course walks the sea raster for
+      -- every segment of every course. A course the sea disputes stores null rather than refusing
+      -- the save: this door has already verified the leg through voyage.path_refusal above, so a
+      -- raise here would be a second, harsher opinion from a function that only measures.
+      begin
+        select sum((q->>'nm')::numeric) into v_leg_nm
+          from jsonb_array_elements(voyage.segments_from_course(s->'course')) q;
+      exception when others then
+        v_leg_nm := null;
+      end;
+      insert into public.standing_route_stops (route_id, ord, port_id, course, repair, crew_up, course_nm)
+      values (sr.id, k, v_port.id, s->'course', coalesce((s->>'repair')::boolean, false),
+              coalesce((s->>'crew_up')::boolean, false), v_leg_nm);$h$),
+('cmd.standing_route_save_for(uuid, uuid, text, jsonb, bigint, integer, integer)', 2,
+$h$  sr       public.standing_routes%rowtype;$h$,
+$h$  sr       public.standing_routes%rowtype;
+  v_leg_nm numeric;   -- 0106: the leg's measured length, stored on the stop$h$),
 ('public.client_rpc_entry_points()', 1,
 $h$      ('world',       'standing_routes',       ''),$h$,
 $h$      ('world',       'standing_routes',       ''),
@@ -229,9 +309,9 @@ begin
   execute v_def;
 end $$;
 
-select pg_temp.recut_0106('public.client_rpc_entry_points()');
+select pg_temp.recut_0106(fn) from (select distinct fn from hunks_0106) x order by fn;
 
--- ── 4. GRANTS ──────────────────────────────────────────────────────────────────────────────────
+-- ── 5. GRANTS ──────────────────────────────────────────────────────────────────────────────────
 revoke all on function public.route_nm(uuid)    from public, anon, authenticated;
 revoke all on function world.route_board()      from public, anon;
 grant execute on function world.route_board()   to authenticated;
@@ -276,6 +356,9 @@ declare
   v_ms      numeric;
   v_t0      timestamptz;
   v_err     text;
+  v_stops   int;
+  v_drift   int;
+  v_half    jsonb;
 begin
   -- (a) THE REGISTRY IS ITS PRE-IMAGE PLUS ONLY THIS FILE'S HUNK, ACL UNMOVED.
   for v_fn in select distinct fn from hunks_0106 loop
@@ -400,52 +483,83 @@ begin
       raise exception '0106 self-assert FAIL: the board''s earnings object is not public.route_earnings''';
     end if;
 
-    -- (c4) THE DISTANCE IS THE BAKED COURSES, re-derived here off the stops themselves.
+    -- (c4) THE DISTANCE IS THE BAKED COURSES, AND THE STORED FIGURE IS NOT TRUSTED. course_nm is a
+    --      second copy of a derivable fact, so every stop in the world is RE-MEASURED here and no
+    --      disagreement is allowed — the one thing that makes storing it safe.
     v_nm := (select (x->>'nm')::numeric from jsonb_array_elements(v_board->'routes') x
               where (x->>'id')::uuid = (v_row->>'id')::uuid);
-    select sum(g.nm) into v_sum
-      from public.standing_route_stops st
-      cross join lateral (select sum((s->>'nm')::numeric) as nm
-                            from jsonb_array_elements(voyage.segments_from_course(st.course)) s) g
+    select count(*),
+           count(*) filter (where (s.stored is null) <> (s.fresh is null)
+                               or (s.stored is not null and abs(s.stored - s.fresh) > 0.000001))
+      into v_stops, v_drift from (
+        select st.course_nm as stored,
+               (select sum((q->>'nm')::numeric)
+                  from jsonb_array_elements(voyage.segments_from_course(st.course)) q) as fresh
+          from public.standing_route_stops st) s;
+    if v_stops < 150 or v_drift <> 0 then
+      raise exception '0106 self-assert FAIL: % of % stored leg length(s) disagree with a fresh measurement (or there are too few stops to mean anything)',
+        v_drift, v_stops;
+    end if;
+    select sum(st.course_nm) into v_sum from public.standing_route_stops st
      where st.route_id = (v_row->>'id')::uuid;
     if v_nm is null or v_sum is null or abs(v_nm - v_sum) > 0.01 or v_nm <= 0 then
-      raise exception '0106 self-assert FAIL: the board says % nm and her stops measure % nm', v_nm, v_sum;
+      raise exception '0106 self-assert FAIL: the board says % nm and her stops hold % nm', v_nm, v_sum;
     end if;
-    -- POSITIVE CONTROL: shorten one baked course and the figure MOVES. The bend is a PREFIX of the
-    -- course she already sails — every consecutive pair in it is a pair the full course already had,
-    -- so every segment is water the rasters still agree on, and the only thing that changed is how
-    -- far it goes. (The first cut of this control bent the course geometrically instead;
-    -- voyage.segments_from_course raised E_NO_SEA at 48.92, 5.00 and brought the whole migration
-    -- down from inside the board's own read, which is how route_nm came to answer null for a loop
-    -- it cannot measure — proven two assertions below.)
-    update public.standing_route_stops st
-       set course = (select jsonb_agg(p.v order by p.i)
-                       from jsonb_array_elements(st.course) with ordinality as p(v, i)
-                      where p.i <= greatest(2, jsonb_array_length(st.course) / 2))
-     where st.route_id = (v_row->>'id')::uuid and st.ord = 0
-       and jsonb_array_length(st.course) >= 5;
-    if public.route_nm((v_row->>'id')::uuid) >= v_nm then
-      raise exception '0106 self-assert FAIL: half a baked course did not shorten the figure (% nm, was % nm) — it is not the loop''s water',
-        public.route_nm((v_row->>'id')::uuid), v_nm;
+
+    -- POSITIVE CONTROL, THROUGH THE DOOR THAT WRITES IT: her route saved again with a LONGER
+    -- course between the SAME two harbours, and the stored figure follows it up. A detour, not a
+    -- prefix: the save door verifies that a leg begins at its own stop and ends at the next one
+    -- (course_join_nm), so a shortened course would be refused E_OFF_COURSE and would prove
+    -- nothing about the measure. The waypoint is open Atlantic at 40N 20W — the same water the
+    -- direct Lisbon-Funchal leg already crosses — so the door's path_refusal passes it and the only
+    -- thing that changed is how far it goes. (The first cut of this control bent a course
+    -- geometrically and in place; voyage.segments_from_course raised E_NO_SEA at 48.92, 5.00 and
+    -- brought the whole migration down from inside the board's read, which is why route_nm answers
+    -- null rather than raising.)
+    v_sum := public.route_nm(v_route);
+    v_half := jsonb_build_array(v_leg->0, jsonb_build_array(40.0, -20.0), v_leg->1);
+    if coalesce((cmd.standing_route_save_for(v_me, v_route, 'A minha rota',
+                   jsonb_build_array(jsonb_build_object('port', 'LIS', 'course', v_half),
+                                     jsonb_build_object('port', 'FNC', 'course', v_back_c)),
+                   null, null, 0)->>'ok')::boolean, false) is not true then
+      raise exception '0106 self-assert FAIL: the save door refused a detour over open Atlantic: %',
+        cmd.standing_route_save_for(v_me, v_route, 'A minha rota',
+          jsonb_build_array(jsonb_build_object('port', 'LIS', 'course', v_half),
+                            jsonb_build_object('port', 'FNC', 'course', v_back_c)), null, null, 0);
+    end if;
+    if public.route_nm(v_route) <= v_sum then
+      raise exception '0106 self-assert FAIL: saving a longer course did not lengthen the stored figure (% nm, was % nm)',
+        public.route_nm(v_route), v_sum;
+    end if;
+    if exists (select 1 from public.standing_route_stops st
+                where st.route_id = v_route and st.course_nm is null) then
+      raise exception '0106 self-assert FAIL: the save door wrote a stop with no measured length';
     end if;
     if public.route_nm('00000000-0000-4000-8000-000000000000'::uuid) is not null then
       raise exception '0106 self-assert FAIL: route_nm answered for a route that does not exist';
     end if;
-    -- AND A LOOP THE SEA DISPUTES MEASURES NULL RATHER THAN BRINGING THE BOARD DOWN. This is the
-    -- very course that faulted: two points over eastern France, which segments_from_course refuses
-    -- E_NO_SEA. A read of every route in the world cannot be one bad row away from serving nothing,
-    -- and the wire type of `nm` is nullable because of this rather than as a convenience.
-    update public.standing_route_stops st
-       set course = jsonb_build_array(jsonb_build_array(48.92, 5.00), jsonb_build_array(48.50, 5.50))
+
+    -- AND A LOOP WITH AN UNMEASURED LEG READS AS UNMEASURED RATHER THAN BRINGING THE BOARD DOWN.
+    -- That is the state a course the sea disputes leaves behind — segments_from_course raises and
+    -- the stop stores null, which the backfill above counted and the save door writes the same way.
+    -- A read of every route in the world cannot be one bad row away from serving nothing, and the
+    -- wire type of `nm` is nullable because of this rather than as a convenience.
+    update public.standing_route_stops st set course_nm = null
      where st.route_id = v_route and st.ord = 0;
     if public.route_nm(v_route) is not null then
-      raise exception '0106 self-assert FAIL: a course the sea disputes measured % nm instead of null',
+      raise exception '0106 self-assert FAIL: a loop with an unmeasured leg measured % nm instead of null',
         public.route_nm(v_route);
     end if;
     if (select count(*) from jsonb_array_elements(world.route_board()->'routes') x) < 20
        or (select x->'nm' from jsonb_array_elements(world.route_board()->'routes') x
             where (x->>'id')::uuid = v_route) <> 'null'::jsonb then
-      raise exception '0106 self-assert FAIL: one unmeasurable loop blanked the board, or it printed a figure for it';
+      raise exception '0106 self-assert FAIL: one unmeasured loop blanked the board, or it printed a figure for it';
+    end if;
+    -- hers is back on the board with its figure once the leg is measured again
+    update public.standing_route_stops st set course_nm = 1
+     where st.route_id = v_route and st.ord = 0;
+    if public.route_nm(v_route) is null then
+      raise exception '0106 self-assert FAIL: measuring the leg again did not bring the figure back';
     end if;
 
     -- (c5) THE CAP BITES, HER OWN SURVIVES IT, and the board owns up to what it left out.
@@ -501,17 +615,23 @@ begin
   end if;
 
   raise notice '0106 self-assert ok: EVERY LANE THE WORLD SAILS, ON ONE BOARD. '
-    'client_rpc_entry_points is its pre-image plus only this file''s one hunk, ACL unmoved, and it '
-    'names world.route_board(); the board is authenticated-only and public.route_nm is reachable by '
-    'nobody. On probe companies, rolled back: DARK the board is her ONE route and no merchant; ON it '
-    'carries % row(s) — 1 hers and % merchants'' — and NOT the second captain''s route that was '
-    'planted beside hers, every row being either hers or a merchant''s, hers naming no company and a '
-    'merchant''s naming company, nation and ink. The top-level and row key sets are exact and the '
-    'earnings object IS public.route_earnings'' own. The distance is the loop''s BAKED courses: the '
-    'board''s % nm equals the sum re-derived off her stops through voyage.segments_from_course, and '
-    'bending one baked course MOVED the figure (positive control), while a route that does not exist '
-    'measures null rather than zero. Capped at 3 the board served 3 of %, said it omitted %, kept HER '
-    'route, and dropped no merchant route longer than one it kept. An account with no company is '
-    'refused E_NO_HOUSE in words. The board took % ms a call over 10 calls at this roster.',
-    v_total, v_mer, v_nm, v_total, v_total - 3, v_ms;
+    'client_rpc_entry_points and cmd.standing_route_save_for are each their pre-image plus only this '
+    'file''s hunks, ACLs unmoved; the registry names world.route_board(), the board is '
+    'authenticated-only and public.route_nm is reachable by nobody. '
+    'THE DISTANCE IS MEASURED WHERE IT IS WRITTEN, because measuring it on every read cost 4,543 ms '
+    'a call at this very roster: all % stored leg length(s) in the world agree with a fresh '
+    'voyage.segments_from_course measurement, 0 disagreements, and saving her route again with a '
+    'LONGER course between the same two harbours put the stored figure up (positive control, through '
+    'the one door that writes it) while leaving no stop unmeasured. A loop with an unmeasured leg '
+    'reads null and the board still serves every other lane; measure it again and the figure comes '
+    'back; a route that does not exist measures null rather than zero. '
+    'On probe companies, rolled back: DARK the board is her ONE route and no merchant; ON it carries '
+    '% row(s) — 1 hers and % merchants'' — and NOT the second captain''s route planted beside hers, '
+    'every row being either hers or a merchant''s, hers naming no company and a merchant''s naming '
+    'company, nation and ink. The top-level and row key sets are exact, the earnings object IS '
+    'public.route_earnings'' own, and the board''s % nm for one merchant equals the sum her own stops '
+    'hold. Capped at 3 it served 3 of %, said it omitted %, KEPT her route, and dropped no merchant '
+    'route longer than one it kept. An account with no company is refused E_NO_HOUSE in words. The '
+    'board now takes % ms a call over 10 calls at % route(s).',
+    v_stops, v_total, v_mer, v_nm, v_total, v_total - 3, v_ms, v_total;
 end $$;
