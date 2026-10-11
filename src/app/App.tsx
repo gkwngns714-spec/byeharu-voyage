@@ -12,6 +12,7 @@ import { PortScreen } from '../features/port/PortScreen'
 import { MapScreen } from '../features/map/MapScreen'
 import { LedgerScreen } from '../features/ledger/LedgerScreen'
 import { RankScreen } from '../features/rank/RankScreen'
+import { RoutesScreen } from '../features/routes/RoutesScreen'
 import { CompendiumScreen } from '../features/compendium/CompendiumScreen'
 import { ProfileScreen } from '../features/profile/ProfileScreen'
 
@@ -52,6 +53,7 @@ export function App() {
           <Route path="/map" element={<MapScreen />} />
           <Route path="/ledger" element={<LedgerScreen />} />
           <Route path="/rank" element={<RankScreen />} />
+          <Route path="/routes" element={<RoutesScreen />} />
           <Route path="/compendium" element={<CompendiumScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
         </Route>

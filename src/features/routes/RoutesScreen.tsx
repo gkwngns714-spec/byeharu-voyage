@@ -1,0 +1,291 @@
+import { useMemo, useState } from 'react'
+import {
+  Figure,
+  Hint,
+  Note,
+  Row,
+  Segmented,
+  Sheet,
+  SheetSection,
+  Skeleton,
+  Tray,
+  type SegmentSpec,
+  type TrayDetent,
+} from '../../components/ui'
+import { formatDucats, formatInt, formatMiles } from '../../lib/format'
+import type { RouteBoardRow } from '../../lib/rpc'
+import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
+import { useRouteBoard } from '../../live/useRouteBoard'
+import { WorldFailed, WorldLoading } from '../../live/WorldGate'
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// ROUTES — every lane the world sails, on one board (owner row 115, 2026-10-11).
+//
+// The owner: *"show all trade routes created"* · *"rank them with distance, earning prices, etc."*
+//
+// ── IT CONSULTS; IT DOES NOT ACT ────────────────────────────────────────────────────────────────
+// This screen lives in the CABIN group for the reason navTabs gives that group: *"none of them acts
+// on the world"*. There is no button on it. A route is COMPOSED on COMMAND, where its verb lives;
+// this is where you find out what the world's lanes are and what they are worth, which is a thing
+// you read and then go and do something about. Taking a lane is not one tap from a list, and was
+// never asked for.
+//
+// ── THE RANKING IS THE WHOLE POINT, AND IT IS DONE HERE ─────────────────────────────────────────
+// The server serves every figure and no order (`world.route_board`, 0106 — "a READ: it composes no
+// order"), and this screen sorts. That is the right seam: a sort is a VIEW, the player changes it
+// three times in ten seconds, and a sort on the wire would be three round trips and a knob in the
+// migration for each new column anyone wants to rank by.
+//
+// Three orders, which are the owner's own three: how far a lap sails, what a lap earns, and how
+// many harbours it calls at. Distance leads because it is the one figure every route has from the
+// moment it exists — earnings are null until a route has closed two laps, which is a fact about
+// where a lap boundary falls (`public.route_earnings`, 0097) and not a gap to paper over.
+//
+// ── WHAT IS NOT ON IT ───────────────────────────────────────────────────────────────────────────
+// Another captain's routes: DESIGN §E.5 keeps other players off the chart and a board is not a
+// loophole in that; the server does not serve them and asserts that it does not.
+//
+// A LEVEL REQUIREMENT. Owner row 117 asks for one and docs/NPC_FLEET_SCALE.md puts the gate in
+// slice G, after this board; until that gate exists there is no requirement to print, and a column
+// of "—" would be this screen inventing a rule the server does not keep. When `public.passage_gate`
+// lands, the row gains the field and this screen gains a line — named here so the seam is not
+// rediscovered.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+export function RoutesScreen() {
+  // FIELDS, NOT THE STORE (worldStore.ts rule 4).
+  const phase = useWorld((s) => s.phase)
+  const fatal = useWorld((s) => s.fatal)
+
+  if (phase === 'failed') return <WorldFailed title="Routes" refusal={fatal} />
+  if (phase !== 'ready') return <WorldLoading title="Routes" />
+  return <RoutesBody />
+}
+
+type Order = 'nm' | 'earned' | 'calls'
+
+const ORDERS: readonly SegmentSpec<Order>[] = [
+  { id: 'nm', label: 'Distance' },
+  { id: 'earned', label: 'Earnings' },
+  { id: 'calls', label: 'Calls' },
+]
+
+function RoutesBody() {
+  const { board, loading } = useRouteBoard()
+  const [order, setOrder] = useState<Order>('nm')
+  const [open, setOpen] = useState<string | null>(null)
+  const [detent, setDetent] = useState<TrayDetent>('closed')
+
+  const rows = useMemo(() => sortRoutes(board?.routes ?? [], order), [board, order])
+  const mine = rows.filter((r) => r.mine)
+  const others = rows.filter((r) => !r.mine)
+  const opened = board?.routes.find((r) => r.id === open) ?? null
+
+  return (
+    <Sheet
+      title="Routes"
+      data-testid="routes"
+      trailing={
+        board === null ? undefined : (
+          <span className="text-t-caption text-ink-faint">
+            {board.omitted > 0
+              ? `${formatInt(board.routes.length)} of ${formatInt(board.total)} lanes`
+              : `${formatInt(board.total)} ${board.total === 1 ? 'lane' : 'lanes'}`}
+          </span>
+        )
+      }
+    >
+      {board === null ? (
+        loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-2/3" />
+          </div>
+        ) : (
+          <Note tone="warning">Could not load the routes. Retrying shortly.</Note>
+        )
+      ) : (
+        <>
+          <Segmented segments={ORDERS} value={order} onChange={setOrder} label="Rank routes by" className="mb-3" />
+
+          {mine.length > 0 && (
+            // HERS ON HER OWN PANEL, as RANK pins the captain's line: one tone step, so her lanes
+            // read as hers rather than as the first rows of a printout.
+            <SheetSection surface>
+              {mine.map((r, i) => (
+                <Lane
+                  key={r.id}
+                  route={r}
+                  order={order}
+                  mine
+                  hairline={i < mine.length - 1}
+                  onOpen={() => {
+                    setOpen(r.id)
+                    setDetent('half')
+                  }}
+                />
+              ))}
+            </SheetSection>
+          )}
+
+          {others.length === 0 && mine.length === 0 ? (
+            <Row
+              label={
+                board.merchants
+                  ? 'No routes are sailing anywhere yet.'
+                  : 'You keep no routes yet, and the merchant companies are not abroad.'
+              }
+              tone="muted"
+              hairline={false}
+            />
+          ) : (
+            <SheetSection surface className={mine.length > 0 ? 'mt-2' : undefined}>
+              {others.map((r, i) => (
+                <Lane
+                  key={r.id}
+                  route={r}
+                  order={order}
+                  hairline={i < others.length - 1}
+                  onOpen={() => {
+                    setOpen(r.id)
+                    setDetent('half')
+                  }}
+                />
+              ))}
+            </SheetSection>
+          )}
+
+          {board.omitted > 0 && (
+            <Hint className="mt-2">
+              {`${formatInt(board.omitted)} shorter ${board.omitted === 1 ? 'lane is' : 'lanes are'} not shown.`}
+            </Hint>
+          )}
+          {!board.merchants && mine.length > 0 && (
+            <Hint className="mt-2">The merchant companies are not abroad yet, so only your own lanes are here.</Hint>
+          )}
+
+          {opened && <LaneTray route={opened} detent={detent} onDetentChange={setDetent} />}
+        </>
+      )}
+    </Sheet>
+  )
+}
+
+/** The order the board is read in. Within each order the tie-break is the NAME, so the list does
+ *  not shuffle under the player between two reads of the same figures. A route whose earnings the
+ *  server has not got yet sorts LAST on earnings rather than as a zero — it has not earned nothing,
+ *  it has not said. */
+function sortRoutes(rows: readonly RouteBoardRow[], order: Order): RouteBoardRow[] {
+  const by = (r: RouteBoardRow): number =>
+    order === 'nm' ? r.nm : order === 'calls' ? r.stop_count : (r.earnings.lap ?? Number.NEGATIVE_INFINITY)
+  return [...rows].sort((a, b) => by(b) - by(a) || a.name.localeCompare(b.name))
+}
+
+/** One lane: its name, the figure the board is ranked by, and one line saying whose it is and what
+ *  shape it has. */
+function Lane({
+  route,
+  order,
+  mine = false,
+  hairline,
+  onOpen,
+}: {
+  route: RouteBoardRow
+  order: Order
+  mine?: boolean
+  hairline: boolean
+  onOpen: () => void
+}) {
+  return (
+    <Row
+      label={route.name}
+      value={<Figure value={rankFigure(route, order)} tone={mine ? 'accent' : undefined} />}
+      tone={mine ? 'accent' : undefined}
+      chevron
+      onClick={onOpen}
+      hairline={hairline}
+      data-testid="route-lane"
+    >
+      <span className="block text-t-caption text-ink-faint">{laneLine(route, mine)}</span>
+    </Row>
+  )
+}
+
+/** The figure being ranked on, and the ABSENCE where the server has one. */
+function rankFigure(route: RouteBoardRow, order: Order): string {
+  if (order === 'nm') return formatMiles(route.nm)
+  if (order === 'calls') return formatInt(route.stop_count)
+  return route.earnings.lap === null ? '—' : formatDucats(route.earnings.lap)
+}
+
+/** Whose lane, and its shape: `Casa da Índia · 5 calls · 3 regions · 4,120 nm`. Her own says so by
+ *  being on her own panel and does not repeat a company name she knows. */
+function laneLine(route: RouteBoardRow, mine: boolean): string {
+  return [
+    mine ? 'Yours' : route.company,
+    `${formatInt(route.stop_count)} ${route.stop_count === 1 ? 'call' : 'calls'}`,
+    route.regions > 1 ? `${formatInt(route.regions)} regions` : null,
+    formatMiles(route.nm),
+    route.assigned ? null : 'no fleet',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+/** THE LANE, OPENED: where she calls, in order, and what the laps say. Every figure is the
+ *  server's — `public.route_nm` for the distance and `public.route_earnings` for the rest. */
+function LaneTray({
+  route,
+  detent,
+  onDetentChange,
+}: {
+  route: RouteBoardRow
+  detent: TrayDetent
+  onDetentChange: (d: TrayDetent) => void
+}) {
+  const portByCode = useWorld((s) => s.portByCode)
+  const nationByCode = useWorld((s) => s.nationByCode)
+  const calls = route.stops.map((c) => portNameOf(portByCode, c))
+
+  return (
+    <Tray detent={detent} onDetentChange={onDetentChange} title={route.name} data-testid="route-tray">
+      {!route.mine && route.company !== null && (
+        <Row
+          label={route.company}
+          value={route.nation_code === null ? undefined : nationNameOf(nationByCode, route.nation_code)}
+        />
+      )}
+      <Row label="Calls at" value={<Figure value={formatInt(route.stop_count)} />}>
+        {/* The loop closes on its first harbour, so the arrow comes back to where it began — which
+            is the owner's own shape for a route (row 122) and not a flourish. */}
+        <span className="block text-t-caption text-ink-faint">{`${calls.join(' → ')} → ${calls[0] ?? '—'}`}</span>
+      </Row>
+      <Row label="A lap sails" value={<Figure value={formatMiles(route.nm)} />} />
+      {route.regions > 1 && <Row label="Regions touched" value={<Figure value={formatInt(route.regions)} />} />}
+      <Row label="Standing" value={route.state} />
+      <Row
+        label="A lap earns"
+        value={
+          route.earnings.lap === null ? (
+            <span className="text-ink-faint">not yet</span>
+          ) : (
+            <Figure value={formatDucats(route.earnings.lap)} tone="accent" />
+          )
+        }
+      >
+        <span className="block text-t-caption text-ink-faint">
+          {route.earnings.lap === null
+            ? 'A lap buys on one circuit and sells on the next, so two have to close before the figure means anything.'
+            : `the mean of ${formatInt(route.earnings.lap_basis)} closed ${route.earnings.lap_basis === 1 ? 'lap' : 'laps'}`}
+        </span>
+      </Row>
+      <Row
+        label="Laps closed"
+        value={<Figure value={formatInt(route.earnings.laps_done)} />}
+        hairline={false}
+      />
+      {!route.assigned && <Hint className="mt-2">No fleet is on this route, so it is a plan and not a lane.</Hint>}
+    </Tray>
+  )
+}

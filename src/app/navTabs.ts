@@ -98,6 +98,13 @@ const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] =
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
   { to: '/ledger', label: 'History', icon: 'ledger', enabled: true, group: 'cabin' },
   { to: '/rank', label: 'Rank', icon: 'wreath', enabled: true, group: 'cabin' },
+  // ROUTES (owner row 115, 2026-10-11): every lane the world sails, ranked. In the CABIN for this
+  // group's own stated kind — it acts on nothing; a route is COMPOSED on Command, where its verb
+  // lives, and this is where you find out what the world's lanes are worth. The word is "Routes"
+  // and not a second word for the same idea: Command's fold is where you make one, this is where
+  // you read them, as Port and Market turned out to be one place drawn twice. The bar still draws
+  // FIVE cells — a group member costs no cell, which is what the group is for.
+  { to: '/routes', label: 'Routes', icon: 'chart', enabled: true, group: 'cabin' },
   // "Codex", not "Compendium": both mean the 도감, and the shorter word is the one that must fit a
   // cell. The screen's own title spells it out in full.
   { to: '/compendium', label: 'Codex', icon: 'codex', enabled: true, group: 'cabin' },
