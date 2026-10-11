@@ -381,7 +381,19 @@ function tradeGoods(stops) {
     if (!lo || !hi || lo.s === hi.s) continue
     if (lo.a >= 0.99) continue
     const grad = hi.a - lo.a
-    if (grad < 0.25) continue
+    // THE THRESHOLD IS THE GAME'S, NOT AN OPINION. It was 0.25 of affinity, and MEASURED on the
+    // built roster that threw away every short loop: all 47 two-stop and all 59 three-stop loops
+    // came back with NO tradeable good, so 448 of 761 houses were founded with an empty `wares`
+    // list and a blurb that named no cargo. They were not actually barren — the server's own
+    // planner funded 20 % of the two-stop fleets and 27 % of the three-stop ones, because
+    // world.trade_routes prices real stock and spread and the bar it has to clear is
+    // npc_min_return_pct (2 %), not a quarter of an affinity point. An empty `wares` also costs
+    // the house npc_plan's pass-1 preference, which is the whole mechanism by which the houses on
+    // one loop specialise instead of all claiming the same cargo. So the bar is a STRICTLY DEARER
+    // sink, which is what "the gradient between two ports is the game" actually means, with a
+    // hair's width to keep numeric noise out; the list is still ordered widest-gradient-first, so
+    // a carreira's pepper still comes before a coaster's buckwheat.
+    if (grad < 0.02) continue
     out.push({ good: g, name: gd.name, from: lo.s, to: hi.s, from_aff: lo.a, to_aff: hi.a, gradient: Number(grad.toFixed(3)) })
   }
   out.sort((a, b) => b.gradient - a.gradient || a.good.localeCompare(b.good))

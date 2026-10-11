@@ -134,7 +134,7 @@ and unassigned, every fleet docked at its own stop 0 with no lines.
 | loop lengths | 2 stops ×47 · 3 ×59 · 4 ×47 · 5 ×26 · 6 ×26 · 7 ×12 · 8 ×2 — **all seven legal lengths**, against 69-of-76 at three stops before this file |
 | long loops | 66 call at five harbours or more, and **every one** takes in at least 2 regions and calls at least 2,500 nm from home. Median farthest call 4,154 nm |
 | reach | **237 of the world's 238 harbours** are called at, including **80 of the 81 that belong to no nation** |
-| classes | carlat 455 · nau 178 · barca 128 — read off each loop's own longest leg, then held to what every stop's `max_draft` can take |
+| classes | carlat 461 · nau 173 · barca 127 — read off each loop's own longest leg, then held to what every stop's `max_draft` can take |
 | names | composed, never authored: every company has a distinct name and a distinct second spelling inside `players.company_name`'s own 24 characters, a master, a nation, and hull names no two of its own share |
 
 ### 4.2 The share: the formula, and the one that was rejected
@@ -171,10 +171,10 @@ chosen by the server itself: the roster order is STRATIFIED across nations and l
 capping `npc_fleet_max` makes any prefix a proportional spread — and the reading is then also the
 answer to "what does the world do at that ceiling".
 
-**What the sample actually came to, and what it cost.** `npc_fleet_max` at 76 + 120 started **38 of
-0105's routes**, and all 72 started routes (38 of 0105's, 34 of 0098's) were driven: **266 arrivals
-over 145 simulated hours in 25 minutes of wall clock**, at which point the sail's own budget stopped
-it with every sample route short of three laps — 35 of the 38 had closed one, none had closed three.
+**What the sample actually came to, and what it cost.** `npc_fleet_max` at 76 + 120 started **40 of
+0105's routes**, and all 75 started routes (40 of 0105's, 35 of 0098's) were driven: **284 arrivals
+over 139 simulated hours in 25 minutes of wall clock**, at which point the sail's own budget stopped
+it with every sample route short of three laps — 38 of the 40 had closed one, none had closed three.
 The budget is deliberate and the receipt says it bit: a build that cannot finish cannot be re-run by
 the next person, and reporting fewer laps as though they were all it meant to take is the thing this
 file refuses to do. An earlier run without a budget drove one short coastal loop round and round for
@@ -183,9 +183,9 @@ longer being measured.
 
 **What the sample VALIDATES.** Derived capital ÷ 1.5 × the dearest single leg the sailed first lap
 actually bought — like for like, the same rule the derivation sizes on — over the 35 routes that
-closed a lap: **p10 1.05×, median 2.8×, p90 17.6×, and 2 of 35 under 1×**. So the derivation is
-GENEROUS, by about threefold at the median: `npc_plan` plans a bigger parcel than the market
-actually fills on the day, and the 1.5 floor sits on top of that. Two of the 35 were under-funded,
+closed a lap: **p10 1.01×, median 1.93×, p90 15.9×, and 3 of 38 under 1×**. So the derivation is
+GENEROUS, by about twofold at the median: `npc_plan` plans a bigger parcel than the market actually
+fills on the day, and the 1.5 floor sits on top of that. Three of the 38 were under-funded,
 which is the honest residual — the plan at derivation time is not the plan at lap time, because the
 market has drifted and a different merchant has taken the cargo. A merchant short of capital is not
 stranded: she buys less. Over-funding by 3× a leg is a purse figure in world data, not an
@@ -205,11 +205,11 @@ world:
 
 | `npc_fleet_max` | routes running | `tick_arrivals` idle | …a minute on | …8 h on (every fleet at sea at once) | `npc_plan` hourly, all | `npc_tend` | `world.sea_traffic()` |
 |---|---|---|---|---|---|---|---|
-| 120 | 46 | 28 ms | **145 ms** (46 fleets) | 1,638 ms | 9,135 ms | 17 ms | 63 ms, serving 240/837, omitting 597 |
-| 837 | 275 | 54 ms | **277 ms** (274 fleets) | 17,321 ms | 9,102 ms | 41 ms | 163 ms, serving 240/837, omitting 597 |
+| 120 | 47 | 28 ms | **147 ms** (47 fleets) | 1,681 ms | 9,677 ms | 17 ms | 63 ms, serving 240/837, omitting 597 |
+| 837 | 296 | 57 ms | **295 ms** (295 fleets) | 18,111 ms | 9,666 ms | 24 ms | 172 ms, serving 240/837, omitting 597 |
 
-Reproduced across three independent builds of the same roster to within 2 ms and 200 ms
-respectively, so the figures are the machinery's and not the run's.
+Reproduced across four independent builds of the same roster, to within 3 ms on the per-minute
+figure and 600 ms on the hourly one, so these are the machinery's figures and not one run's.
 
 `tick_arrivals` is the figure that decides the knob, because it is the one with a minute to finish
 in — and it does **not** only settle arrivals: it settles every voyage whose next sea-day has ended
@@ -221,10 +221,18 @@ and `sea_traffic_max` (240) is kept unchanged: 0102's cap is doing exactly the j
 
 ### 4.5 The finding that matters most: 760 fleets cannot all trade at once
 
-On the untouched market, with each route planned by the server's own planner, **248 of 761 routes
-found a cargo that pays and 513 did not**; switched on at the full ceiling, **275 of 837 run and the
-rest are `laid_up`**. This is not a defect, and it is not a roster that can be fixed by re-rolling
-it. It is the collision of two rules this plan did not put side by side:
+On the untouched market, with each route planned by the server's own planner, **270 of 761 routes
+found a cargo that pays and 491 did not**; switched on at the full ceiling, **296 of 837 run and the
+rest are `laid_up`**. And it is not spread evenly: the planner funds **23 % of the two-stop fleets,
+30 % of the three-stop, 39 % of the four-, 49 % of the five-**, which is the economy's own shape
+showing through. `port_goods.affinity` is derived from how far a port is from the nearest place that
+produces the good (0005), so two neighbouring harbours have nearly the same affinity for nearly
+everything and a short coastal hop has almost no gradient to trade on. The owner asked for loops
+"visiting 2 cities, 3 cities" (row 122a) and those loops are the poorest ones in this economy by
+construction, not by accident.
+
+This is not a defect, and it is not a roster that can be fixed by re-rolling it. On top of the
+gradient it is the collision of two rules this plan did not put side by side:
 
 - `npc_plan` allows **ONE merchant buyer per (port, good)** (0097), world-wide — not per route.
 - A harbour trades only **4 to 10 goods** (0061). Across 224 harbours that is **1,288
@@ -233,7 +241,14 @@ it. It is the collision of two rules this plan did not put side by side:
 
 Giving the houses on a shared loop **different wares** — each takes her own slice of that loop's
 affinity gradient, which is also what a real trading town looks like — moved it from 535 laid up to
-513, so specialisation is right but it is not the binding constraint. The binding constraint is the
+513; lowering the generator's own gradient bar from a quarter of an affinity point to a hair's width
+moved it to **491** and, more importantly, gave all 761 houses a real `wares` list where **448 had
+been founded with an empty one**. That bar was mine and it was stricter than the game's: measured,
+every single 2-stop and 3-stop loop fell under 0.25, while the server's planner still funded a fifth
+of them, because `world.trade_routes` prices real stock and spread and the bar it clears is
+`npc_min_return_pct` (2 %). An empty `wares` also costs a house `npc_plan`'s pass-1 preference,
+which is the very mechanism by which houses on one loop specialise. So specialisation is right and
+the bar had to be the game's — but neither is the binding constraint. The binding constraint is the
 authored breadth of the market. A laid-up merchant is still founded, still visible in port, still
 draws her whole loop on the chart, and `npc_tend` tries her again every `npc_laid_up_hours` as the
 market drifts — so the world is not short of merchants, it is short of *simultaneously paying*
