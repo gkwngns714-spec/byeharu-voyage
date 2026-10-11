@@ -81,15 +81,24 @@ interface ServedFleet {
  * her name happened to brush against. docs/NO_SPAGHETTI.md §7C's mirror rule: the lesser answer is
  * allowed to be lesser, never wrong.
  *
- * THE REAL FIX IS ONE LINE OF SQL AND IT IS NOT MINE TO WRITE THIS SLICE: `world.fleets` and
- * `world.sea_traffic` could serve `c.code`, and this table would go. Until they do, a MERCHANT has
- * no class on the wire at all (`sea_traffic` serves only `count(*)`), so this function is never
- * even called for one.
+ * THIS TABLE IS HALF RETIRED, AND SAYS WHICH HALF. `world.sea_traffic` now serves `hulls` as
+ * `ship_classes.code` per hull, flagship first (0102, 2026-10-11), so a MERCHANT needs no table at
+ * all — `hullCodesOf` below reads the codes straight off the wire. `world.fleets` still serves a
+ * ship's class as `c.name`, so a CAPTAIN's own fleets still come through here. The day that read
+ * serves a code too, this table goes and `hullsOf` becomes `hullCodesOf`.
  */
 const HULL_CLASS_BY_SERVED_NAME: Readonly<Record<string, HullClass>> = {
   barca: 'barca',
   'caravela latina': 'carlat',
   'nau / carrack': 'nau',
+}
+
+/** THE SAME, FROM CODES THE SERVER ALREADY ORDERED (0102). A merchant's `hulls` arrive flagship
+ *  first out of `world.sea_traffic`, so there is nothing to partition here and nothing to look up
+ *  by name: a code either names one of the three silhouettes or it names none, and none draws the
+ *  class-less hull. `HullClass` is the code set, so the check is the cast. */
+function hullCodesOf(codes: readonly string[] | undefined): (HullClass | null)[] {
+  return (codes ?? []).map((c) => (c === 'barca' || c === 'carlat' || c === 'nau' ? c : null))
 }
 
 /** HER HULLS, FLAGSHIP FIRST — the served ships in served order with the flagship moved to the
@@ -167,12 +176,14 @@ export function mapTrafficOf(
       voyage,
       anchor: docked ? fannedBerth(t.roadstead!, berthIndex) : t.anchor,
       port: null,
-      // HOW MANY HULLS SHE IS, AND NOT WHAT THEY ARE (row 120). `world.sea_traffic` serves `ships`
-      // as `count(*)` and no class, so a merchant's list is her count of class-less hulls: the
-      // GROUP is hers and true, the silhouette is the one this chart has always drawn. The day the
-      // read serves `c.code` this line becomes the same `hullsOf` the fleets above use and the
-      // merchants light up with no change to any renderer. See ./mapTypes.ts `FleetHulls`.
-      hulls: Array.from({ length: Math.max(0, Math.trunc(t.ships)) || 0 }, () => null),
+      // WHAT HER HULLS ARE, AND HOW MANY (row 120). `world.sea_traffic` serves `hulls` as a class
+      // CODE per hull, flagship first (0102) — so this is a copy, like every other position here,
+      // and not a derivation. Her `ships` count is the same list's length and is not re-read: one
+      // served fact, one reading of it. A merchant with no list falls back to her count of
+      // class-less hulls, which is what this chart drew for her before the read carried classes.
+      hulls: t.hulls && t.hulls.length > 0
+        ? hullCodesOf(t.hulls)
+        : Array.from({ length: Math.max(0, Math.trunc(t.ships)) || 0 }, () => null),
     })
     if (!m) continue
     const nextLap = t.next_lap_at ? Date.parse(t.next_lap_at) : NaN

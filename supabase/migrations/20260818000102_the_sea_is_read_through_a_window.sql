@@ -9,10 +9,16 @@
 -- The owner has asked for ten times as many (row 118), and ten times as many is a read nobody
 -- should be asked to pay for in order to look at one sea.
 --
--- So the read takes a WINDOW and a CAP, and says how many it did not send. Nothing else about it
--- moves: handed no window it answers exactly what it answered before, fleet for fleet, in the same
--- order, byte for byte — which is asserted below against its own pre-image, cloned into pg_temp one
--- statement before it is dropped.
+-- So the read takes a WINDOW and a CAP, and says how many it did not send. Handed no window it
+-- answers what it answered before, fleet for fleet, in the same order — asserted below against its
+-- own pre-image, cloned into pg_temp one statement before it is dropped.
+--
+-- ONE KEY WAS ADDED TO THE ROW AFTERWARDS, and it is named here rather than discovered: `hulls`,
+-- the classes a merchant fleet is made of, flagship first (owner row 120, 2026-10-11). The chart
+-- draws a silhouette per class and a mark per hull, and this read served `count(*)` and no class,
+-- so every merchant in the world drew the right NUMBER of class-less hulls. The parity assertion
+-- below strikes that one key out and compares the rest byte for byte, which says more than the
+-- plain equality it replaced: nothing ELSE crept in beside it.
 --
 -- ── WHAT "IN THE WINDOW" MEANS, AND WHY IT IS GENEROUS ──────────────────────────────────────────
 -- A merchant is not a point. She is a hull the chart DRIFTS along the current segment of her
@@ -43,6 +49,19 @@
 -- player is looking. `total` is every merchant fleet in the world and `omitted` is total minus
 -- served, so one number covers both the window and the cap, and the read never quietly shows less
 -- than there is. A read that silently truncates is a read that teaches the player the sea is empty.
+--
+-- ── WHAT THIS SUPERSEDES ────────────────────────────────────────────────────────────────────────
+-- `world.sea_traffic` (0099) and `public.client_rpc_entry_points` (0018, re-cut many times since).
+-- The read is SUPERSEDED rather than amended because its signature changes, and the registry row
+-- that names its argument types has to move with it in the same file — a registry whose
+-- `arg_types` no longer resolve is the drift 0096 was written to catch, and it would pass unseen
+-- for weeks (it did, with `world.trade_routes`, for five of them).
+--
+-- THE CHANGE IS A NO-OP WHEN THE NEW INPUT IS ABSENT, and that is asserted rather than asserted of
+-- itself: handed no window the new body answers what the old one answered, fleet for fleet, in the
+-- same order, byte for byte, measured against the old body cloned into pg_temp one statement
+-- before it is dropped. Nothing else in 0099 moves — `world.npc_fleet_card`, `world.voyage_view`
+-- and `public.standing_route_state` are untouched, and the row the read serves is 0099's own.
 --
 -- ── THE SIGNATURE CHANGED, SO THE REGISTRY DID ──────────────────────────────────────────────────
 -- `world.sea_traffic()` is DROPPED and `world.sea_traffic(jsonb default null)` takes its place: two
@@ -168,6 +187,9 @@ begin
            p.company_name, nn.code as nation_code, h.ink, po.code as port_code,
            rs.roadstead_lat, rs.roadstead_lon, nf.roster_ord, sr.hold_until,
            (select count(*) from public.ships s where s.fleet_id = f.id) as ships,
+           (select coalesce(jsonb_agg(sc.code order by s.is_flagship desc, s.created_at, s.id), '[]'::jsonb)
+              from public.ships s join public.ship_classes sc on sc.id = s.class_id
+             where s.fleet_id = f.id) as hulls,
            (select world.voyage_view(v.id, false) from public.voyages v
              where v.fleet_id = f.id and v.status = 'SAILING') as vv
       from public.fleets f
@@ -226,6 +248,15 @@ begin
            'nation_code', pick.nation_code, 'ink', pick.ink,
            'name', pick.name, 'status', pick.status,
            'ships', pick.ships,
+           -- WHAT HER HULLS ARE, AND NOT ONLY HOW MANY (owner row 120, added 2026-10-11). The chart
+           -- draws a silhouette per class and a mark per hull (src/chart/glyphs.ts `hullPath`,
+           -- `hullGroup`), and until this key existed a merchant was served `count(*)` and no
+           -- class, so every one of them drew the right NUMBER of class-less hulls. CODES, not
+           -- names: a code is the server's own identifier (`ship_classes.code`) while a name is
+           -- prose that may be re-worded, and the client was already carrying a name-to-class
+           -- table for `world.fleets` because of exactly that. FLAGSHIP FIRST, then the order she
+           -- was built in, so the formation a fleet draws is hers and cannot shuffle between reads.
+           'hulls', pick.hulls,
            'port', pick.port_code,
            'roadstead', case when pick.port_id is not null
                              then jsonb_build_array(pick.roadstead_lat, pick.roadstead_lon) end,
@@ -436,7 +467,13 @@ begin
     -- (e1) PARITY: handed no window, fleet for fleet, in the same order, byte for byte.
     v_before := pg_temp.traffic_before_0102();
     v_after  := world.sea_traffic();
-    if v_after->'fleets' is distinct from v_before->'fleets'
+    -- HER ROW IS THE PRE-IMAGE'S PLUS EXACTLY ONE KEY. `hulls` was added to this file on
+    -- 2026-10-11 for owner row 120, so parity is now the old row with that one key struck out —
+    -- which is a stronger statement than "the rows are equal" was, because it also says nothing
+    -- ELSE crept in beside it. The key itself is proven on its own in (e1b) below.
+    if (select coalesce(jsonb_agg(x.v - 'hulls' order by x.i), '[]'::jsonb)
+          from jsonb_array_elements(v_after->'fleets') with ordinality as x(v, i))
+         is distinct from v_before->'fleets'
        or (v_after->>'enabled')::boolean is not true
        or jsonb_array_length(v_after->'fleets') <> v_total
        or (v_after->>'total')::int <> v_total or (v_after->>'omitted')::int <> 0 then
@@ -452,9 +489,33 @@ begin
       raise exception '0102 self-assert FAIL: sea_traffic top-level keys %', v_keys;
     end if;
     v_keys := pg_temp.okeys_0102(v_whole->'fleets'->0);
-    if v_keys <> array['anchor', 'company', 'id', 'ink', 'name', 'nation_code', 'next_lap_at',
-                       'port', 'roadstead', 'ships', 'status', 'voyage'] then
+    if v_keys <> array['anchor', 'company', 'hulls', 'id', 'ink', 'name', 'nation_code',
+                       'next_lap_at', 'port', 'roadstead', 'ships', 'status', 'voyage'] then
       raise exception '0102 self-assert FAIL: a merchant row''s keys %', v_keys;
+    end if;
+    -- (e1b) HER HULLS ARE HER SHIPS, flagship first (owner row 120). Re-derived off the tables for
+    --       every served row, and the classes are CODES the catalogue knows — a served name would
+    --       be prose, which is the only reason the client ever had a name-to-class table.
+    if exists (
+      select 1 from jsonb_array_elements(v_whole->'fleets') x
+       where (select count(*) from jsonb_array_elements_text(x->'hulls')) <> (x->>'ships')::int) then
+      raise exception '0102 self-assert FAIL: a merchant''s hull list is not as long as her ship count';
+    end if;
+    if exists (select 1 from jsonb_array_elements(v_whole->'fleets') x,
+                    jsonb_array_elements_text(x->'hulls') c
+                where not exists (select 1 from public.ship_classes sc where sc.code = c)) then
+      raise exception '0102 self-assert FAIL: a served hull names a class the catalogue does not keep';
+    end if;
+    if exists (
+      select 1 from jsonb_array_elements(v_whole->'fleets') x
+       where exists (select 1 from public.ships s join public.ship_classes sc on sc.id = s.class_id
+                      where s.fleet_id = (x->>'id')::uuid and s.is_flagship
+                        and sc.code is distinct from (x->'hulls'->>0))) then
+      raise exception '0102 self-assert FAIL: a merchant''s flagship is not the first of her hulls';
+    end if;
+    if (select count(distinct c) from jsonb_array_elements(v_whole->'fleets') x,
+                                       jsonb_array_elements_text(x->'hulls') c) < 2 then
+      raise exception '0102 self-assert FAIL: every merchant in the world is one class, so the silhouettes prove nothing';
     end if;
 
     -- (e2) A WINDOW ON IBERIA serves fewer, serves only merchants a re-derivation of the predicate
@@ -603,7 +664,9 @@ begin
     'while 0E is not, takes an edge the pad pushed past 180, and answers the whole world. Dark: empty, '
     'total and omitted both zero. On the real roster of % merchant fleet(s), switched on and rolled back: '
     'handed NO window the read is its own pre-image''s answer, fleet for fleet in the same order, byte '
-    'for byte, omitting none, at least one of them at sea; the top-level and row key sets are exact. An '
+    'for byte, omitting none, at least one of them at sea; the top-level and row key sets are exact, '
+    'and every merchant''s HULL LIST is as long as her ship count, names only classes the catalogue '
+    'keeps, starts with her flagship''s class, and spans more than one class across the roster. An '
     '8-degree window on Lisbon served % of % and owned up to the % it left out; every one of them has a '
     'point inside the padded window by a re-derivation from the tables, % were left out, and a merchant '
     'berthed a hemisphere away was not among them. With the cap cut to 3 it served exactly 3 of % and '

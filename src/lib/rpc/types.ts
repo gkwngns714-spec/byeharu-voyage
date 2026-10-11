@@ -1601,6 +1601,16 @@ export interface TrafficFleet {
   status: FleetStatus
   /** Hulls in the fleet. */
   ships: number
+  /**
+   * WHAT THOSE HULLS ARE — `ship_classes.code` per hull, FLAGSHIP FIRST then the order she was
+   * built in (0102, owner row 120). As long as `ships`.
+   *
+   * CODES, not names: a code is the server's own identifier and a name is prose that may be
+   * re-worded or translated, and the chart was carrying a name-to-class table for `world.fleets`
+   * for exactly that reason. A code the client does not know draws the class-less hull rather than
+   * the nearest guess — the lesser answer may be lesser, never wrong.
+   */
+  hulls: string[]
   /** Port CODE she lies in, or null at sea. */
   port: string | null
   /** The SERVED roadstead of that port, [lat, lon] — where the chart draws her at anchor. */

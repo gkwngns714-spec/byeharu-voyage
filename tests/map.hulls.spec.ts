@@ -287,10 +287,14 @@ const LIS: MapPort = {
   roadstead: { lat: 38.6, lon: -9.4 }, roadsteadNm: 12,
 }
 
-function dockedMerchant(id: string, ships: number): TrafficFleet {
+/** A docked merchant as `world.sea_traffic` serves her. `hulls` defaults to NO classes — the
+ *  fallback the chart drew before 0102 carried them — so a caller that cares about the classes
+ *  passes them, and one that cares only about the count does not have to invent any. */
+function dockedMerchant(id: string, ships: number, hulls: readonly string[] = []): TrafficFleet {
   return {
     id, company: 'Casa da Prova', nation_code: 'PRT', ink: 'prt', name: `Prova ${id}`, status: 'DOCKED',
-    ships, port: 'LIS', roadstead: [38.6, -9.4], anchor: null, voyage: null, next_lap_at: null,
+    ships, hulls: [...hulls], port: 'LIS', roadstead: [38.6, -9.4], anchor: null, voyage: null,
+    next_lap_at: null,
   }
 }
 
@@ -331,13 +335,25 @@ test('both reads always say how many hulls, and only one of them can say what th
   expect(bare.hulls).toEqual([])
   expect(hullGroup(bare.hulls ?? [], GROUPED)).toHaveLength(1)
 
-  // THE MERCHANTS: `world.sea_traffic` serves `ships` as `count(*)` and NO class (0099's body, and
-  // 0102 re-cut it without adding one), so her list is her count of class-less hulls. The GROUP is
-  // hers and true; the silhouette is the one this chart has always drawn.
-  const traffic = mapTrafficOf([dockedMerchant('m-1', 3), dockedMerchant('m-2', 1)])
-  expect(traffic[0].hulls).toEqual([null, null, null])
-  expect(traffic[1].hulls).toEqual([null])
+  // THE MERCHANTS, AND WHAT CLOSED THE GAP. This test read "sea_traffic serves count(*) and NO
+  // class, so her list is her count of class-less hulls" until 2026-10-11, when 0102 was re-cut to
+  // serve `hulls` — one `ship_classes.code` per hull, flagship first. So a merchant's silhouettes
+  // are now HERS, copied off the wire, and the class channel works for the whole world and not only
+  // for the captain's own four fleets.
+  const traffic = mapTrafficOf([
+    dockedMerchant('m-1', 3, ['nau', 'carlat', 'barca']),
+    dockedMerchant('m-2', 1, ['barca']),
+  ])
+  expect(traffic[0].hulls).toEqual(['nau', 'carlat', 'barca'])
+  expect(traffic[1].hulls).toEqual(['barca'])
   expect(hullGroup(traffic[0].hulls ?? [], GROUPED)).toHaveLength(3)
+  // A CODE THIS CHART DOES NOT KNOW draws the class-less hull rather than the nearest guess — the
+  // same ruling the name table keeps for your own fleets, and the reason a new class may ship on
+  // the server before the chart has a silhouette for it.
+  expect(mapTrafficOf([dockedMerchant('m-3', 2, ['galleon', 'nau'])])[0].hulls).toEqual([null, 'nau'])
+  // AND THE FALLBACK IS STILL THERE AND STILL TRUE: a merchant served no list at all is her count
+  // of class-less hulls, which is exactly what this chart drew for her before 0102.
+  expect(mapTrafficOf([dockedMerchant('m-4', 3)])[0].hulls).toEqual([null, null, null])
   // and the model carries it through to the mark without the merchants touching anything of yours
   const model = buildChartModel([], [LIS], [], null, traffic)
   expect(model.traffic.map((t) => (t.fleet.hulls ?? []).length)).toEqual([3, 1])

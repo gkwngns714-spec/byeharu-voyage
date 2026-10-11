@@ -59,11 +59,13 @@ import type {
   PriceHistory,
   ProvisionPresetBook,
   RequestBoard,
+  RouteBoard,
   StandingRouteAssigned,
   StandingRouteBook,
   SeaTraffic,
   SeaWindow,
   MerchantCard,
+  PortMerchants,
   StandingRouteDeleted,
   StandingRoutePaused,
   StandingRouteSaved,
@@ -509,6 +511,14 @@ export function worldStandingRoutes(): Promise<RpcResult<StandingRouteBook>> {
   return call<StandingRouteBook>('worldStandingRoutes')
 }
 
+/** EVERY LANE THE WORLD SAILS (0106, owner row 115) — her routes and the merchant companies',
+ *  with the stops, the distance (the baked courses, measured by the server) and the earnings to
+ *  rank them by. Never another captain's route. Refuses E_NO_HOUSE with no company on the
+ *  account. */
+export function worldRouteBoard(): Promise<RpcResult<RouteBoard>> {
+  return call<RouteBoard>('worldRouteBoard')
+}
+
 /** Write a route (routeId null) or replace its stops whole. Each stop carries the course of the
  *  leg that LEAVES it, proposed by the one course author and re-verified at every departure. */
 export function cmdStandingRouteSave(
@@ -551,4 +561,11 @@ export function worldSeaTraffic(view: SeaWindow | null = null): Promise<RpcResul
  *  E_NOT_FOUND in the same words. */
 export function worldNpcFleetCard(fleetId: string): Promise<RpcResult<MerchantCard>> {
   return call<MerchantCard>('worldNpcFleetCard', [fleetId])
+}
+
+/** ONE HARBOUR'S MERCHANTS (0104, owner row 121) — every merchant fleet whose route calls there,
+ *  with what she is DOING there and her loop. Asked when a city is opened, not on the beat: the
+ *  beat's read is `worldSeaTraffic` and it must not grow. Dark: empty. */
+export function worldPortMerchants(portId: string): Promise<RpcResult<PortMerchants>> {
+  return call<PortMerchants>('worldPortMerchants', [portId])
 }
