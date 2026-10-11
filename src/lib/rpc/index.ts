@@ -62,6 +62,7 @@ import type {
   StandingRouteAssigned,
   StandingRouteBook,
   SeaTraffic,
+  SeaWindow,
   MerchantCard,
   StandingRouteDeleted,
   StandingRoutePaused,
@@ -539,9 +540,11 @@ export function cmdStandingRoutePause(routeId: string, paused: boolean): Promise
 
 // ── MERCHANTS (0099) ───────────────────────────────────────────────────────────────────────────
 
-/** Where every merchant fleet is right now — the voyage shape the chart draws. Dark: empty. */
-export function worldSeaTraffic(): Promise<RpcResult<SeaTraffic>> {
-  return call<SeaTraffic>('worldSeaTraffic')
+/** Where every merchant fleet IN A WINDOW is right now — the voyage shape the chart draws. Null is
+ *  the whole world. Either way the server caps the answer and serves `total` and `omitted` (0102).
+ *  Dark: empty. */
+export function worldSeaTraffic(view: SeaWindow | null = null): Promise<RpcResult<SeaTraffic>> {
+  return call<SeaTraffic>('worldSeaTraffic', [view])
 }
 
 /** One merchant fleet's card. A player's fleet, a stranger uuid and a dark world all refuse

@@ -85,6 +85,7 @@ import {
   worldSeaTraffic,
 } from '../lib/rpc'
 import { navFromServed, type SeaNav } from '../lib/sea'
+import { sameSeaWindow, seaWindowUnion } from './seaWindow'
 import type {
   FleetView,
   HaggleAttempt,
@@ -102,6 +103,7 @@ import type {
   StandingRouteStopDraft,
   ReachPayload,
   SeaTraffic,
+  SeaWindow,
   SkillBook,
   SnapshotNation,
   StandingsBoard,
@@ -162,6 +164,26 @@ export interface LiveWorld {
   /** How many mounted screens want the traffic (MAP, PORT). The one seam a screen has into the
    *  cadence; it is never a second clock. */
   trafficWanted: number
+  /**
+   * WHERE EACH MOUNTED SCREEN IS LOOKING (0102), keyed by the screen — `'map'`, `'port'`. The read
+   * is sent the UNION of them (`src/live/seaWindow.ts`), and an empty map is the whole world.
+   *
+   * `world.sea_traffic` served every merchant in the world on every beat until 0102; at the roster
+   * the owner asked for (row 118, ×10) that is a read nobody should pay for to look at one sea. A
+   * screen says where it is looking and the server sends what is there, capped, with `omitted`
+   * saying what it held back.
+   *
+   * KEYED, not a single value, because MAP and PORT are both mounted during a transition and PORT
+   * wants its own harbour while MAP wants its viewport: one value would make whichever wrote last
+   * briefly right and the other briefly wrong. A screen's key is its name because there is one of
+   * each.
+   *
+   * A CHANGED WINDOW DOES NOT READ. It is picked up by the next beat, for the same reason the
+   * first want rides one: a merchant reading that lands outside the beat is drifted from an instant
+   * that did not produce it, and every hull on the chart jumps (see `wantTraffic`). The server's
+   * 10-degree pad covers one beat of lag.
+   */
+  trafficWindows: Readonly<Record<string, SeaWindow | null>>
   /** What is on at the quay (0026), keyed by port id — a fair is a PORT's fact, not the world's. */
   buffs: Record<string, BuffsView>
   /** One port's remembered prices, keyed by port id (0013). Fetched beside its market. */
@@ -273,6 +295,12 @@ export interface LiveWorld {
    *  (`useEffect(() => wantTraffic(), [wantTraffic])`). The first want reads at once, so the
    *  merchants arrive with the screen rather than one beat later; after that the beat reads. */
   wantTraffic: () => () => void
+  /** A screen that draws merchants says where it is looking; null means it wants the world. Call it
+   *  with the same key as the view changes — the next beat reads the new window. */
+  setTrafficWindow: (key: string, window: SeaWindow | null) => void
+  /** ...and takes its window with it on unmount, so a screen nobody is looking at does not keep
+   *  widening the read. */
+  clearTrafficWindow: (key: string) => void
   /** Drop the last refusal — a screen calls this when the player moves on. */
   dismissRefusal: () => void
 }
@@ -389,7 +417,10 @@ export const useWorld = create<LiveWorld>((set, get) => {
   }
   const readTraffic = async (): Promise<void> => {
     const seq = ++trafficAsked
-    const r = await worldSeaTraffic()
+    // THE UNION OF WHAT THE MOUNTED SCREENS ARE LOOKING AT (0102). Empty is the world, which is
+    // what a screen that has not said where it is looking gets — and what the whole app got before
+    // this argument existed.
+    const r = await worldSeaTraffic(seaWindowUnion(Object.values(get().trafficWindows)))
     if (!r.ok || seq < trafficApplied) return
     trafficApplied = seq
     set({ traffic: r.value })
@@ -411,6 +442,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
   routes: null,
   traffic: null,
   trafficWanted: 0,
+  trafficWindows: {},
   buffs: {},
   history: {},
   ducats: null,
@@ -856,6 +888,23 @@ export const useWorld = create<LiveWorld>((set, get) => {
       if (last) dropTrafficInFlight()
     }
   },
+
+  setTrafficWindow: (key, window) =>
+    set((s) => {
+      // A PAN THAT DOES NOT CHANGE THE REQUEST CHANGES NOTHING. MAP calls this on every settled
+      // view, and writing an equal window would re-render every subscriber of this store for a
+      // request that is byte-for-byte the one already standing.
+      if (key in s.trafficWindows && sameSeaWindow(s.trafficWindows[key] ?? null, window)) return s
+      return { trafficWindows: { ...s.trafficWindows, [key]: window } }
+    }),
+
+  clearTrafficWindow: (key) =>
+    set((s) => {
+      if (!(key in s.trafficWindows)) return s
+      const next = { ...s.trafficWindows }
+      delete next[key]
+      return { trafficWindows: next }
+    }),
 
   dismissRefusal: () => set({ refusal: null }),
   }

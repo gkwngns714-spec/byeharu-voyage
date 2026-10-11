@@ -1612,11 +1612,35 @@ export interface TrafficFleet {
   next_lap_at: string | null
 }
 
+/**
+ * A SEA WINDOW — what `world.sea_traffic` is asked to look at (0102). Degrees, the server's own
+ * spelling: `south < north`, both within ±90, `west` and `east` within ±180 and `west > east` when
+ * the window wraps the antimeridian. Null (or an omitted argument) is the whole world. A malformed
+ * one is refused `E_BAD_VIEW` rather than quietly widened — see `src/live/seaWindow.ts`, which is
+ * the one place this shape is built.
+ */
+export interface SeaWindow {
+  south: number
+  north: number
+  west: number
+  east: number
+}
+
 export interface SeaTraffic {
   /** The dark-first switch (`npc_traders_enabled`). False: `fleets` is empty. */
   enabled: boolean
   at: string
   fleets: TrafficFleet[]
+  /**
+   * EVERY merchant fleet in the world, not only the ones in `fleets` (0102). The read carries a
+   * cap (`sea_traffic_max`) and, when it was handed a window, only what that window could see; at
+   * the roster the owner asked for (row 118) serving them all on every beat is not a read anyone
+   * should pay for to look at one sea.
+   */
+  total: number
+  /** `total` minus what was served — the window and the cap in one number. A read that truncates
+   *  silently is a read that teaches the player the sea is empty, so it never does. */
+  omitted: number
 }
 
 /** `public.route_earnings` — a route's laps, summed by the server. Never summed here. */

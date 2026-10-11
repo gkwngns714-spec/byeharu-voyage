@@ -1480,6 +1480,18 @@ test('the registry and the client grants are one set, and the merchant cores are
   expect(names).toContain('sea_traffic')
   expect(names).toContain('npc_fleet_card')
   expect(names).not.toContain('trade_routes')
+  // 0102: THE REGISTRY NAMES THE ARGUMENT, AND THE 0-ARG FORM IS GONE. Two overloads, one with a
+  // default, is an ambiguous call — a runtime 42725 for every caller that says `sea_traffic()` —
+  // and a registry row whose arg_types no longer resolve is the drift 0096 was written to catch.
+  expect(
+    await db.callAs<string | null>(
+      `select arg_types as result from public.client_rpc_entry_points() where function_name = 'sea_traffic'`,
+    ),
+  ).toBe('jsonb')
+  expect(await db.callAs<string | null>(`select to_regprocedure('world.sea_traffic()')::text as result`)).toBeNull()
+  expect(
+    await db.callAs<string | null>(`select to_regprocedure('world.sea_traffic(jsonb)')::text as result`),
+  ).toBe('world.sea_traffic(jsonb)')
   const cores = [
     'public.new_house(uuid, text, text, text, text, text, text, bigint, boolean)',
     'public.commission_ship(uuid, uuid, text, text, boolean, boolean)',
@@ -1503,6 +1515,9 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.fleet_crew_shortfall(uuid)',
     'world.voyage_view(uuid, boolean)',
     'public.tick_arrivals(timestamptz)',
+    // 0102: the longitude window on a round sea. world.sea_traffic is its one caller and it is
+    // reachable by nobody — a helper a client can call is a helper a client can be told about.
+    'public.lon_in_view(double precision, double precision, double precision)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f

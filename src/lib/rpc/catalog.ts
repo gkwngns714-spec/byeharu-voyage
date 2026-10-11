@@ -301,7 +301,9 @@ export const RPCS = {
   // 0099 — MERCHANTS (docs/NPC_TRADERS.md §7). Two reads, no player id, dark until the owner's
   // switch: where every merchant fleet is (read on the shell's beat while MAP or PORT is up), and
   // one merchant fleet's card (read at a tap). Neither answers for a player's fleet.
-  worldSeaTraffic: { schema: 'world', fn: 'sea_traffic', args: [] },
+  // 0102 — and it takes a WINDOW. `{south, north, west, east}` in degrees, or null for the whole
+  // world; the server caps either way and says what it left out.
+  worldSeaTraffic: { schema: 'world', fn: 'sea_traffic', args: [{ name: 'p_view', type: 'jsonb' }] },
   worldNpcFleetCard: { schema: 'world', fn: 'npc_fleet_card', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdStandingRouteSave: {
     schema: 'cmd',

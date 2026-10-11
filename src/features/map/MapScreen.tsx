@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { unproject, type Point, type ViewBox } from '../../lib/geo'
+import { unproject, viewBoxToBounds, type Point, type ViewBox } from '../../lib/geo'
 import type { FleetView, SnapshotPort, TrafficFleet } from '../../lib/rpc'
 import type { SeaNav } from '../../lib/sea'
 import { pointToken, snapSeaPoint } from '../../domain/passage'
 import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
+import { seaWindowOf } from '../../live/seaWindow'
 // THE MERCHANTS (0099): their sheet and its card are live-data React shared with PORT.
 import { MerchantSheet } from '../../live/MerchantSheet'
 import { merchantLine } from '../../live/merchantLine'
@@ -190,6 +191,28 @@ function Chart({
 
   const surface = useChartSurface(chartRef, frameBounds, onTap)
   const box = surface.viewBox
+
+  // WHERE THIS CHART IS LOOKING, TOLD TO THE MERCHANT READ (0102). `world.sea_traffic` served every
+  // merchant in the world on every beat until then, which the roster the owner asked for (row 118)
+  // will not survive. The store sends the union of the mounted screens' windows on the NEXT beat and
+  // never reads on a pan — a merchant reading outside the beat is drifted from an instant that did
+  // not produce it and every hull jumps (worldStore's first-want rule). `seaWindowOf` clamps the box
+  // into what the server accepts: a chart zoomed out past the globe has one that runs off ±180,
+  // which `clampView` makes normal rather than exceptional, and the whole world is sent as null.
+  const setTrafficWindow = useWorld((s) => s.setTrafficWindow)
+  const clearTrafficWindow = useWorld((s) => s.clearTrafficWindow)
+  const bx = box?.x ?? null
+  const by = box?.y ?? null
+  const bw = box?.width ?? null
+  const bh = box?.height ?? null
+  useEffect(() => {
+    if (bx === null || by === null || bw === null || bh === null) {
+      setTrafficWindow('map', null)
+      return
+    }
+    setTrafficWindow('map', seaWindowOf(viewBoxToBounds({ x: bx, y: by, width: bw, height: bh })))
+  }, [bx, by, bw, bh, setTrafficWindow])
+  useEffect(() => () => clearTrafficWindow('map'), [clearTrafficWindow])
   // THE REGIONS FILTER (row 93): off is the map as it was; on hands the tints to the picture.
   const regionsOn = useRegionsFilter()
 

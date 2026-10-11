@@ -274,7 +274,11 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // makes the route pace an interval; 0097 builds the dark merchant machinery (switch off).
 // Moved 2026-10-08 to 0099: 0098 founds the merchant companies (generated from data/npc-houses.json by
 // scripts/build-npc-0098.mjs, dark), and 0099 serves them to the chart and the merchant sheet.
-const LAST = '20260818000100_the_world_runs_ten_times_slower.sql'
+// Moved 2026-10-11 to 0102, the roster the owner asked for (rows 116/118/122, docs/NPC_FLEET_SCALE.md):
+// 0101 gives a lap a two-week rest at its home stop and raises a loop to eight calls; 0102 gives
+// world.sea_traffic a viewport and a cap, because 760 merchant fleets cannot ship on a read that
+// serves them all on every beat.
+const LAST = '20260818000102_the_sea_is_read_through_a_window.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

@@ -10,6 +10,7 @@ import {
   Skeleton,
 } from '../../components/ui'
 import { portNameOf, useWorld } from '../../live/worldStore'
+import { seaWindowAround } from '../../live/seaWindow'
 import { usePortMarket } from '../../live/usePortMarket'
 import type { WorldSnapshot } from '../../lib/rpc'
 import { useCommandDraft } from '../../domain/order'
@@ -82,6 +83,11 @@ export function PortScreen() {
   return <PortBody snapshot={snapshot} />
 }
 
+/** How much of her own coast a harbour asks the merchant read for (0102). Six degrees is roughly
+ *  360 nm of approaches — far enough that a merchant inbound for this quay is already in hand when
+ *  she is listed as heading here, and the server pads it by ten more. */
+const PORT_WINDOW_DEG = 6
+
 function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
@@ -90,6 +96,8 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const traffic = useWorld((s) => s.traffic)
   const wantTraffic = useWorld((s) => s.wantTraffic)
   useEffect(() => wantTraffic(), [wantTraffic])
+  const setTrafficWindow = useWorld((s) => s.setTrafficWindow)
+  const clearTrafficWindow = useWorld((s) => s.clearTrafficWindow)
   const [merchantId, setMerchantId] = useState<string | null>(null)
   const { card: merchantCard } = useMerchantCard(merchantId)
   const { nowMs } = useShellState()
@@ -120,6 +128,23 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
 
   // THE ONE "ALONGSIDE HERE" TEST. Read-only ⇔ nobody is.
   const docked = port ? fleets.filter((f) => f.port === port.code) : []
+
+  // THIS HARBOUR'S OWN WATER, TOLD TO THE MERCHANT READ (0102). This screen lists the merchants
+  // lying HERE, so the window it needs is a few degrees of its own coast and not MAP's viewport —
+  // which may be anywhere, and whose window would otherwise be the only one on the wire and leave
+  // this list empty. The store sends the union of both while both are mounted, so a transition
+  // never makes either of them briefly wrong. HOOK ORDER: this must not sit behind the early
+  // returns below, and it does not.
+  const portLat = port?.lat ?? null
+  const portLon = port?.lon ?? null
+  useEffect(() => {
+    if (portLat === null || portLon === null) {
+      setTrafficWindow('port', null)
+      return
+    }
+    setTrafficWindow('port', seaWindowAround({ lat: portLat, lon: portLon }, PORT_WINDOW_DEG))
+  }, [portLat, portLon, setTrafficWindow])
+  useEffect(() => () => clearTrafficWindow('port'), [clearTrafficWindow])
   const acting = docked[0] ?? fleets.find((f) => f.id === draftFleetId) ?? fleets[0] ?? null
   // WHERE THE ACTING FLEET'S NEXT ORDER WOULD RUN — alongside, or the harbour she is bound for.
   const actingPortCode = acting ? fleetPortCode(acting) : null
