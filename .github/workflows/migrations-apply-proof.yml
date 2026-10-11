@@ -158,7 +158,25 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   disposable-chain:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 2026-10-11: 30 -> 60, and NOT because this job grew. It passed at 16m44s on the first push of
+    # PR #94 and was CANCELLED at 30m26s on the second, inside the same step ("Start disposable local
+    # Supabase"), on a commit whose only changes were a workflow comment and a doc row. That is a
+    # two-fold swing in how long a shared GitHub runner takes to stand up Docker, initialise Postgres
+    # and apply 102 migrations — and it means 30 minutes had stopped being a limit and become a coin
+    # toss, which is worse than either outcome.
+    #
+    # WHAT ACTUALLY CHANGED IS THE CHAIN, and it is permanent: 0105 founded 761 merchant companies,
+    # so every route-walking self-assert in 0105-0110 went from 77 routes and 230 calls to 838 and
+    # 3,302, adding ~16 minutes to EVERY fresh apply anywhere — this gate, pglite-gate, a developer's
+    # db:apply, and the production push. Those migrations are applied to production, so forward-only
+    # forbids making their asserts cheaper after the fact; the cost is baked in and the budgets have
+    # to carry it.
+    #
+    # Both budgets in this file are therefore 60, and both are stopgaps. Owner row 124 is the fix
+    # that earns them back: give scripts/db/proof.mjs a connection-string path so the proofs run on
+    # THIS job's real Postgres 17 instead of a second apply on wasm — one chain apply in CI instead
+    # of two, and the proofs run on the engine production actually uses.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
