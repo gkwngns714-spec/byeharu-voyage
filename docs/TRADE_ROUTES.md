@@ -169,7 +169,7 @@ the route states that directly and keeps `fleets` unchanged. Deleting a fleet se
 fleet to null, which detaches it.
 
 **Stop and line caps** are table triggers in the 0034 shape (`…0034…:161-176`), so every future
-writer inherits them. `standing_route_stop_max` (default 6) and per-stop lines are bounded so that
+writer inherits them. `standing_route_stop_max` (**8** since 0101, owner row 122) and per-stop lines are bounded so that
 `lines + SELL-everything expansion + PROVISION + REPAIR + SAIL ≤ order_queue_max` (12). When the
 expansion would overflow, the generator drops the trailing SELL lines and records them in
 `skipped` with code `E_QUEUE_FULL`, the existing code.
@@ -185,7 +185,8 @@ self-assert.
 |---|---|---|
 | `standing_routes_enabled` | **false** | Dark-first switch. False means the verbs refuse `E_UNAVAILABLE` ("Routes are not open yet."), the hook is inert, and the read serves `enabled:false` |
 | `standing_route_max` | 3 | routes per company (D7) |
-| `standing_route_stop_max` | 6 | stops per route |
+| `standing_route_stop_max` | 8 | stops per route — the owner's stated maximum (row 122, 2026-10-11: "visiting 2 cities, 3 cities, to max 8 cities then returning from the original starting city"). Was 6 until 0101. The queue arithmetic above is per STOP, so the number of stops does not press on `order_queue_max` |
+| `route_rest_voyage_days` | 14 | VOYAGE-days a MERCHANT route lies at its home stop after a lap closes (0101, owner row 122). A FLOOR on the pacing hold in `cmd.run_standing_route`, never a second hold: `greatest(pace, rest)`, so a slower pace still wins. Derived from `time_compression` and never typed — 1260 real seconds at 0100's clock. `players.is_npc` only; a captain's own routes are not held |
 | `standing_route_laps_per_game_day` | 1 | pacing (D2); 0 = unpaced |
 | `standing_route_lap_keep` | 30 | lap rows kept per route |
 | `standing_route_losing_laps` | 3 | default for `stop_after_losing_laps` |
