@@ -1716,6 +1716,20 @@ export interface RouteBoardRow {
   state: string
   /** Whether a fleet is on it. A route with no fleet is a plan, not a lane. */
   assigned: boolean
+  /**
+   * WHAT THIS LANE ASKS OF ANY CAPTAIN (0108, owner row 117) — `public.route_requirement`, the
+   * inverse of the gate `public.passage_gate` refuses by. `navigation` is the smallest level
+   * whose reach covers the loop's longest leg, and null when a leg is unmeasured (a course the
+   * sea disputes); `exploration` is the dearest region the loop calls at.
+   */
+  requires: { navigation: number | null; exploration: number }
+  /**
+   * True when YOU could not sail this loop today. The same rule the gate refuses by, read
+   * forward against your own levels — and carried on a MERCHANT'S lane too: merchants are
+   * exempt from the gates, so this cannot mean "she may not". It means you may not, which is
+   * the useful reading of another house's carreira.
+   */
+  closed: boolean
   earnings: RouteEarnings
 }
 

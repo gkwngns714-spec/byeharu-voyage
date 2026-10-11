@@ -40,9 +40,11 @@
 -- and deliberately — it cannot drift and cannot be inflated), and a board of 220 routes would ask
 -- it some eight hundred times. The agreement assertion is what makes the shortcut safe.
 --
--- A MERCHANT'S ROUTE IS NEVER `closed`: merchants are exempt from the gates (0107), and the
--- requirement printed beside her lane is what YOU would need to sail it — which is the useful
--- reading of a merchant's carreira, and the reason the figure is served for her rows at all.
+-- `closed` IS ABOUT YOU AND NOT ABOUT WHOSE ROUTE IT IS, and a merchant's lane carries it too.
+-- Merchants are exempt from the gates (0107) — a company founded with a 13,000 nm carreira has no
+-- academy to go to — so "closed" could not mean "she may not sail it". It means YOU may not, which
+-- is exactly the useful reading of another house's carreira: here is the lane, here is what it
+-- would take. Computed identically for every row, hers and theirs.
 --
 -- ── WHAT THIS SUPERSEDES ────────────────────────────────────────────────────────────────────────
 -- `world.route_board` (0106) by one hunk: two keys added to each row and nothing else moved. The
@@ -154,7 +156,7 @@ select pg_temp.recut_0108(fn) from (select distinct fn from hunks_0108) x order 
 -- no-house guard, because a caller with no company must be told that rather than asked for her
 -- levels. One replacement, checked to match exactly once, and struck back out by the parity
 -- assertion below so the re-cut is still provably the pre-image plus only what this file states.
-do $
+do $$
 declare
   v_def text := replace(pg_get_functiondef('world.route_board()'::regprocedure), E'\r', '');
   v_old text := $x$    raise exception 'E_NO_HOUSE: there is no company on this account' using errcode = 'P0001';
@@ -168,7 +170,7 @@ begin
   -- 0108: her levels, ONCE, and only once she is known to have a company.
   v_nav := public.skill_level(v_me, 'NAVIGATION');
   v_exp := coalesce((public.player_progress(v_me)->'exploration'->>'level')::int, 1);$x$);
-end $;
+end $$;
 
 -- ── 3. GRANTS ──────────────────────────────────────────────────────────────────────────────────
 revoke all on function public.route_requirement(uuid) from public, anon, authenticated;

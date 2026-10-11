@@ -203,10 +203,14 @@ function Lane({
   onOpen: () => void
 }) {
   return (
+    // A LANE YOU CANNOT SAIL IS STILL ON THE BOARD, and reads as muted rather than being
+    // hidden: the owner asked to SEE every route created (row 115), and what it would take is
+    // the reason to go and study (row 117). Yours wins the tone when both apply — nothing you
+    // keep is ever shown as out of your own reach on your own panel.
     <Row
       label={route.name}
       value={<Figure value={rankFigure(route, order)} tone={mine ? 'accent' : undefined} />}
-      tone={mine ? 'accent' : undefined}
+      tone={mine ? 'accent' : route.closed ? 'muted' : undefined}
       chevron
       onClick={onOpen}
       hairline={hairline}
@@ -225,7 +229,9 @@ function rankFigure(route: RouteBoardRow, order: Order): string {
 }
 
 /** Whose lane, and its shape: `Casa da Índia · 5 calls · 3 regions · 4,120 nm`. Her own says so by
- *  being on her own panel and does not repeat a company name she knows. */
+ *  being on her own panel and does not repeat a company name she knows. A lane that is shut to
+ *  you ends with WHY — the one figure that is standing between you and it, not both, because a
+ *  second-line is one reading and two numbers in it is a table. */
 function laneLine(route: RouteBoardRow, mine: boolean): string {
   return [
     mine ? 'Yours' : route.company,
@@ -233,9 +239,18 @@ function laneLine(route: RouteBoardRow, mine: boolean): string {
     route.regions > 1 ? `${formatInt(route.regions)} regions` : null,
     route.nm === null ? null : formatMiles(route.nm),
     route.assigned ? null : 'no fleet',
+    route.closed ? shutBecause(route) : null,
   ]
     .filter(Boolean)
     .join(' · ')
+}
+
+/** The ONE thing standing between you and a lane. Navigation first when both are wanting: it is
+ *  the one you can go and buy at the academy this afternoon, where exploration is sailed for. */
+function shutBecause(route: RouteBoardRow): string {
+  return route.requires.navigation !== null && route.requires.navigation > 1
+    ? `needs navigation ${formatInt(route.requires.navigation)}`
+    : `needs exploration ${formatInt(route.requires.exploration)}`
 }
 
 /** THE LANE, OPENED: where she calls, in order, and what the laps say. Every figure is the
@@ -284,6 +299,25 @@ function LaneTray({
         )}
       </Row>
       {route.regions > 1 && <Row label="Regions touched" value={<Figure value={formatInt(route.regions)} />} />}
+      <Row
+        label="Asks of you"
+        value={
+          route.requires.navigation === null ? (
+            <span className="text-ink-faint">unmeasured</span>
+          ) : (
+            <Figure
+              value={`Nav ${formatInt(route.requires.navigation)} · Exp ${formatInt(route.requires.exploration)}`}
+              tone={route.closed ? 'warning' : undefined}
+            />
+          )
+        }
+      >
+        <span className="block text-t-caption text-ink-faint">
+          {route.closed
+            ? 'The server would refuse this loop today — the longest leg, or the farthest region.'
+            : 'Within what you have earned.'}
+        </span>
+      </Row>
       <Row label="Standing" value={route.state} />
       <Row
         label="A lap earns"

@@ -1803,6 +1803,17 @@ test('world.route_board() serves every lane the caller may know of, with the fig
     expect(merchant.regions).toBeGreaterThanOrEqual(1)
     expect(isStr(merchant.state)).toBe(true)
     expect(typeof merchant.assigned).toBe('boolean')
+    // 0108, owner row 117: WHAT THE LANE ASKS, and whether it is shut to the caller. The migration
+    // holds `closed` to agreeing with public.passage_gate on every row; what this pins is the SHAPE
+    // the types claim, and that the requirement is the server's own reading and not re-derived here.
+    expect(merchant.requires.exploration).toBeGreaterThanOrEqual(1)
+    expect(merchant.requires.navigation === null || merchant.requires.navigation >= 1).toBe(true)
+    expect(typeof merchant.closed).toBe('boolean')
+    const req = await db.callAs<{ navigation: number | null; exploration: number }>(
+      `select public.route_requirement($1::uuid) as result`,
+      [merchant.id],
+    )
+    expect(merchant.requires).toEqual(req)
     // THE DISTANCE ON THE WIRE IS public.route_nm'S, not a second arithmetic: asked of the server
     // directly and compared. A loop the sea disputes measures null, which is why this may be null
     // at all — so the check is "equal to what route_nm says", including when that is nothing.
