@@ -13,6 +13,8 @@
 //   database. Those are the failure modes that cannot be seen from the SQL side at all.
 
 import { test, expect } from '@playwright/test'
+import os from 'node:os'
+import path from 'node:path'
 import {
   assertChainIsSane,
   describeChain,
@@ -285,7 +287,10 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // order anyone happened to author in.
 // And again the same day to 0107: the gates (owner rows 113 and 117) — a leg beyond a captain's
 // NAVIGATION and a region beyond her EXPLORATION are refused, at the sea's door and at the route's.
-const LAST = '20260818000107_the_ocean_is_earned_at_the_academy.sql'
+// And to 0110 with the roster merged in: 0105 founds 761 merchant companies over 219 loops, 0108
+// prints what a lane asks of you, 0109 stops the cap throwing away the lanes you can actually sail,
+// and 0110 asks each lane what it needs once instead of four times a row.
+const LAST = '20260818000110_a_lane_is_asked_what_it_needs_once.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
@@ -403,7 +408,30 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   // happens when there is no image to load. If the number climbs again the answer really is a
   // lighter fixture rather than a bigger budget — but a world that doubled is allowed to take
   // twice as long.
-  test.setTimeout(900_000)
+  // 2026-10-11: THIS TEST STOPPED FITTING IN WASM MEMORY, NOT IN ITS BUDGET, and the distinction
+  // is the whole reason this comment is here instead of a bigger number. 0105 founded 761 merchant
+  // companies over 219 measured loops; a bare in-memory PGlite now dies partway through the chain
+  // with NO error, no SQLSTATE and no partial receipt, at a different migration each run — the same
+  // ceiling that was hit in scripts/db/apply-chain.mjs the same day (measured there at 0012, 0052,
+  // 0065 and 0089 on a host with 47 GB free, the last one only because a bigger V8 heap let it run
+  // further before the same wall). Here it surfaced as this spec exhausting 900 s.
+  //
+  // So the boot gets a REAL DATA DIRECTORY instead of `memory://`, and every assertion below is
+  // untouched: the same chain, the same phases, the same "every migration applied" equality, the
+  // same K.1 seed. The header's standing ruling — "the answer really is a lighter fixture rather
+  // than a bigger budget" — is kept: the fixture is not lighter and the budget is not bigger, the
+  // bytes simply live where there is room for them. A real browser was never doing this anyway; it
+  // keeps the world in IndexedDB and loads a pre-built image besides.
+  //
+  // 2026-10-11, THE BUDGET: 900 s -> 1,800 s, at the owner's instruction ("make it 30 minutes for
+  // now"), and the "for now" is his word and is kept here. This is the third time this number has
+  // moved (120 s -> 360 s -> 900 s -> 1,800 s) and the header's ruling above still stands: the next
+  // answer is a lighter fixture, not a bigger number. What is NOT yet known is how long the boot
+  // actually takes — it was never measured, only observed to exceed 900 s — so 1,800 is a ceiling
+  // chosen to stop the bleeding and not a figure derived from anything. Measure it before moving it
+  // again, and if the real cost is near this, lighten the fixture instead.
+  const bootDir = path.join(os.tmpdir(), `bv-coldboot-${process.pid}-${Date.now()}`)
+  test.setTimeout(1_800_000)
   const channel = createBootChannel()
   const phases: BootPhase[] = []
   const migrations: string[] = []
@@ -432,7 +460,7 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   expect(channel.get().phase).toBe('idle')
   const db = await openLocalDb({
     loadChain,
-    dataDir: 'memory://',
+    dataDir: bootDir,
     channel,
     log: (...args: unknown[]) => {
       bootLog.push(args.map((a) => String(a)).join(' '))
