@@ -229,6 +229,18 @@ export type MapTraffic = MapFleet & {
   readonly berthIndex: number
   /** When she may start her next lap, epoch ms, while held in port; else null. */
   readonly nextLapAtMs: number | null
+  /**
+   * HER LOOP, THINNED, for drawing at a wide span (0111, owner row 125: *"major fleet shoud also
+   * show the routes as well"*). Served for a MAJOR fleet only — `fleet_lane_min_ships` hulls and a
+   * standing route — and null for everyone else, so this is not `loop` with a different name:
+   * `loop` is the baked water of the ONE merchant whose card is open, and this is a thinned drawing
+   * of the loops of every major fleet on the sheet at once.
+   *
+   * NOT WATER AND NOT SAILABLE. It is `fleet_lane_points_max` points of her course and crosses land
+   * between them, which is why it is only ever drawn at a span where that cannot be seen, and why
+   * nothing in this section may measure anything from it.
+   */
+  readonly lane: readonly LatLon[] | null
 }
 
 /**

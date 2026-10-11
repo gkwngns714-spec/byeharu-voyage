@@ -1,7 +1,15 @@
 import type { ReactNode } from 'react'
 import { project } from '../lib/geo'
 import type { ChartModel, FleetOnChart } from './chartModel'
-import { arrowPath, GLYPH, hullGroup, hullGroupHalo, hullPath } from './glyphs'
+import {
+  arrowPath,
+  GLYPH,
+  HARBOUR_LIGHT_MIN_UNITS_PER_PX,
+  HULL_EMBER_MAX_UNITS_PER_PX,
+  hullGroup,
+  hullGroupHalo,
+  hullPath,
+} from './glyphs'
 import type { MerchantInk } from './mapTypes'
 
 // GLYPHS 2 AND 3 — THE FLEET AND ITS DESTINATION — plus the track between them.
@@ -41,6 +49,19 @@ import type { MerchantInk } from './mapTypes'
 // (./chartModel.ts). There is no animation state and no clock on this layer, so there is nothing to
 // drift — and no handler either: taps are resolved once, on the surface, by ./hitTest.ts.
 
+/** The same eight inks as a STROKE, for row 125's lanes. Whole class names for the same reason the
+ *  fills below are: Tailwind scans source text, and an assembled string is a class it never sees. */
+const NATION_STROKE: Record<MerchantInk, string> = {
+  prt: 'stroke-nation-prt',
+  esp: 'stroke-nation-esp',
+  nld: 'stroke-nation-nld',
+  eng: 'stroke-nation-eng',
+  han: 'stroke-nation-han',
+  ita: 'stroke-nation-ita',
+  ott: 'stroke-nation-ott',
+  east: 'stroke-nation-east',
+}
+
 /** The nation inks as WHOLE class names, so Tailwind sees every one (no assembled strings). */
 const NATION_FILL: Record<MerchantInk, string> = {
   prt: 'fill-nation-prt',
@@ -55,8 +76,46 @@ const NATION_FILL: Record<MerchantInk, string> = {
 
 /** Tracks and destination rings — painted UNDER the port marks. */
 export function TracksLayer({ model, unitsPerPx }: { model: ChartModel; unitsPerPx: number }) {
+  // Is the sheet pulled back far enough to be a night chart? The same rung the harbour lights use
+  // (./glyphs.ts `HARBOUR_LIGHT_MIN_UNITS_PER_PX`), so the lanes, the lights and the embers are one
+  // change of character on one rung and not three opinions about what "zoomed out" means.
+  const litLanes = unitsPerPx >= HARBOUR_LIGHT_MIN_UNITS_PER_PX
   return (
     <g pointerEvents="none" data-testid="map-tracks">
+      {/* OWNER ROW 125 — THE MAJOR FLEETS' LANES, at a wide span only. *"major fleet shoud also
+          show the routes as well"*. FIRST in this layer, so they lie under every track, every port
+          mark and every hull: a lane is the faintest thing on the sheet, the grain of the world's
+          trade rather than a line anybody is meant to follow.
+
+          IN HER NATION'S INK, at /25, hairline. The ink is the SAME channel the embers use, so a
+          lane and the fleet keeping it read as one thing without a legend — MAP_ATMOSPHERE §4's
+          two-channel rule, which row 120 and row 125 both answer to.
+
+          ONLY IN THE NIGHT BAND. Zoomed in, the sheet is a working chart and 240 thinned loops
+          across it would be a thicket over the water somebody is reading; and a lane is thinned,
+          so close in it would also be visibly WRONG — straight where the course bends. The gate is
+          the harbour light's own, so the sheet becomes a night chart all at once.
+
+          WHO GETS ONE IS THE SERVER'S ANSWER (`fleet_lane_min_ships`, 0111). Nothing here counts
+          hulls: a client that decided what "major" means would be a second authority on it, and
+          the one that is not the server would be the one that goes stale. */}
+      {litLanes &&
+        model.traffic.map((t) =>
+          t.laneD ? (
+            <path
+              key={`merchant-lane-${t.fleet.id}`}
+              data-testid="map-merchant-lane"
+              data-lane-ink={t.merchant.ink}
+              d={t.laneD}
+              className={`fill-none ${NATION_STROKE[t.merchant.ink]} opacity-15`}
+              strokeWidth={GLYPH.trackStroke}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null,
+        )}
+
       {/* THE COURSE (row 90): the passage made is SOLID, the water ahead is DASHED, and the
           water ahead ends in an arrowhead at the course's last vertex, turned along its last
           segment. Both halves are the served polyline (./route.ts); the arrow's tip and turn are
@@ -210,6 +269,46 @@ function HullGroup({
 }) {
   const { x, y } = project(fleet.at)
   const marks = hullGroup(fleet.fleet.hulls ?? [], unitsPerPx)
+
+  // ── THE EMBER (owner row 125, 2026-10-12) ────────────────────────────────────────────────────
+  // *"so are ships but in tiny dots… i want the color to be in darker tone, size smaller, but like
+  // cities, there should be light"*.
+  //
+  // Past HULL_EMBER_MAX_UNITS_PER_PX the hull SHAPE goes — row 120's silhouettes say what a fleet
+  // IS, and at a span where the world is 360° across they say it to nobody — and what is left is a
+  // dot with its own faint light, in her nation's ink. DIMMER AND SMALLER THAN A HARBOUR by the
+  // numbers and not by eye: emberRadius 1.15 against portDotRadius 1.6, and the ink at /70 against
+  // a city's full value, so a ship can never out-shout a city on the same sheet. That ordering is
+  // the owner's: the cities are the beautiful thing and the ships are tiny dots upon them.
+  //
+  // NOT ROTATED. A heading on a 1 px dot is a lie about precision, and the drift still moves her,
+  // so she is a light that travels rather than a hull that points.
+  if (unitsPerPx > HULL_EMBER_MAX_UNITS_PER_PX) {
+    return (
+      <g transform={`translate(${x} ${y})`} data-fleet-mark="ember" data-hulls={marks.length} {...hooks}>
+        {/* THE INK IS HELD BELOW A HARBOUR'S, AND THE NUMBERS ARE THE OWNER'S RULE, not taste.
+            Row 125 asks for the ships in "a darker tone" with the CITIES as the bright thing. The
+            first cut had the ember's halo at /25 against a harbour light's /20 — the ship's glow
+            literally more opaque than the city's — and the arithmetic in glyphs.ts could not see
+            it, because it compares ONE ember to ONE harbour and the sheet holds 240 of the first
+            against 252 of the second. The screenshot could: at the globe the European coast read as
+            saturated confetti over the lights it was meant to sit under. Both values now sit
+            strictly below the harbour's, and tests/map.night.spec.ts reads them off the rendered
+            class and asserts that ordering rather than trusting this comment. */}
+        <circle
+          r={GLYPH.emberRadius * GLYPH.emberHaloScale * unitsPerPx}
+          className={`${className.replace(/stroke-[^\s]+/g, '')} opacity-10`}
+          pointerEvents="none"
+        />
+        <circle
+          r={GLYPH.emberRadius * unitsPerPx}
+          className={`${className.replace(/stroke-[^\s]+/g, '')} opacity-40`}
+          pointerEvents="none"
+        />
+      </g>
+    )
+  }
+
   return (
     <g
       transform={`translate(${x} ${y}) rotate(${fleet.heading ?? 0}) scale(${unitsPerPx})`}

@@ -75,6 +75,10 @@ export interface TrafficOnChart extends FleetOnChart {
   /** HER WHOLE LOOP as one SVG path, when her card is open and served it (0099, owner row 112);
    *  null for every other merchant. The leg she is ON is `track`, drawn over this. */
   readonly loopD: string | null
+  /** HER LANE as one SVG path — the thinned loop a MAJOR fleet is served whether her card is open
+   *  or not (0111, owner row 125); null for everyone the server gave no lane. Drawn only at a wide
+   *  span, under everything, and never measured: it crosses land between its points. */
+  readonly laneD: string | null
 }
 
 /** The whole picture. */
@@ -232,8 +236,18 @@ export function buildChartModel(
     // happens to be doing this minute, and a merchant held at her home quay is exactly when a
     // player most wants to see where she goes (owner row 112).
     const loopD = m.loop && m.loop.length > 0 ? loopPathD(m.loop) : null
+    // HER LANE AS ONE PATH (0111, owner row 125). Through the SAME seam-aware pieces the loop and
+    // every voyage track use, so a lane that straddles the antimeridian is cut there like anything
+    // else on this sheet rather than drawn the long way round the world. One leg, because the
+    // server already joined hers into one polyline.
+    const laneD = m.lane && m.lane.length >= 2 ? loopPathD([m.lane]) : null
     if (m.kind === 'sailing') {
-      merchants.push({ ...placeSailing(m, m.voyage, drift, m.voyage.course.length > 2), merchant: m, loopD })
+      merchants.push({
+        ...placeSailing(m, m.voyage, drift, m.voyage.course.length > 2),
+        merchant: m,
+        loopD,
+        laneD,
+      })
     } else if (m.kind === 'anchored') {
       merchants.push({
         fleet: m,
@@ -245,6 +259,7 @@ export function buildChartModel(
         dockedAtCode: null,
         merchant: m,
         loopD,
+        laneD,
       })
     }
   }

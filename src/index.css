@@ -123,6 +123,18 @@
   --color-chart-land: color-mix(in srgb, var(--color-ink-faint) 42%, var(--color-chart-sea));
   --color-chart-coast: color-mix(in srgb, var(--color-ink-faint) 65%, var(--color-chart-sea));
 
+  /* ── THE HARBOUR LIGHT (owner row 125, 2026-10-12) ───────────────────────────────────────────
+     *"when i zoom out, i want cities to be bright light, in a dark map, visually beautiful."*
+
+     Lamplight, not white: a warm near-white reads as a town seen from the sea at night, where a
+     pure #fff reads as a UI dot somebody forgot to style. It is the ONE new ink this adds, and it
+     is deliberately not a nation colour — a city belongs to the chart, and the eight nation inks
+     already spoken for are the SHIPS' channel (MAP_ATMOSPHERE §4: two channels, no legend).
+
+     On the day sea the same name holds a DEEP ink instead of a bright one: a glow on white is a
+     smudge, so the light scheme states its own pen exactly as the sea and the coast above do. */
+  --color-harbour-light: #ffe9c2;
+
   /* ── THE PICTURE (2026-09-13, owner row 90: "map should be much more graphic... it is too
      blank") — five more chart inks, and the three above are UNCHANGED, because
      tests/chart.ink.spec.ts pins their contrast and the picture is built around them, not on
@@ -358,6 +370,12 @@
     --color-bg: #eef2f6;
     --color-sea-1: #dce8f2;
     --color-sea-2: #c9dae8;
+
+    /* Row 125's harbour light, inverted for the day sea: a warm glow on white is a smudge, so the
+       light here is a deep amber that reads as a dense point rather than a bloom. The halo's low
+       opacity then does the opposite job it does at night — it softens the mark into the water
+       instead of bleeding out of it. */
+    --color-harbour-light: #8a5a12;
 
     --color-surface: #ffffff;
     --color-surface-2: #f2f5f8;

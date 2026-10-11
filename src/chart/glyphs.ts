@@ -255,6 +255,45 @@ export const GLYPH = {
    * (hollow, 2.6), so 224 of them on the globe read as a scatter of ports and not as marks.
    */
   portDotRadius: 1.6,
+
+  /**
+   * THE NIGHT CHART (owner row 125, 2026-10-12): *"when i zoom out, i want cities to be bright
+   * light, in a dark map, visually beautiful. so are ships but in tiny dots… i want the color to be
+   * in darker tone, size smaller, but like cities, there should be light"*.
+   *
+   * A HARBOUR'S LIGHT is two circles and no filter: a small bright CORE, and a HALO several times
+   * its radius at low opacity, which is what makes a point read as a light rather than a dot. An
+   * SVG blur filter would look better and cost a repaint of the filtered region on every drift
+   * frame — `docs/MAP_ATMOSPHERE.md` §7 measured the frame budget at twelve wheel-zoom steps and
+   * this chart has up to 252 harbours on it, so two circles it is.
+   *
+   * The CORE keeps `portDotRadius` — the dot row 94 already drew — so nothing moves position or
+   * grows; what is added is the light around it.
+   */
+  harbourLightHaloScale: 3.4,
+  /** How far a tier-5 entrepôt out-burns a tier-1 coast. The halo scales by this between them, so
+   *  the great ports read first on a wide sheet and a one-quay coast is a faint spark — which is
+   *  the owner's "bright light" without a legend and without a second colour. */
+  harbourLightTierSpread: 0.55,
+
+  /**
+   * AN EMBER: the ship mark past `HULL_EMBER_MAX_UNITS_PER_PX`. Row 120 already collapses a
+   * squadron to her flagship when the sheet gets wide; past this second, wider threshold the hull
+   * SHAPE goes too and what is left is a dot with its own faint light. Smaller and dimmer than a
+   * harbour on purpose: the owner's "ships… in tiny dots" and "darker tone" in one rule, so a
+   * fleet never out-shouts a city on the same sheet.
+   */
+  emberRadius: 1.15,
+  /**
+   * AND THIS NUMBER IS BOUNDED BY THE ONE ABOVE IT, which is how it was found. The first cut of
+   * row 125 set it to 2.6, and `tests/map.night.spec.ts` refused the file: an ember's halo came to
+   * 1.15 x 2.6 = 2.99 chart units against a TIER-1 harbour's 1.6 x 3.4 x 0.45 = 2.45, so a lone
+   * barca out-glowed the smallest city on the sheet — the exact inversion of *"cities… bright
+   * light… so are ships but in tiny dots"*. The ordering is the owner's and it is a constraint on
+   * this constant, not a matter of taste: whatever these two scales become, THE DIMMEST HARBOUR
+   * MUST STILL OUT-BURN THE BRIGHTEST SHIP, and the spec holds that rather than this comment.
+   */
+  emberHaloScale: 1.9,
   /**
    * AN ISLET (row 92): the speck of land drawn under a harbour whose island the 110m coast file
    * has no polygon for at all (Malta, Bermuda, the Azores… 28 of them, ./landfall.ts). A filled
@@ -497,7 +536,36 @@ const HULL_GROUP_PLACES: readonly { readonly ax: number; readonly ay: number }[]
  * moves, this comment is the thread back. Named as a seam rather than tidied, the way
  * docs/NO_SPAGHETTI.md §7 asks.
  */
+/**
+ * PAST THIS, A FLEET IS AN EMBER AND NOT A HULL (owner row 125). Three times
+ * `HULL_GROUP_MAX_UNITS_PER_PX`, which is the span where `PORT_TIER_BANDS` has already given up on
+ * marks and drawn harbours as dots — so the two channels change at the same places on the zoom
+ * ladder and the sheet never shows a 10 px carrack beside a 1.6 px city.
+ *
+ * The ladder, end to end: hull silhouettes and squadrons · flagship only · an ember.
+ */
+export const HULL_EMBER_MAX_UNITS_PER_PX = (45 / 390) * 3
+
 export const HULL_GROUP_MAX_UNITS_PER_PX = 45 / 390
+
+/**
+ * THE NIGHT BAND: pulled back past this, every harbour on the glass carries its light (owner row
+ * 125). Below it the chart is a working sheet — names, roads, roadsteads, a fleet's silhouette —
+ * and a glow over that is a smudge across the detail somebody zoomed in to read, so NOTHING GLOWS
+ * CLOSE IN and the close view is exactly what it was before row 125.
+ *
+ * THE LIGHT IS NOT THE DOT'S PROPERTY, which is the mistake the first cut of this row made. Row
+ * 94's dot got a halo and the FULL MARK DID NOT, so at the globe the greatest ports in the world —
+ * the high-tier entrepôts `PORT_TIER_BANDS` deliberately keeps drawn longest — were the only
+ * harbours on the sheet not lit, and the owner's *"cities to be bright light"* came out as every
+ * city but the cities. `tests/map.night.spec.ts` counted them: 35 unlit marks against 217 lights.
+ * The gate is a DENSITY, applied to BOTH branches of ./PortsLayer.tsx.
+ *
+ * Set to `HULL_GROUP_MAX_UNITS_PER_PX` rather than to a number of its own: that is already the rung
+ * where this chart stops drawing a squadron and starts drawing weather, so the sheet changes
+ * character once, on one rung, instead of fading between two opinions about what "pulled back" is.
+ */
+export const HARBOUR_LIGHT_MIN_UNITS_PER_PX = HULL_GROUP_MAX_UNITS_PER_PX
 
 /**
  * A FLEET'S MARK — which hulls are drawn, how big each is, and where each sits, in CSS px in her
@@ -643,4 +711,24 @@ export function trianglePath(x: number, y: number, halfWidth: number, height: nu
 export function lozengePath(x: number, y: number, halfWidth: number, height: number): string {
   const half = height * 0.5
   return `M${x} ${y - half}L${x + halfWidth} ${y}L${x} ${y + half}L${x - halfWidth} ${y}Z`
+}
+
+/**
+ * HOW BRIGHT THIS HARBOUR BURNS, 0..1, from its `size_tier` (owner row 125). Linear between the
+ * tiers the world actually uses rather than a curve: the tiers are already an editorial judgement
+ * about how big a place is, and bending them again here would be this file having an opinion about
+ * geography, which is `docs/MAP_ATMOSPHERE.md`'s rule against a second authority.
+ */
+export function harbourLightStrength(sizeTier: number): number {
+  const t = Math.max(1, Math.min(5, Number.isFinite(sizeTier) ? sizeTier : 1))
+  return (t - 1) / 4
+}
+
+/** The halo radius for a harbour light, in chart units. The brightest tier gets the widest bloom;
+ *  `harbourLightTierSpread` is how much of the halo is tier-dependent and how much every harbour
+ *  gets for free — a tier-1 spark is still a light, just a small one. */
+export function harbourLightHalo(sizeTier: number, unitsPerPx: number): number {
+  const base = GLYPH.portDotRadius * GLYPH.harbourLightHaloScale
+  const lit = 1 - GLYPH.harbourLightTierSpread + GLYPH.harbourLightTierSpread * harbourLightStrength(sizeTier)
+  return base * lit * unitsPerPx
 }

@@ -1780,7 +1780,16 @@ test('world.route_board() serves every lane the caller may know of, with the fig
   expect(dark.routes.every((r) => r.merchant === false)).toBe(true)
   expect(dark.routes.every((r) => r.company === null)).toBe(true)
 
-  await db.pg.query(`update public.world_config set value = 'true'::jsonb where key = 'npc_traders_enabled'`)
+  // BOTH SWITCHES, because `public.npc_traders_on()` (0097) is `npc_traders_enabled` AND
+  // `standing_routes_on()` — "a merchant needs routes, so routes must be on too", in that
+  // function's own words. This test used to set only the first and pass, because the test ABOVE it
+  // left `standing_routes_enabled` on behind it; that test gained a `finally` that puts the key
+  // back (2026-10-11, the 0108 commit), which was right of it and silently took this test's
+  // precondition away. It then read `board.merchants === false` with the chain entirely correct —
+  // a dependency on the previous test's leftovers, which is the kind of order-coupling that makes a
+  // suite mean less the longer it gets. Set here, restored here, dependent on nobody.
+  await db.pg.query(`update public.world_config set value = 'true'::jsonb
+                      where key in ('npc_traders_enabled', 'standing_routes_enabled')`)
   try {
     const board = expectOk(await worldRouteBoard())
     expect(board.merchants).toBe(true)
@@ -1837,6 +1846,7 @@ test('world.route_board() serves every lane the caller may know of, with the fig
     for (const id of hers) expect(capped.routes.some((r) => r.id === id)).toBe(true)
   } finally {
     await db.pg.query(`update public.world_config set value = to_jsonb(400) where key = 'route_board_max'`)
-    await db.pg.query(`update public.world_config set value = 'false'::jsonb where key = 'npc_traders_enabled'`)
+    await db.pg.query(`update public.world_config set value = 'false'::jsonb
+                        where key in ('npc_traders_enabled', 'standing_routes_enabled')`)
   }
 })

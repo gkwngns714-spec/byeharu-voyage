@@ -42,7 +42,7 @@ function sailingRow(id: string, course: [number, number][], at: [number, number]
   return {
     id, company: 'Casa da Prova', nation_code: 'PRT', ink: 'prt', name: `Prova ${id}`, status: 'SAILING',
     ships: 2, hulls: ['nau', 'barca'],
-    port: null, roadstead: null, anchor: null, next_lap_at: null,
+    port: null, roadstead: null, anchor: null, next_lap_at: null, lane: null,
     voyage: {
       to: 'FNC', dest_point: null, course, eta: new Date(Date.now() + 60_000).toISOString(), total_nm: 500, nm_done: 100,
       waters: [], departed_at: new Date(Date.now() - 30_000).toISOString(),
@@ -54,6 +54,7 @@ const dockedRow: TrafficFleet = {
   id: 'm-dock', company: 'Casa da Prova', nation_code: 'PRT', ink: 'prt', name: 'Prova Doca', status: 'DOCKED',
   ships: 2, hulls: ['carlat', 'barca'],
   port: 'LIS', roadstead: [38.6, -9.4], anchor: null, voyage: null, next_lap_at: new Date(Date.now() + 90_000).toISOString(),
+  lane: null,
 }
 
 test('merchants live in their own list and nothing about your fleets sees them', () => {

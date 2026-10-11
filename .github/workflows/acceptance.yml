@@ -100,6 +100,25 @@ jobs:
       - name: Install dependencies (from the lockfile)
         run: npm ci
 
+      # THE SAME CACHE, THE SAME KEY AND THE SAME REASON as build.yml and deploy-pages.yml — and
+      # THIS JOB WAS THE ONLY ONE WITHOUT IT. `npm run build` applies the whole chain once to bake
+      # the pre-built world image, and with no cache this job paid for that apply on every run:
+      # MEASURED AT 32m33s of a 75-minute budget on 2026-10-11 (14:48:16 to 15:20:49, run
+      # 38148284600), which is why it was cancelled at its ceiling with the suite still running,
+      # while build.yml finished the identical build in 33s on a cache hit. 0105's roster is what
+      # made that apply expensive and production has run those migrations, so the chain is
+      # forward-only and the ~16 minutes cannot be taken back out — but paying it twice can be.
+      #
+      # A STALE ENTRY CANNOT SERVE A WRONG WORLD, and the guarantee is in the code and not in the
+      # key: scripts/db/build-image.mjs names the file `world-<fingerprintChain(files)>.tar.gz` and
+      # the build asks for the name THIS chain fingerprints to, so a cache from another chain simply
+      # misses and the image is rebuilt. Restored AFTER npm ci, which removes node_modules whole.
+      - name: Cache the pre-built world image (keyed by the chain)
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/byeharu-world-image
+          key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
+
       # chromium ONLY. The suite declares one project (playwright.config.ts) and one spec needs a
       # browser; firefox and webkit would be two more downloads proving nothing. `--with-deps`
       # pulls the shared libraries the runner image does not ship.

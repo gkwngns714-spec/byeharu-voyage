@@ -117,7 +117,22 @@ jobs:
     # self-assert is ~39, and a budget that fails at 41 buys another cancelled job that reads like a
     # red one. Generous and passing beats tight and ambiguous. When row 124 lands this comes back
     # down, and the ruling above stands for every case where a fixture CAN be lightened.
-    timeout-minutes: 60
+    #
+    # 60 -> 90 on 2026-10-12, AND THE ARITHMETIC ABOVE WAS WRONG BY HALF. It added 0105's ~16
+    # minutes to the last passing run and stopped there; what run 38148284551 actually measured,
+    # cancelled at 1h00m16s, is two costs and not one:
+    #
+    #   the chain apply   14:43:05 -> 15:15:01   31m56s, all 102 receipts printed
+    #   the proofs        15:15:01 -> 15:43:09   28m and STILL RUNNING when the cap fell
+    #
+    # So the job needs some 60 minutes of real work before anything is even allowed to be slow, and
+    # 60 was a budget set to almost exactly its own cost — which is why it read as a failure rather
+    # than as a timeout. 90 is that measurement plus room. Raising it a third time is NOT the fix
+    # and is not pretended to be: the 32 minutes is one apply of a chain that `disposable-chain` has
+    # ALREADY applied, green, on the same commit, in 33m51s, and then left idle. Row 124 is the one
+    # that deletes this cost instead of budgeting for it, and row 127 records that it has stopped
+    # being a nuisance and become the thing standing between a green branch and a merge.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 

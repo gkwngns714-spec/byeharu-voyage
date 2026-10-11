@@ -295,6 +295,7 @@ function dockedMerchant(id: string, ships: number, hulls: readonly string[] = []
     id, company: 'Casa da Prova', nation_code: 'PRT', ink: 'prt', name: `Prova ${id}`, status: 'DOCKED',
     ships, hulls: [...hulls], port: 'LIS', roadstead: [38.6, -9.4], anchor: null, voyage: null,
     next_lap_at: null,
+    lane: null,
   }
 }
 
@@ -428,16 +429,27 @@ test('the sea shows how many ships each merchant is, and lets go of it when pull
         expect(m.hulls).toBeGreaterThanOrEqual(1)
         expect(m.hulls).toBeLessThanOrEqual(3)
         expect(m.paths).toBe(m.hulls)
-        // And it is legible rather than a smudge: a mark is at least a hull wide on a 390 px phone
-        // and never a quarter of the glass.
-        expect(m.w).toBeGreaterThan(4)
-        expect(m.w).toBeLessThan(width / 4)
+        // And it is legible rather than a smudge: a mark is at least a hull ACROSS on a 390 px
+        // phone and never a quarter of the glass.
+        //
+        // ACROSS HER LONGEST AXIS, not her width (corrected 2026-10-12). This read `m.w` and went
+        // red at 3.762022 px on a frame that was perfectly correct: a barca is a SPINDLE, her beam
+        // a third of her half-length by this file's own design note above, so 5.7 x 0.33 x 2 =
+        // 3.762 is a lone barca measured across the beam while she is 11.4 px long — and which of
+        // the two a bounding box reports is decided by HER HEADING. The old assertion therefore
+        // held or failed on where a merchant happened to be pointing, and 0105's roster (76 fleets
+        // to 761) was simply the first sea crowded enough to put a north-bound barca in the opening
+        // frame. A hull's legibility is her longest dimension; the box's width is an accident of
+        // the compass.
+        const across = Math.max(m.w, m.h)
+        expect(across).toBeGreaterThan(4)
+        expect(across).toBeLessThan(width / 4)
       }
       // A MULTI-SHIP MERCHANT IS SEVERAL MARKS ABOUT ONE POINT — the whole of "two ships grouping".
       // The seeded roster has multi-ship fleets; if this frame happens to hold none, the claim is
       // not made rather than faked.
       const several = marks.filter((m) => m.hulls > 1)
-      for (const m of several) expect(m.w).toBeGreaterThan(8)
+      for (const m of several) expect(Math.max(m.w, m.h)).toBeGreaterThan(8)
 
       await page.screenshot({ path: path.join(SHOTS, `map-hulls-${width}-${theme}.png`) })
     }

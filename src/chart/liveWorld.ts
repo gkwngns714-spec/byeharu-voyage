@@ -204,6 +204,12 @@ export function mapTrafficOf(
               .filter((l) => l.course.length >= 2)
               .map((l) => l.course.map(([lat, lon]) => ({ lat, lon })))
           : null,
+      // HER LANE (0111, owner row 125). A COPY, like every other position in here. The server
+      // decides who gets one — `fleet_lane_min_ships` hulls and a route — so there is no notion of
+      // "major" anywhere in this section to drift out of step with the knob. A lane of fewer than
+      // two points draws nothing rather than a guessed line, the same rule the loop above keeps.
+      lane:
+        t.lane && t.lane.length >= 2 ? t.lane.map(([lat, lon]) => ({ lat, lon })) : null,
     })
   }
   return out

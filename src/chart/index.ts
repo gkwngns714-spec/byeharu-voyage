@@ -122,11 +122,18 @@ export {
 // `hullGroupHalo` and the two numbers a group obeys — exported for the same reason the rest of this
 // block is: what a fleet's mark SAYS is arithmetic, and arithmetic is what a spec can hold to
 // account without rendering a component.
+// ROW 125 added the night chart — `harbourLightStrength`, `harbourLightHalo` and the density past
+// which a fleet is an ember — on the same principle: how brightly a city burns and how small a ship
+// gets are numbers, and `tests/map.night.spec.ts` holds them to account as numbers.
 export {
   arrowPath,
   coastStrokeWidth,
   GLYPH,
+  HARBOUR_LIGHT_MIN_UNITS_PER_PX,
+  harbourLightHalo,
+  harbourLightStrength,
   headingDeg,
+  HULL_EMBER_MAX_UNITS_PER_PX,
   HULL_GROUP_MAX,
   HULL_GROUP_MAX_UNITS_PER_PX,
   hullGroup,

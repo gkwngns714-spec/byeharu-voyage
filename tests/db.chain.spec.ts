@@ -290,7 +290,12 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0110 with the roster merged in: 0105 founds 761 merchant companies over 219 loops, 0108
 // prints what a lane asks of you, 0109 stops the cap throwing away the lanes you can actually sail,
 // and 0110 asks each lane what it needs once instead of four times a row.
-const LAST = '20260818000110_a_lane_is_asked_what_it_needs_once.sql'
+// And to 0111 for the night chart (owner row 125): a MAJOR fleet is served her loop, thinned to
+// `fleet_lane_points_max` points with every stop boundary pinned, so the chart can draw the routes
+// of every major fleet on the sheet at a span where a continent is forty pixels wide. The key is
+// named `lane` and not `course` because it crosses land between its points, and `public.route_lane`
+// is reachable by nobody — a line nothing may sail is a line nothing may ASK for.
+const LAST = '20260818000111_a_major_fleet_draws_her_lane.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

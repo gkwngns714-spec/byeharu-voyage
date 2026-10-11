@@ -1620,6 +1620,20 @@ export interface TrafficFleet {
   voyage: Omit<FleetVoyage, 'id'> | null
   /** When her next lap may start (ISO), while she is held in port; else null. */
   next_lap_at: string | null
+  /**
+   * HER LOOP, THINNED FOR DRAWING — `[lat, lon]` points, or null (0111, owner row 125: *"major
+   * fleet shoud also show the routes as well"*). Served only for a fleet of `fleet_lane_min_ships`
+   * hulls or more that has a standing route; null for everyone else, and null is a real answer, not
+   * a missing key.
+   *
+   * NOT A COURSE AND NOT SAILABLE. `voyage.course` beside it is her real, raster-verified leg;
+   * this is the WHOLE loop decimated to `fleet_lane_points_max` points, and between two of them
+   * the straight segment crosses land. It exists to be drawn at a span where a continent is forty
+   * pixels wide. Nothing may sail it, measure a distance from it, or derive a position on it — the
+   * server will not even let a client ask for one (`public.route_lane` is revoked from every client
+   * role), and the only reason it is on the wire at all is that the chart cannot invent it.
+   */
+  lane: [number, number][] | null
 }
 
 /**
@@ -1665,8 +1679,16 @@ export type MerchantDoing = 'laid_up' | 'resting' | 'starting' | 'ending' | 'pas
  * One row of `world.port_merchants` — a TRAFFIC ROW plus what she is doing here and the loop that
  * brings her. It EXTENDS `TrafficFleet` on purpose: one type and one writer of the line beside a
  * merchant's name (`src/live/merchantLine.ts`), so PORT and MAP cannot drift in words.
+ *
+ * MINUS `lane`, WHICH THIS READ DOES NOT SERVE. 0111 added that key to `world.sea_traffic` for the
+ * chart to draw a major fleet's route at a wide zoom; `world.port_merchants` (0104) was not changed
+ * and should not be — a harbour's list of merchants is prose and a table, not a chart, and it
+ * already serves `stops` (port CODES in sailing order), which is what a reader at a quay wants.
+ * Omitted rather than inherited, because inheriting it would have the type PROMISE a key the server
+ * never sends: nothing reads it off a PortMerchant today, and the point of saying so here is that
+ * the first person who tries gets a compile error instead of `undefined`.
  */
-export interface PortMerchant extends TrafficFleet {
+export interface PortMerchant extends Omit<TrafficFleet, 'lane'> {
   doing: MerchantDoing
   /** Her whole loop, port CODES in sailing order (2 to 8 of them). Codes only — the baked courses
    *  are served on the card, for the one fleet a player tapped. */
