@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react'
 import { project } from '../lib/geo'
-import type { ChartModel } from './chartModel'
-import { arrowPath, GLYPH, shipPath } from './glyphs'
+import type { ChartModel, FleetOnChart } from './chartModel'
+import { arrowPath, GLYPH, hullGroup, hullGroupHalo, hullPath } from './glyphs'
 import type { MerchantInk } from './mapTypes'
 
 // GLYPHS 2 AND 3 — THE FLEET AND ITS DESTINATION — plus the track between them.
@@ -24,10 +25,17 @@ import type { MerchantInk } from './mapTypes'
 // carry one — the omission is structural, not a setting.
 //
 // MERCHANT COMPANIES are the owner's 2026-10-08 exception (DESIGN Q7, docs/NPC_TRADERS.md §8.2):
-// companies the world keeps, not players. They arrive only through `model.traffic` — the SAME hull
-// at the SAME size as yours, filled in the company's nation ink, with no halo (the halo and the gold
+// companies the world keeps, not players. They arrive only through `model.traffic` — through the
+// SAME `HullGroup` as yours, filled in the company's nation ink, with no halo (the halo and the gold
 // are how "yours" stays loud), at sea and, when she lies in port, at the port's served roadstead,
 // bow north. The one merchant whose card is open draws her leg, faint.
+//
+// ROW 120 (2026-10-11) — A FLEET IS DRAWN AS THE SHIPS SHE IS. One hull at one size became the hull
+// CLASS's own silhouette at the size her burthen earns, and a fleet of several is drawn as several:
+// the arithmetic is ./glyphs.ts's (`hullPath`, `hullGroup`, `hullGroupHalo`) and the ONE renderer is
+// `HullGroup` below, which both lists go through. The merchants have no class on the wire yet
+// (`world.sea_traffic` serves a count), so they draw the right NUMBER of class-less hulls and will
+// draw the right shapes the day that read serves `c.code` — with no change here.
 //
 // Everything here is a pure function of `model`, and `model` is a pure function of the last read
 // (./chartModel.ts). There is no animation state and no clock on this layer, so there is nothing to
@@ -169,10 +177,69 @@ export function TracksLayer({ model, unitsPerPx }: { model: ChartModel; unitsPer
 }
 
 /**
- * GLYPH 2 — the fleet at sea, AS A SHIP (row 90): `shipPath`, the one hull, turned to her course
- * heading (`FleetOnChart.heading`, the served segment's) inside the same sea-coloured halo the dot
- * wore. A fleet at an open anchor is the same hull pointing north. A fleet in port draws nothing
- * here; it IS its port's loud mark.
+ * ONE FLEET'S HULLS, PLACED AND TURNED — the ONE renderer behind every hull on this chart, yours
+ * and the merchants' alike (owner row 120).
+ *
+ * It emits a single `<g>` whose transform does all three jobs at once — put her where the server
+ * put her, turn her onto her heading, and take the glyph out of pixels into chart units — so every
+ * hull in the group is placed by `translate(dx dy)` inside that frame and the whole formation turns
+ * as one. `children` is the chrome that belongs INSIDE the frame (your halo); the hulls follow it,
+ * so a halo never paints over a hull.
+ *
+ * WHY IT TAKES A `FleetOnChart` AND NOT A MERCHANT TYPE. `TrafficOnChart extends FleetOnChart`, so
+ * this signature is the whole of what both lists have in common and neither list can grow a second
+ * arrangement without the other seeing it (docs/NO_SPAGHETTI.md §1). The things that genuinely
+ * DIFFER between them — the ink, the halo, the test hooks — are props, which is what a difference
+ * that is real looks like.
+ */
+function HullGroup({
+  fleet,
+  unitsPerPx,
+  className,
+  strokeWidth,
+  hooks,
+  children,
+}: {
+  fleet: FleetOnChart
+  unitsPerPx: number
+  className: string
+  strokeWidth: number
+  /** The `data-*` hooks this list wants — on the GROUP, so there is one of them per fleet. */
+  hooks: Readonly<Record<string, string>>
+  children?: ReactNode
+}) {
+  const { x, y } = project(fleet.at)
+  const marks = hullGroup(fleet.fleet.hulls ?? [], unitsPerPx)
+  return (
+    <g
+      transform={`translate(${x} ${y}) rotate(${fleet.heading ?? 0}) scale(${unitsPerPx})`}
+      data-fleet-heading={fleet.heading ?? 0}
+      data-hulls={marks.length}
+      {...hooks}
+    >
+      {children}
+      {marks.map((m, i) => (
+        <path
+          key={i}
+          d={hullPath(m.cls, m.halfLength)}
+          transform={`translate(${m.dx} ${m.dy})`}
+          className={className}
+          strokeWidth={strokeWidth}
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+          data-hull-class={m.cls ?? 'unknown'}
+        />
+      ))}
+    </g>
+  )
+}
+
+/**
+ * GLYPH 2 — the fleet at sea, AS HER HULLS (row 90 made her a ship, row 120 made her HERSELF):
+ * `hullPath` per hull, each at the size her class earns, arranged by `hullGroup` and turned as one
+ * formation onto her course heading (`FleetOnChart.heading`, the served segment's) inside the
+ * sea-coloured halo the dot wore. A fleet at an open anchor is the same group pointing north. A
+ * fleet in port draws nothing here; it IS its port's loud mark.
  */
 export function FleetsLayer({
   model,
@@ -186,55 +253,58 @@ export function FleetsLayer({
   selectedMerchantId?: string | null
   unitsPerPx: number
 }) {
-  const px = (n: number) => n * unitsPerPx
-
   return (
     <g pointerEvents="none" data-testid="map-fleets">
-      {/* 0099 — THE MERCHANTS, UNDER yours: the same `shipPath` at the same size, nation ink, no
-          halo. A docked merchant lies at the roadstead, bow north. */}
+      {/* 0099 — THE MERCHANTS, UNDER yours: the same `HullGroup` at the same sizes, nation ink, no
+          halo. A docked merchant lies at the roadstead, bow north. Row 120: she draws AS MANY HULLS
+          AS SHE HAS, because `world.sea_traffic` serves her count — all of them the class-less hull,
+          because that read serves no class (./mapTypes.ts `FleetHulls` carries the whole note).
+
+          THE TEST HOOKS SIT ON THE GROUP AND NOT ON A HULL, deliberately: there is exactly one
+          `map-merchant` per merchant whatever she sails, so a spec that asks for her box gets her
+          whole mark and a spec that counts hulls on the sea counts fleets. */}
       {model.traffic.map((t) => {
-        const { x, y } = project(t.at)
         const selected = selectedMerchantId === t.fleet.id
         return (
-          <path
+          <HullGroup
             key={`merchant-${t.fleet.id}`}
-            d={shipPath(GLYPH.shipHalfLength)}
-            transform={`translate(${x} ${y}) rotate(${t.heading ?? 0}) scale(${unitsPerPx})`}
+            fleet={t}
+            unitsPerPx={unitsPerPx}
             className={`${NATION_FILL[t.merchant.ink]} ${selected ? 'stroke-ink' : 'stroke-chart-sea'}`}
             strokeWidth={GLYPH.glyphStroke * (selected ? 1.2 : 0.6)}
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-            data-testid="map-merchant"
-            data-merchant-id={t.fleet.id}
-            data-merchant-docked={t.merchant.docked ? 'true' : 'false'}
+            hooks={{
+              'data-testid': 'map-merchant',
+              'data-merchant-id': t.fleet.id,
+              'data-merchant-docked': t.merchant.docked ? 'true' : 'false',
+            }}
           />
         )
       })}
       {model.fleets.map((f) => {
         if (f.dockedAtCode !== null) return null
-        const { x, y } = project(f.at)
         const selected = selectedId === f.fleet.id
-
+        // ONE HALO FOR THE WHOLE GROUP, sized to the hulls actually drawn and inside the group's own
+        // frame — so it follows the formation astern as she turns. For a single hull it is the
+        // circle that was here before row 120, to the pixel (./glyphs.ts `hullGroupHalo`).
+        const halo = hullGroupHalo(hullGroup(f.fleet.hulls ?? [], unitsPerPx))
         return (
-          <g key={f.fleet.id} data-fleet-heading={f.heading ?? 0}>
+          <HullGroup
+            key={f.fleet.id}
+            fleet={f}
+            unitsPerPx={unitsPerPx}
+            className="fill-accent stroke-chart-sea"
+            strokeWidth={GLYPH.glyphStroke * 0.6}
+            hooks={{ 'data-testid': 'map-ship' }}
+          >
             <circle
-              cx={x}
-              cy={y}
-              r={px(GLYPH.fleetHaloRadius)}
+              cx={halo.cx}
+              cy={halo.cy}
+              r={halo.r}
               className={`fill-chart-sea/70 ${selected ? 'stroke-ink/70' : 'stroke-accent/40'}`}
               strokeWidth={GLYPH.glyphStroke}
               vectorEffect="non-scaling-stroke"
             />
-            <path
-              d={shipPath(GLYPH.shipHalfLength)}
-              transform={`translate(${x} ${y}) rotate(${f.heading ?? 0}) scale(${unitsPerPx})`}
-              className="fill-accent stroke-chart-sea"
-              strokeWidth={GLYPH.glyphStroke * 0.6}
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-              data-testid="map-ship"
-            />
-          </g>
+          </HullGroup>
         )
       })}
     </g>

@@ -52,7 +52,16 @@ export { SmallChart } from './SmallChart'
 export { Minimap } from './Minimap'
 
 // ── the read model: what a chart is told, and what it makes of it ──────────────────────────────
-export type { MapFleet, MapPort, MapSelection, MapVoyage, MapWater, MapTraffic, MerchantInk } from './mapTypes'
+export type {
+  HullClass,
+  MapFleet,
+  MapPort,
+  MapSelection,
+  MapVoyage,
+  MapWater,
+  MapTraffic,
+  MerchantInk,
+} from './mapTypes'
 export {
   buildChartModel,
   fleetsAtPort,
@@ -109,15 +118,26 @@ export {
 // ── ink: the glyph metrics, the lines, the names, and what a tap lands on ──────────────────────
 // Row 90 added the ship, the arrowhead, the heading and the zoom-scaled coast weight — all here,
 // so a spec can hold "one hull for every fleet" and "the pen thickens as you zoom" as arithmetic.
+// ROW 120 added the three hulls and the group — `hullPath`, `hullHalfLengthOf`, `hullGroup`,
+// `hullGroupHalo` and the two numbers a group obeys — exported for the same reason the rest of this
+// block is: what a fleet's mark SAYS is arithmetic, and arithmetic is what a spec can hold to
+// account without rendering a component.
 export {
   arrowPath,
   coastStrokeWidth,
   GLYPH,
   headingDeg,
+  HULL_GROUP_MAX,
+  HULL_GROUP_MAX_UNITS_PER_PX,
+  hullGroup,
+  hullGroupHalo,
+  hullHalfLengthOf,
+  hullPath,
   portMarkScale,
   portStrokeWidth,
   shipPath,
   trianglePath,
+  type HullMark,
 } from './glyphs'
 export { toClosedRingsD, toPolylineD } from './svgPath'
 export { buildTrack, sheetPieces, type TrackPaths } from './route'

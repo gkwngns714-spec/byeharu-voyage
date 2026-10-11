@@ -349,7 +349,16 @@ test.describe('the ship is one hull, and the course points where it goes', () =>
   test('one hull for every surface — FleetsLayer and Minimap draw `shipPath`, and no dot survives', () => {
     const fleets = read('src/chart/FleetsLayer.tsx')
     const minimap = read('src/chart/Minimap.tsx')
-    expect(fleets).toContain('shipPath(GLYPH.shipHalfLength)')
+    // PIN MOVED DELIBERATELY 2026-10-11 with owner row 120 (the hull classes and the group). The
+    // chart surface now asks `hullPath` for a hull, because a fleet's mark is her CLASS's
+    // silhouette at the size her burthen earns — and `hullPath(null, …)` IS `shipPath`, which is
+    // still the one hull-with-no-class and still the whole of what the minimap draws (a 100 px
+    // locator inset has no room for a class to be read, and no merchants on it to read one from).
+    // The property is unchanged and now also says there is ONE path authority: every surface gets
+    // its hull out of glyphs.ts and no dot survives anywhere. tests/map.hulls.spec.ts holds the
+    // rest of row 120.
+    expect(fleets).toContain('hullPath(m.cls, m.halfLength)')
+    expect(fleets).not.toContain('shipPath')
     expect(minimap).toContain('shipPath(GLYPH.shipHalfLength)')
     expect(fleets).not.toContain('fleetDotRadius')
     expect(minimap).not.toContain('fleetDotRadius')
