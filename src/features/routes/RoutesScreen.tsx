@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
+  Button,
   Figure,
   Hint,
   Note,
@@ -12,10 +13,11 @@ import {
   type SegmentSpec,
   type TrayDetent,
 } from '../../components/ui'
-import { formatDucats, formatInt, formatMiles } from '../../lib/format'
+import { formatDucats, formatInt, formatMiles, formatRelative } from '../../lib/format'
 import type { RouteBoardRow } from '../../lib/rpc'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
 import { useRouteBoard } from '../../live/useRouteBoard'
+import { useShellState } from '../../app/shellState'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -71,7 +73,10 @@ const ORDERS: readonly SegmentSpec<Order>[] = [
 ]
 
 function RoutesBody() {
-  const { board, loading } = useRouteBoard()
+  // THE ONE CLOCK (src/app/shellState.ts), so the board's age ticks without this screen
+  // keeping a second one.
+  const { nowMs } = useShellState()
+  const { board, loading, refreshing, failed, readAt, refresh } = useRouteBoard()
   const [order, setOrder] = useState<Order>('nm')
   const [open, setOpen] = useState<string | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('closed')
@@ -87,10 +92,27 @@ function RoutesBody() {
       data-testid="routes"
       trailing={
         board === null ? undefined : (
-          <span className="text-t-caption text-ink-faint">
-            {board.omitted > 0
-              ? `${formatInt(board.routes.length)} of ${formatInt(board.total)} lanes`
-              : `${formatInt(board.total)} ${board.total === 1 ? 'lane' : 'lanes'}`}
+          // THE BOARD IS A PHOTOGRAPH, HONESTLY DATED — it is asked once and then left alone
+          // (useRouteBoard says why, with the 218 ms a call at 838 routes that decided it), so
+          // it says how old it is and offers to be asked again rather than pretending to be
+          // live. The same bargain RANK strikes with its "settled" line.
+          <span className="flex items-center gap-2 text-t-caption text-ink-faint">
+            <span>
+              {board.omitted > 0
+                ? `${formatInt(board.routes.length)} of ${formatInt(board.total)} lanes`
+                : `${formatInt(board.total)} ${board.total === 1 ? 'lane' : 'lanes'}`}
+            </span>
+            {readAt !== null && <span>{formatRelative(readAt, nowMs)}</span>}
+            <Button
+              variant="quiet"
+              size="sm"
+              onClick={refresh}
+              busy={refreshing}
+              busyLabel="Reading…"
+              data-testid="routes-refresh"
+            >
+              Read again
+            </Button>
           </span>
         )
       }
@@ -107,6 +129,11 @@ function RoutesBody() {
         )
       ) : (
         <>
+          {failed && (
+            <Note tone="warning" className="mb-3">
+              The last read was refused — these are the figures from before it.
+            </Note>
+          )}
           <Segmented segments={ORDERS} value={order} onChange={setOrder} label="Rank routes by" className="mb-3" />
 
           {mine.length > 0 && (

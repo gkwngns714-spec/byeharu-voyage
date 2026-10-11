@@ -80,6 +80,7 @@ import {
   worldSnapshot,
   worldProvisionPresets,
   worldStandingRoutes,
+  worldRouteBoard,
   worldSeaRaster,
   worldReach,
   worldSeaTraffic,
@@ -102,6 +103,7 @@ import type {
   StandingRouteBook,
   StandingRouteStopDraft,
   ReachPayload,
+  RouteBoard,
   SeaTraffic,
   SeaWindow,
   SkillBook,
@@ -147,6 +149,27 @@ export interface LiveWorld {
   /** The book of standing orders (0034). Null until FLEETS asks for it — it is that tab's card,
    *  and the server tops fleets up on arrival whether or not anyone is looking. */
   presets: ProvisionPresetBook | null
+  /**
+   * EVERY LANE THE WORLD SAILS (0106-0110, owner rows 115/117) — the last `world.route_board`
+   * reading, or null before ROUTES has asked for one.
+   *
+   * ASKED ONCE AND THEN LEFT ALONE, never on the shell's beat, which is the one thing about it
+   * worth knowing. The board measured 218 ms a call at 838 routes (profiled on the real chain:
+   * `route_requirement` 71.7 ms, `standing_route_state` 52.1, `route_earnings` 34.5, `route_nm`
+   * 12.8, the stops and their regions 7.2). None of those is wasteful — there are simply eight
+   * hundred routes since 0105 — but two hundred milliseconds every three seconds to repaint a
+   * board that changes when a lap closes somewhere is the CADENCE being wrong. ROUTES is in the
+   * Cabin group because "none of them acts on the world": it is consulted, not played.
+   *
+   * So it is a photograph, and `routeBoardAt` dates it so the screen can say how old it is
+   * rather than pretend to be live — the bargain RANK strikes with its "settled" line.
+   */
+  routeBoard: RouteBoard | null
+  /** When `routeBoard` was answered, in ms. Null before the first. */
+  routeBoardAt: number | null
+  /** The last board read was refused; whatever is in `routeBoard` is from before it. A board a
+   *  minute old beats no board, so the answer is kept and the screen says which it holds. */
+  routeBoardFailed: boolean
   /** The company's standing routes (0092). Null until the first world read lands — `refresh()`
    *  reads them with the fleets, on the same beat. A route runs on the server whether or not
    *  anyone is looking; this is only the reading of it. */
@@ -225,6 +248,10 @@ export interface LiveWorld {
   loadOfficers: () => Promise<void>
   loadSkills: () => Promise<void>
   loadStandings: (limit?: number | null) => Promise<void>
+  /** Read the route board. ROUTES calls this once on mount and again when the player asks; no
+   *  beat calls it (see `routeBoard`). A refusal keeps the last answer and sets
+   *  `routeBoardFailed`, rather than blanking a board already on screen. */
+  loadRouteBoard: () => Promise<void>
   loadBuffs: (portId: string) => Promise<void>
   /** Fetch the book of standing orders. FLEETS calls it on mount and after every preset verb. */
   loadPresets: () => Promise<void>
@@ -440,6 +467,9 @@ export const useWorld = create<LiveWorld>((set, get) => {
   standings: null,
   presets: null,
   routes: null,
+  routeBoard: null,
+  routeBoardAt: null,
+  routeBoardFailed: false,
   traffic: null,
   trafficWanted: 0,
   trafficWindows: {},
@@ -610,6 +640,15 @@ export const useWorld = create<LiveWorld>((set, get) => {
     const r = await worldStandings(limit)
     if (r.ok) set({ standings: r.value })
     else set({ refusal: r.refusal })
+  },
+
+  loadRouteBoard: async () => {
+    // A REFUSAL IS NOT A REFUSAL BANNER HERE. The board is consulted deliberately and its own
+    // screen prints "the last read was refused — these are the figures from before it", which is
+    // more use than a world-level refusal the player has to dismiss to get back to the list.
+    const r = await worldRouteBoard()
+    if (r.ok) set({ routeBoard: r.value, routeBoardAt: Date.now(), routeBoardFailed: false })
+    else set({ routeBoardFailed: true })
   },
 
   // A FAILED BUFF READ IS SILENT, and this is the one place that choice has a second consequence:
