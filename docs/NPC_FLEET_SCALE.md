@@ -60,10 +60,12 @@ which is the design of the merchant companies themselves; nothing here replaces 
 | A | **0101** — the two-week rest, and the 2-8 stop law · **DONE 2026-10-11** | A server rule the generator must know before it authors a single route. |
 | B | **0102** — `world.sea_traffic` takes a viewport · **DONE 2026-10-11** | 760 fleets cannot ship on a read that serves them all. Must land before the roster does. |
 | C | **The generator: routes ×3, fleets ×10, shares by nation** | The long one. Runs unattended; everything else can be built while it runs. |
-| D | **The chart: hull silhouettes and fleet groups** | Pure client, disjoint from C. |
-| E | **The harbour's merchants: started / resting / ending** | Needs 0101's rest to mean anything. |
-| F | **The route board, ranked** | Needs C's routes to be worth ranking. |
-| G | **0102 — the gates** (rows 113/117) | Last, because it refuses things, and refusing things is easiest to get wrong when the world underneath is still moving. |
+| D | **The chart: hull silhouettes and fleet groups** · **DONE 2026-10-11** | Pure client, disjoint from C. |
+| E | **0104 — the harbour's merchants: started / resting / ending** · **DONE 2026-10-11** | Needs 0101's rest to mean anything. |
+| F | **0106 — the route board, ranked** · **DONE 2026-10-11** | Needs C's routes to be worth ranking. |
+| G | **0107 — the gates** (rows 113/117) · **DONE 2026-10-11, bar the board printing the requirement** | Last, because it refuses things, and refusing things is easiest to get wrong when the world underneath is still moving. |
+
+Slice C — the generated roster itself — is the only one still running, in its own worktree, and takes migration **0105**. Everything else landed around it, which was the point of putting it first in the table and last in the queue.
 
 ## 2. What is NOT being done, and why it would be wrong to
 
