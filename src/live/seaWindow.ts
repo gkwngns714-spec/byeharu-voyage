@@ -20,7 +20,7 @@
 // one that produced it, and every hull on the chart jumps. The server's 10° pad covers the lag.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import type { GeoBounds, LatLon } from '../lib/geo'
+import type { GeoBounds } from '../lib/geo'
 import type { SeaWindow } from '../lib/rpc/types'
 
 /** Within this much of the whole globe, a window is the globe. Below the pad the server already
@@ -53,17 +53,13 @@ export function seaWindowOf(bounds: GeoBounds): SeaWindow | null {
   return { south, north, west, east }
 }
 
-/** A window of `deg` degrees in every direction around a point — what a HARBOUR asks for, which is
- *  its own water and a little of the approaches. */
-export function seaWindowAround(at: LatLon, deg: number): SeaWindow | null {
-  if (!Number.isFinite(at.lat) || !Number.isFinite(at.lon) || !(deg > 0)) return null
-  return seaWindowOf({
-    minLat: at.lat - deg,
-    maxLat: at.lat + deg,
-    minLon: at.lon - deg,
-    maxLon: at.lon + deg,
-  })
-}
+// `seaWindowAround(point, deg)` — a window of so many degrees round a point — was DELETED on
+// 2026-10-11, the day it was written, with its only caller. PORT asked for one while it drew the
+// merchants out of `traffic`; 0104 gave a harbour its own read (`world.port_merchants`, asked at a
+// tap and bounded by the harbour itself), PORT stopped reading the traffic at all, and the window
+// went with the list that needed it. A helper kept alive by its own spec is the spaghetti
+// docs/NO_SPAGHETTI.md names: it would be the SECOND answer to "what water is this screen about"
+// the day something else wanted one, and `seaWindowOf` over a box is the first.
 
 /**
  * The window that covers all of them — what the store sends when two screens that both draw

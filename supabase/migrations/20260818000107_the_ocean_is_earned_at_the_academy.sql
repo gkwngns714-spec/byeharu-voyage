@@ -524,14 +524,36 @@ begin
     end if;
     -- POSITIVE CONTROL: five levels of navigation and the same leg is allowed, because the reach
     -- DOUBLES. If it did not, the ladder would be decoration.
-    insert into public.skills (code, name, blurb) select 'NAVIGATION', 'Navigation', 'x'
-     where not exists (select 1 from public.skills where code = 'NAVIGATION');
     insert into public.player_skills (player_id, skill_id, level)
     select v_me, sk.id, 5 from public.skills sk where sk.code = 'NAVIGATION';
-    if public.passage_gate(v_me, v_nm, v_nag) is not null
-       and public.wc_num('nav_leg_nm_base') * 16 >= v_nm then
-      raise exception '0107 self-assert FAIL: NAVIGATION 5 reaches % nm and the leg is % nm, yet it was refused: %',
+    if public.skill_level(v_me, 'NAVIGATION') <> 5 then
+      raise exception '0107 self-assert FAIL: the probe could not be given NAVIGATION 5 — the catalogue reads %',
+        public.skill_level(v_me, 'NAVIGATION');
+    end if;
+    -- The claim is about the LENGTH gate alone: at NAVIGATION 5 that gate opens. Nagasaki's REGION
+    -- is still priced at level 5 and still closes it, which is the other gate doing its own job and
+    -- is proven on its own below — so this asserts the length refusal is GONE, not that the
+    -- passage is clear. (The first cut asserted the passage was clear and read back
+    -- "E_REGION_CLOSED: Japan & the Ryukyus asks exploration level 5 and yours is 1": two gates
+    -- conflated in one control, which is exactly what a control is for.)
+    if public.wc_num('nav_leg_nm_base') * 16 < v_nm then
+      raise exception '0107 self-assert FAIL: NAVIGATION 5 reaches only % nm and the leg is % nm, so the control cannot say anything',
+        public.wc_num('nav_leg_nm_base') * 16, round(v_nm);
+    end if;
+    if coalesce(public.passage_gate(v_me, v_nm, v_nag), '') like 'E_LEG_TOO_FAR%' then
+      raise exception '0107 self-assert FAIL: NAVIGATION 5 reaches % nm and the leg is % nm, yet the LENGTH gate still refused it: %',
         public.wc_num('nav_leg_nm_base') * 16, round(v_nm), public.passage_gate(v_me, v_nm, v_nag);
+    end if;
+    -- and on a harbour in a region she HAS earned, the same reach is simply clear
+    if public.passage_gate(v_me, v_nm, (select p.id from public.ports p
+                                          join public.regions r on r.id = p.region_id
+                                         where p.kind = 'HARBOUR' and r.min_exploration_level = 1
+                                         order by p.code limit 1)) is not null then
+      raise exception '0107 self-assert FAIL: NAVIGATION 5 on a % nm leg into an open region was still refused: %',
+        round(v_nm), public.passage_gate(v_me, v_nm, (select p.id from public.ports p
+                                                       join public.regions r on r.id = p.region_id
+                                                      where p.kind = 'HARBOUR' and r.min_exploration_level = 1
+                                                      order by p.code limit 1));
     end if;
     delete from public.player_skills ps using public.skills sk
      where ps.skill_id = sk.id and ps.player_id = v_me and sk.code = 'NAVIGATION';

@@ -283,7 +283,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // (owner row 115). 0103 and 0105 are deliberately absent — 0105 is the generated ×10 roster, built
 // in its own worktree and not landed here yet, and the chain is ordered by filename and not by the
 // order anyone happened to author in.
-const LAST = '20260818000106_every_lane_the_world_sails_on_one_board.sql'
+// And again the same day to 0107: the gates (owner rows 113 and 117) — a leg beyond a captain's
+// NAVIGATION and a region beyond her EXPLORATION are refused, at the sea's door and at the route's.
+const LAST = '20260818000107_the_ocean_is_earned_at_the_academy.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

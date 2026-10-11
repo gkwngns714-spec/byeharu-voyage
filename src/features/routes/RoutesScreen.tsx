@@ -297,7 +297,7 @@ function LaneTray({
       >
         <span className="block text-t-caption text-ink-faint">
           {route.earnings.lap === null
-            ? 'A lap buys on one circuit and sells on the next, so two have to close before the figure means anything.'
+            ? 'A lap buys at one call and sells at the next, so two laps have to close before the figure means anything.'
             : `the mean of ${formatInt(route.earnings.lap_basis)} closed ${route.earnings.lap_basis === 1 ? 'lap' : 'laps'}`}
         </span>
       </Row>

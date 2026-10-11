@@ -10,7 +10,7 @@
 // each one turned into either a legal window or null, which IS the whole world.
 
 import { test, expect } from '@playwright/test'
-import { sameSeaWindow, seaWindowAround, seaWindowOf, seaWindowUnion } from '../src/live/seaWindow'
+import { sameSeaWindow, seaWindowOf, seaWindowUnion } from '../src/live/seaWindow'
 import { viewBoxToBounds } from '../src/lib/geo'
 
 test('a window is what the server accepts, or it is null', () => {
@@ -59,19 +59,23 @@ test('a chart viewBox becomes the water it is showing', () => {
   expect(seaWindowOf(viewBoxToBounds(box))).toEqual({ south: 34, north: 43, west: -14, east: -4 })
 })
 
-test("a harbour asks for its own coast, and a degenerate ask is the world", () => {
-  // Rounded to four decimals on the way out, which is why `-9.14 + 6` reads as -3.14 and not as
-  // -3.1400000000000006 — see `round4`, and the pan it keeps from counting as a new window.
-  expect(seaWindowAround({ lat: 38.7, lon: -9.14 }, 6)).toEqual({
+test('a window is rounded, so a pan of a millionth of a degree is not a new window', () => {
+  // 38.7 − 6 is 32.699999999999996 in binary and −9.14 + 6 is −3.1400000000000006. Without the
+  // rounding `sameSeaWindow` means nothing and the store re-renders every subscriber on a drag
+  // that changed nothing the server would answer differently.
+  expect(seaWindowOf({ minLat: 38.7 - 6, maxLat: 38.7 + 6, minLon: -9.14 - 6, maxLon: -9.14 + 6 })).toEqual({
     south: 32.7,
     north: 44.7,
     west: -15.14,
     east: -3.14,
   })
   // At the top of the world the latitude is clamped and the window is still legal.
-  expect(seaWindowAround({ lat: 88, lon: 20 }, 6)).toEqual({ south: 82, north: 90, west: 14, east: 26 })
-  expect(seaWindowAround({ lat: 38.7, lon: -9.14 }, 0)).toBeNull()
-  expect(seaWindowAround({ lat: NaN, lon: -9.14 }, 6)).toBeNull()
+  expect(seaWindowOf({ minLat: 82, maxLat: 94, minLon: 14, maxLon: 26 })).toEqual({
+    south: 82,
+    north: 90,
+    west: 14,
+    east: 26,
+  })
 })
 
 test('the union covers every wanter, and one wanter wanting the world wins', () => {
