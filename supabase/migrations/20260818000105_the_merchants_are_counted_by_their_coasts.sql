@@ -141,6 +141,28 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 -- ── 1. THE CEILING MOVES, WITH THE MEASUREMENT IN THE SENTENCE ───────────────────────────────
+
+-- ── THE CEILING THIS FILE NEEDS, AND WHY IT IS HERE AND NOT IN A RUNBOOK ───────────────────────
+-- This migration takes about 47 s to apply, because its self-assert walks the whole roster — 838
+-- routes and 3,302 calls since 0105, where the same assertions walked 77 and 230. A hosted
+-- Postgres caps how long one statement may run, and on 2026-10-11 that cap ABORTED the production
+-- push: `ERROR: canceling statement due to statement timeout (SQLSTATE 57014)` on 0105, which
+-- rolled back whole and left the chain head at 0104 — a migration nobody chose, which is exactly
+-- what docs/DEPLOY_RUNBOOK.md §2 exists to prevent.
+--
+-- IT PASSED LOCALLY BECAUSE PGLITE HAS NO SUCH CAP. That is the gap: the chain was proven against
+-- a Postgres that cannot fail this way, and "proven" was claimed on the strength of it. The gate
+-- is honest about everything it checks and silent about the one thing only the target can say.
+--
+-- So the file raises its own ceiling, for its own transaction only. `set_config(..., true)` is SET
+-- LOCAL, so it reverts when this migration commits and cannot leak into the next one — and it is
+-- written as set_config rather than `set local` because a bare SET LOCAL outside a transaction
+-- block raises a WARNING, and the local gate reads every notice a migration prints.
+--
+-- TWENTY MINUTES AND NOT NOUGHT. Unbounded would mean a genuinely stuck statement holding locks on
+-- production for ever; twenty minutes is several times the measured cost and still ends.
+do $guard$ begin perform set_config('statement_timeout', '20min', true); end $guard$;
+
 update public.world_config
    set value = to_jsonb(861),
        description = '0105: the most merchant fleets that may sail at once, counted in npc_fleets.roster_ord '
