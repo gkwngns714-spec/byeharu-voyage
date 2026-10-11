@@ -352,7 +352,9 @@ declare
   v_sum     numeric;
   v_mine    int;
   v_mer     int;
-  v_total   int;
+  v_total   int;   -- rows SERVED on an uncapped read
+  v_world   int;   -- routes the world HOLDS, which is a different number once there are
+                   -- more of them than route_board_max — and at 838 it very much is
   v_ms      numeric;
   v_t0      timestamptz;
   v_err     text;
@@ -448,6 +450,12 @@ begin
            count(*) filter (where (x->>'merchant')::boolean)
       into v_mine, v_mer from jsonb_array_elements(v_board->'routes') x;
     v_total := jsonb_array_length(v_board->'routes');
+    -- THE WORLD'S COUNT IS NOT THE SERVED COUNT. These were the same number when this file was
+    -- written against 76 merchant fleets and stopped being the same the day 0105 founded 761: the
+    -- board caps at route_board_max (400) and says so in `total`, so an assertion that compares
+    -- `total` to what it was handed is asserting the cap away. Measured: 3 of 838, omitted 835,
+    -- against a v_total of 400.
+    v_world := (v_board->>'total')::int;
     if not (v_board->>'merchants')::boolean or v_mine <> 1 or v_mer < 20 then
       raise exception '0106 self-assert FAIL: on, the board served % row(s) — % hers, % merchants''',
         v_total, v_mine, v_mer;
@@ -566,10 +574,10 @@ begin
     update public.world_config set value = to_jsonb(3) where key = 'route_board_max';
     v_board := world.route_board();
     if jsonb_array_length(v_board->'routes') <> 3
-       or (v_board->>'total')::int <> v_total
-       or (v_board->>'omitted')::int <> v_total - 3
+       or (v_board->>'total')::int <> v_world
+       or (v_board->>'omitted')::int <> v_world - 3
        or not exists (select 1 from jsonb_array_elements(v_board->'routes') x where (x->>'id')::uuid = v_route) then
-      raise exception '0106 self-assert FAIL: capped at 3 the board served % of % (omitted %) and %s her own',
+      raise exception '0106 self-assert FAIL: capped at 3 the board served % of % (omitted %) and % her own route',
         jsonb_array_length(v_board->'routes'), v_board->>'total', v_board->>'omitted',
         case when exists (select 1 from jsonb_array_elements(v_board->'routes') x
                            where (x->>'id')::uuid = v_route) then 'kept' else 'dropped' end;
@@ -633,5 +641,5 @@ begin
     'hold. Capped at 3 it served 3 of %, said it omitted %, KEPT her route, and dropped no merchant '
     'route longer than one it kept. An account with no company is refused E_NO_HOUSE in words. The '
     'board now takes % ms a call over 10 calls at % route(s).',
-    v_stops, v_total, v_mer, v_nm, v_total, v_total - 3, v_ms, v_total;
+    v_stops, v_total, v_mer, v_nm, v_world, v_world - 3, v_ms, v_world;
 end $$;
