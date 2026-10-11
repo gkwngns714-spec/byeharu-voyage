@@ -1643,6 +1643,86 @@ export interface SeaTraffic {
   omitted: number
 }
 
+/**
+ * WHAT A MERCHANT IS DOING AT ONE HARBOUR (0104, owner row 121: *"By clicking the city, i get to
+ * see what trading ships started, resting, ending etc."*). DERIVED by the server from her route's
+ * stops and cursor, its hold and its pause, and from where her fleet is — never stored, and never
+ * recomputed here. The words are spelled once, in `src/features/port/MerchantsHere.tsx`.
+ */
+export type MerchantDoing = 'laid_up' | 'resting' | 'starting' | 'ending' | 'passing' | 'away'
+
+/**
+ * One row of `world.port_merchants` — a TRAFFIC ROW plus what she is doing here and the loop that
+ * brings her. It EXTENDS `TrafficFleet` on purpose: one type and one writer of the line beside a
+ * merchant's name (`src/live/merchantLine.ts`), so PORT and MAP cannot drift in words.
+ */
+export interface PortMerchant extends TrafficFleet {
+  doing: MerchantDoing
+  /** Her whole loop, port CODES in sailing order (2 to 8 of them). Codes only — the baked courses
+   *  are served on the card, for the one fleet a player tapped. */
+  stops: string[]
+}
+
+/** `world.port_merchants(p_port)` — which merchants this harbour concerns, read at a tap. Not the
+ *  beat: `world.sea_traffic` is the beat's read and it must not grow (migration 0104's header). */
+export interface PortMerchants {
+  /** The dark-first switch (`npc_traders_enabled`). False: `merchants` is empty. */
+  enabled: boolean
+  at: string
+  /** The harbour asked about, by CODE. */
+  port: string | null
+  merchants: PortMerchant[]
+}
+
+/**
+ * ONE LANE on the route board (0106, owner row 115). Hers or a merchant's, never another
+ * captain's — DESIGN §E.5 keeps other players off the chart and the board is not a loophole.
+ */
+export interface RouteBoardRow {
+  id: string
+  name: string
+  /** The caller's own route. Hers carry no `company` — she knows whose they are. */
+  mine: boolean
+  /** A merchant company's route (`players.is_npc`). */
+  merchant: boolean
+  company: string | null
+  nation_code: string | null
+  ink: MerchantInk | null
+  /** Port CODES in loop order; the loop closes back on the first. */
+  stops: string[]
+  stop_count: number
+  /**
+   * How far one lap sails, nautical miles — `public.route_nm`, the sum of the loop's BAKED leg
+   * courses measured by `voyage.segments_from_course`. Never a straight line between harbours.
+   *
+   * NULL when the server will not say: a baked course the two sea rasters disagree about makes
+   * `voyage.segments_from_course` raise, and a board of every route in the world must not be one
+   * faulted loop away from serving nothing (0106). Print the absence and rank it last.
+   */
+  nm: number | null
+  /** How many distinct regions the loop touches. Two or more is a route that crosses a world. */
+  regions: number
+  /** The server's own word for what the route is doing (`public.standing_route_state`). */
+  state: string
+  /** Whether a fleet is on it. A route with no fleet is a plan, not a lane. */
+  assigned: boolean
+  earnings: RouteEarnings
+}
+
+/** `world.route_board` (0106) — every lane the caller may know of, with the figures to rank them
+ *  by. Capped at `route_board_max`; her own routes are never the ones dropped. */
+export interface RouteBoard {
+  at: string
+  /** The merchant switch. False: the board is her own routes, which is all the world then holds. */
+  merchants: boolean
+  routes: RouteBoardRow[]
+  /** Every route the caller may know of, not only the ones served. */
+  total: number
+  /** `total` minus what was served. A read that truncates silently teaches the player the world is
+   *  smaller than it is, so it never does. */
+  omitted: number
+}
+
 /** `public.route_earnings` — a route's laps, summed by the server. Never summed here. */
 export interface RouteEarnings {
   /** Σ net of the laps closed in the last 24 real hours. */

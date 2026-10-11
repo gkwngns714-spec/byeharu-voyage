@@ -173,12 +173,17 @@ function RoutesBody() {
 }
 
 /** The order the board is read in. Within each order the tie-break is the NAME, so the list does
- *  not shuffle under the player between two reads of the same figures. A route whose earnings the
- *  server has not got yet sorts LAST on earnings rather than as a zero — it has not earned nothing,
- *  it has not said. */
+ *  not shuffle under the player between two reads of the same figures. A figure the server has not
+ *  got — earnings before a second lap closes, a distance it will not measure — sorts LAST rather
+ *  than as a zero: the route has not earned nothing and is not nought miles long, the server has
+ *  declined to say. */
 function sortRoutes(rows: readonly RouteBoardRow[], order: Order): RouteBoardRow[] {
   const by = (r: RouteBoardRow): number =>
-    order === 'nm' ? r.nm : order === 'calls' ? r.stop_count : (r.earnings.lap ?? Number.NEGATIVE_INFINITY)
+    order === 'nm'
+      ? (r.nm ?? Number.NEGATIVE_INFINITY)
+      : order === 'calls'
+        ? r.stop_count
+        : (r.earnings.lap ?? Number.NEGATIVE_INFINITY)
   return [...rows].sort((a, b) => by(b) - by(a) || a.name.localeCompare(b.name))
 }
 
@@ -214,7 +219,7 @@ function Lane({
 
 /** The figure being ranked on, and the ABSENCE where the server has one. */
 function rankFigure(route: RouteBoardRow, order: Order): string {
-  if (order === 'nm') return formatMiles(route.nm)
+  if (order === 'nm') return route.nm === null ? '—' : formatMiles(route.nm)
   if (order === 'calls') return formatInt(route.stop_count)
   return route.earnings.lap === null ? '—' : formatDucats(route.earnings.lap)
 }
@@ -226,7 +231,7 @@ function laneLine(route: RouteBoardRow, mine: boolean): string {
     mine ? 'Yours' : route.company,
     `${formatInt(route.stop_count)} ${route.stop_count === 1 ? 'call' : 'calls'}`,
     route.regions > 1 ? `${formatInt(route.regions)} regions` : null,
-    formatMiles(route.nm),
+    route.nm === null ? null : formatMiles(route.nm),
     route.assigned ? null : 'no fleet',
   ]
     .filter(Boolean)
@@ -261,7 +266,23 @@ function LaneTray({
             is the owner's own shape for a route (row 122) and not a flourish. */}
         <span className="block text-t-caption text-ink-faint">{`${calls.join(' → ')} → ${calls[0] ?? '—'}`}</span>
       </Row>
-      <Row label="A lap sails" value={<Figure value={formatMiles(route.nm)} />} />
+      <Row
+        label="A lap sails"
+        value={
+          route.nm === null ? (
+            <span className="text-ink-faint">unmeasured</span>
+          ) : (
+            <Figure value={formatMiles(route.nm)} />
+          )
+        }
+      >
+        {route.nm === null && (
+          <span className="block text-t-caption text-ink-faint">
+            One of this loop&apos;s legs runs over water the charts disagree about, so the server will not put a
+            distance on it.
+          </span>
+        )}
+      </Row>
       {route.regions > 1 && <Row label="Regions touched" value={<Figure value={formatInt(route.regions)} />} />}
       <Row label="Standing" value={route.state} />
       <Row
