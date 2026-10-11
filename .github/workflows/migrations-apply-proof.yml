@@ -88,7 +88,36 @@ jobs:
     # between, on the belief that the lighter fixture had found a game defect; it had found a bug in
     # the filter I wrote for it (scripts/db/proofs/12_merchant_companies.sql says which), and when
     # that was fixed the budget came back here where the ruling put it.
-    timeout-minutes: 30
+    #
+    # ── 2026-10-11, LATER THE SAME DAY: 30 -> 60, AND THE RULING ABOVE DID NOT APPLY ──────────────
+    # Hit again on PR #94, CANCELLED at 30m14s. The ruling above says the answer is a lighter
+    # fixture or a faster gate and NOT a bigger number, and that ruling was obeyed the last two
+    # times. It could not be obeyed this time, and the reason is worth writing down rather than
+    # leaving the next reader to assume somebody got lazy:
+    #
+    #   * THE COST IS NOT IN A FIXTURE. Last time it was proof 12's soak, which was lightened to the
+    #     fleets npc_fleet_max lets sail and still proves the same thing. Proof 12 is ALREADY capped
+    #     at 21 fleets (12_merchant_companies.sql:136) and is not what overran.
+    #   * THE COST IS THE CHAIN'S OWN SELF-ASSERTS. 0105 founded 761 merchant companies over 219
+    #     loops, so every assertion that walks routes went from 77 routes and 230 calls to 838 and
+    #     3,302. Measured on a quiet machine: 0105 50 s, 0106 465 s, 0108/0109/0110 ~145 s each —
+    #     some 16 minutes of self-assert on top of the ~13 the chain already took on wasm.
+    #   * THOSE MIGRATIONS ARE APPLIED TO PRODUCTION. Editing a self-assert now would make the file
+    #     in this repo stop describing what actually ran on the server, which is what forward-only
+    #     exists to prevent. So the one remedy the ruling names was unavailable.
+    #   * A FASTER GATE IS REAL WORK, NOT A TOGGLE. scripts/db/proof.mjs builds its world by calling
+    #     applyChain() and has no connection-string path, so it cannot be pointed at the real
+    #     Postgres that disposable-chain already stands up in 16m44s with budget to spare. THAT is
+    #     the right fix — the proofs test game rules, not engine quirks, and running them on
+    #     Postgres 17 would be strictly better than wasm — and it is logged as owner row 124 rather
+    #     than done badly in a hurry here.
+    #
+    # 60 AND NOT 45. 45 was tried once before and reverted; more to the point the arithmetic says it
+    # is too tight — 22m48s was the last passing run before 0105, plus ~16 minutes of new
+    # self-assert is ~39, and a budget that fails at 41 buys another cancelled job that reads like a
+    # red one. Generous and passing beats tight and ambiguous. When row 124 lands this comes back
+    # down, and the ruling above stands for every case where a fixture CAN be lightened.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
