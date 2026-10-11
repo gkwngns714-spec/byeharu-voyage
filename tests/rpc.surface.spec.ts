@@ -1461,6 +1461,13 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // is the whole argument for it being its own entry point instead of a wider sea_traffic.
       // Landed WITH the face that reads it (PORT's "Merchants" section).
       'worldPortMerchants',
+      // Pin moved deliberately 2026-10-11 with migration 0106 (owner row 115,
+      // docs/NPC_FLEET_SCALE.md §1 slice F): EVERY LANE THE WORLD SAILS — her standing routes and
+      // the merchants', with the distance and the earnings to rank them by. A READ that composes no
+      // order: the server serves every figure and the ROUTES screen sorts, because a sort is a view
+      // the player changes three times in ten seconds. Never another captain's route (DESIGN §E.5).
+      // Landed WITH the face that reads it (the ROUTES tab in the Cabin group).
+      'worldRouteBoard',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

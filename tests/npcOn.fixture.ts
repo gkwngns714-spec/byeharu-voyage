@@ -47,6 +47,19 @@ export async function npcOn(): Promise<Buffer> {
     // same lever proof 12 uses), so the page opens on merchants mid-passage with laps behind them.
     await pg.exec(`update public.standing_routes sr set laps_per_game_day = 0
                      from public.players p where p.id = sr.player_id and p.is_npc`)
+    // AND THE FORTNIGHT AT HOME IS LIFTED FOR THE WARP TOO (0101, 2026-10-11). The pace was the
+    // only thing holding a route between laps when this warp was written; 0101 added a FLOOR on
+    // the same hold — a merchant lies at her home stop for `route_rest_voyage_days` voyage-days
+    // after a lap closes — and `laps_per_game_day = 0` does not lift a floor. So the warp closed
+    // lap 1 on every route and then every route was held for the rest, and the assert below
+    // ("no merchant route with two closed laps") went red on a CORRECT chain. The knob is the one
+    // lever, lifted here and put back before the image is dumped, exactly as the pace is; the
+    // holds already written by the switch are cleared with it, because a hold written a moment ago
+    // outlives the knob that wrote it.
+    const rest = await pg.query<{ v: number }>(`select public.wc_num('route_rest_voyage_days')::float8 as v`)
+    await pg.exec(`update public.world_config set value = to_jsonb(0) where key = 'route_rest_voyage_days';
+                   update public.standing_routes sr set hold_until = null
+                     from public.players p where p.id = sr.player_id and p.is_npc`)
     // SIX legs, not three (2026-10-10). Three let the short loops close ONE lap, and one closed lap
     // is exactly what `public.route_earnings` refuses to average — a lap closes on arrival home
     // BEFORE the home sale, so lap 1 is a purchase with no sale (NPC_TRADERS §7.4). Every screenshot
@@ -66,6 +79,12 @@ export async function npcOn(): Promise<Buffer> {
     }
     await pg.exec(`update public.standing_routes sr set laps_per_game_day = public.wc_int('npc_laps_per_game_day')
                      from public.players p where p.id = sr.player_id and p.is_npc`)
+    await pg.query(`update public.world_config set value = to_jsonb($1::numeric) where key = 'route_rest_voyage_days'`,
+                   [rest.rows[0].v])
+    const restBack = await pg.query<{ v: number }>(`select public.wc_num('route_rest_voyage_days')::float8 as v`)
+    if (restBack.rows[0].v !== rest.rows[0].v) {
+      throw new Error(`the fortnight knob was not put back: ${restBack.rows[0].v} vs ${rest.rows[0].v}`)
+    }
     const laps = await pg.query<{ n: number }>(
       `select count(*)::int as n from public.standing_route_laps x join public.npc_fleets nf on nf.route_id = x.route_id where x.closed_at is not null`,
     )
