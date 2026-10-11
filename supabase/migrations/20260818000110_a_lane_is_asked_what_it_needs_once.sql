@@ -71,7 +71,7 @@ $h$           'requires', pick.requires,$h$),
 ('world.route_board()', 4,
 $h$           'closed', coalesce((public.route_requirement(pick.id)->>'navigation')::int, 1) > greatest(1, v_nav)
                      or coalesce((public.route_requirement(pick.id)->>'exploration')::int, 1) > v_exp,$h$,
-$h$           'closed', not pick.within,$h$));
+$h$           'closed', not pick.within,$h$);
 
 insert into defs_before_0110
 select f.fn, replace(pg_get_functiondef(f.fn::regprocedure), E'\r', ''),
