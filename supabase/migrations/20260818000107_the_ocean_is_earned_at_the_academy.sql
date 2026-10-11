@@ -23,12 +23,20 @@
 -- What 0107 adds is ONE predicate and one column, and turns three flat numbers into earned ones.
 --
 -- ── THE ONE PREDICATE ───────────────────────────────────────────────────────────────────────────
--- `public.passage_gate(player, nm, destination)` answers in `voyage.sail_refusal`'s own shape —
--- `'E_CODE: sentence'`, or null when the passage is clear. It returns TEXT and not a
--- `cmd.refusal` object as row 113's design wrote: `voyage.sail_refusal` is THE "may she sail?"
--- authority (0050) and it answers in text, so the gate slots into it with no translation and no
--- second shape for a client to learn. The design's wording drifted from the code; the code wins,
--- and this paragraph is the correction rather than a silent one.
+-- `public.passage_gate(player, nm, destination)` answers in `voyage.sail_refusal`'s own shape: a
+-- `cmd.refusal` — {code, sentence, figures} — or null when the passage is clear.
+--
+-- THIS PARAGRAPH SAID THE OPPOSITE FOR ONE RUN OF THE CHAIN. I read 0047's cut of
+-- `voyage.sail_refusal`, saw `returns text`, and wrote that row 113's design had drifted from the
+-- code and the code won. It had not: 0050 — "a refusal is two numbers and a verb" — re-cut that
+-- function to return a `cmd.refusal`, and the apply said so plainly ("invalid input syntax for
+-- type json: Token E_LEG_TOO_FAR is invalid ... while casting return value to function's return
+-- type"). The design was right and I was wrong, which is recorded here rather than quietly fixed,
+-- because the next person to read 0047 will make the same mistake.
+--
+-- And the refusal is the better shape for its own reason: 0050's whole point is that a refusal
+-- carries FIGURES a face can draw. Both gates have two numbers — the leg against the reach, the
+-- level asked against the level held — so both carry them.
 --
 -- It is called in TWO places and nowhere else:
 --   `voyage.sail_refusal` — so a passage beyond her captain is refused before a hull moves;
@@ -209,15 +217,16 @@ comment on function public.earned_caps(uuid) is
 
 -- ── 3. THE ONE PREDICATE ───────────────────────────────────────────────────────────────────────
 create or replace function public.passage_gate(p_player uuid, p_nm numeric, p_dest uuid)
-returns text
+returns jsonb
 language plpgsql
 stable
 security definer
 set search_path = public, pg_temp
 as $$
 -- 0107 (owner rows 113a, 113c): may this house sail THIS passage? Null when she may; otherwise a
--- refusal in voyage.sail_refusal's own 'E_CODE: sentence' shape, so it slots into the one
--- "may she sail?" authority with no translation and no second shape for a client to learn.
+-- cmd.refusal — {code, sentence, figures} — which is voyage.sail_refusal's own shape (0050), so it
+-- slots into the one "may she sail?" authority with no translation and no second shape for a client
+-- to learn. Both gates carry their two FIGURES, which is what 0050 exists for.
 --
 -- Two gates, and both read what playing has already earned rather than a stored counter:
 --   the LENGTH of the leg against nav_leg_nm_base x 2^(NAVIGATION-1);
@@ -244,8 +253,10 @@ begin
     v_nav := public.skill_level(p_player, 'NAVIGATION');
     v_reach := public.wc_num('nav_leg_nm_base') * power(2::numeric, greatest(0, v_nav - 1));
     if p_nm > v_reach then
-      return format('E_LEG_TOO_FAR: that leg is %s nm and your navigation carries you %s nm — study navigation',
-                    round(p_nm), round(v_reach));
+      return cmd.refusal('E_LEG_TOO_FAR',
+               format('that leg is %s nm and your navigation carries you %s nm — study navigation',
+                      round(p_nm), round(v_reach)),
+               jsonb_build_object('nm', round(p_nm), 'reach_nm', round(v_reach), 'navigation', v_nav));
     end if;
   end if;
 
@@ -256,8 +267,10 @@ begin
     if v_need is not null then
       v_level := (public.player_progress(p_player)->'exploration'->>'level')::int;
       if v_level < v_need then
-        return format('E_REGION_CLOSED: %s asks exploration level %s and yours is %s — sail farther first',
-                      v_region, v_need, v_level);
+        return cmd.refusal('E_REGION_CLOSED',
+                 format('%s asks exploration level %s and yours is %s — sail farther first',
+                        v_region, v_need, v_level),
+                 jsonb_build_object('needs', v_need, 'has', v_level, 'region', v_region));
       end if;
     end if;
   end if;
@@ -266,8 +279,9 @@ begin
 end $$;
 
 comment on function public.passage_gate(uuid, numeric, uuid) is
-  '0107 (owner rows 113a/113c): THE earned-passage predicate — null, or a refusal in '
-  'voyage.sail_refusal''s own text shape. Gates the LENGTH of a leg on NAVIGATION and the '
+  '0107 (owner rows 113a/113c): THE earned-passage predicate — null, or a cmd.refusal in '
+  'voyage.sail_refusal''s own shape (0050), carrying the two figures each gate turns on. '
+  'Gates the LENGTH of a leg on NAVIGATION and the '
   'DESTINATION''s region on EXPLORATION. Called by voyage.sail_refusal (before a hull moves) and '
   'by cmd.standing_route_save_for (so a route is refused when it is WRITTEN, owner row 117). '
   'Merchants and a null player are exempt. Server-only.';
@@ -296,7 +310,7 @@ $h$  -- 0107 (owner row 113): WHAT HER CAPTAIN HAS EARNED, asked of the one pred
 $h$  v_back  numeric := 0;
 begin$h$,
 $h$  v_back  numeric := 0;
-  v_gate  text;      -- 0107: the earned-passage refusal, or null
+  v_gate  jsonb;     -- 0107: the earned-passage refusal (cmd.refusal), or null
 begin$h$),
 -- (ii) THE ROUTE'S OWN DOOR. 0106 measures every leg here already, so the gate is asked of the
 --      figure that was just measured — one measurement, two uses, and no second arithmetic.
@@ -308,14 +322,14 @@ $h$      -- 0107 (owner row 117): A ROUTE IS REFUSED WHEN IT IS WRITTEN. The leg
       -- carries the server's own sentence through this door's own refusal shape.
       v_gate := public.passage_gate(p_player, v_leg_nm, v_port.id);
       if v_gate is not null then
-        return cmd.standing_route_refusal(split_part(v_gate, ':', 1),
-                 btrim(substr(v_gate, strpos(v_gate, ':') + 1)), '(shorten the route or study)');
+        return cmd.standing_route_refusal(v_gate->>'code', v_gate->>'sentence',
+                                          '(shorten the route or study)');
       end if;
       insert into public.standing_route_stops (route_id, ord, port_id, course, repair, crew_up, course_nm)$h$),
 ('cmd.standing_route_save_for(uuid, uuid, text, jsonb, bigint, integer, integer)', 2,
 $h$  v_leg_nm numeric;   -- 0106: the leg's measured length, stored on the stop$h$,
 $h$  v_leg_nm numeric;   -- 0106: the leg's measured length, stored on the stop
-  v_gate   text;      -- 0107: the earned-passage refusal for that leg, or null$h$),
+  v_gate   jsonb;     -- 0107: the earned-passage refusal for that leg (cmd.refusal), or null$h$),
 -- (iii) THE CAPS. Both flat reads become the earned ones, from the ONE reading.
 ('public.assert_house_caps(uuid, uuid)', 1,
 $h$  select count(*) into v_fleets from public.fleets where player_id = p_player;
@@ -397,7 +411,7 @@ declare
   v_leg     jsonb;
   v_back_c  jsonb;
   v_res     jsonb;
-  v_gate    text;
+  v_gate    jsonb;
   v_caps    jsonb;
   v_lvl     int;
   v_need    int;
@@ -518,9 +532,14 @@ begin
     end if;
     v_nm := (select (sr.reaches->>'NAG')::numeric from public.sea_reaches sr where sr.port_id = v_lis);
     v_gate := public.passage_gate(v_me, v_nm, v_nag);
-    if v_gate is null or v_gate not like 'E_LEG_TOO_FAR%' then
+    if v_gate is null or v_gate->>'code' <> 'E_LEG_TOO_FAR' then
       raise exception '0107 self-assert FAIL: Lisbon to Nagasaki in one leg (% nm) was not refused on length: %',
-        round(v_nm), coalesce(v_gate, '(allowed)');
+        round(v_nm), coalesce(v_gate::text, '(allowed)');
+    end if;
+    -- 0050's point: the refusal carries the two numbers it turned on, so a face can draw them.
+    if (v_gate->'figures'->>'nm')::numeric <> round(v_nm)
+       or (v_gate->'figures'->>'reach_nm')::numeric <> round(public.wc_num('nav_leg_nm_base')) then
+      raise exception '0107 self-assert FAIL: the length refusal does not carry its own two figures: %', v_gate;
     end if;
     -- POSITIVE CONTROL: five levels of navigation and the same leg is allowed, because the reach
     -- DOUBLES. If it did not, the ladder would be decoration.
@@ -540,7 +559,7 @@ begin
       raise exception '0107 self-assert FAIL: NAVIGATION 5 reaches only % nm and the leg is % nm, so the control cannot say anything',
         public.wc_num('nav_leg_nm_base') * 16, round(v_nm);
     end if;
-    if coalesce(public.passage_gate(v_me, v_nm, v_nag), '') like 'E_LEG_TOO_FAR%' then
+    if coalesce(public.passage_gate(v_me, v_nm, v_nag)->>'code', '') = 'E_LEG_TOO_FAR' then
       raise exception '0107 self-assert FAIL: NAVIGATION 5 reaches % nm and the leg is % nm, yet the LENGTH gate still refused it: %',
         public.wc_num('nav_leg_nm_base') * 16, round(v_nm), public.passage_gate(v_me, v_nm, v_nag);
     end if;
@@ -565,9 +584,10 @@ begin
      where p.kind = 'HARBOUR' and r.min_exploration_level > 1
      order by r.min_exploration_level desc, p.code limit 1;
     v_gate := public.passage_gate(v_me, 1, v_nag);
-    if v_gate is null or v_gate not like 'E_REGION_CLOSED%' then
+    if v_gate is null or v_gate->>'code' <> 'E_REGION_CLOSED'
+       or (v_gate->'figures'->>'needs')::int <> v_need then
       raise exception '0107 self-assert FAIL: a region priced at level % was not closed to a house at level %: %',
-        v_need, (public.player_progress(v_me)->'exploration'->>'level')::int, coalesce(v_gate, '(allowed)');
+        v_need, (public.player_progress(v_me)->'exploration'->>'level')::int, coalesce(v_gate::text, '(allowed)');
     end if;
     -- POSITIVE CONTROL: the SAME harbour on the SAME leg opens once the region is priced at 1, so
     -- it was the level that closed it and not the harbour, the draft or the leg.
@@ -627,16 +647,16 @@ begin
     -- and the SEA's own door says the same thing about the same water
     v_gate := voyage.sail_refusal(v_fleet, v_fnc, null,
                 (select (sr.reaches->>'FNC')::numeric from public.sea_reaches sr where sr.port_id = v_lis));
-    if v_gate is null or v_gate not like 'E_LEG_TOO_FAR%' then
+    if v_gate is null or v_gate->>'code' <> 'E_LEG_TOO_FAR' then
       raise exception '0107 self-assert FAIL: voyage.sail_refusal did not refuse the same leg: %',
-        coalesce(v_gate, '(allowed)');
+        coalesce(v_gate::text, '(allowed)');
     end if;
     update public.world_config set value = to_jsonb(900) where key = 'nav_leg_nm_base';
     -- ...and with her reach back, that door answers exactly what it answered before this file:
     -- a fleet with no stores is refused on STORES, not on her captain.
     v_gate := voyage.sail_refusal(v_fleet, v_fnc, null,
                 (select (sr.reaches->>'FNC')::numeric from public.sea_reaches sr where sr.port_id = v_lis));
-    if v_gate is not null and v_gate like 'E_LEG_TOO_FAR%' then
+    if v_gate is not null and v_gate->>'code' = 'E_LEG_TOO_FAR' then
       raise exception '0107 self-assert FAIL: her own reach still refused her: %', v_gate;
     end if;
 
@@ -659,7 +679,8 @@ begin
     'not decoration. On a probe house, rolled back: a new house has earned the base per-fleet cap '
     'and no more, SEAMANSHIP 3 lifts it by three, and twenty levels of it never pass the flat '
     'ceiling. Lisbon to Funchal is inside a beginner''s reach; Lisbon to Nagasaki in ONE leg is '
-    'refused E_LEG_TOO_FAR and allowed at NAVIGATION 5, because the reach doubles. A region the '
+    'refused E_LEG_TOO_FAR — carrying the two figures it turned on — and allowed at NAVIGATION 5, '
+    'because the reach doubles. A region the '
     'derivation prices above level 1 is refused E_REGION_CLOSED on a one-mile leg, and the SAME '
     'harbour opens when its region is priced at 1 — so it was the level and not the harbour. A '
     'MERCHANT company is exempt on a 999,999 nm leg into the dearest region there is, so is a null '
