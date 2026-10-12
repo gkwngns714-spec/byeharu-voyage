@@ -36,19 +36,22 @@ import { serveNpcOn } from './npcOn.fixture'
 import type { TrafficFleet } from '../src/lib/rpc'
 import {
   GLYPH,
-  mapTrafficOf,
-  HARBOUR_LIGHT_MIN_UNITS_PER_PX,
   HULL_EMBER_MAX_UNITS_PER_PX,
   HULL_GROUP_MAX_UNITS_PER_PX,
+  NIGHT_SPAN_DEG,
+  PURE_LIGHT_SPAN_DEG,
   harbourLightHalo,
   harbourLightStrength,
+  mapTrafficOf,
+  zoomPercent,
 } from '../src/chart'
 
 const SHOTS = path.resolve('docs', 'npc-traders')
 
-/** A harbour light's halo opacity, as ./PortsLayer.tsx renders it (`fill-harbour-light/20`). The
- *  ships are held strictly under it — owner row 125's "darker tone", as an ordering. */
-const HARBOUR_HALO_OPACITY = 20
+/** A harbour light's OUTERMOST ring opacity, as ./PortsLayer.tsx renders it
+ *  (`fill-harbour-light/15`, with the glow at /35 and the core at full). The ships' own light is
+ *  held strictly under it — owner row 125's "darker tone", as an ordering and not a vibe. */
+const HARBOUR_HALO_OPACITY = 15
 
 /** The eight merchant inks, as the server spells them. */
 const NATION_INKS = ['prt', 'esp', 'nld', 'eng', 'han', 'ita', 'ott', 'east']
@@ -96,9 +99,16 @@ test('a ship is smaller and dimmer than a city, and the ladder has three rungs i
   // the group rung, or a fleet would turn into a dot while still being drawn as a squadron.
   expect(HULL_EMBER_MAX_UNITS_PER_PX).toBeGreaterThan(HULL_GROUP_MAX_UNITS_PER_PX)
 
-  // AND THE GLOBE IS PAST IT. 360° across a 390 px phone is the widest the chart ever goes; if that
-  // did not cross the threshold this whole file would be asserting a branch nobody can reach.
-  expect(360 / PHONE.width).toBeGreaterThan(HULL_EMBER_MAX_UNITS_PER_PX)
+  // AND THE TWO RUNGS ARE IN SPAN, IN THE RIGHT ORDER, AND REACHABLE. The lights come up first on
+  // the way out, then the marks and hulls go; and the whole world (360°) is past both, on EVERY
+  // screen — which is the whole point of measuring this in degrees. Keyed on density, the night
+  // chart appeared on a 390 px phone (0.92 °/px) and not on a 1440 px desktop (0.25 °/px) at the
+  // very same zoom; `tests/map.marks.spec.ts` caught exactly that, 35 marks still drawn at the
+  // world view on the wide viewports.
+  expect(PURE_LIGHT_SPAN_DEG).toBeGreaterThan(NIGHT_SPAN_DEG)
+  expect(360).toBeGreaterThan(PURE_LIGHT_SPAN_DEG)
+  expect(zoomPercent(360)).toBe(0)
+  expect(zoomPercent(NIGHT_SPAN_DEG)).toBeGreaterThan(zoomPercent(PURE_LIGHT_SPAN_DEG))
 })
 
 test('a lane is copied, never invented, and a stub of one draws nothing', () => {
@@ -139,10 +149,12 @@ async function nightOnTheGlass(page: Page) {
     // belongs to the harbour, so a spec that only looked at the dots would miss the great ports,
     // which is exactly the defect this file found.
     const lights = [...document.querySelectorAll('[data-port-mark]')].map((g) => {
-      // Attribute match, not a class selector: the halo's Tailwind class carries a `/` for the
-      // opacity and escaping that inside a selector inside a page-evaluate string is three layers of
-      // backslash nobody should have to read.
-      const halo = g.querySelector('circle[class*="harbour-light/20"]')
+      // THE RINGS OF THE LIGHT: every harbour-light circle that carries an OPACITY (the `/` in
+      // the Tailwind class) — the bloom and the glow — as opposed to the bare `fill-harbour-light`
+      // core. Attribute match rather than a class selector because that `/` would need three
+      // layers of backslash inside a selector inside a page-evaluate string.
+      const rings = [...g.querySelectorAll('circle[class*="harbour-light/"]')]
+      const halo = rings[0] ?? null
       return {
         tier: Number(g.getAttribute('data-port-tier')),
         mark: g.getAttribute('data-port-mark') ?? '',
@@ -151,6 +163,8 @@ async function nightOnTheGlass(page: Page) {
         core: Number(
           g.querySelector('circle[class="fill-harbour-light"]')?.getAttribute('r') ?? Number.NaN,
         ),
+        rings: rings.length,
+        ringRadii: rings.map((c) => Number(c.getAttribute('r'))),
         circles: g.querySelectorAll('circle').length,
         paths: g.querySelectorAll('path').length,
         ring: g.querySelector('[data-testid="map-port-ring"]') !== null,
@@ -175,13 +189,18 @@ async function nightOnTheGlass(page: Page) {
       cls: p.getAttribute('class') ?? '',
     }))
 
+    const pct = document.querySelector('[data-testid="map-zoom-percent"]')
     return {
       unitsPerPx,
+      spanDeg: vb.length === 4 ? vb[2] : Number.NaN,
+      zoomPercent: pct ? Number(pct.getAttribute('data-zoom-percent')) : Number.NaN,
       lights,
       embers,
       lanes,
       // The marks of the OTHER band, so "the hulls came back" is a count and not a feeling.
       hullPaths: document.querySelectorAll('path[data-hull-class]').length,
+      // Any port that is still drawing its triangle or lozenge rather than its light.
+      portMarkPaths: document.querySelectorAll('[data-port-mark="full"] path').length,
     }
   })
 }
@@ -216,9 +235,12 @@ test('zoomed out, the cities are lights and the ships are embers', async ({ page
 
   const wide = await nightOnTheGlass(page)
 
-  // THE DENSITY IS PAST THE THRESHOLD — read off the glass, not assumed from a click count, because
+  // WE REALLY ARE PAST BOTH RUNGS — read off the glass, not assumed from a click count, because
   // "twelve presses reaches the globe" is a fact about the zoom ladder and not about this file.
-  expect(wide.unitsPerPx).toBeGreaterThan(HULL_EMBER_MAX_UNITS_PER_PX)
+  // The SPAN is what decides the night chart, so the span is what is checked, and the zoom readout
+  // the owner asked for is checked with it: at the globe it must say 0%.
+  expect(wide.spanDeg).toBeGreaterThanOrEqual(PURE_LIGHT_SPAN_DEG)
+  expect(wide.zoomPercent).toBe(0)
 
   // EVERY CITY IS A LIGHT — EVERY ONE, not just the ones drawn as dots. The first cut of row 125
   // lit the dot and left the full mark dark, and because `PORT_TIER_BANDS` keeps the GREAT ports
@@ -227,28 +249,29 @@ test('zoomed out, the cities are lights and the ships are embers', async ({ page
   // the assertion is "not one of you is dark".
   expect(wide.lights.length).toBeGreaterThanOrEqual(20)
   expect(wide.lights.filter((l) => !l.lit)).toEqual([])
-  // Both renderings are present at this density, so this really is the mixed sheet that caught it.
-  expect(wide.lights.some((l) => l.mark === 'dot')).toBe(true)
-  expect(wide.lights.some((l) => l.mark === 'full')).toBe(true)
+  // AND NOT ONE OF THEM DRAWS A MARK. Past the ember rung a city is light and nothing else: the
+  // first lit sheet kept the 35 great ports' triangles outlined on top of their blooms, which is
+  // a hybrid and fights the band it is in. This is also what still catches the original defect —
+  // if any harbour ever stops being lit, or starts drawing a mark here, the counts below move.
+  expect(wide.lights.filter((l) => l.mark !== 'dot')).toEqual([])
+  expect(wide.portMarkPaths).toBe(0)
   for (const l of wide.lights) {
+    // A LIGHT HAS FALLOFF, which is two rings and not one. The first cut drew a single halo at 20%
+    // ink, 3.4x the core — at the globe a 1.6 px dot inside a 5.4 px smudge — and the owner's
+    // answer was that these are not lights. They were not. A point reads as a SOURCE when the ink
+    // climbs as the rings tighten, and that needs a wide faint bloom, a brighter glow inside it,
+    // and the hard core inside them both.
+    expect(l.rings).toBe(2)
     expect(l.halo).not.toBeNull()
     expect(Number.isFinite(l.halo!) && l.halo! > 0).toBe(true)
-    // THE HALO IS ALWAYS THE FIRST CHILD, so it is painted BEHIND whatever the harbour's mark is
-    // — a glow over a triangle would hide the mark it is meant to announce.
+    // BLOOM OUTSIDE GLOW OUTSIDE CORE, in that order and painted in that order, so each sits
+    // behind the next and the mark on top of all of them is never hidden by its own light.
     expect(l.haloIsFirst).toBe(true)
-    if (l.mark === 'dot') {
-      // A dot is its halo and its core, and nothing else.
-      expect(l.circles).toBe(2)
-      expect(l.halo!).toBeGreaterThan(l.core)
-    } else {
-      // A FULL MARK KEEPS EVERYTHING IT ALREADY HAD. Its triangle is still a path, and a tier-5
-      // entrepôt still wears row 90's ring — which is why this is not `circles === 1`: the first
-      // cut of this assertion said so, and the 35 great ports failed it for the correct reason
-      // that their ring was exactly where row 90 put it.
-      expect(l.paths).toBeGreaterThanOrEqual(1)
-      if (l.ring) expect(l.circles).toBe(2)
-      else expect(l.circles).toBe(1)
-    }
+    expect(l.ringRadii[0]).toBeGreaterThan(l.ringRadii[1])
+    // Two rings and a core, and nothing else at all.
+    expect(l.circles).toBe(3)
+    expect(l.paths).toBe(0)
+    expect(l.ringRadii[1]).toBeGreaterThan(l.core)
   }
   // AND THE BRIGHTNESS REALLY FOLLOWS SIZE. If this frame holds more than one tier, the bigger
   // tier's halo must be the wider one; if it holds only one, the claim is not made rather than faked.
@@ -259,9 +282,16 @@ test('zoomed out, the cities are lights and the ships are embers', async ({ page
     expect(byTier.get(tiers.at(-1)!)!).toBeGreaterThan(byTier.get(tiers[0])!)
   }
 
-  // EVERY SHIP IS AN EMBER, and the hull paths are GONE — not hidden, not zero-sized, absent.
+  // EVERY SHIP STILL ON THE SHEET IS AN EMBER, and the hull paths are GONE — not hidden, not
+  // zero-sized, absent.
   expect(wide.embers.length).toBeGreaterThanOrEqual(2)
   expect(wide.hullPaths).toBe(0)
+  // AND ONLY THE MAJOR FLEETS ARE ON IT AT ALL (owner, 2026-10-12: *"when i zoom out ships
+  // doesn't have to show, only major ships with dots - light"*). Asserted as an EQUALITY against
+  // the lanes, because `lane` is the server's own answer to "is she major" — so one mark per lane
+  // and no mark without one is the same statement as "the chart and the server agree who counts".
+  // It is also the frame-rate fix: 240 marks re-placed on every drift frame became 49.
+  expect(wide.embers.length).toBe(wide.lanes.length)
   const smallestCore = Math.min(...wide.lights.filter((l) => l.mark === 'dot').map((l) => l.core))
   for (const e of wide.embers) {
     expect(e.circles).toBe(2)
@@ -292,7 +322,6 @@ test('zoomed out, the cities are lights and the ships are embers', async ({ page
   // Every lane on the sheet is a real path in a real nation's ink, and there are fewer lanes than
   // embers, because only the major fleets keep one (0111 `fleet_lane_min_ships`).
   expect(wide.lanes.length).toBeGreaterThanOrEqual(1)
-  expect(wide.lanes.length).toBeLessThanOrEqual(wide.embers.length)
   for (const l of wide.lanes) {
     // A real polyline: more than one vertex, so no lane is a dot pretending to be a route.
     expect(l.d.length).toBeGreaterThan(8)
@@ -323,11 +352,10 @@ test('zoomed out, the cities are lights and the ships are embers', async ({ page
   for (let i = 0; i < 12; i++) await inBtn.click()
   await page.waitForTimeout(800)
   const close = await nightOnTheGlass(page)
-  expect(close.unitsPerPx).toBeLessThan(HULL_EMBER_MAX_UNITS_PER_PX)
+  expect(close.spanDeg).toBeLessThan(PURE_LIGHT_SPAN_DEG)
   expect(close.embers.length).toBe(0)
   expect(close.hullPaths).toBeGreaterThanOrEqual(2)
 
-  expect(close.unitsPerPx).toBeLessThan(HARBOUR_LIGHT_MIN_UNITS_PER_PX)
   // THE LANES GO WITH THE LIGHTS. Close in the sheet is a working chart, and a lane is THINNED —
   // straight where the real course bends — so drawing it at a span where that shows would be
   // putting a wrong line on the water somebody is reading.
@@ -349,7 +377,9 @@ test('zoomed out, the cities are lights and the ships are embers', async ({ page
   await ready(page)
   await expect.poll(async () => (await nightOnTheGlass(page)).lights.length, { timeout: 60_000 }).toBeGreaterThanOrEqual(1)
   const opening = await nightOnTheGlass(page)
-  expect(opening.unitsPerPx).toBeLessThan(HARBOUR_LIGHT_MIN_UNITS_PER_PX)
+  expect(opening.spanDeg).toBeLessThan(NIGHT_SPAN_DEG)
+  // AND THE READOUT AGREES WITH THE SHEET: the opening frame is well in, so it is not 0%.
+  expect(opening.zoomPercent).toBeGreaterThan(0)
   expect(opening.lights.filter((l) => l.lit)).toEqual([])
   expect(opening.lights.filter((l) => l.halo !== null)).toEqual([])
   expect(opening.lanes).toEqual([])

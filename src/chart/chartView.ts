@@ -37,6 +37,40 @@ export const MIN_SPAN_X = 1.5
 /** The loosest: the whole world. */
 export const MAX_SPAN_X = CHART_WIDTH
 
+/**
+ * THE NIGHT CHART'S TWO RUNGS, IN DEGREES OF SPAN — not in pixels per degree (owner row 125).
+ *
+ * The first cut keyed both on `unitsPerPx`, which is a DENSITY, and that is right for deciding how
+ * big a glyph should be and wrong for deciding what KIND of sheet this is. Measured: the whole
+ * world on a 390 px phone is 0.92 °/px and on a 1440 px desktop 0.25 °/px, so a threshold in
+ * density made the night chart appear on a phone and NOT on a desktop at the very same zoom — the
+ * owner, fully zoomed out on a wide screen, would have been handed back the hybrid they had just
+ * rejected. "When I zoom out" is a statement about how much WORLD is on the glass, and that is the
+ * span. Screen-independent, and the same number the zoom readout prints.
+ *
+ * The two values are what the phone already behaved as, carried over exactly: 45° is where the
+ * lights come up (~38% on the readout) and 135° is where marks and hulls go altogether (~18%).
+ */
+export const NIGHT_SPAN_DEG = 45
+export const PURE_LIGHT_SPAN_DEG = 135
+
+/**
+ * HOW FAR IN THE CHART IS, 0..100 (owner, 2026-10-12: *"show me in map how much i zoomed in and
+ * zoomed out in percentage"*). 0% is the whole world on the glass; 100% is `MIN_SPAN_X`, the
+ * tightest the chart allows.
+ *
+ * LOGARITHMIC, because zoom is. A press of + divides the span by `ZOOM_STEP`, so the range is
+ * multiplicative — 360° down to 1.5° is a factor of 240 — and a LINEAR reading would sit under 1%
+ * for the first eight presses and then leap, which is a number that tells the reader nothing about
+ * where they are. On a log scale every press is the same step, ~8.6% of the ladder, so the figure
+ * moves evenly and "half way" means half the presses.
+ */
+export function zoomPercent(spanX: number): number {
+  if (!Number.isFinite(spanX) || spanX <= 0) return 0
+  const span = Math.min(MAX_SPAN_X, Math.max(MIN_SPAN_X, spanX))
+  return Math.round((Math.log(MAX_SPAN_X / span) / Math.log(MAX_SPAN_X / MIN_SPAN_X)) * 100)
+}
+
 /** One press of + or −. A step this size takes ~7 presses to cross the full zoom range, which is
  *  few enough to be usable and many enough not to lose your place. */
 export const ZOOM_STEP = 1.6

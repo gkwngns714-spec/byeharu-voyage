@@ -7,7 +7,8 @@ import { LabelsLayer } from './LabelsLayer'
 import { PortsLayer } from './PortsLayer'
 import { RoadsteadsLayer } from './RoadsteadsLayer'
 import { SeaLayer } from './SeaLayer'
-import { portMarks, type ChartModel } from './chartModel'
+import { NIGHT_SPAN_DEG, PURE_LIGHT_SPAN_DEG } from './chartView'
+import { portMarks, type ChartModel, type PortRole } from './chartModel'
 import type { CoastlineData } from './coastlineBuild'
 import {
   coastPaperBox,
@@ -127,9 +128,48 @@ export function ChartCanvas({
   ariaLabel: string
   className?: string
 }) {
+  // THE ROLES, HELD STILL WHILE NOTHING ABOUT THEM CHANGES (2026-10-12: *"the game looks stuck.
+  // optimize it so that it is smoothe"*).
+  //
+  // `buildChartModel` is re-run on every DRIFT TICK — `MapScreen`'s memo takes `nowMs` — so
+  // `model.portRoles` was a BRAND NEW MAP several times a second even when not one port had
+  // changed role. Every memo below keyed on it therefore missed, every frame: `portMarks` walked
+  // all 252 harbours, `fullPorts` re-filtered them, and `PortsLayer` re-rendered the lot — which
+  // at the globe is now three circles of light apiece. The roles themselves change when a fleet
+  // ARRIVES or is SENT, which is a read, not a frame.
+  //
+  // So the identity is held still while the CONTENT is equal. Cheap: a size check and a walk of at
+  // most a handful of entries — `portRoles` holds only the ports some fleet is using, never the
+  // whole chart — against a render of 252 marks it saves.
+  // THE CONTENT IS THE KEY, so the identity follows the content and nothing is held in a ref (a ref
+  // read during render is a different bug, and eslint's `react-hooks/refs` is right about it). The
+  // roles are a handful of entries — only the ports some fleet is using — so spelling them as a
+  // string and rebuilding the Map when that string changes costs nothing next to the 252 marks and
+  // 252 lights it stops re-rendering.
+  const rolesKey = [...model.portRoles]
+    .map(([code, role]) => `${code}:${role}`)
+    .sort()
+    .join('|')
+  const portRoles = useMemo<ReadonlyMap<string, PortRole>>(
+    () =>
+      new Map(
+        rolesKey === ''
+          ? []
+          : rolesKey.split('|').map((pair) => pair.split(':') as [string, PortRole]),
+      ),
+    [rolesKey],
+  )
+  // THE TWO RUNGS OF THE NIGHT CHART, read off the SPAN and handed down (owner row 125). Decided
+  // once, here, so the lights, the lanes and the embers cannot disagree about where the sheet
+  // changes character — and in degrees rather than in pixels per degree, because the same world on
+  // a phone and on a desktop is the same zoom and must be the same picture. ./chartView.ts says
+  // what that cost when it was keyed on density instead.
+  const lit = box.width >= NIGHT_SPAN_DEG
+  const lightsOnly = box.width >= PURE_LIGHT_SPAN_DEG
+
   const marks = useMemo(
-    () => portMarks(ports, model.portRoles, box, minTierForSpan(box.width)),
-    [ports, model.portRoles, box],
+    () => portMarks(ports, portRoles, box, minTierForSpan(box.width)),
+    [ports, portRoles, box],
   )
   // The FULL half — what asks for a name and shows its roads (chartModel.ts, `visiblePorts`).
   const fullPorts = useMemo(() => marks.filter((m) => m.full).map((m) => m.port), [marks])
@@ -241,7 +281,7 @@ export function ChartCanvas({
         viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
         aria-hidden="true"
       >
-        <TracksLayer model={model} unitsPerPx={unitsPerPx} />
+        <TracksLayer model={model} unitsPerPx={unitsPerPx} lit={lit} />
         {/* THE ROADS (0076) — the dotted helper line out to the one point of open water each port is
             reached from, and the hollow circle on it. UNDER the port marks, because a dotted line
             crossing a harbour should pass behind it (FleetsLayer.tsx:6-9) and a city standing on its
@@ -270,15 +310,18 @@ export function ChartCanvas({
           })()}
         <PortsLayer
           marks={marks}
-          portRoles={model.portRoles}
+          portRoles={portRoles}
           selectedCode={selectedPortCode}
           unitsPerPx={unitsPerPx}
+          lit={lit}
+          lightsOnly={lightsOnly}
         />
         <FleetsLayer
           model={model}
           selectedId={selectedFleetId}
           selectedMerchantId={selectedMerchantId}
           unitsPerPx={unitsPerPx}
+          lightsOnly={lightsOnly}
         />
         <LabelsLayer labels={labels} unitsPerPx={unitsPerPx} />
       </svg>

@@ -11,12 +11,43 @@
 // merchants are at sea when the page opens and keep sailing while it is open.
 
 import type { Page } from '@playwright/test'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { asWorldImageFile } from '../src/lib/db/worldImage'
 
 /** Built once per worker. */
 let npcOnImage: Buffer | null = null
+
+// ── AND ONCE PER CHAIN, ON DISK (2026-10-12) ───────────────────────────────────────────────────
+// The in-memory cache above is per WORKER, so every `npx playwright test` paid for this fixture
+// again: opening the shipped image, laying up a merchant, running the switch over 837 fleets and
+// warping six legs is ~9 MINUTES, measured. The night-chart spec was written, corrected and
+// re-run five times in one sitting and spent the better part of an hour re-deriving a world that
+// had not changed. That is not a test being thorough, it is a test being re-computed.
+//
+// SO IT IS KEYED AND KEPT. Two things decide the key, and between them nothing stale can be
+// served:
+//
+//   THE SOURCE IMAGE'S FILE NAME, which carries `fingerprintChain(files)` — so a chain that moved
+//   by so much as a comment names a different file, misses, and is rebuilt. This is the same
+//   property `scripts/db/build-image.mjs` relies on and states.
+//
+//   THE SHA OF THIS FILE'S OWN SOURCE, so changing what the fixture DOES to that world — a
+//   different lay-up, another warp leg, a new knob — misses too. Hashing the file beats a version
+//   constant somebody has to remember to bump, which is the version constant that is always one
+//   edit out of date.
+//
+// Under node_modules/.cache, so `npm ci` throws it away with every other build artefact and no
+// CI runner inherits one. A miss costs exactly what this always cost.
+const CACHE_DIR = path.resolve('node_modules', '.cache', 'byeharu-npc-on')
+
+function cachePathFor(imageName: string): string {
+  const self = readFileSync(fileURLToPath(import.meta.url))
+  const sha = createHash('sha256').update(self).digest('hex').slice(0, 12)
+  return path.join(CACHE_DIR, `${imageName.replace(/\.tar\.gz$/, '')}.fixture-${sha}.tar.gz`)
+}
 
 /** The merchant fleet laid up at Lisbon, so PORT has one in port. */
 export const LAID_UP_AT_LISBON = 'Carreira da Guiné'
@@ -26,6 +57,12 @@ export async function npcOn(): Promise<Buffer> {
   const dir = path.resolve('dist', 'db')
   const name = existsSync(dir) ? readdirSync(dir).find((f) => /^world-.*\.tar\.gz$/.test(f)) : undefined
   if (!name) throw new Error(`no world image under ${dir} — run \`npm run build\` first`)
+
+  const cached = cachePathFor(name)
+  if (existsSync(cached)) {
+    npcOnImage = readFileSync(cached)
+    return npcOnImage
+  }
   const { PGlite } = await import('@electric-sql/pglite')
   const pg = await PGlite.create({ loadDataDir: asWorldImageFile(new Uint8Array(readFileSync(path.join(dir, name)))) })
   try {
@@ -98,6 +135,10 @@ export async function npcOn(): Promise<Buffer> {
     )
     if (twice.rows[0].n < 1) throw new Error('the warp left no merchant route with two closed laps')
     npcOnImage = Buffer.from(await (await pg.dumpDataDir('gzip')).arrayBuffer())
+    // Written only after every assertion above has held, so a cache entry is always a world that
+    // passed this fixture's own checks — never a half-warped one from a run that threw.
+    mkdirSync(CACHE_DIR, { recursive: true })
+    writeFileSync(cached, npcOnImage)
   } finally {
     await pg.close()
   }

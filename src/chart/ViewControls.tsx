@@ -1,4 +1,5 @@
 import { Button, Icon, overlaySlotClass } from '../components/ui'
+import { zoomPercent } from './chartView'
 import { setRegionsFilter, useRegionsFilter } from './regionsFilter'
 import { CHART_CHROME, type ChartSurface } from './useChartSurface'
 
@@ -47,19 +48,38 @@ export function ViewControls({
   findTestId,
   testId,
 }: {
-  /** The surface these buttons steer — `zoomIn`, `zoomOut` and `fit` are all they touch. */
-  surface: Pick<ChartSurface, 'zoomIn' | 'zoomOut' | 'fit'>
+  /** The surface these buttons steer — `zoomIn`, `zoomOut` and `fit`— plus `view`, which they only
+   *  READ, to print how far in the chart is. */
+  surface: Pick<ChartSurface, 'zoomIn' | 'zoomOut' | 'fit' | 'view'>
   /** What "find" finds ON THIS SURFACE — e.g. "Find your fleets". The frame is the surface's own. */
   findAriaLabel: string
   findTestId?: string
   testId?: string
 }) {
+  const zoom = surface.view ? zoomPercent(surface.view.spanX) : 0
   return (
     <div
       {...CHART_CHROME}
       className={`pointer-events-auto absolute z-10 ${overlaySlotClass('top-right')} flex flex-col gap-1`}
       data-testid={testId}
     >
+      {/* HOW FAR IN YOU ARE (owner, 2026-10-12: *"show me in map how much i zoomed in and zoomed
+          out in percentage"*). 0% is the whole world, 100% the tightest the chart allows, and the
+          scale is LOGARITHMIC because the zoom is — ./chartView.ts `zoomPercent` carries the
+          reasoning. It sits ABOVE the + and − it describes, in the same column, and it is read-only
+          chrome: a number, never a control, so there is nothing here to mis-tap while zooming.
+
+          `aria-live="polite"` so it is announced when it changes rather than read out of order,
+          and `tabular-nums` so 8% and 86% do not shuffle the column's width as you press. */}
+      <div
+        className="rounded-md bg-surface/90 px-1 py-0.5 text-center text-t-caption tabular-nums text-ink-faint backdrop-blur"
+        data-testid="map-zoom-percent"
+        data-zoom-percent={zoom}
+        aria-live="polite"
+        aria-label={`Zoom ${zoom}%`}
+      >
+        {zoom}%
+      </div>
       <Button
         variant="secondary"
         size="icon"

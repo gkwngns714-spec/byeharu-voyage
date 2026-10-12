@@ -4,8 +4,6 @@ import type { ChartModel, FleetOnChart } from './chartModel'
 import {
   arrowPath,
   GLYPH,
-  HARBOUR_LIGHT_MIN_UNITS_PER_PX,
-  HULL_EMBER_MAX_UNITS_PER_PX,
   hullGroup,
   hullGroupHalo,
   hullPath,
@@ -75,11 +73,18 @@ const NATION_FILL: Record<MerchantInk, string> = {
 }
 
 /** Tracks and destination rings — painted UNDER the port marks. */
-export function TracksLayer({ model, unitsPerPx }: { model: ChartModel; unitsPerPx: number }) {
-  // Is the sheet pulled back far enough to be a night chart? The same rung the harbour lights use
-  // (./glyphs.ts `HARBOUR_LIGHT_MIN_UNITS_PER_PX`), so the lanes, the lights and the embers are one
-  // change of character on one rung and not three opinions about what "zoomed out" means.
-  const litLanes = unitsPerPx >= HARBOUR_LIGHT_MIN_UNITS_PER_PX
+export function TracksLayer({
+  model,
+  unitsPerPx,
+  lit,
+}: {
+  model: ChartModel
+  unitsPerPx: number
+  /** The night band — the same rung the harbour lights come up on, handed down rather than
+   *  re-derived, so the lanes, the lights and the embers can never disagree about where it is. */
+  lit: boolean
+}) {
+  const litLanes = lit
   return (
     <g pointerEvents="none" data-testid="map-tracks">
       {/* OWNER ROW 125 — THE MAJOR FLEETS' LANES, at a wide span only. *"major fleet shoud also
@@ -258,6 +263,7 @@ function HullGroup({
   strokeWidth,
   hooks,
   children,
+  ember = false,
 }: {
   fleet: FleetOnChart
   unitsPerPx: number
@@ -266,6 +272,9 @@ function HullGroup({
   /** The `data-*` hooks this list wants — on the GROUP, so there is one of them per fleet. */
   hooks: Readonly<Record<string, string>>
   children?: ReactNode
+  /** Draw her as an ember rather than a hull. Decided by SPAN upstream, not by density here —
+   *  ./chartView.ts `PURE_LIGHT_SPAN_DEG` carries why. */
+  ember?: boolean
 }) {
   const { x, y } = project(fleet.at)
   const marks = hullGroup(fleet.fleet.hulls ?? [], unitsPerPx)
@@ -283,7 +292,7 @@ function HullGroup({
   //
   // NOT ROTATED. A heading on a 1 px dot is a lie about precision, and the drift still moves her,
   // so she is a light that travels rather than a hull that points.
-  if (unitsPerPx > HULL_EMBER_MAX_UNITS_PER_PX) {
+  if (ember) {
     return (
       <g transform={`translate(${x} ${y})`} data-fleet-mark="ember" data-hulls={marks.length} {...hooks}>
         {/* THE INK IS HELD BELOW A HARBOUR'S, AND THE NUMBERS ARE THE OWNER'S RULE, not taste.
@@ -345,12 +354,15 @@ export function FleetsLayer({
   selectedId,
   selectedMerchantId = null,
   unitsPerPx,
+  lightsOnly = false,
 }: {
   model: ChartModel
   selectedId: string | null
   /** 0099 — the merchant whose card is open, outlined in ink. */
   selectedMerchantId?: string | null
   unitsPerPx: number
+  /** Pulled back past `PURE_LIGHT_SPAN_DEG`: only the MAJOR fleets are drawn, and as embers. */
+  lightsOnly?: boolean
 }) {
   return (
     <g pointerEvents="none" data-testid="map-fleets">
@@ -362,13 +374,30 @@ export function FleetsLayer({
           THE TEST HOOKS SIT ON THE GROUP AND NOT ON A HULL, deliberately: there is exactly one
           `map-merchant` per merchant whatever she sails, so a spec that asks for her box gets her
           whole mark and a spec that counts hulls on the sea counts fleets. */}
+      {/* AT THE GLOBE, ONLY THE MAJOR FLEETS ARE DRAWN AT ALL (owner, 2026-10-12: *"when i zoom out
+          ships doesn't have to show, only major ships with dots - light"*).
+
+          This is the owner's call about what the sheet is FOR at that span, and it is also the
+          whole of why the chart stuttered. Pulled back, 240 merchants were 240 marks re-placed on
+          every drift frame — and 191 of them were one-hull traders whose dots said nothing a
+          reader could use, over a sheet where the cities are supposed to be the subject. Drawing
+          the 49 that keep a lane is a fifth of the work and a clearer picture, which is the rare
+          change that is both.
+
+          WHO IS MAJOR IS THE SERVER'S ANSWER, not a count taken here: `lane` is served exactly to
+          the fleets 0111 calls major (`fleet_lane_min_ships`), so the mark and the lane can never
+          disagree about who deserves one, and the threshold stays a knob in the world config
+          rather than a number hidden in a layer. A merchant the server gave no lane is simply not
+          on the sheet at this span — she returns, with her hull, the moment you zoom in. */}
       {model.traffic.map((t) => {
+        if (lightsOnly && !t.laneD) return null
         const selected = selectedMerchantId === t.fleet.id
         return (
           <HullGroup
             key={`merchant-${t.fleet.id}`}
             fleet={t}
             unitsPerPx={unitsPerPx}
+            ember={lightsOnly}
             className={`${NATION_FILL[t.merchant.ink]} ${selected ? 'stroke-ink' : 'stroke-chart-sea'}`}
             strokeWidth={GLYPH.glyphStroke * (selected ? 1.2 : 0.6)}
             hooks={{

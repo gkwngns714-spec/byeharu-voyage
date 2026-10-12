@@ -270,7 +270,18 @@ export const GLYPH = {
    * The CORE keeps `portDotRadius` — the dot row 94 already drew — so nothing moves position or
    * grows; what is added is the light around it.
    */
-  harbourLightHaloScale: 3.4,
+  harbourLightHaloScale: 9,
+  /**
+   * THE MIDDLE RING. A light is not a dot with one ring round it — that is a dot with a smudge,
+   * which is exactly what the first cut of row 125 drew and what the owner said was not lights:
+   * at the globe a harbour came out a 1.6 px core inside a 5.4 px halo at 20% ink, and on a dark
+   * sheet that reads as a slightly fuzzy speck. What makes a point read as a SOURCE of light is
+   * falloff, and falloff needs at least two steps: a wide faint bloom, a tighter brighter glow,
+   * and the hard core inside them both. Three circles, still no SVG filter — ./PortsLayer.tsx
+   * says why a filter is not affordable here, and three circles that do not move are cheaper than
+   * one filtered region that repaints.
+   */
+  harbourLightGlowScale: 4,
   /** How far a tier-5 entrepôt out-burns a tier-1 coast. The halo scales by this between them, so
    *  the great ports read first on a wide sheet and a one-quay coast is a faint spark — which is
    *  the owner's "bright light" without a legend and without a second colour. */
@@ -729,6 +740,18 @@ export function harbourLightStrength(sizeTier: number): number {
  *  gets for free — a tier-1 spark is still a light, just a small one. */
 export function harbourLightHalo(sizeTier: number, unitsPerPx: number): number {
   const base = GLYPH.portDotRadius * GLYPH.harbourLightHaloScale
+  const lit = 1 - GLYPH.harbourLightTierSpread + GLYPH.harbourLightTierSpread * harbourLightStrength(sizeTier)
+  return base * lit * unitsPerPx
+}
+
+/**
+ * THE MIDDLE RING of a harbour light — between the bloom and the core, and the reason the mark
+ * reads as a lit thing rather than a fuzzy dot (owner row 125, corrected 2026-10-12). Scaled by the
+ * same tier strength as the bloom, so a great entrepôt grows at both steps together and the falloff
+ * keeps its shape at every size.
+ */
+export function harbourLightGlow(sizeTier: number, unitsPerPx: number): number {
+  const base = GLYPH.portDotRadius * GLYPH.harbourLightGlowScale
   const lit = 1 - GLYPH.harbourLightTierSpread + GLYPH.harbourLightTierSpread * harbourLightStrength(sizeTier)
   return base * lit * unitsPerPx
 }
