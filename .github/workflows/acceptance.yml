@@ -87,7 +87,13 @@ jobs:
     # gates nothing, which is the same defect those two tests' own timeouts were raised for twice
     # before. If this climbs again the answer is a lighter fixture for those two - they are the
     # only expensive tests here - and not a third raise.
-    timeout-minutes: 75
+    # 75 -> 120 on 2026-10-12. The build inside this job is no longer the cost — the world-image
+    # cache took it from 32m33s to NINE SECONDS, measured on run 38248046334 — but the SUITE then
+    # ran 74m32s and was cancelled still running. 378 tests, two workers, several of which boot a
+    # PGlite world of their own. The npc-on cache above takes ~18 minutes out of that; 120 is the
+    # remainder with room, rather than another budget set to its own cost, which is the mistake
+    # this file made twice (see migrations-apply-proof.yml for the same lesson written longer).
+    timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v4
@@ -122,6 +128,24 @@ jobs:
       # chromium ONLY. The suite declares one project (playwright.config.ts) and one spec needs a
       # browser; firefox and webkit would be two more downloads proving nothing. `--with-deps`
       # pulls the shared libraries the runner image does not ship.
+      # ── AND THE MERCHANTS-ON WORLD, CACHED THE SAME WAY ─────────────────────────────────────
+      # `tests/npcOn.fixture.ts` builds a second world on top of the shipped image — it lays up a
+      # merchant, runs the switch over 837 fleets and warps six legs — and that takes ~9 MINUTES,
+      # measured, ONCE PER PLAYWRIGHT WORKER. At two workers that is ~18 minutes of this job spent
+      # re-deriving a world that cannot have changed, and it is most of why the suite ran 74m32s
+      # here and was still going when the budget fell (run 38248046334).
+      #
+      # The fixture caches it on disk already; this is what lets CI keep it between runs. Keyed on
+      # the CHAIN and on the FIXTURE'S OWN SOURCE, which is the key the fixture itself computes —
+      # so a migration that moved by a comment misses, and so does a change to what the fixture
+      # DOES to that world. Nothing stale can be served, and a miss costs exactly what it always
+      # cost.
+      - name: Cache the merchants-on world (keyed by the chain and the fixture)
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/byeharu-npc-on
+          key: npc-on-${{ hashFiles('supabase/migrations/*.sql', 'tests/npcOn.fixture.ts') }}
+
       - name: Install the browser
         run: npx playwright install --with-deps chromium
 

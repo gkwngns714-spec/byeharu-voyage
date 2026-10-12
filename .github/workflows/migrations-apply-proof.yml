@@ -118,6 +118,25 @@ jobs:
     # red one. Generous and passing beats tight and ambiguous. When row 124 lands this comes back
     # down, and the ruling above stands for every case where a fixture CAN be lightened.
     #
+    # 90 -> 150 on 2026-10-12, AND THIS IS THE THIRD RAISE, WHICH IS THE POINT. The run at 90
+    # (38248046318) split like this:
+    #
+    #   the chain apply   12:17:07 -> 13:04:09   47m02s, all 103 receipts printed
+    #   the proofs        13:04:09 -> 13:47:10   43m and STILL RUNNING when the cap fell
+    #
+    # So the job needs some hundred minutes of real work, the apply alone has grown from 31m56s to
+    # 47m with one migration added, and every raise so far has been a budget set to roughly its own
+    # cost. 150 is the measurement with genuine room — and it buys TIME, not a fix.
+    #
+    # WHAT THE FIX IS, SAID PLAINLY: those 47 minutes re-apply a chain `disposable-chain` has
+    # ALREADY applied, green, on the same commit, against a real Postgres, in 33m49s — and then
+    # left idle. This job's unique value is `npm run db:proof`, not the apply underneath it. Row 124
+    # (give scripts/db/proof.mjs a path that does not call applyChain) deletes the 47 minutes
+    # instead of budgeting for them, and row 127 records that it has stopped being a nuisance and
+    # become the thing standing between a green branch and a merge. It is not done here because
+    # doing it in a hurry, inside a workflow edit, is how a proof regime gets weakened by accident.
+    #
+    # The previous note, kept because its measurement is still the evidence:
     # 60 -> 90 on 2026-10-12, AND THE ARITHMETIC ABOVE WAS WRONG BY HALF. It added 0105's ~16
     # minutes to the last passing run and stopped there; what run 38148284551 actually measured,
     # cancelled at 1h00m16s, is two costs and not one:
@@ -132,7 +151,7 @@ jobs:
     # ALREADY applied, green, on the same commit, in 33m51s, and then left idle. Row 124 is the one
     # that deletes this cost instead of budgeting for it, and row 127 records that it has stopped
     # being a nuisance and become the thing standing between a green branch and a merge.
-    timeout-minutes: 90
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
 
