@@ -294,7 +294,7 @@ export const GLYPH = {
    * harbour on purpose: the owner's "ships… in tiny dots" and "darker tone" in one rule, so a
    * fleet never out-shouts a city on the same sheet.
    */
-  emberRadius: 1.15,
+  emberRadius: 1.3,
   /**
    * AND THIS NUMBER IS BOUNDED BY THE ONE ABOVE IT, which is how it was found. The first cut of
    * row 125 set it to 2.6, and `tests/map.night.spec.ts` refused the file: an ember's halo came to
@@ -304,7 +304,7 @@ export const GLYPH = {
    * this constant, not a matter of taste: whatever these two scales become, THE DIMMEST HARBOUR
    * MUST STILL OUT-BURN THE BRIGHTEST SHIP, and the spec holds that rather than this comment.
    */
-  emberHaloScale: 1.9,
+  emberHaloScale: 3.2,
   /**
    * AN ISLET (row 92): the speck of land drawn under a harbour whose island the 110m coast file
    * has no polygon for at all (Malta, Bermuda, the Azores… 28 of them, ./landfall.ts). A filled

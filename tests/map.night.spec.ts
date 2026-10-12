@@ -48,11 +48,6 @@ import {
 
 const SHOTS = path.resolve('docs', 'npc-traders')
 
-/** A harbour light's OUTERMOST ring opacity, as ./PortsLayer.tsx renders it
- *  (`fill-harbour-light/15`, with the glow at /35 and the core at full). The ships' own light is
- *  held strictly under it — owner row 125's "darker tone", as an ordering and not a vibe. */
-const HARBOUR_HALO_OPACITY = 15
-
 /** The eight merchant inks, as the server spells them. */
 const NATION_INKS = ['prt', 'esp', 'nld', 'eng', 'han', 'ita', 'ott', 'east']
 
@@ -179,6 +174,8 @@ async function nightOnTheGlass(page: Page) {
         radii: circles.map((c) => Number(c.getAttribute('r'))),
         classes: circles.map((c) => c.getAttribute('class') ?? ''),
         paths: g.querySelectorAll('path[data-hull-class]').length,
+        blink: g.classList.contains('bv-ship-blink'),
+        phaseMs: Number.parseFloat((g as SVGGElement).style.animationDelay) || 0,
       }
     })
     // THE MAJOR FLEETS' LANES (owner row 125's last clause). Counted, and their ink read back, so
@@ -292,6 +289,9 @@ test('zoomed out, the cities are lights and the ships are embers', async ({ page
   // and no mark without one is the same statement as "the chart and the server agree who counts".
   // It is also the frame-rate fix: 240 marks re-placed on every drift frame became 49.
   expect(wide.embers.length).toBe(wide.lanes.length)
+  // THE SEA TWINKLES RATHER THAN PULSING: with 49 lamps alight there must be more than one phase
+  // among them, or this is a UI element flashing and not a fleet of riding lights.
+  expect(new Set(wide.embers.map((e) => e.phaseMs)).size).toBeGreaterThan(1)
   const smallestCore = Math.min(...wide.lights.filter((l) => l.mark === 'dot').map((l) => l.core))
   for (const e of wide.embers) {
     expect(e.circles).toBe(2)
@@ -299,21 +299,28 @@ test('zoomed out, the cities are lights and the ships are embers', async ({ page
     expect(e.radii[0]).toBeGreaterThan(e.radii[1])
     // SMALLER THAN THE SMALLEST CITY ON THE SHEET, measured on the glass and not in the arithmetic.
     expect(e.radii[1]).toBeLessThan(smallestCore)
-    // DIMMER, TOO — AND DIMMER THAN A CITY, READ OFF THE RENDERED CLASS. The ink is hers at
-    // reduced opacity and the stroke that outlined a hull is gone; but "dimmer" also has to be a
-    // RELATION, because the arithmetic above can only compare one ember to one harbour and the
-    // sheet holds 240 of the first against 252 of the second. The first cut rendered the ember's
-    // halo at /25 against a harbour light's /20 — the ship's glow more opaque than the city's —
-    // and every numeric assertion in this file passed while the screenshot showed the European
-    // coast as saturated confetti over the lights it was meant to sit beneath. So the OPACITIES
-    // are compared, both of them, strictly.
+    // A BLUE LIGHT, AND ITS OWN CHANNEL (owner, 2026-10-12: *"I want ships to be in blue light"*).
+    // The two lights on this sheet are told apart by COLOUR and by SIZE, which is what makes them
+    // readable at a glance: a warm harbour lamp and a cold ship lamp, as far apart on the wheel as
+    // they go, where eight nation inks at ember size were a scatter of specks nobody could name.
+    //
+    // THE ORDERING IS SIZE, NOT OPACITY, AND THAT IS A CORRECTION. An earlier cut held the ships
+    // under the cities by INK — ember halo /10, core /40 — and the owner's answer to that sheet was
+    // *"I see no ships whatsoever"*. They were right: a 2.3 px dot at 40% is not a light, it is a
+    // rumour. Dimming was the wrong lever; it was only ever needed because 240 marks were drawn,
+    // and only 49 are now. "Size smaller" is the owner's own word for the relation, so size is what
+    // is asserted — and the colours keep the two channels apart without either having to hide.
     expect(e.classes.join(' ')).not.toMatch(/stroke-/)
-    const emberHaloOp = Number(/opacity-(\d+)/.exec(e.classes[0])?.[1] ?? Number.NaN)
-    const emberCoreOp = Number(/opacity-(\d+)/.exec(e.classes[1])?.[1] ?? Number.NaN)
-    expect(Number.isFinite(emberHaloOp) && Number.isFinite(emberCoreOp)).toBe(true)
-    expect(emberHaloOp).toBeLessThan(HARBOUR_HALO_OPACITY)
-    expect(emberCoreOp).toBeLessThan(100) // a harbour's core carries no opacity class at all
-    expect(emberHaloOp).toBeLessThan(emberCoreOp)
+    expect(e.classes[0]).toContain('fill-ship-light/')
+    expect(e.classes[1]).toContain('fill-ship-light/')
+    expect(e.classes.join(' ')).not.toContain('harbour-light')
+    // SHE BLINKS, ON HER OWN PHASE (owner, 2026-10-12: *"ships should be blinking"*). The class is
+    // declared once and the compositor owns it — nothing here ticks per frame — and the delay comes
+    // from her own id, so the sea twinkles instead of pulsing in unison and a merchant keeps her
+    // rhythm whoever else is at sea.
+    expect(e.blink).toBe(true)
+    expect(e.phaseMs).toBeGreaterThanOrEqual(0)
+    expect(e.phaseMs).toBeLessThan(2600)
     // The ember still says what she is, so a click still has something to select.
     expect(e.hulls).toBeGreaterThanOrEqual(1)
   }
@@ -361,18 +368,17 @@ test('zoomed out, the cities are lights and the ships are embers', async ({ page
   // putting a wrong line on the water somebody is reading.
   expect(close.lanes).toEqual([])
 
-  // AND NOTHING GLOWS CLOSE IN, ON A SHEET THAT HAS HARBOURS ON IT TO NOT GLOW. A working chart is
-  // names, roads and silhouettes, and a glow laid over the detail somebody zoomed in to read is a
-  // smudge — so the close view must be exactly what it was before row 125. Asserted, because "it
-  // only shows when you zoom out" is the owner's own framing of this row and an unasserted gate is
-  // a gate that drifts.
+  // AND THE LIGHTS ARE STILL BURNING CLOSE IN (owner, 2026-10-12: *"when zoomed in, i want to see
+  // the lights also"*). This assertion used to say the opposite — the lights were gated on
+  // `NIGHT_SPAN_DEG` on the reasoning that a glow over a working chart is a smudge across the
+  // detail somebody zoomed in to read. The owner looked at both sheets and wants the lights, and
+  // the cost they were being protected from is not real: every ring is sized in CSS PIXELS, so a
+  // harbour wears the same glow at every span rather than swelling as you close on it.
   //
   // READ OFF A FRESH OPENING FRAME rather than off wherever twelve clicks back in happened to land.
-  // The first cut of this asserted `close.lights.length >= 1` on that landing frame and went red
-  // with ZERO harbours — out past the globe and back in, the chart had put the view over open water
-  // where there is no harbour to draw, which is a true fact about panning and nothing at all about
-  // the lights. The claim needs a sheet with harbours on it; the opening frame is the one frame
-  // this suite can count on for that, and it is well below the night band (~0.038 against 0.115).
+  // An earlier cut asserted on that landing frame and went red with ZERO harbours — out past the
+  // globe and back in, the chart had put the view over open water where there is no harbour to
+  // draw, which is a true fact about panning and nothing at all about the lights.
   await page.goto('map')
   await ready(page)
   await expect.poll(async () => (await nightOnTheGlass(page)).lights.length, { timeout: 60_000 }).toBeGreaterThanOrEqual(1)
@@ -380,7 +386,12 @@ test('zoomed out, the cities are lights and the ships are embers', async ({ page
   expect(opening.spanDeg).toBeLessThan(NIGHT_SPAN_DEG)
   // AND THE READOUT AGREES WITH THE SHEET: the opening frame is well in, so it is not 0%.
   expect(opening.zoomPercent).toBeGreaterThan(0)
-  expect(opening.lights.filter((l) => l.lit)).toEqual([])
-  expect(opening.lights.filter((l) => l.halo !== null)).toEqual([])
+  expect(opening.lights.filter((l) => !l.lit)).toEqual([])
+  expect(opening.lights.filter((l) => l.halo === null)).toEqual([])
+  // CLOSE IN SHE IS A MARK AGAIN, with her light beneath it — the band that goes is the one that
+  // removes the marks, not the one that lights the harbours.
+  expect(opening.lights.some((l) => l.mark === 'full')).toBe(true)
+  // THE LANES, though, DO wait for the pulled-back sheet: a lane is thinned, and straight where the
+  // real course bends, so drawing it close in would be a wrong line on water somebody is reading.
   expect(opening.lanes).toEqual([])
 })

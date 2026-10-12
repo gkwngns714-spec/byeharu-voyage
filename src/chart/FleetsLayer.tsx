@@ -60,6 +60,20 @@ const NATION_STROKE: Record<MerchantInk, string> = {
   east: 'stroke-nation-east',
 }
 
+/**
+ * WHERE IN HER BLINK THIS FLEET IS (owner, 2026-10-12). A stable offset into the 2.6 s cycle,
+ * derived from her OWN id — the `berthSlotOf` lesson from ./liveWorld.ts, which this chart learned
+ * when docked merchants were fanned by their position in the served list and every hull shifted
+ * along the ring whenever a neighbour arrived. A phase taken from an index would do the same thing
+ * in time: the whole sea would re-stagger itself on every read. Taken from her id, a merchant keeps
+ * her own rhythm for as long as she exists, whoever else is at sea.
+ */
+function blinkPhase(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 2600
+  return h
+}
+
 /** The nation inks as WHOLE class names, so Tailwind sees every one (no assembled strings). */
 const NATION_FILL: Record<MerchantInk, string> = {
   prt: 'fill-nation-prt',
@@ -76,15 +90,15 @@ const NATION_FILL: Record<MerchantInk, string> = {
 export function TracksLayer({
   model,
   unitsPerPx,
-  lit,
+  lanes,
 }: {
   model: ChartModel
   unitsPerPx: number
-  /** The night band — the same rung the harbour lights come up on, handed down rather than
-   *  re-derived, so the lanes, the lights and the embers can never disagree about where it is. */
-  lit: boolean
+  /** Past `NIGHT_SPAN_DEG` — the span at which a thinned loop is safe to draw. Handed down rather
+   *  than re-derived here, so there is one place that decides where the sheet changes. */
+  lanes: boolean
 }) {
-  const litLanes = lit
+  const litLanes = lanes
   return (
     <g pointerEvents="none" data-testid="map-tracks">
       {/* OWNER ROW 125 — THE MAJOR FLEETS' LANES, at a wide span only. *"major fleet shoud also
@@ -294,7 +308,14 @@ function HullGroup({
   // so she is a light that travels rather than a hull that points.
   if (ember) {
     return (
-      <g transform={`translate(${x} ${y})`} data-fleet-mark="ember" data-hulls={marks.length} {...hooks}>
+      <g
+        transform={`translate(${x} ${y})`}
+        data-fleet-mark="ember"
+        data-hulls={marks.length}
+        className="bv-ship-blink"
+        style={{ animationDelay: `${blinkPhase(fleet.fleet.id)}ms` }}
+        {...hooks}
+      >
         {/* THE INK IS HELD BELOW A HARBOUR'S, AND THE NUMBERS ARE THE OWNER'S RULE, not taste.
             Row 125 asks for the ships in "a darker tone" with the CITIES as the bright thing. The
             first cut had the ember's halo at /25 against a harbour light's /20 — the ship's glow
@@ -306,12 +327,12 @@ function HullGroup({
             class and asserts that ordering rather than trusting this comment. */}
         <circle
           r={GLYPH.emberRadius * GLYPH.emberHaloScale * unitsPerPx}
-          className={`${className.replace(/stroke-[^\s]+/g, '')} opacity-10`}
+          className="fill-ship-light/30"
           pointerEvents="none"
         />
         <circle
           r={GLYPH.emberRadius * unitsPerPx}
-          className={`${className.replace(/stroke-[^\s]+/g, '')} opacity-40`}
+          className="fill-ship-light/95"
           pointerEvents="none"
         />
       </g>

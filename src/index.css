@@ -135,6 +135,18 @@
      smudge, so the light scheme states its own pen exactly as the sea and the coast above do. */
   --color-harbour-light: #ffe9c2;
 
+  /* ── THE SHIP LIGHT (owner, 2026-10-12: *"I want ships to be in blue light"*) ─────────────────
+     A COLD lamp against the harbours' warm one, and that pairing is the whole reason it reads: on
+     a dark sea an amber light and a blue light separate instantly, at any size, for anyone — where
+     eight nation inks at ember size were a scatter of coloured specks nobody could name. Two
+     channels and no legend, which is MAP_ATMOSPHERE §4's rule, and now the two are as far apart on
+     the wheel as they go.
+
+     THE NATION INK IS NOT RETIRED — it is still what a HULL is drawn in when the chart is close
+     enough to show hulls, where there is room for eight of anything. This colour is the ship's
+     LIGHT, the form she takes when she is a point rather than a shape. */
+  --color-ship-light: #8fd8ff;
+
   /* ── THE PICTURE (2026-09-13, owner row 90: "map should be much more graphic... it is too
      blank") — five more chart inks, and the three above are UNCHANGED, because
      tests/chart.ink.spec.ts pins their contrast and the picture is built around them, not on
@@ -377,6 +389,11 @@
        instead of bleeding out of it. */
     --color-harbour-light: #8a5a12;
 
+    /* The ship light on the day sea: a deep marine blue, for the same reason the harbour light
+       goes deep amber here — a pale glow on white is a smudge, so the light scheme states its own
+       pen rather than inheriting a bloom built for a dark ground. */
+    --color-ship-light: #0b4f7a;
+
     --color-surface: #ffffff;
     --color-surface-2: #f2f5f8;
 
@@ -592,6 +609,37 @@ body {
     background-color: var(--color-surface);
     border-bottom: 1px solid var(--color-edge);
   }
+}
+
+/* ── A SHIP'S RIDING LIGHT (owner, 2026-10-12: *"ships should be blinking"*) ────────────────────
+   A slow breath, not a strobe: 0.35 at the trough and never zero, because a mark that disappears
+   is worse than one that dims — a reader tracking a fleet across the sheet would lose her, and the
+   hit test would still answer where the eye sees nothing. Lamps at sea do not snap off.
+
+   OPACITY ONLY, which is the whole performance story: opacity is composited, so the browser
+   animates these on the GPU without re-laying-out or repainting the 49 marks, and nothing in
+   JavaScript ticks per frame. (The chart already re-renders on a drift clock; this deliberately
+   does NOT ride that clock — it is declared once and the compositor owns it.)
+
+   STAGGERED PER FLEET by `animation-delay`, derived from her own id in FleetsLayer, so the sea
+   twinkles rather than pulsing in unison. Unison would read as a UI element flashing; scattered
+   phases read as many separate lamps, which is what they are.
+
+   Reduced motion is already handled for everything on this sheet by the §4.6 sweep at the bottom
+   of this file — `animation-iteration-count: 1` lands these on the 100% stop, which is full
+   brightness, so a reader who asked for stillness gets steady lights rather than dimmed ones. */
+@keyframes bv-ship-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.bv-ship-blink {
+  animation: bv-ship-blink 2.6s ease-in-out infinite;
 }
 
 @keyframes bv-fade-in {

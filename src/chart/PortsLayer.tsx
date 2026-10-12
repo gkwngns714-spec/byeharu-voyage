@@ -91,16 +91,14 @@ export const PortsLayer = memo(function PortsLayer({
   portRoles,
   selectedCode,
   unitsPerPx,
-  lit,
   lightsOnly,
 }: {
   marks: readonly PortMark[]
   portRoles: ReadonlyMap<string, PortRole>
   selectedCode: string | null
   unitsPerPx: number
-  /** The sheet is pulled back far enough to be a night chart — every harbour carries its light. */
-  lit: boolean
-  /** Pulled back further still: a city is light and NOTHING else, no triangle, no ring. */
+  /** Pulled back past `PURE_LIGHT_SPAN_DEG`: a city is light and NOTHING else — no triangle, no
+   *  ring. Her LIGHT is drawn at every zoom either way (owner, 2026-10-12). */
   lightsOnly: boolean
 }) {
   const px = (n: number) => n * unitsPerPx
@@ -141,16 +139,16 @@ export const PortsLayer = memo(function PortsLayer({
               data-port-tier={port.sizeTier}
               data-port-kind={port.kind}
               data-port-mark="dot"
-              data-port-lit={lit ? 'yes' : 'no'}
+              data-port-lit="yes"
               data-port-x={x}
               data-port-y={y}
             >
-              {lit && <HarbourLight x={x} y={y} tier={port.sizeTier} unitsPerPx={unitsPerPx} />}
+              <HarbourLight x={x} y={y} tier={port.sizeTier} unitsPerPx={unitsPerPx} />
               <circle
                 cx={x}
                 cy={y}
                 r={px(GLYPH.portDotRadius)}
-                className={lit ? 'fill-harbour-light' : 'fill-ink-faint/85'}
+                className="fill-harbour-light"
                 pointerEvents="none"
               />
             </g>
@@ -176,7 +174,7 @@ export const PortsLayer = memo(function PortsLayer({
             data-port-tier={port.sizeTier}
             data-port-kind={port.kind}
             data-port-mark="full"
-            data-port-lit={lit ? 'yes' : 'no'}
+            data-port-lit="yes"
             data-port-x={x}
             data-port-y={y}
           >
@@ -187,7 +185,7 @@ export const PortsLayer = memo(function PortsLayer({
                 the halo is behind it, and the TRIANGLE keeps its own ink, because the weight rule
                 (quiet vs a port a fleet is using) is a different channel from how big a place is
                 and row 125 was not asked to merge them. */}
-            {lit && <HarbourLight x={x} y={y} tier={port.sizeTier} unitsPerPx={unitsPerPx} />}
+            <HarbourLight x={x} y={y} tier={port.sizeTier} unitsPerPx={unitsPerPx} />
             <path
               d={
                 active

@@ -164,7 +164,17 @@ export function ChartCanvas({
   // changes character — and in degrees rather than in pixels per degree, because the same world on
   // a phone and on a desktop is the same zoom and must be the same picture. ./chartView.ts says
   // what that cost when it was keyed on density instead.
-  const lit = box.width >= NIGHT_SPAN_DEG
+  // A HARBOUR CARRIES HER LIGHT AT EVERY ZOOM (owner, 2026-10-12: *"when zoomed in, i want to see
+  // the lights also"*). It was gated on `NIGHT_SPAN_DEG` — the reasoning being that a glow over a
+  // working chart is a smudge across detail somebody zoomed in to read. The owner looked at both
+  // and wants the lights; and they are right that it costs nothing, because the rings are sized in
+  // CSS pixels (every radius is multiplied by `unitsPerPx`), so a harbour wears the SAME glow at
+  // every span rather than swelling as you close on it. The constant is kept and still names the
+  // rung, because `lightsOnly` below is measured from it.
+  // THE LANES still wait for the pulled-back sheet: 49 thinned loops laid over a working chart is a
+  // thicket, and a lane IS thinned — straight where the real course bends — so close in it would be
+  // a visibly wrong line on water somebody is reading.
+  const laneBand = box.width >= NIGHT_SPAN_DEG
   const lightsOnly = box.width >= PURE_LIGHT_SPAN_DEG
 
   const marks = useMemo(
@@ -281,7 +291,7 @@ export function ChartCanvas({
         viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
         aria-hidden="true"
       >
-        <TracksLayer model={model} unitsPerPx={unitsPerPx} lit={lit} />
+        <TracksLayer model={model} unitsPerPx={unitsPerPx} lanes={laneBand} />
         {/* THE ROADS (0076) — the dotted helper line out to the one point of open water each port is
             reached from, and the hollow circle on it. UNDER the port marks, because a dotted line
             crossing a harbour should pass behind it (FleetsLayer.tsx:6-9) and a city standing on its
@@ -313,7 +323,6 @@ export function ChartCanvas({
           portRoles={portRoles}
           selectedCode={selectedPortCode}
           unitsPerPx={unitsPerPx}
-          lit={lit}
           lightsOnly={lightsOnly}
         />
         <FleetsLayer
