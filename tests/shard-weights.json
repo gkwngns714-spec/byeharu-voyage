@@ -49,10 +49,10 @@
   "tests": {
     "db.chain.spec.ts › a chain change rebuilds the stored world instead of layering onto it": 150,
     "db.chain.spec.ts › a chain that could apply half a world is refused before a statement runs": 1,
-    "db.chain.spec.ts › a cold boot ends ready, seeded with the K.1 first session, and reports every phase": 402,
+    "db.chain.spec.ts › a cold boot ends ready, seeded with the K.1 first session, and reports every phase": 120,
     "db.chain.spec.ts › a migration filename reads as a sentence": 1,
     "db.chain.spec.ts › a migration that fails names the FILE and carries the SQLSTATE": 1,
-    "db.chain.spec.ts › every migration applies, in order, and every one prints its self-assert receipt": 348,
+    "db.chain.spec.ts › every migration applies, in order, and every one prints its self-assert receipt": 60,
     "db.chain.spec.ts › progress never goes backwards and never claims done before it is": 1,
     "db.chain.spec.ts › the chain the client loads is the chain on disk, in apply order, LF-only": 1,
     "db.chain.spec.ts › the fingerprint moves when a migration changes, and only then": 1,

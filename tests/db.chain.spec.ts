@@ -351,10 +351,16 @@ test('the fingerprint moves when a migration changes, and only then', async () =
 // ── applying it ────────────────────────────────────────────────────────────────────────────────
 
 test('every migration applies, in order, and every one prints its self-assert receipt', async () => {
+  // 2026-10-13 — THE FROZEN PREFIX, NOT THE WHOLE CHAIN (owner: *"make it so that the test ends
+  // faster"*). PR #94's CI ran this 45.7 min. What it proves is THE APPLIER: order, one receipt per
+  // file, the step count, a seeded world — and a prefix exercises every line of that. The whole
+  // chain is still applied from zero, every self-assert with it, by `disposable-chain` on a real
+  // Supabase, and its new files by the world-image build on every push; this was a third copy.
+  test.setTimeout(300_000)
   const { PGlite } = await import('@electric-sql/pglite')
   const db = await PGlite.create()
   try {
-    const files = await loadChain()
+    const files = (await loadChain()).filter((f) => f.name.slice(0, 14) < REBUILD_PREFIX_END)
     const seen: string[] = []
     const result = await applyChain(db, files, (step) => {
       seen.push(step.name)
@@ -438,8 +444,17 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   // actually takes — it was never measured, only observed to exceed 900 s — so 1,800 is a ceiling
   // chosen to stop the bleeding and not a figure derived from anything. Measure it before moving it
   // again, and if the real cost is near this, lighten the fixture instead.
+  //
+  // 2026-10-13 — A FROZEN PREFIX, measured, as the ruling above asked: "lighten the fixture". PR #94's
+  // CI (run 38371308971) ran this boot 41.4 min against 30 and failed — 0105's merchant roster made
+  // the full chain cost that under the suite's load. Every assertion here is about the BOOT — its
+  // phases, its receipts equal to the chain it was handed, the K.1 house through new_house (0004) at
+  // Lisboa (0003) and the purse invariant — and none reads anything after the growth baseline. The
+  // full chain is still applied end to end by db.image.spec and by the growth test below, and in
+  // every apply proof; this one stops paying a third time for it.
+  const bootChain = async () => (await loadChain()).filter((f) => f.name.slice(0, 14) < REBUILD_PREFIX_END)
   const bootDir = path.join(os.tmpdir(), `bv-coldboot-${process.pid}-${Date.now()}`)
-  test.setTimeout(1_800_000)
+  test.setTimeout(900_000)
   const channel = createBootChannel()
   const phases: BootPhase[] = []
   const migrations: string[] = []
@@ -467,7 +482,7 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   const bootLog: string[] = []
   expect(channel.get().phase).toBe('idle')
   const db = await openLocalDb({
-    loadChain,
+    loadChain: bootChain,
     dataDir: bootDir,
     channel,
     log: (...args: unknown[]) => {
@@ -482,7 +497,7 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
     'seeding',
     'ready',
   ])
-  expect(migrations).toEqual((await loadChain()).map((f) => f.name))
+  expect(migrations).toEqual((await bootChain()).map((f) => f.name))
   const state = channel.get()
   expect(state.error).toBeNull()
   expect(state.progress).toBe(1)
@@ -558,8 +573,9 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
   // fingerprint, never its length or content. A prefix exercises exactly the same code path
   // (openLocalDb → fingerprintChain → the demolition), still founds the house through the chain's
   // own new_house (0004) and still seeds 214 harbours (0003), so every assertion below keeps its
-  // meaning. The FULL chain is still applied, end to end, by the cold-boot test above, by
-  // db.image.spec and by the growth test below; this one stops paying for it twice.
+  // meaning. The FULL chain is still applied, end to end, by db.image.spec and by the growth test
+  // below (the cold-boot test above boots this same prefix since 2026-10-13); this one stops paying
+  // for it twice.
   // The prefix is the frozen pre-growth baseline (GROWTH_SPLIT, below): history, so it never grows.
   test.setTimeout(900_000)
   const prefix = async () => (await loadChain()).filter((f) => f.name.slice(0, 14) < REBUILD_PREFIX_END)

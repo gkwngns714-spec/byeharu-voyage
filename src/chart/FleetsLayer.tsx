@@ -358,7 +358,9 @@ function HullGroup({
         const lit = hullGroupHalo(marks)
         return (
           <g className="bv-ship-blink" style={{ animationDelay: `${blinkPhase(fleet.fleet.id)}ms` }} pointerEvents="none" data-ship-light="">
-            <circle cx={lit.cx} cy={lit.cy} r={lit.r * 1.6} className="fill-ship-light/20" />
+            {/* 1.25 x, not 1.6 x (2026-10-13): at a close phone zoom the wider glow made a mark 110 px
+                across, over a quarter of a 390 px glass (tests/map.hulls.spec.ts:449). */}
+            <circle cx={lit.cx} cy={lit.cy} r={lit.r * 1.25} className="fill-ship-light/20" />
             <circle cx={lit.cx} cy={lit.cy} r={lit.r * 0.9} className="fill-ship-light/45" />
           </g>
         )
