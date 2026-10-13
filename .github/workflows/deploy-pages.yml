@@ -85,11 +85,15 @@ jobs:
       # Same cache, same key and same reason as build.yml: keyed by the chain, restored after
       # npm ci (which removes node_modules whole), and a miss just applies the chain as before.
       # The published artifact is the image itself, so this only decides how long that takes.
+      # `restore-keys` (2026-10-13): on a moved chain the most recent older entry is restored, and
+      # its PREFIX SNAPSHOTS (scripts/db/prefix-cache.mjs) let the build apply only the new files.
+      # The published image is still named, stamped and certified for THIS chain alone.
       - name: Cache the pre-built world image (keyed by the chain)
         uses: actions/cache@v4
         with:
           path: node_modules/.cache/byeharu-world-image
           key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
+          restore-keys: world-image-
 
       - name: Lint
         run: npm run lint

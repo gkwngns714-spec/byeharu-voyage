@@ -53,9 +53,32 @@ concurrency:
 permissions:
   contents: read
 
+# ── FOUR SHARDS AND ONE VERDICT (2026-10-13) ─────────────────────────────────────────────────────
+# The suite ran on ONE runner: 52m22s of `Run the suite` inside a 62-minute job on main (run
+# 38081084926), and 74m32s-and-cancelled on the merchant branch. Nothing in it was slow for a
+# reason a budget could fix — it was 365-382 tests in one queue. So the suite is split by a
+# MEASURED-TIME test list (scripts/ci/shard-plan.mjs) over four parallel runners (`acceptance-shard`), and ONE job named `acceptance`
+# — the required check, so branch protection is unchanged — delivers the verdict.
+#
+# NO ASSERTION IS DROPPED AND THE NON-VACUITY FLOOR GOT STRICTER, not looser:
+#   * every shard still fails on any failed test, any skip, or zero tests run — its own floor;
+#   * the verdict job then requires all four shards' stats to have ARRIVED, every shard to have run
+#     at least one test, zero skipped / unexpected / flaky across them, and — new — the SUM of
+#     expected (passed) tests across the shards to EQUAL the number of tests `playwright test
+#     --list` finds in tests/. A shard that silently ran nothing, or a split that lost a file,
+#     can no longer read as green.
 jobs:
-  acceptance:
+  acceptance-shard:
+    name: acceptance-shard (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    # The budget history below is kept because its measurements are still the evidence. With four
+    # shards a shard carries roughly a quarter of the suite; 75 is left where it was until CI has
+    # measured the split, and should come DOWN once it has (DEV_LOG 2026-10-13 records the numbers).
+    #
     # Derived from the suite's own declared budgets, not from a stopwatch. The slow half is the
     # browser spec: six tests (five tabs plus the market fold), each of which loads the app and
     # waits while the 16-migration chain applies inside chromium. layout.spec.ts's `ready()`
@@ -100,6 +123,20 @@ jobs:
       - name: Install dependencies (from the lockfile)
         run: npm ci
 
+      # THE SAME CACHE AND KEY as build.yml and deploy-pages.yml, which this workflow lacked: with
+      # no cache every run paid a full chain apply inside `npm run build` (8m57s on main, run
+      # 38081084926; 32m33s on the merchant branch). Restored AFTER npm ci, which removes
+      # node_modules whole. `restore-keys` brings back the newest older entry when the chain moved,
+      # and its prefix snapshots (scripts/db/prefix-cache.mjs) mean only the new files are applied.
+      # Restore and save are split so a red suite still keeps the world it paid for.
+      - name: Restore the pre-built world image (keyed by the chain)
+        id: world
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules/.cache/byeharu-world-image
+          key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
+          restore-keys: world-image-
+
       # chromium ONLY. The suite declares one project (playwright.config.ts) and one spec needs a
       # browser; firefox and webkit would be two more downloads proving nothing. `--with-deps`
       # pulls the shared libraries the runner image does not ship.
@@ -113,6 +150,15 @@ jobs:
       # The floor at the end of this job is what makes that impossible to miss.
       - name: Build the app under test (local-PGlite mode)
         run: npm run build
+
+      # One shard saves (they all built the same image from the same chain); the others would only
+      # race it for the same key.
+      - name: Save the pre-built world image
+        if: matrix.shard == 1 && steps.world.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules/.cache/byeharu-world-image
+          key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
 
       # `--strictPort` so a taken port fails here, loudly, instead of leaving the suite pointed at
       # nothing. The host and port must match playwright.config.ts's PLAYWRIGHT_BASE_URL default
@@ -136,28 +182,36 @@ jobs:
           exit 1
 
       # Reporters are set on the CLI rather than in playwright.config.ts so the config keeps
-      # describing how a developer runs the suite. `json` is here only to be read by the next step.
-      - name: Run the suite
+      # describing how a developer runs the suite. `json` is here only to be read by the next steps.
+      #
+      # THE SPLIT IS BY MEASURED TIME (scripts/ci/shard-plan.mjs, tests/shard-weights.json), not
+      # Playwright's `--shard`, which cuts equal COUNTS: the first run with `--shard=i/4` took
+      # 29.8m / 32s / 1.9m / 20.0m because db.chain.spec.ts's four from-zero world builds all fell in
+      # one chunk. The plan is built from `playwright test --list`, so a new spec is never left out.
+      - name: Run this shard of the suite
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-results.json
-        run: npx playwright test --reporter=list,html,json
+        run: |
+          set -euo pipefail
+          node scripts/ci/shard-plan.mjs ${{ matrix.shard }} 4 shard-tests.txt
+          npx playwright test --test-list shard-tests.txt --reporter=list,html,json
 
-      # THE NON-VACUITY FLOOR. Green is not "playwright exited 0" — it is "the tests that matter
-      # actually ran". Every skip in tests/ lives in layout.spec.ts and every one of them fires on
-      # a condition this job exists to rule out: nothing served, or a cloud build sitting on /auth.
-      # Either would produce a perfectly green run that measured no pixels at all, which is the
-      # exact camouflage that spec was written to strip off. So a skip here is a failure.
-      - name: Every test ran — no skips, and not zero tests
+      # THE NON-VACUITY FLOOR, PER SHARD. Green is not "playwright exited 0" — it is "the tests that
+      # matter actually ran". Every skip in tests/ lives in layout.spec.ts and every one of them
+      # fires on a condition this job exists to rule out: nothing served, or a cloud build sitting
+      # on /auth. Either would produce a perfectly green run that measured no pixels at all, which
+      # is the exact camouflage that spec was written to strip off. So a skip here is a failure.
+      - name: Every test in this shard ran — no skips, and not zero tests
         if: always()
         run: |
           set -euo pipefail
           test -f playwright-results.json || {
-            echo "::error title=No JSON report::the suite did not run to completion"; exit 1; }
+            echo "::error title=No JSON report::shard ${{ matrix.shard }} did not run to completion"; exit 1; }
           expected=$(jq -r '.stats.expected // 0' playwright-results.json)
           skipped=$(jq -r '.stats.skipped  // 0' playwright-results.json)
-          echo "expected: $expected   skipped: $skipped"
+          echo "shard ${{ matrix.shard }}/4 — expected: $expected   skipped: $skipped"
           if [ "$expected" -eq 0 ]; then
-            echo "::error title=Vacuous run::0 tests passed. A green tick over nothing is not a proof."
+            echo "::error title=Vacuous shard::0 tests passed in shard ${{ matrix.shard }}. A green tick over nothing is not a proof."
             exit 1
           fi
           if [ "$skipped" -ne 0 ]; then
@@ -170,7 +224,29 @@ jobs:
                    | "  skipped: \(.title)"' playwright-results.json || true
             exit 1
           fi
-          echo "OK: $expected test(s) ran, none skipped."
+          echo "OK: $expected test(s) ran in shard ${{ matrix.shard }}, none skipped."
+
+      # The shard's COUNTS only — a few hundred bytes — for the verdict job. Never the report: a
+      # report on every run is what hit the artifact quota on 2026-08-22 (see below).
+      - name: Hand this shard's counts to the verdict
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p shard-stats
+          if [ -f playwright-results.json ]; then
+            jq '{shard: ${{ matrix.shard }}, stats: .stats}' playwright-results.json > shard-stats/shard-${{ matrix.shard }}.json
+          else
+            echo '{"shard": ${{ matrix.shard }}, "stats": null}' > shard-stats/shard-${{ matrix.shard }}.json
+          fi
+          cat shard-stats/shard-${{ matrix.shard }}.json
+
+      - name: Upload this shard's counts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shard-stats-${{ matrix.shard }}
+          path: shard-stats/
+          retention-days: 1
 
       # `screenshot: on` and `trace: on` are the config's defaults, so a red run arrives with the
       # picture and the timeline already in it.
@@ -195,7 +271,7 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-shard-${{ matrix.shard }}
           path: |
             playwright-report/
             playwright-results.json
@@ -204,3 +280,71 @@ jobs:
       - name: Stop the preview server (always)
         if: always()
         run: kill "${PREVIEW_PID:-0}" 2>/dev/null || true
+
+  # ═══════════════════════════════════════════════════════════════════════════════════════════
+  # THE VERDICT — named `acceptance`, the check branch protection requires.
+  # ═══════════════════════════════════════════════════════════════════════════════════════════
+  acceptance:
+    name: acceptance
+    needs: acceptance-shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies (from the lockfile)
+        run: npm ci
+
+      - name: Collect every shard's counts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: shard-stats-*
+          path: shard-stats
+          merge-multiple: true
+
+      - name: All four shards ran, and together they ran EVERY test in tests/
+        env:
+          SHARDS_RESULT: ${{ needs.acceptance-shard.result }}
+        run: |
+          set -euo pipefail
+          ls -la shard-stats || true
+          fail=0
+          total_expected=0
+          for i in 1 2 3 4; do
+            f="shard-stats/shard-$i.json"
+            if [ ! -f "$f" ]; then
+              echo "::error title=Missing shard::shard $i/4 handed back no counts — it did not run to the end"; fail=1; continue
+            fi
+            if [ "$(jq -r '.stats == null' "$f")" = "true" ]; then
+              echo "::error title=No JSON report::shard $i/4 produced no Playwright report"; fail=1; continue
+            fi
+            e=$(jq -r '.stats.expected // 0' "$f"); s=$(jq -r '.stats.skipped // 0' "$f")
+            u=$(jq -r '.stats.unexpected // 0' "$f"); fl=$(jq -r '.stats.flaky // 0' "$f")
+            echo "shard $i/4: expected=$e skipped=$s unexpected=$u flaky=$fl"
+            [ "$e" -gt 0 ] || { echo "::error title=Vacuous shard::shard $i/4 passed 0 tests"; fail=1; }
+            [ "$s" -eq 0 ] || { echo "::error title=Skipped test(s)::shard $i/4 skipped $s"; fail=1; }
+            [ "$u" -eq 0 ] || { echo "::error title=Failed test(s)::shard $i/4 had $u unexpected result(s)"; fail=1; }
+            [ "$fl" -eq 0 ] || { echo "::error title=Flaky test(s)::shard $i/4 had $fl flaky result(s)"; fail=1; }
+            total_expected=$((total_expected + e))
+          done
+          # The denominator, from tests/ itself and not from the shards: a split that lost a file
+          # would otherwise sum to a smaller, perfectly green number.
+          listed=$(npx playwright test --list | sed -n 's/^Total: \([0-9][0-9]*\) tests\{0,1\} in .*/\1/p' | tail -1)
+          echo "tests in tests/ (playwright test --list): ${listed:-?}   passed across the shards: $total_expected"
+          if [ -z "$listed" ] || [ "$listed" -eq 0 ]; then
+            echo "::error title=No denominator::playwright test --list found no tests"; fail=1
+          elif [ "$total_expected" -ne "$listed" ]; then
+            echo "::error title=Tests unaccounted for::$listed test(s) in tests/ but $total_expected passed across the four shards"; fail=1
+          fi
+          if [ "$SHARDS_RESULT" != "success" ]; then
+            echo "::error title=Shard failed::the shard matrix finished '$SHARDS_RESULT'"; fail=1
+          fi
+          [ "$fail" -eq 0 ] || exit 1
+          echo "OK: $total_expected of $listed test(s) passed across 4 shards, none skipped."
+

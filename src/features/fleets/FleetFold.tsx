@@ -131,6 +131,12 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
                 className="mt-3 w-full"
                 busy={standing.busy}
                 busyLabel="Saving…"
+                // Until the standing-order book has been read, `keep()` refuses silently
+                // (standingOrder.ts: `if (!book || busy) return false`) — so the button must not be
+                // pressable then, or a quick press does nothing at all. Seen in CI 2026-10-13
+                // (flicker.spec, run 38348647015): the press landed before world.provision_presets()
+                // answered and no order was ever sent.
+                disabled={!standing.book}
                 onClick={commit}
                 data-testid="fleet-keep"
               >
