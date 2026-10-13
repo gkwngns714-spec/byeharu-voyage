@@ -100,8 +100,22 @@ step, so Ships, Officers and Skills had no shape.
   before, MAP → `port/useMerchantsHere`, is gone with the move; `duplication` asked 0113 to say
   "supersede" in its header, and it does).
 * Browser specs on the rebuilt image (`vite preview --port 4190`): `primitives.geometry` (the 104 px
-  peek), `map.sendfleet`, `layout`, `wide.layout` — 40 passed, 0 skipped; `map.merchants` and
-  `port.merchants` — see the GATES line at the foot of this entry.
+  peek), `map.sendfleet`, `layout`, `wide.layout` — 40 passed, 0 skipped. `port.merchants` — 2 passed
+  (the shared row: name, `company · N ships · line`, a numeric level on every row, the six words, the
+  loop; the laid-up one at Lisbon; the sheet from a row). `map.merchants`, one worker — 10 of 12
+  passed, among them the NEW city-list test (a city with merchants lying in it, a numeric level on
+  every row, the countdown only on a resting one, soonest first, a row opening her sheet with the
+  same level). The two reds: `:377` is the helper closing the sheet it opened while hunting for a
+  lap average (7 of 8 taps opened it — the coordinator's diagnosis; 1e9837c's helper hunk is taken
+  here), and the 1280 test lost its trace zip to a second Playwright run I started in the same
+  worktree mid-flight (`test-finished-1.png` exists; the body passed). The first, four-worker run was
+  a cold-fixture pile-up (every worker warped the roster at once behind a 40-spec batch) and is
+  not a reading of anything.
+* Shots, looked at: `docs/npc-traders/before-*` (the one-line head, `4 ships resting` and no list, the
+  empty side panel) against `after-city-peek-390` (`Cadiz · Spain · 5 laid up`), `after-city-half-390`
+  and `-1440` (In port: `Costeiros do Sul · 4 level · 20.6 min Resting`, then Your fleets),
+  `after-merchant-half-390` / `after-merchant-full-1440` (the two figure tiles, the grouped panel, ship
+  and cargo tiles with a panel), `city-tray-half-390` and `city-tray-merchant-from-list-390` (the spec's).
 
 ### Honest notes
 
