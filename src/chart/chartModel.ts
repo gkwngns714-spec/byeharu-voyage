@@ -256,6 +256,11 @@ export function buildChartModel(
   // THE MERCHANTS: the same placement, their own list, and nothing else touched.
   const merchants: TrafficOnChart[] = []
   for (const m of traffic) {
+    // A MERCHANT RESTING IN A CITY IS NOT ON THE SEA (owner, 2026-10-13: *"ships that are resting
+    // in cities, don't show it on map. when i click on the city, it will show then"*). Dropped here,
+    // the one place the chart's merchant list is built, so the hit test cannot find her either; the
+    // city's tray counts her instead (MapScreen `portLine`).
+    if (m.docked) continue
     // HER LOOP IS DRAWN WHETHER SHE IS AT SEA OR IN PORT: a route is what she runs, not what she
     // happens to be doing this minute, and a merchant held at her home quay is exactly when a
     // player most wants to see where she goes (owner row 112).

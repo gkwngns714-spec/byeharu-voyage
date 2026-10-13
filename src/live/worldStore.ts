@@ -207,6 +207,9 @@ export interface LiveWorld {
    * 10-degree pad covers one beat of lag.
    */
   trafficWindows: Readonly<Record<string, SeaWindow | null>>
+  /** True from a move of the view until the traffic read for that view lands — MAP's loading bar
+   *  (owner, 2026-10-13: *"the map needs time to load when i move… show loading bar too"*). */
+  trafficPending: boolean
   /** What is on at the quay (0026), keyed by port id — a fair is a PORT's fact, not the world's. */
   buffs: Record<string, BuffsView>
   /** One port's remembered prices, keyed by port id (0013). Fetched beside its market. */
@@ -447,10 +450,16 @@ export const useWorld = create<LiveWorld>((set, get) => {
     // THE UNION OF WHAT THE MOUNTED SCREENS ARE LOOKING AT (0102). Empty is the world, which is
     // what a screen that has not said where it is looking gets — and what the whole app got before
     // this argument existed.
-    const r = await worldSeaTraffic(seaWindowUnion(Object.values(get().trafficWindows)))
-    if (!r.ok || seq < trafficApplied) return
+    const asked = get().trafficWindows
+    const r = await worldSeaTraffic(seaWindowUnion(Object.values(asked)))
+    // The bar ends when the read for the view NOW on screen has answered — landed or refused.
+    const settled = get().trafficWindows === asked ? { trafficPending: false } : {}
+    if (!r.ok || seq < trafficApplied) {
+      if (seq >= trafficApplied) set(settled)
+      return
+    }
     trafficApplied = seq
-    set({ traffic: r.value })
+    set({ traffic: r.value, ...settled })
   }
 
   return {
@@ -473,6 +482,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
   traffic: null,
   trafficWanted: 0,
   trafficWindows: {},
+  trafficPending: false,
   buffs: {},
   history: {},
   ducats: null,
@@ -922,7 +932,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
       set((s) => {
         const left = Math.max(0, s.trafficWanted - 1)
         last = left === 0
-        return last ? { trafficWanted: 0, traffic: null } : { trafficWanted: left }
+        return last ? { trafficWanted: 0, traffic: null, trafficPending: false } : { trafficWanted: left }
       })
       if (last) dropTrafficInFlight()
     }
@@ -934,7 +944,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
       // view, and writing an equal window would re-render every subscriber of this store for a
       // request that is byte-for-byte the one already standing.
       if (key in s.trafficWindows && sameSeaWindow(s.trafficWindows[key] ?? null, window)) return s
-      return { trafficWindows: { ...s.trafficWindows, [key]: window } }
+      return { trafficWindows: { ...s.trafficWindows, [key]: window }, trafficPending: s.trafficWanted > 0 }
     }),
 
   clearTrafficWindow: (key) =>

@@ -63,7 +63,8 @@ test('merchants live in their own list and nothing about your fleets sees them',
   const traffic = mapTrafficOf(rows)
   const bare = buildChartModel([OWN], [LIS, FNC])
   const withTraffic = buildChartModel([OWN], [LIS, FNC], [], null, traffic)
-  expect(withTraffic.traffic).toHaveLength(2)
+  // RESTING MERCHANTS ARE NOT ON THE CHART (owner, 2026-10-13): a merchant in port is counted in her city's tray instead.
+  expect(withTraffic.traffic).toHaveLength(1)
   expect(withTraffic.fleets).toEqual(bare.fleets)
   expect(withTraffic.focusPoints).toEqual(bare.focusPoints)
   expect(withTraffic.motionPoints).toEqual(bare.motionPoints)
@@ -71,12 +72,8 @@ test('merchants live in their own list and nothing about your fleets sees them',
   expect([...withTraffic.destinationPoints]).toEqual([...bare.destinationPoints])
   // POSITION COPIED for a merchant at sea: the served point, exactly.
   expect(withTraffic.traffic[0].at).toEqual({ lat: 37.1, lon: -11.3 })
-  // A MERCHANT IN PORT lies at her own BERTH on the served roads — the roads are an anchorage, not
-  // a pinpoint, and the server serves one point for them (./liveWorld.ts `fannedBerth`). Her place
-  // is within the berth ring of that point, and it is hers alone (asserted below).
-  const berth = withTraffic.traffic[1].at
-  expect(Math.abs(berth.lat - 38.6)).toBeLessThanOrEqual(0.1)
-  expect(Math.abs(berth.lon - -9.4)).toBeLessThanOrEqual(0.2)
+  // A MERCHANT IN PORT is still mapped (her berth is kept for her card), but the model drops her.
+  expect(withTraffic.traffic.some((t) => t.fleet.id === dockedRow.id)).toBe(false)
   expect(traffic[1].docked).toBe(true)
   expect(traffic[1].berthCode).toBe('LIS')
   // NO TRACK for a merchant served the current segment only; one for the open merchant's full course
@@ -88,7 +85,7 @@ test('merchants live in their own list and nothing about your fleets sees them',
   })
   const openModel = buildChartModel([OWN], [LIS, FNC], [], null, open)
   expect(openModel.traffic[0].track).not.toBeNull()
-  expect(openModel.traffic[1].track).toBeNull()
+  expect(openModel.traffic).toHaveLength(1)
 })
 
 // THE CARD LENDS A TRACK AND NEVER A POSITION. The card is re-asked on the beat and lands after it,
@@ -132,12 +129,11 @@ test('the open merchant draws the whole loop she runs, not only the leg she is o
   expect(open[1].loop).toBeNull()
   const model = buildChartModel([OWN], [LIS, FNC], [], null, open)
   expect(model.traffic[0].loopD).toBeTruthy()
-  expect(model.traffic[1].loopD).toBeNull()
-  // and a merchant lying in PORT draws her loop too, with no leg of her own
+  expect(model.traffic).toHaveLength(1)
+  // a merchant lying in PORT is not on the chart at all, loop or not (owner, 2026-10-13)
   const berthed = mapTrafficOf([dockedRow], { id: dockedRow.id, voyage: null, legs })
-  const berthedModel = buildChartModel([], [LIS, FNC], [], null, berthed)
-  expect(berthedModel.traffic[0].loopD).toBeTruthy()
-  expect(berthedModel.traffic[0].track).toBeNull()
+  expect(berthed[0].loop).toHaveLength(3)
+  expect(buildChartModel([], [LIS, FNC], [], null, berthed).traffic).toHaveLength(0)
   // a leg of fewer than two points is never drawn as a guessed line
   const degenerate = mapTrafficOf([row], { id: 'm-1', voyage: row.voyage, legs: [{ course: [[38.6, -9.4]] }] })
   expect(degenerate[0].loop).toHaveLength(0)
@@ -174,14 +170,13 @@ test('merchants lying at one berth are fanned, and the harbour keeps its own dot
   }
   expect(placeOf(later, 'm-dock-2')).toBe(placeOf(traffic, 'm-dock-2'))
   expect(placeOf(later, 'm-dock-3')).toBe(placeOf(traffic, 'm-dock-3'))
-  // and each of the three can be opened from the chart, which a stack of three could not be
+  // and none of the three is on the chart to be tapped: RESTING MERCHANTS ARE NOT ON THE CHART (owner, 2026-10-13): a merchant in port is counted in her city's tray instead.
   const model = buildChartModel([], [LIS, FNC], [], null, traffic)
-  const opened = new Set<string>()
-  for (const t of model.traffic) {
-    const hit = hitTest(model, [], project(t.at), 1)
-    if (hit?.kind === 'merchant') opened.add(hit.id)
+  expect(model.traffic).toHaveLength(0)
+  for (const t of traffic) {
+    if (t.kind !== 'anchored') continue
+    expect(hitTest(model, [], project(t.at), 1)?.kind).not.toBe('merchant')
   }
-  expect(opened).toEqual(new Set(['m-dock', 'm-dock-2', 'm-dock-3']))
   // THE DOT CITY KEEPS ITS TAP: Lisbon is drawn as a dot, a merchant is moored on it, and a tap on
   // the mark opens the PORT — the hull answers only at the dot's own reach.
   const onLisbon = mapTrafficOf([{ ...dockedRow, roadstead: [LIS.lat, LIS.lon] }])

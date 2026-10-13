@@ -10,6 +10,7 @@ import { seaWindowOf } from '../../live/seaWindow'
 import { MerchantSheet } from '../../live/MerchantSheet'
 import { merchantLine } from '../../live/merchantLine'
 import { useMerchantCard } from '../../live/useMerchantCard'
+import { useMerchantsHere } from '../port/useMerchantsHere'
 // WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
 import { useCommandDraft } from '../../domain/order'
 // THE CHART IS A SECTION OF ITS OWN (src/chart) and this screen composes it; nothing here draws.
@@ -98,15 +99,30 @@ export function MapScreen() {
 }
 
 /** The one line beside a harbour's name at peek: its country, and which of yours are there. */
-function portLine(model: ChartModel, port: MapPort): string {
+function portLine(model: ChartModel, port: MapPort, resting: number | null): string {
   const here = fleetsAtPort(model, port.code).map((f) => f.fleet.name)
   const bound = fleetsBoundFor(model, port.code).map((f) => f.fleet.name)
-  if (here.length > 0) return `${port.country} · ${here.join(', ')} here`
-  if (bound.length > 0) return `${port.country} · ${bound.join(', ')} heading here`
-  return port.country
+  // The merchants resting here are not drawn on the chart (chartModel.ts), so the city says how
+  // many there are — the harbour's own read (`world.port_merchants`), not the capped sea window.
+  const merchants = resting === null ? '' : ` · ${resting} ${resting === 1 ? 'ship' : 'ships'} resting`
+  if (here.length > 0) return `${port.country} · ${here.join(', ')} here${merchants}`
+  if (bound.length > 0) return `${port.country} · ${bound.join(', ')} heading here${merchants}`
+  return `${port.country}${merchants}`
 }
 
 const NO_TRAFFIC: readonly TrafficFleet[] = []
+
+/** A thin bar across the top of the chart while the ships for a newly framed view are on their way
+ *  (owner, 2026-10-13). Its own component, so the store flag re-renders the bar and not the chart. */
+function MapLoadingBar() {
+  const pending = useWorld((s) => s.trafficPending)
+  if (!pending) return null
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-1 overflow-hidden bg-accent/15" role="progressbar" aria-label="Loading ships" data-testid="map-loading">
+      <div className="bv-loading-run h-full w-1/3 bg-accent" />
+    </div>
+  )
+}
 
 function Chart({
   ports: snapshotPorts,
@@ -235,6 +251,10 @@ function Chart({
     if (selection?.kind === 'sea') return { dest: { kind: 'sea' as const, at: selection.at }, port: null }
     return null
   }, [selection, portsByCode])
+  const placePortCode = place?.port?.code ?? null
+  const placePortId = placePortCode ? (snapshotPorts.find((p) => p.code === placePortCode)?.id ?? null) : null
+  const merchantsHere = useMerchantsHere(placePortId)
+  const restingHere = merchantsHere.view ? merchantsHere.view.merchants.filter((m) => m.port === placePortCode).length : null
 
   return (
     <div
@@ -245,6 +265,7 @@ function Chart({
       className={`bv-sea relative h-full w-full ${surface.touchClass} select-none overflow-hidden`}
       data-testid="map-chart"
     >
+      <MapLoadingBar />
       {box && (
         <ChartCanvas
           model={model}
@@ -335,7 +356,7 @@ function Chart({
         <SendFleet
           key={place.dest.kind === 'port' ? place.dest.code : pointToken(place.dest.at)}
           dest={place.dest}
-          line={place.port ? portLine(model, place.port) : 'Open sea'}
+          line={place.port ? portLine(model, place.port, restingHere) : 'Open sea'}
           onClose={() => setSelection(null)}
         />
       )}
