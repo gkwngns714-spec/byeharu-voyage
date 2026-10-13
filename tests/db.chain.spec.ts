@@ -295,7 +295,10 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // of every major fleet on the sheet at a span where a continent is forty pixels wide. The key is
 // named `lane` and not `course` because it crosses land between its points, and `public.route_lane`
 // is reachable by nobody — a line nothing may sail is a line nothing may ASK for.
-const LAST = '20260818000111_a_major_fleet_draws_her_lane.sql'
+// And to 0112, a forward fix to 0107 found by pglite-gate's proofs 1 and 5: a beginner's leg reach
+// admits the designed first crossing (Lisbon → Amsterdam), and a region she already lies in or has
+// made harbour in is never refused her — one reading, `public.exploration_reach`, for gate and board.
+const LAST = '20260818000112_a_first_crossing_is_open_and_no_captain_is_shut_in.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
@@ -524,6 +527,10 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   }
 })
 
+/** The end (exclusive) of the frozen chain prefix the rebuild test builds — the same production
+ *  baseline as GROWTH_SPLIT below, spelled here because that constant is declared further down. */
+const REBUILD_PREFIX_END = '20260818000041'
+
 test('a chain change rebuilds the stored world instead of layering onto it', async () => {
   // THIS TEST BUILDS THE WHOLE WORLD TWICE, so its cost grows with every migration added and the
   // 120 s global timeout is not sized for it. Measured 2026-08-23 at 34 migrations: ~1.9 min ALONE,
@@ -540,11 +547,27 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
   // D21 names, which would collapse both builds to a copy.
   // RAISED 2026-09-02 with the test above and for the same reason — this one builds the world
   // TWICE, so 0065's 2.15x lands on it doubled. CI measured 12.2 min against a 720 s budget.
-  test.setTimeout(1_500_000)
+  //
+  // 2026-10-13 — THE TWO BUILDS ARE NOW OF A FROZEN PREFIX OF THE CHAIN, NOT THE WHOLE OF IT, and the
+  // reason is measured rather than preferred. On PR #94's CI (run 38312840082) this test hit its
+  // 1,500 s budget at 39.5 min wall-clock: one full build had grown to ~20 min under the suite's
+  // parallel load (db.image.spec 19.8 min, the growth test below 20.1 min for ONE build each), so
+  // two of them could no longer fit any budget that is not simply "whatever it costs this week".
+  // What this test proves is the REBUILD DECISION — same fingerprint keeps the data, a changed
+  // fingerprint demolishes it and replays from 0001 — and that decision reads the chain's
+  // fingerprint, never its length or content. A prefix exercises exactly the same code path
+  // (openLocalDb → fingerprintChain → the demolition), still founds the house through the chain's
+  // own new_house (0004) and still seeds 214 harbours (0003), so every assertion below keeps its
+  // meaning. The FULL chain is still applied, end to end, by the cold-boot test above, by
+  // db.image.spec and by the growth test below; this one stops paying for it twice.
+  // The prefix is the frozen pre-growth baseline (GROWTH_SPLIT, below): history, so it never grows.
+  test.setTimeout(900_000)
+  const prefix = async () => (await loadChain()).filter((f) => f.name.slice(0, 14) < REBUILD_PREFIX_END)
+  const prefixLast = (await prefix()).at(-1)!.name
   const dir = await scratchDataDir('rebuild')
   try {
     // 1. Build a world and put a mark in it that only survives if the data survives.
-    const first = await openLocalDb({ loadChain, dataDir: dir, log: () => {} })
+    const first = await openLocalDb({ loadChain: prefix, dataDir: dir, log: () => {} })
     const fingerprint = first.fingerprint
     await first.pg.query("update public.players set company_name = 'Casa Marcada' where auth_uid = $1", [
       LOCAL_AUTH_UID,
@@ -553,7 +576,7 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
 
     // 2. Reopen with the SAME chain: no rebuild, and the mark is still there. This is the reload
     //    case, and it is the one that decides whether a player keeps their game.
-    const again = await openLocalDb({ loadChain, dataDir: dir, log: () => {} })
+    const again = await openLocalDb({ loadChain: prefix, dataDir: dir, log: () => {} })
     expect(again.rebuilt).toBe(false)
     expect(again.fingerprint).toBe(fingerprint)
     const kept = await again.pg.query<{ company_name: string }>(
@@ -565,7 +588,10 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
 
     // 3. Reopen with a CHANGED chain: rebuilt from 0001, so the mark is gone and the world is
     //    whole. Half a chain applied over an old database would be a schema in no repository.
-    const changed = () => loadChainWithEdit(LAST, (sql) => `${sql}\n-- a later build changed this\n`)
+    const changed = async () =>
+      (await prefix()).map((f) =>
+        f.name === prefixLast ? { name: f.name, sql: `${f.sql}\n-- a later build changed this\n` } : f,
+      )
     const rebuilt = await openLocalDb({ loadChain: changed, dataDir: dir, log: () => {} })
     expect(rebuilt.rebuilt).toBe(true)
     expect(rebuilt.fingerprint).not.toBe(fingerprint)

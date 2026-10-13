@@ -319,7 +319,8 @@ async function openMerchantWorthReading(page: Page, sailing: boolean | null): Pr
   // hull will win it. So each candidate gets a few aims and then the NEXT hull is tried; the first
   // that opens is kept, and the first that ALSO has a lap average to show is preferred, because
   // these screenshots are the record of the feature (the owner read `0 / no lap yet` off one).
-  for (let attempt = 1; attempt <= 8; attempt++) {
+  const MAX_HULLS = 8
+  for (let attempt = 1; attempt <= MAX_HULLS; attempt++) {
     const id = await hullInView(page, sailing, tried)
     if (!id) break
     tried.add(id)
@@ -332,7 +333,15 @@ async function openMerchantWorthReading(page: Page, sailing: boolean | null): Pr
     if (lap && lap.includes('≈')) return id
     // Keep this one unless there is another to try: a closed sheet and no candidate left would
     // hand the caller nothing, which is how this helper went red on its first run.
-    if (!(await hullInView(page, sailing, tried))) break
+    // AND THE LAST ATTEMPT IS "NO CANDIDATE LEFT" TOO (2026-10-13). PR #94's CI opened the sheet on
+    // SEVEN of eight hulls — every tap landed, every sheet rendered (trace of run 38312840082) — but
+    // none of the eight had a lap average yet, so the eighth was closed because a ninth hull was on
+    // the glass, the loop then ran out, and the helper reported "8 merchant hull(s) were tapped and
+    // none opened her sheet": a false account of a working feature. With 837 merchants and the
+    // window-capped read (0102) most hulls on the opening frame are on their first lap, which is
+    // what made it bite now. The contract in this helper's own doc comment — settle for the last one
+    // if none has a figure — is what is kept here; nothing about the assertion is loosened.
+    if (attempt === MAX_HULLS || !(await hullInView(page, sailing, tried))) break
     const close = page.getByTestId('tray-close')
     if (await close.isVisible().catch(() => false)) await close.click()
     opened = ''

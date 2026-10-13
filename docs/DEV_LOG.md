@@ -5,6 +5,88 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-13 — PR #94's two reds, root-caused: 0107's gates (not the roster), and a spec helper that lied
+
+Branch `osn-npc-traders`. **Production already runs 0101-0110 with `npc_traders_enabled = true`**
+while Pages still serves `main`'s client, so the gate defect below is live for real players.
+
+### pglite-gate — PROOF 1 and PROOF 5 were 0107, not 0105
+
+The hand-over's hypothesis (761 new merchants drawing the spread out of the markets) was TESTED
+and is FALSE. Applied the chain to 0104, ran proofs 01 and 05: green. Applied 0105 alone on top,
+ran them again: green, **same figures to the digit** (median first voyage 19.2 %, 32/32 pairs).
+Both reds are 0107 (`the_ocean_is_earned_at_the_academy`), one per gate:
+
+- **PROOF 1 — the leg gate refused the game's own first crossing.** `nav_leg_nm_base` 900 nm is a
+  beginner's whole reach, and Lisbon → Tunis is 1,086 nm sailed (Antwerp 1,073, Amsterdam 1,102 —
+  DESIGN.md's named first sea crossing). Every live player without NAVIGATION has been refused
+  those since 0107 was pushed.
+- **PROOF 5 — the region gate shut a captain inside the region she lies in.** Of the 8 sampled
+  ports, Busan (Korea, level 5) and Cartagena (Spanish Main, level 2) are in gated regions; a house
+  lying there at exploration level 1 was refused every harbour of her own region. 2 ports × 4
+  markets = the 8 dry pairs.
+
+**Fix: `supabase/migrations/20260818000112_a_first_crossing_is_open_and_no_captain_is_shut_in.sql`**
+(forward-only; 0107 is on production and untouched):
+
+1. `nav_leg_nm_base` 900 → **1,700 = `sea_scan_radius_nm`, the quay's own default horizon.**
+   Measured through proof 5 itself, not picked: 1,200 and 1,500 still fail BALANCE_DISTANCE_PAYS
+   (far/near 11.07/11.93 and 12.81/13.19 — the gate strikes the far half of what the quay offers a
+   beginner), 1,700 / 2,000 / 2,500 all give 14.30/13.57 over the same 79 routes offered before
+   0107. So the horizon is the floor. The ocean is still earned: the Caribbean (~4,000 nm) asks
+   NAVIGATION 3, Nagasaki 4.
+2. **`public.exploration_reach(player)`** — the greater of the derived exploration level and the
+   dearest region she has already made harbour in (VOYAGE_REPORT) or lies in now. ONE reading,
+   re-cut by one hunk into BOTH callers of the old one: `public.passage_gate` and
+   `world.route_board` (whose `closed` 0108 holds to agreeing with the gate) — re-cutting only the
+   gate would have made two authorities.
+3. Self-assert: pre-image + hunk + ACL for both functions; the beginner sails LIS → AMS/TUN/ARP/
+   FNC/CAD through `voyage.sail_refusal` too; the quay's offer at Lisbon equals the offer with no leg
+   gate (positive control: it differs at 900); a 4,000 nm leg and the Spanish Main are still refused;
+   a probe lying in the level-5 region has all its harbours open; a VOYAGE_REPORT keeps a region open
+   after she leaves; the board agrees with the gate on every row served to the probe. **4.5 s** to
+   apply. A first draft ran `npc_traders_switch(true)` for the board check and took 773 s (the switch
+   starts all 837 fleets); the flag is now set directly inside the rolled-back probe.
+
+Deliberately NOT done (named in 0112's header): a house that crossed an ocean before 0107 can trade
+inside the region she is in, but still needs NAVIGATION to sail back across it.
+
+### acceptance — `map.merchants.spec.ts:382` was the helper, not the chart
+
+From the CI trace (`playwright-report` of run 38312840082): **seven of the eight hulls tapped DID
+open the sheet**; none had a lap average yet, so `openMerchantWorthReading` closed each to try the
+next — including the eighth, because a ninth was on the glass — then ran out of attempts and threw
+"none opened her sheet". The last attempt now keeps the open sheet, which is what the helper's own
+doc comment promised. Locally, on a build carrying 0112: 10/11 on a cold npc-on cache (the tap
+test spent its 600 s building the fixture), then the tap test alone 1/1 in 48.6 s on the warm one.
+
+### Gates, honestly
+
+- `npx tsc -b` 0, `npx eslint .` 0, `npm run db:check-versions` 104 migrations, no collisions.
+- 0112 applied on the full 0111 world (in-memory PGlite): self-assert ok, 4.5 s. Proofs 01 and 05
+  on that world: **all 11 markers PASS** (01: 6/6; 05: 5/5, median 19.2 %, distance 14.30/13.57).
+- **The full local `db:apply` / `db:proof` did NOT complete.** Two runs died in 0108's 400 ms timing
+  assert (428 ms, 505 ms) because they ran beside a build on this machine; a third, alone, was
+  stopped on the coordinator's order to push and let CI (now the fast pipeline, #95) be the net.
+- `db.chain.spec.ts` was not run locally (same order).
+
+### acceptance — `db.chain.spec.ts:527` was a budget the test could no longer meet honestly
+
+It builds the world twice; one full build is ~20 min under the suite's load (db.image.spec 19.8 min,
+the growth test 20.1 min), so two cannot fit any fixed budget. What it proves is the REBUILD
+DECISION, which reads the fingerprint and not the chain's length, so both builds now use the frozen
+pre-growth prefix (`< 20260818000041`) and the budget went 1,500 s → 900 s. The full chain is still
+applied end to end by the cold-boot test, db.image.spec and the growth test. `LAST` → 0112.
+
+### Also seen
+
+- 0108's 400 ms timing assert FAILS on a disk-backed PGlite (`BV_CHAIN_DATA_DIR`) on this machine —
+  600-674 ms — and passes in memory. Not changed (0108 is on production); worth knowing before
+  anyone trusts a disk-backed run.
+- 0106 takes 23 min to apply on this machine under load.
+
+---
+
 ## 2026-10-11 — MERGED: PR #93, the merchant companies are on `main` (35f5092). The DATABASE is not deployed.
 
 Four CI jobs green on `7111a4f` — build 36 s, disposable-chain 9m40s, pglite-gate 22m50s,
