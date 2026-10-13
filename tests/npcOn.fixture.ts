@@ -10,7 +10,7 @@
 // there the local backend plays pg_cron's part (`tick_arrivals` before every traffic read), so the
 // merchants are at sea when the page opens and keep sailing while it is open.
 
-import type { Page } from '@playwright/test'
+import { test, type Page } from '@playwright/test'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -147,6 +147,11 @@ export async function npcOn(): Promise<Buffer> {
 
 /** Serve the merchants-on world to `page` in place of the shipped image. */
 export async function serveNpcOn(page: Page): Promise<void> {
+  // A COLD BUILD IS NOT THE TEST. Every migration moves the cache key, and on CI the first test to
+  // ask builds this world from scratch (~20 min, 2026-10-13 run 38362106885) inside its own
+  // 10-minute budget and dies before it looks at the chart. The build gets its own 30 minutes on
+  // top of the test's budget.
+  test.info().setTimeout(test.info().timeout + 30 * 60_000)
   const image = await npcOn()
   await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body: image, contentType: 'application/gzip' }))
 }

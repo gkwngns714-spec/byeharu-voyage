@@ -138,7 +138,7 @@ function MapLoadingFigure() {
   const pct = Math.min(99, Math.max(1, Math.round(((now - since) / expected) * 100)))
   return (
     <div
-      className="pointer-events-none absolute right-2 bottom-1.5 z-20 text-[10px] leading-none tabular-nums text-ink-muted"
+      className="pointer-events-none absolute right-2 bottom-1.5 z-20 text-t-caption leading-none tabular-nums text-ink-muted"
       role="progressbar"
       aria-label="Loading ships"
       aria-valuemin={0}
