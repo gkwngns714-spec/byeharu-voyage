@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// proof.mjs — apply the chain, then run every proof in a transaction that is thrown away
+// proof.mjs — build the chain's world (prefix cache), then run every proof in a thrown-away transaction
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // WHAT GREEN MEANS HERE
