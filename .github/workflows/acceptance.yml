@@ -56,8 +56,8 @@ permissions:
 # ── FOUR SHARDS AND ONE VERDICT (2026-10-13) ─────────────────────────────────────────────────────
 # The suite ran on ONE runner: 52m22s of `Run the suite` inside a 62-minute job on main (run
 # 38081084926), and 74m32s-and-cancelled on the merchant branch. Nothing in it was slow for a
-# reason a budget could fix — it was 382 tests in a queue. So the suite is split by Playwright's
-# own `--shard=i/4` over four parallel runners (`acceptance-shard`), and ONE job named `acceptance`
+# reason a budget could fix — it was 365-382 tests in one queue. So the suite is split by a
+# MEASURED-TIME test list (scripts/ci/shard-plan.mjs) over four parallel runners (`acceptance-shard`), and ONE job named `acceptance`
 # — the required check, so branch protection is unchanged — delivers the verdict.
 #
 # NO ASSERTION IS DROPPED AND THE NON-VACUITY FLOOR GOT STRICTER, not looser:
@@ -183,10 +183,18 @@ jobs:
 
       # Reporters are set on the CLI rather than in playwright.config.ts so the config keeps
       # describing how a developer runs the suite. `json` is here only to be read by the next steps.
+      #
+      # THE SPLIT IS BY MEASURED TIME (scripts/ci/shard-plan.mjs, tests/shard-weights.json), not
+      # Playwright's `--shard`, which cuts equal COUNTS: the first run with `--shard=i/4` took
+      # 29.8m / 32s / 1.9m / 20.0m because db.chain.spec.ts's four from-zero world builds all fell in
+      # one chunk. The plan is built from `playwright test --list`, so a new spec is never left out.
       - name: Run this shard of the suite
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-results.json
-        run: npx playwright test --shard=${{ matrix.shard }}/4 --reporter=list,html,json
+        run: |
+          set -euo pipefail
+          node scripts/ci/shard-plan.mjs ${{ matrix.shard }} 4 shard-tests.txt
+          npx playwright test --test-list shard-tests.txt --reporter=list,html,json
 
       # THE NON-VACUITY FLOOR, PER SHARD. Green is not "playwright exited 0" — it is "the tests that
       # matter actually ran". Every skip in tests/ lives in layout.spec.ts and every one of them
