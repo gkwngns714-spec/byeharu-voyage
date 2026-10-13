@@ -59,6 +59,17 @@ server-side changes; no migration was added or edited.
 
 The dummy migration (`20260818009999_dummy_prefix_probe.sql`) was removed before commit.
 
+**A real app race the new shard mix exposed (fixed here, not re-run until green).** Run 38348647015
+(head 2613844): pglite-gate **21m44s** on a warm prefix cache (chain restored, proofs only), shards
+19m53s / 11m28s / 8m35s / 18m25s — and shard 2 RED on `flicker.spec.ts:105`: `fleet-keep` never
+went away. The trace shows the press landed and **no `cmd.*` RPC was ever sent**:
+`useStandingOrder().keep()` returns `false` silently while the standing-order book is unread
+(`if (!book || busy) return false`), and the Keep button was enabled before
+`world.provision_presets()` answered. Same test passed in 32-34 s on earlier runs; here it shared a
+2-vCPU runner with a from-zero world build. Fix: the button is `disabled` until the book is read
+(`src/features/fleets/FleetFold.tsx`), so Playwright's click waits for it instead of pressing into
+nothing. Local re-check on a fresh preview (port 4517): flicker + route.stopface 8/8.
+
 **Honest limits.** Two independent from-zero applies are NOT byte-identical (uuids from
 `gen_random_uuid`, clock values from `now()`; measured: every seeded table's raw digest differed
 between two fresh applies of 0001-0004), so "same world" is proven as: exact round trip of each
