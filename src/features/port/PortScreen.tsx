@@ -35,7 +35,7 @@ import { MerchantSheet } from '../../live/MerchantSheet'
 import { merchantLine } from '../../live/merchantLine'
 import { useMerchantCard } from '../../live/useMerchantCard'
 import { MerchantsHere } from './MerchantsHere'
-import { useMerchantsHere } from './useMerchantsHere'
+import { useMerchantsHere } from '../../live/useMerchantsHere'
 import { useShellState } from '../../app/shellState'
 
 // PORT — E.3, redrawn to docs/UI_DIRECTION.md §6. Where you are, what is here, what you can do.

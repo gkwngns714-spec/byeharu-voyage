@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { sheetBodyClass, sheetColumnClass } from './screenLayout'
+import { useInTray } from './trayContext'
 
 // THE SHEET — the one scrolling surface of a tab, and the end of the admin document.
 //
@@ -115,6 +116,8 @@ export function SheetSection({
   children: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
+  // IN A TRAY the panel steps up to `surface-2` (trayContext.ts): a tray is itself `surface`.
+  const panel = useInTray() ? 'bg-surface-2' : 'bg-surface'
   return (
     <section className={`mt-6 first:mt-2 ${className}`} {...rest}>
       {(heading !== undefined || trailing !== undefined) && (
@@ -123,7 +126,7 @@ export function SheetSection({
           {trailing !== undefined && <div className="shrink-0">{trailing}</div>}
         </div>
       )}
-      {surface ? <div className="rounded-tile bg-surface px-4 [&>*:last-child]:border-b-0">{children}</div> : children}
+      {surface ? <div className={`rounded-tile ${panel} px-4 [&>*:last-child]:border-b-0`}>{children}</div> : children}
     </section>
   )
 }
