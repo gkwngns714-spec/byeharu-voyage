@@ -76,6 +76,7 @@ export function MapScreen() {
   const seaNav = useWorld((s) => s.seaNav)
   const fleets = useWorld((s) => s.fleets)
   const readAt = useWorld((s) => s.readAt)
+  const trafficReadAt = useWorld((s) => s.trafficReadAt)
   // THE MERCHANTS (0099, docs/NPC_TRADERS.md §8.1): read on the shell's beat while this screen is
   // up — the one seam a screen has into the cadence, never a clock of its own.
   const traffic = useWorld((s) => s.traffic)
@@ -94,6 +95,7 @@ export function MapScreen() {
       fleets={fleets}
       traffic={traffic?.enabled ? traffic.fleets : NO_TRAFFIC}
       readAt={readAt}
+      trafficReadAt={trafficReadAt}
     />
   )
 }
@@ -114,12 +116,31 @@ const NO_TRAFFIC: readonly TrafficFleet[] = []
 
 /** A thin bar across the top of the chart while the ships for a newly framed view are on their way
  *  (owner, 2026-10-13). Its own component, so the store flag re-renders the bar and not the chart. */
-function MapLoadingBar() {
-  const pending = useWorld((s) => s.trafficPending)
-  if (!pending) return null
+/** MAP'S LOADING FIGURE (owner, 2026-10-13: *"only number shown at the bottom right corner, small"*).
+ *  Elapsed ÷ the last wait, held under 99 % until the read for this view lands, so it never claims
+ *  done early. */
+function MapLoadingFigure() {
+  const since = useWorld((s) => (s.trafficPending ? s.trafficPendingSince : null))
+  const expected = useWorld((s) => s.trafficLastWaitMs)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (since === null) return
+    const id = window.setInterval(() => setNow(Date.now()), 100)
+    return () => window.clearInterval(id)
+  }, [since])
+  if (since === null) return null
+  const pct = Math.min(99, Math.max(1, Math.round(((now - since) / expected) * 100)))
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 h-1 overflow-hidden bg-accent/15" role="progressbar" aria-label="Loading ships" data-testid="map-loading">
-      <div className="bv-loading-run h-full w-1/3 bg-accent" />
+    <div
+      className="pointer-events-none absolute right-2 bottom-1.5 z-20 text-[10px] leading-none tabular-nums text-ink-muted"
+      role="progressbar"
+      aria-label="Loading ships"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={pct}
+      data-testid="map-loading"
+    >
+      {pct}%
     </div>
   )
 }
@@ -130,6 +151,7 @@ function Chart({
   fleets: fleetViews,
   traffic: trafficRows,
   readAt,
+  trafficReadAt,
 }: {
   /** Merchant fleets (0099) — never in `fleets`, so nothing about YOUR fleets sees one. */
   traffic: readonly TrafficFleet[]
@@ -138,6 +160,8 @@ function Chart({
   seaNav: SeaNav
   fleets: readonly FleetView[]
   readAt: number | null
+  /** When the merchants landed — their own drift instant (see `buildChartModel`). */
+  trafficReadAt: number | null
 }) {
   // THE ONE CLOCK (src/app/shellState.ts): it ticks a countdown's wording and 0075's drift.
   const { nowMs } = useShellState()
@@ -168,8 +192,8 @@ function Chart({
     [trafficRows, card, merchantId],
   )
   const model = useMemo(
-    () => buildChartModel(fleets, ports, [], { nowMs, readAtMs: readAt }, traffic),
-    [fleets, ports, nowMs, readAt, traffic],
+    () => buildChartModel(fleets, ports, [], { nowMs, readAtMs: readAt }, traffic, trafficReadAt),
+    [fleets, ports, nowMs, readAt, traffic, trafficReadAt],
   )
 
   // THE OPENING VIEW frames WHAT YOU HAVE, taken from the model AT MOUNT, once: it is the frame
@@ -265,7 +289,7 @@ function Chart({
       className={`bv-sea relative h-full w-full ${surface.touchClass} select-none overflow-hidden`}
       data-testid="map-chart"
     >
-      <MapLoadingBar />
+      <MapLoadingFigure />
       {box && (
         <ChartCanvas
           model={model}

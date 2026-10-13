@@ -172,7 +172,16 @@ export function buildChartModel(
    * returned in `traffic` alone: they feed no role, no ring, no focus point and no motion point.
    */
   traffic: readonly MapTraffic[] = [],
+  /**
+   * WHEN THE MERCHANTS WERE READ (owner, 2026-10-13: *"it is too slow"*). A move of the view reads
+   * the traffic ALONE, between beats, so the merchants carry their own instant: drifting them from
+   * the beat's `readAt` would extrapolate from a moment that did not produce their positions, and
+   * every hull would jump. Null = the beat's instant, as before.
+   */
+  trafficReadAtMs: number | null = null,
 ): ChartModel {
+  const trafficDrift: Drift | null =
+    drift && trafficReadAtMs !== null ? { ...drift, readAtMs: trafficReadAtMs } : drift
   const portsByCode = new Map(ports.map((p) => [p.code, p]))
   const roles = new Map<string, PortRole>()
   const destinations = new Map<string, LatLon>()
@@ -272,7 +281,7 @@ export function buildChartModel(
     const laneD = m.lane && m.lane.length >= 2 ? laneDFor(m.lane) : null
     if (m.kind === 'sailing') {
       merchants.push({
-        ...placeSailing(m, m.voyage, drift, m.voyage.course.length > 2),
+        ...placeSailing(m, m.voyage, trafficDrift, m.voyage.course.length > 2),
         merchant: m,
         loopD,
         laneD,

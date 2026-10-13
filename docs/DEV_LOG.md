@@ -5,6 +5,26 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-13 — The map loads the ships the moment it stops moving, and says how far along it is
+
+Branch `osn-ship-lights-resting`. Owner: *"loading bar in numbers"*, *"it is too slow"*, *"only
+number shown at the bottom right corner, small"*.
+
+- **Why a move was slow:** a changed view did not read; it waited for the shell's next beat
+  (7.5 s at compression 960) and then queued behind fleets → routes → traffic.
+- **Now:** a settled move reads `world.sea_traffic` alone, 300 ms after the view holds still
+  (`src/live/worldStore.ts`, `callViewRead`). The old reason a lone read was forbidden — hulls
+  drifting from the beat's `readAt` and jumping — is removed by giving the merchants their own instant,
+  `trafficReadAt`, which `buildChartModel` uses for their drift (`src/chart/chartModel.ts`).
+- **The figure:** `MapLoadingFigure` (`src/features/map/MapScreen.tsx`) prints elapsed ÷ last wait
+  as a percent in the chart's bottom-right corner, held at ≤ 99 % until the read lands. The swept
+  bar and its CSS are gone.
+- **Gates:** `tsc -b`, eslint, build; map/flicker specs 114/117 — the three reds are
+  `map.hulls:407` (pre-existing), `map.merchants:377` (the helper PR #94's 1e9837c fixes) and
+  `map.merchants:454` (passed alone in 43.8 s; it timed out under the parallel load). Browser:
+  checked on :4174. The figure shows in the corner and clears when the ships land. Timing on the
+  local PGlite demo is not meaningful (the database runs on the page's thread); measure on the live site.
+
 ## 2026-10-11 — MERGED: PR #93, the merchant companies are on `main` (35f5092). The DATABASE is not deployed.
 
 Four CI jobs green on `7111a4f` — build 36 s, disposable-chain 9m40s, pglite-gate 22m50s,

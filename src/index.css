@@ -677,12 +677,3 @@ body {
   }
 }
 
-/* MAP'S LOADING BAR (owner, 2026-10-13): a third-width run sweeping across while ships load. */
-@keyframes bv-loading-run {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(300%); }
-}
-.bv-loading-run { animation: bv-loading-run 1.1s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) {
-  .bv-loading-run { animation: none; width: 100%; opacity: 0.6; }
-}
