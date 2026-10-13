@@ -298,7 +298,7 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0112, a forward fix to 0107 found by pglite-gate's proofs 1 and 5: a beginner's leg reach
 // admits the designed first crossing (Lisbon → Amsterdam), and a region she already lies in or has
 // made harbour in is never refused her — one reading, `public.exploration_reach`, for gate and board.
-const LAST = '20260818000112_a_first_crossing_is_open_and_no_captain_is_shut_in.sql'
+const LAST = '20260818000113_a_harbours_merchants_carry_their_level.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

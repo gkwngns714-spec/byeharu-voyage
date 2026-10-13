@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Bar, Figure, Row, Tray, type TrayDetent } from '../../components/ui'
+import { Bar, Figure, Row, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
 import { formatCountdown, formatFixed, formatInt, formatMiles, formatVoyageDays, realMsToVoyageDays } from '../../lib/format'
 import { pointLabel } from '../../domain/passage'
 import { CHART_CHROME, hullPath, type FleetOnChart, type HullClass, type MapPort } from '../../chart'
 import { fleetLine } from './fleetLine'
-import { MapTrayTitle } from './MapTrayTitle'
+
 import { WatersAhead } from './WatersAhead'
 
 // THE FLEET TRAY — what the ship you tapped is doing, rising from the bottom edge.
@@ -112,7 +112,7 @@ export function VoyageTray({
     <Tray
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
-      title={<MapTrayTitle name={fleet.fleet.name} line={fleetLine(fleet, portsByCode, nowMs)} />}
+      title={<TrayTitle name={fleet.fleet.name} line={fleetLine(fleet, portsByCode, nowMs)} />}
       data-testid="map-detail-tray"
       {...CHART_CHROME}
     >

@@ -147,6 +147,10 @@
      LIGHT, the form she takes when she is a point rather than a shape. */
   --color-ship-light: #8fd8ff;
 
+  /* ONE COLOUR FOR EVERY TRADING MERCHANT (owner, 2026-10-13: *"make trading npc the same color —
+     darker than blue but blue. dark blue"*). Their nation inks come back with the Regions toggle. */
+  --color-merchant: #2a5bb8;
+
   /* ── THE PICTURE (2026-09-13, owner row 90: "map should be much more graphic... it is too
      blank") — five more chart inks, and the three above are UNCHANGED, because
      tests/chart.ink.spec.ts pins their contrast and the picture is built around them, not on
@@ -393,6 +397,7 @@
        goes deep amber here — a pale glow on white is a smudge, so the light scheme states its own
        pen rather than inheriting a bloom built for a dark ground. */
     --color-ship-light: #0b4f7a;
+    --color-merchant: #1d3f86;
 
     --color-surface: #ffffff;
     --color-surface-2: #f2f5f8;
@@ -671,3 +676,4 @@ body {
     scroll-behavior: auto !important;
   }
 }
+

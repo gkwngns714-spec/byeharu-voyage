@@ -9,6 +9,7 @@ import {
   hullPath,
 } from './glyphs'
 import type { MerchantInk } from './mapTypes'
+import { useRegionsFilter } from './regionsFilter'
 
 // GLYPHS 2 AND 3 — THE FLEET AND ITS DESTINATION — plus the track between them.
 //
@@ -99,6 +100,8 @@ export function TracksLayer({
   lanes: boolean
 }) {
   const litLanes = lanes
+  // Regions on: each merchant in her nation's ink. Off: every merchant in the one dark blue.
+  const regions = useRegionsFilter()
   return (
     <g pointerEvents="none" data-testid="map-tracks">
       {/* OWNER ROW 125 — THE MAJOR FLEETS' LANES, at a wide span only. *"major fleet shoud also
@@ -126,7 +129,7 @@ export function TracksLayer({
               data-testid="map-merchant-lane"
               data-lane-ink={t.merchant.ink}
               d={t.laneD}
-              className={`fill-none ${NATION_STROKE[t.merchant.ink]} opacity-15`}
+              className={`fill-none ${regions ? NATION_STROKE[t.merchant.ink] : 'stroke-merchant'} opacity-15`}
               strokeWidth={GLYPH.trackStroke}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -347,6 +350,19 @@ function HullGroup({
       {...hooks}
     >
       {children}
+      {/* HER RIDING LIGHT AT EVERY ZOOM (owner, 2026-10-13: *"i see no blue markers for ship"*).
+          The same blue lamp and blink the ember wears, drawn UNDER the hull so the shape stays on
+          top. Sized to HER (the group's halo), so the glow reaches past the hull and reads as a
+          light round her rather than a dot hidden beneath her. */}
+      {marks.length > 0 && (() => {
+        const lit = hullGroupHalo(marks)
+        return (
+          <g className="bv-ship-blink" style={{ animationDelay: `${blinkPhase(fleet.fleet.id)}ms` }} pointerEvents="none" data-ship-light="">
+            <circle cx={lit.cx} cy={lit.cy} r={lit.r * 1.6} className="fill-ship-light/20" />
+            <circle cx={lit.cx} cy={lit.cy} r={lit.r * 0.9} className="fill-ship-light/45" />
+          </g>
+        )
+      })()}
       {marks.map((m, i) => (
         <path
           key={i}
@@ -385,6 +401,8 @@ export function FleetsLayer({
   /** Pulled back past `PURE_LIGHT_SPAN_DEG`: only the MAJOR fleets are drawn, and as embers. */
   lightsOnly?: boolean
 }) {
+  // Regions on: each merchant in her nation's ink. Off: every merchant in the one dark blue.
+  const regions = useRegionsFilter()
   return (
     <g pointerEvents="none" data-testid="map-fleets">
       {/* 0099 — THE MERCHANTS, UNDER yours: the same `HullGroup` at the same sizes, nation ink, no
@@ -419,7 +437,7 @@ export function FleetsLayer({
             fleet={t}
             unitsPerPx={unitsPerPx}
             ember={lightsOnly}
-            className={`${NATION_FILL[t.merchant.ink]} ${selected ? 'stroke-ink' : 'stroke-chart-sea'}`}
+            className={`${regions ? NATION_FILL[t.merchant.ink] : 'fill-merchant'} ${selected ? 'stroke-ink' : 'stroke-chart-sea'}`}
             strokeWidth={GLYPH.glyphStroke * (selected ? 1.2 : 0.6)}
             hooks={{
               'data-testid': 'map-merchant',

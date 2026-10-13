@@ -204,9 +204,11 @@ test('the arrangement is hers — the same every read, and no neighbour can move
   // AND THROUGH THE WHOLE MODEL: one merchant's mark is byte-identical whether she is alone on the
   // sea, first of a crowd, or last of a different crowd — including a crowd berthed at her own
   // roadstead, which is the case that broke the berth fan.
+  // Read off the MAPPED rows: a merchant resting in port is not on the chart (owner, 2026-10-13),
+  // but her berth and hull list are still worked out here for her card, and must not move either.
   const markOf = (rows: readonly TrafficFleet[], id: string) => {
-    const model = buildChartModel([], [LIS], [], null, mapTrafficOf(rows))
-    const her = model.traffic.find((t) => t.fleet.id === id)!
+    const t = mapTrafficOf(rows).find((r) => r.id === id)!
+    const her = { at: t.kind === 'anchored' ? t.at : null, fleet: t }
     // HER HULL LIST AS WELL AS HER MARK. The group caps at three, so a neighbour that added a
     // fourth hull to her list would be invisible in the mark alone — and a list that moves with
     // the neighbours is the defect itself, whether this zoom happens to draw the difference.
@@ -356,8 +358,9 @@ test('both reads always say how many hulls, and only one of them can say what th
   // of class-less hulls, which is exactly what this chart drew for her before 0102.
   expect(mapTrafficOf([dockedMerchant('m-4', 3)])[0].hulls).toEqual([null, null, null])
   // and the model carries it through to the mark without the merchants touching anything of yours
+  // …and resting in port, neither is drawn: RESTING MERCHANTS ARE NOT ON THE CHART (owner, 2026-10-13): a merchant in port is counted in her city's tray instead.
   const model = buildChartModel([], [LIS], [], null, traffic)
-  expect(model.traffic.map((t) => (t.fleet.hulls ?? []).length)).toEqual([3, 1])
+  expect(model.traffic).toHaveLength(0)
 })
 
 // ── UNIT: ONE RENDERER ────────────────────────────────────────────────────────────────────────

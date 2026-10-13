@@ -29,6 +29,7 @@ export { Sheet, SheetSection } from './Sheet'
 //    the press" becomes. It is `fixed`, so opening one cannot move a tile. `inline` mode folds in
 //    flow instead, for the half of the owner's rule that is still open. See Tray.tsx.
 export { Tray } from './Tray'
+export { TrayTitle } from './TrayTitle'
 export {
   TRAY_DETENTS,
   TRAY_PEEK,

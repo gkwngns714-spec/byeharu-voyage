@@ -1690,6 +1690,14 @@ export type MerchantDoing = 'laid_up' | 'resting' | 'starting' | 'ending' | 'pas
  */
 export interface PortMerchant extends Omit<TrafficFleet, 'lane'> {
   doing: MerchantDoing
+  /**
+   * HER TOTAL LEVEL (0113, owner 2026-10-13: *"a list, showing the total level"*): the company's
+   * four skills — the levels docs/WORDS.md calls **Skills** — summed by the server through
+   * `public.skill_level`. 0 for a company that has studied nothing; never null. A server that has
+   * not applied 0113 sends no key at all, and `src/live/merchantWords.ts` `levelOf` reads that
+   * absence as "not served" rather than as nought.
+   */
+  level: number
   /** Her whole loop, port CODES in sailing order (2 to 8 of them). Codes only — the baked courses
    *  are served on the card, for the one fleet a player tapped. */
   stops: string[]

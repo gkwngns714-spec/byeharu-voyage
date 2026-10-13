@@ -25,9 +25,9 @@
 // nothing else asks it; the hook it stands on, the sheet it opens and the one line beside a
 // merchant's name are all shared (src/live).
 
-import { worldPortMerchants } from '../../lib/rpc'
-import type { PortMerchants } from '../../lib/rpc'
-import { useServedRead, type ServedRead } from '../../live/useServedRead'
+import { worldPortMerchants } from '../lib/rpc'
+import type { PortMerchants } from '../lib/rpc'
+import { useServedRead, type ServedRead } from './useServedRead'
 
 export function useMerchantsHere(portId: string | null): ServedRead<PortMerchants> {
   return useServedRead<PortMerchants>(portId, () => worldPortMerchants(portId as string))

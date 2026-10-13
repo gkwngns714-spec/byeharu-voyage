@@ -201,12 +201,25 @@ export interface LiveWorld {
    * briefly right and the other briefly wrong. A screen's key is its name because there is one of
    * each.
    *
-   * A CHANGED WINDOW DOES NOT READ. It is picked up by the next beat, for the same reason the
-   * first want rides one: a merchant reading that lands outside the beat is drifted from an instant
-   * that did not produce it, and every hull on the chart jumps (see `wantTraffic`). The server's
-   * 10-degree pad covers one beat of lag.
+   * A CHANGED WINDOW READS THE TRAFFIC AT ONCE, ALONE (owner, 2026-10-13: *"it is too slow"*), one
+   * VIEW_READ_DELAY_MS after the view holds still. Waiting for the shell's beat cost up to 7.5 s per
+   * move, plus the fleets and routes reads queued in front of it. The hull-jump that once forbade a
+   * lone read is gone because the merchants now carry their OWN instant (`trafficReadAt`), so a
+   * merchant is never drifted from a moment that did not produce her position. The read takes no
+   * lock, so it can sit beside a beat; a stale answer is dropped by the sequence counter.
    */
   trafficWindows: Readonly<Record<string, SeaWindow | null>>
+  /** True from a move of the view until the traffic read for that view lands — MAP's loading bar
+   *  (owner, 2026-10-13: *"the map needs time to load when i move… show loading bar too"*). */
+  trafficPending: boolean
+  /** When the current wait began (epoch ms) and how long the last one took. MAP's loading bar prints
+   *  elapsed ÷ last wait as a percent (owner, 2026-10-13: *"loading bar in numbers"*). The read is
+   *  one request riding the beat, so this is an ETA from the last wait, not a byte count. */
+  trafficPendingSince: number | null
+  trafficLastWaitMs: number
+  /** When `traffic` landed (epoch ms) — the instant the merchants are drifted from, which is NOT the
+   *  beat's `readAt` once a move of the view reads them alone. Null with `traffic`. */
+  trafficReadAt: number | null
   /** What is on at the quay (0026), keyed by port id — a fair is a PORT's fact, not the world's. */
   buffs: Record<string, BuffsView>
   /** One port's remembered prices, keyed by port id (0013). Fetched beside its market. */
@@ -382,6 +395,9 @@ export function nationNameOf(
   return nationByCode[code]?.name ?? code
 }
 
+/** How long a view must hold still before its move reads the traffic — one settled pan, one read. */
+const VIEW_READ_DELAY_MS = 300
+
 export const useWorld = create<LiveWorld>((set, get) => {
   /**
    * WHAT IS READ BACK AFTER A TRADE — the one spelling, for the two verbs that trade (`issue` and
@@ -442,15 +458,39 @@ export const useWorld = create<LiveWorld>((set, get) => {
   const dropTrafficInFlight = (): void => {
     trafficApplied = ++trafficAsked
   }
+  // THE READ A MOVE OF THE VIEW CALLS (see `trafficWindows`). One timer: one settled pan, one read.
+  let viewReadTimer: ReturnType<typeof setTimeout> | null = null
+  const callViewRead = (): void => {
+    if (viewReadTimer !== null) clearTimeout(viewReadTimer)
+    viewReadTimer = setTimeout(() => {
+      viewReadTimer = null
+      const s = get()
+      if (s.trafficWanted > 0 && s.phase === 'ready') void readTraffic()
+    }, VIEW_READ_DELAY_MS)
+  }
   const readTraffic = async (): Promise<void> => {
     const seq = ++trafficAsked
     // THE UNION OF WHAT THE MOUNTED SCREENS ARE LOOKING AT (0102). Empty is the world, which is
     // what a screen that has not said where it is looking gets — and what the whole app got before
     // this argument existed.
-    const r = await worldSeaTraffic(seaWindowUnion(Object.values(get().trafficWindows)))
-    if (!r.ok || seq < trafficApplied) return
+    const asked = get().trafficWindows
+    const r = await worldSeaTraffic(seaWindowUnion(Object.values(asked)))
+    // The bar ends when the read for the view NOW on screen has answered — landed or refused.
+    const since = get().trafficPendingSince
+    const settled =
+      get().trafficWindows === asked
+        ? {
+            trafficPending: false,
+            trafficPendingSince: null,
+            ...(since === null ? {} : { trafficLastWaitMs: Math.max(250, Date.now() - since) }),
+          }
+        : {}
+    if (!r.ok || seq < trafficApplied) {
+      if (seq >= trafficApplied) set(settled)
+      return
+    }
     trafficApplied = seq
-    set({ traffic: r.value })
+    set({ traffic: r.value, trafficReadAt: Date.now(), ...settled })
   }
 
   return {
@@ -473,6 +513,11 @@ export const useWorld = create<LiveWorld>((set, get) => {
   traffic: null,
   trafficWanted: 0,
   trafficWindows: {},
+  trafficPending: false,
+  trafficPendingSince: null,
+  // Before any wait has been measured: one beat is the usual worst case.
+  trafficLastWaitMs: 4000,
+  trafficReadAt: null,
   buffs: {},
   history: {},
   ducats: null,
@@ -922,20 +967,29 @@ export const useWorld = create<LiveWorld>((set, get) => {
       set((s) => {
         const left = Math.max(0, s.trafficWanted - 1)
         last = left === 0
-        return last ? { trafficWanted: 0, traffic: null } : { trafficWanted: left }
+        return last
+          ? { trafficWanted: 0, traffic: null, trafficReadAt: null, trafficPending: false, trafficPendingSince: null }
+          : { trafficWanted: left }
       })
       if (last) dropTrafficInFlight()
     }
   },
 
-  setTrafficWindow: (key, window) =>
-    set((s) => {
-      // A PAN THAT DOES NOT CHANGE THE REQUEST CHANGES NOTHING. MAP calls this on every settled
-      // view, and writing an equal window would re-render every subscriber of this store for a
-      // request that is byte-for-byte the one already standing.
-      if (key in s.trafficWindows && sameSeaWindow(s.trafficWindows[key] ?? null, window)) return s
-      return { trafficWindows: { ...s.trafficWindows, [key]: window } }
-    }),
+  setTrafficWindow: (key, window) => {
+    const s = get()
+    // A PAN THAT DOES NOT CHANGE THE REQUEST CHANGES NOTHING. MAP calls this on every settled
+    // view, and writing an equal window would re-render every subscriber of this store for a
+    // request that is byte-for-byte the one already standing.
+    if (key in s.trafficWindows && sameSeaWindow(s.trafficWindows[key] ?? null, window)) return
+    const pending = s.trafficWanted > 0
+    set({
+      trafficWindows: { ...s.trafficWindows, [key]: window },
+      trafficPending: pending,
+      // A second move inside one wait keeps the first start, so the number never runs backwards.
+      trafficPendingSince: pending ? (s.trafficPendingSince ?? Date.now()) : null,
+    })
+    if (pending) callViewRead()
+  },
 
   clearTrafficWindow: (key) =>
     set((s) => {

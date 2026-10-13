@@ -29,23 +29,25 @@ import { LAID_UP_AT_LISBON, serveNpcOn } from './npcOn.fixture'
 const SHOTS = path.resolve('docs', 'npc-traders')
 
 /** The six words, in the order the server ranks them (migration 0104). The client spells them in
- *  src/features/port/MerchantsHere.tsx; this is the same list, read as the contract it is. */
+ *  src/live/merchantWords.ts; this is the same list, read as the contract it is. */
 const WORDS = ['Laid up', 'Resting', 'Starting', 'Ending', 'Passing', 'Away'] as const
 
-/** Every row of the section, as the three things a player reads on it. */
+/** Every row of the section, as the things a player reads on it — the row is `src/live/MerchantRow`
+ *  since 2026-10-13 (the same row the chart's city tray prints): her name, the caption line
+ *  (company · ships · where she is), her level (0113), the word, and the loop PORT adds. */
 async function harbourRows(
   page: Page,
-): Promise<{ title: string; line: string; doing: string; loop: string }[]> {
+): Promise<{ title: string; line: string; level: string; doing: string; loop: string }[]> {
   return page.evaluate(() => {
-    const out: { title: string; line: string; doing: string; loop: string }[] = []
-    for (const row of document.querySelectorAll('[data-testid="port-merchant-row"]')) {
-      const label = row.querySelector('span')
-      const lines = label ? [...label.querySelectorAll(':scope > span')] : []
+    const out: { title: string; line: string; level: string; doing: string; loop: string }[] = []
+    const read = (row: Element, id: string) => (row.querySelector(`[data-testid="${id}"]`)?.textContent ?? '').trim()
+    for (const row of document.querySelectorAll('[data-testid="merchant-row"]')) {
       out.push({
-        title: (lines[0]?.textContent ?? '').trim(),
-        line: (lines[1]?.textContent ?? '').trim(),
-        doing: (row.querySelector('[data-testid="port-merchant-doing"]')?.textContent ?? '').trim(),
-        loop: (row.querySelector('[data-testid="port-merchant-loop"]')?.textContent ?? '').trim(),
+        title: read(row, 'merchant-row-name'),
+        line: read(row, 'merchant-row-line'),
+        level: read(row, 'merchant-row-level'),
+        doing: read(row, 'merchant-row-doing'),
+        loop: read(row, 'merchant-row-loop'),
       })
     }
     return out
@@ -83,7 +85,11 @@ test('the harbour names its merchants, what each is doing, and the loop that bri
     expect(WORDS, `"${r.doing}" on ${r.title}`).toContain(r.doing)
     expect(r.loop, `the loop of ${r.title}`).toContain('→')
     expect(r.loop, `the loop of ${r.title}`).toContain('Lisbon')
-    expect(r.title, 'a row names the company and the fleet').toContain(' · ')
+    expect(r.title.length, 'a row names the fleet').toBeGreaterThan(0)
+    expect(r.line, 'the caption names the company and her hulls').toMatch(/ · \d+ ships?/)
+    // HER LEVEL (0113): the company's four skills summed, served as a number on every row. A
+    // server without 0113 would print `—`; this build carries 0113.
+    expect(r.level, `the level of ${r.title}`).toMatch(/^\d+$/)
   }
 
   // THE ORDER IS THE SERVER'S — the ones lying here first, then the ones coming, then the rest.
@@ -93,9 +99,11 @@ test('the harbour names its merchants, what each is doing, and the loop that bri
   )
 
   // THE HALF 0099 COULD NOT SHOW: a merchant whose loop calls here and who is NOT in the harbour.
-  // Her line is `to <somewhere> · <when>` (she is at sea) or another harbour's name, never this
-  // one's, and her word is one of the three that are not about lying at this quay.
-  const elsewhere = rows.filter((r) => !r.line.startsWith('Lisbon'))
+  // Her line ends `to <somewhere> · <when>` (she is at sea) or with another harbour's name, never
+  // this one's, and her word is one of the three that are not about lying at this quay. The
+  // caption is `company · N ships · <line>`, so the line is read after the last ` · N ships`.
+  const whereOf = (line: string) => line.replace(/^.*? · \d+ ships? · /, '')
+  const elsewhere = rows.filter((r) => !whereOf(r.line).startsWith('Lisbon'))
   expect(
     elsewhere.length,
     `every row was a merchant lying in Lisbon: ${rows.map((r) => `${r.doing} / ${r.line}`).join(' | ')}`,
@@ -109,11 +117,11 @@ test('the harbour names its merchants, what each is doing, and the loop that bri
   const laidUp = rows.find((r) => r.title.includes(LAID_UP_AT_LISBON))
   expect(laidUp, `${LAID_UP_AT_LISBON} is not on Lisbon's list`).toBeTruthy()
   expect(laidUp?.doing).toBe('Laid up')
-  expect(laidUp?.line.startsWith('Lisbon')).toBe(true)
+  expect(whereOf(laidUp?.line ?? '').startsWith('Lisbon')).toBe(true)
   await page.screenshot({ path: path.join(SHOTS, 'port-merchants-doing-390.png') })
 
   // AND A ROW STILL OPENS THE SAME READ-ONLY SHEET — one sheet, opened from the chart and from here.
-  const row = section.getByTestId('port-merchant-row').filter({ hasText: LAID_UP_AT_LISBON })
+  const row = section.getByTestId('merchant-row').filter({ hasText: LAID_UP_AT_LISBON })
   await expect(row).toHaveCount(1)
   await row.click()
   await expect(page.getByTestId('merchant-sheet')).toBeVisible()
@@ -142,5 +150,5 @@ test('with the shipped image (merchants dark) a harbour names no merchants at al
   // longer than one of the shell's 3-s beats, so the harbour's read would have landed
   await page.waitForTimeout(7_000)
   await expect(page.getByTestId('port-merchants')).toHaveCount(0)
-  await expect(page.getByTestId('port-merchant-row')).toHaveCount(0)
+  await expect(page.getByTestId('merchant-row')).toHaveCount(0)
 })

@@ -31,8 +31,8 @@
 export const TRAY_DETENTS = ['closed', 'peek', 'half', 'full'] as const
 export type TrayDetent = (typeof TRAY_DETENTS)[number]
 
-/** The peek stop, in CSS pixels. One row plus one reach floor. */
-export const TRAY_PEEK = 96
+/** The peek stop, in CSS pixels. The handle row (52) and a two-line head (TrayTitle: a t-title name over a t-caption line, 42, plus 8 of air) — raised from 96 on 2026-10-13 when the head gained its second line. */
+export const TRAY_PEEK = 104
 
 /** How tall the tray stands at a detent, given the height of its containing block. */
 export function detentHeight(detent: TrayDetent, containerHeight: number): number {

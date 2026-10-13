@@ -172,7 +172,16 @@ export function buildChartModel(
    * returned in `traffic` alone: they feed no role, no ring, no focus point and no motion point.
    */
   traffic: readonly MapTraffic[] = [],
+  /**
+   * WHEN THE MERCHANTS WERE READ (owner, 2026-10-13: *"it is too slow"*). A move of the view reads
+   * the traffic ALONE, between beats, so the merchants carry their own instant: drifting them from
+   * the beat's `readAt` would extrapolate from a moment that did not produce their positions, and
+   * every hull would jump. Null = the beat's instant, as before.
+   */
+  trafficReadAtMs: number | null = null,
 ): ChartModel {
+  const trafficDrift: Drift | null =
+    drift && trafficReadAtMs !== null ? { ...drift, readAtMs: trafficReadAtMs } : drift
   const portsByCode = new Map(ports.map((p) => [p.code, p]))
   const roles = new Map<string, PortRole>()
   const destinations = new Map<string, LatLon>()
@@ -256,6 +265,11 @@ export function buildChartModel(
   // THE MERCHANTS: the same placement, their own list, and nothing else touched.
   const merchants: TrafficOnChart[] = []
   for (const m of traffic) {
+    // A MERCHANT RESTING IN A CITY IS NOT ON THE SEA (owner, 2026-10-13: *"ships that are resting
+    // in cities, don't show it on map. when i click on the city, it will show then"*). Dropped here,
+    // the one place the chart's merchant list is built, so the hit test cannot find her either; the
+    // city's tray counts her instead (MapScreen `portLine`).
+    if (m.docked) continue
     // HER LOOP IS DRAWN WHETHER SHE IS AT SEA OR IN PORT: a route is what she runs, not what she
     // happens to be doing this minute, and a merchant held at her home quay is exactly when a
     // player most wants to see where she goes (owner row 112).
@@ -267,7 +281,7 @@ export function buildChartModel(
     const laneD = m.lane && m.lane.length >= 2 ? laneDFor(m.lane) : null
     if (m.kind === 'sailing') {
       merchants.push({
-        ...placeSailing(m, m.voyage, drift, m.voyage.course.length > 2),
+        ...placeSailing(m, m.voyage, trafficDrift, m.voyage.course.length > 2),
         merchant: m,
         loopD,
         laneD,

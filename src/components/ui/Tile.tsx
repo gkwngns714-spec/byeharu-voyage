@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useInTray } from './trayContext'
 
 // THE TILE, AND THE FIELD IT STANDS IN.
 //
@@ -36,10 +37,17 @@ import type { ReactNode } from 'react'
 
 export type TileState = 'rest' | 'selected' | 'muted'
 
+// ON A SHEET a tile is `surface`; IN A TRAY — itself a surface — it steps up to `surface-2`, or it
+// has no shape at all (trayContext.ts). `selected` is a wash plus a hairline on either ground.
 const STATE: Record<TileState, string> = {
   rest: 'bg-surface border border-transparent',
   selected: 'bg-accent-soft border border-accent',
   muted: 'bg-surface border border-transparent text-ink-faint',
+}
+const STATE_IN_TRAY: Record<TileState, string> = {
+  rest: 'bg-surface-2 border border-transparent',
+  selected: 'bg-accent-soft border border-accent',
+  muted: 'bg-surface-2 border border-transparent text-ink-faint',
 }
 
 /** The grid every field of tiles stands in. One line of CSS; see the header for what it retired. */
@@ -97,6 +105,7 @@ export function Tile({
   /** The caller's own tap zones (a good's two price cells), under the figures. */
   children?: ReactNode
 } & { 'data-testid'?: string }) {
+  const inTray = useInTray()
   const head = (
     <>
       {mark !== undefined && <span className="flex shrink-0 items-center">{mark}</span>}
@@ -134,7 +143,7 @@ export function Tile({
 
   const shell = [
     'flex min-h-tile flex-col gap-2 rounded-tile p-3 text-left transition',
-    STATE[state],
+    (inTray ? STATE_IN_TRAY : STATE)[state],
     className,
   ].join(' ')
 

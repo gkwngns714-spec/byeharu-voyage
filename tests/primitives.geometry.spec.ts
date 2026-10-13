@@ -6,7 +6,7 @@ import { PHONE, reachable } from './appReady.fixture'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // §5 states twelve primitives as NUMBERS: a row is 52px, every target clears 44px, a tray stops at
-// 96px / half the glass / all of it, and opening a tray moves nothing above it. A number in a
+// 104px / half the glass / all of it, and opening a tray moves nothing above it. A number in a
 // component's header is not a guard — nav.geometry.spec.ts exists because the tab bar's geometry
 // was being argued about in comments — so every one of those is read off the running build here.
 //
@@ -42,8 +42,8 @@ const TOUCH_FLOOR = 44
  *  everywhere else. */
 const ROW = 52
 
-/** `TRAY_PEEK` in src/components/ui/trayDetents.ts: one row plus one reach floor. */
-const PEEK = 96
+/** `TRAY_PEEK` in src/components/ui/trayDetents.ts: the handle row and a two-line head (52 + 52). */
+const PEEK = 104
 
 async function openGallery(
   page: import('@playwright/test').Page,
@@ -169,7 +169,7 @@ test(`tray: the detents are ${PEEK}px, half the glass and all of it`, async ({ p
 
   console.log(`TRAY DETENTS @${PHONE.height}px glass: ${JSON.stringify(stops)}`)
 
-  // 2. THE THREE STOPS. peek is an absolute 96 (one row + one reach floor); half and full are
+  // 2. THE THREE STOPS. peek is an absolute 104 (the handle row + a two-line head); half and full are
   //    fractions of the glass, so at 844 they are 422 and 844. One pixel of tolerance for the
   //    browser's own rounding of `50dvh`, and no more than one.
   expect(stops.peek, `peek is ${stops.peek}px, not ${PEEK}`).toBe(PEEK)
