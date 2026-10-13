@@ -64,6 +64,39 @@ export async function migrationFiles() {
 }
 
 /**
+ * Apply scripts/db/supabase-preamble.sql to `db` and require its own receipt. ONE authority for
+ * "the hostile Supabase-shaped starting state": applyChain() below and the prefix cache's
+ * `preamble` variant (scripts/db/prefix-cache.mjs, which proof.mjs boots through) both call this,
+ * so the proofs can never start from a different base than `npm run db:apply` does.
+ *
+ * @returns {Promise<string[]>} the preamble's notices
+ */
+export async function applyPreamble(db) {
+  const preambleRaw = await readFile(PREAMBLE_PATH, 'utf8')
+  if (preambleRaw.includes('\r')) {
+    throw new Error('CRLF in supabase-preamble.sql: it must be LF-only, like the migrations.')
+  }
+  const preambleNotices = []
+  try {
+    await db.exec(preambleRaw, { onNotice: (n) => preambleNotices.push(n.message ?? String(n)) })
+  } catch (err) {
+    throw new Error(
+      `SUPABASE PREAMBLE FAILED (${PREAMBLE_PATH}): ${err.message}\n` +
+        '  The local gate refuses to run without it — a run that starts from an empty database ' +
+        'proves the grant lockdown against nothing.',
+    )
+  }
+  if (!preambleNotices.some((l) => /supabase-preamble ok:/i.test(l))) {
+    throw new Error(
+      'SUPABASE PREAMBLE printed no "supabase-preamble ok:" receipt. It is supposed to assert its ' +
+        'own effect; without that receipt it may have stopped modelling the hostile state, which ' +
+        'is exactly the blindness it exists to remove.',
+    )
+  }
+  return preambleNotices
+}
+
+/**
  * Boot a fresh in-memory PostgreSQL and apply every migration in order.
  *
  * Fails loudly: the thrown Error names the offending FILE and carries the raw PostgreSQL error
@@ -107,27 +140,7 @@ export async function applyChain({ quiet = false, log = console.log, stopBefore 
   // ── The Supabase-shaped preamble, before anything else ───────────────────────────────────────
   // Without it, every grant / default-ACL assert in the chain is vacuous here: it passes because
   // a bare PGlite has nothing for it to find. See the header, and DEV_LOG D8.
-  const preambleRaw = await readFile(PREAMBLE_PATH, 'utf8')
-  if (preambleRaw.includes('\r')) {
-    throw new Error('CRLF in supabase-preamble.sql: it must be LF-only, like the migrations.')
-  }
-  const preambleNotices = []
-  try {
-    await db.exec(preambleRaw, { onNotice: (n) => preambleNotices.push(n.message ?? String(n)) })
-  } catch (err) {
-    throw new Error(
-      `SUPABASE PREAMBLE FAILED (${PREAMBLE_PATH}): ${err.message}\n` +
-        '  The local gate refuses to run without it — a run that starts from an empty database ' +
-        'proves the grant lockdown against nothing.',
-    )
-  }
-  if (!preambleNotices.some((l) => /supabase-preamble ok:/i.test(l))) {
-    throw new Error(
-      'SUPABASE PREAMBLE printed no "supabase-preamble ok:" receipt. It is supposed to assert its ' +
-        'own effect; without that receipt it may have stopped modelling the hostile state, which ' +
-        'is exactly the blindness it exists to remove.',
-    )
-  }
+  const preambleNotices = await applyPreamble(db)
   if (!quiet) {
     log('\n── preamble: scripts/db/supabase-preamble.sql  (test fixture, never deployed)')
     for (const line of preambleNotices) log(`    ${line}`)
@@ -186,6 +199,62 @@ export async function applyChain({ quiet = false, log = console.log, stopBefore 
   }
 
   return { db, applied, notices }
+}
+
+/** Where the `preamble` variant's prefix snapshots live. Under node_modules/.cache: never committed. */
+export const PREFIX_CACHE_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'byeharu-chain-prefix')
+
+/**
+ * The base the GATE's world starts from: a fresh PGlite with supabase-preamble.sql applied. The
+ * preamble's own text is part of the key, so an edited fixture can never be served a snapshot built
+ * over the old one.
+ */
+export async function preambleVariant() {
+  const { createHash } = await import('node:crypto')
+  const text = await readFile(PREAMBLE_PATH, 'utf8')
+  return {
+    name: 'preamble',
+    baseId: `new PGlite() + supabase-preamble.sql sha256 ${createHash('sha256').update(text).digest('hex')}`,
+    async create() {
+      const { PGlite } = await import('@electric-sql/pglite')
+      const db = await new PGlite()
+      await applyPreamble(db)
+      return db
+    },
+  }
+}
+
+/**
+ * The whole chain over the preamble — like applyChain() above, but restoring the longest cached
+ * prefix (scripts/db/prefix-cache.mjs) and applying only the files after it. For the PROOF run
+ * (proof.mjs, pglite-gate), whose unique value is the proofs and not a second from-zero apply;
+ * `npm run db:apply` stays a from-zero apply, and so does CI's disposable-chain job.
+ *
+ * Reads the files RAW, like applyChain() above, so a CRLF file is refused (src/lib/db/chain.ts
+ * `assertChainIsSane`) rather than silently normalised.
+ *
+ * @returns {Promise<{db: import('@electric-sql/pglite').PGlite, applied: string[], notices: Map<string,string[]>,
+ *   records: object[], restored: number, restoredFrom: string|null, key: string, ms: number}>}
+ */
+export async function applyChainCached({ log = console.log, fresh, cacheDir = PREFIX_CACHE_DIR } = {}) {
+  const { applyWithPrefixCache } = await import('./prefix-cache.mjs')
+  const names = await migrationFiles()
+  if (names.length === 0) {
+    throw new Error('EMPTY CHAIN: supabase/migrations/ holds no .sql files. A green run over nothing is not a proof.')
+  }
+  const files = []
+  for (const name of names) files.push({ name, sql: await readFile(path.join(MIGRATIONS_DIR, name), 'utf8') })
+  const out = await applyWithPrefixCache({ variant: await preambleVariant(), files, cacheDir, log, fresh })
+  return {
+    db: out.db,
+    applied: out.applied.map((r) => r.name),
+    notices: new Map(out.applied.map((r) => [r.name, r.notices])),
+    records: out.applied,
+    restored: out.restored,
+    restoredFrom: out.restoredFrom,
+    key: out.key,
+    ms: out.ms,
+  }
 }
 
 /** Count how many notices across the chain look like a self-assert receipt. */

@@ -87,6 +87,89 @@ applied end to end by the cold-boot test, db.image.spec and the growth test. `LA
 
 ---
 
+## 2026-10-13 — fast pipeline: prefix-cached chain, comment-blind cache key, proofs off the cache (row 124), acceptance in four time-balanced shards (branch `osn-fast-pipeline`, PR #95, DRAFT, not merged)
+
+Goal: one change from commit to green CI in ~20-30 min without dropping an assertion. Nothing
+server-side changes; no migration was added or edited.
+
+### What changed
+
+* **`scripts/db/prefix-cache.mjs` (new)** — after chosen prefix lengths (the last four, plus every
+  32nd) the PGlite world is checkpointed and dumped; the snapshot is keyed by a ROLLING sha-256
+  over (base, then each file's name + normalised SQL). A build restores the longest cached prefix
+  of the current chain and applies only the rest through `src/lib/db/applyChain.ts` (which gained
+  `startAt` / `afterEach`), so every self-assert after the prefix runs; the prefix's receipts
+  travel in the manifest. A snapshot is refused unless its key, file list and tarball sha-256 match,
+  and **its round trip is proven twice**: a full content digest (every row of every table, every
+  sequence, function body, ACL, policy, role) of the live database must equal the digest of the
+  restored copy before the file gets its name, and the digest is checked again on every load.
+* **Normalised key** — `normalizeSql()` drops comments and collapses whitespace OUTSIDE quotes;
+  dollar-quoted bodies (functions and `do` self-asserts, comments inside them included), strings and
+  quoted identifiers are kept byte for byte. The browser's `fingerprintChain()` is unchanged, so a
+  comment edit still renames and restamps the image; it just no longer costs a full replay.
+* **World image** (`build-image.mjs`) builds through the cache (`browser` variant: no preamble).
+* **Row 124** — `proof.mjs` builds its world through the cache (`preamble` variant, keyed on the
+  preamble's text too), checks the composed file list against `supabase/migrations/` before any
+  proof, and counts receipts PER MIGRATION (stricter: two receipts in one file can no longer cover
+  a silent one). `--fresh` forces a from-zero apply. **`npm run db:apply` and CI `disposable-chain`
+  stay from-zero** — those are the net.
+* **CI** — world-image cache gains `restore-keys` (build, deploy-pages; acceptance gets the cache it
+  never had); `pglite-gate` restores/saves `node_modules/.cache/byeharu-chain-prefix` (save runs
+  even when a proof fails). `acceptance` is four `acceptance-shard` jobs plus a verdict job still
+  named `acceptance` (the required check) that requires all four shards' counts, zero
+  skipped/unexpected/flaky, and **the summed passes to EQUAL `playwright test --list`**.
+* **Shard split by measured time** — `--shard=i/4` cuts equal COUNTS and measured
+  29.8m / 32s / 1.9m / 20.0m, because `db.chain.spec.ts` (29.6 min of test time: four tests that
+  each build the world from 0001) landed in one chunk. `scripts/ci/shard-plan.mjs` deals file groups
+  (and db.chain's independent tests singly) longest-first from `tests/shard-weights.json` into a
+  `--test-list` per shard: ~13 min of measured test time each.
+* `tests/db.prefixCache.spec.ts` — comment edit keeps the key / body edit moves it (on the real
+  chain); restore 3 + apply 1 equals apply 4 from nothing; a corrupted tarball and a manifest naming
+  other files are both refused and deleted.
+
+### Measured (main's chain, 93 migrations; local = this 16-core Windows PC)
+
+| what | before | after |
+|---|---|---|
+| local cold world image (`db:image --force`) | 5m54s (apply 349 s) | 6m39s (apply 394 s, of it 21 s snapshotting) |
+| local `npm run build`, warm cache + ONE new migration | full re-apply (~6 min) | **34.0 s** (93 restored in 2.1 s, 1 applied, 6 s snapshot) |
+| local `npm run build`, comment-only edit to that migration | full re-apply | **45.7 s** (94/94 restored, 0 applied, new image name) |
+| local `db:proof` chain phase, + ONE new migration | ~6 min apply | **32.6 s**, then 85/85 markers |
+| local `db:proof` chain phase, unchanged chain | ~6 min apply | **1.9 s** |
+| CI pglite-gate (main run 38081084926 → PR run, cold cache) | 31m04s (apply ~9m) | 31m04s (apply 519 s + snapshots; cache saved) |
+| CI acceptance | 62m (build 8m57s + suite 52m22s) | count-split shards 30m33s / 1m22s / 2m34s / 20m58s, verdict 365/365 |
+
+The dummy migration (`20260818009999_dummy_prefix_probe.sql`) was removed before commit.
+
+**A real app race the new shard mix exposed (fixed here, not re-run until green).** Run 38348647015
+(head 2613844): pglite-gate **21m44s** on a warm prefix cache (chain restored, proofs only), shards
+19m53s / 11m28s / 8m35s / 18m25s — and shard 2 RED on `flicker.spec.ts:105`: `fleet-keep` never
+went away. The trace shows the press landed and **no `cmd.*` RPC was ever sent**:
+`useStandingOrder().keep()` returns `false` silently while the standing-order book is unread
+(`if (!book || busy) return false`), and the Keep button was enabled before
+`world.provision_presets()` answered. Same test passed in 32-34 s on earlier runs; here it shared a
+2-vCPU runner with a from-zero world build. Fix: the button is `disabled` until the book is read
+(`src/features/fleets/FleetFold.tsx`), so Playwright's click waits for it instead of pressing into
+nothing. Local re-check on a fresh preview (port 4517): flicker + route.stopface 8/8.
+
+**All green on 51842e8 (runs 38351862575 / 38351862541 / 38351862569), first push to last check
+22m27s** (05:31:52 → 05:54:19 UTC): build 26 s; disposable-chain 5m30s (the from-zero net);
+pglite-gate **22m24s** — chain restored 93/93 in 2.8 s, 85/85 markers, so the job is now the proofs
+alone (~22 min; the next lever is splitting proofs 02/05/12 across two legs); acceptance **20m22s**
+wall — time-planned shards 19m54s / 14m31s / 12m33s / 18m12s, verdict 365 of 365 = `--list`, none
+skipped. Before, on main: pglite-gate 31m04s, acceptance 62m.
+
+**Honest limits.** Two independent from-zero applies are NOT byte-identical (uuids from
+`gen_random_uuid`, clock values from `now()`; measured: every seeded table's raw digest differed
+between two fresh applies of 0001-0004), so "same world" is proven as: exact round trip of each
+snapshot, and equality of everything except uuid/clock columns between a prefix-built and a
+from-zero world. A restored snapshot's clock values are from when it was built — the same property
+the shipped world image already had. Temp tables do not survive a restore; a later migration that
+read an earlier migration's temp table would fail loudly here and still be caught by
+`disposable-chain`.
+
+---
+
 ## 2026-10-11 — MERGED: PR #93, the merchant companies are on `main` (35f5092). The DATABASE is not deployed.
 
 Four CI jobs green on `7111a4f` — build 36 s, disposable-chain 9m40s, pglite-gate 22m50s,

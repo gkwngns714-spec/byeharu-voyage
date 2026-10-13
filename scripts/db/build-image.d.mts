@@ -43,8 +43,17 @@ export declare function chainAndFingerprint(): Promise<{
   fingerprint: string
 }>
 
-/** Apply the chain to a fresh PostgreSQL and hand back a compressed data directory. */
-export declare function buildWorldImage(options?: { log?: (...args: unknown[]) => void }): Promise<{
+/** The browser world's base (no preamble), as the prefix cache keys it. */
+export declare const BROWSER_VARIANT: import('./prefix-cache.mjs').PrefixVariant
+
+/**
+ * Apply the chain (restoring the longest cached prefix, scripts/db/prefix-cache.mjs) and hand back
+ * a compressed data directory.
+ */
+export declare function buildWorldImage(options?: {
+  log?: (...args: unknown[]) => void
+  cacheDir?: string
+}): Promise<{
   bytes: Uint8Array
   tarBytes: number
   dumpedBytes: number
@@ -53,6 +62,10 @@ export declare function buildWorldImage(options?: { log?: (...args: unknown[]) =
   ms: number
   migrations: number
   receipts: number
+  /** How many leading migrations came from a prefix snapshot rather than running in this build. */
+  restored: number
+  restoredFrom: string | null
+  snapshotMs: number
 }>
 
 /**

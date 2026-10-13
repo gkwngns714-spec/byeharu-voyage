@@ -46,8 +46,8 @@
 //   import { ensureWorldImage, certifyWorldImage } from './build-image.mjs'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { existsSync, statSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -57,6 +57,7 @@ import { fingerprintChain } from '../../src/lib/db/chain.ts'
 import { imageRefusal, readStoredChain, recordChain } from '../../src/lib/db/appLocal.ts'
 import { WORLD_IMAGE_DIR, worldImageFileName } from '../../src/lib/db/worldImage.ts'
 import { assertWorldMatchesData } from './world-guard.mjs'
+import { applyWithPrefixCache, dropSurplusWal } from './prefix-cache.mjs'
 
 // Re-exported so vite.config.ts and the spec take the naming rule from the SAME module the browser
 // does, without either of them having to import a .ts file of their own.
@@ -72,6 +73,20 @@ export const REPO_ROOT = path.resolve(HERE, '..', '..')
  * chain simply misses and builds a new one.
  */
 export const IMAGE_CACHE_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'byeharu-world-image')
+
+/**
+ * How the browser's world starts before migration 0001: a fresh PGlite with 1 MB WAL segments and
+ * NOTHING applied (no supabase-preamble — see the header). The prefix cache keys every snapshot on
+ * this, so a snapshot of another base can never be restored into an image.
+ */
+export const BROWSER_VARIANT = {
+  name: 'browser',
+  baseId: 'PGlite.create({ initDbStartParams: ["--wal-segsize=1"] }); no preamble',
+  async create() {
+    const { PGlite } = await import('@electric-sql/pglite')
+    return PGlite.create({ initDbStartParams: ['--wal-segsize=1'] })
+  },
+}
 
 /** The chain as the browser will see it, and its fingerprint. One loader, one fingerprint. */
 export async function chainAndFingerprint() {
@@ -90,19 +105,27 @@ export async function chainAndFingerprint() {
  * pg_control at initdb time and travels with the image; nothing else in the shipped configuration
  * is altered, and a 1 MB segment is if anything the friendlier size for a browser.
  */
-export async function buildWorldImage({ log = console.log } = {}) {
-  const { PGlite } = await import('@electric-sql/pglite')
-  const { applyChain } = await import('../../src/lib/db/applyChain.ts')
+export async function buildWorldImage({ log = console.log, cacheDir = IMAGE_CACHE_DIR } = {}) {
   const { files, fingerprint } = await chainAndFingerprint()
 
   const t0 = Date.now()
-  const pg = await PGlite.create({ initDbStartParams: ['--wal-segsize=1'] })
-
-  const result = await applyChain(pg, files, (step) => {
-    if (step.index % 10 === 0 || step.index === step.total - 1) {
-      log(`  applying ${step.index + 1}/${step.total}: ${step.name}`)
-    }
+  // THE PREFIX CACHE (scripts/db/prefix-cache.mjs, 2026-10-13): restore the longest
+  // already-applied prefix of this chain and apply only the files after it — through the SAME
+  // applier as before (src/lib/db/applyChain.ts), so every self-assert after the prefix runs here
+  // and every receipt is captured. The restored prefix's receipts come from its manifest, recorded
+  // when those files really ran. With no usable snapshot this is exactly the old from-zero apply.
+  const result = await applyWithPrefixCache({
+    variant: BROWSER_VARIANT,
+    files,
+    cacheDir: path.join(cacheDir, 'prefix'),
+    log,
+    onProgress: (step) => {
+      if (step.index % 10 === 0 || step.index === step.total - 1) {
+        log(`  applying ${step.index + 1}/${step.total}: ${step.name}`)
+      }
+    },
   })
+  const pg = result.db
   const applyMs = Date.now() - t0
 
   // THE SAME NON-VACUITY FLOOR apply-chain.mjs enforces. A chain whose migrations stopped printing
@@ -168,57 +191,17 @@ export async function buildWorldImage({ log = console.log } = {}) {
     ms: Date.now() - t0,
     migrations: result.applied.length,
     receipts: result.receipts,
+    restored: result.restored,
+    restoredFrom: result.restoredFrom,
+    snapshotMs: result.snapshotMs,
   }
 }
 
-/**
- * Rebuild the tarball with only the write-ahead-log segments a restored database can read:
- * those from the last checkpoint's own file through the current one, inclusive.
- *
- * IT DOES NOT GUESS. `first`/`last` are PostgreSQL's own answers, via `pg_walfile_name()` over
- * `pg_control_checkpoint()` and `pg_current_wal_lsn()`. Segments outside that window are either
- * spent or — the bulk of them — RECYCLED: renamed to future names, still full of the log of the
- * migrations that already ran, waiting to be overwritten by writes this shipped copy will never
- * see.
- *
- * AND IT IS NOT TRUSTED. `certifyWorldImage()` restores THIS tarball and plays the opening of the
- * game in it, so a trim that removed something the engine needed cannot reach a filename, let
- * alone a player. Entries are copied block-for-block, so every tar header and checksum in the
- * output was written by PGlite's own dumper.
- */
-export function dropSurplusWal(tar, first, last) {
-  const dec = new TextDecoder()
-  const kept = []
-  let off = 0
-  let dropped = 0
-  while (off + 512 <= tar.length) {
-    const nameBytes = tar.subarray(off, off + 100)
-    const nul = nameBytes.indexOf(0)
-    const name = dec.decode(nul === -1 ? nameBytes : nameBytes.subarray(0, nul))
-    if (!name) break // the two zero blocks that end a tar
-    const size =
-      parseInt(dec.decode(tar.subarray(off + 124, off + 136)).replace(/\0.*$/, '').trim(), 8) || 0
-    const total = 512 + Math.ceil(size / 512) * 512
-    const segment = /^\/?pg_wal\/([0-9A-F]{24})$/.exec(name)
-    if (segment && (segment[1] < first || segment[1] > last)) {
-      dropped += size
-    } else {
-      kept.push(tar.subarray(off, off + total))
-    }
-    off += total
-  }
-  if (dropped === 0) return tar
-
-  const end = new Uint8Array(1024) // a tar ends with two zero blocks
-  const out = new Uint8Array(kept.reduce((n, b) => n + b.length, 0) + end.length)
-  let at = 0
-  for (const block of kept) {
-    out.set(block, at)
-    at += block.length
-  }
-  out.set(end, at)
-  return out
-}
+// `dropSurplusWal` (keep only the write-ahead-log segments a restored database can read) lives in
+// prefix-cache.mjs since 2026-10-13, because the prefix snapshots trim with it too: ONE trim. It is
+// re-exported here, where the image and its spec have always found it. AND IT IS NOT TRUSTED:
+// `certifyWorldImage()` restores the trimmed tarball and plays the opening of the game in it.
+export { dropSurplusWal }
 
 /**
  * THE ROUND-TRIP PROOF. Restore the tarball into a fresh PostgreSQL and ask the two questions that
@@ -324,9 +307,11 @@ export async function ensureWorldImage({ log = console.log, cacheDir = IMAGE_CAC
   }
 
   log(`world image: building from ${files.length} migration(s), chain ${fingerprint}`)
-  const built = await buildWorldImage({ log })
+  const built = await buildWorldImage({ log, cacheDir })
   log(
-    `world image: chain applied in ${(built.applyMs / 1000).toFixed(1)} s; ` +
+    `world image: chain applied in ${(built.applyMs / 1000).toFixed(1)} s ` +
+      `(${built.restored} of ${built.migrations} restored from the prefix cache, ` +
+      `${built.migrations - built.restored} applied, ${(built.snapshotMs / 1000).toFixed(1)} s snapshotting); ` +
       `${mb(built.dumpedBytes)} dumped, ${mb(built.tarBytes)} after the log trim, ` +
       `${mb(built.bytes.length)} gzipped`,
   )
@@ -342,6 +327,14 @@ export async function ensureWorldImage({ log = console.log, cacheDir = IMAGE_CAC
   await writeFile(tmp, built.bytes)
   await rename(tmp, file)
   log(`world image: ${path.relative(REPO_ROOT, file)} (${mb(built.bytes.length)})`)
+
+  // BOUNDED, because CI saves this whole directory as one cache entry: keep this image and the two
+  // most recent others (a branch switch back is still free), never an unbounded history.
+  const others = (await readdir(cacheDir))
+    .filter((f) => /^world-.*\.tar\.gz$/.test(f) && f !== path.basename(file))
+    .map((f) => ({ f, t: statSync(path.join(cacheDir, f)).mtimeMs }))
+    .sort((a, b) => b.t - a.t)
+  for (const { f } of others.slice(2)) await rm(path.join(cacheDir, f), { force: true })
 
   return { file, fingerprint, bytes: built.bytes, built: true, migrations: built.migrations }
 }
