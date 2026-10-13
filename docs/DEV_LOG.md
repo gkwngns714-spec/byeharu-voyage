@@ -70,6 +70,13 @@ went away. The trace shows the press landed and **no `cmd.*` RPC was ever sent**
 (`src/features/fleets/FleetFold.tsx`), so Playwright's click waits for it instead of pressing into
 nothing. Local re-check on a fresh preview (port 4517): flicker + route.stopface 8/8.
 
+**All green on 51842e8 (runs 38351862575 / 38351862541 / 38351862569), first push to last check
+22m27s** (05:31:52 → 05:54:19 UTC): build 26 s; disposable-chain 5m30s (the from-zero net);
+pglite-gate **22m24s** — chain restored 93/93 in 2.8 s, 85/85 markers, so the job is now the proofs
+alone (~22 min; the next lever is splitting proofs 02/05/12 across two legs); acceptance **20m22s**
+wall — time-planned shards 19m54s / 14m31s / 12m33s / 18m12s, verdict 365 of 365 = `--list`, none
+skipped. Before, on main: pglite-gate 31m04s, acceptance 62m.
+
 **Honest limits.** Two independent from-zero applies are NOT byte-identical (uuids from
 `gen_random_uuid`, clock values from `now()`; measured: every seeded table's raw digest differed
 between two fresh applies of 0001-0004), so "same world" is proven as: exact round trip of each
