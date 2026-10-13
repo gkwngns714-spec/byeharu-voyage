@@ -62,11 +62,21 @@ jobs:
       # the tarball instead of applying 47 migrations to build a world it already built. It must
       # come AFTER npm ci: npm ci removes node_modules whole, and the cache lives inside it.
       # A miss is not a failure — the build applies the chain, which is what it did before.
+      #
+      # `restore-keys` (2026-10-13): when the chain MOVED, the most recent older entry (this
+      # branch's, else main's) is restored instead of nothing. It holds PREFIX SNAPSHOTS
+      # (scripts/db/prefix-cache.mjs) — the world after files 1..k, keyed by a rolling key over
+      # their normalised text — so the build restores the longest prefix the new chain shares and
+      # applies only the files after it, every self-assert included. An older entry cannot serve a
+      # wrong world: the image is still named and stamped `fingerprintChain(this chain)`, a snapshot
+      # is refused unless its key, file list, tarball hash and restored content digest all match,
+      # and the restored image is certified exactly as before.
       - name: Cache the pre-built world image (keyed by the chain)
         uses: actions/cache@v4
         with:
           path: node_modules/.cache/byeharu-world-image
           key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
+          restore-keys: world-image-
 
       - name: Lint
         run: npm run lint

@@ -42,6 +42,20 @@ export interface ApplyResult {
   ms: number
 }
 
+/**
+ * Build-time options. The browser never passes any; scripts/db/prefix-cache.mjs does.
+ *
+ * - `startAt`: the number of leading files the database ALREADY HOLDS (restored from a snapshot
+ *   taken after exactly those files). Only `files[startAt..]` are executed, so every self-assert
+ *   after the restored prefix still runs, here, in this database. The returned `applied` lists
+ *   only the files this call executed.
+ * - `afterEach`: awaited after each file commits — where a prefix snapshot is taken.
+ */
+export interface ApplyOptions {
+  startAt?: number
+  afterEach?: (migration: AppliedMigration, index: number) => Promise<void> | void
+}
+
 /** Called before each file starts, so a UI can name the migration it is waiting on. */
 export type ApplyProgress = (step: { name: string; index: number; total: number }) => void
 
@@ -58,13 +72,18 @@ export async function applyChain(
   db: PgExecutor,
   files: readonly MigrationFile[],
   onProgress?: ApplyProgress,
+  options: ApplyOptions = {},
 ): Promise<ApplyResult> {
   assertChainIsSane(files)
   const ordered = orderChain(files)
   const applied: AppliedMigration[] = []
   const t0 = now()
+  const startAt = options.startAt ?? 0
+  if (!Number.isInteger(startAt) || startAt < 0 || startAt > ordered.length) {
+    throw new Error(`applyChain: startAt ${startAt} is outside a chain of ${ordered.length} file(s)`)
+  }
 
-  for (let i = 0; i < ordered.length; i += 1) {
+  for (let i = startAt; i < ordered.length; i += 1) {
     const file = ordered[i]
     onProgress?.({ name: file.name, index: i, total: ordered.length })
     const notices: string[] = []
@@ -80,6 +99,7 @@ export async function applyChain(
       notices,
       receipt: notices.some((line) => RECEIPT_RE.test(line)),
     })
+    await options.afterEach?.(applied[applied.length - 1], i)
   }
 
   return {

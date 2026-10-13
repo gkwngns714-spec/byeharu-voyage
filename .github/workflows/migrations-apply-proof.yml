@@ -9,7 +9,11 @@ name: Migrations — apply proof (PGlite gate + disposable Supabase)
 #   Applies the ENTIRE migration chain to a real PostgreSQL 18 compiled to WebAssembly
 #   (@electric-sql/pglite) — real planner, real plpgsql, real constraints, real triggers, real
 #   GRANTs — and then runs every proof in scripts/db/proofs/ inside transactions that are rolled
-#   back. It is the same gate the developer runs on their own machine in ten seconds
+#   back. Since 2026-10-13 (row 124) the chain's world comes from the PREFIX CACHE: the longest
+#   already-applied prefix is restored from a verified snapshot and only the files after it are
+#   applied here, self-asserts and all (see the step below; scripts/db/prefix-cache.mjs). The
+#   from-zero apply is job 2's, on a real Postgres, on every PR.
+#   It is the same gate the developer runs on their own machine in ten seconds
 #   (`npm run db:apply` / `npm run db:proof`), which is why a migration should never reach job 2
 #   red.
 #
@@ -107,6 +111,29 @@ jobs:
       - name: Install dependencies (from the lockfile)
         run: npm ci
 
+      # ROW 124 (2026-10-13): THE PROOFS NO LONGER WAIT FOR A SECOND FROM-ZERO APPLY. proof.mjs
+      # builds its world through the PREFIX CACHE (scripts/db/prefix-cache.mjs): the longest
+      # already-applied prefix of THIS chain over THIS preamble is restored from a snapshot and only
+      # the files after it are applied — every one of their self-asserts runs here, and the
+      # restored files' receipts travel in the snapshot's manifest from the run that applied them,
+      # so the every-migration-prints-a-receipt floor still judges the whole chain.
+      #
+      # A snapshot is refused unless its rolling key (preamble text + every file's name and
+      # normalised SQL, in order), its file list, its tarball's sha-256 AND the content digest of
+      # the database it restores to all match; proof.mjs then checks the composed file list against
+      # supabase/migrations/ itself before any proof runs. The FROM-ZERO net is unchanged and is
+      # job 2 below: disposable-chain applies every file from nothing, on a real Postgres, on every
+      # PR — which is why this job never needed to do it a second time.
+      #
+      # Restore and save are split so a red proof still keeps the snapshots the apply paid for.
+      - name: Restore the chain-prefix snapshots (keyed by the chain and the preamble)
+        id: prefix
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules/.cache/byeharu-chain-prefix
+          key: chain-prefix-${{ hashFiles('supabase/migrations/*.sql', 'scripts/db/supabase-preamble.sql') }}
+          restore-keys: chain-prefix-
+
       # A duplicate 14-digit version deploys as a SILENT no-op: schema_migrations keys on the
       # version, so the second file is recorded already-applied and skipped, with everything green.
       # It happened four times in the predecessor project. This check carries its own positive
@@ -128,8 +155,15 @@ jobs:
       # equivalence · ledger reconciliation · grant lockdown · the K.1 first session, and the rest.
       # Fails if any migration printed no receipt, if any declared PASS marker is missing, if a
       # proof declares none, or if a proof leaves committed rows behind.
-      - name: Apply the whole chain to PGlite, then run every proof (declared PASS markers must all appear)
+      - name: Build the chain's world on PGlite (cached prefix + the files after it), then run every proof
         run: npm run db:proof
+
+      - name: Save the chain-prefix snapshots (even when a proof failed)
+        if: always() && steps.prefix.outputs.cache-hit != 'true' && hashFiles('node_modules/.cache/byeharu-chain-prefix/**') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules/.cache/byeharu-chain-prefix
+          key: chain-prefix-${{ hashFiles('supabase/migrations/*.sql', 'scripts/db/supabase-preamble.sql') }}
 
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   # 2. The net: the same chain against Supabase's own roles and default privileges.

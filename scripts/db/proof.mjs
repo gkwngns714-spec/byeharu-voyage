@@ -35,12 +35,14 @@
 // USAGE
 //   node scripts/db/proof.mjs                 # every proof in scripts/db/proofs/
 //   node scripts/db/proof.mjs offline         # only proofs whose filename contains "offline"
+//   node scripts/db/proof.mjs --fresh         # build the world from migration 0001, ignoring the
+//                                             # prefix cache (it still writes fresh snapshots)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { readdir, readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { applyChain, REPO_ROOT, selfAssertReceipts } from './apply-chain.mjs'
+import { applyChainCached, migrationFiles, REPO_ROOT, selfAssertReceipts } from './apply-chain.mjs'
 
 const PROOFS_DIR = path.join(REPO_ROOT, 'scripts', 'db', 'proofs')
 
@@ -82,18 +84,41 @@ if (files.length === 0) {
 
 let db
 try {
-  const chain = await applyChain({ quiet: true })
+  // ROW 124 (2026-10-13): the world comes from the PREFIX CACHE — the longest already-applied
+  // prefix of THIS chain over THIS preamble, restored, with only the files after it applied here
+  // (scripts/db/prefix-cache.mjs). `--fresh` (or BYEHARU_PREFIX_CACHE=off) applies from migration
+  // 0001, as this script always did. The from-zero net is unchanged and is not this script:
+  // `npm run db:apply` locally, and disposable-chain on a real Postgres in CI, on every PR.
+  const fresh = process.argv.includes('--fresh') || undefined
+  const chain = await applyChainCached({ log: console.log, fresh })
   db = chain.db
-  const receipts = selfAssertReceipts(chain.notices)
-  console.log(`chain: ${chain.applied.length} migration(s) applied, ${receipts} self-assert receipt(s)`)
+  // THE POSITIVE CONTROL: the world under the proofs is THIS chain, file for file. The prefix
+  // cache has already refused any snapshot whose key, file list, tarball hash or restored content
+  // digest disagreed; this checks the composed result against the directory, independently.
+  const onDisk = await migrationFiles()
+  if (JSON.stringify(chain.applied) !== JSON.stringify(onDisk)) {
+    throw new Error(
+      `FAIL: the world under the proofs was built from ${chain.applied.length} file(s) that are not ` +
+        `supabase/migrations/'s ${onDisk.length}, in order. Refusing to prove anything about it.`,
+    )
+  }
+  // Counted PER MIGRATION, not per line (2026-10-13): a migration printing two receipts can no
+  // longer cover for one that printed none.
+  const receipts = chain.records.filter((r) => r.receipt).length
+  console.log(
+    `chain: ${chain.applied.length} migration(s) — ${chain.restored} restored from the prefix cache` +
+      `${chain.restoredFrom ? ` (${chain.restoredFrom})` : ''}, ${chain.applied.length - chain.restored} applied ` +
+      `here — ${receipts} with a self-assert receipt (${selfAssertReceipts(chain.notices)} receipt line(s)); ` +
+      `chain key ${chain.key.slice(0, 16)}, ${(chain.ms / 1000).toFixed(1)} s`,
+  )
   // The SAME non-vacuity floor `npm run db:apply` enforces (apply-chain.mjs): every migration
-  // must print its "self-assert ok:" receipt. Enforced HERE too since 2026-09-27, so this one run
-  // is a complete gate on its own and CI no longer applies the whole chain twice (pglite-gate hit
-  // its 30-minute ceiling on the 0086-0091 deploy branch doing exactly that — see the workflow).
+  // must print its "self-assert ok:" receipt — the restored ones as recorded when they ran.
+  // Enforced HERE too since 2026-09-27, so this one run is a complete gate on its own.
   if (receipts < chain.applied.length) {
+    const silent = chain.records.filter((r) => !r.receipt).map((r) => r.name)
     throw new Error(
       `FAIL: ${chain.applied.length} migration(s) applied but only ${receipts} printed a ` +
-        `"self-assert ok:" receipt. Every migration must prove itself out loud.`,
+        `"self-assert ok:" receipt. Every migration must prove itself out loud. Silent: ${silent.join(', ')}`,
     )
   }
   // The same world guard `npm run db:apply` runs: the applied world must EQUAL data/*.json
