@@ -23,6 +23,7 @@ import {
   type MigrationFile,
 } from '../src/lib/db/chain'
 import { applyChain, MigrationFailure } from '../src/lib/db/applyChain'
+import { beforeGrowth, frozenChain, GROWTH_SPLIT } from './frozenChain'
 import { createBootChannel, progressFor, type BootPhase } from '../src/lib/db/bootState'
 import { openLocalDb, humanMigration, LOCAL_AUTH_UID } from '../src/lib/db/localDb'
 import {
@@ -360,7 +361,7 @@ test('every migration applies, in order, and every one prints its self-assert re
   const { PGlite } = await import('@electric-sql/pglite')
   const db = await PGlite.create()
   try {
-    const files = (await loadChain()).filter((f) => f.name.slice(0, 14) < REBUILD_PREFIX_END)
+    const files = await frozenChain()
     const seen: string[] = []
     const result = await applyChain(db, files, (step) => {
       seen.push(step.name)
@@ -452,7 +453,6 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   // Lisboa (0003) and the purse invariant — and none reads anything after the growth baseline. The
   // full chain is still applied end to end by db.image.spec and by the growth test below, and in
   // every apply proof; this one stops paying a third time for it.
-  const bootChain = async () => (await loadChain()).filter((f) => f.name.slice(0, 14) < REBUILD_PREFIX_END)
   const bootDir = path.join(os.tmpdir(), `bv-coldboot-${process.pid}-${Date.now()}`)
   test.setTimeout(900_000)
   const channel = createBootChannel()
@@ -482,7 +482,7 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   const bootLog: string[] = []
   expect(channel.get().phase).toBe('idle')
   const db = await openLocalDb({
-    loadChain: bootChain,
+    loadChain: frozenChain,
     dataDir: bootDir,
     channel,
     log: (...args: unknown[]) => {
@@ -497,7 +497,7 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
     'seeding',
     'ready',
   ])
-  expect(migrations).toEqual((await bootChain()).map((f) => f.name))
+  expect(migrations).toEqual((await frozenChain()).map((f) => f.name))
   const state = channel.get()
   expect(state.error).toBeNull()
   expect(state.progress).toBe(1)
@@ -542,10 +542,6 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   }
 })
 
-/** The end (exclusive) of the frozen chain prefix the rebuild test builds — the same production
- *  baseline as GROWTH_SPLIT below, spelled here because that constant is declared further down. */
-const REBUILD_PREFIX_END = '20260818000041'
-
 test('a chain change rebuilds the stored world instead of layering onto it', async () => {
   // THIS TEST BUILDS THE WHOLE WORLD TWICE, so its cost grows with every migration added and the
   // 120 s global timeout is not sized for it. Measured 2026-08-23 at 34 migrations: ~1.9 min ALONE,
@@ -578,7 +574,7 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
   // for it twice.
   // The prefix is the frozen pre-growth baseline (GROWTH_SPLIT, below): history, so it never grows.
   test.setTimeout(900_000)
-  const prefix = async () => (await loadChain()).filter((f) => f.name.slice(0, 14) < REBUILD_PREFIX_END)
+  const prefix = frozenChain
   const prefixLast = (await prefix()).at(-1)!.name
   const dir = await scratchDataDir('rebuild')
   try {
@@ -638,17 +634,13 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
 // growth — then prove the house, the fleet, the cargo and the ledger did not move by one ducat
 // while the world doubled around them.
 //
-// GROWTH_SPLIT is the frozen production baseline of 2026-08-24 — everything below it had been
-// applied to production before the growth shipped. It does NOT move when later growth migrations
-// land (they simply join the `growth` half); it would only ever move with a documented new
-// baseline, which is a deploy-history fact, not a preference.
-const GROWTH_SPLIT = '20260818000041'
+// GROWTH_SPLIT is the frozen production baseline (tests/frozenChain.ts says why it never moves).
 
 test('the world grows under a live house: player rows survive the growth to the ducat', async () => {
   // One full pre-growth build (~2 min) plus the growth itself. Sized like the cold-boot test.
   test.setTimeout(360_000)
   const files = await loadChain()
-  const before = files.filter((f) => f.name.slice(0, 14) < GROWTH_SPLIT)
+  const before = beforeGrowth(files)
   const growth = files.filter((f) => f.name.slice(0, 14) >= GROWTH_SPLIT)
   expect(growth.length).toBeGreaterThanOrEqual(1)
 

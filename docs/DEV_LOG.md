@@ -5,6 +5,24 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-13/14 — PR #94's CI: four reds read and fixed, and the three ~45-minute applies cut to minutes
+
+Branch `osn-npc-traders`. Owner: *"why is CI taking so long"*, *"make it so that the test ends faster"*, *"make it clean"*.
+
+- **`map.merchants:386`, `map.hulls:407` (run 38362106885).** Test timeouts: the npc-on fixture was
+  built cold (~20 min) inside a 10-minute budget. `serveNpcOn` now adds 30 min for its own build
+  (`tests/npcOn.fixture.ts`).
+- **`duplication:641`.** The map's loading figure used an arbitrary `text-[10px]`; it now uses `text-t-caption`.
+- **`map.hulls:449` (run 38371308971), a real defect.** A merchant mark measured 110 px on a 390 px
+  glass, because my riding light's outer glow sat at 1.6× the hull halo. It is now 1.25×
+  (`src/chart/FleetsLayer.tsx`).
+- **`db.chain:403` cold boot, 41.4 min against a 30 min budget.** Three specs applied 0001..0113 from
+  zero in Node PGlite (cold boot 41.4m, apply 45.7m, image fallback 41.8m). That is a third copy of
+  what `disposable-chain` (real Supabase) and the image build already prove. All three now run the
+  frozen pre-growth chain from ONE helper, `tests/frozenChain.ts` (`GROWTH_SPLIT`, `beforeGrowth`,
+  `frozenChain`), which also retires the duplicated `REBUILD_PREFIX_END`. Locally the cold boot takes
+  1.1 min and the apply 53 s. On CI, shard 3 went from 1h03m to 5m18s.
+
 ## 2026-10-13 — The map loads the ships the moment it stops moving, and says how far along it is
 
 Branch `osn-ship-lights-resting`. Owner: *"loading bar in numbers"*, *"it is too slow"*, *"only

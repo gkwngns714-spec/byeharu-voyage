@@ -53,6 +53,7 @@ import {
   removeScratchDataDir,
   scratchDataDir,
 } from '../src/lib/db/chainSource.node.mjs'
+import { frozenChain } from './frozenChain'
 
 const ROOT = path.resolve(process.cwd())
 
@@ -256,7 +257,6 @@ test('a refused image falls back to applying the chain, and says so out loud', a
   // chain's length; the whole chain is applied from zero by `disposable-chain` and by the image
   // build itself, so this no longer pays for it a third time.
   test.setTimeout(300_000)
-  const fallbackChain = async () => (await loadChain()).filter((f) => f.name.slice(0, 14) < '20260818000041')
   const wounded = await woundedImage()
   const channel = createBootChannel()
   const phases: BootPhase[] = []
@@ -266,7 +266,7 @@ test('a refused image falls back to applying the chain, and says so out loud', a
   })
 
   const db = await openLocalDb({
-    loadChain: fallbackChain,
+    loadChain: frozenChain,
     dataDir: 'memory://',
     channel,
     log: () => {},
