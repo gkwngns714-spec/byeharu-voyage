@@ -333,10 +333,10 @@ test('zoomed out, the cities are lights and the ships are embers', async ({ page
     // A real polyline: more than one vertex, so no lane is a dot pretending to be a route.
     expect(l.d.length).toBeGreaterThan(8)
     expect((l.d.match(/[ML]/g) ?? []).length).toBeGreaterThanOrEqual(2)
-    // HER OWN INK, which is the same channel the ember uses — so a lane and the fleet keeping it
-    // read as one thing with no legend.
+    // THE ONE MERCHANT BLUE with Regions off (owner, 2026-10-13: every trading merchant one dark
+    // blue); her nation ink returns only when Regions is on.
     expect(NATION_INKS).toContain(l.ink)
-    expect(l.cls).toContain(`stroke-nation-${l.ink}`)
+    expect(l.cls).toContain('stroke-merchant')
     expect(l.cls).toContain('fill-none')
   }
 
