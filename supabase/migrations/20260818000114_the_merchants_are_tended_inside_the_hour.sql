@@ -580,6 +580,7 @@ do $$
 declare
   -- AS FOUND, NOT AS SHIPPED (0113, 2026-10-14): production runs lit, a fresh chain runs dark.
   v_was_on  boolean := public.npc_traders_on();
+  v_routes_on boolean := public.standing_routes_on();
   v_route   uuid;
   v_fleet   uuid;
   v_res     jsonb;
@@ -641,7 +642,12 @@ begin
   end if;
 
   begin
+    -- LIT for the probe: a merchant needs routes, so npc_traders_on() reads both flags (0097).
     update public.world_config set value = 'true'::jsonb where key = 'npc_traders_enabled';
+    update public.world_config set value = 'true'::jsonb where key = 'standing_routes_enabled';
+    if not public.npc_traders_on() then
+      raise exception '0114 self-assert FAIL: the probe could not light the merchants';
+    end if;
 
     -- the reading: unset → false; past → true; future → false.
     perform set_config('byeharu.npc_upkeep_deadline', '', true);
@@ -663,8 +669,10 @@ begin
       join public.standing_routes sr on sr.id = nf.route_id
      where coalesce(sr.paused_reason, '') not in ('error', 'laid_up');
     v_res := public.npc_plan(now());
-    if v_n = 0 or (v_res->>'deferred')::int <> v_n or (v_res->>'planned')::int <> 0
-       or (v_res->>'laid_up')::int <> 0 then
+    -- (every comparison null-safe: an answer missing a key must FAIL, never pass vacuously)
+    if v_n = 0 or (v_res->>'enabled')::boolean is distinct from true
+       or (v_res->>'deferred')::int is distinct from v_n or (v_res->>'planned')::int is distinct from 0
+       or (v_res->>'laid_up')::int is distinct from 0 then
       raise exception '0114 self-assert FAIL: spent, the pass over % routes answered %', v_n, v_res - 'notes';
     end if;
 
@@ -672,7 +680,9 @@ begin
     perform cmd.standing_route_set_paused(v_route, 'losing', null, 'A probe loss (0114).');
     select updated_at into v_before from public.standing_routes where id = v_route;
     v_res := public.npc_tend(now(), v_route);
-    if (v_res->>'deferred')::int <> 1 or (v_res->>'resumed')::int <> 0 or (v_res->>'started')::int <> 0
+    if (v_res->>'enabled')::boolean is distinct from true
+       or (v_res->>'deferred')::int is distinct from 1 or (v_res->>'resumed')::int is distinct from 0
+       or (v_res->>'started')::int is distinct from 0
        or (select paused_reason from public.standing_routes where id = v_route) is distinct from 'losing'
        or (select updated_at from public.standing_routes where id = v_route) is distinct from v_before then
       raise exception '0114 self-assert FAIL: spent, the upkeep touched the paused probe: %', v_res - 'notes';
@@ -684,7 +694,9 @@ begin
     v_res := public.npc_plan(now(), v_route);
     -- THE BUYER CAP, deterministically: at a cap of 0 every candidate good is refused, whatever
     -- the market, so the route is laid up for want of cargo — planned 0, laid up 1, nothing deferred.
-    if (v_res->>'deferred')::int <> 0 or (v_res->>'planned')::int <> 0 or (v_res->>'laid_up')::int <> 1
+    if (v_res->>'enabled')::boolean is distinct from true
+       or (v_res->>'deferred')::int is distinct from 0 or (v_res->>'planned')::int is distinct from 0
+       or (v_res->>'laid_up')::int is distinct from 1
        or (select paused_reason from public.standing_routes where id = v_route) is distinct from 'laid_up' then
       raise exception '0114 self-assert FAIL: at a buyer cap of 0 the plan answered %', v_res;
     end if;
@@ -696,7 +708,7 @@ begin
 
   -- EVERYTHING ABOVE WAS UNDONE.
   if public.npc_traders_on() is distinct from v_was_on or public.wc_int('npc_buyers_per_good') <> 3
-     or public.npc_upkeep_spent() then
+     or public.npc_upkeep_spent() or public.standing_routes_on() is distinct from v_routes_on then
     raise exception '0114 self-assert FAIL: the probe world was not rolled back';
   end if;
 
