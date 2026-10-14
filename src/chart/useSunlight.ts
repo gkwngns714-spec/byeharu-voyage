@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { LatLon } from '../lib/geo'
 import {
   DAYLIGHT_RASTER_HEIGHT,
   DAYLIGHT_RASTER_WIDTH,
@@ -37,15 +38,15 @@ import { gameSunInstantMs } from '../lib/format'
 export interface Sunlight {
   /** Where the Sun is overhead, now. */
   readonly sun: SubsolarPoint
-  /** The daylight raster as a data URL, or null before the first paint (nothing is masked, which
-   *  draws the night picture alone, truthfully, for one frame). */
+  /** The daylight raster as a data URL, drawn with the Sun over longitude 0 — `DaylightMask`
+   *  slides it to the Sun's longitude every frame. Null where there is no canvas. */
   readonly rasterUrl: string | null
   /** The REAL instant the raster was drawn at (the Sun is at `gameSunInstantMs` of it). */
   readonly atMs: number
 }
 
 /** Draw the raster into a PNG data URL. Null where there is no canvas (a non-browser render). */
-function rasterToUrl(sun: SubsolarPoint): string | null {
+function rasterToUrl(sun: LatLon): string | null {
   if (typeof document === 'undefined') return null
   const canvas = document.createElement('canvas')
   canvas.width = DAYLIGHT_RASTER_WIDTH
@@ -67,18 +68,25 @@ function rasterToUrl(sun: SubsolarPoint): string | null {
   return canvas.toDataURL('image/png')
 }
 
-function sunlightNow(): Sunlight {
+/** The raster is drawn with the Sun over longitude 0 and SLID to where it stands, every frame,
+ *  by `DaylightMask` (owner, 2026-10-15: the light zone moved rigid — "make it soft"). Only the
+ *  declination changes the picture itself, so it is re-drawn when that moves a hundredth of a
+ *  degree, never on the Sun's longitude. */
+const RASTER_LAT_STEP = 0.01
+
+function sunNow(): { sun: SubsolarPoint; atMs: number } {
   const atMs = Date.now()
   // THE GAME CLOCK'S HOUR (lib/format gameSunInstantMs): day and night turn at game speed.
-  const sun = subsolarPoint(gameSunInstantMs(atMs))
-  return { sun, rasterUrl: rasterToUrl(sun), atMs }
+  return { sun: subsolarPoint(gameSunInstantMs(atMs)), atMs }
 }
 
 export function useSunlight(): Sunlight {
-  const [state, setState] = useState<Sunlight>(sunlightNow)
+  const [now, setNow] = useState(sunNow)
   useEffect(() => {
-    const id = window.setInterval(() => setState(sunlightNow()), SUN_REFRESH_MS)
+    const id = window.setInterval(() => setNow(sunNow()), SUN_REFRESH_MS)
     return () => window.clearInterval(id)
   }, [])
-  return state
+  const rasterLat = Math.round(now.sun.lat / RASTER_LAT_STEP) * RASTER_LAT_STEP
+  const rasterUrl = useMemo(() => rasterToUrl({ lat: rasterLat, lon: 0 }), [rasterLat])
+  return { sun: now.sun, rasterUrl, atMs: now.atMs }
 }
