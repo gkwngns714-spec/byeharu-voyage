@@ -5,6 +5,25 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-14 — 0115: a merchant rests ten real minutes and is never parked — `osn-merchants-never-parked`
+
+Owner, after 0114 went live (585 laid up / 247 sailing / 5 resting): *"make the resting shorter like
+in real life 10 min. remove laid up."*
+
+- **Rest.** `route_rest_voyage_days` is set from the live compression to 600 real seconds
+  (6.666667 voyage-days at 960x; it was 14, which is 21 min). Same knob, same reader.
+- **Nothing writes `laid_up`.** These changes are slices of npc_plan / npc_tend:
+  - With no line at the 15 % bar, the planner saves the loop in ballast (sell at a profit only, no
+    BUY) and she sails.
+  - On the third failed-order clear, she is re-planned and released.
+  - The weekly refound cap and its lay-up are deleted.
+  - An ADRIFT fleet is counted, not paused (prod had 0).
+  - A legacy `laid_up` pause is lifted at once.
+- **UI word kept.** `doing = 'laid_up'` is still served for ANY pause lying in a harbour (0104),
+  so `DOING_WORD.laid_up` stays. The PORT spec's held merchant now uses the `player` pause.
+- **Dry-run on prod (rolled back).** The 0115 body and self-asserts passed with the switch found on
+  and found off. A 50 s tend lifted 160 routes (99 started, 61 resumed) with 0 failures.
+
 ## 2026-10-14 — 0114 re-cut before prod: "a merchant only trades at a profit" — `osn-merchants-profit`
 
 PR #97's 0114 was merged but never applied to prod. The owner rejected its hourly re-plan ("keeps

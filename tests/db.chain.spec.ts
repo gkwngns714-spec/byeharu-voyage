@@ -304,7 +304,8 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // statement timeout every hour — so 0114 gives it a budget with one setter, indexes the column the
 // compactor deletes against, lets three merchants buy one good at one harbour, and puts the idle
 // roster back to sea through the one switch.
-const LAST = '20260818000114_a_merchant_only_trades_at_a_profit.sql'
+// And to 0115: a merchant rests ten real minutes, and nothing parks her (owner, 2026-10-14).
+const LAST = '20260818000115_a_merchant_is_never_parked.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
