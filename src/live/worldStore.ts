@@ -100,6 +100,7 @@ import type {
   PriceHistory,
   ProvisionPresetBook,
   Refusal,
+  RpcResult,
   StandingRouteBook,
   StandingRouteStopDraft,
   ReachPayload,
@@ -415,6 +416,47 @@ export const useWorld = create<LiveWorld>((set, get) => {
   }
 
   /**
+   * THE VERB'S DOOR — the one spelling of what every write here does with its answer. A refusal
+   * lands in `refusal` (rule 2) and the verb reports null; on success the last refusal is cleared
+   * (unless `keepRefusal`: CANCEL and CLEAR never cleared it) and `after` reads back what the verb
+   * moved — the server's answer is the only true one, never a local patch. `refreshOnStale`: an
+   * E_STALE refusal means this tab's fleet version is behind the server's (another tab traded, or a
+   * read is in flight), so the world is read back NOW and the player's next press sends the fresh
+   * version instead of the same stale one again (PR #59 review SHOULD 7).
+   */
+  const verb = async <V>(
+    call: Promise<RpcResult<V>>,
+    after: (() => Promise<unknown>) | null,
+    { keepRefusal = false, refreshOnStale = false }: { keepRefusal?: boolean; refreshOnStale?: boolean } = {},
+  ): Promise<{ value: V } | null> => {
+    const r = await call
+    if (!r.ok) {
+      set({ refusal: r.refusal })
+      if (refreshOnStale && r.refusal.code === 'E_STALE') await get().refresh()
+      return null
+    }
+    if (!keepRefusal) set({ refusal: null })
+    if (after) await after()
+    return { value: r.value }
+  }
+
+  /**
+   * THE READ'S DOOR — an on-demand read lands its answer through `land`. A LOUD read (the screen IS
+   * the answer: officers, skills, standings, presets, a market) puts its refusal in `refusal`; a
+   * SILENT one (a decoration that is true without it: history, reach, buffs) keeps what it had.
+   * Each caller states which, beside its reason.
+   */
+  const loader = async <V>(
+    call: Promise<RpcResult<V>>,
+    land: (value: V, s: LiveWorld) => Partial<LiveWorld>,
+    { loud }: { loud: boolean },
+  ): Promise<void> => {
+    const r = await call
+    if (r.ok) set((s) => land(r.value, s))
+    else if (loud) set({ refusal: r.refusal })
+  }
+
+  /**
    * THE ONE READER OF THE ROUTES BOOK (0092) — the beat's reading (`refresh()`) and the re-read
    * after a verb that moved the book alone (`loadRoutes`) are both this, so its two rules are
    * written once:
@@ -642,50 +684,27 @@ export const useWorld = create<LiveWorld>((set, get) => {
     })
   },
 
-  loadMarket: async (portId) => {
-    const r = await worldMarket(portId)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return
-    }
-    set((s) => ({ markets: { ...s.markets, [portId]: r.value } }))
-  },
+  loadMarket: (portId) =>
+    loader(worldMarket(portId), (v, s) => ({ markets: { ...s.markets, [portId]: v } }), { loud: true }),
 
-  loadHistory: async (portId) => {
-    const r = await worldPriceHistory(portId)
-    if (!r.ok) return
-    set((s) => ({ history: { ...s.history, [portId]: r.value } }))
-  },
+  loadHistory: (portId) =>
+    loader(worldPriceHistory(portId), (v, s) => ({ history: { ...s.history, [portId]: v } }), { loud: false }),
 
   // A FAILED REACH READ IS SILENT, like history: the picker still lists every harbour, only
   // unordered by distance — a truthful, lesser answer (§7C's mirror), never a fabricated figure.
   loadReach: async (portId) => {
     if (get().reaches[portId]) return
-    const r = await worldReach(portId)
-    if (!r.ok) return
-    set((s) => ({ reaches: { ...s.reaches, [portId]: r.value } }))
+    await loader(worldReach(portId), (v, s) => ({ reaches: { ...s.reaches, [portId]: v } }), { loud: false })
   },
 
-  loadOfficers: async () => {
-    const r = await worldOfficers()
-    if (r.ok) set({ officers: r.value })
-    else set({ refusal: r.refusal })
-  },
+  loadOfficers: () => loader(worldOfficers(), (officers) => ({ officers }), { loud: true }),
 
-  loadSkills: async () => {
-    const r = await worldSkills()
-    if (r.ok) set({ skills: r.value })
-    else set({ refusal: r.refusal })
-  },
+  loadSkills: () => loader(worldSkills(), (skills) => ({ skills }), { loud: true }),
 
   // A FAILED BOARD READ IS LOUD, unlike the history read. That one decorates a price that is true
   // without them; the board IS the screen, so a RANK tab that silently kept yesterday's order would
   // be showing a standing nobody holds.
-  loadStandings: async (limit = null) => {
-    const r = await worldStandings(limit)
-    if (r.ok) set({ standings: r.value })
-    else set({ refusal: r.refusal })
-  },
+  loadStandings: (limit = null) => loader(worldStandings(limit), (standings) => ({ standings }), { loud: true }),
 
   loadRouteBoard: async () => {
     // A REFUSAL IS NOT A REFUSAL BANNER HERE. The board is consulted deliberately and its own
@@ -700,138 +719,50 @@ export const useWorld = create<LiveWorld>((set, get) => {
   // this read is also what winds the calendar where pg_cron is absent (0026). A quay that does not
   // know a fair is on still quotes the right price — `world.market` reads the spread itself — so the
   // cost of failing quietly is a missing sign, never a wrong number.
-  loadBuffs: async (portId) => {
-    const r = await worldBuffs(portId)
-    if (!r.ok) return
-    set((s) => ({ buffs: { ...s.buffs, [portId]: r.value } }))
-  },
+  loadBuffs: (portId) =>
+    loader(worldBuffs(portId), (v, s) => ({ buffs: { ...s.buffs, [portId]: v } }), { loud: false }),
 
   // A FAILED BOOK READ IS LOUD, for the standings' reason: the card IS the book, and a Presets
   // panel silently showing yesterday's orders would let a player believe a standing order stands
   // when it does not.
-  loadPresets: async () => {
-    const r = await worldProvisionPresets()
-    if (r.ok) set({ presets: r.value })
-    else set({ refusal: r.refusal })
-  },
+  loadPresets: () => loader(worldProvisionPresets(), (presets) => ({ presets }), { loud: true }),
 
-  savePreset: async (presetId, name, days) => {
-    const r = await cmdProvisionPresetSave(presetId, name, days)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    set({ refusal: null })
-    await get().loadPresets()
-    return true
-  },
+  savePreset: async (presetId, name, days) =>
+    (await verb(cmdProvisionPresetSave(presetId, name, days), get().loadPresets)) !== null,
 
-  deletePreset: async (presetId) => {
-    const r = await cmdProvisionPresetDelete(presetId)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    set({ refusal: null })
-    await get().loadPresets()
-    return true
-  },
+  deletePreset: async (presetId) =>
+    (await verb(cmdProvisionPresetDelete(presetId), get().loadPresets)) !== null,
 
-  applyPreset: async (fleetId, presetId) => {
-    const r = await cmdProvisionPresetApply(fleetId, presetId)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    set({ refusal: null })
-    await get().loadPresets()
-    return true
-  },
+  applyPreset: async (fleetId, presetId) =>
+    (await verb(cmdProvisionPresetApply(fleetId, presetId), get().loadPresets)) !== null,
 
   // The re-read after a verb that moved the book alone (save, delete). The beat's reading is
   // `refresh()`'s; both are `readRoutes`, the one reader.
   loadRoutes: () => readRoutes(),
 
-  saveRoute: async (routeId, name, stops) => {
-    const r = await cmdStandingRouteSave(routeId, name, stops)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return null
-    }
-    set({ refusal: null })
-    await get().loadRoutes()
-    return r.value.id
-  },
+  saveRoute: async (routeId, name, stops) =>
+    (await verb(cmdStandingRouteSave(routeId, name, stops), get().loadRoutes))?.value.id ?? null,
 
-  deleteRoute: async (routeId) => {
-    const r = await cmdStandingRouteDelete(routeId)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    set({ refusal: null })
-    await get().loadRoutes()
-    return true
-  },
+  deleteRoute: async (routeId) =>
+    (await verb(cmdStandingRouteDelete(routeId), get().loadRoutes)) !== null,
 
   // ASSIGN AND RESUME MOVE THE FLEET NOW (the route writes her orders and the queue runs them), so
   // both read the world back — the queue, the purse and the route — never a local patch.
-  assignRoute: async (routeId, fleetId) => {
-    const r = await cmdStandingRouteAssign(routeId, fleetId)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    set({ refusal: null })
-    // refresh() reads the routes with the fleets — one read, not two racing.
-    await get().refresh()
-    return true
-  },
+  // refresh() reads the routes with the fleets — one read, not two racing.
+  assignRoute: async (routeId, fleetId) =>
+    (await verb(cmdStandingRouteAssign(routeId, fleetId), get().refresh)) !== null,
 
-  pauseRoute: async (routeId, paused) => {
-    const r = await cmdStandingRoutePause(routeId, paused)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    set({ refusal: null })
-    // refresh() reads the routes with the fleets — one read, not two racing.
-    await get().refresh()
-    return true
-  },
+  pauseRoute: async (routeId, paused) =>
+    (await verb(cmdStandingRoutePause(routeId, paused), get().refresh)) !== null,
 
-  hireOfficer: async (code, fleetId) => {
-    const r = await cmdHireOfficer(code, fleetId)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    set({ refusal: null })
-    await Promise.all([get().loadOfficers(), get().refresh()])
-    return true
-  },
+  hireOfficer: async (code, fleetId) =>
+    (await verb(cmdHireOfficer(code, fleetId), () => Promise.all([get().loadOfficers(), get().refresh()]))) !== null,
 
-  postOfficer: async (code, fleetId) => {
-    const r = await cmdPostOfficer(code, fleetId)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    set({ refusal: null })
-    await Promise.all([get().loadOfficers(), get().refresh()])
-    return true
-  },
+  postOfficer: async (code, fleetId) =>
+    (await verb(cmdPostOfficer(code, fleetId), () => Promise.all([get().loadOfficers(), get().refresh()]))) !== null,
 
-  studySkill: async (code, fleetId) => {
-    const r = await cmdStudySkill(code, fleetId)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    set({ refusal: null })
-    await Promise.all([get().loadSkills(), get().refresh()])
-    return true
-  },
+  studySkill: async (code, fleetId) =>
+    (await verb(cmdStudySkill(code, fleetId), () => Promise.all([get().loadSkills(), get().refresh()]))) !== null,
 
   // ONE ATTEMPT AT A BARGAIN (0022). A WRITE, so it lives here rather than in a read hook.
   //
@@ -846,102 +777,42 @@ export const useWorld = create<LiveWorld>((set, get) => {
   // re-asked at the new spread rather than standing stale. THE MARKET IS DELIBERATELY NOT RE-READ:
   // the port's PUBLISHED price has not moved, and 0022 refused to make it move for exactly this
   // reason — a bargain is a better fill inside the port's cut, not a different world.
-  haggle: async (fleetId, goodId, side) => {
-    const r = await cmdHaggle(fleetId, goodId, side)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return null
-    }
-    set({ refusal: null })
-    await get().refresh()
-    return r.value
-  },
+  haggle: async (fleetId, goodId, side) => (await verb(cmdHaggle(fleetId, goodId, side), get().refresh))?.value ?? null,
 
   issue: async (fleetId, text, path = null) => {
     const fleet = get().fleets.find((f) => f.id === fleetId)
-    const r = await cmdIssue(fleetId, text, fleet?.version ?? null, path)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    set({ refusal: null })
-    await afterTrade(fleet)
-    return true
+    return (await verb(cmdIssue(fleetId, text, fleet?.version ?? null, path), () => afterTrade(fleet))) !== null
   },
 
   issueManifest: async (fleetId, lines) => {
     const fleet = get().fleets.find((f) => f.id === fleetId)
-    const r = await cmdTradeBasket(fleetId, lines, fleet?.version ?? null)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      // E_STALE means the version this tab holds is behind the server's (another tab traded, or a
-      // read is in flight). Read the world back NOW, so the player's next press sends the fresh
-      // version instead of the same stale one again (PR #59 review SHOULD 7).
-      if (r.refusal.code === 'E_STALE') await get().refresh()
-      return null
-    }
-    set({ refusal: null })
-    await afterTrade(fleet)
-    return r.value
+    const done = await verb(cmdTradeBasket(fleetId, lines, fleet?.version ?? null), () => afterTrade(fleet), {
+      refreshOnStale: true,
+    })
+    return done?.value ?? null
   },
 
   // The same door-shape as issueManifest: version from the fleet in hand, E_STALE read back now.
   fulfil: async (fleetId, contractId) => {
     const fleet = get().fleets.find((f) => f.id === fleetId)
-    const r = await cmdFulfil(fleetId, contractId, fleet?.version ?? null)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      if (r.refusal.code === 'E_STALE') await get().refresh()
-      return null
-    }
-    set({ refusal: null })
-    await afterTrade(fleet)
-    return r.value
+    const done = await verb(cmdFulfil(fleetId, contractId, fleet?.version ?? null), () => afterTrade(fleet), {
+      refreshOnStale: true,
+    })
+    return done?.value ?? null
   },
 
-  preview: async (fleetId, text, path = null) => {
-    const r = await cmdPreview(fleetId, text, path)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return null
-    }
-    set({ refusal: null })
-    return r.value
-  },
+  preview: async (fleetId, text, path = null) => (await verb(cmdPreview(fleetId, text, path), null))?.value ?? null,
 
-  cancel: async (fleetId, index = null) => {
-    const r = await cmdCancel(fleetId, index)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    await get().refresh()
-    return true
-  },
+  cancel: async (fleetId, index = null) =>
+    (await verb(cmdCancel(fleetId, index), get().refresh, { keepRefusal: true })) !== null,
 
-  clear: async (fleetId) => {
-    const r = await cmdClear(fleetId)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    await get().refresh()
-    return true
-  },
+  clear: async (fleetId) => (await verb(cmdClear(fleetId), get().refresh, { keepRefusal: true })) !== null,
 
   // THE HELM ORDER AT SEA (0039). The server settles her first, truncates the voyage at her
   // closed-form position, and departs the onward passage through the one parser and mover — so
   // this action is read-back like every other: the world is re-read, never locally patched.
-  divert: async (fleetId, destPortId, destPoint = null, path = null) => {
-    const r = await cmdDivert(fleetId, destPortId, destPoint, path)
-    if (!r.ok) {
-      set({ refusal: r.refusal })
-      return false
-    }
-    set({ refusal: null })
-    await get().refresh()
-    return true
-  },
+  divert: async (fleetId, destPortId, destPoint = null, path = null) =>
+    (await verb(cmdDivert(fleetId, destPortId, destPoint, path), get().refresh)) !== null,
 
   wantTraffic: () => {
     set((s) => ({ trafficWanted: s.trafficWanted + 1 }))
