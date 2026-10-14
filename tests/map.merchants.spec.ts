@@ -15,14 +15,15 @@
 // Lisbon lists the merchant laid up there and opens the same sheet. With the shipped image (switch
 // OFF) there are no merchant hulls and no "Merchants in port". Screenshots land in docs/npc-traders/.
 
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { LAID_UP_AT_LISBON, serveNpcOn } from './npcOn.fixture'
 import { buildChartModel, hitTest, mapTrafficOf, type MapFleet, type MapPort } from '../src/chart'
-import type { TrafficFleet } from '../src/lib/rpc'
+import type { MerchantDoing, PortMerchant, TrafficFleet } from '../src/lib/rpc'
 import { project } from '../src/lib/geo'
+import { MERCHANT_GROUPS, groupMerchants, merchantsSummary } from '../src/live/merchantGroups'
 
 const SHOTS = path.resolve('docs', 'npc-traders')
 
@@ -190,6 +191,48 @@ test('merchants lying at one berth are fanned, and the harbour keeps its own dot
   if (berthed.kind !== 'anchored') throw new Error('the probe merchant lies in port')
   const off = project(berthed.at)
   expect(hitTest(dotModel, [], { x: off.x + 30, y: off.y }, 40, [LIS], 20)).toBeNull()
+})
+
+// THE CITY'S GROUPING (owner, 2026-10-14: *"i press a city and i see no ship info. Why did this
+// revert back?"*). The harbour's ranked list is cut into headed groups by src/live/merchantGroups.ts
+// and nothing about it is changed: the groups stand in the server's rank, rows keep the server's
+// order inside a group, in port the soonest rest-end stands first, an empty group is not printed,
+// and a list with merchants is never empty.
+test("a harbour's merchants are grouped by what each is doing, in the server's rank, and no group prints empty", () => {
+  const m = (id: string, doing: MerchantDoing, next_lap_at: string | null = null, port: string | null = 'LIS'): PortMerchant => {
+    const facts: Omit<TrafficFleet, 'lane'> = dockedRow
+    return { ...facts, id, name: `Prova ${id}`, port, next_lap_at, doing, level: 3, stops: ['LIS', 'FNC'] }
+  }
+  const soon = new Date(Date.now() + 60_000).toISOString()
+  const later = new Date(Date.now() + 300_000).toISOString()
+  // the server's own order: laid_up, resting, starting, ending, passing, away
+  const rows = [
+    m('a', 'laid_up', later), m('b', 'resting', later), m('c', 'resting', soon), m('d', 'starting'),
+    m('e', 'ending', null, null), m('f', 'passing', null, null), m('g', 'away', null, null), m('h', 'away', null, null),
+  ]
+  const groups = groupMerchants(rows)
+  expect(groups.map((g) => g.key)).toEqual(['in_port', 'leaving', 'arriving', 'passing', 'away'])
+  expect(groups.map((g) => g.heading)).toEqual(['In port', 'Leaving', 'Arriving', 'Passing', 'Away'])
+  // IN PORT, SOONEST FIRST; a laid-up merchant's hold is not a promise, so she stands after the timed ones
+  expect(groups[0].rows.map((r) => r.id)).toEqual(['c', 'b', 'a'])
+  // every other group keeps the server's order exactly
+  expect(groups[1].rows.map((r) => r.id)).toEqual(['d'])
+  expect(groups[2].rows.map((r) => r.id)).toEqual(['e'])
+  expect(groups[3].rows.map((r) => r.id)).toEqual(['f'])
+  expect(groups[4].rows.map((r) => r.id)).toEqual(['g', 'h'])
+  // nothing is dropped and nothing is counted twice
+  expect(groups.flatMap((g) => g.rows).length).toBe(rows.length)
+  // A GROUP WITH NOBODY IN IT IS NOT PRINTED — and a city whose merchants are ALL AT SEA still has a list
+  expect(groupMerchants([m('e', 'ending', null, null), m('g', 'away', null, null)]).map((g) => g.key)).toEqual(['arriving', 'away'])
+  expect(groupMerchants([])).toEqual([])
+  // every one of the server's six words stands under exactly one heading
+  for (const w of ['laid_up', 'resting', 'starting', 'ending', 'passing', 'away'] as const) {
+    expect(MERCHANT_GROUPS.filter((g) => g.doings.includes(w)), w).toHaveLength(1)
+  }
+  // THE PEEK LINE counts everyone the city concerns before the ones lying here, and is never '' with rows
+  expect(merchantsSummary(rows)).toBe('8 merchants · 3 in port')
+  expect(merchantsSummary([m('e', 'ending', null, null)])).toBe('1 merchant')
+  expect(merchantsSummary([])).toBe('')
 })
 
 test('an own fleet wins a tie with a merchant; a merchant wins over open water', () => {
@@ -536,24 +579,37 @@ test('the eight nation inks exist in both schemes and stand off the sea', async 
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE CITY'S LIST (owner, 2026-10-13): *"when i press city, it says how many ships are resting. i
-// want there to be a list, showing the total level, and its current time till the resting
-// finishes."* A resting merchant is drawn nowhere on the chart since the same day, so the city's
-// tray is the one place she shows on the map.
+// THE CITY'S LIST (owner, 2026-10-11: *"By clicking the city, i get to see what trading ships
+// started, resting, ending etc."* · 2026-10-13: *"when i press city … i want there to be a list,
+// showing the total level, and its current time till the resting finishes."* · 2026-10-14: *"i
+// press a city and i see no ship info. Why did this revert back?"*). A resting merchant is drawn
+// nowhere on the chart since 2026-10-13, so the city's tray is the one place she shows on the map
+// — and since 0116 she rests two real minutes, so a tray that listed only the merchants LYING in
+// the city was blank on almost every city. The tray lists EVERY merchant the harbour's read serves,
+// in groups (src/live/merchantGroups.ts), and a city with merchants is never blank.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+/** The group sections the tray may print, in the server's rank, with the words each one holds. */
+const GROUPS = [
+  { id: 'map-merchants-in-port', heading: 'In port', words: ['Laid up', 'Resting'] },
+  { id: 'map-merchants-leaving', heading: 'Leaving', words: ['Starting'] },
+  { id: 'map-merchants-arriving', heading: 'Arriving', words: ['Ending'] },
+  { id: 'map-merchants-passing', heading: 'Passing', words: ['Passing'] },
+  { id: 'map-merchants-away', heading: 'Away', words: ['Away'] },
+] as const
+
 /**
- * Open a city whose tray lists at least one merchant lying in it, and return its label id.
+ * Tap the named harbours on the opening frame in turn, stand each one's tray at half, and keep the
+ * first whose merchant list `want` accepts. Returns its label id; throws naming every harbour tried.
  *
  * NOT LISBON BY NAME. Your own fleet lies on Lisbon's mark and wins any tap within its reach
  * (hitTest.ts), and the harbour's name stands inside that reach at 390 px — so Lisbon is a fleet
  * tray on this frame, and the fixture's laid-up merchant is proved on PORT (port.merchants.spec).
- * Which OTHER harbours have merchants lying in them depends on the fixture's warp (every merchant
- * arrives on the first tick and the home stops write their rest), so the named harbours on the
- * opening frame are tried in turn and the first with a list is kept. A frame on which none has
- * one fails rather than passes.
+ * Which harbours have merchants lying in them, and which have every merchant at sea, depends on
+ * the fixture's warp and on the two-minute rest (0116), so the named harbours are tried in turn.
+ * A frame on which none fits fails rather than passes.
  */
-async function openCityWithMerchants(page: Page): Promise<string> {
+async function openCity(page: Page, want: (list: Locator) => Promise<boolean>): Promise<string> {
   const labels = await page.evaluate(() =>
     [...document.querySelectorAll('[data-label-id^="port:"]')].map((e) => {
       const r = e.getBoundingClientRect()
@@ -562,29 +618,87 @@ async function openCityWithMerchants(page: Page): Promise<string> {
   )
   expect(labels.length, 'no harbour is named on the opening frame').toBeGreaterThan(0)
   const tray = page.getByTestId('map-detail-tray')
+  const list = page.getByTestId('map-merchants')
   const close = async () => {
     const x = page.getByTestId('tray-close')
     if (await x.isVisible().catch(() => false)) await x.click()
     await page.waitForTimeout(300)
   }
+  const tried: string[] = []
   for (const l of labels) {
     await close()
     await page.mouse.click(l.x, l.y)
     if (!(await tray.isVisible().catch(() => false))) continue
     const send = page.getByTestId('map-send-fleet')
     if (!(await send.isVisible().catch(() => false))) continue
+    tried.push(l.id)
     await send.click()
-    try {
-      await page.getByTestId('map-resting').waitFor({ state: 'visible', timeout: 8_000 })
-      return l.id
-    } catch {
-      /* nobody lies here — the next harbour */
-    }
+    // the harbour's read lands on the beat; a city nobody's loop calls at has no list at all
+    const listed = await list.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true, () => false)
+    if (listed && (await want(list))) return l.id
   }
-  throw new Error(`none of ${labels.map((l) => l.id).join(', ')} lists a merchant lying in it`)
+  throw new Error(`none of ${tried.join(', ')} fits (tried ${tried.length} of ${labels.length} named harbours)`)
 }
 
-test('a city lists the merchants lying in it — level, and the time her rest ends — and a row opens her sheet', async ({
+/** Every row of one group section as the things a player reads on it. */
+async function groupRows(section: Locator): Promise<{ name: string; level: string; doing: string; rest: string | null }[]> {
+  return section.evaluate((el) =>
+    [...el.querySelectorAll('[data-testid="merchant-row"]')].map((row) => {
+      const read = (id: string) => (row.querySelector(`[data-testid="${id}"]`)?.textContent ?? '').trim()
+      return {
+        name: read('merchant-row-name'),
+        level: read('merchant-row-level'),
+        doing: read('merchant-row-doing'),
+        rest: row.querySelector('[data-testid="merchant-row-rest"]') ? read('merchant-row-rest') : null,
+      }
+    }),
+  )
+}
+
+/**
+ * THE LIST, READ BACK AS ITS CONTRACT: the groups that are printed stand in the server's rank with
+ * no empty one among them; every row carries a level (0113) and a word that belongs to its group;
+ * a resting merchant carries the time her rest ends and a laid-up one does not; in port the soonest
+ * stands first; each heading's count is its rows. Returns the rows, grouped, for the caller.
+ */
+async function readCityList(page: Page, city: string) {
+  const list = page.getByTestId('map-merchants')
+  await expect(list).toBeVisible()
+  const printed: { heading: string; rows: Awaited<ReturnType<typeof groupRows>> }[] = []
+  for (const g of GROUPS) {
+    const section = page.getByTestId(g.id)
+    if ((await section.count()) === 0) continue
+    const rows = await groupRows(section)
+    expect(rows.length, `${city}: the ${g.heading} group is printed with nobody in it`).toBeGreaterThanOrEqual(1)
+    await expect(section.locator('h2')).toHaveText(g.heading)
+    await expect(section.getByTestId('map-merchants-count')).toHaveText(String(rows.length))
+    for (const r of rows) {
+      expect(r.level, `${city}: the level of ${r.name}`).toMatch(/^\d+$/)
+      expect(g.words as readonly string[], `${city}: "${r.doing}" on ${r.name} is not a ${g.heading} word`).toContain(r.doing)
+      if (r.doing === 'Resting') {
+        // `2 h 14 min`, `4.7 min`, or `ends soon` — src/lib/format's one real-span spelling.
+        expect(r.rest, `${city}: ${r.name} is resting with no time`).toMatch(/(\d+ h( \d+ min)?|\d+(\.\d)? min|ends soon)/)
+      }
+      if (r.doing === 'Laid up') expect(r.rest, `${city}: a laid-up merchant's hold is not a promise`).toBeNull()
+    }
+    if (g.id === 'map-merchants-in-port') {
+      // SOONEST FIRST: a row without a time never stands above one with.
+      const timed = rows.map((r) => (r.rest ? '1' : '0')).join('')
+      expect(timed, `${city}: a row without a time stands above one with`).not.toMatch(/01/)
+    }
+    printed.push({ heading: g.heading, rows })
+  }
+  // THE GROUPS STAND IN THE SERVER'S RANK — the order GROUPS lists them, which is 0104's.
+  const order = printed.map((p) => GROUPS.findIndex((g) => g.heading === p.heading))
+  expect(order).toEqual([...order].sort((a, b) => a - b))
+  // AND THE LIST IS NEVER BLANK WHILE THE READ HAS MERCHANTS: the rows in the groups are every row.
+  const all = await list.getByTestId('merchant-row').count()
+  expect(all, `${city}: rows outside every group`).toBe(printed.reduce((n, p) => n + p.rows.length, 0))
+  expect(all, `${city}: a list with no rows`).toBeGreaterThanOrEqual(1)
+  return printed
+}
+
+test('a city lists every merchant it concerns, grouped — in port with the time her rest ends — and a row opens her sheet', async ({
   page,
   request,
   baseURL,
@@ -599,33 +713,17 @@ test('a city lists the merchants lying in it — level, and the time her rest en
   // one beat, so the first arrivals have closed their laps and the home stops hold their merchants
   await page.waitForTimeout(4_000)
 
-  const city = await openCityWithMerchants(page)
+  // A CITY WITH SOMEBODY IN PORT, so the countdown is on the glass for the shot.
+  const city = await openCity(page, async () => (await page.getByTestId('map-merchants-in-port').count()) === 1)
   const tray = page.getByTestId('map-detail-tray')
   await expect(tray).toHaveAttribute('data-tray-detent', 'half')
-  // THE HEAD: the harbour's name, and under it a line that counts who lies here.
+  // THE HEAD: the harbour's name, and under it a line that counts everyone the city concerns and
+  // how many of them lie here.
   await expect(page.getByTestId('map-place-name')).not.toBeEmpty()
-  await expect(page.getByTestId('map-place-name-line')).toContainText(/laid up|resting|about to sail/)
+  await expect(page.getByTestId('map-place-name-line')).toContainText(/\d+ merchants? · \d+ in port/)
 
-  // THE LIST: every row a merchant LYING here, with a level (a number, 0113) and either the time
-  // her rest ends or the word for why there is no such time.
-  const list = page.getByTestId('map-resting')
-  const rows = list.getByTestId('merchant-row')
-  const n = await rows.count()
-  expect(n, `${city} opened with no rows`).toBeGreaterThanOrEqual(1)
-  for (const row of await rows.all()) {
-    await expect(row.getByTestId('merchant-row-level')).toHaveText(/^\d+$/)
-    const doing = ((await row.getByTestId('merchant-row-doing').textContent()) ?? '').trim()
-    expect(['Laid up', 'Resting', 'Starting', 'Passing'], `"${doing}" is not a word for a merchant lying here`).toContain(doing)
-    if (doing === 'Resting') {
-      // `2 h 14 min`, `4.7 min`, or `ends soon` — src/lib/format's one real-span spelling.
-      await expect(row.getByTestId('merchant-row-rest')).toHaveText(/(\d+ h( \d+ min)?|\d+(\.\d)? min|ends soon)/)
-    } else {
-      await expect(row.getByTestId('merchant-row-rest')).toHaveCount(0)
-    }
-  }
-  // SOONEST FIRST: a row without a time never stands above one with.
-  const timed = await rows.evaluateAll((els) => els.map((el) => (el.querySelector('[data-testid="merchant-row-rest"]') ? '1' : '0')).join(''))
-  expect(timed, 'a row without a time stands above one with').not.toMatch(/01/)
+  const printed = await readCityList(page, city)
+  expect(printed[0].heading).toBe('In port')
   // YOUR FLEETS are still here, under the list, so the owner's send flow did not move.
   await expect(page.getByTestId('map-send-fleets')).toBeVisible()
   await page.screenshot({ path: path.join(SHOTS, 'city-tray-half-390.png') })
@@ -633,7 +731,7 @@ test('a city lists the merchants lying in it — level, and the time her rest en
   // A ROW OPENS THE SAME READ-ONLY SHEET a hull on the water opens — and a resting merchant is
   // served by the harbour and not by the sea window, so this is the one way to reach her from the
   // map. The sheet's level is the number the row printed.
-  const first = rows.first()
+  const first = page.getByTestId('map-merchants-in-port').getByTestId('merchant-row').first()
   const name = ((await first.getByTestId('merchant-row-name').textContent()) ?? '').trim()
   const level = ((await first.getByTestId('merchant-row-level').textContent()) ?? '').trim()
   await first.click()
@@ -643,4 +741,53 @@ test('a city lists the merchants lying in it — level, and the time her rest en
   await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
   await expect(page.getByTestId('merchant-level')).toContainText(level)
   await page.screenshot({ path: path.join(SHOTS, 'city-tray-merchant-from-list-390.png') })
+})
+
+// THE REGRESSION THE OWNER HIT (2026-10-14). On main this list was `map-resting`, the merchants
+// LYING in the city and nothing else, and it rendered NOTHING for a city whose merchants were all
+// at sea — which, with a two-minute rest, is almost every city. This fails there.
+test('a city whose merchants are all at sea still lists them in the tray', async ({ page, request, baseURL }) => {
+  test.setTimeout(600_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+  mkdirSync(SHOTS, { recursive: true })
+  await serveNpcOn(page)
+  await page.goto('map')
+  await ready(page)
+  await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
+  await page.waitForTimeout(4_000)
+
+  const city = await openCity(page, async (list) => {
+    const rows = await list.getByTestId('merchant-row').count()
+    return rows >= 1 && (await page.getByTestId('map-merchants-in-port').count()) === 0
+  })
+  await expect(page.getByTestId('map-detail-tray')).toHaveAttribute('data-tray-detent', 'half')
+  // the head counts them and names nobody in port
+  await expect(page.getByTestId('map-place-name-line')).toContainText(/\d+ merchants?/)
+  await expect(page.getByTestId('map-place-name-line')).not.toContainText('in port')
+  const printed = await readCityList(page, city)
+  expect(printed.map((p) => p.heading)).not.toContain('In port')
+  for (const p of printed) {
+    for (const r of p.rows) {
+      expect(['Starting', 'Ending', 'Passing', 'Away'], `${city}: ${r.name} reads "${r.doing}"`).toContain(r.doing)
+    }
+  }
+  await page.screenshot({ path: path.join(SHOTS, 'city-tray-at-sea-390.png') })
+})
+
+test.describe('wide city tray', () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
+  test('the city tray at 1440 × 900 lists the merchants in their groups', async ({ page, request, baseURL }) => {
+    test.setTimeout(600_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+    mkdirSync(SHOTS, { recursive: true })
+    await serveNpcOn(page)
+    await page.goto('map')
+    await ready(page)
+    await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
+    await page.waitForTimeout(4_000)
+    const city = await openCity(page, async (list) => (await list.getByTestId('merchant-row').count()) >= 1)
+    await readCityList(page, city)
+    await page.waitForTimeout(600)
+    await page.screenshot({ path: path.join(SHOTS, 'city-tray-half-1440.png') })
+  })
 })

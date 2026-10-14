@@ -4,7 +4,7 @@ import { formatVoyageDays } from '../../lib/format'
 import type { PortMerchant } from '../../lib/rpc'
 import { CHART_CHROME } from '../../chart'
 import { useShellState } from '../../app/shellState'
-import { RestingHere } from './RestingHere'
+import { CityMerchants } from './CityMerchants'
 import { SendFleetRow } from './SendFleetRow'
 import { canGo, type SailDest } from './sendRules'
 import { useSendFleet } from './useSendFleet'
@@ -19,10 +19,14 @@ import { useSendFleet } from './useSendFleet'
 // friendliness and style"*:
 //
 //     peek:  Lisbon                                   [Send fleet]
-//            Portugal · 2 resting · 1 laid up
-//     half:  In port
+//            Portugal · 27 merchants · 2 in port
+//     half:  In port                                           2
 //              [⚓] Carreira da Guiné      12        2 h 14 min
 //                  Casa de Aveiro · 3 ships   level       Resting
+//            Arriving                                          3
+//              [⚓] Costeiros do Sul       4            Arriving
+//            Away                                             22
+//              …
 //            Your fleets
 //              [⚓] Gaivota · Lisbon · 1.9 days
 //                  Keep 15 d  [−] ▔▔▔▔▔▔ [+]
@@ -33,8 +37,10 @@ import { useSendFleet } from './useSendFleet'
 // listed with the passage's verdict on each row → press one, the keep control unfolds under it →
 // the one pinned button sends her. Nothing navigates; the chart is still the ground.
 //
-// WHAT THE HALF STOP NOW HOLDS FIRST: the merchants lying in the city (RestingHere.tsx), because
-// a resting merchant is drawn nowhere else on the chart since the same day. The harbour's own
+// WHAT THE HALF STOP NOW HOLDS FIRST: every merchant the city concerns (CityMerchants.tsx), in
+// groups by what each is doing — a resting merchant is drawn nowhere else on the chart since
+// 2026-10-13, and since 0116 she rests two minutes, so a list of only the ones lying here was a
+// blank tray on almost every city (owner, 2026-10-14: *"i see no ship info"*). The harbour's own
 // read serves them (MapScreen asks it when a city is tapped); a row opens the same read-only
 // merchant sheet a hull on the water opens. Then her fleets, under their own heading, so a reader
 // who pressed `Send fleet` finds the thing they pressed for named.
@@ -52,9 +58,9 @@ export function SendFleet({
   onClose,
 }: {
   dest: SailDest
-  /** The one line under the name at peek — `Portugal · 2 resting`, `Open sea`. */
+  /** The one line under the name at peek — `Portugal · 27 merchants · 2 in port`, `Open sea`. */
   line: string
-  /** The merchants LYING in this city (the harbour's read, filtered by the caller); empty at sea. */
+  /** Every merchant this city concerns — the harbour's whole read, unfiltered; empty at sea. */
   merchants: readonly PortMerchant[]
   onOpenMerchant: (fleetId: string) => void
   onClose: () => void
@@ -113,9 +119,15 @@ export function SendFleet({
           tray spends its budget on; the wording is domain/passage's. */}
       {flow.roads && <Hint data-testid="map-send-roads">{flow.roads}</Hint>}
 
-      {/* WHO LIES HERE — the list the owner asked for, soonest to sail first. In the scroll box
-          whether or not the tray is open: at peek it is simply below the fold, a drag away. */}
-      <RestingHere rows={merchants} nowMs={nowMs} onOpen={onOpenMerchant} />
+      {/* THE CITY'S MERCHANTS — the list the owner asked for, in port first and soonest to sail
+          first among them. In the scroll box whether or not the tray is open: at peek it is simply
+          below the fold, a drag away. */}
+      <CityMerchants
+        rows={merchants}
+        portCode={dest.kind === 'port' ? dest.code : null}
+        nowMs={nowMs}
+        onOpen={onOpenMerchant}
+      />
 
       {open && (
         <SheetSection heading="Your fleets" data-testid="map-send-fleets">

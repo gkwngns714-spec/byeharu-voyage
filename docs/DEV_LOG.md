@@ -5,6 +5,43 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-14 — the city tray lists every merchant the harbour concerns, never blank — `osn-city-tray-merchants`
+
+Owner, on the live game: *"i press a city and i see no ship info. Why did this revert back?"*
+
+- **What was wrong.** Nothing reverted; two things crossed. The city tray (row 128, 2026-10-13)
+  filtered the harbour's read to the merchants LYING in the city (`MapScreen.tsx`
+  `m.port === harbourCode`) and `RestingHere` returned null on an empty list. Then 0116 (the same
+  day) cut a merchant's rest to 120 real seconds. Read on prod for the eight busiest harbours:
+  `world.port_merchants` serves 25–32 merchants each, 2–9 of them starting / ending / passing, and
+  0–2 lying there. So the tray was blank on almost every city while the server was answering with
+  dozens of rows. Row 121's sentence was the whole list — *"started, resting, ending etc."* — and
+  the 10-13 build kept one word of it.
+- **The fix, client only, no migration.** `src/live/merchantGroups.ts` is the ONE grouping of a
+  harbour's merchants by `doing`: In port (laid_up, resting; soonest rest-end first, with the time it
+  ends, as row 128 asked) → Leaving (starting) → Arriving (ending) → Passing → Away — the groups
+  stand in the server's rank (0104: "the ones who are here first, then the ones coming, then the
+  rest"), rows keep the server's order inside a group, an empty group is not printed, and a city
+  with merchants is never blank. `merchantsSummary` is the peek line: `27 merchants · 2 in port`.
+  PORT's section still prints the same list flat; the day it groups, it composes this table.
+- **`RestingHere.tsx` → `src/features/map/CityMerchants.tsx`**: one `SheetSection` per group with
+  the heading and a count, rows through the shared `src/live/MerchantRow` (so PORT and MAP cannot
+  drift), `here` by the same rule PORT uses (`m.port === portCode`), a row opening the same
+  read-only sheet. `MapScreen.tsx` hands the harbour's whole read down (the filter and
+  `lyingHere` are gone); `SendFleet.tsx` passes the city's code. `restingSummary` is deleted.
+- **Specs.** `tests/map.merchants.spec.ts`: a unit test of the grouping (rank, soonest first,
+  nothing dropped, empty groups omitted, the summary); the city test re-read as the grouped
+  contract (every printed group's rows carry its words, counts match, in port soonest first, your
+  fleets still under it, a row opens the sheet); **a new test that fails on main** — a city whose
+  merchants are all at sea still lists them (`map-resting` rendered nothing there); and a 1440 × 900
+  shot. `tests/port.merchants.spec.ts` is untouched: PORT never filtered.
+- **Gates.** `npx tsc -b` clean · `npx eslint .` clean · pure guards `words` / `sections` /
+  `duplication` 19 passed · `npm run build` green (the world image for chain 110 was built here, no
+  cache for it existed on this machine). Browser, against `vite preview --port 4193`: filled in
+  below once run.
+- Shots, looked at: `docs/npc-traders/city-tray-half-390.png`, `city-tray-at-sea-390.png`,
+  `city-tray-half-1440.png`, `city-tray-merchant-from-list-390.png`.
+
 ## 2026-10-14 — 0117/0118: the map read stops timing out — the roster once, then what changed — `osn-traffic-delta`
 
 - **The problem.** With 822 merchants sailing, `world.sea_traffic` took 6–7 s against the 8 s

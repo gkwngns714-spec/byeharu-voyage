@@ -53,16 +53,3 @@ export function levelOf(m: PortMerchant): number | null {
   const level: unknown = m.level
   return typeof level === 'number' && Number.isFinite(level) ? level : null
 }
-
-/** A city's one-line count for the map tray's head: `3 resting`, `2 resting · 1 laid up`, or '' when
- *  nobody lies there. Counts what `doing` says, never a guess from where she is. */
-export function restingSummary(lying: readonly PortMerchant[]): string {
-  const resting = lying.filter((m) => m.doing === 'resting').length
-  const laidUp = lying.filter((m) => m.doing === 'laid_up').length
-  const other = lying.length - resting - laidUp
-  const parts: string[] = []
-  if (resting > 0) parts.push(`${resting} resting`)
-  if (laidUp > 0) parts.push(`${laidUp} laid up`)
-  if (other > 0) parts.push(`${other} about to sail`)
-  return parts.join(' · ')
-}
