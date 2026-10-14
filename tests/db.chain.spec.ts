@@ -299,7 +299,12 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0112, a forward fix to 0107 found by pglite-gate's proofs 1 and 5: a beginner's leg reach
 // admits the designed first crossing (Lisbon → Amsterdam), and a region she already lies in or has
 // made harbour in is never refused her — one reading, `public.exploration_reach`, for gate and board.
-const LAST = '20260818000113_a_harbours_merchants_carry_their_level.sql'
+// And to 0113, a harbour's merchants carry their level. And to 0114 (2026-10-14, "I saw no NPC"):
+// the hourly merchant upkeep had not committed since the switch was thrown — it overran the 2-min
+// statement timeout every hour — so 0114 gives it a budget with one setter, indexes the column the
+// compactor deletes against, lets three merchants buy one good at one harbour, and puts the idle
+// roster back to sea through the one switch.
+const LAST = '20260818000114_the_merchants_are_tended_inside_the_hour.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
