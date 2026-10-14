@@ -37,8 +37,9 @@ Owner, on the live game: *"i press a city and i see no ship info. Why did this r
   shot. `tests/port.merchants.spec.ts` is untouched: PORT never filtered.
 - **Gates.** `npx tsc -b` clean · `npx eslint .` clean · pure guards `words` / `sections` /
   `duplication` 19 passed · `npm run build` green (the world image for chain 110 was built here, no
-  cache for it existed on this machine). Browser, against `vite preview --port 4193`: filled in
-  below once run.
+  cache for it existed on this machine). Browser, against `vite preview --port 4193`
+  (`localhost`, one worker): `map.merchants` + `port.merchants` — **17 passed, 0 failed, 0
+  skipped** (18.6 min, the merchants-on fixture built cold inside it).
 - Shots, looked at: `docs/npc-traders/city-tray-half-390.png`, `city-tray-at-sea-390.png`,
   `city-tray-half-1440.png`, `city-tray-merchant-from-list-390.png`.
 
