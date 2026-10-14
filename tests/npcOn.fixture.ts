@@ -82,6 +82,16 @@ export async function npcOn(): Promise<Buffer> {
       [LAID_UP_AT_LISBON],
     )
     if (laid.rows.length !== 1 || !laid.rows[0].r.ok) throw new Error(`could not lay up ${LAID_UP_AT_LISBON}`)
+    // THE ROSTER THIS FIXTURE SAILS IS CAPPED AT THE SCALE IT WAS MEASURED AT (2026-10-14, 0114).
+    // Under 0097's one-buyer rule the switch started ~316 of the 837 merchants and the rest were
+    // laid up for want of cargo; 0114 lets three merchants buy one good at one harbour, so nearly
+    // every one of them starts — and this file's switch plus six-leg warp, single-threaded on
+    // PGlite, went from ~9 minutes to past the 40-minute test timeout (PR #97, shard 3,
+    // map.hulls). The browser specs read how merchants are DRAWN, not how many there are, so the
+    // fixture sails the first 320 of the roster through `npc_fleet_max` — the live lever 0097
+    // names for exactly this — and the image keeps that value.
+    const capped = await pg.query(`update public.world_config set value = to_jsonb(320) where key = 'npc_fleet_max' returning key`)
+    if (capped.rows.length !== 1) throw new Error('world_config has no npc_fleet_max row')
     const sw = await pg.query<{ j: { enabled: boolean; tend: { started: number } } }>(`select public.npc_traders_switch(true) as j`)
     if (!sw.rows[0].j.enabled || sw.rows[0].j.tend.started < 10) {
       throw new Error(`the switch did not put the merchants to sea: ${JSON.stringify(sw.rows[0].j)}`)
