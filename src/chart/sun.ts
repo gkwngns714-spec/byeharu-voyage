@@ -201,6 +201,6 @@ export function daylightRaster(sun: LatLon): Uint8ClampedArray {
   return out
 }
 
-/** How often the picture re-reads the clock. The subsolar point moves a quarter of a degree a
- *  minute, which at the widest zoom on a 1440 px glass is a pixel — nothing finer is visible. */
-export const SUN_REFRESH_MS = 60_000
+/** How often the picture re-reads the clock. The Sun runs on the GAME clock (useSunlight.ts), a
+ *  full turn per game day = 90 real seconds at 960×, so 4° a second; half a second is a 2° step. */
+export const SUN_REFRESH_MS = 500

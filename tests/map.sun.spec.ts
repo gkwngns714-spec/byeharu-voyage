@@ -26,6 +26,7 @@
 
 import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
+import { gameSunInstantMs } from '../src/lib/format'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { serveNpcOn } from './npcOn.fixture'
@@ -185,8 +186,8 @@ test('the raster is the shade sampled once per degree: half the world lit, the r
     if (Math.abs(lat) <= 72) expect(Math.min(...vals), `row at ${lat}°`).toBe(0)
     else expect(Math.min(...vals), `row at ${lat}° never leaves twilight`).toBeGreaterThan(0)
   }
-  // Refreshed once a minute: the Sun moves a quarter-degree a minute, a pixel at the widest zoom.
-  expect(SUN_REFRESH_MS).toBe(60_000)
+  // Refreshed every half second: the Sun runs on the game clock, 4° a real second at 960×.
+  expect(SUN_REFRESH_MS).toBe(500)
 })
 
 // ── THE LIGHTS AND THE LADDER ──────────────────────────────────────────────────────────────────
@@ -325,7 +326,7 @@ test('at the globe the ships are hulls, the day picture is on the sheet, and eve
 
   // THE SUN THE CHART USED IS THE ALMANAC'S, for the instant it says it read. Read off the chart,
   // never assumed from this process's clock (the two differ by the read's own latency).
-  const expected = subsolarPoint(wide.sunAt)
+  const expected = subsolarPoint(gameSunInstantMs(wide.sunAt))
   expect(wide.sunLat).toBeCloseTo(expected.lat, 3)
   expect(wide.sunLon).toBeCloseTo(expected.lon, 3)
   expect(Math.abs(wide.sunAt - Date.now())).toBeLessThan(SUN_REFRESH_MS + 60_000)

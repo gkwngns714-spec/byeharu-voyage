@@ -174,3 +174,28 @@ export function gameDate(nowMs: number, epochMs: number, epochYear: number): Gam
 export function formatGameDate(d: GameDate): string {
   return `${MONTHS[d.monthIndex]} ${d.year} · ${d.season}`
 }
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+/** THE GAME CLOCK — the hour of the voyage clock (TIME_COMPRESSION), the same for every player:
+ *  game time is real time since the Unix epoch run at TIME_COMPRESSION×, so a game day passes in
+ *  REAL_MS_PER_VOYAGE_DAY. The owner, 2026-10-15: *"show game clock, no date, only time"* and the
+ *  sunlight *"should match the speed of the game speed"*. ONE authority: the top bar prints it and
+ *  the Sun (src/chart/useSunlight.ts) stands where this hour puts it. Returns ms into the game day. */
+export function gameTimeOfDayMs(nowMs: number): number {
+  return (((nowMs % MS_PER_DAY) * TIME_COMPRESSION) % MS_PER_DAY + MS_PER_DAY) % MS_PER_DAY
+}
+
+/** The game clock as the top bar prints it, UTC hours: "14:22". No date — the owner's call. */
+export function formatGameClock(nowMs: number): string {
+  const t = gameTimeOfDayMs(nowMs)
+  const h = Math.floor(t / 3_600_000)
+  const m = Math.floor((t % 3_600_000) / 60_000)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+/** The UTC instant the Sun is drawn for: today's real date (so the season is the real one) at the
+ *  GAME CLOCK's hour (so the day and night turn at game speed). */
+export function gameSunInstantMs(nowMs: number): number {
+  return nowMs - (((nowMs % MS_PER_DAY) + MS_PER_DAY) % MS_PER_DAY) + gameTimeOfDayMs(nowMs)
+}

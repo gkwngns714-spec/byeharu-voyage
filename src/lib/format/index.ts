@@ -37,6 +37,9 @@ export {
   seasonOfMonth,
   gameDate,
   formatGameDate,
+  gameTimeOfDayMs,
+  formatGameClock,
+  gameSunInstantMs,
   type Season,
   type GameDate,
 } from './time'

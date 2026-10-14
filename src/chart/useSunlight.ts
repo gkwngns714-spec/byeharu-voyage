@@ -7,6 +7,7 @@ import {
   subsolarPoint,
   type SubsolarPoint,
 } from './sun'
+import { gameSunInstantMs } from '../lib/format'
 
 // THE SUN, ON THE REAL CLOCK — the one hook that reads `Date.now()` for the picture and turns
 // `sun.ts`'s arithmetic into the two things a layer can use: the subsolar point (for the lights
@@ -22,10 +23,10 @@ import {
 //              tab and SAIL's small chart) draw the one picture through it, so neither can hold a
 //              sun of its own. The minimap is a locator and draws no daylight — a decision, not
 //              an omission (./Minimap.tsx).
-// WRONG SHAPE  a second clock. The shell's `nowMs` ticks every second for countdowns and the
-//              drift; the sun moves a quarter of a degree a minute and re-rasterising 64,800
-//              cells on every tick would be the per-frame cost MAP_ATMOSPHERE §7 measured out of
-//              this chart. One timer, one minute, one raster.
+// WRONG SHAPE  a second clock. The Sun stands at the GAME CLOCK's hour (owner, 2026-10-15: the
+//              sunlight "should match the speed of the game speed"), read through the one
+//              authority `gameSunInstantMs`, so it turns 360° per game day — 4° a real second at
+//              960×. One timer (SUN_REFRESH_MS), one raster per step, never per frame.
 //
 // THE IMAGE is a 360 × 180 greyscale PNG — one pixel per degree, the raster's own bytes — handed
 // to an SVG `<mask>` as an `<image>` stretched over each copy of the sheet (ChartCanvas,
@@ -39,7 +40,7 @@ export interface Sunlight {
   /** The daylight raster as a data URL, or null before the first paint (nothing is masked, which
    *  draws the night picture alone, truthfully, for one frame). */
   readonly rasterUrl: string | null
-  /** The instant the raster was drawn for, so a change can be keyed on a number. */
+  /** The REAL instant the raster was drawn at (the Sun is at `gameSunInstantMs` of it). */
   readonly atMs: number
 }
 
@@ -68,7 +69,8 @@ function rasterToUrl(sun: SubsolarPoint): string | null {
 
 function sunlightNow(): Sunlight {
   const atMs = Date.now()
-  const sun = subsolarPoint(atMs)
+  // THE GAME CLOCK'S HOUR (lib/format gameSunInstantMs): day and night turn at game speed.
+  const sun = subsolarPoint(gameSunInstantMs(atMs))
   return { sun, rasterUrl: rasterToUrl(sun), atMs }
 }
 
