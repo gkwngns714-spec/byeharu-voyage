@@ -1,27 +1,4 @@
-import { useEffect, useRef } from 'react'
-import { gameSunInstantMs } from '../lib/format'
 import { CHART_HEIGHT, CHART_WIDTH } from '../lib/geo'
-import { subsolarPoint } from './sun'
-
-/** THE SOFT TERMINATOR (owner, 2026-10-15: "right now the light zone moves rigid. make it soft").
- *  The raster is drawn with the Sun over longitude 0 (useSunlight.ts); every animation frame this
- *  slides it to where the game clock puts the Sun — x IS longitude on this chart (lib/geo
- *  `project`) — by setting one transform attribute, no React render. One extra copy each side so
- *  the slide never shows an edge; the mask's own x/width clips it. */
-function useSunSlide() {
-  const ref = useRef<SVGGElement>(null)
-  useEffect(() => {
-    let frame = 0
-    const step = () => {
-      const lon = subsolarPoint(gameSunInstantMs(Date.now())).lon
-      ref.current?.setAttribute('transform', `translate(${lon} 0)`)
-      frame = requestAnimationFrame(step)
-    }
-    step()
-    return () => cancelAnimationFrame(frame)
-  }, [])
-  return ref
-}
 
 // THE DAYLIGHT MASK — the Sun's raster (./useSunlight.ts) as an SVG <mask>, stretched over each
 // copy of the sheet it is asked for. ONE definition of how the raster becomes a mask, used by
@@ -45,7 +22,6 @@ export function DaylightMask({
   /** The sheet copies (k) the mask must cover — `sheetCopies` of whatever it is applied over. */
   copies: readonly number[]
 }) {
-  const slide = useSunSlide()
   const first = Math.min(...copies)
   const last = Math.max(...copies)
   const x = first * CHART_WIDTH - CHART_WIDTH / 2
@@ -61,8 +37,7 @@ export function DaylightMask({
       style={{ maskType: 'alpha' }}
       data-testid="map-daylight-mask"
     >
-      <g ref={slide}>
-        {[first - 1, ...copies, last + 1].map((k) => (
+      {copies.map((k) => (
         <image
           key={k}
           href={rasterUrl}
@@ -73,8 +48,7 @@ export function DaylightMask({
           preserveAspectRatio="none"
           style={{ imageRendering: 'auto' }}
         />
-        ))}
-      </g>
+      ))}
     </mask>
   )
 }
