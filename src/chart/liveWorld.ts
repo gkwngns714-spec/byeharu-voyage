@@ -30,7 +30,8 @@
 
 import type { FleetShip, FleetView, SnapshotPort, TrafficFleet } from '../lib/rpc'
 import type { HullClass, MapFleet, MapPort, MapTraffic } from './mapTypes'
-import { voyageEtaMs } from '../domain/fleet'
+import { whereabouts } from '../domain/fleet'
+import { instantMs } from '../lib/format'
 
 /** The port table the chart draws. Field-for-field; nothing derived, nothing dropped but the
  *  columns a chart has no use for. */
@@ -55,6 +56,7 @@ export function mapPortsOf(ports: readonly SnapshotPort[]): MapPort[] {
 interface ServedFleet {
   readonly id: string
   readonly name: string
+  readonly status: string
   /** Served for yours; a merchant's stores are not a player's business and are not served. */
   readonly endurance_days?: number
   readonly voyage: Omit<FleetView['voyage'] & object, 'id'> | null
@@ -128,6 +130,7 @@ export function mapFleetsOf(fleets: readonly FleetView[]): MapFleet[] {
     const m = mapFleetOf({
       id: f.id,
       name: f.name,
+      status: f.status,
       endurance_days: f.endurance_days,
       voyage: f.voyage,
       anchor: f.anchor,
@@ -162,7 +165,8 @@ export function mapTrafficOf(
 ): MapTraffic[] {
   const out: MapTraffic[] = []
   for (const t of traffic) {
-    const docked = t.voyage === null && t.port !== null && t.roadstead !== null
+    // In port is `domain/fleet`'s one rule — the chart needs the served roadstead as well to draw her there.
+    const docked = whereabouts(t).kind === 'docked' && t.roadstead !== null
     const voyage = selected && selected.id === t.id && t.voyage ? trackedVoyage(t.voyage, selected.voyage) : t.voyage
     // DOCKED MERCHANTS ARE FANNED, NOT STACKED — and the place is HERS, not her neighbours'. A
     // first cut counted her position in the served list, so a hull shifted along the ring whenever
@@ -173,6 +177,7 @@ export function mapTrafficOf(
     const m = mapFleetOf({
       id: t.id,
       name: t.name,
+      status: t.status,
       voyage,
       anchor: docked ? fannedBerth(t.roadstead!, berthIndex) : t.anchor,
       port: null,
@@ -186,14 +191,13 @@ export function mapTrafficOf(
         : Array.from({ length: Math.max(0, Math.trunc(t.ships)) || 0 }, () => null),
     })
     if (!m) continue
-    const nextLap = t.next_lap_at ? Date.parse(t.next_lap_at) : NaN
     out.push({
       ...m,
       company: t.company,
       ink: t.ink,
       docked,
       berthCode: docked ? t.port : null,
-      nextLapAtMs: Number.isFinite(nextLap) ? nextLap : null,
+      nextLapAtMs: instantMs(t.next_lap_at),
       berthIndex,
       // THE LOOP SHE RUNS, not merely the leg she is on (owner row 112). Copied leg by leg from the
       // card, like every other position here; a leg of fewer than two points draws nothing rather
@@ -294,9 +298,17 @@ function fannedBerth(roadstead: [number, number], n: number): [number, number] {
 function mapFleetOf(f: ServedFleet): MapFleet | null {
   // A merchant's stores are not served (they are not a player's business); nothing prints them.
   const enduranceDays = f.endurance_days ?? Number.NaN
+  // AT SEA, IN PORT OR AT ANCHOR is `domain/fleet`'s one rule (voyage first) — the chart used to
+  // decide it here a second way, anchor before port. It only adds what drawing needs: a passage
+  // with no served position or a course of fewer than two points cannot be placed, and is left off.
+  const where = whereabouts(f)
+  if (where.kind === 'docked') return { kind: 'docked', id: f.id, name: f.name, enduranceDays, hulls: f.hulls, portCode: where.port }
+  if (where.kind === 'anchored') {
+    return { kind: 'anchored', id: f.id, name: f.name, enduranceDays, hulls: f.hulls, at: where.at }
+  }
   const position = f.voyage?.position
   const course = f.voyage?.course
-  if (f.voyage && position && course && course.length >= 2) {
+  if (where.kind === 'sailing' && f.voyage && position && course && course.length >= 2) {
     return {
       kind: 'sailing',
       id: f.id,
@@ -317,16 +329,15 @@ function mapFleetOf(f: ServedFleet): MapFleet | null {
         at: { lat: position.lat, lon: position.lon },
         sailedNm: position.nm_done,
         totalNm: position.total_nm,
-        // domain/fleet owns the parse (`eta` is an ISO string, not ms). A voyage WITH a served
-        // position always has an eta, so the null arm is unreachable here — it is spelt rather
-        // than asserted because a second Date.parse is how the three copies happened.
-        etaMs: voyageEtaMs(f) ?? 0,
-        // 0063: parsed HERE and once, beside the eta, for the reason the line above gives.
-        // `Date.parse` of an absent field is NaN, not 0 — a fleet whose server predates 0063
-        // must draw no elapsed figure rather than one counted from 1970.
-        departedMs: f.voyage.departed_at ? Date.parse(f.voyage.departed_at) : null,
-        destinationCode: f.voyage.to,
-        destPoint: f.voyage.dest_point ? { lat: f.voyage.dest_point[0], lon: f.voyage.dest_point[1] } : null,
+        // `whereabouts` read the eta through the one `instantMs`. A voyage WITH a served position
+        // always has an eta, so the null arm is unreachable here — it is spelt rather than
+        // asserted because a second Date.parse is how the three copies happened.
+        etaMs: where.etaMs ?? 0,
+        // 0063: an absent field is null, not 0 — a fleet whose server predates 0063 must draw no
+        // elapsed figure rather than one counted from 1970.
+        departedMs: instantMs(f.voyage.departed_at),
+        destinationCode: where.to,
+        destPoint: where.point,
         // 0055 — THE WATERS AHEAD. Field for field, and NOTHING is derived here: the tier, the
         // note and both distances are `voyage.waters_ahead`'s, measured over the course the
         // server froze at departure. A build talking to a server that predates 0055 gets an
@@ -344,16 +355,5 @@ function mapFleetOf(f: ServedFleet): MapFleet | null {
       },
     }
   }
-  if (f.anchor) {
-    return {
-      kind: 'anchored',
-      id: f.id,
-      name: f.name,
-      enduranceDays,
-      hulls: f.hulls,
-      at: { lat: f.anchor[0], lon: f.anchor[1] },
-    }
-  }
-  if (f.port) return { kind: 'docked', id: f.id, name: f.name, enduranceDays, hulls: f.hulls, portCode: f.port }
   return null
 }

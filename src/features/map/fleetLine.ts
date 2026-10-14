@@ -1,25 +1,32 @@
-import { formatRealShort } from '../../lib/format'
-import { pointLabel } from '../../domain/passage'
+import { whereLine, type Whereabouts } from '../../domain/fleet'
 import type { FleetOnChart, MapPort } from '../../chart'
 
 // THE ONE LINE UNDER A FLEET'S NAME — where she is, or where she is going and when she gets there.
 //
 // Two readers, one spelling: the fleets corner prints it under every name, and the fleet tray
-// prints it beside hers at peek. It was `statusOf`, private to the old top-left panel, and the
-// detail panel said the same fact a second way in three `Line`s. A pure function, so the wording
-// is one thing a spec can read without mounting anything.
+// prints it beside hers at peek. The WORDS are `domain/fleet`'s `whereLine` — the same sentence
+// FLEETS, COMMAND and the merchant line print. This file only hands it what the chart already
+// decided: `liveWorld.mapFleetOf` classified her through `whereabouts`, so `fleet.kind` IS that
+// answer carried onto the chart, read back here arm for arm (nothing is re-decided).
 //
 // "When she gets there" is the SERVER's arrival instant (`voyage.eta`) counted down against the
-// shell clock, through `formatRealShort` — the map does not own a second way to say "4m".
+// shell clock — the map does not own a second way to say "4m".
 export function fleetLine(f: FleetOnChart, portsByCode: ReadonlyMap<string, MapPort>, nowMs: number): string {
-  if (f.dockedAtCode) return portsByCode.get(f.dockedAtCode)?.name ?? f.dockedAtCode
-  // 0039: anchored at a bare point of water it is somewhere, going nowhere — say the spot, not a dash.
-  if (f.fleet.kind === 'anchored') return `anchored · ${pointLabel(f.at)}`
-  const destination = f.destinationCode
-    ? (portsByCode.get(f.destinationCode)?.name ?? f.destinationCode)
-    : f.voyage?.destPoint
-      ? pointLabel(f.voyage.destPoint)
-      : '—'
-  // A WORD, NOT AN ARROW. `→` was the old spelling; §4.5 bans text glyphs doing an icon's job.
-  return `to ${destination} · ${f.voyage ? formatRealShort(f.voyage.etaMs - nowMs) : '—'}`
+  return whereLine(whereOnChart(f), (code) => portsByCode.get(code)?.name ?? code, nowMs)
+}
+
+function whereOnChart(f: FleetOnChart): Whereabouts {
+  switch (f.fleet.kind) {
+    case 'docked':
+      return { kind: 'docked', port: f.fleet.portCode }
+    case 'anchored':
+      return { kind: 'anchored', at: f.at }
+    case 'sailing':
+      return {
+        kind: 'sailing',
+        to: f.fleet.voyage.destinationCode,
+        point: f.fleet.voyage.destPoint,
+        etaMs: f.fleet.voyage.etaMs,
+      }
+  }
 }

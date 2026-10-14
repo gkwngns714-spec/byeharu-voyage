@@ -1,3 +1,4 @@
+import { instantMs } from '../lib/format'
 import { lonLerp } from '../lib/geo'
 import type { RosterFleet, RosterVoyage, TrafficFleet } from '../lib/rpc'
 
@@ -23,11 +24,12 @@ export function trafficRowAt(f: RosterFleet, nowMs: number): TrafficFleet {
 }
 
 function voyageAt(v: RosterVoyage, nowMs: number): TrafficFleet['voyage'] {
-  const dep = Date.parse(v.departed_at)
-  const eta = Date.parse(v.eta)
+  // Served instants read through the one `instantMs` (null, never NaN, for a byte that is not a time).
+  const dep = instantMs(v.departed_at)
+  const eta = instantMs(v.eta)
   const legs = v.legs_nm
   const course = v.course
-  if (!Number.isFinite(dep) || !Number.isFinite(eta) || legs.length === 0 || course.length < legs.length + 1) {
+  if (dep === null || eta === null || legs.length === 0 || course.length < legs.length + 1) {
     return null
   }
   const frac = eta > dep ? Math.min(1, Math.max(0, (nowMs - dep) / (eta - dep))) : 1
@@ -107,7 +109,7 @@ export function readSavedRoster(raw: string | null, nowMs: number, maxAgeMs: num
   try {
     const s = JSON.parse(raw) as Partial<SavedRoster>
     if (s.v !== ROSTER_SAVE_VERSION || typeof s.at !== 'string' || typeof s.fullAtMs !== 'number') return null
-    if (!Array.isArray(s.fleets) || nowMs - s.fullAtMs > maxAgeMs || !Number.isFinite(Date.parse(s.at))) return null
+    if (!Array.isArray(s.fleets) || nowMs - s.fullAtMs > maxAgeMs || instantMs(s.at) === null) return null
     return { v: s.v, at: s.at, fullAtMs: s.fullAtMs, fleets: s.fleets }
   } catch {
     return null

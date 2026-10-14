@@ -46,6 +46,7 @@ import {
   type SearchScratch,
 } from '../../lib/sea'
 import type { FleetView, SnapshotPort } from '../../lib/rpc'
+import { whereabouts } from '../fleet'
 
 /** One scratch for every search the app runs — three million-entry arrays, allocated once. */
 const SCRATCH: SearchScratch = {}
@@ -68,23 +69,28 @@ export function sailOrigin(
   fleet: FleetView,
   portByCode: Record<string, SnapshotPort>,
 ): LatLon | null {
-  if (fleet.port) {
-    const p = portByCode[fleet.port]
-    return p ? roadsteadOf(p) : null
-  }
-  if (fleet.anchor) return { lat: fleet.anchor[0], lon: fleet.anchor[1] }
-  if (fleet.voyage) {
-    if (fleet.voyage.to) {
-      // A queued order departs where the current voyage ENDS — and since 0076 a voyage to a port
-      // ends in her roads, so this is the same point the server will have her lying at.
-      const p = portByCode[fleet.voyage.to]
+  // WHICH of the three states she is in is `domain/fleet`'s one rule; this only says where each
+  // one departs from.
+  const where = whereabouts(fleet)
+  switch (where.kind) {
+    case 'docked': {
+      const p = portByCode[where.port]
       return p ? roadsteadOf(p) : null
     }
-    if (fleet.voyage.dest_point) {
-      return { lat: fleet.voyage.dest_point[0], lon: fleet.voyage.dest_point[1] }
+    case 'anchored':
+      return where.at
+    case 'sailing': {
+      // A queued order departs where the current voyage ENDS — and since 0076 a voyage to a port
+      // ends in her roads, so this is the same point the server will have her lying at.
+      if (where.to) {
+        const p = portByCode[where.to]
+        return p ? roadsteadOf(p) : null
+      }
+      return where.point
     }
+    case 'unplaced':
+      return null
   }
-  return null
 }
 
 /**
@@ -196,12 +202,4 @@ export function parsePointToken(token: string): LatLon | null {
     return null
   }
   return { lat, lon }
-}
-
-/** How a water point reads on a screen: "33.0°N 15.0°W". The one wording, so the panel, the
- *  fleet chip and the report agree. */
-export function pointLabel(at: LatLon): string {
-  const ns = at.lat >= 0 ? 'N' : 'S'
-  const ew = at.lon >= 0 ? 'E' : 'W'
-  return `${Math.abs(at.lat).toFixed(1)}°${ns} ${Math.abs(at.lon).toFixed(1)}°${ew}`
 }

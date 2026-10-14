@@ -1,11 +1,6 @@
-// Design-system Screen scaffold logic — pure (no React) so the width-variant contract is testable
-// and react-refresh keeps Screen.tsx component-only.
-//
-/** The Screen content column: centered, padded, space-y-4 panel rhythm. `wide` = the wider desktop
- *  measure, which the Market tab uses for its seven-column table. */
-export function screenBodyClass(wide = false): string {
-  return `mx-auto ${wide ? 'max-w-6xl' : 'max-w-3xl'} space-y-4 px-4 py-4 sm:px-6`
-}
+// Design-system layout logic — pure (no React) so the width contract is testable and
+// react-refresh keeps Sheet.tsx and Tray.tsx component-only. (`screenBodyClass` stood here for the
+// deprecated `Screen` scaffold and went with it, 2026-10-14.)
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE WIDE GLASS — a column you read, and the tray beside it instead of over it
@@ -80,7 +75,7 @@ export function trayDockWideClass(): string {
  * A full-bleed picture with a floating side panel puts its top-RIGHT corner under that panel: at
  * 1280 the merchant sheet covered the Regions toggle completely (2026-10-08, the owner's reading of
  * `docs/npc-traders/merchant-sheet-1280.png`). A corner that cannot be reached is the defect
- * `overlayLayout.ts` exists to prevent, so the chrome layer moves instead of the panel. Only from
+ * `cornerSlots.ts` exists to prevent, so the chrome layer moves instead of the panel. Only from
  * `lg`, where a tray IS a side panel; below it the tray is at the bottom edge and a top corner is
  * clear anyway.
  */

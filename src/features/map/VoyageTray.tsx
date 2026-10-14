@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Bar, Figure, Row, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
-import { formatCountdown, formatFixed, formatInt, formatMiles, formatVoyageDays, realMsToVoyageDays } from '../../lib/format'
-import { pointLabel } from '../../domain/passage'
+import { formatCountdown, formatFixed, formatInt, formatMiles, formatVoyageDays, pointLabel, realMsToVoyageDays } from '../../lib/format'
 import { CHART_CHROME, hullPath, type FleetOnChart, type HullClass, type MapPort } from '../../chart'
 import { fleetLine } from './fleetLine'
 

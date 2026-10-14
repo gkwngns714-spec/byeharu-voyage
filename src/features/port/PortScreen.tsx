@@ -27,7 +27,7 @@ import { PortWorkstation } from './PortWorkstation'
 import { PortShipyard } from './PortShipyard'
 import { PORT_FACES, usePortView } from './portView'
 import { harbourCode, harbourPick, useHarbour } from '../../store/harbour'
-import { fleetPortCode } from '../../domain/fleet'
+import { boundForLabel, fleetPortCode, isDockedAt, whereabouts } from '../../domain/fleet'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 // 0099 — the merchants: the same sheet MAP opens, read through the same card. 0104 (owner row 121):
 // and the harbour's own list of them, with what each one is doing here.
@@ -138,8 +138,10 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const { card: merchantCard } = useMerchantCard(merchantId)
 
   // THE ONE "ALONGSIDE HERE" TEST. Read-only ⇔ nobody is.
-  const docked = port ? fleets.filter((f) => f.port === port.code) : []
+  // In port or not is `domain/fleet`'s one rule (`whereabouts`), never a bare `f.port` read here.
+  const docked = port ? fleets.filter((f) => isDockedAt(f, port.code)) : []
   const acting = docked[0] ?? fleets.find((f) => f.id === draftFleetId) ?? fleets[0] ?? null
+  const actingWhere = acting ? whereabouts(acting) : null
   // WHERE THE ACTING FLEET'S NEXT ORDER WOULD RUN — alongside, or the harbour she is bound for.
   const actingPortCode = acting ? fleetPortCode(acting) : null
   const actingIsHere = actingPortCode !== null && actingPortCode === port?.code
@@ -225,10 +227,12 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
             ) : undefined
           }
         >
-          {acting.status === 'SAILING' && acting.voyage
-            ? `${acting.name} is sailing to ${acting.voyage.to ? portNameOf(portByCode, acting.voyage.to) : 'open sea'}. Orders will run there.`
-            : actingPortCode
-              ? `${acting.name} is docked at ${portNameOf(portByCode, actingPortCode)}. Orders will run there.`
+          {/* At sea, in port or neither is `domain/fleet`'s one rule (`whereabouts`); this used to
+              re-decide it from `status` and `voyage.to` with its own "open sea". */}
+          {actingWhere?.kind === 'sailing'
+            ? `${acting.name} is sailing to ${boundForLabel(actingWhere, (c) => portNameOf(portByCode, c))}. Orders will run there.`
+            : actingWhere?.kind === 'docked'
+              ? `${acting.name} is docked at ${portNameOf(portByCode, actingWhere.port)}. Orders will run there.`
               : `${acting.name} is not in any port.`}
         </Note>
       )}

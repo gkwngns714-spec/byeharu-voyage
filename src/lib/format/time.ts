@@ -26,6 +26,19 @@ export const TIME_COMPRESSION = 960
 /** 24 h of voyage time in real milliseconds: 86_400_000 / 960 = 90_000 = 90 real seconds (0100). */
 export const REAL_MS_PER_VOYAGE_DAY = (24 * 60 * 60 * 1000) / TIME_COMPRESSION
 
+/**
+ * A SERVED INSTANT, IN MS — or null. Every timestamp the server sends is an ISO string
+ * (`voyage.eta`, `busy_until`, `next_lap_at`, `clock.next_change_at` …), and the client used to
+ * spell "Date.parse it, and NaN means nothing" at each reader (domain/fleet twice, the chart
+ * twice, the merchant line twice, the merchant words, the fair, the top bar). One spelling: an
+ * absent field and a string that is not a time both read as null, never as NaN or 1970.
+ */
+export function instantMs(iso: string | null | undefined): number | null {
+  if (!iso) return null
+  const ms = Date.parse(iso)
+  return Number.isFinite(ms) ? ms : null
+}
+
 /** One real day is one game month. */
 export const REAL_MS_PER_GAME_MONTH = 24 * 60 * 60 * 1000
 

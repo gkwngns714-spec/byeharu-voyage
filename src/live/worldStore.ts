@@ -86,6 +86,7 @@ import {
   worldSeaRoster,
 } from '../lib/rpc'
 import { navFromServed, type SeaNav } from '../lib/sea'
+import { whereabouts } from '../domain/fleet'
 import { mergeRoster, readSavedRoster, rosterKey, savedRosterText, trafficRowAt } from './seaRoster'
 import type {
   FleetView,
@@ -388,7 +389,9 @@ export const useWorld = create<LiveWorld>((set, get) => {
    */
   const afterTrade = async (fleet: FleetView | undefined): Promise<void> => {
     await get().refresh()
-    const port = fleet?.port ? get().portByCode[fleet.port] : null
+    // "The market she lies at" — in port or not is `domain/fleet`'s one rule, not a bare `port` read.
+    const where = fleet ? whereabouts(fleet) : null
+    const port = where?.kind === 'docked' ? get().portByCode[where.port] : null
     if (port) await get().loadMarket(port.id)
   }
 

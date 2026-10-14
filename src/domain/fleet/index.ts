@@ -18,7 +18,9 @@
 // which they were and why none of them comes back.
 //
 // ── WHAT IT MAY DEPEND ON ──────────────────────────────────────────────────────────────────────
-// `lib/rpc` types, and nothing else. No React, no store, no screen, no other section.
+// `lib` (rpc types, format, geo), and nothing else. `domain/passage` composes THIS section (its
+// `sailOrigin` reads `whereabouts`), so this one must never import it back. No
+// React, no store, no screen.
 export {
   busyUntilMs,
   fleetCargo,
@@ -43,6 +45,10 @@ export {
   type CargoLine,
   type CrewCount,
 } from './derive'
+
+// WHERE SHE IS — the one classification (at sea / in port / at anchor) and the one line about it,
+// for the nine places that spelt it out themselves (where.ts's header lists them).
+export { boundForLabel, isDockedAt, whereabouts, whereLine, type WhereFacts, type Whereabouts } from './where'
 
 // WHAT EACH SHIP FIGURE DECIDES — the one sentence per stat that COMPENDIUM, FLEETS and PORT all
 // compose. It lives in this section because what a stat decides is a fact about the fleet rules,

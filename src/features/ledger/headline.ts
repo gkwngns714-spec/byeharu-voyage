@@ -1,5 +1,5 @@
-import { formatDucats, formatDucatsDelta, formatInt, formatMiles, formatPctPoints, formatUnitPrice } from '../../lib/format'
-import { parsePointToken, pointLabel } from '../../domain/passage'
+import { formatDucats, formatDucatsDelta, formatInt, formatMiles, formatPctPoints, formatUnitPrice, pointLabel } from '../../lib/format'
+import { parsePointToken } from '../../domain/passage'
 import { routePausedEventWords } from '../../domain/route'
 // THE ONE READER OF A JSONB FIELD (2026-08-23). `num`/`str` were declared here AND in
 // features/command/PreviewPanel.tsx, and they had already drifted; docs/NO_SPAGHETTI.md §2 listed

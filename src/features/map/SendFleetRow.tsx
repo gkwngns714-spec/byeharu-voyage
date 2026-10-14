@@ -1,8 +1,8 @@
 import { Bar, Button, Figure, Icon, Note, Row } from '../../components/ui'
 import { formatMiles, formatVoyageDays } from '../../lib/format'
-import type { FleetView, PreviewResult, Refusal, SnapshotPort } from '../../lib/rpc'
+import type { FleetView, PreviewResult, Refusal } from '../../lib/rpc'
 import { sailEstimate } from '../../domain/order'
-import { pointLabel } from '../../domain/passage'
+import { whereabouts, whereLine } from '../../domain/fleet'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { KeepAndSend } from './KeepAndSend'
 import { canGo, type Fix } from './sendRules'
@@ -23,7 +23,10 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
   const on = flow.picked === f.id
   const v = flow.verdicts[f.id]
   const acted = flow.act?.fleetId === f.id ? flow.act : null
-  const where = whereOf(f, portByCode)
+  // At sea or not is `domain/fleet`'s one rule; the mark and the line both read it, never `f.voyage`.
+  const whereAt = whereabouts(f)
+  const sailing = whereAt.kind === 'sailing'
+  const where = whereLine(whereAt, (c) => portNameOf(portByCode, c))
 
   const line = !pressable
     ? standing === 'lies'
@@ -31,7 +34,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
       : acted?.state === 'sent'
         ? `Under way — sailing to ${flow.destName}.`
         : 'already heading here'
-    : f.voyage != null
+    : sailing
       ? 'at sea — turns from where it is'
       : v === undefined
         ? `${where} · checking the route…`
@@ -42,7 +45,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
     <div data-testid="map-send-row">
       <Row
         mark={
-          <Icon name={f.voyage ? 'ship' : 'anchor'} size={20} className={on ? 'text-accent' : 'text-ink-faint'} />
+          <Icon name={sailing ? 'ship' : 'anchor'} size={20} className={on ? 'text-accent' : 'text-ink-faint'} />
         }
         label={f.name}
         value={passage !== null ? <Figure value={<span data-testid="map-send-passage">{passage}</span>} /> : undefined}
@@ -122,13 +125,6 @@ function Refused({ refusal, fixes, testId }: { refusal: Refusal; fixes: Fix[]; t
   )
 }
 
-/** Where she is, in the fleet chip's own wording — one line under the name. */
-function whereOf(f: FleetView, portByCode: Record<string, SnapshotPort>): string {
-  if (f.port) return portNameOf(portByCode, f.port)
-  if (f.voyage) return 'at sea'
-  if (f.anchor) return `at anchor · ${pointLabel({ lat: f.anchor[0], lon: f.anchor[1] })}`
-  return f.status.toLowerCase()
-}
 
 /** The two figures a SAIL estimate carries — the SERVER's own sailed miles and voyage-days over
  *  the proposed course, read once for the whole app in `domain/order/estimate.ts`. */

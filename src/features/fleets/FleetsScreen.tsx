@@ -4,11 +4,18 @@ import { formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView } from '../../lib/rpc'
-import { fleetHoldTotal, fleetHoldUsed, fleetStatusTone, worstHullFraction } from '../../domain/fleet'
+import {
+  fleetHoldTotal,
+  fleetHoldUsed,
+  fleetStatusTone,
+  whereabouts,
+  whereLine,
+  worstHullFraction,
+} from '../../domain/fleet'
 import { routeCaption, routeOfFleet } from '../../domain/route'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { FleetFold } from './FleetFold'
-import { fleetDue, fleetWhere } from './fleetLine'
+import { fleetDue } from './fleetLine'
 
 // FLEETS — what you own, one row each, redrawn to docs/UI_DIRECTION.md §6 (§7 step 7).
 //
@@ -83,7 +90,7 @@ function FleetsBody() {
       return next
     })
   // The one authority for code → name (worldStore.portNameOf).
-  const portName = (code: string | null) => (code ? portNameOf(portByCode, code) : null)
+  const portName = (code: string) => portNameOf(portByCode, code)
 
   return (
     <Sheet title="Fleets" data-testid="fleets">
@@ -96,7 +103,7 @@ function FleetsBody() {
             <Fragment key={fleet.id}>
               <FleetRow
                 fleet={fleet}
-                where={[fleetWhere(fleet, portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
+                where={[whereLine(whereabouts(fleet), portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
                   .filter(Boolean)
                   .join(' · ')}
                 open={open}
@@ -135,7 +142,7 @@ function FleetRow({
   onToggle,
 }: {
   fleet: FleetView
-  /** `Lisbon`, `to Cádiz · 1.2 d`, `Lisbon · 2 h` — fleetLine.ts's words, joined by the caller. */
+  /** `Lisbon`, `to Cádiz · 1.2 d`, `Lisbon · 2 h` — `whereLine` and `fleetDue`, joined by the caller. */
   where: string
   /** Unfolded under this row. The row reads `accent` — §4.4: gold is "selected, yours". */
   open: boolean

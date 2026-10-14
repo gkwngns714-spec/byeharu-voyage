@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, fineClass, Input, Notice, PageHeader, Screen } from '../../components/ui'
+import { Button, Field, Hint, Note, Row, Sheet, SheetSection } from '../../components/ui'
 import { cmdFoundHouse } from '../../lib/rpc'
 import type { Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -47,22 +47,25 @@ export function SignTheBook() {
   }
 
   return (
-    <Screen>
-      <PageHeader
-        eyebrow="New game"
-        title="Start your company"
-        subtitle="Every captain begins the same way."
-        explain="You start with one ship — Gaivota, a Barca — docked at Lisbon, and 8,000 ducats to trade with. The port, the ship and the money are set by the game; the name is yours."
-      />
+    <Sheet title="Start your company">
+      {/* WHAT IS SET FOR YOU is a standing explanation, so it is behind `Hint`'s tray rather than
+          printed (it was `PageHeader`'s folded ⓘ); the subtitle stays printed, as it was. */}
+      <Hint
+        more="You start with one ship — Gaivota, a Barca — docked at Lisbon, and 8,000 ducats to trade with. The port, the ship and the money are set by the game; the name is yours."
+        moreTitle="How every captain begins"
+      >
+        Every captain begins the same way.
+      </Hint>
 
-      <Card>
-        <label htmlFor="house-name" className="block text-sm text-ink-muted">
+      <SheetSection>
+        <label htmlFor="house-name" className="block text-t-label text-ink-muted">
           What is your company called?
         </label>
         {/* The house's name is typed in the game's display face, not the UI face: this is the one
-            field in the app that is a SIGNATURE. `Input` owns the chrome; the serif is this
-            screen's own decision, passed through className. */}
-        <Input
+            field in the app that is a SIGNATURE. `Field` owns the chrome; the serif is this
+            screen's own decision, passed through className (the input inherits the face). */}
+        <Field
+          icon={null}
           id="house-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -72,36 +75,33 @@ export function SignTheBook() {
           placeholder="Casa de Aveiro"
           autoComplete="off"
           autoFocus
-          className="mt-2 font-serif !text-lg"
+          className="mt-2 font-serif"
         />
-        <p className="mt-2 text-xs text-ink-faint">
-          Three to twenty-four letters, and no two houses may trade under the same name.
-        </p>
+        <Hint className="mt-2">Three to twenty-four letters, and no two houses may trade under the same name.</Hint>
 
-        {/* A refusal is DATA (DESIGN F.5): a code, a sentence, and at least one fix. It is printed
-            as it arrives — this screen does not translate server errors into its own words. */}
+        {/* A refusal is DATA (DESIGN F.5): a sentence and at least one fix, printed as it arrives —
+            this screen does not translate server errors into its own words. The code goes to
+            console.debug (Note's own rule, the one WorldGate keeps), never to the screen. */}
         {refusal && (
-          <Notice tone="danger" className="mt-3">
-            <span className="font-mono text-[11px] uppercase tracking-wider">{refusal.code}</span>
-            <span className="mt-1 block text-sm">{refusal.sentence}</span>
-          </Notice>
+          <Note tone="danger" code={refusal.code} className="mt-3">
+            {refusal.sentence}
+          </Note>
         )}
-        {refusal && refusal.fixes.length > 0 && (
-          <ul className="mt-2 space-y-1">
-            {refusal.fixes.slice(0, 4).map((fix) => (
-              <li key={fix} className={fineClass()}>
-                {fix}
-              </li>
-            ))}
-          </ul>
-        )}
+      </SheetSection>
 
-        <div className="mt-4">
-          <Button variant="primary" disabled={busy || name.trim().length === 0} onClick={() => void sign()}>
-            {busy ? 'Starting…' : 'Start'}
-          </Button>
-        </div>
-      </Card>
-    </Screen>
+      {refusal && refusal.fixes.length > 0 && (
+        <SheetSection heading="Try">
+          {refusal.fixes.slice(0, 4).map((fix, i, shown) => (
+            <Row key={fix} label={fix} hairline={i < shown.length - 1} />
+          ))}
+        </SheetSection>
+      )}
+
+      <div className="mt-4">
+        <Button variant="primary" disabled={busy || name.trim().length === 0} onClick={() => void sign()}>
+          {busy ? 'Starting…' : 'Start'}
+        </Button>
+      </div>
+    </Sheet>
   )
 }
