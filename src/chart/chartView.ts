@@ -38,21 +38,24 @@ export const MIN_SPAN_X = 1.5
 export const MAX_SPAN_X = CHART_WIDTH
 
 /**
- * THE NIGHT CHART'S TWO RUNGS, IN DEGREES OF SPAN — not in pixels per degree (owner row 125).
+ * THE WIDE SHEET'S TWO RUNGS, IN DEGREES OF SPAN — not in pixels per degree (owner row 125).
  *
  * The first cut keyed both on `unitsPerPx`, which is a DENSITY, and that is right for deciding how
  * big a glyph should be and wrong for deciding what KIND of sheet this is. Measured: the whole
  * world on a 390 px phone is 0.92 °/px and on a 1440 px desktop 0.25 °/px, so a threshold in
- * density made the night chart appear on a phone and NOT on a desktop at the very same zoom — the
+ * density made the wide sheet appear on a phone and NOT on a desktop at the very same zoom — the
  * owner, fully zoomed out on a wide screen, would have been handed back the hybrid they had just
  * rejected. "When I zoom out" is a statement about how much WORLD is on the glass, and that is the
  * span. Screen-independent, and the same number the zoom readout prints.
  *
- * The two values are what the phone already behaved as, carried over exactly: 45° is where the
- * lights come up (~38% on the readout) and 135° is where marks and hulls go altogether (~18%).
+ * `LANE_SPAN_DEG` (45°, ~38% on the readout) is where the major fleets' lanes come up.
+ * `DOT_SPAN_DEG` (135°, ~18%) is where every harbour is its dot and nothing else — and, on the
+ * night side of the terminator, its light. They were `NIGHT_SPAN_DEG` and `PURE_LIGHT_SPAN_DEG`
+ * until 2026-10-14, when night stopped being a zoom and became the Sun's (./sun.ts): the rungs
+ * are density rules and keep their values; only the names stopped claiming to be the night.
  */
-export const NIGHT_SPAN_DEG = 45
-export const PURE_LIGHT_SPAN_DEG = 135
+export const LANE_SPAN_DEG = 45
+export const DOT_SPAN_DEG = 135
 
 /**
  * HOW FAR IN THE CHART IS, 0..100 (owner, 2026-10-12: *"show me in map how much i zoomed in and
@@ -96,19 +99,22 @@ export function fitView(bounds: GeoBounds, aspect: number, padding = FIT_PADDING
 
 /**
  * Keep a view legal: the span inside [MIN_SPAN_X, MAX_SPAN_X], and the visible box inside the
- * world. An axis whose view is wider than the world is CENTRED on it rather than clamped, so
- * zooming out past the globe parks the world in the middle instead of jamming it against an edge.
+ * world NORTH–SOUTH. A view taller than the world is CENTRED on it rather than clamped, so zooming
+ * out past the globe parks the world in the middle instead of jamming it against an edge.
+ *
+ * EAST–WEST THERE IS NO EDGE (owner, 2026-10-14: *"the map is not continuous from left to right. i
+ * want it to be continuous"*). The sheet repeats every 360° (`sheetCopies`, src/lib/geo), so a pan
+ * past 180° simply continues; the centre is kept in [−180, 180) with `wrapLon` so the numbers stay
+ * bounded, and a view whose centre wraps is the SAME view — every consumer reads the box through
+ * the copies, so nothing on the paper moves when the number does. Until this date the centre was
+ * clamped so the view never left [−180, 180], which is what put a wall at the antimeridian.
  */
 export function clampView(view: ChartView, aspect: number): ChartView {
   const spanX = Math.min(MAX_SPAN_X, Math.max(MIN_SPAN_X, view.spanX))
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1
   const spanY = spanX / safeAspect
 
-  const halfX = spanX / 2
-  const cx =
-    spanX >= CHART_WIDTH
-      ? 0
-      : Math.min(CHART_WIDTH / 2 - halfX, Math.max(-CHART_WIDTH / 2 + halfX, view.cx))
+  const cx = wrapCentre(view.cx)
 
   const halfY = spanY / 2
   const cy =
@@ -117,6 +123,12 @@ export function clampView(view: ChartView, aspect: number): ChartView {
       : Math.min(CHART_HEIGHT / 2 - halfY, Math.max(-CHART_HEIGHT / 2 + halfY, view.cy))
 
   return { cx, cy, spanX }
+}
+
+/** A view centre brought back into [−180, 180): the same place on the next copy of the sheet. */
+function wrapCentre(cx: number): number {
+  if (!Number.isFinite(cx)) return 0
+  return cx - CHART_WIDTH * Math.floor((cx + CHART_WIDTH / 2) / CHART_WIDTH)
 }
 
 /**

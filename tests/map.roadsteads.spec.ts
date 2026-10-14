@@ -185,6 +185,7 @@ test.describe('the layer is furniture, and it says so in the file', () => {
     // half (chartModel.ts); a dot has no roads, so the roads read the half that wears a mark.
     expect(canvas).toMatch(/<RoadsteadsLayer\s+ports=\{fullPorts\}/)
     expect(canvas).toMatch(/<PortsLayer\s+marks=\{marks\}/)
-    expect(canvas).toContain('const fullPorts = useMemo(() => marks.filter((m) => m.full).map((m) => m.port), [marks])')
+    // Since 2026-10-14 the full half is taken per COPY of the sheet, from that copy's own marks.
+    expect(canvas).toContain('const fullPorts = marks.filter((m) => m.full).map((m) => m.port)')
   })
 })

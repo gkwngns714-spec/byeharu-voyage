@@ -55,7 +55,8 @@ export interface GeoBounds {
   readonly maxLon: number
 }
 
-/** The whole globe. The chart can never be panned or zoomed outside this. */
+/** The whole globe. The chart is never panned or zoomed past the poles; east–west it wraps (see
+ *  the end of this file), so these are the bounds of ONE copy of the sheet. */
 export const WORLD_BOUNDS: GeoBounds = { minLat: -90, maxLat: 90, minLon: -180, maxLon: 180 }
 
 /** The full chart in chart units: 360 wide, 180 tall. */
@@ -199,4 +200,48 @@ export function unwrapLongitudes(points: readonly LatLon[]): LatLon[] {
     previousLon = lon
   }
   return out
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE SHEET REPEATS EVERY 360° — the projection is periodic in x, and that is the whole of the
+// continuous east–west chart (owner, 2026-10-14: *"right now the map is not continuous from left
+// to right. i want it to be continuous"*).
+//
+// `project` maps a longitude to x = lon, and a longitude is the same place at lon + 360k for every
+// integer k. So a VIEW is any rectangle on an unbounded x axis, and the thing at lon L is drawn at
+// x = L + 360k for every k whose copy of the world touches the view. These two functions are the
+// only arithmetic the wrap needs, and every consumer composes them rather than restating a 360:
+//   · `sheetCopies(box)`   which copies (k) touch a box — the chart renders its marks once per copy
+//                          in a `translate(360k 0)` group, and the coast once per copy with a <use>;
+//   · `xOnSheet(x, a, b)`  whether a point at x lands inside [a, b] on SOME copy — the box test
+//                          `portMarks` and a hit test ask, so a harbour at 179°E is on a sheet whose
+//                          view runs from 170° to 200°.
+// `WORLD_BOUNDS` still bounds the view VERTICALLY (there is nothing past the poles); horizontally
+// it is only the fit of the opening frame.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * The integer copies of the world a chart-unit x-range touches: copy k is the world drawn at
+ * x ∈ [360k − 180, 360k + 180). Half-open on purpose, so a view that runs exactly from −180 to
+ * 180 is ONE copy and not two with the second contributing nothing but a seam-column duplicate.
+ */
+export function sheetCopies(box: { readonly x: number; readonly width: number }): number[] {
+  const out: number[] = []
+  if (!(box.width > 0) || !Number.isFinite(box.x)) return [0]
+  const first = Math.floor((box.x + CHART_WIDTH / 2) / CHART_WIDTH)
+  const last = Math.ceil((box.x + box.width + CHART_WIDTH / 2) / CHART_WIDTH) - 1
+  for (let k = first; k <= last; k++) {
+    const left = k * CHART_WIDTH - CHART_WIDTH / 2
+    const right = left + CHART_WIDTH
+    if (left < box.x + box.width && right > box.x) out.push(k)
+  }
+  return out.length === 0 ? [0] : out
+}
+
+/** Whether a point at chart x lands inside [minX, maxX] on some copy of the sheet. A range a
+ *  whole turn wide or wider holds every x. */
+export function xOnSheet(x: number, minX: number, maxX: number): boolean {
+  if (maxX - minX >= CHART_WIDTH) return true
+  const first = minX + ((((x - minX) % CHART_WIDTH) + CHART_WIDTH) % CHART_WIDTH)
+  return first <= maxX
 }

@@ -156,7 +156,9 @@ test.describe('a region\'s name is a request, above every quiet harbour and the 
 
   test('the layer is furniture: ChartCanvas is the only composer, and off means untouched', () => {
     const canvas = read('src/chart/ChartCanvas.tsx')
-    expect(canvas).toContain('regions ? regionNameRequests(regions, box) : []')
+    // Since 2026-10-14 the names are asked for once per COPY of the sheet, on that copy's window,
+    // and only while the filter is on — the same "off means untouched", on a continuous sheet.
+    expect(canvas).toContain('if (regions) for (const r of regionNameRequests(regions, window)) requests.push(shift(r))')
     expect(canvas).toContain('regions={regions}')
     const layer = read('src/chart/CoastlineLayer.tsx')
     expect(layer).toContain('data-testid="map-regions-water"')

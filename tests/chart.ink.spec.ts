@@ -178,6 +178,14 @@ test.describe('land reads as land at 390px', () => {
     // 85% alpha, so its ink over land is a different colour from its ink, and only the composite
     // means anything.
     const ink = await page.evaluate(() => {
+      // THE NIGHT PEN IS WHAT THIS PROOF PINS (2026-10-14, src/chart/sun.ts). Every mark mixes its
+      // ink toward the day's by its own `--night`, and at Lisbon the real clock may well say day
+      // when this runs — so the marks are read with the night forced on them, through a sheet that
+      // outranks the group's inline value, and the DAY pen is measured separately below from its
+      // own tokens. Removed again before the function returns.
+      const night = document.createElement('style')
+      night.textContent = '[data-port-code] { --night: 1 !important; }'
+      document.head.appendChild(night)
       const coast = document.querySelector('[data-testid="map-coastline"]')
       // Pin moved deliberately 2026-09-13 (owner row 90): the coast STROKE is its own element
       // now — `map-coast`, the outline with the inland borders dropped — because a country file's
@@ -209,14 +217,31 @@ test.describe('land reads as land at 390px', () => {
       const quiet = [...document.querySelectorAll('[data-testid="map-ports"] path')].find(
         (p) => !/^rgb\(/.test(getComputedStyle(p).fill),
       )
+      const markOnLand = quiet ? over(getComputedStyle(quiet).stroke, land) : null
+      night.remove()
+      // THE DAY PEN, from its own tokens (docs/MAP_ATMOSPHERE.md §11.3): the day's dark mark on the
+      // day's land — the temperate green most harbours stand on — and the day coast on the day sea.
+      const rootCss = getComputedStyle(document.documentElement)
+      const token = (name: string) => rootCss.getPropertyValue(name).trim()
+      const dayLand = over(token('--color-chart-day-temperate'), 'rgb(0, 0, 0)')
+      const daySea = over(token('--color-chart-day-sea'), 'rgb(0, 0, 0)')
       return {
         sea: solidSea,
         land,
         stroke: over(getComputedStyle(line).stroke, solidSea),
-        markOnLand: quiet ? over(getComputedStyle(quiet).stroke, land) : null,
+        markOnLand,
+        dayLand,
+        daySea,
+        dayMarkOnLand: over(token('--color-chart-day-mark'), dayLand),
+        dayCoastOnSea: over(token('--color-chart-day-coast'), daySea),
       }
     })
     expect(ink, 'the chart drew no sea rect — ChartCanvas paints its own ground').not.toBeNull()
+    // THE DAY SIDE holds the same floors: the coast line on the sea at 3 : 1, the land a real step
+    // off the sea, and the mark above the land it stands on.
+    expect(contrast(ink!.dayCoastOnSea, ink!.daySea), 'day coast on the day sea').toBeGreaterThanOrEqual(3)
+    expect(contrast(ink!.dayLand, ink!.daySea), 'day land on the day sea').toBeGreaterThanOrEqual(1.5)
+    expect(contrast(ink!.dayMarkOnLand, ink!.dayLand), 'the day mark on the day land').toBeGreaterThan(3)
 
     const landOnSea = contrast(ink!.land, ink!.sea)
     const coastOnSea = contrast(ink!.stroke, ink!.sea)

@@ -1,5 +1,7 @@
+import { unproject, type LatLon } from '../lib/geo'
 import { GLYPH } from './glyphs'
 import type { LabelTone, PlacedLabel } from './labels'
+import { nightStyle } from './sun'
 
 // EVERY NAME ON THE CHART, DRAWN IN ONE PLACE.
 //
@@ -16,17 +18,22 @@ import type { LabelTone, PlacedLabel } from './labels'
 // way, in the same group, and is only in the plan while the regions filter is on. Each label
 // carries the size and spacing it was planned at
 // (`sizePx`, `spacingEm`), so the box the planner kept clear is the box that is drawn.
+//
+// THE SUN (2026-10-14): a name carries `--night` for the point it names, and its ink and halo mix
+// from the night's tokens toward the day's dark mark on the day's water (`.bv-sun-name-*`,
+// src/index.css) — the same one number every mark on this sheet reads.
 
+/** Each tone's night class (the token the scheme defines) beside its Sun-mixing rule. */
 const TONE: Record<LabelTone, string> = {
   fleet: 'fill-accent',
-  'port-active': 'fill-ink',
-  'port-quiet': 'fill-ink-faint',
-  sea: 'fill-chart-sea-name',
+  'port-active': 'bv-sun-name-active fill-ink',
+  'port-quiet': 'bv-sun-name-quiet fill-ink-faint',
+  sea: 'bv-sun-name-water fill-chart-sea-name',
   // A region's name (row 93) is ground like a sea's, in the same thinned ink, a size up.
-  region: 'fill-chart-sea-name',
+  region: 'bv-sun-name-water fill-chart-sea-name',
 }
 
-function Name({ label, unitsPerPx }: { label: PlacedLabel; unitsPerPx: number }) {
+function Name({ label, unitsPerPx, sun }: { label: PlacedLabel; unitsPerPx: number; sun: LatLon }) {
   return (
     <text
       x={label.x}
@@ -34,9 +41,13 @@ function Name({ label, unitsPerPx }: { label: PlacedLabel; unitsPerPx: number })
       fontSize={label.sizePx * unitsPerPx}
       textAnchor={label.anchor}
       dominantBaseline="middle"
-      className={`stroke-chart-sea font-mono ${TONE[label.tone]}`}
+      className={`bv-sun-name-halo stroke-chart-sea font-mono ${TONE[label.tone]}`}
       strokeWidth={GLYPH.labelHaloWidth * unitsPerPx}
-      style={{ paintOrder: 'stroke', letterSpacing: label.spacingEm > 0 ? `${label.spacingEm}em` : undefined }}
+      style={{
+        paintOrder: 'stroke',
+        letterSpacing: label.spacingEm > 0 ? `${label.spacingEm}em` : undefined,
+        ...nightStyle(unproject({ x: label.x, y: label.y }), sun),
+      }}
       data-label-id={label.id}
       data-label-side={label.side}
     >
@@ -45,19 +56,28 @@ function Name({ label, unitsPerPx }: { label: PlacedLabel; unitsPerPx: number })
   )
 }
 
-export function LabelsLayer({ labels, unitsPerPx }: { labels: readonly PlacedLabel[]; unitsPerPx: number }) {
+export function LabelsLayer({
+  labels,
+  unitsPerPx,
+  sun,
+}: {
+  labels: readonly PlacedLabel[]
+  unitsPerPx: number
+  /** Where the Sun is overhead (./sun.ts). */
+  sun: LatLon
+}) {
   const ground = labels.filter((l) => l.tone === 'sea' || l.tone === 'region')
   const places = labels.filter((l) => l.tone !== 'sea' && l.tone !== 'region')
   return (
     <>
       <g pointerEvents="none" data-testid="map-sea-names">
         {ground.map((label) => (
-          <Name key={label.id} label={label} unitsPerPx={unitsPerPx} />
+          <Name key={label.id} label={label} unitsPerPx={unitsPerPx} sun={sun} />
         ))}
       </g>
       <g pointerEvents="none" data-testid="map-labels">
         {places.map((label) => (
-          <Name key={label.id} label={label} unitsPerPx={unitsPerPx} />
+          <Name key={label.id} label={label} unitsPerPx={unitsPerPx} sun={sun} />
         ))}
       </g>
     </>

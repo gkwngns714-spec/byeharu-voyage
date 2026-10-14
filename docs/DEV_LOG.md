@@ -64,6 +64,41 @@ Owner, on the live game: *"i press a city and i see no ship info. Why did this r
 - Shots, looked at: `docs/npc-traders/city-tray-half-390.png`, `city-tray-at-sea-390.png`,
   `city-tray-half-1440.png`, `city-tray-merchant-from-list-390.png`.
 
+## 2026-10-14 — ships at every zoom, the continuous sheet, the Sun; ships halved — `osn-map-wrap-sun` (client only)
+
+Owner rows 130 and 131. No migration. `docs/MAP_ATMOSPHERE.md` §11 is the design and the measurements;
+this is the record of what moved.
+
+- **Ships at every zoom.** Row 125's ember (a dot with a light past 3 × the group density, and only
+  the 49 lane-served fleets at the globe) is DELETED, not gated: `emberRadius`, `emberHaloScale`,
+  `HULL_EMBER_MAX_UNITS_PER_PX`, `HARBOUR_LIGHT_MIN_UNITS_PER_PX` and `FleetsLayer`'s ember branch are
+  gone. The new decision is `src/chart/shipMarks.ts`: cull to the view (with `portMarks`' margin),
+  thin the merchants to one per `SHIP_CELL_PX` cell (most hulls, then lowest id), never thin yours,
+  draw every survivor as a hull. `FleetsLayer` takes the two lists instead of the model. The Map tab's
+  hit test is handed the same thinned list, so "what you can tap" is "what is drawn".
+- **Continuous east–west.** `src/lib/geo/projection.ts`: `sheetCopies`, `xOnSheet`. `clampView`
+  wraps the centre instead of clamping it. `ChartCanvas`: marks once per copy in a translated group
+  from the copy's clipped window; coast once + `<use>` per copy; labels planned once over the glass.
+  `portMarks` box test is periodic; `hitTest` measures the short way round; the surface wraps a tap's
+  x; the minimap window is drawn per copy. `NIGHT_SPAN_DEG` / `PURE_LIGHT_SPAN_DEG` are renamed
+  `LANE_SPAN_DEG` / `DOT_SPAN_DEG` — the same density rungs, no longer claiming to be the night.
+- **The Sun.** `src/chart/sun.ts` (pure, NOAA/Meeus low-precision; tested against the 2026 equinoxes
+  and solstices and Greenwich noon on 3 Nov / 11 Feb), `useSunlight.ts` (the real clock, once a
+  minute, raster → alpha PNG), `DaylightMask.tsx` (SVG alpha mask), the day picture in `SeaLayer`
+  and `CoastlineLayer` (eleven `--color-chart-day-*` tokens, same in both schemes; the land as a
+  latitude gradient; one shallows band and no relief by day — measured, §11.6: the full day
+  picture cost 89 ms a wheel step at the desktop globe against 47 on main, the cut 75), and
+  `--night` on every mark with the `.bv-sun-*` rules in `src/index.css`.
+- **Measured** (`tests/map.perf.spec.ts`, same spec on main and here): idle and pan at the
+  display's 16.7 ms on 390 and 1440, before and after; the opening frame's DOM 1,744 → 494 nodes
+  (the cull); the globe draws 75 hulls (390) / 150–159 (1440) where it drew 44 embers; zoom step
+  390: 34.0 → 39.6 ms, 1440: 47.3 → 75.3 ms (the masked day coast — the one figure that moved
+  the wrong way, stated in §11.6).
+  `tests/map.night.spec.ts` became `tests/map.sun.spec.ts`; `tests/map.wrap.spec.ts` and
+  `tests/map.perf.spec.ts` are new.
+- **Ships halved** (row 131): `GLYPH.shipHalfLength` 6.5 → 3.25; the class hulls and the halo follow
+  from it; the hit reach does not move.
+
 ## 2026-10-14 — 0117/0118: the map read stops timing out — the roster once, then what changed — `osn-traffic-delta`
 
 - **The problem.** With 822 merchants sailing, `world.sea_traffic` took 6–7 s against the 8 s

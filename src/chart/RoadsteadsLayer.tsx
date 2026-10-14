@@ -1,6 +1,8 @@
+import type { LatLon } from '../lib/geo'
 import { GLYPH } from './glyphs'
 import type { MapPort } from './mapTypes'
 import { roadsteadMarks } from './roadsteads'
+import { nightStyle } from './sun'
 
 // THE ROADS — chart furniture, drawn under the ports (0076).
 //
@@ -25,7 +27,8 @@ import { roadsteadMarks } from './roadsteads'
 // yet made good"*. Not `3 3` (a destination ring), and never solid (a passage sailed).
 //
 // THE INK IS FAINT, NOT ACCENT. Brass means *yours* on this chart; a roadstead is true of every
-// harbour whether you use it or not, so it is drawn like the coastline is.
+// harbour whether you use it or not, so it is drawn like the coastline is — and by day (2026-10-14)
+// it mixes toward the day's dark mark through the group's `--night`, like every other faint ink.
 //
 // THE HIT TEST IS DELIBERATELY NOT TOUCHED. `hitTest.ts` keeps its three subjects — port, fleet,
 // open sea — and a tap near the roads still selects the nearest port, as today. A fourth subject
@@ -35,18 +38,22 @@ import { roadsteadMarks } from './roadsteads'
 export function RoadsteadsLayer({
   ports,
   unitsPerPx,
+  sun,
 }: {
   /** The VISIBLE set — `visiblePorts`, the same list `PortsLayer` is handed. */
   ports: readonly MapPort[]
   unitsPerPx: number
+  /** Where the Sun is overhead (./sun.ts). */
+  sun: LatLon
 }) {
+  const byCode = new Map(ports.map((p) => [p.code, p]))
   return (
     <g pointerEvents="none" data-testid="map-roadsteads">
       {roadsteadMarks(ports, unitsPerPx).map((mark) => (
-        <g key={mark.code} data-roadstead-code={mark.code}>
+        <g key={mark.code} data-roadstead-code={mark.code} style={nightStyle(byCode.get(mark.code)!, sun)}>
           <path
             d={mark.lineD}
-            className="fill-none stroke-ink-faint/70"
+            className="fill-none bv-sun-road stroke-ink-faint/70"
             strokeWidth={GLYPH.trackStroke}
             strokeDasharray="1 5"
             strokeLinecap="round"
@@ -56,7 +63,7 @@ export function RoadsteadsLayer({
             cx={mark.at.x}
             cy={mark.at.y}
             r={GLYPH.roadsteadRadius * unitsPerPx}
-            className="fill-none stroke-ink-faint/85"
+            className="fill-none bv-sun-quiet-mark stroke-ink-faint/85"
             strokeWidth={GLYPH.glyphStroke}
             vectorEffect="non-scaling-stroke"
           />

@@ -36,12 +36,15 @@
 // only value it can return is a `MapSelection`, which is a name, not a verb.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { project, type Point } from '../lib/geo'
+import { project, shortLonDelta, type Point } from '../lib/geo'
 import type { ChartModel } from './chartModel'
 import type { MapPort, MapSelection } from './mapTypes'
 
+/** Chart-unit distance, east–west THE SHORT WAY ROUND (2026-10-14, the continuous chart): a tap
+ *  at 179.9°W is 0.2° from a harbour at 179.9°E, on whichever copy of the sheet either was drawn.
+ *  `shortLonDelta` is the one modular rule (src/lib/geo), and x IS longitude on this projection. */
 function distance(a: Point, b: Point): number {
-  return Math.hypot(a.x - b.x, a.y - b.y)
+  return Math.hypot(shortLonDelta(b.x, a.x), a.y - b.y)
 }
 
 /**
@@ -66,6 +69,11 @@ export function hitTest(
   radius: number,
   dots: readonly MapPort[] = [],
   dotRadius = 0,
+  /** THE MERCHANTS ACTUALLY DRAWN (2026-10-14, ./shipMarks.ts): on a wide sheet the merchants are
+   *  thinned to one per cell, and a hull that is not on the paper is not a thing a tap can mean —
+   *  the same rule the ports keep ("a port not on the sheet at all is not tappable"). Defaults to
+   *  the whole list for a caller that draws everything. */
+  traffic: ChartModel['traffic'] = model.traffic,
 ): MapSelection {
   let nearestFleet: { id: string; d: number } | null = null
   for (const f of model.fleets) {
@@ -93,7 +101,7 @@ export function hitTest(
   // she is moored at. Named harbours are unaffected: they answer at the full reach themselves.
   const dotCodes = new Set(dots.map((p) => p.code))
   let nearestMerchant: { id: string; d: number } | null = null
-  for (const t of model.traffic) {
+  for (const t of traffic) {
     const d = distance(project(t.at), at)
     const berthed = t.merchant.docked && t.merchant.berthCode !== null && dotCodes.has(t.merchant.berthCode)
     const reach = berthed && dotRadius > 0 ? Math.min(radius, dotRadius) : radius
