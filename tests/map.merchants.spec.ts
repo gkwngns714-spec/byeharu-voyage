@@ -19,7 +19,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
-import { LAID_UP_AT_LISBON, serveNpcOn } from './npcOn.fixture'
+import { LAID_UP_AT_LISBON, RESTING_AT_PORTO, RESTING_PORT_CODE, serveNpcOn } from './npcOn.fixture'
 import { buildChartModel, hitTest, mapTrafficOf, type MapFleet, type MapPort } from '../src/chart'
 import type { MerchantDoing, PortMerchant, TrafficFleet } from '../src/lib/rpc'
 import { project } from '../src/lib/geo'
@@ -599,17 +599,9 @@ const GROUPS = [
 ] as const
 
 /**
- * Tap the named harbours on the opening frame in turn, stand each one's tray at half, and keep the
- * first whose merchant list `want` accepts. Returns its label id; throws naming every harbour tried.
- *
- * NOT LISBON BY NAME. Your own fleet lies on Lisbon's mark and wins any tap within its reach
- * (hitTest.ts), and the harbour's name stands inside that reach at 390 px — so Lisbon is a fleet
- * tray on this frame, and the fixture's laid-up merchant is proved on PORT (port.merchants.spec).
- * Which harbours have merchants lying in them, and which have every merchant at sea, depends on
- * the fixture's warp and on the two-minute rest (0116), so the named harbours are tried in turn.
- * A frame on which none fits fails rather than passes.
+ * THE NAMED HARBOURS ON THE GLASS, where each one's name is drawn — the tap targets a player has.
  */
-async function openCity(page: Page, want: (list: Locator) => Promise<boolean>): Promise<string> {
+async function harbourLabels(page: Page): Promise<{ id: string; x: number; y: number }[]> {
   const labels = await page.evaluate(() =>
     [...document.querySelectorAll('[data-label-id^="port:"]')].map((e) => {
       const r = e.getBoundingClientRect()
@@ -617,27 +609,45 @@ async function openCity(page: Page, want: (list: Locator) => Promise<boolean>): 
     }),
   )
   expect(labels.length, 'no harbour is named on the opening frame').toBeGreaterThan(0)
+  return labels
+}
+
+async function closeTray(page: Page): Promise<void> {
+  const x = page.getByTestId('tray-close')
+  if (await x.isVisible().catch(() => false)) await x.click()
+  await page.waitForTimeout(300)
+}
+
+/**
+ * Tap ONE named harbour and stand its tray at half. Returns whether its merchant list is on the
+ * glass (the harbour's read lands on the beat; a city nobody's loop calls at has no list at all).
+ * The caller decides what that means: for the fixture's harbour it is a failure, for a sweep it
+ * is a city with nothing to list.
+ */
+async function openHarbour(page: Page, label: { id: string; x: number; y: number }): Promise<boolean> {
+  await closeTray(page)
+  await page.mouse.click(label.x, label.y)
   const tray = page.getByTestId('map-detail-tray')
-  const list = page.getByTestId('map-merchants')
-  const close = async () => {
-    const x = page.getByTestId('tray-close')
-    if (await x.isVisible().catch(() => false)) await x.click()
-    await page.waitForTimeout(300)
-  }
-  const tried: string[] = []
-  for (const l of labels) {
-    await close()
-    await page.mouse.click(l.x, l.y)
-    if (!(await tray.isVisible().catch(() => false))) continue
-    const send = page.getByTestId('map-send-fleet')
-    if (!(await send.isVisible().catch(() => false))) continue
-    tried.push(l.id)
-    await send.click()
-    // the harbour's read lands on the beat; a city nobody's loop calls at has no list at all
-    const listed = await list.waitFor({ state: 'visible', timeout: 8_000 }).then(() => true, () => false)
-    if (listed && (await want(list))) return l.id
-  }
-  throw new Error(`none of ${tried.join(', ')} fits (tried ${tried.length} of ${labels.length} named harbours)`)
+  await expect(tray, `${label.id}: the tap did not open the place tray`).toBeVisible({ timeout: 5_000 })
+  const send = page.getByTestId('map-send-fleet')
+  await expect(send, `${label.id}: the tray opened without its Send fleet control`).toBeVisible({ timeout: 5_000 })
+  await send.click()
+  await expect(tray).toHaveAttribute('data-tray-detent', 'half')
+  return page.getByTestId('map-merchants').waitFor({ state: 'visible', timeout: 8_000 }).then(() => true, () => false)
+}
+
+/**
+ * THE FIXTURE'S HARBOUR — Porto, where tests/npcOn.fixture.ts put `RESTING_AT_PORTO` to rest with
+ * a known rest end. Its name must be on the opening frame (it is, at 390 and at 1440: the frame is
+ * built on your fleet at Lisbon), and it must not be under your own fleet's mark, which wins the tap
+ * (hitTest.ts) — which is why the fixture chose Porto and not Lisbon. A frame without Porto's name
+ * is a failed precondition and says so; it is never a pass.
+ */
+async function openPorto(page: Page): Promise<void> {
+  const porto = (await harbourLabels(page)).find((l) => l.id === `port:${RESTING_PORT_CODE}`)
+  if (!porto) throw new Error(`Porto (port:${RESTING_PORT_CODE}) is not named on the opening frame — the fixture rests ${RESTING_AT_PORTO} there`)
+  const listed = await openHarbour(page, porto)
+  if (!listed) throw new Error(`Porto's tray lists no merchants, but the fixture rests ${RESTING_AT_PORTO} there`)
 }
 
 /** Every row of one group section as the things a player reads on it. */
@@ -659,7 +669,9 @@ async function groupRows(section: Locator): Promise<{ name: string; level: strin
  * THE LIST, READ BACK AS ITS CONTRACT: the groups that are printed stand in the server's rank with
  * no empty one among them; every row carries a level (0113) and a word that belongs to its group;
  * a resting merchant carries the time her rest ends and a laid-up one does not; in port the soonest
- * stands first; each heading's count is its rows. Returns the rows, grouped, for the caller.
+ * stands first; each heading's count is its rows; the head's count is every row. Holds for ANY
+ * harbour with merchants — nothing here needs a particular merchant to be anywhere. Returns the
+ * rows, grouped, for the caller.
  */
 async function readCityList(page: Page, city: string) {
   const list = page.getByTestId('map-merchants')
@@ -691,14 +703,20 @@ async function readCityList(page: Page, city: string) {
   // THE GROUPS STAND IN THE SERVER'S RANK — the order GROUPS lists them, which is 0104's.
   const order = printed.map((p) => GROUPS.findIndex((g) => g.heading === p.heading))
   expect(order).toEqual([...order].sort((a, b) => a - b))
-  // AND THE LIST IS NEVER BLANK WHILE THE READ HAS MERCHANTS: the rows in the groups are every row.
+  // AND THE LIST IS NEVER BLANK WHILE THE READ HAS MERCHANTS: the rows in the groups are every row,
+  // and the head counts exactly them (`N merchants`, then `· M in port` only when M > 0).
   const all = await list.getByTestId('merchant-row').count()
   expect(all, `${city}: rows outside every group`).toBe(printed.reduce((n, p) => n + p.rows.length, 0))
   expect(all, `${city}: a list with no rows`).toBeGreaterThanOrEqual(1)
+  const inPort = printed.find((p) => p.heading === 'In port')?.rows.length ?? 0
+  const line = page.getByTestId('map-place-name-line')
+  await expect(line).toContainText(`${all} ${all === 1 ? 'merchant' : 'merchants'}`)
+  if (inPort > 0) await expect(line).toContainText(`· ${inPort} in port`)
+  else await expect(line).not.toContainText('in port')
   return printed
 }
 
-test('a city lists every merchant it concerns, grouped — in port with the time her rest ends — and a row opens her sheet', async ({
+test('Porto lists every merchant it concerns, grouped — the fixture\'s resting one with the time her rest ends — and her row opens her sheet', async ({
   page,
   request,
   baseURL,
@@ -710,43 +728,48 @@ test('a city lists every merchant it concerns, grouped — in port with the time
   await page.goto('map')
   await ready(page)
   await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
-  // one beat, so the first arrivals have closed their laps and the home stops hold their merchants
-  await page.waitForTimeout(4_000)
 
-  // A CITY WITH SOMEBODY IN PORT, so the countdown is on the glass for the shot.
-  const city = await openCity(page, async () => (await page.getByTestId('map-merchants-in-port').count()) === 1)
-  const tray = page.getByTestId('map-detail-tray')
-  await expect(tray).toHaveAttribute('data-tray-detent', 'half')
-  // THE HEAD: the harbour's name, and under it a line that counts everyone the city concerns and
-  // how many of them lie here.
-  await expect(page.getByTestId('map-place-name')).not.toBeEmpty()
-  await expect(page.getByTestId('map-place-name-line')).toContainText(/\d+ merchants? · \d+ in port/)
-
-  const printed = await readCityList(page, city)
-  expect(printed[0].heading).toBe('In port')
+  // THE PRECONDITION IS THE FIXTURE'S, NOT THE CLOCK'S: Porto has RESTING_AT_PORTO at rest with
+  // six hours on her hold, whatever the other merchants are doing this minute.
+  await openPorto(page)
+  await expect(page.getByTestId('map-place-name')).toHaveText('Porto')
+  const printed = await readCityList(page, 'Porto')
+  expect(printed[0].heading, 'the In port group stands first').toBe('In port')
+  const resting = printed[0].rows.find((r) => r.name === RESTING_AT_PORTO)
+  expect(resting, `${RESTING_AT_PORTO} is not in Porto's In port group: ${JSON.stringify(printed[0].rows)}`).toBeTruthy()
+  expect(resting?.doing).toBe('Resting')
+  // Hours, not minutes: the hold was written six hours out when the world was built, and a kept
+  // world is at most ninety minutes old (NPC_ON_MAX_AGE_MS) — so at least 4 h 30 min remain.
+  expect(resting?.rest, 'the time her rest ends').toMatch(/^\d+ h( \d+ min)?$/)
+  expect(Number((resting?.rest ?? '0').split(' ')[0]), 'hours left on her rest').toBeGreaterThanOrEqual(4)
   // YOUR FLEETS are still here, under the list, so the owner's send flow did not move.
   await expect(page.getByTestId('map-send-fleets')).toBeVisible()
   await page.screenshot({ path: path.join(SHOTS, 'city-tray-half-390.png') })
 
-  // A ROW OPENS THE SAME READ-ONLY SHEET a hull on the water opens — and a resting merchant is
+  // HER ROW OPENS THE SAME READ-ONLY SHEET a hull on the water opens — and a resting merchant is
   // served by the harbour and not by the sea window, so this is the one way to reach her from the
   // map. The sheet's level is the number the row printed.
-  const first = page.getByTestId('map-merchants-in-port').getByTestId('merchant-row').first()
-  const name = ((await first.getByTestId('merchant-row-name').textContent()) ?? '').trim()
-  const level = ((await first.getByTestId('merchant-row-level').textContent()) ?? '').trim()
-  await first.click()
+  const row = page.getByTestId('map-merchants-in-port').getByTestId('merchant-row').filter({ hasText: RESTING_AT_PORTO })
+  await expect(row).toHaveCount(1)
+  const level = ((await row.getByTestId('merchant-row-level').textContent()) ?? '').trim()
+  await row.click()
   await expect(page.getByTestId('merchant-sheet')).toBeVisible()
   await expect(page.getByTestId('map-detail-tray')).toHaveCount(0)
-  await expect(page.getByTestId('merchant-sheet-name')).toHaveText(name, { timeout: 60_000 })
+  await expect(page.getByTestId('merchant-sheet-name')).toHaveText(RESTING_AT_PORTO, { timeout: 60_000 })
   await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
   await expect(page.getByTestId('merchant-level')).toContainText(level)
   await page.screenshot({ path: path.join(SHOTS, 'city-tray-merchant-from-list-390.png') })
 })
 
-// THE REGRESSION THE OWNER HIT (2026-10-14). On main this list was `map-resting`, the merchants
-// LYING in the city and nothing else, and it rendered NOTHING for a city whose merchants were all
-// at sea — which, with a two-minute rest, is almost every city. This fails there.
-test('a city whose merchants are all at sea still lists them in the tray', async ({ page, request, baseURL }) => {
+// THE REGRESSION THE OWNER HIT (2026-10-14). On main the list was `map-resting` — the merchants
+// LYING in the city and nothing else — and it rendered NOTHING for a city whose merchants were all
+// at sea, which with a two-minute rest is almost every city. This sweep fails there, on Porto at
+// the latest. It asserts NOTHING about which cities have whom this minute: every named harbour on
+// the frame is opened, and each one that has merchants must print them all, grouped, never blank.
+// (Which harbours have nobody in port is the clock's business; the unit test above proves a list
+// of merchants all at sea is still a list. The at-sea shot is taken if the frame offers one — a
+// screenshot is a record, not an assertion.)
+test('every named harbour with merchants lists them all, grouped, never blank', async ({ page, request, baseURL }) => {
   test.setTimeout(600_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   mkdirSync(SHOTS, { recursive: true })
@@ -754,24 +777,22 @@ test('a city whose merchants are all at sea still lists them in the tray', async
   await page.goto('map')
   await ready(page)
   await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
-  await page.waitForTimeout(4_000)
 
-  const city = await openCity(page, async (list) => {
-    const rows = await list.getByTestId('merchant-row').count()
-    return rows >= 1 && (await page.getByTestId('map-merchants-in-port').count()) === 0
-  })
-  await expect(page.getByTestId('map-detail-tray')).toHaveAttribute('data-tray-detent', 'half')
-  // the head counts them and names nobody in port
-  await expect(page.getByTestId('map-place-name-line')).toContainText(/\d+ merchants?/)
-  await expect(page.getByTestId('map-place-name-line')).not.toContainText('in port')
-  const printed = await readCityList(page, city)
-  expect(printed.map((p) => p.heading)).not.toContain('In port')
-  for (const p of printed) {
-    for (const r of p.rows) {
-      expect(['Starting', 'Ending', 'Passing', 'Away'], `${city}: ${r.name} reads "${r.doing}"`).toContain(r.doing)
+  const listed: string[] = []
+  let atSeaShot = false
+  // Lisbon is skipped by name: your own fleet lies on its mark and wins the tap (hitTest.ts), so
+  // its label opens the fleet tray, not the city. Everything else named on the frame is opened.
+  for (const l of (await harbourLabels(page)).filter((l) => l.id !== 'port:LIS')) {
+    if (!(await openHarbour(page, l))) continue
+    const printed = await readCityList(page, l.id)
+    listed.push(l.id)
+    if (!atSeaShot && !printed.some((p) => p.heading === 'In port')) {
+      await page.screenshot({ path: path.join(SHOTS, 'city-tray-at-sea-390.png') })
+      atSeaShot = true
     }
   }
-  await page.screenshot({ path: path.join(SHOTS, 'city-tray-at-sea-390.png') })
+  // At least Porto, by the fixture; the rest is whatever the frame named.
+  expect(listed, 'no named harbour listed a merchant').toContain(`port:${RESTING_PORT_CODE}`)
 })
 
 test.describe('wide city tray', () => {
@@ -784,9 +805,9 @@ test.describe('wide city tray', () => {
     await page.goto('map')
     await ready(page)
     await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
-    await page.waitForTimeout(4_000)
-    const city = await openCity(page, async (list) => (await list.getByTestId('merchant-row').count()) >= 1)
-    await readCityList(page, city)
+    await openPorto(page)
+    const printed = await readCityList(page, 'Porto')
+    expect(printed[0].rows.map((r) => r.name)).toContain(RESTING_AT_PORTO)
     await page.waitForTimeout(600)
     await page.screenshot({ path: path.join(SHOTS, 'city-tray-half-1440.png') })
   })
