@@ -1536,6 +1536,9 @@ test('the registry and the client grants are one set, and the merchant cores are
     // 0106: how far a loop sails. Sums the leg lengths the save door measured; server-only, so the
     // board is the one place a client can learn a route's distance and there is one reading of it.
     'public.route_nm(uuid)',
+    // 0114: whether the hourly merchant upkeep's budget is spent. Server-only: the deadline is
+    // transaction-local and set by tick_reconcile alone.
+    'public.npc_upkeep_spent()',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f

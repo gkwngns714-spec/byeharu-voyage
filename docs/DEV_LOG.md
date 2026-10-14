@@ -5,6 +5,34 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-14 — "I saw no NPC": the hourly upkeep never committed — migration 0114, `osn-merchants-resume`
+
+Prod at 03:10 UTC: 837 merchant routes, 521 `laid_up` (all dated 10-11 14:33:08, the switch's own
+transaction), 223 `losing` and rising, 86 sailing.
+
+- **Root cause.** `tick_reconcile` runs npc_tend + npc_plan + npc_compact in one cron statement under
+  the server's 2-min `statement_timeout`. `cron.job_run_details`: 13 ms a run while dark, then every
+  run since 10-13 02:07 cancelled at 2:00.000, which rolls the whole upkeep back (`when others` does not
+  catch query_canceled). Measured in rolled-back prod transactions: full npc_plan 114 s; npc_compact
+  over 60 s, because `ledger.ref_event_id` (FK target of every deleted event) had no index — with it,
+  5.2 s for the two-day backlog.
+- **Why so many idle.** The laid-up 521 were the switch's first pass under 0097's one-buyer-per-(port,
+  good) rule (0105 predicted 491 of 761). Re-planned alone on prod: 1 of 80 found cargo; at a cap of
+  2 buyers, 145 of 150. The 'losing' ones sailed on 10-11's lines because the re-plan, the cut-loss
+  and the refounds all live in the upkeep that never committed. The loss guard itself is fine: npc_tend
+  lifts 'losing' at once onto fresh lines (0097 §7), and 0094 makes a resumed route sail one lap first.
+- **0114.** Index `ledger_ref_event_id`; `npc_upkeep_budget_seconds` (60) with ONE setter
+  (tick_reconcile sets `byeharu.npc_upkeep_deadline`, clears it after the compactor) and one reading
+  (`public.npc_upkeep_spent()`); npc_plan/npc_tend superseded: oldest-written route first, past the
+  deadline `deferred`; buyer cap `npc_buyers_per_good` (3), one count for both modes. As found lit, it
+  runs `npc_traders_switch(true)` to put the idle roster back to sea; as found dark, nothing sails.
+- **Dry-runs on prod (rolled back).** Body + self-asserts in under 5 s; a broken assert surfaced as
+  an error (negative control). With a 55 s budget npc_tend started 92 laid-up routes and refounded 49
+  companies; 143 'losing' routes lifted in 50 s with no failures (142 sailing, 1 re-laid up).
+- **Note for the next person.** `supabase db query --linked` sits behind Cloudflare and gives up
+  after about 100 s (524), BUT the backend keeps running and holds its locks. tick_arrivals waited
+  58 s behind one of these. Cancel it with `pg_cancel_backend`. Keep prod dry-runs under 60 s.
+
 ## 2026-10-14 — PR #94 live: a stale test world, and a self-assert that assumed prod was dark
 
 PR #94 merged (`04c64b2`), and `805299b` deployed to Pages at 03:03 UTC. Prod migrations 0111–0113 are applied.
