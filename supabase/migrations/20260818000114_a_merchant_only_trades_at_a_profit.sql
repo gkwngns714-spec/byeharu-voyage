@@ -1,82 +1,74 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0114 — THE MERCHANTS ARE TENDED INSIDE THE HOUR
+-- 0114 — A MERCHANT ONLY TRADES AT A PROFIT
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
+-- (An earlier cut of 0114, "the merchants are tended inside the hour", was merged in PR #97 and
+--  NEVER applied to production: prod stood at 0113. The owner rejected its hourly re-plan, so this
+--  file replaces it whole under the same version.)
 --
 -- ── THE OWNER'S WORDS ───────────────────────────────────────────────────────────────────────────
--- 2026-10-14: *"I saw no NPC."* Production that morning, 837 merchant routes: 521 laid up (every
--- one dated 2026-10-11 14:33:08, the switch's own transaction), 223 paused 'losing' and climbing,
--- 86 sailing. Nine merchants in ten were lying in port.
+-- 2026-10-14: *"I saw no NPC."* *"That keeps the server too occupied."* *"The trade routes should
+-- be designed in a way that it only makes profit."*
 --
 -- ── WHAT WAS FOUND, MEASURED ON PRODUCTION (rolled-back transactions) ──────────────────────────
--- 1. THE HOURLY UPKEEP HAD NOT COMMITTED SINCE THE SWITCH WAS THROWN. `tick_reconcile` (0097's
---    re-cut) runs npc_tend, npc_plan and npc_compact in ONE cron statement, and the server's
---    statement_timeout is 2 min (configuration file). cron.job_run_details: 13 ms a run while
---    the switch was off, the clock stopped 10-11 13:07 → 10-13 01:07, and EVERY run since
---    10-13 02:07 "canceling statement due to statement timeout" at 2:00.000. The per-step
---    `exception when others` does not catch query_canceled, so each hour the whole upkeep rolled
---    back. Measured: npc_plan's full pass 114 s (230 planned, ~0.5 s a route); a 'losing' lift
---    0.34 s; a laid-up re-plan 0.09 s; npc_compact more than 60 s (killed at 60 s).
--- 2. npc_compact WAS QUADRATIC. Every merchant event it deletes is FK-checked against
---    `ledger.ref_event_id` (and its own NOT EXISTS reads the same column), which had NO index:
---    29,803 events × a seq scan of 102,253 ledger rows. With the index below the whole two-day
---    backlog compacts in 5.2 s (5,858 voyages, 93,904 ledger rows rolled, 26,728 events).
--- 3. ONE BUYER PER (port, good) LEFT 60 % OF THE ROSTER WITH NOTHING TO CARRY. 0105's header
---    said so on the day (491 of 761 found no cargo), and production agrees: 80 laid-up routes
---    re-planned alone found cargo for ONE. With the cap at two buyers, 145 of 150; with none,
---    75 of 80. 0105 puts about 3.5 fleets on every loop, all calling at the same harbours; one
---    slot per good cannot carry them.
--- 4. WHY 'losing': the lines were planned once (10-11) and never again, because the re-plan
---    lives in the upkeep that never committed — the cut-loss never fired (877 SELLs refused
---    E_PRICE_LIMIT), purses ran dry (1,065 BUYs refused E_INSUFFICIENT_FUNDS) and no refound ran.
---    The loss guard is NOT wrong for merchants: npc_tend already lifts a 'losing' pause at once
---    onto freshly planned lines (0097 §7). It was never reached. So the guard stays.
+-- 837 merchant routes: 521 laid up (all 10-11 14:33:08, the switch's transaction), 223 'losing',
+-- 86 sailing. tick_reconcile's upkeep overran the 2-min statement_timeout every hour since 10-13
+-- 02:07 and rolled back (query_canceled escapes `when others`). The full npc_plan pass took 114 s.
+-- npc_compact took more than 60 s because ledger.ref_event_id (FK target of every event it
+-- deletes) had no index; with the index it takes 5.2 s. 0097's ONE buyer per (port, good) left
+-- cargo for 1 of 80 laid-up routes (145 of 150 at a cap of two). Losing laps: a ~1 % planned margin
+-- (Nacre Inlay bought ~972, SELL floor 982) against a mid that moves 6.7 % (p90) / 9.2 % (p95) /
+-- 13.9 % (p99) in four hours (price_history, every (port, good) a merchant buys at). So the cargo
+-- rode round unsold, wages ate the purse, and the loss guard stopped the route.
 --
 -- ── WHAT THIS FILE DOES ─────────────────────────────────────────────────────────────────────────
--- (1) `ledger_ref_event_id` — the missing index under the FK and the compactor's NOT EXISTS.
--- (2) THE UPKEEP HAS A BUDGET, and ONE place sets it. `tick_reconcile` (re-cut by a slice of its
---     LIVE body, 0097's hunk shape) sets the transaction-local `byeharu.npc_upkeep_deadline` to
---     now + `npc_upkeep_budget_seconds` (60 — half the 2-min statement timeout, so tend + plan,
---     then compact and the invariants, finish inside it) and clears it after the compactor.
---     `public.npc_upkeep_spent()` is the ONE reading of it. Unset — the switch, a proof, a probe,
---     this migration — means no budget at all, so every other caller behaves exactly as before.
--- (3) It SUPERSEDES 0097's `public.npc_plan` (0097:372) and `public.npc_tend` (0097:574), restated
---     whole from 0097 with these changes and no others:
---       npc_plan — past the deadline a route is not begun (`deferred`); the pass takes the route
---         planned LONGEST AGO first (updated_at) instead of (hour mod n), because a budgeted pass
---         rotated by one index an hour would re-plan the same head of the roster for ever; and
---         the buyer rule is ONE count for both modes, at most `npc_buyers_per_good` (3) OTHER
---         merchant routes' BUY lines at that (port, good), a route laid up or in error excepted.
---         The pass's temp table and its (hour mod n) `start` receipt are deleted with it.
---       npc_tend — the same oldest-first walk (k stays the ROSTER rank, which npc_fleet_max reads),
---         and the deadline gates the dear work only: a plan + start/resume, and the halt law's
---         release. Dark and cannot-sail lay-ups stay unconditional.
--- (4) THE IDLE MERCHANTS ARE PUT BACK TO SEA BY THE ONE SWITCH. As found lit (production), this
---     file calls `public.npc_traders_switch(true)` — the switch's own plan-then-tend, unbudgeted —
---     which re-plans every running route and lifts every 'losing' and aged 'laid_up' route through
---     npc_tend's plan → start/resume. No route is updated by hand. As found dark (a fresh chain,
---     CI), the switch is not touched and nothing sails.
+-- (1) A MERCHANT PAYS A QUARTER OF THE RUNNING COSTS. `public.running_cost_mult(player)` is
+--     npc_cost_mult (0.25) for a merchant company and 1 for everyone else. It is composed into the
+--     three charges a lap pays, at the charge and nowhere else: voyage.settle's wages,
+--     cmd.do_provision and cmd.do_repair (each sliced from its LIVE body). It also scales
+--     npc_plan's wage estimate. Active laps averaged sold 56.1k / bought 52.5k / wages 2.6k: a
+--     quarter of the wage turns a +0.7k lap into roughly +2.6k without touching the trade.
+-- (2) A MERCHANT BUYS ONLY WHAT PAYS, AND SELLS ONLY ABOVE WHAT SHE PAID. npc_min_return_pct goes
+--     from 2 to 15, which clears the p95 four-hour drift (9.2 %) with the 5 % sell margin still
+--     standing. At every stop, cmd.standing_route_lines (THE line expansion) caps a merchant's BUY
+--     at what the NEXT stop bids NOW for that parcel (world.quote, sell side, after spread and tax)
+--     divided by (1 + min return). It drops the line if that stop bids nothing: the planner's keep
+--     test, asked again at the moment of buying. Her SELL-at-profit floor is fleet_cargo_basis ×
+--     (1 + npc_sell_margin). A price move can shrink a profit, but she never sells below cost; cargo
+--     she cannot sell is carried to the next stop.
+-- (3) RE-PLANNED ONCE PER LAP, PER SHIP, AT HOME, NOT ON A SWEEP. When cmd.run_standing_route
+--     STARTS a merchant's new lap (after her rest, inside the arrivals tick for that one fleet), it
+--     re-plans her lines on today's prices through public.npc_plan(now, route). If nothing pays,
+--     npc_plan lays her up, so she does not sail a lap at a loss. tick_reconcile no longer runs the
+--     hourly npc_plan pass. It keeps npc_tend (laid-up retries after npc_laid_up_hours, refounds,
+--     the halt law) and npc_compact, under a 60 s budget that ONE function sets.
+-- (4) A MERCHANT IS NOT STOPPED BY LOSING LAPS. The loss guard (0092 / 0094) gains `not is_npc`.
+-- (5) AT MOST npc_buyers_per_good (3) merchants buy one good at one harbour. Both planner modes use
+--     the same count, and the pass takes the route written longest ago first.
+-- (6) THE IDLE MERCHANTS ARE PUT BACK TO SEA BY THE ONE SWITCH. As found lit (production), this
+--     file calls public.npc_traders_switch(true). As found dark (a fresh chain), nothing sails.
 --
--- ── WHAT IT DOES NOT TOUCH ──────────────────────────────────────────────────────────────────────
--- The executor's loss guard (0092 `stop_after_losing_laps`) and every player's route; the five
--- cron jobs and their schedules (wind_the_clock owns them); npc_compact's body; npc_fleet_max;
--- the price, ranking and quote authorities the planner calls.
+-- SUPERSEDES: public.npc_plan (0097:372) and public.npc_tend (0097:574), restated whole. By slices
+-- of their live bodies it also supersedes public.tick_reconcile (the 0097 hunk), voyage.settle
+-- (the 0086 hunk), cmd.do_provision, cmd.do_repair, cmd.run_standing_route (the 0094/0101 body) and
+-- cmd.standing_route_lines (the 0096 body).
 --
--- ── SELF-ASSERTS, AS FOUND ──────────────────────────────────────────────────────────────────────
--- Lit or dark, the probes run inside a rolled-back block and the switch is left as found
--- (0113's lesson, 2026-10-14). The budget, the buyer cap (positive control: a cap of 0 lays a
--- route up, deterministically, whatever the market) and the single setter are asserted
--- structurally and by behaviour; when lit, the resume is then asserted on the real roster: no
--- merchant left 'losing', none left laid up past npc_laid_up_hours, no failed plan or tend.
+-- WHAT STILL LAYS A MERCHANT UP (said, not hidden):
+--   * no paying cargo at a lap start (npc_tend retries after npc_laid_up_hours);
+--   * a fleet ADRIFT or UNABLE_TO_SAIL;
+--   * three failed-order clears in one lap;
+--   * the weekly refound cap.
+-- A lap's net can still read negative when a lap closes before its home sale (NPC_TRADERS §7.4) or
+-- cargo is carried over unsold.
 --
--- Depends ONLY on: public.npc_plan / npc_tend / npc_traders_switch (0097), public.tick_reconcile
--- (0010, re-cut 0097), cmd.standing_route_set_paused (0092), public.world_config (0001).
+-- Self-asserts hold AS FOUND (0113): lit or dark, every probe rolls back and the switch is left as
+-- it was found.
 
 do $guard$ begin perform set_config('statement_timeout', '20min', true); end $guard$;
 
 -- ── 1. THE INDEX THE COMPACTOR WAS MISSING ─────────────────────────────────────────────────────
 create index if not exists ledger_ref_event_id on public.ledger (ref_event_id) where ref_event_id is not null;
 
--- ── 2. TWO KNOBS ───────────────────────────────────────────────────────────────────────────────
+-- ── 2. THE KNOBS ───────────────────────────────────────────────────────────────────────────────
 insert into public.world_config (key, value, description) values
   ('npc_upkeep_budget_seconds', to_jsonb(60),
    '0114: wall-clock seconds the hourly merchant upkeep (npc_tend, then npc_plan) may spend inside '
@@ -84,8 +76,32 @@ insert into public.world_config (key, value, description) values
    'statement_timeout, so the compactor and the invariants still finish inside one statement.'),
   ('npc_buyers_per_good', to_jsonb(3),
    '0114: how many merchant routes may plan a BUY of one good at one harbour (laid-up and failed '
-   'routes hold no place). 0097 allowed one, which left 60 % of 0105''s roster with no cargo.')
+   'routes hold no place). 0097 allowed one, which left 60 % of 0105''s roster with no cargo.'),
+  ('npc_cost_mult', to_jsonb(0.25),
+   '0114: what a merchant company pays of a lap''s running costs — wages, supplies, repairs — as a '
+   'fraction of what a player pays (public.running_cost_mult). Players pay 1.')
 on conflict (key) do nothing;
+-- 0097 shipped 2: a margin under the price drift a lap sails through (p95 9.2 % in four hours).
+update public.world_config set value = to_jsonb(15),
+       description = '0114: the least return, in percent of the outlay, a merchant BUY must promise at '
+                     'the next stop''s current bid — at planning AND again at the moment of buying. 15 '
+                     'clears the p95 four-hour price drift (9.2 %) with the 5 % sell margin still standing.'
+ where key = 'npc_min_return_pct';
+
+-- ── 2b. THE ONE READING OF WHAT A HOUSE PAYS OF ITS RUNNING COSTS ──────────────────────────────
+create or replace function public.running_cost_mult(p_player uuid)
+returns numeric
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  -- 0114: npc_cost_mult for a merchant company, 1 for every player. Composed at the three charges
+  -- (wages in voyage.settle, cmd.do_provision, cmd.do_repair) and into npc_plan's wage estimate.
+  select case when exists (select 1 from public.players p where p.id = p_player and p.is_npc)
+              then public.wc_num('npc_cost_mult') else 1 end
+$$;
+revoke all on function public.running_cost_mult(uuid) from public, anon, authenticated;
 
 -- ── 3. THE ONE READING OF THE BUDGET ───────────────────────────────────────────────────────────
 create or replace function public.npc_upkeep_spent()
@@ -231,7 +247,7 @@ begin
         v_rows  := coalesce(world.trade_routes(st.port_id, null, null, 12, st.next_port)->'routes', '[]'::jsonb);
         v_left  := v_hold;
         v_kept  := 0;
-        v_wages := public.crew_wages(v_crew, false)
+        v_wages := public.crew_wages(v_crew, false) * public.running_cost_mult(sr.player_id)   -- 0114
                    * coalesce((v_rows->0->>'nm')::numeric, 0) / (v_speed * 24);
         for v_pass in 1 .. 2 loop
           exit when v_pass = 2 and v_kept > 0;
@@ -549,7 +565,7 @@ begin
 end $$;
 
 
--- ── 5. tick_reconcile SETS THE BUDGET — a slice of its LIVE body, LF-normalised ────────────────
+-- ── 5. tick_reconcile: THE BUDGET, AND NO HOURLY RE-PLAN — a slice of its LIVE body ──────────
 do $$
 declare
   v_def  text;
@@ -558,10 +574,17 @@ $h$;
   v_clr  text := $h$    v_upkeep := v_upkeep || jsonb_build_object('compact_error', sqlerrm);
   end;
 $h$;
+  v_plan text := $h$  begin
+    v_upkeep := v_upkeep || jsonb_build_object('plan', public.npc_plan(now()));
+  exception when others then
+    v_upkeep := v_upkeep || jsonb_build_object('plan_error', sqlerrm);
+  end;
+$h$;
 begin
   v_def := replace(pg_get_functiondef('public.tick_reconcile()'::regprocedure), E'\r', '');
   if (length(v_def) - length(replace(v_def, v_set, ''))) / length(v_set) <> 1
-     or (length(v_def) - length(replace(v_def, v_clr, ''))) / length(v_clr) <> 1 then
+     or (length(v_def) - length(replace(v_def, v_clr, ''))) / length(v_clr) <> 1
+     or (length(v_def) - length(replace(v_def, v_plan, ''))) / length(v_plan) <> 1 then
     raise exception '0114 self-assert FAIL: tick_reconcile''s live body does not carry 0097''s upkeep hunk exactly once';
   end if;
   v_def := replace(v_def, v_set, v_set || $h$  -- 0114: THE UPKEEP'S BUDGET, set here and nowhere else. npc_tend and npc_plan read it through
@@ -572,8 +595,139 @@ begin
 $h$);
   v_def := replace(v_def, v_clr, v_clr || $h$  perform set_config('byeharu.npc_upkeep_deadline', '', true);   -- 0114
 $h$);
+  -- 0114: NO HOURLY RE-PLAN. A merchant is re-planned once per lap, as her lap starts
+  -- (cmd.run_standing_route); the sweep is deleted, not budgeted.
+  v_def := replace(v_def, v_plan, $h$  -- 0114: the hourly npc_plan pass is gone — a merchant is re-planned as each lap starts.
+$h$);
   execute v_def;
 end $$;
+
+-- ── 5b. THE SLICES — each hunk asserted to occur EXACTLY ONCE in the LIVE body (LF-normalised) ─
+create or replace function pg_temp.slice_0114(p_fn text, p_old text, p_new text)
+returns void
+language plpgsql
+as $$
+declare
+  v_def text := replace(pg_get_functiondef(p_fn::regprocedure), E'\r', '');
+  v_n   int  := (length(v_def) - length(replace(v_def, p_old, ''))) / length(p_old);
+begin
+  if v_n <> 1 then
+    raise exception '0114 self-assert FAIL: a hunk of % occurs % time(s), not once — the live body is not what this file was cut against: %',
+      p_fn, v_n, left(p_old, 120);
+  end if;
+  execute replace(v_def, p_old, p_new);
+end $$;
+
+-- (1) THE THREE CHARGES, each times running_cost_mult — at the charge, nowhere else.
+select pg_temp.slice_0114('voyage.settle(uuid, timestamptz)',
+$h$    select public.crew_wages(coalesce(sum(sh.crew), 0)::int, v_short)
+      into v_wages from public.ships sh where sh.fleet_id = p_fleet;
+$h$,
+$h$    -- 0114: a merchant company pays npc_cost_mult of the day's wages (public.running_cost_mult).
+    select round(public.crew_wages(coalesce(sum(sh.crew), 0)::int, v_short)
+                 * public.running_cost_mult(f.player_id))::bigint
+      into v_wages from public.ships sh where sh.fleet_id = p_fleet;
+$h$);
+
+select pg_temp.slice_0114('cmd.do_provision(uuid, jsonb)',
+$h$  v_cost := round(v_water * v_wp + v_food * v_fp)::bigint;
+$h$,
+$h$  v_cost := round((v_water * v_wp + v_food * v_fp) * public.running_cost_mult(f.player_id))::bigint;   -- 0114
+$h$);
+
+select pg_temp.slice_0114('cmd.do_repair(uuid, jsonb)',
+$h$  v_cost := round(v_points * public.wc_num('repair_rate_per_point') * (1 - v_dev * 0.01))::bigint;
+$h$,
+$h$  v_cost := round(v_points * public.wc_num('repair_rate_per_point') * (1 - v_dev * 0.01)
+                  * public.running_cost_mult(f.player_id))::bigint;   -- 0114
+$h$);
+
+-- (2) THE EXECUTOR: a merchant is never stopped by losing laps, and is re-planned as her lap starts.
+select pg_temp.slice_0114('cmd.run_standing_route(uuid, timestamptz)',
+$h$  v_closed boolean := false;   -- 0094: this call closed a lap, so the loss guard may judge
+$h$,
+$h$  v_closed boolean := false;   -- 0094: this call closed a lap, so the loss guard may judge
+  v_npc    boolean := false;   -- 0114: a merchant company's route
+  v_plan   jsonb;              -- 0114: the lap-start re-plan's receipt
+$h$);
+select pg_temp.slice_0114('cmd.run_standing_route(uuid, timestamptz)',
+$h$  if f.status <> 'DOCKED' then return 0; end if;
+$h$,
+$h$  if f.status <> 'DOCKED' then return 0; end if;
+  v_npc := exists (select 1 from public.players p where p.id = sr.player_id and p.is_npc);   -- 0114
+$h$);
+select pg_temp.slice_0114('cmd.run_standing_route(uuid, timestamptz)',
+$h$      if v_closed and (select count(*) from (select x.net from public.standing_route_laps x
+$h$,
+$h$      -- 0114: PLAYERS ONLY. A merchant is not stopped by losing laps: her lines are re-planned as
+      -- each lap starts, below, and a lap with nothing that pays lays her up instead.
+      if v_closed and not v_npc and (select count(*) from (select x.net from public.standing_route_laps x
+$h$);
+select pg_temp.slice_0114('cmd.run_standing_route(uuid, timestamptz)',
+$h$    if sr.lap_id is null then
+      insert into public.standing_route_laps (route_id, lap_no, started_at)
+$h$,
+$h$    -- 0114: ONCE PER LAP, PER SHIP — A MERCHANT'S LINES ARE RE-PLANNED AS HER LAP STARTS, on
+    -- today's prices, through THE planner. Nothing pays: npc_plan lays her up and she does not sail
+    -- the lap. Lines written in the last minute (the upkeep has just planned and started her) are
+    -- today's already and are not planned twice.
+    if v_npc and sr.lap_id is null and sr.stop_cursor % v_n = 0
+       and sr.updated_at < now() - interval '1 minute' then
+      v_plan := public.npc_plan(p_now, sr.id);
+      if (select paused_reason from public.standing_routes where id = sr.id) is not null then
+        return 0;
+      end if;
+    end if;
+    if sr.lap_id is null then
+      insert into public.standing_route_laps (route_id, lap_no, started_at)
+$h$);
+
+-- (3) THE LINE EXPANSION: a merchant sells only above what she paid, and buys only what the next
+--     stop pays for NOW.
+select pg_temp.slice_0114('cmd.standing_route_lines(uuid, integer, uuid)',
+$h$  v_next  text;
+$h$,
+$h$  v_next  text;
+  v_npc   boolean;   -- 0114
+  v_sink  uuid;      -- 0114: the next stop, where a BUY here is meant to be sold
+  v_cap   numeric;   -- 0114
+  q       record;    -- 0114
+$h$);
+select pg_temp.slice_0114('cmd.standing_route_lines(uuid, integer, uuid)',
+$h$  select count(*) into v_n from public.standing_route_stops where route_id = p_route;
+$h$,
+$h$  select count(*) into v_n from public.standing_route_stops where route_id = p_route;
+  v_npc := exists (select 1 from public.standing_routes r join public.players p on p.id = r.player_id and p.is_npc
+                    where r.id = p_route);   -- 0114
+  select s.port_id into v_sink from public.standing_route_stops s
+   where s.route_id = p_route and s.ord = (p_stop + 1) % v_n;   -- 0114
+$h$);
+select pg_temp.slice_0114('cmd.standing_route_lines(uuid, integer, uuid)',
+$h$      v_floor := case when ln.at_profit then public.fleet_cargo_basis(p_fleet, c.code) else ln.price_limit end;
+$h$,
+$h$      v_floor := case when ln.at_profit then public.fleet_cargo_basis(p_fleet, c.code) else ln.price_limit end;
+      -- 0114: a merchant's at-profit floor is what she paid plus npc_sell_margin. A price move can
+      -- shrink her profit; it never makes her sell below cost — unsold, it sails to the next stop.
+      if v_npc and ln.at_profit and v_floor is not null then
+        v_floor := v_floor * (1 + public.wc_num('npc_sell_margin'));
+      end if;
+$h$);
+select pg_temp.slice_0114('cmd.standing_route_lines(uuid, integer, uuid)',
+$h$    v_out := v_out || (format('BUY %s %s', ln.good_code, coalesce(trim_scale(ln.qty)::text, 'ALL'))
+$h$,
+$h$    -- 0114: THE PLANNER'S KEEP TEST, ASKED AGAIN AT THE MOMENT OF BUYING. A merchant buys a parcel
+    -- only at a price the NEXT stop's current bid for that parcel (world.quote, the sell side — after
+    -- spread and tax) beats by npc_min_return_pct; a stop that bids nothing drops the line.
+    if v_npc then
+      continue when ln.qty is null;
+      select * into q from world.quote(v_sink, ln.good_id, ln.qty, 'sell', null, null);
+      continue when q.units is null or q.units < 1 or q.total is null or q.total <= 0;
+      v_cap := floor(q.total / q.units / (1 + public.wc_num('npc_min_return_pct') / 100) * 100) / 100;
+      continue when v_cap <= 0;
+      ln.price_limit := least(coalesce(ln.price_limit, v_cap), v_cap);
+    end if;
+    v_out := v_out || (format('BUY %s %s', ln.good_code, coalesce(trim_scale(ln.qty)::text, 'ALL'))
+$h$);
 
 -- ── 6. SELF-ASSERT, AND THE IDLE MERCHANTS PUT BACK TO SEA ─────────────────────────────────────
 do $$
@@ -590,6 +744,7 @@ declare
   v_laid    interval := make_interval(hours => public.wc_int('npc_laid_up_hours'));
   v_resume  jsonb;
   v_groups  jsonb;
+  v_lines   text[];
 begin
   -- (a) THE INDEX, on the column the FK and the compactor read.
   if not exists (select 1 from pg_index i
@@ -602,9 +757,30 @@ begin
 
   -- (b) THE KNOBS hold the values this file argues for (a pre-existing key would be kept as found
   --     by `on conflict do nothing`, so a different value is a FAIL, not a silent drift).
-  if public.wc_int('npc_upkeep_budget_seconds') <> 60 or public.wc_int('npc_buyers_per_good') <> 3 then
-    raise exception '0114 self-assert FAIL: the knobs read % s and % buyers',
-      public.wc_int('npc_upkeep_budget_seconds'), public.wc_int('npc_buyers_per_good');
+  if public.wc_int('npc_upkeep_budget_seconds') <> 60 or public.wc_int('npc_buyers_per_good') <> 3
+     or public.wc_num('npc_cost_mult') <> 0.25 or public.wc_num('npc_min_return_pct') <> 15 then
+    raise exception '0114 self-assert FAIL: the knobs read % s, % buyers, cost x %, min return % %%',
+      public.wc_int('npc_upkeep_budget_seconds'), public.wc_int('npc_buyers_per_good'),
+      public.wc_num('npc_cost_mult'), public.wc_num('npc_min_return_pct');
+  end if;
+
+  -- (b2) WHAT A HOUSE PAYS: a merchant company npc_cost_mult, anyone else exactly 1.
+  if public.running_cost_mult(gen_random_uuid()) <> 1
+     or public.running_cost_mult((select p.id from public.players p where p.is_npc order by p.id limit 1)) <> 0.25 then
+    raise exception '0114 self-assert FAIL: running_cost_mult does not read 0.25 for a merchant and 1 for anyone else';
+  end if;
+
+  -- (b3) EVERY SLICE LANDED, and the hourly re-plan is gone.
+  if position('running_cost_mult(f.player_id)' in pg_get_functiondef('voyage.settle(uuid, timestamptz)'::regprocedure)) = 0
+     or position('running_cost_mult(f.player_id)' in pg_get_functiondef('cmd.do_provision(uuid, jsonb)'::regprocedure)) = 0
+     or position('running_cost_mult(f.player_id)' in pg_get_functiondef('cmd.do_repair(uuid, jsonb)'::regprocedure)) = 0
+     or position('running_cost_mult(sr.player_id)' in pg_get_functiondef('public.npc_plan(timestamptz, uuid)'::regprocedure)) = 0
+     or position('if v_closed and not v_npc and' in pg_get_functiondef('cmd.run_standing_route(uuid, timestamptz)'::regprocedure)) = 0
+     or position('v_plan := public.npc_plan(p_now, sr.id);' in pg_get_functiondef('cmd.run_standing_route(uuid, timestamptz)'::regprocedure)) = 0
+     or position($q$v_floor := v_floor * (1 + public.wc_num('npc_sell_margin'));$q$ in pg_get_functiondef('cmd.standing_route_lines(uuid, integer, uuid)'::regprocedure)) = 0
+     or position($q$world.quote(v_sink, ln.good_id, ln.qty, 'sell', null, null)$q$ in pg_get_functiondef('cmd.standing_route_lines(uuid, integer, uuid)'::regprocedure)) = 0
+     or position('npc_plan(' in pg_get_functiondef('public.tick_reconcile()'::regprocedure)) > 0 then
+    raise exception '0114 self-assert FAIL: a slice did not land, or tick_reconcile still re-plans every hour';
   end if;
 
   -- (c) THE ONE SETTER. tick_reconcile sets the deadline and clears it; no other function sets it.
@@ -701,6 +877,17 @@ begin
       raise exception '0114 self-assert FAIL: at a buyer cap of 0 the plan answered %', v_res;
     end if;
 
+    -- THE BUY CAP, deterministically: a BUY line planted at stop 0 with an absurd ceiling is either
+    -- capped at the next stop's current bid ÷ (1 + min return) or dropped — never written as planted.
+    update public.world_config set value = to_jsonb(3) where key = 'npc_buyers_per_good';
+    delete from public.standing_route_lines where route_id = v_route and stop_ord = 0 and kind = 'BUY';
+    insert into public.standing_route_lines (route_id, stop_ord, ord, kind, good_id, qty, price_limit, at_profit)
+    values (v_route, 0, 900, 'BUY', (select g.id from public.goods g order by g.code limit 1), 10, 999999, false);
+    v_lines := cmd.standing_route_lines(v_route, 0, v_fleet);
+    if exists (select 1 from unnest(v_lines) x where x like 'BUY % AT 999999') then
+      raise exception '0114 self-assert FAIL: a merchant BUY was written at its planted ceiling: %', v_lines;
+    end if;
+
     raise exception 'ROLLBACK_0114';
   exception when others then
     if sqlerrm <> 'ROLLBACK_0114' then raise; end if;
@@ -750,10 +937,12 @@ begin
     raise exception '0114 self-assert FAIL: the switch was not left as found';
   end if;
 
-  raise notice '0114 self-assert ok: THE MERCHANTS ARE TENDED INSIDE THE HOUR. ledger.ref_event_id '
-    'indexed; budget 60 s, buyer cap 3; tick_reconcile is the one setter of the deadline, set before '
-    'the upkeep and cleared after the compactor; spent, the pass deferred every route and planned '
-    'none, and the upkeep left a paused probe untouched; unset, the cap at 0 laid the probe up. '
+  raise notice '0114 self-assert ok: A MERCHANT ONLY TRADES AT A PROFIT. ledger.ref_event_id '
+    'indexed; costs x0.25 for merchants (1 for players) in settle, provision, repair and the planner; '
+    'min return 15 %%, sell floor = basis x (1 + margin), BUY capped by the next stop''s bid; the loss '
+    'guard is players-only and a merchant is re-planned as each lap starts; tick_reconcile re-plans '
+    'nothing and is the one setter of the 60 s budget; spent, the pass deferred every route and the '
+    'upkeep left a paused probe untouched; the cap at 0 laid the probe up; a planted BUY was capped. '
     'Rolled back. Switch as found (%); the switch''s pass: %; merchants now: %.',
     case when v_was_on then 'lit' else 'dark' end,
     jsonb_build_object('plan', (v_resume->'plan') - 'notes', 'tend', (v_resume->'tend') - 'notes'),
