@@ -363,7 +363,13 @@ export function nationNameOf(
 /** THE ROSTER'S CADENCE (0118). A delta asks from the last answer's instant LESS this overlap: a tick
  *  that started before that instant commits its rows dated earlier, after it (tick_arrivals runs for
  *  up to a minute), and a row served twice is folded in twice, harmlessly. */
-const ROSTER_OVERLAP_MS = 90_000
+const ROSTER_OVERLAP_MS = 45_000
+/** HOW OFTEN THE ROSTER IS ASKED (2026-10-14). Ships are placed in time between answers, so a beat in
+ *  between only re-places the kept roster; the wire carries a delta at most this often. */
+const ROSTER_ASK_EVERY_MS = 30_000
+/** THE LEDGER IS RE-READ when the purse or a fleet moved, and otherwise at most this often — so an
+ *  event that moves neither still lands, and an idle map does not re-read 19 KB every beat. */
+const LEDGER_CATCH_UP_MS = 60_000
 /** The whole roster again after this long, so a fact no delta carries (an eta a hazard moved
  *  mid-passage) is never older than this. */
 const ROSTER_FULL_EVERY_MS = 10 * 60_000
@@ -465,6 +471,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
   let rosterAt: string | null = null
   let rosterFullAtMs = 0
   let rosterLoadedFor: 'local' | 'cloud' | null = null
+  let rosterAskedAtMs = 0
   let rosterSavedAtMs = 0
   /** THE SAVED ROSTER, read once per backend before the first read or paint (see seaRoster.ts). */
   const loadSavedRoster = (): void => {
@@ -500,6 +507,9 @@ export const useWorld = create<LiveWorld>((set, get) => {
     const fleets = [...roster.values()].map((f) => trafficRowAt(f, now))
     set({ traffic: { enabled: true, at, fleets, total: fleets.length, omitted: 0 }, trafficReadAt: now })
   }
+  // THE LEDGER'S LAST READ: what moved the last time it was read, and when (see `refresh`).
+  let ledgerSig = ''
+  let ledgerReadAtMs = 0
   let trafficAsked = 0
   let trafficApplied = 0
   /** THE LAST WANTER ALSO CANCELS WHAT IS ALREADY ON THE WIRE. Clearing `traffic` on release is not
@@ -519,6 +529,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
   const readTraffic = async (): Promise<void> => {
     const seq = ++trafficAsked
     loadSavedRoster()
+    rosterAskedAtMs = Date.now()
     const full = rosterAt === null || Date.now() - rosterFullAtMs > ROSTER_FULL_EVERY_MS
     const since = full || rosterAt === null ? null : new Date(Date.parse(rosterAt) - ROSTER_OVERLAP_MS).toISOString()
     const r = await worldSeaRoster(since)
@@ -656,10 +667,21 @@ export const useWorld = create<LiveWorld>((set, get) => {
     set({ reading: true })
     // The house rides along with the fleets: it is the same read cadence (fame is derived from the
     // ledger, so it moves whenever the ledger does) and a separate poll would be a second clock.
-    const [fleets, ledger, player] = await Promise.all([worldFleets(), worldLedger(), worldPlayer()])
+    const [fleets, player] = await Promise.all([worldFleets(), worldPlayer()])
     if (!fleets.ok) {
       set({ reading: false, fatal: fleets.refusal, phase: 'failed' })
       return
+    }
+    // THE LEDGER ONLY WHEN SOMETHING MOVED (2026-10-14): the purse, or a fleet's version or state —
+    // every trade, arrival and order bumps one — else once a LEDGER_CATCH_UP_MS.
+    const sig =
+      `${player.ok ? (player.value.player?.ducats ?? '-') : 'x'}|` +
+      fleets.value.map((f) => `${f.id}:${f.version}:${f.status}`).join(',')
+    const ledger =
+      sig !== ledgerSig || Date.now() - ledgerReadAtMs > LEDGER_CATCH_UP_MS ? await worldLedger() : null
+    if (ledger?.ok) {
+      ledgerSig = sig
+      ledgerReadAtMs = Date.now()
     }
     // THE ROUTES RIDE THE SAME BEAT (2026-09-30), for the same reason: COMMAND's fold and FLEETS'
     // caption each re-read them on `readAt`, a second and third clock. AFTER the fleets, never
@@ -674,14 +696,18 @@ export const useWorld = create<LiveWorld>((set, get) => {
     // THE MERCHANTS RIDE THE SAME BEAT, after the routes and only while a screen wants them. This
     // read takes no lock, but it keeps the one order (fleets → routes → traffic) so the deadlock
     // rule above stays one rule.
-    if (get().trafficWanted > 0) await readTraffic()
+    if (get().trafficWanted > 0) {
+      if (rosterAt === null || Date.now() - rosterAskedAtMs >= ROSTER_ASK_EVERY_MS) await readTraffic()
+      else if (roster.size > 0) placeRoster(rosterAt)
+    }
     set({
       fleets: fleets.value,
       // A failed player read leaves the house NULL rather than fatal, for the same reason a failed
       // ledger read only nulls the purse: the world is still playable without it.
       player: player.ok ? player.value.player : null,
-      ducats: ledger.ok ? (ledger.value.ducats ?? null) : null,
-      events: ledger.ok ? ledger.value.events : [],
+      ...(ledger === null
+        ? {}
+        : { ducats: ledger.ok ? (ledger.value.ducats ?? null) : null, events: ledger.ok ? ledger.value.events : [] }),
       reading: false,
       readAt: Date.now(),
     })
