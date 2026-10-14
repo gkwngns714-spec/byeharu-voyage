@@ -62,8 +62,7 @@ import type {
   RouteBoard,
   StandingRouteAssigned,
   StandingRouteBook,
-  SeaTraffic,
-  SeaWindow,
+  SeaRoster,
   MerchantCard,
   PortMerchants,
   StandingRouteDeleted,
@@ -550,11 +549,11 @@ export function cmdStandingRoutePause(routeId: string, paused: boolean): Promise
 
 // ── MERCHANTS (0099) ───────────────────────────────────────────────────────────────────────────
 
-/** Where every merchant fleet IN A WINDOW is right now — the voyage shape the chart draws. Null is
- *  the whole world. Either way the server caps the answer and serves `total` and `omitted` (0102).
+/** THE MERCHANT ROSTER (0118): every merchant fleet when `since` is null, else only those whose state
+ *  moved at or after it — each voyage as its frozen facts, placed in time by src/live/seaRoster.ts.
  *  Dark: empty. */
-export function worldSeaTraffic(view: SeaWindow | null = null): Promise<RpcResult<SeaTraffic>> {
-  return call<SeaTraffic>('worldSeaTraffic', [view])
+export function worldSeaRoster(since: string | null): Promise<RpcResult<SeaRoster>> {
+  return call<SeaRoster>('worldSeaRoster', [since])
 }
 
 /** One merchant fleet's card. A player's fleet, a stranger uuid and a dark world all refuse
@@ -565,7 +564,7 @@ export function worldNpcFleetCard(fleetId: string): Promise<RpcResult<MerchantCa
 
 /** ONE HARBOUR'S MERCHANTS (0104, owner row 121) — every merchant fleet whose route calls there,
  *  with what she is DOING there and her loop. Asked when a city is opened, not on the beat: the
- *  beat's read is `worldSeaTraffic` and it must not grow. Dark: empty. */
+ *  beat's read is `worldSeaRoster` and it must not grow. Dark: empty. */
 export function worldPortMerchants(portId: string): Promise<RpcResult<PortMerchants>> {
   return call<PortMerchants>('worldPortMerchants', [portId])
 }

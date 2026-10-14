@@ -1453,7 +1453,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // fleet. Landed WITH the faces that read them (the chart's merchant hulls, the merchant sheet,
       // PORT's "Merchants in port"). The founding, planning and upkeep cores are server-only and
       // are not here.
-      'worldSeaTraffic', 'worldNpcFleetCard',
+      // Pin moved deliberately 2026-10-14 with migration 0118: `world.sea_roster(p_since)` replaces the
+      // window read — the whole roster once, then what moved. sea_traffic stays on the server for
+      // older builds and leaves this catalogue.
+      'worldSeaRoster', 'worldNpcFleetCard',
       // Pin moved deliberately 2026-10-11 with migration 0104 (owner row 121, docs/NPC_FLEET_SCALE.md
       // §1 slice E): ONE HARBOUR'S MERCHANTS — which merchant companies this quay concerns and what
       // each one is DOING there. A READ, no player id, dark until the owner's switch, and a player's

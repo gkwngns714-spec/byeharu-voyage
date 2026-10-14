@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { unproject, viewBoxToBounds, type Point, type ViewBox } from '../../lib/geo'
+import { unproject, type Point, type ViewBox } from '../../lib/geo'
 import type { FleetView, PortMerchant, SnapshotPort, TrafficFleet } from '../../lib/rpc'
 import type { SeaNav } from '../../lib/sea'
 import { pointToken, snapSeaPoint } from '../../domain/passage'
 import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
-import { seaWindowOf } from '../../live/seaWindow'
 // THE MERCHANTS (0099): their sheet and its card are live-data React shared with PORT.
 import { MerchantSheet } from '../../live/MerchantSheet'
 import { merchantLine } from '../../live/merchantLine'
@@ -120,37 +119,6 @@ const NO_MERCHANTS: readonly PortMerchant[] = []
 
 const NO_TRAFFIC: readonly TrafficFleet[] = []
 
-/** A thin bar across the top of the chart while the ships for a newly framed view are on their way
- *  (owner, 2026-10-13). Its own component, so the store flag re-renders the bar and not the chart. */
-/** MAP'S LOADING FIGURE (owner, 2026-10-13: *"only number shown at the bottom right corner, small"*).
- *  Elapsed ÷ the last wait, held under 99 % until the read for this view lands, so it never claims
- *  done early. */
-function MapLoadingFigure() {
-  const since = useWorld((s) => (s.trafficPending ? s.trafficPendingSince : null))
-  const expected = useWorld((s) => s.trafficLastWaitMs)
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    if (since === null) return
-    const id = window.setInterval(() => setNow(Date.now()), 100)
-    return () => window.clearInterval(id)
-  }, [since])
-  if (since === null) return null
-  const pct = Math.min(99, Math.max(1, Math.round(((now - since) / expected) * 100)))
-  return (
-    <div
-      className="pointer-events-none absolute right-2 bottom-1.5 z-20 text-t-caption leading-none tabular-nums text-ink-muted"
-      role="progressbar"
-      aria-label="Loading ships"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={pct}
-      data-testid="map-loading"
-    >
-      {pct}%
-    </div>
-  )
-}
-
 function Chart({
   ports: snapshotPorts,
   seaNav,
@@ -238,27 +206,6 @@ function Chart({
   const surface = useChartSurface(chartRef, frameBounds, onTap)
   const box = surface.viewBox
 
-  // WHERE THIS CHART IS LOOKING, TOLD TO THE MERCHANT READ (0102). `world.sea_traffic` served every
-  // merchant in the world on every beat until then, which the roster the owner asked for (row 118)
-  // will not survive. The store sends the union of the mounted screens' windows on the NEXT beat and
-  // never reads on a pan — a merchant reading outside the beat is drifted from an instant that did
-  // not produce it and every hull jumps (worldStore's first-want rule). `seaWindowOf` clamps the box
-  // into what the server accepts: a chart zoomed out past the globe has one that runs off ±180,
-  // which `clampView` makes normal rather than exceptional, and the whole world is sent as null.
-  const setTrafficWindow = useWorld((s) => s.setTrafficWindow)
-  const clearTrafficWindow = useWorld((s) => s.clearTrafficWindow)
-  const bx = box?.x ?? null
-  const by = box?.y ?? null
-  const bw = box?.width ?? null
-  const bh = box?.height ?? null
-  useEffect(() => {
-    if (bx === null || by === null || bw === null || bh === null) {
-      setTrafficWindow('map', null)
-      return
-    }
-    setTrafficWindow('map', seaWindowOf(viewBoxToBounds({ x: bx, y: by, width: bw, height: bh })))
-  }, [bx, by, bw, bh, setTrafficWindow])
-  useEffect(() => () => clearTrafficWindow('map'), [clearTrafficWindow])
   // THE REGIONS FILTER (row 93): off is the map as it was; on hands the tints to the picture.
   const regionsOn = useRegionsFilter()
 
@@ -310,7 +257,6 @@ function Chart({
       className={`bv-sea relative h-full w-full ${surface.touchClass} select-none overflow-hidden`}
       data-testid="map-chart"
     >
-      <MapLoadingFigure />
       {box && (
         <ChartCanvas
           model={model}
