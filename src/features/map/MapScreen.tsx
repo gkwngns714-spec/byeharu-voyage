@@ -28,6 +28,7 @@ import {
   Minimap,
   minTierForSpan,
   openingBounds,
+  shipMarks,
   toggleSelection,
   useBackdrop,
   useChartSurface,
@@ -190,7 +191,10 @@ function Chart({
       const minTier = minTierForSpan(view.width)
       const tappable = visiblePorts(ports, model.portRoles, view, minTier)
       const dots = dotPorts(ports, model.portRoles, view, minTier)
-      const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx)
+      // THE MERCHANTS THE SHEET DREW — the same thinning the picture applied (shipMarks), so a tap
+      // can only land on a hull that is actually on the paper.
+      const drawn = shipMarks(model.fleets, model.traffic, view, unitsPerPx)
+      const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx, drawn.traffic)
       // A MERCHANT IS READ, NEVER COMMANDED: her tap selects her and leaves the command draft alone.
       if (hit?.kind === 'fleet') selectFleet(hit.id)
       if (hit) {

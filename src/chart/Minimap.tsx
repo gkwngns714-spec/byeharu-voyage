@@ -1,8 +1,10 @@
 import { useMemo, useRef, type MouseEvent } from 'react'
 import {
   boundsOf,
+  CHART_WIDTH,
   fitToViewBox,
   project,
+  sheetCopies,
   unproject,
   WORLD_BOUNDS,
   type LatLon,
@@ -131,17 +133,17 @@ export function Minimap({
 
   // The window, floored to stay visible (see VIEWPORT_MIN_PX). Drawn from the surface's true
   // viewBox — the same box the main chart is rendering this frame, not a copy of its state.
-  const windowRect = useMemo(() => {
+  // ONCE PER COPY OF THE SHEET IT TOUCHES (2026-10-14, the continuous chart): a view panned past
+  // the antimeridian runs from, say, 170° to 200°, and on this one-copy inset that is a rectangle
+  // at the right edge AND the rest of it at the left — `sheetCopies` (src/lib/geo), composed.
+  const windowRects = useMemo(() => {
     if (!viewport || !box) return null
     const minUnits = VIEWPORT_MIN_PX * unitsPerPx
     const width = Math.max(viewport.width, minUnits)
     const height = Math.max(viewport.height, minUnits)
-    return {
-      x: viewport.x + viewport.width / 2 - width / 2,
-      y: viewport.y + viewport.height / 2 - height / 2,
-      width,
-      height,
-    }
+    const x = viewport.x + viewport.width / 2 - width / 2
+    const y = viewport.y + viewport.height / 2 - height / 2
+    return sheetCopies({ x, width }).map((k) => ({ k, x: x - k * CHART_WIDTH, y, width, height }))
   }, [viewport, box, unitsPerPx])
 
   const jump = (event: MouseEvent<HTMLDivElement>) => {
@@ -188,18 +190,20 @@ export function Minimap({
 
           {/* THE WINDOW — what turns a picture into an instrument. Parchment ink, because it is
               information about the VIEW, and brass on this sheet already means "yours". */}
-          {windowRect && (
+          {windowRects?.map((w) => (
             <rect
-              x={windowRect.x}
-              y={windowRect.y}
-              width={windowRect.width}
-              height={windowRect.height}
+              key={w.k}
+              x={w.x}
+              y={w.y}
+              width={w.width}
+              height={w.height}
               className="fill-ink/10 stroke-ink/80"
               strokeWidth={1}
               vectorEffect="non-scaling-stroke"
               data-testid="minimap-window"
+              data-sheet-copy={w.k}
             />
-          )}
+          ))}
 
           {/* THE FLEETS — §E.5's two symbols, in §E.5's one colour (see header). */}
           <g data-testid="minimap-fleets">

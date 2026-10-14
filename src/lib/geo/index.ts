@@ -16,6 +16,8 @@ export {
   shortLonDelta,
   wrapLon,
   lonLerp,
+  sheetCopies,
+  xOnSheet,
   WORLD_BOUNDS,
   CHART_WIDTH,
   CHART_HEIGHT,

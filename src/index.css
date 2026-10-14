@@ -171,6 +171,34 @@
   --color-chart-grid: color-mix(in srgb, var(--color-ink-faint) 16%, transparent);
   --color-chart-sea-name: color-mix(in srgb, var(--color-ink-faint) 62%, var(--color-chart-sea));
 
+  /* ── THE DAY SIDE OF THE TERMINATOR (2026-10-14, owner: "sunlight based on real science. The
+     sunlight touching the earth should have colors similar to daytime earth") ─────────────────
+     Where the Sun is up (src/chart/sun.ts) the chart is painted in THESE, through a mask whose
+     value is the daylight at each point, over the night picture the tokens above make. So the
+     night side is the chart as it was and the day side is the Earth from above: open ocean a
+     deep blue going deeper toward the frame's edge, shallows paler toward every shore, and the
+     land in the colours its latitude wears — ice at the poles, boreal and temperate green,
+     the arid belt tan at ±25°, the tropics green again — laid as one gradient down the sheet.
+     THE SAME IN BOTH SCHEMES, because daylight is not a colour scheme: the scheme is what the
+     night looks like. The day's marks and names are set in `chart-day-mark`, a near-black that
+     holds on green and on blue alike, and a merchant hull is `chart-day-hull`, the pale deck a
+     ship shows the sky, because the dark-blue merchant ink of the night sea vanishes on the
+     day's water. src/chart/CoastlineLayer.tsx and SeaLayer.tsx paint these; PortsLayer,
+     FleetsLayer, LabelsLayer and RoadsteadsLayer mix toward them by each point's daylight
+     (the `.bv-sun-*` rules at the end of this file). */
+  --color-chart-day-sea: #3d7ab8;
+  --color-chart-day-deep: #1d4f8c;
+  --color-chart-day-shallow: #8ec6e4;
+  --color-chart-day-coast: #2a4b6a;
+  --color-chart-day-relief: #8a7f52;
+  --color-chart-day-ice: #eef3f5;
+  --color-chart-day-boreal: #5f8a58;
+  --color-chart-day-temperate: #86a85f;
+  --color-chart-day-arid: #c9b77f;
+  --color-chart-day-tropic: #5e9650;
+  --color-chart-day-mark: #16212c;
+  --color-chart-day-hull: #eef2f4;
+
   /* ── THE NATION INKS (0099, docs/NPC_TRADERS.md §8.2) — the hull fill of a MERCHANT fleet, by
      the nation family its company sails for (npc_houses.ink, served; never chosen on the client).
      Eight families, hues spread round the wheel AWAY from the accent's gold (yours stay the only
@@ -439,6 +467,21 @@
     --color-chart-grid: color-mix(in srgb, var(--color-ink) 12%, transparent);
     --color-chart-sea-name: color-mix(in srgb, var(--color-ink) 52%, var(--color-chart-sea));
 
+    /* THE DAY SIDE is the Earth by day in this scheme too — the @theme block says why the twelve
+       are the same values: daylight is the Sun's, not the scheme's. */
+    --color-chart-day-sea: #3d7ab8;
+    --color-chart-day-deep: #1d4f8c;
+    --color-chart-day-shallow: #8ec6e4;
+    --color-chart-day-coast: #2a4b6a;
+    --color-chart-day-relief: #8a7f52;
+    --color-chart-day-ice: #eef3f5;
+    --color-chart-day-boreal: #5f8a58;
+    --color-chart-day-temperate: #86a85f;
+    --color-chart-day-arid: #c9b77f;
+    --color-chart-day-tropic: #5e9650;
+    --color-chart-day-mark: #16212c;
+    --color-chart-day-hull: #eef2f4;
+
     /* THE DAY NATION INKS — the same eight hues, dark enough to stand on the day's blue water. */
     --color-nation-prt: oklch(0.42 0.13 150);
     --color-nation-esp: oklch(0.42 0.15 25);
@@ -645,6 +688,72 @@ body {
 
 .bv-ship-blink {
   animation: bv-ship-blink 2.6s ease-in-out infinite;
+}
+
+/* ── THE SUN ON A MARK (2026-10-14, src/chart/sun.ts) ─────────────────────────────────────────
+   Every harbour, hull, road and name on the chart carries `--night` — 1 where the Sun is down,
+   0 where it is up, the twilights between (`daylightAt`, set per element by its layer) — and
+   these rules are the ONE place that says what each kind of ink becomes by day. The night value
+   is the token the dark or light scheme already defines; the day value is the day picture's
+   (`chart-day-mark`, `chart-day-hull`); the mix is CSS's, computed where the element stands, so
+   no layer holds a second palette and no colour literal leaves this file.
+   `--night` defaults to 1 so anything not yet told about the Sun draws its night ink. */
+.bv-sun-light {
+  opacity: var(--night, 1);
+}
+.bv-sun-core {
+  fill: color-mix(in srgb, var(--color-harbour-light) calc(var(--night, 1) * 100%), var(--color-chart-day-mark));
+}
+.bv-sun-quiet-mark {
+  stroke: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--color-ink-faint) 85%, transparent) calc(var(--night, 1) * 100%),
+    var(--color-chart-day-mark)
+  );
+}
+.bv-sun-ring {
+  stroke: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--color-ink-faint) 45%, transparent) calc(var(--night, 1) * 100%),
+    color-mix(in srgb, var(--color-chart-day-mark) 55%, transparent)
+  );
+}
+.bv-sun-road {
+  stroke: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--color-ink-faint) 70%, transparent) calc(var(--night, 1) * 100%),
+    color-mix(in srgb, var(--color-chart-day-mark) 70%, transparent)
+  );
+}
+.bv-sun-merchant {
+  fill: color-mix(in srgb, var(--color-merchant) calc(var(--night, 1) * 100%), var(--color-chart-day-hull));
+}
+.bv-sun-merchant-nation {
+  fill: color-mix(in srgb, var(--nation-ink) calc(var(--night, 1) * 100%), var(--color-chart-day-hull));
+}
+.bv-sun-name-quiet {
+  fill: color-mix(in srgb, var(--color-ink-faint) calc(var(--night, 1) * 100%), var(--color-chart-day-mark));
+}
+.bv-sun-name-active {
+  fill: color-mix(in srgb, var(--color-ink) calc(var(--night, 1) * 100%), var(--color-chart-day-mark));
+}
+.bv-sun-name-water {
+  fill: color-mix(in srgb, var(--color-chart-sea-name) calc(var(--night, 1) * 100%), var(--color-chart-day-shallow));
+}
+/* The halo behind a name, the keyline round a hull, and the disc under a fleet of yours are all
+   "the sea's own colour" — so by day they are the day sea's. */
+.bv-sun-name-halo {
+  stroke: color-mix(in srgb, var(--color-chart-sea) calc(var(--night, 1) * 100%), var(--color-chart-day-sea));
+}
+.bv-sun-keyline {
+  stroke: color-mix(in srgb, var(--color-chart-sea) calc(var(--night, 1) * 100%), var(--color-chart-day-sea));
+}
+.bv-sun-fleet-halo {
+  fill: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--color-chart-sea) 70%, transparent) calc(var(--night, 1) * 100%),
+    color-mix(in srgb, var(--color-chart-day-sea) 70%, transparent)
+  );
 }
 
 @keyframes bv-fade-in {

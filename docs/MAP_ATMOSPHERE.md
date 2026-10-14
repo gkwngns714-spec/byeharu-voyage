@@ -350,3 +350,142 @@ what the owner's 34 ms frames were made of.
   step; a zoom click draws over exactly the view, then settles wide. No wall-clock threshold.
 * `tests/map.sendfleet.spec.ts` — the labelled chart element is the three sheets' wrapper now; the
   view's viewBox is read off its first `<svg>`. Every other chart spec is unchanged.
+
+---
+
+## 11. Ships at every zoom, the continuous sheet, and the Sun (owner, 2026-10-14)
+
+**The owner:** *"show ships when zoomed out. right now the map is not continuous from left to
+right. i want it to be continuous. second, i want there to be sunlight based on real science. The
+sunlight touching the earth should have colors similar to daytime earth."* And, the same day:
+*"make the each ship size smaller by half."*
+
+Three concepts, three authorities, one composer. What this section replaces is said first, because
+two of the three retire things §9 and row 125 built.
+
+### 11.1 Ships at every zoom — and half the size
+
+**What went.** Row 125's night chart made night a ZOOM: past 3× the group density a fleet became an
+EMBER (a dot with a light, no hull), and at the globe only the 49 lane-served fleets were drawn at
+all. Both are deleted — `GLYPH.emberRadius`, `GLYPH.emberHaloScale`, `HULL_EMBER_MAX_UNITS_PER_PX`,
+`HARBOUR_LIGHT_MIN_UNITS_PER_PX`, `FleetsLayer`'s ember branch — not flagged off.
+
+**What decides now: `src/chart/shipMarks.ts`**, the fleets' `portMarks`. For one window of the
+sheet it returns (a) every fleet of yours at sea or at an open anchor on the glass, never thinned;
+(b) the merchants on the glass, thinned to one per `SHIP_CELL_PX` cell — the cell is the largest hull
+bow to stern (`2 × hullHalfLength.nau`), so two merchants that would be drawn on top of each other
+are drawn as one ship and two that would not are both drawn; within a cell the one with the most
+hulls wins, then the lower id (hers, stable — the `berthSlotOf` lesson). The cull alone is most of
+the work this layer used to do for nothing: at the opening frame 12° wide, 800 merchants were in the
+DOM and a dozen on the glass. `FleetsLayer` is handed the two lists and draws every one of them as a
+hull — the class silhouette, the group collapse at `HULL_GROUP_MAX_UNITS_PER_PX` (unchanged), the
+riding light. The Map tab's hit test takes the same thinned list (`hitTest(…, traffic)`), so a tap
+can only mean a hull that is on the paper, the same rule the harbours keep.
+
+**Half the size, from one knob.** `GLYPH.shipHalfLength` 6.5 → 3.25 px; the three class hulls are
+anchored on it (barca 2.85 · carlat 3.25 · nau 5.35 centre to bow, the cube-root ramp untouched) and
+`fleetHaloRadius` on its ratio (8 → 4), so the Map tab, SAIL's small chart and the minimap (at its
+own 0.8×) all halved from the one place. `hitRadius` is derived from the touch floor and the port
+mark, not from the hull, and did not move: a tap means her at the same 38 px.
+
+### 11.2 The continuous sheet
+
+**The one rule is the projection's.** `x = lon`, and a longitude is the same place at `lon + 360k`.
+`src/lib/geo/projection.ts` says so in two functions and nothing else restates a 360:
+
+| | |
+|---|---|
+| `sheetCopies(box)` | which copies `k` of the world a box touches — half-open, so a view that runs exactly −180 → 180 is ONE copy |
+| `xOnSheet(x, a, b)` | whether a point lands inside `[a, b]` on some copy |
+
+`clampView` no longer clamps the centre east–west; it wraps it into [−180, 180) (`wrapCentre`) and
+the latitude still clamps. A pan past 180° therefore simply continues.
+
+**How the picture composes it (`ChartCanvas`).** The marks — tracks, roads, pinpoint, ports, hulls —
+are drawn once per copy in a `<g transform="translate(360k 0)">`, each from the copy's own WINDOW
+(the box shifted back by 360k and clipped to one world), so a harbour is listed in exactly the copy
+it falls in. The coast is drawn once, in a group with an id at the first copy the paper touches, and
+`<use>`d for the rest: the browser clones the subtree, clipPath, mask and gradient included, in the
+clone's own user space — no second path string, no second React tree. The names are planned ONCE
+over the whole glass, every copy's requests shifted into place, so a name at 179°E and a mark at
+179°W cannot be set across the seam onto each other. `portMarks` tests its box through `xOnSheet`;
+`hitTest` measures east–west the short way round (`shortLonDelta`); the surface wraps a tap's x
+onto the globe before handing it on; the minimap draws its window once per copy. A Pacific course —
+`sheetPieces` already cut it at ±180 — meets itself where the two copies meet.
+
+**Rejected:** pre-wrapping the coast `d` with the world duplicated at ±360 (triples 78 KB of path
+for the same picture); threading a copy offset through every layer's props (every consumer projects
+a `MapPort`; the translated group leaves all of them untouched); an unbounded centre (every box
+would carry a growing number and the minimap's window would leave its frame).
+
+### 11.3 The Sun
+
+**The arithmetic is one pure module, `src/chart/sun.ts`**: the NOAA / Meeus low-precision solar
+position — mean longitude, mean anomaly, equation of centre, apparent longitude with the nutation
+term, obliquity, declination; the equation of time; the hour angle at Greenwich — giving the
+subsolar point for a UTC instant; the elevation at any point as the dot product on the sphere; and
+`daylightOf`, 1 above the refracted upper limb (−0.833°), falling through civil (−6°, 0.62),
+nautical (−12°, 0.24) and astronomical (−18°, 0) twilight. Held by `tests/map.sun.spec.ts` against
+the almanac: the 2026 equinoxes (declination 0.002° / 0.017°) and solstices (±23.438°), Greenwich
+noon on 3 November (equation of time +16.49 min → subsolar longitude 0.0° at 11:43:36 UTC, −4.12°
+at 12:00) and 11 February (−14.23 min → +3.56°), J2000.0 (−23.03°, −3.3 min), 15° an hour.
+
+**The clock is one hook, `useSunlight`**, read by `ChartCanvas` alone (both surfaces go through it):
+`Date.now()` once a minute (`SUN_REFRESH_MS` — the Sun moves a quarter-degree a minute, a pixel at
+the widest zoom), the subsolar point, and the daylight RASTER — 360 × 180, one cell per degree,
+painted into a PNG's alpha channel.
+
+**The picture.** `DaylightMask` is that PNG as an SVG `<mask>` with `mask-type: alpha` (a luminance
+mask is computed in linearRGB and would bend the twilight), stretched over each copy of the sheet,
+bilinearly filtered on the way up — a smooth terminator at every zoom for one textured quad per
+frame and 4 ms of sines a minute. `SeaLayer` paints a DAY SEA over the night ground through it (and
+the graticule after, so the grid is on both sides); `CoastlineLayer` paints, after the four night
+steps, the same four by day — shallows, body, relief, line — in the `--color-chart-day-*` tokens,
+inside one masked group. The day body is filled with a gradient down the sheet keyed on latitude
+(`DAY_LAND_BANDS`: ice at the poles, boreal and temperate green, the arid belt tan at ±25°, the
+tropics green), which is what the Earth looks like from above at this chart's resolution and
+promises no terrain the data does not hold. Twelve tokens, the SAME in both schemes, because
+daylight is not a colour scheme: the scheme is what the night looks like. The night tokens did not
+move and `tests/chart.ink.spec.ts` still measures them.
+
+**The marks.** Every harbour, hull, road and name carries `--night` = 1 − daylight at its own
+point (`nightStyle`, one spelling in `sun.ts`), and the `.bv-sun-*` rules in `src/index.css` are the
+one place that says what each ink becomes by day: the harbour light's two rings and the ship's
+riding light fade to nothing (`opacity: var(--night)`), the dot's core and the quiet triangle's
+stroke mix from the lamp and the faint ink toward `chart-day-mark`, a merchant hull from her night
+ink toward `chart-day-hull` (the pale deck a ship shows the sky — the night sea's dark blue vanishes
+on the day's water), a name's ink and halo likewise. So a city at the globe is a lamp on the night
+side and a dark point on the day side of the same sheet, and no layer holds a colour: each holds one
+number.
+
+**Rejected:** a terminator drawn as a polygon per twilight band (the cap of a near-90° small circle
+on an equirectangular sheet can contain both poles, one, or neither, and the boundary is two latitudes
+per meridian in the general case — a per-degree raster is forty lines and always right); an SVG blur
+for the twilight (a filter re-rasterises per frame; the mask's bilinear upscale is free); a second
+"is it night" rule anywhere (the zoom-gated one is gone; the light theme is a scheme, not a time).
+
+### 11.4 What did not change, and is still binding
+
+The three pinned night inks and their contrasts; the roadstead rule; the tracks' geometry; the
+label planner (one plan, now over every copy); `PORT_TIER_BANDS` and the dot past `DOT_SPAN_DEG`
+(`PURE_LIGHT_SPAN_DEG` until now — the same 135°, no longer claiming to be the night); the lanes
+past `LANE_SPAN_DEG` (`NIGHT_SPAN_DEG`, the same 45°); the group collapse; the minimap as a locator
+with no daylight (a decision: a 144 px inset has no room for a terminator); nothing in the centre
+of the glass; no new word of chrome.
+
+### 11.5 Proofs
+
+* `tests/map.sun.spec.ts` — the almanac, the shade, the raster, the lights' ramp, the two-rung
+  ladder with no ember; on the glass at the globe (390 and 1440): the Sun the chart used equals the
+  almanac's for the instant it says it read, every harbour is its dot with two rings whose opacity
+  equals 1 − daylight at the harbour, some lit and some dark on one sheet, every ship a hull with
+  zero embers, her light's opacity her own `--night`, the lanes on the wide sheet and gone close in.
+* `tests/map.wrap.spec.ts` — `sheetCopies` / `xOnSheet`; the centre wraps and the latitude clamps;
+  `portMarks` across the seam; the hit test the short way round; `shipMarks` culls, thins, never
+  thins yours; a Pacific course meets itself. On the glass at 1440: a real drag puts the
+  antimeridian in the middle, two copies drawn, one coast body and one `<use>`, harbours and ships
+  on BOTH sides, a tap on a harbour in the second copy selects it; then the phone.
+* `tests/map.perf.spec.ts` — the apparatus for §11.6, printed, no threshold.
+* `tests/map.hulls.spec.ts`, `map.marks.spec.ts`, `map.merchants.spec.ts` — pins moved deliberately:
+  the legibility floor measured on halved hulls; "past the dot rung a city is its dot"; the
+  merchants in the DOM are the ones on the glass.

@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
-import { project } from '../lib/geo'
-import type { ChartModel, FleetOnChart } from './chartModel'
+import type { CSSProperties, ReactNode } from 'react'
+import { project, type LatLon } from '../lib/geo'
+import type { ChartModel, FleetOnChart, TrafficOnChart } from './chartModel'
 import {
   arrowPath,
   GLYPH,
@@ -10,6 +10,7 @@ import {
 } from './glyphs'
 import type { MerchantInk } from './mapTypes'
 import { useRegionsFilter } from './regionsFilter'
+import { nightStyle } from './sun'
 
 // GLYPHS 2 AND 3 — THE FLEET AND ITS DESTINATION — plus the track between them.
 //
@@ -40,13 +41,22 @@ import { useRegionsFilter } from './regionsFilter'
 // ROW 120 (2026-10-11) — A FLEET IS DRAWN AS THE SHIPS SHE IS. One hull at one size became the hull
 // CLASS's own silhouette at the size her burthen earns, and a fleet of several is drawn as several:
 // the arithmetic is ./glyphs.ts's (`hullPath`, `hullGroup`, `hullGroupHalo`) and the ONE renderer is
-// `HullGroup` below, which both lists go through. The merchants have no class on the wire yet
-// (`world.sea_traffic` serves a count), so they draw the right NUMBER of class-less hulls and will
-// draw the right shapes the day that read serves `c.code` — with no change here.
+// `HullGroup` below, which both lists go through.
 //
-// Everything here is a pure function of `model`, and `model` is a pure function of the last read
-// (./chartModel.ts). There is no animation state and no clock on this layer, so there is nothing to
-// drift — and no handler either: taps are resolved once, on the surface, by ./hitTest.ts.
+// 2026-10-14 — A SHIP AT EVERY ZOOM, AND THE SUN ON HER (owner: *"show ships when zoomed out"*;
+// *"sunlight based on real science"*). Row 125's EMBER — past a density a fleet became a dot with a
+// light and no hull, and at the globe only the major fleets were drawn at all — is retired: this
+// layer draws a HULL for every ship it is handed, at every span. WHAT it is handed is
+// ./shipMarks.ts's decision (culled to the view, the merchants thinned to one per cell), made by
+// `ChartCanvas` once per copy of the sheet, so this file decides nothing about who is on the paper
+// and never did. Her riding light is lit by the Sun: the group carries `--night` (./PortsLayer.tsx
+// `nightStyle`, the one spelling), the two lamp circles fade by day (`.bv-sun-light`), and a
+// merchant's hull mixes from her night ink toward the pale deck a ship shows the sky
+// (`.bv-sun-merchant`, src/index.css).
+//
+// Everything here is a pure function of what it is handed, and that is a pure function of the last
+// read (./chartModel.ts). There is no animation state and no clock on this layer, so there is nothing
+// to drift — and no handler either: taps are resolved once, on the surface, by ./hitTest.ts.
 
 /** The same eight inks as a STROKE, for row 125's lanes. Whole class names for the same reason the
  *  fills below are: Tailwind scans source text, and an assembled string is a class it never sees. */
@@ -75,16 +85,17 @@ function blinkPhase(id: string): number {
   return h
 }
 
-/** The nation inks as WHOLE class names, so Tailwind sees every one (no assembled strings). */
-const NATION_FILL: Record<MerchantInk, string> = {
-  prt: 'fill-nation-prt',
-  esp: 'fill-nation-esp',
-  nld: 'fill-nation-nld',
-  eng: 'fill-nation-eng',
-  han: 'fill-nation-han',
-  ita: 'fill-nation-ita',
-  ott: 'fill-nation-ott',
-  east: 'fill-nation-east',
+/** The nation inks as WHOLE class names, so Tailwind sees every one (no assembled strings). The
+ *  matching custom property is what `.bv-sun-merchant-nation` mixes from by day. */
+const NATION_FILL: Record<MerchantInk, { readonly cls: string; readonly token: string }> = {
+  prt: { cls: 'fill-nation-prt', token: 'var(--color-nation-prt)' },
+  esp: { cls: 'fill-nation-esp', token: 'var(--color-nation-esp)' },
+  nld: { cls: 'fill-nation-nld', token: 'var(--color-nation-nld)' },
+  eng: { cls: 'fill-nation-eng', token: 'var(--color-nation-eng)' },
+  han: { cls: 'fill-nation-han', token: 'var(--color-nation-han)' },
+  ita: { cls: 'fill-nation-ita', token: 'var(--color-nation-ita)' },
+  ott: { cls: 'fill-nation-ott', token: 'var(--color-nation-ott)' },
+  east: { cls: 'fill-nation-east', token: 'var(--color-nation-east)' },
 }
 
 /** Tracks and destination rings — painted UNDER the port marks. */
@@ -95,7 +106,7 @@ export function TracksLayer({
 }: {
   model: ChartModel
   unitsPerPx: number
-  /** Past `NIGHT_SPAN_DEG` — the span at which a thinned loop is safe to draw. Handed down rather
+  /** Past `LANE_SPAN_DEG` — the span at which a thinned loop is safe to draw. Handed down rather
    *  than re-derived here, so there is one place that decides where the sheet changes. */
   lanes: boolean
 }) {
@@ -109,14 +120,13 @@ export function TracksLayer({
           mark and every hull: a lane is the faintest thing on the sheet, the grain of the world's
           trade rather than a line anybody is meant to follow.
 
-          IN HER NATION'S INK, at /25, hairline. The ink is the SAME channel the embers use, so a
+          IN HER NATION'S INK, at /25, hairline. The ink is the SAME channel the hulls use, so a
           lane and the fleet keeping it read as one thing without a legend — MAP_ATMOSPHERE §4's
           two-channel rule, which row 120 and row 125 both answer to.
 
-          ONLY IN THE NIGHT BAND. Zoomed in, the sheet is a working chart and 240 thinned loops
+          ONLY ON THE WIDE SHEET. Zoomed in, the sheet is a working chart and 240 thinned loops
           across it would be a thicket over the water somebody is reading; and a lane is thinned,
-          so close in it would also be visibly WRONG — straight where the course bends. The gate is
-          the harbour light's own, so the sheet becomes a night chart all at once.
+          so close in it would also be visibly WRONG — straight where the course bends.
 
           WHO GETS ONE IS THE SERVER'S ANSWER (`fleet_lane_min_ships`, 0111). Nothing here counts
           hulls: a client that decided what "major" means would be a second authority on it, and
@@ -277,91 +287,47 @@ function HullGroup({
   fleet,
   unitsPerPx,
   className,
+  style,
   strokeWidth,
   hooks,
   children,
-  ember = false,
+  sun,
 }: {
   fleet: FleetOnChart
   unitsPerPx: number
   className: string
+  /** Inline style for the hulls — the nation ink token, when the Regions filter is on. */
+  style?: CSSProperties
   strokeWidth: number
   /** The `data-*` hooks this list wants — on the GROUP, so there is one of them per fleet. */
   hooks: Readonly<Record<string, string>>
   children?: ReactNode
-  /** Draw her as an ember rather than a hull. Decided by SPAN upstream, not by density here —
-   *  ./chartView.ts `PURE_LIGHT_SPAN_DEG` carries why. */
-  ember?: boolean
+  /** Where the Sun is overhead, for her `--night`. */
+  sun: LatLon
 }) {
   const { x, y } = project(fleet.at)
   const marks = hullGroup(fleet.fleet.hulls ?? [], unitsPerPx)
-
-  // ── THE EMBER (owner row 125, 2026-10-12) ────────────────────────────────────────────────────
-  // *"so are ships but in tiny dots… i want the color to be in darker tone, size smaller, but like
-  // cities, there should be light"*.
-  //
-  // Past HULL_EMBER_MAX_UNITS_PER_PX the hull SHAPE goes — row 120's silhouettes say what a fleet
-  // IS, and at a span where the world is 360° across they say it to nobody — and what is left is a
-  // dot with its own faint light, in her nation's ink. DIMMER AND SMALLER THAN A HARBOUR by the
-  // numbers and not by eye: emberRadius 1.15 against portDotRadius 1.6, and the ink at /70 against
-  // a city's full value, so a ship can never out-shout a city on the same sheet. That ordering is
-  // the owner's: the cities are the beautiful thing and the ships are tiny dots upon them.
-  //
-  // NOT ROTATED. A heading on a 1 px dot is a lie about precision, and the drift still moves her,
-  // so she is a light that travels rather than a hull that points.
-  if (ember) {
-    return (
-      <g
-        transform={`translate(${x} ${y})`}
-        data-fleet-mark="ember"
-        data-hulls={marks.length}
-        className="bv-ship-blink"
-        style={{ animationDelay: `${blinkPhase(fleet.fleet.id)}ms` }}
-        {...hooks}
-      >
-        {/* THE INK IS HELD BELOW A HARBOUR'S, AND THE NUMBERS ARE THE OWNER'S RULE, not taste.
-            Row 125 asks for the ships in "a darker tone" with the CITIES as the bright thing. The
-            first cut had the ember's halo at /25 against a harbour light's /20 — the ship's glow
-            literally more opaque than the city's — and the arithmetic in glyphs.ts could not see
-            it, because it compares ONE ember to ONE harbour and the sheet holds 240 of the first
-            against 252 of the second. The screenshot could: at the globe the European coast read as
-            saturated confetti over the lights it was meant to sit under. Both values now sit
-            strictly below the harbour's, and tests/map.night.spec.ts reads them off the rendered
-            class and asserts that ordering rather than trusting this comment. */}
-        <circle
-          r={GLYPH.emberRadius * GLYPH.emberHaloScale * unitsPerPx}
-          className="fill-ship-light/30"
-          pointerEvents="none"
-        />
-        <circle
-          r={GLYPH.emberRadius * unitsPerPx}
-          className="fill-ship-light/95"
-          pointerEvents="none"
-        />
-      </g>
-    )
-  }
 
   return (
     <g
       transform={`translate(${x} ${y}) rotate(${fleet.heading ?? 0}) scale(${unitsPerPx})`}
       data-fleet-heading={fleet.heading ?? 0}
       data-hulls={marks.length}
+      style={nightStyle(fleet.at, sun)}
       {...hooks}
     >
       {children}
-      {/* HER RIDING LIGHT AT EVERY ZOOM (owner, 2026-10-13: *"i see no blue markers for ship"*).
-          The same blue lamp and blink the ember wears, drawn UNDER the hull so the shape stays on
-          top. Sized to HER (the group's halo), so the glow reaches past the hull and reads as a
-          light round her rather than a dot hidden beneath her. */}
+      {/* HER RIDING LIGHT AT EVERY ZOOM (owner, 2026-10-13: *"i see no blue markers for ship"*),
+          LIT BY THE SUN (2026-10-14): the same blue lamp and blink at every span, drawn UNDER the
+          hull so the shape stays on top, sized to HER (the group's halo) so the glow reaches past
+          the hull and reads as a light round her rather than a dot hidden beneath her — and out by
+          day, through the group's `--night`. */}
       {marks.length > 0 && (() => {
         const lit = hullGroupHalo(marks)
         return (
-          <g className="bv-ship-blink" style={{ animationDelay: `${blinkPhase(fleet.fleet.id)}ms` }} pointerEvents="none" data-ship-light="">
-            {/* 1.25 x, not 1.6 x (2026-10-13): at a close phone zoom the wider glow made a mark 110 px
-                across, over a quarter of a 390 px glass (tests/map.hulls.spec.ts:449). */}
-            <circle cx={lit.cx} cy={lit.cy} r={lit.r * 1.25} className="fill-ship-light/20" />
-            <circle cx={lit.cx} cy={lit.cy} r={lit.r * 0.9} className="fill-ship-light/45" />
+          <g className="bv-ship-blink bv-sun-light" style={{ animationDelay: `${blinkPhase(fleet.fleet.id)}ms` }} pointerEvents="none" data-ship-light="">
+            <circle cx={lit.cx} cy={lit.cy} r={lit.r * GLYPH.shipLightBloomScale} className="fill-ship-light/20" />
+            <circle cx={lit.cx} cy={lit.cy} r={lit.r * GLYPH.shipLightGlowScale} className="fill-ship-light/45" />
           </g>
         )
       })()}
@@ -371,6 +337,7 @@ function HullGroup({
           d={hullPath(m.cls, m.halfLength)}
           transform={`translate(${m.dx} ${m.dy})`}
           className={className}
+          style={style}
           strokeWidth={strokeWidth}
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
@@ -387,59 +354,52 @@ function HullGroup({
  * formation onto her course heading (`FleetOnChart.heading`, the served segment's) inside the
  * sea-coloured halo the dot wore. A fleet at an open anchor is the same group pointing north. A
  * fleet in port draws nothing here; it IS its port's loud mark.
+ *
+ * HANDED ITS LISTS, NOT THE MODEL (2026-10-14): `fleets` and `traffic` are ./shipMarks.ts's
+ * decision for one copy of the sheet — your fleets on the view, the merchants on the view thinned
+ * to one per cell. Every one of them is drawn, as a ship.
  */
 export function FleetsLayer({
-  model,
+  fleets,
+  traffic,
   selectedId,
   selectedMerchantId = null,
   unitsPerPx,
-  lightsOnly = false,
+  sun,
 }: {
-  model: ChartModel
+  /** Your fleets at sea on this view (`shipMarks`). */
+  fleets: readonly FleetOnChart[]
+  /** The merchants on this view, thinned (`shipMarks`). */
+  traffic: readonly TrafficOnChart[]
   selectedId: string | null
   /** 0099 — the merchant whose card is open, outlined in ink. */
   selectedMerchantId?: string | null
   unitsPerPx: number
-  /** Pulled back past `PURE_LIGHT_SPAN_DEG`: only the MAJOR fleets are drawn, and as embers. */
-  lightsOnly?: boolean
+  /** Where the Sun is overhead (./sun.ts). */
+  sun: LatLon
 }) {
   // Regions on: each merchant in her nation's ink. Off: every merchant in the one dark blue.
   const regions = useRegionsFilter()
   return (
     <g pointerEvents="none" data-testid="map-fleets">
       {/* 0099 — THE MERCHANTS, UNDER yours: the same `HullGroup` at the same sizes, nation ink, no
-          halo. A docked merchant lies at the roadstead, bow north. Row 120: she draws AS MANY HULLS
-          AS SHE HAS, because `world.sea_traffic` serves her count — all of them the class-less hull,
-          because that read serves no class (./mapTypes.ts `FleetHulls` carries the whole note).
+          halo. Row 120: she draws AS MANY HULLS AS SHE HAS, because `world.sea_traffic` serves her
+          count and 0102 her classes.
 
           THE TEST HOOKS SIT ON THE GROUP AND NOT ON A HULL, deliberately: there is exactly one
           `map-merchant` per merchant whatever she sails, so a spec that asks for her box gets her
           whole mark and a spec that counts hulls on the sea counts fleets. */}
-      {/* AT THE GLOBE, ONLY THE MAJOR FLEETS ARE DRAWN AT ALL (owner, 2026-10-12: *"when i zoom out
-          ships doesn't have to show, only major ships with dots - light"*).
-
-          This is the owner's call about what the sheet is FOR at that span, and it is also the
-          whole of why the chart stuttered. Pulled back, 240 merchants were 240 marks re-placed on
-          every drift frame — and 191 of them were one-hull traders whose dots said nothing a
-          reader could use, over a sheet where the cities are supposed to be the subject. Drawing
-          the 49 that keep a lane is a fifth of the work and a clearer picture, which is the rare
-          change that is both.
-
-          WHO IS MAJOR IS THE SERVER'S ANSWER, not a count taken here: `lane` is served exactly to
-          the fleets 0111 calls major (`fleet_lane_min_ships`), so the mark and the lane can never
-          disagree about who deserves one, and the threshold stays a knob in the world config
-          rather than a number hidden in a layer. A merchant the server gave no lane is simply not
-          on the sheet at this span — she returns, with her hull, the moment you zoom in. */}
-      {model.traffic.map((t) => {
-        if (lightsOnly && !t.laneD) return null
+      {traffic.map((t) => {
         const selected = selectedMerchantId === t.fleet.id
+        const nation = NATION_FILL[t.merchant.ink]
         return (
           <HullGroup
             key={`merchant-${t.fleet.id}`}
             fleet={t}
             unitsPerPx={unitsPerPx}
-            ember={lightsOnly}
-            className={`${regions ? NATION_FILL[t.merchant.ink] : 'fill-merchant'} ${selected ? 'stroke-ink' : 'stroke-chart-sea'}`}
+            sun={sun}
+            className={`${regions ? `bv-sun-merchant-nation ${nation.cls}` : 'bv-sun-merchant fill-merchant'} ${selected ? 'stroke-ink' : 'bv-sun-keyline stroke-chart-sea'}`}
+            style={regions ? ({ '--nation-ink': nation.token } as CSSProperties) : undefined}
             strokeWidth={GLYPH.glyphStroke * (selected ? 1.2 : 0.6)}
             hooks={{
               'data-testid': 'map-merchant',
@@ -449,8 +409,7 @@ export function FleetsLayer({
           />
         )
       })}
-      {model.fleets.map((f) => {
-        if (f.dockedAtCode !== null) return null
+      {fleets.map((f) => {
         const selected = selectedId === f.fleet.id
         // ONE HALO FOR THE WHOLE GROUP, sized to the hulls actually drawn and inside the group's own
         // frame — so it follows the formation astern as she turns. For a single hull it is the
@@ -461,7 +420,8 @@ export function FleetsLayer({
             key={f.fleet.id}
             fleet={f}
             unitsPerPx={unitsPerPx}
-            className="fill-accent stroke-chart-sea"
+            sun={sun}
+            className="fill-accent bv-sun-keyline stroke-chart-sea"
             strokeWidth={GLYPH.glyphStroke * 0.6}
             hooks={{ 'data-testid': 'map-ship' }}
           >
@@ -469,7 +429,7 @@ export function FleetsLayer({
               cx={halo.cx}
               cy={halo.cy}
               r={halo.r}
-              className={`fill-chart-sea/70 ${selected ? 'stroke-ink/70' : 'stroke-accent/40'}`}
+              className={`bv-sun-fleet-halo fill-chart-sea/70 ${selected ? 'stroke-ink/70' : 'stroke-accent/40'}`}
               strokeWidth={GLYPH.glyphStroke}
               vectorEffect="non-scaling-stroke"
             />
