@@ -86,7 +86,7 @@ import {
   worldSeaRoster,
 } from '../lib/rpc'
 import { navFromServed, type SeaNav } from '../lib/sea'
-import { mergeRoster, trafficRowAt } from './seaRoster'
+import { mergeRoster, readSavedRoster, rosterKey, savedRosterText, trafficRowAt } from './seaRoster'
 import type {
   FleetView,
   HaggleAttempt,
@@ -367,6 +367,8 @@ const ROSTER_OVERLAP_MS = 90_000
 /** The whole roster again after this long, so a fact no delta carries (an eta a hazard moved
  *  mid-passage) is never older than this. */
 const ROSTER_FULL_EVERY_MS = 10 * 60_000
+/** A kept roster is written to storage at most this often — it is half a megabyte of text. */
+const ROSTER_SAVE_EVERY_MS = 60_000
 
 export const useWorld = create<LiveWorld>((set, get) => {
   /**
@@ -462,6 +464,42 @@ export const useWorld = create<LiveWorld>((set, get) => {
   let roster = new Map<string, RosterFleet>()
   let rosterAt: string | null = null
   let rosterFullAtMs = 0
+  let rosterLoadedFor: 'local' | 'cloud' | null = null
+  let rosterSavedAtMs = 0
+  /** THE SAVED ROSTER, read once per backend before the first read or paint (see seaRoster.ts). */
+  const loadSavedRoster = (): void => {
+    const mode = get().mode
+    if (mode === null || rosterLoadedFor === mode) return
+    rosterLoadedFor = mode
+    let raw: string | null
+    try {
+      raw = localStorage.getItem(rosterKey(mode))
+    } catch {
+      raw = null
+    }
+    const saved = readSavedRoster(raw, Date.now(), ROSTER_FULL_EVERY_MS)
+    if (saved && rosterAt === null) {
+      roster = mergeRoster(new Map(), saved.fleets, true)
+      rosterAt = saved.at
+      rosterFullAtMs = saved.fullAtMs
+    }
+  }
+  const saveRoster = (force: boolean): void => {
+    const mode = get().mode
+    if (mode === null || rosterAt === null || (!force && Date.now() - rosterSavedAtMs < ROSTER_SAVE_EVERY_MS)) return
+    rosterSavedAtMs = Date.now()
+    try {
+      localStorage.setItem(rosterKey(mode), savedRosterText(rosterAt, rosterFullAtMs, roster))
+    } catch {
+      // A full or blocked storage is not an error: the next visit reads the whole roster once.
+    }
+  }
+  /** The kept roster placed at this instant — the chart's `traffic`. */
+  const placeRoster = (at: string): void => {
+    const now = Date.now()
+    const fleets = [...roster.values()].map((f) => trafficRowAt(f, now))
+    set({ traffic: { enabled: true, at, fleets, total: fleets.length, omitted: 0 }, trafficReadAt: now })
+  }
   let trafficAsked = 0
   let trafficApplied = 0
   /** THE LAST WANTER ALSO CANCELS WHAT IS ALREADY ON THE WIRE. Clearing `traffic` on release is not
@@ -472,13 +510,15 @@ export const useWorld = create<LiveWorld>((set, get) => {
    *  mechanism the reader already uses. */
   const dropTrafficInFlight = (): void => {
     trafficApplied = ++trafficAsked
-    roster = new Map()
-    rosterAt = null
+    // THE ROSTER IS KEPT (2026-10-14). Its rows are placed in time from frozen facts, so a kept copy
+    // painted later is placed at that later instant — no teleport — and a return to MAP shows every
+    // ship at once and catches up with one delta.
   }
   // THE ROSTER (0118): every merchant once, then only the fleets whose state moved. Kept here, and
   // placed in time on every beat, so the chart draws every ship at any zoom and a pan reads nothing.
   const readTraffic = async (): Promise<void> => {
     const seq = ++trafficAsked
+    loadSavedRoster()
     const full = rosterAt === null || Date.now() - rosterFullAtMs > ROSTER_FULL_EVERY_MS
     const since = full || rosterAt === null ? null : new Date(Date.parse(rosterAt) - ROSTER_OVERLAP_MS).toISOString()
     const r = await worldSeaRoster(since)
@@ -487,15 +527,20 @@ export const useWorld = create<LiveWorld>((set, get) => {
     if (!r.value.enabled) {
       roster = new Map()
       rosterAt = null
+      try {
+        const mode = get().mode
+        if (mode) localStorage.removeItem(rosterKey(mode))
+      } catch {
+        // nothing kept, nothing to forget
+      }
       set({ traffic: { enabled: false, at: r.value.at, fleets: [], total: 0, omitted: 0 }, trafficReadAt: Date.now() })
       return
     }
     roster = mergeRoster(roster, r.value.fleets, r.value.full)
     rosterAt = r.value.at
     if (r.value.full) rosterFullAtMs = Date.now()
-    const now = Date.now()
-    const fleets = [...roster.values()].map((f) => trafficRowAt(f, now))
-    set({ traffic: { enabled: true, at: r.value.at, fleets, total: fleets.length, omitted: 0 }, trafficReadAt: now })
+    placeRoster(r.value.at)
+    saveRoster(r.value.full)
   }
 
   return {
@@ -774,6 +819,11 @@ export const useWorld = create<LiveWorld>((set, get) => {
 
   wantTraffic: () => {
     set((s) => ({ trafficWanted: s.trafficWanted + 1 }))
+    // A KEPT OR SAVED ROSTER PAINTS AT ONCE, placed at this instant; the beat below catches it up.
+    if (get().trafficWanted === 1 && get().traffic === null) {
+      loadSavedRoster()
+      if (rosterAt !== null && roster.size > 0) placeRoster(rosterAt)
+    }
     // THE FIRST WANT RIDES A BEAT; IT NEVER READS ALONE (2026-10-10). A lone read lands AFTER the
     // beat's `readAt`, so 0075's drift then extrapolates the merchants from an instant EARLIER than
     // the positions it was given and overshoots until the next beat pulls them back: measured on
