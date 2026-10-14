@@ -5,6 +5,74 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-14 — the city tray lists every merchant the harbour concerns, never blank — `osn-city-tray-merchants`
+
+Owner, on the live game: *"i press a city and i see no ship info. Why did this revert back?"*
+
+- **What was wrong.** Nothing reverted; two things crossed. The city tray (row 128, 2026-10-13)
+  filtered the harbour's read to the merchants LYING in the city (`MapScreen.tsx`
+  `m.port === harbourCode`) and `RestingHere` returned null on an empty list. Then 0116 (the same
+  day) cut a merchant's rest to 120 real seconds. Read on prod for the eight busiest harbours:
+  `world.port_merchants` serves 25–32 merchants each, 2–9 of them starting / ending / passing, and
+  0–2 lying there. So the tray was blank on almost every city while the server was answering with
+  dozens of rows. Row 121's sentence was the whole list — *"started, resting, ending etc."* — and
+  the 10-13 build kept one word of it.
+- **The fix, client only, no migration.** `src/live/merchantGroups.ts` is the ONE grouping of a
+  harbour's merchants by `doing`: In port (laid_up, resting; soonest rest-end first, with the time it
+  ends, as row 128 asked) → Leaving (starting) → Arriving (ending) → Passing → Away — the groups
+  stand in the server's rank (0104: "the ones who are here first, then the ones coming, then the
+  rest"), rows keep the server's order inside a group, an empty group is not printed, and a city
+  with merchants is never blank. `merchantsSummary` is the peek line: `27 merchants · 2 in port`.
+  PORT's section still prints the same list flat; the day it groups, it composes this table.
+- **`RestingHere.tsx` → `src/features/map/CityMerchants.tsx`**: one `SheetSection` per group with
+  the heading and a count, rows through the shared `src/live/MerchantRow` (so PORT and MAP cannot
+  drift), `here` by the same rule PORT uses (`m.port === portCode`), a row opening the same
+  read-only sheet. `MapScreen.tsx` hands the harbour's whole read down (the filter and
+  `lyingHere` are gone); `SendFleet.tsx` passes the city's code. `restingSummary` is deleted.
+- **Specs.** `tests/map.merchants.spec.ts`: a unit test of the grouping (rank, soonest first,
+  nothing dropped, empty groups omitted, a list of merchants all at sea is still a list, the
+  summary); the city test re-read as the grouped contract (every printed group's rows carry its
+  words, counts match, in port soonest first, the head counts every row, your fleets still under
+  it, a row opens the sheet); a sweep that opens every named harbour on the frame and requires each
+  one with merchants to list them all, never blank (**fails on main**, where `map-resting` rendered
+  nothing for a city with nobody in port); and a 1440 × 900 shot. `tests/port.merchants.spec.ts`
+  is untouched: PORT never filtered.
+- **The first cut of the city spec was RED on CI, and rightly** (run 38573178980, shard 1/4: *"none
+  of port:LIS, port:SVQ, port:BIL, port:OPO fits"*). It HUNTED the opening frame for a harbour that
+  happened to have a merchant in port — the rare case under a two-minute rest, i.e. the very
+  condition this slice exists for — and passed locally by the clock. A test that asserts an ambient
+  state asserts a world, not a property. **The precondition is the fixture's now:**
+  `tests/npcOn.fixture.ts` holds one merchant homed at Porto (`RESTING_AT_PORTO`, on the opening
+  frame at 390 and 1440, not under your own fleet's mark as Lisbon is) through the switch and the
+  warp, then puts her to REST with `hold_until` six hours out — written directly, since
+  `cmd.standing_route_pause_for(false)` would sail her — and reads her back through
+  `world.port_merchants` as `resting` before the image is dumped. The city test opens Porto by
+  name and fails loudly if Porto is not on the frame; nothing in the file asks the clock for a
+  harbour any more. The "all at sea" browser test went the same way: it needed a harbour with
+  nobody in port, which is the clock's to give; it is the sweep above now, plus the unit case.
+- **Gates.** `npx tsc -b` clean · `npx eslint .` clean · pure guards `words` / `sections` /
+  `duplication` 19 passed · `npm run build` green (the world image for chain 110 was built here, no
+  cache for it existed on this machine). Browser, against `vite preview --port 4193`
+  (`localhost`, one worker): first cut, `map.merchants` + `port.merchants` — 17 passed, 0 failed,
+  0 skipped (18.6 min, the fixture built cold inside it). After the merge of main (PR #100,
+  `isDockedAt`) and the fixture's precondition: `map.merchants` **14 passed, 1 failed** — the
+  sweep, because `Flotte de Nantes` was drifting over Cadiz's name and won the tap by the chart's
+  own tie rule; the helper now re-aims three times and treats a taken tap as "not this city, this
+  second" — then the three city tests **3 passed, 0 failed, 0 skipped** (3.6 min). A run before
+  that lost its preview server mid-way (`ERR_CONNECTION_REFUSED`, 7 skipped) and counts for
+  nothing; it is why `tests/` treats a skip as a failure on CI. After the merge of PR #108 (ships
+  at every zoom, the continuous sheet, the Sun, ships halved — a new hit test near the names):
+  `map.merchants` + `port.merchants` + `map.wrap` on the merged build — **24 passed, 0 failed,
+  0 skipped** (41.6 min; the merchants-on fixture rebuilt inside it, its kept copy having aged
+  past 90 minutes).
+- Shots, looked at, on the PR #108 chart (daylight, halved ships): `docs/npc-traders/
+  city-tray-half-390.png` (Porto · `15 merchants · 1 in port`, `5 h 54 min` Resting, Leaving 3),
+  `city-tray-at-sea-390.png`, `city-tray-half-1440.png` (Porto's side tray: In port 1, Leaving 3,
+  Away 11), `city-tray-merchant-from-list-390.png`. One true thing the shots show that this slice
+  did not touch: a merchant AWAY from the tapped city whose served `next_lap_at` is her rest at her
+  OWN home prints that countdown over `Away` (`Bristol Traders · 1.5 min · Away`) — `MerchantRow`
+  prints a served instant wherever it has one, on PORT as on the map; the figure is the server's.
+
 ## 2026-10-14 — ships at every zoom, the continuous sheet, the Sun; ships halved — `osn-map-wrap-sun` (client only)
 
 Owner rows 130 and 131. No migration. `docs/MAP_ATMOSPHERE.md` §11 is the design and the measurements;

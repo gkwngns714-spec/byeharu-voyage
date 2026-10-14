@@ -52,6 +52,23 @@ function cachePathFor(imageName: string): string {
 /** The merchant fleet laid up at Lisbon, so PORT has one in port. */
 export const LAID_UP_AT_LISBON = 'Carreira da Guiné'
 
+// ── A MERCHANT AT REST IN PORTO, WITH A KNOWN REST END (2026-10-14) ────────────────────────────
+// The map's city tray lists a resting merchant with the time her rest ends (owner row 128), and
+// the spec that proves it used to HUNT the opening frame for a harbour that happened to have one —
+// which, with 0116's two-minute rest, is the rare case: CI run 38573178980 found none of eight and
+// went red on a correct build. A test that asserts an ambient state asserts a world, not a property
+// (docs/NO_SPAGHETTI.md, the proofs rule). So this fixture SETS the precondition: one merchant
+// homed at Porto — on the opening frame at 390 and at 1440, and not under your own fleet's mark as
+// Lisbon is — is held in port through the switch and the warp (the 'player' pause, as the Lisbon
+// one), and then put to REST: pause lifted, `hold_until` six hours out, written directly rather
+// than through `cmd.standing_route_pause_for(false)`, which would sail her at once. The harbour
+// reads her `resting` with `next_lap_at` (public.merchant_doing_at, 0104), and the tick leaves a
+// future hold alone (0092). Six hours against the 90-minute cache age below, so a kept world still
+// has her resting with hours to go. The name is unique in the roster, as `LAID_UP_AT_LISBON` is.
+export const RESTING_AT_PORTO = 'Carreira Port Royal'
+export const RESTING_PORT_CODE = 'OPO'
+export const RESTING_HOLD_MS = 6 * 3_600_000
+
 /** How old a kept merchants-on world may be before it is rebuilt — see the check in `npcOn`. */
 const NPC_ON_MAX_AGE_MS = 90 * 60_000
 
@@ -86,6 +103,15 @@ export async function npcOn(): Promise<Buffer> {
       [LAID_UP_AT_LISBON],
     )
     if (laid.rows.length !== 1 || !laid.rows[0].r.ok) throw new Error(`could not lay up ${LAID_UP_AT_LISBON}`)
+    // AND THE PORTO ONE, held the same way until the warp is over (see RESTING_AT_PORTO above).
+    const held = await pg.query<{ r: { ok: boolean }; at: string | null }>(
+      `select cmd.standing_route_pause_for(nf.player_id, nf.route_id, true, 'player', 'Held in port for the browser spec.') as r,
+              (select code from public.ports where id = f.port_id) as at
+         from public.npc_fleets nf join public.fleets f on f.id = nf.fleet_id where f.name = $1`,
+      [RESTING_AT_PORTO],
+    )
+    if (held.rows.length !== 1 || !held.rows[0].r.ok) throw new Error(`could not hold ${RESTING_AT_PORTO}`)
+    if (held.rows[0].at !== RESTING_PORT_CODE) throw new Error(`${RESTING_AT_PORTO} lies at ${held.rows[0].at}, not ${RESTING_PORT_CODE}`)
     // THE ROSTER THIS FIXTURE SAILS IS CAPPED AT THE SCALE IT WAS MEASURED AT (2026-10-14, 0114).
     // Under 0097's one-buyer rule the switch started ~316 of the 837 merchants and the rest were
     // laid up for want of cargo; 0114 lets three merchants buy one good at one harbour, so nearly
@@ -156,6 +182,30 @@ export async function npcOn(): Promise<Buffer> {
         where x.closed_at is not null group by x.route_id having count(*) >= 2) y`,
     )
     if (twice.rows[0].n < 1) throw new Error('the warp left no merchant route with two closed laps')
+    // THE PORTO MERCHANT GOES FROM HELD TO RESTING, with her rest end a known six hours out — after
+    // the knob is back and after the warp's own hold sweep above, so nothing here clears it. Read
+    // back through the harbour's own read, the one the tray prints, so the precondition is the
+    // served fact and not this file's belief about it.
+    const toRest = await pg.query(
+      `update public.standing_routes sr set paused_reason = null, hold_until = now() + ($2::int * interval '1 millisecond'), updated_at = now()
+         from public.npc_fleets nf join public.fleets f on f.id = nf.fleet_id
+        where sr.id = nf.route_id and f.name = $1
+        returning sr.id`,
+      [RESTING_AT_PORTO, RESTING_HOLD_MS],
+    )
+    if (toRest.rows.length !== 1) throw new Error(`${RESTING_AT_PORTO} has ${toRest.rows.length} routes to put to rest`)
+    // A second statement on purpose: a data-modifying CTE's writes are not visible to the same
+    // statement's reads, so the harbour would have answered with the hold it had before.
+    const rested = await pg.query<{ doing: string | null; next: string | null }>(
+      `select x->>'doing' as doing, x->>'next_lap_at' as next
+         from jsonb_array_elements(world.port_merchants((select id from public.ports where code = $2))->'merchants') x
+        where x->>'name' = $1`,
+      [RESTING_AT_PORTO, RESTING_PORT_CODE],
+    )
+    const restEnds = rested.rows[0]?.next ? Date.parse(rested.rows[0].next) : NaN
+    if (rested.rows.length !== 1 || rested.rows[0].doing !== 'resting' || !(restEnds - Date.now() > RESTING_HOLD_MS - 60_000)) {
+      throw new Error(`${RESTING_AT_PORTO} does not read as resting at ${RESTING_PORT_CODE}: ${JSON.stringify(rested.rows)}`)
+    }
     npcOnImage = Buffer.from(await (await pg.dumpDataDir('gzip')).arrayBuffer())
     // Written only after every assertion above has held, so a cache entry is always a world that
     // passed this fixture's own checks — never a half-warped one from a run that threw.

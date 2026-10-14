@@ -12,7 +12,6 @@ import { useMerchantCard } from '../../live/useMerchantCard'
 import { useMerchantsHere } from '../../live/useMerchantsHere'
 // WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
 import { useCommandDraft } from '../../domain/order'
-import { isDockedAt } from '../../domain/fleet'
 // THE CHART IS A SECTION OF ITS OWN (src/chart) and this screen composes it; nothing here draws.
 import {
   buildChartModel,
@@ -46,7 +45,7 @@ import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
 import { SendFleet } from './SendFleet'
-import { restingSummary } from '../../live/merchantWords'
+import { merchantsSummary } from '../../live/merchantGroups'
 import { viewLeftFrame } from './frame'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -102,16 +101,17 @@ export function MapScreen() {
   )
 }
 
-/** The one line under a harbour's name at peek: its country, who of the merchants lies here, and
- *  which of yours are here or heading here. The merchants resting here are not drawn on the chart
- *  (chartModel.ts), so the city says how many — the harbour's own read (`world.port_merchants`),
- *  never the capped sea window — and the list itself is a drag away (RestingHere.tsx). */
+/** The one line under a harbour's name at peek: its country, how many merchants the city concerns
+ *  and how many of them lie here, and which of yours are here or heading here. The merchants
+ *  resting here are not drawn on the chart (chartModel.ts), so the city counts them — the
+ *  harbour's own read (`world.port_merchants`), never the capped sea window — and the list itself
+ *  is a drag away (CityMerchants.tsx). */
 function portLine(model: ChartModel, port: MapPort, merchants: readonly PortMerchant[]): string {
   const here = fleetsAtPort(model, port.code).map((f) => f.fleet.name)
   const bound = fleetsBoundFor(model, port.code).map((f) => f.fleet.name)
   const parts = [port.country]
-  const resting = restingSummary(merchants)
-  if (resting) parts.push(resting)
+  const summary = merchantsSummary(merchants)
+  if (summary) parts.push(summary)
   if (here.length > 0) parts.push(`${here.join(', ')} here`)
   else if (bound.length > 0) parts.push(`${bound.join(', ')} heading here`)
   return parts.join(' · ')
@@ -242,11 +242,10 @@ function Chart({
   const harbourId = placePortId ?? (merchantId !== null && viaHarbour?.fleet === merchantId ? viaHarbour.id : null)
   const harbourCode = placePortCode ?? (merchantId !== null && viaHarbour?.fleet === merchantId ? viaHarbour.code : null)
   const merchantsHere = useMerchantsHere(harbourId)
+  // EVERY merchant the harbour concerns goes to the tray, unfiltered (owner, 2026-10-14: *"i press
+  // a city and i see no ship info"* — a filter to the ones lying here left almost every city blank
+  // once 0116 cut a rest to two minutes). The tray groups them (src/live/merchantGroups.ts).
   const harbourRows = merchantsHere.view?.enabled && merchantsHere.view.port === harbourCode ? merchantsHere.view.merchants : NO_MERCHANTS
-  const lyingHere = useMemo(
-    () => (harbourCode ? harbourRows.filter((m) => isDockedAt(m, harbourCode)) : NO_MERCHANTS),
-    [harbourRows, harbourCode],
-  )
   // Her row: the sea window's when she is on the water, else the harbour's own (a resting
   // merchant is served by the harbour and by nothing else — chartModel.ts, 2026-10-13).
   const selectedMerchant = merchantId
@@ -352,8 +351,8 @@ function Chart({
         <SendFleet
           key={place.dest.kind === 'port' ? place.dest.code : pointToken(place.dest.at)}
           dest={place.dest}
-          line={place.port ? portLine(model, place.port, lyingHere) : 'Open sea'}
-          merchants={lyingHere}
+          line={place.port ? portLine(model, place.port, harbourRows) : 'Open sea'}
+          merchants={harbourRows}
           // A MERCHANT IS READ, NEVER COMMANDED — from the list exactly as from her hull.
           onOpenMerchant={(id) => {
             if (placePortId && placePortCode) setViaHarbour({ id: placePortId, code: placePortCode, fleet: id })
