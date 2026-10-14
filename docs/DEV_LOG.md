@@ -5,6 +5,73 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-14 — 0115: a merchant rests ten real minutes and is never parked — `osn-merchants-never-parked`
+
+Owner, after 0114 went live (585 laid up / 247 sailing / 5 resting): *"make the resting shorter like
+in real life 10 min. remove laid up."*
+
+- **Rest.** `route_rest_voyage_days` is set from the live compression to 600 real seconds
+  (6.666667 voyage-days at 960x; it was 14, which is 21 min). Same knob, same reader.
+- **Nothing writes `laid_up`.** These changes are slices of npc_plan / npc_tend:
+  - With no line at the 15 % bar, the planner saves the loop in ballast (sell at a profit only, no
+    BUY) and she sails.
+  - On the third failed-order clear, she is re-planned and released.
+  - The weekly refound cap and its lay-up are deleted.
+  - An ADRIFT fleet is counted, not paused (prod had 0).
+  - A legacy `laid_up` pause is lifted at once.
+- **UI word kept.** `doing = 'laid_up'` is still served for ANY pause lying in a harbour (0104),
+  so `DOING_WORD.laid_up` stays. The PORT spec's held merchant now uses the `player` pause.
+- **Dry-run on prod (rolled back).** The 0115 body and self-asserts passed with the switch found on
+  and found off. A 50 s tend lifted 160 routes (99 started, 61 resumed) with 0 failures.
+
+## 2026-10-14 — 0114 re-cut before prod: "a merchant only trades at a profit" — `osn-merchants-profit`
+
+PR #97's 0114 was merged but never applied to prod. The owner rejected its hourly re-plan ("keeps
+the server too occupied") and asked that trade routes "only make profit", so 0114 is replaced
+whole, under the same version, by `20260818000114_a_merchant_only_trades_at_a_profit.sql`:
+
+- **Costs.** `public.running_cost_mult(player)` is `npc_cost_mult` (0.25) for merchants and 1 for
+  players. It is composed into voyage.settle's wages, cmd.do_provision, cmd.do_repair and
+  npc_plan's wage estimate.
+- **Only profitable trades.** `npc_min_return_pct` goes from 2 to 15. Measured mid drift at the
+  merchants' buy points: p90 6.7 %, p95 9.2 % and p99 13.9 % in 4 h. cmd.standing_route_lines caps a
+  merchant BUY at the next stop's current bid divided by 1.15, and drops the line if that stop bids
+  nothing. The sell-at-profit floor is basis × (1 + npc_sell_margin).
+- **Re-plan once per lap, per ship.** cmd.run_standing_route re-plans a merchant as her lap starts,
+  and lays her up if nothing pays. tick_reconcile no longer runs npc_plan. npc_tend and the
+  compactor stay, under the 60 s budget.
+- **No loss stop for merchants.** The loss guard is now players only.
+- **Yield, measured on prod in a rolled-back 50 s tend.** At 15 %, about a third of laid-up routes
+  find cargo (33 started, 63 laid up again). At 10 %, about 60 % do (57 / 38). The knob is live.
+
+## 2026-10-14 — "I saw no NPC": the hourly upkeep never committed — migration 0114, `osn-merchants-resume`
+
+Prod at 03:10 UTC: 837 merchant routes, 521 `laid_up` (all dated 10-11 14:33:08, the switch's own
+transaction), 223 `losing` and rising, 86 sailing.
+
+- **Root cause.** `tick_reconcile` runs npc_tend + npc_plan + npc_compact in one cron statement under
+  the server's 2-min `statement_timeout`. `cron.job_run_details`: 13 ms a run while dark, then every
+  run since 10-13 02:07 cancelled at 2:00.000, which rolls the whole upkeep back (`when others` does not
+  catch query_canceled). Measured in rolled-back prod transactions: full npc_plan 114 s; npc_compact
+  over 60 s, because `ledger.ref_event_id` (FK target of every deleted event) had no index — with it,
+  5.2 s for the two-day backlog.
+- **Why so many idle.** The laid-up 521 were the switch's first pass under 0097's one-buyer-per-(port,
+  good) rule (0105 predicted 491 of 761). Re-planned alone on prod: 1 of 80 found cargo; at a cap of
+  2 buyers, 145 of 150. The 'losing' ones sailed on 10-11's lines because the re-plan, the cut-loss
+  and the refounds all live in the upkeep that never committed. The loss guard itself is fine: npc_tend
+  lifts 'losing' at once onto fresh lines (0097 §7), and 0094 makes a resumed route sail one lap first.
+- **0114.** Index `ledger_ref_event_id`; `npc_upkeep_budget_seconds` (60) with ONE setter
+  (tick_reconcile sets `byeharu.npc_upkeep_deadline`, clears it after the compactor) and one reading
+  (`public.npc_upkeep_spent()`); npc_plan/npc_tend superseded: oldest-written route first, past the
+  deadline `deferred`; buyer cap `npc_buyers_per_good` (3), one count for both modes. As found lit, it
+  runs `npc_traders_switch(true)` to put the idle roster back to sea; as found dark, nothing sails.
+- **Dry-runs on prod (rolled back).** Body + self-asserts in under 5 s; a broken assert surfaced as
+  an error (negative control). With a 55 s budget npc_tend started 92 laid-up routes and refounded 49
+  companies; 143 'losing' routes lifted in 50 s with no failures (142 sailing, 1 re-laid up).
+- **Note for the next person.** `supabase db query --linked` sits behind Cloudflare and gives up
+  after about 100 s (524), BUT the backend keeps running and holds its locks. tick_arrivals waited
+  58 s behind one of these. Cancel it with `pg_cancel_backend`. Keep prod dry-runs under 60 s.
+
 ## 2026-10-14 — PR #94 live: a stale test world, and a self-assert that assumed prod was dark
 
 PR #94 merged (`04c64b2`), and `805299b` deployed to Pages at 03:03 UTC. Prod migrations 0111–0113 are applied.
