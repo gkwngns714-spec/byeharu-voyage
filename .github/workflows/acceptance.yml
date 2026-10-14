@@ -146,23 +146,10 @@ jobs:
       # chromium ONLY. The suite declares one project (playwright.config.ts) and one spec needs a
       # browser; firefox and webkit would be two more downloads proving nothing. `--with-deps`
       # pulls the shared libraries the runner image does not ship.
-      # ── AND THE MERCHANTS-ON WORLD, CACHED THE SAME WAY ─────────────────────────────────────
-      # `tests/npcOn.fixture.ts` builds a second world on top of the shipped image — it lays up a
-      # merchant, runs the switch over 837 fleets and warps six legs — and that takes ~9 MINUTES,
-      # measured, ONCE PER PLAYWRIGHT WORKER. At two workers that is ~18 minutes of this job spent
-      # re-deriving a world that cannot have changed, and it is most of why the suite ran 74m32s
-      # here and was still going when the budget fell (run 38248046334).
-      #
-      # The fixture caches it on disk already; this is what lets CI keep it between runs. Keyed on
-      # the CHAIN and on the FIXTURE'S OWN SOURCE, which is the key the fixture itself computes —
-      # so a migration that moved by a comment misses, and so does a change to what the fixture
-      # DOES to that world. Nothing stale can be served, and a miss costs exactly what it always
-      # cost.
-      - name: Cache the merchants-on world (keyed by the chain and the fixture)
-        uses: actions/cache@v4
-        with:
-          path: node_modules/.cache/byeharu-npc-on
-          key: npc-on-${{ hashFiles('supabase/migrations/*.sql', 'tests/npcOn.fixture.ts') }}
+      # THE MERCHANTS-ON WORLD IS NOT KEPT BETWEEN RUNS (removed 2026-10-14). It was cached here
+      # keyed on the chain and the fixture, but its merchants sail on `now()`: run 38485001228
+      # restored a 14-hour-old copy and the page froze catching 837 fleets up. A run builds it
+      # fresh (`tests/npcOn.fixture.ts`, which gives that build its own 30-minute allowance).
 
       - name: Install the browser
         run: npx playwright install --with-deps chromium

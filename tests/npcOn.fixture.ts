@@ -12,7 +12,7 @@
 
 import { test, type Page } from '@playwright/test'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { asWorldImageFile } from '../src/lib/db/worldImage'
@@ -27,8 +27,8 @@ let npcOnImage: Buffer | null = null
 // re-run five times in one sitting and spent the better part of an hour re-deriving a world that
 // had not changed. That is not a test being thorough, it is a test being re-computed.
 //
-// SO IT IS KEYED AND KEPT. Two things decide the key, and between them nothing stale can be
-// served:
+// SO IT IS KEYED AND KEPT. Two things decide the key, and a third — its AGE — decides whether a
+// kept copy is still the present (`NPC_ON_MAX_AGE_MS`, 2026-10-14: the merchants sail on `now()`):
 //
 //   THE SOURCE IMAGE'S FILE NAME, which carries `fingerprintChain(files)` — so a chain that moved
 //   by so much as a comment names a different file, misses, and is rebuilt. This is the same
@@ -52,6 +52,9 @@ function cachePathFor(imageName: string): string {
 /** The merchant fleet laid up at Lisbon, so PORT has one in port. */
 export const LAID_UP_AT_LISBON = 'Carreira da Guiné'
 
+/** How old a kept merchants-on world may be before it is rebuilt — see the check in `npcOn`. */
+const NPC_ON_MAX_AGE_MS = 90 * 60_000
+
 export async function npcOn(): Promise<Buffer> {
   if (npcOnImage) return npcOnImage
   const dir = path.resolve('dist', 'db')
@@ -59,6 +62,11 @@ export async function npcOn(): Promise<Buffer> {
   if (!name) throw new Error(`no world image under ${dir} — run \`npm run build\` first`)
 
   const cached = cachePathFor(name)
+  // A KEPT WORLD GOES STALE BY THE CLOCK, NOT ONLY BY ITS KEY (2026-10-14). The merchants sail on
+  // `now()`, so a world dumped hours ago opens with every one of 837 fleets owed hours of voyages at
+  // 960x, and the page's first `tick_arrivals` swallows the tab: CI run 38485001228 served a
+  // 14-hour-old copy and map.night saw no hull for 60 s with one RPC sent. Older than this, rebuild.
+  if (existsSync(cached) && Date.now() - statSync(cached).mtimeMs > NPC_ON_MAX_AGE_MS) rmSync(cached)
   if (existsSync(cached)) {
     npcOnImage = readFileSync(cached)
     return npcOnImage
