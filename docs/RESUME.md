@@ -6,6 +6,38 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 
 ---
 
+# ▼ RESUME ANCHOR — 2026-10-14 ▼
+
+**Handed off for a machine change. Everything below this anchor is HISTORY.**
+
+## The state of the world — VERIFIED 2026-10-14 ~10:30 UTC
+
+| | |
+|---|---|
+| `main` | `99844a1` (PR #106). All of it deployed to Pages and verified on the live site in Chrome |
+| **Production DB head** | **0118**, matching `main`. Clock RUNNING, 5 cron jobs active, arrivals succeeding |
+| Live map | every merchant at any zoom, via `world.sea_roster` (full roster once, then deltas every 30 s), placed in time on the client; the roster is kept across tabs and saved in the browser. Idle map ≈ 130 KB/min |
+
+## What changed today (merchants), all LIVE
+- 0114: plans only at a profit (`npc_min_return_pct` 15; buy ≤ next bid ÷ 1.15; sell ≥ paid + 5 %); re-plan once per lap at home; merchants exempt from the losing-laps stop; index `ledger(ref_event_id)`.
+- 0115: a merchant is never parked (no `laid_up` writes; ballast instead).
+- 0116: `npc_cost_mult` 0 (merchants pay no running costs); rest 2 real min.
+- 0117: merchant lap pacing 0 (rest is the only wait); faster `sea_traffic` (kept for old pages).
+- 0118 + PRs #104–106: `world.sea_roster(p_since)`; the client keeps and saves the roster; the ledger is read only on change.
+
+## Open
+1. **PR #100 `cleanup-2`** (one "where she is" rule in domain/fleet, `instantMs`, retire the deprecated UI half). Its agent was stopped mid-work, all commits pushed. Re-read the diff, finish it, wait for CI, then merge.
+2. Cleanup slices 7–9 from the 10-13 audit: split `lib/rpc/types.ts` by aspect; `useTrayDetent` + `CodexFace`; move comment history into DEV_LOG.
+3. Findings not acted on (from `Byeharu_Voyage_Game_Reference.xlsx`): pirate PLUNDERED leaves the cargo, RANSOM costs nothing; `build_cost` and `port_fee_per_ship` are read by nothing; attack/armour stats are unused (no combat beyond the pirate roll).
+4. Not checked yet: merchant lap profit since 0116, and the map on a real phone.
+
+## Operating rules (the owner's)
+- English, short; say built / merged / LIVE; **no numbers unless asked**; never ask, just go; one review; no local full suite.
+- Prod pushes: write self-asserts "as found"; dry-run inside `begin; … rollback;` with `set local statement_timeout`. **Never run a long block on prod through `db query`**: it outlives the CLI's ~100 s cutoff, keeps running and blocks the arrivals tick (this happened twice on 10-14). Push sequence: `unwind_the_clock()` → `db push` → `wind_the_clock()`, and always re-wind.
+- CLI: `npx --yes supabase@2.120.0 … --linked` from a checkout that has `supabase/.temp` (run `supabase link` on a new machine).
+
+---
+
 # ▼ RESUME ANCHOR — 2026-09-30 ▼
 
 **Handed off mid-work for a machine change. Everything below the 2026-09-14 anchor is HISTORY.**
