@@ -5,6 +5,17 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-14 — 0116: a merchant always earns, and rests two minutes — `osn-merchants-always-earn`
+
+- **Costs.** `npc_cost_mult` goes from 0.25 to 0. Merchants are off Rank and their money never
+  reaches a player.
+- **Lap accounting.** `standing_route_laps.stock_out` is new: the cargo aboard at close, at cost.
+  Net is now `sold − bought − costs + stock_out − stock_in`, so the close-before-home-sale artefact
+  no longer charges one lap for cargo the next lap sells. This is one rule in the one closer, and
+  it applies to players' laps too. The first lap to close after deploy has stock_in 0, once.
+- **Rest.** 120 real seconds (1.333333 voyage-days at 960x). The 480 s pacing interval binds only
+  on laps shorter than 6 minutes, so it is left alone.
+
 ## 2026-10-14 — 0115: a merchant rests ten real minutes and is never parked — `osn-merchants-never-parked`
 
 Owner, after 0114 went live (585 laid up / 247 sailing / 5 resting): *"make the resting shorter like

@@ -305,7 +305,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // compactor deletes against, lets three merchants buy one good at one harbour, and puts the idle
 // roster back to sea through the one switch.
 // And to 0115: a merchant rests ten real minutes, and nothing parks her (owner, 2026-10-14).
-const LAST = '20260818000115_a_merchant_is_never_parked.sql'
+// And to 0116: a merchant's costs are nought, a lap counts its own cargo, and she rests two minutes.
+// And to 0117: no merchant lap pacing; the two-minute rest is her only wait at home.
+const LAST = '20260818000117_a_merchant_sails_again_after_her_rest.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
