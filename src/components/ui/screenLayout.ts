@@ -1,11 +1,6 @@
-// Design-system Screen scaffold logic — pure (no React) so the width-variant contract is testable
-// and react-refresh keeps Screen.tsx component-only.
-//
-/** The Screen content column: centered, padded, space-y-4 panel rhythm. `wide` = the wider desktop
- *  measure, which the Market tab uses for its seven-column table. */
-export function screenBodyClass(wide = false): string {
-  return `mx-auto ${wide ? 'max-w-6xl' : 'max-w-3xl'} space-y-4 px-4 py-4 sm:px-6`
-}
+// Design-system layout logic — pure (no React) so the width contract is testable and
+// react-refresh keeps Sheet.tsx and Tray.tsx component-only. (`screenBodyClass` stood here for the
+// deprecated `Screen` scaffold and went with it, 2026-10-14.)
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE WIDE GLASS — a column you read, and the tray beside it instead of over it
