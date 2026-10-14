@@ -182,6 +182,10 @@ declare
   v_rows   int;
   v_after  int;
   v_dark   jsonb;
+  -- AS FOUND, NOT AS SHIPPED (2026-10-14). Production runs with the merchants LIT (0101-0110 were
+  -- pushed with the switch on), and the first push of this file died here on "lit at apply time".
+  -- Every claim below holds in either state, and the world is left exactly as it was found.
+  v_was_on boolean := public.npc_traders_on();
 begin
   -- (a) THE WALL DID NOT MOVE: authenticated reads, anon does not.
   if not has_function_privilege('authenticated', 'world.port_merchants(uuid)', 'execute')
@@ -202,22 +206,27 @@ begin
   end if;
 
   -- (c) DARK, THE READ IS UNCHANGED: the same four top-level keys, no rows, no level to be read.
-  if public.npc_traders_on() then
-    raise exception '0113 self-assert FAIL: the merchants are lit at apply time; the switch ships dark (0097)';
-  end if;
-  v_dark := world.port_merchants(v_lis);
-  if v_dark is distinct from pg_temp.pm_before_0113(v_lis)
-     or (v_dark->>'enabled')::boolean or jsonb_array_length(v_dark->'merchants') <> 0 then
-    raise exception '0113 self-assert FAIL: dark, the read differs from its pre-image or serves rows: %',
-      left(v_dark::text, 200);
-  end if;
+  --     Dark by the flag inside a rolled-back block, so a lit world is asked too.
+  begin
+    update public.world_config set value = 'false'::jsonb where key = 'npc_traders_enabled';
+    v_dark := world.port_merchants(v_lis);
+    if v_dark is distinct from pg_temp.pm_before_0113(v_lis)
+       or (v_dark->>'enabled')::boolean or jsonb_array_length(v_dark->'merchants') <> 0 then
+      raise exception '0113 self-assert FAIL: dark, the read differs from its pre-image or serves rows: %',
+        left(v_dark::text, 200);
+    end if;
+    raise exception 'ROLLBACK_0113_DARK';
+  exception when others then
+    if sqlerrm <> 'ROLLBACK_0113_DARK' then raise; end if;
+  end;
 
   -- (d) LIT, OVER THE REAL ROSTER PUT TO SEA BY THE ONE SWITCH, with two probe companies whose
   --     levels are KNOWN. Rolled back to the byte.
   begin
     update public.world_config set value = to_jsonb(0.0) where key = 'hazard_p_max';
     update public.world_config set value = 'true'::jsonb where key = 'standing_routes_enabled';
-    perform public.npc_traders_switch(true);
+    -- Lit already (production), the roster is at sea and the switch is not run again.
+    if not v_was_on then perform public.npc_traders_switch(true); end if;
     if not public.npc_traders_on() then
       raise exception '0113 self-assert FAIL: the probe could not switch the merchants on';
     end if;
@@ -347,7 +356,7 @@ begin
   end;
 
   -- EVERYTHING ABOVE WAS UNDONE: the switch is as it was found, and the probes are gone.
-  if public.npc_traders_on()
+  if public.npc_traders_on() is distinct from v_was_on
      or exists (select 1 from public.players where company_name in ('Casa da Escola', 'Casa Iletrada')) then
     raise exception '0113 self-assert FAIL: the probe world was not rolled back';
   end if;
@@ -357,6 +366,6 @@ begin
     '`level` struck from every row the read IS its pre-image; every row''s level is the sum of '
     'public.skill_level over the four skills; 2 + 3 read 5, nothing read 0 (a number), one level '
     'raised by one moved the read 5 -> 6; the row''s keys are 0104''s plus level and the top level '
-    'is unchanged; dark again, no rows. Authenticated-only. Rolled back; the switch ships OFF.',
+    'is unchanged; dark again, no rows. Authenticated-only. Rolled back; the switch is as found.',
     v_rows;
 end $$;
