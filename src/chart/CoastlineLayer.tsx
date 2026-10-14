@@ -86,7 +86,9 @@ import type { RegionTint } from './regions'
 // one attribute, not the 78 KB path strings; the Sun's raster changes once a minute.
 
 const SHALLOW_INK = ['stroke-chart-shallow/25', 'stroke-chart-shallow/35', 'stroke-chart-shallow/55'] as const
-const DAY_SHALLOW_INK = ['stroke-chart-day-shallow/30', 'stroke-chart-day-shallow/40', 'stroke-chart-day-shallow/60'] as const
+/** The day's one shallows band (see the day group below for why one): the middle band's width,
+ *  in the day's paler water at a strength that reads on the day sea. */
+const DAY_SHALLOW_INK = 'stroke-chart-day-shallow/45'
 
 /** How strong a region's tint is on the water and on the land, as SVG fill-opacity. The water
  *  is the darker ground at night and the lighter by day, so the two are one number: the tokens
@@ -253,17 +255,22 @@ export const CoastlineLayer = memo(function CoastlineLayer({
                     )}
                   </g>
                 )}
-                {GLYPH.shallowHaloPx.map((width, i) => (
-                  <path
-                    key={width}
-                    d={coastD}
-                    className={`fill-none ${DAY_SHALLOW_INK[i]}`}
-                    strokeWidth={width}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ))}
+                {/* ONE SHALLOWS BAND BY DAY, not three, and NO RELIEF: the day group is a second
+                    rasterisation of the whole coast on every zoom step, and the wide round-joined
+                    strokes are what a coast costs (§10.1 measured the three shallows at the whole
+                    GPU frame). Measured at 1440×900, the globe, per wheel step: night alone 47 ms;
+                    night + a full day picture (three shallows, relief) 89 ms; night + this 2026-10-14
+                    cut — the middle band and the body — the figure in §11.6. The eye reads one
+                    paler band at the shore as shallows; the relief is the night's own tone step and
+                    the day's gradient already separates land from water. */}
+                <path
+                  d={coastD}
+                  className={`fill-none ${DAY_SHALLOW_INK}`}
+                  strokeWidth={GLYPH.shallowHaloPx[1]}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                />
                 <path d={d} fillRule="evenodd" fill={`url(#${gradientId})`} data-testid="map-coastline-day" />
                 {regions && (
                   <g clipPath={`url(#${clipId})`} fillOpacity={LAND_TINT_ALPHA}>
@@ -274,16 +281,6 @@ export const CoastlineLayer = memo(function CoastlineLayer({
                     )}
                   </g>
                 )}
-                <g clipPath={`url(#${clipId})`}>
-                  <path
-                    d={coastD}
-                    className="fill-none stroke-chart-day-relief/60"
-                    strokeWidth={GLYPH.reliefPx}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </g>
                 <path
                   d={coastD}
                   className="fill-none stroke-chart-day-coast"

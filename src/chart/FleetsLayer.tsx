@@ -324,10 +324,15 @@ function HullGroup({
           day, through the group's `--night`. */}
       {marks.length > 0 && (() => {
         const lit = hullGroupHalo(marks)
+        // TWO GROUPS, because two things set opacity: the Sun (`.bv-sun-light`, the group's
+        // `--night`) on the outer, the blink's keyframes on the inner. One group with both would let
+        // the animation overwrite the Sun's value every frame, and a lamp would burn at noon.
         return (
-          <g className="bv-ship-blink bv-sun-light" style={{ animationDelay: `${blinkPhase(fleet.fleet.id)}ms` }} pointerEvents="none" data-ship-light="">
-            <circle cx={lit.cx} cy={lit.cy} r={lit.r * GLYPH.shipLightBloomScale} className="fill-ship-light/20" />
-            <circle cx={lit.cx} cy={lit.cy} r={lit.r * GLYPH.shipLightGlowScale} className="fill-ship-light/45" />
+          <g className="bv-sun-light" pointerEvents="none" data-ship-light="">
+            <g className="bv-ship-blink" style={{ animationDelay: `${blinkPhase(fleet.fleet.id)}ms` }}>
+              <circle cx={lit.cx} cy={lit.cy} r={lit.r * GLYPH.shipLightBloomScale} className="fill-ship-light/20" />
+              <circle cx={lit.cx} cy={lit.cy} r={lit.r * GLYPH.shipLightGlowScale} className="fill-ship-light/45" />
+            </g>
           </g>
         )
       })()}

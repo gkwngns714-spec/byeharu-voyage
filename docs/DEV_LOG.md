@@ -26,8 +26,15 @@ this is the record of what moved.
 - **The Sun.** `src/chart/sun.ts` (pure, NOAA/Meeus low-precision; tested against the 2026 equinoxes
   and solstices and Greenwich noon on 3 Nov / 11 Feb), `useSunlight.ts` (the real clock, once a
   minute, raster → alpha PNG), `DaylightMask.tsx` (SVG alpha mask), the day picture in `SeaLayer`
-  and `CoastlineLayer` (twelve `--color-chart-day-*` tokens, same in both schemes; the land as a
-  latitude gradient), and `--night` on every mark with the `.bv-sun-*` rules in `src/index.css`.
+  and `CoastlineLayer` (eleven `--color-chart-day-*` tokens, same in both schemes; the land as a
+  latitude gradient; one shallows band and no relief by day — measured, §11.6: the full day
+  picture cost 89 ms a wheel step at the desktop globe against 47 on main, the cut 75), and
+  `--night` on every mark with the `.bv-sun-*` rules in `src/index.css`.
+- **Measured** (`tests/map.perf.spec.ts`, same spec on main and here): idle and pan at the
+  display's 16.7 ms on 390 and 1440, before and after; the opening frame's DOM 1,744 → 494 nodes
+  (the cull); the globe draws 75 hulls (390) / 150–159 (1440) where it drew 44 embers; zoom step
+  390: 34.0 → 39.6 ms, 1440: 47.3 → 75.3 ms (the masked day coast — the one figure that moved
+  the wrong way, stated in §11.6).
   `tests/map.night.spec.ts` became `tests/map.sun.spec.ts`; `tests/map.wrap.spec.ts` and
   `tests/map.perf.spec.ts` are new.
 - **Ships halved** (row 131): `GLYPH.shipHalfLength` 6.5 → 3.25; the class hulls and the halo follow

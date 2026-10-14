@@ -44,14 +44,20 @@ async function frameIntervals(page: Page, ms: number): Promise<{ mean: number; p
 }
 
 async function domCounts(page: Page) {
-  return page.evaluate(() => ({
-    hulls: document.querySelectorAll('path[data-hull-class]').length,
-    ships: document.querySelectorAll('[data-testid="map-merchant"], [data-testid="map-ship"]').length,
-    embers: document.querySelectorAll('[data-fleet-mark="ember"]').length,
-    harbours: document.querySelectorAll('[data-port-code]').length,
-    nodes: document.querySelector('[data-testid="map-chart"]')!.querySelectorAll('*').length,
-    span: Number(document.querySelector('[data-testid="map-chart"] svg')!.getAttribute('viewBox')!.split(/\s+/)[2]),
-  }))
+  return page.evaluate(() => {
+    // Null-safe: before the world has opened there is no chart on the page, and the poll below
+    // reads zero hulls rather than a thrown error.
+    const chart = document.querySelector('[data-testid="map-chart"]')
+    const svg = chart?.querySelector('svg')
+    return {
+      hulls: document.querySelectorAll('path[data-hull-class]').length,
+      ships: document.querySelectorAll('[data-testid="map-merchant"], [data-testid="map-ship"]').length,
+      embers: document.querySelectorAll('[data-fleet-mark="ember"]').length,
+      harbours: document.querySelectorAll('[data-port-code]').length,
+      nodes: chart ? chart.querySelectorAll('*').length : 0,
+      span: svg ? Number(svg.getAttribute('viewBox')!.split(/\s+/)[2]) : Number.NaN,
+    }
+  })
 }
 
 async function panFrames(page: Page): Promise<{ mean: number; p95: number; max: number }> {
@@ -100,7 +106,9 @@ test('the frame cost of the chart, printed at the globe and at the opening frame
     await page.setViewportSize(viewport)
     await page.goto('map')
     await ready(page)
-    await expect.poll(async () => (await domCounts(page)).hulls, { timeout: 60_000 }).toBeGreaterThanOrEqual(1)
+    // The merchants-on world boots off a 26 MB image in the tab; on a loaded machine that is past
+    // a minute, so this waits three.
+    await expect.poll(async () => (await domCounts(page)).hulls, { timeout: 180_000 }).toBeGreaterThanOrEqual(1)
     await page.waitForTimeout(1500)
     const opening = await domCounts(page)
     const openingIdle = await frameIntervals(page, 5000)

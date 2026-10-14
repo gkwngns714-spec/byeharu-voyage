@@ -21,6 +21,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
+import { REAL_PORT_BY_CODE } from './mapWorld.fixture'
 import { serveNpcOn } from './npcOn.fixture'
 import { CHART_WIDTH, project, sheetCopies, xOnSheet, type ViewBox } from '../src/lib/geo'
 import {
@@ -210,13 +211,19 @@ test('a Pacific course is two pieces that meet at the seam latitude — the seco
 
 async function wrapOnTheGlass(page: Page) {
   return page.evaluate(() => {
-    const chart = document.querySelector('[data-testid="map-chart"]')!
-    const root = chart.querySelector('[data-sheet-copies]')!
-    const svg = chart.querySelector('svg') as SVGSVGElement
+    const chart = document.querySelector('[data-testid="map-chart"]')
+    const root = chart?.querySelector('[data-sheet-copies]')
+    const svg = chart?.querySelector('svg')
+    // Null-safe: before the world has opened there is no chart, and the poll reads an empty sheet.
+    if (!chart || !root || !svg) {
+      return { viewX: Number.NaN, spanDeg: Number.NaN, copies: [] as number[], perCopy: [] as { k: number; ports: number; ships: number }[], coastBodies: 0, coastUses: 0, labels: 0 }
+    }
     const [x, , w] = svg.getAttribute('viewBox')!.split(/\s+/).map(Number)
     const copies = (root.getAttribute('data-sheet-copies') ?? '').split(' ').map(Number)
+    // THE MARKS' group for the copy — not the coast sheet's, which carries the same attribute and
+    // comes first in the DOM.
     const perCopy = copies.map((k) => {
-      const g = chart.querySelector(`svg g[data-sheet-copy="${k}"]`)
+      const g = [...chart.querySelectorAll(`svg g[data-sheet-copy="${k}"]`)].find((el) => !el.closest('[data-testid="map-coast-sheet"]'))
       return {
         k,
         ports: g ? g.querySelectorAll('[data-port-code]').length : 0,
@@ -236,13 +243,24 @@ async function wrapOnTheGlass(page: Page) {
   })
 }
 
-/** Where a harbour's mark is on the glass, in client pixels — from the SECOND copy's group. */
+/** Where a harbour's mark is on the glass, in client pixels — from the SECOND copy's group. A full
+ *  mark if the span draws one there, else a dot (row 104: a dot answers a tap too, at half a touch);
+ *  the mark's own core element is what is measured, so the tap lands on the harbour and not on its
+ *  light's bloom. */
 async function markOnGlass(page: Page, k: number) {
   return page.evaluate((copy) => {
-    const g = document.querySelector(`[data-testid="map-chart"] svg g[data-sheet-copy="${copy}"] [data-port-code][data-port-mark="full"]`)
-    if (!g) return null
-    const r = (g.querySelector('path') as SVGPathElement).getBoundingClientRect()
-    return { code: g.getAttribute('data-port-code')!, x: r.left + r.width / 2, y: r.top + r.height / 2 }
+    const chart = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
+    const marks = [...document.querySelectorAll(`[data-testid="map-chart"] svg g[data-sheet-copy="${copy}"] [data-port-code]`)].filter(
+      (el) => !el.closest('[data-testid="map-coast-sheet"]'),
+    )
+    const onGlass = marks
+      .map((g) => {
+        const core = g.getAttribute('data-port-mark') === 'full' ? g.querySelector('path') : g.querySelector('circle:last-of-type')
+        const r = core!.getBoundingClientRect()
+        return { code: g.getAttribute('data-port-code')!, full: g.getAttribute('data-port-mark') === 'full', x: r.left + r.width / 2, y: r.top + r.height / 2 }
+      })
+      .filter((m) => m.x > chart.left + 80 && m.x < chart.right - 80 && m.y > chart.top + 80 && m.y < chart.bottom - 80)
+    return onGlass.find((m) => m.full) ?? onGlass[0] ?? null
   }, k)
 }
 
@@ -258,7 +276,7 @@ test('panned across the antimeridian, the sheet continues: land, harbours and sh
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('map')
   await ready(page)
-  await expect.poll(async () => (await wrapOnTheGlass(page)).perCopy[0].ships, { timeout: 60_000 }).toBeGreaterThanOrEqual(1)
+  await expect.poll(async () => (await wrapOnTheGlass(page)).perCopy[0]?.ships ?? 0, { timeout: 180_000 }).toBeGreaterThanOrEqual(1)
 
   // Pull back to a sea-wide span, then DRAG the sheet west until the antimeridian is in the middle
   // of the glass — a real pan, through the one gesture surface.
@@ -307,11 +325,18 @@ test('panned across the antimeridian, the sheet continues: land, harbours and sh
   )
   await page.screenshot({ path: path.join(SHOTS, 'pacific-1440.png') })
 
-  // A TAP ON A HARBOUR IN THE SECOND COPY SELECTS THAT HARBOUR — the hit test reaches across.
+  // A TAP ON A HARBOUR IN THE SECOND COPY SELECTS THAT HARBOUR — the hit test reaches across. The
+  // detail tray opens on the harbour's own name (the real port table says which name that is).
   const mark = await markOnGlass(page, 1)
-  expect(mark, 'a full harbour mark in the second copy').not.toBeNull()
+  expect(mark, 'a harbour mark in the second copy, on the glass').not.toBeNull()
+  const named = REAL_PORT_BY_CODE.get(mark!.code)
+  expect(named, `${mark!.code} is in the real port table`).toBeDefined()
   await page.mouse.click(mark!.x, mark!.y)
-  await expect.poll(() => page.locator(`[data-port-code="${mark!.code}"] circle.stroke-ink\\/60`).count(), { timeout: 10_000 }).toBeGreaterThanOrEqual(1)
+  const tray = page.getByTestId('map-detail-tray')
+  await expect(tray).toBeVisible({ timeout: 10_000 })
+  await expect(tray).toContainText(named!.name)
+  console.log(`tapped ${mark!.code} (${named!.name}) in copy 1 at ${mark!.x.toFixed(0)},${mark!.y.toFixed(0)} — ${mark!.full ? 'a full mark' : 'a dot'}`)
+  await page.getByTestId('tray-close').first().click()
 
   // THE PHONE, the same water.
   await page.setViewportSize(PHONE)

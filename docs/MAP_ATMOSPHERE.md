@@ -440,13 +440,17 @@ mask is computed in linearRGB and would bend the twilight), stretched over each 
 bilinearly filtered on the way up — a smooth terminator at every zoom for one textured quad per
 frame and 4 ms of sines a minute. `SeaLayer` paints a DAY SEA over the night ground through it (and
 the graticule after, so the grid is on both sides); `CoastlineLayer` paints, after the four night
-steps, the same four by day — shallows, body, relief, line — in the `--color-chart-day-*` tokens,
-inside one masked group. The day body is filled with a gradient down the sheet keyed on latitude
-(`DAY_LAND_BANDS`: ice at the poles, boreal and temperate green, the arid belt tan at ±25°, the
-tropics green), which is what the Earth looks like from above at this chart's resolution and
-promises no terrain the data does not hold. Twelve tokens, the SAME in both schemes, because
-daylight is not a colour scheme: the scheme is what the night looks like. The night tokens did not
-move and `tests/chart.ink.spec.ts` still measures them.
+steps, the day picture — ONE shallows band (the middle width, in the day's paler water), the body,
+the line — in the `--color-chart-day-*` tokens, inside one masked group. The day body is filled
+with a gradient down the sheet keyed on latitude (`DAY_LAND_BANDS`: ice at the poles, boreal and
+temperate green, the arid belt tan at ±25°, the tropics green), which is what the Earth looks like
+from above at this chart's resolution and promises no terrain the data does not hold. Eleven
+tokens, the SAME in both schemes, because daylight is not a colour scheme: the scheme is what the
+night looks like. The night tokens did not move and `tests/chart.ink.spec.ts` still measures them.
+One band and no relief by day is a MEASURED cut, not taste — §11.6: the full day picture (three
+bands and the inner shadow) cost 89 ms a wheel step at the desktop globe against 47 before; the
+cut costs 75, and the 10 px band costs the same 75 as the 22 px one, so what remains is the mask's
+own surfaces, not the stroke.
 
 **The marks.** Every harbour, hull, road and name carries `--night` = 1 − daylight at its own
 point (`nightStyle`, one spelling in `sun.ts`), and the `.bv-sun-*` rules in `src/index.css` are the
@@ -489,3 +493,31 @@ of the glass; no new word of chrome.
 * `tests/map.hulls.spec.ts`, `map.marks.spec.ts`, `map.merchants.spec.ts` — pins moved deliberately:
   the legibility floor measured on halved hulls; "past the dot rung a city is its dot"; the
   merchants in the DOM are the ones on the glass.
+
+### 11.6 What it costs — measured, before and after
+
+`tests/map.perf.spec.ts`, run unchanged against `main` at `c3c279c` (before) and this branch
+(after): headless chromium 1.61 on this machine, `vite preview`, the merchants-on fixture, two
+glasses, at the opening frame (14.9°) and at the globe (360°). Idle and pan are the
+animation-frame interval (mean / p95 / max, ms) over five seconds of nobody touching anything and
+over a real drag of a fifth of the glass; the zoom step is row 90's twelve-wheel-step apparatus.
+"DOM" is what the chart's subtree held: ships / hull paths / embers / nodes.
+
+| | DOM before | DOM after | idle before → after | pan before → after | zoom step before → after |
+|---|---|---|---|---|---|
+| 390×844 opening | 291 / 341 / 0 / 1,744 | 36 / 48 / 0 / 494 | 16.7 · 18.0 · 20.3 → 16.7 · 18.0 · 18.4 | 16.7 · 18.4 · 26.8 → 16.6 · 18.6 · 19.7 | 32.6 → 32.5 ms |
+| 390×844 globe | 44 / 0 / **44** / 1,297 | **75 / 75** / 0 / 1,650 | 16.7 · 18.0 · 19.8 → 16.7 · 18.1 · 18.9 | 16.7 · 17.6 · 18.2 → 16.7 · 19.7 · 20.8 | 34.0 → 39.6 ms |
+| 1440×900 opening | 291 / 341 / 0 / 1,674 | 16 / 19 / 0 / 315 | 16.7 · 18.4 · 19.5 → 16.7 · 18.0 · 28.3 | 16.7 · 23.7 · 25.6 → 16.7 · 25.7 · 32.2 | 35.1 → 50.9 ms |
+| 1440×900 globe | 44 / 0 / **44** / 1,317 | **150–159 / 150–159** / 0 / 2,043–2,096 | 16.7 · 18.1 · 22.1 → 16.7 · 18.1 · 19.2 | 16.7 · 18.1 · 19.2 → 16.7 · 19.8 · 21.2 | 47.3 → 75.3 ms |
+
+Read it honestly. **Idle and pan are the display's 16.7 ms on both glasses before and after** —
+the phone the owner's rule is about is as smooth as it was, with hulls where there were embers
+and the Sun on the sheet. The opening frame holds a sixth of the DOM it did (the cull); the globe
+holds hulls (73–159 drawn from ~800 sailing, the cell thinning) where it held 44 embers. **The
+zoom step on the desktop is the one figure that moved the wrong way**: 47 → 75 ms at the globe,
+35 → 51 at the opening frame — the day coast is a second rasterisation of the land through a mask,
+and a mask is two full-sheet surfaces on every repaint of the coast sheet. On the phone the same
+step is 34 → 40 and 32.6 → 32.5. The pan is unaffected on either, because a pan moves the sheet
+and never repaints it (§10). What was tried and measured for that figure is in §11.3; what was
+not done is taking the day picture off during a zoom (a visible flicker to night) or painting the
+day land without a mask (there is no other way to blend two fills by a per-point value in SVG).

@@ -243,9 +243,10 @@ test('a lane is copied, never invented, and a stub of one draws nothing', () => 
 /** What is actually drawn: the Sun the chart used, the harbours and their `--night`, the ships. */
 async function sunOnTheGlass(page: Page) {
   return page.evaluate(() => {
-    const chart = document.querySelector('[data-testid="map-chart"]')!
-    const root = chart.querySelector('[data-sun-at]')!
-    const svg = chart.querySelector('svg')
+    const chart = document.querySelector('[data-testid="map-chart"]')
+    // Null-safe: before the world has opened there is no chart, and the poll reads an empty sheet.
+    const root = chart?.querySelector('[data-sun-at]') ?? null
+    const svg = chart?.querySelector('svg') ?? null
     const vb = svg?.getAttribute('viewBox')?.split(/\s+/).map(Number) ?? []
     const unitsPerPx = vb.length === 4 && svg ? vb[2] / (svg as SVGSVGElement).clientWidth : Number.NaN
     const lights = [...document.querySelectorAll('[data-port-mark]')].map((g) => {
@@ -269,7 +270,7 @@ async function sunOnTheGlass(page: Page) {
       paths: g.querySelectorAll('path[data-hull-class]').length,
       night: Number((g as SVGGElement).style.getPropertyValue('--night')),
       lightOpacity: Number(getComputedStyle(g.querySelector('[data-ship-light]')!).opacity),
-      blink: g.querySelector('[data-ship-light]')?.classList.contains('bv-ship-blink') ?? false,
+      blink: g.querySelector('[data-ship-light] .bv-ship-blink') !== null,
     }))
     const lanes = [...document.querySelectorAll('[data-testid="map-merchant-lane"]')].map((p) => ({
       ink: p.getAttribute('data-lane-ink') ?? '',
@@ -278,9 +279,9 @@ async function sunOnTheGlass(page: Page) {
     }))
     const pct = document.querySelector('[data-testid="map-zoom-percent"]')
     return {
-      sunAt: Number(root.getAttribute('data-sun-at')),
-      sunLat: Number(root.getAttribute('data-sun-lat')),
-      sunLon: Number(root.getAttribute('data-sun-lon')),
+      sunAt: Number(root?.getAttribute('data-sun-at') ?? Number.NaN),
+      sunLat: Number(root?.getAttribute('data-sun-lat') ?? Number.NaN),
+      sunLon: Number(root?.getAttribute('data-sun-lon') ?? Number.NaN),
       unitsPerPx,
       spanDeg: vb.length === 4 ? vb[2] : Number.NaN,
       zoomPercent: pct ? Number(pct.getAttribute('data-zoom-percent')) : Number.NaN,
