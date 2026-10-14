@@ -306,7 +306,8 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // roster back to sea through the one switch.
 // And to 0115: a merchant rests ten real minutes, and nothing parks her (owner, 2026-10-14).
 // And to 0116: a merchant's costs are nought, a lap counts its own cargo, and she rests two minutes.
-const LAST = '20260818000116_a_merchant_always_earns_and_rests_two_minutes.sql'
+// And to 0117: no merchant lap pacing; the two-minute rest is her only wait at home.
+const LAST = '20260818000117_a_merchant_sails_again_after_her_rest.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
