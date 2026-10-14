@@ -61,7 +61,9 @@ test.describe('every port is on the sheet; the zoom decides dot or mark', () => 
     const screen = readFileSync(path.join(process.cwd(), 'src', 'features', 'map', 'MapScreen.tsx'), 'utf8')
     expect(screen).toMatch(/const tappable = visiblePorts\(ports, model\.portRoles, view, minTier\)/)
     expect(screen).toMatch(/const dots = dotPorts\(ports, model\.portRoles, view, minTier\)/)
-    expect(screen).toMatch(/hitTest\(model, tappable, at, GLYPH\.hitRadius \* unitsPerPx, dots, GLYPH\.dotHitRadius \* unitsPerPx\)/)
+    // …and, since 2026-10-14, the merchants the sheet actually DREW (shipMarks' thinning), last.
+    expect(screen).toMatch(/hitTest\(model, tappable, at, GLYPH\.hitRadius \* unitsPerPx, dots, GLYPH\.dotHitRadius \* unitsPerPx, drawn\.traffic\)/)
+    expect(screen).toMatch(/const drawn = shipMarks\(model\.fleets, model\.traffic, view, unitsPerPx\)/)
     expect(screen).not.toContain('portMarks(')
     // The two halves partition the sheet: no harbour in both, none in neither.
     const roles = buildChartModel(mapFleetsOf([]), PORTS).portRoles
@@ -154,11 +156,11 @@ for (const scheme of ['dark', 'light'] as const) {
         // the rung where the fleets have already given up their hulls it left 35 little outlines
         // sitting on top of 35 blooms, and the owner's answer to that sheet was *"i told you to
         // show in lights"*. They were right: it is a hybrid, and it fights the one thing that band
-        // exists to show. ./src/chart/PortsLayer.tsx renders every harbour as its light past
-        // `HULL_EMBER_MAX_UNITS_PER_PX` — the same rung the ships change on, so the sheet changes
-        // character once rather than twice.
+        // exists to show. ./src/chart/PortsLayer.tsx renders every harbour as its dot past
+        // `DOT_SPAN_DEG` — a lamp on the night side of the terminator, a dark point by day
+        // (2026-10-14, src/chart/sun.ts); the ships, since that date, stay hulls at every span.
         expect(world.harbours, 'every harbour is on the sheet at the world view').toBe(238)
-        expect(world.full, 'past the ember rung a city is light and nothing else').toBe(0)
+        expect(world.full, 'past the dot rung a city is its dot and nothing else').toBe(0)
         expect(world.dots).toBe(238)
         // The whole body is drawn at the world view — the same path as at the opening frame.
         expect(world.coastBytes).toBe(opening.coastBytes)

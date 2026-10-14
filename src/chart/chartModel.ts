@@ -18,7 +18,7 @@
 // ports a fleet is not using are quieter) cannot be computed two different ways in two layers.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { project, type LatLon, type ViewBox } from '../lib/geo'
+import { project, xOnSheet, type LatLon, type ViewBox } from '../lib/geo'
 import type { MapFleet, MapPort, MapTraffic, MapVoyage } from './mapTypes'
 import { buildTrack, loopD as loopPathD, type TrackPaths } from './route'
 import { driftedPoint, type Drift } from './drift'
@@ -402,7 +402,11 @@ export function portMarks(
   const out: PortMark[] = []
   for (const port of ports) {
     const at = project(port)
-    if (at.x < minX || at.x > maxX || at.y < minY || at.y > maxY) continue
+    // ON THE SHEET ON SOME COPY (2026-10-14, the continuous chart): a view that runs from 170° to
+    // 200° holds the harbours at 175°E and at 175°W alike. `xOnSheet` is the projection's own
+    // periodicity (src/lib/geo); each harbour is listed ONCE, and the composer draws it in whichever
+    // copy of the sheet it falls in.
+    if (at.y < minY || at.y > maxY || !xOnSheet(at.x, minX, maxX)) continue
     out.push({ port, full: port.sizeTier >= minTier || roles.has(port.code) })
   }
   return out

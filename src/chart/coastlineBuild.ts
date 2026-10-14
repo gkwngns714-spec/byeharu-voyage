@@ -218,7 +218,16 @@ export function buildCoastline(json: unknown): CoastlineData {
     if (span.width < COASTLINE_MIN_SPAN_DEG && span.height < COASTLINE_MIN_SPAN_DEG) continue
 
     const n = pts.length
-    const shared = pts.map((p, i) => (segmentRings.get(segmentKey(p, pts[(i + 1) % n])) ?? 0) >= 2)
+    // NOT A COAST EITHER: a segment lying ON THE ANTIMERIDIAN (2026-10-14, the continuous sheet).
+    // Natural Earth cuts Russia, Fiji and Antarctica at ±180° and closes each half with a vertical
+    // edge down the seam; on a sheet that repeats every 360° the two halves abut and that edge is
+    // the file's cut, not a shore. Stroked, it was a 40 px shallows smear down the middle of the
+    // Pacific view (docs/map-wrap-sun, the first cut). It is treated exactly like a border: in the
+    // body, out of the line.
+    const onSeam = (a: LatLon, b: LatLon) => Math.abs(a.lon) === 180 && Math.abs(b.lon) === 180
+    const shared = pts.map(
+      (p, i) => (segmentRings.get(segmentKey(p, pts[(i + 1) % n])) ?? 0) >= 2 || onSeam(p, pts[(i + 1) % n]),
+    )
     // A run boundary is where the sharing changes, or a triple point (the neighbour changes).
     const boundary = (i: number) =>
       shared[i] !== shared[(i - 1 + n) % n] || (vertexRings.get(vertexKey(pts[i])) ?? 0) >= 3

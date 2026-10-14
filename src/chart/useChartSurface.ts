@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from 'react'
-import { project, type GeoBounds, type LatLon, type Point, type ViewBox } from '../lib/geo'
+import { project, wrapLon, type GeoBounds, type LatLon, type Point, type ViewBox } from '../lib/geo'
 import {
   clampView,
   fitView,
@@ -410,9 +410,14 @@ export function useChartSurface(
       const rect = element.getBoundingClientRect()
       if (rect.width <= 0 || rect.height <= 0) return
       const box = viewBoxOf(view, rect.width / rect.height)
+      // A TAP IS A PLACE ON THE GLOBE, so its x is a longitude in [−180, 180] whatever copy of the
+      // sheet the finger landed on (2026-10-14, the continuous chart): a view panned past the
+      // antimeridian hands out boxes that run to 200°, and the harbours, the fleets and the sea
+      // grid all live on the one copy. `box` itself is handed on untouched — it is the window the
+      // caller culls by, and `portMarks` reads it through the sheet's copies.
       onTap(
         {
-          x: box.x + ((event.clientX - rect.left) / rect.width) * box.width,
+          x: wrapLon(box.x + ((event.clientX - rect.left) / rect.width) * box.width),
           y: box.y + ((event.clientY - rect.top) / rect.height) * box.height,
         },
         unitsPerPixel(view, rect.width),

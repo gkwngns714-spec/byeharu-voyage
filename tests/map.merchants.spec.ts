@@ -394,7 +394,12 @@ test('the merchants sail on the chart, and a tap opens a read-only sheet', async
   // ON THE OPENING FRAME of a Lisbon start: merchant hulls, at sea and at anchor.
   await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
   const seen = await merchantsInView(page)
-  expect(seen.total).toBeGreaterThanOrEqual(20)
+  // SINCE 2026-10-14 THE CHART DRAWS ONLY THE MERCHANTS ON THE GLASS (src/chart/shipMarks.ts culls
+  // to the view, with the same margin the harbours keep), so the DOM holds the sheet's merchants
+  // and not the roster's 800: the honest count is the one in view, and it is at least the two the
+  // poll above waited for. `total` ≥ `inView` is the margin.
+  expect(seen.inView).toBeGreaterThanOrEqual(2)
+  expect(seen.total).toBeGreaterThanOrEqual(seen.inView)
   await page.screenshot({ path: path.join(SHOTS, 'map-merchants-390.png') })
 
   // A SAILING HULL MOVES between beats (the served segment, drifted by the one clock).

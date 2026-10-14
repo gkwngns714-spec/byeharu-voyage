@@ -394,9 +394,19 @@ test('every --color-chart-* token the night sea defines, the day sea defines too
   expect(night.length).toBeGreaterThanOrEqual(8) // sea, land, coast + deep, shallow, relief, grid, sea-name
   expect(day).toEqual(night)
   // …and every one of them is spent: a token nobody paints with is a second palette waiting.
-  const painted = readdirSync(path.join(SRC, 'chart'))
-    .map((f) => read(path.join('src', 'chart', f)))
-    .join('\n')
+  // A token is drawn by a chart file, or — since 2026-10-14 — by one of the `.bv-sun-*` rules
+  // at the end of src/index.css, which mix a mark's night ink toward the day's by its `--night`
+  // (docs/MAP_ATMOSPHERE.md §11.3). The rules follow the two token blocks, so they are read from
+  // the first `.bv-sun-` rule on and never from the definitions themselves.
+  const firstRule = css.indexOf('\n.bv-sun-light {')
+  expect(firstRule, 'the .bv-sun-* rules exist').toBeGreaterThan(css.indexOf(":root[data-theme='light']"))
+  const sunRules = css.slice(firstRule)
+  const painted =
+    readdirSync(path.join(SRC, 'chart'))
+      .map((f) => read(path.join('src', 'chart', f)))
+      .join('\n') +
+    '\n' +
+    sunRules
   for (const token of night) {
     const utility = token.replace('--color-', '')
     expect(painted.includes(utility), `${token} is defined and never drawn`).toBe(true)

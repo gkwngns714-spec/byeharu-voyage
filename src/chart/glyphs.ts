@@ -55,7 +55,8 @@
 // SIZES ARE IN CSS PIXELS AND STAY THERE. The layers multiply each by `unitsPerPx`, so a glyph is
 // the same size on screen at every zoom — the paper scales, the marks on it do not. The floor is
 // legibility on a 390 px phone, which is what these numbers were chosen against:
-//   · loud port  10 px across, 9 px tall            · fleet dot 8.8 px across, in a 16 px halo
+//   · loud port  10 px across, 9 px tall            · a hull 5.7–10.7 px bow to stern (halved
+//                                                     2026-10-14 at the owner's word), in an 8 px halo
 //   · quiet port 7.2 px across                      · labels 10.5 px mono
 //     (both are the TIER-3 size; `portMarkScale` runs them from 0.60× to 1.40× — 4.3 px to 10.1 px
 //      across for a quiet mark — and `portStrokeWidth` runs the line from 0.70 px to 1.58 px)
@@ -92,26 +93,31 @@ export const GLYPH = {
   loudPortHeight: 9,
   destinationRingRadius: 11,
   /**
-   * THE SHIP (row 90): half the hull's length, bow to stern, in CSS pixels — 13 px overall, so
-   * at arm's length on a phone it reads as a hull and not a dot, and still sits inside the 16 px
-   * halo that keeps it legible over land. Replaces `fleetDotRadius` (4.4): the mark is longer
-   * than the dot was wide because a hull has a heading and a dot has none.
+   * THE SHIP (row 90): half the hull's length, bow to stern, in CSS pixels. Replaces
+   * `fleetDotRadius` (4.4): the mark is longer than the dot was wide because a hull has a heading
+   * and a dot has none.
+   *
+   * HALVED 2026-10-14 (owner: *"make the each ship size smaller by half"*): 6.5 → 3.25, so the
+   * class-less hull is 6.5 px overall where it was 13, inside a halo of 8 px where it was 16. ONE
+   * knob — the three class hulls below and the halo are anchored on this number, so every ship on
+   * every surface (the Map tab, SAIL's small chart, the minimap at its own 0.8×) halved with it,
+   * and the hit reach (`hitRadius`, `TOUCH_TARGET_PX`) did not move: a tap still means her at the
+   * same distance, only the drawing is smaller.
    */
-  shipHalfLength: 6.5,
+  shipHalfLength: 3.25,
   /**
    * HOW LONG EACH OF THE THREE HULLS IS DRAWN, centre to bow, in CSS px (owner row 120, 2026-10-11:
    * *"the ships, higher ships will have different graphics, such as in size, two ships grouping,
    * different graphics completely etc."*).
    *
-   *   barca 5.7 (11.4 px overall) · carlat 6.5 (13.0 px) · nau 10.7 (21.4 px)
+   *   barca 2.85 (5.7 px overall) · carlat 3.25 (6.5 px) · nau 5.35 (10.7 px)
+   *   (before the 2026-10-14 halving: 5.7 / 6.5 / 10.7 centre to bow)
    *
-   * THE MIDDLING HULL KEEPS `shipHalfLength`, so nothing already on this sheet changed weight: the
-   * 13 px hull row 90 measured against the 16 px halo, the roadstead ring and the port marks is
-   * still exactly the caravela latina's. The other two are that number times the CUBE ROOT of the
-   * tonnage ratio, because a hull's length grows as the cube root of her burthen — which is why a
-   * 400-tun carrack is not six barcas long: (60/90)^⅓ = 0.874 and (400/90)^⅓ = 1.645 against the
-   * 60 / 90 / 400 tuns the shipwright rates the three at
-   * (`…0003_the_real_world_and_the_water_between_it.sql:2089-2091`).
+   * THE MIDDLING HULL KEEPS `shipHalfLength`, so the three halve together with it. The other two
+   * are that number times the CUBE ROOT of the tonnage ratio, because a hull's length grows as the
+   * cube root of her burthen — which is why a 400-tun carrack is not six barcas long:
+   * (60/90)^⅓ = 0.874 and (400/90)^⅓ = 1.645 against the 60 / 90 / 400 tuns the shipwright rates
+   * the three at (`…0003_the_real_world_and_the_water_between_it.sql:2089-2091`).
    *
    * THOSE TONNAGES ARE PROSE HERE AND NOT A TABLE, ON PURPOSE. `ship_classes.hold` is the server's
    * column and this file keeps no second copy of it (docs/NO_SPAGHETTI.md §1): these three are
@@ -123,8 +129,10 @@ export const GLYPH = {
    * measure that was applied: a difference you READ across a room, not one you could measure if it
    * occurred to you to try — its own ramp was widened to 1.75× for exactly that reason.
    */
-  hullHalfLength: { barca: 5.7, carlat: 6.5, nau: 10.7 } as Record<HullClass, number>,
-  fleetHaloRadius: 8,
+  hullHalfLength: { barca: 2.85, carlat: 3.25, nau: 5.35 } as Record<HullClass, number>,
+  /** The halo round a lone class-less hull — halved with `shipHalfLength` (8 → 4), since
+   *  `hullGroupHalo` sizes every halo off that ratio. */
+  fleetHaloRadius: 4,
   /** The ring round a GREAT harbour's mark (row 90): 1.9× the loud tier-5 half-width, so it
    *  clears the triangle at every weight and is still well inside the destination ring (r 11). */
   greatPortRingRadius: 9.5,
@@ -257,9 +265,10 @@ export const GLYPH = {
   portDotRadius: 1.6,
 
   /**
-   * THE NIGHT CHART (owner row 125, 2026-10-12): *"when i zoom out, i want cities to be bright
-   * light, in a dark map, visually beautiful. so are ships but in tiny dots… i want the color to be
-   * in darker tone, size smaller, but like cities, there should be light"*.
+   * THE HARBOUR LIGHT (owner row 125, 2026-10-12): *"when i zoom out, i want cities to be bright
+   * light, in a dark map, visually beautiful"* — and since 2026-10-14 it is lit BY THE SUN
+   * (./sun.ts): full on the night side, out by day, dimming through the twilights. The size is
+   * this file's; whether it burns is the almanac's.
    *
    * A HARBOUR'S LIGHT is two circles and no filter: a small bright CORE, and a HALO several times
    * its radius at low opacity, which is what makes a point read as a light rather than a dot. An
@@ -286,25 +295,15 @@ export const GLYPH = {
    *  the great ports read first on a wide sheet and a one-quay coast is a faint spark — which is
    *  the owner's "bright light" without a legend and without a second colour. */
   harbourLightTierSpread: 0.55,
-
   /**
-   * AN EMBER: the ship mark past `HULL_EMBER_MAX_UNITS_PER_PX`. Row 120 already collapses a
-   * squadron to her flagship when the sheet gets wide; past this second, wider threshold the hull
-   * SHAPE goes too and what is left is a dot with its own faint light. Smaller and dimmer than a
-   * harbour on purpose: the owner's "ships… in tiny dots" and "darker tone" in one rule, so a
-   * fleet never out-shouts a city on the same sheet.
+   * THE RIDING LIGHT a ship wears (owner, 2026-10-13: *"i see no blue markers for ship"*; lit by
+   * the sun since 2026-10-14 like the harbours'): two circles under the hull, sized off the group's
+   * halo — the bloom at `shipLightBloomScale` × the halo, the glow at `shipLightGlowScale` × it.
+   * 1.25 and not 1.6 for the bloom: at a close phone zoom the wider glow made a mark 110 px across,
+   * over a quarter of a 390 px glass (tests/map.hulls.spec.ts:449, before the hulls halved).
    */
-  emberRadius: 1.3,
-  /**
-   * AND THIS NUMBER IS BOUNDED BY THE ONE ABOVE IT, which is how it was found. The first cut of
-   * row 125 set it to 2.6, and `tests/map.night.spec.ts` refused the file: an ember's halo came to
-   * 1.15 x 2.6 = 2.99 chart units against a TIER-1 harbour's 1.6 x 3.4 x 0.45 = 2.45, so a lone
-   * barca out-glowed the smallest city on the sheet — the exact inversion of *"cities… bright
-   * light… so are ships but in tiny dots"*. The ordering is the owner's and it is a constraint on
-   * this constant, not a matter of taste: whatever these two scales become, THE DIMMEST HARBOUR
-   * MUST STILL OUT-BURN THE BRIGHTEST SHIP, and the spec holds that rather than this comment.
-   */
-  emberHaloScale: 3.2,
+  shipLightBloomScale: 1.25,
+  shipLightGlowScale: 0.9,
   /**
    * AN ISLET (row 92): the speck of land drawn under a harbour whose island the 110m coast file
    * has no polygon for at all (Malta, Bermuda, the Azores… 28 of them, ./landfall.ts). A filled
@@ -313,6 +312,37 @@ export const GLYPH = {
    */
   isletRadius: 4,
 } as const
+
+/**
+ * THE LAND BY DAY, DOWN THE SHEET (2026-10-14, ./sun.ts): the day body's gradient stops as
+ * (latitude, `--color-chart-day-<token>`). The Earth's broad bands as a satellite shows them, and
+ * nothing finer — a tint keyed on the one coordinate the sheet already has, so it promises no
+ * terrain the data does not hold. Symmetric about the equator except that the south's arid belt
+ * is narrower and its ice begins sooner, which is also true of the Earth. The colours are the
+ * tokens' (src/index.css); this table is only WHERE each one lies.
+ */
+const DAY_ICE = 'var(--color-chart-day-ice)'
+const DAY_BOREAL = 'var(--color-chart-day-boreal)'
+const DAY_TEMPERATE = 'var(--color-chart-day-temperate)'
+const DAY_ARID = 'var(--color-chart-day-arid)'
+const DAY_TROPIC = 'var(--color-chart-day-tropic)'
+
+export const DAY_LAND_BANDS: readonly { readonly lat: number; readonly token: string }[] = [
+  { lat: 90, token: DAY_ICE },
+  { lat: 72, token: DAY_ICE },
+  { lat: 60, token: DAY_BOREAL },
+  { lat: 45, token: DAY_TEMPERATE },
+  { lat: 30, token: DAY_ARID },
+  { lat: 20, token: DAY_ARID },
+  { lat: 8, token: DAY_TROPIC },
+  { lat: -8, token: DAY_TROPIC },
+  { lat: -20, token: DAY_ARID },
+  { lat: -30, token: DAY_ARID },
+  { lat: -45, token: DAY_TEMPERATE },
+  { lat: -55, token: DAY_BOREAL },
+  { lat: -65, token: DAY_ICE },
+  { lat: -90, token: DAY_ICE },
+]
 
 /**
  * THE COAST'S WEIGHT, FOR THIS ZOOM (row 90). Over the globe a hairline (`GLYPH.coastStroke`);
@@ -548,35 +578,13 @@ const HULL_GROUP_PLACES: readonly { readonly ax: number; readonly ay: number }[]
  * docs/NO_SPAGHETTI.md §7 asks.
  */
 /**
- * PAST THIS, A FLEET IS AN EMBER AND NOT A HULL (owner row 125). Three times
- * `HULL_GROUP_MAX_UNITS_PER_PX`, which is the span where `PORT_TIER_BANDS` has already given up on
- * marks and drawn harbours as dots — so the two channels change at the same places on the zoom
- * ladder and the sheet never shows a 10 px carrack beside a 1.6 px city.
- *
- * The ladder, end to end: hull silhouettes and squadrons · flagship only · an ember.
+ * THE LADDER HAS TWO RUNGS AND NO THIRD: hull silhouettes and squadrons · flagship only. Row 125's
+ * third rung — past three times this density a fleet became an EMBER, a dot with a light and no
+ * hull — was retired 2026-10-14 (owner: *"show ships when zoomed out"*): a ship is a ship at every
+ * zoom, and what the widest sheet does with hundreds of them is thin them to one per cell
+ * (./shipMarks.ts), never turn them into dots.
  */
-export const HULL_EMBER_MAX_UNITS_PER_PX = (45 / 390) * 3
-
 export const HULL_GROUP_MAX_UNITS_PER_PX = 45 / 390
-
-/**
- * THE NIGHT BAND: pulled back past this, every harbour on the glass carries its light (owner row
- * 125). Below it the chart is a working sheet — names, roads, roadsteads, a fleet's silhouette —
- * and a glow over that is a smudge across the detail somebody zoomed in to read, so NOTHING GLOWS
- * CLOSE IN and the close view is exactly what it was before row 125.
- *
- * THE LIGHT IS NOT THE DOT'S PROPERTY, which is the mistake the first cut of this row made. Row
- * 94's dot got a halo and the FULL MARK DID NOT, so at the globe the greatest ports in the world —
- * the high-tier entrepôts `PORT_TIER_BANDS` deliberately keeps drawn longest — were the only
- * harbours on the sheet not lit, and the owner's *"cities to be bright light"* came out as every
- * city but the cities. `tests/map.night.spec.ts` counted them: 35 unlit marks against 217 lights.
- * The gate is a DENSITY, applied to BOTH branches of ./PortsLayer.tsx.
- *
- * Set to `HULL_GROUP_MAX_UNITS_PER_PX` rather than to a number of its own: that is already the rung
- * where this chart stops drawing a squadron and starts drawing weather, so the sheet changes
- * character once, on one rung, instead of fading between two opinions about what "pulled back" is.
- */
-export const HARBOUR_LIGHT_MIN_UNITS_PER_PX = HULL_GROUP_MAX_UNITS_PER_PX
 
 /**
  * A FLEET'S MARK — which hulls are drawn, how big each is, and where each sits, in CSS px in her
@@ -607,14 +615,15 @@ export function hullGroup(hulls: readonly (HullClass | null)[], unitsPerPx: numb
  * the hulls that are actually drawn: one circle on the group's centre, wide enough to enclose every
  * hull in it. A SINGLE hull gives back the circle that was there before row 120 to the pixel — the
  * centre is the origin and the radius `fleetHaloRadius` — because her offset is the origin and her
- * halo is `fleetHaloRadius / shipHalfLength` of her length, which for the class-less hull is 8.
+ * halo is `fleetHaloRadius / shipHalfLength` of her length, which for the class-less hull is 4
+ * (8 before the 2026-10-14 halving).
  *
  * ONE CIRCLE AND NOT THREE, decided rather than defaulted: three circles at 70% sea would compound
  * where they overlap and their three gold rings would cross, which is a cluster of bubbles and not
  * a fleet. One ring round a squadron says the thing the halo exists to say, once. The cost is
- * stated: a player's three carracks wear a ~46 px disc, the largest mark this chart draws — and
- * that is the biggest thing a house can put on the water, there are never many of them, and it is
- * hers.
+ * stated: a player's three carracks wear a ~23 px disc (~46 before the halving), the largest mark
+ * this chart draws — and that is the biggest thing a house can put on the water, there are never
+ * many of them, and it is hers.
  */
 export function hullGroupHalo(marks: readonly HullMark[]): { readonly cx: number; readonly cy: number; readonly r: number } {
   const halo = (halfLength: number) => (halfLength * GLYPH.fleetHaloRadius) / GLYPH.shipHalfLength

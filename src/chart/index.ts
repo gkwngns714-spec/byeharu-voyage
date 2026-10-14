@@ -93,9 +93,9 @@ export {
   MAX_SPAN_X,
   MIN_SPAN_X,
   OPENING_MIN_SPAN_DEG,
-  NIGHT_SPAN_DEG,
+  LANE_SPAN_DEG,
   OVER_COVERAGE_LIMIT,
-  PURE_LIGHT_SPAN_DEG,
+  DOT_SPAN_DEG,
   zoomPercent,
   PAPER_MARGIN,
   PAPER_SETTLE_MS,
@@ -125,19 +125,17 @@ export {
 // `hullGroupHalo` and the two numbers a group obeys — exported for the same reason the rest of this
 // block is: what a fleet's mark SAYS is arithmetic, and arithmetic is what a spec can hold to
 // account without rendering a component.
-// ROW 125 added the night chart — `harbourLightStrength`, `harbourLightHalo` and the density past
-// which a fleet is an ember — on the same principle: how brightly a city burns and how small a ship
-// gets are numbers, and `tests/map.night.spec.ts` holds them to account as numbers.
+// ROW 125 added the harbour light — `harbourLightStrength`, `harbourLightHalo` — on the same
+// principle: how brightly a city burns is a number, and `tests/map.sun.spec.ts` holds it to account
+// as one. (The ember and its density are gone — 2026-10-14, a ship is a ship at every zoom.)
 export {
   arrowPath,
   coastStrokeWidth,
   GLYPH,
-  HARBOUR_LIGHT_MIN_UNITS_PER_PX,
   harbourLightGlow,
   harbourLightHalo,
   harbourLightStrength,
   headingDeg,
-  HULL_EMBER_MAX_UNITS_PER_PX,
   HULL_GROUP_MAX,
   HULL_GROUP_MAX_UNITS_PER_PX,
   hullGroup,
@@ -171,6 +169,23 @@ export {
   type Rect,
 } from './labels'
 export { hitTest, toggleSelection } from './hitTest'
+// 2026-10-14 — WHICH SHIPS A VIEW DRAWS (every one of them as a ship): the decision, exported like
+// `portMarks` is, so the Map tab's hit test and a spec read the same thinning the picture did.
+export { shipMarks, SHIP_CELL_PX, type ShipMarks } from './shipMarks'
+// 2026-10-14 — THE SUN: the arithmetic (pure, for tests/map.sun.spec.ts) and nothing of the hook
+// that reads the clock, which only `ChartCanvas` may call.
+export {
+  DAYLIGHT_RASTER_HEIGHT,
+  DAYLIGHT_RASTER_WIDTH,
+  daylightAt,
+  daylightOf,
+  daylightRaster,
+  solarElevationDeg,
+  subsolarPoint,
+  SUN_REFRESH_MS,
+  TWILIGHT,
+  type SubsolarPoint,
+} from './sun'
 
 // ── the backdrop ───────────────────────────────────────────────────────────────────────────────
 export {

@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import type { Point, ViewBox } from '../lib/geo'
+import { CHART_WIDTH, sheetCopies, type Point, type ViewBox } from '../lib/geo'
 import { CoastlineLayer } from './CoastlineLayer'
 import { project } from '../lib/geo'
 import { FleetsLayer, TracksLayer } from './FleetsLayer'
@@ -7,7 +7,7 @@ import { LabelsLayer } from './LabelsLayer'
 import { PortsLayer } from './PortsLayer'
 import { RoadsteadsLayer } from './RoadsteadsLayer'
 import { SeaLayer } from './SeaLayer'
-import { NIGHT_SPAN_DEG, PURE_LIGHT_SPAN_DEG } from './chartView'
+import { DOT_SPAN_DEG, LANE_SPAN_DEG } from './chartView'
 import { portMarks, type ChartModel, type PortRole } from './chartModel'
 import type { CoastlineData } from './coastlineBuild'
 import {
@@ -20,18 +20,20 @@ import {
   type CoastPaper,
 } from './chartView'
 import { coastStrokeWidth, GLYPH } from './glyphs'
-import { mapLabelRequests, planLabels, type Rect } from './labels'
+import { mapLabelRequests, planLabels, type LabelRequest, type Rect } from './labels'
 import type { MapPort, MapSea, MapSelection } from './mapTypes'
 import { regionNameRequests, type RegionTint } from './regions'
 import { seaNameRequests } from './seaNames'
+import { shipMarks } from './shipMarks'
 import type { ChromeBox } from './useChartSurface'
+import { useSunlight } from './useSunlight'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // WHAT IS ON THE PAPER, AND IN WHAT ORDER — the whole chart, drawn once, wherever it is drawn.
 //
 // PAINT ORDER IS THE ONLY STACKING SVG HAS, so it is a RULE and not a preference: sea, coast,
-// tracks, ROADSTEADS, port marks, fleet dots, names. Every name therefore sits on top of every mark
-// and no mark sits on a name; the roads go under the ports, because a dotted line crossing a
+// tracks, ROADSTEADS, port marks, fleet hulls, names. Every name therefore sits on top of every
+// mark and no mark sits on a name; the roads go under the ports, because a dotted line crossing a
 // harbour should pass behind it.
 //
 // ── THE SEA IS PAINTED HERE, AND THAT IS NEW (2026-08-23) ──────────────────────────────────────
@@ -51,19 +53,36 @@ import type { ChromeBox } from './useChartSurface'
 // (`docs/NO_SPAGHETTI.md` §2, and `docs/SECTIONS.md`'s note on the trap a boundary sets). Two
 // stacks can DISAGREE, which is question 3 of §1's checklist, so there is one.
 //
-// The three derivations that decide what is drawn ride with it for the same reason. Each one is a
-// rule about density, not about a screen:
+// The derivations that decide what is drawn ride with it for the same reason. Each one is a rule
+// about density, not about a screen:
 //   · WHICH PORTS      `portMarks` — EVERY port on the glass (row 94), each FULL when it is big
 //                      enough for this zoom (`minTierForSpan`) or one of yours, else a DOT. ONE
 //                      list: the marks layer draws it whole, the label planner and the roads read
 //                      its full half, so a name can never float over a mark drawn as a dot.
-//   · (the lane layer is GONE — 0039: there are no fixed sea lanes on a free sea; the only lines
-//      are TRACKS, the verified courses fleets are actually sailing)
+//   · WHICH SHIPS      `shipMarks` (2026-10-14) — your fleets on the glass, every one; the
+//                      merchants on the glass, thinned to one per cell; ALL of them as ships.
 //   · WHICH NAMES      planned as a SET over the drawn ports (./labels.ts), which is the only way
 //                      two labels can know about each other.
-// MapScreen's hit test asks `visiblePorts` — the full half — the same question with the same box
-// at the moment of a tap, which is what keeps "what you can touch" and "what wears a name" the
-// same list (a dot is a picture; chartModel.ts records the tap that decided it).
+// MapScreen's hit test asks `visiblePorts` and `shipMarks` — the same questions with the same box
+// at the moment of a tap, which is what keeps "what you can touch" and "what is drawn" the same
+// list (a dot is a picture; chartModel.ts records the tap that decided it).
+//
+// ── 2026-10-14: THE SHEET REPEATS, AND THE SUN IS ON IT ────────────────────────────────────────
+// THE COPIES (owner: *"the map is not continuous from left to right. i want it to be continuous"*).
+// The view is no longer clamped east–west (./chartView.ts `clampView`); its box may run past
+// ±180°, and `sheetCopies(box)` (src/lib/geo, the projection's own periodicity) says which copies
+// of the world it touches — one, or two at a seam. The marks are drawn ONCE PER COPY, in a group
+// translated by 360k, from the copy's own WINDOW (the box shifted back by 360k and clipped to one
+// world, so a harbour is drawn in exactly the copy it falls in). The coast is one `<use>` per copy
+// (./CoastlineLayer.tsx). The names are planned ONCE over the whole box, every copy's requests
+// shifted into place, so a name at 179°E and a mark at 179°W cannot be set on top of each other
+// across the seam. A route across the Pacific — `sheetPieces` cuts it at ±180 — meets itself where
+// the two copies meet, and the sheet has no edge anywhere.
+// THE SUN (owner: *"sunlight based on real science… colors similar to daytime earth"*). ONE hook,
+// `useSunlight`, reads the real clock once a minute and hands every layer two things: the subsolar
+// point, so each mark can set its own `--night`, and the daylight raster, through which SeaLayer
+// and CoastlineLayer paint the day picture over the night one. Nothing else on this chart knows
+// what time it is.
 //
 // ── ROW 93: THE REGIONS, ONLY WHEN HANDED IN ───────────────────────────────────────────────────
 // `regions` is null unless the surface's filter is on. Null reaches CoastlineLayer as "paint no
@@ -81,6 +100,20 @@ import type { ChromeBox } from './useChartSurface'
 /** One frozen empty list, so a chart handed no seas does not allocate one per frame. */
 const NO_SEAS: readonly MapSea[] = []
 const NO_ISLETS: readonly Point[] = []
+
+/** The slack `portMarks` keeps beyond the glass, applied to a fleet's name request too. */
+const REQUEST_MARGIN = 0.06
+
+/**
+ * ONE COPY'S WINDOW: the view shifted back onto the base copy and clipped to one world, so a thing
+ * is listed in exactly the copy it falls in. A view that runs 170° → 200° has the window 170 → 180
+ * on copy 0 and −180 → −160 on copy 1.
+ */
+function copyWindow(box: ViewBox, k: number): ViewBox {
+  const left = Math.max(box.x - k * CHART_WIDTH, -CHART_WIDTH / 2)
+  const right = Math.min(box.x + box.width - k * CHART_WIDTH, CHART_WIDTH / 2)
+  return { x: left, y: box.y, width: Math.max(0, right - left), height: box.height }
+}
 
 export function ChartCanvas({
   model,
@@ -128,6 +161,10 @@ export function ChartCanvas({
   ariaLabel: string
   className?: string
 }) {
+  // THE SUN, NOW — the one clock this picture reads (./useSunlight.ts).
+  const sunlight = useSunlight()
+  const sun = sunlight.sun
+
   // THE ROLES, HELD STILL WHILE NOTHING ABOUT THEM CHANGES (2026-10-12: *"the game looks stuck.
   // optimize it so that it is smoothe"*).
   //
@@ -138,9 +175,6 @@ export function ChartCanvas({
   // at the globe is now three circles of light apiece. The roles themselves change when a fleet
   // ARRIVES or is SENT, which is a read, not a frame.
   //
-  // So the identity is held still while the CONTENT is equal. Cheap: a size check and a walk of at
-  // most a handful of entries — `portRoles` holds only the ports some fleet is using, never the
-  // whole chart — against a render of 252 marks it saves.
   // THE CONTENT IS THE KEY, so the identity follows the content and nothing is held in a ref (a ref
   // read during render is a different bug, and eslint's `react-hooks/refs` is right about it). The
   // roles are a handful of entries — only the ports some fleet is using — so spelling them as a
@@ -159,30 +193,35 @@ export function ChartCanvas({
       ),
     [rolesKey],
   )
-  // THE TWO RUNGS OF THE NIGHT CHART, read off the SPAN and handed down (owner row 125). Decided
-  // once, here, so the lights, the lanes and the embers cannot disagree about where the sheet
-  // changes character — and in degrees rather than in pixels per degree, because the same world on
-  // a phone and on a desktop is the same zoom and must be the same picture. ./chartView.ts says
-  // what that cost when it was keyed on density instead.
+  // THE TWO RUNGS OF THE WIDE SHEET, read off the SPAN and handed down (owner row 125). Decided
+  // once, here, so the lanes and the dots cannot disagree about where the sheet changes character
+  // — and in degrees rather than in pixels per degree, because the same world on a phone and on a
+  // desktop is the same zoom and must be the same picture. ./chartView.ts says what that cost when
+  // it was keyed on density instead.
   // A HARBOUR CARRIES HER LIGHT AT EVERY ZOOM (owner, 2026-10-12: *"when zoomed in, i want to see
-  // the lights also"*). It was gated on `NIGHT_SPAN_DEG` — the reasoning being that a glow over a
-  // working chart is a smudge across detail somebody zoomed in to read. The owner looked at both
-  // and wants the lights; and they are right that it costs nothing, because the rings are sized in
-  // CSS pixels (every radius is multiplied by `unitsPerPx`), so a harbour wears the SAME glow at
-  // every span rather than swelling as you close on it. The constant is kept and still names the
-  // rung, because `lightsOnly` below is measured from it.
+  // the lights also"*) — and since 2026-10-14 only where the Sun is down (./sun.ts), which is the
+  // Sun's call and not the zoom's.
   // THE LANES still wait for the pulled-back sheet: 49 thinned loops laid over a working chart is a
   // thicket, and a lane IS thinned — straight where the real course bends — so close in it would be
   // a visibly wrong line on water somebody is reading.
-  const laneBand = box.width >= NIGHT_SPAN_DEG
-  const lightsOnly = box.width >= PURE_LIGHT_SPAN_DEG
+  const laneBand = box.width >= LANE_SPAN_DEG
+  const dotsOnly = box.width >= DOT_SPAN_DEG
 
-  const marks = useMemo(
-    () => portMarks(ports, portRoles, box, minTierForSpan(box.width)),
-    [ports, portRoles, box],
+  // THE COPIES OF THE SHEET ON THE GLASS, and each one's window (header).
+  const copies = useMemo(() => sheetCopies(box), [box])
+  const windows = useMemo(() => copies.map((k) => ({ k, window: copyWindow(box, k) })), [copies, box])
+
+  const minTier = minTierForSpan(box.width)
+  // WHICH PORTS, per copy — `portMarks` on the copy's own window, so each harbour is drawn once.
+  const marksByCopy = useMemo(
+    () => windows.map(({ k, window }) => ({ k, marks: portMarks(ports, portRoles, window, minTier) })),
+    [windows, ports, portRoles, minTier],
   )
-  // The FULL half — what asks for a name and shows its roads (chartModel.ts, `visiblePorts`).
-  const fullPorts = useMemo(() => marks.filter((m) => m.full).map((m) => m.port), [marks])
+  // WHICH SHIPS, per copy — your fleets, and the merchants thinned (./shipMarks.ts).
+  const shipsByCopy = useMemo(
+    () => windows.map(({ k, window }) => ({ k, ships: shipMarks(model.fleets, model.traffic, window, unitsPerPx) })),
+    [windows, model, unitsPerPx],
+  )
 
   // THE SCREEN'S PIXELS, TURNED INTO CHART UNITS — the one line of arithmetic the keep-out contract
   // needs, done here so no screen ever has to hold a scale or a viewBox origin. `unitsPerPx` is the
@@ -198,28 +237,40 @@ export function ChartCanvas({
     }))
   }, [keepOut, box, unitsPerPx])
 
-  // ONE plan for every name on the sheet — the places AND the waters (row 90). The seas' requests
-  // are appended, not merged in a second planner: they carry the lowest priority, so `planLabels`
-  // places them last and a water's name can only ever fill water no port has claimed.
-  const labels = useMemo(
-    () =>
-      planLabels(
-        [
-          ...mapLabelRequests(model, fullPorts, selection, box.width <= LABEL_SPAN_LIMIT),
-          ...(regions ? regionNameRequests(regions, box) : []),
-          ...seaNameRequests(seas, box),
-        ],
-        {
-          viewBox: box,
-          unitsPerPx,
-          fontSizePx: GLYPH.labelSize,
-          gapPx: GLYPH.labelGapX,
-          glyphRadiusPx: GLYPH.fleetHaloRadius,
-          keepOut: keepOutUnits,
-        },
-      ),
-    [model, fullPorts, seas, regions, selection, box, unitsPerPx, keepOutUnits],
-  )
+  // ONE plan for every name on the sheet — the places AND the waters (row 90), on EVERY copy
+  // (2026-10-14). Each copy's requests are built on its own window and shifted into place, so the
+  // planner sees the whole glass at once and a name can never be set across the seam onto a mark
+  // on the other copy. The seas' requests are appended, not merged in a second planner: they carry
+  // the lowest priority, so `planLabels` places them last and a water's name can only ever fill
+  // water no port has claimed.
+  const labels = useMemo(() => {
+    const requests: LabelRequest[] = []
+    for (const { k, marks } of marksByCopy) {
+      const window = copyWindow(box, k)
+      const fullPorts = marks.filter((m) => m.full).map((m) => m.port)
+      const padX = window.width * REQUEST_MARGIN
+      const padY = window.height * REQUEST_MARGIN
+      const inWindow = (r: LabelRequest) =>
+        r.at.x >= window.x - padX && r.at.x <= window.x + window.width + padX && r.at.y >= window.y - padY && r.at.y <= window.y + window.height + padY
+      const shift = (r: LabelRequest): LabelRequest => (k === 0 ? r : { ...r, at: { x: r.at.x + k * CHART_WIDTH, y: r.at.y } })
+      // A fleet's name is asked for on the copy her hull is drawn in, and on that one only — the
+      // ports and the waters are already culled to the window by their own builders.
+      for (const r of mapLabelRequests(model, fullPorts, selection, box.width <= LABEL_SPAN_LIMIT)) {
+        if (r.tone === 'fleet' && !inWindow(r)) continue
+        requests.push(shift(r))
+      }
+      if (regions) for (const r of regionNameRequests(regions, window)) requests.push(shift(r))
+      for (const r of seaNameRequests(seas, window)) requests.push(shift(r))
+    }
+    return planLabels(requests, {
+      viewBox: box,
+      unitsPerPx,
+      fontSizePx: GLYPH.labelSize,
+      gapPx: GLYPH.labelGapX,
+      glyphRadiusPx: GLYPH.fleetHaloRadius,
+      keepOut: keepOutUnits,
+    })
+  }, [model, marksByCopy, seas, regions, selection, box, unitsPerPx, keepOutUnits])
 
   // THE COAST'S SHEET (./chartView.ts, `paperOf` and `nextCoastPaper`) — wide at rest and in a pan,
   // the view itself just after a zoom. The state is only "was the last change a zoom": it is advanced
@@ -243,6 +294,7 @@ export function ChartCanvas({
     () => ({ x: sheet.x, y: sheet.y, width: sheet.width, height: sheet.height }),
     [sheet.x, sheet.y, sheet.width, sheet.height],
   )
+  const paperCopies = useMemo(() => sheetCopies(paper), [paper])
 
   const selectedFleetId = selection?.kind === 'fleet' ? selection.id : null
   const selectedMerchantId = selection?.kind === 'merchant' ? selection.id : null
@@ -259,80 +311,106 @@ export function ChartCanvas({
   const sheetTop = snap((paper.y - box.y) / unitsPerPx)
 
   // THREE SHEETS, ONE PICTURE, in the one paint order (header). The first and last are the view:
-  // their viewBox is `box` and they re-render with it, which costs nothing — the sea is two rects
+  // their viewBox is `box` and they re-render with it, which costs nothing — the sea is three rects
   // and a hairline, the marks are small. The middle one is the coast, the only expensive thing on
   // the paper (measured: every frame of a pan re-rasterised it, 25–55 ms of GPU time): drawn over
   // `paper`, not the view, and moved by a CSS transform, so a pan MOVES it on the compositor and
   // repaints it only when the view crosses into the next half-glass of the grid (`paperOf`) or
   // zooms (docs/MAP_ATMOSPHERE.md §10).
   return (
-    <div className={className} role="img" aria-label={ariaLabel}>
+    <div
+      className={className}
+      role="img"
+      aria-label={ariaLabel}
+      data-sheet-copies={copies.join(' ')}
+      // THE SUN THE PICTURE WAS DRAWN FOR, written on the picture — so a spec reads the instant and
+      // the subsolar point the chart actually used rather than guessing at the clock.
+      data-sun-at={sunlight.atMs}
+      data-sun-lat={sun.lat.toFixed(4)}
+      data-sun-lon={sun.lon.toFixed(4)}
+    >
       <svg
         className="absolute inset-0 h-full w-full"
         viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
         aria-hidden="true"
       >
-        {/* THE SEA — the ground everything else is measured against, its depth, and the graticule
-            (./SeaLayer.tsx). Row 90 made it a picture; the token the ink spec pins did not move. */}
-        <SeaLayer box={box} />
+        {/* THE SEA — the ground everything else is measured against, its depth, the day's water
+            where the Sun is up, and the graticule (./SeaLayer.tsx). */}
+        <SeaLayer box={box} copies={copies} rasterUrl={sunlight.rasterUrl} />
       </svg>
       <CoastSheet
         coast={coast}
         paper={paper}
+        copies={paperCopies}
         left={sheetLeft}
         top={sheetTop}
         strokeWidth={coastStrokeWidth(box.width)}
         regions={regions}
         islets={islets}
         unitsPerPx={unitsPerPx}
+        rasterUrl={sunlight.rasterUrl}
       />
       <svg
         className="absolute inset-0 h-full w-full"
         viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
         aria-hidden="true"
       >
-        <TracksLayer model={model} unitsPerPx={unitsPerPx} lanes={laneBand} />
-        {/* THE ROADS (0076) — the dotted helper line out to the one point of open water each port is
-            reached from, and the hollow circle on it. UNDER the port marks, because a dotted line
-            crossing a harbour should pass behind it (FleetsLayer.tsx:6-9) and a city standing on its
-            own roads is the right picture. It is handed `drawnPorts`, the same list PortsLayer gets,
-            so a line can never run out of a mark that was not drawn — its FULL half, because a
-            dot (row 94) has no roads. */}
-        <RoadsteadsLayer ports={fullPorts} unitsPerPx={unitsPerPx} />
-        {/* THE PINPOINT (0039) — the tapped spot of open water, marked exactly like a selected
-            port is ringed, because it is the same act one step earlier: naming a destination. */}
-        {selection?.kind === 'sea' &&
-          (() => {
-            const at = project(selection.at)
-            return (
-              <g pointerEvents="none" data-testid="map-sea-point">
-                <circle
-                  cx={at.x}
-                  cy={at.y}
-                  r={GLYPH.destinationRingRadius * unitsPerPx}
-                  className="fill-none stroke-ink/70"
-                  strokeWidth={GLYPH.glyphStroke}
-                  vectorEffect="non-scaling-stroke"
-                />
-                <circle cx={at.x} cy={at.y} r={2 * unitsPerPx} className="fill-ink/70" />
-              </g>
-            )
-          })()}
-        <PortsLayer
-          marks={marks}
-          portRoles={portRoles}
-          selectedCode={selectedPortCode}
-          unitsPerPx={unitsPerPx}
-          lightsOnly={lightsOnly}
-        />
-        <FleetsLayer
-          model={model}
-          selectedId={selectedFleetId}
-          selectedMerchantId={selectedMerchantId}
-          unitsPerPx={unitsPerPx}
-          lightsOnly={lightsOnly}
-        />
-        <LabelsLayer labels={labels} unitsPerPx={unitsPerPx} />
+        {/* THE MARKS, ONCE PER COPY OF THE SHEET (header): each copy's group is the world drawn at
+            x + 360k, from that copy's own window, in the one paint order. */}
+        {windows.map(({ k }) => {
+          const marks = marksByCopy.find((m) => m.k === k)?.marks ?? []
+          const ships = shipsByCopy.find((s) => s.k === k)?.ships ?? { fleets: [], traffic: [] }
+          const fullPorts = marks.filter((m) => m.full).map((m) => m.port)
+          return (
+            <g key={k} transform={k === 0 ? undefined : `translate(${k * CHART_WIDTH} 0)`} data-sheet-copy={k}>
+              <TracksLayer model={model} unitsPerPx={unitsPerPx} lanes={laneBand} />
+              {/* THE ROADS (0076) — the dotted helper line out to the one point of open water each
+                  port is reached from, and the hollow circle on it. UNDER the port marks, because a
+                  dotted line crossing a harbour should pass behind it (FleetsLayer.tsx:6-9) and a city
+                  standing on its own roads is the right picture. It is handed the FULL half of the
+                  same list PortsLayer gets, so a line can never run out of a mark that was not drawn
+                  — a dot (row 94) has no roads. */}
+              <RoadsteadsLayer ports={fullPorts} unitsPerPx={unitsPerPx} sun={sun} />
+              {/* THE PINPOINT (0039) — the tapped spot of open water, marked exactly like a selected
+                  port is ringed, because it is the same act one step earlier: naming a destination. */}
+              {selection?.kind === 'sea' &&
+                (() => {
+                  const at = project(selection.at)
+                  return (
+                    <g pointerEvents="none" data-testid="map-sea-point">
+                      <circle
+                        cx={at.x}
+                        cy={at.y}
+                        r={GLYPH.destinationRingRadius * unitsPerPx}
+                        className="fill-none stroke-ink/70"
+                        strokeWidth={GLYPH.glyphStroke}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                      <circle cx={at.x} cy={at.y} r={2 * unitsPerPx} className="fill-ink/70" />
+                    </g>
+                  )
+                })()}
+              <PortsLayer
+                marks={marks}
+                portRoles={portRoles}
+                selectedCode={selectedPortCode}
+                unitsPerPx={unitsPerPx}
+                dotsOnly={dotsOnly}
+                sun={sun}
+              />
+              <FleetsLayer
+                fleets={ships.fleets}
+                traffic={ships.traffic}
+                selectedId={selectedFleetId}
+                selectedMerchantId={selectedMerchantId}
+                unitsPerPx={unitsPerPx}
+                sun={sun}
+              />
+            </g>
+          )
+        })}
+        {/* THE NAMES — one plan over the whole glass, drawn once, over every copy. */}
+        <LabelsLayer labels={labels} unitsPerPx={unitsPerPx} sun={sun} />
       </svg>
     </div>
   )
@@ -340,24 +418,29 @@ export function ChartCanvas({
 
 /**
  * THE COAST'S SHEET — the coast (./CoastlineLayer.tsx: shallows, body, relief, line, tints,
- * islets) in its own `<svg>` over `paper`, on its own compositor layer (`will-change: transform`),
- * placed by a translate of `left`/`top` CSS pixels. Memoised, and CoastlineLayer inside it too, so a
- * pan — which changes only `left`/`top` — writes one `transform` and the browser moves the layer. The svg's viewBox IS
- * `paper` and its size is `paper` in pixels, so a chart unit is exactly the pixel it is on the view
- * sheets and every coordinate inside is the chart's own.
+ * islets, and the day picture over them) in its own `<svg>` over `paper`, on its own compositor
+ * layer (`will-change: transform`), placed by a translate of `left`/`top` CSS pixels. Memoised, and
+ * CoastlineLayer inside it too, so a pan — which changes only `left`/`top` — writes one `transform`
+ * and the browser moves the layer. The svg's viewBox IS `paper` and its size is `paper` in pixels,
+ * so a chart unit is exactly the pixel it is on the view sheets and every coordinate inside is the
+ * chart's own. `copies` is `sheetCopies` of the PAPER, which is wider than the view: the coast is
+ * drawn once and <use>d for the rest.
  */
 const CoastSheet = memo(function CoastSheet({
   coast,
   paper,
+  copies,
   left,
   top,
   strokeWidth,
   regions,
   islets,
   unitsPerPx,
+  rasterUrl,
 }: {
   coast: CoastlineData | null
   paper: ViewBox
+  copies: readonly number[]
   /** Where the sheet's top-left corner is on the glass, in CSS pixels (device-pixel snapped). */
   left: number
   top: number
@@ -365,6 +448,7 @@ const CoastSheet = memo(function CoastSheet({
   regions: readonly RegionTint[] | null
   islets: readonly Point[]
   unitsPerPx: number
+  rasterUrl: string | null
 }) {
   const style: CSSProperties = {
     width: paper.width / unitsPerPx,
@@ -387,6 +471,8 @@ const CoastSheet = memo(function CoastSheet({
           regions={regions}
           islets={islets}
           unitsPerPx={unitsPerPx}
+          copies={copies}
+          rasterUrl={rasterUrl}
         />
       </svg>
     </div>
