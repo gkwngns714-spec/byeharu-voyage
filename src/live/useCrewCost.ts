@@ -17,30 +17,23 @@
 // caller; a crew row on FLEETS ("what this fleet costs per day at sea") is the plausible second,
 // and it reads THIS with `count` null.
 //
-// THE SHAPE OF THE READ — a CEILING-style read (useBuyCapacity), not a VIEW read (useServedRead):
-// the answer is keyed by (fleet, count) and an answer for another count is never printed as this
-// one's. Three things differ from useBuyCapacity, each for a reason:
-//   * DEBOUNCED, like useTrade's dry run: the stepper's slider reports every step of a drag, and
-//     each step is a new count, so an un-debounced effect would turn a 20-step drag into twenty
-//     round trips. The ask waits until the finger has rested for SETTLE_MS.
-//   * NOT re-keyed on `readAt`. `crew_cost(fleet, n)` for an EXPLICIT n depends on the wage knobs
-//     alone — not on what is aboard, not on the purse — so the world's 3-second re-read changes
-//     nothing about it, and re-asking on every beat would be the flicker row 77 removed. A caller
-//     that passes `null` (the crew aboard now) is asking about the world and gets the served
-//     answer for the fleet as it was read; it re-asks when the fleet's crew changes, because the
-//     count it derives changes.
-//   * ANSWERS ARE KEPT, keyed by count, so stepping back to a count already priced is instant and
-//     the caption never blanks between two known figures. `loading` is true only while the count
-//     under the finger has no answer yet. The map is STATE (replaced, never mutated), so a landed
-//     answer is a render and a read during render is a read of state, not of a ref.
+// THE SHAPE OF THE READ — composed from the two shared hooks, not written a third time:
+//   * DEBOUNCED through `useSettled` (the one settle timer): the stepper's slider reports every
+//     step of a drag, and an un-debounced ask would turn a 20-step drag into twenty round trips.
+//   * ASKED through `useServedRead`, with the (fleet, settled count) as the SUBJECT, so an answer
+//     for another count is never printed as this one's: a new count shows "checking" until its
+//     own answer lands. The world's beat re-asks silently and keeps the figure on screen.
+//   * While the count under the finger has not yet settled, the figure on screen would answer an
+//     earlier count, so it is withheld (`loading`) rather than printed as this one's.
+// A refusal (not your fleet, no house) leaves the caption blank rather than wrong: the press states
+// the reason in full when the order is issued (§7C's mirror — a truthful lesser answer, never a
+// fabricated figure).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { useEffect, useState } from 'react'
 import { worldCrewCost } from '../lib/rpc'
 import type { CrewCost } from '../lib/rpc'
-
-/** How long a chosen count must stand still before the server is asked to price it. */
-const SETTLE_MS = 200
+import { useServedRead } from './useServedRead'
+import { useSettled } from './useSettled'
 
 export interface CrewCostState {
   /** The served figures for THIS count, or null before its first answer. */
@@ -50,37 +43,14 @@ export interface CrewCostState {
 }
 
 const IDLE: CrewCostState = { cost: null, loading: false }
+const WAITING: CrewCostState = { cost: null, loading: true }
 
 export function useCrewCost(fleetId: string | null, count: number | null): CrewCostState {
-  const key = fleetId !== null ? `${fleetId}:${count ?? '-'}` : null
-  // One map per hook instance: a fleet's answers do not outlive the screen that asked.
-  const [answers, setAnswers] = useState<ReadonlyMap<string, CrewCost>>(() => new Map())
-  const known = key !== null && answers.has(key)
-
-  useEffect(() => {
-    if (key === null || fleetId === null || known) return
-    let live = true
-    const timer = setTimeout(() => {
-      void worldCrewCost(fleetId, count).then((r) => {
-        if (!live) return
-        // A refusal (not your fleet, no house) leaves the caption blank rather than wrong: the
-        // press states the reason in full when the order is issued (§7C's mirror — a truthful
-        // lesser answer, never a fabricated figure).
-        if (!r.ok) return
-        setAnswers((prev) => {
-          const next = new Map(prev)
-          next.set(key, r.value)
-          return next
-        })
-      })
-    }, SETTLE_MS)
-    return () => {
-      live = false
-      clearTimeout(timer)
-    }
-  }, [key, fleetId, count, known])
-
-  if (key === null) return IDLE
-  const cost = answers.get(key) ?? null
-  return { cost, loading: cost === null }
+  const settled = useSettled(count)
+  const read = useServedRead(fleetId !== null ? `${fleetId}:${settled ?? '-'}` : null, () =>
+    worldCrewCost(fleetId as string, settled),
+  )
+  if (fleetId === null) return IDLE
+  if (settled !== count) return WAITING
+  return { cost: read.view, loading: read.loading }
 }
