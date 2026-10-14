@@ -1601,6 +1601,16 @@ export interface TrafficFleet {
   status: FleetStatus
   /** Hulls in the fleet. */
   ships: number
+  /**
+   * WHAT THOSE HULLS ARE — `ship_classes.code` per hull, FLAGSHIP FIRST then the order she was
+   * built in (0102, owner row 120). As long as `ships`.
+   *
+   * CODES, not names: a code is the server's own identifier and a name is prose that may be
+   * re-worded or translated, and the chart was carrying a name-to-class table for `world.fleets`
+   * for exactly that reason. A code the client does not know draws the class-less hull rather than
+   * the nearest guess — the lesser answer may be lesser, never wrong.
+   */
+  hulls: string[]
   /** Port CODE she lies in, or null at sea. */
   port: string | null
   /** The SERVED roadstead of that port, [lat, lon] — where the chart draws her at anchor. */
@@ -1610,6 +1620,34 @@ export interface TrafficFleet {
   voyage: Omit<FleetVoyage, 'id'> | null
   /** When her next lap may start (ISO), while she is held in port; else null. */
   next_lap_at: string | null
+  /**
+   * HER LOOP, THINNED FOR DRAWING — `[lat, lon]` points, or null (0111, owner row 125: *"major
+   * fleet shoud also show the routes as well"*). Served only for a fleet of `fleet_lane_min_ships`
+   * hulls or more that has a standing route; null for everyone else, and null is a real answer, not
+   * a missing key.
+   *
+   * NOT A COURSE AND NOT SAILABLE. `voyage.course` beside it is her real, raster-verified leg;
+   * this is the WHOLE loop decimated to `fleet_lane_points_max` points, and between two of them
+   * the straight segment crosses land. It exists to be drawn at a span where a continent is forty
+   * pixels wide. Nothing may sail it, measure a distance from it, or derive a position on it — the
+   * server will not even let a client ask for one (`public.route_lane` is revoked from every client
+   * role), and the only reason it is on the wire at all is that the chart cannot invent it.
+   */
+  lane: [number, number][] | null
+}
+
+/**
+ * A SEA WINDOW — what `world.sea_traffic` is asked to look at (0102). Degrees, the server's own
+ * spelling: `south < north`, both within ±90, `west` and `east` within ±180 and `west > east` when
+ * the window wraps the antimeridian. Null (or an omitted argument) is the whole world. A malformed
+ * one is refused `E_BAD_VIEW` rather than quietly widened — see `src/live/seaWindow.ts`, which is
+ * the one place this shape is built.
+ */
+export interface SeaWindow {
+  south: number
+  north: number
+  west: number
+  east: number
 }
 
 export interface SeaTraffic {
@@ -1617,6 +1655,126 @@ export interface SeaTraffic {
   enabled: boolean
   at: string
   fleets: TrafficFleet[]
+  /**
+   * EVERY merchant fleet in the world, not only the ones in `fleets` (0102). The read carries a
+   * cap (`sea_traffic_max`) and, when it was handed a window, only what that window could see; at
+   * the roster the owner asked for (row 118) serving them all on every beat is not a read anyone
+   * should pay for to look at one sea.
+   */
+  total: number
+  /** `total` minus what was served — the window and the cap in one number. A read that truncates
+   *  silently is a read that teaches the player the sea is empty, so it never does. */
+  omitted: number
+}
+
+/**
+ * WHAT A MERCHANT IS DOING AT ONE HARBOUR (0104, owner row 121: *"By clicking the city, i get to
+ * see what trading ships started, resting, ending etc."*). DERIVED by the server from her route's
+ * stops and cursor, its hold and its pause, and from where her fleet is — never stored, and never
+ * recomputed here. The words are spelled once, in `src/features/port/MerchantsHere.tsx`.
+ */
+export type MerchantDoing = 'laid_up' | 'resting' | 'starting' | 'ending' | 'passing' | 'away'
+
+/**
+ * One row of `world.port_merchants` — a TRAFFIC ROW plus what she is doing here and the loop that
+ * brings her. It EXTENDS `TrafficFleet` on purpose: one type and one writer of the line beside a
+ * merchant's name (`src/live/merchantLine.ts`), so PORT and MAP cannot drift in words.
+ *
+ * MINUS `lane`, WHICH THIS READ DOES NOT SERVE. 0111 added that key to `world.sea_traffic` for the
+ * chart to draw a major fleet's route at a wide zoom; `world.port_merchants` (0104) was not changed
+ * and should not be — a harbour's list of merchants is prose and a table, not a chart, and it
+ * already serves `stops` (port CODES in sailing order), which is what a reader at a quay wants.
+ * Omitted rather than inherited, because inheriting it would have the type PROMISE a key the server
+ * never sends: nothing reads it off a PortMerchant today, and the point of saying so here is that
+ * the first person who tries gets a compile error instead of `undefined`.
+ */
+export interface PortMerchant extends Omit<TrafficFleet, 'lane'> {
+  doing: MerchantDoing
+  /**
+   * HER TOTAL LEVEL (0113, owner 2026-10-13: *"a list, showing the total level"*): the company's
+   * four skills — the levels docs/WORDS.md calls **Skills** — summed by the server through
+   * `public.skill_level`. 0 for a company that has studied nothing; never null. A server that has
+   * not applied 0113 sends no key at all, and `src/live/merchantWords.ts` `levelOf` reads that
+   * absence as "not served" rather than as nought.
+   */
+  level: number
+  /** Her whole loop, port CODES in sailing order (2 to 8 of them). Codes only — the baked courses
+   *  are served on the card, for the one fleet a player tapped. */
+  stops: string[]
+}
+
+/** `world.port_merchants(p_port)` — which merchants this harbour concerns, read at a tap. Not the
+ *  beat: `world.sea_traffic` is the beat's read and it must not grow (migration 0104's header). */
+export interface PortMerchants {
+  /** The dark-first switch (`npc_traders_enabled`). False: `merchants` is empty. */
+  enabled: boolean
+  at: string
+  /** The harbour asked about, by CODE. */
+  port: string | null
+  merchants: PortMerchant[]
+}
+
+/**
+ * ONE LANE on the route board (0106, owner row 115). Hers or a merchant's, never another
+ * captain's — DESIGN §E.5 keeps other players off the chart and the board is not a loophole.
+ */
+export interface RouteBoardRow {
+  id: string
+  name: string
+  /** The caller's own route. Hers carry no `company` — she knows whose they are. */
+  mine: boolean
+  /** A merchant company's route (`players.is_npc`). */
+  merchant: boolean
+  company: string | null
+  nation_code: string | null
+  ink: MerchantInk | null
+  /** Port CODES in loop order; the loop closes back on the first. */
+  stops: string[]
+  stop_count: number
+  /**
+   * How far one lap sails, nautical miles — `public.route_nm`, the sum of the loop's BAKED leg
+   * courses measured by `voyage.segments_from_course`. Never a straight line between harbours.
+   *
+   * NULL when the server will not say: a baked course the two sea rasters disagree about makes
+   * `voyage.segments_from_course` raise, and a board of every route in the world must not be one
+   * faulted loop away from serving nothing (0106). Print the absence and rank it last.
+   */
+  nm: number | null
+  /** How many distinct regions the loop touches. Two or more is a route that crosses a world. */
+  regions: number
+  /** The server's own word for what the route is doing (`public.standing_route_state`). */
+  state: string
+  /** Whether a fleet is on it. A route with no fleet is a plan, not a lane. */
+  assigned: boolean
+  /**
+   * WHAT THIS LANE ASKS OF ANY CAPTAIN (0108, owner row 117) — `public.route_requirement`, the
+   * inverse of the gate `public.passage_gate` refuses by. `navigation` is the smallest level
+   * whose reach covers the loop's longest leg, and null when a leg is unmeasured (a course the
+   * sea disputes); `exploration` is the dearest region the loop calls at.
+   */
+  requires: { navigation: number | null; exploration: number }
+  /**
+   * True when YOU could not sail this loop today. The same rule the gate refuses by, read
+   * forward against your own levels — and carried on a MERCHANT'S lane too: merchants are
+   * exempt from the gates, so this cannot mean "she may not". It means you may not, which is
+   * the useful reading of another house's carreira.
+   */
+  closed: boolean
+  earnings: RouteEarnings
+}
+
+/** `world.route_board` (0106) — every lane the caller may know of, with the figures to rank them
+ *  by. Capped at `route_board_max`; her own routes are never the ones dropped. */
+export interface RouteBoard {
+  at: string
+  /** The merchant switch. False: the board is her own routes, which is all the world then holds. */
+  merchants: boolean
+  routes: RouteBoardRow[]
+  /** Every route the caller may know of, not only the ones served. */
+  total: number
+  /** `total` minus what was served. A read that truncates silently teaches the player the world is
+   *  smaller than it is, so it never does. */
+  omitted: number
 }
 
 /** `public.route_earnings` — a route's laps, summed by the server. Never summed here. */

@@ -1,0 +1,397 @@
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE NIGHT CHART — owner row 125, 2026-10-12
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+//   *"when i zoom out, i want cities to be bright light, in a dark map, visually beautiful. so are
+//    ships but in tiny dots. right now ships are distinguished by size and colors, i want the color
+//    to be in darker tone, size smaller, but like cities, there should be light, and major fleet
+//    shoud also show the routes as well"*
+//
+// Four claims, and this file exists because the first three were written and then ANNOUNCED AS DONE
+// before anybody counted a single element on the glass. They are counted here.
+//
+//   CITIES ARE LIGHT     a harbour past its mark band draws a bright core AND a halo around it, and
+//                        the halo is wider for a great entrepôt than for a one-quay coast
+//   SHIPS ARE EMBERS     past `HULL_EMBER_MAX_UNITS_PER_PX` a fleet is a dot with its own faint
+//                        light and NO hull path at all
+//   DIMMER AND SMALLER   an ember's core is strictly smaller than a harbour's, and strictly fainter,
+//                        BY THE NUMBERS — "so are ships but in tiny dots" is an ordering between the
+//                        two channels and not a vibe
+//   THE INK IS HERS      an ember keeps her nation's fill and drops the stroke, so the "darker tone"
+//                        is the same eight inks at lower opacity rather than a ninth grey
+//
+// UNIT: the arithmetic, which needs no browser — the tier ramp is monotonic and bounded, an ember is
+// smaller than a harbour core at every density, and the ember threshold sits ABOVE the group
+// threshold so the ladder has three rungs in the right order.
+//
+// BROWSER, merchants on (./npcOn.fixture.ts): zoomed out to the globe, every harbour on the glass is
+// two circles and every merchant is an ember with no hull path; zoomed back in, the hulls return.
+// The screenshot lands in docs/npc-traders/ so the owner can see the thing they asked for.
+
+import { test, expect, type Page } from '@playwright/test'
+import { mkdirSync } from 'node:fs'
+import path from 'node:path'
+import { PHONE, reachable, ready } from './appReady.fixture'
+import { serveNpcOn } from './npcOn.fixture'
+import type { TrafficFleet } from '../src/lib/rpc'
+import {
+  GLYPH,
+  HULL_EMBER_MAX_UNITS_PER_PX,
+  HULL_GROUP_MAX_UNITS_PER_PX,
+  NIGHT_SPAN_DEG,
+  PURE_LIGHT_SPAN_DEG,
+  harbourLightHalo,
+  harbourLightStrength,
+  mapTrafficOf,
+  zoomPercent,
+} from '../src/chart'
+
+const SHOTS = path.resolve('docs', 'npc-traders')
+
+/** The eight merchant inks, as the server spells them. */
+const NATION_INKS = ['prt', 'esp', 'nld', 'eng', 'han', 'ita', 'ott', 'east']
+
+// ── THE ARITHMETIC ─────────────────────────────────────────────────────────────────────────────
+
+test('a harbour burns by its size, between a floor and a ceiling', () => {
+  // MONOTONIC AND BOUNDED. Every tier is brighter than the one below it, the smallest coast is
+  // still a light (the floor is what `harbourLightTierSpread` leaves behind), and the brightest is
+  // the whole halo and never more — so no harbour can bloom off the sheet.
+  const strengths = [1, 2, 3, 4, 5].map(harbourLightStrength)
+  expect(strengths).toEqual([0, 0.25, 0.5, 0.75, 1])
+  for (let i = 1; i < strengths.length; i++) expect(strengths[i]).toBeGreaterThan(strengths[i - 1])
+
+  // OUT-OF-RANGE TIERS ARE CLAMPED, NOT TRUSTED. A tier the world has not invented yet, or a null
+  // that arrived as NaN, must still draw a light — a harbour that renders as radius NaN is an
+  // invisible city, which is the one failure mode the owner would see and could not describe.
+  expect(harbourLightStrength(0)).toBe(0)
+  expect(harbourLightStrength(99)).toBe(1)
+  expect(harbourLightStrength(Number.NaN)).toBe(0)
+  expect(Number.isFinite(harbourLightHalo(Number.NaN, 0.5))).toBe(true)
+
+  // THE HALO IS ALWAYS WIDER THAN THE CORE IT SURROUNDS, at every tier and every density — that
+  // relation IS the glow, and a halo inside its core would simply be a brighter dot.
+  for (const upp of [0.05, 0.2, 0.5, 0.92]) {
+    for (const tier of [1, 2, 3, 4, 5]) {
+      const halo = harbourLightHalo(tier, upp)
+      expect(halo).toBeGreaterThan(GLYPH.portDotRadius * upp)
+    }
+    // …and a tier-5 entrepôt out-burns a tier-1 coast at the same density.
+    expect(harbourLightHalo(5, upp)).toBeGreaterThan(harbourLightHalo(1, upp))
+  }
+})
+
+test('a ship is smaller and dimmer than a city, and the ladder has three rungs in order', () => {
+  // "SO ARE SHIPS BUT IN TINY DOTS" IS AN ORDERING, so it is asserted as one. An ember's core is
+  // strictly inside a harbour's core, and its halo strictly inside a harbour's halo at the DIMMEST
+  // tier — a ship can never out-shout even the smallest city on the same sheet.
+  expect(GLYPH.emberRadius).toBeLessThan(GLYPH.portDotRadius)
+  for (const upp of [0.4, 0.92]) {
+    expect(GLYPH.emberRadius * GLYPH.emberHaloScale * upp).toBeLessThan(harbourLightHalo(1, upp))
+  }
+
+  // THE LADDER: silhouettes and squadrons · flagship only · an ember. The ember rung must sit ABOVE
+  // the group rung, or a fleet would turn into a dot while still being drawn as a squadron.
+  expect(HULL_EMBER_MAX_UNITS_PER_PX).toBeGreaterThan(HULL_GROUP_MAX_UNITS_PER_PX)
+
+  // AND THE TWO RUNGS ARE IN SPAN, IN THE RIGHT ORDER, AND REACHABLE. The lights come up first on
+  // the way out, then the marks and hulls go; and the whole world (360°) is past both, on EVERY
+  // screen — which is the whole point of measuring this in degrees. Keyed on density, the night
+  // chart appeared on a 390 px phone (0.92 °/px) and not on a 1440 px desktop (0.25 °/px) at the
+  // very same zoom; `tests/map.marks.spec.ts` caught exactly that, 35 marks still drawn at the
+  // world view on the wide viewports.
+  expect(PURE_LIGHT_SPAN_DEG).toBeGreaterThan(NIGHT_SPAN_DEG)
+  expect(360).toBeGreaterThan(PURE_LIGHT_SPAN_DEG)
+  expect(zoomPercent(360)).toBe(0)
+  expect(zoomPercent(NIGHT_SPAN_DEG)).toBeGreaterThan(zoomPercent(PURE_LIGHT_SPAN_DEG))
+})
+
+test('a lane is copied, never invented, and a stub of one draws nothing', () => {
+  // THE CLIENT DECIDES NOTHING ABOUT WHO KEEPS A LANE. `fleet_lane_min_ships` lives in the world
+  // config and 0111 applies it, so `mapTrafficOf` copies whatever arrived — a three-hull fleet with
+  // no lane served draws none, and a one-hull fleet the server DID serve one draws it. Anything else
+  // would be a second authority on the word "major", and the one that is not the server is the one
+  // that goes stale.
+  const row = (over: Partial<TrafficFleet>): TrafficFleet => ({
+    id: 'm-1', company: 'Casa da Prova', nation_code: 'PRT', ink: 'prt', name: 'Prova', status: 'DOCKED',
+    ships: 3, hulls: ['nau', 'nau', 'barca'],
+    port: 'LIS', roadstead: [38.6, -9.4], anchor: null, voyage: null, next_lap_at: null, lane: null,
+    ...over,
+  })
+  const laneOf = (over: Partial<TrafficFleet>) => mapTrafficOf([row(over)])[0]?.lane ?? null
+
+  expect(laneOf({})).toBeNull()
+  expect(laneOf({ ships: 1, hulls: ['barca'], lane: [[38.6, -9.4], [32.6, -16.9]] })).toEqual([
+    { lat: 38.6, lon: -9.4 },
+    { lat: 32.6, lon: -16.9 },
+  ])
+  // A STUB IS NOT A LINE. One point cannot be drawn, and guessing a second would be inventing water
+  // — the same rule the loop keeps (./liveWorld.ts).
+  expect(laneOf({ lane: [[38.6, -9.4]] })).toBeNull()
+  expect(laneOf({ lane: [] })).toBeNull()
+})
+
+// ── THE GLASS ──────────────────────────────────────────────────────────────────────────────────
+
+/** What is actually drawn: the harbour lights, the embers, and the density they were drawn at. */
+async function nightOnTheGlass(page: Page) {
+  return page.evaluate(() => {
+    const svg = document.querySelector('[data-testid="map-chart"] svg')
+    const vb = svg?.getAttribute('viewBox')?.split(/\s+/).map(Number) ?? []
+    const unitsPerPx = vb.length === 4 && svg ? vb[2] / (svg as SVGSVGElement).clientWidth : Number.NaN
+
+    // EVERY HARBOUR ON THE SHEET, in whichever of its two renderings this zoom draws — the light
+    // belongs to the harbour, so a spec that only looked at the dots would miss the great ports,
+    // which is exactly the defect this file found.
+    const lights = [...document.querySelectorAll('[data-port-mark]')].map((g) => {
+      // THE RINGS OF THE LIGHT: every harbour-light circle that carries an OPACITY (the `/` in
+      // the Tailwind class) — the bloom and the glow — as opposed to the bare `fill-harbour-light`
+      // core. Attribute match rather than a class selector because that `/` would need three
+      // layers of backslash inside a selector inside a page-evaluate string.
+      const rings = [...g.querySelectorAll('circle[class*="harbour-light/"]')]
+      const halo = rings[0] ?? null
+      return {
+        tier: Number(g.getAttribute('data-port-tier')),
+        mark: g.getAttribute('data-port-mark') ?? '',
+        lit: g.getAttribute('data-port-lit') === 'yes',
+        halo: halo ? Number(halo.getAttribute('r')) : null,
+        core: Number(
+          g.querySelector('circle[class="fill-harbour-light"]')?.getAttribute('r') ?? Number.NaN,
+        ),
+        rings: rings.length,
+        ringRadii: rings.map((c) => Number(c.getAttribute('r'))),
+        circles: g.querySelectorAll('circle').length,
+        paths: g.querySelectorAll('path').length,
+        ring: g.querySelector('[data-testid="map-port-ring"]') !== null,
+        haloIsFirst: halo !== null && g.firstElementChild === halo,
+      }
+    })
+    const embers = [...document.querySelectorAll('[data-fleet-mark="ember"]')].map((g) => {
+      const circles = [...g.querySelectorAll('circle')]
+      return {
+        hulls: Number(g.getAttribute('data-hulls')),
+        circles: circles.length,
+        radii: circles.map((c) => Number(c.getAttribute('r'))),
+        classes: circles.map((c) => c.getAttribute('class') ?? ''),
+        paths: g.querySelectorAll('path[data-hull-class]').length,
+        blink: g.classList.contains('bv-ship-blink'),
+        phaseMs: Number.parseFloat((g as SVGGElement).style.animationDelay) || 0,
+      }
+    })
+    // THE MAJOR FLEETS' LANES (owner row 125's last clause). Counted, and their ink read back, so
+    // "the routes show" is a number and the ink is proven to be the company's own.
+    const lanes = [...document.querySelectorAll('[data-testid="map-merchant-lane"]')].map((p) => ({
+      ink: p.getAttribute('data-lane-ink') ?? '',
+      d: p.getAttribute('d') ?? '',
+      cls: p.getAttribute('class') ?? '',
+    }))
+
+    const pct = document.querySelector('[data-testid="map-zoom-percent"]')
+    return {
+      unitsPerPx,
+      spanDeg: vb.length === 4 ? vb[2] : Number.NaN,
+      zoomPercent: pct ? Number(pct.getAttribute('data-zoom-percent')) : Number.NaN,
+      lights,
+      embers,
+      lanes,
+      // The marks of the OTHER band, so "the hulls came back" is a count and not a feeling.
+      hullPaths: document.querySelectorAll('path[data-hull-class]').length,
+      // Any port that is still drawing its triangle or lozenge rather than its light.
+      portMarkPaths: document.querySelectorAll('[data-port-mark="full"] path').length,
+    }
+  })
+}
+
+test('zoomed out, the cities are lights and the ships are embers', async ({ page, request, baseURL }) => {
+  // TWENTY MINUTES, AND THE FIXTURE IS WHY. `npcOn()` builds the merchants-on world ONCE PER WORKER
+  // — it opens the shipped image, lays up a merchant at Lisbon, runs the switch over 837 fleets and
+  // warps six legs — and WHICHEVER SPEC IN THE WORKER RUNS FIRST PAYS FOR ALL OF IT. Measured here
+  // at ~9 minutes, which left this test under one minute for twelve zoom-out clicks, the counting,
+  // a screenshot and twelve clicks back, and it timed out at 600_000 with the chart entirely
+  // correct. ./map.hulls.spec.ts carries the same 600_000 and passes only because it has so far
+  // always run second, on an image this file had already built — a budget that depends on
+  // alphabetical order is not a budget. The drive itself is about 90 seconds.
+  test.setTimeout(1_200_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+  mkdirSync(SHOTS, { recursive: true })
+  await serveNpcOn(page)
+  await page.setViewportSize(PHONE)
+  await page.goto('map')
+  await ready(page)
+  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
+
+  // The merchants have to be on the glass before pulling back, or the ember count would be zero for
+  // the honest reason that nobody is at sea yet — which is not the claim this file makes.
+  await expect
+    .poll(async () => (await nightOnTheGlass(page)).hullPaths, { timeout: 60_000 })
+    .toBeGreaterThanOrEqual(2)
+
+  const out = page.getByLabel('Zoom out')
+  for (let i = 0; i < 12; i++) await out.click()
+  await page.waitForTimeout(800)
+
+  const wide = await nightOnTheGlass(page)
+
+  // WE REALLY ARE PAST BOTH RUNGS — read off the glass, not assumed from a click count, because
+  // "twelve presses reaches the globe" is a fact about the zoom ladder and not about this file.
+  // The SPAN is what decides the night chart, so the span is what is checked, and the zoom readout
+  // the owner asked for is checked with it: at the globe it must say 0%.
+  expect(wide.spanDeg).toBeGreaterThanOrEqual(PURE_LIGHT_SPAN_DEG)
+  expect(wide.zoomPercent).toBe(0)
+
+  // EVERY CITY IS A LIGHT — EVERY ONE, not just the ones drawn as dots. The first cut of row 125
+  // lit the dot and left the full mark dark, and because `PORT_TIER_BANDS` keeps the GREAT ports
+  // drawn as marks longest, the harbours left unlit at the globe were precisely the biggest cities
+  // in the world: 35 of them. So the count below is over every `data-port-mark` on the sheet and
+  // the assertion is "not one of you is dark".
+  expect(wide.lights.length).toBeGreaterThanOrEqual(20)
+  expect(wide.lights.filter((l) => !l.lit)).toEqual([])
+  // AND NOT ONE OF THEM DRAWS A MARK. Past the ember rung a city is light and nothing else: the
+  // first lit sheet kept the 35 great ports' triangles outlined on top of their blooms, which is
+  // a hybrid and fights the band it is in. This is also what still catches the original defect —
+  // if any harbour ever stops being lit, or starts drawing a mark here, the counts below move.
+  expect(wide.lights.filter((l) => l.mark !== 'dot')).toEqual([])
+  expect(wide.portMarkPaths).toBe(0)
+  for (const l of wide.lights) {
+    // A LIGHT HAS FALLOFF, which is two rings and not one. The first cut drew a single halo at 20%
+    // ink, 3.4x the core — at the globe a 1.6 px dot inside a 5.4 px smudge — and the owner's
+    // answer was that these are not lights. They were not. A point reads as a SOURCE when the ink
+    // climbs as the rings tighten, and that needs a wide faint bloom, a brighter glow inside it,
+    // and the hard core inside them both.
+    expect(l.rings).toBe(2)
+    expect(l.halo).not.toBeNull()
+    expect(Number.isFinite(l.halo!) && l.halo! > 0).toBe(true)
+    // BLOOM OUTSIDE GLOW OUTSIDE CORE, in that order and painted in that order, so each sits
+    // behind the next and the mark on top of all of them is never hidden by its own light.
+    expect(l.haloIsFirst).toBe(true)
+    expect(l.ringRadii[0]).toBeGreaterThan(l.ringRadii[1])
+    // Two rings and a core, and nothing else at all.
+    expect(l.circles).toBe(3)
+    expect(l.paths).toBe(0)
+    expect(l.ringRadii[1]).toBeGreaterThan(l.core)
+  }
+  // AND THE BRIGHTNESS REALLY FOLLOWS SIZE. If this frame holds more than one tier, the bigger
+  // tier's halo must be the wider one; if it holds only one, the claim is not made rather than faked.
+  const byTier = new Map<number, number>()
+  for (const l of wide.lights) byTier.set(l.tier, l.halo!)
+  if (byTier.size > 1) {
+    const tiers = [...byTier.keys()].sort((a, b) => a - b)
+    expect(byTier.get(tiers.at(-1)!)!).toBeGreaterThan(byTier.get(tiers[0])!)
+  }
+
+  // EVERY SHIP STILL ON THE SHEET IS AN EMBER, and the hull paths are GONE — not hidden, not
+  // zero-sized, absent.
+  expect(wide.embers.length).toBeGreaterThanOrEqual(2)
+  expect(wide.hullPaths).toBe(0)
+  // AND ONLY THE MAJOR FLEETS ARE ON IT AT ALL (owner, 2026-10-12: *"when i zoom out ships
+  // doesn't have to show, only major ships with dots - light"*). Asserted as an EQUALITY against
+  // the lanes, because `lane` is the server's own answer to "is she major" — so one mark per lane
+  // and no mark without one is the same statement as "the chart and the server agree who counts".
+  // It is also the frame-rate fix: 240 marks re-placed on every drift frame became 49.
+  expect(wide.embers.length).toBe(wide.lanes.length)
+  // THE SEA TWINKLES RATHER THAN PULSING: with 49 lamps alight there must be more than one phase
+  // among them, or this is a UI element flashing and not a fleet of riding lights.
+  expect(new Set(wide.embers.map((e) => e.phaseMs)).size).toBeGreaterThan(1)
+  const smallestCore = Math.min(...wide.lights.filter((l) => l.mark === 'dot').map((l) => l.core))
+  for (const e of wide.embers) {
+    expect(e.circles).toBe(2)
+    expect(e.paths).toBe(0)
+    expect(e.radii[0]).toBeGreaterThan(e.radii[1])
+    // SMALLER THAN THE SMALLEST CITY ON THE SHEET, measured on the glass and not in the arithmetic.
+    expect(e.radii[1]).toBeLessThan(smallestCore)
+    // A BLUE LIGHT, AND ITS OWN CHANNEL (owner, 2026-10-12: *"I want ships to be in blue light"*).
+    // The two lights on this sheet are told apart by COLOUR and by SIZE, which is what makes them
+    // readable at a glance: a warm harbour lamp and a cold ship lamp, as far apart on the wheel as
+    // they go, where eight nation inks at ember size were a scatter of specks nobody could name.
+    //
+    // THE ORDERING IS SIZE, NOT OPACITY, AND THAT IS A CORRECTION. An earlier cut held the ships
+    // under the cities by INK — ember halo /10, core /40 — and the owner's answer to that sheet was
+    // *"I see no ships whatsoever"*. They were right: a 2.3 px dot at 40% is not a light, it is a
+    // rumour. Dimming was the wrong lever; it was only ever needed because 240 marks were drawn,
+    // and only 49 are now. "Size smaller" is the owner's own word for the relation, so size is what
+    // is asserted — and the colours keep the two channels apart without either having to hide.
+    expect(e.classes.join(' ')).not.toMatch(/stroke-/)
+    expect(e.classes[0]).toContain('fill-ship-light/')
+    expect(e.classes[1]).toContain('fill-ship-light/')
+    expect(e.classes.join(' ')).not.toContain('harbour-light')
+    // SHE BLINKS, ON HER OWN PHASE (owner, 2026-10-12: *"ships should be blinking"*). The class is
+    // declared once and the compositor owns it — nothing here ticks per frame — and the delay comes
+    // from her own id, so the sea twinkles instead of pulsing in unison and a merchant keeps her
+    // rhythm whoever else is at sea.
+    expect(e.blink).toBe(true)
+    expect(e.phaseMs).toBeGreaterThanOrEqual(0)
+    expect(e.phaseMs).toBeLessThan(2600)
+    // The ember still says what she is, so a click still has something to select.
+    expect(e.hulls).toBeGreaterThanOrEqual(1)
+  }
+
+  // AND THE MAJOR FLEETS SHOW THEIR ROUTES — *"major fleet shoud also show the routes as well"*.
+  // Every lane on the sheet is a real path in a real nation's ink, and there are fewer lanes than
+  // embers, because only the major fleets keep one (0111 `fleet_lane_min_ships`).
+  expect(wide.lanes.length).toBeGreaterThanOrEqual(1)
+  for (const l of wide.lanes) {
+    // A real polyline: more than one vertex, so no lane is a dot pretending to be a route.
+    expect(l.d.length).toBeGreaterThan(8)
+    expect((l.d.match(/[ML]/g) ?? []).length).toBeGreaterThanOrEqual(2)
+    // THE ONE MERCHANT BLUE with Regions off (owner, 2026-10-13: every trading merchant one dark
+    // blue); her nation ink returns only when Regions is on.
+    expect(NATION_INKS).toContain(l.ink)
+    expect(l.cls).toContain('stroke-merchant')
+    expect(l.cls).toContain('fill-none')
+  }
+
+  // WHAT THE GLASS ACTUALLY HELD, printed so the run is evidence and not a tick. These figures are
+  // not pinned — a fixture that sails her merchants has every right to a different sea next run —
+  // but a reader should be able to see the night chart's three channels in one line.
+  console.log(
+    `night chart at ${wide.unitsPerPx.toFixed(3)} °/px: ` +
+      `${wide.lights.length} harbour light(s) (${wide.lights.filter((l) => l.mark === 'full').length} full marks, ` +
+      `${wide.lights.filter((l) => l.mark === 'dot').length} dots, tiers ${[...byTier.keys()].sort((a, b) => a - b).join('/')}), ` +
+      `${wide.embers.length} ember(s) with ${wide.hullPaths} hull path(s), ` +
+      `${wide.lanes.length} lane(s) in ${new Set(wide.lanes.map((l) => l.ink)).size} nation ink(s)`,
+  )
+
+  await page.screenshot({ path: path.join(SHOTS, 'map-night-390-globe.png') })
+
+  // AND IT IS A BAND, NOT A ONE-WAY DOOR. Zoom back in and the hulls return, the embers go: a
+  // rendering branch that could not be left would be a bug the owner would find by moving the map.
+  const inBtn = page.getByLabel('Zoom in')
+  for (let i = 0; i < 12; i++) await inBtn.click()
+  await page.waitForTimeout(800)
+  const close = await nightOnTheGlass(page)
+  expect(close.spanDeg).toBeLessThan(PURE_LIGHT_SPAN_DEG)
+  expect(close.embers.length).toBe(0)
+  expect(close.hullPaths).toBeGreaterThanOrEqual(2)
+
+  // THE LANES GO WITH THE LIGHTS. Close in the sheet is a working chart, and a lane is THINNED —
+  // straight where the real course bends — so drawing it at a span where that shows would be
+  // putting a wrong line on the water somebody is reading.
+  expect(close.lanes).toEqual([])
+
+  // AND THE LIGHTS ARE STILL BURNING CLOSE IN (owner, 2026-10-12: *"when zoomed in, i want to see
+  // the lights also"*). This assertion used to say the opposite — the lights were gated on
+  // `NIGHT_SPAN_DEG` on the reasoning that a glow over a working chart is a smudge across the
+  // detail somebody zoomed in to read. The owner looked at both sheets and wants the lights, and
+  // the cost they were being protected from is not real: every ring is sized in CSS PIXELS, so a
+  // harbour wears the same glow at every span rather than swelling as you close on it.
+  //
+  // READ OFF A FRESH OPENING FRAME rather than off wherever twelve clicks back in happened to land.
+  // An earlier cut asserted on that landing frame and went red with ZERO harbours — out past the
+  // globe and back in, the chart had put the view over open water where there is no harbour to
+  // draw, which is a true fact about panning and nothing at all about the lights.
+  await page.goto('map')
+  await ready(page)
+  await expect.poll(async () => (await nightOnTheGlass(page)).lights.length, { timeout: 60_000 }).toBeGreaterThanOrEqual(1)
+  const opening = await nightOnTheGlass(page)
+  expect(opening.spanDeg).toBeLessThan(NIGHT_SPAN_DEG)
+  // AND THE READOUT AGREES WITH THE SHEET: the opening frame is well in, so it is not 0%.
+  expect(opening.zoomPercent).toBeGreaterThan(0)
+  expect(opening.lights.filter((l) => !l.lit)).toEqual([])
+  expect(opening.lights.filter((l) => l.halo === null)).toEqual([])
+  // CLOSE IN SHE IS A MARK AGAIN, with her light beneath it — the band that goes is the one that
+  // removes the marks, not the one that lights the harbours.
+  expect(opening.lights.some((l) => l.mark === 'full')).toBe(true)
+  // THE LANES, though, DO wait for the pulled-back sheet: a lane is thinned, and straight where the
+  // real course bends, so drawing it close in would be a wrong line on water somebody is reading.
+  expect(opening.lanes).toEqual([])
+})

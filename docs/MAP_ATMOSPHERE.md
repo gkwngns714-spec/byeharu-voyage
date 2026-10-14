@@ -80,7 +80,7 @@ the running chart. Five tokens were added, in both schemes (`src/index.css`), an
 | **sea names** | 51 waters from `data/seas.json`, each set on its hand-placed anchor, centred, in `chart-sea-name`; oceans at 14 px at every zoom, seas at 11.5 px inside 110° of span; 0.14 em of spacing | `src/chart/seaNames.ts` (the decision), `LabelsLayer.tsx` (the paint) | `data/seas.json`, read inside the same lazy chunk as the coast (`backdrop.ts`) |
 | **collision** | the sea names are `LabelRequest`s at priority 5 — below the quietest harbour — placed LAST by the ONE planner, `centred`, with no glyph obstacle; a name that would touch a port's name or mark, or run off the glass, is dropped, never moved | `src/chart/labels.ts` (extended: `sizePx`, `spacingEm`, `placement`) | — |
 | **port hierarchy** | a thin ring (r 9.5 px, faint ink) round every tier-5 harbour; a great harbour's name set at 12 px against 10.5; a great harbour ASKS for its name at every zoom, the globe included, still below every port of yours | `PortsLayer.tsx`, `labels.ts`, `chartView.ts` (`GREAT_PORT_TIER`) | `ports.size_tier` |
-| **ships** | a fleet at sea is a HULL — `shipPath`, one path, 13 px bow to stern, turned to the heading of the served segment she is on (`FleetOnChart.heading`) inside the same sea-coloured halo; the minimap draws the same hull at 0.8×; a docked fleet is still its port's loud mark | `glyphs.ts`, `FleetsLayer.tsx`, `Minimap.tsx`, `chartModel.ts` | `voyage.course[segIndex → segIndex+1]` |
+| **ships** | a fleet at sea is her HULLS — `hullPath`, one of THREE silhouettes by class (barca a double-ended spindle, carlat slim with a raised poop, nau broad and castled at both ends) at a size set by the cube root of her burthen, 11-21 px bow to stern, turned to the heading of the served segment she is on (`FleetOnChart.heading`) inside one sea-coloured halo enclosing the group; a fleet of several hulls is drawn as several, up to three, the flagship on the served point and the others on her quarters (`hullGroup`), collapsing to the flagship alone above `HULL_GROUP_MAX_UNITS_PER_PX`; the minimap still draws the one class-less `shipPath` at 0.8×, which is right for a 100 px locator; a docked fleet is still its port's loud mark | `glyphs.ts`, `FleetsLayer.tsx`, `Minimap.tsx`, `chartModel.ts` | `voyage.course[segIndex → segIndex+1]`, `ships[].class` / `sea_traffic.hulls` |
 | **course** | the passage made SOLID (`accent/85`, 1.8 px); the water ahead a `5 4` dash (`accent/45`); an open chevron arrowhead at the course's last vertex, turned along its last segment (`TrackPaths.end`, `endHeading`); the destination ring and the roadstead ring and dotted helper line as before | `route.ts`, `FleetsLayer.tsx` | the served course |
 | **both schemes** | `chart-deep #03060b` / `#7ea6c9`; `chart-shallow` = `info` 22 % into the sea / paper 30 % into the sea; `chart-relief`; `chart-grid`; `chart-sea-name` | `src/index.css`, `@theme` and `:root[data-theme='light']` | — |
 
@@ -114,9 +114,10 @@ glass; the corners hold exactly what they held; no word of chrome was added.
 * The hit test, the reach, the roadstead rule and its `1 5` dot, the tracks' geometry (the served
   polyline, split at the served position), `visiblePorts`, the tier bands, the keep-out rule.
 * No screen prints a new word; the sea names are the data's own.
-* **The merchant hull (2026-10-08, owner rows 109-111, `docs/NPC_TRADERS.md` §8.2).** Merchant fleets
-  are drawn with the SAME `shipPath` at the SAME `shipHalfLength` as yours — 0.7 × would be the retired
-  8.8 px dot — filled in their company's NATION ink (`--color-nation-*`, eight families, hues held away
+* **The merchant hull (2026-10-08, owner rows 109-111, `docs/NPC_TRADERS.md` §8.2; the silhouettes
+  2026-10-11, owner row 120).** Merchant fleets are drawn by the SAME renderer and at the same sizes
+  as yours — never a shrunken version of your mark; 0.7 × would be the retired 8.8 px dot — filled in
+  their company's NATION ink (`--color-nation-*`, eight families, hues held away
   from the accent's gold, ≥ 3 : 1 against the sea in both schemes, `tests/map.merchants.spec.ts`), with
   NO halo: the halo and the gold are how yours stays loud. At sea she points along her served segment;
   lying in port she is drawn AT ANCHOR at the port's served roadstead, bow north — a ship at anchor

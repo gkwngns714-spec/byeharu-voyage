@@ -110,7 +110,13 @@ jobs:
     # gates nothing, which is the same defect those two tests' own timeouts were raised for twice
     # before. If this climbs again the answer is a lighter fixture for those two - they are the
     # only expensive tests here - and not a third raise.
-    timeout-minutes: 75
+    # 75 -> 120 on 2026-10-12. The build inside this job is no longer the cost — the world-image
+    # cache took it from 32m33s to NINE SECONDS, measured on run 38248046334 — but the SUITE then
+    # ran 74m32s and was cancelled still running. 378 tests, two workers, several of which boot a
+    # PGlite world of their own. The npc-on cache above takes ~18 minutes out of that; 120 is the
+    # remainder with room, rather than another budget set to its own cost, which is the mistake
+    # this file made twice (see migrations-apply-proof.yml for the same lesson written longer).
+    timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v4
@@ -140,6 +146,11 @@ jobs:
       # chromium ONLY. The suite declares one project (playwright.config.ts) and one spec needs a
       # browser; firefox and webkit would be two more downloads proving nothing. `--with-deps`
       # pulls the shared libraries the runner image does not ship.
+      # THE MERCHANTS-ON WORLD IS NOT KEPT BETWEEN RUNS (removed 2026-10-14). It was cached here
+      # keyed on the chain and the fixture, but its merchants sail on `now()`: run 38485001228
+      # restored a 14-hour-old copy and the page froze catching 837 fleets up. A run builds it
+      # fresh (`tests/npcOn.fixture.ts`, which gives that build its own 30-minute allowance).
+
       - name: Install the browser
         run: npx playwright install --with-deps chromium
 

@@ -5,6 +5,229 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-13/14 — PR #94's CI: four reds read and fixed, and the three ~45-minute applies cut to minutes
+
+Branch `osn-npc-traders`. Owner: *"why is CI taking so long"*, *"make it so that the test ends faster"*, *"make it clean"*.
+
+- **`map.merchants:386`, `map.hulls:407` (run 38362106885).** Test timeouts: the npc-on fixture was
+  built cold (~20 min) inside a 10-minute budget. `serveNpcOn` now adds 30 min for its own build
+  (`tests/npcOn.fixture.ts`).
+- **`duplication:641`.** The map's loading figure used an arbitrary `text-[10px]`; it now uses `text-t-caption`.
+- **`map.hulls:449` (run 38371308971), a real defect.** A merchant mark measured 110 px on a 390 px
+  glass, because my riding light's outer glow sat at 1.6× the hull halo. It is now 1.25×
+  (`src/chart/FleetsLayer.tsx`).
+- **`db.chain:403` cold boot, 41.4 min against a 30 min budget.** Three specs applied 0001..0113 from
+  zero in Node PGlite (cold boot 41.4m, apply 45.7m, image fallback 41.8m). That is a third copy of
+  what `disposable-chain` (real Supabase) and the image build already prove. All three now run the
+  frozen pre-growth chain from ONE helper, `tests/frozenChain.ts` (`GROWTH_SPLIT`, `beforeGrowth`,
+  `frozenChain`), which also retires the duplicated `REBUILD_PREFIX_END`. Locally the cold boot takes
+  1.1 min and the apply 53 s. On CI, shard 3 went from 1h03m to 5m18s.
+
+## 2026-10-13 — The map loads the ships the moment it stops moving, and says how far along it is
+
+Branch `osn-ship-lights-resting`. Owner: *"loading bar in numbers"*, *"it is too slow"*, *"only
+number shown at the bottom right corner, small"*.
+
+- **Why a move was slow:** a changed view did not read; it waited for the shell's next beat
+  (7.5 s at compression 960) and then queued behind fleets → routes → traffic.
+- **Now:** a settled move reads `world.sea_traffic` alone, 300 ms after the view holds still
+  (`src/live/worldStore.ts`, `callViewRead`). The old reason a lone read was forbidden — hulls
+  drifting from the beat's `readAt` and jumping — is removed by giving the merchants their own instant,
+  `trafficReadAt`, which `buildChartModel` uses for their drift (`src/chart/chartModel.ts`).
+- **The figure:** `MapLoadingFigure` (`src/features/map/MapScreen.tsx`) prints elapsed ÷ last wait
+  as a percent in the chart's bottom-right corner, held at ≤ 99 % until the read lands. The swept
+  bar and its CSS are gone.
+- **Gates:** `tsc -b`, eslint, build; map/flicker specs 114/117 — the three reds are
+  `map.hulls:407` (pre-existing), `map.merchants:377` (the helper PR #94's 1e9837c fixes) and
+  `map.merchants:454` (passed alone in 43.8 s; it timed out under the parallel load). Browser:
+  checked on :4174. The figure shows in the corner and clears when the ships land. Timing on the
+  local PGlite demo is not meaningful (the database runs on the page's thread); measure on the live site.
+
+---
+
+## 2026-10-13 — The city lists who is resting (level, time left) and the three trays are restyled — `osn-ship-lights-resting`, migration 0113
+
+Two owner sentences, same day (`docs/OWNER_REQUESTS.md` rows 128 and 129):
+
+> *"when i press city, it says how many ships are resting. i want there to be a list, showing the
+> total level, and its current time till the resting finishes."*
+> *"the pop-up page when clicking a ship or a city is not good in terms of friendliness and style.
+> change it so that it is modern, user friendly and somewhat sophisticated."*
+
+### What "total level" is, and why it took a migration
+
+A merchant company's levels are its four **Skills** (`docs/WORDS.md`; the four bars on her sheet,
+`player_skills`). "Total level" is their sum. Nothing a list could read served it: `world.port_merchants`
+(0104) carried `doing` and `next_lap_at` but no level, and the card (`world.npc_fleet_card`) is one
+read per fleet — a list of N resting merchants would be N reads a beat. A hull's `ship_classes.tier`
+IS on the wire, and it was deliberately not used: a tier is a different fact with a different word,
+and printing it under "level" would be lying with a number.
+
+**0113 — `a_harbours_merchants_carry_their_level`** supersedes 0104's `world.port_merchants` with ONE
+more key per row, `level` = `sum(public.skill_level(company, code))` over `public.skills` — 0107's one
+reading of a level, so the absence of a row is 0 and never null. The self-assert keeps the pre-image
+under `pg_temp` before the replace and proves, over a lit roster plus two probe companies at Lisbon,
+that the new read with `level` struck from every row IS the old read byte for byte; that every row's
+level equals the independent sum; that 2 + 3 reads 5 and nothing reads 0; that raising one skill by
+one moves the read by one; that the key set is 0104's plus `level`; and that dark it serves nothing.
+Rolled back; the switch ships OFF. `world.sea_traffic` (the beat's read) is untouched.
+
+Client type: `PortMerchant.level: number` (`src/lib/rpc/types.ts`); `levelOf()` in
+`src/live/merchantWords.ts` prints `—` for a server that has not applied 0113 rather than a nought.
+
+### The list
+
+* `src/features/map/SendFleet.tsx` — the city tray. Peek: `Lisbon` over `Portugal · 2 resting · 1 laid up`
+  (`restingSummary`, counted from the harbour's own read — never the capped sea window, which drops
+  exactly the merchants at anchor). Half: **In port** (`RestingHere.tsx`, soonest to sail first,
+  laid-up and free-to-sail after the timed ones, server order among themselves) then **Your fleets**
+  — the owner's send flow unchanged under its own heading.
+* `src/live/MerchantRow.tsx` — ONE row for PORT's "Merchants" section and the map's list: name;
+  company · N ships (· her line, on PORT); her level with the word under it; the time her rest ends
+  with the server's word under it (`2 h 14 min` / `4.7 min` / `ends soon` — `formatRealDuration`,
+  the one real-span spelling), or the word alone (`Laid up`, no countdown: a pause outranks a hold).
+  Ticks on the shell's one clock. A tap opens the same read-only sheet from both screens.
+* `src/live/merchantWords.ts` — the six words (moved out of `features/port/MerchantsHere.tsx`), the
+  rest instant, the countdown wording, `levelOf`, `restingSummary`. One place.
+* `src/live/useMerchantsHere.ts` — moved from `features/port/` (MAP was importing a PORT file, which
+  `tests/sections.spec.ts` forbids and was red for). `MapScreen.tsx` remembers the harbour a merchant
+  was opened FROM (`viaHarbour`) so a resting merchant's row — served by the harbour and by nothing
+  else — is still there for her sheet's peek line after the city tray has closed.
+
+### The restyle — through the primitives, no second sheet style
+
+Measured on the sheet as it was (`docs/npc-traders/before-*.png`): name, company and line on ONE
+truncated line; eight same-weight rows in a column; every tile `surface` on a `surface` tray — no
+step, so Ships, Officers and Skills had no shape.
+
+* `src/components/ui/TrayTitle.tsx` — the tray head: a `t-title` name over a `t-caption` line, one
+  control. Retires `features/map/MapTrayTitle.tsx` and the merchant sheet's inline head; the city
+  tray, your fleet's tray and the merchant sheet compose it. `TRAY_PEEK` 96 → 104 for the second
+  line (`trayDetents.ts`, `tests/primitives.geometry.spec.ts` re-pinned, `docs/UI_DIRECTION.md` §5).
+* `src/components/ui/trayContext.ts` — what stands in a tray steps up one tone: `Tile` (rest, muted)
+  and `SheetSection surface` read it and draw `surface-2`. `Segmented` deliberately does not.
+* `src/live/MerchantSheet.tsx` — two figure tiles (a day, a lap) first; one grouped panel with a mark
+  per row (route · last laps · fortune); the blurb; then Ships, Cargo (grouped), Officers (master as
+  the heading's trailing), Skills with `level N` beside the heading — the same number the list prints.
+  Not one figure removed or invented; no button but the tray's own.
+
+### Gates (local, lean) — filled in below once run on the rebuilt image
+
+* `npx tsc -b` clean · `npx eslint .` clean · `npm run build` green.
+* Pure guards: `words`, `sections`, `duplication` — 19 passed (the sections failure that was there
+  before, MAP → `port/useMerchantsHere`, is gone with the move; `duplication` asked 0113 to say
+  "supersede" in its header, and it does).
+* Browser specs on the rebuilt image (`vite preview --port 4190`): `primitives.geometry` (the 104 px
+  peek), `map.sendfleet`, `layout`, `wide.layout` — 40 passed, 0 skipped. `port.merchants` — 2 passed
+  (the shared row: name, `company · N ships · line`, a numeric level on every row, the six words, the
+  loop; the laid-up one at Lisbon; the sheet from a row). `map.merchants`, one worker — 10 of 12
+  passed, among them the NEW city-list test (a city with merchants lying in it, a numeric level on
+  every row, the countdown only on a resting one, soonest first, a row opening her sheet with the
+  same level). The two reds: `:377` is the helper closing the sheet it opened while hunting for a
+  lap average (7 of 8 taps opened it — the coordinator's diagnosis; 1e9837c's helper hunk is taken
+  here), and the 1280 test lost its trace zip to a second Playwright run I started in the same
+  worktree mid-flight (`test-finished-1.png` exists; the body passed). The first, four-worker run was
+  a cold-fixture pile-up (every worker warped the roster at once behind a 40-spec batch) and is
+  not a reading of anything.
+* Shots, looked at: `docs/npc-traders/before-*` (the one-line head, `4 ships resting` and no list, the
+  empty side panel) against `after-city-peek-390` (`Cadiz · Spain · 5 laid up`), `after-city-half-390`
+  and `-1440` (In port: `Costeiros do Sul · 4 level · 20.6 min Resting`, then Your fleets),
+  `after-merchant-half-390` / `after-merchant-full-1440` (the two figure tiles, the grouped panel, ship
+  and cargo tiles with a panel), `city-tray-half-390` and `city-tray-merchant-from-list-390` (the spec's).
+
+### Honest notes
+
+* A migration edit costs the world image (~1 h here); it was paid twice, because the header gained
+  the word "supersede" after the first build had read the chain. The second build is the one shipped.
+* The second build went red at **0108**, not 0113: its (d5) is a 400 ms/call wall-clock budget on
+  `world.route_board()`, and it measured 506.90 ms while two Playwright runs and the killed first
+  builder shared the CPU. A load red, diagnosed before any re-run: the same 0108 built this branch's
+  image earlier the same day. The third build ran alone on an idle machine.
+* The city spec cannot tap Lisbon: your own fleet lies on its mark and wins any tap within reach, and
+  the harbour's name stands inside that reach at 390 px. It probes the named harbours on the opening
+  frame and keeps the first with a list; the fixture's laid-up merchant is proved on PORT.
+## 2026-10-13 — PR #94's two reds, root-caused: 0107's gates (not the roster), and a spec helper that lied
+
+Branch `osn-npc-traders`. **Production already runs 0101-0110 with `npc_traders_enabled = true`**
+while Pages still serves `main`'s client, so the gate defect below is live for real players.
+
+### pglite-gate — PROOF 1 and PROOF 5 were 0107, not 0105
+
+The hand-over's hypothesis (761 new merchants drawing the spread out of the markets) was TESTED
+and is FALSE. Applied the chain to 0104, ran proofs 01 and 05: green. Applied 0105 alone on top,
+ran them again: green, **same figures to the digit** (median first voyage 19.2 %, 32/32 pairs).
+Both reds are 0107 (`the_ocean_is_earned_at_the_academy`), one per gate:
+
+- **PROOF 1 — the leg gate refused the game's own first crossing.** `nav_leg_nm_base` 900 nm is a
+  beginner's whole reach, and Lisbon → Tunis is 1,086 nm sailed (Antwerp 1,073, Amsterdam 1,102 —
+  DESIGN.md's named first sea crossing). Every live player without NAVIGATION has been refused
+  those since 0107 was pushed.
+- **PROOF 5 — the region gate shut a captain inside the region she lies in.** Of the 8 sampled
+  ports, Busan (Korea, level 5) and Cartagena (Spanish Main, level 2) are in gated regions; a house
+  lying there at exploration level 1 was refused every harbour of her own region. 2 ports × 4
+  markets = the 8 dry pairs.
+
+**Fix: `supabase/migrations/20260818000112_a_first_crossing_is_open_and_no_captain_is_shut_in.sql`**
+(forward-only; 0107 is on production and untouched):
+
+1. `nav_leg_nm_base` 900 → **1,700 = `sea_scan_radius_nm`, the quay's own default horizon.**
+   Measured through proof 5 itself, not picked: 1,200 and 1,500 still fail BALANCE_DISTANCE_PAYS
+   (far/near 11.07/11.93 and 12.81/13.19 — the gate strikes the far half of what the quay offers a
+   beginner), 1,700 / 2,000 / 2,500 all give 14.30/13.57 over the same 79 routes offered before
+   0107. So the horizon is the floor. The ocean is still earned: the Caribbean (~4,000 nm) asks
+   NAVIGATION 3, Nagasaki 4.
+2. **`public.exploration_reach(player)`** — the greater of the derived exploration level and the
+   dearest region she has already made harbour in (VOYAGE_REPORT) or lies in now. ONE reading,
+   re-cut by one hunk into BOTH callers of the old one: `public.passage_gate` and
+   `world.route_board` (whose `closed` 0108 holds to agreeing with the gate) — re-cutting only the
+   gate would have made two authorities.
+3. Self-assert: pre-image + hunk + ACL for both functions; the beginner sails LIS → AMS/TUN/ARP/
+   FNC/CAD through `voyage.sail_refusal` too; the quay's offer at Lisbon equals the offer with no leg
+   gate (positive control: it differs at 900); a 4,000 nm leg and the Spanish Main are still refused;
+   a probe lying in the level-5 region has all its harbours open; a VOYAGE_REPORT keeps a region open
+   after she leaves; the board agrees with the gate on every row served to the probe. **4.5 s** to
+   apply. A first draft ran `npc_traders_switch(true)` for the board check and took 773 s (the switch
+   starts all 837 fleets); the flag is now set directly inside the rolled-back probe.
+
+Deliberately NOT done (named in 0112's header): a house that crossed an ocean before 0107 can trade
+inside the region she is in, but still needs NAVIGATION to sail back across it.
+
+### acceptance — `map.merchants.spec.ts:382` was the helper, not the chart
+
+From the CI trace (`playwright-report` of run 38312840082): **seven of the eight hulls tapped DID
+open the sheet**; none had a lap average yet, so `openMerchantWorthReading` closed each to try the
+next — including the eighth, because a ninth was on the glass — then ran out of attempts and threw
+"none opened her sheet". The last attempt now keeps the open sheet, which is what the helper's own
+doc comment promised. Locally, on a build carrying 0112: 10/11 on a cold npc-on cache (the tap
+test spent its 600 s building the fixture), then the tap test alone 1/1 in 48.6 s on the warm one.
+
+### Gates, honestly
+
+- `npx tsc -b` 0, `npx eslint .` 0, `npm run db:check-versions` 104 migrations, no collisions.
+- 0112 applied on the full 0111 world (in-memory PGlite): self-assert ok, 4.5 s. Proofs 01 and 05
+  on that world: **all 11 markers PASS** (01: 6/6; 05: 5/5, median 19.2 %, distance 14.30/13.57).
+- **The full local `db:apply` / `db:proof` did NOT complete.** Two runs died in 0108's 400 ms timing
+  assert (428 ms, 505 ms) because they ran beside a build on this machine; a third, alone, was
+  stopped on the coordinator's order to push and let CI (now the fast pipeline, #95) be the net.
+- `db.chain.spec.ts` was not run locally (same order).
+
+### acceptance — `db.chain.spec.ts:527` was a budget the test could no longer meet honestly
+
+It builds the world twice; one full build is ~20 min under the suite's load (db.image.spec 19.8 min,
+the growth test 20.1 min), so two cannot fit any fixed budget. What it proves is the REBUILD
+DECISION, which reads the fingerprint and not the chain's length, so both builds now use the frozen
+pre-growth prefix (`< 20260818000041`) and the budget went 1,500 s → 900 s. The full chain is still
+applied end to end by the cold-boot test, db.image.spec and the growth test. `LAST` → 0112.
+
+### Also seen
+
+- 0108's 400 ms timing assert FAILS on a disk-backed PGlite (`BV_CHAIN_DATA_DIR`) on this machine —
+  600-674 ms — and passes in memory. Not changed (0108 is on production); worth knowing before
+  anyone trusts a disk-backed run.
+- 0106 takes 23 min to apply on this machine under load.
+
+---
+
 ## 2026-10-13 — fast pipeline: prefix-cached chain, comment-blind cache key, proofs off the cache (row 124), acceptance in four time-balanced shards (branch `osn-fast-pipeline`, PR #95, DRAFT, not merged)
 
 Goal: one change from commit to green CI in ~20-30 min without dropping an assertion. Nothing

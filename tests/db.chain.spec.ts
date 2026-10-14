@@ -13,6 +13,8 @@
 //   database. Those are the failure modes that cannot be seen from the SQL side at all.
 
 import { test, expect } from '@playwright/test'
+import os from 'node:os'
+import path from 'node:path'
 import {
   assertChainIsSane,
   describeChain,
@@ -21,6 +23,7 @@ import {
   type MigrationFile,
 } from '../src/lib/db/chain'
 import { applyChain, MigrationFailure } from '../src/lib/db/applyChain'
+import { beforeGrowth, frozenChain, GROWTH_SPLIT } from './frozenChain'
 import { createBootChannel, progressFor, type BootPhase } from '../src/lib/db/bootState'
 import { openLocalDb, humanMigration, LOCAL_AUTH_UID } from '../src/lib/db/localDb'
 import {
@@ -274,7 +277,29 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // makes the route pace an interval; 0097 builds the dark merchant machinery (switch off).
 // Moved 2026-10-08 to 0099: 0098 founds the merchant companies (generated from data/npc-houses.json by
 // scripts/build-npc-0098.mjs, dark), and 0099 serves them to the chart and the merchant sheet.
-const LAST = '20260818000100_the_world_runs_ten_times_slower.sql'
+// Moved 2026-10-11 to 0102, the roster the owner asked for (rows 116/118/122, docs/NPC_FLEET_SCALE.md):
+// 0101 gives a lap a two-week rest at its home stop and raises a loop to eight calls; 0102 gives
+// world.sea_traffic a viewport and a cap, because 760 merchant fleets cannot ship on a read that
+// serves them all on every beat.
+// Moved again 2026-10-11, the same day: 0104 gives a HARBOUR the merchants it concerns and what
+// each is doing there (owner row 121), and 0106 puts every lane the world sails on one ranked board
+// (owner row 115). 0103 and 0105 are deliberately absent — 0105 is the generated ×10 roster, built
+// in its own worktree and not landed here yet, and the chain is ordered by filename and not by the
+// order anyone happened to author in.
+// And again the same day to 0107: the gates (owner rows 113 and 117) — a leg beyond a captain's
+// NAVIGATION and a region beyond her EXPLORATION are refused, at the sea's door and at the route's.
+// And to 0110 with the roster merged in: 0105 founds 761 merchant companies over 219 loops, 0108
+// prints what a lane asks of you, 0109 stops the cap throwing away the lanes you can actually sail,
+// and 0110 asks each lane what it needs once instead of four times a row.
+// And to 0111 for the night chart (owner row 125): a MAJOR fleet is served her loop, thinned to
+// `fleet_lane_points_max` points with every stop boundary pinned, so the chart can draw the routes
+// of every major fleet on the sheet at a span where a continent is forty pixels wide. The key is
+// named `lane` and not `course` because it crosses land between its points, and `public.route_lane`
+// is reachable by nobody — a line nothing may sail is a line nothing may ASK for.
+// And to 0112, a forward fix to 0107 found by pglite-gate's proofs 1 and 5: a beginner's leg reach
+// admits the designed first crossing (Lisbon → Amsterdam), and a region she already lies in or has
+// made harbour in is never refused her — one reading, `public.exploration_reach`, for gate and board.
+const LAST = '20260818000113_a_harbours_merchants_carry_their_level.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
@@ -327,10 +352,16 @@ test('the fingerprint moves when a migration changes, and only then', async () =
 // ── applying it ────────────────────────────────────────────────────────────────────────────────
 
 test('every migration applies, in order, and every one prints its self-assert receipt', async () => {
+  // 2026-10-13 — THE FROZEN PREFIX, NOT THE WHOLE CHAIN (owner: *"make it so that the test ends
+  // faster"*). PR #94's CI ran this 45.7 min. What it proves is THE APPLIER: order, one receipt per
+  // file, the step count, a seeded world — and a prefix exercises every line of that. The whole
+  // chain is still applied from zero, every self-assert with it, by `disposable-chain` on a real
+  // Supabase, and its new files by the world-image build on every push; this was a third copy.
+  test.setTimeout(300_000)
   const { PGlite } = await import('@electric-sql/pglite')
   const db = await PGlite.create()
   try {
-    const files = await loadChain()
+    const files = await frozenChain()
     const seen: string[] = []
     const result = await applyChain(db, files, (step) => {
       seen.push(step.name)
@@ -392,6 +423,37 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   // happens when there is no image to load. If the number climbs again the answer really is a
   // lighter fixture rather than a bigger budget — but a world that doubled is allowed to take
   // twice as long.
+  // 2026-10-11: THIS TEST STOPPED FITTING IN WASM MEMORY, NOT IN ITS BUDGET, and the distinction
+  // is the whole reason this comment is here instead of a bigger number. 0105 founded 761 merchant
+  // companies over 219 measured loops; a bare in-memory PGlite now dies partway through the chain
+  // with NO error, no SQLSTATE and no partial receipt, at a different migration each run — the same
+  // ceiling that was hit in scripts/db/apply-chain.mjs the same day (measured there at 0012, 0052,
+  // 0065 and 0089 on a host with 47 GB free, the last one only because a bigger V8 heap let it run
+  // further before the same wall). Here it surfaced as this spec exhausting 900 s.
+  //
+  // So the boot gets a REAL DATA DIRECTORY instead of `memory://`, and every assertion below is
+  // untouched: the same chain, the same phases, the same "every migration applied" equality, the
+  // same K.1 seed. The header's standing ruling — "the answer really is a lighter fixture rather
+  // than a bigger budget" — is kept: the fixture is not lighter and the budget is not bigger, the
+  // bytes simply live where there is room for them. A real browser was never doing this anyway; it
+  // keeps the world in IndexedDB and loads a pre-built image besides.
+  //
+  // 2026-10-11, THE BUDGET: 900 s -> 1,800 s, at the owner's instruction ("make it 30 minutes for
+  // now"), and the "for now" is his word and is kept here. This is the third time this number has
+  // moved (120 s -> 360 s -> 900 s -> 1,800 s) and the header's ruling above still stands: the next
+  // answer is a lighter fixture, not a bigger number. What is NOT yet known is how long the boot
+  // actually takes — it was never measured, only observed to exceed 900 s — so 1,800 is a ceiling
+  // chosen to stop the bleeding and not a figure derived from anything. Measure it before moving it
+  // again, and if the real cost is near this, lighten the fixture instead.
+  //
+  // 2026-10-13 — A FROZEN PREFIX, measured, as the ruling above asked: "lighten the fixture". PR #94's
+  // CI (run 38371308971) ran this boot 41.4 min against 30 and failed — 0105's merchant roster made
+  // the full chain cost that under the suite's load. Every assertion here is about the BOOT — its
+  // phases, its receipts equal to the chain it was handed, the K.1 house through new_house (0004) at
+  // Lisboa (0003) and the purse invariant — and none reads anything after the growth baseline. The
+  // full chain is still applied end to end by db.image.spec and by the growth test below, and in
+  // every apply proof; this one stops paying a third time for it.
+  const bootDir = path.join(os.tmpdir(), `bv-coldboot-${process.pid}-${Date.now()}`)
   test.setTimeout(900_000)
   const channel = createBootChannel()
   const phases: BootPhase[] = []
@@ -420,8 +482,8 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   const bootLog: string[] = []
   expect(channel.get().phase).toBe('idle')
   const db = await openLocalDb({
-    loadChain,
-    dataDir: 'memory://',
+    loadChain: frozenChain,
+    dataDir: bootDir,
     channel,
     log: (...args: unknown[]) => {
       bootLog.push(args.map((a) => String(a)).join(' '))
@@ -435,7 +497,7 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
     'seeding',
     'ready',
   ])
-  expect(migrations).toEqual((await loadChain()).map((f) => f.name))
+  expect(migrations).toEqual((await frozenChain()).map((f) => f.name))
   const state = channel.get()
   expect(state.error).toBeNull()
   expect(state.progress).toBe(1)
@@ -496,11 +558,28 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
   // D21 names, which would collapse both builds to a copy.
   // RAISED 2026-09-02 with the test above and for the same reason — this one builds the world
   // TWICE, so 0065's 2.15x lands on it doubled. CI measured 12.2 min against a 720 s budget.
-  test.setTimeout(1_500_000)
+  //
+  // 2026-10-13 — THE TWO BUILDS ARE NOW OF A FROZEN PREFIX OF THE CHAIN, NOT THE WHOLE OF IT, and the
+  // reason is measured rather than preferred. On PR #94's CI (run 38312840082) this test hit its
+  // 1,500 s budget at 39.5 min wall-clock: one full build had grown to ~20 min under the suite's
+  // parallel load (db.image.spec 19.8 min, the growth test below 20.1 min for ONE build each), so
+  // two of them could no longer fit any budget that is not simply "whatever it costs this week".
+  // What this test proves is the REBUILD DECISION — same fingerprint keeps the data, a changed
+  // fingerprint demolishes it and replays from 0001 — and that decision reads the chain's
+  // fingerprint, never its length or content. A prefix exercises exactly the same code path
+  // (openLocalDb → fingerprintChain → the demolition), still founds the house through the chain's
+  // own new_house (0004) and still seeds 214 harbours (0003), so every assertion below keeps its
+  // meaning. The FULL chain is still applied, end to end, by db.image.spec and by the growth test
+  // below (the cold-boot test above boots this same prefix since 2026-10-13); this one stops paying
+  // for it twice.
+  // The prefix is the frozen pre-growth baseline (GROWTH_SPLIT, below): history, so it never grows.
+  test.setTimeout(900_000)
+  const prefix = frozenChain
+  const prefixLast = (await prefix()).at(-1)!.name
   const dir = await scratchDataDir('rebuild')
   try {
     // 1. Build a world and put a mark in it that only survives if the data survives.
-    const first = await openLocalDb({ loadChain, dataDir: dir, log: () => {} })
+    const first = await openLocalDb({ loadChain: prefix, dataDir: dir, log: () => {} })
     const fingerprint = first.fingerprint
     await first.pg.query("update public.players set company_name = 'Casa Marcada' where auth_uid = $1", [
       LOCAL_AUTH_UID,
@@ -509,7 +588,7 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
 
     // 2. Reopen with the SAME chain: no rebuild, and the mark is still there. This is the reload
     //    case, and it is the one that decides whether a player keeps their game.
-    const again = await openLocalDb({ loadChain, dataDir: dir, log: () => {} })
+    const again = await openLocalDb({ loadChain: prefix, dataDir: dir, log: () => {} })
     expect(again.rebuilt).toBe(false)
     expect(again.fingerprint).toBe(fingerprint)
     const kept = await again.pg.query<{ company_name: string }>(
@@ -521,7 +600,10 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
 
     // 3. Reopen with a CHANGED chain: rebuilt from 0001, so the mark is gone and the world is
     //    whole. Half a chain applied over an old database would be a schema in no repository.
-    const changed = () => loadChainWithEdit(LAST, (sql) => `${sql}\n-- a later build changed this\n`)
+    const changed = async () =>
+      (await prefix()).map((f) =>
+        f.name === prefixLast ? { name: f.name, sql: `${f.sql}\n-- a later build changed this\n` } : f,
+      )
     const rebuilt = await openLocalDb({ loadChain: changed, dataDir: dir, log: () => {} })
     expect(rebuilt.rebuilt).toBe(true)
     expect(rebuilt.fingerprint).not.toBe(fingerprint)
@@ -552,17 +634,13 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
 // growth — then prove the house, the fleet, the cargo and the ledger did not move by one ducat
 // while the world doubled around them.
 //
-// GROWTH_SPLIT is the frozen production baseline of 2026-08-24 — everything below it had been
-// applied to production before the growth shipped. It does NOT move when later growth migrations
-// land (they simply join the `growth` half); it would only ever move with a documented new
-// baseline, which is a deploy-history fact, not a preference.
-const GROWTH_SPLIT = '20260818000041'
+// GROWTH_SPLIT is the frozen production baseline (tests/frozenChain.ts says why it never moves).
 
 test('the world grows under a live house: player rows survive the growth to the ducat', async () => {
   // One full pre-growth build (~2 min) plus the growth itself. Sized like the cold-boot test.
   test.setTimeout(360_000)
   const files = await loadChain()
-  const before = files.filter((f) => f.name.slice(0, 14) < GROWTH_SPLIT)
+  const before = beforeGrowth(files)
   const growth = files.filter((f) => f.name.slice(0, 14) >= GROWTH_SPLIT)
   expect(growth.length).toBeGreaterThanOrEqual(1)
 

@@ -2,6 +2,7 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNod
 import { Icon } from './Icon'
 import { detentHeight, nearestDetent, stepDetent, TRAY_PEEK, type TrayDetent } from './trayDetents'
 import { trayDockWideClass } from './screenLayout'
+import { InTray } from './trayContext'
 import { useWide } from './useWide'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -126,6 +127,9 @@ export function Tray({
   const height = side ? undefined : dragHeight !== null ? `${dragHeight}px` : HEIGHT[detent]
 
   return (
+    // WHAT STANDS IN A TRAY STEPS UP ONE TONE (trayContext.ts): a tile or a grouped section on
+    // this `surface` is `surface-2`, so it has a shape.
+    <InTray.Provider value={true}>
     <section
       role="dialog"
       aria-modal={false}
@@ -192,5 +196,6 @@ export function Tray({
 
       {action !== undefined && <div className="shrink-0 px-gutter pb-4 pt-2">{action}</div>}
     </section>
+    </InTray.Provider>
   )
 }

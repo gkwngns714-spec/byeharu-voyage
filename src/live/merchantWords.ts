@@ -1,0 +1,68 @@
+import { formatRealDuration } from '../lib/format'
+import type { MerchantDoing, PortMerchant } from '../lib/rpc'
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE WORDS A HARBOUR USES FOR A MERCHANT — spelled once, read by PORT's section and the MAP's
+// city tray (0104's six words; 0113's level; the rest countdown of 2026-10-13)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// `doing` is DERIVED BY THE SERVER (`public.merchant_doing_at`, 0104) from her route's stops and
+// cursor, its hold and its pause, and from where her fleet is. This file spells each word and
+// nothing else: a second copy of the rule here is how two readings of the same thing come to
+// disagree (docs/NO_SPAGHETTI.md §1). They lived in features/port/MerchantsHere.tsx until the MAP's
+// city tray needed the same six (owner, 2026-10-13: *"i want there to be a list"*), which is the
+// moment a screen's private table becomes a shared one.
+//
+// Six, one each, every one a NAME a person would use (docs/WORDS.md laws 1 and 3). The owner's own
+// three — started, resting, ending — are kept as the states they describe; `laid up` is WORDS.md's
+// standing row for a merchant that cannot sail on, and `away` is the plain word for "her loop
+// calls here and she is somewhere else on it".
+export const DOING_WORD: Record<MerchantDoing, string> = {
+  laid_up: 'Laid up',
+  resting: 'Resting',
+  starting: 'Starting',
+  ending: 'Ending',
+  passing: 'Passing',
+  away: 'Away',
+}
+
+/** The instant her rest ends, in ms — `next_lap_at`, the hold 0101 wrote — or null when she is
+ *  not held (or the hold is a byte the server did not spell as a time). A LAID-UP merchant's hold
+ *  is not a promise: a pause outranks a hold (0104), so hers is never printed as a countdown. */
+export function restEndsAt(m: Pick<PortMerchant, 'doing' | 'next_lap_at'>): number | null {
+  if (m.doing === 'laid_up' || !m.next_lap_at) return null
+  const at = Date.parse(m.next_lap_at)
+  return Number.isFinite(at) ? at : null
+}
+
+/**
+ * HOW LONG UNTIL HER REST ENDS, as the list prints it: `2 h 14 min`, `4.7 min` — the one real-span
+ * spelling src/lib/format already owns — and `ends soon` inside the last minute, because a figure
+ * that reads `12 s` on a list that re-asks the server every few seconds is a stopwatch, not news.
+ * A passed instant is `ends soon` too: the server flips her on its next tick and the next read says
+ * so; counting up would be the client inventing a state.
+ */
+export function restLeft(endsAtMs: number, nowMs: number): string {
+  const left = endsAtMs - nowMs
+  return left < 60_000 ? 'ends soon' : formatRealDuration(left)
+}
+
+/** Her level as the read serves it (0113): the company's four skills summed. A server that has not
+ *  applied 0113 sends no key at all, and a list prints that absence rather than a nought. */
+export function levelOf(m: PortMerchant): number | null {
+  const level: unknown = m.level
+  return typeof level === 'number' && Number.isFinite(level) ? level : null
+}
+
+/** A city's one-line count for the map tray's head: `3 resting`, `2 resting · 1 laid up`, or '' when
+ *  nobody lies there. Counts what `doing` says, never a guess from where she is. */
+export function restingSummary(lying: readonly PortMerchant[]): string {
+  const resting = lying.filter((m) => m.doing === 'resting').length
+  const laidUp = lying.filter((m) => m.doing === 'laid_up').length
+  const other = lying.length - resting - laidUp
+  const parts: string[] = []
+  if (resting > 0) parts.push(`${resting} resting`)
+  if (laidUp > 0) parts.push(`${laidUp} laid up`)
+  if (other > 0) parts.push(`${other} about to sail`)
+  return parts.join(' · ')
+}

@@ -291,6 +291,14 @@ test.describe('the position is the server’s, copied', () => {
     // about where she is (mapTypes' FleetStores). It is asserted the way every other figure in
     // this file is — READ OFF THE SERVED PAYLOAD, never restated — so this line goes on proving
     // that the chart COPIES rather than computes, which is the whole point of the file.
+    //
+    // PINS MOVED DELIBERATELY 2026-10-11 with owner row 120 (the hull classes and the group):
+    // `hulls` now rides on every state for the same reason `enduranceDays` does, and it is READ
+    // OFF `FleetView.ships` the same way — the length and the order are the server's and the chart
+    // only resolves each served class name to a silhouette. These two fleets are served no ships
+    // at all by this file's fixtures, so an empty list is the honest reading of them, and the mark
+    // it draws is the one class-less hull this chart drew before row 120
+    // (tests/map.hulls.spec.ts holds that, and holds a fleet whose ships ARE served).
     expect(mapFleetsOf([GAIVOTA])).toEqual([
       {
         kind: 'docked',
@@ -298,6 +306,7 @@ test.describe('the position is the server’s, copied', () => {
         name: 'Gaivota',
         portCode: 'LIS',
         enduranceDays: GAIVOTA.endurance_days,
+        hulls: [],
       },
     ])
     // …and one at open anchor is drawn exactly where it holds (0039).
@@ -309,6 +318,7 @@ test.describe('the position is the server’s, copied', () => {
         name: 'Holdfast',
         at: { lat: 33, lon: -15 },
         enduranceDays: holdfast.endurance_days,
+        hulls: [],
       },
     ])
   })

@@ -80,26 +80,82 @@ jobs:
     # assertion failure at all -- the last receipt was 0056 and then nothing -- while
     # disposable-chain (real Postgres 17) passed the SAME commit in 5m45s. A cancelled job reads
     # exactly like a red one in the checks list, which is how a gate stops meaning anything.
-    # 30 matched disposable-chain's own limit below. The ruling that came with it: if this is hit
-    # again the answer is a lighter fixture or a faster gate, NOT a bigger number -- the same ruling
-    # db.chain's 360 s spec carries. READ THE LOG before ever calling this job's red a defect.
+    # 30 matches disposable-chain's own limit below. If this is hit again the answer is a lighter
+    # fixture or a faster gate, NOT a bigger number -- the same ruling db.chain's 360 s spec
+    # carries. READ THE LOG before ever calling this job's red a defect.
     #
-    # RAISED TO 45 ON 2026-10-11, and the ruling above is not being waved away: its PREMISE moved.
-    # 30 was chosen to match disposable-chain, and on the same commit disposable-chain now takes
-    # 9m52s where it used to take 5m45s. The world tripled (26 -> 70 merchant companies, 35 -> 107
-    # fleets; docs/NPC_TRADERS.md 3.2) and every gate that applies the chain grew with it. This job
-    # PASSED at 22m48s and was CANCELLED at 30m16s on the very next commit, which touched no SQL at
-    # all -- so it is sitting on the line, and a gate that is a coin-toss reads exactly like the red
-    # the ruling was written to prevent.
+    # IT WAS HIT ON 2026-10-11 (passed at 22m48s, CANCELLED at 30m16s on a commit that touched no
+    # SQL) when the world tripled -- 26 -> 70 merchant companies, 35 -> 107 fleets. The ruling held:
+    # the number stayed at 30 and proof 12's soak got lighter instead. It now drives the twenty-one
+    # fleets npc_fleet_max lets sail rather than all seventy-six, which proves the same thing and
+    # costs the same whatever the roster does next. The number was raised to 45 for about an hour in
+    # between, on the belief that the lighter fixture had found a game defect; it had found a bug in
+    # the filter I wrote for it (scripts/db/proofs/12_merchant_companies.sql says which), and when
+    # that was fixed the budget came back here where the ruling put it.
     #
-    # A LIGHTER FIXTURE WAS TRIED FIRST, and is recorded here so nobody tries it twice: capping the
-    # soak to 21 fleets through npc_fleet_max (the world's own lever) made proof 12 cheap, but it
-    # changes WHICH fleets are drawn, and a different pair came up each run as "DOCKED, route
-    # running, no lap" -- fleets sitting between legs that the hourly upkeep has not reached. More
-    # ticks did not help. That is a real looseness in the soak and it deserves its own slice;
-    # squeezing it into a deadline fix would have been the gate weakened to fit the clock, which is
-    # precisely what the ruling forbids. So the number moved instead, in the open, with its reason.
-    timeout-minutes: 45
+    # ── 2026-10-11, LATER THE SAME DAY: 30 -> 60, AND THE RULING ABOVE DID NOT APPLY ──────────────
+    # Hit again on PR #94, CANCELLED at 30m14s. The ruling above says the answer is a lighter
+    # fixture or a faster gate and NOT a bigger number, and that ruling was obeyed the last two
+    # times. It could not be obeyed this time, and the reason is worth writing down rather than
+    # leaving the next reader to assume somebody got lazy:
+    #
+    #   * THE COST IS NOT IN A FIXTURE. Last time it was proof 12's soak, which was lightened to the
+    #     fleets npc_fleet_max lets sail and still proves the same thing. Proof 12 is ALREADY capped
+    #     at 21 fleets (12_merchant_companies.sql:136) and is not what overran.
+    #   * THE COST IS THE CHAIN'S OWN SELF-ASSERTS. 0105 founded 761 merchant companies over 219
+    #     loops, so every assertion that walks routes went from 77 routes and 230 calls to 838 and
+    #     3,302. Measured on a quiet machine: 0105 50 s, 0106 465 s, 0108/0109/0110 ~145 s each —
+    #     some 16 minutes of self-assert on top of the ~13 the chain already took on wasm.
+    #   * THOSE MIGRATIONS ARE APPLIED TO PRODUCTION. Editing a self-assert now would make the file
+    #     in this repo stop describing what actually ran on the server, which is what forward-only
+    #     exists to prevent. So the one remedy the ruling names was unavailable.
+    #   * A FASTER GATE IS REAL WORK, NOT A TOGGLE. scripts/db/proof.mjs builds its world by calling
+    #     applyChain() and has no connection-string path, so it cannot be pointed at the real
+    #     Postgres that disposable-chain already stands up in 16m44s with budget to spare. THAT is
+    #     the right fix — the proofs test game rules, not engine quirks, and running them on
+    #     Postgres 17 would be strictly better than wasm — and it is logged as owner row 124 rather
+    #     than done badly in a hurry here.
+    #
+    # 60 AND NOT 45. 45 was tried once before and reverted; more to the point the arithmetic says it
+    # is too tight — 22m48s was the last passing run before 0105, plus ~16 minutes of new
+    # self-assert is ~39, and a budget that fails at 41 buys another cancelled job that reads like a
+    # red one. Generous and passing beats tight and ambiguous. When row 124 lands this comes back
+    # down, and the ruling above stands for every case where a fixture CAN be lightened.
+    #
+    # 90 -> 150 on 2026-10-12, AND THIS IS THE THIRD RAISE, WHICH IS THE POINT. The run at 90
+    # (38248046318) split like this:
+    #
+    #   the chain apply   12:17:07 -> 13:04:09   47m02s, all 103 receipts printed
+    #   the proofs        13:04:09 -> 13:47:10   43m and STILL RUNNING when the cap fell
+    #
+    # So the job needs some hundred minutes of real work, the apply alone has grown from 31m56s to
+    # 47m with one migration added, and every raise so far has been a budget set to roughly its own
+    # cost. 150 is the measurement with genuine room — and it buys TIME, not a fix.
+    #
+    # WHAT THE FIX IS, SAID PLAINLY: those 47 minutes re-apply a chain `disposable-chain` has
+    # ALREADY applied, green, on the same commit, against a real Postgres, in 33m49s — and then
+    # left idle. This job's unique value is `npm run db:proof`, not the apply underneath it. Row 124
+    # (give scripts/db/proof.mjs a path that does not call applyChain) deletes the 47 minutes
+    # instead of budgeting for them, and row 127 records that it has stopped being a nuisance and
+    # become the thing standing between a green branch and a merge. It is not done here because
+    # doing it in a hurry, inside a workflow edit, is how a proof regime gets weakened by accident.
+    #
+    # The previous note, kept because its measurement is still the evidence:
+    # 60 -> 90 on 2026-10-12, AND THE ARITHMETIC ABOVE WAS WRONG BY HALF. It added 0105's ~16
+    # minutes to the last passing run and stopped there; what run 38148284551 actually measured,
+    # cancelled at 1h00m16s, is two costs and not one:
+    #
+    #   the chain apply   14:43:05 -> 15:15:01   31m56s, all 102 receipts printed
+    #   the proofs        15:15:01 -> 15:43:09   28m and STILL RUNNING when the cap fell
+    #
+    # So the job needs some 60 minutes of real work before anything is even allowed to be slow, and
+    # 60 was a budget set to almost exactly its own cost — which is why it read as a failure rather
+    # than as a timeout. 90 is that measurement plus room. Raising it a third time is NOT the fix
+    # and is not pretended to be: the 32 minutes is one apply of a chain that `disposable-chain` has
+    # ALREADY applied, green, on the same commit, in 33m51s, and then left idle. Row 124 is the one
+    # that deletes this cost instead of budgeting for it, and row 127 records that it has stopped
+    # being a nuisance and become the thing standing between a green branch and a merge.
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
 
@@ -170,7 +226,25 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   disposable-chain:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 2026-10-11: 30 -> 60, and NOT because this job grew. It passed at 16m44s on the first push of
+    # PR #94 and was CANCELLED at 30m26s on the second, inside the same step ("Start disposable local
+    # Supabase"), on a commit whose only changes were a workflow comment and a doc row. That is a
+    # two-fold swing in how long a shared GitHub runner takes to stand up Docker, initialise Postgres
+    # and apply 102 migrations — and it means 30 minutes had stopped being a limit and become a coin
+    # toss, which is worse than either outcome.
+    #
+    # WHAT ACTUALLY CHANGED IS THE CHAIN, and it is permanent: 0105 founded 761 merchant companies,
+    # so every route-walking self-assert in 0105-0110 went from 77 routes and 230 calls to 838 and
+    # 3,302, adding ~16 minutes to EVERY fresh apply anywhere — this gate, pglite-gate, a developer's
+    # db:apply, and the production push. Those migrations are applied to production, so forward-only
+    # forbids making their asserts cheaper after the fact; the cost is baked in and the budgets have
+    # to carry it.
+    #
+    # Both budgets in this file are therefore 60, and both are stopgaps. Owner row 124 is the fix
+    # that earns them back: give scripts/db/proof.mjs a connection-string path so the proofs run on
+    # THIS job's real Postgres 17 instead of a second apply on wasm — one chain apply in CI instead
+    # of two, and the proofs run on the engine production actually uses.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 

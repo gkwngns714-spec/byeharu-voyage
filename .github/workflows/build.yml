@@ -46,7 +46,18 @@ jobs:
     # that is 76 s quiet and 216 s under load; a 2-core runner is slower than either, and it lands
     # on top of npm ci + lint + typecheck. At 10 minutes this job would have started failing on
     # wall-clock alone the first time the image shipped — a red that names nothing.
-    timeout-minutes: 25
+    #
+    # 25 -> 60 on 2026-10-12, and the cause is a MEASUREMENT and not a guess: with a COLD world-image
+    # cache the chain apply inside this build took **32m33s** on a 2-core runner (acceptance.yml,
+    # run 38148284600, 14:48:16 to 15:20:49), because 0105's roster took every route-walking
+    # self-assert from 77 routes/230 calls to 838/3,302. Production has run those migrations, so the
+    # chain is forward-only and that cost is permanent. The cache below hides it on a HIT — this job
+    # finished the same build in 33s on one — but a cache is not a guarantee: a cache entry is
+    # scoped to its ref, so the first run on a NEW chain fingerprint, and every run on `main` after
+    # a feature branch merges, misses by construction. The budget has to cover a miss, or the
+    # publish fails on the one run that matters. 60 is the miss plus room, not a ceiling anybody
+    # expects to approach.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 

@@ -59,6 +59,7 @@ declare
   v_tr      jsonb;
   v_fn      text;
   v_n       int;
+  v_soak    int;
   v_k       int;
   v_bad     text[];
   v_rows0   bigint;
@@ -96,10 +97,10 @@ begin
   v_spec := jsonb_build_object(
     'company', 'Casa da Prova Doze', 'alt_company', 'Casa da Prova XII', 'nation', 'PRT', 'ink', 'prt',
     'master', 'Capitão Probo', 'blurb', 'A probe company that lives for one proof.',
-    'capital', 80000, 'patience', 0.30, 'wares', jsonb_build_array(v_code), 'roster_ord', 9012,
+    'capital', 80000, 'patience', 0.30, 'wares', jsonb_build_array(v_code), 'roster_ord', 0,
     'skills', jsonb_build_object('SEAMANSHIP', 1),
     'fleets', jsonb_build_array(jsonb_build_object(
-       'name', 'Prova Doze', 'roster_ord', 9012, 'days', 12,
+       'name', 'Prova Doze', 'roster_ord', 0, 'days', 12,
        'ships', jsonb_build_array(jsonb_build_object('class', 'carlat', 'name', 'Prova Doze')),
        'officers', '[]'::jsonb,
        'stops', jsonb_build_array(jsonb_build_object('port', 'LIS', 'course', v_leg),
@@ -111,6 +112,28 @@ begin
   v_player := public.new_house(c_auth, 'Casa da Testemunha', 'PRT');
   select id into v_pfleet from public.fleets where player_id = v_player;
 
+  -- ── A SOAK WHOSE COST DOES NOT GROW WITH THE WORLD ───────────────────────────────────────────
+  -- The roster went from 32 fleets to 76 on 2026-10-11 and this gate's budget did not: the job
+  -- passed at 22m48s and was CANCELLED at 30m16s on the next commit, which touched no SQL. The
+  -- workflow's ruling is that the answer to that is a lighter fixture, not a bigger number.
+  --
+  -- Nothing here ever claimed that every fleet IN THE WORLD laps — that is the deploy's soak, on
+  -- production's market. What this proof claims is that MERCHANTS lap, AFK, through the one
+  -- executor, and that their books reconcile. Twenty-one of them prove that exactly as well as
+  -- seventy-six, and the cost now stays flat the next time the world grows.
+  --
+  -- Done with npc_fleet_max — THE WORLD'S OWN LEVER for exactly this ("population is lowered live
+  -- without a migration") — and never by pausing routes by hand, which the upkeep would lift at the
+  -- next reconcile. The probe merchant is founded at roster_ord 0, so she is always inside the cap.
+  --
+  -- READ THE FILTER BELOW BEFORE CHANGING IT. A route beyond the cap is NOT paused 'dark': npc_tend
+  -- only writes that reason for a route that HAS a fleet assigned, and a route the switch never
+  -- started has no fleet and no reason at all. A first cut of this soak filtered on `paused_reason
+  -- is distinct from 'dark'` and so counted 46 never-started routes as part of the soak; they of
+  -- course closed no lap, and they looked exactly like a game defect — they were written up as one
+  -- before the evidence was taken (OWNER_REQUESTS row 114, withdrawn). THE SOAK IS THE ROUTES THAT
+  -- WERE ACTUALLY STARTED: a fleet assigned, and not dark.
+  update public.world_config set value = to_jsonb(21) where key = 'npc_fleet_max';
   perform public.npc_traders_switch(true);
   if (select fleet_id from public.standing_routes where id = v_mroute) is distinct from v_mfleet then
     raise exception 'PROOF 12 FAILED: the switch did not start the probe merchant';
@@ -221,7 +244,8 @@ begin
                           sr.lap_no))
     into v_bad from public.npc_fleets nf join public.fleets f on f.id = nf.fleet_id
     join public.standing_routes sr on sr.id = nf.route_id
-   where not exists (select 1 from public.standing_route_laps x where x.route_id = nf.route_id and x.closed_at is not null)
+   where sr.fleet_id is not null and sr.paused_reason is distinct from 'dark'
+     and not exists (select 1 from public.standing_route_laps x where x.route_id = nf.route_id and x.closed_at is not null)
      and not (sr.paused_reason = 'laid_up'
               and exists (select 1 from public.events e where e.player_id = sr.player_id and e.kind = 'ROUTE_PAUSED'
                             and e.payload::text like '%No cargo pays%'));
@@ -229,12 +253,21 @@ begin
     raise exception 'PROOF 12 FAILED: merchant fleet(s) neither lapped nor were laid up for want of cargo: %', v_bad;
   end if;
   select count(*) into v_n from public.npc_fleets nf
-   where exists (select 1 from public.standing_route_laps x where x.route_id = nf.route_id and x.closed_at is not null);
-  if v_n * 5 < (select count(*) from public.npc_fleets) * 4 then
-    raise exception 'PROOF 12 FAILED: only % of % merchant fleets closed a lap', v_n, (select count(*) from public.npc_fleets);
+    join public.standing_routes sr on sr.id = nf.route_id
+   where sr.fleet_id is not null and sr.paused_reason is distinct from 'dark'
+     and exists (select 1 from public.standing_route_laps x where x.route_id = nf.route_id and x.closed_at is not null);
+  select count(*) into v_soak from public.npc_fleets nf
+    join public.standing_routes sr on sr.id = nf.route_id
+   where sr.fleet_id is not null and sr.paused_reason is distinct from 'dark';
+  if v_n * 5 < v_soak * 4 then
+    raise exception 'PROOF 12 FAILED: only % of % soaked merchant fleets closed a lap', v_n, v_soak;
   end if;
-  raise notice 'PASS: MERCHANT_AFK_LAP — 14 rewound ticks of tick_arrivals (+ 2 reconciles): % merchant laps closed by % of % fleets (the rest laid up for want of a paying cargo), the probe merchant''s best lap netted %, every merchant BUY/SELL came from a route-born order',
-    v_laps, v_n, (select count(*) from public.npc_fleets),
+  -- NON-VACUITY: the soak must have had fleets in it, or the two claims above are about nothing.
+  if v_soak < 15 then
+    raise exception 'PROOF 12 FAILED: the soak drove only % fleet(s) — it is proving nothing', v_soak;
+  end if;
+  raise notice 'PASS: MERCHANT_AFK_LAP — 14 rewound ticks of tick_arrivals (+ 2 reconciles) over the % started fleets: % merchant laps closed by % of them (the rest laid up for want of a paying cargo), the probe merchant''s best lap netted %, every merchant BUY/SELL came from a route-born order',
+    v_soak, v_laps, v_n,
     (select max(net) from public.standing_route_laps where route_id = v_mroute);
 
   -- ── 3. THE BOOKS ─────────────────────────────────────────────────────────────────────────────

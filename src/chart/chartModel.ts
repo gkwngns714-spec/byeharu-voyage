@@ -70,11 +70,39 @@ export type PortRole = 'anchorage' | 'destination' | 'route'
  * `track` is null unless her served course has more than two points — the one merchant whose
  * card is open; every other merchant is served the current segment only and draws no line.
  */
+/**
+ * A LANE'S PATH STRING, BUILT ONCE PER LANE (2026-10-12: *"the game looks stuck"*).
+ *
+ * `buildChartModel` is re-run on every DRIFT TICK — `MapScreen`'s memo takes `nowMs`, which is the
+ * clock that moves a fleet between reads — so without this, 49 major fleets had their whole
+ * decimated loop re-walked and re-formatted into an SVG `d` string several times a second, for a
+ * line that had not moved and cannot move: a lane is the baked course of a standing route, and the
+ * only thing that changes it is a new read.
+ *
+ * KEYED ON THE LANE ARRAY ITSELF, in a WeakMap. `mapTrafficOf` builds that array once per READ
+ * (MapScreen memoises `traffic` on the served rows, not on the clock), so identity is exactly the
+ * right key: same read, same array, same string; new read, new array, new string. A WeakMap so a
+ * merchant who leaves the window takes her entry with her and nothing here has to know when.
+ */
+const LANE_D = new WeakMap<readonly LatLon[], string>()
+
+function laneDFor(lane: readonly LatLon[]): string {
+  const hit = LANE_D.get(lane)
+  if (hit !== undefined) return hit
+  const d = loopPathD([lane])
+  LANE_D.set(lane, d)
+  return d
+}
+
 export interface TrafficOnChart extends FleetOnChart {
   readonly merchant: MapTraffic
   /** HER WHOLE LOOP as one SVG path, when her card is open and served it (0099, owner row 112);
    *  null for every other merchant. The leg she is ON is `track`, drawn over this. */
   readonly loopD: string | null
+  /** HER LANE as one SVG path — the thinned loop a MAJOR fleet is served whether her card is open
+   *  or not (0111, owner row 125); null for everyone the server gave no lane. Drawn only at a wide
+   *  span, under everything, and never measured: it crosses land between its points. */
+  readonly laneD: string | null
 }
 
 /** The whole picture. */
@@ -144,7 +172,16 @@ export function buildChartModel(
    * returned in `traffic` alone: they feed no role, no ring, no focus point and no motion point.
    */
   traffic: readonly MapTraffic[] = [],
+  /**
+   * WHEN THE MERCHANTS WERE READ (owner, 2026-10-13: *"it is too slow"*). A move of the view reads
+   * the traffic ALONE, between beats, so the merchants carry their own instant: drifting them from
+   * the beat's `readAt` would extrapolate from a moment that did not produce their positions, and
+   * every hull would jump. Null = the beat's instant, as before.
+   */
+  trafficReadAtMs: number | null = null,
 ): ChartModel {
+  const trafficDrift: Drift | null =
+    drift && trafficReadAtMs !== null ? { ...drift, readAtMs: trafficReadAtMs } : drift
   const portsByCode = new Map(ports.map((p) => [p.code, p]))
   const roles = new Map<string, PortRole>()
   const destinations = new Map<string, LatLon>()
@@ -228,12 +265,27 @@ export function buildChartModel(
   // THE MERCHANTS: the same placement, their own list, and nothing else touched.
   const merchants: TrafficOnChart[] = []
   for (const m of traffic) {
+    // A MERCHANT RESTING IN A CITY IS NOT ON THE SEA (owner, 2026-10-13: *"ships that are resting
+    // in cities, don't show it on map. when i click on the city, it will show then"*). Dropped here,
+    // the one place the chart's merchant list is built, so the hit test cannot find her either; the
+    // city's tray counts her instead (MapScreen `portLine`).
+    if (m.docked) continue
     // HER LOOP IS DRAWN WHETHER SHE IS AT SEA OR IN PORT: a route is what she runs, not what she
     // happens to be doing this minute, and a merchant held at her home quay is exactly when a
     // player most wants to see where she goes (owner row 112).
     const loopD = m.loop && m.loop.length > 0 ? loopPathD(m.loop) : null
+    // HER LANE AS ONE PATH (0111, owner row 125). Through the SAME seam-aware pieces the loop and
+    // every voyage track use, so a lane that straddles the antimeridian is cut there like anything
+    // else on this sheet rather than drawn the long way round the world. One leg, because the
+    // server already joined hers into one polyline.
+    const laneD = m.lane && m.lane.length >= 2 ? laneDFor(m.lane) : null
     if (m.kind === 'sailing') {
-      merchants.push({ ...placeSailing(m, m.voyage, drift, m.voyage.course.length > 2), merchant: m, loopD })
+      merchants.push({
+        ...placeSailing(m, m.voyage, trafficDrift, m.voyage.course.length > 2),
+        merchant: m,
+        loopD,
+        laneD,
+      })
     } else if (m.kind === 'anchored') {
       merchants.push({
         fleet: m,
@@ -245,6 +297,7 @@ export function buildChartModel(
         dockedAtCode: null,
         merchant: m,
         loopD,
+        laneD,
       })
     }
   }

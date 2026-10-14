@@ -29,12 +29,14 @@ import { PORT_FACES, usePortView } from './portView'
 import { harbourCode, harbourPick, useHarbour } from '../../store/harbour'
 import { fleetPortCode } from '../../domain/fleet'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
-// 0099 — merchants in port: the same sheet MAP opens, read through the same card.
+// 0099 — the merchants: the same sheet MAP opens, read through the same card. 0104 (owner row 121):
+// and the harbour's own list of them, with what each one is doing here.
 import { MerchantSheet } from '../../live/MerchantSheet'
 import { merchantLine } from '../../live/merchantLine'
 import { useMerchantCard } from '../../live/useMerchantCard'
+import { MerchantsHere } from './MerchantsHere'
+import { useMerchantsHere } from '../../live/useMerchantsHere'
 import { useShellState } from '../../app/shellState'
-import type { TrafficFleet } from '../../lib/rpc'
 
 // PORT — E.3, redrawn to docs/UI_DIRECTION.md §6. Where you are, what is here, what you can do.
 //
@@ -82,16 +84,22 @@ export function PortScreen() {
   return <PortBody snapshot={snapshot} />
 }
 
+// 0102's PORT SEA WINDOW IS GONE (0104). It existed for one reason — to make sure the windowed
+// `world.sea_traffic` carried the merchants lying at THIS quay, because this screen's list was
+// filtered out of that whole-world read. Owner row 121 asked the harbour a question that read
+// cannot answer (what is she DOING here, and who is away on her way back), so the list is served
+// by `world.port_merchants(port)` now and PORT reads no traffic at all. One screen, one read.
+
 function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const draftFleetId = useCommandDraft((s) => s.fleetId)
-  // THE MERCHANTS (0099, docs/NPC_TRADERS.md §8.4): the SAME traffic MAP reads — no read of its own.
-  const traffic = useWorld((s) => s.traffic)
-  const wantTraffic = useWorld((s) => s.wantTraffic)
-  useEffect(() => wantTraffic(), [wantTraffic])
-  const [merchantId, setMerchantId] = useState<string | null>(null)
-  const { card: merchantCard } = useMerchantCard(merchantId)
+  // THE OPEN MERCHANT SHEET, REMEMBERED WITH THE HARBOUR IT WAS OPENED FROM. The list is one
+  // harbour's now (0104), so a sheet left open while the port field moves would be about a merchant
+  // nothing on screen names, and her peek line — which comes from these rows — would go blank.
+  // Carried as (harbour, fleet) and DERIVED below rather than cleared in an effect: a reset in an
+  // effect is a cascading render, and the rule here is a derivation, not a synchronisation.
+  const [openMerchant, setOpenMerchant] = useState<{ port: string; fleet: string } | null>(null)
   const { nowMs } = useShellState()
 
   // WHICH HARBOUR — the ONE owner (src/store/harbour.ts); the MAP is its named next caller.
@@ -117,6 +125,17 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
   // looks exactly like a real market with nothing in it.
   const portId = port?.id ?? null
   const quay = usePortMarket(port?.kind === 'HARBOUR' ? portId : null)
+
+  // WHICH MERCHANTS THIS HARBOUR CONCERNS, AND WHAT EACH IS DOING (0104, owner row 121). Its own
+  // read, asked when a city is opened and re-asked on the world's beat (useMerchantsHere.ts carries
+  // the argument): what a merchant is DOING is a fact about a PORT, and `world.sea_traffic` — the
+  // beat's whole-world read, windowed and capped since 0102 — has no harbour to be about and drops
+  // the merchant who is away on her loop, who is half of what the owner asked to see. So PORT no
+  // longer reads the traffic at all, and 0102's PORT window went with the list that needed it.
+  // Never for a SEA PLACE: open water is on nobody's loop. HOOK ORDER: before the early returns.
+  const merchants = useMerchantsHere(port?.kind === 'HARBOUR' ? portId : null)
+  const merchantId = openMerchant !== null && openMerchant.port === portId ? openMerchant.fleet : null
+  const { card: merchantCard } = useMerchantCard(merchantId)
 
   // THE ONE "ALONGSIDE HERE" TEST. Read-only ⇔ nobody is.
   const docked = port ? fleets.filter((f) => f.port === port.code) : []
@@ -214,24 +233,27 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         </Note>
       )}
 
-      {/* MERCHANTS IN PORT (0099) — the world's own companies lying here, named, because they are
-          the harbour's furniture and not somebody's position. A section, never the `trailing`
-          slot (that is about YOU). Hidden when none is here. A row opens the read-only sheet. */}
+      {/* MERCHANTS (0099, grown into owner row 121 by 0104) — the world's own companies this
+          harbour concerns, named, because they are the harbour's furniture and not somebody's
+          position, each with WHAT SHE IS DOING here and the loop that brings her. A section, never
+          the `trailing` slot (that is about YOU). Hidden when there is none. A row opens the
+          read-only sheet. */}
       <MerchantsHere
-        rows={traffic?.enabled ? traffic.fleets.filter((t) => t.voyage === null && t.port === port.code) : []}
+        rows={merchants.view?.enabled ? merchants.view.merchants : []}
+        portCode={port.code}
         portName={(c) => portNameOf(portByCode, c)}
         nowMs={nowMs}
-        onOpen={setMerchantId}
+        onOpen={(fleet) => setOpenMerchant(portId === null ? null : { port: portId, fleet })}
       />
       {merchantId && (
         <MerchantSheet
           key={merchantId}
           card={merchantCard && merchantCard.fleet.id === merchantId ? merchantCard : null}
           line={(() => {
-            const row = traffic?.fleets.find((t) => t.id === merchantId)
+            const row = merchants.view?.merchants.find((t) => t.id === merchantId)
             return row ? merchantLine(row, (c) => portNameOf(portByCode, c), nowMs) : ''
           })()}
-          onClose={() => setMerchantId(null)}
+          onClose={() => setOpenMerchant(null)}
         />
       )}
 
@@ -280,39 +302,5 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         {shownFace.id === 'academy' && <PortAcademy acting={acting} />}
       </div>
     </Sheet>
-  )
-}
-
-/** "Merchants in port" — one row per merchant fleet lying here (0099). Absent when there is none. */
-function MerchantsHere({
-  rows,
-  portName,
-  nowMs,
-  onOpen,
-}: {
-  rows: readonly TrafficFleet[]
-  portName: (code: string) => string
-  nowMs: number
-  onOpen: (fleetId: string) => void
-}) {
-  if (rows.length === 0) return null
-  return (
-    <SheetSection heading="Merchants in port" data-testid="port-merchants">
-      {rows.map((t, i) => (
-        <Row
-          key={t.id}
-          label={
-            <span className="block min-w-0">
-              <span className="block truncate">{`${t.company} · ${t.name}`}</span>
-              <span className="block truncate text-t-caption text-ink-faint">{merchantLine(t, portName, nowMs)}</span>
-            </span>
-          }
-          chevron
-          onClick={() => onOpen(t.id)}
-          hairline={i < rows.length - 1}
-          data-testid="port-merchant-row"
-        />
-      ))}
-    </SheetSection>
   )
 }

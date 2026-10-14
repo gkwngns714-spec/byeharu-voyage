@@ -53,6 +53,7 @@ import {
   removeScratchDataDir,
   scratchDataDir,
 } from '../src/lib/db/chainSource.node.mjs'
+import { frozenChain } from './frozenChain'
 
 const ROOT = path.resolve(process.cwd())
 
@@ -248,8 +249,14 @@ test('a world restored from the image persists, and the next boot reuses it like
 test('a refused image falls back to applying the chain, and says so out loud', async () => {
   // THE FALLBACK IS THE PRODUCT, not a safety net nobody runs: it is what every boot did before
   // this optimisation existed, and what still happens whenever an image is absent, unreadable or
-  // mispaired. So it is proved here end to end, with a full chain apply — minutes, deliberately.
-  test.setTimeout(600_000)
+  // mispaired. So it is proved here end to end — the refusal, the sentence, the fallback apply, the
+  // stored stamp.
+  //
+  // 2026-10-13 — ON A FROZEN PREFIX OF THE CHAIN (owner: *"make it so that the test ends faster"*).
+  // PR #94's CI ran the full-chain version 41.8 min. The fallback is one code path whatever the
+  // chain's length; the whole chain is applied from zero by `disposable-chain` and by the image
+  // build itself, so this no longer pays for it a third time.
+  test.setTimeout(300_000)
   const wounded = await woundedImage()
   const channel = createBootChannel()
   const phases: BootPhase[] = []
@@ -259,7 +266,7 @@ test('a refused image falls back to applying the chain, and says so out loud', a
   })
 
   const db = await openLocalDb({
-    loadChain,
+    loadChain: frozenChain,
     dataDir: 'memory://',
     channel,
     log: () => {},

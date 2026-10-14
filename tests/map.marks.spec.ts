@@ -144,9 +144,22 @@ for (const scheme of ['dark', 'light'] as const) {
         const world = await marksOnSheet(page)
         // Moved deliberately 2026-09-14: 224 → 238 harbours (the Pacific Americas growth, 0090);
         // the 35 great harbours are unchanged — every new one is mid or small.
+        //
+        // AND MOVED AGAIN 2026-10-12, owner row 125: at the world view NOT ONE harbour draws its
+        // mark. This spec's own claim — THE CLAIM IT WAS WRITTEN FOR — is untouched and is the
+        // line above and the two below: every harbour is on the sheet at every zoom, there is no
+        // culling, and a dot becomes its full marker on the way in (asserted further down, where
+        // it always was). What changed is WHICH RENDERING the widest band uses. `PORT_TIER_BANDS`
+        // kept the 35 great ports as triangles longest, which is right on a working chart; past
+        // the rung where the fleets have already given up their hulls it left 35 little outlines
+        // sitting on top of 35 blooms, and the owner's answer to that sheet was *"i told you to
+        // show in lights"*. They were right: it is a hybrid, and it fights the one thing that band
+        // exists to show. ./src/chart/PortsLayer.tsx renders every harbour as its light past
+        // `HULL_EMBER_MAX_UNITS_PER_PX` — the same rung the ships change on, so the sheet changes
+        // character once rather than twice.
         expect(world.harbours, 'every harbour is on the sheet at the world view').toBe(238)
-        expect(world.full).toBe(35)
-        expect(world.dots).toBe(238 - 35)
+        expect(world.full, 'past the ember rung a city is light and nothing else').toBe(0)
+        expect(world.dots).toBe(238)
         // The whole body is drawn at the world view — the same path as at the opening frame.
         expect(world.coastBytes).toBe(opening.coastBytes)
         expect(world.coastBytes).toBeGreaterThan(70_000)

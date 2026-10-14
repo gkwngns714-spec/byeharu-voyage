@@ -50,6 +50,7 @@ import {
   worldMarket,
   worldProvisionPresets,
   worldStandingRoutes,
+  worldRouteBoard,
   cmdStandingRouteSave,
   cmdStandingRouteAssign,
   cmdStandingRoutePause,
@@ -1453,6 +1454,20 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // PORT's "Merchants in port"). The founding, planning and upkeep cores are server-only and
       // are not here.
       'worldSeaTraffic', 'worldNpcFleetCard',
+      // Pin moved deliberately 2026-10-11 with migration 0104 (owner row 121, docs/NPC_FLEET_SCALE.md
+      // §1 slice E): ONE HARBOUR'S MERCHANTS — which merchant companies this quay concerns and what
+      // each one is DOING there. A READ, no player id, dark until the owner's switch, and a player's
+      // fleet is never a row. It is read at a TAP (a city opened), never on the shell's beat, which
+      // is the whole argument for it being its own entry point instead of a wider sea_traffic.
+      // Landed WITH the face that reads it (PORT's "Merchants" section).
+      'worldPortMerchants',
+      // Pin moved deliberately 2026-10-11 with migration 0106 (owner row 115,
+      // docs/NPC_FLEET_SCALE.md §1 slice F): EVERY LANE THE WORLD SAILS — her standing routes and
+      // the merchants', with the distance and the earnings to rank them by. A READ that composes no
+      // order: the server serves every figure and the ROUTES screen sorts, because a sort is a view
+      // the player changes three times in ten seconds. Never another captain's route (DESIGN §E.5).
+      // Landed WITH the face that reads it (the ROUTES tab in the Cabin group).
+      'worldRouteBoard',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')
@@ -1480,6 +1495,18 @@ test('the registry and the client grants are one set, and the merchant cores are
   expect(names).toContain('sea_traffic')
   expect(names).toContain('npc_fleet_card')
   expect(names).not.toContain('trade_routes')
+  // 0102: THE REGISTRY NAMES THE ARGUMENT, AND THE 0-ARG FORM IS GONE. Two overloads, one with a
+  // default, is an ambiguous call — a runtime 42725 for every caller that says `sea_traffic()` —
+  // and a registry row whose arg_types no longer resolve is the drift 0096 was written to catch.
+  expect(
+    await db.callAs<string | null>(
+      `select arg_types as result from public.client_rpc_entry_points() where function_name = 'sea_traffic'`,
+    ),
+  ).toBe('jsonb')
+  expect(await db.callAs<string | null>(`select to_regprocedure('world.sea_traffic()')::text as result`)).toBeNull()
+  expect(
+    await db.callAs<string | null>(`select to_regprocedure('world.sea_traffic(jsonb)')::text as result`),
+  ).toBe('world.sea_traffic(jsonb)')
   const cores = [
     'public.new_house(uuid, text, text, text, text, text, text, bigint, boolean)',
     'public.commission_ship(uuid, uuid, text, text, boolean, boolean)',
@@ -1503,6 +1530,12 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.fleet_crew_shortfall(uuid)',
     'world.voyage_view(uuid, boolean)',
     'public.tick_arrivals(timestamptz)',
+    // 0102: the longitude window on a round sea. world.sea_traffic is its one caller and it is
+    // reachable by nobody — a helper a client can call is a helper a client can be told about.
+    'public.lon_in_view(double precision, double precision, double precision)',
+    // 0106: how far a loop sails. Sums the leg lengths the save door measured; server-only, so the
+    // board is the one place a client can learn a route's distance and there is one reading of it.
+    'public.route_nm(uuid)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f
@@ -1727,5 +1760,93 @@ test('a standing route round-trips: dark refusal, save, assign, the served state
     expectOk(await cmdProvisionPresetDelete(keep.id))
   } finally {
     await db.pg.query(`update public.world_config set value = 'false'::jsonb where key = 'standing_routes_enabled'`)
+  }
+})
+
+// 0106, owner row 115: THE ROUTE BOARD. Every lane the caller may know of — hers and the merchants'
+// — with the figures to rank them by. What this pins that the migration cannot: the shape the TYPES
+// claim, read back out of a payload a real PostgreSQL produced; and that the distance on the wire
+// is the one `public.route_nm` holds rather than a second arithmetic on the way out.
+test('world.route_board() serves every lane the caller may know of, with the figures to rank them by', async () => {
+  const dark = expectOk(await worldRouteBoard())
+  // The merchants ship dark, so the board is HER routes and nothing else — which is all the world
+  // honestly holds then. Earlier tests in this file have saved her one.
+  expect(dark.merchants).toBe(false)
+  expect(Array.isArray(dark.routes)).toBe(true)
+  expect(isNum(dark.total)).toBe(true)
+  expect(isNum(dark.omitted)).toBe(true)
+  expect(dark.omitted).toBe(dark.total - dark.routes.length)
+  expect(dark.routes.every((r) => r.mine)).toBe(true)
+  expect(dark.routes.every((r) => r.merchant === false)).toBe(true)
+  expect(dark.routes.every((r) => r.company === null)).toBe(true)
+
+  // BOTH SWITCHES, because `public.npc_traders_on()` (0097) is `npc_traders_enabled` AND
+  // `standing_routes_on()` — "a merchant needs routes, so routes must be on too", in that
+  // function's own words. This test used to set only the first and pass, because the test ABOVE it
+  // left `standing_routes_enabled` on behind it; that test gained a `finally` that puts the key
+  // back (2026-10-11, the 0108 commit), which was right of it and silently took this test's
+  // precondition away. It then read `board.merchants === false` with the chain entirely correct —
+  // a dependency on the previous test's leftovers, which is the kind of order-coupling that makes a
+  // suite mean less the longer it gets. Set here, restored here, dependent on nobody.
+  await db.pg.query(`update public.world_config set value = 'true'::jsonb
+                      where key in ('npc_traders_enabled', 'standing_routes_enabled')`)
+  try {
+    const board = expectOk(await worldRouteBoard())
+    expect(board.merchants).toBe(true)
+    expect(board.routes.length).toBeGreaterThan(20)
+    expect(isStr(board.at)).toBe(true)
+
+    const merchant = board.routes.find((r) => r.merchant)
+    if (!merchant) throw new Error('the board carried no merchant route with the switch on')
+    expect(isStr(merchant.id)).toBe(true)
+    expect(isStr(merchant.name)).toBe(true)
+    expect(isStr(merchant.company ?? '')).toBe(true)
+    expect(isStr(merchant.nation_code ?? '')).toBe(true)
+    expect(isStr(merchant.ink ?? '')).toBe(true)
+    expect(merchant.mine).toBe(false)
+    // 2 to 8 harbours, and the loop closes on the first (0101, owner row 122).
+    expect(merchant.stops.length).toBe(merchant.stop_count)
+    expect(merchant.stop_count).toBeGreaterThanOrEqual(2)
+    expect(merchant.stop_count).toBeLessThanOrEqual(8)
+    expect(new Set(merchant.stops).size).toBe(merchant.stops.length)
+    expect(merchant.regions).toBeGreaterThanOrEqual(1)
+    expect(isStr(merchant.state)).toBe(true)
+    expect(typeof merchant.assigned).toBe('boolean')
+    // 0108, owner row 117: WHAT THE LANE ASKS, and whether it is shut to the caller. The migration
+    // holds `closed` to agreeing with public.passage_gate on every row; what this pins is the SHAPE
+    // the types claim, and that the requirement is the server's own reading and not re-derived here.
+    expect(merchant.requires.exploration).toBeGreaterThanOrEqual(1)
+    expect(merchant.requires.navigation === null || merchant.requires.navigation >= 1).toBe(true)
+    expect(typeof merchant.closed).toBe('boolean')
+    const req = await db.callAs<{ navigation: number | null; exploration: number }>(
+      `select public.route_requirement($1::uuid) as result`,
+      [merchant.id],
+    )
+    expect(merchant.requires).toEqual(req)
+    // THE DISTANCE ON THE WIRE IS public.route_nm'S, not a second arithmetic: asked of the server
+    // directly and compared. A loop the sea disputes measures null, which is why this may be null
+    // at all — so the check is "equal to what route_nm says", including when that is nothing.
+    const nm = await db.callAs<number | null>(`select public.route_nm($1::uuid) as result`, [merchant.id])
+    expect(merchant.nm === null ? null : Number(merchant.nm)).toBe(nm === null ? null : Number(nm))
+    if (merchant.nm !== null) expect(merchant.nm).toBeGreaterThan(0)
+    // the earnings object is public.route_earnings' own shape, absences included
+    for (const k of ['day', 'day_laps', 'day_full', 'lap_basis', 'laps_done'] as const) {
+      expect(merchant.earnings[k]).not.toBeUndefined()
+    }
+    expect(merchant.earnings.lap === null || isNum(merchant.earnings.lap)).toBe(true)
+    expect(Array.isArray(merchant.earnings.laps_recent)).toBe(true)
+
+    // THE CAP IS NEVER SILENT, and her own route is never what it drops.
+    await db.pg.query(`update public.world_config set value = to_jsonb(3) where key = 'route_board_max'`)
+    const capped = expectOk(await worldRouteBoard())
+    expect(capped.routes).toHaveLength(3)
+    expect(capped.total).toBe(board.total)
+    expect(capped.omitted).toBe(board.total - 3)
+    const hers = board.routes.filter((r) => r.mine).map((r) => r.id)
+    for (const id of hers) expect(capped.routes.some((r) => r.id === id)).toBe(true)
+  } finally {
+    await db.pg.query(`update public.world_config set value = to_jsonb(400) where key = 'route_board_max'`)
+    await db.pg.query(`update public.world_config set value = 'false'::jsonb
+                        where key in ('npc_traders_enabled', 'standing_routes_enabled')`)
   }
 })

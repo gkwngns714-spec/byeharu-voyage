@@ -107,7 +107,19 @@ export async function applyPreamble(db) {
  */
 export async function applyChain({ quiet = false, log = console.log, stopBefore = null } = {}) {
   const { PGlite } = await import('@electric-sql/pglite')
-  const db = await new PGlite()
+  // A BARE `new PGlite()` KEEPS THE WHOLE WORLD IN WASM MEMORY, and this chain has outgrown that on
+  // some machines: the process dies with NO error, no SQLSTATE and no partial receipt, at a
+  // different migration each run (measured 2026-10-11: 0012, then 0052, then 0065, then 0089 once a
+  // bigger V8 heap let it run faster before the same ceiling) on a host with 47 GB free. A gate that
+  // dies without a message is worse than a slow one, so BV_CHAIN_DATA_DIR puts the data on disk
+  // instead, where the ceiling is the disk's.
+  //
+  // IN-MEMORY IS STILL THE DEFAULT, deliberately: CI applies the chain exactly as it always has, and
+  // nothing about the proof changes with where the bytes live. This is an escape hatch for a big
+  // machine running the chain by hand, named in one place rather than copied into a wrapper script.
+  const dataDir = process.env.BV_CHAIN_DATA_DIR || undefined
+  const db = await new PGlite(dataDir)
+  if (dataDir && !quiet) log(`data:   ${dataDir} (BV_CHAIN_DATA_DIR; in-memory is the default)`)
 
   // `stopBefore` (a filename prefix, e.g. '20260818000098'): apply only the files that sort before
   // it. For a GENERATOR that must measure the chain its own output will be appended to

@@ -28,8 +28,8 @@
 // than a picture that is honest about being a reading.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import type { FleetView, SnapshotPort, TrafficFleet } from '../lib/rpc'
-import type { MapFleet, MapPort, MapTraffic } from './mapTypes'
+import type { FleetShip, FleetView, SnapshotPort, TrafficFleet } from '../lib/rpc'
+import type { HullClass, MapFleet, MapPort, MapTraffic } from './mapTypes'
 import { voyageEtaMs } from '../domain/fleet'
 
 /** The port table the chart draws. Field-for-field; nothing derived, nothing dropped but the
@@ -60,6 +60,56 @@ interface ServedFleet {
   readonly voyage: Omit<FleetView['voyage'] & object, 'id'> | null
   readonly anchor: [number, number] | null
   readonly port: string | null
+  /** HER HULLS, flagship first (row 120) — resolved by the caller, because the two reads do not
+   *  agree about what `ships` even is: `world.fleets` serves an ARRAY of ships with a class each
+   *  and `world.sea_traffic` serves a COUNT under the same key. One key, two wire types; the
+   *  conversion is therefore each caller's, and this is the one shape the body below reads. */
+  readonly hulls: readonly (HullClass | null)[]
+}
+
+/**
+ * THE CLASS THE SERVER NAMED, AS ONE OF THE THREE SILHOUETTES — or NULL (row 120).
+ *
+ * `world.fleets` serves a ship's class as the class's NAME and not its code (`'class', c.name` —
+ * 0009:180 and every re-cut of that sub-select since), so this is the one place in the client that
+ * reads a ship class name back into something a renderer can switch on, and it is a table of the
+ * three names the chain seeds (`…0003…:2089-2091`).
+ *
+ * EXACT NAMES, NOT A SUBSTRING SNIFF, and an unknown name is NULL rather than the nearest guess. A
+ * fourth hull, a renamed one, or a translated one then draws the class-less hull — true, and
+ * visibly saying nothing — where a fuzzy match would quietly draw her as whichever of these three
+ * her name happened to brush against. docs/NO_SPAGHETTI.md §7C's mirror rule: the lesser answer is
+ * allowed to be lesser, never wrong.
+ *
+ * THIS TABLE IS HALF RETIRED, AND SAYS WHICH HALF. `world.sea_traffic` now serves `hulls` as
+ * `ship_classes.code` per hull, flagship first (0102, 2026-10-11), so a MERCHANT needs no table at
+ * all — `hullCodesOf` below reads the codes straight off the wire. `world.fleets` still serves a
+ * ship's class as `c.name`, so a CAPTAIN's own fleets still come through here. The day that read
+ * serves a code too, this table goes and `hullsOf` becomes `hullCodesOf`.
+ */
+const HULL_CLASS_BY_SERVED_NAME: Readonly<Record<string, HullClass>> = {
+  barca: 'barca',
+  'caravela latina': 'carlat',
+  'nau / carrack': 'nau',
+}
+
+/** THE SAME, FROM CODES THE SERVER ALREADY ORDERED (0102). A merchant's `hulls` arrive flagship
+ *  first out of `world.sea_traffic`, so there is nothing to partition here and nothing to look up
+ *  by name: a code either names one of the three silhouettes or it names none, and none draws the
+ *  class-less hull. `HullClass` is the code set, so the check is the cast. */
+function hullCodesOf(codes: readonly string[] | undefined): (HullClass | null)[] {
+  return (codes ?? []).map((c) => (c === 'barca' || c === 'carlat' || c === 'nau' ? c : null))
+}
+
+/** HER HULLS, FLAGSHIP FIRST — the served ships in served order with the flagship moved to the
+ *  front, each resolved to a silhouette. A stable partition and not a sort: two ships that are
+ *  both flagged (or neither) keep the order the server sent them in, so the group a fleet draws
+ *  cannot shuffle between reads (./glyphs.ts `HULL_GROUP_PLACES` is the rule this feeds). */
+function hullsOf(ships: readonly FleetShip[] | undefined): (HullClass | null)[] {
+  const all = ships ?? []
+  return [...all.filter((s) => s.is_flagship), ...all.filter((s) => !s.is_flagship)].map(
+    (s) => HULL_CLASS_BY_SERVED_NAME[(s.class ?? '').trim().toLowerCase()] ?? null,
+  )
 }
 
 /**
@@ -73,7 +123,17 @@ interface ServedFleet {
 export function mapFleetsOf(fleets: readonly FleetView[]): MapFleet[] {
   const out: MapFleet[] = []
   for (const f of fleets) {
-    const m = mapFleetOf(f)
+    // Field for field rather than a spread, so the one thing this module DERIVES — her hulls,
+    // flagship first, out of `ships[].class` (row 120) — is the only thing here that is not a copy.
+    const m = mapFleetOf({
+      id: f.id,
+      name: f.name,
+      endurance_days: f.endurance_days,
+      voyage: f.voyage,
+      anchor: f.anchor,
+      port: f.port,
+      hulls: hullsOf(f.ships),
+    })
     if (m) out.push(m)
   }
   return out
@@ -116,6 +176,14 @@ export function mapTrafficOf(
       voyage,
       anchor: docked ? fannedBerth(t.roadstead!, berthIndex) : t.anchor,
       port: null,
+      // WHAT HER HULLS ARE, AND HOW MANY (row 120). `world.sea_traffic` serves `hulls` as a class
+      // CODE per hull, flagship first (0102) — so this is a copy, like every other position here,
+      // and not a derivation. Her `ships` count is the same list's length and is not re-read: one
+      // served fact, one reading of it. A merchant with no list falls back to her count of
+      // class-less hulls, which is what this chart drew for her before the read carried classes.
+      hulls: t.hulls && t.hulls.length > 0
+        ? hullCodesOf(t.hulls)
+        : Array.from({ length: Math.max(0, Math.trunc(t.ships)) || 0 }, () => null),
     })
     if (!m) continue
     const nextLap = t.next_lap_at ? Date.parse(t.next_lap_at) : NaN
@@ -136,6 +204,12 @@ export function mapTrafficOf(
               .filter((l) => l.course.length >= 2)
               .map((l) => l.course.map(([lat, lon]) => ({ lat, lon })))
           : null,
+      // HER LANE (0111, owner row 125). A COPY, like every other position in here. The server
+      // decides who gets one — `fleet_lane_min_ships` hulls and a route — so there is no notion of
+      // "major" anywhere in this section to drift out of step with the knob. A lane of fewer than
+      // two points draws nothing rather than a guessed line, the same rule the loop above keeps.
+      lane:
+        t.lane && t.lane.length >= 2 ? t.lane.map(([lat, lon]) => ({ lat, lon })) : null,
     })
   }
   return out
@@ -228,6 +302,7 @@ function mapFleetOf(f: ServedFleet): MapFleet | null {
       id: f.id,
       name: f.name,
       enduranceDays,
+      hulls: f.hulls,
       voyage: {
         course: course.map(([lat, lon]) => ({ lat, lon })),
         segIndex: position.seg_index,
@@ -270,8 +345,15 @@ function mapFleetOf(f: ServedFleet): MapFleet | null {
     }
   }
   if (f.anchor) {
-    return { kind: 'anchored', id: f.id, name: f.name, enduranceDays, at: { lat: f.anchor[0], lon: f.anchor[1] } }
+    return {
+      kind: 'anchored',
+      id: f.id,
+      name: f.name,
+      enduranceDays,
+      hulls: f.hulls,
+      at: { lat: f.anchor[0], lon: f.anchor[1] },
+    }
   }
-  if (f.port) return { kind: 'docked', id: f.id, name: f.name, enduranceDays, portCode: f.port }
+  if (f.port) return { kind: 'docked', id: f.id, name: f.name, enduranceDays, hulls: f.hulls, portCode: f.port }
   return null
 }

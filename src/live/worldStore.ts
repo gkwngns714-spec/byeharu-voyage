@@ -80,11 +80,13 @@ import {
   worldSnapshot,
   worldProvisionPresets,
   worldStandingRoutes,
+  worldRouteBoard,
   worldSeaRaster,
   worldReach,
   worldSeaTraffic,
 } from '../lib/rpc'
 import { navFromServed, type SeaNav } from '../lib/sea'
+import { sameSeaWindow, seaWindowUnion } from './seaWindow'
 import type {
   FleetView,
   HaggleAttempt,
@@ -101,7 +103,9 @@ import type {
   StandingRouteBook,
   StandingRouteStopDraft,
   ReachPayload,
+  RouteBoard,
   SeaTraffic,
+  SeaWindow,
   SkillBook,
   SnapshotNation,
   StandingsBoard,
@@ -145,6 +149,27 @@ export interface LiveWorld {
   /** The book of standing orders (0034). Null until FLEETS asks for it — it is that tab's card,
    *  and the server tops fleets up on arrival whether or not anyone is looking. */
   presets: ProvisionPresetBook | null
+  /**
+   * EVERY LANE THE WORLD SAILS (0106-0110, owner rows 115/117) — the last `world.route_board`
+   * reading, or null before ROUTES has asked for one.
+   *
+   * ASKED ONCE AND THEN LEFT ALONE, never on the shell's beat, which is the one thing about it
+   * worth knowing. The board measured 218 ms a call at 838 routes (profiled on the real chain:
+   * `route_requirement` 71.7 ms, `standing_route_state` 52.1, `route_earnings` 34.5, `route_nm`
+   * 12.8, the stops and their regions 7.2). None of those is wasteful — there are simply eight
+   * hundred routes since 0105 — but two hundred milliseconds every three seconds to repaint a
+   * board that changes when a lap closes somewhere is the CADENCE being wrong. ROUTES is in the
+   * Cabin group because "none of them acts on the world": it is consulted, not played.
+   *
+   * So it is a photograph, and `routeBoardAt` dates it so the screen can say how old it is
+   * rather than pretend to be live — the bargain RANK strikes with its "settled" line.
+   */
+  routeBoard: RouteBoard | null
+  /** When `routeBoard` was answered, in ms. Null before the first. */
+  routeBoardAt: number | null
+  /** The last board read was refused; whatever is in `routeBoard` is from before it. A board a
+   *  minute old beats no board, so the answer is kept and the screen says which it holds. */
+  routeBoardFailed: boolean
   /** The company's standing routes (0092). Null until the first world read lands — `refresh()`
    *  reads them with the fleets, on the same beat. A route runs on the server whether or not
    *  anyone is looking; this is only the reading of it. */
@@ -162,6 +187,39 @@ export interface LiveWorld {
   /** How many mounted screens want the traffic (MAP, PORT). The one seam a screen has into the
    *  cadence; it is never a second clock. */
   trafficWanted: number
+  /**
+   * WHERE EACH MOUNTED SCREEN IS LOOKING (0102), keyed by the screen — `'map'`, `'port'`. The read
+   * is sent the UNION of them (`src/live/seaWindow.ts`), and an empty map is the whole world.
+   *
+   * `world.sea_traffic` served every merchant in the world on every beat until 0102; at the roster
+   * the owner asked for (row 118, ×10) that is a read nobody should pay for to look at one sea. A
+   * screen says where it is looking and the server sends what is there, capped, with `omitted`
+   * saying what it held back.
+   *
+   * KEYED, not a single value, because MAP and PORT are both mounted during a transition and PORT
+   * wants its own harbour while MAP wants its viewport: one value would make whichever wrote last
+   * briefly right and the other briefly wrong. A screen's key is its name because there is one of
+   * each.
+   *
+   * A CHANGED WINDOW READS THE TRAFFIC AT ONCE, ALONE (owner, 2026-10-13: *"it is too slow"*), one
+   * VIEW_READ_DELAY_MS after the view holds still. Waiting for the shell's beat cost up to 7.5 s per
+   * move, plus the fleets and routes reads queued in front of it. The hull-jump that once forbade a
+   * lone read is gone because the merchants now carry their OWN instant (`trafficReadAt`), so a
+   * merchant is never drifted from a moment that did not produce her position. The read takes no
+   * lock, so it can sit beside a beat; a stale answer is dropped by the sequence counter.
+   */
+  trafficWindows: Readonly<Record<string, SeaWindow | null>>
+  /** True from a move of the view until the traffic read for that view lands — MAP's loading bar
+   *  (owner, 2026-10-13: *"the map needs time to load when i move… show loading bar too"*). */
+  trafficPending: boolean
+  /** When the current wait began (epoch ms) and how long the last one took. MAP's loading bar prints
+   *  elapsed ÷ last wait as a percent (owner, 2026-10-13: *"loading bar in numbers"*). The read is
+   *  one request riding the beat, so this is an ETA from the last wait, not a byte count. */
+  trafficPendingSince: number | null
+  trafficLastWaitMs: number
+  /** When `traffic` landed (epoch ms) — the instant the merchants are drifted from, which is NOT the
+   *  beat's `readAt` once a move of the view reads them alone. Null with `traffic`. */
+  trafficReadAt: number | null
   /** What is on at the quay (0026), keyed by port id — a fair is a PORT's fact, not the world's. */
   buffs: Record<string, BuffsView>
   /** One port's remembered prices, keyed by port id (0013). Fetched beside its market. */
@@ -203,6 +261,10 @@ export interface LiveWorld {
   loadOfficers: () => Promise<void>
   loadSkills: () => Promise<void>
   loadStandings: (limit?: number | null) => Promise<void>
+  /** Read the route board. ROUTES calls this once on mount and again when the player asks; no
+   *  beat calls it (see `routeBoard`). A refusal keeps the last answer and sets
+   *  `routeBoardFailed`, rather than blanking a board already on screen. */
+  loadRouteBoard: () => Promise<void>
   loadBuffs: (portId: string) => Promise<void>
   /** Fetch the book of standing orders. FLEETS calls it on mount and after every preset verb. */
   loadPresets: () => Promise<void>
@@ -273,6 +335,12 @@ export interface LiveWorld {
    *  (`useEffect(() => wantTraffic(), [wantTraffic])`). The first want reads at once, so the
    *  merchants arrive with the screen rather than one beat later; after that the beat reads. */
   wantTraffic: () => () => void
+  /** A screen that draws merchants says where it is looking; null means it wants the world. Call it
+   *  with the same key as the view changes — the next beat reads the new window. */
+  setTrafficWindow: (key: string, window: SeaWindow | null) => void
+  /** ...and takes its window with it on unmount, so a screen nobody is looking at does not keep
+   *  widening the read. */
+  clearTrafficWindow: (key: string) => void
   /** Drop the last refusal — a screen calls this when the player moves on. */
   dismissRefusal: () => void
 }
@@ -326,6 +394,9 @@ export function nationNameOf(
 ): string {
   return nationByCode[code]?.name ?? code
 }
+
+/** How long a view must hold still before its move reads the traffic — one settled pan, one read. */
+const VIEW_READ_DELAY_MS = 300
 
 export const useWorld = create<LiveWorld>((set, get) => {
   /**
@@ -387,12 +458,39 @@ export const useWorld = create<LiveWorld>((set, get) => {
   const dropTrafficInFlight = (): void => {
     trafficApplied = ++trafficAsked
   }
+  // THE READ A MOVE OF THE VIEW CALLS (see `trafficWindows`). One timer: one settled pan, one read.
+  let viewReadTimer: ReturnType<typeof setTimeout> | null = null
+  const callViewRead = (): void => {
+    if (viewReadTimer !== null) clearTimeout(viewReadTimer)
+    viewReadTimer = setTimeout(() => {
+      viewReadTimer = null
+      const s = get()
+      if (s.trafficWanted > 0 && s.phase === 'ready') void readTraffic()
+    }, VIEW_READ_DELAY_MS)
+  }
   const readTraffic = async (): Promise<void> => {
     const seq = ++trafficAsked
-    const r = await worldSeaTraffic()
-    if (!r.ok || seq < trafficApplied) return
+    // THE UNION OF WHAT THE MOUNTED SCREENS ARE LOOKING AT (0102). Empty is the world, which is
+    // what a screen that has not said where it is looking gets — and what the whole app got before
+    // this argument existed.
+    const asked = get().trafficWindows
+    const r = await worldSeaTraffic(seaWindowUnion(Object.values(asked)))
+    // The bar ends when the read for the view NOW on screen has answered — landed or refused.
+    const since = get().trafficPendingSince
+    const settled =
+      get().trafficWindows === asked
+        ? {
+            trafficPending: false,
+            trafficPendingSince: null,
+            ...(since === null ? {} : { trafficLastWaitMs: Math.max(250, Date.now() - since) }),
+          }
+        : {}
+    if (!r.ok || seq < trafficApplied) {
+      if (seq >= trafficApplied) set(settled)
+      return
+    }
     trafficApplied = seq
-    set({ traffic: r.value })
+    set({ traffic: r.value, trafficReadAt: Date.now(), ...settled })
   }
 
   return {
@@ -409,8 +507,17 @@ export const useWorld = create<LiveWorld>((set, get) => {
   standings: null,
   presets: null,
   routes: null,
+  routeBoard: null,
+  routeBoardAt: null,
+  routeBoardFailed: false,
   traffic: null,
   trafficWanted: 0,
+  trafficWindows: {},
+  trafficPending: false,
+  trafficPendingSince: null,
+  // Before any wait has been measured: one beat is the usual worst case.
+  trafficLastWaitMs: 4000,
+  trafficReadAt: null,
   buffs: {},
   history: {},
   ducats: null,
@@ -578,6 +685,15 @@ export const useWorld = create<LiveWorld>((set, get) => {
     const r = await worldStandings(limit)
     if (r.ok) set({ standings: r.value })
     else set({ refusal: r.refusal })
+  },
+
+  loadRouteBoard: async () => {
+    // A REFUSAL IS NOT A REFUSAL BANNER HERE. The board is consulted deliberately and its own
+    // screen prints "the last read was refused — these are the figures from before it", which is
+    // more use than a world-level refusal the player has to dismiss to get back to the list.
+    const r = await worldRouteBoard()
+    if (r.ok) set({ routeBoard: r.value, routeBoardAt: Date.now(), routeBoardFailed: false })
+    else set({ routeBoardFailed: true })
   },
 
   // A FAILED BUFF READ IS SILENT, and this is the one place that choice has a second consequence:
@@ -851,11 +967,37 @@ export const useWorld = create<LiveWorld>((set, get) => {
       set((s) => {
         const left = Math.max(0, s.trafficWanted - 1)
         last = left === 0
-        return last ? { trafficWanted: 0, traffic: null } : { trafficWanted: left }
+        return last
+          ? { trafficWanted: 0, traffic: null, trafficReadAt: null, trafficPending: false, trafficPendingSince: null }
+          : { trafficWanted: left }
       })
       if (last) dropTrafficInFlight()
     }
   },
+
+  setTrafficWindow: (key, window) => {
+    const s = get()
+    // A PAN THAT DOES NOT CHANGE THE REQUEST CHANGES NOTHING. MAP calls this on every settled
+    // view, and writing an equal window would re-render every subscriber of this store for a
+    // request that is byte-for-byte the one already standing.
+    if (key in s.trafficWindows && sameSeaWindow(s.trafficWindows[key] ?? null, window)) return
+    const pending = s.trafficWanted > 0
+    set({
+      trafficWindows: { ...s.trafficWindows, [key]: window },
+      trafficPending: pending,
+      // A second move inside one wait keeps the first start, so the number never runs backwards.
+      trafficPendingSince: pending ? (s.trafficPendingSince ?? Date.now()) : null,
+    })
+    if (pending) callViewRead()
+  },
+
+  clearTrafficWindow: (key) =>
+    set((s) => {
+      if (!(key in s.trafficWindows)) return s
+      const next = { ...s.trafficWindows }
+      delete next[key]
+      return { trafficWindows: next }
+    }),
 
   dismissRefusal: () => set({ refusal: null }),
   }

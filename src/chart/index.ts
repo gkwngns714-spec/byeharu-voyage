@@ -52,7 +52,16 @@ export { SmallChart } from './SmallChart'
 export { Minimap } from './Minimap'
 
 // ── the read model: what a chart is told, and what it makes of it ──────────────────────────────
-export type { MapFleet, MapPort, MapSelection, MapVoyage, MapWater, MapTraffic, MerchantInk } from './mapTypes'
+export type {
+  HullClass,
+  MapFleet,
+  MapPort,
+  MapSelection,
+  MapVoyage,
+  MapWater,
+  MapTraffic,
+  MerchantInk,
+} from './mapTypes'
 export {
   buildChartModel,
   fleetsAtPort,
@@ -84,7 +93,10 @@ export {
   MAX_SPAN_X,
   MIN_SPAN_X,
   OPENING_MIN_SPAN_DEG,
+  NIGHT_SPAN_DEG,
   OVER_COVERAGE_LIMIT,
+  PURE_LIGHT_SPAN_DEG,
+  zoomPercent,
   PAPER_MARGIN,
   PAPER_SETTLE_MS,
   PORT_TIER_BANDS,
@@ -109,15 +121,34 @@ export {
 // ── ink: the glyph metrics, the lines, the names, and what a tap lands on ──────────────────────
 // Row 90 added the ship, the arrowhead, the heading and the zoom-scaled coast weight — all here,
 // so a spec can hold "one hull for every fleet" and "the pen thickens as you zoom" as arithmetic.
+// ROW 120 added the three hulls and the group — `hullPath`, `hullHalfLengthOf`, `hullGroup`,
+// `hullGroupHalo` and the two numbers a group obeys — exported for the same reason the rest of this
+// block is: what a fleet's mark SAYS is arithmetic, and arithmetic is what a spec can hold to
+// account without rendering a component.
+// ROW 125 added the night chart — `harbourLightStrength`, `harbourLightHalo` and the density past
+// which a fleet is an ember — on the same principle: how brightly a city burns and how small a ship
+// gets are numbers, and `tests/map.night.spec.ts` holds them to account as numbers.
 export {
   arrowPath,
   coastStrokeWidth,
   GLYPH,
+  HARBOUR_LIGHT_MIN_UNITS_PER_PX,
+  harbourLightGlow,
+  harbourLightHalo,
+  harbourLightStrength,
   headingDeg,
+  HULL_EMBER_MAX_UNITS_PER_PX,
+  HULL_GROUP_MAX,
+  HULL_GROUP_MAX_UNITS_PER_PX,
+  hullGroup,
+  hullGroupHalo,
+  hullHalfLengthOf,
+  hullPath,
   portMarkScale,
   portStrokeWidth,
   shipPath,
   trianglePath,
+  type HullMark,
 } from './glyphs'
 export { toClosedRingsD, toPolylineD } from './svgPath'
 export { buildTrack, sheetPieces, type TrackPaths } from './route'

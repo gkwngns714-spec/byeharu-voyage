@@ -155,11 +155,53 @@ export interface MapSea {
  */
 type FleetStores = { readonly enduranceDays: number }
 
+/**
+ * A HULL CLASS, by `ship_classes.code` — the three hulls this world sails
+ * (`…0003_the_real_world_and_the_water_between_it.sql:2089-2091`: `barca`, `carlat`, `nau`).
+ *
+ * It is the chart's own word for a served fact and nothing here decides it: ./liveWorld.ts reads
+ * the class the server names on a ship and resolves it to one of these three, or to NULL. What each
+ * one LOOKS like is ./glyphs.ts's business (`hullPath`, `hullHalfLengthOf`) — one authority for
+ * every mark on this sheet, as that file's header says.
+ */
+export type HullClass = 'barca' | 'carlat' | 'nau'
+
+/**
+ * HER HULLS, FLAGSHIP FIRST — one entry per ship in the fleet, each the class the server named for
+ * her, or NULL where the server named none. OWNER ROW 120, 2026-10-11: *"the ships, higher ships
+ * will have different graphics, such as in size, two ships grouping, different graphics completely
+ * etc."*
+ *
+ * It is a fact about the fleet and not about where she is, so it sits outside the union's
+ * discriminated part, exactly as `FleetStores` does — a fleet has her hulls docked, at sea and at
+ * an open anchor alike.
+ *
+ * NULL IS NOT A GUESS, AND THE LENGTH IS NEVER INVENTED. `world.fleets` serves every ship's class,
+ * so a fleet of YOURS is a list of real classes. `world.sea_traffic` serves a merchant's `ships` as
+ * a COUNT and no class at all (0099's body: `'ships', (select count(*) from public.ships …)`), so
+ * every merchant hull is null today and is drawn as the class-less hull this chart has always drawn
+ * — the truthful lesser answer `docs/NO_SPAGHETTI.md` §7C's mirror rule asks for, never a
+ * silhouette invented on this side of the wire. The COUNT is served in BOTH cases, which is why
+ * the group is drawn for both and the silhouette for one of them. Serving `c.code` beside that
+ * count is the whole of what the merchants still want, and it is a migration, not a client change.
+ *
+ * OPTIONAL, AND THE ABSENCE IS NOT A FALLBACK IN §7C'S SENSE. A chart fixture about labels or
+ * roadsteads has nothing to say about hulls, so it may leave this out, and a fleet with no list
+ * draws ONE class-less hull — the exact mark this chart drew before row 120, claiming nothing
+ * about either channel. Both wire readers ALWAYS set it (./liveWorld.ts), and
+ * tests/map.hulls.spec.ts holds them to that rather than the type doing it, because what must be
+ * true is "the server's answer always reaches the paper", not "every literal is long".
+ */
+type FleetHulls = { readonly hulls?: readonly (HullClass | null)[] }
+
 /** A fleet, in exactly one of the three states the chart can draw (0039 added the open anchor). */
 export type MapFleet =
-  | ({ readonly kind: 'docked'; readonly id: string; readonly name: string; readonly portCode: string } & FleetStores)
-  | ({ readonly kind: 'sailing'; readonly id: string; readonly name: string; readonly voyage: MapVoyage } & FleetStores)
-  | ({ readonly kind: 'anchored'; readonly id: string; readonly name: string; readonly at: LatLon } & FleetStores)
+  | ({ readonly kind: 'docked'; readonly id: string; readonly name: string; readonly portCode: string } & FleetStores &
+      FleetHulls)
+  | ({ readonly kind: 'sailing'; readonly id: string; readonly name: string; readonly voyage: MapVoyage } & FleetStores &
+      FleetHulls)
+  | ({ readonly kind: 'anchored'; readonly id: string; readonly name: string; readonly at: LatLon } & FleetStores &
+      FleetHulls)
 
 /** The nation family a merchant hull is inked in — `npc_houses.ink`, served; never derived here. */
 export type MerchantInk = 'prt' | 'esp' | 'nld' | 'eng' | 'han' | 'ita' | 'ott' | 'east'
@@ -187,6 +229,18 @@ export type MapTraffic = MapFleet & {
   readonly berthIndex: number
   /** When she may start her next lap, epoch ms, while held in port; else null. */
   readonly nextLapAtMs: number | null
+  /**
+   * HER LOOP, THINNED, for drawing at a wide span (0111, owner row 125: *"major fleet shoud also
+   * show the routes as well"*). Served for a MAJOR fleet only — `fleet_lane_min_ships` hulls and a
+   * standing route — and null for everyone else, so this is not `loop` with a different name:
+   * `loop` is the baked water of the ONE merchant whose card is open, and this is a thinned drawing
+   * of the loops of every major fleet on the sheet at once.
+   *
+   * NOT WATER AND NOT SAILABLE. It is `fleet_lane_points_max` points of her course and crosses land
+   * between them, which is why it is only ever drawn at a span where that cannot be seen, and why
+   * nothing in this section may measure anything from it.
+   */
+  readonly lane: readonly LatLon[] | null
 }
 
 /**
