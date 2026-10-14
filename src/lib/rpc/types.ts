@@ -1637,17 +1637,32 @@ export interface TrafficFleet {
 }
 
 /**
- * A SEA WINDOW — what `world.sea_traffic` is asked to look at (0102). Degrees, the server's own
- * spelling: `south < north`, both within ±90, `west` and `east` within ±180 and `west > east` when
- * the window wraps the antimeridian. Null (or an omitted argument) is the whole world. A malformed
- * one is refused `E_BAD_VIEW` rather than quietly widened — see `src/live/seaWindow.ts`, which is
- * the one place this shape is built.
+ * ONE MERCHANT'S VOYAGE AS ITS FROZEN FACTS (0118, `world.sea_roster`): the whole course, each leg's
+ * nm, departure and the served eta. No computed position: the client places her in time
+ * (`src/live/seaRoster.ts`), so the server never walks 800 voyages day by day on every beat.
  */
-export interface SeaWindow {
-  south: number
-  north: number
-  west: number
-  east: number
+export interface RosterVoyage {
+  to: string | null
+  dest_point: [number, number] | null
+  course: [number, number][]
+  /** One per segment of `course`, in nautical miles, off the same frozen path. */
+  legs_nm: number[]
+  eta: string
+  total_nm: number
+  departed_at: string
+}
+
+/** One roster row — `world.sea_traffic`'s row with the voyage served as its frozen facts. */
+export interface RosterFleet extends Omit<TrafficFleet, 'voyage'> {
+  voyage: RosterVoyage | null
+}
+
+/** `world.sea_roster(p_since)` (0118): every merchant (`full`), or the ones whose state moved. */
+export interface SeaRoster {
+  enabled: boolean
+  at: string
+  full: boolean
+  fleets: RosterFleet[]
 }
 
 export interface SeaTraffic {

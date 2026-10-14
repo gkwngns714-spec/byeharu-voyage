@@ -36,7 +36,7 @@ export function createLocalBackend(db: LocalCaller): RpcBackend {
       // defaults to null, so a padded null is the identical call.
       const params = RPCS[name].args.map((_, i) => values[i] ?? null)
       const clock =
-        name === 'worldSeaTraffic' || name === 'worldPortMerchants'
+        name === 'worldSeaRoster' || name === 'worldPortMerchants'
           ? db.callAs<unknown>('select public.tick_arrivals(now()) as result')
           : Promise.resolve(null)
       return clock.then(() => db.callAs<unknown>(localSql(name), params)).catch((err: unknown) => {
