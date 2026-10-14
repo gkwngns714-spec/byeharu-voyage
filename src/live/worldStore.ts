@@ -741,10 +741,10 @@ export const useWorld = create<LiveWorld>((set, get) => {
   loadRoutes: () => readRoutes(),
 
   saveRoute: async (routeId, name, stops) =>
-    (await verb(cmdStandingRouteSave(routeId, name, stops), get().loadRoutes))?.value.id ?? null,
+    (await verb(cmdStandingRouteSave(routeId, name, stops), () => get().loadRoutes()))?.value.id ?? null,
 
   deleteRoute: async (routeId) =>
-    (await verb(cmdStandingRouteDelete(routeId), get().loadRoutes)) !== null,
+    (await verb(cmdStandingRouteDelete(routeId), () => get().loadRoutes())) !== null,
 
   // ASSIGN AND RESUME MOVE THE FLEET NOW (the route writes her orders and the queue runs them), so
   // both read the world back — the queue, the purse and the route — never a local patch.
