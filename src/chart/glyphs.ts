@@ -72,7 +72,7 @@ import type { HullClass } from './mapTypes'
  * 44 is WCAG 2.5.5 (Target Size, AAA) and Apple's HIG; Android/Material asks 48. It is the
  * EDGE-TO-EDGE size of a target, so half of it — 22 px — is how far from the point they aimed at
  * a finger may still land. The design system already builds every control to the same floor
- * (`buttonStyles.ts`'s `min-h-11` / `h-11 w-11`); this is the same fact for a thing drawn on a
+ * (`Button.tsx`'s `min-h-11` / `h-11 w-11`); this is the same fact for a thing drawn on a
  * chart, where there is no element to give a minimum height to.
  */
 export const TOUCH_TARGET_PX = 44

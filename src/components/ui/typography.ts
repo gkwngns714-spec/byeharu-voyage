@@ -1,4 +1,4 @@
-// Design-system TYPE RECIPES — pure class builders, the `buttonStyles.ts` / `tableLayout.ts` idiom
+// Design-system TYPE RECIPES — pure class builders, the `tableLayout.ts` idiom
 // applied to the text treatments this game repeats most.
 //
 // ── WHY THESE ARE FUNCTIONS AND NOT A COMMENT SAYING "USE THESE CLASSES" ───────────────────────
@@ -10,7 +10,7 @@
 // broken; that is the point. A voice spelt thirty times is a voice nobody can retune, and three
 // spellings of one link is three things that will keep drifting apart one class at a time.
 //
-// The same audit is why `buttonClasses` exists (twelve hand-rolled chips) and why `scrollTableClass`
+// The same audit is why `buttonClasses` existed (twelve hand-rolled chips) and why `scrollTableClass`
 // exists. This is that rule reaching the text.
 //
 // ── THE BOUNDARY BETWEEN THEM ──────────────────────────────────────────────────────────────────

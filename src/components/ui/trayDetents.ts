@@ -1,6 +1,6 @@
 // THE TRAY'S DETENTS — pure arithmetic, in its own module so it can be read without a browser.
 //
-// PURE (no React) for the same reason `buttonStyles.ts` and `screenLayout.ts` are: a file that
+// PURE (no React) for the same reason `screenLayout.ts` is: a file that
 // exports a component and a helper breaks Fast Refresh, and a rule that decides where a dragged
 // sheet lands is a rule worth testing without mounting anything.
 //
