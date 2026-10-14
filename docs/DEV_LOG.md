@@ -5,6 +5,23 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-14 — PR #94 live: a stale test world, and a self-assert that assumed prod was dark
+
+PR #94 merged (`04c64b2`), and `805299b` deployed to Pages at 03:03 UTC. Prod migrations 0111–0113 are applied.
+
+- **Stale npc-on fixture (CI run 38485001228).** The kept merchants-on world was 14 hours old. The
+  merchants sail on `now()`, so the page's first `tick_arrivals` owed every fleet hours of voyages and
+  froze the tab; map.night saw no hull for 60 s. A kept copy older than 90 min is now rebuilt
+  (`NPC_ON_MAX_AGE_MS`, `tests/npcOn.fixture.ts`), and the cross-run cache step is gone from
+  `.github/workflows/acceptance.yml`.
+- **0113 died on prod.** Its self-assert demanded that merchants be dark at apply time; prod runs lit.
+  0111 and 0112 had committed; the clock was re-wound at once. Fix (`805299b`): record the switch as
+  found, probe the dark path inside a rolled-back block, and run the switch only if it was off.
+  Before re-pushing, the migration was dry-run on prod inside `begin; …; rollback;` via
+  `supabase db query --linked -f`, which does surface errors.
+- **Rule:** a voyage self-assert holds "as found", never on the shipped default, and every prod push is
+  dry-run in a rolled-back transaction first.
+
 ## 2026-10-13/14 — PR #94's CI: four reds read and fixed, and the three ~45-minute applies cut to minutes
 
 Branch `osn-npc-traders`. Owner: *"why is CI taking so long"*, *"make it so that the test ends faster"*, *"make it clean"*.
