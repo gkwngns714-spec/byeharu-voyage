@@ -91,7 +91,7 @@ export function AuthPage() {
         </form>
 
         <Button
-          variant="ghost"
+          variant="quiet"
           size="sm"
           className="mt-4 w-full"
           onClick={() => {

@@ -210,8 +210,13 @@ export interface CargoLine {
  * is no per-lot purchase price to fold. What the cargo COST is not folded here either: since 0081
  * the server serves it, already averaged, as `FleetView.cargo_basis`, and `paidPerTun` below is
  * the one reading of it.
+ *
+ * STRUCTURAL, so a merchant's served card (`MerchantCard.ships`, 0099) is folded by the same
+ * function — the merchant sheet used to keep a fourth copy of this loop.
  */
-export function fleetCargoByCode(fleet: FleetView): Record<string, number> {
+export function fleetCargoByCode(fleet: {
+  readonly ships: readonly { readonly cargo: Readonly<Record<string, number>> }[]
+}): Record<string, number> {
   const byGood: Record<string, number> = {}
   for (const ship of fleet.ships) {
     for (const [code, qty] of Object.entries(ship.cargo)) {

@@ -19,7 +19,7 @@ import {
 import { CHART_CHROME } from '../chart'
 import { useShellState } from '../app/shellState'
 import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../lib/format'
-import { hullFraction } from '../domain/fleet'
+import { fleetCargoByCode, hullFraction } from '../domain/fleet'
 import { skippedWords } from '../domain/route'
 import type { MerchantCard } from '../lib/rpc'
 import { portNameOf, useWorld } from './worldStore'
@@ -112,13 +112,10 @@ function MerchantBody({
   const { nowMs } = useShellState()
   const e = card.earnings
   const cargo = useMemo(() => {
-    const sum = new Map<string, number>()
-    for (const s of card.ships) for (const [code, qty] of Object.entries(s.cargo)) sum.set(code, (sum.get(code) ?? 0) + qty)
-    return [...sum.entries()]
-      .filter(([, qty]) => qty > 0)
+    return Object.entries(fleetCargoByCode(card))
       .map(([code, qty]) => ({ code, name: goodName(code), category: goodCategory(code), qty }))
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [card.ships, goodName, goodCategory])
+  }, [card, goodName, goodCategory])
   const skipped = card.route?.last_skipped ?? []
   const level = card.skills.reduce((n, sk) => n + sk.level, 0)
 
