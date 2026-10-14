@@ -6,9 +6,40 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 
 ---
 
-# ▼ RESUME ANCHOR — 2026-10-14 ▼
+# ▼ RESUME ANCHOR — 2026-10-15 ▼
 
 **Handed off for a machine change. Everything below this anchor is HISTORY.**
+
+## The state of the world (verified 2026-10-15)
+
+| | |
+|---|---|
+| `main` | `b94edac` (PR #107), deployed to Pages; the live bundle `index-CkQCXc1i.js` was checked |
+| **Production DB head** | **0118**, which matches `main`. No migration is pending |
+
+## LIVE since the 10-14 anchor
+- **PR #100** `cleanup-2`: one "docked at" rule, `isDockedAt`, in `src/domain/fleet/where.ts`. It replaced 8 copies.
+- **PR #108**: on the map, ships show at every zoom at half size. The map wraps east to west (`sheetCopies` in `src/lib/geo/projection.ts`), and it has real sunlight: the NOAA subsolar point and twilight, with daytime colours (`src/chart/sun.ts`, `DaylightMask.tsx`).
+- **PR #107**: the city tray lists every merchant the harbour concerns, grouped In port / Leaving / Arriving / Passing / Away (`src/live/merchantGroups.ts`, `CityMerchants.tsx`). It is never blank.
+  - Why it was blank: the map filtered to "lying here", and with the 2-min rest that list was almost always empty.
+
+## Open
+1. Optional: show a countdown only for ships in the tapped city (Away shows a home-rest countdown).
+2. Cleanup slices 7–9: split `lib/rpc/types.ts` by aspect; `useTrayDetent` + `CodexFace`; move comment history into DEV_LOG.
+3. xlsx findings not acted on: PLUNDERED leaves the cargo; RANSOM costs nothing; `build_cost` and `port_fee_per_ship` are unread; attack/armour are unused.
+4. Not checked yet: merchant lap profit since 0116, and the map on a real phone.
+
+## New-machine notes
+- `npm run build` bakes the world image cold (19–60 min). Copy `node_modules/.cache` into new worktrees.
+- Run `supabase link` before any `npx --yes supabase@2.120.0 … --linked` command.
+- Merge with `gh pr merge --auto`, never `--admin`. Shards take 10 min to 1 h 20 min each.
+- If the Pages deploy is cancelled by a queue timeout, read the log, then re-run the deploy.
+- Operating rules are as in the 10-14 anchor below.
+
+---
+# ▼ RESUME ANCHOR — 2026-10-14 ▼
+
+**HISTORY.**
 
 ## The state of the world — VERIFIED 2026-10-14 ~10:30 UTC
 
