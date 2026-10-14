@@ -30,16 +30,37 @@ Owner, on the live game: *"i press a city and i see no ship info. Why did this r
   read-only sheet. `MapScreen.tsx` hands the harbour's whole read down (the filter and
   `lyingHere` are gone); `SendFleet.tsx` passes the city's code. `restingSummary` is deleted.
 - **Specs.** `tests/map.merchants.spec.ts`: a unit test of the grouping (rank, soonest first,
-  nothing dropped, empty groups omitted, the summary); the city test re-read as the grouped
-  contract (every printed group's rows carry its words, counts match, in port soonest first, your
-  fleets still under it, a row opens the sheet); **a new test that fails on main** — a city whose
-  merchants are all at sea still lists them (`map-resting` rendered nothing there); and a 1440 × 900
-  shot. `tests/port.merchants.spec.ts` is untouched: PORT never filtered.
+  nothing dropped, empty groups omitted, a list of merchants all at sea is still a list, the
+  summary); the city test re-read as the grouped contract (every printed group's rows carry its
+  words, counts match, in port soonest first, the head counts every row, your fleets still under
+  it, a row opens the sheet); a sweep that opens every named harbour on the frame and requires each
+  one with merchants to list them all, never blank (**fails on main**, where `map-resting` rendered
+  nothing for a city with nobody in port); and a 1440 × 900 shot. `tests/port.merchants.spec.ts`
+  is untouched: PORT never filtered.
+- **The first cut of the city spec was RED on CI, and rightly** (run 38573178980, shard 1/4: *"none
+  of port:LIS, port:SVQ, port:BIL, port:OPO fits"*). It HUNTED the opening frame for a harbour that
+  happened to have a merchant in port — the rare case under a two-minute rest, i.e. the very
+  condition this slice exists for — and passed locally by the clock. A test that asserts an ambient
+  state asserts a world, not a property. **The precondition is the fixture's now:**
+  `tests/npcOn.fixture.ts` holds one merchant homed at Porto (`RESTING_AT_PORTO`, on the opening
+  frame at 390 and 1440, not under your own fleet's mark as Lisbon is) through the switch and the
+  warp, then puts her to REST with `hold_until` six hours out — written directly, since
+  `cmd.standing_route_pause_for(false)` would sail her — and reads her back through
+  `world.port_merchants` as `resting` before the image is dumped. The city test opens Porto by
+  name and fails loudly if Porto is not on the frame; nothing in the file asks the clock for a
+  harbour any more. The "all at sea" browser test went the same way: it needed a harbour with
+  nobody in port, which is the clock's to give; it is the sweep above now, plus the unit case.
 - **Gates.** `npx tsc -b` clean · `npx eslint .` clean · pure guards `words` / `sections` /
   `duplication` 19 passed · `npm run build` green (the world image for chain 110 was built here, no
   cache for it existed on this machine). Browser, against `vite preview --port 4193`
-  (`localhost`, one worker): `map.merchants` + `port.merchants` — **17 passed, 0 failed, 0
-  skipped** (18.6 min, the merchants-on fixture built cold inside it).
+  (`localhost`, one worker): first cut, `map.merchants` + `port.merchants` — 17 passed, 0 failed,
+  0 skipped (18.6 min, the fixture built cold inside it). After the merge of main (PR #100,
+  `isDockedAt`) and the fixture's precondition: `map.merchants` **14 passed, 1 failed** — the
+  sweep, because `Flotte de Nantes` was drifting over Cadiz's name and won the tap by the chart's
+  own tie rule; the helper now re-aims three times and treats a taken tap as "not this city, this
+  second" — then the three city tests **3 passed, 0 failed, 0 skipped** (3.6 min). A run before
+  that lost its preview server mid-way (`ERR_CONNECTION_REFUSED`, 7 skipped) and counts for
+  nothing; it is why `tests/` treats a skip as a failure on CI.
 - Shots, looked at: `docs/npc-traders/city-tray-half-390.png`, `city-tray-at-sea-390.png`,
   `city-tray-half-1440.png`, `city-tray-merchant-from-list-390.png`.
 
