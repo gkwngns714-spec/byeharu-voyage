@@ -60,9 +60,18 @@ Owner, on the live game: *"i press a city and i see no ship info. Why did this r
   own tie rule; the helper now re-aims three times and treats a taken tap as "not this city, this
   second" — then the three city tests **3 passed, 0 failed, 0 skipped** (3.6 min). A run before
   that lost its preview server mid-way (`ERR_CONNECTION_REFUSED`, 7 skipped) and counts for
-  nothing; it is why `tests/` treats a skip as a failure on CI.
-- Shots, looked at: `docs/npc-traders/city-tray-half-390.png`, `city-tray-at-sea-390.png`,
-  `city-tray-half-1440.png`, `city-tray-merchant-from-list-390.png`.
+  nothing; it is why `tests/` treats a skip as a failure on CI. After the merge of PR #108 (ships
+  at every zoom, the continuous sheet, the Sun, ships halved — a new hit test near the names):
+  `map.merchants` + `port.merchants` + `map.wrap` on the merged build — **24 passed, 0 failed,
+  0 skipped** (41.6 min; the merchants-on fixture rebuilt inside it, its kept copy having aged
+  past 90 minutes).
+- Shots, looked at, on the PR #108 chart (daylight, halved ships): `docs/npc-traders/
+  city-tray-half-390.png` (Porto · `15 merchants · 1 in port`, `5 h 54 min` Resting, Leaving 3),
+  `city-tray-at-sea-390.png`, `city-tray-half-1440.png` (Porto's side tray: In port 1, Leaving 3,
+  Away 11), `city-tray-merchant-from-list-390.png`. One true thing the shots show that this slice
+  did not touch: a merchant AWAY from the tapped city whose served `next_lap_at` is her rest at her
+  OWN home prints that countdown over `Away` (`Bristol Traders · 1.5 min · Away`) — `MerchantRow`
+  prints a served instant wherever it has one, on PORT as on the map; the figure is the server's.
 
 ## 2026-10-14 — ships at every zoom, the continuous sheet, the Sun; ships halved — `osn-map-wrap-sun` (client only)
 
