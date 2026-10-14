@@ -1,8 +1,8 @@
 import { Bar, Button, Figure, Icon, Note, Row } from '../../components/ui'
 import { formatMiles, formatVoyageDays } from '../../lib/format'
-import type { FleetView, PreviewResult, Refusal, SnapshotPort } from '../../lib/rpc'
+import type { FleetView, PreviewResult, Refusal } from '../../lib/rpc'
 import { sailEstimate } from '../../domain/order'
-import { pointLabel } from '../../domain/passage'
+import { whereabouts, whereLine } from '../../domain/fleet'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { KeepAndSend } from './KeepAndSend'
 import { canGo, type Fix } from './sendRules'
@@ -23,7 +23,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
   const on = flow.picked === f.id
   const v = flow.verdicts[f.id]
   const acted = flow.act?.fleetId === f.id ? flow.act : null
-  const where = whereOf(f, portByCode)
+  const where = whereLine(whereabouts(f), (c) => portNameOf(portByCode, c))
 
   const line = !pressable
     ? standing === 'lies'
@@ -122,13 +122,6 @@ function Refused({ refusal, fixes, testId }: { refusal: Refusal; fixes: Fix[]; t
   )
 }
 
-/** Where she is, in the fleet chip's own wording — one line under the name. */
-function whereOf(f: FleetView, portByCode: Record<string, SnapshotPort>): string {
-  if (f.port) return portNameOf(portByCode, f.port)
-  if (f.voyage) return 'at sea'
-  if (f.anchor) return `at anchor · ${pointLabel({ lat: f.anchor[0], lon: f.anchor[1] })}`
-  return f.status.toLowerCase()
-}
 
 /** The two figures a SAIL estimate carries — the SERVER's own sailed miles and voyage-days over
  *  the proposed course, read once for the whole app in `domain/order/estimate.ts`. */

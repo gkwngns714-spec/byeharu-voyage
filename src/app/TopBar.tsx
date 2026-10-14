@@ -3,7 +3,7 @@ import { Countdown, Figure } from '../components/ui'
 import { useWorld } from '../live/worldStore'
 import { isTradeRoute } from './navTabs'
 import { useShellState } from './shellState'
-import { COIN } from '../lib/format'
+import { COIN, instantMs } from '../lib/format'
 
 // THE STATUS STRIP — 32px, two facts, and nothing that says the obvious.
 //
@@ -50,8 +50,8 @@ export function TopBar() {
   const priceEdgeMs = useWorld((s) => {
     let latest: number | null = null
     for (const view of Object.values(s.markets)) {
-      const at = Date.parse(view.clock.next_change_at)
-      if (Number.isFinite(at) && (latest === null || at > latest)) latest = at
+      const at = instantMs(view.clock.next_change_at)
+      if (at !== null && (latest === null || at > latest)) latest = at
     }
     return latest
   })

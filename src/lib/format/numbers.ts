@@ -91,6 +91,16 @@ export function formatMiles(n: number, dp = 0): string {
   return `${dp > 0 ? formatFixed(n, dp) : formatInt(n)} miles`
 }
 
+/** How a water point reads on a screen: "33.0°N 15.0°W". The one wording, so the panel, the
+ *  fleet chip and the report agree. (Moved here from `domain/passage` 2026-10-14 so
+ *  `domain/fleet`'s where-she-is line can print a point without the two sections importing each
+ *  other — it is a way of printing two numbers, which is this file's whole job.) */
+export function pointLabel(at: { readonly lat: number; readonly lon: number }): string {
+  const ns = at.lat >= 0 ? 'N' : 'S'
+  const ew = at.lon >= 0 ? 'E' : 'W'
+  return `${Math.abs(at.lat).toFixed(1)}°${ns} ${Math.abs(at.lon).toFixed(1)}°${ew}`
+}
+
 /** Speed: 3.5695 → "3.6 knots". */
 export function formatKnots(n: number): string {
   return `${formatFixed(n, 1)} knots`

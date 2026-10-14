@@ -4,9 +4,9 @@ import { Queue } from './Queue'
 import { RouteFold } from './RouteFold'
 import { useCommandDraft } from '../../domain/order'
 import { formatOfTotal, formatVoyageDays, tonsWord } from '../../lib/format'
-import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
+import { fleetHoldTotal, fleetHoldUsed, whereabouts, whereLine } from '../../domain/fleet'
 import { portNameOf, useWorld } from '../../live/worldStore'
-import type { FleetView, SnapshotPort } from '../../lib/rpc'
+import type { FleetView } from '../../lib/rpc'
 
 // COMMAND — whose orders, and what she has been told. Nothing here composes a verb any more.
 //
@@ -90,7 +90,7 @@ export function CommandScreen() {
       <div className="-mx-gutter flex gap-2 overflow-x-auto px-gutter pb-1">
         {fleets.map((f) => (
           <Chip key={f.id} on={f.id === fleetId} onClick={() => selectFleet(f.id)} className="shrink-0 whitespace-nowrap">
-            {f.name} · {whereOf(f, portByCode)}
+            {f.name} · {whereLine(whereabouts(f), (c) => portNameOf(portByCode, c))}
           </Chip>
         ))}
       </div>
@@ -154,12 +154,4 @@ function FleetFigures({ fleet }: { fleet: FleetView }) {
       </div>
     </div>
   )
-}
-
-/** Where a fleet is or is heading, in a word — for the chip. */
-function whereOf(f: FleetView, portByCode: Record<string, SnapshotPort>): string {
-  if (f.port) return portNameOf(portByCode, f.port)
-  if (f.voyage) return `→ ${f.voyage.to ? portNameOf(portByCode, f.voyage.to) : 'sea'}`
-  if (f.anchor) return `anchored`
-  return f.status.toLowerCase()
 }

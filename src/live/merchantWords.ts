@@ -1,4 +1,4 @@
-import { formatRealDuration } from '../lib/format'
+import { formatRealDuration, instantMs } from '../lib/format'
 import type { MerchantDoing, PortMerchant } from '../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -30,9 +30,7 @@ export const DOING_WORD: Record<MerchantDoing, string> = {
  *  not held (or the hold is a byte the server did not spell as a time). A LAID-UP merchant's hold
  *  is not a promise: a pause outranks a hold (0104), so hers is never printed as a countdown. */
 export function restEndsAt(m: Pick<PortMerchant, 'doing' | 'next_lap_at'>): number | null {
-  if (m.doing === 'laid_up' || !m.next_lap_at) return null
-  const at = Date.parse(m.next_lap_at)
-  return Number.isFinite(at) ? at : null
+  return m.doing === 'laid_up' ? null : instantMs(m.next_lap_at)
 }
 
 /**

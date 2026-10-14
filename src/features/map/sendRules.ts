@@ -1,6 +1,7 @@
 import type { LatLon } from '../../lib/geo'
 import type { FleetView, PreviewResult, Refusal } from '../../lib/rpc'
-import { pointLabel, pointToken } from '../../domain/passage'
+import { pointToken } from '../../domain/passage'
+import { pointLabel } from '../../lib/format'
 
 // THE SEND FLOW'S RULES AS DATA — no React, no store, so each one can be read without a browser.
 // `useSendFleet.ts` is the one caller; the same split `watersRows.ts` / `WatersAhead.tsx` uses.
