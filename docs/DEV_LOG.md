@@ -5,6 +5,26 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-14 — 0117/0118: the map read stops timing out — the roster once, then what changed — `osn-traffic-delta`
+
+- **The problem.** With 822 merchants sailing, `world.sea_traffic` took 6–7 s against the 8 s
+  `authenticated` timeout, and calls failed with 57014. The cost is `world.voyage_view` per fleet,
+  because `voyage.progress_nm` walks a voyage day by day.
+- **0117.** The window first filters on an exact superset test over the frozen course, then builds
+  voyage objects only for those candidates. Output is byte-identical (asserted). Measured on prod:
+  6.4 s down to 2.6 s for Iberia, and 1.9 s for the world. Merchant pace is now read from the
+  `npc_laps_per_game_day` knob, set to 0.
+- **0118: `world.sea_roster(p_since)`.** It returns every merchant once, then only the fleets whose
+  route was re-dated (`standing_routes.updated_at`) or whose voyage departed after `p_since`. Each
+  voyage is served as frozen facts: course, `legs_nm`, eta, departed_at. Measured on prod: the full
+  roster is 837 rows, ~0.5 s on the server, 530 KB raw.
+- **Client.** `src/live/seaRoster.ts` places each row linearly in time along the served legs and
+  rebuilds the sea_traffic row shape, so the chart is unchanged. The store reads a delta each beat
+  (overlap 90 s) and the full roster every 10 min.
+- **Removed:** the view read (`callViewRead`, `VIEW_READ_DELAY_MS`, `trafficWindows`),
+  `MapLoadingFigure` and `src/live/seaWindow.ts`.
+- **Kept:** `world.sea_traffic` stays on the server for older builds.
+
 ## 2026-10-14 — 0116: a merchant always earns, and rests two minutes — `osn-merchants-always-earn`
 
 - **Costs.** `npc_cost_mult` goes from 0.25 to 0. Merchants are off Rank and their money never
