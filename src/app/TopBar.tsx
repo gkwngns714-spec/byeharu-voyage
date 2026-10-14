@@ -3,7 +3,7 @@ import { Countdown, Figure } from '../components/ui'
 import { useWorld } from '../live/worldStore'
 import { isTradeRoute } from './navTabs'
 import { useShellState } from './shellState'
-import { COIN, instantMs } from '../lib/format'
+import { COIN, formatGameClock, instantMs } from '../lib/format'
 
 // THE STATUS STRIP — 32px, two facts, and nothing that says the obvious.
 //
@@ -63,9 +63,14 @@ export function TopBar() {
       {/* Left: how long the quay's prices stand. An empty span holds the slot when there is
           nothing true to say, so the purse does not slide across the bar between tabs. */}
       <span className="min-w-0 truncate text-t-caption text-ink-muted">
+        {/* THE GAME CLOCK — time only, no date (owner, 2026-10-15); the Sun runs on the same
+            hour (lib/format gameTimeOfDayMs). */}
+        <span data-testid="game-clock" className="tabular-nums text-ink">
+          {formatGameClock(nowMs)}
+        </span>
         {showCountdown && (
           <>
-            prices <Countdown untilMs={priceEdgeMs} nowMs={nowMs} dueText="now" />
+            {' · '}prices <Countdown untilMs={priceEdgeMs} nowMs={nowMs} dueText="now" />
           </>
         )}
       </span>
