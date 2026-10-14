@@ -5,6 +5,26 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-14 — 0114 re-cut before prod: "a merchant only trades at a profit" — `osn-merchants-profit`
+
+PR #97's 0114 was merged but never applied to prod. The owner rejected its hourly re-plan ("keeps
+the server too occupied") and asked that trade routes "only make profit", so 0114 is replaced
+whole, under the same version, by `20260818000114_a_merchant_only_trades_at_a_profit.sql`:
+
+- **Costs.** `public.running_cost_mult(player)` is `npc_cost_mult` (0.25) for merchants and 1 for
+  players. It is composed into voyage.settle's wages, cmd.do_provision, cmd.do_repair and
+  npc_plan's wage estimate.
+- **Only profitable trades.** `npc_min_return_pct` goes from 2 to 15. Measured mid drift at the
+  merchants' buy points: p90 6.7 %, p95 9.2 % and p99 13.9 % in 4 h. cmd.standing_route_lines caps a
+  merchant BUY at the next stop's current bid divided by 1.15, and drops the line if that stop bids
+  nothing. The sell-at-profit floor is basis × (1 + npc_sell_margin).
+- **Re-plan once per lap, per ship.** cmd.run_standing_route re-plans a merchant as her lap starts,
+  and lays her up if nothing pays. tick_reconcile no longer runs npc_plan. npc_tend and the
+  compactor stay, under the 60 s budget.
+- **No loss stop for merchants.** The loss guard is now players only.
+- **Yield, measured on prod in a rolled-back 50 s tend.** At 15 %, about a third of laid-up routes
+  find cargo (33 started, 63 laid up again). At 10 %, about 60 % do (57 / 38). The knob is live.
+
 ## 2026-10-14 — "I saw no NPC": the hourly upkeep never committed — migration 0114, `osn-merchants-resume`
 
 Prod at 03:10 UTC: 837 merchant routes, 521 `laid_up` (all dated 10-11 14:33:08, the switch's own
