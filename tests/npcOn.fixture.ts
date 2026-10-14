@@ -76,8 +76,12 @@ export async function npcOn(): Promise<Buffer> {
   try {
     const r = await pg.query(`update public.world_config set value = 'true'::jsonb where key = 'standing_routes_enabled' returning key`)
     if (r.rows.length !== 1) throw new Error('world_config has no standing_routes_enabled row')
+    // HELD WITH THE 'player' PAUSE (0115). Nothing lays a merchant up any more, and npc_tend lifts
+    // a 'laid_up' pause at once, so the switch below would put her to sea. 'player' is the one
+    // pause the upkeep never lifts, and the harbour still reads ANY pause lying here as `laid_up`
+    // (world.port_merchants, 0104), so PORT's list shows her exactly as before.
     const laid = await pg.query<{ r: { ok: boolean } }>(
-      `select cmd.standing_route_pause_for(nf.player_id, nf.route_id, true, 'laid_up', 'Held in port for the browser spec.') as r
+      `select cmd.standing_route_pause_for(nf.player_id, nf.route_id, true, 'player', 'Held in port for the browser spec.') as r
          from public.npc_fleets nf join public.fleets f on f.id = nf.fleet_id where f.name = $1`,
       [LAID_UP_AT_LISBON],
     )
