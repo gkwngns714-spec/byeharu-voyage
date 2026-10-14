@@ -278,7 +278,7 @@ distance or invents a line of water.
 |---|---|---|
 | `id`, `name`, `status` | same | statuses are the identical six |
 | `portCode` | `port` | **renamed**; port CODE, null while SAILING |
-| `busyUntilMs` | `busy_until` | **ISO string, not ms.** `Date.parse()` it. |
+| `busyUntilMs` | `busy_until` | **ISO string, not ms.** Read it through `lib/format`'s `instantMs`. |
 | `voyage` | `voyage` | different shape — 4.8 |
 | — | `version` | pass into `cmdIssue` |
 | — | `speed_kn`, `endurance_days` | **server-computed.** `features/fleets/fleetMath.ts` computes these client-side today; the server's numbers are the ones the game obeys. |

@@ -75,7 +75,7 @@ export function trayDockWideClass(): string {
  * A full-bleed picture with a floating side panel puts its top-RIGHT corner under that panel: at
  * 1280 the merchant sheet covered the Regions toggle completely (2026-10-08, the owner's reading of
  * `docs/npc-traders/merchant-sheet-1280.png`). A corner that cannot be reached is the defect
- * `overlayLayout.ts` exists to prevent, so the chrome layer moves instead of the panel. Only from
+ * `cornerSlots.ts` exists to prevent, so the chrome layer moves instead of the panel. Only from
  * `lg`, where a tray IS a side panel; below it the tray is at the bottom edge and a top corner is
  * clear anyway.
  */

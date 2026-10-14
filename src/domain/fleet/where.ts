@@ -15,7 +15,11 @@
 //
 // Two precedences (port-first and voyage-first), four words for a point-bound destination ("sea",
 // "open sea", "open water", the point itself), two for an anchor ("anchored", "at anchor"). Each
-// one now ASKS this file.
+// one now ASKS this file. A second pass the same day folded the bare `f.port === code` /
+// `f.port ? …` / `f.voyage ? …` tests that decided "docked here" or "at sea" on their own:
+// `housePortCode`, PORT's alongside test and its "orders will run there" note, `standingOf`
+// (map/sendRules), the send row's mark, the route editor's home stop, MerchantsHere / MAP's
+// "lying here" (`isDockedAt`) and worldStore's `afterTrade`.
 //
 // ── THE RULE ───────────────────────────────────────────────────────────────────────────────────
 // The server keeps the three states exclusive — `voyage.depart` sets `port_id = null, lat = null`
@@ -105,4 +109,12 @@ export function whereLine(w: Whereabouts, portName: (code: string) => string, no
     case 'unplaced':
       return w.status.toLowerCase()
   }
+}
+
+/** Is she lying in THIS harbour — the one "alongside here" test (PORT's read-only gate, a
+ *  harbour's merchant list, MAP's "lying here"). Through `whereabouts`, so a SAILING row is never
+ *  counted as alongside on the strength of a stale `port`. */
+export function isDockedAt(f: WhereFacts, portCode: string): boolean {
+  const w = whereabouts(f)
+  return w.kind === 'docked' && w.port === portCode
 }

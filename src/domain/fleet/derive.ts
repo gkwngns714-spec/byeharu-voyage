@@ -98,8 +98,11 @@ export function fleetPortCode(fleet: FleetView): string | null {
  * is the only case where a screen may reasonably fall back to the world's first port.
  */
 export function housePortCode(fleets: readonly FleetView[]): string | null {
-  const alongside = fleets.find((f) => f.port)
-  if (alongside?.port) return alongside.port
+  // "Alongside" is where.ts's one rule, never a bare `port` read (a SAILING row outranks a stale port).
+  for (const f of fleets) {
+    const where = whereabouts(f)
+    if (where.kind === 'docked') return where.port
+  }
   for (const f of fleets) {
     const bound = fleetPortCode(f)
     if (bound) return bound

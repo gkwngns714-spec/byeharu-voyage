@@ -12,6 +12,7 @@ import { useMerchantCard } from '../../live/useMerchantCard'
 import { useMerchantsHere } from '../../live/useMerchantsHere'
 // WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
 import { useCommandDraft } from '../../domain/order'
+import { isDockedAt } from '../../domain/fleet'
 // THE CHART IS A SECTION OF ITS OWN (src/chart) and this screen composes it; nothing here draws.
 import {
   buildChartModel,
@@ -239,7 +240,7 @@ function Chart({
   const merchantsHere = useMerchantsHere(harbourId)
   const harbourRows = merchantsHere.view?.enabled && merchantsHere.view.port === harbourCode ? merchantsHere.view.merchants : NO_MERCHANTS
   const lyingHere = useMemo(
-    () => (harbourCode ? harbourRows.filter((m) => m.port === harbourCode) : NO_MERCHANTS),
+    () => (harbourCode ? harbourRows.filter((m) => isDockedAt(m, harbourCode)) : NO_MERCHANTS),
     [harbourRows, harbourCode],
   )
   // Her row: the sea window's when she is on the water, else the harbour's own (a resting

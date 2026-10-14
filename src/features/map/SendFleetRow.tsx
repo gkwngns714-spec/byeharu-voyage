@@ -23,7 +23,10 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
   const on = flow.picked === f.id
   const v = flow.verdicts[f.id]
   const acted = flow.act?.fleetId === f.id ? flow.act : null
-  const where = whereLine(whereabouts(f), (c) => portNameOf(portByCode, c))
+  // At sea or not is `domain/fleet`'s one rule; the mark and the line both read it, never `f.voyage`.
+  const whereAt = whereabouts(f)
+  const sailing = whereAt.kind === 'sailing'
+  const where = whereLine(whereAt, (c) => portNameOf(portByCode, c))
 
   const line = !pressable
     ? standing === 'lies'
@@ -31,7 +34,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
       : acted?.state === 'sent'
         ? `Under way — sailing to ${flow.destName}.`
         : 'already heading here'
-    : f.voyage != null
+    : sailing
       ? 'at sea — turns from where it is'
       : v === undefined
         ? `${where} · checking the route…`
@@ -42,7 +45,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
     <div data-testid="map-send-row">
       <Row
         mark={
-          <Icon name={f.voyage ? 'ship' : 'anchor'} size={20} className={on ? 'text-accent' : 'text-ink-faint'} />
+          <Icon name={sailing ? 'ship' : 'anchor'} size={20} className={on ? 'text-accent' : 'text-ink-faint'} />
         }
         label={f.name}
         value={passage !== null ? <Figure value={<span data-testid="map-send-passage">{passage}</span>} /> : undefined}
