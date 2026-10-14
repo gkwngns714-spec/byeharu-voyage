@@ -1,4 +1,4 @@
-import { Button, Icon, overlaySlotClass } from '../components/ui'
+import { Button, cornerSlotClass, Icon } from '../components/ui'
 import { zoomPercent } from './chartView'
 import { setRegionsFilter, useRegionsFilter } from './regionsFilter'
 import { CHART_CHROME, type ChartSurface } from './useChartSurface'
@@ -35,7 +35,7 @@ import { CHART_CHROME, type ChartSurface } from './useChartSurface'
 //
 // ── WHY IT IS SAFE TO SIT ON THE GLASS ─────────────────────────────────────────────────────────
 // `CHART_CHROME` makes it invisible to every gesture (a press here never pans), the corner is
-// `overlaySlotClass`'s — the same table every panel reads, never a hand-written inset — and being
+// `cornerSlotClass`'s — the same table every `Corner` reads, never a hand-written inset — and being
 // chrome, `useChromeBoxes` measures it into `surface.chromeBoxes`, so a port's name is never
 // printed underneath it (the Saint-Malo defect, ./useChartSurface.ts). A corner slot cannot be
 // panned, scrolled or clipped away, which is what lets a control live on a pannable picture at all
@@ -60,7 +60,7 @@ export function ViewControls({
   return (
     <div
       {...CHART_CHROME}
-      className={`pointer-events-auto absolute z-10 ${overlaySlotClass('top-right')} flex flex-col gap-1`}
+      className={`pointer-events-auto absolute z-10 ${cornerSlotClass('top-right')} flex flex-col gap-1`}
       data-testid={testId}
     >
       {/* HOW FAR IN YOU ARE (owner, 2026-10-12: *"show me in map how much i zoomed in and zoomed

@@ -1,4 +1,5 @@
 import { SheetSection } from '../../components/ui'
+import { isDockedAt } from '../../domain/fleet'
 import { MerchantRow } from '../../live/MerchantRow'
 import { merchantLine } from '../../live/merchantLine'
 import type { PortMerchant } from '../../lib/rpc'
@@ -50,7 +51,7 @@ export function MerchantsHere({
         <MerchantRow
           key={t.id}
           m={t}
-          here={t.port === portCode}
+          here={isDockedAt(t, portCode)}
           detail={merchantLine(t, portName, nowMs)}
           nowMs={nowMs}
           onOpen={onOpen}

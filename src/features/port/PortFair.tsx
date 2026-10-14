@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Figure, Icon, Row } from '../../components/ui'
-import { formatPctPoints, formatRelative } from '../../lib/format'
+import { formatPctPoints, formatRelative, instantMs } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
 import { useShellState } from '../../app/shellState'
 import type { BuffsView } from '../../lib/rpc'
@@ -50,7 +50,7 @@ export function QuayFair({ portId }: { portId: string | null }) {
   // crosses one, the payload in hand has stopped being true. The `buffsAt < edge` term is what
   // makes this terminate: after the re-read the payload's own `now` is past that edge.
   const edge = buffs ? quayEdgeMs(buffs) : null
-  const buffsAt = buffs ? Date.parse(buffs.now) : null
+  const buffsAt = buffs ? instantMs(buffs.now) : null
   useEffect(() => {
     if (!portId) return
     if (!buffs) {
@@ -86,7 +86,7 @@ export function QuayFair({ portId }: { portId: string | null }) {
  */
 function quayEdgeMs(buffs: BuffsView): number | null {
   const edges = (buffs.port?.running ?? [])
-    .map((r) => Date.parse(r.live ? r.ends_at : r.starts_at))
-    .filter((ms) => Number.isFinite(ms))
+    .map((r) => instantMs(r.live ? r.ends_at : r.starts_at))
+    .filter((ms): ms is number => ms !== null)
   return edges.length === 0 ? null : Math.min(...edges)
 }

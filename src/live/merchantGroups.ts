@@ -34,7 +34,9 @@ import { restEndsAt } from './merchantWords'
 //
 // NOTHING HERE IS WORKED OUT. `doing` is the server's (public.merchant_doing_at, 0104), the rest
 // instant is `next_lap_at` (0101), and a level is the server's (0113). This file only decides
-// which heading a served word stands under.
+// which heading a served word stands under. It never asks WHERE she is: "in port" here is the
+// server's word, and the one client rule for "is she lying in this harbour" is `isDockedAt`
+// (src/domain/fleet/where.ts), which the row's `here` mark asks — not a second test on `port`.
 
 export type MerchantGroupKey = 'in_port' | 'leaving' | 'arriving' | 'passing' | 'away'
 

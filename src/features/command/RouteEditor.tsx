@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button, Chip, Field, Hint, Icon, Note, goodIcon } from '../../components/ui'
+import { whereabouts } from '../../domain/fleet'
 import { routeStopQuiet, stopLine, type StopLine } from '../../domain/route'
 import { PortField } from '../../live/PortField'
 import { usePress } from '../../live/usePress'
@@ -43,7 +44,9 @@ export function RouteEditor({
   // owner, 2026-09-30: "Start route in command ... blinks occasionally on its own").
   const press = usePress()
 
-  const home = fleet.port
+  // Where she lies is `domain/fleet`'s one rule; a fleet at sea or at anchor has no home stop yet.
+  const whereHome = whereabouts(fleet)
+  const home = whereHome.kind === 'docked' ? whereHome.port : null
   const [stops, setStops] = useState<RouteStopDraft[]>(() =>
     route ? draftOfRoute(route) : home ? [emptyStop(home), emptyStop('')] : [],
   )

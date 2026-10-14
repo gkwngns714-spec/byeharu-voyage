@@ -32,6 +32,8 @@
 //
 // Pure: no React, no clock (an instant is always passed in), no fixtures.
 
+import { instantMs } from '../../lib/format'
+import { whereabouts } from './where'
 import type { FleetShip, FleetStatus, FleetView } from '../../lib/rpc'
 
 /**
@@ -83,7 +85,9 @@ export function fleetStatusTone(
  * agree with the other three.
  */
 export function fleetPortCode(fleet: FleetView): string | null {
-  return fleet.port ?? fleet.voyage?.to ?? null
+  // Which state she is in is where.ts's one rule (voyage first); this only names the port.
+  const where = whereabouts(fleet)
+  return where.kind === 'docked' ? where.port : where.kind === 'sailing' ? where.to : null
 }
 
 /**
@@ -94,8 +98,11 @@ export function fleetPortCode(fleet: FleetView): string | null {
  * is the only case where a screen may reasonably fall back to the world's first port.
  */
 export function housePortCode(fleets: readonly FleetView[]): string | null {
-  const alongside = fleets.find((f) => f.port)
-  if (alongside?.port) return alongside.port
+  // "Alongside" is where.ts's one rule, never a bare `port` read (a SAILING row outranks a stale port).
+  for (const f of fleets) {
+    const where = whereabouts(f)
+    if (where.kind === 'docked') return where.port
+  }
   for (const f of fleets) {
     const bound = fleetPortCode(f)
     if (bound) return bound
@@ -255,20 +262,15 @@ export function voyageFraction(fleet: FleetView): number | null {
   return Math.max(0, Math.min(1, v.nm_done / v.total_nm))
 }
 
-/** The arrival instant, in ms. `eta` is an ISO STRING (not ms) — Date.parse is the whole of it. */
-/** Structural: a merchant's served voyage (0099) carries the same `eta` and is read by the same parse. */
+/** The arrival instant, in ms — `eta` is an ISO string, read through the one `instantMs`.
+ *  Structural: a merchant's served voyage (0099) carries the same `eta` and is read the same way. */
 export function voyageEtaMs(fleet: { readonly voyage: { readonly eta: string } | null }): number | null {
-  const v = fleet.voyage
-  if (!v) return null
-  const ms = Date.parse(v.eta)
-  return Number.isFinite(ms) ? ms : null
+  return fleet.voyage ? instantMs(fleet.voyage.eta) : null
 }
 
 /** When a REPAIRING (or otherwise occupied) fleet comes free. Also an ISO string. */
 export function busyUntilMs(fleet: FleetView): number | null {
-  if (!fleet.busy_until) return null
-  const ms = Date.parse(fleet.busy_until)
-  return Number.isFinite(ms) ? ms : null
+  return instantMs(fleet.busy_until)
 }
 
 /**

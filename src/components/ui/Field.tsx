@@ -3,8 +3,10 @@ import { Icon } from './Icon'
 
 // THE FIELD — one text input, with the leading mark and the clear the four copies never agreed on.
 //
-// `Input.tsx` already folded FOUR hand-written recipes in August (its header carries the count and
-// the ways they had drifted). This is that primitive redrawn on the step-1 tokens and given the
+// `Input.tsx` (deleted 2026-10-14, its last two callers moved here) folded FOUR hand-written text-
+// field recipes in August — the sign-in form, the register, the Market's port search and the
+// Command pickers' filters, differing in border colour, in focus ring, in padding and in whether
+// they cleared the 44px touch floor. This is that primitive redrawn on the step-1 tokens and given the
 // two things every caller was bolting on afterwards: a leading `Icon` (the Market's port search,
 // the compendium's filter, both good pickers all draw one) and a clear button (`FilterBox` has
 // one; the others do not, and a filter you cannot clear is a filter you must retype).

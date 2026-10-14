@@ -23,7 +23,7 @@ different clothes. The ledger, all measured, all cited:
 | *"is this group on a sortie?"* (predecessor project) | **7 copies**, 5 functions, 4 shapes, 3 key sets | `docs/CORE_REUSE.md:1479` |
 | *"is this fleet docked?"* (predecessor project) | **11 copies**, 3 inside one function body | `docs/CORE_REUSE.md:1480` |
 | the chip recipe | **12 hand-written copies** across Command, Market, Fleets | `src/components/ui/buttonStyles.ts:31-35` |
-| the text field | **4 hand-written recipes**, differing in border, focus ring, padding, touch height | `src/components/ui/Input.tsx:5-8` |
+| the text field | **4 hand-written recipes**, differing in border, focus ring, padding, touch height | `src/components/ui/Field.tsx:6-9` |
 | *"how much fits in this hull?"* | **7 implementations** — 4 server, 3 client — **and one of the client copies was already wrong** | `supabase/migrations/20260818000017_a_quartermaster_stows_the_hold_and_a_purser_shaves_the_spread.sql:18-31` |
 | *"is this order legal?"* | a second authority, 838 lines, deleted | `src/features/command/README.md:66` |
 | the price | a second authority, deleted | `src/features/market/marketRows.ts:4-10` |
@@ -379,10 +379,9 @@ re-declares a name a section owns. The rest is question 1 of the checklist.
   `AuthPage`) while `src/app` renders the screens — a folder-level cycle. The state is not the
   shell's; it is app-wide UI state, and it belongs in a section of its own. Not enforced, because
   the rule would be red the day it was written, and a red guard gates nothing.
-* **The eyebrow recipe** (`font-mono text-xs tracking-wider uppercase text-ink-faint mb-0.5`) is
-  written twice inside the design system — `Card.tsx` and `PageHeader.tsx` — while
-  `SectionLabel` exists. `tests/duplication.spec.ts` treats `src/components/**` as one authority
-  and so does not count it; it is a real duplication and it is written here so it is not lost.
+* ~~**The eyebrow recipe**~~ — written twice inside the design system (`Card.tsx`,
+  `PageHeader.tsx`) while `SectionLabel` existed. **Gone 2026-10-14 (cleanup 2):** all three
+  files were deleted with the rest of the deprecated half, so there is no eyebrow left to copy.
 * **The good tile's home is decided** (§7B, 2026-08-23): a trade good drawn as a BLOCK is
   `src/components/ui/GoodTile.tsx` (+ `goodTileLayout.ts` for the grid), composed by MARKET's
   goods panel and the COMPENDIUM's goods face. **COMMAND's good picker row

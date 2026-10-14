@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Icon } from './Icon'
+import { cornerSlotClass, type CornerSlot } from './cornerSlots'
 
 // THE CORNER — chrome that floats over the world, and never in the middle of it.
 //
@@ -20,14 +21,7 @@ import { Icon } from './Icon'
 // IT FOLDS RATHER THAN CLOSING. A corner panel that can be dismissed outright is a control the
 // player can lose; folded, it is a 44px header that says what is inside it and opens on a tap.
 
-export type CornerSlot = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-
-const SLOT: Record<CornerSlot, string> = {
-  'top-left': 'left-3 top-3',
-  'top-right': 'right-3 top-3',
-  'bottom-left': 'bottom-3 left-3',
-  'bottom-right': 'bottom-3 right-3',
-}
+// The anchor table is ./cornerSlots.ts — one spelling, which the chart's view controls read too.
 
 export function Corner({
   slot,
@@ -55,7 +49,7 @@ export function Corner({
     <div
       className={[
         'absolute z-30 max-w-[70%] overflow-hidden rounded-tile bg-surface/70 shadow-float backdrop-blur-lg',
-        SLOT[slot],
+        cornerSlotClass(slot),
         className,
       ].join(' ')}
       {...rest}

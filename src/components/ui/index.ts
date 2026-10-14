@@ -2,20 +2,15 @@
 // Screens import from here, never from the individual files, so the set stays one authority.
 //
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE SECOND HALF IS DEAD. TEN LINES OF IT ARE LEFT, AND EACH ONE NAMES ITS OWN SCREEN
+// THE SECOND HALF IS DEAD. ONE LINE OF IT IS LEFT, AND IT NAMES ITS OWN CALLER
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // docs/UI_DIRECTION.md §7 is a ten-step migration. Step 1 rewrote the tokens under the old screens
 // without moving a class string; step 2 added the twelve primitives §5 names and changed no
 // screen; steps 3-9 swapped each tab whole onto the twelve. STEP 10 — done — deleted every
 // deprecated export whose last caller had gone: twenty-three files, and tests/tableLayout.spec.ts
-// with them.
-//
-// What survives at the foot of this file is the ten the twelve have NOT reached, and eight of them
-// are on the three surfaces a player meets before the tab shell — AuthPage, SignTheBook, WorldGate
-// — which the migration never covered because it walked the TABS. The property §7 was built to
-// keep still holds and is why the remainder is safe: the app is never a mix of two skins on ONE
-// screen. A screen is on the old set or on the new one, and it changes in a single PR.
+// with them. Cleanup 2 moved the surfaces a player meets before the tab shell (AuthPage,
+// SignTheBook) onto the twelve and deleted eight more; the foot of this file says what is left.
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TWELVE (docs/UI_DIRECTION.md §5)
@@ -40,7 +35,8 @@ export {
 } from './trayDetents'
 
 // 3. CORNER — corner-anchored floating glass, foldable, max two per screen, never the centre.
-export { Corner, type CornerSlot } from './Corner'
+export { Corner } from './Corner'
+export { cornerSlotClass, type CornerSlot } from './cornerSlots'
 
 // 4. ROW — 52px: mark · label · Figure · chevron. What a table was.
 export { Row, type RowTone } from './Row'
@@ -149,36 +145,17 @@ export { rarityLabel, RARITY_TIERS } from './rarityTiers'
 export { dangerLabel, dangerPips, dangerTone, DANGER_PIPS, DANGER_TIERS } from './dangerTiers'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// WHAT IS LEFT OF THE DEPRECATED HALF, AFTER STEP 10
+// WHAT IS LEFT OF THE DEPRECATED HALF — ONE LINE
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// Step 10 deleted every deprecated export that had lost its last caller — twenty-three files, and
-// tests/tableLayout.spec.ts with them, because that spec existed only to guard Table.tsx's
-// `w-full`. The header above this one used to say the second half was dying. It has died.
+// Step 10 deleted every deprecated export that had lost its last caller — twenty-three files. The
+// ten that survived it were the exact set the twelve had not reached: AuthPage and SignTheBook
+// (surfaces a player meets BEFORE the tab shell) and the chart's view controls. Cleanup 2
+// (2026-10-14) moved those callers onto Sheet / Field / Note / Hint / Row and `cornerSlotClass`,
+// and deleted Input, Card, Notice, PageHeader, Screen, SectionLabel, Explain (with explainState)
+// and overlayLayout.
 //
-// What is below is NOT a leftover vocabulary. It is the exact set the twelve have not reached, and
-// every line names the screen that still holds it. Eight of the ten live on AuthPage, SignTheBook
-// and WorldGate — the three surfaces a player meets BEFORE the tab shell, which the §7 migration
-// never covered because it walked the tabs. That is the next step's list, written as code rather
-// than as a plan, so it cannot go stale: when a caller goes, its line goes with it.
-//
-// Nothing new may use any of them.
+// Nothing new may use what is below; when its last caller goes, its line goes with it.
 
-/** @deprecated → `Field`. AuthPage, SignTheBook. */
-export { Input } from './Input'
-/** @deprecated → `Hint`, the fine-print voice. SmallChart, SignTheBook. */
+/** @deprecated → `Hint`, the fine-print voice. SmallChart. */
 export { fineClass } from './typography'
-/** @deprecated → `Sheet` + `SheetSection`. A card is a box, and §4.3 forbids a box. AuthPage, SignTheBook, WorldGate. */
-export { Card, CardHeader } from './Card'
-/** @deprecated → `Note`. AuthPage, SignTheBook, WorldGate. */
-export { Notice } from './Notice'
-/** @deprecated → `Sheet`'s own title. SignTheBook, WorldGate. */
-export { PageHeader } from './PageHeader'
-/** @deprecated → `Sheet`. SignTheBook, WorldGate. */
-export { Screen } from './Screen'
-/** @deprecated → `SheetSection`'s heading. WorldGate. */
-export { SectionLabel } from './SectionLabel'
-/** @deprecated → `Hint`, and a `Tray` when the text is genuinely long. WorldGate. */
-export { Explain } from './Explain'
-/** @deprecated → `Corner`. The chart's view controls read the corner table straight. ViewControls. */
-export { overlaySlotClass } from './overlayLayout'

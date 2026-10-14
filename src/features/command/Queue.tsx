@@ -1,5 +1,5 @@
 import { Button, Figure, Icon, Note, Row } from '../../components/ui'
-import { voyageEtaMs } from '../../domain/fleet'
+import { boundForLabel, voyageEtaMs, whereabouts } from '../../domain/fleet'
 import { queuedOrderWords, refusalOfOrder } from '../../domain/order'
 import { formatMiles, formatRealShort } from '../../lib/format'
 import { usePress } from '../../live/usePress'
@@ -41,6 +41,7 @@ export function Queue({
   const orders = fleet.queue
   const failed = orders.find((o) => o.status === 'failed')
   const failedRefusal = failed ? refusalOfOrder(failed) : null
+  const where = whereabouts(fleet)
   const eta = voyageEtaMs(fleet)
   const etaMs = eta !== null && readAt !== null ? Math.max(0, eta - readAt) : null
 
@@ -52,10 +53,10 @@ export function Queue({
         </Note>
       )}
 
-      {fleet.voyage && (
+      {fleet.voyage && where.kind === 'sailing' && (
         <Row
           mark={<Icon name="ship" size={18} className="text-info" />}
-          label={`Sailing → ${fleet.voyage.to ? portNameOf(portByCode, fleet.voyage.to) : 'open sea'}`}
+          label={`Sailing to ${boundForLabel(where, (c) => portNameOf(portByCode, c))}`}
           value={etaMs !== null ? <Figure value={formatRealShort(etaMs)} tone="info" /> : undefined}
         >
           <span className="block text-t-caption text-ink-faint">

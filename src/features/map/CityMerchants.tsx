@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { SheetSection } from '../../components/ui'
+import { isDockedAt } from '../../domain/fleet'
 import { formatInt } from '../../lib/format'
 import { MerchantRow } from '../../live/MerchantRow'
 import { groupMerchants } from '../../live/merchantGroups'
@@ -34,8 +35,8 @@ export function CityMerchants({
   /** The harbour's whole read — every merchant whose loop calls at the tapped city, in the
    *  server's rank — handed down by MapScreen, which is the one place that knows which city. */
   rows: readonly PortMerchant[]
-  /** The tapped city's code — what decides whether a row's merchant lies HERE (`m.port`), the
-   *  same rule PORT's section applies. */
+  /** The tapped city's code — what decides whether a row's merchant lies HERE, through the ONE
+   *  "alongside here" rule (`isDockedAt`, src/domain/fleet/where.ts), the same PORT's section asks. */
   portCode: string | null
   nowMs: number
   onOpen: (fleetId: string) => void
@@ -60,7 +61,7 @@ export function CityMerchants({
             <MerchantRow
               key={m.id}
               m={m}
-              here={portCode !== null && m.port === portCode}
+              here={portCode !== null && isDockedAt(m, portCode)}
               nowMs={nowMs}
               onOpen={onOpen}
               hairline={i < g.rows.length - 1}

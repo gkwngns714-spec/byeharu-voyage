@@ -1,6 +1,8 @@
 import type { LatLon } from '../../lib/geo'
 import type { FleetView, PreviewResult, Refusal } from '../../lib/rpc'
-import { pointLabel, pointToken } from '../../domain/passage'
+import { whereabouts } from '../../domain/fleet'
+import { pointToken } from '../../domain/passage'
+import { pointLabel } from '../../lib/format'
 
 // THE SEND FLOW'S RULES AS DATA — no React, no store, so each one can be read without a browser.
 // `useSendFleet.ts` is the one caller; the same split `watersRows.ts` / `WatersAhead.tsx` uses.
@@ -56,17 +58,16 @@ export function destArgs(dest: SailDest): Record<string, string> {
 
 export function standingOf(dest: SailDest, f: FleetView): Standing {
   const key = destKey(dest)
+  // In port, at anchor or at sea is `domain/fleet`'s one rule; this only matches the place to `dest`.
+  const where = whereabouts(f)
   const lies =
     dest.kind === 'port'
-      ? f.port === dest.code
-      : f.anchor != null && pointToken({ lat: f.anchor[0], lon: f.anchor[1] }) === key
+      ? where.kind === 'docked' && where.port === dest.code
+      : where.kind === 'anchored' && pointToken(where.at) === key
   const bound =
-    f.voyage != null &&
-    (dest.kind === 'port'
-      ? f.voyage.to === dest.code
-      : f.voyage.dest_point != null &&
-        pointToken({ lat: f.voyage.dest_point[0], lon: f.voyage.dest_point[1] }) === key)
-  return lies ? 'lies' : bound ? 'bound' : f.voyage != null ? 'turn' : 'send'
+    where.kind === 'sailing' &&
+    (dest.kind === 'port' ? where.to === dest.code : where.point !== null && pointToken(where.point) === key)
+  return lies ? 'lies' : bound ? 'bound' : where.kind === 'sailing' ? 'turn' : 'send'
 }
 
 export function canGo(standing: Standing): boolean {

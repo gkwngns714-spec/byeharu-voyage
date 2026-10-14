@@ -13,7 +13,7 @@
 //   7 copies of "is this group on a sortie?"            docs/CORE_REUSE.md:1479
 //  11 copies of "is this fleet docked?"                 docs/CORE_REUSE.md:1480
 //  12 hand-written copies of the chip recipe            src/components/ui/buttonStyles.ts:31-35
-//   4 hand-written text-field recipes                   src/components/ui/Input.tsx:5-8
+//   4 hand-written text-field recipes                   src/components/ui/Field.tsx:6-9
 //   7 answers to "how much fits in this hull?"          20260818000017_a_quartermaster…sql:18-31
 //        — 4 server, 3 client, and ONE OF THEM WAS ALREADY WRONG: MarketScreen forgot the stores
 //          and had been wrong since the day it was written. Nobody introduced a bug; somebody
@@ -107,7 +107,7 @@ test('no raw palette literal — colour is a token, and the tokens live in src/i
 //
 // THE SHAPE THIS CATCHES, in its own words (src/components/ui/buttonStyles.ts:31-35): "an audit on
 // 2026-08-20 found TWELVE hand-written copies of these two recipes across Command, Market and
-// Fleets, drifting in border colour and hover between copies." And Input.tsx:5-8: FOUR text-field
+// Fleets, drifting in border colour and hover between copies." And Field.tsx:6-9: FOUR text-field
 // recipes "differing in border colour, in focus ring, in padding and in whether they cleared the
 // 44px touch floor — four answers to one question, drifting apart every time one of them was
 // touched."
@@ -126,9 +126,9 @@ test('no raw palette literal — colour is a token, and the tokens live in src/i
 //     its `text-xs` twin) — real headroom, and 0.75 still catches a copy that drifted by a token.
 //   · `src/components/**` counts as ONE authority: it is the place recipes are SUPPOSED to live,
 //     and a screen hand-writing a button is a different (and worse) thing than two primitives
-//     sharing a house style. The design system's own internal repeat — the eyebrow, in Card.tsx,
-//     PageHeader.tsx and Sheet.tsx while SectionLabel exists — is named in docs/NO_SPAGHETTI.md §7
-//     rather than silently forgotten.
+//     sharing a house style. The design system's one internal repeat this let through — the eyebrow,
+//     in Card.tsx and PageHeader.tsx while SectionLabel existed — was named in docs/NO_SPAGHETTI.md
+//     §7 and went with those three files on 2026-10-14.
 const MIN_RECIPE_TOKENS = 5
 const MAX_RECIPE_OVERLAP = 0.75
 
@@ -585,10 +585,10 @@ test('sea-grid.mjs declares NO snap rule — the third answer is retired, not me
  *  are deleted (a `Tray` and a `Corner` are what they were), and the caption bar and the coastline
  *  note in `MapScreen` and every `text-[10px]`/`text-[11px]` in `WatersAhead` are on the scale.
  *  Twenty-eight, less six, less eighteen: four. */
-const ARBITRARY_SIZE_DEBT: Record<string, number> = {
-  'features/found/SignTheBook.tsx': 1,
-}
-const ARBITRARY_SIZE_TOTAL = 1
+const ARBITRARY_SIZE_DEBT: Record<string, number> = {}
+// SIGN THE BOOK PAID THE LAST ONE on 2026-10-14 (cleanup 2): its refusal code was a hand-sized
+// `text-[11px]` span inside a `Notice`; it is a `Note` now, and the code goes to console.debug.
+const ARBITRARY_SIZE_TOTAL = 0
 
 /** MEASURED 2026-09-09 on osn-ui-primitives: twelve. The nine skins §3 rule 4 names by file, plus
  *  the three more that a className-REGION reader finds and a grep for `border border-edge` does
@@ -641,7 +641,11 @@ const skinnedFiles = () => [
 test('no arbitrary type size in a screen — the scale is six steps and it has no holes', () => {
   const found = new Map<string, string[]>()
   let total = 0
-  for (const f of skinnedFiles()) {
+  const walked = skinnedFiles()
+  // The walker's own sanity check counts files READ, not files with a hit: since the ledger reached
+  // zero (2026-10-14) a correct tree has no hits at all, and "found nothing" must not read as broken.
+  expect(walked.length, 'no feature files were read at all — the walker is broken').toBeGreaterThan(0)
+  for (const f of walked) {
     const lines = read(f).split('\n')
     const hits: string[] = []
     for (let i = 0; i < lines.length; i++) {
@@ -652,7 +656,6 @@ test('no arbitrary type size in a screen — the scale is six steps and it has n
       total += hits.length
     }
   }
-  expect(found.size, 'no feature files were read at all — the walker is broken').toBeGreaterThan(0)
 
   expect(
     overDebt(found, ARBITRARY_SIZE_DEBT),

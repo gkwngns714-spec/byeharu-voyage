@@ -13,6 +13,7 @@ export {
   tonsWord,
   formatTons,
   formatMiles,
+  pointLabel,
   formatKnots,
   formatPct,
   formatPctPoints,
@@ -21,6 +22,7 @@ export {
 } from './numbers'
 export {
   TIME_COMPRESSION,
+  instantMs,
   REAL_MS_PER_VOYAGE_DAY,
   REAL_MS_PER_GAME_MONTH,
   voyageDaysToRealMs,

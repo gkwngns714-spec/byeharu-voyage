@@ -1,15 +1,16 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
-import { Button, Card, CardHeader, Input, Notice } from '../../components/ui'
+import { Button, Field, Hint, Note } from '../../components/ui'
 import { HOME_TAB } from '../../app/navTabs'
 
 // The sign-in / sign-up screen. Functionally identical to byeharu's: one form, two modes, the
-// auth store does the work and this file only renders. Restyled as the first page of a ship's
-// register — a ruled card, a mono heading rule, parchment on ink.
-
-// The two fields used to share a hand-written INPUT_CLASSES string here. That string was one of
-// four such recipes in the app; it is the design system's `Input` now (Input.tsx).
+// auth store does the work and this file only renders.
+//
+// DRAWN FROM THE TWELVE (2026-10-14). It was the last screen on the deprecated half — a `Card`
+// with a `CardHeader`, two `Input`s and two `Notice`s. It is now the same vocabulary every tab
+// speaks: one `surface` panel on the lit sea (a tone step, never a border — §4.3), the title in the
+// title step, the subtitle in the caption voice (`Hint`), `Field`s and `Note`s.
 
 type Mode = 'signin' | 'signup'
 
@@ -52,19 +53,17 @@ export function AuthPage() {
        This was a flat `bg-app` field — the same colour as an unstyled page. It is the lit sea now,
        the same one the shell paints, so signing in and playing are visibly the same place. */
     <div className="bv-sea flex min-h-[100dvh] items-center justify-center px-4 py-8 text-ink">
-      <Card tone="accent" className="w-full max-w-sm">
-        <CardHeader
-          eyebrow="Register of shipping"
-          title="Byeharu Voyage"
-          subtitle={
-            mode === 'signin'
-              ? 'Sign the book and take up your command.'
-              : 'Enter your name in the register and be given your first ship.'
-          }
-        />
+      <section className="w-full max-w-sm rounded-tile bg-surface px-gutter py-6">
+        <h1 className="text-t-title">Byeharu Voyage</h1>
+        <Hint className="mt-1">
+          {mode === 'signin'
+            ? 'Sign the book and take up your command.'
+            : 'Enter your name in the register and be given your first ship.'}
+        </Hint>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <Field
+            icon={null}
             type="email"
             required
             placeholder="Email"
@@ -72,7 +71,8 @@ export function AuthPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <Input
+          <Field
+            icon={null}
             type="password"
             required
             minLength={6}
@@ -82,8 +82,8 @@ export function AuthPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          {error && <Notice tone="danger">{error}</Notice>}
-          {notice && <Notice tone="success">{notice}</Notice>}
+          {error && <Note tone="danger">{error}</Note>}
+          {notice && <Note tone="success">{notice}</Note>}
 
           <Button type="submit" variant="primary" busy={busy} busyLabel="Working…" className="w-full">
             {mode === 'signin' ? 'Sign in' : 'Create account'}
@@ -102,7 +102,7 @@ export function AuthPage() {
         >
           {mode === 'signin' ? 'No account yet? Sign the register' : 'Already in the register? Sign in'}
         </Button>
-      </Card>
+      </section>
     </div>
   )
 }

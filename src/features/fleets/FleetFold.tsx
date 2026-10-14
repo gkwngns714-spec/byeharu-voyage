@@ -6,11 +6,11 @@ import { portNameOf, useWorld } from '../../live/worldStore'
 import { useShellState } from '../../app/shellState'
 import type { FleetView } from '../../lib/rpc'
 import { useCommandDraft, type CommandIntent } from '../../domain/order'
-import { voyageFraction } from '../../domain/fleet'
+import { voyageFraction, whereabouts, whereLine } from '../../domain/fleet'
 import { FleetCargo } from './FleetCargo'
 import { FleetShips } from './FleetShips'
 import { FleetStores } from './FleetStores'
-import { fleetBoundFor, fleetDue } from './fleetLine'
+import { fleetDue } from './fleetLine'
 import { keepDays, useStandingOrder } from './standingOrder'
 
 // ONE FLEET, UNFOLDED UNDER ITS ROW — owner row 89 (2026-09-13):
@@ -81,7 +81,7 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
   }
 
   const fraction = voyageFraction(fleet)
-  const bound = fleetBoundFor(fleet, (code) => (code ? portNameOf(portByCode, code) : null))
+  const where = whereLine(whereabouts(fleet), (code) => portNameOf(portByCode, code))
 
   return (
     // `flex flex-col` so the first section's `mt-2` cannot collapse through this box: MEASURED at
@@ -90,7 +90,7 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
       {/* THE VOYAGE, only while there is one: where it is heading, how far along, and when. The
           ETA is the server's and the position its closed form — nothing here interpolates. */}
       {fleet.voyage && fraction !== null && (
-        <Row label={`to ${bound}`} value={fleetDue(fleet, nowMs)} hairline={false} data-testid="fleet-passage">
+        <Row label={where} value={fleetDue(fleet, nowMs)} hairline={false} data-testid="fleet-passage">
           <Bar
             pct={fraction * 100}
             tone="info"
