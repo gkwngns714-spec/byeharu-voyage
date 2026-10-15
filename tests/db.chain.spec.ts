@@ -315,7 +315,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // that pays most per real hour.
 // And to 0121 : a lap keeps its trades, and one fleet's
 // trading is read at a tap (world.fleet_trades).
-const LAST = '20260818000121_a_lap_keeps_its_trades.sql'
+// And to 0122 (docs/ECONOMY_LOOP.md): a city keeps a purse — the market is the city's money, tax
+// falls on the profit of a sale only, a city buys only what it can pay for; shipped dark.
+const LAST = '20260818000122_a_city_keeps_a_purse.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
