@@ -726,6 +726,15 @@ export interface FleetShip {
   slots: Record<string, number>
   /** How many captains she can berth. Nothing reads it yet — ranks and cabins are their own slice. */
   cabins: number
+  /** 0127 — slots a higher level opens, by kind: how many, and the level that opens the first. */
+  slots_locked?: Record<string, { count: number; at_level: number }>
+  /** 0127 — her level on the one curve (`public.level_from_points`), and her experience in points:
+   *  `xp_from` is where this level began, `next_level_at` where the next begins (null at the top).
+   *  Optional for one release: a server older than 0127 does not serve them. */
+  level?: number
+  xp?: number
+  xp_from?: number
+  next_level_at?: number | null
   /** goods CODE → tuns aboard. `{}` when empty. Water and food are stores, not cargo. */
   cargo: Record<string, number>
   /** Tuns occupied, bulk applied. */
@@ -1206,7 +1215,8 @@ export interface LevelTrack {
 export interface PlayerLevels {
   trading: LevelTrack & { turnover: number }
   exploration: LevelTrack & { ports_reached: number; nm_sailed: number }
-  /** Reads zero, and says so: there is no combat in this game yet (migration 0035, deliberately). */
+  /** 0127: derived from the pirates her voyages saw off; `playable` true. Before 0127 it read zero
+   *  with `playable: false` (migration 0035, deliberately). */
   combat: LevelTrack & { playable: boolean }
 }
 
@@ -1233,6 +1243,9 @@ export interface Officer {
   hired: boolean
   /** The fleet they serve in, by NAME, or null for an officer ashore. */
   fleet: string | null
+  /** 0127 — the level of YOUR signing of her (per signing), null when you have not signed her.
+   *  Absent on a server older than 0127. */
+  level?: number | null
 }
 
 export interface OfficerRoster {
