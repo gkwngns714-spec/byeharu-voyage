@@ -70,6 +70,10 @@ the source:**
   a label tap that fell on WATER beside a long name ("28.1°N 13.9°W · Open sea", the Canaries)
   waited 60 s for a harbour list open sea never has. The old 8 s wait had silently counted it as an
   empty city. `openHarbour` now accepts only a tray with the City tabs; anything else took the tap.
+- `map.hulls` 407, CI run 38780770200 on a4e846a — "at least two merchant marks on the glass" was read
+  at one instant per viewport and theme, after a single poll at the start; the merchants sail, and
+  one frame held one. The frame is now polled for (≥ 2) and the per-mark claims are made of that
+  frame.
 - `map.lag` 1545 ("just after a zoom the coast is drawn over exactly the view") — one driver read
   after the click raced the glide plus the 250 ms settle; the frames are now sampled in the page and
   the claim is made of the zoom's first frame.
