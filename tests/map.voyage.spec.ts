@@ -457,8 +457,10 @@ test.describe('hitTest — nearest wins, at every zoom, over the ports actually 
     expect(hitTest(MODEL, DRAWN, nearSanlucar, REACH)).toEqual({ kind: 'port', code: 'SNL' })
   })
 
-  test('a fleet at anchor wins the tie with the port it lies in', () => {
-    expect(hitTest(MODEL, DRAWN, project(LISBON), REACH)).toEqual({ kind: 'fleet', id: 'gaivota' })
+  // OWNER, 2026-10-15: a tap on a city where your fleet is docked opens the CITY (its tabs list her
+  // first in Port). Her hull is drawn on the mark, so the harbour is the one target there.
+  test('a fleet docked in a port yields the tie to that port', () => {
+    expect(hitTest(MODEL, DRAWN, project(LISBON), REACH)).toEqual({ kind: 'port', code: 'LIS' })
   })
 
   test('a port drawn as a dot is not in the named half, and without the dots handed over it cannot be tapped', () => {

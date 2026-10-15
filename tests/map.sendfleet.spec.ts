@@ -5,7 +5,6 @@ import { fitToViewBox } from '../src/lib/geo'
 import { FIT_PADDING, openingBounds } from '../src/chart'
 import { sailOrigin, sailTarget } from '../src/domain/passage'
 import { REAL_PORTS, dockedFleet, portAt } from './mapWorld.fixture'
-import { TRAY_PEEK } from '../src/components/ui'
 import { ready, reachable } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -267,10 +266,11 @@ test.describe('the whole send, driven on a phone', () => {
     expect(name, 'Cadiz was not named on the opening frame — nothing was aimed at').not.toBeNull()
     await page.mouse.click(name!.cx, name!.cy)
 
-    // THE TRAY, NOT A CORNER CARD (docs/UI_DIRECTION.md §6, step 8): a tap on a place rises a
-    // `Tray` from the bottom edge at its PEEK — the name, one line, and the `Send fleet` press —
-    // and the chart above it is untouched. Measured against the primitive's own stop, not a
-    // number typed here: `TRAY_PEEK` is the 96px the detent ladder defines.
+    // THE PANEL, NOT A CORNER CARD. Since PR #113 (owner, 2026-10-15: *"i want the page to slide on
+    // the right side"*) a tap on a place slides a `Tray mode="side"` in at the glass's RIGHT edge,
+    // standing at its PEEK detent — the name, one line, and the `Send fleet` press — between the
+    // top bar and the nav, never over the bottom edge. This assertion still measured the old
+    // bottom-edge tray (96px tall, flush with the glass's bottom) and failed on main from #113 on.
     const tray = page.getByTestId('map-detail-tray')
     await expect(tray).toBeVisible()
     await expect(
@@ -279,11 +279,13 @@ test.describe('the whole send, driven on a phone', () => {
         'its name, and missing it silently offers a different destination',
     ).toContainText('Cadiz')
     await expect(tray).toHaveAttribute('data-tray-detent', 'peek')
+    await expect(tray).toHaveAttribute('data-tray-mode', 'side')
     await expect(async () => {
       const box = await tray.boundingBox()
       expect(box).not.toBeNull()
-      expect(Math.round(box!.height)).toBe(TRAY_PEEK)
-      expect(Math.round(box!.y + box!.height)).toBe(PHONE.height)
+      // flush with the right edge, and clear of the bottom nav
+      expect(Math.round(box!.x + box!.width)).toBe(PHONE.width)
+      expect(Math.round(box!.y + box!.height)).toBeLessThan(PHONE.height)
     }).toPass()
 
     // ── DEFECT 2: the fold can WRITE a ratio, and writing it is not sailing ───────────────────

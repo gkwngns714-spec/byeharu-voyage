@@ -134,7 +134,11 @@ function Section({
   return (
     <SheetSection
       heading={heading}
-      trailing={<span className="text-t-caption tabular-nums text-ink-muted">{formatInt(count)}</span>}
+      trailing={
+        <span className="text-t-caption tabular-nums text-ink-muted" data-testid="map-harbour-count">
+          {formatInt(count)}
+        </span>
+      }
       surface
       data-testid={testId}
     >

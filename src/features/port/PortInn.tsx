@@ -70,7 +70,7 @@ import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../../lib/rpc'
 // would be honest — it would change nothing — but it would TEACH the player that re-reading
 // might help. So the room says outright when it turns over, in ONE line.
 //
-// ── THE ROOM TURNS EVERY QUARTER HOUR (0120, owner 2026-10-15) ─────────────────────────────────
+// ── THE ROOM TURNS EVERY QUARTER HOUR (0119, owner 2026-10-15) ─────────────────────────────────
 // *"captains should be randomly distributed and change locations every few time (set real 15min
 // for now)"*. The key is no longer the game day but `world.inn_shift()` — 15 real minutes, a knob —
 // still derived, still the same room for everybody. The read serves `turns_at`; the head line
@@ -285,7 +285,7 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
 /** This quarter hour's room — the read, the faces, and the hiring tray. */
 function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView | null; trayMode?: TrayMode }) {
   const { view, loading } = useInn(port.id)
-  // THE ONE CLOCK (src/app/shellState.ts) counts down to the served turn (0120 `turns_at`).
+  // THE ONE CLOCK (src/app/shellState.ts) counts down to the served turn (0119 `turns_at`).
   const { nowMs } = useShellState()
   const turnsAt = instantMs(view?.turns_at)
   const [open, setOpen] = useState<InnGuest | null>(null)
@@ -317,8 +317,8 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
 
   return (
     <>
-      {/* WHEN THE ROOM TURNS OVER (0120: every inn_captain_rotate_minutes REAL minutes). A server
-          that has not applied 0120 serves no instant, and the line says only what is true. */}
+      {/* WHEN THE ROOM TURNS OVER (0119: every inn_captain_rotate_minutes REAL minutes). A server
+          that has not applied 0119 serves no instant, and the line says only what is true. */}
       <div className="flex items-baseline justify-between pb-2 pt-4" data-testid="inn-room-head">
         <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">Captains here</h3>
         {turnsAt !== null && (

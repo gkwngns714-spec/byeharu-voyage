@@ -29,7 +29,7 @@ import { CITY_TABS, useCityTab } from './cityTab'
 //           itself stays on PORT's quay, where the basket and the trade tray live.
 //   Port    `CityHarbour` — in port and incoming, yours and the merchants' (MapScreen hands the
 //           rows down; the harbour's read is MapScreen's, because it also feeds the title line).
-//   Inn     `PortInn` — the captains in the room this quarter hour (`world.inn`, 0120), and, for
+//   Inn     `PortInn` — the captains in the room this quarter hour (`world.inn`, 0119), and, for
 //           a fleet of yours lying here, the crew stepper (HIRE/DISMISS) and supplies
 //           (PROVISION), both through `useStepOrder`'s dry run and one button.
 //
