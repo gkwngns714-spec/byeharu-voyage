@@ -76,12 +76,15 @@ permissions:
 #   * the merchants-on world (tests/npcOn.fixture.ts) built from scratch by the first test to ask
 #     on EVERY shard, by BOTH workers at once — map.wrap 33m, map.hulls 30m, map.perf 30m (red),
 #     map.sun 14m, map.merchants 14m, for one world that does not change within a run;
-#   * db.chain.spec.ts, whose growth test applies the chain from 0041 under a live house: 55m.
+#   * db.chain.spec.ts, whose growth test applies the chain from 0041 under a live house: 55m;
+#   * and, hidden from every reported duration, rpc.firstSession / rpc.surface / sea.dateline
+#     applying the WHOLE chain in a beforeAll (~40m each on run 38699813083).
 # So `npc-on-world` builds that world ONCE, through the fixture's own code and checks, and hands it
-# to the browser shards through a per-run cache entry (`npcOn()` finds it on disk); and the pure-Node
-# db.* specs run as their own pool, `acceptance-db`, which does not wait for it. The pools are
-# disjoint by file name (scripts/ci/shard-plan.mjs --files / --not-files, one RE), and the verdict
-# now requires FIVE pools' counts to sum to `playwright test --list`.
+# to the npc pool through a per-run cache entry (`npcOn()` finds it on disk); the specs that do not
+# need it (plain) and the pure-Node db.* specs (db) start at once; and the three rpc/sea specs boot
+# from the build's own image (tests/builtWorld.fixture.ts). The pools are disjoint by file name
+# (.github/actions/acceptance-pool, scripts/ci/shard-plan.mjs --files / --not-files), and the
+# verdict now requires all six shards' counts to sum to `playwright test --list`.
 #
 # THE ONE TEST A PR MAY DEFER (stated, not hidden): db.chain's growth test re-applies the whole
 # chain from 0041 and proves a live house survives it. On a PR that touches none of what it reads —
@@ -138,6 +141,13 @@ jobs:
           path: node_modules/.cache/byeharu-npc-on
           key: npc-on-${{ github.run_id }}-${{ github.run_attempt }}
 
+  # ── THE POOLS ─────────────────────────────────────────────────────────────────────────────────
+  # db    — the pure-Node db.* specs. No browser, no wait.
+  # plain — every spec that does NOT open the merchants-on world. No wait.
+  # npc   — the specs that import tests/npcOn.fixture.ts. They wait for npc-on-world.
+  # One composite action (.github/actions/acceptance-pool) runs every shard of every pool, so the
+  # steps and the floors cannot drift apart. The cut is by file name and the three cuts are each
+  # other's complement (see the action); the verdict sums all of them against `--list`.
   acceptance-db:
     name: acceptance-shard (db)
     runs-on: ubuntu-latest
@@ -146,25 +156,6 @@ jobs:
       grep_invert: ${{ steps.defer.outputs.grep_invert }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install dependencies (from the lockfile)
-        run: npm ci
-
-      - name: Restore the pre-built world image (keyed by the chain)
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules/.cache/byeharu-world-image
-          key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
-          restore-keys: world-image-
-
-      # db.image.spec.ts certifies the image THIS build emitted into dist/.
-      - name: Build the app under test (local-PGlite mode)
-        run: npm run build
 
       - name: Does this PR touch what the growth test reads?
         id: defer
@@ -185,288 +176,58 @@ jobs:
             echo "grep_invert=the world grows under a live house" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run the db.* specs
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-results.json
-          GREP_INVERT: ${{ steps.defer.outputs.grep_invert }}
-        run: |
-          set -euo pipefail
-          node scripts/ci/shard-plan.mjs 1 1 shard-tests.txt '--files=^db\.' ${GREP_INVERT:+"--grep-invert=$GREP_INVERT"}
-          npx playwright test --test-list shard-tests.txt ${GREP_INVERT:+--grep-invert "$GREP_INVERT"} --reporter=list,html,json
-
-      - name: Every test in this pool ran — no skips, and not zero tests
-        if: always()
-        run: |
-          set -euo pipefail
-          test -f playwright-results.json || { echo "::error title=No JSON report::the db pool did not run to completion"; exit 1; }
-          expected=$(jq -r '.stats.expected // 0' playwright-results.json)
-          skipped=$(jq -r '.stats.skipped  // 0' playwright-results.json)
-          echo "db pool — expected: $expected   skipped: $skipped"
-          [ "$expected" -gt 0 ] || { echo "::error title=Vacuous pool::0 tests passed in the db pool"; exit 1; }
-          [ "$skipped" -eq 0 ] || { echo "::error title=Skipped test(s)::$skipped skipped in the db pool"; exit 1; }
-
-      - name: Hand this pool's counts to the verdict
-        if: always()
-        run: |
-          set -euo pipefail
-          mkdir -p shard-stats
-          if [ -f playwright-results.json ]; then
-            jq '{shard: "db", stats: .stats}' playwright-results.json > shard-stats/shard-db.json
-          else
-            echo '{"shard": "db", "stats": null}' > shard-stats/shard-db.json
-          fi
-          cat shard-stats/shard-db.json
-
-      - name: Upload this pool's counts
-        if: always()
-        uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/acceptance-pool
         with:
-          name: shard-stats-db
-          path: shard-stats/
-          retention-days: 1
-
-      - name: Upload the Playwright report (only when something failed)
-        if: failure()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-shard-db
-          path: |
-            playwright-report/
-            playwright-results.json
-          retention-days: 7
+          kind: db
+          index: 1
+          total: 1
+          grep-invert: ${{ steps.defer.outputs.grep_invert }}
 
   acceptance-shard:
-    name: acceptance-shard (${{ matrix.shard }}/4)
+    name: acceptance-shard (${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    # The budget history (25 -> 40 -> 75 -> 120, 2026-08-25 to 2026-10-12) is in git history; every
+    # raise was a world being built inside a shard — db.chain's from-zero builds, three rpc/sea
+    # specs applying the whole chain in a beforeAll (~40 min each since 0105, hidden from every
+    # test's reported duration), and the merchants-on world on every worker. All three now live
+    # elsewhere (the db pool, tests/builtWorld.fixture.ts, npc-on-world), so this should come DOWN
+    # once CI has measured the new split.
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/acceptance-pool
+        with:
+          kind: plain
+          index: ${{ matrix.shard }}
+          total: 3
+
+  acceptance-npc:
+    name: acceptance-shard (npc ${{ matrix.shard }}/2)
     needs: npc-on-world
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
-    # The budget history below is kept because its measurements are still the evidence. With four
-    # shards a shard carries roughly a quarter of the suite; 75 is left where it was until CI has
-    # measured the split, and should come DOWN once it has (DEV_LOG 2026-10-13 records the numbers).
-    #
-    # Derived from the suite's own declared budgets, not from a stopwatch. The slow half is the
-    # browser spec: six tests (five tabs plus the market fold), each of which loads the app and
-    # waits while the 16-migration chain applies inside chromium. layout.spec.ts's `ready()`
-    # allows 90 s for that, so those six alone can take ~9 min, and playwright.config.ts sets a
-    # 120 s per-test cap. Add a chromium download, `npm ci`, a production build, and three pure
-    # specs that each boot PGlite in Node. 25 leaves genuine headroom without letting a hung run
-    # burn half an hour of runner time. If this number ever needs raising, find out WHY first —
-    # a suite that got slower is usually a boot that got slower, and that is the player's boot.
-    # 2026-08-31: RAISED 25 -> 40, and this is the THIRD gate today whose red was a clock rather
-    # than a defect (pglite-gate 15 -> 30 was the other two). PR #3's run was cancelled at exactly
-    # 25m15s -- no failing spec, no assertion, just the ceiling -- and a cancelled job is
-    # indistinguishable from a failed one in the checks list.
-    #
-    # THE REAL ANSWER IS NOT A BIGGER NUMBER, and it is written here so the next person does not
-    # have to rediscover it: the suite has no `workers` setting, so Playwright runs about half the
-    # runner's CPUs, and MORE THAN ONE spec builds the whole 243-good world (db.chain's cold boot,
-    # rpc.firstSession, the map fixtures). Two of those racing is why db.chain's cold boot took
-    # 5.0 min in CI against 1.8 min locally, and it is the likeliest cause of the one-shot retry
-    # that reddened it. Serialising the world-building specs -- or giving them one shared built
-    # world -- removes both the contention and most of the wall clock. THAT is the fix; this is
-    # headroom so the gate keeps meaning something until it is done.
-    # RAISED 2026-09-02, 40 -> 75. Migration 0065 grew the catalogue from 243 goods to 523 and the
-    # market from 54,432 rows to 117,152 - 2.15x - to make the owner's "no good in more than three
-    # cities" rule possible at all. Two tests in db.chain.spec.ts build the whole world (one of
-    # them twice) and now cost 6.9 and 12.2 minutes: nineteen of the old forty in two tests.
-    #
-    # The symptom that says this is a BUDGET and not a slowdown: the same chain passed on one
-    # runner and died at 40m16s on another, minutes apart. A gate that decides by runner speed
-    # gates nothing, which is the same defect those two tests' own timeouts were raised for twice
-    # before. If this climbs again the answer is a lighter fixture for those two - they are the
-    # only expensive tests here - and not a third raise.
-    # 75 -> 120 on 2026-10-12. The build inside this job is no longer the cost — the world-image
-    # cache took it from 32m33s to NINE SECONDS, measured on run 38248046334 — but the SUITE then
-    # ran 74m32s and was cancelled still running. 378 tests, two workers, several of which boot a
-    # PGlite world of their own. The npc-on cache above takes ~18 minutes out of that; 120 is the
-    # remainder with room, rather than another budget set to its own cost, which is the mistake
-    # this file made twice (see migrations-apply-proof.yml for the same lesson written longer).
+        shard: [1, 2]
     timeout-minutes: 120
-
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/acceptance-pool
         with:
-          node-version: 24  # 0039: Node scripts import src/lib/sea/*.ts via type stripping (default from 23.6)
-          cache: npm
-
-      - name: Install dependencies (from the lockfile)
-        run: npm ci
-
-      # THE SAME CACHE AND KEY as build.yml and deploy-pages.yml, which this workflow lacked: with
-      # no cache every run paid a full chain apply inside `npm run build` (8m57s on main, run
-      # 38081084926; 32m33s on the merchant branch). Restored AFTER npm ci, which removes
-      # node_modules whole. `restore-keys` brings back the newest older entry when the chain moved,
-      # and its prefix snapshots (scripts/db/prefix-cache.mjs) mean only the new files are applied.
-      # Restore and save are split so a red suite still keeps the world it paid for.
-      - name: Restore the pre-built world image (keyed by the chain)
-        id: world
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules/.cache/byeharu-world-image
-          key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
-          restore-keys: world-image-
-
-      # chromium ONLY. The suite declares one project (playwright.config.ts) and one spec needs a
-      # browser; firefox and webkit would be two more downloads proving nothing. `--with-deps`
-      # pulls the shared libraries the runner image does not ship.
-      # THE MERCHANTS-ON WORLD IS NOT KEPT BETWEEN RUNS (removed 2026-10-14). It was cached here
-      # keyed on the chain and the fixture, but its merchants sail on `now()`: run 38485001228
-      # restored a 14-hour-old copy and the page froze catching 837 fleets up. A run builds it
-      # fresh (`tests/npcOn.fixture.ts`, which gives that build its own 30-minute allowance).
-
-      - name: Install the browser
-        run: npx playwright install --with-deps chromium
-
-      # The SAME build deploy-pages.yml publishes, produced the same way — no VITE_SUPABASE_URL and
-      # no VITE_SUPABASE_ANON_KEY, so `hasCloud` is false and the app boots the local PGlite engine.
-      # This is deliberate and load-bearing: a cloud build redirects every route to /auth, where
-      # there is no world and no table, and layout.spec.ts would SKIP itself rather than measure.
-      # The floor at the end of this job is what makes that impossible to miss.
-      - name: Build the app under test (local-PGlite mode)
-        run: npm run build
-
-      # The world npc-on-world built for THIS run (the image is saved by that job now). fail-on-
-      # cache-miss: a shard that would silently rebuild it is the 30-minute cost this removed.
-      - name: Restore this run's merchants-on world
-        uses: actions/cache/restore@v4
-        with:
-          path: node_modules/.cache/byeharu-npc-on
-          key: npc-on-${{ github.run_id }}-${{ github.run_attempt }}
-          fail-on-cache-miss: true
-
-      # `--strictPort` so a taken port fails here, loudly, instead of leaving the suite pointed at
-      # nothing. The host and port must match playwright.config.ts's PLAYWRIGHT_BASE_URL default
-      # (http://127.0.0.1:4173/byeharu-voyage/); that env var is left unset on purpose so the
-      # config stays the single authority for the URL. If they ever disagree, every browser test
-      # skips — which the no-skips floor below turns into a red run rather than a green one.
-      - name: Serve the build
-        run: |
-          set -euo pipefail
-          nohup npx vite preview --host 127.0.0.1 --port 4173 --strictPort > /tmp/preview.log 2>&1 &
-          echo "PREVIEW_PID=$!" >> "$GITHUB_ENV"
-          for i in $(seq 1 60); do
-            if curl -fsS http://127.0.0.1:4173/byeharu-voyage/ > /dev/null; then
-              echo "served after ${i}s"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "::error title=Nothing served::vite preview never answered on 127.0.0.1:4173"
-          cat /tmp/preview.log
-          exit 1
-
-      # Reporters are set on the CLI rather than in playwright.config.ts so the config keeps
-      # describing how a developer runs the suite. `json` is here only to be read by the next steps.
-      #
-      # THE SPLIT IS BY MEASURED TIME (scripts/ci/shard-plan.mjs, tests/shard-weights.json), not
-      # Playwright's `--shard`, which cuts equal COUNTS: the first run with `--shard=i/4` took
-      # 29.8m / 32s / 1.9m / 20.0m because db.chain.spec.ts's four from-zero world builds all fell in
-      # one chunk. The plan is built from `playwright test --list`, so a new spec is never left out.
-      - name: Run this shard of the suite
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-results.json
-        run: |
-          set -euo pipefail
-          node scripts/ci/shard-plan.mjs ${{ matrix.shard }} 4 shard-tests.txt '--not-files=^db\.'
-          npx playwright test --test-list shard-tests.txt --reporter=list,html,json
-
-      # THE NON-VACUITY FLOOR, PER SHARD. Green is not "playwright exited 0" — it is "the tests that
-      # matter actually ran". Every skip in tests/ lives in layout.spec.ts and every one of them
-      # fires on a condition this job exists to rule out: nothing served, or a cloud build sitting
-      # on /auth. Either would produce a perfectly green run that measured no pixels at all, which
-      # is the exact camouflage that spec was written to strip off. So a skip here is a failure.
-      - name: Every test in this shard ran — no skips, and not zero tests
-        if: always()
-        run: |
-          set -euo pipefail
-          test -f playwright-results.json || {
-            echo "::error title=No JSON report::shard ${{ matrix.shard }} did not run to completion"; exit 1; }
-          expected=$(jq -r '.stats.expected // 0' playwright-results.json)
-          skipped=$(jq -r '.stats.skipped  // 0' playwright-results.json)
-          echo "shard ${{ matrix.shard }}/4 — expected: $expected   skipped: $skipped"
-          if [ "$expected" -eq 0 ]; then
-            echo "::error title=Vacuous shard::0 tests passed in shard ${{ matrix.shard }}. A green tick over nothing is not a proof."
-            exit 1
-          fi
-          if [ "$skipped" -ne 0 ]; then
-            echo "::error title=Skipped test(s)::$skipped test(s) skipped. Every skip in tests/ means the app was not served, or was built in cloud mode — neither is a pass."
-            # Walk the whole tree: the JSON reporter nests a file suite inside a project suite, so
-            # a fixed `.suites[].specs[]` path silently finds nothing. `.stats` is the authority
-            # that failed the step; this is only here to name the tests.
-            jq -r '[.. | objects | select(has("tests") and has("title"))]
-                   | .[] | select(any(.tests[]?; .status == "skipped"))
-                   | "  skipped: \(.title)"' playwright-results.json || true
-            exit 1
-          fi
-          echo "OK: $expected test(s) ran in shard ${{ matrix.shard }}, none skipped."
-
-      # The shard's COUNTS only — a few hundred bytes — for the verdict job. Never the report: a
-      # report on every run is what hit the artifact quota on 2026-08-22 (see below).
-      - name: Hand this shard's counts to the verdict
-        if: always()
-        run: |
-          set -euo pipefail
-          mkdir -p shard-stats
-          if [ -f playwright-results.json ]; then
-            jq '{shard: ${{ matrix.shard }}, stats: .stats}' playwright-results.json > shard-stats/shard-${{ matrix.shard }}.json
-          else
-            echo '{"shard": ${{ matrix.shard }}, "stats": null}' > shard-stats/shard-${{ matrix.shard }}.json
-          fi
-          cat shard-stats/shard-${{ matrix.shard }}.json
-
-      - name: Upload this shard's counts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: shard-stats-${{ matrix.shard }}
-          path: shard-stats/
-          retention-days: 1
-
-      # `screenshot: on` and `trace: on` are the config's defaults, so a red run arrives with the
-      # picture and the timeline already in it.
-      #
-      # ── ONLY ON FAILURE, AND NEVER ALLOWED TO FAIL THE JOB (2026-08-22) ────────────────────────
-      # This step used to run `if: always()` with a 14-day retention, and on its very first real
-      # push it turned a GREEN suite RED:
-      #
-      #     157 passed (11.3m) · expected: 157  skipped: 0 · OK: 157 test(s) ran, none skipped.
-      #     ##[error]Failed to CreateArtifact: Artifact storage quota has been hit.
-      #
-      # 183 files per run, every run, on a private repo's storage allowance. The reason given for
-      # `always()` was that "a green report is how the phone-width measurements get read back" —
-      # but a report nobody opens is not worth a red tick on a passing suite, and the measurements
-      # that matter are asserted by the specs themselves rather than read out of an artifact.
-      #
-      # `if: failure()` keeps the trace exactly where it is useful. `continue-on-error` is the
-      # load-bearing half: a STORAGE problem must never be able to mask a test result again, in
-      # either direction. The suite's own step is what decides this job.
-      - name: Upload the Playwright report (only when something failed)
-        if: failure()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-shard-${{ matrix.shard }}
-          path: |
-            playwright-report/
-            playwright-results.json
-          retention-days: 7
-
-      - name: Stop the preview server (always)
-        if: always()
-        run: kill "${PREVIEW_PID:-0}" 2>/dev/null || true
+          kind: npc
+          index: ${{ matrix.shard }}
+          total: 2
 
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   # THE VERDICT — named `acceptance`, the check branch protection requires.
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   acceptance:
     name: acceptance
-    needs: [npc-on-world, acceptance-shard, acceptance-db]
+    needs: [npc-on-world, acceptance-shard, acceptance-npc, acceptance-db]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -488,9 +249,10 @@ jobs:
           path: shard-stats
           merge-multiple: true
 
-      - name: All five pools ran, and together they ran EVERY test in tests/
+      - name: All six shards ran, and together they ran EVERY test in tests/
         env:
           SHARDS_RESULT: ${{ needs.acceptance-shard.result }}
+          NPC_RESULT: ${{ needs.acceptance-npc.result }}
           DB_RESULT: ${{ needs.acceptance-db.result }}
           GREP_INVERT: ${{ needs.acceptance-db.outputs.grep_invert }}
         run: |
@@ -498,7 +260,7 @@ jobs:
           ls -la shard-stats || true
           fail=0
           total_expected=0
-          for i in 1 2 3 4 db; do
+          for i in plain-1 plain-2 plain-3 npc-1 npc-2 db-1; do
             f="shard-stats/shard-$i.json"
             if [ ! -f "$f" ]; then
               echo "::error title=Missing shard::shard $i handed back no counts — it did not run to the end"; fail=1; continue
@@ -527,14 +289,17 @@ jobs:
           if [ -z "$listed" ] || [ "$listed" -eq 0 ]; then
             echo "::error title=No denominator::playwright test --list found no tests"; fail=1
           elif [ "$total_expected" -ne "$listed" ]; then
-            echo "::error title=Tests unaccounted for::$listed test(s) in tests/ but $total_expected passed across the five pools"; fail=1
+            echo "::error title=Tests unaccounted for::$listed test(s) in tests/ but $total_expected passed across the six shards"; fail=1
           fi
           if [ "$SHARDS_RESULT" != "success" ]; then
             echo "::error title=Shard failed::the shard matrix finished '$SHARDS_RESULT'"; fail=1
+          fi
+          if [ "$NPC_RESULT" != "success" ]; then
+            echo "::error title=Shard failed::the npc pool finished '$NPC_RESULT'"; fail=1
           fi
           if [ "$DB_RESULT" != "success" ]; then
             echo "::error title=Shard failed::the db pool finished '$DB_RESULT'"; fail=1
           fi
           [ "$fail" -eq 0 ] || exit 1
-          echo "OK: $total_expected of $listed test(s) passed across 4 browser shards + the db pool, none skipped."
+          echo "OK: $total_expected of $listed test(s) passed across the db, plain and npc pools (6 shards), none skipped."
 

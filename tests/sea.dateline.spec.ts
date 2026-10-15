@@ -29,6 +29,7 @@
 import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
+import { builtWorldImage } from './builtWorld.fixture'
 import { haversineNm, lonLerp, shortLonDelta, unwrapLongitudes, wrapLon } from '../src/lib/geo'
 import { pathLengthNm } from '../src/lib/geo'
 import {
@@ -47,7 +48,8 @@ let portByCode: Record<string, SnapshotPort>
 
 test.beforeAll(async () => {
   test.setTimeout(360_000)
-  db = await openLocalDb({ loadChain, dataDir: 'memory://', log: () => {} })
+  // The build's own world (tests/builtWorld.fixture.ts says why), not a from-zero apply.
+  db = await openLocalDb({ loadChain, loadImage: builtWorldImage, dataDir: 'memory://', log: () => {} })
   setBackend(createLocalBackend(db))
   const snap = expectOk(await worldSnapshot())
   portByCode = Object.fromEntries(snap.ports.map((p) => [p.code, p]))
