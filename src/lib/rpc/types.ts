@@ -1896,3 +1896,83 @@ export interface MerchantCard {
   officers: MerchantOfficer[]
   skills: MerchantSkill[]
 }
+
+// ── 0121: ONE FLEET'S TRADING, LAP BY LAP (owner, 2026-10-15) ───────────────────────────────────
+// *"by clicking fleet, i want to be able to click on laps, so far, a lap and so on which tells me
+// what the ship has bought and sold, where it sold, and so on."* `world.fleet_trades(fleet)` — a
+// merchant's (switch on) or the caller's own. Every figure is the server's; nothing is summed here.
+
+/** One good on one side of one stop: how much, at what (total ÷ qty, the server's), for how much. */
+export interface TradeLine {
+  good: string
+  qty: number
+  /** Null only for a zero quantity, which the server never records. */
+  price: number | null
+  total: number
+}
+
+/** One harbour she called at in a lap, in sailing order, and what she did there. */
+export interface TradeStop {
+  port: string
+  sold: TradeLine[]
+  bought: TradeLine[]
+}
+
+/** One CLOSED lap with every figure of its net (0116):
+ *  net = sold − bought − supplies − repairs − wages + stock_out − stock_in. */
+export interface TradeLap {
+  lap_no: number
+  started_at: string
+  closed_at: string
+  sold: number
+  bought: number
+  supplies: number
+  repairs: number
+  wages: number
+  /** The cargo she carried INTO the lap, at cost — the previous closed lap's `stock_out`. */
+  stock_in: number
+  /** The cargo aboard when the lap closed, at cost; the next lap sells it. */
+  stock_out: number
+  net: number
+  /** Null when the lap is older than the newest seven — its sums are kept, its trades are not. */
+  stops: TradeStop[] | null
+}
+
+/** One good at one harbour over the day's laps, summed by the server. */
+export interface TradeDayGood {
+  port: string
+  good: string
+  sold_qty: number
+  sold_total: number
+  bought_qty: number
+  bought_total: number
+}
+
+/** The laps closed in the last 24 real hours — `RouteEarnings.day`'s window — totalled. */
+export interface TradeDay {
+  since: string | null
+  /** True once a whole real day of laps is held (`RouteEarnings.day_full`). */
+  full: boolean
+  laps: number
+  /** How many of those laps still carry their trades — `goods` is summed over these alone. */
+  laps_traded: number
+  sold: number
+  bought: number
+  supplies: number
+  repairs: number
+  wages: number
+  stock_in: number
+  stock_out: number
+  net: number
+  goods: TradeDayGood[]
+}
+
+export interface FleetTrades {
+  route: { name: string; stops: string[] } | null
+  /** The newest seven closed laps, NEWEST FIRST — the same seven, in the same order, as
+   *  `RouteEarnings.laps_recent`, so the sheet's pill i is `laps[i]`. */
+  laps: TradeLap[]
+  /** The lap under way: what she has traded so far. */
+  open: { lap_no: number; started_at: string; stops: TradeStop[] } | null
+  day: TradeDay | null
+}

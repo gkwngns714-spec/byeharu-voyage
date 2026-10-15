@@ -8970,3 +8970,31 @@ too for bigger profit."* Rows 133–134. Design and numbers: `docs/NPC_TRADERS.m
   merchant planner, `cmd.run_standing_route` and `cmd.standing_route_lines`).
 - **Not done.** No prod push, no `db push`, no PR merge. The branch holds the migration, the two
   measurement scripts, the `LAST` pin, and the docs.
+
+## 2026-10-15 — a fleet's trading, lap by lap — `osn-lap-trades` (migration 0121, NOT deployed)
+Owner: *"by clicking fleet, i want to be able to click on laps, so far, a lap and so on which tells
+me what the ship has bought and sold, where it sold, and so on. info about trading."*
+- **What was found.** A lap's trades live only in its route-born `orders` (done BUY/SELL `result`:
+  good, qty, total; cut into stops by the SAILs' `args.dest`). The closer deletes every lap's orders
+  but the newest closed one at each close, and `npc_compact` deletes a merchant's done orders past
+  6 h unless they are the open lap's. So six of the seven "Last laps" pills had no detail anywhere.
+- **0121 `a_lap_keeps_its_trades`** (numbered 0118 + 3; 0119/0120 are the city-tabs and
+  merchant-routes slices). `standing_route_laps.trades jsonb`, compact
+  `[[port, [[good, qty, total]…sold], [[good, qty, total]…bought]]…]`, written by THE one closer
+  (one hunk sliced from its live body) from `public.lap_trades(lap)` — the one builder, also asked
+  live for the open lap. Kept on the newest `standing_route_lap_trades_keep` = 7 laps (the pills'
+  seven); the closer nulls older ones in the same call. Capped at 16 stops × 12 lines a side.
+  `world.fleet_trades(fleet)` — a read at a tap, a merchant's (switch on) or the caller's own fleet,
+  else E_NOT_FOUND like the card: the newest seven closed laps (every term of 0116's net, stock_in
+  = previous stock_out) with their stops, the open lap so far, and the 24-h day (route_earnings'
+  window) totalled with its goods summed by harbour. No basis, no per-line profit (0099's privacy).
+- **Measured** (PGlite, full 837-fleet roster, 12 rewound ticks, 1,905 laps closed): `trades`
+  111 bytes a lap on average (lap ≥ 2), 686 the largest (3 stops, 9 lines); seven kept per route ⇒
+  under 4 MB for 830 routes even if every lap were the largest. `public.lap_trades` 3.95 ms a call;
+  `world.fleet_trades` 7.1 ms a call, ~1.5 KB served. Write cost per close: the jsonb in the UPDATE
+  the closer already makes, plus one UPDATE nulling the lap that falls out of the seven.
+- **Client.** `src/live/TradeHistoryPanel.tsx` (side-next, ShipPanel's slot and style): a strip
+  (So far / A day, the lap under way, seven laps with their nets), a net plate (green/red), the
+  books, and every stop with Good · Qty · Price · Total for sold and bought. MerchantSheet's two
+  tiles and each lap pill open it; VoyageTray shows your own route's laps (from the routes book the
+  shell already holds) and opens the same panel.

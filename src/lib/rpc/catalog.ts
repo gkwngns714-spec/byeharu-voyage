@@ -308,6 +308,10 @@ export const RPCS = {
   // 0118 — the ROSTER replaces the window read: every merchant once, then only what moved since.
   worldSeaRoster: { schema: 'world', fn: 'sea_roster', args: [{ name: 'p_since', type: 'timestamptz' }] },
   worldNpcFleetCard: { schema: 'world', fn: 'npc_fleet_card', args: [{ name: 'p_fleet', type: 'uuid' }] },
+  // 0121 (owner, 2026-10-15) — ONE FLEET'S TRADING: her newest seven laps, stop by stop, what she
+  // bought and sold and where; the lap under way; the last real day. A merchant's (switch on) or the
+  // caller's own fleet. A READ, at a tap (the merchant sheet, the voyage tray), never on the beat.
+  worldFleetTrades: { schema: 'world', fn: 'fleet_trades', args: [{ name: 'p_fleet', type: 'uuid' }] },
   // 0104 — ONE HARBOUR'S MERCHANTS (owner row 121): which merchant companies this quay concerns and
   // what each one is DOING here, read at a TAP like the card and never on the beat — sea_traffic is
   // the beat's read and it must not grow. A read, no player id, dark until the owner's switch; a

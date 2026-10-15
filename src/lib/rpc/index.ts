@@ -64,6 +64,7 @@ import type {
   StandingRouteBook,
   SeaRoster,
   MerchantCard,
+  FleetTrades,
   PortMerchants,
   StandingRouteDeleted,
   StandingRoutePaused,
@@ -560,6 +561,12 @@ export function worldSeaRoster(since: string | null): Promise<RpcResult<SeaRoste
  *  E_NOT_FOUND in the same words. */
 export function worldNpcFleetCard(fleetId: string): Promise<RpcResult<MerchantCard>> {
   return call<MerchantCard>('worldNpcFleetCard', [fleetId])
+}
+
+/** ONE FLEET'S TRADING (0121) — a merchant's or your own: her newest seven laps stop by stop, the
+ *  lap under way, the last real day. Anything else refuses E_NOT_FOUND, as the card does. */
+export function worldFleetTrades(fleetId: string): Promise<RpcResult<FleetTrades>> {
+  return call<FleetTrades>('worldFleetTrades', [fleetId])
 }
 
 /** ONE HARBOUR'S MERCHANTS (0104, owner row 121) — every merchant fleet whose route calls there,
