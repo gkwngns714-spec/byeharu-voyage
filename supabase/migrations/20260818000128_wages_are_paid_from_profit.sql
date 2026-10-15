@@ -40,7 +40,7 @@
 --
 -- ── WHAT IT DOES NOT DO ─────────────────────────────────────────────────────────────────────────
 -- No new entry point, no client write, no cron. voyages.wages_paid (0122) is kept and no longer
--- written. A fleet at sea at deploy time owes only the days settled after it. world.crew_cost and
+-- added to; the arrival still posts what it holds (days paid before this file). A fleet at sea at deploy time owes only the days settled after it. world.crew_cost and
 -- the Inn's per-day quote are unchanged (the day's wage is the same figure; when it is paid moved).
 --
 -- ── THE PROBES LOCK NO LIVE SHIP ─────────────────────────────────────────────────────────────────
@@ -58,9 +58,11 @@
 -- 0121/0122), public.running_cost_mult and public.route_earnings (comment lines only) — hunks
 -- sliced from the LIVE bodies (LF-normalised), each asserted to occur exactly once. Self-asserts
 -- hold AS FOUND; every probe rolls back.
--- VERSION: 0128. Applies on 0126 (prod head). Its voyage.settle hunks are textually clear of 0125's
--- (the delay arms) and 0127's (inserted before the "-- 0122: the leg's wages reach" line, which this
--- file keeps), so it applies before or after either.
+-- VERSION: 0128. Applies on prod head (0126 + 0125). Its voyage.settle hunks are all in the
+-- per-sea-day wage charge (the declaration, the charge, the day's UPDATE): clear of 0125's delay arms
+-- and of the arrival's report tail and wages-to-harbour block, which this file leaves as they are —
+-- that block still posts, at arrival, the wages a passage settled BEFORE this file had already paid
+-- (voyages.wages_paid), and posts nothing for a passage begun after it (wages_paid stays 0).
 
 do $guard$ begin perform set_config('statement_timeout', '20min', true); end $guard$;
 
@@ -94,7 +96,8 @@ comment on column public.fleets.wages_owed is
   'wage; public.pay_wages pays it out of a sale''s profit (cmd.do_sell); voyage.depart forgives the rest.';
 comment on column public.voyages.wages_paid is
   '0122: Σ of the WAGES this voyage''s house paid per settled sea-day. 0128: no longer written — a sea-day '
-  'pays no wage; wages are paid out of a sale''s profit (fleets.wages_owed, public.pay_wages).';
+  'pays no wage (what a voyage held before 0128 still reaches its harbour at arrival); wages are paid out of '
+  'a sale''s profit (fleets.wages_owed, public.pay_wages).';
 
 -- ── 3. THE RULE AND THE MOVER ──────────────────────────────────────────────────────────────────
 create or replace function public.wages_from_profit(p_owed numeric, p_profit numeric)
@@ -169,14 +172,6 @@ $h$    update public.voyages set last_settled_day = d,
      where id = v.id;
 $h$,
 $h$    update public.voyages set last_settled_day = d where id = v.id;   -- 0128: a sea-day pays no wage
-$h$),
-('voyage.settle(uuid, timestamptz)', 4,
-$h$    if v.wages_paid > 0
-       and exists (select 1 from public.ports hp where hp.id = v.dest_port_id and hp.kind = 'HARBOUR') then
-      perform public.treasury_post(v.dest_port_id, 'WAGES', v.wages_paid, f.player_id, v_report);
-    end if;
-$h$,
-$h$    -- 0128: no longer here — a wage is paid to the city of the SALE that pays it (public.pay_wages).
 $h$),
 
 -- voyage.depart: what the last passage's sales did not cover is forgiven
@@ -372,9 +367,9 @@ begin
   select array_agg(n.nspname || '.' || p.proname order by n.nspname || '.' || p.proname) into v_list
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public', 'cmd', 'world', 'voyage')
-     and p.prosrc ~ $q$(credit|pay_city|treasury_post)\([^;]*'WAGES'$q$;
+     and p.prosrc ~ $q$(credit|pay_city)\([^;]*'WAGES'$q$;
   if v_list is distinct from array['public.pay_wages'] then
-    raise exception '0128 self-assert FAIL: the live movers of a WAGES charge are %, not pay_wages alone', v_list;
+    raise exception '0128 self-assert FAIL: the live bodies that charge a house WAGES are %, not pay_wages alone', v_list;
   end if;
   select array_agg(n.nspname || '.' || p.proname order by n.nspname || '.' || p.proname) into v_list
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -629,6 +624,6 @@ begin
     raise exception '0128 self-assert FAIL: the probe world was not rolled back';
   end if;
 
-  raise notice '0128 self-assert ok: WAGES ARE PAID FROM PROFIT. voyage.settle, voyage.depart, cmd.do_sell, npc_leg_lines, standing_route_close_lap (and two comment lines) reverse to their pre-images hunk by hunk, ACLs unmoved; public.pay_wages is the ONLY live body that moves a WAGES charge (positive control: settle''s pre-image did); wages_owed is written by settle (accrue), depart (forgive) and pay_wages (pay) alone; the sale and the planner read the one rule public.wages_from_profit, which reads no is_npc; server-only, no new entry point, no client write. Rule grid: loss / break-even / unknown pay 0, a profit pays min(owed, profit). Probes: %a loss and an unknown cost paid 0; a fat profit paid exactly the 7 owed; the next departure forgave 99; a merchant owing 5 paid 5 through the same lines; a lap booked the 30 its sales paid; % planner leg(s) kept the same lines with no crew and a ruinous wage bill, leaving 0, never less. npc_cost_mult % -> 1. Rolled back.',
+  raise notice '0128 self-assert ok: WAGES ARE PAID FROM PROFIT. voyage.settle, voyage.depart, cmd.do_sell, npc_leg_lines, standing_route_close_lap (and two comment lines) reverse to their pre-images hunk by hunk, ACLs unmoved; public.pay_wages is the ONLY live body that charges a house WAGES (positive control: settle''s pre-image did); wages_owed is written by settle (accrue), depart (forgive) and pay_wages (pay) alone; the sale and the planner read the one rule public.wages_from_profit, which reads no is_npc; server-only, no new entry point, no client write. Rule grid: loss / break-even / unknown pay 0, a profit pays min(owed, profit). Probes: %a loss and an unknown cost paid 0; a fat profit paid exactly the 7 owed; the next departure forgave 99; a merchant owing 5 paid 5 through the same lines; a lap booked the 30 its sales paid; % planner leg(s) kept the same lines with no crew and a ruinous wage bill, leaving 0, never less. npc_cost_mult % -> 1. Rolled back.',
     v_notes, v_legs, (select npc_cost_mult from before_0128);
 end $$;
