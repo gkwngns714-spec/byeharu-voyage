@@ -35,6 +35,7 @@
 // USAGE
 //   node scripts/db/proof.mjs                 # every proof in scripts/db/proofs/
 //   node scripts/db/proof.mjs offline         # only proofs whose filename contains "offline"
+//   node scripts/db/proof.mjs --exclude=02_,12_ # every proof EXCEPT those (CI's catch-all leg)
 //   node scripts/db/proof.mjs --fresh         # build the world from migration 0001, ignoring the
 //                                             # prefix cache (it still writes fresh snapshots)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -67,6 +68,14 @@ async function digest(db) {
 }
 
 const filter = process.argv.slice(2).find((a) => !a.startsWith('-'))
+// --exclude=a,b skips every proof whose filename contains any of the listed substrings. It exists
+// for CI's parallel legs (migrations-apply-proof.yml): the slow proofs each get a leg by NAME and
+// the last leg runs `--exclude=<those names>`, so a proof added tomorrow lands in that leg by
+// construction and can never fall between legs.
+const excludes = (process.argv.find((a) => a.startsWith('--exclude=')) ?? '--exclude=')
+  .slice('--exclude='.length)
+  .split(',')
+  .filter(Boolean)
 
 let files
 try {
@@ -76,6 +85,7 @@ try {
   process.exit(1)
 }
 if (filter) files = files.filter((f) => f.includes(filter))
+if (excludes.length) files = files.filter((f) => !excludes.some((x) => f.includes(x)))
 
 if (files.length === 0) {
   console.error(`FAIL: no proof .sql files matched${filter ? ` "${filter}"` : ''} in ${PROOFS_DIR}.`)
@@ -88,7 +98,7 @@ try {
   // prefix of THIS chain over THIS preamble, restored, with only the files after it applied here
   // (scripts/db/prefix-cache.mjs). `--fresh` (or BYEHARU_PREFIX_CACHE=off) applies from migration
   // 0001, as this script always did. The from-zero net is unchanged and is not this script:
-  // `npm run db:apply` locally, and disposable-chain on a real Postgres in CI, on every PR.
+  // `npm run db:apply` locally, and disposable-chain on a real Postgres in CI, on every push to main.
   const fresh = process.argv.includes('--fresh') || undefined
   const chain = await applyChainCached({ log: console.log, fresh })
   db = chain.db

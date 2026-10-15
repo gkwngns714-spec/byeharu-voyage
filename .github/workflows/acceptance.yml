@@ -46,9 +46,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A newer push to a PR cancels the older run; a push to MAIN never cancels one (2026-10-15). With
+# cancelling on main, every merge cancelled the run before it — the last 15 main runs on 10-14/15
+# were ALL cancelled, so main had no finished acceptance verdict at all. Main runs now queue.
 concurrency:
   group: acceptance-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -67,9 +70,175 @@ permissions:
 #     expected (passed) tests across the shards to EQUAL the number of tests `playwright test
 #     --list` finds in tests/. A shard that silently ran nothing, or a split that lost a file,
 #     can no longer read as green.
+#
+# ── ONE MERCHANTS-ON WORLD, AND THE DB SPECS ON THEIR OWN RUNNER (2026-10-15) ────────────────────
+# Measured on run 38689111316 (four shards, 40-61 minutes each), the wall clock was two things:
+#   * the merchants-on world (tests/npcOn.fixture.ts) built from scratch by the first test to ask
+#     on EVERY shard, by BOTH workers at once — map.wrap 33m, map.hulls 30m, map.perf 30m (red),
+#     map.sun 14m, map.merchants 14m, for one world that does not change within a run;
+#   * db.chain.spec.ts, whose growth test applies the chain from 0041 under a live house: 55m.
+# So `npc-on-world` builds that world ONCE, through the fixture's own code and checks, and hands it
+# to the browser shards through a per-run cache entry (`npcOn()` finds it on disk); and the pure-Node
+# db.* specs run as their own pool, `acceptance-db`, which does not wait for it. The pools are
+# disjoint by file name (scripts/ci/shard-plan.mjs --files / --not-files, one RE), and the verdict
+# now requires FIVE pools' counts to sum to `playwright test --list`.
+#
+# THE ONE TEST A PR MAY DEFER (stated, not hidden): db.chain's growth test re-applies the whole
+# chain from 0041 and proves a live house survives it. On a PR that touches none of what it reads —
+# supabase/migrations/, src/lib/db/, tests/db.chain.spec.ts, tests/frozenChain.ts,
+# package.json / package-lock.json — its answer is the one main's own run already gave, so it is
+# deferred to main (which now finishes, see `concurrency`). The verdict lists with the same
+# --grep-invert, says so in its log, and every PR that touches any of those paths runs it.
 jobs:
+  npc-on-world:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies (from the lockfile)
+        run: npm ci
+
+      # The same cache and key as the shards, build.yml and deploy-pages.yml (see below for why).
+      - name: Restore the pre-built world image (keyed by the chain)
+        id: world
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules/.cache/byeharu-world-image
+          key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
+          restore-keys: world-image-
+
+      - name: Build the app (local-PGlite mode) — the world image the fixture opens
+        run: npm run build
+
+      # This job saves it now, not shard 1: it builds first, and every shard restores after it.
+      - name: Save the pre-built world image
+        if: steps.world.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules/.cache/byeharu-world-image
+          key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
+
+      # No browser: the fixture is Node + PGlite. One worker, one build, every fixture check.
+      - name: Build the merchants-on world once
+        run: npx playwright test -c playwright.npc-on.config.ts
+
+      # A per-RUN key: the merchants sail on now(), so this world is never handed to another run
+      # (npcOn.fixture.ts's 90-minute age check still applies on the shards — tar keeps the mtime).
+      # A cache, not an artifact: artifacts count against the storage quota that turned a green
+      # suite red on 2026-08-22; cache entries are evicted instead.
+      - name: Hand it to the shards
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules/.cache/byeharu-npc-on
+          key: npc-on-${{ github.run_id }}-${{ github.run_attempt }}
+
+  acceptance-db:
+    name: acceptance-shard (db)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    outputs:
+      grep_invert: ${{ steps.defer.outputs.grep_invert }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies (from the lockfile)
+        run: npm ci
+
+      - name: Restore the pre-built world image (keyed by the chain)
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules/.cache/byeharu-world-image
+          key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
+          restore-keys: world-image-
+
+      # db.image.spec.ts certifies the image THIS build emitted into dist/.
+      - name: Build the app under test (local-PGlite mode)
+        run: npm run build
+
+      - name: Does this PR touch what the growth test reads?
+        id: defer
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "not a PR: the growth test runs"; echo "grep_invert=" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          changed="$(git diff --name-only "$BASE_SHA" HEAD)"
+          echo "files this PR changes:"; echo "$changed" | sed 's/^/  /'
+          if echo "$changed" | grep -qE '^(supabase/migrations/|src/lib/db/|tests/db\.chain\.spec\.ts$|tests/frozenChain\.ts$|package(-lock)?\.json$)'; then
+            echo "it does: the growth test runs"; echo "grep_invert=" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Growth test deferred to main::this PR touches nothing db.chain's growth test reads; main's run proves it"
+            echo "grep_invert=the world grows under a live house" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run the db.* specs
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-results.json
+          GREP_INVERT: ${{ steps.defer.outputs.grep_invert }}
+        run: |
+          set -euo pipefail
+          node scripts/ci/shard-plan.mjs 1 1 shard-tests.txt '--files=^db\.' ${GREP_INVERT:+"--grep-invert=$GREP_INVERT"}
+          npx playwright test --test-list shard-tests.txt ${GREP_INVERT:+--grep-invert "$GREP_INVERT"} --reporter=list,html,json
+
+      - name: Every test in this pool ran — no skips, and not zero tests
+        if: always()
+        run: |
+          set -euo pipefail
+          test -f playwright-results.json || { echo "::error title=No JSON report::the db pool did not run to completion"; exit 1; }
+          expected=$(jq -r '.stats.expected // 0' playwright-results.json)
+          skipped=$(jq -r '.stats.skipped  // 0' playwright-results.json)
+          echo "db pool — expected: $expected   skipped: $skipped"
+          [ "$expected" -gt 0 ] || { echo "::error title=Vacuous pool::0 tests passed in the db pool"; exit 1; }
+          [ "$skipped" -eq 0 ] || { echo "::error title=Skipped test(s)::$skipped skipped in the db pool"; exit 1; }
+
+      - name: Hand this pool's counts to the verdict
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p shard-stats
+          if [ -f playwright-results.json ]; then
+            jq '{shard: "db", stats: .stats}' playwright-results.json > shard-stats/shard-db.json
+          else
+            echo '{"shard": "db", "stats": null}' > shard-stats/shard-db.json
+          fi
+          cat shard-stats/shard-db.json
+
+      - name: Upload this pool's counts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shard-stats-db
+          path: shard-stats/
+          retention-days: 1
+
+      - name: Upload the Playwright report (only when something failed)
+        if: failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-shard-db
+          path: |
+            playwright-report/
+            playwright-results.json
+          retention-days: 7
+
   acceptance-shard:
     name: acceptance-shard (${{ matrix.shard }}/4)
+    needs: npc-on-world
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -162,14 +331,14 @@ jobs:
       - name: Build the app under test (local-PGlite mode)
         run: npm run build
 
-      # One shard saves (they all built the same image from the same chain); the others would only
-      # race it for the same key.
-      - name: Save the pre-built world image
-        if: matrix.shard == 1 && steps.world.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+      # The world npc-on-world built for THIS run (the image is saved by that job now). fail-on-
+      # cache-miss: a shard that would silently rebuild it is the 30-minute cost this removed.
+      - name: Restore this run's merchants-on world
+        uses: actions/cache/restore@v4
         with:
-          path: node_modules/.cache/byeharu-world-image
-          key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
+          path: node_modules/.cache/byeharu-npc-on
+          key: npc-on-${{ github.run_id }}-${{ github.run_attempt }}
+          fail-on-cache-miss: true
 
       # `--strictPort` so a taken port fails here, loudly, instead of leaving the suite pointed at
       # nothing. The host and port must match playwright.config.ts's PLAYWRIGHT_BASE_URL default
@@ -204,7 +373,7 @@ jobs:
           PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-results.json
         run: |
           set -euo pipefail
-          node scripts/ci/shard-plan.mjs ${{ matrix.shard }} 4 shard-tests.txt
+          node scripts/ci/shard-plan.mjs ${{ matrix.shard }} 4 shard-tests.txt '--not-files=^db\.'
           npx playwright test --test-list shard-tests.txt --reporter=list,html,json
 
       # THE NON-VACUITY FLOOR, PER SHARD. Green is not "playwright exited 0" — it is "the tests that
@@ -297,7 +466,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   acceptance:
     name: acceptance
-    needs: acceptance-shard
+    needs: [npc-on-world, acceptance-shard, acceptance-db]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -319,43 +488,53 @@ jobs:
           path: shard-stats
           merge-multiple: true
 
-      - name: All four shards ran, and together they ran EVERY test in tests/
+      - name: All five pools ran, and together they ran EVERY test in tests/
         env:
           SHARDS_RESULT: ${{ needs.acceptance-shard.result }}
+          DB_RESULT: ${{ needs.acceptance-db.result }}
+          GREP_INVERT: ${{ needs.acceptance-db.outputs.grep_invert }}
         run: |
           set -euo pipefail
           ls -la shard-stats || true
           fail=0
           total_expected=0
-          for i in 1 2 3 4; do
+          for i in 1 2 3 4 db; do
             f="shard-stats/shard-$i.json"
             if [ ! -f "$f" ]; then
-              echo "::error title=Missing shard::shard $i/4 handed back no counts — it did not run to the end"; fail=1; continue
+              echo "::error title=Missing shard::shard $i handed back no counts — it did not run to the end"; fail=1; continue
             fi
             if [ "$(jq -r '.stats == null' "$f")" = "true" ]; then
-              echo "::error title=No JSON report::shard $i/4 produced no Playwright report"; fail=1; continue
+              echo "::error title=No JSON report::shard $i produced no Playwright report"; fail=1; continue
             fi
             e=$(jq -r '.stats.expected // 0' "$f"); s=$(jq -r '.stats.skipped // 0' "$f")
             u=$(jq -r '.stats.unexpected // 0' "$f"); fl=$(jq -r '.stats.flaky // 0' "$f")
-            echo "shard $i/4: expected=$e skipped=$s unexpected=$u flaky=$fl"
-            [ "$e" -gt 0 ] || { echo "::error title=Vacuous shard::shard $i/4 passed 0 tests"; fail=1; }
-            [ "$s" -eq 0 ] || { echo "::error title=Skipped test(s)::shard $i/4 skipped $s"; fail=1; }
-            [ "$u" -eq 0 ] || { echo "::error title=Failed test(s)::shard $i/4 had $u unexpected result(s)"; fail=1; }
-            [ "$fl" -eq 0 ] || { echo "::error title=Flaky test(s)::shard $i/4 had $fl flaky result(s)"; fail=1; }
+            echo "shard $i: expected=$e skipped=$s unexpected=$u flaky=$fl"
+            [ "$e" -gt 0 ] || { echo "::error title=Vacuous shard::shard $i passed 0 tests"; fail=1; }
+            [ "$s" -eq 0 ] || { echo "::error title=Skipped test(s)::shard $i skipped $s"; fail=1; }
+            [ "$u" -eq 0 ] || { echo "::error title=Failed test(s)::shard $i had $u unexpected result(s)"; fail=1; }
+            [ "$fl" -eq 0 ] || { echo "::error title=Flaky test(s)::shard $i had $fl flaky result(s)"; fail=1; }
             total_expected=$((total_expected + e))
           done
           # The denominator, from tests/ itself and not from the shards: a split that lost a file
           # would otherwise sum to a smaller, perfectly green number.
-          listed=$(npx playwright test --list | sed -n 's/^Total: \([0-9][0-9]*\) tests\{0,1\} in .*/\1/p' | tail -1)
+          # Listed with the db pool's own --grep-invert, which is empty unless that pool deferred the
+          # growth test to main — and then this log says so, by name.
+          if [ -n "$GREP_INVERT" ]; then
+            echo "::notice title=Deferred to main::\"$GREP_INVERT\" is not run on this PR (see acceptance-db's log for why); the denominator below excludes it"
+          fi
+          listed=$(npx playwright test --list ${GREP_INVERT:+--grep-invert "$GREP_INVERT"} | sed -n 's/^Total: \([0-9][0-9]*\) tests\{0,1\} in .*/\1/p' | tail -1)
           echo "tests in tests/ (playwright test --list): ${listed:-?}   passed across the shards: $total_expected"
           if [ -z "$listed" ] || [ "$listed" -eq 0 ]; then
             echo "::error title=No denominator::playwright test --list found no tests"; fail=1
           elif [ "$total_expected" -ne "$listed" ]; then
-            echo "::error title=Tests unaccounted for::$listed test(s) in tests/ but $total_expected passed across the four shards"; fail=1
+            echo "::error title=Tests unaccounted for::$listed test(s) in tests/ but $total_expected passed across the five pools"; fail=1
           fi
           if [ "$SHARDS_RESULT" != "success" ]; then
             echo "::error title=Shard failed::the shard matrix finished '$SHARDS_RESULT'"; fail=1
           fi
+          if [ "$DB_RESULT" != "success" ]; then
+            echo "::error title=Shard failed::the db pool finished '$DB_RESULT'"; fail=1
+          fi
           [ "$fail" -eq 0 ] || exit 1
-          echo "OK: $total_expected of $listed test(s) passed across 4 shards, none skipped."
+          echo "OK: $total_expected of $listed test(s) passed across 4 browser shards + the db pool, none skipped."
 

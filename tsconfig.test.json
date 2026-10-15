@@ -29,5 +29,5 @@
   },
   /* Every Playwright config in the repo belongs here on the day it is added — a gate that covers
      the test but not the thing that runs it is not a gate. */
-  "include": ["tests", "playwright.config.ts"]
+  "include": ["tests", "playwright.config.ts", "playwright.npc-on.config.ts"]
 }

@@ -12,7 +12,7 @@ name: Migrations — apply proof (PGlite gate + disposable Supabase)
 #   back. Since 2026-10-13 (row 124) the chain's world comes from the PREFIX CACHE: the longest
 #   already-applied prefix is restored from a verified snapshot and only the files after it are
 #   applied here, self-asserts and all (see the step below; scripts/db/prefix-cache.mjs). The
-#   from-zero apply is job 2's, on a real Postgres, on every PR.
+#   from-zero apply is job 2's, on a real Postgres, on every push to main (PRs build on its snapshot; see job 2).
 #   It is the same gate the developer runs on their own machine in ten seconds
 #   (`npm run db:apply` / `npm run db:proof`), which is why a migration should never reach job 2
 #   red.
@@ -42,6 +42,13 @@ name: Migrations — apply proof (PGlite gate + disposable Supabase)
 #   privileges. Any error (a syntax error, a broken dependency on an earlier migration, a violated
 #   CHECK, a `raise exception` from a self-assert) fails the job.
 #
+#   SINCE 2026-10-15 THAT FROM-ZERO APPLY IS MAIN'S (and any PR with no usable snapshot): a PR
+#   restores the newest green from-zero snapshot whose manifest is an exact prefix of its chain and
+#   applies only the files after it, through the CLI's own `migration up` (see the steps below and
+#   scripts/ci/supabase-snapshot.sh). Trade-off, stated: an OLD file's from-zero apply is proven by
+#   main's run, not re-proven on each PR — which is only a loss if that file changed, and a changed
+#   file breaks the prefix and forces the full apply.
+#
 #   It then re-runs the grant-lockdown proof by hand against that database, because that proof is
 #   the one whose result differs between the two environments, and asserts every PASS marker
 #   appears. Green is NOT "psql exited 0"; green is "every named marker was printed".
@@ -62,9 +69,13 @@ on:
       - '.github/workflows/migrations-apply-proof.yml'
   workflow_dispatch:
 
+# A newer push to a PR cancels the older run. A push to MAIN never cancels one (2026-10-15): main's
+# run is the from-zero net AND the run that keeps the snapshot PRs build on, and with cancelling on
+# main every merge in a busy hour cancelled the one before it (runs 38682431353, 38683652373). Main
+# runs now queue — one running, the newest waiting.
 concurrency:
   group: migrations-apply-proof-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -73,7 +84,28 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   # 1. The fast gate: the whole chain + all four proofs, on real PostgreSQL, no Docker.
   # ═══════════════════════════════════════════════════════════════════════════════════════════
+  #
+  # ── THREE PARALLEL LEGS (2026-10-15) ────────────────────────────────────────────────────────────
+  # With the prefix cache the apply is seconds; the job is the proofs, run one after another on one
+  # wasm Postgres. Measured on run 38689706526: 12_merchant_companies 11m10s, 02_ledger_reconciliation
+  # 4m30s, 05_first_voyage_balance 2m48s, the other nine together ~35s. Each proof already runs in
+  # its own rolled-back, digest-checked transaction, so nothing couples them but the queue. The two
+  # slow ones each get a leg by name; the third leg runs `--exclude=` those two names, so a proof
+  # added tomorrow lands in it BY CONSTRUCTION and nothing can fall between legs. Every leg builds
+  # the same world through the same prefix cache, enforces the same receipts floor and world guard,
+  # and fails on its own markers — a leg that matched no proof fails as vacuous (proof.mjs).
   pglite-gate:
+    name: pglite-gate (${{ matrix.leg }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: merchants
+            args: 12_merchant_companies
+          - leg: ledger
+            args: 02_ledger_reconciliation
+          - leg: the rest
+            args: --exclude=12_merchant_companies,02_ledger_reconciliation
     runs-on: ubuntu-latest
     # 2026-08-31: RAISED 15 -> 30, and it is CAPACITY, not a slack limit. The chain takes ~13
     # minutes on wasm Postgres and grows with the world; PR #3 was CANCELLED at 15m14s with no
@@ -177,9 +209,9 @@ jobs:
       # A snapshot is refused unless its rolling key (preamble text + every file's name and
       # normalised SQL, in order), its file list, its tarball's sha-256 AND the content digest of
       # the database it restores to all match; proof.mjs then checks the composed file list against
-      # supabase/migrations/ itself before any proof runs. The FROM-ZERO net is unchanged and is
-      # job 2 below: disposable-chain applies every file from nothing, on a real Postgres, on every
-      # PR — which is why this job never needed to do it a second time.
+      # supabase/migrations/ itself before any proof runs. The FROM-ZERO net is
+      # job 2 below: disposable-chain applies every file from nothing, on a real Postgres, on every push
+      # to main (a PR applies its new files on main's snapshot) — which is why this job never needed to do it a second time.
       #
       # Restore and save are split so a red proof still keeps the snapshots the apply paid for.
       - name: Restore the chain-prefix snapshots (keyed by the chain and the preamble)
@@ -212,10 +244,12 @@ jobs:
       # Fails if any migration printed no receipt, if any declared PASS marker is missing, if a
       # proof declares none, or if a proof leaves committed rows behind.
       - name: Build the chain's world on PGlite (cached prefix + the files after it), then run every proof
-        run: npm run db:proof
+        run: npm run db:proof -- ${{ matrix.args }}
 
+      # One leg saves (all three built the same snapshots from the same chain); the others would
+      # only race it for the same key.
       - name: Save the chain-prefix snapshots (even when a proof failed)
-        if: always() && steps.prefix.outputs.cache-hit != 'true' && hashFiles('node_modules/.cache/byeharu-chain-prefix/**') != ''
+        if: always() && matrix.leg == 'the rest' && steps.prefix.outputs.cache-hit != 'true' && hashFiles('node_modules/.cache/byeharu-chain-prefix/**') != ''
         uses: actions/cache/save@v4
         with:
           path: node_modules/.cache/byeharu-chain-prefix
@@ -269,8 +303,60 @@ jobs:
           # also means the chain is proven against a known CLI rather than a moving one.
           version: 2.114.0
 
-      - name: Start disposable local Supabase (applies the WHOLE chain, in order)
+      # ── THE APPLIED-CHAIN SNAPSHOT (2026-10-15, scripts/ci/supabase-snapshot.sh) ─────────────
+      # ON MAIN (push, dispatch): unchanged — the WHOLE chain from 0001 on a fresh volume. That is
+      # the from-zero net, and afterwards the stopped volume is kept as the snapshot PRs build on.
+      # ON A PR: the newest kept snapshot is restored ONLY if its manifest (every file's name and
+      # sha-256, in order, plus the CLI version and config.toml) is an exact PREFIX of this PR's
+      # chain; the CLI boots it ("Starting database from backup...", no migrate step) and
+      # `supabase migration up` applies the files after it — every new migration's self-asserts and
+      # CHECK constraints run here exactly as before. Anything else falls back to the full apply.
+      # Every check below then runs against the result unchanged, plus a new one: what the database
+      # recorded equals supabase/migrations/, file for file.
+      - name: Restore the newest applied-chain snapshot (PRs only)
+        id: snap
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/sbsnap
+          key: sbdb-v1-2.114.0-never-an-exact-key
+          restore-keys: sbdb-v1-2.114.0-
+
+      - name: Is the snapshot a prefix of THIS chain?
+        id: plan
+        env:
+          SUPABASE_CLI_VERSION: 2.114.0
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "push/dispatch: the full from-zero apply, always"
+            echo "usable=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          bash scripts/ci/supabase-snapshot.sh usable "$RUNNER_TEMP/sbsnap" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Restore the snapshot into the db volume
+        if: steps.plan.outputs.usable == 'true'
+        env:
+          SUPABASE_CLI_VERSION: 2.114.0
+        run: bash scripts/ci/supabase-snapshot.sh restore "$RUNNER_TEMP/sbsnap"
+
+      - name: Start disposable local Supabase (fresh volume = applies the WHOLE chain, in order)
         run: supabase start
+
+      - name: Apply the files after the snapshot (supabase migration up)
+        if: steps.plan.outputs.usable == 'true'
+        run: |
+          set -euo pipefail
+          supabase status -o env > /tmp/sbenv0
+          set -a; . /tmp/sbenv0; set +a
+          # POSITIVE CONTROL: the booted database holds EXACTLY the snapshot's files and nothing was
+          # re-applied or skipped on the way up.
+          have="$(psql "$DB_URL" -v ON_ERROR_STOP=1 -tAc 'select count(*) from supabase_migrations.schema_migrations')"
+          echo "restored database records $have applied migration(s); the snapshot covers ${{ steps.plan.outputs.prefix }}"
+          if [ "$have" != "${{ steps.plan.outputs.prefix }}" ]; then
+            echo "::error title=Snapshot mismatch::the restored database records $have migrations, its manifest ${{ steps.plan.outputs.prefix }}"; exit 1
+          fi
+          supabase migration up --local
 
       - name: Show what the database recorded as applied
         run: |
@@ -281,6 +367,15 @@ jobs:
           # the directory listing, so a silently-skipped duplicate version shows up as a gap here.
           psql "$DB_URL" -v ON_ERROR_STOP=1 -c \
             "select version, name from supabase_migrations.schema_migrations order by version;"
+          # AND IT IS EXACTLY THE DIRECTORY (2026-10-15): every file's version recorded, nothing
+          # more — whichever way (fresh or snapshot + migration up) the database got here.
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -tAc \
+            "select version from supabase_migrations.schema_migrations order by version;" > /tmp/recorded.txt
+          ls supabase/migrations/*.sql | xargs -n1 basename | cut -d_ -f1 | sort > /tmp/ondisk.txt
+          if ! diff /tmp/ondisk.txt /tmp/recorded.txt; then
+            echo "::error title=Chain mismatch::the database's applied list is not supabase/migrations/ (diff above: < on disk, > recorded)"; exit 1
+          fi
+          echo "OK: $(wc -l < /tmp/ondisk.txt) migration(s) on disk, the same $(wc -l < /tmp/recorded.txt) recorded."
 
       # THE DEFAULT ACLs, checked from OUTSIDE migration 0001, against the platform's own roles.
       #
@@ -389,6 +484,29 @@ jobs:
               || { echo "::error title=Missing PASS marker::$marker"; exit 1; }
           done
           echo "All 8 lockdown PASS markers present against Supabase's own roles."
+
+      # ONLY a green FROM-ZERO run is kept: stopped WITH its volume, tarred with its manifest, saved
+      # under its own chain's key. A red run, or one that itself started from a snapshot, never
+      # becomes one. Main's are what every PR restores; a PR's own (visible to that PR only, by
+      # GitHub's cache scoping) lets its next push skip the old files too — and if that push edits
+      # one of its own migrations the manifest is no longer a prefix and it applies from zero again.
+      - name: Keep the applied chain as a snapshot (green, from zero)
+        id: keep
+        if: success() && steps.plan.outputs.usable != 'true'
+        env:
+          SUPABASE_CLI_VERSION: 2.114.0
+        run: |
+          set -euo pipefail
+          supabase stop
+          bash scripts/ci/supabase-snapshot.sh save "$RUNNER_TEMP/sbsnap"
+          echo "key=$(bash scripts/ci/supabase-snapshot.sh key)" >> "$GITHUB_OUTPUT"
+
+      - name: Save the snapshot
+        if: success() && steps.keep.outputs.key != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/sbsnap
+          key: ${{ steps.keep.outputs.key }}
 
       - name: Stop disposable stack (always)
         if: always()
