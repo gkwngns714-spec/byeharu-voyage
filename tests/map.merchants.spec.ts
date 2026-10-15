@@ -651,8 +651,8 @@ async function closeTray(page: Page): Promise<void> {
  *
  *   'listed'  the city's tray is at half with its merchant list on the glass
  *   'empty'   the city's tray is at half and no list came (nobody's loop calls here)
- *   'taken'   the tap never opened the CITY: a merchant hull drifting over the name, or one of
- *             your own fleets, won it by the chart's own tie rule (hitTest.ts) — three aims, a
+ *   'taken'   the tap never opened the CITY: a merchant hull drifting over the name, open water
+ *             beside a long name, or one of your own fleets, won it by the chart's own tie rule (hitTest.ts) — three aims, a
  *             second apart, because a sailing hull moves on. Correct behaviour, not a defect, and
  *             it happened locally for Cadiz with `Flotte de Nantes` passing over the name.
  *
@@ -669,8 +669,13 @@ async function openHarbour(
     await closeTray(page)
     await page.mouse.click(label.x, label.y)
     // the city's tray, with its one control — anything else that opened took the tap
+    // A CITY, NOT A POINT OF WATER (2026-10-16). Open sea wears the same tray and the same `Send
+    // fleet` press, so those two alone took a tap that fell on WATER beside a long name (CI run
+    // 38776868688: "28.1°N 13.9°W · Open sea" off the Canaries) for a city — which then never
+    // answered with a harbour list. Only a city has the City tabs; anything else took the tap.
     const city = await send.waitFor({ state: 'visible', timeout: 2_000 }).then(() => true, () => false)
-    if (city && (await tray.isVisible())) {
+    const tabs = tray.getByRole('tablist', { name: 'City' })
+    if (city && (await tray.isVisible()) && (await tabs.isVisible())) {
       await send.click()
       await expect(tray).toHaveAttribute('data-tray-detent', 'half')
       // THE HARBOUR'S READ IS WAITED FOR UNTIL IT ANSWERS, not for a fixed 8 s (2026-10-16). Until

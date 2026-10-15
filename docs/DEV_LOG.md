@@ -66,6 +66,10 @@ the source:**
   shows the sheet OPEN; the helper closed it to try another hull that had drifted off the glass
   0.4 s later, then reported none. It now re-opens the last one that opened (its documented
   contract).
+- `map.merchants` 832 (the sweep), CI run 38776868688 on f8a2960 — with the honest wait in place,
+  a label tap that fell on WATER beside a long name ("28.1°N 13.9°W · Open sea", the Canaries)
+  waited 60 s for a harbour list open sea never has. The old 8 s wait had silently counted it as an
+  empty city. `openHarbour` now accepts only a tray with the City tabs; anything else took the tap.
 - `map.lag` 1545 ("just after a zoom the coast is drawn over exactly the view") — one driver read
   after the click raced the glide plus the 250 ms settle; the frames are now sampled in the page and
   the claim is made of the zoom's first frame.
