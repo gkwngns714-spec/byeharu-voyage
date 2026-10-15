@@ -287,6 +287,12 @@ as $$
 declare
   v_sum bigint;
 begin
+  -- 0122's lock order: the house's row first, then the city's rows — and only when there is
+  -- something to collect, so an arrival with nothing owed locks nothing more.
+  if not exists (select 1 from public.city_shares s where s.port_id = p_port and s.player_id = p_player and s.accrued > 0) then
+    return 0;
+  end if;
+  perform 1 from public.players where id = p_player for update;
   with c as (
     select s.port_id, s.kind, s.player_id, s.accrued from public.city_shares s
      where s.port_id = p_port and s.player_id = p_player and s.accrued > 0
@@ -440,37 +446,22 @@ $h$                   + pg.production_rate * public.works_factor(pg.port_id, 'pr
                      * (v_day - pg.last_regen_day)),
 $h$);
 
--- (d0) THE ROLL BOOKS AN HOUR THAT NETS NEGATIVE. 0122's purse CTE was INSERT … ON CONFLICT DO
---      UPDATE, and PostgreSQL checks a CHECK constraint on the PROPOSED row before it looks for the
---      conflict: an hour in which a lit city paid out more than it took (a coupon, a refound, a
---      day of SELLs) proposed a negative `ducats` and failed the whole roll. Dark it never shows
---      (dark, nothing is written). Now every purse row exists before the roll and the roll is
---      an UPDATE. Proven by the coupon probe below, whose second hour is a lone DIVIDEND outflow.
-select pg_temp.slice_0123('public.tick_city(timestamptz)',
-$h$  perform set_config('byeharu.treasury_roll', 'on', true);
-  with f as (
+-- (d0) THE HARBOUR'S LOCK, ONE AUTHORITY. 0122 takes it inside treasury_post for an outflow paid to
+--      a house (house row first, harbour second). tick_city's own outflows (WORKS_OUT, DIVIDEND)
+--      take the SAME lock through the same function before they judge the purse, so a sale paying
+--      out at that harbour can never pass the balance test beside them and fail the hour's roll.
+--      tick_city locks no house row, so the order stays house → harbour everywhere.
+create or replace function public.treasury_lock(p_port uuid)
+returns void
+language sql
+as $$ select pg_advisory_xact_lock(hashtextextended('byeharu.treasury:' || p_port::text, 0)) $$;
+comment on function public.treasury_lock(uuid) is
+  '0123: THE harbour''s money lock, to the end of the transaction. treasury_post (0122) and tick_city take it here.';
+revoke all on function public.treasury_lock(uuid) from public, anon, authenticated;
+select pg_temp.slice_0123('public.treasury_post(uuid, text, bigint, uuid, uuid, boolean)',
+$h$      perform pg_advisory_xact_lock(hashtextextended('byeharu.treasury:' || p_port::text, 0));
 $h$,
-$h$  insert into public.port_treasury (port_id)   -- 0123: every purse row exists before the roll
-  select distinct tf.port_id from public.treasury_flows tf where tf.created_at <= p_now
-  on conflict (port_id) do nothing;
-  perform set_config('byeharu.treasury_roll', 'on', true);
-  with f as (
-$h$);
-select pg_temp.slice_0123('public.tick_city(timestamptz)',
-$h$  ), b as (
-    insert into public.port_treasury (port_id, ducats, rolled_at)
-    select f.port_id, sum(f.ducats), p_now from f group by 1
-    on conflict (port_id) do update
-       set ducats = public.port_treasury.ducats + excluded.ducats, rolled_at = p_now, updated_at = now()
-    returning 1
-$h$,
-$h$  ), b as (
-    -- 0123: an UPDATE — a proposed INSERT row with a negative hour failed ducats >= 0 (above).
-    update public.port_treasury t
-       set ducats = t.ducats + x.s, rolled_at = p_now, updated_at = now()
-      from (select f.port_id, sum(f.ducats) as s from f group by 1) x
-     where t.port_id = x.port_id
-    returning 1
+$h$      perform public.treasury_lock(p_port);   -- 0123: the one authority of the key
 $h$);
 
 -- (d) THE HOURLY JOB gains steps 4 BUILD, 5 INN, 6 COUPONS (lit only) and their receipt.
@@ -523,7 +514,10 @@ $h$  -- 4. BUILD (0123, lit): each harbour subscribes its lowest work from its s
                  order by w.port_id, w.level, array_position(array['docks', 'market', 'production', 'inn'], w.kind) loop
         v_price := public.works_share_price(wb.level);
         -- what it held at the roll (never this hour's WORKS_IN — a region's money does not cascade
-        -- round the coast inside one hour), and never more than it holds now.
+        -- round the coast inside one hour), and never more than it holds now. Judged once to skip a
+        -- city that cannot buy without locking it, and again under the harbour's lock.
+        continue when floor(greatest(0, wb.rolled - wb.reserve) / v_price) < 1;
+        perform public.treasury_lock(wb.port_id);
         v_k := least(v_per - wb.subscribed,
                      floor(greatest(0, least(wb.rolled, public.treasury_balance(wb.port_id)) - wb.reserve) / v_price))::int;
         continue when v_k < 1;
@@ -591,6 +585,7 @@ $h$  -- 4. BUILD (0123, lit): each harbour subscribes its lowest work from its s
                        sum(round(s.paid * public.wc_num('works_coupon_pct') * (v_today - s.accrued_day)))::bigint as due
                   from public.city_shares s where s.accrued_day < v_today
                  group by s.port_id order by s.port_id loop
+        perform public.treasury_lock(hp.port_id);   -- before the purse is judged
         v_pay := least(hp.due, greatest(0, public.city_surplus(hp.port_id)));
         with d as (
           select s.kind, s.player_id,
@@ -881,7 +876,7 @@ begin
     'public.city_level(uuid, text)', 'public.works_factor(uuid, text, text)', 'public.works_share_price(integer)',
     'public.city_offered(uuid, text)', 'public.invest_for(uuid, uuid, text, integer)',
     'public.collect_coupons(uuid, uuid, uuid)', 'cmd.refused_envelope(text, text)',
-    'public.npc_invest(timestamp with time zone)'] loop
+    'public.npc_invest(timestamp with time zone)', 'public.treasury_lock(uuid)'] loop
     if has_function_privilege('anon', v_fn, 'execute') or has_function_privilege('authenticated', v_fn, 'execute') then
       raise exception '0123 self-assert FAIL: % is client-callable', v_fn;
     end if;
@@ -1025,8 +1020,7 @@ begin
     end if;
     -- a harbour holding its reserve exactly pays nothing; accrued_day still advances.
     update public.city_shares set accrued = 0, accrued_day = v_day - 1 where port_id = v_home;
-    --   (this hour's only flow at v_home is the DIVIDEND outflow: an hour that nets NEGATIVE, which
-    --    0122's roll could not book — the (d0) slice.)
+    --   (this hour's only flow at v_home is the DIVIDEND outflow: an hour that nets negative.)
     perform pg_temp.set_balance_0123(v_home, 0);
     v_city := public.tick_city(now());
     if (select sum(accrued) from public.city_shares where port_id = v_home) <> 0
