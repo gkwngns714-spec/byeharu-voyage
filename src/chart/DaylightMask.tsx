@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { gameSunInstantMs } from '../lib/format'
+import { serverNow } from '../lib/serverClock'
 import { CHART_HEIGHT, CHART_WIDTH } from '../lib/geo'
 import { subsolarPoint } from './sun'
 
@@ -13,7 +14,7 @@ function useSunSlide() {
   useEffect(() => {
     let frame = 0
     const step = () => {
-      const lon = subsolarPoint(gameSunInstantMs(Date.now())).lon
+      const lon = subsolarPoint(gameSunInstantMs(serverNow())).lon
       ref.current?.setAttribute('transform', `translate(${lon} 0)`)
       frame = requestAnimationFrame(step)
     }

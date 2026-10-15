@@ -9,6 +9,7 @@ import {
   type SubsolarPoint,
 } from './sun'
 import { gameSunInstantMs } from '../lib/format'
+import { serverNow } from '../lib/serverClock'
 
 // THE SUN, ON THE REAL CLOCK — the one hook that reads `Date.now()` for the picture and turns
 // `sun.ts`'s arithmetic into the two things a layer can use: the subsolar point (for the lights
@@ -75,7 +76,7 @@ function rasterToUrl(sun: LatLon): string | null {
 const RASTER_LAT_STEP = 0.01
 
 function sunNow(): { sun: SubsolarPoint; atMs: number } {
-  const atMs = Date.now()
+  const atMs = serverNow()
   // THE GAME CLOCK'S HOUR (lib/format gameSunInstantMs): day and night turn at game speed.
   return { sun: subsolarPoint(gameSunInstantMs(atMs)), atMs }
 }
