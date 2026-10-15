@@ -444,7 +444,7 @@ $h$);
 --      UPDATE, and PostgreSQL checks a CHECK constraint on the PROPOSED row before it looks for the
 --      conflict: an hour in which a lit city paid out more than it took (a coupon, a refound, a
 --      day of SELLs) proposed a negative `ducats` and failed the whole roll. Dark it never shows
---      (only lit flows move a purse). Now every purse row exists before the roll and the roll is
+--      (dark, nothing is written). Now every purse row exists before the roll and the roll is
 --      an UPDATE. Proven by the coupon probe below, whose second hour is a lone DIVIDEND outflow.
 select pg_temp.slice_0123('public.tick_city(timestamptz)',
 $h$  perform set_config('byeharu.treasury_roll', 'on', true);
@@ -459,7 +459,7 @@ $h$);
 select pg_temp.slice_0123('public.tick_city(timestamptz)',
 $h$  ), b as (
     insert into public.port_treasury (port_id, ducats, rolled_at)
-    select f.port_id, coalesce(sum(f.ducats) filter (where f.lit), 0), p_now from f group by 1
+    select f.port_id, sum(f.ducats), p_now from f group by 1
     on conflict (port_id) do update
        set ducats = public.port_treasury.ducats + excluded.ducats, rolled_at = p_now, updated_at = now()
     returning 1
@@ -468,7 +468,7 @@ $h$  ), b as (
     -- 0123: an UPDATE — a proposed INSERT row with a negative hour failed ducats >= 0 (above).
     update public.port_treasury t
        set ducats = t.ducats + x.s, rolled_at = p_now, updated_at = now()
-      from (select f.port_id, coalesce(sum(f.ducats) filter (where f.lit), 0) as s from f group by 1) x
+      from (select f.port_id, sum(f.ducats) as s from f group by 1) x
      where t.port_id = x.port_id
     returning 1
 $h$);
@@ -625,10 +625,10 @@ $h$  -- 4. BUILD (0123, lit): each harbour subscribes its lowest work from its s
   -- 7. ASSERT: every purse equals its books; none below zero (the CHECK holds it too).
 $h$);
 select pg_temp.slice_0123('public.tick_city(timestamptz)',
-$h$       + coalesce((select sum(f.ducats) from public.treasury_flows f where f.lit), 0)
+$h$       + coalesce((select sum(f.ducats) from public.treasury_flows f), 0)
     into v_world;
 $h$,
-$h$       + coalesce((select sum(f.ducats) from public.treasury_flows f where f.lit), 0)
+$h$       + coalesce((select sum(f.ducats) from public.treasury_flows f), 0)
        + coalesce((select sum(s.accrued) from public.city_shares s), 0)   -- 0123: set aside, not yet collected
     into v_world;
 $h$);
@@ -978,7 +978,7 @@ begin
        or public.treasury_balance(v_home) <> v_bal + 60 * v_price
        or (select subscribed from public.city_works where port_id = v_home and kind = 'docks') <> 60
        or not exists (select 1 from public.events e where e.player_id = v_player and e.kind = 'INVESTED' and (e.payload->>'shares')::int = 60)
-       or not exists (select 1 from public.treasury_flows tf where tf.port_id = v_home and tf.kind = 'SHARE' and tf.ducats = 60 * v_price and tf.lit) then
+       or not exists (select 1 from public.treasury_flows tf where tf.port_id = v_home and tf.kind = 'SHARE' and tf.ducats = 60 * v_price) then
       raise exception '0123 self-assert FAIL: a 60-share buy did not move purse, treasury, register and event as one: %', v_r;
     end if;
     v_r := cmd.invest(v_home, 'docks', 40);

@@ -55,6 +55,8 @@ async function townHallWorld(): Promise<{ body: Buffer; investor: string }> {
 }
 
 async function openCity(page: Page, code: string): Promise<void> {
+  // the chart draws after the world is up ("opening the chart…"): wait for the harbour's name
+  await page.locator(`[data-label-id="port:${code}"]`).first().waitFor({ state: 'attached', timeout: 120_000 })
   const label = await page.evaluate((id) => {
     const e = document.querySelector(`[data-label-id="${id}"]`)
     if (!e) return null
