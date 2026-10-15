@@ -308,7 +308,11 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0116: a merchant's costs are nought, a lap counts its own cargo, and she rests two minutes.
 // And to 0117: no merchant lap pacing; the two-minute rest is her only wait at home.
 // And to 0118: the sea is read once and then only what changed (world.sea_roster).
-const LAST = '20260818000118_the_sea_is_read_once_and_then_what_changed.sql'
+// And to 0120 (owner, 2026-10-15: "the merchant npc should have freedom too. 15% is too big"): the
+// bar is 5 %, and at each lap start a merchant prices her loop against the loops the roster's
+// courses allow out of her home — near, and for a big hold between continents — and sails the one
+// that pays most per real hour.
+const LAST = '20260818000120_a_merchant_chooses_her_own_loop.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
