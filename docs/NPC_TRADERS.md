@@ -1444,3 +1444,137 @@ unchanged.
 | X15 | sea_traffic memoised per 3-s slot above ~5 ms | not built; measured instead | 0099 measured 27.7 ms/call and `scripts/db/measure-merchants.mjs` 20.5 ms/call (`explain analyze` 20.6 ms, 12 KB) — on PGlite (WebAssembly, one connection), not on production. A memo is a WRITE inside a read path; it is the slice-6 lever once production's own figure is read, not a guess made here |
 | X16 | (found, not planned) | **NOT FIXED — reported.** A route's LAP closes when the fleet ARRIVES at stop 0, before stop 0's SELL lines run; those sales are written under the NEXT lap (0092's closer). So a parcel bought on the last leg (bought at the last stop, sold at home) books its COST on lap N and its REVENUE on lap N+1. Measured on 2026-10-08: Carreira do Brasil's first lap read −114,807 🪙 (emeralds bought at Salvador for 116,224, sold at Lisbon for 139,165 in the next lap). Per-lap means over several laps are right (the build judges laps 3-6); a route's FIRST lap, and the card's day sum in its first hours, read low | It is 0092's lap semantics, shared with every player route, and moving the boundary (close after stop 0's sales) is a change to a live player feature — the owner's call, recorded here and in DEV_LOG, not slipped into this branch |
 
+
+## 16. 0120 — a merchant chooses her own loop (2026-10-15, branch `osn-npc-free-routes`; local proof only)
+
+**The owner, verbatim (2026-10-15):** *"the merchant npc should have freedom too. 15% is too big.
+change to 5%, and is there a way for these ships, to change trading routes accordingly by itself
+finding the best solution for money? change the buying items accordingly, selling them accordingly
+and so on by itself?"* — and — *"but some ships (bigger ships) must move outside the zone, meaning
+not nearby 4~5 ports, but far away between continents too for bigger profit. you know that the
+prices should go up as you move further away from the distance of original place where you've
+bought right?"* Rows 133–134.
+
+**What was found.** 0114–0117 (not recorded above; DEV_LOG 2026-10-14) made a merchant re-plan her
+LINES at every lap start, at a 15 % bar, on a FIXED authored loop. Prod (read-only, last 12 h): 369
+profitable laps, 15,745 at net zero (sailed in ballast), 7 negative. The planner could change what
+she bought, never where she went; and the server holds no pathfinder — a course is the client's
+proposal, `voyage.path_refusal` judges it — so the only courses a merchant can sail are the ones the
+roster already carries.
+
+### 16.1 The pieces, each one authority
+
+| Piece | What it is | Where |
+|---|---|---|
+| `npc_min_return_pct` = 5 | the bar; the same knob, the same two readers (the keep test; the buy cap at the moment of buying, 0114) | 0120 §1 |
+| `public.npc_leg_lines(route, from, to, hold, crew, speed)` | 0114's rank–filter–size–keep for ONE leg, lifted out of `npc_plan` whole: the cut-loss SELLs, THE ranking (`world.trade_routes` from → to), the wares filter, the `npc_buyers_per_good` cap (counted once per port as a map), the sink-sized parcel, the wage and min-return keep, the ceiling. Answers `{lines, profit, nm, any}`, so a loop can be priced without being written | §3 |
+| `public.npc_known_legs(port)` | every merchant route's leg out of the harbour, and every leg INTO it reversed (same polyline, same water; `cmd.do_sail` judges it again at departure); one per destination with the reach table's distance | §2 |
+| `public.npc_feasible_legs(port, draft, speed, days)` | the known legs a fleet may sail: a harbour that takes her draft, open (the berth facts `voyage.sail_refusal` reads), a passage her stores cover at `endurance_margin` plus a day | §4 |
+| `public.npc_loop_candidates(route, fleet, home, hold, speed)` | the loops she may price (below) | §4b |
+| `public.npc_plan` (restated) | decides WHICH loop and writes it through the save door; every leg's lines come from the leg planner | §5 |
+| `cmd.run_standing_route` (sliced) | re-reads the route, its stop count and the stop she lies at after the lap-start plan, so the orders and the SAIL's course are the chosen loop's | §6 (1) |
+| `cmd.standing_route_lines` (sliced) | the margin is the general SELL's; a NAMED at-profit SELL — the cut-loss — floors at what she paid | §6 (2) |
+
+### 16.2 The choice, in plain words
+
+At her **lap start** (planned alone, docked at her stop 0, no open lap — never on the switch's pass,
+never past the upkeep budget), a merchant prices:
+
+1. her present loop;
+2. **near**: out-and-back to each of the `npc_route_neighbours` (5) nearest known harbours;
+3. **near3**: home → B → C → home for neighbours B, C where the roster knows B → C, shortest first,
+   into whatever room `npc_route_candidates` (16) leaves;
+4. **far** (hold ≥ `npc_route_far_hold_tuns`, 200 tuns — p90 of the roster is 396): out-and-back on
+   the `npc_route_far_candidates` (3) farthest known legs of `npc_route_far_nm` (2,000) or more; her
+   harbour having none, via each neighbour's farthest such leg (home → X → F → X → home).
+
+Every candidate destination must take her draft, be open, and lie within the days of stores she
+can carry — her preset as it stands, or what the planner may raise it to through
+`cmd.provision_preset_save_for` (at most `npc_preset_days_max` = 90, and never more than half her
+hold in stores). Each loop's lines come from the leg planner, each distinct leg priced once (a memo
+per plan). **Score = ducats per real hour of the lap**: Σ nm ÷ speed is voyage-hours, through
+`time_compression` real hours, plus her rest — and never over less than a game-day
+(`game_day_seconds`), because the daily cap lets a parcel be bought once a game-day; without that
+floor the first proof sent the Carreira da Índia's nau to Porto (77,836/h on a five-minute hop that
+cannot repeat). She changes loop when the best beats her present one by `npc_route_switch_pct`
+(10 %); if her present loop pays nothing, any paying loop wins. Nothing pays anywhere: she keeps
+her loop and sails it in ballast (0115). Her stop 0 — home — is where every loop starts and ends:
+she chooses where to go, not where to live.
+
+**Deterministic**: ties fall to the port id; the same world plans the same loop.
+
+### 16.3 Prices already rise with distance from the source — nothing in the market moved
+
+`world.affinity_at` (0005/0048), the one affinity formula, prices a (port, good) at
+`affinity_producer` (0.93) × base at a producer and `home + span × (nearest source nm / reach)^curve`
+= `1.00 + 0.76 × (nm / 9,500)^0.88` elsewhere, capped at 3.0: ≈ 1.10 at 1,000 nm from the nearest
+producer, 1.28 at 3,000, 1.51 at 6,000, 1.76 at 9,500 and beyond. So a nutmeg is dear in Lisbon
+because Banda is far, by construction. Two things it is NOT: it is distance from the nearest
+PRODUCER (`port_specialties`), not from the port where a given parcel was bought; and it is
+great-circle, not sailed. The planner needs neither: it prices every candidate leg through
+`world.quote` at both ends, which is where that gradient already lives.
+
+*A proposal, not built:* a gradient on SAILED distance from the source would replace
+`voyage.gc_distance_nm` in `world.affinity_for` / the 0005 seed's distance matrix with
+`voyage.reach_from` (the reach table) — one expression, both callers — and re-derive `port_goods`
+affinity and stock targets the way 0062 did (`world.affinity_for` over the whole table). It moves
+every price in the world and is its own migration with its own measurement (`scripts/db/
+measure-first-voyage.mjs`, `tune-balance.mjs`); the owner's call.
+
+### 16.4 A losing lap from trading, closed
+
+Prod showed lap 10 of one route closed 2026-10-14 23:07 UTC: bought 100,158, sold 92,688,
+stock_out 100,158, costs 0, net −13,206 → stock_in 105,894 was sold for 92,688. The path was the
+**cut-loss** (§4.1 step 4 above; 0114 step 4): a good refused `E_PRICE_LIMIT` on a SELL at a stop
+in both of the last two closed laps was written `SELL <good> ALL` with no floor — a named SELL line
+carrying `at_profit = false` renders no `AT` — so a carried-in parcel went at whatever the quay bid.
+The basis itself is sound (0081: a weighted average blended on load, left alone on a partial unload;
+the 0116 lap identity conserves money). 0120 writes the cut-loss as a named **at-profit** SELL and
+the renderer adds `npc_sell_margin` only to the general SELL: a named at-profit SELL floors at what
+she paid. The parcel leaves the moment the quay bids its cost, never for less — and with the choice
+she can carry it to a harbour that pays. Asserted in 0120: a 50 parcel renders `AT >= 50`, the
+general SELL at 40 renders 42. The other way a lap closes below zero is cargo taken by a STRIPPED
+raid (0027) — not a trade; left as it is.
+
+### 16.5 Measured (PGlite, this machine; prod's native Postgres will differ)
+
+`scripts/db/measure-free-routes.mjs` (the library, timings) and `scripts/db/measure-ballast-share.mjs`
+(60 merchant routes in roster order, each set at a lap start, `npc_plan(now, route)` under three
+settings, rolled back):
+
+| Setting | sailed empty (ballast) | changed loop | loops priced | plan mean / max |
+|---|---|---|---|---|
+| A — 15 %, no choice (as 0118 left it) | 45 / 60 (75 %) | — | 60 | 218 / 1,247 ms |
+| B — 5 %, no choice | 3 / 60 (5 %) | — | 60 | 179 / 970 ms |
+| C — 5 %, the choice (0120) | **0 / 60 (0 %)** | 39 / 60 | 707 (≈ 12 a route) | 461 / 1,230 ms |
+
+What that models: the planner's own verdict at a lap start on the applied chain's market. What it
+does not: prod's prices and stocks, the other merchants' lines moving between laps, and the daily
+caps a repeated lap meets (prod's 15,745 net-zero laps are also laps that sailed with lines and sold
+nothing; the cut-loss and the 5 % bar bear on those too). The library: 995 authored legs, 1,804
+both ways, 237 harbours, median 7 ways out, 634 legs ≥ 2,000 nm, 194 harbours with a long haul
+out. Fleet holds p50 86 / p90 396 / max 1,289 tuns. `world.trade_routes(from, to)` 10–85 ms a
+call; `world.quote` ~1 ms; `npc_known_legs` once per harbour touched. **Cost at scale**: ~830
+merchants × 461 ms ≈ 6.4 CPU-minutes per full round of lap starts on PGlite, spread over the hours
+their laps take — a few lap starts per arrivals tick. `cmd.standing_route_save_for` costs 0.3–0.7 s
+of every plan on PGlite (profiled; not its course loop — a set-based rewrite measured 583 ms against
+591 and was retired). Not fixed here; named.
+
+### 16.6 Knobs added
+
+`npc_route_candidates` 16 · `npc_route_neighbours` 5 · `npc_route_far_candidates` 3 ·
+`npc_route_far_nm` 2000 · `npc_route_far_hold_tuns` 200 · `npc_route_switch_pct` 10 ·
+`npc_preset_days_max` 90. `npc_route_candidates` 0 turns the choice off and leaves every rule above
+in place.
+
+### 16.7 Known limitations, stated
+
+- A merchant never changes her home; a loop starts and ends at her stop 0.
+- Candidates are bounded by the roster's courses: a harbour no merchant leg touches is never a
+  destination (there is no server-side pathfinder).
+- A leg's profit is priced with the hold she has NOW; a preset raise for a long haul takes stores
+  out of that hold at the quay, so a long-haul estimate is slightly high.
+- The score prices one lap at today's quotes; the market the lap meets hours later is not the one
+  priced (the 5 % bar is what stands against that drift).
+- Measured on PGlite only; the proof's switch was dark as found. The prod push is the owner's call,
+  with the runbook (clock off → `db push` → clock on).

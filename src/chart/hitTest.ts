@@ -12,8 +12,12 @@
 // landed on and returns the nearest thing to it, or nothing. Nearest is nearest at every zoom, and
 // there is no paint order to lose to.
 //
-// TIES GO TO THE FLEET: a fleet at anchor is drawn ON its port, so their distances are equal. The
-// fleet is the thing the player put there, so it is the thing they meant.
+// A FLEET DOCKED IN A HARBOUR YIELDS TO THAT HARBOUR (owner, 2026-10-15). Her hull is drawn ON the
+// harbour's mark, so the two are one target; until 2026-10-15 the fleet won that tie, and a player
+// with a fleet in Lisbon could never open Lisbon — the city panel and its Market | Port | Inn
+// tabs. Now the CITY opens, and she stands first in its Port tab (CityHarbour.tsx), a tap from
+// her own panel; the Fleets corner opens her directly too. Anywhere else her hull wins a tie as
+// before: a fleet at an open anchor, or at sea, or nearer to the thumb than the harbour is.
 //
 // TIES BETWEEN TWO HARBOURS are broken by the harbour, never by the array. Two ports exactly
 // equidistant from a thumb used to be resolved by whichever came first in `ports` — which is seed
@@ -75,10 +79,10 @@ export function hitTest(
    *  the whole list for a caller that draws everything. */
   traffic: ChartModel['traffic'] = model.traffic,
 ): MapSelection {
-  let nearestFleet: { id: string; d: number } | null = null
+  let nearestFleet: { id: string; d: number; dockedAt: string | null } | null = null
   for (const f of model.fleets) {
     const d = distance(project(f.at), at)
-    if (d <= radius && (!nearestFleet || d < nearestFleet.d)) nearestFleet = { id: f.fleet.id, d }
+    if (d <= radius && (!nearestFleet || d < nearestFleet.d)) nearestFleet = { id: f.fleet.id, d, dockedAt: f.dockedAtCode }
   }
 
   const named = nearestOf(ports, at, radius)
@@ -89,7 +93,9 @@ export function hitTest(
   // reach — a dot under it is the nearer thing, and the nearer thing wins as it does everywhere.
   const nearestPort = !dot ? named : !named ? dot : named.d <= dotRadius || named.d <= dot.d ? named : dot
 
-  if (nearestFleet && (!nearestPort || nearestFleet.d <= nearestPort.d)) {
+  // THE ONE RULE (header): her hull on the mark of the harbour she is docked in is that harbour.
+  const docksHere = nearestFleet !== null && nearestPort !== null && nearestFleet.dockedAt === nearestPort.port.code
+  if (nearestFleet && !docksHere && (!nearestPort || nearestFleet.d <= nearestPort.d)) {
     return { kind: 'fleet', id: nearestFleet.id }
   }
   // 0099 — A MERCHANT, by the same reach, AFTER your fleets (one of yours already won any tie

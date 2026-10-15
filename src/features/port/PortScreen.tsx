@@ -27,7 +27,7 @@ import { PortWorkstation } from './PortWorkstation'
 import { PortShipyard } from './PortShipyard'
 import { PORT_FACES, usePortView } from './portView'
 import { harbourCode, harbourPick, useHarbour } from '../../store/harbour'
-import { boundForLabel, fleetPortCode, isDockedAt, whereabouts } from '../../domain/fleet'
+import { alongsideAt, boundForLabel, fleetPortCode, whereabouts } from '../../domain/fleet'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 // 0099 — the merchants: the same sheet MAP opens, read through the same card. 0104 (owner row 121):
 // and the harbour's own list of them, with what each one is doing here.
@@ -139,8 +139,9 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
 
   // THE ONE "ALONGSIDE HERE" TEST. Read-only ⇔ nobody is.
   // In port or not is `domain/fleet`'s one rule (`whereabouts`), never a bare `f.port` read here.
-  const docked = port ? fleets.filter((f) => isDockedAt(f, port.code)) : []
-  const acting = docked[0] ?? fleets.find((f) => f.id === draftFleetId) ?? fleets[0] ?? null
+  // Who acts for this harbour is `domain/fleet`'s `alongsideAt` (the MAP's city panel asks it too).
+  // No port (the early return below) is a harbour no fleet lies in: nobody docked, the draft acts.
+  const { docked, acting } = alongsideAt(fleets, port?.code ?? '', draftFleetId)
   const actingWhere = acting ? whereabouts(acting) : null
   // WHERE THE ACTING FLEET'S NEXT ORDER WOULD RUN — alongside, or the harbour she is bound for.
   const actingPortCode = acting ? fleetPortCode(acting) : null

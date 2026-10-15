@@ -24,6 +24,7 @@ import { skippedWords } from '../domain/route'
 import type { MerchantCard } from '../lib/rpc'
 import { portNameOf, useWorld } from './worldStore'
 import { ShipPanel } from './ShipPanel'
+import { TradeHistoryPanel, type TradePick } from './TradeHistoryPanel'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MERCHANT SHEET — one merchant fleet, READ-ONLY (owner rows 110-111, docs/NPC_TRADERS.md §8.3)
@@ -55,6 +56,8 @@ import { ShipPanel } from './ShipPanel'
 //
 // NOTHING HERE IS AN ACTION. No Button, no Stepper, no hand-off, no fleet selection: the map stays
 // an output device (DESIGN E.5) and the only thing a player can do with this sheet is close it.
+// (2026-10-15: or OPEN a second panel beside it — one of her ships, or her trading from the tiles
+// and the lap pills. Reading deeper is not an action; nothing there issues an order.)
 // Every figure is served; nothing is summed on this side of the wire (worldStore rule 3) — the
 // level beside Skills is four served levels added, which is the one sum the server also serves
 // (0113) and the sheet prints it so the list and the sheet say one number.
@@ -76,6 +79,18 @@ export function MerchantSheet({
   const [detent, setDetent] = useState<TrayDetent>('peek')
   // HER SHIPS OPEN ONE BY ONE (owner, 2026-10-15): a press slides that ship's panel in over this.
   const [openShip, setOpenShip] = useState<number | null>(null)
+  // HER TRADING OPENS FROM HER FIGURES (owner, 2026-10-15: *"click on laps, so far, a lap and so on
+  // which tells me what the ship has bought and sold, where it sold"*): the tiles and each lap pill
+  // slide out TradeHistoryPanel in the same slot as a ship's panel — one of the two at a time.
+  const [trades, setTrades] = useState<TradePick | null>(null)
+  const openShipPanel = (i: number) => {
+    setTrades(null)
+    setOpenShip(i)
+  }
+  const openTrades = (pick: TradePick) => {
+    setOpenShip(null)
+    setTrades(pick)
+  }
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
 
@@ -99,10 +114,13 @@ export function MerchantSheet({
       {!card ? (
         <Skeleton className="mt-2 h-28 w-full" />
       ) : (
-        <MerchantBody card={card} portName={(c) => portNameOf(portByCode, c)} goodName={(c) => goodByCode[c]?.name ?? c} goodCategory={(c) => goodByCode[c]?.category ?? ''} onOpenShip={setOpenShip} />
+        <MerchantBody card={card} portName={(c) => portNameOf(portByCode, c)} goodName={(c) => goodByCode[c]?.name ?? c} goodCategory={(c) => goodByCode[c]?.category ?? ''} onOpenShip={openShipPanel} onOpenTrades={openTrades} />
       )}
     </Tray>
     {ship && <ShipPanel key={openShip} ship={ship} onClose={() => setOpenShip(null)} />}
+    {card && trades && (
+      <TradeHistoryPanel fleetId={card.fleet.id} pick={trades} onPick={setTrades} onClose={() => setTrades(null)} />
+    )}
     </>
   )
 }
@@ -113,12 +131,14 @@ function MerchantBody({
   goodName,
   goodCategory,
   onOpenShip,
+  onOpenTrades,
 }: {
   card: MerchantCard
   portName: (code: string) => string
   goodName: (code: string) => string
   goodCategory: (code: string) => string
   onOpenShip: (index: number) => void
+  onOpenTrades: (pick: TradePick) => void
 }) {
   // THE ONE CLOCK (src/app/shellState.ts): the Fortune line counts a span from it, never from a
   // Date.now() read during a render.
@@ -146,6 +166,10 @@ function MerchantBody({
           name={e && e.day_full ? 'A day' : 'So far'}
           meta={e && e.day_full ? 'a real day of laps' : e && e.day_since ? `over the last ${formatRealShort(nowMs - Date.parse(e.day_since))}` : 'no lap closed yet'}
           figure={<Figure size="figure" value={e ? `${e.day_full ? '≈ ' : ''}${formatDucats(e.day)}` : '—'} />}
+          // A PRESS OPENS WHAT THE FIGURE IS MADE OF: the day's laps, totalled, and the goods she
+          // traded at each harbour (TradeHistoryPanel).
+          tap={e ? 'whole' : 'none'}
+          onClick={() => onOpenTrades({ kind: 'day' })}
           data-testid="merchant-earnings-day"
         />
         {/* A LAP IS NOT GUESSED FROM ONE LAP. The server returns `lap` null until two have closed,
@@ -163,6 +187,10 @@ function MerchantBody({
               <Figure value={e && e.laps_done > 0 ? 'one lap closed' : 'first lap under way'} tone="muted" />
             )
           }
+          // A press opens her newest closed lap, stop by stop — or, before one has closed, the lap
+          // under way.
+          tap={e ? 'whole' : 'none'}
+          onClick={() => onOpenTrades(e && e.laps_done > 0 ? { kind: 'lap', index: 0 } : { kind: 'open' })}
           data-testid="merchant-earnings-lap"
         />
       </TileField>
@@ -195,16 +223,23 @@ function MerchantBody({
                 in the value column they wrapped into each other (owner, 2026-10-15, on Yol
                 Portobelo: "the lines are overlapping with one another"). */}
             <span className="mt-1.5 flex flex-wrap gap-1.5" data-testid="merchant-laps-recent">
+              {/* EACH PILL OPENS ITS LAP (owner, 2026-10-15): `laps_recent` and world.fleet_trades'
+                  `laps` are the same seven, newest first, so pill i is lap i in the panel. */}
               {e.laps_recent.map((n, i) => (
-                <span
+                <button
                   key={i}
+                  type="button"
+                  onClick={() => onOpenTrades({ kind: 'lap', index: i })}
+                  aria-label={`Lap ${formatInt(e.laps_done - i)}: ${formatDucatsDelta(n)}`}
                   className={[
-                    'whitespace-nowrap rounded-chip px-2 py-0.5 text-t-caption leading-snug tabular-nums',
+                    'whitespace-nowrap rounded-chip px-2 py-0.5 text-t-caption leading-snug tabular-nums transition',
+                    'hover:ring-1 hover:ring-current focus-visible:ring-1 focus-visible:ring-current',
                     n > 0 ? 'bg-success/15 text-success' : n < 0 ? 'bg-danger/15 text-danger' : 'bg-surface-2 text-ink-muted',
                   ].join(' ')}
+                  data-testid="merchant-lap-pill"
                 >
                   {formatDucatsDelta(n)}
-                </span>
+                </button>
               ))}
             </span>
           </Row>

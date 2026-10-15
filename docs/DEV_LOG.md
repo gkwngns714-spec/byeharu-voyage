@@ -5,6 +5,30 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-15 — a city is three tabs: Market | Port | Inn; the inn turns over every 15 real minutes — `osn-city-tabs`
+
+Owner: *"when i click on a city, i don't want to see stupid useless info. Rather, i want there to be
+tab, such as market, port, inn … captains should be randomly distributed and change locations every
+few time (set real 15min for now), and inn should be a place where we can hire crew and buy
+provisions."*
+
+- **Map city panel** (`SendFleet.tsx` shell → `CityTabs.tsx`): Market = `PortPrices` (read-only
+  ledger, `world.market`; a price slides `PriceTray` out `side-next`). Port = `CityHarbour.tsx`:
+  In port / Incoming, yours first then merchants, split by the one where-rule
+  (`merchantGroups.ts` `harbourSides`, replacing the five doing-word groups; Away is gone).
+  Inn = `PortInn` (captains this quarter hour with a "new faces in" countdown; crew stepper and a
+  new Supplies row → `PROVISION` via `useStepOrder`/`StepQuestion` for a fleet alongside).
+  `Send fleet` stays in the title and turns to Port with the fleets list; the anchorage hint now
+  shows only there. `alongsideAt` (domain/fleet/where.ts) is the one "who acts for this harbour"
+  rule, now shared by PORT and the map. Trays gained a `mode`/`trayMode` pass-through.
+- **City tap**: a tap on a harbour where your fleet is DOCKED opens the city (her hull is drawn on
+  the mark; `src/chart/hitTest.ts`, the one tie rule). She is first in its Port tab.
+- **0119 `the_inn_turns_over_every_quarter_hour`** (first drafted as 0120; renumbered 0119 so it
+  goes live first, the concurrent merchant migration takes 0120): `world.inn_shift()` (knob `inn_captain_rotate_minutes` = 15) is
+  the room's key in place of `world.game_day()` for both `world.inn` and the `cmd.hire_officer`
+  gate; `world.inn` serves `shift` and `turns_at`. Derived, no cron, no table. Self-asserted on the
+  local chain (`npm run db:apply`). **Not deployed.**
+
 ## 2026-10-14 — the city tray lists every merchant the harbour concerns, never blank — `osn-city-tray-merchants`
 
 Owner, on the live game: *"i press a city and i see no ship info. Why did this revert back?"*
@@ -8891,3 +8915,86 @@ Three foundation agents, on disjoint file domains:
 | 1 | Core reuse audit of `byeharu` | `docs/CORE_REUSE.md` |
 | 2 | Real-world port / region / goods dataset | `data/*.json`, `docs/WORLD_DATA.md` |
 | 3 | Game design, grounded in Uncharted Waters Origin research | `docs/DESIGN.md`, `docs/DESIGN_RESEARCH.md` |
+
+## 2026-10-15 — 0120: a merchant chooses her own loop — `osn-npc-free-routes` (NOT merged, NOT on prod)
+Owner: *"the merchant npc should have freedom too. 15% is too big. change to 5%, and is there a way
+for these ships, to change trading routes accordingly by itself finding the best solution for
+money?"* and *"some ships (bigger ships) must move outside the zone … far away between continents
+too for bigger profit."* Rows 133–134. Design and numbers: `docs/NPC_TRADERS.md` §16.
+- **The bar.** `npc_min_return_pct` 15 → 5. Same knob, same two readers (the keep test, the buy cap
+  at the moment of buying).
+- **One leg planner.** `public.npc_leg_lines(route, from, to, hold, crew, speed)` is 0114's
+  rank-filter-size-keep lifted out of `npc_plan`'s loop whole; it answers the lines, what they pay
+  and the leg's sailed distance. `npc_plan` (restated) composes it and no longer carries the keep
+  test, the buyer cap or the ranking call (asserted).
+- **The courses the world holds.** The server has no pathfinder (the course is the client's
+  proposal). `public.npc_known_legs(port)` = every merchant route's leg out of the harbour, and every
+  leg into it reversed; on the applied chain 995 authored legs, 1,804 both ways, 237 harbours,
+  median 7 ways out, 634 legs ≥ 2,000 nm (194 harbours have a long haul out).
+- **The choice, at a lap start.** `public.npc_loop_candidates`: out-and-back to the 5 nearest known
+  harbours, three-stop loops among them, and for a hold ≥ 200 tuns the 3 farthest known legs
+  ≥ 2,000 nm (or via a neighbour). Every destination must take her draft, be open, and lie within
+  the days of stores she can carry (her preset, raised through `cmd.provision_preset_save_for` up
+  to 90 days / half her hold). Score = ducats per real hour of the lap (sea time at her speed
+  through `time_compression`, plus the rest), never over less than a game-day — the daily cap lets a
+  parcel be bought once a game-day, and without that floor the first proof sent the Carreira da
+  Índia's nau to Porto (77,836/h on a five-minute hop). With it she goes to Luanda (62,110/h
+  against 28,185/h on her authored loop). She switches when the best beats hers by 10 %.
+- **The executor** (`cmd.run_standing_route`, sliced) re-reads the route, the stop count and the
+  stop she lies at after the lap-start plan, so the orders and the SAIL's course are the new loop's.
+- **A losing lap from trading is closed.** Prod (read-only) showed lap 10 of a route closed
+  2026-10-14 23:07 UTC with stock_in 105,894 sold for 92,688, all costs 0, net −13,206. The path:
+  the cut-loss line (0097 §4.1 / 0114 step 4) — a good refused `E_PRICE_LIMIT` on a SELL at a stop
+  in both of the last two closed laps — was written `SELL <good> ALL` with **no floor** (a named SELL
+  line with `at_profit = false` renders no `AT`), so a carried-in parcel was let go at whatever the
+  quay bid. Now the leg planner writes it as a named **at-profit** SELL and `cmd.standing_route_lines`
+  (sliced) adds `npc_sell_margin` only to the general SELL: a named at-profit SELL floors at what she
+  paid. Asserted: a 50 parcel renders `AT >= 50`, the general SELL at 40 renders 42. The basis itself
+  is sound (0081 blends a weighted average on load and leaves it alone on a partial unload, so the
+  lap identity conserves money). The other way a lap closes below zero is cargo taken by a STRIPPED
+  raid (0027) — not a trade, left as it is.
+- **Measured (PGlite, `scripts/db/measure-free-routes.mjs`, `measure-ballast-share.mjs`).** 60
+  merchant routes, each at a lap start, rolled back: at 15 % with no choice **45 of 60 (75 %)** plan
+  to sail empty; at 5 % with no choice 3 of 60 (5 %); at 5 % with the choice **0 of 60**, 39 of 60
+  change loop, ≈ 12 loops priced a route. A lap-start plan with the choice: mean 461 ms, max
+  1,230 ms (218 / 1,247 ms before — the save door is most of it). ≈ 830 merchants × 0.46 s ≈ 6.4
+  CPU-minutes per full round of lap starts, spread over the hours their laps take.
+  `cmd.standing_route_save_for` costs 0.3–0.7 s per save on PGlite (profiled; not the course loop —
+  a set-based rewrite of it was tried, measured 583 ms against 591, and retired). Not fixed here.
+- **Proof.** Full chain from zero on PGlite (110 files, 2,301 s, 110 receipts), then 0120 on the
+  verified 0118 snapshot (self-assert ok, ~3 s); `npx tsc -b` clean; `npm run db:proof` green —
+  12 proofs, 85/85 PASS markers (proof 12, the merchant soak, included). Also applied in the
+  intended order behind the inn migration (`osn-city-tabs`, to be numbered 0119; on that branch it
+  is still 0120 — one of the two must move before both merge): both receipts ok, no function
+  touched by both (the inn file re-cuts `world.inn` and `cmd.hire_officer`; this one touches the
+  merchant planner, `cmd.run_standing_route` and `cmd.standing_route_lines`).
+- **Not done.** No prod push, no `db push`, no PR merge. The branch holds the migration, the two
+  measurement scripts, the `LAST` pin, and the docs.
+
+## 2026-10-15 — a fleet's trading, lap by lap — `osn-lap-trades` (migration 0121, NOT deployed)
+Owner: *"by clicking fleet, i want to be able to click on laps, so far, a lap and so on which tells
+me what the ship has bought and sold, where it sold, and so on. info about trading."*
+- **What was found.** A lap's trades live only in its route-born `orders` (done BUY/SELL `result`:
+  good, qty, total; cut into stops by the SAILs' `args.dest`). The closer deletes every lap's orders
+  but the newest closed one at each close, and `npc_compact` deletes a merchant's done orders past
+  6 h unless they are the open lap's. So six of the seven "Last laps" pills had no detail anywhere.
+- **0121 `a_lap_keeps_its_trades`** (numbered 0118 + 3; 0119/0120 are the city-tabs and
+  merchant-routes slices). `standing_route_laps.trades jsonb`, compact
+  `[[port, [[good, qty, total]…sold], [[good, qty, total]…bought]]…]`, written by THE one closer
+  (one hunk sliced from its live body) from `public.lap_trades(lap)` — the one builder, also asked
+  live for the open lap. Kept on the newest `standing_route_lap_trades_keep` = 7 laps (the pills'
+  seven); the closer nulls older ones in the same call. Capped at 16 stops × 12 lines a side.
+  `world.fleet_trades(fleet)` — a read at a tap, a merchant's (switch on) or the caller's own fleet,
+  else E_NOT_FOUND like the card: the newest seven closed laps (every term of 0116's net, stock_in
+  = previous stock_out) with their stops, the open lap so far, and the 24-h day (route_earnings'
+  window) totalled with its goods summed by harbour. No basis, no per-line profit (0099's privacy).
+- **Measured** (PGlite, full 837-fleet roster, 12 rewound ticks, 1,905 laps closed): `trades`
+  111 bytes a lap on average (lap ≥ 2), 686 the largest (3 stops, 9 lines); seven kept per route ⇒
+  under 4 MB for 830 routes even if every lap were the largest. `public.lap_trades` 3.95 ms a call;
+  `world.fleet_trades` 7.1 ms a call, ~1.5 KB served. Write cost per close: the jsonb in the UPDATE
+  the closer already makes, plus one UPDATE nulling the lap that falls out of the seven.
+- **Client.** `src/live/TradeHistoryPanel.tsx` (side-next, ShipPanel's slot and style): a strip
+  (So far / A day, the lap under way, seven laps with their nets), a net plate (green/red), the
+  books, and every stop with Good · Qty · Price · Total for sold and bought. MerchantSheet's two
+  tiles and each lap pill open it; VoyageTray shows your own route's laps (from the routes book the
+  shell already holds) and opens the same panel.
