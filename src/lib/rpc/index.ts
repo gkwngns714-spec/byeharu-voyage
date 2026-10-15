@@ -165,7 +165,7 @@ export function worldBuyCapacity(fleetId: string, goodId: string): Promise<RpcRe
  * WHAT A CREW OF N COSTS PER DAY AT SEA (0086) — `{crew, per_day, per_day_short_rations}`, for
  * any count, from `public.crew_wages`: the same sum `voyage.settle` adds to what the fleet owes
  * on every settled voyage-day. Since 0128 it is PAID only out of a sale's profit (never past it);
- * what the sales do not cover is forgiven at the next departure.
+ * the rest is carried to later profitable sales (capped at wages_owed_cap_days).
  *
  * @param crew the count to price, or null for the crew aboard now.
  */

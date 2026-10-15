@@ -5,7 +5,8 @@
 -- ── THE OWNER'S WORDS ───────────────────────────────────────────────────────────────────────────
 -- 2026-10-15: *"because of wages, ships are losing too much money. pay wages only when a profit is
 -- made."* — the same rule as his earlier "tax or any fees only when a profit is made" (0122's
--- public.profit_tax), now for the crew.
+-- public.profit_tax), now for the crew. Wages are DEFERRED to a profit, never dodged: hopping from
+-- port to port without selling does not wipe them.
 --
 -- ── WHAT WAS FOUND (prod, since 0122 set npc_cost_mult 1 at 06:00 UTC) ──────────────────────────
 -- ~90 % of merchant laps lose: a lap sells ~3,300, buys ~2,900 and pays ~300-430 in wages
@@ -13,57 +14,62 @@
 -- passage earned, so a thin margin became a loss. As a stopgap npc_cost_mult was set to 0 on prod.
 --
 -- ── THE RULE (one authority, every ship — a player's and a merchant's by the same lines) ────────
---   * A SEA-DAY PAYS NO WAGE. voyage.settle adds the day's wage — the same figure as before,
+--   * A SEA-DAY PAYS NO WAGE. voyage.settle hands the day's wage — the same figure as before,
 --     public.crew_wages × public.running_cost_mult, still written into the day's payload — to
---     public.fleet_wages.owed (NEW side table). Nothing leaves the purse at sea.
---   * A SALE PAYS THEM OUT OF ITS PROFIT. cmd.do_sell, after 0122's profit tax, pays
---     public.wages_from_profit(owed, profit - tax) = min(owed, profit - tax), and nothing when that
---     is not positive (a loss, a break-even, a cost the hold does not know). So a sale is never
---     turned into a loss by its wages. The money moves through public.pay_wages (NEW: owed down,
---     then public.pay_city(..., 'WAGES', ...) — a WAGES ledger row, and lit, a WAGES flow INTO THE
---     CITY OF THE SALE). The SOLD event and the result carry `wages`; `net` is after tax and wages.
---   * WHAT THE PASSAGE'S SALES DO NOT COVER IS FORGIVEN when she next sails: voyage.depart — the
---     one departure, a player's SAIL and a merchant's leg alike — deletes her fleet_wages row. "A passage's
---     sales" are therefore every sale she makes between one arrival and the next departure.
---   * SUPPLIES AND REPAIRS STAY AS THEY ARE: they are purchases, paid when made (0122's
---     PROVISION / REPAIR rows, × running_cost_mult for a merchant), not wages.
---   * THE LAP (cmd.standing_route_close_lap) books `wages` = Σ of its SELLs' paid `wages` — what
---     left her purse, as sold / bought / taxes are — instead of the wage owed per sea-day. Its net
---     formula is unchanged.
+--     public.owe_wages (NEW), which adds it to public.fleet_wages.owed (NEW side table). Nothing
+--     leaves the purse at sea.
+--   * THE DEBT CARRIES OVER from passage to passage, capped at wages_owed_cap_days (knob, 30) of
+--     that day's wage: what lies above the cap is forgiven, so a chronically losing ship is not
+--     buried. Nothing else forgives it.
+--   * IT IS PAID ONLY OUT OF PROFIT, AT A PORT VISIT. cmd.do_sell, after 0122's profit tax, hands
+--     the sale's after-tax profit (signed; null when the cost is unknown) to public.pay_wages (NEW,
+--     THE ONE MOVER), which keeps the visit's running NET after-tax profit and pays
+--       public.wages_from_profit(owed, least(this sale's profit, visit net − already paid this visit))
+--     = never more than this sale's profit (a sale never becomes a loss) and never more than the
+--     visit's net (a losing sale at the same port reduces what can be paid). A visit is the span
+--     between two sea-days: owe_wages, which runs only at sea, starts a fresh visit. The payment is
+--     public.pay_city(..., 'WAGES', ...) — a WAGES ledger row, and lit, a WAGES flow INTO THE CITY OF
+--     THE SALE. do_sell's result carries `wages`; its `net` is after tax and wages.
+--   * SUPPLIES AND REPAIRS STAY AS THEY ARE: they are purchases, paid when made (0122's PROVISION /
+--     REPAIR rows, × running_cost_mult for a merchant), not wages.
+--   * THE LAP (cmd.standing_route_close_lap) books `wages` = Σ of its SELLs' paid `wages` — what left
+--     her purse, as sold / bought / taxes are — instead of the wage owed per sea-day. Net formula
+--     unchanged.
 --   * THE PLANNER (public.npc_leg_lines) keeps a parcel when it pays after the profit tax (and
 --     npc_min_return_pct), no longer only when it beats the whole leg's wage bill; the leg's
 --     `profit` is its profit less public.wages_from_profit(leg wages, profit) — the same rule the
---     sale pays by, so npc_plan prices a loop by what it really leaves her and never refuses one
---     that pays.
---   * npc_cost_mult goes back to 1 (the owner's full-cost decision stands; the rule now protects
---     merchants).
+--     sale pays by, so npc_plan never refuses a loop that pays.
+--   * npc_cost_mult goes back to 1 (the owner's full-cost decision stands; the rule protects merchants).
 --
 -- ── WHAT IT DOES NOT DO ─────────────────────────────────────────────────────────────────────────
--- No new entry point, no client write, no cron. voyages.wages_paid (0122) is kept and no longer
--- added to; the arrival still posts what it holds (days paid before this file). A fleet at sea at deploy time owes only the days settled after it. world.crew_cost and
--- the Inn's per-day quote are unchanged (the day's wage is the same figure; when it is paid moved).
+-- No new entry point, no client write, no cron. voyages.wages_paid (0122) is kept and no longer added
+-- to; the arrival still posts what it holds (days paid before this file). A fleet at sea at deploy
+-- time owes only the days settled after it. world.crew_cost and the Inn's per-day quote are
+-- unchanged (the day's wage is the same figure; when it is paid moved). voyage.depart is untouched.
 --
--- ── THE PROBES LOCK NO LIVE SHIP ─────────────────────────────────────────────────────────────────
--- The self-assert's player and merchant are its own (new_house, npc_found), rolled back; no live
--- merchant fleet, route or house row is written. The planner probe only READS live routes. No live
--- table is ALTERed or FK-referenced (the owed book is a new side table); lock_timeout 5 s; no LOCK
--- TABLE, no set role, no begin/commit — db push runs the file as one implicit transaction.
+-- ── LOCKS, AND THE PROBES ───────────────────────────────────────────────────────────────────────
+-- lock_timeout 5 s; no LOCK TABLE, no set role, no begin/commit (db push runs the file as one
+-- implicit transaction). fleet_wages.fleet_id references fleets ON DELETE CASCADE: creating that FK
+-- takes SHARE ROW EXCLUSIVE on fleets until commit (the file's run, seconds) — the arrivals sweep's
+-- fleet writes wait that long. The self-assert's player and merchant are its own (new_house,
+-- npc_found), rolled back; no live merchant fleet, route or house is written; the planner probe
+-- only READS live routes; the sales use a good no merchant route trades at LIS / FNC, so no live
+-- merchant line waits on the probe's market rows.
 --
 -- ── ROLLBACK ────────────────────────────────────────────────────────────────────────────────────
--- npc_cost_mult 0 by knob (instant). The code: one forward migration re-cutting the seven bodies —
+-- npc_cost_mult 0 by knob (instant). The code: one forward migration re-cutting the six bodies —
 -- every OLD hunk is in this file verbatim (hunks_0128.old) and the self-assert proves each live body
--- reverses to its pre-image by them; then drop pay_wages, wages_from_profit, fleet_wages.
+-- reverses to its pre-image by them; then drop owe_wages, pay_wages, wages_from_profit, fleet_wages.
 --
--- SUPERSEDES: voyage.settle (0114 as cut by 0122/0123), voyage.depart (0047), cmd.do_sell (0122),
+-- SUPERSEDES: voyage.settle (0114 as cut by 0122/0123/0125/0127), cmd.do_sell (0122),
 -- public.npc_leg_lines (0120 as cut by 0122), cmd.standing_route_close_lap (0116 as cut by
--- 0121/0122), public.running_cost_mult and public.route_earnings (comment lines only) — hunks
--- sliced from the LIVE bodies (LF-normalised), each asserted to occur exactly once. Self-asserts
--- hold AS FOUND; every probe rolls back.
--- VERSION: 0128. Applies on prod head (0126 + 0125). Its voyage.settle hunks are all in the
--- per-sea-day wage charge (the declaration, the charge, the day's UPDATE): clear of 0125's delay arms
--- and of the arrival's report tail and wages-to-harbour block, which this file leaves as they are —
--- that block still posts, at arrival, the wages a passage settled BEFORE this file had already paid
--- (voyages.wages_paid), and posts nothing for a passage begun after it (wages_paid stays 0).
+-- 0121/0122), public.running_cost_mult and public.route_earnings (comment lines only) — hunks sliced
+-- from the LIVE bodies (LF-normalised), each asserted to occur exactly once. Self-asserts hold AS
+-- FOUND; every probe rolls back.
+-- VERSION: 0128. Applies on prod head 0127. Its voyage.settle hunks are all in the per-sea-day wage
+-- charge (the declaration, the charge, the day's UPDATE): clear of 0125's delay arms and of 0127's
+-- arrival arm; the arrival's wages-to-harbour block is left as it is (it still posts, at arrival,
+-- wages a passage paid BEFORE this file; nothing for a passage begun after it).
 
 do $guard$
 begin
@@ -77,7 +83,6 @@ select f.fn,
        replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl
   from unnest(array['voyage.settle(uuid, timestamptz)',
-                    'voyage.depart(uuid, jsonb, uuid, uuid, timestamptz)',
                     'cmd.do_sell(uuid, jsonb)',
                     'public.npc_leg_lines(uuid, uuid, uuid, numeric, integer, numeric)',
                     'cmd.standing_route_close_lap(uuid, timestamptz)',
@@ -86,19 +91,27 @@ select f.fn,
 
 create temp table before_0128 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
-       public.wc('npc_cost_mult') as npc_cost_mult;
+       public.wc('npc_cost_mult') as npc_cost_mult,
+       (select count(*) from public.world_config where key = 'wages_owed_cap_days') as knobs_found;
 
--- ── 2. THE BOOK: what a fleet owes her crew ────────────────────────────────────────────────────
--- A SIDE TABLE, not a fleets column: no ALTER and no FK on a table the arrivals tick writes (0127's
--- lesson), so the push takes no ACCESS EXCLUSIVE lock the 15 s sweep would queue behind.
+-- ── 2. THE KNOB AND THE BOOK ───────────────────────────────────────────────────────────────────
+insert into public.world_config (key, value, description) values
+  ('wages_owed_cap_days', to_jsonb(30),
+   '0128: a fleet carries unpaid wages from passage to passage up to this many days of her day''s wage '
+   '(public.owe_wages); what lies above is forgiven.')
+on conflict (key) do nothing;
+
 create table if not exists public.fleet_wages (
-  fleet_id uuid   primary key,
-  owed     bigint not null default 0 check (owed >= 0)
+  fleet_id   uuid   primary key references public.fleets(id) on delete cascade,
+  owed       bigint not null default 0 check (owed >= 0),
+  visit_net  bigint not null default 0,
+  visit_paid bigint not null default 0 check (visit_paid >= 0)
 );
 comment on table public.fleet_wages is
-  '0128: the wages a fleet''s crew have earned at sea and not yet been paid. voyage.settle adds each sea-day''s '
-  'wage; public.pay_wages pays it out of a sale''s profit (cmd.do_sell); voyage.depart deletes the row (forgiven). '
-  'No row = nothing owed. No FK to fleets (see above); a row of a fleet that is gone is inert.';
+  '0128: what a fleet''s crew are owed and not yet paid, carried from passage to passage (capped at '
+  'wages_owed_cap_days of the day''s wage), and the current port visit''s running net after-tax profit and '
+  'wages paid. Written by public.owe_wages (each sea-day; starts a fresh visit) and public.pay_wages (each '
+  'sale) alone. No row = nothing owed.';
 alter table public.fleet_wages enable row level security;
 revoke all on table public.fleet_wages from public, anon, authenticated;
 comment on column public.voyages.wages_paid is
@@ -106,45 +119,79 @@ comment on column public.voyages.wages_paid is
   'pays no wage (what a voyage held before 0128 still reaches its harbour at arrival); wages are paid out of '
   'a sale''s profit (public.fleet_wages, public.pay_wages).';
 
--- ── 3. THE RULE AND THE MOVER ──────────────────────────────────────────────────────────────────
+-- ── 3. THE RULE, THE DEBT AND THE MOVER ────────────────────────────────────────────────────────
 create or replace function public.wages_from_profit(p_owed numeric, p_profit numeric)
 returns numeric
 language sql
 immutable
 set search_path = public, pg_temp
 as $$
-  -- 0128: THE RULE. Of what she owes her crew, a sale pays at most its profit (after the profit tax):
-  -- nothing on a loss, a break-even, or a profit the game cannot know (null). cmd.do_sell pays by it;
-  -- the planner (npc_leg_lines) prices a leg by it.
+  -- 0128: THE RULE. Of what she owes her crew, a profit pays at most itself: nothing on a loss, a
+  -- break-even, or a profit the game cannot know (null). public.pay_wages pays by it; the planner
+  -- (npc_leg_lines) prices a leg by it.
   select case when p_owed > 0 and p_profit > 0 then least(p_owed, p_profit) else 0 end
 $$;
 
-create or replace function public.pay_wages(p_fleet uuid, p_port uuid, p_amount bigint, p_event uuid default null)
+create or replace function public.owe_wages(p_fleet uuid, p_wage bigint)
 returns bigint
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0128: THE ONE MOVER of a crew's pay. What the fleet owes comes down by p_amount (refused if she
--- does not owe it), then the house pays the city of the sale (public.pay_city: a WAGES ledger row;
--- lit, a WAGES flow). A merchant's and a player's are paid by these lines. Returns what was paid.
+-- 0128: A SEA-DAY'S WAGE IS OWED. Added to what the fleet already owes (carried from passage to
+-- passage), capped at wages_owed_cap_days × this day's wage — the rest is forgiven. A sea-day ends
+-- any port visit, so the visit's figures start afresh. Called by voyage.settle alone. Returns owed.
 declare
+  v_owed bigint;
+begin
+  if coalesce(p_wage, 0) <= 0 then
+    return null;
+  end if;
+  insert into public.fleet_wages as w (fleet_id, owed)
+  values (p_fleet, least(p_wage, public.wc_int('wages_owed_cap_days') * p_wage))
+  on conflict (fleet_id) do update
+     set owed = least(w.owed + excluded.owed, public.wc_int('wages_owed_cap_days') * p_wage),
+         visit_net = 0, visit_paid = 0
+  returning w.owed into v_owed;
+  return v_owed;
+end $$;
+
+create or replace function public.pay_wages(p_fleet uuid, p_port uuid, p_profit bigint, p_event uuid default null)
+returns bigint
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+-- 0128: THE ONE MOVER of a crew's pay. p_profit is this sale's profit after the profit tax (signed;
+-- null when the hold did not know the cost). The visit's net is kept; the pay is
+-- wages_from_profit(owed, least(this sale's profit, visit net − paid this visit)) — never more than
+-- the sale's own profit, never more than the visit's net. Then the house pays the city of the sale
+-- (public.pay_city: a WAGES ledger row; lit, a WAGES flow). A merchant's and a player's are paid by
+-- these lines. Returns what was paid.
+declare
+  w      public.fleet_wages%rowtype;
+  v_pay  bigint;
   v_player uuid;
 begin
-  if coalesce(p_amount, 0) <= 0 then
-    return 0;
+  select * into w from public.fleet_wages where fleet_id = p_fleet for update;
+  if w.fleet_id is null then
+    return 0;   -- she has never owed a wage
   end if;
-  update public.fleet_wages set owed = owed - p_amount
-   where fleet_id = p_fleet and owed >= p_amount;
-  if not found then
-    raise exception 'pay_wages: fleet % does not owe % d.', p_fleet, p_amount;
+  w.visit_net := w.visit_net + coalesce(p_profit, 0);
+  v_pay := case when p_profit is null then 0
+                else round(public.wages_from_profit(w.owed, least(p_profit, w.visit_net - w.visit_paid)))::bigint end;
+  update public.fleet_wages
+     set owed = w.owed - v_pay, visit_net = w.visit_net, visit_paid = w.visit_paid + v_pay
+   where fleet_id = p_fleet;
+  if v_pay > 0 then
+    select f.player_id into v_player from public.fleets f where f.id = p_fleet;
+    perform public.pay_city(v_player, p_port, 'WAGES', v_pay, p_event);
   end if;
-  select f.player_id into v_player from public.fleets f where f.id = p_fleet;
-  perform public.pay_city(v_player, p_port, 'WAGES', p_amount, p_event);
-  return p_amount;
+  return v_pay;
 end $$;
 
 revoke all on function public.wages_from_profit(numeric, numeric)     from public, anon, authenticated;
+revoke all on function public.owe_wages(uuid, bigint)                 from public, anon, authenticated;
 revoke all on function public.pay_wages(uuid, uuid, bigint, uuid)     from public, anon, authenticated;
 
 -- ── 4. THE HUNKS (old = verbatim from the live bodies; new = what replaces it) ─────────────────
@@ -168,10 +215,9 @@ $h$    if v_wages > 0 then
 $h$,
 $h$    if v_wages > 0 then
       -- 0128: OWED, NOT PAID (owner, 2026-10-15: "pay wages only when a profit is made"). The day's
-      -- wage is added to what the fleet owes her crew; cmd.do_sell pays it out of a sale's profit
-      -- (public.pay_wages), and voyage.depart forgives what the passage's sales did not cover.
-      insert into public.fleet_wages (fleet_id, owed) values (p_fleet, v_wages)
-      on conflict (fleet_id) do update set owed = public.fleet_wages.owed + excluded.owed;
+      -- wage joins what the fleet owes her crew (public.owe_wages: carried, capped); cmd.do_sell pays
+      -- it out of profit (public.pay_wages).
+      perform public.owe_wages(p_fleet, v_wages);
     end if;
 $h$),
 ('voyage.settle(uuid, timestamptz)', 3,
@@ -182,15 +228,6 @@ $h$,
 $h$    update public.voyages set last_settled_day = d where id = v.id;   -- 0128: a sea-day pays no wage
 $h$),
 
--- voyage.depart: what the last passage's sales did not cover is forgiven
-('voyage.depart(uuid, jsonb, uuid, uuid, timestamptz)', 1,
-$h$  return v_voyage;
-end$h$,
-$h$  delete from public.fleet_wages where fleet_id = p_fleet;   -- 0128: what the last passage's sales did not cover is forgiven
-
-  return v_voyage;
-end$h$),
-
 -- cmd.do_sell: the crew are paid out of the profit, after the tax
 ('cmd.do_sell(uuid, jsonb)', 1,
 $h$  v_fit     numeric;
@@ -200,31 +237,18 @@ $h$,
 $h$  v_fit     numeric;
   v_wages   bigint := 0;   -- 0128: the wages this sale pays out of its profit
 begin
-  select * into f from public.fleets where id = p_fleet for update;   -- 0128: what she owes is read and paid here
+  select * into f from public.fleets where id = p_fleet for update;   -- 0128: one sale of hers at a time pays her crew
 $h$),
 ('cmd.do_sell(uuid, jsonb)', 2,
-$h$  v_tax    := public.profit_tax(f.port_id, v_profit);   -- 0122: on the profit, nothing else
+$h$    perform public.pay_city(f.player_id, f.port_id, 'TAX', v_tax, null);
+  end if;
 $h$,
-$h$  v_tax    := public.profit_tax(f.port_id, v_profit);   -- 0122: on the profit, nothing else
-  v_wages  := round(public.wages_from_profit(
-                (select w.owed from public.fleet_wages w where w.fleet_id = p_fleet), v_profit - v_tax))::bigint;   -- 0128: never past it
+$h$    perform public.pay_city(f.player_id, f.port_id, 'TAX', v_tax, null);
+  end if;
+  -- 0128: then the crew, out of what the tax left (the visit's net, never past this sale's profit).
+  v_wages := public.pay_wages(p_fleet, f.port_id, v_profit - v_tax, null);
 $h$),
 ('cmd.do_sell(uuid, jsonb)', 3,
-$h$      'basis', v_basis, 'cost', v_cost, 'profit', v_profit, 'tax', v_tax, 'net', q.total - v_tax,
-$h$,
-$h$      'basis', v_basis, 'cost', v_cost, 'profit', v_profit, 'tax', v_tax, 'wages', v_wages,
-      'net', q.total - v_tax - v_wages,
-$h$),
-('cmd.do_sell(uuid, jsonb)', 4,
-$h$    perform public.pay_city(f.player_id, f.port_id, 'TAX', v_tax, null);
-  end if;
-$h$,
-$h$    perform public.pay_city(f.player_id, f.port_id, 'TAX', v_tax, null);
-  end if;
-  -- 0128: then the crew, out of what the tax left — a WAGES row, paid to the city of the sale.
-  perform public.pay_wages(p_fleet, f.port_id, v_wages, null);
-$h$),
-('cmd.do_sell(uuid, jsonb)', 5,
 $h$                            'tax', v_tax, 'net', q.total - v_tax,
 $h$,
 $h$                            'tax', v_tax, 'wages', v_wages, 'net', q.total - v_tax - v_wages,
@@ -313,6 +337,34 @@ as $$ select coalesce((select w.owed from public.fleet_wages w where w.fleet_id 
 create or replace function pg_temp.set_owed_0128(p_fleet uuid, p_owed bigint) returns void language sql
 as $$ insert into public.fleet_wages (fleet_id, owed) values (p_fleet, p_owed)
       on conflict (fleet_id) do update set owed = excluded.owed $$;
+-- a good no merchant route trades at the port, offered there with stock, under the house's cap.
+create or replace function pg_temp.probe_good_0128(p_port uuid, p_player uuid, p_fleet uuid)
+returns table (id uuid, code text) language sql
+as $$
+  select g1.id, g1.code
+    from public.port_goods pg
+    join public.goods g1 on g1.id = pg.good_id
+    join public.ports pr on pr.id = pg.port_id
+   where pg.port_id = p_port and pg.stock >= 40 and public.port_offers(p_port, g1.id)
+     and not public.culture_refuses(pr.culture, g1.culture_mask)
+     and world.daily_cap_remaining(p_player, p_port, g1.id) >= 60
+     and public.fleet_free_hold(p_fleet) >= 10 * g1.bulk
+     and not exists (select 1 from public.standing_route_lines l
+                       join public.standing_route_stops s on s.route_id = l.route_id and s.ord = l.stop_ord
+                      where l.good_id = g1.id and s.port_id = p_port)
+   order by g1.bulk, g1.code limit 1
+$$;
+-- sell 10 of a good she was just given at a chosen profit (cost = the quote's total − p_profit).
+create or replace function pg_temp.sell_at_0128(p_fleet uuid, p_port uuid, p_good uuid, p_code text, p_profit bigint)
+returns jsonb language plpgsql
+as $$
+declare q record;
+begin
+  update public.ships set cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb where fleet_id = p_fleet;
+  select * into q from world.quote(p_port, p_good, 10, 'sell', null, p_fleet);
+  perform public.fleet_load(p_fleet, p_code, 10, greatest(0, q.total - p_profit) / 10.0);
+  return cmd.do_sell(p_fleet, jsonb_build_object('good', p_good, 'qty', 10));
+end $$;
 
 -- ── 7. SELF-ASSERT ─────────────────────────────────────────────────────────────────────────────
 do $$
@@ -323,11 +375,11 @@ declare
   v_back     text;
   h          record;
   v_n        int;
-  v_bad      int;
   v_list     text[];
   v_player   uuid;
   v_fleet    uuid;
   v_voy      uuid;
+  v_voy2     uuid;
   v_lis      uuid;
   v_fnc      uuid;
   v_leg      jsonb;
@@ -336,13 +388,12 @@ declare
   v_code     text;
   v_owed     bigint;
   v_days     bigint;
-  v_q        record;
   v_r        jsonb;
-  v_ev       jsonb;
+  v_r2       jsonb;
   v_rows     bigint;
+  v_cap      bigint;
   v_m        uuid;
   v_mfleet   uuid;
-  v_mport    uuid;
   v_mgood    uuid;
   v_mcode    text;
   v_route    uuid;
@@ -375,9 +426,9 @@ begin
   end loop;
 
   -- (b) ONE AUTHORITY. Positive control: settle's pre-image charged WAGES through credit(). Now the
-  --     ONLY live body that moves a WAGES charge is pay_wages; the only writers of fleet_wages are
-  --     settle (accrue), depart (forgive) and pay_wages (pay); the rule is read by the sale and the
-  --     planner; neither the rule nor the mover tells a merchant from a player.
+  --     ONLY live body that charges a house WAGES is pay_wages; the only writers of fleet_wages are
+  --     owe_wages and pay_wages; settle owes through owe_wages, the sale pays through pay_wages, the
+  --     mover and the planner read the one rule; nothing of it tells a merchant from a player.
   if strpos((select def from defs_before_0128 where fn = 'voyage.settle(uuid, timestamptz)'), $q$public.credit(f.player_id, 'WAGES'$q$) = 0 then
     raise exception '0128 self-assert FAIL: the scan''s positive control — settle''s pre-image did not charge WAGES';
   end if;
@@ -391,27 +442,35 @@ begin
   select array_agg(n.nspname || '.' || p.proname order by n.nspname || '.' || p.proname) into v_list
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public', 'cmd', 'world', 'voyage')
-     and p.prosrc ~* '(insert into|update|delete from)\s+public\.fleet_wages'
-     and p.proname not in ('recut_0128');
-  if v_list is distinct from array['public.pay_wages', 'voyage.depart', 'voyage.settle'] then
-    raise exception '0128 self-assert FAIL: the live writers of fleet_wages are %, not settle / depart / pay_wages', v_list;
+     and p.prosrc ~* '(insert into|update|delete from)\s+public\.fleet_wages';
+  if v_list is distinct from array['public.owe_wages', 'public.pay_wages'] then
+    raise exception '0128 self-assert FAIL: the live writers of fleet_wages are %, not owe_wages / pay_wages', v_list;
   end if;
-  if strpos(pg_get_functiondef('cmd.do_sell(uuid, jsonb)'::regprocedure), 'public.wages_from_profit(') = 0
-     or strpos(pg_get_functiondef('cmd.do_sell(uuid, jsonb)'::regprocedure), 'public.pay_wages(p_fleet, f.port_id, v_wages, null)') = 0
+  if strpos(pg_get_functiondef('voyage.settle(uuid, timestamptz)'::regprocedure), 'public.owe_wages(p_fleet, v_wages)') = 0
+     or strpos(pg_get_functiondef('voyage.settle(uuid, timestamptz)'::regprocedure), 'running_cost_mult(f.player_id)') = 0
+     or strpos(pg_get_functiondef('cmd.do_sell(uuid, jsonb)'::regprocedure), 'public.pay_wages(p_fleet, f.port_id, v_profit - v_tax, null)') = 0
+     or strpos(pg_get_functiondef('public.pay_wages(uuid, uuid, bigint, uuid)'::regprocedure), 'public.wages_from_profit(') = 0
      or strpos(pg_get_functiondef('public.npc_leg_lines(uuid, uuid, uuid, numeric, integer, numeric)'::regprocedure),
                'public.wages_from_profit(v_wages, v_profit)') = 0
-     or strpos(pg_get_functiondef('public.pay_wages(uuid, uuid, bigint, uuid)'::regprocedure), 'is_npc') > 0
-     or strpos(pg_get_functiondef('public.wages_from_profit(numeric, numeric)'::regprocedure), 'is_npc') > 0
-     or strpos(pg_get_functiondef('voyage.settle(uuid, timestamptz)'::regprocedure), 'running_cost_mult(f.player_id)') = 0 then
-    raise exception '0128 self-assert FAIL: the sale or the planner does not read the one rule, the wage lost running_cost_mult, or the rule reads is_npc';
+     or exists (select 1 from pg_proc p where p.proname in ('pay_wages', 'owe_wages', 'wages_from_profit')
+                   and p.pronamespace = 'public'::regnamespace and strpos(p.prosrc, 'is_npc') > 0) then
+    raise exception '0128 self-assert FAIL: settle, the sale, the mover or the planner does not compose the one rule, or it reads is_npc';
+  end if;
+  if not exists (select 1 from pg_constraint c where c.conrelid = 'public.fleet_wages'::regclass and c.contype = 'f'
+                   and c.confrelid = 'public.fleets'::regclass and c.confdeltype = 'c') then
+    raise exception '0128 self-assert FAIL: fleet_wages does not go with its fleet (ON DELETE CASCADE)';
   end if;
 
-  -- (c) THE WALL: the two new functions are server-only; no new entry point; no client write.
-  if has_function_privilege('anon', 'public.pay_wages(uuid, uuid, bigint, uuid)', 'execute')
-     or has_function_privilege('authenticated', 'public.pay_wages(uuid, uuid, bigint, uuid)', 'execute')
+  -- (c) THE WALL: the new functions and the table are server-only; no new entry point; no client write.
+  if has_function_privilege('authenticated', 'public.pay_wages(uuid, uuid, bigint, uuid)', 'execute')
+     or has_function_privilege('anon', 'public.pay_wages(uuid, uuid, bigint, uuid)', 'execute')
+     or has_function_privilege('authenticated', 'public.owe_wages(uuid, bigint)', 'execute')
+     or has_function_privilege('anon', 'public.owe_wages(uuid, bigint)', 'execute')
+     or has_function_privilege('authenticated', 'public.wages_from_profit(numeric, numeric)', 'execute')
      or has_function_privilege('anon', 'public.wages_from_profit(numeric, numeric)', 'execute')
-     or has_function_privilege('authenticated', 'public.wages_from_profit(numeric, numeric)', 'execute') then
-    raise exception '0128 self-assert FAIL: pay_wages or wages_from_profit is client-callable';
+     or has_table_privilege('authenticated', 'public.fleet_wages', 'select')
+     or has_table_privilege('anon', 'public.fleet_wages', 'select') then
+    raise exception '0128 self-assert FAIL: a wage function or the book is client-reachable';
   end if;
   if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0128)
      or exists (select 1 from public.client_rpc_entry_points() e
@@ -422,16 +481,16 @@ begin
     raise exception '0128 self-assert FAIL: the registry, the grant wall or the read wall';
   end if;
 
-  -- (d) THE RULE, on its grid: a loss, a break-even and an unknown pay nothing; a profit pays
-  --     min(owed, profit); nothing owed, nothing paid.
+  -- (d) THE RULE, on its grid; the knobs.
   if public.wages_from_profit(500, -10) <> 0 or public.wages_from_profit(500, 0) <> 0
      or public.wages_from_profit(500, null) <> 0 or public.wages_from_profit(500, 200) <> 200
      or public.wages_from_profit(500, 800) <> 500 or public.wages_from_profit(0, 800) <> 0
      or public.wages_from_profit(null, 800) <> 0 then
     raise exception '0128 self-assert FAIL: wages_from_profit is not min(owed, profit) above zero';
   end if;
-  if public.wc_num('npc_cost_mult') <> 1 then
-    raise exception '0128 self-assert FAIL: npc_cost_mult is %, not 1', public.wc('npc_cost_mult');
+  if public.wc_num('npc_cost_mult') <> 1 or (select knobs_found from before_0128) <> 0
+     or public.wc_int('wages_owed_cap_days') <> 30 then
+    raise exception '0128 self-assert FAIL: npc_cost_mult is not 1, or wages_owed_cap_days is not this file''s 30';
   end if;
 
   -- (e) THE PROBES, rolled back.
@@ -448,13 +507,9 @@ begin
     select id into v_fleet from public.fleets where player_id = v_player;
     perform public.credit(v_player, 'PROBE_0128', 1000000);
     update public.ships set cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb where fleet_id = v_fleet;
-    perform pg_temp.set_owed_0128(v_fleet, 4321);   -- a last passage's leftover
-    v_voy := voyage.depart(v_fleet, voyage.segments_from_course(v_leg), v_lis, v_fnc, now() - interval '60 days');
-    if pg_temp.owed_0128(v_fleet) <> 0 then
-      raise exception '0128 self-assert FAIL: a departure did not forgive what was owed';
-    end if;
     select count(*) into v_rows from public.ledger where player_id = v_player and kind = 'WAGES';
-    perform voyage.settle(v_fleet, now());
+    v_voy := voyage.depart(v_fleet, voyage.segments_from_course(v_leg), v_lis, v_fnc, now() - interval '60 days');
+    perform voyage.settle(v_fleet, now() - interval '40 days');
     if (select status from public.voyages where id = v_voy) <> 'ARRIVED'
        or (select status from public.fleets where id = v_fleet) <> 'DOCKED' then
       raise exception '0128 self-assert FAIL: the probe passage did not arrive';
@@ -469,86 +524,87 @@ begin
     end if;
     v_notes := v_notes || format('a %s-day passage owed %s d. and paid none at sea; ', v_n, v_owed);
 
-    -- THE GOOD she sells at FNC.
-    select g1.id, g1.code into v_good, v_code
-      from public.port_goods pg
-      join public.goods g1 on g1.id = pg.good_id
-      join public.ports pr on pr.id = pg.port_id
-     where pg.port_id = v_fnc and pg.stock >= 40 and public.port_offers(v_fnc, g1.id)
-       and not public.culture_refuses(pr.culture, g1.culture_mask)
-       and world.daily_cap_remaining(v_player, v_fnc, g1.id) >= 60
-       and public.fleet_free_hold(v_fleet) >= 10 * g1.bulk
-     order by g1.bulk, g1.code limit 1;
+    -- HOPPING DOES NOT DODGE THEM: she sells nothing at FNC, sails on to LIS, and the carried wages
+    -- of BOTH passages are paid out of LIS's profit.
+    v_voy2 := voyage.depart(v_fleet, voyage.segments_from_course(v_back_c), v_fnc, v_lis, now() - interval '30 days');
+    perform voyage.settle(v_fleet, now() - interval '10 days');
+    if (select status from public.voyages where id = v_voy2) <> 'ARRIVED' then
+      raise exception '0128 self-assert FAIL: the hop did not arrive';
+    end if;
+    select v_owed + coalesce(sum((ve.payload->>'wages')::bigint), 0) into v_days
+      from public.voyage_events ve where ve.voyage_id = v_voy2 and ve.payload ? 'wages';
+    if pg_temp.owed_0128(v_fleet) <> v_days then
+      raise exception '0128 self-assert FAIL: the hop did not carry the first passage''s % d. (owes %, expected %)',
+        v_owed, pg_temp.owed_0128(v_fleet), v_days;
+    end if;
+    select g.id, g.code into v_good, v_code from pg_temp.probe_good_0128(v_lis, v_player, v_fleet) g;
+    if v_good is null then
+      raise exception '0128 self-assert FAIL: no good at LIS to probe a sale with';
+    end if;
+    perform public.treasury_post(v_lis, 'SEED', 100000000);   -- lit: a purse that can buy (dark: nothing)
+    perform public.treasury_post(v_fnc, 'SEED', 100000000);
+    v_r := pg_temp.sell_at_0128(v_fleet, v_lis, v_good, v_code, 100000);
+    if (v_r->>'profit')::bigint - (v_r->>'tax')::bigint <= v_days or (v_r->>'wages')::bigint <> v_days
+       or pg_temp.owed_0128(v_fleet) <> 0
+       or (v_r->>'net')::bigint <> (v_r->>'total')::bigint - (v_r->>'tax')::bigint - (v_r->>'wages')::bigint
+       or not exists (select 1 from public.ledger where player_id = v_player and kind = 'WAGES' and ducats_delta = -v_days) then
+      raise exception '0128 self-assert FAIL: the hop''s carried % d. were not paid out of LIS''s profit: %', v_days, v_r;
+    end if;
+    if public.city_treasury_on()
+       and not exists (select 1 from public.treasury_flows tf where tf.port_id = v_lis and tf.kind = 'WAGES'
+                        and tf.ducats = v_days) then
+      raise exception '0128 self-assert FAIL: lit, the wages were not paid into the city of the sale';
+    end if;
+    v_notes := v_notes || format('a hop carried both passages'' %s d. and LIS''s profit paid them; ', v_days);
+
+    -- A LOSS AND A PROFIT AT ONE PORT PAY AT MOST THEIR NET. Owed 1000 at a fresh visit (a sea-day
+    -- starts one): a sale at a loss of 50 pays nothing; a sale at a profit of 80 then pays its
+    -- after-tax profit less the 50 lost.
+    perform voyage.depart(v_fleet, voyage.segments_from_course(v_leg), v_lis, v_fnc, now() - interval '9 days');
+    perform voyage.settle(v_fleet, now());
+    select g.id, g.code into v_good, v_code from pg_temp.probe_good_0128(v_fnc, v_player, v_fleet) g;
     if v_good is null then
       raise exception '0128 self-assert FAIL: no good at FNC to probe a sale with';
     end if;
-    perform public.treasury_post(v_fnc, 'SEED', 100000000);   -- lit: a purse that can buy (dark: nothing)
     perform pg_temp.set_owed_0128(v_fleet, 1000);
-
-    -- A LOSS PAYS NO WAGE.
-    perform public.fleet_load(v_fleet, v_code, 10, 1000000);
-    v_r := cmd.do_sell(v_fleet, jsonb_build_object('good', v_good, 'qty', 10));
-    if (v_r->>'profit')::bigint >= 0 or (v_r->>'wages')::bigint <> 0
-       or pg_temp.owed_0128(v_fleet) <> 1000
+    select count(*) into v_rows from public.ledger where player_id = v_player and kind = 'WAGES';
+    v_r := pg_temp.sell_at_0128(v_fleet, v_fnc, v_good, v_code, -50);
+    if (v_r->>'profit')::bigint >= 0 or (v_r->>'wages')::bigint <> 0 or pg_temp.owed_0128(v_fleet) <> 1000
        or (select count(*) from public.ledger where player_id = v_player and kind = 'WAGES') <> v_rows then
       raise exception '0128 self-assert FAIL: a sale at a loss paid wages: %', v_r;
     end if;
-    -- NOR DOES A COST THE HOLD DOES NOT KNOW.
+    v_r2 := pg_temp.sell_at_0128(v_fleet, v_fnc, v_good, v_code, 80);
+    if (v_r2->>'profit')::bigint - (v_r2->>'tax')::bigint + (v_r->>'profit')::bigint <= 0 then
+      raise exception '0128 self-assert FAIL: the probe pair does not net a profit: % then %', v_r, v_r2;
+    end if;
+    if (v_r2->>'wages')::bigint <> (v_r2->>'profit')::bigint - (v_r2->>'tax')::bigint + (v_r->>'profit')::bigint
+       or pg_temp.owed_0128(v_fleet) <> 1000 - (v_r2->>'wages')::bigint then
+      raise exception '0128 self-assert FAIL: a loss (%) and a profit at one port paid % in wages, not their net', v_r->>'profit', v_r2;
+    end if;
+    -- and a cost the hold does not know pays nothing.
+    update public.ships set cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb where fleet_id = v_fleet;
     perform public.fleet_load(v_fleet, v_code, 10, 1);
     update public.ships set cargo_basis = cargo_basis || jsonb_build_object(v_code, null) where fleet_id = v_fleet;
     v_r := cmd.do_sell(v_fleet, jsonb_build_object('good', v_good, 'qty', 10));
-    if v_r->>'profit' is not null or (v_r->>'wages')::bigint <> 0
-       or pg_temp.owed_0128(v_fleet) <> 1000 then
+    if v_r->>'profit' is not null or (v_r->>'wages')::bigint <> 0 then
       raise exception '0128 self-assert FAIL: a sale of unknown cost paid wages: %', v_r;
     end if;
-    -- A THIN PROFIT PAYS ALL IT HAS AFTER THE TAX, AND NOT A DUCAT MORE: the sale is not a loss.
-    update public.ships set cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb where fleet_id = v_fleet;
-    select * into v_q from world.quote(v_fnc, v_good, 10, 'sell', null, v_fleet);
-    perform public.fleet_load(v_fleet, v_code, 10, greatest(0, v_q.total - 60) / 10.0);
-    v_r := cmd.do_sell(v_fleet, jsonb_build_object('good', v_good, 'qty', 10));
-    if (v_r->>'profit')::bigint <= 0 or (v_r->>'profit')::bigint - (v_r->>'tax')::bigint >= 1000 then
-      raise exception '0128 self-assert FAIL: the probe could not make a thin profit: %', v_r;
-    end if;
-    if (v_r->>'wages')::bigint <> (v_r->>'profit')::bigint - (v_r->>'tax')::bigint
-       or (v_r->>'net')::bigint <> (v_r->>'total')::bigint - (v_r->>'tax')::bigint - (v_r->>'wages')::bigint
-       or (v_r->>'net')::bigint < (v_r->>'cost')::bigint
-       or pg_temp.owed_0128(v_fleet) <> 1000 - (v_r->>'wages')::bigint
-       or not exists (select 1 from public.ledger where player_id = v_player and kind = 'WAGES'
-                       and ducats_delta = -(v_r->>'wages')::bigint) then
-      raise exception '0128 self-assert FAIL: a thin profit did not pay exactly profit - tax in wages: %', v_r;
-    end if;
-    select e.payload into v_ev from public.events e where e.player_id = v_player and e.kind = 'SOLD'
-     order by e.created_at desc, e.id limit 1;
-    if not exists (select 1 from public.events e where e.player_id = v_player and e.kind = 'SOLD'
-                    and (e.payload->>'wages')::bigint = (v_r->>'wages')::bigint
-                    and (e.payload->>'net')::bigint = (v_r->>'net')::bigint) then
-      raise exception '0128 self-assert FAIL: the SOLD event does not carry the wages and the net';
-    end if;
-    if public.city_treasury_on()
-       and not exists (select 1 from public.treasury_flows tf where tf.port_id = v_fnc and tf.kind = 'WAGES'
-                        and tf.ducats = (v_r->>'wages')::bigint) then
-      raise exception '0128 self-assert FAIL: lit, the wages were not paid into the city of the sale';
-    end if;
-    v_notes := v_notes || format('a thin sale (profit %s, tax %s) paid %s of 1000 owed; ',
-                                 v_r->>'profit', v_r->>'tax', v_r->>'wages');
-    -- A FAT PROFIT PAYS WHAT IS OWED, AND NO MORE.
-    perform pg_temp.set_owed_0128(v_fleet, 7);
-    perform public.fleet_load(v_fleet, v_code, 10, 1);
-    v_r := cmd.do_sell(v_fleet, jsonb_build_object('good', v_good, 'qty', 10));
-    if (v_r->>'profit')::bigint - (v_r->>'tax')::bigint <= 7 or (v_r->>'wages')::bigint <> 7
-       or pg_temp.owed_0128(v_fleet) <> 0 then
-      raise exception '0128 self-assert FAIL: a fat profit did not pay exactly the 7 owed: %', v_r;
-    end if;
-    -- WHAT THE SALES DID NOT COVER IS FORGIVEN AT THE NEXT DEPARTURE.
-    perform pg_temp.set_owed_0128(v_fleet, 99);
-    perform voyage.depart(v_fleet, voyage.segments_from_course(v_back_c), v_fnc, v_lis, now());
-    if pg_temp.owed_0128(v_fleet) <> 0 then
-      raise exception '0128 self-assert FAIL: the next departure did not forgive the 99 owed';
+    v_notes := v_notes || format('a loss of 50 then a profit of %s at one port paid %s; ',
+                                 (v_r2->>'profit')::bigint - (v_r2->>'tax')::bigint, v_r2->>'wages');
+
+    -- THE CAP: past 30 days of the day's wage, the rest is forgiven.
+    perform pg_temp.set_owed_0128(v_fleet, 0);
+    for v_n in 1 .. 45 loop
+      perform public.owe_wages(v_fleet, 10);
+    end loop;
+    v_cap := pg_temp.owed_0128(v_fleet);
+    perform public.owe_wages(v_fleet, 10);
+    if v_cap <> 300 or pg_temp.owed_0128(v_fleet) <> 300 then
+      raise exception '0128 self-assert FAIL: 45 days of 10 d. carried %, not the 30-day cap of 300', v_cap;
     end if;
 
     -- A MERCHANT IS PAID BY THE SAME LINES. The probe founds ITS OWN merchant (npc_found, as 0126 and
-    -- 0127 do) — no live merchant fleet, route or purse is locked or touched by this file — docks her
-    -- at LIS, and a profitable sale with 5 owed pays 5.
+    -- 0127 do), docks her at LIS, and a profitable sale with 5 owed pays 5.
     v_m := public.npc_found(jsonb_build_object(
       'company', 'Casa do Soldo Justo', 'alt_company', 'Casa da Paga', 'nation', 'PRT', 'ink', 'prt',
       'master', 'Capitao Pagador',
@@ -570,23 +626,13 @@ begin
     end if;
     update public.voyages set status = 'ARRIVED' where fleet_id = v_mfleet and status = 'SAILING';
     update public.fleets set status = 'DOCKED', port_id = v_lis, lat = null, lon = null where id = v_mfleet;
-    update public.ships set cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb where fleet_id = v_mfleet;
-    v_mport := v_lis;
-    select g1.id, g1.code into v_mgood, v_mcode
-      from public.port_goods pg join public.goods g1 on g1.id = pg.good_id join public.ports pr on pr.id = pg.port_id
-     where pg.port_id = v_lis and pg.stock >= 40 and public.port_offers(v_lis, g1.id)
-       and not public.culture_refuses(pr.culture, g1.culture_mask)
-       and world.daily_cap_remaining(v_m, v_lis, g1.id) >= 20
-       and public.fleet_free_hold(v_mfleet) >= 10 * g1.bulk
-     order by g1.bulk, g1.code limit 1;
+    select g.id, g.code into v_mgood, v_mcode from pg_temp.probe_good_0128(v_lis, v_m, v_mfleet) g;
     if v_mgood is null then
       raise exception '0128 self-assert FAIL: no good at LIS for the probe merchant to sell';
     end if;
-    perform public.treasury_post(v_mport, 'SEED', 100000000);
     perform pg_temp.set_owed_0128(v_mfleet, 5);
     select count(*) into v_rows from public.ledger where player_id = v_m and kind = 'WAGES';
-    perform public.fleet_load(v_mfleet, v_mcode, 10, 1);
-    v_r := cmd.do_sell(v_mfleet, jsonb_build_object('good', v_mgood, 'qty', 10));
+    v_r := pg_temp.sell_at_0128(v_mfleet, v_lis, v_mgood, v_mcode, 1000);
     if (v_r->>'wages')::bigint <> 5 or pg_temp.owed_0128(v_mfleet) <> 0
        or (select count(*) from public.ledger where player_id = v_m and kind = 'WAGES' and ducats_delta = -5) <> 1
        or (select count(*) from public.ledger where player_id = v_m and kind = 'WAGES') <> v_rows + 1 then
@@ -641,6 +687,6 @@ begin
     raise exception '0128 self-assert FAIL: the probe world was not rolled back';
   end if;
 
-  raise notice '0128 self-assert ok: WAGES ARE PAID FROM PROFIT. voyage.settle, voyage.depart, cmd.do_sell, npc_leg_lines, standing_route_close_lap (and two comment lines) reverse to their pre-images hunk by hunk, ACLs unmoved; public.pay_wages is the ONLY live body that charges a house WAGES (positive control: settle''s pre-image did); fleet_wages is written by settle (accrue), depart (forgive) and pay_wages (pay) alone; the sale and the planner read the one rule public.wages_from_profit, which reads no is_npc; server-only, no new entry point, no client write. Rule grid: loss / break-even / unknown pay 0, a profit pays min(owed, profit). Probes: %a loss and an unknown cost paid 0; a fat profit paid exactly the 7 owed; the next departure forgave 99; a merchant owing 5 paid 5 through the same lines; a lap booked the 30 its sales paid; % planner leg(s) kept the same lines with no crew and a ruinous wage bill, leaving 0, never less. npc_cost_mult % -> 1. Rolled back.',
+  raise notice '0128 self-assert ok: WAGES ARE PAID FROM PROFIT. voyage.settle, cmd.do_sell, npc_leg_lines, standing_route_close_lap (and two comment lines) reverse to their pre-images hunk by hunk, ACLs unmoved; public.pay_wages is the ONLY live body that charges a house WAGES (positive control: settle''s pre-image did); fleet_wages is written by owe_wages and pay_wages alone and goes with its fleet; settle owes, the sale pays, the mover and the planner read the one rule public.wages_from_profit; nothing reads is_npc; server-only, no new entry point, no client write. Rule grid: loss / break-even / unknown pay 0, a profit pays min(owed, profit). Probes: %an unknown cost paid 0; 45 days of 10 d. carried the 30-day cap of 300; a merchant owing 5 paid 5 through the same lines; a lap booked the 30 its sales paid; % planner leg(s) kept the same lines with no crew and a ruinous wage bill, leaving 0, never less. npc_cost_mult % -> 1. Rolled back.',
     v_notes, v_legs, (select npc_cost_mult from before_0128);
 end $$;
