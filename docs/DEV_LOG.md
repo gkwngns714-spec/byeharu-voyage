@@ -20,11 +20,12 @@ companies). `player_progress` derives the combat track (playable). Effects, all 
 × `captain_level_mult`. `world.ship_view` serves level, xp, xp_from, next_level_at, slots_locked;
 `world.officers` a signed officer's level. Client: level chip + XP bar + dimmed locked boxes in
 ShipPanel (no bar on a merchant's), `Lv N` on a signed officer's tile.
-**Prod dry-run (0126 + 0127 on head 0124, aborted = rolled back):** all asserts ok; 912 hulls,
+**Prod dry-runs (aborted = rolled back): 0126+0127 on head 0124, then 0127 alone on head 0126:** all asserts ok; 912 hulls,
 1,992 officer bonuses, 37 tracks read their pre-images dark; seed: 1 player hull 6.3 pts (one
 player has sailed: 17 reports, 6,267 nm), 821 merchant companies fixed in 256 ms (L1 ×590, L2 ×217,
 L3 ×59, L4 ×26). First dry-run deadlocked with the live tick on a probe that rewrote every hull's
-xp; the probe now reads the level-1 hulls as seeded and rewrites none. Light it with one UPDATE:
+xp; the probe now reads the level-1 hulls as seeded and rewrites none. A second found the live tick moving cargo/crew/hull points between the pre-image and the
+check (read committed); the dark/lit comparisons now skip those keys (0127 touches none of them). Light it with one UPDATE:
 `update world_config set value = 'true' where key = 'levels_bite'`.
 
 ## 2026-10-15 — S2 (0126): a merchant is fitted by the same hands — `osn-0126-merchant-loadouts`
