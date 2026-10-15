@@ -50,8 +50,10 @@
 --     company — npc_fix_level. No live row of ships or player_officers is written.
 --
 -- ── LOCKS ───────────────────────────────────────────────────────────────────────────────────────
--- lock_timeout 5 s, and the two catalogue tables the new FKs reference (ship_classes, item_kinds)
--- are locked first, in one statement, in that order (SHARE ROW EXCLUSIVE: reads go on). ships,
+-- lock_timeout 5 s. The only table locks beyond reads are the SHARE ROW EXCLUSIVE the two new FKs
+-- take on the catalogue tables they reference — ship_classes, then item_kinds, in file order (reads
+-- go on; nothing live writes them). No LOCK TABLE: db push runs this file as an implicit
+-- transaction, where LOCK TABLE is refused (25P01). ships,
 -- player_officers, class_slots and the arrivals tick's other tables are never locked beyond the
 -- reads and the probe house's own rows. The arrivals clock need not be stopped for this push.
 --
@@ -77,7 +79,6 @@ do $guard$ begin
   perform set_config('statement_timeout', '20min', true);
   perform set_config('lock_timeout', '5s', true);
 end $guard$;
-lock table public.ship_classes, public.item_kinds in share row exclusive mode;
 
 -- ── 1. THE PRE-IMAGES ──────────────────────────────────────────────────────────────────────────
 create temp table defs_before_0127 on commit drop as
