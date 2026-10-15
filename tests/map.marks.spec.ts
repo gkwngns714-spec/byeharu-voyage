@@ -17,7 +17,7 @@ import { ready, reachable, zoomStepMs } from './appReady.fixture'
 // first run with tappable dots opened Sanlúcar for a tap on the word "Cadiz"). The countries: the body is every kept ring of the file, at every
 // zoom — there is no culling to prove absent, only the count of countries the body carries.
 //
-// Browser: at the world view 224 harbour marks are in the DOM (dots and full marks together), and
+// Browser: at the world view 238 harbour marks (224 until 0090) are in the DOM (dots and full marks together), and
 // zoomed in on a harbour that was a dot it wears its full mark; both glasses, both schemes; the
 // frame cost of a zoom step at the world view with every dot on the sheet, printed.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -119,10 +119,10 @@ for (const scheme of ['dark', 'light'] as const) {
     { width: 390, height: 844 },
     { width: 1440, height: 900 },
   ]) {
-    test.describe(`all 224 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {
+    test.describe(`all 238 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {
       test.use({ viewport, colorScheme: scheme })
 
-      test('224 marks at the world view, and a dot becomes its full marker on the way in', async ({
+      test('238 marks at the world view, and a dot becomes its full marker on the way in', async ({
         page,
         request,
         baseURL,

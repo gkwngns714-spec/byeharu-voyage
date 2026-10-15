@@ -241,6 +241,19 @@ export interface ChartSurface {
   }
 }
 
+/**
+ * The share of what a glide still owes that one animation frame pays, for a decay of time constant
+ * `tau` ms. The elapsed time is floored at one frame: a rAF timestamp is the frame's START, which
+ * can be EARLIER than the `performance.now()` a wheel handler read moments before, and a negative
+ * elapsed made the first frame of a notch pay a NEGATIVE share — a zoom-in that first zoomed out,
+ * which at the world view (already fully out) clamped to no change at all: the wheel "did not
+ * zoom" (tests/map.marks.spec.ts, tests/map.perf.spec.ts, red on main 2026-10-16). Every frame of
+ * a glide moves toward where it is going, starting with the first.
+ */
+function glideShare(t: number, last: number, tau: number): number {
+  return 1 - Math.exp(-Math.max(t - last, 1000 / 60) / tau)
+}
+
 export function useChartSurface(
   ref: RefObject<HTMLDivElement | null>,
   /** The opening frame, as a function of the surface's aspect ratio — the same port set is a good
@@ -331,7 +344,7 @@ export function useChartSurface(
       if (g.frame !== 0) return
       g.last = performance.now()
       const step = (t: number) => {
-        const share = 1 - Math.exp(-(t - g.last) / ZOOM_GLIDE_MS)
+        const share = glideShare(t, g.last, ZOOM_GLIDE_MS)
         g.last = t
         const done = Math.abs(g.owed) < 0.002
         const pay = done ? g.owed : g.owed * share
@@ -362,7 +375,7 @@ export function useChartSurface(
       g.last = performance.now()
       const step = (t: number) => {
         if (g.to !== to || !g.at) return
-        const share = 1 - Math.exp(-(t - g.last) / GOTO_GLIDE_MS)
+        const share = glideShare(t, g.last, GOTO_GLIDE_MS)
         g.last = t
         const next = approachView(g.at, to, share)
         const done = viewArrived(next, to)

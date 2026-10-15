@@ -5,6 +5,60 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-16 — main's acceptance made green, honestly — `osn-acceptance-green`
+
+The REQUIRED `acceptance` check was red on `main` itself (run 38728407504 on `bfd1e72`, 13 failing
+tests), so no `--auto` merge could ever fire. Each failure was read off the CI log, reproduced
+locally on a PGlite world (port 4176, `localhost`), and sorted into code defect or stale spec.
+
+**Code was wrong (fixed, specs untouched):**
+- `duplication.spec` — `ShipPanel` and `TradeHistoryPanel` hand-wrote the same empty-well recipe.
+  Now one design-system primitive, `Empty` (`src/components/ui/Empty.tsx`).
+- `words.spec` — `TradeHistoryPanel` said "aboard" and "standing route" to the player → "on board",
+  "route" (docs/WORDS.md).
+- `sections.spec` "no screen imports another screen" — the map's city panel (`CityTabs`, #120)
+  imported PORT's `PortInn` and `PortPrices`. The two faces and their closure (`PriceTray`,
+  `QuayLedger`, `RequestBoard`, `TradeFaces`, `tradeFace`, `StepQuestion`, `useStepOrder`,
+  `orderCheck`) moved to `src/live/` — the existing home of faces two screens draw
+  (`MerchantSheet`, `useMerchantsHere`). `verbHomes.spec` now reads `src/live` too and names the
+  three composers of the stepped question by file (Inn, Shipyard, quay) — tighter than the folder.
+- `sections.spec` "the chart has one entrance" — `AppShell` and `MapScreen` (#128) reached into
+  `chart/goTo` and `chart/GoToMarker`; both now come through `chart/index.ts`.
+- `map.marks.spec` ×2 and `map.perf.spec` ("the wheel did not zoom the chart") — the zoom glide's
+  first frame computed `1 - exp(-(t - last)/τ)` with `last = performance.now()` at the wheel and `t`
+  the rAF timestamp, which is the frame's START and can be EARLIER. Measured in the browser: gaps of
+  −0.6 / −1.6 / −8.1 ms, and exactly those steps left the view unchanged at the world view — or, at
+  −8.1 ms, a zoom-IN notch zoomed OUT (358.4° → 360°). `glideShare` floors the elapsed time at one
+  frame; the go-to glide had the same line and shares the helper (`useChartSurface.ts`).
+
+**Spec was stale against an owner-requested change (updated to the current behaviour):**
+- `map.lag.spec` ×2 — the "other writes" in the coast sheet during a drag were the soft terminator
+  (#113, owner: "make it soft", kept at the owner's insistence): `DaylightMask` writes one
+  `transform` per frame, and `useSunlight` re-points the mask images' `href` on its timer. Those two
+  exact writes are now counted apart (logged as sun-slide frames); every other write still counts
+  against the pan, and the path-data and one-re-base assertions are unchanged.
+- `waters.panel.spec` — the fleet panel is a `Tray mode="side"` since #113; a side panel has no
+  detent ladder and no Resize handle by design. The test now asserts the side panel, no handle, its
+  close, and the chart left of it.
+- `map.sendfleet.spec` — the fleets corner is read before a place is tapped and after the side
+  panel is closed: on a 390 phone the side panel (92vw, #113) stands over the corner.
+- `port.merchants.spec` — the merchant sheet's buttons include openers of read panels since #113
+  (her ships) and #117/0121 (So far / lap pills); asserted the same way `map.merchants.spec`
+  already does: Close is there, and no button is a verb.
+- `map.wrap.spec` — the setup pressed Zoom out five times from the opening frame, which is fitted to
+  the traffic in motion; on CI's merchants-on world that ran into the globe (360°), where the tapped
+  harbour was a dot with a departing merchant 2.8 px from it. The spec now drives to its own
+  120°–200° span. Titles in `map.marks.spec` said 224 harbours; the assertions already pinned
+  **238** (0090), which is the real count on the sheet.
+
+**Found, not fixed (owner's call):**
+- On a 390 px phone an open side panel squeezes the map's corner chrome (fleets list, zoom column,
+  Regions) into the ~31 px `chromeAsideSideTrayClass` leaves; the fleets list renders invisible.
+- `hitTest` compares a merchant against the harbour the name rule chose, not the nearest harbour:
+  at the globe a tap ON Acapulco's dot picked Veracruz by the name rule (4.4° off) and then lost to
+  a merchant 0.74° off. Its own comment says a merchant wins only when nearer than the nearest
+  harbour.
+
 ## 2026-10-15 — 0128: wages are paid from profit — `osn-0128-wages-from-profit`
 
 Owner: *"because of wages, ships are losing too much money. pay wages only when a profit is made."*

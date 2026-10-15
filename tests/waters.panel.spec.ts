@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { HERE, WATERS_SHOWN, watersView } from '../src/features/map/watersRows'
-import { DANGER_PIPS, DANGER_TIERS, TRAY_PEEK, dangerLabel, dangerPips, dangerTone } from '../src/components/ui'
+import { DANGER_PIPS, DANGER_TIERS, dangerLabel, dangerPips, dangerTone } from '../src/components/ui'
 import { mapFleetsOf } from '../src/chart'
 import type { MapWater } from '../src/chart'
 import { sailingFleet, dockedFleet } from './mapWorld.fixture'
@@ -189,7 +189,7 @@ test.describe('the wire, turned into the panel', () => {
 test.describe('pressing a control selects, and never destroys the surface', () => {
   test.use({ viewport: PHONE })
 
-  test('the fleet tray opens on a selection and survives its own ladder', async ({
+  test('the fleet panel opens on a selection and leaves the chart under it', async ({
     page,
     request,
     baseURL,
@@ -226,36 +226,36 @@ test.describe('pressing a control selects, and never destroys the surface', () =
     await expect(corner).toBeVisible()
     await expect(pill).toHaveAttribute('aria-expanded', 'true')
 
-    // Selecting a fleet rises the tray. A selection is a view change and nothing else.
+    // Selecting a fleet opens her panel. A selection is a view change and nothing else.
     await page.getByTestId('map-fleet-row').first().click()
     const tray = page.getByTestId('map-detail-tray')
     await expect(tray).toBeVisible()
-    await expect(tray).toHaveAttribute('data-tray-detent', 'peek')
 
-    // …and stepping the tray up its ladder and back keeps it on the glass, twice over. The grab
-    // handle is a real button — ↑ and ↓ step the same detents a drag snaps to. This is the
-    // assertion the data half cannot make, and the reason this file boots a browser at all.
-    const handle = tray.getByRole('button', { name: 'Resize' })
-    await handle.focus()
-    await page.keyboard.press('ArrowUp')
-    await expect(tray).toHaveAttribute('data-tray-detent', 'half')
-    await expect(tray).toBeVisible()
-    await page.keyboard.press('ArrowDown')
-    await expect(tray).toHaveAttribute('data-tray-detent', 'peek')
-    await expect(tray).toBeVisible()
+    // SINCE PR #113 (owner, 2026-10-15: *"i want the page to slide on the right side"*) the fleet's
+    // panel is a `Tray mode="side"` at the glass's RIGHT edge, standing between the top bar and the
+    // nav at every width (screenLayout.ts `traySideEdgeClass`). A side panel has NO detent ladder —
+    // the ladder is a bottom-edge idea, and Tray.tsx gives its grab handle way to a spacer — so the
+    // keyboard ladder this test used to step is gone by design, not by defect. What the law still
+    // demands of the press is unchanged and asserted here: the panel opened, it is a panel and not
+    // the whole glass, and nothing under it was destroyed.
+    await expect(tray).toHaveAttribute('data-tray-mode', 'side')
+    await expect(tray.getByRole('button', { name: 'Resize' })).toHaveCount(0)
+    await expect(tray.getByTestId('tray-close').first()).toBeVisible()
 
     // A house's first fleet lies in her home port, so there is no water ahead of her and the
     // section is ABSENT rather than empty — the same rule `watersView([])` states above.
     await expect(page.getByTestId('map-waters')).toHaveCount(0)
 
-    // The chart is still under it. At peek the tray is exactly the primitive's stop — `TRAY_PEEK`,
-    // 96px — docked to the bottom edge, so at 390×844 the other 748px of glass are the chart's.
+    // The chart is still under it: the panel is flush with the RIGHT edge and clear of the bottom
+    // nav, and it leaves glass to its left — the chart was not replaced by the panel.
     await expect(async () => {
       const box = await tray.boundingBox()
       expect(box).not.toBeNull()
-      expect(Math.round(box!.height)).toBe(TRAY_PEEK)
-      expect(Math.round(box!.y + box!.height)).toBe(PHONE.height)
+      expect(Math.round(box!.x + box!.width)).toBe(PHONE.width)
+      expect(Math.round(box!.y + box!.height)).toBeLessThan(PHONE.height)
+      expect(box!.x).toBeGreaterThan(0)
     }).toPass()
+    await expect(page.getByTestId('map-chart')).toBeVisible()
 
     // And the corner is still a CORNER while it is open: never the centre, never the whole glass.
     const cornerBox = await corner.boundingBox()
