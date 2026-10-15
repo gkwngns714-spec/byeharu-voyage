@@ -177,11 +177,12 @@ export function formatGameDate(d: GameDate): string {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
-/** THE GAME CLOCK'S RATE — HALF the voyage clock. The owner, 2026-10-15: *"make the clock twice
- *  slower, but keep the ship speed to where it is"*. So the clock and the Sun run at 480× (a game
- *  day is 3 real minutes) while sailing stays on the server's TIME_COMPRESSION (960×). The two are
- *  deliberately different now: a ship covers in one clock-hour what she covers in two voyage-hours. */
-export const GAME_CLOCK_RATE = TIME_COMPRESSION / 2
+/** THE GAME CLOCK'S RATE — a QUARTER of the voyage clock. The owner, 2026-10-15: *"make the clock
+ *  twice slower, but keep the ship speed to where it is"* (960× → 480×), then *"make the light zone
+ *  time twice slower"* (480× → 240×). The Sun stands where this clock puts it, so the clock and the
+ *  light slow together: a game day is 6 real minutes. Sailing stays on the server's
+ *  TIME_COMPRESSION (960×): a ship covers in one clock-hour what she covers in four voyage-hours. */
+export const GAME_CLOCK_RATE = TIME_COMPRESSION / 4
 
 /** THE GAME CLOCK — the same for every player: real time since the Unix epoch run at
  *  GAME_CLOCK_RATE×. The owner, 2026-10-15: *"show game clock, no date, only time"* and the
