@@ -48,17 +48,27 @@
 --     game-day SELL outflow, never under city_seed_min) and refuses a world born broke. NOT CALLED.
 --
 -- ── DECISIONS TAKEN HERE (stated, not hidden) ───────────────────────────────────────────────────
--- * DARK BOOKS DO NOT MOVE A PURSE. The market is the purse only once lit; dark, every flow is
---   still written (the seed and the reserve are computed from the dark day's books, §6), but the
---   flow carries `lit = false` and the roll adds to port_treasury.ducats only what was posted lit.
---   Otherwise a dark day's SELLs would roll a purse below zero against its own CHECK. The daybook
---   keeps both figures: `ducats` (the books) and `lit_ducats` (what moved the purse); the roll's
---   assert is ducats = Σ lit_ducats.
+-- * DARK WRITES NOTHING (review of PR #118). While the switch is off treasury_post books no flow,
+--   so a dark deploy adds no row to any table. The one exception is money that IS a city's: an
+--   escrow posted lit and returned after the switch went off (BOUNTY_LAPSED) still reaches its
+--   purse. Consequence for §6: at the first switch there are no dark books, so a harbour's seed is
+--   city_seed_min (the outflow term is 0); the owner raises city_seed_min if the switch refuses a
+--   broke world. port_treasury.ducats = Σ daybook.ducats, asserted every roll.
+-- * THE CITY JOB RUNS ONLY WHILE THERE IS SOMETHING TO ROLL: it is defined inactive (0078's rule
+--   — no migration starts a job) and city_treasury_switch(true) activates it. Dark there are no
+--   flows, so an active job (wind_the_clock activates every defined job) rolls nothing.
 -- * NO FOREIGN KEY from treasury_flows.ref_event / player_id: npc_compact deletes a merchant's old
 --   events (0097), and a flow that pinned one would break the compactor between two rolls.
--- * LIT OUTFLOWS SERIALISE PER HARBOUR (a transaction-scoped advisory lock in treasury_post), so
---   two sales cannot both pass the "can the purse pay?" test and roll a purse below zero.
---   Inflows lock nothing. Dark, nothing is locked.
+-- * LOCKS, IN ONE ORDER: the house's row first, then the harbour. Lit, an outflow PAID TO A HOUSE
+--   (city_pays: a sale, a refound) locks the house's players row (credit's own lock, taken first)
+--   and only then a transaction-scoped advisory lock on the harbour, so two sales cannot both pass
+--   "can the purse pay?" and roll a purse below zero. Inflows (pay_city) lock no harbour. A bounty
+--   escrow takes no harbour lock: it is gated at bounty_reserve_mult × its premium above the
+--   reserve, so a racing post cannot empty the purse (§2.5's own argument). STATED COST, lit only:
+--   the harbour lock is held to commit, so a sale at a harbour waits behind an uncommitted sale
+--   there — e.g. a merchant's inside the arrivals tick (avg 14 s). Postgres detects a deadlock
+--   between two multi-house transactions and aborts one; the arrivals tick skips the locked fleet
+--   next minute. Dark, nothing is locked. Revisit before the switch if the tick's waits show.
 -- * city_bid_factor is floor + (1 - floor) × min(1, ducats / reserve): §2.3's prose ("half-way
 --   down to the floor at half its reserve") and §2.9's figures (0.75 at half), not §2.3's
 --   greatest() shorthand, which disagrees with both. Read live from the rolled purse and reserve;
@@ -126,14 +136,13 @@ create table if not exists public.port_treasury (
 );
 comment on table public.port_treasury is
   '0122: a city''s purse, as of its last roll (public.tick_city). The live balance is '
-  'public.treasury_balance (this + the lit flows not yet rolled). Never below zero: a city cannot owe.';
+  'public.treasury_balance (this + the flows not yet rolled). Never below zero: a city cannot owe.';
 
 create table if not exists public.treasury_flows (
   id         bigint generated always as identity primary key,
   port_id    uuid not null references public.ports(id),
   kind       text not null,
   ducats     bigint not null,
-  lit        boolean not null,
   player_id  uuid,
   ref_event  uuid,
   created_at timestamptz not null default now()
@@ -143,20 +152,18 @@ alter table public.treasury_flows set (autovacuum_vacuum_scale_factor = 0, autov
 comment on table public.treasury_flows is
   '0122: APPEND-ONLY. Every movement into (+) or out of (-) a city, written by public.treasury_post '
   'alone; rolled hourly into treasury_daybook and port_treasury by public.tick_city, which alone may '
-  'delete (byeharu.treasury_roll). `lit` = posted while city_treasury_enabled: only lit flows move a purse.';
+  'delete (byeharu.treasury_roll). Written only while city_treasury_enabled (and for an escrow returned).';
 
 create table if not exists public.treasury_daybook (
   port_id    uuid not null references public.ports(id),
   game_day   int  not null,
   kind       text not null,
   ducats     bigint not null,
-  lit_ducats bigint not null default 0,
   primary key (port_id, game_day, kind)
 );
 comment on table public.treasury_daybook is
-  '0122: a city''s books, one row per (game-day, kind). `ducats` is everything booked, `lit_ducats` the '
-  'part that moved the purse; port_treasury.ducats = Σ lit_ducats (tick_city asserts it). Rows older '
-  'than treasury_days_kept collapse into one CARRIED row (game_day 0).';
+  '0122: a city''s books, one row per (game-day, kind); port_treasury.ducats = Σ ducats (tick_city '
+  'asserts it). Rows older than treasury_days_kept collapse into one CARRIED row (game_day 0).';
 
 alter table public.voyages add column if not exists wages_paid bigint not null default 0;
 comment on column public.voyages.wages_paid is
@@ -217,9 +224,9 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0122: THE live balance: the rolled purse plus the LIT flows not yet rolled.
+  -- 0122: THE live balance: the rolled purse plus the flows not yet rolled.
   select coalesce((select t.ducats from public.port_treasury t where t.port_id = p_port), 0)
-       + coalesce((select sum(f.ducats) from public.treasury_flows f where f.port_id = p_port and f.lit), 0)::bigint
+       + coalesce((select sum(f.ducats) from public.treasury_flows f where f.port_id = p_port), 0)::bigint
 $$;
 
 create or replace function public.city_surplus(p_port uuid)
@@ -298,25 +305,30 @@ as $$
 $$;
 
 create or replace function public.treasury_post(p_port uuid, p_kind text, p_delta bigint,
-                                                p_player uuid default null, p_ref_event uuid default null)
+                                                p_player uuid default null, p_ref_event uuid default null,
+                                                p_always boolean default false)
 returns bigint
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0122: THE one writer of a city's money. One INSERT. Lit, an outflow is refused when the purse
--- does not cover it (E_CITY_BROKE, have/need) and outflows at one harbour take turns (an advisory
--- lock to the end of the transaction); dark, nothing is refused and nothing is locked. Returns the
--- live balance after (lit) or null (dark).
+-- 0122: THE one writer of a city's money. One INSERT, and only while the purses are lit — dark it
+-- writes NOTHING, unless p_always (money that already is the city's: a returned escrow). An
+-- outflow is refused when the purse does not cover it (E_CITY_BROKE, have/need). An outflow paid
+-- to a HOUSE (p_player — city_pays, which has already locked that house's row) also takes the
+-- harbour's advisory lock to the end of the transaction, so two sales cannot both pass this test:
+-- house first, harbour second, everywhere. Returns the live balance after, or null when nothing
+-- was written.
 declare
-  v_lit boolean := public.city_treasury_on();
   v_bal bigint;
 begin
-  if p_port is null or coalesce(p_delta, 0) = 0 then
+  if p_port is null or coalesce(p_delta, 0) = 0 or not (p_always or public.city_treasury_on()) then
     return null;
   end if;
-  if v_lit and p_delta < 0 then
-    perform pg_advisory_xact_lock(hashtextextended('byeharu.treasury:' || p_port::text, 0));
+  if p_delta < 0 then
+    if p_player is not null then
+      perform pg_advisory_xact_lock(hashtextextended('byeharu.treasury:' || p_port::text, 0));
+    end if;
     v_bal := public.treasury_balance(p_port);
     if v_bal + p_delta < 0 then
       perform cmd.refuse('E_CITY_BROKE',
@@ -324,9 +336,9 @@ begin
         cmd.figures(greatest(v_bal, 0), -p_delta, 'ducats'));
     end if;
   end if;
-  insert into public.treasury_flows (port_id, kind, ducats, lit, player_id, ref_event)
-  values (p_port, p_kind, p_delta, v_lit, p_player, p_ref_event);
-  return case when v_lit then coalesce(v_bal, public.treasury_balance(p_port) - p_delta) + p_delta end;
+  insert into public.treasury_flows (port_id, kind, ducats, player_id, ref_event)
+  values (p_port, p_kind, p_delta, p_player, p_ref_event);
+  return public.treasury_balance(p_port);
 end $$;
 
 create or replace function public.pay_city(p_player uuid, p_port uuid, p_kind text, p_amount bigint,
@@ -356,8 +368,12 @@ security definer
 set search_path = public, pg_temp
 as $$
 -- 0122: a city pays a house — treasury_post(-amount), refused lit when the purse cannot, then
--- public.credit(+amount). Returns the house's purse after.
+-- public.credit(+amount). Returns the house's purse after. LOCK ORDER: the house's row FIRST (the
+-- lock credit() takes anyway), the harbour second — the order pay_city keeps by construction.
 begin
+  if public.city_treasury_on() then
+    perform 1 from public.players where id = p_player for update;
+  end if;
   perform public.treasury_post(p_port, p_kind, -p_amount, p_player, p_event);
   return public.credit(p_player, p_kind, p_amount, p_event);
 end $$;
@@ -370,7 +386,7 @@ revoke all on function public.city_sell_outflow(uuid)                           
 revoke all on function public.treasury_reserve(uuid)                            from public, anon, authenticated;
 revoke all on function public.city_bid_factor(uuid)                             from public, anon, authenticated;
 revoke all on function public.profit_tax(uuid, numeric)                         from public, anon, authenticated;
-revoke all on function public.treasury_post(uuid, text, bigint, uuid, uuid)     from public, anon, authenticated;
+revoke all on function public.treasury_post(uuid, text, bigint, uuid, uuid, boolean) from public, anon, authenticated;
 revoke all on function public.pay_city(uuid, uuid, text, bigint, uuid)          from public, anon, authenticated;
 revoke all on function public.city_pays(uuid, uuid, text, bigint, uuid)         from public, anon, authenticated;
 
@@ -597,7 +613,14 @@ $h$      perform public.credit(f.player_id, 'WAGES',
 $h$,
 $h$      v_paid := least(v_wages, (select ducats from public.players where id = f.player_id));
       perform public.credit(f.player_id, 'WAGES', -v_paid);
-      update public.voyages set wages_paid = wages_paid + v_paid where id = v.id;   -- 0122
+$h$);
+-- the day's figure rides the UPDATE the loop already makes for the day (no second write)
+select pg_temp.slice_0122('voyage.settle(uuid, timestamptz)',
+$h$    update public.voyages set last_settled_day = d where id = v.id;
+$h$,
+$h$    update public.voyages set last_settled_day = d,
+           wages_paid = wages_paid + case when v_wages > 0 then v_paid else 0 end   -- 0122
+     where id = v.id;
 $h$);
 select pg_temp.slice_0122('voyage.settle(uuid, timestamptz)',
 $h$    perform public.emit_event(f.player_id, 'VOYAGE_REPORT', jsonb_build_object(
@@ -734,7 +757,8 @@ $h$  with x as (
   select coalesce(sum(x.escrow), 0) into v_lapsed from x;
   -- 0122: what the city set aside for a request nobody delivered comes back to it.
   if v_lapsed > 0 then
-    perform public.treasury_post(p_port, 'BOUNTY_LAPSED', v_lapsed, null, null);
+    -- (whether or not the purses are still lit: an escrow is the city's money either way)
+    perform public.treasury_post(p_port, 'BOUNTY_LAPSED', v_lapsed, null, null, true);
   end if;
 $h$);
 select pg_temp.slice_0122('public.tick_contracts(uuid, timestamptz)',
@@ -793,26 +817,29 @@ declare
   v_bad     int;
   v_world   bigint;
 begin
+  -- DARK AND NOTHING TO ROLL: the job writes nothing (review of PR #118 — dark adds no row).
+  if not public.city_treasury_on() and not exists (select 1 from public.treasury_flows) then
+    return jsonb_build_object('enabled', false, 'flows_rolled', 0, 'at', p_now);
+  end if;
   perform set_config('lock_timeout', '2s', true);
 
-  -- 1. ROLL: every flow up to p_now into the daybook (all of it) and the purse (the lit part).
+  -- 1. ROLL: every flow up to p_now into the daybook and the purse.
   v_t := clock_timestamp();
   perform set_config('byeharu.treasury_roll', 'on', true);
   with f as (
-    select tf.id, tf.port_id, tf.kind, tf.ducats, tf.lit, world.game_day(tf.created_at) as gd
+    select tf.id, tf.port_id, tf.kind, tf.ducats, world.game_day(tf.created_at) as gd
       from public.treasury_flows tf where tf.created_at <= p_now
        for update skip locked
   ), d as (
-    insert into public.treasury_daybook (port_id, game_day, kind, ducats, lit_ducats)
-    select f.port_id, f.gd, f.kind, sum(f.ducats), coalesce(sum(f.ducats) filter (where f.lit), 0)
+    insert into public.treasury_daybook (port_id, game_day, kind, ducats)
+    select f.port_id, f.gd, f.kind, sum(f.ducats)
       from f group by 1, 2, 3
     on conflict (port_id, game_day, kind) do update
-       set ducats = public.treasury_daybook.ducats + excluded.ducats,
-           lit_ducats = public.treasury_daybook.lit_ducats + excluded.lit_ducats
+       set ducats = public.treasury_daybook.ducats + excluded.ducats
     returning 1
   ), b as (
     insert into public.port_treasury (port_id, ducats, rolled_at)
-    select f.port_id, coalesce(sum(f.ducats) filter (where f.lit), 0), p_now from f group by 1
+    select f.port_id, sum(f.ducats), p_now from f group by 1
     on conflict (port_id) do update
        set ducats = public.port_treasury.ducats + excluded.ducats, rolled_at = p_now, updated_at = now()
     returning 1
@@ -829,13 +856,12 @@ begin
     with old as (
       delete from public.treasury_daybook d
        where d.game_day < v_today - public.wc_int('treasury_days_kept') and d.kind <> 'CARRIED'
-      returning d.port_id, d.ducats, d.lit_ducats
+      returning d.port_id, d.ducats
     )
-    insert into public.treasury_daybook (port_id, game_day, kind, ducats, lit_ducats)
-    select o.port_id, 0, 'CARRIED', sum(o.ducats), sum(o.lit_ducats) from old o group by 1
+    insert into public.treasury_daybook (port_id, game_day, kind, ducats)
+    select o.port_id, 0, 'CARRIED', sum(o.ducats) from old o group by 1
     on conflict (port_id, game_day, kind) do update
-       set ducats = public.treasury_daybook.ducats + excluded.ducats,
-           lit_ducats = public.treasury_daybook.lit_ducats + excluded.lit_ducats;
+       set ducats = public.treasury_daybook.ducats + excluded.ducats;
     get diagnostics v_carried = row_count;
   exception when others then
     v_err := v_err || jsonb_build_object('carry', sqlerrm);
@@ -861,7 +887,7 @@ begin
   select count(*) into v_bad
     from public.port_treasury t
    where t.ducats < 0
-      or t.ducats <> coalesce((select sum(d.lit_ducats) from public.treasury_daybook d where d.port_id = t.port_id), 0);
+      or t.ducats <> coalesce((select sum(d.ducats) from public.treasury_daybook d where d.port_id = t.port_id), 0);
   if v_bad > 0 then
     raise exception 'TICK_CITY FAIL: % city purse(s) disagree with their daybook or are below zero', v_bad
       using errcode = 'P0001';
@@ -870,7 +896,7 @@ begin
   -- 8. RECEIPT
   select coalesce((select sum(p.ducats) from public.players p), 0)
        + coalesce((select sum(t.ducats) from public.port_treasury t), 0)
-       + coalesce((select sum(f.ducats) from public.treasury_flows f where f.lit), 0)
+       + coalesce((select sum(f.ducats) from public.treasury_flows f), 0)
     into v_world;
   return jsonb_build_object('enabled', public.city_treasury_on(), 'flows_rolled', v_rolled,
                             'carried', v_carried, 'reserves', v_ports, 'thin', v_thin,
@@ -890,9 +916,10 @@ begin
     return;
   end if;
   perform cron.schedule('byeharu-voyage:city', '37 * * * *', 'select public.tick_city()');
-  -- 0078: DEFINED, NOT RUNNING. public.wind_the_clock() starts it with the others.
+  -- 0078: DEFINED, NOT RUNNING. public.city_treasury_switch(true) starts it (and wind_the_clock()
+  -- would too — harmless dark: there is nothing to roll and tick_city writes nothing).
   perform cron.alter_job(jobid, active := false) from cron.job where jobname = 'byeharu-voyage:city';
-  raise notice '0122: pg_cron present — byeharu-voyage:city on "37 * * * *", SCHEDULED BUT INACTIVE until wind_the_clock().';
+  raise notice '0122: pg_cron present — byeharu-voyage:city on "37 * * * *", SCHEDULED BUT INACTIVE until city_treasury_switch(true).';
 end $$;
 
 -- ── 8. THE SWITCH AND THE SEED (not called by this file) ───────────────────────────────────────
@@ -948,8 +975,14 @@ begin
     into v_need;
   if v_have < v_need then
     perform cmd.refuse('E_WORLD_BROKE',
-      'the world''s money cannot carry the merchants and the cities'' reserves — raise city_seed_days and call again',
+      'the world''s money cannot carry the merchants and the cities'' reserves — raise city_seed_min (or city_seed_days) and call again',
       cmd.figures(v_have, v_need, 'ducats'));
+  end if;
+
+  -- THE CITY JOB STARTS WITH THE PURSES (it was defined inactive; 0078's rule binds migrations).
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    execute $c$select cron.alter_job(j.jobid, active := true) from public.clock_jobs() j
+                where j.jobname = 'byeharu-voyage:city' and not j.active$c$;
   end if;
 
   return jsonb_build_object('enabled', public.city_treasury_on(), 'seeded', v_seeded, 'seed_total', v_sum,
@@ -1046,7 +1079,7 @@ begin
     'public.city_treasury_on()', 'public.treasury_balance(uuid)', 'public.city_surplus(uuid)',
     'public.city_can_spend(uuid, bigint)', 'public.city_sell_outflow(uuid)', 'public.treasury_reserve(uuid)',
     'public.city_bid_factor(uuid)', 'public.profit_tax(uuid, numeric)',
-    'public.treasury_post(uuid, text, bigint, uuid, uuid)', 'public.pay_city(uuid, uuid, text, bigint, uuid)',
+    'public.treasury_post(uuid, text, bigint, uuid, uuid, boolean)', 'public.pay_city(uuid, uuid, text, bigint, uuid)',
     'public.city_pays(uuid, uuid, text, bigint, uuid)', 'public.tick_city(timestamptz)',
     'public.city_treasury_switch(boolean)'] loop
     if has_function_privilege('anon', v_fn, 'execute') or has_function_privilege('authenticated', v_fn, 'execute') then
@@ -1088,7 +1121,7 @@ begin
   exception when check_violation then null;
   end;
   begin
-    insert into public.treasury_flows (port_id, kind, ducats, lit) values ((select port_id from public.port_treasury limit 1), 'PROBE', 1, false);
+    insert into public.treasury_flows (port_id, kind, ducats) values ((select port_id from public.port_treasury limit 1), 'PROBE', 1);
     begin
       update public.treasury_flows set ducats = 2 where kind = 'PROBE';
       raise exception '0122 self-assert FAIL: a flow was updated';
@@ -1149,13 +1182,12 @@ begin
     update public.ships set cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb, water_t = 0, food_t = 0
      where fleet_id = v_fleet;
 
-    -- (d) DARK: a BUY and a SELL move the purse as before, flows are booked (lit = false), no tax.
+    -- (d) DARK: a BUY and a SELL move the purse as before, write NO flow, pay no tax.
     select ducats into v_purse from public.players where id = v_player;
     v_r := cmd.do_buy(v_fleet, jsonb_build_object('good', v_good, 'qty', 10));
     if (select ducats from public.players where id = v_player) <> v_purse - (v_r->>'total')::bigint
-       or not exists (select 1 from public.treasury_flows tf where tf.port_id = v_port and tf.kind = 'BUY'
-                       and tf.ducats = (v_r->>'total')::bigint and not tf.lit and tf.player_id = v_player) then
-      raise exception '0122 self-assert FAIL: dark BUY % did not book a BUY flow or moved the purse wrongly', v_r;
+       or exists (select 1 from public.treasury_flows) then
+      raise exception '0122 self-assert FAIL: dark BUY % wrote a flow or moved the purse wrongly', v_r;
     end if;
     select ducats into v_purse from public.players where id = v_player;
     v_r := cmd.do_sell(v_fleet, jsonb_build_object('good', v_good, 'qty', 10));
@@ -1164,8 +1196,7 @@ begin
     if (select ducats from public.players where id = v_player) <> v_purse + (v_r->>'total')::bigint
        or (v_r->>'tax')::bigint <> 0 or (v_r->>'net')::bigint <> (v_r->>'total')::bigint
        or (v_ev->>'tax')::bigint <> 0 or (v_ev->>'net')::bigint <> (v_r->>'total')::bigint
-       or not exists (select 1 from public.treasury_flows tf where tf.port_id = v_port and tf.kind = 'SELL'
-                       and tf.ducats = -(v_r->>'total')::bigint and not tf.lit) then
+       or exists (select 1 from public.treasury_flows) then
       raise exception '0122 self-assert FAIL: dark SELL % (event %) is not the old sale plus tax 0 / net', v_r, v_ev;
     end if;
     if public.treasury_balance(v_port) <> coalesce((select ducats from public.port_treasury where port_id = v_port), 0) then
@@ -1221,17 +1252,19 @@ begin
 
     -- (g) THE PROFIT TAX: on a profit, its own ledger row and flow; none on a loss, an unknown cost, a BUY.
     perform public.treasury_post(v_port, 'SEED', 100000000);
+    select count(*) into v_n from public.ledger l where l.player_id = v_player and l.kind = 'TAX';
     update public.ships set cargo_basis = cargo_basis || jsonb_build_object(v_code, 1) where fleet_id = v_fleet;
     v_r := cmd.do_sell(v_fleet, jsonb_build_object('good', v_good, 'qty', 10));
     v_tax := round(((v_r->>'total')::bigint - 10) * world.tax_rate(v_port));
     if (v_r->>'profit')::bigint <> (v_r->>'total')::bigint - 10 or (v_r->>'tax')::bigint <> v_tax or v_tax <= 0
        or (v_r->>'net')::bigint <> (v_r->>'total')::bigint - v_tax or (v_r->>'tax_total')::numeric <> 0
-       or (select l.ducats_delta from public.ledger l where l.player_id = v_player and l.kind = 'TAX'
-            order by l.id desc limit 1) is distinct from -v_tax
-       or not exists (select 1 from public.treasury_flows tf where tf.port_id = v_port and tf.kind = 'TAX' and tf.ducats = v_tax and tf.lit) then
+       -- the ledger's id is a random uuid and one transaction shares created_at: count, never "the last row"
+       or (select count(*) from public.ledger l where l.player_id = v_player and l.kind = 'TAX') <> v_n + 1
+       or not exists (select 1 from public.ledger l where l.player_id = v_player and l.kind = 'TAX' and l.ducats_delta = -v_tax)
+       or not exists (select 1 from public.treasury_flows tf where tf.port_id = v_port and tf.kind = 'TAX' and tf.ducats = v_tax) then
       raise exception '0122 self-assert FAIL: a profitable sale % did not pay % tax as its own row and flow', v_r, v_tax;
     end if;
-    select count(*) into v_n from public.ledger l where l.player_id = v_player and l.kind = 'TAX';
+    v_n := v_n + 1;
     update public.ships set cargo_basis = cargo_basis || jsonb_build_object(v_code, 1000000) where fleet_id = v_fleet;
     v_r := cmd.do_sell(v_fleet, jsonb_build_object('good', v_good, 'qty', 10));
     if (v_r->>'tax')::bigint <> 0 or (v_r->>'profit')::bigint >= 0 then
@@ -1251,10 +1284,10 @@ begin
     -- (h) A CHARGE: provisions are paid INTO the harbour, kind unchanged, to the ducat.
     v_r := cmd.do_provision(v_fleet, jsonb_build_object('mode', 'FULL'));
     if (v_r->>'cost')::bigint <= 0
-       or (select l.ducats_delta from public.ledger l where l.player_id = v_player and l.kind = 'PROVISION'
-            order by l.id desc limit 1) is distinct from -(v_r->>'cost')::bigint
+       or not exists (select 1 from public.ledger l where l.player_id = v_player and l.kind = 'PROVISION'
+                       and l.ducats_delta = -(v_r->>'cost')::bigint)
        or not exists (select 1 from public.treasury_flows tf where tf.port_id = v_port and tf.kind = 'PROVISION'
-                       and tf.ducats = (v_r->>'cost')::bigint and tf.lit) then
+                       and tf.ducats = (v_r->>'cost')::bigint) then
       raise exception '0122 self-assert FAIL: a provision % was not paid into the harbour', v_r;
     end if;
 
@@ -1274,13 +1307,19 @@ begin
        or v_x <> -coalesce((select sum(tf.ducats) from public.treasury_flows tf where tf.port_id = v_port and tf.kind = 'BOUNTY'), 0) then
       raise exception '0122 self-assert FAIL: open requests were not escrowed at posting (Σ escrow %)', v_x;
     end if;
+    -- an escrow posted lit and lapsing DARK still comes back to the purse (review of PR #118)
+    update public.world_config set value = 'false'::jsonb where key = 'city_treasury_enabled';
+    v_bal := public.treasury_balance(v_port);
     perform public.tick_contracts(v_port, now() + make_interval(secs => ((public.wc_int('contract_deadline_days') + 1)
                                                                          * public.wc_num('game_day_seconds'))::double precision));
-    if coalesce((select sum(tf.ducats) from public.treasury_flows tf where tf.port_id = v_port and tf.kind = 'BOUNTY_LAPSED'), 0) <> v_x then
-      raise exception '0122 self-assert FAIL: the lapsed requests returned % not the % escrowed',
-        (select sum(tf.ducats) from public.treasury_flows tf where tf.port_id = v_port and tf.kind = 'BOUNTY_LAPSED'), v_x;
+    if coalesce((select sum(tf.ducats) from public.treasury_flows tf where tf.port_id = v_port and tf.kind = 'BOUNTY_LAPSED'), 0) <> v_x
+       or public.treasury_balance(v_port) <> v_bal + v_x then
+      raise exception '0122 self-assert FAIL: the requests lapsing dark returned % (purse % -> %), not the % escrowed',
+        (select sum(tf.ducats) from public.treasury_flows tf where tf.port_id = v_port and tf.kind = 'BOUNTY_LAPSED'),
+        v_bal, public.treasury_balance(v_port), v_x;
     end if;
-    v_notes := v_notes || format('the board escrowed %s request(s), %s d., and took it back at expiry; ', v_n, v_x);
+    update public.world_config set value = 'true'::jsonb where key = 'city_treasury_enabled';
+    v_notes := v_notes || format('the board escrowed %s request(s), %s d., and took it back at expiry with the purses dark; ', v_n, v_x);
 
     -- (j) THE REFOUND is paid by the home harbour from its surplus (partially when short).
     select h.player_id, h.capital, h.home_port_id, h.roster_ord into v_house from public.npc_houses h
@@ -1403,7 +1442,7 @@ begin
     raise exception '0122 self-assert FAIL: the probe world was not rolled back';
   end if;
 
-  raise notice '0122 self-assert ok: A CITY KEEPS A PURSE. The movers, the roll and the switch are server-only, world.town_hall authenticated-only and registered, no client write grant, the books unreadable and the purse public; a purse cannot go below zero and the flows are append-only but to the roll; no cut body charges through credit( or prints the raw rate; merchants pay running costs at 1. Dark: 200 quotes and prices equal their pre-images, the rate is the column, a BUY and a SELL moved the purse exactly as before and booked unlit flows (SOLD carries tax 0, net = total). Lit: the rate is the column × 5 capped at 20 %%, the ask carries no tax, the bid factor read 0.5 / 0.75 / 1 / 1; an empty city refused E_CITY_BROKE with figures and moved nothing; %a profitable sale paid its tax as its own TAX row and flow, a loss, an unknown cost and a BUY paid none; a provision was paid into the harbour; %the closer booked taxes and netted them and the read printed them; %the switch refused a broke world and left it dark. Rolled back; the purses ship DARK.',
+  raise notice '0122 self-assert ok: A CITY KEEPS A PURSE. The movers, the roll and the switch are server-only, world.town_hall authenticated-only and registered, no client write grant, the books unreadable and the purse public; a purse cannot go below zero and the flows are append-only but to the roll; no cut body charges through credit( or prints the raw rate; merchants pay running costs at 1. Dark: 200 quotes and prices equal their pre-images, the rate is the column, a BUY and a SELL moved the purse exactly as before and wrote no flow (SOLD carries tax 0, net = total). Lit: the rate is the column × 5 capped at 20 %%, the ask carries no tax, the bid factor read 0.5 / 0.75 / 1 / 1; an empty city refused E_CITY_BROKE with figures and moved nothing; %a profitable sale paid its tax as its own TAX row and flow, a loss, an unknown cost and a BUY paid none; a provision was paid into the harbour; %the closer booked taxes and netted them and the read printed them; %the switch refused a broke world and left it dark. Rolled back; the purses ship DARK.',
     split_part(v_notes, '; ', 1) || '; ', split_part(v_notes, '; ', 2) || '; ' || split_part(v_notes, '; ', 3) || '; ',
     split_part(v_notes, '; ', 4) || '; ' || split_part(v_notes, '; ', 5) || '; ';
 end $$;
