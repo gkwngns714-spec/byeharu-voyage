@@ -74,6 +74,15 @@ the source:**
   at one instant per viewport and theme, after a single poll at the start; the merchants sail, and
   one frame held one. The frame is now polled for (≥ 2) and the per-mark claims are made of that
   frame.
+- `map.merchants` 535 / 865, CI run 38784220784 on fab0674 — "two merchants on the glass" waited 60 s
+  at 1280 and 1440 with one in view. The sea near Lisbon sails on the real clock (each tab's first
+  tick settles every voyage-day since the fixture world was dumped), so the count on a frame close on
+  Lisbon depends on when in its shard a test runs. Tried first: a second merchant laid up in port at
+  Setúbal; measured, a held merchant is not drawn on the chart at all, so reverted. Kept:
+  `merchantsOnTheGlass` still asks for two, and presses Zoom out (up to four times) until the glass
+  has them; the city tests press Zoom in as many times to get their opening frame back. The 390
+  opening-frame claim (`map.merchants` 419) is left as written: it has not failed and is the claim
+  itself, not a precondition.
 - `map.lag` 1545 ("just after a zoom the coast is drawn over exactly the view") — one driver read
   after the click raced the glide plus the 250 ms settle; the frames are now sampled in the page and
   the claim is made of the zoom's first frame.

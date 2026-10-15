@@ -257,6 +257,36 @@ async function merchantsInView(page: Page): Promise<{ total: number; inView: num
 }
 
 
+/**
+ * WAIT FOR TWO MERCHANTS ON THE GLASS, PULLING BACK A STEP AT A TIME IF THE SEA HERE IS EMPTY
+ * (2026-10-16). Everything near Lisbon SAILS, on the real clock: each tab's first tick settles every
+ * voyage-day since the merchants-on world was dumped, so how many hulls stand inside a frame close
+ * on Lisbon depends on how many minutes into its shard a test runs. CI run 38784220784 waited 60 s
+ * at 1280 and at 1440 with one merchant in view. The spec sets its own precondition instead of
+ * assuming the sea's: up to four presses of Zoom out (each a sea-wider frame, where a 320-merchant
+ * roster always has ships), and the count asked is still two. Returns how many presses it took, so
+ * a caller that needs the opening frame back (a harbour's NAME is tapped on it) presses Zoom in as
+ * many times — the zoom is about the glass's centre, so that is the same frame.
+ */
+async function merchantsOnTheGlass(page: Page): Promise<number> {
+  for (let presses = 0; ; presses++) {
+    const two = await expect
+      .poll(async () => (await merchantsInView(page)).inView, { timeout: 20_000 })
+      .toBeGreaterThanOrEqual(2)
+      .then(() => true, () => false)
+    if (two) return presses
+    if (presses === 4) throw new Error('fewer than two merchants on the glass, even four zoom steps out from Lisbon')
+    await page.getByLabel('Zoom out').click()
+    await page.waitForTimeout(800)
+  }
+}
+
+/** Back to the frame `merchantsOnTheGlass` started from. */
+async function backIn(page: Page, presses: number): Promise<void> {
+  for (let i = 0; i < presses; i++) await page.getByLabel('Zoom in').click()
+  if (presses > 0) await page.waitForTimeout(800)
+}
+
 /** A merchant hull whose centre is on the chart's glass, so a tap can land on it. */
 async function hullInView(page: Page, sailing: boolean | null, skip: ReadonlySet<string> = new Set()): Promise<string> {
   // OPEN WATER FIRST, THEN ANYWHERE. A hull within a harbour's reach loses the tap to the harbour —
@@ -539,7 +569,7 @@ test.describe('wide', () => {
     await serveNpcOn(page)
     await page.goto('map')
     await ready(page)
-    await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
+    await merchantsOnTheGlass(page)
     await page.screenshot({ path: path.join(SHOTS, 'map-merchants-1280.png') })
     // the wide frame sits close on Lisbon: whichever merchant is on the glass, at sea or at anchor —
     // preferring one whose sheet has a lap figure to show (see openMerchantWorthReading)
@@ -792,7 +822,7 @@ test('Porto lists every merchant it concerns, grouped — the fixture\'s resting
   await serveNpcOn(page)
   await page.goto('map')
   await ready(page)
-  await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
+  await backIn(page, await merchantsOnTheGlass(page))
 
   // THE PRECONDITION IS THE FIXTURE'S, NOT THE CLOCK'S: Porto has RESTING_AT_PORTO at rest with
   // six hours on her hold, whatever the other merchants are doing this minute.
@@ -841,7 +871,7 @@ test('every named harbour with merchants lists them all, grouped, never blank', 
   await serveNpcOn(page)
   await page.goto('map')
   await ready(page)
-  await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
+  await backIn(page, await merchantsOnTheGlass(page))
 
   const listed: string[] = []
   let atSeaShot = false
@@ -869,7 +899,7 @@ test.describe('wide city tray', () => {
     await serveNpcOn(page)
     await page.goto('map')
     await ready(page)
-    await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
+    await backIn(page, await merchantsOnTheGlass(page))
     await openPorto(page)
     const printed = await readCityList(page, 'Porto')
     expect(printed[0].rows.map((r) => r.name)).toContain(RESTING_AT_PORTO)
