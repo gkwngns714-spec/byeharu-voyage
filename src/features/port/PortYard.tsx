@@ -54,16 +54,6 @@ function shortfall(hull: YardHull): string | null {
   return short.map((m) => `${m.name} ${formatInt(m.have)}/${formatInt(m.qty)}`).join(' · ')
 }
 
-/** Why THIS yard cannot lay her down, in the server's own facts (0129: her coast, then your trading
- *  level, then the yard's size). Only read when the server says she is not buildable here. */
-function whyNot(hull: YardHull, tier: number): string {
-  if (hull.on_coast === false && hull.coast) return `This ship is only built in ${hull.coast.join(', ')}.`
-  if (hull.your_level != null && hull.min_level != null && hull.your_level < hull.min_level) {
-    return `This ship needs trading level ${formatInt(hull.min_level)}. You are level ${formatInt(hull.your_level)}.`
-  }
-  return `This port can build up to level ${formatInt(tier)}. This ship needs level ${formatInt(hull.yard_tier)}.`
-}
-
 export function PortYard({
   portId,
   fleet,
@@ -171,7 +161,11 @@ export function PortYard({
               {`It needs ${formatInt(open.draft)} of depth and this port only has ${formatInt(maxDraft)}. The fleet it joins could never sail back in.`}
             </Note>
           )}
-          {!open.buildable && <Note tone="warning" data-testid="yard-why-not">{whyNot(open, tier)}</Note>}
+          {!open.buildable && (
+            <Note tone="warning">
+              {`This port can build up to level ${formatInt(tier)}. This ship needs level ${formatInt(open.yard_tier)}.`}
+            </Note>
+          )}
           {open.buildable && short !== null && (
             <Note tone="warning">{`Missing from storage: ${short}.`}</Note>
           )}

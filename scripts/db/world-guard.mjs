@@ -137,14 +137,13 @@ function drift(db_, want) {
 }
 
 // ── SHIPS AND GEAR (0129, docs/SHIPS_AND_GEAR.md S7) ───────────────────────────────────────────
-// data/ship_stats.json (classes, slots, cabins, level unlocks), data/hulls.json (recipes, coast,
-// trading level), data/fittings.json (kinds, effects, recipes, the ship level a fitting asks) and
+// data/ship_stats.json (classes, slots, cabins, level unlocks), data/hulls.json (recipes),
+// data/fittings.json (kinds, effects, recipes, the ship level a fitting asks) and
 // data/npc-loadouts.json are the one authority for the ship and gear catalogue. Each table row is
 // spelled as ONE canonical line — `table key col=value …` — from the data and from the database
 // alike, and the two sets must be equal. Numbers go through Number() so 4.40 and 4.4 are the same.
 
 const n = (v) => (v === null || v === undefined ? 'null' : String(Number(v)))
-const arr = (v) => (v === null || v === undefined ? 'null' : JSON.stringify([...v]))
 const SLOT_KINDS = ['rig', 'weapon', 'ground-tackle', 'steering', 'hull', 'lookout', 'flourish']
 
 function classLine(c) {
@@ -170,8 +169,7 @@ export function shipLinesFromData(root) {
   }
   for (const u of stats.unlocks ?? []) L.push(`class_slot_unlocks ${u.class} ${u.slot} @${n(u.min_level)} count=${n(u.count)}`)
   for (const h of hulls) {
-    L.push(`hull_recipes ${h.class} yard_tier=${n(h.yard_tier)} ducats=${n(h.ducats)} yard_regions=${arr(h.yard_regions)} ` +
-      `min_level=${n(h.min_level ?? 1)} note=${h.note}`)
+    L.push(`hull_recipes ${h.class} yard_tier=${n(h.yard_tier)} ducats=${n(h.ducats)} note=${h.note}`)
     for (const g of h.goods) L.push(`hull_recipe_goods ${h.class} ${g.in} qty=${n(g.qty)}`)
     for (const i of h.items) L.push(`hull_recipe_items ${h.class} ${i.in} qty=${n(i.qty)}`)
   }
@@ -196,9 +194,8 @@ async function shipLinesFromDb(db) {
   for (const r of await rows(`select class_code, slot, count, min_level from public.class_slot_unlocks`)) {
     L.push(`class_slot_unlocks ${r.class_code} ${r.slot} @${n(r.min_level)} count=${n(r.count)}`)
   }
-  for (const r of await rows(`select class_code, yard_tier, ducats, yard_regions, min_level, note from public.hull_recipes`)) {
-    L.push(`hull_recipes ${r.class_code} yard_tier=${n(r.yard_tier)} ducats=${n(r.ducats)} yard_regions=${arr(r.yard_regions)} ` +
-      `min_level=${n(r.min_level)} note=${r.note}`)
+  for (const r of await rows(`select class_code, yard_tier, ducats, note from public.hull_recipes`)) {
+    L.push(`hull_recipes ${r.class_code} yard_tier=${n(r.yard_tier)} ducats=${n(r.ducats)} note=${r.note}`)
   }
   for (const r of await rows(`select hg.class_code, g.code, hg.qty from public.hull_recipe_goods hg join public.goods g on g.id = hg.good_id`)) {
     L.push(`hull_recipe_goods ${r.class_code} ${r.code} qty=${n(r.qty)}`)

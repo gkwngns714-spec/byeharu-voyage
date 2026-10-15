@@ -3,14 +3,11 @@
   "_why": "Authored here and guarded, for the same reason data/fittings.json is: a recipe that lives only inside a migration is exactly the drift world-guard exists to kill.",
   "_where_from": "Materials come out of the WAREHOUSE in the yard's own city (0070), never out of a hold. A nau wants more timber than any ship afloat could carry, and that is the point: you ferry it in over several voyages and leave it ashore. It is what makes a warehouse worth having.",
   "_ducats": "The ducat figure is the yard's LABOUR, not the price of a ship. ship_classes.build_cost is what a hull would cost if you simply bought one; here you bring the materials and pay for the work, which is roughly a quarter of it.",
-  "_coast_and_level": "yard_regions: the region codes whose yards lay her down (null = any yard of her tier) — cmd.do_build refuses E_WRONG_COAST elsewhere. min_level: the company's TRADING level she asks (public.player_progress), refused E_LEVEL only while levels_bite is on. Both 0129.",
   "hulls": [
     {
       "class": "barca",
       "yard_tier": 1,
       "ducats": 3000,
-      "yard_regions": null,
-      "min_level": 1,
       "note": "A coaster. Two fittings and a stack of deal boards - the hull a house builds first.",
       "goods": [
         { "in": "timber", "qty": 40 },
@@ -27,8 +24,6 @@
       "class": "carlat",
       "yard_tier": 2,
       "ducats": 7000,
-      "yard_regions": null,
-      "min_level": 1,
       "note": "The lateen caravel: weatherly, and she wants a proper rudder and a headsail to prove it.",
       "goods": [
         { "in": "timber", "qty": 70 },
@@ -48,8 +43,6 @@
       "class": "nau",
       "yard_tier": 3,
       "ducats": 30000,
-      "yard_regions": null,
-      "min_level": 1,
       "note": "Four hundred tuns of hold. Live oak below the waterline, copper over it, and a year of somebody's life.",
       "goods": [
         { "in": "live-oak", "qty": 90 },
@@ -57,168 +50,6 @@
         { "in": "timber", "qty": 60 },
         { "in": "tar", "qty": 25 },
         { "in": "ships-nails", "qty": 40 }
-      ],
-      "items": [
-        { "in": "suit-of-sails", "qty": 3 },
-        { "in": "anchor-and-cable", "qty": 2 },
-        { "in": "rudder-and-helm", "qty": 1 },
-        { "in": "hold-fittings", "qty": 2 },
-        { "in": "copper-sheathing", "qty": 1 }
-      ]
-    },
-    {
-      "class": "pinnace",
-      "yard_tier": 1,
-      "ducats": 2500,
-      "yard_regions": null,
-      "min_level": 1,
-      "note": "A scout's hull: light frames, a tall rig and a hold you could fill from one quay.",
-      "goods": [
-        { "in": "timber", "qty": 25 },
-        { "in": "tar", "qty": 5 },
-        { "in": "cordage", "qty": 4 },
-        { "in": "ships-nails", "qty": 6 }
-      ],
-      "items": [
-        { "in": "suit-of-sails", "qty": 1 },
-        { "in": "anchor-and-cable", "qty": 1 }
-      ]
-    },
-    {
-      "class": "dhow",
-      "yard_tier": 1,
-      "ducats": 2800,
-      "yard_regions": ["WIA", "ARA", "EAS", "SOU"],
-      "min_level": 1,
-      "note": "Teak planks sewn with coir and one great lateen - the Indian Ocean builds her and nobody else.",
-      "goods": [
-        { "in": "teak", "qty": 30 },
-        { "in": "coir", "qty": 8 },
-        { "in": "tar", "qty": 4 },
-        { "in": "ships-nails", "qty": 4 }
-      ],
-      "items": [
-        { "in": "suit-of-sails", "qty": 1 },
-        { "in": "anchor-and-cable", "qty": 1 }
-      ]
-    },
-    {
-      "class": "carred",
-      "yard_tier": 2,
-      "ducats": 9000,
-      "yard_regions": ["IBE", "FRA", "BRI", "WES", "ADR", "BAL", "CAR", "STH", "PAC"],
-      "min_level": 2,
-      "note": "The caravel squared off for the open ocean: two suits of sail and a proper rudder.",
-      "goods": [
-        { "in": "timber", "qty": 80 },
-        { "in": "naval-timber", "qty": 25 },
-        { "in": "tar", "qty": 12 },
-        { "in": "cordage", "qty": 12 },
-        { "in": "ships-nails", "qty": 20 }
-      ],
-      "items": [
-        { "in": "suit-of-sails", "qty": 2 },
-        { "in": "anchor-and-cable", "qty": 1 },
-        { "in": "rudder-and-helm", "qty": 1 }
-      ]
-    },
-    {
-      "class": "fluyt",
-      "yard_tier": 2,
-      "ducats": 10000,
-      "yard_regions": ["FRA", "BAL", "BRI"],
-      "min_level": 3,
-      "note": "A long box of northern spruce with a narrow deck - the Low Countries build her by the hundred.",
-      "goods": [
-        { "in": "timber", "qty": 110 },
-        { "in": "norway-spruce", "qty": 20 },
-        { "in": "tar", "qty": 15 },
-        { "in": "cordage", "qty": 10 },
-        { "in": "ships-nails", "qty": 24 }
-      ],
-      "items": [
-        { "in": "suit-of-sails", "qty": 1 },
-        { "in": "anchor-and-cable", "qty": 1 },
-        { "in": "rudder-and-helm", "qty": 1 },
-        { "in": "hold-fittings", "qty": 1 }
-      ]
-    },
-    {
-      "class": "xebec",
-      "yard_tier": 2,
-      "ducats": 8000,
-      "yard_regions": ["WES", "ADR", "LEV", "AEG", "IBE"],
-      "min_level": 3,
-      "note": "Lean, lateen-rigged and full of men - a Mediterranean yard builds her to catch what runs.",
-      "goods": [
-        { "in": "naval-timber", "qty": 40 },
-        { "in": "timber", "qty": 50 },
-        { "in": "tar", "qty": 10 },
-        { "in": "cordage", "qty": 14 },
-        { "in": "ships-nails", "qty": 16 }
-      ],
-      "items": [
-        { "in": "suit-of-sails", "qty": 2 },
-        { "in": "anchor-and-cable", "qty": 1 },
-        { "in": "rudder-and-helm", "qty": 1 },
-        { "in": "boarding-gear", "qty": 1 }
-      ]
-    },
-    {
-      "class": "junk",
-      "yard_tier": 1,
-      "ducats": 9500,
-      "yard_regions": ["CHI", "JAP", "KOR", "SOU"],
-      "min_level": 2,
-      "note": "Teak bulkheads, rattan-battened sails and a stern rudder - the hull the eastern yards have always built.",
-      "goods": [
-        { "in": "teak", "qty": 70 },
-        { "in": "timber", "qty": 40 },
-        { "in": "tar", "qty": 10 },
-        { "in": "rattan", "qty": 10 },
-        { "in": "ships-nails", "qty": 12 }
-      ],
-      "items": [
-        { "in": "suit-of-sails", "qty": 2 },
-        { "in": "anchor-and-cable", "qty": 1 },
-        { "in": "hold-fittings", "qty": 1 }
-      ]
-    },
-    {
-      "class": "galleon",
-      "yard_tier": 3,
-      "ducats": 38000,
-      "yard_regions": null,
-      "min_level": 5,
-      "note": "Two gun decks over live oak and copper - only the seven great yards can lay one down.",
-      "goods": [
-        { "in": "live-oak", "qty": 110 },
-        { "in": "naval-timber", "qty": 50 },
-        { "in": "timber", "qty": 70 },
-        { "in": "tar", "qty": 30 },
-        { "in": "ships-nails", "qty": 50 }
-      ],
-      "items": [
-        { "in": "suit-of-sails", "qty": 3 },
-        { "in": "anchor-and-cable", "qty": 2 },
-        { "in": "rudder-and-helm", "qty": 1 },
-        { "in": "copper-sheathing", "qty": 1 },
-        { "in": "broadside-guns", "qty": 1 }
-      ]
-    },
-    {
-      "class": "indiaman",
-      "yard_tier": 3,
-      "ducats": 42000,
-      "yard_regions": null,
-      "min_level": 6,
-      "note": "The biggest hold afloat, sheathed for the long haul east - a great yard's work for a year.",
-      "goods": [
-        { "in": "live-oak", "qty": 100 },
-        { "in": "naval-timber", "qty": 60 },
-        { "in": "timber", "qty": 80 },
-        { "in": "tar", "qty": 30 },
-        { "in": "ships-nails", "qty": 50 }
       ],
       "items": [
         { "in": "suit-of-sails", "qty": 3 },

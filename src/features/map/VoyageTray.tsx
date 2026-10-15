@@ -182,17 +182,6 @@ const HULL_WORD: Record<string, string> = {
   barca: 'barca',
   carlat: 'caravel',
   nau: 'nau',
-  // 0129's eight (docs/SHIPS_AND_GEAR.md §6.1). Their silhouettes are not drawn yet: the chart
-  // draws each as the class-less hull (liveWorld.ts `hullClassOfCode` → null), which is the
-  // fallback, not a fault.
-  pinnace: 'pinnace',
-  dhow: 'dhow',
-  carred: 'caravel',
-  fluyt: 'fluyt',
-  xebec: 'xebec',
-  junk: 'junk',
-  galleon: 'galleon',
-  indiaman: 'indiaman',
   ship: 'ship',
 }
 
