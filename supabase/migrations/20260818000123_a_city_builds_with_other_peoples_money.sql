@@ -492,6 +492,9 @@ $h$  v_bad     int;
   v_inns     int := 0;
   v_paid     bigint := 0;
   v_skipped  bigint := 0;
+  v_lvl      int;
+  v_sub      int;
+  v_due      bigint;
 $h$);
 select pg_temp.slice_0123('public.tick_city(timestamptz)',
 $h$  -- 7. ASSERT: every purse equals its books; none below zero (the CHECK holds it too).
@@ -518,7 +521,12 @@ $h$  -- 4. BUILD (0123, lit): each harbour subscribes its lowest work from its s
         -- city that cannot buy without locking it, and again under the harbour's lock.
         continue when floor(greatest(0, wb.rolled - wb.reserve) / v_price) < 1;
         perform public.treasury_lock(wb.port_id);
-        v_k := least(v_per - wb.subscribed,
+        -- the work's row as it stands NOW, locked: a house may have bought since the loop read it.
+        select w.level, w.subscribed into v_lvl, v_sub from public.city_works w
+         where w.port_id = wb.port_id and w.kind = wb.kind for update;
+        continue when v_lvl >= v_max;
+        v_price := public.works_share_price(v_lvl);
+        v_k := least(v_per - v_sub,
                      floor(greatest(0, least(wb.rolled, public.treasury_balance(wb.port_id)) - wb.reserve) / v_price))::int;
         continue when v_k < 1;
         v_amt := v_k * v_price;
@@ -540,7 +548,7 @@ $h$  -- 4. BUILD (0123, lit): each harbour subscribes its lowest work from its s
           end loop;
           v_works_out := v_works_out + v_out;
         end if;
-        if wb.subscribed + v_k >= v_per then
+        if v_sub + v_k >= v_per then
           update public.city_works set level = level + 1, subscribed = 0, updated_at = now()
            where port_id = wb.port_id and kind = wb.kind;
           v_built := v_built + 1;
@@ -581,30 +589,38 @@ $h$  -- 4. BUILD (0123, lit): each harbour subscribes its lowest work from its s
   v_t := clock_timestamp();
   if v_lit then
     begin
-      for hp in select s.port_id,
-                       sum(round(s.paid * public.wc_num('works_coupon_pct') * (v_today - s.accrued_day)))::bigint as due
-                  from public.city_shares s where s.accrued_day < v_today
-                 group by s.port_id order by s.port_id loop
+      for hp in select distinct s.port_id from public.city_shares s
+                 where s.accrued_day < v_today order by s.port_id loop
         perform public.treasury_lock(hp.port_id);   -- before the purse is judged
-        v_pay := least(hp.due, greatest(0, public.city_surplus(hp.port_id)));
+        -- ONE statement, under the lock: the rows are read once (locked), their dues summed, the
+        -- payable taken from the surplus, split pro rata and written — so what the rows are
+        -- credited and the DIVIDEND that leaves the city are the same figure by construction.
         with d as (
           select s.kind, s.player_id,
                  round(s.paid * public.wc_num('works_coupon_pct') * (v_today - s.accrued_day))::bigint as due
             from public.city_shares s where s.port_id = hp.port_id and s.accrued_day < v_today
+             for update
+        ), t as (
+          select coalesce(sum(d.due), 0)::bigint as total,
+                 least(coalesce(sum(d.due), 0), greatest(0, public.city_surplus(hp.port_id)))::bigint as payable
+            from d
         ), a as (
-          select d.kind, d.player_id,
-                 case when hp.due > 0 then
-                   round(sum(d.due) over w * v_pay::numeric / hp.due)
-                   - round((sum(d.due) over w - d.due) * v_pay::numeric / hp.due) else 0 end as pay
-            from d window w as (order by d.due, d.player_id, d.kind)
+          select d.kind, d.player_id, d.due,
+                 case when t.total > 0 then
+                   round(sum(d.due) over w * t.payable::numeric / t.total)
+                   - round((sum(d.due) over w - d.due) * t.payable::numeric / t.total) else 0 end::bigint as pay
+            from d cross join t window w as (order by d.due, d.player_id, d.kind)
+        ), u as (
+          update public.city_shares s set accrued = s.accrued + a.pay, accrued_day = v_today
+            from a where s.port_id = hp.port_id and s.kind = a.kind and s.player_id = a.player_id
+          returning a.pay, a.due
         )
-        update public.city_shares s set accrued = s.accrued + a.pay::bigint, accrued_day = v_today
-          from a where s.port_id = hp.port_id and s.kind = a.kind and s.player_id = a.player_id;
+        select coalesce(sum(u.pay), 0), coalesce(sum(u.due), 0) into v_pay, v_due from u;
         if v_pay > 0 then
           perform public.treasury_post(hp.port_id, 'DIVIDEND', -v_pay, null, null);
         end if;
         v_paid := v_paid + v_pay;
-        v_skipped := v_skipped + (hp.due - v_pay);
+        v_skipped := v_skipped + (v_due - v_pay);
       end loop;
     exception when others then
       v_err := v_err || jsonb_build_object('coupons', sqlerrm);
