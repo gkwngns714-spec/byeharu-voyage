@@ -26,7 +26,7 @@ import {
   GoToMarker,
   GOTO_MIN_CLEAR_PX,
   GOTO_MARK_MS,
-  GOTO_SPAN_DEG,
+  goToSpan,
   PlaceLine,
   useGoTo,
   CHART_CHROME,
@@ -318,11 +318,15 @@ function Chart({
         clear = Math.min(clear, node.getBoundingClientRect().left - rect.left)
       }
       let u = 0.5
+      let clearShare = 1
       if (clear < rect.width - 1) {
-        if (clear >= GOTO_MIN_CLEAR_PX) u = clear / 2 / rect.width
-        else setFoldedFor({ selection })
+        if (clear >= GOTO_MIN_CLEAR_PX) {
+          u = clear / 2 / rect.width
+          clearShare = clear / rect.width
+        } else setFoldedFor({ selection })
       }
-      surface.glideTo(at, GOTO_SPAN_DEG, u)
+      // How close it lands is chartView.ts `goToSpan`'s, the one rule (a readable band).
+      surface.glideTo(at, (current) => goToSpan(current, clearShare), u)
       setMark({ at, seq: request.seq })
     }
   })
