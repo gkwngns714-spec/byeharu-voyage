@@ -148,6 +148,17 @@ players' orders are untouched.
   | 20,000 before → after | 43 / 57 → 95 / 0 | 27 % → 18 % | 334,148 → 686,338 | 589 → 580 ms |
   The "before" planner priced those 60 loops at ~1.73 M d. of profit she could never buy; "after"
   prices what she can (41 k / 87 k / 351 k by purse). No extra planning cost.
+- **DEPLOYED to prod 2026-10-15 15:51 UTC** (`db push --linked` before the merge; head 0129, knob 90,
+  planner + lines composing `npc_affordable` verified on the live bodies). Re-measured 17:03 UTC over
+  two mirrored 71.6-min windows (laps started AND closed inside the window):
+  | | laps | profit / loss | empty | Σ net | avg net |
+  |---|---|---|---|---|---|
+  | before (14:40–15:51) | 931 | 35 / 896 | 735 (79 %) | −9,814 | −11 |
+  | after (15:51–17:03) | 897 | 304 / 593 | 380 (42 %) | +274,052 | +306 |
+  E_INSUFFICIENT_FUNDS on post-deploy laps: **2** (819 in the hour before). Arrivals job 290 runs,
+  0 failed, avg 6.1 s (6.1 before), max 17.2 s. Still losing (open): 380 genuine ballast laps
+  (nothing affordable clears the 5 % bar; they lose their stores), 155 trading laps whose margin
+  the carried wages took, and buy-only laps whose parcel is sold — and booked — in the next lap.
 - Prod dry-run (`begin … rollback` on head 0128, ~5 s, prod verified unchanged): all asserts ok;
   probe: rich 3 BUY lines, 110 units for 8,734 d.; with 2,911 d. (budget 2,619) the plan cost 2,583
   and the quay lines 28 units for 2,583; with 0 d. none.
