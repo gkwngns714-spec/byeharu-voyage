@@ -825,6 +825,12 @@ begin
 
   -- 1. ROLL: every flow up to p_now into the daybook and the purse.
   v_t := clock_timestamp();
+  -- Every city with a flow has a purse row FIRST, so the roll below is an UPDATE: an
+  -- INSERT … ON CONFLICT checks `ducats >= 0` on the proposed row, and an hour that nets negative
+  -- (a city that paid out more than it took in, from a purse that covers it) would fail there.
+  insert into public.port_treasury (port_id)
+  select distinct tf.port_id from public.treasury_flows tf where tf.created_at <= p_now
+  on conflict (port_id) do nothing;
   perform set_config('byeharu.treasury_roll', 'on', true);
   with f as (
     select tf.id, tf.port_id, tf.kind, tf.ducats, world.game_day(tf.created_at) as gd
@@ -838,10 +844,10 @@ begin
        set ducats = public.treasury_daybook.ducats + excluded.ducats
     returning 1
   ), b as (
-    insert into public.port_treasury (port_id, ducats, rolled_at)
-    select f.port_id, sum(f.ducats), p_now from f group by 1
-    on conflict (port_id) do update
-       set ducats = public.port_treasury.ducats + excluded.ducats, rolled_at = p_now, updated_at = now()
+    update public.port_treasury t
+       set ducats = t.ducats + s.net, rolled_at = p_now, updated_at = now()
+      from (select f.port_id, sum(f.ducats) as net from f group by 1) s
+     where t.port_id = s.port_id
     returning 1
   ), x as (
     delete from public.treasury_flows t using f where t.id = f.id returning 1
@@ -1168,6 +1174,7 @@ begin
         join public.goods g1 on g1.id = pg.good_id
         join public.ports pr on pr.id = pg.port_id
        where pg.port_id = f.port_id and pg.stock >= 40 and public.port_offers(f.port_id, g1.id)
+         and (select sum(public.ship_hold_capacity(s.id)) from public.ships s where s.fleet_id = f.id) >= 120 * g1.bulk
          and not public.culture_refuses(pr.culture, g1.culture_mask)
          and world.daily_cap_remaining(f.player_id, f.port_id, g1.id) >= 120
        order by g1.bulk, g1.code limit 1) g
@@ -1339,8 +1346,7 @@ begin
       perform set_config('byeharu.npc_upkeep_deadline', '', true);
       select e.payload into v_ev from public.events e where e.player_id = v_house.player_id and e.kind = 'NPC_REFOUNDED'
        order by e.created_at desc, e.id limit 1;
-      if (select ducats from public.players where id = v_house.player_id) <> v_exp
-         or (v_ev->>'amount')::bigint <> v_exp or (v_ev->>'partial')::boolean is distinct from (v_exp < v_house.capital)
+      if (v_ev->>'amount')::bigint <> v_exp or (v_ev->>'partial')::boolean is distinct from (v_exp < v_house.capital)
          or not exists (select 1 from public.treasury_flows tf where tf.port_id = v_house.home_port_id
                           and tf.kind = 'NPC_REFOUND' and tf.ducats = -v_exp and tf.player_id = v_house.player_id)
          or not (v_city ? 'refound_unfunded') then
@@ -1363,13 +1369,16 @@ begin
     select nf.fleet_id, nf.player_id, 900122, 'SELL', 'SELL', '{}', 'done',
            jsonb_build_object('good', v_code, 'qty', 10, 'total', 300, 'tax', 30), v_lap.id, now()
       from public.npc_fleets nf where nf.route_id = v_route;
+    -- stock_in is the previous closed lap's stock_out AS THE CLOSER READS IT — read BEFORE the close,
+    -- which prunes a lived-in route's older laps past the keep (the prod dry-run of 2026-10-15).
+    v_y := coalesce((select x.stock_out from public.standing_route_laps x
+                      where x.route_id = v_route and x.closed_at is not null and x.lap_no < 900122
+                      order by x.lap_no desc limit 1), 0);
     perform cmd.standing_route_close_lap(v_route, now());
     select * into v_lap from public.standing_route_laps where id = v_lap.id;
-    if v_lap.taxes <> 30 or v_lap.net is distinct from v_lap.sold - v_lap.bought - v_lap.supplies - v_lap.repairs - v_lap.wages
-                                                     + v_lap.stock_out
-                                                     - coalesce((select x.stock_out from public.standing_route_laps x
-                                                                  where x.route_id = v_route and x.closed_at is not null and x.lap_no < 900122
-                                                                  order by x.lap_no desc limit 1), 0) - 30 then
+    if v_lap.taxes <> 30 or v_lap.sold <> 300
+       or v_lap.net is distinct from v_lap.sold - v_lap.bought - v_lap.supplies - v_lap.repairs - v_lap.wages
+                                     + v_lap.stock_out - v_y - 30 then
       raise exception '0122 self-assert FAIL: the closer booked taxes % net % for a lap that paid 30', v_lap.taxes, v_lap.net;
     end if;
     v_r := world.fleet_trades((select nf.fleet_id from public.npc_fleets nf where nf.route_id = v_route limit 1));
@@ -1393,7 +1402,15 @@ begin
        or v_city->'errors' <> '{}'::jsonb or v_ms > 20000 then
       raise exception '0122 self-assert FAIL: tick_city left flows, moved a purse or took % ms: %', v_ms, v_city;
     end if;
-    v_notes := v_notes || format('tick_city rolled %s flow(s) over the whole world in %s ms; ', v_city->>'flows_rolled', v_ms);
+    -- AN HOUR THAT NETS NEGATIVE rolls: the city pays out 1,000 d. more than it takes in.
+    perform public.treasury_post(v_port, 'SELL', -1500, v_player);
+    perform public.treasury_post(v_port, 'BUY', 500, v_player);
+    v_city := public.tick_city(now());
+    if (select ducats from public.port_treasury where port_id = v_port) <> v_bal - 1000
+       or exists (select 1 from public.treasury_flows where created_at <= now()) then
+      raise exception '0122 self-assert FAIL: an hour netting -1000 d. did not roll: %', v_city;
+    end if;
+    v_notes := v_notes || format('tick_city rolled %s flow(s) over the whole world in %s ms, and an hour netting -1,000 d. rolled; ', v_city->>'flows_rolled', v_ms);
 
     raise exception 'ROLLBACK_0122';
   exception when others then
