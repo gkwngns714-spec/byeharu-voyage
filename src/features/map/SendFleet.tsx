@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Button, Hint, Row, SheetSection, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
 import { formatVoyageDays } from '../../lib/format'
-import { CHART_CHROME } from '../../chart'
+import { CHART_CHROME, GoToLink } from '../../chart'
 import { CityTabs } from './CityTabs'
 import { useCityTab } from './cityTab'
 import { SendFleetRow } from './SendFleetRow'
@@ -50,7 +50,7 @@ export function SendFleet({
 }: {
   dest: SailDest
   /** The one line under the name — `Portugal · 27 merchants · 2 in port`, `Open sea`. */
-  line: string
+  line: ReactNode
   /** The Port tab's ships — in port and incoming (CityHarbour), built by MapScreen, which holds
    *  the harbour's read. Unused at sea. */
   harbour: ReactNode
@@ -110,7 +110,11 @@ export function SendFleet({
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={
         <TrayTitle
-          name={flow.destName}
+          name={
+            <GoToLink to={dest.kind === 'port' ? { kind: 'port', code: dest.code } : { kind: 'point', at: dest.at }}>
+              {flow.destName}
+            </GoToLink>
+          }
           line={line}
           testId="map-place-name"
           trailing={

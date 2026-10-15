@@ -2,11 +2,11 @@ import { useMemo, type ReactNode } from 'react'
 import { IconDisc, Row, SheetSection } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import { MerchantRow } from '../../live/MerchantRow'
-import { merchantLine } from '../../live/merchantLine'
+import { merchantParts } from '../../live/merchantLine'
 import { harbourSides } from '../../live/merchantGroups'
 import type { PortMerchant } from '../../lib/rpc'
-import type { FleetOnChart, MapPort } from '../../chart'
-import { fleetLine } from './fleetLine'
+import { GoToLink, PlaceLine, type FleetOnChart, type MapPort } from '../../chart'
+import { fleetParts } from './fleetLine'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PANEL'S PORT TAB — the ships lying here, and the ships bound here
@@ -96,7 +96,7 @@ export function CityHarbour({
               key={f.fleet.id}
               f={f}
               // `to Lisbon · 11m` — her ETA, in the one where-line (fleetLine.ts).
-              line={fleetLine(f, portsByCode, nowMs)}
+              line={<PlaceLine parts={fleetParts(f, portsByCode, nowMs)} />}
               right={<span className="text-t-caption text-accent">yours</span>}
               onOpen={onOpenFleet}
               hairline={i < incomingCount - 1}
@@ -108,7 +108,7 @@ export function CityHarbour({
               m={m}
               here={false}
               // HER ETA, in the one where-line every fleet is printed with (`to Lisbon · 11m`).
-              detail={merchantLine(m, portName, nowMs)}
+              detail={<PlaceLine parts={merchantParts(m, portName, nowMs)} />}
               nowMs={nowMs}
               onOpen={onOpenMerchant}
               hairline={bound.length + i < incomingCount - 1}
@@ -156,7 +156,7 @@ function OwnRow({
   hairline,
 }: {
   f: FleetOnChart
-  line?: string
+  line?: ReactNode
   right?: ReactNode
   onOpen: (fleetId: string) => void
   hairline: boolean
@@ -166,7 +166,9 @@ function OwnRow({
       mark={<IconDisc name={f.dockedAtCode ? 'anchor' : 'ship'} tone="accent" />}
       label={
         <span className="block min-w-0">
-          <span className="block truncate text-t-body text-ink">{f.fleet.name}</span>
+          <span className="block truncate text-t-body text-ink">
+            <GoToLink to={{ kind: 'fleet', id: f.fleet.id }}>{f.fleet.name}</GoToLink>
+          </span>
           {line !== undefined && <span className="block truncate text-t-caption text-ink-faint">{line}</span>}
         </span>
       }

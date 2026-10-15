@@ -1,5 +1,5 @@
 import { formatClock, instantMs } from '../lib/format'
-import { whereabouts, whereLine } from '../domain/fleet'
+import { joinPieces, whereabouts, whereParts, type WherePiece } from '../domain/fleet'
 import type { TrafficFleet } from '../lib/rpc'
 
 /**
@@ -21,9 +21,14 @@ import type { TrafficFleet } from '../lib/rpc'
 export type MerchantLineFacts = Pick<TrafficFleet, 'status' | 'voyage' | 'port' | 'anchor' | 'next_lap_at'>
 
 export function merchantLine(t: MerchantLineFacts, portName: (code: string) => string, nowMs: number): string {
+  return joinPieces(merchantParts(t, portName, nowMs))
+}
+
+/** The same line in pieces, so a panel can link the harbour it names (src/chart/goTo.ts). */
+export function merchantParts(t: MerchantLineFacts, portName: (code: string) => string, nowMs: number): WherePiece[] {
   const where = whereabouts(t)
-  const here = whereLine(where, portName, nowMs)
+  const here = whereParts(where, portName, nowMs)
   if (where.kind === 'sailing') return here
   const next = instantMs(t.next_lap_at)
-  return next !== null ? `${here} · sails at ${formatClock(next)}` : here
+  return next !== null ? [...here, ` · sails at ${formatClock(next)}`] : here
 }

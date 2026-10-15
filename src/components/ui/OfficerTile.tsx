@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from 'react'
 import { formatPctPoints } from '../../lib/format'
 import { Figure } from './Figure'
 import { Icon } from './Icon'
@@ -22,7 +23,7 @@ export function OfficerTile({
   specialty: string
   bonusPct: number
   /** The port NAME she calls home, when known (0015:63). */
-  homePort?: string | null
+  homePort?: ReactNode
   signed?: boolean
   /** 0127 — the level of your signing of her; null draws nothing (a merchant's, or one not signed). */
   level?: number | null
@@ -31,9 +32,15 @@ export function OfficerTile({
   testId?: string
 }) {
   const role = specialty.toLowerCase()
+  // The home port may be a go-to link (src/chart/GoToLink.tsx), so the line is joined as nodes.
   const meta = [role, signed ? 'signed' : null, level != null ? `Lv ${level}` : null, homePort]
     .filter(Boolean)
-    .join(' · ')
+    .map((part, i) => (
+      <Fragment key={i}>
+        {i > 0 && ' · '}
+        {part}
+      </Fragment>
+    ))
   return (
     <Tile
       mark={<Icon name="crew" size={20} />}

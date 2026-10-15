@@ -32,7 +32,8 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 // 0099 — the merchants: the same sheet MAP opens, read through the same card. 0104 (owner row 121):
 // and the harbour's own list of them, with what each one is doing here.
 import { MerchantSheet } from '../../live/MerchantSheet'
-import { merchantLine } from '../../live/merchantLine'
+import { merchantParts } from '../../live/merchantLine'
+import { PlaceLine } from '../../chart'
 import { useMerchantCard } from '../../live/useMerchantCard'
 import { MerchantsHere } from './MerchantsHere'
 import { useMerchantsHere } from '../../live/useMerchantsHere'
@@ -256,7 +257,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
           card={merchantCard && merchantCard.fleet.id === merchantId ? merchantCard : null}
           line={(() => {
             const row = merchants.view?.merchants.find((t) => t.id === merchantId)
-            return row ? merchantLine(row, (c) => portNameOf(portByCode, c), nowMs) : ''
+            return row ? <PlaceLine parts={merchantParts(row, (c) => portNameOf(portByCode, c), nowMs)} /> : ''
           })()}
           onClose={() => setOpenMerchant(null)}
         />

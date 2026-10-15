@@ -82,6 +82,40 @@ export const ZOOM_STEP = 1.6
  *  constant (ms), so a step is ~95% there in three of them. useChartSurface's glide. */
 export const ZOOM_GLIDE_MS = 70
 
+/** THE GO-TO GLIDE (./goTo.ts): the same decay as the zoom glide, slowed threefold, because it
+ *  carries the eye across the sheet rather than a notch deeper — a jump would lose the reader. */
+export const GOTO_GLIDE_MS = ZOOM_GLIDE_MS * 3
+
+/** How close a go-to brings the chart: a sea's width, where every named harbour is drawn. Never
+ *  zooms OUT — a reader already closer keeps their zoom. */
+export const GOTO_SPAN_DEG = 12
+
+/** The shortest signed run from `a` to `b` around the sheet — the continuous chart wraps. */
+function wrapDelta(d: number): number {
+  return d - CHART_WIDTH * Math.round(d / CHART_WIDTH)
+}
+
+/** One frame of a glide toward `to`: `share` of what is left, the zoom in log space (so a deep
+ *  zoom does not race at the end), the centre the short way round the globe. Pure. */
+export function approachView(from: ChartView, to: ChartView, share: number): ChartView {
+  const logSpan = Math.log(from.spanX) + (Math.log(to.spanX) - Math.log(from.spanX)) * share
+  return {
+    cx: from.cx + wrapDelta(to.cx - from.cx) * share,
+    cy: from.cy + (to.cy - from.cy) * share,
+    spanX: Math.exp(logSpan),
+  }
+}
+
+/** Close enough that the next frame would not move a pixel the eye could see. */
+export function viewArrived(at: ChartView, to: ChartView): boolean {
+  const tol = to.spanX * 0.002
+  return (
+    Math.abs(wrapDelta(to.cx - at.cx)) < tol &&
+    Math.abs(to.cy - at.cy) < tol &&
+    Math.abs(Math.log(to.spanX / at.spanX)) < 0.004
+  )
+}
+
 /** The viewBox a view describes on a surface of the given pixel aspect ratio (width / height). */
 export function viewBoxOf(view: ChartView, aspect: number): ViewBox {
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import {
   CargoRows,
   Figure,
@@ -16,10 +16,10 @@ import {
   TrayTitle,
   type TrayDetent,
 } from '../components/ui'
-import { CHART_CHROME } from '../chart'
+import { CHART_CHROME, GoToLink } from '../chart'
 import { useShellState } from '../app/shellState'
 import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../lib/format'
-import { fleetCargoByCode, hullFraction } from '../domain/fleet'
+import { fleetCargoByCode, hullFraction, whereabouts } from '../domain/fleet'
 import { skippedWords } from '../domain/route'
 import type { MerchantCard } from '../lib/rpc'
 import { portNameOf, useWorld } from './worldStore'
@@ -71,7 +71,7 @@ export function MerchantSheet({
    *  also draws the open merchant's leg from the same answer. Null while the first read is out. */
   card: MerchantCard | null
   /** The one line under her name at peek — the caller's (MAP: `fleetLine`, or when she sails). */
-  line: string
+  line: ReactNode
   onClose: () => void
   /** MAP passes 'side' — its slide-in panel at the right edge (screenLayout traySideEdgeClass). */
   mode?: 'docked' | 'side'
@@ -103,8 +103,17 @@ export function MerchantSheet({
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={
         <TrayTitle
-          name={card?.fleet.name ?? '…'}
-          line={card ? [card.company.name, line].filter(Boolean).join(' · ') : line}
+          name={card ? <GoToLink to={{ kind: 'fleet', id: card.fleet.id, where: whereabouts(card.fleet) }}>{card.fleet.name}</GoToLink> : '…'}
+          line={
+            card ? (
+              <>
+                {card.company.name}
+                {line ? <> · {line}</> : null}
+              </>
+            ) : (
+              line
+            )
+          }
           testId="merchant-sheet-name"
         />
       }
@@ -202,7 +211,14 @@ function MerchantBody({
             label={
               <span className="block min-w-0">
                 <span className="block truncate">{card.route.name}</span>
-                <span className="block truncate text-t-caption text-ink-faint">{card.route.stops.map(portName).join(' → ')}</span>
+                <span className="block truncate text-t-caption text-ink-faint">
+                  {card.route.stops.map((code, i) => (
+                    <Fragment key={`${code}-${i}`}>
+                      {i > 0 && ' → '}
+                      <GoToLink to={{ kind: 'port', code }}>{portName(code)}</GoToLink>
+                    </Fragment>
+                  ))}
+                </span>
               </span>
             }
             value={<Figure value={formatInt(e?.laps_done ?? 0)} unit={(e?.laps_done ?? 0) === 1 ? 'lap' : 'laps'} />}
@@ -262,9 +278,9 @@ function MerchantBody({
               {/* 0123: where her surplus went — her largest stake, and how many cities more. */}
               {card.company.invested && card.company.invested.length > 0 && (
                 <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-invested">
-                  {`Invested ${formatDucats(card.company.invested[0].paid)} at ${card.company.invested[0].name}${
-                    card.company.invested.length > 1 ? ` +${card.company.invested.length - 1}` : ''
-                  }`}
+                  {`Invested ${formatDucats(card.company.invested[0].paid)} at `}
+                  <GoToLink to={{ kind: 'port', code: card.company.invested[0].port }}>{card.company.invested[0].name}</GoToLink>
+                  {card.company.invested.length > 1 ? ` +${card.company.invested.length - 1}` : ''}
                 </span>
               )}
             </span>
@@ -325,7 +341,7 @@ function MerchantBody({
                 name={o.name}
                 specialty={o.specialty}
                 bonusPct={o.bonus_pct}
-                homePort={o.home_port ? portName(o.home_port) : null}
+                homePort={o.home_port ? <GoToLink to={{ kind: 'port', code: o.home_port }}>{portName(o.home_port)}</GoToLink> : null}
                 testId="merchant-officer-tile"
               />
             ))}

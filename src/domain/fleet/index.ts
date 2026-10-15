@@ -48,7 +48,18 @@ export {
 
 // WHERE SHE IS — the one classification (at sea / in port / at anchor) and the one line about it,
 // for the nine places that spelt it out themselves (where.ts's header lists them).
-export { alongsideAt, boundForLabel, isDockedAt, whereabouts, whereLine, type WhereFacts, type Whereabouts } from './where'
+export {
+  alongsideAt,
+  boundForLabel,
+  isDockedAt,
+  joinPieces,
+  whereabouts,
+  whereLine,
+  whereParts,
+  type WhereFacts,
+  type Whereabouts,
+  type WherePiece,
+} from './where'
 
 // WHAT EACH SHIP FIGURE DECIDES — the one sentence per stat that COMPENDIUM, FLEETS and PORT all
 // compose. It lives in this section because what a stat decides is a fact about the fleet rules,

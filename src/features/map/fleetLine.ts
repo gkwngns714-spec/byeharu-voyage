@@ -1,4 +1,4 @@
-import { whereLine, type Whereabouts } from '../../domain/fleet'
+import { joinPieces, whereParts, type Whereabouts, type WherePiece } from '../../domain/fleet'
 import type { FleetOnChart, MapPort } from '../../chart'
 
 // THE ONE LINE UNDER A FLEET'S NAME — where she is, or where she is going and when she gets there.
@@ -12,7 +12,12 @@ import type { FleetOnChart, MapPort } from '../../chart'
 // "When she gets there" is the SERVER's arrival instant (`voyage.eta`) counted down against the
 // shell clock — the map does not own a second way to say "4m".
 export function fleetLine(f: FleetOnChart, portsByCode: ReadonlyMap<string, MapPort>, nowMs: number): string {
-  return whereLine(whereOnChart(f), (code) => portsByCode.get(code)?.name ?? code, nowMs)
+  return joinPieces(fleetParts(f, portsByCode, nowMs))
+}
+
+/** The same line in pieces, so a panel can link the harbour it names (src/chart/goTo.ts). */
+export function fleetParts(f: FleetOnChart, portsByCode: ReadonlyMap<string, MapPort>, nowMs: number): WherePiece[] {
+  return whereParts(whereOnChart(f), (code) => portsByCode.get(code)?.name ?? code, nowMs)
 }
 
 function whereOnChart(f: FleetOnChart): Whereabouts {
