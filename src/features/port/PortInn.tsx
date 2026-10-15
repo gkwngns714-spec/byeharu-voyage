@@ -250,11 +250,11 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
       )}
 
       {/* WHAT THE CHOSEN CREW WILL COST, PER DAY AT SEA — the server's one sum (0086), moving with
-          the stepper. Wages are charged at sea only; in port the crew cost nothing per day. */}
+          the stepper. 0128: it is owed per day at sea and paid only out of a sale's profit. */}
       {cost.cost !== null ? (
         <Row
           label="Wages"
-          value={<Figure value={formatDucats(cost.cost.per_day)} unit="per day at sea" />}
+          value={<Figure value={formatDucats(cost.cost.per_day)} unit="per day at sea, paid from profit" />}
           hairline={false}
           data-testid="inn-crew-cost"
         />

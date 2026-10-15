@@ -263,7 +263,7 @@ function Books({
     { label: 'Bought', value: b.bought, sign: -1, always: true },
     { label: 'Supplies', value: b.supplies, sign: -1 },
     { label: 'Repairs', value: b.repairs, sign: -1 },
-    { label: 'Wages', value: b.wages, sign: -1 },
+    { label: 'Wages', value: b.wages, sign: -1, hint: 'paid from profit' },
     { label: 'Cargo carried in', value: b.stock_in, sign: -1, hint: 'bought last lap, sold in this one' },
     { label: 'Cargo carried out', value: b.stock_out, sign: 1, hint: 'aboard at the close, sold next lap' },
   ]

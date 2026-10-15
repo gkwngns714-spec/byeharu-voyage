@@ -5,6 +5,28 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-15 — 0128: wages are paid from profit — `osn-0128-wages-from-profit`
+
+Owner: *"because of wages, ships are losing too much money. pay wages only when a profit is made."*
+Prod since 0122 (npc_cost_mult 1): ~90 % of merchant laps lost (sold ~3,300, bought ~2,900, wages
+~300–430); npc_cost_mult was set to 0 on prod as a stopgap. One rule for every ship (review of PR
+#126: deferred, never dodged):
+- A sea-day pays no wage: `voyage.settle` → `public.owe_wages` adds it to `public.fleet_wages.owed`
+  (side table, FK to fleets ON DELETE CASCADE). The debt CARRIES OVER between passages, capped at
+  `wages_owed_cap_days` (30) × the day's wage; above the cap is forgiven.
+- Paid only from profit, per port visit: `cmd.do_sell` hands its after-tax profit to
+  `public.pay_wages`, which keeps the visit's net and pays `wages_from_profit(owed, least(sale
+  profit, visit net − paid))` — never past the sale's profit nor the visit's net (a loss at the same
+  port reduces it). A sea-day starts a new visit. WAGES ledger row; lit, a WAGES flow to the city.
+- Supplies/repairs unchanged (purchases). Lap wages = what its sales paid. `npc_leg_lines` keeps any
+  parcel that pays after tax; leg profit = profit − wages_from_profit(leg wages, profit).
+  npc_cost_mult back to 1. Client: "wages from profit" wording (laps, books, Inn, ledger).
+Verified: cached-prefix apply on main (0125/0127) with self-assert probes on its own player and
+merchant (hop-and-sell pays both passages' wages from the later port's profit; loss 50 + profit 80
+at one port pays 30; cap 300 after 45 × 10; unknown cost 0; merchant same lines; lap; planner);
+lit probe (loss 50, profit 200, tax 30 → wages 120); tsc, eslint, build; prod dry-run of 0128 alone
+on head 0127 (begin…rollback) passed in 5.3 s, prod unchanged afterwards.
+
 ## 2026-10-15 — S3 (0127): a ship learns by the mile — `osn-0127-levels`
 
 docs/SHIPS_AND_GEAR.md §4. Experience lives in NEW side tables — `ship_xp`, `officer_xp`
