@@ -5,6 +5,20 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-15 — S2 (0126): a merchant is fitted by the same hands — `osn-0126-merchant-loadouts`
+
+docs/SHIPS_AND_GEAR.md §3.2. `cmd.do_fit` sliced into door + `public.mount_fitting(ship, item)` (the
+class_slots check and the upsert, moved verbatim); `public.npc_loadouts` authored in
+`data/npc-loadouts.json` (2–3 patterns per class, none spending hold, none full);
+`public.npc_fit_loadout(ship)` picks the pattern by md5(fleet_id) and mounts through the core,
+leaving a fitted hull alone (gear FIXED); `npc_found` hunk fits new merchants; one-time backfill.
+Nothing added to the arrivals tick; combat untouched (escort score still reads `guns`).
+**Prod dry-run (begin…rollback, 0126 alone on head 0124):** 892 merchant hulls given 2,542 fittings
+in 590 ms; merchant speed rating +10.9 % on average (barca +0.42 kn, carlat +0.46, nau +0.97);
+hold +1,650 t over 66 nau traders, no hull lower; speed+hold reads over all 892 hulls 950 ms vs
+969 ms bare (no arrivals cost). Expect merchant lap profit per real hour up by up to ~11 % (sea legs
+shorter); measure zero-net laps and arrivals avg/max after deploy. Rollback = one DELETE.
+
 ## 2026-10-15 — a city is three tabs: Market | Port | Inn; the inn turns over every 15 real minutes — `osn-city-tabs`
 
 Owner: *"when i click on a city, i don't want to see stupid useless info. Rather, i want there to be
