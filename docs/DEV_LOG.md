@@ -105,6 +105,9 @@ the source:**
   at the globe a tap ON Acapulco's dot picked Veracruz by the name rule (4.4° off) and then lost to
   a merchant 0.74° off. Its own comment says a merchant wins only when nearer than the nearest
   harbour.
+
+---
+
 ## 2026-10-16 — 0129: a merchant buys what her purse can pay — `osn-0129-merchant-lap-profit`
 
 RESUME next #1: merchant laps still mostly lose after 0128. **Measured on prod (read-only, laps
