@@ -1,7 +1,7 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { Icon } from './Icon'
 import { detentHeight, nearestDetent, stepDetent, TRAY_PEEK, type TrayDetent } from './trayDetents'
-import { trayDockWideClass } from './screenLayout'
+import { trayDockWideClass, traySideEdgeClass, traySideNextClass } from './screenLayout'
 import { InTray } from './trayContext'
 import { useWide } from './useWide'
 
@@ -82,7 +82,8 @@ export function Tray({
   onDetentChange: (next: TrayDetent) => void
   /** What was tapped. `t-title`, one line, never a sentence. */
   title: ReactNode
-  mode?: 'docked' | 'inline'
+  /** 'side' — the map's slide-in panel at the right edge, at every width (traySideEdgeClass). */
+  mode?: 'docked' | 'inline' | 'side' | 'side-next'
   /** The ONE primary button, pinned to the bottom edge and never inside the scroll. */
   action?: ReactNode
   /** False for a tray that is a FIXTURE of its slot rather than an answer to a tap — the basket
@@ -99,7 +100,8 @@ export function Tray({
   // ON A WIDE GLASS A DOCKED TRAY IS A SIDE PANEL (screenLayout.ts, "the wide glass"): it stands
   // beside the column at full height, so the detent ladder — a bottom-edge idea — does not apply.
   // `detent` still says open or closed; the height is the panel's.
-  const side = useWide() && mode === 'docked'
+  const wide = useWide()
+  const side = mode === 'side' || mode === 'side-next' || (wide && mode === 'docked')
 
   if (detent === 'closed') return null
 
@@ -138,9 +140,16 @@ export function Tray({
       data-tray-detent={detent}
       style={{ height, transitionDuration: dragHeight !== null ? '0ms' : undefined }}
       className={[
-        'z-40 flex flex-col overflow-hidden rounded-t-sheet bg-surface shadow-sheet',
+        mode === 'side-next' ? 'z-30' : 'z-40',
+        'flex flex-col overflow-hidden rounded-t-sheet bg-surface shadow-sheet',
         'transition-[height] duration-sheet ease-sheet',
-        mode === 'docked' ? `fixed inset-x-0 bottom-0 ${trayDockWideClass()}` : 'relative w-full',
+        mode === 'side-next'
+          ? traySideNextClass()
+          : mode === 'side'
+          ? traySideEdgeClass()
+          : mode === 'docked'
+            ? `fixed inset-x-0 bottom-0 ${trayDockWideClass()}`
+            : 'relative w-full',
         className,
       ].join(' ')}
       {...rest}

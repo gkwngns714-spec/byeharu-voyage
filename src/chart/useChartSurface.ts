@@ -15,6 +15,7 @@ import {
   unitsPerPixel,
   viewBoxOf,
   zoomAt,
+  ZOOM_GLIDE_MS,
   ZOOM_STEP,
   type ChartView,
 } from './chartView'
@@ -290,6 +291,41 @@ export function useChartSurface(
     [frameBounds],
   )
 
+  // ── THE ZOOM GLIDE (owner, 2026-10-15: "i want zoom in and out to be smoother") ────────────────
+  // A wheel notch or a +/− press no longer jumps: it adds its log-factor to what is still owed and
+  // one animation frame at a time pays a share of it (time constant ZOOM_GLIDE_MS) around the
+  // latest anchor. One loop, one owed amount — a second notch mid-glide just owes more. A drag, a
+  // pinch, Fit or a centre-on cancels it, so the hand always wins.
+  const glide = useRef({ owed: 0, u: 0.5, v: 0.5, aspect: 1, frame: 0, last: 0 })
+  const stopGlide = useCallback(() => {
+    cancelAnimationFrame(glide.current.frame)
+    glide.current.frame = 0
+    glide.current.owed = 0
+  }, [])
+  const glideZoom = useCallback(
+    (factor: number, u: number, v: number, surfaceAspect: number) => {
+      const g = glide.current
+      g.owed += Math.log(factor)
+      g.u = u
+      g.v = v
+      g.aspect = surfaceAspect
+      if (g.frame !== 0) return
+      g.last = performance.now()
+      const step = (t: number) => {
+        const share = 1 - Math.exp(-(t - g.last) / ZOOM_GLIDE_MS)
+        g.last = t
+        const done = Math.abs(g.owed) < 0.002
+        const pay = done ? g.owed : g.owed * share
+        g.owed -= pay
+        setMovedTo((previous) => zoomAt(from(previous, g.aspect), g.aspect, Math.exp(pay), g.u, g.v))
+        g.frame = done ? 0 : requestAnimationFrame(step)
+      }
+      g.frame = requestAnimationFrame(step)
+    },
+    [from],
+  )
+  useEffect(() => stopGlide, [stopGlide])
+
   // ── wheel (and the trackpad pinch, which arrives as ctrlKey + wheel) ──────────────────────────
   // Attached natively because it must be non-passive: a chart that scrolls the page under the
   // player's finger while they zoom is unusable, and React's onWheel cannot say preventDefault.
@@ -313,19 +349,20 @@ export function useChartSurface(
       const factor = Math.exp((-event.deltaY * lineHeight) / 400)
       const u = (event.clientX - rect.left) / rect.width
       const v = (event.clientY - rect.top) / rect.height
-      setMovedTo((previous) => zoomAt(from(previous, surfaceAspect), surfaceAspect, factor, u, v))
+      glideZoom(factor, u, v, surfaceAspect)
     }
     element.addEventListener('wheel', onWheel, { passive: false })
     return () => element.removeEventListener('wheel', onWheel)
-  }, [ref, from, pageOwnsVertical])
+  }, [ref, glideZoom, pageOwnsVertical])
 
   // ── pointers: one finger pans, two pinch ──────────────────────────────────────────────────────
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (isChrome(event.target)) return
+    stopGlide()
     if (pointers.current.size === 0) travelled.current = 0
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
     event.currentTarget.setPointerCapture(event.pointerId)
-  }, [])
+  }, [stopGlide])
 
   const onPointerMove = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -429,23 +466,27 @@ export function useChartSurface(
 
   // ── the three controls ────────────────────────────────────────────────────────────────────────
   const zoomBy = useCallback(
-    (factor: number) => setMovedTo((previous) => zoomAt(from(previous, aspect), aspect, factor, 0.5, 0.5)),
-    [aspect, from],
+    (factor: number) => glideZoom(factor, 0.5, 0.5, aspect),
+    [aspect, glideZoom],
   )
   const zoomIn = useCallback(() => zoomBy(ZOOM_STEP), [zoomBy])
   const zoomOut = useCallback(() => zoomBy(1 / ZOOM_STEP), [zoomBy])
   // "Fit" returns to the opening frame by FORGETTING the moves, not by storing a copy of it — so
   // there is only ever one definition of where the chart opens.
-  const fit = useCallback(() => setMovedTo(null), [])
+  const fit = useCallback(() => {
+    stopGlide()
+    setMovedTo(null)
+  }, [stopGlide])
 
   const centreOn = useCallback(
     (at: LatLon) => {
+      stopGlide()
       const point = project(at)
       setMovedTo((previous) =>
         clampView({ cx: point.x, cy: point.y, spanX: from(previous, aspect).spanX }, aspect),
       )
     },
-    [aspect, from],
+    [aspect, from, stopGlide],
   )
 
   return {

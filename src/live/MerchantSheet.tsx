@@ -23,6 +23,7 @@ import { fleetCargoByCode, hullFraction } from '../domain/fleet'
 import { skippedWords } from '../domain/route'
 import type { MerchantCard } from '../lib/rpc'
 import { portNameOf, useWorld } from './worldStore'
+import { ShipPanel } from './ShipPanel'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MERCHANT SHEET — one merchant fleet, READ-ONLY (owner rows 110-111, docs/NPC_TRADERS.md §8.3)
@@ -61,6 +62,7 @@ export function MerchantSheet({
   card,
   line,
   onClose,
+  mode,
 }: {
   /** The card, read by the caller through `useMerchantCard` — ONE read per screen, because MAP
    *  also draws the open merchant's leg from the same answer. Null while the first read is out. */
@@ -68,13 +70,20 @@ export function MerchantSheet({
   /** The one line under her name at peek — the caller's (MAP: `fleetLine`, or when she sails). */
   line: string
   onClose: () => void
+  /** MAP passes 'side' — its slide-in panel at the right edge (screenLayout traySideEdgeClass). */
+  mode?: 'docked' | 'side'
 }) {
   const [detent, setDetent] = useState<TrayDetent>('peek')
+  // HER SHIPS OPEN ONE BY ONE (owner, 2026-10-15): a press slides that ship's panel in over this.
+  const [openShip, setOpenShip] = useState<number | null>(null)
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
 
+  const ship = card && openShip !== null ? card.ships[openShip] : undefined
   return (
+    <>
     <Tray
+      mode={mode}
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={
@@ -90,9 +99,11 @@ export function MerchantSheet({
       {!card ? (
         <Skeleton className="mt-2 h-28 w-full" />
       ) : (
-        <MerchantBody card={card} portName={(c) => portNameOf(portByCode, c)} goodName={(c) => goodByCode[c]?.name ?? c} goodCategory={(c) => goodByCode[c]?.category ?? ''} />
+        <MerchantBody card={card} portName={(c) => portNameOf(portByCode, c)} goodName={(c) => goodByCode[c]?.name ?? c} goodCategory={(c) => goodByCode[c]?.category ?? ''} onOpenShip={setOpenShip} />
       )}
     </Tray>
+    {ship && <ShipPanel key={openShip} ship={ship} onClose={() => setOpenShip(null)} />}
+    </>
   )
 }
 
@@ -101,11 +112,13 @@ function MerchantBody({
   portName,
   goodName,
   goodCategory,
+  onOpenShip,
 }: {
   card: MerchantCard
   portName: (code: string) => string
   goodName: (code: string) => string
   goodCategory: (code: string) => string
+  onOpenShip: (index: number) => void
 }) {
   // THE ONE CLOCK (src/app/shellState.ts): the Fortune line counts a span from it, never from a
   // Date.now() read during a render.
@@ -177,12 +190,24 @@ function MerchantBody({
                 <span className="block text-t-caption text-ink-faint">newest first</span>
               </span>
             }
-            value={
-              <span className="text-t-caption tabular-nums text-ink-muted" data-testid="merchant-laps-recent">
-                {e.laps_recent.map((n) => formatDucatsDelta(n)).join(' · ')}
-              </span>
-            }
-          />
+          >
+            {/* ONE PILL A LAP, wrapping on their own line under the label — as one joined string
+                in the value column they wrapped into each other (owner, 2026-10-15, on Yol
+                Portobelo: "the lines are overlapping with one another"). */}
+            <span className="mt-1.5 flex flex-wrap gap-1.5" data-testid="merchant-laps-recent">
+              {e.laps_recent.map((n, i) => (
+                <span
+                  key={i}
+                  className={[
+                    'whitespace-nowrap rounded-chip px-2 py-0.5 text-t-caption leading-snug tabular-nums',
+                    n > 0 ? 'bg-success/15 text-success' : n < 0 ? 'bg-danger/15 text-danger' : 'bg-surface-2 text-ink-muted',
+                  ].join(' ')}
+                >
+                  {formatDucatsDelta(n)}
+                </span>
+              ))}
+            </span>
+          </Row>
         )}
         <Row
           mark={<IconDisc name="coin" />}
@@ -210,8 +235,17 @@ function MerchantBody({
       </Hint>
 
       <SheetSection heading="Ships">
-        <TileField>
-          {card.ships.map((s) => (
+        {/* ONE SHIP A ROW, full width: in the auto-fill tile grid her figures ran out of the box
+            (owner, 2026-10-15: "words are outside the box"). */}
+        <div className="flex flex-col gap-2">
+          {card.ships.map((s, i) => (
+            <button
+              key={s.name}
+              type="button"
+              onClick={() => onOpenShip(i)}
+              className="block w-full text-left"
+              data-testid="merchant-ship-open"
+            >
             <ShipTile
               key={s.name}
               name={s.name}
@@ -228,8 +262,9 @@ function MerchantBody({
               fittings={s.fittings}
               testId="merchant-ship-tile"
             />
+            </button>
           ))}
-        </TileField>
+        </div>
       </SheetSection>
 
       <SheetSection heading="Cargo" surface>

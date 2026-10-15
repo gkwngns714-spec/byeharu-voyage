@@ -81,6 +81,7 @@ export function SendFleet({
 
   return (
     <Tray
+      mode="side"
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={

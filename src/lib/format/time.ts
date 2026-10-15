@@ -177,13 +177,18 @@ export function formatGameDate(d: GameDate): string {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
-/** THE GAME CLOCK — the hour of the voyage clock (TIME_COMPRESSION), the same for every player:
- *  game time is real time since the Unix epoch run at TIME_COMPRESSION×, so a game day passes in
- *  REAL_MS_PER_VOYAGE_DAY. The owner, 2026-10-15: *"show game clock, no date, only time"* and the
+/** THE GAME CLOCK'S RATE — HALF the voyage clock. The owner, 2026-10-15: *"make the clock twice
+ *  slower, but keep the ship speed to where it is"*. So the clock and the Sun run at 480× (a game
+ *  day is 3 real minutes) while sailing stays on the server's TIME_COMPRESSION (960×). The two are
+ *  deliberately different now: a ship covers in one clock-hour what she covers in two voyage-hours. */
+export const GAME_CLOCK_RATE = TIME_COMPRESSION / 2
+
+/** THE GAME CLOCK — the same for every player: real time since the Unix epoch run at
+ *  GAME_CLOCK_RATE×. The owner, 2026-10-15: *"show game clock, no date, only time"* and the
  *  sunlight *"should match the speed of the game speed"*. ONE authority: the top bar prints it and
  *  the Sun (src/chart/useSunlight.ts) stands where this hour puts it. Returns ms into the game day. */
 export function gameTimeOfDayMs(nowMs: number): number {
-  return (((nowMs % MS_PER_DAY) * TIME_COMPRESSION) % MS_PER_DAY + MS_PER_DAY) % MS_PER_DAY
+  return (((nowMs % MS_PER_DAY) * GAME_CLOCK_RATE) % MS_PER_DAY + MS_PER_DAY) % MS_PER_DAY
 }
 
 /** The game clock as the top bar prints it, UTC hours: "14:22". No date — the owner's call. */
