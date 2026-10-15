@@ -69,7 +69,7 @@ async function settlesAt(page: Page, target: { x: number; y: number }) {
     .then(() => true)
     .catch(() => false)
   if (!ok) seen.push(...(await page.evaluate(() => (window as unknown as { __goto?: string[] }).__goto ?? [])))
-  expect(ok, `the marker settles on ${target.x},${target.y}; saw ${seen.filter((v, i) => i % 10 === 0).join(' ')}`).toBe(true)
+  expect(ok, `the marker settles on ${target.x},${target.y}; saw ${seen.filter((_, i) => i % 10 === 0).join(' ')}`).toBe(true)
 }
 
 test.describe('a place named in a panel is a link that brings the chart to it', () => {
