@@ -317,7 +317,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // trading is read at a tap (world.fleet_trades).
 // And to 0122 (docs/ECONOMY_LOOP.md): a city keeps a purse — the market is the city's money, tax
 // falls on the profit of a sale only, a city buys only what it can pay for; shipped dark.
-const LAST = '20260818000122_a_city_keeps_a_purse.sql'
+// And to 0123 (owner: "a building called town hall, where you click and can invest, and see who or
+// what npcs invested"): works, shares, coupons from surplus, merchants invest on their loop; dark.
+const LAST = '20260818000123_a_city_builds_with_other_peoples_money.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
