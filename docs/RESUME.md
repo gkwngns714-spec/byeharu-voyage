@@ -6,6 +6,44 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 
 ---
 
+# ▼ RESUME ANCHOR — 2026-10-15 (night) — READ THIS FIRST ▼
+
+**Paused again for a machine change. Everything below this anchor is HISTORY.**
+
+## State (verified 2026-10-15 ~11:30 UTC)
+| | |
+|---|---|
+| `main` | `11c5bb6` (+ this doc), Pages deployed |
+| **Prod DB head** | **0128**. Nothing pending. |
+| Open branches | `osn-0129-ships-and-gear` (stopped WIP, superseded — reference only, PR #127 closed); old #59/#84 from September |
+| Agents / worktrees | none running; all worktrees removed |
+
+## LIVE today (PRs #118–#128)
+- **0122** city purse (DARK: `city_treasury_enabled` false; switch = `city_treasury_switch(true)` seeds all 238 harbours). Tax only on profit, per city, cap 20 %; no harbour dues.
+- **0123** investment + **Town Hall** tab (DARK: "not selling shares yet").
+- **0124** one ship builder (`world.ship_view`/`ship_stats`): merchant ship panels show slots + six stats.
+- **0125** a merchant is in port the moment she TRULY arrives (`voyage.arrival_at` rolls remaining days purely; map + reads share it); arrivals sweep **every 15 s** (10 s budget; was 1 min); daily cron-record purge active.
+- **0126** merchant loadouts via `mount_fitting` (the one gear writer); merchants ~11 % faster.
+- **0127** ship + captain levels (xp by miles at arrival; captain per signing; NPC fixed) — effects DARK (`levels_bite` false), display live.
+- **0128** wages paid only from profit (owed wages carry over, cap 30 days, paid ≤ net profit of a port visit); `npc_cost_mult` back to 1.
+- **#121** faster CI (PR runs restore main's DB snapshot; migrations ~13 min, acceptance ~20 min). **#128** every place/ship name in side panels is a go-to link (map glides + ring marker).
+
+## Next (in order)
+1. **Merchant laps still mostly LOSE after 0128** (prod, hour 11 UTC: 679 laps — 72 profit / 12 zero / 595 loss; avg sold 2,634 vs bought 2,780, wages only ~65). So the loss is now in the TRADE itself (bought > sold), not wages. Investigate first (0126's +11 % speed? 0120 route choice? cut-loss sells? price drift?). Stopgap knob if needed: `npc_min_return_pct` up.
+2. **Go-to links polish** (seen on live): glide zooms in too close (only water visible); one press on a stop name may also have opened the trade-history panel — the link must only move the map.
+3. **Ships / skills / gear** — plan `docs/SHIPS_AND_SKILLS.md` (EVE-style grid: 11 countries × 6 sizes × 4 roles × T1/T2/famous = 103 hulls; ~92 real-time skills I–V; EVE racks + RS3 grades/wear/perks/sets). Build steps S8–S18. Owner questions: (a) home-country head start? default no; (b) anything lost for good? default no (wear to half, repair). Then build S8 (countries + yards).
+4. Combat stats bite (S4) — after the ship/gear redesign.
+5. **One full acceptance run at the end** (owner's rule); known stale specs: waters.panel, map.sendfleet ("a ratio can be set without sailing"), words.spec (TradeHistoryPanel), duplicate-class, city-tray specs.
+6. **Owner decision:** switch the city economy on (`city_treasury_switch(true)`).
+
+## Process notes learned today
+- **Deploy order: `db push --linked` FIRST, merge only after it succeeds** (Pages auto-deploys on merge).
+- `db push` runs each top-level statement separately (implicit transaction): no top-level `LOCK TABLE` / `set local` / `begin`; no `set role`/`reset role` in self-asserts. A `begin…rollback` dry-run via `db query` cannot catch either.
+- Self-asserts must hold on a lived-in prod world (probe their own fleets; don't assume empty).
+- Fable credits ran out mid-day; agents ran on Opus.
+
+---
+
 # ▼ RESUME ANCHOR — 2026-10-15 (evening) — READ THIS FIRST ▼
 
 **Paused for a machine change by the owner. Everything below this anchor is HISTORY.**
