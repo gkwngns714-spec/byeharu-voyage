@@ -18,21 +18,45 @@ import type { RosterFleet, RosterVoyage, TrafficFleet } from '../lib/rpc'
 // served legs. The eta is the server's and already carries every delay a hazard put on her, so she
 // arrives on the instant the server says.
 
-/** One roster row placed at `nowMs`, in the shape the chart draws. */
+/**
+ * One roster row placed at `nowMs`, in the shape the chart draws.
+ *
+ * 0125 (owner, 2026-10-15: "the merchant npc should also be like me"): SHE IS IN PORT THE MOMENT
+ * HER PLACEMENT REACHES THE END OF HER COURSE — the same `placedFrac` that draws her, so she is never
+ * drawn at sea while called in port, or the other way round. Bound for a harbour, she is then the
+ * row the server serves for a docked merchant: DOCKED in that port, at the roadstead her course ends
+ * on (0118: the frozen path ends on the destination's served roadstead), no voyage — and
+ * `whereabouts` (domain/fleet/where.ts), the one classifier, reads her as docked with no rule of its
+ * own. The server agrees on the instant: `voyage.arrived` (0125) reaches the end of the path exactly
+ * at the served eta, and a delay recorded later moves that eta and reaches this roster on its delta.
+ * Trading, the lap close and the next departure are still the sweep's (every 15 s).
+ */
 export function trafficRowAt(f: RosterFleet, nowMs: number): TrafficFleet {
-  return { ...f, voyage: f.voyage ? voyageAt(f.voyage, nowMs) : null }
+  const v = f.voyage
+  if (v && v.to !== null && placedFrac(v, nowMs) === 1) {
+    const end = v.course[v.course.length - 1]
+    return { ...f, status: 'DOCKED', port: v.to, roadstead: end ?? f.roadstead, anchor: null, voyage: null }
+  }
+  return { ...f, voyage: v ? voyageAt(v, nowMs) : null }
 }
 
-function voyageAt(v: RosterVoyage, nowMs: number): TrafficFleet['voyage'] {
+/** How far along her served passage she is at `nowMs`, 0..1 — linear in time from departure to the
+ *  served eta. Null for a voyage whose instants are not times. THE one placement rule. */
+function placedFrac(v: RosterVoyage, nowMs: number): number | null {
   // Served instants read through the one `instantMs` (null, never NaN, for a byte that is not a time).
   const dep = instantMs(v.departed_at)
   const eta = instantMs(v.eta)
+  if (dep === null || eta === null) return null
+  return eta > dep ? Math.min(1, Math.max(0, (nowMs - dep) / (eta - dep))) : 1
+}
+
+function voyageAt(v: RosterVoyage, nowMs: number): TrafficFleet['voyage'] {
   const legs = v.legs_nm
   const course = v.course
-  if (dep === null || eta === null || legs.length === 0 || course.length < legs.length + 1) {
+  const frac = placedFrac(v, nowMs)
+  if (frac === null || legs.length === 0 || course.length < legs.length + 1) {
     return null
   }
-  const frac = eta > dep ? Math.min(1, Math.max(0, (nowMs - dep) / (eta - dep))) : 1
   const total = legs.reduce((a, b) => a + b, 0)
   const done = frac * total
   // THE LEG SHE IS ON — the walk voyage.position makes over the same frozen legs.

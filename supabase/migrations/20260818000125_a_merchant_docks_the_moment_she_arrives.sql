@@ -1,74 +1,80 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 -- 0125 — A MERCHANT DOCKS THE MOMENT SHE ARRIVES  (docs/MERCHANTS_DOCK_ON_ARRIVAL.md, step M1)
+--        "in port" is where her position says she is; and the arrivals sweep runs every 15 s
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- ── THE OWNER'S WORDS ───────────────────────────────────────────────────────────────────────────
 --   "the merchant npc should also be like me."  (2026-10-15)
+--   And, on the design: "in port" is a pure function of time — the ship's actual position (the same
+--   function the map uses) has reached her destination, never a stored eta; the arrival is not known
+--   at departure (weather can slow her mid-passage); trading, the lap close and the next departure
+--   stay in the sweep, which runs every 15 seconds.
 --
 -- ── WHAT SAYS THE OPPOSITE, NAMED ───────────────────────────────────────────────────────────────
--- A player's fleet docks on the first read after her eta: world.fleets() settles every one of the
--- house's fleets through voyage.settle before it answers (0009:161-165). A merchant docked only when
--- the minute sweep reached her (public.tick_arrivals, 0010:54-87, cron `* * * * *`), because the four
--- reads that report her were declared STABLE and so could settle nothing:
---   world.sea_roster (0118:38), world.port_merchants (0113:70-71), world.npc_fleet_card (0099:241),
---   world.fleet_trades (0121:214).
--- At 960x that left an arrived merchant lying off the quay as a SAILING hull for up to a minute and
--- a half of real time — sixteen to twenty-eight voyage-hours. The 2026-10-08 decision "the map read
--- does not settle" (N13) is revisited in the plan's §7: what stands of it is "no viewer WAITS".
+-- The merchant reads served her `status` / `port` / `voyage` straight off public.fleets, which only
+-- the minute sweep (public.tick_arrivals, cron `* * * * *` at 0012:97) writes — so an arrived
+-- merchant lay off the quay as a SAILING hull until the sweep reached her: up to a minute plus the
+-- sweep's own run (prod, last hour, 2026-10-15 16:10: avg 17 s, max 39.8 s, 60 runs). At 960x that
+-- is a day of ship's time. world.sea_roster (0118), world.port_merchants (0113, body 0104) and
+-- world.npc_fleet_card (0099 as cut by 0124) all read `f.status` / `f.port_id` / "the SAILING voyage".
+--
+-- ── THE POSITION IS THE ONE AUTHORITY (and what weather is today) ──────────────────────────────
+-- voyage.progress_nm(voyage, t) (0006) is THE position function: elapsed sim-hours minus the delay
+-- RECORDED so far (voyage.delay_before_day reads public.voyage_events), consumed leg by leg at the
+-- leg's speed. voyage.position and the chart's drift read it. Today the only things that change a
+-- passage's pace are the daily hazard roll's delay arms in voyage.settle — STORM (+36 h), CALM
+-- (+24..96 h), FAIR_WIND (gives back up to what was lost) — each RECORDED as a voyage_event and
+-- folded into voyages.eta by voyage.recompute_eta. Nothing is known ahead: a day's delay exists from
+-- the moment the sweep resolves that day, and not before. So:
+--   * voyage.arrived(voyage, t) — NEW, the one "has she reached the end of her path": her
+--     progress_nm at t has reached the end of the path progress_nm walks. It reads no eta. A later
+--     weather system that changes speed must flow through progress_nm, and both the map and "in port"
+--     follow it with no second edit (it holds whether weather is rolled from a seed and recorded when
+--     resolved, or rolled live and recorded: progress_nm reads what is recorded).
+--   * voyage.where_now(fleet, t) — NEW, the one "where is this fleet NOW": her own status / port /
+--     SAILING voyage, except that a SAILING fleet whose position has reached a HARBOUR reads
+--     DOCKED at that harbour with no voyage. It writes nothing; the sweep still docks her, trades,
+--     closes the lap and sails her on — through voyage.settle, unchanged.
+--   The client places a roster merchant linearly in time from departure to the served eta
+--   (src/live/seaRoster.ts); recompute_eta writes eta = departed + (sim-hours + recorded delay), the
+--   instant progress_nm reaches the end, so the two arrive on the same instant — asserted below over
+--   every merchant at sea. A delay recorded after the read moves her eta; world.sea_roster's delta
+--   now carries a fleet whose passage gained a delaying event since p_since, so the map learns it on
+--   its next 30 s beat (before 0125 an eta change never reached the delta at all).
 --
 -- ── WHAT THIS FILE DOES ─────────────────────────────────────────────────────────────────────────
--- (1) Five knobs (world_config): merchant_settle_on_read (THE switch, lit), merchant_settle_per_read
---     12, merchant_wake_per_read 2, merchant_settle_budget_ms 1500, merchant_settle_lock_ms 500.
--- (2) public.merchant_settle_on_read() — the one reader of the switch. Server-only.
--- (3) voyage.settle_due(fleets, now, limit, wake_max, budget_ms) — THE MERCHANT CATCH-UP ON READ.
---     A CALLER of voyage.settle, never an author: it picks the merchants that are due — arrivals
---     (eta passed, oldest first, the sweep's order) and rests that are over (the sweep's wake
---     predicate) — locks each one `for update skip locked` exactly as the sweep does, and settles it
---     through voyage.settle in its own subtransaction under a short lock_timeout. Arrival is judged
---     inside voyage.settle; the dock, the lap close, the rest and the next lap inside cmd.advance →
---     cmd.run_standing_route. Nothing is re-derived here. Sea-day boundaries are NOT chased (a read
---     that chased them would find hundreds due every beat — N13's objection); only arrivals and wakes.
---     Bounded: a count, a wake sub-cap, a wall-clock budget checked before each settle. A held row is
---     `busy`, never a wait; a settle that fails is rolled back alone and counted `failed`.
--- (4) The four reads become VOLATILE (the shape world.fleets() has had since 0009) and call
---     voyage.settle_due FIRST, on exactly the merchants they report, after their own dark/E_NOT_FOUND
---     gate, then answer as before. world.fleet_trades settles a MERCHANT only: a player's own fleet is
---     settled by world.fleets(), its one settling read.
+-- (1) voyage.arrived, voyage.where_now — stable, server-only.
+-- (2) world.sea_roster, world.port_merchants, world.npc_fleet_card — sliced: status / port /
+--     roadstead / voyage through voyage.where_now (the reads stay STABLE: they write nothing). The
+--     roster's delta also carries a passage whose arrival moved (a recorded delaying event).
+-- (3) public.tick_arrivals — sliced: a wall-clock budget (arrivals_tick_budget_ms, 10 000), checked
+--     before each settle and each wake, so a run stays short and the next run takes the rest (the
+--     arrivals are taken first: the loop is in eta order).
+-- (4) The cron job byeharu-voyage:arrivals: '* * * * *' → '15 seconds' (pg_cron >= 1.5; prod runs
+--     1.6.4). cron.alter_job keeps the job's active flag as found (0078: the chain defines, the
+--     runbook winds). pg_cron runs at most one instance of a job at a time — a run due while one is
+--     running is queued and starts when it ends — so runs never overlap and at most one waits. Lock
+--     order inside a run is the sweep's own and unchanged, so the drift / reconcile behaviour is the
+--     same; only the cadence moves.
 --
 -- ── WHAT IT DELIBERATELY DOES NOT ───────────────────────────────────────────────────────────────
--- Touch voyage.settle, cmd.advance, cmd.run_standing_route, public.tick_arrivals or the cron (the
--- sweep stays, unchanged, the fallback for merchants nobody is looking at); world.sea_traffic or
--- world.route_board; any table; any grant; the client. No key is added to any read's answer.
--- world.port_merchants stays a `language sql` function: a volatile SQL function runs its statements
--- in order with each one seeing the last, so the settle is one statement placed before its select —
--- a slice, not a restatement (the plan's §3.2 named a plpgsql restatement; the slice is less text and
--- the same one authority).
---
--- ── COST (bounds, by the plan's measurements; this file's receipt prints the PGlite numbers) ────
--- Per settle: an arrival ~0.06-0.1 s, a home arrival ~0.01 s, a wake (the lap-start plan) 0.5-1.3 s
--- (docs/DEV_LOG.md:8959-8960). Defaults 12 arrivals + 2 wakes inside a 1,500 ms budget checked before
--- each settle: the worst overrun is one wake, so the worst read is ~3 s against the 8 s
--- `authenticated` statement timeout (0117:10-14). A card or a trade history settles at most one fleet.
--- MEASURED on prod, 2026-10-15, this file's self-assert inside begin…rollback (on 0122 + 0124): the
--- harbour's read docking an arrival 521 ms, the roster delta 295 ms, the card 948 ms; a trade history
--- settling one WHOLE rewound passage 3.9 s (every sea-day of the voyage at once — a probe artefact: in
--- play the sweep resolves the days and a read meets at most the last one); a wake through the card
--- (a halted merchant's lap-start plan) 4.1 s. The budget is checked BEFORE each settle, so the worst
--- read is budget + one wake + the read itself, ~6 s against 8 s — merchant_settle_budget_ms is the
--- knob to lower if pg_stat_statements shows a read near it.
+-- Touch voyage.settle, voyage.progress_nm, voyage.recompute_eta, cmd.advance, the executor, any
+-- table, any grant, world.fleets (a player's read settles her own fleets, 0009) or
+-- world.fleet_trades (it serves no position). public.merchant_doing_at is not re-cut: an arrived,
+-- not-yet-swept merchant reads `ending` / `passing` for the seconds until the sweep docks her.
 --
 -- ── ROLLBACK ────────────────────────────────────────────────────────────────────────────────────
--- (1) Instant: update world_config set value = 'false' where key = 'merchant_settle_on_read' — every
---     read is then its pre-image to the byte (asserted below, (c)). (2) A forward migration: every OLD
---     hunk is in this file verbatim (hunks_0125.old) and the self-assert proves each live body reverses
---     to its pre-image by them; then drop voyage.settle_due and public.merchant_settle_on_read.
+--   select cron.alter_job((select jobid from cron.job where jobname = 'byeharu-voyage:arrivals'),
+--                         schedule := '* * * * *');                     -- the cadence, one statement
+--   update public.world_config set value = '600000' where key = 'arrivals_tick_budget_ms';  -- no cut
+-- and a forward migration restoring the reads: every OLD hunk is in this file (hunks_0125.old) and
+-- the self-assert proves each live body reverses to its pre-image by them.
 --
--- SUPERSEDES: world.sea_roster (0118), world.port_merchants (0113), world.npc_fleet_card (0099 as cut
--- by 0124), world.fleet_trades (0121) — hunks sliced from the LIVE bodies (LF-normalised), each
--- asserted to occur exactly once. The npc_fleet_card hunk sits at the E_NOT_FOUND gate, clear of the
--- 'refounded_at' line 0123 slices and of the 'ships' line 0124 cut.
--- Self-asserts hold AS FOUND; every probe rolls back. No table, no client grant, no new entry point.
--- VERSION: 0125, stacked on 0124 (one_ship_one_builder).
+-- SUPERSEDES: world.sea_roster (0118), world.port_merchants (0113), world.npc_fleet_card (0099 as
+-- cut by 0124), public.tick_arrivals (0092) — hunks sliced from the LIVE bodies (LF-normalised),
+-- each asserted to occur exactly once. The card's hunks are clear of 0123's 'refounded_at' line
+-- and of 0124's 'ships' line. Self-asserts hold AS FOUND; every probe rolls back. No table, no client
+-- grant, no new entry point.
 
 do $guard$ begin perform set_config('statement_timeout', '20min', true); end $guard$;
 
@@ -79,18 +85,13 @@ select f.fn,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl,
        (select p.provolatile from pg_proc p where p.oid = f.fn::regprocedure) as vol
   from unnest(array['world.sea_roster(timestamptz)', 'world.port_merchants(uuid)',
-                    'world.npc_fleet_card(uuid)', 'world.fleet_trades(uuid)',
-                    'voyage.settle(uuid, timestamptz)', 'public.tick_arrivals(timestamptz)']) f(fn);
+                    'world.npc_fleet_card(uuid)', 'public.tick_arrivals(timestamptz)',
+                    'voyage.settle(uuid, timestamptz)', 'voyage.progress_nm(uuid, timestamptz)']) f(fn);
 
 create temp table before_0125 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
-       (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-         where n.nspname not like 'pg_temp%' and p.prosrc like '%voyage.settle(%') as settle_callers,
-       (select count(*) from public.world_config
-         where key in ('merchant_settle_on_read', 'merchant_settle_per_read', 'merchant_wake_per_read',
-                       'merchant_settle_budget_ms', 'merchant_settle_lock_ms')) as knobs_found;
+       (select count(*) from public.world_config where key = 'arrivals_tick_budget_ms') as knobs_found;
 
--- The four reads as they were, callable under pg_temp for the parity asserts.
 do $$
 begin
   execute replace((select def from defs_before_0125 where fn = 'world.sea_roster(timestamptz)'),
@@ -99,224 +100,196 @@ begin
     'CREATE OR REPLACE FUNCTION world.port_merchants(', 'CREATE OR REPLACE FUNCTION pg_temp.port_merchants_before_0125(');
   execute replace((select def from defs_before_0125 where fn = 'world.npc_fleet_card(uuid)'),
     'CREATE OR REPLACE FUNCTION world.npc_fleet_card(', 'CREATE OR REPLACE FUNCTION pg_temp.card_before_0125(');
-  execute replace((select def from defs_before_0125 where fn = 'world.fleet_trades(uuid)'),
-    'CREATE OR REPLACE FUNCTION world.fleet_trades(', 'CREATE OR REPLACE FUNCTION pg_temp.trades_before_0125(');
 end $$;
 
--- ── 2. THE KNOBS ───────────────────────────────────────────────────────────────────────────────
+-- ── 2. THE KNOB ────────────────────────────────────────────────────────────────────────────────
 insert into public.world_config (key, value, description) values
-  ('merchant_settle_on_read', 'true'::jsonb,
-   '0125: THE switch. True: the four merchant reads (sea_roster, port_merchants, npc_fleet_card, '
-   'fleet_trades) settle the merchants they report through voyage.settle_due before answering, so a '
-   'merchant docks on the first read after her eta, as a player''s fleet does. False: every one of '
-   'those reads is its pre-0125 body to the byte and the minute sweep alone docks merchants. One '
-   'reader: public.merchant_settle_on_read().'),
-  ('merchant_settle_per_read', to_jsonb(12),
-   '0125: the most arrivals one merchant read may settle (eta ascending, the sweep''s order). '
-   'voyage.settle_due.'),
-  ('merchant_wake_per_read', to_jsonb(2),
-   '0125: the most rested merchants one read may put back to sea (each runs the lap-start plan, '
-   '0.5-1.3 s). voyage.settle_due.'),
-  ('merchant_settle_budget_ms', to_jsonb(1500),
-   '0125: the wall-clock budget of one read''s settling, in ms, checked BEFORE each settle — the '
-   'overrun is at most one settle. 0 settles nothing. voyage.settle_due.'),
-  ('merchant_settle_lock_ms', to_jsonb(500),
-   '0125: lock_timeout (ms) while a read settles a merchant. A row it cannot lock in time is counted '
-   'busy and left to the sweep — a player never waits on it. voyage.settle_due.')
+  ('arrivals_tick_budget_ms', to_jsonb(10000),
+   '0125: the wall-clock budget of one public.tick_arrivals run, in ms, checked before each settle '
+   'and each wake; what is left is the next run''s (the job runs every 15 s; arrivals come first, '
+   'the loop is in eta order). 600000 = no cut in practice.')
 on conflict (key) do nothing;
 
--- ── 3. THE SWITCH'S ONE READER ─────────────────────────────────────────────────────────────────
-create or replace function public.merchant_settle_on_read()
+-- ── 3. THE POSITION'S VERDICT, AND WHERE A FLEET IS NOW ────────────────────────────────────────
+create or replace function voyage.arrived(p_voyage uuid, p_at timestamptz default now())
 returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+-- 0125: HAS SHE REACHED THE END OF HER PATH at p_at — by voyage.progress_nm, THE position function,
+-- against the farthest point progress_nm itself can report (the walked legs, capped at total_nm,
+-- rounded as it rounds). No eta is read. Cost guard: a passage cannot be done before its undelayed
+-- sailing time (recorded delay is never negative: voyages.delay_hours >= 0 and FAIR_WIND gives back
+-- at most what was lost), so progress_nm is walked only for a passage that could be.
+declare
+  v public.voyages%rowtype;
+begin
+  select * into v from public.voyages where id = p_voyage;
+  if v.id is null then return false; end if;
+  if extract(epoch from (p_at - v.departed_at)) * public.wc_num('time_compression') / 3600
+     < voyage.sim_hours(v.id) then
+    return false;
+  end if;
+  return voyage.progress_nm(v.id, p_at)
+         >= least(round((select coalesce(sum((e->>'nm')::numeric), 0) from jsonb_array_elements(v.path) e), 4),
+                  v.total_nm);
+end $$;
+comment on function voyage.arrived(uuid, timestamptz) is
+  '0125: THE one "has she reached the end of her path" — voyage.progress_nm at p_at against the end '
+  'of the path it walks. Reads no eta. Server-only.';
+revoke all on function voyage.arrived(uuid, timestamptz) from public, anon, authenticated;
+
+create or replace function voyage.where_now(p_fleet uuid, p_at timestamptz default now())
+returns table (status text, port_id uuid, voyage_id uuid)
 language sql
 stable
 security definer
 set search_path = public, pg_temp
 as $$
-  select public.wc('merchant_settle_on_read') = 'true'::jsonb
+  -- 0125: WHERE THIS FLEET IS NOW — her own status / port / SAILING voyage, except that a passage
+  -- whose position has reached a HARBOUR reads DOCKED there, with no voyage. Writes nothing: the
+  -- sweep (voyage.settle) still docks her, and everything that follows a docking follows it there.
+  select case when a.done then 'DOCKED' else f.status end,
+         case when a.done then v.dest_port_id else f.port_id end,
+         case when a.done then null else v.id end
+    from public.fleets f
+    left join public.voyages v on v.fleet_id = f.id and v.status = 'SAILING'
+    cross join lateral (select v.id is not null and v.dest_port_id is not null
+                               and voyage.arrived(v.id, p_at) as done) a
+   where f.id = p_fleet
 $$;
-comment on function public.merchant_settle_on_read() is
-  '0125: the one reader of world_config.merchant_settle_on_read. Server-only.';
-revoke all on function public.merchant_settle_on_read() from public, anon, authenticated;
+comment on function voyage.where_now(uuid, timestamptz) is
+  '0125: THE one "where is this fleet now" for the merchant reads: a passage whose position '
+  '(voyage.arrived) has reached its harbour reads DOCKED there with no voyage. Server-only.';
+revoke all on function voyage.where_now(uuid, timestamptz) from public, anon, authenticated;
 
--- ── 4. THE MERCHANT CATCH-UP ON READ ───────────────────────────────────────────────────────────
-create or replace function voyage.settle_due(
-  p_fleets    uuid[]      default null,
-  p_now       timestamptz default now(),
-  p_limit     int         default null,
-  p_wake_max  int         default null,
-  p_budget_ms int         default null)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
--- 0125: THE MERCHANT CATCH-UP ON READ. p_fleets: the merchants the calling read reports (null =
--- every merchant). Locks as the sweep locks, settles through the one catch-up (voyage.settle), and
--- decides nothing: arrival, dock, lap close, rest and the next lap are all judged downstream of
--- voyage.settle. Server-only; never an entry point.
-declare
-  v_t0      timestamptz := clock_timestamp();
-  v_lock    text := current_setting('lock_timeout');
-  v_limit   int;
-  v_wake    int;
-  v_budget  interval;
-  v_settled int := 0;
-  v_woken   int := 0;
-  v_busy    int := 0;
-  v_failed  int := 0;
-  v_over    int := 0;
-  v_notes   jsonb := '[]'::jsonb;
-  r         record;
-begin
-  if not public.merchant_settle_on_read() or not public.npc_traders_on() then
-    return jsonb_build_object('settled', 0, 'woken', 0, 'busy', 0, 'failed', 0, 'over_budget', 0, 'ms', 0,
-                              'notes', '[]'::jsonb);
-  end if;
-  v_limit  := greatest(0, coalesce(p_limit, public.wc_int('merchant_settle_per_read')));
-  v_wake   := greatest(0, coalesce(p_wake_max, public.wc_int('merchant_wake_per_read')));
-  v_budget := make_interval(secs => greatest(0, coalesce(p_budget_ms, public.wc_int('merchant_settle_budget_ms'))) / 1000.0);
-  perform set_config('lock_timeout', public.wc_int('merchant_settle_lock_ms') || 'ms', true);
-
-  -- ARRIVALS, oldest eta first (the sweep's order). `eta <= p_now` picks candidates; voyage.settle
-  -- judges the arrival. players.is_npc is the one predicate: a player's fleet is never settled here.
-  for r in select v.id, v.fleet_id
-             from public.voyages v
-             join public.fleets f on f.id = v.fleet_id
-             join public.players p on p.id = f.player_id and p.is_npc
-            where v.status = 'SAILING' and v.eta <= p_now
-              and (p_fleets is null or v.fleet_id = any(p_fleets))
-            order by v.eta
-            limit v_limit loop
-    if clock_timestamp() >= v_t0 + v_budget then
-      v_over := v_over + 1;
-      exit;
-    end if;
-    begin
-      perform 1 from public.voyages where id = r.id and status = 'SAILING' for update skip locked;
-      if not found then
-        v_busy := v_busy + 1;          -- the sweep or another read holds her
-      else
-        perform voyage.settle(r.fleet_id, p_now);
-        v_settled := v_settled + 1;
-      end if;
-    exception
-      when lock_not_available then
-        v_busy := v_busy + 1;
-      when others then
-        v_failed := v_failed + 1;
-        v_notes := v_notes || jsonb_build_object('fleet', r.fleet_id, 'error', sqlerrm);
-    end;
-  end loop;
-
-  -- WAKES: a rest that is over, soonest first — the sweep's wake predicate (0092). voyage.settle of a
-  -- fleet with no voyage is cmd.advance, which refills through cmd.run_standing_route; the lap start
-  -- there writes hold_until, so it is not cleared here.
-  if v_over = 0 and v_wake > 0 and public.standing_routes_on() then
-    for r in select f.id
-               from public.fleets f
-               join public.players p on p.id = f.player_id and p.is_npc
-               join public.standing_routes sr on sr.fleet_id = f.id
-              where sr.paused_reason is null and sr.hold_until is not null and sr.hold_until <= p_now
-                and f.status = 'DOCKED'
-                and (p_fleets is null or f.id = any(p_fleets))
-              order by sr.hold_until
-              limit v_wake loop
-      if clock_timestamp() >= v_t0 + v_budget then
-        v_over := v_over + 1;
-        exit;
-      end if;
-      begin
-        perform 1 from public.fleets where id = r.id for update skip locked;
-        if not found then
-          v_busy := v_busy + 1;
-        else
-          perform voyage.settle(r.id, p_now);
-          v_woken := v_woken + 1;
-        end if;
-      exception
-        when lock_not_available then
-          v_busy := v_busy + 1;
-        when others then
-          v_failed := v_failed + 1;
-          v_notes := v_notes || jsonb_build_object('fleet', r.id, 'error', sqlerrm);
-      end;
-    end loop;
-  end if;
-
-  perform set_config('lock_timeout', v_lock, true);
-  return jsonb_build_object('settled', v_settled, 'woken', v_woken, 'busy', v_busy, 'failed', v_failed,
-                            'over_budget', v_over,
-                            'ms', round((extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric, 1),
-                            'notes', v_notes);
-end $$;
-comment on function voyage.settle_due(uuid[], timestamptz, int, int, int) is
-  '0125: THE merchant catch-up on read. Settles the due merchants among p_fleets (null = all) through '
-  'voyage.settle, skip-locked, bounded by merchant_settle_per_read / merchant_wake_per_read / '
-  'merchant_settle_budget_ms. Called first by the four merchant reads. Server-only.';
-revoke all on function voyage.settle_due(uuid[], timestamptz, int, int, int) from public, anon, authenticated;
-
--- ── 5. THE HUNKS (old = verbatim from the live bodies; new = what replaces it) ─────────────────
+-- ── 4. THE HUNKS (old = verbatim from the live bodies; new = what replaces it) ─────────────────
 create temp table hunks_0125 (fn text, n int, old text, new text) on commit drop;
 
--- n = 0 on every read: STABLE → volatile (the header line pg_get_functiondef prints).
-insert into hunks_0125
-select fn, 0, E'\n STABLE SECURITY DEFINER\n', E'\n SECURITY DEFINER\n'
-  from unnest(array['world.sea_roster(timestamptz)', 'world.port_merchants(uuid)',
-                    'world.npc_fleet_card(uuid)', 'world.fleet_trades(uuid)']) fn;
-
 insert into hunks_0125 values
+-- world.sea_roster
 ('world.sea_roster(timestamptz)', 1,
-$h$    return jsonb_build_object('enabled', false, 'at', now(), 'full', p_since is null, 'fleets', '[]'::jsonb);
-  end if;
+$h$           'name', f.name, 'status', f.status,
 $h$,
-$h$    return jsonb_build_object('enabled', false, 'at', now(), 'full', p_since is null, 'fleets', '[]'::jsonb);
-  end if;
-
-  -- 0125: SHE DOCKS ON THIS READ. The merchants due are settled through the one catch-up first, so
-  -- a settled arrival is in this very answer (her lap close / refill moves updated_at; a stop she
-  -- sails on from departs a new voyage).
-  perform voyage.settle_due(null, now());
+$h$           'name', f.name, 'status', w.status,
 $h$),
-
+('world.sea_roster(timestamptz)', 2,
+$h$           'roadstead', case when f.port_id is not null
+$h$,
+$h$           'roadstead', case when w.port_id is not null
+$h$),
+('world.sea_roster(timestamptz)', 3,
+$h$                        from public.voyages v where v.fleet_id = f.id and v.status = 'SAILING'),
+$h$,
+$h$                        from public.voyages v where v.id = w.voyage_id),
+$h$),
+('world.sea_roster(timestamptz)', 4,
+$h$    left join public.standing_routes sr on sr.id = nf.route_id
+    left join public.nations nn on nn.id = p.nation_id
+    left join public.ports po on po.id = f.port_id
+    left join public.sea_reaches rs on rs.port_id = f.port_id
+$h$,
+$h$    left join public.standing_routes sr on sr.id = nf.route_id
+    -- 0125: where she is NOW — her position's verdict (voyage.where_now), not the sweep's last write.
+    cross join lateral voyage.where_now(f.id) w
+    left join public.nations nn on nn.id = p.nation_id
+    left join public.ports po on po.id = w.port_id
+    left join public.sea_reaches rs on rs.port_id = w.port_id
+$h$),
+('world.sea_roster(timestamptz)', 5,
+$h$                  where v2.fleet_id = f.id and v2.status = 'SAILING' and v2.departed_at >= p_since);
+$h$,
+$h$                  where v2.fleet_id = f.id and v2.status = 'SAILING' and v2.departed_at >= p_since)
+      -- 0125: or her passage's arrival MOVED — a delaying event recorded since p_since.
+      or exists (select 1 from public.voyages v3 join public.voyage_events ve on ve.voyage_id = v3.id
+                  where v3.fleet_id = f.id and v3.status = 'SAILING' and ve.resolved_at >= p_since
+                    and coalesce((ve.payload->>'delay_hours')::numeric, 0) <> 0);
+$h$),
+-- world.port_merchants
 ('world.port_merchants(uuid)', 1,
-$h$  select case when not public.npc_traders_on()
+$h$                     'name', f.name, 'status', f.status,
 $h$,
-$h$  -- 0125: SHE DOCKS ON THIS READ. The merchants whose loop calls here are settled first through the
-  -- one catch-up (voyage.settle_due, a no-op dark or switched off); the answer below is read after it.
-  select voyage.settle_due(array(select nf.fleet_id from public.npc_fleets nf
-                                  where exists (select 1 from public.standing_route_stops st
-                                                 where st.route_id = nf.route_id and st.port_id = p_port)),
-                           now());
-  select case when not public.npc_traders_on()
+$h$                     'name', f.name, 'status', w.status,
 $h$),
-
+('world.port_merchants(uuid)', 2,
+$h$                     'roadstead', case when f.port_id is not null
+$h$,
+$h$                     'roadstead', case when w.port_id is not null
+$h$),
+('world.port_merchants(uuid)', 3,
+$h$                     'voyage', (select world.voyage_view(v.id, false) from public.voyages v
+                                 where v.fleet_id = f.id and v.status = 'SAILING'),
+$h$,
+$h$                     'voyage', (select world.voyage_view(v.id, false) from public.voyages v
+                                 where v.id = w.voyage_id),
+$h$),
+('world.port_merchants(uuid)', 4,
+$h$              left join public.ports po on po.id = f.port_id
+              left join public.sea_reaches rs on rs.port_id = f.port_id
+$h$,
+$h$              -- 0125: where she is NOW — her position's verdict (voyage.where_now).
+              cross join lateral voyage.where_now(f.id) w
+              left join public.ports po on po.id = w.port_id
+              left join public.sea_reaches rs on rs.port_id = w.port_id
+$h$),
+-- world.npc_fleet_card
 ('world.npc_fleet_card(uuid)', 1,
+$h$  sr  public.standing_routes%rowtype;
+begin
+$h$,
+$h$  sr  public.standing_routes%rowtype;
+  w   record;   -- 0125
+begin
+$h$),
+('world.npc_fleet_card(uuid)', 2,
 $h$    raise exception 'E_NOT_FOUND: there is no such merchant fleet' using errcode = 'P0001';
   end if;
   select * into p from public.players where id = f.player_id;
 $h$,
 $h$    raise exception 'E_NOT_FOUND: there is no such merchant fleet' using errcode = 'P0001';
   end if;
-  -- 0125: SHE DOCKS ON THIS READ (voyage.settle_due), and the card is built from the fleet after it.
-  perform voyage.settle_due(array[f.id], now());
-  select x.* into f from public.fleets x where x.id = f.id;
+  -- 0125: where she is NOW — her position's verdict (voyage.where_now), not the sweep's last write.
+  select * into w from voyage.where_now(f.id);
+  f.status  := w.status;
+  f.port_id := w.port_id;
   select * into p from public.players where id = f.player_id;
 $h$),
-
-('world.fleet_trades(uuid)', 1,
-$h$    raise exception 'E_NOT_FOUND: there is no such merchant fleet' using errcode = 'P0001';
-  end if;
-  if v_npc then
+('world.npc_fleet_card(uuid)', 3,
+$h$                  where v.fleet_id = f.id and v.status = 'SAILING')),
 $h$,
-$h$    raise exception 'E_NOT_FOUND: there is no such merchant fleet' using errcode = 'P0001';
-  end if;
-  if v_npc then
-    -- 0125: a MERCHANT docks on this read. A player's own fleet is settled by world.fleets(), never here.
-    perform voyage.settle_due(array[f.id], now());
+$h$                  where v.id = w.voyage_id)),
+$h$),
+-- public.tick_arrivals
+('public.tick_arrivals(timestamptz)', 1,
+$h$  v_days    int := 0;
+begin
+$h$,
+$h$  v_days    int := 0;
+  -- 0125: a run's wall-clock budget; what is left is the next run's (the job runs every 15 s).
+  v_t0      timestamptz := clock_timestamp();
+  v_budget  interval := make_interval(secs => public.wc_int('arrivals_tick_budget_ms') / 1000.0);
+begin
+$h$),
+('public.tick_arrivals(timestamptz)', 2,
+$h$              for update skip locked loop
+    v_days   := v_days + voyage.settle(r.fleet_id, p_now);
+$h$,
+$h$              for update skip locked loop
+    exit when clock_timestamp() >= v_t0 + v_budget;   -- 0125
+    v_days   := v_days + voyage.settle(r.fleet_id, p_now);
+$h$),
+('public.tick_arrivals(timestamptz)', 3,
+$h$              for update of f skip locked loop
+    update public.standing_routes set hold_until = null where fleet_id = r.id;
+$h$,
+$h$              for update of f skip locked loop
+    exit when clock_timestamp() >= v_t0 + v_budget;   -- 0125
+    update public.standing_routes set hold_until = null where fleet_id = r.id;
 $h$);
 
--- ── 6. THE RE-CUTS ─────────────────────────────────────────────────────────────────────────────
+-- ── 5. THE RE-CUTS ─────────────────────────────────────────────────────────────────────────────
 create or replace function pg_temp.recut_0125(p_fn text)
 returns void
 language plpgsql
@@ -338,62 +311,68 @@ begin
 end $$;
 
 select pg_temp.recut_0125(fn) from (values ('world.sea_roster(timestamptz)'), ('world.port_merchants(uuid)'),
-                                           ('world.npc_fleet_card(uuid)'), ('world.fleet_trades(uuid)')) x(fn);
+                                           ('world.npc_fleet_card(uuid)'), ('public.tick_arrivals(timestamptz)')) x(fn);
+
+-- ── 6. THE CADENCE ─────────────────────────────────────────────────────────────────────────────
+do $$
+begin
+  if to_regclass('cron.job') is null then
+    raise notice '0125: no pg_cron here (PGlite) — the arrivals cadence is not scheduled in this database';
+    return;
+  end if;
+  perform cron.alter_job(j.jobid, schedule := '15 seconds')
+     from cron.job j where j.jobname = 'byeharu-voyage:arrivals';
+end $$;
 
 -- ── 7. THE SELF-ASSERT ─────────────────────────────────────────────────────────────────────────
 do $$
 declare
   c_reads   constant text[] := array['world.sea_roster(timestamptz)', 'world.port_merchants(uuid)',
-                                     'world.npc_fleet_card(uuid)', 'world.fleet_trades(uuid)'];
+                                     'world.npc_fleet_card(uuid)', 'public.tick_arrivals(timestamptz)'];
   v_fn      text;
   v_def     text;
   v_back    text;
   h         record;
   r         record;
   v_n       int;
+  v_bad     int;
   v_was_on  boolean := public.npc_traders_on();
   v_routes_on boolean := public.standing_routes_on();
-  v_subj    uuid[];        -- A, B, C, D, E: sailing merchants; W: a rested one
+  v_subj    uuid[];
   v_route   uuid[];
-  v_vid     uuid[];        -- their first voyages
+  v_vid     uuid[];
   v_dest    uuid[];
-  v_w       uuid;
-  v_wroute  uuid;
-  v_wlap    uuid;
-  v_port    uuid;
-  v_r       jsonb;
+  v_eta     timestamptz;
+  v_rows    jsonb;
   v_row     jsonb;
-  v_a       jsonb;
-  v_b       jsonb;
+  v_card    jsonb;
+  v_pm      jsonb;
   v_t0      timestamptz;
-  v_ms_harbour numeric;
-  v_ms_roster  numeric;
-  v_ms_card    numeric;
-  v_ms_wake    numeric;
-  v_ms_trades  numeric;
-  v_arm_d   text;
-  v_arm_e   text;
-  v_arm_w   text;
+  v_ms_where numeric;
+  v_ms_new  numeric;
+  v_ms_old  numeric;
+  v_sailing int;
+  v_cron    text;
   v_msg     text;
   i         int;
 begin
-  -- (a) POSTURE: the four reads volatile (each was stable); ACLs unmoved; the two new functions
-  --     server-only; no new entry point; no client write; the knobs are this file's, at its values.
+  -- (a) POSTURE: reads still stable (they write nothing), ACLs unmoved; the helpers server-only;
+  --     no new entry point; no client write; the knob is this file's.
   for v_fn in select unnest(c_reads) loop
-    if (select vol from defs_before_0125 where fn = v_fn) <> 's'
-       or (select p.provolatile from pg_proc p where p.oid = v_fn::regprocedure) <> 'v' then
-      raise exception '0125 self-assert FAIL: % was not stable before or is not volatile now', v_fn;
+    if (select p.provolatile from pg_proc p where p.oid = v_fn::regprocedure)
+       is distinct from (select vol from defs_before_0125 where fn = v_fn) then
+      raise exception '0125 self-assert FAIL: the volatility of % moved', v_fn;
     end if;
     if coalesce((select p.proacl::text from pg_proc p where p.oid = v_fn::regprocedure), '')
        is distinct from (select acl from defs_before_0125 where fn = v_fn) then
       raise exception '0125 self-assert FAIL: the re-cut moved the ACL of %', v_fn;
     end if;
   end loop;
-  if has_function_privilege('anon', 'voyage.settle_due(uuid[], timestamptz, int, int, int)', 'execute')
-     or has_function_privilege('authenticated', 'voyage.settle_due(uuid[], timestamptz, int, int, int)', 'execute')
-     or has_function_privilege('anon', 'public.merchant_settle_on_read()', 'execute')
-     or has_function_privilege('authenticated', 'public.merchant_settle_on_read()', 'execute') then
-    raise exception '0125 self-assert FAIL: voyage.settle_due or the switch reader is client-callable';
+  if has_function_privilege('anon', 'voyage.arrived(uuid, timestamptz)', 'execute')
+     or has_function_privilege('authenticated', 'voyage.arrived(uuid, timestamptz)', 'execute')
+     or has_function_privilege('anon', 'voyage.where_now(uuid, timestamptz)', 'execute')
+     or has_function_privilege('authenticated', 'voyage.where_now(uuid, timestamptz)', 'execute') then
+    raise exception '0125 self-assert FAIL: voyage.arrived or voyage.where_now is client-callable';
   end if;
   if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0125)
      or exists (select 1 from public.client_rpc_entry_points() e
@@ -403,20 +382,13 @@ begin
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
     raise exception '0125 self-assert FAIL: the registry, the grant wall or the read wall';
   end if;
-  if (select knobs_found from before_0125) <> 0 then
-    raise exception '0125 self-assert FAIL: a merchant_settle knob existed before this file — a drift, not a default';
-  end if;
-  if public.wc('merchant_settle_on_read') <> 'true'::jsonb or public.wc_int('merchant_settle_per_read') <> 12
-     or public.wc_int('merchant_wake_per_read') <> 2 or public.wc_int('merchant_settle_budget_ms') <> 1500
-     or public.wc_int('merchant_settle_lock_ms') <> 500
-     or exists (select 1 from public.world_config where key like 'merchant_settle%' and coalesce(description, '') = '') then
-    raise exception '0125 self-assert FAIL: the knobs do not read this file''s values';
+  if (select knobs_found from before_0125) <> 0 or public.wc_int('arrivals_tick_budget_ms') <> 10000 then
+    raise exception '0125 self-assert FAIL: arrivals_tick_budget_ms existed before this file or is not 10000';
   end if;
 
-  -- (b) ONE AUTHORITY. Each read reverses to its pre-image hunk by hunk, each hunk once; each read
-  --     calls voyage.settle_due exactly once; voyage.settle has exactly one new caller (settle_due);
-  --     voyage.settle and the sweep are their pre-images; the wrapper locks as the sweep does and its
-  --     candidates are merchants only.
+  -- (b) ONE AUTHORITY. Each body reverses to its pre-image hunk by hunk, each hunk once; the three
+  --     reads each ask voyage.where_now once and no longer read the SAILING voyage themselves;
+  --     voyage.settle and voyage.progress_nm are their pre-images (0125 adds no mover).
   for v_fn in select unnest(c_reads) loop
     v_def := replace(pg_get_functiondef(v_fn::regprocedure), E'\r', '');
     v_back := v_def;
@@ -430,45 +402,44 @@ begin
     if v_back <> (select def from defs_before_0125 where fn = v_fn) or v_def = v_back then
       raise exception '0125 self-assert FAIL: % is not its pre-image plus only 0125''s hunks', v_fn;
     end if;
-    if (length(v_def) - length(replace(v_def, 'voyage.settle_due(', ''))) / length('voyage.settle_due(') <> 1
-       or strpos(v_def, 'voyage.settle(') > 0 then
-      raise exception '0125 self-assert FAIL: % does not call voyage.settle_due exactly once, or calls voyage.settle itself', v_fn;
+    if v_fn <> 'public.tick_arrivals(timestamptz)'
+       and ((length(v_def) - length(replace(v_def, 'voyage.where_now(', ''))) / length('voyage.where_now(') <> 1
+            or strpos(v_def, 'v.fleet_id = f.id and v.status = ''SAILING''') > 0) then
+      raise exception '0125 self-assert FAIL: % does not take where she is from voyage.where_now alone', v_fn;
     end if;
   end loop;
-  if (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-       where n.nspname not like 'pg_temp%' and p.prosrc like '%voyage.settle(%')
-     <> (select settle_callers from before_0125) + 1 then
-    raise exception '0125 self-assert FAIL: voyage.settle gained a caller other than voyage.settle_due';
-  end if;
-  foreach v_fn in array array['voyage.settle(uuid, timestamptz)', 'public.tick_arrivals(timestamptz)'] loop
+  foreach v_fn in array array['voyage.settle(uuid, timestamptz)', 'voyage.progress_nm(uuid, timestamptz)'] loop
     if replace(pg_get_functiondef(v_fn::regprocedure), E'\r', '') <> (select def from defs_before_0125 where fn = v_fn) then
       raise exception '0125 self-assert FAIL: % was re-cut', v_fn;
     end if;
   end loop;
-  v_def := pg_get_functiondef('voyage.settle_due(uuid[], timestamptz, int, int, int)'::regprocedure);
-  if (length(v_def) - length(replace(v_def, 'for update skip locked', ''))) / length('for update skip locked') <> 2
-     or (length(v_def) - length(replace(v_def, 'p.is_npc', ''))) / length('p.is_npc') <> 2
-     or strpos(v_def, 'set_config(''lock_timeout''') = 0 then
-    raise exception '0125 self-assert FAIL: voyage.settle_due does not lock as the sweep does, or reads a non-merchant';
+  if strpos(pg_get_functiondef('voyage.arrived(uuid, timestamptz)'::regprocedure), 'v.eta') > 0 then
+    raise exception '0125 self-assert FAIL: voyage.arrived reads an eta';
   end if;
 
-  -- THE PROBES, rolled back. Six merchants by roster order, docked at their home stop: five put to
-  -- sea on their routes (the one start door, cmd.standing_route_assign_for), one rested at home.
+  -- (c) THE CADENCE, where there is a scheduler.
+  if to_regclass('cron.job') is not null then
+    execute 'select schedule from cron.job where jobname = ''byeharu-voyage:arrivals''' into v_cron;
+    if v_cron is distinct from '15 seconds' then
+      raise exception '0125 self-assert FAIL: byeharu-voyage:arrivals runs on "%", not every 15 seconds', v_cron;
+    end if;
+  end if;
+
   begin
     update public.world_config set value = 'true'::jsonb where key in ('npc_traders_enabled', 'standing_routes_enabled');
-    -- A-E: merchants AT SEA on their route for one of its harbours, by roster order — the live
-    -- world has hundreds; a world where none sails (a fresh chain) is topped up through the one
-    -- start door, cmd.standing_route_assign_for, from merchants lying at their home stop.
+
+    -- PROBES: three merchants AT SEA on their route for one of its harbours (the live world has
+    -- hundreds; a world where none sails is topped up through the one start door), held FOR UPDATE
+    -- so a live sweep passes them by.
     select coalesce(array_agg(x.fleet_id order by x.ord, x.fleet_id), '{}'), coalesce(array_agg(x.route_id order by x.ord, x.fleet_id), '{}')
       into v_subj, v_route
       from (select nf.fleet_id, nf.route_id, nf.roster_ord as ord
               from public.npc_fleets nf
               join public.voyages v on v.fleet_id = nf.fleet_id and v.status = 'SAILING'
               join public.ports po on po.id = v.dest_port_id and po.kind = 'HARBOUR'
-             where nf.route_id is not null
-               and v.eta > now() + interval '5 minutes'   -- not one the sweep is about to arrive
+             where nf.route_id is not null and v.eta > now() + interval '5 minutes'
                and exists (select 1 from public.standing_route_stops st where st.route_id = nf.route_id and st.port_id = v.dest_port_id)
-             order by nf.roster_ord, nf.fleet_id limit 5) x;
+             order by nf.roster_ord, nf.fleet_id limit 3) x;
     for r in select nf.fleet_id, nf.route_id, f.player_id
                from public.npc_fleets nf
                join public.fleets f on f.id = nf.fleet_id and f.status = 'DOCKED'
@@ -477,217 +448,147 @@ begin
                join public.standing_routes sr on sr.id = nf.route_id
               where nf.route_id is not null and pl.ducats >= sr.reserve
                 and not exists (select 1 from public.voyages v where v.fleet_id = f.id and v.status = 'SAILING')
-                -- not inside her rest (on a lit world the start door would hold her at home)
                 and not exists (select 1 from public.standing_route_laps x
                                  where x.route_id = nf.route_id and x.closed_at > now() - interval '30 minutes')
               order by nf.roster_ord, nf.fleet_id limit 6 loop
-      if coalesce(array_length(v_subj, 1), 0) >= 5 then
-        v_w := r.fleet_id;        -- W: the first one left lying at home
-        v_wroute := r.route_id;
-        exit;
+      exit when coalesce(array_length(v_subj, 1), 0) >= 3;
+      perform cmd.standing_route_assign_for(r.player_id, r.route_id, r.fleet_id);
+      if exists (select 1 from public.voyages v where v.fleet_id = r.fleet_id and v.status = 'SAILING') then
+        v_subj := v_subj || r.fleet_id;
+        v_route := v_route || r.route_id;
       end if;
-      v_r := cmd.standing_route_assign_for(r.player_id, r.route_id, r.fleet_id);
-      if not coalesce((v_r->>'ok')::boolean, false) then
-        raise exception '0125 self-assert FAIL: the start door refused a probe: %', v_r;
-      end if;
-      v_subj := v_subj || r.fleet_id;
-      v_route := v_route || r.route_id;
     end loop;
-    if coalesce(array_length(v_subj, 1), 0) <> 5 or v_w is null then
-      raise exception '0125 self-assert FAIL: five merchants at sea and one at home to probe were not found (%, %)',
-        coalesce(array_length(v_subj, 1), 0), v_w;
-    end if;
     select array_agg(v.id order by k), array_agg(v.dest_port_id order by k) into v_vid, v_dest
-      from unnest(v_subj[1:5]) with ordinality s(fid, k)
-      left join public.voyages v on v.fleet_id = s.fid and v.status = 'SAILING';
-    if array_position(v_vid, null) is not null
-       or exists (select 1 from unnest(v_dest) d join public.ports po on po.id = d where po.kind <> 'HARBOUR') then
-      raise exception '0125 self-assert FAIL: a probe merchant did not put to sea for a harbour';
+      from unnest(v_subj) with ordinality s(fid, k)
+      join public.voyages v on v.fleet_id = s.fid and v.status = 'SAILING';
+    if coalesce(array_length(v_vid, 1), 0) <> 3 then
+      raise exception '0125 self-assert FAIL: three merchants at sea to probe were not found (%)', coalesce(array_length(v_vid, 1), 0);
     end if;
-    -- The probes' passages are held for the rest of the block: on a live world the minute sweep
-    -- (for update skip locked) passes them by instead of arriving one under the probe's feet.
     perform 1 from public.voyages where id = any(v_vid) for update;
-    -- Due now: each passage REWOUND whole, as proof 12 rewinds it for the cron (departed_at and eta
-    -- moved back together, so every sea-day of hers is due and voyage.settle resolves them on the way
-    -- to the arrival, exactly as for a fleet left alone), hazards off so no delay re-derives her eta
-    -- past now. voyage.recompute_eta stays THE ETA author; this is a probe-only move of the clock.
-    -- B's route clock is put back too: the roster's delta since 15 s ago can only carry her if this
-    -- read moved her.
-    update public.world_config set value = to_jsonb(0.0) where key = 'hazard_p_max';
-    update public.voyages v set departed_at = v.departed_at - (v.eta - now()) - interval '1 minute',
-                                eta = now() - interval '1 minute'
-     where v.id = any(v_vid[2:5]);   -- A is rewound just before her own read, (d), below
-    update public.standing_routes set updated_at = now() - interval '2 minutes' where id = v_route[2];
 
-    -- (c) PARITY WHEN OFF: switch off, on the lit world with four merchants due — the four reads are
-    --     their pre-images to the byte, and nobody moved.
-    update public.world_config set value = 'false'::jsonb where key = 'merchant_settle_on_read';
-    select st.port_id into v_port from public.standing_route_stops st join public.ports po on po.id = st.port_id
-      join public.npc_fleets nf on nf.route_id = st.route_id order by po.code limit 1;
-    -- (asked twice at most: on a live world another job may commit between the two halves of a pair)
+    -- (d) THE MAP AND THE QUAY AGREE ON THE INSTANT, over every merchant at sea (the world as
+    --     found, the probes among them): the position reaches the end exactly at the served eta (the client's placement runs
+    --     linearly to it), not a second before.
+    select count(*), count(*) filter (where not voyage.arrived(v.id, v.eta + interval '1 millisecond') or voyage.arrived(v.id, v.eta - interval '1 second'))
+      into v_sailing, v_bad
+      from public.voyages v join public.fleets f on f.id = v.fleet_id
+      join public.players p on p.id = f.player_id and p.is_npc
+     where v.status = 'SAILING' and v.dest_port_id is not null;
+    if v_bad > 0 or v_sailing < 3 then
+      raise exception '0125 self-assert FAIL: % of % merchant passages reach the end of their path off their served eta', v_bad, v_sailing;
+    end if;
+
+    -- (e) PARITY, nobody arrived: with the three at sea (not yet at their harbours) every read is its
+    --     pre-image to the byte — asked twice at most, as another job may commit between a pair.
     for i in 1 .. 2 loop
-      v_n := (world.sea_roster(null) is distinct from pg_temp.sea_roster_before_0125(null))::int
+      v_n := (world.npc_fleet_card(v_subj[1]) is distinct from pg_temp.card_before_0125(v_subj[1]))::int
+           + (world.port_merchants(v_dest[1]) is distinct from pg_temp.port_merchants_before_0125(v_dest[1]))::int
            + (world.sea_roster(now() - interval '15 seconds') is distinct from pg_temp.sea_roster_before_0125(now() - interval '15 seconds'))::int
-           + (world.port_merchants(v_port) is distinct from pg_temp.port_merchants_before_0125(v_port))::int
-           + (world.port_merchants(v_dest[3]) is distinct from pg_temp.port_merchants_before_0125(v_dest[3]))::int
-           + (world.npc_fleet_card(v_subj[3]) is distinct from pg_temp.card_before_0125(v_subj[3]))::int
-           + (world.fleet_trades(v_subj[3]) is distinct from pg_temp.trades_before_0125(v_subj[3]))::int;
+           + (case when exists (select 1 from public.voyages v join public.fleets f on f.id = v.fleet_id
+                                  join public.players p on p.id = f.player_id and p.is_npc
+                                 where v.status = 'SAILING' and voyage.arrived(v.id))
+                   then 0   -- on a live world some merchant is always arriving; the full read differs for her alone
+                   else (world.sea_roster(null) is distinct from pg_temp.sea_roster_before_0125(null))::int end);
       exit when v_n = 0;
     end loop;
     if v_n <> 0 then
-      raise exception '0125 self-assert FAIL: switched off, % merchant read(s) are not their pre-image', v_n;
-    end if;
-    if (select count(*) from public.voyages where id = any(v_vid) and status = 'SAILING') <> 5 then
-      raise exception '0125 self-assert FAIL: switched off, a read settled a merchant';
-    end if;
-    update public.world_config set value = 'true'::jsonb where key = 'merchant_settle_on_read';
-
-    -- (h) DARK, NOTHING: the switch on but the merchants dark — each read is its dark pre-image.
-    update public.world_config set value = 'false'::jsonb where key = 'npc_traders_enabled';
-    if world.sea_roster(null) is distinct from pg_temp.sea_roster_before_0125(null)
-       or world.port_merchants(v_dest[3]) is distinct from pg_temp.port_merchants_before_0125(v_dest[3])
-       or voyage.settle_due(array[v_subj[3]])->>'settled' <> '0'
-       or (select count(*) from public.voyages where id = any(v_vid) and status = 'SAILING') <> 5 then
-      raise exception '0125 self-assert FAIL: dark, a merchant read moved a merchant or changed its answer';
-    end if;
-    update public.world_config set value = 'true'::jsonb where key = 'npc_traders_enabled';
-
-    -- (f) THE BUDGET BITES: at 0 ms her card settles nothing; the receipt says over_budget.
-    update public.world_config set value = to_jsonb(0) where key = 'merchant_settle_budget_ms';
-    perform world.npc_fleet_card(v_subj[3]);
-    v_r := voyage.settle_due(array[v_subj[3]]);
-    if (select status from public.voyages where id = v_vid[3]) <> 'SAILING'
-       or (v_r->>'over_budget')::int < 1 or (v_r->>'settled')::int <> 0 then
-      raise exception '0125 self-assert FAIL: a zero budget still settled (%)', v_r;
-    end if;
-    update public.world_config set value = to_jsonb(1500) where key = 'merchant_settle_budget_ms';
-
-    -- (f) THE COUNT BITES: two due (D, E), a limit of one — exactly one settled, the other untouched.
-    v_r := voyage.settle_due(array[v_subj[4], v_subj[5]], now(), 1);
-    if (v_r->>'settled')::int <> 1
-       or (select count(*) from public.voyages where id in (v_vid[4], v_vid[5]) and status = 'SAILING') <> 1 then
-      raise exception '0125 self-assert FAIL: a limit of one settled % (%)',
-        2 - (select count(*) from public.voyages where id in (v_vid[4], v_vid[5]) and status = 'SAILING'), v_r;
+      raise exception '0125 self-assert FAIL: % read(s) differ from their pre-image while nobody probed has arrived', v_n;
     end if;
 
-    -- the card and the trade history each settle their one merchant.
-    v_t0 := clock_timestamp();
-    v_a := world.npc_fleet_card(v_subj[3]);
-    v_ms_card := round((extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric, 1);
-    if (select status from public.voyages where id = v_vid[3]) <> 'ARRIVED'
-       or v_a->'fleet'->>'status' is distinct from (select status from public.fleets where id = v_subj[3]) then
-      raise exception '0125 self-assert FAIL: her card did not dock her, or was built from the fleet before it: %', v_a->'fleet';
-    end if;
-    i := case when (select status from public.voyages where id = v_vid[4]) = 'SAILING' then 4 else 5 end;
-    v_t0 := clock_timestamp();
-    perform world.fleet_trades(v_subj[i]);
-    v_ms_trades := round((extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric, 1);
-    if (select status from public.voyages where id = v_vid[i]) <> 'ARRIVED' then
-      raise exception '0125 self-assert FAIL: her trade history did not dock her';
-    end if;
-
-    -- (f) THE WAKE CAP BITES. W lies at home with her rest over: at 0 her card leaves her be; at 1 it
-    --     puts her back to sea through the executor — a new lap, or at sea, or paused with a reason.
-    -- (her queue released through the one CLEAR core first, as the upkeep releases a halted merchant:
-    --  on a live world the merchants lying at home are mostly ones a refused SAIL has halted)
-    perform cmd.clear_for((select player_id from public.fleets where id = v_w), v_w, false);
-    update public.standing_routes
-       set fleet_id = v_w, stop_cursor = 0, lap_id = null, paused_reason = null,
-           hold_until = now() - interval '1 second', updated_at = now() - interval '1 hour'
-     where id = v_wroute;
-    update public.world_config set value = to_jsonb(0) where key = 'merchant_wake_per_read';
-    perform world.npc_fleet_card(v_w);
-    if (select status from public.fleets where id = v_w) <> 'DOCKED'
-       or (select lap_id from public.standing_routes where id = v_wroute) is not null
-       or (select hold_until from public.standing_routes where id = v_wroute) is distinct from now() - interval '1 second' then
-      raise exception '0125 self-assert FAIL: a wake cap of 0 still woke her';
-    end if;
-    update public.world_config set value = to_jsonb(1) where key = 'merchant_wake_per_read';
-    v_t0 := clock_timestamp();
-    perform world.npc_fleet_card(v_w);
-    v_ms_wake := round((extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric, 1);
-    select case when sr.paused_reason is not null then 'paused ' || sr.paused_reason
-                when exists (select 1 from public.voyages v where v.fleet_id = v_w and v.status = 'SAILING') then 'at sea'
-                when sr.lap_id is not null then 'new lap'
-           end into v_arm_w
-      from public.standing_routes sr where sr.id = v_wroute;
-    if v_arm_w is null then
-      raise exception '0125 self-assert FAIL: a wake cap of 1 did not wake her';
-    end if;
-    update public.world_config set value = to_jsonb(2) where key = 'merchant_wake_per_read';
-
-    -- (e)/(d) run LAST, and with the count and the budget opened: the harbour's read and the map's
-    -- read settle every due merchant they report, and on a live world others may be due ahead of the
-    -- probe. The bounds themselves are (f)'s.
-    update public.world_config set value = to_jsonb(1000) where key = 'merchant_settle_per_read';
-    update public.world_config set value = to_jsonb(60000) where key = 'merchant_settle_budget_ms';
-    -- (e) THE MAP'S READ CARRIES HER IN THE SAME ANSWER. Positive control: the old roster's delta
-    --     does not carry B at all; the new one does, docked or on a new voyage, never at the old eta.
-    if exists (select 1 from jsonb_array_elements(pg_temp.sea_roster_before_0125(now() - interval '15 seconds')->'fleets') x
-                where x->>'id' = v_subj[2]::text) then
-      raise exception '0125 self-assert FAIL: the control — the old delta already carried the probe';
-    end if;
-    v_t0 := clock_timestamp();
-    v_r := world.sea_roster(now() - interval '15 seconds');
-    v_ms_roster := round((extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric, 1);
-    select x into v_row from jsonb_array_elements(v_r->'fleets') x where x->>'id' = v_subj[2]::text;
-    if v_row is null or (select status from public.voyages where id = v_vid[2]) <> 'ARRIVED'
-       or (jsonb_typeof(v_row->'voyage') = 'object' and (v_row->'voyage'->>'eta')::timestamptz <= now()) then
-      raise exception '0125 self-assert FAIL: the roster''s delta did not carry her settled: %', v_row;
-    end if;
-    v_arm_e := case when jsonb_typeof(v_row->'voyage') = 'object' then 'sailed on' else 'docked' end;
-
-    -- A's passage, rewound now (the map's read above settles every merchant due, so she is made due
-    -- only for her harbour's read).
+    -- (f) SHE IS IN PORT THE INSTANT HER POSITION SAYS SO — nothing written. Each passage REWOUND whole
+    --     (departed_at and eta back together, proof 12's rewind) so her position has reached the end.
     update public.voyages v set departed_at = v.departed_at - (v.eta - now()) - interval '1 minute',
                                 eta = now() - interval '1 minute'
-     where v.id = v_vid[1];
-
-    -- (d) AN ARRIVAL DOCKS ON THE HARBOUR'S READ, called as a player: the old voyage ARRIVED, nothing
-    --     of hers is left due for the sweep, and her row in THIS answer is her state after it — at the
-    --     quay (port = the harbour, no voyage) or, at a stop she trades and sails on from, a NEW voyage.
-    execute 'set local role authenticated';
+     where v.id = any(v_vid);
     v_t0 := clock_timestamp();
-    v_r := world.port_merchants(v_dest[1]);
-    v_ms_harbour := round((extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric, 1);
+    select jsonb_agg(to_jsonb(w)) into v_rows from unnest(v_subj) s(fid), voyage.where_now(s.fid) w;
+    v_ms_where := round((extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric, 2);
+    v_rows := world.sea_roster(null);
+    v_card := world.npc_fleet_card(v_subj[1]);
+    execute 'set local role authenticated';
+    v_pm := world.port_merchants(v_dest[1]);
     execute 'reset role';
-    select m into v_row from jsonb_array_elements(v_r->'merchants') m where m->>'id' = v_subj[1]::text;
-    if (select status from public.voyages where id = v_vid[1]) <> 'ARRIVED'
-       or exists (select 1 from public.voyages where fleet_id = v_subj[1] and status = 'SAILING' and eta <= now())
-       or v_row is null
-       or v_row->>'status' is distinct from (select status from public.fleets where id = v_subj[1]) then
-      raise exception '0125 self-assert FAIL: the harbour''s read did not dock her: voyage %, row %',
-        (select status from public.voyages where id = v_vid[1]), v_row;
-    end if;
-    if v_row->>'port' = (select code from public.ports where id = v_dest[1]) and jsonb_typeof(v_row->'voyage') is distinct from 'object' then
-      v_arm_d := 'docked, ' || (v_row->>'doing');
-    elsif jsonb_typeof(v_row->'voyage') = 'object' and (v_row->'voyage'->>'eta')::timestamptz > now()
-          and exists (select 1 from public.voyages where fleet_id = v_subj[1] and status = 'SAILING' and id <> v_vid[1]) then
-      v_arm_d := 'traded and sailed on';
-    else
-      raise exception '0125 self-assert FAIL: her harbour row is neither at the quay nor on a new voyage: %', v_row;
+    select x into v_row from jsonb_array_elements(v_rows->'fleets') x where x->>'id' = v_subj[1]::text;
+    if not voyage.arrived(v_vid[1])
+       or v_row->>'status' <> 'DOCKED' or v_row->>'port' <> (select code from public.ports where id = v_dest[1])
+       or jsonb_typeof(v_row->'voyage') <> 'null'
+       or v_row->'roadstead' <> (select jsonb_build_array(rs.roadstead_lat, rs.roadstead_lon) from public.sea_reaches rs where rs.port_id = v_dest[1])
+       or v_card->'fleet'->>'status' <> 'DOCKED' or v_card->'fleet'->>'port' <> v_row->>'port'
+       or jsonb_typeof(v_card->'fleet'->'voyage') <> 'null'
+       or (select m->>'status' from jsonb_array_elements(v_pm->'merchants') m where m->>'id' = v_subj[1]::text) <> 'DOCKED'
+       or (select m->>'port' from jsonb_array_elements(v_pm->'merchants') m where m->>'id' = v_subj[1]::text) <> v_row->>'port'
+       or (select status from public.voyages where id = v_vid[1]) <> 'SAILING'
+       or (select status from public.fleets where id = v_subj[1]) <> 'SAILING' then
+      raise exception '0125 self-assert FAIL: arrived by her position, she is not in port on every read (or a read wrote): roster %, card %',
+        v_row, v_card->'fleet';
     end if;
 
-    update public.world_config set value = to_jsonb(12) where key = 'merchant_settle_per_read';
-    update public.world_config set value = to_jsonb(1500) where key = 'merchant_settle_budget_ms';
+    -- (g) A DELAY KEEPS HER AT SEA, and the map hears of it. Probe B arrived the same way; then a CALM
+    --     is RECORDED on a day already behind her (the way voyage.settle records one) and
+    --     voyage.recompute_eta — THE eta author — re-derives her eta. Her position falls short of the
+    --     end; every read shows her at sea, bound for the same harbour, with the served eta at the
+    --     instant her position will reach it; the roster's delta carries her.
+    if not voyage.arrived(v_vid[2]) then
+      raise exception '0125 self-assert FAIL: the second probe did not arrive by her position';
+    end if;
+    update public.standing_routes set updated_at = now() - interval '1 hour' where id = v_route[2];
+    insert into public.voyage_events (voyage_id, day_index, kind, payload, resolved_at)
+    values (v_vid[2], 1, 'CALM', jsonb_build_object('delay_hours', 48, 'short_rations', false, 'wages', 0), now())
+    on conflict (voyage_id, day_index) do update set kind = 'CALM',
+      payload = public.voyage_events.payload || jsonb_build_object('delay_hours',
+                 coalesce((public.voyage_events.payload->>'delay_hours')::numeric, 0) + 48),
+      resolved_at = now();
+    v_eta := voyage.recompute_eta(v_vid[2]);
+    v_rows := world.sea_roster(now() - interval '15 seconds');
+    select x into v_row from jsonb_array_elements(v_rows->'fleets') x where x->>'id' = v_subj[2]::text;
+    v_card := world.npc_fleet_card(v_subj[2]);
+    if voyage.arrived(v_vid[2]) or v_eta <= now()
+       or not voyage.arrived(v_vid[2], v_eta + interval '1 millisecond') or voyage.arrived(v_vid[2], v_eta - interval '1 second')
+       or v_row is null or v_row->>'status' <> 'SAILING' or (v_row->'voyage'->>'eta')::timestamptz <> v_eta
+       or v_row->'voyage'->>'to' <> (select code from public.ports where id = v_dest[2])
+       or v_card->'fleet'->>'status' <> 'SAILING' or (v_card->'fleet'->'voyage'->>'eta')::timestamptz <> v_eta then
+      raise exception '0125 self-assert FAIL: a recorded delay did not keep her at sea on every read: eta %, roster %', v_eta, v_row;
+    end if;
 
-    raise exception 'ROLLBACK_0125|%|%|%|%|%|%|%|%', v_ms_harbour, v_ms_roster, v_ms_card, v_ms_trades, v_ms_wake,
-      v_arm_d, v_arm_e, v_arm_w;
+    -- (h) THE SWEEP STILL DOCKS HER, and its budget bites: at 0 ms a run settles nobody; the sweep's
+    --     own settle then docks the arrived probe C.
+    update public.world_config set value = to_jsonb(0) where key = 'arrivals_tick_budget_ms';
+    perform public.tick_arrivals();
+    if (select status from public.voyages where id = v_vid[3]) <> 'SAILING' then
+      raise exception '0125 self-assert FAIL: a 0 ms sweep still settled a merchant';
+    end if;
+    update public.world_config set value = to_jsonb(10000) where key = 'arrivals_tick_budget_ms';
+    -- (her rewound passage's sea-days are all resolved now; hazards off, as proof 12 rewinds, so a
+    --  day's weather cannot — rightly — keep her at sea and make this probe about something else)
+    update public.world_config set value = to_jsonb(0.0) where key = 'hazard_p_max';
+    perform voyage.settle(v_subj[3]);
+    if (select status from public.voyages where id = v_vid[3]) <> 'ARRIVED' then
+      raise exception '0125 self-assert FAIL: the sweep''s settle did not dock an arrived merchant';
+    end if;
+
+    -- (i) COST: where_now over every merchant (the full roster asks it once each), and the full
+    --     roster read, new body against old.
+    v_t0 := clock_timestamp();
+    perform count(*) from public.fleets f join public.players p on p.id = f.player_id and p.is_npc,
+                          voyage.where_now(f.id) w;
+    v_ms_where := round((extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric, 1);
+    v_t0 := clock_timestamp(); perform world.sea_roster(null);
+    v_ms_new := round((extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric, 1);
+    v_t0 := clock_timestamp(); perform pg_temp.sea_roster_before_0125(null);
+    v_ms_old := round((extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric, 1);
+
+    raise exception 'ROLLBACK_0125|%|%|%|%', v_sailing, v_ms_where, v_ms_new, v_ms_old;
   exception when others then
     if sqlerrm not like 'ROLLBACK_0125|%' then raise; end if;
     v_msg := sqlerrm;
   end;
   if public.npc_traders_on() is distinct from v_was_on or public.standing_routes_on() is distinct from v_routes_on
-     or public.wc('merchant_settle_on_read') <> 'true'::jsonb or public.wc_int('merchant_wake_per_read') <> 2
-     or public.wc_int('merchant_settle_budget_ms') <> 1500 or current_user <> session_user
-     -- a rewound passage left behind (on a live world the probes' voyages are real and stay)
-     or exists (select 1 from public.voyages v where v.id = any(v_vid) and v.eta = now() - interval '1 minute')
-     or exists (select 1 from public.standing_routes where id = v_wroute and fleet_id is not distinct from v_w
-                   and hold_until = now() - interval '1 second') then
+     or public.wc_int('arrivals_tick_budget_ms') <> 10000 or current_user <> session_user
+     or exists (select 1 from public.voyages v where v.id = any(v_vid) and v.eta = now() - interval '1 minute') then
     raise exception '0125 self-assert FAIL: the probe world was not rolled back';
   end if;
 
-  raise notice '0125 self-assert ok: A MERCHANT DOCKS THE MOMENT SHE ARRIVES. sea_roster, port_merchants, npc_fleet_card and fleet_trades are volatile, reverse to their pre-images hunk by hunk, ACLs unmoved, and each calls voyage.settle_due once; voyage.settle has exactly one new caller and neither it nor the sweep was re-cut; settle_due locks as the sweep does, reads merchants only, is server-only; no new entry point, no client write; five knobs at true/12/2/1500/500. Switched off and dark, every read is its pre-image to the byte and nobody moves. Probes: the harbour''s read (as authenticated) docked an arrival in % ms (%); the roster delta carried an arrival only this read moved, in % ms (%); the card % ms, the trade history % ms; a wake through the card % ms (%); a 0 ms budget settles nothing, a limit of one settles one of two, a wake cap of 0 wakes none. Rolled back.',
-    split_part(v_msg, '|', 2), split_part(v_msg, '|', 7), split_part(v_msg, '|', 3), split_part(v_msg, '|', 8),
-    split_part(v_msg, '|', 4), split_part(v_msg, '|', 5), split_part(v_msg, '|', 6), split_part(v_msg, '|', 9);
+  raise notice '0125 self-assert ok: A MERCHANT DOCKS THE MOMENT SHE ARRIVES. sea_roster, port_merchants and npc_fleet_card take status / port / roadstead / voyage from voyage.where_now alone, reverse to their pre-images hunk by hunk, stay stable, ACLs unmoved; voyage.arrived reads no eta and voyage.settle / progress_nm are untouched; both helpers server-only; no new entry point, no client write. Over % merchant passage(s) at sea the position reaches the end exactly at the served eta. With nobody arrived every read is its pre-image. Arrived by her position, a merchant is DOCKED at her harbour''s roadstead on the roster, the card and the harbour''s read (as authenticated) with nothing written; a recorded CALM keeps her at sea on every read with the served eta at the instant her position reaches the end, and the roster delta carries her. The sweep: % ; a 0 ms budget settles nobody; its settle docks the arrived one. where_now over every merchant % ms; the full roster % ms (before: % ms). Rolled back.',
+    split_part(v_msg, '|', 2), coalesce(v_cron, 'no scheduler here'), split_part(v_msg, '|', 3),
+    split_part(v_msg, '|', 4), split_part(v_msg, '|', 5);
 end $$;
