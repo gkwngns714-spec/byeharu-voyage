@@ -95,7 +95,8 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   // (world.sea_raster) and the sailed distances (world.reach), asserted in their own test below.
   expect('legs' in snap).toBe(false)
   expect(snap.goods.length).toBeGreaterThan(20)
-  expect(snap.ship_classes).toHaveLength(3)
+  // Pin moved deliberately 2026-10-15 with migration 0129: eight more hulls, eleven in all.
+  expect(snap.ship_classes).toHaveLength(11)
   // Pin moved deliberately 2026-09-13 with migration 0086: DISMISS is the fifteenth verb.
   expect(snap.verbs).toHaveLength(15)
 

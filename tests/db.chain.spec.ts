@@ -326,7 +326,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // first and it landed second, so the last file was 0126.
 // And to 0127 (a ship learns by the mile: ship and officer levels, dark behind levels_bite).
 // And to 0128 (wages are paid from profit: owed at sea, paid out of a sale's profit, forgiven at departure).
-const LAST = '20260818000128_wages_are_paid_from_profit.sql'
+// And to 0129 (more hulls and more gear: eight ship types, twelve fittings, the yard's coast and
+// trading-level rules, and the world guard over the ship and gear catalogue).
+const LAST = '20260818000129_more_hulls_and_more_gear.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

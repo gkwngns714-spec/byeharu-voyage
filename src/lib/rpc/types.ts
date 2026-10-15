@@ -334,8 +334,18 @@ export interface YardHull {
   crew_required: number
   durability: number
   draft: number
-  /** Whether THIS yard is good enough. The server's rule, never re-derived here. */
+  /** Whether THIS yard can lay her down for you: its tier, her coast and (while levels are on) your
+   *  trading level. The server's rule, never re-derived here. */
   buildable: boolean
+  /** 0129: the regions whose yards lay her down, by name — null when any yard of her tier will.
+   *  Optional so a bundle ahead of its server still renders. */
+  coast?: string[] | null
+  /** 0129: whether this yard is on her coast. */
+  on_coast?: boolean
+  /** 0129: the house trading level she asks (it only bites while levels are switched on). */
+  min_level?: number
+  /** 0129: your trading level, served only while levels are switched on; null otherwise. */
+  your_level?: number | null
   goods: HullMaterial[]
   items: HullMaterial[]
 }

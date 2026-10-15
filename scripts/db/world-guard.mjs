@@ -22,6 +22,10 @@
 //                 are still checked to exist and sit where data/sea-places.json says.
 //   * seas/regions/nations   the code+name sets are equal
 //   * market      exactly one port_goods row per (harbour, good) — the market covers the world
+//   * ships/gear  (0129, S7) ship_classes, class_slots, class_cabins, class_slot_unlocks,
+//                 hull_recipes (+ goods, items), item_kinds, item_effects, item_recipes,
+//                 item_level_asks and npc_loadouts EQUAL data/ship_stats.json, data/hulls.json,
+//                 data/fittings.json and data/npc-loadouts.json, row for row, both directions
 //
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
@@ -123,7 +127,96 @@ function drift(db_, want) {
     say(`port_goods holds ${db_.marketRows} rows; ${want.ports.length} harbours × ${want.goods.length} goods = ${expected} — the market does not cover the world`)
   }
 
+  // ships and gear (0129, S7): every catalogue row, both directions, as one line per row
+  const dShips = new Set(db_.shipLines)
+  const wShips = new Set(want.shipLines)
+  for (const k of wShips) if (!dShips.has(k)) say(`ships/gear: ${k} — in data/*.json but not in the database`)
+  for (const k of dShips) if (!wShips.has(k)) say(`ships/gear: ${k} — in the database but not in data/*.json`)
+
   return out
+}
+
+// ── SHIPS AND GEAR (0129, docs/SHIPS_AND_GEAR.md S7) ───────────────────────────────────────────
+// data/ship_stats.json (classes, slots, cabins, level unlocks), data/hulls.json (recipes, coast,
+// trading level), data/fittings.json (kinds, effects, recipes, the ship level a fitting asks) and
+// data/npc-loadouts.json are the one authority for the ship and gear catalogue. Each table row is
+// spelled as ONE canonical line — `table key col=value …` — from the data and from the database
+// alike, and the two sets must be equal. Numbers go through Number() so 4.40 and 4.4 are the same.
+
+const n = (v) => (v === null || v === undefined ? 'null' : String(Number(v)))
+const arr = (v) => (v === null || v === undefined ? 'null' : JSON.stringify([...v]))
+const SLOT_KINDS = ['rig', 'weapon', 'ground-tackle', 'steering', 'hull', 'lookout', 'flourish']
+
+function classLine(c) {
+  return `ship_classes ${c.code} name=${c.name} family=${c.family} rig=${c.rig} tier=${n(c.tier)} hold=${n(c.hold)} ` +
+    `crew=${n(c.crew_required)}/${n(c.crew_max)} speed_kn=${n(c.speed_kn)} durability=${n(c.durability)} guns=${n(c.guns)} ` +
+    `draft=${n(c.draft)} build_hours=${n(c.build_hours)} build_cost=${n(c.build_cost)} handling=${n(c.handling)} ` +
+    `armour=${n(c.armour)} attack=${n(c.attack)} accuracy=${n(c.accuracy)} reach=${n(c.reach)} sighting=${n(c.sighting)} ` +
+    `note=${c.stat_note}`
+}
+
+/** The catalogue as data/*.json says it, one line per row. */
+export function shipLinesFromData(root) {
+  const read = (f) => JSON.parse(readFileSync(join(root, 'data', f), 'utf8'))
+  const stats = read('ship_stats.json')
+  const hulls = read('hulls.json').hulls
+  const fittings = read('fittings.json').fittings
+  const loadouts = read('npc-loadouts.json').patterns
+  const L = []
+  for (const c of stats.classes) L.push(classLine({ ...c, code: c.class, stat_note: c.note }))
+  for (const s of stats.slots) {
+    for (const k of SLOT_KINDS) if (s[k] > 0) L.push(`class_slots ${s.class} ${k} count=${n(s[k])}`)
+    L.push(`class_cabins ${s.class} cabins=${n(s.cabins)}`)
+  }
+  for (const u of stats.unlocks ?? []) L.push(`class_slot_unlocks ${u.class} ${u.slot} @${n(u.min_level)} count=${n(u.count)}`)
+  for (const h of hulls) {
+    L.push(`hull_recipes ${h.class} yard_tier=${n(h.yard_tier)} ducats=${n(h.ducats)} yard_regions=${arr(h.yard_regions)} ` +
+      `min_level=${n(h.min_level ?? 1)} note=${h.note}`)
+    for (const g of h.goods) L.push(`hull_recipe_goods ${h.class} ${g.in} qty=${n(g.qty)}`)
+    for (const i of h.items) L.push(`hull_recipe_items ${h.class} ${i.in} qty=${n(i.qty)}`)
+  }
+  for (const f of fittings) {
+    L.push(`item_kinds ${f.code} name=${f.name} slot=${f.slot} buys=${f.buys} spends=${f.spends} volume=${n(f.volume)} ` +
+      `ws_tier=${n(f.ws_tier)} note=${f.note}`)
+    for (const e of f.effects) L.push(`item_effects ${f.code} ${e.stat} delta=${n(e.delta)}`)
+    for (const r of f.recipe) L.push(`item_recipes ${f.code} ${r.in} qty=${n(r.qty)}`)
+    if ((f.min_level ?? 1) > 1) L.push(`item_level_asks ${f.code} min_level=${n(f.min_level)}`)
+  }
+  for (const p of loadouts) for (const i of p.items) L.push(`npc_loadouts ${p.class} #${n(p.pattern)} ${i.item} qty=${n(i.qty)}`)
+  return L
+}
+
+/** The catalogue as the applied database holds it, one line per row. */
+async function shipLinesFromDb(db) {
+  const rows = async (sql) => (await db.query(sql)).rows
+  const L = []
+  for (const c of await rows(`select * from public.ship_classes`)) L.push(classLine(c))
+  for (const r of await rows(`select class_code, slot, count from public.class_slots`)) L.push(`class_slots ${r.class_code} ${r.slot} count=${n(r.count)}`)
+  for (const r of await rows(`select class_code, cabins from public.class_cabins`)) L.push(`class_cabins ${r.class_code} cabins=${n(r.cabins)}`)
+  for (const r of await rows(`select class_code, slot, count, min_level from public.class_slot_unlocks`)) {
+    L.push(`class_slot_unlocks ${r.class_code} ${r.slot} @${n(r.min_level)} count=${n(r.count)}`)
+  }
+  for (const r of await rows(`select class_code, yard_tier, ducats, yard_regions, min_level, note from public.hull_recipes`)) {
+    L.push(`hull_recipes ${r.class_code} yard_tier=${n(r.yard_tier)} ducats=${n(r.ducats)} yard_regions=${arr(r.yard_regions)} ` +
+      `min_level=${n(r.min_level)} note=${r.note}`)
+  }
+  for (const r of await rows(`select hg.class_code, g.code, hg.qty from public.hull_recipe_goods hg join public.goods g on g.id = hg.good_id`)) {
+    L.push(`hull_recipe_goods ${r.class_code} ${r.code} qty=${n(r.qty)}`)
+  }
+  for (const r of await rows(`select class_code, item_code, qty from public.hull_recipe_items`)) L.push(`hull_recipe_items ${r.class_code} ${r.item_code} qty=${n(r.qty)}`)
+  for (const r of await rows(`select * from public.item_kinds`)) {
+    L.push(`item_kinds ${r.code} name=${r.name} slot=${r.slot} buys=${r.buys} spends=${r.spends} volume=${n(r.volume)} ` +
+      `ws_tier=${n(r.ws_tier)} note=${r.note}`)
+  }
+  for (const r of await rows(`select item_code, stat, delta from public.item_effects`)) L.push(`item_effects ${r.item_code} ${r.stat} delta=${n(r.delta)}`)
+  for (const r of await rows(`select ir.item_code, g.code, ir.qty from public.item_recipes ir join public.goods g on g.id = ir.good_id`)) {
+    L.push(`item_recipes ${r.item_code} ${r.code} qty=${n(r.qty)}`)
+  }
+  for (const r of await rows(`select item_code, min_level from public.item_level_asks`)) L.push(`item_level_asks ${r.item_code} min_level=${n(r.min_level)}`)
+  for (const r of await rows(`select class_code, pattern, item_code, qty from public.npc_loadouts`)) {
+    L.push(`npc_loadouts ${r.class_code} #${n(r.pattern)} ${r.item_code} qty=${n(r.qty)}`)
+  }
+  return L
 }
 
 /**
@@ -163,24 +256,34 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   db_.regions = (await db.query(`select code, name from public.regions`)).rows
   db_.nations = (await db.query(`select code, name from public.nations`)).rows
   db_.marketRows = (await db.query(`select count(*)::int as n from public.port_goods`)).rows[0].n
+  db_.shipLines = await shipLinesFromDb(db)
 
   const want = deriveWorld()
   want.places = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'sea-places.json'), 'utf8')).places
+  want.shipLines = shipLinesFromData(REPO_ROOT)
 
   // ── POSITIVE CONTROL: the comparator must SEE a planted drift before it may certify zero ─────
+  // 0129: and a dropped ship class and a bent fitting effect, both directions of the ships lines.
+  const droppedClass = want.shipLines.find((s) => s.startsWith('ship_classes '))
+  const bentEffect = want.shipLines.find((s) => s.startsWith('item_effects '))
   const wounded = {
     ...want,
     ports: want.ports.slice(1),                                      // one harbour dropped
     goods: want.goods.map((g, i) => (i === 0 ? { ...g, base_value: g.base_value + 500 } : g)), // one value bent
+    shipLines: want.shipLines.filter((s) => s !== droppedClass)      // one class dropped
+      .map((s) => (s === bentEffect ? s.replace(/delta=(\S+)$/, (_, d) => `delta=${Number(d) + 7}`) : s)), // one effect bent
   }
   const seen = drift(db_, wounded)
   const sawDrop = seen.some((s) => s.includes(`${want.ports[0].code}`))
   const sawBend = seen.some((s) => s.includes('.base_value:'))
-  if (!sawDrop || !sawBend) {
+  const sawClass = seen.some((s) => s.includes(droppedClass) && s.endsWith('in the database but not in data/*.json'))
+  const sawEffect = seen.some((s) => s.includes(bentEffect) && s.endsWith('in the database but not in data/*.json'))
+    && seen.some((s) => s.startsWith('ships/gear: item_effects ') && s.endsWith('in data/*.json but not in the database'))
+  if (!sawDrop || !sawBend || !sawClass || !sawEffect) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}) or bent good value was NOT reported by the comparator ` +
-        `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
+        `(${want.ports[0].code}), bent good value, dropped ship class or bent fitting effect was NOT reported by ` +
+        `the comparator (saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
 
@@ -202,7 +305,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   log(
     `world-guard ok: the applied world EQUALS data/*.json — ${want.ports.length} harbours, ` +
       `${want.goods.length} goods, ${want.specialtyPairs.length} offers, ` +
-      `${want.places.length} sea places, ${db_.marketRows} market rows ` +
-      `(positive control: a planted dropped-harbour and bent-good-value were both seen)`,
+      `${want.places.length} sea places, ${db_.marketRows} market rows, ${want.shipLines.length} ship/gear catalogue rows ` +
+      `(positive control: a planted dropped-harbour, bent-good-value, dropped-class and bent-effect were all seen)`,
   )
 }
