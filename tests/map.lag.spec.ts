@@ -191,7 +191,8 @@ for (const viewport of [
       // wide sheet (PR #131, run on 2bdf8df). Every frame from the press to the settle is sampled
       // in the page instead, and the claim is made of the zoom's FIRST frame — the moment "just
       // after a zoom" means — with no dependence on how fast the driver's round trip is.
-      const beforeZoom = (await sheets(page)).view
+      const pressed = await sheets(page)
+      const beforeZoom = pressed.view
       await page.evaluate(() => {
         const w = window as unknown as { __zoomFrames: { view: string | null; paper: string | null; covered: boolean }[]; __zoomOn: boolean }
         w.__zoomFrames = []
@@ -212,12 +213,18 @@ for (const viewport of [
         requestAnimationFrame(sample)
       })
       await page.getByRole('button', { name: 'Zoom in' }).click()
-      await page.waitForFunction(() => {
+      // THE SETTLE IS WAITED FOR ON THE ZOOMED VIEW (2026-10-16). "The sheet is wide" is ALSO the
+      // state before the press — the drag above left it settled wide — so waiting on width alone
+      // could return before the zoom's first frame had committed, and the sampler was stopped
+      // having seen no zoom (PR #129's CI, run on cc8cebd). The wait now also needs the view to
+      // have moved off the pre-press view: the wide sheet it sees is the settle AFTER the zoom.
+      await page.waitForFunction((before) => {
         const chart = document.querySelector('[data-testid="map-chart"]')!
-        const view = chart.querySelector('svg')!.viewBox.baseVal
+        const svg = chart.querySelector('svg')!
+        const view = svg.viewBox.baseVal
         const paper = chart.querySelector('[data-testid="map-coast-sheet"] svg') as SVGSVGElement
-        return paper.viewBox.baseVal.width > view.width * 1.4
-      })
+        return svg.getAttribute('viewBox') !== before && paper.viewBox.baseVal.width > view.width * 1.4
+      }, beforeZoom)
       const frames = await page.evaluate(() => {
         const w = window as unknown as { __zoomFrames: { view: string | null; paper: string | null; covered: boolean }[]; __zoomOn: boolean }
         w.__zoomOn = false
@@ -231,7 +238,7 @@ for (const viewport of [
       expect(settled.covered).toBe(true)
       console.log(
         `${viewport.width}×${viewport.height}: drag of 0.2 glass → ${views.size} views, ${papers.size} coast sheet(s), ` +
-          `${mut.d} path rewrites, ${mut.other} other writes, ${mut.sun} sun-slide frames; zoom → narrow ${zoomed!.paper} (${frames.length} frames sampled), settled ${settled.paper}`,
+          `${mut.d} path rewrites, ${mut.other} other writes, ${mut.sun} sun-slide frames; zoom → narrow ${zoomed!.paper} (${frames.length} frames sampled; before the press the sheet was ${pressed.paper} on view ${pressed.view}), settled ${settled.paper}`,
       )
     })
   })
