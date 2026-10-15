@@ -702,6 +702,14 @@ body {
 .bv-sun-core {
   fill: color-mix(in srgb, var(--color-harbour-light) calc(var(--night, 1) * 100%), var(--color-chart-day-mark));
 }
+/* A CITY'S DOT IS SLIGHTLY BIGGER BY DAY (owner, 2026-10-15: "make the dots for the daytime city to
+   be slightly bigger"). By night the lamp's halo carries it; by day the dark dot stands alone, so it
+   grows to 1.4× as `--night` falls to 0 — the same light the colour mix above reads, nothing new. */
+.bv-sun-day-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(calc(1 + 0.4 * (1 - var(--night, 1))));
+}
 .bv-sun-quiet-mark {
   stroke: color-mix(
     in srgb,

@@ -162,7 +162,7 @@ export const PortsLayer = memo(function PortsLayer({
                 cx={x}
                 cy={y}
                 r={px(GLYPH.portDotRadius)}
-                className="bv-sun-core fill-harbour-light"
+                className="bv-sun-core bv-sun-day-dot fill-harbour-light"
                 pointerEvents="none"
               />
             </g>
