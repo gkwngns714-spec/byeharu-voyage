@@ -5,6 +5,17 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-16 — map.lag: the settle wait could be satisfied before the zoom — `osn-maplag-flake`
+
+PR #129's CI (on `cc8cebd`, SQL-only diff) failed `map.lag` 1545 with "no frame between the press and
+the settle showed the zoom". Cause: the spec waited for "the coast sheet is wider than 1.4 × the
+view" as the settle — but the drag before it had ALREADY left the sheet settled wide (logged: sheet
+24.81 wide on a 16.54 view, 1.5×). Proven in the browser: the instant after the Zoom-in press, the
+view has not changed and that predicate is already true, so whenever the wait's first check ran
+before the glide's first frame committed, the frame sampler was stopped having seen no zoom. Fix:
+the wait now also requires the view to have moved off the pre-press view, so the wide sheet it sees
+is the settle AFTER the zoom. Locally: 20 of 20 repeats at 1545 × 784 under six workers, 0 skipped.
+
 ## 2026-10-16 — main's acceptance made green, honestly — `osn-acceptance-green`
 
 The REQUIRED `acceptance` check was red on `main` itself (run 38728407504 on `bfd1e72`, 13 failing
