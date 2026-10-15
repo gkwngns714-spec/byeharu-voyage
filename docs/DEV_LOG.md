@@ -137,6 +137,17 @@ players' orders are untouched.
   `standing_routes.fleet_id` was null, the budget 0, and the first lap sailed in ballast. The
   planner now budgets `coalesce(sr.fleet_id, the npc_fleets fleet for the route)`; the self-assert's
   planner probe runs with the route unassigned.
+- **Local PGlite measurement** (`node scripts/db/measure-purse-bound.mjs`, chain restored from the
+  0096 prefix + 25 applied, first 60 merchant routes at a lap start, every stop-0 BUY executed
+  through `cmd.do_buy`; "before" = `npc_buy_purse_pct` 1e9, the bound never binds; run on the first
+  cut, which differs only for an unassigned route — the harness assigns every fleet):
+  | purse | BUY bought / refused for funds | ballast at stop 0 | laid out | plan mean |
+  |---|---|---|---|---|
+  | 2,000 before → after | 8 / 92 → 71 / 0 | 27 % → 20 % | 7,744 → 78,998 | 607 → 556 ms |
+  | 3,993 before → after | 13 / 87 → 75 / 0 | 27 % → 17 % | 21,308 → 165,347 | 610 → 564 ms |
+  | 20,000 before → after | 43 / 57 → 95 / 0 | 27 % → 18 % | 334,148 → 686,338 | 589 → 580 ms |
+  The "before" planner priced those 60 loops at ~1.73 M d. of profit she could never buy; "after"
+  prices what she can (41 k / 87 k / 351 k by purse). No extra planning cost.
 - Prod dry-run (`begin … rollback` on head 0128, ~5 s, prod verified unchanged): all asserts ok;
   probe: rich 3 BUY lines, 110 units for 8,734 d.; with 2,911 d. (budget 2,619) the plan cost 2,583
   and the quay lines 28 units for 2,583; with 0 d. none.
