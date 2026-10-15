@@ -132,6 +132,14 @@ sliced); the moment of buying asks the same bound again (cmd.standing_route_line
 0114 already re-asks the keep test). "Cargo at cost" moved out of cmd.standing_route_close_lap
 into `public.fleet_stock_at_cost` (the one reading; the lap and the budget call it). do_buy and
 players' orders are untouched.
+- **CI caught a first-cut bug** (pglite-gate merchants, PROOF 12: the probe merchant's first lap
+  net −9): `npc_traders_switch` plans every route BEFORE `npc_tend` assigns its fleet, so
+  `standing_routes.fleet_id` was null, the budget 0, and the first lap sailed in ballast. The
+  planner now budgets `coalesce(sr.fleet_id, the npc_fleets fleet for the route)`; the self-assert's
+  planner probe runs with the route unassigned.
+- Prod dry-run (`begin … rollback` on head 0128, ~5 s, prod verified unchanged): all asserts ok;
+  probe: rich 3 BUY lines, 110 units for 8,734 d.; with 2,911 d. (budget 2,619) the plan cost 2,583
+  and the quay lines 28 units for 2,583; with 0 d. none.
 
 ## 2026-10-15 — 0128: wages are paid from profit — `osn-0128-wages-from-profit`
 

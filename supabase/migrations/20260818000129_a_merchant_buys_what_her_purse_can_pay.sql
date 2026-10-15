@@ -165,7 +165,10 @@ $h$),
 $h$  v_left  := p_hold;
 $h$,
 $h$  v_left  := p_hold;
-  v_budget := public.npc_buy_budget(sr.fleet_id);   -- 0129
+  -- 0129: her fleet's working capital — the route's fleet, or (before the switch assigns it) the
+  -- merchant fleet the roster keeps for this route.
+  v_budget := public.npc_buy_budget(coalesce(sr.fleet_id,
+                (select nf.fleet_id from public.npc_fleets nf where nf.route_id = sr.id limit 1)));
 $h$),
 ('public.npc_leg_lines(uuid, uuid, uuid, numeric, integer, numeric)', 4,
 $h$      v_q := floor(coalesce(q_size.units, 0));
@@ -330,7 +333,7 @@ begin
   if strpos(pg_get_functiondef('public.npc_leg_lines(uuid, uuid, uuid, numeric, integer, numeric)'::regprocedure),
             'public.npc_affordable(p_from, v_good, v_q, v_budget)') = 0
      or strpos(pg_get_functiondef('public.npc_leg_lines(uuid, uuid, uuid, numeric, integer, numeric)'::regprocedure),
-               'public.npc_buy_budget(sr.fleet_id)') = 0
+               'public.npc_buy_budget(coalesce(sr.fleet_id,') = 0
      or strpos(pg_get_functiondef('cmd.standing_route_lines(uuid, integer, uuid)'::regprocedure),
                'public.npc_affordable(st.port_id, ln.good_id, ln.qty, v_budget)') = 0
      or strpos(pg_get_functiondef('cmd.standing_route_lines(uuid, integer, uuid)'::regprocedure),
@@ -447,10 +450,12 @@ begin
       raise exception '0129 self-assert FAIL: the lap carried out % at cost, not the 500 aboard', v_lap.stock_out;
     end if;
     update public.ships set cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb where fleet_id = v_mfleet;
-    update public.standing_routes set lap_id = null where id = v_route;
+    -- the planner is also run before the switch assigns a route its fleet (npc_traders_switch plans
+    -- every route at once): unassigned, she is budgeted by the fleet the roster keeps for the route.
+    update public.standing_routes set lap_id = null, fleet_id = null where id = v_route;
 
-    -- THE PLANNER: over real merchant legs, priced for HER (her purse, her caps), find one that
-    -- keeps a parcel when she is rich; then with a third of that parcel's cost in her purse, the
+    -- THE PLANNER: over real merchant legs, priced for HER (her purse, her caps; her route not yet
+    -- assigned its fleet), find one that keeps a parcel when she is rich; then with a third of that parcel's cost in her purse, the
     -- leg's BUYs cost no more than her budget; with nothing, it keeps no BUY.
     for v_from, v_to in
       select s0.port_id, s1.port_id
