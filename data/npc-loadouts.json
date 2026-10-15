@@ -1,0 +1,17 @@
+{
+  "_": "WHAT A MERCHANT'S HULL CARRIES — docs/SHIPS_AND_GEAR.md §3.2 (S2, migration 0126). Endowed at founding, as her hull is; never bought, never changed (owner, 2026-10-15: merchant gear is FIXED).",
+  "_how": "public.npc_fit_loadout(ship) picks ONE pattern of her class, deterministically per FLEET — md5(fleet_id) mod the class's pattern count — so every hull of a fleet wears the same pattern and a re-run picks the same one. Each item goes on through public.mount_fitting, the same core a player's FIT uses, so a pattern that does not fit her slots is refused, not squeezed.",
+  "_hold": "No pattern spends hold (owner, 2026-10-15: prefer loadouts that do not reduce hold). So no anchor, no rudder, no broadside guns, no powder magazine: each of those costs tuns. The only hold change is the nau trader's hold fittings, +25 t.",
+  "_never_full": "A pattern never fills every slot: a full hull is the player's design, not the world's default.",
+  "_guard": "migration 0126 seeds public.npc_loadouts with exactly these rows; S7 adds this file to scripts/db/world-guard.mjs.",
+  "patterns": [
+    { "class": "barca",  "pattern": 0, "name": "trader",        "items": [{ "item": "suit-of-sails", "qty": 1 }, { "item": "boarding-gear", "qty": 1 }] },
+    { "class": "barca",  "pattern": 1, "name": "handy trader",  "items": [{ "item": "bowsprit-and-jib", "qty": 1 }, { "item": "boarding-gear", "qty": 1 }] },
+    { "class": "carlat", "pattern": 0, "name": "trader",        "items": [{ "item": "suit-of-sails", "qty": 1 }, { "item": "boarding-gear", "qty": 1 }] },
+    { "class": "carlat", "pattern": 1, "name": "armed trader",  "items": [{ "item": "suit-of-sails", "qty": 1 }, { "item": "boarding-gear", "qty": 2 }] },
+    { "class": "carlat", "pattern": 2, "name": "handy trader",  "items": [{ "item": "bowsprit-and-jib", "qty": 1 }, { "item": "boarding-gear", "qty": 1 }] },
+    { "class": "nau",    "pattern": 0, "name": "trader",        "items": [{ "item": "suit-of-sails", "qty": 2 }, { "item": "hold-fittings", "qty": 1 }, { "item": "crows-nest", "qty": 1 }] },
+    { "class": "nau",    "pattern": 1, "name": "armed trader",  "items": [{ "item": "suit-of-sails", "qty": 2 }, { "item": "boarding-gear", "qty": 2 }, { "item": "crows-nest", "qty": 1 }] },
+    { "class": "nau",    "pattern": 2, "name": "convoy",        "items": [{ "item": "suit-of-sails", "qty": 2 }, { "item": "copper-sheathing", "qty": 1 }, { "item": "boarding-gear", "qty": 1 }, { "item": "crows-nest", "qty": 1 }, { "item": "figurehead", "qty": 1 }] }
+  ]
+}
