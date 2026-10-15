@@ -71,6 +71,7 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
             bonusPct={o.bonus_pct}
             homePort={o.port ? portNameOf(portByCode, o.port) : null}
             signed={o.hired}
+            level={o.level ?? null}
             takesEffect={o.takes_effect}
             onClick={() => {
               setDetent('half')

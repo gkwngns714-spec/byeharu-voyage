@@ -117,7 +117,7 @@ export function MerchantSheet({
         <MerchantBody card={card} portName={(c) => portNameOf(portByCode, c)} goodName={(c) => goodByCode[c]?.name ?? c} goodCategory={(c) => goodByCode[c]?.category ?? ''} onOpenShip={openShipPanel} onOpenTrades={openTrades} />
       )}
     </Tray>
-    {ship && <ShipPanel key={openShip} ship={ship} onClose={() => setOpenShip(null)} />}
+    {ship && <ShipPanel key={openShip} ship={ship} levelFixed onClose={() => setOpenShip(null)} />}
     {card && trades && (
       <TradeHistoryPanel fleetId={card.fleet.id} pick={trades} onPick={setTrades} onClose={() => setTrades(null)} />
     )}

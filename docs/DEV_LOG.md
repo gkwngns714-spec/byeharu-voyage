@@ -10,17 +10,38 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 Owner: *"because of wages, ships are losing too much money. pay wages only when a profit is made."*
 Prod since 0122 (npc_cost_mult 1): ~90 % of merchant laps lost (sold ~3,300, bought ~2,900, wages
 ~300–430); npc_cost_mult was set to 0 on prod as a stopgap. One rule for every ship:
-`voyage.settle` adds the day's wage (crew_wages × running_cost_mult) to the new
-`fleets.wages_owed` instead of charging it; `cmd.do_sell` pays `public.wages_from_profit(owed,
+`voyage.settle` adds the day's wage (crew_wages × running_cost_mult) to a new side
+table `public.fleet_wages` (no ALTER/FK on a table the arrivals sweep writes) instead of charging it; `cmd.do_sell` pays `public.wages_from_profit(owed,
 profit − tax)` = min(owed, profit after 0122's tax) through `public.pay_wages` (WAGES ledger row,
 lit a WAGES flow to the city of the sale); a loss, break-even or unknown cost pays nothing;
-`voyage.depart` forgives what is left. Supplies and repairs unchanged (purchases). The lap books the
+`voyage.depart` deletes the row (forgiven). Supplies and repairs unchanged (purchases). The lap books the
 wages its sales paid; `npc_leg_lines` keeps any parcel that pays after tax and prices the leg as
 profit − wages_from_profit(leg wages, profit). npc_cost_mult back to 1. Client: "Wages from profit"
 on route laps, "paid from profit" in the trade books, the Inn caption and the ledger line.
-Verified: cached-prefix apply + self-assert (also with 0125/0127 applied before and after), tsc,
-eslint, db.chain spec; prod dry-run of 0128 alone on head 0126 inside begin…rollback passed
-(treasury dark), and prod was unchanged afterwards (npc_cost_mult still 0, no column).
+Verified: cached-prefix apply + self-assert on main with 0125/0127 (probes use their own player
+and merchant; no live merchant written), a lit probe (profit 200, tax 30, wages 170, net = cost),
+tsc, eslint, build; prod dry-run of 0128 alone on head 0127 inside begin…rollback passed in 4.5 s
+(treasury dark), and prod was unchanged afterwards (npc_cost_mult still 0, no table).
+
+## 2026-10-15 — S3 (0127): a ship learns by the mile — `osn-0127-levels`
+
+docs/SHIPS_AND_GEAR.md §4. Experience lives in NEW side tables — `ship_xp`, `officer_xp`
+(+ `aboard_since`), `class_slot_unlocks`, `item_level_asks` — so no table the arrivals tick touches
+is ALTERed or FK-referenced (no ACCESS EXCLUSIVE on ships/player_officers/class_slots/item_kinds;
+lock_timeout 5 s; the clock need not be stopped). ONE writer of a player's: `voyage.settle` arrival
+arm (one hunk, inserted before the `-- 0034 STANDING ORDER` comment) credits `voyage_xp` (miles /
+1,000 + fight points) to every hull and to officers aboard since departure (`aboard_since` from
+`post_officer_to`, else `hired_at`) — an officer moved onto a fleet at sea earns nothing. Merchants:
+one `is_npc` read; `npc_fix_level` fixes 1 + floor(skill_sum/3) once. Everything bites only while
+`levels_bite` is on (**shipped false**): stats, slots (locked slots served only lit), E_SLOT_LOCKED /
+E_SHIP_LEVEL (dark keeps E_NO_SLOT / E_SLOTS_FULL), officer multiplier, and the combat track (lit, it
+rides the existing miles scan; dark = the old honest zero). Display only while dark: hull level/xp,
+signed officer level. Seed: hulls from fleet reports; signings only voyages departed after hired_at.
+**Prod dry-run, 0127 alone on head 0126 (0125 live), clock running, aborted = rolled back:** all
+asserts ok; 912 hulls, 1,992 bonuses, 37 tracks at pre-image; 821 merchant companies fixed (L1 ×590,
+L2 ×217, L3 ×59, L4 ×26). Earlier drafts deadlocked with the tick (mass UPDATE of ships in a probe)
+and tripped on live drift (cargo/crew moved mid-apply) — both fixed. Light: `update world_config
+set value = 'true' where key = 'levels_bite'`.
 
 ## 2026-10-15 — S2 (0126): a merchant is fitted by the same hands — `osn-0126-merchant-loadouts`
 

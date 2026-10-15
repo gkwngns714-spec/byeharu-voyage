@@ -37,6 +37,14 @@ export interface ShipView {
   speed: number
   fittings: readonly { name: string; qty: number; slot?: string }[]
   slots?: Record<string, number>
+  /** 0127 — slots a higher level opens: drawn dimmed with the level, never fillable. */
+  slots_locked?: Record<string, { count: number; at_level: number }>
+  /** 0127 — her level and experience (points): this level began at `xp_from`, the next at
+   *  `next_level_at` (null at the top). Absent from a server older than 0127: not drawn. */
+  level?: number
+  xp?: number
+  xp_from?: number
+  next_level_at?: number | null
   attack?: number
   accuracy?: number
   reach?: number
@@ -88,6 +96,8 @@ interface SlotBox {
   kind: string
   word: string
   fitted: string | null
+  /** 0127: the level that opens this box, or null for a box she has now. */
+  opensAt: number | null
 }
 
 /** Every slot she has, one box each, filled in the order her fittings are mounted. A fitting
@@ -102,6 +112,7 @@ function slotBoxes(ship: ShipView): SlotBox[] {
         kind: f.slot ?? 'flourish',
         word: SLOT_ORDER.find((s) => s.code === f.slot)?.word ?? 'Fitted',
         fitted: f.name,
+        opensAt: null,
       })),
     )
   }
@@ -110,7 +121,7 @@ function slotBoxes(ship: ShipView): SlotBox[] {
   const kinds = [
     ...SLOT_ORDER,
     // A kind the server adds later still gets its boxes, under its own code.
-    ...Object.keys(slots)
+    ...[...new Set([...Object.keys(slots), ...Object.keys(ship.slots_locked ?? {})])]
       .filter((k) => !known.has(k))
       .map((code) => ({ code, word: code })),
   ]
@@ -121,7 +132,11 @@ function slotBoxes(ship: ShipView): SlotBox[] {
       .filter((f) => f.slot === kind.code)
       .flatMap((f) => Array.from({ length: f.qty }, () => f.name))
     for (let i = 0; i < count; i++) {
-      out.push({ key: `${kind.code}-${i}`, kind: kind.code, word: kind.word, fitted: fitted[i] ?? null })
+      out.push({ key: `${kind.code}-${i}`, kind: kind.code, word: kind.word, fitted: fitted[i] ?? null, opensAt: null })
+    }
+    const locked = ship.slots_locked?.[kind.code]
+    for (let i = 0; locked && i < locked.count; i++) {
+      out.push({ key: `${kind.code}-locked-${i}`, kind: kind.code, word: kind.word, fitted: null, opensAt: locked.at_level })
     }
   }
   return out
@@ -140,12 +155,13 @@ function Heading({ children, trailing }: { children: ReactNode; trailing?: React
 function EquipmentGrid({ ship }: { ship: ShipView }) {
   const boxes = slotBoxes(ship)
   const filled = boxes.filter((b) => b.fitted !== null).length
+  const open = boxes.filter((b) => b.opensAt === null).length
   return (
     <section data-testid="ship-equipment">
       <Heading
         trailing={
           boxes.length > 0 && (
-            <span className="text-t-caption tabular-nums text-ink-faint">{`${filled} / ${boxes.length}`}</span>
+            <span className="text-t-caption tabular-nums text-ink-faint">{`${filled} / ${open}`}</span>
           )
         }
       >
@@ -157,22 +173,25 @@ function EquipmentGrid({ ship }: { ship: ShipView }) {
         <div className="grid grid-cols-4 gap-2">
           {boxes.map((b) => {
             const on = b.fitted !== null
+            const shut = b.opensAt !== null
             return (
               <div
                 key={b.key}
                 data-fitted={on || undefined}
-                title={on ? `${b.word}: ${b.fitted}` : `${b.word} — empty`}
+                data-locked={shut || undefined}
+                title={on ? `${b.word}: ${b.fitted}` : shut ? `${b.word} — level ${b.opensAt}` : `${b.word} — empty`}
                 className={[
                   'relative flex aspect-square min-w-0 flex-col items-center justify-center gap-1 rounded-control p-1.5 text-center',
                   'shadow-[inset_0_1px_0_rgb(255_255_255/0.04),inset_0_-2px_4px_rgb(0_0_0/0.35)]',
                   on ? 'bg-accent/10 ring-1 ring-accent/50' : 'bg-surface-2 ring-1 ring-ink-faint/15',
+                  shut ? 'opacity-40' : '',
                 ].join(' ')}
               >
                 <SlotGlyph kind={b.kind} className={on ? 'text-accent' : 'text-ink-faint/40'} />
                 <span
                   className={`line-clamp-2 text-[0.6875rem] leading-tight ${on ? 'text-ink' : 'text-ink-faint/60'}`}
                 >
-                  {on ? b.fitted : b.word}
+                  {on ? b.fitted : shut ? `Lv ${b.opensAt}` : b.word}
                 </span>
               </div>
             )
@@ -225,7 +244,25 @@ function Gauge({
   )
 }
 
-export function ShipPanel({ ship, onClose }: { ship: ShipView; onClose: () => void }) {
+/** 0127 — her level chip's companion: the bar from where this level began to where the next does.
+ *  `fixed` (a merchant's hull: her level never moves) draws no bar; the top level draws none. */
+function LevelBar({ ship, fixed }: { ship: ShipView; fixed: boolean }) {
+  if (fixed || ship.xp === undefined || ship.xp_from === undefined || ship.next_level_at == null) return null
+  return (
+    <Gauge label="XP" now={ship.xp - ship.xp_from} max={ship.next_level_at - ship.xp_from} tone="accent" />
+  )
+}
+
+export function ShipPanel({
+  ship,
+  onClose,
+  levelFixed = false,
+}: {
+  ship: ShipView
+  onClose: () => void
+  /** A merchant's hull: her level is fixed (0127), so no bar toward the next. */
+  levelFixed?: boolean
+}) {
   const [detent, setDetent] = useState<TrayDetent>('half')
   const hullPct = ship.max_durability > 0 ? ship.durability / ship.max_durability : 1
   const crewShort = ship.crew_required !== undefined && ship.crew < ship.crew_required
@@ -263,6 +300,12 @@ export function ShipPanel({ ship, onClose }: { ship: ShipView; onClose: () => vo
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="rounded-chip bg-surface px-2 py-0.5 text-t-caption text-ink">{ship.class}</span>
+            {ship.level !== undefined && (
+              <span
+                data-testid="ship-level"
+                className="rounded-chip bg-surface px-2 py-0.5 text-t-caption tabular-nums text-ink"
+              >{`Lv ${ship.level}`}</span>
+            )}
             {ship.is_flagship && (
               <span className="rounded-chip bg-accent/20 px-2 py-0.5 text-t-caption text-accent">Flagship</span>
             )}
@@ -275,6 +318,7 @@ export function ShipPanel({ ship, onClose }: { ship: ShipView; onClose: () => vo
               tone={hullPct < 0.4 ? 'danger' : hullPct < 0.75 ? 'warning' : 'success'}
             />
             <Gauge label="Crew" now={ship.crew} max={ship.crew_max} tone={crewShort ? 'danger' : 'neutral'} />
+            <LevelBar ship={ship} fixed={levelFixed} />
           </div>
         </div>
       </div>
