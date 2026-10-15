@@ -301,9 +301,9 @@ function dockedMerchant(id: string, ships: number, hulls: readonly string[] = []
   }
 }
 
-function ship(name: string, cls: string, flagship = false): FleetShip {
+function ship(name: string, cls: string, flagship = false, code?: string): FleetShip {
   return {
-    id: `s-${name}`, name, class: cls, is_flagship: flagship, durability: 100, max_durability: 100,
+    id: `s-${name}`, name, class: cls, class_code: code, is_flagship: flagship, durability: 100, max_durability: 100,
     crew: 10, crew_required: 8, crew_max: 20, hold: 60, hold_rated: 60, speed: 5, speed_rated: 5,
     handling: 1, armour: 1, attack: 0, accuracy: 1, reach: 1, sighting: 1, fittings: [], slots: {},
     cabins: 1, cargo: {}, cargo_tuns: 0, water_t: 0, food_t: 0,
@@ -319,19 +319,19 @@ function ownFleet(ships: readonly FleetShip[]): FleetView {
 }
 
 test('both reads always say how many hulls, and only one of them can say what they are', () => {
-  // YOURS: `world.fleets` serves every ship's class as the class's NAME (`'class', c.name`,
-  // 0009:180), so the three names the chain seeds resolve and the FLAGSHIP comes first whatever
-  // order the server sent them in.
+  // YOURS: `world.fleets` serves every ship's class CODE beside its name (`class_code`, 0124 —
+  // world.ship_view), so the three codes the chain seeds resolve and the FLAGSHIP comes first
+  // whatever order the server sent them in.
   const [mine] = mapFleetsOf([
-    ownFleet([ship('Segunda', 'Caravela latina'), ship('Capitania', 'Nau / Carrack', true), ship('Terceira', 'Barca')]),
+    ownFleet([ship('Segunda', 'Caravela latina', false, 'carlat'), ship('Capitania', 'Nau / Carrack', true, 'nau'), ship('Terceira', 'Barca', false, 'barca')]),
   ])
   expect(mine.hulls).toEqual(['nau', 'carlat', 'barca'])
 
-  // AN UNKNOWN NAME IS NULL AND NOT THE NEAREST GUESS — a fourth hull, a renamed one or a
-  // translated one draws the class-less hull, visibly saying nothing, where a fuzzy match would
-  // quietly draw her as whichever of the three her name brushed against.
-  const [odd] = mapFleetsOf([ownFleet([ship('Galeao', 'Galleon', true), ship('Barca Velha', ' BARCA ')])])
-  expect(odd.hulls).toEqual([null, 'barca'])
+  // AN UNKNOWN CODE IS NULL AND NOT THE NEAREST GUESS — a fourth hull draws the class-less hull,
+  // visibly saying nothing; and the NAME is never read for the class (a server older than 0124,
+  // which serves no code, draws class-less hulls rather than guessing from ' BARCA ').
+  const [odd] = mapFleetsOf([ownFleet([ship('Galeao', 'Galleon', true, 'galleon'), ship('Barca Velha', 'Barca', false, 'barca'), ship('Velha', 'Barca')])])
+  expect(odd.hulls).toEqual([null, 'barca', null])
 
   // A FLEET WITH NO SHIPS SERVED still reaches the paper, as one class-less hull (`hullGroup([])`).
   const [bare] = mapFleetsOf([ownFleet([])])
@@ -351,7 +351,7 @@ test('both reads always say how many hulls, and only one of them can say what th
   expect(traffic[1].hulls).toEqual(['barca'])
   expect(hullGroup(traffic[0].hulls ?? [], GROUPED)).toHaveLength(3)
   // A CODE THIS CHART DOES NOT KNOW draws the class-less hull rather than the nearest guess — the
-  // same ruling the name table keeps for your own fleets, and the reason a new class may ship on
+  // same ruling `hullClassOfCode` keeps for your own fleets, and the reason a new class may ship on
   // the server before the chart has a silhouette for it.
   expect(mapTrafficOf([dockedMerchant('m-3', 2, ['galleon', 'nau'])])[0].hulls).toEqual([null, 'nau'])
   // AND THE FALLBACK IS STILL THERE AND STILL TRUE: a merchant served no list at all is her count

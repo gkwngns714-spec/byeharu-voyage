@@ -688,6 +688,9 @@ export interface FleetShip {
   name: string
   /** Ship class NAME (`Barca`), not code. */
   class: string
+  /** 0124 — the class CODE (`barca`), served beside the name by `world.ship_view`. Optional for one
+   *  release: a server older than 0124 does not serve it. */
+  class_code?: string
   is_flagship: boolean
   durability: number
   max_durability: number
@@ -1820,23 +1823,6 @@ export interface RouteEarnings {
   laps_done: number
 }
 
-export interface MerchantShip {
-  name: string
-  class: string
-  is_flagship: boolean
-  durability: number
-  max_durability: number
-  crew: number
-  crew_required: number
-  crew_max: number
-  hold: number
-  hold_rated: number
-  speed: number
-  speed_rated: number
-  cargo: Record<string, number>
-  cargo_tuns: number
-  fittings: { name: string; qty: number }[]
-}
 
 export interface MerchantOfficer {
   name: string
@@ -1894,7 +1880,10 @@ export interface MerchantCard {
     last_skipped: StandingRouteLap['skipped']
   } | null
   earnings: RouteEarnings | null
-  ships: MerchantShip[]
+  /** 0124 — ONE SERVED SHIP TYPE: `world.ship_view`, as your own fleet's ships are served, less what
+   *  a stranger is not — her id and her water and food. (Before 0124 the card built its own poorer
+   *  object, with no slots and no stats; the panel still renders that, its keys being optional there.) */
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
   officers: MerchantOfficer[]
   skills: MerchantSkill[]
 }
