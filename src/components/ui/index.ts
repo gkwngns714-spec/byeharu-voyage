@@ -23,7 +23,7 @@ export { Sheet, SheetSection } from './Sheet'
 // 2. TRAY — the bottom-docked sheet with detents (peek 96 · half · full) that every "unfold under
 //    the press" becomes. It is `fixed`, so opening one cannot move a tile. `inline` mode folds in
 //    flow instead, for the half of the owner's rule that is still open. See Tray.tsx.
-export { Tray } from './Tray'
+export { Tray, type TrayMode } from './Tray'
 export { TrayTitle } from './TrayTitle'
 export {
   TRAY_DETENTS,

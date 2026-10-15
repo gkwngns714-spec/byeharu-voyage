@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Figure, PriceRows, Row, Tray, type PriceTrend, type TrayDetent } from '../../components/ui'
+import { Figure, PriceRows, Row, Tray, type PriceTrend, type TrayDetent, type TrayMode } from '../../components/ui'
 import { formatInt, formatMiles } from '../../lib/format'
 import type { MarketGood } from '../../lib/rpc'
 
@@ -22,6 +22,7 @@ export function PriceTray({
   good,
   trend,
   passage,
+  mode,
   onClose,
 }: {
   good: MarketGood
@@ -29,6 +30,9 @@ export function PriceTray({
   trend: PriceTrend
   /** The sailed distance from where she lies to this quay, or null when there is no figure. */
   passage: number | null
+  /** Where the tray stands — PORT's docked default; the MAP's city panel slides it out beside
+   *  itself (`side-next`), the pattern its ship panel uses. */
+  mode?: TrayMode
   onClose: () => void
 }) {
   const [detent, setDetent] = useState<TrayDetent>('half')
@@ -37,6 +41,7 @@ export function PriceTray({
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={good.name}
+      mode={mode}
       data-testid="price-tray"
     >
       <Row label="Buy" value={<Figure value={formatInt(good.buy)} size="figure" />} />

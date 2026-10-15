@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Note, type TradePick } from '../../components/ui'
+import { Note, type TradePick, type TrayMode } from '../../components/ui'
 import { fleetCargoByCode, fleetPortCode } from '../../domain/fleet'
 import type { FleetView, MarketGood, SnapshotPort } from '../../lib/rpc'
 import { usePortHistory } from '../../live/usePortHistory'
@@ -41,6 +41,7 @@ export function PortPrices({
   goods,
   port,
   reader,
+  trayMode,
 }: {
   /** `world.market(port)`'s goods for THIS harbour — the read PortScreen already makes. */
   goods: readonly MarketGood[]
@@ -48,6 +49,8 @@ export function PortPrices({
   port: SnapshotPort
   /** The fleet whose hold the ledger is read against, or null when the house has none. */
   reader: FleetView | null
+  /** Where a pressed price's tray stands (PriceTray `mode`) — the MAP's city panel passes `side-next`. */
+  trayMode?: TrayMode
 }) {
   const portByCode = useWorld((s) => s.portByCode)
   const reaches = useWorld((s) => s.reaches)
@@ -94,7 +97,9 @@ export function PortPrices({
           }
         />
       )}
-      {pick && <PriceTray good={pick.good} trend={trend} passage={passage} onClose={() => setPick(null)} />}
+      {pick && (
+        <PriceTray good={pick.good} trend={trend} passage={passage} mode={trayMode} onClose={() => setPick(null)} />
+      )}
     </>
   )
 }

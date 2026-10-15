@@ -62,6 +62,7 @@ export function Segmented<T extends string>({
   value,
   onChange,
   label,
+  fill = false,
   className = '',
 }: {
   segments: readonly SegmentSpec<T>[]
@@ -69,6 +70,9 @@ export function Segmented<T extends string>({
   onChange: (id: T) => void
   /** Names the set for assistive tech ("Port faces"). Not painted. */
   label: string
+  /** The segments share the whole width — a short fixed set (the map city panel's Market | Port |
+   *  Inn), where a scrolling row of shrink-wrapped cells would leave half the bar empty. */
+  fill?: boolean
   className?: string
 }) {
   return (
@@ -88,6 +92,7 @@ export function Segmented<T extends string>({
             onClick={() => onChange(s.id)}
             className={[
               'min-h-11 min-w-11 shrink-0 whitespace-nowrap rounded-control px-3 text-t-caption transition',
+              fill ? 'flex-1' : '',
               on ? 'bg-surface text-ink' : 'text-ink-muted',
             ].join(' ')}
           >

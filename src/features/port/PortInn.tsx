@@ -11,15 +11,25 @@ import {
   TileField,
   Tray,
   type TrayDetent,
+  type TrayMode,
 } from '../../components/ui'
 import { OrderCheck } from './orderCheck'
+import { StepQuestion } from './StepQuestion'
+import { useShellState } from '../../app/shellState'
 import { useStepOrder, type StepVerb } from './useStepOrder'
 import { fleetCrew } from '../../domain/fleet'
 import { useCrewCost } from '../../live/useCrewCost'
 import { useInn } from '../../live/useInn'
 import { useWorld } from '../../live/worldStore'
 import { cmdHireOfficer } from '../../lib/rpc'
-import { formatDucats, formatInt, formatOfTotal } from '../../lib/format'
+import {
+  formatDucats,
+  formatInt,
+  formatOfTotal,
+  formatRealDuration,
+  formatVoyageDays,
+  instantMs,
+} from '../../lib/format'
 import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -58,7 +68,13 @@ import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../../lib/rpc'
 // A refresh of the room. Who is in it is derived from (officer, port, day, world secret): the
 // same port on the same day shows the same faces to everybody, for ever. A button that re-read it
 // would be honest — it would change nothing — but it would TEACH the player that re-reading
-// might help. So the room says outright that it is today's room, in ONE line.
+// might help. So the room says outright when it turns over, in ONE line.
+//
+// ── THE ROOM TURNS EVERY QUARTER HOUR (0120, owner 2026-10-15) ─────────────────────────────────
+// *"captains should be randomly distributed and change locations every few time (set real 15min
+// for now)"*. The key is no longer the game day but `world.inn_shift()` — 15 real minutes, a knob —
+// still derived, still the same room for everybody. The read serves `turns_at`; the head line
+// counts down to it on the shell's one clock, and the world's beat re-asks the room after it.
 //
 // ── HIRING AN OFFICER IS A DIRECT CALL, NOT AN ORDER ───────────────────────────────────────────
 // `cmd.hire_officer` is not one of the verbs and never has been (0015): signing somebody is not
@@ -83,27 +99,62 @@ export function PortInn({
   port,
   fleet,
   alongside,
+  trayMode,
 }: {
   port: SnapshotPort
   /** The fleet an officer signs with — the acting fleet, wherever it is (`cmd.hire_officer`). */
   fleet: FleetView | null
   /** A fleet of yours docked HERE, or null — crew are hired and let go from the port they are in. */
   alongside: FleetView | null
+  /** Where this face's trays stand — PORT's docked default; the MAP's city panel (2026-10-15)
+   *  slides them out beside itself (`side-next`). The same face, composed by a second caller. */
+  trayMode?: TrayMode
 }) {
   return (
     <div data-testid="port-inn">
       {alongside ? (
-        <CrewFace port={port} fleet={alongside} />
+        <>
+          <CrewFace port={port} fleet={alongside} />
+          <Supplies port={port} fleet={alongside} trayMode={trayMode} />
+        </>
       ) : (
-        <Row
-          label="Crew available"
-          value={<Figure value={formatInt(port.crew_pool)} unit="people" />}
-          tone="muted"
-          data-testid="inn-pool"
-        />
+        <>
+          <Row
+            label="Crew available"
+            value={<Figure value={formatInt(port.crew_pool)} unit="people" />}
+            tone="muted"
+            data-testid="inn-pool"
+          />
+          {/* WHY NOTHING HERE CAN BE PRESSED — one line, not a dead stepper. */}
+          <Row label="Dock a fleet here to hire crew or buy supplies." tone="muted" hairline={false} data-testid="inn-none-docked" />
+        </>
       )}
-      <Room port={port} fleet={fleet} />
+      <Room port={port} fleet={fleet} trayMode={trayMode} />
     </div>
+  )
+}
+
+/**
+ * SUPPLIES, BOUGHT AT THE INN (owner, 2026-10-15: *"inn should be a place where we can hire crew and
+ * buy provisions"*). The same act the quay's Trade face offers — `useStepOrder(…, 'PROVISION')`
+ * judged by the dry run and sent by the one button in `StepQuestion` — composed here as a second
+ * caller, never a second rule: how many days, what it costs and whether it is allowed are the
+ * server's, exactly as on the quay.
+ */
+function Supplies({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView; trayMode?: TrayMode }) {
+  const [open, setOpen] = useState(false)
+  const step = useStepOrder(fleet, 'PROVISION', open, () => setOpen(false))
+  return (
+    <>
+      <Row
+        label="Supplies"
+        value={<Figure value={formatVoyageDays(fleet.endurance_days)} />}
+        chevron
+        onClick={() => setOpen(true)}
+        data-testid="inn-supplies"
+      />
+      {open && <StepQuestion fleet={fleet} port={port} step={step} mode={trayMode} onClose={() => setOpen(false)} />}
+    </>
   )
 }
 
@@ -231,9 +282,12 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
   )
 }
 
-/** Today's room — the read, the faces, and the hiring tray. */
-function Room({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) {
+/** This quarter hour's room — the read, the faces, and the hiring tray. */
+function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView | null; trayMode?: TrayMode }) {
   const { view, loading } = useInn(port.id)
+  // THE ONE CLOCK (src/app/shellState.ts) counts down to the served turn (0120 `turns_at`).
+  const { nowMs } = useShellState()
+  const turnsAt = instantMs(view?.turns_at)
   const [open, setOpen] = useState<InnGuest | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('half')
   const [signing, setSigning] = useState(false)
@@ -263,16 +317,19 @@ function Room({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) 
 
   return (
     <>
-      <Note tone="neutral" className="my-3">
-        Officers available today. Tomorrow there will be different ones.
-      </Note>
+      {/* WHEN THE ROOM TURNS OVER (0120: every inn_captain_rotate_minutes REAL minutes). A server
+          that has not applied 0120 serves no instant, and the line says only what is true. */}
+      <div className="flex items-baseline justify-between pb-2 pt-4" data-testid="inn-room-head">
+        <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">Captains here</h3>
+        {turnsAt !== null && (
+          <span className="text-t-caption tabular-nums text-ink-faint" data-testid="inn-turns">
+            {turnsAt > nowMs ? `New faces in ${formatRealDuration(turnsAt - nowMs)}` : 'New faces arriving'}
+          </span>
+        )}
+      </div>
 
       {view.present.length === 0 ? (
-        <Row
-          label="No officers available today. Try a port closer to the kind of officer you want."
-          tone="muted"
-          hairline={false}
-        />
+        <Row label="Nobody in the inn right now." tone="muted" hairline={false} data-testid="inn-empty" />
       ) : (
         <TileField>
           {view.present.map((guest) => (
@@ -300,6 +357,7 @@ function Room({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) 
           detent={detent}
           onDetentChange={(next) => (next === 'closed' ? setOpen(null) : setDetent(next))}
           title={open.name}
+          mode={trayMode}
           data-testid="inn-tray"
           action={
             open.signed ? undefined : (

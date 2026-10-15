@@ -299,6 +299,11 @@ export interface InnView {
   has_inn: boolean
   /** The world's own day. Present so a screen can say WHEN this room was true. */
   game_day: number
+  /** 0120 — which quarter hour's room this is (`world.inn_shift`). Optional for the serve-order
+   *  reason: a server before 0120 sends no key. */
+  shift?: number
+  /** 0120 — ISO instant this room turns over and the captains move. Absent before 0120. */
+  turns_at?: string
   present: InnGuest[]
 }
 

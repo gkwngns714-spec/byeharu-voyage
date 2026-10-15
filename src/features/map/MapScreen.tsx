@@ -45,6 +45,7 @@ import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
 import { SendFleet } from './SendFleet'
+import { CityHarbour } from './CityHarbour'
 import { merchantsSummary } from '../../live/merchantGroups'
 import { viewLeftFrame } from './frame'
 
@@ -105,12 +106,12 @@ export function MapScreen() {
  *  and how many of them lie here, and which of yours are here or heading here. The merchants
  *  resting here are not drawn on the chart (chartModel.ts), so the city counts them — the
  *  harbour's own read (`world.port_merchants`), never the capped sea window — and the list itself
- *  is a drag away (CityMerchants.tsx). */
+ *  is the Port tab (CityHarbour.tsx). */
 function portLine(model: ChartModel, port: MapPort, merchants: readonly PortMerchant[]): string {
   const here = fleetsAtPort(model, port.code).map((f) => f.fleet.name)
   const bound = fleetsBoundFor(model, port.code).map((f) => f.fleet.name)
   const parts = [port.country]
-  const summary = merchantsSummary(merchants)
+  const summary = merchantsSummary(merchants, port.code)
   if (summary) parts.push(summary)
   if (here.length > 0) parts.push(`${here.join(', ')} here`)
   else if (bound.length > 0) parts.push(`${bound.join(', ')} heading here`)
@@ -353,12 +354,28 @@ function Chart({
           key={place.dest.kind === 'port' ? place.dest.code : pointToken(place.dest.at)}
           dest={place.dest}
           line={place.port ? portLine(model, place.port, harbourRows) : 'Open sea'}
-          merchants={harbourRows}
-          // A MERCHANT IS READ, NEVER COMMANDED — from the list exactly as from her hull.
-          onOpenMerchant={(id) => {
-            if (placePortId && placePortCode) setViaHarbour({ id: placePortId, code: placePortCode, fleet: id })
-            setSelection({ kind: 'merchant', id })
-          }}
+          harbour={
+            place.port && (
+              <CityHarbour
+                portCode={place.port.code}
+                merchants={harbourRows}
+                here={fleetsAtPort(model, place.port.code)}
+                bound={fleetsBoundFor(model, place.port.code)}
+                portsByCode={portsByCode}
+                nowMs={nowMs}
+                // A MERCHANT IS READ, NEVER COMMANDED — from the list exactly as from her hull.
+                onOpenMerchant={(id) => {
+                  if (placePortId && placePortCode) setViaHarbour({ id: placePortId, code: placePortCode, fleet: id })
+                  setSelection({ kind: 'merchant', id })
+                }}
+                // YOURS opens her own panel, as a tap on her hull does.
+                onOpenFleet={(id) => {
+                  selectFleet(id)
+                  setSelection({ kind: 'fleet', id })
+                }}
+              />
+            )
+          }
           onClose={() => setSelection(null)}
         />
       )}
