@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Bar, Figure, Icon, Row, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
 import {
   formatCountdown,
@@ -10,8 +10,17 @@ import {
   pointLabel,
   realMsToVoyageDays,
 } from '../../lib/format'
-import { CHART_CHROME, hullClassOfCode, hullPath, type FleetOnChart, type HullClass, type MapPort } from '../../chart'
-import { fleetLine } from './fleetLine'
+import {
+  CHART_CHROME,
+  GoToLink,
+  hullClassOfCode,
+  hullPath,
+  PlaceLine,
+  type FleetOnChart,
+  type HullClass,
+  type MapPort,
+} from '../../chart'
+import { fleetParts } from './fleetLine'
 import { useWorld } from '../../live/worldStore'
 import type { FleetShip } from '../../lib/rpc'
 import { ShipPanel } from '../../live/ShipPanel'
@@ -45,7 +54,7 @@ import { WatersAhead } from './WatersAhead'
  * ONE FACT, as a term and its figure. A `<dl>` cell rather than a `Row`: the grid owns the spacing,
  * and the pair stays a pair for a screen reader, which a pile of divs would not.
  */
-function Fact({ label, value }: { label: string; value: string }) {
+function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="min-w-0">
       <dt className="truncate text-t-caption text-ink-faint">{label}</dt>
@@ -224,7 +233,12 @@ export function VoyageTray({
       mode="side"
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
-      title={<TrayTitle name={fleet.fleet.name} line={fleetLine(fleet, portsByCode, nowMs)} />}
+      title={
+        <TrayTitle
+          name={<GoToLink to={{ kind: 'fleet', id: fleet.fleet.id }}>{fleet.fleet.name}</GoToLink>}
+          line={<PlaceLine parts={fleetParts(fleet, portsByCode, nowMs)} />}
+        />
+      }
       data-testid="map-detail-tray"
       {...CHART_CHROME}
     >
@@ -250,19 +264,21 @@ export function VoyageTray({
           sheet with five facts in it still reads as empty. Two columns put the same facts in half
           the height and let the eye take them in as a block. */}
       <dl className="grid grid-cols-2 gap-x-gutter gap-y-2 py-2">
-        {fleet.fleet.kind === 'anchored' && <Fact label="Anchored" value={pointLabel(fleet.at)} />}
-        {fleet.fleet.kind === 'docked' && <Fact label="In port" value={nameOf(fleet.fleet.portCode)} />}
+        {fleet.fleet.kind === 'anchored' && <Fact label="Anchored" value={<GoToLink to={{ kind: 'point', at: fleet.at }}>{pointLabel(fleet.at)}</GoToLink>} />}
+        {fleet.fleet.kind === 'docked' && <Fact label="In port" value={<GoToLink to={{ kind: 'port', code: fleet.fleet.portCode }}>{nameOf(fleet.fleet.portCode)}</GoToLink>} />}
         {voyage && (
           <>
             {/* 0039: a destination is a port, or a pinpointed spot of open water. */}
             <Fact
               label="Bound for"
               value={
-                voyage.destinationCode
-                  ? nameOf(voyage.destinationCode)
-                  : voyage.destPoint
-                    ? pointLabel(voyage.destPoint)
-                    : '—'
+                voyage.destinationCode ? (
+                  <GoToLink to={{ kind: 'port', code: voyage.destinationCode }}>{nameOf(voyage.destinationCode)}</GoToLink>
+                ) : voyage.destPoint ? (
+                  <GoToLink to={{ kind: 'point', at: voyage.destPoint }}>{pointLabel(voyage.destPoint)}</GoToLink>
+                ) : (
+                  '—'
+                )
               }
             />
             <Fact label="Arrives in" value={formatCountdown(voyage.etaMs - nowMs)} />

@@ -81,14 +81,60 @@ export function whereabouts(f: WhereFacts): Whereabouts {
   return { kind: 'unplaced', status: f.status }
 }
 
+/**
+ * A PIECE OF A "WHERE" SENTENCE — plain words, or the name of a PLACE (a harbour by code, or a
+ * point of water) that a screen may draw as a go-to link (src/chart/goTo.ts). The sentence is
+ * written ONCE, here, as pieces; `whereLine` is those pieces joined, so the linked line and the
+ * plain line can never say different things.
+ */
+export type WherePiece =
+  | string
+  | { readonly text: string; readonly port: string }
+  | { readonly text: string; readonly at: LatLon }
+
+/** The words of a piece, link or not. */
+export function pieceText(p: WherePiece): string {
+  return typeof p === 'string' ? p : p.text
+}
+
+/** Pieces joined back into the one line. */
+export function joinPieces(pieces: readonly WherePiece[]): string {
+  return pieces.map(pieceText).join('')
+}
+
+/** Where a sailing fleet is bound, as a piece: the harbour, the point of water, or "open sea". */
+export function boundForPiece(
+  w: { readonly to: string | null; readonly point: LatLon | null },
+  portName: (code: string) => string,
+): WherePiece {
+  if (w.to) return { text: portName(w.to), port: w.to }
+  if (w.point) return { text: pointLabel(w.point), at: w.point }
+  return 'open sea'
+}
+
 /** Where a sailing fleet is bound, by name: the harbour, the point of water, or "open sea". */
 export function boundForLabel(
   w: { readonly to: string | null; readonly point: LatLon | null },
   portName: (code: string) => string,
 ): string {
-  if (w.to) return portName(w.to)
-  if (w.point) return pointLabel(w.point)
-  return 'open sea'
+  return pieceText(boundForPiece(w, portName))
+}
+
+/** THE ONE SENTENCE ABOUT WHERE SHE IS, in pieces (see `WherePiece`). */
+export function whereParts(w: Whereabouts, portName: (code: string) => string, nowMs?: number): WherePiece[] {
+  switch (w.kind) {
+    case 'docked':
+      return [{ text: portName(w.port), port: w.port }]
+    case 'anchored':
+      return ['anchored · ', { text: pointLabel(w.at), at: w.at }]
+    case 'sailing': {
+      const to: WherePiece[] = ['to ', boundForPiece(w, portName)]
+      if (nowMs === undefined) return to
+      return [...to, ` · ${w.etaMs !== null ? formatRealShort(w.etaMs - nowMs) : '—'}`]
+    }
+    case 'unplaced':
+      return [w.status.toLowerCase()]
+  }
 }
 
 /**
@@ -96,19 +142,7 @@ export function boundForLabel(
  * the SERVER's arrival instant (`to Cádiz · 4m`); without it, the caller prints its own clock.
  */
 export function whereLine(w: Whereabouts, portName: (code: string) => string, nowMs?: number): string {
-  switch (w.kind) {
-    case 'docked':
-      return portName(w.port)
-    case 'anchored':
-      return `anchored · ${pointLabel(w.at)}`
-    case 'sailing': {
-      const to = `to ${boundForLabel(w, portName)}`
-      if (nowMs === undefined) return to
-      return `${to} · ${w.etaMs !== null ? formatRealShort(w.etaMs - nowMs) : '—'}`
-    }
-    case 'unplaced':
-      return w.status.toLowerCase()
-  }
+  return joinPieces(whereParts(w, portName, nowMs))
 }
 
 /** Is she lying in THIS harbour — the one "alongside here" test (PORT's read-only gate, a

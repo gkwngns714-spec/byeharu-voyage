@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { IconDisc, Row } from '../components/ui'
 import { formatInt } from '../lib/format'
 import type { PortMerchant } from '../lib/rpc'
+import { GoToLink } from '../chart'
+import { whereabouts } from '../domain/fleet'
 import { DOING_WORD, levelOf, restEndsAt, restLeft } from './merchantWords'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -54,7 +56,7 @@ export function MerchantRow({
       label={
         <span className="block min-w-0">
           <span className="block truncate text-t-body text-ink" data-testid="merchant-row-name">
-            {m.name}
+            <GoToLink to={{ kind: 'fleet', id: m.id, where: whereabouts(m) }}>{m.name}</GoToLink>
           </span>
           <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-row-line">
             {m.company}

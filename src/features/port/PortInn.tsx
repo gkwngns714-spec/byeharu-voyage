@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { GoToLink } from '../../chart'
 import {
   Bar,
   Button,
@@ -89,10 +90,19 @@ const SPECIALTY_DOES: Record<string, string> = {
   PURSER: 'better prices on every trade',
 }
 
-function whereFrom(guest: InnGuest): string {
-  if (guest.nation && guest.home) return `${guest.nation} · ${guest.home}`
-  if (guest.home) return guest.home
-  return 'Unknown'
+/** Her nation and home port — the port a go-to link when the world names it (the inn serves the
+ *  port's NAME, 0073, so it is found by name in the snapshot). */
+function whereFrom(guest: InnGuest, ports: readonly SnapshotPort[] | undefined): ReactNode {
+  if (!guest.home) return 'Unknown'
+  const code = ports?.find((p) => p.name === guest.home)?.code
+  const home = code ? <GoToLink to={{ kind: 'port', code }}>{guest.home}</GoToLink> : guest.home
+  return guest.nation ? (
+    <>
+      {guest.nation} · {home}
+    </>
+  ) : (
+    home
+  )
 }
 
 export function PortInn({
@@ -293,6 +303,7 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
   const [signing, setSigning] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   const refresh = useWorld((s) => s.refresh)
+  const ports = useWorld((s) => s.snapshot?.ports)
 
   const sign = (guest: InnGuest) => {
     if (signing) return
@@ -382,7 +393,7 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
             label="Bonus"
             value={<Figure value={`+${formatInt(open.bonus_pct)}%`} tone="success" />}
           />
-          <Row label="From" value={whereFrom(open)} hairline={!open.signed} />
+          <Row label="From" value={whereFrom(open, ports)} hairline={!open.signed} />
           {open.signed && <Row label="Already working for you." tone="muted" hairline={false} />}
           <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
           {refusal && (

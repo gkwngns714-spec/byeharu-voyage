@@ -804,6 +804,31 @@ body {
   }
 }
 
+/* GO TO (src/chart/goTo.ts) — the ring on the place a link named. Its own keyframes, never
+   Tailwind's `animate-ping`/`animate-pulse`: tests/appReady.fixture.ts reads `.animate-pulse` as
+   "still loading". */
+@keyframes bv-goto-ring {
+  from {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+.bv-goto-ring {
+  animation: bv-goto-ring 1.1s var(--ease-sheet) infinite;
+}
+
+/* A side panel FOLDED for a go-to on a narrow glass (MapScreen): slid out past the right edge,
+   still mounted, so its state is all there when the tab beside the edge brings it back. */
+[data-panels-folded] [data-tray-mode='side'],
+[data-panels-folded] [data-tray-mode='side-next'] {
+  transform: translateX(100%);
+  visibility: hidden;
+}
+
 /* §4.6: reduced motion collapses ALL of it to zero — the tokens first, so anything that reads
    them is already still, and then the sweep for whatever does not. */
 @media (prefers-reduced-motion: reduce) {

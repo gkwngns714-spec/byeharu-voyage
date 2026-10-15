@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Icon, Skeleton, Tray, TrayTitle, deltaTone, goodIcon, type TrayDetent } from '../components/ui'
-import { CHART_CHROME } from '../chart'
+import { CHART_CHROME, GoToLink } from '../chart'
 import { useShellState } from '../app/shellState'
 import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../lib/format'
 import { worldFleetTrades, type FleetTrades, type TradeDay, type TradeLap, type TradeLine, type TradeStop } from '../lib/rpc'
@@ -200,7 +200,7 @@ function DayView({ day }: { day: TradeDay }) {
         <ol className="flex flex-col gap-2">
           {ports.map((p) => (
             <li key={p.port} className="rounded-control bg-surface-2 p-3" data-testid="trade-day-port">
-              <PortHead name={portNameOf(portByCode, p.port)} />
+              <PortHead code={p.port} name={portNameOf(portByCode, p.port)} />
               <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-1 text-t-caption">
                 <span className="text-ink-faint">Good</span>
                 <span className="text-right text-ink-faint">Sold</span>
@@ -300,7 +300,7 @@ function Stops({ stops }: { stops: readonly TradeStop[] }) {
     <ol className="flex flex-col gap-2" data-testid="trade-stops">
       {stops.map((s, i) => (
         <li key={`${s.port}-${i}`} className="rounded-control bg-surface-2 p-3" data-testid="trade-stop">
-          <PortHead name={portNameOf(portByCode, s.port)} n={i + 1} />
+          <PortHead code={s.port} name={portNameOf(portByCode, s.port)} n={i + 1} />
           {s.sold.length === 0 && s.bought.length === 0 ? (
             <p className="mt-1.5 text-t-caption text-ink-faint">Called here and traded nothing.</p>
           ) : (
@@ -354,7 +354,7 @@ function GoodName({ code }: { code: string }) {
   )
 }
 
-function PortHead({ name, n }: { name: string; n?: number }) {
+function PortHead({ code, name, n }: { code: string; name: string; n?: number }) {
   return (
     <div className="flex items-center gap-2">
       {n !== undefined && (
@@ -362,7 +362,9 @@ function PortHead({ name, n }: { name: string; n?: number }) {
           {n}
         </span>
       )}
-      <span className="truncate text-t-body text-ink">{name}</span>
+      <span className="truncate text-t-body text-ink">
+        <GoToLink to={{ kind: 'port', code }}>{name}</GoToLink>
+      </span>
     </div>
   )
 }

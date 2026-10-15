@@ -2,7 +2,8 @@ import { Bar, Button, Figure, Icon, Note, Row } from '../../components/ui'
 import { formatMiles, formatVoyageDays } from '../../lib/format'
 import type { FleetView, PreviewResult, Refusal } from '../../lib/rpc'
 import { sailEstimate } from '../../domain/order'
-import { whereabouts, whereLine } from '../../domain/fleet'
+import { whereabouts, whereParts } from '../../domain/fleet'
+import { GoToLink, PlaceLine } from '../../chart'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { KeepAndSend } from './KeepAndSend'
 import { canGo, type Fix } from './sendRules'
@@ -26,7 +27,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
   // At sea or not is `domain/fleet`'s one rule; the mark and the line both read it, never `f.voyage`.
   const whereAt = whereabouts(f)
   const sailing = whereAt.kind === 'sailing'
-  const where = whereLine(whereAt, (c) => portNameOf(portByCode, c))
+  const where = <PlaceLine parts={whereParts(whereAt, (c) => portNameOf(portByCode, c))} />
 
   const line = !pressable
     ? standing === 'lies'
@@ -37,7 +38,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
     : sailing
       ? 'at sea — turns from where it is'
       : v === undefined
-        ? `${where} · checking the route…`
+        ? <>{where} · checking the route…</>
         : where
   const passage = pressable && v?.kind === 'ok' ? passageOf(v.result) : null
 
@@ -47,7 +48,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
         mark={
           <Icon name={sailing ? 'ship' : 'anchor'} size={20} className={on ? 'text-accent' : 'text-ink-faint'} />
         }
-        label={f.name}
+        label={<GoToLink to={{ kind: 'fleet', id: f.id, where: whereAt }}>{f.name}</GoToLink>}
         value={passage !== null ? <Figure value={<span data-testid="map-send-passage">{passage}</span>} /> : undefined}
         tone={on ? 'accent' : pressable ? 'default' : 'muted'}
         hairline={!on}

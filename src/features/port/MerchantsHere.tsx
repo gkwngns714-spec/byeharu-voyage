@@ -1,7 +1,8 @@
 import { SheetSection } from '../../components/ui'
 import { isDockedAt } from '../../domain/fleet'
 import { MerchantRow } from '../../live/MerchantRow'
-import { merchantLine } from '../../live/merchantLine'
+import { merchantParts } from '../../live/merchantLine'
+import { PlaceLine } from '../../chart'
 import type { PortMerchant } from '../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -52,7 +53,7 @@ export function MerchantsHere({
           key={t.id}
           m={t}
           here={isDockedAt(t, portCode)}
-          detail={merchantLine(t, portName, nowMs)}
+          detail={<PlaceLine parts={merchantParts(t, portName, nowMs)} />}
           nowMs={nowMs}
           onOpen={onOpen}
           hairline={i < rows.length - 1}

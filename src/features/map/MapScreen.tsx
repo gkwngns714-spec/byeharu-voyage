@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { unproject, type Point, type ViewBox } from '../../lib/geo'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { unproject, type LatLon, type Point, type ViewBox } from '../../lib/geo'
+import { whereabouts } from '../../domain/fleet'
 import type { FleetView, PortMerchant, SnapshotPort, TrafficFleet } from '../../lib/rpc'
 import type { SeaNav } from '../../lib/sea'
 import { pointToken, snapSeaPoint } from '../../domain/passage'
@@ -7,7 +8,7 @@ import { useShellState } from '../../app/shellState'
 import { useWorld } from '../../live/worldStore'
 // THE MERCHANTS (0099): their sheet and its card are live-data React shared with PORT.
 import { MerchantSheet } from '../../live/MerchantSheet'
-import { merchantLine } from '../../live/merchantLine'
+import { merchantParts } from '../../live/merchantLine'
 import { useMerchantCard } from '../../live/useMerchantCard'
 import { useMerchantsHere } from '../../live/useMerchantsHere'
 // WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
@@ -21,6 +22,15 @@ import {
   fleetsAtPort,
   fleetsBoundFor,
   GLYPH,
+  GoToLink,
+  GOTO_MIN_CLEAR_PX,
+  GOTO_MARK_MS,
+  GOTO_SPAN_DEG,
+  PlaceLine,
+  useGoTo,
+  CHART_CHROME,
+  type FleetOnChart,
+  type GoToTarget,
   dotPorts,
   hitTest,
   mapFleetsOf,
@@ -40,7 +50,8 @@ import {
   type MapSelection,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
-import { chromeAsideSideTrayClass } from '../../components/ui'
+import { chromeAsideSideTrayClass, Icon } from '../../components/ui'
+import { GoToMarker } from '../../chart/GoToMarker'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
@@ -107,15 +118,30 @@ export function MapScreen() {
  *  resting here are not drawn on the chart (chartModel.ts), so the city counts them — the
  *  harbour's own read (`world.port_merchants`), never the capped sea window — and the list itself
  *  is the Port tab (CityHarbour.tsx). */
-function portLine(model: ChartModel, port: MapPort, merchants: readonly PortMerchant[]): string {
-  const here = fleetsAtPort(model, port.code).map((f) => f.fleet.name)
-  const bound = fleetsBoundFor(model, port.code).map((f) => f.fleet.name)
-  const parts = [port.country]
+function portLine(model: ChartModel, port: MapPort, merchants: readonly PortMerchant[]): ReactNode {
+  const here = fleetsAtPort(model, port.code)
+  const bound = fleetsBoundFor(model, port.code)
+  const parts: ReactNode[] = [port.country]
   const summary = merchantsSummary(merchants, port.code)
   if (summary) parts.push(summary)
-  if (here.length > 0) parts.push(`${here.join(', ')} here`)
-  else if (bound.length > 0) parts.push(`${bound.join(', ')} heading here`)
-  return parts.join(' · ')
+  if (here.length > 0) parts.push(<>{fleetLinks(here)} here</>)
+  else if (bound.length > 0) parts.push(<>{fleetLinks(bound)} heading here</>)
+  return parts.map((p, i) => (
+    <Fragment key={i}>
+      {i > 0 && ' · '}
+      {p}
+    </Fragment>
+  ))
+}
+
+/** Your fleets by name, each a go-to link (src/chart/goTo.ts), comma-separated. */
+function fleetLinks(fleets: readonly FleetOnChart[]): ReactNode {
+  return fleets.map((f, i) => (
+    <Fragment key={f.fleet.id}>
+      {i > 0 && ', '}
+      <GoToLink to={{ kind: 'fleet', id: f.fleet.id }}>{f.fleet.name}</GoToLink>
+    </Fragment>
+  ))
 }
 
 const NO_MERCHANTS: readonly PortMerchant[] = []
@@ -252,11 +278,84 @@ function Chart({
   const selectedMerchant = merchantId
     ? (trafficRows.find((t) => t.id === merchantId) ?? harbourRows.find((t) => t.id === merchantId) ?? null)
     : null
+  const panelOpen = selectedFleet !== null || selectedMerchant !== null || place !== null
+
+  // ── GO TO (src/chart/goTo.ts) — this screen is the one taker ──────────────────────────────────
+  // A request is resolved to a coordinate through THIS chart's model: a harbour by its code; a
+  // fleet by the mark the chart drew for her, else by `whereabouts` over her served row (a
+  // merchant resting in a harbour is not drawn). Then the zoom glide carries the view there and the
+  // marker rings it. Nothing is selected or closed: the panel the link was in stays as it was —
+  // unless the side panels leave too little clear glass (a phone), when they FOLD, still mounted,
+  // until the tab at the edge or the next tap on the chart brings them back.
+  const [mark, setMark] = useState<{ at: LatLon; seq: number } | null>(null)
+  const [foldedFor, setFoldedFor] = useState<{ selection: MapSelection } | null>(null)
+  const folded = panelOpen && foldedFor !== null && foldedFor.selection === selection
+  const take = useRef<(request: { target: GoToTarget; seq: number }) => void>(() => {})
+  useEffect(() => {
+    const portAt = (code: string): LatLon | null => {
+      const p = portsByCode.get(code)
+      return p ? { lat: p.lat, lon: p.lon } : null
+    }
+    const resolve = (t: GoToTarget): LatLon | null => {
+      if (t.kind === 'point') return t.at
+      if (t.kind === 'port') return portAt(t.code)
+      const drawn = model.fleets.find((f) => f.fleet.id === t.id) ?? model.traffic.find((f) => f.fleet.id === t.id)
+      if (drawn) return drawn.at
+      const row = harbourRows.find((r) => r.id === t.id) ?? trafficRows.find((r) => r.id === t.id)
+      const w = t.where ?? (row ? whereabouts(row) : null)
+      if (w?.kind === 'docked') return portAt(w.port)
+      if (w?.kind === 'anchored') return w.at
+      return null
+    }
+    take.current = (request) => {
+      const at = resolve(request.target)
+      const element = chartRef.current
+      if (!at || !element) return
+      // How much glass the side panels leave clear, measured off the page (they fold and slide).
+      const rect = element.getBoundingClientRect()
+      let clear = rect.width
+      for (const node of element.querySelectorAll('[data-tray-mode="side"], [data-tray-mode="side-next"]')) {
+        clear = Math.min(clear, node.getBoundingClientRect().left - rect.left)
+      }
+      let u = 0.5
+      if (clear < rect.width - 1) {
+        if (clear >= GOTO_MIN_CLEAR_PX) u = clear / 2 / rect.width
+        else setFoldedFor({ selection })
+      }
+      surface.glideTo(at, GOTO_SPAN_DEG, u)
+      setMark({ at, seq: request.seq })
+    }
+  })
+  const measured = surface.view !== null
+  useEffect(() => {
+    if (!measured) return
+    useGoTo.setState((s) => ({ charts: s.charts + 1 }))
+    const run = () => {
+      const request = useGoTo.getState().take()
+      if (request) take.current(request)
+    }
+    // A request held while the tab was down is taken on the first frame the view is committed.
+    const frame = requestAnimationFrame(run)
+    const unsubscribe = useGoTo.subscribe((s) => {
+      if (s.request) run()
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      unsubscribe()
+      useGoTo.setState((s) => ({ charts: s.charts - 1 }))
+    }
+  }, [measured])
+  useEffect(() => {
+    if (!mark) return
+    const id = window.setTimeout(() => setMark(null), GOTO_MARK_MS)
+    return () => window.clearTimeout(id)
+  }, [mark])
 
   return (
     <div
       ref={chartRef}
       {...surface.handlers}
+      data-panels-folded={folded || undefined}
       // `touchClass` is the hook's (posture and `touch-action` are ONE fact); `bv-sea` paints the
       // frames before `box` is measured, so nothing flashes where the sea will be.
       className={`bv-sea relative h-full w-full ${surface.touchClass} select-none overflow-hidden`}
@@ -281,13 +380,15 @@ function Chart({
         />
       )}
 
+      {mark && box && <GoToMarker key={mark.seq} at={mark.at} box={box} width={surface.width} height={surface.height} />}
+
       {/* THE CHROME LAYER — corners only; pointer-transparent itself so it can never swallow a
           pan, and each child that is meant to be pressed turns pointer events back on.
           ITS RIGHT EDGE GIVES WAY TO AN OPEN SIDE TRAY (screenLayout.ts `chromeAsideSideTrayClass`),
           so the zoom column and Regions are never left underneath the panel at any width. */}
       <div
         className={`pointer-events-none absolute inset-0 z-10 ${
-          selectedFleet || selectedMerchant || place ? chromeAsideSideTrayClass() : ''
+          panelOpen && !folded ? chromeAsideSideTrayClass() : ''
         }`}
       >
         {surface.width > 0 && (
@@ -330,6 +431,20 @@ function Chart({
         )}
       </div>
 
+      {/* THE FOLDED PANELS' TAB (a go-to on a narrow glass): one press brings them back. */}
+      {folded && (
+        <button
+          type="button"
+          {...CHART_CHROME}
+          onClick={() => setFoldedFor(null)}
+          aria-label="Show the panel"
+          data-testid="map-unfold"
+          className="absolute right-0 top-1/2 z-20 flex h-14 w-8 -translate-y-1/2 items-center justify-center rounded-l-control bg-surface text-ink-muted shadow-sheet"
+        >
+          <Icon name="chevron" size={18} className="rotate-180" />
+        </button>
+      )}
+
       {/* THE TRAY — one at a time, keyed by what was tapped so the next tap starts it at peek. */}
       {selectedFleet && (
         <VoyageTray
@@ -345,7 +460,7 @@ function Chart({
           key={selectedMerchant.id}
           mode="side"
           card={card && card.fleet.id === selectedMerchant.id ? card : null}
-          line={merchantLine(selectedMerchant, (c) => portsByCode.get(c)?.name ?? c, nowMs)}
+          line={<PlaceLine parts={merchantParts(selectedMerchant, (c) => portsByCode.get(c)?.name ?? c, nowMs)} />}
           onClose={() => setSelection(null)}
         />
       )}

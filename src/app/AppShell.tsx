@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import { ShellStateContext } from './shellState'
 import { NavBar } from './NavBar'
 import { TopBar } from './TopBar'
@@ -7,6 +7,7 @@ import { RebuildNotice } from './RebuildNotice'
 import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
 import { serverNow } from '../lib/serverClock'
+import { useGoTo } from '../chart/goTo'
 
 // THE PERSISTENT SHELL: a slim header, the tab content, and the ONE tab bar. Mounted once for the
 // whole authenticated app; the shared data layer (see shellState.ts) mounts HERE and nowhere else.
@@ -68,6 +69,14 @@ export function AppShell() {
   useEffect(() => {
     void useWorld.getState().open()
   }, [])
+
+  // GO TO (src/chart/goTo.ts): a place named on any tab brings the Map tab up — the one navigator
+  // the request uses, registered here because this is the shell, inside the router.
+  const navigate = useNavigate()
+  useEffect(() => {
+    useGoTo.setState({ openMap: () => navigate('/map') })
+    return () => useGoTo.setState({ openMap: null })
+  }, [navigate])
 
   // The cadence follows the SERVED clock, so it is right for whatever the world's compression is —
   // and it re-arms if that knob ever changes under a running tab.

@@ -9,10 +9,13 @@ import {
 } from 'react'
 import { project, wrapLon, type GeoBounds, type LatLon, type Point, type ViewBox } from '../lib/geo'
 import {
+  approachView,
   clampView,
   fitView,
+  GOTO_GLIDE_MS,
   panBy,
   unitsPerPixel,
+  viewArrived,
   viewBoxOf,
   zoomAt,
   ZOOM_GLIDE_MS,
@@ -227,6 +230,9 @@ export interface ChartSurface {
   /** Put a place in the middle of the glass, at the current zoom. A VIEW change and nothing else —
    *  it is how the fleet list reaches a fleet the opening frame does not happen to contain. */
   readonly centreOn: (at: LatLon) => void
+  /** GLIDE a place to a point of the glass (`u`, a fraction of its width; 0.5 the middle) at no
+   *  wider than `spanX` — the zoom glide's own loop, aimed (./goTo.ts). The hand still wins. */
+  readonly glideTo: (at: LatLon, spanX: number, u?: number) => void
   readonly handlers: {
     onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void
     onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => void
@@ -296,15 +302,28 @@ export function useChartSurface(
   // one animation frame at a time pays a share of it (time constant ZOOM_GLIDE_MS) around the
   // latest anchor. One loop, one owed amount — a second notch mid-glide just owes more. A drag, a
   // pinch, Fit or a centre-on cancels it, so the hand always wins.
-  const glide = useRef({ owed: 0, u: 0.5, v: 0.5, aspect: 1, frame: 0, last: 0 })
+  // A GO-TO (./goTo.ts) is the same loop with a destination instead of a debt: `to` is where it
+  // is going and `at` where the last frame left it. A wheel notch, a drag or a pinch drops it.
+  const glide = useRef({
+    owed: 0,
+    u: 0.5,
+    v: 0.5,
+    aspect: 1,
+    frame: 0,
+    last: 0,
+    to: null as ChartView | null,
+    at: null as ChartView | null,
+  })
   const stopGlide = useCallback(() => {
     cancelAnimationFrame(glide.current.frame)
     glide.current.frame = 0
     glide.current.owed = 0
+    glide.current.to = null
   }, [])
   const glideZoom = useCallback(
     (factor: number, u: number, v: number, surfaceAspect: number) => {
       const g = glide.current
+      if (g.to) stopGlide()
       g.owed += Math.log(factor)
       g.u = u
       g.v = v
@@ -322,9 +341,42 @@ export function useChartSurface(
       }
       g.frame = requestAnimationFrame(step)
     },
-    [from],
+    [from, stopGlide],
   )
   useEffect(() => stopGlide, [stopGlide])
+
+  // The view the last render committed, for a go-to to start from (read in a handler, never in
+  // render).
+  const committed = useRef<ChartView | null>(null)
+  const glideTo = useCallback(
+    (at: LatLon, spanX: number, u = 0.5) => {
+      const start = committed.current
+      if (!start) return
+      stopGlide()
+      const g = glide.current
+      const span = Math.min(start.spanX, spanX)
+      const point = project(at)
+      const to = clampView({ cx: point.x + (0.5 - u) * span, cy: point.y, spanX: span }, aspect)
+      g.to = to
+      g.at = start
+      g.last = performance.now()
+      const step = (t: number) => {
+        if (g.to !== to || !g.at) return
+        const share = 1 - Math.exp(-(t - g.last) / GOTO_GLIDE_MS)
+        g.last = t
+        const next = approachView(g.at, to, share)
+        const done = viewArrived(next, to)
+        g.at = done ? to : next
+        setMovedTo(clampView(g.at, aspect))
+        if (done) {
+          g.to = null
+          g.frame = 0
+        } else g.frame = requestAnimationFrame(step)
+      }
+      g.frame = requestAnimationFrame(step)
+    },
+    [aspect, stopGlide],
+  )
 
   // ── wheel (and the trackpad pinch, which arrives as ctrlKey + wheel) ──────────────────────────
   // Attached natively because it must be non-passive: a chart that scrolls the page under the
@@ -465,6 +517,10 @@ export function useChartSurface(
   )
 
   // ── the three controls ────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    committed.current = view
+  }, [view])
+
   const zoomBy = useCallback(
     (factor: number) => glideZoom(factor, 0.5, 0.5, aspect),
     [aspect, glideZoom],
@@ -501,6 +557,7 @@ export function useChartSurface(
     zoomOut,
     fit,
     centreOn,
+    glideTo,
     handlers: {
       onPointerDown,
       onPointerMove,

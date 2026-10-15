@@ -234,3 +234,10 @@ export {
 // for the same reason `seaNameRequests` is; the paint is CoastlineLayer's and LabelsLayer's.
 export { REGION_FILL, regionNameRequests, regionTintsOf, type RegionTint } from './regions'
 export { readRegionsFilter, REGIONS_FILTER_KEY, setRegionsFilter, useRegionsFilter } from './regionsFilter'
+
+// ── GO TO (owner, 2026-10-15) ──────────────────────────────────────────────────────────────────
+// The one way a panel asks the chart to show a place, and the one link every panel draws a place
+// with. ./goTo.ts carries the rule; MapScreen is the one taker.
+export { goTo, useGoTo, GOTO_MARK_MS, GOTO_MIN_CLEAR_PX, type GoToTarget } from './goTo'
+export { GoToLink, PlaceLine } from './GoToLink'
+export { GOTO_SPAN_DEG } from './chartView'
