@@ -23,7 +23,7 @@ import { LAID_UP_AT_LISBON, RESTING_AT_PORTO, RESTING_PORT_CODE, serveNpcOn } fr
 import { buildChartModel, hitTest, mapTrafficOf, type MapFleet, type MapPort } from '../src/chart'
 import type { MerchantDoing, PortMerchant, TrafficFleet } from '../src/lib/rpc'
 import { project } from '../src/lib/geo'
-import { MERCHANT_GROUPS, groupMerchants, merchantsSummary } from '../src/live/merchantGroups'
+import { harbourSides, merchantsSummary } from '../src/live/merchantGroups'
 
 const SHOTS = path.resolve('docs', 'npc-traders')
 
@@ -193,46 +193,36 @@ test('merchants lying at one berth are fanned, and the harbour keeps its own dot
   expect(hitTest(dotModel, [], { x: off.x + 30, y: off.y }, 40, [LIS], 20)).toBeNull()
 })
 
-// THE CITY'S GROUPING (owner, 2026-10-14: *"i press a city and i see no ship info. Why did this
-// revert back?"*). The harbour's ranked list is cut into headed groups by src/live/merchantGroups.ts
-// and nothing about it is changed: the groups stand in the server's rank, rows keep the server's
-// order inside a group, in port the soonest rest-end stands first, an empty group is not printed,
-// and a list with merchants is never empty.
-test("a harbour's merchants are grouped by what each is doing, in the server's rank, and no group prints empty", () => {
-  const m = (id: string, doing: MerchantDoing, next_lap_at: string | null = null, port: string | null = 'LIS'): PortMerchant => {
+// THE CITY'S PORT TAB (owner, 2026-10-15: *"by clicking on [port] it should show incomming ships,
+// resting ships"*). The harbour's ranked list is split by WHERE each merchant is — the one rule,
+// src/domain/fleet/where.ts — into In port (soonest rest-end first) and Incoming (soonest ETA
+// first); one away on her loop is in neither, and nothing is counted twice.
+test("a harbour's merchants split into in port and incoming by the one where-rule", () => {
+  const docked = (id: string, doing: MerchantDoing, next_lap_at: string | null = null): PortMerchant => {
     const facts: Omit<TrafficFleet, 'lane'> = dockedRow
-    return { ...facts, id, name: `Prova ${id}`, port, next_lap_at, doing, level: 3, stops: ['LIS', 'FNC'] }
+    return { ...facts, id, name: `Prova ${id}`, port: 'LIS', next_lap_at, doing, level: 3, stops: ['LIS', 'FNC'] }
+  }
+  const sailing = (id: string, doing: MerchantDoing, to: string, etaInMs: number): PortMerchant => {
+    const { lane: _lane, ...facts } = sailingRow(id, [[38.6, -9.4], [32.6, -16.95]], [36, -12])
+    void _lane
+    return { ...facts, voyage: { ...facts.voyage!, to, eta: new Date(Date.now() + etaInMs).toISOString() }, doing, level: 3, stops: ['LIS', 'FNC'] }
   }
   const soon = new Date(Date.now() + 60_000).toISOString()
   const later = new Date(Date.now() + 300_000).toISOString()
-  // the server's own order: laid_up, resting, starting, ending, passing, away
   const rows = [
-    m('a', 'laid_up', later), m('b', 'resting', later), m('c', 'resting', soon), m('d', 'starting'),
-    m('e', 'ending', null, null), m('f', 'passing', null, null), m('g', 'away', null, null), m('h', 'away', null, null),
+    docked('a', 'laid_up', later), docked('b', 'resting', later), docked('c', 'resting', soon), docked('d', 'starting'),
+    sailing('e', 'ending', 'LIS', 600_000), sailing('f', 'passing', 'LIS', 120_000), sailing('g', 'away', 'FNC', 60_000),
   ]
-  const groups = groupMerchants(rows)
-  expect(groups.map((g) => g.key)).toEqual(['in_port', 'leaving', 'arriving', 'passing', 'away'])
-  expect(groups.map((g) => g.heading)).toEqual(['In port', 'Leaving', 'Arriving', 'Passing', 'Away'])
-  // IN PORT, SOONEST FIRST; a laid-up merchant's hold is not a promise, so she stands after the timed ones
-  expect(groups[0].rows.map((r) => r.id)).toEqual(['c', 'b', 'a'])
-  // every other group keeps the server's order exactly
-  expect(groups[1].rows.map((r) => r.id)).toEqual(['d'])
-  expect(groups[2].rows.map((r) => r.id)).toEqual(['e'])
-  expect(groups[3].rows.map((r) => r.id)).toEqual(['f'])
-  expect(groups[4].rows.map((r) => r.id)).toEqual(['g', 'h'])
-  // nothing is dropped and nothing is counted twice
-  expect(groups.flatMap((g) => g.rows).length).toBe(rows.length)
-  // A GROUP WITH NOBODY IN IT IS NOT PRINTED — and a city whose merchants are ALL AT SEA still has a list
-  expect(groupMerchants([m('e', 'ending', null, null), m('g', 'away', null, null)]).map((g) => g.key)).toEqual(['arriving', 'away'])
-  expect(groupMerchants([])).toEqual([])
-  // every one of the server's six words stands under exactly one heading
-  for (const w of ['laid_up', 'resting', 'starting', 'ending', 'passing', 'away'] as const) {
-    expect(MERCHANT_GROUPS.filter((g) => g.doings.includes(w)), w).toHaveLength(1)
-  }
-  // THE PEEK LINE counts everyone the city concerns before the ones lying here, and is never '' with rows
-  expect(merchantsSummary(rows)).toBe('8 merchants · 3 in port')
-  expect(merchantsSummary([m('e', 'ending', null, null)])).toBe('1 merchant')
-  expect(merchantsSummary([])).toBe('')
+  const sides = harbourSides(rows, 'LIS')
+  // IN PORT, SOONEST FIRST; a laid-up merchant's hold is not a promise, and `starting` lies here too
+  expect(sides.inPort.map((r) => r.id)).toEqual(['c', 'b', 'a', 'd'])
+  // INCOMING, SOONEST ARRIVAL FIRST; one bound elsewhere is in neither list
+  expect(sides.incoming.map((r) => r.id)).toEqual(['f', 'e'])
+  expect(harbourSides([], 'LIS')).toEqual({ inPort: [], incoming: [] })
+  // THE PEEK LINE counts everyone the city concerns before the ones lying here — the Port tab's count
+  expect(merchantsSummary(rows, 'LIS')).toBe('7 merchants · 4 in port')
+  expect(merchantsSummary([sailing('e', 'ending', 'LIS', 1)], 'LIS')).toBe('1 merchant')
+  expect(merchantsSummary([], 'LIS')).toBe('')
 })
 
 test('an own fleet wins a tie with a merchant; a merchant wins over open water', () => {
@@ -594,13 +584,12 @@ test('the eight nation inks exist in both schemes and stand off the sea', async 
 // in groups (src/live/merchantGroups.ts), and a city with merchants is never blank.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-/** The group sections the tray may print, in the server's rank, with the words each one holds. */
+/** The PORT TAB's two sections (2026-10-15, owner: *"incomming ships, resting ships"*), split by
+ *  where each merchant IS (src/live/merchantGroups.ts `harbourSides`), with the served words a
+ *  merchant in each may carry. Away merchants are in neither. */
 const GROUPS = [
-  { id: 'map-merchants-in-port', heading: 'In port', words: ['Laid up', 'Resting'] },
-  { id: 'map-merchants-leaving', heading: 'Leaving', words: ['Starting'] },
-  { id: 'map-merchants-arriving', heading: 'Arriving', words: ['Ending'] },
-  { id: 'map-merchants-passing', heading: 'Passing', words: ['Passing'] },
-  { id: 'map-merchants-away', heading: 'Away', words: ['Away'] },
+  { id: 'map-harbour-in-port', heading: 'In port', words: ['Laid up', 'Resting', 'Starting', 'Passing'] },
+  { id: 'map-harbour-incoming', heading: 'Incoming', words: ['Ending', 'Passing'] },
 ] as const
 
 /**
@@ -651,7 +640,7 @@ async function openHarbour(
       await send.click()
       await expect(tray).toHaveAttribute('data-tray-detent', 'half')
       // the harbour's read lands on the beat; a city nobody's loop calls at has no list at all
-      const listed = await page.getByTestId('map-merchants').waitFor({ state: 'visible', timeout: 8_000 }).then(() => true, () => false)
+      const listed = await page.getByTestId('map-harbour').waitFor({ state: 'visible', timeout: 8_000 }).then(() => true, () => false)
       return listed ? 'listed' : 'empty'
     }
     await page.waitForTimeout(1_000)
@@ -698,7 +687,7 @@ async function groupRows(section: Locator): Promise<{ name: string; level: strin
  * rows, grouped, for the caller.
  */
 async function readCityList(page: Page, city: string) {
-  const list = page.getByTestId('map-merchants')
+  const list = page.getByTestId('map-harbour')
   await expect(list).toBeVisible()
   const printed: { heading: string; rows: Awaited<ReturnType<typeof groupRows>> }[] = []
   for (const g of GROUPS) {
@@ -707,7 +696,9 @@ async function readCityList(page: Page, city: string) {
     const rows = await groupRows(section)
     expect(rows.length, `${city}: the ${g.heading} group is printed with nobody in it`).toBeGreaterThanOrEqual(1)
     await expect(section.locator('h2')).toHaveText(g.heading)
-    await expect(section.getByTestId('map-merchants-count')).toHaveText(String(rows.length))
+    // the heading counts every row in it — your own fleets (map-harbour-own) and the merchants
+    const own = await section.getByTestId('map-harbour-own').count()
+    await expect(section.getByTestId('map-harbour-count')).toHaveText(String(rows.length + own))
     for (const r of rows) {
       expect(r.level, `${city}: the level of ${r.name}`).toMatch(/^\d+$/)
       expect(g.words as readonly string[], `${city}: "${r.doing}" on ${r.name} is not a ${g.heading} word`).toContain(r.doing)
@@ -717,7 +708,7 @@ async function readCityList(page: Page, city: string) {
       }
       if (r.doing === 'Laid up') expect(r.rest, `${city}: a laid-up merchant's hold is not a promise`).toBeNull()
     }
-    if (g.id === 'map-merchants-in-port') {
+    if (g.id === 'map-harbour-in-port') {
       // SOONEST FIRST: a row without a time never stands above one with.
       const timed = rows.map((r) => (r.rest ? '1' : '0')).join('')
       expect(timed, `${city}: a row without a time stands above one with`).not.toMatch(/01/)
@@ -727,14 +718,16 @@ async function readCityList(page: Page, city: string) {
   // THE GROUPS STAND IN THE SERVER'S RANK — the order GROUPS lists them, which is 0104's.
   const order = printed.map((p) => GROUPS.findIndex((g) => g.heading === p.heading))
   expect(order).toEqual([...order].sort((a, b) => a - b))
-  // AND THE LIST IS NEVER BLANK WHILE THE READ HAS MERCHANTS: the rows in the groups are every row,
-  // and the head counts exactly them (`N merchants`, then `· M in port` only when M > 0).
+  // Every row stands in a section; the head line's in-port count is the In port section's — one
+  // rule (`harbourSides`) for both. The head still counts every merchant the city concerns, the
+  // ones away on their loops too, so it is at least the rows listed.
   const all = await list.getByTestId('merchant-row').count()
-  expect(all, `${city}: rows outside every group`).toBe(printed.reduce((n, p) => n + p.rows.length, 0))
+  expect(all, `${city}: rows outside every section`).toBe(printed.reduce((n, p) => n + p.rows.length, 0))
   expect(all, `${city}: a list with no rows`).toBeGreaterThanOrEqual(1)
   const inPort = printed.find((p) => p.heading === 'In port')?.rows.length ?? 0
   const line = page.getByTestId('map-place-name-line')
-  await expect(line).toContainText(`${all} ${all === 1 ? 'merchant' : 'merchants'}`)
+  const head = Number(((await line.textContent()) ?? '').match(/(\d+) merchants?/)?.[1] ?? '0')
+  expect(head, `${city}: the head counts fewer merchants than the tab lists`).toBeGreaterThanOrEqual(all)
   if (inPort > 0) await expect(line).toContainText(`· ${inPort} in port`)
   else await expect(line).not.toContainText('in port')
   return printed
@@ -773,7 +766,7 @@ test('Porto lists every merchant it concerns, grouped — the fixture\'s resting
   // HER ROW OPENS THE SAME READ-ONLY SHEET a hull on the water opens — and a resting merchant is
   // served by the harbour and not by the sea window, so this is the one way to reach her from the
   // map. The sheet's level is the number the row printed.
-  const row = page.getByTestId('map-merchants-in-port').getByTestId('merchant-row').filter({ hasText: RESTING_AT_PORTO })
+  const row = page.getByTestId('map-harbour-in-port').getByTestId('merchant-row').filter({ hasText: RESTING_AT_PORTO })
   await expect(row).toHaveCount(1)
   const level = ((await row.getByTestId('merchant-row-level').textContent()) ?? '').trim()
   await row.click()
@@ -804,9 +797,9 @@ test('every named harbour with merchants lists them all, grouped, never blank', 
 
   const listed: string[] = []
   let atSeaShot = false
-  // Lisbon is skipped by name: your own fleet lies on its mark and wins the tap (hitTest.ts), so
-  // its label opens the fleet tray, not the city. Everything else named on the frame is opened.
-  for (const l of (await harbourLabels(page)).filter((l) => l.id !== 'port:LIS')) {
+  // Every named harbour, Lisbon too: since 2026-10-15 a fleet DOCKED in a harbour yields the tap to
+  // it (hitTest.ts), so Lisbon's label opens the city with your fleet first in its Port tab.
+  for (const l of await harbourLabels(page)) {
     if ((await openHarbour(page, l)) !== 'listed') continue
     const printed = await readCityList(page, l.id)
     listed.push(l.id)

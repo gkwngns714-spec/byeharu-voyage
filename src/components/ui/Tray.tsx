@@ -61,6 +61,9 @@ import { useWide } from './useWide'
 
 export type { TrayDetent } from './trayDetents'
 
+/** Where a tray stands. 'side-next' slides out beside an open 'side' panel (the map's drill-down). */
+export type TrayMode = 'docked' | 'inline' | 'side' | 'side-next'
+
 const HEIGHT: Record<Exclude<TrayDetent, 'closed'>, string> = {
   peek: `${TRAY_PEEK}px`,
   half: '50dvh',
@@ -83,7 +86,7 @@ export function Tray({
   /** What was tapped. `t-title`, one line, never a sentence. */
   title: ReactNode
   /** 'side' — the map's slide-in panel at the right edge, at every width (traySideEdgeClass). */
-  mode?: 'docked' | 'inline' | 'side' | 'side-next'
+  mode?: TrayMode
   /** The ONE primary button, pinned to the bottom edge and never inside the scroll. */
   action?: ReactNode
   /** False for a tray that is a FIXTURE of its slot rather than an answer to a tap — the basket

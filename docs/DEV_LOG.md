@@ -5,6 +5,30 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-15 — a city is three tabs: Market | Port | Inn; the inn turns over every 15 real minutes — `osn-city-tabs`
+
+Owner: *"when i click on a city, i don't want to see stupid useless info. Rather, i want there to be
+tab, such as market, port, inn … captains should be randomly distributed and change locations every
+few time (set real 15min for now), and inn should be a place where we can hire crew and buy
+provisions."*
+
+- **Map city panel** (`SendFleet.tsx` shell → `CityTabs.tsx`): Market = `PortPrices` (read-only
+  ledger, `world.market`; a price slides `PriceTray` out `side-next`). Port = `CityHarbour.tsx`:
+  In port / Incoming, yours first then merchants, split by the one where-rule
+  (`merchantGroups.ts` `harbourSides`, replacing the five doing-word groups; Away is gone).
+  Inn = `PortInn` (captains this quarter hour with a "new faces in" countdown; crew stepper and a
+  new Supplies row → `PROVISION` via `useStepOrder`/`StepQuestion` for a fleet alongside).
+  `Send fleet` stays in the title and turns to Port with the fleets list; the anchorage hint now
+  shows only there. `alongsideAt` (domain/fleet/where.ts) is the one "who acts for this harbour"
+  rule, now shared by PORT and the map. Trays gained a `mode`/`trayMode` pass-through.
+- **City tap**: a tap on a harbour where your fleet is DOCKED opens the city (her hull is drawn on
+  the mark; `src/chart/hitTest.ts`, the one tie rule). She is first in its Port tab.
+- **0119 `the_inn_turns_over_every_quarter_hour`** (first drafted as 0120; renumbered 0119 so it
+  goes live first, the concurrent merchant migration takes 0120): `world.inn_shift()` (knob `inn_captain_rotate_minutes` = 15) is
+  the room's key in place of `world.game_day()` for both `world.inn` and the `cmd.hire_officer`
+  gate; `world.inn` serves `shift` and `turns_at`. Derived, no cron, no table. Self-asserted on the
+  local chain (`npm run db:apply`). **Not deployed.**
+
 ## 2026-10-14 — the city tray lists every merchant the harbour concerns, never blank — `osn-city-tray-merchants`
 
 Owner, on the live game: *"i press a city and i see no ship info. Why did this revert back?"*

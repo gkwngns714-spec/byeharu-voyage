@@ -1,49 +1,41 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Button, Hint, Row, SheetSection, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
 import { formatVoyageDays } from '../../lib/format'
-import type { PortMerchant } from '../../lib/rpc'
 import { CHART_CHROME } from '../../chart'
-import { useShellState } from '../../app/shellState'
-import { CityMerchants } from './CityMerchants'
+import { CityTabs } from './CityTabs'
+import { useCityTab } from './cityTab'
 import { SendFleetRow } from './SendFleetRow'
 import { canGo, type SailDest } from './sendRules'
 import { useSendFleet } from './useSendFleet'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE CITY TRAY — a tapped place: who lies in it, and the map's one act, as a tray from the bottom edge.
+// THE CITY PANEL — a tapped place: its three tabs, and the map's one act, as a panel at the right.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // docs/UI_DIRECTION.md §6, MAP, grown on 2026-10-13 by the owner's two sentences — *"when i press
 // city … i want there to be a list, showing the total level, and its current time till the resting
 // finishes"* and *"the pop-up page when clicking a ship or a city is not good in terms of
-// friendliness and style"*:
+// friendliness and style"* — and on 2026-10-15 by a third:
 //
-//     peek:  Lisbon                                   [Send fleet]
-//            Portugal · 27 merchants · 2 in port
-//     half:  In port                                           2
-//              [⚓] Carreira da Guiné      12        2 h 14 min
-//                  Casa de Aveiro · 3 ships   level       Resting
-//            Arriving                                          3
-//              [⚓] Costeiros do Sul       4            Arriving
-//            Away                                             22
-//              …
-//            Your fleets
-//              [⚓] Gaivota · Lisbon · 1.9 days
-//                  Keep 15 d  [−] ▔▔▔▔▔▔ [+]
-//            [            Send Gaivota · keep 15 days            ]
+//   *"when i click on a city, i don't want to see stupid useless info. Rather, i want there to be
+//    tab, such as market, port, inn."*
 //
-// The owner's flow, step for step (useSendFleet.ts quotes it): tap a place → the tray peeks with
-// the place's name, one line, and `Send fleet` → press it and the tray stands at half, her fleets
-// listed with the passage's verdict on each row → press one, the keep control unfolds under it →
-// the one pinned button sends her. Nothing navigates; the chart is still the ground.
+//     Lisbon                                         [Send fleet]
+//     Portugal · 27 merchants · 2 in port
+//     [  Market  |   Port   |   Inn   ]
+//       Market: the price table (PortPrices) — a press slides the price history out beside
+//       Port:   In port · Incoming, yours and the merchants' (CityHarbour)
+//       Inn:    the captains here this quarter hour; crew and supplies for a fleet alongside
+//     [            Send Gaivota · keep 15 days            ]
 //
-// WHAT THE HALF STOP NOW HOLDS FIRST: every merchant the city concerns (CityMerchants.tsx), in
-// groups by what each is doing — a resting merchant is drawn nowhere else on the chart since
-// 2026-10-13, and since 0116 she rests two minutes, so a list of only the ones lying here was a
-// blank tray on almost every city (owner, 2026-10-14: *"i see no ship info"*). The harbour's own
-// read serves them (MapScreen asks it when a city is tapped); a row opens the same read-only
-// merchant sheet a hull on the water opens. Then her fleets, under their own heading, so a reader
-// who pressed `Send fleet` finds the thing they pressed for named.
+// A HARBOUR'S BODY IS `CityTabs` (CityTabs.tsx says what each tab composes). A point of OPEN SEA
+// has no tabs: it is only somewhere to send a fleet.
+//
+// THE SEND IS NOT LOST. The owner's flow, step for step (useSendFleet.ts quotes it): tap a place →
+// the panel opens with the place's name, one line, and `Send fleet` → press it and her fleets are
+// listed with the passage's verdict on each row — at the top of the PORT tab, which the press
+// turns to → press one, the keep control unfolds under it → the one pinned button sends her.
+// `Send fleet` stands in the title on every tab. Nothing navigates; the chart is still the ground.
 //
 // THE RULES (useSendFleet.ts carries them): this file composes nothing, judges nothing, and owns
 // no grammar. It is the markup of a decision made elsewhere.
@@ -53,24 +45,22 @@ import { useSendFleet } from './useSendFleet'
 export function SendFleet({
   dest,
   line,
-  merchants,
-  onOpenMerchant,
+  harbour,
   onClose,
 }: {
   dest: SailDest
-  /** The one line under the name at peek — `Portugal · 27 merchants · 2 in port`, `Open sea`. */
+  /** The one line under the name — `Portugal · 27 merchants · 2 in port`, `Open sea`. */
   line: string
-  /** Every merchant this city concerns — the harbour's whole read, unfiltered; empty at sea. */
-  merchants: readonly PortMerchant[]
-  onOpenMerchant: (fleetId: string) => void
+  /** The Port tab's ships — in port and incoming (CityHarbour), built by MapScreen, which holds
+   *  the harbour's read. Unused at sea. */
+  harbour: ReactNode
   onClose: () => void
 }) {
   const [detent, setDetent] = useState<TrayDetent>('peek')
   const open = detent !== 'peek'
   const flow = useSendFleet(dest, open)
   const { fleets } = flow
-  // THE ONE CLOCK (src/app/shellState.ts): the rest countdowns tick on it, never on a timer here.
-  const { nowMs } = useShellState()
+  const turnTo = useCityTab((s) => s.turnTo)
 
   const picked = fleets.find((f) => f.id === flow.picked) ?? null
   const sendable = picked !== null && canGo(flow.standingOf(picked)) && flow.presets !== null
@@ -78,6 +68,40 @@ export function SendFleet({
   // send emptied the list, when her row already says she is under way.
   const nowhere = fleets.length > 0 && !fleets.some((f) => canGo(flow.standingOf(f))) && flow.act?.state !== 'sent'
   const busy = picked !== null && flow.act?.state === 'busy' && flow.act.fleetId === picked.id
+
+  // HER FLEETS, each with the passage's verdict — once `Send fleet` is pressed: at the top of the
+  // Port tab for a city, alone for a point of open sea.
+  const sendSection = open && (
+    <SheetSection heading="Your fleets" data-testid="map-send-fleets">
+      {/* WHY THE TRACK WILL NOT TOUCH THE QUAY (0076): the marker leaves the triangle for a point
+          up to 67.7 nm out, and a player who was not told reads that as a bug. Said only where a
+          passage is being chosen — above the tabs it was the first line of every city (2026-10-15,
+          "stupid useless info"). The wording is domain/passage's. */}
+      {flow.roads && <Hint data-testid="map-send-roads">{flow.roads}</Hint>}
+      {fleets.length === 0 && (
+        <Row tone="muted" hairline={false} label="No fleets yet — start your company to get one." data-testid="map-send-none" />
+      )}
+
+      {/* THE DEAD END, NAMED (OWNER_REQUESTS row 49: "i can't send a fleet in map"): a list in
+          which nothing can be pressed says so ONCE, at the top, before the player hunts for the
+          press. */}
+      {nowhere && (
+        <Row
+          tone="muted"
+          label={
+            fleets.every((f) => flow.standingOf(f) === 'lies')
+              ? `Nothing to send — ${fleets.length === 1 ? 'it is' : 'they are'} already at ${flow.destName}.`
+              : `Nothing to send — every fleet is at ${flow.destName} or heading there.`
+          }
+          data-testid="map-send-nowhere"
+        />
+      )}
+
+      {fleets.map((f) => (
+        <SendFleetRow key={f.id} fleet={f} flow={flow} />
+      ))}
+    </SheetSection>
+  )
 
   return (
     <Tray
@@ -91,7 +115,15 @@ export function SendFleet({
           testId="map-place-name"
           trailing={
             !open && (
-              <Button variant="primary" size="sm" onClick={() => setDetent('half')} data-testid="map-send-fleet">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  turnTo('port')
+                  setDetent('half')
+                }}
+                data-testid="map-send-fleet"
+              >
                 Send fleet
               </Button>
             )
@@ -115,46 +147,18 @@ export function SendFleet({
       data-testid="map-detail-tray"
       {...CHART_CHROME}
     >
-      {/* WHY THE TRACK WILL NOT TOUCH THE QUAY (0076): the marker leaves the triangle for a point
-          up to 67.7 nm out, and a player who was not told reads that as a bug. The one hint this
-          tray spends its budget on; the wording is domain/passage's. */}
-      {flow.roads && <Hint data-testid="map-send-roads">{flow.roads}</Hint>}
-
-      {/* THE CITY'S MERCHANTS — the list the owner asked for, in port first and soonest to sail
-          first among them. In the scroll box whether or not the tray is open: at peek it is simply
-          below the fold, a drag away. */}
-      <CityMerchants
-        rows={merchants}
-        portCode={dest.kind === 'port' ? dest.code : null}
-        nowMs={nowMs}
-        onOpen={onOpenMerchant}
-      />
-
-      {open && (
-        <SheetSection heading="Your fleets" data-testid="map-send-fleets">
-          {fleets.length === 0 && (
-            <Row tone="muted" hairline={false} label="No fleets yet — start your company to get one." data-testid="map-send-none" />
-          )}
-
-          {/* THE DEAD END, NAMED (OWNER_REQUESTS row 49: "i can't send a fleet in map"): a list in
-              which nothing can be pressed says so ONCE, at the top, before the player hunts for the
-              press. */}
-          {nowhere && (
-            <Row
-              tone="muted"
-              label={
-                fleets.every((f) => flow.standingOf(f) === 'lies')
-                  ? `Nothing to send — ${fleets.length === 1 ? 'it is' : 'they are'} already at ${flow.destName}.`
-                  : `Nothing to send — every fleet is at ${flow.destName} or heading there.`
-              }
-              data-testid="map-send-nowhere"
-            />
-          )}
-
-          {fleets.map((f) => (
-            <SendFleetRow key={f.id} fleet={f} flow={flow} />
-          ))}
-        </SheetSection>
+      {dest.kind === 'port' ? (
+        <CityTabs
+          portCode={dest.code}
+          harbour={
+            <>
+              {sendSection}
+              {harbour}
+            </>
+          }
+        />
+      ) : (
+        sendSection
       )}
     </Tray>
   )

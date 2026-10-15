@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Figure, Note, Row, Stepper, Tray, type TrayDetent } from '../../components/ui'
+import { Button, Figure, Note, Row, Stepper, Tray, type TrayDetent, type TrayMode } from '../../components/ui'
 import { OrderCheck } from './orderCheck'
 import type { StepOrder } from './useStepOrder'
 import { fleetStores, worstHullFraction } from '../../domain/fleet'
@@ -34,12 +34,15 @@ export function StepQuestion({
   fleet,
   port,
   step,
+  mode,
   onClose,
 }: {
   fleet: FleetView
   /** Where the ship is — the snapshot port, for the shipyard. */
   port: SnapshotPort | null
   step: StepOrder
+  /** Where the tray stands — PORT's docked default; the MAP's city panel passes `side-next`. */
+  mode?: TrayMode
   onClose: () => void
 }) {
   const { spec, args, setArg, check, issuing, timeCompression } = step
@@ -84,6 +87,7 @@ export function StepQuestion({
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={title(spec.verb)}
+      mode={mode}
       data-testid="step-tray"
       action={
         <Button

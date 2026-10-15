@@ -118,3 +118,19 @@ export function isDockedAt(f: WhereFacts, portCode: string): boolean {
   const w = whereabouts(f)
   return w.kind === 'docked' && w.port === portCode
 }
+
+/**
+ * WHO OF YOURS ACTS FOR A HARBOUR — the fleets lying in it, and the one fleet whose orders and
+ * hold a screen about that harbour reads: one alongside first, else the hull the command draft
+ * holds, else the first. PORT spelt this inline; the MAP's city panel (2026-10-15) is its second
+ * caller, so it lives here once.
+ */
+export function alongsideAt<F extends WhereFacts & { readonly id: string }>(
+  fleets: readonly F[],
+  portCode: string,
+  draftFleetId: string | null,
+): { docked: F[]; acting: F | null } {
+  const docked = fleets.filter((f) => isDockedAt(f, portCode))
+  const acting = docked[0] ?? fleets.find((f) => f.id === draftFleetId) ?? fleets[0] ?? null
+  return { docked, acting }
+}
