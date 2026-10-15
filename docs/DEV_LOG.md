@@ -105,6 +105,33 @@ the source:**
   at the globe a tap ON Acapulco's dot picked Veracruz by the name rule (4.4° off) and then lost to
   a merchant 0.74° off. Its own comment says a merchant wins only when nearer than the nearest
   harbour.
+## 2026-10-16 — 0129: a merchant buys what her purse can pay — `osn-0129-merchant-lap-profit`
+
+RESUME next #1: merchant laps still mostly lose after 0128. **Measured on prod (read-only, laps
+closed 12:00–15:00 UTC 10-15, head 0128):** 3,564 laps, 333 profit / 3,231 loss, but the average
+lap netted **+378 d.** — the "bought > sold" lens is not the loss (a lap's net is cost of goods
+SOLD, 0116: a parcel bought at the last stop is carried out at cost).
+- **2,520 laps (71 %) bought and sold nothing**, each losing only its stores/repairs (−24 two
+  stops, −33 three, −70 four) — 78 % of all losing laps. 1,940 of them had a BUY refused
+  **E_INSUFFICIENT_FUNDS**: the 2,575 refused parcels cost a median **20,981 d.** against a median
+  purse of **3,993 d.** (4.3×; 2,477 cost more than her whole purse). do_buy refuses an unpayable
+  line whole, so she sailed in ballast. 327 merchant companies hold < 5,000 d. (capital ~5,400).
+- The trading laps made money on the trade: 0 of 920 sold below cost. 604 closed a few ducats
+  under zero because 0128's carried wages (owed on ballast sea-days too) took the whole margin and
+  the stores were left (net ≈ −stores).
+- Ruled out: 0126's speed, the cut-loss (no sale below cost), price drift (same).
+**Cause:** the leg planner (`public.npc_leg_lines`, 0120) sized a parcel by sink, daily cap and
+hold — never by the purse — and priced loops on parcels she could never buy.
+
+**Fix (0129, one bound in one place):** `public.npc_affordable(port, good, qty, budget)` — the most
+units ≤ qty whose `world.quote` buy total fits the budget — and `public.npc_buy_budget(fleet)` =
+(purse + cargo aboard at cost) × `npc_buy_purse_pct` (90; the rest pays the stop's stores/repairs,
+which run before the BUYs; the cargo counts because her SELLs run first and never below cost). The
+planner sizes every kept parcel by it and spends the leg's budget as it keeps (npc_leg_lines,
+sliced); the moment of buying asks the same bound again (cmd.standing_route_lines, sliced, where
+0114 already re-asks the keep test). "Cargo at cost" moved out of cmd.standing_route_close_lap
+into `public.fleet_stock_at_cost` (the one reading; the lap and the budget call it). do_buy and
+players' orders are untouched.
 
 ## 2026-10-15 — 0128: wages are paid from profit — `osn-0128-wages-from-profit`
 
