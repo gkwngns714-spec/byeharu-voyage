@@ -426,8 +426,15 @@ test('the sea shows how many ships each merchant is, and lets go of it when pull
 
       // EVERY MARK DRAWS EXACTLY THE HULLS IT CLAIMS, and claims at least one: a merchant is never
       // an empty patch of sea, and the group is never a path that was dropped.
-      const marks = await hullsOnTheGlass(page)
-      expect(marks.length).toBeGreaterThanOrEqual(2)
+      // AT LEAST TWO, WAITED FOR, as the opening of this test waits for them (2026-10-16). The
+      // merchants sail while the page is open, so how many hulls stand on the glass at one instant
+      // is the sea's business: CI run 38780770200 caught a frame with one, two of them having
+      // sailed off a 390 px glass since the opening poll. The claim below is still made of every
+      // mark on a frame holding two or more — the frame is waited for, not assumed.
+      let marks: Awaited<ReturnType<typeof hullsOnTheGlass>> = []
+      await expect
+        .poll(async () => (marks = await hullsOnTheGlass(page)).length, { timeout: 60_000 })
+        .toBeGreaterThanOrEqual(2)
       for (const m of marks) {
         expect(m.hulls).toBeGreaterThanOrEqual(1)
         expect(m.hulls).toBeLessThanOrEqual(3)

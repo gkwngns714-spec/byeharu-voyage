@@ -7,7 +7,7 @@ import { RebuildNotice } from './RebuildNotice'
 import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
 import { serverNow } from '../lib/serverClock'
-import { useGoTo } from '../chart/goTo'
+import { useGoTo } from '../chart'
 
 // THE PERSISTENT SHELL: a slim header, the tab content, and the ONE tab bar. Mounted once for the
 // whole authenticated app; the shared data layer (see shellState.ts) mounts HERE and nowhere else.

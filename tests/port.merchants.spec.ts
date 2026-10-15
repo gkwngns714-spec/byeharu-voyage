@@ -127,13 +127,16 @@ test('the harbour names its merchants, what each is doing, and the loop that bri
   await expect(page.getByTestId('merchant-sheet')).toBeVisible()
   await expect(page.getByTestId('merchant-sheet-name')).toHaveText(LAID_UP_AT_LISBON, { timeout: 60_000 })
   await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
-  // READ-ONLY, here as on the chart: the only buttons are the tray's own.
+  // READ-ONLY, here as on the chart (tests/map.merchants.spec.ts asserts the same of the chart's
+  // sheet): the tray's own buttons, and since 2026-10-15 openers of READ panels — her ships
+  // (PR #113's ship panel) and her figures and lap pills (0121's trade history, PR #117). None of
+  // them is a verb, and that is what read-only means.
   const sheet = page.getByTestId('merchant-sheet')
   const labels = await sheet
     .locator('button')
     .evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label') ?? b.textContent ?? ''))
-  expect(labels.length).toBeGreaterThan(0)
-  for (const l of labels) expect(l).toMatch(/^(Close|Resize)$/)
+  expect(labels).toContain('Close')
+  for (const l of labels) expect(l).not.toMatch(/\b(Buy|Sell|Sail|Fit|Unfit|Hire|Dismiss|Send|Assign|Save|Delete|Repair|Board)\b/i)
   await page.screenshot({ path: path.join(SHOTS, 'port-merchant-sheet-from-harbour-390.png') })
 })
 

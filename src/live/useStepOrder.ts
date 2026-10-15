@@ -15,15 +15,17 @@
 // preview, the `checked` pair, `issuing`); it moved with the doorways rather than being copied.
 //
 // WHAT WOULD MAKE THIS THE WRONG SHAPE: a second file holding a `checked`/`issuing` pair for a
-// verb. tests/verbHomes.spec.ts holds that `StepQuestion` is composed from features/port only.
+// verb. tests/verbHomes.spec.ts holds that `StepQuestion` is composed by the three building faces
+// only — the Inn (live/PortInn), the Shipyard and the quay (features/port). The Inn moved to
+// src/live on 2026-10-16 because two screens draw it (PORT's Inn tab, the map city panel's Inn).
 //
 // ONE PARSER, ON THE SERVER. `orderText` walks `cmd.verb_schema()` to the exact line; `preview`
 // runs the REAL verb in a subtransaction and rolls it back (F.5); `issue` is the one door.
 
 import { useCallback, useEffect, useState } from 'react'
-import { findVerb, isComplete, orderText } from '../../domain/order'
-import { useWorld } from '../../live/worldStore'
-import type { FleetView, Refusal, VerbSpec } from '../../lib/rpc'
+import { findVerb, isComplete, orderText } from '../domain/order'
+import { useWorld } from './worldStore'
+import type { FleetView, Refusal, VerbSpec } from '../lib/rpc'
 import type { CheckState } from './orderCheck'
 
 const FALLBACK_REFUSAL: Refusal = {

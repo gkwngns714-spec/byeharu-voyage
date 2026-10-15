@@ -1,7 +1,7 @@
-import { ActCell, Figure, RarityMark, Row } from '../../components/ui'
-import { useShellState } from '../../app/shellState'
-import { formatDucatsDelta, formatOfTotal, formatPctDelta, formatRelative, formatUnits } from '../../lib/format'
-import type { TradeRequest } from '../../lib/rpc'
+import { ActCell, Figure, RarityMark, Row } from '../components/ui'
+import { useShellState } from '../app/shellState'
+import { formatDucatsDelta, formatOfTotal, formatPctDelta, formatRelative, formatUnits } from '../lib/format'
+import type { TradeRequest } from '../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE REQUEST BOARD — what this port asks for, one row per request, shaped like the ledger.

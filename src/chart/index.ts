@@ -240,4 +240,5 @@ export { readRegionsFilter, REGIONS_FILTER_KEY, setRegionsFilter, useRegionsFilt
 // with. ./goTo.ts carries the rule; MapScreen is the one taker.
 export { goTo, useGoTo, GOTO_MARK_MS, GOTO_MIN_CLEAR_PX, type GoToTarget } from './goTo'
 export { GoToLink, PlaceLine } from './GoToLink'
+export { GoToMarker } from './GoToMarker'
 export { GOTO_SPAN_DEG } from './chartView'

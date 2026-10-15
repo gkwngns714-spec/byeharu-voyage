@@ -257,6 +257,36 @@ async function merchantsInView(page: Page): Promise<{ total: number; inView: num
 }
 
 
+/**
+ * WAIT FOR TWO MERCHANTS ON THE GLASS, PULLING BACK A STEP AT A TIME IF THE SEA HERE IS EMPTY
+ * (2026-10-16). Everything near Lisbon SAILS, on the real clock: each tab's first tick settles every
+ * voyage-day since the merchants-on world was dumped, so how many hulls stand inside a frame close
+ * on Lisbon depends on how many minutes into its shard a test runs. CI run 38784220784 waited 60 s
+ * at 1280 and at 1440 with one merchant in view. The spec sets its own precondition instead of
+ * assuming the sea's: up to four presses of Zoom out (each a sea-wider frame, where a 320-merchant
+ * roster always has ships), and the count asked is still two. Returns how many presses it took, so
+ * a caller that needs the opening frame back (a harbour's NAME is tapped on it) presses Zoom in as
+ * many times — the zoom is about the glass's centre, so that is the same frame.
+ */
+async function merchantsOnTheGlass(page: Page): Promise<number> {
+  for (let presses = 0; ; presses++) {
+    const two = await expect
+      .poll(async () => (await merchantsInView(page)).inView, { timeout: 20_000 })
+      .toBeGreaterThanOrEqual(2)
+      .then(() => true, () => false)
+    if (two) return presses
+    if (presses === 4) throw new Error('fewer than two merchants on the glass, even four zoom steps out from Lisbon')
+    await page.getByLabel('Zoom out').click()
+    await page.waitForTimeout(800)
+  }
+}
+
+/** Back to the frame `merchantsOnTheGlass` started from. */
+async function backIn(page: Page, presses: number): Promise<void> {
+  for (let i = 0; i < presses; i++) await page.getByLabel('Zoom in').click()
+  if (presses > 0) await page.waitForTimeout(800)
+}
+
 /** A merchant hull whose centre is on the chart's glass, so a tap can land on it. */
 async function hullInView(page: Page, sailing: boolean | null, skip: ReadonlySet<string> = new Set()): Promise<string> {
   // OPEN WATER FIRST, THEN ANYWHERE. A hull within a harbour's reach loses the tap to the harbour —
@@ -341,6 +371,13 @@ async function hullInViewClearOf(
 async function openMerchantWorthReading(page: Page, sailing: boolean | null): Promise<string> {
   const tried = new Set<string>()
   let opened = ''
+  // THE LAST HULL WHOSE SHEET DID OPEN, kept when the loop closes it to try another (2026-10-16).
+  // The "is there another candidate?" check and the next pass's pick are two reads of a moving sea:
+  // PR #130's CI trace shows the sheet OPEN (body visible, no lap average yet), a second hull
+  // present at the check, gone 0.4 s later at the pick — and the helper then reported "1 merchant
+  // hull(s) were tapped and none opened her sheet", a false account of a working tap. The
+  // contract above — settle for the last one if none has a figure — is kept by re-opening her.
+  let lastOpened = ''
   let seen = 0
   // WALK THE HULLS, not one hull repeatedly. A tap can be lost to a harbour or to one of your own
   // fleets — both outrank a merchant by the chart's own rule — and no amount of re-aiming at that
@@ -356,6 +393,7 @@ async function openMerchantWorthReading(page: Page, sailing: boolean | null): Pr
     if (!(await tapHull(page, id))) continue
     await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
     opened = id
+    lastOpened = id
     const lap = await page.getByTestId('merchant-earnings-lap').textContent()
     // a lap average is printed as `≈ <figure>`; the two absences say so in words
     if (lap && lap.includes('≈')) return id
@@ -374,6 +412,7 @@ async function openMerchantWorthReading(page: Page, sailing: boolean | null): Pr
     if (await close.isVisible().catch(() => false)) await close.click()
     opened = ''
   }
+  if (!opened) opened = lastOpened
   if (!opened) {
     if (seen === 0) throw new Error('no merchant hull on the glass to open')
     throw new Error(`${seen} merchant hull(s) were tapped and none opened her sheet`)
@@ -530,7 +569,7 @@ test.describe('wide', () => {
     await serveNpcOn(page)
     await page.goto('map')
     await ready(page)
-    await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
+    await merchantsOnTheGlass(page)
     await page.screenshot({ path: path.join(SHOTS, 'map-merchants-1280.png') })
     // the wide frame sits close on Lisbon: whichever merchant is on the glass, at sea or at anchor —
     // preferring one whose sheet has a lap figure to show (see openMerchantWorthReading)
@@ -642,8 +681,8 @@ async function closeTray(page: Page): Promise<void> {
  *
  *   'listed'  the city's tray is at half with its merchant list on the glass
  *   'empty'   the city's tray is at half and no list came (nobody's loop calls here)
- *   'taken'   the tap never opened the CITY: a merchant hull drifting over the name, or one of
- *             your own fleets, won it by the chart's own tie rule (hitTest.ts) — three aims, a
+ *   'taken'   the tap never opened the CITY: a merchant hull drifting over the name, open water
+ *             beside a long name, or one of your own fleets, won it by the chart's own tie rule (hitTest.ts) — three aims, a
  *             second apart, because a sailing hull moves on. Correct behaviour, not a defect, and
  *             it happened locally for Cadiz with `Flotte de Nantes` passing over the name.
  *
@@ -660,13 +699,27 @@ async function openHarbour(
     await closeTray(page)
     await page.mouse.click(label.x, label.y)
     // the city's tray, with its one control — anything else that opened took the tap
+    // A CITY, NOT A POINT OF WATER (2026-10-16). Open sea wears the same tray and the same `Send
+    // fleet` press, so those two alone took a tap that fell on WATER beside a long name (CI run
+    // 38776868688: "28.1°N 13.9°W · Open sea" off the Canaries) for a city — which then never
+    // answered with a harbour list. Only a city has the City tabs; anything else took the tap.
     const city = await send.waitFor({ state: 'visible', timeout: 2_000 }).then(() => true, () => false)
-    if (city && (await tray.isVisible())) {
+    const tabs = tray.getByRole('tablist', { name: 'City' })
+    if (city && (await tray.isVisible()) && (await tabs.isVisible())) {
       await send.click()
       await expect(tray).toHaveAttribute('data-tray-detent', 'half')
-      // the harbour's read lands on the beat; a city nobody's loop calls at has no list at all
-      const listed = await page.getByTestId('map-harbour').waitFor({ state: 'visible', timeout: 8_000 }).then(() => true, () => false)
-      return listed ? 'listed' : 'empty'
+      // THE HARBOUR'S READ IS WAITED FOR UNTIL IT ANSWERS, not for a fixed 8 s (2026-10-16). Until
+      // it lands the tray shows a placeholder (`map-harbour-loading`), and only an ANSWER prints the
+      // list or "No ships in port or bound here." The fixed wait was the flake on PR #130 and #131:
+      // each tab's first reads run `tick_arrivals` over every voyage-day since the merchants-on
+      // world was dumped, so the read slows as a shard goes on, and an unanswered read was being
+      // reported as "Porto's tray lists no merchants". A city nobody's loop calls at still answers
+      // with no list at all — 'empty' now means exactly that.
+      // (`data-landed`: your own fleets are listed before the merchants' read answers, so a list
+      // on the glass is not yet the answer either.)
+      const answer = page.locator('[data-testid="map-harbour"][data-landed="true"], [data-testid="map-harbour-empty"]')
+      await answer.first().waitFor({ state: 'visible', timeout: 60_000 })
+      return (await page.getByTestId('map-harbour').isVisible()) ? 'listed' : 'empty'
     }
     await page.waitForTimeout(1_000)
   }
@@ -769,7 +822,7 @@ test('Porto lists every merchant it concerns, grouped — the fixture\'s resting
   await serveNpcOn(page)
   await page.goto('map')
   await ready(page)
-  await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
+  await backIn(page, await merchantsOnTheGlass(page))
 
   // THE PRECONDITION IS THE FIXTURE'S, NOT THE CLOCK'S: Porto has RESTING_AT_PORTO at rest with
   // six hours on her hold, whatever the other merchants are doing this minute.
@@ -818,7 +871,7 @@ test('every named harbour with merchants lists them all, grouped, never blank', 
   await serveNpcOn(page)
   await page.goto('map')
   await ready(page)
-  await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
+  await backIn(page, await merchantsOnTheGlass(page))
 
   const listed: string[] = []
   let atSeaShot = false
@@ -846,7 +899,7 @@ test.describe('wide city tray', () => {
     await serveNpcOn(page)
     await page.goto('map')
     await ready(page)
-    await expect.poll(async () => (await merchantsInView(page)).inView, { timeout: 60_000 }).toBeGreaterThanOrEqual(2)
+    await backIn(page, await merchantsOnTheGlass(page))
     await openPorto(page)
     const printed = await readCityList(page, 'Porto')
     expect(printed[0].rows.map((r) => r.name)).toContain(RESTING_AT_PORTO)

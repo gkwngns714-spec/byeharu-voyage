@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Bar, Tray, type TrayDetent } from '../components/ui'
+import { Bar, Empty, Tray, type TrayDetent } from '../components/ui'
 import { formatFixed, formatInt } from '../lib/format'
 import { CHART_CHROME, hullClassOfCode, hullPath } from '../chart'
 
@@ -168,7 +168,7 @@ function EquipmentGrid({ ship }: { ship: ShipView }) {
         Equipment
       </Heading>
       {boxes.length === 0 ? (
-        <p className="rounded-control bg-surface-2 px-3 py-3 text-t-caption text-ink-faint">Nothing fitted.</p>
+        <Empty>Nothing fitted.</Empty>
       ) : (
         <div className="grid grid-cols-4 gap-2">
           {boxes.map((b) => {

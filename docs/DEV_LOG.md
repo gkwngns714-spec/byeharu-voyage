@@ -5,6 +5,96 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-16 — main's acceptance made green, honestly — `osn-acceptance-green`
+
+The REQUIRED `acceptance` check was red on `main` itself (run 38728407504 on `bfd1e72`, 13 failing
+tests), so no `--auto` merge could ever fire. Each failure was read off the CI log, reproduced
+locally on a PGlite world (port 4176, `localhost`), and sorted into code defect or stale spec.
+
+**Code was wrong (fixed, specs untouched):**
+- `duplication.spec` — `ShipPanel` and `TradeHistoryPanel` hand-wrote the same empty-well recipe.
+  Now one design-system primitive, `Empty` (`src/components/ui/Empty.tsx`).
+- `words.spec` — `TradeHistoryPanel` said "aboard" and "standing route" to the player → "on board",
+  "route" (docs/WORDS.md).
+- `sections.spec` "no screen imports another screen" — the map's city panel (`CityTabs`, #120)
+  imported PORT's `PortInn` and `PortPrices`. The two faces and their closure (`PriceTray`,
+  `QuayLedger`, `RequestBoard`, `TradeFaces`, `tradeFace`, `StepQuestion`, `useStepOrder`,
+  `orderCheck`) moved to `src/live/` — the existing home of faces two screens draw
+  (`MerchantSheet`, `useMerchantsHere`). `verbHomes.spec` now reads `src/live` too and names the
+  three composers of the stepped question by file (Inn, Shipyard, quay) — tighter than the folder.
+- `sections.spec` "the chart has one entrance" — `AppShell` and `MapScreen` (#128) reached into
+  `chart/goTo` and `chart/GoToMarker`; both now come through `chart/index.ts`.
+- `map.marks.spec` ×2 and `map.perf.spec` ("the wheel did not zoom the chart") — the zoom glide's
+  first frame computed `1 - exp(-(t - last)/τ)` with `last = performance.now()` at the wheel and `t`
+  the rAF timestamp, which is the frame's START and can be EARLIER. Measured in the browser: gaps of
+  −0.6 / −1.6 / −8.1 ms, and exactly those steps left the view unchanged at the world view — or, at
+  −8.1 ms, a zoom-IN notch zoomed OUT (358.4° → 360°). `glideShare` floors the elapsed time at one
+  frame; the go-to glide had the same line and shares the helper (`useChartSurface.ts`).
+
+**Spec was stale against an owner-requested change (updated to the current behaviour):**
+- `map.lag.spec` ×2 — the "other writes" in the coast sheet during a drag were the soft terminator
+  (#113, owner: "make it soft", kept at the owner's insistence): `DaylightMask` writes one
+  `transform` per frame, and `useSunlight` re-points the mask images' `href` on its timer. Those two
+  exact writes are now counted apart (logged as sun-slide frames); every other write still counts
+  against the pan, and the path-data and one-re-base assertions are unchanged.
+- `waters.panel.spec` — the fleet panel is a `Tray mode="side"` since #113; a side panel has no
+  detent ladder and no Resize handle by design. The test now asserts the side panel, no handle, its
+  close, and the chart left of it.
+- `map.sendfleet.spec` — the fleets corner is read before a place is tapped and after the side
+  panel is closed: on a 390 phone the side panel (92vw, #113) stands over the corner.
+- `port.merchants.spec` — the merchant sheet's buttons include openers of read panels since #113
+  (her ships) and #117/0121 (So far / lap pills); asserted the same way `map.merchants.spec`
+  already does: Close is there, and no button is a verb.
+- `map.wrap.spec` — the setup pressed Zoom out five times from the opening frame, which is fitted to
+  the traffic in motion; on CI's merchants-on world that ran into the globe (360°), where the tapped
+  harbour was a dot with a departing merchant 2.8 px from it. The spec now drives to its own
+  120°–200° span. Titles in `map.marks.spec` said 224 harbours; the assertions already pinned
+  **238** (0090), which is the real count on the sheet.
+
+**The first CI run of this PR (2bdf8df) and PR #130 found three more, all timing races, all fixed at
+the source:**
+- `map.merchants` 761 / 842 ("Porto's tray lists no merchants") — the city's Port tab printed
+  "No ships in port or bound here." while the harbour's read was still on the wire, and the spec
+  waited a fixed 8 s for the list. Each tab's first reads run `tick_arrivals` over every voyage-day
+  since the merchants-on world was dumped (1,279 days resolved in one tick at 45 min old, measured),
+  so the read slows as a shard goes on. Probed in Node on the fixture world: Porto still answers 15
+  merchants with Carreira Port Royal `resting` after 45 min — the served fact was right, the screen
+  and the wait were not. CODE: `CityHarbour` shows a placeholder (`map-harbour-loading`) until the
+  read has answered for this harbour (`landed`, one line in `MapScreen.tsx`), and marks its list
+  `data-landed`; SPEC: `openHarbour` waits (60 s) for an answer, not for 8 s.
+- `map.merchants` 526 ("1 merchant hull(s) were tapped and none opened her sheet") — PR #130's trace
+  shows the sheet OPEN; the helper closed it to try another hull that had drifted off the glass
+  0.4 s later, then reported none. It now re-opens the last one that opened (its documented
+  contract).
+- `map.merchants` 832 (the sweep), CI run 38776868688 on f8a2960 — with the honest wait in place,
+  a label tap that fell on WATER beside a long name ("28.1°N 13.9°W · Open sea", the Canaries)
+  waited 60 s for a harbour list open sea never has. The old 8 s wait had silently counted it as an
+  empty city. `openHarbour` now accepts only a tray with the City tabs; anything else took the tap.
+- `map.hulls` 407, CI run 38780770200 on a4e846a — "at least two merchant marks on the glass" was read
+  at one instant per viewport and theme, after a single poll at the start; the merchants sail, and
+  one frame held one. The frame is now polled for (≥ 2) and the per-mark claims are made of that
+  frame.
+- `map.merchants` 535 / 865, CI run 38784220784 on fab0674 — "two merchants on the glass" waited 60 s
+  at 1280 and 1440 with one in view. The sea near Lisbon sails on the real clock (each tab's first
+  tick settles every voyage-day since the fixture world was dumped), so the count on a frame close on
+  Lisbon depends on when in its shard a test runs. Tried first: a second merchant laid up in port at
+  Setúbal; measured, a held merchant is not drawn on the chart at all, so reverted. Kept:
+  `merchantsOnTheGlass` still asks for two, and presses Zoom out (up to four times) until the glass
+  has them; the city tests press Zoom in as many times to get their opening frame back. The 390
+  opening-frame claim (`map.merchants` 419) is left as written: it has not failed and is the claim
+  itself, not a precondition.
+- `map.lag` 1545 ("just after a zoom the coast is drawn over exactly the view") — one driver read
+  after the click raced the glide plus the 250 ms settle; the frames are now sampled in the page and
+  the claim is made of the zoom's first frame.
+
+**Found, not fixed (owner's call):**
+- On a 390 px phone an open side panel squeezes the map's corner chrome (fleets list, zoom column,
+  Regions) into the ~31 px `chromeAsideSideTrayClass` leaves; the fleets list renders invisible.
+- `hitTest` compares a merchant against the harbour the name rule chose, not the nearest harbour:
+  at the globe a tap ON Acapulco's dot picked Veracruz by the name rule (4.4° off) and then lost to
+  a merchant 0.74° off. Its own comment says a merchant wins only when nearer than the nearest
+  harbour.
+
 ## 2026-10-15 — 0128: wages are paid from profit — `osn-0128-wages-from-profit`
 
 Owner: *"because of wages, ships are losing too much money. pay wages only when a profit is made."*

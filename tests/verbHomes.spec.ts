@@ -13,9 +13,9 @@
 //   1. COMMAND composes no verb. It imports none of the composing apparatus.
 //   2. No screen hands a VERB to COMMAND. The draft may still be pointed at a HULL (FLEETS'
 //      "Command her" does that); a `verb:` in a hand-off is a doorway that leads nowhere.
-//   3. The stepped question (HIRE · REPAIR · PROVISION) has ONE home, PORT — the only screen that
-//      imports `StepQuestion` or `useStepOrder`. A second `checked`/`issuing` pair for a verb is the
-//      duplication docs/NO_SPAGHETTI.md §1 names.
+//   3. The stepped question (HIRE · REPAIR · PROVISION) has ONE home: the Inn, the Shipyard and the
+//      quay are the only faces that import `StepQuestion` or `useStepOrder`. A second
+//      `checked`/`issuing` pair for a verb is the duplication docs/NO_SPAGHETTI.md §1 names.
 //
 // Static, like tests/sections.spec.ts: it reads the tree off disk, so it runs without a browser
 // and fails on the commit that reintroduces the grid rather than on the playtest that finds it.
@@ -87,22 +87,30 @@ test('no screen hands a VERB to COMMAND', () => {
   ).toEqual([])
 })
 
-test('the stepped question has one home — PORT', () => {
+test('the stepped question has one home — the three building faces', () => {
+  // 2026-10-16: the Inn face (PortInn) and the stepped question it composes moved from
+  // features/port to src/live, because the map's city panel draws the SAME Inn as PORT's Inn tab
+  // (owner, 2026-10-15: "inn should be a place where we can hire crew and buy provisions"), and
+  // tests/sections.spec.ts forbids MAP importing a PORT file. So this reads src/live as well as the
+  // screens, and names the composers by FILE — the Inn, the Shipyard, the quay — which is tighter
+  // than the folder it replaced: a fourth face composing a verb fails here wherever it is put.
+  const HOMES = ['live/PortInn.tsx', 'features/port/PortShipyard.tsx', 'features/port/PortTrade.tsx']
   const importers: string[] = []
-  for (const f of files(path.join(SRC, 'features'))) {
+  for (const f of [...files(path.join(SRC, 'features')), ...files(path.join(SRC, 'live'))]) {
     const text = readFileSync(f, 'utf8')
     // IMPORTS, not mentions: CommandScreen's header names the file it sent these to, and that is
-    // the record, not a doorway.
+    // the record, not a doorway. The two files that ARE the apparatus import each other.
     if (/from '[^']*(StepQuestion|useStepOrder)'/.test(text)) {
       importers.push(rel(f))
     }
   }
-  expect(importers.length, 'nothing composes StepQuestion — has HIRE / REPAIR / PROVISION lost its doorway?').toBeGreaterThan(0)
-  const outside = importers.filter((p) => !p.startsWith('features/port/'))
+  const composers = importers.filter((p) => p !== 'live/StepQuestion.tsx' && p !== 'live/useStepOrder.ts')
+  expect(composers.length, 'nothing composes StepQuestion — has HIRE / REPAIR / PROVISION lost its doorway?').toBeGreaterThan(0)
+  const outside = composers.filter((p) => !HOMES.includes(p))
   expect(
     outside,
-    `StepQuestion / useStepOrder is composed outside features/port. HIRE, REPAIR and PROVISION each ` +
-      `have ONE doorway (the Inn, the Shipyard, the quay); a second composer is a second ` +
+    `StepQuestion / useStepOrder is composed outside the Inn, the Shipyard and the quay. HIRE, ` +
+      `REPAIR and PROVISION each have ONE doorway; a second composer is a second ` +
       `\`checked\`/\`issuing\` pair for the same verb.\n` + outside.join('\n'),
   ).toEqual([])
 })

@@ -253,6 +253,19 @@ test.describe('the whole send, driven on a phone', () => {
     ).toBeGreaterThan(0.05)
     await page.screenshot({ path: 'map-open-390.png' })
 
+    // THE FLEETS CORNER — a pill at rest, and a list when pressed. It is glass over the top-left
+    // of the chart while open, so the drive folds it back before aiming at a harbour. Read BEFORE
+    // a place is tapped: since PR #113 a place opens a SIDE panel, which on a 390px phone is 92vw
+    // wide and stands over the corner's glass, so the corner is read on a glass with no panel on it.
+    const corner = page.getByTestId('map-fleets-corner')
+    const pill = corner.locator('button[aria-expanded]')
+    await expect(pill).toHaveAttribute('aria-expanded', 'false')
+    await pill.click()
+    const herRow = page.getByTestId('map-fleet-row').first()
+    await expect(herRow).toBeVisible()
+    await pill.click()
+    await expect(page.getByTestId('map-fleet-row')).toHaveCount(0)
+
     // ── DEFECT 1: the name IS the harbour ─────────────────────────────────────────────────────
     // The player reads a name and puts a thumb on it. Measured in a browser drive at 1389×900
     // before the fix: the centre of the word "Cadiz" is 24.8 px from its mark, the reach was 22 px,
@@ -362,17 +375,6 @@ test.describe('the whole send, driven on a phone', () => {
       return true
     }
 
-    // THE FLEETS CORNER — a pill at rest, and a list when pressed. It is glass over the top-left
-    // of the chart while open, so the drive folds it back before aiming at a harbour.
-    const corner = page.getByTestId('map-fleets-corner')
-    const pill = corner.locator('button[aria-expanded]')
-    await expect(pill).toHaveAttribute('aria-expanded', 'false')
-    await pill.click()
-    const herRow = page.getByTestId('map-fleet-row').first()
-    await expect(herRow).toBeVisible()
-    await pill.click()
-    await expect(page.getByTestId('map-fleet-row')).toHaveCount(0)
-
     // ── DEFECT 5: THE ACT ITSELF HAD NEVER BEEN PROVEN ────────────────────────────────────────
     // Everything above this line, in every version of this file, stopped one press short: the
     // suite asserted that the fold OPENS, that the ratio MOVES, and that nothing sailed. Not once
@@ -386,7 +388,10 @@ test.describe('the whole send, driven on a phone', () => {
       timeout: 60_000,
     })
     // Reading 2, independent of the tray entirely: the corner derives her line from the world
-    // payload, and a fleet at sea reads "to <destination> · <clock>".
+    // payload, and a fleet at sea reads "to <destination> · <clock>". The side panel is closed
+    // first by its own ✕ (the ONE dismiss) — on a phone it stands over the corner (PR #113).
+    await tray.getByTestId('tray-close').first().click()
+    await expect(tray).toHaveCount(0)
     await pill.click()
     await expect(page.getByTestId('map-fleet-row').first()).toContainText('to Cadiz', { timeout: 60_000 })
     await pill.click()

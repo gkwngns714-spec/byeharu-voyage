@@ -280,9 +280,27 @@ test('panned across the antimeridian, the sheet continues: land, harbours and sh
 
   // Pull back to a sea-wide span, then DRAG the sheet west until the antimeridian is in the middle
   // of the glass — a real pan, through the one gesture surface.
+  // TO A SEA-WIDE SPAN THE SPEC SETS ITSELF, not "five presses out from wherever the chart
+  // opened". The opening frame is fitted to the house's fleets AND the traffic in motion
+  // (chartView.ts `openingBounds`), so it is the world's to decide: on CI's merchants-on world
+  // (run 38728407504) five presses ran into the globe (360°), where every harbour is a nameless dot
+  // and the tap below fell on a merchant leaving Acapulco instead — measured locally the same way,
+  // a hull 2.8 px from the dot. 120°–200° is the sea-wide span this test was written for (five
+  // presses from the opening of a fresh house land at ~156°).
   const out = page.getByLabel('Zoom out')
-  for (let i = 0; i < 5; i++) await out.click()
-  await page.waitForTimeout(400)
+  const zoomIn = page.getByLabel('Zoom in')
+  for (let i = 0; i < 12; i++) {
+    const { spanDeg } = await wrapOnTheGlass(page)
+    if (spanDeg < 120) await out.click()
+    else if (spanDeg > 200) await zoomIn.click()
+    else break
+    await page.waitForTimeout(400)
+  }
+  {
+    const { spanDeg } = await wrapOnTheGlass(page)
+    expect(spanDeg, 'the drive did not reach a sea-wide span').toBeGreaterThanOrEqual(120)
+    expect(spanDeg).toBeLessThanOrEqual(200)
+  }
   const chart = (await page.locator('[data-testid="map-chart"]').boundingBox())!
   const centre = { x: chart.x + chart.width / 2, y: chart.y + chart.height / 2 }
   // Each drag moves the paper by half the glass. The view opens on Iberia (−9°); the seam is 189°

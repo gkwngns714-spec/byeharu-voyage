@@ -1,4 +1,4 @@
-import { Note, Row, Figure } from '../../components/ui'
+import { Note, Row, Figure } from '../components/ui'
 import {
   formatDucats,
   formatFixed,
@@ -8,10 +8,10 @@ import {
   formatUnitPrice,
   formatUnits,
   formatVoyageDays,
-} from '../../lib/format'
-import { num, str } from '../../lib/json'
-import { sailEstimate } from '../../domain/order'
-import type { PreviewResult, Refusal } from '../../lib/rpc'
+} from '../lib/format'
+import { num, str } from '../lib/json'
+import { sailEstimate } from '../domain/order'
+import type { PreviewResult, Refusal } from '../lib/rpc'
 
 // THE CHECK, COMPACT — the server's dry run, drawn as Rows and one Note.
 //

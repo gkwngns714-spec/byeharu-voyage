@@ -131,12 +131,24 @@ for (const viewport of [
       // Count every change to the coast's own content — the path data above all — during the drag.
       await page.evaluate(() => {
         const sheet = document.querySelector('[data-testid="map-coast-sheet"]')!
-        const w = window as unknown as { __coastMut: { d: number; other: number }; __coastMo: MutationObserver }
-        w.__coastMut = { d: 0, other: 0 }
+        const w = window as unknown as { __coastMut: { d: number; other: number; sun: number }; __coastMo: MutationObserver }
+        w.__coastMut = { d: 0, other: 0, sun: 0 }
+        // THE SUN'S SLIDE IS NOT THE PAN'S. Since PR #113 (owner, 2026-10-15: "right now the light
+        // zone moves rigid. make it soft" — and kept at the owner's insistence when it was reverted)
+        // src/chart/DaylightMask.tsx sets ONE `transform` on the mask's slide group every animation
+        // frame, on the game clock, whether or not anything is dragged — and src/chart/useSunlight.ts
+        // re-draws the Sun's raster on its own timer (SUN_REFRESH_MS), which re-points the `href`
+        // of the mask's images (measured 2026-10-16: 3 such writes in a drag slowed by a busy
+        // machine, 0 in a quick one). Both are counted apart, and only those exact writes are set
+        // apart: any other attribute, or the same attribute anywhere else in the sheet, still
+        // counts against the pan.
+        const slide = sheet.querySelector('[data-testid="map-daylight-mask"] > g')
         w.__coastMo = new MutationObserver((list) => {
           for (const m of list) {
             if (m.target === sheet) continue // the sheet's own translate — the one thing a pan changes
             if (m.attributeName === 'd') w.__coastMut.d += 1
+            else if (slide !== null && m.target === slide && m.attributeName === 'transform') w.__coastMut.sun += 1
+            else if (slide !== null && m.attributeName === 'href' && (m.target as Element).parentNode === slide) w.__coastMut.sun += 1
             else w.__coastMut.other += 1
           }
         })
@@ -161,7 +173,7 @@ for (const viewport of [
       }
       await page.mouse.up()
       const mut = await page.evaluate(() => {
-        const w = window as unknown as { __coastMut: { d: number; other: number }; __coastMo: MutationObserver }
+        const w = window as unknown as { __coastMut: { d: number; other: number; sun: number }; __coastMo: MutationObserver }
         w.__coastMo.disconnect()
         return w.__coastMut
       })
@@ -173,21 +185,53 @@ for (const viewport of [
       expect(mut.other).toBeLessThanOrEqual(1)
 
       // A zoom draws the coast over the view alone, then settles to the wide sheet.
+      // READ IN THE PAGE, FRAME BY FRAME (2026-10-16). Since #113 a press GLIDES (~0.4 s) and the
+      // sheet settles wide PAPER_SETTLE_MS (250 ms) after the last frame, so "one read after the
+      // click returns" raced the settle: on a busy CI runner the read landed after it and saw the
+      // wide sheet (PR #131, run on 2bdf8df). Every frame from the press to the settle is sampled
+      // in the page instead, and the claim is made of the zoom's FIRST frame — the moment "just
+      // after a zoom" means — with no dependence on how fast the driver's round trip is.
+      const beforeZoom = (await sheets(page)).view
+      await page.evaluate(() => {
+        const w = window as unknown as { __zoomFrames: { view: string | null; paper: string | null; covered: boolean }[]; __zoomOn: boolean }
+        w.__zoomFrames = []
+        w.__zoomOn = true
+        const sample = () => {
+          if (!w.__zoomOn) return
+          const chart = document.querySelector('[data-testid="map-chart"]')!
+          const sheet = chart.querySelector('[data-testid="map-coast-sheet"]') as HTMLElement
+          const g = chart.getBoundingClientRect()
+          const r = sheet.getBoundingClientRect()
+          w.__zoomFrames.push({
+            view: chart.querySelector('svg')!.getAttribute('viewBox'),
+            paper: sheet.querySelector('svg')!.getAttribute('viewBox'),
+            covered: r.left <= g.left + 0.5 && r.top <= g.top + 0.5 && r.right >= g.right - 0.5 && r.bottom >= g.bottom - 0.5,
+          })
+          requestAnimationFrame(sample)
+        }
+        requestAnimationFrame(sample)
+      })
       await page.getByRole('button', { name: 'Zoom in' }).click()
-      const zoomed = await sheets(page)
-      expect(zoomed.paper, 'just after a zoom the coast is drawn over exactly the view').toBe(zoomed.view)
-      expect(zoomed.covered).toBe(true)
       await page.waitForFunction(() => {
         const chart = document.querySelector('[data-testid="map-chart"]')!
         const view = chart.querySelector('svg')!.viewBox.baseVal
         const paper = chart.querySelector('[data-testid="map-coast-sheet"] svg') as SVGSVGElement
         return paper.viewBox.baseVal.width > view.width * 1.4
       })
+      const frames = await page.evaluate(() => {
+        const w = window as unknown as { __zoomFrames: { view: string | null; paper: string | null; covered: boolean }[]; __zoomOn: boolean }
+        w.__zoomOn = false
+        return w.__zoomFrames
+      })
+      const zoomed = frames.find((f) => f.view !== beforeZoom)
+      expect(zoomed, 'no frame between the press and the settle showed the zoom').toBeDefined()
+      expect(zoomed!.paper, 'just after a zoom the coast is drawn over exactly the view').toBe(zoomed!.view)
+      expect(zoomed!.covered).toBe(true)
       const settled = await sheets(page)
       expect(settled.covered).toBe(true)
       console.log(
         `${viewport.width}×${viewport.height}: drag of 0.2 glass → ${views.size} views, ${papers.size} coast sheet(s), ` +
-          `${mut.d} path rewrites; zoom → narrow ${zoomed.paper}, settled ${settled.paper}`,
+          `${mut.d} path rewrites, ${mut.other} other writes, ${mut.sun} sun-slide frames; zoom → narrow ${zoomed!.paper} (${frames.length} frames sampled), settled ${settled.paper}`,
       )
     })
   })

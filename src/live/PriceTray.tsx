@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Figure, PriceRows, Row, Tray, type PriceTrend, type TrayDetent, type TrayMode } from '../../components/ui'
-import { formatInt, formatMiles } from '../../lib/format'
-import type { MarketGood } from '../../lib/rpc'
+import { Figure, PriceRows, Row, Tray, type PriceTrend, type TrayDetent, type TrayMode } from '../components/ui'
+import { formatInt, formatMiles } from '../lib/format'
+import type { MarketGood } from '../lib/rpc'
 
 // A GOOD, READ ON A QUAY SHE IS NOT ON — the tray a price cell opens when nobody of yours is
 // alongside. MOVED 2026-09-11 from features/market/ with the MARKET tab, which folded into PORT

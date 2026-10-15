@@ -23,6 +23,7 @@ import {
   fleetsBoundFor,
   GLYPH,
   GoToLink,
+  GoToMarker,
   GOTO_MIN_CLEAR_PX,
   GOTO_MARK_MS,
   GOTO_SPAN_DEG,
@@ -51,7 +52,6 @@ import {
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
 import { chromeAsideSideTrayClass, Icon } from '../../components/ui'
-import { GoToMarker } from '../../chart/GoToMarker'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
@@ -474,6 +474,7 @@ function Chart({
               <CityHarbour
                 portCode={place.port.code}
                 merchants={harbourRows}
+                landed={merchantsHere.view !== null && (!merchantsHere.view.enabled || merchantsHere.view.port === harbourCode)}
                 here={fleetsAtPort(model, place.port.code)}
                 bound={fleetsBoundFor(model, place.port.code)}
                 portsByCode={portsByCode}

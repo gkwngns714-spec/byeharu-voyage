@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { GoToLink } from '../../chart'
+import { GoToLink } from '../chart'
 import {
   Bar,
   Button,
@@ -13,16 +13,16 @@ import {
   Tray,
   type TrayDetent,
   type TrayMode,
-} from '../../components/ui'
+} from '../components/ui'
 import { OrderCheck } from './orderCheck'
 import { StepQuestion } from './StepQuestion'
-import { useShellState } from '../../app/shellState'
+import { useShellState } from '../app/shellState'
 import { useStepOrder, type StepVerb } from './useStepOrder'
-import { fleetCrew } from '../../domain/fleet'
-import { useCrewCost } from '../../live/useCrewCost'
-import { useInn } from '../../live/useInn'
-import { useWorld } from '../../live/worldStore'
-import { cmdHireOfficer } from '../../lib/rpc'
+import { fleetCrew } from '../domain/fleet'
+import { useCrewCost } from './useCrewCost'
+import { useInn } from './useInn'
+import { useWorld } from './worldStore'
+import { cmdHireOfficer } from '../lib/rpc'
 import {
   formatDucats,
   formatInt,
@@ -30,8 +30,8 @@ import {
   formatRealDuration,
   formatVoyageDays,
   instantMs,
-} from '../../lib/format'
-import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../../lib/rpc'
+} from '../lib/format'
+import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE INN — the crew, hired and let go from one stepper, and who is drinking here today (0073).

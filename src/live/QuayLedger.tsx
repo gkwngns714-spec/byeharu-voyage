@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react'
-import { TradeRow, type TradePick } from '../../components/ui'
-import { buyableHere, listedHere } from '../../domain/market'
-import type { MarketGood } from '../../lib/rpc'
+import { TradeRow, type TradePick } from '../components/ui'
+import { buyableHere, listedHere } from '../domain/market'
+import type { MarketGood } from '../lib/rpc'
 
 // THE LEDGER — which goods stand on the board, in what order, each as ONE `TradeRow`.
 //
