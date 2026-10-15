@@ -6,6 +6,7 @@ import { TopBar } from './TopBar'
 import { RebuildNotice } from './RebuildNotice'
 import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
+import { serverNow } from '../lib/serverClock'
 
 // THE PERSISTENT SHELL: a slim header, the tab content, and the ONE tab bar. Mounted once for the
 // whole authenticated app; the shared data layer (see shellState.ts) mounts HERE and nowhere else.
@@ -54,9 +55,10 @@ function readIntervalMs(timeCompression: number | undefined): number {
 export function AppShell() {
   // THE ONE CLOCK (shellState.ts explains why it is here and not in the countdowns themselves).
   // One second is the coarsest tick that still lets a "12s" readout look alive.
-  const [nowMs, setNowMs] = useState(() => Date.now())
+  // On the SERVER's time (lib/serverClock.ts), so every player's clock and countdowns agree.
+  const [nowMs, setNowMs] = useState(() => serverNow())
   useEffect(() => {
-    const id = window.setInterval(() => setNowMs(Date.now()), 1000)
+    const id = window.setInterval(() => setNowMs(serverNow()), 1000)
     return () => window.clearInterval(id)
   }, [])
 

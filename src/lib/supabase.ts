@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { clockedFetch } from './serverClock'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -27,6 +28,8 @@ export const supabase: SupabaseClient | null = hasCloud
         persistSession: true,
         autoRefreshToken: true,
       },
+      // THE SERVER'S CLOCK is read off every response (./serverClock.ts).
+      global: { fetch: clockedFetch },
     })
   : null
 
