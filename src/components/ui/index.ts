@@ -78,6 +78,8 @@ export { Note, type NoteTone } from './Note'
 
 // 12. HINT — the caption voice, printed rather than hidden, one per section. Long text opens a Tray.
 export { Hint } from './Hint'
+//     EMPTY — the empty-list well: one caption line on the quiet surface. Two panels had hand-written it.
+export { Empty } from './Empty'
 
 //     NAV — the tab rail: six cells, one row, 22px icon, no uppercase. Step 3 repoints the shell.
 export { Nav, type NavItem } from './Nav'

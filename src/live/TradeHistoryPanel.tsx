@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Icon, Skeleton, Tray, TrayTitle, deltaTone, goodIcon, type TrayDetent } from '../components/ui'
+import { Empty, Icon, Skeleton, Tray, TrayTitle, deltaTone, goodIcon, type TrayDetent } from '../components/ui'
 import { CHART_CHROME, GoToLink } from '../chart'
 import { useShellState } from '../app/shellState'
 import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../lib/format'
@@ -57,10 +57,10 @@ export function TradeHistoryPanel({
         read.loading ? (
           <Skeleton className="mt-2 h-40 w-full" />
         ) : (
-          <Empty>No trading to show for this fleet.</Empty>
+          <Empty className="mt-2">No trading to show for this fleet.</Empty>
         )
       ) : !t.route ? (
-        <Empty>She sails no standing route, so she keeps no laps.</Empty>
+        <Empty className="mt-2">She sails no route, so she keeps no laps.</Empty>
       ) : (
         <TradeBody t={t} pick={pick} onPick={onPick} />
       )}
@@ -75,8 +75,8 @@ function TradeBody({ t, pick, onPick }: { t: FleetTrades; pick: TradePick; onPic
       <PickStrip t={t} pick={pick} onPick={onPick} />
       {pick.kind === 'day' && t.day && <DayView day={t.day} />}
       {pick.kind === 'open' && t.open && <OpenView open={t.open} />}
-      {pick.kind === 'lap' && (lap ? <LapView lap={lap} /> : <Empty>That lap is no longer held.</Empty>)}
-      {pick.kind === 'open' && !t.open && <Empty>No lap is under way — she is resting at home.</Empty>}
+      {pick.kind === 'lap' && (lap ? <LapView lap={lap} /> : <Empty className="mt-2">That lap is no longer held.</Empty>)}
+      {pick.kind === 'open' && !t.open && <Empty className="mt-2">No lap is under way — she is resting at home.</Empty>}
     </div>
   )
 }
@@ -144,7 +144,7 @@ function LapView({ lap }: { lap: TradeLap }) {
       {lap.stops ? (
         <Stops stops={lap.stops} />
       ) : (
-        <Empty>Only the newest seven laps keep what was traded. This lap keeps its books above.</Empty>
+        <Empty className="mt-2">Only the newest seven laps keep what was traded. This lap keeps its books above.</Empty>
       )}
     </div>
   )
@@ -161,7 +161,7 @@ function OpenView({ open }: { open: NonNullable<FleetTrades['open']> }) {
         <div className="mt-1 text-t-caption text-ink-faint">Her books close when she is home again.</div>
       </div>
       <Heading>So far</Heading>
-      {open.stops.length > 0 ? <Stops stops={open.stops} /> : <Empty>Nothing traded yet this lap.</Empty>}
+      {open.stops.length > 0 ? <Stops stops={open.stops} /> : <Empty className="mt-2">Nothing traded yet this lap.</Empty>}
     </div>
   )
 }
@@ -195,7 +195,7 @@ function DayView({ day }: { day: TradeDay }) {
         Where she traded
       </Heading>
       {ports.length === 0 ? (
-        <Empty>No trades are held for these laps.</Empty>
+        <Empty className="mt-2">No trades are held for these laps.</Empty>
       ) : (
         <ol className="flex flex-col gap-2">
           {ports.map((p) => (
@@ -265,7 +265,7 @@ function Books({
     { label: 'Repairs', value: b.repairs, sign: -1 },
     { label: 'Wages', value: b.wages, sign: -1, hint: 'paid from profit' },
     { label: 'Cargo carried in', value: b.stock_in, sign: -1, hint: 'bought last lap, sold in this one' },
-    { label: 'Cargo carried out', value: b.stock_out, sign: 1, hint: 'aboard at the close, sold next lap' },
+    { label: 'Cargo carried out', value: b.stock_out, sign: 1, hint: 'on board at the close, sold next lap' },
   ]
   return (
     <section data-testid="trade-books">
@@ -382,6 +382,3 @@ function Faint({ children }: { children: ReactNode }) {
   return <span className="text-t-caption text-ink-faint">{children}</span>
 }
 
-function Empty({ children }: { children: ReactNode }) {
-  return <p className="mt-2 rounded-control bg-surface-2 px-3 py-3 text-t-caption text-ink-faint">{children}</p>
-}

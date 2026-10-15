@@ -23,7 +23,7 @@ import type { FleetView } from '../../lib/rpc'
 // Trade face, STORE and TAKE on its Store face, MAKE on Craft, BUILD on Yard, HIRE on the Inn,
 // REPAIR at the Shipyard, PROVISION on the quay, SAIL on the MAP. So the grid is gone, and with it
 // the trade question, the sail question and the step question this file used to mount; the step
-// question moved to PORT with the two faces that ask it (features/port/StepQuestion.tsx).
+// question moved to PORT with the two faces that ask it (live/StepQuestion.tsx, moved out of features/port 2026-10-16 when the map city panel composed the Inn).
 //
 // WHAT IS LEFT IS THE ONE THING THAT BELONGS TO NO BUILDING: which hull is in hand, and her queue
 // — the orders she has been given, the halt if one of them refused, and the two acts the queue

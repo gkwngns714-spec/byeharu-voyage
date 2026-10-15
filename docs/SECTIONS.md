@@ -71,6 +71,7 @@ src/components/ui the design system.   One import surface, already a section in 
 | `domain/passage` | the course a client PROPOSES for a SAIL or a DIVERT (0039): where she departs from, the snapped water point a map tap becomes, the `lat,lon` token the grammar reads, and the one wording of a point on a screen. It proposes; the SERVER verifies and measures — this section decides nothing | `domain/passage/index.ts` |
 | `lib/sea` | the navigable-water grid and the pathfinder over it (0039) — machinery with no game opinion, consumed by the browser, the Node generators and the proof harness, so all three search the same water the same way. The AUTHORITY on what the grid contains is the served `public.sea_raster` row | `lib/sea/index.ts` |
 | `live/MerchantSheet` (+ `live/useMerchantCard`, `live/merchantLine`) | **one merchant fleet, read-only** (0099, `docs/NPC_TRADERS.md` §8.3): the sheet MAP opens on a tapped hull and PORT opens from "Merchants in port" — earnings, route, fortune, ships, cargo, officers, Skills — composed of the design system's `ShipTile`, `CargoRows`, `OfficerTile`, `SkillTile` (moved out of FLEETS, the Codex and the Academy so both faces print one shape). No action but closing. The traffic itself is the store's one reader (`worldStore.traffic`, read on the beat while a screen wants it) | `live/MerchantSheet.tsx` |
+| `live/PortPrices`, `live/PortInn` (+ `PriceTray`, `QuayLedger`, `RequestBoard`, `TradeFaces`, `tradeFace`, `StepQuestion`, `useStepOrder`, `orderCheck`) | **a harbour's Market and Inn faces**, drawn by two screens: PORT's tabs and the map's city panel (`features/map/CityTabs.tsx`, owner 2026-10-15). Moved out of `features/port/` on 2026-10-16 — the map had been importing PORT files, which `tests/sections.spec.ts` refuses. PORT's quay (`PortTrade`) and Shipyard compose the same pieces from here | the files themselves |
 
 The `domain/*` ones are pure and derive from served payloads. **Neither they nor the chart decide
 anything** — the server owns every rule; these only read what a payload already says.
@@ -195,7 +196,7 @@ about a sale is written twice. On the client: the catalogue rows and the typed w
 `live/useFulfilPreview.ts` (the dry run) — a one-line doorway onto **`live/usePreviewRead.ts`**,
 which is the fold of "an estimate, or a refusal, as one served value" that `useManifestPreview`
 carried inline and now composes too (written a second time → a function). The faces are PORT's:
-`features/port/tradeFace.ts` (ONE store for Buy · Sell · Requests, session-persisted like
+`live/tradeFace.ts` (moved from `features/port/` 2026-10-16) (ONE store for Buy · Sell · Requests, session-persisted like
 `portView.ts`), `TradeFaces.tsx` (the strip, composed by `PortTrade.tsx` and `PortPrices.tsx`),
 `RequestBoard.tsx` (the rows — `Row` + `ActCell` + `Figure` + `RarityMark`, the ledger's own
 shapes), `FulfilTray.tsx` (the tray in the one slot; `slot.kind = 'request'` in `PortTrade.tsx`).

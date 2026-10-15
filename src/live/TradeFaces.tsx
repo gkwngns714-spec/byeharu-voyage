@@ -1,4 +1,4 @@
-import { Segmented } from '../../components/ui'
+import { Segmented } from '../components/ui'
 import { TRADE_FACES, useTradeFace } from './tradeFace'
 
 // THE STRIP — Buy · Sell · Requests, one `Segmented` over the one store (tradeFace.ts). Composed

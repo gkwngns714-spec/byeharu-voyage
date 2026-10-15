@@ -7,7 +7,7 @@
 > doorway is on the face of the building whose act it is — BUY/SELL and PROVISION on PORT's Trade
 > face (the quay is the chandler), STORE/TAKE on Store, MAKE on Craft, BUILD on Yard, HIRE on the
 > Inn, REPAIR at the Shipyard (`features/port/`), SAIL on the MAP (`features/map/`). The step
-> question moved to `features/port/StepQuestion.tsx` with its act in `useStepOrder.ts`; the bargain
+> question moved to `live/StepQuestion.tsx` (was `features/port/`, moved 2026-10-16) with its act in `useStepOrder.ts`; the bargain
 > row moved to `features/port/HaggleRow.tsx`. What stands here is `CommandScreen.tsx` (whose orders:
 > the fleet chips, her one line) and `Queue.tsx` (what she has been told: the rows, the halt,
 > CANCEL and CLEAR). The grammar, the door and the judge did not move — one `orderText`, one

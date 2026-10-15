@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Button, Figure, Note, Row, Stepper, Tray, type TrayDetent, type TrayMode } from '../../components/ui'
+import { Button, Figure, Note, Row, Stepper, Tray, type TrayDetent, type TrayMode } from '../components/ui'
 import { OrderCheck } from './orderCheck'
 import type { StepOrder } from './useStepOrder'
-import { fleetStores, worstHullFraction } from '../../domain/fleet'
-import { enumNaming } from '../../domain/order'
-import { hasBuilding } from '../../domain/port'
-import { formatInt, formatPct, formatVoyageDays } from '../../lib/format'
-import type { FleetView, SnapshotPort } from '../../lib/rpc'
+import { fleetStores, worstHullFraction } from '../domain/fleet'
+import { enumNaming } from '../domain/order'
+import { hasBuilding } from '../domain/port'
+import { formatInt, formatPct, formatVoyageDays } from '../lib/format'
+import type { FleetView, SnapshotPort } from '../lib/rpc'
 
 // REPAIR · PROVISION — the two verbs whose question is a single quantity asked in a tray. §6: "the
 // Stepper is the question; the tray shows the server's cost line and the button."

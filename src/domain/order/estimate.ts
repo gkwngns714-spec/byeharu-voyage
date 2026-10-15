@@ -16,7 +16,7 @@
 // each screen's own chrome, which is legitimately different.
 //
 // SAIL, AND SINCE 0081 SELL. The other verbs' estimates have exactly one reader each
-// (`features/port/orderCheck.tsx`), and folding a thing that is not duplicated would be
+// (`live/orderCheck.tsx`), and folding a thing that is not duplicated would be
 // inventing a home rather than finding one. SELL gained a second reader on 2026-09-09: the trade
 // tray (through `src/live/useTrade.ts`) previews the real sale to print what it will realise —
 // the owner's row 74, *"by selling them i would like to see the profits of this trade"* — and
