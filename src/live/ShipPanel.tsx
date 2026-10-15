@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Bar, Tray, type TrayDetent } from '../components/ui'
 import { formatFixed, formatInt } from '../lib/format'
-import { CHART_CHROME, hullPath, type HullClass } from '../chart'
+import { CHART_CHROME, hullClassOfCode, hullPath } from '../chart'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE SHIP, OPENED FROM HER FLEET'S PANEL — the owner, 2026-10-15:
@@ -17,12 +17,15 @@ import { CHART_CHROME, hullPath, type HullClass } from '../chart'
 // what is mounted) and the slot counts are `ship.slots`, which is `class_slots` plus her guns.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-/** WHAT THE PANEL READS — your own `FleetShip` has all of it; a merchant's `MerchantShip` is served
- *  without slot kinds or the six combat stats, so those are optional and simply not drawn for her
- *  (shown, never guessed). Both server types fit this shape as they are. */
+/** WHAT THE PANEL READS — one ship as `world.ship_view` serves her (0124): your own `FleetShip` and a
+ *  merchant's card ship are the same object (the card less her id and provisions). Slots, the six
+ *  combat stats and `class_code` stay OPTIONAL for one release, so a bundle talking to a server
+ *  older than 0124 still renders: what is not served is simply not drawn (shown, never guessed). */
 export interface ShipView {
   name: string
   class: string
+  /** `ship_classes.code` (0124) — the silhouette is drawn from it. */
+  class_code?: string
   is_flagship: boolean
   durability: number
   max_durability: number
@@ -40,13 +43,6 @@ export interface ShipView {
   armour?: number
   handling?: number
   sighting?: number
-}
-
-/** The server's class NAME → the hull code its silhouette is drawn from. */
-const CLASS_CODE: Record<string, HullClass> = {
-  Barca: 'barca',
-  'Caravela latina': 'carlat',
-  'Nau / Carrack': 'nau',
 }
 
 // ── THE SLOT GLYPHS — one small line drawing per kind, 24-unit box, stroked in currentColor ──────
@@ -97,7 +93,7 @@ interface SlotBox {
 /** Every slot she has, one box each, filled in the order her fittings are mounted. A fitting
  *  mounted ×2 fills two boxes — it occupies two slots on the server too. */
 function slotBoxes(ship: ShipView): SlotBox[] {
-  // NO SLOT TABLE SERVED (a merchant): her fittings, one box per piece, and no empty boxes — the
+  // NO SLOT TABLE SERVED (a server older than 0124): her fittings, one box per piece, and no empty boxes — the
   // empties would be a guess at her class's slots.
   if (!ship.slots) {
     return ship.fittings.flatMap((f, i) =>
@@ -257,7 +253,7 @@ export function ShipPanel({ ship, onClose }: { ship: ShipView; onClose: () => vo
         <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-surface ring-1 ring-accent/30">
           <svg width={64} height={64} viewBox="-15 -15 30 30" aria-hidden>
             <path
-              d={hullPath(CLASS_CODE[ship.class] ?? null, 13)}
+              d={hullPath(hullClassOfCode(ship.class_code), 13)}
               className="fill-accent stroke-chart-sea"
               strokeWidth={0.7}
               strokeLinejoin="round"

@@ -477,6 +477,27 @@ test('the merchants sail on the chart, and a tap opens a read-only sheet', async
   await page.locator('[data-testid^="skill-"]').last().scrollIntoViewIfNeeded()
   await page.waitForTimeout(300)
   await page.screenshot({ path: path.join(SHOTS, 'merchant-sheet-officers-skills-390.png') })
+
+  // 0124 — HER SHIP'S PANEL IS YOUR OWN SHIP'S PANEL: one builder (world.ship_view) serves both, so
+  // a merchant's hull shows her whole equipment grid — every slot her class has, fitted or empty,
+  // counted `n / m` with m the class's slots — and the six combat figures under Speed and Cargo.
+  await page.getByTestId('merchant-ship-open').first().click()
+  const panel = page.getByTestId('map-ship-panel')
+  await expect(panel).toBeVisible({ timeout: 30_000 })
+  const equipment = panel.getByTestId('ship-equipment')
+  await expect(equipment).toBeVisible()
+  const count = (await equipment.locator('h3 + span').textContent()) ?? ''
+  const m = /^(\d+) \/ (\d+)$/.exec(count.trim())
+  expect(m, `the equipment count reads "${count}"`).not.toBeNull()
+  expect(Number(m![2])).toBeGreaterThanOrEqual(1)
+  expect(Number(m![1])).toBeLessThanOrEqual(Number(m![2]))
+  await expect(equipment.locator('.grid > div')).toHaveCount(Number(m![2]))
+  const stats = panel.getByTestId('ship-stats')
+  await expect(stats.locator('dt')).toHaveCount(8)
+  for (const label of ['Speed', 'Cargo', 'Attack', 'Accuracy', 'Reach', 'Armour', 'Handling', 'Sighting']) {
+    await expect(stats.getByText(label, { exact: true })).toBeVisible()
+  }
+  await page.screenshot({ path: path.join(SHOTS, 'merchant-ship-panel-390.png') })
 })
 
 test('PORT at Lisbon lists the merchant in port and opens the same sheet', async ({ page, request, baseURL }) => {

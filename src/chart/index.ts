@@ -76,7 +76,7 @@ export {
   type PortRole,
 } from './chartModel'
 // 0099 — the merchants, through the same per-fleet mapping (docs/NPC_TRADERS.md §8.2).
-export { mapFleetsOf, mapPortsOf, mapTrafficOf } from './liveWorld'
+export { hullClassOfCode, mapFleetsOf, mapPortsOf, mapTrafficOf } from './liveWorld'
 // ROW 90 — the seas' names: how data/seas.json is read, and which waters ask to be named at a
 // zoom. The DECISION, exported for the same reason `roadsteadMarks` is; the paint is LabelsLayer's.
 export { mapSeasOf, seaNameRequests } from './seaNames'

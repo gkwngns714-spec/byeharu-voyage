@@ -10,7 +10,7 @@ import {
   pointLabel,
   realMsToVoyageDays,
 } from '../../lib/format'
-import { CHART_CHROME, hullPath, type FleetOnChart, type HullClass, type MapPort } from '../../chart'
+import { CHART_CHROME, hullClassOfCode, hullPath, type FleetOnChart, type HullClass, type MapPort } from '../../chart'
 import { fleetLine } from './fleetLine'
 import { useWorld } from '../../live/worldStore'
 import type { FleetShip } from '../../lib/rpc'
@@ -96,13 +96,6 @@ function HullStrip({ hulls }: { hulls: readonly (HullClass | null)[] }) {
   )
 }
 
-/** The server's class NAME (`FleetShip.class`) → the hull code its silhouette is drawn from. */
-const CLASS_CODE: Record<string, HullClass> = {
-  Barca: 'barca',
-  'Caravela latina': 'carlat',
-  'Nau / Carrack': 'nau',
-}
-
 /** THE FLEET'S SHIPS, one pressable row each (owner, 2026-10-15: *"name of the fleet, then
  *  ships"*); a press slides her own panel in over this one (./ShipPanel.tsx). */
 function ShipList({ ships, onOpen }: { ships: readonly FleetShip[]; onOpen: (id: string) => void }) {
@@ -119,7 +112,7 @@ function ShipList({ ships, onOpen }: { ships: readonly FleetShip[]; onOpen: (id:
           >
             <svg width={26} height={26} viewBox="-15 -15 30 30" aria-hidden className="shrink-0">
               <path
-                d={hullPath(CLASS_CODE[ship.class] ?? null, 13)}
+                d={hullPath(hullClassOfCode(ship.class_code), 13)}
                 className="fill-accent stroke-chart-sea"
                 strokeWidth={0.9}
                 strokeLinejoin="round"

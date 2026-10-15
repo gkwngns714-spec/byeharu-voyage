@@ -100,7 +100,14 @@ const HULL_CLASS_BY_SERVED_NAME: Readonly<Record<string, HullClass>> = {
  *  by name: a code either names one of the three silhouettes or it names none, and none draws the
  *  class-less hull. `HullClass` is the code set, so the check is the cast. */
 function hullCodesOf(codes: readonly string[] | undefined): (HullClass | null)[] {
-  return (codes ?? []).map((c) => (c === 'barca' || c === 'carlat' || c === 'nau' ? c : null))
+  return (codes ?? []).map(hullClassOfCode)
+}
+
+/** ONE SERVED CLASS CODE (`ship_classes.code`) → its silhouette, or null for a code this chart does
+ *  not draw. The one narrow from the wire's code to `HullClass`: `hullCodesOf` above maps a
+ *  merchant's `hulls` through it, and a ship row or panel reads `class_code` (0124) through it. */
+export function hullClassOfCode(code: string | null | undefined): HullClass | null {
+  return code === 'barca' || code === 'carlat' || code === 'nau' ? code : null
 }
 
 /** HER HULLS, FLAGSHIP FIRST — the served ships in served order with the flagship moved to the
