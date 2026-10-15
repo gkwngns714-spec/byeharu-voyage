@@ -12,10 +12,16 @@ transaction with a positive control; merchants are the same tables and the same 
 (`docs/NPC_TRADERS.md` §0); the arrivals tick has a hard 2-minute limit and averages ~14 s
 (`docs/RESUME.md:29`); prod is live with ~30 players.
 
-**Numbering.** The steps below are **S1 … S7**. They take migration numbers from **0122** when they
-are scheduled; the city-economy plan (`docs/ECONOMY_LOOP.md`) may also claim numbers from 0122, so
-the number is assigned at scheduling time, never here. Every step is one migration unless it says
-"client only".
+**Numbering.** The steps below are **S1 … S7**. The city-economy plan (`docs/ECONOMY_LOOP.md`)
+holds **0122–0123**; these steps follow it, in deploy order: **S1 0124 · S2 0125 · S3 0126 · S5 0127
+· S6 0128 · S4 0129**; S7 is a CI change with no migration. Provisional until the branch runs
+`npm run db:check-versions`, which arbitrates. Every step is one migration unless it says "client
+only".
+
+**Owner decisions of 2026-10-15 folded in:** captain level is per signing; merchant captains and
+merchant skills are constant and merchant hulls carry a fixed level; levelling is a long grind
+(§4.2 gives the numbers); merchant gear is fixed, and whether merchants ever buy better gear is
+deferred to the economy plan.
 
 ---
 
@@ -32,11 +38,14 @@ the number is assigned at scheduling time, never here. Every step is one migrati
    hulls), and mounted for new merchants in `npc_found`. Nothing runs in the arrivals tick.
 3. **Levels (S3):** ships and captains get an `xp` column written by exactly ONE function, the
    arrival arm of `voyage.settle` (the same place the `VOYAGE_REPORT` is written), and a level through
-   the ONE curve that already exists, `public.level_from_points` (0069:105-112). The company's three
-   tracks stay what 0069 made them; the combat track stops reading an honest zero and reads the
-   pirate roll's own record.
-4. Merchants level through the same hunk, because `voyage.settle` is identity-free (NPC_TRADERS
-   §1.2 guard c). No merchant code is written.
+   the ONE curve that already exists, `public.level_from_points` (0069:105-112). A long grind: a hull
+   running a route round the clock reaches level 10 in about a month and level 20 in about five
+   (§4.2). A captain's level is per signing. The company's three tracks stay what 0069 made them;
+   the combat track stops reading an honest zero and reads the pirate roll's own record.
+4. **Merchant levels are fixed** (owner, 2026-10-15): a merchant hull's `xp` is written once, from
+   her company's skill sum, and never moves; merchant officers and skills are constant. The settle
+   hunk runs for player fleets only, by the one predicate `players.is_npc`, so the minute tick does
+   no levelling work for the ~830 merchants. The reading is the same one reading for everyone.
 5. What a level gives: small stat gains (handling, accuracy, sighting) inside the one stat reading
    `world.ship_stat`; **slot unlocks** as rows of the existing `class_slots` table with a `min_level`;
    **gear requirements** as `item_kinds.min_level`; a captain's level multiplies her own bonus inside
@@ -51,9 +60,11 @@ the number is assigned at scheduling time, never here. Every step is one migrati
 8. The world guard does NOT check ships or gear today (`scripts/db/world-guard.mjs:14-22` guards
    harbours, goods and sea places only) although `data/fittings.json:3` and `data/hulls.json:3` say
    "guarded". **S7 makes that sentence true.**
-9. Cost: nothing in this plan adds a query to the minute tick except two tiny UPDATEs per arrival
-   (S3). Slots, stats and loadouts are read at tap time only.
-10. Owner questions: three, in §10. Everything else is decided here with its default.
+9. Cost: nothing in this plan adds a query to the minute tick except two tiny UPDATEs per PLAYER
+   arrival (S3); a merchant arrival gets one boolean read. Slots, stats and loadouts are read at tap
+   time only.
+10. Owner questions: none open; §10 lists the decisions taken in and the one knob to turn if the
+    grind reads wrong.
 
 ---
 
@@ -167,7 +178,7 @@ outcomes by ratio (0027:334-345), crew and hull losses (0027:353-373), the paylo
 | "a ship's effective stats" | `world.ship_stat(ship, stat)` (0074:224) — stays the name; S1 makes `world.ship_stats(ship)` the one computation (ten stats in one query) and `ship_stat` a projection of it | — | `ship_hold_capacity`, `voyage.ship_speed`, `ship_view`, the escort score (S4) |
 | "mount a fitting on a hull" | **`public.mount_fitting(ship, item)`** (S2): capacity by `class_slots` at her level, the insert | the same lines inside `cmd.do_fit` (0074:338-367), which becomes door + core | `cmd.do_fit` (the player, from the store), `public.npc_fit_loadout` (a merchant, endowed) |
 | "how many slots of a kind this hull has NOW" | **`world.ship_slots(ship)`** (S3) over `class_slots` rows with `min_level ≤ her level` | `cmd.do_fit`'s `class_slots` read (0077:77-80) and `world.fleets`'s (0077:89-90) | `mount_fitting`, `ship_view` |
-| "a hull's level" / "a captain's level" | `ships.xp`, `player_officers.xp` (S3) + `public.level_from_points` (0069) — ONE writer, `voyage.settle` | none exists | `ship_stats`, `ship_slots`, `mount_fitting`, `fleet_officer_bonus`, `ship_view`, `world.officers`, the card |
+| "a hull's level" / "a captain's level" | `ships.xp`, `player_officers.xp` (S3) + `public.level_from_points` (0069) — ONE writer, `voyage.settle`, for player fleets; a merchant hull's `xp` is written once (S3's seed, `npc_found` for new ones) and never again | none exists | `ship_stats`, `ship_slots`, `mount_fitting`, `fleet_officer_bonus`, `ship_view`, `world.officers`, the card |
 | "the company's levels" | `public.player_progress` (0069) — unchanged shape; combat track derived from `voyage_events` (S3) | none | `world.player`, `passage_gate` (0107), `cmd.do_build` (S5 min level) |
 | "a merchant's loadout" | `public.npc_loadouts (class_code, pattern, item_code, qty)` (S2) — authored data | none | `npc_fit_loadout` only |
 | "which yard may lay a hull down" | `hull_recipes.yard_tier` (0072) + `hull_recipes.yard_regions` (S5) + `hull_recipes.min_level` (S5), all read in `cmd.do_build` and printed by `world.building_yard` | none | `do_build`, `building_yard` |
@@ -238,6 +249,8 @@ plan says so rather than inventing a merchant shopping trip.
   `ship_fittings` rows before = after); the card for a probe merchant serves `slots` with at least
   one `fitted` box; `cmd.do_fit` under a probe player still refuses `E_SLOTS_FULL` on a full slot
   (0077:163-174 replayed) — the door still gates.
+- **Fixed for good (owner, 2026-10-15):** a merchant never changes her gear. Whether merchants
+  should one day buy better gear is the economy plan's question and is deferred there.
 - **What this changes in the live economy, said plainly:** a suit of sails is +0.6 kn and −8
   handling; hold fittings +25 t. Merchants with loadouts sail a little faster and carry a little
   more, which moves lap profits upward. Measure after: zero-net lap share and arrivals duration,
@@ -262,8 +275,8 @@ plan says so rather than inventing a merchant shopping trip.
 
 | who | the number | where it lives | the curve | writer |
 |---|---|---|---|---|
-| a **ship** | her sea miles and fights, as points | `ships.xp numeric not null default 0` | `public.level_from_points(xp)` (0069) via `world.ship_level(ship)` | `voyage.settle`, arrival arm + PIRATES arm — the ONE writer |
-| a **captain** (officer signing) | the miles and fights of the fleet she was posted to | `player_officers.xp numeric not null default 0` | the same curve via `world.captain_level(player_officer_id)` | the same hunk (`where fleet_id = p_fleet`) |
+| a **ship** | her sea miles and fights, as points | `ships.xp numeric not null default 0` | `public.level_from_points(xp)` (0069) via `world.ship_level(ship)` | `voyage.settle`, arrival arm + PIRATES arm, **player fleets only** — the ONE writer. A merchant hull's value is written once and never moves (§4.5) |
+| a **captain** (officer signing) | the miles and fights of the fleet she was posted to | `player_officers.xp numeric not null default 0` | the same curve via `world.captain_level(player_officer_id)` | the same hunk (`where fleet_id = p_fleet`). **Per signing** (owner, 2026-10-15): dismissed and hired again, she is a new row at 0. A merchant's officers stay at 0 for ever |
 | the **company** | three tracks | `public.player_progress` (0069) — unchanged home | the same curve | nothing: derived |
 | crew | none | — | — | a count has no level; morale (DESIGN_V1 §7.2) is its own future slice |
 
@@ -278,22 +291,44 @@ track (`fame_nm_per_point` 100, 0069:89-93) so "a level" means the same work eve
 
 | event | who gains | points | where it is written | knob |
 |---|---|---|---|---|
-| a voyage arrives (the `VOYAGE_REPORT`, `total_nm`) | every hull in the fleet; every officer posted to the fleet | `total_nm / ship_xp_nm_per_point` | `voyage.settle` arrival arm (0036:515-524 as cut; live through 0114): two UPDATEs after the report | `ship_xp_nm_per_point` 100 |
+| a voyage arrives (the `VOYAGE_REPORT`, `total_nm`) | every hull in a PLAYER's fleet; every officer posted to it (never a merchant's: §4.5) | `total_nm / ship_xp_nm_per_point` | `voyage.settle` arrival arm (0036:515-524 as cut; live through 0114): one `is_npc` read, then two UPDATEs after the report | `ship_xp_nm_per_point` **1,000** |
 | pirates EVADED | the same | +5 | the PIRATES arm, after the outcome (0027:338-345) | `xp_evaded_points` 5 |
 | pirates DRIVEN_OFF | the same | +15 | same | `xp_driven_off_points` 15 |
 | RANSOM / PLUNDERED / STRIPPED | nobody | 0 | — | — |
 | a trade | nobody per hull — trading is the COMPANY's track (0069, turnover) | — | derived already | `fame_ducats_per_point` |
 | the company's combat track | the company | +5 per EVADED, +15 per DRIVEN_OFF, read from `public.voyage_events` (0006:89) joined through `voyages.fleet_id` (0006:56) to `fleets.player_id`, `payload->>'outcome'` | `player_progress` re-cut: `combat.playable = true`, points derived | the same two knobs |
 
-Pace, at the 960× voyage clock (0100): a hull at 5 kn makes ~4,800 nm a real hour at sea = 48
-points; level 2 (25 pts) after ~30 min at sea, level 5 (400) after ~8 h, level 10 (2,025) after
-~42 h, level 20 (9,025) after ~190 h. A Cape merchant's lap (~20,000 nm) is 200 points.
+**The curve, and why it is a long grind.** One curve for everything, `public.level_from_points`
+(0069:105-112): `level = floor(sqrt(points / 25)) + 1`, cap 20 — so level L costs `(L−1)² × 25`
+points. The pace lever is how many sea miles make a point, and it is set high on purpose (the
+owner, 2026-10-15: a long grind): **`ship_xp_nm_per_point` = 1,000**. The company's exploration
+track keeps its own 100 nm a point (0069:89-93) because 0107's gates read those levels and
+re-pacing them would re-gate live players.
 
-Seeding at apply, once, so the world does not read "level 1" everywhere on day one: a player's
-hull gets Σ `total_nm` of her fleet's own `VOYAGE_REPORT`s (the same sum 0069 reads); a merchant's
-hull gets `laps_done × loop nm` (the lap count the card serves, `earnings.laps_done`; the loop nm the
-route board sums from `standing_route_stops.course`, 0106). Officers get their fleet's figure.
-Stated as a seed, not a derivation — it is written once and then only `settle` moves it.
+At the 960× voyage clock (0100) a 5-kn hull makes 4,800 nm a real hour at sea (5 × 24 × 40
+voyage-days an hour). Two profiles: a hull that **runs a route round the clock**, at sea ~60 % of
+the time (~65,000 nm a real day), and a hull **sailed in sessions**, at sea ~3-4 real hours a day
+(~16,000 nm a day).
+
+| level | points | sea miles | Cape laps (Lisbon–Cape–Kochi–Goa–Mozambique–Lisbon, ≈ 19,600 nm) | Lisbon–Cádiz hops (188 nm) | round-the-clock route hull | session hull |
+|---|---|---|---|---|---|---|
+| 2 | 25 | 25,000 | 1.3 | 133 | ~9 hours | ~1.5 days |
+| 3 | 100 | 100,000 | 5 | 532 | 1.5 days | 6 days |
+| 5 | 400 | 400,000 | 20 | 2,128 | 6 days | 25 days |
+| 10 (mid) | 2,025 | 2,025,000 | 103 | 10,771 | **~1 month** (31 days) | ~4 months |
+| 15 | 4,900 | 4,900,000 | 250 | 26,064 | 2.5 months | 10 months |
+| 20 (max) | 9,025 | 9,025,000 | 460 | 48,005 | **~4.5 months** (139 days) | ~19 months |
+
+A faster hull levels faster (a xebec at 6.6 kn is a third quicker than a barca; an Indiaman at
+4.5 kn a tenth slower). A fight won is 5 or 15 points — 5,000 or 15,000 miles' worth, a real
+bonus for a rare event and never a farm, because the raider decides whether there is a fight.
+Captains pace exactly with the hull they are posted to, and per signing: dismissed and hired
+again, she starts at 0. If the grind reads wrong it is one UPDATE of `ship_xp_nm_per_point`.
+
+Seeding at apply, once: a player's hull gets Σ `total_nm` of her fleet's own `VOYAGE_REPORT`s
+(the sum 0069 already reads) and her posted officers the same figure — honest history, and at
+1,000 nm a point a modest start (a house that has sailed 100,000 nm opens at level 3). A merchant
+hull gets a FIXED value (§4.5). Written once; after that only `settle` moves a player's.
 
 ### 4.3 What a level gives
 
@@ -302,7 +337,7 @@ Stated as a seed, not a derivation — it is written once and then only `settle`
 | ship | **stat gains** per level above 1: handling +1, accuracy +1.5, sighting +0.15 (a worked-up ship: the crew knows her) | the one stat computation `world.ship_stats` adds `level_bonus(stat, level)`; proven zero at level 1 | `ship_level_handling_per_level` 1 · `ship_level_accuracy_per_level` 1.5 · `ship_level_sighting_per_level` 0.15 |
 | ship | **slot unlocks** — rows of `class_slots` with `min_level > 1` (table in §6.2); a locked slot is served as `slots_locked {kind: {count, at_level}}` and drawn dimmed with "Level 6" | `class_slots` gains `min_level int not null default 1` and the PK becomes `(class_code, slot, min_level)`; `world.ship_slots(ship)` sums rows with `min_level ≤ level`. Existing rows keep 1, so **nothing already mounted is ever in a locked slot** | the rows |
 | ship | **gear requirements** — `item_kinds.min_level` (default 1; the twelve of today stay 1) | `mount_fitting` refuses `E_SHIP_LEVEL` with figures `{have: her level, need: min_level}` in 0050's shape | the rows |
-| captain | her own bonus × `(1 + captain_level_pct_per_level × (level − 1))`, still under `officer_bonus_cap_pct` | `public.fleet_officer_bonus` (0015:108-125): one hunk, `o.bonus_pct` → `o.bonus_pct × world.captain_level_mult(po.id)` | `captain_level_pct_per_level` 2 (a level-10 navigator at 6 % is worth 7.08 %) |
+| captain | her own bonus × `(1 + captain_level_pct_per_level × (level − 1))`, still under `officer_bonus_cap_pct`; per signing — the multiplier belongs to the `player_officers` row and dies with it | `public.fleet_officer_bonus` (0015:108-125): one hunk, `o.bonus_pct` → `o.bonus_pct × world.captain_level_mult(po.id)` | `captain_level_pct_per_level` 2 (a level-10 navigator at 6 % is worth 7.08 %; a merchant's officers stay at level 1, multiplier 1) |
 | company — trading | fleets per house (0107, exists); **hull build requirement** `hull_recipes.min_level` (S5: galleon 5, indiaman 6; today's three stay 1) | `cmd.do_build` refuses `E_LEVEL` with figures; `world.building_yard` prints `min_level` and `your_level` | the rows |
 | company — exploration | regions (0107, exists) | — | — |
 | company — combat | playable from S3; nothing gates on it yet — said on the screen rather than invented | — | — |
@@ -323,25 +358,42 @@ Stated as a seed, not a derivation — it is written once and then only `settle`
 | reach | nothing | — | the band she fights at — the combat slice |
 | sighting | nothing | S3: +0.15 per ship level | `lookout_expertise` stays 0 (0006:686) until the hazard roll is re-cut to read it — named as the next step, not done here |
 
-### 4.5 Merchants get levels through the same authority
+### 4.5 Merchants: fixed levels, the same reading, no work in the tick
 
-Nothing merchant-specific is written. `voyage.settle` is the executor for every fleet (NPC_TRADERS
-§0.2) and is identity-free (its live body contains no `auth.uid()`/`current_player_id()`, guarded
-since 0096). So a merchant's hulls and her posted officers gain `xp` on every arrival exactly as a
-player's do, her hulls' stats grow in `world.ship_stats`, her locked slots unlock, and her card
-serves `level` per ship and per officer from `ship_view` / the officer builder. The company tracks
-(`player_progress`) are not served on the card and are not needed: the card's company level stays
-the four skills' sum (0113). `passage_gate` keeps its `is_npc` exemption (0107:81-87) — that is a
-PLAYER progression gate and this plan does not touch it.
+The owner (2026-10-15): merchant captains and merchant skills are constant for now. The choice for
+merchant hulls, made here for consistency: **constant too — a fixed value, assigned once.**
+
+- A merchant hull's `xp` is written once by S3's seed: the points of level `1 + floor(skill_sum / 3)`,
+  where `skill_sum` is the company's four skill levels added — the number the city list already
+  prints as her level (0113:18-27). A sum of 0 is level 1, 12 is level 5, the best companies (20)
+  level 7. A merchant founded later gets the same value in `npc_found` (one hunk after
+  `commission_ship`, beside S2's loadout hunk). It never moves afterwards.
+- The reading is the one reading: `world.ship_level(ship) = level_from_points(ships.xp)`, served
+  through `ship_view` like any hull. There is no merchant level column and no merchant level
+  function.
+- Merchant officers: `player_officers.xp` stays 0, so `captain_level_mult` is 1 and her
+  `bonus_pct` is exactly what `npc_found` signed. The card serves no officer level.
+- Merchant skills: set once by `npc_found` (0097:241); nothing in the chain raises them today and
+  this plan adds nothing that does.
+- **The settle hunk does not run for a merchant fleet.** It reads the ONE predicate `players.is_npc`
+  once per arrival — the way the crew floor (0097) and the fortnight's rest (0101) read it
+  (0107:84-86) — and skips both UPDATEs. No `auth_uid is null`, no name test, no second spelling
+  of "merchant" (NPC_TRADERS §1.1). `passage_gate` keeps its own `is_npc` exemption (0107:81-87)
+  untouched. The company tracks (`player_progress`) are not served on the card and are not needed.
+- Her loadout (S2) is authored within her class's level-1 slots, so a locked slot never holds
+  anything and nothing about her depends on a level that does not grow.
 
 ### 4.6 Cost on the arrivals tick
 
-Per arrival: `update public.ships set xp = xp + :pts where fleet_id = p_fleet` (≤ 8 rows; `settle`
-already updates `ships … where fleet_id = p_fleet` in the raid arm, 0027:365-370) and `update
-public.player_officers set xp = xp + :pts where fleet_id = p_fleet` (0-3 rows). Under a millisecond
-against a tick that averages 14 s because of 0120's lap-start planning. Levels are READ at tap
-time (`ship_view`) and inside `fleet_officer_bonus`, which already runs per speed/hold/spread
-reading — one more column on the row it already reads. No cron, no table scan, no new job.
+Per PLAYER arrival: one read of `players.is_npc` by primary key (the fleet row is already in hand),
+then `update public.ships set xp = xp + :pts where fleet_id = p_fleet` (≤ 8 rows; `settle` already
+updates `ships … where fleet_id = p_fleet` in the raid arm, 0027:365-370) and `update
+public.player_officers set xp = xp + :pts where fleet_id = p_fleet` (0-3 rows). Under a
+millisecond, on the ~30 players' arrivals only. For the ~830 merchants — most of what the tick
+settles — the hunk is one boolean read and nothing else. Levels are READ at tap time (`ship_view`)
+and inside `fleet_officer_bonus`, which already runs per speed/hold/spread reading — one more
+column on the row it already reads. No cron, no table scan, no new job; the tick that averages
+14 s because of 0120's lap-start planning does not notice.
 
 ---
 
@@ -468,8 +520,9 @@ asserts (a) 2-5 inputs, (b) no dead ingredient, (d) every fitting makeable somew
 ## 8. The build steps
 
 Each step is one migration with its own self-assert (positive controls first), its knobs, its
-rollback, and the client change that rides with it. Numbers from **0122** are assigned when
-scheduled (shared with the economy plan). Every prod push follows `docs/DEPLOY_RUNBOOK.md`: dry
+rollback, and the client change that rides with it. The economy plan holds 0122–0123; provisional
+numbers in deploy order: **S1 0124 · S2 0125 · S3 0126 · S5 0127 · S6 0128 · S4 0129**, S7 none
+(`npm run db:check-versions` arbitrates on the branch). Every prod push follows `docs/DEPLOY_RUNBOOK.md`: dry
 run inside `begin … rollback` with `set local statement_timeout`, then `unwind_the_clock()` →
 `db push` → `wind_the_clock()`.
 
@@ -477,7 +530,7 @@ run inside `begin … rollback` with `set local statement_timeout`, then `unwind
 |---|---|---|---|---|---|
 | **S1** one ship builder | `world.ship_stats(ship)` (ten stats, one query); `world.ship_stat` re-cut to project it; `world.ship_view(ship)` with `class_code` + `max_durability`; `world.fleets` and `world.npc_fleet_card` re-cut to call it | pre-image of `world.fleets()` for every fleet and of the card for every merchant equal the post-image with the two new keys stripped; every hull × ten stats agree to the digit; neither live body still contains `'fittings', (select`; no `is_npc` token in `ship_view`/`ship_stats`; 0 client write grants, no new entry point | none | one forward migration re-cutting both readers to the inline bodies kept in S1's header (the pre-image is printed in the apply notice); `ship_view` dropped | types: one served ship type; `ShipPanel` reads `class_code`, drops `CLASS_CODE`; spec: merchant panel shows slots + stats |
 | **S2** merchant loadouts | `mount_fitting` core sliced out of `do_fit`; `npc_loadouts` table + `data/npc-loadouts.json`; `npc_fit_loadout`; backfill every bare merchant hull; `npc_found` hunk | door = pre-image + call (reverse substitution); every merchant hull ≥ 2 fittings, none over its slots (recomputed from `class_slots`); player rows untouched (count before = after); a probe player's `FIT` still refuses `E_SLOTS_FULL`; only `mount_fitting` and `do_unfit` write `ship_fittings` (live-body scan, positive control); backfill time printed | none (data) | `delete from ship_fittings where ship's company is_npc`; `npc_found` hunk re-cut out | none (S1's panel draws them). After deploy: measure zero-net lap share and arrivals avg/max against `RESUME.md:29` |
-| **S3** levels | `ships.xp`, `player_officers.xp`; `class_slots.min_level` + PK; `item_kinds.min_level`; `world.ship_level`, `world.captain_level`, `world.captain_level_mult`, `world.ship_slots`; `settle` arrival + PIRATES hunks; `ship_stats` level term; `mount_fitting` reads `ship_slots` + `min_level`; `fleet_officer_bonus` hunk; `player_progress` combat track derived; `ship_view` serves `level`, `xp`, `next_level_at`, `slots_locked`; `world.officers` and the card's officers serve `level`; the one-time seed | `settle` is its pre-image plus the hunks; exactly one live body contains `set xp` (positive control); at level 1 every stat, every slot count and every officer bonus equals its pre-image for every hull/fleet in the world (`levels_bite` on); a probe hull given 2,500 nm reads level 2 and +1 handling; a locked slot refuses `E_SLOT_LOCKED` and opens at the level; `carronades`-shaped probe item refuses `E_SHIP_LEVEL` with figures; a probe fleet with one EVADED day reads `combat.points` 5 and `playable` true; `levels_bite` false → all pre-images again; the tick: `tick_arrivals` on a probe arrival is timed and printed | `ship_xp_nm_per_point` 100 · `xp_evaded_points` 5 · `xp_driven_off_points` 15 · `ship_level_handling_per_level` 1 · `ship_level_accuracy_per_level` 1.5 · `ship_level_sighting_per_level` 0.15 · `captain_level_pct_per_level` 2 · `levels_bite` true (reuses `level_points_per_step` 25) | `levels_bite = false` is the first rollback (one UPDATE, effects off, XP keeps counting); full: re-cut the hunks out, drop the columns | `ShipPanel`: level chip + XP bar + dimmed locked boxes "Level 6"; `OfficerTile` level; house screen shows combat as playable; workstation/yard faces print "needs level N"; `statGloss.ts` gains `level` |
+| **S3** levels | `ships.xp`, `player_officers.xp`; `class_slots.min_level` + PK; `item_kinds.min_level`; `world.ship_level`, `world.captain_level`, `world.captain_level_mult`, `world.ship_slots`; `settle` arrival + PIRATES hunks; `ship_stats` level term; `mount_fitting` reads `ship_slots` + `min_level`; `fleet_officer_bonus` hunk; `player_progress` combat track derived; `ship_view` serves `level`, `xp`, `next_level_at`, `slots_locked`; `world.officers` serves `level` (the card's officers do not — constant); the one-time seed (a player's hulls and officers from her reports; a merchant's hulls a FIXED value from the skill sum, §4.5) and the `npc_found` hunk that seeds a new merchant the same way | `settle` is its pre-image plus the hunks; exactly one live body contains `set xp` (positive control); the hunk reads `players.is_npc` and nothing else to tell a merchant (token scan: no `auth_uid is null`); at level 1 every stat, every slot count and every officer bonus equals its pre-image for every hull/fleet in the world (`levels_bite` on); a probe PLAYER hull given 25,000 nm reads level 2 and +1 handling; a probe MERCHANT arrival moves no `xp` at all and her hull reads `1 + floor(skill_sum/3)`; the merchant seed touches no player row (counts before = after); a locked slot refuses `E_SLOT_LOCKED` and opens at the level; `carronades`-shaped probe item refuses `E_SHIP_LEVEL` with figures; a probe fleet with one EVADED day reads `combat.points` 5 and `playable` true; `levels_bite` false → all pre-images again; the tick: `tick_arrivals` on a probe arrival is timed and printed | `ship_xp_nm_per_point` 1,000 · `xp_evaded_points` 5 · `xp_driven_off_points` 15 · `ship_level_handling_per_level` 1 · `ship_level_accuracy_per_level` 1.5 · `ship_level_sighting_per_level` 0.15 · `captain_level_pct_per_level` 2 · `levels_bite` true (reuses `level_points_per_step` 25) | `levels_bite = false` is the first rollback (one UPDATE, effects off, XP keeps counting); full: re-cut the hunks out, drop the columns | `ShipPanel`: level chip + XP bar + dimmed locked boxes "Level 6"; `OfficerTile` level; house screen shows combat as playable; workstation/yard faces print "needs level N"; `statGloss.ts` gains `level` |
 | **S4** combat stats bite | escort reads `attack/10`; armour turns hull loss by `armour_turns_pct` | new escort = old to 4 places for every fleet with no weapon fitting; strictly higher with one; `guns` no longer read in `settle` (scan + control); `guns = attack/10` for every class; knob at 0 → storm/raid losses byte-identical on a pre-image; probe at 0.5 shows the nau loss 15 % lower | `armour_turns_pct` 0 | re-cut the two hunks out; knob to 0 | none; `statGloss.ts` lines for attack/armour stop saying "unused" |
 | **S5** new ship types | eight `ship_classes` rows + six stats; `class_slots`/`class_cabins` rows incl. unlock rows; `hull_recipes` (+ `yard_regions text[]`, `min_level`) and goods/items; `do_build` gains the coast and level gates; `building_yard` prints them; `data/ship_stats.json`, `data/hulls.json` extended; generator `scripts/build-ships-S5.mjs` | 11 classes; `guns = attack/10` all; slots grow with tier; 0072 (b)(c)(d) over all eleven; every new hull buildable at ≥ 1 real yard; a junk refused `E_WRONG_COAST` at Lisbon and laid down at Nagasaki by a probe house; galleon refused `E_LEVEL` at trading level 1 with figures; nothing about the three existing classes moved (pre-image rows equal) | none | `delete` the eight classes and their rows (no hull of a deleted class may exist: asserted before delete); re-cut `do_build` | `HullClass` union + 8 silhouettes + half-lengths; `SnapshotShipClass` declares the six stats; Codex ships face shows stats + slots; yard face shows coast/level; `tests/map.hulls.spec.ts` unchanged (names) |
 | **S6** new gear | twelve `item_kinds` (+ `min_level`), `item_effects`, `item_recipes`; `data/fittings.json` extended; generator `scripts/build-gear-S6.mjs` | 24 kinds; 0068 (a)(b)(d) and 0074 (a)(b) over all; a probe makes `swivel-guns` at a tier-2 workstation and mounts them in a barca's weapon slot; `carronades` refused `E_SHIP_LEVEL` on a level-1 hull and mounted on a level-5 probe | none | `delete` the twelve (no `ship_fittings`/`player_items` row may reference them: asserted, or the rows are moved back to store first) | workstation face lists them (served already); Codex gear face if one exists, else the workstation face |
@@ -497,12 +550,15 @@ defaulting to 1.
   portrait, the equipment grid with her sails, anchor and guns in their slots and the empty slots
   shown, and the six combat figures under Speed and Cargo. No merchant reads "Nothing fitted" any
   more.
-- Every ship, yours and theirs, carries a **level** on her chip and a small bar to the next one.
-  Ships level by sailing; a fight she wins pays extra. A higher level makes her answer the helm a
-  little better, shoot a little straighter, see a little farther, and opens one or two more slots
+- Every ship of yours carries a **level** on her chip and a small bar to the next one. Ships level
+  by sailing, slowly: a hull that runs a route round the clock reaches level 10 in about a month
+  and level 20 in about five; a fight she wins pays extra. A higher level makes her answer the helm
+  a little better, shoot a little straighter, see a little farther, and opens one or two more slots
   on her grid (shown dimmed with the level they open at). Some gear says "needs level 4".
-- Officers show a level beside their bonus; a veteran navigator is worth more than she was the
-  day you signed her.
+- A merchant's ship shows a fixed level — the better the company, the higher — that never changes.
+- Your officers show a level beside their bonus; a veteran navigator is worth more than she was the
+  day you signed her. The level is hers for this signing only: dismiss her and hire her again and
+  she starts over. A merchant's officers carry no level.
 - The house screen's Combat track stops reading "not yet playable" and counts the pirates you
   evaded or drove off.
 - At a build yard: eight more hulls to lay down — a pinnace or a dhow for a beginner, a caravela
@@ -516,20 +572,23 @@ defaulting to 1.
 
 ---
 
-## 10. Owner questions (only what cannot be decided here)
+## 10. Owner decisions taken into this plan, and what is still open
 
-1. **A captain's level: per signing, or per person?** Per signing (`player_officers.xp`) means she
-   starts again when dismissed and re-signed, and a merchant's veteran stays the merchant's. Per
-   person (an `officers.xp` shared world-wide) means whoever signs her next inherits what another
-   company trained — a stronger world, but a company could train and release. **Default here:
-   per signing.**
-2. **Pace of levelling.** The defaults give a hull level 5 after ~8 real hours at sea and level 10
-   after ~42, with the cap at 20 (0069's curve). Faster, slower, or as is? **Default: as is;
-   knobs.**
-3. **Do merchants ever change their gear?** This plan endows each merchant hull once and leaves it.
-   If the economy plan (`docs/ECONOMY_LOOP.md`) has merchants paying full costs, gear upkeep and
-   upgrades bought from workstations would be the natural next rule — but it is that plan's call,
-   not this one's. **Default: endowed and fixed.**
+Decided by the owner on 2026-10-15 and now in the plan:
+
+1. **Captain level is per signing** (`player_officers.xp`): dismissed and hired again, she starts
+   at 0 (§4.1, §4.3).
+2. **Merchant captains and merchant skills are constant**; merchant hulls carry a **fixed level**
+   assigned once from the company's skill sum, and the settle hunk does nothing for a merchant
+   fleet (§4.5, §4.6).
+3. **Levelling is a long grind**: `ship_xp_nm_per_point` 1,000 on 0069's curve — level 10 in about a
+   month and level 20 in about five for a hull running a route round the clock (§4.2's table).
+4. **Merchant gear is fixed**; whether merchants ever buy better gear is the economy plan's
+   question, deferred (§3.2).
+5. **Numbering**: the economy plan holds 0122–0123; S1 → 0124 onward (§8).
+
+Open: nothing that cannot be decided here. The one figure to read is §4.2's table — if a month to
+level 10 and five to level 20 is the wrong length of grind, it is one knob, changed by one UPDATE.
 
 ---
 
@@ -542,8 +601,9 @@ defaulting to 1.
    passed; these are ~310. If (d) refuses, the timber is trimmed at generation — the assert is not
    loosened.
 3. **The 2-min tick is dominated by 0120's planning, not by anything here.** S3 adds two small
-   UPDATEs per arrival. The risk is that S3 is blamed for a slow tick that 0120 owns; S3's assert
-   prints its own timing so the two are not confused.
+   UPDATEs per PLAYER arrival and one boolean read per merchant arrival. The risk is that S3 is
+   blamed for a slow tick that 0120 owns; S3's assert prints its own timing so the two are not
+   confused.
 4. **Collision with the economy plan** on migration numbers from 0122 and on `world_config` knob
    names; also on whether merchants pay for anything (§10 Q3). Schedule the two plans' numbers in
    one sitting.
