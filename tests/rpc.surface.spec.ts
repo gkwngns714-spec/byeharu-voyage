@@ -51,6 +51,7 @@ import {
   worldProvisionPresets,
   worldStandingRoutes,
   worldRouteBoard,
+  worldFleetTrades,
   cmdStandingRouteSave,
   cmdStandingRouteAssign,
   cmdStandingRoutePause,
@@ -1471,6 +1472,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // the player changes three times in ten seconds. Never another captain's route (DESIGN §E.5).
       // Landed WITH the face that reads it (the ROUTES tab in the Cabin group).
       'worldRouteBoard',
+      // Pin moved deliberately 2026-10-15 with migration 0121 (owner: *"click on laps, so far, a lap
+      // and so on which tells me what the ship has bought and sold, where it sold"*): ONE FLEET'S
+      // TRADING — her newest seven laps stop by stop, the lap under way, the last real day. A READ at
+      // a tap, a merchant's (switch on) or the caller's own fleet; anything else refuses E_NOT_FOUND
+      // as the card does. Landed WITH the face that reads it (TradeHistoryPanel).
+      'worldFleetTrades',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')
@@ -1852,6 +1859,44 @@ test('world.route_board() serves every lane the caller may know of, with the fig
     for (const id of hers) expect(capped.routes.some((r) => r.id === id)).toBe(true)
   } finally {
     await db.pg.query(`update public.world_config set value = to_jsonb(400) where key = 'route_board_max'`)
+    await db.pg.query(`update public.world_config set value = 'false'::jsonb
+                        where key in ('npc_traders_enabled', 'standing_routes_enabled')`)
+  }
+})
+
+// 0121 (owner, 2026-10-15): ONE FLEET'S TRADING. What this pins that the migration cannot: the
+// shape the TYPES claim (`FleetTrades`), read back out of a payload a real PostgreSQL produced —
+// for a merchant with the switch on, and the refusal for her with it off.
+test("world.fleet_trades(fleet) serves a merchant fleet's laps, the lap under way and the day", async () => {
+  const fleetId = await db.callAs<string>(
+    `select nf.fleet_id as result from public.npc_fleets nf where nf.route_id is not null order by nf.roster_ord limit 1`,
+  )
+  const dark = await worldFleetTrades(fleetId)
+  expect(dark.ok).toBe(false)
+  if (!dark.ok) expect(dark.refusal.code).toBe('E_NOT_FOUND')
+
+  await db.pg.query(`update public.world_config set value = 'true'::jsonb
+                      where key in ('npc_traders_enabled', 'standing_routes_enabled')`)
+  try {
+    const t = expectOk(await worldFleetTrades(fleetId))
+    if (!t.route) throw new Error('a merchant fleet with a route served no route')
+    expect(isStr(t.route.name)).toBe(true)
+    expect(t.route.stops.length).toBeGreaterThanOrEqual(2)
+    expect(t.laps.length).toBeLessThanOrEqual(7)
+    for (const l of t.laps) {
+      for (const k of ['lap_no', 'sold', 'bought', 'supplies', 'repairs', 'wages', 'stock_in', 'stock_out', 'net'] as const) {
+        expect(isNum(l[k])).toBe(true)
+      }
+      expect(l.stops === null || Array.isArray(l.stops)).toBe(true)
+    }
+    expect(t.open === null || Array.isArray(t.open.stops)).toBe(true)
+    if (!t.day) throw new Error('a route served no day')
+    for (const k of ['laps', 'laps_traded', 'sold', 'bought', 'supplies', 'repairs', 'wages', 'stock_in', 'stock_out', 'net'] as const) {
+      expect(isNum(t.day[k])).toBe(true)
+    }
+    expect(typeof t.day.full).toBe('boolean')
+    expect(Array.isArray(t.day.goods)).toBe(true)
+  } finally {
     await db.pg.query(`update public.world_config set value = 'false'::jsonb
                         where key in ('npc_traders_enabled', 'standing_routes_enabled')`)
   }
