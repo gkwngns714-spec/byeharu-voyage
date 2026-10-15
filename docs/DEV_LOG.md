@@ -139,6 +139,66 @@ the source:**
   a merchant 0.74° off. Its own comment says a merchant wins only when nearer than the nearest
   harbour.
 
+---
+
+## 2026-10-16 — 0129: a merchant buys what her purse can pay — `osn-0129-merchant-lap-profit`
+
+RESUME next #1: merchant laps still mostly lose after 0128. **Measured on prod (read-only, laps
+closed 12:00–15:00 UTC 10-15, head 0128):** 3,564 laps, 333 profit / 3,231 loss, but the average
+lap netted **+378 d.** — the "bought > sold" lens is not the loss (a lap's net is cost of goods
+SOLD, 0116: a parcel bought at the last stop is carried out at cost).
+- **2,520 laps (71 %) bought and sold nothing**, each losing only its stores/repairs (−24 two
+  stops, −33 three, −70 four) — 78 % of all losing laps. 1,940 of them had a BUY refused
+  **E_INSUFFICIENT_FUNDS**: the 2,575 refused parcels cost a median **20,981 d.** against a median
+  purse of **3,993 d.** (4.3×; 2,477 cost more than her whole purse). do_buy refuses an unpayable
+  line whole, so she sailed in ballast. 327 merchant companies hold < 5,000 d. (capital ~5,400).
+- The trading laps made money on the trade: 0 of 920 sold below cost. 604 closed a few ducats
+  under zero because 0128's carried wages (owed on ballast sea-days too) took the whole margin and
+  the stores were left (net ≈ −stores).
+- Ruled out: 0126's speed, the cut-loss (no sale below cost), price drift (same).
+**Cause:** the leg planner (`public.npc_leg_lines`, 0120) sized a parcel by sink, daily cap and
+hold — never by the purse — and priced loops on parcels she could never buy.
+
+**Fix (0129, one bound in one place):** `public.npc_affordable(port, good, qty, budget)` — the most
+units ≤ qty whose `world.quote` buy total fits the budget — and `public.npc_buy_budget(fleet)` =
+(purse + cargo aboard at cost) × `npc_buy_purse_pct` (90; the rest pays the stop's stores/repairs,
+which run before the BUYs; the cargo counts because her SELLs run first and never below cost). The
+planner sizes every kept parcel by it and spends the leg's budget as it keeps (npc_leg_lines,
+sliced); the moment of buying asks the same bound again (cmd.standing_route_lines, sliced, where
+0114 already re-asks the keep test). "Cargo at cost" moved out of cmd.standing_route_close_lap
+into `public.fleet_stock_at_cost` (the one reading; the lap and the budget call it). do_buy and
+players' orders are untouched.
+- **CI caught a first-cut bug** (pglite-gate merchants, PROOF 12: the probe merchant's first lap
+  net −9): `npc_traders_switch` plans every route BEFORE `npc_tend` assigns its fleet, so
+  `standing_routes.fleet_id` was null, the budget 0, and the first lap sailed in ballast. The
+  planner now budgets `coalesce(sr.fleet_id, the npc_fleets fleet for the route)`; the self-assert's
+  planner probe runs with the route unassigned.
+- **Local PGlite measurement** (`node scripts/db/measure-purse-bound.mjs`, chain restored from the
+  0096 prefix + 25 applied, first 60 merchant routes at a lap start, every stop-0 BUY executed
+  through `cmd.do_buy`; "before" = `npc_buy_purse_pct` 1e9, the bound never binds; run on the first
+  cut, which differs only for an unassigned route — the harness assigns every fleet):
+  | purse | BUY bought / refused for funds | ballast at stop 0 | laid out | plan mean |
+  |---|---|---|---|---|
+  | 2,000 before → after | 8 / 92 → 71 / 0 | 27 % → 20 % | 7,744 → 78,998 | 607 → 556 ms |
+  | 3,993 before → after | 13 / 87 → 75 / 0 | 27 % → 17 % | 21,308 → 165,347 | 610 → 564 ms |
+  | 20,000 before → after | 43 / 57 → 95 / 0 | 27 % → 18 % | 334,148 → 686,338 | 589 → 580 ms |
+  The "before" planner priced those 60 loops at ~1.73 M d. of profit she could never buy; "after"
+  prices what she can (41 k / 87 k / 351 k by purse). No extra planning cost.
+- **DEPLOYED to prod 2026-10-15 15:51 UTC** (`db push --linked` before the merge; head 0129, knob 90,
+  planner + lines composing `npc_affordable` verified on the live bodies). Re-measured 17:03 UTC over
+  two mirrored 71.6-min windows (laps started AND closed inside the window):
+  | | laps | profit / loss | empty | Σ net | avg net |
+  |---|---|---|---|---|---|
+  | before (14:40–15:51) | 931 | 35 / 896 | 735 (79 %) | −9,814 | −11 |
+  | after (15:51–17:03) | 897 | 304 / 593 | 380 (42 %) | +274,052 | +306 |
+  E_INSUFFICIENT_FUNDS on post-deploy laps: **2** (819 in the hour before). Arrivals job 290 runs,
+  0 failed, avg 6.1 s (6.1 before), max 17.2 s. Still losing (open): 380 genuine ballast laps
+  (nothing affordable clears the 5 % bar; they lose their stores), 155 trading laps whose margin
+  the carried wages took, and buy-only laps whose parcel is sold — and booked — in the next lap.
+- Prod dry-run (`begin … rollback` on head 0128, ~5 s, prod verified unchanged): all asserts ok;
+  probe: rich 3 BUY lines, 110 units for 8,734 d.; with 2,911 d. (budget 2,619) the plan cost 2,583
+  and the quay lines 28 units for 2,583; with 0 d. none.
+
 ## 2026-10-15 — 0128: wages are paid from profit — `osn-0128-wages-from-profit`
 
 Owner: *"because of wages, ships are losing too much money. pay wages only when a profit is made."*
