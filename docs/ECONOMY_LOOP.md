@@ -724,7 +724,7 @@ slice's old text is in the file). Tables are left in place; they are inert witho
 
 | # | Name | What it changes | Self-assert | Knobs | Rollback |
 |---|---|---|---|---|---|
-| **0122** | `a_city_keeps_a_purse` | tables `port_treasury` (≥ 0), `treasury_flows`, `treasury_daybook`, trigger; `voyages.wages_paid`; `standing_route_laps.taxes`; movers + `city_treasury_on` + `city_can_spend` + `treasury_reserve`; **the tax rule** (`world.tax_rate` re-based lit, `profit_tax`, one-line hunks in `world.quote` / `world.price`, `do_sell`'s tax row, the planner's keep test, the lap closer, the `tax_rate` prints); **the empty-purse rule** (`city_bid_factor` in `quote`/`price`, `do_sell` shrink-or-refuse); eight verb hunks (six one-line, two four-line) + the settle wages/arrival hunks (no dues); refounds from the home harbour; bounty escrow (0087's rule kept); `tick_city` (roll, carry, state, assert, receipt) + cron inactive; `world.town_hall` (purse + day) + registry; `city_treasury_switch` (seed + flag) | §2.9 | `city_treasury_enabled` false, `npc_cost_mult` 1, `profit_tax_scale` 5, `tax_rate_max` 0.40, `treasury_days_kept` 30, `treasury_reserve_days` 3, `city_bid_floor` 0.5, `bounty_reserve_mult` 2, `city_seed_days` 10, `city_seed_min` 20,000 | the switch; `npc_cost_mult` 0 by knob; a forward slice restoring `credit(` in the eight bodies and `v_tax := world.tax_rate(…)` in the two price bodies; `cron.unschedule('byeharu-voyage:city')` |
+| **0122** | `a_city_keeps_a_purse` | tables `port_treasury` (≥ 0), `treasury_flows`, `treasury_daybook`, trigger; `voyages.wages_paid`; `standing_route_laps.taxes`; movers + `city_treasury_on` + `city_can_spend` + `treasury_reserve`; **the tax rule** (`world.tax_rate` re-based lit, `profit_tax`, one-line hunks in `world.quote` / `world.price`, `do_sell`'s tax row, the planner's keep test, the lap closer, the `tax_rate` prints); **the empty-purse rule** (`city_bid_factor` in `quote`/`price`, `do_sell` shrink-or-refuse); eight verb hunks (six one-line, two four-line) + the settle wages/arrival hunks (no dues); refounds from the home harbour; bounty escrow (0087's rule kept); `tick_city` (roll, carry, state, assert, receipt) + cron inactive; `world.town_hall` (purse + day) + registry; `city_treasury_switch` (seed + flag) | §2.9 | `city_treasury_enabled` false, `npc_cost_mult` 1, `profit_tax_scale` 5, `tax_rate_max` 0.20, `treasury_days_kept` 30, `treasury_reserve_days` 3, `city_bid_floor` 0.5, `bounty_reserve_mult` 2, `city_seed_days` 10, `city_seed_min` 20,000 | the switch; `npc_cost_mult` 0 by knob; a forward slice restoring `credit(` in the eight bodies and `v_tax := world.tax_rate(…)` in the two price bodies; `cron.unschedule('byeharu-voyage:city')` |
 | **0123** | `a_city_builds_with_other_peoples_money` | tables `city_works`, `city_shares`; `city_level`, `invest_for`, `cmd.invest`, `cmd.preview_invest` + registry; steps 4, 5, 6 of `tick_city`; the four reader slices (`sail_refusal`, `daily_cap_remaining`, `world.spread`, `tick_market_drift`); the dividend payout in the settle arrival hunk; `npc_tend` investment rule; `world.town_hall` restated whole (works, investors, you); `npc_fleet_card` line | §3.6 | `works_cost_base` 20,000, `works_cost_growth` 1.6, `works_level_max` 5, `shares_per_level` 100, `works_coupon_pct` 0.003, `works_region_share` 1.0, `invest_min_ducats` 1,000, `npc_invest_above` 2.0, `npc_invest_keep` 1.5, `npc_invest_max_per_hour` 50, `docks_draft_per_levels` 2, `market_cap_per_level` 0.10, `production_per_level` 0.10, `inn_hands_per_level` 2, `inn_pool_per_tier` 40, `town_hall_investors_max` 50 | `works_level_max` 0 offers nothing; `works_coupon_pct` 0 stops coupons; readers at level 0 are byte-parity with their pre-images |
 
 **Deploy order and the switch**: the 0120 check in the RESUME queue (zero-net laps, tick durations)
@@ -740,12 +740,14 @@ rows, **Invest** and its tray, the investors list, the merchant sheet line.
 
 ---
 
-## 11. Remaining owner decisions (two, neither blocking 0122's build)
+## 11. Owner decisions on the tax (2026-10-15, final)
 
-1. **The profit-tax level.** The city's 3 % becomes 15 % of a sale's profit (`profit_tax_scale` 5).
-   Accept, or name the percentage.
-2. **Harbour dues.** "Tax or any fees only on profit" is read here as: no port dues at all
-   (`port_fee_per_ship` stays unread, as today). Confirm, or say dues are a cost like provisions.
+1. **The profit tax is per city, never one constant, max 20 %.** Each city keeps its own rate (its
+   `tax_rate` column × `profit_tax_scale`), **capped at 20 %** — `tax_rate_max` is **0.20**, not 0.40.
+   Later the rate will be **set by the city's mayor = its highest investor** (within 0–20 %). The mayor
+   is NOT scheduled — owner: "leave this for now". 0123's share register is what will name the mayor;
+   build nothing for it yet, but keep `world.tax_rate` the one place a mayor's choice would plug in.
+2. **Harbour dues are gone** — confirmed. No port fee at all; `port_fee_per_ship` stays unread.
 
 Decided: the seed rule (ten game-days of what a harbour pays sellers, min 20 k) stays the default.
 
