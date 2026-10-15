@@ -341,6 +341,13 @@ async function hullInViewClearOf(
 async function openMerchantWorthReading(page: Page, sailing: boolean | null): Promise<string> {
   const tried = new Set<string>()
   let opened = ''
+  // THE LAST HULL WHOSE SHEET DID OPEN, kept when the loop closes it to try another (2026-10-16).
+  // The "is there another candidate?" check and the next pass's pick are two reads of a moving sea:
+  // PR #130's CI trace shows the sheet OPEN (body visible, no lap average yet), a second hull
+  // present at the check, gone 0.4 s later at the pick — and the helper then reported "1 merchant
+  // hull(s) were tapped and none opened her sheet", a false account of a working tap. The
+  // contract above — settle for the last one if none has a figure — is kept by re-opening her.
+  let lastOpened = ''
   let seen = 0
   // WALK THE HULLS, not one hull repeatedly. A tap can be lost to a harbour or to one of your own
   // fleets — both outrank a merchant by the chart's own rule — and no amount of re-aiming at that
@@ -356,6 +363,7 @@ async function openMerchantWorthReading(page: Page, sailing: boolean | null): Pr
     if (!(await tapHull(page, id))) continue
     await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
     opened = id
+    lastOpened = id
     const lap = await page.getByTestId('merchant-earnings-lap').textContent()
     // a lap average is printed as `≈ <figure>`; the two absences say so in words
     if (lap && lap.includes('≈')) return id
@@ -374,6 +382,7 @@ async function openMerchantWorthReading(page: Page, sailing: boolean | null): Pr
     if (await close.isVisible().catch(() => false)) await close.click()
     opened = ''
   }
+  if (!opened) opened = lastOpened
   if (!opened) {
     if (seen === 0) throw new Error('no merchant hull on the glass to open')
     throw new Error(`${seen} merchant hull(s) were tapped and none opened her sheet`)
@@ -664,9 +673,18 @@ async function openHarbour(
     if (city && (await tray.isVisible())) {
       await send.click()
       await expect(tray).toHaveAttribute('data-tray-detent', 'half')
-      // the harbour's read lands on the beat; a city nobody's loop calls at has no list at all
-      const listed = await page.getByTestId('map-harbour').waitFor({ state: 'visible', timeout: 8_000 }).then(() => true, () => false)
-      return listed ? 'listed' : 'empty'
+      // THE HARBOUR'S READ IS WAITED FOR UNTIL IT ANSWERS, not for a fixed 8 s (2026-10-16). Until
+      // it lands the tray shows a placeholder (`map-harbour-loading`), and only an ANSWER prints the
+      // list or "No ships in port or bound here." The fixed wait was the flake on PR #130 and #131:
+      // each tab's first reads run `tick_arrivals` over every voyage-day since the merchants-on
+      // world was dumped, so the read slows as a shard goes on, and an unanswered read was being
+      // reported as "Porto's tray lists no merchants". A city nobody's loop calls at still answers
+      // with no list at all — 'empty' now means exactly that.
+      // (`data-landed`: your own fleets are listed before the merchants' read answers, so a list
+      // on the glass is not yet the answer either.)
+      const answer = page.locator('[data-testid="map-harbour"][data-landed="true"], [data-testid="map-harbour-empty"]')
+      await answer.first().waitFor({ state: 'visible', timeout: 60_000 })
+      return (await page.getByTestId('map-harbour').isVisible()) ? 'listed' : 'empty'
     }
     await page.waitForTimeout(1_000)
   }

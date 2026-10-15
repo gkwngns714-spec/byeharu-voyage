@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
-import { IconDisc, Row, SheetSection } from '../../components/ui'
+import { IconDisc, Row, SheetSection, Skeleton } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import { MerchantRow } from '../../live/MerchantRow'
 import { merchantParts } from '../../live/merchantLine'
@@ -36,6 +36,7 @@ import { fleetParts } from './fleetLine'
 export function CityHarbour({
   portCode,
   merchants,
+  landed,
   here,
   bound,
   portsByCode,
@@ -46,6 +47,11 @@ export function CityHarbour({
   portCode: string
   /** The harbour's whole read (`world.port_merchants`), handed down by MapScreen. */
   merchants: readonly PortMerchant[]
+  /** Whether the harbour's read has ANSWERED for this harbour. Until it has, "nobody here" is not
+   *  known, so it is never printed (2026-10-16: the tray said "No ships in port or bound here."
+   *  while the read was still on the wire, and tests/map.merchants.spec.ts took that for an answer
+   *  whenever a busy machine made the read slower than its wait). */
+  landed: boolean
   /** Your fleets lying here, and bound here — the chart model's (`fleetsAtPort` / `fleetsBoundFor`). */
   here: readonly FleetOnChart[]
   bound: readonly FleetOnChart[]
@@ -61,11 +67,12 @@ export function CityHarbour({
   const incomingCount = bound.length + sides.incoming.length
 
   if (inPortCount + incomingCount === 0) {
+    if (!landed) return <Skeleton className="h-11 w-full" data-testid="map-harbour-loading" />
     return <Row label="No ships in port or bound here." tone="muted" hairline={false} data-testid="map-harbour-empty" />
   }
 
   return (
-    <div data-testid="map-harbour">
+    <div data-testid="map-harbour" data-landed={landed ? 'true' : 'false'}>
       {inPortCount > 0 && (
         <Section heading="In port" count={inPortCount} testId="map-harbour-in-port">
           {here.map((f, i) => (

@@ -51,6 +51,25 @@ locally on a PGlite world (port 4176, `localhost`), and sorted into code defect 
   120°–200° span. Titles in `map.marks.spec` said 224 harbours; the assertions already pinned
   **238** (0090), which is the real count on the sheet.
 
+**The first CI run of this PR (2bdf8df) and PR #130 found three more, all timing races, all fixed at
+the source:**
+- `map.merchants` 761 / 842 ("Porto's tray lists no merchants") — the city's Port tab printed
+  "No ships in port or bound here." while the harbour's read was still on the wire, and the spec
+  waited a fixed 8 s for the list. Each tab's first reads run `tick_arrivals` over every voyage-day
+  since the merchants-on world was dumped (1,279 days resolved in one tick at 45 min old, measured),
+  so the read slows as a shard goes on. Probed in Node on the fixture world: Porto still answers 15
+  merchants with Carreira Port Royal `resting` after 45 min — the served fact was right, the screen
+  and the wait were not. CODE: `CityHarbour` shows a placeholder (`map-harbour-loading`) until the
+  read has answered for this harbour (`landed`, one line in `MapScreen.tsx`), and marks its list
+  `data-landed`; SPEC: `openHarbour` waits (60 s) for an answer, not for 8 s.
+- `map.merchants` 526 ("1 merchant hull(s) were tapped and none opened her sheet") — PR #130's trace
+  shows the sheet OPEN; the helper closed it to try another hull that had drifted off the glass
+  0.4 s later, then reported none. It now re-opens the last one that opened (its documented
+  contract).
+- `map.lag` 1545 ("just after a zoom the coast is drawn over exactly the view") — one driver read
+  after the click raced the glide plus the 250 ms settle; the frames are now sampled in the page and
+  the claim is made of the zoom's first frame.
+
 **Found, not fixed (owner's call):**
 - On a 390 px phone an open side panel squeezes the map's corner chrome (fleets list, zoom column,
   Regions) into the ~31 px `chromeAsideSideTrayClass` leaves; the fleets list renders invisible.

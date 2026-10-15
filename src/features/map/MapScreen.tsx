@@ -474,6 +474,7 @@ function Chart({
               <CityHarbour
                 portCode={place.port.code}
                 merchants={harbourRows}
+                landed={merchantsHere.view !== null && (!merchantsHere.view.enabled || merchantsHere.view.port === harbourCode)}
                 here={fleetsAtPort(model, place.port.code)}
                 bound={fleetsBoundFor(model, place.port.code)}
                 portsByCode={portsByCode}
