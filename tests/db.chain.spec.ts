@@ -321,7 +321,8 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // what npcs invested"): works, shares, coupons from surplus, merchants invest on their loop; dark.
 // And to 0124 (one ship, one builder: merchant ship panels get slots and stats).
 // And to 0126 (a merchant is fitted by the same hands: mount_fitting, authored loadouts, backfill).
-const LAST = '20260818000126_a_merchant_is_fitted_by_the_same_hands.sql'
+// And to 0128 (wages are paid from profit: owed at sea, paid out of a sale's profit, forgiven at departure).
+const LAST = '20260818000128_wages_are_paid_from_profit.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

@@ -489,8 +489,8 @@ export interface MarketGood {
  * execute at, at the quantity named in `qty`. `nm` is the SAILED distance over the water
  * (`sea_reaches`, 0038 — derived from the raster, Arctic closed), never a straight line.
  * `profit` is the TRADE's margin — a voyage
- * also pays its crew's wages each day at sea, and that is deliberately not folded in here (see the
- * migration header): `days` is printed beside it so the exposure is visible.
+ * also owes its crew's wages each day at sea (paid out of the sale's profit since 0128), and that is
+ * deliberately not folded in here (see the migration header): `days` is printed beside it.
  */
 export interface TradeRoute {
   good_id: string
@@ -570,8 +570,8 @@ export interface BuyCapacity {
 }
 
 /** `world.crew_cost(fleet, crew)` — migration 0086. What a crew of `crew` costs per voyage-day at
- *  sea, from `public.crew_wages`, the ONE sum `voyage.settle` charges. Wages are charged at sea
- *  only, once per settled voyage-day; nothing is charged in port. Both rations are served so the
+ *  sea, from `public.crew_wages`, the ONE sum `voyage.settle` adds to what the fleet owes, once
+ *  per settled voyage-day; since 0128 it is paid only out of a sale's profit. Both rations are served so the
  *  screen never guesses which one a day will charge (the tick decides, from what is aboard). */
 export interface CrewCost {
   /** The count priced — the argument, or the crew aboard now when none was given. */
@@ -1499,6 +1499,7 @@ export interface StandingRouteLap {
   bought: number
   supplies: number
   repairs: number
+  /** Paid out of the sales' profit, never past it (0128). */
   wages: number
   net: number
   /** The refused trade lines that were stepped over, in the server's own words. */
@@ -1919,6 +1920,7 @@ export interface TradeLap {
   bought: number
   supplies: number
   repairs: number
+  /** Paid out of the sales' profit, never past it (0128). */
   wages: number
   /** The cargo she carried INTO the lap, at cost — the previous closed lap's `stock_out`. */
   stock_in: number
@@ -1951,6 +1953,7 @@ export interface TradeDay {
   bought: number
   supplies: number
   repairs: number
+  /** Paid out of the sales' profit, never past it (0128). */
   wages: number
   stock_in: number
   stock_out: number

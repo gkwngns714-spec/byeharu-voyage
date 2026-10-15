@@ -164,7 +164,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
       }.`
     }
     case 'WAGES':
-      return `Wages paid to ${fleet}.`
+      return `Wages paid to ${fleet} from profit.`
     // 0087: a request met. The SOLD event beside it says what the sale paid; this line says what
     // the request paid over it, from the payload's own `premium` — never re-derived here.
     case 'FULFILLED': {

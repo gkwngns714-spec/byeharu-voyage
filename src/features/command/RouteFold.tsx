@@ -170,7 +170,7 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
                 >
                   <span className="block text-t-caption text-ink-faint">
                     Sold {formatDucats(l.sold)} · Bought {formatDucats(l.bought)} · Supplies {formatDucats(l.supplies)}
-                    {l.repairs > 0 ? ` · Repairs ${formatDucats(l.repairs)}` : ''} · Wages {formatDucats(l.wages)}
+                    {l.repairs > 0 ? ` · Repairs ${formatDucats(l.repairs)}` : ''} · Wages from profit {formatDucats(l.wages)}
                     {l.skipped.length > 0 ? ` · ${l.skipped.length} skipped` : ''}
                   </span>
                 </Row>
