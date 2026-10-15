@@ -7,26 +7,23 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ## 2026-10-15 — S3 (0127): a ship learns by the mile — `osn-0127-levels`
 
-docs/SHIPS_AND_GEAR.md §4. `ships.xp` / `player_officers.xp` on 0069's one curve. ONE writer for a
-player's: `voyage.settle`'s arrival arm adds `public.voyage_xp(voyage)` (total_nm / 1,000 +
-`public.fight_points` per PIRATES day — fights are paid at arrival, with the miles) to every hull
-and posted officer; a merchant fleet is one `players.is_npc` read and nothing written. ONE writer
-for a merchant's: `public.npc_fix_level` (1 + floor(skill_sum / 3), once; npc_found hunk for new
-companies). `player_progress` derives the combat track (playable). Effects, all behind
-`levels_bite` (**shipped false, dark**) via `public.level_in_force`: `world.ship_stats` +handling
-/+accuracy/+sighting per level; `world.ship_slots` (new, the only reader of class_slots;
-`class_slots.min_level`, PK widened, unlock rows barca lookout@3, carlat hull@4, nau weapon@6);
-`mount_fitting` E_SLOT_LOCKED / E_SHIP_LEVEL (`item_kinds.min_level`, all 1); `fleet_officer_bonus`
-× `captain_level_mult`. `world.ship_view` serves level, xp, xp_from, next_level_at, slots_locked;
-`world.officers` a signed officer's level. Client: level chip + XP bar + dimmed locked boxes in
-ShipPanel (no bar on a merchant's), `Lv N` on a signed officer's tile.
-**Prod dry-runs (aborted = rolled back): 0126+0127 on head 0124, then 0127 alone on head 0126:** all asserts ok; 912 hulls,
-1,992 officer bonuses, 37 tracks read their pre-images dark; seed: 1 player hull 6.3 pts (one
-player has sailed: 17 reports, 6,267 nm), 821 merchant companies fixed in 256 ms (L1 ×590, L2 ×217,
-L3 ×59, L4 ×26). First dry-run deadlocked with the live tick on a probe that rewrote every hull's
-xp; the probe now reads the level-1 hulls as seeded and rewrites none. A second found the live tick moving cargo/crew/hull points between the pre-image and the
-check (read committed); the dark/lit comparisons now skip those keys (0127 touches none of them). Light it with one UPDATE:
-`update world_config set value = 'true' where key = 'levels_bite'`.
+docs/SHIPS_AND_GEAR.md §4. Experience lives in NEW side tables — `ship_xp`, `officer_xp`
+(+ `aboard_since`), `class_slot_unlocks`, `item_level_asks` — so no table the arrivals tick touches
+is ALTERed or FK-referenced (no ACCESS EXCLUSIVE on ships/player_officers/class_slots/item_kinds;
+lock_timeout 5 s; the clock need not be stopped). ONE writer of a player's: `voyage.settle` arrival
+arm (one hunk, inserted before the `-- 0034 STANDING ORDER` comment) credits `voyage_xp` (miles /
+1,000 + fight points) to every hull and to officers aboard since departure (`aboard_since` from
+`post_officer_to`, else `hired_at`) — an officer moved onto a fleet at sea earns nothing. Merchants:
+one `is_npc` read; `npc_fix_level` fixes 1 + floor(skill_sum/3) once. Everything bites only while
+`levels_bite` is on (**shipped false**): stats, slots (locked slots served only lit), E_SLOT_LOCKED /
+E_SHIP_LEVEL (dark keeps E_NO_SLOT / E_SLOTS_FULL), officer multiplier, and the combat track (lit, it
+rides the existing miles scan; dark = the old honest zero). Display only while dark: hull level/xp,
+signed officer level. Seed: hulls from fleet reports; signings only voyages departed after hired_at.
+**Prod dry-run, 0127 alone on head 0126 (0125 live), clock running, aborted = rolled back:** all
+asserts ok; 912 hulls, 1,992 bonuses, 37 tracks at pre-image; 821 merchant companies fixed (L1 ×590,
+L2 ×217, L3 ×59, L4 ×26). Earlier drafts deadlocked with the tick (mass UPDATE of ships in a probe)
+and tripped on live drift (cargo/crew moved mid-apply) — both fixed. Light: `update world_config
+set value = 'true' where key = 'levels_bite'`.
 
 ## 2026-10-15 — S2 (0126): a merchant is fitted by the same hands — `osn-0126-merchant-loadouts`
 
