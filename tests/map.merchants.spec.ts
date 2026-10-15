@@ -461,16 +461,20 @@ test('the merchants sail on the chart, and a tap opens a read-only sheet', async
   await expect(page.locator('[data-testid^="skill-"]')).toHaveCount(4)
   await expect(sheet.getByText('Skills', { exact: true })).toBeAttached()
   await expect(sheet.getByText('Officers', { exact: true })).toBeAttached()
-  // READ-ONLY: the only buttons are the tray's own (its handle and its close)
+  // READ-ONLY: the tray's own buttons (its handle and its close), and since 2026-10-15 openers of
+  // READ panels — her ships (PR #113), her figures and lap pills (0121's trades). None is a verb.
   const labels = await sheet.locator('button').evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label') ?? b.textContent ?? ''))
-  expect(labels.length).toBeGreaterThan(0)
-  for (const l of labels) expect(l).toMatch(/^(Close|Resize)$/)
+  // (A SIDE panel has no Resize handle — src/components/ui/Tray.tsx — so only Close is required.)
+  expect(labels).toContain('Close')
+  for (const l of labels) expect(l).not.toMatch(/\b(Buy|Sell|Sail|Fit|Unfit|Hire|Dismiss|Send|Assign|Save|Delete|Repair|Board)\b/i)
   await page.screenshot({ path: path.join(SHOTS, 'merchant-sheet-peek-390.png') })
 
   // open it to full (the handle steps the detent from the keyboard) and record the ships, officers, Skills
   const resize = sheet.getByRole('button', { name: 'Resize' })
-  await resize.press('ArrowUp')
-  await resize.press('ArrowUp')
+  if ((await resize.count()) > 0) {
+    await resize.press('ArrowUp')
+    await resize.press('ArrowUp')
+  }
   await page.waitForTimeout(600)
   await page.screenshot({ path: path.join(SHOTS, 'merchant-sheet-full-390.png') })
   // the officers and the company's Skills, further down the same sheet
