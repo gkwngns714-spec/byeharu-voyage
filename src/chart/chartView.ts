@@ -86,9 +86,36 @@ export const ZOOM_GLIDE_MS = 70
  *  carries the eye across the sheet rather than a notch deeper — a jump would lose the reader. */
 export const GOTO_GLIDE_MS = ZOOM_GLIDE_MS * 3
 
-/** How close a go-to brings the chart: a sea's width, where every named harbour is drawn. Never
- *  zooms OUT — a reader already closer keeps their zoom. */
-export const GOTO_SPAN_DEG = 12
+/**
+ * THE GO-TO'S READABLE BAND — how close a go-to (./goTo.ts) lands, decided HERE and nowhere else.
+ *
+ * The owner, on the live site after #128: the glide "zooms in too close — only water is visible".
+ * Measured on a local build (2026-10-16): from the opening frame the go-to landed at 12° and read
+ * well, but the rule was `min(current, 12)` — so a reader already zoomed in kept their zoom, down to
+ * `MIN_SPAN_X` (1.5°, 100%), a harbour approach on which the place lands alone: one dot, a sliver of
+ * coast, no neighbour. A go-to is asked for in order to SEE a place, so it lands inside a band in
+ * which a harbour stands among its neighbours:
+ *
+ *   GOTO_SPAN_MAX_DEG  12°  never wider — a reader further out is brought IN to it: a coast's
+ *                           width, the band in which every harbour is drawn ("a coast", below).
+ *   GOTO_CLEAR_MIN_DEG  6°  never narrower ACROSS THE CLEAR GLASS — a reader zoomed in closer is
+ *                           brought back OUT to it: Lisboa with Setúbal and the Tagus coast.
+ *
+ * Inside the band the reader's own zoom is kept. The floor is measured on the CLEAR glass (the part
+ * the side panels leave open) because that is all the reader sees: a 39rem panel over half a
+ * desktop glass would turn 6° of span into 3° seen. The floor never passes the ceiling.
+ */
+export const GOTO_SPAN_MAX_DEG = 12
+export const GOTO_CLEAR_MIN_DEG = 6
+
+/** The span (chart units across the WHOLE glass) a go-to lands at, from the reader's current span
+ *  and the share of the glass's width the side panels leave clear (1 = all of it). Pure. */
+export function goToSpan(currentSpanX: number, clearShare = 1): number {
+  const share = Number.isFinite(clearShare) && clearShare > 0 ? Math.min(1, clearShare) : 1
+  const floor = Math.min(GOTO_SPAN_MAX_DEG, GOTO_CLEAR_MIN_DEG / share)
+  const current = Number.isFinite(currentSpanX) && currentSpanX > 0 ? currentSpanX : GOTO_SPAN_MAX_DEG
+  return Math.min(GOTO_SPAN_MAX_DEG, Math.max(floor, current))
+}
 
 /** The shortest signed run from `a` to `b` around the sheet — the continuous chart wraps. */
 function wrapDelta(d: number): number {

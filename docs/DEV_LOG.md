@@ -16,6 +16,39 @@ before the glide's first frame committed, the frame sampler was stopped having s
 the wait now also requires the view to have moved off the pre-press view, so the wide sheet it sees
 is the settle AFTER the zoom. Locally: 20 of 20 repeats at 1545 × 784 under six workers, 0 skipped.
 
+---
+
+## 2026-10-16 — Go-to links polish (after #128) — `osn-goto-link-polish`
+
+Owner, on the live site after #128: the glide "zooms in too close — only water is visible"; and one
+press on a stop name "may also have opened" the trade-history panel. No migration.
+
+**(a) Too close — found and fixed.** The rule was `min(current, GOTO_SPAN_DEG = 12)`
+(`useChartSurface.glideTo`). Measured on a local build: from the opening frame (58 %) or the whole
+world (0 %) the go-to landed at 12° (62 %) and read well (Lisboa with Porto, Sevilla, Cádiz); but a
+reader already zoomed in KEPT their zoom, down to `MIN_SPAN_X` 1.5° (100 %) — a harbour approach on
+which the place lands alone with no neighbour. Now ONE rule, `chartView.ts goToSpan(current,
+clearShare)`: a READABLE BAND — never wider than 12° across the glass (`GOTO_SPAN_MAX_DEG`), never
+narrower than 6° across the CLEAR glass (`GOTO_CLEAR_MIN_DEG`; the part the side panels leave open,
+so a panel over half a desktop does not halve what is seen); inside the band the reader's zoom is
+kept. `glideTo` takes the rule (`spanFor`) instead of doing its own `min`; MapScreen hands it the
+clear share it already measures. `GOTO_SPAN_DEG` is gone.
+
+**(b) Trade history on a link press — NOT reproduced; guarded.** With the merchants switched on
+(tests/npcOn.fixture.ts), every go-to link in a merchant's sheet — name, where she is, each route
+stop, her officer's home port — was pressed with a mouse at 1280 × 800 and tapped with a finger at
+390 × 844 (13 presses): the trade-history panel opened 0 times, and the sheet stayed hers. In code,
+`GoToLink` stops its click and pointerdown at itself, and no element that holds a link opens the
+trading (the openers are the "So far"/"A lap" tiles and the lap pills in MerchantSheet, the route
+pills in VoyageTray, and the pick strip in TradeHistoryPanel — none of them an ancestor of a link).
+Measured: the route-stop links are 15 px tall and stand 52 px below the "A lap" tile at both widths.
+What the owner saw is not explained by this build; no speculative change was made.
+
+Specs (`tests/map.goto.spec.ts`): the band rule (pure); driven at 1280 and 390 — zoomed fully IN,
+then fully OUT, a go-to lands inside the band on the zoom readout; driven at 1280 (mouse) and 390
+(touch), merchants on — every link in her sheet rings the place and opens no trade history, no ship
+panel, and leaves her sheet open. Local run on a PGlite build: 7 passed, 0 skipped. tsc green.
+
 ## 2026-10-16 — main's acceptance made green, honestly — `osn-acceptance-green`
 
 The REQUIRED `acceptance` check was red on `main` itself (run 38728407504 on `bfd1e72`, 13 failing

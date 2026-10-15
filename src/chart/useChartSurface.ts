@@ -230,9 +230,10 @@ export interface ChartSurface {
   /** Put a place in the middle of the glass, at the current zoom. A VIEW change and nothing else —
    *  it is how the fleet list reaches a fleet the opening frame does not happen to contain. */
   readonly centreOn: (at: LatLon) => void
-  /** GLIDE a place to a point of the glass (`u`, a fraction of its width; 0.5 the middle) at no
-   *  wider than `spanX` — the zoom glide's own loop, aimed (./goTo.ts). The hand still wins. */
-  readonly glideTo: (at: LatLon, spanX: number, u?: number) => void
+  /** GLIDE a place to a point of the glass (`u`, a fraction of its width; 0.5 the middle) at the
+   *  span `spanFor` picks from the current one (./chartView.ts `goToSpan`, the one rule) — the zoom
+   *  glide's own loop, aimed (./goTo.ts). The hand still wins. */
+  readonly glideTo: (at: LatLon, spanFor: (currentSpanX: number) => number, u?: number) => void
   readonly handlers: {
     onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void
     onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => void
@@ -362,12 +363,12 @@ export function useChartSurface(
   // render).
   const committed = useRef<ChartView | null>(null)
   const glideTo = useCallback(
-    (at: LatLon, spanX: number, u = 0.5) => {
+    (at: LatLon, spanFor: (currentSpanX: number) => number, u = 0.5) => {
       const start = committed.current
       if (!start) return
       stopGlide()
       const g = glide.current
-      const span = Math.min(start.spanX, spanX)
+      const span = spanFor(start.spanX)
       const point = project(at)
       const to = clampView({ cx: point.x + (0.5 - u) * span, cy: point.y, spanX: span }, aspect)
       g.to = to

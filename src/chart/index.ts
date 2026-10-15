@@ -241,4 +241,4 @@ export { readRegionsFilter, REGIONS_FILTER_KEY, setRegionsFilter, useRegionsFilt
 export { goTo, useGoTo, GOTO_MARK_MS, GOTO_MIN_CLEAR_PX, type GoToTarget } from './goTo'
 export { GoToLink, PlaceLine } from './GoToLink'
 export { GoToMarker } from './GoToMarker'
-export { GOTO_SPAN_DEG } from './chartView'
+export { GOTO_CLEAR_MIN_DEG, GOTO_SPAN_MAX_DEG, goToSpan } from './chartView'
