@@ -6,6 +6,37 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 
 ---
 
+# ▼ RESUME ANCHOR — 2026-10-16 — READ THIS FIRST ▼
+
+**Paused for a machine change by the owner. Everything below this anchor is HISTORY.**
+
+## State (verified 2026-10-16 ~21:00 UTC)
+| | |
+|---|---|
+| `main` | `86c1897` (+ this doc), Pages deployed — live bundle `index-GGNILgxZ.js` checked |
+| **Prod DB head** | **0129** = main. Nothing pending. |
+| CI on `86c1897` | Build ✅ · Pages ✅ · Acceptance + Migrations apply-proof were still running at pause — read their result first |
+| Worktrees / agents | none |
+
+## LIVE today (PRs #129–#132)
+- **0129 (#129)** a merchant buys what her purse can pay: `npc_affordable` / `npc_buy_budget` (knob `npc_buy_purse_pct` 90) / `fleet_stock_at_cost`; planner + line renderer both bounded. Cause was BUYs refused `E_INSUFFICIENT_FUNDS` (median parcel 20,981 vs purse 3,993) → empty laps. Prod: avg lap net **+39 → +308**, funds refusals 819/h → ~0.
+- **#130** go-to glide lands inside a band (`goToSpan`, `src/chart/chartView.ts`: ≤ 12° across, ≥ 6° across the clear glass). "A stop-name press opens trade history" was NOT reproduced (13 presses, mouse + touch).
+- **#131** main's acceptance green again (was red with 13 specs → every `--auto` merge blocked): `Empty` primitive, WORDS fixes, PortInn/PortPrices moved to `src/live/`, chart imports through `chart/index.ts`, `glideShare` first-frame zoom bug; six specs brought up to #113/#117; merchants-spec races fixed.
+- **#132** map.lag settle wait now requires the viewBox to have changed (race proven in browser).
+
+## Next (in order)
+1. **Owner's call — remaining losing laps** (~2/3, median −12): empty laps where nothing affordable clears the 5 % bar (`npc_min_return_pct`); carried wages eating the margin; buy-only laps (profit lands next lap). Options: lower the bar, or don't charge stores/wages on ballast passages.
+2. Bugs found by #131, not fixed: (a) at 390 px an open side panel squeezes the corner controls → fleets list invisible; (b) `src/chart/hitTest.ts` compares a merchant against the name-rule harbour, not the nearest (Acapulco tap → merchant).
+3. Ships / skills / gear plan (`docs/SHIPS_AND_SKILLS.md`) → build S8.
+4. Combat stats bite (S4) after that. Owner decision still open: `city_treasury_switch(true)`.
+
+## Process notes learned
+- **A red required `acceptance` on main blocks every `gh pr merge --auto`** — check main's own Acceptance run before blaming a PR's red.
+- Fable credits ran out again → agents on Opus.
+- Any new migration makes the world image rebuild cold (~30 min on this PC); `npm run build | tail` hides the error — log the whole build.
+
+---
+
 # ▼ RESUME ANCHOR — 2026-10-15 (night) — READ THIS FIRST ▼
 
 **Paused again for a machine change. Everything below this anchor is HISTORY.**
