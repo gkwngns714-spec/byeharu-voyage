@@ -6,6 +6,46 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 
 ---
 
+# ▼ RESUME ANCHOR — 2026-10-15 (evening) — READ THIS FIRST ▼
+
+**Paused for a machine change by the owner. Everything below this anchor is HISTORY.**
+
+## State (verified 2026-10-15 ~02:40 UTC)
+
+| | |
+|---|---|
+| `main` | `28305e8` (PR #117), deployed to Pages — the live site was checked (city tabs, inn countdown) |
+| **Production DB head** | **0121**, matching `main`. Nothing pending. 0119–0121 were dry-run on prod inside `begin … rollback` (45 s, all self-asserts ok) before `supabase db push` |
+| Open branches from this session | none — all merged and deleted |
+| CI on `28305e8` | Build ✅ · Pages ✅ · **Acceptance and Migrations apply-proof were still running at pause — read their result first** (PR #117 was admin-merged before they finished). Known stale specs the city-tabs agent flagged: `map.sendfleet.spec.ts:196` (still measured the bottom tray before PR #113; updated, not re-run) and `map.merchants.spec.ts:419` (expects only Close/Resize buttons; PR #113 added ship rows — not updated) |
+
+## LIVE today (PRs #110–#117)
+- **Game clock** in the top bar, time only (`formatGameClock`, `src/lib/format/time.ts`). `GAME_CLOCK_RATE` = TIME_COMPRESSION/4 = **240×** (a game day = 6 real min). Ships stay on the server's voyage clock (960×). The Sun follows the game clock (`gameSunInstantMs`).
+- **Server time for every player** — `src/lib/serverClock.ts` measures the offset from every Supabase response's `Date` header; `serverNow()` drives AppShell's ONE CLOCK, `useSunlight`, `DaylightMask`.
+- **Soft day/night edge** — `DaylightMask` slides the raster every frame (owner insisted on keeping it). **Known cost: measured 2 fps on a dev build vs 48 fps without** — making it cheap (compositor layer / CSS mask) is open.
+- City dots 1.4× by day (`.bv-sun-day-dot`, `src/index.css`). Smooth zoom glide (`ZOOM_GLIDE_MS`, `useChartSurface.ts`).
+- **Right-side slide-in panels** (`Tray mode="side"`, 39rem) for fleet / merchant / city; a ship opens a second panel beside it (`mode="side-next"`, `src/live/ShipPanel.tsx`: portrait, RuneScape-style equipment slots, spec tiles). Merchant ships one per row; last-lap pills.
+- **City panel = Market | Port | Inn** (`CityHarbour.tsx` etc.); tapping a city where your fleet is docked opens the city (`src/chart/hitTest.ts:94`). **0119**: inn captains turn over every 15 real min (`inn_captain_rotate_minutes`).
+- **0120 merchant freedom**: `npc_min_return_pct` 5; at lap start a merchant prices her loop vs nearby loops and (hold ≥ 200 t) long hauls ≥ 2,000 nm and sails the best per real hour (knobs `npc_route_*`); cut-loss SELLs floored at cost. Measured locally: empty laps 75 % → 0 %. **Live effect not yet visible at pause** — laps closing then had started under the old plan (14 profit / 640 zero / 0 loss in the first 30 min). Arrivals job avg 14.3 s (was ~11), max 46.8 s; reconcile 66.7 s; no failures.
+- **0121 lap trade history**: `standing_route_laps.trades` (newest 7 laps), `world.fleet_trades`, `src/live/TradeHistoryPanel.tsx` opened from So far / A day / A lap / lap pills.
+
+## Next (owner's queue)
+1. **Check 0120 on prod after ~1 h**: share of zero-net laps, arrivals/reconcile durations (2-min limit). Roll back if arrivals times out.
+2. **Circular economy** — plan in `docs/ECONOMY_LOOP.md`; waiting on the owner's 5 answers (§7). Then build step 1 (city treasuries).
+3. 70 k ships idea: answered "not as full simulation"; proposed abstract background traffic — awaiting the owner.
+4. Make the soft day/night edge cheap.
+5. Merchant ships: serve slots + combat stats so their ship panel matches yours (needs a server change).
+
+## Supabase facts (verified on the billing page 2026-10-15)
+Pro plan, org "gkwngns714-spec's Org", Micro compute, 8 GB disk (DB 341 MB), 250 GB egress (0.1 used), spend cap ON, daily backups. The old `byeharu` project is a different org.
+
+## Process notes learned today
+- Owner wants speed: agent briefs = cached-prefix migration apply + its self-assert, tsc, eslint, build, only the touched spec. **No from-zero `db:apply` or full `db:proof` locally** — CI runs them. Never run more than one heavy local chain at once.
+- Never remove a feature the owner asked for without asking (the soft edge was reverted and restored).
+- **Worktree cleanup: never `git worktree remove --force` by a pattern** — on 10-15 a `bv-*` glob force-removed old September worktrees (`bv-blink`, `bv-fix`, `bv-merchants`, `bv-npc`, `bv-quay-tray`, `bv-routes`, `bv-stopface`); their branches are all pushed, but any uncommitted edits in them are gone. Check `git status` per worktree first. Agent worktrees with a `node_modules` **junction** to the main checkout must be unlinked before deletion.
+
+---
+
 # ▼ RESUME ANCHOR — 2026-10-15 ▼
 
 **Handed off for a machine change. Everything below this anchor is HISTORY.**
