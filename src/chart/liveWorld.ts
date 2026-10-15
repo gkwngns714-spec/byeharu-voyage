@@ -69,33 +69,9 @@ interface ServedFleet {
   readonly hulls: readonly (HullClass | null)[]
 }
 
-/**
- * THE CLASS THE SERVER NAMED, AS ONE OF THE THREE SILHOUETTES — or NULL (row 120).
- *
- * `world.fleets` serves a ship's class as the class's NAME and not its code (`'class', c.name` —
- * 0009:180 and every re-cut of that sub-select since), so this is the one place in the client that
- * reads a ship class name back into something a renderer can switch on, and it is a table of the
- * three names the chain seeds (`…0003…:2089-2091`).
- *
- * EXACT NAMES, NOT A SUBSTRING SNIFF, and an unknown name is NULL rather than the nearest guess. A
- * fourth hull, a renamed one, or a translated one then draws the class-less hull — true, and
- * visibly saying nothing — where a fuzzy match would quietly draw her as whichever of these three
- * her name happened to brush against. docs/NO_SPAGHETTI.md §7C's mirror rule: the lesser answer is
- * allowed to be lesser, never wrong.
- *
- * THIS TABLE IS HALF RETIRED, AND SAYS WHICH HALF. `world.sea_traffic` now serves `hulls` as
- * `ship_classes.code` per hull, flagship first (0102, 2026-10-11), so a MERCHANT needs no table at
- * all — `hullCodesOf` below reads the codes straight off the wire. `world.fleets` still serves a
- * ship's class as `c.name`, so a CAPTAIN's own fleets still come through here. The day that read
- * serves a code too, this table goes and `hullsOf` becomes `hullCodesOf`.
- */
-const HULL_CLASS_BY_SERVED_NAME: Readonly<Record<string, HullClass>> = {
-  barca: 'barca',
-  'caravela latina': 'carlat',
-  'nau / carrack': 'nau',
-}
-
-/** THE SAME, FROM CODES THE SERVER ALREADY ORDERED (0102). A merchant's `hulls` arrive flagship
+/** A SHIP CLASS AS ONE OF THE THREE SILHOUETTES, FROM ITS CODE — or NULL (row 120). Since 0124 every
+ *  read serves `ship_classes.code` (`hulls` on world.sea_traffic since 0102, `class_code` on every
+ *  ship since 0124), so no name is read back into a class anywhere in the client. A merchant's `hulls` arrive flagship
  *  first out of `world.sea_traffic`, so there is nothing to partition here and nothing to look up
  *  by name: a code either names one of the three silhouettes or it names none, and none draws the
  *  class-less hull. `HullClass` is the code set, so the check is the cast. */
@@ -117,7 +93,7 @@ export function hullClassOfCode(code: string | null | undefined): HullClass | nu
 function hullsOf(ships: readonly FleetShip[] | undefined): (HullClass | null)[] {
   const all = ships ?? []
   return [...all.filter((s) => s.is_flagship), ...all.filter((s) => !s.is_flagship)].map(
-    (s) => HULL_CLASS_BY_SERVED_NAME[(s.class ?? '').trim().toLowerCase()] ?? null,
+    (s) => hullClassOfCode(s.class_code),
   )
 }
 
