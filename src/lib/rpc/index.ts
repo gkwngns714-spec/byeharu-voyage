@@ -66,6 +66,9 @@ import type {
   MerchantCard,
   FleetTrades,
   PortMerchants,
+  TownHallView,
+  InvestReceipt,
+  WorkKind,
   StandingRouteDeleted,
   StandingRoutePaused,
   StandingRouteSaved,
@@ -574,4 +577,23 @@ export function worldFleetTrades(fleetId: string): Promise<RpcResult<FleetTrades
  *  beat's read is `worldSeaRoster` and it must not grow. Dark: empty. */
 export function worldPortMerchants(portId: string): Promise<RpcResult<PortMerchants>> {
   return call<PortMerchants>('worldPortMerchants', [portId])
+}
+
+/** THE TOWN HALL (0122/0123) — one harbour's purse, its works, who invested, and what you hold
+ *  there. Asked when the tab is open, not on the beat. */
+export function worldTownHall(portId: string): Promise<RpcResult<TownHallView>> {
+  return call<TownHallView>('worldTownHall', [portId])
+}
+
+/** What `cmdInvest` would do — the real buy, rolled back — or the refusal it would give
+ *  (E_NOT_DOCKED, E_OVERSUBSCRIBED with have / need in shares, E_INVEST_MIN, …). */
+export async function cmdPreviewInvest(portId: string, kind: WorkKind, shares: number): Promise<RpcResult<InvestReceipt>> {
+  const r = await call<{ estimate: InvestReceipt }>('cmdPreviewInvest', [portId, kind, shares])
+  return r.ok ? ok(r.value.estimate) : r
+}
+
+/** Buy `shares` of a city's next level of `kind` — your company pays the city; only while a fleet of
+ *  yours lies docked there. */
+export function cmdInvest(portId: string, kind: WorkKind, shares: number): Promise<RpcResult<InvestReceipt>> {
+  return call<InvestReceipt>('cmdInvest', [portId, kind, shares])
 }

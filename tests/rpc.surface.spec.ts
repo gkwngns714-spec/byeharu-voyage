@@ -1478,6 +1478,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // a tap, a merchant's (switch on) or the caller's own fleet; anything else refuses E_NOT_FOUND
       // as the card does. Landed WITH the face that reads it (TradeHistoryPanel).
       'worldFleetTrades',
+      // Pin moved deliberately 2026-10-15 with migrations 0122/0123 (owner: *"a building called town
+      // hall, where you click and can invest, and see who or what npcs invested"*): THE TOWN HALL —
+      // the read (purse, works, investors, your holdings) and the buy with its dry run. Neither verb
+      // takes a fleet or a player id: the caller's company buys, docked at that harbour only
+      // (E_NOT_DOCKED). Landed WITH the face that reads them (CityTownHall).
+      'worldTownHall', 'cmdPreviewInvest', 'cmdInvest',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

@@ -259,6 +259,14 @@ function MerchantBody({
                   }`}
                 </span>
               )}
+              {/* 0123: where her surplus went — her largest stake, and how many cities more. */}
+              {card.company.invested && card.company.invested.length > 0 && (
+                <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-invested">
+                  {`Invested ${formatDucats(card.company.invested[0].paid)} at ${card.company.invested[0].name}${
+                    card.company.invested.length > 1 ? ` +${card.company.invested.length - 1}` : ''
+                  }`}
+                </span>
+              )}
             </span>
           }
           value={<Figure value={formatDucats(card.company.fortune)} />}
