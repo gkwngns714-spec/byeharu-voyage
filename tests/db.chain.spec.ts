@@ -321,6 +321,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // what npcs invested"): works, shares, coupons from surplus, merchants invest on their loop; dark.
 // And to 0124 (one ship, one builder: merchant ship panels get slots and stats).
 // And to 0126 (a merchant is fitted by the same hands: mount_fitting, authored loadouts, backfill).
+// 0125 (owner: "the merchant npc should also be like me" — a merchant is in port the moment she truly
+// arrives; the arrivals sweep runs every 15 s) sits BEFORE 0126 in the chain: its number was taken
+// first and it landed second, so the last file was 0126.
 // And to 0127 (a ship learns by the mile: ship and officer levels, dark behind levels_bite).
 const LAST = '20260818000127_a_ship_learns_by_the_mile.sql'
 
