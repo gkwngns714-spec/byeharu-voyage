@@ -19,7 +19,15 @@
 // shard by construction, and the `acceptance` verdict job independently requires the passes
 // summed over the shards to EQUAL the `--list` total.
 //
-// USAGE   node scripts/ci/shard-plan.mjs <i> <N> <out-file>
+// USAGE   node scripts/ci/shard-plan.mjs <i> <N> <out-file> [--files=RE | --not-files=RE] [--grep-invert=TEXT]
+//
+//   --files / --not-files (2026-10-15) carve the suite into DISJOINT pools by spec file name, so
+//   acceptance.yml can run the pure-Node world-building specs (db.*) on their own runner without
+//   waiting for the merchants-on world the browser shards need. The two flags are each other's
+//   complement with the same RE, so every listed test is in exactly one pool, and the verdict's
+//   sum-equals-`--list` floor still sees every test.
+//   --grep-invert is handed to `playwright test --list` verbatim; the verdict must list with the
+//   same value (acceptance.yml passes it through a job output), or its denominator disagrees.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { execFileSync } from 'node:child_process'
@@ -30,8 +38,8 @@ import path from 'node:path'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 /** Every test Playwright would run, as `{ file, id }`, parsed from `playwright test --list`. */
-export function listTests() {
-  const out = execFileSync('npx', ['playwright', 'test', '--list'], {
+export function listTests(extraArgs = []) {
+  const out = execFileSync('npx', ['playwright', 'test', '--list', ...extraArgs], {
     cwd: ROOT,
     encoding: 'utf8',
     shell: process.platform === 'win32',
@@ -87,7 +95,19 @@ if (isMain) {
     process.exit(2)
   }
   const weights = JSON.parse(readFileSync(path.join(ROOT, 'tests', 'shard-weights.json'), 'utf8'))
-  const tests = listTests()
+  const opt = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3)
+  const grepInvert = opt('grep-invert')
+  // Quoted by hand on Windows only, where listTests goes through a shell that would split it.
+  const q = (a) => (process.platform === 'win32' ? JSON.stringify(a) : a)
+  let tests = listTests(grepInvert ? ['--grep-invert', q(grepInvert)] : [])
+  const only = opt('files')
+  const not = opt('not-files')
+  if (only) tests = tests.filter((t) => new RegExp(only).test(t.file))
+  if (not) tests = tests.filter((t) => !new RegExp(not).test(t.file))
+  if (tests.length === 0) {
+    console.error('shard-plan: the file filter left no tests — refusing to plan an empty pool')
+    process.exit(1)
+  }
   const shards = planShards(tests, n, weights)
   shards.forEach((s, k) =>
     console.log(`shard ${k + 1}/${n}: ~${Math.round(s.seconds / 60)} min of measured test time, ${s.tests} test(s), ${s.entries.length} group(s)`),
