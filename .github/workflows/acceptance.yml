@@ -155,19 +155,22 @@ jobs:
     outputs:
       grep_invert: ${{ steps.defer.outputs.grep_invert }}
     steps:
+      # Depth 2: the PR's merge commit AND its first parent, the main it was merged onto.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
+      # Diffed against the merge commit's FIRST PARENT, not `pull_request.base.sha`: that sha is
+      # the base when the PR was last opened/synced and can be older than the main GitHub merged
+      # onto — run 38711128598 then counted main's own new migration as this PR's.
       - name: Does this PR touch what the growth test reads?
         id: defer
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "not a PR: the growth test runs"; echo "grep_invert=" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          git fetch --no-tags --depth=1 origin "$BASE_SHA"
-          changed="$(git diff --name-only "$BASE_SHA" HEAD)"
+          changed="$(git diff --name-only HEAD^1 HEAD)"
           echo "files this PR changes:"; echo "$changed" | sed 's/^/  /'
           if echo "$changed" | grep -qE '^(supabase/migrations/|src/lib/db/|tests/db\.chain\.spec\.ts$|tests/frozenChain\.ts$|package(-lock)?\.json$)'; then
             echo "it does: the growth test runs"; echo "grep_invert=" >> "$GITHUB_OUTPUT"

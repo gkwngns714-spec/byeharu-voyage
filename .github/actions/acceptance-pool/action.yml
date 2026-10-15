@@ -183,7 +183,9 @@ runs:
           playwright-results.json
         retention-days: 7
 
+    # NEVER `kill 0`: with no server started (the db pool) that signals the whole process group,
+    # the job's own shell included — exit 143 on run 38711128598 after every db test had passed.
     - name: Stop the preview server (always)
-      if: always()
+      if: always() && inputs.kind != 'db'
       shell: bash
-      run: kill "${PREVIEW_PID:-0}" 2>/dev/null || true
+      run: if [ -n "${PREVIEW_PID:-}" ]; then kill "$PREVIEW_PID" 2>/dev/null || true; fi
