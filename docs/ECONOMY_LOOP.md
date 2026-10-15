@@ -685,6 +685,15 @@ None of these needs a migration; each is one knob with one reader.
   `do_hire` already does); if a proof holds it equal, the proof learns the column is live (it must already,
   because hiring moves it).
 
+**Owner's answers (2026-10-15) — these override the recommendations below:**
+1. **Limited money: the market IS the city's purse** (full conservation). A city pays sellers from its treasury and keeps buyers' money.
+2. **Merchants pay full running costs (1.0)**, the same as a player.
+3. *Still open* — the owner asked what it means; explained in chat, waiting on the answer.
+4. **Debt, not decay.** A city may go below zero. Debt is meant to drive city-to-city interaction: war, donations, help from NPCs. (This replaces the `check (ducats >= 0)` floor and the "a broke harbour cannot buy" closed-quay problem: a broke city keeps buying and goes into debt.)
+5. **Everyone may invest in cities**: players, and merchants anywhere (not only at home).
+
+Also decided 10-15: the 70k-ships idea is **dropped**; the soft day/night edge stays as it is for now; merchant ship slots + combat stats are **wanted**, and **more ship types and more gear** must be made.
+
 **Questions for the owner:**
 1. **Should the market itself be the city's purse?** That is full conservation: a city pays sellers from
    its treasury and keeps buyers' money. A broke harbour then cannot buy and ~830 merchants find closed

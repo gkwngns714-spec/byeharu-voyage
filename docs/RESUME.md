@@ -29,12 +29,12 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 - **0120 merchant freedom**: `npc_min_return_pct` 5; at lap start a merchant prices her loop vs nearby loops and (hold ≥ 200 t) long hauls ≥ 2,000 nm and sails the best per real hour (knobs `npc_route_*`); cut-loss SELLs floored at cost. Measured locally: empty laps 75 % → 0 %. **Live effect not yet visible at pause** — laps closing then had started under the old plan (14 profit / 640 zero / 0 loss in the first 30 min). Arrivals job avg 14.3 s (was ~11), max 46.8 s; reconcile 66.7 s; no failures.
 - **0121 lap trade history**: `standing_route_laps.trades` (newest 7 laps), `world.fleet_trades`, `src/live/TradeHistoryPanel.tsx` opened from So far / A day / A lap / lap pills.
 
-## Next (owner's queue)
-1. **Check 0120 on prod after ~1 h**: share of zero-net laps, arrivals/reconcile durations (2-min limit). Roll back if arrivals times out.
-2. **Circular economy** — plan in `docs/ECONOMY_LOOP.md`; waiting on the owner's 5 answers (§7). Then build step 1 (city treasuries).
-3. 70 k ships idea: answered "not as full simulation"; proposed abstract background traffic — awaiting the owner.
-4. Make the soft day/night edge cheap.
-5. Merchant ships: serve slots + combat stats so their ship panel matches yours (needs a server change).
+## Next (owner's queue — updated with the owner's answers, 2026-10-15 late)
+1. **Check 0120 on prod**: share of zero-net laps, arrivals/reconcile durations (2-min limit). Roll back if arrivals times out. Read the Acceptance result on `a784986`.
+2. **Circular economy** — `docs/ECONOMY_LOOP.md` §7 now holds the owner's answers: limited money (market = city purse), merchants pay full costs, **cities go into debt** (→ war / donations / NPC aid between cities), everyone may invest anywhere. Question 3 ("what a city lacks") is still open. The plan must be re-cut for these answers before building step 1.
+3. **Merchant ships: serve slots + combat stats** (server change), **and make more ship types and more gear.**
+4. Soft day/night edge: leave as is (owner, 10-15).
+5. 70k ships idea: **dropped** by the owner.
 
 ## Supabase facts (verified on the billing page 2026-10-15)
 Pro plan, org "gkwngns714-spec's Org", Micro compute, 8 GB disk (DB 341 MB), 250 GB egress (0.1 used), spend cap ON, daily backups. The old `byeharu` project is a different org.
