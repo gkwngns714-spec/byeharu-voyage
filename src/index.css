@@ -754,6 +754,37 @@ body {
   );
 }
 
+/* THE MAP'S SLIDE-IN PANEL (screenLayout.ts traySideEdgeClass): in from the right edge. */
+@keyframes bv-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+.bv-slide-in-right {
+  animation: bv-slide-in-right var(--duration-sheet) var(--ease-sheet);
+}
+
+/* THE SECOND PANEL (screenLayout.ts traySideNextClass): out from under the first panel's left
+   edge — it starts hidden behind it and slides left into place. */
+@keyframes bv-slide-out-left {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@media (width >= 64rem) {
+  .lg\:bv-slide-out-left {
+    animation: bv-slide-out-left var(--duration-sheet) var(--ease-sheet);
+  }
+}
+
 @keyframes bv-fade-in {
   from {
     opacity: 0;

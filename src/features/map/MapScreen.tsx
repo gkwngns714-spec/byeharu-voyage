@@ -40,7 +40,7 @@ import {
   type MapSelection,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
-import { chromeAsideTrayClass } from '../../components/ui'
+import { chromeAsideSideTrayClass } from '../../components/ui'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
@@ -282,11 +282,11 @@ function Chart({
 
       {/* THE CHROME LAYER — corners only; pointer-transparent itself so it can never swallow a
           pan, and each child that is meant to be pressed turns pointer events back on.
-          ITS RIGHT EDGE GIVES WAY TO AN OPEN SIDE TRAY (screenLayout.ts `chromeAsideTrayClass`),
-          so the zoom column and Regions are never left underneath the panel on a wide glass. */}
+          ITS RIGHT EDGE GIVES WAY TO AN OPEN SIDE TRAY (screenLayout.ts `chromeAsideSideTrayClass`),
+          so the zoom column and Regions are never left underneath the panel at any width. */}
       <div
         className={`pointer-events-none absolute inset-0 z-10 ${
-          selectedFleet || selectedMerchant ? chromeAsideTrayClass() : ''
+          selectedFleet || selectedMerchant || place ? chromeAsideSideTrayClass() : ''
         }`}
       >
         {surface.width > 0 && (
@@ -342,6 +342,7 @@ function Chart({
       {selectedMerchant && (
         <MerchantSheet
           key={selectedMerchant.id}
+          mode="side"
           card={card && card.fleet.id === selectedMerchant.id ? card : null}
           line={merchantLine(selectedMerchant, (c) => portsByCode.get(c)?.name ?? c, nowMs)}
           onClose={() => setSelection(null)}

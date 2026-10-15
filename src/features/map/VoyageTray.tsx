@@ -1,8 +1,12 @@
 import { useState } from 'react'
-import { Bar, Figure, Row, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
+import { Bar, Figure, Icon, Row, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
 import { formatCountdown, formatFixed, formatInt, formatMiles, formatVoyageDays, pointLabel, realMsToVoyageDays } from '../../lib/format'
 import { CHART_CHROME, hullPath, type FleetOnChart, type HullClass, type MapPort } from '../../chart'
 import { fleetLine } from './fleetLine'
+import { useWorld } from '../../live/worldStore'
+import type { FleetShip } from '../../lib/rpc'
+import { ShipPanel } from '../../live/ShipPanel'
+
 
 import { WatersAhead } from './WatersAhead'
 
@@ -82,6 +86,49 @@ function HullStrip({ hulls }: { hulls: readonly (HullClass | null)[] }) {
   )
 }
 
+/** The server's class NAME (`FleetShip.class`) → the hull code its silhouette is drawn from. */
+const CLASS_CODE: Record<string, HullClass> = {
+  Barca: 'barca',
+  'Caravela latina': 'carlat',
+  'Nau / Carrack': 'nau',
+}
+
+/** THE FLEET'S SHIPS, one pressable row each (owner, 2026-10-15: *"name of the fleet, then
+ *  ships"*); a press slides her own panel in over this one (./ShipPanel.tsx). */
+function ShipList({ ships, onOpen }: { ships: readonly FleetShip[]; onOpen: (id: string) => void }) {
+  if (ships.length === 0) return null
+  return (
+    <ul className="flex flex-col gap-1 py-2" data-testid="tray-ships">
+      {ships.map((ship) => (
+        <li key={ship.id}>
+          <button
+            type="button"
+            onClick={() => onOpen(ship.id)}
+            data-testid="tray-ship"
+            className="flex min-h-11 w-full items-center gap-3 rounded-control bg-surface-2 px-3 py-2 text-left"
+          >
+            <svg width={26} height={26} viewBox="-15 -15 30 30" aria-hidden className="shrink-0">
+              <path
+                d={hullPath(CLASS_CODE[ship.class] ?? null, 13)}
+                className="fill-accent stroke-chart-sea"
+                strokeWidth={0.9}
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-t-body">{ship.name}</span>
+              <span className="block truncate text-t-caption text-ink-faint">
+                {ship.is_flagship ? `${ship.class} · flagship` : ship.class}
+              </span>
+            </span>
+            <Icon name="chevron" size={18} className="shrink-0 text-ink-faint" />
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 /** What a reader calls each class. The CODE is the server's word; this is the player's. */
 const HULL_WORD: Record<string, string> = {
   barca: 'barca',
@@ -106,9 +153,14 @@ export function VoyageTray({
   const voyage = fleet.voyage
   const daysToRun = voyage ? Math.max(0, realMsToVoyageDays(voyage.etaMs - nowMs)) : 0
   const stores = fleet.fleet.enduranceDays
+  const ships = useWorld((s) => s.fleets.find((f) => f.id === fleet.fleet.id)?.ships)
+  const [openShipId, setOpenShipId] = useState<string | null>(null)
+  const openShip = ships?.find((s) => s.id === openShipId) ?? null
 
   return (
+    <>
     <Tray
+      mode="side"
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={<TrayTitle name={fleet.fleet.name} line={fleetLine(fleet, portsByCode, nowMs)} />}
@@ -126,7 +178,11 @@ export function VoyageTray({
           densest true thing this screen holds: what she is, at a glance, in the SAME shapes the
           chart draws, so the mark on the water and the row in the sheet are one language. No new
           read, no new wire key — `MapFleet.hulls` has been served since row 120. */}
-      <HullStrip hulls={fleet.fleet.hulls ?? []} />
+      {ships && ships.length > 0 ? (
+        <ShipList ships={ships} onOpen={setOpenShipId} />
+      ) : (
+        <HullStrip hulls={fleet.fleet.hulls ?? []} />
+      )}
 
       {/* ── THE FACTS, IN A GRID RATHER THAN A COLUMN ───────────────────────────────────────────
           Full-width label/value rows spend a whole line on four words and a number, which is how a
@@ -170,5 +226,7 @@ export function VoyageTray({
       </Row>
       {voyage && <WatersAhead waters={voyage.waters} />}
     </Tray>
+    {openShip && <ShipPanel key={openShip.id} ship={openShip} onClose={() => setOpenShipId(null)} />}
+    </>
   )
 }

@@ -201,6 +201,9 @@ export function daylightRaster(sun: LatLon): Uint8ClampedArray {
   return out
 }
 
-/** How often the picture re-reads the clock. The Sun runs on the GAME clock (useSunlight.ts), a
- *  full turn per game day = 90 real seconds at 960×, so 4° a second; half a second is a 2° step. */
+/** How often the picture re-reads the clock. The Sun runs on the GAME clock (GAME_CLOCK_RATE,
+ *  480×: a full turn in 3 real minutes, 2° a second), so half a second is a 1° step for the
+ *  harbour lights. The day/night edge itself glides every frame (DaylightMask) — kept by the
+ *  owner's word although it repaints the masked coast each frame (measured 2 fps on a dev build,
+ *  2026-10-15); making it cheap is open work. */
 export const SUN_REFRESH_MS = 500

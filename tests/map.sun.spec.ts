@@ -186,7 +186,7 @@ test('the raster is the shade sampled once per degree: half the world lit, the r
     if (Math.abs(lat) <= 72) expect(Math.min(...vals), `row at ${lat}°`).toBe(0)
     else expect(Math.min(...vals), `row at ${lat}° never leaves twilight`).toBeGreaterThan(0)
   }
-  // Refreshed every half second: the Sun runs on the game clock, 4° a real second at 960×.
+  // Refreshed every half second: the Sun runs on the game clock, 2° a real second at 480×.
   expect(SUN_REFRESH_MS).toBe(500)
 })
 

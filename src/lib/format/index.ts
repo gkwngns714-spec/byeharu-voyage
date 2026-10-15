@@ -37,6 +37,7 @@ export {
   seasonOfMonth,
   gameDate,
   formatGameDate,
+  GAME_CLOCK_RATE,
   gameTimeOfDayMs,
   formatGameClock,
   gameSunInstantMs,

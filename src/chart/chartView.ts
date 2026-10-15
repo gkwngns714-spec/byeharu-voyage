@@ -78,6 +78,10 @@ export function zoomPercent(spanX: number): number {
  *  few enough to be usable and many enough not to lose your place. */
 export const ZOOM_STEP = 1.6
 
+/** How soft a wheel notch or a +/− press lands: the zoom still owed decays with this time
+ *  constant (ms), so a step is ~95% there in three of them. useChartSurface's glide. */
+export const ZOOM_GLIDE_MS = 70
+
 /** The viewBox a view describes on a surface of the given pixel aspect ratio (width / height). */
 export function viewBoxOf(view: ChartView, aspect: number): ViewBox {
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1
