@@ -5,12 +5,14 @@ import { create } from 'zustand'
 // which turns to Port where her fleets are listed. Kept across cities, so a player reading prices
 // along a coast taps city after city and stays on Market. Session chrome, never game state.
 
-export type CityTab = 'market' | 'port' | 'inn'
+// The fourth, Town Hall (0123, owner 2026-10-15): the city's purse, its works, Invest, who invested.
+export type CityTab = 'market' | 'port' | 'inn' | 'townhall'
 
 export const CITY_TABS: readonly { id: CityTab; label: string }[] = [
   { id: 'market', label: 'Market' },
   { id: 'port', label: 'Port' },
   { id: 'inn', label: 'Inn' },
+  { id: 'townhall', label: 'Town Hall' },
 ]
 
 export const useCityTab = create<{ tab: CityTab; turnTo: (tab: CityTab) => void }>((set) => ({

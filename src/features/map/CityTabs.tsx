@@ -8,9 +8,10 @@ import type { FleetView, SnapshotPort } from '../../lib/rpc'
 import { PortInn } from '../port/PortInn'
 import { PortPrices } from '../port/PortPrices'
 import { CITY_TABS, useCityTab } from './cityTab'
+import { CityTownHall } from './CityTownHall'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE CITY PANEL'S THREE TABS — Market | Port | Inn
+// THE CITY PANEL'S FOUR TABS — Market | Port | Inn | Town Hall
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The owner, 2026-10-15:
@@ -32,6 +33,8 @@ import { CITY_TABS, useCityTab } from './cityTab'
 //   Inn     `PortInn` — the captains in the room this quarter hour (`world.inn`, 0119), and, for
 //           a fleet of yours lying here, the crew stepper (HIRE/DISMISS) and supplies
 //           (PROVISION), both through `useStepOrder`'s dry run and one button.
+//   Town Hall `CityTownHall` (0123) — the city's purse, its works, Invest (`cmd.preview_invest` →
+//           `cmd.invest`, docked here only), and the investors by name (`world.town_hall`).
 //
 // Every second-level tray these faces open stands `side-next`, beside the panel — the pattern a
 // ship opened from a fleet panel already uses (src/live/ShipPanel.tsx).
@@ -56,6 +59,7 @@ export function CityTabs({ portCode, harbour }: { portCode: string; harbour: Rea
         {tab === 'port' && harbour}
         {tab === 'market' && port && <CityMarket port={port} reader={acting} />}
         {tab === 'inn' && port && <PortInn port={port} fleet={acting} alongside={docked[0] ?? null} trayMode="side-next" />}
+        {tab === 'townhall' && port && <CityTownHall port={port} trayMode="side-next" />}
       </div>
     </div>
   )

@@ -1865,6 +1865,8 @@ export interface MerchantCard {
     fortune: number
     refounded: number
     refounded_at: string | null
+    /** 0123: her stakes in cities, by harbour, largest first. Absent on a server before 0123. */
+    invested?: { port: string; name: string; paid: number }[]
   }
   fleet: {
     id: string
@@ -1975,4 +1977,65 @@ export interface FleetTrades {
   /** The lap under way: what she has traded so far. */
   open: { lap_no: number; started_at: string; stops: TradeStop[] } | null
   day: TradeDay | null
+}
+
+// ── 0123 — THE TOWN HALL (docs/ECONOMY_LOOP.md §5) ──────────────────────────────────────────────
+
+export type WorkKind = 'docks' | 'market' | 'production' | 'inn'
+
+/** One of a city's four works: what is built, and what the next level offers. */
+export interface CityWork {
+  kind: WorkKind
+  level: number
+  level_max: number
+  /** What the next level costs whole, or null once the work is fully built. */
+  next_cost: number | null
+  /** One share of the next level, or null once fully built. */
+  share_price: number | null
+  /** Shares of the next level still for sale — 0 while the city's books are closed. */
+  offered: number
+  subscribed: number
+}
+
+/** One holder of a city's shares — a merchant company or a player's company, by name. */
+export interface CityInvestor {
+  name: string
+  merchant: boolean
+  kind: WorkKind
+  shares: number
+  paid: number
+}
+
+/** `world.town_hall(port)` — one harbour's purse, its last full day's book, its works, who invested. */
+export interface TownHallView {
+  port: string
+  /** False while the city purses are dark (0122): nothing is offered, nothing moves a purse. */
+  enabled: boolean
+  purse: {
+    ducats: number
+    reserve: number
+    /** 1 at or above the reserve; falls toward 0.5 as the purse empties (what the city bids). */
+    bid_factor: number
+    rolled_at: string | null
+    seeded_at: string | null
+    /** The tax on the PROFIT of a sale here (lit), as a fraction. */
+    tax_rate: number
+  }
+  day: { game_day: number; in: Record<string, number>; out: Record<string, number> }
+  works: CityWork[]
+  investors: CityInvestor[]
+  you: { docked: boolean; holdings: { kind: WorkKind; shares: number; paid: number; owed: number }[] }
+}
+
+/** `cmd.invest` — the stake bought (also the dry run's `estimate`). */
+export interface InvestReceipt {
+  port: string
+  kind: WorkKind
+  shares: number
+  price: number
+  cost: number
+  completed: boolean
+  level: number
+  subscribed: number
+  purse: number
 }
