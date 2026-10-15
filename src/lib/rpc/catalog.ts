@@ -317,6 +317,29 @@ export const RPCS = {
   // the beat's read and it must not grow. A read, no player id, dark until the owner's switch; a
   // player's fleet is never a row.
   worldPortMerchants: { schema: 'world', fn: 'port_merchants', args: [{ name: 'p_port', type: 'uuid' }] },
+  // 0122/0123 (owner, 2026-10-15) — THE TOWN HALL: one harbour's purse, its works, who invested, and
+  // what you hold there. A READ at a tap (the city's fourth tab), never on the beat. The buy and its
+  // dry run take no fleet and no player id: the caller's company buys, only while a fleet of hers
+  // lies docked at that harbour (E_NOT_DOCKED) — the read's `you.docked` is the same test.
+  worldTownHall: { schema: 'world', fn: 'town_hall', args: [{ name: 'p_port', type: 'uuid' }] },
+  cmdPreviewInvest: {
+    schema: 'cmd',
+    fn: 'preview_invest',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_kind', type: 'text' },
+      { name: 'p_shares', type: 'int' },
+    ],
+  },
+  cmdInvest: {
+    schema: 'cmd',
+    fn: 'invest',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_kind', type: 'text' },
+      { name: 'p_shares', type: 'int' },
+    ],
+  },
   cmdStandingRouteSave: {
     schema: 'cmd',
     fn: 'standing_route_save',
