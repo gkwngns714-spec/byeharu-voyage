@@ -29,12 +29,12 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 - **0120 merchant freedom**: `npc_min_return_pct` 5; at lap start a merchant prices her loop vs nearby loops and (hold ≥ 200 t) long hauls ≥ 2,000 nm and sails the best per real hour (knobs `npc_route_*`); cut-loss SELLs floored at cost. Measured locally: empty laps 75 % → 0 %. **Live effect not yet visible at pause** — laps closing then had started under the old plan (14 profit / 640 zero / 0 loss in the first 30 min). Arrivals job avg 14.3 s (was ~11), max 46.8 s; reconcile 66.7 s; no failures.
 - **0121 lap trade history**: `standing_route_laps.trades` (newest 7 laps), `world.fleet_trades`, `src/live/TradeHistoryPanel.tsx` opened from So far / A day / A lap / lap pills.
 
-## Next (owner's queue — updated with the owner's answers, 2026-10-15 late)
-1. **Check 0120 on prod**: share of zero-net laps, arrivals/reconcile durations (2-min limit). Roll back if arrivals times out. Read the Acceptance result on `a784986`.
-2. **Circular economy** — `docs/ECONOMY_LOOP.md` §7 now holds the owner's answers: limited money (market = city purse), merchants pay full costs, **cities go into debt** (→ war / donations / NPC aid between cities), everyone may invest anywhere. Question 3 ("what a city lacks") is still open. The plan must be re-cut for these answers before building step 1.
-3. **Merchant ships: serve slots + combat stats** (server change), **and make more ship types and more gear.**
-4. Soft day/night edge: leave as is (owner, 10-15).
-5. 70k ships idea: **dropped** by the owner.
+## Next (owner's queue — plans approved for planning only, 2026-10-15 late; NOTHING BUILT)
+The owner said "don't create anything yet. plan and be ready." Both plans are build-ready:
+1. **Check 0120 on prod** (zero-net laps, arrivals/reconcile durations) and the Acceptance result on `a784986`.
+2. **City economy** — `docs/ECONOMY_LOOP.md` v3: **0122** city purse (never below zero; tax only on profit, via `ships.cargo_basis`; empty-purse rule; dark switch + seed), **0123** investment + **Town Hall** tab (purse, works, Invest, named investors). Debt / aid / war are in §12 "LATER", deferred by the owner. Open: profit-tax level (default 15 %), whether harbour dues are dropped (default yes).
+3. **Ships, gear, levels, stats** — `docs/SHIPS_AND_GEAR.md`: S1 0124 … (one ship-stats authority; merchant loadouts fixed; levels with a long grind; captain level per signing; NPC captains/skills/levels fixed; 8 ship types, 12 fittings; combat stats bite last).
+4. Soft day/night edge: leave as is. 70k ships: dropped.
 
 ## Supabase facts (verified on the billing page 2026-10-15)
 Pro plan, org "gkwngns714-spec's Org", Micro compute, 8 GB disk (DB 341 MB), 250 GB egress (0.1 used), spend cap ON, daily backups. The old `byeharu` project is a different org.
