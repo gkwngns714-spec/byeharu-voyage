@@ -463,6 +463,11 @@ declare
   v_purge   text;
   v_msg     text;
   i         int;
+  -- THE ROLE THIS FILE RUNS AS, restored by NAME after the one probe made as `authenticated`. Never
+  -- RESET ROLE / SET ROLE NONE: under `supabase db push` the session user is the CLI's login role and
+  -- the migration runs under SET ROLE, so a reset drops to a role that may read nothing (prod,
+  -- 2026-10-15: 'permission denied for table ports' — the first push of 0125 rolled back on it).
+  v_me      text := current_user;
 begin
   -- (a) POSTURE: every cut body keeps its volatility and ACL; the helpers are server-only; no new
   --     entry point; no client write; the knob is this file's.
@@ -701,7 +706,7 @@ begin
     v_card := world.npc_fleet_card(v_subj[i]);
     execute 'set local role authenticated';
     v_pm := world.port_merchants(v_dest[i]);
-    execute 'reset role';
+    execute format('set local role %I', v_me);
     select x into v_row from jsonb_array_elements(v_rows->'fleets') x where x->>'id' = v_subj[i]::text;
     if v_row->>'status' <> 'DOCKED' or v_row->>'port' <> (select code from public.ports where id = v_dest[i])
        or jsonb_typeof(v_row->'voyage') <> 'null'
@@ -734,7 +739,7 @@ begin
     v_msg := sqlerrm;
   end;
   if public.npc_traders_on() is distinct from v_was_on or public.standing_routes_on() is distinct from v_routes_on
-     or public.wc_int('arrivals_tick_budget_ms') <> 10000 or current_user <> session_user
+     or public.wc_int('arrivals_tick_budget_ms') <> 10000 or current_user <> v_me
      or exists (select 1 from public.voyages v where v.id = any(v_vid) and v.eta = now() - interval '1 minute') then
     raise exception '0125 self-assert FAIL: the probe world was not rolled back';
   end if;
