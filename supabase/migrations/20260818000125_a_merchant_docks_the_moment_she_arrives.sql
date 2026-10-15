@@ -44,8 +44,10 @@
 --     instead of calling it once per merchant.
 -- The client never decides an arrival on its own (src/live/seaRoster.ts clamps her at the end of her
 -- course until a read serves the docked fact). world.sea_roster's delta now also carries every
--- merchant at or past her stored eta and every passage whose arrival moved (a delaying event
--- recorded since p_since), so the map learns both on its next roster beat.
+-- merchant at or past her stored eta, so the docked fact (or a held passage's true arrival) reaches
+-- the map on its next roster beat. (A delta clause on recorded delaying events was measured on prod
+-- at +1 s per full read — a hashed scan of voyage_events — and is not here: a mid-passage delay
+-- reaches the map when her moved eta passes, as before 0125, and she is never shown in port early.)
 --
 -- ── WHAT THIS FILE DOES ─────────────────────────────────────────────────────────────────────────
 -- (1) voyage.day_delay_hours, voyage.arrival_at, voyage.where_now — stable, server-only.
@@ -208,7 +210,10 @@ as $$
          case when x.done then null else a.arrives end
     from public.fleets f
     left join public.voyages v on v.fleet_id = f.id and v.status = 'SAILING'
-    cross join lateral (select case when v.eta <= p_at then voyage.arrival_at(v.id, p_at) else v.eta end as arrives) a
+    -- OFFSET 0 keeps this a subquery of its own, so arrival_at runs once per passage, not once per
+    -- column that reads it (a flattened lateral would substitute the call into every reference).
+    cross join lateral (select case when v.eta <= p_at then voyage.arrival_at(v.id, p_at) else v.eta end as arrives
+                        offset 0) a
     cross join lateral (select coalesce(v.dest_port_id is not null and a.arrives <= p_at, false) as done) x
    where f.id = p_fleet
 $$;
@@ -273,13 +278,11 @@ $h$),
 $h$                  where v2.fleet_id = f.id and v2.status = 'SAILING' and v2.departed_at >= p_since);
 $h$,
 $h$                  where v2.fleet_id = f.id and v2.status = 'SAILING' and v2.departed_at >= p_since)
-      -- 0125: or she is at or past her stored eta (arrived, or held by the last day's weather) — a
-      -- handful, the sweep clears them within 15 s — or her passage's arrival MOVED since p_since.
+      -- 0125: or she is at or past her stored eta — arrived, or held by her last day's weather (a
+      -- handful: the sweep clears them within 15 s). So the docked fact, or the true arrival of a
+      -- passage held at sea, reaches the map on its next roster beat.
       or exists (select 1 from public.voyages v3
-                  where v3.fleet_id = f.id and v3.status = 'SAILING' and v3.eta <= now())
-      or exists (select 1 from public.voyages v4 join public.voyage_events ve on ve.voyage_id = v4.id
-                  where v4.fleet_id = f.id and v4.status = 'SAILING' and ve.resolved_at >= p_since
-                    and coalesce((ve.payload->>'delay_hours')::numeric, 0) <> 0);
+                  where v3.fleet_id = f.id and v3.status = 'SAILING' and v3.eta <= now());
 $h$),
 -- world.port_merchants
 ('world.port_merchants(uuid)', 1,
@@ -611,7 +614,11 @@ begin
     --     only on a world where no merchant is at or past her eta (on a live one somebody always is).
     for i in 1 .. 2 loop
       v_n := (world.npc_fleet_card(v_subj[1]) is distinct from pg_temp.card_before_0125(v_subj[1]))::int
-           + (world.port_merchants(v_dest[1]) is distinct from pg_temp.port_merchants_before_0125(v_dest[1]))::int
+           + (case when exists (select 1 from public.voyages v join public.npc_fleets nf on nf.fleet_id = v.fleet_id
+                                  join public.standing_route_stops st on st.route_id = nf.route_id and st.port_id = v_dest[1]
+                                 where v.status = 'SAILING' and v.eta <= now())
+                   then 0   -- one of this harbour's merchants is arriving on a live world: she differs, rightly
+                   else (world.port_merchants(v_dest[1]) is distinct from pg_temp.port_merchants_before_0125(v_dest[1]))::int end)
            + (case when exists (select 1 from public.voyages v join public.fleets f on f.id = v.fleet_id
                                   join public.players p on p.id = f.player_id and p.is_npc
                                  where v.status = 'SAILING' and v.eta <= now())
