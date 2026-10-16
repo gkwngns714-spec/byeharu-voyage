@@ -41,6 +41,7 @@ import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { serveNpcOn } from './npcOn.fixture'
+import { pullBackUntilMerchants } from './seaFrame.fixture'
 import {
   buildChartModel,
   GLYPH,
@@ -420,6 +421,12 @@ test('the sea shows how many ships each merchant is, and lets go of it when pull
   for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 844 })
     await page.waitForTimeout(400)
+    // TWO MERCHANTS ON THIS GLASS ARE SET, NOT ASSUMED (2026-10-17, ./seaFrame.fixture.ts). A resize
+    // keeps the view's centre and horizontal span, so the 1280 glass is a band 8.8° tall where the
+    // phone's was 28.8°, and CI run 38917698523's band held ONE of the 13 merchants the phone drew —
+    // drawn, correctly, for 60 s. Pulled back a press at a time instead, and never past the density
+    // at which a group collapses to its flagship, because every claim below is about the group.
+    await pullBackUntilMerchants(page, { maxUnitsPerPx: HULL_GROUP_MAX_UNITS_PER_PX })
     for (const theme of ['dark', 'light'] as const) {
       await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
       await page.waitForTimeout(200)

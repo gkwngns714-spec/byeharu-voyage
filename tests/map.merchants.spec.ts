@@ -20,6 +20,7 @@ import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { LAID_UP_AT_LISBON, RESTING_AT_PORTO, RESTING_PORT_CODE, serveNpcOn } from './npcOn.fixture'
+import { pullBackUntilMerchants, TAP_ZONE, WHOLE_GLASS, type GlassZone } from './seaFrame.fixture'
 import {
   GLYPH,
   buildChartModel,
@@ -316,18 +317,14 @@ async function merchantsInView(page: Page): Promise<{ total: number; inView: num
  * roster always has ships), and the count asked is still two. Returns how many presses it took, so
  * a caller that needs the opening frame back (a harbour's NAME is tapped on it) presses Zoom in as
  * many times — the zoom is about the glass's centre, so that is the same frame.
+ *
+ * IN THE REGION THE CALLER WILL USE (2026-10-17). A caller that goes on to TAP a hull passes
+ * `TAP_ZONE`, the region `hullInView` hunts in: CI runs 38810111728 and 38831207542 waited for two on
+ * the whole glass, found them in the margins, and then threw "no merchant hull on the glass" from
+ * the smaller tap zone. The loop itself is ./seaFrame.fixture.ts's, shared with map.hulls.
  */
-async function merchantsOnTheGlass(page: Page): Promise<number> {
-  for (let presses = 0; ; presses++) {
-    const two = await expect
-      .poll(async () => (await merchantsInView(page)).inView, { timeout: 20_000 })
-      .toBeGreaterThanOrEqual(2)
-      .then(() => true, () => false)
-    if (two) return presses
-    if (presses === 4) throw new Error('fewer than two merchants on the glass, even four zoom steps out from Lisbon')
-    await page.getByLabel('Zoom out').click()
-    await page.waitForTimeout(800)
-  }
+async function merchantsOnTheGlass(page: Page, zone: GlassZone = WHOLE_GLASS): Promise<number> {
+  return pullBackUntilMerchants(page, { zone })
 }
 
 /** Back to the frame `merchantsOnTheGlass` started from. */
@@ -357,7 +354,7 @@ async function hullInViewClearOf(
   clearPx: number,
 ): Promise<string> {
   const id = await page.evaluate(
-    ({ wantSailing, seen, clear }) => {
+    ({ wantSailing, seen, clear, z }) => {
       const chart = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
       for (const h of document.querySelectorAll('[data-testid="map-merchant"]')) {
         if (wantSailing !== null && (h.getAttribute('data-merchant-docked') === 'false') !== wantSailing) continue
@@ -366,7 +363,8 @@ async function hullInViewClearOf(
         const r = h.getBoundingClientRect()
         const cx = r.left + r.width / 2
         const cy = r.top + r.height / 2
-        if (!(cx > chart.left + 60 && cx < chart.right - 120 && cy > chart.top + 100 && cy < chart.bottom - 120)) continue
+        // TAP_ZONE (./seaFrame.fixture.ts) — the same region `merchantsOnTheGlass(page, TAP_ZONE)` waits on.
+        if (!(cx >= chart.left + z.left && cx <= chart.right - z.right && cy >= chart.top + z.top && cy <= chart.bottom - z.bottom)) continue
         // AND IN OPEN WATER. A hull lying within a harbour's own reach loses the tap to the
         // harbour — correctly: a mark as near as a hull is the city (hitTest.ts, and a berthed
         // merchant answers only at the dot's reach). With 76 fleets on the sea that case is common
@@ -397,7 +395,7 @@ async function hullInViewClearOf(
       }
       return null
     },
-    { wantSailing: sailing, seen: [...skip], clear: clearPx },
+    { wantSailing: sailing, seen: [...skip], clear: clearPx, z: TAP_ZONE },
   )
   if (!id && skip.size === 0 && clearPx === 0) {
     throw new Error(`no ${sailing === null ? '' : sailing ? 'sailing ' : 'docked '}merchant hull on the glass`)
@@ -618,7 +616,8 @@ test.describe('wide', () => {
     await serveNpcOn(page)
     await page.goto('map')
     await ready(page)
-    await merchantsOnTheGlass(page)
+    // IN THE TAP ZONE, because the next step taps one (see `merchantsOnTheGlass`).
+    await merchantsOnTheGlass(page, TAP_ZONE)
     await page.screenshot({ path: path.join(SHOTS, 'map-merchants-1280.png') })
     // the wide frame sits close on Lisbon: whichever merchant is on the glass, at sea or at anchor —
     // preferring one whose sheet has a lap figure to show (see openMerchantWorthReading)

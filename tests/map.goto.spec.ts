@@ -265,12 +265,18 @@ test.describe('a go-to link opens nothing (no trade history, no other panel)', (
       await link.scrollIntoViewIfNeeded()
       const b = (await link.boundingBox())!
       const at = { x: b.x + b.width / 2, y: b.y + b.height / 2 }
+      // HER TEXT IS READ BEFORE THE PRESS, never between the press and the check (2026-10-17). The
+      // marker rings for GOTO_MARK_MS (4 s) and then goes; CI run 38927914130 (PR #141) pressed
+      // `Setubal`, the marker was on the page at the press's own after-snapshot, and the message's
+      // `await link.textContent()` then took 10 s on a busy runner — so the check began after the
+      // ring had come and gone, and read 0 for 20 s on a press that had worked.
+      const text = await link.textContent()
       if (finger) await page.touchscreen.tap(at.x, at.y)
       else await page.mouse.click(at.x, at.y)
       // The marker is a 0×0 anchor (GoToMarker.tsx), so it is counted, not 'seen'.
-      await expect(page.getByTestId('map-goto-marker'), `link ${i} (${await link.textContent()}) rang the place`).toHaveCount(1)
+      await expect(page.getByTestId('map-goto-marker'), `link ${i} (${text}) rang the place`).toHaveCount(1)
       await page.waitForTimeout(600)
-      expect(await page.getByTestId('trade-history').count(), `link ${i} (${await link.textContent()}) opened the trading`).toBe(0)
+      expect(await page.getByTestId('trade-history').count(), `link ${i} (${text}) opened the trading`).toBe(0)
       expect(await page.getByTestId('map-ship-panel').count(), `link ${i} opened a ship`).toBe(0)
       await expect(page.getByTestId('merchant-sheet-name')).toHaveText(name ?? '')
     }
