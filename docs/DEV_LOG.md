@@ -5,6 +5,60 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — S14 (0138): capitals and flagships — `osn-0138-wave-b`
+
+`docs/SHIPS_AND_SKILLS.md` §8 S14 "Wave B: 15 capitals & flagships". **Not deployed** (prod head 0136, read-only probe 2026-10-17; 0137 is
+PR #142, independent — either order). Deploy per DEPLOY_RUNBOOK with the clock unwound.
+- **One generator, extended** (`scripts/build-ships.mjs`, no second copy): four new archetypes (capital /
+  flagship × trade / combat) solved from §4.3's Wave B table; every one of the 15 rows equals the table in
+  every stat column (scratch diff: 0 mismatches, labour of the 11 capitals too). Sizes 5-6 get yard tier 3,
+  cabins 7 / 8, templates medium × 2 / × 3. Each row now carries `wave` ('A' 52 / 'B' 15); `--sql A` / `--sql B`
+  print one wave's VALUES. `data/ships.generated.json` = 67 hulls; the world guard holds all 67 through the
+  same `generateShips()` call (no guard code change beyond its comment).
+- **The shed (0072 (d), §10 risk 3) — not loosened.** Measured on the cached world: every tier-3 yard city's
+  shed holds 750 t (14 of 14; tier-5 warehouse × 150). A flagship's medium × 3 template is 1,071 t, so the
+  generator scales the goods to fit (floored, proportions kept → 749 t) and moves the removed goods' value
+  (middle of `baseValue`, §4.2's "≈ market") into labour, rounded UP to 500: carraca 150,000 → 168,000,
+  galeón real 187,000 → 205,000, Great Ship 178,500 → 197,000, Baştarda-i Hümayun 170,000 → 184,000. All-in
+  prices stay within +500 of the table. The capitals (666-714 t) fit as drafted. §4.3's four flagship rows
+  updated to the generated numbers, with a paragraph saying why.
+- **Requirements (§4.4)**: 56 hull rows — capital: X Heavy IV + X Capital I + Command III + role III (11 × 4);
+  flagship: X Capital V + Fleet Command I + role V (4 × 3). No function re-cut: 0135's `requirements_unmet`
+  already closes any subject WITH requirements while `skills_bite` is off, so all 15 are refused today
+  (`E_NEEDS_SKILL`, "— ship skills are not in use yet").
+- **0138 self-assert** (cached-prefix apply, PGlite, 834 companies): the 55 old hulls' rows (class, profile,
+  racks, cabins, recipe, requirements), every item / effect / unlock / constraint hash-unchanged; +15 / +75
+  racks / +60 materials / +56 requirements; 11 capitals (one per line) + 4 flagships (PRT ESP ENG OTT);
+  guns = attack/10, tier = least(size, 5), Hands ≥ 0, yard tier 3; 0072 (b)(c)(d) over every hull (receipt
+  prints each new hull's tons / shed); buildable at ≥ 1 yard of its line and the yard screen agrees; places
+  and cabins grow through size 6; §4.4 pattern per hull; no entry point / grant / posture moved, lever 1.0;
+  dark — 45,870 company × old-hull pairs unchanged, 12,510 company × new-hull pairs closed (counted against
+  the companies the after-read itself saw), 1,925 old yard entries byte-equal, every new entry closed with
+  the dark sentence, 15 refused through the door, barca built for 3,000; lit (rolled back) — 15 refused
+  naming every requirement, 15 BUILT for their labour with the skills (Command / Fleet Command at V).
+  Hot reads timed at `random_page_cost = 1.1` (notice, not gated; md5 answers hard): speed+hold 308 → 318 ms,
+  ship_stats 69 → 71, ship_view 1,254 → 1,198, quotes 330 → 310 (the build run); 12 s apply.
+- **Client**: twelve silhouettes (`src/chart/glyphs.ts`): `square-5` / `square-6` / `fore-5` / `fore-6`, half-
+  lengths capital 7.0 / flagship 8.3 by the cube-root rule (900 t / 1,500 t vs the carlat's 90); size clamps to
+  1-6; every new beam ≤ 0.58 × half-length (the group-formation spacing). Codex and yard already had the
+  words for sizes 5-6 (`ShipsFace.tsx` SIZE_WORD). Specs: `map.hulls` (twelve shapes, lengths rise through 6,
+  a size-7 code draws as flagship), `rpc.surface` (70 classes from the generator's file; 11 of size 5, 4 of 6),
+  `db.chain` LAST → 0138.
+- **Proof run (lean)**: generators `--check` (67 / 103); `npx eslint .`; `npm run build` (tsc -b inside; world
+  image restored 128/129, applied 0138, receipt read from the p0129 manifest, world guard ok — 70 classes);
+  `vite preview --port 4200` → `map.hulls` + `rpc.surface` + `db.chain` without "the world grows under a live
+  house" (CI runs it): 49 passed, 0 skipped. Screenshots (local PGlite world): Codex → Ships → Flagship lists
+  the four; Lisbon → Build → Carraca grande, 168,000 to build, "needs Fleet Command I and Merchant Ships V and
+  Portuguese Capital Hulls V — ship skills are not in use yet".
+- **Found, not fixed (pre-existing since 0135, outside S14):** the only tier-3 yards of the ENG (LON), ESP (SVQ,
+  ARP) and CHN (GUA) lines have `max_draft` 2 (read on the cached world), and `cmd.do_build` does not check draft,
+  so every heavy (draft 4) and capital / flagship (draft 5) of those lines would be built in a harbour the
+  yard screen itself says "it could never sail back in". Wave A's heavies already have this; Wave B adds five
+  more hulls to it (galmanila, galreal, indiaman, greatship, dachuan). Owner's call: a deeper yard per line,
+  a draft gate in the door, or accept.
+
+---
+
 ## 2026-10-17 — 0136: a ranking reads the quay once (arrivals speed, step 2) — `osn-0136-arrivals-2`
 
 RESUME 2026-10-16/17 "Next": arrivals speed step 2, `port_offers` per row inside `trade_routes`, so that

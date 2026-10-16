@@ -36,7 +36,7 @@
 //                 Capital = 5 and 6), every row and its per cent, both directions; the four company
 //                 rows mirror skills.effect / pct_per_level; public.skill_requirements EQUALS
 //                 data/skills.json `requirements`, both directions
-//   * wave A      (0135) the GENERATORS are re-run here: scripts/build-ships.mjs `generateShips()` and
+//   * waves A + B (0135, 0138) the GENERATORS are re-run here: scripts/build-ships.mjs `generateShips()` and
 //                 scripts/build-gear.mjs `generateGear()` must equal data/ships.generated.json and
 //                 data/gear.generated.json byte for byte, AND the database: public.ship_classes (every
 //                 column), class_profile, the rack rows of class_slots, class_cabins, hull_recipes +
@@ -44,6 +44,8 @@
 //                 item_recipes and skill_requirements EQUAL the live rows' data files (data/hulls.json,
 //                 data/fittings.json, data/gear.json, data/ship_stats.json, data/ship-lines.json) plus
 //                 what the generators give, every column, both directions
+//                 (0138 added Wave B — 15 capitals and flagships — to the SAME generator, so this
+//                 one check holds all 67 generated hulls; no second copy of the rule)
 //
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
