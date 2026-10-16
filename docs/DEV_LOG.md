@@ -5,6 +5,46 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — 0136: a ranking reads the quay once (arrivals speed, step 2) — `osn-0136-arrivals-2`
+
+RESUME 2026-10-16/17 "Next": arrivals speed step 2, `port_offers` per row inside `trade_routes`, so that
+`skills_bite` (lit ≈ 2× merchant ship reads) gets room. **Not deployed** (prod head 0134; applies on 0135).
+Deploy per DEPLOY_RUNBOOK with the clock unwound: `unwind_the_clock()` → `db push` → `wind_the_clock()` → merge.
+- **Prod now** (cron.job_run_details, `byeharu-voyage:arrivals`, hourly 2026-10-16 07:00–14:00 UTC after
+  0134): avg 3.1–3.5 s, p95 5.4–6.0 s, max 7.5–10.8 s; one 38.45 s run at 13:07 UTC (not explained).
+- **Profile (prod, read-only)**: one statement each, `set_config('transaction_read_only','on',true)` first,
+  `clock_timestamp()` checkpoints between materialized CTEs (`track_functions` is now refused to the CLI
+  role — 42501). 24 merchant legs: `npc_leg_lines` 903 ms (37.6 ms a leg); `trade_routes(from,…,12,to)` 698 /
+  612 ms (25–29 ms a ranking); inside it the `here` scan with `port_offers` per market row 191 ms (8 ms a
+  ranking — 555 market rows per harbour, port_offers is SQL with a sub-link so never inlined) vs the same
+  scan reading the roster as a set 1 ms (same 150 rows); reach_from 0.5 ms, here's mid_price ~1.8 ms, quotes
+  ~1 ms each (~12 a ranking, already cut by 0134). So port_offers was ~28 % of a ranking, ~21 % of a priced
+  leg — the biggest single non-quote piece; nothing bigger dominated.
+- **Fix (one authority)**: `public.port_offered_goods(port)` NEW — THE reading of a city's roster as a set
+  (SQL, STABLE, invoker, no SET → inlined; server-only, port_offers' ACL). `public.port_offers` = membership
+  in it (per-good callers unchanged: do_buy, world.market, quay_shows, tick_price_snapshot, contract_draw).
+  `world.trade_routes`' `here` scan reads it once per ranking (one hunk). Not touched: world.affinity_for
+  (0005) still asks port_specialties for "is it a specialty" inside its own affinity formula — a second
+  reader of the same membership, left as found (out of this slice's scope; noted for a cleanup).
+- **Proof in the file**: old tree (port_offers, trade_routes, npc_leg_lines; closed — asserted no other
+  body calls trade_routes) under pg_temp names; old vs new in one statement each, byte-equal: port_offers
+  over every port × every good + nulls (139,860 pairs locally), 144 rankings (120 merchant legs as
+  npc_leg_lines asks them + 24 open scans, all rows and 400 nm/5), 12 merchants' whole lap-start reads
+  (0134's probe). Both bodies reverse to their pre-images; ACL/volatility/definer/config/parallel unmoved;
+  no new entry point. **Timing is reported (raise notice), not gated** — prod is burstable CPU and a timing
+  gate inside a self-assert could abort a db push; nothing is written, so nothing to analyze between passes.
+- **Timings (PGlite, cached world, on 0135 `10ae571`)**: lap starts 2,226 → 1,664 ms (−25 %); leg rankings
+  807 → 452 ms (−44 %); port_offers per market row 415 → 405 ms (unchanged). (A first run under machine load:
+  −27 % / −41 % / −1 %.) **Prod after = ESTIMATE**: −8 ms a ranking ≈ −21 % a priced leg; re-measure
+  `cron.job_run_details` after the push before throwing skills_bite.
+- **Proof run (lean)**: cached-prefix apply of 0136 + self-assert + world guard (browser variant, prefix
+  through 0135 from a warm cache), `npx tsc -b`, `npx eslint .`, `npm run build` (whole log kept),
+  `tests/db.chain.spec.ts` (LAST → 0136) without "the world grows under a live house" (a from-split apply of
+  the whole growth chain — not run locally; CI runs it). No from-zero apply / full db:proof (CI's
+  disposable-chain is the real-Postgres truth).
+
+---
+
 ## 2026-10-17 — 0135: a bigger catalogue costs a ship read nothing — why the hot reads looked slower (PR #139)
 
 Still **not deployed** (prod head 0134). Brief: the +12.8 / +29.6 / +22.0 % above sit on prod's arrivals sweep
