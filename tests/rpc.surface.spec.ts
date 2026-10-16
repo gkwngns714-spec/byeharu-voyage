@@ -70,8 +70,9 @@ import {
 import type { ManifestLine } from '../src/lib/rpc'
 import { readFileSync } from 'node:fs'
 
-// 0135: the generated hulls (scripts/build-ships.mjs), read from the file the migration was made from.
-const waveA = JSON.parse(readFileSync(new URL('../data/ships.generated.json', import.meta.url), 'utf8')) as {
+// 0135 / 0138: the generated hulls (scripts/build-ships.mjs, Waves A + B), read from the file the
+// migrations were made from.
+const generated = JSON.parse(readFileSync(new URL('../data/ships.generated.json', import.meta.url), 'utf8')) as {
   hulls: unknown[]
 }
 
@@ -106,9 +107,12 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   // (world.sea_raster) and the sailed distances (world.reach), asserted in their own test below.
   expect('legs' in snap).toBe(false)
   expect(snap.goods.length).toBeGreaterThan(20)
-  // 0135 (S12 Wave A): the three Lisbon hulls plus the generated ones (data/ships.generated.json) —
-  // counted from the generator's file, not remembered — each served with its line, size, role, tech.
-  expect(snap.ship_classes).toHaveLength(3 + waveA.hulls.length)
+  // 0135 (S12 Wave A) + 0138 (S14 Wave B): the three Lisbon hulls plus the generated ones
+  // (data/ships.generated.json) — counted from the generator's file, not remembered — each served with
+  // its line, size, role, tech; the capitals and flagships among them at sizes 5 and 6.
+  expect(snap.ship_classes).toHaveLength(3 + generated.hulls.length)
+  expect(snap.ship_classes.filter((c) => c.size === 5)).toHaveLength(11)
+  expect(snap.ship_classes.filter((c) => c.size === 6)).toHaveLength(4)
   for (const c of snap.ship_classes) {
     expect(isStr(c.line) && isNum(c.size) && isStr(c.role) && isStr(c.tech), c.code).toBe(true)
   }

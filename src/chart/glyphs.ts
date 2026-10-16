@@ -133,8 +133,12 @@ export const GLYPH = {
    * stand for — small 2.85 (the barca), light 3.25 (the carlat), medium 5.35 (the nau) — and a fourth,
    * heavy 6.1 = 3.25 × (600/90)^⅓, the heavy archetype's 600 tons against the carlat's 90 by the
    * same cube-root rule. Every hull of a size is drawn at its size's length (`hullShapeOf`).
+   *
+   * 0138 — CAPITAL AND FLAGSHIP (S14 Wave B, 70 hulls), by the same rule off their trade archetypes:
+   * capital 7.0 = 3.25 × (900/90)^⅓, flagship 8.3 = 3.25 × (1500/90)^⅓ (the nau da carreira's 900 tons
+   * and the carraca grande's 1,500).
    */
-  hullHalfLength: { 1: 2.85, 2: 3.25, 3: 5.35, 4: 6.1 } as Record<HullSize, number>,
+  hullHalfLength: { 1: 2.85, 2: 3.25, 3: 5.35, 4: 6.1, 5: 7.0, 6: 8.3 } as Record<HullSize, number>,
   /** The halo round a lone class-less hull — halved with `shipHalfLength` (8 → 4), since
    *  `hullGroupHalo` sizes every halo off that ratio. */
   fleetHaloRadius: 4,
@@ -407,21 +411,21 @@ export function shipPath(halfLength: number): string {
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// 0135 — EIGHT SILHOUETTES, NOT FIFTY-FIVE (docs/SHIPS_AND_SKILLS.md §8, S12)
+// 0135 / 0138 — TWELVE SILHOUETTES, NOT SEVENTY (docs/SHIPS_AND_SKILLS.md §8, S12 + S14)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // A hull's silhouette is its RIG FAMILY × its SIZE: `square` (square and mixed rigs — the ship
 // rig, with a castle) or `fore` (lateen and oared — the fore-and-aft hulls, galleys and dhows),
-// at sizes 1-4 (small, light, medium, heavy; a size above heavy draws as heavy). The three live
-// hulls are three of the eight, unchanged: the barca is `fore-1`, the caravela latina `fore-2`,
+// at sizes 1-6 (small, light, medium, heavy, capital, flagship — 0138 added the last two; a size
+// above flagship draws as flagship). The three live hulls are three of the twelve, unchanged: the barca is `fore-1`, the caravela latina `fore-2`,
 // the nau `square-3`. Both facts are SERVED — `ship_classes.rig` and `class_profile.size` on
 // `world.snapshot().ship_classes` (0135) — and the world store hands them to
-// `registerHullClasses`; this file only decides what each of the eight looks like. Until a
+// `registerHullClasses`; this file only decides what each of the twelve looks like. Until a
 // snapshot has named a code, the three live codes keep their pins (the FALLBACK), and a code no
 // one has named draws the class-less hull, as an unknown class always has.
 
-/** The four sizes a silhouette is drawn at (`class_profile.size`, clamped to heavy). */
-export type HullSize = 1 | 2 | 3 | 4
+/** The six sizes a silhouette is drawn at (`class_profile.size`, clamped to 1-6). */
+export type HullSize = 1 | 2 | 3 | 4 | 5 | 6
 /** A silhouette: rig family × size. */
 export type HullShape = `${'fore' | 'square'}-${HullSize}`
 
@@ -439,7 +443,7 @@ let servedShapes: ReadonlyMap<string, HullShape> = new Map()
 /** The silhouette of a rig and a size — the one rule. */
 export function hullShapeFor(rig: string, size: number): HullShape {
   const family = rig === 'square' || rig === 'mixed' ? 'square' : 'fore'
-  const s = Math.min(4, Math.max(1, Math.round(Number.isFinite(size) ? size : 1))) as HullSize
+  const s = Math.min(6, Math.max(1, Math.round(Number.isFinite(size) ? size : 1))) as HullSize
   return `${family}-${s}`
 }
 
@@ -562,6 +566,19 @@ function mirrored(half: readonly (readonly [number, number])[]): string {
  *   fore-3    a medium galley, xebec or dhow — LONG and slim, a ram spur at the bow, a pointed stern.
  *   fore-4    a heavy fore-and-aft hull (the baştarda, the atakebune, the panokseon) — long, with the
  *             BOX CASTLE bulging amidships.
+ *
+ * 0138 — THE FOUR WAVE B ADDED (capital and flagship, S14), drawn at their own longer lengths:
+ *
+ *   square-5  a capital ship of the line (the nau da carreira, the Manila galleon, the East Indiaman) —
+ *             the beakhead spur, a forecastle shoulder, a long parallel waist and a broad stepped stern
+ *             gallery: the heavy galleon's plan with a second step aft.
+ *   square-6  a flagship (the carraca grande, the galeón real, the Great Ship) — the broadest hull on the
+ *             chart: a blunt raised forecastle, a wide waist and a towering after-castle in two steps,
+ *             its stern squared off flat.
+ *   fore-5    a capital fore-and-aft hull (the galleass, the great junk, the ō-atakebune) — long and
+ *             full, a short ram, a SPONSON of oar-ports or castle along both sides amidships, a rounded stern.
+ *   fore-6    the great galley (the Baştarda-i Hümayun) — the longest, slimmest hull: a long ram, an
+ *             outrigger of oars down the whole waist, a raised poop at the stern.
  */
 function waveAHullPath(shape: HullShape, l: number): string {
   if (shape === 'square-1') {
@@ -580,6 +597,26 @@ function waveAHullPath(shape: HullShape, l: number): string {
   if (shape === 'fore-3') {
     const b = l * 0.3
     return mirrored([[0, -l], [b * 0.35, -l * 0.82], [b * 0.9, -l * 0.7], [b, -l * 0.3], [b, l * 0.55], [b * 0.75, l * 0.9], [0, l]])
+  }
+  if (shape === 'square-5') {
+    const b = l * 0.5
+    return mirrored([[0, -l], [b * 0.16, -l * 0.88], [b * 0.55, -l * 0.78], [b * 0.8, -l * 0.66], [b, -l * 0.3],
+      [b, l * 0.3], [b * 1.08, l * 0.38], [b * 1.08, l * 0.62], [b * 1.14, l * 0.7], [b * 1.14, l * 0.97], [0, l * 0.97]])
+  }
+  if (shape === 'square-6') {
+    const b = l * 0.51
+    return mirrored([[0, -l], [b * 0.45, -l * 0.9], [b * 0.85, -l * 0.74], [b, -l * 0.5], [b, l * 0.25],
+      [b * 1.06, l * 0.33], [b * 1.06, l * 0.55], [b * 1.12, l * 0.62], [b * 1.12, l], [0, l]])
+  }
+  if (shape === 'fore-5') {
+    const b = l * 0.34
+    return mirrored([[0, -l], [b * 0.4, -l * 0.86], [b, -l * 0.62], [b, -l * 0.42], [b * 1.3, -l * 0.36],
+      [b * 1.3, l * 0.36], [b, l * 0.42], [b, l * 0.72], [b * 0.7, l * 0.92], [0, l * 0.98]])
+  }
+  if (shape === 'fore-6') {
+    const b = l * 0.24
+    return mirrored([[0, -l], [b * 0.3, -l * 0.78], [b, -l * 0.66], [b * 1.5, -l * 0.6], [b * 1.5, l * 0.6],
+      [b, l * 0.66], [b, l * 0.78], [b * 1.3, l * 0.84], [b * 1.3, l * 0.97], [0, l * 0.97]])
   }
   // fore-4
   const b = l * 0.36

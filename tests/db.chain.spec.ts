@@ -334,7 +334,8 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0134 (every arrival is answered in time: the arrivals sweep's reads made faster, answers unchanged; 0132's retired table dropped).
 // And to 0135 (every country builds its own ships: 52 hulls of the eleven lines and gear grades G2-G5, dark).
 // And to 0136 (a ranking reads the quay once: trade_routes reads the city's roster as one set, answers unchanged).
-const LAST = '20260818000136_a_ranking_reads_the_quay_once.sql'
+// And to 0138 (capitals and flagships: S14 Wave B, 15 hulls of sizes 5 and 6, generated, dark; their goods fit the shed).
+const LAST = '20260818000138_capitals_and_flagships_are_built_in_their_own_countries.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
