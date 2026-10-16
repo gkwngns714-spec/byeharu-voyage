@@ -47,30 +47,69 @@ async function drag(page: Page, from: { x: number; y: number }, by: { x: number;
   await page.mouse.up()
 }
 
-/** Waits, in the page and frame by frame, for the marker to stand within 8 px of `target` —
- *  inside its ring time (GOTO_MARK_MS, 4 s); a marker that never arrives fails with what it saw. */
+/** ARMS the go-to marker's watch BEFORE the press (2026-10-17). The marker rings for GOTO_MARK_MS
+ *  (4 s) and then goes, and a busy runner can take longer than that between the press returning and
+ *  a check starting — CI run 38927914130 (PR #141) and job 117230833293 (PR #142) both read 0 for
+ *  20 s on presses that had worked. So the page itself records the marker from the press on: the
+ *  next click (a mouse click or a tap's click) starts a MutationObserver plus a frame-by-frame sampler
+ *  that write every sighting — present or not, and where — into window.__goto for 6 s. The checks
+ *  below read that record, so they cannot miss a marker however short it lives. Call it right
+ *  before the press, every time. */
+async function armGoTo(page: Page) {
+  await page.evaluate(() => {
+    const w = window as unknown as { __goto?: string[]; __gotoSeen?: { x: number; y: number }[] }
+    w.__goto = []
+    w.__gotoSeen = []
+    const sample = () => {
+      const m = document.querySelector('[data-testid="map-goto-marker"]')
+      if (!m) {
+        w.__goto!.push('none')
+        return
+      }
+      const r = m.getBoundingClientRect()
+      w.__goto!.push(`${r.x.toFixed(0)},${r.y.toFixed(0)}`)
+      w.__gotoSeen!.push({ x: r.x, y: r.y })
+    }
+    const onPress = () => {
+      document.removeEventListener('click', onPress, true)
+      const until = performance.now() + 6000
+      const mo = new MutationObserver(sample)
+      mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] })
+      const tick = () => {
+        sample()
+        if (performance.now() < until) requestAnimationFrame(tick)
+        else mo.disconnect()
+      }
+      setTimeout(tick, 0)
+    }
+    document.addEventListener('click', onPress, true)
+  })
+}
+
+/** The armed press rang the marker: it was on the page at least once after the press. */
+async function rang(page: Page, what: string) {
+  const ok = await page
+    .waitForFunction(() => ((window as unknown as { __gotoSeen?: unknown[] }).__gotoSeen ?? []).length > 0, null, { timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false)
+  expect(ok, `${what} rang the place`).toBe(true)
+}
+
+/** The armed press's marker stood within 8 px of `target` at some frame after the press — inside its
+ *  ring time; a marker that never arrives fails with what it saw. */
 async function settlesAt(page: Page, target: { x: number; y: number }) {
-  const seen: string[] = []
   const ok = await page
     .waitForFunction(
-      ({ x, y }) => {
-        const w = window as unknown as { __goto?: string[] }
-        w.__goto ??= []
-        const e = document.querySelector('[data-testid="map-goto-marker"]')
-        if (!e) {
-          w.__goto.push('none')
-          return false
-        }
-        const r = e.getBoundingClientRect()
-        w.__goto.push(`${r.x.toFixed(0)},${r.y.toFixed(0)}`)
-        return Math.hypot(r.x - x, r.y - y) < 8
-      },
+      ({ x, y }) =>
+        ((window as unknown as { __gotoSeen?: { x: number; y: number }[] }).__gotoSeen ?? []).some(
+          (r) => Math.hypot(r.x - x, r.y - y) < 8,
+        ),
       target,
-      { polling: 'raf', timeout: 3500 },
+      { timeout: 8000 },
     )
     .then(() => true)
     .catch(() => false)
-  if (!ok) seen.push(...(await page.evaluate(() => (window as unknown as { __goto?: string[] }).__goto ?? [])))
+  const seen = ok ? [] : await page.evaluate(() => (window as unknown as { __goto?: string[] }).__goto ?? [])
   expect(ok, `the marker settles on ${target.x},${target.y}; saw ${seen.filter((_, i) => i % 10 === 0).join(' ')}`).toBe(true)
 }
 
@@ -106,6 +145,7 @@ test.describe('a place named in a panel is a link that brings the chart to it', 
     const before = (await name.count()) > 0 ? await name.boundingBox({ timeout: 1000 }) : null
     if (before) expect(Math.hypot(before.x - target.x, before.y - target.y)).toBeGreaterThan(150)
 
+    await armGoTo(page)
     await link.click()
     // The panel the link was in stays open — a go-to selects and closes nothing.
     await expect(page.getByTestId('map-detail-tray')).toBeVisible()
@@ -127,8 +167,9 @@ test.describe('a place named in a panel is a link that brings the chart to it', 
     const glass = await page.getByTestId('map-chart').boundingBox()
     if (!glass) throw new Error('no glass')
 
+    await armGoTo(page)
     await page.getByTestId('map-place-name').getByTestId('goto-link').click()
-    // Read inside the marker's ring time first, then the fold.
+    // The marker's record was armed before the press (armGoTo), then the fold.
     await settlesAt(page, { x: glass.x + glass.width / 2, y: glass.y + glass.height / 2 })
     await expect(page.getByTestId('map-unfold')).toBeVisible()
     await expect(page.getByTestId('map-detail-tray')).toBeHidden()
@@ -271,10 +312,11 @@ test.describe('a go-to link opens nothing (no trade history, no other panel)', (
       // `await link.textContent()` then took 10 s on a busy runner — so the check began after the
       // ring had come and gone, and read 0 for 20 s on a press that had worked.
       const text = await link.textContent()
+      await armGoTo(page)
       if (finger) await page.touchscreen.tap(at.x, at.y)
       else await page.mouse.click(at.x, at.y)
-      // The marker is a 0×0 anchor (GoToMarker.tsx), so it is counted, not 'seen'.
-      await expect(page.getByTestId('map-goto-marker'), `link ${i} (${text}) rang the place`).toHaveCount(1)
+      // The marker is a 0×0 anchor (GoToMarker.tsx): its record, armed before the press, is read.
+      await rang(page, `link ${i} (${text})`)
       await page.waitForTimeout(600)
       expect(await page.getByTestId('trade-history').count(), `link ${i} (${text}) opened the trading`).toBe(0)
       expect(await page.getByTestId('map-ship-panel').count(), `link ${i} opened a ship`).toBe(0)
