@@ -5,6 +5,162 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — 0135: a bigger catalogue costs a ship read nothing — why the hot reads looked slower (PR #139)
+
+Still **not deployed** (prod head 0134). Brief: the +12.8 / +29.6 / +22.0 % above sit on prod's arrivals sweep
+(every 15 s, budget 10 s) — find exactly why and fix it before deploy.
+- **Root cause: the planner's page cost, not the rows.** Every per-ship read reaches the catalogue BY KEY (a
+  ship's class row, its fitted items' effects / profile / kind). PGlite runs PostgreSQL's default
+  `random_page_cost = 4` (a spinning disk); **prod runs 1.1** (`pg_settings`, source "configuration file",
+  read 2026-10-17, PG 17.6). At 4, one index probe is priced above reading a whole 2-3-page table, so once
+  0135 grows the tables the planner SEQ-SCANS them per ship per call. EXPLAIN (ANALYZE, BUFFERS), generic
+  plans, the dark `world.ship_stats` body: before — `Index Scan using ship_classes_pkey` and `Seq Scan on
+  item_effects (rows=30)`; after — `Seq Scan on ship_classes (rows=55)` + Hash Join and `Seq Scan on
+  item_effects (rows=315)` + Hash Join. The same flip in `ship_slots`, `ship_budget` / `class_budget`,
+  `ship_racks` (item_profile 115), `voyage.ship_speed` (ship_classes), and `ship_view`'s fittings list
+  (item_kinds 115). `ship_view` evaluates `ship_stats` four times (direct, hold, speed × 2), so it pays it 4×.
+  Indexes were already right (every lookup has its PK / `fitted_units_ship_item_idx`); the before world's
+  catalogue tables had never been analysed (prod's ship_classes / item_kinds / item_profile neither: relpages 0,
+  reltuples -1), which is why the class lookups planned as index scans there.
+- **Measured** (PGlite 18.3, 892 merchant hulls, one process holding both worlds, passes interleaved,
+  15 each, median / min): at **1.1 (prod)** before → after: speed+hold **+2.2 / +1.9 %**, ship_stats
+  **-0.6 / +0.8 %**, ship_view **+2.3 / -0.1 %**, quotes +1.6 / +0.1 % — noise. At **4 (PGlite default)**:
+  +27.6 / +28.2 %, +30.8 / +36.7 %, +26.3 / +27.1 %, +4.3 / +0.1 %. EXPLAIN at 1.1 after 0135: ship_stats,
+  ship_slots, ship_racks, ship_budget, ship_speed all index probes; three ~1-page seq scans remain (fittings'
+  item_kinds 115, class_cabins 55, class_profile 55) — inside the noise above.
+- **Fix: the 0135 notice times the reads at production's page cost** (`set random_page_cost = 1.1` on the
+  `pg_temp` timing helper only, both phases; a no-op on prod) and prints the engine's own setting beside it.
+  This build's notice: speed+hold 307 → 300 ms (-2.3 %), ship_stats 65 → 67 ms (+3.1 %), ship_view
+  1260 → 1263 ms (+0.2 %), quotes 351 → 339 ms (-3.4 %); answers md5-equal.
+- **Rejected, measured:** pinning `random_page_cost = 1.1` on the hot functions themselves (`alter function …
+  set`) — catalogue-independent, but the per-call SET cost ship_view ~9 % in PGlite (seven functions pinned
+  vs the whole session at 1.1) and prod would pay it for nothing. `alter database … set random_page_cost` —
+  PGlite never applies `pg_db_role_setting` (tested: set, dumped, reloaded → still 4). No query shape avoids
+  a seq scan of a 2-3-page table at 4.
+- **Not done (a separate slice, outside 0135):** PGlite worlds (the canary, CI's pglite gates) still plan the
+  grown catalogue at 4, i.e. their per-ship reads ARE ~27 % slower than before 0135. Fixing that means
+  starting every PGlite engine at prod's page cost (the variants' base, so every prefix snapshot rebuilds).
+- **Not verified:** prod itself after 0135 (it is at 0134). PG 17 re-plans SQL-language bodies per call
+  (`ship_slots`, `class_budget`, `ship_hold_capacity`) where PGlite 18 caches them; at 1.1 their plans are
+  index probes either way, but that difference was not timed on a real PG 17. The push's own notice is the
+  measurement there.
+
+---
+
+## 2026-10-17 — 0135 review fixes (PR #139) — timing notice, dark crafting gate, unique flags, hull_labour PL/pgSQL
+
+Still **not deployed** (prod head 0134). Owner: fix everything the review found, then merge + deploy.
+- **Hot-read timing is reported, not gated** (self-assert (o)): prod measured one `world.ship_view` pass over
+  892 merchant hulls at ~9.8 s on the burstable Micro CPU, so the old `after > before × 1.15 + 50 ms` refusal
+  would likely have aborted an honest push. The md5 answer-equality checks stay hard raises; the times go to
+  a `raise notice` (before → after ms, %). An `analyze` of the catalogue tables the file grows runs before
+  the 'after' pass. **Measured on the local cached-prefix apply (PGlite, after the analyze):** speed+hold
+  1002 → 1130 ms (+12.8 %), ship_stats 213 → 276 ms (+29.6 %), ship_view 3778 → 4608 ms (+22.0 %), quotes
+  1023 → 1047 ms (+2.3 %). That is a real slowdown of the per-hull reads as the catalogue grows 3 → 55 /
+  12 → 115 — the old gate would have refused it here too. Not fixed in this commit; re-measure on prod.
+- **Sign-up race** in (l)(2): the closed-pair count is compared with `52 × count(distinct player)` of
+  `needs_after_0135` itself, not a fresh `count(*) from players`.
+- **Dark gear could be crafted but not fitted** — `cmd.do_make` now refuses an item whose requirements are
+  unmet through the same gate as `cmd.do_build` / `mount_fitting` (`requirements_met` → `E_NEEDS_SKILL`, the
+  `requirements_refusal` sentence, "— ship skills are not in use yet" while dark). `world.workstation` folds
+  that sentence into `makeable` (once per item, lateral) and serves `tier_ok` beside it, as `building_yard`
+  does; `PortWorkstation.tsx` prints the workshop-tier note only when `tier_ok === false` and the `needs`
+  sentence as a warning. Self-assert: a probe house at the best workshop makes storm canvas (ungated),
+  is refused hemp canvas (Rigging II) dark, and makes it lit with Rigging II; every gated new item is served
+  closed with its sentence, every ungated one open exactly where the tier allows; live items' entries are
+  the pre-image + `tier_ok` (= their old `makeable`).
+- **`public.hull_labour`** is PL/pgSQL (PG 17 re-plans SQL bodies per call), body unchanged.
+- **One flag per country**: POL ♛, VEN ✥, MAR ❂, MUG ✺, PER ☀, GEN ✚ (ESP ⚔, OTT ☾, PRT ⚓ keep) —
+  `scripts/lib/world-derive.mjs` NATIONS + an update in 0135; asserted all 23 `flag_char` distinct.
+- Docs: `SHIPS_AND_SKILLS.md` §8 S12 row (102 hull rows, 11 new types / 103), §6.3 heading (23 = 12 + 11);
+  `DEPLOY_RUNBOOK.md` §3 + RESUME: `db push` parses statements separately but runs the file and its
+  `schema_migrations` row as ONE implicit transaction; after a failed push only `wind_the_clock()` is needed;
+  the clock must be unwound before the push. `PortYard.tsx` grouping block re-indented.
+
+---
+
+## 2026-10-17 — S12 (0135): every country builds its own ships — `osn-0135-wave-a`
+
+`docs/SHIPS_AND_SKILLS.md` §8 S12 "Wave A: 52 hulls + Wave A gear". **Not deployed** (prod head 0134).
+- **Generators** (the data the migration loads; re-run = file = DB, held by `scripts/db/world-guard.mjs`):
+  `scripts/build-ships.mjs` — 12 archetypes (size × role, the Portuguese values) × the 11 lines of
+  `data/ship-lines.json`; anchors: PRT small trade / light explorer / medium trade reproduce the live barca /
+  carlat / nau to the digit (stats, deck, racks, labour, goods, yard tier) or it throws. Every one of the 52
+  rows equals §4.3's Wave A table in every column (scratch diff: 0 mismatches) — the table was drafted with
+  half-to-even rounding (crayer 5.25 → 5.2 kn), hold to 5 t from 50 up, labour to 500 × a per-line yard
+  factor. `scripts/build-gear.mjs` — 23 base types × grades: G2-G5 of the 12 live, G1-G5 of the **11** new
+  ones §6.3 lists (the row says "10 / ~98"; the table is 11 → **103 items**), buys × 1.30…2.20 (speed/hold ×
+  1.15…1.60), spends × 1, deck/hands +10 %/grade, family material ladders; reproduces §6.4's Long Guns /
+  Sails / Hold Frames / Planking ladders. Output: `data/ships.generated.json`, `data/gear.generated.json`;
+  `--sql` prints the VALUES pasted into 0135; `--check` fails on a stale file.
+- **0135**: 52 `ship_classes` (guns = attack / 10, tier = size) + `class_profile` + 198 rack rows + cabins
+  (3/4/5/6 by size) + recipes (goods only, as the table names them — 0072 (a)'s "and fittings" is held for
+  the live three only); 103 items + profiles + 285 effects + 338 recipe rows; requirements **102 hull rows
+  (§4.4's pattern literally: small 1, light 2, medium 2, heavy 3 — the row's "55" matches no reading of
+  §4.4)** + 98 item rows; knob `hull_labour_mult` 1.0 read by ONE function `public.hull_labour` (do_build
+  sets `h.ducats` from it; building_yard serves it); `world.snapshot` serves size / role / tech.
+- **Dark = the pre-image of what can be built**: `public.requirements_unmet` re-cut — while `skills_bite`
+  is off NO level counts (have 0), so a subject WITH requirements is refused (`E_NEEDS_SKILL`, every skill
+  named, sentence + " — ship skills are not in use yet"); one without is answered as before. **So today on
+  prod none of the 52 new hulls, and none of the G2-G5 / Carronades / Chase Guns gear, can be built or
+  fitted by anyone; the nine ungated new G1 fittings and the figurehead grades can be made and fitted.**
+  Lighting `skills_bite` opens each to whoever holds the levels (re-measure the arrivals sweep first).
+- **Self-assert** (cached-prefix run, PGlite, 834 companies): live 3 hulls / 12 items hash-unchanged; counts;
+  guns = attack/10, tier = size, Hands ≥ 0, yard tier by size; 0072 (b)(c)(d) and 0068/0074 over every hull
+  and item (sold somewhere, made somewhere, fits a storage where buildable, buys+spends, fits a rack, climbs
+  from G1, places grow with size, 23 × 5); every hull buildable at ≥ 1 yard of its line (yard_wrong_country +
+  tier, and the yard screen agrees); dark — 12,510 company × live-subject pairs unchanged, 43,368 company ×
+  new-hull pairs closed, every live yard / workshop entry byte-equal, through the doors 52 hulls E_NEEDS_SKILL,
+  barca built for 3,000, storm canvas fitted, hemp canvas / carronades refused; lit (rolled back) — 52
+  refused naming every requirement without skills, 52 BUILT for their labour with them, the FITs go on;
+  lever 2.0 doubles door + yard; 5 bodies reverse to pre-images; entry points / posture unchanged.
+- **Hot reads** (faster of 2 passes, answers equal; budget before × 1.15 + 50 ms): speed+hold 364 → 405 ms,
+  ship_stats 77 → 92, ship_view 1,359 → 1,509, quotes 375 → 362 (892 merchant hulls / 898 quotes). One run
+  with tsc + eslint running beside it FAILED the gate (speed+hold 957 → 1,191) — the gate is load-sensitive.
+- **Client**: `HullClass` = the served code (`src/chart/mapTypes.ts:170`); eight silhouettes by rig family ×
+  size (`src/chart/glyphs.ts` `hullShapeOf` / `registerHullClasses`, live three pinned as the fallback,
+  `hullHalfLength` by size, heavy 6.1); `hullClassOfCode` (`src/chart/liveWorld.ts:85`) keeps any placeable
+  code; the store registers the snapshot's classes; Codex Ships filters by country / size / role / tech; the
+  build yard lists this country's hulls first, the rest under "Built only in other countries".
+- **Open questions from the handover, decided by the spec's own detailed sections** (the §8 row is a
+  summary; where it disagrees with the section it summarises, the section wins). Nothing built was changed;
+  the owner can overrule any of the three:
+  (1) **Hull requirement rows: 102, not "55".** §4.4's table is the rule: small T1 one skill, light two,
+  medium two, heavy three (the role skill I). Wave A is 13 small / 15 light / 13 medium / 11 heavy →
+  13 + 30 + 26 + 33 = **102**. No reading of §4.4 gives 55 (55 is the hull count after S12, 3 + 52), so the
+  row's number is a slip.
+  (2) **Items: 103, not "~98".** §6.3 lists **11** new base types (Carronades, Chase Guns, Swivel Guns,
+  Studding Sails, Storm Canvas, Whipstaff, Sheet Anchor, Capstan, Binnacle & Charts, Planking, Bilge
+  Pumps), not the row's 10: 12 live × G2-G5 (48) + 11 new × G1-G5 (55) = **103**. The row's "~" marks an
+  estimate; the table is exact.
+  (3) **New hull recipes are goods only.** §4.3's Wave A table names each hull's materials as goods only,
+  and §8 puts fittings into a hull recipe only for the famous ships (S17, `hull_recipe_items`). 0072 (a)'s
+  "goods and fittings" stays true of the live three (their `hull_recipe_items` hash is unchanged, asserted).
+- **Proof (lean)**: cached-prefix apply of 0135 + self-assert + world guard; `npx tsc -b`, `npx eslint .`,
+  `npm run build`; specs touched: db.chain, map.hulls, map.wrap, words.
+- **Finishing pass (fresh worktree, local PGlite build, no `.env.local`):** `build-ships.mjs --check` (52) and
+  `build-gear.mjs --check` (103) pass; `tsc -b` and `eslint .` clean; `npm run build` exit 0 — the world image
+  restored the browser prefix to 0120 and applied 0121-0135 here, 0135's receipt printed, world guard ok
+  (55 ship classes, 115 items, 200 requirements, generators re-run = files = database). Hot reads in that
+  run (wasm, faster of 2): speed+hold 947 → 1,041 ms, ship_stats 201 → 237, ship_view 3,688 → 4,255
+  (+15.4 %, inside the × 1.15 + 50 ms budget by 36 ms — the closest margin; CI's real Postgres is the
+  verdict), quotes 1,016 → 1,060. Specs against `vite preview --port 4196` on `localhost`:
+  `map.wrap.spec.ts:158` + all of `map.hulls.spec.ts` 11 passed / 0 skipped / 0 failed;
+  `db.chain.spec.ts` :339 :363 :789 passed. **`db.chain.spec.ts:672` (growth test) FAILED locally after
+  49 min — in 0108's own timing assert (`route_board` 408.9 ms a call against an absolute 400 ms budget,
+  wasm on this PC), before 0135 was reached;** main's CI ran the same test green, and this PR touches
+  `supabase/migrations/` so CI runs it again — that run is the verdict. Looked at the preview: Codex → Ships
+  lists the 55 hulls with their flags and Country / Size / Role filters (Tech hides itself while every hull
+  is T1); Lisbon's Build face lists the Portuguese hulls first (the two new ones dimmed) and the rest under
+  "Built only in other countries", each with its flag; Fluit's tray names The Netherlands, its yards, and
+  `Fluit needs Dutch Light Hulls III and Dutch Medium Hulls I — ship skills are not in use yet`.
+- **CI round 1 (PR #139, `b7ccfb2`):** build, disposable-chain (0135 applied on real Postgres over main's 0134
+  snapshot), the three pglite gates, npc-on-world, shards 2/3, 3/3, npc 1/2, npc 2/2 and **db** green. The db
+  shard ran the growth test (`db.chain.spec.ts:672`, 46 min), which passed, so the local 0108 timing failure
+  above is this PC's wasm speed and not the chain. **Shard 1/3 was red:** `tests/rpc.surface.spec.ts:103`
+  still pinned the snapshot's `ship_classes` to 3. Fixed: it now counts 3 + `data/ships.generated.json`'s
+  hulls and requires line / size / role / tech on every class (passed locally against the built image).
+
 ## 2026-10-17 — the 1280 map "lost its merchants" after a resize: it did not — `osn-map-resize-merchants`
 
 Brief: `map.hulls` (390 → 1280, "≥ 2 merchant marks", got 0–1 for 60 s; CI 38917698523, 38864772736,

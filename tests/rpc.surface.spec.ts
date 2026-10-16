@@ -68,6 +68,12 @@ import {
   cmdSkillQueueSet,
 } from '../src/lib/rpc'
 import type { ManifestLine } from '../src/lib/rpc'
+import { readFileSync } from 'node:fs'
+
+// 0135: the generated hulls (scripts/build-ships.mjs), read from the file the migration was made from.
+const waveA = JSON.parse(readFileSync(new URL('../data/ships.generated.json', import.meta.url), 'utf8')) as {
+  hulls: unknown[]
+}
 
 let db: LocalDb
 
@@ -100,7 +106,12 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   // (world.sea_raster) and the sailed distances (world.reach), asserted in their own test below.
   expect('legs' in snap).toBe(false)
   expect(snap.goods.length).toBeGreaterThan(20)
-  expect(snap.ship_classes).toHaveLength(3)
+  // 0135 (S12 Wave A): the three Lisbon hulls plus the generated ones (data/ships.generated.json) —
+  // counted from the generator's file, not remembered — each served with its line, size, role, tech.
+  expect(snap.ship_classes).toHaveLength(3 + waveA.hulls.length)
+  for (const c of snap.ship_classes) {
+    expect(isStr(c.line) && isNum(c.size) && isStr(c.role) && isStr(c.tech), c.code).toBe(true)
+  }
   // Pin moved deliberately 2026-09-13 with migration 0086: DISMISS is the fifteenth verb.
   expect(snap.verbs).toHaveLength(15)
 

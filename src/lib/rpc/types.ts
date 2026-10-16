@@ -153,6 +153,12 @@ export interface SnapshotShipClass {
   /** 0130 — the nation code whose flag the hull is shown under (the line's home nation), resolved
    *  through `nationByCode`. */
   line_nation?: string | null
+  /** 0135 — `class_profile.size`: 1 small · 2 light · 3 medium · 4 heavy · 5 capital · 6 flagship. */
+  size?: number | null
+  /** 0135 — `class_profile.role`: trade · combat · explorer · support. */
+  role?: string | null
+  /** 0135 — `class_profile.tech`: T1 · T2 · F (famous). */
+  tech?: string | null
 }
 
 /** The allow-listed knobs. `world_secret` is NOT among them and 0009 asserts that by value. */
@@ -417,12 +423,16 @@ export interface WorkstationItem {
   volume: number
   /** The workstation tier a city needs to make it. */
   ws_tier: number
-  /** Whether THIS city's workstation is good enough. The server's rule, never re-derived here. */
+  /** Whether YOU can make it HERE: this city's workstation is good enough AND (0135) nothing it needs
+   *  of your skills is missing — cmd.do_make's own verdict. The server's rule, never re-derived here. */
   makeable: boolean
+  /** 0135 — this city's workstation tier alone, so the screen can say which of the two closed it. */
+  tier_ok?: boolean
   /** How many you already own in this city — items have a LOCATION. */
   owned_here: number
-  /** 0133 — the skills FITTING it needs that you lack: the fit refusal's own E_NEEDS_SKILL sentence
-   *  ("Suit of Sails needs Rigging II"), or null. Making it needs none. Printed as served. */
+  /** 0133 — the skills it needs that you lack: the E_NEEDS_SKILL sentence cmd.do_make (0135) and the
+   *  fit both refuse with ("Hemp Canvas needs Rigging II — ship skills are not in use yet"), or null.
+   *  Printed as served. */
   needs?: string | null
   recipe: RecipeLine[]
 }

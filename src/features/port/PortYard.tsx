@@ -3,6 +3,7 @@ import {
   Button,
   Field,
   Figure,
+  Hint,
   Icon,
   Note,
   Row,
@@ -107,6 +108,11 @@ export function PortYard({
   if (loading && !view) return <Note tone="neutral">Loading…</Note>
   if (!view) return <Note tone="neutral">This port does not build ships.</Note>
 
+  // 0135 — 55 hulls, most of them another country's: the ones THIS port's country builds first (the
+  // server's own `wrong_yard` is null for them), the rest after, under one caption. A split of the
+  // served list, not a rule — the server already said which is which.
+  const here = view.hulls.filter((h) => !h.wrong_yard)
+  const elsewhere = view.hulls.filter((h) => h.wrong_yard)
   const short = open ? shortfall(open) : null
   const tooDeep = open !== null && open.draft > maxDraft
   const ready = open !== null && open.buildable && fleet !== null && short === null
@@ -119,31 +125,42 @@ export function PortYard({
         </Note>
       )}
 
-      <TileField>
-        {view.hulls.map((hull) => (
-          <Tile
-            key={hull.class}
-            mark={<Icon name="ship" size={20} />}
-            name={hull.name}
-            meta={
-              <>
-                <HullCountry nation={hull.line_nation} compact />
-                {hull.line_nation ? ' ' : ''}
-                {formatTons(hull.hold)}
-              </>
-            }
-            state={hull.buildable ? 'rest' : 'muted'}
-            tap="whole"
-            onClick={() => {
-              setRefusal(null)
-              setDetent('half')
-              setOpen(hull)
-            }}
-            figure={<Figure value={formatDucats(hull.ducats)} unit="to build" />}
-            data-testid={`hull-${hull.class}`}
-          />
-        ))}
-      </TileField>
+      {[here, elsewhere].map((group, gi) =>
+        group.length === 0 ? null : (
+          <div
+            key={gi}
+            className={gi === 1 ? 'mt-4' : undefined}
+            data-testid={gi === 0 ? 'yard-here' : 'yard-elsewhere'}
+          >
+            {gi === 1 && <Hint className="mb-2">Built only in other countries</Hint>}
+            <TileField>
+              {group.map((hull) => (
+                <Tile
+                  key={hull.class}
+                  mark={<Icon name="ship" size={20} />}
+                  name={hull.name}
+                  meta={
+                    <>
+                      <HullCountry nation={hull.line_nation} compact />
+                      {hull.line_nation ? ' ' : ''}
+                      {formatTons(hull.hold)}
+                    </>
+                  }
+                  state={hull.buildable ? 'rest' : 'muted'}
+                  tap="whole"
+                  onClick={() => {
+                    setRefusal(null)
+                    setDetent('half')
+                    setOpen(hull)
+                  }}
+                  figure={<Figure value={formatDucats(hull.ducats)} unit="to build" />}
+                  data-testid={`hull-${hull.class}`}
+                />
+              ))}
+            </TileField>
+          </div>
+        ),
+      )}
 
       {open && (
         <Tray

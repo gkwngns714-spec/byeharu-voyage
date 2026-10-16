@@ -36,6 +36,14 @@
 //                 Capital = 5 and 6), every row and its per cent, both directions; the four company
 //                 rows mirror skills.effect / pct_per_level; public.skill_requirements EQUALS
 //                 data/skills.json `requirements`, both directions
+//   * wave A      (0135) the GENERATORS are re-run here: scripts/build-ships.mjs `generateShips()` and
+//                 scripts/build-gear.mjs `generateGear()` must equal data/ships.generated.json and
+//                 data/gear.generated.json byte for byte, AND the database: public.ship_classes (every
+//                 column), class_profile, the rack rows of class_slots, class_cabins, hull_recipes +
+//                 hull_recipe_goods + hull_recipe_items, item_kinds, item_profile, item_effects,
+//                 item_recipes and skill_requirements EQUAL the live rows' data files (data/hulls.json,
+//                 data/fittings.json, data/gear.json, data/ship_stats.json, data/ship-lines.json) plus
+//                 what the generators give, every column, both directions
 //
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
@@ -50,6 +58,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { deriveWorld, REPO_ROOT, round2 } from '../lib/world-derive.mjs'
+import { generateShips, SHIPS_FILE } from '../build-ships.mjs'
+import { generateGear, GEAR_FILE } from '../build-gear.mjs'
 
 /** 0133: one skill effect's identity — every column but the per cent. */
 const effectKey = (e) => [e.skill, e.scope, e.stat, e.line ?? '', e.size ?? '', e.role ?? '', e.tech ?? ''].join('/')
@@ -257,6 +267,33 @@ function drift(db_, want) {
     'data/skills.json + data/ship-lines.json')
   both(keyed(db_.skillRequirements, (r) => `${r.kind}/${r.code}/${r.skill}`),
     keyed(want.skillRequirements, (r) => `${r.kind}/${r.code}/${r.skill}`), 'skill requirement', [['level', 'level', 'level']], 'data/skills.json')
+  // wave A (0135) — the live rows' data files plus the generators' output, every column, both directions
+  if (want.waveA) {
+    const w = want.waveA
+    const SHIP = 'data/hulls.json + data/ships.generated.json'
+    const GEAR = 'data/fittings.json + data/gear.generated.json'
+    // the live three are held row-for-row by 0135's own hash (their stats live in no data file); here
+    // they must simply BE there, and every other class must be a generated one, column for column
+    for (const code of w.liveClasses) if (!db_.waveA.classes.some((r) => r.code === code)) say(`ship class ${code} (live) is missing from the database`)
+    both(keyed(db_.waveA.classes.filter((r) => !w.liveClasses.includes(r.code)), (r) => r.code), keyed(w.classes, (r) => r.code),
+      'ship class', w.classCols.map((c) => [c, c, c]), SHIP)
+    both(keyed(db_.waveA.cabins, (r) => r.class_code), keyed(w.cabins, (r) => r.class_code), 'cabins', [['cabins', 'cabins', 'cabins']],
+      'data/ship_stats.json + data/ships.generated.json')
+    both(keyed(db_.waveA.recipes, (r) => r.class_code), keyed(w.recipes, (r) => r.class_code), 'hull recipe',
+      [['yard_tier', 'yard_tier', 'yard_tier'], ['ducats', 'ducats', 'ducats'], ['note', 'note', 'note']], SHIP)
+    both(keyed(db_.waveA.recipeGoods, (r) => `${r.class_code}/${r.good}`), keyed(w.recipeGoods, (r) => `${r.class_code}/${r.good}`),
+      'hull material', [['qty', 'qty', 'qty']], SHIP)
+    both(keyed(db_.waveA.recipeItems, (r) => `${r.class_code}/${r.item}`), keyed(w.recipeItems, (r) => `${r.class_code}/${r.item}`),
+      'hull fitting', [['qty', 'qty', 'qty']], SHIP)
+    both(keyed(db_.waveA.items, (r) => r.code), keyed(w.items, (r) => r.code), 'item',
+      [['name', 'name', 'name'], ['slot', 'slot', 'slot'], ['buys', 'buys', 'buys'], ['spends', 'spends', 'spends'],
+        ['note', 'note', 'note'], ['volume', 'volume', 'volume'], ['ws_tier', 'ws_tier', 'ws_tier']], GEAR)
+    both(keyed(db_.waveA.effects, (r) => `${r.item}/${r.stat}`), keyed(w.effects, (r) => `${r.item}/${r.stat}`), 'item effect',
+      [['delta', 'delta', 'delta']], GEAR)
+    both(keyed(db_.waveA.itemRecipes, (r) => `${r.item}/${r.good}`), keyed(w.itemRecipes, (r) => `${r.item}/${r.good}`), 'item recipe',
+      [['qty', 'qty', 'qty']], GEAR)
+  }
+
   for (const s of db_.skills) {
     if (s.effect === 'NONE') continue
     const mirror = db_.skillEffects.filter((e) => e.skill === s.code && e.scope === 'company')
@@ -342,6 +379,23 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       from public.skill_effects`)).rows
   db_.skillRequirements = (await db.query(`
     select subject_kind as kind, subject_code as code, skill_code as skill, level from public.skill_requirements`)).rows
+  // 0135: wave A — every hull class, its cabins and recipe, and every item, its effects and recipe
+  db_.waveA = {
+    classes: (await db.query(`
+      select code, name, family, rig, hold, crew_required, crew_max, speed_kn::float8 as speed_kn, durability, guns, draft,
+             build_hours::float8 as build_hours, build_cost::float8 as build_cost, tier, handling, armour, attack, accuracy,
+             reach, sighting::float8 as sighting
+        from public.ship_classes`)).rows,
+    cabins: (await db.query(`select class_code, cabins from public.class_cabins`)).rows,
+    recipes: (await db.query(`select class_code, yard_tier, ducats::float8 as ducats, note from public.hull_recipes`)).rows,
+    recipeGoods: (await db.query(`
+      select hg.class_code, g.code as good, hg.qty::float8 as qty from public.hull_recipe_goods hg join public.goods g on g.id = hg.good_id`)).rows,
+    recipeItems: (await db.query(`select class_code, item_code as item, qty from public.hull_recipe_items`)).rows,
+    items: (await db.query(`select code, name, slot, buys, spends, note, volume::float8 as volume, ws_tier from public.item_kinds`)).rows,
+    effects: (await db.query(`select item_code as item, stat, delta::float8 as delta from public.item_effects`)).rows,
+    itemRecipes: (await db.query(`
+      select ir.item_code as item, g.code as good, ir.qty::float8 as qty from public.item_recipes ir join public.goods g on g.id = ir.good_id`)).rows,
+  }
 
   const want = deriveWorld()
   want.places = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'sea-places.json'), 'utf8')).places
@@ -359,6 +413,55 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   }
   want.gear = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'gear.json'), 'utf8'))
 
+  // 0135: THE GENERATORS, RE-RUN. Their output must equal the committed files (a stale file is drift)
+  // and, with the live rows' data files, the database (below, in `drift`).
+  {
+    const read = (rel) => JSON.parse(readFileSync(join(REPO_ROOT, rel), 'utf8'))
+    const ships = generateShips()
+    const gear = generateGear()
+    for (const [file, gen] of [[SHIPS_FILE, ships], [GEAR_FILE, gear]]) {
+      if (readFileSync(join(REPO_ROOT, file), 'utf8') !== JSON.stringify(gen, null, 1) + '\n') {
+        throw new Error(`WORLD DRIFT: ${file} is not what its generator gives today — re-run the generator (a shipped migration is never edited).`)
+      }
+    }
+    want.classProfiles = [...want.classProfiles, ...ships.hulls.map((h) => ({
+      class: h.class, line: h.line, size: h.size, role: h.role, tech: h.tech, deck: h.deck, anyYard: h.anyYard }))]
+    want.gear = {
+      ...want.gear,
+      items: [...want.gear.items, ...gear.items.map((i) => ({
+        code: i.code, baseType: i.baseType, rack: i.rack, grade: i.grade, meta: i.meta, deck: i.deck, hands: i.hands, active: i.active }))],
+      classes: [...want.gear.classes, ...ships.hulls.map((h) => ({ class: h.class, ...h.racks }))],
+    }
+    want.skillRequirements = [
+      ...want.skillRequirements,
+      ...ships.hulls.flatMap((h) => h.requirements.map((q) => ({ kind: 'hull', code: h.class, skill: q.skill, level: q.level }))),
+      ...gear.items.flatMap((i) => i.requirements.map((q) => ({ kind: 'item', code: i.code, skill: q.skill, level: q.level }))),
+    ]
+    const liveHulls = read('data/hulls.json').hulls
+    const fittings = read('data/fittings.json').fittings
+    want.waveA = {
+      liveClasses: liveHulls.map((h) => h.class),
+      classCols: ['name', 'family', 'rig', 'hold', 'crew_required', 'crew_max', 'speed_kn', 'durability', 'guns', 'draft',
+        'build_hours', 'build_cost', 'tier', 'handling', 'armour', 'attack', 'accuracy', 'reach', 'sighting'],
+      classes: ships.hulls.map((h) => ({
+        code: h.class, name: h.name, family: h.family, rig: h.rig, hold: h.hold, crew_required: h.crewRequired, crew_max: h.crewMax,
+        speed_kn: h.speedKn, durability: h.durability, guns: h.guns, draft: h.draft, build_hours: h.buildHours, build_cost: h.buildCost,
+        tier: h.tier, handling: h.handling, armour: h.armour, attack: h.attack, accuracy: h.accuracy, reach: h.reach, sighting: h.sighting })),
+      cabins: [...read('data/ship_stats.json').slots.map((s) => ({ class_code: s.class, cabins: s.cabins })),
+        ...ships.hulls.map((h) => ({ class_code: h.class, cabins: h.cabins }))],
+      recipes: [...liveHulls.map((h) => ({ class_code: h.class, yard_tier: h.yard_tier, ducats: h.ducats, note: h.note })),
+        ...ships.hulls.map((h) => ({ class_code: h.class, yard_tier: h.yardTier, ducats: h.ducats, note: h.note }))],
+      recipeGoods: [...liveHulls, ...ships.hulls].flatMap((h) =>
+        h.goods.map((g) => ({ class_code: h.class, good: g.in, qty: g.qty }))),
+      recipeItems: liveHulls.flatMap((h) => h.items.map((i) => ({ class_code: h.class, item: i.in, qty: i.qty }))),
+      items: [...fittings.map((f) => ({ code: f.code, name: f.name, slot: f.slot, buys: f.buys, spends: f.spends, note: f.note, volume: f.volume, ws_tier: f.ws_tier })),
+        ...gear.items.map((i) => ({ code: i.code, name: i.name, slot: i.slot, buys: i.buys, spends: i.spends, note: i.note, volume: i.volume, ws_tier: i.wsTier }))],
+      effects: [...fittings.flatMap((f) => (f.effects ?? []).map((e) => ({ item: f.code, stat: e.stat, delta: e.delta }))),
+        ...gear.items.flatMap((i) => i.effects.map((e) => ({ item: i.code, stat: e.stat, delta: e.delta })))],
+      itemRecipes: [...fittings, ...gear.items].flatMap((i) => i.recipe.map((x) => ({ item: i.code, good: x.in, qty: x.qty }))),
+    }
+  }
+
   // ── POSITIVE CONTROL: the comparator must SEE a planted drift before it may certify zero ─────
   const wounded = {
     ...want,
@@ -368,6 +471,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     skills: want.skills.map((s, i) => (i === 0 ? { ...s, rank: s.rank + 1 } : s)), // 0131: one skill's rank bent
     gear: { ...want.gear, items: want.gear.items.map((it, i) => (i === 0 ? { ...it, deck: it.deck + 1 } : it)) }, // 0132: one item's deck bent
     skillEffects: want.skillEffects.map((e, i) => (i === 0 ? { ...e, pct: e.pct + 1 } : e)), // 0133: one skill effect's per cent bent
+    waveA: { ...want.waveA, classes: want.waveA.classes.map((c, i) => (i === 0 ? { ...c, hold: c.hold + 5 } : c)) }, // 0135: one generated hull's hold bent
   }
   const seen = drift(db_, wounded)
   const sawDrop = seen.some((s) => s.includes(`${want.ports[0].code}`))
@@ -376,10 +480,11 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const sawSkill = seen.some((s) => s.includes(`skill ${want.skills[0].code}.rank:`))
   const sawGear = seen.some((s) => s.includes(`item profile ${want.gear.items[0].code}.deck:`))
   const sawEffect = seen.some((s) => s.includes(`skill effect ${effectKey(want.skillEffects[0])}.pct:`))
-  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect) {
+  const sawHull = seen.some((s) => s.includes(`ship class ${want.waveA.classes[0].code}.hold:`))
+  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawHull) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck or bent skill effect was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect or bent generated hull was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -405,7 +510,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       `${want.places.length} sea places, ${db_.marketRows} market rows, ${want.shipLines.length} ship lines, ` +
       `${want.classProfiles.length} class profiles, ${want.skills.length} skills in ${want.skillGroups.length} groups, ` +
       `${want.gear.racks.length} gear racks, ${want.gear.items.length} item profiles, ${db_.rackSlots.length} rack places, ` +
-      `${want.skillEffects.length} skill effects, ${want.skillRequirements.length} skill requirements ` +
-      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck and bent skill effect were all seen)`,
+      `${want.skillEffects.length} skill effects, ${want.skillRequirements.length} skill requirements, ` +
+      `${want.waveA.liveClasses.length + want.waveA.classes.length} ship classes and ${want.waveA.items.length} items (generators re-run = files = database) ` +
+      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect and bent generated hull were all seen)`,
   )
 }

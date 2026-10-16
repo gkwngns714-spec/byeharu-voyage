@@ -1017,7 +1017,12 @@ names the RACK (`… has no free Mid slot (2 / 2 used)`), and `E_NO_SLOT` / `E_N
 and from 0133 (skill effects and requirements, docs/SHIPS_AND_SKILLS.md §4.4/§5.2, dark behind `skills_bite`)
 `E_NEEDS_SKILL` (a BUILD or a FIT whose hull or item needs a skill level the company lacks — `Nau / Carrack
 needs Portuguese Medium Hulls IV`, with figures level have / need; the build yard and the workshop serve the
-same sentence as `needs`); `E_SHIP_LEVEL` (0127, a fitting's ship-level ask) is retired with `item_level_asks`.
+same sentence as `needs`); `E_SHIP_LEVEL` (0127, a fitting's ship-level ask) is retired with `item_level_asks`,
+and from 0135 (Wave A: 52 hulls + the gear grades, docs/SHIPS_AND_SKILLS.md §8 S12) no new code: `E_NEEDS_SKILL`
+now refuses DARK too — while `skills_bite` is off no skill level counts, so a hull or item that HAS requirements
+(the 52 new hulls, G2-G5 gear, Carronades / Chase Guns) is refused with every requirement named and the sentence
+ending ` — ship skills are not in use yet` (figures have 0 / need); one with none is answered as before.
+`E_WRONG_YARD` / `E_YARD_TOO_SMALL` now apply to the new hulls (each is built only in its line's countries).
 
 ---
 
