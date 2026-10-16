@@ -696,9 +696,38 @@ export type FleetStatus = 'DOCKED' | 'ANCHORED' | 'SAILING' | 'REPAIRING' | 'ADR
 export interface MountedFitting {
   code: string
   name: string
-  /** rig · weapon · ground-tackle · steering · hull · lookout · flourish. */
+  /** rig · weapon · ground-tackle · steering · hull · lookout · flourish — the item's TYPE word. Since
+   *  0132 it is not a capacity: a fitting goes in its RACK (`FleetShip.racks`). */
   slot: string
   qty: number
+}
+
+/** 0132 — one mounted UNIT in a rack, with what it costs of the two fitting budgets. */
+export interface ShipRackUnit {
+  code: string
+  name: string
+  /** The item's TYPE word (glyph), as `MountedFitting.slot`. */
+  slot: string
+  deck: number
+  hands: number
+}
+
+/** 0132 — one gear RACK of a hull (`world.ship_racks`): the word the player reads, how many places
+ *  are open now and how many a level opens later (`at_level`, null when none), and the units in it. */
+export interface ShipRack {
+  /** high · mid · low · refit · flourish (`public.gear_racks.code`). */
+  rack: string
+  word: string
+  open: number
+  locked: number
+  at_level: number | null
+  fitted: ShipRackUnit[]
+}
+
+/** 0132 — a hull's two fitting budgets (`world.ship_budget`): Deck and Hands, used out of max. */
+export interface ShipBudget {
+  deck: { used: number; max: number }
+  hands: { used: number; max: number }
 }
 
 export interface FleetShip {
@@ -740,8 +769,14 @@ export interface FleetShip {
   sighting: number
   /** What is mounted on her right now. */
   fittings: MountedFitting[]
-  /** How many of each kind of slot she has. `weapon` is `ship_classes.guns`, retired into this. */
+  /** How many places she has in each gear RACK (0132: high · mid · low · refit · flourish; before
+   *  0132 it was keyed by the seven item kinds). */
   slots: Record<string, number>
+  /** 0132 — her racks, each with its word, open / locked places and the units in it. Optional for one
+   *  release: a server older than 0132 does not serve them (the panel falls back to `slots`). */
+  racks?: ShipRack[]
+  /** 0132 — her Deck and Hands, used out of max. Optional for one release, as `racks`. */
+  budget?: ShipBudget
   /** How many captains she can berth. Nothing reads it yet — ranks and cabins are their own slice. */
   cabins: number
   /** 0127 — slots a higher level opens, by kind: how many, and the level that opens the first. */

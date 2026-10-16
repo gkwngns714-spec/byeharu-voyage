@@ -5,6 +5,53 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — S10 (0132): a ship carries what its deck can bear — `osn-0132-gear-racks`
+
+docs/SHIPS_AND_SKILLS.md §8 row S10 ("Gear I: racks, units, budgets"), §6.1/6.2/6.9. **Not deployed**
+(prod head 0131; the owner deploys: `db push` first, merge after — DEPLOY_RUNBOOK clock unwind/wind).
+- **Racks**: `public.gear_racks` (High / Mid / Low / Refit / Flourish — code, word, order) and
+  `public.item_profile` (the twelve live items = grade 1 of their base type: rack, deck, hands, active),
+  authored in `data/gear.json` and held to it by the world guard (positive control: a bent item deck).
+  `class_slots` rewritten BY RACK (barca H1/M2, carlat H2/M3/R1, nau H3/M5/L1/R2/F1 = the typed rows
+  summed by rack + new Refit rows); `class_slot_unlocks` kind → rack (dark). `world.ship_slots` needed
+  no hunk (it reads class_slots generically; body asserted unchanged).
+- **Units**: `public.fitted_units` — one row per mounted unit (wear, perks, mounted_at; read by nothing
+  until S13/S16), backfilled from `ship_fittings` qty → rows (2,552 units / 893 hulls on the cached world).
+  Writers: `mount_fitting` (insert) and NEW `unmount_fitting` (delete, counted; refits destroyed) only —
+  live-body scan with a planted writer as control. `ship_fittings` is now a READ-ONLY view (GROUP BY,
+  insert/update/delete refused) for one release; no live body names it (5 pre-images did).
+- **Budgets**: `public.class_budget` (Deck = class_profile.deck, Hands = crew_max − ⌈crew_required/2⌉) →
+  `world.ship_budget` (used/max), the one reading; `mount_fitting` refuses `E_OVER_DECK` / `E_OVER_HANDS`
+  with figures on a FIT only. Enumerated: every loadout legal under the typed caps fits (barca 24, carlat
+  120, nau 7,680 loadouts; worst 12/12·14/16, 20/22·24/24, 33/56·37/110). Over-budget hulls: 0.
+- **Concurrency**: `public.fitting_lock(house)` (advisory, re-entrant) taken FIRST by do_fit / do_unfit
+  (before the store / units are read), and by both cores and npc_fit_loadout; do_fit's store debit counts
+  its row (GET DIAGNOSTICS) — a lost double tap takes nothing twice.
+- **Reads**: `world.ship_stats` over units (every hull's ten stats = pre-image, old vs new on one
+  snapshot); `world.ship_view` = pre-image + `racks` (NEW `world.ship_racks`, PL/pgSQL so its plan is
+  cached — inlined in the SQL builder it doubled the merchant read) + `budget`; `slots` re-keyed by rack
+  (asserted the exact rack-sum of the typed pre-image). Merchant reads on the cached world: speed+hold
+  305 → 314 ms (892 hulls), ship_view 1,015 → 1,233 ms.
+- **Locks (review fix S1)**: nothing anyone can wait on before §7 — the backfill and every comparison read
+  a pg_temp SNAPSHOT of ship_fittings; the new tables get no FK until §7 (an FK on item_kinds held to
+  commit parks every player_items/ship_fittings insert's FK check). §7 is one short retried step,
+  lock_timeout 2 s, fixed order: ACCESS EXCLUSIVE on ship_fittings → re-sync any hull that moved since the
+  snapshot (exercised with a planted drift: 2 hulls re-synced) → RENAME the table to
+  `ship_fittings_retired_0132` (dropping it would take ACCESS EXCLUSIVE on `ships` for its FK triggers) →
+  the view (`security_invoker`) → item/rack FKs. No FK to ships (0127's ship_xp precedent). Swap 6 ms,
+  held 7 ms to commit on the cached world. **The retired table is dropped in the next gear step, clock unwound.**
+- **Review fix B1**: assert (g)'s writer list was `array_agg(... order by 1)` (orders by the constant) —
+  now ordered by the entry itself. No other `order by <constant>` in an aggregate in 0130-0132.
+- **Merchant cards** carry `racks`/`budget` intentionally (fittings were already public on the card).
+- **Client**: `src/live/ShipPanel.tsx` draws Equipment by rack (word + `used / places`, units glow with
+  their item's glyph) under Deck and Hands bars; falls back to the typed slots for a pre-0132 server.
+  `FleetShip.racks` / `.budget` (`src/lib/rpc/types.ts`). New codes in docs/DESIGN.md; words in WORDS.md.
+- **Proof (lean)**: cached-prefix apply of 0132 + its self-assert + world guard (`applyChainCached` +
+  `assertWorldMatchesData`), `npx tsc -b`, `npx eslint .`, `npm run build`, `tests/db.chain.spec.ts` LAST
+  pin → 0132.
+
+---
+
 ## 2026-10-16 — S9 (0131): a skill is learned by the hour — `osn-0131-skills-queue`
 
 docs/SHIPS_AND_SKILLS.md §8 row S9 ("Skills I: catalogue + queue"), §5.1-5.2. **Not deployed** (prod

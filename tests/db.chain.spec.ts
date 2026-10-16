@@ -329,7 +329,8 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0129 (a merchant buys what her purse can pay: the planner and her BUY lines are bounded by her working capital).
 // And to 0130 (a ship has a country: eleven shipbuilding lines, three nations, seven arsenals, E_WRONG_YARD).
 // And to 0131 (a skill is learned by the hour: 92 skills in 8 groups, enrolment + a training queue, no cron).
-const LAST = '20260818000131_a_skill_is_learned_by_the_hour.sql'
+// And to 0132 (a ship carries what its deck can bear: gear racks, one row per mounted unit, Deck and Hands budgets).
+const LAST = '20260818000132_a_ship_carries_what_its_deck_can_bear.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

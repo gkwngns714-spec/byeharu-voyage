@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Bar, Empty, Tray, type TrayDetent } from '../components/ui'
 import { formatFixed, formatInt } from '../lib/format'
 import { CHART_CHROME, hullClassOfCode, hullPath } from '../chart'
+import type { ShipBudget, ShipRack } from '../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE SHIP, OPENED FROM HER FLEET'S PANEL — the owner, 2026-10-15:
@@ -14,7 +15,9 @@ import { CHART_CHROME, hullClassOfCode, hullPath } from '../chart'
 //
 // A second side panel, slid out from the fleet's (VoyageTray) or a merchant's (MerchantSheet).
 // Nothing here is computed: every figure is the server's (`FleetShip`, 0074 — stats are base plus
-// what is mounted) and the slot counts are `ship.slots`, which is `class_slots` plus her guns.
+// what is mounted). Since 0132 the equipment is drawn from `ship.racks` (High / Mid / Low / Refit +
+// Flourish, each with its word, places and units) and the two fitting budgets from `ship.budget`
+// (Deck and Hands, used out of max) — the server's answers, rendered; no rack or count is derived here.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 /** WHAT THE PANEL READS — one ship as `world.ship_view` serves her (0124): your own `FleetShip` and a
@@ -37,6 +40,10 @@ export interface ShipView {
   speed: number
   fittings: readonly { name: string; qty: number; slot?: string }[]
   slots?: Record<string, number>
+  /** 0132 — her racks and her two fitting budgets (`world.ship_racks`, `world.ship_budget`). Absent
+   *  from a server older than 0132: the panel falls back to `slots` by kind. */
+  racks?: readonly ShipRack[]
+  budget?: ShipBudget
   /** 0127 — slots a higher level opens: drawn dimmed with the level, never fillable. */
   slots_locked?: Record<string, { count: number; at_level: number }>
   /** 0127 — her level and experience (points): this level began at `xp_from`, the next at
@@ -69,6 +76,17 @@ const GLYPH: Record<string, string> = {
   lookout: 'M3 15l12-7 2 4-12 7zM15 8l4-2 2 4-4 2M7 18l-1 3',
   // a star flourish
   flourish: 'M12 3l2.5 6 6.5.5-5 4 1.5 6.5L12 16l-5.5 4 1.5-6.5-5-4 6.5-.5z',
+  // 0132 — a refit (permanent work on the hull): a shipwright's adze
+  refit: 'M4 20l9-9M11 7l6-4 4 4-4 6-6-6M13 11l-2-2',
+}
+
+/** 0132 — the glyph an EMPTY place of each rack shows (a filled place shows its item's own glyph). */
+const RACK_GLYPH: Record<string, string> = {
+  high: 'weapon',
+  mid: 'rig',
+  low: 'hull',
+  refit: 'refit',
+  flourish: 'flourish',
 }
 function SlotGlyph({ kind, className = '' }: { kind: string; className?: string }) {
   const d = GLYPH[kind] ?? GLYPH.flourish
@@ -151,8 +169,96 @@ function Heading({ children, trailing }: { children: ReactNode; trailing?: React
   )
 }
 
-/** THE EQUIPMENT PAGE — square slots in a grid, each with its kind's glyph; a fitted slot glows. */
+/** One square place: a fitted unit glows with its item's glyph; an empty one shows its rack's; a place a
+ *  level opens later is dimmed with the level. */
+function Box({ b }: { b: SlotBox }) {
+  const on = b.fitted !== null
+  const shut = b.opensAt !== null
+  return (
+    <div
+      data-fitted={on || undefined}
+      data-locked={shut || undefined}
+      title={on ? `${b.word}: ${b.fitted}` : shut ? `${b.word} — level ${b.opensAt}` : `${b.word} — empty`}
+      className={[
+        'relative flex aspect-square min-w-0 flex-col items-center justify-center gap-1 rounded-control p-1.5 text-center',
+        'shadow-[inset_0_1px_0_rgb(255_255_255/0.04),inset_0_-2px_4px_rgb(0_0_0/0.35)]',
+        on ? 'bg-accent/10 ring-1 ring-accent/50' : 'bg-surface-2 ring-1 ring-ink-faint/15',
+        shut ? 'opacity-40' : '',
+      ].join(' ')}
+    >
+      <SlotGlyph kind={b.kind} className={on ? 'text-accent' : 'text-ink-faint/40'} />
+      <span className={`line-clamp-2 text-[0.6875rem] leading-tight ${on ? 'text-ink' : 'text-ink-faint/60'}`}>
+        {on ? b.fitted : shut ? `Lv ${b.opensAt}` : b.word}
+      </span>
+    </div>
+  )
+}
+
+/** 0132 — one rack's places, as served: its units first (each with its own glyph), then the empty
+ *  places, then the ones a level opens. */
+function rackBoxes(rack: ShipRack): SlotBox[] {
+  const empty = RACK_GLYPH[rack.rack] ?? 'flourish'
+  const out: SlotBox[] = rack.fitted.map((u, i) => ({
+    key: `${rack.rack}-u-${i}`,
+    kind: u.slot,
+    word: rack.word,
+    fitted: u.name,
+    opensAt: null,
+  }))
+  for (let i = rack.fitted.length; i < rack.open; i++) {
+    out.push({ key: `${rack.rack}-e-${i}`, kind: empty, word: rack.word, fitted: null, opensAt: null })
+  }
+  for (let i = 0; i < rack.locked; i++) {
+    out.push({ key: `${rack.rack}-l-${i}`, kind: empty, word: rack.word, fitted: null, opensAt: rack.at_level })
+  }
+  return out
+}
+
+/** 0132 — THE EQUIPMENT PAGE BY RACK: Deck and Hands bars (what is mounted costs, out of what the hull
+ *  can carry), then one row of places per rack under its word and its `used / places`. */
+function RackEquipment({ ship, racks }: { ship: ShipView; racks: readonly ShipRack[] }) {
+  const filled = racks.reduce((n, r) => n + r.fitted.length, 0)
+  const open = racks.reduce((n, r) => n + r.open, 0)
+  const budget = ship.budget
+  const tone = (b: { used: number; max: number }) => (b.max > 0 && b.used >= b.max ? 'warning' : 'accent')
+  return (
+    <section data-testid="ship-equipment">
+      <Heading trailing={<span className="text-t-caption tabular-nums text-ink-faint">{`${filled} / ${open}`}</span>}>
+        Equipment
+      </Heading>
+      {budget && (
+        <div data-testid="ship-budget" className="mb-3 flex flex-col gap-2">
+          <Gauge label="Deck" now={budget.deck.used} max={budget.deck.max} tone={tone(budget.deck)} />
+          <Gauge label="Hands" now={budget.hands.used} max={budget.hands.max} tone={tone(budget.hands)} />
+        </div>
+      )}
+      {racks.length === 0 ? (
+        <Empty>Nothing fitted.</Empty>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {racks.map((rack) => (
+            <div key={rack.rack} data-testid={`ship-rack-${rack.rack}`}>
+              <div className="flex items-baseline justify-between pb-1.5">
+                <span className="text-t-caption text-ink">{rack.word}</span>
+                <span className="text-t-caption tabular-nums text-ink-faint">{`${rack.fitted.length} / ${rack.open}`}</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {rackBoxes(rack).map((b) => (
+                  <Box key={b.key} b={b} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** THE EQUIPMENT PAGE — square slots in a grid, each with its kind's glyph; a fitted slot glows. A
+ *  server from 0132 serves racks (drawn by RackEquipment); an older one, slots by kind (drawn here). */
 function EquipmentGrid({ ship }: { ship: ShipView }) {
+  if (ship.racks) return <RackEquipment ship={ship} racks={ship.racks} />
   const boxes = slotBoxes(ship)
   const filled = boxes.filter((b) => b.fitted !== null).length
   const open = boxes.filter((b) => b.opensAt === null).length
@@ -171,31 +277,9 @@ function EquipmentGrid({ ship }: { ship: ShipView }) {
         <Empty>Nothing fitted.</Empty>
       ) : (
         <div className="grid grid-cols-4 gap-2">
-          {boxes.map((b) => {
-            const on = b.fitted !== null
-            const shut = b.opensAt !== null
-            return (
-              <div
-                key={b.key}
-                data-fitted={on || undefined}
-                data-locked={shut || undefined}
-                title={on ? `${b.word}: ${b.fitted}` : shut ? `${b.word} — level ${b.opensAt}` : `${b.word} — empty`}
-                className={[
-                  'relative flex aspect-square min-w-0 flex-col items-center justify-center gap-1 rounded-control p-1.5 text-center',
-                  'shadow-[inset_0_1px_0_rgb(255_255_255/0.04),inset_0_-2px_4px_rgb(0_0_0/0.35)]',
-                  on ? 'bg-accent/10 ring-1 ring-accent/50' : 'bg-surface-2 ring-1 ring-ink-faint/15',
-                  shut ? 'opacity-40' : '',
-                ].join(' ')}
-              >
-                <SlotGlyph kind={b.kind} className={on ? 'text-accent' : 'text-ink-faint/40'} />
-                <span
-                  className={`line-clamp-2 text-[0.6875rem] leading-tight ${on ? 'text-ink' : 'text-ink-faint/60'}`}
-                >
-                  {on ? b.fitted : shut ? `Lv ${b.opensAt}` : b.word}
-                </span>
-              </div>
-            )
-          })}
+          {boxes.map((b) => (
+            <Box key={b.key} b={b} />
+          ))}
         </div>
       )}
     </section>
