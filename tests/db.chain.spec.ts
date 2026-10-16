@@ -331,7 +331,8 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0131 (a skill is learned by the hour: 92 skills in 8 groups, enrolment + a training queue, no cron).
 // And to 0132 (a ship carries what its deck can bear: gear racks, one row per mounted unit, Deck and Hands budgets).
 // And to 0133 (a skill makes the ship better: skill effects and requirements, dark behind skills_bite).
-const LAST = '20260818000133_a_skill_makes_the_ship_better.sql'
+// And to 0134 (every arrival is answered in time: the arrivals sweep's reads made faster, answers unchanged; 0132's retired table dropped).
+const LAST = '20260818000134_every_arrival_is_answered_in_time.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

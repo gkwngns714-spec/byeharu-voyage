@@ -5,6 +5,58 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — 0134: every arrival is answered in time (arrivals sweep speed) — `osn-0134-arrivals-speed`
+
+RESUME 2026-10-17 "Next" #3: speed up the arrivals sweep before `skills_bite` (lit ≈ 2× merchant ship
+reads), and drop `ship_fittings_retired_0132`. **Not deployed** (prod head 0133). Deploy per DEPLOY_RUNBOOK
+with the clock unwound: `unwind_the_clock()` → `db push` → `wind_the_clock()` → merge.
+- **Prod before** (cron.job_run_details, `byeharu-voyage:arrivals`, 2026-10-16 03:31–05:31 UTC, 461 runs):
+  avg 4.55 s, p95 8.48 s, max 11.05 s vs the 10 s budget.
+- **Method (prod, read-only only)**: `npx supabase db query --linked` with `begin transaction read only;
+  set local track_functions = 'all'; <reads>; select … from pg_stat_xact_user_functions; rollback;` (per-
+  transaction function stats — pg_stat_statements is `track = top`, so it only sees the cron's one call),
+  plus `EXPLAIN (ANALYZE, BUFFERS)` of the sweep's candidate scan without `FOR UPDATE`. Nothing that writes
+  was called; the lap-start reads (npc_loop_candidates, npc_leg_lines) were run inside read-only txns.
+- **What was slow**: last hour 2,139 arrivals / 924 lap starts → ~9 arrivals and ~3.9 LAP STARTS per 15 s
+  run. A lap start = `npc_plan`: one merchant measured 144 ms candidates + 12 distinct legs 1,104 ms ≈ 1.3 s,
+  × 3.9 ≈ the whole average. Inside it: `world.trade_routes` 519 ms/12, `world.quote` 387 ms/194,
+  `world.mid_price` 1,051 calls (~900 are the quote's 10-tun steps, each re-reading the market row and 4
+  knobs), 5,769 knob reads (227 ms self), `npc_known_legs` 12 ms a call (windows all 2,466 merchant stops
+  for one harbour), and SQL-language readers at 0.12–0.45 ms SELF a call (`buff_multiplier`, `city_level`,
+  `skill_level_at`; `delay_before_day` 412× in the scan) — PG 17 re-plans SQL bodies per call. The scan
+  itself: 120 ms a run (429 passages at sea).
+- **Fix (one authority each; answers unchanged)**: `world.mid_terms` NEW — THE reader of a market row's price
+  terms (moved verbatim out of `mid_price`, which composes it); `world.quote` reads it once per quote and
+  walks its steps on `world.mid_from_terms`; `npc_known_legs` windows only the routes calling at the harbour
+  (PL/pgSQL); eleven SQL readers wrapped as PL/pgSQL with the query untouched (`#variable_conflict
+  use_column` = SQL's column-wins rule): `voyage.delay_before_day / day_ends_at / sim_hours / total_days`,
+  `skill_level_at`, `player_skill_bonus`, `buff_multiplier`, `city_level`, `world.spread`,
+  `haggle_concession`, `world.daily_cap_remaining` (each was SECURITY DEFINER + SET → never inlined;
+  asserted). Not touched: npc_plan / npc_leg_lines / trade_routes / tick_arrivals / settle text; port_offers'
+  per-row probe in trade_routes (555 calls a ranking, ~9 % of a lap start) is the next lever.
+- **Proof in the file**: the PRE-IMAGE TREE (41 functions on a path from the compared reads to a changed
+  body) copied under pg_temp names, asserted not to reach any changed body; old vs new in ONE statement each
+  (one snapshot), byte-equal text: 4,742 quotes (168 with a fleet, 1,252 limited), 17,229 mid prices,
+  spreads / buffs / city levels / haggles / daily caps / skill levels and bonuses, every harbour's known legs,
+  every fleet's speed and endurance, every passage at sea (arrival_at now and at eta + 36 h to the
+  microsecond, day boundaries, delays, days, sim hours) + 2,000 settled, the sweep's candidate set, and 12
+  merchants' whole lap-start reads (144 loops, 236 legs). PGlite/CI have no passages at sea → topped up
+  through `cmd.standing_route_assign_for` in a rolled-back block (as 0125); prod only reads. 14 bodies
+  reverse to their pre-images; ACL / volatility / definer unmoved; `mid_terms` server-only; entry points
+  unchanged. Timing gate: lap-start reads old tree vs new, faster of 2, must be ≥ 10 % faster.
+- **Timings (PGlite, cached world — under-states the SQL→PL/pgSQL part, PG 18 caches SQL plans)**: lap
+  starts 9,484 → 7,200 ms (−24 %); quotes 5,031 → 3,310 ms (−34 %). **Prod after = ESTIMATE** from the profile:
+  ≈ −35 % a lap start (quote steps ≈ −125 ms, known legs ≈ −65, wrapped readers ≈ −90 of ~780), scan
+  ≈ 120 → 40 ms → sweep ≈ avg 3 s / p95 5.5 s. **Re-measure on prod after the push** (same job_run_details
+  query) before throwing `skills_bite`.
+- **Dropped**: `ship_fittings_retired_0132` (2,113 rows on prod; named by no body / view / rule / FK — scans
+  with positive controls) as the LAST step: ACCESS EXCLUSIVE NOWAIT on it, `ships`, `item_kinds` (its two FKs'
+  triggers), retried 10 × 0.2 s, then LOCK CONTENTION.
+- **Proof run (lean)**: cached-prefix apply of 0134 + its self-assert + world guard (`applyChainCached` +
+  `assertWorldMatchesData`, scratch script), `npx tsc -b`, `npx eslint .`, `npm run build`,
+  `tests/db.chain.spec.ts` (LAST → 0134). No from-zero apply, no full db:proof / acceptance (CI's
+  disposable-chain on real Postgres is the performance truth).
+
 ## 2026-10-17 — S11 (0133): a skill makes the ship better — `osn-0133-skill-effects`
 
 docs/SHIPS_AND_SKILLS.md §8 row S11 ("Skills II: effects & requirements (DARK)"), §5.2/§5.3/§4.4/§6.2.
