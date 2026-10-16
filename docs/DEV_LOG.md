@@ -32,9 +32,17 @@ docs/SHIPS_AND_SKILLS.md §8 row S10 ("Gear I: racks, units, budgets"), §6.1/6.
   cached — inlined in the SQL builder it doubled the merchant read) + `budget`; `slots` re-keyed by rack
   (asserted the exact rack-sum of the typed pre-image). Merchant reads on the cached world: speed+hold
   305 → 314 ms (892 hulls), ship_view 1,015 → 1,233 ms.
-- **Locks**: heavy pre-images first; `LOCK ship_fittings IN SHARE MODE` (readers go on) before the
-  backfill; the comparisons and probe under it; the hot DDL (drop table → view, FK units→ships ON DELETE
-  CASCADE, rack FKs) LAST in one retried step (LOCK CONTENTION, not a result).
+- **Locks (review fix S1)**: nothing anyone can wait on before §7 — the backfill and every comparison read
+  a pg_temp SNAPSHOT of ship_fittings; the new tables get no FK until §7 (an FK on item_kinds held to
+  commit parks every player_items/ship_fittings insert's FK check). §7 is one short retried step,
+  lock_timeout 2 s, fixed order: ACCESS EXCLUSIVE on ship_fittings → re-sync any hull that moved since the
+  snapshot (exercised with a planted drift: 2 hulls re-synced) → RENAME the table to
+  `ship_fittings_retired_0132` (dropping it would take ACCESS EXCLUSIVE on `ships` for its FK triggers) →
+  the view (`security_invoker`) → item/rack FKs. No FK to ships (0127's ship_xp precedent). Swap 6 ms,
+  held 7 ms to commit on the cached world. **The retired table is dropped in the next gear step, clock unwound.**
+- **Review fix B1**: assert (g)'s writer list was `array_agg(... order by 1)` (orders by the constant) —
+  now ordered by the entry itself. No other `order by <constant>` in an aggregate in 0130-0132.
+- **Merchant cards** carry `racks`/`budget` intentionally (fittings were already public on the card).
 - **Client**: `src/live/ShipPanel.tsx` draws Equipment by rack (word + `used / places`, units glow with
   their item's glyph) under Deck and Hands bars; falls back to the typed slots for a pre-0132 server.
   `FleetShip.racks` / `.budget` (`src/lib/rpc/types.ts`). New codes in docs/DESIGN.md; words in WORDS.md.

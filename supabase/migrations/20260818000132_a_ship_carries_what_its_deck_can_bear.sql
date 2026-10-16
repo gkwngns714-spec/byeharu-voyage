@@ -50,8 +50,15 @@
 --     (world.ship_racks: each rack's word, open / locked counts and the units in it, with their costs) and `budget`
 --     ({deck, hands} × {used, max}). The client renders them; it derives none.
 -- (9) public.ship_fittings becomes a READ-ONLY VIEW over fitted_units (ship_id, item_code, qty) for
---     one release, then dropped. It is not updatable (a GROUP BY view): an INSERT is refused (asserted).
---     No live body reads it any more (scan; positive control: the five pre-images did).
+--     one release (security_invoker, server-only). It is not updatable (a GROUP BY view): insert,
+--     update and delete are refused (asserted). No live body reads it any more (scan; positive control:
+--     the five pre-images did). The old TABLE is RENAMED public.ship_fittings_retired_0132, not dropped:
+--     dropping it removes its FK triggers on public.ships, which takes ACCESS EXCLUSIVE on ships (every
+--     ship read in the game would queue behind it). It is read by nothing, written by nothing (its FK
+--     still cascades a deleted hull's rows), and is DROPPED IN THE NEXT GEAR STEP with the clock unwound.
+-- (10) A merchant's card (world.npc_fleet_card = ship_view less id / water / food) now carries `racks`
+--     and `budget` too — INTENTIONALLY: what a merchant's hull carries is already public on her card
+--     (`fittings`, 0124), and racks / budget are that same fact arranged; no handle, no provisioning.
 --
 -- ── WHAT IT DELIBERATELY DOES NOT DO ────────────────────────────────────────────────────────────
 -- No stat moves (every hull's ten stats are the pre-image to the digit), no new item, no wear, no
@@ -63,23 +70,38 @@
 -- pre-image. Every other key is the pre-image, as text.
 --
 -- ── LOCKS (db push holds every lock until this file commits) ───────────────────────────────────
--- lock_timeout 5 s. ORDER: (§1) every heavy pre-image read; (§2-§4) new tables (FKs only to item_kinds
--- and the new gear_racks — SHARE ROW EXCLUSIVE on catalogue tables no tick writes), new functions and
--- re-cuts (no table lock); (§5) `LOCK ship_fittings IN SHARE MODE` — readers go on, only a FIT/UNFIT
--- waits — then the backfill and the class_slots/unlock ROWS (row locks on tables nothing live
--- writes); (§6) the comparisons and the probe house, all before any hot DDL; (§7) LAST, in one retried
--- step: DROP TABLE ship_fittings + the view, the FK fitted_units → ships (ON DELETE CASCADE, as
--- ship_fittings had), and the two FKs to gear_racks. After §7 only catalogue reads run. Each lock step
--- that meets lock_timeout / a deadlock is RETRIED (5 × 0.2 s) and then fails as LOCK CONTENTION, not
--- a result. Every probe is on its own founded house and rolls back.
+-- Until §7 this file takes NO lock that any live statement could wait on: only ACCESS SHARE on what it
+-- reads (ships, ship_fittings, class_slots …), ROW EXCLUSIVE + row locks on class_slots /
+-- class_slot_unlocks (nothing live writes them), and its own new tables. The new tables carry NO FK
+-- to item_kinds or ships until §7: an FK takes SHARE ROW EXCLUSIVE on the referenced table until
+-- commit, and every player_items / ship_fittings insert's FK check needs ROW SHARE on item_kinds — a
+-- FIT parked there while holding ship_fittings would deadlock with §7. Every probe write is inside a
+-- rolled-back subtransaction (its locks are released with it).
+--   (§1) every heavy pre-image read;  (§2-§4) new tables, functions, re-cuts;
+--   (§5) a SNAPSHOT copy of ship_fittings (pg_temp) — the backfill and every comparison read the copy,
+--        so a FIT/UNFIT during §5-§6 cannot fake a difference — then the class_slots / unlock rows;
+--   (§6) every comparison and the probe house (the old computation re-pointed at the copy);
+--   (§7) LAST, ONE short retried step, lock_timeout 2 s, LOCK ORDER fixed:
+--          1. ACCESS EXCLUSIVE on public.ship_fittings (the only hot lock; ships itself is never locked
+--             beyond ACCESS SHARE — the old table is renamed, not dropped);
+--          2. re-sync the units of any hull whose fittings moved since the snapshot (counted);
+--          3. rename → ship_fittings_retired_0132, the view in its place;
+--          4. SHARE ROW EXCLUSIVE on item_kinds and gear_racks (the FKs of item_profile / fitted_units,
+--             and class_slots / class_slot_unlocks → gear_racks) — the same order every FIT takes
+--             (ship_fittings, then item_kinds), so no cycle can form.
+--        After it: catalogue reads and one Σ check (ms). A live transaction cannot be waiting on this
+--        file while it waits on them (nothing they need is held before §7), so a deadlock needs a cycle
+--        that does not exist; a lock_timeout is retried (5 × 0.2 s), then LOCK CONTENTION, not a result.
+--        Player ship reads block only while step 1 queues (≤ 2 s per try) and for the ms after it.
 --
 -- SUPERSEDES, by hunks sliced from the LIVE bodies (LF-normalised), each asserted to occur exactly once
 -- and to reverse to its pre-image, ACLs unchanged: public.mount_fitting (0126 as cut by 0127),
 -- cmd.do_fit (0126), cmd.do_unfit (0074), public.npc_fit_loadout (0126), world.ship_stats (0127),
 -- world.ship_view (0127).
 --
--- ROLLBACK (forward migration): drop the view; recreate public.ship_fittings (0074's shape) filled with
--- `select ship_id, item_code, count(*) from fitted_units group by 1, 2`; reverse the six bodies' hunks
+-- ROLLBACK (forward migration): drop the view; re-fill public.ship_fittings_retired_0132 from
+-- `select ship_id, item_code, count(*) from fitted_units group by 1, 2` and rename it back to
+-- public.ship_fittings (0074's table, its FK and policy intact); reverse the six bodies' hunks
 -- (old text is in hunks_0132); restore class_slots' fourteen typed rows and the three unlocks (listed in
 -- slots_before_0132 / unlocks below, and in 0074 / 0127); drop unmount_fitting, ship_racks, ship_budget,
 -- class_budget, fitting_lock, fitted_units, item_profile, gear_racks.
@@ -152,20 +174,6 @@ select class_code, slot, count from public.class_slots;
 create temp table unlocks_before_0132 on commit drop as
 select class_code, slot, count, min_level from public.class_slot_unlocks;
 
--- The OLD stat computation and ship builder, kept under pg_temp names: §6 compares old against new
--- on the SAME snapshot (one statement, STABLE functions), so the arrivals tick moving a hull's cargo
--- between here and there cannot fake a difference. The old ones read ship_fittings, which §5 freezes.
-do $$
-declare
-  v_def text;
-begin
-  v_def := (select def from defs_before_0132 where fn = 'world.ship_stats(uuid)');
-  execute replace(v_def, 'CREATE OR REPLACE FUNCTION world.ship_stats(', 'CREATE OR REPLACE FUNCTION pg_temp.ship_stats_before_0132(');
-  v_def := (select def from defs_before_0132 where fn = 'world.ship_view(uuid)');
-  v_def := replace(v_def, 'CREATE OR REPLACE FUNCTION world.ship_view(', 'CREATE OR REPLACE FUNCTION pg_temp.ship_view_before_0132(');
-  execute replace(v_def, 'world.ship_stats(s.id)', 'pg_temp.ship_stats_before_0132(s.id)');
-end $$;
-
 -- every hull's served slots, as found (static: class data, levels dark) — the rack-sum source.
 create temp table hulls_before_0132 on commit drop as
 select s.id as ship_id, c.code as class_code, p.is_npc,
@@ -208,7 +216,7 @@ insert into public.gear_racks (code, word, ord) values
 on conflict (code) do nothing;
 
 create table if not exists public.item_profile (
-  item_code text primary key references public.item_kinds(code),
+  item_code text primary key,      -- FK to item_kinds added in §7 (see LOCKS)
   base_type text not null,
   rack      text not null references public.gear_racks(code),
   grade     int  not null check (grade between 1 and 5),
@@ -248,11 +256,13 @@ insert into racks_0132 values
   ('nau', 'high', 3), ('nau', 'mid', 5), ('nau', 'low', 1), ('nau', 'refit', 2), ('nau', 'flourish', 1);
 
 -- ── 3. ONE ROW PER MOUNTED UNIT ────────────────────────────────────────────────────────────────
--- The FK to ships is added in §7 (it locks ships; so does dropping ship_fittings — one step, last).
+-- No FK to ships, as 0127's ship_xp has none (0127:125): an FK would hold SHARE ROW EXCLUSIVE on ships
+-- — the arrivals tick's table — until commit. No live body deletes a ship; a unit whose hull is gone is
+-- never read (every read joins by ship_id). The FK to item_kinds is added in §7 (see LOCKS).
 create table if not exists public.fitted_units (
   id         uuid primary key default gen_random_uuid(),
   ship_id    uuid not null,
-  item_code  text not null references public.item_kinds(code),
+  item_code  text not null,
   wear       numeric(5,2) not null default 0 check (wear between 0 and 100),
   perks      text[] not null default '{}' check (cardinality(perks) <= 2),
   mounted_at timestamptz not null default now()
@@ -443,10 +453,14 @@ $h$  select * into v_ship from public.ships where id = p_ship;
   end if;
   -- 0132: ONE HOUSE'S FITTINGS, ONE AT A TIME (re-entrant: the doors took it first).
   perform public.fitting_lock(v_ship.player_id);
-  -- 0132: the item's RACK and its costs — public.item_profile, the one home of both.
+  -- 0132: the item's RACK and its costs — public.item_profile, the one home of both — and what she
+  -- carries in that rack, counted unit by unit ONCE (a RACK takes any item of its rack, EVE).
   select ip.rack, gr.word, ip.deck, ip.hands into v_rack, v_word, v_deck, v_hands
     from public.item_profile ip join public.gear_racks gr on gr.code = ip.rack
    where ip.item_code = k.code;
+  select count(*) into v_used
+    from public.fitted_units u join public.item_profile ip on ip.item_code = u.item_code
+   where u.ship_id = v_ship.id and ip.rack = v_rack;
 $h$),
 ('public.mount_fitting(uuid, text)', 3,
 $h$  v_slots := coalesce((v_open->'open'->>k.slot)::int, 0);
@@ -462,9 +476,7 @@ $h$    if v_open->'locked' ? k.slot
         cmd.figures(v_lvl, (v_open->'locked'->k.slot->>'at_level')::int, 'level'));
     end if;
 $h$,
-$h$    if v_open->'locked' ? v_rack
-       and (select count(*) from public.fitted_units u join public.item_profile ip on ip.item_code = u.item_code
-             where u.ship_id = v_ship.id and ip.rack = v_rack) >= v_slots then
+$h$    if v_open->'locked' ? v_rack and v_used >= v_slots then
       perform cmd.refuse('E_SLOT_LOCKED',
         format('%s opens another %s slot at level %s', v_ship.name, v_word, v_open->'locked'->v_rack->>'at_level'),
         cmd.figures(v_lvl, (v_open->'locked'->v_rack->>'at_level')::int, 'level'));
@@ -482,10 +494,7 @@ $h$  select coalesce(sum(sf.qty), 0) into v_used
   insert into public.ship_fittings (ship_id, item_code, qty) values (v_ship.id, k.code, 1)
   on conflict (ship_id, item_code) do update set qty = public.ship_fittings.qty + 1;
 $h$,
-$h$  -- 0132: A RACK TAKES ANY ITEM OF ITS RACK (EVE): what she carries there, counted unit by unit.
-  select count(*) into v_used
-    from public.fitted_units u join public.item_profile ip on ip.item_code = u.item_code
-   where u.ship_id = v_ship.id and ip.rack = v_rack;
+$h$  -- 0132: her places in the item's RACK, against what she carries there (counted above, once).
   if v_used >= v_slots then
     perform cmd.refuse('E_SLOTS_FULL',
       format('%s has no free %s slot (%s / %s used)', v_ship.name, v_word, v_used, v_slots));
@@ -660,18 +669,40 @@ comment on function public.mount_fitting(uuid, text) is
   '/ E_OVER_HANDS), one row into public.fitted_units. Called by cmd.do_fit and public.npc_fit_loadout. '
   'Server-only.';
 
--- ── 5. UNDER THE LOCK: the backfill and the rack rows ──────────────────────────────────────────
--- SHARE on ship_fittings: every reader goes on; only a FIT / UNFIT (or a cascading hull delete) waits
--- until this file commits, so no write can fall between the backfill and the swap.
-create temp table lock_0132 (what text, ms numeric, at timestamptz) on commit drop;
-insert into lock_0132
-select 'share', pg_temp.locked_0132('lock table public.ship_fittings in share mode', 'LOCK ship_fittings IN SHARE MODE'), clock_timestamp();
+-- ── 5. THE SNAPSHOT, the backfill from it, and the rack rows (no lock anyone waits on) ──────────
+-- ship_fittings as it stands NOW, copied: the backfill and every §6 comparison read this copy, so a
+-- FIT / UNFIT landing during §5-§6 cannot fake a difference; §7 re-syncs any hull that moved since.
+create temp table sf_snap_0132 on commit drop as
+select ship_id, item_code, qty from public.ship_fittings;
 
 insert into public.fitted_units (ship_id, item_code)
 select sf.ship_id, sf.item_code
-  from public.ship_fittings sf
+  from sf_snap_0132 sf
  cross join lateral generate_series(1, sf.qty)
  order by sf.ship_id, sf.item_code;
+analyze public.fitted_units;
+
+-- The OLD stat computation and ship builder, kept under pg_temp names and re-pointed at the snapshot:
+-- §6 compares old against new on the SAME statement (one snapshot, STABLE functions) over the SAME
+-- fittings (the copy, and the units backfilled from it).
+do $$
+declare
+  v_def text;
+begin
+  v_def := (select def from defs_before_0132 where fn = 'world.ship_stats(uuid)');
+  v_def := replace(v_def, 'CREATE OR REPLACE FUNCTION world.ship_stats(', 'CREATE OR REPLACE FUNCTION pg_temp.ship_stats_before_0132(');
+  if strpos(v_def, 'from public.ship_fittings f') = 0 then
+    raise exception '0132 self-assert FAIL: the old ship_stats does not read ship_fittings where expected';
+  end if;
+  execute replace(v_def, 'from public.ship_fittings f', 'from pg_temp.sf_snap_0132 f');
+  v_def := (select def from defs_before_0132 where fn = 'world.ship_view(uuid)');
+  v_def := replace(v_def, 'CREATE OR REPLACE FUNCTION world.ship_view(', 'CREATE OR REPLACE FUNCTION pg_temp.ship_view_before_0132(');
+  if strpos(v_def, 'from public.ship_fittings sf') = 0 then
+    raise exception '0132 self-assert FAIL: the old ship_view does not read ship_fittings where expected';
+  end if;
+  v_def := replace(v_def, 'from public.ship_fittings sf', 'from pg_temp.sf_snap_0132 sf');
+  execute replace(v_def, 'world.ship_stats(s.id)', 'pg_temp.ship_stats_before_0132(s.id)');
+end $$;
 
 delete from public.class_slots cs
  where not exists (select 1 from racks_0132 r where r.class_code = cs.class_code and r.rack = cs.slot);
@@ -851,17 +882,17 @@ declare
   v_writers text[];
   v_readers int;
 begin
-  -- (a) EVERY HULL'S TEN STATS = THE PRE-IMAGE, to the digit: the old computation (over ship_fittings,
-  --     frozen) against the new (over units), on the same snapshot, as text.
+  -- (a) EVERY HULL'S TEN STATS = THE PRE-IMAGE, to the digit: the old computation (over the snapshot
+  --     of ship_fittings) against the new (over the units backfilled from it), one statement, as text.
   select count(*), count(*) filter (where a.old_stats::text is distinct from a.new_stats::text)
     into v_hulls, v_bad from hulls_after_0132 a;
-  if v_hulls = 0 or v_bad <> 0 or v_hulls <> (select count(*) from public.ships) then
+  if v_hulls = 0 or v_bad <> 0 then   -- hulls_after_0132 IS public.ships, read in one statement
     raise exception '0132 self-assert FAIL: % of % hull(s) read different stats over units', v_bad, v_hulls;
   end if;
   if exists (select 1 from hulls_after_0132 a where (select count(*) from jsonb_object_keys(a.new_stats)) <> 10) then
     raise exception '0132 self-assert FAIL: a hull''s ship_stats does not carry exactly ten stats';
   end if;
-  -- and against the pre-image of §1 (live play may have fitted a hull between §1 and the lock: counted)
+  -- and against the pre-image of §1 (live play may have fitted a hull between §1 and §5: counted)
   select count(*) into v_n from hulls_before_0132 b join hulls_after_0132 a on a.ship_id = b.ship_id
    where b.stats::text is distinct from a.new_stats::text;
   insert into proven_0132 values ('stats', format('%s hulls, 0 differ old/new; %s moved by play since the pre-image', v_hulls, v_n));
@@ -906,10 +937,10 @@ begin
          <> (select coalesce(sum(value::int), 0) from jsonb_each_text(x.v->'slots'))
       or (select coalesce(sum(jsonb_array_length(r->'fitted')), 0) from jsonb_array_elements(x.v->'racks') r)
          <> (select count(*) from public.fitted_units u where u.ship_id = s.id)
-      or (x.v->'budget'->'deck'->>'used')::int <> (select coalesce(sum(ip.deck), 0) from public.ship_fittings sf
+      or (x.v->'budget'->'deck'->>'used')::int <> (select coalesce(sum(ip.deck), 0) from sf_snap_0132 sf
                                                      join public.item_profile ip on ip.item_code = sf.item_code
                                                      cross join lateral generate_series(1, sf.qty) where sf.ship_id = s.id)
-      or (x.v->'budget'->'hands'->>'used')::int <> (select coalesce(sum(ip.hands), 0) from public.ship_fittings sf
+      or (x.v->'budget'->'hands'->>'used')::int <> (select coalesce(sum(ip.hands), 0) from sf_snap_0132 sf
                                                       join public.item_profile ip on ip.item_code = sf.item_code
                                                       cross join lateral generate_series(1, sf.qty) where sf.ship_id = s.id);
   if v_bad <> 0 then
@@ -917,20 +948,21 @@ begin
   end if;
   insert into proven_0132 values ('view', format('%s hulls', v_hulls));
 
-  -- (c) Σ UNITS = Σ QTY, per hull and per item (both directions), and in total.
+  -- (c) Σ UNITS = Σ QTY, per hull and per item (both directions), and in total — against the snapshot
+  --     here; §7 re-syncs any hull that moved since and the last assert repeats this against the table.
   select count(*) into v_bad from (
     select coalesce(a.ship_id, b.ship_id) from
-      (select ship_id, item_code, qty from public.ship_fittings) a
+      (select ship_id, item_code, qty from sf_snap_0132) a
       full join (select ship_id, item_code, count(*)::int as qty from public.fitted_units group by 1, 2) b
         on b.ship_id = a.ship_id and b.item_code = a.item_code
      where a.qty is distinct from b.qty) z;
-  if v_bad <> 0 or (select count(*) from public.fitted_units) <> (select coalesce(sum(qty), 0) from public.ship_fittings)
+  if v_bad <> 0 or (select count(*) from public.fitted_units) <> (select coalesce(sum(qty), 0) from sf_snap_0132)
      or (select count(*) from public.fitted_units) = 0 then
     raise exception '0132 self-assert FAIL: % (hull, item) pair(s) whose units are not their qty (% units, % qty)',
-      v_bad, (select count(*) from public.fitted_units), (select coalesce(sum(qty), 0) from public.ship_fittings);
+      v_bad, (select count(*) from public.fitted_units), (select coalesce(sum(qty), 0) from sf_snap_0132);
   end if;
   insert into proven_0132 values ('units', format('%s units on %s hulls = Σ qty of %s rows',
-    (select count(*) from public.fitted_units), (select count(distinct ship_id) from public.fitted_units), (select count(*) from public.ship_fittings)));
+    (select count(*) from public.fitted_units), (select count(distinct ship_id) from public.fitted_units), (select count(*) from sf_snap_0132)));
 
   -- (d) EVERY MOUNTED ITEM FITS ITS RACK: per hull per rack, units ≤ the rack's open places.
   select count(*), string_agg(distinct x.rack, ',') into v_bad, v_list from (
@@ -1003,14 +1035,15 @@ begin
   language sql
   stable
   as $f$
-    select coalesce(array_agg(n.nspname || '.' || p.proname || ':' ||
-             case when p.prosrc ~* 'insert\s+into\s+public\.fitted_units' then 'insert' else '' end ||
-             case when p.prosrc ~* 'delete\s+from\s+public\.fitted_units' then 'delete' else '' end ||
-             case when p.prosrc ~* 'update\s+public\.fitted_units' then 'update' else '' end
-             order by 1), '{}')
-      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-     where n.nspname not in ('pg_catalog', 'information_schema') and n.nspname not like 'pg\_%'
-       and p.prosrc ~* '(insert\s+into|delete\s+from|update|truncate)\s+(table\s+)?public\.fitted_units'
+    -- ordered by the entry ITSELF (an `order by 1` inside an aggregate orders by the constant 1)
+    select coalesce(array_agg(w.entry order by w.entry), '{}')
+      from (select n.nspname || '.' || p.proname || ':' ||
+                   case when p.prosrc ~* 'insert\s+into\s+public\.fitted_units' then 'insert' else '' end ||
+                   case when p.prosrc ~* 'delete\s+from\s+public\.fitted_units' then 'delete' else '' end ||
+                   case when p.prosrc ~* 'update\s+public\.fitted_units' then 'update' else '' end as entry
+              from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+             where n.nspname not in ('pg_catalog', 'information_schema') and n.nspname not like 'pg\_%'
+               and p.prosrc ~* '(insert\s+into|delete\s+from|update|truncate)\s+(table\s+)?public\.fitted_units') w
   $f$;
   v_writers := pg_temp.fitted_writers_0132();
   if v_writers is distinct from array['public.mount_fitting:insert', 'public.unmount_fitting:delete'] then
@@ -1114,6 +1147,8 @@ begin
   end if;
   -- the catalogue: every item profiled once; the rack rows are the data; the unlocks converted
   if (select count(*) from public.item_profile) <> (select count(*) from public.item_kinds)
+     or exists (select 1 from public.item_profile ip where not exists (select 1 from public.item_kinds k where k.code = ip.item_code))
+     or exists (select 1 from public.fitted_units u where not exists (select 1 from public.item_kinds k where k.code = u.item_code))
      or (select count(*) from public.gear_racks) <> 5 then
     raise exception '0132 self-assert FAIL: % item profile(s) for % item(s), % rack(s)',
       (select count(*) from public.item_profile), (select count(*) from public.item_kinds), (select count(*) from public.gear_racks);
@@ -1186,26 +1221,50 @@ begin
   end if;
 end $$;
 
--- ── 7. LAST: THE SWAP (hot DDL — one retried step, nothing heavy after it) ─────────────────────
-insert into lock_0132
+-- ── 7. LAST: THE SWAP — one short retried step, locks in the fixed order of the header ──────────
+create temp table swap_0132 (what text, n bigint, ms numeric, at timestamptz) on commit drop;
+select set_config('lock_timeout', '2s', true);   -- step 1 queues player ship reads behind it: keep the wait short
+insert into swap_0132 (what, ms, at)
 select 'swap', pg_temp.locked_0132($swap$
-  drop table public.ship_fittings;
-  create view public.ship_fittings as
+  -- 1. the one hot lock
+  lock table public.ship_fittings in access exclusive mode;
+  -- 2. the hulls whose fittings moved since the §5 snapshot (a FIT / UNFIT during §5-§6): rebuilt
+  create temp table moved_0132 on commit drop as
+  select distinct coalesce(a.ship_id, b.ship_id) as ship_id
+    from public.ship_fittings a
+    full join sf_snap_0132 b on b.ship_id = a.ship_id and b.item_code = a.item_code
+   where a.qty is distinct from b.qty;
+  delete from public.fitted_units u using moved_0132 m where u.ship_id = m.ship_id;
+  insert into public.fitted_units (ship_id, item_code)
+  select sf.ship_id, sf.item_code
+    from public.ship_fittings sf join moved_0132 m on m.ship_id = sf.ship_id
+   cross join lateral generate_series(1, sf.qty);
+  -- 3. the table retired (renamed — dropping it would take ACCESS EXCLUSIVE on ships), the view in its place
+  alter table public.ship_fittings rename to ship_fittings_retired_0132;
+  revoke all on table public.ship_fittings_retired_0132 from public, anon, authenticated;
+  comment on table public.ship_fittings_retired_0132 is
+    '0132: RETIRED — the stacked fittings table of 0074, frozen at the swap. Read and written by nothing '
+    '(public.fitted_units is the one home of a mounted unit). Dropped in the next gear step, with the clock unwound.';
+  create view public.ship_fittings with (security_invoker = true) as
     select u.ship_id, u.item_code, count(*)::int as qty
       from public.fitted_units u
      group by u.ship_id, u.item_code;
   comment on view public.ship_fittings is
     '0132: READ-ONLY, FOR ONE RELEASE — what a hull carries, stacked by qty, over public.fitted_units (one '
     'row per unit). Not updatable (GROUP BY): writes go through public.mount_fitting / unmount_fitting. '
+    'security_invoker: it reads as its caller (no client role holds a grant on it or on fitted_units). '
     'No live body reads it; it is dropped in the next gear step.';
   revoke all on table public.ship_fittings from public, anon, authenticated;
-  alter table public.fitted_units add constraint fitted_units_ship_id_fkey
-    foreign key (ship_id) references public.ships(id) on delete cascade;
+  -- 4. the catalogue FKs (SHARE ROW EXCLUSIVE on item_kinds, then gear_racks)
+  alter table public.item_profile add constraint item_profile_item_code_fkey
+    foreign key (item_code) references public.item_kinds(code);
+  alter table public.fitted_units add constraint fitted_units_item_code_fkey
+    foreign key (item_code) references public.item_kinds(code);
   alter table public.class_slots add constraint class_slots_rack_fkey
     foreign key (slot) references public.gear_racks(code);
   alter table public.class_slot_unlocks add constraint class_slot_unlocks_rack_fkey
     foreign key (slot) references public.gear_racks(code);
-$swap$, 'the swap (DROP ship_fittings, the view, three FKs)'), clock_timestamp();
+$swap$, 'the swap (LOCK ship_fittings, re-sync, rename, the view, four FKs)'), clock_timestamp();
 
 -- ── SELF-ASSERT (light: catalogue reads and one refused insert) ────────────────────────────────
 do $$
@@ -1223,6 +1282,18 @@ begin
   if (select coalesce(sum(qty), 0) from public.ship_fittings) <> (select count(*) from public.fitted_units)
      or (select count(*) from public.ship_fittings) <> (select count(*) from (select distinct ship_id, item_code from public.fitted_units) x) then
     raise exception '0132 self-assert FAIL: the view does not stack the units';
+  end if;
+  -- Σ UNITS = Σ QTY once more, now against the table as it stood at the swap (after the re-sync)
+  if exists (select 1 from public.ship_fittings_retired_0132 a
+               full join public.ship_fittings b on b.ship_id = a.ship_id and b.item_code = a.item_code
+              where a.qty is distinct from b.qty)
+     or (select relkind from pg_class where oid = 'public.ship_fittings_retired_0132'::regclass) <> 'r' then
+    raise exception '0132 self-assert FAIL: after the swap the units are not the retired table''s fittings';
+  end if;
+  if not coalesce((select 'security_invoker=true' = any(reloptions) from pg_class where oid = 'public.ship_fittings'::regclass), false)
+     or has_table_privilege('authenticated', 'public.ship_fittings_retired_0132', 'select,insert,update,delete')
+     or has_table_privilege('anon', 'public.ship_fittings_retired_0132', 'select,insert,update,delete') then
+    raise exception '0132 self-assert FAIL: the view is not security_invoker, or a client role can reach the retired table';
   end if;
   foreach v_err in array array[
     'insert into public.ship_fittings (ship_id, item_code, qty) values (gen_random_uuid(), ''figurehead'', 1)',
@@ -1242,10 +1313,12 @@ begin
      or has_table_privilege('anon', 'public.ship_fittings', 'select,insert,update,delete') then
     raise exception '0132 self-assert FAIL: a client role can reach the ship_fittings view';
   end if;
-  -- the FKs are in place (a sunk hull's units go with it, as its fittings did)
-  if (select count(*) from pg_constraint where conname in ('fitted_units_ship_id_fkey', 'class_slots_rack_fkey', 'class_slot_unlocks_rack_fkey')) <> 3
-     or (select confdeltype from pg_constraint where conname = 'fitted_units_ship_id_fkey') <> 'c' then
-    raise exception '0132 self-assert FAIL: the foreign keys are not in place';
+  -- the catalogue FKs are in place; and NO FK reaches public.ships from the new table (see LOCKS)
+  if (select count(*) from pg_constraint
+       where conname in ('item_profile_item_code_fkey', 'fitted_units_item_code_fkey', 'class_slots_rack_fkey', 'class_slot_unlocks_rack_fkey')
+         and contype = 'f') <> 4
+     or exists (select 1 from pg_constraint where conrelid = 'public.fitted_units'::regclass and confrelid = 'public.ships'::regclass) then
+    raise exception '0132 self-assert FAIL: the foreign keys are not as the header says';
   end if;
 
   for r in select b.what, b.ms as before_ms, a.ms as after_ms, b.hulls
@@ -1254,11 +1327,11 @@ begin
     v_notes := v_notes || format('%s over %s merchant hull(s) %s ms → %s ms; ', r.what, r.hulls, r.before_ms, r.after_ms);
   end loop;
 
-  raise notice '0132 self-assert ok: A SHIP CARRIES WHAT ITS DECK CAN BEAR. STATS: % — every hull''s ten stats over units = the pre-image to the digit (old computation vs new, same snapshot, as text). VIEW: % — ship_view = the pre-image plus `racks` and `budget` on every key, `slots` the exact rack-sum of the typed pre-image (+ Refit), `slots_locked` {} as before, racks/budget agree with slots and units. UNITS: %. RACKS: every mounted item fits its rack. ENUMERATED (every loadout legal under the typed caps): %all within budget. OVER-BUDGET HULLS: %. WRITERS: only mount_fitting (insert) and unmount_fitting (delete) write fitted_units (planted writer seen by the same scan, rolled back); no live body names ship_fittings (5 pre-images did); doors lock the house before reading, debits counted. MERCHANTS: % hull(s) carry exactly their 0126 loadout as units. Six bodies reverse to their pre-images, ACLs unmoved; ship_slots untouched; item_kinds / item_effects / ship_classes / class_profile unmoved; 12 profiles, 5 racks, rack rows = data, unlocks converted; no new entry point, the new tables and cores server-only. PROBE (own house, rolled back): two suits of sails in a barca''s Mid + guns in High (budget 12/12 deck, 16/16 hands); a third Mid piece: %; carlat: %; carlat at deck 20: %; UNFIT returns one per unit, a second: %; a merchant loadout mounts its pattern through the core (% units). VIEW ship_fittings: read-only (insert/update/delete refused), stacks the units, server-only; FK fitted_units → ships ON DELETE CASCADE, racks FK''d. READS: %LOCKS: SHARE on ship_fittings % ms, the swap % ms, held % ms to the end of the file.',
+  raise notice '0132 self-assert ok: A SHIP CARRIES WHAT ITS DECK CAN BEAR. STATS: % — every hull''s ten stats over units = the pre-image to the digit (old computation vs new, same snapshot, as text). VIEW: % — ship_view = the pre-image plus `racks` and `budget` on every key, `slots` the exact rack-sum of the typed pre-image (+ Refit), `slots_locked` {} as before, racks/budget agree with slots and units. UNITS: %. RACKS: every mounted item fits its rack. ENUMERATED (every loadout legal under the typed caps): %all within budget. OVER-BUDGET HULLS: %. WRITERS: only mount_fitting (insert) and unmount_fitting (delete) write fitted_units (planted writer seen by the same scan, rolled back); no live body names ship_fittings (5 pre-images did); doors lock the house before reading, debits counted. MERCHANTS: % hull(s) carry exactly their 0126 loadout as units. Six bodies reverse to their pre-images, ACLs unmoved; ship_slots untouched; item_kinds / item_effects / ship_classes / class_profile unmoved; 12 profiles, 5 racks, rack rows = data, unlocks converted; no new entry point, the new tables and cores server-only. PROBE (own house, rolled back): two suits of sails in a barca''s Mid + guns in High (budget 12/12 deck, 16/16 hands); a third Mid piece: %; carlat: %; carlat at deck 20: %; UNFIT returns one per unit, a second: %; a merchant loadout mounts its pattern through the core (% units). VIEW ship_fittings: read-only (insert/update/delete refused), security_invoker, stacks the units, server-only; the old table retired by rename (no lock on ships), Σ units = its Σ qty after % hull(s) re-synced; item / rack FKs in place. READS: %LOCKS: nothing anyone waits on before §7; the swap step % ms; held % ms from the swap to the end of the file.',
     (select v from proven_0132 where k = 'stats'), (select v from proven_0132 where k = 'view'),
     (select v from proven_0132 where k = 'units'), (select v from proven_0132 where k = 'enum'),
     (select v from proven_0132 where k = 'over'), (select v from proven_0132 where k = 'merchants'),
     v_p->>'mid_full', v_p->>'hands_refusal', v_p->>'deck_refusal', v_p->>'unfit_twice', v_p->>'npc_fit',
-    v_notes, (select ms from lock_0132 where what = 'share'), (select ms from lock_0132 where what = 'swap'),
-    round(extract(epoch from clock_timestamp() - (select at from lock_0132 where what = 'share')) * 1000, 1);
+    (select count(*) from moved_0132), v_notes, (select ms from swap_0132 where what = 'swap'),
+    round(extract(epoch from clock_timestamp() - (select at from swap_0132 where what = 'swap')) * 1000, 1);
 end $$;
