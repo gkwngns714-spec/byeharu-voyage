@@ -39,14 +39,27 @@
 -- (2) public.tick_reconcile becomes a PROCEDURE (the job says CALL): every merchant in her own
 --     transaction, then the companies, then the compactor — each under public.npc_upkeep_scope (0097's
 --     lock_timeout 2 s and 0114's deadline, transaction-local, so set again for each transaction; the
---     deadline still runs from the start of the hour) — then the invariants unchanged, in a transaction
---     that takes no row lock. A merchant's locks now live for her step (ms; ≈ 1.3 s for a lap start
---     with its plan), not for the hour.
+--     deadline still runs from the start of the hour). A merchant's locks now live for her step (ms;
+--     ≈ 1.3 s for a lap start with its plan), not for the hour.
+--     EVERY STEP IS CHECKED BEFORE ITS COMMIT: a merchant's step ends with
+--     public.assert_ledger_reconciles(her), the companies' step with it for every company (players.is_npc);
+--     the compactor already checks each company it rolls up (0097). A step that breaks a purse raises
+--     inside its own block, is rolled back alone and is counted in the receipt (failed + a note,
+--     public.npc_step_failed — the one shape of a failed step). Then the whole-world invariants,
+--     unchanged and read-only, in a transaction that takes no row lock. p_commit = false runs the same
+--     steps in the caller's one transaction (the proofs).
 -- (3) public.tick_market_drift(p_now, p_port default null) — two hunks (`and (p_port is null or
 --     pg.port_id = p_port)`, one per UPDATE); null is every harbour, as before. The drift job calls the
 --     procedure public.tick_market_drift_each_port: every harbour (public.ports, in id order) in its own
 --     transaction, all at the job's start time, so every harbour lands on the same slot and game-day.
--- (4) The two cron jobs are re-pointed in place (cron.alter_job command only — name, schedule, owner and
+--     A harbour that DEADLOCKS (40P01 — prod's drift failed 34 of 386 runs, 8.8 %, on one in the
+--     regeneration UPDATE) or times out on a lock (55P03) is rolled back alone, warned and counted, and
+--     the run goes on; that harbour keeps its slot and day, so the next run drifts it.
+-- (4) world.market (the client's read of one quay, ~3,970 calls on prod) drifted the WHOLE market before
+--     pricing its quay — 132,090 rows locked by a player's read, and the other side of the drift job's
+--     deadlocks. One hunk, sliced from the live body: `tick_market_drift(v_now)` →
+--     `tick_market_drift(v_now, p_port)`. It answers the same for its quay (asserted, §6b).
+-- (5) The two cron jobs are re-pointed in place (cron.alter_job command only — name, schedule, owner and
 --     active flag untouched), so public.wind_the_clock() starts exactly these commands.
 --
 -- ── WHAT IT DELIBERATELY DOES NOT DO ────────────────────────────────────────────────────────────
@@ -54,43 +67,94 @@
 -- invariants, the arrivals sweep, voyage.settle, or any client grant / entry point. Run the upkeep in
 -- parallel. Re-order a lock (each step keeps its own order: fleet, then route, NOWAIT).
 -- WHAT CHANGES ONLY IN FAILURE: before, an error escaping the investment pass rolled back the whole
--- tend, and an invariant failure rolled back the hour's upkeep. Now a step's error is reported and
--- rolled back alone, and the invariants raise on a world whose upkeep has already committed.
+-- tend, and an invariant failure rolled back the hour's upkeep. Now a step's error — or a purse it
+-- broke — is reported and rolled back alone; a purse broken BEFORE the hour fails every step of hers
+-- and the whole-world pass still raises on it. A drift run that met a deadlock now completes, one
+-- harbour short, instead of failing whole.
 -- A price snapshot taken during the drift may now read some harbours on the new slot and the rest on
--- the old one (each is a committed state of its own harbour).
+-- the old one (each is a committed state of its own harbour). WHERE THERE IS NO pg_cron (the local
+-- PGlite game) a harbour's prices now step only when its own quay is read, not when any quay is.
 --
--- ── THE PROOF (all in this file; old and new on the SAME snapshot) ──────────────────────────────
+-- ── THE PROOF (all in this file; production is lived in while it runs, so only OWN writes count) ──
 -- §3 cuts the pre-image of npc_tend at six anchors and requires each slice byte-equal in its new home,
 -- the houses slice after its one hunk is reversed, and the text between slices to be exactly the
 -- loop's own two lines. §4 runs old (pre-image copy) and new npc_tend, each in a rolled-back
--- subtransaction: the whole pass with the hour's budget spent, then 12 merchants one by one with no
--- budget (dear work first: unstarted, paused, a failed order at her head) — receipts must be equal,
--- and so must an END-STATE digest of every table in public / world / cmd / voyage (row count + md5 of
--- every row the run wrote, minted uuids blanked). The merchants are switched on inside the run where
--- the world has them off (PGlite / CI). §6 reverses tick_market_drift to its pre-image and runs old
--- (whole market) vs new (harbour by harbour) with drift_sigma = 0 inside the run — the drift draw is
--- random() by design (0010) — over every row: port_goods must be byte-equal. Timings: raise notice only.
+-- subtransaction: the whole pass with the hour's budget spent, then 12 merchants (dear work first)
+-- ONE PAIR AT A TIME. Compared: the receipts, and each run's OWN writes — per table its inserted /
+-- updated / deleted counts (pg_stat_xact_all_tables, read before and after inside the run) and the md5
+-- of the rows whose xmin is this backend's open transaction (pg_xact_status = 'in progress'). No
+-- count(*) and no whole-table md5: a player's commit between two runs cannot fail the push. The
+-- instrument is proven to see a one-row write first.
+-- §6 reverses tick_market_drift and world.market to their pre-images. §6b proves old vs new on a
+-- BOUNDED SAMPLE of harbours (the ones with the most producing rows, the strongest works, the most
+-- short rows, the fewest and most rows, the first and last; 3 harbours / 1,665 rows on the cached
+-- world), never the whole market: only the sample's rows are locked (FOR UPDATE in ctid order), at a
+-- probe moment T at or before every row's slot and day, so no row outside the sample is due and the
+-- old whole-market body writes only the sample (asserted by its own-write count). drift_sigma = 0 in
+-- the run (the draw is random() by design, 0010) and six rows are bent so both clamps, a row on its
+-- slot, a row on its day, and regeneration below and up to the target are all taken. Each new
+-- per-harbour call must move exactly its own harbour's due rows. Then world.market old vs new at T on
+-- every sample harbour: payloads equal. Timings: raise notice only.
+-- MUTANTS, each caught on the cached PGlite world: the drift filter inverted (§6b per-harbour count);
+-- k + 5000 in npc_tend (§4 receipt); world.market drifting at T + 3 days (§6b payload); an extra
+-- world_config write in npc_tend with an unchanged receipt (§4 own-write digest).
 -- The procedures COMMIT, so they cannot run inside a migration: they were driven, committed, on the
--- cached PGlite world (DEV_LOG 2026-10-16), and §7 asserts they are invoker, SET-free, owner-only.
+-- cached PGlite world with merchants on (DEV_LOG 2026-10-17 — two hours; a merchant whose step broke
+-- her purse rolled back alone; a forced 40P01 and a forced 55P03 harbour skipped while the drift went
+-- on), and §7 asserts they are invoker, SET-free, owner-only, and carry the checks above.
 --
 -- ── WHAT IT BUYS ────────────────────────────────────────────────────────────────────────────────
 -- EXPECTED on prod (not measurable before the push): an arrivals run overlapping the reconcile waits at
 -- most for the one merchant step holding her (ms; ≈ 1.3 s at most, a lap start)
--- instead of up to 84 s; one overlapping the drift waits for one harbour's update (≈ 132,090 / 252 rows,
--- ~0.1 s) instead of 12–26 s. VERIFY after the push with the same cron.job_run_details query (arrivals
--- runs > 12 s ending within 1 s of a reconcile / drift end).
+-- instead of up to 84 s; one overlapping the drift waits for one harbour's update (≈ 132,090 / 238 rows,
+-- ~0.1 s) instead of 12–26 s; a quay read locks its own 555 rows, not 132,090. VERIFY after the push.
 --
--- ── LOCKS ───────────────────────────────────────────────────────────────────────────────────────
--- DROP / CREATE FUNCTION and PROCEDURE (catalog only); the proofs write inside rolled-back
--- subtransactions (row locks on rows they touch, released at each rollback); cron.alter_job. No LOCK
--- TABLE, no set role, no set local, no begin. Deploy with the clock unwound (DEPLOY_RUNBOOK):
--- unwind_the_clock() → db push → wind_the_clock().
+-- ── LOCKS, AND HOW LONG THE PUSH TAKES ──────────────────────────────────────────────────────────
+-- DROP / CREATE FUNCTION and PROCEDURE, CREATE OR REPLACE world.market (catalog only); cron.alter_job.
+-- The §4 runs write inside rolled-back subtransactions: a merchant's rows are held for her own pair of
+-- runs (≤ ≈ 2 × 1.3 s), the whole pass's NOWAIT merchant locks for its run (merchants only — the
+-- arrivals sweep is stopped). §6b holds the SAMPLE harbours' port_goods rows from its lock to this
+-- file's COMMIT (the rest is §7, catalogue reads): a trade or quay read at those 3 harbours waits that
+-- long (≈ 1–3 s), no other harbour waits at all. No LOCK TABLE, no set role, no set local, no begin.
+-- Measured on the cached PGlite world: the whole file ≈ 15 s (§4 ≈ 9 s, §6b ≈ 1.5 s). ESTIMATED on
+-- prod, NOT measured: 30–90 s — §4's 12 dear-work merchants are ≈ 1.3 s a run there (24 runs), plus the
+-- own-row scans of the tables each run wrote (events 79 MB is the largest). The file sets
+-- statement_timeout 20 min for itself.
 --
--- ROLLBACK: a forward migration that drops the four steps and the two procedures, re-creates
--- tick_reconcile() and tick_market_drift(timestamptz) from their pre-images (verbatim in pg history and
--- reconstructible here: the hunks and slices are this file's text) and points the jobs back at `select`.
--- SUPERSEDES: public.npc_tend (0123), public.tick_reconcile (0114), public.tick_market_drift (0123).
--- VERSION: 0137. Applies on 0136 (PR #140; depends on #139 and #140). Prod head 0134 at writing.
+-- ── DEPLOY, AND THE CHECKLIST AFTER THE PUSH ────────────────────────────────────────────────────
+-- DEPLOY_RUNBOOK: select public.unwind_the_clock(); → supabase db push --linked → select
+-- public.wind_the_clock(). START THE PUSH a minute or two after a quarter hour (drift slots are 900 s,
+-- epoch-aligned): until this file commits, the LIVE world.market still drifts the whole market on the
+-- first quay read of each slot (~15 s of row locks), and a §4 merchant trade that meets one of those
+-- locks waits up to the file's lock_timeout (5 s) — a failed push, rolled back whole (DEPLOY_RUNBOOK §3),
+-- not a corrupted one; read the error before pushing again. Then, on the target:
+--   1. supabase migration list --linked — 0137 applied, the head.
+--   2. select jobname, command, active from cron.job where jobname in ('byeharu-voyage:reconcile',
+--      'byeharu-voyage:drift') — `call public.tick_reconcile()` / `call public.tick_market_drift_each_port()`,
+--      both active after wind_the_clock().
+--   3. After the next drift slot and the next :07: cron.job_run_details for both jobs — status
+--      'succeeded', the reconcile well under the 120 s statement_timeout (it was 63–84 s; failed twice at
+--      120 s), the drift no longer failing on `deadlock detected` (a skipped harbour is a WARNING in the
+--      Postgres log, not a failed run).
+--   4. The overlap query of 0136/0137: arrivals runs > 12 s ending within 1 s of a reconcile or drift end
+--      — expected none.
+--   5. Open a quay in the game (world.market) and trade: the prices served and the trade go through.
+--   NOTE `select public.tick_reconcile()` NO LONGER WORKS — it is a procedure: `call public.tick_reconcile()`
+--   (or `call public.tick_reconcile(false)` inside a transaction).
+--
+-- ROLLBACK WITHOUT A MIGRATION (both old behaviours are still callable after 0137):
+--   the drift, one statement over the whole market as before:
+--     select cron.alter_job((select jobid from cron.job where jobname = 'byeharu-voyage:drift'),
+--                           command := 'select public.tick_market_drift()');
+--   the reconcile, one transaction as before:
+--     select cron.alter_job((select jobid from cron.job where jobname = 'byeharu-voyage:reconcile'),
+--                           command := 'call public.tick_reconcile(false)');
+-- A FULL ROLLBACK is a forward migration that drops the steps and the two procedures, re-creates
+-- tick_reconcile() and tick_market_drift(timestamptz) from their pre-images (reconstructible here: the
+-- hunks and slices are this file's text), reverses world.market's one hunk, and points the jobs back.
+-- SUPERSEDES: public.npc_tend (0123), public.tick_reconcile (0114), public.tick_market_drift (0123),
+-- world.market (0122).
+-- VERSION: 0137. Applies on 0136 (PR #140; depends on #139 and #140). Prod head 0136.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 
@@ -134,7 +198,8 @@ select f.fn,
        (select coalesce(p.proconfig::text, '') from pg_proc p where p.oid = f.fn::regprocedure) as cfg
   from (values ('public.npc_tend(timestamptz, uuid)'),
                ('public.tick_reconcile()'),
-               ('public.tick_market_drift(timestamptz)')) f(fn);
+               ('public.tick_market_drift(timestamptz)'),
+               ('world.market(uuid)')) f(fn);
 
 -- THE OLD COPIES the proof runs against the new bodies. npc_tend's callees are untouched by this file
 -- (npc_plan, npc_invest, the cmd doors, credit), so the copy calls the live ones; asserted below that
@@ -456,6 +521,25 @@ comment on function public.npc_tend_sum(jsonb, jsonb) is
   '0137: THE adder of npc_tend''s receipt (counts summed, notes concatenated). Server-only.';
 revoke all on function public.npc_tend_sum(jsonb, jsonb) from public, anon, authenticated;
 
+-- A step of the hourly upkeep that raised: the receipt fragment npc_tend_sum adds — one failure,
+-- one note naming the step and the error, the same shape npc_tend_route's own failures have.
+create function public.npc_step_failed(p_where jsonb, p_error text)
+returns jsonb
+language plpgsql
+immutable
+set search_path = public, pg_temp
+as $$
+-- 0137: THE receipt of an hourly-upkeep step that raised and was rolled back alone (its error, or
+-- the purse it broke — public.tick_reconcile checks the ledger inside the step, before its COMMIT):
+-- failed 1, and one note, p_where || {error}. Added up by public.npc_tend_sum like any count.
+begin
+  return jsonb_build_object('failed', 1, 'notes', jsonb_build_array(p_where || jsonb_build_object('error', p_error)));
+end $$;
+comment on function public.npc_step_failed(jsonb, text) is
+  '0137: THE receipt of an hourly-upkeep step that raised and was rolled back alone (failed 1, one '
+  'note). Read by public.tick_reconcile. Server-only.';
+revoke all on function public.npc_step_failed(jsonb, text) from public, anon, authenticated;
+
 -- The budget's scope: set here and nowhere else (0114's deadline and 0097's lock_timeout, both
 -- transaction-local — so the hourly upkeep sets them again at the start of each of its transactions).
 create function public.npc_upkeep_scope(p_deadline timestamptz)
@@ -581,45 +665,75 @@ begin
   -- the steps are server-only
   if exists (select 1 from unnest(array['public.npc_tend_roster()', 'public.npc_tend_route(timestamptz, uuid, uuid, bigint)',
                                         'public.npc_tend_houses(timestamptz)', 'public.npc_tend_sum(jsonb, jsonb)',
-                                        'public.npc_upkeep_scope(timestamptz)']) f
+                                        'public.npc_step_failed(jsonb, text)', 'public.npc_upkeep_scope(timestamptz)']) f
               where has_function_privilege('anon', f, 'execute') or has_function_privilege('authenticated', f, 'execute')) then
     raise exception '0137 self-assert FAIL: a client can execute an upkeep step';
   end if;
 end $$;
 
--- ── 4. OLD AND NEW TEND THE SAME WORLD (one snapshot, each run rolled back) ───────────────────
--- What is compared: npc_tend's receipt, and an END-STATE digest of every table in public / world /
--- cmd / voyage — its row count, and the md5 of every row the run wrote (xmin newer than this
--- file's transaction; uuids blanked, because the doors mint fresh ones). Two runs per variant:
+-- ── 4. OLD AND NEW TEND THE SAME WORLD (each run rolled back; only the run's OWN writes compared) ──
+-- Production is lived in while this file applies: players trade and settle, and their commits land
+-- between two runs. So nothing here counts or hashes a whole table. What is compared, per run:
+--   * npc_tend's receipt;
+--   * the run's OWN writes, per table of public / world / cmd / voyage: the rows it inserted, updated
+--     and deleted (pg_stat_xact_all_tables — this backend's transaction alone, an aborted
+--     subtransaction's attempts included, so it is read before and after the run, inside it), and,
+--     for every table it wrote, the md5 of the rows whose xmin is a transaction of THIS backend still
+--     in progress (pg_xact_status = 'in progress'; another session's rows are committed or invisible),
+--     uuids blanked because the doors mint fresh ones.
+-- Runs, old then new, each pair on the world as it stands:
 --   (a) the WHOLE pass with the hour's budget already spent — every merchant walked (the dark and
 --       cannot-sail lay-ups, off-route re-assigns, the halt law's deferral), the investment pass
 --       deferred, every refound due;
---   (b) then, budget unset, 12 merchants one route at a time (p_route), those with dear work first
---       (unstarted, paused, or a failed order at the head of her queue): plans, starts, resumes, clears.
--- The merchants are switched on inside the run when the world has them off (PGlite / CI); prod has
--- them on, and the update then writes nothing.
-create or replace function pg_temp.digest_0137(p_base bigint)
+--   (b) 12 merchants ONE AT A TIME (p_route), budget unset, those with dear work first (unstarted,
+--       paused, or a failed order at the head of her queue): plans, starts, resumes, clears. One pair
+--       per merchant, so the rows a merchant's trade locks are held for her two runs, never for twelve.
+-- The merchants are switched on inside each run when the world has them off (PGlite / CI); prod has
+-- them on, and the update then writes nothing. The instrument is proven able to see a write first.
+create or replace function pg_temp.writes_0137()
 returns jsonb
 language plpgsql
 as $$
 declare
-  t     record;
-  v     jsonb := '{}'::jsonb;
-  v_n   bigint;
-  v_md5 text;
+  v jsonb;
 begin
-  for t in select n.nspname, c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
-            where c.relkind = 'r' and n.nspname in ('public', 'world', 'cmd', 'voyage')
-            order by n.nspname, c.relname loop
-    execute format($q$select count(*),
-                             md5(coalesce(string_agg(regexp_replace(row_to_json(x)::text,
-                                   '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', 'U', 'g'), E'\n'
-                                   order by regexp_replace(row_to_json(x)::text,
-                                   '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', 'U', 'g'))
-                                   filter (where x.xmin::text::bigint > $1), ''))
-                        from %I.%I x$q$, t.nspname, t.relname)
-      into v_n, v_md5 using p_base;
-    v := v || jsonb_build_object(t.nspname || '.' || t.relname, v_n::text || ':' || v_md5);
+  select coalesce(jsonb_object_agg(s.schemaname || '.' || s.relname,
+                                   jsonb_build_array(s.n_tup_ins, s.n_tup_upd, s.n_tup_del)), '{}'::jsonb)
+    into v
+    from pg_stat_xact_all_tables s
+   where s.schemaname in ('public', 'world', 'cmd', 'voyage');
+  return v;
+end $$;
+
+-- what the run wrote since p_before: per table it touched, its [inserted, updated, deleted] and the
+-- md5 of the rows this backend's open transaction wrote (p_base: this file's xid, low 32 bits;
+-- p_epoch: its epoch × 2^32, so a 32-bit xmin can be asked about as an xid8)
+create or replace function pg_temp.digest_0137(p_before jsonb, p_base bigint, p_epoch bigint)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_after jsonb := pg_temp.writes_0137();
+  v       jsonb := '{}'::jsonb;
+  v_k     text;
+  v_w     jsonb;
+  v_n     bigint;
+  v_md5   text;
+begin
+  for v_k in select k from jsonb_object_keys(v_after) k order by k loop
+    v_w := jsonb_build_array((v_after->v_k->>0)::bigint - coalesce((p_before->v_k->>0)::bigint, 0),
+                             (v_after->v_k->>1)::bigint - coalesce((p_before->v_k->>1)::bigint, 0),
+                             (v_after->v_k->>2)::bigint - coalesce((p_before->v_k->>2)::bigint, 0));
+    continue when v_w = '[0, 0, 0]'::jsonb;
+    execute format($q$select count(*), md5(coalesce(string_agg(t.r, E'\n' order by t.r), ''))
+                        from (select regexp_replace(row_to_json(x)::text,
+                                       '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', 'U', 'g') as r
+                                from %I.%I x
+                               where x.xmin::text::bigint >= $1
+                                 and pg_xact_status(($2 + x.xmin::text::bigint)::text::xid8) = 'in progress') t$q$,
+                   split_part(v_k, '.', 1), split_part(v_k, '.', 2))
+      into v_n, v_md5 using p_base, p_epoch;
+    v := v || jsonb_build_object(v_k, jsonb_build_object('writes', v_w, 'own_rows', v_n, 'md5', v_md5));
   end loop;
   return v;
 end $$;
@@ -634,80 +748,112 @@ select nf.route_id
           md5(nf.route_id::text), nf.route_id
  limit 12;
 
-create or replace function pg_temp.tend_run_0137(p_old boolean, p_now timestamptz, p_base bigint)
+-- one run: p_route null = the whole pass, budget spent; else that one merchant, no budget
+create or replace function pg_temp.tend_run_0137(p_old boolean, p_now timestamptz, p_route uuid, p_base bigint, p_epoch bigint)
 returns jsonb
 language plpgsql
 as $$
 declare
-  s      record;
-  v_t0   timestamptz;
-  v_full jsonb;
-  v_one  jsonb := '[]'::jsonb;
-  v_ms   jsonb := '{}'::jsonb;
+  v_before jsonb := pg_temp.writes_0137();
+  v_t0     timestamptz;
+  v_r      jsonb;
 begin
   update public.world_config set value = 'true'::jsonb
    where key in ('npc_traders_enabled', 'standing_routes_enabled') and value is distinct from 'true'::jsonb;
-  -- (a) the whole pass, the hour's budget spent
-  perform set_config('byeharu.npc_upkeep_deadline', '2000-01-01 00:00:00+00', true);
+  perform set_config('byeharu.npc_upkeep_deadline', case when p_route is null then '2000-01-01 00:00:00+00' else '' end, true);
   v_t0 := clock_timestamp();
-  if p_old then v_full := pg_temp.npc_tend_old_0137(p_now); else v_full := public.npc_tend(p_now); end if;
-  v_ms := v_ms || jsonb_build_object('whole', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
-  raise notice '0137 probe: the whole pass (old body: %) % ms', p_old, v_ms->>'whole';
-  -- (b) twelve merchants, one route at a time, no budget
-  perform set_config('byeharu.npc_upkeep_deadline', '', true);
-  v_t0 := clock_timestamp();
-  for s in select route_id from tend_sample_0137 order by route_id loop
-    if p_old then
-      v_one := v_one || jsonb_build_array(pg_temp.npc_tend_old_0137(p_now, s.route_id));
-    else
-      v_one := v_one || jsonb_build_array(public.npc_tend(p_now, s.route_id));
-    end if;
-  end loop;
-  v_ms := v_ms || jsonb_build_object('sample', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
-  raise notice '0137 probe: twelve merchants (old body: %) % ms', p_old, v_ms->>'sample';
-  return jsonb_build_object('whole', v_full, 'sample', v_one, 'digest', pg_temp.digest_0137(p_base), 'ms', v_ms);
+  if p_old and p_route is null then
+    v_r := pg_temp.npc_tend_old_0137(p_now);
+  elsif p_old then
+    v_r := pg_temp.npc_tend_old_0137(p_now, p_route);
+  elsif p_route is null then
+    v_r := public.npc_tend(p_now);
+  else
+    v_r := public.npc_tend(p_now, p_route);
+  end if;
+  return jsonb_build_object('receipt', v_r, 'ms', round(extract(epoch from clock_timestamp() - v_t0) * 1000),
+                            'digest', pg_temp.digest_0137(v_before, p_base, p_epoch));
 end $$;
 
-do $$
+-- old then new, each rolled back; raises on any difference; returns the pair's measure
+create or replace function pg_temp.tend_pair_0137(p_now timestamptz, p_route uuid, p_base bigint, p_epoch bigint)
+returns jsonb
+language plpgsql
+as $$
 declare
-  v_base bigint := (pg_current_xact_id()::text::bigint % 4294967296);
-  v_now  timestamptz := now();
   v_old  jsonb;
   v_new  jsonb;
-  v_k    text;
+  v_what text := coalesce('merchant route ' || p_route::text, 'the whole pass (budget spent)');
 begin
   begin
-    v_old := pg_temp.tend_run_0137(true, v_now, v_base);
+    v_old := pg_temp.tend_run_0137(true, p_now, p_route, p_base, p_epoch);
     raise exception using errcode = 'ZX137', message = v_old::text;
   exception when sqlstate 'ZX137' then
     v_old := sqlerrm::jsonb;
   end;
   begin
-    v_new := pg_temp.tend_run_0137(false, v_now, v_base);
+    v_new := pg_temp.tend_run_0137(false, p_now, p_route, p_base, p_epoch);
     raise exception using errcode = 'ZX137', message = v_new::text;
   exception when sqlstate 'ZX137' then
     v_new := sqlerrm::jsonb;
   end;
-  if v_old->'whole' is distinct from v_new->'whole' then
-    raise exception '0137 self-assert FAIL: the whole tend''s receipt moved: old % / new %', v_old->'whole', v_new->'whole';
+  if v_old->'receipt' is distinct from v_new->'receipt' then
+    raise exception '0137 self-assert FAIL: % — the receipt moved: old % / new %', v_what, v_old->'receipt', v_new->'receipt';
   end if;
-  if v_old->'sample' is distinct from v_new->'sample' then
-    raise exception '0137 self-assert FAIL: a merchant''s tend moved: old % / new %', v_old->'sample', v_new->'sample';
+  if v_old->'digest' is distinct from v_new->'digest' then
+    raise exception '0137 self-assert FAIL: % — the run wrote a different state: old % / new %', v_what, v_old->'digest', v_new->'digest';
   end if;
-  for v_k in select jsonb_object_keys(v_old->'digest') loop
-    if v_old->'digest'->v_k is distinct from v_new->'digest'->v_k then
-      raise exception '0137 self-assert FAIL: % ends in a different state (old % / new %)', v_k,
-        v_old->'digest'->>v_k, v_new->'digest'->>v_k;
-    end if;
+  return jsonb_build_object('old_ms', v_old->'ms', 'new_ms', v_new->'ms', 'receipt', v_new->'receipt',
+    'tables',  (select count(*) from jsonb_object_keys(v_new->'digest')),
+    'rows',    (select coalesce(sum((e.value->>'own_rows')::bigint), 0) from jsonb_each(v_new->'digest') e),
+    'deleted', (select coalesce(sum((e.value->'writes'->>2)::bigint), 0) from jsonb_each(v_new->'digest') e));
+end $$;
+
+do $$
+declare
+  v_xid   bigint := pg_current_xact_id()::text::bigint;
+  v_base  bigint := v_xid % 4294967296;
+  v_epoch bigint := v_xid - v_xid % 4294967296;
+  v_now   timestamptz := now();
+  v_probe jsonb;
+  v_whole jsonb;
+  v_one   jsonb;
+  s       record;
+  v_n     int := 0;
+  v_tabs  int := 0;
+  v_rows  bigint := 0;
+  v_ms_o  bigint := 0;
+  v_ms_n  bigint := 0;
+begin
+  -- THE INSTRUMENT SEES A WRITE (positive control): one row updated in a rolled-back subtransaction
+  -- is exactly one updated row of exactly one table, and exactly one own row.
+  begin
+    v_probe := pg_temp.writes_0137();
+    update public.world_config set value = value where key = 'drift_sigma';
+    v_probe := pg_temp.digest_0137(v_probe, v_base, v_epoch);
+    raise exception using errcode = 'ZX137', message = v_probe::text;
+  exception when sqlstate 'ZX137' then
+    v_probe := sqlerrm::jsonb;
+  end;
+  if (select count(*) from jsonb_object_keys(v_probe)) <> 1
+     or v_probe->'public.world_config'->'writes' is distinct from '[0, 1, 0]'::jsonb
+     or (v_probe->'public.world_config'->>'own_rows')::int <> 1 then
+    raise exception '0137 self-assert FAIL: the own-write instrument did not see exactly one updated row: %', v_probe;
+  end if;
+
+  v_whole := pg_temp.tend_pair_0137(v_now, null, v_base, v_epoch);
+  raise notice '0137 probe: the whole pass (budget spent) old % ms / new % ms', v_whole->>'old_ms', v_whole->>'new_ms';
+  for s in select route_id from tend_sample_0137 order by route_id loop
+    v_one := pg_temp.tend_pair_0137(v_now, s.route_id, v_base, v_epoch);
+    v_n := v_n + 1;
+    v_tabs := v_tabs + (v_one->>'tables')::int;
+    v_rows := v_rows + (v_one->>'rows')::bigint;
+    v_ms_o := v_ms_o + (v_one->>'old_ms')::bigint;
+    v_ms_n := v_ms_n + (v_one->>'new_ms')::bigint;
   end loop;
-  if (select count(*) from jsonb_object_keys(v_new->'digest')) <> (select count(*) from jsonb_object_keys(v_old->'digest')) then
-    raise exception '0137 self-assert FAIL: the digests cover different tables';
-  end if;
-  raise notice '0137: the tend, old = new on one snapshot — whole pass % (budget spent; old % ms / new % ms), % merchants one by one (old % ms / new % ms), % tables, % written',
-    (v_new->'whole') - 'notes', v_old->'ms'->>'whole', v_new->'ms'->>'whole',
-    jsonb_array_length(v_new->'sample'), v_old->'ms'->>'sample', v_new->'ms'->>'sample',
-    (select count(*) from jsonb_object_keys(v_new->'digest')),
-    (select count(*) from jsonb_each_text(v_new->'digest') e where e.value not like '%:d41d8cd98f00b204e9800998ecf8427e');
+  raise notice '0137 probe: % merchants one by one, old % ms / new % ms', v_n, v_ms_o, v_ms_n;
+  raise notice '0137: the tend, old = new, run by run — whole pass % (budget spent; % table(s), % own row(s) written, % deleted), % merchants one by one (% table-writes, % own row(s)); compared: receipts and each run''s own writes, never a whole table',
+    (v_whole->'receipt') - 'notes', v_whole->>'tables', v_whole->>'rows', v_whole->>'deleted', v_n, v_tabs, v_rows;
 end $$;
 
 -- ── 5. THE HOURLY RECONCILE, ONE TRANSACTION PER STEP ──────────────────────────────────────────
@@ -726,6 +872,12 @@ as $$
 -- 0114's deadline, which runs from the start of the hour's pass). A step's row locks are held for
 -- that step and released at its COMMIT, so the arrivals sweep waits for one merchant at most, never
 -- for the hour. A step that fails is reported in the receipt and rolled back alone (0097).
+-- EVERY STEP IS CHECKED BEFORE IT COMMITS: a merchant's step ends with her ledger reconciling
+-- (public.assert_ledger_reconciles), the companies' step with every company's — so a step that
+-- breaks a purse raises inside its own block and is rolled back alone, counted in the receipt
+-- (failed + a note, public.npc_step_failed) like any other step error. The compactor checks each
+-- company it rolls up itself (0097). A purse already broken before the hour fails every step of
+-- hers, and the whole-world pass below raises on it.
 -- THEN the invariants, in their own transaction, which take no row lock (plain reads): every
 -- player's ledger reconciles, the sailing invariant, no client write grant. A failure RAISES.
 -- p_commit = false runs the SAME steps in the caller's transaction, committing nothing (a proof inside
@@ -738,6 +890,8 @@ declare
   v_deadline timestamptz := clock_timestamp() + make_interval(secs => public.wc_num('npc_upkeep_budget_seconds'));
   v_on       boolean := public.npc_traders_on();
   r          record;
+  h          record;
+  v_step     jsonb;
   v_tend     jsonb := '{}'::jsonb;
   v_upkeep   jsonb := '{}'::jsonb;
   v_n        int := 0;
@@ -746,17 +900,23 @@ begin
   for r in select * from public.npc_tend_roster() loop
     perform public.npc_upkeep_scope(v_deadline);
     begin
-      v_tend := public.npc_tend_sum(v_tend, public.npc_tend_route(v_now, r.fleet_id, r.route_id, r.k));
+      v_step := public.npc_tend_route(v_now, r.fleet_id, r.route_id, r.k);
+      perform public.assert_ledger_reconciles(r.player_id);   -- her purse, before her COMMIT
+      v_tend := public.npc_tend_sum(v_tend, v_step);
     exception when others then
-      v_upkeep := v_upkeep || jsonb_build_object('tend_error', sqlerrm);
+      v_tend := public.npc_tend_sum(v_tend, public.npc_step_failed(jsonb_build_object('route', r.route_id), sqlerrm));
     end;
     if p_commit then commit; end if;
   end loop;
   perform public.npc_upkeep_scope(v_deadline);
   begin
-    v_tend := public.npc_tend_sum(v_tend, public.npc_tend_houses(v_now));
+    v_step := public.npc_tend_houses(v_now);
+    for h in select p.id from public.players p where p.is_npc order by p.id loop
+      perform public.assert_ledger_reconciles(h.id);   -- every company's purse, before the COMMIT
+    end loop;
+    v_tend := public.npc_tend_sum(v_tend, v_step);
   exception when others then
-    v_upkeep := v_upkeep || jsonb_build_object('tend_error', sqlerrm);
+    v_tend := public.npc_tend_sum(v_tend, public.npc_step_failed(jsonb_build_object('step', 'companies'), sqlerrm));
   end;
   if p_commit then commit; end if;
   v_upkeep := v_upkeep || jsonb_build_object('tend', jsonb_build_object('enabled', v_on) || public.npc_tend_sum(v_tend, '{}'::jsonb));
@@ -767,7 +927,7 @@ begin
     v_upkeep := v_upkeep || jsonb_build_object('compact_error', sqlerrm);
   end;
   if p_commit then commit; end if;
-  -- THE INVARIANTS (0010/0097, unchanged), on the world the upkeep left.
+  -- THE INVARIANTS (0010/0097, unchanged — a read-only whole-world pass), on the world the upkeep left.
   for r in select id from public.players loop
     perform public.assert_ledger_reconciles(r.id);   -- raises on a mismatch
     v_n := v_n + 1;
@@ -796,25 +956,31 @@ begin
   end if;
 end $cron$;
 
--- ── 6. THE MARKET DRIFTS ONE HARBOUR AT A TIME ─────────────────────────────────────────────────
+-- ── 6. THE MARKET DRIFTS ONE HARBOUR AT A TIME, AND A QUAY DRIFTS ONLY ITSELF ──────────────────
 -- public.tick_market_drift keeps its body; it gains p_port (default null = every harbour, exactly
 -- as before) through two hunks, one per UPDATE. A new signature cannot be a CREATE OR REPLACE, so
 -- the old one is dropped and the new one made from the pre-image's text; its ACL is the pre-image's
 -- (asserted). The drift job then calls a procedure that drifts each harbour in its own transaction,
 -- so a port_goods row the drift writes is held for one harbour's update, never for the whole market.
-create temp table hunks_0137 (n int, old text, new text) on commit drop;
+-- world.market — the client's read of one quay, ~4,000 calls a day on prod — no longer drifts the
+-- WHOLE market before pricing its quay: one hunk passes its own harbour (p_port). Every harbour is
+-- the drift job's; a quay a player opens is caught up for that quay alone.
+create temp table hunks_0137 (fn text, n int, old text, new text) on commit drop;
 insert into hunks_0137 values
-(0,
+('public.tick_market_drift(timestamptz)', 0,
 $h$CREATE OR REPLACE FUNCTION public.tick_market_drift(p_now timestamp with time zone DEFAULT now())$h$,
 $h$CREATE OR REPLACE FUNCTION public.tick_market_drift(p_now timestamp with time zone DEFAULT now(), p_port uuid DEFAULT NULL::uuid)$h$),
-(1,
+('public.tick_market_drift(timestamptz)', 1,
 $h$   where pg.drift_slot < v_slot;$h$,
 $h$   where pg.drift_slot < v_slot
      and (p_port is null or pg.port_id = p_port);   -- 0137: one harbour, when one is asked for$h$),
-(2,
+('public.tick_market_drift(timestamptz)', 2,
 $h$   where pg.last_regen_day < v_day;$h$,
 $h$   where pg.last_regen_day < v_day
-     and (p_port is null or pg.port_id = p_port);   -- 0137: one harbour, when one is asked for$h$);
+     and (p_port is null or pg.port_id = p_port);   -- 0137: one harbour, when one is asked for$h$),
+('world.market(uuid)', 0,
+$h$  perform public.tick_market_drift(v_now);$h$,
+$h$  perform public.tick_market_drift(v_now, p_port);   -- 0137: this quay only; every harbour is the drift job's$h$);
 
 do $$
 declare
@@ -825,7 +991,7 @@ declare
 begin
   select * into b from defs_before_0137 where fn = 'public.tick_market_drift(timestamptz)';
   v_def := b.def;
-  for h in select * from hunks_0137 order by n loop
+  for h in select * from hunks_0137 where fn = b.fn order by n loop
     if pg_temp.occurs_0137(v_def, h.old) <> 1 then
       raise exception '0137 self-assert FAIL: tick_market_drift hunk % occurs % time(s), not once', h.n, pg_temp.occurs_0137(v_def, h.old);
     end if;
@@ -846,7 +1012,7 @@ begin
   end loop;
   -- REVERSE TO ORIGINAL: the live body, its hunks undone, is the pre-image byte for byte
   v_rev := replace(pg_get_functiondef('public.tick_market_drift(timestamptz, uuid)'::regprocedure), E'\r', '');
-  for h in select * from hunks_0137 order by n desc loop
+  for h in select * from hunks_0137 where fn = b.fn order by n desc loop
     if pg_temp.occurs_0137(v_rev, h.new) <> 1 then
       raise exception '0137 self-assert FAIL: tick_market_drift''s new hunk % is not in the live body once', h.n;
     end if;
@@ -861,6 +1027,26 @@ begin
      or (select p.provolatile from pg_proc p where p.oid = 'public.tick_market_drift(timestamptz, uuid)'::regprocedure) <> b.vol then
     raise exception '0137 self-assert FAIL: tick_market_drift''s ACL, security, settings or volatility moved';
   end if;
+
+  -- world.market: ONE hunk, sliced out of the live body (same signature: CREATE OR REPLACE keeps
+  -- its ACL, owner, definer and path — asserted), and the live body reverses to the pre-image.
+  select * into b from defs_before_0137 where fn = 'world.market(uuid)';
+  select * into h from hunks_0137 where fn = b.fn and n = 0;
+  if pg_temp.occurs_0137(b.def, h.old) <> 1 or pg_temp.occurs_0137(b.def, 'tick_market_drift(') <> 1 then
+    raise exception '0137 self-assert FAIL: world.market does not call the drift exactly once, as "%" (% × the hunk, % × any call) — the deployed body is not what this file was written against',
+      h.old, pg_temp.occurs_0137(b.def, h.old), pg_temp.occurs_0137(b.def, 'tick_market_drift(');
+  end if;
+  execute replace(b.def, h.old, h.new);
+  v_rev := replace(pg_get_functiondef('world.market(uuid)'::regprocedure), E'\r', '');
+  if pg_temp.occurs_0137(v_rev, h.new) <> 1 or replace(v_rev, h.new, h.old) <> b.def then
+    raise exception '0137 self-assert FAIL: world.market does not reverse to its pre-image through its one hunk';
+  end if;
+  if coalesce((select p.proacl::text from pg_proc p where p.oid = 'world.market(uuid)'::regprocedure), '') <> b.acl
+     or (select p.prosecdef from pg_proc p where p.oid = 'world.market(uuid)'::regprocedure) <> b.secdef
+     or (select coalesce(p.proconfig::text, '') from pg_proc p where p.oid = 'world.market(uuid)'::regprocedure) <> b.cfg
+     or (select p.provolatile from pg_proc p where p.oid = 'world.market(uuid)'::regprocedure) <> b.vol then
+    raise exception '0137 self-assert FAIL: world.market''s ACL, security, settings or volatility moved';
+  end if;
 end $$;
 
 create procedure public.tick_market_drift_each_port()
@@ -870,95 +1056,40 @@ as $$
 -- per transaction, every harbour in order, all at the one moment the job started (so every harbour
 -- lands on the same drift slot and game-day the whole-market call would have). No SECURITY DEFINER,
 -- no SET: a procedure that commits may carry neither; it runs as the job's owner.
+-- A HARBOUR THAT DEADLOCKS (40P01 — prod's drift failed 8.8 % of its runs on one, in the
+-- regeneration UPDATE, against a quay read or a trade) OR TIMES OUT ON A LOCK (55P03) is rolled back
+-- alone, WARNED (the server log) and counted, and the run goes on to the next harbour. It loses
+-- this slot's drift step only: its rows keep their slot and day, so the next run drifts it, and
+-- the regeneration is closed-form over the days missed. Any other error still raises.
 declare
-  v_now timestamptz := now();
-  p     record;
-  v_n   int := 0;
-  v_r   int := 0;
-  v_j   jsonb;
+  v_now  timestamptz := now();
+  p      record;
+  v_n    int := 0;
+  v_r    int := 0;
+  v_skip int := 0;
+  v_j    jsonb;
+  v_last jsonb;
 begin
-  for p in select po.id from public.ports po order by po.id loop
-    v_j := public.tick_market_drift(v_now, p.id);
-    v_n := v_n + (v_j->>'drifted')::int;
-    v_r := v_r + (v_j->>'regenerated')::int;
+  for p in select po.id, po.code from public.ports po order by po.id loop
+    begin
+      v_j := public.tick_market_drift(v_now, p.id);
+      v_n := v_n + (v_j->>'drifted')::int;
+      v_r := v_r + (v_j->>'regenerated')::int;
+      v_last := v_j;
+    exception when deadlock_detected or lock_not_available then
+      v_skip := v_skip + 1;
+      raise warning 'tick_market_drift_each_port: harbour % skipped this slot (SQLSTATE %: %); the next run drifts it',
+        p.code, sqlstate, sqlerrm;
+    end;
     commit;
   end loop;
-  raise notice 'tick_market_drift_each_port: % drifted, % regenerated, slot %, game-day %', v_n, v_r, v_j->>'slot', v_j->>'game_day';
+  raise notice 'tick_market_drift_each_port: % drifted, % regenerated, % harbour(s) skipped (deadlock / lock timeout), slot %, game-day %',
+    v_n, v_r, v_skip, v_last->>'slot', v_last->>'game_day';
 end $$;
 comment on procedure public.tick_market_drift_each_port() is
   '0137: THE drift job (CALL): public.tick_market_drift one harbour per transaction, all at the job''s '
-  'start time. Server-only.';
+  'start time; a harbour that deadlocks or times out on a lock is skipped, warned and counted. Server-only.';
 revoke all on procedure public.tick_market_drift_each_port() from public, anon, authenticated;
-
--- OLD AND NEW DRIFT THE SAME MARKET (one snapshot, each run rolled back). The noise term is
--- random() by design (0010), so the runs set drift_sigma = 0 inside themselves: the drift is then
--- theta × drift, clamped — the same arithmetic minus the draw — and the whole of port_goods can be
--- compared row for row. The draw's own text is untouched (the reverse-to-original check above).
--- old: the pre-image, whole market. new: the new body one harbour at a time, as the procedure runs it.
--- The moment is one drift slot and one game-day ahead, so every row drifts AND regenerates.
-create or replace function pg_temp.drift_run_0137(p_old boolean, p_at timestamptz)
-returns jsonb
-language plpgsql
-as $$
-declare
-  p      record;
-  v_t0   timestamptz := clock_timestamp();
-  v_n    int := 0;
-  v_r    int := 0;
-  v_j    jsonb;
-  v_md5  text;
-begin
-  update public.world_config set value = to_jsonb(0) where key = 'drift_sigma';
-  if p_old then
-    v_j := pg_temp.tick_market_drift_old_0137(p_at);
-    v_n := (v_j->>'drifted')::int;
-    v_r := (v_j->>'regenerated')::int;
-  else
-    for p in select po.id from public.ports po order by po.id loop
-      v_j := public.tick_market_drift(p_at, p.id);
-      v_n := v_n + (v_j->>'drifted')::int;
-      v_r := v_r + (v_j->>'regenerated')::int;
-    end loop;
-  end if;
-  select md5(string_agg(row_to_json(g)::text, E'\n' order by g.port_id, g.good_id)) into v_md5 from public.port_goods g;
-  return jsonb_build_object('drifted', v_n, 'regenerated', v_r, 'slot', v_j->>'slot', 'game_day', v_j->>'game_day',
-                            'md5', v_md5, 'ms', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
-end $$;
-
-do $$
-declare
-  -- past every row's drift slot (a fixture may have wound some ahead of the clock), then one slot and one day more
-  v_at  timestamptz := greatest(now(), to_timestamp(((select max(drift_slot) from public.port_goods) + 1) * public.wc_num('drift_slot_seconds')))
-                       + make_interval(secs => (public.wc_num('drift_slot_seconds') + public.wc_num('game_day_seconds'))::double precision);
-  v_old jsonb;
-  v_new jsonb;
-  v_rows int := (select count(*) from public.port_goods);
-begin
-  if (select count(*) from public.world_config where key = 'drift_sigma') <> 1 then
-    raise exception '0137 self-assert FAIL: world_config has no drift_sigma row';
-  end if;
-  begin
-    v_old := pg_temp.drift_run_0137(true, v_at);
-    raise exception using errcode = 'ZX137', message = v_old::text;
-  exception when sqlstate 'ZX137' then
-    v_old := sqlerrm::jsonb;
-  end;
-  begin
-    v_new := pg_temp.drift_run_0137(false, v_at);
-    raise exception using errcode = 'ZX137', message = v_new::text;
-  exception when sqlstate 'ZX137' then
-    v_new := sqlerrm::jsonb;
-  end;
-  if (v_old - 'ms') is distinct from (v_new - 'ms') then
-    raise exception '0137 self-assert FAIL: the market drifted differently harbour by harbour: old % / new %', v_old, v_new;
-  end if;
-  if (v_new->>'drifted')::int <> v_rows or (v_new->>'regenerated')::int <> v_rows then
-    raise exception '0137 self-assert FAIL: the probe moment did not move every row (% drifted, % regenerated of %)',
-      v_new->>'drifted', v_new->>'regenerated', v_rows;
-  end if;
-  raise notice '0137: the drift, old = new on one snapshot — % rows drifted and regenerated, whole market % ms, harbour by harbour % ms',
-    v_rows, v_old->>'ms', v_new->>'ms';
-end $$;
 
 do $cron$
 begin
@@ -967,6 +1098,285 @@ begin
        from cron.job j where j.jobname = 'byeharu-voyage:drift';
   end if;
 end $cron$;
+
+-- ── 6b. OLD AND NEW DRIFT, AND OLD AND NEW QUAY READS, ON A BOUNDED SAMPLE ─────────────────────
+-- NOT the whole market: an UPDATE of all 132,090 port_goods rows would hold every row a player can
+-- trade for tens of seconds while this file is open (a trade gives up at 8 s). The sample is a
+-- handful of harbours chosen to cover every arm of the drift (below), and ONLY their rows are
+-- locked — FOR UPDATE, in ctid order (the order a whole-market UPDATE walks, so the two cannot
+-- deadlock), from here to this file's COMMIT (the rest of the file is catalogue checks, ms). A
+-- locked row cannot move under the probe, so old and new read the same input.
+--   THE PROBE MOMENT T lies at or before every row's drift slot and regeneration day in the whole
+-- market, so at T NO row outside the sample is due — the old whole-market body therefore writes
+-- the sample's rows and nothing else (asserted: its own-write count is the sample's). Inside each
+-- run the sample's rows are made due at T (slot and day one before), drift_sigma is 0 (the draw is
+-- random() by design, 0010) and six rows are bent so every arm is taken whatever the world holds:
+--   row 1 drift = +2·clamp/θ (the upper clamp binds), row 2 −2·clamp/θ (the lower clamp binds),
+--   row 3 already on T's slot (NOT drifted), row 4 already on T's day (NOT regenerated),
+--   row 5 stock 0 (regenerates below the target), row 6 stock 2 × target (least() pulls it to target).
+-- Production > 0 and a works factor ≠ 1 are taken from the world (a harbour with each is in the
+-- sample whenever the world has one — asserted).
+-- old: the pre-image, whole market, at T. new: the new body harbour by harbour, as the job runs it —
+-- each call must drift exactly its own harbour's due rows. Compared: the counts, and the run's own
+-- writes (§4's instrument — so a row outside the sample written by either run is a difference).
+-- THEN world.market, old (pre-image: drifts the whole market, then prices) vs new (drifts its quay,
+-- then prices), every sample harbour, the same moment and bending: the payloads must be equal.
+-- The two copies differ from their live bodies in ONE line each — `v_now := now()` reads T — and the
+-- old one calls the old drift (asserted, each replacement exactly once).
+create temp table drift_sample_0137 on commit drop as
+with per_port as (
+  select pg.port_id,
+         count(*) filter (where pg.production_rate > 0) as producing,
+         count(*) filter (where pg.stock < pg.stock_target) as short,
+         count(*) as n
+    from public.port_goods pg group by pg.port_id
+), works as (
+  select po.id as port_id, public.works_factor(po.id, 'production', 'production_per_level') as f from public.ports po
+)
+select distinct s.port_id from (
+  (select port_id from per_port order by producing desc, port_id limit 1)
+  union all (select port_id from works order by f desc, port_id limit 1)
+  union all (select port_id from per_port order by short desc, port_id limit 1)
+  union all (select port_id from per_port order by n, port_id limit 1)
+  union all (select port_id from per_port order by n desc, port_id limit 1)
+  union all (select port_id from per_port order by port_id limit 1)
+  union all (select port_id from per_port order by port_id desc limit 1)) s;
+
+create temp table drift_rows_0137 on commit drop as
+select pg.port_id, pg.good_id, row_number() over (order by pg.port_id, pg.good_id) as ord
+  from public.port_goods pg
+ where pg.port_id in (select port_id from drift_sample_0137);
+
+-- the in-run preparation, the same for every run: the sample due at T, six rows bent (header above)
+create or replace function pg_temp.drift_prepare_0137(p_slot bigint, p_day int)
+returns void
+language plpgsql
+as $$
+declare
+  v_bend numeric := round(2 * public.wc_num('drift_clamp') / public.wc_num('drift_theta'), 4);
+begin
+  update public.world_config set value = to_jsonb(0) where key = 'drift_sigma';
+  update public.port_goods pg
+     set drift_slot     = case when s.ord = 3 then p_slot else p_slot - 1 end,
+         last_regen_day = case when s.ord = 4 then p_day else p_day - 1 end,
+         drift          = case s.ord when 1 then v_bend when 2 then -v_bend else pg.drift end,
+         stock          = case s.ord when 5 then 0 when 6 then pg.stock_target * 2 else pg.stock end
+    from pg_temp.drift_rows_0137 s
+   where s.port_id = pg.port_id and s.good_id = pg.good_id;
+end $$;
+
+create or replace function pg_temp.drift_run_0137(p_old boolean, p_at timestamptz, p_slot bigint, p_day int, p_base bigint, p_epoch bigint)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_before jsonb := pg_temp.writes_0137();
+  p        record;
+  v_t0     timestamptz;
+  v_n      int := 0;
+  v_r      int := 0;
+  v_j      jsonb;
+begin
+  perform pg_temp.drift_prepare_0137(p_slot, p_day);
+  v_t0 := clock_timestamp();
+  if p_old then
+    v_j := pg_temp.tick_market_drift_old_0137(p_at);
+    v_n := (v_j->>'drifted')::int;
+    v_r := (v_j->>'regenerated')::int;
+  else
+    for p in select s.port_id,
+                    count(*) filter (where s.ord <> 3) as due_drift,
+                    count(*) filter (where s.ord <> 4) as due_regen
+               from pg_temp.drift_rows_0137 s group by s.port_id order by s.port_id loop
+      v_j := public.tick_market_drift(p_at, p.port_id);
+      if (v_j->>'drifted')::int <> p.due_drift or (v_j->>'regenerated')::int <> p.due_regen then
+        raise exception '0137 self-assert FAIL: tick_market_drift(T, %) moved % / % row(s), not its own harbour''s % / %',
+          p.port_id, v_j->>'drifted', v_j->>'regenerated', p.due_drift, p.due_regen;
+      end if;
+      v_n := v_n + (v_j->>'drifted')::int;
+      v_r := v_r + (v_j->>'regenerated')::int;
+    end loop;
+  end if;
+  return jsonb_build_object('drifted', v_n, 'regenerated', v_r, 'slot', v_j->>'slot', 'game_day', v_j->>'game_day',
+                            'ms', round(extract(epoch from clock_timestamp() - v_t0) * 1000),
+                            'digest', pg_temp.digest_0137(v_before, p_base, p_epoch));
+end $$;
+
+do $$
+declare
+  b       record;
+  v_old   text;
+  v_new   text;
+  v_line  text := '  v_now timestamptz := now();';
+  v_probe text := $l$  v_now timestamptz := current_setting('byeharu.probe_now_0137')::timestamptz;   -- 0137 probe copy$l$;
+  v_call  text := (select old from hunks_0137 where fn = 'world.market(uuid)' and n = 0);
+begin
+  select * into b from defs_before_0137 where fn = 'world.market(uuid)';
+  v_old := b.def;
+  v_new := replace(pg_get_functiondef('world.market(uuid)'::regprocedure), E'\r', '');
+  if pg_temp.occurs_0137(v_old, v_line) <> 1 or pg_temp.occurs_0137(v_new, v_line) <> 1
+     or pg_temp.occurs_0137(v_old, 'CREATE OR REPLACE FUNCTION world.market(') <> 1
+     or pg_temp.occurs_0137(v_new, 'CREATE OR REPLACE FUNCTION world.market(') <> 1 then
+    raise exception '0137 self-assert FAIL: world.market''s clock line or header is not where the probe copies expect it';
+  end if;
+  v_old := replace(replace(replace(v_old, v_line, v_probe), v_call, '  perform pg_temp.tick_market_drift_old_0137(v_now);'),
+                   'CREATE OR REPLACE FUNCTION world.market(', 'CREATE OR REPLACE FUNCTION pg_temp.market_old_0137(');
+  v_new := replace(replace(v_new, v_line, v_probe), 'CREATE OR REPLACE FUNCTION world.market(', 'CREATE OR REPLACE FUNCTION pg_temp.market_new_0137(');
+  execute v_old;
+  execute v_new;
+end $$;
+
+create or replace function pg_temp.market_run_0137(p_old boolean, p_at timestamptz, p_slot bigint, p_day int, p_base bigint, p_epoch bigint)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_before jsonb := pg_temp.writes_0137();
+  p        record;
+  v_pay    jsonb := '{}'::jsonb;
+begin
+  perform pg_temp.drift_prepare_0137(p_slot, p_day);
+  perform set_config('byeharu.probe_now_0137', p_at::text, true);
+  for p in select port_id from drift_sample_0137 order by port_id loop
+    if p_old then
+      v_pay := v_pay || jsonb_build_object(p.port_id::text, pg_temp.market_old_0137(p.port_id));
+    else
+      v_pay := v_pay || jsonb_build_object(p.port_id::text, pg_temp.market_new_0137(p.port_id));
+    end if;
+  end loop;
+  return jsonb_build_object('payload', v_pay, 'digest', pg_temp.digest_0137(v_before, p_base, p_epoch));
+end $$;
+
+do $$
+declare
+  v_xid   bigint := pg_current_xact_id()::text::bigint;
+  v_base  bigint := v_xid % 4294967296;
+  v_epoch bigint := v_xid - v_xid % 4294967296;
+  v_ss    numeric := public.wc_num('drift_slot_seconds');
+  v_ds    numeric := public.wc_num('game_day_seconds');
+  v_smin  bigint;
+  v_dmin  int;
+  v_at    timestamptz;
+  v_slot  bigint;
+  v_day   int;
+  v_rows  int := (select count(*) from drift_rows_0137);
+  v_ports int := (select count(*) from drift_sample_0137);
+  v_old   jsonb;
+  v_new   jsonb;
+  v_mo    jsonb;
+  v_mn    jsonb;
+  v_t0    timestamptz := clock_timestamp();
+  v_k     text;
+begin
+  if (select count(*) from public.world_config where key in ('drift_sigma', 'drift_clamp', 'drift_theta')) <> 3
+     or public.wc_num('drift_theta') <= 0 then
+    raise exception '0137 self-assert FAIL: world_config lacks drift_sigma / drift_clamp / a positive drift_theta';
+  end if;
+  if v_rows < 6 then
+    raise exception '0137 self-assert FAIL: the drift sample holds % row(s); six are bent', v_rows;
+  end if;
+  -- the arms the world decides: a producing row, and a works factor other than 1, when the world has one
+  if exists (select 1 from public.port_goods where production_rate > 0)
+     and not exists (select 1 from public.port_goods pg join drift_rows_0137 s using (port_id, good_id) where pg.production_rate > 0) then
+    raise exception '0137 self-assert FAIL: the drift sample holds no producing row, and the world has some';
+  end if;
+  if exists (select 1 from public.ports po where public.works_factor(po.id, 'production', 'production_per_level') <> 1)
+     and not exists (select 1 from drift_sample_0137 s where public.works_factor(s.port_id, 'production', 'production_per_level') <> 1) then
+    raise exception '0137 self-assert FAIL: the drift sample holds no harbour whose works bend production, and the world has one';
+  end if;
+
+  -- ONLY THE SAMPLE'S ROWS ARE LOCKED (ctid order), until this file commits
+  perform 1 from public.port_goods pg where pg.port_id in (select port_id from drift_sample_0137) order by pg.ctid for update;
+
+  -- T: at or before every row's slot and day, so nothing outside the sample is due at T
+  select min(drift_slot), min(last_regen_day) into v_smin, v_dmin from public.port_goods;
+  v_at := least(to_timestamp((v_smin * v_ss)::double precision), to_timestamp((v_dmin * v_ds)::double precision));
+  v_slot := floor(extract(epoch from v_at) / v_ss)::bigint;
+  v_day  := world.game_day(v_at);
+  if v_slot > v_smin or v_day > v_dmin then
+    raise exception '0137 self-assert FAIL: the probe moment % (slot %, day %) is past a row''s slot % / day %', v_at, v_slot, v_day, v_smin, v_dmin;
+  end if;
+
+  begin
+    v_old := pg_temp.drift_run_0137(true, v_at, v_slot, v_day, v_base, v_epoch);
+    raise exception using errcode = 'ZX137', message = v_old::text;
+  exception when sqlstate 'ZX137' then
+    v_old := sqlerrm::jsonb;
+  end;
+  begin
+    v_new := pg_temp.drift_run_0137(false, v_at, v_slot, v_day, v_base, v_epoch);
+    raise exception using errcode = 'ZX137', message = v_new::text;
+  exception when sqlstate 'ZX137' then
+    v_new := sqlerrm::jsonb;
+  end;
+  if (v_old - 'ms') is distinct from (v_new - 'ms') then
+    raise exception '0137 self-assert FAIL: the market drifted differently harbour by harbour: old % / new %', v_old, v_new;
+  end if;
+  if (v_new->>'drifted')::int <> v_rows - 1 or (v_new->>'regenerated')::int <> v_rows - 1 then
+    raise exception '0137 self-assert FAIL: the probe moved % / % row(s), not the sample''s % / % due',
+      v_new->>'drifted', v_new->>'regenerated', v_rows - 1, v_rows - 1;
+  end if;
+  -- the runs wrote the sample's rows and nothing else in port_goods: the bending (one update a row),
+  -- the drift and the regeneration — and every sample row is the run's own
+  if v_new->'digest'->'public.port_goods'->'writes' is distinct from jsonb_build_array(0, 3 * v_rows - 2, 0)
+     or (v_new->'digest'->'public.port_goods'->>'own_rows')::int <> v_rows then
+    raise exception '0137 self-assert FAIL: the drift probe wrote % in port_goods (% own rows), not the sample''s [0, %, 0] (% rows)',
+      v_new->'digest'->'public.port_goods'->'writes', v_new->'digest'->'public.port_goods'->>'own_rows', 3 * v_rows - 2, v_rows;
+  end if;
+  -- the arms were taken: both clamps, a row left on its slot, one on its day, one regenerated below
+  -- its target, one pulled down to it (read back inside a run, from the new body's own result)
+  begin
+    perform pg_temp.drift_prepare_0137(v_slot, v_day);
+    for v_k in select s.port_id::text from drift_sample_0137 s order by s.port_id loop
+      perform public.tick_market_drift(v_at, v_k::uuid);
+    end loop;
+    if (select count(*) from public.port_goods pg join drift_rows_0137 s using (port_id, good_id)
+         where (s.ord = 1 and pg.drift =  public.wc_num('drift_clamp'))
+            or (s.ord = 2 and pg.drift = -public.wc_num('drift_clamp'))
+            or (s.ord = 3 and pg.drift_slot = v_slot)
+            or (s.ord = 4 and pg.last_regen_day = v_day)
+            or (s.ord = 5 and pg.stock < pg.stock_target)
+            or (s.ord = 6 and pg.stock = pg.stock_target)) <> 6 then
+      raise exception '0137 self-assert FAIL: the six bent rows did not take their six arms';
+    end if;
+    raise exception using errcode = 'ZX137', message = 'arms ok';
+  exception when sqlstate 'ZX137' then
+    null;
+  end;
+  raise notice '0137 probe: the drift sample, % harbour(s) / % row(s), old (whole market at T) % ms / new (harbour by harbour) % ms',
+    v_ports, v_rows, v_old->>'ms', v_new->>'ms';
+
+  begin
+    v_mo := pg_temp.market_run_0137(true, v_at, v_slot, v_day, v_base, v_epoch);
+    raise exception using errcode = 'ZX137', message = v_mo::text;
+  exception when sqlstate 'ZX137' then
+    v_mo := sqlerrm::jsonb;
+  end;
+  begin
+    v_mn := pg_temp.market_run_0137(false, v_at, v_slot, v_day, v_base, v_epoch);
+    raise exception using errcode = 'ZX137', message = v_mn::text;
+  exception when sqlstate 'ZX137' then
+    v_mn := sqlerrm::jsonb;
+  end;
+  for v_k in select k from jsonb_object_keys(v_mo->'payload') k order by k loop
+    if v_mo->'payload'->v_k is distinct from v_mn->'payload'->v_k then
+      raise exception '0137 self-assert FAIL: world.market(%) answers differently now it drifts only its quay', v_k;
+    end if;
+  end loop;
+  if (select count(*) from jsonb_object_keys(v_mn->'payload')) <> v_ports
+     or (select count(*) from jsonb_object_keys(v_mo->'payload')) <> v_ports
+     or exists (select 1 from jsonb_each(v_mn->'payload') e where jsonb_array_length(e.value->'goods') = 0) then
+    raise exception '0137 self-assert FAIL: the quay probe priced % / % of % harbour(s), or one served no goods',
+      (select count(*) from jsonb_object_keys(v_mo->'payload')), (select count(*) from jsonb_object_keys(v_mn->'payload')), v_ports;
+  end if;
+  if v_mo->'digest' is distinct from v_mn->'digest' then
+    raise exception '0137 self-assert FAIL: the quay reads left a different market: old % / new %', v_mo->'digest', v_mn->'digest';
+  end if;
+  raise notice '0137: the drift and the quay, old = new on the sample — % harbour(s), % row(s) (% drifted, % regenerated; both clamps, a row on its slot, a row on its day, below and at the target taken), T = % (slot %, day %); world.market answered alike at every one of them (% goods); only the sample was locked or written; % ms in all',
+    v_ports, v_rows, v_new->>'drifted', v_new->>'regenerated', v_at, v_slot, v_day,
+    (select sum(jsonb_array_length(e.value->'goods')) from jsonb_each(v_mn->'payload') e),
+    round(extract(epoch from clock_timestamp() - v_t0) * 1000);
+end $$;
 
 -- ── 7. THE RECEIPT ─────────────────────────────────────────────────────────────────────────────
 do $$
@@ -989,6 +1399,12 @@ begin
   if (select count(*) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'tick_reconcile') <> 1 then
     raise exception '0137 self-assert FAIL: tick_reconcile is not exactly one procedure';
   end if;
+  -- every step is checked before it commits; the drift job skips a deadlocked harbour and goes on
+  if pg_temp.occurs_0137(pg_get_functiondef('public.tick_reconcile(boolean)'::regprocedure), 'perform public.assert_ledger_reconciles(') <> 3
+     or pg_temp.occurs_0137(pg_get_functiondef('public.tick_reconcile(boolean)'::regprocedure), 'public.npc_step_failed(') <> 2
+     or pg_temp.occurs_0137(pg_get_functiondef('public.tick_market_drift_each_port()'::regprocedure), 'exception when deadlock_detected or lock_not_available then') <> 1 then
+    raise exception '0137 self-assert FAIL: a reconcile step is not checked before its commit, or the drift job does not skip a deadlocked harbour';
+  end if;
   -- THE JOBS RUN THE PROCEDURES, by name, with the schedule and active flag they had
   if exists (select 1 from pg_extension where extname = 'pg_cron') then
     execute $q$select count(*) from cron.job
@@ -1004,5 +1420,5 @@ begin
     end if;
     v_cron := 'byeharu-voyage:reconcile = call public.tick_reconcile(), byeharu-voyage:drift = call public.tick_market_drift_each_port() (schedule and active flag untouched; wind_the_clock() starts exactly these)';
   end if;
-  raise notice '0137 self-assert ok: AN ARRIVAL NEVER WAITS FOR THE HOUR — the hourly reconcile and the drift commit step by step, nothing either decides moved. TEND: npc_tend cut into its walk (npc_tend_roster), one merchant (npc_tend_route), the companies (npc_tend_houses) and the receipt''s adder (npc_tend_sum), each slice byte-equal to the pre-image (the houses gate the one hunk), no line between the slices unaccounted for; old = new on one snapshot (receipts and end-state digest of every table). RECONCILE: a procedure, one transaction per merchant / the companies / the compactor under npc_upkeep_scope, then the invariants (no row lock). DRIFT: tick_market_drift(p_now, p_port) reverses to its pre-image, ACL carried; tick_market_drift_each_port commits one harbour at a time; old = new on one snapshot (drift_sigma 0 in the run). CRON: %.', v_cron;
+  raise notice '0137 self-assert ok: AN ARRIVAL NEVER WAITS FOR THE HOUR — the hourly reconcile and the drift commit step by step, nothing either decides moved. TEND: npc_tend cut into its walk (npc_tend_roster), one merchant (npc_tend_route), the companies (npc_tend_houses) and the receipt''s adder (npc_tend_sum), each slice byte-equal to the pre-image (the houses gate the one hunk), no line between the slices unaccounted for; old = new run by run (receipts and each run''s OWN writes — counts per table and the md5 of its own rows; never a whole table, so a player''s commit cannot fail the push). RECONCILE: a procedure, one transaction per merchant / the companies / the compactor under npc_upkeep_scope, each merchant''s ledger and every company''s checked BEFORE its commit (a step that breaks a purse rolls back alone, counted), then the read-only whole-world invariants. DRIFT: tick_market_drift(p_now, p_port) reverses to its pre-image, ACL carried; tick_market_drift_each_port commits one harbour at a time and skips (warns, counts) a harbour that deadlocks or times out on a lock; old = new on a bounded sample, every arm taken, only the sample locked. QUAY: world.market drifts its own harbour only (one hunk, reverses to its pre-image, ACL kept), answering alike at every sample harbour. CRON: %.', v_cron;
 end $$;
