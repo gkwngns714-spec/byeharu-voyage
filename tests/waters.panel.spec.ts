@@ -237,7 +237,7 @@ test.describe('pressing a control selects, and never destroys the surface', () =
     // the ladder is a bottom-edge idea, and Tray.tsx gives its grab handle way to a spacer — so the
     // keyboard ladder this test used to step is gone by design, not by defect. What the law still
     // demands of the press is unchanged and asserted here: the panel opened, it is a panel and not
-    // the whole glass, and nothing under it was destroyed.
+    // the whole page (the chart stays mounted under it), and nothing under it was destroyed.
     await expect(tray).toHaveAttribute('data-tray-mode', 'side')
     await expect(tray.getByRole('button', { name: 'Resize' })).toHaveCount(0)
     await expect(tray.getByTestId('tray-close').first()).toBeVisible()
@@ -246,21 +246,47 @@ test.describe('pressing a control selects, and never destroys the surface', () =
     // section is ABSENT rather than empty — the same rule `watersView([])` states above.
     await expect(page.getByTestId('map-waters')).toHaveCount(0)
 
-    // The chart is still under it: the panel is flush with the RIGHT edge and clear of the bottom
-    // nav, and it leaves glass to its left — the chart was not replaced by the panel.
+    // BELOW `lg` THE PANEL IS THE GLASS (2026-10-16, screenLayout.ts `traySideEdgeClass`): the
+    // old 92vw panel left the corner chrome a 31 px strip and the fleets list rendered invisible in
+    // it. Now it covers the whole width between the top bar and the nav, over the chart — which
+    // stays mounted under it, not replaced — and its ✕ is on the glass.
     await expect(async () => {
       const box = await tray.boundingBox()
       expect(box).not.toBeNull()
       expect(Math.round(box!.x + box!.width)).toBe(PHONE.width)
       expect(Math.round(box!.y + box!.height)).toBeLessThan(PHONE.height)
-      expect(box!.x).toBeGreaterThan(0)
+      expect(Math.round(box!.x)).toBe(0)
     }).toPass()
     await expect(page.getByTestId('map-chart')).toBeVisible()
+    const close = await tray.getByTestId('tray-close').first().boundingBox()
+    expect(close).not.toBeNull()
+    expect(close!.x + close!.width).toBeLessThanOrEqual(PHONE.width)
+    expect(close!.width).toBeGreaterThanOrEqual(44)
 
-    // And the corner is still a CORNER while it is open: never the centre, never the whole glass.
+    // THE CHROME UNDER IT IS NOT SQUEEZED: the zoom column keeps its top-right corner of the whole
+    // glass (under the squeeze its right edge stood at ~19 px), and the fleets corner keeps a
+    // corner's width — never the centre, never the whole glass.
+    const controls = await page.getByTestId('map-view-controls').boundingBox()
+    expect(controls).not.toBeNull()
+    expect(controls!.x + controls!.width).toBeGreaterThan(PHONE.width - 24)
     const cornerBox = await corner.boundingBox()
     expect(cornerBox).not.toBeNull()
+    expect(cornerBox!.width).toBeGreaterThanOrEqual(44)
     expect(cornerBox!.width).toBeLessThan(PHONE.width * 0.7 + 1)
     expect(cornerBox!.x).toBeLessThan(PHONE.width / 2)
+    await page.screenshot({ path: test.info().outputPath('panel-open-390.png') })
+
+    // ✕ gives the corners back intact: the fleets list opens, its rows on the glass with width.
+    await tray.getByTestId('tray-close').first().click()
+    await expect(tray).toHaveCount(0)
+    if ((await pill.getAttribute('aria-expanded')) !== 'true') await pill.click()
+    const row = page.getByTestId('map-fleet-row').first()
+    await expect(row).toBeVisible()
+    const rowBox = await row.boundingBox()
+    expect(rowBox).not.toBeNull()
+    // A short name makes a short row (Gaivota: 82 px measured); squeezed, it collapsed to nothing.
+    expect(rowBox!.width).toBeGreaterThanOrEqual(44)
+    expect(rowBox!.x).toBeGreaterThanOrEqual(0)
+    await page.screenshot({ path: test.info().outputPath('panel-closed-fleets-390.png') })
   })
 })

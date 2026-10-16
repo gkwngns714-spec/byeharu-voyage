@@ -92,10 +92,16 @@ export function hitTest(
   // Beyond that — the thumb out on the tail of a word, or in open water inside the name's wide
   // reach — a dot under it is the nearer thing, and the nearer thing wins as it does everywhere.
   const nearestPort = !dot ? named : !named ? dot : named.d <= dotRadius || named.d <= dot.d ? named : dot
+  // HOW FAR THE NEAREST HARBOUR IS — named or dot, whichever is nearer — which is what a hull is
+  // weighed against. The name rule above decides WHICH harbour a harbour-tap opens; it is not the
+  // distance to "a harbour". Weighing a hull against the name rule's pick let a thumb ON a dot lose
+  // to a passing ship (2026-10-16: at the globe a tap on Acapulco's dot chose Veracruz, 4.4° off, by
+  // the name rule, and a merchant 0.74° off then beat 4.4° — the tap opened her, not the city).
+  const harbourD = !named ? dot?.d : !dot ? named.d : Math.min(named.d, dot.d)
 
   // THE ONE RULE (header): her hull on the mark of the harbour she is docked in is that harbour.
   const docksHere = nearestFleet !== null && nearestPort !== null && nearestFleet.dockedAt === nearestPort.port.code
-  if (nearestFleet && !docksHere && (!nearestPort || nearestFleet.d <= nearestPort.d)) {
+  if (nearestFleet && !docksHere && (harbourD === undefined || nearestFleet.d <= harbourD)) {
     return { kind: 'fleet', id: nearestFleet.id }
   }
   // 0099 — A MERCHANT, by the same reach, AFTER your fleets (one of yours already won any tie
@@ -113,7 +119,7 @@ export function hitTest(
     const reach = berthed && dotRadius > 0 ? Math.min(radius, dotRadius) : radius
     if (d <= reach && (!nearestMerchant || d < nearestMerchant.d)) nearestMerchant = { id: t.fleet.id, d }
   }
-  if (nearestMerchant && (!nearestPort || nearestMerchant.d < nearestPort.d)) {
+  if (nearestMerchant && (harbourD === undefined || nearestMerchant.d < harbourD)) {
     return { kind: 'merchant', id: nearestMerchant.id }
   }
   if (nearestPort) return { kind: 'port', code: nearestPort.port.code }
