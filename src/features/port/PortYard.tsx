@@ -11,6 +11,7 @@ import {
   Tray,
   type TrayDetent,
 } from '../../components/ui'
+import { HullCountry, WrongYardNote } from '../../live/HullCountry'
 import { useBuildingYard } from '../../live/useBuildingYard'
 import { useWorld } from '../../live/worldStore'
 import { formatDucats, formatInt, formatTons } from '../../lib/format'
@@ -42,6 +43,12 @@ import type { FleetView, HullMaterial, Refusal, YardHull } from '../../lib/rpc'
 // token in `src/index.css` — the border was invisible from the day it was written, which is what a
 // hand-drawn skin buys you (§3 rule 4). It is a `Field` now: one recipe, one focus ring, one 44px
 // floor, and no token that has to exist for it to look right.
+//
+// ── A HULL'S COUNTRY (0130) ────────────────────────────────────────────────────────────────────
+// Every hull belongs to a country's shipbuilding line and shows that country's flag. A hull is
+// built only at build yards in its line's countries (some, like the three first hulls, at any);
+// the server answers `right_yard` from the same rule cmd.do_build refuses with (E_WRONG_YARD), and
+// the tray says which countries can build it rather than leaving the player to find out.
 //
 // ── WHAT THIS FILE DOES NOT KNOW ───────────────────────────────────────────────────────────────
 // Whether a hull can be built here. All of that is `cmd.do_build`'s and arrives answered.
@@ -113,7 +120,13 @@ export function PortYard({
             key={hull.class}
             mark={<Icon name="ship" size={20} />}
             name={hull.name}
-            meta={formatTons(hull.hold)}
+            meta={
+              <>
+                <HullCountry nation={hull.line_nation} compact />
+                {hull.line_nation ? ' ' : ''}
+                {formatTons(hull.hold)}
+              </>
+            }
             state={hull.buildable ? 'rest' : 'muted'}
             tap="whole"
             onClick={() => {
@@ -149,6 +162,7 @@ export function PortYard({
             ) : undefined
           }
         >
+          {open.line_nation && <Row label="Country" value={<HullCountry nation={open.line_nation} />} />}
           <Row label="Cargo" value={<Figure value={formatInt(open.hold)} unit="tons" />} />
           <Row label="Speed" value={<Figure value={open.speed_kn} unit="knots" />} />
           <Row label="Crew needed" value={<Figure value={formatInt(open.crew_required)} />} />
@@ -161,7 +175,8 @@ export function PortYard({
               {`It needs ${formatInt(open.draft)} of depth and this port only has ${formatInt(maxDraft)}. The fleet it joins could never sail back in.`}
             </Note>
           )}
-          {!open.buildable && (
+          {open.right_yard === false && <WrongYardNote builders={open.builders} />}
+          {!open.buildable && tier < open.yard_tier && (
             <Note tone="warning">
               {`This port can build up to level ${formatInt(tier)}. This ship needs level ${formatInt(open.yard_tier)}.`}
             </Note>

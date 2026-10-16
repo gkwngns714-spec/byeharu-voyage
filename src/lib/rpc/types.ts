@@ -147,6 +147,12 @@ export interface SnapshotShipClass {
   build_hours: number
   build_cost: number
   tier: number
+  /** 0130 — the shipbuilding line (`ship_lines.code`, e.g. "PRT"). Optional for the serve-order
+   *  reason: a server before 0130 sends no key. */
+  line?: string | null
+  /** 0130 — the nation code whose flag the hull is shown under (the line's home nation), resolved
+   *  through `nationByCode`. */
+  line_nation?: string | null
 }
 
 /** The allow-listed knobs. `world_secret` is NOT among them and 0009 asserts that by value. */
@@ -334,8 +340,18 @@ export interface YardHull {
   crew_required: number
   durability: number
   draft: number
-  /** Whether THIS yard is good enough. The server's rule, never re-derived here. */
+  /** Whether THIS yard is good enough — its tier AND (0130) its country. The server's rule,
+   *  never re-derived here. */
   buildable: boolean
+  /** 0130 — the hull's line code, its name ("The Netherlands"), and the nation code whose flag it
+   *  is shown under. Optional: a server before 0130 sends none. */
+  line?: string | null
+  line_name?: string | null
+  line_nation?: string | null
+  /** 0130 — the nation codes whose build yards may build it. */
+  builders?: string[]
+  /** 0130 — whether THIS port's country is one of them (`public.yard_wrong_country`). */
+  right_yard?: boolean
   goods: HullMaterial[]
   items: HullMaterial[]
 }

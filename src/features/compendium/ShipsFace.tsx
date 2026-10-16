@@ -12,6 +12,7 @@ import {
 import { formatFixed, formatInt, formatOfTotal } from '../../lib/format'
 import type { SnapshotShipClass } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
+import { HullCountry } from '../../live/HullCountry'
 import { useWorld } from '../../live/worldStore'
 import { NoAnswer } from './NoAnswer'
 
@@ -24,6 +25,9 @@ import { NoAnswer } from './NoAnswer'
 // shallower than the deepest hull; repair reads condition), so they are in the tray with the tier.
 //
 // SERVED ORDER: the snapshot serves ship classes by tier (0009:97) — the catalogue's own ladder.
+//
+// THE COUNTRY (0130): each class arrives with its line's flag nation; the tile and the tray print
+// it through the one renderer, HullCountry.
 
 const EMPTY: readonly SnapshotShipClass[] = []
 
@@ -48,7 +52,13 @@ export function ShipsFace({ query }: { query: string }) {
             key={s.code}
             mark={<Icon name="ship" size={20} />}
             name={s.name}
-            meta={`${s.family} · ${s.rig}`}
+            meta={
+              <>
+                <HullCountry nation={s.line_nation} compact />
+                {s.line_nation ? ' ' : ''}
+                {`${s.family} · ${s.rig}`}
+              </>
+            }
             figure={<Figure value={formatInt(s.hold)} unit="tons" />}
             second={<Figure value={formatFixed(s.speed_kn, 1)} unit="knots" />}
             tap="whole"
@@ -70,6 +80,7 @@ export function ShipsFace({ query }: { query: string }) {
           title={open.name}
           data-testid="ship-tray"
         >
+          {open.line_nation && <Row label="Country" value={<HullCountry nation={open.line_nation} />} />}
           <Row label="Cargo" value={<Figure value={formatInt(open.hold)} unit="tons" />} />
           <Row label="Speed" value={<Figure value={formatFixed(open.speed_kn, 1)} unit="knots" />} />
           {/* crew she must have / berths she carries — two served figures, one pair. */}

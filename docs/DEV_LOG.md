@@ -5,6 +5,33 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-16 — S8 (0130): a ship has a country — `osn-0130-countries-and-yards`
+
+docs/SHIPS_AND_SKILLS.md §8 row S8, built as written. **Not deployed** (prod head 0129; the owner
+deploys: `db push` first, merge after).
+- **+3 nations** GUJ Gujarat Sultanate (capital Khambhat), MLB Malabar (Kozhikode), BAN Banten
+  (Banten), and the ten port fixes — Old Goa → PRT (the override was keyed `goa`, a key no port
+  carries), Surat/Khambhat → GUJ, Kozhikode/Kochi/Kannur/Kollam/Mangaluru → MLB, Jakarta/Banten → BAN
+  — in `scripts/lib/world-derive.mjs` AND by UPDATE in the migration. The world guard now also
+  compares each nation's flag and capital, and `public.ship_lines` / `public.class_profile` against
+  the new `data/ship-lines.json` (positive control: a bent line's builders must be seen).
+- **`ship_lines`** (11) and **`class_profile`** (side table; the live three PRT, any_yard, sizes
+  1-2-3; `ship_classes` untouched, tier = least(size, 5) asserted). Both server-only.
+- **Arsenals**: `public.harbour_buildings` (the one yard-tier rule, 0089) re-cut to read
+  `ship_lines.arsenal_port`; SVQ, AMS, IST, SRT 2→3 and GUA, OSA, BUS 1→3 raised from it.
+- **One country rule** `public.yard_wrong_country(port, class)`: read by `cmd.do_build` (one hunk,
+  after the tier check → `E_WRONG_YARD` with the builders by name and the port's country) and by
+  `world.building_yard` (`buildable`, new `right_yard`, `line`, `line_name`, `line_nation`,
+  `builders`). `world.snapshot()` serves each class's `line` / `line_nation`.
+- **Client**: `src/live/HullCountry.tsx` — the one flag renderer (tile: flag only; tray: "Country ⚓
+  Portugal"); Codex Ships face and the Build face use it; the Build tray says which countries can
+  build a hull when the server answers `right_yard: false`.
+Verified locally: cached-prefix apply of 0130 (self-assert ok in 1.1 s, world guard ok), `tsc -b`,
+`eslint .`, `npm run build` (0130 also applied in the world image), and a throw-away Playwright check
+at 390 px (Codex + Lisbon Build face show ⚓ on all three hulls; screenshots looked at).
+
+---
+
 ## 2026-10-16 — map.lag: the settle wait could be satisfied before the zoom — `osn-maplag-flake`
 
 PR #129's CI (on `cc8cebd`, SQL-only diff) failed `map.lag` 1545 with "no frame between the press and
