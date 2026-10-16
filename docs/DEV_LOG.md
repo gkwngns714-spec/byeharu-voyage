@@ -5,6 +5,85 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — S11 (0133): a skill makes the ship better — `osn-0133-skill-effects`
+
+docs/SHIPS_AND_SKILLS.md §8 row S11 ("Skills II: effects & requirements (DARK)"), §5.2/§5.3/§4.4/§6.2.
+**Not deployed** (prod head 0132; the owner deploys: `db push` first, merge after — DEPLOY_RUNBOOK clock
+unwind/wind as usual; `ships` is no longer locked). Everything ships DARK behind `skills_bite` false;
+rollback = one UPDATE of that knob — said plainly: a company that grew past `ship_max` under Command keeps
+its hulls, but after the rollback any later write that re-checks the cap (a hull moved between fleets, a
+new hull) fails `E_SHIP_MAX` until it is back under `ship_max`.
+- **Effects**: `public.skill_effects` — one row per per-level bonus (160): 4 company rows (the live four,
+  mirrors of `skills.effect`/`pct_per_level`, asserted equal; `player_skill_bonus` re-cut to read them —
+  every company's four bonuses = pre-image as text), 132 hull rows (each line's two traits from
+  `ship_lines.traits` on that line's hulls of that size; Capital on 5 and 6), 24 others (roles, Hull
+  Upkeep, Damage Control, Rigging, Lookouts, Instruments, Cargo Stowage, the gunnery five; Deck Management
+  and Gun Drill → `fitting`; Command → `house`). Not given an effect yet: the six specialisations (S15),
+  Shipwright's labour, Fleet Command, Refitting, Augmentation. `data/skills.json` `effects` +
+  `requirements` (empty); world guard extended (positive control: a bent effect per cent).
+- **The one reading**: `world.skill_bonuses(player, ship)` — by source, with level, per cent and words
+  ("Portuguese Medium Hulls III", "+12% sighting"); nothing while dark. `world.skill_pct` = its sum.
+  `world.ship_stats` = (base + units) × (1 + Σ skill %/100) + hull level (one materialized read per call,
+  `public.skill_scale` returns x untouched at 0 %). `world.ship_budget`: Deck × (1 + Deck Management %)
+  floored; High units' Hands × (1 − Gun Drill %) rounded (`public.drilled_hands`, also used by
+  `mount_fitting` for the unit being fitted). `fleet_officer_bonus` × (1 + Command %) under the cap;
+  `assert_house_caps` reads `public.house_ship_max` (ship_max + Command × `command_hulls_per_level`).
+- **Requirements**: `public.skill_requirements` (EMPTY — the live hulls and G1 items need nothing) read by
+  ONE rule `public.requirements_unmet` → `requirements_met` / `requirements_refusal`; `cmd.do_build` (door,
+  after E_WRONG_YARD) and `mount_fitting` (core, first) refuse `E_NEEDS_SKILL` with figures;
+  `world.building_yard` serves per hull `needs` (folded into `buildable`) and `world.workstation` per item
+  `needs` — the same sentence. `item_level_asks` (0127, empty) and its `E_SHIP_LEVEL` read retired.
+- **Dropped**: `item_level_asks` (empty, read by nothing — body/view/FK scan with a planted control) in ONE
+  last retried step: ACCESS EXCLUSIVE on item_kinds then item_level_asks, then SHARE ROW EXCLUSIVE on skills
+  for the two FKs — every lock NOWAIT, so the file never waits while holding one (no cycle with do_build /
+  do_fit, which take ships → item_kinds); retried 10 × 0.2 s, then LOCK CONTENTION. `ships` is not locked.
+  **`ship_fittings_retired_0132` is NOT dropped here** (review S1: its drop needs ACCESS EXCLUSIVE on ships)
+  — **follow-up: a tiny migration drops it, clock unwound.**
+- **Academy**: `world.skills` re-cut to read each skill's effect / `pct_per_level` from `skill_effects`
+  (scope company; NONE / 0.00 otherwise) — the same answer as text (asserted), one home.
+- **Self-assert (cached world)**: dark = pre-image for 908 hulls' stats / budgets / ship_view (+ `bonuses`
+  = []), 3,336 company bonuses, 3,400 fleet officer bonuses, 834 companies' hull caps, every company × 15
+  subjects' requirements, 35 yards, 71 workshops; ten bodies reverse to their pre-images. LIT probe (rolled
+  back): PRT Medium Hulls III → nau sighting 14 → 15.68, speed 5.00 → 5.30 (+12 % / +6 %, nothing else;
+  barca unmoved); Deck Management II → Deck 56 → 61; Gun Drill II → 2 guns 16 → 14 Hands; Command II →
+  officer bonus 8.5 % → 8.84 %, hull cap **8 → 10** (the row's "6th hull" assumed ship_max 4; live is 8);
+  planted requirements refuse BUILD and FIT with the rule's sentence and figures, met → pass; a merchant's
+  `npc_fit_loadout` mounts lit and her hull reads the same lit as dark.
+- **Merchant reads** (892 hulls, cached world): speed+hold 310 → 380 ms dark → 720 ms lit; ship_view
+  1,235 → 1,483 ms dark → 2,538 ms lit (first cut). After review S2 (dark made ~free: `skills_bite_on` is an
+  inlinable SQL read of world_config; ship_stats carries the per cents in its units CTE behind a one-time
+  filter; ship_budget / ship_view gate their lookups the same way; fleet_officer_bonus reads no skill when
+  dark or when its officers add 0): each the faster of two passes, speed+hold 305 → 345 ms dark → 622 ms lit,
+  ship_view 1,214 → 1,388 ms dark → 2,414 ms lit. **That still failed on CI's real Postgres 17
+  (disposable-chain: merchant ship_view 7,452 → 10,914 ms, +46 %)**: PG 17 re-plans a SQL function body on
+  every call (PGlite is PG 18, which caches SQL plans, so it under-stated it), and every hot SQL body had
+  grown. Fix: world.ship_stats, world.ship_budget, world.ship_view and public.fleet_officer_bonus are now
+  PL/pgSQL wrappers — the DARK branch is the 0132 query untouched (plan cached), the LIT branch adds the
+  skills (ship_view: `bonuses` is the constant [] dark; budget / officer bonus composed on the 0132 answer;
+  ship_stats' lit query is the 0132 query plus the per cents). Instrumented dark path (switch shim counting
+  reads, every skill helper replaced by a raise): per merchant ship_view 11.0 switch reads (one per
+  ship_stats / ship_budget / ship_view call; the officer bonus only when its officers add anything — 36 of
+  892 hulls) and ZERO calls to skill_bonuses / skill_pct / skill_scale / drilled_hands; per ship_stats 1;
+  per speed+hold 3.0. PGlite, faster of two passes: ship_stats 65 → 72 ms, speed+hold 307 → 323 ms,
+  ship_view 1,231 → 1,316 ms dark; lit 171 / 639 / 2,478 ms. Self-assert refuses dark >
+  before × 1.15 + 50 ms on ship_stats, speed+hold and ship_view — **CI's disposable chain on real Postgres
+  is the gate.** **Re-measure on prod before throwing `skills_bite`: the arrivals budget is
+  10 s and prod is already at p95 8.7 s; lit roughly doubles these reads locally.**
+- Lit stats are rounded to the stat's own scale (sighting 14.0 → 15.7, speed 5.00 → 5.30).
+- **CI flake found by the review (map.sendfleet.spec.ts:195)**: not 0133. Same PC, same spec, timed
+  (`tests/_time_send.spec.ts`, throwaway): the first route check (`cmd.preview` of the SAIL) is cold —
+  main 6.4–7.0 s / branch 6.5 s at full speed, main 36.2–38.6 s / branch 34.3–34.5 s at 4× CPU throttle;
+  warm ~1 s / ~3 s on both; the standing-orders read 0.2–0.5 s / 1.2–2.9 s on both. The single-threaded
+  engine queues the standing-orders read behind that cold check, and the spec gave the next step 20 s
+  without waiting for the check — a race on a slow runner (main's own passes of this drive: 32.5 s to
+  1.1 min). Fix: the spec waits for "checking the route…" to clear on the drive's long clock first.
+- **Client** (renders only): ShipPanel "Skill bonuses" (source · effect), yard note `needs`, workshop note
+  `needs`; nothing new appears while dark. WORDS.md + DESIGN.md (`E_NEEDS_SKILL`) updated.
+- **Open for the owner**: when lit, RANK still prints the flat `ship_max` (world.snapshot) while a Command
+  company may hold more — a client follow-up at switch-on.
+
+---
+
 ## 2026-10-17 — S10 (0132): a ship carries what its deck can bear — `osn-0132-gear-racks`
 
 docs/SHIPS_AND_SKILLS.md §8 row S10 ("Gear I: racks, units, budgets"), §6.1/6.2/6.9. **Not deployed**

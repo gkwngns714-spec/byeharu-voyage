@@ -195,6 +195,13 @@ export function PortWorkstation({
             </Note>
           )}
           {open.makeable && short !== null && <Note tone="warning">{`Missing: ${short}.`}</Note>}
+          {/* 0133: what FITTING it needs of your skills — the fit refusal's own sentence, as served
+              (making it needs none, so it never blocks the Make button). */}
+          {open.needs && (
+            <Note tone="neutral" data-testid="workstation-needs">
+              {open.needs}
+            </Note>
+          )}
           {refusal && (
             <Note tone="danger" code={refusal.code}>
               {refusal.sentence}

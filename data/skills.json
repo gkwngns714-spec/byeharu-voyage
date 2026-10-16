@@ -1,5 +1,7 @@
 {
   "_about": "0131 (docs/SHIPS_AND_SKILLS.md §5.2, step S9): the skill catalogue — groups, and every skill's group, rank, where it is enrolled (none = counts as enrolled; academy = any academy; line_yard = any build yard of its line's countries) and prerequisites (all rows with choice 0 are needed; rows sharing a choice > 0 need ANY ONE). The four live skills (live: true) keep their 0016 rows; only their profile is authored here. Applied by migration 0131; scripts/db/world-guard.mjs holds public.skills / skill_profile / skill_prereqs to this file.",
+  "_effects": "0133 (docs/SHIPS_AND_SKILLS.md §5.2-5.3, step S11): `effects` = what ONE LEVEL of a skill gives, one row of public.skill_effects each. scope company = the four live company effects public.player_skill_bonus reads (mirrors of skills.effect / pct_per_level; never gated, as before). scope ship = a per cent on a stat of world.ship_stats (hold, speed, handling, durability, armour, attack, accuracy, reach, sighting), optionally only on hulls of one role / tech. scope fitting = deck (+% of the Deck budget) or high_hands (-% of the Hands a High fitting needs), read by world.ship_budget. scope house = officer_bonus (+% on officers' bonuses inside public.fleet_officer_bonus, under the cap). A HULL skill's effects are not listed here: they are its line's two traits (data/ship-lines.json `traits`, `hull` = durability) on that line's hulls of that size (Capital Hulls: sizes 5 and 6, the flagship reads Capital Hulls). ship / fitting / house effects bite only while the knob skills_bite is true (shipped false). Given no effect yet, said plainly: the six specialisations (their T2 modules arrive with S15), Shipwright's yard labour, Fleet Command, Refitting, Augmentation.",
+  "_requirements": "0133: `requirements` = what a hull (BUILD, cmd.do_build) or an item (FIT, public.mount_fitting) needs of the company: {kind: hull | item, code, skill, level}. Read by ONE rule, public.requirements_unmet (refusal E_NEEDS_SKILL; the build yard and the workshop serve the same sentence), only while skills_bite is true. EMPTY in S11: the three live hulls and the twelve G1 items need nothing (docs/SHIPS_AND_SKILLS.md §4.4, §6.2); S12 adds the new hulls' rows.",
   "groups": [
     {
       "code": "HULLS",
@@ -917,6 +919,14 @@
           "choice": 0
         }
       ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "hold",
+          "pct": 3,
+          "role": "trade"
+        }
+      ],
       "blurb": "Running big trading ships: packing, loading and keeping a large cargo moving."
     },
     {
@@ -930,6 +940,14 @@
           "skill": "GUNNERY",
           "level": 3,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "attack",
+          "pct": 3,
+          "role": "combat"
         }
       ],
       "blurb": "Fighting big warships: the gun decks, the drills and the crews they need."
@@ -947,6 +965,20 @@
           "choice": 0
         }
       ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "sighting",
+          "pct": 4,
+          "role": "explorer"
+        },
+        {
+          "scope": "ship",
+          "stat": "speed",
+          "pct": 1,
+          "role": "explorer"
+        }
+      ],
       "blurb": "Long voyages into unknown water: lookouts, charts and ships built to range far."
     },
     {
@@ -960,6 +992,14 @@
           "skill": "HULL_UPKEEP",
           "level": 3,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "durability",
+          "pct": 4,
+          "role": "support"
         }
       ],
       "blurb": "Ships that guard and serve a fleet: tough, steady and kept in good repair."
@@ -977,6 +1017,15 @@
           "choice": 0
         }
       ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "hold",
+          "pct": 4,
+          "role": "trade",
+          "tech": "T2"
+        }
+      ],
       "blurb": "Improved trading ships that carry guns as well as cargo."
     },
     {
@@ -990,6 +1039,15 @@
           "skill": "SHIPS_OF_WAR",
           "level": 5,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "attack",
+          "pct": 4,
+          "role": "combat",
+          "tech": "T2"
         }
       ],
       "blurb": "Improved warships built to hunt and hit hard."
@@ -1007,6 +1065,15 @@
           "choice": 0
         }
       ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "sighting",
+          "pct": 4,
+          "role": "explorer",
+          "tech": "T2"
+        }
+      ],
       "blurb": "Improved exploration ships that see farther and range wider."
     },
     {
@@ -1020,6 +1087,15 @@
           "skill": "ESCORT_SUPPORT",
           "level": 5,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "durability",
+          "pct": 4,
+          "role": "support",
+          "tech": "T2"
         }
       ],
       "blurb": "Improved escorts that keep a convoy together and safe."
@@ -1057,6 +1133,14 @@
           "choice": 1
         }
       ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "durability",
+          "pct": 2,
+          "tech": "F"
+        }
+      ],
       "blurb": "The great named ships of each country. Only the most experienced captains are trusted with one."
     },
     {
@@ -1066,6 +1150,13 @@
       "rank": 1,
       "enrol": "none",
       "prereqs": [],
+      "effects": [
+        {
+          "scope": "company",
+          "stat": "ENDURANCE",
+          "pct": 6
+        }
+      ],
       "live": true
     },
     {
@@ -1079,6 +1170,13 @@
           "skill": "SEAMANSHIP",
           "level": 2,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "durability",
+          "pct": 4
         }
       ],
       "blurb": "Keeping planking, seams and frames sound so every ship lasts longer."
@@ -1096,6 +1194,13 @@
           "choice": 0
         }
       ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "armour",
+          "pct": 3
+        }
+      ],
       "blurb": "Plugging holes and shoring up under fire, so damage does less harm."
     },
     {
@@ -1109,6 +1214,13 @@
           "skill": "SEAMANSHIP",
           "level": 3,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "fitting",
+          "stat": "deck",
+          "pct": 5
         }
       ],
       "blurb": "Fitting more gear on a deck without getting in the crew's way."
@@ -1135,6 +1247,13 @@
       "rank": 1,
       "enrol": "none",
       "prereqs": [],
+      "effects": [
+        {
+          "scope": "company",
+          "stat": "SPEED",
+          "pct": 4
+        }
+      ],
       "live": true
     },
     {
@@ -1148,6 +1267,13 @@
           "skill": "NAVIGATION",
           "level": 1,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "handling",
+          "pct": 3
         }
       ],
       "blurb": "Setting and trimming sails so a ship turns and answers quickly."
@@ -1165,6 +1291,13 @@
           "choice": 0
         }
       ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "sighting",
+          "pct": 5
+        }
+      ],
       "blurb": "Training sharp eyes aloft to spot sails and coasts sooner."
     },
     {
@@ -1178,6 +1311,13 @@
           "skill": "NAVIGATION",
           "level": 3,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "sighting",
+          "pct": 2
         }
       ],
       "blurb": "Compass, charts and the astrolabe, used well."
@@ -1219,6 +1359,13 @@
       "rank": 1,
       "enrol": "none",
       "prereqs": [],
+      "effects": [
+        {
+          "scope": "company",
+          "stat": "TRADE_CAP",
+          "pct": 5
+        }
+      ],
       "live": true
     },
     {
@@ -1228,6 +1375,13 @@
       "rank": 1,
       "enrol": "none",
       "prereqs": [],
+      "effects": [
+        {
+          "scope": "company",
+          "stat": "SPREAD",
+          "pct": 5
+        }
+      ],
       "live": true
     },
     {
@@ -1241,6 +1395,13 @@
           "skill": "ACCOUNTING",
           "level": 2,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "hold",
+          "pct": 3
         }
       ],
       "blurb": "Packing cargo tightly so every ship carries more."
@@ -1267,6 +1428,13 @@
       "rank": 1,
       "enrol": "academy",
       "prereqs": [],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "attack",
+          "pct": 3
+        }
+      ],
       "blurb": "Loading, aiming and firing a ship's guns."
     },
     {
@@ -1280,6 +1448,13 @@
           "skill": "GUNNERY",
           "level": 2,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "accuracy",
+          "pct": 4
         }
       ],
       "blurb": "Aiming each gun with care so more shots hit."
@@ -1297,6 +1472,13 @@
           "choice": 0
         }
       ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "reach",
+          "pct": 4
+        }
+      ],
       "blurb": "Long-barrelled chase guns that reach farther."
     },
     {
@@ -1310,6 +1492,13 @@
           "skill": "GUNNERY",
           "level": 3,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "attack",
+          "pct": 2
         }
       ],
       "blurb": "Short, heavy guns that hit hard up close."
@@ -1327,6 +1516,13 @@
           "choice": 0
         }
       ],
+      "effects": [
+        {
+          "scope": "ship",
+          "stat": "attack",
+          "pct": 2
+        }
+      ],
       "blurb": "Grappling, crossing over and fighting on another ship's deck."
     },
     {
@@ -1340,6 +1536,13 @@
           "skill": "GUNNERY",
           "level": 3,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "fitting",
+          "stat": "high_hands",
+          "pct": 4
         }
       ],
       "blurb": "Drilled gun crews, so the guns need fewer hands."
@@ -1370,6 +1573,13 @@
           "skill": "SEAMANSHIP",
           "level": 3,
           "choice": 0
+        }
+      ],
+      "effects": [
+        {
+          "scope": "house",
+          "stat": "officer_bonus",
+          "pct": 2
         }
       ],
       "blurb": "Leading officers and running more ships at once."
@@ -1449,5 +1659,6 @@
       ],
       "blurb": "Mastery of improved hull fittings."
     }
-  ]
+  ],
+  "requirements": []
 }

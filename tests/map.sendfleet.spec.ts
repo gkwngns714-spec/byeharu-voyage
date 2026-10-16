@@ -307,6 +307,14 @@ test.describe('the whole send, driven on a phone', () => {
     await expect(tray).toHaveAttribute('data-tray-detent', 'half')
     const row = page.getByTestId('map-send-row-head').first()
     await expect(row).toBeVisible()
+    // THE FIRST ROUTE CHECK IS COLD. Each row asks `cmd.preview` (the real SAIL, rolled back), and the
+    // first one in a fresh tab compiles every plan under the verb on the wasm engine: measured
+    // 2026-10-17 on this PC, 6.4-7.0 s at full speed and 34-39 s at 4× CPU throttle — main and 0133 alike
+    // (warm: ~1 s / ~3 s). The engine is single-threaded, so the standing-orders read the next step
+    // waits on queues behind it; on a slow CI runner the old 20 s wait below raced that cold check and
+    // failed with "checking the route…" still on the row (PR #137 shard 2/3; main's own passes of this
+    // drive took 32.5 s to 1.1 min). Wait for the check itself, on the drive's long clock, then assert.
+    await expect(row).not.toContainText('checking the route', { timeout: 120_000 })
     const her = (await row.innerText()).split('\n')[0]
     await row.click()
 

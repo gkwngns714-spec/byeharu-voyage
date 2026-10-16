@@ -1013,7 +1013,11 @@ the time the entry starts, with figures), `E_SKILL_ORDER` (not the next level of
 merchant's skills are fixed at founding),
 and from 0132 (gear racks and fitting budgets, docs/SHIPS_AND_SKILLS.md §6.1) `E_OVER_DECK` (a FIT that would
 use more Deck than the hull has left, with figures), `E_OVER_HANDS` (the same for Hands); `E_SLOTS_FULL` now
-names the RACK (`… has no free Mid slot (2 / 2 used)`), and `E_NO_SLOT` / `E_NOT_FITTED` keep their words.
+names the RACK (`… has no free Mid slot (2 / 2 used)`), and `E_NO_SLOT` / `E_NOT_FITTED` keep their words,
+and from 0133 (skill effects and requirements, docs/SHIPS_AND_SKILLS.md §4.4/§5.2, dark behind `skills_bite`)
+`E_NEEDS_SKILL` (a BUILD or a FIT whose hull or item needs a skill level the company lacks — `Nau / Carrack
+needs Portuguese Medium Hulls IV`, with figures level have / need; the build yard and the workshop serve the
+same sentence as `needs`); `E_SHIP_LEVEL` (0127, a fitting's ship-level ask) is retired with `item_level_asks`.
 
 ---
 

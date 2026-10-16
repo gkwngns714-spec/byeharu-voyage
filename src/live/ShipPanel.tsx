@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Bar, Empty, Tray, type TrayDetent } from '../components/ui'
 import { formatFixed, formatInt } from '../lib/format'
 import { CHART_CHROME, hullClassOfCode, hullPath } from '../chart'
-import type { ShipBudget, ShipRack } from '../lib/rpc'
+import type { ShipBonus, ShipBudget, ShipRack } from '../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE SHIP, OPENED FROM HER FLEET'S PANEL — the owner, 2026-10-15:
@@ -18,6 +18,8 @@ import type { ShipBudget, ShipRack } from '../lib/rpc'
 // what is mounted). Since 0132 the equipment is drawn from `ship.racks` (High / Mid / Low / Refit +
 // Flourish, each with its word, places and units) and the two fitting budgets from `ship.budget`
 // (Deck and Hands, used out of max) — the server's answers, rendered; no rack or count is derived here.
+// Since 0133 `ship.bonuses` lists what the company's skills add to her, one line per source ("Portuguese
+// Medium Hulls III · +12% sighting") — the server's words; empty (and not drawn) while skills do not bite.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 /** WHAT THE PANEL READS — one ship as `world.ship_view` serves her (0124): your own `FleetShip` and a
@@ -44,6 +46,9 @@ export interface ShipView {
    *  from a server older than 0132: the panel falls back to `slots` by kind. */
   racks?: readonly ShipRack[]
   budget?: ShipBudget
+  /** 0133 — what the company's skills add to her, by source (`world.skill_bonuses`). Empty while skills
+   *  do not bite, absent from a server older than 0133: either way nothing is drawn. */
+  bonuses?: readonly ShipBonus[]
   /** 0127 — slots a higher level opens: drawn dimmed with the level, never fillable. */
   slots_locked?: Record<string, { count: number; at_level: number }>
   /** 0127 — her level and experience (points): this level began at `xp_from`, the next at
@@ -286,6 +291,28 @@ function EquipmentGrid({ ship }: { ship: ShipView }) {
   )
 }
 
+/** 0133 — SKILL BONUSES, BY SOURCE: one row per bonus, the skill and level on the left and the effect on
+ *  the right, both exactly as the server words them. Drawn only when there is at least one. */
+function SkillBonuses({ bonuses }: { bonuses: readonly ShipBonus[] | undefined }) {
+  if (!bonuses || bonuses.length === 0) return null
+  return (
+    <section data-testid="ship-bonuses">
+      <Heading>Skill bonuses</Heading>
+      <ul className="flex flex-col gap-1">
+        {bonuses.map((b) => (
+          <li
+            key={`${b.skill}-${b.stat}`}
+            className="flex items-baseline justify-between gap-3 rounded-control bg-surface-2 px-3 py-2"
+          >
+            <span className="min-w-0 truncate text-t-caption text-ink">{b.source}</span>
+            <span className="shrink-0 text-t-caption tabular-nums text-accent">{b.effect}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 /** One figure in the spec: a quiet label above, the number large. */
 function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
@@ -424,6 +451,8 @@ export function ShipPanel({
           </dl>
         )}
       </section>
+
+      <SkillBonuses bonuses={ship.bonuses} />
     </Tray>
   )
 }
