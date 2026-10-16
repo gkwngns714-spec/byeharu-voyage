@@ -93,6 +93,8 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | the skill levels waiting to train (0131) | **Training** (section) · `Train level 3` · `Remove` · `All done · 3 / 10 levels` · *Trains while you are away.* | skill queue, cooldown |
 | where a fitting goes on a ship (0132) | the rack's word: **High** · **Mid** · **Low** · **Refit** · **Flourish** (`Mid 2 / 2`) — served by the server (`gear_racks.word`) | slot kinds as places (rig, ground tackle, steering) |
 | what fittings cost a ship (0132) | **Deck** and **Hands**, each out of its whole (`Deck 12 / 12`, `Hands 16 / 16`) | CPU, powergrid, fitting points |
+| what a company's skills add to a ship (0133) | **Skill bonuses** (ship panel section), one line per source: `Portuguese Medium Hulls III` · `+12% sighting` — both words the server's (`world.skill_bonuses`); a stat is named as on the panel (`cargo space`, `hull`, `Deck`, `Hands for High fittings`, `officer bonuses`) | per level of, trait, buff |
+| a skill a ship or fitting asks for (0133) | **needs** + the skill and its level in Roman numerals, one sentence from the server: `Nau / Carrack needs Portuguese Medium Hulls IV`, `Suit of Sails needs Rigging II` | requires, prerequisite (that word is the Skills screen's, skill to skill), Lv 4 |
 | the person in charge of a fleet | **captain** = the player, for their own fleets; a merchant fleet's named **Master** (flavour only) | — |
 
 ## Where the words are checked

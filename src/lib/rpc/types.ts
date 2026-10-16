@@ -354,6 +354,10 @@ export interface YardHull {
    *  own refusal sentence (`public.yard_wrong_country`, the one cmd.do_build raises as E_WRONG_YARD).
    *  Printed as served, never rebuilt here. */
   wrong_yard?: string | null
+  /** 0133 — the skills this hull needs that you lack: cmd.do_build's own E_NEEDS_SKILL sentence
+   *  ("Nau / Carrack needs Portuguese Medium Hulls IV"), or null. `buildable` already folds it in.
+   *  Printed as served. Optional: a server before 0133 sends none; null while skills do not bite. */
+  needs?: string | null
   goods: HullMaterial[]
   items: HullMaterial[]
 }
@@ -417,6 +421,9 @@ export interface WorkstationItem {
   makeable: boolean
   /** How many you already own in this city — items have a LOCATION. */
   owned_here: number
+  /** 0133 — the skills FITTING it needs that you lack: the fit refusal's own E_NEEDS_SKILL sentence
+   *  ("Suit of Sails needs Rigging II"), or null. Making it needs none. Printed as served. */
+  needs?: string | null
   recipe: RecipeLine[]
 }
 
@@ -724,6 +731,18 @@ export interface ShipRack {
   fitted: ShipRackUnit[]
 }
 
+/** 0133 — ONE bonus a company's skill gives this hull (`world.skill_bonuses`, by source): the skill and
+ *  level, and the server's own words for both — `source` "Portuguese Medium Hulls III", `effect`
+ *  "+12% sighting". Rendered as served; the client derives no per cent and no word. */
+export interface ShipBonus {
+  skill: string
+  level: number
+  stat: string
+  pct: number
+  source: string
+  effect: string
+}
+
 /** 0132 — a hull's two fitting budgets (`world.ship_budget`): Deck and Hands, used out of max. */
 export interface ShipBudget {
   deck: { used: number; max: number }
@@ -777,6 +796,9 @@ export interface FleetShip {
   racks?: ShipRack[]
   /** 0132 — her Deck and Hands, used out of max. Optional for one release, as `racks`. */
   budget?: ShipBudget
+  /** 0133 — what your company's skills add to her, by source. `[]` while skills do not bite; absent
+   *  from a server before 0133. */
+  bonuses?: ShipBonus[]
   /** How many captains she can berth. Nothing reads it yet — ranks and cabins are their own slice. */
   cabins: number
   /** 0127 — slots a higher level opens, by kind: how many, and the level that opens the first. */

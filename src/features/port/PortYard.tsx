@@ -50,6 +50,11 @@ import type { FleetView, HullMaterial, Refusal, YardHull } from '../../lib/rpc'
 // The server serves both halves of `buildable` — `tier_ok` and `wrong_yard`, the very sentence
 // cmd.do_build refuses with (E_WRONG_YARD) — and the tray prints them as served.
 //
+// ── WHAT A HULL NEEDS OF YOU (0133) ────────────────────────────────────────────────────────────
+// A hull may need a skill ("Nau / Carrack needs Portuguese Medium Hulls IV"). The server serves that
+// sentence as `needs` — the very one cmd.do_build refuses with (E_NEEDS_SKILL) — and folds it into
+// `buildable`; the tray prints it as served. null (nothing printed) while skills do not bite.
+//
 // ── WHAT THIS FILE DOES NOT KNOW ───────────────────────────────────────────────────────────────
 // Whether a hull can be built here. All of that is `cmd.do_build`'s and arrives answered.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -178,6 +183,11 @@ export function PortYard({
           {open.wrong_yard && (
             <Note tone="warning" data-testid="yard-country">
               {open.wrong_yard}
+            </Note>
+          )}
+          {open.needs && (
+            <Note tone="warning" data-testid="yard-needs">
+              {open.needs}
             </Note>
           )}
           {open.tier_ok === false && (

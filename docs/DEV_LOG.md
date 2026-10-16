@@ -5,6 +5,52 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — S11 (0133): a skill makes the ship better — `osn-0133-skill-effects`
+
+docs/SHIPS_AND_SKILLS.md §8 row S11 ("Skills II: effects & requirements (DARK)"), §5.2/§5.3/§4.4/§6.2.
+**Not deployed** (prod head 0132; the owner deploys: `db push` first, merge after — DEPLOY_RUNBOOK clock
+unwind/wind, REQUIRED this time: the last step takes ACCESS EXCLUSIVE on `ships`). Everything ships DARK
+behind `skills_bite` false; rollback = one UPDATE of that knob.
+- **Effects**: `public.skill_effects` — one row per per-level bonus (160): 4 company rows (the live four,
+  mirrors of `skills.effect`/`pct_per_level`, asserted equal; `player_skill_bonus` re-cut to read them —
+  every company's four bonuses = pre-image as text), 132 hull rows (each line's two traits from
+  `ship_lines.traits` on that line's hulls of that size; Capital on 5 and 6), 24 others (roles, Hull
+  Upkeep, Damage Control, Rigging, Lookouts, Instruments, Cargo Stowage, the gunnery five; Deck Management
+  and Gun Drill → `fitting`; Command → `house`). Not given an effect yet: the six specialisations (S15),
+  Shipwright's labour, Fleet Command, Refitting, Augmentation. `data/skills.json` `effects` +
+  `requirements` (empty); world guard extended (positive control: a bent effect per cent).
+- **The one reading**: `world.skill_bonuses(player, ship)` — by source, with level, per cent and words
+  ("Portuguese Medium Hulls III", "+12% sighting"); nothing while dark. `world.skill_pct` = its sum.
+  `world.ship_stats` = (base + units) × (1 + Σ skill %/100) + hull level (one materialized read per call,
+  `public.skill_scale` returns x untouched at 0 %). `world.ship_budget`: Deck × (1 + Deck Management %)
+  floored; High units' Hands × (1 − Gun Drill %) rounded (`public.drilled_hands`, also used by
+  `mount_fitting` for the unit being fitted). `fleet_officer_bonus` × (1 + Command %) under the cap;
+  `assert_house_caps` reads `public.house_ship_max` (ship_max + Command × `command_hulls_per_level`).
+- **Requirements**: `public.skill_requirements` (EMPTY — the live hulls and G1 items need nothing) read by
+  ONE rule `public.requirements_unmet` → `requirements_met` / `requirements_refusal`; `cmd.do_build` (door,
+  after E_WRONG_YARD) and `mount_fitting` (core, first) refuse `E_NEEDS_SKILL` with figures;
+  `world.building_yard` serves per hull `needs` (folded into `buildable`) and `world.workstation` per item
+  `needs` — the same sentence. `item_level_asks` (0127, empty) and its `E_SHIP_LEVEL` read retired.
+- **Dropped**: `item_level_asks` and `ship_fittings_retired_0132` (2,113 rows locally; read by nothing —
+  body/view/FK scan with a planted control) in ONE last retried step, lock order skills (SRE) →
+  item_kinds → item_level_asks → ships → retired (AE), lock_timeout 2 s.
+- **Self-assert (cached world)**: dark = pre-image for 908 hulls' stats / budgets / ship_view (+ `bonuses`
+  = []), 3,336 company bonuses, 3,400 fleet officer bonuses, 834 companies' hull caps, every company × 15
+  subjects' requirements, 35 yards, 71 workshops; ten bodies reverse to their pre-images. LIT probe (rolled
+  back): PRT Medium Hulls III → nau sighting 14 → 15.68, speed 5.00 → 5.30 (+12 % / +6 %, nothing else;
+  barca unmoved); Deck Management II → Deck 56 → 61; Gun Drill II → 2 guns 16 → 14 Hands; Command II →
+  officer bonus 8.5 % → 8.84 %, hull cap **8 → 10** (the row's "6th hull" assumed ship_max 4; live is 8);
+  planted requirements refuse BUILD and FIT with the rule's sentence and figures, met → pass; a merchant's
+  `npc_fit_loadout` mounts lit and her hull reads the same lit as dark.
+- **Merchant reads** (892 hulls, cached world): speed+hold 310 → 380 ms dark → 720 ms lit; ship_view
+  1,235 → 1,483 ms dark → 2,538 ms lit. Self-assert refuses a dark regression above 2× + 500 ms.
+- **Client** (renders only): ShipPanel "Skill bonuses" (source · effect), yard note `needs`, workshop note
+  `needs`; nothing new appears while dark. WORDS.md + DESIGN.md (`E_NEEDS_SKILL`) updated.
+- **Open for the owner**: when lit, RANK still prints the flat `ship_max` (world.snapshot) while a Command
+  company may hold more — a client follow-up at switch-on.
+
+---
+
 ## 2026-10-17 — S10 (0132): a ship carries what its deck can bear — `osn-0132-gear-racks`
 
 docs/SHIPS_AND_SKILLS.md §8 row S10 ("Gear I: racks, units, budgets"), §6.1/6.2/6.9. **Not deployed**

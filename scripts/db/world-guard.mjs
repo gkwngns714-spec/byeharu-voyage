@@ -31,6 +31,11 @@
 //                 line and prerequisites; the 88 new ones' blurb and NONE / 0
 //   * gear        (0132) public.gear_racks, public.item_profile, the RACK rows of public.class_slots
 //                 and public.class_slot_unlocks EQUAL data/gear.json, every column, both directions
+//   * skill effects / requirements (0133) public.skill_effects EQUALS data/skills.json `effects` plus
+//                 every hull skill's line traits (data/ship-lines.json, sizes by the skill's suffix,
+//                 Capital = 5 and 6), every row and its per cent, both directions; the four company
+//                 rows mirror skills.effect / pct_per_level; public.skill_requirements EQUALS
+//                 data/skills.json `requirements`, both directions
 //
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
@@ -45,6 +50,34 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { deriveWorld, REPO_ROOT, round2 } from '../lib/world-derive.mjs'
+
+/** 0133: one skill effect's identity — every column but the per cent. */
+const effectKey = (e) => [e.skill, e.scope, e.stat, e.line ?? '', e.size ?? '', e.role ?? '', e.tech ?? ''].join('/')
+
+/** 0133: the skill effects data/skills.json and data/ship-lines.json describe — each listed `effects`
+ *  row, and every hull skill's two line traits on its line's hulls of its size (`hull` is durability;
+ *  Capital Hulls also on size 6, the flagship). */
+function wantedSkillEffects(skills, lines) {
+  const out = []
+  for (const s of skills) {
+    for (const e of s.effects ?? []) {
+      out.push({ skill: s.code, scope: e.scope, stat: e.stat, pct: Number(e.pct), line: e.line ?? null,
+        size: e.size ?? null, role: e.role ?? null, tech: e.tech ?? null })
+    }
+  }
+  const sizes = { SMALL: [1], LIGHT: [2], MEDIUM: [3], HEAVY: [4], CAPITAL: [5, 6] }
+  for (const l of lines) {
+    for (const [suffix, list] of Object.entries(sizes)) {
+      for (const size of list) {
+        for (const t of l.traits) {
+          out.push({ skill: `${l.code}_${suffix}`, scope: 'ship', stat: t.stat === 'hull' ? 'durability' : t.stat,
+            pct: Number(t.pct), line: l.code, size, role: null, tech: null })
+        }
+      }
+    }
+  }
+  return out
+}
 
 /** Compare the applied world (queried once, below) against a derived world. Pure. */
 function drift(db_, want) {
@@ -195,11 +228,11 @@ function drift(db_, want) {
   // gear (0132) — data/gear.json: the racks, every item's profile, every hull's rack places and the
   // level unlocks, every column, both directions (a zero in the file is simply no class_slots row)
   const keyed = (rows, key) => new Map(rows.map((r) => [key(r), r]))
-  const both = (dbMap, wantMap, what, cols) => {
-    for (const k of dbMap.keys()) if (!wantMap.has(k)) say(`${what} ${k} is in the database but not in data/gear.json`)
+  const both = (dbMap, wantMap, what, cols, file = 'data/gear.json') => {
+    for (const k of dbMap.keys()) if (!wantMap.has(k)) say(`${what} ${k} is in the database but not in ${file}`)
     for (const [k, w] of wantMap) {
       const d = dbMap.get(k)
-      if (!d) { say(`${what} ${k} is in data/gear.json but not in the database`); continue }
+      if (!d) { say(`${what} ${k} is in ${file} but not in the database`); continue }
       for (const [col, dcol, wcol] of cols) {
         if (String(d[dcol]) !== String(w[wcol])) say(`${what} ${k}.${col}: database has ${d[dcol]}, data says ${w[wcol]}`)
       }
@@ -217,6 +250,20 @@ function drift(db_, want) {
     [['count', 'count', 'count']])
   both(keyed(db_.slotUnlocks, (r) => `${r.class_code}/${r.slot}@${r.min_level}`),
     keyed(want.gear.unlocks, (u) => `${u.class}/${u.rack}@${u.minLevel}`), 'rack unlock', [['count', 'count', 'count']])
+
+  // skill effects and requirements (0133) — data/skills.json `effects` + the hull skills' line traits
+  // (data/ship-lines.json), and `requirements`, both directions, every per cent and level
+  both(keyed(db_.skillEffects, effectKey), keyed(want.skillEffects, effectKey), 'skill effect', [['pct', 'pct', 'pct']],
+    'data/skills.json + data/ship-lines.json')
+  both(keyed(db_.skillRequirements, (r) => `${r.kind}/${r.code}/${r.skill}`),
+    keyed(want.skillRequirements, (r) => `${r.kind}/${r.code}/${r.skill}`), 'skill requirement', [['level', 'level', 'level']], 'data/skills.json')
+  for (const s of db_.skills) {
+    if (s.effect === 'NONE') continue
+    const mirror = db_.skillEffects.filter((e) => e.skill === s.code && e.scope === 'company')
+    if (mirror.length !== 1 || mirror[0].stat !== s.effect || Number(mirror[0].pct) !== Number(s.pct_per_level)) {
+      say(`skill ${s.code}: its company effect row does not mirror skills.effect ${s.effect} / ${s.pct_per_level}`)
+    }
+  }
 
   // market coverage
   const expected = want.ports.length * want.goods.length
@@ -287,6 +334,14 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     select item_code, base_type, rack, grade, meta, deck, hands, active from public.item_profile order by item_code`)).rows
   db_.rackSlots = (await db.query(`select class_code, slot, count from public.class_slots order by 1, 2`)).rows
   db_.slotUnlocks = (await db.query(`select class_code, slot, count, min_level from public.class_slot_unlocks order by 1, 2, 4`)).rows
+  // 0133: the skill effects and requirements
+  const hasEffects = (await db.query(`select to_regclass('public.skill_effects') is not null as ok`)).rows[0].ok
+  if (!hasEffects) throw new Error('world-guard: public.skill_effects is missing — the chain no longer reaches 0133, so the skill effects cannot be checked')
+  db_.skillEffects = (await db.query(`
+    select skill_code as skill, scope, stat, pct_per_level::float8 as pct, line_code as line, size, role, tech
+      from public.skill_effects`)).rows
+  db_.skillRequirements = (await db.query(`
+    select subject_kind as kind, subject_code as code, skill_code as skill, level from public.skill_requirements`)).rows
 
   const want = deriveWorld()
   want.places = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'sea-places.json'), 'utf8')).places
@@ -299,6 +354,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     const skills = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'skills.json'), 'utf8'))
     want.skillGroups = skills.groups
     want.skills = skills.skills
+    want.skillEffects = wantedSkillEffects(skills.skills, want.shipLines)   // 0133
+    want.skillRequirements = skills.requirements                            // 0133
   }
   want.gear = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'gear.json'), 'utf8'))
 
@@ -310,6 +367,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     shipLines: want.shipLines.map((l, i) => (i === 0 ? { ...l, builderNations: [...l.builderNations, 'ENG'] } : l)), // 0130: one line's builders bent
     skills: want.skills.map((s, i) => (i === 0 ? { ...s, rank: s.rank + 1 } : s)), // 0131: one skill's rank bent
     gear: { ...want.gear, items: want.gear.items.map((it, i) => (i === 0 ? { ...it, deck: it.deck + 1 } : it)) }, // 0132: one item's deck bent
+    skillEffects: want.skillEffects.map((e, i) => (i === 0 ? { ...e, pct: e.pct + 1 } : e)), // 0133: one skill effect's per cent bent
   }
   const seen = drift(db_, wounded)
   const sawDrop = seen.some((s) => s.includes(`${want.ports[0].code}`))
@@ -317,10 +375,11 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const sawLine = seen.some((s) => s.includes('.builder_nations:'))
   const sawSkill = seen.some((s) => s.includes(`skill ${want.skills[0].code}.rank:`))
   const sawGear = seen.some((s) => s.includes(`item profile ${want.gear.items[0].code}.deck:`))
-  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear) {
+  const sawEffect = seen.some((s) => s.includes(`skill effect ${effectKey(want.skillEffects[0])}.pct:`))
+  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank or bent item deck was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck or bent skill effect was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -345,7 +404,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       `${want.goods.length} goods, ${want.specialtyPairs.length} offers, ` +
       `${want.places.length} sea places, ${db_.marketRows} market rows, ${want.shipLines.length} ship lines, ` +
       `${want.classProfiles.length} class profiles, ${want.skills.length} skills in ${want.skillGroups.length} groups, ` +
-      `${want.gear.racks.length} gear racks, ${want.gear.items.length} item profiles, ${db_.rackSlots.length} rack places ` +
-      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank and bent item deck were all seen)`,
+      `${want.gear.racks.length} gear racks, ${want.gear.items.length} item profiles, ${db_.rackSlots.length} rack places, ` +
+      `${want.skillEffects.length} skill effects, ${want.skillRequirements.length} skill requirements ` +
+      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck and bent skill effect were all seen)`,
   )
 }
