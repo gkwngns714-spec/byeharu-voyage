@@ -70,28 +70,39 @@ export function trayDockWideClass(): string {
 
 /** THE MAP'S SLIDE-IN PANEL (owner, 2026-10-15: *"when i click location or a ship, i don't want a
  *  page to pop up randomly. instead i want the page to slide on the right side, and show info"*).
- *  Pinned to the glass's right edge at every width, between the top bar (top-8) and the nav
- *  (bottom-14), 39rem (TRAY_REM × 1.5) wide or 92% of a phone, and it slides in (index.css `bv-slide-in-right`).
- *  `Tray mode="side"` is its one user. */
+ *  Pinned to the glass's right edge, between the top bar (top-8) and the nav (bottom-14), and it
+ *  slides in (index.css `bv-slide-in-right`). `Tray mode="side"` is its one user.
+ *
+ *  ── NARROW: THE PANEL IS THE GLASS (2026-10-16) ──────────────────────────────────────────────
+ *  From `lg` (WIDE_QUERY, the one breakpoint this file turns on) it is 39rem (TRAY_REM × 1.5)
+ *  wide and the chart's corner chrome steps left to stand beside it (`chromeAsideSideTrayClass`).
+ *  Below `lg` there is no room for a panel AND a usable chart beside it: at 390 px the old 92vw
+ *  panel left the corner chrome a 31 px strip, and the fleets list rendered invisible inside it.
+ *  So below `lg` the panel covers the whole width, over the map, with its ✕ at the top right, and
+ *  the chrome underneath keeps its full width — closing the panel gives the corners back intact,
+ *  never squeezed. The same break `traySideNextClass` already used for "no room for two". */
 export function traySideEdgeClass(): string {
   // 39rem = TRAY_REM × 1.5 (owner, 2026-10-15: "give more room, about 50% more")
-  return 'fixed top-8 bottom-14 right-0 w-[min(39rem,92vw)] rounded-l-sheet bv-slide-in-right'
+  return 'fixed top-8 bottom-14 right-0 w-full lg:w-[39rem] lg:rounded-l-sheet bv-slide-in-right'
 }
 
 /** THE SECOND PANEL, SLID OUT FROM THE FIRST (owner, 2026-10-15: *"i want it to show by sliding
  *  further, a new slide from the sliding panel"*): a ship opened from a fleet's or a merchant's
  *  panel stands to that panel's LEFT, 26rem (TRAY_REM) wide, one layer below it so it comes out
- *  from under its edge. Below `lg` there is no room for two side by side, so it covers the first. */
+ *  from under its edge. Below `lg` there is no room for two side by side, so it covers the first
+ *  — the whole width, as the first does there (`traySideEdgeClass`). */
 export function traySideNextClass(): string {
   // 39rem = traySideEdgeClass's width · 26rem = TRAY_REM
-  return 'fixed top-8 bottom-14 right-0 w-[min(39rem,92vw)] lg:right-[39rem] lg:w-[26rem] rounded-l-sheet bv-slide-in-right lg:bv-slide-out-left'
+  return 'fixed top-8 bottom-14 right-0 w-full lg:right-[39rem] lg:w-[26rem] lg:rounded-l-sheet bv-slide-in-right lg:bv-slide-out-left'
 }
 
-/** The chart's corner chrome beside that panel — its right edge where the panel's left edge is. */
+/** The chart's corner chrome beside that panel — its right edge where the panel's left edge is.
+ *  Only from `lg`: below it the panel covers the glass (`traySideEdgeClass`) and the chrome stays
+ *  full width underneath rather than being squeezed into nothing. */
 export function chromeAsideSideTrayClass(): string {
   // 39rem, as traySideEdgeClass · 65rem = 39rem + the second panel's 26rem (traySideNextClass),
   // while one stands — read off the page, since the second panel is opened inside the first.
-  return 'right-[min(39rem,92vw)] lg:[body:has([data-testid=map-ship-panel])_&]:right-[65rem]'
+  return 'lg:right-[39rem] lg:[body:has([data-testid=map-ship-panel])_&]:right-[65rem]'
 }
 
 /**

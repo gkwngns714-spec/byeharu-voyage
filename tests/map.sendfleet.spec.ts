@@ -255,8 +255,8 @@ test.describe('the whole send, driven on a phone', () => {
 
     // THE FLEETS CORNER — a pill at rest, and a list when pressed. It is glass over the top-left
     // of the chart while open, so the drive folds it back before aiming at a harbour. Read BEFORE
-    // a place is tapped: since PR #113 a place opens a SIDE panel, which on a 390px phone is 92vw
-    // wide and stands over the corner's glass, so the corner is read on a glass with no panel on it.
+    // a place is tapped: since PR #113 a place opens a SIDE panel, which on a 390px phone covers
+    // the whole width and stands over the corner's glass, so the corner is read on a glass with no panel on it.
     const corner = page.getByTestId('map-fleets-corner')
     const pill = corner.locator('button[aria-expanded]')
     await expect(pill).toHaveAttribute('aria-expanded', 'false')

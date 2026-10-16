@@ -20,9 +20,21 @@ import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { LAID_UP_AT_LISBON, RESTING_AT_PORTO, RESTING_PORT_CODE, serveNpcOn } from './npcOn.fixture'
-import { buildChartModel, hitTest, mapTrafficOf, type MapFleet, type MapPort } from '../src/chart'
+import {
+  GLYPH,
+  buildChartModel,
+  dotPorts,
+  hitTest,
+  mapPortsOf,
+  mapTrafficOf,
+  minTierForSpan,
+  visiblePorts,
+  type MapFleet,
+  type MapPort,
+} from '../src/chart'
 import type { MerchantDoing, PortMerchant, TrafficFleet } from '../src/lib/rpc'
-import { project } from '../src/lib/geo'
+import { project, type ViewBox } from '../src/lib/geo'
+import { REAL_PORTS, portAt } from './mapWorld.fixture'
 import { harbourSides, merchantsSummary } from '../src/live/merchantGroups'
 
 const SHOTS = path.resolve('docs', 'npc-traders')
@@ -233,6 +245,43 @@ test('an own fleet wins a tie with a merchant; a merchant wins over open water',
   expect(hitTest(model, [], at, 1)).toEqual({ kind: 'fleet', id: 'own-2' })
   const alone = buildChartModel([], [LIS, FNC], [], null, traffic)
   expect(hitTest(alone, [], at, 1)).toEqual({ kind: 'merchant', id: 'm-1' })
+})
+
+// A HULL IS WEIGHED AGAINST THE NEAREST HARBOUR, NOT THE NAME RULE'S PICK (2026-10-16, found by
+// #131). At the globe on a 390 px phone a tap ON Acapulco's dot chose Veracruz by the name rule
+// (4.4° off — a named mark within half a touch beats a dot) and then lost to a merchant 0.74° off,
+// because the hull was compared with Veracruz's 4.4° and not with Acapulco's 0°. The tap opened
+// her. It must open the city — the one the name rule names — and a tap on HER still opens her.
+test('a tap on Acapulco at the globe opens the city, not a merchant passing beside it', () => {
+  const world: ViewBox = { x: -180, y: -90, width: 360, height: 180 }
+  const upp = world.width / 390
+  const acapulco = portAt('ACA')
+  const offshore: [number, number] = [acapulco.lat - 0.74, acapulco.lon]
+  const traffic = mapTrafficOf([sailingRow('m-aca', [[16.625, -99.875], [10, -100]], offshore)])
+  const ports = mapPortsOf(REAL_PORTS)
+  const model = buildChartModel([], ports, [], null, traffic)
+  const minTier = minTierForSpan(world.width)
+  const named = visiblePorts(ports, model.portRoles, world, minTier)
+  const dots = dotPorts(ports, model.portRoles, world, minTier)
+  const reach = GLYPH.hitRadius * upp
+  const dotReach = GLYPH.dotHitRadius * upp
+  // The geometry the bug needs, so this test cannot pass by the world moving under it: Acapulco is
+  // a dot, a named harbour is within half a touch (the name rule picks it), and the merchant is
+  // nearer to the thumb than that named harbour.
+  expect(dots.map((p) => p.code)).toContain('ACA')
+  const at = project(acapulco)
+  const nameRulePick = named
+    .map((n) => ({ code: n.code, d: Math.hypot(project(n).x - at.x, project(n).y - at.y) }))
+    .sort((a, b) => a.d - b.d)[0]
+  expect(nameRulePick.d).toBeLessThanOrEqual(dotReach)
+  expect(0.74).toBeLessThan(nameRulePick.d)
+  // ON the dot: a harbour, never the hull beside it.
+  expect(hitTest(model, named, at, reach, dots, dotReach)).toEqual({ kind: 'port', code: nameRulePick.code })
+  // ON the hull: she is nearer than any harbour, so she still answers.
+  expect(hitTest(model, named, project({ lat: offshore[0], lon: offshore[1] }), reach, dots, dotReach)).toEqual({
+    kind: 'merchant',
+    id: 'm-aca',
+  })
 })
 
 // ── BROWSER ────────────────────────────────────────────────────────────────────────────────────

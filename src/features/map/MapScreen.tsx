@@ -388,8 +388,9 @@ function Chart({
 
       {/* THE CHROME LAYER — corners only; pointer-transparent itself so it can never swallow a
           pan, and each child that is meant to be pressed turns pointer events back on.
-          ITS RIGHT EDGE GIVES WAY TO AN OPEN SIDE TRAY (screenLayout.ts `chromeAsideSideTrayClass`),
-          so the zoom column and Regions are never left underneath the panel at any width. */}
+          ITS RIGHT EDGE GIVES WAY TO AN OPEN SIDE TRAY from `lg` (screenLayout.ts
+          `chromeAsideSideTrayClass`), so the zoom column and Regions are never left underneath the
+          panel; below `lg` the panel covers the glass and the chrome keeps its full width under it. */}
       <div
         className={`pointer-events-none absolute inset-0 z-10 ${
           panelOpen && !folded ? chromeAsideSideTrayClass() : ''
