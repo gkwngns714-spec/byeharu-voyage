@@ -43,8 +43,8 @@
 --     Portuguese Medium Hulls IV"). Refusal E_NEEDS_SKILL, with figures (level have / need).
 -- (5) THE HUNKS (sliced from the LIVE bodies, LF-normalised, each asserted to occur once and to reverse
 --     to its pre-image, ACLs unchanged):
---       world.ship_stats       (base + units) × (1 + Σ skill % / 100) + hull level — §5.3's order; the per
---                              cents ride in the units' CTE (one read, gated by the switch), rounded to scale
+--       world.ship_stats       PL/pgSQL: lit = (base + units) × (1 + Σ skill % / 100) + hull level, §5.3's
+--                              order, rounded to the stat's scale; dark = the 0132 query untouched
 --       public.player_skill_bonus   reads skill_effects (scope company) — same arithmetic, same text
 --       cmd.do_build           (door) E_NEEDS_SKILL after the country rule
 --       public.mount_fitting   (core) E_NEEDS_SKILL first; Gun Drill on the new unit's Hands; the
@@ -75,10 +75,13 @@
 -- live ones, which carry only company effects, so a merchant's ship reads the same lit or dark (asserted).
 --
 -- ── COST (the arrivals sweep: 10 s budget; prod p95 8.7 s / max 11.8 s on 2026-10-17) ──────────────
--- DARK IS ~FREE: public.skills_bite_on() is an inlinable SQL read of world_config; every hot read gates its
--- skill lookup behind it as a ONE-TIME FILTER (ship_stats' units CTE, ship_budget's k, ship_view's bonuses) or a
--- CASE (fleet_officer_bonus, which also skips it when the officers' sum is 0), so while dark no skill
--- function is even called. The self-assert times the merchant reads twice per phase, keeps the faster,
+-- DARK IS THE 0132 QUERY: the four hot reads (world.ship_stats, world.ship_budget, world.ship_view,
+-- public.fleet_officer_bonus) become PL/pgSQL wrappers whose dark branch runs the 0132 query UNTOUCHED and
+-- whose lit branch adds the skills; the switch (public.skills_bite_on(), one world_config read) is read
+-- once per call and nothing else is called while it is off (ship_view's `bonuses` is the constant []).
+-- Why PL/pgSQL: PostgreSQL 17 re-plans a SQL function's body on EVERY call, so the first cut's bigger
+-- SQL bodies cost the merchant ship_view +46 % on CI's real Postgres (7.45 s → 10.9 s) while PGlite (PG 18,
+-- which caches SQL plans) showed +16 %; PL/pgSQL caches both branches' plans. The self-assert times the merchant reads twice per phase, keeps the faster,
 -- and refuses dark > before × 1.15 + 50 ms. LIT costs more (timed in the receipt, rolled back) —
 -- RE-MEASURE ON PROD BEFORE THROWING skills_bite: the arrivals budget is already tight.
 --
@@ -227,8 +230,12 @@ declare
   v_t0 timestamptz;
   v_a  numeric := null;
   v_b  numeric := null;
+  v_c  numeric := null;
 begin
   for i in 1 .. 2 loop
+    v_t0 := clock_timestamp();
+    perform world.ship_stats(h.ship_id) from hulls_before_0133 h where h.is_npc;
+    v_c := least(coalesce(v_c, 1e12), round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
     v_t0 := clock_timestamp();
     perform voyage.ship_speed(h.ship_id), public.ship_hold_capacity(h.ship_id) from hulls_before_0133 h where h.is_npc;
     v_a := least(coalesce(v_a, 1e12), round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
@@ -236,7 +243,7 @@ begin
     perform world.ship_view(h.ship_id) from hulls_before_0133 h where h.is_npc;
     v_b := least(coalesce(v_b, 1e12), round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
   end loop;
-  return jsonb_build_object('speed+hold', v_a, 'ship_view', v_b);
+  return jsonb_build_object('ship_stats', v_c, 'speed+hold', v_a, 'ship_view', v_b);
 end $$;
 create or replace function pg_temp.time_reads_0133(p_phase text)
 returns void
@@ -573,42 +580,6 @@ revoke all on function public.requirements_refusal(uuid, text, text) from public
 -- ── 4. THE HUNKS (old → new), sliced from the live bodies ───────────────────────────────────────
 create temp table hunks_0133 (fn text, n int, old text, new text) on commit drop;
 insert into hunks_0133 values
--- world.ship_stats: (base + units) × (1 + Σ skill % / 100); the per cents ride in the units' own CTE
-('world.ship_stats(uuid)', 1,
-$h$    select e.stat, sum(e.delta) as delta
-      from public.fitted_units f
-      join public.item_effects e on e.item_code = f.item_code
-     where f.ship_id = p_ship
-     group by e.stat
-  )
-$h$,
-$h$    -- 0133: and WHAT HER COMPANY'S SKILLS ADD, per stat, in per cent (world.skill_bonuses, the one
-    -- reading), in the SAME CTE — no second CTE, no extra join: while skills_bite is off the second branch
-    -- is a one-time filter (the lookup never runs) and every stat's pct is null. Measured: a separate
-    -- materialized CTE cost the merchant reads +13 % dark; this shape costs one world_config read.
-    select x.stat, sum(x.delta) as delta, sum(x.pct) as pct
-      from (select e.stat, e.delta, null::numeric as pct
-              from public.fitted_units f
-              join public.item_effects e on e.item_code = f.item_code
-             where f.ship_id = p_ship
-            union all
-            select sb.stat, null, sb.pct
-              from public.ships s0
-             cross join lateral world.skill_bonuses(s0.player_id, s0.id) sb
-             where public.skills_bite_on() and s0.id = p_ship and sb.scope = 'ship') x
-     group by x.stat
-  )
-$h$),
-('world.ship_stats(uuid)', 2,
-$h$                              b.base + coalesce(d.delta, 0)
-$h$,
-$h$                              -- 0133: (base + what is mounted) × (1 + Σ skill % / 100), §5.3's order, rounded
-                              -- to the sum's own scale (the precision the stat is shown in) — and the
-                              -- untouched sum wherever no skill adds (always, while dark).
-                              case when d.pct is null then b.base + coalesce(d.delta, 0)
-                                   else round(public.skill_scale(b.base + coalesce(d.delta, 0), d.pct),
-                                              scale(b.base + coalesce(d.delta, 0))) end
-$h$),
 -- public.player_skill_bonus: the per cent is skill_effects' (scope company)
 ('public.player_skill_bonus(uuid, text)', 1,
 $h$  select coalesce(sum(s.pct_per_level * public.skill_level(p_player, s.code)), 0) / 100.0
@@ -680,18 +651,6 @@ $h$    v_lvl := public.level_in_force(coalesce((select sx.xp from public.ship_xp
     -- 0133: "may I fit this" is no longer the SHIP's level (0127's gear level asks, empty, dropped here):
     -- it is the company's skills — public.requirements_met, above, for every hull.
 $h$),
--- public.fleet_officer_bonus: Command, under the cap
-('public.fleet_officer_bonus(uuid, text)', 1,
-$h$           coalesce(sum(o.bonus_pct * public.captain_level_mult(po.id)), 0),
-$h$,
-$h$           -- 0133: and × (1 + Command's per cent / 100) while skills_bite is on (public.skill_scale:
-           -- exactly the sum while dark) — still under the cap below.
-           -- No skill is read at all while dark or when no officer adds anything (the arrivals sweep's path).
-           public.skill_scale(coalesce(sum(o.bonus_pct * public.captain_level_mult(po.id)), 0),
-                              case when coalesce(sum(o.bonus_pct * public.captain_level_mult(po.id)), 0) = 0
-                                     or not public.skills_bite_on() then 0
-                                   else world.skill_pct((select fl.player_id from public.fleets fl where fl.id = p_fleet), null, 'officer_bonus') end),
-$h$),
 -- public.assert_house_caps: the hull cap is public.house_ship_max
 ('public.assert_house_caps(uuid, uuid)', 1,
 $h$  select count(*) into v_ships from public.ships where player_id = p_player;
@@ -707,40 +666,6 @@ $h$  -- 0133: the cap is public.house_ship_max — ship_max, plus command_hulls_
     raise exception 'E_SHIP_MAX: the house may hold % ship(s) and this would make %',
       public.house_ship_max(p_player), v_ships using errcode = 'P0001';
   end if;
-$h$),
--- world.ship_budget: Deck Management on the Deck, Gun Drill on the High units' Hands
-('world.ship_budget(uuid)', 1,
-$h$           'deck',  jsonb_build_object('used', coalesce(u.deck, 0),  'max', b.deck),
-$h$,
-$h$           -- 0133: Deck Management — the Deck × (1 + its per cent / 100), floored (exactly b.deck while dark).
-           'deck',  jsonb_build_object('used', coalesce(u.deck, 0),  'max', floor(public.skill_scale(b.deck, k.deck))::int),
-$h$),
-('world.ship_budget(uuid)', 2,
-$h$   cross join lateral public.class_budget(c.code) b
-    left join lateral (select sum(ip.deck)::int as deck, sum(ip.hands)::int as hands
-$h$,
-$h$   cross join lateral public.class_budget(c.code) b
-   -- 0133: the two fitting per cents her company's skills give (world.skill_bonuses, read once).
-   cross join lateral (select coalesce(sum(sb.pct) filter (where sb.stat = 'deck'), 0) as deck,
-                              coalesce(sum(sb.pct) filter (where sb.stat = 'high_hands'), 0) as drill
-                         from world.skill_bonuses(s.player_id, s.id) sb
-                        where public.skills_bite_on()) k   -- dark: a one-time filter
-    -- 0133: Gun Drill — a High unit needs fewer Hands (public.drilled_hands; exactly ip.hands while dark).
-    left join lateral (select sum(ip.deck)::int as deck, sum(public.drilled_hands(ip.hands, ip.rack, k.drill))::int as hands
-$h$),
--- world.ship_view: + bonuses by source
-('world.ship_view(uuid)', 1,
-$h$           'budget', world.ship_budget(s.id),
-$h$,
-$h$           'budget', world.ship_budget(s.id),
-           -- 0133: WHAT HER COMPANY'S SKILLS ADD TO HER, by source (world.skill_bonuses, the one reading): the
-           -- skill and level and the effect in words — the client lists them, it derives none. [] while dark.
-           'bonuses', (select coalesce(jsonb_agg(jsonb_build_object(
-                          'skill', sb.skill_code, 'level', sb.level, 'stat', sb.stat, 'pct', sb.pct,
-                          'source', sb.source, 'effect', sb.effect)
-                          order by sb.source, sb.stat), '[]'::jsonb)
-                         from world.skill_bonuses(s.player_id, s.id) sb
-                        where public.skills_bite_on()),   -- dark: a one-time filter
 $h$),
 -- world.building_yard: + needs (the door's sentence), folded into buildable
 ('world.building_yard(uuid)', 1,
@@ -788,7 +713,193 @@ $h$        join public.skill_groups g on g.code = pr.group_code));
 $h$,
 $h$        join public.skill_groups g on g.code = pr.group_code
         left join public.skill_effects ce on ce.skill_code = s.code and ce.scope = 'company'));   -- 0133
-$h$);
+$h$),
+-- 0133 (review S2): the four hot reads become PL/pgSQL wrappers — DARK is the 0132 query, untouched
+('world.ship_stats(uuid)', 1,
+$h$ LANGUAGE sql
+$h$,
+$h$ LANGUAGE plpgsql
+$h$),
+('world.ship_stats(uuid)', 2,
+$h$AS $function$
+$h$,
+$h$AS $function$
+begin
+  -- 0133: WHILE skills_bite IS ON — (base + what is mounted) × (1 + Σ skill % / 100), §5.3's order, the
+  -- per cents (world.skill_bonuses, the one reading) riding in the units' CTE, each lit stat rounded to
+  -- its own scale; the hull level and the floors exactly as below.
+  if public.skills_bite_on() then
+    return (
+    with d as (
+      select x.stat, sum(x.delta) as delta, sum(x.pct) as pct
+        from (select e.stat, e.delta, null::numeric as pct
+                from public.fitted_units f
+                join public.item_effects e on e.item_code = f.item_code
+               where f.ship_id = p_ship
+              union all
+              select sb.stat, null, sb.pct
+                from public.ships s0
+               cross join lateral world.skill_bonuses(s0.player_id, s0.id) sb
+               where s0.id = p_ship and sb.scope = 'ship') x
+       group by x.stat
+    )
+    select jsonb_object_agg(b.stat,
+             case when b.base is null then null
+                  else greatest(case when b.stat in ('speed', 'sighting') then 0.5 else 0 end,
+                                case when d.pct is null then b.base + coalesce(d.delta, 0)
+                                     else round(public.skill_scale(b.base + coalesce(d.delta, 0), d.pct),
+                                                scale(b.base + coalesce(d.delta, 0))) end
+                                + case when l.lvl > 1 then (l.lvl - 1) * case b.stat
+                                         when 'handling' then public.wc_num('ship_level_handling_per_level')
+                                         when 'accuracy' then public.wc_num('ship_level_accuracy_per_level')
+                                         when 'sighting' then public.wc_num('ship_level_sighting_per_level')
+                                         else 0 end
+                                       else 0 end) end)
+      from public.ships s
+      join public.ship_classes c on c.id = s.class_id
+      left join public.ship_xp sx on sx.ship_id = s.id
+     cross join lateral (select case when sx.xp > 0 then public.level_in_force(sx.xp) else 1 end as lvl) l
+     cross join lateral (values ('hold',       c.hold::numeric),
+                                ('speed',      c.speed_kn::numeric),
+                                ('handling',   c.handling::numeric),
+                                ('draft',      c.draft::numeric),
+                                ('durability', c.durability::numeric),
+                                ('armour',     c.armour::numeric),
+                                ('attack',     c.attack::numeric),
+                                ('accuracy',   c.accuracy::numeric),
+                                ('reach',      c.reach::numeric),
+                                ('sighting',   c.sighting::numeric)) b(stat, base)
+      left join d on d.stat = b.stat
+     where s.id = p_ship
+    );
+  end if;
+  -- 0133: WHILE IT IS OFF — exactly the 0132 query, untouched. PL/pgSQL so both plans are cached: a SQL
+  -- body is re-planned on every call on PostgreSQL 17, and a bigger one cost the merchant reads +46 %
+  -- (CI's real Postgres, PR #137); this way dark pays one switch read and nothing else.
+  return (
+$h$),
+('world.ship_stats(uuid)', 3,
+$h$   where s.id = p_ship
+$function$$h$,
+$h$   where s.id = p_ship
+  );
+end $function$$h$),
+('world.ship_budget(uuid)', 1,
+$h$ LANGUAGE sql
+$h$,
+$h$ LANGUAGE plpgsql
+$h$),
+('world.ship_budget(uuid)', 2,
+$h$AS $function$
+$h$,
+$h$AS $function$
+declare
+  v_bud   jsonb;
+  v_deck  numeric;
+  v_drill numeric;
+begin
+  -- 0133: the 0132 reading, untouched (dark answers exactly this) …
+  v_bud := (
+$h$),
+('world.ship_budget(uuid)', 3,
+$h$   where s.id = p_ship
+$function$$h$,
+$h$   where s.id = p_ship
+  );
+  if v_bud is null or not public.skills_bite_on() then
+    return v_bud;
+  end if;
+  -- 0133: … and while skills_bite is on, the two fitting per cents her company's skills give
+  -- (world.skill_bonuses, read once): Deck Management raises the Deck max (× (1 + % / 100), floored), Gun
+  -- Drill lowers what a High unit needs of Hands (public.drilled_hands — the count mount_fitting uses).
+  select coalesce(sum(sb.pct) filter (where sb.stat = 'deck'), 0),
+         coalesce(sum(sb.pct) filter (where sb.stat = 'high_hands'), 0)
+    into v_deck, v_drill
+    from public.ships s
+   cross join lateral world.skill_bonuses(s.player_id, s.id) sb
+   where s.id = p_ship;
+  if v_deck = 0 and v_drill = 0 then
+    return v_bud;
+  end if;
+  return jsonb_build_object(
+           'deck',  jsonb_build_object('used', v_bud->'deck'->'used',
+                                       'max', floor(public.skill_scale((v_bud->'deck'->>'max')::numeric, v_deck))::int),
+           'hands', jsonb_build_object('used', (select coalesce(sum(public.drilled_hands(ip.hands, ip.rack, v_drill)), 0)::int
+                                                  from public.fitted_units fu
+                                                  join public.item_profile ip on ip.item_code = fu.item_code
+                                                 where fu.ship_id = p_ship),
+                                       'max', v_bud->'hands'->'max'));
+end $function$$h$),
+('world.ship_view(uuid)', 1,
+$h$ LANGUAGE sql
+$h$,
+$h$ LANGUAGE plpgsql
+$h$),
+('world.ship_view(uuid)', 2,
+$h$AS $function$
+$h$,
+$h$AS $function$
+declare
+  v_view jsonb;
+begin
+  -- 0133: the 0132 builder, untouched …
+  v_view := (
+$h$),
+('world.ship_view(uuid)', 3,
+$h$   where s.id = p_ship
+$function$$h$,
+$h$   where s.id = p_ship
+  );
+  -- 0133: … plus `bonuses` — WHAT HER COMPANY'S SKILLS ADD TO HER, by source (world.skill_bonuses, the one
+  -- reading): skill, level, the effect in words; the client lists them, it derives none. While skills_bite
+  -- is off it is the constant [] and nothing is called.
+  if v_view is null or not public.skills_bite_on() then
+    return v_view || '{"bonuses": []}'::jsonb;
+  end if;
+  return v_view || jsonb_build_object('bonuses',
+           (select coalesce(jsonb_agg(jsonb_build_object(
+                     'skill', sb.skill_code, 'level', sb.level, 'stat', sb.stat, 'pct', sb.pct,
+                     'source', sb.source, 'effect', sb.effect)
+                     order by sb.source, sb.stat), '[]'::jsonb)
+              from public.ships s
+             cross join lateral world.skill_bonuses(s.player_id, s.id) sb
+             where s.id = p_ship));
+end $function$$h$),
+('public.fleet_officer_bonus(uuid, text)', 1,
+$h$ LANGUAGE sql
+$h$,
+$h$ LANGUAGE plpgsql
+$h$),
+('public.fleet_officer_bonus(uuid, text)', 2,
+$h$AS $function$
+$h$,
+$h$AS $function$
+declare
+  v_bonus numeric;
+begin
+  -- 0133: the 0132 reading, untouched (dark — and any fleet whose officers add nothing — answers exactly
+  -- this, with no skill read) …
+  v_bonus := (
+$h$),
+('public.fleet_officer_bonus(uuid, text)', 3,
+$h$     and o.specialty = upper(p_specialty);
+$function$$h$,
+$h$     and o.specialty = upper(p_specialty)
+  );
+  if v_bonus = 0 or not public.skills_bite_on() then
+    return v_bonus;
+  end if;
+  -- 0133: … and while skills_bite is on, Command: the officers' sum × (1 + Command's per cent / 100)
+  -- (public.skill_scale), still under the cap.
+  return (select least(public.skill_scale(coalesce(sum(o.bonus_pct * public.captain_level_mult(po.id)), 0),
+                                          world.skill_pct((select fl.player_id from public.fleets fl where fl.id = p_fleet),
+                                                          null, 'officer_bonus')),
+                       public.wc_num('officer_bonus_cap_pct')) / 100.0
+            from public.player_officers po
+            join public.officers o on o.id = po.officer_id
+           where po.fleet_id = p_fleet
+             and o.specialty = upper(p_specialty));
+end $function$$h$);
 
 create or replace function pg_temp.recut_0133(p_fn text)
 returns void

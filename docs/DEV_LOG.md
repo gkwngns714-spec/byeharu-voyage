@@ -54,9 +54,20 @@ new hull) fails `E_SHIP_MAX` until it is back under `ship_max`.
   inlinable SQL read of world_config; ship_stats carries the per cents in its units CTE behind a one-time
   filter; ship_budget / ship_view gate their lookups the same way; fleet_officer_bonus reads no skill when
   dark or when its officers add 0): each the faster of two passes, speed+hold 305 → 345 ms dark → 622 ms lit,
-  ship_view 1,214 → 1,388 ms dark → 2,414 ms lit. The remaining dark cost is one world_config read per call
-  (A/B against the 0132 bodies with the switch read replaced by `false`: 314 → 326 ms). Self-assert refuses
-  dark > before × 1.15 + 50 ms. **Re-measure on prod before throwing `skills_bite`: the arrivals budget is
+  ship_view 1,214 → 1,388 ms dark → 2,414 ms lit. **That still failed on CI's real Postgres 17
+  (disposable-chain: merchant ship_view 7,452 → 10,914 ms, +46 %)**: PG 17 re-plans a SQL function body on
+  every call (PGlite is PG 18, which caches SQL plans, so it under-stated it), and every hot SQL body had
+  grown. Fix: world.ship_stats, world.ship_budget, world.ship_view and public.fleet_officer_bonus are now
+  PL/pgSQL wrappers — the DARK branch is the 0132 query untouched (plan cached), the LIT branch adds the
+  skills (ship_view: `bonuses` is the constant [] dark; budget / officer bonus composed on the 0132 answer;
+  ship_stats' lit query is the 0132 query plus the per cents). Instrumented dark path (switch shim counting
+  reads, every skill helper replaced by a raise): per merchant ship_view 11.0 switch reads (one per
+  ship_stats / ship_budget / ship_view call; the officer bonus only when its officers add anything — 36 of
+  892 hulls) and ZERO calls to skill_bonuses / skill_pct / skill_scale / drilled_hands; per ship_stats 1;
+  per speed+hold 3.0. PGlite, faster of two passes: ship_stats 65 → 72 ms, speed+hold 307 → 323 ms,
+  ship_view 1,231 → 1,316 ms dark; lit 171 / 639 / 2,478 ms. Self-assert refuses dark >
+  before × 1.15 + 50 ms on ship_stats, speed+hold and ship_view — **CI's disposable chain on real Postgres
+  is the gate.** **Re-measure on prod before throwing `skills_bite`: the arrivals budget is
   10 s and prod is already at p95 8.7 s; lit roughly doubles these reads locally.**
 - Lit stats are rounded to the stat's own scale (sighting 14.0 → 15.7, speed 5.00 → 5.30).
 - **CI flake found by the review (map.sendfleet.spec.ts:195)**: not 0133. Same PC, same spec, timed
