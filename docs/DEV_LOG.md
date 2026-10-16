@@ -5,6 +5,38 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — 0135 review fixes (PR #139) — timing notice, dark crafting gate, unique flags, hull_labour PL/pgSQL
+
+Still **not deployed** (prod head 0134). Owner: fix everything the review found, then merge + deploy.
+- **Hot-read timing is reported, not gated** (self-assert (o)): prod measured one `world.ship_view` pass over
+  892 merchant hulls at ~9.8 s on the burstable Micro CPU, so the old `after > before × 1.15 + 50 ms` refusal
+  would likely have aborted an honest push. The md5 answer-equality checks stay hard raises; the times go to
+  a `raise notice` (before → after ms, %). An `analyze` of the catalogue tables the file grows runs before
+  the 'after' pass. **Measured on the local cached-prefix apply (PGlite, after the analyze):** speed+hold
+  1002 → 1130 ms (+12.8 %), ship_stats 213 → 276 ms (+29.6 %), ship_view 3778 → 4608 ms (+22.0 %), quotes
+  1023 → 1047 ms (+2.3 %). That is a real slowdown of the per-hull reads as the catalogue grows 3 → 55 /
+  12 → 115 — the old gate would have refused it here too. Not fixed in this commit; re-measure on prod.
+- **Sign-up race** in (l)(2): the closed-pair count is compared with `52 × count(distinct player)` of
+  `needs_after_0135` itself, not a fresh `count(*) from players`.
+- **Dark gear could be crafted but not fitted** — `cmd.do_make` now refuses an item whose requirements are
+  unmet through the same gate as `cmd.do_build` / `mount_fitting` (`requirements_met` → `E_NEEDS_SKILL`, the
+  `requirements_refusal` sentence, "— ship skills are not in use yet" while dark). `world.workstation` folds
+  that sentence into `makeable` (once per item, lateral) and serves `tier_ok` beside it, as `building_yard`
+  does; `PortWorkstation.tsx` prints the workshop-tier note only when `tier_ok === false` and the `needs`
+  sentence as a warning. Self-assert: a probe house at the best workshop makes storm canvas (ungated),
+  is refused hemp canvas (Rigging II) dark, and makes it lit with Rigging II; every gated new item is served
+  closed with its sentence, every ungated one open exactly where the tier allows; live items' entries are
+  the pre-image + `tier_ok` (= their old `makeable`).
+- **`public.hull_labour`** is PL/pgSQL (PG 17 re-plans SQL bodies per call), body unchanged.
+- **One flag per country**: POL ♛, VEN ✥, MAR ❂, MUG ✺, PER ☀, GEN ✚ (ESP ⚔, OTT ☾, PRT ⚓ keep) —
+  `scripts/lib/world-derive.mjs` NATIONS + an update in 0135; asserted all 23 `flag_char` distinct.
+- Docs: `SHIPS_AND_SKILLS.md` §8 S12 row (102 hull rows, 11 new types / 103), §6.3 heading (23 = 12 + 11);
+  `DEPLOY_RUNBOOK.md` §3 + RESUME: `db push` parses statements separately but runs the file and its
+  `schema_migrations` row as ONE implicit transaction; after a failed push only `wind_the_clock()` is needed;
+  the clock must be unwound before the push. `PortYard.tsx` grouping block re-indented.
+
+---
+
 ## 2026-10-17 — S12 (0135): every country builds its own ships — `osn-0135-wave-a`
 
 `docs/SHIPS_AND_SKILLS.md` §8 S12 "Wave A: 52 hulls + Wave A gear". **Not deployed** (prod head 0134).

@@ -105,6 +105,23 @@ supabase db push --linked
 Watch it. If it stops, **read the error before re-running** — that is the whole reason step 2
 exists, and re-running past an unread red is how the one red that matters gets waved through.
 
+**What one file's push is (verified 2026-10-16).** `db push` parses a migration's top-level
+statements separately, but the file and its `schema_migrations` row run as ONE implicit
+transaction. So:
+
+* a `raise` anywhere in a file (a self-assert, a lock timeout) rolls back **the whole file and its
+  `schema_migrations` row** — the head stays on the previous migration and nothing of the file remains;
+* every lock the file takes is held until the file commits;
+* there is no top-level `begin` / `commit` / `LOCK TABLE` / `set local` to write.
+
+**After a failed push the only manual step is `select public.wind_the_clock();`** (step 4) — there is
+nothing half-applied to repair. Read the error, fix, unwind again, push again.
+
+**The clock MUST be unwound before the push** (step 2) — not only for the deadlock above: a
+self-assert that compares a before-image with an after-image (md5 of the hot reads, the yard and
+workshop screens) needs a still world between the two, and a tick that moves a fleet in between
+makes an honest file fail.
+
 ---
 
 ## 4. Start the clock again

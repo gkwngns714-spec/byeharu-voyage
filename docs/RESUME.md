@@ -15,6 +15,7 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 - **S12 WIP = `11ff40a` on `osn-0135-wave-a`** (migration `20260818000135_every_country_builds_its_own_ships.sql`; 52 hulls, 103 items, 200 requirement rows; self-assert + world guard green on its last cached run; dark: new hulls/G2–G5 refused `E_NEEDS_SKILL` "ship skills are not in use yet", 9 ungated G1 fittings + figurehead grades usable now). **To finish:** (1) `node scripts/build-ships.mjs --check` + `build-gear.mjs --check`; (2) cached-prefix apply 0135 + world guard; (3) tsc/eslint/build (not re-run after the last `src/chart/shipMarks.ts` edit); (4) `vite preview --port 4196` → `tests/map.wrap.spec.ts:158` + `tests/db.chain.spec.ts:672` (both unverified), look at Codex → Ships and a Build screen; (5) squash WIP, open PR. **Owner questions:** spec says 55 hull-skill rows, built 102 per §4.4; spec says ~98 items, §6.3 lists 11 types → 103; new hull recipes are goods-only (0072 (a) "fittings too" kept for the live three).
 - **Next after S12:** 0136 arrivals speed step 2 — `port_offers` called per row inside `trade_routes`. Arrivals on prod after 0134: avg 3.60 s, p95 5.65 s, max 10.30 s (budget 10 s). `skills_bite` stays false until arrivals have headroom (lit ≈ 2× merchant ship reads) — re-measure on prod before lighting.
 - **Owner decisions held ("leave as is"):** losing merchant laps; MUG capital at Surat; Acapulco at globe zoom opens Veracruz; city economy switch.
+- **`db push`, verified:** statements are parsed separately but the file + its `schema_migrations` row run as ONE implicit transaction — a raise rolls everything back, so the only manual step after a failed push is `select public.wind_the_clock();`. The clock MUST be unwound before the push: the before/after md5 compares in the self-asserts need a still world (`docs/DEPLOY_RUNBOOK.md` §3).
 - **Lessons this session:** PG 17 (prod/CI) re-plans SQL-language function bodies per call → hot helpers are PL/pgSQL; never `array_agg(x order by <constant>)`; db push holds all locks to commit → heavy compares first, hot-table locks last with NOWAIT retry; full Acceptance on main is checked once at the end of the batch (not yet run for #133–#138).
 
 ---
@@ -109,7 +110,7 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 
 ## Process notes learned today
 - **Deploy order: `db push --linked` FIRST, merge only after it succeeds** (Pages auto-deploys on merge).
-- `db push` runs each top-level statement separately (implicit transaction): no top-level `LOCK TABLE` / `set local` / `begin`; no `set role`/`reset role` in self-asserts. A `begin…rollback` dry-run via `db query` cannot catch either.
+- `db push` parses each top-level statement separately, but the file + its `schema_migrations` row run as ONE implicit transaction (a raise rolls the whole file back): no top-level `LOCK TABLE` / `set local` / `begin`; no `set role`/`reset role` in self-asserts. A `begin…rollback` dry-run via `db query` cannot catch either.
 - Self-asserts must hold on a lived-in prod world (probe their own fleets; don't assume empty).
 - Fable credits ran out mid-day; agents ran on Opus.
 

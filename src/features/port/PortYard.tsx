@@ -127,34 +127,38 @@ export function PortYard({
 
       {[here, elsewhere].map((group, gi) =>
         group.length === 0 ? null : (
-      <div key={gi} className={gi === 1 ? 'mt-4' : undefined} data-testid={gi === 0 ? 'yard-here' : 'yard-elsewhere'}>
-      {gi === 1 && <Hint className="mb-2">Built only in other countries</Hint>}
-      <TileField>
-        {group.map((hull) => (
-          <Tile
-            key={hull.class}
-            mark={<Icon name="ship" size={20} />}
-            name={hull.name}
-            meta={
-              <>
-                <HullCountry nation={hull.line_nation} compact />
-                {hull.line_nation ? ' ' : ''}
-                {formatTons(hull.hold)}
-              </>
-            }
-            state={hull.buildable ? 'rest' : 'muted'}
-            tap="whole"
-            onClick={() => {
-              setRefusal(null)
-              setDetent('half')
-              setOpen(hull)
-            }}
-            figure={<Figure value={formatDucats(hull.ducats)} unit="to build" />}
-            data-testid={`hull-${hull.class}`}
-          />
-        ))}
-      </TileField>
-      </div>
+          <div
+            key={gi}
+            className={gi === 1 ? 'mt-4' : undefined}
+            data-testid={gi === 0 ? 'yard-here' : 'yard-elsewhere'}
+          >
+            {gi === 1 && <Hint className="mb-2">Built only in other countries</Hint>}
+            <TileField>
+              {group.map((hull) => (
+                <Tile
+                  key={hull.class}
+                  mark={<Icon name="ship" size={20} />}
+                  name={hull.name}
+                  meta={
+                    <>
+                      <HullCountry nation={hull.line_nation} compact />
+                      {hull.line_nation ? ' ' : ''}
+                      {formatTons(hull.hold)}
+                    </>
+                  }
+                  state={hull.buildable ? 'rest' : 'muted'}
+                  tap="whole"
+                  onClick={() => {
+                    setRefusal(null)
+                    setDetent('half')
+                    setOpen(hull)
+                  }}
+                  figure={<Figure value={formatDucats(hull.ducats)} unit="to build" />}
+                  data-testid={`hull-${hull.class}`}
+                />
+              ))}
+            </TileField>
+          </div>
         ),
       )}
 

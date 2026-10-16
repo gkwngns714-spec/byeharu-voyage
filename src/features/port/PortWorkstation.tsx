@@ -189,19 +189,19 @@ export function PortWorkstation({
               hairline={i < open.recipe.length - 1}
             />
           ))}
-          {!open.makeable && (
+          {/* 0135: the server says WHICH closed it — the workshop's tier (`tier_ok`) or your skills
+              (`needs`, cmd.do_make's own E_NEEDS_SKILL sentence). Both are printed as served. */}
+          {open.tier_ok === false && (
             <Note tone="warning">
               {`Needs a level ${formatInt(open.ws_tier)} workshop. This one is level ${formatInt(tier)}.`}
             </Note>
           )}
-          {open.makeable && short !== null && <Note tone="warning">{`Missing: ${short}.`}</Note>}
-          {/* 0133: what FITTING it needs of your skills — the fit refusal's own sentence, as served
-              (making it needs none, so it never blocks the Make button). */}
           {open.needs && (
-            <Note tone="neutral" data-testid="workstation-needs">
+            <Note tone="warning" data-testid="workstation-needs">
               {open.needs}
             </Note>
           )}
+          {open.makeable && short !== null && <Note tone="warning">{`Missing: ${short}.`}</Note>}
           {refusal && (
             <Note tone="danger" code={refusal.code}>
               {refusal.sentence}
