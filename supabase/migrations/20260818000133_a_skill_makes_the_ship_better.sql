@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 -- 0133 — A SKILL MAKES THE SHIP BETTER  (what a level gives, what a hull or a fitting needs — DARK)
---        plus: the two leftovers of 0127 and 0132 are retired (item_level_asks, ship_fittings_retired_0132)
+--        plus: 0127's empty gear level asks (item_level_asks) are retired
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- ── WHY NOW ─────────────────────────────────────────────────────────────────────────────────────
@@ -21,8 +21,8 @@
 --   * public.assert_house_caps (0021, cut by 0107): the house hull cap is the flat knob `ship_max`.
 --   * public.mount_fitting (0126, cut by 0127/0132) asks a fitting's SHIP LEVEL (public.item_level_asks,
 --     0127:163-171, EMPTY) — "may I fit this" belongs to skills (§2); cmd.do_build asks no skill at all.
---   * public.ship_fittings_retired_0132 (0132 §7) is a frozen table read and written by nothing, whose FK
---     triggers still sit on public.ships.
+--   * world.skills (0027, cut by 0131) serves the Academy each skill's effect / pct_per_level from the skills
+--     columns — a second home of "what a level gives" once skill_effects exists.
 --
 -- ── WHAT THIS FILE DOES ─────────────────────────────────────────────────────────────────────────
 -- (1) public.skill_effects — ONE ROW PER PER-LEVEL BONUS (skill, scope, stat, pct per level, and an
@@ -43,8 +43,8 @@
 --     Portuguese Medium Hulls IV"). Refusal E_NEEDS_SKILL, with figures (level have / need).
 -- (5) THE HUNKS (sliced from the LIVE bodies, LF-normalised, each asserted to occur once and to reverse
 --     to its pre-image, ACLs unchanged):
---       world.ship_stats       (base + units) × (1 + Σ skill % / 100) + hull level — §5.3's order; one read
---                              of world.skill_bonuses per call (a MATERIALIZED CTE, not one per stat)
+--       world.ship_stats       (base + units) × (1 + Σ skill % / 100) + hull level — §5.3's order; the per
+--                              cents ride in the units' CTE (one read, gated by the switch), rounded to scale
 --       public.player_skill_bonus   reads skill_effects (scope company) — same arithmetic, same text
 --       cmd.do_build           (door) E_NEEDS_SKILL after the country rule
 --       public.mount_fitting   (core) E_NEEDS_SKILL first; Gun Drill on the new unit's Hands; the
@@ -56,9 +56,11 @@
 --       world.ship_view        + `bonuses` (each bonus by source) — [] while dark
 --       world.building_yard    + per hull `needs` (the door's own sentence), and `buildable` folds it in
 --       world.workstation      + per item `needs` (the FIT refusal's own sentence)
+--       world.skills           the Academy's effect / pct_per_level read from skill_effects (scope company)
+--                              — the same values as text (asserted), one home
 -- (6) item_level_asks DROPPED (asserted empty first; no live body names it after the re-cut — positive
---     control: mount_fitting's pre-image did). public.ship_fittings_retired_0132 DROPPED (asserted: no
---     body, view or FK references it).
+--     control: mount_fitting's pre-image did). public.ship_fittings_retired_0132 is NOT touched here (its
+--     drop needs ACCESS EXCLUSIVE on public.ships): a later small migration drops it, clock unwound.
 -- (7) Knobs: skills_bite false (THE switch); command_hulls_per_level 1.
 --
 -- ── WHAT IT DELIBERATELY DOES NOT DO ────────────────────────────────────────────────────────────
@@ -72,38 +74,56 @@
 -- Merchants get no exemption anywhere (no is_npc read in any new body): their fixed skills are the four
 -- live ones, which carry only company effects, so a merchant's ship reads the same lit or dark (asserted).
 --
+-- ── COST (the arrivals sweep: 10 s budget; prod p95 8.7 s / max 11.8 s on 2026-10-17) ──────────────
+-- DARK IS ~FREE: public.skills_bite_on() is an inlinable SQL read of world_config; every hot read gates its
+-- skill lookup behind it as a ONE-TIME FILTER (ship_stats' units CTE, ship_budget's k, ship_view's bonuses) or a
+-- CASE (fleet_officer_bonus, which also skips it when the officers' sum is 0), so while dark no skill
+-- function is even called. The self-assert times the merchant reads twice per phase, keeps the faster,
+-- and refuses dark > before × 1.15 + 50 ms. LIT costs more (timed in the receipt, rolled back) —
+-- RE-MEASURE ON PROD BEFORE THROWING skills_bite: the arrivals budget is already tight.
+--
 -- ── LOCKS (db push holds every lock until this file commits) ───────────────────────────────────
 -- Until §7 this file takes NO lock any live statement waits on: ACCESS SHARE on what it reads; its own
 -- new tables (their FK to ship_lines takes SHARE ROW EXCLUSIVE on ship_lines — written by nothing live);
 -- CREATE OR REPLACE FUNCTION (no table lock); world_config INSERT of two new keys. The skill_effects /
 -- skill_requirements FKs to public.skills are NOT added early (SHARE ROW EXCLUSIVE on skills held to
--- commit). Every probe write is inside a rolled-back subtransaction (its locks go with it); the probe is
+-- commit). Every probe write is inside a rolled-back subtransaction (its table and row locks go with it;
+-- the per-house ADVISORY lock public.fitting_lock takes for the probe's FITs is transaction-scoped and is
+-- held to commit — on the probe's own throw-away house, which nothing else can name); the probe is
 -- retried on 55P03 / 40P01 and fails as LOCK CONTENTION, never as a result.
 --   (§1) every heavy pre-image read;  (§2-§4) knobs, tables, catalogue rows, functions, re-cuts;
 --   (§5) the old bodies kept under pg_temp names;  (§6) every comparison, the probes, the timings;
---   (§7) LAST, ONE short retried step, lock_timeout 2 s, LOCK ORDER fixed:
---          1. SHARE ROW EXCLUSIVE on public.skills → the two FKs to skills(code);
---          2. ACCESS EXCLUSIVE on public.item_kinds, then public.item_level_asks → drop item_level_asks
---             (its FK triggers live on item_kinds);
---          3. ACCESS EXCLUSIVE on public.ships, then public.ship_fittings_retired_0132 → drop it (its FK
---             triggers live on ships and item_kinds).
---        After it: catalogue reads only (ms), then the commit. DEPLOY WITH THE CLOCK UNWOUND
---        (DEPLOY_RUNBOOK: unwind_the_clock() → db push → wind_the_clock()): step 3 queues every ship read
---        while it waits (≤ 2 s per try, 5 tries) and holds them for the ms to the commit.
+--   (§7) LAST, ONE short retried step, LOCK ORDER fixed:
+--          1. ACCESS EXCLUSIVE on public.item_kinds, NOWAIT, then public.item_level_asks → drop
+--             item_level_asks (its FK triggers live on item_kinds);
+--          2. SHARE ROW EXCLUSIVE on public.skills, NOWAIT → the two FKs to skills(code).
+--        public.ships is NOT locked (beyond the ACCESS SHARE every read takes). WHY NO CYCLE: the live
+--        RPCs that touch these (cmd.do_build: ships → item_kinds; cmd.do_fit / mount_fitting: ships →
+--        item_kinds; skill verbs: skills, key-share only) take ACCESS SHARE / ROW SHARE and never wait on
+--        anything this file holds before §7 (it holds no lock they need); and in §7 every lock is NOWAIT,
+--        so this file never WAITS while holding one — a busy table is 55P03 at once, the step's subtxn
+--        rolls back (releasing what it took), sleeps 0.2 s and retries (10 tries), then LOCK CONTENTION,
+--        not a result. After it: catalogue reads only (ms), then the commit (item_kinds readers — FITs,
+--        ship cards — queue for those ms). The clock need not be unwound for this file (DEPLOY_RUNBOOK's
+--        unwind/wind is still the safe default).
 --
 -- SUPERSEDES, by hunks sliced from the LIVE bodies (LF-normalised), each asserted to occur exactly once
 -- and to reverse to its pre-image, ACLs unchanged: world.ship_stats (0132), public.player_skill_bonus
 -- (0131), cmd.do_build (0130), public.mount_fitting (0132), public.fleet_officer_bonus (0127),
 -- public.assert_house_caps (0107), world.ship_budget (0132), world.ship_view (0132), world.building_yard
--- (0130), world.workstation (0068).
+-- (0130), world.workstation (0068), world.skills (0131).
 --
 -- ROLLBACK: `update public.world_config set value = 'false'::jsonb where key = 'skills_bite'` — one UPDATE,
 -- and every effect and requirement is off (the dark state this file proves is the pre-image). A full
--- forward revert: reverse the ten bodies' hunks (old text in hunks_0133); drop world.skill_bonuses,
+-- forward revert: reverse the eleven bodies' hunks (old text in hunks_0133); drop world.skill_bonuses,
 -- world.skill_pct, public.requirements_refusal / requirements_met / requirements_unmet,
 -- public.house_ship_max, public.drilled_hands, public.skill_scale, public.skill_effect_words,
 -- public.skill_level_word, public.skills_bite_on, skill_requirements, skill_effects. item_level_asks
--- (0127:163-171, empty) and ship_fittings_retired_0132 (frozen, read by nothing) are not restored.
+-- (0127:163-171, empty) is not restored.
+-- SAID PLAINLY, ONE RESIDUE OF A ROLLBACK: a company that grew past ship_max under Command while lit keeps
+-- every hull it has (nothing is taken away), but with skills_bite false its cap is ship_max again, so any
+-- later write that re-checks the cap on its ships — a hull transferred between fleets, a new hull — fails
+-- E_SHIP_MAX until it is back under ship_max.
 -- VERSION: 0133. Applies on prod head 0132.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -134,8 +154,8 @@ begin
     exception when lock_not_available or deadlock_detected then
       get stacked diagnostics v_msg = message_text, v_state = returned_sqlstate;
     end;
-    if v_try >= 5 then
-      raise exception '0133 self-assert FAIL: LOCK CONTENTION, not a result — % could not get its locks in 5 tries (%: %). Re-run the push.',
+    if v_try >= 10 then
+      raise exception '0133 self-assert FAIL: LOCK CONTENTION, not a result — % could not get its locks in 10 tries (%: %). Re-run the push.',
         p_what, v_state, v_msg;
     end if;
     perform pg_sleep(0.2);
@@ -156,7 +176,8 @@ select f.fn,
                     'world.ship_budget(uuid)',
                     'world.ship_view(uuid)',
                     'world.building_yard(uuid)',
-                    'world.workstation(uuid, uuid)']) f(fn);
+                    'world.workstation(uuid, uuid)',
+                    'world.skills()']) f(fn);
 
 -- NOT re-cut: their bodies must come out of this file exactly as they went in.
 create temp table untouched_before_0133 on commit drop as
@@ -170,7 +191,6 @@ select f.fn,
 create temp table before_0133 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select count(*) from public.item_level_asks) as level_asks,
-       (select count(*) from public.ship_fittings_retired_0132) as retired_rows,
        (select md5(string_agg(to_jsonb(s)::text, '|' order by s.code)) from public.skills s) as skills_hash,
        (select md5(string_agg(to_jsonb(c)::text, '|' order by c.code)) from public.ship_classes c) as classes_hash,
        (select md5(string_agg(to_jsonb(k)::text, '|' order by k.code)) from public.item_kinds k) as kinds_hash,
@@ -197,20 +217,35 @@ select f.id as fleet_id, sp.specialty, public.fleet_officer_bonus(f.id, sp.speci
 -- What the arrivals tick and a merchant card read per merchant hull — speed + hold, and the whole
 -- ship — timed over every merchant hull, before (and in §6: after, dark; and lit, rolled back).
 create temp table reads_0133 (phase text, what text, hulls bigint, ms numeric) on commit drop;
+-- Each read is timed TWICE and the faster kept (the first pass also warms the plans), so one noisy pass
+-- cannot fail the assert in §6 or hide a regression. Returns {what: ms}.
+create or replace function pg_temp.reads_now_0133()
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_t0 timestamptz;
+  v_a  numeric := null;
+  v_b  numeric := null;
+begin
+  for i in 1 .. 2 loop
+    v_t0 := clock_timestamp();
+    perform voyage.ship_speed(h.ship_id), public.ship_hold_capacity(h.ship_id) from hulls_before_0133 h where h.is_npc;
+    v_a := least(coalesce(v_a, 1e12), round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
+    v_t0 := clock_timestamp();
+    perform world.ship_view(h.ship_id) from hulls_before_0133 h where h.is_npc;
+    v_b := least(coalesce(v_b, 1e12), round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
+  end loop;
+  return jsonb_build_object('speed+hold', v_a, 'ship_view', v_b);
+end $$;
 create or replace function pg_temp.time_reads_0133(p_phase text)
 returns void
 language plpgsql
 as $$
 declare
-  v_t0 timestamptz;
-  v_n  bigint := (select count(*) from hulls_before_0133 where is_npc);
+  v_n bigint := (select count(*) from hulls_before_0133 where is_npc);
 begin
-  v_t0 := clock_timestamp();
-  perform voyage.ship_speed(h.ship_id), public.ship_hold_capacity(h.ship_id) from hulls_before_0133 h where h.is_npc;
-  insert into reads_0133 values (p_phase, 'speed+hold', v_n, round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
-  v_t0 := clock_timestamp();
-  perform world.ship_view(h.ship_id) from hulls_before_0133 h where h.is_npc;
-  insert into reads_0133 values (p_phase, 'ship_view', v_n, round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
+  insert into reads_0133 select p_phase, key, v_n, value::text::numeric from jsonb_each(pg_temp.reads_now_0133());
 end $$;
 select pg_temp.time_reads_0133('before');
 
@@ -318,9 +353,14 @@ create or replace function public.skills_bite_on()
 returns boolean
 language sql
 stable
-as $$ select public.wc('skills_bite') = 'true'::jsonb $$;
+as $$
+  -- 0133: THE switch. A plain SQL read of world_config — no SET, no SECURITY DEFINER, no wc() call — so the
+  -- planner INLINES it, and in a SQL body with no column of its own it is a ONE-TIME FILTER (evaluated once,
+  -- and when false the gated lookup below it never runs). Missing row = off.
+  select coalesce((select c.value = 'true'::jsonb from public.world_config c where c.key = 'skills_bite'), false)
+$$;
 comment on function public.skills_bite_on() is
-  '0133: THE switch of skill effects and requirements (world_config skills_bite). Server-only.';
+  '0133: THE switch of skill effects and requirements (world_config skills_bite), inlinable. Server-only.';
 revoke all on function public.skills_bite_on() from public, anon, authenticated;
 
 create or replace function public.skill_level_word(p_level int)
@@ -533,39 +573,41 @@ revoke all on function public.requirements_refusal(uuid, text, text) from public
 -- ── 4. THE HUNKS (old → new), sliced from the live bodies ───────────────────────────────────────
 create temp table hunks_0133 (fn text, n int, old text, new text) on commit drop;
 insert into hunks_0133 values
--- world.ship_stats: (base + units) × (1 + Σ skill % / 100), one read of the bonuses per call
+-- world.ship_stats: (base + units) × (1 + Σ skill % / 100); the per cents ride in the units' own CTE
 ('world.ship_stats(uuid)', 1,
-$h$     group by e.stat
+$h$    select e.stat, sum(e.delta) as delta
+      from public.fitted_units f
+      join public.item_effects e on e.item_code = f.item_code
+     where f.ship_id = p_ship
+     group by e.stat
   )
-  select jsonb_object_agg(b.stat,
 $h$,
-$h$     group by e.stat
-  ),
-  -- 0133: WHAT HER COMPANY'S SKILLS ADD, per stat, in per cent — world.skill_bonuses, the one reading
-  -- (every row while skills_bite is on, none while it is off). MATERIALIZED: read once per call, not
-  -- once per stat.
-  k as materialized (
-    select coalesce(jsonb_object_agg(q.stat, q.pct), '{}'::jsonb) as pcts
-      from (select sb.stat, sum(sb.pct) as pct
+$h$    -- 0133: and WHAT HER COMPANY'S SKILLS ADD, per stat, in per cent (world.skill_bonuses, the one
+    -- reading), in the SAME CTE — no second CTE, no extra join: while skills_bite is off the second branch
+    -- is a one-time filter (the lookup never runs) and every stat's pct is null. Measured: a separate
+    -- materialized CTE cost the merchant reads +13 % dark; this shape costs one world_config read.
+    select x.stat, sum(x.delta) as delta, sum(x.pct) as pct
+      from (select e.stat, e.delta, null::numeric as pct
+              from public.fitted_units f
+              join public.item_effects e on e.item_code = f.item_code
+             where f.ship_id = p_ship
+            union all
+            select sb.stat, null, sb.pct
               from public.ships s0
              cross join lateral world.skill_bonuses(s0.player_id, s0.id) sb
-             where s0.id = p_ship and sb.scope = 'ship'
-             group by sb.stat) q
+             where public.skills_bite_on() and s0.id = p_ship and sb.scope = 'ship') x
+     group by x.stat
   )
-  select jsonb_object_agg(b.stat,
 $h$),
 ('world.ship_stats(uuid)', 2,
 $h$                              b.base + coalesce(d.delta, 0)
 $h$,
-$h$                              -- 0133: (base + what is mounted) × (1 + Σ skill % / 100), §5.3's order —
-                              -- public.skill_scale: exactly the unscaled sum where no skill adds.
-                              public.skill_scale(b.base + coalesce(d.delta, 0), (k.pcts->>b.stat)::numeric)
-$h$),
-('world.ship_stats(uuid)', 3,
-$h$    left join d on d.stat = b.stat
-$h$,
-$h$    left join d on d.stat = b.stat
-   cross join k   -- 0133: one row
+$h$                              -- 0133: (base + what is mounted) × (1 + Σ skill % / 100), §5.3's order, rounded
+                              -- to the sum's own scale (the precision the stat is shown in) — and the
+                              -- untouched sum wherever no skill adds (always, while dark).
+                              case when d.pct is null then b.base + coalesce(d.delta, 0)
+                                   else round(public.skill_scale(b.base + coalesce(d.delta, 0), d.pct),
+                                              scale(b.base + coalesce(d.delta, 0))) end
 $h$),
 -- public.player_skill_bonus: the per cent is skill_effects' (scope company)
 ('public.player_skill_bonus(uuid, text)', 1,
@@ -644,8 +686,11 @@ $h$           coalesce(sum(o.bonus_pct * public.captain_level_mult(po.id)), 0),
 $h$,
 $h$           -- 0133: and × (1 + Command's per cent / 100) while skills_bite is on (public.skill_scale:
            -- exactly the sum while dark) — still under the cap below.
+           -- No skill is read at all while dark or when no officer adds anything (the arrivals sweep's path).
            public.skill_scale(coalesce(sum(o.bonus_pct * public.captain_level_mult(po.id)), 0),
-                              world.skill_pct((select fl.player_id from public.fleets fl where fl.id = p_fleet), null, 'officer_bonus')),
+                              case when coalesce(sum(o.bonus_pct * public.captain_level_mult(po.id)), 0) = 0
+                                     or not public.skills_bite_on() then 0
+                                   else world.skill_pct((select fl.player_id from public.fleets fl where fl.id = p_fleet), null, 'officer_bonus') end),
 $h$),
 -- public.assert_house_caps: the hull cap is public.house_ship_max
 ('public.assert_house_caps(uuid, uuid)', 1,
@@ -678,7 +723,8 @@ $h$   cross join lateral public.class_budget(c.code) b
    -- 0133: the two fitting per cents her company's skills give (world.skill_bonuses, read once).
    cross join lateral (select coalesce(sum(sb.pct) filter (where sb.stat = 'deck'), 0) as deck,
                               coalesce(sum(sb.pct) filter (where sb.stat = 'high_hands'), 0) as drill
-                         from world.skill_bonuses(s.player_id, s.id) sb) k
+                         from world.skill_bonuses(s.player_id, s.id) sb
+                        where public.skills_bite_on()) k   -- dark: a one-time filter
     -- 0133: Gun Drill — a High unit needs fewer Hands (public.drilled_hands; exactly ip.hands while dark).
     left join lateral (select sum(ip.deck)::int as deck, sum(public.drilled_hands(ip.hands, ip.rack, k.drill))::int as hands
 $h$),
@@ -693,7 +739,8 @@ $h$           'budget', world.ship_budget(s.id),
                           'skill', sb.skill_code, 'level', sb.level, 'stat', sb.stat, 'pct', sb.pct,
                           'source', sb.source, 'effect', sb.effect)
                           order by sb.source, sb.stat), '[]'::jsonb)
-                         from world.skill_bonuses(s.player_id, s.id) sb),
+                         from world.skill_bonuses(s.player_id, s.id) sb
+                        where public.skills_bite_on()),   -- dark: a one-time filter
 $h$),
 -- world.building_yard: + needs (the door's sentence), folded into buildable
 ('world.building_yard(uuid)', 1,
@@ -723,6 +770,24 @@ $h$        'makeable', v_tier is not null and v_tier >= k.ws_tier,
         -- 0133: the skills FITTING it needs that you lack — public.mount_fitting's own E_NEEDS_SKILL
         -- sentence, or null. Making it needs none.
         'needs', public.requirements_refusal(v_player, 'item', k.code),
+$h$),
+-- world.skills: the Academy's effect / pct_per_level from skill_effects (scope company) — one home
+('world.skills()', 1,
+$h$               'code', s.code, 'name', s.name, 'effect', s.effect,
+               'pct_per_level', s.pct_per_level, 'blurb', s.blurb,
+               'takes_effect', (s.effect = any(v_read))
+$h$,
+$h$               -- 0133: what a level gives is public.skill_effects' (scope company); a skill with no
+               -- company effect reads NONE / 0.00, as its skills row always said (asserted, as text).
+               'code', s.code, 'name', s.name, 'effect', coalesce(ce.stat, 'NONE'),
+               'pct_per_level', coalesce(ce.pct_per_level, 0.00::numeric(5,2)), 'blurb', s.blurb,
+               'takes_effect', (coalesce(ce.stat, 'NONE') = any(v_read))
+$h$),
+('world.skills()', 2,
+$h$        join public.skill_groups g on g.code = pr.group_code));
+$h$,
+$h$        join public.skill_groups g on g.code = pr.group_code
+        left join public.skill_effects ce on ce.skill_code = s.code and ce.scope = 'company'));   -- 0133
 $h$);
 
 create or replace function pg_temp.recut_0133(p_fn text)
@@ -763,7 +828,7 @@ begin
   for d in select * from defs_before_0133
             where fn in ('world.ship_stats(uuid)', 'world.ship_budget(uuid)', 'world.ship_view(uuid)',
                          'public.player_skill_bonus(uuid, text)', 'public.fleet_officer_bonus(uuid, text)',
-                         'world.building_yard(uuid)', 'world.workstation(uuid, uuid)') loop
+                         'world.building_yard(uuid)', 'world.workstation(uuid, uuid)', 'world.skills()') loop
     v_def := d.def;
     v_def := replace(v_def, 'CREATE OR REPLACE FUNCTION ' || split_part(d.fn, '(', 1) || '(',
                      'CREATE OR REPLACE FUNCTION pg_temp.' || split_part(split_part(d.fn, '(', 1), '.', 2) || '_before_0133(');
@@ -804,6 +869,8 @@ select f.id as fleet_id, sp.specialty,
 create temp table yards_after_0133 on commit drop as
 select b.port_id, world.building_yard(b.port_id) as new_v, pg_temp.building_yard_before_0133(b.port_id) as old_v
   from public.port_buildings b where b.kind = 'building_yard';
+create temp table skills_after_0133 on commit drop as
+select world.skills() as new_v, pg_temp.skills_before_0133() as old_v;
 create temp table ws_after_0133 on commit drop as
 select b.port_id, world.workstation(b.port_id, null) as new_v, pg_temp.workstation_before_0133(b.port_id, null) as old_v
   from public.port_buildings b where b.kind = 'workstation';
@@ -1000,18 +1067,12 @@ end $$;
 create temp table lit_reads_0133 (what text, hulls bigint, ms numeric) on commit drop;
 do $$
 declare
-  v_t0 timestamptz;
   v_n  bigint := (select count(*) from hulls_before_0133 where is_npc);
   r    jsonb := '{}'::jsonb;
 begin
   begin
     update public.world_config set value = 'true'::jsonb where key = 'skills_bite';
-    v_t0 := clock_timestamp();
-    perform voyage.ship_speed(h.ship_id), public.ship_hold_capacity(h.ship_id) from hulls_before_0133 h where h.is_npc;
-    r := r || jsonb_build_object('speed+hold', round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
-    v_t0 := clock_timestamp();
-    perform world.ship_view(h.ship_id) from hulls_before_0133 h where h.is_npc;
-    r := r || jsonb_build_object('ship_view', round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
+    r := pg_temp.reads_now_0133();
     raise exception 'LIT_ROLLBACK_0133';
   exception when others then
     if sqlerrm <> 'LIT_ROLLBACK_0133' then raise; end if;
@@ -1115,6 +1176,11 @@ begin
   if v_bad <> 0 or (select count(*) from ws_after_0133) = 0 then
     raise exception '0133 self-assert FAIL: % workshop(s) whose answer is not the pre-image plus needs = null', v_bad;
   end if;
+  -- the Academy (world.skills) = the pre-image, as text, now reading skill_effects
+  if (select new_v::text is distinct from old_v::text from skills_after_0133)
+     or (select jsonb_array_length(new_v->'skills') from skills_after_0133) <> (select count(*) from public.skills) then
+    raise exception '0133 self-assert FAIL: world.skills over skill_effects is not the pre-image';
+  end if;
   insert into proven_0133 values ('caps', format('%s companies at ship_max %s; %s yards, %s workshops',
     (select count(*) from public.players), public.wc_int('ship_max'), (select count(*) from yards_after_0133), (select count(*) from ws_after_0133)));
 
@@ -1156,9 +1222,8 @@ begin
   insert into proven_0133 values ('catalogue', format('%s effects (4 company, 132 hull, %s other), 0 requirements',
     (select count(*) from public.skill_effects), (select count(*) from public.skill_effects where line_code is null and scope <> 'company')));
 
-  -- (g) item_level_asks: empty (pre-image and now), and no live body names it any more (positive
-  --     control: mount_fitting's pre-image did). ship_fittings_retired_0132: no body, view or FK
-  --     references it (positive control: a planted body that names it is seen by the same scan).
+  -- (g) item_level_asks: empty (pre-image and now), and no live body, view or FK names it any more
+  --     (positive controls: mount_fitting's pre-image did; a planted body that names it is seen).
   if (select level_asks from before_0133) <> 0 or (select count(*) from public.item_level_asks) <> 0 then
     raise exception '0133 self-assert FAIL: item_level_asks is not empty (% row(s)) — convert each to a skill requirement before dropping it',
       (select count(*) from public.item_level_asks);
@@ -1169,14 +1234,14 @@ begin
   select count(*), string_agg(n.nspname || '.' || p.proname, ', ') into v_bad, v_list
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname not in ('pg_catalog', 'information_schema') and n.nspname not like 'pg\_%'
-     and (p.prosrc ~* 'item_level_asks' or p.prosrc ~* 'ship_fittings_retired_0132');
+     and p.prosrc ~* 'item_level_asks';
   if v_bad <> 0 then
-    raise exception '0133 self-assert FAIL: live bodies still name item_level_asks or ship_fittings_retired_0132: %', v_list;
+    raise exception '0133 self-assert FAIL: live bodies still name item_level_asks: %', v_list;
   end if;
   begin
     execute $planted$create function public.zz_planted_reader_0133() returns bigint language sql as
-      'select count(*) from public.ship_fittings_retired_0132'$planted$;
-    if (select count(*) from pg_proc p where p.prosrc ~* 'ship_fittings_retired_0132') <> 1 then
+      'select count(*) from public.item_level_asks'$planted$;
+    if (select count(*) from pg_proc p where p.prosrc ~* 'item_level_asks') <> 1 then
       raise exception '0133 self-assert FAIL: the reader scan did not see a planted reader — it proves nothing';
     end if;
     raise exception 'CONTROL_ROLLBACK_0133';
@@ -1187,14 +1252,12 @@ begin
     raise exception '0133 self-assert FAIL: the planted reader was not rolled back';
   end if;
   if exists (select 1 from pg_depend dp join pg_rewrite rw on rw.oid = dp.objid
-              where dp.refobjid in ('public.ship_fittings_retired_0132'::regclass, 'public.item_level_asks'::regclass)
+              where dp.refobjid = 'public.item_level_asks'::regclass
                 and dp.classid = 'pg_rewrite'::regclass)
-     or exists (select 1 from pg_constraint
-                 where confrelid in ('public.ship_fittings_retired_0132'::regclass, 'public.item_level_asks'::regclass)) then
-    raise exception '0133 self-assert FAIL: a view or a foreign key still references item_level_asks or ship_fittings_retired_0132';
+     or exists (select 1 from pg_constraint where confrelid = 'public.item_level_asks'::regclass) then
+    raise exception '0133 self-assert FAIL: a view or a foreign key still references item_level_asks';
   end if;
-  insert into proven_0133 values ('retired', format('item_level_asks 0 rows, read by nothing; ship_fittings_retired_0132 %s rows, read by nothing',
-    (select retired_rows from before_0133)));
+  insert into proven_0133 values ('retired', 'item_level_asks 0 rows, read by nothing');
 
   -- (h) THE RE-CUTS: each new body reverses to its pre-image hunk by hunk; ACLs unmoved; the untouched
   --     bodies untouched; the catalogue (skills, ship_classes, item_kinds, class_profile, ship_lines) unmoved
@@ -1276,8 +1339,8 @@ begin
   --     stat and the barca (a small hull) unmoved; the bonuses listed by source
   v_nau_d := v_p->'dark_nau';
   v_nau_l := v_p->'lit_nau';
-  if coalesce((v_nau_l->>'sighting')::numeric <> (v_nau_d->>'sighting')::numeric * 1.12
-     or (v_nau_l->>'speed')::numeric <> (v_nau_d->>'speed')::numeric * 1.06
+  if coalesce((v_nau_l->>'sighting') <> round((v_nau_d->>'sighting')::numeric * 1.12, scale((v_nau_d->>'sighting')::numeric))::text
+     or (v_nau_l->>'speed') <> round((v_nau_d->>'speed')::numeric * 1.06, scale((v_nau_d->>'speed')::numeric))::text
      or (v_nau_l->>'sighting')::numeric = (v_nau_d->>'sighting')::numeric
      or exists (select 1 from jsonb_object_keys(v_nau_d) k
                  where k not in ('sighting', 'speed') and (v_nau_l->>k)::numeric is distinct from (v_nau_d->>k)::numeric)
@@ -1339,35 +1402,31 @@ begin
     raise exception '0133 self-assert FAIL: the probe world was not rolled back';
   end if;
 
-  -- (l) MERCHANT READS: dark after ≤ 2 × before + 500 ms (the arrivals sweep's budget is 10 s for 892 hulls)
+  -- (l) MERCHANT READS, DARK ≈ BEFORE: each the faster of two passes; dark ≤ before × 1.15 + 50 ms (the
+  --     arrivals sweep's budget is 10 s, and prod is already near it)
   for h in select b.what, b.ms as before_ms, a.ms as after_ms from reads_0133 b
              join reads_0133 a on a.what = b.what and a.phase = 'after' where b.phase = 'before' loop
-    if h.after_ms > 2 * h.before_ms + 500 then
+    if h.after_ms > h.before_ms * 1.15 + 50 then
       raise exception '0133 self-assert FAIL: the merchant % read regressed dark: % ms → % ms', h.what, h.before_ms, h.after_ms;
     end if;
   end loop;
 end $$;
 
--- ── 7. LAST: the FKs to skills and the two drops — one short retried step, the fixed lock order ─
+-- ── 7. LAST: drop item_level_asks, the FKs to skills — one short retried step, NOWAIT, fixed order ─
 create temp table swap_0133 (what text, ms numeric, at timestamptz) on commit drop;
-select set_config('lock_timeout', '2s', true);   -- step 3 queues every ship read behind it: keep the wait short
 insert into swap_0133 (what, ms, at)
 select 'last', pg_temp.locked_0133($last$
-  -- 1. SHARE ROW EXCLUSIVE on skills: the two FKs to skills(code)
-  lock table public.skills in share row exclusive mode;
+  -- 1. item_kinds, then item_level_asks (its FK triggers live on item_kinds) — NOWAIT: never wait holding a lock
+  lock table public.item_kinds in access exclusive mode nowait;
+  lock table public.item_level_asks in access exclusive mode nowait;
+  drop table public.item_level_asks;
+  -- 2. SHARE ROW EXCLUSIVE on skills, NOWAIT: the two FKs to skills(code)
+  lock table public.skills in share row exclusive mode nowait;
   alter table public.skill_effects add constraint skill_effects_skill_code_fkey
     foreign key (skill_code) references public.skills(code);
   alter table public.skill_requirements add constraint skill_requirements_skill_code_fkey
     foreign key (skill_code) references public.skills(code);
-  -- 2. item_kinds, then item_level_asks (its FK triggers live on item_kinds)
-  lock table public.item_kinds in access exclusive mode;
-  lock table public.item_level_asks in access exclusive mode;
-  drop table public.item_level_asks;
-  -- 3. ships, then the retired table (its FK triggers live on ships and item_kinds)
-  lock table public.ships in access exclusive mode;
-  lock table public.ship_fittings_retired_0132 in access exclusive mode;
-  drop table public.ship_fittings_retired_0132;
-$last$, 'the last step (FKs to skills; drop item_level_asks; drop ship_fittings_retired_0132)'), clock_timestamp();
+$last$, 'the last step (drop item_level_asks; FKs to skills)'), clock_timestamp();
 
 -- ── SELF-ASSERT (light: catalogue reads) ───────────────────────────────────────────────────────
 do $$
@@ -1376,8 +1435,8 @@ declare
   v_notes text := '';
   v_p     jsonb := (select j from probe_0133);
 begin
-  if to_regclass('public.item_level_asks') is not null or to_regclass('public.ship_fittings_retired_0132') is not null then
-    raise exception '0133 self-assert FAIL: item_level_asks or ship_fittings_retired_0132 is still there';
+  if to_regclass('public.item_level_asks') is not null then
+    raise exception '0133 self-assert FAIL: item_level_asks is still there';
   end if;
   if (select count(*) from pg_constraint
        where conname in ('skill_effects_skill_code_fkey', 'skill_requirements_skill_code_fkey') and contype = 'f') <> 2
@@ -1390,11 +1449,11 @@ begin
              join reads_0133 a on a.what = b.what and a.phase = 'after'
              left join lit_reads_0133 l on l.what = b.what
             where b.phase = 'before' order by b.what desc loop
-    v_notes := v_notes || format('%s over %s merchant hull(s) %s ms before → %s ms dark → %s ms lit; ',
+    v_notes := v_notes || format('%s over %s merchant hull(s) (faster of 2) %s ms before → %s ms dark → %s ms lit; ',
                                  r.what, r.hulls, r.before_ms, r.after_ms, r.lit_ms);
   end loop;
 
-  raise notice '0133 self-assert ok: A SKILL MAKES THE SHIP BETTER (dark: skills_bite false). DARK = THE PRE-IMAGE — STATS: %. BUDGETS + SHIP_VIEW: % (ship_view = the pre-image plus bonuses = []). COMPANY EFFECTS: % = the pre-image (player_skill_bonus over skill_effects). OFFICER BONUSES: % = the pre-image. CAPS / REFUSALS / YARDS: % — every company''s hull cap is ship_max, no requirement refuses any company any hull or item, every yard and workshop answer = the pre-image plus needs = null. CATALOGUE: % (company rows mirror skills.effect / pct_per_level; hull rows = every line''s two traits × its sizes). RETIRED: %, both dropped in the last step. Ten bodies reverse to their pre-images, ACLs unmoved; ship_slots / skill_level / skill_level_at / ship_racks / class_budget untouched; skills / ship_classes / item_kinds / class_profile / ship_lines unmoved; no new body reads is_npc; no new entry point, the new tables and functions server-only. PROBE (own company, rolled back) — DARK: trained skills + planted requirements moved nothing (build: %; cap refusal: %). LIT: PRT Medium Hulls III → nau sighting % → %, speed % → % (+12%% / +6%%, nothing else; the barca unmoved), listed as "Portuguese Medium Hulls III · +12%% sighting / +6%% speed"; Deck Management II → Deck 56 → 61; Gun Drill II → two guns 16 → 14 Hands; Command II → officer bonus % → %, hull cap % → % (a % refused: %); requirements: %, figures %; %; the yard serves "%", the workshop "%"; met → FIT on, BUILD stops at the shed as dark. A merchant lit: her loadout mounted (% units = her pattern) and her hull read the same lit as dark. READS: %LOCKS: nothing anyone waits on before §7; the last step % ms; held % ms from it to the end of the file.',
+  raise notice '0133 self-assert ok: A SKILL MAKES THE SHIP BETTER (dark: skills_bite false). DARK = THE PRE-IMAGE — STATS: %. BUDGETS + SHIP_VIEW: % (ship_view = the pre-image plus bonuses = []). COMPANY EFFECTS: % = the pre-image (player_skill_bonus over skill_effects). OFFICER BONUSES: % = the pre-image. CAPS / REFUSALS / YARDS: % — every company''s hull cap is ship_max, no requirement refuses any company any hull or item, every yard and workshop answer = the pre-image plus needs = null. CATALOGUE: % (company rows mirror skills.effect / pct_per_level; hull rows = every line''s two traits × its sizes). RETIRED: %, dropped in the last step (ship_fittings_retired_0132 left for a later migration). ACADEMY: world.skills reads skill_effects, = the pre-image as text. Eleven bodies reverse to their pre-images, ACLs unmoved; ship_slots / skill_level / skill_level_at / ship_racks / class_budget untouched; skills / ship_classes / item_kinds / class_profile / ship_lines unmoved; no new body reads is_npc; no new entry point, the new tables and functions server-only. PROBE (own company, rolled back) — DARK: trained skills + planted requirements moved nothing (build: %; cap refusal: %). LIT: PRT Medium Hulls III → nau sighting % → %, speed % → % (+12%% / +6%%, rounded to the stat''s scale, nothing else; the barca unmoved), listed as "Portuguese Medium Hulls III · +12%% sighting / +6%% speed"; Deck Management II → Deck 56 → 61; Gun Drill II → two guns 16 → 14 Hands; Command II → officer bonus % → %, hull cap % → % (a % refused: %); requirements: %, figures %; %; the yard serves "%", the workshop "%"; met → FIT on, BUILD stops at the shed as dark. A merchant lit: her loadout mounted (% units = her pattern) and her hull read the same lit as dark. READS: %RE-MEASURE ON PROD BEFORE THROWING skills_bite (arrivals budget 10 s). LOCKS: nothing anyone waits on before §7; ships never locked; the last step (NOWAIT) % ms; held % ms from it to the end of the file.',
     (select v from proven_0133 where k = 'stats'), (select v from proven_0133 where k = 'budget'),
     (select v from proven_0133 where k = 'company'), (select v from proven_0133 where k = 'officers'),
     (select v from proven_0133 where k = 'caps'), (select v from proven_0133 where k = 'catalogue'),
