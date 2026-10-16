@@ -80,6 +80,12 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
   is T1); Lisbon's Build face lists the Portuguese hulls first (the two new ones dimmed) and the rest under
   "Built only in other countries", each with its flag; Fluit's tray names The Netherlands, its yards, and
   `Fluit needs Dutch Light Hulls III and Dutch Medium Hulls I — ship skills are not in use yet`.
+- **CI round 1 (PR #139, `b7ccfb2`):** build, disposable-chain (0135 applied on real Postgres over main's 0134
+  snapshot), the three pglite gates, npc-on-world, shards 2/3, 3/3, npc 1/2, npc 2/2 and **db** green. The db
+  shard ran the growth test (`db.chain.spec.ts:672`, 46 min), which passed, so the local 0108 timing failure
+  above is this PC's wasm speed and not the chain. **Shard 1/3 was red:** `tests/rpc.surface.spec.ts:103`
+  still pinned the snapshot's `ship_classes` to 3. Fixed: it now counts 3 + `data/ships.generated.json`'s
+  hulls and requires line / size / role / tech on every class (passed locally against the built image).
 
 ## 2026-10-17 — the 1280 map "lost its merchants" after a resize: it did not — `osn-map-resize-merchants`
 
