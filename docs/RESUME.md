@@ -6,6 +6,18 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 
 ---
 
+# ▼ RESUME ANCHOR — 2026-10-16 17:20 KST (08:20 UTC) — HANDOVER — READ THIS FIRST ▼
+
+**Owner left for the day; continue on the other computer. Everything below this anchor is HISTORY.**
+
+- **Prod DB head 0134 = main.** Live since this morning: 0130 S8 countries & yards, #134 map fixes, 0131 S9 skills queue, 0132 S10 gear racks, 0133 S11 skill effects (DARK, `skills_bite` false), 0134 arrivals speed. Cron clock: all 7 jobs active (checked after each push).
+- **In progress, NOT merged, NOT on prod: S12 Wave A (52 hulls + gear) = migration 0135, branch `osn-0135-wave-a`** (WIP commit pushed at handover). Read the branch's DEV_LOG/commit message for what's done; finish it, then: one adversarial review (with read-only prod queries) → real-Postgres CI `disposable-chain` green (read its log TO THE LAST ERROR — Docker rate-limit noise hid a real failure once) → deploy per `docs/DEPLOY_RUNBOOK.md`: `unwind_the_clock()` → wait no running jobs → `supabase db push --linked` → `wind_the_clock()` → merge immediately.
+- **Next after S12:** 0136 arrivals speed step 2 — `port_offers` called per row inside `trade_routes`. Arrivals on prod after 0134: avg 3.60 s, p95 5.65 s, max 10.30 s (budget 10 s). `skills_bite` stays false until arrivals have headroom (lit ≈ 2× merchant ship reads) — re-measure on prod before lighting.
+- **Owner decisions held ("leave as is"):** losing merchant laps; MUG capital at Surat; Acapulco at globe zoom opens Veracruz; city economy switch.
+- **Lessons this session:** PG 17 (prod/CI) re-plans SQL-language function bodies per call → hot helpers are PL/pgSQL; never `array_agg(x order by <constant>)`; db push holds all locks to commit → heavy compares first, hot-table locks last with NOWAIT retry; full Acceptance on main is checked once at the end of the batch (not yet run for #133–#138).
+
+---
+
 # ▼ RESUME ANCHOR — 2026-10-17 — READ THIS FIRST ▼
 
 **Everything below this anchor is HISTORY.**
