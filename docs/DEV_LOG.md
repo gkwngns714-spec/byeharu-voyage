@@ -5,6 +5,38 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — the 1280 map "lost its merchants" after a resize: it did not — `osn-map-resize-merchants`
+
+Brief: `map.hulls` (390 → 1280, "≥ 2 merchant marks", got 0–1 for 60 s; CI 38917698523, 38864772736,
+38845860625) and `map.merchants` "wide" ("no merchant hull on the glass"; CI 38810111728, 38831207542).
+Suspected a real resize bug in the culling / thinning / roster. **Proven not a game defect; the specs
+asserted the sea's state.** No `src/` change.
+- **Evidence (CI trace 38917698523, hulls)**: DOM snapshots carry every mark's chart position. Just before
+  the resize the phone drew 13 merchants; the 1280 × 844 view is the SAME centre and 14.88° span (chartView's
+  stated design: a resize keeps centre + horizontal span), i.e. 34.3°N–43.1°N where the phone's was 28.8°
+  tall. Exactly **1** of the 13 lay inside that band (with shipMarks' 6 % margin) and the 1280 glass drew
+  exactly that one, tracking it for 60 s; the rest were off Morocco / the Canaries / Biscay.
+- **Reproduced locally** (PGlite world, `vite preview` :4198, a scratch spec dumping each mark's
+  translate + the svg viewBox): phone 20 marks, 7 inside the 1280 band → 1280 drew 6–7 (one was in the 6 %
+  margin edge); back to 390 → 21. Every merchant in the band is drawn; nothing is culled wrongly, the roster
+  is not dropped on resize (sea_roster reads continue), thinning cell is pixel-sized and finer at 1280.
+- **merchants "wide"**: `merchantsOnTheGlass` waited for 2 on the WHOLE glass, then `hullInView` hunted in a
+  smaller tap zone (60/120/100/120 px insets) and threw 24 s in.
+- **Fix (tests only, one helper)**: `tests/seaFrame.fixture.ts` — `pullBackUntilMerchants(page, { zone,
+  min, maxPresses, maxUnitsPerPx })`, the ONE "set the merchants-on-the-glass precondition" loop (moved out of
+  map.merchants). `map.hulls` calls it at each width, capped at `HULL_GROUP_MAX_UNITS_PER_PX` so its group
+  claims stay meaningful; `map.merchants` wide waits in `TAP_ZONE`, the same zone `hullInView` now reads.
+- **Open for the owner (design, not a bug)**: keeping the span on resize means a wide desktop window shows a
+  thin latitude band — Iberia at 58 % on 1280 × 844 is 8.8° tall — and at some minutes it is genuinely empty
+  sea. If a resized window should keep the DENSITY (°/px) instead, that is a chartView change to decide.
+- **CI on this PR (run 38927914130)**: both target tests green; `map.goto` "wide, a mouse" red — a third
+  spec race, same family: link 1 (Setubal) rang the marker (present in the press's after-snapshot), then the
+  assertion MESSAGE's `await link.textContent()` took 10 s on the runner and the 4 s marker (GOTO_MARK_MS)
+  was gone before the check began. Text now read before the press. Passed locally (wide + phone).
+- **Side finding**: a local `npm run build` failed once on 0133's timing self-assert ("merchant ship_view
+  read regressed dark: 1096 → 1615 ms") under machine load and passed on the next build — a timing-based
+  proof that is non-deterministic on a loaded machine.
+
 ## 2026-10-17 — 0134: every arrival is answered in time (arrivals sweep speed) — `osn-0134-arrivals-speed`
 
 RESUME 2026-10-17 "Next" #3: speed up the arrivals sweep before `skills_bite` (lit ≈ 2× merchant ship
