@@ -153,6 +153,12 @@ export interface SnapshotShipClass {
   /** 0130 — the nation code whose flag the hull is shown under (the line's home nation), resolved
    *  through `nationByCode`. */
   line_nation?: string | null
+  /** 0135 — `class_profile.size`: 1 small · 2 light · 3 medium · 4 heavy · 5 capital · 6 flagship. */
+  size?: number | null
+  /** 0135 — `class_profile.role`: trade · combat · explorer · support. */
+  role?: string | null
+  /** 0135 — `class_profile.tech`: T1 · T2 · F (famous). */
+  tech?: string | null
 }
 
 /** The allow-listed knobs. `world_secret` is NOT among them and 0009 asserts that by value. */

@@ -183,7 +183,7 @@ test('shipMarks culls to the view across the seam, thins the merchants to one pe
   const m3 = buildChartModel([], [], [], null, tie)
   expect(shipMarks([], m3.traffic, { x: 0, y: -20, width: 20, height: 40 }, 1).traffic.map((t) => t.fleet.id)).toEqual(['p'])
   // The cell is the largest hull bow to stern — one legible ship.
-  expect(SHIP_CELL_PX).toBeCloseTo(2 * GLYPH.hullHalfLength.nau, 9)
+  expect(SHIP_CELL_PX).toBeCloseTo(2 * GLYPH.hullHalfLength[3], 9)
   // A docked fleet of yours is her port's mark, not a ship.
   const docked: MapFleet = { kind: 'docked', id: 'd', name: 'd', hulls: ['nau'], enduranceDays: 20, portCode: 'LIS' }
   const m4 = buildChartModel([docked], [LISBON], [])

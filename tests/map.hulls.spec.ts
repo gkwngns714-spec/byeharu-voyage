@@ -48,9 +48,12 @@ import {
   HULL_GROUP_MAX_UNITS_PER_PX,
   hullGroup,
   hullGroupHalo,
+  hullClassOfCode,
   hullHalfLengthOf,
   hullPath,
+  hullShapeOf,
   mapFleetsOf,
+  registerHullClasses,
   mapTrafficOf,
   shipPath,
   type HullClass,
@@ -115,6 +118,55 @@ test('the three hulls are three silhouettes, and no two of them are one shape sc
   const corners = CLASSES.map((c) => vertices(hullPath(c)).length)
   expect(corners[0]).toBeLessThan(corners[1])
   expect(corners[1]).toBeLessThan(corners[2])
+})
+
+test('0135: eight silhouettes by rig family × size, not 55 — the live three are three of them', () => {
+  // THE SERVED CLASSES (world.snapshot ship_classes: rig + size) placed by the one rule. Two codes per
+  // shape, through both rigs of each family, so the rule — not a code list — is what is held.
+  const shapes = ['fore-1', 'fore-2', 'fore-3', 'fore-4', 'square-1', 'square-2', 'square-3', 'square-4'] as const
+  const served = shapes.flatMap((sh, i) => {
+    const size = Number(sh.slice(-1))
+    const rigs = sh.startsWith('square') ? ['square', 'mixed'] : ['lateen', 'oared']
+    return rigs.map((rig, j) => ({ code: `wave-a-${i}-${j}`, rig, tier: Math.min(size, 5), size }))
+  })
+  try {
+    registerHullClasses([...served, { code: 'barca', rig: 'lateen', tier: 1, size: 1 },
+      { code: 'carlat', rig: 'lateen', tier: 2, size: 2 }, { code: 'nau', rig: 'square', tier: 3, size: 3 },
+      { code: 'flag', rig: 'square', tier: 5, size: 6 }])
+    for (const c of served) expect(hullShapeOf(c.code)).toBe(`${c.rig === 'square' || c.rig === 'mixed' ? 'square' : 'fore'}-${c.size}`)
+    expect([hullShapeOf('barca'), hullShapeOf('carlat'), hullShapeOf('nau')]).toEqual(['fore-1', 'fore-2', 'square-3'])
+    // a size above heavy draws as heavy; a code nobody served is the class-less hull
+    expect(hullShapeOf('flag')).toBe('square-4')
+    expect(hullClassOfCode('no-such-hull')).toBeNull()
+    expect(hullPath('no-such-hull')).toBe(shipPath(GLYPH.shipHalfLength))
+    // EIGHT shapes, none of them another scaled (or the class-less hull), every one closed, bow up
+    const one = shapes.map((_, i) => `wave-a-${i}-0`)
+    const norm = one.map(normalised)
+    expect(new Set(norm).size).toBe(8)
+    expect(norm).not.toContain(normalised(null))
+    for (const code of one) {
+      const d = hullPath(code)
+      const l = hullHalfLengthOf(code)
+      expect(d.startsWith(`M0 ${-l}`)).toBe(true)
+      expect(d.endsWith('Z')).toBe(true)
+      const beam = Math.max(...vertices(d).map((p) => Math.abs(p.x)))
+      expect(beam).toBeGreaterThan(l * 0.25)
+      expect(beam).toBeLessThan(l * 0.8)
+      // both rigs of a family draw the same picture
+      expect(hullPath(code.replace(/-0$/, '-1'))).toBe(d)
+    }
+    // the live three draw exactly as they did before any snapshot was registered
+    const live = CLASSES.map((c) => hullPath(c))
+    registerHullClasses([])
+    expect(CLASSES.map((c) => hullPath(c))).toEqual(live)
+    // length by size: small < light < medium < heavy
+    registerHullClasses(served)
+    const len = [1, 2, 3, 4].map((sz) => hullHalfLengthOf(`wave-a-${sz - 1}-0`))
+    expect(len).toEqual([...len].sort((a, b) => a - b))
+    expect(new Set(len).size).toBe(4)
+  } finally {
+    registerHullClasses([])
+  }
 })
 
 test('a bigger ship is a bigger, heavier mark — the ramp is the cube root of her burthen', () => {
