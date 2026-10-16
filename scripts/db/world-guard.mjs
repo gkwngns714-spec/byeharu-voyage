@@ -22,6 +22,10 @@
 //                 are still checked to exist and sit where data/sea-places.json says.
 //   * seas/regions/nations   the code+name sets are equal
 //   * market      exactly one port_goods row per (harbour, good) — the market covers the world
+//   * nations     (0130) also each nation's flag and capital, as world-derive.mjs derives them
+//   * ship lines  (0130) public.ship_lines and public.class_profile EQUAL data/ship-lines.json,
+//                 every column, both directions — the eleven lines (builders, arsenal, modifiers,
+//                 traits) and every hull's line / size / role / tech / deck / any_yard
 //
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
@@ -116,6 +120,47 @@ function drift(db_, want) {
   setCheck(db_.seas, want.seas, 'sea')
   setCheck(db_.regions, want.regions, 'region')
   setCheck(db_.nations, want.nations, 'nation')
+  // 0130: a nation's flag and capital are derived too (world-derive.mjs NATIONS / CAPITALS)
+  for (const n of want.nations) {
+    const d = db_.nations.find((x) => x.code === n.code)
+    if (!d) continue
+    if (d.flag_char !== n.flag_char) say(`nation ${n.code}.flag_char: database has ${d.flag_char}, data says ${n.flag_char}`)
+    if ((d.capital_port_code ?? null) !== (n.capital_port_code ?? null)) {
+      say(`nation ${n.code}.capital: database has ${d.capital_port_code}, data says ${n.capital_port_code}`)
+    }
+  }
+
+  // ship lines and class profiles (0130) — data/ship-lines.json, every column, both directions
+  const norm = (v) => JSON.stringify(v, (_k, x) => (x && typeof x === 'object' && !Array.isArray(x)
+    ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x))
+  const wLines = new Map(want.shipLines.map((l) => [l.code, l]))
+  for (const l of db_.shipLines) if (!wLines.has(l.code)) say(`ship line ${l.code} is in the database but not in data/ship-lines.json`)
+  for (const l of want.shipLines) {
+    const d = db_.shipLines.find((x) => x.code === l.code)
+    if (!d) { say(`ship line ${l.code} (${l.name}) is in data/ship-lines.json but not in public.ship_lines`); continue }
+    const pairs = [
+      ['name', d.name, l.name], ['home_nation', d.home_nation, l.homeNation],
+      ['builder_nations', norm(d.builder_nations), norm(l.builderNations)],
+      ['arsenal_port', d.arsenal_port ?? null, l.arsenalPort ?? null], ['philosophy', d.philosophy, l.philosophy],
+      ['modifiers', norm(d.modifiers), norm({ mult: l.mult, add: l.add })], ['traits', norm(d.traits), norm(l.traits)],
+    ]
+    for (const [col, got, wanted] of pairs) {
+      if (String(got) !== String(wanted)) say(`ship line ${l.code}.${col}: database has ${got}, data says ${wanted}`)
+    }
+  }
+  const wProf = new Map(want.classProfiles.map((c) => [c.class, c]))
+  for (const c of db_.classProfiles) if (!wProf.has(c.class_code)) say(`class profile ${c.class_code} is in the database but not in data/ship-lines.json`)
+  for (const c of want.classProfiles) {
+    const d = db_.classProfiles.find((x) => x.class_code === c.class)
+    if (!d) { say(`class profile ${c.class} is in data/ship-lines.json but not in public.class_profile`); continue }
+    const pairs = [
+      ['line', d.line_code, c.line], ['size', Number(d.size), c.size], ['role', d.role, c.role],
+      ['tech', d.tech, c.tech], ['deck', Number(d.deck), c.deck], ['any_yard', Boolean(d.any_yard), c.anyYard === true],
+    ]
+    for (const [col, got, wanted] of pairs) {
+      if (String(got) !== String(wanted)) say(`class profile ${c.class}.${col}: database has ${got}, data says ${wanted}`)
+    }
+  }
 
   // market coverage
   const expected = want.ports.length * want.goods.length
@@ -161,25 +206,38 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       join public.ports p on p.id = s.port_id join public.goods g on g.id = s.good_id`)).rows
   db_.seas = (await db.query(`select code, name from public.seas`)).rows
   db_.regions = (await db.query(`select code, name from public.regions`)).rows
-  db_.nations = (await db.query(`select code, name from public.nations`)).rows
+  db_.nations = (await db.query(`select code, name, flag_char, capital_port_code from public.nations`)).rows
+  // 0130: the eleven lines and every hull's profile (numeric jsonb values read back as numbers)
+  db_.shipLines = (await db.query(`
+    select code, name, home_nation, builder_nations, arsenal_port, philosophy, modifiers, traits
+      from public.ship_lines order by code`)).rows
+  db_.classProfiles = (await db.query(`
+    select class_code, line_code, size, role, tech, deck, any_yard from public.class_profile order by class_code`)).rows
   db_.marketRows = (await db.query(`select count(*)::int as n from public.port_goods`)).rows[0].n
 
   const want = deriveWorld()
   want.places = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'sea-places.json'), 'utf8')).places
+  {
+    const lines = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'ship-lines.json'), 'utf8'))
+    want.shipLines = lines.lines
+    want.classProfiles = lines.profiles
+  }
 
   // ── POSITIVE CONTROL: the comparator must SEE a planted drift before it may certify zero ─────
   const wounded = {
     ...want,
     ports: want.ports.slice(1),                                      // one harbour dropped
     goods: want.goods.map((g, i) => (i === 0 ? { ...g, base_value: g.base_value + 500 } : g)), // one value bent
+    shipLines: want.shipLines.map((l, i) => (i === 0 ? { ...l, builderNations: [...l.builderNations, 'ENG'] } : l)), // 0130: one line's builders bent
   }
   const seen = drift(db_, wounded)
   const sawDrop = seen.some((s) => s.includes(`${want.ports[0].code}`))
   const sawBend = seen.some((s) => s.includes('.base_value:'))
-  if (!sawDrop || !sawBend) {
+  const sawLine = seen.some((s) => s.includes('.builder_nations:'))
+  if (!sawDrop || !sawBend || !sawLine) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}) or bent good value was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value or bent ship line was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -202,7 +260,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   log(
     `world-guard ok: the applied world EQUALS data/*.json — ${want.ports.length} harbours, ` +
       `${want.goods.length} goods, ${want.specialtyPairs.length} offers, ` +
-      `${want.places.length} sea places, ${db_.marketRows} market rows ` +
-      `(positive control: a planted dropped-harbour and bent-good-value were both seen)`,
+      `${want.places.length} sea places, ${db_.marketRows} market rows, ${want.shipLines.length} ship lines, ` +
+      `${want.classProfiles.length} class profiles ` +
+      `(positive control: a planted dropped-harbour, bent-good-value and bent ship line were all seen)`,
   )
 }

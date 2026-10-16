@@ -393,6 +393,11 @@ export const NATIONS = [
   ['JPN', 'Japan', '⛩', null],
   ['JOS', 'Joseon', '☰', null],
   ['AYU', 'Ayutthaya', '⛨', null],
+  // 0130 (docs/SHIPS_AND_SKILLS.md §3.2, "three nations added"): the powers that held these
+  // harbours in 1550 as plainly as the twenty above — and the builders of the Arabia & India line.
+  ['GUJ', 'Gujarat Sultanate', '❁', null],
+  ['MLB', 'Malabar', '✹', null],
+  ['BAN', 'Banten', '✧', null],
 ]
 /** Modern country code → the 1550 power, where it is not in dispute. */
 const NATION_BY_COUNTRY = {
@@ -408,7 +413,7 @@ const NATION_BY_COUNTRY = {
 }
 const NATION_OVERRIDE = {
   venice: 'VEN', genoa: 'GEN', naples: 'ESP', palermo: 'ESP', messina: 'ESP',
-  malacca: 'PRT', goa: 'PRT', colombo: 'PRT', 'mozambique-island': 'PRT', sofala: 'PRT',
+  malacca: 'PRT', 'old-goa': 'PRT', colombo: 'PRT', 'mozambique-island': 'PRT', sofala: 'PRT',
   elmina: 'PRT', luanda: 'PRT', macau: 'PRT', nagasaki: 'JPN', hormuz: 'PRT', diu: 'PRT',
   antwerp: 'ESP', bruges: 'ESP', // the Habsburg Netherlands answered to Madrid in 1550
   hamburg: 'HAN', lubeck: 'HAN', bremen: 'HAN', gdansk: 'POL', riga: 'POL',
@@ -416,6 +421,11 @@ const NATION_OVERRIDE = {
   chios: 'GEN',              // the Genoese Maona until 1566
   cagliari: 'ESP',           // Sardinia under the Crown of Aragon
   hadibu: null,              // Socotra answered to the Mahra sultans, not the Porte — an explicit "no seeded power"
+  // 0130. 'old-goa' above was keyed `goa` until 0130 — a key no port carries, so Goa, the
+  // Portuguese capital in the Indies from 1510, derived with no nation at all.
+  surat: 'GUJ', khambhat: 'GUJ',  // the Gujarat Sultanate's ports until the Mughals took Surat in 1573
+  kozhikode: 'MLB', kochi: 'MLB', kannur: 'MLB', kollam: 'MLB', mangaluru: 'MLB', // the Zamorin of Calicut and the Raja of Cochin
+  jakarta: 'BAN', banten: 'BAN',  // Sunda Kelapa was Banten's from 1527
 }
 /** The capitals, set here rather than guessed from the roster. */
 const CAPITALS = {
@@ -423,6 +433,7 @@ const CAPITALS = {
   RUS: 'arkhangelsk', HAN: 'hamburg', VEN: 'venice', GEN: 'genoa', OTT: 'istanbul',
   PER: 'bandar-abbas', MAR: 'safi', MUG: 'surat', MNG: 'guangzhou', JPN: 'sakai',
   JOS: 'busan', AYU: 'ayutthaya',
+  GUJ: 'khambhat', MLB: 'kozhikode', BAN: 'banten', // 0130: Cambay was Gujarat's great port in 1550; Calicut the Zamorin's seat
 }
 
 // ── PORTS: the derived columns ────────────────────────────────────────────────────────────────
