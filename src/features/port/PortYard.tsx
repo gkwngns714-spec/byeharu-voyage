@@ -11,7 +11,7 @@ import {
   Tray,
   type TrayDetent,
 } from '../../components/ui'
-import { HullCountry, WrongYardNote } from '../../live/HullCountry'
+import { HullCountry } from '../../live/HullCountry'
 import { useBuildingYard } from '../../live/useBuildingYard'
 import { useWorld } from '../../live/worldStore'
 import { formatDucats, formatInt, formatTons } from '../../lib/format'
@@ -46,9 +46,9 @@ import type { FleetView, HullMaterial, Refusal, YardHull } from '../../lib/rpc'
 //
 // ── A HULL'S COUNTRY (0130) ────────────────────────────────────────────────────────────────────
 // Every hull belongs to a country's shipbuilding line and shows that country's flag. A hull is
-// built only at build yards in its line's countries (some, like the three first hulls, at any);
-// the server answers `right_yard` from the same rule cmd.do_build refuses with (E_WRONG_YARD), and
-// the tray says which countries can build it rather than leaving the player to find out.
+// built only at build yards in its line's countries (some, like the three first hulls, at any).
+// The server serves both halves of `buildable` — `tier_ok` and `wrong_yard`, the very sentence
+// cmd.do_build refuses with (E_WRONG_YARD) — and the tray prints them as served.
 //
 // ── WHAT THIS FILE DOES NOT KNOW ───────────────────────────────────────────────────────────────
 // Whether a hull can be built here. All of that is `cmd.do_build`'s and arrives answered.
@@ -175,8 +175,12 @@ export function PortYard({
               {`It needs ${formatInt(open.draft)} of depth and this port only has ${formatInt(maxDraft)}. The fleet it joins could never sail back in.`}
             </Note>
           )}
-          {open.right_yard === false && <WrongYardNote builders={open.builders} />}
-          {!open.buildable && tier < open.yard_tier && (
+          {open.wrong_yard && (
+            <Note tone="warning" data-testid="yard-country">
+              {open.wrong_yard}
+            </Note>
+          )}
+          {open.tier_ok === false && (
             <Note tone="warning">
               {`This port can build up to level ${formatInt(tier)}. This ship needs level ${formatInt(open.yard_tier)}.`}
             </Note>

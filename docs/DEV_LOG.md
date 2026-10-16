@@ -18,14 +18,20 @@ deploys: `db push` first, merge after).
 - **`ship_lines`** (11) and **`class_profile`** (side table; the live three PRT, any_yard, sizes
   1-2-3; `ship_classes` untouched, tier = least(size, 5) asserted). Both server-only.
 - **Arsenals**: `public.harbour_buildings` (the one yard-tier rule, 0089) re-cut to read
-  `ship_lines.arsenal_port`; SVQ, AMS, IST, SRT 2→3 and GUA, OSA, BUS 1→3 raised from it.
-- **One country rule** `public.yard_wrong_country(port, class)`: read by `cmd.do_build` (one hunk,
-  after the tier check → `E_WRONG_YARD` with the builders by name and the port's country) and by
-  `world.building_yard` (`buildable`, new `right_yard`, `line`, `line_name`, `line_nation`,
-  `builders`). `world.snapshot()` serves each class's `line` / `line_nation`.
+  `ship_lines.arsenal_port`; SVQ, AMS, IST, SRT 2→3 and GUA, OSA, BUS 1→3 raised from it. **This is
+  the one change to what a player can build**: the nau at those seven yards, and the caravela latina
+  at GUA/OSA/BUS. Everywhere else the live hulls build exactly as before (probed, every yard).
+- **One country rule** `public.yard_wrong_country(port, class)` returns the refusal sentence (or
+  null): `cmd.do_build` raises it as `E_WRONG_YARD` (one hunk, after the tier check); `world.building_yard`
+  computes it once per hull and serves `wrong_yard` (that sentence) and `tier_ok` (the tier half of
+  `buildable`), plus `line`, `line_name`, `line_nation`. `world.snapshot()` serves each class's
+  `line` / `line_nation`.
 - **Client**: `src/live/HullCountry.tsx` — the one flag renderer (tile: flag only; tray: "Country ⚓
-  Portugal"); Codex Ships face and the Build face use it; the Build tray says which countries can
-  build a hull when the server answers `right_yard: false`.
+  Portugal"); Codex Ships face and the Build face use it; the Build tray prints `wrong_yard` and keys
+  the level note on `tier_ok` — it re-derives neither rule.
+- **Prod posture**: the probe's builds go through `pay_city`; a lock wait (55P03 / 40P01) is retried
+  up to 5× and, if it persists, fails as LOCK CONTENTION — never recorded as an outcome. The ports
+  UPDATE runs after the probes. `tests/db.chain.spec.ts` LAST pin → 0130.
 Verified locally: cached-prefix apply of 0130 (self-assert ok in 1.1 s, world guard ok), `tsc -b`,
 `eslint .`, `npm run build` (0130 also applied in the world image), and a throw-away Playwright check
 at 390 px (Codex + Lisbon Build face show ⚓ on all three hulls; screenshots looked at).

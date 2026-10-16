@@ -6,7 +6,10 @@
 -- docs/SHIPS_AND_SKILLS.md §8, step S8 "Countries & yards" — the first build step of the ship grid
 -- (11 lines × 6 sizes × 4 roles × T1/T2/famous). Every later step (skills, gear racks, the 100 new
 -- hulls) hangs a hull on a LINE, and a line on the countries whose yards build it. This file lays
--- that floor and changes nothing a player can build today.
+-- that floor. What a player can build changes in ONE way only: the seven arsenals rise to build-yard
+-- tier 3, so the nau becomes buildable at Seville, Amsterdam, Istanbul and Surat (tier 2 before),
+-- and the caravela latina and the nau at Guangzhou, Osaka and Busan (tier 1 before). Everywhere
+-- else every live hull is built exactly as before (probed, every yard).
 --
 -- ── WHAT SAYS THE OPPOSITE TODAY, NAMED ─────────────────────────────────────────────────────────
 --   * scripts/lib/world-derive.mjs NATION_OVERRIDE keyed Goa as `goa` — a key no port carries
@@ -35,11 +38,12 @@
 --     for a yard's tier, public.harbour_buildings (0089), is re-cut to read ship_lines.arsenal_port,
 --     and the seven rows are raised from it. ports.yard_tier (the repair yard) is untouched.
 -- (5) THE ONE COUNTRY RULE: public.yard_wrong_country(port, class) — null when this port's country
---     may build the class (any_yard, or its nation is among the line's builders), else the
---     E_WRONG_YARD sentence with its figures (the line's country, every builder by name, and this
---     port's country). Read by cmd.do_build (one hunk, after the tier check) and by
---     world.building_yard (buildable + the new right_yard), so the screen and the door cannot
---     disagree. world.snapshot() serves each class's line and line_nation for the Codex flag.
+--     may build the class (any_yard, or its nation is among the line's builders), else the refusal
+--     SENTENCE with its figures (the line's country, every builder by name, and this port's
+--     country). Read by cmd.do_build (one hunk, after the tier check; raised as E_WRONG_YARD) and by
+--     world.building_yard, which computes it ONCE per hull and serves it as `wrong_yard` beside
+--     `tier_ok` (the tier half of `buildable`), so the screen prints the server's sentence and
+--     re-derives neither rule. world.snapshot() serves each class's line and line_nation (the flag).
 --
 -- ── WHAT IT DELIBERATELY DOES NOT DO ────────────────────────────────────────────────────────────
 -- No new hull, no skill, no stat moves (modifiers and traits are recorded, read by nothing yet).
@@ -51,9 +55,13 @@
 -- ── LOCKS, AND THE PROBES ───────────────────────────────────────────────────────────────────────
 -- lock_timeout 5 s; no LOCK TABLE, no set role, no begin/commit. The new tables' FKs take SHARE ROW
 -- EXCLUSIVE on ship_classes / nations (never written by a tick). Row writes: 10 ports rows, at most
--- 7 port_buildings rows, 3 nations rows. Self-asserts hold on a LIVED-IN world: every probe runs on
--- its own founded house and rolls back; counts are measured against pre-images taken in this file,
--- never against an assumed empty world.
+-- 7 port_buildings rows, 3 nations rows. The ports UPDATE runs AFTER the probes, so its row locks are
+-- held only for the short tail of the file. Self-asserts hold on a LIVED-IN world: every probe runs
+-- on its own founded house and rolls back; counts are measured against pre-images taken in this
+-- file, never against an assumed empty world. A probe build goes through pay_city (the city's books);
+-- one that hits lock_timeout / a deadlock is RETRIED (up to 5 times, 0.2 s apart) — never recorded as
+-- a result — and if it still cannot get the lock the file fails as LOCK CONTENTION, never as a
+-- moved outcome. A genuine refusal is recorded on the first try.
 --
 -- SUPERSEDES, by hunks sliced from the LIVE bodies (LF-normalised), each asserted to occur exactly
 -- once and to reverse to its pre-image: cmd.do_build (0072 as cut by 0096/0122), world.building_yard
@@ -91,6 +99,8 @@ declare
   v_view   jsonb;
   v_res    text;
   v_msg    text;
+  v_state  text;
+  v_try    int;
   y        record;
   k        text;
 begin
@@ -113,13 +123,25 @@ begin
        where hi.class_code in ('barca', 'carlat', 'nau') group by hi.item_code
       on conflict (player_id, port_id, item_code) do update set qty = excluded.qty;
       foreach k in array array['barca', 'carlat', 'nau'] loop
-        v_msg := null;
-        begin
-          perform cmd.do_build(v_fleet, jsonb_build_object('class', k, 'name', 'Prova ' || k));
-          raise exception 'PROBE_UNDO_0130';
-        exception when others then
-          v_msg := sqlerrm;
-        end;
+        v_try := 0;
+        loop
+          v_try := v_try + 1;
+          v_msg := null;
+          v_state := null;
+          begin
+            perform cmd.do_build(v_fleet, jsonb_build_object('class', k, 'name', 'Prova ' || k));
+            raise exception 'PROBE_UNDO_0130';
+          exception when others then
+            get stacked diagnostics v_msg = message_text, v_state = returned_sqlstate;
+          end;
+          -- a lock the live world holds (lock_timeout 55P03, deadlock 40P01) is not an answer: retry
+          exit when v_state not in ('55P03', '40P01');
+          if v_try >= 5 then
+            raise exception '0130 self-assert FAIL: LOCK CONTENTION, not a result — BUILD % at % could not get its locks in 5 tries (%: %). Re-run the push.',
+              k, y.code, v_state, v_msg;
+          end if;
+          perform pg_sleep(0.2);
+        end loop;
         v_res := case when v_msg = 'PROBE_UNDO_0130' then 'ok' else split_part(v_msg, ':', 1) end;
         v_out := v_out || jsonb_build_object(y.code || '/' || k, v_res);
         if y.code = 'LIS' and k = 'nau' then v_lis := v_msg; end if;
@@ -178,7 +200,7 @@ insert into public.nations (code, name, flag_char, capital_port_code) values
   ('BAN', 'Banten', '✧', 'BNT')
 on conflict (code) do nothing;
 
--- ── 3. THE PORT FIXES (world-derive.mjs NATION_OVERRIDE) ───────────────────────────────────────
+-- ── 3. THE PORT FIXES (world-derive.mjs NATION_OVERRIDE) — the list; applied in §10 ────────────
 create temp table port_nations_0130 (code text primary key, nation text not null);
 insert into port_nations_0130 values
   ('OLD', 'PRT'),
@@ -186,11 +208,7 @@ insert into port_nations_0130 values
   ('KOZ', 'MLB'), ('KOC', 'MLB'), ('KAN', 'MLB'), ('KOL', 'MLB'), ('MNG', 'MLB'),
   ('JAK', 'BAN'), ('BNT', 'BAN');
 
-update public.ports p
-   set nation_id = n.id
-  from port_nations_0130 w
-  join public.nations n on n.code = w.nation
- where p.code = w.code and p.nation_id is distinct from n.id;
+-- (the UPDATE runs in §10, after the probes)
 
 -- ── 4. THE LINES (data/ship-lines.json `lines`) ────────────────────────────────────────────────
 create table if not exists public.ship_lines (
@@ -297,10 +315,10 @@ set search_path = public, pg_temp
 as $$
   select case
     when cp.class_code is null then
-      format('E_WRONG_YARD: %s belongs to no shipbuilding country, so no build yard can build it.', c.name)
+      format('%s belongs to no shipbuilding country, so no build yard can build it.', c.name)
     when cp.any_yard then null
     when n.code = any(sl.builder_nations) then null
-    else format('E_WRONG_YARD: %s is a ship from %s. Only build yards in %s can build it, and %s',
+    else format('%s is a ship from %s. Only build yards in %s can build it, and %s',
                 c.name, sl.name,
                 case when cardinality(b.names) = 1 then b.names[1]
                      else array_to_string(b.names[1:cardinality(b.names) - 1], ', ') || ' or ' || b.names[cardinality(b.names)] end,
@@ -319,8 +337,9 @@ $$;
 
 comment on function public.yard_wrong_country(uuid, text) is
   '0130 THE ONE COUNTRY RULE: null when this port''s build yard may build the class (class_profile.'
-  'any_yard, or the port''s nation is among its line''s builder_nations), else the E_WRONG_YARD sentence '
-  'with its figures. Read by cmd.do_build (the door) and world.building_yard (the screen), nothing else.';
+  'any_yard, or the port''s nation is among its line''s builder_nations), else the refusal sentence with '
+  'its figures. Read by cmd.do_build (raised as E_WRONG_YARD) and world.building_yard (served as '
+  'wrong_yard, once per hull), nothing else.';
 
 revoke all on function public.yard_wrong_country(uuid, text) from public, anon, authenticated;
 
@@ -359,27 +378,28 @@ $h$  if v_tier < h.yard_tier then
   -- 0130: a hull is built only in its line's countries — the one rule, public.yard_wrong_country.
   v_wrong := public.yard_wrong_country(f.port_id, c.code);
   if v_wrong is not null then
-    raise exception '%', v_wrong using errcode = 'P0001';
+    raise exception 'E_WRONG_YARD: %', v_wrong using errcode = 'P0001';
   end if;
 $h$),
 -- world.building_yard: the screen reads the same rule, and serves the hull's country
 ('world.building_yard(uuid)', 1,
 $h$        'buildable', v_tier is not null and v_tier >= h.yard_tier,
 $h$,
-$h$        'buildable', v_tier is not null and v_tier >= h.yard_tier
-                     and public.yard_wrong_country(p_port, c.code) is null,
-        -- 0130: the hull's country — its line, the flag it is shown under, the countries whose
-        -- yards build it, and whether THIS port is one of them (the one rule, as cmd.do_build reads it).
+$h$        'buildable', v_tier is not null and v_tier >= h.yard_tier and yw.wrong is null,   -- 0130: and its country
+        -- 0130: the two halves of `buildable`, answered here so the screen re-derives neither: the
+        -- tier half, and the country rule's own sentence (null where this port's country builds it).
+        'tier_ok', v_tier is not null and v_tier >= h.yard_tier,
+        'wrong_yard', yw.wrong,
+        -- 0130: the hull's country — its line and the flag it is shown under.
         'line', cp.line_code, 'line_name', sl.name, 'line_nation', sl.home_nation,
-        'builders', to_jsonb(coalesce(sl.builder_nations, '{}'::text[])),
-        'right_yard', public.yard_wrong_country(p_port, c.code) is null,
 $h$),
 ('world.building_yard(uuid)', 2,
 $h$      from public.hull_recipes h join public.ship_classes c on c.code = h.class_code));
 $h$,
 $h$      from public.hull_recipes h join public.ship_classes c on c.code = h.class_code
       left join public.class_profile cp on cp.class_code = c.code      -- 0130
-      left join public.ship_lines sl on sl.code = cp.line_code));      -- 0130
+      left join public.ship_lines sl on sl.code = cp.line_code         -- 0130
+      cross join lateral (select public.yard_wrong_country(p_port, c.code) as wrong) yw));   -- 0130: once per hull
 $h$),
 -- world.snapshot(): each class carries its line and the flag it is shown under (the Codex)
 ('world.snapshot()', 1,
@@ -426,6 +446,19 @@ update public.port_buildings b
    and p.code in (select sl.arsenal_port from public.ship_lines sl where sl.arsenal_port is not null)
    and b.tier < r.tier;
 
+-- ── 10. THE PROBES AFTER, then THE PORT FIXES ──────────────────────────────────────────────────
+-- Probed now, before the ports UPDATE takes its row locks: the live hulls are any_yard (the port's
+-- nation is not read for them), and the control's Dutch builder yards and Lisbon do not move nation
+-- (asserted), so every outcome is the one the world after the UPDATE gives.
+create temp table probe_after_0130 as
+select pg_temp.probe_0130(false) as j, pg_temp.probe_0130(true) as ctl;
+
+update public.ports p
+   set nation_id = n.id
+  from port_nations_0130 w
+  join public.nations n on n.code = w.nation
+ where p.code = w.code and p.nation_id is distinct from n.id;
+
 -- ── SELF-ASSERT ────────────────────────────────────────────────────────────────────────────────
 do $$
 declare
@@ -445,6 +478,7 @@ declare
   v_yards    int;
   v_snap     jsonb;
   v_lis      text;
+  v_dutch    text;
 begin
   -- (a) THREE NATIONS, and only three; each capital resolves to a port it holds.
   if (select count(*) from public.nations) <> (select nations from before_0130) + 3 then
@@ -592,7 +626,7 @@ begin
   -- (h) THE LIVE HULLS ARE BUILT EXACTLY AS BEFORE, at every yard, through the one door (a probe
   --     house of this file's own, rolled back). The only differences allowed are the arsenals'
   --     raised tiers: there a hull a tier-1/2 yard refused (E_YARD_TOO_SMALL) is now built.
-  v_post := pg_temp.probe_0130(false)->'outcomes';
+  v_post := (select j from probe_after_0130)->'outcomes';
   select count(*) into v_yards from public.port_buildings where kind = 'building_yard';
   if v_yards < 30 or (select count(*) from jsonb_object_keys(v_pre->'outcomes')) <> v_yards * 3
      or (select count(*) from jsonb_object_keys(v_post)) <> v_yards * 3 then
@@ -623,7 +657,13 @@ begin
   -- (i) POSITIVE CONTROL: the gate BITES. With the nau tagged a Dutch hull (any_yard off), BUILD
   --     refuses E_WRONG_YARD at every yard outside the Dutch line's builders, and at theirs answers
   --     what it answered before. The sentence names the figures; the yard screen agrees.
-  v_ctl := pg_temp.probe_0130(true);
+  v_ctl := (select ctl from probe_after_0130);
+  -- the control ran before the ports UPDATE: it stands only if no moved port is Lisbon or a Dutch builder
+  if exists (select 1 from port_nations_0130 w
+              where w.code = 'LIS'
+                 or w.nation = any((select builder_nations from public.ship_lines where code = 'NLD')::text[])) then
+    raise exception '0130 self-assert FAIL: a moved port is Lisbon or a Dutch builder — the early control would not stand';
+  end if;
   select count(*), string_agg(e.key || ' ' || e.value, ', ')
     into v_bad, v_list
     from jsonb_each_text(v_ctl->'outcomes') e
@@ -631,7 +671,7 @@ begin
     left join public.nations n on n.id = p.nation_id
    where e.value is distinct from case
            when e.key not like '%/nau' then v_post->>e.key
-           when n.code = any(array['NLD', 'HAN', 'POL', 'DNK', 'SWE']) then v_post->>e.key
+           when n.code = any((select builder_nations from public.ship_lines where code = 'NLD')::text[]) then v_post->>e.key
            when v_post->>e.key = 'ok' then 'E_WRONG_YARD'   -- the tier check runs first
            else v_post->>e.key end;
   if v_bad <> 0 then
@@ -641,18 +681,24 @@ begin
     join public.ports p on p.code = split_part(e.key, '/', 1)
     left join public.nations n on n.id = p.nation_id
    where e.key like '%/nau' and e.value = 'ok'
-     and not coalesce(n.code = any(array['NLD', 'HAN', 'POL', 'DNK', 'SWE']), false);
+     and not coalesce(n.code = any((select builder_nations from public.ship_lines where code = 'NLD')::text[]), false);
   if v_n < 5 or (select count(*) from jsonb_each_text(v_ctl->'outcomes') e where e.value = 'E_WRONG_YARD') <> v_n then
     raise exception '0130 self-assert FAIL: the control refused at % yard(s); % yard(s) outside the Dutch builders build a nau',
       (select count(*) from jsonb_each_text(v_ctl->'outcomes') e where e.value = 'E_WRONG_YARD'), v_n;
   end if;
   v_lis := v_ctl->>'lis_nau';
+  select array_to_string(x.names[1:cardinality(x.names) - 1], ', ') || ' or ' || x.names[cardinality(x.names)]
+    into v_dutch
+    from (select array_agg(n.name order by array_position(sl.builder_nations, n.code)) as names
+            from public.ship_lines sl join public.nations n on n.code = any(sl.builder_nations)
+           where sl.code = 'NLD') x;
   if v_lis is null or position('E_WRONG_YARD: Nau' in v_lis) <> 1
-     or position('The Netherlands, The Hanse, Poland-Lithuania, Denmark-Norway or Sweden' in v_lis) = 0
+     or position(v_dutch in v_lis) = 0
      or position('this port is in Portugal.' in v_lis) = 0 then
     raise exception '0130 self-assert FAIL: the refusal at Lisbon does not carry its figures: %', v_lis;
   end if;
-  if (v_ctl->'lis_view'->>'buildable')::boolean or (v_ctl->'lis_view'->>'right_yard')::boolean
+  if (v_ctl->'lis_view'->>'buildable')::boolean or not (v_ctl->'lis_view'->>'tier_ok')::boolean
+     or 'E_WRONG_YARD: ' || (v_ctl->'lis_view'->>'wrong_yard') is distinct from v_lis
      or v_ctl->'lis_view'->>'line_nation' <> 'NLD' then
     raise exception '0130 self-assert FAIL: the yard screen at Lisbon disagrees with the door: %', v_ctl->'lis_view';
   end if;
@@ -669,7 +715,7 @@ begin
     raise exception '0130 self-assert FAIL: the snapshot does not serve every class''s country';
   end if;
 
-  raise notice '0130 self-assert ok: A SHIP HAS A COUNTRY. +3 nations (GUJ, MLB, BAN), each capital a port it holds; % port(s) changed nation (%) — none outside the ten listed, all ten hold theirs (% harbours still of no nation, % before); % building row(s) changed tier, every one an arsenal''s build yard (%), all seven arsenals tier 3, the rule (harbour_buildings) names every build yard; 11 lines, every builder a nation, every line a tier-3 yard in its own countries; % class(es) profiled, the live three PRT / any yard / sizes 1-2-3, tier = least(size, 5); ship_classes rows, count and constraints unchanged (hash); 4 bodies (do_build, building_yard, snapshot, harbour_buildings) reverse to their pre-images, ACLs unmoved, no new entry point, the rule and tables server-only. PROBE (own house, every one of % build yards, through cmd.do_build): the live hulls'' % outcomes equal the pre-image but at the arsenals'' raised tiers; a barca at every yard. CONTROL (nau tagged Dutch): E_WRONG_YARD at % yard(s) outside the Dutch builders and only there, with its figures; the yard screen agrees. Rolled back.',
+  raise notice '0130 self-assert ok: A SHIP HAS A COUNTRY. +3 nations (GUJ, MLB, BAN), each capital a port it holds; % port(s) changed nation (%) — none outside the ten listed, all ten hold theirs (% harbours still of no nation, % before); % building row(s) changed tier, every one an arsenal''s build yard (%), all seven arsenals tier 3, the rule (harbour_buildings) names every build yard; 11 lines, every builder a nation, every line a tier-3 yard in its own countries; % class(es) profiled, the live three PRT / any yard / sizes 1-2-3, tier = least(size, 5); ship_classes rows, count and constraints unchanged (hash); 4 bodies (do_build, building_yard, snapshot, harbour_buildings) reverse to their pre-images, ACLs unmoved, no new entry point, the rule and tables server-only. PROBE (own house, every one of % build yards, through cmd.do_build): the live hulls'' % outcomes equal the pre-image but at the arsenals'' raised tiers; a barca at every yard. CONTROL (nau tagged Dutch): E_WRONG_YARD at % yard(s) outside the Dutch builders and only there, with its figures; the yard screen serves the door''s own sentence. Lock waits retried, never recorded. Rolled back.',
     v_moved, coalesce(v_ports_l, 'none'), (select count(*) from public.ports where kind = 'HARBOUR' and nation_id is null),
     (select stateless from before_0130), v_raised, coalesce(v_raised_l, 'none'),
     (select count(*) from public.class_profile), v_yards, v_yards * 3,

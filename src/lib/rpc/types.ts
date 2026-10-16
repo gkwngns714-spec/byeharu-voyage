@@ -348,10 +348,12 @@ export interface YardHull {
   line?: string | null
   line_name?: string | null
   line_nation?: string | null
-  /** 0130 — the nation codes whose build yards may build it. */
-  builders?: string[]
-  /** 0130 — whether THIS port's country is one of them (`public.yard_wrong_country`). */
-  right_yard?: boolean
+  /** 0130 — the tier half of `buildable`: this yard's level is high enough. */
+  tier_ok?: boolean
+  /** 0130 — the country half: null where this port's country builds the hull, else the server's
+   *  own refusal sentence (`public.yard_wrong_country`, the one cmd.do_build raises as E_WRONG_YARD).
+   *  Printed as served, never rebuilt here. */
+  wrong_yard?: string | null
   goods: HullMaterial[]
   items: HullMaterial[]
 }

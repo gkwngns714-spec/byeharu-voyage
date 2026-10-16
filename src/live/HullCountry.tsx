@@ -1,4 +1,3 @@
-import { Note } from '../components/ui'
 import { nationNameOf, useWorld } from './worldStore'
 
 // A HULL'S COUNTRY (0130) — the flag of the country whose line it belongs to, and that country's
@@ -25,18 +24,5 @@ export function HullCountry({ nation, compact = false }: { nation: string | null
       {flag && <span aria-hidden>{flag}</span>}
       <span>{name}</span>
     </span>
-  )
-}
-
-/** THE COUNTRY REFUSAL, said before the order is sent: the countries whose build yards may build
- *  this hull, by name ("A, B or C"). Shown where the server answered `right_yard: false`. */
-export function WrongYardNote({ builders }: { builders: readonly string[] | undefined }) {
-  const nationByCode = useWorld((s) => s.nationByCode)
-  const names = (builders ?? []).map((c) => nationNameOf(nationByCode, c))
-  const list = names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`
-  return (
-    <Note tone="warning" data-testid="yard-country">
-      {`Only build yards in ${list} can build this ship.`}
-    </Note>
   )
 }
