@@ -7,7 +7,8 @@
 -- has headroom (lit ≈ 2× merchant ship reads); the next lever named there is "port_offers called per
 -- row inside trade_routes (~555 calls per ranking, ~9 % of a lap start)".
 -- Prod after 0134, cron.job_run_details, byeharu-voyage:arrivals (2026-10-16 07:00–14:00 UTC, ~1,700
--- runs): avg 3.1–3.5 s an hour, p95 5.4–6.0 s, max 7.5–10.8 s (one 38.45 s outlier at 13:07 UTC)
+-- runs): avg 3.1–3.5 s an hour, p95 5.4–6.0 s, max 7.5–10.8 s (one 38.45 s run at 13:07 UTC: a lock wait on
+-- the hourly reconcile — it ended 55 ms after tick_reconcile committed; see DEV_LOG)
 -- against arrivals_tick_budget_ms 10 000.
 --
 -- ── THE PROFILE (prod, READ-ONLY: one statement each, `transaction_read_only` set on, clock_timestamp
@@ -34,6 +35,14 @@
 --     Same answer (asserted over every harbour × every good), same plan after inlining, same ACL.
 -- (3) world.trade_routes' `here` scan reads (1) ONCE per ranking (`pg.good_id in (…)`) instead of
 --     calling port_offers for each of the harbour's 555 market rows. One hunk; nothing else moves.
+-- (4) world.affinity_for(port, good) — the seeding authority of port_goods.affinity (0005; 0048 / 0058
+--     re-derive through it; scripts/tune-balance and the breaktests call it) — read the roster table
+--     itself twice: "is it a specialty here" (an EXISTS) and "where is it produced" (the nearest
+--     source). Both now go through the one reading: public.port_offers, and ports whose
+--     port_offered_goods hold the good. One hunk; affinity_at, the knobs and the distance untouched.
+--     After this file the only reader of port_specialties for "what a city offers" is (1)
+--     (public.rarity_scale / good_rarity count producers per good for rarity — a different question,
+--     left as they are).
 --
 -- ── WHAT IT DELIBERATELY DOES NOT DO ────────────────────────────────────────────────────────────
 -- Change any rule, price, ranking, refusal, schedule, knob, table, client grant or entry point. Touch
@@ -41,10 +50,10 @@
 -- anything across calls. Fold the culture mask into the roster (it stays its own rule).
 --
 -- ── THE PROOF (all in this file; old and new on the SAME snapshot) ──────────────────────────────
--- §1 keeps the pre-image TREE (port_offers, trade_routes, npc_leg_lines — every function on a path
+-- §1 keeps the pre-image TREE (port_offers, trade_routes, npc_leg_lines, affinity_for — every function on a path
 -- from the reads below to a changed body; checked on prod: only npc_leg_lines calls trade_routes, and
 -- only npc_plan calls npc_leg_lines) under pg_temp names. §4 reads old and new IN ONE STATEMENT each
--- and requires byte-equal text: port_offers over every port × every good (and nulls); the rankings of
+-- and requires byte-equal text: port_offers and affinity_for over every port × every good (and nulls); the rankings of
 -- every sampled merchant leg (p_to, twelve rows, as npc_leg_lines asks) and open scans (no p_to, every
 -- row; and a 400 nm radius, five rows) from a spread of harbours; whole lap-start reads (loops + every
 -- leg's lines, which carry the quotes) for 12 merchants. A difference RAISES.
@@ -59,11 +68,11 @@
 -- pg_temp objects. No LOCK TABLE, no set role, no write to any table. Deploy with the clock unwound as
 -- usual (DEPLOY_RUNBOOK): unwind_the_clock() → db push → wind_the_clock().
 --
--- ROLLBACK: a forward migration putting port_offers' and trade_routes' pre-image bodies back (both are
+-- ROLLBACK: a forward migration putting port_offers', trade_routes' and affinity_for's pre-image bodies back (all are
 -- here verbatim as the hunks' OLD text; the self-assert proves each live body reverses to its pre-image)
 -- and dropping public.port_offered_goods.
 -- SUPERSEDES, by hunks sliced from the LIVE bodies (LF-normalised), each asserted to occur exactly once:
--- public.port_offers (0061), world.trade_routes (0061/0080).
+-- public.port_offers (0061), world.trade_routes (0061/0080), world.affinity_for (0005).
 -- VERSION: 0136. Applies on prod head 0135.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -91,7 +100,8 @@ select f.fn,
        (select p.proparallel from pg_proc p where p.oid = f.fn::regprocedure) as par,
        (select l.lanname from pg_proc p join pg_language l on l.oid = p.prolang where p.oid = f.fn::regprocedure) as lang
   from (values ('public.port_offers(uuid, uuid)'),
-               ('world.trade_routes(uuid, uuid, numeric, integer, uuid)')) f(fn);
+               ('world.trade_routes(uuid, uuid, numeric, integer, uuid)'),
+               ('world.affinity_for(uuid, uuid)')) f(fn);
 
 create temp table before_0136 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
@@ -99,7 +109,8 @@ select (select count(*) from public.client_rpc_entry_points()) as entry_points,
 
 -- THE OLD TREE: every function on a path from the reads §4 compares to a changed body. Every overload.
 create temp table tree_0136 (nsp text, name text) on commit drop;
-insert into tree_0136 values ('public', 'port_offers'), ('world', 'trade_routes'), ('public', 'npc_leg_lines');
+insert into tree_0136 values ('public', 'port_offers'), ('world', 'trade_routes'), ('public', 'npc_leg_lines'),
+                             ('world', 'affinity_for');
 
 create or replace function pg_temp.old_sql_0136(p_sql text)
 returns text
@@ -158,9 +169,9 @@ begin
   end loop;
   perform set_config('check_function_bodies', 'on', true);
   select count(*) into v_n from pg_proc where pronamespace = pg_my_temp_schema() and proname like '%\_0136'
-                                          and proname in ('public_port_offers_0136', 'world_trade_routes_0136', 'public_npc_leg_lines_0136');
-  if v_n <> 3 then
-    raise exception '0136 self-assert FAIL: % old cop(ies) made, not 3', v_n;
+                                          and proname in ('public_port_offers_0136', 'world_trade_routes_0136', 'public_npc_leg_lines_0136', 'world_affinity_for_0136');
+  if v_n <> 4 then
+    raise exception '0136 self-assert FAIL: % old cop(ies) made, not 4', v_n;
   end if;
 end $$;
 
@@ -284,6 +295,19 @@ $h$  select exists (select 1 from public.port_specialties s
                   where s.port_id = p_port and s.good_id = p_good)$h$,
 $h$  select exists (select 1 from public.port_offered_goods(p_port) o   -- 0136: the roster's one reading
                   where o.good_id = p_good)$h$),
+('world.affinity_for(uuid, uuid)', 1,
+$h$           exists (
+             select 1 from public.port_specialties s
+              where s.port_id = p_port and s.good_id = p_good
+           ),
+           (select min(voyage.gc_distance_nm(p.lat, p.lon, src.lat, src.lon))
+              from public.port_specialties s
+              join public.ports src on src.id = s.port_id
+             where s.good_id = p_good),$h$,
+$h$           public.port_offers(p_port, p_good),   -- 0136: the roster's one reading (was its own probe)
+           (select min(voyage.gc_distance_nm(p.lat, p.lon, src.lat, src.lon))
+              from public.ports src   -- 0136: the cities whose roster (public.port_offered_goods) holds it
+             where p_good in (select o.good_id from public.port_offered_goods(src.id) o)),$h$),
 ('world.trade_routes(uuid, uuid, numeric, integer, uuid)', 1,
 $h$       and public.port_offers(p_from, pg.good_id)
 $h$,
@@ -334,6 +358,17 @@ select count(*) as n,
   from (select public.port_offers(p.id, g.id) as new_v, pg_temp.public_port_offers_0136(p.id, g.id) as old_v
           from public.ports p cross join public.goods g) z;
 
+-- (a2) the affinity seed, over every port × every good, and the nulls
+create temp table affinity_0136 on commit drop as
+select count(*) as n,
+       count(*) filter (where z.new_v is distinct from z.old_v) as bad,
+       count(distinct z.new_v) as distinct_values,
+       (world.affinity_for(null, null) is not distinct from pg_temp.world_affinity_for_0136(null, null)) as nulls_ok,
+       min(format('%s/%s new %s old %s', z.port_id, z.good_id, z.new_v, z.old_v)) filter (where z.new_v is distinct from z.old_v) as ex
+  from (select p.id as port_id, g.id as good_id, world.affinity_for(p.id, g.id) as new_v,
+               pg_temp.world_affinity_for_0136(p.id, g.id) as old_v
+          from public.ports p cross join public.goods g) z;
+
 -- (b) the rankings
 create temp table ranks_0136 on commit drop as
 select r.*, world.trade_routes(r.f, null, r.radius, r.lim, r.t) as new_v,
@@ -367,6 +402,15 @@ begin
     raise exception '0136 self-assert FAIL: port_offers answers true on % pair(s), the roster holds %', o.yes,
       (select count(*) from public.port_specialties);
   end if;
+  if (select bad from affinity_0136) > 0 or not (select nulls_ok from affinity_0136) then
+    raise exception '0136 self-assert FAIL: affinity_for — % of % (port, good) pairs differ from the pre-image (e.g. %; nulls equal: %)',
+      (select bad from affinity_0136), (select n from affinity_0136), (select ex from affinity_0136), (select nulls_ok from affinity_0136);
+  end if;
+  if (select distinct_values from affinity_0136) < 3 then
+    raise exception '0136 self-assert FAIL: the affinity comparison is vacuous (% distinct value(s))', (select distinct_values from affinity_0136);
+  end if;
+  insert into proven_0136 values ('affinity', format('%s (port, good) pairs (%s distinct affinities) and the nulls = the pre-image',
+    (select n from affinity_0136), (select distinct_values from affinity_0136)));
   insert into proven_0136 values ('offers', format('%s (port, good) pairs (%s offered) and the nulls = the pre-image', o.n, o.yes));
 
   -- (b)
@@ -472,8 +516,8 @@ begin
       raise exception '0136 self-assert FAIL: % changed its ACL, volatility, definer, config, parallel safety or language', d.fn;
     end if;
   end loop;
-  if v_rev <> 2 then
-    raise exception '0136 self-assert FAIL: % bodies checked, not 2', v_rev;
+  if v_rev <> 3 then
+    raise exception '0136 self-assert FAIL: % bodies checked, not 3', v_rev;
   end if;
 
   -- the new reading: one new function, inlinable (SQL, STABLE, invoker, no SET, returns a set), with
@@ -508,6 +552,11 @@ begin
   if strpos(p.src, 'port_specialties') > 0 or pg_temp.occurs_0136(p.src, 'public.port_offered_goods(p_port)') <> 1 then
     raise exception '0136 self-assert FAIL: public.port_offers is not membership in public.port_offered_goods';
   end if;
+  select pr.prosrc as src into p from pg_proc pr where pr.oid = 'world.affinity_for(uuid, uuid)'::regprocedure;
+  if strpos(p.src, 'port_specialties') > 0 or pg_temp.occurs_0136(p.src, 'public.port_offered_goods(src.id)') <> 1
+     or pg_temp.occurs_0136(p.src, 'public.port_offers(p_port, p_good)') <> 1 then
+    raise exception '0136 self-assert FAIL: world.affinity_for still reads the roster table itself';
+  end if;
   select pr.prosrc as src into p from pg_proc pr where pr.oid = 'world.trade_routes(uuid, uuid, numeric, integer, uuid)'::regprocedure;
   if strpos(p.src, 'public.port_offers(') > 0 or pg_temp.occurs_0136(p.src, 'public.port_offered_goods(p_from)') <> 1 then
     raise exception '0136 self-assert FAIL: world.trade_routes does not read public.port_offered_goods once (or still calls port_offers)';
@@ -517,7 +566,7 @@ begin
                            round(100 * (1 - new_ms / greatest(old_ms, 0.1)))), '; ' order by what)
     into v_tim from timing_0136;
 
-  raise notice '0136 self-assert ok: A RANKING READS THE QUAY ONCE — nothing the sweep decides moved. SAME ANSWERS (old tree vs new, one statement each): OFFERS %; RANKINGS %; LAP STARTS %. TIMING (reported, not gated — old tree vs new, the same data, faster of 2 passes): %. BODIES: public.port_offered_goods is THE reading of a city''s roster (SQL, inlinable, server-only); port_offers is membership in it; world.trade_routes reads it once a ranking; 2 bodies reverse to their pre-images, ACL / volatility / definer / config unmoved; no new entry point.',
-    (select v from proven_0136 where k = 'offers'), (select v from proven_0136 where k = 'ranks'),
+  raise notice '0136 self-assert ok: A RANKING READS THE QUAY ONCE — nothing the sweep decides moved. SAME ANSWERS (old tree vs new, one statement each): OFFERS %; AFFINITY %; RANKINGS %; LAP STARTS %. TIMING (reported, not gated — old tree vs new, the same data, faster of 2 passes): %. BODIES: public.port_offered_goods is THE reading of a city''s roster (SQL, inlinable, server-only); port_offers is membership in it; world.trade_routes reads it once a ranking; world.affinity_for reads the roster through it (no second reader); 3 bodies reverse to their pre-images, ACL / volatility / definer / config unmoved; no new entry point.',
+    (select v from proven_0136 where k = 'offers'), (select v from proven_0136 where k = 'affinity'), (select v from proven_0136 where k = 'ranks'),
     (select v from proven_0136 where k = 'laps'), v_tim;
 end $$;
