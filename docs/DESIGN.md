@@ -1010,7 +1010,10 @@ and from 0131 (skills: enrolment + the training queue, docs/SHIPS_AND_SKILLS.md 
 enrolled anywhere but a build yard of that line's countries), `E_SKILL_PREREQ` (a prerequisite not met by
 the time the entry starts, with figures), `E_SKILL_ORDER` (not the next level of its skill),
 `E_SKILL_QUEUE_FULL` (more than `skill_queue_max` levels), and the server-only `E_MERCHANT_FIXED` (a
-merchant's skills are fixed at founding).
+merchant's skills are fixed at founding),
+and from 0132 (gear racks and fitting budgets, docs/SHIPS_AND_SKILLS.md §6.1) `E_OVER_DECK` (a FIT that would
+use more Deck than the hull has left, with figures), `E_OVER_HANDS` (the same for Hands); `E_SLOTS_FULL` now
+names the RACK (`… has no free Mid slot (2 / 2 used)`), and `E_NO_SLOT` / `E_NOT_FITTED` keep their words.
 
 ---
 

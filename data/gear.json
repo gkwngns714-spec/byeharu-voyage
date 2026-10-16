@@ -1,0 +1,39 @@
+{
+  "_": "GEAR I — racks, units, budgets (docs/SHIPS_AND_SKILLS.md §6.1-6.3, step S10, migration 0132).",
+  "_why": "Authored here and guarded (scripts/db/world-guard.mjs), never migration-only. public.gear_racks, public.item_profile, the RACK rows of public.class_slots and public.class_slot_unlocks EQUAL this file, every column, both directions.",
+  "_racks": "A rack takes ANY item of its rack (EVE). High = guns and boarding gear; Mid = sails, rudder, anchor, lookout, instruments; Low = hull, hold, pumps, sheathing; Refit = permanent refits (fitted at a build yard from S13, destroyed when removed); Flourish = the figurehead (no budget). `word` is what the player reads (docs/WORDS.md).",
+  "racks": [
+    { "code": "high", "word": "High", "ord": 1 },
+    { "code": "mid", "word": "Mid", "ord": 2 },
+    { "code": "low", "word": "Low", "ord": 3 },
+    { "code": "refit", "word": "Refit", "ord": 4 },
+    { "code": "flourish", "word": "Flourish", "ord": 5 }
+  ],
+  "_items": "The twelve live fittings are GRADE 1 of their base types (§6.3); effects untouched. deck / hands = what one mounted unit costs of the two fitting budgets (Deck = class_profile.deck, EVE's CPU; Hands = crew_max - ceil(crew_required / 2), EVE's powergrid). active = carries a trigger (S13 makes actives bite; until then every module is passive).",
+  "items": [
+    { "code": "broadside-guns", "baseType": "Long Guns", "rack": "high", "grade": 1, "meta": 0, "deck": 6, "hands": 8, "active": true },
+    { "code": "boarding-gear", "baseType": "Boarding Gear", "rack": "high", "grade": 1, "meta": 0, "deck": 2, "hands": 5, "active": true },
+    { "code": "powder-magazine", "baseType": "Powder Magazine", "rack": "high", "grade": 1, "meta": 0, "deck": 3, "hands": 2, "active": false },
+    { "code": "suit-of-sails", "baseType": "Sails", "rack": "mid", "grade": 1, "meta": 0, "deck": 3, "hands": 4, "active": false },
+    { "code": "bowsprit-and-jib", "baseType": "Headsails", "rack": "mid", "grade": 1, "meta": 0, "deck": 2, "hands": 2, "active": false },
+    { "code": "rudder-and-helm", "baseType": "Rudder", "rack": "mid", "grade": 1, "meta": 0, "deck": 2, "hands": 2, "active": false },
+    { "code": "anchor-and-cable", "baseType": "Anchor", "rack": "mid", "grade": 1, "meta": 0, "deck": 3, "hands": 2, "active": false },
+    { "code": "crows-nest", "baseType": "Lookout", "rack": "mid", "grade": 1, "meta": 0, "deck": 1, "hands": 1, "active": false },
+    { "code": "ballast", "baseType": "Ballast", "rack": "low", "grade": 1, "meta": 0, "deck": 2, "hands": 0, "active": false },
+    { "code": "copper-sheathing", "baseType": "Sheathing", "rack": "low", "grade": 1, "meta": 0, "deck": 3, "hands": 0, "active": false },
+    { "code": "hold-fittings", "baseType": "Hold Frames", "rack": "low", "grade": 1, "meta": 0, "deck": 2, "hands": 0, "active": false },
+    { "code": "figurehead", "baseType": "Figurehead", "rack": "flourish", "grade": 1, "meta": 0, "deck": 0, "hands": 0, "active": false }
+  ],
+  "_classes": "Slots by RACK per hull (§4.3 H/M/L/R + Flourish). The live typed counts convert exactly (barca H1/M2, carlat H2/M3, nau H3/M5/L1/F1 — 0074's rows summed by rack); Refit rows are new. A zero is simply no class_slots row.",
+  "classes": [
+    { "class": "barca", "high": 1, "mid": 2, "low": 0, "refit": 0, "flourish": 0 },
+    { "class": "carlat", "high": 2, "mid": 3, "low": 0, "refit": 1, "flourish": 0 },
+    { "class": "nau", "high": 3, "mid": 5, "low": 1, "refit": 2, "flourish": 1 }
+  ],
+  "_unlocks": "0127's level unlocks converted kind -> rack (barca lookout -> Mid @3, carlat hull -> Low @4, nau weapon -> High @6). Dark while levels_bite is off.",
+  "unlocks": [
+    { "class": "barca", "rack": "mid", "count": 1, "minLevel": 3 },
+    { "class": "carlat", "rack": "low", "count": 1, "minLevel": 4 },
+    { "class": "nau", "rack": "high", "count": 1, "minLevel": 6 }
+  ]
+}

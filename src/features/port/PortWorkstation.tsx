@@ -38,7 +38,8 @@ import type { FleetView, Refusal, WorkstationItem } from '../../lib/rpc'
 // ── GROUPED BY WHAT KIND OF FITTING IT IS (2026-09-13, owner row 84) ──────────────────────────
 // *"crafting should be grouped into categories."* The category is the SERVED `slot` — the kind
 // of slot a fitting goes into (`item_kinds.slot`, 0068: rig, steering, ground-tackle, hull,
-// weapon, lookout, flourish), which is also the rule `cmd.do_fit` counts against (0074). Nothing
+// weapon, lookout, flourish) — the item's TYPE word (since 0132 a fitting goes in its RACK, served
+// on the ship panel; this grouping is the catalogue's, not a capacity). Nothing
 // is invented on this side: the groups are the served codes in the served order, and the heading
 // is that code printed as a word (hyphens to spaces, a capital). The server serves no NAME for a
 // slot today — `SnapshotBuildingKind` names buildings, nothing names slots — so a served heading

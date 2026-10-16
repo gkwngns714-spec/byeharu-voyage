@@ -29,6 +29,8 @@
 //   * skills      (0131) public.skill_groups, public.skills + skill_profile + skill_prereqs EQUAL
 //                 data/skills.json, both directions — every skill's name, group, rank, enrolment,
 //                 line and prerequisites; the 88 new ones' blurb and NONE / 0
+//   * gear        (0132) public.gear_racks, public.item_profile, the RACK rows of public.class_slots
+//                 and public.class_slot_unlocks EQUAL data/gear.json, every column, both directions
 //
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
@@ -190,6 +192,32 @@ function drift(db_, want) {
     }
   }
 
+  // gear (0132) — data/gear.json: the racks, every item's profile, every hull's rack places and the
+  // level unlocks, every column, both directions (a zero in the file is simply no class_slots row)
+  const keyed = (rows, key) => new Map(rows.map((r) => [key(r), r]))
+  const both = (dbMap, wantMap, what, cols) => {
+    for (const k of dbMap.keys()) if (!wantMap.has(k)) say(`${what} ${k} is in the database but not in data/gear.json`)
+    for (const [k, w] of wantMap) {
+      const d = dbMap.get(k)
+      if (!d) { say(`${what} ${k} is in data/gear.json but not in the database`); continue }
+      for (const [col, dcol, wcol] of cols) {
+        if (String(d[dcol]) !== String(w[wcol])) say(`${what} ${k}.${col}: database has ${d[dcol]}, data says ${w[wcol]}`)
+      }
+    }
+  }
+  both(keyed(db_.gearRacks, (r) => r.code), keyed(want.gear.racks, (r) => r.code), 'gear rack',
+    [['word', 'word', 'word'], ['ord', 'ord', 'ord']])
+  both(keyed(db_.itemProfiles, (r) => r.item_code), keyed(want.gear.items, (r) => r.code), 'item profile',
+    [['base_type', 'base_type', 'baseType'], ['rack', 'rack', 'rack'], ['grade', 'grade', 'grade'], ['meta', 'meta', 'meta'],
+      ['deck', 'deck', 'deck'], ['hands', 'hands', 'hands'], ['active', 'active', 'active']])
+  const wantSlots = want.gear.classes.flatMap((c) => want.gear.racks
+    .filter((r) => Number(c[r.code] ?? 0) > 0)
+    .map((r) => ({ class_code: c.class, slot: r.code, count: Number(c[r.code]) })))
+  both(keyed(db_.rackSlots, (r) => `${r.class_code}/${r.slot}`), keyed(wantSlots, (r) => `${r.class_code}/${r.slot}`), 'rack places',
+    [['count', 'count', 'count']])
+  both(keyed(db_.slotUnlocks, (r) => `${r.class_code}/${r.slot}@${r.min_level}`),
+    keyed(want.gear.unlocks, (u) => `${u.class}/${u.rack}@${u.minLevel}`), 'rack unlock', [['count', 'count', 'count']])
+
   // market coverage
   const expected = want.ports.length * want.goods.length
   if (Number(db_.marketRows) !== expected) {
@@ -251,6 +279,14 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     select s.code, n.code as skill, q.level, q.choice from public.skill_prereqs q
       join public.skills s on s.id = q.skill_id join public.skills n on n.id = q.needs_skill_id`)).rows
   db_.marketRows = (await db.query(`select count(*)::int as n from public.port_goods`)).rows[0].n
+  // 0132: the gear racks, item profiles, rack places and unlocks
+  const hasGear = (await db.query(`select to_regclass('public.item_profile') is not null as ok`)).rows[0].ok
+  if (!hasGear) throw new Error('world-guard: public.item_profile is missing — the chain no longer reaches 0132, so the gear cannot be checked')
+  db_.gearRacks = (await db.query(`select code, word, ord from public.gear_racks order by ord`)).rows
+  db_.itemProfiles = (await db.query(`
+    select item_code, base_type, rack, grade, meta, deck, hands, active from public.item_profile order by item_code`)).rows
+  db_.rackSlots = (await db.query(`select class_code, slot, count from public.class_slots order by 1, 2`)).rows
+  db_.slotUnlocks = (await db.query(`select class_code, slot, count, min_level from public.class_slot_unlocks order by 1, 2, 4`)).rows
 
   const want = deriveWorld()
   want.places = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'sea-places.json'), 'utf8')).places
@@ -264,6 +300,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     want.skillGroups = skills.groups
     want.skills = skills.skills
   }
+  want.gear = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'gear.json'), 'utf8'))
 
   // ── POSITIVE CONTROL: the comparator must SEE a planted drift before it may certify zero ─────
   const wounded = {
@@ -272,16 +309,18 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     goods: want.goods.map((g, i) => (i === 0 ? { ...g, base_value: g.base_value + 500 } : g)), // one value bent
     shipLines: want.shipLines.map((l, i) => (i === 0 ? { ...l, builderNations: [...l.builderNations, 'ENG'] } : l)), // 0130: one line's builders bent
     skills: want.skills.map((s, i) => (i === 0 ? { ...s, rank: s.rank + 1 } : s)), // 0131: one skill's rank bent
+    gear: { ...want.gear, items: want.gear.items.map((it, i) => (i === 0 ? { ...it, deck: it.deck + 1 } : it)) }, // 0132: one item's deck bent
   }
   const seen = drift(db_, wounded)
   const sawDrop = seen.some((s) => s.includes(`${want.ports[0].code}`))
   const sawBend = seen.some((s) => s.includes('.base_value:'))
   const sawLine = seen.some((s) => s.includes('.builder_nations:'))
   const sawSkill = seen.some((s) => s.includes(`skill ${want.skills[0].code}.rank:`))
-  if (!sawDrop || !sawBend || !sawLine || !sawSkill) {
+  const sawGear = seen.some((s) => s.includes(`item profile ${want.gear.items[0].code}.deck:`))
+  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}), bent good value, bent ship line or bent skill rank was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank or bent item deck was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -305,7 +344,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     `world-guard ok: the applied world EQUALS data/*.json — ${want.ports.length} harbours, ` +
       `${want.goods.length} goods, ${want.specialtyPairs.length} offers, ` +
       `${want.places.length} sea places, ${db_.marketRows} market rows, ${want.shipLines.length} ship lines, ` +
-      `${want.classProfiles.length} class profiles, ${want.skills.length} skills in ${want.skillGroups.length} groups ` +
-      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line and bent skill rank were all seen)`,
+      `${want.classProfiles.length} class profiles, ${want.skills.length} skills in ${want.skillGroups.length} groups, ` +
+      `${want.gear.racks.length} gear racks, ${want.gear.items.length} item profiles, ${db_.rackSlots.length} rack places ` +
+      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank and bent item deck were all seen)`,
   )
 }

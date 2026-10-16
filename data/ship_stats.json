@@ -35,6 +35,7 @@
       "note": "Four hundred tuns of ship: slow to answer the helm, hard to hurt, and she fights at a distance because she must."
     }
   ],
+  "_slots_retired": "0132: capacity is by RACK now (data/gear.json: High / Mid / Low / Refit / Flourish, guarded). The typed counts below are 0074's pre-image, kept only because scripts/build-stats-0074.mjs generated 0074 from them; nothing reads them as a capacity.",
   "_slots": "How many fittings of each kind a hull may carry, by tier. DESIGN_V1 §1.5, and the owner: 'for tier 1, sail, weapon, anchor would do. and 3 captain slot. it will grow as the tier of the ship grows'. Slots are TYPED, so a tier-3 hull is not simply more of anything.",
   "slots": [
     { "class": "barca",  "rig": 1, "weapon": 1, "ground-tackle": 1, "steering": 0, "hull": 0, "lookout": 0, "flourish": 0, "cabins": 3 },

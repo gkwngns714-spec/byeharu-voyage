@@ -91,6 +91,8 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | the company's levels (the Academy and the merchant sheet) | **Skills** — the Academy face is the Skills screen (0131): groups of skill tiles under **Training** | Captain (for a set of bars) |
 | paying once to start a skill, where it is taught (0131) | **Enrol** (`Enrol · 1,000 🪙`; History: `Enrolled in Gunnery at Lisbon.`) | sign up, register, buy |
 | the skill levels waiting to train (0131) | **Training** (section) · `Train level 3` · `Remove` · `All done · 3 / 10 levels` · *Trains while you are away.* | skill queue, cooldown |
+| where a fitting goes on a ship (0132) | the rack's word: **High** · **Mid** · **Low** · **Refit** · **Flourish** (`Mid 2 / 2`) — served by the server (`gear_racks.word`) | slot kinds as places (rig, ground tackle, steering) |
+| what fittings cost a ship (0132) | **Deck** and **Hands**, each out of its whole (`Deck 12 / 12`, `Hands 16 / 16`) | CPU, powergrid, fitting points |
 | the person in charge of a fleet | **captain** = the player, for their own fleets; a merchant fleet's named **Master** (flavour only) | — |
 
 ## Where the words are checked
