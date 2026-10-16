@@ -5,6 +5,60 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-16 — S9 (0131): a skill is learned by the hour — `osn-0131-skills-queue`
+
+docs/SHIPS_AND_SKILLS.md §8 row S9 ("Skills I: catalogue + queue"), §5.1-5.2. **Not deployed** (prod
+head 0130; the owner deploys: `db push` first, merge after).
+- **Catalogue**: `data/skills.json` (92 skills, 8 groups; the four live skills keep their 0016 rows) →
+  88 new `public.skills` rows with effect `NONE`, pct 0 — 55 hull skills (11 lines × Small 1 / Light 2 /
+  Medium 4 / Heavy 6 / Capital 10) and 33 Roles/Seamanship/Navigation/Trade/Gunnery/Command/Shipwright.
+  The effect check AND the pct check were re-made `NOT VALID` → `VALIDATE` (inside a DO block, lock
+  retry): the pct check had to admit 0 for exactly the NONE rows (a NONE skill with a percentage would
+  be a number that moves nothing). The world guard holds groups / skills / profiles / prereqs to the
+  file (positive control: a bent rank).
+- **Side tables** (server-only, no FK to players): `skill_groups` (one more than the row listed — the
+  group names and order), `skill_profile`, `skill_prereqs` (choice groups for "any one of": Famous
+  Ships needs Command V + any of the four T2 role skills III), `skill_queue`, `skill_sp` (a row =
+  enrolled; sp = points banked, kept when an entry is removed). Knobs `skill_sp_per_hour` 1800,
+  `skill_queue_max` 10; tuition reuses `skill_study_base_cost` × rank.
+- **One reading**: `public.skill_level` → `public.skill_level_at(player, code, now())` (learned, or
+  queued and finished by t — a pure function of time, no cron). `public.player_skill_bonus` re-cut to
+  read the level through `skill_level` (it read player_skills by hand — a second reading).
+- **Verbs**: one queue rule `public.skill_queue_refusal` (enrolled, next level, ≤ max, prereqs met BY
+  THE TIME IT STARTS, ≤ queue_max) read by the verb and the screen; one place rule
+  `public.skill_taught_at` (academy / a build yard of the line's countries). Cores `skill_enroll_for`,
+  `skill_queue_set_for` (fold → validate → bank → rebuild), `skill_study_for`. Doors: `cmd.study_skill`
+  re-cut (enrols if needed, queues the next level — refuses BEFORE any tuition when the level could not
+  be queued); NEW `cmd.skill_enroll`, `cmd.skill_queue_set` (+2 entry points).
+- **Read**: `world.skills()` re-cut — groups, ranks, prereqs (met), enrolment (cost, where, the docked
+  fleet that can enrol or the refusal), queue + ETA, SP, train time, can_queue + the verb's refusal.
+  `world.npc_fleet_card` lists a merchant's held skills + the four (not 88 zero rows).
+- **Client**: PORT › Academy is the **Skills** screen (`src/features/port/PortAcademy.tsx`): Training
+  (queue rows with live countdowns, Remove, "All done", *Trains while you are away.*), then the eight
+  groups of tiles; the tray prints only served answers (Enrol · cost / Train level N, the server's
+  refusal sentences). Ledger: `ENROLLED` line. New codes registered in docs/DESIGN.md.
+- **Felt change, said plainly**: the four live skills are no longer bought instantly for 500 × level —
+  they are queued, free, and take time (rank 1: 8 min to I … 5.9 days to V).
+- **Self-assert** (cached-prefix apply, 5 s): every house × live skill level, every house × effect
+  bonus, every house's 0107 gates (earned caps + six leg rungs) = pre-image; player_skills untouched;
+  merchants: no queue/sp rows, cores refuse, 40 cards unchanged; no cron; +2 entry points exactly; six
+  re-cut bodies reverse to their pre-images; probe house: place refusals, tuition × rank, prereq /
+  order / not-enrolled / full refusals with figures, the chain Gunnery I → II → Gun Laying I finishing
+  at exactly now + 500 s / + 2,328 s / + 1,000 s with `skill_level_at` stepping at each finish.
+  `tests/db.chain.spec.ts` LAST pin → 0131; `tests/rpc.surface.spec.ts` pins the two doors and reads
+  the book back.
+- **Review fixes (same file, before any deploy)**: tuition is paid only by the call whose `skill_sp`
+  insert wrote the row (`GET DIAGNOSTICS`; a double tap answers `E_ALREADY_ENROLLED` and pays nothing,
+  asserted); one per-house advisory lock `public.skill_lock` taken FIRST by enrol / queue_set / study
+  (study read the queue before the lock); `world.port_merchants` (0113) re-cut to sum a merchant's
+  level over the four company skills, not 92 (8 busiest harbours' 216 merchant levels = pre-image);
+  the merchant card filter and the profile check key on `skill_profile.enrol_where = 'none'`, not the
+  effect (S11-proof). The header's lock note was wrong — db push holds locks to the commit — so the
+  ALTER of `public.skills` (ACCESS EXCLUSIVE) now comes AFTER every heavy comparison (§7), with only
+  the rows, the probe and light reads behind it.
+
+---
+
 ## 2026-10-16 — S8 (0130): a ship has a country — `osn-0130-countries-and-yards`
 
 docs/SHIPS_AND_SKILLS.md §8 row S8, built as written. **Not deployed** (prod head 0129; the owner

@@ -22,6 +22,7 @@ import type { LedgerEvent } from '../../lib/rpc'
 //   REPAIRED      {fleet}
 //   SIGNED_OFFICER {officer, code, specialty, bonus_pct, cost}   (0015:231 — NO fleet key)
 //   STUDIED       {skill, code, level, port, cost}               (0016:239 — port is a CODE)
+//   ENROLLED      {skill, code, port, cost}                       (0131 — enrolment in a skill)
 //   ROUTE_LAP     {route, fleet, lap, stops, sold, bought, supplies, repairs, wages, net, skipped, skipped_lines}  (0092)
 //   ROUTE_PAUSED  {route, fleet, reason, code?, sentence?}        (0092; 0093: sentence names ports)
 //
@@ -162,6 +163,12 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
       return `${skill} trained${level === null ? '' : ` to level ${formatInt(level)}`}${
         port ? ` at ${portName(port)}` : ''
       }.`
+    }
+    case 'ENROLLED': {
+      // 0131: the tuition of a skill, paid once where it is taught; its levels then train by time.
+      const skill = str(p, 'skill') ?? 'A skill'
+      const port = str(p, 'port')
+      return `Enrolled in ${skill}${port ? ` at ${portName(port)}` : ''}.`
     }
     case 'WAGES':
       return `Wages paid to ${fleet} from profit.`

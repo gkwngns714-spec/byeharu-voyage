@@ -88,7 +88,9 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | its money | **Fortune** | purse, treasury |
 | a merchant put back on its feet | **refounded** (`refounded twice, last 09:40`) | bailed out, reset |
 | a merchant that cannot sail on | **laid up** | stranded, dead |
-| the company's four levels (the Academy and the merchant sheet) | **Skills** — the Academy's note is *"Pick a fleet docked at an academy to study."* | Captain (for a set of bars) |
+| the company's levels (the Academy and the merchant sheet) | **Skills** — the Academy face is the Skills screen (0131): groups of skill tiles under **Training** | Captain (for a set of bars) |
+| paying once to start a skill, where it is taught (0131) | **Enrol** (`Enrol · 1,000 🪙`; History: `Enrolled in Gunnery at Lisbon.`) | sign up, register, buy |
+| the skill levels waiting to train (0131) | **Training** (section) · `Train level 3` · `Remove` · `All done · 3 / 10 levels` · *Trains while you are away.* | skill queue, cooldown |
 | the person in charge of a fleet | **captain** = the player, for their own fleets; a merchant fleet's named **Master** (flavour only) | — |
 
 ## Where the words are checked

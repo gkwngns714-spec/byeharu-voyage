@@ -305,7 +305,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
             maxDraft={port.max_draft}
           />
         )}
-        {shownFace.id === 'academy' && <PortAcademy acting={acting} />}
+        {shownFace.id === 'academy' && <PortAcademy />}
       </div>
     </Sheet>
   )

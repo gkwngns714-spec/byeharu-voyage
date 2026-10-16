@@ -328,7 +328,8 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0128 (wages are paid from profit: owed at sea, paid out of a sale's profit, forgiven at departure).
 // And to 0129 (a merchant buys what her purse can pay: the planner and her BUY lines are bounded by her working capital).
 // And to 0130 (a ship has a country: eleven shipbuilding lines, three nations, seven arsenals, E_WRONG_YARD).
-const LAST = '20260818000130_a_ship_has_a_country.sql'
+// And to 0131 (a skill is learned by the hour: 92 skills in 8 groups, enrolment + a training queue, no cron).
+const LAST = '20260818000131_a_skill_is_learned_by_the_hour.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 

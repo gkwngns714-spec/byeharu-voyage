@@ -1,0 +1,1453 @@
+{
+  "_about": "0131 (docs/SHIPS_AND_SKILLS.md §5.2, step S9): the skill catalogue — groups, and every skill's group, rank, where it is enrolled (none = counts as enrolled; academy = any academy; line_yard = any build yard of its line's countries) and prerequisites (all rows with choice 0 are needed; rows sharing a choice > 0 need ANY ONE). The four live skills (live: true) keep their 0016 rows; only their profile is authored here. Applied by migration 0131; scripts/db/world-guard.mjs holds public.skills / skill_profile / skill_prereqs to this file.",
+  "groups": [
+    {
+      "code": "HULLS",
+      "name": "Hulls"
+    },
+    {
+      "code": "ROLES",
+      "name": "Roles"
+    },
+    {
+      "code": "SEAMANSHIP",
+      "name": "Seamanship"
+    },
+    {
+      "code": "NAVIGATION",
+      "name": "Navigation"
+    },
+    {
+      "code": "TRADE",
+      "name": "Trade"
+    },
+    {
+      "code": "GUNNERY",
+      "name": "Gunnery"
+    },
+    {
+      "code": "COMMAND",
+      "name": "Command"
+    },
+    {
+      "code": "SHIPWRIGHT",
+      "name": "Shipwright"
+    }
+  ],
+  "skills": [
+    {
+      "code": "PRT_SMALL",
+      "name": "Portuguese Small Hulls",
+      "group": "HULLS",
+      "rank": 1,
+      "enrol": "line_yard",
+      "line": "PRT",
+      "prereqs": [],
+      "blurb": "How Portuguese small ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "PRT_LIGHT",
+      "name": "Portuguese Light Hulls",
+      "group": "HULLS",
+      "rank": 2,
+      "enrol": "line_yard",
+      "line": "PRT",
+      "prereqs": [
+        {
+          "skill": "PRT_SMALL",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Portuguese light ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "PRT_MEDIUM",
+      "name": "Portuguese Medium Hulls",
+      "group": "HULLS",
+      "rank": 4,
+      "enrol": "line_yard",
+      "line": "PRT",
+      "prereqs": [
+        {
+          "skill": "PRT_LIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Portuguese medium ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "PRT_HEAVY",
+      "name": "Portuguese Heavy Hulls",
+      "group": "HULLS",
+      "rank": 6,
+      "enrol": "line_yard",
+      "line": "PRT",
+      "prereqs": [
+        {
+          "skill": "PRT_MEDIUM",
+          "level": 4,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Portuguese heavy ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "PRT_CAPITAL",
+      "name": "Portuguese Capital Hulls",
+      "group": "HULLS",
+      "rank": 10,
+      "enrol": "line_yard",
+      "line": "PRT",
+      "prereqs": [
+        {
+          "skill": "PRT_HEAVY",
+          "level": 4,
+          "choice": 0
+        },
+        {
+          "skill": "COMMAND",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Portuguese capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ESP_SMALL",
+      "name": "Spanish Small Hulls",
+      "group": "HULLS",
+      "rank": 1,
+      "enrol": "line_yard",
+      "line": "ESP",
+      "prereqs": [],
+      "blurb": "How Spanish small ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ESP_LIGHT",
+      "name": "Spanish Light Hulls",
+      "group": "HULLS",
+      "rank": 2,
+      "enrol": "line_yard",
+      "line": "ESP",
+      "prereqs": [
+        {
+          "skill": "ESP_SMALL",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Spanish light ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ESP_MEDIUM",
+      "name": "Spanish Medium Hulls",
+      "group": "HULLS",
+      "rank": 4,
+      "enrol": "line_yard",
+      "line": "ESP",
+      "prereqs": [
+        {
+          "skill": "ESP_LIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Spanish medium ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ESP_HEAVY",
+      "name": "Spanish Heavy Hulls",
+      "group": "HULLS",
+      "rank": 6,
+      "enrol": "line_yard",
+      "line": "ESP",
+      "prereqs": [
+        {
+          "skill": "ESP_MEDIUM",
+          "level": 4,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Spanish heavy ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ESP_CAPITAL",
+      "name": "Spanish Capital Hulls",
+      "group": "HULLS",
+      "rank": 10,
+      "enrol": "line_yard",
+      "line": "ESP",
+      "prereqs": [
+        {
+          "skill": "ESP_HEAVY",
+          "level": 4,
+          "choice": 0
+        },
+        {
+          "skill": "COMMAND",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Spanish capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "NLD_SMALL",
+      "name": "Dutch Small Hulls",
+      "group": "HULLS",
+      "rank": 1,
+      "enrol": "line_yard",
+      "line": "NLD",
+      "prereqs": [],
+      "blurb": "How Dutch small ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "NLD_LIGHT",
+      "name": "Dutch Light Hulls",
+      "group": "HULLS",
+      "rank": 2,
+      "enrol": "line_yard",
+      "line": "NLD",
+      "prereqs": [
+        {
+          "skill": "NLD_SMALL",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Dutch light ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "NLD_MEDIUM",
+      "name": "Dutch Medium Hulls",
+      "group": "HULLS",
+      "rank": 4,
+      "enrol": "line_yard",
+      "line": "NLD",
+      "prereqs": [
+        {
+          "skill": "NLD_LIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Dutch medium ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "NLD_HEAVY",
+      "name": "Dutch Heavy Hulls",
+      "group": "HULLS",
+      "rank": 6,
+      "enrol": "line_yard",
+      "line": "NLD",
+      "prereqs": [
+        {
+          "skill": "NLD_MEDIUM",
+          "level": 4,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Dutch heavy ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "NLD_CAPITAL",
+      "name": "Dutch Capital Hulls",
+      "group": "HULLS",
+      "rank": 10,
+      "enrol": "line_yard",
+      "line": "NLD",
+      "prereqs": [
+        {
+          "skill": "NLD_HEAVY",
+          "level": 4,
+          "choice": 0
+        },
+        {
+          "skill": "COMMAND",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Dutch capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ENG_SMALL",
+      "name": "English Small Hulls",
+      "group": "HULLS",
+      "rank": 1,
+      "enrol": "line_yard",
+      "line": "ENG",
+      "prereqs": [],
+      "blurb": "How English small ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ENG_LIGHT",
+      "name": "English Light Hulls",
+      "group": "HULLS",
+      "rank": 2,
+      "enrol": "line_yard",
+      "line": "ENG",
+      "prereqs": [
+        {
+          "skill": "ENG_SMALL",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How English light ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ENG_MEDIUM",
+      "name": "English Medium Hulls",
+      "group": "HULLS",
+      "rank": 4,
+      "enrol": "line_yard",
+      "line": "ENG",
+      "prereqs": [
+        {
+          "skill": "ENG_LIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How English medium ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ENG_HEAVY",
+      "name": "English Heavy Hulls",
+      "group": "HULLS",
+      "rank": 6,
+      "enrol": "line_yard",
+      "line": "ENG",
+      "prereqs": [
+        {
+          "skill": "ENG_MEDIUM",
+          "level": 4,
+          "choice": 0
+        }
+      ],
+      "blurb": "How English heavy ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ENG_CAPITAL",
+      "name": "English Capital Hulls",
+      "group": "HULLS",
+      "rank": 10,
+      "enrol": "line_yard",
+      "line": "ENG",
+      "prereqs": [
+        {
+          "skill": "ENG_HEAVY",
+          "level": 4,
+          "choice": 0
+        },
+        {
+          "skill": "COMMAND",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How English capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "FRA_SMALL",
+      "name": "French Small Hulls",
+      "group": "HULLS",
+      "rank": 1,
+      "enrol": "line_yard",
+      "line": "FRA",
+      "prereqs": [],
+      "blurb": "How French small ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "FRA_LIGHT",
+      "name": "French Light Hulls",
+      "group": "HULLS",
+      "rank": 2,
+      "enrol": "line_yard",
+      "line": "FRA",
+      "prereqs": [
+        {
+          "skill": "FRA_SMALL",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How French light ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "FRA_MEDIUM",
+      "name": "French Medium Hulls",
+      "group": "HULLS",
+      "rank": 4,
+      "enrol": "line_yard",
+      "line": "FRA",
+      "prereqs": [
+        {
+          "skill": "FRA_LIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How French medium ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "FRA_HEAVY",
+      "name": "French Heavy Hulls",
+      "group": "HULLS",
+      "rank": 6,
+      "enrol": "line_yard",
+      "line": "FRA",
+      "prereqs": [
+        {
+          "skill": "FRA_MEDIUM",
+          "level": 4,
+          "choice": 0
+        }
+      ],
+      "blurb": "How French heavy ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "FRA_CAPITAL",
+      "name": "French Capital Hulls",
+      "group": "HULLS",
+      "rank": 10,
+      "enrol": "line_yard",
+      "line": "FRA",
+      "prereqs": [
+        {
+          "skill": "FRA_HEAVY",
+          "level": 4,
+          "choice": 0
+        },
+        {
+          "skill": "COMMAND",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How French capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ITA_SMALL",
+      "name": "Italian Small Hulls",
+      "group": "HULLS",
+      "rank": 1,
+      "enrol": "line_yard",
+      "line": "ITA",
+      "prereqs": [],
+      "blurb": "How Italian small ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ITA_LIGHT",
+      "name": "Italian Light Hulls",
+      "group": "HULLS",
+      "rank": 2,
+      "enrol": "line_yard",
+      "line": "ITA",
+      "prereqs": [
+        {
+          "skill": "ITA_SMALL",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Italian light ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ITA_MEDIUM",
+      "name": "Italian Medium Hulls",
+      "group": "HULLS",
+      "rank": 4,
+      "enrol": "line_yard",
+      "line": "ITA",
+      "prereqs": [
+        {
+          "skill": "ITA_LIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Italian medium ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ITA_HEAVY",
+      "name": "Italian Heavy Hulls",
+      "group": "HULLS",
+      "rank": 6,
+      "enrol": "line_yard",
+      "line": "ITA",
+      "prereqs": [
+        {
+          "skill": "ITA_MEDIUM",
+          "level": 4,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Italian heavy ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "ITA_CAPITAL",
+      "name": "Italian Capital Hulls",
+      "group": "HULLS",
+      "rank": 10,
+      "enrol": "line_yard",
+      "line": "ITA",
+      "prereqs": [
+        {
+          "skill": "ITA_HEAVY",
+          "level": 4,
+          "choice": 0
+        },
+        {
+          "skill": "COMMAND",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Italian capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "OTT_SMALL",
+      "name": "Ottoman Small Hulls",
+      "group": "HULLS",
+      "rank": 1,
+      "enrol": "line_yard",
+      "line": "OTT",
+      "prereqs": [],
+      "blurb": "How Ottoman small ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "OTT_LIGHT",
+      "name": "Ottoman Light Hulls",
+      "group": "HULLS",
+      "rank": 2,
+      "enrol": "line_yard",
+      "line": "OTT",
+      "prereqs": [
+        {
+          "skill": "OTT_SMALL",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Ottoman light ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "OTT_MEDIUM",
+      "name": "Ottoman Medium Hulls",
+      "group": "HULLS",
+      "rank": 4,
+      "enrol": "line_yard",
+      "line": "OTT",
+      "prereqs": [
+        {
+          "skill": "OTT_LIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Ottoman medium ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "OTT_HEAVY",
+      "name": "Ottoman Heavy Hulls",
+      "group": "HULLS",
+      "rank": 6,
+      "enrol": "line_yard",
+      "line": "OTT",
+      "prereqs": [
+        {
+          "skill": "OTT_MEDIUM",
+          "level": 4,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Ottoman heavy ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "OTT_CAPITAL",
+      "name": "Ottoman Capital Hulls",
+      "group": "HULLS",
+      "rank": 10,
+      "enrol": "line_yard",
+      "line": "OTT",
+      "prereqs": [
+        {
+          "skill": "OTT_HEAVY",
+          "level": 4,
+          "choice": 0
+        },
+        {
+          "skill": "COMMAND",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Ottoman capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "IND_SMALL",
+      "name": "Indian Small Hulls",
+      "group": "HULLS",
+      "rank": 1,
+      "enrol": "line_yard",
+      "line": "IND",
+      "prereqs": [],
+      "blurb": "How Indian small ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "IND_LIGHT",
+      "name": "Indian Light Hulls",
+      "group": "HULLS",
+      "rank": 2,
+      "enrol": "line_yard",
+      "line": "IND",
+      "prereqs": [
+        {
+          "skill": "IND_SMALL",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Indian light ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "IND_MEDIUM",
+      "name": "Indian Medium Hulls",
+      "group": "HULLS",
+      "rank": 4,
+      "enrol": "line_yard",
+      "line": "IND",
+      "prereqs": [
+        {
+          "skill": "IND_LIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Indian medium ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "IND_HEAVY",
+      "name": "Indian Heavy Hulls",
+      "group": "HULLS",
+      "rank": 6,
+      "enrol": "line_yard",
+      "line": "IND",
+      "prereqs": [
+        {
+          "skill": "IND_MEDIUM",
+          "level": 4,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Indian heavy ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "IND_CAPITAL",
+      "name": "Indian Capital Hulls",
+      "group": "HULLS",
+      "rank": 10,
+      "enrol": "line_yard",
+      "line": "IND",
+      "prereqs": [
+        {
+          "skill": "IND_HEAVY",
+          "level": 4,
+          "choice": 0
+        },
+        {
+          "skill": "COMMAND",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Indian capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "CHN_SMALL",
+      "name": "Chinese Small Hulls",
+      "group": "HULLS",
+      "rank": 1,
+      "enrol": "line_yard",
+      "line": "CHN",
+      "prereqs": [],
+      "blurb": "How Chinese small ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "CHN_LIGHT",
+      "name": "Chinese Light Hulls",
+      "group": "HULLS",
+      "rank": 2,
+      "enrol": "line_yard",
+      "line": "CHN",
+      "prereqs": [
+        {
+          "skill": "CHN_SMALL",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Chinese light ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "CHN_MEDIUM",
+      "name": "Chinese Medium Hulls",
+      "group": "HULLS",
+      "rank": 4,
+      "enrol": "line_yard",
+      "line": "CHN",
+      "prereqs": [
+        {
+          "skill": "CHN_LIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Chinese medium ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "CHN_HEAVY",
+      "name": "Chinese Heavy Hulls",
+      "group": "HULLS",
+      "rank": 6,
+      "enrol": "line_yard",
+      "line": "CHN",
+      "prereqs": [
+        {
+          "skill": "CHN_MEDIUM",
+          "level": 4,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Chinese heavy ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "CHN_CAPITAL",
+      "name": "Chinese Capital Hulls",
+      "group": "HULLS",
+      "rank": 10,
+      "enrol": "line_yard",
+      "line": "CHN",
+      "prereqs": [
+        {
+          "skill": "CHN_HEAVY",
+          "level": 4,
+          "choice": 0
+        },
+        {
+          "skill": "COMMAND",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Chinese capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "JPN_SMALL",
+      "name": "Japanese Small Hulls",
+      "group": "HULLS",
+      "rank": 1,
+      "enrol": "line_yard",
+      "line": "JPN",
+      "prereqs": [],
+      "blurb": "How Japanese small ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "JPN_LIGHT",
+      "name": "Japanese Light Hulls",
+      "group": "HULLS",
+      "rank": 2,
+      "enrol": "line_yard",
+      "line": "JPN",
+      "prereqs": [
+        {
+          "skill": "JPN_SMALL",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Japanese light ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "JPN_MEDIUM",
+      "name": "Japanese Medium Hulls",
+      "group": "HULLS",
+      "rank": 4,
+      "enrol": "line_yard",
+      "line": "JPN",
+      "prereqs": [
+        {
+          "skill": "JPN_LIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Japanese medium ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "JPN_HEAVY",
+      "name": "Japanese Heavy Hulls",
+      "group": "HULLS",
+      "rank": 6,
+      "enrol": "line_yard",
+      "line": "JPN",
+      "prereqs": [
+        {
+          "skill": "JPN_MEDIUM",
+          "level": 4,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Japanese heavy ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "JPN_CAPITAL",
+      "name": "Japanese Capital Hulls",
+      "group": "HULLS",
+      "rank": 10,
+      "enrol": "line_yard",
+      "line": "JPN",
+      "prereqs": [
+        {
+          "skill": "JPN_HEAVY",
+          "level": 4,
+          "choice": 0
+        },
+        {
+          "skill": "COMMAND",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Japanese capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "KOR_SMALL",
+      "name": "Korean Small Hulls",
+      "group": "HULLS",
+      "rank": 1,
+      "enrol": "line_yard",
+      "line": "KOR",
+      "prereqs": [],
+      "blurb": "How Korean small ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "KOR_LIGHT",
+      "name": "Korean Light Hulls",
+      "group": "HULLS",
+      "rank": 2,
+      "enrol": "line_yard",
+      "line": "KOR",
+      "prereqs": [
+        {
+          "skill": "KOR_SMALL",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Korean light ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "KOR_MEDIUM",
+      "name": "Korean Medium Hulls",
+      "group": "HULLS",
+      "rank": 4,
+      "enrol": "line_yard",
+      "line": "KOR",
+      "prereqs": [
+        {
+          "skill": "KOR_LIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Korean medium ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "KOR_HEAVY",
+      "name": "Korean Heavy Hulls",
+      "group": "HULLS",
+      "rank": 6,
+      "enrol": "line_yard",
+      "line": "KOR",
+      "prereqs": [
+        {
+          "skill": "KOR_MEDIUM",
+          "level": 4,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Korean heavy ships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "KOR_CAPITAL",
+      "name": "Korean Capital Hulls",
+      "group": "HULLS",
+      "rank": 10,
+      "enrol": "line_yard",
+      "line": "KOR",
+      "prereqs": [
+        {
+          "skill": "KOR_HEAVY",
+          "level": 4,
+          "choice": 0
+        },
+        {
+          "skill": "COMMAND",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "How Korean capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them."
+    },
+    {
+      "code": "MERCHANT_SHIPS",
+      "name": "Merchant Ships",
+      "group": "ROLES",
+      "rank": 4,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "CARGO_STOWAGE",
+          "level": 2,
+          "choice": 0
+        }
+      ],
+      "blurb": "Running big trading ships: packing, loading and keeping a large cargo moving."
+    },
+    {
+      "code": "SHIPS_OF_WAR",
+      "name": "Ships of War",
+      "group": "ROLES",
+      "rank": 4,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "GUNNERY",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Fighting big warships: the gun decks, the drills and the crews they need."
+    },
+    {
+      "code": "EXPLORERS",
+      "name": "Exploration Vessels",
+      "group": "ROLES",
+      "rank": 4,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "LOOKOUTS",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Long voyages into unknown water: lookouts, charts and ships built to range far."
+    },
+    {
+      "code": "ESCORT_SUPPORT",
+      "name": "Escort & Support",
+      "group": "ROLES",
+      "rank": 4,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "HULL_UPKEEP",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Ships that guard and serve a fleet: tough, steady and kept in good repair."
+    },
+    {
+      "code": "ARMED_MERCHANT",
+      "name": "Armed Merchantmen",
+      "group": "ROLES",
+      "rank": 5,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "MERCHANT_SHIPS",
+          "level": 5,
+          "choice": 0
+        }
+      ],
+      "blurb": "Improved trading ships that carry guns as well as cargo."
+    },
+    {
+      "code": "PRIVATEERS",
+      "name": "Privateers",
+      "group": "ROLES",
+      "rank": 5,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "SHIPS_OF_WAR",
+          "level": 5,
+          "choice": 0
+        }
+      ],
+      "blurb": "Improved warships built to hunt and hit hard."
+    },
+    {
+      "code": "SURVEY_SHIPS",
+      "name": "Survey Ships",
+      "group": "ROLES",
+      "rank": 5,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "EXPLORERS",
+          "level": 5,
+          "choice": 0
+        }
+      ],
+      "blurb": "Improved exploration ships that see farther and range wider."
+    },
+    {
+      "code": "CONVOY_ESCORTS",
+      "name": "Convoy Escorts",
+      "group": "ROLES",
+      "rank": 5,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "ESCORT_SUPPORT",
+          "level": 5,
+          "choice": 0
+        }
+      ],
+      "blurb": "Improved escorts that keep a convoy together and safe."
+    },
+    {
+      "code": "FAMOUS_SHIPS",
+      "name": "Famous Ships",
+      "group": "ROLES",
+      "rank": 12,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "COMMAND",
+          "level": 5,
+          "choice": 0
+        },
+        {
+          "skill": "ARMED_MERCHANT",
+          "level": 3,
+          "choice": 1
+        },
+        {
+          "skill": "PRIVATEERS",
+          "level": 3,
+          "choice": 1
+        },
+        {
+          "skill": "SURVEY_SHIPS",
+          "level": 3,
+          "choice": 1
+        },
+        {
+          "skill": "CONVOY_ESCORTS",
+          "level": 3,
+          "choice": 1
+        }
+      ],
+      "blurb": "The great named ships of each country. Only the most experienced captains are trusted with one."
+    },
+    {
+      "code": "SEAMANSHIP",
+      "name": "Seamanship",
+      "group": "SEAMANSHIP",
+      "rank": 1,
+      "enrol": "none",
+      "prereqs": [],
+      "live": true
+    },
+    {
+      "code": "HULL_UPKEEP",
+      "name": "Hull Upkeep",
+      "group": "SEAMANSHIP",
+      "rank": 2,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "SEAMANSHIP",
+          "level": 2,
+          "choice": 0
+        }
+      ],
+      "blurb": "Keeping planking, seams and frames sound so every ship lasts longer."
+    },
+    {
+      "code": "DAMAGE_CONTROL",
+      "name": "Damage Control",
+      "group": "SEAMANSHIP",
+      "rank": 3,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "HULL_UPKEEP",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Plugging holes and shoring up under fire, so damage does less harm."
+    },
+    {
+      "code": "DECK_MANAGEMENT",
+      "name": "Deck Management",
+      "group": "SEAMANSHIP",
+      "rank": 3,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "SEAMANSHIP",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Fitting more gear on a deck without getting in the crew's way."
+    },
+    {
+      "code": "HANDLING_SPEC",
+      "name": "Ship Handling Specialisation",
+      "group": "SEAMANSHIP",
+      "rank": 5,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "SEAMANSHIP",
+          "level": 5,
+          "choice": 0
+        }
+      ],
+      "blurb": "Mastery of improved rudders, anchors and capstans."
+    },
+    {
+      "code": "NAVIGATION",
+      "name": "Navigation",
+      "group": "NAVIGATION",
+      "rank": 1,
+      "enrol": "none",
+      "prereqs": [],
+      "live": true
+    },
+    {
+      "code": "RIGGING",
+      "name": "Rigging",
+      "group": "NAVIGATION",
+      "rank": 2,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "NAVIGATION",
+          "level": 1,
+          "choice": 0
+        }
+      ],
+      "blurb": "Setting and trimming sails so a ship turns and answers quickly."
+    },
+    {
+      "code": "LOOKOUTS",
+      "name": "Lookouts",
+      "group": "NAVIGATION",
+      "rank": 2,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "NAVIGATION",
+          "level": 2,
+          "choice": 0
+        }
+      ],
+      "blurb": "Training sharp eyes aloft to spot sails and coasts sooner."
+    },
+    {
+      "code": "INSTRUMENTS",
+      "name": "Instruments",
+      "group": "NAVIGATION",
+      "rank": 3,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "NAVIGATION",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Compass, charts and the astrolabe, used well."
+    },
+    {
+      "code": "RIGGING_SPEC",
+      "name": "Rigging Specialisation",
+      "group": "NAVIGATION",
+      "rank": 5,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "RIGGING",
+          "level": 5,
+          "choice": 0
+        }
+      ],
+      "blurb": "Mastery of improved sails and rigging."
+    },
+    {
+      "code": "INSTRUMENT_SPEC",
+      "name": "Instrument Specialisation",
+      "group": "NAVIGATION",
+      "rank": 5,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "INSTRUMENTS",
+          "level": 5,
+          "choice": 0
+        }
+      ],
+      "blurb": "Mastery of improved navigation instruments."
+    },
+    {
+      "code": "ACCOUNTING",
+      "name": "Accounting",
+      "group": "TRADE",
+      "rank": 1,
+      "enrol": "none",
+      "prereqs": [],
+      "live": true
+    },
+    {
+      "code": "HAGGLING",
+      "name": "Haggling",
+      "group": "TRADE",
+      "rank": 1,
+      "enrol": "none",
+      "prereqs": [],
+      "live": true
+    },
+    {
+      "code": "CARGO_STOWAGE",
+      "name": "Cargo Stowage",
+      "group": "TRADE",
+      "rank": 3,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "ACCOUNTING",
+          "level": 2,
+          "choice": 0
+        }
+      ],
+      "blurb": "Packing cargo tightly so every ship carries more."
+    },
+    {
+      "code": "STOWAGE_SPEC",
+      "name": "Stowage Specialisation",
+      "group": "TRADE",
+      "rank": 5,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "CARGO_STOWAGE",
+          "level": 5,
+          "choice": 0
+        }
+      ],
+      "blurb": "Mastery of improved cargo fittings."
+    },
+    {
+      "code": "GUNNERY",
+      "name": "Gunnery",
+      "group": "GUNNERY",
+      "rank": 1,
+      "enrol": "academy",
+      "prereqs": [],
+      "blurb": "Loading, aiming and firing a ship's guns."
+    },
+    {
+      "code": "GUN_LAYING",
+      "name": "Gun Laying",
+      "group": "GUNNERY",
+      "rank": 2,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "GUNNERY",
+          "level": 2,
+          "choice": 0
+        }
+      ],
+      "blurb": "Aiming each gun with care so more shots hit."
+    },
+    {
+      "code": "LONG_GUNS",
+      "name": "Long Guns",
+      "group": "GUNNERY",
+      "rank": 3,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "GUNNERY",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Long-barrelled chase guns that reach farther."
+    },
+    {
+      "code": "SHORT_GUNS",
+      "name": "Short Guns",
+      "group": "GUNNERY",
+      "rank": 3,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "GUNNERY",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Short, heavy guns that hit hard up close."
+    },
+    {
+      "code": "BOARDING",
+      "name": "Boarding",
+      "group": "GUNNERY",
+      "rank": 2,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "GUNNERY",
+          "level": 1,
+          "choice": 0
+        }
+      ],
+      "blurb": "Grappling, crossing over and fighting on another ship's deck."
+    },
+    {
+      "code": "GUN_DRILL",
+      "name": "Gun Drill",
+      "group": "GUNNERY",
+      "rank": 3,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "GUNNERY",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Drilled gun crews, so the guns need fewer hands."
+    },
+    {
+      "code": "GUNNERY_SPEC",
+      "name": "Gunnery Specialisation",
+      "group": "GUNNERY",
+      "rank": 5,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "GUNNERY",
+          "level": 5,
+          "choice": 0
+        }
+      ],
+      "blurb": "Mastery of improved guns, boarding gear and magazines."
+    },
+    {
+      "code": "COMMAND",
+      "name": "Command",
+      "group": "COMMAND",
+      "rank": 3,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "SEAMANSHIP",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Leading officers and running more ships at once."
+    },
+    {
+      "code": "FLEET_COMMAND",
+      "name": "Fleet Command",
+      "group": "COMMAND",
+      "rank": 8,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "COMMAND",
+          "level": 5,
+          "choice": 0
+        }
+      ],
+      "blurb": "Leading a whole fleet from a flagship."
+    },
+    {
+      "code": "SHIPWRIGHT",
+      "name": "Shipwright",
+      "group": "SHIPWRIGHT",
+      "rank": 2,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "SEAMANSHIP",
+          "level": 1,
+          "choice": 0
+        }
+      ],
+      "blurb": "How ships are built, so a build yard needs less paid work."
+    },
+    {
+      "code": "REFITTING",
+      "name": "Refitting",
+      "group": "SHIPWRIGHT",
+      "rank": 4,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "SHIPWRIGHT",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Lasting changes to a ship's build."
+    },
+    {
+      "code": "AUGMENTATION",
+      "name": "Augmentation",
+      "group": "SHIPWRIGHT",
+      "rank": 5,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "REFITTING",
+          "level": 3,
+          "choice": 0
+        }
+      ],
+      "blurb": "Adding chosen extras to fitted gear."
+    },
+    {
+      "code": "SHIPWRIGHT_SPEC",
+      "name": "Shipwright Specialisation",
+      "group": "SHIPWRIGHT",
+      "rank": 5,
+      "enrol": "academy",
+      "prereqs": [
+        {
+          "skill": "SHIPWRIGHT",
+          "level": 5,
+          "choice": 0
+        }
+      ],
+      "blurb": "Mastery of improved hull fittings."
+    }
+  ]
+}

@@ -65,7 +65,8 @@ import {
   cmdStandingRouteDelete,
   cmdStandingRoutePause,
   cmdStandingRouteSave,
-  cmdStudySkill,
+  cmdSkillEnroll,
+  cmdSkillQueueSet,
   cmdTradeBasket,
   initRpc,
   worldFleets,
@@ -261,7 +262,11 @@ export interface LiveWorld {
    *  server's answer is the only true one — no local patching (the `issue` rule). */
   hireOfficer: (code: string, fleetId: string | null) => Promise<boolean>
   postOfficer: (code: string, fleetId: string | null) => Promise<boolean>
-  studySkill: (code: string, fleetId: string) => Promise<boolean>
+  /** 0131: enrol in a skill where this fleet is docked; set the whole training queue (in order).
+   *  (The Academy's old one-button `studySkill` left with the instant purchase; cmd.study_skill stays
+   *  on the server for older builds and does the same two acts.) */
+  enrollSkill: (code: string, fleetId: string) => Promise<boolean>
+  setSkillQueue: (entries: readonly { code: string; level: number }[]) => Promise<boolean>
 
   /** ONE attempt at a bargain (0022). Returns the attempt — WON OR LOST, both of which are `ok` —
    *  or null when the server refused. Attempts are finite and a lost one is spent, so a caller may
@@ -793,8 +798,14 @@ export const useWorld = create<LiveWorld>((set, get) => {
   postOfficer: async (code, fleetId) =>
     (await verb(cmdPostOfficer(code, fleetId), () => Promise.all([get().loadOfficers(), get().refresh()]))) !== null,
 
-  studySkill: async (code, fleetId) =>
-    (await verb(cmdStudySkill(code, fleetId), () => Promise.all([get().loadSkills(), get().refresh()]))) !== null,
+  enrollSkill: async (code, fleetId) =>
+    (await verb(cmdSkillEnroll(code, fleetId), () => Promise.all([get().loadSkills(), get().refresh()]))) !== null,
+  // A refused queue still re-reads the book: the server's queue is the only true one.
+  setSkillQueue: async (entries) => {
+    const r = await verb(cmdSkillQueueSet(entries), () => get().loadSkills())
+    if (r === null) await get().loadSkills()
+    return r !== null
+  },
 
   // ONE ATTEMPT AT A BARGAIN (0022). A WRITE, so it lives here rather than in a read hook.
   //
