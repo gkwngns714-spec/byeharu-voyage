@@ -251,7 +251,7 @@ begin
     raise exception 'PROOF 10 FAILED: the receipt (purse %, net %) is not the ledger (% -> % -> %)',
       v_res->'purse', v_res->'totals'->>'net', v_purse0, v_sold_bal, v_bought_bal;
   end if;
-  perform public.tick_reconcile();
+  call public.tick_reconcile(false);   -- 0137: a procedure; false = inside this proof's transaction
   raise notice 'PASS: MANIFEST_RECEIPT_IS_THE_LEDGER — the SOLD and BOUGHT events carry the two lines'' qty / total / profit / mid / tax / spread exactly, the ledger ran % -> % -> % (sale first, purchase last), Σ of the two rows is the receipt''s net % and the purse read back is purse.after %; tick_reconcile agrees',
     v_purse0, v_sold_bal, v_bought_bal, v_res->'totals'->>'net', v_res->'purse'->>'after';
 

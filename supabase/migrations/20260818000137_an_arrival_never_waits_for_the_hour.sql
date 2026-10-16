@@ -717,7 +717,7 @@ end $$;
 -- the job's owner, every name schema-qualified; each step it calls keeps its own definer and path.
 drop function public.tick_reconcile();
 
-create procedure public.tick_reconcile()
+create procedure public.tick_reconcile(p_commit boolean default true)
 language plpgsql
 as $$
 -- 0137: THE hourly reconcile. Merchant upkeep first — npc_tend's steps, ONE TRANSACTION EACH: every
@@ -728,6 +728,9 @@ as $$
 -- for the hour. A step that fails is reported in the receipt and rolled back alone (0097).
 -- THEN the invariants, in their own transaction, which take no row lock (plain reads): every
 -- player's ledger reconciles, the sailing invariant, no client write grant. A failure RAISES.
+-- p_commit = false runs the SAME steps in the caller's transaction, committing nothing (a proof inside
+-- BEGIN … ROLLBACK: `call public.tick_reconcile(false)`); the job runs the default, true. Either way
+-- the steps, their order and what they decide are the same — only where the transaction ends moves.
 -- What a whole pass decides is npc_tend's (asserted, 0137 §4): the same walk, the same per-merchant
 -- body, the same companies' passes, the same compactor — only the commits between them are new.
 declare
@@ -747,7 +750,7 @@ begin
     exception when others then
       v_upkeep := v_upkeep || jsonb_build_object('tend_error', sqlerrm);
     end;
-    commit;
+    if p_commit then commit; end if;
   end loop;
   perform public.npc_upkeep_scope(v_deadline);
   begin
@@ -755,7 +758,7 @@ begin
   exception when others then
     v_upkeep := v_upkeep || jsonb_build_object('tend_error', sqlerrm);
   end;
-  commit;
+  if p_commit then commit; end if;
   v_upkeep := v_upkeep || jsonb_build_object('tend', jsonb_build_object('enabled', v_on) || public.npc_tend_sum(v_tend, '{}'::jsonb));
   perform public.npc_upkeep_scope(v_deadline);
   begin
@@ -763,7 +766,7 @@ begin
   exception when others then
     v_upkeep := v_upkeep || jsonb_build_object('compact_error', sqlerrm);
   end;
-  commit;
+  if p_commit then commit; end if;
   -- THE INVARIANTS (0010/0097, unchanged), on the world the upkeep left.
   for r in select id from public.players loop
     perform public.assert_ledger_reconciles(r.id);   -- raises on a mismatch
@@ -778,10 +781,10 @@ begin
   raise notice 'tick_reconcile: %', jsonb_build_object('players_checked', v_n, 'sailing_invariant', 'ok',
                                                        'client_write_grants', 0, 'merchant_upkeep', v_upkeep);
 end $$;
-comment on procedure public.tick_reconcile() is
+comment on procedure public.tick_reconcile(boolean) is
   '0137: THE hourly reconcile (pg_cron byeharu-voyage:reconcile, CALL): merchant upkeep one '
   'transaction per merchant / the companies / the compactor, then the invariants. Server-only.';
-revoke all on procedure public.tick_reconcile() from public, anon, authenticated;
+revoke all on procedure public.tick_reconcile(boolean) from public, anon, authenticated;
 
 -- THE JOB SAYS CALL. The job keeps its name, schedule, owner and active flag (0012 defined it,
 -- 0078's clock_jobs() owns its activation; wind_the_clock() activates exactly this command).
@@ -974,7 +977,7 @@ begin
   -- the two procedures may COMMIT: neither is SECURITY DEFINER nor carries a SET (transaction control
   -- refuses both), and nobody but the owner can run them
   select count(*) into v_n from pg_proc p
-   where p.oid in ('public.tick_reconcile()'::regprocedure, 'public.tick_market_drift_each_port()'::regprocedure)
+   where p.oid in ('public.tick_reconcile(boolean)'::regprocedure, 'public.tick_market_drift_each_port()'::regprocedure)
      and p.prokind = 'p' and not p.prosecdef and p.proconfig is null
      and not has_function_privilege('anon', p.oid, 'execute') and not has_function_privilege('authenticated', p.oid, 'execute');
   if v_n <> 2 then

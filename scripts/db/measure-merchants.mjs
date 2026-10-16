@@ -83,7 +83,7 @@ for (let k = 1; k <= TICKS; k++) {
     update public.standing_routes sr set hold_until = now() - interval '1 second'
       from public.players p where p.id = sr.player_id and p.is_npc and sr.hold_until is not null;
     select public.tick_arrivals(now());`)
-  if (k % 5 === 0) await q(`select public.tick_reconcile()`)
+  if (k % 5 === 0) await q(`call public.tick_reconcile()`)
   frameSamples.push(await inFrame())
 }
 const c1 = await one(COUNT)

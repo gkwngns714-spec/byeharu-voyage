@@ -175,7 +175,7 @@ begin
   if v_bad <> 0 then
     raise exception 'PROOF 2 FAILED: % of 3 houses do not reconcile', v_bad;
   end if;
-  perform public.tick_reconcile();
+  call public.tick_reconcile(false);   -- 0137: a procedure; false = inside this proof's transaction
   raise notice 'PASS: LEDGER_SOAK_RECONCILES — all 3 houses: purse = Σ ledger.ducats_delta exactly (purses %, %, %)',
     (select ducats from public.players where id = v_players[1]),
     (select ducats from public.players where id = v_players[2]),
@@ -188,7 +188,7 @@ begin
   -- ── POSITIVE CONTROL: the reconciler must be able to fail. One ducat, no ledger row.
   update public.players set ducats = ducats + 1 where id = v_players[1];
   begin
-    perform public.tick_reconcile();
+    call public.tick_reconcile(false);   -- 0137: a procedure; false = inside this proof's transaction
   exception when others then
     if sqlerrm ~ 'LEDGER RECONCILIATION FAILED' then v_bites := true; end if;
   end;

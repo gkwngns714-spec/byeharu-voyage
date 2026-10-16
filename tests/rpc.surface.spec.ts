@@ -1590,7 +1590,7 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.npc_tend_houses(timestamptz)',
     'public.npc_tend_sum(jsonb, jsonb)',
     'public.npc_upkeep_scope(timestamptz)',
-    'public.tick_reconcile()',
+    'public.tick_reconcile(boolean)',
     'public.tick_market_drift(timestamptz, uuid)',
     'public.tick_market_drift_each_port()',
   ]

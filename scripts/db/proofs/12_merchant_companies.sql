@@ -214,7 +214,7 @@ begin
       from public.players p where p.id = sr.player_id and p.is_npc and sr.hold_until is not null;
     perform public.tick_arrivals(now());
     if v_k % 5 = 0 then
-      perform public.tick_reconcile();
+      call public.tick_reconcile(false);   -- 0137: a procedure; false = inside this proof's transaction
     end if;
   end loop;
   select (select count(*) from public.ledger l join public.players p on p.id = l.player_id and p.is_npc)
