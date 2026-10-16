@@ -332,7 +332,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0132 (a ship carries what its deck can bear: gear racks, one row per mounted unit, Deck and Hands budgets).
 // And to 0133 (a skill makes the ship better: skill effects and requirements, dark behind skills_bite).
 // And to 0134 (every arrival is answered in time: the arrivals sweep's reads made faster, answers unchanged; 0132's retired table dropped).
-const LAST = '20260818000135_every_country_builds_its_own_ships.sql'
+// And to 0135 (every country builds its own ships: 52 hulls of the eleven lines and gear grades G2-G5, dark).
+// And to 0136 (a ranking reads the quay once: trade_routes reads the city's roster as one set, answers unchanged).
+const LAST = '20260818000136_a_ranking_reads_the_quay_once.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
