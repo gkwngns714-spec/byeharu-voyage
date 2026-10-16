@@ -26,6 +26,9 @@
 //   * ship lines  (0130) public.ship_lines and public.class_profile EQUAL data/ship-lines.json,
 //                 every column, both directions — the eleven lines (builders, arsenal, modifiers,
 //                 traits) and every hull's line / size / role / tech / deck / any_yard
+//   * skills      (0131) public.skill_groups, public.skills + skill_profile + skill_prereqs EQUAL
+//                 data/skills.json, both directions — every skill's name, group, rank, enrolment,
+//                 line and prerequisites; the 88 new ones' blurb and NONE / 0
 //
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
@@ -162,6 +165,31 @@ function drift(db_, want) {
     }
   }
 
+  // skills (0131) — data/skills.json: the groups, and every skill's name / group / rank / enrolment /
+  // line / prerequisites, both directions; the new skills' blurb, and NONE / 0 (the live four keep
+  // their 0016 rows, so only their name and profile are held to the file)
+  setCheck(db_.skillGroups, want.skillGroups, 'skill group')
+  for (const [i, g] of want.skillGroups.entries()) {
+    const d = db_.skillGroups.find((x) => x.code === g.code)
+    if (d && Number(d.ord) !== i + 1) say(`skill group ${g.code}.ord: database has ${d.ord}, data says ${i + 1}`)
+  }
+  const wSkills = new Map(want.skills.map((s) => [s.code, s]))
+  for (const s of db_.skills) if (!wSkills.has(s.code)) say(`skill ${s.code} is in the database but not in data/skills.json`)
+  const prereqKey = (rows) => rows.map((p) => `${p.skill}:${p.level}:${p.choice}`).sort().join(',')
+  for (const s of want.skills) {
+    const d = db_.skills.find((x) => x.code === s.code)
+    if (!d) { say(`skill ${s.code} (${s.name}) is in data/skills.json but not in public.skills`); continue }
+    const pairs = [
+      ['name', d.name, s.name], ['group', d.group_code, s.group], ['rank', Number(d.rank), s.rank],
+      ['enrol', d.enrol_where, s.enrol], ['line', d.line_code ?? null, s.line ?? null],
+      ['prereqs', prereqKey(db_.skillPrereqs.filter((p) => p.code === s.code)), prereqKey(s.prereqs)],
+    ]
+    if (!s.live) pairs.push(['blurb', d.blurb, s.blurb], ['effect', d.effect, 'NONE'], ['pct_per_level', Number(d.pct_per_level), 0])
+    for (const [col, got, wanted] of pairs) {
+      if (String(got) !== String(wanted)) say(`skill ${s.code}.${col}: database has ${got}, data says ${wanted}`)
+    }
+  }
+
   // market coverage
   const expected = want.ports.length * want.goods.length
   if (Number(db_.marketRows) !== expected) {
@@ -213,6 +241,15 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       from public.ship_lines order by code`)).rows
   db_.classProfiles = (await db.query(`
     select class_code, line_code, size, role, tech, deck, any_yard from public.class_profile order by class_code`)).rows
+  // 0131: the skill catalogue, its groups and prerequisites
+  db_.skillGroups = (await db.query(`select code, name, ord from public.skill_groups order by ord`)).rows
+  db_.skills = (await db.query(`
+    select s.code, s.name, s.effect, s.pct_per_level::float8 as pct_per_level, s.blurb,
+           pr.group_code, pr.rank, pr.enrol_where, pr.line_code
+      from public.skills s left join public.skill_profile pr on pr.skill_id = s.id order by s.code`)).rows
+  db_.skillPrereqs = (await db.query(`
+    select s.code, n.code as skill, q.level, q.choice from public.skill_prereqs q
+      join public.skills s on s.id = q.skill_id join public.skills n on n.id = q.needs_skill_id`)).rows
   db_.marketRows = (await db.query(`select count(*)::int as n from public.port_goods`)).rows[0].n
 
   const want = deriveWorld()
@@ -222,6 +259,11 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     want.shipLines = lines.lines
     want.classProfiles = lines.profiles
   }
+  {
+    const skills = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'skills.json'), 'utf8'))
+    want.skillGroups = skills.groups
+    want.skills = skills.skills
+  }
 
   // ── POSITIVE CONTROL: the comparator must SEE a planted drift before it may certify zero ─────
   const wounded = {
@@ -229,15 +271,17 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     ports: want.ports.slice(1),                                      // one harbour dropped
     goods: want.goods.map((g, i) => (i === 0 ? { ...g, base_value: g.base_value + 500 } : g)), // one value bent
     shipLines: want.shipLines.map((l, i) => (i === 0 ? { ...l, builderNations: [...l.builderNations, 'ENG'] } : l)), // 0130: one line's builders bent
+    skills: want.skills.map((s, i) => (i === 0 ? { ...s, rank: s.rank + 1 } : s)), // 0131: one skill's rank bent
   }
   const seen = drift(db_, wounded)
   const sawDrop = seen.some((s) => s.includes(`${want.ports[0].code}`))
   const sawBend = seen.some((s) => s.includes('.base_value:'))
   const sawLine = seen.some((s) => s.includes('.builder_nations:'))
-  if (!sawDrop || !sawBend || !sawLine) {
+  const sawSkill = seen.some((s) => s.includes(`skill ${want.skills[0].code}.rank:`))
+  if (!sawDrop || !sawBend || !sawLine || !sawSkill) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}), bent good value or bent ship line was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value, bent ship line or bent skill rank was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -261,7 +305,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     `world-guard ok: the applied world EQUALS data/*.json — ${want.ports.length} harbours, ` +
       `${want.goods.length} goods, ${want.specialtyPairs.length} offers, ` +
       `${want.places.length} sea places, ${db_.marketRows} market rows, ${want.shipLines.length} ship lines, ` +
-      `${want.classProfiles.length} class profiles ` +
-      `(positive control: a planted dropped-harbour, bent-good-value and bent ship line were all seen)`,
+      `${want.classProfiles.length} class profiles, ${want.skills.length} skills in ${want.skillGroups.length} groups ` +
+      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line and bent skill rank were all seen)`,
   )
 }

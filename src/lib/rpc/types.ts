@@ -1273,7 +1273,25 @@ export interface OfficerRoster {
   officers: Officer[]
 }
 
-export type SkillEffect = 'ENDURANCE' | 'SPEED' | 'TRADE_CAP' | 'SPREAD'
+/** 0131: `NONE` — a catalogue skill that changes nothing yet (docs/SHIPS_AND_SKILLS.md §5.2; S11). */
+export type SkillEffect = 'ENDURANCE' | 'SPEED' | 'TRADE_CAP' | 'SPREAD' | 'NONE'
+
+/** A refusal value as the server serves it inside a read (cmd.refusal, 0050). */
+export interface ServedRefusal {
+  code: string
+  sentence: string
+  figures?: RefusalFigures
+}
+
+/** One prerequisite of a skill (0131): `met` is the server's comparison with the level held now. */
+export interface SkillPrereq {
+  code: string
+  name: string
+  level: number
+  /** 0 = always needed; rows sharing a choice > 0 need any one of them. */
+  choice: number
+  met: boolean
+}
 
 export interface Skill {
   code: string
@@ -1281,12 +1299,51 @@ export interface Skill {
   effect: SkillEffect
   pct_per_level: number
   blurb: string
-  /** 0 when never studied — the absence of a row, not a stored zero. */
+  /** 0 when never studied. Since 0131 a queued level counts the instant its finish passes. */
   level: number
-  /** What the next level costs, or null at the ceiling. */
+  /** What adding the next level costs (the enrolment, or 0 once enrolled), or null at the ceiling. */
   next_cost: number | null
-  /** FALSE when no rule reads this effect yet (0016 wires ENDURANCE only). */
+  /** FALSE when no rule reads this effect yet. */
   takes_effect: boolean
+  // ── 0131 (docs/SHIPS_AND_SKILLS.md §5): every answer below is the server's ──
+  group: string
+  rank: number
+  prereqs: SkillPrereq[]
+  enrolled: boolean
+  enrol_cost: number | null
+  /** "Taught at any academy." — null once enrolled. */
+  enrol_where: string | null
+  /** A docked fleet of yours that can enrol here now, or null. */
+  enrol_fleet: string | null
+  /** Why no docked fleet can enrol (the verb's own refusal), or null. */
+  enrol_refusal: ServedRefusal | null
+  can_enrol: boolean
+  /** The highest level of this skill already in the queue, or null. */
+  queued_to: number | null
+  /** The level that would be added next, or null at the ceiling. */
+  next_level: number | null
+  sp: number
+  sp_next: number | null
+  /** Real seconds the next level takes to train. */
+  train_seconds: number | null
+  can_queue: boolean
+  /** Why the next level cannot be queued (the verb's own refusal), or null. */
+  queue_refusal: ServedRefusal | null
+}
+
+/** One entry of the training queue (0131): served, in order, unfinished only. */
+export interface SkillQueueEntry {
+  pos: number
+  code: string
+  name: string
+  level: number
+  starts_at: string
+  finishes_at: string
+}
+
+export interface SkillGroup {
+  code: string
+  name: string
 }
 
 export interface SkillBook {
@@ -1294,6 +1351,28 @@ export interface SkillBook {
   base_cost: number
   effects_read: SkillEffect[]
   skills: Skill[]
+  // ── 0131 ──
+  groups: SkillGroup[]
+  queue: SkillQueueEntry[]
+  queue_max: number
+  sp_per_hour: number
+  /** When the last queued level finishes, or null with an empty queue. */
+  eta: string | null
+  now: string
+}
+
+/** What `cmd.skill_queue_set` / `cmd.study_skill` hand back on success (0131). */
+export interface SkillQueueSet {
+  queue: SkillQueueEntry[]
+  eta: string | null
+}
+
+/** What `cmd.skill_enroll` hands back on success (0131). */
+export interface SkillEnrolled {
+  skill: string
+  name: string
+  paid: number
+  port: string
 }
 
 // ── the board (0025) ───────────────────────────────────────────────────────────────────────────
@@ -1428,14 +1507,14 @@ export interface PostedOfficer {
   fleet: string | null
 }
 
-export interface StudiedSkill {
+/** 0131: the Academy button enrols (if needed) and QUEUES the next level — no level is sold at once. */
+export interface StudiedSkill extends SkillQueueSet {
   skill: string
   name: string
+  /** The level added to the queue. */
   level: number
-  max_level: number
+  /** The enrolment paid by this press, or 0. */
   paid: number
-  port: string
-  effect: SkillEffect
 }
 
 // ── THE BOOK OF STANDING ORDERS (0034) ──────────────────────────────────────────────────────────

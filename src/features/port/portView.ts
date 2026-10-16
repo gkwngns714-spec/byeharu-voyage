@@ -63,7 +63,9 @@ export const PORT_FACES = [
   // label is the ACT, not the building's period name — owner row 86: *"wtf is shipyard"*. The id
   // stays `shipyard` (the served kind); one word, and not the Build face's word.
   { id: 'shipyard', building: 'shipyard', label: 'Repair' },
-  { id: 'academy', building: 'academy', label: 'School' },
+  // 0131: the academy's face is the SKILLS screen (docs/SHIPS_AND_SKILLS.md §8 S9) — groups of
+  // skills and the training queue; the label is what it shows, as Repair and Build are acts.
+  { id: 'academy', building: 'academy', label: 'Skills' },
 ] as const satisfies readonly {
   id: string
   /** 0067 — the building this face IS, or null for a face that is not one. */

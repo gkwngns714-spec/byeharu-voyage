@@ -1004,7 +1004,13 @@ E_HOLD_FULL
 `E_UNAVAILABLE`, `E_DAILY_CAP`, `E_PRICE_LIMIT`, `E_MIN_INVEST`, `E_WEEKLY_CAP`, `E_NO_PRESENCE`,
 `E_SEASON_CLOSED`, `E_FLEET_CAP`, `E_FLEET_SIZE`, `E_SHIP_CAP`, `E_LAST_SHIP`, `E_DIFFERENT_PORT`,
 `E_YARD_TIER`, `E_WRONG_YARD` (0130: a hull built outside its line's countries), `E_NO_YARD`, `E_NO_BLUEPRINT`, `E_MATERIALS`, `E_SCOUTING`, `E_ALREADY_EXPLORED`,
-`E_ALREADY_REPORTED`, `E_NO_ACADEMY`, `E_QUEUE_FULL`, `E_RANK_LOCKED`, `E_STALE`.
+`E_ALREADY_REPORTED`, `E_NO_ACADEMY`, `E_QUEUE_FULL`, `E_RANK_LOCKED`, `E_STALE`,
+and from 0131 (skills: enrolment + the training queue, docs/SHIPS_AND_SKILLS.md §5.1) `E_NOT_ENROLLED`
+(a level of a skill not yet enrolled), `E_ALREADY_ENROLLED`, `E_NOT_TAUGHT_HERE` (a line's hull skill
+enrolled anywhere but a build yard of that line's countries), `E_SKILL_PREREQ` (a prerequisite not met by
+the time the entry starts, with figures), `E_SKILL_ORDER` (not the next level of its skill),
+`E_SKILL_QUEUE_FULL` (more than `skill_queue_max` levels), and the server-only `E_MERCHANT_FIXED` (a
+merchant's skills are fixed at founding).
 
 ---
 

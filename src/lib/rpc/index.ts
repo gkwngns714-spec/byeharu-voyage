@@ -74,6 +74,8 @@ import type {
   StandingRouteSaved,
   StandingRouteStopDraft,
   SkillBook,
+  SkillEnrolled,
+  SkillQueueSet,
   StandingsBoard,
   BuffsView,
   StudiedSkill,
@@ -467,9 +469,19 @@ export function cmdPostOfficer(code: string, fleetId: string | null = null) {
   return call<PostedOfficer>('cmdPostOfficer', [code, fleetId])
 }
 
-/** Raise one skill by one level, for money, at a port that keeps an academy (0016). */
+/** Enrol (if needed, where the fleet is docked) and queue a skill's next level (0016, re-cut 0131). */
 export function cmdStudySkill(code: string, fleetId: string) {
   return call<StudiedSkill>('cmdStudySkill', [code, fleetId])
+}
+
+/** Enrol in a skill where this fleet is docked, for the tuition (0131). */
+export function cmdSkillEnroll(code: string, fleetId: string) {
+  return call<SkillEnrolled>('cmdSkillEnroll', [code, fleetId])
+}
+
+/** Set the whole training queue, in order (0131). The server refuses it whole or takes it whole. */
+export function cmdSkillQueueSet(entries: readonly { code: string; level: number }[]) {
+  return call<SkillQueueSet>('cmdSkillQueueSet', [entries])
 }
 
 /**

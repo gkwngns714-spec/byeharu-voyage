@@ -63,6 +63,9 @@ import {
   worldSnapshot,
   worldSeaRaster,
   worldReach,
+  worldSkills,
+  cmdSkillEnroll,
+  cmdSkillQueueSet,
 } from '../src/lib/rpc'
 import type { ManifestLine } from '../src/lib/rpc'
 
@@ -1486,6 +1489,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // takes a fleet or a player id: the caller's company buys, docked at that harbour only
       // (E_NOT_DOCKED). Landed WITH the face that reads them (CityTownHall).
       'worldTownHall', 'cmdPreviewInvest', 'cmdInvest',
+      // Pin moved deliberately 2026-10-16 with migration 0131 (docs/SHIPS_AND_SKILLS.md §5, step S9):
+      // THE SKILLS SCREEN — enrol where a skill is taught (the fleet names where you are) and set the
+      // whole training queue. Neither takes a player id; the queue is validated whole by the one rule
+      // world.skills answers from. Landed WITH the face that reads them (PORT › Academy → Skills).
+      'cmdSkillEnroll', 'cmdSkillQueueSet',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')
@@ -1532,6 +1540,10 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.sign_officer(uuid, text, uuid)',
     'public.post_officer_to(uuid, text, uuid)',
     'public.raise_skill(uuid, text, text)',
+    // 0131: the skill cores — enrolment, the queue's one writer, the Academy button's core.
+    'public.skill_enroll_for(uuid, text, uuid)',
+    'public.skill_queue_set_for(uuid, jsonb)',
+    'public.skill_study_for(uuid, text, uuid)',
     'cmd.provision_preset_save_for(uuid, uuid, text, integer)',
     'cmd.provision_preset_apply_for(uuid, uuid, uuid)',
     'cmd.standing_route_save_for(uuid, uuid, text, jsonb, bigint, integer, integer)',
@@ -1696,6 +1708,62 @@ test('the book of standing orders round-trips: write, adjust, apply, clear, stri
   expect(struck.deleted).toBe('Spec Order II')
   expect(struck.detached_fleets).toBe(0)
   expect(expectOk(await worldProvisionPresets()).presets.length).toBe(before)
+})
+
+// 0131 — THE SKILLS BOOK AND THE QUEUE THROUGH THE CLIENT'S OWN DOORS (docs/SHIPS_AND_SKILLS.md §5).
+// Every key SkillBook / Skill declare is read back off a real answer; a level is queued and the book
+// serves it back; a refusal is typed; the queue is left as it was found. Nothing here is paid for.
+test("world.skills() serves the groups, the queue and the verbs' own answers; the queue round-trips (0131)", async () => {
+  const book = expectOk(await worldSkills())
+  expect(book.groups.map((g) => g.code)).toEqual([
+    'HULLS', 'ROLES', 'SEAMANSHIP', 'NAVIGATION', 'TRADE', 'GUNNERY', 'COMMAND', 'SHIPWRIGHT',
+  ])
+  expect(book.skills).toHaveLength(92)
+  expect(isNum(book.queue_max) && isNum(book.sp_per_hour) && isStr(book.now)).toBe(true)
+  for (const s of book.skills) {
+    for (const k of [
+      'code', 'name', 'effect', 'pct_per_level', 'blurb', 'level', 'next_cost', 'takes_effect', 'group', 'rank',
+      'prereqs', 'enrolled', 'enrol_cost', 'enrol_where', 'enrol_fleet', 'enrol_refusal', 'can_enrol',
+      'queued_to', 'next_level', 'sp', 'sp_next', 'train_seconds', 'can_queue', 'queue_refusal',
+    ]) expect(s, `${s.code}.${k}`).toHaveProperty(k)
+    expect(book.groups.some((g) => g.code === s.group)).toBe(true)
+  }
+  // a hull skill is taught at its line's build yards, and says so; its prerequisite is served
+  const light = book.skills.find((s) => s.code === 'NLD_LIGHT')!
+  expect(light.enrolled).toBe(false)
+  expect(light.enrol_where).toContain('build yard')
+  expect(light.prereqs).toEqual([expect.objectContaining({ code: 'NLD_SMALL', level: 3 })])
+
+  // QUEUE the next level of a live skill (needs no enrolment) after whatever is queued already.
+  const sea = book.skills.find((s) => s.code === 'SEAMANSHIP')!
+  expect(sea.enrolled).toBe(true)
+  const start = book.queue.map((q) => ({ code: q.code, level: q.level }))
+  if (sea.next_level !== null && start.length < book.queue_max) {
+    expect(sea.can_queue).toBe(true)
+    const set = expectOk(await cmdSkillQueueSet([...start, { code: 'SEAMANSHIP', level: sea.next_level }]))
+    expect(set.queue.at(-1)!.code).toBe('SEAMANSHIP')
+    expect(isStr(set.eta)).toBe(true)
+    const after = expectOk(await worldSkills())
+    expect(after.queue).toHaveLength(start.length + 1)
+    expect(isStr(after.queue.at(-1)!.finishes_at)).toBe(true)
+    expect(after.eta).toBe(set.eta)
+    expect(after.skills.find((s) => s.code === 'SEAMANSHIP')!.queued_to).toBe(sea.next_level)
+  }
+
+  // REFUSALS ARE TYPED: a skill not enrolled; a fleet that is not yours.
+  const notEnrolled = await cmdSkillQueueSet([{ code: 'HULL_UPKEEP', level: 1 }])
+  expect(notEnrolled.ok).toBe(false)
+  if (notEnrolled.ok) throw new Error('unreachable')
+  expect(notEnrolled.refusal.code).toBe('E_NOT_ENROLLED')
+  expect(notEnrolled.refusal.sentence).toContain('Hull Upkeep')
+  const ghost = await cmdSkillEnroll('GUNNERY', '00000000-0000-4000-8000-0000000000ab')
+  expect(ghost.ok).toBe(false)
+  if (ghost.ok) throw new Error('unreachable')
+  expect(ghost.refusal.code).toBe('E_NOT_YOUR_FLEET')
+
+  // and the queue as it was found
+  expectOk(await cmdSkillQueueSet(start))
+  expect(expectOk(await worldSkills()).queue).toHaveLength(start.length)
 })
 
 // 0092 — THE STANDING ROUTE THROUGH THE CLIENT'S OWN DOORS. Every field StandingRouteBook declares is

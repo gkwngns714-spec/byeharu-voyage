@@ -263,6 +263,22 @@ export const RPCS = {
       { name: 'p_fleet', type: 'uuid' },
     ],
   },
+  // 0131 — THE SKILLS SCREEN (docs/SHIPS_AND_SKILLS.md §5.1). Enrol where a skill is taught (the fleet
+  // names where you are), and set the whole training queue. Neither takes a player id; the server
+  // validates the whole queue with the one rule world.skills answers from.
+  cmdSkillEnroll: {
+    schema: 'cmd',
+    fn: 'skill_enroll',
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_fleet', type: 'uuid' },
+    ],
+  },
+  cmdSkillQueueSet: {
+    schema: 'cmd',
+    fn: 'skill_queue_set',
+    args: [{ name: 'p_entries', type: 'jsonb' }],
+  },
   // 0034 — THE BOOK OF STANDING ORDERS. One read and three verbs, landed here together with the
   // migration's grant rows because a grant with no catalogue entry is a door nobody opens — the
   // 0022 lesson, written into that migration's own header. None takes a player id: each reads
