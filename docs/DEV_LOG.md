@@ -47,6 +47,15 @@ head 0130; the owner deploys: `db push` first, merge after).
   at exactly now + 500 s / + 2,328 s / + 1,000 s with `skill_level_at` stepping at each finish.
   `tests/db.chain.spec.ts` LAST pin → 0131; `tests/rpc.surface.spec.ts` pins the two doors and reads
   the book back.
+- **Review fixes (same file, before any deploy)**: tuition is paid only by the call whose `skill_sp`
+  insert wrote the row (`GET DIAGNOSTICS`; a double tap answers `E_ALREADY_ENROLLED` and pays nothing,
+  asserted); one per-house advisory lock `public.skill_lock` taken FIRST by enrol / queue_set / study
+  (study read the queue before the lock); `world.port_merchants` (0113) re-cut to sum a merchant's
+  level over the four company skills, not 92 (8 busiest harbours' 216 merchant levels = pre-image);
+  the merchant card filter and the profile check key on `skill_profile.enrol_where = 'none'`, not the
+  effect (S11-proof). The header's lock note was wrong — db push holds locks to the commit — so the
+  ALTER of `public.skills` (ACCESS EXCLUSIVE) now comes AFTER every heavy comparison (§7), with only
+  the rows, the probe and light reads behind it.
 
 ---
 

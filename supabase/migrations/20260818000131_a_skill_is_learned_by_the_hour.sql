@@ -52,7 +52,12 @@
 --     next level takes, the ETA, and for every skill whether its next level can be queued and the
 --     verb's own refusal if not (the same function the verb asks). The client renders only.
 -- (7) A merchant's card (world.npc_fleet_card) lists the skills it holds and the four it always
---     showed — not 88 zero rows (merchants never train: fixed at founding, §5.1).
+--     showed — not 88 zero rows (merchants never train: fixed at founding, §5.1); and a harbour's
+--     merchant list (world.port_merchants, 0113) sums a merchant's level over those four skills, not
+--     over all 92 (92 skill_level calls per merchant row would cost a busy harbour's tap ~100 ms).
+--     Both key on skill_profile.enrol_where = 'none', not on the effect, so S11 does not move them.
+--     Enrolment, the queue and the Academy button take one per-house lock (public.skill_lock) first,
+--     and tuition is paid only by the call whose insert wrote the enrolment row.
 --
 -- ── WHAT IT DELIBERATELY DOES NOT DO ────────────────────────────────────────────────────────────
 -- No skill effect for the 88 (S11: skill_effects / skill_requirements). No cron: levels are a pure
@@ -63,20 +68,27 @@
 -- 8 min to I … 5.9 days to V).
 --
 -- ── LOCKS ───────────────────────────────────────────────────────────────────────────────────────
--- lock_timeout 5 s; no LOCK TABLE, no set role, no begin/commit. The ALTER of public.skills takes
--- ACCESS EXCLUSIVE on skills (read by the ticks through player_skill_bonus) for the length of one
--- statement where each statement commits alone; it is retried on a lock wait and fails as LOCK
--- CONTENTION, never as a result. New FKs reference skills / ship_lines / skill_groups only (no
--- tick writes those). Every probe runs on its own founded house and rolls back; a probe call that
--- reaches pay_city (tuition → the city's books) is retried on 55P03/40P01 and fails as LOCK
--- CONTENTION if it persists. Pre-images are taken in this file — never an assumed empty world.
+-- lock_timeout 5 s; no LOCK TABLE, no set role, no begin/commit. db push applies this file in ONE
+-- transaction, so every lock taken is held until the file commits. Two matter:
+--   * the new tables' FKs take SHARE ROW EXCLUSIVE on public.skills (and ship_lines, skill_groups)
+--     from §3 on — that blocks only WRITES to those tables, which no tick makes;
+--   * the ALTER of public.skills (§8) takes ACCESS EXCLUSIVE, which blocks every READ of skills —
+--     and the ticks read it (player_skill_bonus in fleet speed and endurance) — until the commit. So it
+--     is taken as LATE as the file allows: every heavy read (the pre-images, and the comparisons of
+--     every house's levels, bonuses and 0107 gates, the merchant cards and harbour lists through the
+--     re-cut bodies, §7) runs BEFORE it, and after it come only the catalogue rows, the probe (about a
+--     second) and light reads. The ALTER is retried on a lock wait and fails as LOCK CONTENTION, never
+--     as a result.
+-- Every probe runs on its own founded house and rolls back; a probe call that reaches pay_city
+-- (tuition → the city's books) is retried on 55P03/40P01 and fails as LOCK CONTENTION if it
+-- persists. Pre-images are taken in this file — never an assumed empty world.
 --
 -- SUPERSEDES, by hunks sliced from the LIVE bodies (LF-normalised), each asserted to occur exactly
 -- once and to reverse to its pre-image, ACLs unchanged: public.skill_level (0107),
 -- public.player_skill_bonus (0016), world.skills() (0027), cmd.study_skill (0016 as cut by 0096),
--- public.client_rpc_entry_points() (0123), world.npc_fleet_card (0124).
+-- public.client_rpc_entry_points() (0123), world.npc_fleet_card (0124), world.port_merchants (0113).
 --
--- ROLLBACK (forward migration): reverse the six hunks; drop the two doors (and their registry
+-- ROLLBACK (forward migration): reverse the seven hunks; drop the two doors (and their registry
 -- rows), the cores, skill_queue, skill_sp, skill_prereqs, skill_profile, skill_groups; delete the 88
 -- NONE rows (no player_skills row can reference them: only queue folds write those, and the fold
 -- is what a rollback keeps — levels earned stay). The knobs may stay.
@@ -144,6 +156,35 @@ begin
   return v_out;
 end $$;
 
+-- What the busiest harbours' merchant lists say each merchant's level is (world.port_merchants) — the
+-- eight harbours most merchant routes call at. Same switch handling as the cards.
+create or replace function pg_temp.harbours_0131()
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_out jsonb := '{}'::jsonb;
+  h     record;
+begin
+  begin
+    if not public.npc_traders_on() then
+      update public.world_config set value = 'true'::jsonb
+       where key in ('npc_traders_enabled', 'standing_routes_enabled') and value <> 'true'::jsonb;
+    end if;
+    for h in select s.port_id, count(*) as n from public.standing_route_stops s
+               join public.npc_fleets nf on nf.route_id = s.route_id
+              group by s.port_id order by count(*) desc, s.port_id limit 8 loop
+      v_out := v_out || jsonb_build_object(h.port_id::text,
+                 (select coalesce(jsonb_object_agg(m->>'id', m->'level'), '{}'::jsonb)
+                    from jsonb_array_elements(world.port_merchants(h.port_id)->'merchants') m));
+    end loop;
+    raise exception 'HARBOURS_ROLLBACK_0131';
+  exception when others then
+    if sqlerrm <> 'HARBOURS_ROLLBACK_0131' then raise; end if;
+  end;
+  return v_out;
+end $$;
+
 -- How many cron jobs there are (null where there is no pg_cron, as in a local chain). Dynamic, so the
 -- name cron.job is only resolved where it exists.
 create or replace function pg_temp.cron_jobs_0131()
@@ -170,7 +211,8 @@ select f.fn,
                     'world.skills()',
                     'cmd.study_skill(text, uuid)',
                     'public.client_rpc_entry_points()',
-                    'world.npc_fleet_card(uuid)']) f(fn);
+                    'world.npc_fleet_card(uuid)',
+                    'world.port_merchants(uuid)']) f(fn);
 
 create temp table before_0131 as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
@@ -204,6 +246,13 @@ select p.id as player_id, public.earned_caps(p.id) as caps,
 create temp table cards_before_0131 as
 select pg_temp.cards_0131() as j;
 
+create temp table harbours_before_0131 as
+select pg_temp.harbours_0131() as j;
+
+-- the skills that existed before this file (the four live ones), by id
+create temp table live_skills_0131 as
+select s.id, s.code from public.skills s;
+
 -- ── 2. THE KNOBS ───────────────────────────────────────────────────────────────────────────────
 insert into public.world_config (key, value, description) values
   ('skill_sp_per_hour', to_jsonb(1800),
@@ -214,145 +263,7 @@ insert into public.world_config (key, value, description) values
    '0131: the most levels a house may have in its training queue at once (each the next level of its skill).')
 on conflict (key) do nothing;
 
--- ── 3. THE CATALOGUE: the checks re-made, then the 88 rows (data/skills.json) ──────────────────
-do $alter$
-declare
-  v_eff   text;
-  v_pct   text;
-  v_try   int := 0;
-  v_state text;
-  v_msg   text;
-begin
-  perform set_config('lock_timeout', '5s', true);
-  select k.conname into v_eff from pg_constraint k
-   where k.conrelid = 'public.skills'::regclass and k.contype = 'c'
-     and pg_get_constraintdef(k.oid) like '%effect%' and pg_get_constraintdef(k.oid) not like '%pct_per_level%';
-  select k.conname into v_pct from pg_constraint k
-   where k.conrelid = 'public.skills'::regclass and k.contype = 'c'
-     and pg_get_constraintdef(k.oid) like '%pct_per_level%' and pg_get_constraintdef(k.oid) not like '%effect%';
-  if v_eff is null or v_pct is null then
-    raise exception '0131 self-assert FAIL: the effect (%) or pct_per_level (%) check of public.skills is not where 0016 put it', v_eff, v_pct;
-  end if;
-  loop
-    v_try := v_try + 1;
-    begin
-      execute format(
-        'alter table public.skills drop constraint %I, drop constraint %I, '
-        'add constraint skills_effect_known check (effect in (''ENDURANCE'', ''SPEED'', ''TRADE_CAP'', ''SPREAD'', ''NONE'')) not valid, '
-        'add constraint skills_pct_per_level_sane check ((effect = ''NONE'' and pct_per_level = 0) '
-        'or (effect <> ''NONE'' and pct_per_level > 0 and pct_per_level <= 10)) not valid',
-        v_eff, v_pct);
-      alter table public.skills validate constraint skills_effect_known;
-      alter table public.skills validate constraint skills_pct_per_level_sane;
-      exit;
-    exception when lock_not_available or deadlock_detected then
-      get stacked diagnostics v_msg = message_text, v_state = returned_sqlstate;
-      if v_try >= 5 then
-        raise exception '0131 self-assert FAIL: LOCK CONTENTION, not a result — public.skills could not be altered in 5 tries (%: %). Re-run the push.', v_state, v_msg;
-      end if;
-      perform pg_sleep(0.5);
-    end;
-  end loop;
-end $alter$;
-
-comment on column public.skills.effect is
-  'The ONE thing this skill changes. Exactly one, for the same reason an officer has one specialty: '
-  'a skill that moved several numbers would need several rules to read it. 0131: NONE = nothing yet '
-  '(the 88 catalogue skills of docs/SHIPS_AND_SKILLS.md §5.2; S11 gives them their effects through '
-  'skill_effects), always with pct_per_level 0.';
-
-insert into public.skills (code, name, effect, pct_per_level, blurb) values
-  ('PRT_SMALL', 'Portuguese Small Hulls', 'NONE', 0, 'How Portuguese small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('PRT_LIGHT', 'Portuguese Light Hulls', 'NONE', 0, 'How Portuguese light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('PRT_MEDIUM', 'Portuguese Medium Hulls', 'NONE', 0, 'How Portuguese medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('PRT_HEAVY', 'Portuguese Heavy Hulls', 'NONE', 0, 'How Portuguese heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('PRT_CAPITAL', 'Portuguese Capital Hulls', 'NONE', 0, 'How Portuguese capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ESP_SMALL', 'Spanish Small Hulls', 'NONE', 0, 'How Spanish small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ESP_LIGHT', 'Spanish Light Hulls', 'NONE', 0, 'How Spanish light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ESP_MEDIUM', 'Spanish Medium Hulls', 'NONE', 0, 'How Spanish medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ESP_HEAVY', 'Spanish Heavy Hulls', 'NONE', 0, 'How Spanish heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ESP_CAPITAL', 'Spanish Capital Hulls', 'NONE', 0, 'How Spanish capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('NLD_SMALL', 'Dutch Small Hulls', 'NONE', 0, 'How Dutch small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('NLD_LIGHT', 'Dutch Light Hulls', 'NONE', 0, 'How Dutch light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('NLD_MEDIUM', 'Dutch Medium Hulls', 'NONE', 0, 'How Dutch medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('NLD_HEAVY', 'Dutch Heavy Hulls', 'NONE', 0, 'How Dutch heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('NLD_CAPITAL', 'Dutch Capital Hulls', 'NONE', 0, 'How Dutch capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ENG_SMALL', 'English Small Hulls', 'NONE', 0, 'How English small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ENG_LIGHT', 'English Light Hulls', 'NONE', 0, 'How English light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ENG_MEDIUM', 'English Medium Hulls', 'NONE', 0, 'How English medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ENG_HEAVY', 'English Heavy Hulls', 'NONE', 0, 'How English heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ENG_CAPITAL', 'English Capital Hulls', 'NONE', 0, 'How English capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('FRA_SMALL', 'French Small Hulls', 'NONE', 0, 'How French small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('FRA_LIGHT', 'French Light Hulls', 'NONE', 0, 'How French light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('FRA_MEDIUM', 'French Medium Hulls', 'NONE', 0, 'How French medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('FRA_HEAVY', 'French Heavy Hulls', 'NONE', 0, 'How French heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('FRA_CAPITAL', 'French Capital Hulls', 'NONE', 0, 'How French capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ITA_SMALL', 'Italian Small Hulls', 'NONE', 0, 'How Italian small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ITA_LIGHT', 'Italian Light Hulls', 'NONE', 0, 'How Italian light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ITA_MEDIUM', 'Italian Medium Hulls', 'NONE', 0, 'How Italian medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ITA_HEAVY', 'Italian Heavy Hulls', 'NONE', 0, 'How Italian heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('ITA_CAPITAL', 'Italian Capital Hulls', 'NONE', 0, 'How Italian capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('OTT_SMALL', 'Ottoman Small Hulls', 'NONE', 0, 'How Ottoman small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('OTT_LIGHT', 'Ottoman Light Hulls', 'NONE', 0, 'How Ottoman light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('OTT_MEDIUM', 'Ottoman Medium Hulls', 'NONE', 0, 'How Ottoman medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('OTT_HEAVY', 'Ottoman Heavy Hulls', 'NONE', 0, 'How Ottoman heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('OTT_CAPITAL', 'Ottoman Capital Hulls', 'NONE', 0, 'How Ottoman capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('IND_SMALL', 'Indian Small Hulls', 'NONE', 0, 'How Indian small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('IND_LIGHT', 'Indian Light Hulls', 'NONE', 0, 'How Indian light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('IND_MEDIUM', 'Indian Medium Hulls', 'NONE', 0, 'How Indian medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('IND_HEAVY', 'Indian Heavy Hulls', 'NONE', 0, 'How Indian heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('IND_CAPITAL', 'Indian Capital Hulls', 'NONE', 0, 'How Indian capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('CHN_SMALL', 'Chinese Small Hulls', 'NONE', 0, 'How Chinese small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('CHN_LIGHT', 'Chinese Light Hulls', 'NONE', 0, 'How Chinese light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('CHN_MEDIUM', 'Chinese Medium Hulls', 'NONE', 0, 'How Chinese medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('CHN_HEAVY', 'Chinese Heavy Hulls', 'NONE', 0, 'How Chinese heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('CHN_CAPITAL', 'Chinese Capital Hulls', 'NONE', 0, 'How Chinese capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('JPN_SMALL', 'Japanese Small Hulls', 'NONE', 0, 'How Japanese small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('JPN_LIGHT', 'Japanese Light Hulls', 'NONE', 0, 'How Japanese light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('JPN_MEDIUM', 'Japanese Medium Hulls', 'NONE', 0, 'How Japanese medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('JPN_HEAVY', 'Japanese Heavy Hulls', 'NONE', 0, 'How Japanese heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('JPN_CAPITAL', 'Japanese Capital Hulls', 'NONE', 0, 'How Japanese capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('KOR_SMALL', 'Korean Small Hulls', 'NONE', 0, 'How Korean small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('KOR_LIGHT', 'Korean Light Hulls', 'NONE', 0, 'How Korean light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('KOR_MEDIUM', 'Korean Medium Hulls', 'NONE', 0, 'How Korean medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('KOR_HEAVY', 'Korean Heavy Hulls', 'NONE', 0, 'How Korean heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('KOR_CAPITAL', 'Korean Capital Hulls', 'NONE', 0, 'How Korean capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
-  ('MERCHANT_SHIPS', 'Merchant Ships', 'NONE', 0, 'Running big trading ships: packing, loading and keeping a large cargo moving.'),
-  ('SHIPS_OF_WAR', 'Ships of War', 'NONE', 0, 'Fighting big warships: the gun decks, the drills and the crews they need.'),
-  ('EXPLORERS', 'Exploration Vessels', 'NONE', 0, 'Long voyages into unknown water: lookouts, charts and ships built to range far.'),
-  ('ESCORT_SUPPORT', 'Escort & Support', 'NONE', 0, 'Ships that guard and serve a fleet: tough, steady and kept in good repair.'),
-  ('ARMED_MERCHANT', 'Armed Merchantmen', 'NONE', 0, 'Improved trading ships that carry guns as well as cargo.'),
-  ('PRIVATEERS', 'Privateers', 'NONE', 0, 'Improved warships built to hunt and hit hard.'),
-  ('SURVEY_SHIPS', 'Survey Ships', 'NONE', 0, 'Improved exploration ships that see farther and range wider.'),
-  ('CONVOY_ESCORTS', 'Convoy Escorts', 'NONE', 0, 'Improved escorts that keep a convoy together and safe.'),
-  ('FAMOUS_SHIPS', 'Famous Ships', 'NONE', 0, 'The great named ships of each country. Only the most experienced captains are trusted with one.'),
-  ('HULL_UPKEEP', 'Hull Upkeep', 'NONE', 0, 'Keeping planking, seams and frames sound so every ship lasts longer.'),
-  ('DAMAGE_CONTROL', 'Damage Control', 'NONE', 0, 'Plugging holes and shoring up under fire, so damage does less harm.'),
-  ('DECK_MANAGEMENT', 'Deck Management', 'NONE', 0, 'Fitting more gear on a deck without getting in the crew''s way.'),
-  ('HANDLING_SPEC', 'Ship Handling Specialisation', 'NONE', 0, 'Mastery of improved rudders, anchors and capstans.'),
-  ('RIGGING', 'Rigging', 'NONE', 0, 'Setting and trimming sails so a ship turns and answers quickly.'),
-  ('LOOKOUTS', 'Lookouts', 'NONE', 0, 'Training sharp eyes aloft to spot sails and coasts sooner.'),
-  ('INSTRUMENTS', 'Instruments', 'NONE', 0, 'Compass, charts and the astrolabe, used well.'),
-  ('RIGGING_SPEC', 'Rigging Specialisation', 'NONE', 0, 'Mastery of improved sails and rigging.'),
-  ('INSTRUMENT_SPEC', 'Instrument Specialisation', 'NONE', 0, 'Mastery of improved navigation instruments.'),
-  ('CARGO_STOWAGE', 'Cargo Stowage', 'NONE', 0, 'Packing cargo tightly so every ship carries more.'),
-  ('STOWAGE_SPEC', 'Stowage Specialisation', 'NONE', 0, 'Mastery of improved cargo fittings.'),
-  ('GUNNERY', 'Gunnery', 'NONE', 0, 'Loading, aiming and firing a ship''s guns.'),
-  ('GUN_LAYING', 'Gun Laying', 'NONE', 0, 'Aiming each gun with care so more shots hit.'),
-  ('LONG_GUNS', 'Long Guns', 'NONE', 0, 'Long-barrelled chase guns that reach farther.'),
-  ('SHORT_GUNS', 'Short Guns', 'NONE', 0, 'Short, heavy guns that hit hard up close.'),
-  ('BOARDING', 'Boarding', 'NONE', 0, 'Grappling, crossing over and fighting on another ship''s deck.'),
-  ('GUN_DRILL', 'Gun Drill', 'NONE', 0, 'Drilled gun crews, so the guns need fewer hands.'),
-  ('GUNNERY_SPEC', 'Gunnery Specialisation', 'NONE', 0, 'Mastery of improved guns, boarding gear and magazines.'),
-  ('COMMAND', 'Command', 'NONE', 0, 'Leading officers and running more ships at once.'),
-  ('FLEET_COMMAND', 'Fleet Command', 'NONE', 0, 'Leading a whole fleet from a flagship.'),
-  ('SHIPWRIGHT', 'Shipwright', 'NONE', 0, 'How ships are built, so a build yard needs less paid work.'),
-  ('REFITTING', 'Refitting', 'NONE', 0, 'Lasting changes to a ship''s build.'),
-  ('AUGMENTATION', 'Augmentation', 'NONE', 0, 'Adding chosen extras to fitted gear.'),
-  ('SHIPWRIGHT_SPEC', 'Shipwright Specialisation', 'NONE', 0, 'Mastery of improved hull fittings.')
-on conflict (code) do nothing;
-
--- ── 4. THE SIDE TABLES ─────────────────────────────────────────────────────────────────────────
+-- ── 3. THE SIDE TABLES ─────────────────────────────────────────────────────────────────────────
 create table if not exists public.skill_groups (
   code text primary key check (code ~ '^[A-Z]+$'),
   name text not null,
@@ -392,9 +303,10 @@ comment on table public.skill_profile is
 alter table public.skill_profile enable row level security;
 revoke all on table public.skill_profile from public, anon, authenticated;
 
-insert into public.skill_profile (skill_id, group_code, rank, enrol_where, line_code, ord)
-select s.id, v.grp, v.rank, v.enrol, v.line, v.ord
-  from (values
+-- the 92 profiles (data/skills.json), kept in one temp table: inserted HERE for the four live skills
+-- (the re-cut reads below key on them), and again after the catalogue rows exist (§8).
+create temp table profile_rows_0131 (code text, grp text, rank int, enrol text, line text, ord int);
+insert into profile_rows_0131 (code, grp, rank, enrol, line, ord) values
     ('PRT_SMALL', 'HULLS', 1, 'line_yard', 'PRT', 1),
     ('PRT_LIGHT', 'HULLS', 2, 'line_yard', 'PRT', 2),
     ('PRT_MEDIUM', 'HULLS', 4, 'line_yard', 'PRT', 3),
@@ -486,9 +398,11 @@ select s.id, v.grp, v.rank, v.enrol, v.line, v.ord
     ('SHIPWRIGHT', 'SHIPWRIGHT', 2, 'academy', null, 1),
     ('REFITTING', 'SHIPWRIGHT', 4, 'academy', null, 2),
     ('AUGMENTATION', 'SHIPWRIGHT', 5, 'academy', null, 3),
-    ('SHIPWRIGHT_SPEC', 'SHIPWRIGHT', 5, 'academy', null, 4)
-  ) v(code, grp, rank, enrol, line, ord)
-  join public.skills s on s.code = v.code
+    ('SHIPWRIGHT_SPEC', 'SHIPWRIGHT', 5, 'academy', null, 4);
+
+insert into public.skill_profile (skill_id, group_code, rank, enrol_where, line_code, ord)
+select s.id, v.grp, v.rank, v.enrol, v.line, v.ord
+  from profile_rows_0131 v join public.skills s on s.code = v.code
 on conflict (skill_id) do nothing;
 
 create table if not exists public.skill_prereqs (
@@ -505,105 +419,6 @@ comment on table public.skill_prereqs is
   '(the one rule). Authored in data/skills.json. Server-only.';
 alter table public.skill_prereqs enable row level security;
 revoke all on table public.skill_prereqs from public, anon, authenticated;
-
-insert into public.skill_prereqs (skill_id, needs_skill_id, level, choice)
-select s.id, n.id, v.level, v.choice
-  from (values
-    ('PRT_LIGHT', 'PRT_SMALL', 3, 0),
-    ('PRT_MEDIUM', 'PRT_LIGHT', 3, 0),
-    ('PRT_HEAVY', 'PRT_MEDIUM', 4, 0),
-    ('PRT_CAPITAL', 'PRT_HEAVY', 4, 0),
-    ('PRT_CAPITAL', 'COMMAND', 3, 0),
-    ('ESP_LIGHT', 'ESP_SMALL', 3, 0),
-    ('ESP_MEDIUM', 'ESP_LIGHT', 3, 0),
-    ('ESP_HEAVY', 'ESP_MEDIUM', 4, 0),
-    ('ESP_CAPITAL', 'ESP_HEAVY', 4, 0),
-    ('ESP_CAPITAL', 'COMMAND', 3, 0),
-    ('NLD_LIGHT', 'NLD_SMALL', 3, 0),
-    ('NLD_MEDIUM', 'NLD_LIGHT', 3, 0),
-    ('NLD_HEAVY', 'NLD_MEDIUM', 4, 0),
-    ('NLD_CAPITAL', 'NLD_HEAVY', 4, 0),
-    ('NLD_CAPITAL', 'COMMAND', 3, 0),
-    ('ENG_LIGHT', 'ENG_SMALL', 3, 0),
-    ('ENG_MEDIUM', 'ENG_LIGHT', 3, 0),
-    ('ENG_HEAVY', 'ENG_MEDIUM', 4, 0),
-    ('ENG_CAPITAL', 'ENG_HEAVY', 4, 0),
-    ('ENG_CAPITAL', 'COMMAND', 3, 0),
-    ('FRA_LIGHT', 'FRA_SMALL', 3, 0),
-    ('FRA_MEDIUM', 'FRA_LIGHT', 3, 0),
-    ('FRA_HEAVY', 'FRA_MEDIUM', 4, 0),
-    ('FRA_CAPITAL', 'FRA_HEAVY', 4, 0),
-    ('FRA_CAPITAL', 'COMMAND', 3, 0),
-    ('ITA_LIGHT', 'ITA_SMALL', 3, 0),
-    ('ITA_MEDIUM', 'ITA_LIGHT', 3, 0),
-    ('ITA_HEAVY', 'ITA_MEDIUM', 4, 0),
-    ('ITA_CAPITAL', 'ITA_HEAVY', 4, 0),
-    ('ITA_CAPITAL', 'COMMAND', 3, 0),
-    ('OTT_LIGHT', 'OTT_SMALL', 3, 0),
-    ('OTT_MEDIUM', 'OTT_LIGHT', 3, 0),
-    ('OTT_HEAVY', 'OTT_MEDIUM', 4, 0),
-    ('OTT_CAPITAL', 'OTT_HEAVY', 4, 0),
-    ('OTT_CAPITAL', 'COMMAND', 3, 0),
-    ('IND_LIGHT', 'IND_SMALL', 3, 0),
-    ('IND_MEDIUM', 'IND_LIGHT', 3, 0),
-    ('IND_HEAVY', 'IND_MEDIUM', 4, 0),
-    ('IND_CAPITAL', 'IND_HEAVY', 4, 0),
-    ('IND_CAPITAL', 'COMMAND', 3, 0),
-    ('CHN_LIGHT', 'CHN_SMALL', 3, 0),
-    ('CHN_MEDIUM', 'CHN_LIGHT', 3, 0),
-    ('CHN_HEAVY', 'CHN_MEDIUM', 4, 0),
-    ('CHN_CAPITAL', 'CHN_HEAVY', 4, 0),
-    ('CHN_CAPITAL', 'COMMAND', 3, 0),
-    ('JPN_LIGHT', 'JPN_SMALL', 3, 0),
-    ('JPN_MEDIUM', 'JPN_LIGHT', 3, 0),
-    ('JPN_HEAVY', 'JPN_MEDIUM', 4, 0),
-    ('JPN_CAPITAL', 'JPN_HEAVY', 4, 0),
-    ('JPN_CAPITAL', 'COMMAND', 3, 0),
-    ('KOR_LIGHT', 'KOR_SMALL', 3, 0),
-    ('KOR_MEDIUM', 'KOR_LIGHT', 3, 0),
-    ('KOR_HEAVY', 'KOR_MEDIUM', 4, 0),
-    ('KOR_CAPITAL', 'KOR_HEAVY', 4, 0),
-    ('KOR_CAPITAL', 'COMMAND', 3, 0),
-    ('MERCHANT_SHIPS', 'CARGO_STOWAGE', 2, 0),
-    ('SHIPS_OF_WAR', 'GUNNERY', 3, 0),
-    ('EXPLORERS', 'LOOKOUTS', 3, 0),
-    ('ESCORT_SUPPORT', 'HULL_UPKEEP', 3, 0),
-    ('ARMED_MERCHANT', 'MERCHANT_SHIPS', 5, 0),
-    ('PRIVATEERS', 'SHIPS_OF_WAR', 5, 0),
-    ('SURVEY_SHIPS', 'EXPLORERS', 5, 0),
-    ('CONVOY_ESCORTS', 'ESCORT_SUPPORT', 5, 0),
-    ('FAMOUS_SHIPS', 'COMMAND', 5, 0),
-    ('FAMOUS_SHIPS', 'ARMED_MERCHANT', 3, 1),
-    ('FAMOUS_SHIPS', 'PRIVATEERS', 3, 1),
-    ('FAMOUS_SHIPS', 'SURVEY_SHIPS', 3, 1),
-    ('FAMOUS_SHIPS', 'CONVOY_ESCORTS', 3, 1),
-    ('HULL_UPKEEP', 'SEAMANSHIP', 2, 0),
-    ('DAMAGE_CONTROL', 'HULL_UPKEEP', 3, 0),
-    ('DECK_MANAGEMENT', 'SEAMANSHIP', 3, 0),
-    ('HANDLING_SPEC', 'SEAMANSHIP', 5, 0),
-    ('RIGGING', 'NAVIGATION', 1, 0),
-    ('LOOKOUTS', 'NAVIGATION', 2, 0),
-    ('INSTRUMENTS', 'NAVIGATION', 3, 0),
-    ('RIGGING_SPEC', 'RIGGING', 5, 0),
-    ('INSTRUMENT_SPEC', 'INSTRUMENTS', 5, 0),
-    ('CARGO_STOWAGE', 'ACCOUNTING', 2, 0),
-    ('STOWAGE_SPEC', 'CARGO_STOWAGE', 5, 0),
-    ('GUN_LAYING', 'GUNNERY', 2, 0),
-    ('LONG_GUNS', 'GUNNERY', 3, 0),
-    ('SHORT_GUNS', 'GUNNERY', 3, 0),
-    ('BOARDING', 'GUNNERY', 1, 0),
-    ('GUN_DRILL', 'GUNNERY', 3, 0),
-    ('GUNNERY_SPEC', 'GUNNERY', 5, 0),
-    ('COMMAND', 'SEAMANSHIP', 3, 0),
-    ('FLEET_COMMAND', 'COMMAND', 5, 0),
-    ('SHIPWRIGHT', 'SEAMANSHIP', 1, 0),
-    ('REFITTING', 'SHIPWRIGHT', 3, 0),
-    ('AUGMENTATION', 'REFITTING', 3, 0),
-    ('SHIPWRIGHT_SPEC', 'SHIPWRIGHT', 5, 0)
-  ) v(code, needs, level, choice)
-  join public.skills s on s.code = v.code
-  join public.skills n on n.code = v.needs
-on conflict (skill_id, needs_skill_id) do nothing;
 
 -- No FK to players on the two per-house tables: a FK takes SHARE ROW EXCLUSIVE on players, which the
 -- ticks write (0127's method). A player row is never deleted by the game.
@@ -639,7 +454,7 @@ comment on table public.skill_sp is
 alter table public.skill_sp enable row level security;
 revoke all on table public.skill_sp from public, anon, authenticated;
 
--- ── 5. THE NEW FUNCTIONS ───────────────────────────────────────────────────────────────────────
+-- ── 4. THE NEW FUNCTIONS ───────────────────────────────────────────────────────────────────────
 create or replace function public.skill_sp_for(p_rank int, p_level int)
 returns numeric
 language sql
@@ -923,6 +738,18 @@ as $$
          || (p_refusal - array['code', 'sentence'])
 $$;
 
+create or replace function public.skill_lock(p_player uuid)
+returns void
+language sql
+volatile
+set search_path = public, pg_temp
+as $$
+  -- 0131: ONE HOUSE'S SKILL WRITES, ONE AT A TIME — a transaction-scoped advisory lock on the house
+  -- (re-entrant), taken FIRST by every core that reads the queue or enrolment before it writes. No
+  -- table row is locked, so nothing the ticks hold is waited on.
+  select pg_advisory_xact_lock(hashtextextended('skill_queue:' || p_player::text, 131))
+$$;
+
 create or replace function public.skill_enroll_for(p_player uuid, p_code text, p_fleet uuid)
 returns jsonb
 language plpgsql
@@ -937,11 +764,13 @@ declare
   v_ref  jsonb;
   v_port record;
   v_cost bigint;
+  v_rows int;
 begin
   if exists (select 1 from public.players x where x.id = p_player and x.is_npc) then
     raise exception 'E_MERCHANT_FIXED: a merchant company''s skills are fixed at founding; it does not enrol or train'
       using errcode = 'P0001';
   end if;
+  perform public.skill_lock(p_player);   -- one house's enrolments and queue edits, one at a time
   select sk.id, sk.code, sk.name into s from public.skills sk
     join public.skill_profile pr on pr.skill_id = sk.id
    where sk.code = upper(btrim(coalesce(p_code, '')));
@@ -959,6 +788,12 @@ begin
   v_cost := public.skill_enrol_cost(s.id);
   insert into public.skill_sp (player_id, skill_id, sp) values (p_player, s.id, 0)
   on conflict (player_id, skill_id) do nothing;
+  -- THE ROW IS THE RECEIPT: tuition is paid only by the call that wrote it. A second tap that got here
+  -- (its check ran before the first committed) inserts nothing and pays nothing.
+  get diagnostics v_rows = row_count;
+  if v_rows = 0 then
+    return public.skill_refused(cmd.refusal('E_ALREADY_ENROLLED', format('You are already enrolled in %s.', s.name)));
+  end if;
   perform public.pay_city(p_player, v_port.id, 'TUITION', v_cost,
     public.emit_event(p_player, 'ENROLLED', jsonb_build_object(
       'skill', s.name, 'code', s.code, 'port', v_port.code, 'cost', v_cost)));
@@ -998,7 +833,7 @@ begin
   if p_player is null then
     return public.skill_refused(cmd.refusal('E_NOT_SIGNED_IN', 'Nobody is signed in.'));
   end if;
-  perform pg_advisory_xact_lock(hashtextextended('skill_queue:' || p_player::text, 131));
+  perform public.skill_lock(p_player);
 
   -- 1. FOLD
   insert into public.player_skills (player_id, skill_id, level, studied_at)
@@ -1074,6 +909,7 @@ begin
     raise exception 'E_MERCHANT_FIXED: a merchant company''s skills are fixed at founding; it does not enrol or train'
       using errcode = 'P0001';
   end if;
+  perform public.skill_lock(p_player);   -- BEFORE the queue is read: the list built below is the one written
   select sk.id, sk.code, sk.name into s from public.skills sk
     join public.skill_profile pr on pr.skill_id = sk.id
    where sk.code = upper(btrim(coalesce(p_code, '')));
@@ -1232,6 +1068,7 @@ revoke all on function public.skill_enrol_refusal(uuid, uuid, uuid) from public,
 revoke all on function public.skill_queue_now(uuid) from public, anon, authenticated;
 revoke all on function public.skill_queue_refusal(uuid, jsonb, uuid) from public, anon, authenticated;
 revoke all on function public.skill_refused(jsonb) from public, anon, authenticated;
+revoke all on function public.skill_lock(uuid) from public, anon, authenticated;
 revoke all on function public.skill_enroll_for(uuid, text, uuid) from public, anon, authenticated;
 revoke all on function public.skill_queue_set_for(uuid, jsonb) from public, anon, authenticated;
 revoke all on function public.skill_study_for(uuid, text, uuid) from public, anon, authenticated;
@@ -1241,7 +1078,7 @@ revoke all on function cmd.skill_queue_set(jsonb) from public, anon;
 grant execute on function cmd.skill_enroll(text, uuid) to authenticated;
 grant execute on function cmd.skill_queue_set(jsonb) to authenticated;
 
--- ── 6. THE HUNKS (old → new), sliced from the live bodies ──────────────────────────────────────
+-- ── 5. THE HUNKS (old → new), sliced from the live bodies ──────────────────────────────────────
 create temp table hunks_0131 (fn text, n int, old text, new text);
 insert into hunks_0131 values
 -- public.skill_level: the queue term, through the one core
@@ -1363,12 +1200,27 @@ $h$                 from public.skills sk
 $h$,
 $h$                 from public.skills sk
                  left join public.player_skills ps on ps.skill_id = sk.id and ps.player_id = p.id
-                -- 0131: the skills it HOLDS and the four every company has always been shown — never the
-                -- 88 catalogue skills a merchant does not train (fixed at founding, docs/SHIPS_AND_SKILLS.md §5.1).
-                where ps.level is not null or sk.effect <> 'NONE'));
+                -- 0131: the skills it HOLDS and the four every company has always been shown (the ones that
+                -- need no enrolment) — never the catalogue skills a merchant does not train (fixed at
+                -- founding, docs/SHIPS_AND_SKILLS.md §5.1). Keyed on the profile, not the effect, so it
+                -- holds when S11 gives the catalogue its effects.
+                where ps.level is not null
+                   or exists (select 1 from public.skill_profile pr where pr.skill_id = sk.id and pr.enrol_where = 'none')));
+$h$),
+-- world.port_merchants: a merchant's level is summed over the four company skills, not all 92
+('world.port_merchants(uuid)', 1,
+$h$                     'level', (select coalesce(sum(public.skill_level(p.id, sk.code)), 0)::int
+                                 from public.skills sk),
+$h$,
+$h$                     'level', (select coalesce(sum(public.skill_level(p.id, sk.code)), 0)::int
+                                 from public.skills sk
+                                 -- 0131: the four company skills (those needing no enrolment) — not the
+                                 -- catalogue a merchant never trains; one skill_level call per skill
+                                 -- per row, so a busy harbour's tap stays four calls a merchant.
+                                 join public.skill_profile pr on pr.skill_id = sk.id and pr.enrol_where = 'none'),
 $h$);
 
--- ── 7. THE RE-CUTS ─────────────────────────────────────────────────────────────────────────────
+-- ── 6. THE RE-CUTS ─────────────────────────────────────────────────────────────────────────────
 create or replace function pg_temp.recut_0131(p_fn text)
 returns void
 language plpgsql
@@ -1391,7 +1243,314 @@ end $$;
 
 select pg_temp.recut_0131(fn) from defs_before_0131 order by fn;
 
--- ── 8. THE PROBE ───────────────────────────────────────────────────────────────────────────────
+-- ── 7. THE HEAVY COMPARISONS, BEFORE public.skills IS LOCKED ───────────────────────────────────
+-- Every house's levels, bonuses and 0107 gates, the merchant cards and the busiest harbours' merchant
+-- levels, read through the RE-CUT bodies against the pre-images — run here, before the ALTER below
+-- takes public.skills ACCESS EXCLUSIVE for the rest of the file. The re-cuts read only the four live
+-- skills' rows and profiles at this point; the catalogue rows cannot move any of these figures (a NONE
+-- skill reads level 0 for every house, asserted at the end).
+create temp table early_0131 (lv int, bn int, gt int, cards int, harbours int);
+do $$
+declare
+  v_bad int;
+  v_lv  int;
+  v_bn  int;
+  v_gt  int;
+  v_cards int;
+  v_now jsonb;
+begin
+  select count(*) into v_lv from levels_before_0131;
+  select count(*) into v_bad from levels_before_0131 b where public.skill_level(b.player_id, b.code) is distinct from b.level;
+  if v_bad <> 0 then
+    raise exception '0131 self-assert FAIL: % house × skill level(s) moved', v_bad;
+  end if;
+  if (select players from before_0131) > 0 and not exists (select 1 from levels_before_0131 where level > 0) then
+    raise exception '0131 self-assert FAIL: % houses and not one holds a level — the level comparison proves nothing', (select players from before_0131);
+  end if;
+
+  select count(*) into v_bn from bonus_before_0131;
+  select count(*) into v_bad from bonus_before_0131 b where public.player_skill_bonus(b.player_id, b.effect) is distinct from b.bonus;
+  if v_bad <> 0 then
+    raise exception '0131 self-assert FAIL: % house × effect bonus(es) moved', v_bad;
+  end if;
+
+  select count(*) into v_gt from gates_before_0131;
+  select count(*) into v_bad from gates_before_0131 g
+   where public.earned_caps(g.player_id) is distinct from g.caps
+      or jsonb_build_array(public.passage_gate(g.player_id, 899, null), public.passage_gate(g.player_id, 901, null),
+                           public.passage_gate(g.player_id, 1801, null), public.passage_gate(g.player_id, 3601, null),
+                           public.passage_gate(g.player_id, 7201, null), public.passage_gate(g.player_id, 14401, null)) is distinct from g.legs;
+  if v_bad <> 0 then
+    raise exception '0131 self-assert FAIL: % house(s) whose 0107 gates moved', v_bad;
+  end if;
+
+  v_now := pg_temp.cards_0131();
+  if v_now is distinct from (select j from cards_before_0131) then
+    raise exception '0131 self-assert FAIL: a merchant card''s skills moved: % → %', left((select j from cards_before_0131)::text, 400), left(v_now::text, 400);
+  end if;
+  v_cards := (select count(*) from jsonb_object_keys(v_now));
+
+  v_now := pg_temp.harbours_0131();
+  if v_now is distinct from (select j from harbours_before_0131) then
+    raise exception '0131 self-assert FAIL: a harbour''s merchant levels moved: % → %', left((select j from harbours_before_0131)::text, 400), left(v_now::text, 400);
+  end if;
+  if (select count(*) from public.npc_fleets) > 0
+     and not exists (select 1 from jsonb_each(v_now) h, jsonb_each(h.value) m where (m.value)::int > 0) then
+    raise exception '0131 self-assert FAIL: merchants sail but no harbour list shows a merchant level — the comparison proves nothing';
+  end if;
+
+  insert into early_0131 values (v_lv, v_bn, v_gt, v_cards,
+    (select count(*) from jsonb_each(v_now) h, jsonb_each(h.value) m));
+end $$;
+
+-- ── 8. THE CATALOGUE: the checks re-made, then the 88 rows (data/skills.json) ──────────────────
+-- From here to the end of the file public.skills is held ACCESS EXCLUSIVE (the ALTER), until the
+-- file commits. Everything heavy has already run above; what follows is the rows, the probe (about
+-- a second) and light catalogue reads.
+do $alter$
+declare
+  v_eff   text;
+  v_pct   text;
+  v_try   int := 0;
+  v_state text;
+  v_msg   text;
+begin
+  perform set_config('lock_timeout', '5s', true);
+  select k.conname into v_eff from pg_constraint k
+   where k.conrelid = 'public.skills'::regclass and k.contype = 'c'
+     and pg_get_constraintdef(k.oid) like '%effect%' and pg_get_constraintdef(k.oid) not like '%pct_per_level%';
+  select k.conname into v_pct from pg_constraint k
+   where k.conrelid = 'public.skills'::regclass and k.contype = 'c'
+     and pg_get_constraintdef(k.oid) like '%pct_per_level%' and pg_get_constraintdef(k.oid) not like '%effect%';
+  if v_eff is null or v_pct is null then
+    raise exception '0131 self-assert FAIL: the effect (%) or pct_per_level (%) check of public.skills is not where 0016 put it', v_eff, v_pct;
+  end if;
+  loop
+    v_try := v_try + 1;
+    begin
+      execute format(
+        'alter table public.skills drop constraint %I, drop constraint %I, '
+        'add constraint skills_effect_known check (effect in (''ENDURANCE'', ''SPEED'', ''TRADE_CAP'', ''SPREAD'', ''NONE'')) not valid, '
+        'add constraint skills_pct_per_level_sane check ((effect = ''NONE'' and pct_per_level = 0) '
+        'or (effect <> ''NONE'' and pct_per_level > 0 and pct_per_level <= 10)) not valid',
+        v_eff, v_pct);
+      alter table public.skills validate constraint skills_effect_known;
+      alter table public.skills validate constraint skills_pct_per_level_sane;
+      exit;
+    exception when lock_not_available or deadlock_detected then
+      get stacked diagnostics v_msg = message_text, v_state = returned_sqlstate;
+      if v_try >= 5 then
+        raise exception '0131 self-assert FAIL: LOCK CONTENTION, not a result — public.skills could not be altered in 5 tries (%: %). Re-run the push.', v_state, v_msg;
+      end if;
+      perform pg_sleep(0.5);
+    end;
+  end loop;
+end $alter$;
+
+comment on column public.skills.effect is
+  'The ONE thing this skill changes. Exactly one, for the same reason an officer has one specialty: '
+  'a skill that moved several numbers would need several rules to read it. 0131: NONE = nothing yet '
+  '(the 88 catalogue skills of docs/SHIPS_AND_SKILLS.md §5.2; S11 gives them their effects through '
+  'skill_effects), always with pct_per_level 0.';
+
+insert into public.skills (code, name, effect, pct_per_level, blurb) values
+  ('PRT_SMALL', 'Portuguese Small Hulls', 'NONE', 0, 'How Portuguese small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('PRT_LIGHT', 'Portuguese Light Hulls', 'NONE', 0, 'How Portuguese light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('PRT_MEDIUM', 'Portuguese Medium Hulls', 'NONE', 0, 'How Portuguese medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('PRT_HEAVY', 'Portuguese Heavy Hulls', 'NONE', 0, 'How Portuguese heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('PRT_CAPITAL', 'Portuguese Capital Hulls', 'NONE', 0, 'How Portuguese capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ESP_SMALL', 'Spanish Small Hulls', 'NONE', 0, 'How Spanish small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ESP_LIGHT', 'Spanish Light Hulls', 'NONE', 0, 'How Spanish light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ESP_MEDIUM', 'Spanish Medium Hulls', 'NONE', 0, 'How Spanish medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ESP_HEAVY', 'Spanish Heavy Hulls', 'NONE', 0, 'How Spanish heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ESP_CAPITAL', 'Spanish Capital Hulls', 'NONE', 0, 'How Spanish capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('NLD_SMALL', 'Dutch Small Hulls', 'NONE', 0, 'How Dutch small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('NLD_LIGHT', 'Dutch Light Hulls', 'NONE', 0, 'How Dutch light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('NLD_MEDIUM', 'Dutch Medium Hulls', 'NONE', 0, 'How Dutch medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('NLD_HEAVY', 'Dutch Heavy Hulls', 'NONE', 0, 'How Dutch heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('NLD_CAPITAL', 'Dutch Capital Hulls', 'NONE', 0, 'How Dutch capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ENG_SMALL', 'English Small Hulls', 'NONE', 0, 'How English small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ENG_LIGHT', 'English Light Hulls', 'NONE', 0, 'How English light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ENG_MEDIUM', 'English Medium Hulls', 'NONE', 0, 'How English medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ENG_HEAVY', 'English Heavy Hulls', 'NONE', 0, 'How English heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ENG_CAPITAL', 'English Capital Hulls', 'NONE', 0, 'How English capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('FRA_SMALL', 'French Small Hulls', 'NONE', 0, 'How French small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('FRA_LIGHT', 'French Light Hulls', 'NONE', 0, 'How French light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('FRA_MEDIUM', 'French Medium Hulls', 'NONE', 0, 'How French medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('FRA_HEAVY', 'French Heavy Hulls', 'NONE', 0, 'How French heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('FRA_CAPITAL', 'French Capital Hulls', 'NONE', 0, 'How French capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ITA_SMALL', 'Italian Small Hulls', 'NONE', 0, 'How Italian small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ITA_LIGHT', 'Italian Light Hulls', 'NONE', 0, 'How Italian light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ITA_MEDIUM', 'Italian Medium Hulls', 'NONE', 0, 'How Italian medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ITA_HEAVY', 'Italian Heavy Hulls', 'NONE', 0, 'How Italian heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('ITA_CAPITAL', 'Italian Capital Hulls', 'NONE', 0, 'How Italian capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('OTT_SMALL', 'Ottoman Small Hulls', 'NONE', 0, 'How Ottoman small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('OTT_LIGHT', 'Ottoman Light Hulls', 'NONE', 0, 'How Ottoman light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('OTT_MEDIUM', 'Ottoman Medium Hulls', 'NONE', 0, 'How Ottoman medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('OTT_HEAVY', 'Ottoman Heavy Hulls', 'NONE', 0, 'How Ottoman heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('OTT_CAPITAL', 'Ottoman Capital Hulls', 'NONE', 0, 'How Ottoman capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('IND_SMALL', 'Indian Small Hulls', 'NONE', 0, 'How Indian small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('IND_LIGHT', 'Indian Light Hulls', 'NONE', 0, 'How Indian light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('IND_MEDIUM', 'Indian Medium Hulls', 'NONE', 0, 'How Indian medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('IND_HEAVY', 'Indian Heavy Hulls', 'NONE', 0, 'How Indian heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('IND_CAPITAL', 'Indian Capital Hulls', 'NONE', 0, 'How Indian capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('CHN_SMALL', 'Chinese Small Hulls', 'NONE', 0, 'How Chinese small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('CHN_LIGHT', 'Chinese Light Hulls', 'NONE', 0, 'How Chinese light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('CHN_MEDIUM', 'Chinese Medium Hulls', 'NONE', 0, 'How Chinese medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('CHN_HEAVY', 'Chinese Heavy Hulls', 'NONE', 0, 'How Chinese heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('CHN_CAPITAL', 'Chinese Capital Hulls', 'NONE', 0, 'How Chinese capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('JPN_SMALL', 'Japanese Small Hulls', 'NONE', 0, 'How Japanese small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('JPN_LIGHT', 'Japanese Light Hulls', 'NONE', 0, 'How Japanese light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('JPN_MEDIUM', 'Japanese Medium Hulls', 'NONE', 0, 'How Japanese medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('JPN_HEAVY', 'Japanese Heavy Hulls', 'NONE', 0, 'How Japanese heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('JPN_CAPITAL', 'Japanese Capital Hulls', 'NONE', 0, 'How Japanese capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('KOR_SMALL', 'Korean Small Hulls', 'NONE', 0, 'How Korean small ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('KOR_LIGHT', 'Korean Light Hulls', 'NONE', 0, 'How Korean light ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('KOR_MEDIUM', 'Korean Medium Hulls', 'NONE', 0, 'How Korean medium ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('KOR_HEAVY', 'Korean Heavy Hulls', 'NONE', 0, 'How Korean heavy ships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('KOR_CAPITAL', 'Korean Capital Hulls', 'NONE', 0, 'How Korean capital ships and flagships are sailed and kept. Taught only at the build yards of the countries that build them.'),
+  ('MERCHANT_SHIPS', 'Merchant Ships', 'NONE', 0, 'Running big trading ships: packing, loading and keeping a large cargo moving.'),
+  ('SHIPS_OF_WAR', 'Ships of War', 'NONE', 0, 'Fighting big warships: the gun decks, the drills and the crews they need.'),
+  ('EXPLORERS', 'Exploration Vessels', 'NONE', 0, 'Long voyages into unknown water: lookouts, charts and ships built to range far.'),
+  ('ESCORT_SUPPORT', 'Escort & Support', 'NONE', 0, 'Ships that guard and serve a fleet: tough, steady and kept in good repair.'),
+  ('ARMED_MERCHANT', 'Armed Merchantmen', 'NONE', 0, 'Improved trading ships that carry guns as well as cargo.'),
+  ('PRIVATEERS', 'Privateers', 'NONE', 0, 'Improved warships built to hunt and hit hard.'),
+  ('SURVEY_SHIPS', 'Survey Ships', 'NONE', 0, 'Improved exploration ships that see farther and range wider.'),
+  ('CONVOY_ESCORTS', 'Convoy Escorts', 'NONE', 0, 'Improved escorts that keep a convoy together and safe.'),
+  ('FAMOUS_SHIPS', 'Famous Ships', 'NONE', 0, 'The great named ships of each country. Only the most experienced captains are trusted with one.'),
+  ('HULL_UPKEEP', 'Hull Upkeep', 'NONE', 0, 'Keeping planking, seams and frames sound so every ship lasts longer.'),
+  ('DAMAGE_CONTROL', 'Damage Control', 'NONE', 0, 'Plugging holes and shoring up under fire, so damage does less harm.'),
+  ('DECK_MANAGEMENT', 'Deck Management', 'NONE', 0, 'Fitting more gear on a deck without getting in the crew''s way.'),
+  ('HANDLING_SPEC', 'Ship Handling Specialisation', 'NONE', 0, 'Mastery of improved rudders, anchors and capstans.'),
+  ('RIGGING', 'Rigging', 'NONE', 0, 'Setting and trimming sails so a ship turns and answers quickly.'),
+  ('LOOKOUTS', 'Lookouts', 'NONE', 0, 'Training sharp eyes aloft to spot sails and coasts sooner.'),
+  ('INSTRUMENTS', 'Instruments', 'NONE', 0, 'Compass, charts and the astrolabe, used well.'),
+  ('RIGGING_SPEC', 'Rigging Specialisation', 'NONE', 0, 'Mastery of improved sails and rigging.'),
+  ('INSTRUMENT_SPEC', 'Instrument Specialisation', 'NONE', 0, 'Mastery of improved navigation instruments.'),
+  ('CARGO_STOWAGE', 'Cargo Stowage', 'NONE', 0, 'Packing cargo tightly so every ship carries more.'),
+  ('STOWAGE_SPEC', 'Stowage Specialisation', 'NONE', 0, 'Mastery of improved cargo fittings.'),
+  ('GUNNERY', 'Gunnery', 'NONE', 0, 'Loading, aiming and firing a ship''s guns.'),
+  ('GUN_LAYING', 'Gun Laying', 'NONE', 0, 'Aiming each gun with care so more shots hit.'),
+  ('LONG_GUNS', 'Long Guns', 'NONE', 0, 'Long-barrelled chase guns that reach farther.'),
+  ('SHORT_GUNS', 'Short Guns', 'NONE', 0, 'Short, heavy guns that hit hard up close.'),
+  ('BOARDING', 'Boarding', 'NONE', 0, 'Grappling, crossing over and fighting on another ship''s deck.'),
+  ('GUN_DRILL', 'Gun Drill', 'NONE', 0, 'Drilled gun crews, so the guns need fewer hands.'),
+  ('GUNNERY_SPEC', 'Gunnery Specialisation', 'NONE', 0, 'Mastery of improved guns, boarding gear and magazines.'),
+  ('COMMAND', 'Command', 'NONE', 0, 'Leading officers and running more ships at once.'),
+  ('FLEET_COMMAND', 'Fleet Command', 'NONE', 0, 'Leading a whole fleet from a flagship.'),
+  ('SHIPWRIGHT', 'Shipwright', 'NONE', 0, 'How ships are built, so a build yard needs less paid work.'),
+  ('REFITTING', 'Refitting', 'NONE', 0, 'Lasting changes to a ship''s build.'),
+  ('AUGMENTATION', 'Augmentation', 'NONE', 0, 'Adding chosen extras to fitted gear.'),
+  ('SHIPWRIGHT_SPEC', 'Shipwright Specialisation', 'NONE', 0, 'Mastery of improved hull fittings.')
+on conflict (code) do nothing;
+
+-- the remaining 88 profiles, and the prerequisites (both need the new rows)
+insert into public.skill_profile (skill_id, group_code, rank, enrol_where, line_code, ord)
+select s.id, v.grp, v.rank, v.enrol, v.line, v.ord
+  from profile_rows_0131 v join public.skills s on s.code = v.code
+on conflict (skill_id) do nothing;
+
+insert into public.skill_prereqs (skill_id, needs_skill_id, level, choice)
+select s.id, n.id, v.level, v.choice
+  from (values
+    ('PRT_LIGHT', 'PRT_SMALL', 3, 0),
+    ('PRT_MEDIUM', 'PRT_LIGHT', 3, 0),
+    ('PRT_HEAVY', 'PRT_MEDIUM', 4, 0),
+    ('PRT_CAPITAL', 'PRT_HEAVY', 4, 0),
+    ('PRT_CAPITAL', 'COMMAND', 3, 0),
+    ('ESP_LIGHT', 'ESP_SMALL', 3, 0),
+    ('ESP_MEDIUM', 'ESP_LIGHT', 3, 0),
+    ('ESP_HEAVY', 'ESP_MEDIUM', 4, 0),
+    ('ESP_CAPITAL', 'ESP_HEAVY', 4, 0),
+    ('ESP_CAPITAL', 'COMMAND', 3, 0),
+    ('NLD_LIGHT', 'NLD_SMALL', 3, 0),
+    ('NLD_MEDIUM', 'NLD_LIGHT', 3, 0),
+    ('NLD_HEAVY', 'NLD_MEDIUM', 4, 0),
+    ('NLD_CAPITAL', 'NLD_HEAVY', 4, 0),
+    ('NLD_CAPITAL', 'COMMAND', 3, 0),
+    ('ENG_LIGHT', 'ENG_SMALL', 3, 0),
+    ('ENG_MEDIUM', 'ENG_LIGHT', 3, 0),
+    ('ENG_HEAVY', 'ENG_MEDIUM', 4, 0),
+    ('ENG_CAPITAL', 'ENG_HEAVY', 4, 0),
+    ('ENG_CAPITAL', 'COMMAND', 3, 0),
+    ('FRA_LIGHT', 'FRA_SMALL', 3, 0),
+    ('FRA_MEDIUM', 'FRA_LIGHT', 3, 0),
+    ('FRA_HEAVY', 'FRA_MEDIUM', 4, 0),
+    ('FRA_CAPITAL', 'FRA_HEAVY', 4, 0),
+    ('FRA_CAPITAL', 'COMMAND', 3, 0),
+    ('ITA_LIGHT', 'ITA_SMALL', 3, 0),
+    ('ITA_MEDIUM', 'ITA_LIGHT', 3, 0),
+    ('ITA_HEAVY', 'ITA_MEDIUM', 4, 0),
+    ('ITA_CAPITAL', 'ITA_HEAVY', 4, 0),
+    ('ITA_CAPITAL', 'COMMAND', 3, 0),
+    ('OTT_LIGHT', 'OTT_SMALL', 3, 0),
+    ('OTT_MEDIUM', 'OTT_LIGHT', 3, 0),
+    ('OTT_HEAVY', 'OTT_MEDIUM', 4, 0),
+    ('OTT_CAPITAL', 'OTT_HEAVY', 4, 0),
+    ('OTT_CAPITAL', 'COMMAND', 3, 0),
+    ('IND_LIGHT', 'IND_SMALL', 3, 0),
+    ('IND_MEDIUM', 'IND_LIGHT', 3, 0),
+    ('IND_HEAVY', 'IND_MEDIUM', 4, 0),
+    ('IND_CAPITAL', 'IND_HEAVY', 4, 0),
+    ('IND_CAPITAL', 'COMMAND', 3, 0),
+    ('CHN_LIGHT', 'CHN_SMALL', 3, 0),
+    ('CHN_MEDIUM', 'CHN_LIGHT', 3, 0),
+    ('CHN_HEAVY', 'CHN_MEDIUM', 4, 0),
+    ('CHN_CAPITAL', 'CHN_HEAVY', 4, 0),
+    ('CHN_CAPITAL', 'COMMAND', 3, 0),
+    ('JPN_LIGHT', 'JPN_SMALL', 3, 0),
+    ('JPN_MEDIUM', 'JPN_LIGHT', 3, 0),
+    ('JPN_HEAVY', 'JPN_MEDIUM', 4, 0),
+    ('JPN_CAPITAL', 'JPN_HEAVY', 4, 0),
+    ('JPN_CAPITAL', 'COMMAND', 3, 0),
+    ('KOR_LIGHT', 'KOR_SMALL', 3, 0),
+    ('KOR_MEDIUM', 'KOR_LIGHT', 3, 0),
+    ('KOR_HEAVY', 'KOR_MEDIUM', 4, 0),
+    ('KOR_CAPITAL', 'KOR_HEAVY', 4, 0),
+    ('KOR_CAPITAL', 'COMMAND', 3, 0),
+    ('MERCHANT_SHIPS', 'CARGO_STOWAGE', 2, 0),
+    ('SHIPS_OF_WAR', 'GUNNERY', 3, 0),
+    ('EXPLORERS', 'LOOKOUTS', 3, 0),
+    ('ESCORT_SUPPORT', 'HULL_UPKEEP', 3, 0),
+    ('ARMED_MERCHANT', 'MERCHANT_SHIPS', 5, 0),
+    ('PRIVATEERS', 'SHIPS_OF_WAR', 5, 0),
+    ('SURVEY_SHIPS', 'EXPLORERS', 5, 0),
+    ('CONVOY_ESCORTS', 'ESCORT_SUPPORT', 5, 0),
+    ('FAMOUS_SHIPS', 'COMMAND', 5, 0),
+    ('FAMOUS_SHIPS', 'ARMED_MERCHANT', 3, 1),
+    ('FAMOUS_SHIPS', 'PRIVATEERS', 3, 1),
+    ('FAMOUS_SHIPS', 'SURVEY_SHIPS', 3, 1),
+    ('FAMOUS_SHIPS', 'CONVOY_ESCORTS', 3, 1),
+    ('HULL_UPKEEP', 'SEAMANSHIP', 2, 0),
+    ('DAMAGE_CONTROL', 'HULL_UPKEEP', 3, 0),
+    ('DECK_MANAGEMENT', 'SEAMANSHIP', 3, 0),
+    ('HANDLING_SPEC', 'SEAMANSHIP', 5, 0),
+    ('RIGGING', 'NAVIGATION', 1, 0),
+    ('LOOKOUTS', 'NAVIGATION', 2, 0),
+    ('INSTRUMENTS', 'NAVIGATION', 3, 0),
+    ('RIGGING_SPEC', 'RIGGING', 5, 0),
+    ('INSTRUMENT_SPEC', 'INSTRUMENTS', 5, 0),
+    ('CARGO_STOWAGE', 'ACCOUNTING', 2, 0),
+    ('STOWAGE_SPEC', 'CARGO_STOWAGE', 5, 0),
+    ('GUN_LAYING', 'GUNNERY', 2, 0),
+    ('LONG_GUNS', 'GUNNERY', 3, 0),
+    ('SHORT_GUNS', 'GUNNERY', 3, 0),
+    ('BOARDING', 'GUNNERY', 1, 0),
+    ('GUN_DRILL', 'GUNNERY', 3, 0),
+    ('GUNNERY_SPEC', 'GUNNERY', 5, 0),
+    ('COMMAND', 'SEAMANSHIP', 3, 0),
+    ('FLEET_COMMAND', 'COMMAND', 5, 0),
+    ('SHIPWRIGHT', 'SEAMANSHIP', 1, 0),
+    ('REFITTING', 'SHIPWRIGHT', 3, 0),
+    ('AUGMENTATION', 'REFITTING', 3, 0),
+    ('SHIPWRIGHT_SPEC', 'SHIPWRIGHT', 5, 0)
+  ) v(code, needs, level, choice)
+  join public.skills s on s.code = v.code
+  join public.skills n on n.code = v.needs
+on conflict (skill_id, needs_skill_id) do nothing;
+
+
+-- ── 9. THE PROBE ───────────────────────────────────────────────────────────────────────────────
 -- Founds its own house (rolled back whole), and asserts as it goes: refusals by place, enrolment and
 -- its tuition, the one queue rule (prereq / order / full), the exact finishes of a chain, the pure
 -- step of skill_level_at at each finish, the Academy button queuing instead of selling, the screen's
@@ -1476,9 +1635,13 @@ begin
                        where x.player_id = v_player and k.code = 'GUNNERY' and x.sp = 0) then
       raise exception '0131 self-assert FAIL: enrolling in Gunnery (rank 1) did not charge the tuition, record it and enrol: %', v_r;
     end if;
+    -- a SECOND enrolment (a double tap) charges nothing and writes no second record
+    select ducats into v_purse from public.players where id = v_player;
     v_r := pg_temp.call_0131(format('select cmd.skill_enroll(%L, %L)', 'GUNNERY', v_fleet));
-    if v_r->>'error_code' is distinct from 'E_ALREADY_ENROLLED' then
-      raise exception '0131 self-assert FAIL: a second enrolment answered %', v_r;
+    if v_r->>'error_code' is distinct from 'E_ALREADY_ENROLLED'
+       or (select ducats from public.players where id = v_player) <> v_purse
+       or (select count(*) from public.events e where e.player_id = v_player and e.kind = 'ENROLLED' and e.payload->>'code' = 'GUNNERY') <> 1 then
+      raise exception '0131 self-assert FAIL: a second enrolment charged or recorded again: %', v_r;
     end if;
     select ducats into v_purse from public.players where id = v_player;
     v_r := pg_temp.call_0131(format('select cmd.skill_enroll(%L, %L)', 'GUN_LAYING', v_fleet));
@@ -1629,8 +1792,6 @@ declare
   h       record;
   d       record;
   v_probe jsonb := (select j from probe_0131);
-  v_cards jsonb;
-  v_pre   jsonb := (select j from cards_before_0131);
   v_lv    int;
   v_bn    int;
   v_gt    int;
@@ -1674,8 +1835,8 @@ begin
      or (select count(*) from public.skill_profile where enrol_where = 'line_yard') <> 55
      or (select count(*) from public.skill_profile pr join public.skills s on s.id = pr.skill_id
           where pr.enrol_where = 'none') <> 4
-     or exists (select 1 from public.skill_profile pr join public.skills s on s.id = pr.skill_id
-                 where (pr.enrol_where = 'none') <> (s.effect <> 'NONE')) then
+     or exists (select 1 from public.skill_profile pr
+                 where (pr.enrol_where = 'none') <> (pr.skill_id in (select id from live_skills_0131))) then
     raise exception '0131 self-assert FAIL: the profile does not cover the catalogue as authored (92 / 8 groups / 55 hull / 4 live)';
   end if;
   select string_agg(distinct pr.line_code, ',') into v_list from public.skill_profile pr
@@ -1702,15 +1863,16 @@ begin
     raise exception '0131 self-assert FAIL: a choice group offers no choice';
   end if;
 
-  -- (c) EVERY HOUSE'S LEVEL in every skill that existed = its pre-image (the live four), through THE
-  --     reading; every new skill reads 0 for every house.
-  select count(*) into v_lv from levels_before_0131;
+  -- (c) THE HEAVY COMPARISONS ran in §7 before the lock (levels, bonuses, 0107 gates, merchant cards,
+  --     harbour merchant levels) and recorded their counts; they must have run. The levels again, now
+  --     that the catalogue rows exist — cheap, and the proof that 88 NONE rows moved no house's level.
+  select lv, bn, gt into v_lv, v_bn, v_gt from early_0131;
+  if v_lv is null then
+    raise exception '0131 self-assert FAIL: the comparisons before the lock did not run';
+  end if;
   select count(*) into v_bad from levels_before_0131 b where public.skill_level(b.player_id, b.code) is distinct from b.level;
   if v_bad <> 0 then
-    raise exception '0131 self-assert FAIL: % house × skill level(s) moved', v_bad;
-  end if;
-  if (select players from before_0131) > 0 and not exists (select 1 from levels_before_0131 where level > 0) then
-    raise exception '0131 self-assert FAIL: % houses and not one holds a level — the level comparison proves nothing', (select players from before_0131);
+    raise exception '0131 self-assert FAIL: % house × skill level(s) moved once the catalogue landed', v_bad;
   end if;
   -- the new skills read 0 for every house: no level row names one, and this file left no queue or
   -- enrolment row behind (the probe's were rolled back)
@@ -1718,24 +1880,6 @@ begin
   select v_bad + (select count(*) from public.skill_queue) + (select count(*) from public.skill_sp) into v_bad;
   if v_bad <> 0 then
     raise exception '0131 self-assert FAIL: % level / queue / enrolment row(s) for the new skills exist after the file', v_bad;
-  end if;
-
-  -- (d) player_skill_bonus = pre-image for every house and effect.
-  select count(*) into v_bn from bonus_before_0131;
-  select count(*) into v_bad from bonus_before_0131 b where public.player_skill_bonus(b.player_id, b.effect) is distinct from b.bonus;
-  if v_bad <> 0 then
-    raise exception '0131 self-assert FAIL: % house × effect bonus(es) moved', v_bad;
-  end if;
-
-  -- (e) 0107's GATES = pre-image for every house: the earned caps and the leg-length gate.
-  select count(*) into v_gt from gates_before_0131;
-  select count(*) into v_bad from gates_before_0131 g
-   where public.earned_caps(g.player_id) is distinct from g.caps
-      or jsonb_build_array(public.passage_gate(g.player_id, 899, null), public.passage_gate(g.player_id, 901, null),
-                           public.passage_gate(g.player_id, 1801, null), public.passage_gate(g.player_id, 3601, null),
-                           public.passage_gate(g.player_id, 7201, null), public.passage_gate(g.player_id, 14401, null)) is distinct from g.legs;
-  if v_bad <> 0 then
-    raise exception '0131 self-assert FAIL: % house(s) whose 0107 gates moved', v_bad;
   end if;
 
   -- (f) player_skills untouched by this file.
@@ -1749,11 +1893,6 @@ begin
   select v_bad + count(*) into v_bad from public.skill_sp x join public.players p on p.id = x.player_id where p.is_npc;
   if v_bad <> 0 then
     raise exception '0131 self-assert FAIL: % merchant queue / enrolment row(s)', v_bad;
-  end if;
-  -- and a merchant's card shows what it always showed
-  v_cards := pg_temp.cards_0131();
-  if v_cards is distinct from v_pre then
-    raise exception '0131 self-assert FAIL: a merchant card''s skills moved: % → %', left(v_pre::text, 400), left(v_cards::text, 400);
   end if;
 
   -- (h) NO CRON ADDED: levels are a pure function of time.
@@ -1785,6 +1924,7 @@ begin
                       'public.skill_taught_place(uuid)', 'public.skill_taught_at(uuid, uuid)',
                       'public.skill_enrol_refusal(uuid, uuid, uuid)', 'public.skill_queue_now(uuid)',
                       'public.skill_queue_refusal(uuid, jsonb, uuid)', 'public.skill_refused(jsonb)',
+                      'public.skill_lock(uuid)',
                       'public.skill_enroll_for(uuid, text, uuid)', 'public.skill_queue_set_for(uuid, jsonb)',
                       'public.skill_study_for(uuid, text, uuid)', 'public.skill_answers(uuid, uuid, jsonb)']) f(fn)
    cross join unnest(array['anon', 'authenticated']) r(role)
@@ -1820,9 +1960,9 @@ begin
     raise exception '0131 self-assert FAIL: the probe did not finish, or its house was not rolled back: %', v_probe;
   end if;
 
-  raise notice '0131 self-assert ok: A SKILL IS LEARNED BY THE HOUR. Catalogue +88 (NONE, 0 %%) = % skills, the 4 live rows untouched, effect/pct checks re-made NOT VALID then VALIDATED (positive controls refused a NONE with a percentage and an unknown effect); 8 groups, every skill profiled (55 hull skills by line, 4 needing no enrolment), every line a build yard to enrol at, 91 prerequisites, no cycle. Levels: % house × skill readings equal their pre-image through the re-cut skill_level; % house × effect player_skill_bonus readings equal; % houses'' 0107 gates (earned caps + the six leg rungs) equal; player_skills untouched; every new skill reads 0 for every house. Merchants: 0 queue / enrolment rows, every core refuses one, % card(s) show their skills as before. No cron (% before and after). +2 entry points exactly (skill_enroll, skill_queue_set), authenticated only; 0 client writers; cores and tables server-only; 6 bodies reverse to their pre-images, ACLs unmoved. PROBE (own house, rolled back): E_NO_ACADEMY with no academy, E_NOT_TAUGHT_HERE for Portuguese hulls at % with its figures (and the screen served the same sentence), tuition 500 × rank charged once with an ENROLLED event; prereq / order / not-enrolled / full refused with figures, nothing written; the chain Gunnery I → II → Gun Laying I finished at exactly now + 500 s (%), + 2,328 s (%), + 1,000 s (%) and skill_level_at stepped at each finish; the Academy button queued Seamanship I free (no level now) and refused Hull Upkeep before any tuition; the screen''s can_queue / refusal / ETA matched the verbs; clearing the queue left no level.',
+  raise notice '0131 self-assert ok: A SKILL IS LEARNED BY THE HOUR. Catalogue +88 (NONE, 0 %%) = % skills, the 4 live rows untouched, effect/pct checks re-made NOT VALID then VALIDATED (positive controls refused a NONE with a percentage and an unknown effect); 8 groups, every skill profiled (55 hull skills by line, 4 needing no enrolment), every line a build yard to enrol at, 91 prerequisites, no cycle. Levels: % house × skill readings equal their pre-image through the re-cut skill_level; % house × effect player_skill_bonus readings equal; % houses'' 0107 gates (earned caps + the six leg rungs) equal; player_skills untouched; every new skill reads 0 for every house. Merchants: 0 queue / enrolment rows, every core refuses one, % card(s) show their skills as before and % merchant level(s) in the 8 busiest harbours'' lists equal their pre-image (port_merchants now sums four skills, not 92). No cron (% before and after). +2 entry points exactly (skill_enroll, skill_queue_set), authenticated only; 0 client writers; cores and tables server-only; 7 bodies reverse to their pre-images, ACLs unmoved. PROBE (own house, rolled back): E_NO_ACADEMY with no academy, E_NOT_TAUGHT_HERE for Portuguese hulls at % with its figures (and the screen served the same sentence), tuition 500 × rank charged once with an ENROLLED event, a second enrolment charged nothing; prereq / order / not-enrolled / full refused with figures, nothing written; the chain Gunnery I → II → Gun Laying I finished at exactly now + 500 s (%), + 2,328 s (%), + 1,000 s (%) and skill_level_at stepped at each finish; the Academy button queued Seamanship I free (no level now) and refused Hull Upkeep before any tuition; the screen''s can_queue / refusal / ETA matched the verbs; clearing the queue left no level.',
     (select count(*) from public.skills), v_lv, v_bn, v_gt,
-    (select count(*) from jsonb_object_keys(v_cards)),
+    (select cards from early_0131), (select harbours from early_0131),
     coalesce((select cron_jobs::text from before_0131), 'no cron schema'),
     v_probe->>'wrong', v_probe->>'f1', v_probe->>'f2', v_probe->>'f3';
 end $$;
