@@ -29,6 +29,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import type { FleetShip, FleetView, SnapshotPort, TrafficFleet } from '../lib/rpc'
+import { hullShapeOf } from './glyphs'
 import type { HullClass, MapFleet, MapPort, MapTraffic } from './mapTypes'
 import { whereabouts } from '../domain/fleet'
 import { instantMs } from '../lib/format'
@@ -79,11 +80,13 @@ function hullCodesOf(codes: readonly string[] | undefined): (HullClass | null)[]
   return (codes ?? []).map(hullClassOfCode)
 }
 
-/** ONE SERVED CLASS CODE (`ship_classes.code`) → its silhouette, or null for a code this chart does
- *  not draw. The one narrow from the wire's code to `HullClass`: `hullCodesOf` above maps a
- *  merchant's `hulls` through it, and a ship row or panel reads `class_code` (0124) through it. */
+/** ONE SERVED CLASS CODE (`ship_classes.code`) → that code, when the chart can draw it, or null for a
+ *  code it cannot place. The one narrow from the wire's code to `HullClass`: `hullCodesOf` above maps a
+ *  merchant's `hulls` through it, and a ship row or panel reads `class_code` (0124) through it. 0135:
+ *  ANY served class (55), placed by ./glyphs.ts `hullShapeOf` from the snapshot's rig and size, with
+ *  the live three pinned as the fallback; anything else is the class-less hull. */
 export function hullClassOfCode(code: string | null | undefined): HullClass | null {
-  return code === 'barca' || code === 'carlat' || code === 'nau' ? code : null
+  return code != null && hullShapeOf(code) !== null ? code : null
 }
 
 /** HER HULLS, FLAGSHIP FIRST — the served ships in served order with the flagship moved to the

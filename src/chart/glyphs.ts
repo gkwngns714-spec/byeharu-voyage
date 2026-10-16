@@ -128,8 +128,13 @@ export const GLYPH = {
    * 1.88× bow to stern and ~3.1× in ink from the barca to the nau. `portMarkScale`'s header is the
    * measure that was applied: a difference you READ across a room, not one you could measure if it
    * occurred to you to try — its own ramp was widened to 1.75× for exactly that reason.
+   *
+   * 0135 — BY SIZE, NOT BY CODE (Wave A: 55 hulls). The three pins are now the SIZES the live three
+   * stand for — small 2.85 (the barca), light 3.25 (the carlat), medium 5.35 (the nau) — and a fourth,
+   * heavy 6.1 = 3.25 × (600/90)^⅓, the heavy archetype's 600 tons against the carlat's 90 by the
+   * same cube-root rule. Every hull of a size is drawn at its size's length (`hullShapeOf`).
    */
-  hullHalfLength: { barca: 2.85, carlat: 3.25, nau: 5.35 } as Record<HullClass, number>,
+  hullHalfLength: { 1: 2.85, 2: 3.25, 3: 5.35, 4: 6.1 } as Record<HullSize, number>,
   /** The halo round a lone class-less hull — halved with `shipHalfLength` (8 → 4), since
    *  `hullGroupHalo` sizes every halo off that ratio. */
   fleetHaloRadius: 4,
@@ -401,13 +406,64 @@ export function shipPath(halfLength: number): string {
 // arrangement for the other list is the copy this section exists to forbid.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// 0135 — EIGHT SILHOUETTES, NOT FIFTY-FIVE (docs/SHIPS_AND_SKILLS.md §8, S12)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// A hull's silhouette is its RIG FAMILY × its SIZE: `square` (square and mixed rigs — the ship
+// rig, with a castle) or `fore` (lateen and oared — the fore-and-aft hulls, galleys and dhows),
+// at sizes 1-4 (small, light, medium, heavy; a size above heavy draws as heavy). The three live
+// hulls are three of the eight, unchanged: the barca is `fore-1`, the caravela latina `fore-2`,
+// the nau `square-3`. Both facts are SERVED — `ship_classes.rig` and `class_profile.size` on
+// `world.snapshot().ship_classes` (0135) — and the world store hands them to
+// `registerHullClasses`; this file only decides what each of the eight looks like. Until a
+// snapshot has named a code, the three live codes keep their pins (the FALLBACK), and a code no
+// one has named draws the class-less hull, as an unknown class always has.
+
+/** The four sizes a silhouette is drawn at (`class_profile.size`, clamped to heavy). */
+export type HullSize = 1 | 2 | 3 | 4
+/** A silhouette: rig family × size. */
+export type HullShape = `${'fore' | 'square'}-${HullSize}`
+
+/** The served facts a silhouette is read from — `world.snapshot().ship_classes` rows. */
+export interface HullClassFacts {
+  readonly code: string
+  readonly rig: string
+  readonly tier: number
+  readonly size?: number | null
+}
+
+const LIVE_SHAPES: Readonly<Record<string, HullShape>> = { barca: 'fore-1', carlat: 'fore-2', nau: 'square-3' }
+let servedShapes: ReadonlyMap<string, HullShape> = new Map()
+
+/** The silhouette of a rig and a size — the one rule. */
+export function hullShapeFor(rig: string, size: number): HullShape {
+  const family = rig === 'square' || rig === 'mixed' ? 'square' : 'fore'
+  const s = Math.min(4, Math.max(1, Math.round(Number.isFinite(size) ? size : 1))) as HullSize
+  return `${family}-${s}`
+}
+
+/** THE SERVED CLASSES — called by the world store with each snapshot's `ship_classes`. */
+export function registerHullClasses(classes: readonly HullClassFacts[]): void {
+  servedShapes = new Map(classes.map((c) => [c.code, hullShapeFor(c.rig, c.size ?? c.tier)]))
+}
+
+/** A served class code → its silhouette, the live three's pins when no snapshot named it, or null. */
+export function hullShapeOf(cls: HullClass | null): HullShape | null {
+  if (cls === null) return null
+  return servedShapes.get(cls) ?? LIVE_SHAPES[cls] ?? null
+}
+
+const sizeOfShape = (shape: HullShape): HullSize => Number(shape.slice(-1)) as HullSize
+
 /**
  * HOW LONG THIS HULL IS DRAWN, centre to bow, in CSS px. A class the server did not name is the
  * class-less hull at `shipHalfLength` — the mark this chart drew before row 120, which says
  * nothing about her class because nothing is known about it (./mapTypes.ts `FleetHulls`).
  */
 export function hullHalfLengthOf(cls: HullClass | null): number {
-  return cls === null ? GLYPH.shipHalfLength : GLYPH.hullHalfLength[cls]
+  const shape = hullShapeOf(cls)
+  return shape === null ? GLYPH.shipHalfLength : GLYPH.hullHalfLength[sizeOfShape(shape)]
 }
 
 /**
@@ -438,10 +494,12 @@ export function hullHalfLengthOf(cls: HullClass | null): number {
  */
 export function hullPath(cls: HullClass | null, halfLength: number = hullHalfLengthOf(cls)): string {
   const l = halfLength
-  // THE CLASS-LESS HULL IS `shipPath` AND NOT A FOURTH SILHOUETTE. One hull-with-no-class on this
+  const shape = hullShapeOf(cls)
+  // THE CLASS-LESS HULL IS `shipPath` AND NOT A NINTH SILHOUETTE. One hull-with-no-class on this
   // chart, drawn by the function the minimap and row 90's whole measurement already use.
-  if (cls === null) return shipPath(l)
-  if (cls === 'barca') {
+  if (shape === null) return shipPath(l)
+  if (shape !== 'fore-1' && shape !== 'fore-2' && shape !== 'square-3') return waveAHullPath(shape, l)
+  if (shape === 'fore-1') {
     const b = l * 0.33
     return (
       `M0 ${-l}` +
@@ -452,7 +510,7 @@ export function hullPath(cls: HullClass | null, halfLength: number = hullHalfLen
       `L${-b} ${-l * 0.2}Z`
     )
   }
-  if (cls === 'carlat') {
+  if (shape === 'fore-2') {
     const b = l * 0.42
     return (
       `M0 ${-l}` +
@@ -482,6 +540,51 @@ export function hullPath(cls: HullClass | null, halfLength: number = hullHalfLen
     `L${-b * 0.74} ${-l * 0.6}` +
     `L${-b * 0.55} ${-l * 0.72}Z`
   )
+}
+
+/** A symmetric closed hull from its starboard half, bow (0, −l) first, listed bow → stern. */
+function mirrored(half: readonly (readonly [number, number])[]): string {
+  const right = half.map(([x, y]) => `L${x} ${y}`).join('')
+  const left = [...half].reverse().filter(([x]) => x !== 0).map(([x, y]) => `L${-x} ${y}`).join('')
+  return `M${half[0][0]} ${half[0][1]}${right.slice(right.indexOf('L', 1))}${left}Z`
+}
+
+/**
+ * 0135 — THE FIVE SILHOUETTES WAVE A ADDED (the three above are the live three's). Each is the
+ * thing a sailor would know across a harbour, and none is another shape scaled:
+ *
+ *   square-1  a small square-rigged coaster or pinnace — short and BEAMY, a rounded bow and a flat
+ *             transom. No castle.
+ *   square-2  a light square-rigger (the caravela redonda, the zabra, the buss) — a FORECASTLE
+ *             shoulder behind the stem and a plain square stern: the nau's bow without its castle aft.
+ *   square-4  the heavy galleon — the BEAKHEAD: a narrow spur ahead of the forecastle, a long broad
+ *             body and the great stepped after-castle wider than the hull.
+ *   fore-3    a medium galley, xebec or dhow — LONG and slim, a ram spur at the bow, a pointed stern.
+ *   fore-4    a heavy fore-and-aft hull (the baştarda, the atakebune, the panokseon) — long, with the
+ *             BOX CASTLE bulging amidships.
+ */
+function waveAHullPath(shape: HullShape, l: number): string {
+  if (shape === 'square-1') {
+    const b = l * 0.4
+    return mirrored([[0, -l], [b * 0.7, -l * 0.6], [b, -l * 0.1], [b, l * 0.75], [b * 0.85, l * 0.9], [0, l * 0.9]])
+  }
+  if (shape === 'square-2') {
+    const b = l * 0.46
+    return mirrored([[0, -l], [b * 0.6, -l * 0.78], [b * 0.8, -l * 0.62], [b, -l * 0.15], [b, l * 0.92], [0, l * 0.92]])
+  }
+  if (shape === 'square-4') {
+    const b = l * 0.5
+    return mirrored([[0, -l], [b * 0.18, -l * 0.86], [b * 0.6, -l * 0.74], [b * 0.78, -l * 0.64], [b, -l * 0.2],
+      [b, l * 0.4], [b * 1.15, l * 0.48], [b * 1.15, l * 0.97], [0, l * 0.97]])
+  }
+  if (shape === 'fore-3') {
+    const b = l * 0.3
+    return mirrored([[0, -l], [b * 0.35, -l * 0.82], [b * 0.9, -l * 0.7], [b, -l * 0.3], [b, l * 0.55], [b * 0.75, l * 0.9], [0, l]])
+  }
+  // fore-4
+  const b = l * 0.36
+  return mirrored([[0, -l], [b * 0.8, -l * 0.7], [b, -l * 0.4], [b * 1.25, -l * 0.3], [b * 1.25, l * 0.3], [b, l * 0.4],
+    [b, l * 0.8], [b * 0.6, l * 0.95], [0, l * 0.95]])
 }
 
 /** One hull of a fleet's mark: which class, how long, and where she sits in the group — the offset

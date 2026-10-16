@@ -32,9 +32,10 @@ import { project, xOnSheet, type ViewBox } from '../lib/geo'
 import type { FleetOnChart, TrafficOnChart } from './chartModel'
 import { GLYPH } from './glyphs'
 
-/** The cell, in CSS px, inside which the merchants are thinned to one — the largest hull's length
- *  bow to stern, so a cell holds exactly one legible ship. */
-export const SHIP_CELL_PX = 2 * GLYPH.hullHalfLength.nau
+/** The cell, in CSS px, inside which the merchants are thinned to one — the largest hull a merchant
+ *  sails, bow to stern (the nau, a medium hull: 0135 drew sizes by `GLYPH.hullHalfLength`, and no
+ *  merchant sails a heavy one), so a cell holds exactly one legible ship. */
+export const SHIP_CELL_PX = 2 * GLYPH.hullHalfLength[3]
 
 /** Beyond the view's edge, as a fraction of its width and height — the same slack `portMarks`
  *  keeps, so a mark half off the glass is still drawn. */

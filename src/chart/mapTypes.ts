@@ -156,15 +156,18 @@ export interface MapSea {
 type FleetStores = { readonly enduranceDays: number }
 
 /**
- * A HULL CLASS, by `ship_classes.code` — the three hulls this world sails
- * (`…0003_the_real_world_and_the_water_between_it.sql:2089-2091`: `barca`, `carlat`, `nau`).
+ * A HULL CLASS — the SERVED `ship_classes.code`, any of the 55 (0135: the three live hulls and Wave A's
+ * 52, `docs/SHIPS_AND_SKILLS.md` §4.3), not a list this file keeps.
  *
- * It is the chart's own word for a served fact and nothing here decides it: ./liveWorld.ts reads
- * the class the server names on a ship and resolves it to one of these three, or to NULL. What each
- * one LOOKS like is ./glyphs.ts's business (`hullPath`, `hullHalfLengthOf`) — one authority for
- * every mark on this sheet, as that file's header says.
+ * It is the chart's own word for a served fact and nothing here decides it: ./liveWorld.ts reads the
+ * class the server names on a ship and keeps the code when the chart knows how to draw it, or NULL.
+ * What each one LOOKS like is ./glyphs.ts's business (`hullShapeOf`, `hullPath`, `hullHalfLengthOf`):
+ * EIGHT silhouettes by rig family × size, not 55, resolved from the class's served rig and size
+ * (`world.snapshot`, registered by the world store) — with the three live hulls pinned as the
+ * fallback, so a code the snapshot has not yet named still draws as it always did, and a code the
+ * chart cannot place at all draws the class-less hull.
  */
-export type HullClass = 'barca' | 'carlat' | 'nau'
+export type HullClass = string
 
 /**
  * HER HULLS, FLAGSHIP FIRST — one entry per ship in the fleet, each the class the server named for

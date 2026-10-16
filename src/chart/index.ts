@@ -142,6 +142,12 @@ export {
   hullGroupHalo,
   hullHalfLengthOf,
   hullPath,
+  // 0135 — eight silhouettes by rig family × size; the store registers the served classes.
+  hullShapeFor,
+  hullShapeOf,
+  registerHullClasses,
+  type HullClassFacts,
+  type HullShape,
   portMarkScale,
   portStrokeWidth,
   shipPath,

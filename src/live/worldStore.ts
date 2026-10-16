@@ -87,6 +87,7 @@ import {
   worldSeaRoster,
 } from '../lib/rpc'
 import { navFromServed, type SeaNav } from '../lib/sea'
+import { registerHullClasses } from '../chart'
 import { whereabouts } from '../domain/fleet'
 import { mergeRoster, readSavedRoster, rosterKey, savedRosterText, trafficRowAt } from './seaRoster'
 import type {
@@ -656,6 +657,10 @@ export const useWorld = create<LiveWorld>((set, get) => {
     // screen can see `snapshot` without the first fleets read having landed. `phase: 'ready'`
     // lands in the same `set()`, so the two readings of "the world is up" cannot disagree.
     const seaNav = navFromServed(sea.value)
+    // 0135 — every served hull class's rig and size, so the chart draws each of the 55 as one of its
+    // eight silhouettes (src/chart/glyphs.ts `hullShapeOf`). Before the first fleets read, so no hull
+    // is ever drawn from a snapshot the store holds but the chart has not seen.
+    registerHullClasses(snap.value.ship_classes)
     await get().refresh()
     set({
       snapshot: snap.value,

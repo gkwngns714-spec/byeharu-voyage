@@ -5,6 +5,82 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — S12 (0135): every country builds its own ships — `osn-0135-wave-a`
+
+`docs/SHIPS_AND_SKILLS.md` §8 S12 "Wave A: 52 hulls + Wave A gear". **Not deployed** (prod head 0134).
+- **Generators** (the data the migration loads; re-run = file = DB, held by `scripts/db/world-guard.mjs`):
+  `scripts/build-ships.mjs` — 12 archetypes (size × role, the Portuguese values) × the 11 lines of
+  `data/ship-lines.json`; anchors: PRT small trade / light explorer / medium trade reproduce the live barca /
+  carlat / nau to the digit (stats, deck, racks, labour, goods, yard tier) or it throws. Every one of the 52
+  rows equals §4.3's Wave A table in every column (scratch diff: 0 mismatches) — the table was drafted with
+  half-to-even rounding (crayer 5.25 → 5.2 kn), hold to 5 t from 50 up, labour to 500 × a per-line yard
+  factor. `scripts/build-gear.mjs` — 23 base types × grades: G2-G5 of the 12 live, G1-G5 of the **11** new
+  ones §6.3 lists (the row says "10 / ~98"; the table is 11 → **103 items**), buys × 1.30…2.20 (speed/hold ×
+  1.15…1.60), spends × 1, deck/hands +10 %/grade, family material ladders; reproduces §6.4's Long Guns /
+  Sails / Hold Frames / Planking ladders. Output: `data/ships.generated.json`, `data/gear.generated.json`;
+  `--sql` prints the VALUES pasted into 0135; `--check` fails on a stale file.
+- **0135**: 52 `ship_classes` (guns = attack / 10, tier = size) + `class_profile` + 198 rack rows + cabins
+  (3/4/5/6 by size) + recipes (goods only, as the table names them — 0072 (a)'s "and fittings" is held for
+  the live three only); 103 items + profiles + 285 effects + 338 recipe rows; requirements **102 hull rows
+  (§4.4's pattern literally: small 1, light 2, medium 2, heavy 3 — the row's "55" matches no reading of
+  §4.4)** + 98 item rows; knob `hull_labour_mult` 1.0 read by ONE function `public.hull_labour` (do_build
+  sets `h.ducats` from it; building_yard serves it); `world.snapshot` serves size / role / tech.
+- **Dark = the pre-image of what can be built**: `public.requirements_unmet` re-cut — while `skills_bite`
+  is off NO level counts (have 0), so a subject WITH requirements is refused (`E_NEEDS_SKILL`, every skill
+  named, sentence + " — ship skills are not in use yet"); one without is answered as before. **So today on
+  prod none of the 52 new hulls, and none of the G2-G5 / Carronades / Chase Guns gear, can be built or
+  fitted by anyone; the nine ungated new G1 fittings and the figurehead grades can be made and fitted.**
+  Lighting `skills_bite` opens each to whoever holds the levels (re-measure the arrivals sweep first).
+- **Self-assert** (cached-prefix run, PGlite, 834 companies): live 3 hulls / 12 items hash-unchanged; counts;
+  guns = attack/10, tier = size, Hands ≥ 0, yard tier by size; 0072 (b)(c)(d) and 0068/0074 over every hull
+  and item (sold somewhere, made somewhere, fits a storage where buildable, buys+spends, fits a rack, climbs
+  from G1, places grow with size, 23 × 5); every hull buildable at ≥ 1 yard of its line (yard_wrong_country +
+  tier, and the yard screen agrees); dark — 12,510 company × live-subject pairs unchanged, 43,368 company ×
+  new-hull pairs closed, every live yard / workshop entry byte-equal, through the doors 52 hulls E_NEEDS_SKILL,
+  barca built for 3,000, storm canvas fitted, hemp canvas / carronades refused; lit (rolled back) — 52
+  refused naming every requirement without skills, 52 BUILT for their labour with them, the FITs go on;
+  lever 2.0 doubles door + yard; 5 bodies reverse to pre-images; entry points / posture unchanged.
+- **Hot reads** (faster of 2 passes, answers equal; budget before × 1.15 + 50 ms): speed+hold 364 → 405 ms,
+  ship_stats 77 → 92, ship_view 1,359 → 1,509, quotes 375 → 362 (892 merchant hulls / 898 quotes). One run
+  with tsc + eslint running beside it FAILED the gate (speed+hold 957 → 1,191) — the gate is load-sensitive.
+- **Client**: `HullClass` = the served code (`src/chart/mapTypes.ts:170`); eight silhouettes by rig family ×
+  size (`src/chart/glyphs.ts` `hullShapeOf` / `registerHullClasses`, live three pinned as the fallback,
+  `hullHalfLength` by size, heavy 6.1); `hullClassOfCode` (`src/chart/liveWorld.ts:85`) keeps any placeable
+  code; the store registers the snapshot's classes; Codex Ships filters by country / size / role / tech; the
+  build yard lists this country's hulls first, the rest under "Built only in other countries".
+- **Open questions from the handover, decided by the spec's own detailed sections** (the §8 row is a
+  summary; where it disagrees with the section it summarises, the section wins). Nothing built was changed;
+  the owner can overrule any of the three:
+  (1) **Hull requirement rows: 102, not "55".** §4.4's table is the rule: small T1 one skill, light two,
+  medium two, heavy three (the role skill I). Wave A is 13 small / 15 light / 13 medium / 11 heavy →
+  13 + 30 + 26 + 33 = **102**. No reading of §4.4 gives 55 (55 is the hull count after S12, 3 + 52), so the
+  row's number is a slip.
+  (2) **Items: 103, not "~98".** §6.3 lists **11** new base types (Carronades, Chase Guns, Swivel Guns,
+  Studding Sails, Storm Canvas, Whipstaff, Sheet Anchor, Capstan, Binnacle & Charts, Planking, Bilge
+  Pumps), not the row's 10: 12 live × G2-G5 (48) + 11 new × G1-G5 (55) = **103**. The row's "~" marks an
+  estimate; the table is exact.
+  (3) **New hull recipes are goods only.** §4.3's Wave A table names each hull's materials as goods only,
+  and §8 puts fittings into a hull recipe only for the famous ships (S17, `hull_recipe_items`). 0072 (a)'s
+  "goods and fittings" stays true of the live three (their `hull_recipe_items` hash is unchanged, asserted).
+- **Proof (lean)**: cached-prefix apply of 0135 + self-assert + world guard; `npx tsc -b`, `npx eslint .`,
+  `npm run build`; specs touched: db.chain, map.hulls, map.wrap, words.
+- **Finishing pass (fresh worktree, local PGlite build, no `.env.local`):** `build-ships.mjs --check` (52) and
+  `build-gear.mjs --check` (103) pass; `tsc -b` and `eslint .` clean; `npm run build` exit 0 — the world image
+  restored the browser prefix to 0120 and applied 0121-0135 here, 0135's receipt printed, world guard ok
+  (55 ship classes, 115 items, 200 requirements, generators re-run = files = database). Hot reads in that
+  run (wasm, faster of 2): speed+hold 947 → 1,041 ms, ship_stats 201 → 237, ship_view 3,688 → 4,255
+  (+15.4 %, inside the × 1.15 + 50 ms budget by 36 ms — the closest margin; CI's real Postgres is the
+  verdict), quotes 1,016 → 1,060. Specs against `vite preview --port 4196` on `localhost`:
+  `map.wrap.spec.ts:158` + all of `map.hulls.spec.ts` 11 passed / 0 skipped / 0 failed;
+  `db.chain.spec.ts` :339 :363 :789 passed. **`db.chain.spec.ts:672` (growth test) FAILED locally after
+  49 min — in 0108's own timing assert (`route_board` 408.9 ms a call against an absolute 400 ms budget,
+  wasm on this PC), before 0135 was reached;** main's CI ran the same test green, and this PR touches
+  `supabase/migrations/` so CI runs it again — that run is the verdict. Looked at the preview: Codex → Ships
+  lists the 55 hulls with their flags and Country / Size / Role filters (Tech hides itself while every hull
+  is T1); Lisbon's Build face lists the Portuguese hulls first (the two new ones dimmed) and the rest under
+  "Built only in other countries", each with its flag; Fluit's tray names The Netherlands, its yards, and
+  `Fluit needs Dutch Light Hulls III and Dutch Medium Hulls I — ship skills are not in use yet`.
+
 ## 2026-10-17 — the 1280 map "lost its merchants" after a resize: it did not — `osn-map-resize-merchants`
 
 Brief: `map.hulls` (390 → 1280, "≥ 2 merchant marks", got 0–1 for 60 s; CI 38917698523, 38864772736,
