@@ -82,6 +82,20 @@
 -- as text and must be EQUAL (a refusal). The times are REPORTED in a notice (before → after, %), not
 -- gated: prod's burstable CPU measured ~10 s for one ship_view pass, and a ±15 % ceiling would abort an
 -- honest push on noise. public.hull_labour is PL/pgSQL (PG 17 re-plans SQL bodies per call).
+-- THE READS ARE TIMED AT PRODUCTION'S PLANNER PAGE COST (random_page_cost 1.1 — prod's configuration
+-- file, read 2026-10-17; on prod the setting is therefore a no-op). Measured why (PR #139 review): every
+-- per-ship read reaches the catalogue by key (a ship's class, its fitted items' effects / profile / kind).
+-- At 1.1 the planner probes those keys by index and the cost is the ship's, not the catalogue's — before
+-- → after at 1.1, 892 merchant hulls, interleaved medians: speed + hold +2.2 %, ship_stats -0.6 %,
+-- ship_view +2.3 %, quotes +1.6 % (noise). PGlite's DEFAULT is 4 (a spinning disk), and there a key
+-- lookup costs more than reading a whole 2-3-page table, so the grown catalogue is SEQ-SCANNED once per
+-- ship per call (EXPLAIN: Seq Scan on item_effects 315 rows + Hash Join in world.ship_stats, Seq Scan
+-- on ship_classes 55 rows in ship_stats / ship_slots / ship_budget / ship_speed; before, 3 classes and
+-- 30 effects, the same lookups were index scans): +27 % / +31 % / +26 % — a cost of the wasm engine's
+-- planner model, not of these rows, and one no query shape avoids at 4. Pinning 1.1 on the hot
+-- functions themselves was measured too and REJECTED: the per-call SET cost ship_view ~9 % in PGlite (seven
+-- functions pinned vs the whole session at 1.1), and prod would pay it for nothing. So the gauge reads
+-- what prod's planner does, and the notice prints this engine's own setting beside it.
 --
 -- ── LOCKS (db push holds every lock until this file commits) ───────────────────────────────────
 -- Heavy reads (pre-images, the before-timings) come FIRST, before any write. Then only: ROW EXCLUSIVE
@@ -195,9 +209,12 @@ select ps.port_id, ps.good_id, x.qty, x.side, f.id as fleet
  where ps.k % 3 = 0;
 
 create temp table reads_0135 (phase text, what text, n bigint, ms numeric, answer text) on commit drop;
+-- Timed at PRODUCTION'S planner page cost, both phases alike (header, COST): on prod a no-op, on PGlite
+-- (default 4) it plans the reads as prod plans them. Scoped to this pg_temp function, gone at commit.
 create or replace function pg_temp.time_reads_0135(p_phase text)
 returns void
 language plpgsql
+set random_page_cost = 1.1
 as $$
 declare
   v_t0   timestamptz;
@@ -2745,7 +2762,8 @@ begin
       raise exception '0135 self-assert FAIL: the % answers moved', rb.what;
     end if;
   end loop;
-  raise notice '0135 hot reads, faster of two passes, before → after (reported, not gated): %', v_timing;
+  raise notice '0135 hot reads, faster of two passes, at production''s planner page cost 1.1 (this engine''s own: %), before → after (reported, not gated): %',
+    current_setting('random_page_cost'), v_timing;
   if (select count(*) from reads_0135 where phase = 'after') <> 4 or (select n from reads_0135 where phase = 'before' and what = 'quotes') = 0 then
     raise exception '0135 self-assert FAIL: the hot reads were not all timed';
   end if;

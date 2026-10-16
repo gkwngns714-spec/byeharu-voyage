@@ -5,6 +5,48 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — 0135: a bigger catalogue costs a ship read nothing — why the hot reads looked slower (PR #139)
+
+Still **not deployed** (prod head 0134). Brief: the +12.8 / +29.6 / +22.0 % above sit on prod's arrivals sweep
+(every 15 s, budget 10 s) — find exactly why and fix it before deploy.
+- **Root cause: the planner's page cost, not the rows.** Every per-ship read reaches the catalogue BY KEY (a
+  ship's class row, its fitted items' effects / profile / kind). PGlite runs PostgreSQL's default
+  `random_page_cost = 4` (a spinning disk); **prod runs 1.1** (`pg_settings`, source "configuration file",
+  read 2026-10-17, PG 17.6). At 4, one index probe is priced above reading a whole 2-3-page table, so once
+  0135 grows the tables the planner SEQ-SCANS them per ship per call. EXPLAIN (ANALYZE, BUFFERS), generic
+  plans, the dark `world.ship_stats` body: before — `Index Scan using ship_classes_pkey` and `Seq Scan on
+  item_effects (rows=30)`; after — `Seq Scan on ship_classes (rows=55)` + Hash Join and `Seq Scan on
+  item_effects (rows=315)` + Hash Join. The same flip in `ship_slots`, `ship_budget` / `class_budget`,
+  `ship_racks` (item_profile 115), `voyage.ship_speed` (ship_classes), and `ship_view`'s fittings list
+  (item_kinds 115). `ship_view` evaluates `ship_stats` four times (direct, hold, speed × 2), so it pays it 4×.
+  Indexes were already right (every lookup has its PK / `fitted_units_ship_item_idx`); the before world's
+  catalogue tables had never been analysed (prod's ship_classes / item_kinds / item_profile neither: relpages 0,
+  reltuples -1), which is why the class lookups planned as index scans there.
+- **Measured** (PGlite 18.3, 892 merchant hulls, one process holding both worlds, passes interleaved,
+  15 each, median / min): at **1.1 (prod)** before → after: speed+hold **+2.2 / +1.9 %**, ship_stats
+  **-0.6 / +0.8 %**, ship_view **+2.3 / -0.1 %**, quotes +1.6 / +0.1 % — noise. At **4 (PGlite default)**:
+  +27.6 / +28.2 %, +30.8 / +36.7 %, +26.3 / +27.1 %, +4.3 / +0.1 %. EXPLAIN at 1.1 after 0135: ship_stats,
+  ship_slots, ship_racks, ship_budget, ship_speed all index probes; three ~1-page seq scans remain (fittings'
+  item_kinds 115, class_cabins 55, class_profile 55) — inside the noise above.
+- **Fix: the 0135 notice times the reads at production's page cost** (`set random_page_cost = 1.1` on the
+  `pg_temp` timing helper only, both phases; a no-op on prod) and prints the engine's own setting beside it.
+  This build's notice: speed+hold 307 → 300 ms (-2.3 %), ship_stats 65 → 67 ms (+3.1 %), ship_view
+  1260 → 1263 ms (+0.2 %), quotes 351 → 339 ms (-3.4 %); answers md5-equal.
+- **Rejected, measured:** pinning `random_page_cost = 1.1` on the hot functions themselves (`alter function …
+  set`) — catalogue-independent, but the per-call SET cost ship_view ~9 % in PGlite (seven functions pinned
+  vs the whole session at 1.1) and prod would pay it for nothing. `alter database … set random_page_cost` —
+  PGlite never applies `pg_db_role_setting` (tested: set, dumped, reloaded → still 4). No query shape avoids
+  a seq scan of a 2-3-page table at 4.
+- **Not done (a separate slice, outside 0135):** PGlite worlds (the canary, CI's pglite gates) still plan the
+  grown catalogue at 4, i.e. their per-ship reads ARE ~27 % slower than before 0135. Fixing that means
+  starting every PGlite engine at prod's page cost (the variants' base, so every prefix snapshot rebuilds).
+- **Not verified:** prod itself after 0135 (it is at 0134). PG 17 re-plans SQL-language bodies per call
+  (`ship_slots`, `class_budget`, `ship_hold_capacity`) where PGlite 18 caches them; at 1.1 their plans are
+  index probes either way, but that difference was not timed on a real PG 17. The push's own notice is the
+  measurement there.
+
+---
+
 ## 2026-10-17 — 0135 review fixes (PR #139) — timing notice, dark crafting gate, unique flags, hull_labour PL/pgSQL
 
 Still **not deployed** (prod head 0134). Owner: fix everything the review found, then merge + deploy.
