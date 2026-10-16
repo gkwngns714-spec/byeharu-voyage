@@ -6,6 +6,29 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 
 ---
 
+# ▼ RESUME ANCHOR — 2026-10-17 — READ THIS FIRST ▼
+
+**Everything below this anchor is HISTORY.**
+
+## State (verified 2026-10-17 ~00:55 UTC)
+| | |
+|---|---|
+| `main` | `b6c5523` (+ this doc), Pages deployed — live bundle `index-CO0eqUp-.js` checked (carries `wrong_yard`/`tier_ok`) |
+| **Prod DB head** | **0130** = main (`db push` 00:41 UTC, self-asserts green; spot query: 3 new nations, 11 ship_lines, 3 class_profile) |
+| CI | Acceptance on main NOT yet checked — owner's rule: one full Acceptance check after the batch |
+
+## LIVE today
+- **0130 (#133) S8 countries & yards** — `public.ship_lines` (11, `data/ship-lines.json`), `public.class_profile`; nations GUJ ❁ / MLB ✹ / BAN ✧ + 10 port nation fixes (Old Goa → PRT); 7 arsenal build yards → tier 3; ONE country rule `public.yard_wrong_country` read by `cmd.do_build` (`E_WRONG_YARD`) and `world.building_yard` (per hull `tier_ok` + `wrong_yard` sentence — client renders only); flag on Codex Ships + Build (`src/live/HullCountry.tsx`). The 3 live hulls are `any_yard` (build everywhere as before; arsenals now open bigger hulls). Probe builds retry lock timeouts.
+- **#134** below `lg` a side panel covers the whole width (corner chrome stays full width under it, `src/components/ui/screenLayout.ts`); `src/chart/hitTest.ts` weighs a hull against the NEAREST harbour (Acapulco tap at the globe now opens Veracruz by the name rule, not a merchant).
+
+## Next (in order)
+1. Owner's call — remaining losing merchant laps (lower `npc_min_return_pct` or don't charge stores/wages on ballast passages).
+2. Owner's open choices from 0130: MUG capital stays Surat (now GUJ) or move to Chittagong/Karachi; Acapulco at globe zoom opens Veracruz (name rule) — change only if asked.
+3. S9 Skills I (catalogue + queue) per `docs/SHIPS_AND_SKILLS.md` §8.
+4. One full Acceptance run on main after the batch; known flaky: `map.merchants.spec.ts:565` ("no merchant hull on the glass", failed once on a docs-only commit).
+
+---
+
 # ▼ RESUME ANCHOR — 2026-10-16 — READ THIS FIRST ▼
 
 **Paused for a machine change by the owner. Everything below this anchor is HISTORY.**
