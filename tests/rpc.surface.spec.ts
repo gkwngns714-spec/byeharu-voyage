@@ -1399,7 +1399,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // 0013-0016. Each of the three cmd.* entries takes NO player id — identity is the JWT's,
       // the same property that makes cmd.found_house safe for a browser to hold.
       'worldPriceHistory', 'worldPlayer', 'worldOfficers', 'worldSkills',
-      'cmdHireOfficer', 'cmdStudySkill',   // 0165 (K9): cmdPostOfficer retired with cmd.post_officer
+      'cmdHireOfficer', 'cmdStudySkill',   // 0166 (K9): cmdPostOfficer retired with cmd.post_officer
       // Pin moved deliberately 2026-08-23 with migration 0022, `a_bargain_is_struck_on_the_quay`:
       // `world.haggle_state` (the read) and `cmd.haggle` (the verb). They land together because
       // they are ONE feature, and because 0022 GRANTS EXECUTE to `authenticated` on exactly the

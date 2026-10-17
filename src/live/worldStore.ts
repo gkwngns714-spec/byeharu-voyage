@@ -267,7 +267,7 @@ export interface LiveWorld {
   /** Give a route to a fleet (it starts at once, so the world is read back), or take it off with null. */
   assignRoute: (routeId: string, fleetId: string | null) => Promise<boolean>
   pauseRoute: (routeId: string, paused: boolean) => Promise<boolean>
-  /** Hire a captain, or study a level (0165: a captain is seated with `cmdSeatCaptain`). Each re-reads what it changed, because the
+  /** Hire a captain, or study a level (0166: a captain is seated with `cmdSeatCaptain`). Each re-reads what it changed, because the
    *  server's answer is the only true one — no local patching (the `issue` rule). */
   hireOfficer: (code: string, fleetId: string | null) => Promise<boolean>
   /** 0131: enrol in a skill where this fleet is docked; set the whole training queue (in order).

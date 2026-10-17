@@ -1754,7 +1754,7 @@ export interface BuffsView {
   port: PortBuffs | null
 }
 
-/** What `cmd.hire_officer` / `cmd.study_skill` (0165: `cmd.post_officer` is retired — `cmd.seat_captain` seats) hand back. A refusal arrives as
+/** What `cmd.hire_officer` / `cmd.study_skill` (0166: `cmd.post_officer` is retired — `cmd.seat_captain` seats) hand back. A refusal arrives as
  *  a `Refusal` through the usual `RpcResult`, never as a field here. */
 export interface HiredOfficer {
   officer: string
