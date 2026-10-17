@@ -30,13 +30,10 @@ import type { MarketGood } from '../../lib/rpc'
 // press OPENS is the caller's affair; this row inserts nothing into the list it stands in, which
 // is what lets the ledger hold still under the finger.
 //
-// `native` IS A CAPTION WORD, NOT A TAG (0084, slice 2). The served flag — "this is grown here",
-// 0062's own word — is appended to the caption the row already carries (`· 40 units on board ·
-// native`), in the caption voice. Not a coloured tag: docs/UI_DIRECTION.md §4.4 gives rarity its
-// hues as a 10-px MARK only and never as text colour, and a second badge vocabulary beside it
-// would be a second one. A server predating 0084 sends no flag and the row draws nothing — never
-// a guess from origin_regions on this side of the wire. The rarity mark IS drawn, mark only, when
-// the tier is served — never as a text tag.
+// NO `native` WORD (owner, 2026-10-17: "remove native"; 0141 took the key off world.market). The
+// caption carries one fact — `· 40 units on board` — and docs/UI_DIRECTION.md §4.4 gives rarity
+// its hues as a 10-px MARK only: the rarity mark IS drawn, mark only, when the tier is served —
+// never as a text tag.
 
 export function TradeRow({
   good,
@@ -62,7 +59,7 @@ export function TradeRow({
         // THE CAPTION WRAPS UNDER THE NAME WHEN IT DOES NOT FIT, and never squeezes it: at 390px a
         // row with cargo on board once read `◇ · 10 units on board` with the name truncated to
         // nothing (seen in the basket proof's end frame, 2026-09-13). `flex-wrap` keeps a short
-        // caption on the name's line (`· native` fits), so no other row's height moves.
+        // caption on the name's line (`· 4 units on board` often fits), so no other row's height moves.
         // THE GOOD'S OWN MARK LEADS THE NAME (2026-10-01, owner: "it is like a text game"). The 96
         // hand-drawn goods marks were already drawn on the Codex and the cargo rows, and missing
         // from the one list a player reads most — so the ledger was a column of words. It rides
@@ -75,14 +72,11 @@ export function TradeRow({
           <Icon name={goodIcon(good.code, good.category)} size={18} className="mt-0.5 shrink-0 text-ink-muted" />
           <span className="min-w-0 break-words">
             {good.name} <RarityMark rarity={good.rarity} />
-            {/* Each caption word keeps its dot — a no-break space, so `·` never ends a line alone. */}
-            {(aboard > 0 || good.native === true) && (
+            {/* The caption keeps its dot — a no-break space, so `·` never ends a line alone. */}
+            {aboard > 0 && (
               <span className="text-t-caption text-ink-faint">
                 {' '}
-                {[aboard > 0 ? `${formatUnits(aboard)} on board` : null, good.native === true ? 'native' : null]
-                  .filter(Boolean)
-                  .map((w) => `·${NBSP}${w}`)
-                  .join(' ')}
+                {`·${NBSP}${formatUnits(aboard)} on board`}
               </span>
             )}
           </span>

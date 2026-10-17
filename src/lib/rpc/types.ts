@@ -508,12 +508,6 @@ export interface MarketGood {
    * E_UNAVAILABLE. Optional for the serve-order reason `rarity` is.
    */
   offered?: boolean
-  /**
-   * 0084 — IS THIS GOOD GROWN HERE? 0062's own word: the port's region is among the good's
-   * `origin_regions`. A fact about the row, served, so the client never joins `goods` to `regions`
-   * to say it. Optional: a server predating 0084 says nothing and the row draws nothing.
-   */
-  native?: boolean
 }
 
 /**

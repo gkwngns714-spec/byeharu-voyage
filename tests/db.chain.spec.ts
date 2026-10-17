@@ -338,7 +338,8 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0138 (capitals and flagships: S14 Wave B, 15 hulls of sizes 5 and 6, generated, dark; their goods fit the shed).
 // And to 0139 (any hull enters any harbour: the E_DRAFT gate, the merchants' draft filter and the docks draft knob removed).
 // And to 0140 (the Mughal capital is Karachi: Surat is Gujarat's since 0130; every capital is a harbour of its own nation).
-const LAST = '20260818000140_the_mughal_capital_is_karachi.sql'
+// And to 0141 (the quay says nothing about where a good grows: the owner removed the native tag; world.market serves no native key).
+const LAST = '20260818000141_the_quay_says_nothing_about_where_a_good_grows.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
