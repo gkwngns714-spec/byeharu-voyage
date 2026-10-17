@@ -6,6 +6,42 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 
 ---
 
+# ▼ RESUME ANCHOR — 2026-10-17 ~11:45 UTC — READ THIS FIRST ▼
+
+**Everything below this anchor is HISTORY.**
+
+## State (verified on prod 2026-10-17 ~11:40 UTC)
+| | |
+|---|---|
+| `main` | `1841709` (+ this doc), Pages deployed |
+| **Prod DB head** | **0139**, plus **0137** (pushed out of order with `db push --include-all`). 0140 in PR #147 |
+| CI | **Scoped since #144**: a PR runs only the specs its diff reaches + the new migration (`scripts/ci/select-specs.mjs`, `docs/CI.md`). A migration PR takes ~20 min (it was 47–66). Main still runs everything; both full runs after #144 were green |
+| Clock | all 7 jobs active; drift + reconcile are now `call …` procedures |
+
+## LIVE this session
+- **0135 (#139)** S12 Wave A: 52 country hulls + 103 gear items, DARK; dark gear can't be crafted (`do_make` gate); every nation has a distinct flag (23).
+- **0136 (#140)** arrivals speed step 2: `port_offered_goods` is the one roster reader (affinity_for folded). Prod arrivals avg 3.6 → 2.4 s, max 10.3 → 4.1 s.
+- **0138 (#143)** S14 Wave B: 11 capitals + 4 flagships, DARK (shed rule: flagship goods capped to 749 t, the rest moved into labour).
+- **0139 (#145)** **the draft gate is REMOVED by the owner's order**: any hull enters any harbour (sail_refusal, npc_feasible_legs now (uuid,numeric,integer), npc_loop_candidates; knob `docks_draft_per_levels` deleted). The draft rule was my own invention in DESIGN, not the owner's.
+- **0137 (#142)** reconcile + drift commit step by step: the ledger check runs inside each merchant's step; `world.market` drifts only the opened harbour; drift skips a deadlocked harbour. First runs: drift 1.8 s (was ~25), reconcile 71.4 s, arrivals during the reconcile 1.4–3.6 s (stalled 17–72 s before). Rollback with no migration: `cron.alter_job(<drift>, command := 'select public.tick_market_drift()')`, `cron.alter_job(<reconcile>, command := 'call public.tick_reconcile(false)')`.
+- **City economy ON** (owner's order): `city_treasury_switch(true)` seeded 238 purses (4,760,000 d.). World money 54,990,837 vs need 52,122,000, so only ~5 % headroom; watch it. City job hourly at :37, first run ok.
+- **#146** day/night half as fast: `GAME_CLOCK_RATE` = TIME_COMPRESSION / 8 (a game day = 12 real minutes; clock and Sun together; ships unchanged).
+- **#141** map specs set their own preconditions; **#144** scoped CI.
+
+## Next (in order)
+1. **0140 (PR #147)**: Mughal India's capital moves from Surat (Gujarat's since 0130) to **Karachi**, picked by the numbers (dev 19 vs Chittagong 17). Deploy: unwind → `db push` → wind → merge.
+2. Ships plan `docs/SHIPS_AND_SKILLS.md` §8: **S13** Gear II (wear/repair/refits), **S15** T2 hulls, **S16** perks/sets, **S17** famous ships, **S18** merchants of every flag. Then light `skills_bite`: re-measure arrivals on prod first (they now have headroom). Then S4 combat stats.
+3. **Owner open:** docks building has no effect since 0139; the owner will decide ("keep it as it is" for now). Losing merchant laps: leave as is.
+4. Worktrees `bv-no-blink`, `bv-stop-face` never got a PR; ask the owner before deleting them.
+
+## Lessons
+- **A defect caused by a rule I invented means REMOVE the rule**; never bolt another check on top (the draft gate).
+- `db push`: the file + its history row are ONE implicit transaction; a raise rolls everything back. Timing gates in self-asserts are `raise notice` only (prod Micro CPU is burstable). Own-row proofs, never whole-table digests (players write during a push).
+- PGlite plans with random_page_cost 4 (prod 1.1): time hot reads at 1.1 or they look like regressions.
+- pg_cron 1.6.4 on prod runs `call` procedures that COMMIT (proved by the first runs).
+
+---
+
 # ▼ RESUME ANCHOR — 2026-10-16 17:20 KST (08:20 UTC) — HANDOVER — READ THIS FIRST ▼
 
 **Owner left for the day; continue on the other computer. Everything below this anchor is HISTORY.**
