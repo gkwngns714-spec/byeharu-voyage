@@ -2027,6 +2027,8 @@ export interface MerchantCard {
     refounded_at: string | null
     /** 0123: her stakes in cities, by harbour, largest first. Absent on a server before 0123. */
     invested?: { port: string; name: string; paid: number }[]
+    /** 0145 — her influence, by city and the country it counts for, most first. */
+    influence?: { port: string; name: string; nation: string; points: number }[]
   }
   fleet: {
     id: string

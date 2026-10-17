@@ -22,7 +22,7 @@ import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../
 import { fleetCargoByCode, hullFraction, whereabouts } from '../domain/fleet'
 import { skippedWords } from '../domain/route'
 import type { MerchantCard } from '../lib/rpc'
-import { portNameOf, useWorld } from './worldStore'
+import { nationNameOf, portNameOf, useWorld } from './worldStore'
 import { ShipPanel } from './ShipPanel'
 import { HullCountry } from './HullCountry'
 import { TradeHistoryPanel, type TradePick } from './TradeHistoryPanel'
@@ -157,6 +157,7 @@ function MerchantBody({
   // THE ONE CLOCK (src/app/shellState.ts): the Fortune line counts a span from it, never from a
   // Date.now() read during a render.
   const { nowMs } = useShellState()
+  const nationByCode = useWorld((s) => s.nationByCode)
   const e = card.earnings
   const cargo = useMemo(() => {
     return Object.entries(fleetCargoByCode(card))
@@ -286,6 +287,14 @@ function MerchantBody({
                   {`Invested ${formatDucats(card.company.invested[0].paid)} at `}
                   <GoToLink to={{ kind: 'port', code: card.company.invested[0].port }}>{card.company.invested[0].name}</GoToLink>
                   {card.company.invested.length > 1 ? ` +${card.company.invested.length - 1}` : ''}
+                </span>
+              )}
+              {/* 0145: where her country's race is — her largest influence, the city and the country. */}
+              {card.company.influence && card.company.influence.length > 0 && (
+                <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-influence">
+                  {`Influence ${formatInt(card.company.influence[0].points)} at `}
+                  <GoToLink to={{ kind: 'port', code: card.company.influence[0].port }}>{card.company.influence[0].name}</GoToLink>
+                  {` for ${nationNameOf(nationByCode, card.company.influence[0].nation)}`}
                 </span>
               )}
             </span>

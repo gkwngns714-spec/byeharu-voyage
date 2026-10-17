@@ -507,6 +507,20 @@ to Havana for Castile-Spain`.
 
 ---
 
+### 6.1 As built (0145)
+
+- **The rebalance (A4)**, measured on prod 2026-10-17 (ESP 205 · PRT 122 · OTT 96 · JPN 58 · FRA 48 ·
+  ENG 46 · JOS 32 · MNG 29 · DNK 27 · NLD 23 · VEN 22 · HAN 21 · GEN 15 · POL 14 · SWE 13 · MAR 13 ·
+  MUG 11 · AYU 10 · PER 8 · RUS 8 · MLB / GUJ / BAN 0 — 821): quotas by 0105's weight (Σ commerce +
+  industry of the harbours a country holds today) with a **cap of 12 %** (99) and a **floor of 12**,
+  water-filled. Result on the chain: ESP 99 · OTT 99 · PRT 99 · JPN 65 · FRA 50 · ENG 46 · JOS 36 ·
+  MNG 31 · MLB 30 · DNK 29 · HAN 23 · NLD 23 · VEN 23 · POL 22 · GUJ 21 · BAN 20 · GEN 19 · MAR 16 ·
+  AYU 15 · PER 15 · SWE 15 · RUS 13 · MUG 12. 129 companies move (106 from Castile, 23 from
+  Portugal); 62 take a home on their own loop, 67 (no loop reaches the new country) at its capital.
+- **The gap**, corrected from §6's formula (which compared defence the wrong way round): defend =
+  `flip_lead × hers / best rival − 1` (never below 0), attack = `flip_lead × holder / hers − 1`, claim =
+  `claim_min / hers − 1`; a stop where her country has given nothing is no race.
+
 ## 7. The switch, and what each slice does
 
 `influence_enabled` (false) is read by **`public.influence_on()`** and nothing else, which is the
