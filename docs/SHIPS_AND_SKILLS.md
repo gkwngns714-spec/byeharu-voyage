@@ -407,6 +407,11 @@ weeks**. A famous flagship ≈ **4-5 months**. Hulls cost money too, but the que
 
 ## 5. Skills like EVE
 
+> **2026-10-17: superseded in part by `docs/SKILLS_AND_CAPTAINS.md` (v2).** Its §3 changes this section:
+> queue 50 (not 10), general skills enrolled in any port, the heavy/capital ladder at III, T2
+> specialisations with a support skill at V and a second bonus, and 15 new skills (§5.2 becomes 107).
+> Captains (officers) get grades, traits, cabins and three levels there (§4).
+
 ### 5.1 The model
 
 - **One catalogue, extended:** every skill is a row of `public.skills` (0016:57); a house's completed
@@ -781,6 +786,11 @@ when removed**. Refit I needs Refitting I; Refit II needs Refitting V.
 ---
 
 ## 8. Build steps (S8 …), in order
+
+> **2026-10-17:** `docs/SKILLS_AND_CAPTAINS.md` §9 says exactly which steps change: S13, S16 and S17
+> unchanged; S14's capital rows go IV → III; S15 no longer authors the specialisations' support-V and
+> second bonus (K1 does); S18 seats merchant captains through the new seat core. **K0 comes before
+> `skills_bite` is lit.**
 
 Numbers are assigned when scheduled (0129 is stopped; `npm run db:check-versions` arbitrates). Every
 migration: pre-images first, hunks sliced from LIVE bodies and asserted to occur once, positive
