@@ -65,7 +65,7 @@
 -- ROLLBACK (forward migration): set every ship in npc_hull_conversions back to `from_class` and its hull
 -- points to `durability_before`; reverse the two bodies' hunks (old text in hunks_0167); leave the hull
 -- skills (they were paid for) or delete those rows; drop npc_hull_for, npc_fix_hull_skills, npc_line_hulls.
--- VERSION: 0167 (provisional; renumbered to head + 1 at deploy). Applies on 0166 (S17).
+-- VERSION: 0167 (S17 is 0165 on prod; K9 takes 0166). Applies on 0165 (S17) and deploys after K9 (0166), which touches neither body.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$

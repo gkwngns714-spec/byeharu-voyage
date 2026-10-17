@@ -1,7 +1,7 @@
 # 2026-10-18 — 0167: S18, merchants of every flag — `osn-s18-merchants`
 
 `docs/SHIPS_AND_SKILLS.md` §8 row S18 (§5.1 "S18 seeds their hull skills the same way, once", §6.9;
-`docs/SKILLS_AND_CAPTAINS.md` §9). **Not deployed.** Stacked on S17 (#184, 0166); number 0167 (prod head 0164, K9 0165, S17 0166;
+`docs/SKILLS_AND_CAPTAINS.md` §9). **Not deployed.** On main after S17 (#184, live as 0165); number 0167 (K9 is 0166 and deploys first;
 renumber if the head moves). Hunks checked to occur exactly once in production's live bodies (`public.npc_found`,
 `public.npc_fit_loadout`; read-only `pg_get_functiondef`, re-checked at prod head 0164, 2026-10-18). **This one touches live
 merchant data**: 62 merchant hulls change class when it is pushed.
@@ -75,7 +75,7 @@ select count(*) laps, round(100.0*count(*) filter (where net<=0)/greatest(count(
 
 ## Verification (once, fresh worktree, real `npm ci`, no `.env.local`)
 
-- Cached-prefix `npm run build`: 155/157 restored, 0166 + 0167 applied in 74 s, world guard ok (including the new
+- Cached-prefix `npm run build`: 155/157 restored, the S17 file + 0167 applied in 74 s (before S17 was renumbered to 0165), world guard ok (including the new
   merchant line hulls check and its planted-drift control); both receipts printed (above).
 - `tsc -b` 0, `eslint .` 0, `build-ships --check`, `db:check-versions` ok.
 - The CI selector's 30 specs (growth test deferred, as CI does), run on `vite preview --port 4243` on `localhost`
