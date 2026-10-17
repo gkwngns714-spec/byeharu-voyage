@@ -44,16 +44,16 @@
 -- VERSION: 0140. Applies on prod head 0139.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-do $guard$
+do $$
 begin
   perform set_config('statement_timeout', '5min', true);
   perform set_config('lock_timeout', '5s', true);
-end $guard$;
+end $$;
 
 create temp table nations_pre_0140 on commit drop as
   select code, name, flag_char, capital_port_code from public.nations;
 
-do $pre$
+do $$
 declare
   v_cap text;
 begin
@@ -68,14 +68,14 @@ begin
                   where p.code = 'KAR' and p.kind = 'HARBOUR' and n.code = 'MUG') then
     raise exception '0140 pre-image FAIL: KAR is not a harbour of Mughal India';
   end if;
-end $pre$;
+end $$;
 
 -- ── 1. THE ONE ROW (world-derive.mjs CAPITALS MUG: 'karachi') ─────────────────────────────────
 update public.nations set capital_port_code = 'KAR'
  where code = 'MUG' and capital_port_code is distinct from 'KAR';
 
 -- ── 2. SELF-ASSERT ─────────────────────────────────────────────────────────────────────────────
-do $assert$
+do $$
 declare
   v_t0   timestamptz := clock_timestamp();
   v_bad  int;
@@ -128,4 +128,4 @@ begin
   raise notice '0140 self-assert ok: THE MUGHAL CAPITAL IS KARACHI. MUG''s capital is KAR, a harbour of Mughal India; every one of % nation(s) with a capital names a harbour of its own nation; every other nation row equals its pre-image; world.snapshot serves MUG → KAR. (asserts took % ms)',
     (select count(*) from public.nations where capital_port_code is not null),
     round(extract(epoch from clock_timestamp() - v_t0) * 1000);
-end $assert$;
+end $$;
