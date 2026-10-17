@@ -49,7 +49,7 @@
 //   * item use    (0158, S13) public.item_use EQUALS the gear generator's `use` (scripts/build-gear.mjs
 //                 USE_BY_BASE — what wears every item and what an active consumes), every item, both
 //                 directions; the 14 refits ride in `generateGear()`'s items with the rest of the gear
-//   * named items (0162, S15) public.item_city EQUALS the gear generator's Named items' `city`, both
+//   * named items (0159, S15) public.item_city EQUALS the gear generator's Named items' `city`, both
 //                 directions (a Named item is made only in that city's workshop)
 //   * home cities (0143) public.port_allegiance's `home` rows EQUAL data/home-ports.json, both
 //                 directions; every country has 3 or 4; no harbour is home to two; every home city
@@ -341,7 +341,7 @@ function drift(db_, want) {
       [['trigger', 'trigger', 'trigger'], ['consumes', 'consumes', 'consumes']], 'data/gear.generated.json (use)')
   }
 
-  // named items (0162) — each Named item's one city, both directions
+  // named items (0159) — each Named item's one city, both directions
   if (want.itemCity) {
     both(keyed(db_.itemCity, (r) => r.code), keyed(want.itemCity, (r) => r.code), 'named item city',
       [['city', 'city', 'city']], 'data/gear.generated.json (Named)')
@@ -478,9 +478,9 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   db_.itemUse = (await db.query(`
     select item_code as code, coalesce(trigger, 'null') as trigger, consumes::text as consumes from public.item_use order by item_code`)).rows
     .map((r) => ({ ...r, consumes: consumedKey(JSON.parse(r.consumes)) }))
-  // 0162: the one city of every Named item (S15)
+  // 0159: the one city of every Named item (S15)
   const hasCity = (await db.query(`select to_regclass('public.item_city') is not null as ok`)).rows[0].ok
-  if (!hasCity) throw new Error('world-guard: public.item_city is missing — the chain no longer reaches 0162, so the Named items cannot be checked')
+  if (!hasCity) throw new Error('world-guard: public.item_city is missing — the chain no longer reaches 0159, so the Named items cannot be checked')
   db_.itemCity = (await db.query(`
     select ic.item_code as code, p.code as city from public.item_city ic join public.ports p on p.id = ic.port_id order by 1`)).rows
   // 0133: the skill effects and requirements
@@ -567,7 +567,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
         code: i.code, baseType: i.baseType, rack: i.rack, grade: i.grade, meta: i.meta, deck: i.deck, hands: i.hands, active: i.active }))],
       classes: [...want.gear.classes, ...ships.hulls.map((h) => ({ class: h.class, ...h.racks }))],
     }
-    want.itemCity = gear.items.filter((i) => i.city).map((i) => ({ code: i.code, city: i.city }))   // 0162
+    want.itemCity = gear.items.filter((i) => i.city).map((i) => ({ code: i.code, city: i.city }))   // 0159
     want.itemUse = gear.use.map((u) => ({ code: u.code, trigger: u.trigger ?? 'null', consumes: consumedKey(u.consumes) }))   // 0158
     want.skillRequirements = [
       ...want.skillRequirements,
@@ -621,7 +621,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     skills: want.skills.map((s, i) => (i === 0 ? { ...s, rank: s.rank + 1 } : s)), // 0131: one skill's rank bent
     gear: { ...want.gear, items: want.gear.items.map((it, i) => (i === 0 ? { ...it, deck: it.deck + 1 } : it)) }, // 0132: one item's deck bent
     skillEffects: want.skillEffects.map((e, i) => (i === 0 ? { ...e, pct: e.pct + 1 } : e)), // 0133: one skill effect's per cent bent
-    itemCity: want.itemCity.map((c, i) => (i === 0 ? { ...c, city: c.city === 'LIS' ? 'VEN' : 'LIS' } : c)), // 0162: one Named item's city bent
+    itemCity: want.itemCity.map((c, i) => (i === 0 ? { ...c, city: c.city === 'LIS' ? 'VEN' : 'LIS' } : c)), // 0159: one Named item's city bent
     itemUse: want.itemUse.map((u, i) => (i === 0 ? { ...u, trigger: u.trigger === 'STORM' ? 'MILES' : 'STORM' } : u)), // 0158: one item's trigger bent
     waveA: { ...want.waveA, classes: want.waveA.classes.map((c, i) => (i === 0 ? { ...c, hold: c.hold + 5 } : c)) }, // 0135: one generated hull's hold bent
     homes: Object.fromEntries(Object.entries(want.homes).map(([n, ps], i) => [n, i === 0 ? ps.slice(1) : ps])), // 0143: one home city dropped

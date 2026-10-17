@@ -1,4 +1,4 @@
-// A HULL'S TECH BADGE (0162, S15) — "T2" (and "Famous", S17) beside a hull's name, small. ONE renderer for
+// A HULL'S TECH BADGE (0159, S15) — "T2" (and "Famous", S17) beside a hull's name, small. ONE renderer for
 // the Codex and the build yard, as HullCountry is for the flag, so the two can never badge a hull
 // differently. The tech code is served (snapshot `ship_classes[].tech`, `world.building_yard`
 // `hulls[].tech`, `class_profile.tech`); a T1 hull carries no badge — it is the standard of its line.
