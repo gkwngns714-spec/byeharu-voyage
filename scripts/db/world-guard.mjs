@@ -353,6 +353,12 @@ function drift(db_, want) {
       [['city', 'city', 'city']], 'data/gear.generated.json (Named)')
   }
 
+  // merchants of every flag (0167) — the line hull a merchant sails in place of each live class, both directions
+  if (want.npcLineHulls) {
+    both(keyed(db_.npcLineHulls, (r) => `${r.live}/${r.line}`), keyed(want.npcLineHulls, (r) => `${r.live}/${r.line}`),
+      'merchant line hull', [['class', 'class', 'class']], 'data/ships.generated.json (merchant)')
+  }
+
   // perks, sets and Country lines (0163)
   if (want.perks) {
     both(keyed(db_.perks, (r) => r.code), keyed(want.perks, (r) => r.code), 'perk',
@@ -501,6 +507,11 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   if (!hasCity) throw new Error('world-guard: public.item_city is missing — the chain no longer reaches 0159, so the Named items cannot be checked')
   db_.itemCity = (await db.query(`
     select ic.item_code as code, p.code as city from public.item_city ic join public.ports p on p.id = ic.port_id order by 1`)).rows
+  // 0167: the line hull a merchant sails in place of each live class (S18)
+  const hasLineHulls = (await db.query(`select to_regclass('public.npc_line_hulls') is not null as ok`)).rows[0].ok
+  if (!hasLineHulls) throw new Error('world-guard: public.npc_line_hulls is missing — the chain no longer reaches 0167, so the merchants of every flag cannot be checked')
+  db_.npcLineHulls = (await db.query(`
+    select live_class as live, line_code as line, class_code as class from public.npc_line_hulls order by 1, 2`)).rows
   // 0163: perks, sets and the Country items' lines (S16)
   const hasPerks = (await db.query(`select to_regclass('public.perks') is not null as ok`)).rows[0].ok
   if (!hasPerks) throw new Error('world-guard: public.perks is missing — the chain no longer reaches 0163, so the perks and sets cannot be checked')
@@ -610,6 +621,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       want.itemLine = gear.items.filter((i) => i.line).map((i) => ({ code: i.code, line: i.line }))
     }
     want.itemCity = gear.items.filter((i) => i.city).map((i) => ({ code: i.code, city: i.city }))   // 0159
+    want.npcLineHulls = ships.merchant.map((m) => ({ live: m.live, line: m.line, class: m.class }))   // 0167
     want.itemUse = [
       ...gear.use.map((u) => ({ code: u.code, trigger: u.trigger ?? 'null', consumes: consumedKey(u.consumes) })),   // 0158
       // 0166: the three promotion items (data/captains.json, K8) are spent by cmd.promote_captain and never fitted —
@@ -671,6 +683,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     skillEffects: want.skillEffects.map((e, i) => (i === 0 ? { ...e, pct: e.pct + 1 } : e)), // 0133: one skill effect's per cent bent
     perks: want.perks.map((x, i) => (i === 0 ? { ...x, perRank: x.perRank + 1 } : x)), // 0163: one perk's rank bent
     itemCity: want.itemCity.map((c, i) => (i === 0 ? { ...c, city: c.city === 'LIS' ? 'VEN' : 'LIS' } : c)), // 0159: one Named item's city bent
+    npcLineHulls: want.npcLineHulls.map((m, i) => (i === 0 ? { ...m, class: m.class === 'barca' ? 'nau' : 'barca' } : m)), // 0167: one merchant line hull bent
     itemUse: want.itemUse.map((u, i) => (i === 0 ? { ...u, trigger: u.trigger === 'STORM' ? 'MILES' : 'STORM' } : u)), // 0158: one item's trigger bent
     waveA: { ...want.waveA, classes: want.waveA.classes.map((c, i) => (i === 0 ? { ...c, hold: c.hold + 5 } : c)) }, // 0135: one generated hull's hold bent
     homes: Object.fromEntries(Object.entries(want.homes).map(([n, ps], i) => [n, i === 0 ? ps.slice(1) : ps])), // 0143: one home city dropped
@@ -686,15 +699,16 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const sawEffect = seen.some((s) => s.includes(`skill effect ${effectKey(want.skillEffects[0])}.pct:`))
   const sawPerk = seen.some((s) => s.includes(`perk ${want.perks[0].code}.per_rank:`))
   const sawCity = seen.some((s) => s.includes(`named item city ${want.itemCity[0].code}.city:`))
+  const sawLineHull = seen.some((s) => s.includes(`merchant line hull ${want.npcLineHulls[0].live}/${want.npcLineHulls[0].line}.class:`))
   const sawUse = seen.some((s) => s.includes(`item use ${want.itemUse[0].code}.trigger:`))
   const sawHull = seen.some((s) => s.includes(`ship class ${want.waveA.classes[0].code}.hold:`))
   const droppedHome = Object.values(want.homes)[0][0]
   const sawHome = seen.some((s) => s.includes(`home city ${droppedHome} `))
   const sawCaptain = seen.some((s) => s.includes(`captain trait ${want.captains.gen.captains[0].code}#2.pct:`))
-  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawUse || !sawCity || !sawPerk || !sawHull || !sawHome || !sawCaptain) {
+  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawUse || !sawCity || !sawLineHull || !sawPerk || !sawHull || !sawHome || !sawCaptain) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, bent perk, bent generated hull, dropped home city or bent captain trait was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, bent merchant line hull, bent perk, bent generated hull, dropped home city or bent captain trait was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -724,6 +738,6 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       `${want.waveA.liveClasses.length + want.waveA.classes.length} ship classes and ${want.waveA.items.length} items (generators re-run = files = database), ` +
       `${db_.homes.length} home cities, ${want.captains.people.length} captains with ${db_.captains.kit.length} traits and ` +
       `${db_.captains.speaks.length} languages, ${db_.captains.portLanguage.length} harbour languages (generator re-run = file = database) ` +
-      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, bent perk, bent generated hull, dropped home city and bent captain trait were all seen)`,
+      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, bent merchant line hull, bent perk, bent generated hull, dropped home city and bent captain trait were all seen)`,
   )
 }

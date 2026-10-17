@@ -77,6 +77,10 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
  * does: the lesser answer may be lesser, never wrong.
  */
 function HullStrip({ hulls }: { hulls: readonly (HullClass | null)[] }) {
+  // 0167 (S18): a merchant sails her country's line hull now (a Crayer, a Caravelle normande), and a class
+  // this map has no word for is said by the name the server serves for it (snapshot `ship_classes`),
+  // never by its code.
+  const classes = useWorld((s) => s.snapshot?.ship_classes)
   if (hulls.length === 0) return null
   const counted = new Map<string, number>()
   for (const h of hulls) counted.set(h ?? 'ship', (counted.get(h ?? 'ship') ?? 0) + 1)
@@ -100,7 +104,13 @@ function HullStrip({ hulls }: { hulls: readonly (HullClass | null)[] }) {
         ))}
       </div>
       <span className="min-w-0 truncate text-t-caption text-ink-faint">
-        {[...counted].map(([cls, n]) => `${n} ${HULL_WORD[cls] ?? cls}${n > 1 ? 's' : ''}`).join(' · ')}
+        {[...counted]
+          .map(([cls, n]) => {
+            const word = HULL_WORD[cls]
+            if (word) return `${n} ${word}${n > 1 ? 's' : ''}`
+            return `${n} ${classes?.find((c) => c.code === cls)?.name ?? cls}`
+          })
+          .join(' · ')}
       </span>
     </div>
   )

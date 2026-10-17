@@ -3,6 +3,7 @@
   "_how": "public.npc_fit_loadout(ship) picks ONE pattern of her class, deterministically per FLEET — md5(fleet_id) mod the class's pattern count — so every hull of a fleet wears the same pattern and a re-run picks the same one. Each item goes on through public.mount_fitting, the same core a player's FIT uses, so a pattern that does not fit her slots is refused, not squeezed.",
   "_hold": "No pattern spends hold (owner, 2026-10-15: prefer loadouts that do not reduce hold). So no anchor, no rudder, no broadside guns, no powder magazine: each of those costs tuns. The only hold change is the nau trader's hold fittings, +25 t.",
   "_never_full": "A pattern never fills every slot: a full hull is the player's design, not the world's default.",
+  "_s18": "0167 (S18): a merchant of a line with its own hull for her class sails that hull (public.npc_line_hulls, scripts/build-ships.mjs `merchant`) and wears THESE patterns of the live class it stands in for — public.npc_fit_loadout reads them through npc_line_hulls, so no pattern is written twice.",
   "_guard": "migration 0126 seeds public.npc_loadouts with exactly these rows; S7 adds this file to scripts/db/world-guard.mjs.",
   "patterns": [
     { "class": "barca",  "pattern": 0, "name": "trader",        "items": [{ "item": "suit-of-sails", "qty": 1 }, { "item": "boarding-gear", "qty": 1 }] },
