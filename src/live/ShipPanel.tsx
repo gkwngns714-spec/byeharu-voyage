@@ -3,8 +3,9 @@ import { Bar, Empty, Tray, type TrayDetent } from '../components/ui'
 import { formatFixed, formatInt } from '../lib/format'
 import { CHART_CHROME, hullClassOfCode, hullPath } from '../chart'
 import { HullCountry } from './HullCountry'
-import type { ShipBonus, ShipBudget, ShipRack, ShipSeats } from '../lib/rpc'
+import type { ShipSet, ShipBonus, ShipBudget, ShipRack, ShipSeats } from '../lib/rpc'
 import { ShipCabins, type Seating } from './ShipCabins'
+import { ShipAugments } from './ShipAugments'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE SHIP, OPENED FROM HER FLEET'S PANEL — the owner, 2026-10-15:
@@ -53,6 +54,8 @@ export interface ShipView {
   /** 0133 — what the company's skills add to her, by source (`world.skill_bonuses`). Empty while skills
    *  do not bite, absent from a server older than 0133: either way nothing is drawn. */
   bonuses?: readonly ShipBonus[]
+  /** 0163 — her set progress (`world.ship_set_card`), only where she carries a set piece. */
+  sets?: readonly ShipSet[]
   /** 0127 — slots a higher level opens: drawn dimmed with the level, never fillable. */
   slots_locked?: Record<string, { count: number; at_level: number }>
   /** 0127 — her level and experience (points): this level began at `xp_from`, the next at
@@ -491,6 +494,8 @@ export function ShipPanel({
       <SkillBonuses bonuses={ship.bonuses} />
 
       <ShipCabins seats={ship.seats} seating={seating} />
+
+      <ShipAugments shipId={seating?.shipId ?? null} racks={ship.racks} sets={ship.sets} docked={seating?.docked} />
     </Tray>
   )
 }

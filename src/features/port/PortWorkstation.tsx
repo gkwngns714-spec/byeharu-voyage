@@ -201,7 +201,7 @@ export function PortWorkstation({
               {open.needs}
             </Note>
           )}
-          {/* 0162: a Named item is made only in its own city — the server's sentence, as served. */}
+          {/* 0159: a Named item is made only in its own city — the server's sentence, as served. */}
           {open.made_only_in && (
             <Note tone="warning" data-testid="workstation-made-only-in">
               {open.made_only_in}
