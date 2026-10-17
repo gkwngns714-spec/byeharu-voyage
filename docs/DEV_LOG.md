@@ -11,6 +11,42 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — 0142: a merchant sells at the quay's price when she must — `osn-0142-merchants-unstuck`
+
+**The owner:** fix the stuck merchant (Carrera Guayaquil, lap 14 open since 2026-10-14 17:26), and
+*"redesign the routes that are like this, and also that gives negative cash."* **Not deployed** (prod head
+0141; 0141 touches none of these bodies).
+- **The floor at cost was never asked for.** 0120 §6 wrote the cut-loss as "SELL <good> ALL at what she
+  paid and not a ducat less". It is not in `docs/OWNER_REQUESTS.md`; I invented it. A defect from an
+  invented rule is fixed by removing the rule, so it is **removed**: the cut-loss is `SELL <good> ALL` at the
+  quay's bid again (`at_profit false`), and 0120's renderer hunk (`ln.good_id is null`) is cut back.
+- **Measured on prod (read-only):** 819 merchant laps open, 365 > 6 h, 323 > 24 h. 284 of the 365 hold an
+  **E_ENDURANCE** SAIL (2,238 refusals over 404 fleets in 24 h) — the real lock: a kept loop was never
+  re-measured against her stores (0120 raised the preset only on a switch), her speed moved, the SAIL to her
+  stop 0 is refused for ever and the lap never closes (Guayaquil: preset 12 days, GYE→REA needs 15.9).
+  240 show E_PRICE_LIMIT SELLs, 221 with E_INSUFFICIENT_FUNDS / E_HOLD_FULL beside them, but only 11 fleets
+  hold cargo above every bid on their loop. 81 more lie UNABLE_TO_SAIL at durability 0 (89 fleets in all,
+  84 of them with their REPAIR on a yardless port). 256 routes carry `repair` on a stop with no shipyard
+  (806 E_NO_YARD in 24 h). Last 24 h of closed laps: 19,453 laps / 514 routes; per route 182 net < 0, 55 = 0,
+  277 > 0 (median +332.5); 11,388 laps traded nothing (mean −34: supplies 22, repairs 12); the 182 losing
+  routes paid wages 711,388 and supplies 362,344 against a trade margin of 377,216.
+- **0142:** (1) the cut-loss has no floor; (2) npc_plan raises the preset for the loop she will SAIL,
+  kept or chosen (a refused raise un-chooses a switch); (3) `public.port_has_shipyard` — do_repair's
+  E_NO_YARD reading, lifted — and npc_plan writes `repair` at the loop's first yard stop, nowhere if none;
+  (4) a loop is scored by what the lap leaves her: the parcels' profit after tax, less the wages of EVERY
+  sea-day (`wages_from_profit` once per loop — the leg planner now answers `wages` apart from `profit`)
+  and the stores it eats (`public.stores_cost`, do_provision's price, lifted). A losing present loop is
+  beaten by any loop that pays; nothing paying, she sails in ballast (0115). No new knob.
+- **Sample, prod, read-only (20 routes, 10 losing / 10 earning over 24 h):** every losing route plans no
+  parcel today and scored **0** before (indistinguishable from a paying loop of nothing); it now scores its
+  real cost, −16 to −38 d. a lap, beside its real −18 to −48. Derrota Makassar: one 584 d. parcel against
+  7,547 of wages over 15,006 nm — before 0, now −868. Earning loops keep their order (Flota Tripoli
+  35,370 → 31,303; Shuilu Mombasa 11,487 → 11,302).
+- **Recovery:** no data touched. npc_tend's third clear in a lap re-plans her; that plan now raises her
+  preset, the save door puts her cursor back on her stop and the render carries PROVISION DAYS n.
+- **Not done (the owner's):** the 89 hulls at durability 0 — no verb refloats a fleet and do_repair wants
+  DOCKED; 69 loops have no shipyard and now write no repair at all.
+
 ## 2026-10-17 — 0141: the quay says nothing about where a good grows — `osn-0141-no-native-tag`
 
 **The owner:** *"remove native"* — the `· native` caption word on a trade row. Removed entirely, both
