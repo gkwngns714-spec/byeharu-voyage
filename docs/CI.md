@@ -31,7 +31,8 @@ one scheduled run a day. So on a pull request:
      after a merge (the Supabase snapshot keeps one length per entry, which is why it needs the
      lookup and the wait).
 2. **The one exemption**: a PR whose diff changed the chain machinery or an old file — exactly the
-   set that runs the growth test (`select-specs.mjs`, `growth.run`: `src/lib/db/**`, `scripts/db/**`,
+   set that runs the growth test (`select-specs.mjs`, `growth.run`: `src/lib/db/**`, `scripts/db/**` but
+   not `scripts/db/world-guard.mjs` — a certifier in no snapshot's key, 2026-10-18 —,
    the preamble, `package(-lock).json`, `vite.config.ts`, `tests/frozenChain.ts`, an **edited,
    deleted or renamed** migration). No kept snapshot can be expected to fit such a chain, so a
    from-zero apply is allowed there and **logged as a warning**. `select` prints the reasons.

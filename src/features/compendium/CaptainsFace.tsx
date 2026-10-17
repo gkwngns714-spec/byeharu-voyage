@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react'
 import {
   Figure,
+  Hint,
   Note,
   Row,
+  Segmented,
   Skeleton,
   OfficerTile,
   TileField,
   Tray,
+  type SegmentSpec,
   type TrayDetent,
 } from '../../components/ui'
 import { COIN, formatInt, formatPctPoints } from '../../lib/format'
@@ -15,35 +18,81 @@ import { fold, foldedMatch } from '../../lib/text'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
 import { NoAnswer } from './NoAnswer'
 
-// THE CAPTAINS FACE — every officer in the world, signed or not, in their four callings. Each is
-// found at their home port and signs on there (PORT's Inn); nothing here signs anyone.
+// THE CAPTAINS FACE — every captain in the world, signed or not. Each is found in an Inn and hired
+// there (PORT's Inn); nothing here hires anyone.
 //
-// SPECIALTY AND BONUS ON THE TILE, AND NOTHING ELSE (docs/UI_DIRECTION.md §6). A bonus nothing
+// GRADE, JOB AND VALUE ON THE TILE, AND NOTHING ELSE (docs/UI_DIRECTION.md §6). A bonus nothing
 // reads is still shown — hiding it would sell a bonus that does nothing — but as a MUTED tile,
-// with the reason in the tray rather than as a line of fine print printed fifty times down the
-// face. The blurb, the wage, the port and the flag are the tray's.
+// with the reason in the tray rather than as a line of fine print printed a hundred times down the
+// face. The traits, the languages, the blurb, the wage, the port and the flag are the tray's.
+//
+// THE CARD IS THE SERVER'S (0156, K4): grade, job, focus, the traits she knows with their lines,
+// and the "Speaks …" sentence come from world.captain_card through world.officers. The three
+// filters — Grade, Role, Job — are rows of the values the SERVED captains carry, plus "All":
+// nothing is offered that no captain has, and every label is a served word.
+
+const ALL = 'all'
+type Filters = { grade: string; focus: string; job: string }
+const NO_FILTER: Filters = { grade: ALL, focus: ALL, job: ALL }
+const EMPTY: readonly Officer[] = []
+
+/** The distinct served values of one key, behind "All", in the served order of first appearance
+ *  unless an order is given. */
+function segmentsOf(
+  officers: readonly Officer[],
+  key: (o: Officer) => string | undefined,
+  label: (o: Officer) => string | undefined,
+  order?: (a: string, b: string) => number,
+): SegmentSpec<string>[] {
+  const firstOf = new Map<string, Officer>()
+  for (const o of officers) {
+    const v = key(o)
+    if (v !== undefined && !firstOf.has(v)) firstOf.set(v, o)
+  }
+  const ids = [...firstOf.keys()]
+  if (order) ids.sort(order)
+  return [{ id: ALL, label: 'All' }, ...ids.map((v) => ({ id: v, label: label(firstOf.get(v)!) ?? v }))]
+}
+
+const gradeOrd = (officers: readonly Officer[], grade: string) => officers.find((o) => o.grade === grade)?.grade_ord ?? 0
 
 export function CaptainsFace({ query, answered }: { query: string; answered: boolean }) {
   const roster = useWorld((s) => s.officers)
   const portByCode = useWorld((s) => s.portByCode)
   const nationByCode = useWorld((s) => s.nationByCode)
   const officers = roster?.officers ?? null
+  const all = officers ?? EMPTY
   const [open, setOpen] = useState<Officer | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('half')
+  const [filters, setFilters] = useState<Filters>(NO_FILTER)
+
+  const facets = useMemo(
+    () => ({
+      // best first, by the served ladder (`grade_ord`): a grade above S costs the server a row, not this file a letter
+      grade: segmentsOf(all, (o) => o.grade, (o) => o.grade, (a, b) => gradeOrd(all, b) - gradeOrd(all, a)),
+      focus: segmentsOf(all, (o) => o.focus, (o) => o.focus_word),
+      job: segmentsOf(all, (o) => o.job, (o) => o.job_word),
+    }),
+    [all],
+  )
 
   const rows = useMemo(() => {
-    if (officers === null) return []
     const needle = fold(query.trim())
-    return officers.filter((o) =>
-      foldedMatch(
-        needle,
-        o.name,
-        o.specialty,
-        o.port === null ? null : portNameOf(portByCode, o.port),
-        o.nation === null ? null : nationNameOf(nationByCode, o.nation),
-      ),
+    return all.filter(
+      (o) =>
+        foldedMatch(
+          needle,
+          o.name,
+          o.job_word ?? o.specialty,
+          o.port === null ? null : portNameOf(portByCode, o.port),
+          o.nation === null ? null : nationNameOf(nationByCode, o.nation),
+          ...(o.languages ?? []),
+        ) &&
+        (filters.grade === ALL || o.grade === filters.grade) &&
+        (filters.focus === ALL || o.focus === filters.focus) &&
+        (filters.job === ALL || o.job === filters.job),
     )
-  }, [officers, query, portByCode, nationByCode])
+  }, [all, query, filters, portByCode, nationByCode])
 
   if (officers === null) {
     return answered ? (
@@ -55,19 +104,45 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
       </div>
     )
   }
-  if (rows.length === 0) return <NoAnswer />
+
+  const filterBar = (
+    <div className="mb-3 flex flex-col gap-2" data-testid="captain-filters">
+      {(['grade', 'focus', 'job'] as const).map((k) =>
+        facets[k].length > 2 ? (
+          <Segmented
+            key={k}
+            label={{ grade: 'Grade', focus: 'Role', job: 'Job' }[k]}
+            segments={facets[k]}
+            value={filters[k]}
+            onChange={(v) => setFilters((f) => ({ ...f, [k]: v }))}
+          />
+        ) : null,
+      )}
+    </div>
+  )
+
+  if (rows.length === 0) {
+    return (
+      <>
+        {filterBar}
+        <NoAnswer />
+      </>
+    )
+  }
 
   return (
     <>
+      {filterBar}
       <TileField>
         {rows.map((o) => (
           // THE TILE is the design system's `OfficerTile` since 2026-10-08 (a merchant's sheet prints
-          // the same officer). SIGNED is a fact about the world, not an offer: whose house holds
-          // their mark is read from the roster and only read. Home port is new here (0015:63).
+          // the same captain). SIGNED is a fact about the world, not an offer: whose company holds
+          // her is read from the roster and only read.
           <OfficerTile
             key={o.code}
             name={o.name}
-            specialty={o.specialty}
+            role={o.job_word ?? o.specialty.toLowerCase()}
+            grade={o.grade ?? null}
             bonusPct={o.bonus_pct}
             homePort={o.port ? portNameOf(portByCode, o.port) : null}
             signed={o.hired}
@@ -88,8 +163,9 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
           title={open.name}
           data-testid="officer-tray"
         >
+          {open.grade && <Row label="Grade" value={open.grade} data-testid="captain-grade" />}
           <Row
-            label={open.specialty.toLowerCase()}
+            label={open.job_word ? `${open.job_word} · ${open.focus_word ?? ''}` : open.specialty.toLowerCase()}
             value={
               <Figure
                 value={`+${formatPctPoints(open.bonus_pct)}`}
@@ -97,6 +173,18 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
               />
             }
           />
+          {(open.traits ?? []).map((t) => (
+            <Row
+              key={t.code}
+              label={t.word}
+              value={<Figure value={t.lines.join(' · ')} tone={t.in_use ? 'success' : 'faint'} />}
+              tone={t.in_use ? 'default' : 'muted'}
+              data-testid={`captain-trait-${t.code}`}
+            >
+              {t.note && <Hint>{t.note}</Hint>}
+            </Row>
+          ))}
+          {open.speaks && <Row label={open.speaks} tone="muted" data-testid="captain-speaks" />}
           {/* "signs for" is the server's own phrase (0015's refusal says it word for word). */}
           <Row label="Wage" value={<Figure value={formatInt(open.wage)} unit={`${COIN} per voyage`} />} />
           <Row
@@ -111,7 +199,7 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
           <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
           {!open.takes_effect && (
             <Note tone="neutral" className="mt-2">
-              This role has no effect in the game yet. The bonus changes nothing.
+              This job has no effect in the game yet. The bonus changes nothing.
             </Note>
           )}
         </Tray>

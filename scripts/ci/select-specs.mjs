@@ -49,7 +49,7 @@
 //
 // ── THE GROWTH TEST (db.chain's "the world grows under a live house", 45-65 min) ───────────────
 //   Runs on a PR only when the CHAIN MACHINERY changed: src/lib/db/**, tests/frozenChain.ts,
-//   scripts/db/**, package(-lock).json, vite.config.ts, an edited (not added) migration, or
+//   scripts/db/** (not world-guard.mjs: a certifier in no snapshot key), package(-lock).json, vite.config.ts, an edited (not added) migration, or
 //   tests/db.chain.spec.ts (since 2026-10-17 it reads the chain's end off the directory, so a
 //   migration PR does not touch it; the `// And to 0NNN …` + `const LAST = …` bump every migration
 //   PR used to make stays exempt, for the control commits that predate the change). A new
@@ -238,7 +238,11 @@ const FULL_RULES = [
   [/^tests\/appReady\.fixture\.ts$/, 'the readiness/skip gate every browser spec rests on'],
 ]
 const GROWTH_RULES = [
-  /^src\/lib\/db\//, /^tests\/frozenChain\.ts$/, /^scripts\/db\//, /^package(-lock)?\.json$/, /^vite\.config\.ts$/,
+  // scripts/db/world-guard.mjs is NOT machinery (K4, 2026-10-18): it certifies an applied world after the
+  // fact and is in no snapshot's key (those hash the migrations, the preamble and the config), so a kept
+  // snapshot fits a chain whose guard changed exactly as before. The specs that run it (db.chain,
+  // db.image) are still selected by rule G through apply-chain / build-image.
+  /^src\/lib\/db\//, /^tests\/frozenChain\.ts$/, /^scripts\/db\/(?!world-guard\.mjs$)/, /^package(-lock)?\.json$/, /^vite\.config\.ts$/,
 ]
 const SHELL_RE = /^(src\/app\/|src\/index\.css$|src\/components\/ui\/|public\/)/
 const FACE_RE = /^src\/(features|live|components)\/.*\.(tsx|css)$/
@@ -477,6 +481,13 @@ const CONTROLS = [
     check: (s) => [
       [s.mode === 'full', 'full'],
       [s.fullReasons.some((r) => r.startsWith('tests/appReady.fixture.ts')), 'because of appReady.fixture.ts'],
+    ],
+  },
+  {
+    name: "a world-guard edit + a new migration (da37072: 0143) → growth deferred (the guard is in no snapshot's key)",
+    sha: 'da37072',
+    check: (s) => [
+      [!s.growth.run, `growth test deferred (got: ${s.growth.why.join('; ') || 'none'})`],
     ],
   },
   {

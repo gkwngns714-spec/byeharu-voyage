@@ -353,7 +353,7 @@ function MerchantBody({
               <OfficerTile
                 key={o.name}
                 name={o.name}
-                specialty={o.specialty}
+                role={o.specialty.toLowerCase()}
                 bonusPct={o.bonus_pct}
                 homePort={o.home_port ? <GoToLink to={{ kind: 'port', code: o.home_port }}>{portName(o.home_port)}</GoToLink> : null}
                 testId="merchant-officer-tile"

@@ -291,11 +291,49 @@ export interface MarketPort {
 
 // ── world.inn(port) — who is drinking here today (0073) ────────────────────────────────────────
 
+// ── world.captain_card(officer) — what a captain IS (0156, K4; docs/SKILLS_AND_CAPTAINS.md §4) ────
+
+/** One trait a captain KNOWS, in the server's words. `lines` is what it does ("+7.5% speed"); only her
+ *  job (the first) can be `in_use` today, and only if a rule reads it — otherwise `note` says why
+ *  ("Not in use yet." / "Works when combat arrives."). `uses`: within her grade's trait slots. */
+export interface CaptainTrait {
+  code: string
+  word: string
+  focus_word: string
+  pct: number
+  lines: string[]
+  uses: boolean
+  in_use: boolean
+  note: string | null
+}
+
+/** The card world.inn and world.officers compose onto every captain. Optional for the serve-order
+ *  reason: a server before 0156 sends none of these keys. */
+export interface CaptainCard {
+  /** C / B / A / S (`captain_grades`), and its place on the ladder (C 1 … S 4). */
+  grade?: string
+  grade_ord?: number
+  /** Traits in use at once, and traits known, at her grade (S: 5 / 10). */
+  slots?: number
+  known?: number
+  /** Her job — a trait code — and its word ("Gem trader"). */
+  job?: string
+  job_word?: string
+  focus?: string
+  /** "Exploration" / "Trading" / "Combat". */
+  focus_word?: string
+  traits?: CaptainTrait[]
+  languages?: string[]
+  /** "Speaks Portuguese, Spanish" — the server's sentence. */
+  speaks?: string
+}
+
 /** One officer in the room. `signed` is whether you already keep her, so nothing is offered twice. */
-export interface InnGuest {
+export interface InnGuest extends CaptainCard {
   code: string
   name: string
-  specialty: OfficerSpecialty
+  /** Her job's code (0156: any of the 25 traits, not only the four live jobs). */
+  specialty: string
   bonus_pct: number
   wage: number
   blurb: string
@@ -1309,10 +1347,11 @@ export interface PlayerView {
 
 export type OfficerSpecialty = 'NAVIGATOR' | 'QUARTERMASTER' | 'SURGEON' | 'PURSER'
 
-export interface Officer {
+export interface Officer extends CaptainCard {
   code: string
   name: string
-  specialty: OfficerSpecialty
+  /** Her job's code (0156: any of the 25 traits); `takes_effect` says whether a rule reads it. */
+  specialty: string
   bonus_pct: number
   wage: number
   blurb: string

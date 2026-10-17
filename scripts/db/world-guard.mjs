@@ -50,6 +50,12 @@
 //                 directions; every country has 3 or 4; no harbour is home to two; every home city
 //                 flies its own country (a home never changes hands — docs/INFLUENCE.md §3.2).
 //                 Who holds a CONTESTED city is the game's, not the data's, and is not checked.
+//   * captains    (0156, K4) public.officers EQUALS data/officers.json, every column, both directions (the
+//                 105 people); the catalogue — trait_foci, captain_grades, crew_effects, traits,
+//                 trait_effects, languages — EQUALS data/captains.json; and the GENERATOR is re-run:
+//                 scripts/build-captains.mjs `generateCaptains()` must equal data/captains.generated.json
+//                 byte for byte AND the database: captain_profile, captain_traits, captain_languages and
+//                 port_language, every row, both directions
 //
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
@@ -66,6 +72,7 @@ import { join } from 'node:path'
 import { deriveWorld, REPO_ROOT, round2 } from '../lib/world-derive.mjs'
 import { generateShips, SHIPS_FILE } from '../build-ships.mjs'
 import { generateGear, GEAR_FILE } from '../build-gear.mjs'
+import { captainInputs, generateCaptains, CAPTAINS_FILE } from '../build-captains.mjs'
 
 /** 0133: one skill effect's identity — every column but the per cent. */
 const effectKey = (e) => [e.skill, e.scope, e.stat, e.line ?? '', e.size ?? '', e.role ?? '', e.tech ?? ''].join('/')
@@ -326,6 +333,38 @@ function drift(db_, want) {
     }
   }
 
+  // captains (0156) — data/officers.json, data/captains.json and the generator's cards, both directions
+  if (want.captains) {
+    const c = want.captains
+    const PEOPLE = 'data/officers.json'
+    const CAT = 'data/captains.json'
+    const GEN = 'data/captains.generated.json'
+    const same = (k) => [k, k, k]
+    both(keyed(db_.captains.officers, (r) => r.code), keyed(c.people, (r) => r.code), 'captain',
+      ['name', 'specialty', 'bonus_pct', 'wage', 'nation', 'home', 'blurb'].map(same), PEOPLE)
+    both(keyed(db_.captains.foci, (r) => r.code), keyed(c.cat.foci.map((x, i) => ({ ...x, ord: i + 1 })), (r) => r.code), 'trait focus',
+      ['word', 'ord'].map(same), CAT)
+    both(keyed(db_.captains.grades, (r) => r.code), keyed(c.cat.grades, (r) => r.code), 'captain grade',
+      ['ord', 'slots', 'known', 'floor_pct'].map(same), CAT)
+    both(keyed(db_.captains.effects, (r) => r.code), keyed(c.cat.effects.map((e, i) => ({ ...e, ord: i + 1 })), (r) => r.code), 'crew effect',
+      ['ord', 'scope', 'live', 'words', 'waits', 'reader'].map(same), CAT)
+    both(keyed(db_.captains.traits, (r) => r.code),
+      keyed(c.cat.traits.map((t) => ({ ...t, goods: t.goods ?? null, goods_word: t.goods_word ?? null })), (r) => r.code), 'trait',
+      ['ord', 'word', 'focus', 'goods', 'goods_word'].map(same), CAT)
+    both(keyed(db_.captains.traitEffects, (r) => `${r.trait}/${r.effect}`),
+      keyed(c.cat.traits.flatMap((t) => t.effects.map((e, i) => ({ trait: t.code, effect: e.effect, ord: i + 1, mult: e.mult }))),
+        (r) => `${r.trait}/${r.effect}`), 'trait effect', ['ord', 'mult'].map(same), CAT)
+    both(keyed(db_.captains.languages, (r) => r.code), keyed(c.cat.languages, (r) => r.code), 'language', ['ord', 'name'].map(same), CAT)
+    both(keyed(db_.captains.portLanguage, (r) => r.port), keyed(c.gen.harbours, (r) => r.port), 'harbour language', [same('language')], GEN)
+    both(keyed(db_.captains.profile, (r) => r.code), keyed(c.gen.captains, (r) => r.code), 'captain card', ['grade', 'job'].map(same), GEN)
+    both(keyed(db_.captains.kit, (r) => `${r.code}#${r.ord}`),
+      keyed(c.gen.captains.flatMap((x) => x.kit.map((k, i) => ({ code: x.code, ord: i + 1, trait: k.trait, pct: k.pct }))), (r) => `${r.code}#${r.ord}`),
+      'captain trait', ['trait', 'pct'].map(same), GEN)
+    both(keyed(db_.captains.speaks, (r) => `${r.code}#${r.ord}`),
+      keyed(c.gen.captains.flatMap((x) => x.languages.map((l, i) => ({ code: x.code, ord: i + 1, language: l }))), (r) => `${r.code}#${r.ord}`),
+      'captain language', [same('language')], GEN)
+  }
+
   // market coverage
   const expected = want.ports.length * want.goods.length
   if (Number(db_.marketRows) !== expected) {
@@ -428,6 +467,25 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       select ir.item_code as item, g.code as good, ir.qty::float8 as qty from public.item_recipes ir join public.goods g on g.id = ir.good_id`)).rows,
   }
 
+  // 0156: the captains — the people, the catalogue, and every generated card
+  const hasCaptains = (await db.query(`select to_regclass('public.captain_profile') is not null as ok`)).rows[0].ok
+  if (!hasCaptains) throw new Error('world-guard: public.captain_profile is missing — the chain no longer reaches 0156, so the captains cannot be checked')
+  db_.captains = {
+    officers: (await db.query(`
+      select o.code, o.name, o.specialty, o.bonus_pct::float8 as bonus_pct, o.wage_ducats::int as wage, n.code as nation, p.code as home, o.blurb
+        from public.officers o left join public.nations n on n.id = o.nation_id left join public.ports p on p.id = o.home_port_id`)).rows,
+    foci: (await db.query(`select code, word, ord from public.trait_foci`)).rows,
+    grades: (await db.query(`select code, ord, slots, known, floor_pct::float8 as floor_pct from public.captain_grades`)).rows,
+    effects: (await db.query(`select code, ord, scope, live, words, waits, reader from public.crew_effects`)).rows,
+    traits: (await db.query(`select code, ord, word, focus, goods, goods_word from public.traits`)).rows,
+    traitEffects: (await db.query(`select trait, effect, ord, mult::float8 as mult from public.trait_effects`)).rows,
+    languages: (await db.query(`select code, ord, name from public.languages`)).rows,
+    portLanguage: (await db.query(`select p.code as port, pl.language from public.port_language pl join public.ports p on p.id = pl.port_id`)).rows,
+    profile: (await db.query(`select o.code, cp.grade, cp.job_trait as job from public.captain_profile cp join public.officers o on o.id = cp.officer_id`)).rows,
+    kit: (await db.query(`select o.code, ct.ord, ct.trait, ct.base_pct::float8 as pct from public.captain_traits ct join public.officers o on o.id = ct.officer_id`)).rows,
+    speaks: (await db.query(`select o.code, cl.ord, cl.language from public.captain_languages cl join public.officers o on o.id = cl.officer_id`)).rows,
+  }
+
   const want = deriveWorld()
   want.places = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'sea-places.json'), 'utf8')).places
   {
@@ -494,6 +552,16 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     }
   }
 
+  // 0156: THE CAPTAINS GENERATOR, RE-RUN — its output must equal the committed file, and (in `drift`) the database
+  {
+    const gen = generateCaptains()
+    if (readFileSync(join(REPO_ROOT, CAPTAINS_FILE), 'utf8') !== JSON.stringify(gen, null, 1) + '\n') {
+      throw new Error(`WORLD DRIFT: ${CAPTAINS_FILE} is not what its generator gives today — re-run scripts/build-captains.mjs (a shipped migration is never edited).`)
+    }
+    const { people, cat } = captainInputs()
+    want.captains = { people, cat, gen }
+  }
+
   // ── POSITIVE CONTROL: the comparator must SEE a planted drift before it may certify zero ─────
   const wounded = {
     ...want,
@@ -505,6 +573,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     skillEffects: want.skillEffects.map((e, i) => (i === 0 ? { ...e, pct: e.pct + 1 } : e)), // 0133: one skill effect's per cent bent
     waveA: { ...want.waveA, classes: want.waveA.classes.map((c, i) => (i === 0 ? { ...c, hold: c.hold + 5 } : c)) }, // 0135: one generated hull's hold bent
     homes: Object.fromEntries(Object.entries(want.homes).map(([n, ps], i) => [n, i === 0 ? ps.slice(1) : ps])), // 0143: one home city dropped
+    captains: { ...want.captains, gen: { ...want.captains.gen, captains: want.captains.gen.captains.map((x, i) => (i === 0
+      ? { ...x, kit: x.kit.map((k, j) => (j === 1 ? { ...k, pct: k.pct + 1 } : k)) } : x)) } }, // 0156: one captain's second trait bent
   }
   const seen = drift(db_, wounded)
   const sawDrop = seen.some((s) => s.includes(`${want.ports[0].code}`))
@@ -516,10 +586,11 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const sawHull = seen.some((s) => s.includes(`ship class ${want.waveA.classes[0].code}.hold:`))
   const droppedHome = Object.values(want.homes)[0][0]
   const sawHome = seen.some((s) => s.includes(`home city ${droppedHome} `))
-  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawHull || !sawHome) {
+  const sawCaptain = seen.some((s) => s.includes(`captain trait ${want.captains.gen.captains[0].code}#2.pct:`))
+  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawHull || !sawHome || !sawCaptain) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent generated hull or dropped home city was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent generated hull, dropped home city or bent captain trait was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -547,7 +618,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       `${want.gear.racks.length} gear racks, ${want.gear.items.length} item profiles, ${db_.rackSlots.length} rack places, ` +
       `${want.skillEffects.length} skill effects, ${want.skillRequirements.length} skill requirements, ` +
       `${want.waveA.liveClasses.length + want.waveA.classes.length} ship classes and ${want.waveA.items.length} items (generators re-run = files = database), ` +
-      `${db_.homes.length} home cities ` +
-      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent generated hull and dropped home city were all seen)`,
+      `${db_.homes.length} home cities, ${want.captains.people.length} captains with ${db_.captains.kit.length} traits and ` +
+      `${db_.captains.speaks.length} languages, ${db_.captains.portLanguage.length} harbour languages (generator re-run = file = database) ` +
+      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent generated hull, dropped home city and bent captain trait were all seen)`,
   )
 }
