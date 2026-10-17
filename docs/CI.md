@@ -1,11 +1,14 @@
 # CI — what runs on a pull request, and what runs on main
 
-## The law — a pull request's CI never rebuilds from scratch (owner, 2026-10-17)
+## The law — CI never rebuilds from scratch (owner, 2026-10-17; extended to main 2026-10-18)
 
 The owner's order: *"avoid doing things from scratch"* in CI, made a law the same day: **a PR's CI
 must NEVER rebuild from scratch.** Applying the whole migration chain from 0001 — on the disposable
 Supabase, on PGlite for the proofs, or to build the world image — costs 30 to 50 minutes since 0105,
-and every one of those files was already applied, green, by main's own run. So on a pull request:
+and every one of those files was already applied, green, by main's own run. On 2026-10-18 the owner
+restated it for every run: *"CI never starts from scratch; always make CI fast; save everything you
+checked"* — so **main builds on its own snapshot too** (point 3 below), and the from-zero apply is
+one scheduled run a day. So on a pull request:
 
 1. **Every world is built from a kept snapshot, or the job fails and says why.** It never falls
    back to a from-zero apply.
@@ -32,14 +35,36 @@ and every one of those files was already applied, green, by main's own run. So o
    the preamble, `package(-lock).json`, `vite.config.ts`, `tests/frozenChain.ts`, an **edited,
    deleted or renamed** migration). No kept snapshot can be expected to fit such a chain, so a
    from-zero apply is allowed there and **logged as a warning**. `select` prints the reasons.
-3. **Main is exempt.** Main's run applies from zero on purpose: it is the net, and the run that
-   makes the snapshots every PR builds on.
+3. **Main builds on its own snapshot (2026-10-18).** A push to main runs the same `choose` a PR
+   runs — the longest kept snapshot that is an exact prefix of main's chain, by exact key, **without
+   waiting** (`SNAPSHOT_WAIT_SECONDS=0`: the heavy self-asserts, 0105–0110, are inside every kept
+   prefix, and applying a few more merged files costs less than waiting for a sibling run) — applies
+   the merged files on it, runs every check, and **keeps the result** as the snapshot the next PR
+   and the next main run restore. Main is never refused: with nothing usable it applies from zero
+   and says so in a warning. Each push to main has its **own concurrency group** (per sha), so every
+   merge's run completes and leaves its snapshot — with one shared group GitHub keeps only one
+   *pending* run and cancels the rest, which is what happened to 10 of the 12 main runs between
+   14:18 and 15:16 UTC on 2026-10-17. A push whose diff touches no database path skips both proof
+   jobs, exactly as a PR does: its chain is byte-identical to the previous main commit's, whose run
+   keeps that snapshot already. The PGlite legs and the acceptance / build / deploy world images on
+   main already restored the previous main entry (`restore-keys`) before this; measured on run
+   39040210150: 133 of 134 files restored in 3.2 s, one applied.
+4. **The from-zero net is one run a day**, not every merge: the `schedule` in
+   migrations-apply-proof.yml (`23 18 * * *` UTC = 03:23 KST), any `workflow_dispatch`, and a push
+   to main whose diff changed the chain machinery or an old migration (the same `growth.run` set as
+   the PR exemption). It applies the whole chain from 0001 on a fresh volume, against Supabase's own
+   roles, and keeps its snapshot like any other run. **A red nightly is a red:** read it to the last
+   error the same day; it means a kept snapshot and a from-zero apply of the same chain disagree, or
+   a self-assert is non-deterministic, and either is the finding.
 
 Why it exists: PR #147 (run 39029031472) started at 11:33 UTC, two minutes before main's run saved
 the snapshot that matched its chain. The job restored "the newest" kept snapshot, which 0137's
 out-of-order merge had made a non-prefix, and applied 132 files from zero for 47 minutes while five
 other snapshots sat in the cache. A re-run at 12:21 restored 131 files and applied one in two
-minutes.
+minutes. And why main joined it: main's from-zero apply was 47 of its 49 minutes (run 39040210150,
+14:28 → 15:16 UTC), every PR since #149 waits for main's run on its base, and with several merges
+an hour main's own runs cancelled each other while pending — so every PR waited on one 50-minute run
+(docs/dev-log/2026-10-18-main-builds-on-its-snapshot.md).
 
 When the law fails a PR: read the `choose` step (which snapshots were considered, whether main's
 run was waited for and how it ended), wait for main's migrations-apply-proof run on the base to
@@ -52,10 +77,9 @@ not the whole game."*
 
 | Event | Acceptance (Playwright) | migrations-apply-proof |
 |---|---|---|
-| **push to `main`**, dispatch | **every spec**, growth test included; verdict: passed == `playwright test --list` over all of `tests/` | all three pglite legs; disposable-chain from zero (keeps the snapshot PRs build on) |
-| **pull request** | only the specs the diff can reach (below); verdict: passed == `--list` count of the **selected** files | **nothing** when the diff touches no database path (below); otherwise `the rest` always, `ledger` / `merchants` only when the diff reaches their proof, disposable-chain on main's snapshot (unchanged) |
-
-| **pull request** | only the specs the diff can reach (below); verdict: passed == `--list` count of the **selected** files; every world build from a cached prefix or red (the law) | `the rest` always; `ledger` / `merchants` only when the diff reaches their proof; disposable-chain on the longest kept snapshot, after waiting for main's run on the base — never from zero (the law) |
+| **push to `main`** | **every spec**, growth test included; verdict: passed == `playwright test --list` over all of `tests/` | **nothing** when the push touches no database path; otherwise all three pglite legs (on the previous main entry) and disposable-chain **on the longest kept snapshot, no wait**, keeping its result as the next snapshot; from zero only when the chain machinery or an old migration changed |
+| **nightly schedule** (03:23 KST), dispatch | — (acceptance has no schedule) | all three pglite legs; disposable-chain **from zero** on a fresh volume — the net — keeping its snapshot |
+| **pull request** | only the specs the diff can reach (below); verdict: passed == `--list` count of the **selected** files; every world build from a cached prefix or red (the law) | **nothing** when the diff touches no database path (below); otherwise `the rest` always, `ledger` / `merchants` only when the diff reaches their proof; disposable-chain on the longest kept snapshot, after waiting for main's run on the base — never from zero (the law) |
 
 Main's full run is the safety net. After a batch of merges, check one full Acceptance run on main
 before you call the batch done.
@@ -70,8 +94,12 @@ its first parent, whether the diff touches `supabase/`, `scripts/db/`, `scripts/
 `disposable-chain` are skipped by a job-level `if:` on that `db` output, in seconds; GitHub reports
 a job skipped by its `if:` as success, and the required check is satisfied. The `select` job's log
 says which it was and lists the diff. `disposable-chain`'s condition is `!cancelled() && … != 'false'`,
-so a `select` job that failed cannot skip the required check — it runs the chain instead. A push to
-`main` always runs everything, from zero, as before.
+so a `select` job that failed cannot skip the required check — it runs the chain instead. Since
+2026-10-18 a push to `main` is judged by the same diff (against `github.event.before`, the commit
+main stood at): a merge that touches none of those paths skips both proof jobs there too, because
+its chain is byte-identical to the previous main commit's, whose run keeps that snapshot. A push
+whose previous commit GitHub does not name, a dispatch and the schedule have no diff and run
+everything, from zero.
 
 ## Who decides
 
