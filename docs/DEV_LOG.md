@@ -73,6 +73,45 @@ Owner: *"when moving map, it isn't smooth."* **Not deployed** (client only, no m
   atmosphere, marks, regions and chart.ink all pass locally.
 
 ---
+## 2026-10-17 — CI: a pull request never rebuilds from scratch (the law) — `osn-ci-no-from-zero`
+
+**The owner's order:** *"avoid doing things from scratch"* in CI, then the law: **a PR's CI must
+NEVER rebuild from scratch.** `docs/CI.md` opens with it.
+- **The defect** (PR #147, run 39029031472): disposable-chain restored ONE applied-chain snapshot —
+  the newest `sbdb-v1-2.114.0-*` by `restore-keys` — and that one (saved 02:32, before 0137 merged
+  out of order) was not a prefix of the PR's chain, so it applied 132 files from zero for 47 minutes.
+  The matching snapshot was saved by main's run two minutes after the PR's started; five others were
+  kept. A re-run restored 131 files and applied one in two minutes.
+- **The fix** (`scripts/ci/supabase-snapshot.sh choose`): the key IS the manifest's hash, so the key
+  of every snapshot that could fit is computed from the checkout (one per prefix length) and looked
+  up in the repository's cache list (GitHub API, `actions: read`), filtered to the refs this run may
+  restore. The **longest** kept prefix is restored by exact key. Before choosing it waits, bounded
+  (50 min), for main's run on the PR's base commit when that run is still going and the base chain's
+  snapshot is not kept yet — and only then (a base that is not a prefix of the PR's chain cannot be
+  helped by main's snapshot, so no wait). `usable` still judges the restored bytes. The positive
+  control for the key-of-a-revision path: `key 0928643` = the kept `…9d1606…`, `key 7c34918` = `…40d01f…`.
+- **The law, enforced**: on a PR, nothing usable → the job FAILS ("no usable applied-chain snapshot
+  for this chain — refusing to rebuild from zero on a PR; re-run after main's migrations-apply-proof
+  finishes"). PGlite side (`prefix-cache.mjs`, `BYEHARU_PREFIX_CACHE=required`): pglite-gate's
+  proof step, the acceptance builds (npc-on-world, every pool shard) and build.yml's `vite build`
+  throw instead of applying from zero. **Exempt**: main (the net that makes the snapshots) and a PR
+  that changed the chain machinery or an old migration — `select-specs.mjs`'s `growth.run`, the one
+  list, read by all three workflows as `cold` (build.yml runs the selector itself).
+- disposable-chain's budget 60 → 120: 50 min of wait + an exempt from-zero (51) + room. Job names
+  unchanged. Not deployed anywhere: CI only.
+- **Proven on PR #149's own run** (job 117399569928): `choose` waited 12:46 → 13:11 for main's run
+  on the base, then `chosen: …ff9b80… — the longest kept prefix, 132 of this chain's 132 file(s); 0 to
+  apply on top` → `Cache restored from key: sbdb-v1-2.114.0-ff9b80…` → `usable=true prefix=132` →
+  `Starting database from backup...` → `restored database records 132 applied migration(s)`.
+- **Found by the same run, fixed here** (`tests/rpc.surface.spec.ts:1798`, the standing-route test;
+  shard 1/3 red: expected DOCKED, received SAILING, green on main's runs of the same code — a
+  non-deterministic proof, which is the finding). The test warps the fleet's voyage to `eta = a
+  minute ago` and expects her docked, but since 0125 her arrival is `voyage.arrival_at`: the
+  unresolved days are ROLLED (`voyage.hazard_roll`, pure in the voyage's id, which is new every run)
+  and a STORM or a CALM lands her after that minute. Reproduced locally: with the per-day hazard
+  probability forced to 1 the assertion fails 3 of 3 runs; with the ceiling `hazard_p_max` pinned to
+  0 (the chain's own idiom — 0034, 0036, 0037, 0075) it passes 3 of 3. The test now pins the ceiling
+  before the warp and restores it in `finally`; nothing it asserts is about the dice.
 
 ## 2026-10-17 — 0141: the quay says nothing about where a good grows — `osn-0141-no-native-tag`
 

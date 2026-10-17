@@ -56,6 +56,10 @@
 //   migration alone does NOT run it: that file is proven by
 //   migrations-apply-proof (applied on main's snapshot, its self-asserts run) and by db.chain's
 //   other tests; main's full run then re-proves the growth.
+//   THE SAME SET IS THE ONE EXEMPTION FROM THE NO-FROM-ZERO LAW (docs/CI.md, 2026-10-17): a PR's
+//   CI may apply a chain from scratch only when `growth.run` is true — the chain machinery or an
+//   old file changed, so no kept snapshot can be expected to fit. Every workflow reads it from
+//   selection.json; nothing else decides it.
 //
 // ── THE MERCHANTS-ON WORLD (npc-on-world) ──────────────────────────────────────────────────────
 //   Built only when a selected spec is in the npc pool (a spec importing tests/npcOn.fixture.ts —

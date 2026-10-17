@@ -60,6 +60,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # the merge commit's first parent, for the law's exemption check below
 
       - uses: actions/setup-node@v4
         with:
@@ -69,10 +71,30 @@ jobs:
       - name: Install dependencies (from the lockfile)
         run: npm ci
 
+      # THE LAW (owner, 2026-10-17; docs/CI.md): a pull request's CI never builds a world from
+      # zero. The one exemption is a PR that changed the chain machinery or an old migration, and
+      # scripts/ci/select-specs.mjs decides that (its growth rule) — the same authority acceptance.yml
+      # and migrations-apply-proof.yml read. On main the question does not arise: main may be cold.
+      - name: May this run build the world from zero? (the law's one exemption)
+        id: cold
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node scripts/ci/select-specs.mjs --base HEAD^1 --head HEAD --out selection.json > selection.txt
+            grep -E '^(diff|  [A-Z] )' selection.txt || true
+            cold=$(jq -r .growth.run selection.json)
+            if [ "$cold" = "true" ]; then echo "yes: $(jq -r '.growth.why | join("; ")' selection.json)"
+            else echo "no: a pull request builds the world from a cached prefix or fails (BYEHARU_PREFIX_CACHE=required)"; fi
+          else
+            cold=true; echo "not a pull request: main may build from zero (its builds fill the cache)"
+          fi
+          echo "cold=$cold" >> "$GITHUB_OUTPUT"
+
       # The world image is keyed by the CHAIN, so a run whose migrations are unchanged can restore
       # the tarball instead of applying 47 migrations to build a world it already built. It must
       # come AFTER npm ci: npm ci removes node_modules whole, and the cache lives inside it.
-      # A miss is not a failure — the build applies the chain, which is what it did before.
+      # A miss is not a failure on MAIN — the build applies the chain. On a PR a miss with no usable
+      # prefix snapshot FAILS the build step (the law above), unless the exemption holds.
       #
       # `restore-keys` (2026-10-13): when the chain MOVED, the most recent older entry (this
       # branch's, else main's) is restored instead of nothing. It holds PREFIX SNAPSHOTS
@@ -122,4 +144,6 @@ jobs:
         run: npx tsc -b
 
       - name: Production build (vite build)
+        env:
+          BYEHARU_PREFIX_CACHE: ${{ github.event_name == 'pull_request' && steps.cold.outputs.cold != 'true' && 'required' || '' }}
         run: npx vite build

@@ -451,6 +451,13 @@ export async function applyWithPrefixCache({
   log = console.log,
   onProgress,
   fresh = process.env.BYEHARU_PREFIX_CACHE === 'off',
+  // THE LAW (owner, 2026-10-17): a pull request's CI never rebuilds a world from scratch. With
+  // BYEHARU_PREFIX_CACHE=required a chain with no usable cached prefix is a FAILURE, stated, not a
+  // from-zero apply — docs/CI.md, "The law". CI sets it on a PR's build and proof steps, never on
+  // main (main's from-zero apply is what makes the snapshots) and never when the PR changed the
+  // chain machinery (scripts/ci/select-specs.mjs decides that: an edited old migration or preamble
+  // moves every key). An explicit `fresh: true` (a test seeding a tiny chain) is deliberate and exempt.
+  required = process.env.BYEHARU_PREFIX_CACHE === 'required',
   snapshots = true,
 }) {
   const { applyChain } = await import('../../src/lib/db/applyChain.ts')
@@ -492,6 +499,15 @@ export async function applyWithPrefixCache({
         `file(s), names and content digest verified); applying ${ordered.length - hit.k}`,
     )
   } else {
+    if (required && !fresh) {
+      throw new Error(
+        `NO USABLE PREFIX SNAPSHOT for this chain (${ordered.length} file(s), variant ${variant.name}, ` +
+          `cache ${dir}) — refusing to rebuild the world from zero on a pull request ` +
+          '(BYEHARU_PREFIX_CACHE=required; docs/CI.md, "The law"). Main\'s run on this PR\'s base saves ' +
+          'the snapshot a PR builds on; re-run this job after main\'s run has finished. A PR that changed ' +
+          'the chain machinery or an old migration is exempt (scripts/ci/select-specs.mjs lifts it).',
+      )
+    }
     pg = await variant.create()
     log(`prefix cache: no cached prefix for this chain${fresh ? ' (disabled)' : ''}; applying all ${ordered.length}`)
   }
