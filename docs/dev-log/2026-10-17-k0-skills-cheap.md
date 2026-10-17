@@ -1,14 +1,13 @@
-# 2026-10-17 — 0150 (provisional number): K0, a merchant pays nothing for skills she cannot use — `osn-k0-skills-cheap`
+# 2026-10-17 — 0149: K0, a merchant pays nothing for skills she cannot use — `osn-k0-skills-cheap`
 
 `docs/SKILLS_AND_CAPTAINS.md` §7.1 / §8 row K0, before anything is lit. **Not deployed**; `skills_bite`
-stays false. The number is provisional (0141–0148 are held by in-flight slices): renumber to head + 1 at
-merge, and deploy strictly in order.
+stays false. Numbered 0149, after prod head 0148 (it was drafted as 0150); deploy strictly in order.
 - **Why lit was 2×**: every hot read of a merchant hull ran `world.skill_bonuses`' whole query (plus the
   SRF call) for a house whose four company skills cannot touch a ship. And `world.ship_view` ran
   `world.ship_stats` **six times** a ship, not once: the planner pulls up `cross join lateral (select
   world.ship_stats(s.id) as st) x` and evaluates it per `x.st` reference (measured: `offset 0` alone takes
   the merchant ship_view from 1,025 to 727 ms dark on the cached world).
-- **0150**: `public.house_skill_scopes(player, ship default null)` — THE reading of which non-company
+- **0149**: `public.house_skill_scopes(player, ship default null)` — THE reading of which non-company
   scopes a house's held skills reach (skill_bonuses' own held set; PL/pgSQL, invoker, no SET). Early exits,
   each after the live switch test (dark runs what it ran before): `world.skill_bonuses`, `world.ship_stats`
   (lit branch only with a SHIP skill), `world.ship_budget`, `world.ship_view` (+ `offset 0`),
