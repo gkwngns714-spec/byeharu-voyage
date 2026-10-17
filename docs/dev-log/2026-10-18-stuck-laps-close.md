@@ -1,4 +1,4 @@
-# 2026-10-18 — a stuck merchant lap is answered on the first clear — `osn-0150-laps-close` (migration 0152)
+# 2026-10-18 — a stuck merchant lap is answered on the first clear — `osn-0150-laps-close` (migration 0150, deployed; drafted as 0152)
 
 **The defect.** 0142 said a merchant stuck on an `E_ENDURANCE` SAIL would recover with no data
 change: the hourly upkeep re-plans her after her third cleared failed order, and that re-plan raises
@@ -37,7 +37,7 @@ Four causes overlap inside the 270:
    SAIL measures the course itself, which is 2–7 % longer on long legs. 19 laps were refused by more
    than that day.
 
-**The fix (0152).** It goes in the four bodies that make these decisions. Each is cut by a hunk
+**The fix (0150).** It goes in the four bodies that make these decisions. Each is cut by a hunk
 that is asserted to occur once, reversed back to its pre-image, and leaves the ACL unchanged:
 
 - `npc_tend_route`: when the head of the queue is a SAIL refused `E_ENDURANCE`, the clear that
@@ -60,7 +60,7 @@ stop 0. Each probe was mutation-checked: with its fix reverted, the probe fails.
 refused again. One step takes 150–190 ms (PGlite).
 
 **Release estimate (prod, read-only).** All 271 docked `E_ENDURANCE` laps at the time of the
-estimate reach their passage's need under 0152's arithmetic. 63 of them first need the cut-loss
+estimate reach their passage's need under 0150's arithmetic. 63 of them first need the cut-loss
 for room. 6 have a purse under 500 d. and may still be refused `E_INSUFFICIENT_FUNDS` for their
 stores. The 88 wrecks wait for the tow. The rate is bounded by the hour's 60 s budget, so they drain
 over a few passes, not in one.
@@ -68,3 +68,23 @@ over a few passes, not in one.
 **Not done.** The third-clear count still reads events the compactor ages out, but no other
 refusal holds a merchant today. A merchant who cannot pay for her stores (2 refused so today, up to
 6 at risk) is not helped.
+
+**Deployed, then CI red on a fresh chain (2026-10-17 ~16:10 UTC).** The file went to prod
+renumbered as 0150 and its self-assert passed there. Stuck laps fell from 391 to 345 after the
+16:07 pass. PR #168's disposable-chain then failed on a fresh chain:
+`CASKS — she reached her stop 0 and the lap did not close (fleet SAILING at <NULL>)`.
+
+The cause was the probe, not the fix. The probe settled the voyage once, at the eta it read before
+sailing. `voyage.settle` resolves the sea-days, and a STORM or a foul wind can delay the voyage:
+`voyage.recompute_eta` moves the eta later, and the arrival check (`p_now >= v.eta`) then fails.
+Which days draw what depends on the voyage, so the result changes from one world to another. Prod
+and local PGlite drew no delay; CI did.
+
+The probe now re-reads the eta and settles again until the voyage is in, at most 12 times, and
+raises if she is still at sea. Only the self-assert changed. The function bodies are identical to
+prod's: each hunk's new text occurs once in prod's live body, and the three new helpers' bodies
+are verbatim in the file.
+
+Simulating a delay (a stale eta one day early) reproduces CI's failure with the old probe and
+passes with the new one. The branch is rebased onto main (0149 K0, 0151 K1), so 0151 applies after
+0150.

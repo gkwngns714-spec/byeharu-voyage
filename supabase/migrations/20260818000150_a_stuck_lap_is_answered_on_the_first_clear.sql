@@ -659,7 +659,18 @@ begin
         if v_v.id is null or v_v.dest_port_id <> v_lis then
           raise exception '0150 self-assert FAIL: % — her voyage is not bound for her stop 0 (%)', v_s.cause, v_v.dest_port_id;
         end if;
-        perform voyage.settle(v_mfleet, v_v.eta + interval '1 minute');
+        -- The sea may delay her (a STORM or a foul wind moves the eta past the instant first asked —
+        -- voyage.recompute_eta; which days draw what is the voyage's own), so she is settled at her
+        -- CURRENT eta until she is in: a voyage's delays are bounded, and twelve settles is far past them.
+        v_n := 0;
+        while v_v.status = 'SAILING' and v_n < 12 loop
+          perform voyage.settle(v_mfleet, v_v.eta + interval '1 minute');
+          select * into v_v from public.voyages where id = v_v.id;
+          v_n := v_n + 1;
+        end loop;
+        if v_v.status = 'SAILING' then
+          raise exception '0150 self-assert FAIL: % — her voyage is still at sea after % settles (eta %)', v_s.cause, v_n, v_v.eta;
+        end if;
         perform cmd.advance(v_mfleet, v_v.eta + interval '1 minute');
         if (select closed_at from public.standing_route_laps where route_id = v_route and lap_no = 900151 + v_s.k) is null then
           raise exception '0150 self-assert FAIL: % — she reached her stop 0 and the lap did not close (fleet % at %)', v_s.cause,
