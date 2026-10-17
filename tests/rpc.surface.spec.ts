@@ -1540,6 +1540,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // and choosing the traits one uses (the officer code and her traits; no player id; only ashore or in
       // port). Landed WITH the face that reads and presses them (src/live/YourCaptains.tsx, FLEETS).
       'worldCaptains', 'cmdCaptainTraitsSet',
+      // Pin moved deliberately 2026-10-18 with migration 0162 (K8): PROMOTE a captain (the officer code; no
+      // player id; her ship docked, her level, the items in storage there). Landed WITH its button
+      // (src/live/YourCaptains.tsx).
+      'cmdPromoteCaptain',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

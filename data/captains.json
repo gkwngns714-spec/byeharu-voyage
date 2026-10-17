@@ -2,10 +2,10 @@
   "_": "THE CAPTAINS' CATALOGUE (K4, docs/SKILLS_AND_CAPTAINS.md §4.1, §4.2, §4.9) — authored. Who the captains ARE is data/officers.json; what a grade, a trait and a language ARE is this file. scripts/build-captains.mjs reads both and generates data/captains.generated.json (every captain's grade, kit of ten traits and languages, and every harbour's language); migration 0156 loads them and scripts/db/world-guard.mjs holds the database to all three files on every apply.",
   "_grades": "OWNER O3 (row 61): S 5 slots / 10 traits, A 4 / 8, you get the pattern — B 3 / 6, C 2 / 4. `floor_pct` is DEFAULT D10 / D12: a captain's grade at birth is the highest grade whose floor her job value reaches (C 4-5 %, B 5.5-6.5 %, A 7-8 %, S 8.5-9 %), and a promotion (K8) lifts every trait to at least the new floor. A grade above S costs one row (\"for now\").",
   "grades": [
-    { "code": "C", "ord": 1, "slots": 2, "known": 4, "floor_pct": 4 },
-    { "code": "B", "ord": 2, "slots": 3, "known": 6, "floor_pct": 5.5 },
-    { "code": "A", "ord": 3, "slots": 4, "known": 8, "floor_pct": 7 },
-    { "code": "S", "ord": 4, "slots": 5, "known": 10, "floor_pct": 8.5 }
+    { "code": "C", "ord": 1, "slots": 2, "known": 4, "floor_pct": 4, "promote_level": null, "promote_items": null },
+    { "code": "B", "ord": 2, "slots": 3, "known": 6, "floor_pct": 5.5, "promote_level": 5, "promote_items": 10 },
+    { "code": "A", "ord": 3, "slots": 4, "known": 8, "floor_pct": 7, "promote_level": 10, "promote_items": 20 },
+    { "code": "S", "ord": 4, "slots": 5, "known": 10, "floor_pct": 8.5, "promote_level": 15, "promote_items": 40 }
   ],
   "_kit": "DEFAULT D15: every captain carries TEN ordered traits — her job first at her own value, then up to `same_focus` more of her job's focus, then the rest, each at `extra_pct` % of her job's value (rounded to 0.1). The order after the first is a pure function of her code (md5), so the kit is the same on every build.",
   "kit": { "size": 10, "extra_pct": 60, "same_focus": 3 },
@@ -14,6 +14,12 @@
     { "code": "exploration", "word": "Exploration" },
     { "code": "trading", "word": "Trading" },
     { "code": "combat", "word": "Combat" }
+  ],
+  "_promotion": "DEFAULT D12 (§4.6): promotion C → B → A → S needs her level in her job's focus (promote_level of the grade she rises to) and promote_items of her focus's item, spent from storage at the port where her ship is docked. The items are the SAME for every captain (never one per captain): one per `points` your fleets earn in that track. Exploration and Combat: 100 points (a Sea Chart ≈ 100,000 miles). Trading: MEASURED (K8, 2026-10-18, production read-only): the merchants — the only sample large enough, the one human sailor having 6,478 miles — turned over 61,712,599 coin across 12,732,386 miles, 4.85 coin a mile, so 100,000 miles ≈ 485,000 coin ≈ 4,850 trading points (100 coin = 1 point): a Trade Seal takes about as long as a Sea Chart.",
+  "promotion_items": [
+    { "code": "sea-chart", "name": "Sea Chart", "focus": "exploration", "points": 100, "note": "A chart of waters your fleets have sailed: what promotes an exploration captain." },
+    { "code": "trade-seal", "name": "Trade Seal", "focus": "trading", "points": 4850, "note": "A seal of trade your fleets have made: what promotes a trading captain." },
+    { "code": "battle-honour", "name": "Battle Honour", "focus": "combat", "points": 100, "note": "An honour for pirates your fleets have seen off: what promotes a combat captain." }
   ],
   "_effects": "What a trait does, by effect (§4.2, §5). `scope` fleet = every seated captain of the fleet adds up; ship = only the ship she sits on (K5). `live` = a rule reads it TODAY while crew_bite is off: the four effects public.fleet_officer_bonus has always served (speed, cargo space, spread, crew saved) — and only for a captain's job (her first trait). `words` is the line the trait card prints ({pct}, {goods}); `waits` is the sentence printed when the trait does not work for this captain yet. `reader` names the ONE rule that will read it. `cap_pct` (K5) is the most a fleet can gain from that effect — read by public.crew_pct, the one reader, which also retired the old `officer_bonus_cap_pct` knob (the four live effects carry its 25). category_spread's cap is per goods category.",
   "effects": [

@@ -441,6 +441,8 @@ export const RPCS = {
       { name: 'p_traits', type: 'text[]' },
     ],
   },
+  // 0162 (K8): promote a captain — her ship docked, her level, the items in storage there.
+  cmdPromoteCaptain: { schema: 'cmd', fn: 'promote_captain', args: [{ name: 'p_code', type: 'text' }] },
   cmdSeatCaptain: {
     schema: 'cmd',
     fn: 'seat_captain',

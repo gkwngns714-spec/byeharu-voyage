@@ -66,6 +66,8 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | homesickness (0160) | the server's line **Homesick: 4 days from Iberia** | morale, loyalty, mood |
 | the traits she uses (0160) | **Traits · 3 / 5 in use**, **In use**, button **Use these traits**; *Her traits change only in port.* | loadout, equip, slots |
 | a captain who speaks the port's language (0161) | the server's line on the bargain row: *Ana de Sousa speaks Portuguese here: +5% bargain odds* | fluency, LV |
+| moving a captain up a grade (0162) | **Promote** (button `Promote to B`); the server's line `Promote to B · 10 Sea Charts · Exploration level 5`, `6 / 10 here`; refusals in the server's words (`Needs 10 Sea Charts here: you have 6 at Lisbon.`) | rank up, ascend, transcend |
+| promotion items (0162) | **Sea Chart** · **Trade Seal** · **Battle Honour** (in Storage, like any item) | contract, astrolabe, certificate |
 | the languages she speaks (0156) | the server's sentence **Speaks Portuguese, Spanish** | LV, fluency |
 | the market | **market** / **here** | the quay |
 | price paid | **Bought at** | paid, basis |

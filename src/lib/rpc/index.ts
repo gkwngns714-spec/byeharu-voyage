@@ -55,6 +55,7 @@ import type {
   SeatedCaptain,
   CaptainsView,
   TraitsSet,
+  PromotedCaptain,
   PresetApplied,
   PresetDeleted,
   PresetSaved,
@@ -483,6 +484,11 @@ export function worldCaptains(): Promise<RpcResult<CaptainsView>> {
  *  in port; the refusal says why. */
 export function cmdCaptainTraitsSet(code: string, traits: readonly string[]) {
   return call<TraitsSet>('cmdCaptainTraitsSet', [code, [...traits]])
+}
+
+/** 0162 — promote a captain to her next grade (her ship docked; her level; the items kept there). */
+export function cmdPromoteCaptain(code: string) {
+  return call<PromotedCaptain>('cmdPromoteCaptain', [code])
 }
 
 /** 0157 — seat a captain you keep in a cabin of one of your ships (`seat` null: the server's picker),

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Bar, Button, Note, Row, TileField, Tray, type TrayDetent, OfficerTile } from '../components/ui'
-import { cmdCaptainTraitsSet, worldCaptains } from '../lib/rpc'
+import { cmdCaptainTraitsSet, cmdPromoteCaptain, worldCaptains } from '../lib/rpc'
 import type { Refusal, YourCaptain } from '../lib/rpc'
 import { formatInt } from '../lib/format'
 import { useServedRead } from './useServedRead'
@@ -102,6 +102,8 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
         </Row>
       ))}
 
+      {captain.promote && <Promote captain={captain} />}
+
       <h4 className="pb-1 pt-4 text-t-caption text-ink-faint">{`Traits · ${chosen.length} / ${slots} in use`}</h4>
       {(captain.traits ?? []).map((t) => {
         const on = chosen.includes(t.code)
@@ -130,6 +132,40 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
       )}
       {refusal && (
         <Note tone="danger" code={refusal.code}>
+          {refusal.sentence}
+        </Note>
+      )}
+    </div>
+  )
+}
+
+/** 0162: her next promotion, in the server's words, and the one button. The server decides; its refusal
+ *  (level, items here, in port) is printed as it comes. */
+function Promote({ captain }: { captain: YourCaptain }) {
+  const refresh = useWorld((s) => s.refresh)
+  const [busy, setBusy] = useState(false)
+  const [refusal, setRefusal] = useState<Refusal | null>(null)
+  const p = captain.promote!
+  const press = () => {
+    if (busy) return
+    setBusy(true)
+    setRefusal(null)
+    void (async () => {
+      const r = await cmdPromoteCaptain(captain.code)
+      setBusy(false)
+      if (r.ok) await refresh()
+      else setRefusal(r.refusal)
+    })()
+  }
+  return (
+    <div className="pt-4" data-testid="captain-promote">
+      <Row label={p.line} value={p.items_here === null ? undefined : `${formatInt(p.items_here)} / ${formatInt(p.items_needed)} here`} />
+      <Button variant="secondary" className="w-full" disabled={busy} busy={busy} busyLabel="Promoting…" onClick={press}
+        data-testid="captain-promote-press">
+        {`Promote to ${p.to}`}
+      </Button>
+      {refusal && (
+        <Note tone="danger" code={refusal.code} className="mt-2">
           {refusal.sentence}
         </Note>
       )}

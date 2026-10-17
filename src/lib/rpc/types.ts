@@ -1040,6 +1040,26 @@ export interface YourCaptain extends CaptainCard {
   can_change: boolean
   levels: CaptainLevel[]
   homesick: { days: number; line: string } | null
+  /** 0162 — her next promotion: the grade, the level and items it needs, what you keep where her ship is
+   *  docked (null ashore or at sea), and the server's line. Null at the top grade; absent before 0162. */
+  promote?: {
+    to: string
+    level_needed: number
+    level: number
+    item: string
+    item_name: string
+    items_needed: number
+    items_here: number | null
+    port: string | null
+    line: string
+  } | null
+}
+
+/** 0162 — what cmd.promote_captain answers. */
+export interface PromotedCaptain {
+  officer: string
+  grade: string
+  sentence: string
 }
 
 export interface CaptainsView {
