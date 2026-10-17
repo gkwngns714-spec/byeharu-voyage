@@ -1525,6 +1525,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-10-17 with migration 0148 (docs/INFLUENCE.md I6): Rank's COUNTRIES
       // board — every country's cities and its biggest givers. A read; no player id.
       'worldNationStandings',
+      // Pin moved deliberately 2026-10-17 with migration 0152 (owner default: "a fleet that cannot
+      // sail because its hulls are at 0 can be TOWED to the nearest harbour with a shipyard"): THE
+      // TOW and its dry run. Both take the fleet (the caller's own, E_NO_SUCH_FLEET otherwise) and no
+      // player id; the tow takes the version (E_STALE). Not a line of the grammar — a wreck cannot
+      // run its queue. Landed WITH the face that reads them (src/live/TowNote.tsx, PORT and the city panel).
+      'cmdPreviewTow', 'cmdTow',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

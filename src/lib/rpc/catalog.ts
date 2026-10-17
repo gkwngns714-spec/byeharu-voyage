@@ -356,6 +356,20 @@ export const RPCS = {
       { name: 'p_shares', type: 'int' },
     ],
   },
+  // 0152 — THE TOW: a fleet of yours lying UNABLE_TO_SAIL in a port (every hull at 0) is towed to the
+  // nearest harbour with a shipyard and lies docked there, where REPAIR takes it. The dry run is the
+  // real tow rolled back — the fee and the harbour printed are the ones charged, or the refusal the
+  // press would get (E_NOT_WRECKED, E_TOW_FUNDS with have / need in ducats, …). Not a line of the
+  // grammar: a wreck cannot run her queue (cmd.advance stops at a fleet that is not docked).
+  cmdPreviewTow: { schema: 'cmd', fn: 'preview_tow', args: [{ name: 'p_fleet', type: 'uuid' }] },
+  cmdTow: {
+    schema: 'cmd',
+    fn: 'tow',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_expected_version', type: 'int' },
+    ],
+  },
   cmdStandingRouteSave: {
     schema: 'cmd',
     fn: 'standing_route_save',

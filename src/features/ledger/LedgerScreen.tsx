@@ -72,6 +72,7 @@ const FACE_OF: Record<string, Exclude<Face, 'all'>> = {
   PROVISION_REFUSED: 'voyage',
   REPAIRING: 'voyage',
   REPAIRED: 'voyage',
+  TOWED: 'voyage',   // 0152: a wreck towed to a shipyard
   // 0092: a standing route's lap and its pause are VOYAGE lines (docs/TRADE_ROUTES.md §6).
   ROUTE_LAP: 'voyage',
   ROUTE_PAUSED: 'voyage',

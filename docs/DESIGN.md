@@ -861,6 +861,13 @@ Pre: docked at a port with a yard. Cost `= (max_dur − dur) × class_repair_rat
 Takes voyage-time: `hours = damage_pct × 0.4` sim-hours. Queues a `REPAIRING` state.
 Fails `E_NO_YARD`, `E_INSUFFICIENT_FUNDS`.
 
+**Tow** (0152, `cmd.tow` / `cmd.preview_tow` — an RPC, not a line of the grammar: a wreck cannot run its queue)
+A fleet lying `UNABLE_TO_SAIL` in a port (its flagship made port at durability 0) is towed to the nearest
+open harbour with a shipyard by sailed miles (its own port at 0 miles when it has one), and lies `DOCKED` there,
+where `REPAIR` takes it. Cost: miles × `tow_fee_per_nm` × the house's running-cost multiplier, paid to the city it
+is towed to. Releases its queue. Merchants are towed by the hourly upkeep through the same core (`public.tow_for`).
+Fails `E_NOT_WRECKED`, `E_NOT_AT_PORT` (a wreck at sea), `E_NO_YARD`, `E_TOW_FUNDS`, `E_STALE`.
+
 ---
 
 **`SPLIT <fleet> [SHIPS <ship>,...] AS <newname>`**
@@ -1023,6 +1030,9 @@ now refuses DARK too — while `skills_bite` is off no skill level counts, so a 
 (the 52 new hulls, G2-G5 gear, Carronades / Chase Guns) is refused with every requirement named and the sentence
 ending ` — ship skills are not in use yet` (figures have 0 / need); one with none is answered as before.
 `E_WRONG_YARD` / `E_YARD_TOO_SMALL` now apply to the new hulls (each is built only in its line's countries).
+And from 0152 (the tow) `E_NOT_WRECKED` (a tow asked for a fleet that is not lying wrecked) and `E_TOW_FUNDS`
+(the purse does not cover the tow: `Towing Gaivota to Lisbon costs 146 🪙 and you have 40 🪙.`, figures have / need in
+ducats); `E_NOT_AT_PORT` and `E_NO_YARD` also answer a tow.
 
 ---
 

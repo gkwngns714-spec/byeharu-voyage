@@ -25,6 +25,7 @@ import { PortInn } from '../../live/PortInn'
 import { PortYard } from './PortYard'
 import { PortWorkstation } from './PortWorkstation'
 import { PortShipyard } from './PortShipyard'
+import { TowNote } from '../../live/TowNote'
 import { PORT_FACES, usePortView } from './portView'
 import { harbourCode, harbourPick, useHarbour } from '../../store/harbour'
 import { alongsideAt, boundForLabel, fleetPortCode, whereabouts } from '../../domain/fleet'
@@ -238,6 +239,10 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
               : `${acting.name} is not in any port.`}
         </Note>
       )}
+
+      {/* A WRECK OF YOURS LYING HERE (0152): the tow, above every face — a harbour with no shipyard
+          has no Repair face for it to stand on (src/live/TowNote.tsx). */}
+      <TowNote docked={docked} />
 
       {/* MERCHANTS (0099, grown into owner row 121 by 0104) — the world's own companies this
           harbour concerns, named, because they are the harbour's furniture and not somebody's

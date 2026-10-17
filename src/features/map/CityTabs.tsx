@@ -9,6 +9,7 @@ import { PortInn } from '../../live/PortInn'
 import { PortPrices } from '../../live/PortPrices'
 import { CITY_TABS, useCityTab } from './cityTab'
 import { CityTownHall } from './CityTownHall'
+import { TowNote } from '../../live/TowNote'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PANEL'S FOUR TABS — Market | Port | Inn | Town Hall
@@ -54,6 +55,8 @@ export function CityTabs({ portCode, harbour }: { portCode: string; harbour: Rea
 
   return (
     <div data-testid="map-city-tabs">
+      {/* 0152: a wreck of yours lying here, and its tow — whichever tab is up (src/live/TowNote.tsx). */}
+      <TowNote docked={docked} />
       <Segmented label="City" segments={CITY_TABS} value={tab} onChange={turnTo} fill className="sticky top-0 z-10 mb-1" />
       <div role="tabpanel" data-testid={`map-city-${tab}`}>
         {tab === 'port' && harbour}

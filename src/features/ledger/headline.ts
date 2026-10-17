@@ -20,6 +20,7 @@ import type { LedgerEvent } from '../../lib/rpc'
 //   HIRED         {fleet, count, urgent, cost}
 //   REPAIRING     {fleet, points, cost, sim_hours}
 //   REPAIRED      {fleet}
+//   TOWED         {fleet, from, to, nm, fee}                  (0152 — from / to are CODES)
 //   SIGNED_OFFICER {officer, code, specialty, bonus_pct, cost}   (0015:231 — NO fleet key)
 //   STUDIED       {skill, code, level, port, cost}               (0016:239 — port is a CODE)
 //   ENROLLED      {skill, code, port, cost}                       (0131 — enrolment in a skill)
@@ -144,6 +145,16 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     }
     case 'REPAIRED':
       return `${fleet} repaired.`
+    // 0152: a wreck towed to the nearest shipyard — or brought into the one where it lay (0 miles).
+    case 'TOWED': {
+      const to = str(p, 'to')
+      const from = str(p, 'from')
+      const nm = num(p, 'nm')
+      if (!to) return `${fleet} was towed.`
+      return from === to || nm === 0
+        ? `${fleet} was brought in for repair at ${portName(to)}.`
+        : `${fleet} was towed${nm === null ? '' : ` ${formatMiles(nm)}`} to ${portName(to)}.`
+    }
     case 'SIGNED_OFFICER': {
       // Who, what they are, what they are worth. The wage is deliberately absent — it is the
       // movement printed beside this sentence, and saying it twice would make one movement look

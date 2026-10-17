@@ -50,6 +50,8 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | how badly a ship is hurt | **Damage** (`13% damaged`, the worst ship) | hull (worst ship), hull % |
 | build a ship | **Build ship** | lay her down |
 | repair | **Repair** (`Repair to 100%`) | mend |
+| a fleet whose ships are at 0 and cannot sail (served status UNABLE_TO_SAIL; 0152) | **wrecked** (`Gaivota cannot sail: its ships are wrecked.`) | unable to sail, sunk |
+| moving a wrecked fleet to the nearest port that repairs ships (0152) | **Tow** (button `Tow · 146 🪙`; the server's sentence `A tow takes it 49 miles to Lisbon, the nearest port that repairs ships.`; History `Gaivota was towed 49 miles to Lisbon.`) | salvage, haul, rescue |
 | hire | **Hire** (`Hire crew`, `Hire officer`) | sign on |
 | the inn's daily officers | **Officers today** | tonight's room |
 | the market | **market** / **here** | the quay |
