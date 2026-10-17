@@ -28,9 +28,10 @@
 // line's labour factor × `hull_labour_mult` (a knob, 1.0 — applied by the server, never here).
 //
 // WHAT IT NEEDS (§4.4): small — the line's Small Hulls I; light — Small III + Light I; medium —
-// Light III + Medium I; heavy — Medium IV + Heavy I + the role skill I; capital (S14) — Heavy IV +
+// Light III + Medium I; heavy — Medium III + Heavy I + the role skill I; capital (S14) — Heavy III +
 // Capital Hulls I + Command III + the role skill III; flagship (S14) — Capital Hulls V + Fleet
-// Command I + the role skill V. Read only by public.requirements_unmet (0133, re-cut by 0135).
+// Command I + the role skill V. Read only by public.requirements_unmet (0133, re-cut by 0135). K1 (D2,
+// docs/SKILLS_AND_CAPTAINS.md §3.2): heavy and capital asked Medium / Heavy IV until then; EVE's 2013 rule.
 //
 // IT FITS IN THE SHED (0072 (d), §8 S14 — never loosened): a hull's goods come out of ONE warehouse
 // in the yard's city, and the biggest shed in the world holds SHED_TUNS. A capital's size template
@@ -264,8 +265,8 @@ function requirementsOf(line, size, role) {
   if (size === 1) return [{ skill: sk(1), level: 1 }]
   if (size === 2) return [{ skill: sk(1), level: 3 }, { skill: sk(2), level: 1 }]
   if (size === 3) return [{ skill: sk(2), level: 3 }, { skill: sk(3), level: 1 }]
-  if (size === 4) return [{ skill: sk(3), level: 4 }, { skill: sk(4), level: 1 }, { skill: ROLE_SKILL[role], level: 1 }]
-  if (size === 5) return [{ skill: sk(4), level: 4 }, { skill: sk(5), level: 1 }, { skill: 'COMMAND', level: 3 }, { skill: ROLE_SKILL[role], level: 3 }]
+  if (size === 4) return [{ skill: sk(3), level: 3 }, { skill: sk(4), level: 1 }, { skill: ROLE_SKILL[role], level: 1 }]
+  if (size === 5) return [{ skill: sk(4), level: 3 }, { skill: sk(5), level: 1 }, { skill: 'COMMAND', level: 3 }, { skill: ROLE_SKILL[role], level: 3 }]
   return [{ skill: sk(6), level: 5 }, { skill: 'FLEET_COMMAND', level: 1 }, { skill: ROLE_SKILL[role], level: 5 }]
 }
 
