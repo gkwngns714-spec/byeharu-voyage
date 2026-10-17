@@ -103,8 +103,9 @@ PR #142, independent — either order). Deploy per DEPLOY_RUNBOOK with the clock
 
 The 0136 entry below found the slow arrivals runs were lock waits on `reconcile` and `drift`, and left
 the fix for its own slice. This is that slice. **Not deployed.** It applies on 0136, so it depends on
-PRs #139 and #140. Prod is at 0138 (S14, #143), so 0137 goes on OUT OF ORDER: `unwind_the_clock()` →
-`db push --linked --include-all` → `wind_the_clock()`. 0138 re-cuts none of the functions 0137 reads or replaces.
+PRs #139 and #140. Prod is at 0139 (0138 S14 #143, 0139 #145), so 0137 goes on OUT OF ORDER: `unwind_the_clock()` →
+`db push --linked --include-all` → `wind_the_clock()`. Neither re-cuts a function 0137 reads or replaces; 0137 was
+applied locally AFTER 0138 + 0139 (renamed to sort last, not committed) and its receipt held.
 - **Evidence (prod, read-only).** cron.job_run_details, 2026-10-15 12:00 → 10-16 18:00 UTC: every
   arrivals run over 12 s ended 31–489 ms after a reconcile or drift COMMIT. That is 6 reconcile overlaps
   (59.2, 72.0, 29.9, 17.2, 38.9, 38.4 s) and 11 drift overlaps (12.7–21.2 s). The 10-16 13:07:24 run

@@ -128,7 +128,7 @@
 -- first quay read of each slot (~15 s of row locks), and a §4 merchant trade that meets one of those
 -- locks waits up to the file's lock_timeout (5 s) — a failed push, rolled back whole (DEPLOY_RUNBOOK §3),
 -- not a corrupted one; read the error before pushing again. Then, on the target:
---   1. supabase migration list --linked — 0137 applied (0138 stays the head: it went on first).
+--   1. supabase migration list --linked — 0137 applied (0139 stays the head: it went on first).
 --   2. select jobname, command, active from cron.job where jobname in ('byeharu-voyage:reconcile',
 --      'byeharu-voyage:drift') — `call public.tick_reconcile()` / `call public.tick_market_drift_each_port()`,
 --      both active after wind_the_clock().
@@ -154,10 +154,13 @@
 -- hunks and slices are this file's text), reverses world.market's one hunk, and points the jobs back.
 -- SUPERSEDES: public.npc_tend (0123), public.tick_reconcile (0114), public.tick_market_drift (0123),
 -- world.market (0122).
--- VERSION: 0137. Applies on 0136 (PR #140; depends on #139 and #140). Prod head is 0138 (S14, #143), so
--- 0137 goes on OUT OF ORDER: `supabase db push --linked --include-all`. Nothing here assumes it is the
--- newest file: 0138 adds catalogue rows (15 hulls, 56 requirements) and re-cuts none of the functions
--- this file reads or replaces; every pre-image is read live from the target (asserted once each).
+-- VERSION: 0137. Applies on 0136 (PR #140; depends on #139 and #140). Prod head is 0139 (0138 S14 #143,
+-- 0139 the draft gate removed #145), so 0137 goes on OUT OF ORDER: `supabase db push --linked
+-- --include-all`. Nothing here assumes it is the newest file: 0138 adds catalogue rows and 0139 re-cuts
+-- npc_feasible_legs / npc_loop_candidates / voyage.sail_refusal — none of which this file reads or
+-- replaces; every pre-image is read live from the target (asserted once each). Proved in that order on
+-- the cached PGlite world: 0137 applied AFTER 0138 and 0139 (renamed to sort last, not committed) —
+-- receipt ok, the same counts as in chain order.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 
