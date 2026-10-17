@@ -1584,6 +1584,16 @@ test('the registry and the client grants are one set, and the merchant cores are
     // 0114: whether the hourly merchant upkeep's budget is spent. Server-only: the deadline is
     // transaction-local and set by tick_reconcile alone.
     'public.npc_upkeep_spent()',
+    // 0137: the merchant upkeep's steps and the two committing jobs. Server-only.
+    'public.npc_tend_roster()',
+    'public.npc_tend_route(timestamptz, uuid, uuid, bigint)',
+    'public.npc_tend_houses(timestamptz)',
+    'public.npc_tend_sum(jsonb, jsonb)',
+    'public.npc_step_failed(jsonb, text)',
+    'public.npc_upkeep_scope(timestamptz)',
+    'public.tick_reconcile(boolean)',
+    'public.tick_market_drift(timestamptz, uuid)',
+    'public.tick_market_drift_each_port()',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f

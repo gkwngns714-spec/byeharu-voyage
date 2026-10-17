@@ -322,7 +322,7 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   expect(sailed.order.status).toBe('done')
 
   // 0045 runs the world twenty times faster: this passage is ~30 REAL SECONDS, and the reads
-  // between orders (world.market winds the drift over 54k rows) cost seconds each in a WASM
+  // between orders (world.market wound the drift over every row until 0137; its own quay since) cost seconds each in a WASM
   // database — so without this the fleet ARRIVES underneath the spec's own typing and the
   // "queue the rest while it sails" beat executes at the quay instead of queueing (measured
   // 2026-08-24: the SELL ran at the destination and was refused by its daily cap). Time is held

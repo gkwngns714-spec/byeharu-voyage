@@ -99,6 +99,97 @@ PR #142, independent — either order). Deploy per DEPLOY_RUNBOOK with the clock
 
 ---
 
+## 2026-10-17 — 0137: an arrival never waits for the hour — `osn-0137-reconcile-locks`
+
+The 0136 entry below found the slow arrivals runs were lock waits on `reconcile` and `drift`, and left
+the fix for its own slice. This is that slice. **Not deployed.** It applies on 0136, so it depends on
+PRs #139 and #140. Prod is at 0139 (0138 S14 #143, 0139 #145), so 0137 goes on OUT OF ORDER: `unwind_the_clock()` →
+`db push --linked --include-all` → `wind_the_clock()`. Neither re-cuts a function 0137 reads or replaces; 0137 was
+applied locally AFTER 0138 + 0139 (renamed to sort last, not committed) and its receipt held.
+- **Evidence (prod, read-only).** cron.job_run_details, 2026-10-15 12:00 → 10-16 18:00 UTC: every
+  arrivals run over 12 s ended 31–489 ms after a reconcile or drift COMMIT. That is 6 reconcile overlaps
+  (59.2, 72.0, 29.9, 17.2, 38.9, 38.4 s) and 11 drift overlaps (12.7–21.2 s). The 10-16 13:07:24 run
+  wrote only merchant business at its own now(): 10 VOYAGE_REPORT, 8 DEPARTED, 3 ROUTE_LAP, 3 BOUGHT
+  and 3 SOLD events.
+- **The lock** (pg_get_functiondef on prod). `npc_tend` takes `fleets … for update nowait` and the
+  route row for EVERY merchant on its walk, before the budget test. It does this inside a
+  subtransaction, so the locks are held to the top commit, after the compactor and the 838-player
+  ledger check (60–80 s). `voyage.settle` opens with a waiting `fleets … for update`. So a merchant who
+  comes due during the hour is held until it commits. The drift updates all 132,090 `port_goods` rows
+  in two statements, and a trade on arrival updates the row it trades.
+- **The live probe** sampled pg_stat_activity + pg_locks every ~4 s at 18:07 and 18:10 UTC. It saw the
+  reconcile take 65 s and no sweep waiting, because no merchant on the walk came due that hour. So the
+  probe confirmed the window, but it did not catch a wait in progress.
+- **Fix, with one authority each.** `npc_tend` is cut verbatim into `npc_tend_roster` (the walk),
+  `npc_tend_route` (one merchant, run in a one-row loop so its `continue`s are unchanged),
+  `npc_tend_houses` (invest + refound; the gate loses `and p_route is null`) and `npc_tend_sum` (the
+  receipt). `npc_tend` composes them in one transaction, with the same signature, receipt and ACL.
+  `tick_reconcile` becomes a PROCEDURE: one COMMIT per merchant, then the companies, then the compactor.
+  Each step runs under `npc_upkeep_scope` (lock_timeout 2 s plus the 0114 deadline, set again in every
+  transaction). The invariants run last and take no row lock. `tick_market_drift(p_now, p_port)` gets
+  two hunks; null means the whole market, as before. `tick_market_drift_each_port` commits one harbour
+  at a time, all at the job's start time. Both jobs are re-pointed with `cron.alter_job(command := 'call …')`;
+  name, schedule and active flag are untouched, so `wind_the_clock()` starts the new commands.
+- **Proof in the file** (as revised by the review below). The npc_tend pre-image is cut at six anchors.
+  Each slice is byte-equal in its new home, and the glue between slices is exactly the loop's two lines.
+  Old vs new npc_tend run in rolled-back subtransactions: the whole pass with the budget spent, then 12
+  merchants with dear work first, one old/new pair each. Receipts must be equal, and so must each run's
+  OWN writes. tick_market_drift and world.market reverse to their pre-images and keep their ACLs.
+- **The procedures were driven committed** on the cached PGlite world, with merchants on, using
+  top-level `call`. The first hour: 255 started, 582 deferred at the 60 s deadline, 63 refounded,
+  3,063 ledger rows compacted, invariants ok. The second hour picked up where the first stopped (174
+  started). The drift: 77,658 drifted and 132,090 regenerated, one commit per harbour.
+- **Changes only on failure.** A step's error now rolls back alone, and an invariant failure raises
+  after the upkeep has committed. A price snapshot taken during the drift can see a mix of slots across
+  harbours.
+- **Review fixes (same day, PR #142 review; all re-proved on the cached PGlite world).**
+  - **The ledger is checked inside each step, before its COMMIT.** Before this, `assert_ledger_reconciles`
+    ran only at the end, after the merchants, companies and compactor had committed, so a step that broke
+    a purse was no longer undone. Now each merchant's step ends with her check, and the companies' step
+    with every `is_npc` player's check. A failing check rolls that step back alone and is counted
+    (`failed` + a note, `public.npc_step_failed`, the one shape of a failed step). The read-only
+    whole-world pass stays at the end. Driven committed: a trigger broke one merchant's purse on every
+    event she wrote. Her step reported `LEDGER RECONCILIATION FAILED … difference = 3` and rolled back
+    (purse 199,000 = ledger, her events unchanged at 5). Every other merchant committed (events 4,457 →
+    4,903), and the final pass checked 834 players OK.
+  - **The proofs compare only the probe's own writes.** The old §4 digest ran count(*) per table under
+    READ COMMITTED, so any player's commit between the two runs would have failed the push. It now
+    reads, per run, the run's own inserted/updated/deleted counts (`pg_stat_xact_all_tables`) and the md5
+    of the rows whose xmin is this backend's open transaction (`pg_xact_status = 'in progress'`). A
+    positive control proves the instrument sees a one-row write. The 12 merchants run as one pair each,
+    so a merchant's locks last for her two runs, not for all twelve.
+  - **§6 no longer locks the whole market.** It is proved on a bounded sample: 3 harbours / 1,665 rows
+    on the cached world, chosen for the most producing rows, the strongest works, the most short rows,
+    and the fewest/most rows, first/last. Only those rows are locked (FOR UPDATE, ctid order). The probe
+    moment T is at or before every row's slot and day, so the old whole-market body writes only the
+    sample, which its own-write count asserts. Six bent rows take both clamps, a row on its slot, a row
+    on its day, and regeneration below and up to target. Each per-harbour call must move exactly its
+    harbour's due rows.
+  - **`world.market` drifts its own quay only.** Before, it drifted the whole market on each first read
+    in a slot (~3,970 calls), which is the other side of the drift job's deadlocks (34/386 runs, 8.8 %).
+    The fix is one hunk sliced from the live body (`tick_market_drift(v_now)` →
+    `tick_market_drift(v_now, p_port)`), with reverse-to-original and ACL kept. Old vs new payloads are
+    equal at every sample harbour at T. Local PGlite, which has no pg_cron, now steps a harbour only when
+    its own quay is read.
+  - **The drift job skips a harbour that deadlocks (40P01) or times out on a lock (55P03).** It warns,
+    counts and goes on. Driven committed, with a trigger forcing 40P01 on HUA and 55P03 on TRO, because
+    PGlite is one session and cannot deadlock for real: both were warned and skipped, 76,791 drifted and
+    130,980 regenerated elsewhere, and the next run caught up both (867 drifted, 1,110 regenerated).
+  - **Mutants caught:** drift filter inverted, `k + 5000`, world.market drifting at T + 3 days, and an
+    extra world_config write with an unchanged receipt (caught by the own-write digest).
+  - **Push time.** The whole file takes ≈ 15 s on the cached PGlite world. On prod it is ESTIMATED at
+    30–90 s, NOT measured: 24 dear-work runs at ≈ 1.3 s, plus own-row scans. The sample harbours' rows
+    stay locked for ≈ 1–3 s at the end of the file.
+  - **Post-push checklist** (header): head 0137, both jobs `call …` and active after `wind_the_clock()`,
+    job_run_details succeeded (reconcile < 120 s, no drift deadlock failures), the overlap query, then
+    open a quay and trade. `select public.tick_reconcile()` no longer works; it is a procedure.
+  - **Rollback without a migration:**
+    `select cron.alter_job((select jobid from cron.job where jobname = 'byeharu-voyage:drift'), command := 'select public.tick_market_drift()')`
+    and `select cron.alter_job((select jobid from cron.job where jobname = 'byeharu-voyage:reconcile'), command := 'call public.tick_reconcile(false)')`.
+- **Expected on prod, not measured yet.** An overlapping sweep should wait at most one merchant step
+  (ms; about 1.3 s for a lap start) or one harbour's drift update (about 0.1 s). Re-run the
+  cron.job_run_details overlap query after the push.
+
 ## 2026-10-17 — 0136: a ranking reads the quay once (arrivals speed, step 2) — `osn-0136-arrivals-2`
 
 RESUME 2026-10-16/17 "Next": arrivals speed step 2, `port_offers` per row inside `trade_routes`, so that
