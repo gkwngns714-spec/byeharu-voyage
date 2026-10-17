@@ -31,13 +31,9 @@ import type { FleetView, HullMaterial, Refusal, YardHull } from '../../lib/rpc'
 // yard, watch the order refuse, and conclude the game is broken. So every material row prints what
 // is ashore HERE against what she wants.
 //
-// ── WHERE DRAFT LIVES NOW (docs/UI_DIRECTION.md §2 item 9) ─────────────────────────────────────
-// `DRAFT 5` was a badge in the port header, on every visit, deciding nothing: you are already
-// lying in the harbour you are reading. It appears HERE, and only when it refuses something — a
-// hull that draws more than this quay takes. That is not a rule invented on this side: the sailing
-// gate refuses a destination whose `max_draft` is under the DEEPEST hull in the fleet (migration
-// 0019:436-439), and a new hull joins the fleet that ordered her, so laying one down too deep for
-// this harbour shuts the whole fleet out of it.
+// ── NO DRAFT WARNING (0139) ────────────────────────────────────────────────────────────────────
+// Migration 0139 removed the E_DRAFT sailing gate: any hull enters any harbour, so a hull laid down
+// here can never be too deep for this quay, and the yard says nothing about depth.
 //
 // ── A BORDER THAT NEVER RENDERED ───────────────────────────────────────────────────────────────
 // The name box was `rounded border border-line bg-surface`. There has never been a `--color-line`
@@ -71,15 +67,12 @@ export function PortYard({
   portId,
   fleet,
   tier,
-  maxDraft,
 }: {
   portId: string
   /** A fleet of yours lying here, or null — a new hull joins the fleet that ordered her. */
   fleet: FleetView | null
   /** This city's building-yard tier, from the port's own building row. */
   tier: number
-  /** The deepest hull this harbour takes. Printed only where it refuses one. */
-  maxDraft: number
 }) {
   const { view, loading } = useBuildingYard(portId)
   const [open, setOpen] = useState<YardHull | null>(null)
@@ -114,7 +107,6 @@ export function PortYard({
   const here = view.hulls.filter((h) => !h.wrong_yard)
   const elsewhere = view.hulls.filter((h) => h.wrong_yard)
   const short = open ? shortfall(open) : null
-  const tooDeep = open !== null && open.draft > maxDraft
   const ready = open !== null && open.buildable && fleet !== null && short === null
 
   return (
@@ -191,12 +183,6 @@ export function PortYard({
           <Materials label="Materials" list={open.goods} />
           <Materials label="Parts" list={open.items} />
 
-          {/* THE REFUSAL DRAFT ACTUALLY MAKES, said where it is made. */}
-          {tooDeep && (
-            <Note tone="warning" data-testid="yard-draft">
-              {`It needs ${formatInt(open.draft)} of depth and this port only has ${formatInt(maxDraft)}. The fleet it joins could never sail back in.`}
-            </Note>
-          )}
           {open.wrong_yard && (
             <Note tone="warning" data-testid="yard-country">
               {open.wrong_yard}

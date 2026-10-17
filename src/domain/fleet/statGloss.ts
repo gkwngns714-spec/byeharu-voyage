@@ -24,10 +24,8 @@
 //           E_FLAGSHIP_DISABLED gate on SAIL (0007:375-377).
 //   guns    escort_score = Σ(guns + crew×0.02 + tier×3) — the game's whole combat number
 //           (0007:979, re-cut 0027:334-335; DESIGN B.6).
-//   draft   the deepest hull's draft against public.ports.max_draft — the E_DRAFT gate on SAIL
-//           (voyage.sail_refusal, re-cut 0050). The refusal now SERVES the two numbers as figures
-//           (port depth over hull draft), so nothing quotes its sentence here: a number in a
-//           comment is a liability the day the sentence changes, which is today.
+//   draft   how deep the hull sits. NO RULE READS IT since 0139, which removed the E_DRAFT gate on
+//           SAIL: any hull enters any harbour. Shown as a fact of the hull only.
 //   tier    the third term of the escort score (0007:979), and the catalogue's ladder (0009:97).
 //   build   ship_classes.build_hours — NO RULE READS IT. Table 0002:161 and the seed only;
 //           0021:50 states it: "There is no verb that adds a hull today."
@@ -96,7 +94,7 @@ export const SHIP_STATS = {
   draft: {
     term: 'draft',
     unit: null,
-    line: 'How deep the water must be. Each port has a depth limit — a fleet with a ship deeper than that cannot enter.',
+    line: 'How deep the hull sits in the water. Any ship can enter any port.',
   },
   build: {
     term: 'build',

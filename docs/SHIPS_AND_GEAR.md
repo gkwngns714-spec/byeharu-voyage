@@ -111,7 +111,7 @@ deferred to the economy plan.
 |---|---|---|---|
 | hold | `ship_classes.hold` | `world.ship_stat(ship,'hold')` 0074:224-263 → `public.ship_hold_capacity` (0074:271-280) | YES — cargo, stores, speed-by-load |
 | speed | `speed_kn` | `ship_stat('speed')` → `voyage.ship_speed` (0074:282-287) | YES — the mover |
-| draft | `draft` | `ship_stat('draft')` | YES — `voyage.sail_refusal` E_DRAFT |
+| draft | `draft` | `ship_stat('draft')` | NO since 0139 (the E_DRAFT gate was removed) — shown only |
 | durability | `durability` (max) | hull points on `ships.durability` | YES — speed floor, repair, raids |
 | handling | 0074 | `ship_stat('handling')` | NO rule reads it |
 | armour | 0074 | `ship_stat('armour')` | NO |

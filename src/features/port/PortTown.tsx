@@ -24,9 +24,8 @@ import { PORT_FACES, type PortFace } from './portView'
 //   THE BUILDING BLURBS.  `What this city keeps` printed `kind.does` — a sentence per building,
 //     naming what storage is to a player who is standing in it. The row is the building and the
 //     chevron opens its face, which is the same fact as a demonstration instead of a lecture.
-//   DRAFT.  It left the header with the badge and it is not a row here: it decides nothing at a
-//     port you are already docked in. It appears where it actually refuses something — the yard,
-//     on a hull too deep for this harbour (PortYard.tsx).
+//   DRAFT.  It left the header with the badge and it is not a row here. Since 0139 it refuses
+//     nothing anywhere: any hull enters any harbour.
 //
 // ── THE BUILDING'S WORD IS THE TAB'S WORD (owner rows 86 and 87) ──────────────────────────────
 // A building row prints the LABEL of the face it opens (`PORT_FACES`, the one client word map:

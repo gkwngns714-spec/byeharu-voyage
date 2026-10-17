@@ -28,7 +28,6 @@ export {
   fleetCrew,
   fleetHoldTotal,
   fleetHoldUsed,
-  fleetMaxDraft,
   // WHERE HER NEXT ORDER HAPPENS — the one answer, for the four places that spelt it out inline.
   fleetPortCode,
   fleetStatusTone,
