@@ -99,6 +99,19 @@ NEVER rebuild from scratch.** `docs/CI.md` opens with it.
   list, read by all three workflows as `cold` (build.yml runs the selector itself).
 - disposable-chain's budget 60 → 120: 50 min of wait + an exempt from-zero (51) + room. Job names
   unchanged. Not deployed anywhere: CI only.
+- **Proven on PR #149's own run** (job 117399569928): `choose` waited 12:46 → 13:11 for main's run
+  on the base, then `chosen: …ff9b80… — the longest kept prefix, 132 of this chain's 132 file(s); 0 to
+  apply on top` → `Cache restored from key: sbdb-v1-2.114.0-ff9b80…` → `usable=true prefix=132` →
+  `Starting database from backup...` → `restored database records 132 applied migration(s)`.
+- **Found by the same run, fixed here** (`tests/rpc.surface.spec.ts:1798`, the standing-route test;
+  shard 1/3 red: expected DOCKED, received SAILING, green on main's runs of the same code — a
+  non-deterministic proof, which is the finding). The test warps the fleet's voyage to `eta = a
+  minute ago` and expects her docked, but since 0125 her arrival is `voyage.arrival_at`: the
+  unresolved days are ROLLED (`voyage.hazard_roll`, pure in the voyage's id, which is new every run)
+  and a STORM or a CALM lands her after that minute. Reproduced locally: with the per-day hazard
+  probability forced to 1 the assertion fails 3 of 3 runs; with the ceiling `hazard_p_max` pinned to
+  0 (the chain's own idiom — 0034, 0036, 0037, 0075) it passes 3 of 3. The test now pins the ceiling
+  before the warp and restores it in `finally`; nothing it asserts is about the dice.
 
 ## 2026-10-17 — 0141: the quay says nothing about where a good grows — `osn-0141-no-native-tag`
 
