@@ -143,7 +143,15 @@ export function Tray({
       data-tray-detent={detent}
       style={{ height, transitionDuration: dragHeight !== null ? '0ms' : undefined }}
       className={[
-        mode === 'side-next' ? 'z-30' : 'z-40',
+        // THE LAYER ORDER OF THE TWO SIDE PANELS, the one place it is decided. From `lg` the second
+        // panel ('side-next') stands to the first's LEFT and one layer UNDER it, so it slides out
+        // from under the first's edge (traySideNextClass, `lg:bv-slide-out-left`). Below `lg`
+        // BOTH cover the whole width at the same right edge (traySideEdgeClass /
+        // traySideNextClass), so the layer alone decides which one is seen — and the one opened
+        // last must be on top, or a ship pressed in her fleet's tray opens behind it, invisible
+        // and unpressable (2026-10-18, every phone). Closing it gives the first panel back as it
+        // stood. tests/map.shipPanel.spec.ts asks the browser which panel a finger lands on.
+        mode === 'side-next' ? 'z-50 lg:z-30' : 'z-40',
         'flex flex-col overflow-hidden rounded-t-sheet bg-surface shadow-sheet',
         'transition-[height] duration-sheet ease-sheet',
         mode === 'side-next'
