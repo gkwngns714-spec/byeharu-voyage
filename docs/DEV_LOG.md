@@ -46,6 +46,33 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
   preset, the save door puts her cursor back on her stop and the render carries PROVISION DAYS n.
 - **Not done (the owner's):** the 89 hulls at durability 0 — no verb refloats a fleet and do_repair wants
   DOCKED; 69 loops have no shipyard and now write no repair at all.
+## 2026-10-17 — panning is smooth: the day/night edge is a CSS mask over composited pictures — `osn-smooth-pan`
+
+Owner: *"when moving map, it isn't smooth."* **Not deployed** (client only, no migration).
+- **Root cause, measured** (production build, Playwright + rAF intervals, 5 s drags): the soft terminator
+  (`DaylightMask`, an SVG `<mask>` whose image group was re-translated every frame to the game clock's Sun)
+  invalidated the paint of everything drawn through it, so every animation frame re-recorded the whole day
+  coast on the main thread. Headless 1280×844: 22–31 fps median, 41 long tasks up to 68 ms in 5 s; the same
+  drag with the mask held still: 60 fps, none. In headed Chrome on the GPU (144 Hz screen) main was
+  **6–9 fps at 1280×844 and 10 fps at 390×844, every frame 100–196 ms**.
+- **Fix**: `src/chart/DaylightSheet.tsx` replaces `DaylightMask.tsx` — the same raster as a CSS `mask-image`
+  (alpha, tiled per 360°, slid by `mask-position` each frame, placed in a layout effect on pan/zoom) over an
+  HTML sheet whose picture is its own compositor layer, so the glide repaints the mask and never the coast.
+  The day coast is `CoastlineLayer face="day"` on its own sheet over the night one inside the coast sheet;
+  the day sea is `DaySeaLayer` on a sheet over the view, with the graticule on its own svg after it. Same
+  sun (`sun.ts` via `gameSunInstantMs`), same twilight, same soft edge (globe screenshots of main and this
+  build taken back to back are the same picture).
+- **After** (headed, GPU): 1280×844 **143 fps median**, p95 7.5 ms; 390×844 **145 fps**. Headless (software
+  raster) full 12-minute game-day sweep at 1280×844: 50–60 fps median, except ~40 s when the view sat near
+  the antisolar meridian (26 fps).
+- **Still open**: the coast sheet re-base (`paperOf`, once per half glass of travel) re-rasterises the coast:
+  3–7 frames of 53–115 ms per 5 s of continuous fast dragging. The night coast alone costs 44–79 ms there,
+  so this is older than the mask. It needs tiled coast sheets, which is a separate slice.
+- Specs: map.lag (sun writes are now the day sheet's `style`; a re-base writes the viewBox of 2 pictures),
+  map.sun (masks counted as CSS masks), map.wrap (night and day `<use>`s counted apart). sun, lag, wrap,
+  atmosphere, marks, regions and chart.ink all pass locally.
+
+---
 
 ## 2026-10-17 — 0141: the quay says nothing about where a good grows — `osn-0141-no-native-tag`
 

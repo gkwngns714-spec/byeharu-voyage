@@ -13,7 +13,7 @@
 // own clock, which is what every player read before this file.
 //
 // Readers: the shell's ONE CLOCK (app/AppShell.tsx), the Sun (chart/useSunlight.ts) and the
-// daylight slide (chart/DaylightMask.tsx). The game clock and the Sun are pure functions of it
+// daylight slide (chart/DaylightSheet.tsx). The game clock and the Sun are pure functions of it
 // (lib/format gameTimeOfDayMs), so every player sees the same hour and the same day and night.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 

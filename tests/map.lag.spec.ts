@@ -135,20 +135,19 @@ for (const viewport of [
         w.__coastMut = { d: 0, other: 0, sun: 0 }
         // THE SUN'S SLIDE IS NOT THE PAN'S. Since PR #113 (owner, 2026-10-15: "right now the light
         // zone moves rigid. make it soft" — and kept at the owner's insistence when it was reverted)
-        // src/chart/DaylightMask.tsx sets ONE `transform` on the mask's slide group every animation
-        // frame, on the game clock, whether or not anything is dragged — and src/chart/useSunlight.ts
-        // re-draws the Sun's raster on its own timer (SUN_REFRESH_MS), which re-points the `href`
-        // of the mask's images (measured 2026-10-16: 3 such writes in a drag slowed by a busy
-        // machine, 0 in a quick one). Both are counted apart, and only those exact writes are set
-        // apart: any other attribute, or the same attribute anywhere else in the sheet, still
-        // counts against the pan.
-        const slide = sheet.querySelector('[data-testid="map-daylight-mask"] > g')
+        // the day picture is shown through the Sun's raster, slid to the game clock's Sun on every
+        // animation frame whether or not anything is dragged. Since 2026-10-17 that is a CSS mask
+        // on the day coast's own sheet (src/chart/DaylightSheet.tsx): ONE `style` write (its
+        // `mask-position`) per frame on that sheet's element, and the raster's re-draw on its own
+        // timer (src/chart/useSunlight.ts, SUN_REFRESH_MS) re-points its `mask-image` there too.
+        // Both are counted apart, and only those exact writes are set apart: any other attribute,
+        // or a style write anywhere else in the sheet, still counts against the pan.
         w.__coastMo = new MutationObserver((list) => {
           for (const m of list) {
             if (m.target === sheet) continue // the sheet's own translate — the one thing a pan changes
+            const daylight = m.target instanceof Element && m.target.matches('[data-testid="map-daylight-mask"]')
             if (m.attributeName === 'd') w.__coastMut.d += 1
-            else if (slide !== null && m.target === slide && m.attributeName === 'transform') w.__coastMut.sun += 1
-            else if (slide !== null && m.attributeName === 'href' && (m.target as Element).parentNode === slide) w.__coastMut.sun += 1
+            else if (daylight && m.attributeName === 'style') w.__coastMut.sun += 1
             else w.__coastMut.other += 1
           }
         })
@@ -181,8 +180,9 @@ for (const viewport of [
       expect(views.size, 'the view itself moved on (nearly) every step').toBeGreaterThanOrEqual(15)
       expect(papers.size, 'the coast sheet was re-based more than once in a fifth of a glass').toBeLessThanOrEqual(2)
       expect(mut.d, 'a pan rewrote the coast path data').toBe(0)
-      // At most one re-base: the sheet svg's viewBox, and nothing else inside the sheet.
-      expect(mut.other).toBeLessThanOrEqual(1)
+      // At most one re-base: the viewBox of the sheet's two pictures (the night coast and, since
+      // 2026-10-17, the day coast on its own sheet over it), and nothing else inside the sheet.
+      expect(mut.other).toBeLessThanOrEqual(2)
 
       // A zoom draws the coast over the view alone, then settles to the wide sheet.
       // READ IN THE PAGE, FRAME BY FRAME (2026-10-16). Since #113 a press GLIDES (~0.4 s) and the
