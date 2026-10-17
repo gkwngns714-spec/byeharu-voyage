@@ -5,6 +5,24 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — 0140: the Mughal capital is Karachi — `osn-0140-mughal-capital`
+
+**The owner decided:** Mughal India's capital moves from Surat to Karachi. 0130 gave Surat to Gujarat,
+so MUG's capital sat in another country; the owner asked for the best pick. Mughal India holds two
+harbours, both size 2: Karachi (dev 6/9/4 = 19) and Chittagong (4/9/4 = 17); Karachi is the more developed
+and on the Arabian Sea routes. Surat stays Gujarat's (it is Gujarat's only tier-3 yard). **Not deployed**
+(prod head 0139).
+- **Every reader of a capital**: `public.nations.capital_port_code` (0002, seeded 0003 / 0130); on prod
+  only `world.snapshot` reads it (serves `nations[].capital`, printed by the compendium's NationsFace);
+  `world-derive.mjs` CAPITALS (the generator) and `world-guard.mjs` (holds the DB to it);
+  `roster/world-facts.mjs`, `build-npc-0098/0105.mjs` read it for reports only. No house, fleet, officer or
+  yard is placed by a capital (`new_house` / `found_house` take the harbour), so nothing moves and no
+  player asset is touched. The other 22 nations were checked on prod: each capital is already a harbour of
+  its own nation; MUG was the only mismatch.
+- **0140**: one row, MUG `SRT` → `KAR`; `world-derive.mjs` CAPITALS `MUG: 'karachi'`. Self-assert: MUG = KAR,
+  KAR is a Mughal harbour, every capital is a harbour of its own nation, every other nation row equals
+  its pre-image, `world.snapshot` serves MUG → KAR. The world guard holds it.
+
 ## 2026-10-17 — 0139: any hull enters any harbour — `osn-0139-no-draft-gate`
 
 Owner, in chat: *remove the draft restriction entirely — any hull may enter any harbour.* **Not deployed**

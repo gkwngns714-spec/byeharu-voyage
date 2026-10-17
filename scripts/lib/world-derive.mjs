@@ -431,9 +431,12 @@ const NATION_OVERRIDE = {
 const CAPITALS = {
   ENG: 'london', NLD: 'amsterdam', DNK: 'copenhagen', SWE: 'stockholm', POL: 'gdansk',
   RUS: 'arkhangelsk', HAN: 'hamburg', VEN: 'venice', GEN: 'genoa', OTT: 'istanbul',
-  PER: 'bandar-abbas', MAR: 'safi', MUG: 'surat', MNG: 'guangzhou', JPN: 'sakai',
+  PER: 'bandar-abbas', MAR: 'safi', MUG: 'karachi', MNG: 'guangzhou', JPN: 'sakai',
   JOS: 'busan', AYU: 'ayutthaya',
   GUJ: 'khambhat', MLB: 'kozhikode', BAN: 'banten', // 0130: Cambay was Gujarat's great port in 1550; Calicut the Zamorin's seat
+  // 0140 (the owner's decision, 2026-10-17): Mughal India's capital is Karachi. It was Surat (0003),
+  // but 0130 gave Surat to Gujarat, so the capital sat in another country. Karachi is the more
+  // developed of Mughal India's two harbours (19 against Chittagong's 17) and on the Arabian Sea.
 }
 
 // ── PORTS: the derived columns ────────────────────────────────────────────────────────────────

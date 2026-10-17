@@ -189,7 +189,8 @@ moves; `ports.yard_tier` (the repair yard, 0067) is untouched.
 (Kozhikode, Kochi, Kannur, Kollam, Mangaluru), `BAN` Banten (Jakarta, Banten). They held these ports
 in 1550 as plainly as the twenty already seeded (`world-derive.mjs` NATIONS comment: "a port is given
 a nation only where one of these plainly held it"). Side effect, said plainly: the inn's weighting
-toward an officer's own nation (0119:11-13) sees these ports as national for the first time.
+toward an officer's own nation (0119:11-13) sees these ports as national for the first time. Surat going to Gujarat left
+Mughal India's capital (SRT) in another country; the owner decided it moves to Karachi (0140).
 
 ---
 
