@@ -377,6 +377,19 @@ batil's labour is 5,000 (2,400 × 2.5 × 0.85, rounded to 500 as every other hul
 | `sjb` | San Juan Bautista | JPN | heavy | explorer | F | 360 | 5.5 | 80/207 | 2,300 | 3 | 2/8/2/2 | 78 · 167 | 64/32/110/60/57/23 | 184,000 | timber 585, tar 77, iron 123, lignum-vitae 28, sea-charts 2 (≈44,700) | ≈228,700 | 3 |
 | `geobuk` | Geobukseon (turtle ship) | KOR | medium | combat | F | 270 | 4.8 | 99/242 | 2,640 | 3 | 5/5/1/2 | 71 · 192 | 56/54/260/70/72/15 | 136,000 | timber 418, tar 55, iron 88, lignum-vitae 20, sea-charts 2 (≈32,700) | ≈168,700 | 3 |
 
+**As built (S17, 0166, `scripts/build-ships.mjs` + `scripts/build-gear.mjs` — the generators are the authority):** the
+table's stats, crews, hulls, drafts and racks are the generator's to the digit (one famous uplift by role — §4.3's rows
+measured, written in the generator; the heavy explorer archetype solved from `sjb`). What differs, and the world holds
+the generator's: **deck** follows T2's one rule (+ the added rack's deck × size), so the four trade flagships are 156
+(not 158), the combat flagship 168 (not 172), the two combat capitals 130 (not 132) and the Golden Hind 24 (not 26);
+**goods and labour** — × 2.2 of every template but the light one exceeds the biggest shed (750 t), so ten of the eleven
+are scaled to fit (sea charts floored to 1, never to nothing) and the value moved into labour (0072 (d), not
+loosened): madre 691,500, sanmartin 839,500, batavia 175,000, couronne 449,500, duodo 468,500, turgut 140,000, rahimi
+612,500, baochuan 598,000, sjb 198,000, geobuk 138,000; the Golden Hind is the table's (29,500, 429 t). Each famous
+ship's recipe also holds ONE fitting, her famous gear (§6.2's Famous rung, `hull_recipe_items`): Madre de Deus Holds,
+San Martín Tercio Arms, Batavia Double Planking, Drake's Culverins, La Couronne Battery, Duodo Bow Guns, Turgut Reis
+Swivels, Rahimi Pilgrim Holds, Zheng He Bulkheads, Date Masamune Charts, Dragon-head Cannon.
+
 **The shed (S14, 0138, 0072 (d) not loosened):** a flagship's size template (medium × 3) wants 1,071 t and the
 biggest shed in the world holds 750 t (a tier-5 warehouse; every tier-3 yard city has one), so the four flagships'
 goods are scaled to fit (floored, 749 t) and the value taken out (≈ market) moved into the yard labour, rounded up
@@ -817,7 +830,7 @@ done step by step), and the arrivals-tick read cost timed before/after like 0127
 | **S14** Wave B: 15 capitals & flagships (**0138**, built: 15 hulls, 56 requirement rows, the four flagships shed-capped — §4.3) | rows + recipes + requirements (Command, Fleet Command) | as S12; plus 0072 (d) "fits in the shed" — if a flagship's goods exceed the shed, goods are capped to the shed and the difference moves into labour (never loosen the assert) | — | delete rows | silhouettes for size 5-6 |
 | **S15** Wave C: 22 T2 hulls + T2 & Named gear (**0159**, LIVE and dark since 2026-10-18 — `docs/dev-log/2026-10-18-s15-wave-c.md`; 22 T2 hulls, 22 T2 modules, 12 Named items in `public.item_city`) | T2 hulls, 22 T2 modules, ~12 Named items, the 10 specialisation skills' requirement rows | as S12; T2 requirements refuse with figures; Named items makeable only at their city | — | delete rows | "T2" badge |
 | **S16** Gear III: perks, Country gear, sets (**0163** provisional, built 2026-10-18, not deployed — `docs/dev-log/2026-10-18-s16-perks-sets.md`; 44 Country items, 4 kits, 10 perks, 11 sets, `cmd.augment_fitting`) | kits; `cmd.augment_fitting` (+1 entry point); perks on units; 44 Country items; 11 sets with a set term in `ship_stats` | a probe unit takes a chosen perk and loses it on unmount; set bonus appears at 2 and 4 pieces only; perks/sets absent → pre-image | `perks_max_per_unit` 2 | delete rows; re-cut the hunk out | perk picker; set progress on the ship panel |
-| **S17** Wave D: 11 famous ships | rows; famous gear as `hull_recipe_items`; one-per-house check in the `do_build` door | a second famous of the same code refused for a probe house | — | delete rows | "Famous" badge and the ship's history line |
+| **S17** Wave D: 11 famous ships (**0166** provisional, built 2026-10-18, not deployed — `docs/dev-log/2026-10-18-s17-famous-ships.md`; 11 famous hulls, 11 pieces of famous gear, one of each to a house through `public.famous_held`) | rows; famous gear as `hull_recipe_items`; one-per-house check in the `do_build` door | a second famous of the same code refused for a probe house | — | delete rows | "Famous" badge and the ship's history line |
 | **S18** Merchants of every flag | `npc_found` picks a line hull by home port nation; a one-time conversion of existing merchant hulls to their line's hull nearest in hold (±10 %) and speed; merchant hull skills fixed once via `raise_skill`; G1 patterns for new classes in `data/npc-loadouts.json` | merchant fleet hold within ±10 % and speed within ±5 % of pre-image per fleet; no player row touched; no merchant queue rows; zero-net lap share and arrivals duration measured before/after (the 0120 method) | — | reverse conversion from the printed pre-image | the sea shows Dutch fluits in the Baltic, junks off China |
 
 SHIPS_AND_GEAR's **S4** (combat stats bite) stays where it was; actives (§6.1) and armour/attack from

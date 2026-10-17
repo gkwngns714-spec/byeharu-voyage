@@ -73,7 +73,7 @@ import { readFileSync } from 'node:fs'
 // 0135 / 0138: the generated hulls (scripts/build-ships.mjs, Waves A + B), read from the file the
 // migrations were made from.
 const generated = JSON.parse(readFileSync(new URL('../data/ships.generated.json', import.meta.url), 'utf8')) as {
-  hulls: unknown[]
+  hulls: { size: number }[]
 }
 
 let db: LocalDb
@@ -109,10 +109,16 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   expect(snap.goods.length).toBeGreaterThan(20)
   // 0135 (S12 Wave A) + 0138 (S14 Wave B): the three Lisbon hulls plus the generated ones
   // (data/ships.generated.json) — counted from the generator's file, not remembered — each served with
-  // its line, size, role, tech; the capitals and flagships among them at sizes 5 and 6.
+  // its line, size, role, tech; the capitals and flagships among them at sizes 5 and 6 — counted from the
+  // same file (0166, S17, added two famous capitals and four famous flagships), and never none of either.
   expect(snap.ship_classes).toHaveLength(3 + generated.hulls.length)
-  expect(snap.ship_classes.filter((c) => c.size === 5)).toHaveLength(11)
-  expect(snap.ship_classes.filter((c) => c.size === 6)).toHaveLength(4)
+  const atSize = (n: number) => generated.hulls.filter((h) => h.size === n).length
+  expect(atSize(5)).toBeGreaterThan(0)
+  expect(atSize(6)).toBeGreaterThan(0)
+  expect(snap.ship_classes.filter((c) => c.size === 5)).toHaveLength(atSize(5))
+  expect(snap.ship_classes.filter((c) => c.size === 6)).toHaveLength(atSize(6))
+  // 0166: the famous ships ride the snapshot with tech F, one a line
+  expect(new Set(snap.ship_classes.filter((c) => c.tech === 'F').map((c) => c.line)).size).toBe(11)
   for (const c of snap.ship_classes) {
     expect(isStr(c.line) && isNum(c.size) && isStr(c.role) && isStr(c.tech), c.code).toBe(true)
   }

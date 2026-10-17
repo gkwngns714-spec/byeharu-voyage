@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// build-ships.mjs — WAVES A + B + C: the 89 hulls of docs/SHIPS_AND_SKILLS.md §4.3, generated
+// build-ships.mjs — WAVES A + B + C + D: the 100 hulls of docs/SHIPS_AND_SKILLS.md §4.3, generated
 //                   (S12 Wave A, 52 T1 hulls, 0135; S14 Wave B, 15 T1 capitals and flagships, 0138;
-//                    S15 Wave C, 22 T2 hulls, 0159)
+//                    S15 Wave C, 22 T2 hulls, 0159; S17 Wave D, 11 famous ships, 0166)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // THE METHOD (§4.2): ONE archetype table (size × role — the Portuguese values) × ONE line table
@@ -47,16 +47,31 @@
 // 10, +3 a size from heavy (13). Measured against the 22 rows of §4.3 Wave C; the cells the rows and the
 // rule disagree on are listed in the S15 PR, not special-cased here.
 //
+// FAMOUS (S17 Wave D, §4.1 "famous (F)", one per house): the archetype's (size, role) hull with ONE uplift
+// keyed by role (TECH.F below), measured against the 11 rows of §4.3 Wave D the same way: every famous hull
+// is 3 % faster (speed × 1.03 inside the product); trade hold × 1.25, hull × 1.15, attack × 1.10, handling +2,
+// armour +6, sighting +1, +1 Low; combat attack × 1.40, hull × 1.20, handling +4, armour +10, accuracy +8,
+// sighting +1, +1 High; explorer speed × 1.06 more, hull × 1.10, handling +10, armour +2, accuracy +4,
+// sighting +5, +1 Mid. Deck: T2's one rule (+ the added rack's deck × size). Labour × 4; goods = the size
+// template × 2.2 with lignum vitae (9 a medium template, × the template's size factor) and sea charts 2
+// (§4.1 "lignum vitae + sea charts"); then THE SHED. Its FITTING is its famous gear — one piece, made at a
+// tier-3 workshop (scripts/build-gear.mjs FAMOUS, which names the hull: the one home of the link), spent from
+// the yard city's store when she is laid down (0072's hull_recipe_items; §8 S17). Needs the line's ⟨size⟩
+// Hulls V + Famous Ships I + the role's T2 specialisation III (§4.4); ONE OF EACH TO A HOUSE is
+// public.famous_held, read by cmd.do_build and world.building_yard (0166). The heavy EXPLORER archetype is
+// solved from the San Juan Bautista row (no T1 hull is built from it). Cells of the drafted table the rule
+// does not give are listed in the S17 PR and under the table in §4.3, not special-cased here.
+//
 // IT FITS IN THE SHED (0072 (d), §8 S14 — never loosened): a hull's goods come out of ONE warehouse
 // in the yard's city, and the biggest shed in the world holds SHED_TUNS. A capital's size template
 // (medium × 2) fits; a flagship's (medium × 3) does not. So where a hull's goods exceed the shed,
-// every quantity is scaled down to fit (floored, the template's proportions kept) and the value of
+// every quantity is scaled down to fit (floored but never below 1 — a famous hull's 2 sea charts — the template's proportions kept) and the value of
 // what was taken out — each good at the middle of its baseValue band, data/goods.json, the "≈ market"
 // of §4.2 — moves into the yard's labour (rounded UP to 500, so the all-in price never falls). The
 // hull costs what it cost; more of it is paid to the yard and less is carried to the shed.
 //
-// WAVE (`wave` on each row): A = 0135's 52, B = 0138's 15, C = 0159's 22. `--sql A` / `--sql B` /
-// `--sql C` print the VALUES of one wave — the rows that wave's migration pasted.
+// WAVE (`wave` on each row): A = 0135's 52, B = 0138's 15, C = 0159's 22, D = 0166's 11. `--sql A` /
+// `--sql B` / `--sql C` / `--sql D` print the VALUES of one wave — the rows that wave's migration pasted.
 //
 // RUN:   node scripts/build-ships.mjs           writes data/ships.generated.json
 //        node scripts/build-ships.mjs --check   fails if the file is not what the generator gives
@@ -66,6 +81,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { FAMOUS } from './build-gear.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const readJson = (rel) => JSON.parse(readFileSync(join(ROOT, rel), 'utf8'))
@@ -98,15 +114,30 @@ const ROLE_T2_SKILL = { trade: 'ARMED_MERCHANT', combat: 'PRIVATEERS', explorer:
  *  Wave C). `mult` goes into the product before the one rounding; `add` is added after the line's; `rack`
  *  is the one rack that gains a slot and `rackDeck` the deck that slot brings per size. T1 is the identity. */
 const NO_UPLIFT = { mult: {}, add: {}, rack: null, rackDeck: 0 }
+/** A medium template's lignum vitae for a famous hull (§4.1), and each size's template factor (TEMPLATES below). */
+const FAMOUS_LIGNUM = 9
+const TEMPLATE_FACTOR = { 1: 1, 2: 1, 3: 1, 4: 1.4, 5: 2, 6: 3 }
+const FAMOUS_SPEED = 1.03
+/** `extra(size)` = the goods the tech adds to the template AFTER its factor (copper sheet, sea charts) and
+ *  `scaled(size)` = goods it adds BEFORE it (a famous hull's lignum vitae rides with the template). */
 export const TECH = {
-  T1: { labour: 1, goods: 1, copperSheet: () => 0, role: { trade: NO_UPLIFT, combat: NO_UPLIFT, explorer: NO_UPLIFT, support: NO_UPLIFT } },
+  T1: { labour: 1, goods: 1, scaled: () => [], extra: () => [], role: { trade: NO_UPLIFT, combat: NO_UPLIFT, explorer: NO_UPLIFT, support: NO_UPLIFT } },
   T2: {
-    labour: 2.5, goods: 1.6, copperSheet: (size) => 10 + 3 * Math.max(0, size - 3),
+    labour: 2.5, goods: 1.6, scaled: () => [], extra: (size) => [['copper-sheet', 10 + 3 * Math.max(0, size - 3)]],
     role: {
       trade:    { mult: { hold: 1.15, hull: 1.10 },  add: { armour: 4 },                         rack: 'low',  rackDeck: 3 },
       combat:   { mult: { attack: 1.25, hull: 1.10 }, add: { armour: 6, accuracy: 4 },           rack: 'high', rackDeck: 3 },
       explorer: { mult: { speed: 1.06 },             add: { handling: 6, sighting: 3 },          rack: 'mid',  rackDeck: 1 },
       support:  { mult: { hull: 1.20 },              add: {},                                    rack: 'low',  rackDeck: 3 },
+    },
+  },
+  // S17 (§4.1 famous, measured against §4.3 Wave D). No famous ship is a support hull.
+  F: {
+    labour: 4, goods: 2.2, scaled: (size) => [['lignum-vitae', FAMOUS_LIGNUM * TEMPLATE_FACTOR[size]]], extra: () => [['sea-charts', 2]],
+    role: {
+      trade:    { mult: { hold: 1.25, hull: 1.15, attack: 1.10, speed: FAMOUS_SPEED }, add: { handling: 2, armour: 6, sighting: 1 },               rack: 'low',  rackDeck: 3 },
+      combat:   { mult: { attack: 1.40, hull: 1.20, speed: FAMOUS_SPEED },             add: { handling: 4, armour: 10, accuracy: 8, sighting: 1 }, rack: 'high', rackDeck: 3 },
+      explorer: { mult: { speed: FAMOUS_SPEED * 1.06, hull: 1.10 },                    add: { handling: 10, armour: 2, accuracy: 4, sighting: 5 }, rack: 'mid',  rackDeck: 1 },
     },
   },
 }
@@ -139,6 +170,11 @@ export const ARCHETYPES = {
   // 180 / 1.15 → 160, deck 89 − 12, racks 4/6/3/2 − the T2 Low). No T1 hull is built from them yet.
   '3/support':  { hold: 280,  speed: 4.8, crewReq: 70,  crewMax: 180, hull: 1700, draft: 3, handling: 52, armour: 34, attack: 100, accuracy: 55, reach: 60, sighting: 14, deck: 57,  racks: [3, 5, 2, 2], labour: 30000 },
   '4/support':  { hold: 480,  speed: 4.5, crewReq: 100, crewMax: 260, hull: 2700, draft: 4, handling: 44, armour: 44, attack: 160, accuracy: 60, reach: 70, sighting: 14, deck: 77,  racks: [4, 6, 2, 2], labour: 52000 },
+  // Wave D (S17, 0166) — the heavy EXPLORER archetype, solved from §4.3's San Juan Bautista row through the
+  // JPN line and TECH.F (360 / 0.9 → 400, 5.5 / 1.0918 → 5.0, 80 / 1.15 → 70, 207 / 1.15 → 180, 2,300 / 0.95
+  // / 1.1 → 2,200, handling 64 − 4 − 10, armour 32 − 2 − 2, attack 110 / 1.1, accuracy 60 − 6 − 4, reach 57 + 8,
+  // sighting 23 − 1 − 5, deck 78 − 4, racks 2/8/2/2 − the famous Mid, labour 184,000 / 4). No T1 hull is built from it.
+  '4/explorer': { hold: 400,  speed: 5.0, crewReq: 70,  crewMax: 180, hull: 2200, draft: 3, handling: 50, armour: 28, attack: 100, accuracy: 50, reach: 65, sighting: 17, deck: 74,  racks: [2, 7, 2, 2], labour: 46000 },
 }
 
 /** Each line's yard-labour factor (what its yards charge against Lisbon's) and its goods substitutions. */
@@ -269,6 +305,22 @@ export const WAVE_C = [
   ['bangpae',    'Bangpaeseon',           'KOR', 3, 'combat',   'oared',  'A Joseon warship with a shielded upper deck, the forerunner of the panokseon.'],
 ]
 
+/** THE 11 (§4.3 Wave D, S17, 0166): the famous ships — one per line, one of each to a house. Same columns as
+ *  WAVE_A; the note is the ship's history line (the build yard prints it under her name). */
+export const WAVE_D = [
+  ['madre',      'Madre de Deus',             'PRT', 6, 'trade',    'square', 'The great Portuguese carrack taken by the English off the Azores in 1592, the richest prize ever brought into an English port.'],
+  ['sanmartin',  'San Martín',                'ESP', 6, 'combat',   'square', 'The flagship of the Duke of Medina Sidonia in the Armada of 1588, which fought through the Channel and came home.'],
+  ['batavia',    'Batavia',                   'NLD', 4, 'trade',    'square', 'The Dutch East India Company ship wrecked on the Abrolhos reefs off Australia on her maiden voyage in 1629.'],
+  ['goldenhind', 'Golden Hind',               'ENG', 2, 'explorer', 'mixed',  'The galleon in which Francis Drake sailed round the world between 1577 and 1580, the second ship ever to do it.'],
+  ['couronne',   'La Couronne',               'FRA', 5, 'combat',   'square', 'The first great French ship of the line, built at La Roche-Bernard for Richelieu in 1636.'],
+  ['duodo',      'Galeazza di Duodo',         'ITA', 5, 'combat',   'oared',  "The Venetian galleass of Francesco Duodo's squadron, whose guns broke the Ottoman line at Lepanto in 1571."],
+  ['turgut',     "Turgut Reis's Kadırga",     'OTT', 3, 'combat',   'oared',  'The war galley of Turgut Reis, the corsair admiral who raided the Christian coasts and fell at the siege of Malta in 1565.'],
+  ['rahimi',     'Rahimi',                    'IND', 6, 'trade',    'mixed',  "The great pilgrim ship of the Mughal queen mother, the largest ship of the Red Sea trade until the Portuguese burned it in 1614."],
+  ['baochuan',   'Baochuan (treasure ship)',  'CHN', 6, 'trade',    'lateen', "A treasure ship of Zheng He's fleets, which sailed from Nanjing to India, Arabia and Africa between 1405 and 1433."],
+  ['sjb',        'San Juan Bautista',         'JPN', 4, 'explorer', 'square', 'The galleon Date Masamune built in 1613 to carry Hasekura Tsunenaga across the Pacific to Acapulco, and on to Rome.'],
+  ['geobuk',     'Geobukseon (turtle ship)',  'KOR', 3, 'combat',   'oared',  "Yi Sun-sin's turtle ship, its back plated and spiked against boarders, which led the Joseon fleet against Japan in 1592."],
+]
+
 /** The live three, as 0003:2089-2091 + data/ship_stats.json rate them — the anchors. */
 const LIVE_ANCHORS = {
   barca:  { key: '1/trade',    hold: 60,  speed: 5.0, crewReq: 8,  crewMax: 20,  hull: 400,  draft: 1, guns: 0 },
@@ -309,12 +361,11 @@ function hullOf(archetype, line, size, up = NO_UPLIFT) {
  *  (merged, first appearance first), then the tech's copper sheet. */
 function goodsOf(size, subs, tech) {
   const out = new Map()
-  for (const [g, q] of TEMPLATES[size]) {
+  for (const [g, q] of [...TEMPLATES[size], ...tech.scaled(size)]) {
     const s = subs[g] ?? g
     out.set(s, (out.get(s) ?? 0) + roundHalfEven(q * tech.goods))
   }
-  const copper = tech.copperSheet(size)
-  if (copper > 0) out.set('copper-sheet', (out.get('copper-sheet') ?? 0) + copper)
+  for (const [g, q] of tech.extra(size)) out.set(g, (out.get(g) ?? 0) + q)
   return [...out].map(([g, qty]) => ({ in: g, qty }))
 }
 
@@ -324,7 +375,7 @@ function shedFit(goodsList, bulk, mid) {
   const tons = tonsOf(goodsList)
   if (tons <= SHED_TUNS + 1e-9) return { goods: goodsList, moved: 0, tons: Number(tons.toFixed(3)) }
   const f = SHED_TUNS / tons
-  const capped = goodsList.map((g) => ({ in: g.in, qty: Math.floor(g.qty * f) }))
+  const capped = goodsList.map((g) => ({ in: g.in, qty: Math.max(1, Math.floor(g.qty * f)) }))   // S17: never floored to nothing
   const moved = goodsList.reduce((v, g, i) => v + (g.qty - capped[i].qty) * mid.get(g.in), 0)
   const after = tonsOf(capped)
   if (after > SHED_TUNS + 1e-9) throw new Error(`shed: capped goods are ${after} t, over ${SHED_TUNS}`)
@@ -334,6 +385,7 @@ function shedFit(goodsList, bulk, mid) {
 function requirementsOf(line, size, role, tech) {
   const sk = (s) => `${line}_${SIZE_WORD[s].toUpperCase()}`
   if (tech === 'T2') return [{ skill: sk(size), level: 5 }, { skill: ROLE_T2_SKILL[role], level: 1 }]
+  if (tech === 'F') return [{ skill: sk(size), level: 5 }, { skill: 'FAMOUS_SHIPS', level: 1 }, { skill: ROLE_T2_SKILL[role], level: 3 }]
   if (tech !== 'T1') throw new Error(`requirementsOf: tech ${tech}`)
   if (size === 1) return [{ skill: sk(1), level: 1 }]
   if (size === 2) return [{ skill: sk(1), level: 3 }, { skill: sk(2), level: 1 }]
@@ -379,7 +431,14 @@ export function generateShips() {
   }
 
   const seen = new Set(Object.keys(LIVE_ANCHORS))
-  const waves = [...WAVE_A.map((h) => ['A', 'T1', ...h]), ...WAVE_B.map((h) => ['B', 'T1', ...h]), ...WAVE_C.map((h) => ['C', 'T2', ...h])]
+  const waves = [...WAVE_A.map((h) => ['A', 'T1', ...h]), ...WAVE_B.map((h) => ['B', 'T1', ...h]), ...WAVE_C.map((h) => ['C', 'T2', ...h]),
+    ...WAVE_D.map((h) => ['D', 'F', ...h])]
+  // S17: a famous hull's fitting is its famous gear (scripts/build-gear.mjs FAMOUS names the hull), one piece
+  const famousGear = new Map()
+  for (const [item, , hull] of FAMOUS) {
+    if (famousGear.has(hull)) throw new Error(`${hull}: two famous pieces name it`)
+    famousGear.set(hull, item)
+  }
   const hulls = waves.map(([wave, tech, code, name, lineCode, size, role, rig, note]) => {
     const key = `${size}/${role}`
     const a = ARCHETYPES[key]
@@ -400,6 +459,8 @@ export function generateShips() {
     for (const g of goodsList) if (!goods.has(g.in)) throw new Error(`${code}: good ${g.in} is not in data/goods.json`)
     const requirements = requirementsOf(lineCode, size, role, tech)
     for (const r of requirements) if (!skills.has(r.skill)) throw new Error(`${code}: skill ${r.skill} is not in data/skills.json`)
+    if ((tech === 'F') !== famousGear.has(code)) throw new Error(`${code}: a famous hull has exactly one famous piece, and no other hull has one`)
+    const items = tech === 'F' ? [{ in: famousGear.get(code), qty: 1 }] : []
     return {
       wave, class: code, name, line: lineCode, size, role, tech, anyYard: false,
       family: yard.family, rig, tier: Math.min(size, 5),
@@ -407,22 +468,26 @@ export function generateShips() {
       guns: h.attack / 10, draft: h.draft, buildHours: SIZE_BUILD_HOURS[size], buildCost: ducats * 4,
       handling: h.handling, armour: h.armour, attack: h.attack, accuracy: h.accuracy, reach: h.reach, sighting: h.sighting,
       deck: h.deck, hands: h.crewMax - Math.ceil(h.crewRequired / 2), racks: h.racks, cabins: SIZE_CABINS[size],
-      yardTier: SIZE_YARD_TIER[size], ducats, shedLabour: shed.moved, tons: shed.tons, note, goods: goodsList, requirements,
+      yardTier: SIZE_YARD_TIER[size], ducats, shedLabour: shed.moved, tons: shed.tons, note, goods: goodsList, items, requirements,
     }
   })
+  for (const hull of famousGear.keys()) if (!seen.has(hull)) throw new Error(`famous piece names ${hull}, which is no hull`)
   const nA = hulls.filter((h) => h.wave === 'A').length
   const nB = hulls.filter((h) => h.wave === 'B').length
   const nC = hulls.filter((h) => h.wave === 'C').length
   if (nA !== 52) throw new Error(`Wave A is 52 hulls; the list has ${nA}`)
   if (nB !== 15) throw new Error(`Wave B is 15 hulls; the list has ${nB}`)
   if (nC !== 22) throw new Error(`Wave C is 22 hulls; the list has ${nC}`)
+  const nD = hulls.filter((h) => h.wave === 'D').length
+  if (nD !== 11) throw new Error(`Wave D is 11 hulls; the list has ${nD}`)
+  if (new Set(WAVE_D.map((h) => h[2])).size !== 11) throw new Error('Wave D is one famous ship per line')
   for (const h of hulls) if (h.tons > SHED_TUNS) throw new Error(`${h.class}: ${h.tons} t does not fit the shed`)
-  return { _: 'GENERATED by scripts/build-ships.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §4.2; S12 Wave A, migration 0135; S14 Wave B, migration 0138; S15 Wave C, migration 0159).', hulls }
+  return { _: 'GENERATED by scripts/build-ships.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §4.2; S12 Wave A, migration 0135; S14 Wave B, migration 0138; S15 Wave C, migration 0159; S17 Wave D, migration 0166).', hulls }
 }
 
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`
 
-/** The SQL VALUES a wave's migration loads (`--sql A` → 0135, `--sql B` → 0138, `--sql C` → 0159): pasted into the file verbatim, and the world guard holds
+/** The SQL VALUES a wave's migration loads (`--sql A` → 0135, `--sql B` → 0138, `--sql C` → 0159, `--sql D` → 0166): pasted into the file verbatim, and the world guard holds
  *  the database to generateShips() on every apply, so the file and the generator cannot drift apart. */
 export function shipsSql(gen = generateShips(), wave = 'A') {
   const H = gen.hulls.filter((h) => h.wave === wave)
@@ -440,6 +505,8 @@ export function shipsSql(gen = generateShips(), wave = 'A') {
     rows(H.map((h) => `  (${q(h.class)}, ${h.yardTier}, ${h.ducats}, ${q(h.note)})`)),
     '-- hull_recipe_goods (by good code)',
     rows(H.flatMap((h) => h.goods.map((g) => `  (${q(h.class)}, ${q(g.in)}, ${g.qty})`))),
+    ...(H.some((h) => h.items.length) ? ['-- hull_recipe_items (S17: the famous gear)',
+      rows(H.flatMap((h) => h.items.map((i) => `  (${q(h.class)}, ${q(i.in)}, ${i.qty})`)))] : []),
     '-- skill_requirements (hull)',
     rows(H.flatMap((h) => h.requirements.map((r) => `  ('hull', ${q(h.class)}, ${q(r.skill)}, ${r.level})`))),
   ].join('\n')
@@ -449,14 +516,14 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/bui
   const text = JSON.stringify(generateShips(), null, 1) + '\n'
   if (process.argv.includes('--sql')) {
     const wave = process.argv[process.argv.indexOf('--sql') + 1]
-    if (!['A', 'B', 'C'].includes(wave)) { console.error(`--sql takes A, B or C (got ${wave})`); process.exit(1) }
+    if (!['A', 'B', 'C', 'D'].includes(wave)) { console.error(`--sql takes A, B, C or D (got ${wave})`); process.exit(1) }
     console.log(shipsSql(undefined, wave))
   } else if (process.argv.includes('--check')) {
     const now = readFileSync(join(ROOT, SHIPS_FILE), 'utf8')
     if (now !== text) { console.error(`${SHIPS_FILE} is NOT what scripts/build-ships.mjs generates — re-run it.`); process.exit(1) }
-    console.log(`${SHIPS_FILE} equals the generator (89 hulls: Wave A 52, Wave B 15, Wave C 22).`)
+    console.log(`${SHIPS_FILE} equals the generator (100 hulls: Wave A 52, Wave B 15, Wave C 22, Wave D 11).`)
   } else {
     writeFileSync(join(ROOT, SHIPS_FILE), text)
-    console.log(`wrote ${SHIPS_FILE}: LIVE ANCHORS OK, 89 hulls (Wave A 52, Wave B 15, Wave C 22)`)
+    console.log(`wrote ${SHIPS_FILE}: LIVE ANCHORS OK, 100 hulls (Wave A 52, Wave B 15, Wave C 22, Wave D 11)`)
   }
 }

@@ -2,7 +2,8 @@
 // build-gear.mjs — THE GEAR: grades 2-5 of the twelve live base types, grades 1-5 of the eleven new ones
 //                  (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135); the refits and what works
 //                  every item (S13, 0158); the T2 and Named rungs (S15, 0159); the Country rung — the
-//                  eleven sets — and the four perk kits (S16, 0163)
+//                  eleven sets — and the four perk kits (S16, 0163); the Famous rung — the gear of the
+//                  eleven famous ships (S17, 0166)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // ONE ITEM MODEL (§6.2): base type × grade. Grade 1 of a live base type is the live item, untouched
@@ -55,6 +56,19 @@
 //   * Kits (KITS, 4; §6.6) — the perk kits: base type Kit, rack kit (no hull has a place in it: a kit is never
 //     fitted, it is used up), grade 1, meta 0, tier 3, volume 1, no effect, no requirement, never wear.
 //
+// S17 (migration 0166, §6.2's Famous row): the gear of a famous ship, ONE per famous hull (FAMOUS, 11), each
+//   the Famous rung (meta 8, grade 5) of ONE base type. The G1's effects with BUYS × 3.00 (speed and hold
+//   × 2.00), SPENDS × 1.00, plus an authored second buy where §6.4 names one (Drake's Culverins: accuracy
+//   +12 — the only one it names); Deck and Hands = the G1's × 1.6 (§6.1 "Famous +60 %"); needs the module
+//   skill V + Famous Ships I (+ the base type's second skill); the G1's words, volume and active flag.
+//   It goes into its hull's recipe as a fitting (scripts/build-ships.mjs reads `hull` from this table —
+//   the one home of "which famous ship's gear this is"; §8 S17 "famous gear as hull_recipe_items").
+//   §6.2 says the Famous rung is "made at —, comes with the hull"; 0072 (b) — the owner's row 58, "not
+//   only some trading goods but some items" — refuses a hull fitting that no city can make. So a Famous
+//   piece is MADE at a tier-3 workshop, of its base type's T2 recipe × 1.5 (rounded up), and spent when
+//   its hull is laid down (NOT the owner's — confirm; written in the S17 PR).
+//   §6.4's Drake's Culverins (Famous Long Guns) come out 180 / 45, accuracy +12 — asserted.
+//
 // §6.3 lists ELEVEN new base types (Carronades, Chase Guns, Swivel Guns, Studding Sails, Storm
 // Canvas, Whipstaff, Sheet Anchor, Capstan, Binnacle & Charts, Planking, Bilge Pumps); §0/§8 say
 // "ten" and "~98 rows". The table is the specification: 11 × 5 + 12 × 4 = 103 rows.
@@ -65,6 +79,7 @@
 //        node scripts/build-gear.mjs --sql-0158  the VALUES 0158 loaded (14 refits + item_use)
 //        node scripts/build-gear.mjs --sql-0159  the VALUES 0159 loaded (22 T2 + 12 Named, item_use, item_city)
 //        node scripts/build-gear.mjs --sql-0163  the VALUES 0163 loads (44 Country + 4 kits, item_use, item_line)
+//        node scripts/build-gear.mjs --sql-0166  the VALUES 0166 loads (11 Famous, item_use)
 // scripts/db/world-guard.mjs re-runs generateGear() on every apply and holds the database to it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -538,6 +553,45 @@ export const KITS = [
   ['navigators-kit', "Navigator's Kit", r('sea-charts 1, lodestone 1'), "A navigator's charts and lodestone for augmenting a fitting at a tier-3 workshop; the kit is used up by it."],
 ]
 
+/**
+ * S17 (migration 0166, §6.2's Famous row): THE GEAR OF THE ELEVEN FAMOUS SHIPS — one per hull of
+ * scripts/build-ships.mjs WAVE_D. [code, name, the famous hull's code, base type, second buy [stat, delta]
+ * or null, note]. The base type is one of the rack the hull's tech uplift adds a place in (trade a Low,
+ * combat a High, explorer a Mid) but where §6.4 names it (the Golden Hind's culverins) — chosen here, NOT
+ * the owner's: confirm.
+ */
+export const FAMOUS = [
+  ['madre-de-deus-holds', 'Madre de Deus Holds', 'madre', 'Hold Frames', null,
+    'The deep cargo space of the great carrack taken off the Azores in 1592, whose pepper, silks and jewels filled a London custom house.'],
+  ['san-martin-tercio', 'San Martín Tercio Arms', 'sanmartin', 'Boarding Gear', null,
+    'The pikes, grapnels and breastplates of the soldiers Medina Sidonia carried in his flagship in 1588, ready to board.'],
+  ['batavia-double-planking', 'Batavia Double Planking', 'batavia', 'Planking', null,
+    'The doubled planking of the Dutch East India ship lost on the Abrolhos in 1629, laid two skins deep for the long voyage east.'],
+  ['drakes-culverins', "Drake's Culverins", 'goldenhind', 'Long Guns', ['accuracy', 12],
+    'The culverins Francis Drake carried round the world in 1577-1580: they hit harder, reach further and shoot straighter than any battery.'],
+  ['couronne-battery', 'La Couronne Battery', 'couronne', 'Long Guns', null,
+    'The great battery of the first French ship of the line, launched at La Roche-Bernard in 1636.'],
+  ['duodo-bow-guns', 'Duodo Bow Guns', 'duodo', 'Chase Guns', null,
+    'The heavy bow guns of the Venetian galleasses Francesco Duodo led at Lepanto in 1571, which broke the Ottoman line before it closed.'],
+  ['turgut-reis-swivels', 'Turgut Reis Swivels', 'turgut', 'Swivel Guns', null,
+    'The rail swivels of the corsair admiral Turgut Reis, which swept a Christian deck before his men went over the side.'],
+  ['rahimi-pilgrim-holds', 'Rahimi Pilgrim Holds', 'rahimi', 'Hold Frames', null,
+    "The vast cargo space of the Mughal queen mother's pilgrim ship, the largest in the Red Sea trade until the Portuguese burned it in 1614."],
+  ['zheng-he-bulkheads', 'Zheng He Bulkheads', 'baochuan', 'Planking', null,
+    "The watertight bulkheads and layered planking of Zheng He's treasure ships, which sailed as far as Africa between 1405 and 1433."],
+  ['date-masamune-charts', 'Date Masamune Charts', 'sjb', 'Binnacle & Charts', null,
+    'The binnacle and Pacific charts of the galleon Date Masamune sent to Acapulco in 1613 with Hasekura Tsunenaga on board.'],
+  ['dragon-head-cannon', 'Dragon-head Cannon', 'geobuk', 'Carronades', null,
+    "The cannon fired through the dragon's mouth of Yi Sun-sin's turtle ship, which smashed Japanese hulls at close range in 1592."],
+]
+export const FAMOUS_MULT = { buys: 3, money: 2, deckHands: 1.6, recipe: 1.5 }
+/** One effect of a Famous (meta 8): buys × 3.00 (speed / hold × 2.00; half up, speed to 0.01), spends × 1.00. */
+export function famousDelta(stat, delta) {
+  if (delta < 0) return delta
+  const v = delta * (MONEY_STATS.has(stat) ? FAMOUS_MULT.money : FAMOUS_MULT.buys)
+  return stat === 'speed' ? round2(v) : roundUp(v)
+}
+
 /** THE GENERATOR. Pure but for reading data/*.json; throws on any broken rule. */
 export function generateGear() {
   const fittings = Object.fromEntries(readJson('data/fittings.json').fittings.map((f) => [f.code, f]))
@@ -808,11 +862,47 @@ export function generateGear() {
   }
   if (KITS.length !== 4) throw new Error(`§6.6 names four kits; KITS has ${KITS.length}`)
   if (items.length !== 151 + COUNTRY_COUNT + KITS.length) throw new Error(`the gear is 151 items through S15 + ${COUNTRY_COUNT} Country + ${KITS.length} kits = 199; the generator made ${items.length}`)
+
+  // S17 (§6.2's Famous row): ONE Famous per famous hull — famousDelta over the G1's effects (+ its authored
+  // second buy, a stat the G1 does not move), Deck and Hands × 1.6, the module skill V + Famous Ships I (+ the
+  // base type's second skill), tier 3, the T2 recipe × 1.5 (rounded up).
+  if (!skills.has('FAMOUS_SHIPS')) throw new Error('FAMOUS_SHIPS is not in data/skills.json')
+  const famousHulls = new Set()
+  for (const [code, name, hull, base, second, note] of FAMOUS) {
+    const b = BASE_TYPES.find((x) => x.base === base)
+    if (!b || !b.t2) throw new Error(`${code}: ${base} is no base type with a T2 (a Famous is cut from its G1 and T2)`)
+    if (famousHulls.has(hull)) throw new Error(`${code}: a second Famous for the hull ${hull} (one each)`)
+    famousHulls.add(hull)
+    const g1 = g1ByBase[base]
+    take(code, name)
+    checkNote(code, note)
+    const recipe = b.t2[2].map((x) => ({ in: x.in, qty: roundUp(x.qty * FAMOUS_MULT.recipe) }))
+    checkRecipe(code, recipe)
+    const effects = g1.effects.map(([stat, delta]) => ({ stat, delta: famousDelta(stat, delta) }))
+    if (second) {
+      if (effects.some((e) => e.stat === second[0])) throw new Error(`${code}: the second buy ${second[0]} is a stat the G1 already moves`)
+      effects.push({ stat: second[0], delta: second[1] })
+    }
+    checkEffects(code, effects)
+    const requirements = [{ skill: b.skill, level: 5 }, { skill: 'FAMOUS_SHIPS', level: 1 }]
+    if (b.also) requirements.push({ ...b.also })
+    items.push({
+      code, name, slot: g1.slot, buys: second ? `${g1.buys}, ${STAT_WORD[second[0]]}` : g1.buys,
+      spends: g1.spends, note, volume: g1.volume, wsTier: 3,
+      baseType: base, rack: b.rack, grade: 5, meta: 8, hull,
+      deck: roundUp(g1.deck * FAMOUS_MULT.deckHands), hands: roundUp(g1.hands * FAMOUS_MULT.deckHands), active: g1.active,
+      effects, recipe, requirements,
+    })
+    use.push({ code, ...useOf(code, base, g1.active) })
+  }
+  if (FAMOUS.length !== 11) throw new Error(`§4.3 Wave D: one Famous per famous ship (11); the table has ${FAMOUS.length}`)
+  if (items.length !== 151 + COUNTRY_COUNT + KITS.length + FAMOUS.length) throw new Error(`the gear is 199 items through S16 + ${FAMOUS.length} Famous = 210; the generator made ${items.length}`)
+  expectFx('drakes-culverins', { attack: 180, reach: 45, accuracy: 12, hold: -20, handling: -6 })
   if (use.length !== items.length + Object.keys(profiles).length) throw new Error(`every item has one use row: ${use.length} for ${items.length} + ${Object.keys(profiles).length} live`)
 
   use.sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
   return {
-    _: 'GENERATED by scripts/build-gear.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135; §6.1 / §6.5 / §6.8, S13, migration 0158; §6.2 T2 + Named, S15, migration 0159; §6.2 Country + §6.6 kits + §6.7 sets, S16, migration 0163).',
+    _: 'GENERATED by scripts/build-gear.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135; §6.1 / §6.5 / §6.8, S13, migration 0158; §6.2 T2 + Named, S15, migration 0159; §6.2 Country + §6.6 kits + §6.7 sets, S16, migration 0163; §6.2 Famous, S17, migration 0166).',
     items,
     use,
   }
@@ -842,7 +932,8 @@ function itemRows(I) {
  *  or 0163 (Country, meta 6, and the kits). */
 const isS16 = (i) => i.meta === 6 || i.rack === 'kit'
 const isS12 = (i) => i.rack !== 'refit' && i.meta === 0 && !isS16(i)
-const isS15 = (i) => i.meta > 0 && !isS16(i)
+const isS17 = (i) => i.meta === 8
+const isS15 = (i) => i.meta > 0 && !isS16(i) && !isS17(i)
 const useRows = (list) => list.map((u) => `  (${q(u.code)}, ${u.trigger === null ? 'null' : q(u.trigger)}, ${q(JSON.stringify(u.consumes))})`).join(',' + NL)
 
 /** The SQL VALUES migration 0135 loaded (`--sql`): the 103 Wave A items (the refits are 0158's, T2 + Named 0159's). */
@@ -854,7 +945,7 @@ export function gearSql(gen = generateGear()) {
  *  every item 0158 knew (public.item_use — the 12 live + 103 Wave A + 14 refits; 0159 adds its own). The
  *  world guard holds the database to generateGear() on every apply. */
 export function s13Sql(gen = generateGear()) {
-  const later = new Set(gen.items.filter((i) => isS15(i) || isS16(i)).map((i) => i.code))
+  const later = new Set(gen.items.filter((i) => isS15(i) || isS16(i) || isS17(i)).map((i) => i.code))
   const use = gen.use.filter((u) => !later.has(u.code))
   return [
     ...itemRows(gen.items.filter((i) => i.rack === 'refit')),
@@ -893,11 +984,23 @@ export function s16Sql(gen = generateGear()) {
   ].join(NL)
 }
 
+/** The SQL VALUES migration 0166 loads (`--sql-0166`), pasted verbatim: the 11 Famous items and what works
+ *  each (public.item_use). Which hull each is the gear of rides in scripts/build-ships.mjs (hull_recipe_items). */
+export function s17Sql(gen = generateGear()) {
+  const I = gen.items.filter(isS17)
+  const s17 = new Set(I.map((i) => i.code))
+  return [
+    ...itemRows(I),
+    `-- item_use (${s17.size})`,
+    useRows(gen.use.filter((u) => s17.has(u.code))),
+  ].join(NL)
+}
+
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/build-gear.mjs')) {
   const gen = generateGear()
   const text = JSON.stringify(gen, null, 1) + NL
   const n = (f) => gen.items.filter(f).length
-  const says = `${gen.items.length} items (${n(isS12)} Wave A + ${n((i) => i.rack === 'refit')} refits + ${n((i) => i.meta === 5)} T2 + ${n((i) => i.meta === 1)} Named + ${n((i) => i.meta === 6)} Country + ${n((i) => i.rack === 'kit')} kits), ${gen.use.length} item uses`
+  const says = `${gen.items.length} items (${n(isS12)} Wave A + ${n((i) => i.rack === 'refit')} refits + ${n((i) => i.meta === 5)} T2 + ${n((i) => i.meta === 1)} Named + ${n((i) => i.meta === 6)} Country + ${n((i) => i.rack === 'kit')} kits + ${n(isS17)} Famous), ${gen.use.length} item uses`
   if (process.argv.includes('--sql')) {
     console.log(gearSql(gen))
   } else if (process.argv.includes('--sql-0158')) {
@@ -906,6 +1009,8 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/bui
     console.log(s15Sql(gen))
   } else if (process.argv.includes('--sql-0163')) {
     console.log(s16Sql(gen))
+  } else if (process.argv.includes('--sql-0166')) {
+    console.log(s17Sql(gen))
   } else if (process.argv.includes('--check')) {
     const now = readFileSync(join(ROOT, GEAR_FILE), 'utf8')
     if (now !== text) { console.error(`${GEAR_FILE} is NOT what scripts/build-gear.mjs generates — re-run it.`); process.exit(1) }
