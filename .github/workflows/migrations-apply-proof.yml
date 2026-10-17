@@ -12,7 +12,10 @@ name: Migrations — apply proof (PGlite gate + disposable Supabase)
 #   back. Since 2026-10-13 (row 124) the chain's world comes from the PREFIX CACHE: the longest
 #   already-applied prefix is restored from a verified snapshot and only the files after it are
 #   applied here, self-asserts and all (see the step below; scripts/db/prefix-cache.mjs). The
-#   from-zero apply is job 2's, on a real Postgres, on every push to main (PRs build on its snapshot; see job 2).
+#   from-zero apply is job 2's, on a real Postgres, nightly (and whenever the chain machinery
+#   changed; see job 2). On main this job restores the previous main run's entry (restore-keys)
+#   and applies the merged files — measured 2026-10-17 (run 39040210150): 133 of 134 restored in
+#   3.2 s, 1 applied, the leg done in 4m24s.
 #   It is the same gate the developer runs on their own machine in ten seconds
 #   (`npm run db:apply` / `npm run db:proof`), which is why a migration should never reach job 2
 #   red.
@@ -42,11 +45,26 @@ name: Migrations — apply proof (PGlite gate + disposable Supabase)
 #   privileges. Any error (a syntax error, a broken dependency on an earlier migration, a violated
 #   CHECK, a `raise exception` from a self-assert) fails the job.
 #
-#   SINCE 2026-10-15 THAT FROM-ZERO APPLY IS MAIN'S: a PR restores a green from-zero snapshot whose
-#   manifest is an exact prefix of its chain and applies only the files after it, through the CLI's
-#   own `migration up` (see the steps below and scripts/ci/supabase-snapshot.sh). Trade-off,
-#   stated: an OLD file's from-zero apply is proven by main's run, not re-proven on each PR — which
-#   is only a loss if that file changed, and a changed file breaks the prefix.
+#   SINCE 2026-10-15 a PR restores a green snapshot whose manifest is an exact prefix of its chain
+#   and applies only the files after it, through the CLI's own `migration up` (see the steps below
+#   and scripts/ci/supabase-snapshot.sh). Trade-off, stated: an OLD file's from-zero apply is
+#   proven by the from-zero run, not re-proven on each PR — which is only a loss if that file
+#   changed, and a changed file breaks the prefix.
+#
+#   SINCE 2026-10-18 MAIN BUILDS ON ITS OWN SNAPSHOT TOO (owner: "CI never starts from scratch;
+#   always make CI fast; save everything you checked"). A push to main runs the same `choose` a PR
+#   runs — the longest kept snapshot that is an exact prefix of main's chain, by exact key, no wait
+#   — applies the merged files on it, and KEEPS the result as the snapshot the next PR and the next
+#   main run restore. Measured before: main's from-zero apply was 47 of its 49 minutes
+#   (run 39040210150, 14:28 -> 15:16), and with several merges an hour main's runs queued and
+#   cancelled each other (10 of the 12 main runs of 14:18-15:16 on 2026-10-17 were cancelled while
+#   pending), so every PR waited on one 50-minute run. Now each push to main has its OWN
+#   concurrency group (below), so every merge's run completes and leaves its snapshot.
+#
+#   THE FROM-ZERO NET STILL EXISTS, ONE A DAY: the `schedule` below (03:23 KST), any
+#   workflow_dispatch, and a push to main whose diff changed the chain machinery or an old
+#   migration (select's `cold`, the growth rule) apply the whole chain from 0001 on a fresh volume,
+#   and their green snapshot is kept like any other. A red nightly is a red like any red: read it.
 #
 #   THE LAW (owner, 2026-10-17; docs/CI.md): A PULL REQUEST NEVER APPLIES THE CHAIN FROM ZERO.
 #   Since 2026-10-17 a PR (1) waits, bounded, for main's own run on its base commit if that run is
@@ -80,14 +98,23 @@ on:
   # protection (docs: "Using conditions to control job execution"). A PR that does touch the
   # database runs exactly what it ran before.
   pull_request:
+  # A dispatch is a from-zero apply (the net), like the schedule.
   workflow_dispatch:
+  # THE NIGHTLY FROM-ZERO NET (2026-10-18): 18:23 UTC = 03:23 KST, once a day, the whole chain from
+  # 0001 on a fresh volume, on main. Every other run builds on a kept snapshot.
+  schedule:
+    - cron: '23 18 * * *'
 
-# A newer push to a PR cancels the older run. A push to MAIN never cancels one (2026-10-15): main's
-# run is the from-zero net AND the run that keeps the snapshot PRs build on, and with cancelling on
-# main every merge in a busy hour cancelled the one before it (runs 38682431353, 38683652373). Main
-# runs now queue — one running, the newest waiting.
+# A newer push to a PR cancels the older run. A push to MAIN never cancels one (2026-10-15), and
+# since 2026-10-18 each push to main is its OWN group: GitHub keeps at most ONE PENDING run per
+# group, so with a shared group and cancel-in-progress false, every merge in a busy hour still
+# cancelled the pending one before it — 10 of the 12 main runs between 14:18 and 15:16 on
+# 2026-10-17 ended "cancelled" without starting, and only the first and the last applied. A
+# cancelled main run leaves no snapshot and no proof of its commit. Per-sha groups let every
+# merge's run complete, side by side; now that a main run builds on a snapshot (minutes, not 50),
+# that costs little. Dispatch and schedule runs share the ref's group and queue as before.
 concurrency:
-  group: migrations-apply-proof-${{ github.ref }}
+  group: migrations-apply-proof-${{ github.event_name == 'push' && github.sha || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -105,20 +132,25 @@ jobs:
   #     proof file names; when the proof file itself changed; or on any change to scripts/db/**,
   #     package(-lock).json or an edited (not added) migration. On main, and on dispatch: all three.
   # A skipped leg still reports success under its own name, and its log says why it did not run.
-  # disposable-chain runs every leg of its own: it is already scoped (a PR applies only its new
-  # files on a kept snapshot) and it is the only check that runs against Supabase's own roles. It
-  # reads this job's `cold` output for the law's exemption (header, JOB 2).
+  # disposable-chain runs every leg of its own: it is already scoped (a PR, and since 2026-10-18 a
+  # push to main, applies only its new files on a kept snapshot) and it is the only check that
+  # runs against Supabase's own roles. It reads this job's `cold` output: on a PR the law's
+  # exemption, on a push to main the decision to run the from-zero NET instead (header, JOB 2).
   select:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
       legs: ${{ steps.sel.outputs.legs }}
-      # 'false' only when this is a pull request whose diff touches none of the paths below.
-      # Anything else — a push to main, a dispatch, a diff that reaches the database, or a step
-      # that did not get as far as writing the output — leaves it != 'false', and the jobs run.
+      # 'false' only when this run has a diff (a pull request, or a push whose previous commit is
+      # known) and that diff touches none of the database paths below. Anything else — a dispatch,
+      # the schedule, a diff that reaches the database, or a step that did not get as far as
+      # writing the output — leaves it != 'false', and the jobs run.
       db: ${{ steps.db.outputs.db }}
-      # 'true' only when the chain machinery or an old migration changed: the law's one exemption
-      # (a from-zero apply is allowed, and logged). selection.json's growth.run; main is always exempt.
+      # 'true' only when the chain machinery or an old migration changed (selection.json's
+      # growth.run, from the PR's diff or the push's own diff): on a PR the law's one exemption (a
+      # from-zero apply is allowed, and logged); on a push to main the from-zero NET runs instead
+      # of the snapshot build. Always 'true' on a dispatch, the nightly schedule, or a push whose
+      # previous commit GitHub did not name.
       cold: ${{ steps.sel.outputs.cold }}
     steps:
       - uses: actions/checkout@v4
@@ -127,44 +159,89 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Does this pull request touch the database at all?
+
+      # ONE answer to "what did this run change?", read by both steps below. A pull request: the
+      # merge commit against its first parent. A push: against the commit the branch stood at
+      # before (github.event.before — HEAD^1 would miss the earlier commits of a multi-commit
+      # push), fetched shallow. Empty = no diff (dispatch, schedule, a push with no known before):
+      # everything runs, from zero.
+      - name: What is this run's diff against?
+        id: base
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          case "${{ github.event_name }}" in
+            pull_request) base=$(git rev-parse HEAD^1) ;;
+            push)
+              if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git fetch --quiet --depth=1 origin "$BEFORE"; then
+                base=""; echo "the commit before this push is not known ('$BEFORE'): no diff — everything runs, from zero (the safe side)"
+              else
+                base=$BEFORE
+              fi ;;
+            *) base="" ;;
+          esac
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "diff base: ${base:-(none: ${{ github.event_name }})}"
+
+      - name: Does this run touch the database at all?
         id: db
         # The paths are the former `paths:` filter of this workflow, plus everything the two jobs
         # below actually execute: scripts/ci/** (select-specs.mjs, supabase-snapshot.sh) and
         # src/lib/db/** (apply-chain.mjs and prefix-cache.mjs import the chain engine from there),
         # and package-lock.json (the gate's dependencies are installed from it).
+        # Since 2026-10-18 a PUSH to main is judged the same way: a merge that changed none of
+        # these leaves the chain, the preamble and the machinery byte-identical to the previous
+        # main commit's, whose own run proved them and keeps their snapshot — there is nothing new
+        # to apply and nothing new to keep, so both proof jobs are skipped there too.
+        env:
+          BASE: ${{ steps.base.outputs.base }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
+          if [ -z "$BASE" ]; then
             echo "db=true" >> "$GITHUB_OUTPUT"
-            echo "not a pull request: the whole chain applies, from zero, every job runs"; exit 0
+            echo "no diff to judge (${{ github.event_name }}): every job runs, from zero"; exit 0
           fi
-          hits=$(git diff --name-only HEAD^1 HEAD -- \
+          hits=$(git diff --name-only "$BASE" HEAD -- \
             supabase scripts/db scripts/ci src/lib/db \
             package.json package-lock.json .github/workflows/migrations-apply-proof.yml)
           if [ -n "$hits" ]; then
             echo "db=true" >> "$GITHUB_OUTPUT"
-            echo "this pull request touches the database; the proof jobs run:"
+            echo "this ${{ github.event_name }} touches the database; the proof jobs run:"
             echo "$hits"
           else
             echo "db=false" >> "$GITHUB_OUTPUT"
-            echo "this pull request changes no file under supabase/, scripts/db/, scripts/ci/, src/lib/db/, nor package(-lock).json nor this workflow:"
-            echo "pglite-gate and disposable-chain are skipped by their job-level if:, which GitHub reports as success (the required check is satisfied). The whole diff:"
-            git diff --name-only HEAD^1 HEAD
+            echo "this ${{ github.event_name }} changes no file under supabase/, scripts/db/, scripts/ci/, src/lib/db/, nor package(-lock).json nor this workflow:"
+            echo "pglite-gate and disposable-chain are skipped by their job-level if:, which GitHub reports as success (on a PR the required check is satisfied; on main the previous commit's snapshot already IS this chain's). The whole diff:"
+            git diff --name-only "$BASE" HEAD
           fi
-      - name: Which pglite legs this run needs, and why
+
+      - name: Which pglite legs this run needs, and why — and whether this run applies from zero
         id: sel
+        env:
+          BASE: ${{ steps.base.outputs.base }}
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            node scripts/ci/select-specs.mjs --base HEAD^1 --head HEAD --out selection.json | grep -E '^(diff|  [A-Z] |sql |  defines|  tables|  mentions|pglite-gate)'
+            node scripts/ci/select-specs.mjs --base "$BASE" --head HEAD --out selection.json | grep -E '^(diff|  [A-Z] |sql |  defines|  tables|  mentions|pglite-gate)'
           else
+            # Every leg runs on main, on a dispatch and on the schedule.
             node scripts/ci/select-specs.mjs --full --out selection.json | grep -E '^pglite-gate'
           fi
           echo "legs=$(jq -c '.pglite | with_entries(.value |= (length > 0))' selection.json)" >> "$GITHUB_OUTPUT"
           jq -c '.pglite | with_entries(.value |= (length > 0))' selection.json
-          echo "cold=$(jq -r .growth.run selection.json)" >> "$GITHUB_OUTPUT"
-          echo "from-zero allowed on this run (the law's exemption): $(jq -r '.growth.run' selection.json) — $(jq -r '.growth.why | join("; ")' selection.json)"
+          # FROM ZERO OR NOT: the same growth rule, on this run's diff. On a PR it is the law's
+          # exemption; on a push to main it decides whether this run is the from-zero NET or builds
+          # on the kept snapshot. No diff = from zero.
+          if [ -z "$BASE" ]; then
+            cold=true; echo "from zero: yes — ${{ github.event_name }}, no diff (the net)"
+          else
+            if [ "${{ github.event_name }}" = "pull_request" ]; then cp selection.json diff.json
+            else node scripts/ci/select-specs.mjs --base "$BASE" --head HEAD --out diff.json | grep -E '^(diff|  [A-Z] |growth test)'; fi
+            cold=$(jq -r .growth.run diff.json)
+            echo "from zero (a PR: allowed; main: the net runs): $cold — $(jq -r '.growth.why | join("; ")' diff.json)"
+          fi
+          echo "cold=$cold" >> "$GITHUB_OUTPUT"
 
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   # 1. The fast gate: the whole chain + all four proofs, on real PostgreSQL, no Docker.
@@ -404,6 +481,14 @@ jobs:
     # THIS job's real Postgres 17 instead of a second apply on wasm — one chain apply in CI instead
     # of two, and the proofs run on the engine production actually uses.
     timeout-minutes: 120
+    env:
+      # 'true' = this run applies the WHOLE chain from zero ON PURPOSE — the net: the nightly
+      # schedule, a dispatch, or a push to main whose diff changed the chain machinery or an old
+      # migration (select's `cold`). Everything else builds on a kept snapshot: a PR by the law, a
+      # push to main because that is what makes the snapshots and the owner's rule is "CI never
+      # starts from scratch". A `select` that failed leaves `cold` empty, so a push then takes the
+      # snapshot path and, with nothing usable, falls through to a from-zero apply that is SAID.
+      FROM_ZERO: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && needs.select.outputs.cold == 'true') }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -431,33 +516,38 @@ jobs:
           version: 2.114.0
 
       # ── THE APPLIED-CHAIN SNAPSHOT (2026-10-15, scripts/ci/supabase-snapshot.sh) ─────────────
-      # ON MAIN (push, dispatch): unchanged — the WHOLE chain from 0001 on a fresh volume. That is
-      # the from-zero net, and afterwards the stopped volume is kept as the snapshot PRs build on.
-      # ON A PR (2026-10-17, the law): `choose` computes the key every usable snapshot would carry
-      # (the key IS the manifest's hash, one per prefix length of this chain), waits — bounded —
-      # for main's run on the base commit when it is still going and the base chain's own snapshot
-      # is not kept yet, then names the LONGEST kept prefix this run may restore. It is restored by
-      # EXACT key (no restore-keys, no "newest"); `usable` then judges the restored bytes exactly
-      # as before: the manifest (every file's name and sha-256, in order, plus the CLI version and
-      # config.toml) must be an exact PREFIX of this PR's chain. The CLI boots it ("Starting
-      # database from backup...", no migrate step) and `supabase migration up` applies the files
-      # after it — every new migration's self-asserts and CHECK constraints run here exactly as
-      # before. NOTHING USABLE = THE JOB FAILS (the step after `usable`), unless the PR changed the
-      # chain machinery. Every check below then runs against the result unchanged, plus: what the
-      # database recorded equals supabase/migrations/, file for file.
-      - name: Which kept snapshot is the longest prefix of THIS chain (PRs only; waits for main's run on the base)
+      # FROM ZERO (FROM_ZERO above: the nightly, a dispatch, a push that changed the chain
+      # machinery): the WHOLE chain from 0001 on a fresh volume. That is the net, and afterwards
+      # the stopped volume is kept as a snapshot.
+      # ON A SNAPSHOT (a PR since 2026-10-17, the law; a push to main since 2026-10-18): `choose`
+      # computes the key every usable snapshot would carry (the key IS the manifest's hash, one per
+      # prefix length of this chain), on a PR waits — bounded — for main's run on the base commit
+      # when it is still going and the base chain's own snapshot is not kept yet (a push does not
+      # wait: SNAPSHOT_WAIT_SECONDS=0 — the heavy files are in every kept prefix, and applying a
+      # few more merged files beats waiting on a sibling run), then names the LONGEST kept prefix
+      # this run may restore. It is restored by EXACT key (no restore-keys, no "newest"); `usable`
+      # then judges the restored bytes: the manifest (every file's name and sha-256, in order,
+      # plus the CLI version and config.toml) must be an exact PREFIX of this chain. The CLI boots
+      # it ("Starting database from backup...", no migrate step) and `supabase migration up`
+      # applies the files after it — every new migration's self-asserts and CHECK constraints run
+      # here exactly as before. NOTHING USABLE: a PR FAILS (the law step), unless it changed the
+      # chain machinery; a push to main applies from zero and SAYS so (main is never refused — it
+      # is the run that makes the snapshots). Every check below then runs against the result
+      # unchanged, plus: what the database recorded equals supabase/migrations/, file for file.
+      - name: Which kept snapshot is the longest prefix of THIS chain (a PR waits for main's run on its base)
         id: choose
-        if: github.event_name == 'pull_request'
+        if: env.FROM_ZERO != 'true'
         env:
           SUPABASE_CLI_VERSION: 2.114.0
           GH_TOKEN: ${{ github.token }}
+          SNAPSHOT_WAIT_SECONDS: ${{ github.event_name == 'push' && '0' || '3000' }}
         run: |
           set -euo pipefail
           bash scripts/ci/supabase-snapshot.sh choose "$(git rev-parse HEAD^1)" | tee -a "$GITHUB_OUTPUT"
 
-      - name: Restore that applied-chain snapshot, by its exact key (PRs only)
+      - name: Restore that applied-chain snapshot, by its exact key
         id: snap
-        if: github.event_name == 'pull_request' && steps.choose.outputs.key != ''
+        if: env.FROM_ZERO != 'true' && steps.choose.outputs.key != ''
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/sbsnap
@@ -469,11 +559,16 @@ jobs:
           SUPABASE_CLI_VERSION: 2.114.0
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo "push/dispatch: the full from-zero apply, always"
+          if [ "$FROM_ZERO" = "true" ]; then
+            echo "${{ github.event_name }}, cold=${{ needs.select.outputs.cold }}: the full from-zero apply, on purpose (the net)"
             echo "usable=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           bash scripts/ci/supabase-snapshot.sh usable "$RUNNER_TEMP/sbsnap" | tee -a "$GITHUB_OUTPUT"
+
+      # Main is never refused, but a from-zero apply there that nobody asked for is said out loud.
+      - name: Main with nothing to build on — applying from zero, said
+        if: github.event_name == 'push' && env.FROM_ZERO != 'true' && steps.plan.outputs.usable != 'true'
+        run: echo "::warning title=From-zero apply on main::no kept snapshot is a prefix of this chain (the choose step says which were considered) — main is the run that makes the snapshots, so it applies from zero and keeps the result"
 
       # THE LAW: a pull request never applies the chain from zero. Exempt only when the diff
       # changed the chain machinery or an old migration (`select`'s `cold`), and then it is said.
@@ -496,7 +591,7 @@ jobs:
           SUPABASE_CLI_VERSION: 2.114.0
         run: bash scripts/ci/supabase-snapshot.sh restore "$RUNNER_TEMP/sbsnap"
 
-      - name: Start disposable local Supabase (fresh volume = applies the WHOLE chain, in order)
+      - name: Start disposable local Supabase (a restored volume boots from the snapshot; a fresh one applies the WHOLE chain, in order)
         run: supabase start
 
       - name: Apply the files after the snapshot (supabase migration up)
@@ -641,15 +736,24 @@ jobs:
           done
           echo "All 8 lockdown PASS markers present against Supabase's own roles."
 
-      # ONLY a green FROM-ZERO run is kept: stopped WITH its volume, tarred with its manifest, saved
-      # under its own chain's key. A red run, or one that itself started from a snapshot, never
-      # becomes one. Main's are what every PR restores; a PR's own (visible to that PR only, by
-      # GitHub's cache scoping; only an exempt PR can make one now) lets its next push skip the old
-      # files too — and if that push edits one of its own migrations the manifest is no longer a
-      # prefix and `choose` looks for a shorter one.
-      - name: Keep the applied chain as a snapshot (green, from zero)
+      # WHAT IS KEPT: a green run's applied chain, stopped WITH its volume, tarred with its
+      # manifest, saved under its own chain's key. A red run never becomes one.
+      #   * ON MAIN (push, schedule, dispatch) EVERY green run is kept (2026-10-18) — the one built
+      #     on a snapshot as much as the from-zero one. "Save everything you checked": the volume
+      #     holds exactly the restored prefix (a snapshot a green run made, judged file for file by
+      #     `usable`) plus the merged files applied here by the CLI's own applier, self-asserts
+      #     and all, and the positive controls above proved the recorded list is the directory.
+      #     That is the snapshot the next PR and the next main run restore. The nightly from-zero
+      #     run re-anchors the line once a day: its snapshot carries the same key as an
+      #     incremental run of the same chain (the key is the manifest), so a PR cannot tell them
+      #     apart and does not need to.
+      #   * ON A PR only a from-zero (exempt) run is kept, as before; it is visible to that PR
+      #     only, by GitHub's cache scoping, and lets its next push skip the old files too — and if
+      #     that push edits one of its own migrations the manifest is no longer a prefix and
+      #     `choose` looks for a shorter one.
+      - name: Keep the applied chain as a snapshot (green; main always, a PR only from zero)
         id: keep
-        if: success() && steps.plan.outputs.usable != 'true'
+        if: success() && (github.event_name != 'pull_request' || steps.plan.outputs.usable != 'true')
         env:
           SUPABASE_CLI_VERSION: 2.114.0
         run: |

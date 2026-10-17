@@ -8,39 +8,45 @@
 # last 07:12). On a PR every file but the new ones is byte-identical to a chain that main's own run
 # ALREADY applied from zero, green, on the same CLI and the same config.
 #
-# WHAT: on a push to main (the from-zero net, unchanged) the stopped Postgres volume is tarred
-# with a MANIFEST — one line per applied file, "<name> <sha256 of its bytes>", plus the CLI version
-# and config.toml's sha — and saved under a key that is the sha of that manifest. On a PR a kept
-# snapshot is restored ONLY IF its manifest is an exact PREFIX of the PR's own chain (same names,
-# same bytes, same order, same CLI, same config); `supabase start` then boots that volume
-# ("Starting database from backup..." — the CLI skips its migrate step for an existing volume) and
-# `supabase migration up` applies the files after the prefix through the CLI's own applier, every
-# self-assert and CHECK with them. Anything else — an edited old migration, a config or CLI change,
-# no usable snapshot at all — is a full from-zero `supabase start`, exactly as before.
+# WHAT: after a green run the stopped Postgres volume is tarred with a MANIFEST — one line per
+# applied file, "<name> <sha256 of its bytes>", plus the CLI version and config.toml's sha — and
+# saved under a key that is the sha of that manifest. A kept snapshot is restored ONLY IF its
+# manifest is an exact PREFIX of the run's own chain (same names, same bytes, same order, same CLI,
+# same config); `supabase start` then boots that volume ("Starting database from backup..." — the
+# CLI skips its migrate step for an existing volume) and `supabase migration up` applies the files
+# after the prefix through the CLI's own applier, every self-assert and CHECK with them. Since
+# 2026-10-18 a push to MAIN builds this way too, and keeps its result: every main commit leaves the
+# snapshot of its own chain, in minutes. The from-zero apply is the nightly run's (and a dispatch's,
+# and a push's that changed the chain machinery or an old file): the net, kept the same way.
 #
 # WHICH SNAPSHOT (2026-10-17, `choose`): NOT "the newest". The key IS the manifest's hash, and a
 # snapshot is usable exactly when its manifest is this chain's first lines — so the keys of every
 # usable snapshot can be computed from the checkout alone (one per prefix length) and looked up in
 # the repository's cache list. `choose` picks the LONGEST kept prefix this run may restore (a cache
-# on the base branch or on this PR's own ref; GitHub lets a PR restore no other). Before it decides
-# it WAITS, bounded, for main's own run on the PR's base commit when that run is still going and
-# its snapshot — the base chain itself, the one that leaves only the PR's files to apply — is not
-# kept yet. Why: PR #147 started two minutes before main's run saved the matching snapshot, the
-# newest kept one was from a chain that 0137's out-of-order merge had made a non-prefix, and the
-# PR applied 132 files from zero (47 minutes) while a usable snapshot sat one key over.
+# on the base branch or on this run's own ref; GitHub lets a PR restore no other — on a push to
+# main both are main). Before it decides it WAITS, bounded, for main's own run on the base commit
+# when that run is still going and its snapshot — the base chain itself, the one that leaves only
+# this run's files to apply — is not kept yet. Why: PR #147 started two minutes before main's run
+# saved the matching snapshot, the newest kept one was from a chain that 0137's out-of-order merge
+# had made a non-prefix, and the PR applied 132 files from zero (47 minutes) while a usable
+# snapshot sat one key over. A push to main sets SNAPSHOT_WAIT_SECONDS=0 and does not wait: main
+# runs now go side by side (one concurrency group per sha), the heavy self-asserts (0105-0110) are
+# inside every kept prefix, and applying a few more merged files costs less than waiting for a
+# sibling run to save its snapshot.
 #
 # USAGE
 #   supabase-snapshot.sh manifest <out-file> [rev]  # this checkout's manifest (or the chain committed at <rev>)
 #   supabase-snapshot.sh key [rev]                  # the cache key of this checkout's chain (or <rev>'s)
-#   supabase-snapshot.sh choose <base-rev>          # PR: prints "key=<kept key or empty>" and "prefix=N"
+#   supabase-snapshot.sh choose <base-rev>          # PR or push: prints "key=<kept key or empty>" and "prefix=N"
 #   supabase-snapshot.sh usable <snapdir>           # prints "usable=true|false" and "prefix=N"
 #   supabase-snapshot.sh save <snapdir>             # tar the (stopped) db volume + manifest
 #   supabase-snapshot.sh restore <snapdir>          # untar into a fresh db volume
 #
 # `choose` needs `gh` with a token that may read Actions (`permissions: actions: read`), and the
-# GITHUB_REPOSITORY / GITHUB_REF / GITHUB_BASE_REF the runner sets. SNAPSHOT_WAIT_SECONDS bounds
-# the wait (default 3000 = 50 min, about one from-zero apply: waiting longer than that can never
-# beat applying from zero ourselves).
+# GITHUB_REPOSITORY / GITHUB_REF / GITHUB_REF_NAME / GITHUB_BASE_REF the runner sets (the branch
+# whose runs and caches count is GITHUB_BASE_REF on a PR, the pushed branch otherwise).
+# SNAPSHOT_WAIT_SECONDS bounds the wait (default 3000 = 50 min, about one from-zero apply: waiting
+# longer than that can never beat applying from zero ourselves; 0 = never wait).
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
@@ -73,19 +79,23 @@ manifest() {
 
 key_of() { echo "$KEY_PREFIX$(sha256sum | cut -c1-40)"; }
 
+# The branch whose kept snapshots this run may restore and whose runs it may wait for: a pull
+# request's base branch; on a push (or a dispatch, or the schedule) the branch itself.
+BASE_BRANCH="${GITHUB_BASE_REF:-${GITHUB_REF_NAME:-}}"
+
 # Every kept snapshot key THIS run may restore: GitHub scopes a cache to the ref that saved it, and
 # a pull request may read its own ref's and its base branch's. Anything else in the list is real
 # but unreachable from here, so it is filtered out rather than chosen and then missed.
 kept_keys() {
   gh api --paginate "repos/$GITHUB_REPOSITORY/actions/caches?key=$KEY_PREFIX&per_page=100" \
       --jq '.actions_caches[] | "\(.ref) \(.key)"' \
-    | awk -v own="$GITHUB_REF" -v base="refs/heads/$GITHUB_BASE_REF" '$1 == own || $1 == base { print $2 }' \
+    | awk -v own="$GITHUB_REF" -v base="refs/heads/$BASE_BRANCH" '$1 == own || $1 == base { print $2 }' \
     | sort -u
 }
 
-# "<run id> <status>" of main's migrations-apply-proof run for a commit, or "none".
+# "<run id> <status>" of the base branch's migrations-apply-proof run for a commit, or "none".
 main_run_for() {
-  gh run list --repo "$GITHUB_REPOSITORY" --workflow migrations-apply-proof.yml --branch "$GITHUB_BASE_REF" \
+  gh run list --repo "$GITHUB_REPOSITORY" --workflow migrations-apply-proof.yml --branch "$BASE_BRANCH" \
       --limit 100 --json databaseId,headSha,status \
     | jq -r --arg s "$1" '[.[] | select(.headSha == $s)] | if length == 0 then "none" else "\(.[0].databaseId) \(.[0].status)" end'
 }
@@ -115,7 +125,8 @@ case "${1:-}" in
     if [ "$ideal_k" -eq 0 ]; then
       echo "the base chain ($base) is not a prefix of this chain (a file was added before its last one, or an old file changed): main's snapshot of it could never be used, so there is nothing to wait for" >&2
     fi
-    deadline=$(( $(date +%s) + ${SNAPSHOT_WAIT_SECONDS:-3000} ))
+    wait_s=${SNAPSHOT_WAIT_SECONDS:-3000}
+    deadline=$(( $(date +%s) + wait_s ))
     while :; do
       best_k=0; best_key=""
       while read -r key; do
@@ -123,7 +134,7 @@ case "${1:-}" in
         k=${len_of[$key]:-0}
         if [ "$k" -gt "$best_k" ]; then best_k=$k; best_key=$key; fi
       done < <(kept_keys)
-      if [ "$ideal_k" -gt 0 ] && [ "$best_k" -lt "$ideal_k" ]; then
+      if [ "$ideal_k" -gt 0 ] && [ "$best_k" -lt "$ideal_k" ] && [ "$wait_s" -gt 0 ]; then
         run=$(main_run_for "$base")
         status=${run#* }
         if [ "$run" != "none" ] && [ "$status" != "completed" ] && [ "$(date +%s)" -lt "$deadline" ]; then
@@ -131,14 +142,16 @@ case "${1:-}" in
           sleep 60
           continue
         fi
-        echo "main's run for the base $base: ${run} — not waiting (any) longer" >&2
+        echo "$BASE_BRANCH's run for the base $base: ${run} — not waiting (any) longer" >&2
+      elif [ "$ideal_k" -gt 0 ] && [ "$best_k" -lt "$ideal_k" ]; then
+        echo "the base chain's own snapshot ($ideal, $ideal_k files) is not kept and SNAPSHOT_WAIT_SECONDS=0: not waiting for $BASE_BRANCH's run on $base" >&2
       fi
       break
     done
     if [ "$best_k" -gt 0 ]; then
       echo "chosen: $best_key — the longest kept prefix, $best_k of this chain's $n file(s); $((n - best_k)) to apply on top" >&2
     else
-      echo "no kept snapshot is a prefix of this chain ($(kept_keys | wc -l) restorable key(s) checked against $n prefix key(s)): the full from-zero apply" >&2
+      echo "no kept snapshot is a prefix of this chain ($(kept_keys | wc -l) restorable key(s) checked against $n prefix key(s))" >&2
     fi
     echo "key=$best_key"; echo "prefix=$best_k"
     ;;
