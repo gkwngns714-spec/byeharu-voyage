@@ -1519,6 +1519,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // to a city, counted as influence for the giver's country, and its dry run. No player id; docked
       // there only (E_NOT_DOCKED); dark until the race is lit. Landed WITH the face (TownHallInfluence).
       'cmdDonate', 'cmdPreviewDonate',
+      // Pin moved deliberately 2026-10-17 with migration 0147 (docs/INFLUENCE.md I5): THE MAYOR sets the
+      // city's profit tax, 0–20 %, once a day; no player id — the caller must be the city's mayor.
+      'cmdSetTax',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')
