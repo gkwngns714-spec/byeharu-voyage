@@ -45,7 +45,9 @@
 //                 data/fittings.json, data/gear.json, data/ship_stats.json, data/ship-lines.json) plus
 //                 what the generators give, every column, both directions
 //                 (0138 added Wave B — 15 capitals and flagships — to the SAME generator, so this
-//                 one check holds all 67 generated hulls; no second copy of the rule)
+//                 one check holds all 67 generated hulls; no second copy of the rule; 0162 and 0165 added
+//                 Waves C and D the same way — 100 generated hulls — and a famous hull's one fitting, its
+//                 famous gear, is held in hull_recipe_items with the live three's)
 //   * item use    (0158, S13) public.item_use EQUALS the gear generator's `use` (scripts/build-gear.mjs
 //                 USE_BY_BASE — what wears every item and what an active consumes), every item, both
 //                 directions; the 14 refits ride in `generateGear()`'s items with the rest of the gear
@@ -626,7 +628,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
         ...ships.hulls.map((h) => ({ class_code: h.class, yard_tier: h.yardTier, ducats: h.ducats, note: h.note }))],
       recipeGoods: [...liveHulls, ...ships.hulls].flatMap((h) =>
         h.goods.map((g) => ({ class_code: h.class, good: g.in, qty: g.qty }))),
-      recipeItems: liveHulls.flatMap((h) => h.items.map((i) => ({ class_code: h.class, item: i.in, qty: i.qty }))),
+      // 0165 (S17): and the generated hulls' fittings — a famous hull's famous gear (no other generated hull has one)
+      recipeItems: [...liveHulls, ...ships.hulls].flatMap((h) => h.items.map((i) => ({ class_code: h.class, item: i.in, qty: i.qty }))),
       items: [...fittings.map((f) => ({ code: f.code, name: f.name, slot: f.slot, buys: f.buys, spends: f.spends, note: f.note, volume: f.volume, ws_tier: f.ws_tier })),
         // 0162 (K8): the three promotion items (data/captains.json), kept in the one item system as kind 'promotion'
         ...read('data/captains.json').promotion_items.map((p) => ({ code: p.code, name: p.name, slot: 'promotion', buys: 'a promotion',

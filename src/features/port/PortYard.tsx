@@ -178,6 +178,12 @@ export function PortYard({
             ) : undefined
           }
         >
+          {/* 0165 (S17): a famous ship carries her history line — the hull's served note, printed as served */}
+          {open.tech === 'F' && (
+            <Hint className="mb-2" data-testid="yard-history">
+              {open.note}
+            </Hint>
+          )}
           {open.line_nation && <Row label="Country" value={<HullCountry nation={open.line_nation} />} />}
           <Row label="Cargo" value={<Figure value={formatInt(open.hold)} unit="tons" />} />
           <Row label="Speed" value={<Figure value={open.speed_kn} unit="knots" />} />
@@ -193,6 +199,11 @@ export function PortYard({
           {open.needs && (
             <Note tone="warning" data-testid="yard-needs">
               {open.needs}
+            </Note>
+          )}
+          {open.famous_held && (
+            <Note tone="warning" data-testid="yard-famous-held">
+              {open.famous_held}
             </Note>
           )}
           {open.tier_ok === false && (

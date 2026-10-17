@@ -1033,6 +1033,9 @@ ending ` — ship skills are not in use yet` (figures have 0 / need); one with n
 And from 0152 (the tow) `E_NOT_WRECKED` (a tow asked for a fleet that is not lying wrecked) and `E_TOW_FUNDS`
 (the purse does not cover the tow: `Towing Gaivota to Lisbon costs 146 🪙 and you have 40 🪙.`, figures have / need in
 ducats); `E_NOT_AT_PORT` and `E_NO_YARD` also answer a tow.
+And from 0165 (S17, the famous ships) `E_FAMOUS_HELD` (a BUILD of a famous ship the company already keeps: one of
+each to a house — `Golden Hind is a famous ship, and a company keeps only one of each: yours is the Pelican.`; the build
+yard serves the same sentence as `famous_held` and closes the entry).
 
 ---
 
