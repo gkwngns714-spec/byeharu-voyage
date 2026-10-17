@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0152 — A STUCK LAP IS ANSWERED ON THE FIRST CLEAR  (and the casks are filled store by store)
+-- 0150 — A STUCK LAP IS ANSWERED ON THE FIRST CLEAR  (and the casks are filled store by store)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- ── WHY ─────────────────────────────────────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@
 -- 0114/0142). ACLs unmoved. The hunks are disjoint from 0151's (the tow cuts npc_plan and
 -- npc_tend_route elsewhere), so the two apply in either order.
 -- Self-asserts hold on a lived-in world: every probe runs on its own founded merchant and rolls
--- back. Timings: raise notice only. VERSION 0152 (provisional; renumbered at merge).
+-- back. Timings: raise notice only. VERSION 0150 (provisional; renumbered at merge).
 
 do $guard$
 begin
@@ -74,7 +74,7 @@ begin
 end $guard$;
 
 -- ── 1. THE PRE-IMAGES ──────────────────────────────────────────────────────────────────────────
-create temp table defs_before_0152 on commit drop as
+create temp table defs_before_0150 on commit drop as
 select f.fn,
        replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl
@@ -83,7 +83,7 @@ select f.fn,
                     'public.npc_leg_lines(uuid, uuid, uuid, numeric, integer, numeric)',
                     'cmd.do_provision(uuid, jsonb)']) f(fn);
 
-create temp table before_0152 on commit drop as
+create temp table before_0150 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select count(*) from public.world_config) as knobs;
 
@@ -96,7 +96,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
--- 0152: THE top-up of one hull's stores. p_room = her hold less her cargo (what water and food may
+-- 0150: THE top-up of one hull's stores. p_room = her hold less her cargo (what water and food may
 -- fill); p_days = the days asked (PROVISION DAYS n), or null for FULL, which asks the days that
 -- p_full tons (hold x store_ratio) last. Each store is raised to the days asked — the shorter
 -- first, then both in step — never past p_room. Answers the tons to ADD and the days she then holds
@@ -151,7 +151,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
--- 0152: the days of stores her SAIL was refused for — the head of her queue (the order the halt
+-- 0150: the days of stores her SAIL was refused for — the head of her queue (the order the halt
 -- law stops on, as public.npc_tend_route reads it), when it is a SAIL refused E_ENDURANCE: the
 -- SAIL's own figure (cmd.figures need: the course she sails through endurance_margin), rounded up,
 -- plus one day. 0 otherwise. Read by public.npc_plan (her preset) and public.npc_casks_blocked.
@@ -176,7 +176,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
--- 0152: SHE CANNOT STOW HER CASKS FOR THIS LEG BESIDE HER CARGO. She lies docked at p_from, her
+-- 0150: SHE CANNOT STOW HER CASKS FOR THIS LEG BESIDE HER CARGO. She lies docked at p_from, her
 -- SAIL from there was refused E_ENDURANCE (public.sail_refused_days), and a hull of hers that
 -- carries cargo cannot reach the leg's days — the larger of that refusal's and the planner's
 -- (p_nm / p_speed through endurance_margin, + 1) — through public.stores_topup. Read by
@@ -213,8 +213,8 @@ revoke all on function public.sail_refused_days(uuid) from public, anon, authent
 revoke all on function public.npc_casks_blocked(uuid, uuid, numeric, numeric) from public, anon, authenticated;
 
 -- ── 3. THE HUNKS (old → new), sliced from the live bodies ──────────────────────────────────────
-create temp table hunks_0152 (fn text, n int, old text, new text) on commit drop;
-insert into hunks_0152 values
+create temp table hunks_0150 (fn text, n int, old text, new text) on commit drop;
+insert into hunks_0150 values
 -- public.npc_tend_route: a SAIL refused E_ENDURANCE is re-planned on the clear that releases it
 ('public.npc_tend_route(timestamptz, uuid, uuid, bigint)', 1,
 $h$        -- 0115: NOT PARKED. The third clear in one lap re-plans her lines on today's market first;
@@ -223,7 +223,7 @@ $h$        -- 0115: NOT PARKED. The third clear in one lap re-plans her lines on
 $h$,
 $h$        -- 0115: NOT PARKED. The third clear in one lap re-plans her lines on today's market first;
         -- every clear then releases her queue and the executor goes on.
-        -- 0152: A SAIL REFUSED E_ENDURANCE IS RE-PLANNED ON THIS CLEAR. Only a plan answers it (her
+        -- 0150: A SAIL REFUSED E_ENDURANCE IS RE-PLANNED ON THIS CLEAR. Only a plan answers it (her
         -- preset, room for her casks, her cursor back on her stop so the stop renders whole); a
         -- clear alone re-sends the SAIL and nothing else. The count of three was read off events
         -- the compactor deletes after npc_retention_hours, and the hour's pass reached a stuck
@@ -240,7 +240,7 @@ $h$,
 $h$      for v_try in 1 .. 2 loop
         v_days := ceil((case when v_best_i <> 0 then v_best_maxnm else v_cur_maxnm end)
                        / (v_speed * 24) * v_emargin)::int + 1;
-        -- 0152: AND, FOR THE LOOP SHE KEEPS, NEVER LESS THAN THE PASSAGE HER SAIL WAS REFUSED FOR
+        -- 0150: AND, FOR THE LOOP SHE KEEPS, NEVER LESS THAN THE PASSAGE HER SAIL WAS REFUSED FOR
         -- (public.sail_refused_days — the SAIL's own measure of the course, 2-7 % past the reach
         -- table's nm on a long leg).
         if v_best_i = 0 then
@@ -255,7 +255,7 @@ $h$    v_lines := v_lines || jsonb_build_object('kind', 'SELL', 'good', v_cut, '
 $h$,
 $h$    v_lines := v_lines || jsonb_build_object('kind', 'SELL', 'good', v_cut, 'at_profit', false);   -- 0142: at the quay's bid
   end loop;
-  -- 0152: THE CUT-LOSS FOR ROOM. Her SAIL from here was refused E_ENDURANCE and a hull of hers
+  -- 0150: THE CUT-LOSS FOR ROOM. Her SAIL from here was refused E_ENDURANCE and a hull of hers
   -- cannot stow this leg's casks beside the cargo the at-profit SELL could not move
   -- (public.npc_casks_blocked): every good aboard goes at the quay's bid, so the PROVISION after
   -- it has room and her lap can close — the two-closed-laps cut-loss above never comes to a lap
@@ -275,8 +275,8 @@ $h$),
 $h$  v_purse  bigint;
 $h$,
 $h$  v_purse  bigint;
-  v_tw     numeric;   -- 0152: water this hull takes on (public.stores_topup)
-  v_tf     numeric;   -- 0152: food
+  v_tw     numeric;   -- 0150: water this hull takes on (public.stores_topup)
+  v_tf     numeric;   -- 0150: food
 $h$),
 ('cmd.do_provision(uuid, jsonb)', 2,
 $h$    if p_args->>'mode' = 'DAYS' then
@@ -295,7 +295,7 @@ $h$    if p_args->>'mode' = 'DAYS' then
     v_food  := v_food  + round(v_target * public.wc_num('food_per_crew_day')
                / (public.wc_num('water_per_crew_day') + public.wc_num('food_per_crew_day')), 3);
 $h$,
-$h$    -- 0152: EACH STORE TO THE DAYS ASKED (DAYS n; FULL = the days the ship's store_ratio of her hold
+$h$    -- 0150: EACH STORE TO THE DAYS ASKED (DAYS n; FULL = the days the ship's store_ratio of her hold
     -- lasts, DESIGN F.2), the shorter first, never past the hold — public.stores_topup. The old
     -- split topped up the TOTAL, so food left over after a broached cask counted as room and she
     -- lay with short water and "the casks are already full".
@@ -322,7 +322,7 @@ $h$    if p_args->>'mode' = 'DAYS' then
                      / (public.wc_num('water_per_crew_day') + public.wc_num('food_per_crew_day')), 3)
      where id = r.id;
 $h$,
-$h$    select t.water_t, t.food_t into v_tw, v_tf   -- 0152: the same top-up as the pass above
+$h$    select t.water_t, t.food_t into v_tw, v_tf   -- 0150: the same top-up as the pass above
       from public.stores_topup(r.crew, r.water_t, r.food_t, r.hold - r.cargo_t,
                                case when p_args->>'mode' = 'DAYS' then (p_args->>'days')::numeric end,
                                r.hold * r.store_ratio) t;
@@ -333,7 +333,7 @@ $h$    select t.water_t, t.food_t into v_tw, v_tf   -- 0152: the same top-up as 
 $h$);
 
 -- ── 4. THE RE-CUTS ─────────────────────────────────────────────────────────────────────────────
-create or replace function pg_temp.recut_0152(p_fn text)
+create or replace function pg_temp.recut_0150(p_fn text)
 returns void
 language plpgsql
 as $$
@@ -342,10 +342,10 @@ declare
   h     record;
   v_n   int;
 begin
-  for h in select * from hunks_0152 where fn = p_fn order by n loop
+  for h in select * from hunks_0150 where fn = p_fn order by n loop
     v_n := (length(v_def) - length(replace(v_def, h.old, ''))) / length(h.old);
     if v_n <> 1 then
-      raise exception '0152 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
+      raise exception '0150 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
         h.n, p_fn, v_n;
     end if;
     v_def := replace(v_def, h.old, h.new);
@@ -353,17 +353,17 @@ begin
   execute v_def;
 end $$;
 
-select pg_temp.recut_0152(fn) from defs_before_0152 order by fn;
+select pg_temp.recut_0150(fn) from defs_before_0150 order by fn;
 
 -- set the probe merchant's purse, through the ledger (the purse reconciles with it).
-create or replace function pg_temp.purse_0152(p_player uuid, p_ducats numeric)
+create or replace function pg_temp.purse_0150(p_player uuid, p_ducats numeric)
 returns void language sql
-as $$ select public.credit(p_player, 'PROBE_0152',
+as $$ select public.credit(p_player, 'PROBE_0150',
                            (p_ducats - (select ducats from public.players where id = p_player))::bigint) $$;
 
 -- put the probe merchant where a stuck lap lies: docked at her stop 1 (FNC), her lap open seven
 -- hours, her cursor on that stop, her queue empty, nothing aboard, her casks dry.
-create or replace function pg_temp.stuck_0152(p_player uuid, p_route uuid, p_fleet uuid, p_port uuid, p_lap int)
+create or replace function pg_temp.stuck_0150(p_player uuid, p_route uuid, p_fleet uuid, p_port uuid, p_lap int)
 returns void language plpgsql
 as $$
 begin
@@ -413,22 +413,22 @@ declare
   v_routes_on boolean := public.standing_routes_on();
 begin
   -- (a) PARITY BY REVERSE SUBSTITUTION; ACLs unmoved; each hunk in its new body exactly once.
-  for v_fn in select fn from defs_before_0152 loop
+  for v_fn in select fn from defs_before_0150 loop
     v_def := replace(pg_get_functiondef(v_fn::regprocedure), E'\r', '');
     v_back := v_def;
-    for h in select * from hunks_0152 where fn = v_fn order by n desc loop
+    for h in select * from hunks_0150 where fn = v_fn order by n desc loop
       v_n := (length(v_back) - length(replace(v_back, h.new, ''))) / length(h.new);
       if v_n <> 1 then
-        raise exception '0152 self-assert FAIL: hunk % of % is in the new body % time(s), not once', h.n, v_fn, v_n;
+        raise exception '0150 self-assert FAIL: hunk % of % is in the new body % time(s), not once', h.n, v_fn, v_n;
       end if;
       v_back := replace(v_back, h.new, h.old);
     end loop;
-    if v_back <> (select def from defs_before_0152 where fn = v_fn) or v_def = v_back then
-      raise exception '0152 self-assert FAIL: % is not its pre-image plus only 0152''s hunks', v_fn;
+    if v_back <> (select def from defs_before_0150 where fn = v_fn) or v_def = v_back then
+      raise exception '0150 self-assert FAIL: % is not its pre-image plus only 0150''s hunks', v_fn;
     end if;
     if coalesce((select p.proacl::text from pg_proc p where p.oid = v_fn::regprocedure), '')
-       is distinct from (select acl from defs_before_0152 where fn = v_fn) then
-      raise exception '0152 self-assert FAIL: the re-cut moved the ACL of %', v_fn;
+       is distinct from (select acl from defs_before_0150 where fn = v_fn) then
+      raise exception '0150 self-assert FAIL: the re-cut moved the ACL of %', v_fn;
     end if;
   end loop;
 
@@ -437,14 +437,14 @@ begin
   if strpos(pg_get_functiondef('cmd.do_provision(uuid, jsonb)'::regprocedure), 'r.hold * r.store_ratio') = 0
      or strpos(pg_get_functiondef('cmd.do_provision(uuid, jsonb)'::regprocedure), 'v_target - r.water_t - r.food_t') > 0
      or strpos(pg_get_functiondef('cmd.do_provision(uuid, jsonb)'::regprocedure), 'public.stores_topup(') = 0 then
-    raise exception '0152 self-assert FAIL: cmd.do_provision does not take its top-up from public.stores_topup alone';
+    raise exception '0150 self-assert FAIL: cmd.do_provision does not take its top-up from public.stores_topup alone';
   end if;
   if (select array_agg(n.nspname || '.' || p.proname order by n.nspname || '.' || p.proname)
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage')
          and (p.prosrc like '%provision_water_price%' or p.prosrc like '%provision_food_price%'))
      is distinct from array['public.stores_cost'] then
-    raise exception '0152 self-assert FAIL: the price of stores is read outside stores_cost';
+    raise exception '0150 self-assert FAIL: the price of stores is read outside stores_cost';
   end if;
 
   -- (c) THE WALL: server-only, no new entry point, no client write, no new knob.
@@ -454,14 +454,14 @@ begin
      or has_function_privilege('anon', 'public.sail_refused_days(uuid)', 'execute')
      or has_function_privilege('authenticated', 'public.npc_casks_blocked(uuid, uuid, numeric, numeric)', 'execute')
      or has_function_privilege('anon', 'public.npc_casks_blocked(uuid, uuid, numeric, numeric)', 'execute') then
-    raise exception '0152 self-assert FAIL: a new reading is client-reachable';
+    raise exception '0150 self-assert FAIL: a new reading is client-reachable';
   end if;
-  if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0152)
-     or (select count(*) from public.world_config) <> (select knobs from before_0152)
+  if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0150)
+     or (select count(*) from public.world_config) <> (select knobs from before_0150)
      or (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0152 self-assert FAIL: the registry, the knobs, the grant wall or the read wall moved';
+    raise exception '0150 self-assert FAIL: the registry, the knobs, the grant wall or the read wall moved';
   end if;
 
   -- (d) THE TOP-UP OVER EVERY CREWED HULL IN THE WORLD, both modes, read-only: where water and food
@@ -481,7 +481,7 @@ begin
                                         v_s.hold * v_s.store_ratio))
                          - v_s.water_t - v_s.food_t);
     if v_s.water_t + v_s.food_t + v_v.water_t + v_v.food_t > greatest(v_s.hold - v_s.cargo_t, v_s.water_t + v_s.food_t) + 0.002 then
-      raise exception '0152 self-assert FAIL: the top-up of ship % passes her hold (% + % + % + % > %)',
+      raise exception '0150 self-assert FAIL: the top-up of ship % passes her hold (% + % + % + % > %)',
         v_s.id, v_s.water_t, v_s.food_t, v_v.water_t, v_v.food_t, v_s.hold - v_s.cargo_t;
     end if;
     if least((v_s.water_t + v_v.water_t) / (v_s.crew * public.wc_num('water_per_crew_day')),
@@ -490,12 +490,12 @@ begin
                  / (v_s.crew * public.wc_num('water_per_crew_day')),
                (v_s.food_t + round(v_qty * public.wc_num('food_per_crew_day') / (public.wc_num('water_per_crew_day') + public.wc_num('food_per_crew_day')), 3))
                  / (v_s.crew * public.wc_num('food_per_crew_day'))) then
-      raise exception '0152 self-assert FAIL: the top-up leaves ship % fewer days than the old split (mode %)', v_s.id, coalesce(v_s.days::text, 'FULL');
+      raise exception '0150 self-assert FAIL: the top-up leaves ship % fewer days than the old split (mode %)', v_s.id, coalesce(v_s.days::text, 'FULL');
     end if;
     if abs(v_s.water_t / (v_s.crew * public.wc_num('water_per_crew_day')) - v_s.food_t / (v_s.crew * public.wc_num('food_per_crew_day'))) < 0.0001
        and (abs(v_v.water_t - round(v_qty * public.wc_num('water_per_crew_day') / (public.wc_num('water_per_crew_day') + public.wc_num('food_per_crew_day')), 3)) > 0.002
             or abs(v_v.food_t - round(v_qty * public.wc_num('food_per_crew_day') / (public.wc_num('water_per_crew_day') + public.wc_num('food_per_crew_day')), 3)) > 0.002) then
-      raise exception '0152 self-assert FAIL: ship % with stores in step tops up % / % where the old split gave % (mode %)',
+      raise exception '0150 self-assert FAIL: ship % with stores in step tops up % / % where the old split gave % (mode %)',
         v_s.id, v_v.water_t, v_v.food_t, v_qty, coalesce(v_s.days::text, 'FULL');
     end if;
   end loop;
@@ -508,7 +508,7 @@ begin
                                                20 * public.wc_num('food_per_crew_day') * 5, 1000, v_s.days, 450);
     if abs(v_v.water_t - round(v_qty * public.wc_num('water_per_crew_day') / (public.wc_num('water_per_crew_day') + public.wc_num('food_per_crew_day')), 3)) > 0.002
        or abs(v_v.food_t - round(v_qty * public.wc_num('food_per_crew_day') / (public.wc_num('water_per_crew_day') + public.wc_num('food_per_crew_day')), 3)) > 0.002 then
-      raise exception '0152 self-assert FAIL: 5 days of both stores top up to % / % where the old split gave % (mode %)',
+      raise exception '0150 self-assert FAIL: 5 days of both stores top up to % / % where the old split gave % (mode %)',
         v_v.water_t, v_v.food_t, v_qty, coalesce(v_s.days::text, 'FULL');
     end if;
   end loop;
@@ -518,11 +518,11 @@ begin
                        - 20 * public.wc_num('food_per_crew_day') * 60);
   if round(v_qty * public.wc_num('water_per_crew_day') / (public.wc_num('water_per_crew_day') + public.wc_num('food_per_crew_day')), 3)
        / (20 * public.wc_num('water_per_crew_day')) >= 30 then
-    raise exception '0152 self-assert FAIL: POSITIVE CONTROL — the old split already reaches 30 days on a broached cask';
+    raise exception '0150 self-assert FAIL: POSITIVE CONTROL — the old split already reaches 30 days on a broached cask';
   end if;
   select * into v_v from public.stores_topup(20, 0, 20 * public.wc_num('food_per_crew_day') * 60, 1000, 30, null);
   if v_v.days < 30 or v_v.food_t <> 0 then
-    raise exception '0152 self-assert FAIL: a hull with no water and 60 days of food tops up to % days (% / %)', v_v.days, v_v.water_t, v_v.food_t;
+    raise exception '0150 self-assert FAIL: a hull with no water and 60 days of food tops up to % days (% / %)', v_v.days, v_v.water_t, v_v.food_t;
   end if;
 
   -- (e) THE PROBES, on a merchant of the probe's own, rolled back. Each scenario is a stuck lap
@@ -541,7 +541,7 @@ begin
     update public.world_config set value = 'true'::jsonb where key = 'standing_routes_enabled';
     perform set_config('byeharu.npc_upkeep_deadline', '', true);
     if not public.npc_traders_on() then
-      raise exception '0152 self-assert FAIL: the probe could not light the merchants';
+      raise exception '0150 self-assert FAIL: the probe could not light the merchants';
     end if;
     v_m := public.npc_found(jsonb_build_object(
       'company', 'Casa do Casco Seco', 'alt_company', 'Casa da Pipa', 'nation', 'PRT', 'ink', 'prt',
@@ -561,7 +561,7 @@ begin
      where nf.player_id = v_m order by nf.roster_ord limit 1;   -- the probe founded exactly one
     select f.provision_preset_id into v_preset from public.fleets f where f.id = v_mfleet;
     if v_mfleet is null or v_route is null or v_preset is null then
-      raise exception '0152 self-assert FAIL: the probe merchant was founded without a fleet, a route or a preset';
+      raise exception '0150 self-assert FAIL: the probe merchant was founded without a fleet, a route or a preset';
     end if;
 
     -- THE SUBJECT GOOD for the room scenario: one FNC bids for, the first by id.
@@ -571,18 +571,18 @@ begin
      where pg.port_id = v_fnc and q.units >= 1 and q.total > 0
      order by g.id limit 1;
     if v_good is null then
-      raise exception '0152 self-assert FAIL: FNC bids for no good to fill the probe hold with';
+      raise exception '0150 self-assert FAIL: FNC bids for no good to fill the probe hold with';
     end if;
 
     for v_s in select * from (values (1, 'PRESET'), (2, 'ROOM'), (3, 'CASKS')) c(k, cause) order by k loop
       begin
-        perform pg_temp.stuck_0152(v_m, v_route, v_mfleet, v_fnc, 900151 + v_s.k);
-        perform pg_temp.purse_0152(v_m, 40000);
+        perform pg_temp.stuck_0150(v_m, v_route, v_mfleet, v_fnc, 900151 + v_s.k);
+        perform pg_temp.purse_0150(v_m, 40000);
         -- her lines, as the planner writes them mid-lap (no loop choice): this raises her preset to
         -- her loop's days, so each scenario then breaks one thing.
         v_plan := public.npc_plan(now(), v_route);
         if (v_plan->>'planned')::int is distinct from 1 or (v_plan->>'failed')::int is distinct from 0 then
-          raise exception '0152 self-assert FAIL: the mid-lap plan answered %', v_plan;
+          raise exception '0150 self-assert FAIL: the mid-lap plan answered %', v_plan;
         end if;
         if v_s.cause = 'PRESET' then
           -- the preset 0142 never re-measured: 1 day, and no prior clear on record (the count is 1).
@@ -604,52 +604,52 @@ begin
 
         select * into o from public.orders where fleet_id = v_mfleet and status = 'failed' order by seq limit 1;
         if v_s.cause = 'CASKS' then
-          -- 0152's top-up answers this one at the stop itself: no refusal, she is at sea.
+          -- 0150's top-up answers this one at the stop itself: no refusal, she is at sea.
           if o.id is not null or (select status from public.fleets where id = v_mfleet) <> 'SAILING' then
-            raise exception '0152 self-assert FAIL: CASKS — the broached-cask merchant did not sail from her stop (head % %, fleet %)',
+            raise exception '0150 self-assert FAIL: CASKS — the broached-cask merchant did not sail from her stop (head % %, fleet %)',
               o.verb, o.error_code, (select status from public.fleets where id = v_mfleet);
           end if;
         else
           -- POSITIVE CONTROL: the stuck shape — the SAIL refused E_ENDURANCE at the head, docked.
           if o.verb is distinct from 'SAIL' or o.error_code is distinct from 'E_ENDURANCE'
              or (select status from public.fleets where id = v_mfleet) <> 'DOCKED' then
-            raise exception '0152 self-assert FAIL: % — the probe did not make a stuck lap (head % %, fleet %)',
+            raise exception '0150 self-assert FAIL: % — the probe did not make a stuck lap (head % %, fleet %)',
               v_s.cause, o.verb, o.error_code, (select status from public.fleets where id = v_mfleet);
           end if;
           v_need := public.sail_refused_days(v_mfleet);
           if v_need <> ceil((o.error_figures->>'need')::numeric)::int + 1 then
-            raise exception '0152 self-assert FAIL: sail_refused_days read % for a refusal needing %', v_need, o.error_figures;
+            raise exception '0150 self-assert FAIL: sail_refused_days read % for a refusal needing %', v_need, o.error_figures;
           end if;
           if v_s.cause = 'ROOM' and not public.npc_casks_blocked(v_mfleet, v_fnc,
                (select r.nm from voyage.reach_from(v_fnc) r where r.port_id = v_lis), voyage.fleet_speed(v_mfleet)) then
-            raise exception '0152 self-assert FAIL: ROOM — a full hold with her SAIL refused is not read as blocked';
+            raise exception '0150 self-assert FAIL: ROOM — a full hold with her SAIL refused is not read as blocked';
           end if;
           if exists (select 1 from public.events ev where ev.kind = 'NPC_CLEARED' and ev.payload->>'route_id' = v_route::text) then
-            raise exception '0152 self-assert FAIL: % — the probe route already carries a clear', v_s.cause;
+            raise exception '0150 self-assert FAIL: % — the probe route already carries a clear', v_s.cause;
           end if;
 
           -- ONE STEP OF THE HOUR'S PASS.
           v_t0 := clock_timestamp();
           v_res := public.npc_tend_route(now(), v_mfleet, v_route, 1);
           v_ms := extract(epoch from clock_timestamp() - v_t0) * 1000;
-          raise notice '0152 % : one npc_tend_route step % ms', v_s.cause, round(v_ms);
+          raise notice '0150 % : one npc_tend_route step % ms', v_s.cause, round(v_ms);
           if (v_res->>'cleared')::int is distinct from 1 or (v_res->>'failed')::int is distinct from 0 then
-            raise exception '0152 self-assert FAIL: % — the step answered %', v_s.cause, v_res;
+            raise exception '0150 self-assert FAIL: % — the step answered %', v_s.cause, v_res;
           end if;
           if (select status from public.fleets where id = v_mfleet) <> 'SAILING'
              or exists (select 1 from public.orders where fleet_id = v_mfleet and status = 'failed') then
-            raise exception '0152 self-assert FAIL: % — one step did not put her to sea (fleet %, orders %)', v_s.cause,
+            raise exception '0150 self-assert FAIL: % — one step did not put her to sea (fleet %, orders %)', v_s.cause,
               (select status from public.fleets where id = v_mfleet),
               (select string_agg(seq || ' ' || status || ' ' || coalesce(error_code, '') || ' ' || raw_text, ' | ' order by seq)
                  from public.orders where fleet_id = v_mfleet and issued_at >= now());
           end if;
           if v_s.cause = 'PRESET' and (select days from public.provision_presets where id = v_preset) < v_need then
-            raise exception '0152 self-assert FAIL: PRESET — her preset reads % after the step, the refusal needed %',
+            raise exception '0150 self-assert FAIL: PRESET — her preset reads % after the step, the refusal needed %',
               (select days from public.provision_presets where id = v_preset), v_need;
           end if;
           if v_s.cause = 'ROOM'
              and (select coalesce(sum((s.cargo->>v_code)::numeric), 0) from public.ships s where s.fleet_id = v_mfleet) >= v_qty then
-            raise exception '0152 self-assert FAIL: ROOM — she sailed and her % was never let go', v_code;
+            raise exception '0150 self-assert FAIL: ROOM — she sailed and her % was never let go', v_code;
           end if;
         end if;
 
@@ -657,31 +657,31 @@ begin
         -- runs her stop.
         select * into v_v from public.voyages where fleet_id = v_mfleet and status = 'SAILING' order by departed_at desc limit 1;
         if v_v.id is null or v_v.dest_port_id <> v_lis then
-          raise exception '0152 self-assert FAIL: % — her voyage is not bound for her stop 0 (%)', v_s.cause, v_v.dest_port_id;
+          raise exception '0150 self-assert FAIL: % — her voyage is not bound for her stop 0 (%)', v_s.cause, v_v.dest_port_id;
         end if;
         perform voyage.settle(v_mfleet, v_v.eta + interval '1 minute');
         perform cmd.advance(v_mfleet, v_v.eta + interval '1 minute');
         if (select closed_at from public.standing_route_laps where route_id = v_route and lap_no = 900151 + v_s.k) is null then
-          raise exception '0152 self-assert FAIL: % — she reached her stop 0 and the lap did not close (fleet % at %)', v_s.cause,
+          raise exception '0150 self-assert FAIL: % — she reached her stop 0 and the lap did not close (fleet % at %)', v_s.cause,
             (select status from public.fleets where id = v_mfleet),
             (select p.code from public.fleets f join public.ports p on p.id = f.port_id where f.id = v_mfleet);
         end if;
         v_ok := v_ok || format('%s: put to sea in one step and closed her lap at LIS; ', v_s.cause);
-        raise exception 'ROLLBACK_0152_ONE';
+        raise exception 'ROLLBACK_0150_ONE';
       exception when others then
-        if sqlerrm <> 'ROLLBACK_0152_ONE' then raise; end if;
+        if sqlerrm <> 'ROLLBACK_0150_ONE' then raise; end if;
       end;
     end loop;
 
-    raise exception 'ROLLBACK_0152';
+    raise exception 'ROLLBACK_0150';
   exception when others then
-    if sqlerrm <> 'ROLLBACK_0152' then raise; end if;
+    if sqlerrm <> 'ROLLBACK_0150' then raise; end if;
   end;
   if exists (select 1 from public.npc_houses where roster_ord = 9152)
-     or exists (select 1 from public.standing_route_laps where lap_no between 900152 and 900154)
+     or exists (select 1 from public.standing_route_laps where lap_no between 900150 and 900154)
      or public.npc_traders_on() is distinct from v_was_on or public.standing_routes_on() is distinct from v_routes_on then
-    raise exception '0152 self-assert FAIL: the probe world was not rolled back';
+    raise exception '0150 self-assert FAIL: the probe world was not rolled back';
   end if;
 
-  raise notice '0152 self-assert ok: A STUCK LAP IS ANSWERED ON THE FIRST CLEAR. npc_tend_route, npc_plan, npc_leg_lines and do_provision reverse to their pre-images hunk by hunk, ACLs unmoved; the top-up lives in stores_topup alone and matches the old split on every crewed hull whose stores are in step, never fewer days on any; server-only, no new entry point, no new knob, no client write. Probes: %Rolled back.', v_ok;
+  raise notice '0150 self-assert ok: A STUCK LAP IS ANSWERED ON THE FIRST CLEAR. npc_tend_route, npc_plan, npc_leg_lines and do_provision reverse to their pre-images hunk by hunk, ACLs unmoved; the top-up lives in stores_topup alone and matches the old split on every crewed hull whose stores are in step, never fewer days on any; server-only, no new entry point, no new knob, no client write. Probes: %Rolled back.', v_ok;
 end $$;
