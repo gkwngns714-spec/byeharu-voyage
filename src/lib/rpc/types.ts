@@ -1463,6 +1463,8 @@ export interface StandingRow {
   total_fame: number
   ports_reached: number
   is_you: boolean
+  /** 0148 — the cities this company is mayor of (names). */
+  mayor_of?: string[]
 }
 
 /**
@@ -2277,4 +2279,17 @@ export interface CountryChanged {
 export interface TaxSet {
   port: string
   tax_rate: number
+}
+
+/** `world.nation_standings()` (0148) — Rank's Countries board, most cities first. */
+export interface NationStandings {
+  at: string
+  countries: {
+    nation: string
+    held: number
+    home: number
+    won: number
+    won_week: number
+    top: { name: string; merchant: boolean; points: number }[]
+  }[]
 }

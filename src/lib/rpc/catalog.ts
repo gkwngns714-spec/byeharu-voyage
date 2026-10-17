@@ -412,6 +412,8 @@ export const RPCS = {
   cmdPreviewDonate: { schema: 'cmd', fn: 'preview_donate', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_coin', type: 'bigint' }] },
   // 0147 (docs/INFLUENCE.md I5): the mayor sets the city's profit tax.
   cmdSetTax: { schema: 'cmd', fn: 'set_tax', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_rate', type: 'numeric' }] },
+  // 0148 (docs/INFLUENCE.md I6): Rank's Countries board.
+  worldNationStandings: { schema: 'world', fn: 'nation_standings', args: [] },
   cmdFoundHouse: {
     schema: 'cmd',
     fn: 'found_house',
