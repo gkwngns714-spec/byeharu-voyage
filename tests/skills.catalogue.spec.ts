@@ -79,3 +79,13 @@ test('D5: every prerequisite and group exists, no skill needs itself, and every 
   // every group has a skill
   for (const g of groups) expect(skills.some((s) => s.group === g), `group ${g} is empty`).toBe(true)
 })
+
+test('K2: every house effect is a stat its one reader knows, and Shipwright gives yard labour (0154)', () => {
+  // the stats public.skill_effects' house CHECK admits (0151, + yard_labour in 0154); each K2 stat has one
+  // reader (standing_route_max_for, fleet_wage, crew_hire_cost, captain_wage, yard_labour, storm_hull_lost,
+  // day_delay_for) — 0154's self-assert proves what they do
+  const house = new Set(['officer_bonus', 'standing_routes', 'crew_wage', 'profit_tax', 'storm_damage', 'calm_delay',
+    'captain_wage', 'crew_hire', 'influence', 'captain_xp', 'homesick', 'yard_labour'])
+  expect(skills.flatMap((s) => (s.effects ?? []).filter((e) => e.scope === 'house' && !house.has(e.stat)).map((e) => `${s.code}:${e.stat}`))).toEqual([])
+  expect((byCode.get('SHIPWRIGHT')?.effects ?? []).filter((e) => e.scope === 'house' && e.stat === 'yard_labour' && e.pct > 0)).toHaveLength(1)
+})
