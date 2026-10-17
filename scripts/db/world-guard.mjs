@@ -51,6 +51,9 @@
 //                 directions; the 14 refits ride in `generateGear()`'s items with the rest of the gear
 //   * named items (0159, S15) public.item_city EQUALS the gear generator's Named items' `city`, both
 //                 directions (a Named item is made only in that city's workshop)
+//   * perks, sets, Country lines (0163, S16) public.perks, public.gear_set_bonuses and public.gear_set_names
+//                 EQUAL data/gear.json `perks` / `sets`, and public.item_line the gear generator's Country
+//                 items' `line`, every column, both directions
 //   * home cities (0143) public.port_allegiance's `home` rows EQUAL data/home-ports.json, both
 //                 directions; every country has 3 or 4; no harbour is home to two; every home city
 //                 flies its own country (a home never changes hands — docs/INFLUENCE.md §3.2).
@@ -346,6 +349,18 @@ function drift(db_, want) {
       [['city', 'city', 'city']], 'data/gear.generated.json (Named)')
   }
 
+  // perks, sets and Country lines (0163)
+  if (want.perks) {
+    both(keyed(db_.perks, (r) => r.code), keyed(want.perks, (r) => r.code), 'perk',
+      [['word', 'word', 'word'], ['racks', 'racks', 'racks'], ['slot', 'slot', 'slot'], ['base', 'base', 'base'], ['mode', 'mode', 'mode'],
+        ['stat', 'stat', 'stat'], ['per_rank', 'per_rank', 'perRank'], ['kit', 'kit', 'kit'], ['ord', 'ord', 'ord']])
+    both(keyed(db_.setBonuses, (r) => `${r.line}/${r.pieces}/${r.stat}`), keyed(want.setBonuses, (r) => `${r.line}/${r.pieces}/${r.stat}`),
+      'set bonus', [['pct', 'pct', 'pct'], ['flat', 'flat', 'flat']])
+    both(keyed(db_.setNames, (r) => r.line), keyed(want.setNames, (r) => r.line), 'set name', [['name', 'name', 'name']])
+    both(keyed(db_.itemLine, (r) => r.code), keyed(want.itemLine, (r) => r.code), 'country item line', [['line', 'line', 'line']],
+      'data/gear.generated.json (Country)')
+  }
+
   for (const s of db_.skills) {
     if (s.effect === 'NONE') continue
     const mirror = db_.skillEffects.filter((e) => e.skill === s.code && e.scope === 'company')
@@ -479,6 +494,16 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   if (!hasCity) throw new Error('world-guard: public.item_city is missing — the chain no longer reaches 0159, so the Named items cannot be checked')
   db_.itemCity = (await db.query(`
     select ic.item_code as code, p.code as city from public.item_city ic join public.ports p on p.id = ic.port_id order by 1`)).rows
+  // 0163: perks, sets and the Country items' lines (S16)
+  const hasPerks = (await db.query(`select to_regclass('public.perks') is not null as ok`)).rows[0].ok
+  if (!hasPerks) throw new Error('world-guard: public.perks is missing — the chain no longer reaches 0163, so the perks and sets cannot be checked')
+  db_.perks = (await db.query(`
+    select code, word, array_to_string(racks, ',') as racks, coalesce(slot, 'null') as slot, coalesce(base, 'null') as base, mode,
+           coalesce(stat, 'null') as stat, per_rank::float8 as per_rank, coalesce(kit, 'null') as kit, ord from public.perks`)).rows
+  db_.setBonuses = (await db.query(`
+    select line_code as line, pieces, stat, coalesce(pct::float8::text, 'null') as pct, coalesce(flat::float8::text, 'null') as flat from public.gear_set_bonuses`)).rows
+  db_.setNames = (await db.query(`select line_code as line, set_name as name from public.gear_set_names`)).rows
+  db_.itemLine = (await db.query(`select item_code as code, line_code as line from public.item_line`)).rows
   // 0133: the skill effects and requirements
   const hasEffects = (await db.query(`select to_regclass('public.skill_effects') is not null as ok`)).rows[0].ok
   if (!hasEffects) throw new Error('world-guard: public.skill_effects is missing — the chain no longer reaches 0133, so the skill effects cannot be checked')
@@ -562,6 +587,17 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
         code: i.code, baseType: i.baseType, rack: i.rack, grade: i.grade, meta: i.meta, deck: i.deck, hands: i.hands, active: i.active }))],
       classes: [...want.gear.classes, ...ships.hulls.map((h) => ({ class: h.class, ...h.racks }))],
     }
+    // 0163: the perks and sets (data/gear.json) and the Country items' lines (the generator)
+    {
+      const g = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'gear.json'), 'utf8'))
+      const nz = (v) => (v === null || v === undefined ? 'null' : String(v))
+      want.perks = g.perks.map((x, i) => ({ code: x.code, word: x.word, racks: x.racks.join(','), slot: nz(x.slot), base: nz(x.base), mode: x.mode,
+        stat: nz(x.stat), perRank: x.perRank, kit: nz(x.kit), ord: i + 1 }))
+      want.setBonuses = g.sets.flatMap((st) => st.bonuses.map((b) => ({ line: st.line, pieces: b.pieces, stat: b.stat,
+        pct: b.pct === undefined ? 'null' : String(b.pct), flat: b.flat === undefined ? 'null' : String(b.flat) })))
+      want.setNames = g.sets.map((st) => ({ line: st.line, name: st.name }))
+      want.itemLine = gear.items.filter((i) => i.line).map((i) => ({ code: i.code, line: i.line }))
+    }
     want.itemCity = gear.items.filter((i) => i.city).map((i) => ({ code: i.code, city: i.city }))   // 0159
     want.itemUse = gear.use.map((u) => ({ code: u.code, trigger: u.trigger ?? 'null', consumes: consumedKey(u.consumes) }))   // 0158
     want.skillRequirements = [
@@ -613,6 +649,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     skills: want.skills.map((s, i) => (i === 0 ? { ...s, rank: s.rank + 1 } : s)), // 0131: one skill's rank bent
     gear: { ...want.gear, items: want.gear.items.map((it, i) => (i === 0 ? { ...it, deck: it.deck + 1 } : it)) }, // 0132: one item's deck bent
     skillEffects: want.skillEffects.map((e, i) => (i === 0 ? { ...e, pct: e.pct + 1 } : e)), // 0133: one skill effect's per cent bent
+    perks: want.perks.map((x, i) => (i === 0 ? { ...x, perRank: x.perRank + 1 } : x)), // 0163: one perk's rank bent
     itemCity: want.itemCity.map((c, i) => (i === 0 ? { ...c, city: c.city === 'LIS' ? 'VEN' : 'LIS' } : c)), // 0159: one Named item's city bent
     itemUse: want.itemUse.map((u, i) => (i === 0 ? { ...u, trigger: u.trigger === 'STORM' ? 'MILES' : 'STORM' } : u)), // 0158: one item's trigger bent
     waveA: { ...want.waveA, classes: want.waveA.classes.map((c, i) => (i === 0 ? { ...c, hold: c.hold + 5 } : c)) }, // 0135: one generated hull's hold bent
@@ -627,16 +664,17 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const sawSkill = seen.some((s) => s.includes(`skill ${want.skills[0].code}.rank:`))
   const sawGear = seen.some((s) => s.includes(`item profile ${want.gear.items[0].code}.deck:`))
   const sawEffect = seen.some((s) => s.includes(`skill effect ${effectKey(want.skillEffects[0])}.pct:`))
+  const sawPerk = seen.some((s) => s.includes(`perk ${want.perks[0].code}.per_rank:`))
   const sawCity = seen.some((s) => s.includes(`named item city ${want.itemCity[0].code}.city:`))
   const sawUse = seen.some((s) => s.includes(`item use ${want.itemUse[0].code}.trigger:`))
   const sawHull = seen.some((s) => s.includes(`ship class ${want.waveA.classes[0].code}.hold:`))
   const droppedHome = Object.values(want.homes)[0][0]
   const sawHome = seen.some((s) => s.includes(`home city ${droppedHome} `))
   const sawCaptain = seen.some((s) => s.includes(`captain trait ${want.captains.gen.captains[0].code}#2.pct:`))
-  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawUse || !sawCity || !sawHull || !sawHome || !sawCaptain) {
+  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawUse || !sawCity || !sawPerk || !sawHull || !sawHome || !sawCaptain) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, bent generated hull, dropped home city or bent captain trait was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, bent perk, bent generated hull, dropped home city or bent captain trait was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -662,10 +700,10 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       `${want.places.length} sea places, ${db_.marketRows} market rows, ${want.shipLines.length} ship lines, ` +
       `${want.classProfiles.length} class profiles, ${want.skills.length} skills in ${want.skillGroups.length} groups, ` +
       `${want.gear.racks.length} gear racks, ${want.gear.items.length} item profiles, ${db_.rackSlots.length} rack places, ` +
-      `${want.skillEffects.length} skill effects, ${want.skillRequirements.length} skill requirements, ${want.itemUse.length} item uses, ${want.itemCity.length} Named items' cities, ` +
+      `${want.skillEffects.length} skill effects, ${want.skillRequirements.length} skill requirements, ${want.itemUse.length} item uses, ${want.itemCity.length} Named items' cities, ${want.perks.length} perks, ${want.setNames.length} sets, ${want.itemLine.length} Country items' lines, ` +
       `${want.waveA.liveClasses.length + want.waveA.classes.length} ship classes and ${want.waveA.items.length} items (generators re-run = files = database), ` +
       `${db_.homes.length} home cities, ${want.captains.people.length} captains with ${db_.captains.kit.length} traits and ` +
       `${db_.captains.speaks.length} languages, ${db_.captains.portLanguage.length} harbour languages (generator re-run = file = database) ` +
-      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, bent generated hull, dropped home city and bent captain trait were all seen)`,
+      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, bent perk, bent generated hull, dropped home city and bent captain trait were all seen)`,
   )
 }

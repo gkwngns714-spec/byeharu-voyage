@@ -439,6 +439,18 @@ export const RPCS = {
       { name: 'p_seat', type: 'int' },
     ],
   },
+  // 0163 (docs/SHIPS_AND_SKILLS.md S16): augment one of your mounted fittings with a perk you choose,
+  // paid in kits from the store in this city (a level 3 workshop; the server refuses in its own words).
+  cmdAugmentFitting: {
+    schema: 'cmd',
+    fn: 'augment_fitting',
+    args: [
+      { name: 'p_ship', type: 'uuid' },
+      { name: 'p_item', type: 'text' },
+      { name: 'p_perk', type: 'text' },
+      { name: 'p_rank', type: 'int' },
+    ],
+  },
   cmdFoundHouse: {
     schema: 'cmd',
     fn: 'found_house',

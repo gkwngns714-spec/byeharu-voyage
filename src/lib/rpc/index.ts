@@ -53,6 +53,7 @@ import type {
   PlayerView,
   PostedOfficer,
   SeatedCaptain,
+  AugmentedFitting,
   PresetApplied,
   PresetDeleted,
   PresetSaved,
@@ -475,6 +476,11 @@ export function cmdHireOfficer(code: string, fleetId: string | null = null) {
  *  move her, or put her ashore (`shipId` null). Only in port; the refusal says why. */
 export function cmdSeatCaptain(code: string, shipId: string | null, seat: number | null = null) {
   return call<SeatedCaptain>('cmdSeatCaptain', [code, shipId, seat])
+}
+
+/** 0163 — augment a fitting of one of your ships with a chosen perk at a rank (cmd.augment_fitting). */
+export function cmdAugmentFitting(shipId: string, item: string, perk: string, rank: number) {
+  return call<AugmentedFitting>('cmdAugmentFitting', [shipId, item, perk, rank])
 }
 
 /** Move an officer already in the house's service to a fleet, or ashore with `null`. */
