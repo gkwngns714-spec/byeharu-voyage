@@ -83,6 +83,9 @@ const BANNED: { word: RegExp; say: string }[] = [
   { word: /\bbailed out\b/i, say: 'refounded' },
   { word: /\bfatigue\b/i, say: 'Next lap 14:32' },
   { word: /\bat profit\b/i, say: 'Only sell above cost' },
+  // 2026-10-18, docs/SKILLS_AND_CAPTAINS.md K9: the people you hire are CAPTAINS (K4–K8); `officer` is the
+  // wire's word (`public.officers`, `cmd.hire_officer`) and never the player's.
+  { word: /\bofficers?\b/i, say: 'captain(s)' },
 ]
 
 /** Literals the crude rule catches that are NOT player text, each with its reason. */

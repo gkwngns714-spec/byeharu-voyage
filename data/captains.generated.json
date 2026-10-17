@@ -606,8 +606,8 @@
     }
    ],
    "languages": [
-    "ITALIAN",
-    "PORTUGUESE"
+    "PORTUGUESE",
+    "INDIC"
    ]
   },
   {
@@ -1112,9 +1112,9 @@
     }
    ],
    "languages": [
-    "ITALIAN",
     "PORTUGUESE",
-    "SPANISH"
+    "INDIC",
+    "ARABIC"
    ]
   },
   {

@@ -344,9 +344,9 @@ function MerchantBody({
         <CargoRows rows={cargo} totalTons={card.ships.reduce((n, s) => n + s.cargo_tuns, 0)} testId="merchant-cargo-row" />
       </SheetSection>
 
-      <SheetSection heading="Officers" trailing={<span className="text-t-caption text-ink-muted">{`master ${card.company.master}`}</span>}>
+      <SheetSection heading="Captains" trailing={<span className="text-t-caption text-ink-muted">{`master ${card.company.master}`}</span>}>
         {card.officers.length === 0 ? (
-          <Row label={`No officers — ${card.company.master} keeps the ship himself.`} tone="muted" hairline={false} />
+          <Row label={`No captains — ${card.company.master} keeps the ship himself.`} tone="muted" hairline={false} />
         ) : (
           <TileField>
             {card.officers.map((o) => (

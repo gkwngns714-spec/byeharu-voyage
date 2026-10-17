@@ -56,7 +56,6 @@ import {
   cmdHaggle,
   cmdHireOfficer,
   cmdIssue,
-  cmdPostOfficer,
   cmdPreview,
   cmdProvisionPresetApply,
   cmdProvisionPresetDelete,
@@ -268,10 +267,9 @@ export interface LiveWorld {
   /** Give a route to a fleet (it starts at once, so the world is read back), or take it off with null. */
   assignRoute: (routeId: string, fleetId: string | null) => Promise<boolean>
   pauseRoute: (routeId: string, paused: boolean) => Promise<boolean>
-  /** Sign an officer, post one, or study a level. Each re-reads what it changed, because the
+  /** Hire a captain, or study a level (0164: a captain is seated with `cmdSeatCaptain`). Each re-reads what it changed, because the
    *  server's answer is the only true one — no local patching (the `issue` rule). */
   hireOfficer: (code: string, fleetId: string | null) => Promise<boolean>
-  postOfficer: (code: string, fleetId: string | null) => Promise<boolean>
   /** 0131: enrol in a skill where this fleet is docked; set the whole training queue (in order).
    *  (The Academy's old one-button `studySkill` left with the instant purchase; cmd.study_skill stays
    *  on the server for older builds and does the same two acts.) */
@@ -838,9 +836,6 @@ export const useWorld = create<LiveWorld>((set, get) => {
 
   hireOfficer: async (code, fleetId) =>
     (await verb(cmdHireOfficer(code, fleetId), () => Promise.all([get().loadOfficers(), get().refresh()]))) !== null,
-
-  postOfficer: async (code, fleetId) =>
-    (await verb(cmdPostOfficer(code, fleetId), () => Promise.all([get().loadOfficers(), get().refresh()]))) !== null,
 
   enrollSkill: async (code, fleetId) =>
     (await verb(cmdSkillEnroll(code, fleetId), () => Promise.all([get().loadSkills(), get().refresh()]))) !== null,

@@ -51,7 +51,6 @@ import type {
   MarketView,
   OfficerRoster,
   PlayerView,
-  PostedOfficer,
   SeatedCaptain,
   CaptainsView,
   TraitsSet,
@@ -501,11 +500,6 @@ export function cmdSeatCaptain(code: string, shipId: string | null, seat: number
 /** 0163 — augment a fitting of one of your ships with a chosen perk at a rank (cmd.augment_fitting). */
 export function cmdAugmentFitting(shipId: string, item: string, perk: string, rank: number) {
   return call<AugmentedFitting>('cmdAugmentFitting', [shipId, item, perk, rank])
-}
-
-/** Move an officer already in the house's service to a fleet, or ashore with `null`. */
-export function cmdPostOfficer(code: string, fleetId: string | null = null) {
-  return call<PostedOfficer>('cmdPostOfficer', [code, fleetId])
 }
 
 /** Enrol (if needed, where the fleet is docked) and queue a skill's next level (0016, re-cut 0131). */
