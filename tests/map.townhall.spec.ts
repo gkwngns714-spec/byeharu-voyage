@@ -137,6 +137,8 @@ test('0144: lit, a company docked at Lisbon donates, and its influence there is 
   await page.getByTestId('map-city-tabs').getByText('Town Hall', { exact: true }).click()
   await expect(page.getByTestId('townhall-influence')).toBeVisible({ timeout: 30_000 })
   await expect(page.getByTestId('townhall-influence-you')).toContainText('0')
+  // 0146: lit, the Town Hall says when the daily count next runs
+  await expect(page.getByTestId('townhall-next-count')).toContainText('Next count')
   await page.getByTestId('townhall-donate').click()
   await expect(page.getByTestId('townhall-donate-points')).toBeVisible({ timeout: 30_000 })
   await page.getByTestId('townhall-donate-send').click()

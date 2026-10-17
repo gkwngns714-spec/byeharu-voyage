@@ -64,7 +64,9 @@ select jobname, active from cron.job
 byeharu-voyage:price-snapshot, byeharu-voyage:reconcile`. If a job has been added, renamed or lost
 — or if an old `voyage-tick-%` job survives from 0010 — the push stops inside 0078 and somebody has
 to decide whether that job may run during an apply. Better to learn it from a select than from a
-half-applied chain.
+half-applied chain. Since 0122 `byeharu-voyage:city` and `byeharu-voyage:cron-purge` exist too, and
+since 0146 **`byeharu-voyage:influence`** (the daily count at 00:47 UTC; it writes nothing while
+`influence_enabled` is false, so `wind_the_clock()` starting it before the switch is harmless).
 
 **Why this is not optional on a database with rows in it.** `pg_cron` is running
 `tick_market_drift` every drift slot, and that tick writes `public.port_goods`. A migration that

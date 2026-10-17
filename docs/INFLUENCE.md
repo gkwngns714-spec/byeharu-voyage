@@ -551,7 +551,9 @@ The DEPLOY_RUNBOOK's job list gains `influence` in I4.
 | **I5 · 0147** | `a_city_has_a_mayor` | `port_mayor`; step 4; `cmd.set_tax` (registered); **`world.tax_rate(p_port, p_player)`** and the eight callers re-cut; `influence_citizen_tax_cut` 0.5 | the mayor is the controlling country's top giver, not a richer foreigner; `set_tax` refuses a non-mayor, 0.21 and a second same-day call; a citizen pays half the profit tax on a probe sale and a foreigner pays it all; dark = every caller's output equals its pre-image on 200 sampled quotes (the 0122 pre-image method) | the switch. Arrivals measured on prod before and after |
 | **I6 · 0148** | `leading_a_city_is_known` | step 5 (`MAYOR_DAY`); `player_progress`'s two terms; the coupon multiplier hunk in `tick_city`; `world.nation_standings()`; knobs `fame_per_mayor_day` 25, `influence_owner_coupon_mult` 1.5 | a probe giver's trading points rise by cost/100; one mayor day = 25; the controlling holder's coupon = 1.5 × another's for the same `paid`; standings count = `port_allegiance` per country | the switch |
 
-**Then:** `select public.influence_switch(true)`. The first 00:47 run's receipt is read (`changed`,
+**As built (0146):** `tick_influence` writes nothing while dark; the job `byeharu-voyage:influence`
+is defined inactive and `influence_switch(true)` starts it; the History line goes to the PLAYER
+companies of the two countries. **Then:** `select public.influence_switch(true)`. The first 00:47 run's receipt is read (`changed`,
 `claimed`, `mayors`), and the next day's change count is checked against §8.
 
 ### 7.1 Client PRs (each after its migration is LIVE)
