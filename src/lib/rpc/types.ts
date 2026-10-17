@@ -295,7 +295,8 @@ export interface MarketPort {
 
 /** One trait a captain KNOWS, in the server's words. `lines` is what it does ("+7.5% speed"); only her
  *  job (the first) can be `in_use` today, and only if a rule reads it — otherwise `note` says why
- *  ("Not in use yet." / "Works when combat arrives."). `uses`: within her grade's trait slots. */
+ *  ("Not in use yet." / "Works when combat arrives." — the latter not served once `combat_bite` is on, 0168).
+ *  `uses`: within her grade's trait slots. */
 export interface CaptainTrait {
   code: string
   word: string
