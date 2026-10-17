@@ -1011,6 +1011,44 @@ export interface CrewBonuses {
   totals: { effect: string; pct: number; line: string }[]
 }
 
+/** 0160 — one of her three levels: the level in force (capped at your company's), her own, her
+ *  points and where the next level starts; `cap_line` is the server's sentence when the cap holds her. */
+export interface CaptainLevel {
+  track: string
+  word: string
+  level: number
+  own: number
+  points: number
+  next_at: number
+  cap_line: string | null
+}
+
+/** 0160 — one of YOUR captains (`world.captains`): her card, her grade now, the traits she uses, where
+ *  she sits, her levels and whether she is homesick — every word the server's. */
+export interface YourCaptain extends CaptainCard {
+  code: string
+  name: string
+  active: string[]
+  ship: string | null
+  fleet: string | null
+  cabin_word: string | null
+  /** Ashore, or her ship is docked: her traits (and seat) may change. */
+  can_change: boolean
+  levels: CaptainLevel[]
+  homesick: { days: number; line: string } | null
+}
+
+export interface CaptainsView {
+  captains: YourCaptain[]
+}
+
+/** 0160 — what cmd.captain_traits_set answers. */
+export interface TraitsSet {
+  officer: string
+  traits: string[]
+  sentence: string
+}
+
 /** 0157 — what cmd.seat_captain answers: where she now sits, in one sentence. */
 export interface SeatedCaptain {
   officer: string
