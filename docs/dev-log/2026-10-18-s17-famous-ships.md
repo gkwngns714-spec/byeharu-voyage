@@ -1,8 +1,8 @@
-# 2026-10-18 — 0165: S17, the famous ships (Wave D) — `osn-s17-famous`
+# 2026-10-18 — 0166: S17, the famous ships (Wave D) — `osn-s17-famous`
 
 `docs/SHIPS_AND_SKILLS.md` §8 row S17 (§4.1 the famous tech, §4.3 Wave D, §4.4 the famous requirements, §6.2's
 Famous rung; `docs/SKILLS_AND_CAPTAINS.md` §9: S17 unchanged). **Not deployed; dark** (every new subject has
-requirements and `skills_bite` is off). Number provisional (S16 is 0163, K9 0164; renumber to head + 1 at deploy).
+requirements and `skills_bite` is off). Number provisional (prod head 0164, K9 takes 0165, so S17 is 0166).
 Built on main `20845c3` (S16 merged). Hunks checked to occur exactly once in production's live bodies
 (`cmd.do_build` 0154, `world.building_yard` 0159; read-only `pg_get_functiondef` through `db query --linked`,
 2026-10-18); neither S16 nor K9 touches either body.
@@ -57,9 +57,9 @@ Built on main `20845c3` (S16 merged). Hunks checked to occur exactly once in pro
 
 ## Verification (once, fresh worktree, real `npm ci`, no `.env.local`)
 
-- **Cached-prefix build** (`npm run build`): restored 155/156 from the prefix cache, applied 0165 alone in 78 s
+- **Cached-prefix build** (`npm run build`): restored 155/156 from the prefix cache, applied 0166 alone in 78 s
   (whole build 1 m 36 s); world guard ok (103 ship classes, 225 items, generators re-run = files = database). Receipt:
-  `0165 self-assert ok: A FAMOUS SHIP IS ONE TO A HOUSE … DARK: 3220 old yard entries and 14981 old workshop entries as
+  `0166 self-assert ok: A FAMOUS SHIP IS ONE TO A HOUSE … DARK: 3220 old yard entries and 14981 old workshop entries as
   before; … 11 refused through the door. LIT (rolled back): 11 BUILT for their labour; a second Golden Hind refused
   "Golden Hind is a famous ship, and a company keeps only one of each: yours is the Pelican." (the yard says the same
   and closes her), a Turgut Reis's Kadırga and a second barca still built; Drake's Culverins refused "E_NEEDS_SKILL:

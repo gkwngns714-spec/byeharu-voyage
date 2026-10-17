@@ -178,7 +178,7 @@ export function PortYard({
             ) : undefined
           }
         >
-          {/* 0165 (S17): a famous ship carries her history line — the hull's served note, printed as served */}
+          {/* 0166 (S17): a famous ship carries her history line — the hull's served note, printed as served */}
           {open.tech === 'F' && (
             <Hint className="mb-2" data-testid="yard-history">
               {open.note}

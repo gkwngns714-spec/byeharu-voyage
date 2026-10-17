@@ -110,14 +110,14 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   // 0135 (S12 Wave A) + 0138 (S14 Wave B): the three Lisbon hulls plus the generated ones
   // (data/ships.generated.json) — counted from the generator's file, not remembered — each served with
   // its line, size, role, tech; the capitals and flagships among them at sizes 5 and 6 — counted from the
-  // same file (0165, S17, added two famous capitals and four famous flagships), and never none of either.
+  // same file (0166, S17, added two famous capitals and four famous flagships), and never none of either.
   expect(snap.ship_classes).toHaveLength(3 + generated.hulls.length)
   const atSize = (n: number) => generated.hulls.filter((h) => h.size === n).length
   expect(atSize(5)).toBeGreaterThan(0)
   expect(atSize(6)).toBeGreaterThan(0)
   expect(snap.ship_classes.filter((c) => c.size === 5)).toHaveLength(atSize(5))
   expect(snap.ship_classes.filter((c) => c.size === 6)).toHaveLength(atSize(6))
-  // 0165: the famous ships ride the snapshot with tech F, one a line
+  // 0166: the famous ships ride the snapshot with tech F, one a line
   expect(new Set(snap.ship_classes.filter((c) => c.tech === 'F').map((c) => c.line)).size).toBe(11)
   for (const c of snap.ship_classes) {
     expect(isStr(c.line) && isNum(c.size) && isStr(c.role) && isStr(c.tech), c.code).toBe(true)

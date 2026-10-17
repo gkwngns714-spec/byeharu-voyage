@@ -404,7 +404,7 @@ export interface YardHull {
   needs?: string | null
   /** 0159 — `class_profile.tech` (T1 · T2 · F), for the yard's T2 badge. Optional: a server before 0159 sends none. */
   tech?: string | null
-  /** 0165 — a famous ship (tech F) the company already keeps: cmd.do_build's own E_FAMOUS_HELD sentence
+  /** 0166 — a famous ship (tech F) the company already keeps: cmd.do_build's own E_FAMOUS_HELD sentence
    *  ("Golden Hind is a famous ship, and a company keeps only one of each: yours is the Pelican."), served only
    *  where it applies; `buildable` already folds it in. Printed as served. */
   famous_held?: string
