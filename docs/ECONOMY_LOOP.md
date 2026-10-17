@@ -461,7 +461,7 @@ A level lives in its own row and composes into a reader. `public.city_level(p_po
 
 | Work | Reader (live) | Composition |
 |---|---|---|
-| `docks` | `voyage.sail_refusal` E_DRAFT 0036:443-448 (`max(draft) > max_draft`; live via 0047:358 → 0050:316) | `v_maxd + public.city_level(p_dest, 'docks') / wc_int('docks_draft_per_levels')` → +1 draft at levels 2 and 4 |
+| `docks` | ~~`voyage.sail_refusal` E_DRAFT~~ — **none since 0139** (the draft gate and the knob `docks_draft_per_levels` were removed: any hull enters any harbour) | ~~`v_maxd + city_level(p_dest, 'docks') / docks_draft_per_levels`~~ — the docks level raises nothing a rule reads |
 | `market` | `world.daily_cap_remaining` 0027:445 and `world.spread` 0026:277-293 | allowance × `(1 + wc_num('market_cap_per_level') × level)`; spread: one more term inside the `greatest(floor, base − per_dev × dev_commerce − per_dev × level)` |
 | `production` | `public.tick_market_drift` regeneration UPDATE 0010:120-126 | `production_rate × (1 + wc_num('production_per_level') × coalesce(cw.level, 0))` via a `left join city_works` — set-based already, once a game-day |
 | `inn` | `cmd.do_hire` draws `ports.crew_pool` (0007:689); no tick refills it (0097:98-99) | §4 step 5: `update ports set crew_pool = least(size_tier × wc_int('inn_pool_per_tier'), crew_pool + wc_int('inn_hands_per_level') × level)` for harbours with an inn level, `for update skip locked` |

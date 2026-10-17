@@ -304,7 +304,7 @@ Nothing is on this list unless a player decision hangs off it.
 | `speed` (kn) | Converts directly to real-world minutes of the player's life. The most legible stat in the game. |
 | `durability` | The buffer that absorbs storms and pirates. **Flagship durability at 0 ⇒ the fleet cannot sail** (Origin's rule, `DESIGN_RESEARCH.md` §1.3). |
 | `guns` | Feeds `escort_score` — the *only* combat number, and it is an input to a probability, never to a battle. |
-| `draft` | Gates ports: `port.max_draft`. This is what makes a small ship permanently useful — Sevilla up the Guadalquivir and a hundred island ports refuse deep hulls. |
+| `draft` | How deep the hull sits — a fact of the hull only. **It gates nothing since 0139** (owner, 2026-10-17: any hull may enter any harbour); `port.max_draft` is still served as a fact of the port. |
 | `rig` | Selects the wind multiplier column (§B.5). Makes seasonal routing a real skill. |
 | `seaworthiness` | Storm damage reduction, derived: `0.4·(durability/1000) + 0.6·(hold/500)`. Not authored per-ship; **derived so there is one authority.** |
 
@@ -788,14 +788,14 @@ Every entry: **shape · preconditions · cost · what it queues · failure.**
 **`SAIL <fleet> TO <port> [VIA <port> ...] [SPEED cruise|press]`**
 Sends a fleet to sea.
 - **Pre:** fleet `DOCKED`; destination reachable through the leg graph; `endurance_days ≥ leg_days × 1.15`;
-  flagship durability > 0; crew ≥ `crew_required` on every ship; destination `max_draft ≥` deepest ship;
+  flagship durability > 0; crew ≥ `crew_required` on every ship (no draft condition — 0139 removed it);
   destination not ice-closed; player's language/permit level admits the port.
 - **Cost:** 0 at issue. Wages and provisions accrue per voyage-day while sailing.
 - **Queues:** one `VOYAGE` row with the frozen `speed_profile`, `total_nm`, `eta`, and a checkpoint
   schedule. Status `SAILING`.
 - **`SPEED press`:** +8% speed, +40% hull wear, +25% hazard. `cruise` is the default.
-- **Fails:** `E_NOT_DOCKED`, `E_NO_ROUTE`, `E_ENDURANCE`, `E_CREW_SHORT`, `E_DRAFT`, `E_PORT_CLOSED`,
-  `E_FLAGSHIP_DISABLED`, `E_LANGUAGE`.
+- **Fails:** `E_NOT_DOCKED`, `E_NO_ROUTE`, `E_ENDURANCE`, `E_CREW_SHORT`, `E_PORT_CLOSED`,
+  `E_FLAGSHIP_DISABLED`, `E_LANGUAGE`. (`E_DRAFT` — RETIRED by 0139: any hull enters any harbour.)
 
 **`DOCK <fleet>`**
 Enters the port the fleet is anchored off. Pre: `ANCHORED` at a port. Cost: port fee `50 × ships`.
@@ -999,7 +999,7 @@ E_HOLD_FULL
 
 **Full error code list:** `E_PARSE`, `E_AMBIGUOUS`, `E_NO_SUCH_FLEET`, `E_NO_SUCH_PORT`, `E_NO_SUCH_GOOD`,
 `E_NO_SUCH_SHIP`, `E_NO_SUCH_OFFICER`, `E_NOT_DOCKED`, `E_NOT_SAILING`, `E_NOT_AT_PORT`, `E_NO_ROUTE`,
-`E_ENDURANCE`, `E_CREW_SHORT`, `E_CREW_MAX`, `E_CREW_POOL`, `E_DRAFT`, `E_PORT_CLOSED`,
+`E_ENDURANCE`, `E_CREW_SHORT`, `E_CREW_MAX`, `E_CREW_POOL`, `E_DRAFT` (retired by 0139), `E_PORT_CLOSED`,
 `E_FLAGSHIP_DISABLED`, `E_LANGUAGE`, `E_INSUFFICIENT_FUNDS`, `E_HOLD_FULL`, `E_NO_CARGO`, `E_NO_STOCK`,
 `E_UNAVAILABLE`, `E_DAILY_CAP`, `E_PRICE_LIMIT`, `E_MIN_INVEST`, `E_WEEKLY_CAP`, `E_NO_PRESENCE`,
 `E_SEASON_CLOSED`, `E_FLEET_CAP`, `E_FLEET_SIZE`, `E_SHIP_CAP`, `E_LAST_SHIP`, `E_DIFFERENT_PORT`,

@@ -5,6 +5,31 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — 0139: any hull enters any harbour — `osn-0139-no-draft-gate`
+
+Owner, in chat: *remove the draft restriction entirely — any hull may enter any harbour.* **Not deployed**
+(prod head 0138; 0137 is PR #142 and touches none of these bodies — either order).
+- **Every reader found on prod** (`pg_get_functiondef` over public / cmd / world / voyage, read-only): the
+  rule lived in `voyage.sail_refusal` (E_DRAFT: deepest hull vs `max_draft` + docks level /
+  `docks_draft_per_levels`), `public.npc_feasible_legs` (`p.max_draft >= p_draft`) and
+  `public.npc_loop_candidates` (`max(cl.draft)` feeding it). `world.snapshot` (max_draft),
+  `world.ship_stats` / `world.building_yard` (draft) only serve facts — kept. `passage_gate` / `settle` only
+  mention draft in comments.
+- **0139**: the E_DRAFT block and its two variables go (ice stays); `npc_feasible_legs(port, speed, days)`
+  loses the draft parameter and filter (drop + create from its re-cut pre-image; owner / ACL / definer /
+  search_path asserted equal — the ACL is copied off the old function, not written out); `npc_loop_candidates`
+  no longer reads draft (3 call sites re-cut); knob `docks_draft_per_levels` deleted (no reader left). The
+  docks work now raises nothing a rule reads.
+- **Self-assert (cached-prefix apply, 1.7 s)**: probe house, a bashum (draft 5) bound for SET (depth 3):
+  old body E_DRAFT, new body not refused (stores margin neutralised; with the real margin it is E_ENDURANCE,
+  not draft). 240 leg answers = old filter at draft 0, ⊇ old at every draft, 120 grew by exactly their
+  shallower harbours. 12 shallow-hulled merchants' candidate loops = pre-image. 3 bodies reverse; no body
+  refuses E_DRAFT, compares max_draft or reads the knob.
+- **Client**: PortYard's `maxDraft` prop / `tooDeep` / `yard-draft` note deleted; `fleetMaxDraft` (unused)
+  deleted; ShipsFace's "Depth needed" → "Draft"; stat gloss, PortTown comment, DESIGN (E_DRAFT retired),
+  ECONOMY_LOOP, SHIPS_AND_GEAR updated. No spec asserted E_DRAFT or the yard-draft note.
+
+---
 ## 2026-10-17 — PR CI runs only what the diff reaches (`osn-ci-scoped`)
 
 The owner's order: *"make CI shorter — CI tests only from where we made something new, not the whole
@@ -17,6 +42,8 @@ The required check names are unchanged. On a PR, the verdict counts against the 
 
 Before this change, migration PRs took 47-66 min of acceptance wall-clock (runs 38950948786,
 38977847594, 38980408372) and spec-only #141 took 21 min.
+
+---
 
 ## 2026-10-17 — S14 (0138): capitals and flagships — `osn-0138-wave-b`
 

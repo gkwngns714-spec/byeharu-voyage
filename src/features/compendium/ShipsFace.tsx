@@ -23,8 +23,8 @@ import { NoAnswer } from './NoAnswer'
 // HOLD, SPEED, CREW, AND NOTHING ELSE ON THE TILE (docs/UI_DIRECTION.md §6). `build 40 h` and
 // `cost 2,400 d.` described hulls no order can commission — domain/fleet/statGloss.ts says so in
 // its own header — and guns arm a combat the game does not have. A stat the rules do not read is
-// a stat the player cannot use. Draft and hull ARE read (the sailing gate refuses a harbour
-// shallower than the deepest hull; repair reads condition), so they are in the tray with the tier.
+// a stat the player cannot use. Hull IS read (repair reads condition), so it is in the tray with the
+// tier. Draft is shown there as a fact of the hull only — 0139 removed the gate that read it.
 //
 // SERVED ORDER: the snapshot serves ship classes by tier (0009:97) — the catalogue's own ladder.
 //
@@ -169,7 +169,7 @@ export function ShipsFace({ query }: { query: string }) {
           <Row label="Speed" value={<Figure value={formatFixed(open.speed_kn, 1)} unit="knots" />} />
           {/* crew she must have / berths she carries — two served figures, one pair. */}
           <Row label="Crew (needed / max)" value={<Figure value={formatOfTotal(open.crew_required, open.crew_max)} />} />
-          <Row label="Depth needed" value={<Figure value={formatInt(open.draft)} />} />
+          <Row label="Draft" value={<Figure value={formatInt(open.draft)} />} />
           <Row label="Hull" value={<Figure value={formatInt(open.durability)} />} />
           <Row label="Class" value={<Figure value={formatInt(open.tier)} />} hairline={false} />
           <Hint className="mt-2">Base figures, before any officer or skill bonus.</Hint>

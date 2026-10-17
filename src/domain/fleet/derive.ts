@@ -273,14 +273,3 @@ export function busyUntilMs(fleet: FleetView): number | null {
   return instantMs(fleet.busy_until)
 }
 
-/**
- * The deepest hull in the fleet — what a port's `max_draft` gates (DESIGN C.3).
- *
- * Draft is a SHIP-CLASS fact and `FleetShip` does not carry it, so the caller supplies the lookup.
- * `FleetShip.class` is the class NAME (`Barca`), not its code — README §4.9.
- */
-export function fleetMaxDraft(fleet: FleetView, draftOfClass: (className: string) => number | undefined): number {
-  let deepest = 0
-  for (const ship of fleet.ships) deepest = Math.max(deepest, draftOfClass(ship.class) ?? 0)
-  return deepest
-}

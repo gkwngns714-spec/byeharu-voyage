@@ -302,7 +302,6 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
             portId={port.id}
             fleet={acting}
             tier={buildingTier(port, 'building_yard')}
-            maxDraft={port.max_draft}
           />
         )}
         {shownFace.id === 'academy' && <PortAcademy />}
