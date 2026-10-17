@@ -1756,10 +1756,14 @@ test('the book of standing orders round-trips: write, adjust, apply, clear, stri
 // serves it back; a refusal is typed; the queue is left as it was found. Nothing here is paid for.
 test("world.skills() serves the groups, the queue and the verbs' own answers; the queue round-trips (0131)", async () => {
   const book = expectOk(await worldSkills())
-  expect(book.groups.map((g) => g.code)).toEqual([
-    'HULLS', 'ROLES', 'SEAMANSHIP', 'NAVIGATION', 'TRADE', 'GUNNERY', 'COMMAND', 'SHIPWRIGHT',
-  ])
-  expect(book.skills).toHaveLength(92)
+  // the groups and the skills the catalogue authors (data/skills.json — the world guard holds the
+  // database to it), never a count typed from one day's world (0151 grew it 92 → 107, SOCIAL added)
+  const authored = JSON.parse(readFileSync(new URL('../data/skills.json', import.meta.url), 'utf8')) as {
+    groups: { code: string }[]
+    skills: { code: string }[]
+  }
+  expect(book.groups.map((g) => g.code)).toEqual(authored.groups.map((g) => g.code))
+  expect(book.skills).toHaveLength(authored.skills.length)
   expect(isNum(book.queue_max) && isNum(book.sp_per_hour) && isStr(book.now)).toBe(true)
   for (const s of book.skills) {
     for (const k of [

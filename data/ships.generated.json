@@ -143,7 +143,7 @@
    "requirements": [
     {
      "skill": "PRT_MEDIUM",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "PRT_HEAVY",
@@ -514,7 +514,7 @@
    "requirements": [
     {
      "skill": "ESP_MEDIUM",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "ESP_HEAVY",
@@ -873,7 +873,7 @@
    "requirements": [
     {
      "skill": "NLD_MEDIUM",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "NLD_HEAVY",
@@ -1228,7 +1228,7 @@
    "requirements": [
     {
      "skill": "ENG_MEDIUM",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "ENG_HEAVY",
@@ -1587,7 +1587,7 @@
    "requirements": [
     {
      "skill": "FRA_MEDIUM",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "FRA_HEAVY",
@@ -1950,7 +1950,7 @@
    "requirements": [
     {
      "skill": "ITA_MEDIUM",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "ITA_HEAVY",
@@ -2309,7 +2309,7 @@
    "requirements": [
     {
      "skill": "OTT_MEDIUM",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "OTT_HEAVY",
@@ -2640,7 +2640,7 @@
    "requirements": [
     {
      "skill": "IND_MEDIUM",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "IND_HEAVY",
@@ -2987,7 +2987,7 @@
    "requirements": [
     {
      "skill": "CHN_MEDIUM",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "CHN_HEAVY",
@@ -3330,7 +3330,7 @@
    "requirements": [
     {
      "skill": "JPN_MEDIUM",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "JPN_HEAVY",
@@ -3677,7 +3677,7 @@
    "requirements": [
     {
      "skill": "KOR_MEDIUM",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "KOR_HEAVY",
@@ -3756,7 +3756,7 @@
    "requirements": [
     {
      "skill": "PRT_HEAVY",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "PRT_CAPITAL",
@@ -3918,7 +3918,7 @@
    "requirements": [
     {
      "skill": "ESP_HEAVY",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "ESP_CAPITAL",
@@ -4076,7 +4076,7 @@
    "requirements": [
     {
      "skill": "NLD_HEAVY",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "NLD_CAPITAL",
@@ -4155,7 +4155,7 @@
    "requirements": [
     {
      "skill": "ENG_HEAVY",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "ENG_CAPITAL",
@@ -4309,7 +4309,7 @@
    "requirements": [
     {
      "skill": "FRA_HEAVY",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "FRA_CAPITAL",
@@ -4388,7 +4388,7 @@
    "requirements": [
     {
      "skill": "ITA_HEAVY",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "ITA_CAPITAL",
@@ -4467,7 +4467,7 @@
    "requirements": [
     {
      "skill": "OTT_HEAVY",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "OTT_CAPITAL",
@@ -4617,7 +4617,7 @@
    "requirements": [
     {
      "skill": "IND_HEAVY",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "IND_CAPITAL",
@@ -4692,7 +4692,7 @@
    "requirements": [
     {
      "skill": "CHN_HEAVY",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "CHN_CAPITAL",
@@ -4767,7 +4767,7 @@
    "requirements": [
     {
      "skill": "JPN_HEAVY",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "JPN_CAPITAL",
@@ -4842,7 +4842,7 @@
    "requirements": [
     {
      "skill": "KOR_HEAVY",
-     "level": 4
+     "level": 3
     },
     {
      "skill": "KOR_CAPITAL",
