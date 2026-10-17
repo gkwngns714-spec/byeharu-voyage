@@ -147,7 +147,10 @@ export function HaggleThread({
             hairline={false}
             value={<Figure value={formatPctPoints(quay.next_odds_pct, 0)} tone={oddsTone} unit={quay.at_floor ? 'at the floor' : undefined} />}
             data-testid="haggle-odds"
-          />
+          >
+            {/* 0161: the server's sentence when one of her captains speaks the port's language */}
+            {quay.language_line && <span className="block text-t-caption text-accent" data-testid="haggle-language">{quay.language_line}</span>}
+          </Row>
           <div className="grid grid-cols-2 gap-2 py-2">
             <Button variant="secondary" className="w-full" onClick={() => setOpen(false)} data-testid="haggle-take">
               Take it
