@@ -282,7 +282,7 @@ $h$  v_tax    := public.profit_tax(f.port_id, v_profit, f.player_id);   -- 0122:
 ('public.npc_leg_lines(uuid, uuid, uuid, numeric, integer, numeric)', 1,
 $h$      v_net := (q_sell.total - q_buy.total) - public.profit_tax(p_to, q_sell.total - q_buy.total);$h$,
 $h$      v_net := (q_sell.total - q_buy.total) - public.profit_tax(p_to, q_sell.total - q_buy.total,
-                 (select sr.player_id from public.standing_routes sr where sr.id = p_route));   -- 0147: her rate$h$),
+                 (select r_0147.player_id from public.standing_routes r_0147 where r_0147.id = p_route));   -- 0147: her rate$h$),
 ('public.client_rpc_entry_points()', 1,
 $h$      ('cmd',         'preview_donate',        'uuid, bigint')
     ) as t(s, f, a)$h$,
@@ -342,6 +342,15 @@ begin
   if (select count(*) from pre_0147) <> 2 * (select count(*) from public.ports where kind = 'HARBOUR') then
     raise exception '0147 self-assert FAIL: the parity set is not every harbour twice';
   end if;
+  -- the merchants' leg pricer RUNS (a re-cut body that only compiles at call time must be called):
+  -- a sample of merchant routes, each priced from its first stop to its second, lit, without error
+  update public.world_config set value = 'true'::jsonb where key = 'city_treasury_enabled';
+  perform public.npc_leg_lines(r.route_id, r.a, r.b, 100, 10, 5)
+     from (select s0.route_id, s0.port_id as a, s1.port_id as b
+             from public.standing_route_stops s0
+             join public.standing_route_stops s1 on s1.route_id = s0.route_id and s1.ord = 1
+            where s0.ord = 0 order by md5(s0.route_id::text || '0147') limit 20) r;
+  update public.world_config set value = v_was where key = 'city_treasury_enabled';
   if (select count(*) from public.client_rpc_entry_points() e where e.function_name = 'set_tax'
         and e.fn is not null and has_function_privilege('authenticated', e.fn, 'execute')) <> 1
      or has_function_privilege('anon', 'cmd.set_tax(uuid, numeric)', 'execute') then
