@@ -46,6 +46,10 @@
 //                 what the generators give, every column, both directions
 //                 (0138 added Wave B — 15 capitals and flagships — to the SAME generator, so this
 //                 one check holds all 67 generated hulls; no second copy of the rule)
+//   * home cities (0143) public.port_allegiance's `home` rows EQUAL data/home-ports.json, both
+//                 directions; every country has 3 or 4; no harbour is home to two; every home city
+//                 flies its own country (a home never changes hands — docs/INFLUENCE.md §3.2).
+//                 Who holds a CONTESTED city is the game's, not the data's, and is not checked.
 //
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
@@ -178,6 +182,24 @@ function drift(db_, want) {
     if ((d.capital_port_code ?? null) !== (n.capital_port_code ?? null)) {
       say(`nation ${n.code}.capital: database has ${d.capital_port_code}, data says ${n.capital_port_code}`)
     }
+  }
+
+  // home cities (0143) — data/home-ports.json, both directions; each flies its own country
+  {
+    const dbHome = new Map(db_.homes.map((h) => [h.port, h.nation]))
+    const wantHome = new Map()
+    for (const [nation, ports] of Object.entries(want.homes)) {
+      if (ports.length < 3 || ports.length > 4) say(`home cities: ${nation} has ${ports.length} in data/home-ports.json, the rule is 3 or 4`)
+      for (const port of ports) {
+        if (wantHome.has(port)) say(`home city ${port} is home to both ${wantHome.get(port)} and ${nation} in data/home-ports.json`)
+        wantHome.set(port, nation)
+      }
+    }
+    for (const [port, nation] of wantHome) {
+      if (!dbHome.has(port)) say(`home city ${port} (${nation}) is in data/home-ports.json but public.port_allegiance does not mark it home`)
+      else if (dbHome.get(port) !== nation) say(`home city ${port}: data says ${nation}, public.port_allegiance flies ${dbHome.get(port)}`)
+    }
+    for (const [port, nation] of dbHome) if (!wantHome.has(port)) say(`home city ${port} (${nation}) is marked home in public.port_allegiance but not in data/home-ports.json`)
   }
 
   // ship lines and class profiles (0130) — data/ship-lines.json, every column, both directions
@@ -364,6 +386,13 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   db_.skillPrereqs = (await db.query(`
     select s.code, n.code as skill, q.level, q.choice from public.skill_prereqs q
       join public.skills s on s.id = q.skill_id join public.skills n on n.id = q.needs_skill_id`)).rows
+  // 0143: the home cities
+  const hasAllegiance = (await db.query(`select to_regclass('public.port_allegiance') is not null as ok`)).rows[0].ok
+  if (!hasAllegiance) throw new Error('world-guard: public.port_allegiance is missing — the chain no longer reaches 0143, so the home cities cannot be checked')
+  db_.homes = (await db.query(`
+    select p.code as port, n.code as nation from public.port_allegiance a
+      join public.ports p on p.id = a.port_id left join public.nations n on n.id = a.nation_id
+     where a.home order by p.code`)).rows
   db_.marketRows = (await db.query(`select count(*)::int as n from public.port_goods`)).rows[0].n
   // 0132: the gear racks, item profiles, rack places and unlocks
   const hasGear = (await db.query(`select to_regclass('public.item_profile') is not null as ok`)).rows[0].ok
@@ -414,6 +443,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     want.skillRequirements = skills.requirements                            // 0133
   }
   want.gear = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'gear.json'), 'utf8'))
+  want.homes = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'home-ports.json'), 'utf8')).homes   // 0143
 
   // 0135: THE GENERATORS, RE-RUN. Their output must equal the committed files (a stale file is drift)
   // and, with the live rows' data files, the database (below, in `drift`).
@@ -474,6 +504,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     gear: { ...want.gear, items: want.gear.items.map((it, i) => (i === 0 ? { ...it, deck: it.deck + 1 } : it)) }, // 0132: one item's deck bent
     skillEffects: want.skillEffects.map((e, i) => (i === 0 ? { ...e, pct: e.pct + 1 } : e)), // 0133: one skill effect's per cent bent
     waveA: { ...want.waveA, classes: want.waveA.classes.map((c, i) => (i === 0 ? { ...c, hold: c.hold + 5 } : c)) }, // 0135: one generated hull's hold bent
+    homes: Object.fromEntries(Object.entries(want.homes).map(([n, ps], i) => [n, i === 0 ? ps.slice(1) : ps])), // 0143: one home city dropped
   }
   const seen = drift(db_, wounded)
   const sawDrop = seen.some((s) => s.includes(`${want.ports[0].code}`))
@@ -483,10 +514,12 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const sawGear = seen.some((s) => s.includes(`item profile ${want.gear.items[0].code}.deck:`))
   const sawEffect = seen.some((s) => s.includes(`skill effect ${effectKey(want.skillEffects[0])}.pct:`))
   const sawHull = seen.some((s) => s.includes(`ship class ${want.waveA.classes[0].code}.hold:`))
-  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawHull) {
+  const droppedHome = Object.values(want.homes)[0][0]
+  const sawHome = seen.some((s) => s.includes(`home city ${droppedHome} `))
+  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawHull || !sawHome) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect or bent generated hull was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent generated hull or dropped home city was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -513,7 +546,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       `${want.classProfiles.length} class profiles, ${want.skills.length} skills in ${want.skillGroups.length} groups, ` +
       `${want.gear.racks.length} gear racks, ${want.gear.items.length} item profiles, ${db_.rackSlots.length} rack places, ` +
       `${want.skillEffects.length} skill effects, ${want.skillRequirements.length} skill requirements, ` +
-      `${want.waveA.liveClasses.length + want.waveA.classes.length} ship classes and ${want.waveA.items.length} items (generators re-run = files = database) ` +
-      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect and bent generated hull were all seen)`,
+      `${want.waveA.liveClasses.length + want.waveA.classes.length} ship classes and ${want.waveA.items.length} items (generators re-run = files = database), ` +
+      `${db_.homes.length} home cities ` +
+      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent generated hull and dropped home city were all seen)`,
   )
 }

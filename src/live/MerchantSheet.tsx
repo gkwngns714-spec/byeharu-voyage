@@ -24,6 +24,7 @@ import { skippedWords } from '../domain/route'
 import type { MerchantCard } from '../lib/rpc'
 import { portNameOf, useWorld } from './worldStore'
 import { ShipPanel } from './ShipPanel'
+import { HullCountry } from './HullCountry'
 import { TradeHistoryPanel, type TradePick } from './TradeHistoryPanel'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -107,6 +108,10 @@ export function MerchantSheet({
           line={
             card ? (
               <>
+                {/* 0143 (owner, 2026-10-17): every merchant shows the flag of her company's country. */}
+                <span className="inline-flex items-center gap-1" data-testid="merchant-sheet-flag">
+                  <HullCountry nation={card.company.nation_code} compact />
+                </span>{' '}
                 {card.company.name}
                 {line ? <> · {line}</> : null}
               </>
@@ -126,7 +131,7 @@ export function MerchantSheet({
         <MerchantBody card={card} portName={(c) => portNameOf(portByCode, c)} goodName={(c) => goodByCode[c]?.name ?? c} goodCategory={(c) => goodByCode[c]?.category ?? ''} onOpenShip={openShipPanel} onOpenTrades={openTrades} />
       )}
     </Tray>
-    {ship && <ShipPanel key={openShip} ship={ship} levelFixed onClose={() => setOpenShip(null)} />}
+    {ship && <ShipPanel key={openShip} ship={ship} nation={card?.company.nation_code} levelFixed onClose={() => setOpenShip(null)} />}
     {card && trades && (
       <TradeHistoryPanel fleetId={card.fleet.id} pick={trades} onPick={setTrades} onClose={() => setTrades(null)} />
     )}

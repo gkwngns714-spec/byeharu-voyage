@@ -123,6 +123,7 @@ export function ChartCanvas({
   coast,
   seas = NO_SEAS,
   regions = null,
+  portFlags = null,
   islets = NO_ISLETS,
   selection,
   keepOut,
@@ -144,6 +145,9 @@ export function ChartCanvas({
   /** The regions' tints and names (row 93) — null while the filter is off, which is the default
    *  and the map exactly as it was. */
   regions?: readonly RegionTint[] | null
+  /** 0143 — each harbour's flag by port code, set before its name (D14). The screen passes it only
+   *  while the Regions filter is on; null is the map exactly as it was. */
+  portFlags?: ReadonlyMap<string, string> | null
   /** Harbours the drawn coast has no land for (row 92): a speck of land is painted under each. */
   islets?: readonly Point[]
   selection: MapSelection
@@ -255,7 +259,7 @@ export function ChartCanvas({
       const shift = (r: LabelRequest): LabelRequest => (k === 0 ? r : { ...r, at: { x: r.at.x + k * CHART_WIDTH, y: r.at.y } })
       // A fleet's name is asked for on the copy her hull is drawn in, and on that one only — the
       // ports and the waters are already culled to the window by their own builders.
-      for (const r of mapLabelRequests(model, fullPorts, selection, box.width <= LABEL_SPAN_LIMIT)) {
+      for (const r of mapLabelRequests(model, fullPorts, selection, box.width <= LABEL_SPAN_LIMIT, portFlags)) {
         if (r.tone === 'fleet' && !inWindow(r)) continue
         requests.push(shift(r))
       }
@@ -270,7 +274,7 @@ export function ChartCanvas({
       glyphRadiusPx: GLYPH.fleetHaloRadius,
       keepOut: keepOutUnits,
     })
-  }, [model, marksByCopy, seas, regions, selection, box, unitsPerPx, keepOutUnits])
+  }, [model, marksByCopy, seas, regions, portFlags, selection, box, unitsPerPx, keepOutUnits])
 
   // THE COAST'S SHEET (./chartView.ts, `paperOf` and `nextCoastPaper`) — wide at rest and in a pan,
   // the view itself just after a zoom. The state is only "was the last change a zoom": it is advanced

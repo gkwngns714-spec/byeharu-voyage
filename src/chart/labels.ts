@@ -447,6 +447,9 @@ export function mapLabelRequests(
   ports: readonly MapPort[],
   selection: MapSelection,
   showQuietPorts: boolean,
+  /** 0143 (docs/INFLUENCE.md D14): each harbour's flag by port code, set before its name — only
+   *  while the Regions filter is on (the screen passes null otherwise, and the map stays clean). */
+  flags: ReadonlyMap<string, string> | null = null,
 ): LabelRequest[] {
   const requests: LabelRequest[] = []
 
@@ -460,7 +463,7 @@ export function mapLabelRequests(
     const selected = selection?.kind === 'port' && selection.code === port.code
     requests.push({
       id: `port:${port.code}`,
-      text: port.name,
+      text: flags?.has(port.code) ? `${flags.get(port.code)} ${port.name}` : port.name,
       at: project(port),
       priority: selected
         ? LABEL_PRIORITY.selected

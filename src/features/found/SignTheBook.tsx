@@ -3,6 +3,7 @@ import { Button, Field, Hint, Note, Row, Sheet, SheetSection } from '../../compo
 import { cmdFoundHouse } from '../../lib/rpc'
 import type { Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
+import { NationPicker } from '../../live/NationPicker'
 
 // SIGN THE BOOK — the first thing a captain on a real server ever sees, and until 2026-08-20 it
 // did not exist.
@@ -15,11 +16,12 @@ import { useWorld } from '../../live/worldStore'
 // arrived at an empty world with nothing to press. Migration 0011 gave the server side
 // (`cmd.found_house(name)`, which takes NO uid and reads auth.uid() itself); this is the door.
 //
-// ── IT ASKS FOR ONE THING ──────────────────────────────────────────────────────────────────────
-// A name. Not a nation, not a starting port, not a ship: DESIGN K.1 opens every captain the same
-// way — one Barca called Gaivota, alongside at Lisboa, 8,000 ducats — and the server is what
-// decides that, not this form. A screen that offered choices the chain does not honour would be
-// lying about the game.
+// ── IT ASKS FOR TWO THINGS ─────────────────────────────────────────────────────────────────────
+// A name, and (0143, owner 2026-10-17: like Uncharted Waters, every company belongs to a country)
+// the country it sails for — Portugal unless chosen. Not a starting port, not a ship: DESIGN K.1
+// opens every captain the same way — one Barca called Gaivota, 8,000 ducats — alongside in the
+// chosen country's capital, and the server is what decides that (cmd.found_house), not this form.
+// The capital's name printed here is read off the served catalogue, never kept here.
 //
 // ── AND IT VALIDATES NOTHING ───────────────────────────────────────────────────────────────────
 // No length check, no "name taken" check, no trimming rules. `public.players` already carries
@@ -29,14 +31,19 @@ import { useWorld } from '../../live/worldStore'
 
 export function SignTheBook() {
   const refresh = useWorld((s) => s.refresh)
+  const nationByCode = useWorld((s) => s.nationByCode)
+  const portByCode = useWorld((s) => s.portByCode)
   const [name, setName] = useState('')
+  const [nation, setNation] = useState('PRT')
+  const capitalCode = nationByCode[nation]?.capital ?? null
+  const capital = capitalCode ? (portByCode[capitalCode]?.name ?? capitalCode) : null
   const [busy, setBusy] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
 
   const sign = async () => {
     setBusy(true)
     setRefusal(null)
-    const r = await cmdFoundHouse(name)
+    const r = await cmdFoundHouse(name, nation)
     if (r.ok) {
       // The house exists now; the read is what makes it appear. Nothing here writes to the store.
       await refresh()
@@ -51,7 +58,7 @@ export function SignTheBook() {
       {/* WHAT IS SET FOR YOU is a standing explanation, so it is behind `Hint`'s tray rather than
           printed (it was `PageHeader`'s folded ⓘ); the subtitle stays printed, as it was. */}
       <Hint
-        more="You start with one ship — Gaivota, a Barca — docked at Lisbon, and 8,000 ducats to trade with. The port, the ship and the money are set by the game; the name is yours."
+        more={`You start with one ship — Gaivota, a Barca — docked at ${capital ?? "your country's capital"}, and 8,000 ducats to trade with. The ship and the money are set by the game; the name and the country are yours.`}
         moreTitle="How every captain begins"
       >
         Every captain begins the same way.
@@ -78,6 +85,12 @@ export function SignTheBook() {
           className="mt-2 font-serif"
         />
         <Hint className="mt-2">Three to twenty-four letters, and no two houses may trade under the same name.</Hint>
+
+        <p className="mt-4 text-t-label text-ink-muted">Which country does it sail for?</p>
+        <div className="mt-2">
+          <NationPicker value={nation} onChange={setNation} label="Country" />
+        </div>
+        {capital && <Hint className="mt-2">{`You start at ${capital}. You can change country later.`}</Hint>}
 
         {/* A refusal is DATA (DESIGN F.5): a sentence and at least one fix, printed as it arrives —
             this screen does not translate server errors into its own words. The code goes to

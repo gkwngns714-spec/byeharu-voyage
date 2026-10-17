@@ -1,0 +1,133 @@
+{
+  "_comment": "Every country's home cities (docs/INFLUENCE.md §3, rule D1). AUTHORED after scripts/build-home-ports.mjs wrote it once; a home city never changes hands. Migration 0143 seeds public.port_allegiance.home from it, and scripts/db/world-guard.mjs holds the database equal to it.",
+  "homes": {
+    "AYU": [
+      "AYU",
+      "PTT",
+      "HOI"
+    ],
+    "BAN": [
+      "BNT",
+      "JAK",
+      "SUR"
+    ],
+    "DNK": [
+      "COP",
+      "BER",
+      "TRO",
+      "REY"
+    ],
+    "ENG": [
+      "LON",
+      "PTH",
+      "KIN",
+      "PLY"
+    ],
+    "ESP": [
+      "SVQ",
+      "SNL",
+      "CAD",
+      "CEU"
+    ],
+    "FRA": [
+      "MRS",
+      "TOU",
+      "LAR",
+      "NAN"
+    ],
+    "GEN": [
+      "GOA",
+      "CHS",
+      "LIV"
+    ],
+    "GUJ": [
+      "KHA",
+      "SRT",
+      "MUM"
+    ],
+    "HAN": [
+      "HAM",
+      "LUB",
+      "TOR"
+    ],
+    "JOS": [
+      "BUS",
+      "ULS",
+      "TON",
+      "YEO"
+    ],
+    "JPN": [
+      "SAK",
+      "OSA",
+      "TOK",
+      "KAG"
+    ],
+    "MAR": [
+      "SAF",
+      "AGA",
+      "SAL",
+      "TAN"
+    ],
+    "MLB": [
+      "KOZ",
+      "KAN",
+      "KOC",
+      "MNG"
+    ],
+    "MNG": [
+      "GUA",
+      "XIA",
+      "QUA",
+      "FUZ"
+    ],
+    "MUG": [
+      "KAR",
+      "CHI",
+      "HAD"
+    ],
+    "NLD": [
+      "AMS",
+      "HRN",
+      "ROT",
+      "MID"
+    ],
+    "OTT": [
+      "IST",
+      "IZM",
+      "THE",
+      "RHO"
+    ],
+    "PER": [
+      "BAS",
+      "MUS",
+      "MAN"
+    ],
+    "POL": [
+      "GDA",
+      "RIG",
+      "TAL"
+    ],
+    "PRT": [
+      "LIS",
+      "SET",
+      "OPO",
+      "FNC"
+    ],
+    "RUS": [
+      "ARK",
+      "KAL",
+      "NUU"
+    ],
+    "SWE": [
+      "STO",
+      "VIS",
+      "TUR"
+    ],
+    "VEN": [
+      "VEN",
+      "COR",
+      "ZAK",
+      "HER"
+    ]
+  }
+}

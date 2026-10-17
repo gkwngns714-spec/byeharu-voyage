@@ -1,0 +1,31 @@
+import { Chip } from '../components/ui'
+import { HullCountry } from './HullCountry'
+import { useWorld } from './worldStore'
+
+// THE COUNTRY PICKER (0143, owner 2026-10-17: like Uncharted Waters, a company belongs to a country
+// and can change it). Every country the world serves (`snapshot.nations`), in the catalogue's order,
+// as chips — the flag and the name through HullCountry. Two callers: Start your company
+// (SignTheBook) and Profile's change of country. It chooses; the server decides (cmd.found_house,
+// cmd.change_country) and its refusal is printed by the caller.
+export function NationPicker({
+  value,
+  onChange,
+  label,
+}: {
+  value: string
+  onChange: (code: string) => void
+  /** Names the set for assistive tech. Not painted. */
+  label: string
+}) {
+  const nationByCode = useWorld((s) => s.nationByCode)
+  const nations = Object.values(nationByCode).sort((a, b) => a.name.localeCompare(b.name))
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap gap-1.5" data-testid="nation-picker">
+      {nations.map((n) => (
+        <Chip key={n.code} on={n.code === value} onClick={() => onChange(n.code)} data-testid={`nation-${n.code}`}>
+          <HullCountry nation={n.code} />
+        </Chip>
+      ))}
+    </div>
+  )
+}

@@ -68,6 +68,8 @@ import type {
   PortMerchants,
   TownHallView,
   InvestReceipt,
+  AllegianceView,
+  CountryChanged,
   WorkKind,
   StandingRouteDeleted,
   StandingRoutePaused,
@@ -608,4 +610,15 @@ export async function cmdPreviewInvest(portId: string, kind: WorkKind, shares: n
  *  yours lies docked there. */
 export function cmdInvest(portId: string, kind: WorkKind, shares: number): Promise<RpcResult<InvestReceipt>> {
   return call<InvestReceipt>('cmdInvest', [portId, kind, shares])
+}
+
+/** EVERY HARBOUR'S FLAG (0143) — the country that holds it today and whether it is a home city.
+ *  Read at the open, once an hour, and when a city panel opens; flags change once a day. */
+export function worldAllegiance(): Promise<RpcResult<AllegianceView>> {
+  return call<AllegianceView>('worldAllegiance', [])
+}
+
+/** Your company changes its country (0143) — once every seven days; it moves no money. */
+export function cmdChangeCountry(nationCode: string): Promise<RpcResult<CountryChanged>> {
+  return call<CountryChanged>('cmdChangeCountry', [nationCode])
 }

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Bar, Empty, Tray, type TrayDetent } from '../components/ui'
 import { formatFixed, formatInt } from '../lib/format'
 import { CHART_CHROME, hullClassOfCode, hullPath } from '../chart'
+import { HullCountry } from './HullCountry'
 import type { ShipBonus, ShipBudget, ShipRack } from '../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -368,9 +369,12 @@ export function ShipPanel({
   ship,
   onClose,
   levelFixed = false,
+  nation = null,
 }: {
   ship: ShipView
   onClose: () => void
+  /** 0143: a merchant's hull flies her company's country — its flag is set before the ship's name. */
+  nation?: string | null
   /** A merchant's hull: her level is fixed (0127), so no bar toward the next. */
   levelFixed?: boolean
 }) {
@@ -392,7 +396,16 @@ export function ShipPanel({
       mode="side-next"
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
-      title={ship.name}
+      title={
+        nation ? (
+          <span className="inline-flex items-center gap-1.5" data-testid="ship-panel-flag">
+            <HullCountry nation={nation} compact />
+            {ship.name}
+          </span>
+        ) : (
+          ship.name
+        )
+      }
       data-testid="map-ship-panel"
       {...CHART_CHROME}
     >
