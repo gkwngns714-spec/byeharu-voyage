@@ -841,8 +841,11 @@ export interface FleetShip {
   /** 0133 — what your company's skills add to her, by source. `[]` while skills do not bite; absent
    *  from a server before 0133. */
   bonuses?: ShipBonus[]
-  /** How many captains she can berth. Nothing reads it yet — ranks and cabins are their own slice. */
+  /** How many captains she can seat (class_cabins: 3 on a small hull, up to 8). */
   cabins: number
+  /** 0157 — her cabins, seat by seat, and who sits in each (`world.ship_seats`). Optional for the
+   *  serve-order reason: a server before 0157 sends none. */
+  seats?: ShipSeats
   /** 0127 — slots a higher level opens, by kind: how many, and the level that opens the first. */
   slots_locked?: Record<string, { count: number; at_level: number }>
   /** 0127 — her level on the one curve (`public.level_from_points`), and her experience in points:
@@ -957,7 +960,48 @@ export interface QueuedOrder {
   result: Record<string, unknown> | null
 }
 
+/** 0157 — one cabin of a ship: the server's word for it, and the captain in it (null: empty). */
+export interface ShipSeat {
+  seat: number
+  /** captain / trading / exploration / combat */
+  cabin: string
+  /** "Captain's cabin", "Trade cabin", … */
+  cabin_word: string
+  captain: {
+    code: string
+    name: string
+    grade: string
+    job_word: string
+    /** What her job is worth in this cabin: 100, or the off-focus rate (50). */
+    rate_pct: number
+  } | null
+}
+
+/** 0157 — `world.ship_seats`: the cabins, and whether their rates count yet (`note` says so when not). */
+export interface ShipSeats {
+  rates_in_use: boolean
+  note: string | null
+  list: ShipSeat[]
+}
+
+/** 0157 — `world.crew_bonuses`: what the captains add to a fleet, by source and in total, in the
+ *  server's words. The client prints both and adds nothing. */
+export interface CrewBonuses {
+  lines: { captain: string; trait: string; cabin_word: string; effect: string; line: string }[]
+  totals: { effect: string; pct: number; line: string }[]
+}
+
+/** 0157 — what cmd.seat_captain answers: where she now sits, in one sentence. */
+export interface SeatedCaptain {
+  officer: string
+  ship: string | null
+  seat: number | null
+  sentence: string
+}
+
 export interface FleetView {
+  /** 0157 — what the captains seated in her ships add (`world.crew_bonuses`). Absent before 0157. */
+  crew?: CrewBonuses
   id: string
   name: string
   status: FleetStatus
@@ -1363,6 +1407,9 @@ export interface Officer extends CaptainCard {
   hired: boolean
   /** The fleet they serve in, by NAME, or null for an officer ashore. */
   fleet: string | null
+  /** 0157 — the ship and the cabin she sits in (null ashore). Absent before 0157. */
+  ship?: string | null
+  seat?: number | null
   /** 0127 — the level of YOUR signing of her (per signing), null when you have not signed her.
    *  Absent on a server older than 0127. */
   level?: number | null

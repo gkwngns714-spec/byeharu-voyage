@@ -112,14 +112,12 @@ function whereFrom(guest: InnGuest, ports: readonly SnapshotPort[] | undefined):
 
 export function PortInn({
   port,
-  fleet,
   alongside,
   trayMode,
 }: {
   port: SnapshotPort
-  /** The fleet an officer signs with — the acting fleet, wherever it is (`cmd.hire_officer`). */
-  fleet: FleetView | null
-  /** A fleet of yours docked HERE, or null — crew are hired and let go from the port they are in. */
+  /** A fleet of yours docked HERE, or null — crew are hired and let go from the port they are in, and
+   *  (0157) a captain hired here sits in it, by the server's picker, or goes ashore without one. */
   alongside: FleetView | null
   /** Where this face's trays stand — PORT's docked default; the MAP's city panel (2026-10-15)
    *  slides them out beside itself (`side-next`). The same face, composed by a second caller. */
@@ -144,7 +142,7 @@ export function PortInn({
           <Row label="Dock a fleet here to hire crew or buy supplies." tone="muted" hairline={false} data-testid="inn-none-docked" />
         </>
       )}
-      <Room port={port} fleet={fleet} trayMode={trayMode} />
+      <Room port={port} fleet={alongside} trayMode={trayMode} />
     </div>
   )
 }
@@ -411,6 +409,10 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
             <Row label="Job" value={open.specialty.toLowerCase()} />
           )}
           <Row label="From" value={whereFrom(open, ports)} hairline={!open.signed} />
+          {/* 0157: where she will sit — the fleet docked here, by the server's picker; else ashore */}
+          {!open.signed && (
+            <Row label={fleet ? `Joins ${fleet.name} on hiring` : 'Goes ashore on hiring'} tone="muted" data-testid="inn-joins" />
+          )}
           {open.signed && <Row label="Already working for you." tone="muted" hairline={false} />}
           <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
           {refusal && (

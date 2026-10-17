@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Bar, Figure, Icon, Row, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
 import {
   formatCountdown,
@@ -24,6 +24,7 @@ import { fleetParts } from './fleetLine'
 import { useWorld } from '../../live/worldStore'
 import type { FleetShip } from '../../lib/rpc'
 import { ShipPanel } from '../../live/ShipPanel'
+import { CrewBonuses } from '../../live/CrewBonuses'
 import { TradeHistoryPanel, type TradePick } from '../../live/TradeHistoryPanel'
 
 
@@ -210,7 +211,15 @@ export function VoyageTray({
   const voyage = fleet.voyage
   const daysToRun = voyage ? Math.max(0, realMsToVoyageDays(voyage.etaMs - nowMs)) : 0
   const stores = fleet.fleet.enduranceDays
-  const ships = useWorld((s) => s.fleets.find((f) => f.id === fleet.fleet.id)?.ships)
+  const own = useWorld((s) => s.fleets.find((f) => f.id === fleet.fleet.id))
+  const ships = own?.ships
+  // 0157: the captains you keep — the ones a cabin of hers can seat
+  const roster = useWorld((s) => s.officers)
+  const kept = useMemo(() => (roster?.officers ?? []).filter((o) => o.hired), [roster])
+  const loadOfficers = useWorld((s) => s.loadOfficers)
+  useEffect(() => {
+    if (roster === null) void loadOfficers()
+  }, [roster, loadOfficers])
   const [openShipId, setOpenShipId] = useState<string | null>(null)
   const openShip = ships?.find((s) => s.id === openShipId) ?? null
   // HER ROUTE'S LAPS, if she sails one — the company's routes book the shell already holds, so
@@ -302,6 +311,7 @@ export function VoyageTray({
         )}
       </Row>
       {voyage && <WatersAhead waters={voyage.waters} />}
+      <CrewBonuses crew={own?.crew} />
       {route && (
         <RouteLaps
           name={route.name}
@@ -311,7 +321,14 @@ export function VoyageTray({
         />
       )}
     </Tray>
-    {openShip && <ShipPanel key={openShip.id} ship={openShip} onClose={() => setOpenShipId(null)} />}
+    {openShip && (
+      <ShipPanel
+        key={openShip.id}
+        ship={openShip}
+        onClose={() => setOpenShipId(null)}
+        seating={{ shipId: openShip.id, docked: own?.status === 'DOCKED', captains: kept }}
+      />
+    )}
     {trades && (
       <TradeHistoryPanel fleetId={fleet.fleet.id} pick={trades} onPick={setTrades} onClose={() => setTrades(null)} />
     )}

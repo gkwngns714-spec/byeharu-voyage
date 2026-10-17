@@ -55,7 +55,8 @@
 //                 trait_effects, languages — EQUALS data/captains.json; and the GENERATOR is re-run:
 //                 scripts/build-captains.mjs `generateCaptains()` must equal data/captains.generated.json
 //                 byte for byte AND the database: captain_profile, captain_traits, captain_languages and
-//                 port_language, every row, both directions
+//                 port_language, every row, both directions; (0157, K5) each effect's cap, the cabin kinds
+//                 and the rotation of cabins by hull role
 //
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
@@ -347,7 +348,13 @@ function drift(db_, want) {
     both(keyed(db_.captains.grades, (r) => r.code), keyed(c.cat.grades, (r) => r.code), 'captain grade',
       ['ord', 'slots', 'known', 'floor_pct'].map(same), CAT)
     both(keyed(db_.captains.effects, (r) => r.code), keyed(c.cat.effects.map((e, i) => ({ ...e, ord: i + 1 })), (r) => r.code), 'crew effect',
-      ['ord', 'scope', 'live', 'words', 'waits', 'reader'].map(same), CAT)
+      ['ord', 'scope', 'live', 'cap_pct', 'words', 'waits', 'reader'].map(same), CAT)
+    // 0157 (K5): the cabin kinds and the rotation by hull role
+    both(keyed(db_.captains.cabinKinds, (r) => r.code), keyed(c.cat.cabins.kinds.map((k, i) => ({ ...k, ord: i + 1 })), (r) => r.code),
+      'cabin kind', ['word', 'ord'].map(same), CAT)
+    both(keyed(db_.captains.rotation, (r) => `${r.role}#${r.ord}`),
+      keyed(Object.entries(c.cat.cabins.rotation).flatMap(([role, list]) => list.map((focus, i) => ({ role, ord: i + 1, focus }))),
+        (r) => `${r.role}#${r.ord}`), 'cabin rotation', [same('focus')], CAT)
     both(keyed(db_.captains.traits, (r) => r.code),
       keyed(c.cat.traits.map((t) => ({ ...t, goods: t.goods ?? null, goods_word: t.goods_word ?? null })), (r) => r.code), 'trait',
       ['ord', 'word', 'focus', 'goods', 'goods_word'].map(same), CAT)
@@ -476,7 +483,9 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
         from public.officers o left join public.nations n on n.id = o.nation_id left join public.ports p on p.id = o.home_port_id`)).rows,
     foci: (await db.query(`select code, word, ord from public.trait_foci`)).rows,
     grades: (await db.query(`select code, ord, slots, known, floor_pct::float8 as floor_pct from public.captain_grades`)).rows,
-    effects: (await db.query(`select code, ord, scope, live, words, waits, reader from public.crew_effects`)).rows,
+    effects: (await db.query(`select code, ord, scope, live, cap_pct::float8 as cap_pct, words, waits, reader from public.crew_effects`)).rows,
+    cabinKinds: (await db.query(`select code, word, ord from public.cabin_kinds`)).rows,
+    rotation: (await db.query(`select role, ord, focus from public.cabin_rotation`)).rows,
     traits: (await db.query(`select code, ord, word, focus, goods, goods_word from public.traits`)).rows,
     traitEffects: (await db.query(`select trait, effect, ord, mult::float8 as mult from public.trait_effects`)).rows,
     languages: (await db.query(`select code, ord, name from public.languages`)).rows,

@@ -3,7 +3,8 @@ import { Bar, Empty, Tray, type TrayDetent } from '../components/ui'
 import { formatFixed, formatInt } from '../lib/format'
 import { CHART_CHROME, hullClassOfCode, hullPath } from '../chart'
 import { HullCountry } from './HullCountry'
-import type { ShipBonus, ShipBudget, ShipRack } from '../lib/rpc'
+import type { ShipBonus, ShipBudget, ShipRack, ShipSeats } from '../lib/rpc'
+import { ShipCabins, type Seating } from './ShipCabins'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE SHIP, OPENED FROM HER FLEET'S PANEL — the owner, 2026-10-15:
@@ -28,6 +29,8 @@ import type { ShipBonus, ShipBudget, ShipRack } from '../lib/rpc'
  *  combat stats and `class_code` stay OPTIONAL for one release, so a bundle talking to a server
  *  older than 0124 still renders: what is not served is simply not drawn (shown, never guessed). */
 export interface ShipView {
+  /** 0157 — her cabins, seat by seat (`world.ship_seats`). Absent before 0157: not drawn. */
+  seats?: ShipSeats
   name: string
   class: string
   /** `ship_classes.code` (0124) — the silhouette is drawn from it. */
@@ -370,7 +373,10 @@ export function ShipPanel({
   onClose,
   levelFixed = false,
   nation = null,
+  seating,
 }: {
+  /** 0157: one of YOUR ships — her cabins can be seated while she is docked. A merchant's: omitted. */
+  seating?: Seating
   ship: ShipView
   onClose: () => void
   /** 0143: a merchant's hull flies her company's country — its flag is set before the ship's name. */
@@ -466,6 +472,8 @@ export function ShipPanel({
       </section>
 
       <SkillBonuses bonuses={ship.bonuses} />
+
+      <ShipCabins seats={ship.seats} seating={seating} />
     </Tray>
   )
 }
