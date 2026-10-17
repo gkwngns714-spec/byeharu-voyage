@@ -121,6 +121,19 @@ language sql
 immutable
 as $$ select regexp_replace(regexp_replace(p_src, '--[^\n]*', '', 'g'), '''(?:[^'']|'''')*''', '''''', 'g') $$;
 
+-- An answer with one array re-sorted by (specialty, name, the element): OLD's order among captains who share job
+-- and name was the plan's choice (two PURSERs are both "Virji Vora"), so OLD and NEW are compared in one order.
+create or replace function pg_temp.canon_0165(p jsonb, p_key text)
+returns jsonb
+language sql
+immutable
+as $$
+  select case when jsonb_typeof(p -> p_key) = 'array'
+              then jsonb_set(p, array[p_key], (select coalesce(jsonb_agg(e order by e ->> 'specialty', e ->> 'name', e::text), '[]'::jsonb)
+                                                 from jsonb_array_elements(p -> p_key) e))
+              else p end
+$$;
+
 -- ── 1. THE PRE-IMAGES ─────────────────────────────────────────────────────────────────────────
 -- (a) the mirror, before anything moves
 do $$
@@ -162,7 +175,8 @@ insert into hunks_0165 (fn, n, old, new) values
         'bonus_pct', j.job_pct, 'wage', public.captain_wage(v_player, o.id), 'blurb', o.blurb,$n$),
   ('world.inn(uuid)', 2, $o$        order by o.specialty, o.name), '[]'::jsonb)
       from public.officers o
-$o$, $n$        order by j.job, o.name), '[]'::jsonb)
+$o$, $n$        -- 0165: ties broken by her code — two captains share job and name (MUGPURSER, NPCPURSERMUG: Virji Vora)
+        order by j.job, o.name, o.code), '[]'::jsonb)
       from public.officers o
       join public.captain_job j on j.officer_id = o.id
 $n$),
@@ -196,7 +210,7 @@ $n$),
    $n$                   'name', o.name, 'specialty', j.job, 'bonus_pct', j.job_pct,   -- 0165 (K9): public.captain_job$n$),
   ('world.npc_fleet_card(uuid)', 2, $o$                   order by o.specialty, o.name), '[]'::jsonb)
                    from public.player_officers po join public.officers o on o.id = po.officer_id
-$o$, $n$                   order by j.job, o.name), '[]'::jsonb)
+$o$, $n$                   order by j.job, o.name, o.code), '[]'::jsonb)   -- 0165: ties broken by her code
                    from public.player_officers po join public.officers o on o.id = po.officer_id
                    join public.captain_job j on j.officer_id = o.id
 $n$),
@@ -403,8 +417,14 @@ begin
   -- (b) OLD = NEW at the same instant
   select count(*) into v_bad from public.ports p
    where exists (select 1 from public.port_buildings pb where pb.port_id = p.id and pb.kind = 'inn')
-     and pg_temp.old_0165_world_inn(p.id)::text is distinct from world.inn(p.id)::text;
+     and pg_temp.canon_0165(pg_temp.old_0165_world_inn(p.id), 'present')::text is distinct from pg_temp.canon_0165(world.inn(p.id), 'present')::text;
   if v_bad <> 0 then raise exception '0165 self-assert FAIL: world.inn moved at % inn(s)', v_bad; end if;
+  select count(*) into v_bad from public.ports p
+   cross join lateral (select world.inn(p.id) -> 'present' as pr) x
+   where exists (select 1 from public.port_buildings pb where pb.port_id = p.id and pb.kind = 'inn')
+     and x.pr is distinct from (select coalesce(jsonb_agg(e order by e ->> 'specialty', e ->> 'name', e ->> 'code'), '[]'::jsonb)
+                                  from jsonb_array_elements(x.pr) e);
+  if v_bad <> 0 then raise exception '0165 self-assert FAIL: world.inn is not in (job, name, code) order at % inn(s)', v_bad; end if;
 
   select count(*) into v_bad from public.officers o cross join public.ports p
    where p.kind = 'HARBOUR' and pg_temp.old_0165_world_inn_chance(o.id, p.id) is distinct from world.inn_chance(o.id, p.id);
@@ -424,7 +444,8 @@ begin
 
   select count(*) into v_bad from public.fleets f join public.players pl on pl.id = f.player_id
    where pl.is_npc and public.npc_traders_on()   -- (the card answers only while the merchants trade)
-     and pg_temp.old_0165_world_npc_fleet_card(f.id)::text is distinct from world.npc_fleet_card(f.id)::text;
+     and pg_temp.canon_0165(pg_temp.old_0165_world_npc_fleet_card(f.id), 'officers')::text
+         is distinct from pg_temp.canon_0165(world.npc_fleet_card(f.id), 'officers')::text;
   if v_bad <> 0 then raise exception '0165 self-assert FAIL: world.npc_fleet_card moved for % merchant fleet(s)', v_bad; end if;
   insert into timing_0165 values ('cards', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
 
@@ -567,6 +588,10 @@ begin
   insert into timing_0165 values ('heavy self-assert', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
 end $$;
 
+create temp table chance_before_0165 on commit drop as
+select o.id as officer_id, o.code, p.id as port_id, world.inn_chance(o.id, p.id) as chance
+  from public.officers o cross join public.ports p where p.kind = 'HARBOUR';
+
 -- ── 6. TWO CAPTAINS OF GOA (data/officers.json; languages from data/captains.generated.json) ───
 update public.officers o set home_port_id = (select p.id from public.ports p where p.code = 'OLD')
  where o.code in ('ALBUQUERQ', 'GARCIAORTA')
@@ -598,6 +623,17 @@ begin
      <> 'ALBUQUERQ:1:PORTUGUESE,ALBUQUERQ:2:INDIC,GARCIAORTA:1:PORTUGUESE,GARCIAORTA:2:INDIC,GARCIAORTA:3:ARABIC'
      or (select pl.language from public.port_language pl join public.ports p on p.id = pl.port_id where p.code = 'OLD') <> 'PORTUGUESE' then
     raise exception '0165 self-assert FAIL: their languages are not Old Goa''s first (the generator''s rule)';
+  end if;
+  -- THE ONLY ANSWERS MEANT TO MOVE: every other captain's odds at every harbour are as before; these two's
+  -- moved somewhere (their home's region and culture weights now follow Old Goa)
+  if exists (select 1 from chance_before_0165 c
+              where c.code not in ('ALBUQUERQ', 'GARCIAORTA')
+                and world.inn_chance(c.officer_id, c.port_id) is distinct from c.chance) then
+    raise exception '0165 self-assert FAIL: moving two captains home changed another captain''s inn odds';
+  end if;
+  if (select count(distinct c.code) from chance_before_0165 c
+       where c.code in ('ALBUQUERQ', 'GARCIAORTA') and world.inn_chance(c.officer_id, c.port_id) is distinct from c.chance) <> 2 then
+    raise exception '0165 self-assert FAIL: their inn odds did not follow their new home';
   end if;
 end $$;
 
