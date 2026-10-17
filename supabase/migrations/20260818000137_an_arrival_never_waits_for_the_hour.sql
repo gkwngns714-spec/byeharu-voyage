@@ -161,6 +161,24 @@
 -- replaces; every pre-image is read live from the target (asserted once each). Proved in that order on
 -- the cached PGlite world: 0137 applied AFTER 0138 and 0139 (renamed to sort last, not committed) —
 -- receipt ok, the same counts as in chain order.
+--
+-- ── SELF-ASSERT CORRECTED AFTER DEPLOY (2026-10-18; §4's harness only — no function body, no data) ─
+-- PRODUCTION RAN THE EARLIER TEXT of this file (pushed 2026-10-17; its self-assert passed there). The
+-- ONE change since is in §4's proof harness: pg_temp.pin_hull_order_0137, called at the top of every
+-- rolled-back run. WHY: main's full acceptance (job 117389612522, the growth test) failed §4 on one
+-- merchant — old and new wrote the same receipt, ducats, quay and ledger, but a different SPLIT of her
+-- cargo between two identical hulls (ships 10 vs 8 updates), hence a different laden speed and voyage
+-- (orders, voyages). public.fleet_load (`order by cap desc`) and public.fleet_unload (`order by have
+-- desc`) — neither touched by 0137 — leave a tie between equal hulls to the heap's physical order, and
+-- the first run of a pair, though rolled back, leaves its dead tuples on the pages, so the second run's
+-- updated rows land elsewhere and the tie can break the other way. Reproduced on PGlite: NEW against
+-- NEW, the same p_now, one merchant in 837 split her two parcels differently (6.1547 vs 6.3263 kn), every
+-- repeat; with the hull order pinned, 0 of 837. The corrected file passes there (12 sampled and all 837).
+-- The pin re-creates the two loaders, inside each rolled-back run, from their LIVE text with `, s.id`
+-- added to that one ORDER BY (asserted to occur exactly once each), so both runs of a pair break the
+-- tie alike; the compare itself (receipt + every own write, row by row) is unchanged. The edit moves
+-- this file's hash: an edited migration is CI's exemption (docs/CI.md §2) — the growth test runs on
+-- the PR. Production is not re-applied (0137 is recorded there); nothing live changes.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 
@@ -754,16 +772,48 @@ select nf.route_id
           md5(nf.route_id::text), nf.route_id
  limit 12;
 
+-- THE HULL ORDER, PINNED FOR THE PROOF (added after deploy — see the header). fleet_load and
+-- fleet_unload give a parcel to hulls `order by cap desc` / `order by have desc`; between equal hulls
+-- the heap's physical order decides, and a rolled-back first run changes where the second run's rows
+-- land. Each run re-creates both from their LIVE text with `, s.id` added to that ORDER BY, inside its
+-- own rolled-back subtransaction, so old and new break the tie alike and nothing outlives the run.
+create or replace function pg_temp.pin_hull_order_0137()
+returns void
+language plpgsql
+as $$
+declare
+  r     record;
+  v_def text;
+  v_n   int;
+begin
+  for r in select * from (values
+             ('public.fleet_load(uuid,text,numeric,numeric)'::regprocedure,
+              'where s.fleet_id = p_fleet order by cap desc loop',
+              'where s.fleet_id = p_fleet order by cap desc, s.id loop'),
+             ('public.fleet_unload(uuid,text,numeric)'::regprocedure,
+              'where s.fleet_id = p_fleet order by have desc loop',
+              'where s.fleet_id = p_fleet order by have desc, s.id loop')) v(fn, old_line, new_line) loop
+    v_def := pg_get_functiondef(r.fn);
+    v_n := (length(v_def) - length(replace(v_def, r.old_line, ''))) / length(r.old_line);
+    if v_n <> 1 then
+      raise exception '0137 self-assert FAIL: the hull order of % was not found exactly once (% times): %', r.fn, v_n, r.old_line;
+    end if;
+    execute replace(v_def, r.old_line, r.new_line);
+  end loop;
+end $$;
+
 -- one run: p_route null = the whole pass, budget spent; else that one merchant, no budget
 create or replace function pg_temp.tend_run_0137(p_old boolean, p_now timestamptz, p_route uuid, p_base bigint, p_epoch bigint)
 returns jsonb
 language plpgsql
 as $$
 declare
-  v_before jsonb := pg_temp.writes_0137();
+  v_before jsonb;
   v_t0     timestamptz;
   v_r      jsonb;
 begin
+  perform pg_temp.pin_hull_order_0137();   -- after deploy: catalogue only, no table row written
+  v_before := pg_temp.writes_0137();
   update public.world_config set value = 'true'::jsonb
    where key in ('npc_traders_enabled', 'standing_routes_enabled') and value is distinct from 'true'::jsonb;
   perform set_config('byeharu.npc_upkeep_deadline', case when p_route is null then '2000-01-01 00:00:00+00' else '' end, true);
