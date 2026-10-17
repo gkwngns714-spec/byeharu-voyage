@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // skills.catalogue.spec.ts — the skill catalogue keeps EVE's lessons (docs/SKILLS_AND_CAPTAINS.md
-// §3.2-3.3, K1 = migration 0151: D1-D5, and D7 "never"). Reads data/skills.json, data/ships.generated.json
+// §3.2-3.3, K1 = migration 0150: D1-D5, and D7 "never"). Reads data/skills.json, data/ships.generated.json
 // and the RPC catalogue off disk — the one authority the world guard holds the database to — and asserts
 // the RULES, never a count typed from today's world: every count below is derived from the files.
-// What the database does with these rows is 0151's self-assert (world.skills, skill_taught_at,
+// What the database does with these rows is 0150's self-assert (world.skills, skill_taught_at,
 // world.ship_budget, player_skill_bonus), run on every apply.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 import { test, expect } from '@playwright/test'

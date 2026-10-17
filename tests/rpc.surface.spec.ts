@@ -1757,7 +1757,7 @@ test('the book of standing orders round-trips: write, adjust, apply, clear, stri
 test("world.skills() serves the groups, the queue and the verbs' own answers; the queue round-trips (0131)", async () => {
   const book = expectOk(await worldSkills())
   // the groups and the skills the catalogue authors (data/skills.json — the world guard holds the
-  // database to it), never a count typed from one day's world (0151 grew it 92 → 107, SOCIAL added)
+  // database to it), never a count typed from one day's world (0150 grew it 92 → 107, SOCIAL added)
   const authored = JSON.parse(readFileSync(new URL('../data/skills.json', import.meta.url), 'utf8')) as {
     groups: { code: string }[]
     skills: { code: string }[]
