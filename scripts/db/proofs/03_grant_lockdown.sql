@@ -390,7 +390,7 @@ begin
     from public.fleets f, public.goods g where f.id = v_fleet order by g.code limit 1;
   insert into public.player_skills (player_id, skill_id, level)
   select v_a, s.id, 1 from public.skills s order by s.code limit 1;
-  insert into public.player_officers (player_id, officer_id)   -- 0164 (K9): where she sits is her seat's
+  insert into public.player_officers (player_id, officer_id)   -- 0165 (K9): where she sits is her seat's
   select v_a, o.id from public.officers o order by o.code limit 1;
   perform cmd.assume_identity(c_a);
   perform cmd.issue(v_fleet, 'PROVISION FULL');

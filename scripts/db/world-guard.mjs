@@ -50,7 +50,7 @@
 //                 famous gear, is held in hull_recipe_items with the live three's)
 //   * item use    (0158, S13) public.item_use EQUALS the gear generator's `use` (scripts/build-gear.mjs
 //                 USE_BY_BASE — what wears every item and what an active consumes), every item, both
-//                 directions; the 14 refits ride in `generateGear()`'s items with the rest of the gear; (0164) the
+//                 directions; the 14 refits ride in `generateGear()`'s items with the rest of the gear; (0165) the
 //                 three promotion items of data/captains.json are in it too, never wearing and spending nothing
 //   * named items (0159, S15) public.item_city EQUALS the gear generator's Named items' `city`, both
 //                 directions (a Named item is made only in that city's workshop)
@@ -544,7 +544,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     officers: (await db.query(`
       select o.code, o.name, j.job as specialty, j.job_pct::float8 as bonus_pct, o.wage_ducats::int as wage, n.code as nation, p.code as home, o.blurb
         from public.officers o
-        -- 0164 (K9): her job and its value are her first trait's (public.captain_job); officers.specialty / bonus_pct are gone
+        -- 0165 (K9): her job and its value are her first trait's (public.captain_job); officers.specialty / bonus_pct are gone
         left join public.captain_job j on j.officer_id = o.id
         left join public.nations n on n.id = o.nation_id left join public.ports p on p.id = o.home_port_id`)).rows,
     foci: (await db.query(`select code, word, ord from public.trait_foci`)).rows,
@@ -612,7 +612,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     want.itemCity = gear.items.filter((i) => i.city).map((i) => ({ code: i.code, city: i.city }))   // 0159
     want.itemUse = [
       ...gear.use.map((u) => ({ code: u.code, trigger: u.trigger ?? 'null', consumes: consumedKey(u.consumes) })),   // 0158
-      // 0164: the three promotion items (data/captains.json, K8) are spent by cmd.promote_captain and never fitted —
+      // 0165: the three promotion items (data/captains.json, K8) are spent by cmd.promote_captain and never fitted —
       // so they never wear (trigger null) and spend no good when they act (consumes [])
       ...read('data/captains.json').promotion_items.map((p) => ({ code: p.code, trigger: 'null', consumes: '' })),
     ]

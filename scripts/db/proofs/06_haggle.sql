@@ -195,7 +195,7 @@ begin
   values ('PROOF6', 'A purser at the cap', 1,
           'Exists for the length of one rolled-back proof, to drive the stack onto the floor.')
   returning id into v_officer;
-  -- 0164 (K9): her job and its value are her first trait (public.captain_job), no longer officers columns
+  -- 0165 (K9): her job and its value are her first trait (public.captain_job), no longer officers columns
   insert into public.captain_profile (officer_id, grade, job_trait) values (v_officer, 'C', 'PURSER');
   insert into public.captain_traits (officer_id, ord, trait, base_pct) values (v_officer, 1, 'PURSER', k_offcap);
   insert into public.player_officers (player_id, officer_id)
