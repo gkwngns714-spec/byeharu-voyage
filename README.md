@@ -10,7 +10,8 @@ game that keeps the proven core (auth, shell, migration chain discipline, CI app
 - **The map is a view, not a controller.** It shows where your fleets are and where they are going.
 - **The world is the real world:** real countries, real port cities, real coordinates.
 
-See `docs/DESIGN.md` for the game design and `docs/DEV_LOG.md` for the running record.
+See `docs/DESIGN.md` for the game design and `docs/dev-log/` for the running record (one file per
+entry, newest by filename; `docs/DEV_LOG.md` is the archive up to 2026-10-17).
 
 > **Picking this up on another computer?** Read `docs/PICKUP_2026-09-07.md` first — it says what is
 > pushed, which pull requests are open and in what order they merge, and where production actually

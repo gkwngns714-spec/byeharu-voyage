@@ -638,8 +638,9 @@ remains: `SignTheBook.tsx`'s 11px refusal code.
    `tests/duplication.spec.ts` meant every merge invalidated the others' arithmetic — the same two
    files conflicted six times. Merge them into one branch, resolve once, prove once. And state the
    ledger from the **merged tree**, measured, not from whichever side of a conflict won.
-4. **Do not number DEV_LOG entries in a parallel branch.** Four agents each claimed the same
-   D-number. Write the date and title; number it at merge.
+4. **Do not number dev-log entries in a parallel branch.** Four agents each claimed the same
+   D-number. Write the date and title; number it at merge. (Since 2026-10-17 each entry is its own
+   file, `docs/dev-log/YYYY-MM-DD-<slug>.md`, so two branches never edit the same lines.)
 5. **Never `git add -A` in a scratch clone.** One did, swept an unrelated embedded repository in as
    a gitlink, and pushed it. Use explicit paths.
 6. **A name collision only appears at the merge.** FLEETS and MAP each wrote a `FleetTray` and

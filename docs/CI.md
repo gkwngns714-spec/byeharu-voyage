@@ -62,8 +62,9 @@ The script header holds the exact patterns.
 **The growth test** is db.chain's *"the world grows under a live house"*, and it takes 45 to 65
 minutes. A PR runs it only when the chain machinery changed: `src/lib/db/**`,
 `tests/frozenChain.ts`, `scripts/db/**`, `package(-lock).json`, `vite.config.ts`, an edited
-migration, or `tests/db.chain.spec.ts` beyond the routine `// And to 0NNN` + `const LAST =` bump. A
-new migration on its own does not run it. migrations-apply-proof applies that file on main's
+migration, or `tests/db.chain.spec.ts` (since 2026-10-17 the spec reads the chain's end off the
+directory, so a migration PR does not touch it; the old `// And to 0NNN` + `const LAST =` bump stays
+exempt for the control commits that predate the change). A new migration on its own does not run it. migrations-apply-proof applies that file on main's
 snapshot with its self-asserts, db.chain's other tests apply it again, and main's run re-proves the
 growth.
 

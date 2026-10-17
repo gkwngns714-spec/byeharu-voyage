@@ -126,7 +126,8 @@ permissions:
 # the whole chain from 0041 and proves a live house survives it (45-65 min). Since 2026-10-17 a PR
 # runs it only when the CHAIN MACHINERY changed — src/lib/db/**, tests/frozenChain.ts, scripts/db/**,
 # package(-lock).json, vite.config.ts, an edited (not added) migration, or tests/db.chain.spec.ts
-# beyond the routine `// And to 0NNN` + `const LAST =` bump every migration PR makes. A new
+# (since 2026-10-17 it reads the chain's end off the directory, so a migration PR does not touch
+# it; the old `// And to 0NNN` + `const LAST =` bump stays exempt for the control commits). A new
 # migration ALONE no longer runs it: that file is applied on main's snapshot with its self-asserts
 # by migrations-apply-proof, and db.chain's other tests apply it; main's full run then re-proves
 # the growth. The verdict lists with the same --grep-invert and says so in its log.

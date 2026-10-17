@@ -1110,9 +1110,10 @@ the `self-assert ok` receipt), with probe rows rolled back by the 0092 `raise �
 and **every scan over `pg_get_functiondef` first proves it can see**: a `pg_temp` function carrying
 the banned token is created, the scan must report exactly it, it is dropped, and only then must
 the real scan over `cmd`, `world`, `public` and `voyage` report zero; the receipt prints the
-positive-control hits. Every slice updates `docs/DEV_LOG.md`, `docs/OWNER_REQUESTS.md` rows
-109-111, `supabase/migrations/CHAIN.md`, moves the `LAST` pin in `tests/db.chain.spec.ts:272`
-with a dated comment, and runs `npm run refresh` in `tools/projectmap` if present. Before every
+positive-control hits. Every slice writes its dev-log entry (`docs/dev-log/YYYY-MM-DD-<slug>.md`, one file each; since
+2026-10-17 — `docs/DEV_LOG.md` is the archive), updates `docs/OWNER_REQUESTS.md` rows 109-111 and
+`supabase/migrations/CHAIN.md` (the `LAST` pin in `tests/db.chain.spec.ts` is gone — the spec reads
+the chain's end off the directory), and runs `npm run refresh` in `tools/projectmap` if present. Before every
 push: `npx tsc -b`, `npx eslint .`, `npm run build`, `npm run db:apply`, `npm run db:proof`, and
 Playwright against `vite preview` on **localhost** (never 127.0.0.1) with an explicit port.
 

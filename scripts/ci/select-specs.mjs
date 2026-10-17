@@ -50,8 +50,10 @@
 // ── THE GROWTH TEST (db.chain's "the world grows under a live house", 45-65 min) ───────────────
 //   Runs on a PR only when the CHAIN MACHINERY changed: src/lib/db/**, tests/frozenChain.ts,
 //   scripts/db/**, package(-lock).json, vite.config.ts, an edited (not added) migration, or
-//   tests/db.chain.spec.ts beyond the routine `// And to 0NNN …` + `const LAST = …` bump every
-//   migration PR makes. A new migration alone does NOT run it: that file is proven by
+//   tests/db.chain.spec.ts (since 2026-10-17 it reads the chain's end off the directory, so a
+//   migration PR does not touch it; the `// And to 0NNN …` + `const LAST = …` bump every migration
+//   PR used to make stays exempt, for the control commits that predate the change). A new
+//   migration alone does NOT run it: that file is proven by
 //   migrations-apply-proof (applied on main's snapshot, its self-asserts run) and by db.chain's
 //   other tests; main's full run then re-proves the growth.
 //
@@ -275,6 +277,8 @@ export function select({ base, head, full = false }) {
     if (GROWTH_RULES.some((re) => re.test(c.path))) out.growth.why.push(`${c.path} is chain machinery`)
     if (MIGRATION_RE.test(c.path) && c.status !== 'A') out.growth.why.push(`${c.path}: an existing migration changed`)
     if (c.path === 'tests/db.chain.spec.ts') {
+      // The routine chain-end bump is history since 2026-10-17 (the spec reads the newest file off
+      // disk); the exemption stays only so the control commits below keep their known answer.
       const lines = fileDiff(base, head, c.path).split('\n').filter((l) => /^[+-]/.test(l) && !/^(\+\+\+|---)/.test(l))
       const routine = lines.every((l) => /^[+-](\/\/ And to |const LAST = )/.test(l))
       if (!routine) out.growth.why.push('tests/db.chain.spec.ts changed beyond the routine chain-end bump')
