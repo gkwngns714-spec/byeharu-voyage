@@ -402,7 +402,7 @@ export interface YardHull {
    *  ("Nau / Carrack needs Portuguese Medium Hulls IV"), or null. `buildable` already folds it in.
    *  Printed as served. Optional: a server before 0133 sends none; null while skills do not bite. */
   needs?: string | null
-  /** 0162 — `class_profile.tech` (T1 · T2 · F), for the yard's T2 badge. Optional: a server before 0162 sends none. */
+  /** 0159 — `class_profile.tech` (T1 · T2 · F), for the yard's T2 badge. Optional: a server before 0159 sends none. */
   tech?: string | null
   goods: HullMaterial[]
   items: HullMaterial[]
@@ -474,7 +474,7 @@ export interface WorkstationItem {
    *  fit both refuse with ("Hemp Canvas needs Rigging II — ship skills are not in use yet"), or null.
    *  Printed as served. */
   needs?: string | null
-  /** 0162 (S15) — a Named item is made only in its own city: the server's sentence ("Lisbon-cast Brass Guns
+  /** 0159 (S15) — a Named item is made only in its own city: the server's sentence ("Lisbon-cast Brass Guns
    *  are made only in Lisbon") where THIS city is not it, else null. `makeable` already folds it in. */
   made_only_in?: string | null
   recipe: RecipeLine[]
