@@ -339,7 +339,9 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0139 (any hull enters any harbour: the E_DRAFT gate, the merchants' draft filter and the docks draft knob removed).
 // And to 0140 (the Mughal capital is Karachi: Surat is Gujarat's since 0130; every capital is a harbour of its own nation).
 // And to 0141 (the quay says nothing about where a good grows: the owner removed the native tag; world.market serves no native key).
-const LAST = '20260818000141_the_quay_says_nothing_about_where_a_good_grows.sql'
+// And to 0142 (a merchant sells at the quay's price when she must: the cut-loss floor at cost removed; her stores cover the loop she keeps; no REPAIR where no yard is; a loop is scored by what the lap leaves her).
+// Moved deliberately 2026-10-17.
+const LAST = '20260818000142_a_merchant_sells_at_the_quays_price_when_she_must.sql'
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
