@@ -70,6 +70,7 @@ import type {
   InvestReceipt,
   AllegianceView,
   CountryChanged,
+  DonateReceipt,
   WorkKind,
   StandingRouteDeleted,
   StandingRoutePaused,
@@ -621,4 +622,17 @@ export function worldAllegiance(): Promise<RpcResult<AllegianceView>> {
 /** Your company changes its country (0143) — once every seven days; it moves no money. */
 export function cmdChangeCountry(nationCode: string): Promise<RpcResult<CountryChanged>> {
   return call<CountryChanged>('cmdChangeCountry', [nationCode])
+}
+
+/** What `cmdDonate` would do — the real gift, rolled back — or the refusal it would give
+ *  (E_NOT_DOCKED, E_NOT_OFFERED, E_DONATE_MIN, E_DAY_CAP with the room left, …). */
+export async function cmdPreviewDonate(portId: string, coin: number): Promise<RpcResult<DonateReceipt>> {
+  const r = await call<{ estimate: DonateReceipt }>('cmdPreviewDonate', [portId, coin])
+  return r.ok ? ok(r.value.estimate) : r
+}
+
+/** Give a city `coin` (0144) — it lands in the city's purse and counts as influence for your
+ *  country there; only while a fleet of yours lies docked there. */
+export function cmdDonate(portId: string, coin: number): Promise<RpcResult<DonateReceipt>> {
+  return call<DonateReceipt>('cmdDonate', [portId, coin])
 }

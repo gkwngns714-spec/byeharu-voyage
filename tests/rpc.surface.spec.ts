@@ -1515,6 +1515,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // takes no player id — the caller's company changes). Landed WITH the faces that read them
       // (CityFlag, Profile → Country).
       'worldAllegiance', 'cmdChangeCountry',
+      // Pin moved deliberately 2026-10-17 with migration 0144 (docs/INFLUENCE.md I2): DONATE — a gift
+      // to a city, counted as influence for the giver's country, and its dry run. No player id; docked
+      // there only (E_NOT_DOCKED); dark until the race is lit. Landed WITH the face (TownHallInfluence).
+      'cmdDonate', 'cmdPreviewDonate',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

@@ -20,9 +20,32 @@ import { PHONE, reachable, ready } from './appReady.fixture'
 
 const CITY = 'OPO'
 
-let image: { body: Buffer; investor: string } | null = null
+let image: { body: Buffer; investor: string; investorNation: string } | null = null
+let litImage: Buffer | null = null
 
-async function townHallWorld(): Promise<{ body: Buffer; investor: string }> {
+/** 0144: the same build's world with the city purses AND the influence race lit (`influence_enabled`
+ *  set directly — the switch is I4's), for the Donate press at Lisbon, where your fleet lies. */
+async function donateWorld(): Promise<Buffer> {
+  if (litImage) return litImage
+  const dir = path.resolve('dist', 'db')
+  const name = existsSync(dir) ? readdirSync(dir).find((f) => /^world-.*\.tar\.gz$/.test(f)) : undefined
+  if (!name) throw new Error(`no world image under ${dir} — run \`npm run build\` first`)
+  const { PGlite } = await import('@electric-sql/pglite')
+  const pg = await PGlite.create({ loadDataDir: asWorldImageFile(new Uint8Array(readFileSync(path.join(dir, name)))) })
+  try {
+    const above = await pg.query<{ v: unknown }>(`select value as v from public.world_config where key = 'npc_invest_above'`)
+    await pg.exec(`update public.world_config set value = to_jsonb(0) where key = 'npc_invest_above'`)
+    await pg.query(`select public.city_treasury_switch(true)`)
+    await pg.query(`update public.world_config set value = $1::jsonb where key = 'npc_invest_above'`, [JSON.stringify(above.rows[0].v)])
+    await pg.exec(`update public.world_config set value = 'true'::jsonb where key = 'influence_enabled'`)
+    litImage = Buffer.from(await (await pg.dumpDataDir('gzip')).arrayBuffer())
+  } finally {
+    await pg.close()
+  }
+  return litImage
+}
+
+async function townHallWorld(): Promise<{ body: Buffer; investor: string; investorNation: string }> {
   if (image) return image
   const dir = path.resolve('dist', 'db')
   const name = existsSync(dir) ? readdirSync(dir).find((f) => /^world-.*\.tar\.gz$/.test(f)) : undefined
@@ -39,15 +62,19 @@ async function townHallWorld(): Promise<{ body: Buffer; investor: string }> {
     await pg.query(`update public.world_config set value = $1::jsonb where key = 'npc_invest_above'`, [
       JSON.stringify(above.rows[0].v),
     ])
-    const who = await pg.query<{ name: string; r: { ok: boolean } }>(
-      `select pl.company_name as name,
+    const who = await pg.query<{ name: string; nation: string; r: { ok: boolean } }>(
+      `select pl.company_name as name, (select n.name from public.nations n where n.id = pl.nation_id) as nation,
               public.invest_for(pl.id, (select id from public.ports where code = $1), 'docks', 10) as r
          from public.npc_houses h join public.players pl on pl.id = h.player_id
         order by h.roster_ord limit 1`,
       [CITY],
     )
     if (who.rows.length !== 1 || !who.rows[0].r.ok) throw new Error(`no merchant could invest at ${CITY}`)
-    image = { body: Buffer.from(await (await pg.dumpDataDir('gzip')).arrayBuffer()), investor: who.rows[0].name }
+    image = {
+      body: Buffer.from(await (await pg.dumpDataDir('gzip')).arrayBuffer()),
+      investor: who.rows[0].name,
+      investorNation: who.rows[0].nation,
+    }
   } finally {
     await pg.close()
   }
@@ -96,4 +123,32 @@ test('the Town Hall shows the treasury, offers no Invest away from your fleet, a
   await expect(row).toHaveCount(1)
   await expect(row).toContainText('Merchant')
   await expect(page.getByTestId('townhall-work-docks')).toContainText('10 of 100 sold')
+  // 0144: Porto is a home city of Portugal; the merchant's investment is influence for its country;
+  // the race is dark, so no Donate and one line that says so.
+  await expect(page.getByTestId('townhall-holder')).toContainText('Portugal')
+  await expect(page.getByTestId('townhall-holder')).toContainText('Home city')
+  await expect(page.getByTestId('townhall-influence-share').filter({ hasText: world.investorNation })).toHaveCount(1)
+  await expect(page.getByTestId('townhall-donate')).toHaveCount(0)
+  await expect(page.getByTestId('townhall-donate-none')).toHaveText('Not taking gifts yet.')
+})
+
+test('0144: lit, a company docked at Lisbon donates, and its influence there is counted', async ({ page, request, baseURL }) => {
+  test.setTimeout(600_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+  const body = await donateWorld()
+  await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body, contentType: 'application/gzip' }))
+  await page.setViewportSize(PHONE)
+  await page.goto('map')
+  await ready(page)
+
+  await openCity(page, 'LIS')
+  await page.getByTestId('map-city-tabs').getByText('Town Hall', { exact: true }).click()
+  await expect(page.getByTestId('townhall-influence')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByTestId('townhall-influence-you')).toContainText('0')
+  await page.getByTestId('townhall-donate').click()
+  await expect(page.getByTestId('townhall-donate-points')).toBeVisible({ timeout: 30_000 })
+  await page.getByTestId('townhall-donate-send').click()
+  await expect(page.getByTestId('townhall-donate-tray')).toHaveCount(0, { timeout: 30_000 })
+  await expect(page.getByTestId('townhall-given-today')).toContainText('given today', { timeout: 30_000 })
+  await expect(page.getByTestId('townhall-influence-share').filter({ hasText: 'Portugal' })).toHaveCount(1, { timeout: 30_000 })
 })

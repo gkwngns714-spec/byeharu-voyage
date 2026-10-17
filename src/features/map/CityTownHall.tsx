@@ -6,6 +6,7 @@ import { useWorld } from '../../live/worldStore'
 import { cmdInvest, cmdPreviewInvest, ok, worldTownHall } from '../../lib/rpc'
 import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallView, WorkKind } from '../../lib/rpc'
 import { formatDucats, formatInt, formatPct } from '../../lib/format'
+import { TownHallInfluence } from './TownHallInfluence'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TOWN HALL — the city's fourth building: its purse, its works, Invest, and who invested
@@ -80,6 +81,10 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
         hairline={false}
         data-testid="townhall-purse-line"
       />
+
+      {/* 0144: who holds the city, each country's influence, Donate (docs/INFLUENCE.md §7.1). */}
+      <Heading>Influence</Heading>
+      <TownHallInfluence port={port} influence={hall.influence} docked={hall.you.docked} trayMode={trayMode} />
 
       <Heading>Works</Heading>
       {hall.works.map((w) => {
@@ -185,6 +190,7 @@ function DayBook({ hall }: { hall: TownHallView }) {
     ['Tax', hall.day.in.TAX ?? 0],
     ['Wages', hall.day.in.WAGES ?? 0],
     ['Shares', hall.day.in.SHARE ?? 0],
+    ['Gifts', hall.day.in.DONATION ?? 0],
     ['Coupons', hall.day.out.DIVIDEND ?? 0],
   ]
   const moved = rows.filter(([, n]) => n !== 0)

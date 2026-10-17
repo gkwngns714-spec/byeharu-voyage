@@ -360,7 +360,7 @@ create table public.port_influence (
   points     numeric not null check (points >= 0),     -- coin given, decayed (D6)
   day_given  bigint  not null default 0,               -- coin donated today (D7's cap), reset by the evaluation
   updated_at timestamptz not null default now(),
-  primary key (port_id, player_id)
+  primary key (port_id, nation_id, player_id)   -- as built (0144): the country AT GIVING (A2)
 );
 ```
 
