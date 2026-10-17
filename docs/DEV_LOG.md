@@ -5,6 +5,19 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — PR CI runs only what the diff reaches (`osn-ci-scoped`)
+
+The owner's order: *"make CI shorter — CI tests only from where we made something new, not the whole
+game"*. Rules and gaps are documented in `docs/CI.md`. `scripts/ci/select-specs.mjs` is the one
+authority for which specs a PR runs, and its log gives the reason for every spec. Main still runs
+everything. On a PR, the growth test (45-65 min) runs only when chain machinery changed, so a new
+migration on its own no longer runs it. The merchants-on world is built only when an npc-pool spec
+is selected. The pglite `ledger` and `merchants` legs run only when the diff reaches their proof.
+The required check names are unchanged. On a PR, the verdict counts against the selected list.
+
+Before this change, migration PRs took 47-66 min of acceptance wall-clock (runs 38950948786,
+38977847594, 38980408372) and spec-only #141 took 21 min.
+
 ## 2026-10-17 — S14 (0138): capitals and flagships — `osn-0138-wave-b`
 
 `docs/SHIPS_AND_SKILLS.md` §8 S14 "Wave B: 15 capitals & flagships". **Not deployed** (prod head 0136, read-only probe 2026-10-17; 0137 is

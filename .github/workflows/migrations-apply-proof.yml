@@ -67,6 +67,7 @@ on:
       - 'scripts/db/**'
       - 'package.json'
       - '.github/workflows/migrations-apply-proof.yml'
+      - 'scripts/ci/select-specs.mjs'
   workflow_dispatch:
 
 # A newer push to a PR cancels the older run. A push to MAIN never cancels one (2026-10-15): main's
@@ -81,6 +82,43 @@ permissions:
   contents: read
 
 jobs:
+  # ── WHICH pglite LEGS A PR RUNS (2026-10-17, the owner's "test only where we made something new")
+  # scripts/ci/select-specs.mjs — the same one authority acceptance.yml's `select` job uses —
+  # decides it from the PR's diff against its merge commit's first parent:
+  #   * `the rest` (grant lockdown, offline equivalence, first session and seven more; minutes)
+  #     ALWAYS runs. Every new migration's apply, its self-assert receipt and the world guard run
+  #     inside every leg, so this one leg carries them on every PR.
+  #   * `ledger` (02, ~5 min) and `merchants` (12, ~11 min) run when an ADDED migration defines or
+  #     mentions a qualified name (`public.port_offers`, `cmd.issue`, a table it writes) that the
+  #     proof file names; when the proof file itself changed; or on any change to scripts/db/**,
+  #     package(-lock).json or an edited (not added) migration. On main, and on dispatch: all three.
+  # A skipped leg still reports success under its own name, and its log says why it did not run.
+  # disposable-chain is unchanged: it is already scoped (a PR applies only its new files on main's
+  # snapshot) and it is the only check that runs against Supabase's own roles.
+  select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      legs: ${{ steps.sel.outputs.legs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Which pglite legs this run needs, and why
+        id: sel
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node scripts/ci/select-specs.mjs --base HEAD^1 --head HEAD --out selection.json | grep -E '^(diff|  [A-Z] |sql |  defines|  tables|  mentions|pglite-gate)'
+          else
+            node scripts/ci/select-specs.mjs --full --out selection.json | grep -E '^pglite-gate'
+          fi
+          echo "legs=$(jq -c '.pglite | with_entries(.value |= (length > 0))' selection.json)" >> "$GITHUB_OUTPUT"
+          jq -c '.pglite | with_entries(.value |= (length > 0))' selection.json
+
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   # 1. The fast gate: the whole chain + all four proofs, on real PostgreSQL, no Docker.
   # ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -96,6 +134,9 @@ jobs:
   # and fails on its own markers — a leg that matched no proof fails as vacuous (proof.mjs).
   pglite-gate:
     name: pglite-gate (${{ matrix.leg }})
+    needs: select
+    env:
+      RUN: ${{ fromJSON(needs.select.outputs.legs)[matrix.leg] }}
     strategy:
       fail-fast: false
       matrix:
@@ -189,14 +230,22 @@ jobs:
     # being a nuisance and become the thing standing between a green branch and a merge.
     timeout-minutes: 150
     steps:
+      - name: Does this run need this leg?
+        run: |
+          if [ "$RUN" = "true" ]; then echo "yes — see the select job's log for why"
+          else echo "no added migration names what this leg's proof names, and no gate machinery changed: this leg is not run on this PR (main runs it)"; fi
+
       - uses: actions/checkout@v4
+        if: env.RUN == 'true'
 
       - uses: actions/setup-node@v4
+        if: env.RUN == 'true'
         with:
           node-version: 24  # 0039: Node scripts import src/lib/sea/*.ts via type stripping (default from 23.6)
           cache: npm
 
       - name: Install dependencies (from the lockfile)
+        if: env.RUN == 'true'
         run: npm ci
 
       # ROW 124 (2026-10-13): THE PROOFS NO LONGER WAIT FOR A SECOND FROM-ZERO APPLY. proof.mjs
@@ -215,6 +264,7 @@ jobs:
       #
       # Restore and save are split so a red proof still keeps the snapshots the apply paid for.
       - name: Restore the chain-prefix snapshots (keyed by the chain and the preamble)
+        if: env.RUN == 'true'
         id: prefix
         uses: actions/cache/restore@v4
         with:
@@ -227,6 +277,7 @@ jobs:
       # It happened four times in the predecessor project. This check carries its own positive
       # control — it proves it can detect a deliberately duplicated version before reporting none.
       - name: Migration versions are unique
+        if: env.RUN == 'true'
         run: npm run db:check-versions
 
       # ONE APPLY, NOT TWO (2026-09-27). This job used to run `npm run db:apply` and then
@@ -244,12 +295,13 @@ jobs:
       # Fails if any migration printed no receipt, if any declared PASS marker is missing, if a
       # proof declares none, or if a proof leaves committed rows behind.
       - name: Build the chain's world on PGlite (cached prefix + the files after it), then run every proof
+        if: env.RUN == 'true'
         run: npm run db:proof -- ${{ matrix.args }}
 
       # One leg saves (all three built the same snapshots from the same chain); the others would
       # only race it for the same key.
       - name: Save the chain-prefix snapshots (even when a proof failed)
-        if: always() && matrix.leg == 'the rest' && steps.prefix.outputs.cache-hit != 'true' && hashFiles('node_modules/.cache/byeharu-chain-prefix/**') != ''
+        if: always() && env.RUN == 'true' && matrix.leg == 'the rest' && steps.prefix.outputs.cache-hit != 'true' && hashFiles('node_modules/.cache/byeharu-chain-prefix/**') != ''
         uses: actions/cache/save@v4
         with:
           path: node_modules/.cache/byeharu-chain-prefix

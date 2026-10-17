@@ -28,6 +28,14 @@
 //   sum-equals-`--list` floor still sees every test.
 //   --grep-invert is handed to `playwright test --list` verbatim; the verdict must list with the
 //   same value (acceptance.yml passes it through a job output), or its denominator disagrees.
+//
+//   --select=selection.json (2026-10-17) narrows the plan to the spec files
+//   scripts/ci/select-specs.mjs chose for a PR. Only a `scoped` selection narrows anything; a
+//   `full` one (every push to main) plans exactly what it planned before. Under a scoped selection
+//   a pool or shard left with no tests is a legitimate outcome, not a broken cut: the plan writes
+//   an EMPTY list and says so, and the pool action skips the run. In every case
+//   `<out-file>.count` holds the number of tests planned for this shard — the per-shard floor
+//   reads it, so "planned 0, ran 0" is the only zero that can be green.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { execFileSync } from 'node:child_process'
@@ -104,7 +112,24 @@ if (isMain) {
   const not = opt('not-files')
   if (only) tests = tests.filter((t) => new RegExp(only).test(t.file))
   if (not) tests = tests.filter((t) => !new RegExp(not).test(t.file))
+  const selFile = opt('select')
+  const sel = selFile ? JSON.parse(readFileSync(selFile, 'utf8')) : null
+  const scoped = sel?.mode === 'scoped'
+  if (scoped) {
+    const chosen = new Set(sel.specs.map((s) => s.file))
+    const before = tests.length
+    tests = tests.filter((t) => chosen.has(t.file))
+    console.log(`scoped selection (${selFile}): ${tests.length} of this pool's ${before} test(s) are in the ${chosen.size} selected spec file(s)`)
+  }
+  const empty = (why) => {
+    console.log(`::notice title=No affected specs in this pool::${why}`)
+    console.log(`no affected specs in this pool — ${why}`)
+    writeFileSync(outFile, '')
+    writeFileSync(`${outFile}.count`, '0\n')
+    process.exit(0)
+  }
   if (tests.length === 0) {
+    if (scoped) empty(`shard ${i}/${n}: the selection reaches no spec in this pool`)
     console.error('shard-plan: the file filter left no tests — refusing to plan an empty pool')
     process.exit(1)
   }
@@ -114,9 +139,11 @@ if (isMain) {
   )
   const mine = shards[i - 1]
   if (mine.tests === 0) {
+    if (scoped) empty(`shard ${i}/${n}: the pool's selected specs all landed on other shards`)
     console.error(`shard-plan: shard ${i}/${n} got no tests — fewer groups than shards`)
     process.exit(1)
   }
   writeFileSync(outFile, `${mine.entries.join('\n')}\n`)
+  writeFileSync(`${outFile}.count`, `${mine.tests}\n`)
   console.log(`shard ${i}/${n} → ${outFile}:\n  ${mine.entries.join('\n  ')}`)
 }
