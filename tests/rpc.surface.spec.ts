@@ -1544,6 +1544,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // player id; her ship docked, her level, the items in storage there). Landed WITH its button
       // (src/live/YourCaptains.tsx).
       'cmdPromoteCaptain',
+      // Pin moved deliberately 2026-10-18 with migration 0163 (docs/SHIPS_AND_SKILLS.md S16): AUGMENT A
+      // FITTING with a perk the player chooses, paid in kits. Takes a ship (the caller's own,
+      // E_NOT_YOUR_SHIP otherwise), the item, the perk and the rank; no player id. Only docked at a level 3
+      // workshop. Landed WITH the face that presses it (src/live/ShipAugments.tsx, the ship panel's Perks).
+      'cmdAugmentFitting',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

@@ -402,7 +402,7 @@ export interface YardHull {
    *  ("Nau / Carrack needs Portuguese Medium Hulls IV"), or null. `buildable` already folds it in.
    *  Printed as served. Optional: a server before 0133 sends none; null while skills do not bite. */
   needs?: string | null
-  /** 0162 — `class_profile.tech` (T1 · T2 · F), for the yard's T2 badge. Optional: a server before 0162 sends none. */
+  /** 0159 — `class_profile.tech` (T1 · T2 · F), for the yard's T2 badge. Optional: a server before 0159 sends none. */
   tech?: string | null
   goods: HullMaterial[]
   items: HullMaterial[]
@@ -474,7 +474,7 @@ export interface WorkstationItem {
    *  fit both refuse with ("Hemp Canvas needs Rigging II — ship skills are not in use yet"), or null.
    *  Printed as served. */
   needs?: string | null
-  /** 0162 (S15) — a Named item is made only in its own city: the server's sentence ("Lisbon-cast Brass Guns
+  /** 0159 (S15) — a Named item is made only in its own city: the server's sentence ("Lisbon-cast Brass Guns
    *  are made only in Lisbon") where THIS city is not it, else null. `makeable` already folds it in. */
   made_only_in?: string | null
   recipe: RecipeLine[]
@@ -774,6 +774,30 @@ export interface ShipRackUnit {
   wear?: number
   works_pct?: number
   wear_words?: string
+  /** 0163 (S16) — the perks it carries, in the server's words ("Precise II · +6 accuracy"). Absent: none. */
+  perks?: { code: string; rank: number; words: string }[]
+  /** 0163 — for a unit that may be augmented (grade III and better, T2, Country, Famous): the perks that fit
+   *  it, the kit each costs (a rank r costs r kits) and each rank's words. Absent for any other unit. */
+  perk_options?: { code: string; word: string; kit: string; ranks: string[] }[]
+}
+
+/** 0163 (S16) — a line's set on one ship (`world.ship_set_card`): pieces carried of 4, and each bonus with
+ *  whether it is in force, in the server's words. */
+export interface ShipSet {
+  line: string
+  name: string
+  pieces: number
+  of: number
+  bonuses: { pieces: number; in_force: boolean; words: string }[]
+}
+
+/** 0163 — what cmd.augment_fitting answers when the perk is on. */
+export interface AugmentedFitting {
+  ship: string
+  item: string
+  perk: string
+  rank: number
+  sentence: string
 }
 
 /** 0158 (S13) — what a REPAIR also repaired of the fleet's gear (`public.gear_repair_quote`): the worn
@@ -865,6 +889,8 @@ export interface FleetShip {
   /** 0133 — what your company's skills add to her, by source. `[]` while skills do not bite; absent
    *  from a server before 0133. */
   bonuses?: ShipBonus[]
+  /** 0163 (S16) — her set progress, only where she carries a set piece. */
+  sets?: ShipSet[]
   /** How many captains she can seat (class_cabins: 3 on a small hull, up to 8). */
   cabins: number
   /** 0157 — her cabins, seat by seat, and who sits in each (`world.ship_seats`). Optional for the

@@ -1,13 +1,14 @@
 {
   "_": "GEAR I — racks, units, budgets (docs/SHIPS_AND_SKILLS.md §6.1-6.3, step S10, migration 0132).",
   "_why": "Authored here and guarded (scripts/db/world-guard.mjs), never migration-only. public.gear_racks, public.item_profile, the RACK rows of public.class_slots and public.class_slot_unlocks EQUAL this file, every column, both directions.",
-  "_racks": "A rack takes ANY item of its rack (EVE). High = guns and boarding gear; Mid = sails, rudder, anchor, lookout, instruments; Low = hull, hold, pumps, sheathing; Refit = permanent refits (fitted at a build yard from S13, destroyed when removed); Flourish = the figurehead (no budget). `word` is what the player reads (docs/WORDS.md).",
+  "_racks": "A rack takes ANY item of its rack (EVE). High = guns and boarding gear; Mid = sails, rudder, anchor, lookout, instruments; Low = hull, hold, pumps, sheathing; Refit = permanent refits (fitted at a build yard from S13, destroyed when removed); Flourish = the figurehead (no budget); Kits = the four augment kits (0163), a rack no hull has places in, so a kit is never fitted. `word` is what the player reads (docs/WORDS.md).",
   "racks": [
     { "code": "high", "word": "High", "ord": 1 },
     { "code": "mid", "word": "Mid", "ord": 2 },
     { "code": "low", "word": "Low", "ord": 3 },
     { "code": "refit", "word": "Refit", "ord": 4 },
-    { "code": "flourish", "word": "Flourish", "ord": 5 }
+    { "code": "flourish", "word": "Flourish", "ord": 5 },
+    { "code": "kit", "word": "Kits", "ord": 6 }
   ],
   "_items": "The twelve live fittings are GRADE 1 of their base types (§6.3); effects untouched. deck / hands = what one mounted unit costs of the two fitting budgets (Deck = class_profile.deck, EVE's CPU; Hands = crew_max - ceil(crew_required / 2), EVE's powergrid). active = carries a trigger (S13 makes actives bite; until then every module is passive).",
   "items": [
@@ -35,5 +36,32 @@
     { "class": "barca", "rack": "mid", "count": 1, "minLevel": 3 },
     { "class": "carlat", "rack": "low", "count": 1, "minLevel": 4 },
     { "class": "nau", "rack": "high", "count": 1, "minLevel": 6 }
+  ],
+  "_perks": "0163 (S16, docs/SHIPS_AND_SKILLS.md §6.6): the perks a mounted unit (grade III and better, T2, Country, Famous) may be augmented with, chosen, never rolled. racks = where it may sit; slot / base narrow it (Swift: canvas; Roomy: cargo frames). mode flat = perRank × rank on `stat`; unit_pct = perRank % × rank of the unit's own figure of `stat`; wear = wear × (1 − perRank % × rank); deck = Deck − perRank × rank (never below 1); hands = Hands − perRank % × rank. kit = the kit a rank costs (r kits for rank r); null = any kit. Order = the panel's order.",
+  "perks": [
+    { "code": "WEATHERLY", "word": "Weatherly", "racks": ["mid"], "slot": null, "base": null, "mode": "flat", "stat": "handling", "perRank": 3, "kit": "sailmakers-kit" },
+    { "code": "SWIFT", "word": "Swift", "racks": ["mid"], "slot": "rig", "base": null, "mode": "flat", "stat": "speed", "perRank": 0.05, "kit": "sailmakers-kit" },
+    { "code": "PRECISE", "word": "Precise", "racks": ["high"], "slot": null, "base": null, "mode": "flat", "stat": "accuracy", "perRank": 3, "kit": "gunsmiths-kit" },
+    { "code": "FAR_REACHING", "word": "Far-reaching", "racks": ["high"], "slot": null, "base": null, "mode": "flat", "stat": "reach", "perRank": 4, "kit": "gunsmiths-kit" },
+    { "code": "HARD_HITTING", "word": "Hard-hitting", "racks": ["high"], "slot": null, "base": null, "mode": "unit_pct", "stat": "attack", "perRank": 5, "kit": "gunsmiths-kit" },
+    { "code": "STOUT", "word": "Stout", "racks": ["low"], "slot": null, "base": null, "mode": "unit_pct", "stat": "durability", "perRank": 4, "kit": "shipwrights-kit" },
+    { "code": "ROOMY", "word": "Roomy", "racks": ["low"], "slot": null, "base": "Hold Frames", "mode": "flat", "stat": "hold", "perRank": 2, "kit": "shipwrights-kit" },
+    { "code": "SEASONED", "word": "Seasoned", "racks": ["high", "mid", "low"], "slot": null, "base": null, "mode": "wear", "stat": null, "perRank": 25, "kit": null },
+    { "code": "LIGHT", "word": "Light", "racks": ["high", "mid", "low"], "slot": null, "base": null, "mode": "deck", "stat": null, "perRank": 1, "kit": "shipwrights-kit" },
+    { "code": "HANDY", "word": "Handy", "racks": ["high"], "slot": null, "base": null, "mode": "hands", "stat": null, "perRank": 10, "kit": "navigators-kit" }
+  ],
+  "_sets": "0163 (S16, §6.7): one set per line — its four Country pieces (High, Mid, Low, Figurehead; scripts/build-gear.mjs COUNTRY). A hull carrying 2 pieces of a line gets its 2-piece bonuses; 4 pieces add the 4-piece ones. pct = per cent of the class base + what is mounted; flat = a fixed amount; stat `hands` = what her fitted items need of Hands.",
+  "sets": [
+    { "line": "PRT", "name": "Carreira da Índia", "bonuses": [{"pieces": 2, "stat": "hold", "pct": 3},{"pieces": 4, "stat": "sighting", "pct": 5},{"pieces": 4, "stat": "durability", "pct": 3}] },
+    { "line": "ESP", "name": "Flota de Indias", "bonuses": [{"pieces": 2, "stat": "armour", "flat": 5},{"pieces": 4, "stat": "attack", "pct": 8},{"pieces": 4, "stat": "durability", "pct": 5}] },
+    { "line": "NLD", "name": "VOC Return Fleet", "bonuses": [{"pieces": 2, "stat": "hold", "pct": 4},{"pieces": 4, "stat": "hands", "pct": -10},{"pieces": 4, "stat": "handling", "flat": 5}] },
+    { "line": "ENG", "name": "Sea Dogs", "bonuses": [{"pieces": 2, "stat": "accuracy", "flat": 5},{"pieces": 4, "stat": "reach", "flat": 8},{"pieces": 4, "stat": "speed", "pct": 2}] },
+    { "line": "FRA", "name": "Ponant", "bonuses": [{"pieces": 2, "stat": "handling", "flat": 4},{"pieces": 4, "stat": "reach", "flat": 6},{"pieces": 4, "stat": "durability", "pct": 4}] },
+    { "line": "ITA", "name": "Arsenale", "bonuses": [{"pieces": 2, "stat": "attack", "pct": 5},{"pieces": 4, "stat": "handling", "flat": 8}] },
+    { "line": "OTT", "name": "Kapudan", "bonuses": [{"pieces": 2, "stat": "armour", "flat": 5},{"pieces": 4, "stat": "attack", "pct": 8}] },
+    { "line": "IND", "name": "Monsoon", "bonuses": [{"pieces": 2, "stat": "hold", "pct": 3},{"pieces": 4, "stat": "speed", "pct": 2},{"pieces": 4, "stat": "handling", "flat": 5}] },
+    { "line": "CHN", "name": "Ming Treasure", "bonuses": [{"pieces": 2, "stat": "durability", "pct": 5},{"pieces": 4, "stat": "hold", "pct": 4}] },
+    { "line": "JPN", "name": "Red Seal", "bonuses": [{"pieces": 2, "stat": "accuracy", "flat": 5},{"pieces": 4, "stat": "attack", "pct": 6}] },
+    { "line": "KOR", "name": "Yi Sun-sin", "bonuses": [{"pieces": 2, "stat": "armour", "flat": 6},{"pieces": 4, "stat": "armour", "flat": 10},{"pieces": 4, "stat": "accuracy", "flat": 4}] }
   ]
 }

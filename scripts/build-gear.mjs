@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // build-gear.mjs — THE GEAR: grades 2-5 of the twelve live base types, grades 1-5 of the eleven new ones
 //                  (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135); the refits and what works
-//                  every item (S13, 0158); the T2 and Named rungs (S15, 0162)
+//                  every item (S13, 0158); the T2 and Named rungs (S15, 0159); the Country rung — the
+//                  eleven sets — and the four perk kits (S16, 0163)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // ONE ITEM MODEL (§6.2): base type × grade. Grade 1 of a live base type is the live item, untouched
@@ -24,7 +25,7 @@
 // The same buys/spends sentence as its G1 (the stats it moves do not change, only how far). The
 // figurehead is the one base type that moves no stat at any grade (0074, DESIGN 1.4).
 //
-// S15 (migration 0162, §6.2's meta ladder): two more rungs, each ONE rule over the same base types.
+// S15 (migration 0159, §6.2's meta ladder): two more rungs, each ONE rule over the same base types.
 //   * T2 (meta 5, "improved") — one per base type but the figurehead (22). BUYS × 2.60 (speed and hold
 //     × 1.80), SPENDS × 1.25 rounded half away from zero (handling −6 → −8; −5 → −6; speed −0.35 → −0.44);
 //     Deck and Hands = the G1's × 1.5; needs the module skill V + its specialisation I (T2_SPEC) + the
@@ -39,6 +40,21 @@
 //     known for; the grade's requirements exactly; tier 3; made in that one city (public.item_city).
 //     §6.4's Lisbon-cast Brass Guns (G3 Long Guns) come out 106 / 26 — asserted.
 //
+// S16 (migration 0163, §6.2's Country row, §6.6, §6.7): the sets and the kits, each ONE rule.
+//   * Country (meta 6, grade 4) — a line's pattern of ONE base type, four a line (COUNTRY, 44): a High piece, a
+//     Mid piece, a Low piece and a Figurehead, the four pieces of the line's SET (§6.7). The G1's effects with
+//     BUYS × 2.40 (speed and hold × 1.70), SPENDS × 1.00, then the line's second buy — a stat the G1 does not
+//     move, appended (its word joins `buys`); or, where it IS one the G1 moves (item_effects keeps one row per
+//     stat), folded into that row by the sum. Deck and Hands = the G1's × 1.3; needs the module skill IV + the
+//     line's Medium Hulls I (+ the base type's second skill); made at tier ≥ 2 (0163 confines it to a port of the
+//     line's builder nations through public.item_line); the G1's words, volume and active flag. The Country
+//     Figurehead moves nothing, costs nothing and needs the line's Medium Hulls I only. §6.4's four are asserted:
+//     Sea Dogs' Culverin Battery 144 / 36, accuracy +10, hold −20, handling −6; Toiles de Bretagne +1.02,
+//     handling −4 (§6.4 writes it "handling +4 | handling −8": one row, the sum); VOC Frames speed −0.18,
+//     handling −5; Turtle-back Plating armour 30.
+//   * Kits (KITS, 4; §6.6) — the perk kits: base type Kit, rack kit (no hull has a place in it: a kit is never
+//     fitted, it is used up), grade 1, meta 0, tier 3, volume 1, no effect, no requirement, never wear.
+//
 // §6.3 lists ELEVEN new base types (Carronades, Chase Guns, Swivel Guns, Studding Sails, Storm
 // Canvas, Whipstaff, Sheet Anchor, Capstan, Binnacle & Charts, Planking, Bilge Pumps); §0/§8 say
 // "ten" and "~98 rows". The table is the specification: 11 × 5 + 12 × 4 = 103 rows.
@@ -47,7 +63,8 @@
 //        node scripts/build-gear.mjs --check     fails if the file is not what the generator gives
 //        node scripts/build-gear.mjs --sql       the VALUES 0135 loaded (103 Wave A items)
 //        node scripts/build-gear.mjs --sql-0158  the VALUES 0158 loaded (14 refits + item_use)
-//        node scripts/build-gear.mjs --sql-0162  the VALUES 0162 loads (22 T2 + 12 Named, item_use, item_city)
+//        node scripts/build-gear.mjs --sql-0159  the VALUES 0159 loaded (22 T2 + 12 Named, item_use, item_city)
+//        node scripts/build-gear.mjs --sql-0163  the VALUES 0163 loads (44 Country + 4 kits, item_use, item_line)
 // scripts/db/world-guard.mjs re-runs generateGear() on every apply and holds the database to it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -292,6 +309,7 @@ export const USE_BY_BASE = {
   'Bilge Pumps': { trigger: 'STORM', consumes: [] },
   'Hold Frames': { trigger: 'STORM', consumes: [] },
   'Figurehead': { trigger: null, consumes: [] },
+  'Kit': { trigger: null, consumes: [] },
 }
 export const TRIGGERS = ['MILES', 'PIRATES', 'STORM']
 
@@ -334,7 +352,7 @@ export function gradedDelta(stat, delta, g) {
 }
 
 /**
- * S15 (migration 0162, §6.2's T2 row): the ONE map from a module skill to the specialisation that gates its
+ * S15 (migration 0159, §6.2's T2 row): the ONE map from a module skill to the specialisation that gates its
  * T2 module (§5.2: Gunnery Spec gates T2 guns, boarding and magazines; Ship Handling Spec the Mid handling
  * modules; Rigging / Instrument Spec the sails / instruments; Shipwright Spec the Low; Stowage Spec hold frames).
  */
@@ -351,7 +369,7 @@ export function t2Delta(stat, delta) {
 }
 
 /**
- * S15 (migration 0162, §6.2's Named row): a city's own pattern of ONE grade of ONE base type — one per city
+ * S15 (migration 0159, §6.2's Named row): a city's own pattern of ONE grade of ONE base type — one per city
  * with a tier-3 workshop (0068: 12 cities). [code, name, port code, base type, grade, the extra good, note].
  */
 export const NAMED = [
@@ -376,6 +394,150 @@ export function namedDelta(stat, gradeDelta) {
   return stat === 'speed' ? round2(v) : roundUp(v)
 }
 
+/**
+ * S16 (migration 0163, §6.2's Country row, §6.7): THE SETS — one per line, four pieces: a High, a Mid and a
+ * Low piece, each the Country rung of a base type of that rack, and a Figurehead. A piece is
+ * [base type, code, name, recipe, second buy [stat, delta], note]; the figurehead [code, name, recipe, note].
+ * The four of §6.4 are verbatim (ENG High, FRA Mid, NLD Low, KOR Low); the rest follow the line's character
+ * (data/ship-lines.json) and are made of the line's own goods plus the family's materials.
+ */
+export const COUNTRY = [
+  { line: 'PRT', set: 'Carreira da Índia',
+    high: ['Chase Guns', 'bombardas-de-caca', 'Bombardas de Caça', r('culverin 6, swedish-iron 6, shot-and-ball 4, cork 4'), ['attack', 20],
+      'Bow and stern chasers of the India run, wadded with Portuguese cork: they reach further, aim truer and hit harder too.'],
+    mid: ['Lookout', 'gavea-da-carreira', 'Gávea da Carreira', r('riga-mast 3, portolan-charts 2, lodestone 1, cordage 4'), ['speed', 0.1],
+      'A high fighting top with a Portuguese portolan and compass in it: the lookout sees further and the ship finds the wind sooner.'],
+    low: ['Ballast', 'lastro-de-sal', 'Lastro de Sal', r('salt 20, iron 6, timber 2'), ['hold', 5],
+      'Setúbal salt packed over iron kentledge: a stiff, steady ship, and the salt sells at the far end, so it counts as a little cargo space.'],
+    figurehead: ['armillary-figurehead', 'Armillary Sphere Figurehead', r('timber 4, armillary-spheres 1, gold 1'),
+      'An armillary sphere at the bow, the mark of the Portuguese crown. It moves no number; it completes the set.'] },
+  { line: 'ESP', set: 'Flota de Indias',
+    high: ['Boarding Gear', 'armas-del-tercio', 'Armas del Tercio', r('toledo-blades 6, swedish-iron 4, abaca 4, armour 2'), ['armour', 4],
+      'Toledo blades, pikes and breastplates for a boarding party of soldiers: a harder blow across the rail, and the breastplates count on deck too.'],
+    mid: ['Sheet Anchor', 'ancla-de-la-esperanza', 'Ancla de la Esperanza', r('swedish-iron 8, abaca 8, tar 2'), ['armour', 4],
+      'The great anchor of the treasure fleets, chained along an iron-bound side: the ship rides out the worst night and the chain plates stop a little shot.'],
+    low: ['Planking', 'tablazon-de-galeon', 'Tablazón de Galeón', r('live-oak 16, naval-timber 6, ships-nails 8, oakum 4, pine-pitch 2'), ['sighting', 2],
+      'Doubled live-oak planking carried up into high sides: far more hull and armour, a slower ship, and a lookout a little higher above the water.'],
+    figurehead: ['castile-lion-figurehead', 'León de Castilla Figurehead', r('timber 4, vermilion 1, gold 1'),
+      'A crowned lion of Castile in red and gold. It moves no number; it completes the set.'] },
+  { line: 'NLD', set: 'VOC Return Fleet',
+    high: ['Swivel Guns', 'voc-swivels', 'VOC Draaibassen', r('swedish-iron 5, brass-ingots 3, shot-and-ball 2, holland-linen 2'), ['hold', 5],
+      'Light rail guns of the Dutch East India Company with linen cartridges made up in advance: they sweep a deck and leave a little more cargo space than heavier metal would.'],
+    mid: ['Capstan', 'fluit-kaapstander', 'Fluit Kaapstander', r('live-oak 4, swedish-iron 3, abaca 3, stockholm-tar 1'), ['durability', 40],
+      'A geared capstan built for a small crew: the anchor and yards come up fast with few hands, and the ship meets a squall with sail already off.'],
+    low: ['Hold Frames', 'voc-frames', 'VOC Frames', r('memel-fir 30, norway-spruce 20, oakum 6'), ['speed', 0.17],
+      'Light fir frames and ceiling in the Dutch way: nearly the most cargo space a hull can give, at half the usual cost in speed.'],
+    figurehead: ['holland-lion-figurehead', 'Leeuw van Holland Figurehead', r('timber 4, ochre 1, lead 1'),
+      'The lion of Holland in red and gold paint. It moves no number; it completes the set.'] },
+  { line: 'ENG', set: 'Sea Dogs',
+    high: ['Long Guns', 'sea-dogs-culverins', "Sea Dogs' Culverin Battery", r('culverin 14, tin-ingots 6, oakum 4'), ['accuracy', 10],
+      'A full battery of English culverins on truck carriages: they hit hard, reach far and shoot straighter than any plain battery.'],
+    mid: ['Headsails', 'race-built-headsails', 'Race-built Headsails', r('sailcloth 8, riga-mast 2, abaca 4, tar 1'), ['accuracy', 6],
+      'Headsails cut for a race-built hull: the ship turns smartly, gains a little way, and keeps a steadier gun platform through the turn.'],
+    low: ['Sheathing', 'admiralty-copper', 'Admiralty Copper', r('copper-sheet 14, tin-ingots 4, ships-nails 6, tar 2'), ['handling', 4],
+      'Copper sheathing to the Admiralty pattern over a clean bottom: more armour and hull, and a ship that answers the helm a little quicker.'],
+    figurehead: ['sea-dog-figurehead', 'Sea Dog Figurehead', r('timber 4, tallow 1, lead-white 1'),
+      'A carved and painted sea dog at the bow. It moves no number; it completes the set.'] },
+  { line: 'FRA', set: 'Ponant',
+    high: ['Powder Magazine', 'sainte-barbe-du-ponant', 'Sainte-Barbe du Ponant', r('gunpowder 10, live-oak 4, copper-sheet 4, lead 2'), ['reach', 6],
+      'A copper-lined powder room stocked with fine French powder: steadier and more accurate fire, and the charge carries a little further.'],
+    mid: ['Sails', 'toiles-de-bretagne', 'Toiles de Bretagne', r('canvas-duck 30, sailcloth 8, hemp 6'), ['handling', 4],
+      'Breton duck canvas cut full and flat: a great deal more speed from the same wind, and the suit costs only half the usual handling.'],
+    low: ['Bilge Pumps', 'pompes-du-ponant', 'Pompes du Ponant', r('live-oak 4, copper 3, hides 2, canvas-duck 4'), ['handling', 4],
+      'Chain pumps with canvas hoses that keep the bilge dry: the hull takes far more punishment, and a dry ship answers the helm a little quicker.'],
+    figurehead: ['fleur-de-lis-figurehead', 'Fleur-de-lis Figurehead', r('timber 4, gold-thread 1, ultramarine 1'),
+      'A gilded fleur-de-lis on a blue ground. It moves no number; it completes the set.'] },
+  { line: 'ITA', set: 'Arsenale',
+    high: ['Carronades', 'petrieri', "Petrieri dell'Arsenale", r('culverin 6, brass-ingots 6, gunpowder 3, marble 4'), ['accuracy', 6],
+      'Short brass stone-throwers of the Venetian Arsenal, bored true: they smash at close range and aim better than most short guns.'],
+    mid: ['Whipstaff', 'agghiaccio', "Agghiaccio dell'Arsenale", r('live-oak 4, naval-timber 1, swedish-iron 1, hemp 1'), ['speed', 0.1],
+      'A long steering lever in the Venetian pattern: the ship answers the helm at once and wanders less, so it keeps a little more way on.'],
+    low: ['Ballast', 'zavorra-dell-arsenale', "Zavorra dell'Arsenale", r('lead 8, iron 6, marble 4, oakum 2'), ['attack', 15],
+      'Lead and marble ballast trimmed by the Arsenal for a steady gun platform: a stiffer ship, and the bow guns tell harder.'],
+    figurehead: ['san-marco-lion-figurehead', 'Leone di San Marco Figurehead', r('timber 4, gold 1, murano-glass 1'),
+      'The winged lion of St Mark in gilt, with glass eyes from Murano. It moves no number; it completes the set.'] },
+  { line: 'OTT', set: 'Kapudan',
+    high: ['Long Guns', 'sahi-guns', 'Şahi Guns', r('bombard 2, culverin 8, copper 8, tin-ingots 4'), ['armour', 4],
+      'Heavy bronze guns of the Tersane-i Amire behind stout bulwarks: a hard-hitting broadside, and the gun deck takes a little more shot.'],
+    mid: ['Anchor', 'tersane-anchor', 'Tersane Anchor & Cable', r('swedish-iron 5, abaca 5, hemp 3, cedar 2'), ['durability', 40],
+      'Ground tackle from the Imperial Arsenal on a cedar-stocked anchor: the ship turns around quicker in port and rides easier at anchor, which spares the hull.'],
+    low: ['Planking', 'cedar-planking', 'Cedar Planking', r('cedar 16, naval-timber 4, ships-nails 8, oakum 4'), ['handling', 4],
+      'Doubled planking of Anatolian cedar, lighter than oak: far more hull and armour for a slower ship, and the lighter wood leaves it a little handier.'],
+    figurehead: ['crescent-figurehead', "Kapudan's Crescent Figurehead", r('cedar 4, gold-thread 1, iznik-tiles 1'),
+      'A gilded crescent and star over Iznik tilework at the bow. It moves no number; it completes the set.'] },
+  { line: 'IND', set: 'Monsoon',
+    high: ['Boarding Gear', 'malabar-boarding-gear', 'Malabar Boarding Gear', r('talwar 4, swedish-iron 3, coir 4, teak 2'), ['handling', 4],
+      'Talwars, coir grapnel lines and boarding ladders in the Malabar way: a hard blow across the rail from a light, handy ship.'],
+    mid: ['Binnacle & Charts', 'rahmani-and-kamal', 'Rahmani & Kamal', r('lodestone 2, sea-charts 3, teak 2, brass-ingots 1'), ['speed', 0.1],
+      'An Arab pilot book and a kamal for the star heights beside a lodestone compass: the ship knows where it is, answers the helm well and picks the better wind.'],
+    low: ['Sheathing', 'monsoon-teak-sheathing', 'Monsoon Teak Sheathing', r('teak 10, copper-sheet 8, coir 6, coco-fibre 4'), ['hold', 6],
+      'Teak and copper over coir caulking, sewn and nailed as the monsoon yards do it: more armour and hull, and the lighter build leaves a little more cargo space.'],
+    figurehead: ['makara-figurehead', 'Monsoon Makara Figurehead', r('teak 4, sandalwood-carving 1, vermilion 1'),
+      'A carved makara, the sea creature of the monsoon coasts, in sandalwood and red. It moves no number; it completes the set.'] },
+  { line: 'CHN', set: 'Ming Treasure',
+    high: ['Powder Magazine', 'fire-lance-magazine', 'Fire-lance Magazine', r('gunpowder 10, rocket-tubes 4, fire-lance 4, copper-sheet 4'), ['armour', 4],
+      'A powder room stocked with rockets and fire-lances behind a watertight bulkhead: steadier and more accurate fire, and the bulkhead counts as armour.'],
+    mid: ['Rudder', 'fenestrated-rudder', 'Fenestrated Rudder', r('live-oak 6, teak 2, iron 4, abaca 2'), ['durability', 40],
+      'A deep junk rudder pierced with holes, raised and lowered on tackles: the ship turns sharply and the rudder shrugs off seas that would unship another.'],
+    low: ['Hold Frames', 'treasure-junk-bulkheads', 'Treasure Junk Bulkheads', r('live-oak 14, teak 6, iron 6, oakum 6'), ['durability', 50],
+      'Watertight bulkheads in the Ming way: the cargo stows in sealed compartments, so there is more room for it and one leak never sinks the ship.'],
+    figurehead: ['dragon-eye-figurehead', 'Dragon-eye Figurehead', r('timber 4, lacquerware 1, vermilion 1'),
+      'Painted eyes on the bow in red lacquer, as every junk carries. It moves no number; it completes the set.'] },
+  { line: 'JPN', set: 'Red Seal',
+    high: ['Swivel Guns', 'ozutsu-swivels', 'Ōzutsu Swivels', r('swedish-iron 4, culverin 2, matchlocks 2, shot-and-ball 2'), ['reach', 6],
+      'Heavy Japanese hand cannon on the rails, served by matchlock men: they sweep a deck, shoot straight and reach a little further than a plain swivel.'],
+    mid: ['Storm Canvas', 'typhoon-canvas', 'Typhoon Canvas', r('sailcloth 8, cotton-cloth 6, hemp 4, tar 2'), ['accuracy', 6],
+      'Small, heavy sails of cotton and sailcloth for typhoon weather: the ship rides out the storm, gives up a little speed and keeps a steadier gun platform.'],
+    low: ['Ballast', 'red-seal-ballast', 'Red Seal Ballast', r('japan-copper 8, iron 4, timber 2'), ['accuracy', 6],
+      'Copper pigs from the Japanese mines stowed low as ballast: a stiff, steady ship, and the guns shoot straighter for it.'],
+    figurehead: ['red-seal-figurehead', 'Red Seal Figurehead', r('timber 4, lacquerware 1, gold 1'),
+      'The red seal of the shogunate in lacquer and gold leaf at the bow. It moves no number; it completes the set.'] },
+  { line: 'KOR', set: 'Yi Sun-sin',
+    high: ['Chase Guns', 'cheonja-chongtong', 'Cheonja Chongtong', r('culverin 8, copper 6, tin-ingots 4, rocket-tubes 2'), ['attack', 20],
+      'Heavy Korean bronze cannon in the bows that fire great arrows as well as shot: they reach and aim further than a broadside gun and hit harder than most chasers.'],
+    mid: ['Sails', 'ramie-sails', 'Ramie Sails', r('ramie-korea 20, hemp-cloth 8, cordage 4'), ['durability', 40],
+      'Battened sails of Korean ramie and hemp cloth: more speed from the same wind, harder to handle, and the cloth stands weather that tears flax.'],
+    low: ['Planking', 'turtle-back-plating', 'Turtle-back Plating', r('iron 20, copper-sheet 10, timber 10'), ['armour', 6],
+      'Iron plates spiked over a timber deck in the turtle-ship way: the best armour afloat and a far stronger hull, for a slower ship with less cargo space.'],
+    figurehead: ['dragon-head-figurehead', 'Dragon-head Figurehead', r('timber 4, iron 2, vermilion 1'),
+      'The dragon head of the turtle ship, carved and painted red. It moves no number; it completes the set.'] },
+]
+export const COUNTRY_MULT = { buys: 2.4, money: 1.7, spends: 1.0 }
+/** The word a stat goes by in an item's buys sentence (docs/WORDS.md: the player never reads "hold"). */
+const STAT_WORD = { attack: 'Attack', accuracy: 'Accuracy', reach: 'Reach', handling: 'Handling', speed: 'Speed', hold: 'Cargo space', durability: 'Hull', armour: 'Armour', sighting: 'Sighting' }
+/**
+ * The effects of a Country item (meta 6) from its G1's: buys × 2.40 (speed / hold × 1.70), spends × 1.00 (speed
+ * to 0.01, every other stat half up), then the line's second buy (always > 0) — appended; or, where its stat is one
+ * the G1 already moves (item_effects keeps ONE row per stat), folded into that row by the sum: a lighter spend (VOC
+ * Frames: speed −0.35 + 0.17 = −0.18; Toiles de Bretagne: handling −8 + 4 = −4) or a bigger buy (Turtle-back
+ * Plating: armour 24 + 6 = 30).
+ */
+export function countryEffects(g1Effects, [stat2, delta2]) {
+  if (!(delta2 > 0)) throw new Error(`a Country second buy is positive, not ${stat2} ${delta2}`)
+  const scale = (stat, delta) => {
+    if (delta < 0) return -(stat === 'speed' ? round2(-delta * COUNTRY_MULT.spends) : roundUp(-delta * COUNTRY_MULT.spends))
+    const v = delta * (MONEY_STATS.has(stat) ? COUNTRY_MULT.money : COUNTRY_MULT.buys)
+    return stat === 'speed' ? round2(v) : roundUp(v)
+  }
+  const effects = g1Effects.map(([stat, delta]) => ({ stat, delta: scale(stat, delta) }))
+  const row = effects.find((e) => e.stat === stat2)
+  if (row) row.delta = stat2 === 'speed' ? round2(row.delta + delta2) : row.delta + delta2
+  else effects.push({ stat: stat2, delta: delta2 })
+  return effects
+}
+
+/**
+ * S16 (migration 0163, §6.6): THE PERK KITS — made items that augment a fitting at a tier-3 workshop and are used
+ * up by it. Base type Kit, rack kit (no hull has a place in it); no effect, no requirement. [code, name, recipe, note].
+ */
+export const KIT_BASE = 'Kit'
+export const KITS = [
+  ['gunsmiths-kit', "Gunsmith's Kit", r('swivel-gun 1, slow-match 2, gunpowder 2'), "A gunsmith's tools and stores for augmenting a High-rack fitting at a tier-3 workshop; the kit is used up by it."],
+  ['sailmakers-kit', "Sailmaker's Kit", r('sailcloth 4, whale-bone-stays 2, abaca 3'), "A sailmaker's cloth, stays and twine for augmenting a Mid-rack fitting at a tier-3 workshop; the kit is used up by it."],
+  ['shipwrights-kit', "Shipwright's Kit", r('lignum-vitae 2, copper-sheet 3, oakum 3'), "A shipwright's blocks, copper and oakum for augmenting a Low-rack fitting at a tier-3 workshop; the kit is used up by it."],
+  ['navigators-kit', "Navigator's Kit", r('sea-charts 1, lodestone 1'), "A navigator's charts and lodestone for augmenting a fitting at a tier-3 workshop; the kit is used up by it."],
+]
+
 /** THE GENERATOR. Pure but for reading data/*.json; throws on any broken rule. */
 export function generateGear() {
   const fittings = Object.fromEntries(readJson('data/fittings.json').fittings.map((f) => [f.code, f]))
@@ -388,8 +550,8 @@ export function generateGear() {
   const names = new Set(Object.values(fittings).map((f) => f.name.toLowerCase()))
   if (BASE_TYPES.length !== 23) throw new Error(`§6.3 lists 23 base types (12 live + 11 new); the table has ${BASE_TYPES.length}`)
 
-  // S13: every base type answers to exactly one entry of USE_BY_BASE, and nothing else is in it
-  const bases = new Set(BASE_TYPES.map((b) => b.base))
+  // S13: every base type answers to exactly one entry of USE_BY_BASE (S16: and the kits' Kit), and nothing else is in it
+  const bases = new Set([...BASE_TYPES.map((b) => b.base), KIT_BASE])
   for (const b of bases) if (!(b in USE_BY_BASE)) throw new Error(`${b}: no entry in USE_BY_BASE (what wears it, what it consumes)`)
   for (const b of Object.keys(USE_BY_BASE)) if (!bases.has(b)) throw new Error(`USE_BY_BASE names ${b}, which is no base type`)
   /** S13: what works an item of base type `base` (active or not), checked against §6.1's rules. */
@@ -501,8 +663,9 @@ export function generateGear() {
     for (const x of recipe) if (!goods.has(x.in)) throw new Error(`${code}: good ${x.in} is not in data/goods.json`)
     if (new Set(recipe.map((x) => x.in)).size !== recipe.length) throw new Error(`${code}: a good twice in one recipe`)
   }
-  const checkEffects = (code, effects) => {
+  const checkEffects = (code, effects, base = null) => {
     for (const e of effects) if (!STATS.has(e.stat) || e.delta === 0) throw new Error(`${code}: effect ${e.stat} ${e.delta}`)
+    if (base === 'Figurehead' || base === KIT_BASE) { if (effects.length) throw new Error(`${code}: a ${base.toLowerCase()} moves no stat`); return }
     if (!(effects.some((e) => e.delta > 0) && effects.some((e) => e.delta < 0))) throw new Error(`${code}: every fitting buys one stat and spends another (0074)`)
   }
   const T2_COUNT = BASE_TYPES.length - 1
@@ -564,11 +727,92 @@ export function generateGear() {
   if (NAMED.length !== 12) throw new Error(`§6.2: one Named per tier-3 city (12); the table has ${NAMED.length}`)
   if (items.length !== 103 + REFIT_COUNT + T2_COUNT + NAMED.length) throw new Error(`the gear is 103 Wave A + ${REFIT_COUNT} refits + ${T2_COUNT} T2 + ${NAMED.length} Named = 151; the generator made ${items.length}`)
   expectFx('lisbon-cast-brass-guns', { attack: 106, reach: 26 })
+
+  // S16 (§6.2's Country row, §6.7): THE SETS — four pieces a line, each piece the Country rung of a base type of
+  // its rack: countryEffects over the G1's, Deck and Hands × 1.3, the module skill IV + the line's Medium Hulls I
+  // (+ the base type's second skill), tier ≥ 2, the G1's words with the second buy's word joined to `buys` when it
+  // is a new buy; the Country Figurehead moves nothing and needs the line's Medium Hulls I only. Every piece
+  // carries its line and set (public.item_line).
+  const lineCodes = readJson('data/ship-lines.json').lines.map((l) => l.code)
+  const byBase = Object.fromEntries(BASE_TYPES.map((b) => [b.base, b]))
+  if (COUNTRY.length !== lineCodes.length) throw new Error(`§6.7: one set per line (${lineCodes.length}); COUNTRY has ${COUNTRY.length}`)
+  const checkNote = (code, note) => {
+    if (note.length <= 12) throw new Error(`${code}: note too short`)
+    if (/hold|\bshe\b|\bher\b/i.test(note)) throw new Error(`${code}: a note says "cargo space", never "hold", and names no "she" or "her"`)
+  }
+  const setLines = new Set()
+  const setNames = new Set()
+  const figurehead = g1ByBase['Figurehead']
+  for (const c of COUNTRY) {
+    if (!lineCodes.includes(c.line)) throw new Error(`${c.line}: not a line of data/ship-lines.json`)
+    if (setLines.has(c.line) || setNames.has(c.set)) throw new Error(`${c.line} / ${c.set}: a second set for that line or of that name`)
+    setLines.add(c.line)
+    setNames.add(c.set)
+    const hullSkill = `${c.line}_MEDIUM`
+    if (!skills.has(hullSkill)) throw new Error(`${c.line}: ${hullSkill} is not in data/skills.json`)
+    for (const rack of ['high', 'mid', 'low']) {
+      const [base, code, name, recipe, second, note] = c[rack]
+      const b = byBase[base]
+      if (!b || b.rack !== rack) throw new Error(`${code}: ${base} is no base type of the ${rack} rack`)
+      const g1 = g1ByBase[base]
+      take(code, name)
+      checkNote(code, note)
+      checkRecipe(code, recipe)
+      const effects = countryEffects(g1.effects, second)
+      checkEffects(code, effects)
+      const [stat2] = second
+      const newBuy = effects.find((e) => e.stat === stat2).delta > 0 && !g1.effects.some(([s, d]) => s === stat2 && d > 0)
+      const requirements = [{ skill: b.skill, level: 4 }, { skill: hullSkill, level: 1 }]
+      if (b.also) requirements.push({ ...b.also })
+      items.push({
+        code, name, slot: g1.slot, buys: newBuy ? `${g1.buys}, ${STAT_WORD[stat2]}` : g1.buys, spends: g1.spends, note, volume: g1.volume, wsTier: 2,
+        baseType: base, rack, grade: 4, meta: 6, line: c.line, set: c.set,
+        deck: roundUp(g1.deck * 1.3), hands: roundUp(g1.hands * 1.3), active: g1.active,
+        effects, recipe, requirements,
+      })
+      use.push({ code, ...useOf(code, base, g1.active) })
+    }
+    const [code, name, recipe, note] = c.figurehead
+    take(code, name)
+    checkNote(code, note)
+    checkRecipe(code, recipe)
+    checkEffects(code, [], 'Figurehead')
+    items.push({
+      code, name, slot: figurehead.slot, buys: figurehead.buys, spends: figurehead.spends, note, volume: figurehead.volume, wsTier: 2,
+      baseType: 'Figurehead', rack: 'flourish', grade: 4, meta: 6, line: c.line, set: c.set,
+      deck: 0, hands: 0, active: false,
+      effects: [], recipe, requirements: [{ skill: hullSkill, level: 1 }],
+    })
+    use.push({ code, ...useOf(code, 'Figurehead', false) })
+  }
+  const COUNTRY_COUNT = COUNTRY.length * 4
+  if (items.length !== 151 + COUNTRY_COUNT) throw new Error(`the gear is 151 items through S15 + ${COUNTRY_COUNT} Country; the generator made ${items.length}`)
+  // §6.4's four Country rows, verbatim (Toiles de Bretagne's "handling +4 | handling −8" is one row, the sum)
+  expectFx('sea-dogs-culverins', { attack: 144, reach: 36, accuracy: 10, hold: -20, handling: -6 })
+  expectFx('toiles-de-bretagne', { speed: 1.02, handling: -4 })
+  expectFx('voc-frames', { speed: -0.18, handling: -5 })
+  expectFx('turtle-back-plating', { armour: 30 })
+
+  // S16 (§6.6): THE KITS — base type Kit, rack kit, tier 3, volume 1, no effect, no requirement, never wear.
+  for (const [code, name, recipe, note] of KITS) {
+    take(code, name)
+    if (note.length <= 12) throw new Error(`${code}: note too short`)
+    checkRecipe(code, recipe)
+    checkEffects(code, [], KIT_BASE)
+    items.push({
+      code, name, slot: 'kit', buys: 'Augments a fitting', spends: 'Used up', note, volume: 1, wsTier: 3,
+      baseType: KIT_BASE, rack: 'kit', grade: 1, meta: 0, deck: 0, hands: 0, active: false,
+      effects: [], recipe, requirements: [],
+    })
+    use.push({ code, ...useOf(code, KIT_BASE, false) })
+  }
+  if (KITS.length !== 4) throw new Error(`§6.6 names four kits; KITS has ${KITS.length}`)
+  if (items.length !== 151 + COUNTRY_COUNT + KITS.length) throw new Error(`the gear is 151 items through S15 + ${COUNTRY_COUNT} Country + ${KITS.length} kits = 199; the generator made ${items.length}`)
   if (use.length !== items.length + Object.keys(profiles).length) throw new Error(`every item has one use row: ${use.length} for ${items.length} + ${Object.keys(profiles).length} live`)
 
   use.sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
   return {
-    _: 'GENERATED by scripts/build-gear.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135; §6.1 / §6.5 / §6.8, S13, migration 0158; §6.2 T2 + Named, S15, migration 0162).',
+    _: 'GENERATED by scripts/build-gear.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135; §6.1 / §6.5 / §6.8, S13, migration 0158; §6.2 T2 + Named, S15, migration 0159; §6.2 Country + §6.6 kits + §6.7 sets, S16, migration 0163).',
     items,
     use,
   }
@@ -594,22 +838,24 @@ function itemRows(I) {
   ]
 }
 
-/** Which migration an item's rows belong to: 0135 (Wave A, meta 0), 0158 (the refits) or 0162 (T2 + Named, meta > 0). */
-const isS12 = (i) => i.rack !== 'refit' && i.meta === 0
-const isS15 = (i) => i.meta > 0
+/** Which migration an item's rows belong to: 0135 (Wave A, meta 0), 0158 (the refits), 0159 (T2 + Named, meta 1 / 5)
+ *  or 0163 (Country, meta 6, and the kits). */
+const isS16 = (i) => i.meta === 6 || i.rack === 'kit'
+const isS12 = (i) => i.rack !== 'refit' && i.meta === 0 && !isS16(i)
+const isS15 = (i) => i.meta > 0 && !isS16(i)
 const useRows = (list) => list.map((u) => `  (${q(u.code)}, ${u.trigger === null ? 'null' : q(u.trigger)}, ${q(JSON.stringify(u.consumes))})`).join(',' + NL)
 
-/** The SQL VALUES migration 0135 loaded (`--sql`): the 103 Wave A items (the refits are 0158's, T2 + Named 0162's). */
+/** The SQL VALUES migration 0135 loaded (`--sql`): the 103 Wave A items (the refits are 0158's, T2 + Named 0159's). */
 export function gearSql(gen = generateGear()) {
   return itemRows(gen.items.filter(isS12)).join(NL)
 }
 
 /** The SQL VALUES migration 0158 loaded (`--sql-0158`), pasted verbatim: the 14 refits, then what works
- *  every item 0158 knew (public.item_use — the 12 live + 103 Wave A + 14 refits; 0162 adds its own). The
+ *  every item 0158 knew (public.item_use — the 12 live + 103 Wave A + 14 refits; 0159 adds its own). The
  *  world guard holds the database to generateGear() on every apply. */
 export function s13Sql(gen = generateGear()) {
-  const s15 = new Set(gen.items.filter(isS15).map((i) => i.code))
-  const use = gen.use.filter((u) => !s15.has(u.code))
+  const later = new Set(gen.items.filter((i) => isS15(i) || isS16(i)).map((i) => i.code))
+  const use = gen.use.filter((u) => !later.has(u.code))
   return [
     ...itemRows(gen.items.filter((i) => i.rack === 'refit')),
     `-- item_use (${use.length})`,
@@ -617,7 +863,7 @@ export function s13Sql(gen = generateGear()) {
   ].join(NL)
 }
 
-/** The SQL VALUES migration 0162 loads (`--sql-0162`), pasted verbatim: the 22 T2 and 12 Named items, what
+/** The SQL VALUES migration 0159 loads (`--sql-0159`), pasted verbatim: the 22 T2 and 12 Named items, what
  *  works each (public.item_use), and the one city that makes each Named (public.item_city). */
 export function s15Sql(gen = generateGear()) {
   const I = gen.items.filter(isS15)
@@ -632,17 +878,34 @@ export function s15Sql(gen = generateGear()) {
   ].join(NL)
 }
 
+/** The SQL VALUES migration 0163 loads (`--sql-0163`), pasted verbatim: the 44 Country items and the 4 kits, what
+ *  works each (public.item_use), and the line each Country item belongs to (public.item_line). */
+export function s16Sql(gen = generateGear()) {
+  const I = gen.items.filter(isS16)
+  const s16 = new Set(I.map((i) => i.code))
+  const country = I.filter((i) => i.meta === 6)
+  return [
+    ...itemRows(I),
+    `-- item_use (${s16.size})`,
+    useRows(gen.use.filter((u) => s16.has(u.code))),
+    `-- item_line (${country.length})`,
+    country.map((i) => `  (${q(i.code)}, ${q(i.line)})`).join(',' + NL),
+  ].join(NL)
+}
+
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/build-gear.mjs')) {
   const gen = generateGear()
   const text = JSON.stringify(gen, null, 1) + NL
   const n = (f) => gen.items.filter(f).length
-  const says = `${gen.items.length} items (${n(isS12)} Wave A + ${n((i) => i.rack === 'refit')} refits + ${n((i) => i.meta === 5)} T2 + ${n((i) => i.meta === 1)} Named), ${gen.use.length} item uses`
+  const says = `${gen.items.length} items (${n(isS12)} Wave A + ${n((i) => i.rack === 'refit')} refits + ${n((i) => i.meta === 5)} T2 + ${n((i) => i.meta === 1)} Named + ${n((i) => i.meta === 6)} Country + ${n((i) => i.rack === 'kit')} kits), ${gen.use.length} item uses`
   if (process.argv.includes('--sql')) {
     console.log(gearSql(gen))
   } else if (process.argv.includes('--sql-0158')) {
     console.log(s13Sql(gen))
-  } else if (process.argv.includes('--sql-0162')) {
+  } else if (process.argv.includes('--sql-0159')) {
     console.log(s15Sql(gen))
+  } else if (process.argv.includes('--sql-0163')) {
+    console.log(s16Sql(gen))
   } else if (process.argv.includes('--check')) {
     const now = readFileSync(join(ROOT, GEAR_FILE), 'utf8')
     if (now !== text) { console.error(`${GEAR_FILE} is NOT what scripts/build-gear.mjs generates — re-run it.`); process.exit(1) }
