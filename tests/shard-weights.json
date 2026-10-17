@@ -34,6 +34,7 @@
     "primitives.geometry.spec.ts": 7,
     "route.stopface.spec.ts": 114,
     "rpc.firstSession.spec.ts": 4,
+    "rpc.outlook.spec.ts": 20,
     "rpc.surface.spec.ts": 13,
     "sea.dateline.spec.ts": 1,
     "seaCarve.spec.ts": 1,
