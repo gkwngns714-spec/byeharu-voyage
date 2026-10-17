@@ -78,7 +78,10 @@ name: Acceptance (the whole spec suite, against a served build)
 on:
   push:
     branches: [main]
-  pull_request:
+  # 2026-10-17 (owner: "always make CI fast"): acceptance is NOT a required check any more
+  # (required = build + disposable-chain), so it no longer runs on pull requests — it held GitHub
+  # runners that the required checks then queued behind. Main runs the full suite after every merge
+  # as the net; a red there is fixed before the next deploy. Run it on a PR by hand if needed.
   workflow_dispatch:
 
 # A newer push to a PR cancels the older run; a push to MAIN never cancels one (2026-10-15). With
