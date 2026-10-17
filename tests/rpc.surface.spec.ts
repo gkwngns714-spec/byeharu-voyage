@@ -1522,6 +1522,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-10-17 with migration 0147 (docs/INFLUENCE.md I5): THE MAYOR sets the
       // city's profit tax, 0–20 %, once a day; no player id — the caller must be the city's mayor.
       'cmdSetTax',
+      // Pin moved deliberately 2026-10-17 with migration 0148 (docs/INFLUENCE.md I6): Rank's COUNTRIES
+      // board — every country's cities and its biggest givers. A read; no player id.
+      'worldNationStandings',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

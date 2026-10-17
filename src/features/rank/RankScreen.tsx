@@ -4,6 +4,7 @@ import {
   Hint,
   Note,
   Row,
+  Segmented,
   Sheet,
   SheetSection,
   Skeleton,
@@ -14,6 +15,7 @@ import { formatInt, formatRelative } from '../../lib/format'
 import type { PlayerHouse, StandingsBoard } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
+import { CountriesBoard } from './CountriesBoard'
 
 // RANK — one list, and you are pinned to the top of it. docs/UI_DIRECTION.md §6 "RANK".
 //
@@ -69,6 +71,8 @@ function RankBody() {
   // asked yet" and "the read was refused", and without the distinction a refused read draws a
   // skeleton for ever.
   const [answered, setAnswered] = useState(false)
+  // 0148: Captains (the board) or Countries (who holds the cities).
+  const [face, setFace] = useState<'captains' | 'countries'>('captains')
 
   // KEYED ON `readAt`: the world re-reads itself every thirty seconds and on tab focus, and the
   // board rides that same beat — a refused read is retried with no button, and a new slot's
@@ -99,7 +103,17 @@ function RankBody() {
         )
       }
     >
-      <Board board={board} answered={answered} house={house} />
+      <Segmented
+        segments={[
+          { id: 'captains', label: 'Captains' },
+          { id: 'countries', label: 'Countries' },
+        ]}
+        value={face}
+        onChange={setFace}
+        label="Standings"
+        className="mb-3 w-fit"
+      />
+      {face === 'captains' ? <Board board={board} answered={answered} house={house} /> : <CountriesBoard />}
     </Sheet>
   )
 }
@@ -187,6 +201,9 @@ function Board({
             hairline={i < others.length - 1}
           >
             <Standing nation={flag(r.nation)} tied={r.tied} />
+            {r.mayor_of && r.mayor_of.length > 0 && (
+              <span className="block text-t-caption text-ink-faint" data-testid="rank-mayor-of">{`Mayor of ${r.mayor_of.join(', ')}`}</span>
+            )}
           </Row>
         ))}
       </SheetSection>
@@ -198,7 +215,7 @@ function Board({
           <Row label="Ports reached" value={<Figure value={formatInt(you.ports_reached)} />} />
           <Row label="Total score" value={<Figure value={formatInt(you.total_fame)} tone="accent" />} hairline={false} />
           <Hint className="mt-2">
-            One point per 100 ducats turned over; 25 for each new port, and one per 100 sea miles.
+            One point per 100 coin turned over or given to cities; 25 for each day as a mayor; 25 for each new port, and one per 100 sea miles.
           </Hint>
         </Tray>
       )}

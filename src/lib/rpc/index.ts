@@ -72,6 +72,7 @@ import type {
   CountryChanged,
   DonateReceipt,
   TaxSet,
+  NationStandings,
   WorkKind,
   StandingRouteDeleted,
   StandingRoutePaused,
@@ -641,4 +642,9 @@ export function cmdDonate(portId: string, coin: number): Promise<RpcResult<Donat
 /** The mayor sets the city's profit tax (0147) — 0 to the cap, once a day. */
 export function cmdSetTax(portId: string, rate: number): Promise<RpcResult<TaxSet>> {
   return call<TaxSet>('cmdSetTax', [portId, rate])
+}
+
+/** Rank's Countries board (0148) — every country's cities and its biggest givers. */
+export function worldNationStandings(): Promise<RpcResult<NationStandings>> {
+  return call<NationStandings>('worldNationStandings', [])
 }
