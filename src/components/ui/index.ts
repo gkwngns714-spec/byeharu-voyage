@@ -96,6 +96,10 @@ export { Nav, type NavItem } from './Nav'
 //     TradeRow's price cell, promoted 2026-09-13 when the Storage face wanted the same box for
 //     `Put in storage` / `Take on board` (owner row 88). Two callers, one box.
 export { ActCell } from './ActCell'
+//     BONUS ROWS — what a source adds, one row per source, the server's words on both sides. A
+//     ship's skill bonuses (ShipPanel, 0133) and a fleet's crew bonuses (CrewBonuses, 0157) had
+//     hand-written the same row; promoted 2026-10-18 when tests/duplication.spec.ts caught it.
+export { BonusRows, type BonusRow } from './BonusRows'
 //     TRADE ROW — a good with its two prices as its two acts, and the tide inside its range.
 //     Replaced TRADE TILE on 2026-09-11 (one row per good; the 2026-08-26 grid rule is reversed).
 export { PriceCell, TradeRow } from './TradeRow'

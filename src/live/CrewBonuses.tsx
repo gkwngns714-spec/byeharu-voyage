@@ -1,3 +1,4 @@
+import { BonusRows } from '../components/ui'
 import type { CrewBonuses as Bonuses } from '../lib/rpc'
 
 // WHAT THE CAPTAINS ADD TO THIS FLEET (0157, docs/SKILLS_AND_CAPTAINS.md §4.4) — `world.crew_bonuses`,
@@ -12,15 +13,13 @@ export function CrewBonuses({ crew }: { crew: Bonuses | undefined }) {
         <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">Crew bonuses</h3>
         <span className="text-t-caption tabular-nums text-accent">{crew.totals.map((t) => t.line).join(' · ')}</span>
       </div>
-      <ul className="flex flex-col gap-1">
-        {crew.lines.map((l, i) => (
-          <li key={`${l.captain}-${l.trait}-${l.effect}-${i}`}
-            className="flex items-baseline justify-between gap-3 rounded-control bg-surface-2 px-3 py-2">
-            <span className="min-w-0 truncate text-t-caption text-ink">{`${l.captain} · ${l.trait} · ${l.cabin_word}`}</span>
-            <span className="shrink-0 text-t-caption tabular-nums text-accent">{l.line}</span>
-          </li>
-        ))}
-      </ul>
+      <BonusRows
+        rows={crew.lines.map((l, i) => ({
+          key: `${l.captain}-${l.trait}-${l.effect}-${i}`,
+          source: `${l.captain} · ${l.trait} · ${l.cabin_word}`,
+          effect: l.line,
+        }))}
+      />
     </section>
   )
 }
