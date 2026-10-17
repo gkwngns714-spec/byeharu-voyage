@@ -40,7 +40,7 @@
 -- (a) the mirror holds for every officer (ord 1 = specialty at bonus_pct, scale and all) before anything moves.
 -- (b) OLD = NEW, at the same instant (the old bodies kept under pg_temp names): world.inn at every inn,
 --     world.inn_chance for every captain × harbour, world.officers for every company with a sign-in and for
---     nobody, world.npc_fleet_card for every merchant fleet, world.ship_seats for every ship, crew_terms (dark)
+--     nobody, world.npc_fleet_card for every fleet (the same card, or the same refusal), world.ship_seats for every ship, crew_terms (dark)
 --     for every fleet, promotion_next and captain_seat_pick for every signing.
 -- (c) the aboard clock: for every captain seated in a fleet now at sea, old filter = new; no officer_xp
 --     experience is left behind (K6 moved it).
@@ -309,6 +309,23 @@ begin
   end loop;
 end $old$;
 
+-- One merchant card, OLD or NEW, as text: the answer (officers in one order), or the refusal itself. The card
+-- refuses a fleet that is not a merchant's (E_NOT_FOUND); comparing OUTCOMES over every fleet compares the
+-- refusals too, and no planner can call it on a row the comparison meant to skip (prod 2026-10-18: the card's
+-- qual was pushed below the join to players and called for the 17 player fleets).
+create or replace function pg_temp.card_0165(p_fleet uuid, p_old boolean)
+returns text
+language plpgsql
+as $$
+begin
+  if p_old then
+    return pg_temp.canon_0165(pg_temp.old_0165_world_npc_fleet_card(p_fleet), 'officers')::text;
+  end if;
+  return pg_temp.canon_0165(world.npc_fleet_card(p_fleet), 'officers')::text;
+exception when others then
+  return 'REFUSED ' || sqlstate || ': ' || sqlerrm;
+end $$;
+
 -- ── 2. THE ONE READING OF HER JOB ───────────────────────────────────────────────────────────────
 create or replace view public.captain_job as
 select ct.officer_id, ct.trait as job, ct.base_pct::numeric(5,2) as job_pct
@@ -442,11 +459,29 @@ begin
   perform cmd.assume_identity(c_nil);
   insert into timing_0165 values ('companies compared', v_n);
 
-  select count(*) into v_bad from public.fleets f join public.players pl on pl.id = f.player_id
-   where pl.is_npc and public.npc_traders_on()   -- (the card answers only while the merchants trade)
-     and pg_temp.canon_0165(pg_temp.old_0165_world_npc_fleet_card(f.id), 'officers')::text
-         is distinct from pg_temp.canon_0165(world.npc_fleet_card(f.id), 'officers')::text;
-  if v_bad <> 0 then raise exception '0165 self-assert FAIL: world.npc_fleet_card moved for % merchant fleet(s)', v_bad; end if;
+  -- every fleet: the same card, or the same refusal
+  select count(*) filter (where c.o is distinct from c.n), count(*) filter (where c.o like 'REFUSED %' and c.o = c.n)
+    into v_bad, v_n
+    from (select pg_temp.card_0165(f.id, true) as o, pg_temp.card_0165(f.id, false) as n from public.fleets f) c;
+  if v_bad <> 0 then raise exception '0165 self-assert FAIL: world.npc_fleet_card answered or refused differently for % fleet(s)', v_bad; end if;
+  insert into timing_0165 values ('fleets refused alike by the card', v_n);
+  -- a world whose merchants are switched off refuses every card: there, compare them LIT too (rolled back), so the
+  -- answers — not only the refusals — are compared on every chain
+  if not public.npc_traders_on() then
+    begin
+      update public.world_config set value = 'true'::jsonb where key in ('npc_traders_enabled', 'standing_routes_enabled');
+      select count(*) filter (where c.o is distinct from c.n), count(*) filter (where c.o not like 'REFUSED %')
+        into v_bad, v_n
+        from (select pg_temp.card_0165(f.id, true) as o, pg_temp.card_0165(f.id, false) as n from public.fleets f) c;
+      raise exception 'LIT_ROLLBACK_0165 % %', v_bad, v_n;
+    exception when others then
+      if sqlerrm not like 'LIT_ROLLBACK_0165 %' then raise; end if;
+      v_bad := split_part(sqlerrm, ' ', 2)::int;
+      v_n := split_part(sqlerrm, ' ', 3)::int;
+    end;
+    if v_bad <> 0 then raise exception '0165 self-assert FAIL: lit, world.npc_fleet_card answered or refused differently for % fleet(s)', v_bad; end if;
+    insert into timing_0165 values ('merchant cards compared lit (rolled back)', v_n);
+  end if;
   insert into timing_0165 values ('cards', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
 
   select count(*) into v_bad from public.ships s
@@ -702,8 +737,8 @@ begin
             join public.ships s2 on s2.id = c2.ship_id join public.fleets f2 on f2.id = s2.fleet_id
             join public.players p2 on p2.id = f2.player_id where p2.is_npc order by c2.player_officer_id limit 1)) end;
 
-  select string_agg(t.what || ' ' || t.ms || (case when t.what = 'companies compared' then '' else ' ms' end), ', ') into v_times from timing_0165 t;
-  raise notice '0165 self-assert ok: A CAPTAIN IS READ FROM HER SEAT AND HER FIRST TRAIT (K9). The mirror held for all % captains; public.captain_job is the one reading of her job. OLD = NEW at the same instant: world.inn at every inn, world.inn_chance for every captain × harbour, world.officers for every company signed in and for nobody, world.npc_fleet_card for every merchant fleet, world.ship_seats for every ship, crew_terms for every fleet, promotion_next and the seat picker for every signing. The aboard clock: every captain at sea taught alike without it. The probe (rolled back): hired into her docked fleet she sat in the flagship with no fleet_id and no officer_xp row, at her job''s old value; ashore and seated again; taught once signed before the departure, not before. Eleven bodies reverse, ACLs unmoved; captain_seat_put at three arguments, ACL unmoved; cmd.post_officer and post_officer_to dropped (entry points −1). item_use: % rows = % items (sea-chart, trade-seal, battle-honour: never wear, spend nothing). Albuquerque and Garcia de Orta are of Old Goa (its region, its languages). DROPPED: player_officers.fleet_id, officer_xp, officers.specialty / bonus_pct — no function body or view names them, the readers run. TIMES: %. LOCKS: nothing anyone waits on before §7; the last step (NOWAIT) % ms; held % ms from it to the end of the file.',
+  select string_agg(t.what || ' ' || t.ms || (case when t.what in ('companies compared', 'fleets refused alike by the card', 'merchant cards compared lit (rolled back)') then '' else ' ms' end), ', ') into v_times from timing_0165 t;
+  raise notice '0165 self-assert ok: A CAPTAIN IS READ FROM HER SEAT AND HER FIRST TRAIT (K9). The mirror held for all % captains; public.captain_job is the one reading of her job. OLD = NEW at the same instant: world.inn at every inn, world.inn_chance for every captain × harbour, world.officers for every company signed in and for nobody, world.npc_fleet_card for every fleet (the same card, or the same refusal), world.ship_seats for every ship, crew_terms for every fleet, promotion_next and the seat picker for every signing. The aboard clock: every captain at sea taught alike without it. The probe (rolled back): hired into her docked fleet she sat in the flagship with no fleet_id and no officer_xp row, at her job''s old value; ashore and seated again; taught once signed before the departure, not before. Eleven bodies reverse, ACLs unmoved; captain_seat_put at three arguments, ACL unmoved; cmd.post_officer and post_officer_to dropped (entry points −1). item_use: % rows = % items (sea-chart, trade-seal, battle-honour: never wear, spend nothing). Albuquerque and Garcia de Orta are of Old Goa (its region, its languages). DROPPED: player_officers.fleet_id, officer_xp, officers.specialty / bonus_pct — no function body or view names them, the readers run. TIMES: %. LOCKS: nothing anyone waits on before §7; the last step (NOWAIT) % ms; held % ms from it to the end of the file.',
     (select count(*) from public.officers), (select count(*) from public.item_use), (select count(*) from public.item_kinds), v_times,
     (select ms from swap_0165 where what = 'last'),
     round(extract(epoch from clock_timestamp() - (select at from swap_0165 where what = 'last')) * 1000, 1);
