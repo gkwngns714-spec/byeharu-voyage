@@ -15,6 +15,7 @@ import { formatFixed, formatInt, formatOfTotal } from '../../lib/format'
 import type { SnapshotShipClass } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { HullCountry } from '../../live/HullCountry'
+import { HullTech } from '../../live/HullTech'
 import { useWorld } from '../../live/worldStore'
 import { NoAnswer } from './NoAnswer'
 
@@ -137,6 +138,7 @@ export function ShipsFace({ query }: { query: string }) {
               <>
                 <HullCountry nation={s.line_nation} compact />
                 {s.line_nation ? ' ' : ''}
+                <HullTech tech={s.tech} />
                 {[sizeWord(s.size), roleWord(s.role), `${s.family} · ${s.rig}`].filter(Boolean).join(' · ')}
               </>
             }

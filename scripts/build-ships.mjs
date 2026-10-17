@@ -1,12 +1,14 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// build-ships.mjs — WAVES A + B: the 67 T1 hulls of docs/SHIPS_AND_SKILLS.md §4.3, generated
-//                   (S12 Wave A, 52 hulls, 0135; S14 Wave B, 15 capitals and flagships, 0138)
+// build-ships.mjs — WAVES A + B + C: the 89 hulls of docs/SHIPS_AND_SKILLS.md §4.3, generated
+//                   (S12 Wave A, 52 T1 hulls, 0135; S14 Wave B, 15 T1 capitals and flagships, 0138;
+//                    S15 Wave C, 22 T2 hulls, 0162)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // THE METHOD (§4.2): ONE archetype table (size × role — the Portuguese values) × ONE line table
-// (data/ship-lines.json `mult` / `add`, the eleven lines of §3.1). Every hull = archetype × line,
-// rounded the one way written below. A designer moves a number in ONE place and every hull of that
-// size, role or line moves with it. The ANCHORS hold the method honest: the Portuguese small trade,
+// (data/ship-lines.json `mult` / `add`, the eleven lines of §3.1) × ONE tech uplift (TECH below).
+// Every hull = archetype × line × tech, rounded the one way written below. A designer moves a number
+// in ONE place and every hull of that size, role, line or tech moves with it. The ANCHORS hold the
+// method honest: the Portuguese small trade,
 // light explorer and medium trade archetypes ARE the live barca, caravela latina and nau, and this
 // file refuses to run unless all three come out of the archetype table to the digit (stats from
 // 0003:2089-2091 + data/ship_stats.json, deck from data/ship-lines.json, racks from data/gear.json,
@@ -30,8 +32,20 @@
 // WHAT IT NEEDS (§4.4): small — the line's Small Hulls I; light — Small III + Light I; medium —
 // Light III + Medium I; heavy — Medium III + Heavy I + the role skill I; capital (S14) — Heavy III +
 // Capital Hulls I + Command III + the role skill III; flagship (S14) — Capital Hulls V + Fleet
-// Command I + the role skill V. Read only by public.requirements_unmet (0133, re-cut by 0135). K1 (D2,
+// Command I + the role skill V; T2 (S15, any size) — the line's ⟨size⟩ Hulls V + the role's T2
+// specialisation I. Read only by public.requirements_unmet (0133, re-cut by 0135). K1 (D2,
 // docs/SKILLS_AND_CAPTAINS.md §3.2): heavy and capital asked Medium / Heavy IV until then; EVE's 2013 rule.
+//
+// T2 (S15 Wave C, §4.1): the archetype's (size, role) hull with ONE uplift keyed by role (TECH.T2 below),
+// applied INSIDE the products before the one rounding — hull × 1.1 × line, attack × 1.25 × line, speed
+// × 1.06 × line: trade +15 % hold, +10 % hull, +4 armour, +1 Low; combat +25 % attack, +10 % hull,
+// +6 armour, +4 accuracy, +1 High; explorer +6 % speed, +6 handling, +3 sighting, +1 Mid; support
+// +20 % hull, +1 Low. Common to every T2: deck + (the added rack's deck × size: High and Low 3 a size,
+// Mid 1), labour × 2.5 (inside the product, one rounding to 500 — the ESP light combat is 8,000 × 2.5
+// × 1.10 = 22,000, not 9,000 × 2.5), goods = the size template × 1.6 (each line rounded, then the line's
+// substitutions merged — the IND small is teak 64, coir 13 + 10 = 23, coco-fibre 16) + copper sheet
+// 10, +3 a size from heavy (13). Measured against the 22 rows of §4.3 Wave C; the cells the rows and the
+// rule disagree on are listed in the S15 PR, not special-cased here.
 //
 // IT FITS IN THE SHED (0072 (d), §8 S14 — never loosened): a hull's goods come out of ONE warehouse
 // in the yard's city, and the biggest shed in the world holds SHED_TUNS. A capital's size template
@@ -41,8 +55,8 @@
 // of §4.2 — moves into the yard's labour (rounded UP to 500, so the all-in price never falls). The
 // hull costs what it cost; more of it is paid to the yard and less is carried to the shed.
 //
-// WAVE (`wave` on each row): A = 0135's 52, B = 0138's 15. `--sql A` / `--sql B` print the VALUES
-// of one wave — the rows that wave's migration pasted.
+// WAVE (`wave` on each row): A = 0135's 52, B = 0138's 15, C = 0162's 22. `--sql A` / `--sql B` /
+// `--sql C` print the VALUES of one wave — the rows that wave's migration pasted.
 //
 // RUN:   node scripts/build-ships.mjs           writes data/ships.generated.json
 //        node scripts/build-ships.mjs --check   fails if the file is not what the generator gives
@@ -77,6 +91,25 @@ const SIZE_BUILD_HOURS = { 1: 24, 2: 40, 3: 96, 4: 144, 5: 240, 6: 360 } // buil
  *  goods to the REAL storage of a yard where it can be built, so a wrong number here cannot ship. */
 export const SHED_TUNS = 750
 const ROLE_SKILL = { trade: 'MERCHANT_SHIPS', combat: 'SHIPS_OF_WAR', explorer: 'EXPLORERS', support: 'ESCORT_SUPPORT' }
+/** The role's T2 specialisation (§4.4 "T2 (any size)"). */
+const ROLE_T2_SKILL = { trade: 'ARMED_MERCHANT', combat: 'PRIVATEERS', explorer: 'SURVEY_SHIPS', support: 'CONVOY_ESCORTS' }
+
+/** THE TECH UPLIFT — one row per tech, keyed by role inside (§4.1's tech table, measured against §4.3
+ *  Wave C). `mult` goes into the product before the one rounding; `add` is added after the line's; `rack`
+ *  is the one rack that gains a slot and `rackDeck` the deck that slot brings per size. T1 is the identity. */
+const NO_UPLIFT = { mult: {}, add: {}, rack: null, rackDeck: 0 }
+export const TECH = {
+  T1: { labour: 1, goods: 1, copperSheet: () => 0, role: { trade: NO_UPLIFT, combat: NO_UPLIFT, explorer: NO_UPLIFT, support: NO_UPLIFT } },
+  T2: {
+    labour: 2.5, goods: 1.6, copperSheet: (size) => 10 + 3 * Math.max(0, size - 3),
+    role: {
+      trade:    { mult: { hold: 1.15, hull: 1.10 },  add: { armour: 4 },                         rack: 'low',  rackDeck: 3 },
+      combat:   { mult: { attack: 1.25, hull: 1.10 }, add: { armour: 6, accuracy: 4 },           rack: 'high', rackDeck: 3 },
+      explorer: { mult: { speed: 1.06 },             add: { handling: 6, sighting: 3 },          rack: 'mid',  rackDeck: 1 },
+      support:  { mult: { hull: 1.20 },              add: {},                                    rack: 'low',  rackDeck: 3 },
+    },
+  },
+}
 
 /** THE ARCHETYPES (size/role) — the Portuguese values; Wave A uses these twelve. `racks` = High / Mid /
  *  Low / Refit (+ 1 Flourish from medium up). `labour` is the base yard labour in ducats. */
@@ -100,6 +133,12 @@ export const ARCHETYPES = {
   '5/combat':   { hold: 600,  speed: 4.3, crewReq: 200, crewMax: 480, hull: 4000, draft: 5, handling: 36, armour: 48, attack: 340, accuracy: 62, reach: 82, sighting: 14, deck: 115, racks: [6, 6, 2, 3], labour: 95000 },
   '6/trade':    { hold: 1500, speed: 3.9, crewReq: 200, crewMax: 500, hull: 5000, draft: 5, handling: 30, armour: 42, attack: 220, accuracy: 50, reach: 65, sighting: 13, deck: 138, racks: [4, 7, 4, 3], labour: 150000 },
   '6/combat':   { hold: 800,  speed: 4.0, crewReq: 320, crewMax: 750, hull: 5600, draft: 5, handling: 32, armour: 55, attack: 480, accuracy: 64, reach: 85, sighting: 15, deck: 150, racks: [7, 6, 2, 3], labour: 170000 },
+  // Wave C (S15, 0162) — the medium and heavy SUPPORT archetypes, solved from §4.3's Wave C table through
+  // TECH.T2 (the PRT nau de guerra IS the medium support archetype × the T2 uplift; the OTT mavna ÷ its line
+  // gives the heavy one: 455 / 0.95 → 480, 4.4 / 0.98 → 4.5, 125 / 1.25 → 100, 3,560 / 1.2 / 1.1 → 2,700,
+  // 180 / 1.15 → 160, deck 89 − 12, racks 4/6/3/2 − the T2 Low). No T1 hull is built from them yet.
+  '3/support':  { hold: 280,  speed: 4.8, crewReq: 70,  crewMax: 180, hull: 1700, draft: 3, handling: 52, armour: 34, attack: 100, accuracy: 55, reach: 60, sighting: 14, deck: 57,  racks: [3, 5, 2, 2], labour: 30000 },
+  '4/support':  { hold: 480,  speed: 4.5, crewReq: 100, crewMax: 260, hull: 2700, draft: 4, handling: 44, armour: 44, attack: 160, accuracy: 60, reach: 70, sighting: 14, deck: 77,  racks: [4, 6, 2, 2], labour: 52000 },
 }
 
 /** Each line's yard-labour factor (what its yards charge against Lisbon's) and its goods substitutions. */
@@ -204,6 +243,32 @@ export const WAVE_B = [
   ['daepanok',  'Dae-panokseon',       'KOR', 5, 'combat', 'oared',  'The great Joseon battleship, its raised upper deck plated against boarders.'],
 ]
 
+/** THE 22 (§4.3 Wave C, S15, 0162): the T2 hulls — two per line. Same columns as WAVE_A. */
+export const WAVE_C = [
+  ['carvarm',    'Caravela de armada',    'PRT', 2, 'combat',   'mixed',  'The armed caravel of the Portuguese fleets, sheathed in copper and given a heavier battery.'],
+  ['nauguerra',  'Nau de guerra',         'PRT', 3, 'support',  'square', 'A nau built for the fleet rather than the cargo: stout, well armed and able to keep a convoy together.'],
+  ['galplata',   'Galeón de la Plata',    'ESP', 4, 'trade',    'square', 'The silver galleon of the treasure fleets, built to carry bullion home under heavy guns.'],
+  ['dunkirk',    'Fragata de Dunquerque', 'ESP', 2, 'combat',   'square', 'The fast Dunkirk frigate of the Flanders privateers, built for the chase.'],
+  ['armfluit',   'Gewapende fluit',       'NLD', 3, 'trade',    'square', 'A fluit with a proper gun deck for the dangerous routes, keeping most of its cargo space.'],
+  ['kaper',      'Kaperschip',            'NLD', 2, 'combat',   'square', 'A Dutch privateer, fast and lightly built, with more hold than most fighting hulls.'],
+  ['qpinnace',   "Queen's Pinnace",       'ENG', 1, 'explorer', 'mixed',  'A royal pinnace of the English navy, the fastest small scout afloat.'],
+  ['armmerch',   'Armed Merchantman',     'ENG', 3, 'trade',    'square', 'An English merchant built to fight its way through, with a stout hull and a full broadside.'],
+  ['fregcourse', 'Frégate de course',     'FRA', 2, 'combat',   'square', 'A French privateer frigate from Saint-Malo, quick and handy with a sharp battery.'],
+  ['fluteroy',   'Flûte royale',          'FRA', 3, 'trade',    'square', 'The royal store ship of the French navy, a roomy hull built to naval standards.'],
+  ['galbast',    'Galea bastarda',        'ITA', 3, 'combat',   'oared',  'The heavy Mediterranean war galley: more oars, more soldiers and a heavier bow battery than the sottile.'],
+  ['carcarm',    'Caracca armata',        'ITA', 4, 'trade',    'square', 'An armed Genoese carrack, built to carry a rich cargo through pirate waters.'],
+  ['korsan',     'Korsan şebeği',         'OTT', 2, 'combat',   'lateen', 'The Barbary corsair xebec: a fast lateen raider with a heavier battery than the common şebek.'],
+  ['mavna',      'Mavna',                 'OTT', 4, 'support',  'oared',  'The great Ottoman mahone, a heavy oared hull that carries guns, troops and stores for the fleet.'],
+  ['batil',      'Batil',                 'IND', 1, 'explorer', 'lateen', 'A fast Arabian batil, a long sharp hull for scouting and the pearl banks.'],
+  ['ghurabj',    'Ghurab-i-jang',         'IND', 2, 'combat',   'lateen', 'The war ghurab of the Malabar fleets, with a heavier bow gun and copper below the waterline.'],
+  ['zhanchuan',  'Zhanchuan',             'CHN', 3, 'combat',   'lateen', 'The Ming war junk proper, built heavier and gunned harder than the coastal patrol ships.'],
+  ['haicang',    'Haicang',               'CHN', 4, 'trade',    'lateen', 'The great ocean trader of the Zhangzhou junks, deep in the hold and hard to sink.'],
+  ['murakami',   'Murakami kobaya',       'JPN', 1, 'combat',   'oared',  'The war boat of the Murakami sea lords of the Inland Sea, fast and crowded with fighters.'],
+  ['oshuin',     'Ō-shuinsen',            'JPN', 3, 'trade',    'square', 'A great red-seal ship for the long runs to Siam and Luzon, built bigger and stouter.'],
+  ['tamang',     'Tamangseon',            'KOR', 1, 'explorer', 'oared',  'The Joseon scout boat of the coastal watch, fast under oars with a sharp lookout.'],
+  ['bangpae',    'Bangpaeseon',           'KOR', 3, 'combat',   'oared',  'A Joseon warship with a shielded upper deck, the forerunner of the panokseon.'],
+]
+
 /** The live three, as 0003:2089-2091 + data/ship_stats.json rate them — the anchors. */
 const LIVE_ANCHORS = {
   barca:  { key: '1/trade',    hold: 60,  speed: 5.0, crewReq: 8,  crewMax: 20,  hull: 400,  draft: 1, guns: 0 },
@@ -213,37 +278,43 @@ const LIVE_ANCHORS = {
 
 const RACKS = ['high', 'mid', 'low', 'refit']
 
-/** One hull = archetype × line. Pure. */
-function hullOf(archetype, line, size) {
+/** One hull = archetype × line × tech (`up` = TECH[tech].role[role]; T1 is the identity). Pure. */
+function hullOf(archetype, line, size, up = NO_UPLIFT) {
   const a = archetype
   const m = line.mult
   const d = line.add
-  const hold = a.hold * m.hold
+  const um = (k) => up.mult[k] ?? 1
+  const ud = (k) => up.add[k] ?? 0
+  const hold = a.hold * um('hold') * m.hold
+  const racks = Object.fromEntries(RACKS.map((r, i) => [r, a.racks[i] + (up.rack === r ? 1 : 0)]))
   return {
     hold: roundTo(hold, hold >= 50 ? 5 : 1),
-    speedKn: roundTo(a.speed * m.speed, 0.1),
+    speedKn: roundTo(a.speed * um('speed') * m.speed, 0.1),
     crewRequired: roundHalfEven(a.crewReq * m.crew),
     crewMax: roundHalfEven(a.crewMax * m.crew),
-    durability: roundTo(a.hull * m.hull, 10),
+    durability: roundTo(a.hull * um('hull') * m.hull, 10),
     draft: Math.min(6, Math.max(1, a.draft + d.draft)),
-    handling: Math.min(100, Math.max(0, a.handling + d.handling)),
-    armour: Math.min(100, Math.max(0, a.armour + d.armour)),
-    attack: a.attack === 0 ? 0 : roundTo(a.attack * m.attack, 10),
-    accuracy: a.accuracy === 0 ? 0 : Math.min(100, Math.max(0, a.accuracy + d.accuracy)),
+    handling: Math.min(100, Math.max(0, a.handling + ud('handling') + d.handling)),
+    armour: Math.min(100, Math.max(0, a.armour + ud('armour') + d.armour)),
+    attack: a.attack === 0 ? 0 : roundTo(a.attack * um('attack') * m.attack, 10),
+    accuracy: a.accuracy === 0 ? 0 : Math.min(100, Math.max(0, a.accuracy + ud('accuracy') + d.accuracy)),
     reach: Math.min(100, Math.max(0, a.reach + d.reach)),
-    sighting: a.sighting + d.sighting,
-    deck: a.deck,
-    racks: { ...Object.fromEntries(RACKS.map((r, i) => [r, a.racks[i]])), flourish: size >= 3 ? 1 : 0 },
+    sighting: a.sighting + ud('sighting') + d.sighting,
+    deck: a.deck + up.rackDeck * size,
+    racks: { ...racks, flourish: size >= 3 ? 1 : 0 },
   }
 }
 
-/** The size template with the line's goods substituted (merged, first appearance first). */
-function goodsOf(size, subs) {
+/** The size template × the tech's goods factor (each line rounded) with the line's goods substituted
+ *  (merged, first appearance first), then the tech's copper sheet. */
+function goodsOf(size, subs, tech) {
   const out = new Map()
   for (const [g, q] of TEMPLATES[size]) {
     const s = subs[g] ?? g
-    out.set(s, (out.get(s) ?? 0) + q)
+    out.set(s, (out.get(s) ?? 0) + roundHalfEven(q * tech.goods))
   }
+  const copper = tech.copperSheet(size)
+  if (copper > 0) out.set('copper-sheet', (out.get('copper-sheet') ?? 0) + copper)
   return [...out].map(([g, qty]) => ({ in: g, qty }))
 }
 
@@ -260,8 +331,10 @@ function shedFit(goodsList, bulk, mid) {
   return { goods: capped, moved: Math.ceil(moved / 500) * 500, tons: Number(after.toFixed(3)) }
 }
 
-function requirementsOf(line, size, role) {
+function requirementsOf(line, size, role, tech) {
   const sk = (s) => `${line}_${SIZE_WORD[s].toUpperCase()}`
+  if (tech === 'T2') return [{ skill: sk(size), level: 5 }, { skill: ROLE_T2_SKILL[role], level: 1 }]
+  if (tech !== 'T1') throw new Error(`requirementsOf: tech ${tech}`)
   if (size === 1) return [{ skill: sk(1), level: 1 }]
   if (size === 2) return [{ skill: sk(1), level: 3 }, { skill: sk(2), level: 1 }]
   if (size === 3) return [{ skill: sk(2), level: 3 }, { skill: sk(3), level: 1 }]
@@ -300,33 +373,35 @@ export function generateShips() {
     if (h.attack / 10 !== live.guns) throw new Error(`LIVE ANCHOR ${code}: guns ${live.guns} is not attack / 10`)
     if (roundTo(a.labour * LINE_YARDS.PRT.labour, 500) !== liveHulls[code].ducats) throw new Error(`LIVE ANCHOR ${code}: labour`)
     if (SIZE_YARD_TIER[size] !== liveHulls[code].yard_tier) throw new Error(`LIVE ANCHOR ${code}: yard tier`)
-    const g = goodsOf(size, LINE_YARDS.PRT.subs).map((x) => `${x.in}:${x.qty}`).sort().join(',')
+    const g = goodsOf(size, LINE_YARDS.PRT.subs, TECH.T1).map((x) => `${x.in}:${x.qty}`).sort().join(',')
     const lg = liveHulls[code].goods.map((x) => `${x.in}:${x.qty}`).sort().join(',')
     if (g !== lg) throw new Error(`LIVE ANCHOR ${code}: goods ${g} vs ${lg}`)
   }
 
   const seen = new Set(Object.keys(LIVE_ANCHORS))
-  const waves = [...WAVE_A.map((h) => ['A', ...h]), ...WAVE_B.map((h) => ['B', ...h])]
-  const hulls = waves.map(([wave, code, name, lineCode, size, role, rig, note]) => {
+  const waves = [...WAVE_A.map((h) => ['A', 'T1', ...h]), ...WAVE_B.map((h) => ['B', 'T1', ...h]), ...WAVE_C.map((h) => ['C', 'T2', ...h])]
+  const hulls = waves.map(([wave, tech, code, name, lineCode, size, role, rig, note]) => {
     const key = `${size}/${role}`
     const a = ARCHETYPES[key]
     const line = lines[lineCode]
     const yard = LINE_YARDS[lineCode]
+    const t = TECH[tech]
     if (!a) throw new Error(`${code}: no archetype ${key}`)
     if (!line || !yard) throw new Error(`${code}: no line ${lineCode}`)
+    if (!t || !t.role[role]) throw new Error(`${code}: no tech uplift ${tech}/${role}`)
     if (seen.has(code)) throw new Error(`${code}: a second hull of that code`)
     seen.add(code)
     if (!['square', 'lateen', 'mixed', 'oared'].includes(rig)) throw new Error(`${code}: rig ${rig}`)
     if (note.length <= 12) throw new Error(`${code}: the note is too short for hull_recipes`)
-    const h = hullOf(a, line, size)
-    const shed = shedFit(goodsOf(size, yard.subs), bulk, mid)
+    const h = hullOf(a, line, size, t.role[role])
+    const shed = shedFit(goodsOf(size, yard.subs, t), bulk, mid)
     const goodsList = shed.goods
-    const ducats = roundTo(a.labour * yard.labour, 500) + shed.moved
+    const ducats = roundTo(a.labour * t.labour * yard.labour, 500) + shed.moved
     for (const g of goodsList) if (!goods.has(g.in)) throw new Error(`${code}: good ${g.in} is not in data/goods.json`)
-    const requirements = requirementsOf(lineCode, size, role)
+    const requirements = requirementsOf(lineCode, size, role, tech)
     for (const r of requirements) if (!skills.has(r.skill)) throw new Error(`${code}: skill ${r.skill} is not in data/skills.json`)
     return {
-      wave, class: code, name, line: lineCode, size, role, tech: 'T1', anyYard: false,
+      wave, class: code, name, line: lineCode, size, role, tech, anyYard: false,
       family: yard.family, rig, tier: Math.min(size, 5),
       hold: h.hold, crewRequired: h.crewRequired, crewMax: h.crewMax, speedKn: h.speedKn, durability: h.durability,
       guns: h.attack / 10, draft: h.draft, buildHours: SIZE_BUILD_HOURS[size], buildCost: ducats * 4,
@@ -337,15 +412,17 @@ export function generateShips() {
   })
   const nA = hulls.filter((h) => h.wave === 'A').length
   const nB = hulls.filter((h) => h.wave === 'B').length
+  const nC = hulls.filter((h) => h.wave === 'C').length
   if (nA !== 52) throw new Error(`Wave A is 52 hulls; the list has ${nA}`)
   if (nB !== 15) throw new Error(`Wave B is 15 hulls; the list has ${nB}`)
+  if (nC !== 22) throw new Error(`Wave C is 22 hulls; the list has ${nC}`)
   for (const h of hulls) if (h.tons > SHED_TUNS) throw new Error(`${h.class}: ${h.tons} t does not fit the shed`)
-  return { _: 'GENERATED by scripts/build-ships.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §4.2; S12 Wave A, migration 0135; S14 Wave B, migration 0138).', hulls }
+  return { _: 'GENERATED by scripts/build-ships.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §4.2; S12 Wave A, migration 0135; S14 Wave B, migration 0138; S15 Wave C, migration 0162).', hulls }
 }
 
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`
 
-/** The SQL VALUES a wave's migration loads (`--sql A` → 0135, `--sql B` → 0138): pasted into the file verbatim, and the world guard holds
+/** The SQL VALUES a wave's migration loads (`--sql A` → 0135, `--sql B` → 0138, `--sql C` → 0162): pasted into the file verbatim, and the world guard holds
  *  the database to generateShips() on every apply, so the file and the generator cannot drift apart. */
 export function shipsSql(gen = generateShips(), wave = 'A') {
   const H = gen.hulls.filter((h) => h.wave === wave)
@@ -371,13 +448,15 @@ export function shipsSql(gen = generateShips(), wave = 'A') {
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/build-ships.mjs')) {
   const text = JSON.stringify(generateShips(), null, 1) + '\n'
   if (process.argv.includes('--sql')) {
-    console.log(shipsSql(undefined, process.argv[process.argv.indexOf('--sql') + 1] === 'B' ? 'B' : 'A'))
+    const wave = process.argv[process.argv.indexOf('--sql') + 1]
+    if (!['A', 'B', 'C'].includes(wave)) { console.error(`--sql takes A, B or C (got ${wave})`); process.exit(1) }
+    console.log(shipsSql(undefined, wave))
   } else if (process.argv.includes('--check')) {
     const now = readFileSync(join(ROOT, SHIPS_FILE), 'utf8')
     if (now !== text) { console.error(`${SHIPS_FILE} is NOT what scripts/build-ships.mjs generates — re-run it.`); process.exit(1) }
-    console.log(`${SHIPS_FILE} equals the generator (67 hulls: Wave A 52, Wave B 15).`)
+    console.log(`${SHIPS_FILE} equals the generator (89 hulls: Wave A 52, Wave B 15, Wave C 22).`)
   } else {
     writeFileSync(join(ROOT, SHIPS_FILE), text)
-    console.log(`wrote ${SHIPS_FILE}: LIVE ANCHORS OK, 67 hulls (Wave A 52, Wave B 15)`)
+    console.log(`wrote ${SHIPS_FILE}: LIVE ANCHORS OK, 89 hulls (Wave A 52, Wave B 15, Wave C 22)`)
   }
 }

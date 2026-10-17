@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// build-gear.mjs — WAVE A GEAR: grades 2-5 of the twelve live base types, grades 1-5 of the eleven new
-//                  ones (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135)
+// build-gear.mjs — THE GEAR: grades 2-5 of the twelve live base types, grades 1-5 of the eleven new ones
+//                  (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135); the refits and what works
+//                  every item (S13, 0158); the T2 and Named rungs (S15, 0162)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // ONE ITEM MODEL (§6.2): base type × grade. Grade 1 of a live base type is the live item, untouched
@@ -23,12 +24,30 @@
 // The same buys/spends sentence as its G1 (the stats it moves do not change, only how far). The
 // figurehead is the one base type that moves no stat at any grade (0074, DESIGN 1.4).
 //
+// S15 (migration 0162, §6.2's meta ladder): two more rungs, each ONE rule over the same base types.
+//   * T2 (meta 5, "improved") — one per base type but the figurehead (22). BUYS × 2.60 (speed and hold
+//     × 1.80), SPENDS × 1.25 rounded half away from zero (handling −6 → −8; −5 → −6; speed −0.35 → −0.44);
+//     Deck and Hands = the G1's × 1.5; needs the module skill V + its specialisation I (T2_SPEC) + the
+//     base type's second skill, if any; made at tier 3; the G1's words, volume and active flag. Its
+//     recipe is the G5's materials scaled up plus the family's T2 component (§6.2: cast metal gunpowder +
+//     falconet, timber copper-sheet + swedish-iron, canvas abaca, cordage & iron lodestone, instruments
+//     sea-charts). §6.4's three are verbatim and asserted: Long Eighteens 156 / 39, hold −25, handling
+//     −8; Racing Courses +1.08, handling −10; Orlop Stowage +45, speed −0.44, handling −6.
+//   * Named (meta 1) — a city's own pattern of ONE grade of ONE base type (NAMED, 12: one per city with a
+//     tier-3 workshop). The grade's effects with BUYS × 1.10 (half up; speed to 0.01) and spends as they
+//     are; Deck −1 (never below 0), Hands the grade's; the grade's recipe plus one good the city is
+//     known for; the grade's requirements exactly; tier 3; made in that one city (public.item_city).
+//     §6.4's Lisbon-cast Brass Guns (G3 Long Guns) come out 106 / 26 — asserted.
+//
 // §6.3 lists ELEVEN new base types (Carronades, Chase Guns, Swivel Guns, Studding Sails, Storm
 // Canvas, Whipstaff, Sheet Anchor, Capstan, Binnacle & Charts, Planking, Bilge Pumps); §0/§8 say
 // "ten" and "~98 rows". The table is the specification: 11 × 5 + 12 × 4 = 103 rows.
 //
-// RUN:   node scripts/build-gear.mjs           writes data/gear.generated.json
-//        node scripts/build-gear.mjs --check   fails if the file is not what the generator gives
+// RUN:   node scripts/build-gear.mjs             writes data/gear.generated.json
+//        node scripts/build-gear.mjs --check     fails if the file is not what the generator gives
+//        node scripts/build-gear.mjs --sql       the VALUES 0135 loaded (103 Wave A items)
+//        node scripts/build-gear.mjs --sql-0158  the VALUES 0158 loaded (14 refits + item_use)
+//        node scripts/build-gear.mjs --sql-0162  the VALUES 0162 loads (22 T2 + 12 Named, item_use, item_city)
 // scripts/db/world-guard.mjs re-runs generateGear() on every apply and holds the database to it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -58,7 +77,8 @@ export const BASE_TYPES = [
     ['culverins', 'Culverins', r('culverin 4, bar-iron 4, timber 2'), 'Longer guns of a better pattern: they hit harder and carry further.'],
     ['brass-guns', 'Brass Guns', r('brass-ingots 8, culverin 6, live-oak 3'), 'Cast brass does not burst as iron does, so the charge can be heavier.'],
     ['swedish-guns', 'Swedish Guns', r('swedish-iron 8, culverin 8, shot-and-ball 2'), 'Guns of the best Swedish iron: light for their weight of shot.'],
-    ['bronze-guns', 'Bronze Guns', r('copper 12, tin-ingots 8, culverin 10, falconet 2'), 'The finest gun metal there is, cast for range and weight of fire.'] ] },
+    ['bronze-guns', 'Bronze Guns', r('copper 12, tin-ingots 8, culverin 10, falconet 2'), 'The finest gun metal there is, cast for range and weight of fire.'] ],
+    t2: ['long-eighteens', 'Long Eighteens', r('swedish-iron 10, culverin 12, falconet 4, gunpowder 4'), 'Long guns bored for an eighteen-pound ball: the heaviest broadside a trader can mount, and it costs more cargo space and handling.'] },
   { base: 'Carronades', rack: 'high', skill: 'GUNNERY', also: { skill: 'SHORT_GUNS', level: 1 },
     g1: { code: 'carronades', name: 'Carronades', slot: 'weapon', buys: 'Attack at close range', spends: 'Reach, Cargo space, Handling',
       note: 'Short, heavy guns that smash at close range and reach nothing far off.', volume: 5, wsTier: 3, deck: 5, hands: 7, active: true,
@@ -67,7 +87,8 @@ export const BASE_TYPES = [
       ['heavy-carronades', 'Heavy Carronades', r('culverin 3, bar-iron 6, gunpowder 2'), 'Carronades of a heavier pattern, with more shot in every broadside.'],
       ['brass-carronades', 'Brass Carronades', r('brass-ingots 8, culverin 4, gunpowder 2'), 'Brass short guns that take a bigger charge without bursting.'],
       ['swedish-carronades', 'Swedish Carronades', r('swedish-iron 8, culverin 6, gunpowder 3'), 'Short guns of Swedish iron, as heavy-hitting as any afloat.'],
-      ['bronze-carronades', 'Bronze Carronades', r('copper 10, tin-ingots 6, culverin 6, gunpowder 3'), 'Bronze smashers: the hardest blow a ship can strike at close range.'] ] },
+      ['bronze-carronades', 'Bronze Carronades', r('copper 10, tin-ingots 6, culverin 6, gunpowder 3'), 'Bronze smashers: the hardest blow a ship can strike at close range.'] ],
+    t2: ['gunnades', 'Gunnades', r('copper 12, tin-ingots 8, falconet 4, gunpowder 4'), 'A cross between a gun and a carronade: it smashes at close range and keeps a little more reach.'] },
   { base: 'Chase Guns', rack: 'high', skill: 'GUNNERY', also: { skill: 'LONG_GUNS', level: 1 },
     g1: { code: 'stern-chasers', name: 'Stern Chasers', slot: 'weapon', buys: 'Reach, Accuracy', spends: 'Cargo space',
       note: 'Long guns at the stern and bow that keep a pursuer honest at a distance.', volume: 4, wsTier: 3, deck: 4, hands: 4, active: true,
@@ -76,7 +97,8 @@ export const BASE_TYPES = [
       ['culverin-chasers', 'Culverin Chasers', r('culverin 3, bar-iron 3, shot-and-ball 2'), 'Longer chase guns that reach further and aim truer.'],
       ['brass-chasers', 'Brass Chasers', r('brass-ingots 6, culverin 4, shot-and-ball 2'), 'Brass chase guns, accurate at long range.'],
       ['swedish-chasers', 'Swedish Chasers', r('swedish-iron 6, culverin 5, shot-and-ball 3'), 'Swedish-iron chasers that outrange most broadsides.'],
-      ['bronze-chasers', 'Bronze Chasers', r('copper 8, tin-ingots 5, culverin 6, falconet 1'), 'Bronze long chasers: the furthest-reaching guns a ship can carry.'] ] },
+      ['bronze-chasers', 'Bronze Chasers', r('copper 8, tin-ingots 5, culverin 6, falconet 1'), 'Bronze long chasers: the furthest-reaching guns a ship can carry.'] ],
+    t2: ['long-nines', 'Long Nines', r('copper 10, tin-ingots 6, culverin 8, falconet 3, gunpowder 2'), 'Nine-pounder chase guns of the longest pattern: they reach and aim further than any broadside piece.'] },
   { base: 'Swivel Guns', rack: 'high', skill: 'GUNNERY',
     g1: { code: 'swivel-guns', name: 'Swivel Guns', slot: 'weapon', buys: 'Attack, Accuracy', spends: 'Handling',
       note: 'Small guns on the rails that sweep a deck at close quarters.', volume: 2, wsTier: 2, deck: 2, hands: 3, active: true,
@@ -85,27 +107,32 @@ export const BASE_TYPES = [
       ['iron-swivels', 'Iron Swivels', r('bar-iron 3, culverin 1, shot-and-ball 1'), 'Better-bored swivels that hit harder and truer.'],
       ['brass-swivels', 'Brass Swivels', r('brass-ingots 4, culverin 1, shot-and-ball 1'), 'Brass swivels, light enough to train fast.'],
       ['swedish-swivels', 'Swedish Swivels', r('swedish-iron 4, culverin 2, shot-and-ball 2'), 'Swivels of Swedish iron that can take a double charge.'],
-      ['bronze-swivels', 'Bronze Swivels', r('copper 5, tin-ingots 3, swivel-gun 1, shot-and-ball 2'), 'Bronze swivels: the deadliest small guns on any rail.'] ] },
+      ['bronze-swivels', 'Bronze Swivels', r('copper 5, tin-ingots 3, swivel-gun 1, shot-and-ball 2'), 'Bronze swivels: the deadliest small guns on any rail.'] ],
+    t2: ['pateraros', 'Pateraros', r('copper 6, tin-ingots 4, swivel-gun 2, falconet 1, gunpowder 2'), 'Breech-loading swivels with spare chambers: they fire faster and truer than a plain swivel.'] },
   { base: 'Boarding Gear', rack: 'high', skill: 'BOARDING', g1: 'boarding-gear', grades: [
     ['osmund-grapnels', 'Osmund Grapnels', r('osmund-iron 3, hemp 3, timber 1'), 'Grapnels of good iron that hold where cheaper ones straighten.'],
     ['boarding-pikes', 'Boarding Pikes', r('bar-iron 3, abaca 3, timber 2'), 'Pikes, nets and grapnels for a crew that means to board.'],
     ['boarding-axes', 'Boarding Axes & Grapnels', r('swedish-iron 3, abaca 3, live-oak 2'), 'Axes and grapnels of Swedish iron for the hardest boarding fights.'],
-    ['storming-gear', 'Storming Gear', r('swedish-iron 4, copper 2, abaca 3, slow-match 1'), 'Everything a boarding party needs, down to the fire pots.'] ] },
+    ['storming-gear', 'Storming Gear', r('swedish-iron 4, copper 2, abaca 3, slow-match 1'), 'Everything a boarding party needs, down to the fire pots.'] ],
+    t2: ['grenadoes-and-cutlasses', 'Grenadoes & Cutlasses', r('swedish-iron 5, abaca 4, gunpowder 3, falconet 1, slow-match 1'), 'Grenades, cutlasses and a falconet in the top: a boarding party that clears a deck before it crosses.'] },
   { base: 'Powder Magazine', rack: 'high', skill: 'GUNNERY', g1: 'powder-magazine', grades: [
     ['lined-magazine', 'Lined Magazine', r('gunpowder 5, live-oak 3, copper-sheet 2'), 'A lined powder room that keeps the guns firing longer.'],
     ['copper-magazine', 'Copper-lined Magazine', r('gunpowder 6, teak 3, copper-sheet 4'), 'A copper-lined powder room: drier powder and steadier fire.'],
     ['light-room-magazine', 'Light Room Magazine', r('gunpowder 8, live-oak 4, copper-sheet 4, lead 2'), 'A powder room with its own light room, so the gunners never fire blind.'],
-    ['grand-magazine', 'Grand Magazine', r('gunpowder 10, greenheart 4, copper-sheet 6, slow-match 1'), 'The finest magazine afloat, built for a long day of fighting.'] ] },
+    ['grand-magazine', 'Grand Magazine', r('gunpowder 10, greenheart 4, copper-sheet 6, slow-match 1'), 'The finest magazine afloat, built for a long day of fighting.'] ],
+    t2: ['hanging-magazine', 'Hanging Magazine', r('gunpowder 12, greenheart 5, copper-sheet 8, swedish-iron 2'), 'A powder room hung clear of the hull on iron knees and lined in copper: dry powder and a steadier rate of fire.'] },
   { base: 'Sails', rack: 'mid', skill: 'RIGGING', g1: 'suit-of-sails', grades: [
     ['hemp-canvas', 'Hemp Canvas', r('hemp 6, cordage 3, tar 1'), 'Sails of hemp canvas that hold their shape and drive harder.'],
     ['duck-canvas', 'Duck Canvas', r('canvas-duck 20, hemp 6, cordage 3, tar 1'), 'Heavy duck canvas that stands a stronger wind.'],
     ['baltic-sailcloth', 'Baltic Sailcloth', r('sailcloth 10, hemp 6, cordage 4, tar 2'), 'Close-woven Baltic sailcloth: more speed from the same wind.'],
-    ['holland-duck', 'Holland Duck', r('sailcloth 14, abaca 8, whale-bone-stays 4, tar 2'), 'The best sail canvas there is, cut and stayed for speed.'] ] },
+    ['holland-duck', 'Holland Duck', r('sailcloth 14, abaca 8, whale-bone-stays 4, tar 2'), 'The best sail canvas there is, cut and stayed for speed.'] ],
+    t2: ['racing-courses', 'Racing Courses', r('sailcloth 18, abaca 10, whale-bone-stays 6, canvas-duck 6'), 'Courses and topsails cut flat and full for speed: the fastest suit a ship can carry, and a handful to work.'] },
   { base: 'Headsails', rack: 'mid', skill: 'RIGGING', g1: 'bowsprit-and-jib', grades: [
     ['hemp-jib', 'Hemp Jib', r('naval-timber 3, hemp 3, cordage 2'), 'A hemp jib on a stouter bowsprit: quicker through the turn.'],
     ['duck-jib', 'Duck Jib & Staysail', r('naval-timber 3, canvas-duck 8, cordage 3'), 'A jib and staysail of duck canvas that turn the ship smartly.'],
     ['sailcloth-headsails', 'Sailcloth Headsails', r('riga-mast 2, sailcloth 4, cordage 3'), 'Headsails of Baltic sailcloth on a Riga spar.'],
-    ['holland-headsails', 'Holland Headsails', r('riga-mast 2, sailcloth 6, abaca 3, whale-bone-stays 2'), 'The finest headsails: the ship answers almost before the helm is put over.'] ] },
+    ['holland-headsails', 'Holland Headsails', r('riga-mast 2, sailcloth 6, abaca 3, whale-bone-stays 2'), 'The finest headsails: the ship answers almost before the helm is put over.'] ],
+    t2: ['flying-jib', 'Flying Jib & Jibboom', r('riga-mast 3, sailcloth 8, abaca 5, whale-bone-stays 3'), 'A jibboom run out beyond the bowsprit with a flying jib on it: the ship turns quicker and gains a little way.'] },
   { base: 'Studding Sails', rack: 'mid', skill: 'RIGGING',
     g1: { code: 'studding-sails', name: 'Studding Sails', slot: 'rig', buys: 'Speed', spends: 'Handling, Hull',
       note: 'Extra sails set outside the main ones in fair weather: faster, but harder to handle and easy to damage.', volume: 4, wsTier: 2, deck: 4, hands: 5, active: false,
@@ -114,7 +141,8 @@ export const BASE_TYPES = [
       ['hemp-studding-sails', 'Hemp Studding Sails', r('hemp 8, norway-spruce 2, cordage 3'), 'Studding sails of hemp canvas on spruce booms.'],
       ['duck-studding-sails', 'Duck Studding Sails', r('canvas-duck 20, norway-spruce 3, cordage 3'), 'Duck-canvas studding sails that carry in a fresher wind.'],
       ['sailcloth-studding-sails', 'Sailcloth Studding Sails', r('sailcloth 8, riga-mast 2, cordage 4'), 'Baltic sailcloth studding sails on Riga booms.'],
-      ['holland-studding-sails', 'Holland Studding Sails', r('sailcloth 12, abaca 6, riga-mast 2, whale-bone-stays 2'), 'The fastest studding sails there are.'] ] },
+      ['holland-studding-sails', 'Holland Studding Sails', r('sailcloth 12, abaca 6, riga-mast 2, whale-bone-stays 2'), 'The fastest studding sails there are.'] ],
+    t2: ['royal-stunsails', 'Royal Stunsails', r('sailcloth 14, abaca 8, riga-mast 3, whale-bone-stays 3'), 'Studding sails set right up to the royals: a great deal more speed in fair weather, and a great deal more to tear.'] },
   { base: 'Storm Canvas', rack: 'mid', skill: 'RIGGING',
     g1: { code: 'storm-canvas', name: 'Storm Canvas', slot: 'rig', buys: 'Hull, Handling', spends: 'Speed',
       note: 'Small, heavy sails for bad weather: the ship rides out a storm and gives up a little speed.', volume: 3, wsTier: 1, deck: 3, hands: 3, active: true,
@@ -123,12 +151,14 @@ export const BASE_TYPES = [
       ['hemp-storm-canvas', 'Hemp Storm Canvas', r('hemp 4, canvas-duck 4, tar 1'), 'Storm sails of hemp and duck that take a harder blow.'],
       ['double-duck-storm-canvas', 'Double Duck Storm Canvas', r('canvas-duck 12, hemp 3, tar 1'), 'Doubled duck canvas for the worst weather.'],
       ['sailcloth-storm-canvas', 'Sailcloth Storm Canvas', r('sailcloth 6, hemp 4, tar 2'), 'Baltic storm canvas that holds where others split.'],
-      ['holland-storm-canvas', 'Holland Storm Canvas', r('sailcloth 8, abaca 6, whale-bone-stays 2, tar 2'), 'The best storm canvas made: the ship can ride out almost anything.'] ] },
+      ['holland-storm-canvas', 'Holland Storm Canvas', r('sailcloth 8, abaca 6, whale-bone-stays 2, tar 2'), 'The best storm canvas made: the ship can ride out almost anything.'] ],
+    t2: ['storm-trysails', 'Storm Trysails', r('sailcloth 10, abaca 8, whale-bone-stays 3, tar 2'), 'Small trysails on their own gaffs, cut from the heaviest cloth: the ship lies to in the worst weather and loses a little speed.'] },
   { base: 'Rudder', rack: 'mid', skill: 'SEAMANSHIP', g1: 'rudder-and-helm', grades: [
     ['oak-rudder', 'Oak Rudder & Helm', r('timber 6, ships-nails 3, lignum-vitae 1'), 'A broader oak rudder that bites harder.'],
     ['teak-rudder', 'Teak Rudder & Helm', r('teak 4, ships-nails 3, lignum-vitae 1'), 'A teak rudder that does not warp or rot.'],
     ['live-oak-rudder', 'Live-oak Rudder & Tiller', r('live-oak 6, naval-timber 2, ships-nails 3, lignum-vitae 1'), 'A live-oak rudder on a long tiller: the ship turns on a coin.'],
-    ['greenheart-rudder', 'Greenheart Rudder & Helm', r('greenheart 6, lignum-vitae 3, copper-sheet 2'), 'The finest steering gear made, of greenheart and lignum vitae.'] ] },
+    ['greenheart-rudder', 'Greenheart Rudder & Helm', r('greenheart 6, lignum-vitae 3, copper-sheet 2'), 'The finest steering gear made, of greenheart and lignum vitae.'] ],
+    t2: ['wheel-steered-rudder', 'Wheel-steered Rudder', r('greenheart 8, lignum-vitae 4, copper-sheet 4, swedish-iron 2'), "A ship's wheel and tiller ropes on a greenheart rudder: the helmsman has more purchase and the ship answers at once."] },
   { base: 'Whipstaff', rack: 'mid', skill: 'SEAMANSHIP',
     g1: { code: 'whipstaff', name: 'Whipstaff', slot: 'steering', buys: 'Handling', spends: 'Cargo space',
       note: 'A light steering lever that gives the helmsman more purchase on the rudder.', volume: 2, wsTier: 1, deck: 2, hands: 1, active: false,
@@ -137,12 +167,14 @@ export const BASE_TYPES = [
       ['oak-whipstaff', 'Oak Whipstaff', r('timber 4, osmund-iron 1, hemp 1'), 'A stouter oak whipstaff.'],
       ['teak-whipstaff', 'Teak Whipstaff', r('teak 3, bar-iron 1, hemp 1'), 'A teak whipstaff with iron fittings.'],
       ['live-oak-whipstaff', 'Live-oak Whipstaff', r('live-oak 4, naval-timber 1, swedish-iron 1'), 'A live-oak whipstaff that answers the lightest touch.'],
-      ['greenheart-whipstaff', 'Greenheart Whipstaff', r('greenheart 4, lignum-vitae 2, brass-ingots 1'), 'The best whipstaff made, of greenheart and brass.'] ] },
+      ['greenheart-whipstaff', 'Greenheart Whipstaff', r('greenheart 4, lignum-vitae 2, brass-ingots 1'), 'The best whipstaff made, of greenheart and brass.'] ],
+    t2: ['geared-whipstaff', 'Rowle-geared Whipstaff', r('greenheart 5, lignum-vitae 3, brass-ingots 2, copper-sheet 1, swedish-iron 1'), 'A whipstaff turning in a brass rowle with iron gearing: more rudder for the same push.'] },
   { base: 'Anchor', rack: 'mid', skill: 'SEAMANSHIP', g1: 'anchor-and-cable', grades: [
     ['osmund-anchor', 'Osmund Anchor & Cable', r('osmund-iron 4, hemp 4, tar 1'), 'An anchor of good osmund iron on a stronger cable.'],
     ['manila-anchor', 'Bar-iron Anchor & Manila Cable', r('bar-iron 4, abaca 4, tar 1'), 'A bar-iron anchor on Manila cable, which does not rot.'],
     ['swedish-anchor', 'Swedish Anchor & Cable', r('swedish-iron 4, abaca 5, tar 1'), 'A Swedish-iron anchor that holds in any ground.'],
-    ['copper-fast-anchor', 'Copper-fast Anchor & Cable', r('swedish-iron 5, copper 2, abaca 5'), 'The best ground tackle made, copper-fastened against rust.'] ] },
+    ['copper-fast-anchor', 'Copper-fast Anchor & Cable', r('swedish-iron 5, copper 2, abaca 5'), 'The best ground tackle made, copper-fastened against rust.'] ],
+    t2: ['admiralty-anchor', 'Admiralty-pattern Anchor', r('swedish-iron 6, copper 3, abaca 6, lodestone 1'), 'An anchor of the improved pattern with a longer shank and curved arms: it bites in any ground and weighs a little more.'] },
   { base: 'Sheet Anchor', rack: 'mid', skill: 'SEAMANSHIP',
     g1: { code: 'sheet-anchor', name: 'Sheet Anchor', slot: 'ground-tackle', buys: 'Hull in a storm, Handling', spends: 'Cargo space',
       note: 'The biggest anchor on board, kept for the night it is the only thing between the ship and the rocks.', volume: 5, wsTier: 2, deck: 5, hands: 3, active: true,
@@ -151,7 +183,8 @@ export const BASE_TYPES = [
       ['osmund-sheet-anchor', 'Osmund Sheet Anchor', r('osmund-iron 6, hemp 6, tar 1'), 'A sheet anchor of osmund iron.'],
       ['bar-iron-sheet-anchor', 'Bar-iron Sheet Anchor', r('bar-iron 6, abaca 5, tar 1'), 'A bar-iron sheet anchor on Manila cable.'],
       ['swedish-sheet-anchor', 'Swedish Sheet Anchor', r('swedish-iron 6, abaca 6, tar 2'), 'A Swedish-iron sheet anchor that never drags.'],
-      ['copper-fast-sheet-anchor', 'Copper-fast Sheet Anchor', r('swedish-iron 6, copper 3, abaca 6'), 'The best sheet anchor made.'] ] },
+      ['copper-fast-sheet-anchor', 'Copper-fast Sheet Anchor', r('swedish-iron 6, copper 3, abaca 6'), 'The best sheet anchor made.'] ],
+    t2: ['bower-and-sheet-anchors', 'Bower & Sheet Anchors', r('swedish-iron 8, copper 4, abaca 8, lodestone 1'), 'A sheet anchor and a best bower carried together: the ship rides out almost any night, at a cost in cargo space.'] },
   { base: 'Capstan', rack: 'mid', skill: 'SEAMANSHIP',
     g1: { code: 'capstan', name: 'Capstan', slot: 'ground-tackle', buys: 'Handling, a little Speed', spends: 'Cargo space',
       note: 'A capstan to haul the anchor and the yards faster, so the ship gets under way sooner.', volume: 3, wsTier: 2, deck: 3, hands: 3, active: false,
@@ -160,12 +193,14 @@ export const BASE_TYPES = [
       ['osmund-capstan', 'Osmund Capstan', r('timber 4, osmund-iron 2, tallow 1'), 'A capstan with osmund-iron pawls.'],
       ['manila-capstan', 'Manila Capstan', r('teak 3, bar-iron 2, abaca 2, tallow 1'), 'A teak capstan with a Manila messenger.'],
       ['swedish-capstan', 'Swedish Capstan', r('live-oak 4, swedish-iron 2, abaca 2, tallow 1'), 'A live-oak capstan with Swedish-iron fittings.'],
-      ['double-capstan', 'Double Capstan', r('greenheart 4, swedish-iron 3, copper 1, abaca 2'), 'A double capstan: two crews heave at once.'] ] },
+      ['double-capstan', 'Double Capstan', r('greenheart 4, swedish-iron 3, copper 1, abaca 2'), 'A double capstan: two crews heave at once.'] ],
+    t2: ['geared-capstan', 'Geared Capstan', r('greenheart 5, swedish-iron 4, copper 2, abaca 3, lodestone 1'), 'A capstan geared so one crew heaves like two: the anchor comes up fast and the yards faster.'] },
   { base: 'Lookout', rack: 'mid', skill: 'LOOKOUTS', g1: 'crows-nest', grades: [
     ['topgallant-mast', 'Topgallant Mast', r('riga-mast 2, cordage 3, tar 1'), 'A taller mast with a lookout higher up: the horizon moves out.'],
     ['masthead-glass', 'Masthead Glass', r('riga-mast 2, brass-ingots 2, sea-charts 1'), 'A lookout with a brass glass and charts to name what is seen.'],
     ['lookout-top', 'Lookout Top & Glass', r('riga-mast 2, lodestone 1, sea-charts 1'), 'A fighting top with a glass and compass for the lookout.'],
-    ['royal-lookout', 'Royal Lookout', r('riga-mast 3, lodestone 1, sea-charts 1, brass-ingots 2'), 'The highest lookout and the best glass afloat.'] ] },
+    ['royal-lookout', 'Royal Lookout', r('riga-mast 3, lodestone 1, sea-charts 1, brass-ingots 2'), 'The highest lookout and the best glass afloat.'] ],
+    t2: ['night-glass', 'Night Glass & Royal Mast', r('riga-mast 4, lodestone 1, sea-charts 2, brass-ingots 3'), 'A royal mast with a night glass at its head: the lookout sees further by day and something by night.'] },
   { base: 'Binnacle & Charts', rack: 'mid', skill: 'INSTRUMENTS',
     g1: { code: 'binnacle-and-charts', name: 'Binnacle & Charts', slot: 'lookout', buys: 'Sighting, Handling', spends: 'Cargo space',
       note: 'A compass housing and a chest of charts: the ship knows where it is and what lies ahead.', volume: 2, wsTier: 2, deck: 2, hands: 1, active: false,
@@ -174,17 +209,20 @@ export const BASE_TYPES = [
       ['brass-binnacle', 'Brass Binnacle & Charts', r('riga-mast 1, brass-ingots 2, sea-charts 1'), 'A brass binnacle and better charts.'],
       ['binnacle-and-atlas', 'Binnacle & Sea Atlas', r('brass-ingots 2, sea-charts 2'), 'A binnacle and a full sea atlas.'],
       ['lodestone-compass', 'Lodestone Compass & Charts', r('lodestone 2, sea-charts 2, brass-ingots 1'), 'A compass touched with lodestone, true in any weather.'],
-      ['masters-binnacle', "Master's Binnacle", r('lodestone 2, sea-charts 3, brass-ingots 2, lignum-vitae 1'), 'The finest instruments a sailing master can own.'] ] },
+      ['masters-binnacle', "Master's Binnacle", r('lodestone 2, sea-charts 3, brass-ingots 2, lignum-vitae 1'), 'The finest instruments a sailing master can own.'] ],
+    t2: ['azimuth-compass', 'Azimuth Compass & Rutter', r('lodestone 3, sea-charts 4, brass-ingots 3, lignum-vitae 1'), 'An azimuth compass and a written rutter of every coast: the ship knows its bearing and what lies ahead.'] },
   { base: 'Ballast', rack: 'low', skill: 'SHIPWRIGHT', g1: 'ballast', grades: [
     ['iron-kentledge', 'Iron Kentledge', r('iron 6, timber 2'), 'Iron ballast blocks, stowed low and tight.'],
     ['pig-iron-ballast', 'Pig-iron Ballast', r('bar-iron 4, iron 4, timber 2'), 'Pig-iron ballast trimmed for a stiffer ship.'],
     ['lead-ballast', 'Lead & Shingle Ballast', r('lead 8, iron 4, oakum 2'), 'Lead ballast packed in shingle: very stiff, very steady.'],
-    ['cast-kentledge', 'Cast Kentledge', r('lead 8, swedish-iron 3, copper 2'), 'Cast ballast fitted to the hull: the steadiest ship afloat.'] ] },
+    ['cast-kentledge', 'Cast Kentledge', r('lead 8, swedish-iron 3, copper 2'), 'Cast ballast fitted to the hull: the steadiest ship afloat.'] ],
+    t2: ['trimmed-kentledge', 'Trimmed Kentledge', r('lead 10, swedish-iron 4, copper 2, copper-sheet 2'), 'Kentledge cast to the hull and trimmed by a shipwright: the stiffest ship afloat, and a slower one.'] },
   { base: 'Sheathing', rack: 'low', skill: 'SHIPWRIGHT', g1: 'copper-sheathing', grades: [
     ['doubled-copper', 'Doubled Copper', r('copper-sheet 8, ships-nails 4, tar 2'), 'A double layer of copper below the waterline.'],
     ['teak-and-copper', 'Teak & Copper Sheathing', r('teak 4, copper-sheet 8, ships-nails 4'), 'Teak planking under copper: worm and shot both stop here.'],
     ['live-oak-and-copper', 'Live-oak & Copper Sheathing', r('live-oak 6, copper-sheet 10, ships-nails 5, oakum 2'), 'Live oak under copper, the hardest bottom a ship can have.'],
-    ['greenheart-sheathing', 'Greenheart Sheathing', r('greenheart 8, copper-sheet 12, lignum-vitae 2, oakum 2'), 'Greenheart and copper: the best sheathing made.'] ] },
+    ['greenheart-sheathing', 'Greenheart Sheathing', r('greenheart 8, copper-sheet 12, lignum-vitae 2, oakum 2'), 'Greenheart and copper: the best sheathing made.'] ],
+    t2: ['copper-bolted-sheathing', 'Copper-bolted Sheathing', r('greenheart 10, copper-sheet 16, lignum-vitae 3, swedish-iron 2, oakum 2'), 'Copper sheathing fastened with copper bolts over greenheart, so the iron below does not rot away: the hardest bottom made.'] },
   { base: 'Planking', rack: 'low', skill: 'SHIPWRIGHT',
     g1: { code: 'deal-planking', name: 'Deal Planking', slot: 'hull', buys: 'Armour, Hull', spends: 'Speed, Cargo space',
       note: 'A second skin of planks over the hull: stronger, heavier and slower.', volume: 4, wsTier: 1, deck: 4, hands: 0, active: false,
@@ -193,7 +231,8 @@ export const BASE_TYPES = [
       ['oak-planking', 'Oak Planking', r('timber 12, ships-nails 5, oakum 3, tar 1'), 'Doubled oak planking.'],
       ['teak-planking', 'Teak Planking', r('teak 10, ships-nails 6, oakum 3, tar 1'), 'Doubled teak planking that does not rot.'],
       ['live-oak-planking', 'Live-oak Planking', r('live-oak 16, naval-timber 4, ships-nails 8, oakum 4'), 'Doubled live oak: shot bounces off it.'],
-      ['greenheart-planking', 'Greenheart Planking', r('greenheart 20, lignum-vitae 10, naval-timber 6, copper-sheet 8'), 'Doubled greenheart, the hardest planking made.'] ] },
+      ['greenheart-planking', 'Greenheart Planking', r('greenheart 20, lignum-vitae 10, naval-timber 6, copper-sheet 8'), 'Doubled greenheart, the hardest planking made.'] ],
+    t2: ['diagonal-planking', 'Diagonal Planking', r('greenheart 24, lignum-vitae 12, copper-sheet 10, swedish-iron 4'), 'A second skin of greenheart laid diagonally over the frames: the hull stops working in a sea and takes far more shot.'] },
   { base: 'Bilge Pumps', rack: 'low', skill: 'SHIPWRIGHT',
     g1: { code: 'bilge-pumps', name: 'Bilge Pumps', slot: 'hull', buys: 'Hull', spends: 'Cargo space',
       note: 'Pumps that keep the water down when the hull is hurt or the sea gets in.', volume: 3, wsTier: 1, deck: 3, hands: 4, active: true,
@@ -202,12 +241,14 @@ export const BASE_TYPES = [
       ['chain-pumps', 'Chain Pumps', r('timber 3, iron 2, hides 1, cordage 1'), 'Chain pumps that move more water than a plain pump.'],
       ['teak-chain-pumps', 'Teak Chain Pumps', r('teak 3, bar-iron 2, hides 1'), 'Chain pumps in teak cases.'],
       ['brake-pumps', 'Brake Pumps', r('live-oak 4, copper 2, hides 2'), 'Big brake pumps worked by a whole watch.'],
-      ['copper-chain-pumps', 'Copper Chain Pumps', r('greenheart 3, copper 4, brass-ingots 2, hides 1'), 'Copper chain pumps: the best made.'] ] },
+      ['copper-chain-pumps', 'Copper Chain Pumps', r('greenheart 3, copper 4, brass-ingots 2, hides 1'), 'Copper chain pumps: the best made.'] ],
+    t2: ['bentinck-pumps', 'Bentinck Chain Pumps', r('greenheart 4, copper 5, brass-ingots 3, copper-sheet 2, swedish-iron 1'), 'Chain pumps of the improved pattern, worked by fewer hands and moving far more water.'] },
   { base: 'Hold Frames', rack: 'low', skill: 'CARGO_STOWAGE', g1: 'hold-fittings', grades: [
     ['teak-frames', 'Teak Frames', r('teak 5, ships-nails 4, oakum 3'), 'Teak frames that stow more cargo in the same space.'],
     ['live-oak-frames', 'Live-oak Frames', r('live-oak 10, teak 4, ships-nails 5, oakum 4'), 'Live-oak frames for a tighter stow.'],
     ['knee-braced-frames', 'Knee-braced Frames', r('live-oak 14, naval-timber 4, lignum-vitae 6, oakum 6'), 'Frames braced with knees, so the cargo space can be opened up.'],
-    ['greenheart-frames', 'Greenheart Frames', r('greenheart 20, naval-timber 6, lignum-vitae 8, copper-sheet 6'), 'Greenheart frames: the most cargo space a hull can give.'] ] },
+    ['greenheart-frames', 'Greenheart Frames', r('greenheart 20, naval-timber 6, lignum-vitae 8, copper-sheet 6'), 'Greenheart frames: the most cargo space a hull can give.'] ],
+    t2: ['orlop-stowage', 'Orlop Stowage', r('naval-timber 10, greenheart 20, copper-sheet 10, swedish-iron 2'), 'An orlop deck laid over greenheart frames so cargo stows on two levels: the most cargo space a hull can give, and a slower ship.'] },
   { base: 'Figurehead', rack: 'flourish', skill: null, g1: 'figurehead', grades: [
     ['carved-figurehead', 'Carved Oak Figurehead', r('timber 4, tallow 1, lead 1'), "A carved oak figurehead. It moves no number; it is the ship's face."],
     ['painted-figurehead', 'Painted Teak Figurehead', r('teak 3, cedar 2, tallow 1'), 'A painted teak figurehead. It moves no number; the crew are proud of it.'],
@@ -292,6 +333,49 @@ export function gradedDelta(stat, delta, g) {
   return stat === 'speed' ? round2(v) : roundUp(v)
 }
 
+/**
+ * S15 (migration 0162, §6.2's T2 row): the ONE map from a module skill to the specialisation that gates its
+ * T2 module (§5.2: Gunnery Spec gates T2 guns, boarding and magazines; Ship Handling Spec the Mid handling
+ * modules; Rigging / Instrument Spec the sails / instruments; Shipwright Spec the Low; Stowage Spec hold frames).
+ */
+export const T2_SPEC = {
+  GUNNERY: 'GUNNERY_SPEC', BOARDING: 'GUNNERY_SPEC', RIGGING: 'RIGGING_SPEC', SEAMANSHIP: 'HANDLING_SPEC',
+  LOOKOUTS: 'INSTRUMENT_SPEC', INSTRUMENTS: 'INSTRUMENT_SPEC', SHIPWRIGHT: 'SHIPWRIGHT_SPEC', CARGO_STOWAGE: 'STOWAGE_SPEC',
+}
+export const T2_MULT = { buys: 2.6, money: 1.8, spends: 1.25 }
+/** One effect of a T2 (meta 5): buys × 2.60 (speed / hold × 1.80), spends × 1.25 rounded half AWAY from zero. */
+export function t2Delta(stat, delta) {
+  if (delta < 0) return -(stat === 'speed' ? round2(-delta * T2_MULT.spends) : roundUp(-delta * T2_MULT.spends))
+  const v = delta * (MONEY_STATS.has(stat) ? T2_MULT.money : T2_MULT.buys)
+  return stat === 'speed' ? round2(v) : roundUp(v)
+}
+
+/**
+ * S15 (migration 0162, §6.2's Named row): a city's own pattern of ONE grade of ONE base type — one per city
+ * with a tier-3 workshop (0068: 12 cities). [code, name, port code, base type, grade, the extra good, note].
+ */
+export const NAMED = [
+  ['lisbon-cast-brass-guns', 'Lisbon-cast Brass Guns', 'LIS', 'Long Guns', 3, 'slow-match', 'Brass guns cast in the Lisbon foundry and proved with slow-match: a little more weight of fire than other brass guns.'],
+  ['arsenale-rudder', 'Arsenale Rudder & Helm', 'VEN', 'Rudder', 3, 'brass-ingots', 'A teak rudder hung on brass pintles in the Venetian Arsenale way: the ship turns a little sharper.'],
+  ['genoese-anchor', 'Genoese Anchor & Cable', 'GOA', 'Anchor', 3, 'hemp', 'A bar-iron anchor on a cable laid from Ligurian hemp as well as Manila: the ship rides easier and swings quicker.'],
+  ['antwerp-duck-canvas', 'Antwerp Duck Canvas', 'ARP', 'Sails', 3, 'holland-linen', 'Duck canvas lined with Flemish linen at the seams, as the Antwerp sailmakers cut it: a little more speed from the same wind.'],
+  ['elbe-frames', 'Elbe Frames', 'HAM', 'Hold Frames', 3, 'memel-fir', 'Live-oak frames with Memel fir ceiling between them, Hamburg fashion: a little more cargo space in the same hull.'],
+  ['hanseatic-capstan', 'Hanseatic Capstan', 'LUB', 'Capstan', 3, 'osmund-iron', 'A teak capstan with osmund-iron pawls, as the Lubeck yards fit it: the anchor and yards come up a little faster.'],
+  ['danzig-oak-planking', 'Danzig Oak Planking', 'GDA', 'Planking', 2, 'pine-pitch', 'Doubled planking of the straight Polish oak Gdansk ships, payed with pine pitch: a little stronger than other oak.'],
+  ['london-pattern-chasers', 'London-pattern Chasers', 'LON', 'Chase Guns', 3, 'gunpowder', 'Brass chasers bored to the London pattern and proved with English powder: they reach and aim a little further.'],
+  ['provencal-headsails', 'Provencal Jib & Staysail', 'MRS', 'Headsails', 3, 'linseed', 'A duck jib and staysail dressed with linseed oil, as the Marseille sailmakers do: the ship answers the helm a little quicker.'],
+  ['surat-teak-sheathing', 'Surat Teak Sheathing', 'SRT', 'Sheathing', 3, 'coir', 'Teak and copper over a bed of coir caulking, as the Surat yards lay it: a little more armour and hull from the same bottom.'],
+  ['malabar-chain-pumps', 'Malabar Chain Pumps', 'KOC', 'Bilge Pumps', 3, 'coco-fibre', 'Teak chain pumps with coco-fibre packing, Kochi fashion: they keep a little more water down.'],
+  ['callao-copper-ballast', 'Callao Copper-pig Ballast', 'CLL', 'Ballast', 3, 'chilean-copper', 'Pig-iron ballast topped with copper pigs from the Callao quay: a little stiffer and steadier than plain pig iron.'],
+]
+export const NAMED_MULT = 1.1
+/** One effect of a Named (meta 1): the grade's effect with buys × 1.10 (half up; speed to 0.01), spends as they are. */
+export function namedDelta(stat, gradeDelta) {
+  if (gradeDelta < 0) return gradeDelta
+  const v = gradeDelta * NAMED_MULT
+  return stat === 'speed' ? round2(v) : roundUp(v)
+}
+
 /** THE GENERATOR. Pure but for reading data/*.json; throws on any broken rule. */
 export function generateGear() {
   const fittings = Object.fromEntries(readJson('data/fittings.json').fittings.map((f) => [f.code, f]))
@@ -319,6 +403,8 @@ export function generateGear() {
   }
   const use = []
   for (const [code, p] of Object.entries(profiles)) use.push({ code, ...useOf(code, p.baseType, p.active) })
+  const g1ByBase = {}                       // S15: the T2 of a base type is cut from its G1
+  const gradeItem = {}                      // S15: `${base}#${grade}` → the generated row the Named is a pattern of
 
   for (const b of BASE_TYPES) {
     // G1: the live row (anchor) or the new one
@@ -333,6 +419,7 @@ export function generateGear() {
     } else {
       g1 = { ...b.g1, live: false }
     }
+    g1ByBase[b.base] = g1
     const ladder = [[1, g1.code, g1.name, g1.recipe, g1.note], ...b.grades.map((x, i) => [i + 2, ...x])]
     for (const [g, code, name, recipe, note] of ladder) {
       if (g === 1 && g1.live) continue          // the live twelve are not re-written: their rows are 0068 / 0074 / 0132's
@@ -356,13 +443,15 @@ export function generateGear() {
       if (b.skill && g >= 2) requirements.push({ skill: b.skill, level: g })
       if (b.also) requirements.push({ ...b.also })
       for (const q of requirements) if (!skills.has(q.skill)) throw new Error(`${code}: skill ${q.skill} is not in data/skills.json`)
-      items.push({
+      const item = {
         code, name, slot: g1.slot, buys: g1.buys, spends: g1.spends, note, volume: g1.volume,
         wsTier: g === 1 ? g1.wsTier : g <= 3 ? Math.max(2, g1.wsTier) : 3,
         baseType: b.base, rack: b.rack, grade: g, meta: 0,
         deck: roundUp(g1.deck * (1 + 0.1 * (g - 1))), hands: roundUp(g1.hands * (1 + 0.1 * (g - 1))), active: g1.active,
         effects, recipe, requirements,
-      })
+      }
+      items.push(item)
+      gradeItem[`${b.base}#${g}`] = item
       use.push({ code, ...useOf(code, b.base, g1.active) })
     }
   }
@@ -393,9 +482,93 @@ export function generateGear() {
     }
   }
   if (items.length !== 103 + REFIT_COUNT) throw new Error(`the gear is 103 Wave A items + ${REFIT_COUNT} refits; the generator made ${items.length}`)
+
+  // S15 (§6.2's T2 row): ONE T2 per base type but the figurehead — t2Delta over the G1's effects, Deck and
+  // Hands × 1.5, the module skill V + its specialisation I (+ the base type's second skill), tier 3.
+  for (const [skill, spec] of Object.entries(T2_SPEC)) {
+    if (!skills.has(skill)) throw new Error(`T2_SPEC: skill ${skill} is not in data/skills.json`)
+    if (!skills.has(spec)) throw new Error(`T2_SPEC: specialisation ${spec} is not in data/skills.json`)
+  }
+  const take = (code, name) => {
+    if (codes.has(code)) throw new Error(`${code}: a second item of that code`)
+    if (names.has(name.toLowerCase())) throw new Error(`${name}: a second item of that name`)
+    if (!/^[a-z][a-z0-9-]+$/.test(code)) throw new Error(`${code}: not a code`)
+    codes.add(code)
+    names.add(name.toLowerCase())
+  }
+  const checkRecipe = (code, recipe) => {
+    if (recipe.length < 2 || recipe.length > 5) throw new Error(`${code}: a recipe is 2-5 goods (0068), not ${recipe.length}`)
+    for (const x of recipe) if (!goods.has(x.in)) throw new Error(`${code}: good ${x.in} is not in data/goods.json`)
+    if (new Set(recipe.map((x) => x.in)).size !== recipe.length) throw new Error(`${code}: a good twice in one recipe`)
+  }
+  const checkEffects = (code, effects) => {
+    for (const e of effects) if (!STATS.has(e.stat) || e.delta === 0) throw new Error(`${code}: effect ${e.stat} ${e.delta}`)
+    if (!(effects.some((e) => e.delta > 0) && effects.some((e) => e.delta < 0))) throw new Error(`${code}: every fitting buys one stat and spends another (0074)`)
+  }
+  const T2_COUNT = BASE_TYPES.length - 1
+  for (const b of BASE_TYPES) {
+    if (b.base === 'Figurehead') { if (b.t2) throw new Error('the figurehead has no T2 (it moves no stat at any rung)'); continue }
+    if (!b.t2) throw new Error(`${b.base}: no T2 (every base type but the figurehead has one, §6.2)`)
+    if (!b.skill || !(b.skill in T2_SPEC)) throw new Error(`${b.base}: module skill ${b.skill} has no specialisation in T2_SPEC`)
+    const [code, name, recipe, note] = b.t2
+    const g1 = g1ByBase[b.base]
+    take(code, name)
+    if (note.length <= 12) throw new Error(`${code}: note too short`)
+    checkRecipe(code, recipe)
+    const effects = g1.effects.map(([stat, delta]) => ({ stat, delta: t2Delta(stat, delta) }))
+    checkEffects(code, effects)
+    const requirements = [{ skill: b.skill, level: 5 }, { skill: T2_SPEC[b.skill], level: 1 }]
+    if (b.also) requirements.push({ ...b.also })
+    items.push({
+      code, name, slot: g1.slot, buys: g1.buys, spends: g1.spends, note, volume: g1.volume, wsTier: 3,
+      baseType: b.base, rack: b.rack, grade: 5, meta: 5,
+      deck: roundUp(g1.deck * 1.5), hands: roundUp(g1.hands * 1.5), active: g1.active,
+      effects, recipe, requirements,
+    })
+    use.push({ code, ...useOf(code, b.base, g1.active) })
+  }
+  if (items.length !== 103 + REFIT_COUNT + T2_COUNT) throw new Error(`the gear is 103 Wave A items + ${REFIT_COUNT} refits + ${T2_COUNT} T2; the generator made ${items.length}`)
+  // §6.4's three T2 rows, verbatim
+  const fx = (code) => Object.fromEntries(items.find((i) => i.code === code).effects.map((e) => [e.stat, e.delta]))
+  const expectFx = (code, want) => {
+    const got = fx(code)
+    for (const [stat, v] of Object.entries(want)) if (got[stat] !== v) throw new Error(`§6.4: ${code} ${stat} should be ${v}, the rule gives ${got[stat]}`)
+  }
+  expectFx('long-eighteens', { attack: 156, reach: 39, hold: -25, handling: -8 })
+  expectFx('racing-courses', { speed: 1.08, handling: -10 })
+  expectFx('orlop-stowage', { hold: 45, speed: -0.44, handling: -6 })
+
+  // S15 (§6.2's Named row): a city's own pattern of ONE grade of ONE base type — namedDelta over the grade's
+  // effects, Deck −1, the grade's recipe + one good the city is known for, the grade's requirements, tier 3.
+  const namedCities = new Set()
+  for (const [code, name, city, base, grade, extra, note] of NAMED) {
+    const src = gradeItem[`${base}#${grade}`]
+    if (!src) throw new Error(`${code}: no generated ${base} G${grade} to pattern (a Named is of a generated grade, never the live G1)`)
+    if (!/^[A-Z]{3}$/.test(city)) throw new Error(`${code}: ${city} is not a port code`)
+    if (namedCities.has(city)) throw new Error(`${code}: a second Named for ${city} (one per tier-3 city)`)
+    namedCities.add(city)
+    take(code, name)
+    if (note.length <= 12) throw new Error(`${code}: note too short`)
+    const recipe = [...src.recipe, { in: extra, qty: 1 }]
+    checkRecipe(code, recipe)
+    const effects = src.effects.map((e) => ({ stat: e.stat, delta: namedDelta(e.stat, e.delta) }))
+    checkEffects(code, effects)
+    items.push({
+      code, name, slot: src.slot, buys: src.buys, spends: src.spends, note, volume: src.volume, wsTier: 3,
+      baseType: base, rack: src.rack, grade, meta: 1, city,
+      deck: Math.max(0, src.deck - 1), hands: src.hands, active: src.active,
+      effects, recipe, requirements: src.requirements.map((q) => ({ ...q })),
+    })
+    use.push({ code, ...useOf(code, base, src.active) })
+  }
+  if (NAMED.length !== 12) throw new Error(`§6.2: one Named per tier-3 city (12); the table has ${NAMED.length}`)
+  if (items.length !== 103 + REFIT_COUNT + T2_COUNT + NAMED.length) throw new Error(`the gear is 103 Wave A + ${REFIT_COUNT} refits + ${T2_COUNT} T2 + ${NAMED.length} Named = 151; the generator made ${items.length}`)
+  expectFx('lisbon-cast-brass-guns', { attack: 106, reach: 26 })
+  if (use.length !== items.length + Object.keys(profiles).length) throw new Error(`every item has one use row: ${use.length} for ${items.length} + ${Object.keys(profiles).length} live`)
+
   use.sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
   return {
-    _: 'GENERATED by scripts/build-gear.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135; §6.1 / §6.5 / §6.8, S13, migration 0158).',
+    _: 'GENERATED by scripts/build-gear.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135; §6.1 / §6.5 / §6.8, S13, migration 0158; §6.2 T2 + Named, S15, migration 0162).',
     items,
     use,
   }
@@ -421,29 +594,55 @@ function itemRows(I) {
   ]
 }
 
-/** The SQL VALUES migration 0135 loaded (`--sql`): the 103 Wave A items (the refits are 0158's). */
+/** Which migration an item's rows belong to: 0135 (Wave A, meta 0), 0158 (the refits) or 0162 (T2 + Named, meta > 0). */
+const isS12 = (i) => i.rack !== 'refit' && i.meta === 0
+const isS15 = (i) => i.meta > 0
+const useRows = (list) => list.map((u) => `  (${q(u.code)}, ${u.trigger === null ? 'null' : q(u.trigger)}, ${q(JSON.stringify(u.consumes))})`).join(',' + NL)
+
+/** The SQL VALUES migration 0135 loaded (`--sql`): the 103 Wave A items (the refits are 0158's, T2 + Named 0162's). */
 export function gearSql(gen = generateGear()) {
-  return itemRows(gen.items.filter((i) => i.rack !== 'refit')).join(NL)
+  return itemRows(gen.items.filter(isS12)).join(NL)
 }
 
-/** The SQL VALUES migration 0158 loads (`--sql-0158`), pasted verbatim: the 14 refits, then what works
- *  every item (public.item_use). The world guard holds the database to generateGear() on every apply. */
+/** The SQL VALUES migration 0158 loaded (`--sql-0158`), pasted verbatim: the 14 refits, then what works
+ *  every item 0158 knew (public.item_use — the 12 live + 103 Wave A + 14 refits; 0162 adds its own). The
+ *  world guard holds the database to generateGear() on every apply. */
 export function s13Sql(gen = generateGear()) {
+  const s15 = new Set(gen.items.filter(isS15).map((i) => i.code))
+  const use = gen.use.filter((u) => !s15.has(u.code))
   return [
     ...itemRows(gen.items.filter((i) => i.rack === 'refit')),
-    `-- item_use (${gen.use.length})`,
-    gen.use.map((u) => `  (${q(u.code)}, ${u.trigger === null ? 'null' : q(u.trigger)}, ${q(JSON.stringify(u.consumes))})`).join(',' + NL),
+    `-- item_use (${use.length})`,
+    useRows(use),
+  ].join(NL)
+}
+
+/** The SQL VALUES migration 0162 loads (`--sql-0162`), pasted verbatim: the 22 T2 and 12 Named items, what
+ *  works each (public.item_use), and the one city that makes each Named (public.item_city). */
+export function s15Sql(gen = generateGear()) {
+  const I = gen.items.filter(isS15)
+  const s15 = new Set(I.map((i) => i.code))
+  const named = I.filter((i) => i.meta === 1)
+  return [
+    ...itemRows(I),
+    `-- item_use (${s15.size})`,
+    useRows(gen.use.filter((u) => s15.has(u.code))),
+    `-- item_city (${named.length})`,
+    named.map((i) => `  (${q(i.code)}, ${q(i.city)})`).join(',' + NL),
   ].join(NL)
 }
 
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/build-gear.mjs')) {
   const gen = generateGear()
   const text = JSON.stringify(gen, null, 1) + NL
-  const says = `${gen.items.length} items, ${gen.use.length} item uses`
+  const n = (f) => gen.items.filter(f).length
+  const says = `${gen.items.length} items (${n(isS12)} Wave A + ${n((i) => i.rack === 'refit')} refits + ${n((i) => i.meta === 5)} T2 + ${n((i) => i.meta === 1)} Named), ${gen.use.length} item uses`
   if (process.argv.includes('--sql')) {
     console.log(gearSql(gen))
   } else if (process.argv.includes('--sql-0158')) {
     console.log(s13Sql(gen))
+  } else if (process.argv.includes('--sql-0162')) {
+    console.log(s15Sql(gen))
   } else if (process.argv.includes('--check')) {
     const now = readFileSync(join(ROOT, GEAR_FILE), 'utf8')
     if (now !== text) { console.error(`${GEAR_FILE} is NOT what scripts/build-gear.mjs generates — re-run it.`); process.exit(1) }

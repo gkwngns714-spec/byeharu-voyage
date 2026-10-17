@@ -13,6 +13,7 @@ import {
   type TrayDetent,
 } from '../../components/ui'
 import { HullCountry } from '../../live/HullCountry'
+import { HullTech } from '../../live/HullTech'
 import { useBuildingYard } from '../../live/useBuildingYard'
 import { useWorld } from '../../live/worldStore'
 import { formatDucats, formatInt, formatTons } from '../../lib/format'
@@ -135,6 +136,7 @@ export function PortYard({
                     <>
                       <HullCountry nation={hull.line_nation} compact />
                       {hull.line_nation ? ' ' : ''}
+                      <HullTech tech={hull.tech} />
                       {formatTons(hull.hold)}
                     </>
                   }
