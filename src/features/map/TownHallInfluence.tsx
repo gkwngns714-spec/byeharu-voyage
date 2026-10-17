@@ -93,6 +93,14 @@ export function TownHallInfluence({
           )}
         </Row>
       )}
+      {influence.next_count && (
+        <Row
+          label={`Next count ${new Date(influence.next_count).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', hour12: false })}`}
+          tone="muted"
+          hairline={false}
+          data-testid="townhall-next-count"
+        />
+      )}
       {canGive ? (
         <div className="pt-2">
           <Button onClick={() => setGiving(true)} data-testid="townhall-donate">

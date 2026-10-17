@@ -1,4 +1,4 @@
-import { formatDucats, formatDucatsDelta, formatInt, formatMiles, formatPctPoints, formatUnitPrice, pointLabel } from '../../lib/format'
+import { formatDucats, formatDucatsDelta, formatInt, formatMiles, formatPct, formatPctPoints, formatUnitPrice, pointLabel } from '../../lib/format'
 import { parsePointToken } from '../../domain/passage'
 import { routePausedEventWords } from '../../domain/route'
 // THE ONE READER OF A JSONB FIELD (2026-08-23). `num`/`str` were declared here AND in
@@ -27,6 +27,7 @@ import type { LedgerEvent } from '../../lib/rpc'
 //   ROUTE_PAUSED  {route, fleet, reason, code?, sentence?}        (0092; 0093: sentence names ports)
 //   NATION_CHANGED {from, from_name, to, to_name}                 (0143 — codes and names)
 //   DONATED       {port, port_name, amount, nation}               (0144 — a gift to a city)
+//   FLAG_CHANGED  {port, port_name, from, from_name, to, to_name, share_to, share_from}  (0146)
 //
 // An unknown kind falls through to the kind itself rather than to an invented sentence — a new
 // migration's event shows up as a legible row on the day it lands, without lying about its content.
@@ -204,6 +205,15 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     // A ROUTE THAT STOPPED ITSELF WHILE YOU WERE AWAY SAYS SO — the served REASON, worded in
     // src/domain/route (the one wording, shared with COMMAND's fold); the server's sentence only
     // for `error`, where it is the caught refusal's own.
+    // 0146: a city changed country at the daily count — `Havana now flies the flag of England (54% to 41%).`
+    case 'FLAG_CHANGED': {
+      const where = str(p, 'port_name') ?? (str(p, 'port') ? portName(str(p, 'port') as string) : 'A city')
+      const to = str(p, 'to_name') ?? str(p, 'to') ?? 'another country'
+      const a = num(p, 'share_to')
+      const b = num(p, 'share_from')
+      const shares = a !== null ? ` (${formatPct(a)}${b !== null && str(p, 'from') ? ` to ${formatPct(b)}` : ''})` : ''
+      return `${where} now flies the flag of ${to}${shares}.`
+    }
     // 0144: a gift to a city — it counts as influence for your country there.
     case 'DONATED': {
       const amount = num(p, 'amount')

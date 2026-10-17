@@ -2205,6 +2205,8 @@ export interface CityInfluence {
   since: string | null
   /** Donate is offered (the influence race and the city purses are on). */
   open: boolean
+  /** 0146 — when the daily count next runs (null while the race is off). */
+  next_count: string | null
   /** Each country's influence here, most first: points and the share of all (0..1). */
   shares: { nation: string; points: number; share: number }[]
   /** Yours, for the country you sail for now — null for a viewer with no company. */
