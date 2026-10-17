@@ -3,6 +3,12 @@
 Running record of **requests**, **decisions**, **work done**, **bugs**, and **fixes**.
 Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
+> **New entries live in `docs/dev-log/` (one file each, `YYYY-MM-DD-<slug>.md`, newest by
+> filename); this file is the archive up to 2026-10-17.** Do not add at the top of this file: every
+> PR that did so conflicted with every other open PR on the same lines, and GitHub stopped running
+> their CI until each was rebased. `.gitattributes` merges this file `union` as a belt for the PRs
+> still in flight that edit it.
+
 ---
 
 ## 2026-10-17 — 0141: the quay says nothing about where a good grows — `osn-0141-no-native-tag`
@@ -3126,6 +3132,12 @@ using at the same time (free memory under 1 GB for most of the day; a whole-chai
 
 Running record of **requests**, **decisions**, **work done**, **bugs**, and **fixes**.
 Newest entries at the top. Dates are absolute (YYYY-MM-DD).
+
+> **New entries live in `docs/dev-log/` (one file each, `YYYY-MM-DD-<slug>.md`, newest by
+> filename); this file is the archive up to 2026-10-17.** Do not add at the top of this file: every
+> PR that did so conflicted with every other open PR on the same lines, and GitHub stopped running
+> their CI until each was rebased. `.gitattributes` merges this file `union` as a belt for the PRs
+> still in flight that edit it.
 
 ).
   Fixed; second run **PROOFS PASSED: 10 file(s), 74/74 PASS markers**, including

@@ -3,3 +3,6 @@
 *.mjs text eol=lf
 *.sh text eol=lf
 *.json text eol=lf
+# One file, many PRs adding at its top: let both sides' lines land instead of conflicting
+# (new entries go to docs/dev-log/ since 2026-10-17; this is the belt for PRs still in flight).
+docs/DEV_LOG.md merge=union

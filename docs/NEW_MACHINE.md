@@ -164,9 +164,10 @@ the new computer.
 - **Never edit a migration that has been applied.** Editing does not re-run it, so the repo and
   production silently diverge with everything green. That is the D23 defect — see
   `docs/DEV_LOG.md`. A change goes in a NEW file that says the word "supersede" in its header.
-- **`tests/db.chain.spec.ts` has a `const LAST = '…'` pin** naming the last migration by
-  filename. Every new migration must move it, and parallel branches conflict there on purpose.
-  Resolve it to whichever file actually sorts last.
+- **`tests/db.chain.spec.ts` reads the end of the chain off the directory** (`newestMigrationOnDisk`
+  in `src/lib/db/chainSource.node.mjs`). Until 2026-10-17 it held a `const LAST = '…'` pin that
+  every migration PR moved, which made every merge conflict every other open PR. A new migration
+  needs no edit there.
 
 ---
 

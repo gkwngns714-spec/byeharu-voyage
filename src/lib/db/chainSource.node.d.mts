@@ -13,6 +13,9 @@ export declare const MIGRATIONS_DIR: string
 /** Every migration on disk, in apply order, CRLF normalised. */
 export declare function loadChain(): Promise<MigrationFile[]>
 
+/** The newest migration's filename on disk, by its 14-digit version — the end of the chain as a fact of the directory. */
+export declare function newestMigrationOnDisk(): Promise<string>
+
 /** The same chain with one migration's text rewritten — for proving the fingerprint moves. */
 export declare function loadChainWithEdit(
   name: string,

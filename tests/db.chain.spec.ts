@@ -29,6 +29,7 @@ import { openLocalDb, humanMigration, LOCAL_AUTH_UID } from '../src/lib/db/local
 import {
   loadChain,
   loadChainWithEdit,
+  newestMigrationOnDisk,
   removeScratchDataDir,
   scratchDataDir,
 } from '../src/lib/db/chainSource.node.mjs'
@@ -339,14 +340,27 @@ const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.
 // And to 0139 (any hull enters any harbour: the E_DRAFT gate, the merchants' draft filter and the docks draft knob removed).
 // And to 0140 (the Mughal capital is Karachi: Surat is Gujarat's since 0130; every capital is a harbour of its own nation).
 // And to 0141 (the quay says nothing about where a good grows: the owner removed the native tag; world.market serves no native key).
-const LAST = '20260818000141_the_quay_says_nothing_about_where_a_good_grows.sql'
+//
+// THE HISTORY ABOVE ENDS AT 0141. Since 2026-10-17 the end of the chain is READ FROM THE DIRECTORY
+// (`newestMigrationOnDisk`, the highest 14-digit version in supabase/migrations/) instead of being
+// pinned here by hand. The pin's whole job was to make a migration PR say out loud that the chain
+// had grown — and it did that by making EVERY migration PR edit this one line, so every merge to
+// main conflicted every other open PR and GitHub stopped running their CI. What it guarded is
+// kept: the loader's last file must be the newest file on disk (below), a new file is applied
+// with its receipt (migrations-apply-proof, db.chain's apply tests), and the fingerprint and the
+// sentence tests still run against the real newest file. What is gone is the manual bump.
 
 // ── the chain, as data ─────────────────────────────────────────────────────────────────────────
 
 test('the chain the client loads is the chain on disk, in apply order, LF-only', async () => {
   const files = await loadChain()
+  const LAST = await newestMigrationOnDisk()
+  expect(LAST).toMatch(/^\d{14}_[a-z0-9_]+\.sql$/)
+  expect(LAST.slice(0, 14) > FIRST.slice(0, 14)).toBe(true)
   expect(files.length).toBeGreaterThanOrEqual(10)
   expect(files[0].name).toBe(FIRST)
+  // The loader sorts by whole name; the directory read picks by version. They must agree on the
+  // end of the chain, or the client is loading a chain that stops short of what is on disk.
   expect(files[files.length - 1].name).toBe(LAST)
   for (const f of files) {
     expect(f.sql.includes('\r'), `${f.name} must be LF-only`).toBe(false)
@@ -377,6 +391,7 @@ test('the fingerprint moves when a migration changes, and only then', async () =
 
   // ONE CHARACTER of ONE migration — the case that matters, because it is the shape of a real
   // edit and the shape a weak hash misses.
+  const LAST = await newestMigrationOnDisk()
   const edited = await loadChainWithEdit(LAST, (sql) => `${sql}\n-- one added comment\n`)
   expect(fingerprintChain(edited)).not.toBe(base)
 
@@ -786,14 +801,15 @@ test('progress never goes backwards and never claims done before it is', () => {
   expect(progressFor('ready', 0, 0)).toBe(1)
 })
 
-// THE SENTENCE IS DERIVED FROM `LAST`, NOT REMEMBERED BESIDE IT. This spec was pinned to the
-// literal 'a bargain worth striking' (0024) and stayed pinned there while `LAST` moved twice — so
-// it was RED on an entirely correct chain, which is a guard that has stopped guarding (the
-// permanently-red-proof failure, docs/NO_SPAGHETTI.md §7). What it is actually for is the
+// THE SENTENCE IS DERIVED FROM THE NEWEST FILE, NOT REMEMBERED BESIDE IT. This spec was pinned to
+// the literal 'a bargain worth striking' (0024) and stayed pinned there while the chain's end moved
+// twice — so it was RED on an entirely correct chain, which is a guard that has stopped guarding
+// (the permanently-red-proof failure, docs/NO_SPAGHETTI.md §7). What it is actually for is the
 // TRANSFORM: strip the version, strip the extension, underscores become spaces. Deriving the
-// expectation from the same constant the rest of the file uses means it can never go stale again,
-// and the second case below is what keeps it non-vacuous — a broken transform cannot satisfy both.
-test('a migration filename reads as a sentence', () => {
+// expectation from the file the directory names means it can never go stale again, and the second
+// case below is what keeps it non-vacuous — a broken transform cannot satisfy both.
+test('a migration filename reads as a sentence', async () => {
+  const LAST = await newestMigrationOnDisk()
   expect(humanMigration(LAST)).toBe(
     LAST.replace(/^\d+_/, '').replace(/\.sql$/, '').replace(/_/g, ' '),
   )

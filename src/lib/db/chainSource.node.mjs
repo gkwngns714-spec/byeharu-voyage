@@ -36,6 +36,20 @@ export async function loadChain() {
 }
 
 /**
+ * The newest migration on disk, by its 14-digit version — THE END OF THE CHAIN AS A FACT OF THE
+ * DIRECTORY, not a constant anyone bumps. Until 2026-10-17 tests/db.chain.spec.ts pinned the last
+ * filename by hand, so every migration PR edited the same line and every merge to main conflicted
+ * every other open PR. Read independently of loadChain (by version, not by whole-name sort) so the
+ * spec can still prove the loader puts the newest file last.
+ */
+export async function newestMigrationOnDisk() {
+  const entries = await readdir(MIGRATIONS_DIR)
+  const versioned = entries.filter((f) => /^\d{14}_.+\.sql$/.test(f))
+  if (versioned.length === 0) throw new Error(`no versioned migration in ${MIGRATIONS_DIR}`)
+  return versioned.reduce((a, b) => (b.slice(0, 14) > a.slice(0, 14) ? b : a))
+}
+
+/**
  * The same chain with ONE migration altered, for proving that the fingerprint actually moves.
  * A change-detector nobody has ever seen change is not known to detect anything.
  */

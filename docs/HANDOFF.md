@@ -26,7 +26,8 @@ never will be** — danger is a probability table resolved server-side and repor
 > was 10 migrations long and there was no cloud project. Corrections carrying a date have been
 > inserted at each place where the file had gone false; the superseded text is struck through rather
 > than deleted, because how it was wrong is part of the record. For where the project actually
-> stands, read `docs/RESUME.md` and then the top entry of `docs/DEV_LOG.md`.
+> stands, read `docs/RESUME.md` and then the newest file in `docs/dev-log/` (`docs/DEV_LOG.md` is the
+> archive up to 2026-10-17).
 
 ---
 

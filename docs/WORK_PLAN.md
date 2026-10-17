@@ -28,7 +28,8 @@ This is why the queue in §4 is ordered and not a menu.
    - `docs/OWNER_REQUESTS.md` — the owner's own words, all of them. This is the highest authority.
    - `docs/DESIGN_V1.md` — the design. Nothing is invented that this does not already say.
    - `docs/WORK_PLAN.md` — this file. §4 says which slice is next.
-   - `docs/DEV_LOG.md`'s top entry — what the last session actually did.
+   - the newest file in `docs/dev-log/` (one entry per file, newest by filename; `docs/DEV_LOG.md`
+     is the archive up to 2026-10-17) — what the last session actually did.
 2. **Read the deploy state from the target, not from prose.** `supabase migration list --linked`.
    Every doc in this repo has been wrong about the head at some point; the database has not.
 3. **Take the next unstarted slice from §4.** Not a later one because it looks easier.
@@ -160,7 +161,9 @@ A session that ends without these has not finished, however much code it wrote.
 
 1. **`docs/OWNER_REQUESTS.md`** — every instruction the owner gave, in their words, the moment it
    was given. A row leaves OPEN only when built **and driven in the running game**.
-2. **`docs/DEV_LOG.md`** — one entry: what landed, what it measured, what it deliberately did not
+2. **`docs/dev-log/YYYY-MM-DD-<slug>.md`** — one entry, one NEW file (never the top of
+   `docs/DEV_LOG.md`, which is the archive up to 2026-10-17: two PRs adding at its top conflicted
+   every time): what landed, what it measured, what it deliberately did not
    do, and what went wrong on the way. The mistakes are the valuable part; they are what stops the
    next session repeating them.
 3. **This file's §4** — tick the slice, so the next session knows where the queue is.
