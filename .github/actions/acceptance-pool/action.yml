@@ -2,7 +2,8 @@ name: Acceptance pool
 description: >
   Run one pool (one shard of one kind) of the Playwright suite against a served local-PGlite build
   and hand its counts to the `acceptance` verdict. Shared by acceptance.yml's three shard jobs so
-  their steps cannot drift apart. See acceptance.yml for WHY the suite is cut into pools.
+  their steps cannot drift apart. See acceptance.yml for WHY the suite is cut into pools, and
+  scripts/ci/select-specs.mjs for which specs a PR runs.
 
 inputs:
   kind:
@@ -31,11 +32,52 @@ runs:
       shell: bash
       run: npm ci
 
+    # THE SELECTION (2026-10-17): the `select` job's selection.json — which specs this run covers
+    # (all of them on main; the affected ones on a PR) and the npc pool's member list. One file, one
+    # authority, read by every shard and by the verdict.
+    - name: Fetch this run's spec selection
+      uses: actions/download-artifact@v4
+      with:
+        name: spec-selection
+        path: spec-selection
+
+    # THE POOLS ARE CUT BY FILE NAME, and the three cuts are complements of each other by
+    # construction: db = ^db\. ; npc = every spec that imports tests/npcOn.fixture.ts (listed by
+    # select-specs.mjs from THIS checkout, so a new merchants-on spec joins the npc pool without
+    # anyone listing it) ; plain = everything else. Inside a pool the split is by MEASURED TIME
+    # (scripts/ci/shard-plan.mjs, tests/shard-weights.json), narrowed on a PR to the selected spec
+    # files (--select). The verdict independently requires the pools' passes to sum to the
+    # denominator, so a cut that lost or doubled a file is red.
+    #
+    # PLANNED FIRST (2026-10-17), before the cache, the browser and the build: a PR shard whose
+    # plan is empty skips all three and reports "planned 0" — minutes, not a build, for nothing.
+    - name: Plan this shard
+      id: plan
+      shell: bash
+      env:
+        KIND: ${{ inputs.kind }}
+        GREP_INVERT: ${{ inputs.grep-invert }}
+      run: |
+        set -euo pipefail
+        npc="$(jq -r '.pools.npc[]' spec-selection/selection.json | sed 's/\./\\./g' | paste -sd'|')"
+        [ -n "$npc" ] || { echo "::error::selection.json lists no npc-pool spec — the npc pool has nothing to cut"; exit 1; }
+        case "$KIND" in
+          db)    cut='--files=^db\.' ;;
+          npc)   cut="--files=^($npc)\$" ;;
+          plain) cut="--not-files=^db\\.|^($npc)\$" ;;
+          *)     echo "unknown pool $KIND"; exit 1 ;;
+        esac
+        echo "pool $KIND, shard ${{ inputs.index }}/${{ inputs.total }}: $cut   (selection: $(jq -r .mode spec-selection/selection.json))"
+        node scripts/ci/shard-plan.mjs ${{ inputs.index }} ${{ inputs.total }} shard-tests.txt "$cut" \
+          --select=spec-selection/selection.json ${GREP_INVERT:+"--grep-invert=$GREP_INVERT"}
+        echo "planned=$(cat shard-tests.txt.count)" >> "$GITHUB_OUTPUT"
+
     # THE SAME CACHE AND KEY as build.yml and deploy-pages.yml. Restored AFTER npm ci, which removes
     # node_modules whole. `restore-keys` brings back the newest older entry when the chain moved,
     # and its prefix snapshots (scripts/db/prefix-cache.mjs) mean only the new files are applied.
     # npc-on-world saves it; every pool only restores.
     - name: Restore the pre-built world image (keyed by the chain)
+      if: steps.plan.outputs.planned != '0'
       uses: actions/cache/restore@v4
       with:
         path: node_modules/.cache/byeharu-world-image
@@ -44,7 +86,7 @@ runs:
 
     # chromium ONLY, and only for the pools that open a page. The db.* specs are pure Node.
     - name: Install the browser
-      if: inputs.kind != 'db'
+      if: inputs.kind != 'db' && steps.plan.outputs.planned != '0'
       shell: bash
       run: npx playwright install --with-deps chromium
 
@@ -55,13 +97,14 @@ runs:
     # The no-skips floor below is what makes that impossible to miss. The db pool needs it too:
     # db.image.spec.ts certifies the image THIS build emitted, and the rpc specs boot from it.
     - name: Build the app under test (local-PGlite mode)
+      if: steps.plan.outputs.planned != '0'
       shell: bash
       run: npm run build
 
     # The world npc-on-world built for THIS run. fail-on-cache-miss: a shard that silently rebuilt
     # it would be the 30-minute cost the npc pool exists to remove.
     - name: Restore this run's merchants-on world
-      if: inputs.kind == 'npc'
+      if: inputs.kind == 'npc' && steps.plan.outputs.planned != '0'
       uses: actions/cache/restore@v4
       with:
         path: node_modules/.cache/byeharu-npc-on
@@ -73,7 +116,7 @@ runs:
     # that env var is left unset on purpose so the config stays the single authority for the URL.
     # If they ever disagree, every browser test skips — which the no-skips floor turns red.
     - name: Serve the build
-      if: inputs.kind != 'db'
+      if: inputs.kind != 'db' && steps.plan.outputs.planned != '0'
       shell: bash
       run: |
         set -euo pipefail
@@ -90,49 +133,39 @@ runs:
         cat /tmp/preview.log
         exit 1
 
-    # THE POOLS ARE CUT BY FILE NAME, and the three cuts are complements of each other by
-    # construction: db = ^db\. ; npc = every spec that imports tests/npcOn.fixture.ts, found by
-    # grep in THIS checkout (so a new merchants-on spec joins the npc pool without anyone listing
-    # it) ; plain = everything else. Inside a pool the split is by MEASURED TIME
-    # (scripts/ci/shard-plan.mjs, tests/shard-weights.json). The verdict independently requires the
-    # pools' passes to sum to `playwright test --list`, so a cut that lost or doubled a file is red.
-    #
     # Reporters are set on the CLI rather than in playwright.config.ts so the config keeps
     # describing how a developer runs the suite. `json` is here only to be read by the next steps.
     - name: Run this shard of the suite
+      if: steps.plan.outputs.planned != '0'
       shell: bash
       env:
         PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-results.json
-        KIND: ${{ inputs.kind }}
         GREP_INVERT: ${{ inputs.grep-invert }}
       run: |
         set -euo pipefail
-        npc="$(grep -l 'npcOn.fixture' tests/*.spec.ts | xargs -n1 basename | sed 's/\./\\./g' | paste -sd'|')"
-        [ -n "$npc" ] || { echo "::error::no spec imports npcOn.fixture — the npc pool has nothing to run"; exit 1; }
-        case "$KIND" in
-          db)    cut='--files=^db\.' ;;
-          npc)   cut="--files=^($npc)\$" ;;
-          plain) cut="--not-files=^db\\.|^($npc)\$" ;;
-          *)     echo "unknown pool $KIND"; exit 1 ;;
-        esac
-        echo "pool $KIND, shard ${{ inputs.index }}/${{ inputs.total }}: $cut"
-        node scripts/ci/shard-plan.mjs ${{ inputs.index }} ${{ inputs.total }} shard-tests.txt "$cut" ${GREP_INVERT:+"--grep-invert=$GREP_INVERT"}
         npx playwright test --test-list shard-tests.txt ${GREP_INVERT:+--grep-invert "$GREP_INVERT"} --reporter=list,html,json
 
     # THE NON-VACUITY FLOOR, PER SHARD. Green is not "playwright exited 0" — it is "the tests that
     # matter actually ran". Every skip in tests/ lives in layout.spec.ts and every one of them
     # fires on a condition this job exists to rule out: nothing served, or a cloud build sitting
-    # on /auth. So a skip here is a failure, and so is a shard that ran nothing.
+    # on /auth. So a skip here is a failure, and so is a shard that ran nothing — UNLESS its plan
+    # was empty, which only a PR's scoped selection can produce (shard-plan.mjs refuses an empty
+    # plan otherwise). "Planned 0, ran 0" is reported as exactly that, never as a pass of tests.
     - name: Every test in this shard ran — no skips, and not zero tests
       if: always()
       shell: bash
       run: |
         set -euo pipefail
+        planned="${{ steps.plan.outputs.planned }}"
+        if [ "$planned" = "0" ]; then
+          echo "no affected specs in this pool: ${{ inputs.kind }} ${{ inputs.index }}/${{ inputs.total }} planned 0 test(s) under this PR's selection, and ran none."
+          exit 0
+        fi
         test -f playwright-results.json || {
           echo "::error title=No JSON report::${{ inputs.kind }} ${{ inputs.index }}/${{ inputs.total }} did not run to completion"; exit 1; }
         expected=$(jq -r '.stats.expected // 0' playwright-results.json)
         skipped=$(jq -r '.stats.skipped  // 0' playwright-results.json)
-        echo "${{ inputs.kind }} ${{ inputs.index }}/${{ inputs.total }} — expected: $expected   skipped: $skipped"
+        echo "${{ inputs.kind }} ${{ inputs.index }}/${{ inputs.total }} — planned: $planned   expected: $expected   skipped: $skipped"
         if [ "$expected" -eq 0 ]; then
           echo "::error title=Vacuous shard::0 tests passed. A green tick over nothing is not a proof."
           exit 1
@@ -147,18 +180,22 @@ runs:
         echo "OK: $expected test(s) ran, none skipped."
 
     # The shard's COUNTS only — a few hundred bytes — for the verdict job. Never the report: a
-    # report on every run is what hit the artifact quota on 2026-08-22.
+    # report on every run is what hit the artifact quota on 2026-08-22. `planned` travels with them
+    # so the verdict can tell an empty plan from a shard that died.
     - name: Hand this shard's counts to the verdict
       if: always()
       shell: bash
       run: |
         set -euo pipefail
         id="${{ inputs.kind }}-${{ inputs.index }}"
+        planned="${{ steps.plan.outputs.planned }}"
         mkdir -p shard-stats
-        if [ -f playwright-results.json ]; then
-          jq --arg id "$id" '{shard: $id, stats: .stats}' playwright-results.json > "shard-stats/shard-$id.json"
+        if [ "$planned" = "0" ]; then
+          echo "{\"shard\": \"$id\", \"planned\": 0, \"stats\": {\"expected\": 0, \"skipped\": 0, \"unexpected\": 0, \"flaky\": 0}}" > "shard-stats/shard-$id.json"
+        elif [ -f playwright-results.json ]; then
+          jq --arg id "$id" --argjson planned "${planned:-null}" '{shard: $id, planned: $planned, stats: .stats}' playwright-results.json > "shard-stats/shard-$id.json"
         else
-          echo "{\"shard\": \"$id\", \"stats\": null}" > "shard-stats/shard-$id.json"
+          echo "{\"shard\": \"$id\", \"planned\": ${planned:-null}, \"stats\": null}" > "shard-stats/shard-$id.json"
         fi
         cat "shard-stats/shard-$id.json"
 

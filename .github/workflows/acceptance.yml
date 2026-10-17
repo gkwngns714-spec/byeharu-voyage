@@ -1,5 +1,40 @@
 name: Acceptance (the whole spec suite, against a served build)
 
+# ══ ON A PULL REQUEST: ONLY THE SPECS THE DIFF CAN REACH (2026-10-17) ══════════════════════════════
+# The owner's order: "make CI shorter — CI tests only from where we made something new, not the
+# whole game". So a PR runs the specs its change can reach, and a push to main runs EVERY spec,
+# exactly as before — main's run is the net that catches whatever a selection rule cannot see.
+#
+#   WHO DECIDES: scripts/ci/select-specs.mjs, in the `select` job, and nothing else. It diffs the
+#   PR's merge commit against its FIRST PARENT and writes selection.json — the selected spec files,
+#   each with the rule(s) that selected it, printed in that job's log and its step summary. Every
+#   shard and the verdict read that one file. Its rules, in short (the script's header is the
+#   authority, and docs/CI.md explains them):
+#     F  full suite: playwright config, package(-lock).json, tsconfig, vite.config, index.html,
+#        src/main.tsx, src/lib/db/**, the world-image pipeline in scripts/db, tests/appReady.fixture.ts,
+#        or an EDITED (not added) migration
+#     C  a changed spec;  G  a spec importing a changed file (transitively);  N  a spec naming a
+#        changed file;  T  a directory-walking spec when its tree changed;  A  the app shell
+#        (src/app, index.css, components/ui, public) → every browser spec;  I  a browser spec naming
+#        a data-testid a changed src file declares;  L  a changed face → layout + wide.layout
+#     S  an ADDED migration: the functions/tables it defines (and the names it mentions) → the specs
+#        naming them, and through the RPC catalogue into the src that calls them; npc_* → the npc
+#        pool; always db.chain + db.image
+#   The script's own positive controls (real commits with known answers: docs-only → nothing,
+#   0136 → the trade_routes/port_offers specs, #141 → its three map specs, appReady → full) run
+#   first in `select`; a rule change that breaks one is red there.
+#
+#   THE SAME CHECK NAMES, ALWAYS: every job below still runs and reports. A shard whose share of
+#   the selection is empty plans nothing, skips its build, logs "no affected specs in this pool"
+#   and succeeds; the merchants-on world is built only when an npc-pool spec is selected.
+#
+#   THE VERDICT ON A PR requires passed == the number of tests `playwright test --list` finds in
+#   the SELECTED files (minus a deferred growth test), zero skips, every shard reported, and a
+#   shard that passed nothing to have PLANNED nothing. On main: passed == `--list` over all of
+#   tests/, unchanged. Zero selected on a PR is green with the log saying so — nothing it changed is
+#   reachable by a spec, and main's full run is where that claim is checked.
+# ═════════════════════════════════════════════════════════════════════════════════════════════════
+
 # WHAT THIS PROVES
 #   That the app RUNS. build.yml's own header says a green tick there means "it builds, not it
 #   works"; this is the workflow that closes that sentence. It builds the app exactly as
@@ -86,29 +121,99 @@ permissions:
 # (.github/actions/acceptance-pool, scripts/ci/shard-plan.mjs --files / --not-files), and the
 # verdict now requires all six shards' counts to sum to `playwright test --list`.
 #
-# THE ONE TEST A PR MAY DEFER (stated, not hidden): db.chain's growth test re-applies the whole
-# chain from 0041 and proves a live house survives it. On a PR that touches none of what it reads —
-# supabase/migrations/, src/lib/db/, tests/db.chain.spec.ts, tests/frozenChain.ts,
-# package.json / package-lock.json — its answer is the one main's own run already gave, so it is
-# deferred to main (which now finishes, see `concurrency`). The verdict lists with the same
-# --grep-invert, says so in its log, and every PR that touches any of those paths runs it.
+#
+# THE GROWTH TEST (stated, not hidden): db.chain's "the world grows under a live house" re-applies
+# the whole chain from 0041 and proves a live house survives it (45-65 min). Since 2026-10-17 a PR
+# runs it only when the CHAIN MACHINERY changed — src/lib/db/**, tests/frozenChain.ts, scripts/db/**,
+# package(-lock).json, vite.config.ts, an edited (not added) migration, or tests/db.chain.spec.ts
+# beyond the routine `// And to 0NNN` + `const LAST =` bump every migration PR makes. A new
+# migration ALONE no longer runs it: that file is applied on main's snapshot with its self-asserts
+# by migrations-apply-proof, and db.chain's other tests apply it; main's full run then re-proves
+# the growth. The verdict lists with the same --grep-invert and says so in its log.
 jobs:
-  npc-on-world:
+  # ── THE SELECTION — one job, one file, read by everything below ──────────────────────────────
+  select:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 10
+    outputs:
+      mode: ${{ steps.sel.outputs.mode }}
+      specs: ${{ steps.sel.outputs.specs }}
+      grep_invert: ${{ steps.sel.outputs.grep_invert }}
+      npc_world: ${{ steps.sel.outputs.npc_world }}
     steps:
+      # Full history: the positive controls read real commits of this repo, and the diff needs the
+      # merge commit's first parent.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: The selector still gives the known answer for real commits (positive controls)
+        run: node scripts/ci/select-specs.mjs self-test
+
+      # Diffed against the merge commit's FIRST PARENT, not `pull_request.base.sha`: that sha is
+      # the base when the PR was last opened/synced and can be older than the main GitHub merged
+      # onto — run 38711128598 then counted main's own new migration as this PR's.
+      - name: Which specs this run covers, and why
+        id: sel
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node scripts/ci/select-specs.mjs --base HEAD^1 --head HEAD --out selection.json | tee selection.txt
+          else
+            node scripts/ci/select-specs.mjs --full --out selection.json | tee selection.txt
+          fi
+          {
+            echo "mode=$(jq -r .mode selection.json)"
+            echo "specs=$(jq -r '.specs | length' selection.json)"
+            echo "grep_invert=$(jq -r .growth.grepInvert selection.json)"
+            echo "npc_world=$(jq -r .npcWorld.run selection.json)"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$(jq -r .mode selection.json)" = "scoped" ]; then
+            echo "::notice title=Scoped acceptance::$(jq -r '.specs | length' selection.json) affected spec file(s) of $(ls tests/*.spec.ts | wc -l) — see this job's log for why each was selected; main runs them all"
+          fi
+          { echo '### Spec selection'; echo '```'; cat selection.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Hand the selection to every shard and the verdict
+        uses: actions/upload-artifact@v4
+        with:
+          name: spec-selection
+          path: |
+            selection.json
+            selection.txt
+          retention-days: 3
+
+  npc-on-world:
+    needs: select
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      NEEDED: ${{ needs.select.outputs.npc_world }}
+    steps:
+      - name: Is the merchants-on world needed by this run?
+        run: |
+          if [ "$NEEDED" = "true" ]; then echo "yes: an npc-pool spec is selected — building it"
+          else echo "no affected specs in the npc pool: the merchants-on world is not built on this run"; fi
+
+      - uses: actions/checkout@v4
+        if: env.NEEDED == 'true'
+
+      - uses: actions/setup-node@v4
+        if: env.NEEDED == 'true'
         with:
           node-version: 24
           cache: npm
 
       - name: Install dependencies (from the lockfile)
+        if: env.NEEDED == 'true'
         run: npm ci
 
       # The same cache and key as the shards, build.yml and deploy-pages.yml (see below for why).
       - name: Restore the pre-built world image (keyed by the chain)
+        if: env.NEEDED == 'true'
         id: world
         uses: actions/cache/restore@v4
         with:
@@ -117,11 +222,12 @@ jobs:
           restore-keys: world-image-
 
       - name: Build the app (local-PGlite mode) — the world image the fixture opens
+        if: env.NEEDED == 'true'
         run: npm run build
 
       # This job saves it now, not shard 1: it builds first, and every shard restores after it.
       - name: Save the pre-built world image
-        if: steps.world.outputs.cache-hit != 'true'
+        if: env.NEEDED == 'true' && steps.world.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: node_modules/.cache/byeharu-world-image
@@ -129,6 +235,7 @@ jobs:
 
       # No browser: the fixture is Node + PGlite. One worker, one build, every fixture check.
       - name: Build the merchants-on world once
+        if: env.NEEDED == 'true'
         run: npx playwright test -c playwright.npc-on.config.ts
 
       # A per-RUN key: the merchants sail on now(), so this world is never handed to another run
@@ -136,6 +243,7 @@ jobs:
       # A cache, not an artifact: artifacts count against the storage quota that turned a green
       # suite red on 2026-08-22; cache entries are evicted instead.
       - name: Hand it to the shards
+        if: env.NEEDED == 'true'
         uses: actions/cache/save@v4
         with:
           path: node_modules/.cache/byeharu-npc-on
@@ -147,47 +255,34 @@ jobs:
   # npc   — the specs that import tests/npcOn.fixture.ts. They wait for npc-on-world.
   # One composite action (.github/actions/acceptance-pool) runs every shard of every pool, so the
   # steps and the floors cannot drift apart. The cut is by file name and the three cuts are each
-  # other's complement (see the action); the verdict sums all of them against `--list`.
+  # other's complement (see the action); the verdict sums all of them against the denominator.
+  # On a PR each pool runs only its share of the selection; an empty share succeeds, saying so.
   acceptance-db:
     name: acceptance-shard (db)
+    needs: select
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    outputs:
-      grep_invert: ${{ steps.defer.outputs.grep_invert }}
     steps:
-      # Depth 2: the PR's merge commit AND its first parent, the main it was merged onto.
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      # Diffed against the merge commit's FIRST PARENT, not `pull_request.base.sha`: that sha is
-      # the base when the PR was last opened/synced and can be older than the main GitHub merged
-      # onto — run 38711128598 then counted main's own new migration as this PR's.
-      - name: Does this PR touch what the growth test reads?
-        id: defer
+      - name: The growth test on this run
+        env:
+          GREP_INVERT: ${{ needs.select.outputs.grep_invert }}
         run: |
-          set -euo pipefail
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo "not a PR: the growth test runs"; echo "grep_invert=" >> "$GITHUB_OUTPUT"; exit 0
-          fi
-          changed="$(git diff --name-only HEAD^1 HEAD)"
-          echo "files this PR changes:"; echo "$changed" | sed 's/^/  /'
-          if echo "$changed" | grep -qE '^(supabase/migrations/|src/lib/db/|tests/db\.chain\.spec\.ts$|tests/frozenChain\.ts$|package(-lock)?\.json$)'; then
-            echo "it does: the growth test runs"; echo "grep_invert=" >> "$GITHUB_OUTPUT"
+          if [ -n "$GREP_INVERT" ]; then
+            echo "::notice title=Growth test deferred to main::this PR touches no chain machinery (see the select job's log); main's run proves it"
           else
-            echo "::notice title=Growth test deferred to main::this PR touches nothing db.chain's growth test reads; main's run proves it"
-            echo "grep_invert=the world grows under a live house" >> "$GITHUB_OUTPUT"
+            echo "the growth test runs on this run"
           fi
-
       - uses: ./.github/actions/acceptance-pool
         with:
           kind: db
           index: 1
           total: 1
-          grep-invert: ${{ steps.defer.outputs.grep_invert }}
+          grep-invert: ${{ needs.select.outputs.grep_invert }}
 
   acceptance-shard:
     name: acceptance-shard (${{ matrix.shard }}/3)
+    needs: select
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -210,7 +305,7 @@ jobs:
 
   acceptance-npc:
     name: acceptance-shard (npc ${{ matrix.shard }}/2)
-    needs: npc-on-world
+    needs: [select, npc-on-world]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -230,7 +325,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   acceptance:
     name: acceptance
-    needs: [npc-on-world, acceptance-shard, acceptance-npc, acceptance-db]
+    needs: [select, npc-on-world, acceptance-shard, acceptance-npc, acceptance-db]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -252,17 +347,34 @@ jobs:
           path: shard-stats
           merge-multiple: true
 
-      - name: All six shards ran, and together they ran EVERY test in tests/
+      # If `select` itself failed there is no selection to judge against, and this step's absence
+      # of the file fails the verdict below — never a green over an unknown denominator.
+      - name: Collect the selection
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: spec-selection
+          path: spec-selection
+
+      - name: All six shards ran, and together they ran EVERY selected test
         env:
+          SELECT_RESULT: ${{ needs.select.result }}
+          NPC_WORLD_RESULT: ${{ needs.npc-on-world.result }}
           SHARDS_RESULT: ${{ needs.acceptance-shard.result }}
           NPC_RESULT: ${{ needs.acceptance-npc.result }}
           DB_RESULT: ${{ needs.acceptance-db.result }}
-          GREP_INVERT: ${{ needs.acceptance-db.outputs.grep_invert }}
+          GREP_INVERT: ${{ needs.select.outputs.grep_invert }}
         run: |
           set -euo pipefail
           ls -la shard-stats || true
           fail=0
+          if [ "$SELECT_RESULT" != "success" ] || [ ! -f spec-selection/selection.json ]; then
+            echo "::error title=No selection::the select job finished '$SELECT_RESULT' — there is no denominator to judge the shards against"; exit 1
+          fi
+          mode="$(jq -r .mode spec-selection/selection.json)"
+          echo "selection: $mode — $(jq -r '.specs | length' spec-selection/selection.json) spec file(s)"
           total_expected=0
+          total_planned=0
           for i in plain-1 plain-2 plain-3 npc-1 npc-2 db-1; do
             f="shard-stats/shard-$i.json"
             if [ ! -f "$f" ]; then
@@ -271,38 +383,52 @@ jobs:
             if [ "$(jq -r '.stats == null' "$f")" = "true" ]; then
               echo "::error title=No JSON report::shard $i produced no Playwright report"; fail=1; continue
             fi
+            p=$(jq -r '.planned // "?"' "$f")
             e=$(jq -r '.stats.expected // 0' "$f"); s=$(jq -r '.stats.skipped // 0' "$f")
             u=$(jq -r '.stats.unexpected // 0' "$f"); fl=$(jq -r '.stats.flaky // 0' "$f")
-            echo "shard $i: expected=$e skipped=$s unexpected=$u flaky=$fl"
-            [ "$e" -gt 0 ] || { echo "::error title=Vacuous shard::shard $i passed 0 tests"; fail=1; }
+            echo "shard $i: planned=$p expected=$e skipped=$s unexpected=$u flaky=$fl"
+            # A shard that passed nothing is green ONLY when a PR's scoped selection planned it
+            # nothing. On main (full) an empty shard is refused by shard-plan.mjs itself.
+            if [ "$e" -eq 0 ]; then
+              if [ "$mode" = "scoped" ] && [ "$p" = "0" ]; then echo "  shard $i: no affected specs in this pool"
+              else echo "::error title=Vacuous shard::shard $i passed 0 tests (planned $p)"; fail=1; fi
+            fi
             [ "$s" -eq 0 ] || { echo "::error title=Skipped test(s)::shard $i skipped $s"; fail=1; }
             [ "$u" -eq 0 ] || { echo "::error title=Failed test(s)::shard $i had $u unexpected result(s)"; fail=1; }
             [ "$fl" -eq 0 ] || { echo "::error title=Flaky test(s)::shard $i had $fl flaky result(s)"; fail=1; }
             total_expected=$((total_expected + e))
+            [ "$p" = "?" ] || total_planned=$((total_planned + p))
           done
           # The denominator, from tests/ itself and not from the shards: a split that lost a file
-          # would otherwise sum to a smaller, perfectly green number.
-          # Listed with the db pool's own --grep-invert, which is empty unless that pool deferred the
-          # growth test to main — and then this log says so, by name.
+          # would otherwise sum to a smaller, perfectly green number. Listed with the same
+          # --grep-invert the db pool ran under, which is empty unless the growth test was deferred.
           if [ -n "$GREP_INVERT" ]; then
-            echo "::notice title=Deferred to main::\"$GREP_INVERT\" is not run on this PR (see acceptance-db's log for why); the denominator below excludes it"
+            echo "::notice title=Deferred to main::\"$GREP_INVERT\" is not run on this PR (see the select job's log for why); the denominator below excludes it"
           fi
-          listed=$(npx playwright test --list ${GREP_INVERT:+--grep-invert "$GREP_INVERT"} | sed -n 's/^Total: \([0-9][0-9]*\) tests\{0,1\} in .*/\1/p' | tail -1)
-          echo "tests in tests/ (playwright test --list): ${listed:-?}   passed across the shards: $total_expected"
-          if [ -z "$listed" ] || [ "$listed" -eq 0 ]; then
-            echo "::error title=No denominator::playwright test --list found no tests"; fail=1
-          elif [ "$total_expected" -ne "$listed" ]; then
-            echo "::error title=Tests unaccounted for::$listed test(s) in tests/ but $total_expected passed across the six shards"; fail=1
+          if [ "$mode" = "full" ]; then
+            listed=$(npx playwright test --list ${GREP_INVERT:+--grep-invert "$GREP_INVERT"} | sed -n 's/^Total: \([0-9][0-9]*\) tests\{0,1\} in .*/\1/p' | tail -1)
+            what="tests in tests/ (playwright test --list)"
+            if [ -z "$listed" ] || [ "$listed" -eq 0 ]; then
+              echo "::error title=No denominator::playwright test --list found no tests"; fail=1; listed=0
+            fi
+          else
+            # Every test `playwright test --list` finds in the SELECTED files — counted from the
+            # list itself, not from the shard plan.
+            listed=$(node scripts/ci/select-specs.mjs count spec-selection/selection.json ${GREP_INVERT:+--grep-invert "$GREP_INVERT"})
+            what="tests in the $(jq -r '.specs | length' spec-selection/selection.json) selected spec file(s) (playwright test --list)"
           fi
-          if [ "$SHARDS_RESULT" != "success" ]; then
-            echo "::error title=Shard failed::the shard matrix finished '$SHARDS_RESULT'"; fail=1
+          echo "$what: ${listed:-?}   planned across the shards: $total_planned   passed across the shards: $total_expected"
+          if [ "$total_expected" -ne "$listed" ]; then
+            echo "::error title=Tests unaccounted for::$listed test(s) to run but $total_expected passed across the six shards"; fail=1
           fi
-          if [ "$NPC_RESULT" != "success" ]; then
-            echo "::error title=Shard failed::the npc pool finished '$NPC_RESULT'"; fail=1
-          fi
-          if [ "$DB_RESULT" != "success" ]; then
-            echo "::error title=Shard failed::the db pool finished '$DB_RESULT'"; fail=1
-          fi
+          for r in "select:$SELECT_RESULT" "npc-on-world:$NPC_WORLD_RESULT" "the shard matrix:$SHARDS_RESULT" "the npc pool:$NPC_RESULT" "the db pool:$DB_RESULT"; do
+            if [ "${r##*:}" != "success" ]; then
+              echo "::error title=Job failed::${r%:*} finished '${r##*:}'"; fail=1
+            fi
+          done
           [ "$fail" -eq 0 ] || exit 1
-          echo "OK: $total_expected of $listed test(s) passed across the db, plain and npc pools (6 shards), none skipped."
-
+          if [ "$mode" = "scoped" ] && [ "$listed" -eq 0 ]; then
+            echo "OK: no affected specs — this PR changes nothing a spec can reach (the select job says why); every shard reported, none ran a test. Main's full run checks that claim."
+          else
+            echo "OK: $total_expected of $listed test(s) passed across the db, plain and npc pools (6 shards), none skipped ($mode)."
+          fi
