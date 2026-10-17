@@ -49,7 +49,8 @@
 //
 // ── THE GROWTH TEST (db.chain's "the world grows under a live house", 45-65 min) ───────────────
 //   Runs on a PR only when the CHAIN MACHINERY changed: src/lib/db/**, tests/frozenChain.ts,
-//   scripts/db/** (not world-guard.mjs nor proofs/: in no snapshot key), package(-lock).json, vite.config.ts, an edited (not added) migration, or
+//   scripts/db/** (not world-guard.mjs nor proofs/: in no snapshot key), package(-lock).json, vite.config.ts, an edited (not added) migration, a migration
+//   added before the base chain's newest file (out of order: no kept snapshot is a prefix), or
 //   tests/db.chain.spec.ts (since 2026-10-17 it reads the chain's end off the directory, so a
 //   migration PR does not touch it; the `// And to 0NNN …` + `const LAST = …` bump every migration
 //   PR used to make stays exempt, for the control commits that predate the change). A new
@@ -283,9 +284,19 @@ export function select({ base, head, full = false }) {
 
   // ── growth ──
   if (full) out.growth = { run: true, why: ['not a pull request'] }
+  // An ADDED migration that sorts before the base chain's newest file (a file deployed out of order,
+  // e.g. 0150 landing after main took 0151/0152) makes the base chain a non-prefix of this one: no
+  // kept snapshot can fit it, exactly as when an old file changes — the same exemption.
+  const versionOf = (p) => /^supabase\/migrations\/(\d{14})_[^/]*\.sql$/.exec(p)?.[1]
+  const baseNewest = !full && base
+    ? git(['ls-tree', '--name-only', base, '--', 'supabase/migrations/']).split('\n').map(versionOf).filter(Boolean).sort().pop()
+    : undefined
   for (const c of changed) {
     if (GROWTH_RULES.some((re) => re.test(c.path))) out.growth.why.push(`${c.path} is chain machinery`)
     if (MIGRATION_RE.test(c.path) && c.status !== 'A') out.growth.why.push(`${c.path}: an existing migration changed`)
+    if (c.status === 'A' && baseNewest && versionOf(c.path) && versionOf(c.path) < baseNewest) {
+      out.growth.why.push(`${c.path}: added before the base chain's newest file (${baseNewest}) — no kept snapshot is a prefix`)
+    }
     if (c.path === 'tests/db.chain.spec.ts') {
       // The routine chain-end bump is history since 2026-10-17 (the spec reads the newest file off
       // disk); the exemption stays only so the control commits below keep their known answer.

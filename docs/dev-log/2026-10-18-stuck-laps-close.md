@@ -88,3 +88,14 @@ are verbatim in the file.
 Simulating a delay (a stale eta one day early) reproduces CI's failure with the old probe and
 passes with the new one. The branch is rebased onto main (0149 K0, 0151 K1), so 0151 applies after
 0150.
+
+**Second red: the apply-proof would not run an out-of-order file.** With 0150 placed between
+main's 0149 and 0151/0152, the disposable-chain job failed in 13 s: "the base chain is not a prefix
+of this chain ... refusing to rebuild from zero on a PR". No saved snapshot can be a prefix of a
+chain that has a file inserted before its last one. That is the same situation as an edited old
+migration, which is the no-from-zero rule's one exemption, but the selector did not count it.
+
+`scripts/ci/select-specs.mjs` now counts it: an added migration whose version sorts before the
+base chain's newest file sets `growth.run` (from-zero allowed, and logged). Its 5 self-test
+controls still hold, and on this PR it reports
+`20260818000150_…: added before the base chain's newest file (20260818000152)`.
