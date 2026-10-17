@@ -267,6 +267,59 @@ insert into public.gear_set_bonuses (line_code, pieces, stat, pct, flat) values
 on conflict (line_code, pieces, stat) do nothing;
 
 -- ── 3. THE 48 ITEMS (scripts/build-gear.mjs --sql-0163, verbatim) ───────────────────────────────
+-- THIS FILE'S OWN CODES — every completeness check below counts these rows, never a whole table (other
+-- slices add items too: K7's traders, K8's promotion items).
+create temp table new_items_0163 (code text primary key) on commit drop;
+insert into new_items_0163 values
+  ('bombardas-de-caca'),
+  ('gavea-da-carreira'),
+  ('lastro-de-sal'),
+  ('armillary-figurehead'),
+  ('armas-del-tercio'),
+  ('ancla-de-la-esperanza'),
+  ('tablazon-de-galeon'),
+  ('castile-lion-figurehead'),
+  ('voc-swivels'),
+  ('fluit-kaapstander'),
+  ('voc-frames'),
+  ('holland-lion-figurehead'),
+  ('sea-dogs-culverins'),
+  ('race-built-headsails'),
+  ('admiralty-copper'),
+  ('sea-dog-figurehead'),
+  ('sainte-barbe-du-ponant'),
+  ('toiles-de-bretagne'),
+  ('pompes-du-ponant'),
+  ('fleur-de-lis-figurehead'),
+  ('petrieri'),
+  ('agghiaccio'),
+  ('zavorra-dell-arsenale'),
+  ('san-marco-lion-figurehead'),
+  ('sahi-guns'),
+  ('tersane-anchor'),
+  ('cedar-planking'),
+  ('crescent-figurehead'),
+  ('malabar-boarding-gear'),
+  ('rahmani-and-kamal'),
+  ('monsoon-teak-sheathing'),
+  ('makara-figurehead'),
+  ('fire-lance-magazine'),
+  ('fenestrated-rudder'),
+  ('treasure-junk-bulkheads'),
+  ('dragon-eye-figurehead'),
+  ('ozutsu-swivels'),
+  ('typhoon-canvas'),
+  ('red-seal-ballast'),
+  ('red-seal-figurehead'),
+  ('cheonja-chongtong'),
+  ('ramie-sails'),
+  ('turtle-back-plating'),
+  ('dragon-head-figurehead'),
+  ('gunsmiths-kit'),
+  ('sailmakers-kit'),
+  ('shipwrights-kit'),
+  ('navigators-kit');
+
 insert into public.item_kinds (code, name, slot, buys, spends, note, volume, ws_tier) values
   ('bombardas-de-caca', 'Bombardas de Caça', 'weapon', 'Reach, Accuracy, Attack', 'Cargo space', 'Bow and stern chasers of the India run, wadded with Portuguese cork: they reach further, aim truer and hit harder too.', 4, 2),
   ('gavea-da-carreira', 'Gávea da Carreira', 'lookout', 'Sighting, Speed', 'Handling', 'A high fighting top with a Portuguese portolan and compass in it: the lookout sees further and the ship finds the wind sooner.', 2, 2),
@@ -1650,18 +1703,22 @@ begin
      or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.code)) from public.gear_racks c where c.code <> 'kit') <> v_b.racks_hash then
     raise exception '0163 self-assert FAIL: a live item or rack moved';
   end if;
-  if (select count(*) from public.item_kinds) <> v_b.kinds + 48
+  if (select count(*) from new_items_0163) <> 48
+     or (select count(*) from public.item_kinds k join new_items_0163 n on n.code = k.code) <> 48
+     or (select count(*) from public.item_profile ip join new_items_0163 n on n.code = ip.item_code) <> 48
+     or (select count(*) from public.item_use u join new_items_0163 n on n.code = u.item_code) <> 48
+     or (select count(*) from public.item_line il join new_items_0163 n on n.code = il.item_code) <> 44
      or (select count(*) from public.item_line) <> 44
      or exists (select line_code from public.item_line group by line_code having count(*) <> 4)
      or (select count(distinct line_code) from public.item_line) <> 11
      or exists (select 1 from public.item_line il join public.item_profile ip on ip.item_code = il.item_code
                  group by il.line_code having count(distinct ip.rack) <> 4)
      or exists (select 1 from public.item_line il join public.item_profile ip on ip.item_code = il.item_code where ip.meta <> 6)
-     or exists (select 1 from public.item_profile ip where ip.meta = 6 and not exists (select 1 from public.item_line il where il.item_code = ip.item_code))
-     or (select count(*) from public.item_profile where rack = 'kit') <> 4
+     or exists (select 1 from public.item_profile ip join new_items_0163 n on n.code = ip.item_code
+                 where ip.meta = 6 and not exists (select 1 from public.item_line il where il.item_code = ip.item_code))
+     or (select count(*) from public.item_profile ip join new_items_0163 n on n.code = ip.item_code where ip.rack = 'kit') <> 4
      or exists (select 1 from public.item_profile ip where ip.rack = 'kit' and (ip.deck <> 0 or ip.hands <> 0))
      or exists (select 1 from public.class_slots where slot = 'kit')
-     or (select count(*) from public.item_use) <> (select count(*) from public.item_kinds)
      or (select count(*) from public.perks) <> 10 or (select count(distinct line_code) from public.gear_set_bonuses) <> 11
      or (select count(*) from public.gear_set_names) <> 11
      or exists (select 1 from public.gear_set_bonuses gb where gb.stat not in ('hold', 'speed', 'handling', 'durability', 'armour', 'attack', 'accuracy', 'reach', 'sighting', 'hands'))
@@ -1679,8 +1736,8 @@ begin
      or exists (select 1 from public.item_line il where not exists (select 1 from public.skill_requirements r
                  where r.subject_kind = 'item' and r.subject_code = il.item_code and r.skill_code = il.line_code || '_MEDIUM' and r.level = 1))
      or exists (select 1 from public.item_recipes ir join public.item_profile ip on ip.item_code = ir.item_code
-                 where (ip.meta = 6 or ip.rack = 'kit')
-                   and not exists (select 1 from public.port_goods pg join public.ports p on p.id = pg.port_id
+                  join new_items_0163 n on n.code = ip.item_code
+                 where not exists (select 1 from public.port_goods pg join public.ports p on p.id = pg.port_id
                                     where pg.good_id = ir.good_id and public.port_offers(p.id, ir.good_id))) then
     raise exception '0163 self-assert FAIL: a Country piece breaks buys-one-spends-one, lacks its line''s Medium Hulls I, or a recipe good is sold nowhere';
   end if;
