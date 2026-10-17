@@ -430,6 +430,17 @@ export const RPCS = {
   worldNationStandings: { schema: 'world', fn: 'nation_standings', args: [] },
   // 0157 (docs/SKILLS_AND_CAPTAINS.md K5): seat a captain in a cabin of a ship, move her, or put her
   // ashore (ship null). Only in port — the server refuses E_NOT_IN_PORT otherwise.
+  // 0160 (docs/SKILLS_AND_CAPTAINS.md K6): your captains — levels in three tracks, homesickness,
+  // traits — and choosing the traits one of them uses (only ashore or in port).
+  worldCaptains: { schema: 'world', fn: 'captains', args: [] },
+  cmdCaptainTraitsSet: {
+    schema: 'cmd',
+    fn: 'captain_traits_set',
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_traits', type: 'text[]' },
+    ],
+  },
   cmdSeatCaptain: {
     schema: 'cmd',
     fn: 'seat_captain',

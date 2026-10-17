@@ -53,6 +53,8 @@ import type {
   PlayerView,
   PostedOfficer,
   SeatedCaptain,
+  CaptainsView,
+  TraitsSet,
   PresetApplied,
   PresetDeleted,
   PresetSaved,
@@ -469,6 +471,18 @@ export function worldBuffs(portId: string | null = null): Promise<RpcResult<Buff
  *  the one money mover, so the ledger and the purse cannot disagree. */
 export function cmdHireOfficer(code: string, fleetId: string | null = null) {
   return call<HiredOfficer>('cmdHireOfficer', [code, fleetId])
+}
+
+/** 0160 — YOUR captains: grade now, traits known and in use, seat, three levels with the cap said,
+ *  and homesickness in words (`world.captains`). */
+export function worldCaptains(): Promise<RpcResult<CaptainsView>> {
+  return call<CaptainsView>('worldCaptains')
+}
+
+/** 0160 — the traits a captain USES (up to her grade's slots, among those she knows). Only ashore or
+ *  in port; the refusal says why. */
+export function cmdCaptainTraitsSet(code: string, traits: readonly string[]) {
+  return call<TraitsSet>('cmdCaptainTraitsSet', [code, [...traits]])
 }
 
 /** 0157 — seat a captain you keep in a cabin of one of your ships (`seat` null: the server's picker),

@@ -1,6 +1,6 @@
 # SKILLS AND CAPTAINS — EVE's house skills, Origin's captains (v2 design)
 
-**Status: DESIGN v2, BUILD-READY (2026-10-17). K0 (0149) and K1 (0151) are LIVE and dark; K4 (0156, `osn-k4-captains`, 2026-10-18) and K5 (0157, `osn-k5-cabins`, stacked on K4) are built, not deployed** — dev-log `docs/dev-log/2026-10-18-k4-captains-grades-traits.md`. The rest of this paragraph is the plan as written:
+**Status: DESIGN v2, BUILD-READY (2026-10-17). K0 (0149) and K1 (0151) are LIVE and dark; K4 (0156, `osn-k4-captains`, 2026-10-18) and K5 (0157) are LIVE and dark; K6 (0160, `osn-k6-levels`) and K7 (0161, `osn-k7-traits`) are built, not deployed** — dev-log `docs/dev-log/2026-10-18-k4-captains-grades-traits.md`. The rest of this paragraph is the plan as written:
 no production change. Written against production head **0140**, read-only. `docs/INFLUENCE.md` has
 already claimed 0141–0146 (I1–I6), so the slices here are numbered **K0, K1, …** and get migration
 numbers only when they are scheduled (`npm run db:check-versions` decides).
