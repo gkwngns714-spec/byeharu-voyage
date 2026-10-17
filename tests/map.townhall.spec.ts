@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { asWorldImageFile } from '../src/lib/db/worldImage'
 import { PHONE, reachable, ready } from './appReady.fixture'
+import { openCityPanel } from './openCity.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TOWN HALL, DRIVEN (0123, owner 2026-10-15): *"by clicking a city, there should be another
@@ -81,17 +82,8 @@ async function townHallWorld(): Promise<{ body: Buffer; investor: string; invest
   return image
 }
 
-async function openCity(page: Page, code: string): Promise<void> {
-  // the chart draws after the world is up ("opening the chart…"): wait for the harbour's name
-  await page.locator(`[data-label-id="port:${code}"]`).first().waitFor({ state: 'attached', timeout: 120_000 })
-  const label = await page.evaluate((id) => {
-    const e = document.querySelector(`[data-label-id="${id}"]`)
-    if (!e) return null
-    const r = e.getBoundingClientRect()
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
-  }, `port:${code}`)
-  if (!label) throw new Error(`${code} is not named on the opening frame`)
-  await page.mouse.click(label.x, label.y)
+async function openCity(page: Page, code: string, name: string): Promise<void> {
+  await openCityPanel(page, code, name)
   await page.getByTestId('map-send-fleet').click()
   await expect(page.getByTestId('map-city-tabs')).toBeVisible()
 }
@@ -109,7 +101,7 @@ test('the Town Hall shows the treasury, offers no Invest away from your fleet, a
   await page.goto('map')
   await ready(page)
 
-  await openCity(page, CITY)
+  await openCity(page, CITY, 'Porto')
   await page.getByTestId('map-city-tabs').getByText('Town Hall', { exact: true }).click()
   await expect(page.getByTestId('map-city-townhall')).toBeVisible()
   await expect(page.getByTestId('townhall-treasury')).toBeVisible({ timeout: 30_000 })
@@ -141,7 +133,7 @@ test('0144: lit, a company docked at Lisbon donates, and its influence there is 
   await page.goto('map')
   await ready(page)
 
-  await openCity(page, 'LIS')
+  await openCity(page, 'LIS', 'Lisbon')
   await page.getByTestId('map-city-tabs').getByText('Town Hall', { exact: true }).click()
   await expect(page.getByTestId('townhall-influence')).toBeVisible({ timeout: 30_000 })
   await expect(page.getByTestId('townhall-influence-you')).toContainText('0')

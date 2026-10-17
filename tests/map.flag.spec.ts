@@ -1,10 +1,11 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { mapLabelRequests } from '../src/chart/labels'
 import { buildChartModel } from '../src/chart/chartModel'
 import type { MapPort } from '../src/chart/mapTypes'
 import { PHONE, reachable, ready } from './appReady.fixture'
+import { openCityPanel } from './openCity.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A CITY FLIES A FLAG (0143, docs/INFLUENCE.md I1). The owner, 2026-10-17: "like uncharted
@@ -63,25 +64,13 @@ test('with flags (Regions on) a harbour\'s name carries its flag; without, the l
   expect(on.find((r) => r.id === 'port:OPO')?.text).toBe('Porto')
 })
 
-async function openCity(page: Page, code: string): Promise<void> {
-  await page.locator(`[data-label-id="port:${code}"]`).first().waitFor({ state: 'attached', timeout: 120_000 })
-  const label = await page.evaluate((id) => {
-    const e = document.querySelector(`[data-label-id="${id}"]`)
-    if (!e) return null
-    const r = e.getBoundingClientRect()
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
-  }, `port:${code}`)
-  if (!label) throw new Error(`${code} is not named on the opening frame`)
-  await page.mouse.click(label.x, label.y)
-}
-
 test('the city title line prints the flag it flies: Lisbon, Portugal, Home city', async ({ page, request, baseURL }) => {
   test.setTimeout(300_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.setViewportSize(PHONE)
   await page.goto('map')
   await ready(page)
-  await openCity(page, 'LIS')
+  await openCityPanel(page, 'LIS', 'Lisbon')
   const flag = page.getByTestId('city-flag').first()
   await expect(flag).toBeVisible({ timeout: 30_000 })
   await expect(flag).toContainText('Portugal')
