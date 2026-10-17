@@ -99,3 +99,34 @@ migration, which is the no-from-zero rule's one exemption, but the selector did 
 base chain's newest file sets `growth.run` (from-zero allowed, and logged). Its 5 self-test
 controls still hold, and on this PR it reports
 `20260818000150_…: added before the base chain's newest file (20260818000152)`.
+
+**Third red: the ROOM probe tested the world, not the fix (2026-10-17 ~17:50 UTC).** On the fresh
+chain the disposable-chain job failed with `ROOM — one step did not put her to sea`. The order list
+shows that the cut-loss was written and executed (`done SELL tortoiseshell ALL`). The `SELL … ALL AT
+>= …` refusals before it are the ordinary at-profit SELL.
+
+The probe filled the whole hold with "the first good by id FNC bids for". Ids are random per world,
+so CI drew tortoiseshell. I forced that good locally, and the step sold 21 of 1,416 units: the quay
+would take no more, her endurance stayed at 3.1 days against a 12-day preset, and she was still
+blocked.
+
+The probe now owns its precondition. Her one hull holds a small parcel (her preset's water, in
+tons) of the first good by code that FNC takes whole today (its quote and her daily cap), plus spare
+food, leaving room for only half her preset's water. The cut-loss clears that room in one sale. It
+passes on the full chain 0149 → 0156, and is still red when `npc_casks_blocked` is disabled. The
+function bodies are still identical to prod's.
+
+**Prod, read-only, ~17:55 UTC.** 0150 is working there. The 17:07 pass cleared 99 E_ENDURANCE
+merchants, and 89 of them are now at sea or have moved on. 162 docked laps are still waiting. Most
+of those were last re-planned at 16:07, before 0150 was live. The hourly budget (66–67 s against 60)
+reaches about 100 of them per hour, and a re-plan moves a route to the back of the roster.
+
+Two slower paths seen there are real, but neither is a deadlock:
+
+1. **Stores slow her down.** `voyage.ship_speed` counts water and food in the hold's fill
+   (`load_speed_penalty` 0.25). Provisioning makes her slower, so the need can come out just above
+   the preset's +1 day. "Watari Mogadishu": preset 84, need 85.2. The next clear raises the preset
+   again.
+2. **A shallow quay sells the cut-loss in parts.** A quay that takes little of a good sells the
+   parcel one chunk per pass. Also, `order_queue_max` = 12 drops the trailing SELL lines first, and
+   those are the cut-loss lines.

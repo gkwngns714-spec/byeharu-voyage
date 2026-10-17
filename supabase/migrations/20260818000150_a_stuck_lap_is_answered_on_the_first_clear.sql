@@ -401,6 +401,8 @@ declare
   v_bulk     numeric;
   v_qty      numeric;
   v_need     int;
+  v_need_t   numeric;   -- ROOM: her preset's water, in tons
+  v_hold_t   numeric;
   v_res      jsonb;
   v_plan     jsonb;
   o          record;
@@ -564,16 +566,6 @@ begin
       raise exception '0150 self-assert FAIL: the probe merchant was founded without a fleet, a route or a preset';
     end if;
 
-    -- THE SUBJECT GOOD for the room scenario: one FNC bids for, the first by id.
-    select g.id, g.code, g.bulk into v_good, v_code, v_bulk
-      from public.port_goods pg join public.goods g on g.id = pg.good_id
-      cross join lateral world.quote(v_fnc, pg.good_id, 1, 'sell', null, null) q
-     where pg.port_id = v_fnc and q.units >= 1 and q.total > 0
-     order by g.id limit 1;
-    if v_good is null then
-      raise exception '0150 self-assert FAIL: FNC bids for no good to fill the probe hold with';
-    end if;
-
     for v_s in select * from (values (1, 'PRESET'), (2, 'ROOM'), (3, 'CASKS')) c(k, cause) order by k loop
       begin
         perform pg_temp.stuck_0150(v_m, v_route, v_mfleet, v_fnc, 900151 + v_s.k);
@@ -588,10 +580,35 @@ begin
           -- the preset 0142 never re-measured: 1 day, and no prior clear on record (the count is 1).
           update public.provision_presets set days = 1 where id = v_preset;
         elsif v_s.cause = 'ROOM' then
-          -- a hold full of a good bought far above every bid: the at-profit SELL refuses it, the
-          -- casks have no room.
-          v_qty := floor(public.fleet_free_hold(v_mfleet) / greatest(v_bulk, 0.001));
+          -- a parcel bought far above every bid that her casks cannot be stowed beside: her one hull
+          -- holds the parcel (her preset's water, in tons), food to spare (a broached cask's leftover,
+          -- as on prod) and room for only half her preset's water. The parcel is of a good the FNC
+          -- quay takes WHOLE today (its quote and her daily cap), first by code, so the cut-loss
+          -- clears the room in one sale. The probe owns all of it: which good a world's ids put
+          -- first and how deep its quay is are the world's (CI's fresh chain drew a hold-full of a
+          -- good FNC took 21 of, and she stayed blocked — a probe of the world, not of the fix).
+          if (select count(*) from public.ships where fleet_id = v_mfleet) <> 1 then
+            raise exception '0150 self-assert FAIL: ROOM — the probe fleet is not one hull';
+          end if;
+          select s.crew * public.wc_num('water_per_crew_day') * (select days from public.provision_presets where id = v_preset),
+                 public.ship_hold_capacity(s.id)
+            into v_need_t, v_hold_t
+            from public.ships s where s.fleet_id = v_mfleet;
+          select g.id, g.code, g.bulk, n.q into v_good, v_code, v_bulk, v_qty
+            from public.port_goods pg join public.goods g on g.id = pg.good_id
+           cross join lateral (select ceil(v_need_t / greatest(g.bulk, 0.001)) as q) n
+           where pg.port_id = v_fnc and n.q * g.bulk <= v_need_t * 1.5
+             and (select qs.units from world.quote(v_fnc, g.id, n.q, 'sell', null, null) qs) >= n.q
+             and world.daily_cap_remaining(v_m, v_fnc, g.id) >= n.q
+           order by g.code limit 1;
+          if v_good is null then
+            raise exception '0150 self-assert FAIL: ROOM — FNC takes no good whole in a parcel of % t', v_need_t;
+          end if;
           perform public.fleet_load(v_mfleet, v_code, v_qty, 1000000);
+          update public.ships s
+             set water_t = 0,
+                 food_t = round(greatest(0, v_hold_t - public.ship_cargo_tuns(s.id) - 0.5 * v_need_t), 3)
+           where s.fleet_id = v_mfleet;
         else
           -- a cask broached at sea: no water, and food for twice her preset.
           update public.ships s
@@ -648,8 +665,8 @@ begin
               (select days from public.provision_presets where id = v_preset), v_need;
           end if;
           if v_s.cause = 'ROOM'
-             and (select coalesce(sum((s.cargo->>v_code)::numeric), 0) from public.ships s where s.fleet_id = v_mfleet) >= v_qty then
-            raise exception '0150 self-assert FAIL: ROOM — she sailed and her % was never let go', v_code;
+             and (select coalesce(sum((s.cargo->>v_code)::numeric), 0) from public.ships s where s.fleet_id = v_mfleet) > 0 then
+            raise exception '0150 self-assert FAIL: ROOM — she sailed and her % was not all let go', v_code;
           end if;
         end if;
 
