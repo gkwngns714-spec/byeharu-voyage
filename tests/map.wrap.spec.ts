@@ -216,7 +216,7 @@ async function wrapOnTheGlass(page: Page) {
     const svg = chart?.querySelector('svg')
     // Null-safe: before the world has opened there is no chart, and the poll reads an empty sheet.
     if (!chart || !root || !svg) {
-      return { viewX: Number.NaN, spanDeg: Number.NaN, copies: [] as number[], perCopy: [] as { k: number; ports: number; ships: number }[], coastBodies: 0, coastUses: 0, labels: 0 }
+      return { viewX: Number.NaN, spanDeg: Number.NaN, copies: [] as number[], perCopy: [] as { k: number; ports: number; ships: number }[], coastBodies: 0, coastUses: 0, dayCoastUses: 0, labels: 0 }
     }
     const [x, , w] = svg.getAttribute('viewBox')!.split(/\s+/).map(Number)
     const copies = (root.getAttribute('data-sheet-copies') ?? '').split(' ').map(Number)
@@ -237,7 +237,10 @@ async function wrapOnTheGlass(page: Page) {
       copies,
       perCopy,
       coastBodies: sheet.querySelectorAll('[data-testid="map-coastline"]').length,
-      coastUses: sheet.querySelectorAll('use[data-sheet-copy]').length,
+      // The night coast's own <use>s: since 2026-10-17 the day coast is a second picture on its own
+      // sheet (src/chart/DaylightSheet.tsx) with its own copies, counted apart.
+      coastUses: sheet.querySelectorAll(':scope > svg use[data-sheet-copy]').length,
+      dayCoastUses: sheet.querySelectorAll('[data-testid="map-daylight-mask"] use[data-sheet-copy]').length,
       labels: document.querySelectorAll('[data-testid="map-labels"] text').length,
     }
   })
@@ -329,6 +332,7 @@ test('panned across the antimeridian, the sheet continues: land, harbours and sh
   // LAND ON BOTH SIDES: one body drawn, one <use> of it, so the coast continues past 180°.
   expect(across.coastBodies).toBe(1)
   expect(across.coastUses).toBe(1)
+  expect(across.dayCoastUses, 'the day coast continues past 180° the same way').toBe(1)
   // HARBOURS on both sides of the seam (New Zealand and Japan west of it; Hawaii and the Americas
   // east), and SHIPS on both sides — the Pacific is sailed.
   for (const c of across.perCopy) {

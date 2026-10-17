@@ -435,13 +435,17 @@ at 12:00) and 11 February (−14.23 min → +3.56°), J2000.0 (−23.03°, −3.
 the widest zoom), the subsolar point, and the daylight RASTER — 360 × 180, one cell per degree,
 painted into a PNG's alpha channel.
 
-**The picture.** `DaylightMask` is that PNG as an SVG `<mask>` with `mask-type: alpha` (a luminance
-mask is computed in linearRGB and would bend the twilight), stretched over each copy of the sheet,
-bilinearly filtered on the way up — a smooth terminator at every zoom for one textured quad per
-frame and 4 ms of sines a minute. `SeaLayer` paints a DAY SEA over the night ground through it (and
-the graticule after, so the grid is on both sides); `CoastlineLayer` paints, after the four night
-steps, the day picture — ONE shallows band (the middle width, in the day's paler water), the body,
-the line — in the `--color-chart-day-*` tokens, inside one masked group. The day body is filled
+**The picture.** `DaylightSheet` (since 2026-10-17; `DaylightMask`, an SVG `<mask>`, before) is
+that PNG as a CSS `mask-image` with `mask-mode: alpha` (a luminance mask would bend the twilight),
+tiled once per turn of the world over an HTML sheet and slid to the Sun's longitude every frame by
+`mask-position`, bilinearly filtered on the way up — a smooth terminator at every zoom. The picture
+under the mask is its own compositor layer, so the glide repaints the mask and never the coast:
+the SVG mask's sliding content had re-recorded the whole day coast every frame (a 5 s drag at
+1280×844 on the production build: 22 fps median, 41 frames over 50 ms; after: 54–60 fps, none).
+`DaySeaLayer` is the DAY SEA on one such sheet over the night ground (`SeaLayer`), with the
+graticule on its own svg after it, so the grid is on both sides; `CoastlineLayer face="day"` is,
+on a second sheet over the night coast, the day picture — ONE shallows band (the middle width, in
+the day's paler water), the body, the line — in the `--color-chart-day-*` tokens. The day body is filled
 with a gradient down the sheet keyed on latitude (`DAY_LAND_BANDS`: ice at the poles, boreal and
 temperate green, the arid belt tan at ±25°, the tropics green), which is what the Earth looks like
 from above at this chart's resolution and promises no terrain the data does not hold. Eleven

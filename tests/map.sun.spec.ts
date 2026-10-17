@@ -294,7 +294,10 @@ async function sunOnTheGlass(page: Page) {
       portMarkPaths: document.querySelectorAll('[data-port-mark="full"] path').length,
       daySea: document.querySelectorAll('[data-testid="map-sea-day"]').length,
       dayCoast: document.querySelectorAll('[data-testid="map-coast-day"]').length,
-      masks: document.querySelectorAll('[data-testid="map-daylight-mask"] image').length,
+      // The Sun's raster as a CSS mask on each day sheet (src/chart/DaylightSheet.tsx, 2026-10-17).
+      masks: [...document.querySelectorAll('[data-testid="map-daylight-mask"]')].filter((e) =>
+        getComputedStyle(e).maskImage.startsWith('url('),
+      ).length,
     }
   })
 }
@@ -335,7 +338,7 @@ test('at the globe the ships are hulls, the day picture is on the sheet, and eve
   expect(wide.spanDeg).toBeGreaterThanOrEqual(DOT_SPAN_DEG)
   expect(wide.zoomPercent).toBe(0)
 
-  // THE DAY PICTURE IS ON THE SHEET: the day sea in the view's svg, the day coast on the sheet,
+  // THE DAY PICTURE IS ON THE SHEET: the day sea over the view, the day coast on the coast's sheet,
   // both through the Sun's mask.
   expect(wide.daySea).toBe(1)
   expect(wide.dayCoast).toBeGreaterThanOrEqual(1)

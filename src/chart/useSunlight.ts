@@ -31,15 +31,15 @@ import { serverNow } from '../lib/serverClock'
 //              120× (GAME_CLOCK_RATE). One timer (SUN_REFRESH_MS), one raster per step, never per frame.
 //
 // THE IMAGE is a 360 × 180 greyscale PNG — one pixel per degree, the raster's own bytes — handed
-// to an SVG `<mask>` as an `<image>` stretched over each copy of the sheet (ChartCanvas,
-// `DaylightMask`). The browser filters it bilinearly on the way up, which is a smooth terminator
-// at every zoom; the cost per frame is one textured quad on the GPU, and the cost per minute is
-// 4 ms of sines and one `toDataURL`.
+// to a CSS `mask-image` tiled once per turn of the world over each day sheet (ChartCanvas,
+// `DaylightSheet`). The browser filters it bilinearly on the way up, which is a smooth terminator
+// at every zoom; the cost per frame is one re-painted mask over composited pictures, and the cost
+// per declination step is 4 ms of sines and one `toDataURL`.
 
 export interface Sunlight {
   /** Where the Sun is overhead, now. */
   readonly sun: SubsolarPoint
-  /** The daylight raster as a data URL, drawn with the Sun over longitude 0 — `DaylightMask`
+  /** The daylight raster as a data URL, drawn with the Sun over longitude 0 — `DaylightSheet`
    *  slides it to the Sun's longitude every frame. Null where there is no canvas. */
   readonly rasterUrl: string | null
   /** The REAL instant the raster was drawn at (the Sun is at `gameSunInstantMs` of it). */
@@ -56,7 +56,7 @@ function rasterToUrl(sun: LatLon): string | null {
   if (!ctx) return null
   const bytes = daylightRaster(sun)
   const image = ctx.createImageData(DAYLIGHT_RASTER_WIDTH, DAYLIGHT_RASTER_HEIGHT)
-  // INTO THE ALPHA CHANNEL: the mask reads alpha linearly (./DaylightMask.tsx says why not
+  // INTO THE ALPHA CHANNEL: the mask reads alpha linearly (./DaylightSheet.tsx says why not
   // luminance), so a cell's daylight is exactly the cell's opacity. White underneath, so a reader
   // who opens the PNG sees a terminator and not a black square.
   for (let i = 0; i < bytes.length; i++) {
@@ -70,7 +70,7 @@ function rasterToUrl(sun: LatLon): string | null {
 }
 
 /** The raster is drawn with the Sun over longitude 0 and SLID to where it stands, every frame,
- *  by `DaylightMask` (owner, 2026-10-15: the light zone moved rigid — "make it soft"). Only the
+ *  by `DaylightSheet` (owner, 2026-10-15: the light zone moved rigid — "make it soft"). Only the
  *  declination changes the picture itself, so it is re-drawn when that moves a hundredth of a
  *  degree, never on the Sun's longitude. */
 const RASTER_LAT_STEP = 0.01

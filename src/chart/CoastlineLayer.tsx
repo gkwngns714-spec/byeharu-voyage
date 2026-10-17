@@ -1,7 +1,6 @@
 import { memo, useId } from 'react'
 import { CHART_WIDTH, type Point } from '../lib/geo'
 import type { CoastlineData } from './coastlineBuild'
-import { DaylightMask } from './DaylightMask'
 import { DAY_LAND_BANDS, GLYPH } from './glyphs'
 import type { RegionTint } from './regions'
 
@@ -41,8 +40,10 @@ import type { RegionTint } from './regions'
 // ── 2026-10-14: THE DAY SIDE, AND THE SHEET THAT REPEATS ──────────────────────────────────────
 // THE DAY (owner: *"sunlight based on real science. The sunlight touching the earth should have
 // colors similar to daytime earth"*). After the four night steps, the SAME four again — shallows,
-// body, relief, line — in the `chart-day-*` tokens (src/index.css), inside ONE group masked by the
-// Sun's raster (./DaylightMask.tsx): where the Sun is up the day picture covers the night one,
+// body, relief, line — in the `chart-day-*` tokens (src/index.css), drawn by this same layer with
+// `face="day"` into a sheet of its own that ChartCanvas lays over the night one through the Sun's
+// raster (./DaylightSheet.tsx, a CSS mask on a composited layer — 2026-10-17, because an SVG mask
+// sliding every frame re-recorded this whole picture every frame): where the Sun is up the day picture covers the night one,
 // where it is down nothing is added, and the twilight is the mask's own gradient. The day body is
 // filled with a GRADIENT DOWN THE SHEET keyed on latitude — ice at the poles, boreal green, temperate
 // green, the arid belt tan at ±25°, the tropics green — which is what the Earth looks like from
@@ -51,7 +52,7 @@ import type { RegionTint } from './regions'
 // THE COPIES (owner: *"the map is not continuous from left to right"*). The whole picture is drawn
 // ONCE, into a group with an id, at the first copy of the sheet the paper touches; every other copy
 // is a `<use>` of that group translated by 360°. The browser clones the subtree — the clipPath, the
-// mask and the gradient go with it, in the clone's own user space — so the second copy costs no
+// gradient goes with it, in the clone's own user space — so the second copy costs no
 // second path string and no second React tree. `copies` is `sheetCopies` of the paper
 // (src/lib/geo): the one periodicity rule, composed.
 //
@@ -108,7 +109,7 @@ export const CoastlineLayer = memo(function CoastlineLayer({
   islets = NO_ISLETS,
   unitsPerPx = 0,
   copies = BASE_COPY,
-  rasterUrl = null,
+  face = 'night',
 }: {
   /** The built backdrop, or null while it is still being fetched — which draws nothing. */
   coast: Pick<CoastlineData, 'd' | 'coastD'> | null
@@ -125,116 +126,122 @@ export const CoastlineLayer = memo(function CoastlineLayer({
   unitsPerPx?: number
   /** The copies of the sheet this layer is painted over (`sheetCopies` of the paper). */
   copies?: readonly number[]
-  /** The Sun's raster (./useSunlight.ts), or null for the night picture alone. */
-  rasterUrl?: string | null
+  /** Which picture: the night chart (the default, and the minimap's only one), or the same coast in
+   *  the Earth's day colours — painted whole; the caller shows it where the Sun is up. */
+  face?: 'night' | 'day'
 }) {
   const clipId = useId()
-  const maskId = useId()
   const gradientId = useId()
   const baseId = useId()
   if (!coast || !coast.d) return null
   const { d, coastD } = coast
-  const day = relief && rasterUrl !== null
+  const day = face === 'day'
   const base = copies[0] ?? 0
   return (
     <g pointerEvents="none">
       <g transform={`translate(${base * CHART_WIDTH} 0)`} data-sheet-copy={base}>
         <g id={baseId}>
-          {regions && (
-            /* 0. THE WATER TINT (row 93) — under the shallows and the body, one path per region. */
-            <g data-testid="map-regions-water" fillOpacity={WATER_TINT_ALPHA} shapeRendering="crispEdges">
-              {regions.map(
-                (region) =>
-                  region.waterD !== '' &&
-                  region.fill !== '' && <path key={region.id} d={region.waterD} className={region.fill} data-region-id={region.id} />,
-              )}
-            </g>
+          {!day && (
+            <>
+            {regions && (
+              /* 0. THE WATER TINT (row 93) — under the shallows and the body, one path per region. */
+              <g data-testid="map-regions-water" fillOpacity={WATER_TINT_ALPHA} shapeRendering="crispEdges">
+                {regions.map(
+                  (region) =>
+                    region.waterD !== '' &&
+                    region.fill !== '' && <path key={region.id} d={region.waterD} className={region.fill} data-region-id={region.id} />,
+                )}
+              </g>
+            )}
+            {relief && (
+              <>
+                <defs>
+                  <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
+                    <path d={d} fillRule="evenodd" />
+                  </clipPath>
+                </defs>
+                {/* 1. THE SHALLOWS — widest first, so each narrower band paints over the one before it
+                    and the water is palest right at the shore. */}
+                {GLYPH.shallowHaloPx.map((width, i) => (
+                  <path
+                    key={width}
+                    d={coastD}
+                    className={`fill-none ${SHALLOW_INK[i]}`}
+                    strokeWidth={width}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                    data-testid={i === GLYPH.shallowHaloPx.length - 1 ? 'map-shallows' : undefined}
+                  />
+                ))}
+              </>
+            )}
+            {/* 2. THE BODY. Full opacity, in the pinned token. */}
+            <path d={d} fillRule="evenodd" className="fill-chart-land" data-testid="map-coastline" />
+            {regions && relief && (
+              /* 2b. THE LAND TINT (row 93) — on the body, clipped to it, under the relief and the coast. */
+              <g clipPath={`url(#${clipId})`} data-testid="map-regions-land" fillOpacity={LAND_TINT_ALPHA}>
+                {regions.map(
+                  (region) =>
+                    region.landD !== '' &&
+                    region.fill !== '' && (
+                      <path key={region.id} d={region.landD} fillRule="evenodd" className={region.fill} data-region-id={region.id} />
+                    ),
+                )}
+              </g>
+            )}
+            {relief && (
+              /* 3. THE RELIEF — on the body, clipped to it so it never reaches the water. */
+              <g clipPath={`url(#${clipId})`}>
+                <path
+                  d={coastD}
+                  className="fill-none stroke-chart-relief/70"
+                  strokeWidth={GLYPH.reliefPx}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                  data-testid="map-relief"
+                />
+              </g>
+            )}
+            {/* 4. THE COAST. Full opacity, in the pinned token, at this zoom's weight — and that is the
+                point: "how pale is the coast" is a token whose value IS its contrast ratio, never an
+                alpha struck at the point of use. */}
+            <path
+              d={coastD}
+              className="fill-none stroke-chart-coast"
+              strokeWidth={strokeWidth}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+              data-testid="map-coast"
+            />
+            {/* 5. THE ISLETS (row 92) — land the file lacks, under the harbours that stand on it. */}
+            {unitsPerPx > 0 && islets.length > 0 && (
+              <g data-testid="map-islets">
+                {islets.map((at) => (
+                  <circle
+                    key={`${at.x},${at.y}`}
+                    cx={at.x}
+                    cy={at.y}
+                    r={GLYPH.isletRadius * unitsPerPx}
+                    className="fill-chart-land stroke-chart-coast"
+                    strokeWidth={strokeWidth}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ))}
+              </g>
+            )}
+            </>
           )}
-          {relief && (
+          {/* 6. THE DAY (`face="day"`) — the same picture in the Earth's colours, whole; the
+              caller's DaylightSheet shows it only where the Sun is up. */}
+          {day && (
             <>
               <defs>
                 <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
                   <path d={d} fillRule="evenodd" />
                 </clipPath>
-              </defs>
-              {/* 1. THE SHALLOWS — widest first, so each narrower band paints over the one before it
-                  and the water is palest right at the shore. */}
-              {GLYPH.shallowHaloPx.map((width, i) => (
-                <path
-                  key={width}
-                  d={coastD}
-                  className={`fill-none ${SHALLOW_INK[i]}`}
-                  strokeWidth={width}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                  data-testid={i === GLYPH.shallowHaloPx.length - 1 ? 'map-shallows' : undefined}
-                />
-              ))}
-            </>
-          )}
-          {/* 2. THE BODY. Full opacity, in the pinned token. */}
-          <path d={d} fillRule="evenodd" className="fill-chart-land" data-testid="map-coastline" />
-          {regions && relief && (
-            /* 2b. THE LAND TINT (row 93) — on the body, clipped to it, under the relief and the coast. */
-            <g clipPath={`url(#${clipId})`} data-testid="map-regions-land" fillOpacity={LAND_TINT_ALPHA}>
-              {regions.map(
-                (region) =>
-                  region.landD !== '' &&
-                  region.fill !== '' && (
-                    <path key={region.id} d={region.landD} fillRule="evenodd" className={region.fill} data-region-id={region.id} />
-                  ),
-              )}
-            </g>
-          )}
-          {relief && (
-            /* 3. THE RELIEF — on the body, clipped to it so it never reaches the water. */
-            <g clipPath={`url(#${clipId})`}>
-              <path
-                d={coastD}
-                className="fill-none stroke-chart-relief/70"
-                strokeWidth={GLYPH.reliefPx}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                vectorEffect="non-scaling-stroke"
-                data-testid="map-relief"
-              />
-            </g>
-          )}
-          {/* 4. THE COAST. Full opacity, in the pinned token, at this zoom's weight — and that is the
-              point: "how pale is the coast" is a token whose value IS its contrast ratio, never an
-              alpha struck at the point of use. */}
-          <path
-            d={coastD}
-            className="fill-none stroke-chart-coast"
-            strokeWidth={strokeWidth}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-            data-testid="map-coast"
-          />
-          {/* 5. THE ISLETS (row 92) — land the file lacks, under the harbours that stand on it. */}
-          {unitsPerPx > 0 && islets.length > 0 && (
-            <g data-testid="map-islets">
-              {islets.map((at) => (
-                <circle
-                  key={`${at.x},${at.y}`}
-                  cx={at.x}
-                  cy={at.y}
-                  r={GLYPH.isletRadius * unitsPerPx}
-                  className="fill-chart-land stroke-chart-coast"
-                  strokeWidth={strokeWidth}
-                  vectorEffect="non-scaling-stroke"
-                />
-              ))}
-            </g>
-          )}
-          {/* 6. THE DAY — the same picture in the Earth's colours, through the Sun's mask. One image
-              in the mask, at the base copy: a <use> copy translates its mask with it. */}
-          {day && (
-            <>
-              <defs>
-                <DaylightMask id={maskId} rasterUrl={rasterUrl} copies={BASE_COPY} />
                 <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1={0} y1={-90} x2={0} y2={90}>
                   {DAY_LAND_BANDS.map((band, i) => (
                     <stop
@@ -245,7 +252,7 @@ export const CoastlineLayer = memo(function CoastlineLayer({
                   ))}
                 </linearGradient>
               </defs>
-              <g mask={`url(#${maskId})`} data-testid="map-coast-day">
+              <g data-testid="map-coast-day">
                 {regions && (
                   <g fillOpacity={WATER_TINT_ALPHA} shapeRendering="crispEdges">
                     {regions.map(

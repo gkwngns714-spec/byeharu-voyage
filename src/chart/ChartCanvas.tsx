@@ -6,7 +6,8 @@ import { FleetsLayer, TracksLayer } from './FleetsLayer'
 import { LabelsLayer } from './LabelsLayer'
 import { PortsLayer } from './PortsLayer'
 import { RoadsteadsLayer } from './RoadsteadsLayer'
-import { SeaLayer } from './SeaLayer'
+import { DaylightSheet } from './DaylightSheet'
+import { DaySeaLayer, GraticuleLayer, SeaLayer } from './SeaLayer'
 import { DOT_SPAN_DEG, LANE_SPAN_DEG } from './chartView'
 import { portMarks, type ChartModel, type PortRole } from './chartModel'
 import type { CoastlineData } from './coastlineBuild'
@@ -338,9 +339,23 @@ export function ChartCanvas({
         viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
         aria-hidden="true"
       >
-        {/* THE SEA — the ground everything else is measured against, its depth, the day's water
-            where the Sun is up, and the graticule (./SeaLayer.tsx). */}
-        <SeaLayer box={box} copies={copies} rasterUrl={sunlight.rasterUrl} />
+        {/* THE SEA — the ground everything else is measured against, and its depth (./SeaLayer.tsx). */}
+        <SeaLayer box={box} />
+      </svg>
+      {/* THE DAY'S WATER, where the Sun is up (./DaylightSheet.tsx), then the graticule over it. */}
+      {sunlight.rasterUrl && (
+        <DaylightSheet rasterUrl={sunlight.rasterUrl} x={box.x} y={box.y} unitsPerPx={unitsPerPx} className="absolute inset-0">
+          <svg className="block h-full w-full" viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`} aria-hidden="true">
+            <DaySeaLayer box={box} />
+          </svg>
+        </DaylightSheet>
+      )}
+      <svg
+        className="absolute inset-0 h-full w-full"
+        viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
+        aria-hidden="true"
+      >
+        <GraticuleLayer box={box} />
       </svg>
       <CoastSheet
         coast={coast}
@@ -476,9 +491,31 @@ const CoastSheet = memo(function CoastSheet({
           islets={islets}
           unitsPerPx={unitsPerPx}
           copies={copies}
-          rasterUrl={rasterUrl}
         />
       </svg>
+      {/* THE DAY COAST — the same coast in the Earth's colours, on a sheet of its own over the night
+          one, shown where the Sun is up (./DaylightSheet.tsx). Its picture is a composited layer
+          that the Sun's glide never repaints: only the mask over it moves. */}
+      {rasterUrl && coast && (
+        <DaylightSheet rasterUrl={rasterUrl} x={paper.x} y={paper.y} unitsPerPx={unitsPerPx} className="absolute inset-0">
+          <svg
+            className="block h-full w-full"
+            viewBox={`${paper.x} ${paper.y} ${paper.width} ${paper.height}`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <CoastlineLayer
+              coast={coast}
+              strokeWidth={strokeWidth}
+              regions={regions}
+              islets={islets}
+              unitsPerPx={unitsPerPx}
+              copies={copies}
+              face="day"
+            />
+          </svg>
+        </DaylightSheet>
+      )}
     </div>
   )
 })

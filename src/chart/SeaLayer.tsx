@@ -1,6 +1,5 @@
 import { memo, useId } from 'react'
 import type { ViewBox } from '../lib/geo'
-import { DaylightMask } from './DaylightMask'
 import { GLYPH } from './glyphs'
 
 // THE WATER — the ground everything else is measured against, with depth, the day's water where
@@ -31,7 +30,8 @@ import { GLYPH } from './glyphs'
 // ── THE DAY SEA (2026-10-14, owner: "sunlight based on real science… colors similar to daytime
 //    earth") ──────────────────────────────────────────────────────────────────────────────────
 // Over the night ground, a THIRD rect in `chart-day-sea` with its own deep vignette, painted
-// through `DaylightMask` — the Sun's raster — so it is the water by day where the Sun is up,
+// through the Sun's raster (`DaylightSheet`, an HTML sheet of its own between the ground and the
+// grid — ChartCanvas stacks the three) — so it is the water by day where the Sun is up,
 // nothing where it is down, and the twilight between. The night tokens did not move, and the ink
 // spec still measures them: it measures at night, which is now a fact about the clock (the spec
 // pins it with Playwright's clock, not by hoping). The graticule is painted AFTER the day sea, so
@@ -46,33 +46,9 @@ import { GLYPH } from './glyphs'
 // ±180° (the continuous chart) draws its meridians at 195°, 210°… exactly as at 15°: there is no
 // seam line, because there is no seam.
 
-/** Memoised on the box and the Sun: the grid is a pure function of the view, and the Sun moves
- *  once a minute — nothing here has to re-render for a read. */
-export const SeaLayer = memo(function SeaLayer({
-  box,
-  copies,
-  rasterUrl,
-}: {
-  box: ViewBox
-  /** The copies of the sheet on the glass (`sheetCopies(box)`) — the day sea is masked over each. */
-  copies: readonly number[]
-  /** The Sun's raster as a data URL, or null before its first paint — night alone, for one frame. */
-  rasterUrl: string | null
-}) {
+/** THE GROUND AND ITS DEPTH — the night sea, memoised on the box. */
+export const SeaLayer = memo(function SeaLayer({ box }: { box: ViewBox }) {
   const gradientId = useId()
-  const dayGradientId = useId()
-  const maskId = useId()
-  const step = GLYPH.graticuleStepDeg
-  let grid = ''
-  // Meridians and parallels are straight and evenly spaced on this projection (lib/geo), so a
-  // graticule is a set of chart-unit lines at multiples of the step, clipped to the box.
-  for (let x = Math.ceil(box.x / step) * step; x <= box.x + box.width; x += step) {
-    grid += `M${x} ${box.y}L${x} ${box.y + box.height}`
-  }
-  for (let y = Math.ceil(box.y / step) * step; y <= box.y + box.height; y += step) {
-    grid += `M${box.x} ${y}L${box.x + box.width} ${y}`
-  }
-
   return (
     <g pointerEvents="none">
       <defs>
@@ -81,13 +57,6 @@ export const SeaLayer = memo(function SeaLayer({
           <stop offset="60%" style={{ stopColor: 'var(--color-chart-deep)', stopOpacity: 0.18 }} />
           <stop offset="100%" style={{ stopColor: 'var(--color-chart-deep)', stopOpacity: 0.62 }} />
         </radialGradient>
-        {/* The day's depth: open ocean goes deeper toward the frame's edge, as the night's does. */}
-        <radialGradient id={dayGradientId} cx="50%" cy="50%" r="72%">
-          <stop offset="0%" style={{ stopColor: 'var(--color-chart-day-deep)', stopOpacity: 0 }} />
-          <stop offset="60%" style={{ stopColor: 'var(--color-chart-day-deep)', stopOpacity: 0.25 }} />
-          <stop offset="100%" style={{ stopColor: 'var(--color-chart-day-deep)', stopOpacity: 0.7 }} />
-        </radialGradient>
-        {rasterUrl && <DaylightMask id={maskId} rasterUrl={rasterUrl} copies={copies} />}
       </defs>
       {/* THE GROUND — the whole viewBox, so it moves with the paper and there is never an
           unpainted edge mid-pan. Flat, in the pinned token. */}
@@ -101,23 +70,52 @@ export const SeaLayer = memo(function SeaLayer({
         fill={`url(#${gradientId})`}
         data-testid="map-sea-depth"
       />
-      {/* THE DAY SEA — where the Sun is up, the water by day, through the Sun's mask. */}
-      {rasterUrl && (
-        <g mask={`url(#${maskId})`} data-testid="map-sea-day">
-          <rect x={box.x} y={box.y} width={box.width} height={box.height} className="fill-chart-day-sea" />
-          <rect x={box.x} y={box.y} width={box.width} height={box.height} fill={`url(#${dayGradientId})`} />
-        </g>
-      )}
-      {/* THE GRATICULE — one path, hairline, quieter than the coast. */}
-      {grid !== '' && (
-        <path
-          d={grid}
-          className="fill-none stroke-chart-grid"
-          strokeWidth={GLYPH.graticuleStroke}
-          vectorEffect="non-scaling-stroke"
-          data-testid="map-graticule"
-        />
-      )}
     </g>
+  )
+})
+
+/** THE DAY SEA — the water by day, with its own deep vignette. Painted whole: ChartCanvas lays it
+ *  in a `DaylightSheet`, which is what shows it only where the Sun is up. */
+export const DaySeaLayer = memo(function DaySeaLayer({ box }: { box: ViewBox }) {
+  const dayGradientId = useId()
+  return (
+    <g pointerEvents="none" data-testid="map-sea-day">
+      <defs>
+        {/* The day's depth: open ocean goes deeper toward the frame's edge, as the night's does. */}
+        <radialGradient id={dayGradientId} cx="50%" cy="50%" r="72%">
+          <stop offset="0%" style={{ stopColor: 'var(--color-chart-day-deep)', stopOpacity: 0 }} />
+          <stop offset="60%" style={{ stopColor: 'var(--color-chart-day-deep)', stopOpacity: 0.25 }} />
+          <stop offset="100%" style={{ stopColor: 'var(--color-chart-day-deep)', stopOpacity: 0.7 }} />
+        </radialGradient>
+      </defs>
+      <rect x={box.x} y={box.y} width={box.width} height={box.height} className="fill-chart-day-sea" />
+      <rect x={box.x} y={box.y} width={box.width} height={box.height} fill={`url(#${dayGradientId})`} />
+    </g>
+  )
+})
+
+/** THE GRATICULE — one path, hairline, quieter than the coast; over the day sea, under the coast.
+ *  A pure function of the view. */
+export const GraticuleLayer = memo(function GraticuleLayer({ box }: { box: ViewBox }) {
+  const step = GLYPH.graticuleStepDeg
+  let grid = ''
+  // Meridians and parallels are straight and evenly spaced on this projection (lib/geo), so a
+  // graticule is a set of chart-unit lines at multiples of the step, clipped to the box.
+  for (let x = Math.ceil(box.x / step) * step; x <= box.x + box.width; x += step) {
+    grid += `M${x} ${box.y}L${x} ${box.y + box.height}`
+  }
+  for (let y = Math.ceil(box.y / step) * step; y <= box.y + box.height; y += step) {
+    grid += `M${box.x} ${y}L${box.x + box.width} ${y}`
+  }
+  if (grid === '') return null
+  return (
+    <path
+      d={grid}
+      pointerEvents="none"
+      className="fill-none stroke-chart-grid"
+      strokeWidth={GLYPH.graticuleStroke}
+      vectorEffect="non-scaling-stroke"
+      data-testid="map-graticule"
+    />
   )
 })
