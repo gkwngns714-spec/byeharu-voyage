@@ -93,6 +93,7 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | pacing | `Next lap 14:32` | cooldown, fatigue |
 | money kept back (slice 2) | **Keep at least** `5,000 🪙` | reserve, floor |
 | "only sell at a profit" (slice 2) | **Only sell above cost** | at profit, basis |
+| a person you hire to sit in a cabin (K4–K9) | **captain** (`Captains`, `No captains — … keeps the ship himself.`) — the wire says `officer` (`public.officers`, `cmd.hire_officer`) and the player never reads it | officer |
 | a route stop's two groups (owner, 2026-09-30: *"sell all buy all is ... in one line and not distinguished"*) | **Sell** above **Buy**, each word once in the stop's left column | Sell all · Buy … in one line |
 | a price floor the player sets on a sale | **Min** (`Min 14 🪙 each`) — the mirror of **Max** | at least, >= |
 | sell every good on board | **Everything on board** (amount `All`) | Sell all, ALL |

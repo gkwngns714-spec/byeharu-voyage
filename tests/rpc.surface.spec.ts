@@ -1399,7 +1399,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // 0013-0016. Each of the three cmd.* entries takes NO player id — identity is the JWT's,
       // the same property that makes cmd.found_house safe for a browser to hold.
       'worldPriceHistory', 'worldPlayer', 'worldOfficers', 'worldSkills',
-      'cmdHireOfficer', 'cmdPostOfficer', 'cmdStudySkill',
+      'cmdHireOfficer', 'cmdStudySkill',   // 0166 (K9): cmdPostOfficer retired with cmd.post_officer
       // Pin moved deliberately 2026-08-23 with migration 0022, `a_bargain_is_struck_on_the_quay`:
       // `world.haggle_state` (the read) and `cmd.haggle` (the verb). They land together because
       // they are ONE feature, and because 0022 GRANTS EXECUTE to `authenticated` on exactly the
@@ -1599,7 +1599,6 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.commission_ship(uuid, uuid, text, text, boolean, boolean)',
     'public.form_fleet(uuid, text, uuid)',
     'public.sign_officer(uuid, text, uuid)',
-    'public.post_officer_to(uuid, text, uuid)',
     'public.raise_skill(uuid, text, text)',
     // 0131: the skill cores — enrolment, the queue's one writer, the Academy button's core.
     'public.skill_enroll_for(uuid, text, uuid)',

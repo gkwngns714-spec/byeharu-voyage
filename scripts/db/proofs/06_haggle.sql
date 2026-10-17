@@ -188,19 +188,22 @@ begin
   -- ════════════════════════════════════════════════════════════════════════════════════════════
   -- 5. AND THE FLOOR BITES UNDER THE WORST STACK THE KNOBS PERMIT. Today's seeded roster reaches
   --    only a 10 per cent purser (0015:354-358), which is not enough — so this proof authors a
-  --    purser at the cap `officers.bonus_pct` already allows and rolls it back with everything
+  --    purser at the cap a job's value already allows and rolls it back with everything
   --    else. That is a precondition it OWNS, not one it borrows.
   -- ════════════════════════════════════════════════════════════════════════════════════════════
-  insert into public.officers (code, name, specialty, bonus_pct, wage_ducats, blurb)
-  values ('PROOF6', 'A purser at the cap', 'PURSER', k_offcap, 1,
+  insert into public.officers (code, name, wage_ducats, blurb)
+  values ('PROOF6', 'A purser at the cap', 1,
           'Exists for the length of one rolled-back proof, to drive the stack onto the floor.')
   returning id into v_officer;
-  insert into public.player_officers (player_id, officer_id, fleet_id)
-  values (v_player, v_officer, v_fleet)
+  -- 0166 (K9): her job and its value are her first trait (public.captain_job), no longer officers columns
+  insert into public.captain_profile (officer_id, grade, job_trait) values (v_officer, 'C', 'PURSER');
+  insert into public.captain_traits (officer_id, ord, trait, base_pct) values (v_officer, 1, 'PURSER', k_offcap);
+  insert into public.player_officers (player_id, officer_id)
+  values (v_player, v_officer)
   returning id into v_signing;
   -- 0157: a captain counts where she SITS — in the Captain's cabin of the flagship, through the one seat core
   perform public.captain_seat_put(v_signing,
-    (select s.id from public.ships s where s.fleet_id = v_fleet order by s.is_flagship desc, s.id limit 1), 1, false);
+    (select s.id from public.ships s where s.fleet_id = v_fleet order by s.is_flagship desc, s.id limit 1), 1);
 
   v_eff := world.spread_effective(v_port, v_good, v_fleet);
   if v_eff <> v_pub * k_floor then

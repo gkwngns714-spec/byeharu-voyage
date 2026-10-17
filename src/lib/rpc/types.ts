@@ -1754,7 +1754,7 @@ export interface BuffsView {
   port: PortBuffs | null
 }
 
-/** What `cmd.hire_officer` / `cmd.post_officer` / `cmd.study_skill` hand back. A refusal arrives as
+/** What `cmd.hire_officer` / `cmd.study_skill` (0166: `cmd.post_officer` is retired — `cmd.seat_captain` seats) hand back. A refusal arrives as
  *  a `Refusal` through the usual `RpcResult`, never as a field here. */
 export interface HiredOfficer {
   officer: string
@@ -1763,11 +1763,6 @@ export interface HiredOfficer {
   bonus_pct: number
   fleet: string | null
   paid: number
-}
-
-export interface PostedOfficer {
-  officer: string
-  fleet: string | null
 }
 
 /** 0131: the Academy button enrols (if needed) and QUEUES the next level — no level is sold at once. */

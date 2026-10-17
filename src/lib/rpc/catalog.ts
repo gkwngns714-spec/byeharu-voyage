@@ -247,14 +247,6 @@ export const RPCS = {
       { name: 'p_fleet', type: 'uuid' },
     ],
   },
-  cmdPostOfficer: {
-    schema: 'cmd',
-    fn: 'post_officer',
-    args: [
-      { name: 'p_code', type: 'text' },
-      { name: 'p_fleet', type: 'uuid' },
-    ],
-  },
   cmdStudySkill: {
     schema: 'cmd',
     fn: 'study_skill',

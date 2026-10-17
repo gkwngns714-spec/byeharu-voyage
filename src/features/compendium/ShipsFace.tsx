@@ -174,7 +174,7 @@ export function ShipsFace({ query }: { query: string }) {
           <Row label="Draft" value={<Figure value={formatInt(open.draft)} />} />
           <Row label="Hull" value={<Figure value={formatInt(open.durability)} />} />
           <Row label="Class" value={<Figure value={formatInt(open.tier)} />} hairline={false} />
-          <Hint className="mt-2">Base figures, before any officer or skill bonus.</Hint>
+          <Hint className="mt-2">Base figures, before any captain or skill bonus.</Hint>
         </Tray>
       )}
     </>

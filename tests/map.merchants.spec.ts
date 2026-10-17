@@ -546,7 +546,7 @@ test('the merchants sail on the chart, and a tap opens a read-only sheet', async
   expect(await page.getByTestId('merchant-ship-tile').count()).toBeGreaterThanOrEqual(1)
   await expect(page.locator('[data-testid^="skill-"]')).toHaveCount(4)
   await expect(sheet.getByText('Skills', { exact: true })).toBeAttached()
-  await expect(sheet.getByText('Officers', { exact: true })).toBeAttached()
+  await expect(sheet.getByText('Captains', { exact: true })).toBeAttached()
   // READ-ONLY: the tray's own buttons (its handle and its close), and since 2026-10-15 openers of
   // READ panels — her ships (PR #113), her figures and lap pills (0121's trades). None is a verb.
   const labels = await sheet.locator('button').evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label') ?? b.textContent ?? ''))
