@@ -5,6 +5,22 @@ Newest entries at the top. Dates are absolute (YYYY-MM-DD).
 
 ---
 
+## 2026-10-17 — 0141: the quay says nothing about where a good grows — `osn-0141-no-native-tag`
+
+**The owner:** *"remove native"* — the `· native` caption word on a trade row. Removed entirely, both
+sides in one slice. **Not deployed** (applies on 0140, PR #147, merged to main).
+- **Every reader found:** client — `TradeRow.tsx` (the caption word, and the `aboard > 0 || native`
+  condition), `MarketGood.native` in `lib/rpc/types.ts`; no spec asserted it. Server — only
+  `world.market(uuid)` names a `'native'` key (prod `pg_proc.prosrc`, read-only). No rule read it.
+- **0141** slices prod's live body (0137's `tick_market_drift(v_now, p_port)` cut included): 0084's one
+  hunk, reversed — the `native` key and its comment line go, `offered` closes the row again. Self-assert:
+  the hunk occurs exactly once; live = pre-image with the hunk swapped and reverses to it; ACL /
+  volatility / definer / config / parallel / language unchanged; no live body in public / world / cmd /
+  voyage names a `'native'` key; the busiest harbour's served rows carry no `native` key (and still
+  `offered`); the read's time by `raise notice`.
+- The "N on board" caption is unchanged. `goods.origin_regions` stays (0062's roster law reads it).
+  docs/QUAY_LEDGER.md notes the removal.
+
 ## 2026-10-17 — 0140: the Mughal capital is Karachi — `osn-0140-mughal-capital`
 
 **The owner decided:** Mughal India's capital moves from Surat to Karachi. 0130 gave Surat to Gujarat,

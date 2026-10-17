@@ -835,6 +835,8 @@ test(`PORT: a line staged onto the basket docks the one tray at peek, moves noth
   await expect(page.locator('[data-testid="basket-panel"]')).toHaveCount(0)
   // …and the world was READ BACK: the pressed good's own row now says what is on board.
   await expect(rows.filter({ hasText: pressed }).first()).toContainText(/\d units? on board/, { timeout: 20_000 })
+  // No row says where a good grows: the owner removed the `native` tag (2026-10-17, 0141).
+  await expect(rows.filter({ hasText: /·\s*native\b/ })).toHaveCount(0)
   await receipt.locator('[data-testid="receipt-done"]').click()
   await expect(receipt).toHaveCount(0)
   expect(await rows.count()).toBe(before.length)
