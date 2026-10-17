@@ -46,6 +46,9 @@
 //                 what the generators give, every column, both directions
 //                 (0138 added Wave B — 15 capitals and flagships — to the SAME generator, so this
 //                 one check holds all 67 generated hulls; no second copy of the rule)
+//   * item use    (0158, S13) public.item_use EQUALS the gear generator's `use` (scripts/build-gear.mjs
+//                 USE_BY_BASE — what wears every item and what an active consumes), every item, both
+//                 directions; the 14 refits ride in `generateGear()`'s items with the rest of the gear
 //   * home cities (0143) public.port_allegiance's `home` rows EQUAL data/home-ports.json, both
 //                 directions; every country has 3 or 4; no harbour is home to two; every home city
 //                 flies its own country (a home never changes hands — docs/INFLUENCE.md §3.2).
@@ -74,6 +77,9 @@ import { deriveWorld, REPO_ROOT, round2 } from '../lib/world-derive.mjs'
 import { generateShips, SHIPS_FILE } from '../build-ships.mjs'
 import { generateGear, GEAR_FILE } from '../build-gear.mjs'
 import { captainInputs, generateCaptains, CAPTAINS_FILE } from '../build-captains.mjs'
+
+/** 0158: what an item consumes, as one comparable string (jsonb re-orders an object's keys). */
+const consumedKey = (list) => list.map((c) => `${c.good} ${Number(c.qty)}`).join(', ')
 
 /** 0133: one skill effect's identity — every column but the per cent. */
 const effectKey = (e) => [e.skill, e.scope, e.stat, e.line ?? '', e.size ?? '', e.role ?? '', e.tech ?? ''].join('/')
@@ -326,6 +332,12 @@ function drift(db_, want) {
       [['qty', 'qty', 'qty']], GEAR)
   }
 
+  // item use (0158) — the generator's `use`, every item, both directions (trigger and what it consumes)
+  if (want.itemUse) {
+    both(keyed(db_.itemUse, (r) => r.code), keyed(want.itemUse, (r) => r.code), 'item use',
+      [['trigger', 'trigger', 'trigger'], ['consumes', 'consumes', 'consumes']], 'data/gear.generated.json (use)')
+  }
+
   for (const s of db_.skills) {
     if (s.effect === 'NONE') continue
     const mirror = db_.skillEffects.filter((e) => e.skill === s.code && e.scope === 'company')
@@ -448,6 +460,12 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     select item_code, base_type, rack, grade, meta, deck, hands, active from public.item_profile order by item_code`)).rows
   db_.rackSlots = (await db.query(`select class_code, slot, count from public.class_slots order by 1, 2`)).rows
   db_.slotUnlocks = (await db.query(`select class_code, slot, count, min_level from public.class_slot_unlocks order by 1, 2, 4`)).rows
+  // 0158: what works every item (S13)
+  const hasUse = (await db.query(`select to_regclass('public.item_use') is not null as ok`)).rows[0].ok
+  if (!hasUse) throw new Error('world-guard: public.item_use is missing — the chain no longer reaches 0158, so what wears the gear cannot be checked')
+  db_.itemUse = (await db.query(`
+    select item_code as code, coalesce(trigger, 'null') as trigger, consumes::text as consumes from public.item_use order by item_code`)).rows
+    .map((r) => ({ ...r, consumes: consumedKey(JSON.parse(r.consumes)) }))
   // 0133: the skill effects and requirements
   const hasEffects = (await db.query(`select to_regclass('public.skill_effects') is not null as ok`)).rows[0].ok
   if (!hasEffects) throw new Error('world-guard: public.skill_effects is missing — the chain no longer reaches 0133, so the skill effects cannot be checked')
@@ -531,6 +549,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
         code: i.code, baseType: i.baseType, rack: i.rack, grade: i.grade, meta: i.meta, deck: i.deck, hands: i.hands, active: i.active }))],
       classes: [...want.gear.classes, ...ships.hulls.map((h) => ({ class: h.class, ...h.racks }))],
     }
+    want.itemUse = gear.use.map((u) => ({ code: u.code, trigger: u.trigger ?? 'null', consumes: consumedKey(u.consumes) }))   // 0158
     want.skillRequirements = [
       ...want.skillRequirements,
       ...ships.hulls.flatMap((h) => h.requirements.map((q) => ({ kind: 'hull', code: h.class, skill: q.skill, level: q.level }))),
@@ -580,6 +599,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     skills: want.skills.map((s, i) => (i === 0 ? { ...s, rank: s.rank + 1 } : s)), // 0131: one skill's rank bent
     gear: { ...want.gear, items: want.gear.items.map((it, i) => (i === 0 ? { ...it, deck: it.deck + 1 } : it)) }, // 0132: one item's deck bent
     skillEffects: want.skillEffects.map((e, i) => (i === 0 ? { ...e, pct: e.pct + 1 } : e)), // 0133: one skill effect's per cent bent
+    itemUse: want.itemUse.map((u, i) => (i === 0 ? { ...u, trigger: u.trigger === 'STORM' ? 'MILES' : 'STORM' } : u)), // 0158: one item's trigger bent
     waveA: { ...want.waveA, classes: want.waveA.classes.map((c, i) => (i === 0 ? { ...c, hold: c.hold + 5 } : c)) }, // 0135: one generated hull's hold bent
     homes: Object.fromEntries(Object.entries(want.homes).map(([n, ps], i) => [n, i === 0 ? ps.slice(1) : ps])), // 0143: one home city dropped
     captains: { ...want.captains, gen: { ...want.captains.gen, captains: want.captains.gen.captains.map((x, i) => (i === 0
@@ -592,14 +612,15 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const sawSkill = seen.some((s) => s.includes(`skill ${want.skills[0].code}.rank:`))
   const sawGear = seen.some((s) => s.includes(`item profile ${want.gear.items[0].code}.deck:`))
   const sawEffect = seen.some((s) => s.includes(`skill effect ${effectKey(want.skillEffects[0])}.pct:`))
+  const sawUse = seen.some((s) => s.includes(`item use ${want.itemUse[0].code}.trigger:`))
   const sawHull = seen.some((s) => s.includes(`ship class ${want.waveA.classes[0].code}.hold:`))
   const droppedHome = Object.values(want.homes)[0][0]
   const sawHome = seen.some((s) => s.includes(`home city ${droppedHome} `))
   const sawCaptain = seen.some((s) => s.includes(`captain trait ${want.captains.gen.captains[0].code}#2.pct:`))
-  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawHull || !sawHome || !sawCaptain) {
+  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawUse || !sawHull || !sawHome || !sawCaptain) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent generated hull, dropped home city or bent captain trait was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent generated hull, dropped home city or bent captain trait was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -625,10 +646,10 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       `${want.places.length} sea places, ${db_.marketRows} market rows, ${want.shipLines.length} ship lines, ` +
       `${want.classProfiles.length} class profiles, ${want.skills.length} skills in ${want.skillGroups.length} groups, ` +
       `${want.gear.racks.length} gear racks, ${want.gear.items.length} item profiles, ${db_.rackSlots.length} rack places, ` +
-      `${want.skillEffects.length} skill effects, ${want.skillRequirements.length} skill requirements, ` +
+      `${want.skillEffects.length} skill effects, ${want.skillRequirements.length} skill requirements, ${want.itemUse.length} item uses, ` +
       `${want.waveA.liveClasses.length + want.waveA.classes.length} ship classes and ${want.waveA.items.length} items (generators re-run = files = database), ` +
       `${db_.homes.length} home cities, ${want.captains.people.length} captains with ${db_.captains.kit.length} traits and ` +
       `${db_.captains.speaks.length} languages, ${db_.captains.portLanguage.length} harbour languages (generator re-run = file = database) ` +
-      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent generated hull, dropped home city and bent captain trait were all seen)`,
+      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent generated hull, dropped home city and bent captain trait were all seen)`,
   )
 }

@@ -215,6 +215,76 @@ export const BASE_TYPES = [
     ['royal-figurehead', 'Royal Figurehead', r('sandalwood 3, gold 1, vermilion 1'), 'A royal figurehead in sandalwood and gold. It moves no number; it is a statement.'] ] },
 ]
 
+/**
+ * S13 (migration 0158, §6.1 / §6.5): WHAT WORKS A BASE TYPE — the ONE table of it, by base type, so every
+ * grade of a type answers alike. `trigger` is the sea event the piece answers to: it WEARS by it
+ * (§6.5 — MILES: canvas, rigging and the lookouts, gear_wear_per_1000nm a thousand miles; PIRATES: the
+ * High rack, gear_wear_per_fight a PIRATES day; STORM: the Low rack and the Mid hull-keeping gear,
+ * gear_wear_per_storm a STORM day), and an ACTIVE module (§6.1) acts on it — so an active's trigger is a
+ * day (PIRATES or STORM), never MILES. null: the piece never wears (the figurehead; every refit).
+ * `consumes` = what an active spends from the cargo each time it acts (§6.1: long guns a shot-and-ball and
+ * a gunpowder a fight; pumps and storm canvas nothing but hands). Recorded only: nothing reads attack,
+ * armour or a trigger in a roll until SHIPS_AND_GEAR S4 and the hazard re-cut.
+ */
+const GUN_SHOT = [{ good: 'shot-and-ball', qty: 1 }, { good: 'gunpowder', qty: 1 }]
+export const USE_BY_BASE = {
+  'Long Guns': { trigger: 'PIRATES', consumes: GUN_SHOT },
+  'Carronades': { trigger: 'PIRATES', consumes: GUN_SHOT },
+  'Chase Guns': { trigger: 'PIRATES', consumes: GUN_SHOT },
+  'Swivel Guns': { trigger: 'PIRATES', consumes: GUN_SHOT },
+  'Boarding Gear': { trigger: 'PIRATES', consumes: [] },
+  'Powder Magazine': { trigger: 'PIRATES', consumes: [] },
+  'Sails': { trigger: 'MILES', consumes: [] },
+  'Headsails': { trigger: 'MILES', consumes: [] },
+  'Studding Sails': { trigger: 'MILES', consumes: [] },
+  'Storm Canvas': { trigger: 'STORM', consumes: [] },
+  'Rudder': { trigger: 'STORM', consumes: [] },
+  'Whipstaff': { trigger: 'STORM', consumes: [] },
+  'Anchor': { trigger: 'STORM', consumes: [] },
+  'Sheet Anchor': { trigger: 'STORM', consumes: [] },
+  'Capstan': { trigger: 'STORM', consumes: [] },
+  'Lookout': { trigger: 'MILES', consumes: [] },
+  'Binnacle & Charts': { trigger: 'MILES', consumes: [] },
+  'Ballast': { trigger: 'STORM', consumes: [] },
+  'Sheathing': { trigger: 'STORM', consumes: [] },
+  'Planking': { trigger: 'STORM', consumes: [] },
+  'Bilge Pumps': { trigger: 'STORM', consumes: [] },
+  'Hold Frames': { trigger: 'STORM', consumes: [] },
+  'Figurehead': { trigger: null, consumes: [] },
+}
+export const TRIGGERS = ['MILES', 'PIRATES', 'STORM']
+
+/**
+ * S13 (migration 0158, §6.8): THE REFITS — EVE's rigs. Fitted only at a build yard, into the Refit rack;
+ * cost no Deck or Hands; never wear; DESTROYED when removed (public.unmount_fitting, 0132). Refit I needs
+ * Refitting I, Refit II needs Refitting V. §6.8 lists eight; SEVEN are here — Shallow Keel is not: its buy
+ * is a LOWER draft (a negative delta, against 0074's buys-one-spends-one rule) and nothing in the game reads
+ * draft as a gate since 0139 ("any hull enters any harbour"), so it would cost cargo space for nothing.
+ * [code stem, name, slot (the item's TYPE word), buys, spends, note, [effects I], [effects II], [good a, good b]]
+ */
+export const REFITS = [
+  ['fine-lines', 'Fine Lines', 'hull', 'Speed', 'Cargo space', 'The hull is faired to finer lines: faster through the water, with less room inside.',
+    [['speed', 0.2], ['hold', -15]], [['speed', 0.35], ['hold', -20]], ['live-oak', 'lignum-vitae']],
+  ['extended-hold', 'Extended Hold', 'hull', 'Cargo space', 'Handling', 'The cargo space is opened up and lengthened: more cargo, and a ship slower to answer the helm.',
+    [['hold', 30], ['handling', -6]], [['hold', 50], ['handling', -8]], ['timber', 'ships-nails']],
+  ['doubled-frames', 'Doubled Frames', 'hull', 'Hull', 'Speed', 'Every frame is doubled: the hull takes far more punishment and sits a little heavier.',
+    [['durability', 200], ['speed', -0.15]], [['durability', 320], ['speed', -0.2]], ['naval-timber', 'live-oak']],
+  ['raised-forecastle', 'Raised Forecastle', 'hull', 'Armour', 'Handling', 'A high, stout forecastle that shelters the crew and catches the wind.',
+    [['armour', 8], ['handling', -5]], [['armour', 14], ['handling', -6]], ['timber', 'oakum']],
+  ['lateen-rerig', 'Lateen Re-rig', 'rig', 'Handling', 'Speed', 'The ship is re-rigged with lateen sails: it turns and points higher, and runs a little slower.',
+    [['handling', 10], ['speed', -0.1]], [['handling', 16], ['speed', -0.1]], ['hemp', 'naval-timber']],
+  ['pierced-gun-deck', 'Pierced Gun Deck', 'weapon', 'Attack', 'Hull', 'A gun deck is cut through the side: more guns bear, and the hull is weaker for it.',
+    [['attack', 40], ['durability', -100]], [['attack', 70], ['durability', -120]], ['timber', 'bar-iron']],
+  ['lookout-refit', 'Lookout Top', 'lookout', 'Sighting', 'Handling', 'A permanent lookout top high on the mainmast: the horizon moves out, and the ship is a little tender.',
+    [['sighting', 2], ['handling', -2]], [['sighting', 4], ['handling', -2]], ['riga-mast', 'cordage']],
+]
+/** A refit's two levels: I (grade 1, Refitting I, made at a tier-2 workshop) and II (grade 2, Refitting V, tier 3). */
+const REFIT_LEVELS = [
+  { g: 1, roman: 'I', skillLevel: 1, wsTier: 2, volume: 4, qty: [8, 4] },
+  { g: 2, roman: 'II', skillLevel: 5, wsTier: 3, volume: 5, qty: [14, 8] },
+]
+const REFIT_COUNT = REFITS.length * REFIT_LEVELS.length
+
 /** One effect at grade g: buys × the grade's multiplier (gentler for speed / hold), spends × 1. */
 export function gradedDelta(stat, delta, g) {
   if (delta < 0) return delta
@@ -233,6 +303,22 @@ export function generateGear() {
   const codes = new Set(Object.keys(fittings))
   const names = new Set(Object.values(fittings).map((f) => f.name.toLowerCase()))
   if (BASE_TYPES.length !== 23) throw new Error(`§6.3 lists 23 base types (12 live + 11 new); the table has ${BASE_TYPES.length}`)
+
+  // S13: every base type answers to exactly one entry of USE_BY_BASE, and nothing else is in it
+  const bases = new Set(BASE_TYPES.map((b) => b.base))
+  for (const b of bases) if (!(b in USE_BY_BASE)) throw new Error(`${b}: no entry in USE_BY_BASE (what wears it, what it consumes)`)
+  for (const b of Object.keys(USE_BY_BASE)) if (!bases.has(b)) throw new Error(`USE_BY_BASE names ${b}, which is no base type`)
+  /** S13: what works an item of base type `base` (active or not), checked against §6.1's rules. */
+  const useOf = (code, base, active) => {
+    const u = USE_BY_BASE[base]
+    if (u.trigger !== null && !TRIGGERS.includes(u.trigger)) throw new Error(`${code}: trigger ${u.trigger}`)
+    if (active && !['PIRATES', 'STORM'].includes(u.trigger)) throw new Error(`${code}: an active module acts on a PIRATES or STORM day, not on ${u.trigger}`)
+    if (!active && u.consumes.length) throw new Error(`${code}: only an active module consumes anything`)
+    for (const c of u.consumes) if (!goods.has(c.good) || !(c.qty > 0)) throw new Error(`${code}: consumes ${c.good} ${c.qty}`)
+    return { trigger: u.trigger, consumes: u.consumes }
+  }
+  const use = []
+  for (const [code, p] of Object.entries(profiles)) use.push({ code, ...useOf(code, p.baseType, p.active) })
 
   for (const b of BASE_TYPES) {
     // G1: the live row (anchor) or the new one
@@ -277,23 +363,54 @@ export function generateGear() {
         deck: roundUp(g1.deck * (1 + 0.1 * (g - 1))), hands: roundUp(g1.hands * (1 + 0.1 * (g - 1))), active: g1.active,
         effects, recipe, requirements,
       })
+      use.push({ code, ...useOf(code, b.base, g1.active) })
     }
   }
   if (items.length !== 103) throw new Error(`Wave A gear is 103 items (12 × G2-G5 + 11 × G1-G5); the generator made ${items.length}`)
-  return { _: 'GENERATED by scripts/build-gear.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135).', items }
+
+  // S13 (§6.8): THE REFITS — rack refit, no Deck, no Hands, never wear (trigger null), passive; each buys one
+  // stat and spends another (0074); Refit I needs Refitting I, II needs Refitting V.
+  if (!skills.has('REFITTING')) throw new Error('REFITTING is not in data/skills.json')
+  for (const [stem, base, slot, buys, spends, note, fx1, fx2, [ga, gb]] of REFITS) {
+    for (const lv of REFIT_LEVELS) {
+      const code = `${stem}-${lv.g}`
+      const name = `${base} ${lv.roman}`
+      if (codes.has(code)) throw new Error(`${code}: a second item of that code`)
+      if (names.has(name.toLowerCase())) throw new Error(`${name}: a second item of that name`)
+      codes.add(code)
+      names.add(name.toLowerCase())
+      const effects = (lv.g === 1 ? fx1 : fx2).map(([stat, delta]) => ({ stat, delta }))
+      for (const e of effects) if (!STATS.has(e.stat) || e.delta === 0) throw new Error(`${code}: effect ${e.stat} ${e.delta}`)
+      if (!(effects.some((e) => e.delta > 0) && effects.some((e) => e.delta < 0))) throw new Error(`${code}: every fitting buys one stat and spends another (0074)`)
+      for (const g of [ga, gb]) if (!goods.has(g)) throw new Error(`${code}: good ${g} is not in data/goods.json`)
+      items.push({
+        code, name, slot, buys, spends, note, volume: lv.volume, wsTier: lv.wsTier,
+        baseType: base, rack: 'refit', grade: lv.g, meta: 0, deck: 0, hands: 0, active: false,
+        effects, recipe: [{ in: ga, qty: lv.qty[0] }, { in: gb, qty: lv.qty[1] }],
+        requirements: [{ skill: 'REFITTING', level: lv.skillLevel }],
+      })
+      use.push({ code, trigger: null, consumes: [] })
+    }
+  }
+  if (items.length !== 103 + REFIT_COUNT) throw new Error(`the gear is 103 Wave A items + ${REFIT_COUNT} refits; the generator made ${items.length}`)
+  use.sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
+  return {
+    _: 'GENERATED by scripts/build-gear.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135; §6.1 / §6.5 / §6.8, S13, migration 0158).',
+    items,
+    use,
+  }
 }
 
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`
+const NL = '\n'
 
-/** The SQL VALUES migration 0135 loads (`--sql`), pasted verbatim; the world guard holds the database to
- *  generateGear() on every apply. */
-export function gearSql(gen = generateGear()) {
-  const I = gen.items
-  const rows = (list) => list.join(',\n')
+/** The rows of one list of items, as the five catalogue tables take them. */
+function itemRows(I) {
+  const rows = (list) => list.join(',' + NL)
   return [
-    '-- item_kinds (103)',
+    `-- item_kinds (${I.length})`,
     rows(I.map((i) => `  (${q(i.code)}, ${q(i.name)}, ${q(i.slot)}, ${q(i.buys)}, ${q(i.spends)}, ${q(i.note)}, ${i.volume}, ${i.wsTier})`)),
-    '-- item_profile (103)',
+    `-- item_profile (${I.length})`,
     rows(I.map((i) => `  (${q(i.code)}, ${q(i.baseType)}, ${q(i.rack)}, ${i.grade}, ${i.meta}, ${i.deck}, ${i.hands}, ${i.active})`)),
     '-- item_effects',
     rows(I.flatMap((i) => i.effects.map((e) => `  (${q(i.code)}, ${q(e.stat)}, ${e.delta})`))),
@@ -301,19 +418,38 @@ export function gearSql(gen = generateGear()) {
     rows(I.flatMap((i) => i.recipe.map((x) => `  (${q(i.code)}, ${q(x.in)}, ${x.qty})`))),
     '-- skill_requirements (item)',
     rows(I.flatMap((i) => i.requirements.map((r) => `  ('item', ${q(i.code)}, ${q(r.skill)}, ${r.level})`))),
-  ].join('\n')
+  ]
+}
+
+/** The SQL VALUES migration 0135 loaded (`--sql`): the 103 Wave A items (the refits are 0158's). */
+export function gearSql(gen = generateGear()) {
+  return itemRows(gen.items.filter((i) => i.rack !== 'refit')).join(NL)
+}
+
+/** The SQL VALUES migration 0158 loads (`--sql-0158`), pasted verbatim: the 14 refits, then what works
+ *  every item (public.item_use). The world guard holds the database to generateGear() on every apply. */
+export function s13Sql(gen = generateGear()) {
+  return [
+    ...itemRows(gen.items.filter((i) => i.rack === 'refit')),
+    `-- item_use (${gen.use.length})`,
+    gen.use.map((u) => `  (${q(u.code)}, ${u.trigger === null ? 'null' : q(u.trigger)}, ${q(JSON.stringify(u.consumes))})`).join(',' + NL),
+  ].join(NL)
 }
 
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/build-gear.mjs')) {
-  const text = JSON.stringify(generateGear(), null, 1) + '\n'
+  const gen = generateGear()
+  const text = JSON.stringify(gen, null, 1) + NL
+  const says = `${gen.items.length} items, ${gen.use.length} item uses`
   if (process.argv.includes('--sql')) {
-    console.log(gearSql())
+    console.log(gearSql(gen))
+  } else if (process.argv.includes('--sql-0158')) {
+    console.log(s13Sql(gen))
   } else if (process.argv.includes('--check')) {
     const now = readFileSync(join(ROOT, GEAR_FILE), 'utf8')
     if (now !== text) { console.error(`${GEAR_FILE} is NOT what scripts/build-gear.mjs generates — re-run it.`); process.exit(1) }
-    console.log(`${GEAR_FILE} equals the generator (103 items).`)
+    console.log(`${GEAR_FILE} equals the generator (${says}).`)
   } else {
     writeFileSync(join(ROOT, GEAR_FILE), text)
-    console.log(`wrote ${GEAR_FILE}: 103 items`)
+    console.log(`wrote ${GEAR_FILE}: ${says}`)
   }
 }
