@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Bar, Empty, Tray, type TrayDetent } from '../components/ui'
+import { Bar, BonusRows, Empty, Tray, type TrayDetent } from '../components/ui'
 import { formatFixed, formatInt } from '../lib/format'
 import { CHART_CHROME, hullClassOfCode, hullPath } from '../chart'
 import { HullCountry } from './HullCountry'
@@ -322,17 +322,7 @@ function SkillBonuses({ bonuses }: { bonuses: readonly ShipBonus[] | undefined }
   return (
     <section data-testid="ship-bonuses">
       <Heading>Skill bonuses</Heading>
-      <ul className="flex flex-col gap-1">
-        {bonuses.map((b) => (
-          <li
-            key={`${b.skill}-${b.stat}`}
-            className="flex items-baseline justify-between gap-3 rounded-control bg-surface-2 px-3 py-2"
-          >
-            <span className="min-w-0 truncate text-t-caption text-ink">{b.source}</span>
-            <span className="shrink-0 text-t-caption tabular-nums text-accent">{b.effect}</span>
-          </li>
-        ))}
-      </ul>
+      <BonusRows rows={bonuses.map((b) => ({ key: `${b.skill}-${b.stat}`, source: b.source, effect: b.effect }))} />
     </section>
   )
 }
