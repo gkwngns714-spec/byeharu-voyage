@@ -1,0 +1,102 @@
+{
+  "_": "THE CAPTAINS' CATALOGUE (K4, docs/SKILLS_AND_CAPTAINS.md §4.1, §4.2, §4.9) — authored. Who the captains ARE is data/officers.json; what a grade, a trait and a language ARE is this file. scripts/build-captains.mjs reads both and generates data/captains.generated.json (every captain's grade, kit of ten traits and languages, and every harbour's language); migration 0156 loads them and scripts/db/world-guard.mjs holds the database to all three files on every apply.",
+  "_grades": "OWNER O3 (row 61): S 5 slots / 10 traits, A 4 / 8, you get the pattern — B 3 / 6, C 2 / 4. `floor_pct` is DEFAULT D10 / D12: a captain's grade at birth is the highest grade whose floor her job value reaches (C 4-5 %, B 5.5-6.5 %, A 7-8 %, S 8.5-9 %), and a promotion (K8) lifts every trait to at least the new floor. A grade above S costs one row (\"for now\").",
+  "grades": [
+    { "code": "C", "ord": 1, "slots": 2, "known": 4, "floor_pct": 4.0 },
+    { "code": "B", "ord": 2, "slots": 3, "known": 6, "floor_pct": 5.5 },
+    { "code": "A", "ord": 3, "slots": 4, "known": 8, "floor_pct": 7.0 },
+    { "code": "S", "ord": 4, "slots": 5, "known": 10, "floor_pct": 8.5 }
+  ],
+  "_kit": "DEFAULT D15: every captain carries TEN ordered traits — her job first at her own value, then up to `same_focus` more of her job's focus, then the rest, each at `extra_pct` % of her job's value (rounded to 0.1). The order after the first is a pure function of her code (md5), so the kit is the same on every build.",
+  "kit": { "size": 10, "extra_pct": 60, "same_focus": 3 },
+  "_foci": "Origin's three foci [UWO §3.2]. The word is what the player reads (Codex filter Role, the trait card).",
+  "foci": [
+    { "code": "exploration", "word": "Exploration" },
+    { "code": "trading", "word": "Trading" },
+    { "code": "combat", "word": "Combat" }
+  ],
+  "_effects": "What a trait does, by effect (§4.2, §5). `scope` fleet = every seated captain of the fleet adds up; ship = only the ship she sits on (K5). `live` = a rule reads it TODAY while crew_bite is off: the four effects public.fleet_officer_bonus has always served (speed, cargo space, spread, crew saved) — and only for a captain's job (her first trait). `words` is the line the trait card prints ({pct}, {goods}); `waits` is the sentence printed when the trait does not work for this captain yet. `reader` names the ONE rule that will read it. The cap per effect arrives with its reader, public.crew_pct, in K5 (a number nothing reads is a second source of truth beside officer_bonus_cap_pct).",
+  "effects": [
+    { "code": "speed", "scope": "fleet", "live": true, "words": "+{pct}% speed", "waits": "Not in use yet.", "reader": "voyage.fleet_speed" },
+    { "code": "hold", "scope": "fleet", "live": true, "words": "+{pct}% cargo space", "waits": "Not in use yet.", "reader": "public.ship_hold_capacity" },
+    { "code": "spread", "scope": "fleet", "live": true, "words": "+{pct}% better prices", "waits": "Not in use yet.", "reader": "world.spread_effective" },
+    { "code": "crew_saved", "scope": "fleet", "live": true, "words": "−{pct}% crew lost to pirates", "waits": "Not in use yet.", "reader": "public.raid_crew_lost" },
+    { "code": "homesick_relief", "scope": "fleet", "live": false, "words": "−{pct} points of homesickness", "waits": "Not in use yet.", "reader": "public.crew_pct" },
+    { "code": "storm", "scope": "fleet", "live": false, "words": "−{pct}% storm damage", "waits": "Not in use yet.", "reader": "voyage.settle" },
+    { "code": "supplies", "scope": "fleet", "live": false, "words": "+{pct}% days of supplies", "waits": "Not in use yet.", "reader": "voyage.endurance_days" },
+    { "code": "category_spread", "scope": "fleet", "live": false, "words": "+{pct}% better prices on {goods}", "waits": "Not in use yet.", "reader": "world.spread_effective" },
+    { "code": "accuracy", "scope": "ship", "live": false, "words": "+{pct}% accuracy", "waits": "Works when combat arrives.", "reader": "world.ship_stats" },
+    { "code": "reach", "scope": "ship", "live": false, "words": "+{pct}% reach", "waits": "Works when combat arrives.", "reader": "world.ship_stats" },
+    { "code": "attack", "scope": "ship", "live": false, "words": "+{pct}% attack", "waits": "Works when combat arrives.", "reader": "world.ship_stats" }
+  ],
+  "_traits": "The 25 traits (§4.2): the four live jobs (O6), Pilot (O6: kinder weather), Provisioner (D15), one trader per goods category (O5, the owner's 17 categories of row 70: jewellery → Gem trader, meat → Food trader) and the two combat jobs (O5: long range, close). `ord` is the catalogue order; `goods` is data/goods.json's category code a trader works on, `goods_word` how the card names it. A trait may carry two effects (the surgeon). Every trait is some captain's job (at least two captains each, D15).",
+  "traits": [
+    { "code": "NAVIGATOR", "ord": 1, "word": "Navigator", "focus": "exploration", "effects": [{ "effect": "speed", "mult": 1 }] },
+    { "code": "QUARTERMASTER", "ord": 2, "word": "Quartermaster", "focus": "trading", "effects": [{ "effect": "hold", "mult": 1 }] },
+    { "code": "PURSER", "ord": 3, "word": "Purser", "focus": "trading", "effects": [{ "effect": "spread", "mult": 1 }] },
+    { "code": "SURGEON", "ord": 4, "word": "Surgeon", "focus": "exploration", "effects": [{ "effect": "crew_saved", "mult": 1 }, { "effect": "homesick_relief", "mult": 1 }] },
+    { "code": "PILOT", "ord": 5, "word": "Pilot", "focus": "exploration", "effects": [{ "effect": "storm", "mult": 1 }] },
+    { "code": "PROVISIONER", "ord": 6, "word": "Provisioner", "focus": "exploration", "effects": [{ "effect": "supplies", "mult": 1 }] },
+    { "code": "GRAIN_TRADER", "ord": 7, "word": "Grain trader", "focus": "trading", "goods": "grain", "goods_word": "grain", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "FOOD_TRADER", "ord": 8, "word": "Food trader", "focus": "trading", "goods": "food", "goods_word": "food", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "DRINK_TRADER", "ord": 9, "word": "Drink trader", "focus": "trading", "goods": "drink", "goods_word": "drink", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "TOBACCO_TRADER", "ord": 10, "word": "Tobacco trader", "focus": "trading", "goods": "tobacco", "goods_word": "tobacco", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "SPICE_TRADER", "ord": 11, "word": "Spice trader", "focus": "trading", "goods": "spice", "goods_word": "spice", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "MEDICINE_TRADER", "ord": 12, "word": "Medicine trader", "focus": "trading", "goods": "medicine", "goods_word": "medicine", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "DYE_TRADER", "ord": 13, "word": "Dye trader", "focus": "trading", "goods": "dye", "goods_word": "dye", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "CLOTH_TRADER", "ord": 14, "word": "Cloth trader", "focus": "trading", "goods": "cloth", "goods_word": "cloth", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "METAL_TRADER", "ord": 15, "word": "Metal trader", "focus": "trading", "goods": "metal", "goods_word": "metal", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "GEM_TRADER", "ord": 16, "word": "Gem trader", "focus": "trading", "goods": "gems", "goods_word": "gems", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "CRAFTS_TRADER", "ord": 17, "word": "Crafts trader", "focus": "trading", "goods": "crafts", "goods_word": "crafts", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "WEAPONS_TRADER", "ord": 18, "word": "Weapons trader", "focus": "trading", "goods": "weapons", "goods_word": "weapons", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "GUNS_TRADER", "ord": 19, "word": "Guns trader", "focus": "trading", "goods": "guns", "goods_word": "guns", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "SHIP_SUPPLIES_TRADER", "ord": 20, "word": "Ship-supplies trader", "focus": "trading", "goods": "ship-supplies", "goods_word": "ship supplies", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "ART_TRADER", "ord": 21, "word": "Art trader", "focus": "trading", "goods": "art", "goods_word": "art", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "BOOK_TRADER", "ord": 22, "word": "Book trader", "focus": "trading", "goods": "books", "goods_word": "books", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "ANIMAL_TRADER", "ord": 23, "word": "Animal trader", "focus": "trading", "goods": "animals", "goods_word": "animals", "effects": [{ "effect": "category_spread", "mult": 1 }] },
+    { "code": "GUNNER", "ord": 24, "word": "Gunner", "focus": "combat", "effects": [{ "effect": "accuracy", "mult": 1 }, { "effect": "reach", "mult": 1 }] },
+    { "code": "BOARDER", "ord": 25, "word": "Boarder", "focus": "combat", "effects": [{ "effect": "attack", "mult": 1 }] }
+  ],
+  "_languages": "DEFAULT D14 (§4.9): twenty languages, one for each people the map has. A language is NEVER a gate. A harbour's language: a named exception (`by_port`), else its founding nation's (`by_nation`), else its culture's (`by_culture`), else — only for a Latin harbour of no nation, since there is no single Latin language — its country's (`by_country`); a harbour none of the four names fails the generator rather than being guessed. A captain speaks her home's language; an A captain one more and an S captain two more, the languages most spoken in her home region first.",
+  "languages": [
+    { "code": "PORTUGUESE", "ord": 1, "name": "Portuguese" },
+    { "code": "SPANISH", "ord": 2, "name": "Spanish" },
+    { "code": "FRENCH", "ord": 3, "name": "French" },
+    { "code": "ITALIAN", "ord": 4, "name": "Italian" },
+    { "code": "ENGLISH", "ord": 5, "name": "English" },
+    { "code": "DUTCH", "ord": 6, "name": "Dutch" },
+    { "code": "GERMAN", "ord": 7, "name": "German" },
+    { "code": "NORDIC", "ord": 8, "name": "Nordic" },
+    { "code": "SLAVIC", "ord": 9, "name": "Slavic" },
+    { "code": "TURKISH", "ord": 10, "name": "Turkish" },
+    { "code": "ARABIC", "ord": 11, "name": "Arabic" },
+    { "code": "PERSIAN", "ord": 12, "name": "Persian" },
+    { "code": "INDIC", "ord": 13, "name": "Indic" },
+    { "code": "MALAY", "ord": 14, "name": "Malay" },
+    { "code": "THAI", "ord": 15, "name": "Thai" },
+    { "code": "CHINESE", "ord": 16, "name": "Chinese" },
+    { "code": "JAPANESE", "ord": 17, "name": "Japanese" },
+    { "code": "KOREAN", "ord": 18, "name": "Korean" },
+    { "code": "SWAHILI", "ord": 19, "name": "Swahili" },
+    { "code": "GUINEAN", "ord": 20, "name": "Guinean" }
+  ],
+  "extra_languages": { "C": 0, "B": 0, "A": 1, "S": 2 },
+  "by_nation": {
+    "AYU": "THAI", "BAN": "MALAY", "DNK": "NORDIC", "ENG": "ENGLISH", "ESP": "SPANISH", "FRA": "FRENCH",
+    "GEN": "ITALIAN", "GUJ": "INDIC", "HAN": "GERMAN", "JOS": "KOREAN", "JPN": "JAPANESE", "MAR": "ARABIC",
+    "MLB": "INDIC", "MNG": "CHINESE", "MUG": "INDIC", "NLD": "DUTCH", "OTT": "TURKISH", "PER": "PERSIAN",
+    "POL": "SLAVIC", "PRT": "PORTUGUESE", "RUS": "SLAVIC", "SWE": "NORDIC", "VEN": "ITALIAN"
+  },
+  "_by_port": "Feodosia (Kaffa) was an Ottoman port from 1475; the data gives it no nation, and its culture would say Arabic.",
+  "by_port": { "FEO": "TURKISH" },
+  "by_country": {
+    "Barbados": "ENGLISH", "Canada": "FRENCH", "Croatia": "ITALIAN", "Curaçao": "DUTCH", "Cyprus": "ITALIAN",
+    "Gibraltar": "SPANISH", "Italy": "ITALIAN", "Jamaica": "SPANISH", "Malta": "ITALIAN", "Puerto Rico": "SPANISH",
+    "Suriname": "DUTCH", "United States": "SPANISH"
+  },
+  "by_culture": {
+    "anglo": "ENGLISH", "germanic": "GERMAN", "guinean": "GUINEAN", "indic": "INDIC", "islamic": "ARABIC",
+    "japanese": "JAPANESE", "korean": "KOREAN", "malay": "MALAY", "nordic": "NORDIC", "oceanic": "MALAY",
+    "sinic": "CHINESE", "swahili": "SWAHILI"
+  }
+}

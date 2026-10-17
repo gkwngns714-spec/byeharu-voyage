@@ -7,10 +7,12 @@ import { Tile } from './Tile'
 // ONE OFFICER, AS A TILE — moved here from features/compendium/CaptainsFace.tsx (2026-10-08) so the
 // Codex and a merchant's sheet print one shape (docs/NPC_TRADERS.md §8.3). PURE PROPS; the caller
 // resolves the home port's NAME. `signed` is a fact about the world (the Codex), never an offer;
-// `takesEffect` false greys the bonus for an officer no rule reads yet.
+// `takesEffect` false greys the bonus for an officer no rule reads yet. 0156: `role` is the word to print
+// for her job (the Codex passes the server's `job_word`) and `grade` her served grade, printed first.
 export function OfficerTile({
   name,
-  specialty,
+  role,
+  grade = null,
   bonusPct,
   homePort = null,
   signed = false,
@@ -20,7 +22,10 @@ export function OfficerTile({
   testId = 'officer-tile',
 }: {
   name: string
-  specialty: string
+  /** The job, as the line prints it. */
+  role: string
+  /** 0156 — C / B / A / S, served; null draws nothing (a server before 0156). */
+  grade?: string | null
   bonusPct: number
   /** The port NAME she calls home, when known (0015:63). */
   homePort?: ReactNode
@@ -31,9 +36,8 @@ export function OfficerTile({
   onClick?: () => void
   testId?: string
 }) {
-  const role = specialty.toLowerCase()
   // The home port may be a go-to link (src/chart/GoToLink.tsx), so the line is joined as nodes.
-  const meta = [role, signed ? 'signed' : null, level != null ? `Lv ${level}` : null, homePort]
+  const meta = [grade, role, signed ? 'signed' : null, level != null ? `Lv ${level}` : null, homePort]
     .filter(Boolean)
     .map((part, i) => (
       <Fragment key={i}>

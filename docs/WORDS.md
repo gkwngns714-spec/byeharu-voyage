@@ -52,8 +52,14 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | repair | **Repair** (`Repair to 100%`) | mend |
 | a fleet whose ships are at 0 and cannot sail (served status UNABLE_TO_SAIL; 0152) | **wrecked** (`Gaivota cannot sail: its ships are wrecked.`) | unable to sail, sunk |
 | moving a wrecked fleet to the nearest port that repairs ships (0152) | **Tow** (button `Tow · 146 🪙`; the server's sentence `A tow takes it 49 miles to Lisbon, the nearest port that repairs ships.`; History `Gaivota was towed 49 miles to Lisbon.`) | salvage, haul, rescue |
-| hire | **Hire** (`Hire crew`, `Hire officer`) | sign on |
-| the inn's daily officers | **Officers today** | tonight's room |
+| hire | **Hire** (`Hire crew`, `Hire Ana for 1,100 🪙`) | sign on |
+| the captains in an inn this quarter hour | **Captains here** (`New faces in 12 min`) | tonight's room, officers today |
+| a hired person (0156, docs/SKILLS_AND_CAPTAINS.md D8) | **captain** (`Captains here`, the Codex face **Captains**) — the wire still says `officer` (`public.officers`, `world.officers`) until K9 | mate, officer (in new text) |
+| her grade (0156) | **S** · **A** · **B** · **C** — the server's letter, first on her tile (`S · Navigator`) and a **Grade** row in her card; Codex filter **Grade** | rank (that is RANK's word), tier, star |
+| what she does (0156) | her **job**, by its word — **Navigator**, **Gem trader**, **Boarder** — and its focus **Exploration** · **Trading** · **Combat** (Codex filter **Role**, then **Job**) | specialty, class, profession |
+| what a captain can do (0156) | **traits**, each named by its job word with the server's line (`Navigator · +7.5% speed`, `Gem trader · +4.5% better prices on gems`) | skills (the Academy's word), effects, perks |
+| a trait that does not work yet (0156) | the server's sentence: *Not in use yet.* · *Works when combat arrives.* | locked, disabled, coming soon |
+| the languages she speaks (0156) | the server's sentence **Speaks Portuguese, Spanish** | LV, fluency |
 | the market | **market** / **here** | the quay |
 | price paid | **Bought at** | paid, basis |
 | sale proceeds | **You get** | fetches |

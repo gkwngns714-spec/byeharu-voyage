@@ -4,6 +4,7 @@ import {
   Bar,
   Button,
   Figure,
+  Hint,
   Icon,
   Note,
   Row,
@@ -83,11 +84,15 @@ import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../lib/rpc'
 // it and then asks the world to re-read, rather than composing a line.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-const SPECIALTY_DOES: Record<string, string> = {
-  NAVIGATOR: 'faster voyages',
-  QUARTERMASTER: 'more cargo space',
-  SURGEON: 'healthier crew',
-  PURSER: 'better prices on every trade',
+// ── A CAPTAIN IS HER CARD (0156, K4) ───────────────────────────────────────────────────────────
+// Grade, job, the traits she knows and what each does, and the languages she speaks are the
+// server's — world.captain_card, composed onto every guest by world.inn. This screen prints them and
+// writes no word of its own about what a job does (the client's old SPECIALTY_DOES table is gone).
+
+/** The tile's line: `S · Navigator`. A server before 0156 sends no card, and the job code is all
+ *  there is to say. */
+function guestMeta(guest: InnGuest): string {
+  return guest.grade && guest.job_word ? `${guest.grade} · ${guest.job_word}` : guest.specialty.toLowerCase()
 }
 
 /** Her nation and home port — the port a go-to link when the world names it (the inn serves the
@@ -348,7 +353,7 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
               key={guest.code}
               mark={<Icon name="crew" size={20} />}
               name={guest.name}
-              meta={guest.specialty.toLowerCase()}
+              meta={guestMeta(guest)}
               state={guest.signed ? 'muted' : 'rest'}
               tap="whole"
               onClick={() => {
@@ -385,14 +390,26 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
             )
           }
         >
-          <Row
-            label="Role"
-            value={`${open.specialty.toLowerCase()} · ${SPECIALTY_DOES[open.specialty] ?? ''}`}
-          />
-          <Row
-            label="Bonus"
-            value={<Figure value={`+${formatInt(open.bonus_pct)}%`} tone="success" />}
-          />
+          {open.grade && open.job_word ? (
+            <>
+              <Row label="Grade" value={open.grade} data-testid="inn-grade" />
+              <Row label="Job" value={`${open.job_word} · ${open.focus_word ?? ''}`} data-testid="inn-job" />
+              {(open.traits ?? []).map((t) => (
+                <Row
+                  key={t.code}
+                  label={t.word}
+                  value={<Figure value={t.lines.join(' · ')} tone={t.in_use ? 'success' : 'faint'} />}
+                  tone={t.in_use ? 'default' : 'muted'}
+                  data-testid={`inn-trait-${t.code}`}
+                >
+                  {t.note && <Hint>{t.note}</Hint>}
+                </Row>
+              ))}
+              {open.speaks && <Row label={open.speaks} tone="muted" data-testid="inn-speaks" />}
+            </>
+          ) : (
+            <Row label="Job" value={open.specialty.toLowerCase()} />
+          )}
           <Row label="From" value={whereFrom(open, ports)} hairline={!open.signed} />
           {open.signed && <Row label="Already working for you." tone="muted" hairline={false} />}
           <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
