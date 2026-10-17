@@ -1536,6 +1536,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // own, E_NOT_YOUR_SHIP otherwise) and a seat; no player id. Only in port (E_NOT_IN_PORT). Landed
       // WITH the face that presses it (src/live/ShipCabins.tsx, the ship panel's Cabins).
       'cmdSeatCaptain',
+      // Pin moved deliberately 2026-10-18 with migration 0160 (K6): YOUR CAPTAINS (a read; no player id)
+      // and choosing the traits one uses (the officer code and her traits; no player id; only ashore or in
+      // port). Landed WITH the face that reads and presses them (src/live/YourCaptains.tsx, FLEETS).
+      'worldCaptains', 'cmdCaptainTraitsSet',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

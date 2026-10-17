@@ -16,6 +16,7 @@ import { routeCaption, routeOfFleet } from '../../domain/route'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { FleetFold } from './FleetFold'
 import { fleetDue } from './fleetLine'
+import { YourCaptains } from '../../live/YourCaptains'
 
 // FLEETS — what you own, one row each, redrawn to docs/UI_DIRECTION.md §6 (§7 step 7).
 //
@@ -118,6 +119,8 @@ function FleetsBody() {
           )
         })
       )}
+      {/* 0160: your captains — levels, homesickness, the traits each one uses (src/live/YourCaptains.tsx) */}
+      <YourCaptains />
     </Sheet>
   )
 }
