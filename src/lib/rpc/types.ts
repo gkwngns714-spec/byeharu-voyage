@@ -696,6 +696,10 @@ export interface HaggleOnQuay {
    *  `cmd.haggle` rolls against, so the panel cannot promise what the verb will not do. */
   next_odds: number
   next_odds_pct: number
+  /** 0161 — which of her captains speaks this port's language, in the server's words ("Ana de Sousa
+   *  speaks Portuguese here: +5% bargain odds"); null when nobody does, or while captain traits are off.
+   *  Absent before 0161. */
+  language_line?: string | null
   /** The port's PUBLISHED spread, and the spread THIS house executes at — purser and bargain
    *  already folded in by `world.spread_effective`, which is what `world.quote` itself calls. */
   spread_published: number
@@ -1009,6 +1013,64 @@ export interface ShipSeats {
 export interface CrewBonuses {
   lines: { captain: string; trait: string; cabin_word: string; effect: string; line: string }[]
   totals: { effect: string; pct: number; line: string }[]
+}
+
+/** 0160 — one of her three levels: the level in force (capped at your company's), her own, her
+ *  points and where the next level starts; `cap_line` is the server's sentence when the cap holds her. */
+export interface CaptainLevel {
+  track: string
+  word: string
+  level: number
+  own: number
+  points: number
+  next_at: number
+  cap_line: string | null
+}
+
+/** 0160 — one of YOUR captains (`world.captains`): her card, her grade now, the traits she uses, where
+ *  she sits, her levels and whether she is homesick — every word the server's. */
+export interface YourCaptain extends CaptainCard {
+  code: string
+  name: string
+  active: string[]
+  ship: string | null
+  fleet: string | null
+  cabin_word: string | null
+  /** Ashore, or her ship is docked: her traits (and seat) may change. */
+  can_change: boolean
+  levels: CaptainLevel[]
+  homesick: { days: number; line: string } | null
+  /** 0162 — her next promotion: the grade, the level and items it needs, what you keep where her ship is
+   *  docked (null ashore or at sea), and the server's line. Null at the top grade; absent before 0162. */
+  promote?: {
+    to: string
+    level_needed: number
+    level: number
+    item: string
+    item_name: string
+    items_needed: number
+    items_here: number | null
+    port: string | null
+    line: string
+  } | null
+}
+
+/** 0162 — what cmd.promote_captain answers. */
+export interface PromotedCaptain {
+  officer: string
+  grade: string
+  sentence: string
+}
+
+export interface CaptainsView {
+  captains: YourCaptain[]
+}
+
+/** 0160 — what cmd.captain_traits_set answers. */
+export interface TraitsSet {
+  officer: string
+  traits: string[]
+  sentence: string
 }
 
 /** 0157 — what cmd.seat_captain answers: where she now sits, in one sentence. */

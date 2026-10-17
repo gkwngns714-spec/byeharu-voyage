@@ -61,7 +61,8 @@
 //                 scripts/build-captains.mjs `generateCaptains()` must equal data/captains.generated.json
 //                 byte for byte AND the database: captain_profile, captain_traits, captain_languages and
 //                 port_language, every row, both directions; (0157, K5) each effect's cap, the cabin kinds
-//                 and the rotation of cabins by hull role
+//                 and the rotation of cabins by hull role; (0162, K8) the grades' promotion gates, the
+//                 promotion items (item_kinds rows of kind 'promotion' + public.promotion_items)
 //
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
@@ -366,7 +367,10 @@ function drift(db_, want) {
     both(keyed(db_.captains.foci, (r) => r.code), keyed(c.cat.foci.map((x, i) => ({ ...x, ord: i + 1 })), (r) => r.code), 'trait focus',
       ['word', 'ord'].map(same), CAT)
     both(keyed(db_.captains.grades, (r) => r.code), keyed(c.cat.grades, (r) => r.code), 'captain grade',
-      ['ord', 'slots', 'known', 'floor_pct'].map(same), CAT)
+      ['ord', 'slots', 'known', 'floor_pct', 'promote_level', 'promote_items'].map(same), CAT)
+    // 0162 (K8): the promotion items, their focus and the points that earn one
+    both(keyed(db_.captains.promotion, (r) => r.code), keyed(c.cat.promotion_items, (r) => r.code), 'promotion item',
+      ['focus', 'points'].map(same), CAT)
     both(keyed(db_.captains.effects, (r) => r.code), keyed(c.cat.effects.map((e, i) => ({ ...e, ord: i + 1 })), (r) => r.code), 'crew effect',
       ['ord', 'scope', 'live', 'cap_pct', 'words', 'waits', 'reader'].map(same), CAT)
     // 0157 (K5): the cabin kinds and the rotation by hull role
@@ -513,7 +517,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       select o.code, o.name, o.specialty, o.bonus_pct::float8 as bonus_pct, o.wage_ducats::int as wage, n.code as nation, p.code as home, o.blurb
         from public.officers o left join public.nations n on n.id = o.nation_id left join public.ports p on p.id = o.home_port_id`)).rows,
     foci: (await db.query(`select code, word, ord from public.trait_foci`)).rows,
-    grades: (await db.query(`select code, ord, slots, known, floor_pct::float8 as floor_pct from public.captain_grades`)).rows,
+    grades: (await db.query(`select code, ord, slots, known, floor_pct::float8 as floor_pct, promote_level, promote_items from public.captain_grades`)).rows,
+    promotion: (await db.query(`select item_code as code, focus, points::float8 as points from public.promotion_items`)).rows,
     effects: (await db.query(`select code, ord, scope, live, cap_pct::float8 as cap_pct, words, waits, reader from public.crew_effects`)).rows,
     cabinKinds: (await db.query(`select code, word, ord from public.cabin_kinds`)).rows,
     rotation: (await db.query(`select role, ord, focus from public.cabin_rotation`)).rows,
@@ -587,6 +592,9 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
         h.goods.map((g) => ({ class_code: h.class, good: g.in, qty: g.qty }))),
       recipeItems: liveHulls.flatMap((h) => h.items.map((i) => ({ class_code: h.class, item: i.in, qty: i.qty }))),
       items: [...fittings.map((f) => ({ code: f.code, name: f.name, slot: f.slot, buys: f.buys, spends: f.spends, note: f.note, volume: f.volume, ws_tier: f.ws_tier })),
+        // 0162 (K8): the three promotion items (data/captains.json), kept in the one item system as kind 'promotion'
+        ...read('data/captains.json').promotion_items.map((p) => ({ code: p.code, name: p.name, slot: 'promotion', buys: 'a promotion',
+          spends: 'nothing', note: p.note, volume: 0.01, ws_tier: 1 })),
         ...gear.items.map((i) => ({ code: i.code, name: i.name, slot: i.slot, buys: i.buys, spends: i.spends, note: i.note, volume: i.volume, ws_tier: i.wsTier }))],
       effects: [...fittings.flatMap((f) => (f.effects ?? []).map((e) => ({ item: f.code, stat: e.stat, delta: e.delta }))),
         ...gear.items.flatMap((i) => i.effects.map((e) => ({ item: i.code, stat: e.stat, delta: e.delta })))],
