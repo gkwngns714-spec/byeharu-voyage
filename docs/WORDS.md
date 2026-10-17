@@ -65,6 +65,7 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | a captain's levels (0160) | **Exploration 7 · Trading 3 · Combat 1** — `7 / 20` on a bar; the server's *capped at your Trading level 3* | XP, Lv |
 | homesickness (0160) | the server's line **Homesick: 4 days from Iberia** | morale, loyalty, mood |
 | the traits she uses (0160) | **Traits · 3 / 5 in use**, **In use**, button **Use these traits**; *Her traits change only in port.* | loadout, equip, slots |
+| a captain who speaks the port's language (0161) | the server's line on the bargain row: *Ana de Sousa speaks Portuguese here: +5% bargain odds* | fluency, LV |
 | the languages she speaks (0156) | the server's sentence **Speaks Portuguese, Spanish** | LV, fluency |
 | the market | **market** / **here** | the quay |
 | price paid | **Bought at** | paid, basis |

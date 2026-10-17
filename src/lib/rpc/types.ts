@@ -696,6 +696,10 @@ export interface HaggleOnQuay {
    *  `cmd.haggle` rolls against, so the panel cannot promise what the verb will not do. */
   next_odds: number
   next_odds_pct: number
+  /** 0161 — which of her captains speaks this port's language, in the server's words ("Ana de Sousa
+   *  speaks Portuguese here: +5% bargain odds"); null when nobody does, or while captain traits are off.
+   *  Absent before 0161. */
+  language_line?: string | null
   /** The port's PUBLISHED spread, and the spread THIS house executes at — purser and bargain
    *  already folded in by `world.spread_effective`, which is what `world.quote` itself calls. */
   spread_published: number
