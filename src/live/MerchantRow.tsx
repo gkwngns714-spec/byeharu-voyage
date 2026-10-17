@@ -5,6 +5,7 @@ import type { PortMerchant } from '../lib/rpc'
 import { GoToLink } from '../chart'
 import { whereabouts } from '../domain/fleet'
 import { DOING_WORD, levelOf, restEndsAt, restLeft } from './merchantWords'
+import { HullCountry } from './HullCountry'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE MERCHANT ON A HARBOUR'S LIST — her name and company, her level, and what she is doing here
@@ -59,6 +60,12 @@ export function MerchantRow({
             <GoToLink to={{ kind: 'fleet', id: m.id, where: whereabouts(m) }}>{m.name}</GoToLink>
           </span>
           <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-row-line">
+            {/* 0143 (owner, 2026-10-17): her company's flag before its name. */}
+            {m.nation_code && (
+              <span data-testid="merchant-row-flag">
+                <HullCountry nation={m.nation_code} compact />{' '}
+              </span>
+            )}
             {m.company}
             {` · ${formatInt(m.ships)} ${m.ships === 1 ? 'ship' : 'ships'}`}
             {detail !== undefined && <> · {detail}</>}

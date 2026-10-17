@@ -73,6 +73,7 @@ import {
   worldLedger,
   worldMarket,
   worldOfficers,
+  worldAllegiance,
   worldPlayer,
   worldPriceHistory,
   worldSkills,
@@ -112,6 +113,7 @@ import type {
   SeaTraffic,
   SkillBook,
   SnapshotNation,
+  PortAllegiance,
   StandingsBoard,
   BuffsView,
   SnapshotGood,
@@ -217,6 +219,10 @@ export interface LiveWorld {
   nationByCode: Record<string, SnapshotNation>
   portById: Record<string, SnapshotPort>
   goodByCode: Record<string, SnapshotGood>
+  /** 0143 — EVERY HARBOUR'S FLAG, by port code (`world.allegiance`): the country that holds it today
+   *  and whether it is a home city. Read through `portNationOf` alone; empty until the first read
+   *  lands, and then a screen prints no flag rather than a guessed one. */
+  allegiance: Record<string, PortAllegiance>
 
   // ── what a screen may do ─────────────────────────────────────────────────────────────────────
   /** Open the world. Idempotent; AppShell calls it once. */
@@ -231,6 +237,9 @@ export interface LiveWorld {
   loadReach: (portId: string) => Promise<void>
   /** Fetch (and cache) where the goods of one port pay more. Naming the fleet lying there is what
    *  makes the quantities hers rather than the server's stated default. */
+  /** Read every harbour's flag again (0143) — the city panel asks when it opens; the beat asks
+   *  once an hour. Flags change once a day, so this is never on the 3-s beat. */
+  loadAllegiance: () => Promise<void>
   /** Fetch the roster and the school. Idempotent; screens call them on mount. */
   loadOfficers: () => Promise<void>
   loadSkills: () => Promise<void>
@@ -366,6 +375,24 @@ export function nationNameOf(
 ): string {
   return nationByCode[code]?.name ?? code
 }
+
+/**
+ * THE COUNTRY A HARBOUR BELONGS TO TODAY (0143, docs/INFLUENCE.md D13) — the one client reading of
+ * `world.allegiance`, which serves `public.port_nation`, the one server reading. No screen reads
+ * `snapshot.ports[].nation` (that is the snapshot's copy, cached with the static world) or
+ * `port.country` (the modern country's name) for a flag; tests/map.flag.spec.ts greps for it.
+ * Undefined until the first read lands — a screen then prints no flag, never a guessed one.
+ */
+export function portNationOf(
+  allegiance: Record<string, PortAllegiance>,
+  code: string,
+): PortAllegiance | undefined {
+  return allegiance[code]
+}
+
+/** How often the beat re-reads the flags (0143). The daily count moves them once a day. */
+const ALLEGIANCE_ASK_EVERY_MS = 60 * 60_000
+let allegianceAskedAtMs = 0
 
 /** THE ROSTER'S CADENCE (0118). A delta asks from the last answer's instant LESS this overlap: a tick
  *  that started before that instant commits its rows dated earlier, after it (tick_arrivals runs for
@@ -595,6 +622,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
   nationByCode: {},
   portById: {},
   goodByCode: {},
+  allegiance: {},
 
   open: async () => {
     if (get().phase !== 'idle') return
@@ -706,6 +734,8 @@ export const useWorld = create<LiveWorld>((set, get) => {
     // the routes read's settle is a no-op. On the fatal branch above the routes are not read at
     // all and the last book stands.
     await readRoutes()
+    // 0143: THE FLAGS, once an hour — a read that takes no lock and changes once a day.
+    if (Date.now() - allegianceAskedAtMs >= ALLEGIANCE_ASK_EVERY_MS) await get().loadAllegiance()
     // THE MERCHANTS RIDE THE SAME BEAT, after the routes and only while a screen wants them. This
     // read takes no lock, but it keeps the one order (fleets → routes → traffic) so the deadlock
     // rule above stays one rule.
@@ -737,6 +767,15 @@ export const useWorld = create<LiveWorld>((set, get) => {
   loadReach: async (portId) => {
     if (get().reaches[portId]) return
     await loader(worldReach(portId), (v, s) => ({ reaches: { ...s.reaches, [portId]: v } }), { loud: false })
+  },
+
+  // A FAILED FLAG READ IS SILENT: the last flags stand (or none, before the first), which is a
+  // truthful lesser answer — the city line then prints no flag, never a stale guess as new.
+  loadAllegiance: async () => {
+    allegianceAskedAtMs = Date.now()
+    await loader(worldAllegiance(), (v) => ({
+      allegiance: Object.fromEntries(v.ports.map((p) => [p.port, p])),
+    }), { loud: false })
   },
 
   loadOfficers: () => loader(worldOfficers(), (officers) => ({ officers }), { loud: true }),

@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { Bar, Button, Figure, Row, Segmented, Sheet, SheetSection } from '../../components/ui'
+import { Bar, Button, Figure, Note, Row, Segmented, Sheet, SheetSection } from '../../components/ui'
+import { cmdChangeCountry, type Refusal } from '../../lib/rpc'
+import { HullCountry } from '../../live/HullCountry'
+import { NationPicker } from '../../live/NationPicker'
 import { useAuthStore } from '../../store/authStore'
 import { useWorld } from '../../live/worldStore'
 import { formatInt } from '../../lib/format'
@@ -76,6 +79,10 @@ export function ProfileScreen() {
         )}
       </SheetSection>
 
+      {player && player.nation && (
+        <CountrySection nation={player.nation} changeAt={player.nation_change_at} nowMs={nowMs} />
+      )}
+
       {player && (
         <SheetSection heading="Levels" surface data-testid="levels">
           <Track name="Trading" track={player.levels.trading} />
@@ -144,6 +151,71 @@ export function ProfileScreen() {
         )}
       </SheetSection>
     </Sheet>
+  )
+}
+
+/** YOUR COMPANY'S COUNTRY (0143, owner 2026-10-17: like Uncharted Waters, a company belongs to a
+ *  country and can change it). The flag it sails under, and a change through `cmd.change_country`
+ *  — which decides (once every few days, `nation_change_at`) and whose refusal is printed as it
+ *  arrives. After a change the house is read again; nothing here writes the store. */
+function CountrySection({ nation, changeAt, nowMs }: { nation: string; changeAt: string | null; nowMs: number }) {
+  const refresh = useWorld((s) => s.refresh)
+  const nationByCode = useWorld((s) => s.nationByCode)
+  const [open, setOpen] = useState(false)
+  const [pick, setPick] = useState(nation)
+  const [busy, setBusy] = useState(false)
+  const [refusal, setRefusal] = useState<Refusal | null>(null)
+  const waiting = changeAt !== null && Date.parse(changeAt) > nowMs
+  const change = async () => {
+    setBusy(true)
+    setRefusal(null)
+    const r = await cmdChangeCountry(pick)
+    if (r.ok) {
+      await refresh()
+      setOpen(false)
+    } else setRefusal(r.refusal)
+    setBusy(false)
+  }
+  return (
+    <SheetSection heading="Country" surface data-testid="country">
+      <Row
+        hairline={open}
+        label={<HullCountry nation={nation} />}
+        value={
+          waiting ? (
+            <span className="text-t-caption text-ink-faint" data-testid="country-next">
+              {`next change ${new Date(changeAt).toLocaleDateString('en', { month: 'short', day: 'numeric' })}`}
+            </span>
+          ) : (
+            <Button variant="secondary" data-testid="country-change" onClick={() => setOpen((o) => !o)}>
+              {open ? 'Keep' : 'Change'}
+            </Button>
+          )
+        }
+      />
+      {open && !waiting && (
+        <div className="mt-3">
+          <NationPicker value={pick} onChange={setPick} label="Country" />
+          {refusal && (
+            <Note tone="danger" code={refusal.code} className="mt-3">
+              {refusal.sentence}
+            </Note>
+          )}
+          <div className="mt-3">
+            <Button
+              variant="primary"
+              busy={busy}
+              busyLabel="Changing…"
+              disabled={pick === nation}
+              data-testid="country-confirm"
+              onClick={() => void change()}
+            >
+              {`Sail for ${nationByCode[pick]?.name ?? pick}`}
+            </Button>
+          </div>
+        </div>
+      )}
+    </SheetSection>
   )
 }
 

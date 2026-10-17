@@ -1282,6 +1282,8 @@ export interface PlayerHouse {
   fame: PlayerFame
   /** 0069 — the three tracks. Fame is one number for a board; a LEVEL is what promotion requires. */
   levels: PlayerLevels
+  /** 0143 — when the company may next change its country (`cmd.change_country`), or null: it may now. */
+  nation_change_at: string | null
 }
 
 /** One track of DESIGN 8. `level` is the same curve for all three, so "level 4" means one amount
@@ -2201,4 +2203,29 @@ export interface InvestReceipt {
   level: number
   subscribed: number
   purse: number
+}
+
+// ── 0143: a city flies a flag (docs/INFLUENCE.md I1) ───────────────────────────────────────────
+
+/** One harbour's flag — the country that holds it today (null: no country), and whether it is a
+ *  HOME city, one that never changes hands (OWNER O1). */
+export interface PortAllegiance {
+  port: string
+  nation: string | null
+  home: boolean
+  since: string
+}
+
+/** `world.allegiance()` — every harbour's flag. */
+export interface AllegianceView {
+  at: string
+  ports: PortAllegiance[]
+}
+
+/** `cmd.change_country(code)` — the company now sails for `nation`; the next change opens at
+ *  `nation_change_at`. */
+export interface CountryChanged {
+  nation: string
+  nation_name: string
+  nation_change_at: string | null
 }

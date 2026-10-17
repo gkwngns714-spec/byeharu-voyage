@@ -1176,6 +1176,10 @@ one player, which is exactly the design intent: **development is a shared projec
 
 ### H.3 Influence and shares
 
+> **Superseded 2026-10-17 by `docs/INFLUENCE.md`** (built from migration 0143): §H.3–§H.5 below are the
+> first sketch and are kept as record only. The country a city belongs to, home cities, influence, the
+> mayor and the rewards are specified there.
+
 For each port and track:
 
 ```

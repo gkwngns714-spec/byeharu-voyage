@@ -100,6 +100,9 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | the build yard's second group (0135) | **Built only in other countries** — hulls this port's country cannot build, each with the server's own reason | foreign ships, unavailable |
 | ship and fitting names and notes (0135, `scripts/build-ships.mjs`, `scripts/build-gear.mjs`) | the historical name as the player reads it (`Fluit`, `Galeón`, `Panokseon`; `Hemp Canvas`, `Brass Guns`) and one plain sentence, no *she/her* (`A light, fast Dutch boat for scouting and carrying news, with a tiny crew.`) | she, her, lay down |
 | the person in charge of a fleet | **captain** = the player, for their own fleets; a merchant fleet's named **Master** (flavour only) | — |
+| the country a city belongs to today (0143, docs/INFLUENCE.md) | its flag and name, **Home city** or **Contested** (`⚓ Portugal · Home city`, `⚔ Castile-Spain · Contested`) | territory, core, alliance port, free port, owner |
+| a city held by no country (0143) | **No country** | free port, neutral, stateless |
+| the country a company sails for (0143) | **Country** (`Sail for England`, `Your company now sails for England`); a merchant's company shows its flag | nation (on screen), faction, allegiance |
 
 ## Where the words are checked
 

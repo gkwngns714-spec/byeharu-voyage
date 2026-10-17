@@ -1509,6 +1509,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // whole training queue. Neither takes a player id; the queue is validated whole by the one rule
       // world.skills answers from. Landed WITH the face that reads them (PORT › Academy → Skills).
       'cmdSkillEnroll', 'cmdSkillQueueSet',
+      // Pin moved deliberately 2026-10-17 with migration 0143 (docs/INFLUENCE.md I1, owner: "country
+      // region influences and all like uncharted [waters]"): EVERY HARBOUR'S FLAG (the read the city
+      // title line and the map print) and a company's CHANGE OF COUNTRY (once every seven days; it
+      // takes no player id — the caller's company changes). Landed WITH the faces that read them
+      // (CityFlag, Profile → Country).
+      'worldAllegiance', 'cmdChangeCountry',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

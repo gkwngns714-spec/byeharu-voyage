@@ -2,7 +2,9 @@ import { nationNameOf, useWorld } from './worldStore'
 
 // A HULL'S COUNTRY (0130) — the flag of the country whose line it belongs to, and that country's
 // name, small. ONE renderer for the Codex and the build yard, so the two can never show a hull
-// under different flags. The nation code is served (snapshot `ship_classes[].line_nation`,
+// under different flags. Since 0143 it is THE nation-flag renderer of the game: a city's flag
+// (CityFlag), a merchant's company (MerchantSheet, MerchantRow, ShipPanel) and the country picker
+// (NationPicker) draw a flag through it and nowhere else. The nation code is served (snapshot `ship_classes[].line_nation`,
 // `world.building_yard` `hulls[].line_nation`); the flag and the name come from the one nation
 // catalogue (`nationByCode`), never from a table kept here.
 

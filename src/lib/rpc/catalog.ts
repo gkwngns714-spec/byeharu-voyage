@@ -404,6 +404,9 @@ export const RPCS = {
   },
   // The ONE way a signed-in captain gets a house (0011). It takes no uid — the server reads
   // auth.uid() — which is why it is safe for a browser to hold, unlike public.new_house().
+  // 0143 (docs/INFLUENCE.md I1): every harbour's flag, and a company's change of country.
+  worldAllegiance: { schema: 'world', fn: 'allegiance', args: [] },
+  cmdChangeCountry: { schema: 'cmd', fn: 'change_country', args: [{ name: 'p_nation_code', type: 'text' }] },
   cmdFoundHouse: {
     schema: 'cmd',
     fn: 'found_house',

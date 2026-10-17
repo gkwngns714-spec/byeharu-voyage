@@ -1,11 +1,13 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { unproject, type LatLon, type Point, type ViewBox } from '../../lib/geo'
 import { whereabouts } from '../../domain/fleet'
-import type { FleetView, PortMerchant, SnapshotPort, TrafficFleet } from '../../lib/rpc'
+import type { FleetView, PortAllegiance, PortMerchant, SnapshotPort, TrafficFleet } from '../../lib/rpc'
 import type { SeaNav } from '../../lib/sea'
 import { pointToken, snapSeaPoint } from '../../domain/passage'
 import { useShellState } from '../../app/shellState'
-import { useWorld } from '../../live/worldStore'
+import { portNationOf, useWorld } from '../../live/worldStore'
+import { CityFlag } from '../../live/CityFlag'
+import { usePortFlags } from '../../live/usePortFlags'
 // THE MERCHANTS (0099): their sheet and its card are live-data React shared with PORT.
 import { MerchantSheet } from '../../live/MerchantSheet'
 import { merchantParts } from '../../live/merchantLine'
@@ -118,10 +120,16 @@ export function MapScreen() {
  *  resting here are not drawn on the chart (chartModel.ts), so the city counts them — the
  *  harbour's own read (`world.port_merchants`), never the capped sea window — and the list itself
  *  is the Port tab (CityHarbour.tsx). */
-function portLine(model: ChartModel, port: MapPort, merchants: readonly PortMerchant[]): ReactNode {
+function portLine(
+  model: ChartModel,
+  port: MapPort,
+  merchants: readonly PortMerchant[],
+  allegiance: PortAllegiance | undefined,
+): ReactNode {
   const here = fleetsAtPort(model, port.code)
   const bound = fleetsBoundFor(model, port.code)
-  const parts: ReactNode[] = [port.country]
+  // 0143 (D14): THE FLAG IT FLIES TODAY, in place of the modern country's name — none until read.
+  const parts: ReactNode[] = allegiance ? [<CityFlag allegiance={allegiance} />] : []
   const summary = merchantsSummary(merchants, port.code)
   if (summary) parts.push(summary)
   if (here.length > 0) parts.push(<>{fleetLinks(here)} here</>)
@@ -240,6 +248,15 @@ function Chart({
 
   // THE REGIONS FILTER (row 93): off is the map as it was; on hands the tints to the picture.
   const regionsOn = useRegionsFilter()
+  // 0143 (D14): with Regions on, each harbour's name carries the flag it flies.
+  const portFlags = usePortFlags(regionsOn)
+  const allegiance = useWorld((s) => s.allegiance)
+  const loadAllegiance = useWorld((s) => s.loadAllegiance)
+  const openPort = selection?.kind === 'port' ? selection.code : null
+  // A city panel that opens reads the flags again (they change once a day; the beat asks hourly).
+  useEffect(() => {
+    if (openPort !== null) void loadAllegiance()
+  }, [openPort, loadAllegiance])
 
   // THE MINIMAP ONLY WHEN THE PLAYER HAS LEFT THE OPENING FRAME (./frame.ts says why).
   const aspect = surface.width > 0 && surface.height > 0 ? surface.width / surface.height : null
@@ -374,6 +391,7 @@ function Chart({
           coast={backdrop.coast}
           seas={backdrop.seas}
           regions={regionsOn ? backdrop.regions : null}
+          portFlags={portFlags}
           islets={backdrop.islets}
           selection={selection}
           // Every `CHART_CHROME` box, so no harbour's name prints under the pill, the zoom column,
@@ -473,7 +491,7 @@ function Chart({
         <SendFleet
           key={place.dest.kind === 'port' ? place.dest.code : pointToken(place.dest.at)}
           dest={place.dest}
-          line={place.port ? portLine(model, place.port, harbourRows) : 'Open sea'}
+          line={place.port ? portLine(model, place.port, harbourRows, portNationOf(allegiance, place.port.code)) : 'Open sea'}
           harbour={
             place.port && (
               <CityHarbour

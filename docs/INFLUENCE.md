@@ -1,8 +1,23 @@
 # INFLUENCE — countries compete for cities with money
 
-**Status: DESIGN v1, BUILD-READY (2026-10-17). Nothing in this file is built.** No migration, no code,
-no production change. Written against production head **0139 (+0137)**, with **0140** (Mughal capital →
-Karachi, PR #147) assumed landed. Slice numbers therefore start at **0141**.
+**Status: APPROVED by the owner 2026-10-17 ("make the game — country region influences and all like
+uncharted [waters]"), D1–D14 as written plus the three additions below. BEING BUILT from migration
+0143** (0141 and 0142 were taken by other work). Slices: I1 0143 · I2 0144 · I3 0145 · I4 0146 ·
+I5 0147 · I6 0148.
+
+**Owner additions, 2026-10-17 (binding, like O1–O4):**
+- **A1 UWO anti-whale damping** (§1.1) on top of D7's daily cap: each coin moves a country's influence
+  in a city less as that country's share there rises, and the trailing country gets more per coin.
+  It lives in the ONE posting authority, `public.influence_post` (I2).
+- **A2 A company chooses its country** (UW): founding offers the 23 countries (default Portugal); a
+  later change is allowed once every 7 real days (`nation_change_cooldown_days`) and costs the
+  company its standing — the influence it gave stays with the old country (the book is keyed by the
+  country at the moment of giving, I2) and a mayor must be a citizen of the holder (I5). Built in I1.
+- **A3 Every merchant shows its company's flag when pressed** (merchant sheet, ship panel, city
+  tray rows), through the one flag renderer (`src/live/HullCountry.tsx`). Built in I1.
+- **A4 Rebalance the merchant companies across the countries** — proportional to a country's power
+  (OWNER_REQUESTS row 119: *"powerful and rich countries will have more ships"*) with a cap on any one
+  country's share and a floor so all 23 have merchants. Built in I3, before the merchants give.
 
 **The owner, 2026-10-17, verbatim intent:** *"like uncharted [waters], i want to have influence of major
 countries, so that each country can compete, and make the city have more influence [for that country]
@@ -50,17 +65,18 @@ one reader each) so tuning needs no migration.
 
 **Consequences to know (stated, not gated):**
 
-- **All 17 players are Portuguese today**: `new_house` defaults to `PRT` and the Start screen asks for
-  no country. So the players' half of the race is Portugal's alone, and every other country is played
-  by its merchants. Choosing a country at the start is not in this plan (the owner did not ask for it).
+- **All 17 players are Portuguese today**, and stay so unless they change (A2). From I1 the Start
+  screen offers every country (default Portugal) and Profile → Country changes it.
 - **Malabar, Gujarat and Banten have no merchant companies** (0 houses). They hold their homes and
   will win nothing unless players invest for them.
 - **Spain holds 36 contestable cities today and has 205 merchants.** Portugal holds 21 and has 122
   merchants plus every player. Expect Spain to hold the Americas and the race to happen where loops
   cross: West Africa, the Indies and the Caribbean.
-- Investment is live, but **no company has bought a share yet** (`city_shares` = 0 rows at 12:14 UTC,
-  one reconcile run after the 11:19 switch, 176 merchants above 2 × capital). I did not investigate
-  this. I1 starts by reading the 12:07 and later reconcile receipts' `invested` count.
+- Investment is live, but **no company had bought a share** (`city_shares` = 0 rows). **Found in I1
+  (a defect, fixed by 0143):** every reconcile run takes 62–71 s on prod and `npc_upkeep_budget_seconds`
+  is 60; 0137 gave the whole hour ONE deadline, so by the companies' step it had passed and
+  `npc_invest` deferred every company, every hour (`invested_at` null for all 821). 0143 gives the
+  companies' step its own budget.
 
 ---
 
@@ -89,7 +105,7 @@ one reader each) so tuning needs no migration.
 10. **Merchants (OWNER O2):** `public.npc_invest` keeps its amount and changes only where she invests (D12).
 11. **Town Hall** gains an **Influence** block and a **Donate** press. The city's title line and the
     map follow the flag (D14).
-12. **Six migration slices, I1–I6 (0141–0146).** Each is dark or byte-parity when it lands, and one
+12. **Six migration slices, I1–I6 (0143–0148).** Each is dark or byte-parity when it lands, and one
     switch, `influence_switch(true)`, lights the race (§7).
 
 ---
@@ -514,12 +530,12 @@ The DEPLOY_RUNBOOK's job list gains `influence` in I4.
 
 | # | Migration | What it changes | Proof (self-assert, rolled back) | Dark / rollback |
 |---|---|---|---|---|
-| **I1 · 0141** | `a_city_flies_a_flag` | `port_allegiance` seeded = `ports.nation_id` (+ `home` from the data, + the 10 top-up homes' `nation_id`); home-row guard trigger; **`public.port_nation(p_port)`** (PL/pgSQL, the one reader); `world.snapshot`'s port `nation`, `world.inn`, `world.inn_chance`, `public.yard_wrong_country`, `public.skill_taught_at` re-cut to read it; **`world.allegiance()`** → `[{port, nation, home, since}]` (authenticated, registered); world guard home check; `scripts/build-home-ports.mjs` | (a) the prod `pg_proc` scan finds **no** function reading a port's `nation_id` except `port_nation`; (b) byte parity: snapshot, inn chances on 50 sampled (officer, port) pairs, `yard_wrong_country` for every (hull, yard), `skill_taught_at` for every skill all equal their pre-images, **except** the 10 top-up homes, which are asserted to have moved from null to their country; (c) a probe UPDATE of a home row is refused | no switch: the only visible change is the 10 top-ups. Rollback = a forward slice restoring the five readers' `p.nation_id` |
-| **I2 · 0142** | `a_city_counts_who_gives` | `port_influence`; `influence_post`; the `pay_city` hunk; `influence_shares`; `donate_for` + `cmd.donate` + `cmd.preview_donate` (registered); `E_DAY_CAP`; `world.town_hall` restated whole with an `influence` block (`{holder, home, since, shares:[{nation, share, points}], you:{points, given_today, cap}}`); knobs `influence_enabled` false, `influence_day_cap` 20,000, `donate_min_ducats` 100 | an investment by a probe PRT house posts its cost to PRT at that port; a donation is refused dark (`E_NOT_OFFERED` "… is not taking gifts yet"), and lit (inside the assert) posts, is refused past the cap with figures, and conserves purse + treasury; `town_hall` keys exact | book posts from shares now; donate dark. Rollback: drop the hunk |
-| **I3 · 0143** | `merchants_give_for_their_country` | `npc_invest` where-rule (§6) behind `influence_on()`; receipt `donated`; `npc_fleet_card` line | a probe merchant (PRT) with stops at a PRT-held and an ESP-held contestable port, ESP leading by 5 %, gives at the ESP one (closest race); with only home stops she follows 0123's rule byte for byte; dark → 0123's choice on 50 sampled merchants equals the pre-image | dark. The whole npc pool is selected in CI (`docs/CI.md` S rule) |
-| **I4 · 0144** | `the_flag_follows_the_money` | `tick_influence` steps 1–3 + 6; cron `byeharu-voyage:influence` (inactive); `influence_switch`; `FLAG_CHANGED` event + headline words; knobs `influence_decay` 0.10, `influence_flip_lead` 1.10, `influence_claim_min` 10,000 | on probe rows: decay to the coin; a 9 % lead keeps the holder and an 11 % lead changes it; a free city is claimed at the minimum and not below; a home row never changes; the receipt figures equal a recount; the run on the live world takes < 5 s (a notice, not a raise; prod CPU is burstable) | the switch. Flags already changed stay (they are true facts) |
-| **I5 · 0145** | `a_city_has_a_mayor` | `port_mayor`; step 4; `cmd.set_tax` (registered); **`world.tax_rate(p_port, p_player)`** and the eight callers re-cut; `influence_citizen_tax_cut` 0.5 | the mayor is the controlling country's top giver, not a richer foreigner; `set_tax` refuses a non-mayor, 0.21 and a second same-day call; a citizen pays half the profit tax on a probe sale and a foreigner pays it all; dark = every caller's output equals its pre-image on 200 sampled quotes (the 0122 pre-image method) | the switch. Arrivals measured on prod before and after |
-| **I6 · 0146** | `leading_a_city_is_known` | step 5 (`MAYOR_DAY`); `player_progress`'s two terms; the coupon multiplier hunk in `tick_city`; `world.nation_standings()`; knobs `fame_per_mayor_day` 25, `influence_owner_coupon_mult` 1.5 | a probe giver's trading points rise by cost/100; one mayor day = 25; the controlling holder's coupon = 1.5 × another's for the same `paid`; standings count = `port_allegiance` per country | the switch |
+| **I1 · 0143** | `a_city_flies_a_flag` | `port_allegiance` seeded = `ports.nation_id` (+ `home` from the data, + the 10 top-up homes' `nation_id`); home-row guard trigger; **`public.port_nation(p_port)`** (PL/pgSQL, the one reader); `world.snapshot`'s port `nation`, `world.inn_chance`, `public.yard_wrong_country`, `public.skill_taught_at` re-cut to read it (`world.inn` reads an officer's country, not the port's); the companies' reconcile step gets its own budget (the 0-shares defect); `cmd.change_country` + `nation_change_next_at` + founding in the capital (A2); merchant flags (A3); **`world.allegiance()`** → `[{port, nation, home, since}]` (authenticated, registered); world guard home check; `scripts/build-home-ports.mjs` | (a) the prod `pg_proc` scan finds **no** function reading a port's `nation_id` except `port_nation`; (b) byte parity: snapshot, inn chances on 50 sampled (officer, port) pairs, `yard_wrong_country` for every (hull, yard), `skill_taught_at` for every skill all equal their pre-images, **except** the 10 top-up homes, which are asserted to have moved from null to their country; (c) a probe UPDATE of a home row is refused | no switch: the only visible change is the 10 top-ups. Rollback = a forward slice restoring the five readers' `p.nation_id` |
+| **I2 · 0144** | `a_city_counts_who_gives` | `port_influence`; `influence_post`; the `pay_city` hunk; `influence_shares`; `donate_for` + `cmd.donate` + `cmd.preview_donate` (registered); `E_DAY_CAP`; `world.town_hall` restated whole with an `influence` block (`{holder, home, since, shares:[{nation, share, points}], you:{points, given_today, cap}}`); knobs `influence_enabled` false, `influence_day_cap` 20,000, `donate_min_ducats` 100 | an investment by a probe PRT house posts its cost to PRT at that port; a donation is refused dark (`E_NOT_OFFERED` "… is not taking gifts yet"), and lit (inside the assert) posts, is refused past the cap with figures, and conserves purse + treasury; `town_hall` keys exact | book posts from shares now; donate dark. Rollback: drop the hunk |
+| **I3 · 0145** | `merchants_give_for_their_country` | `npc_invest` where-rule (§6) behind `influence_on()`; receipt `donated`; `npc_fleet_card` line | a probe merchant (PRT) with stops at a PRT-held and an ESP-held contestable port, ESP leading by 5 %, gives at the ESP one (closest race); with only home stops she follows 0123's rule byte for byte; dark → 0123's choice on 50 sampled merchants equals the pre-image | dark. The whole npc pool is selected in CI (`docs/CI.md` S rule) |
+| **I4 · 0146** | `the_flag_follows_the_money` | `tick_influence` steps 1–3 + 6; cron `byeharu-voyage:influence` (inactive); `influence_switch`; `FLAG_CHANGED` event + headline words; knobs `influence_decay` 0.10, `influence_flip_lead` 1.10, `influence_claim_min` 10,000 | on probe rows: decay to the coin; a 9 % lead keeps the holder and an 11 % lead changes it; a free city is claimed at the minimum and not below; a home row never changes; the receipt figures equal a recount; the run on the live world takes < 5 s (a notice, not a raise; prod CPU is burstable) | the switch. Flags already changed stay (they are true facts) |
+| **I5 · 0147** | `a_city_has_a_mayor` | `port_mayor`; step 4; `cmd.set_tax` (registered); **`world.tax_rate(p_port, p_player)`** and the eight callers re-cut; `influence_citizen_tax_cut` 0.5 | the mayor is the controlling country's top giver, not a richer foreigner; `set_tax` refuses a non-mayor, 0.21 and a second same-day call; a citizen pays half the profit tax on a probe sale and a foreigner pays it all; dark = every caller's output equals its pre-image on 200 sampled quotes (the 0122 pre-image method) | the switch. Arrivals measured on prod before and after |
+| **I6 · 0148** | `leading_a_city_is_known` | step 5 (`MAYOR_DAY`); `player_progress`'s two terms; the coupon multiplier hunk in `tick_city`; `world.nation_standings()`; knobs `fame_per_mayor_day` 25, `influence_owner_coupon_mult` 1.5 | a probe giver's trading points rise by cost/100; one mayor day = 25; the controlling holder's coupon = 1.5 × another's for the same `paid`; standings count = `port_allegiance` per country | the switch |
 
 **Then:** `select public.influence_switch(true)`. The first 00:47 run's receipt is read (`changed`,
 `claimed`, `mayors`), and the next day's change count is checked against §8.
@@ -592,6 +608,6 @@ The DEPLOY_RUNBOOK's job list gains `influence` in I4.
 - No **seasons** (DESIGN H.6): decay (D6) does their job without a wipe.
 - No **area-control bonuses** (DESIGN H.5, Origin): not asked for.
 - No **war, PvP or naval battles** moving influence: ECONOMY_LOOP §12.3 stays deferred.
-- No **choosing a country** at Start your company: every player stays Portuguese (§ consequences).
+- ~~No choosing a country~~ — superseded by A2 (built in I1).
 - No **mayor pay**: Origin removed it as a runaway engine (§1.2).
 - `docs/DESIGN.md` §H.3–H.5 are superseded by this file. They get a pointer here in I1.
