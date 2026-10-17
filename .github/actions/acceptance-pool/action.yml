@@ -19,6 +19,13 @@ inputs:
     description: "a test title to leave out (the db pool's deferral); empty = none"
     required: false
     default: ''
+  prefix-cache:
+    description: >
+      BYEHARU_PREFIX_CACHE for the build: 'required' on a pull request (the law — the world image
+      is built from a cached prefix or the build FAILS, never from zero), '' on main or when the
+      PR changed the chain machinery (docs/CI.md, "The law")
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -99,6 +106,8 @@ runs:
     - name: Build the app under test (local-PGlite mode)
       if: steps.plan.outputs.planned != '0'
       shell: bash
+      env:
+        BYEHARU_PREFIX_CACHE: ${{ inputs.prefix-cache }}
       run: npm run build
 
     # The world npc-on-world built for THIS run. fail-on-cache-miss: a shard that silently rebuilt

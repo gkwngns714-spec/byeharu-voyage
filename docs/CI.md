@@ -1,5 +1,52 @@
 # CI — what runs on a pull request, and what runs on main
 
+## The law — a pull request's CI never rebuilds from scratch (owner, 2026-10-17)
+
+The owner's order: *"avoid doing things from scratch"* in CI, made a law the same day: **a PR's CI
+must NEVER rebuild from scratch.** Applying the whole migration chain from 0001 — on the disposable
+Supabase, on PGlite for the proofs, or to build the world image — costs 30 to 50 minutes since 0105,
+and every one of those files was already applied, green, by main's own run. So on a pull request:
+
+1. **Every world is built from a kept snapshot, or the job fails and says why.** It never falls
+   back to a from-zero apply.
+   - **disposable-chain** (`scripts/ci/supabase-snapshot.sh choose`): the keys of every snapshot
+     that could fit are computed from the checkout (the key is the manifest's hash, one per prefix
+     length), the repository's kept caches are listed, and the **longest kept prefix** this run may
+     restore (main's or this PR's own ref) is restored **by exact key** — never "the newest".
+     Before choosing it **waits, bounded** (`SNAPSHOT_WAIT_SECONDS`, 50 min), for main's
+     migrations-apply-proof run on the PR's base commit when that run is still going and the base
+     chain's snapshot is not kept yet. `usable` then judges the restored bytes as before. Nothing
+     usable: the step *"The law — no from-zero apply on a pull request"* fails with
+     *"no usable applied-chain snapshot for this chain — refusing to rebuild from zero on a PR;
+     re-run after main's migrations-apply-proof finishes"*.
+   - **pglite-gate, the acceptance builds (`npc-on-world`, every pool shard) and build.yml**
+     (`scripts/db/prefix-cache.mjs`): the build or proof step runs with
+     `BYEHARU_PREFIX_CACHE=required`, and a chain with no usable cached prefix **throws** instead of
+     applying from zero. No wait is needed there: one `chain-prefix-*` / `world-image-*` entry holds
+     the last **four** prefix lengths (plus one every 32), so the previous main entry still fits a
+     chain that grew by up to three files, out of order or not, and main saves its entry minutes
+     after a merge (the Supabase snapshot keeps one length per entry, which is why it needs the
+     lookup and the wait).
+2. **The one exemption**: a PR whose diff changed the chain machinery or an old file — exactly the
+   set that runs the growth test (`select-specs.mjs`, `growth.run`: `src/lib/db/**`, `scripts/db/**`,
+   the preamble, `package(-lock).json`, `vite.config.ts`, `tests/frozenChain.ts`, an **edited,
+   deleted or renamed** migration). No kept snapshot can be expected to fit such a chain, so a
+   from-zero apply is allowed there and **logged as a warning**. `select` prints the reasons.
+3. **Main is exempt.** Main's run applies from zero on purpose: it is the net, and the run that
+   makes the snapshots every PR builds on.
+
+Why it exists: PR #147 (run 39029031472) started at 11:33 UTC, two minutes before main's run saved
+the snapshot that matched its chain. The job restored "the newest" kept snapshot, which 0137's
+out-of-order merge had made a non-prefix, and applied 132 files from zero for 47 minutes while five
+other snapshots sat in the cache. A re-run at 12:21 restored 131 files and applied one in two
+minutes.
+
+When the law fails a PR: read the `choose` step (which snapshots were considered, whether main's
+run was waited for and how it ended), wait for main's migrations-apply-proof run on the base to
+finish, and re-run the failed jobs. If main's run itself is red, that red is the finding.
+
+---
+
 The owner's order, 2026-10-17: *"make CI shorter — CI tests only from where we made something new,
 not the whole game."*
 
@@ -7,6 +54,8 @@ not the whole game."*
 |---|---|---|
 | **push to `main`**, dispatch | **every spec**, growth test included; verdict: passed == `playwright test --list` over all of `tests/` | all three pglite legs; disposable-chain from zero (keeps the snapshot PRs build on) |
 | **pull request** | only the specs the diff can reach (below); verdict: passed == `--list` count of the **selected** files | **nothing** when the diff touches no database path (below); otherwise `the rest` always, `ledger` / `merchants` only when the diff reaches their proof, disposable-chain on main's snapshot (unchanged) |
+
+| **pull request** | only the specs the diff can reach (below); verdict: passed == `--list` count of the **selected** files; every world build from a cached prefix or red (the law) | `the rest` always; `ledger` / `merchants` only when the diff reaches their proof; disposable-chain on the longest kept snapshot, after waiting for main's run on the base — never from zero (the law) |
 
 Main's full run is the safety net. After a batch of merges, check one full Acceptance run on main
 before you call the batch done.

@@ -42,12 +42,21 @@ name: Migrations — apply proof (PGlite gate + disposable Supabase)
 #   privileges. Any error (a syntax error, a broken dependency on an earlier migration, a violated
 #   CHECK, a `raise exception` from a self-assert) fails the job.
 #
-#   SINCE 2026-10-15 THAT FROM-ZERO APPLY IS MAIN'S (and any PR with no usable snapshot): a PR
-#   restores the newest green from-zero snapshot whose manifest is an exact prefix of its chain and
-#   applies only the files after it, through the CLI's own `migration up` (see the steps below and
-#   scripts/ci/supabase-snapshot.sh). Trade-off, stated: an OLD file's from-zero apply is proven by
-#   main's run, not re-proven on each PR — which is only a loss if that file changed, and a changed
-#   file breaks the prefix and forces the full apply.
+#   SINCE 2026-10-15 THAT FROM-ZERO APPLY IS MAIN'S: a PR restores a green from-zero snapshot whose
+#   manifest is an exact prefix of its chain and applies only the files after it, through the CLI's
+#   own `migration up` (see the steps below and scripts/ci/supabase-snapshot.sh). Trade-off,
+#   stated: an OLD file's from-zero apply is proven by main's run, not re-proven on each PR — which
+#   is only a loss if that file changed, and a changed file breaks the prefix.
+#
+#   THE LAW (owner, 2026-10-17; docs/CI.md): A PULL REQUEST NEVER APPLIES THE CHAIN FROM ZERO.
+#   Since 2026-10-17 a PR (1) waits, bounded, for main's own run on its base commit if that run is
+#   still going and its snapshot is not kept yet, (2) restores the LONGEST kept snapshot that is a
+#   prefix of its chain — looked up by key among ALL kept snapshots, not "the newest" (PR #147 got
+#   the newest, a non-prefix, and applied 132 files from zero while the right one was saved two
+#   minutes later), and (3) if nothing usable exists, FAILS with the reason instead of applying
+#   from zero. The one exemption: a PR that changed the chain machinery or an old migration
+#   (`select`'s `cold`, from select-specs.mjs's growth rule) may apply from zero, and says so.
+#   The same law governs the pglite legs' prefix cache (BYEHARU_PREFIX_CACHE=required).
 #
 #   It then re-runs the grant-lockdown proof by hand against that database, because that proof is
 #   the one whose result differs between the two environments, and asserts every PASS marker
@@ -96,8 +105,9 @@ jobs:
   #     proof file names; when the proof file itself changed; or on any change to scripts/db/**,
   #     package(-lock).json or an edited (not added) migration. On main, and on dispatch: all three.
   # A skipped leg still reports success under its own name, and its log says why it did not run.
-  # disposable-chain is unchanged: it is already scoped (a PR applies only its new files on main's
-  # snapshot) and it is the only check that runs against Supabase's own roles.
+  # disposable-chain runs every leg of its own: it is already scoped (a PR applies only its new
+  # files on a kept snapshot) and it is the only check that runs against Supabase's own roles. It
+  # reads this job's `cold` output for the law's exemption (header, JOB 2).
   select:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -107,6 +117,9 @@ jobs:
       # Anything else — a push to main, a dispatch, a diff that reaches the database, or a step
       # that did not get as far as writing the output — leaves it != 'false', and the jobs run.
       db: ${{ steps.db.outputs.db }}
+      # 'true' only when the chain machinery or an old migration changed: the law's one exemption
+      # (a from-zero apply is allowed, and logged). selection.json's growth.run; main is always exempt.
+      cold: ${{ steps.sel.outputs.cold }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -150,6 +163,8 @@ jobs:
           fi
           echo "legs=$(jq -c '.pglite | with_entries(.value |= (length > 0))' selection.json)" >> "$GITHUB_OUTPUT"
           jq -c '.pglite | with_entries(.value |= (length > 0))' selection.json
+          echo "cold=$(jq -r .growth.run selection.json)" >> "$GITHUB_OUTPUT"
+          echo "from-zero allowed on this run (the law's exemption): $(jq -r '.growth.run' selection.json) — $(jq -r '.growth.why | join("; ")' selection.json)"
 
   # ═══════════════════════════════════════════════════════════════════════════════════════════
   # 1. The fast gate: the whole chain + all four proofs, on real PostgreSQL, no Docker.
@@ -328,8 +343,16 @@ jobs:
       # equivalence · ledger reconciliation · grant lockdown · the K.1 first session, and the rest.
       # Fails if any migration printed no receipt, if any declared PASS marker is missing, if a
       # proof declares none, or if a proof leaves committed rows behind.
+      # THE LAW (docs/CI.md): on a PR the world comes from a cached prefix or this step FAILS with
+      # the reason (prefix-cache.mjs, BYEHARU_PREFIX_CACHE=required) — never a from-zero apply.
+      # Main is exempt (its run fills the cache), as is a PR that changed the chain machinery.
+      # No wait is needed here, unlike disposable-chain: one chain-prefix entry holds the last FOUR
+      # prefix lengths (plus one every 32), so the previous main entry still fits a chain that
+      # grew by up to three files, out of order or not, and main saves its entry minutes after a merge.
       - name: Build the chain's world on PGlite (cached prefix + the files after it), then run every proof
         if: env.RUN == 'true'
+        env:
+          BYEHARU_PREFIX_CACHE: ${{ github.event_name == 'pull_request' && needs.select.outputs.cold != 'true' && 'required' || '' }}
         run: npm run db:proof -- ${{ matrix.args }}
 
       # One leg saves (all three built the same snapshots from the same chain); the others would
@@ -353,6 +376,15 @@ jobs:
     # holds and the chain is applied as before.
     if: ${{ !cancelled() && needs.select.outputs.db != 'false' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read  # list the repository's caches and main's runs (supabase-snapshot.sh choose)
+    # 60 -> 120 on 2026-10-17, FOR THE WAIT, not for the apply: a PR may now wait up to 50 minutes
+    # for main's run on its base (SNAPSHOT_WAIT_SECONDS), and the exempt case (chain machinery
+    # changed, main's run red) may then still apply from zero, measured at 47-51 minutes. 50 + 51
+    # + the restore path is ~105; 120 is that plus room. A non-exempt PR never reaches the apply:
+    # it fails the "law" step below in seconds once the wait is over.
+    #
     # 2026-10-11: 30 -> 60, and NOT because this job grew. It passed at 16m44s on the first push of
     # PR #94 and was CANCELLED at 30m26s on the second, inside the same step ("Start disposable local
     # Supabase"), on a commit whose only changes were a workflow comment and a doc row. That is a
@@ -371,9 +403,11 @@ jobs:
     # that earns them back: give scripts/db/proof.mjs a connection-string path so the proofs run on
     # THIS job's real Postgres 17 instead of a second apply on wasm — one chain apply in CI instead
     # of two, and the proofs run on the engine production actually uses.
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # the merge commit's first parent = the base whose snapshot a PR wants
 
       - name: Count the migrations about to be applied
         run: |
@@ -399,21 +433,35 @@ jobs:
       # ── THE APPLIED-CHAIN SNAPSHOT (2026-10-15, scripts/ci/supabase-snapshot.sh) ─────────────
       # ON MAIN (push, dispatch): unchanged — the WHOLE chain from 0001 on a fresh volume. That is
       # the from-zero net, and afterwards the stopped volume is kept as the snapshot PRs build on.
-      # ON A PR: the newest kept snapshot is restored ONLY if its manifest (every file's name and
-      # sha-256, in order, plus the CLI version and config.toml) is an exact PREFIX of this PR's
-      # chain; the CLI boots it ("Starting database from backup...", no migrate step) and
-      # `supabase migration up` applies the files after it — every new migration's self-asserts and
-      # CHECK constraints run here exactly as before. Anything else falls back to the full apply.
-      # Every check below then runs against the result unchanged, plus a new one: what the database
-      # recorded equals supabase/migrations/, file for file.
-      - name: Restore the newest applied-chain snapshot (PRs only)
-        id: snap
+      # ON A PR (2026-10-17, the law): `choose` computes the key every usable snapshot would carry
+      # (the key IS the manifest's hash, one per prefix length of this chain), waits — bounded —
+      # for main's run on the base commit when it is still going and the base chain's own snapshot
+      # is not kept yet, then names the LONGEST kept prefix this run may restore. It is restored by
+      # EXACT key (no restore-keys, no "newest"); `usable` then judges the restored bytes exactly
+      # as before: the manifest (every file's name and sha-256, in order, plus the CLI version and
+      # config.toml) must be an exact PREFIX of this PR's chain. The CLI boots it ("Starting
+      # database from backup...", no migrate step) and `supabase migration up` applies the files
+      # after it — every new migration's self-asserts and CHECK constraints run here exactly as
+      # before. NOTHING USABLE = THE JOB FAILS (the step after `usable`), unless the PR changed the
+      # chain machinery. Every check below then runs against the result unchanged, plus: what the
+      # database recorded equals supabase/migrations/, file for file.
+      - name: Which kept snapshot is the longest prefix of THIS chain (PRs only; waits for main's run on the base)
+        id: choose
         if: github.event_name == 'pull_request'
+        env:
+          SUPABASE_CLI_VERSION: 2.114.0
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          bash scripts/ci/supabase-snapshot.sh choose "$(git rev-parse HEAD^1)" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Restore that applied-chain snapshot, by its exact key (PRs only)
+        id: snap
+        if: github.event_name == 'pull_request' && steps.choose.outputs.key != ''
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/sbsnap
-          key: sbdb-v1-2.114.0-never-an-exact-key
-          restore-keys: sbdb-v1-2.114.0-
+          key: ${{ steps.choose.outputs.key }}
 
       - name: Is the snapshot a prefix of THIS chain?
         id: plan
@@ -426,6 +474,21 @@ jobs:
             echo "usable=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           bash scripts/ci/supabase-snapshot.sh usable "$RUNNER_TEMP/sbsnap" | tee -a "$GITHUB_OUTPUT"
+
+      # THE LAW: a pull request never applies the chain from zero. Exempt only when the diff
+      # changed the chain machinery or an old migration (`select`'s `cold`), and then it is said.
+      - name: The law — no from-zero apply on a pull request
+        if: github.event_name == 'pull_request' && steps.plan.outputs.usable != 'true'
+        env:
+          COLD: ${{ needs.select.outputs.cold }}
+        run: |
+          set -euo pipefail
+          if [ "$COLD" = "true" ]; then
+            echo "::warning title=From-zero apply on a PR::no usable applied-chain snapshot, and this PR changed the chain machinery or an old migration (see the select job's log) — the law's one exemption: applying from zero"
+            exit 0
+          fi
+          echo "::error title=No usable applied-chain snapshot::no usable applied-chain snapshot for this chain — refusing to rebuild from zero on a PR; re-run after main's migrations-apply-proof finishes (the choose step above says which snapshots were considered and why main's was waited for or not)"
+          exit 1
 
       - name: Restore the snapshot into the db volume
         if: steps.plan.outputs.usable == 'true'
@@ -581,8 +644,9 @@ jobs:
       # ONLY a green FROM-ZERO run is kept: stopped WITH its volume, tarred with its manifest, saved
       # under its own chain's key. A red run, or one that itself started from a snapshot, never
       # becomes one. Main's are what every PR restores; a PR's own (visible to that PR only, by
-      # GitHub's cache scoping) lets its next push skip the old files too — and if that push edits
-      # one of its own migrations the manifest is no longer a prefix and it applies from zero again.
+      # GitHub's cache scoping; only an exempt PR can make one now) lets its next push skip the old
+      # files too — and if that push edits one of its own migrations the manifest is no longer a
+      # prefix and `choose` looks for a shorter one.
       - name: Keep the applied chain as a snapshot (green, from zero)
         id: keep
         if: success() && steps.plan.outputs.usable != 'true'
