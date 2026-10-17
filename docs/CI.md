@@ -6,10 +6,23 @@ not the whole game."*
 | Event | Acceptance (Playwright) | migrations-apply-proof |
 |---|---|---|
 | **push to `main`**, dispatch | **every spec**, growth test included; verdict: passed == `playwright test --list` over all of `tests/` | all three pglite legs; disposable-chain from zero (keeps the snapshot PRs build on) |
-| **pull request** | only the specs the diff can reach (below); verdict: passed == `--list` count of the **selected** files | `the rest` always; `ledger` / `merchants` only when the diff reaches their proof; disposable-chain on main's snapshot (unchanged) |
+| **pull request** | only the specs the diff can reach (below); verdict: passed == `--list` count of the **selected** files | **nothing** when the diff touches no database path (below); otherwise `the rest` always, `ledger` / `merchants` only when the diff reaches their proof, disposable-chain on main's snapshot (unchanged) |
 
 Main's full run is the safety net. After a batch of merges, check one full Acceptance run on main
 before you call the batch done.
+
+## A pull request that does not touch the database
+
+`disposable-chain` is a required check on `main`. migrations-apply-proof therefore runs on **every**
+pull request (no `paths:` filter since 2026-10-17; a workflow a filter keeps from running reports no
+check at all, and the PR can never merge). Its `select` job decides, from the merge commit against
+its first parent, whether the diff touches `supabase/`, `scripts/db/`, `scripts/ci/`, `src/lib/db/`,
+`package.json`, `package-lock.json` or the workflow file. When it does not, `pglite-gate` and
+`disposable-chain` are skipped by a job-level `if:` on that `db` output, in seconds; GitHub reports
+a job skipped by its `if:` as success, and the required check is satisfied. The `select` job's log
+says which it was and lists the diff. `disposable-chain`'s condition is `!cancelled() && … != 'false'`,
+so a `select` job that failed cannot skip the required check — it runs the chain instead. A push to
+`main` always runs everything, from zero, as before.
 
 ## Who decides
 
