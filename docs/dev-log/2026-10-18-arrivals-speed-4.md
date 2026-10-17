@@ -1,4 +1,4 @@
-# 2026-10-18 — 0168: a day is counted once and a quay is read once — `osn-arrivals-4`
+# 2026-10-18 — 0169: a day is counted once and a quay is read once — `osn-arrivals-4`
 
 **Symptom (prod, read-only `cron.job_run_details`):** after 0164 (the chart unrolled) went live at about 22:05 UTC on
 2026-10-17, `byeharu-voyage:arrivals` (every 15 s, 10 s budget) ran 216 times between 22:10 and 23:14 UTC.
@@ -42,7 +42,7 @@ So lap starts and sea-days are the two halves of a run, over a floor of about 0.
    - The average voyage at sea has total_days 16 and has settled 6.8 days; the longest has 141. Σ T² is 411k.
 3. **The candidate scan.** `day_ends_at` costs about 0.17 ms × about 760 voyages, which is 0.13 s a run.
 
-**Fix (migration 0168, provisional number; it applies on prod head 0164).**
+**Fix (migration 0169, provisional number; it applies on prod head 0168).**
 
 - `voyage.day_end_from(eta, departed_at, day, delay_before, k)` is new. It holds `day_ends_at`'s arithmetic, moved verbatim.
   It is PL/pgSQL, STABLE and invoker, reads nothing, and is server-only.
@@ -92,7 +92,7 @@ against prod's callers. Old and new are compared as text:
 
 - Cached-prefix image build: 156 of 157 restored, 1 applied, chain applied in 24.3 s, image certified. `tsc -b` + vite
   passed, and `npm run lint` passed.
-- The `0168 self-assert ok` receipt printed:
+- The `0169 self-assert ok` receipt printed:
   - on a saved merchants-on world: 578 voyages at sea, 123 hazards that befell them, 2,312 candidate tests, 49 s to apply
   - on the fresh chain, with an earlier revision whose only difference was the comparison sampling: 17.5 s
 - Whole sweep, from one saved merchants-on PGlite world, pinned `p_now`, `analyze` first (837 merchant fleets, 578 at sea;
@@ -141,5 +141,14 @@ their own events, which is the same derivation settle applies after every delay.
 - So the values written equal the values that were there, but I cannot prove that from a snapshot before the write.
 - From then on I checked each function's volatility before calling it.
 
-**Not done:** merge, `db push`, or any further production write. The number moves to head + 1 at deploy (K9 0165, S17 0166 and
-S18 0167 are in flight). This file deploys first.
+**Not done:** merge, `db push`, or any further production write. Renumbered 0168 → 0169 after 0165–0168 (K9, S17, S18, S4 + K10) landed; rebased on main at 0168, and every body cut here was re-dumped from prod at head 0168 and compared (below).
+
+**Re-checked at prod head 0168 (after the renumber).**
+
+- I re-dumped the five bodies cut here from prod, read-only. Each of the 11 hunks occurs exactly once: 8 re-cuts and the 3
+  `quote_priced` slices of `world.quote`.
+- All 21 functions involved, including 0168's `voyage.escort_score`, `public.crew_pct` and `world.ship_stats`, have the same
+  `md5(pg_get_functiondef)` on prod as on the fresh chain at 0168.
+- On the rebased chain, the image build restored 156 of 161, applied 5 including 0169, and certified the image.
+- The coordinator's baseline after 0164 is avg ≈ 3.3 s and max ≈ 5–6.5 s. The expected cut of ≈ 1.0 s puts it at
+  ≈ 2.3 s. Measure after the push with the hourly query.

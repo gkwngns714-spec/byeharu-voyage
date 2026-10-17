@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0168 — A DAY IS COUNTED ONCE AND A QUAY IS READ ONCE  (the arrivals sweep, step 4 — nothing it decides moves)
+-- 0169 — A DAY IS COUNTED ONCE AND A QUAY IS READ ONCE  (the arrivals sweep, step 4 — nothing it decides moves)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- ── WHY ─────────────────────────────────────────────────────────────────────────────────────────
@@ -104,10 +104,10 @@
 --
 -- ROLLBACK: a forward migration putting the pre-image bodies back (each hunk's OLD text is here verbatim;
 -- the self-assert proves each live body reverses to its pre-image) and dropping the three new functions.
--- SUPERSEDES, by hunks sliced from the LIVE bodies (prod head 0164, LF-normalised), each asserted to occur
+-- SUPERSEDES, by hunks sliced from the LIVE bodies (prod head 0168, LF-normalised), each asserted to occur
 -- exactly once: voyage.day_ends_at (0006/0125), voyage.days_complete (0006), public.tick_arrivals (0125),
 -- world.quote (0134), world.trade_routes (0136).
--- VERSION: 0168 (provisional; renumbered to head + 1 at deploy). Applies on prod head 0164.
+-- VERSION: 0169 (provisional; renumbered to head + 1 at deploy). Applies on prod head 0168.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -117,14 +117,14 @@ begin
 end $guard$;
 
 -- ── 0. HELPERS (pg_temp, gone at commit) ───────────────────────────────────────────────────────
-create or replace function pg_temp.occurs_0168(p_hay text, p_needle text)
+create or replace function pg_temp.occurs_0169(p_hay text, p_needle text)
 returns int
 language sql
 immutable
 as $$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_needle) $$;
 
 -- ── 1. THE PRE-IMAGES ──────────────────────────────────────────────────────────────────────────
-create temp table defs_before_0168 on commit drop as
+create temp table defs_before_0169 on commit drop as
 select f.fn,
        replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl,
@@ -140,30 +140,30 @@ select f.fn,
                ('world.quote(uuid, uuid, numeric, text, numeric, uuid)'),
                ('world.trade_routes(uuid, uuid, numeric, integer, uuid)')) f(fn);
 
-create temp table before_0168 on commit drop as
+create temp table before_0169 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
          where (n.nspname, p.proname) in (('voyage', 'day_end_from'), ('world', 'quote_terms'), ('world', 'quote_priced'))) as n_found;
 
 do $$
 begin
-  if (select count(*) from defs_before_0168 where def is not null) <> 5 then
-    raise exception '0168 self-assert FAIL: % of the 5 bodies found', (select count(*) from defs_before_0168 where def is not null);
+  if (select count(*) from defs_before_0169 where def is not null) <> 5 then
+    raise exception '0169 self-assert FAIL: % of the 5 bodies found', (select count(*) from defs_before_0169 where def is not null);
   end if;
-  if (select n_found from before_0168) <> 0 then
-    raise exception '0168 self-assert FAIL: voyage.day_end_from / world.quote_terms / world.quote_priced already exist';
+  if (select n_found from before_0169) <> 0 then
+    raise exception '0169 self-assert FAIL: voyage.day_end_from / world.quote_terms / world.quote_priced already exist';
   end if;
 end $$;
 
 -- THE OLD TREE: every function on a path from the reads §4 compares to a changed body. Every overload.
-create temp table tree_0168 (nsp text, name text) on commit drop;
-insert into tree_0168 values
+create temp table tree_0169 (nsp text, name text) on commit drop;
+insert into tree_0169 values
   ('voyage', 'day_ends_at'), ('voyage', 'days_complete'), ('voyage', 'progress_nm'), ('voyage', 'leg_at_day'),
   ('voyage', 'hazard_roll'), ('voyage', 'arrival_at'),
   ('world', 'quote'), ('world', 'trade_routes'), ('public', 'npc_leg_lines'), ('public', 'npc_affordable'),
   ('public', 'npc_buy_ceiling');
 
-create or replace function pg_temp.old_sql_0168(p_sql text)
+create or replace function pg_temp.old_sql_0169(p_sql text)
 returns text
 language plpgsql
 stable
@@ -172,18 +172,18 @@ declare
   t record;
   v text := p_sql;
 begin
-  for t in select nsp, name from tree_0168 order by length(name) desc, nsp, name loop
-    v := replace(v, t.nsp || '.' || t.name || '(', 'pg_temp.' || t.nsp || '_' || t.name || '_0168(');
+  for t in select nsp, name from tree_0169 order by length(name) desc, nsp, name loop
+    v := replace(v, t.nsp || '.' || t.name || '(', 'pg_temp.' || t.nsp || '_' || t.name || '_0169(');
   end loop;
   return v;
 end $$;
 
-create temp table old_tree_0168 on commit drop as
+create temp table old_tree_0169 on commit drop as
 select n.nspname as nsp, p.proname as name, p.oid::regprocedure::text as sig,
-       pg_temp.old_sql_0168(replace(pg_get_functiondef(p.oid), E'\r', '')) as def
+       pg_temp.old_sql_0169(replace(pg_get_functiondef(p.oid), E'\r', '')) as def
   from pg_proc p
   join pg_namespace n on n.oid = p.pronamespace
-  join tree_0168 t on t.nsp = n.nspname and t.name = p.proname;
+  join tree_0169 t on t.nsp = n.nspname and t.name = p.proname;
 
 do $$
 declare
@@ -191,9 +191,9 @@ declare
   t   record;
   v_n int;
 begin
-  if (select count(*) from old_tree_0168) <> (select count(*) from tree_0168) then
-    raise exception '0168 self-assert FAIL: the old tree lists % name(s) but % live function(s) were found',
-      (select count(*) from tree_0168), (select count(*) from old_tree_0168);
+  if (select count(*) from old_tree_0169) <> (select count(*) from tree_0169) then
+    raise exception '0169 self-assert FAIL: the old tree lists % name(s) but % live function(s) were found',
+      (select count(*) from tree_0169), (select count(*) from old_tree_0169);
   end if;
   -- THE TREE IS CLOSED on the compared paths: the callers of the changed bodies that §4 reads are in it
   -- (settle, tick_arrivals, npc_plan, do_buy / do_sell write and are not read; §4(c) stands in for the
@@ -211,38 +211,38 @@ begin
        and not (n.nspname || '.' || p.proname = any (t.allowed))
        and not (n.nspname || '.' || p.proname || '(' = t.needle);
     if v_n > 0 then
-      raise exception '0168 self-assert FAIL: % live bod(ies) outside the known callers call % — the old tree is not closed: %', v_n, t.needle,
+      raise exception '0169 self-assert FAIL: % live bod(ies) outside the known callers call % — the old tree is not closed: %', v_n, t.needle,
         (select string_agg(p.oid::regprocedure::text, ', ') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
           where p.pronamespace <> pg_my_temp_schema() and strpos(p.prosrc, t.needle) > 0
             and not (n.nspname || '.' || p.proname = any (t.allowed)) and not (n.nspname || '.' || p.proname || '(' = t.needle));
     end if;
   end loop;
   -- NO COPY REACHES A LIVE TREE BODY (and every copy was renamed).
-  for d in select * from old_tree_0168 loop
-    if strpos(d.def, 'CREATE OR REPLACE FUNCTION pg_temp.' || d.nsp || '_' || d.name || '_0168(') <> 1 then
-      raise exception '0168 self-assert FAIL: the old copy of % was not renamed', d.sig;
+  for d in select * from old_tree_0169 loop
+    if strpos(d.def, 'CREATE OR REPLACE FUNCTION pg_temp.' || d.nsp || '_' || d.name || '_0169(') <> 1 then
+      raise exception '0169 self-assert FAIL: the old copy of % was not renamed', d.sig;
     end if;
-    for t in select * from tree_0168 loop
+    for t in select * from tree_0169 loop
       if strpos(d.def, t.nsp || '.' || t.name || '(') > 0 then
-        raise exception '0168 self-assert FAIL: the old copy of % still calls the live %.%', d.sig, t.nsp, t.name;
+        raise exception '0169 self-assert FAIL: the old copy of % still calls the live %.%', d.sig, t.nsp, t.name;
       end if;
     end loop;
   end loop;
   perform set_config('check_function_bodies', 'off', true);
-  for d in select * from old_tree_0168 order by nsp, name, sig loop
+  for d in select * from old_tree_0169 order by nsp, name, sig loop
     execute d.def;
   end loop;
   perform set_config('check_function_bodies', 'on', true);
   select count(*) into v_n from pg_proc where pronamespace = pg_my_temp_schema()
-     and proname in (select tt.nsp || '_' || tt.name || '_0168' from tree_0168 tt);
-  if v_n <> (select count(*) from tree_0168) then
-    raise exception '0168 self-assert FAIL: % old cop(ies) made, not %', v_n, (select count(*) from tree_0168);
+     and proname in (select tt.nsp || '_' || tt.name || '_0169' from tree_0169 tt);
+  if v_n <> (select count(*) from tree_0169) then
+    raise exception '0169 self-assert FAIL: % old cop(ies) made, not %', v_n, (select count(*) from tree_0169);
   end if;
 end $$;
 
 -- THE LAP-START READ, as npc_plan reads it — 0136's probe, verbatim but for its name. The OLD variant is
 -- the same text pointed at the old tree.
-create or replace function pg_temp.lap_read_0168(p_route uuid)
+create or replace function pg_temp.lap_read_0169(p_route uuid)
 returns jsonb
 language plpgsql
 as $$
@@ -297,11 +297,11 @@ end $$;
 
 do $$
 declare
-  v_def text := replace(pg_get_functiondef('pg_temp.lap_read_0168(uuid)'::regprocedure), E'\r', '');
+  v_def text := replace(pg_get_functiondef('pg_temp.lap_read_0169(uuid)'::regprocedure), E'\r', '');
 begin
-  v_def := regexp_replace(pg_temp.old_sql_0168(v_def), 'FUNCTION pg_temp(_[0-9]+)?\.lap_read_0168\(', 'FUNCTION pg_temp.lap_read_old_0168(');
-  if strpos(v_def, 'FUNCTION pg_temp.lap_read_old_0168(') = 0 or strpos(v_def, 'pg_temp.public_npc_leg_lines_0168(') = 0 then
-    raise exception '0168 self-assert FAIL: the old lap read was not pointed at the old tree';
+  v_def := regexp_replace(pg_temp.old_sql_0169(v_def), 'FUNCTION pg_temp(_[0-9]+)?\.lap_read_0169\(', 'FUNCTION pg_temp.lap_read_old_0169(');
+  if strpos(v_def, 'FUNCTION pg_temp.lap_read_old_0169(') = 0 or strpos(v_def, 'pg_temp.public_npc_leg_lines_0169(') = 0 then
+    raise exception '0169 self-assert FAIL: the old lap read was not pointed at the old tree';
   end if;
   execute v_def;
 end $$;
@@ -313,7 +313,7 @@ end $$;
 -- progress_nm at each boundary and 1 ms either side of it, and arrival_at a day past the eta. (The OLD
 -- walk is what makes this read cost the square of a passage's length: on prod the full read of every
 -- voyage would take longer than the push should.)
-create or replace function pg_temp.schedule_0168(p_voyage uuid, p_now timestamptz, p_full boolean)
+create or replace function pg_temp.schedule_0169(p_voyage uuid, p_now timestamptz, p_full boolean)
 returns text
 language plpgsql
 as $$
@@ -377,19 +377,19 @@ end $$;
 
 do $$
 declare
-  v_def text := replace(pg_get_functiondef('pg_temp.schedule_0168(uuid, timestamp with time zone, boolean)'::regprocedure), E'\r', '');
+  v_def text := replace(pg_get_functiondef('pg_temp.schedule_0169(uuid, timestamp with time zone, boolean)'::regprocedure), E'\r', '');
 begin
-  v_def := regexp_replace(pg_temp.old_sql_0168(v_def), 'FUNCTION pg_temp(_[0-9]+)?\.schedule_0168\(', 'FUNCTION pg_temp.schedule_old_0168(');
-  if strpos(v_def, 'FUNCTION pg_temp.schedule_old_0168(') = 0 or strpos(v_def, 'pg_temp.voyage_hazard_roll_0168(') = 0
-     or strpos(v_def, 'pg_temp.voyage_days_complete_0168(') = 0 or strpos(v_def, 'pg_temp.voyage_arrival_at_0168(') = 0 then
-    raise exception '0168 self-assert FAIL: the old schedule read was not pointed at the old tree';
+  v_def := regexp_replace(pg_temp.old_sql_0169(v_def), 'FUNCTION pg_temp(_[0-9]+)?\.schedule_0169\(', 'FUNCTION pg_temp.schedule_old_0169(');
+  if strpos(v_def, 'FUNCTION pg_temp.schedule_old_0169(') = 0 or strpos(v_def, 'pg_temp.voyage_hazard_roll_0169(') = 0
+     or strpos(v_def, 'pg_temp.voyage_days_complete_0169(') = 0 or strpos(v_def, 'pg_temp.voyage_arrival_at_0169(') = 0 then
+    raise exception '0169 self-assert FAIL: the old schedule read was not pointed at the old tree';
   end if;
   execute v_def;
 end $$;
 
 -- ONE QUOTE, old tree or new, as text (a refusal is an answer too). p_given: the new side hands over the
 -- terms world.trade_routes hands over (world.quote_terms(port, null, null)) — only asked with no fleet.
-create or replace function pg_temp.quote_try_0168(p_mode text, p_port uuid, p_good uuid, p_qty numeric,
+create or replace function pg_temp.quote_try_0169(p_mode text, p_port uuid, p_good uuid, p_qty numeric,
                                                   p_side text, p_limit numeric, p_fleet uuid)
 returns text
 language plpgsql
@@ -399,7 +399,7 @@ declare
   k record;
 begin
   if p_mode = 'old' then
-    select * into r from pg_temp.world_quote_0168(p_port, p_good, p_qty, p_side, p_limit, p_fleet);
+    select * into r from pg_temp.world_quote_0169(p_port, p_good, p_qty, p_side, p_limit, p_fleet);
   elsif p_mode = 'new' then
     select * into r from world.quote(p_port, p_good, p_qty, p_side, p_limit, p_fleet);
   else
@@ -413,12 +413,12 @@ exception when others then
 end $$;
 
 -- the voyages compared: every voyage at sea (and how much of the heavy half each gets)
-create temp table voyages_0168 on commit drop as
+create temp table voyages_0169 on commit drop as
 select x.id, (x.rn <= 40 and voyage.total_days(x.id) <= 60) as full_read
   from (select v.id, row_number() over (order by md5(v.id::text)) as rn from public.voyages v where v.status = 'SAILING') x;
 
 -- the market rows quoted: a md5 spread over every harbour's rows, and a fleet for every fifth
-create temp table qrows_0168 on commit drop as
+create temp table qrows_0169 on commit drop as
 select x.port_id, x.good_id, x.stock, world.mid_price(x.port_id, x.good_id, x.stock) as mid, x.rn,
        case when x.rn % 5 = 0 then (select f.id from public.fleets f order by md5(f.id::text || x.rn::text) limit 1) end as fleet_id
   from (select pg.port_id, pg.good_id, pg.stock,
@@ -426,12 +426,12 @@ select x.port_id, x.good_id, x.stock, world.mid_price(x.port_id, x.good_id, x.st
           from public.port_goods pg join public.ports p on p.id = pg.port_id and p.kind = 'HARBOUR'
          order by md5(pg.port_id::text || pg.good_id::text) limit 700) x;
 
-create temp table qcases_0168 (side text, qty numeric, lim text) on commit drop;
-insert into qcases_0168 values ('buy', 1, null), ('buy', 50, null), ('buy', 37.5, 'mid'), ('sell', 50, null),
+create temp table qcases_0169 (side text, qty numeric, lim text) on commit drop;
+insert into qcases_0169 values ('buy', 1, null), ('buy', 50, null), ('buy', 37.5, 'mid'), ('sell', 50, null),
                                ('sell', 400, 'mid'), ('buy', 400, null), ('sell', 0.4, null), ('buy', 0, null);
 
 -- the merchants whose lap-start reads are compared and timed: 12, spread by a hash of the route id
-create temp table lap_sample_0168 on commit drop as
+create temp table lap_sample_0169 on commit drop as
 select sr.id as route_id
   from public.standing_routes sr
   join public.players p on p.id = sr.player_id and p.is_npc
@@ -443,7 +443,7 @@ select sr.id as route_id
 
 -- the rankings compared and timed: merchant legs as npc_leg_lines asks them (p_to, twelve rows), and
 -- open scans (no p_to) from a spread of harbours — every row, and a 400 nm radius with five rows
-create temp table rank_grid_0168 on commit drop as
+create temp table rank_grid_0169 on commit drop as
 select * from (
   select distinct on (s.port_id, n.port_id) s.port_id as f, n.port_id as t, null::numeric as radius, 12 as lim
     from public.standing_route_stops s
@@ -453,13 +453,13 @@ select * from (
                    where s2.route_id = s.route_id and s2.ord > s.ord order by s2.ord limit 1) n on true
    order by s.port_id, n.port_id) legs
  order by md5(f::text || t::text) limit 120;
-insert into rank_grid_0168
+insert into rank_grid_0169
 select h.id, null, x.radius, x.lim
   from (select p.id from public.ports p where p.kind = 'HARBOUR' order by md5(p.id::text) limit 12) h
  cross join (values (null::numeric, null::int), (400::numeric, 5)) x(radius, lim);
 
 -- the timing's inputs, read through the OLD tree before anything changes (§5 reads them again after)
-create temp table timing_0168 (what text, n int, old_ms numeric, new_ms numeric) on commit drop;
+create temp table timing_0169 (what text, n int, old_ms numeric, new_ms numeric) on commit drop;
 
 -- ── 2. THE NEW HELPERS ─────────────────────────────────────────────────────────────────────────
 create function voyage.day_end_from(p_eta timestamptz, p_departed timestamptz, p_day integer,
@@ -468,7 +468,7 @@ returns timestamptz
 language plpgsql
 stable
 as $fn$
--- 0168: THE DAY BOUNDARY — voyage.day_ends_at's arithmetic (0006, clamped at the eta by 0006's own
+-- 0169: THE DAY BOUNDARY — voyage.day_ends_at's arithmetic (0006, clamped at the eta by 0006's own
 -- reasoning: see voyage.day_ends_at), moved here verbatim so a caller holding the voyage row, the delay
 -- accrued before the day (voyage.delay_before_day) and the knob (time_compression) composes it without
 -- reading them again: voyage.day_ends_at, voyage.days_complete's walk and tick_arrivals' candidate scan.
@@ -489,7 +489,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $fn$
--- 0168: A QUOTE'S FOUR TERMS — what this house executes at here (the port's spread, her purser's and
+-- 0169: A QUOTE'S FOUR TERMS — what this house executes at here (the port's spread, her purser's and
 -- today's bargain: world.spread_effective), the same without the bargain, the tax a quote carries (0 lit:
 -- it is charged on profit) and the city's bid factor. MOVED out of world.quote verbatim; world.quote_priced
 -- reads them here, at the point world.quote always did. WITH NO FLEET NAMED THEY ARE THE PORT'S: p_good is
@@ -508,13 +508,13 @@ revoke all on function world.quote_terms(uuid, uuid, uuid) from public, anon, au
 
 -- world.quote_priced: world.quote's LIVE body, renamed, its four term readings replaced by the terms
 -- handed over or (none handed over) world.quote_terms at the same point. Generated, asserted.
-create temp table priced_hunks_0168 (n int, old text, new text) on commit drop;
-insert into priced_hunks_0168 values
+create temp table priced_hunks_0169 (n int, old text, new text) on commit drop;
+insert into priced_hunks_0169 values
 (1, $h$CREATE OR REPLACE FUNCTION world.quote(p_port uuid, p_good uuid, p_qty numeric, p_side text, p_limit numeric DEFAULT NULL::numeric, p_fleet uuid DEFAULT NULL::uuid)$h$,
 $h$CREATE OR REPLACE FUNCTION world.quote_priced(p_port uuid, p_good uuid, p_qty numeric, p_side text, p_limit numeric, p_fleet uuid, p_spread numeric, p_nohag numeric, p_tax numeric, p_bidf numeric)$h$),
 (2, $h$  t        record;    -- 0134: the market row's price terms, read ONCE (world.mid_terms)$h$,
 $h$  t        record;    -- 0134: the market row's price terms, read ONCE (world.mid_terms)
-  k        record;    -- 0168: the four terms (world.quote_terms), when none were handed over$h$),
+  k        record;    -- 0169: the four terms (world.quote_terms), when none were handed over$h$),
 (3, $h$  v_spread := world.spread_effective(p_port, p_good, p_fleet);
   -- 0083: what the same house pays with no bargain; with no fleet named there is no bargain.
   v_nohag  := case when p_fleet is null then v_spread
@@ -523,7 +523,7 @@ $h$  t        record;    -- 0134: the market row's price terms, read ONCE (world
   v_tax    := case when public.city_treasury_on() then 0 else world.tax_rate(p_port) end;
   v_bidf   := public.city_bid_factor(p_port);
 $h$,
-$h$  -- 0168: THE FOUR TERMS (world.quote_terms — the readings that stood here, moved whole), read
+$h$  -- 0169: THE FOUR TERMS (world.quote_terms — the readings that stood here, moved whole), read
   -- HERE as always; a caller that read them once for the quay (world.trade_routes, no fleet named)
   -- hands them over instead. None handed over = all four null.
   if p_spread is null and p_nohag is null and p_tax is null and p_bidf is null then
@@ -542,20 +542,20 @@ $h$);
 
 do $$
 declare
-  v_def text := (select def from defs_before_0168 where fn = 'world.quote(uuid, uuid, numeric, text, numeric, uuid)');
+  v_def text := (select def from defs_before_0169 where fn = 'world.quote(uuid, uuid, numeric, text, numeric, uuid)');
   h     record;
   v_n   int;
 begin
-  for h in select * from priced_hunks_0168 order by n loop
-    v_n := pg_temp.occurs_0168(v_def, h.old);
+  for h in select * from priced_hunks_0169 order by n loop
+    v_n := pg_temp.occurs_0169(v_def, h.old);
     if v_n <> 1 then
-      raise exception '0168 self-assert FAIL: world.quote_priced hunk % occurs % time(s) in the live world.quote, not once', h.n, v_n;
+      raise exception '0169 self-assert FAIL: world.quote_priced hunk % occurs % time(s) in the live world.quote, not once', h.n, v_n;
     end if;
     v_def := replace(v_def, h.old, h.new);
   end loop;
   if strpos(v_def, 'world.spread_effective(') > 0 or strpos(v_def, 'public.city_bid_factor(') > 0
      or strpos(v_def, 'world.tax_rate(') > 0 or strpos(v_def, 'CREATE OR REPLACE FUNCTION world.quote_priced(') <> 1 then
-    raise exception '0168 self-assert FAIL: world.quote_priced still reads a term itself, or was not renamed';
+    raise exception '0169 self-assert FAIL: world.quote_priced still reads a term itself, or was not renamed';
   end if;
   v_def := replace(v_def, 'CREATE OR REPLACE FUNCTION world.quote_priced(', 'CREATE FUNCTION world.quote_priced(');
   execute v_def;
@@ -563,9 +563,9 @@ end $$;
 revoke all on function world.quote_priced(uuid, uuid, numeric, text, numeric, uuid, numeric, numeric, numeric, numeric) from public, anon, authenticated;
 
 -- ── 3. THE RE-CUTS (hunks: old = verbatim from the live bodies; new = what replaces it) ─────────
-create temp table hunks_0168 (fn text, n int, old text, new text) on commit drop;
+create temp table hunks_0169 (fn text, n int, old text, new text) on commit drop;
 
-insert into hunks_0168 values
+insert into hunks_0169 values
 ('voyage.day_ends_at(uuid, integer)', 1,
 $h$  select least(v.eta,
                v.departed_at + make_interval(secs =>
@@ -573,7 +573,7 @@ $h$  select least(v.eta,
                   / public.wc_num('time_compression'))::double precision))
     from public.voyages v where v.id = p_voyage
 $h$,
-$h$  -- 0168: the arithmetic lives in voyage.day_end_from (one home; days_complete's walk and the sweep's
+$h$  -- 0169: the arithmetic lives in voyage.day_end_from (one home; days_complete's walk and the sweep's
   -- candidate scan compose it too), over what this reads: the row, the delay before the day, the knob.
   select voyage.day_end_from(v.eta, v.departed_at, p_day, voyage.delay_before_day(p_voyage, p_day),
                              public.wc_num('time_compression'))
@@ -584,7 +584,7 @@ $h$  while d < v_cap and voyage.day_ends_at(p_voyage, d + 1) <= p_at loop
     d := d + 1;
   end loop;
 $h$,
-$h$  -- 0168: THE SAME WALK, the row and the knob read ONCE: each day is voyage.day_end_from over the delay
+$h$  -- 0169: THE SAME WALK, the row and the knob read ONCE: each day is voyage.day_end_from over the delay
   -- accrued before it (voyage.delay_before_day) — what voyage.day_ends_at(p_voyage, d + 1) composes — so
   -- a step is one delay read, not a fresh row, knob and delay read (it grew with the square of the day).
   -- No voyage: no row, a null boundary, no day walked — as before.
@@ -599,14 +599,14 @@ $h$),
 $h$  d     int := 0;
 $h$,
 $h$  d     int := 0;
-  v_eta timestamptz;   -- 0168: the row and the knob, read once
+  v_eta timestamptz;   -- 0169: the row and the knob, read once
   v_dep timestamptz;
   v_k   numeric;
 $h$),
 ('public.tick_arrivals(timestamp with time zone)', 1,
 $h$              and (v.eta <= p_now or voyage.day_ends_at(v.id, v.last_settled_day + 1) <= p_now)
 $h$,
-$h$              -- 0168: voyage.day_ends_at(v.id, n) composed from the row in hand (voyage.day_end_from over
+$h$              -- 0169: voyage.day_ends_at(v.id, n) composed from the row in hand (voyage.day_end_from over
               -- voyage.delay_before_day), the knob read once a run — the same test, one read a voyage
               and (v.eta <= p_now
                    or voyage.day_end_from(v.eta, v.departed_at, v.last_settled_day + 1,
@@ -616,7 +616,7 @@ $h$),
 $h$  v_budget  interval := make_interval(secs => public.wc_int('arrivals_tick_budget_ms') / 1000.0);
 $h$,
 $h$  v_budget  interval := make_interval(secs => public.wc_int('arrivals_tick_budget_ms') / 1000.0);
-  v_k       numeric := public.wc_num('time_compression');   -- 0168: the candidate scan's knob, once a run
+  v_k       numeric := public.wc_num('time_compression');   -- 0169: the candidate scan's knob, once a run
 $h$),
 ('world.quote(uuid, uuid, numeric, text, numeric, uuid)', 1,
 $h$
@@ -715,7 +715,7 @@ begin
   return next;
 end $h$,
 $h$
--- 0168: THE PRICE AUTHORITY IS world.quote_priced — this body, moved there whole (generated from it and
+-- 0169: THE PRICE AUTHORITY IS world.quote_priced — this body, moved there whole (generated from it and
 -- asserted): the side, the market row, its terms (world.quote_terms, read at the same point), the stock
 -- walk. Asked here no terms are handed over, so it reads its own: the same answer, the same refusals in
 -- the same order. world.trade_routes hands over a quay's terms, read once a ranking.
@@ -730,7 +730,7 @@ $h$  bought as materialized (
      where z.qty >= 1
   ),
 $h$,
-$h$  -- 0168: A QUAY'S QUOTE TERMS, READ ONCE A RANKING. With no fleet named a quote's four terms are the
+$h$  -- 0169: A QUAY'S QUOTE TERMS, READ ONCE A RANKING. With no fleet named a quote's four terms are the
   -- port's (world.quote_terms: no purser, no bargain — the same for every good, size and side), so the
   -- source's are read once here and each sink's once below, and every quote is handed them
   -- (world.quote_priced). With a fleet named there are none: each quote reads its own, per good.
@@ -761,7 +761,7 @@ $h$      cross join lateral world.quote_priced(k.port_id, k.good_id, b.units, 's
                                             (select q.q_spread from qt_to q where q.port_id = k.port_id),
                                             (select q.q_nohag from qt_to q where q.port_id = k.port_id),
                                             (select q.q_tax from qt_to q where q.port_id = k.port_id),
-                                            (select q.q_bidf from qt_to q where q.port_id = k.port_id)) qs   -- 0168
+                                            (select q.q_bidf from qt_to q where q.port_id = k.port_id)) qs   -- 0169
 $h$);
 
 do $$
@@ -771,12 +771,12 @@ declare
   v_def text;
   v_n   int;
 begin
-  for d in select * from defs_before_0168 order by fn loop
+  for d in select * from defs_before_0169 order by fn loop
     v_def := d.def;
-    for h in select * from hunks_0168 where fn = d.fn order by n loop
-      v_n := pg_temp.occurs_0168(v_def, h.old);
+    for h in select * from hunks_0169 where fn = d.fn order by n loop
+      v_n := pg_temp.occurs_0169(v_def, h.old);
       if v_n <> 1 then
-        raise exception '0168 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
+        raise exception '0169 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
           h.n, d.fn, v_n;
       end if;
       v_def := replace(v_def, h.old, h.new);
@@ -786,18 +786,18 @@ begin
 end $$;
 
 -- ── 4. THE COMPARISONS — old tree and new, side by side (one snapshot each) ───────────────────
-create temp table proven_0168 (k text primary key, v text) on commit drop;
+create temp table proven_0169 (k text primary key, v text) on commit drop;
 
 -- (a) every voyage at sea
-create temp table sched_0168 on commit drop as
-select v.id, v.full_read, pg_temp.schedule_0168(v.id, now(), v.full_read) as new_v,
-       pg_temp.schedule_old_0168(v.id, now(), v.full_read) as old_v
-  from voyages_0168 v;
+create temp table sched_0169 on commit drop as
+select v.id, v.full_read, pg_temp.schedule_0169(v.id, now(), v.full_read) as new_v,
+       pg_temp.schedule_old_0169(v.id, now(), v.full_read) as old_v
+  from voyages_0169 v;
 
 -- (c) the candidate test, at now and 1 ms either side of each voyage's next boundary
-create temp table cand_0168 on commit drop as
+create temp table cand_0169 on commit drop as
 select v.id, x.at,
-       (v.eta <= x.at or pg_temp.voyage_day_ends_at_0168(v.id, v.last_settled_day + 1) <= x.at) as old_v,
+       (v.eta <= x.at or pg_temp.voyage_day_ends_at_0169(v.id, v.last_settled_day + 1) <= x.at) as old_v,
        (v.eta <= x.at or voyage.day_end_from(v.eta, v.departed_at, v.last_settled_day + 1,
                                              voyage.delay_before_day(v.id, v.last_settled_day + 1),
                                              public.wc_num('time_compression')) <= x.at) as new_v
@@ -809,13 +809,13 @@ select v.id, x.at,
  where v.status = 'SAILING';
 
 -- (e) rankings and lap-start reads
-create temp table ranks_0168 on commit drop as
+create temp table ranks_0169 on commit drop as
 select r.*, world.trade_routes(r.f, null, r.radius, r.lim, r.t) as new_v,
-       pg_temp.world_trade_routes_0168(r.f, null, r.radius, r.lim, r.t) as old_v
-  from rank_grid_0168 r;
-create temp table laps_0168 on commit drop as
-select s.route_id, pg_temp.lap_read_0168(s.route_id) as new_v, pg_temp.lap_read_old_0168(s.route_id) as old_v
-  from lap_sample_0168 s;
+       pg_temp.world_trade_routes_0169(r.f, null, r.radius, r.lim, r.t) as old_v
+  from rank_grid_0169 r;
+create temp table laps_0169 on commit drop as
+select s.route_id, pg_temp.lap_read_0169(s.route_id) as new_v, pg_temp.lap_read_old_0169(s.route_id) as old_v
+  from lap_sample_0169 s;
 
 do $$
 declare
@@ -830,49 +830,49 @@ declare
 begin
   -- (a)
   select count(*), count(*) filter (where new_v is distinct from old_v), min(id::text) filter (where new_v is distinct from old_v)
-    into v_n, v_bad, v_ex from sched_0168;
+    into v_n, v_bad, v_ex from sched_0169;
   if v_bad > 0 then
-    raise exception '0168 self-assert FAIL: schedules — % of % voyages at sea differ from the pre-image (e.g. %)', v_bad, v_n, v_ex;
+    raise exception '0169 self-assert FAIL: schedules — % of % voyages at sea differ from the pre-image (e.g. %)', v_bad, v_n, v_ex;
   end if;
-  select coalesce(sum(array_length(regexp_split_to_array(new_v, ';H[0-9]+=\(t'), 1) - 1), 0) into v_hz from sched_0168;
-  insert into proven_0168 values ('live', format('%s voyages at sea (%s read in full; %s hazards that befell them) — every day end, hazard roll, leg, day count, progress and arrival = the pre-image as text',
-    v_n, (select count(*) from sched_0168 where full_read), v_hz));
+  select coalesce(sum(array_length(regexp_split_to_array(new_v, ';H[0-9]+=\(t'), 1) - 1), 0) into v_hz from sched_0169;
+  insert into proven_0169 values ('live', format('%s voyages at sea (%s read in full; %s hazards that befell them) — every day end, hazard roll, leg, day count, progress and arrival = the pre-image as text',
+    v_n, (select count(*) from sched_0169 where full_read), v_hz));
 
   -- (c)
-  select count(*), count(*) filter (where new_v is distinct from old_v) into v_n, v_bad from cand_0168;
+  select count(*), count(*) filter (where new_v is distinct from old_v) into v_n, v_bad from cand_0169;
   if v_bad > 0 then
-    raise exception '0168 self-assert FAIL: the candidate test — % of % (voyage, instant) differ from the pre-image', v_bad, v_n;
+    raise exception '0169 self-assert FAIL: the candidate test — % of % (voyage, instant) differ from the pre-image', v_bad, v_n;
   end if;
-  if v_n > 0 and ((select count(*) from cand_0168 where new_v) < 1 or (select count(*) from cand_0168 where not new_v) < 1) then
-    raise exception '0168 self-assert FAIL: the candidate comparison is vacuous (all one answer over % instants)', v_n;
+  if v_n > 0 and ((select count(*) from cand_0169 where new_v) < 1 or (select count(*) from cand_0169 where not new_v) < 1) then
+    raise exception '0169 self-assert FAIL: the candidate comparison is vacuous (all one answer over % instants)', v_n;
   end if;
-  insert into proven_0168 values ('cand', format('%s (voyage, instant) candidate tests (%s due, %s not) = the pre-image',
-    v_n, (select count(*) from cand_0168 where new_v), (select count(*) from cand_0168 where not new_v)));
+  insert into proven_0169 values ('cand', format('%s (voyage, instant) candidate tests (%s due, %s not) = the pre-image',
+    v_n, (select count(*) from cand_0169 where new_v), (select count(*) from cand_0169 where not new_v)));
 
   -- (e)
-  select count(*), count(*) filter (where new_v::text is distinct from old_v::text) into v_n, v_bad from ranks_0168;
-  select min(format('%s → %s r %s l %s', f, t, radius, lim)) into v_ex from ranks_0168 where new_v::text is distinct from old_v::text;
+  select count(*), count(*) filter (where new_v::text is distinct from old_v::text) into v_n, v_bad from ranks_0169;
+  select min(format('%s → %s r %s l %s', f, t, radius, lim)) into v_ex from ranks_0169 where new_v::text is distinct from old_v::text;
   if v_bad > 0 then
-    raise exception '0168 self-assert FAIL: rankings — % of % differ from the pre-image (e.g. %)', v_bad, v_n, v_ex;
+    raise exception '0169 self-assert FAIL: rankings — % of % differ from the pre-image (e.g. %)', v_bad, v_n, v_ex;
   end if;
-  select sum(jsonb_array_length(new_v->'routes')) into v_rows from ranks_0168;
-  if v_n < 20 or coalesce(v_rows, 0) < 20 or (select count(*) from ranks_0168 where t is null and jsonb_array_length(new_v->'routes') > 0) < 1 then
-    raise exception '0168 self-assert FAIL: the ranking comparison is vacuous (% rankings, % rows)', v_n, v_rows;
+  select sum(jsonb_array_length(new_v->'routes')) into v_rows from ranks_0169;
+  if v_n < 20 or coalesce(v_rows, 0) < 20 or (select count(*) from ranks_0169 where t is null and jsonb_array_length(new_v->'routes') > 0) < 1 then
+    raise exception '0169 self-assert FAIL: the ranking comparison is vacuous (% rankings, % rows)', v_n, v_rows;
   end if;
-  insert into proven_0168 values ('ranks', format('%s rankings (%s merchant legs, %s open scans; %s rows) = the pre-image as text',
-    v_n, (select count(*) from ranks_0168 where t is not null), (select count(*) from ranks_0168 where t is null), v_rows));
-  select count(*), count(*) filter (where new_v::text is distinct from old_v::text) into v_n, v_bad from laps_0168;
+  insert into proven_0169 values ('ranks', format('%s rankings (%s merchant legs, %s open scans; %s rows) = the pre-image as text',
+    v_n, (select count(*) from ranks_0169 where t is not null), (select count(*) from ranks_0169 where t is null), v_rows));
+  select count(*), count(*) filter (where new_v::text is distinct from old_v::text) into v_n, v_bad from laps_0169;
   if v_n < 1 or v_bad > 0 then
-    raise exception '0168 self-assert FAIL: lap-start reads — % of % differ from the pre-image', v_bad, v_n;
+    raise exception '0169 self-assert FAIL: lap-start reads — % of % differ from the pre-image', v_bad, v_n;
   end if;
   select sum((select count(*) from jsonb_object_keys(new_v->'legs'))),
          sum((select count(*) from jsonb_each(new_v->'legs') e where (e.value->>'any')::boolean))
-    into v_legs, v_kept from laps_0168;
+    into v_legs, v_kept from laps_0169;
   if v_legs < v_n then
-    raise exception '0168 self-assert FAIL: the lap-start reads priced % leg(s) for % merchant(s)', v_legs, v_n;
+    raise exception '0169 self-assert FAIL: the lap-start reads priced % leg(s) for % merchant(s)', v_legs, v_n;
   end if;
-  insert into proven_0168 values ('laps', format('%s merchants'' lap-start reads (%s loops, %s distinct legs priced, %s with a parcel kept) = the pre-image as text',
-    v_n, (select sum(jsonb_array_length(new_v->'loops')) from laps_0168), v_legs, v_kept));
+  insert into proven_0169 values ('laps', format('%s merchants'' lap-start reads (%s loops, %s distinct legs priced, %s with a parcel kept) = the pre-image as text',
+    v_n, (select sum(jsonb_array_length(new_v->'loops')) from laps_0169), v_legs, v_kept));
 end $$;
 
 -- (d) quotes, in the world as found and with the city treasury and influence switched the other way
@@ -905,7 +905,7 @@ declare
   v_voy     uuid;
   v_t       int;
   v_probe   text := '';
-  v_ghost   uuid := '00000000-0000-4000-8000-000000016800';
+  v_ghost   uuid := '00000000-0000-4000-8000-000000016900';
 begin
   select value into v_tre from public.world_config where key = 'city_treasury_enabled';
   select value into v_inf from public.world_config where key = 'influence_enabled';
@@ -915,11 +915,11 @@ begin
         update public.world_config set value = to_jsonb(not (v_tre::text::boolean)) where key = 'city_treasury_enabled';
         update public.world_config set value = to_jsonb(not (v_inf::text::boolean)) where key = 'influence_enabled';
       end if;
-      for r in select * from qrows_0168 where v_pass = 1 or rn <= 250 order by rn loop
-        for c in select * from qcases_0168 loop
+      for r in select * from qrows_0169 where v_pass = 1 or rn <= 250 order by rn loop
+        for c in select * from qcases_0169 loop
           v_lim := case when c.lim = 'mid' then round(r.mid, 2) end;
-          o  := pg_temp.quote_try_0168('old', r.port_id, r.good_id, c.qty, c.side, v_lim, r.fleet_id);
-          nw := pg_temp.quote_try_0168('new', r.port_id, r.good_id, c.qty, c.side, v_lim, r.fleet_id);
+          o  := pg_temp.quote_try_0169('old', r.port_id, r.good_id, c.qty, c.side, v_lim, r.fleet_id);
+          nw := pg_temp.quote_try_0169('new', r.port_id, r.good_id, c.qty, c.side, v_lim, r.fleet_id);
           v_n := v_n + 1;
           if nw is distinct from o then
             v_bad := v_bad + 1;
@@ -928,7 +928,7 @@ begin
           end if;
           if o like 'RAISED%' then v_raised := v_raised + 1; end if;
           if r.fleet_id is null then
-            gv := pg_temp.quote_try_0168('given', r.port_id, r.good_id, c.qty, c.side, v_lim, null);
+            gv := pg_temp.quote_try_0169('given', r.port_id, r.good_id, c.qty, c.side, v_lim, null);
             v_given := v_given + 1;
             if gv is distinct from o then
               v_bad := v_bad + 1;
@@ -943,17 +943,17 @@ begin
         -- the property world.trade_routes relies on: with no fleet named the terms are the port's
         if (select row(k.*)::text from world.quote_terms(r.port_id, r.good_id, null) k)
            is distinct from (select row(k.*)::text from world.quote_terms(r.port_id, null, null) k) then
-          raise exception '0168 self-assert FAIL: world.quote_terms(%, %, no fleet) is not the port''s terms', r.port_id, r.good_id;
+          raise exception '0169 self-assert FAIL: world.quote_terms(%, %, no fleet) is not the port''s terms', r.port_id, r.good_id;
         end if;
         v_terms := v_terms + 1;
       end loop;
       -- the refusals, in their order: a bad side before a missing row; a missing row; a missing port
-      for c in select * from (values ('hold', (select good_id from qrows_0168 order by rn limit 1), (select port_id from qrows_0168 order by rn limit 1)),
+      for c in select * from (values ('hold', (select good_id from qrows_0169 order by rn limit 1), (select port_id from qrows_0169 order by rn limit 1)),
                                      ('hold', v_ghost, v_ghost),
-                                     ('buy',  v_ghost, (select port_id from qrows_0168 order by rn limit 1)),
-                                     ('sell', (select good_id from qrows_0168 order by rn limit 1), v_ghost)) x(side, good, port) loop
-        o  := pg_temp.quote_try_0168('old', c.port, c.good, 10, c.side, null, null);
-        nw := pg_temp.quote_try_0168('new', c.port, c.good, 10, c.side, null, null);
+                                     ('buy',  v_ghost, (select port_id from qrows_0169 order by rn limit 1)),
+                                     ('sell', (select good_id from qrows_0169 order by rn limit 1), v_ghost)) x(side, good, port) loop
+        o  := pg_temp.quote_try_0169('old', c.port, c.good, 10, c.side, null, null);
+        nw := pg_temp.quote_try_0169('new', c.port, c.good, 10, c.side, null, null);
         v_n := v_n + 1;
         if nw is distinct from o or o not like 'RAISED%' then
           v_bad := v_bad + 1;
@@ -962,24 +962,24 @@ begin
         v_raised := v_raised + 1;
       end loop;
       if v_pass = 2 then
-        raise exception 'ROLLBACK_0168_LIT';
+        raise exception 'ROLLBACK_0169_LIT';
       end if;
     exception when others then
-      if sqlerrm <> 'ROLLBACK_0168_LIT' then raise; end if;
+      if sqlerrm <> 'ROLLBACK_0169_LIT' then raise; end if;
     end;
   end loop;
   if (select value from public.world_config where key = 'city_treasury_enabled') is distinct from v_tre
      or (select value from public.world_config where key = 'influence_enabled') is distinct from v_inf then
-    raise exception '0168 self-assert FAIL: the switched quote pass was not rolled back';
+    raise exception '0169 self-assert FAIL: the switched quote pass was not rolled back';
   end if;
   if v_bad > 0 then
-    raise exception '0168 self-assert FAIL: quotes — % of % differ from the pre-image (e.g. %)', v_bad, v_n + v_given, v_ex;
+    raise exception '0169 self-assert FAIL: quotes — % of % differ from the pre-image (e.g. %)', v_bad, v_n + v_given, v_ex;
   end if;
   if v_n < 1000 or v_raised < 4 or v_partial < 1 or v_given < 500 then
-    raise exception '0168 self-assert FAIL: the quote comparison is vacuous (% quotes, % refusals, % partial fills, % handed terms)',
+    raise exception '0169 self-assert FAIL: the quote comparison is vacuous (% quotes, % refusals, % partial fills, % handed terms)',
       v_n, v_raised, v_partial, v_given;
   end if;
-  insert into proven_0168 values ('quotes', format('%s quotes (%s refused, %s partial fills at a limit; switches as found and the other way) and %s with the quay''s terms handed over = the pre-image; world.quote_terms with no fleet = the port''s on %s rows',
+  insert into proven_0169 values ('quotes', format('%s quotes (%s refused, %s partial fills at a limit; switches as found and the other way) and %s with the quay''s terms handed over = the pre-image; world.quote_terms with no fleet = the port''s on %s rows',
     v_n, v_raised, v_partial, v_given, v_terms));
 
   -- (b) VOYAGES OF THIS FILE'S OWN — a merchant hull lying in port, put to sea on her own route's course
@@ -993,7 +993,7 @@ begin
        and exists (select 1 from public.ships s where s.fleet_id = f.id)
      order by md5(f.id::text) limit 1;
     if v_fleet is null then
-      raise exception '0168 self-assert FAIL: no docked hull to put to sea for the probes';
+      raise exception '0169 self-assert FAIL: no docked hull to put to sea for the probes';
     end if;
     for c in select * from (values (1, 'none'), (2, 'weather'), (3, 'long')) x(k, kind) order by k loop
       if c.kind = 'long' then
@@ -1026,34 +1026,34 @@ begin
         perform voyage.recompute_eta(v_voy);
         update public.voyages set last_settled_day = least(5, voyage.total_days(v_voy)) where id = v_voy;
       end if;
-      o  := pg_temp.schedule_old_0168(v_voy, now(), true);
-      nw := pg_temp.schedule_0168(v_voy, now(), true);
+      o  := pg_temp.schedule_old_0169(v_voy, now(), true);
+      nw := pg_temp.schedule_0169(v_voy, now(), true);
       if nw is distinct from o then
-        raise exception '0168 self-assert FAIL: the % probe voyage''s schedule differs from the pre-image', c.kind;
+        raise exception '0169 self-assert FAIL: the % probe voyage''s schedule differs from the pre-image', c.kind;
       end if;
       if strpos(nw, 'H1=') = 0 or strpos(nw, ';E' || (v_t + 1) || '=') = 0 then
-        raise exception '0168 self-assert FAIL: the % probe read no schedule', c.kind;
+        raise exception '0169 self-assert FAIL: the % probe read no schedule', c.kind;
       end if;
       v_probe := v_probe || format('%s (%s days%s); ', c.kind, voyage.total_days(v_voy),
                                    case when c.kind <> 'none' then format(', %s h of delay net', (select delay_hours from public.voyages where id = v_voy)) else '' end);
       update public.voyages set status = 'ARRIVED' where id = v_voy;
     end loop;
     -- a voyage that does not exist: every read answers (or refuses) as before
-    o  := pg_temp.schedule_old_0168(v_ghost, now(), true);
-    nw := pg_temp.schedule_0168(v_ghost, now(), true);
+    o  := pg_temp.schedule_old_0169(v_ghost, now(), true);
+    nw := pg_temp.schedule_0169(v_ghost, now(), true);
     if nw is distinct from o or strpos(nw, '!P0001 E_NO_SUCH_VOYAGE') = 0 then
-      raise exception '0168 self-assert FAIL: the missing voyage reads differently (old % / new %)', left(o, 300), left(nw, 300);
+      raise exception '0169 self-assert FAIL: the missing voyage reads differently (old % / new %)', left(o, 300), left(nw, 300);
     end if;
     v_probe := v_probe || 'and a voyage that does not exist (its refusals compared)';
-    raise exception 'ROLLBACK_0168_PROBE';
+    raise exception 'ROLLBACK_0169_PROBE';
   exception when others then
-    if sqlerrm <> 'ROLLBACK_0168_PROBE' then raise; end if;
+    if sqlerrm <> 'ROLLBACK_0169_PROBE' then raise; end if;
   end;
   if exists (select 1 from public.voyage_events ve where ve.payload ? 'hours_gained' and ve.payload->>'hours_gained' = '23.9'
                 and ve.resolved_at = now()) then
-    raise exception '0168 self-assert FAIL: the probe voyages were not rolled back';
+    raise exception '0169 self-assert FAIL: the probe voyages were not rolled back';
   end if;
-  insert into proven_0168 values ('probes', 'own voyages ' || v_probe);
+  insert into proven_0169 values ('probes', 'own voyages ' || v_probe);
 end $$;
 
 -- ── 5. THE TIMING — REPORTED, NOT GATED (old tree vs new, the same inputs, one pass each) ──────
@@ -1068,50 +1068,50 @@ begin
   select count(*) into v_n from public.voyages where status = 'SAILING';
   if v_n > 0 then
     v_t0 := clock_timestamp();
-    perform count(pg_temp.voyage_days_complete_0168(v.id, pg_temp.voyage_day_ends_at_0168(v.id, v.last_settled_day + 1)))
+    perform count(pg_temp.voyage_days_complete_0169(v.id, pg_temp.voyage_day_ends_at_0169(v.id, v.last_settled_day + 1)))
        from public.voyages v where v.status = 'SAILING';
     v_old := round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1);
     v_t0 := clock_timestamp();
     perform count(voyage.days_complete(v.id, voyage.day_ends_at(v.id, v.last_settled_day + 1)))
        from public.voyages v where v.status = 'SAILING';
     v_new := round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1);
-    insert into timing_0168 values ('days_complete at her next day', v_n, v_old, v_new);
+    insert into timing_0169 values ('days_complete at her next day', v_n, v_old, v_new);
     v_t0 := clock_timestamp();
     perform count(h.occurred) from public.voyages v
-      cross join lateral pg_temp.voyage_hazard_roll_0168(v.id, v.last_settled_day + 1) h where v.status = 'SAILING';
+      cross join lateral pg_temp.voyage_hazard_roll_0169(v.id, v.last_settled_day + 1) h where v.status = 'SAILING';
     v_old := round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1);
     v_t0 := clock_timestamp();
     perform count(h.occurred) from public.voyages v
       cross join lateral voyage.hazard_roll(v.id, v.last_settled_day + 1) h where v.status = 'SAILING';
     v_new := round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1);
-    insert into timing_0168 values ('hazard_roll at her next day', v_n, v_old, v_new);
+    insert into timing_0169 values ('hazard_roll at her next day', v_n, v_old, v_new);
     v_t0 := clock_timestamp();
     perform count(*) from public.voyages v where v.status = 'SAILING'
-       and (v.eta <= now() or pg_temp.voyage_day_ends_at_0168(v.id, v.last_settled_day + 1) <= now());
+       and (v.eta <= now() or pg_temp.voyage_day_ends_at_0169(v.id, v.last_settled_day + 1) <= now());
     v_old := round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1);
     v_t0 := clock_timestamp();
     perform count(*) from public.voyages v where v.status = 'SAILING'
        and (v.eta <= now() or voyage.day_end_from(v.eta, v.departed_at, v.last_settled_day + 1,
                                                   voyage.delay_before_day(v.id, v.last_settled_day + 1), v_k) <= now());
     v_new := round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1);
-    insert into timing_0168 values ('the candidate scan', v_n, v_old, v_new);
+    insert into timing_0169 values ('the candidate scan', v_n, v_old, v_new);
   end if;
-  select count(*) into v_n from rank_grid_0168 where t is not null;
+  select count(*) into v_n from rank_grid_0169 where t is not null;
   v_t0 := clock_timestamp();
-  perform count(pg_temp.world_trade_routes_0168(r.f, null, r.radius, r.lim, r.t)::text) from rank_grid_0168 r where r.t is not null;
+  perform count(pg_temp.world_trade_routes_0169(r.f, null, r.radius, r.lim, r.t)::text) from rank_grid_0169 r where r.t is not null;
   v_old := round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1);
   v_t0 := clock_timestamp();
-  perform count(world.trade_routes(r.f, null, r.radius, r.lim, r.t)::text) from rank_grid_0168 r where r.t is not null;
+  perform count(world.trade_routes(r.f, null, r.radius, r.lim, r.t)::text) from rank_grid_0169 r where r.t is not null;
   v_new := round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1);
-  insert into timing_0168 values ('a merchant leg''s ranking', v_n, v_old, v_new);
-  select count(*) into v_n from lap_sample_0168;
+  insert into timing_0169 values ('a merchant leg''s ranking', v_n, v_old, v_new);
+  select count(*) into v_n from lap_sample_0169;
   v_t0 := clock_timestamp();
-  perform count(pg_temp.lap_read_old_0168(route_id)::text) from lap_sample_0168;
+  perform count(pg_temp.lap_read_old_0169(route_id)::text) from lap_sample_0169;
   v_old := round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1);
   v_t0 := clock_timestamp();
-  perform count(pg_temp.lap_read_0168(route_id)::text) from lap_sample_0168;
+  perform count(pg_temp.lap_read_0169(route_id)::text) from lap_sample_0169;
   v_new := round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1);
-  insert into timing_0168 values ('a lap start''s reads', v_n, v_old, v_new);
+  insert into timing_0169 values ('a lap start''s reads', v_n, v_old, v_new);
 end $$;
 
 -- ── 6. SELF-ASSERT (catalogue reads) ─────────────────────────────────────────────────────────────
@@ -1127,17 +1127,17 @@ declare
 begin
   -- every body moved by its hunks and reverses to its pre-image; ACL, owner, language, volatility,
   -- definer, config and parallel safety unmoved
-  for d in select * from defs_before_0168 order by fn loop
+  for d in select * from defs_before_0169 order by fn loop
     v_def  := replace(pg_get_functiondef(d.fn::regprocedure), E'\r', '');
     v_back := v_def;
-    for h in select * from hunks_0168 where fn = d.fn order by n desc loop
-      if pg_temp.occurs_0168(v_back, h.new) <> 1 then
-        raise exception '0168 self-assert FAIL: hunk % of % is not in the live body once', h.n, d.fn;
+    for h in select * from hunks_0169 where fn = d.fn order by n desc loop
+      if pg_temp.occurs_0169(v_back, h.new) <> 1 then
+        raise exception '0169 self-assert FAIL: hunk % of % is not in the live body once', h.n, d.fn;
       end if;
       v_back := replace(v_back, h.new, h.old);
     end loop;
     if v_back is distinct from d.def then
-      raise exception '0168 self-assert FAIL: % does not reverse to its pre-image', d.fn;
+      raise exception '0169 self-assert FAIL: % does not reverse to its pre-image', d.fn;
     end if;
     v_rev := v_rev + 1;
     select coalesce(pr.proacl::text, '') as acl, pr.provolatile as vol, pr.prosecdef as secdef, pr.proowner as owner,
@@ -1145,51 +1145,51 @@ begin
       into p from pg_proc pr join pg_language l on l.oid = pr.prolang where pr.oid = d.fn::regprocedure;
     if p.acl <> d.acl or p.vol <> d.vol or p.secdef <> d.secdef or p.cfg <> d.cfg or p.par <> d.par
        or p.lang <> d.lang or p.owner <> d.owner then
-      raise exception '0168 self-assert FAIL: % changed its ACL, owner, volatility, definer, config, parallel safety or language', d.fn;
+      raise exception '0169 self-assert FAIL: % changed its ACL, owner, volatility, definer, config, parallel safety or language', d.fn;
     end if;
   end loop;
   if v_rev <> 5 then
-    raise exception '0168 self-assert FAIL: % bodies checked, not 5', v_rev;
+    raise exception '0169 self-assert FAIL: % bodies checked, not 5', v_rev;
   end if;
   -- the new helpers: server-only (only the owner may execute), PL/pgSQL, as declared
   for p in select pr.oid::regprocedure::text as sig, coalesce(pr.proacl::text, '') as acl, l.lanname as lang
              from pg_proc pr join pg_language l on l.oid = pr.prolang join pg_namespace n on n.oid = pr.pronamespace
             where (n.nspname, pr.proname) in (('voyage', 'day_end_from'), ('world', 'quote_terms'), ('world', 'quote_priced')) loop
     if p.lang <> 'plpgsql' or p.acl ~ '(^|[{,])=X' or p.acl ~ 'anon=' or p.acl ~ 'authenticated=' then
-      raise exception '0168 self-assert FAIL: % is not a server-only PL/pgSQL helper (acl %, language %)', p.sig, p.acl, p.lang;
+      raise exception '0169 self-assert FAIL: % is not a server-only PL/pgSQL helper (acl %, language %)', p.sig, p.acl, p.lang;
     end if;
   end loop;
   if (select count(*) from pg_proc pr join pg_namespace n on n.oid = pr.pronamespace
        where (n.nspname, pr.proname) in (('voyage', 'day_end_from'), ('world', 'quote_terms'), ('world', 'quote_priced'))) <> 3 then
-    raise exception '0168 self-assert FAIL: the three helpers are not there once each';
+    raise exception '0169 self-assert FAIL: the three helpers are not there once each';
   end if;
   -- ONE HOME EACH: the day boundary's arithmetic is in voyage.day_end_from alone among the bodies cut
   -- here; the quote's term readings are in world.quote_terms alone; world.quote reads nothing itself.
   if (select count(*) from pg_proc pr where pr.pronamespace <> pg_my_temp_schema()
         and strpos(pr.prosrc, 'p_day * 24 + voyage.delay_before_day') > 0) > 0 then
-    raise exception '0168 self-assert FAIL: a body still states the day boundary with day_ends_at''s own arithmetic';
+    raise exception '0169 self-assert FAIL: a body still states the day boundary with day_ends_at''s own arithmetic';
   end if;
   if (select count(*) from pg_proc pr where pr.pronamespace <> pg_my_temp_schema()
         and strpos(pr.prosrc, 'world.spread_effective(p_port, p_good, p_fleet, false)') > 0) <> 1
      or strpos((select prosrc from pg_proc where oid = 'world.quote_terms(uuid, uuid, uuid)'::regprocedure),
                'world.spread_effective(p_port, p_good, p_fleet, false)') = 0 then
-    raise exception '0168 self-assert FAIL: the quote''s no-bargain term is read outside world.quote_terms';
+    raise exception '0169 self-assert FAIL: the quote''s no-bargain term is read outside world.quote_terms';
   end if;
   if strpos((select prosrc from pg_proc where oid = 'world.quote(uuid, uuid, numeric, text, numeric, uuid)'::regprocedure), 'world.quote_priced(') = 0
      or strpos((select prosrc from pg_proc where oid = 'world.quote(uuid, uuid, numeric, text, numeric, uuid)'::regprocedure), 'public.') > 0 then
-    raise exception '0168 self-assert FAIL: world.quote is not world.quote_priced asked with no terms';
+    raise exception '0169 self-assert FAIL: world.quote is not world.quote_priced asked with no terms';
   end if;
-  if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0168) then
-    raise exception '0168 self-assert FAIL: the client entry points moved (% → %)',
-      (select entry_points from before_0168), (select count(*) from public.client_rpc_entry_points());
+  if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0169) then
+    raise exception '0169 self-assert FAIL: the client entry points moved (% → %)',
+      (select entry_points from before_0169), (select count(*) from public.client_rpc_entry_points());
   end if;
 
   select string_agg(format('%s ×%s %s ms → %s ms (−%s%%)', what, n, old_ms, new_ms,
                            round(100 * (1 - new_ms / greatest(old_ms, 0.1)))), '; ' order by what)
-    into v_tim from timing_0168;
+    into v_tim from timing_0169;
 
-  raise notice '0168 self-assert ok: A DAY IS COUNTED ONCE AND A QUAY IS READ ONCE — nothing the sweep decides moved. SAME ANSWERS (old tree vs new, as text): LIVE %; CANDIDATES %; PROBES %; QUOTES %; RANKINGS %; LAPS %. TIMING (reported, not gated — old vs new, the same inputs, one pass): %. BODIES: day_ends_at, days_complete, tick_arrivals, quote and trade_routes reverse to their pre-images hunk by hunk, ACL / owner / volatility / definer / config unmoved; voyage.day_end_from, world.quote_terms and world.quote_priced are server-only PL/pgSQL; the boundary arithmetic and the quote terms have one home each; no new entry point.',
-    (select v from proven_0168 where k = 'live'), (select v from proven_0168 where k = 'cand'),
-    (select v from proven_0168 where k = 'probes'), (select v from proven_0168 where k = 'quotes'),
-    (select v from proven_0168 where k = 'ranks'), (select v from proven_0168 where k = 'laps'), coalesce(v_tim, 'none');
+  raise notice '0169 self-assert ok: A DAY IS COUNTED ONCE AND A QUAY IS READ ONCE — nothing the sweep decides moved. SAME ANSWERS (old tree vs new, as text): LIVE %; CANDIDATES %; PROBES %; QUOTES %; RANKINGS %; LAPS %. TIMING (reported, not gated — old vs new, the same inputs, one pass): %. BODIES: day_ends_at, days_complete, tick_arrivals, quote and trade_routes reverse to their pre-images hunk by hunk, ACL / owner / volatility / definer / config unmoved; voyage.day_end_from, world.quote_terms and world.quote_priced are server-only PL/pgSQL; the boundary arithmetic and the quote terms have one home each; no new entry point.',
+    (select v from proven_0169 where k = 'live'), (select v from proven_0169 where k = 'cand'),
+    (select v from proven_0169 where k = 'probes'), (select v from proven_0169 where k = 'quotes'),
+    (select v from proven_0169 where k = 'ranks'), (select v from proven_0169 where k = 'laps'), coalesce(v_tim, 'none');
 end $$;
