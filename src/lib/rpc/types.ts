@@ -759,6 +759,21 @@ export interface ShipRackUnit {
   slot: string
   deck: number
   hands: number
+  /** 0158 (S13) — served only while gear wear bites (`gear_wear_bite`), and only for a piece that wears
+   *  (`public.unit_wear_card`): its wear 0-100, how well its buys work (per cent), and the server's own
+   *  words ("12% worn · works at 94%", "New"). Absent: nothing to draw. */
+  wear?: number
+  works_pct?: number
+  wear_words?: string
+}
+
+/** 0158 (S13) — what a REPAIR also repaired of the fleet's gear (`public.gear_repair_quote`): the worn
+ *  units, their share of the cost, and the server's words ("4 worn fittings repaired too"). Served in
+ *  cmd.do_repair's reply and its REPAIRING event only while gear wear bites and something was worn. */
+export interface GearRepair {
+  units: number
+  cost: number
+  words: string
 }
 
 /** 0132 — one gear RACK of a hull (`world.ship_racks`): the word the player reads, how many places

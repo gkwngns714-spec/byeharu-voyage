@@ -68,6 +68,13 @@ export function OrderCheck({
   return <Estimate verb={result.parsed.verb} estimate={result.estimate} timeCompression={timeCompression} />
 }
 
+/** 0158: the gear a REPAIR also repaired, as served (`GearRepair`), or null. */
+function gearOf(estimate: Record<string, unknown>): { words: string } | null {
+  const g = estimate.gear
+  if (g && typeof g === 'object' && typeof (g as { words?: unknown }).words === 'string') return { words: (g as { words: string }).words }
+  return null
+}
+
 /** The verb-shaped estimate `cmd.do_*()` returns (migration 0007), one Row per served figure. */
 function Estimate({
   verb,
@@ -129,9 +136,13 @@ function Estimate({
     case 'REPAIR': {
       const points = num(estimate, 'points')
       const cost = num(estimate, 'cost')
+      const gear = gearOf(estimate)
       return (
         <>
           {points !== null && <Row label="Hull repaired" value={<Figure value={formatFixed(points, 1)} />} />}
+          {/* 0158 (S13): "Repair all" — the fleet's worn fittings go with the hull, in the server's words
+              (public.gear_repair_quote); served only while gear wear bites and something is worn. */}
+          {gear !== null && <Row label="Fittings" value={gear.words} data-testid="repair-gear" />}
           {cost !== null && <Row label="It costs" value={<Figure value={formatDucats(cost)} />} hairline={false} />}
         </>
       )

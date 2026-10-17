@@ -125,6 +125,8 @@ interface SlotBox {
   fitted: string | null
   /** 0127: the level that opens this box, or null for a box she has now. */
   opensAt: number | null
+  /** 0158: a fitted unit's wear as served (`wear` 0-100, `wear_words`), or null — nothing to draw. */
+  wear?: { wear: number; words: string } | null
 }
 
 /** Every slot she has, one box each, filled in the order her fittings are mounted. A fitting
@@ -187,7 +189,7 @@ function Box({ b }: { b: SlotBox }) {
     <div
       data-fitted={on || undefined}
       data-locked={shut || undefined}
-      title={on ? `${b.word}: ${b.fitted}` : shut ? `${b.word} — level ${b.opensAt}` : `${b.word} — empty`}
+      title={on ? `${b.word}: ${b.fitted}${b.wear ? ` — ${b.wear.words}` : ''}` : shut ? `${b.word} — level ${b.opensAt}` : `${b.word} — empty`}
       className={[
         'relative flex aspect-square min-w-0 flex-col items-center justify-center gap-1 rounded-control p-1.5 text-center',
         'shadow-[inset_0_1px_0_rgb(255_255_255/0.04),inset_0_-2px_4px_rgb(0_0_0/0.35)]',
@@ -199,6 +201,20 @@ function Box({ b }: { b: SlotBox }) {
       <span className={`line-clamp-2 text-[0.6875rem] leading-tight ${on ? 'text-ink' : 'text-ink-faint/60'}`}>
         {on ? b.fitted : shut ? `Lv ${b.opensAt}` : b.word}
       </span>
+      {/* 0158 (S13): THE WEAR BAR — what is left of the piece (100 − its served wear), under the server's own
+          words; drawn only when the server serves a wear for it (gear wear on, and a piece that wears). */}
+      {on && b.wear && (
+        <span
+          data-testid="unit-wear"
+          aria-label={b.wear.words}
+          className="absolute inset-x-1.5 bottom-1 h-0.5 overflow-hidden rounded-full bg-ink-faint/20"
+        >
+          <span
+            className={`block h-full ${b.wear.wear >= 50 ? 'bg-warning' : 'bg-accent'}`}
+            style={{ width: `${Math.max(0, Math.min(100, 100 - b.wear.wear))}%` }}
+          />
+        </span>
+      )}
     </div>
   )
 }
@@ -213,6 +229,7 @@ function rackBoxes(rack: ShipRack): SlotBox[] {
     word: rack.word,
     fitted: u.name,
     opensAt: null,
+    wear: u.wear !== undefined && u.wear_words !== undefined ? { wear: u.wear, words: u.wear_words } : null,
   }))
   for (let i = rack.fitted.length; i < rack.open; i++) {
     out.push({ key: `${rack.rack}-e-${i}`, kind: empty, word: rack.word, fitted: null, opensAt: null })
