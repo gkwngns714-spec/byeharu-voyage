@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0162 — THE IMPROVED SHIPS AND THE NAMED GEAR  (S15 Wave C: 22 T2 hulls, 22 T2 modules, 12 Named
+-- 0159 — THE IMPROVED SHIPS AND THE NAMED GEAR  (S15 Wave C: 22 T2 hulls, 22 T2 modules, 12 Named
 --        items — generated, guarded, and closed until the specialisations count)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
@@ -32,7 +32,7 @@
 --     2.60, speed and cargo space × 1.80, spends × 1.25; Deck and Hands × 1.5; grade 5, meta 5; made at
 --     a tier-3 workshop) and 12 NAMED items (a city's own pattern of one grade: its buys × 1.10, Deck − 1,
 --     the grade's recipe + one good of the city; meta 1) — item_kinds, item_profile, item_effects,
---     item_recipes, item_use (0158's: what works each, by its base type). `--sql-0162`, pasted.
+--     item_recipes, item_use (0158's: what works each, by its base type). `--sql-0159`, pasted.
 -- (4) A NAMED ITEM IS MADE ONLY IN ITS CITY: public.item_city (item, port) — the one home of it, 12
 --     rows, held by the world guard — read by ONE sentence, public.made_only_in(item, port) ("Lisbon-cast
 --     Brass Guns is made only in Lisbon", or null): cmd.do_make refuses with it (E_NOT_MADE_HERE) and
@@ -61,12 +61,12 @@
 -- and to reverse to its pre-image, ACL / volatility / definer / config unchanged: cmd.do_make (0135),
 -- world.workstation (0135), world.building_yard (0154).
 --
--- ROLLBACK (forward migration): reverse the three bodies' hunks (old text in hunks_0162); drop
+-- ROLLBACK (forward migration): reverse the three bodies' hunks (old text in hunks_0159); drop
 -- public.made_only_in and public.item_city; delete the rows of the 22 hull codes and the 34 item codes
 -- (skill_requirements, item_use, item_recipes, item_effects, item_profile, item_kinds; hull_recipe_goods,
 -- hull_recipes, class_cabins, class_slots, class_profile, ship_classes) after asserting no ship,
 -- fitted_units or player_items row names one (dark, none can).
--- VERSION: 0162 (provisional; renumbered to head + 1 at deploy). Applies on 0158 (S13).
+-- VERSION: 0159 (provisional; renumbered to head + 1 at deploy). Applies on 0158 (S13).
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -77,7 +77,7 @@ begin
 end $guard$;
 
 -- ── 0. HELPERS (pg_temp, gone at commit) ───────────────────────────────────────────────────────
-create or replace function pg_temp.occurs_0162(p_hay text, p_needle text)
+create or replace function pg_temp.occurs_0159(p_hay text, p_needle text)
 returns int
 language sql
 immutable
@@ -85,7 +85,7 @@ as $$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_n
 
 -- One verb through its door, undone at once: 'ok:<ducats paid>' or 'E_CODE: sentence|<detail>'. A lock
 -- the live world holds is not an answer: retried, then LOCK CONTENTION.
-create or replace function pg_temp.try_0162(p_player uuid, p_sql text)
+create or replace function pg_temp.try_0159(p_player uuid, p_sql text)
 returns text
 language plpgsql
 as $$
@@ -103,23 +103,23 @@ begin
       v_paid := (select ducats from public.players where id = p_player);
       execute p_sql;
       v_paid := v_paid - (select ducats from public.players where id = p_player);
-      raise exception 'PROBE_UNDO_0162:%', v_paid;
+      raise exception 'PROBE_UNDO_0159:%', v_paid;
     exception when others then
       get stacked diagnostics v_msg = message_text, v_state = returned_sqlstate, v_det = pg_exception_detail;
     end;
     exit when v_state not in ('55P03', '40P01');
     if v_try >= 5 then
-      raise exception '0162 self-assert FAIL: LOCK CONTENTION, not a result — % could not get its locks in 5 tries (%: %). Re-run the push.',
+      raise exception '0159 self-assert FAIL: LOCK CONTENTION, not a result — % could not get its locks in 5 tries (%: %). Re-run the push.',
         p_sql, v_state, v_msg;
     end if;
     perform pg_sleep(0.2);
   end loop;
-  return case when v_msg like 'PROBE_UNDO_0162:%' then 'ok:' || split_part(v_msg, ':', 2)
+  return case when v_msg like 'PROBE_UNDO_0159:%' then 'ok:' || split_part(v_msg, ':', 2)
               else v_msg || case when coalesce(v_det, '') <> '' then '|' || v_det else '' end end;
 end $$;
 
 -- act as a company's signed-in user (a workshop serves what YOU may make) — or as nobody
-create or replace function pg_temp.as_0162(p_uid uuid)
+create or replace function pg_temp.as_0159(p_uid uuid)
 returns void
 language plpgsql
 as $$
@@ -128,8 +128,8 @@ begin
   perform set_config('request.jwt.claims', case when p_uid is null then '' else json_build_object('sub', p_uid)::text end, true);
 end $$;
 
-create temp table reads_0162 (phase text, what text, hulls bigint, ms numeric) on commit drop;
-create or replace function pg_temp.time_reads_0162(p_phase text)
+create temp table reads_0159 (phase text, what text, hulls bigint, ms numeric) on commit drop;
+create or replace function pg_temp.time_reads_0159(p_phase text)
 returns void
 language plpgsql
 as $$
@@ -140,14 +140,14 @@ begin
   select array_agg(s.id order by s.id) into v_ids from public.ships s join public.players p on p.id = s.player_id where p.is_npc;
   v_t0 := clock_timestamp();
   perform voyage.ship_speed(x), public.ship_hold_capacity(x) from unnest(v_ids) x;
-  insert into reads_0162 values (p_phase, 'speed+hold', coalesce(cardinality(v_ids), 0), round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
+  insert into reads_0159 values (p_phase, 'speed+hold', coalesce(cardinality(v_ids), 0), round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
   v_t0 := clock_timestamp();
   perform world.ship_view(x) from unnest(v_ids) x;
-  insert into reads_0162 values (p_phase, 'ship_view', coalesce(cardinality(v_ids), 0), round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
+  insert into reads_0159 values (p_phase, 'ship_view', coalesce(cardinality(v_ids), 0), round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
 end $$;
 
 -- ── 1. THE PRE-IMAGES (every heavy read happens here, before any write) ─────────────────────────
-create temp table defs_before_0162 on commit drop as
+create temp table defs_before_0159 on commit drop as
 select f.fn,
        replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl,
@@ -156,10 +156,10 @@ select f.fn,
        (select coalesce(p.proconfig::text, '') from pg_proc p where p.oid = f.fn::regprocedure) as cfg
   from (values ('cmd.do_make(uuid, jsonb)'), ('world.workstation(uuid, uuid)'), ('world.building_yard(uuid)')) f(fn);
 
-create temp table live_classes_0162 on commit drop as select code from public.ship_classes;
-create temp table live_items_0162 on commit drop as select code from public.item_kinds;
+create temp table live_classes_0159 on commit drop as select code from public.ship_classes;
+create temp table live_items_0159 on commit drop as select code from public.item_kinds;
 
-create temp table before_0162 on commit drop as
+create temp table before_0159 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select count(*) from public.ship_classes) as classes,
        (select count(*) from public.class_slots) as slots,
@@ -184,18 +184,18 @@ select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select md5(string_agg(to_jsonb(c)::text, '|' order by c.item_code)) from public.item_use c) as use_hash;
 
 -- what the build yards and the workshops serve, as found (no company: the migration has no auth.uid())
-create temp table yards_before_0162 on commit drop as
+create temp table yards_before_0159 on commit drop as
 select b.port_id, h.value->>'class' as class, h.value as entry
   from public.port_buildings b
  cross join lateral jsonb_array_elements(world.building_yard(b.port_id)->'hulls') h
  where b.kind = 'building_yard';
-create temp table shops_before_0162 on commit drop as
+create temp table shops_before_0159 on commit drop as
 select b.port_id, i.value->>'code' as code, i.value as entry
   from public.port_buildings b
  cross join lateral jsonb_array_elements(world.workstation(b.port_id)->'items') i
  where b.kind = 'workstation';
 
-select pg_temp.time_reads_0162('before');
+select pg_temp.time_reads_0159('before');
 
 -- ── 2. THE 22 T2 HULLS (scripts/build-ships.mjs --sql C, verbatim) ──────────────────────────────
 insert into public.ship_classes
@@ -389,8 +389,8 @@ insert into public.hull_recipes (class_code, yard_tier, ducats, note) values
   ('bangpae', 3, 85000, 'A Joseon warship with a shielded upper deck, the forerunner of the panokseon.')
 on conflict (class_code) do nothing;
 
-create temp table hull_goods_0162 (class_code text, good_code text, qty numeric) on commit drop;
-insert into hull_goods_0162 values
+create temp table hull_goods_0159 (class_code text, good_code text, qty numeric) on commit drop;
+insert into hull_goods_0159 values
   ('carvarm', 'timber', 112),
   ('carvarm', 'naval-timber', 32),
   ('carvarm', 'tar', 19),
@@ -503,7 +503,7 @@ insert into hull_goods_0162 values
   ('bangpae', 'iron', 64),
   ('bangpae', 'copper-sheet', 10);
 insert into public.hull_recipe_goods (class_code, good_id, qty)
-select w.class_code, g.id, w.qty from hull_goods_0162 w join public.goods g on g.code = w.good_code
+select w.class_code, g.id, w.qty from hull_goods_0159 w join public.goods g on g.code = w.good_code
 on conflict (class_code, good_id) do nothing;
 
 insert into public.skill_requirements (subject_kind, subject_code, skill_code, level) values
@@ -553,7 +553,7 @@ insert into public.skill_requirements (subject_kind, subject_code, skill_code, l
   ('hull', 'bangpae', 'PRIVATEERS', 1)
 on conflict (subject_kind, subject_code, skill_code) do nothing;
 
--- ── 3. THE 34 ITEMS (scripts/build-gear.mjs --sql-0162, verbatim) ───────────────────────────────
+-- ── 3. THE 34 ITEMS (scripts/build-gear.mjs --sql-0159, verbatim) ───────────────────────────────
 insert into public.item_kinds (code, name, slot, buys, spends, note, volume, ws_tier) values
   ('long-eighteens', 'Long Eighteens', 'weapon', 'Attack, Reach', 'Hold, Handling', 'Long guns bored for an eighteen-pound ball: the heaviest broadside a trader can mount, and it costs more cargo space and handling.', 6, 3),
   ('gunnades', 'Gunnades', 'weapon', 'Attack at close range', 'Reach, Cargo space, Handling', 'A cross between a gun and a carronade: it smashes at close range and keeps a little more reach.', 5, 3),
@@ -728,8 +728,8 @@ insert into public.item_effects (item_code, stat, delta) values
   ('callao-copper-ballast', 'speed', -0.4)
 on conflict (item_code, stat) do nothing;
 
-create temp table item_goods_0162 (item_code text, good_code text, qty numeric) on commit drop;
-insert into item_goods_0162 values
+create temp table item_goods_0159 (item_code text, good_code text, qty numeric) on commit drop;
+insert into item_goods_0159 values
   ('long-eighteens', 'swedish-iron', 10),
   ('long-eighteens', 'culverin', 12),
   ('long-eighteens', 'falconet', 4),
@@ -878,7 +878,7 @@ insert into item_goods_0162 values
   ('callao-copper-ballast', 'timber', 2),
   ('callao-copper-ballast', 'chilean-copper', 1);
 insert into public.item_recipes (item_code, good_id, qty)
-select w.item_code, g.id, w.qty from item_goods_0162 w join public.goods g on g.code = w.good_code
+select w.item_code, g.id, w.qty from item_goods_0159 w join public.goods g on g.code = w.good_code
 on conflict (item_code, good_id) do nothing;
 
 insert into public.skill_requirements (subject_kind, subject_code, skill_code, level) values
@@ -986,14 +986,14 @@ create table if not exists public.item_city (
   port_id   uuid not null
 );
 comment on table public.item_city is
-  '0162 (S15, docs/SHIPS_AND_SKILLS.md §6.2): a NAMED item is a city''s own pattern and is made ONLY in that '
+  '0159 (S15, docs/SHIPS_AND_SKILLS.md §6.2): a NAMED item is a city''s own pattern and is made ONLY in that '
   'city''s workshop — one row per Named item. Read only by public.made_only_in. Generated (scripts/build-gear.mjs '
   'NAMED), held by the world guard. Server-only.';
 alter table public.item_city enable row level security;
 revoke all on table public.item_city from public, anon, authenticated;
 
-create temp table item_city_0162 (item_code text, port_code text) on commit drop;
-insert into item_city_0162 values
+create temp table item_city_0159 (item_code text, port_code text) on commit drop;
+insert into item_city_0159 values
   ('lisbon-cast-brass-guns', 'LIS'),
   ('arsenale-rudder', 'VEN'),
   ('genoese-anchor', 'GOA'),
@@ -1007,7 +1007,7 @@ insert into item_city_0162 values
   ('malabar-chain-pumps', 'KOC'),
   ('callao-copper-ballast', 'CLL');
 insert into public.item_city (item_code, port_id)
-select w.item_code, p.id from item_city_0162 w join public.ports p on p.code = w.port_code
+select w.item_code, p.id from item_city_0159 w join public.ports p on p.code = w.port_code
 on conflict (item_code) do nothing;
 
 create or replace function public.made_only_in(p_item text, p_port uuid)
@@ -1018,7 +1018,7 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  -- 0162 (S15): THE ONE SENTENCE OF "MADE ONLY THERE" — null where this port may make the item (it has no
+  -- 0159 (S15): THE ONE SENTENCE OF "MADE ONLY THERE" — null where this port may make the item (it has no
   -- city, or this is its city); else "Lisbon-cast Brass Guns is made only in Lisbon". Read by cmd.do_make
   -- (E_NOT_MADE_HERE) and world.workstation (`makeable`, `made_only_in`).
   return (select format('%s is made only in %s', k.name, p.name)
@@ -1028,12 +1028,12 @@ begin
            where ic.item_code = p_item and ic.port_id is distinct from p_port);
 end $$;
 comment on function public.made_only_in(text, uuid) is
-  '0162 (S15): the "made only in <city>" sentence of a Named item away from its city, or null. Server-only.';
+  '0159 (S15): the "made only in <city>" sentence of a Named item away from its city, or null. Server-only.';
 revoke all on function public.made_only_in(text, uuid) from public, anon, authenticated;
 
 -- ── 5. THE HUNKS (old → new), sliced from the live bodies ──────────────────────────────────────
-create temp table hunks_0162 (fn text, n int, old text, new text) on commit drop;
-insert into hunks_0162 values
+create temp table hunks_0159 (fn text, n int, old text, new text) on commit drop;
+insert into hunks_0159 values
 ('cmd.do_make(uuid, jsonb)', 1,
 $h$    raise exception 'E_WORKSTATION_TOO_SMALL: % needs a tier % workstation and this one is tier %',
       k.name, k.ws_tier, v_tier using errcode = 'P0001';
@@ -1042,7 +1042,7 @@ $h$,
 $h$    raise exception 'E_WORKSTATION_TOO_SMALL: % needs a tier % workstation and this one is tier %',
       k.name, k.ws_tier, v_tier using errcode = 'P0001';
   end if;
-  -- 0162 (S15, §6.2): A NAMED ITEM IS MADE ONLY IN ITS OWN CITY — public.made_only_in, the one sentence
+  -- 0159 (S15, §6.2): A NAMED ITEM IS MADE ONLY IN ITS OWN CITY — public.made_only_in, the one sentence
   -- (the workshop screen serves the same one).
   if public.made_only_in(k.code, f.port_id) is not null then
     perform cmd.refuse('E_NOT_MADE_HERE', public.made_only_in(k.code, f.port_id));
@@ -1052,14 +1052,14 @@ $h$),
 $h$                    and kn.needs is null,                                   -- 0135: and its skills (cmd.do_make)
 $h$,
 $h$                    and kn.needs is null                                    -- 0135: and its skills (cmd.do_make)
-                    and kn.made_in is null,                                 -- 0162: and, a Named item, its city
+                    and kn.made_in is null,                                 -- 0159: and, a Named item, its city
 $h$),
 ('world.workstation(uuid, uuid)', 2,
 $h$         where ir.item_code = k.code))
         order by k.ws_tier, k.name), '[]'::jsonb)
 $h$,
 $h$         where ir.item_code = k.code))
-        -- 0162: a Named item away from its city says where it is made (public.made_only_in), only then
+        -- 0159: a Named item away from its city says where it is made (public.made_only_in), only then
         || case when kn.made_in is null then '{}'::jsonb else jsonb_build_object('made_only_in', kn.made_in) end
         order by k.ws_tier, k.name), '[]'::jsonb)
 $h$),
@@ -1067,19 +1067,19 @@ $h$),
 $h$     cross join lateral (select public.requirements_refusal(v_player, 'item', k.code) as needs) kn));   -- 0135: once per item
 $h$,
 $h$     cross join lateral (select public.requirements_refusal(v_player, 'item', k.code) as needs,
-                                public.made_only_in(k.code, p_port) as made_in) kn));   -- 0135: once per item (0162: and its city)
+                                public.made_only_in(k.code, p_port) as made_in) kn));   -- 0135: once per item (0159: and its city)
 $h$),
 ('world.building_yard(uuid)', 1,
 $h$         where hi.class_code = h.class_code))
         order by h.yard_tier, c.name), '[]'::jsonb)
 $h$,
 $h$         where hi.class_code = h.class_code))
-        -- 0162: a hull's tech where it is not T1 (the yard's T2 badge); a T1 hull's entry is as before
+        -- 0159: a hull's tech where it is not T1 (the yard's T2 badge); a T1 hull's entry is as before
         || case when cp.tech is distinct from 'T1' then jsonb_build_object('tech', cp.tech) else '{}'::jsonb end
         order by h.yard_tier, c.name), '[]'::jsonb)
 $h$);
 
-create or replace function pg_temp.recut_0162(p_fn text)
+create or replace function pg_temp.recut_0159(p_fn text)
 returns void
 language plpgsql
 as $$
@@ -1088,10 +1088,10 @@ declare
   h     record;
   v_n   int;
 begin
-  for h in select * from hunks_0162 where fn = p_fn order by n loop
-    v_n := pg_temp.occurs_0162(v_def, h.old);
+  for h in select * from hunks_0159 where fn = p_fn order by n loop
+    v_n := pg_temp.occurs_0159(v_def, h.old);
     if v_n <> 1 then
-      raise exception '0162 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
+      raise exception '0159 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
         h.n, p_fn, v_n;
     end if;
     v_def := replace(v_def, h.old, h.new);
@@ -1099,29 +1099,29 @@ begin
   execute v_def;
 end $$;
 
-select pg_temp.recut_0162(fn) from defs_before_0162 order by fn;
+select pg_temp.recut_0159(fn) from defs_before_0159 order by fn;
 
 -- one item of a workshop, as the company's own user sees it
-create or replace function pg_temp.shop_item_0162(p_uid uuid, p_port uuid, p_fleet uuid, p_item text)
+create or replace function pg_temp.shop_item_0159(p_uid uuid, p_port uuid, p_fleet uuid, p_item text)
 returns jsonb
 language plpgsql
 as $$
 declare
   v jsonb;
 begin
-  perform pg_temp.as_0162(p_uid);
+  perform pg_temp.as_0159(p_uid);
   select i into v from jsonb_array_elements(world.workstation(p_port, p_fleet)->'items') i where i->>'code' = p_item;
-  perform pg_temp.as_0162(null);
+  perform pg_temp.as_0159(null);
   return v;
 end $$;
 
 -- ── 6. THE PROBE (its own company, which builds its own state; rolled back whole) ─────────────────
-create or replace function pg_temp.probe_0162()
+create or replace function pg_temp.probe_0159()
 returns jsonb
 language plpgsql
 as $$
 declare
-  c_uid    constant uuid := '00000000-0162-4000-8000-000000000001';
+  c_uid    constant uuid := '00000000-0159-4000-8000-000000000001';
   v_player uuid;
   v_fleet  uuid;
   v_barca  uuid;
@@ -1136,14 +1136,14 @@ declare
 begin
   begin
     update public.world_config set value = 'false'::jsonb where key = 'skills_bite';   -- own precondition
-    v_player := public.new_house(c_uid, 'Casa da Prova 0162', 'PRT', 'LIS');
+    v_player := public.new_house(c_uid, 'Casa da Prova 0159', 'PRT', 'LIS');
     select id into v_fleet from public.fleets where player_id = v_player;
     select id into v_barca from public.ships where fleet_id = v_fleet;
-    perform public.credit(v_player, 'PROBE_0162', 100000000);
+    perform public.credit(v_player, 'PROBE_0159', 100000000);
     -- every new hull at a build yard of its line (the first by tier, then code), its goods ashore there
-    create temp table if not exists probe_yards_0162 (class text primary key, yard uuid, ducats bigint) on commit drop;
-    delete from probe_yards_0162;
-    insert into probe_yards_0162
+    create temp table if not exists probe_yards_0159 (class text primary key, yard uuid, ducats bigint) on commit drop;
+    delete from probe_yards_0159;
+    insert into probe_yards_0159
     select c.code,
            (select b.port_id from public.port_buildings b join public.ports p on p.id = b.port_id
              where b.kind = 'building_yard' and b.tier >= hr.yard_tier
@@ -1151,18 +1151,18 @@ begin
              order by b.tier desc, p.code limit 1),
            hr.ducats
       from public.ship_classes c join public.hull_recipes hr on hr.class_code = c.code
-     where c.code not in (select code from live_classes_0162);
+     where c.code not in (select code from live_classes_0159);
     insert into public.player_storage (player_id, port_id, good_id, qty)
     select v_player, y.yard, hg.good_id, max(hg.qty)
-      from probe_yards_0162 y join public.hull_recipe_goods hg on hg.class_code = y.class
+      from probe_yards_0159 y join public.hull_recipe_goods hg on hg.class_code = y.class
      where y.yard is not null
      group by y.yard, hg.good_id
     on conflict (player_id, port_id, good_id) do update set qty = excluded.qty;
 
     -- (H1) DARK: every one refused
-    for h in select * from probe_yards_0162 where yard is not null order by class loop
+    for h in select * from probe_yards_0159 where yard is not null order by class loop
       update public.fleets set port_id = h.yard, status = 'DOCKED' where id = v_fleet;
-      v_dark := v_dark || jsonb_build_object(h.class, pg_temp.try_0162(v_player,
+      v_dark := v_dark || jsonb_build_object(h.class, pg_temp.try_0159(v_player,
         format('select cmd.do_build(%L, %L::jsonb)', v_fleet, jsonb_build_object('class', h.class, 'name', 'Prova ' || h.class))));
     end loop;
     -- (H2) LIT, the hull skills at V but no specialisation: refused naming the specialisation, with figures
@@ -1171,9 +1171,9 @@ begin
     select v_player, sk.id, 5 from public.skills sk join public.skill_profile pr on pr.skill_id = sk.id
      where pr.group_code = 'HULLS'
     on conflict (player_id, skill_id) do update set level = excluded.level;
-    for h in select * from probe_yards_0162 where yard is not null order by class loop
+    for h in select * from probe_yards_0159 where yard is not null order by class loop
       update public.fleets set port_id = h.yard, status = 'DOCKED' where id = v_fleet;
-      v_lit0 := v_lit0 || jsonb_build_object(h.class, pg_temp.try_0162(v_player,
+      v_lit0 := v_lit0 || jsonb_build_object(h.class, pg_temp.try_0159(v_player,
         format('select cmd.do_build(%L, %L::jsonb)', v_fleet, jsonb_build_object('class', h.class, 'name', 'Prova ' || h.class))));
     end loop;
     -- (H3) LIT, with the four role specialisations: every one BUILT for its labour
@@ -1181,13 +1181,13 @@ begin
     select v_player, sk.id, 1 from public.skills sk
      where sk.code in ('ARMED_MERCHANT', 'PRIVATEERS', 'SURVEY_SHIPS', 'CONVOY_ESCORTS')
     on conflict (player_id, skill_id) do update set level = excluded.level;
-    for h in select * from probe_yards_0162 where yard is not null order by class loop
+    for h in select * from probe_yards_0159 where yard is not null order by class loop
       update public.fleets set port_id = h.yard, status = 'DOCKED' where id = v_fleet;
-      v_lit := v_lit || jsonb_build_object(h.class, pg_temp.try_0162(v_player,
+      v_lit := v_lit || jsonb_build_object(h.class, pg_temp.try_0159(v_player,
         format('select cmd.do_build(%L, %L::jsonb)', v_fleet, jsonb_build_object('class', h.class, 'name', 'Prova ' || h.class))));
     end loop;
     v_out := v_out || jsonb_build_object('dark', v_dark, 'lit0', v_lit0, 'lit', v_lit,
-                                         'yards', (select jsonb_object_agg(class, yard) from probe_yards_0162));
+                                         'yards', (select jsonb_object_agg(class, yard) from probe_yards_0159));
 
     -- (G) THE GEAR at Lisbon's tier-3 workshop, the materials on board: a T2 module (Long Eighteens) needs
     --     Gunnery V and Gunnery Specialisation I; the Named Lisbon-cast Brass Guns (Gunnery III) is made in
@@ -1198,43 +1198,43 @@ begin
      where ir.item_code in ('long-eighteens', 'lisbon-cast-brass-guns');
     update public.ships set cargo = v_cargo where id = v_barca;
     update public.world_config set value = 'false'::jsonb where key = 'skills_bite';
-    v_out := v_out || jsonb_build_object('t2_dark', pg_temp.try_0162(v_player,
+    v_out := v_out || jsonb_build_object('t2_dark', pg_temp.try_0159(v_player,
       format('select cmd.do_make(%L, ''{"item": "long-eighteens"}''::jsonb)', v_fleet)));
     update public.world_config set value = 'true'::jsonb where key = 'skills_bite';
     insert into public.player_skills (player_id, skill_id, level)
     select v_player, sk.id, 5 from public.skills sk where sk.code = 'GUNNERY'
     on conflict (player_id, skill_id) do update set level = excluded.level;
-    v_out := v_out || jsonb_build_object('t2_nospec', pg_temp.try_0162(v_player,
+    v_out := v_out || jsonb_build_object('t2_nospec', pg_temp.try_0159(v_player,
       format('select cmd.do_make(%L, ''{"item": "long-eighteens"}''::jsonb)', v_fleet)));
     insert into public.player_skills (player_id, skill_id, level)
     select v_player, sk.id, 1 from public.skills sk where sk.code = 'GUNNERY_SPEC'
     on conflict (player_id, skill_id) do update set level = excluded.level;
-    v_out := v_out || jsonb_build_object('t2_made', pg_temp.try_0162(v_player,
+    v_out := v_out || jsonb_build_object('t2_made', pg_temp.try_0159(v_player,
       format('select cmd.do_make(%L, ''{"item": "long-eighteens"}''::jsonb)', v_fleet)));
-    v_out := v_out || jsonb_build_object('named_lis', pg_temp.try_0162(v_player,
+    v_out := v_out || jsonb_build_object('named_lis', pg_temp.try_0159(v_player,
       format('select cmd.do_make(%L, ''{"item": "lisbon-cast-brass-guns"}''::jsonb)', v_fleet)),
-      'shop_lis', pg_temp.shop_item_0162(c_uid, v_lis, v_fleet, 'lisbon-cast-brass-guns'));
+      'shop_lis', pg_temp.shop_item_0159(c_uid, v_lis, v_fleet, 'lisbon-cast-brass-guns'));
     update public.fleets set port_id = v_ven where id = v_fleet;
-    v_out := v_out || jsonb_build_object('named_ven', pg_temp.try_0162(v_player,
+    v_out := v_out || jsonb_build_object('named_ven', pg_temp.try_0159(v_player,
       format('select cmd.do_make(%L, ''{"item": "lisbon-cast-brass-guns"}''::jsonb)', v_fleet)),
-      'shop_ven', pg_temp.shop_item_0162(c_uid, v_ven, v_fleet, 'lisbon-cast-brass-guns'));
+      'shop_ven', pg_temp.shop_item_0159(c_uid, v_ven, v_fleet, 'lisbon-cast-brass-guns'));
     update public.world_config set value = 'false'::jsonb where key = 'skills_bite';
-    raise exception 'PROBE_ROLLBACK_0162';
+    raise exception 'PROBE_ROLLBACK_0159';
   exception when others then
-    if sqlerrm <> 'PROBE_ROLLBACK_0162' then raise; end if;
+    if sqlerrm <> 'PROBE_ROLLBACK_0159' then raise; end if;
   end;
   return v_out;
 end $$;
 
-create temp table probe_0162 on commit drop as select pg_temp.probe_0162() as j;
+create temp table probe_0159 on commit drop as select pg_temp.probe_0159() as j;
 
 -- ── 7. THE COMPARISONS ─────────────────────────────────────────────────────────────────────────
-create temp table yards_after_0162 on commit drop as
+create temp table yards_after_0159 on commit drop as
 select b.port_id, h.value->>'class' as class, h.value as entry
   from public.port_buildings b
  cross join lateral jsonb_array_elements(world.building_yard(b.port_id)->'hulls') h
  where b.kind = 'building_yard';
-create temp table shops_after_0162 on commit drop as
+create temp table shops_after_0159 on commit drop as
 select b.port_id, i.value->>'code' as code, i.value as entry
   from public.port_buildings b
  cross join lateral jsonb_array_elements(world.workstation(b.port_id)->'items') i
@@ -1243,7 +1243,7 @@ select b.port_id, i.value->>'code' as code, i.value as entry
 analyze public.ship_classes, public.class_profile, public.class_slots, public.class_cabins, public.hull_recipes,
         public.hull_recipe_goods, public.skill_requirements, public.item_kinds, public.item_profile,
         public.item_effects, public.item_recipes, public.item_use, public.item_city;
-select pg_temp.time_reads_0162('after');
+select pg_temp.time_reads_0159('after');
 
 -- ── SELF-ASSERT ────────────────────────────────────────────────────────────────────────────────
 do $$
@@ -1256,26 +1256,26 @@ declare
   v_bad   int;
   v_list  text;
   v_def   text;
-  v_p     jsonb := (select j from probe_0162);
+  v_p     jsonb := (select j from probe_0159);
   v_notes text := '';
 begin
-  select * into v_b from before_0162;
+  select * into v_b from before_0159;
 
   -- (a) NOTHING ALREADY IN THE WORLD MOVED: every old hull's and item's rows hash as before
-  if (select md5(string_agg(to_jsonb(c)::text, '|' order by c.code)) from public.ship_classes c where c.code in (select code from live_classes_0162)) <> v_b.classes_hash
-     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.class_code)) from public.class_profile c where c.class_code in (select code from live_classes_0162)) <> v_b.profile_hash
-     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.class_code, c.slot)) from public.class_slots c where c.class_code in (select code from live_classes_0162)) <> v_b.slots_hash
-     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.class_code)) from public.class_cabins c where c.class_code in (select code from live_classes_0162)) <> v_b.cabins_hash
-     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.class_code)) from public.hull_recipes c where c.class_code in (select code from live_classes_0162)) <> v_b.recipes_hash
-     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.class_code, c.good_id)) from public.hull_recipe_goods c where c.class_code in (select code from live_classes_0162)) <> v_b.recipe_goods_hash
+  if (select md5(string_agg(to_jsonb(c)::text, '|' order by c.code)) from public.ship_classes c where c.code in (select code from live_classes_0159)) <> v_b.classes_hash
+     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.class_code)) from public.class_profile c where c.class_code in (select code from live_classes_0159)) <> v_b.profile_hash
+     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.class_code, c.slot)) from public.class_slots c where c.class_code in (select code from live_classes_0159)) <> v_b.slots_hash
+     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.class_code)) from public.class_cabins c where c.class_code in (select code from live_classes_0159)) <> v_b.cabins_hash
+     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.class_code)) from public.hull_recipes c where c.class_code in (select code from live_classes_0159)) <> v_b.recipes_hash
+     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.class_code, c.good_id)) from public.hull_recipe_goods c where c.class_code in (select code from live_classes_0159)) <> v_b.recipe_goods_hash
      or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.subject_kind, c.subject_code, c.skill_code)) from public.skill_requirements c
-          where c.subject_code in (select code from live_classes_0162) or c.subject_code in (select code from live_items_0162)) <> v_b.requirements_hash
-     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.code)) from public.item_kinds c where c.code in (select code from live_items_0162)) <> v_b.kinds_hash
-     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.item_code)) from public.item_profile c where c.item_code in (select code from live_items_0162)) <> v_b.iprofile_hash
-     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.item_code, c.stat)) from public.item_effects c where c.item_code in (select code from live_items_0162)) <> v_b.effects_hash
-     or (select md5(string_agg(format('%s/%s/%s', c.item_code, c.good_id, c.qty), '|' order by c.item_code, c.good_id)) from public.item_recipes c where c.item_code in (select code from live_items_0162)) <> v_b.item_recipes_hash
-     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.item_code)) from public.item_use c where c.item_code in (select code from live_items_0162)) <> v_b.use_hash then
-    raise exception '0162 self-assert FAIL: a row of a hull or an item already in the world moved';
+          where c.subject_code in (select code from live_classes_0159) or c.subject_code in (select code from live_items_0159)) <> v_b.requirements_hash
+     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.code)) from public.item_kinds c where c.code in (select code from live_items_0159)) <> v_b.kinds_hash
+     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.item_code)) from public.item_profile c where c.item_code in (select code from live_items_0159)) <> v_b.iprofile_hash
+     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.item_code, c.stat)) from public.item_effects c where c.item_code in (select code from live_items_0159)) <> v_b.effects_hash
+     or (select md5(string_agg(format('%s/%s/%s', c.item_code, c.good_id, c.qty), '|' order by c.item_code, c.good_id)) from public.item_recipes c where c.item_code in (select code from live_items_0159)) <> v_b.item_recipes_hash
+     or (select md5(string_agg(to_jsonb(c)::text, '|' order by c.item_code)) from public.item_use c where c.item_code in (select code from live_items_0159)) <> v_b.use_hash then
+    raise exception '0159 self-assert FAIL: a row of a hull or an item already in the world moved';
   end if;
 
   -- (b) EXACTLY THE GENERATED ROWS LANDED (counts; the world guard holds every column to the generators)
@@ -1293,7 +1293,7 @@ begin
      or (select count(*) from public.item_profile where meta = 5) <> 22
      or (select count(*) from public.item_profile where meta = 1) <> 12
      or (select count(*) from public.item_city) <> 12 then
-    raise exception '0162 self-assert FAIL: the catalogue counts are not the pre-image plus the generated rows (classes %, items %, cities %)',
+    raise exception '0159 self-assert FAIL: the catalogue counts are not the pre-image plus the generated rows (classes %, items %, cities %)',
       (select count(*) from public.ship_classes), (select count(*) from public.item_kinds), (select count(*) from public.item_city);
   end if;
   select count(*) into v_bad from public.ship_classes c
@@ -1303,7 +1303,7 @@ begin
       or not exists (select 1 from public.hull_recipe_goods x where x.class_code = c.code)
       or not exists (select 1 from public.class_slots x where x.class_code = c.code);
   if v_bad <> 0 then
-    raise exception '0162 self-assert FAIL: % hull(s) lack a profile, cabins, recipe, materials or racks', v_bad;
+    raise exception '0159 self-assert FAIL: % hull(s) lack a profile, cabins, recipe, materials or racks', v_bad;
   end if;
 
   -- (c) THE HULL RULES over every class: guns = attack / 10, tier = least(size, 5), Hands ≥ 0, the yard tier
@@ -1314,13 +1314,13 @@ begin
    where c.guns * 10 <> c.attack or c.tier <> least(p.size, 5)
       or c.crew_max - (c.crew_required + 1) / 2 < 0
       or hr.yard_tier <> case p.size when 1 then 1 when 2 then 2 else 3 end
-      or (c.code not in (select code from live_classes_0162) and (p.tech <> 'T2' or p.any_yard or p.size > 4));
+      or (c.code not in (select code from live_classes_0159) and (p.tech <> 'T2' or p.any_yard or p.size > 4));
   if v_bad <> 0 then
-    raise exception '0162 self-assert FAIL: % class(es) break guns = attack / 10, tier, Hands, the yard tier by size, or T2 / own-country / sizes 1-4: %', v_bad, v_list;
+    raise exception '0159 self-assert FAIL: % class(es) break guns = attack / 10, tier, Hands, the yard tier by size, or T2 / own-country / sizes 1-4: %', v_bad, v_list;
   end if;
   if exists (select 1 from public.class_profile p where p.tech = 'T2' group by p.line_code having count(*) <> 2)
      or (select count(distinct p.line_code) from public.class_profile p where p.tech = 'T2') <> 11 then
-    raise exception '0162 self-assert FAIL: the T2 hulls are not two per line, eleven lines';
+    raise exception '0159 self-assert FAIL: the T2 hulls are not two per line, eleven lines';
   end if;
   -- a T2 hull carries more places than the T1 of its line, size and role where one exists
   select count(*), string_agg(t2.class_code, ',') into v_bad, v_list
@@ -1330,7 +1330,7 @@ begin
      and (select sum(count) from public.class_slots where class_code = t2.class_code)
          <> (select sum(count) from public.class_slots where class_code = t1.class_code) + 1;
   if v_bad <> 0 then
-    raise exception '0162 self-assert FAIL: % T2 hull(s) do not carry exactly one place more than their T1: %', v_bad, v_list;
+    raise exception '0159 self-assert FAIL: % T2 hull(s) do not carry exactly one place more than their T1: %', v_bad, v_list;
   end if;
 
   -- (d) 0072 (b)(d) OVER EVERY HULL: every material sold somewhere; every hull's goods fit a storage where it
@@ -1340,7 +1340,7 @@ begin
    where not exists (select 1 from public.port_goods pg join public.ports p on p.id = pg.port_id
                       where pg.good_id = hg.good_id and public.port_offers(p.id, hg.good_id));
   if v_bad <> 0 then
-    raise exception '0162 self-assert FAIL: % hull material(s) are sold in NO city: %', v_bad, v_list;
+    raise exception '0159 self-assert FAIL: % hull material(s) are sold in NO city: %', v_bad, v_list;
   end if;
   select count(*), string_agg(x.class_code || ' ' || x.tons || ' t', ', ') into v_bad, v_list from (
     select hr.class_code, sum(hg.qty * g.bulk) as tons
@@ -1353,7 +1353,7 @@ begin
                             where b.kind = 'building_yard' and b.tier >= hr.yard_tier
                               and public.yard_wrong_country(b.port_id, x.class_code) is null), 0);
   if v_bad <> 0 then
-    raise exception '0162 self-assert FAIL: % hull(s) want more than any storage where they can be built holds: %', v_bad, v_list;
+    raise exception '0159 self-assert FAIL: % hull(s) want more than any storage where they can be built holds: %', v_bad, v_list;
   end if;
   select count(*), string_agg(c.code, ',') into v_bad, v_list
     from public.ship_classes c join public.hull_recipes hr on hr.class_code = c.code
@@ -1361,7 +1361,7 @@ begin
                       where b.kind = 'building_yard' and b.tier >= hr.yard_tier
                         and public.yard_wrong_country(b.port_id, c.code) is null);
   if v_bad <> 0 then
-    raise exception '0162 self-assert FAIL: % hull(s) can be built at no yard of their line: %', v_bad, v_list;
+    raise exception '0159 self-assert FAIL: % hull(s) can be built at no yard of their line: %', v_bad, v_list;
   end if;
 
   -- (e) THE T2 HULL REQUIREMENTS (§4.4): the line's ⟨size⟩ Hulls V + the role's specialisation I, nothing else
@@ -1376,7 +1376,7 @@ begin
             (case c.role when 'trade' then 'ARMED_MERCHANT' when 'combat' then 'PRIVATEERS'
                          when 'explorer' then 'SURVEY_SHIPS' else 'CONVOY_ESCORTS' end, 1)) x(s, l));
   if v_bad <> 0 then
-    raise exception '0162 self-assert FAIL: % T2 hull(s) do not carry §4.4''s requirements: %', v_bad, v_list;
+    raise exception '0159 self-assert FAIL: % T2 hull(s) do not carry §4.4''s requirements: %', v_bad, v_list;
   end if;
 
   -- (f) THE GEAR RULES over every item: buys one and spends one (0074; the figurehead none); every recipe good
@@ -1387,14 +1387,14 @@ begin
      and not (exists (select 1 from public.item_effects e where e.item_code = k.code and e.delta > 0)
           and exists (select 1 from public.item_effects e where e.item_code = k.code and e.delta < 0));
   if v_bad <> 0 then
-    raise exception '0162 self-assert FAIL: % item(s) buy a stat without spending one', v_bad;
+    raise exception '0159 self-assert FAIL: % item(s) buy a stat without spending one', v_bad;
   end if;
   select count(*), string_agg(distinct g.code, ',') into v_bad, v_list
     from public.item_recipes ir join public.goods g on g.id = ir.good_id
    where not exists (select 1 from public.port_goods pg join public.ports p on p.id = pg.port_id
                       where pg.good_id = ir.good_id and public.port_offers(p.id, ir.good_id));
   if v_bad <> 0 then
-    raise exception '0162 self-assert FAIL: % item material(s) are sold in NO city: %', v_bad, v_list;
+    raise exception '0159 self-assert FAIL: % item material(s) are sold in NO city: %', v_bad, v_list;
   end if;
   if exists (select 1 from public.item_profile ip where ip.meta = 5
               and (ip.grade <> 5
@@ -1408,43 +1408,43 @@ begin
      or (select count(distinct port_id) from public.item_city) <> 12
      or exists (select 1 from public.item_city ic where not exists (select 1 from public.port_buildings b
                  where b.port_id = ic.port_id and b.kind = 'workstation' and b.tier >= (select k.ws_tier from public.item_kinds k where k.code = ic.item_code))) then
-    raise exception '0162 self-assert FAIL: a T2 module''s grade / requirements / workshop, a Named item''s city, or what works a new item is not as §6.2 says';
+    raise exception '0159 self-assert FAIL: a T2 module''s grade / requirements / workshop, a Named item''s city, or what works a new item is not as §6.2 says';
   end if;
 
   -- (g) DARK = WHAT A COMPANY SEES AND DOES TODAY. Every old hull's yard entry and every old item's workshop
   --     entry is its pre-image, to the byte; every new one is closed with its needs (dark reason)
-  select count(*) into v_bad from yards_before_0162 yb
-   where (select ya.entry from yards_after_0162 ya where ya.port_id = yb.port_id and ya.class = yb.class) is distinct from yb.entry;
-  if v_bad <> 0 or (select count(*) from yards_before_0162) = 0 then
-    raise exception '0162 self-assert FAIL: % old yard entr(ies) moved (or none was read)', v_bad;
+  select count(*) into v_bad from yards_before_0159 yb
+   where (select ya.entry from yards_after_0159 ya where ya.port_id = yb.port_id and ya.class = yb.class) is distinct from yb.entry;
+  if v_bad <> 0 or (select count(*) from yards_before_0159) = 0 then
+    raise exception '0159 self-assert FAIL: % old yard entr(ies) moved (or none was read)', v_bad;
   end if;
-  select count(*) into v_bad from shops_before_0162 sb
-   where (select sa.entry from shops_after_0162 sa where sa.port_id = sb.port_id and sa.code = sb.code) is distinct from sb.entry;
-  if v_bad <> 0 or (select count(*) from shops_before_0162) = 0 then
-    raise exception '0162 self-assert FAIL: % old workshop entr(ies) moved (or none was read)', v_bad;
+  select count(*) into v_bad from shops_before_0159 sb
+   where (select sa.entry from shops_after_0159 sa where sa.port_id = sb.port_id and sa.code = sb.code) is distinct from sb.entry;
+  if v_bad <> 0 or (select count(*) from shops_before_0159) = 0 then
+    raise exception '0159 self-assert FAIL: % old workshop entr(ies) moved (or none was read)', v_bad;
   end if;
-  select count(*) into v_bad from yards_after_0162 ya
-   where ya.class not in (select code from live_classes_0162)
+  select count(*) into v_bad from yards_after_0159 ya
+   where ya.class not in (select code from live_classes_0159)
      and ((ya.entry->>'buildable')::boolean or ya.entry->>'tech' is distinct from 'T2'
           or position('ship skills are not in use yet' in coalesce(ya.entry->>'needs', '')) = 0);
   if v_bad <> 0 then
-    raise exception '0162 self-assert FAIL: % new yard entr(ies) are open, unbadged or without the dark reason', v_bad;
+    raise exception '0159 self-assert FAIL: % new yard entr(ies) are open, unbadged or without the dark reason', v_bad;
   end if;
-  select count(*) into v_bad from shops_after_0162 sa
-   where sa.code not in (select code from live_items_0162)
+  select count(*) into v_bad from shops_after_0159 sa
+   where sa.code not in (select code from live_items_0159)
      and ((sa.entry->>'makeable')::boolean
           or position('ship skills are not in use yet' in coalesce(sa.entry->>'needs', '')) = 0
           or (sa.code in (select item_code from public.item_city)) <> (sa.entry ? 'made_only_in'
                or sa.port_id = (select ic.port_id from public.item_city ic where ic.item_code = sa.code)));
   if v_bad <> 0 then
-    raise exception '0162 self-assert FAIL: % new workshop entr(ies) are open, without the dark reason, or say "made only in" wrongly', v_bad;
+    raise exception '0159 self-assert FAIL: % new workshop entr(ies) are open, without the dark reason, or say "made only in" wrongly', v_bad;
   end if;
   -- through the door: dark, every new hull refused E_NEEDS_SKILL with the dark reason
   select count(*), string_agg(e.key || ' ' || e.value, '; ') into v_bad, v_list
     from jsonb_each_text(v_p->'dark') e
    where split_part(e.value, ':', 1) <> 'E_NEEDS_SKILL' or position('ship skills are not in use yet' in e.value) = 0;
   if v_bad <> 0 or (select count(*) from jsonb_object_keys(v_p->'dark')) <> 22 then
-    raise exception '0162 self-assert FAIL: dark, % new hull(s) were not refused: %', v_bad, v_list;
+    raise exception '0159 self-assert FAIL: dark, % new hull(s) were not refused: %', v_bad, v_list;
   end if;
 
   -- (h) LIT (rolled back): the hull skills at V but no specialisation — every T2 refused naming its
@@ -1456,13 +1456,13 @@ begin
                        when 'explorer' then 'SURVEY_SHIPS' else 'CONVOY_ESCORTS' end) || ' I|%'
       or (split_part(e.value, '|', 2))::jsonb is distinct from '{"have": 0, "need": 1, "unit": "level"}'::jsonb;
   if v_bad <> 0 or (select count(*) from jsonb_object_keys(v_p->'lit0')) <> 22 then
-    raise exception '0162 self-assert FAIL: lit without the specialisation, % T2 hull(s) not refused with its figures: %', v_bad, v_list;
+    raise exception '0159 self-assert FAIL: lit without the specialisation, % T2 hull(s) not refused with its figures: %', v_bad, v_list;
   end if;
   select count(*), string_agg(e.key || ' ' || e.value, '; ') into v_bad, v_list
     from jsonb_each_text(v_p->'lit') e join public.hull_recipes hr on hr.class_code = e.key
    where e.value <> 'ok:' || public.hull_labour(hr.class_code);
   if v_bad <> 0 or (select count(*) from jsonb_object_keys(v_p->'lit')) <> 22 then
-    raise exception '0162 self-assert FAIL: lit with the skills, % T2 hull(s) were not built for their labour: %', v_bad, v_list;
+    raise exception '0159 self-assert FAIL: lit with the skills, % T2 hull(s) were not built for their labour: %', v_bad, v_list;
   end if;
 
   -- (i) THE GEAR THROUGH THE WORKSHOP: a T2 module dark refused; lit with Gunnery V but no specialisation
@@ -1472,7 +1472,7 @@ begin
      or v_p->>'t2_nospec' not like 'E_NEEDS_SKILL: Long Eighteens needs Gunnery Specialisation I|%'
      or (split_part(v_p->>'t2_nospec', '|', 2))::jsonb is distinct from '{"have": 0, "need": 1, "unit": "level"}'::jsonb
      or v_p->>'t2_made' not like 'ok:%' then
-    raise exception '0162 self-assert FAIL: the T2 module''s requirements did not hold at the workshop: %',
+    raise exception '0159 self-assert FAIL: the T2 module''s requirements did not hold at the workshop: %',
       jsonb_build_object('dark', v_p->'t2_dark', 'nospec', v_p->'t2_nospec', 'made', v_p->'t2_made');
   end if;
   if v_p->>'named_lis' not like 'ok:%'
@@ -1480,29 +1480,29 @@ begin
      or v_p->'shop_ven'->>'made_only_in' is distinct from 'Lisbon-cast Brass Guns is made only in Lisbon'
      or (v_p->'shop_ven'->>'makeable')::boolean
      or v_p->'shop_lis' ? 'made_only_in' or not (v_p->'shop_lis'->>'makeable')::boolean then
-    raise exception '0162 self-assert FAIL: the Named item was not made only in its city: %',
+    raise exception '0159 self-assert FAIL: the Named item was not made only in its city: %',
       jsonb_build_object('lis', v_p->'named_lis', 'ven', v_p->'named_ven', 'shop_lis', v_p->'shop_lis', 'shop_ven', v_p->'shop_ven');
   end if;
-  if public.skills_bite_on() or exists (select 1 from public.players where auth_uid = '00000000-0162-4000-8000-000000000001') then
-    raise exception '0162 self-assert FAIL: the probe world was not rolled back';
+  if public.skills_bite_on() or exists (select 1 from public.players where auth_uid = '00000000-0159-4000-8000-000000000001') then
+    raise exception '0159 self-assert FAIL: the probe world was not rolled back';
   end if;
 
   -- (j) THE RE-CUTS reverse to their pre-images; ACL / volatility / definer / config unmoved
-  for d in select * from defs_before_0162 order by fn loop
+  for d in select * from defs_before_0159 order by fn loop
     v_def := replace(pg_get_functiondef(d.fn::regprocedure), E'\r', '');
-    for h in select * from hunks_0162 where fn = d.fn order by n desc loop
-      if pg_temp.occurs_0162(v_def, h.new) <> 1 then
-        raise exception '0162 self-assert FAIL: hunk % of % is not in the new body exactly once', h.n, d.fn;
+    for h in select * from hunks_0159 where fn = d.fn order by n desc loop
+      if pg_temp.occurs_0159(v_def, h.new) <> 1 then
+        raise exception '0159 self-assert FAIL: hunk % of % is not in the new body exactly once', h.n, d.fn;
       end if;
       v_def := replace(v_def, h.new, h.old);
     end loop;
     if v_def <> d.def then
-      raise exception '0162 self-assert FAIL: % does not reverse to its pre-image', d.fn;
+      raise exception '0159 self-assert FAIL: % does not reverse to its pre-image', d.fn;
     end if;
     select coalesce(pr.proacl::text, '') as acl, pr.provolatile as vol, pr.prosecdef as secdef, coalesce(pr.proconfig::text, '') as cfg
       into v_pp from pg_proc pr where pr.oid = d.fn::regprocedure;
     if v_pp.acl <> d.acl or v_pp.vol <> d.vol or v_pp.secdef <> d.secdef or v_pp.cfg <> d.cfg then
-      raise exception '0162 self-assert FAIL: % changed its ACL, volatility, definer or config', d.fn;
+      raise exception '0159 self-assert FAIL: % changed its ACL, volatility, definer or config', d.fn;
     end if;
   end loop;
 
@@ -1515,16 +1515,16 @@ begin
      or has_function_privilege('authenticated', 'public.made_only_in(text, uuid)', 'execute')
      or has_table_privilege('anon', 'public.item_city', 'select,insert,update,delete')
      or has_table_privilege('authenticated', 'public.item_city', 'select,insert,update,delete') then
-    raise exception '0162 self-assert FAIL: the registry, the grant wall or the read wall moved, or a client can reach the new function or table';
+    raise exception '0159 self-assert FAIL: the registry, the grant wall or the read wall moved, or a client can reach the new function or table';
   end if;
 
   for v_rd in select bf.what, bf.ms as before_ms, af.ms as after_ms, bf.hulls
-             from reads_0162 bf join reads_0162 af on af.what = bf.what and af.phase = 'after'
+             from reads_0159 bf join reads_0159 af on af.what = bf.what and af.phase = 'after'
             where bf.phase = 'before' order by bf.what loop
     v_notes := v_notes || format('%s over %s merchant hull(s) %s ms → %s ms; ', v_rd.what, v_rd.hulls, v_rd.before_ms, v_rd.after_ms);
   end loop;
 
-  raise notice '0162 self-assert ok: THE IMPROVED SHIPS AND THE NAMED GEAR. UNTOUCHED: every hull and item already in the world. LANDED: +22 T2 hulls (two a line, one place more than their T1), +44 hull requirements (⟨size⟩ Hulls V + the role''s specialisation I), +34 items (22 T2 modules: grade 5, a skill V + its specialisation I, tier-3 workshop; 12 Named, one a city), +item use and item cities. RULES: guns = attack / 10, tier, Hands, yard tier, T2 own-country; every material sold somewhere; every hull fits a shed where it is built and is buildable at ≥ 1 yard of its line; every item buys one and spends one. DARK: % old yard entries and % old workshop entries as before; every new hull and item closed with its needs; 22 refused through the door. LIT (rolled back): without the specialisation 22 refused with its figures (have 0 / need 1); with it 22 BUILT for their labour; Long Eighteens refused "%", then made; Lisbon-cast Brass Guns made in Lisbon and refused in Venice ("%"). 3 bodies reverse, no entry point. READS: %',
-    (select count(*) from yards_before_0162), (select count(*) from shops_before_0162),
+  raise notice '0159 self-assert ok: THE IMPROVED SHIPS AND THE NAMED GEAR. UNTOUCHED: every hull and item already in the world. LANDED: +22 T2 hulls (two a line, one place more than their T1), +44 hull requirements (⟨size⟩ Hulls V + the role''s specialisation I), +34 items (22 T2 modules: grade 5, a skill V + its specialisation I, tier-3 workshop; 12 Named, one a city), +item use and item cities. RULES: guns = attack / 10, tier, Hands, yard tier, T2 own-country; every material sold somewhere; every hull fits a shed where it is built and is buildable at ≥ 1 yard of its line; every item buys one and spends one. DARK: % old yard entries and % old workshop entries as before; every new hull and item closed with its needs; 22 refused through the door. LIT (rolled back): without the specialisation 22 refused with its figures (have 0 / need 1); with it 22 BUILT for their labour; Long Eighteens refused "%", then made; Lisbon-cast Brass Guns made in Lisbon and refused in Venice ("%"). 3 bodies reverse, no entry point. READS: %',
+    (select count(*) from yards_before_0159), (select count(*) from shops_before_0159),
     split_part(v_p->>'t2_nospec', '|', 1), v_p->>'named_ven', v_notes;
 end $$;
