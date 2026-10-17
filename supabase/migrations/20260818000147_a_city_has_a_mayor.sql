@@ -70,14 +70,18 @@ select f.fn,
                ('public.npc_leg_lines(uuid, uuid, uuid, numeric, integer, numeric)'),
                ('public.client_rpc_entry_points()')) f(fn);
 
--- the answers the parity proof compares: every harbour, dark and lit, with no company
-create temp table pre_0147 on commit drop as
-select p.id as port_id, false as lit, world.tax_rate(p.id)::text as rate, public.profit_tax(p.id, 1000)::text as tax
-  from public.ports p where p.kind = 'HARBOUR';
+-- the answers the parity proof compares: every harbour, dark and lit, with no company. EACH STATE IS
+-- SET before it is captured — prod runs lit (city_treasury_enabled true since 2026-10-17), and a
+-- capture that took the world's own state for "dark" compared lit answers with dark ones (the
+-- first push of 0147 failed exactly so, and rolled back).
+create temp table pre_0147 (port_id uuid, lit boolean, rate text, tax text) on commit drop;
 do $$
 declare
   v_was jsonb := (select value from public.world_config where key = 'city_treasury_enabled');
 begin
+  update public.world_config set value = 'false'::jsonb where key = 'city_treasury_enabled';
+  insert into pre_0147
+  select p.id, false, world.tax_rate(p.id)::text, public.profit_tax(p.id, 1000)::text from public.ports p where p.kind = 'HARBOUR';
   update public.world_config set value = 'true'::jsonb where key = 'city_treasury_enabled';
   insert into pre_0147
   select p.id, true, world.tax_rate(p.id)::text, public.profit_tax(p.id, 1000)::text from public.ports p where p.kind = 'HARBOUR';
