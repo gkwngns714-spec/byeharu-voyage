@@ -639,7 +639,7 @@ declare
   v_out    jsonb;
 begin
   begin
-    perform set_config('request.jwt.claim.sub', c_uid::text, true);
+    perform cmd.assume_identity(c_uid);   -- both JWT shapes: the PGlite shim's and Supabase's
     v_r := cmd.found_house('Casa da Bandeira 0143', 'esp');
     if not coalesce((v_r->>'ok')::boolean, false) then
       raise exception '0143 self-assert FAIL: founding under Castile was refused: %', v_r;
@@ -677,6 +677,7 @@ begin
     if sqlerrm <> 'PROBE_ROLLBACK_0143' then raise; end if;
   end;
   perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claims', '', true);
   if (select count(*) from public.players) <> v_base then
     raise exception '0143 self-assert FAIL: the probe did not leave the world as it found it';
   end if;
