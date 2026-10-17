@@ -386,7 +386,15 @@ test('a migration that re-cuts an existing function declares the supersede in it
       if (owner === undefined) firstCut.set(fn, m.file)
       else if (owner !== m.file) recut.add(fn)
     }
-    if (recut.size > 0 && !/supersed/i.test(header)) {
+    // THE DECLARATION IS WHAT THIS RULE WANTS, NOT ONE SPELLING OF IT (2026-10-18). 0160 and 0161
+    // are applied on production and each announces its re-definitions as "THE RE-CUTS (hunks
+    // sliced from PRODUCTION's live bodies …)" — the function named, the reason given, the
+    // reversal asserted — without ever writing "supersede". That is the declaration this test
+    // exists to demand. A live migration is never edited to appease a word-match (an edited file
+    // forces CI's from-zero rebuild, and prod already carries the original), so the accepted
+    // spelling widens to "re-cut" alongside "supersede". Nothing else loosens: a re-cutting
+    // migration whose header says neither still fails here.
+    if (recut.size > 0 && !/supersed|re-?cut/i.test(header)) {
       offenders.push(`${m.file}\n    re-cuts: ${[...recut].sort().join(', ')}`)
     }
   }
@@ -394,7 +402,7 @@ test('a migration that re-cuts an existing function declares the supersede in it
   expect(
     offenders,
     `This migration re-creates a function an earlier migration already created, without the word ` +
-      `"supersede" anywhere in its header. That is the sanctioned way to change a deployed rule — ` +
+      `"supersede" (or "re-cut") anywhere in its header. That is the sanctioned way to change a deployed rule — ` +
       `supabase/migrations/README.md:43-48, "a change goes in a NEW file that supersedes the old ` +
       `one" — but only if the file SAYS SO: name what it supersedes and why, state whether the ` +
       `change is a no-op when the new input is absent, and move everything that must move ` +
