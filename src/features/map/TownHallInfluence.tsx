@@ -4,7 +4,7 @@ import { useServedRead } from '../../live/useServedRead'
 import { useSettled } from '../../live/useSettled'
 import { HullCountry } from '../../live/HullCountry'
 import { nationNameOf, useWorld } from '../../live/worldStore'
-import { cmdDonate, cmdPreviewDonate, ok } from '../../lib/rpc'
+import { cmdDonate, cmdPreviewDonate, cmdSetTax, ok } from '../../lib/rpc'
 import type { CityInfluence, DonateReceipt, Refusal, SnapshotPort } from '../../lib/rpc'
 import { formatDucats, formatInt, formatPct } from '../../lib/format'
 
@@ -80,6 +80,29 @@ export function TownHallInfluence({
           </Row>
         ))
       )}
+      {/* 0147: the mayor — the holder's top giver who sails for it (D8) — and the rate they set. */}
+      {influence.mayor && (
+        <Row
+          label={`Mayor · ${influence.mayor.name}`}
+          value={
+            influence.mayor.tax_rate !== null ? (
+              <span className="text-t-caption text-ink-muted">{`Tax ${formatPct(influence.mayor.tax_rate, 1)}`}</span>
+            ) : undefined
+          }
+          tone="muted"
+          hairline={false}
+          data-testid="townhall-mayor"
+        />
+      )}
+      {you && you.mayor && <MayorTax port={port} setAt={influence.mayor?.tax_set_at ?? null} />}
+      {you && influence.open && (
+        <Row
+          label={`Your tax here ${formatPct(you.tax_rate, 1)}${you.nation !== null && you.nation === influence.holder ? ' (half: your country holds this city)' : ''}`}
+          tone="muted"
+          hairline={false}
+          data-testid="townhall-your-tax"
+        />
+      )}
       {you && (
         <Row
           label="Your influence"
@@ -117,6 +140,37 @@ export function TownHallInfluence({
       )}
       {giving && you && (
         <DonateTray key={port.id} port={port} min={you.min} room={room} mode={trayMode} onClose={() => setGiving(false)} />
+      )}
+    </div>
+  )
+}
+
+/** THE MAYOR'S TAX (0147): 0 to 20 %, once a day — the server refuses anything else and says why. */
+function MayorTax({ port, setAt }: { port: SnapshotPort; setAt: string | null }) {
+  const [pct, setPct] = useState(10)
+  const [busy, setBusy] = useState(false)
+  const [refusal, setRefusal] = useState<Refusal | null>(null)
+  const refresh = useWorld((s) => s.refresh)
+  const send = async () => {
+    setBusy(true)
+    setRefusal(null)
+    const r = await cmdSetTax(port.id, pct / 100)
+    setBusy(false)
+    if (r.ok) await refresh()
+    else setRefusal(r.refusal)
+  }
+  return (
+    <div className="py-2" data-testid="townhall-mayor-tax">
+      <Stepper value={pct} onChange={setPct} min={0} max={20} step={1} unit="%" label="the city's profit tax" />
+      <div className="mt-2">
+        <Button size="sm" busy={busy} busyLabel="Setting…" onClick={() => void send()} data-testid="townhall-mayor-tax-set">
+          {setAt ? `Set tax ${pct}% (once a day)` : `Set tax ${pct}%`}
+        </Button>
+      </div>
+      {refusal && (
+        <Note tone="danger" code={refusal.code} className="mt-2">
+          {refusal.sentence}
+        </Note>
       )}
     </div>
   )

@@ -410,6 +410,8 @@ export const RPCS = {
   // 0144 (docs/INFLUENCE.md I2): a gift to a city, and its dry run (the Town Hall's Donate).
   cmdDonate: { schema: 'cmd', fn: 'donate', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_coin', type: 'bigint' }] },
   cmdPreviewDonate: { schema: 'cmd', fn: 'preview_donate', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_coin', type: 'bigint' }] },
+  // 0147 (docs/INFLUENCE.md I5): the mayor sets the city's profit tax.
+  cmdSetTax: { schema: 'cmd', fn: 'set_tax', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_rate', type: 'numeric' }] },
   cmdFoundHouse: {
     schema: 'cmd',
     fn: 'found_house',

@@ -71,6 +71,7 @@ import type {
   AllegianceView,
   CountryChanged,
   DonateReceipt,
+  TaxSet,
   WorkKind,
   StandingRouteDeleted,
   StandingRoutePaused,
@@ -635,4 +636,9 @@ export async function cmdPreviewDonate(portId: string, coin: number): Promise<Rp
  *  country there; only while a fleet of yours lies docked there. */
 export function cmdDonate(portId: string, coin: number): Promise<RpcResult<DonateReceipt>> {
   return call<DonateReceipt>('cmdDonate', [portId, coin])
+}
+
+/** The mayor sets the city's profit tax (0147) — 0 to the cap, once a day. */
+export function cmdSetTax(portId: string, rate: number): Promise<RpcResult<TaxSet>> {
+  return call<TaxSet>('cmdSetTax', [portId, rate])
 }

@@ -2210,7 +2210,19 @@ export interface CityInfluence {
   /** Each country's influence here, most first: points and the share of all (0..1). */
   shares: { nation: string; points: number; share: number }[]
   /** Yours, for the country you sail for now — null for a viewer with no company. */
-  you: { nation: string | null; points: number; given_today: number; cap: number; min: number } | null
+  you: {
+    nation: string | null
+    points: number
+    given_today: number
+    cap: number
+    min: number
+    /** 0147 — the profit tax you pay here (half where your country holds the city, while lit). */
+    tax_rate: number
+    /** 0147 — you are this city's mayor. */
+    mayor: boolean
+  } | null
+  /** 0147 — the city's mayor and the rate the mayor set (null: the city's own). */
+  mayor: { name: string; merchant: boolean; since: string; tax_rate: number | null; tax_set_at: string | null } | null
 }
 
 /** `cmd.donate` — the gift (also the dry run's `estimate`). */
@@ -2259,4 +2271,10 @@ export interface CountryChanged {
   nation: string
   nation_name: string
   nation_change_at: string | null
+}
+
+/** `cmd.set_tax` (0147) — the rate the mayor set. */
+export interface TaxSet {
+  port: string
+  tax_rate: number
 }

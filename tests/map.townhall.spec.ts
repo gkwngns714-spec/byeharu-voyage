@@ -22,11 +22,11 @@ import { openCityPanel } from './openCity.fixture'
 const CITY = 'OPO'
 
 let image: { body: Buffer; investor: string; investorNation: string } | null = null
-let litImage: Buffer | null = null
+let litImage: { body: Buffer; mayor: string } | null = null
 
 /** 0144: the same build's world with the city purses AND the influence race lit (`influence_enabled`
  *  set directly — the switch is I4's), for the Donate press at Lisbon, where your fleet lies. */
-async function donateWorld(): Promise<Buffer> {
+async function donateWorld(): Promise<{ body: Buffer; mayor: string }> {
   if (litImage) return litImage
   const dir = path.resolve('dist', 'db')
   const name = existsSync(dir) ? readdirSync(dir).find((f) => /^world-.*\.tar\.gz$/.test(f)) : undefined
@@ -39,7 +39,16 @@ async function donateWorld(): Promise<Buffer> {
     await pg.query(`select public.city_treasury_switch(true)`)
     await pg.query(`update public.world_config set value = $1::jsonb where key = 'npc_invest_above'`, [JSON.stringify(above.rows[0].v)])
     await pg.exec(`update public.world_config set value = 'true'::jsonb where key = 'influence_enabled'`)
-    litImage = Buffer.from(await (await pg.dumpDataDir('gzip')).arrayBuffer())
+    // 0147: a Portuguese merchant gives Lisbon 1,000 and the daily count names it the mayor
+    const giver = await pg.query<{ name: string; r: { ok: boolean } }>(
+      `select pl.company_name as name, public.donate_for(pl.id, (select id from public.ports where code = 'LIS'), 1000) as r
+         from public.players pl join public.npc_houses h on h.player_id = pl.id
+        where pl.nation_id = (select id from public.nations where code = 'PRT') and pl.ducats >= 1000
+        order by h.roster_ord limit 1`,
+    )
+    if (giver.rows.length !== 1 || !giver.rows[0].r.ok) throw new Error('no Portuguese merchant could give at Lisbon')
+    await pg.query(`select public.tick_influence()`)
+    litImage = { body: Buffer.from(await (await pg.dumpDataDir('gzip')).arrayBuffer()), mayor: giver.rows[0].name }
   } finally {
     await pg.close()
   }
@@ -127,8 +136,8 @@ test('the Town Hall shows the treasury, offers no Invest away from your fleet, a
 test('0144: lit, a company docked at Lisbon donates, and its influence there is counted', async ({ page, request, baseURL }) => {
   test.setTimeout(600_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-  const body = await donateWorld()
-  await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body, contentType: 'application/gzip' }))
+  const lit = await donateWorld()
+  await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body: lit.body, contentType: 'application/gzip' }))
   await page.setViewportSize(PHONE)
   await page.goto('map')
   await ready(page)
@@ -137,6 +146,9 @@ test('0144: lit, a company docked at Lisbon donates, and its influence there is 
   await page.getByTestId('map-city-tabs').getByText('Town Hall', { exact: true }).click()
   await expect(page.getByTestId('townhall-influence')).toBeVisible({ timeout: 30_000 })
   await expect(page.getByTestId('townhall-influence-you')).toContainText('0')
+  // 0147: the mayor is the Portuguese merchant who gave; you sail for Portugal, which holds Lisbon
+  await expect(page.getByTestId('townhall-mayor')).toContainText(lit.mayor)
+  await expect(page.getByTestId('townhall-your-tax')).toContainText('half')
   // 0146: lit, the Town Hall says when the daily count next runs
   await expect(page.getByTestId('townhall-next-count')).toContainText('Next count')
   await page.getByTestId('townhall-donate').click()
