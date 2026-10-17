@@ -1515,6 +1515,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // takes no player id — the caller's company changes). Landed WITH the faces that read them
       // (CityFlag, Profile → Country).
       'worldAllegiance', 'cmdChangeCountry',
+      // Pin moved deliberately 2026-10-17 with migration 0144 (docs/INFLUENCE.md I2): DONATE — a gift
+      // to a city, counted as influence for the giver's country, and its dry run. No player id; docked
+      // there only (E_NOT_DOCKED); dark until the race is lit. Landed WITH the face (TownHallInfluence).
+      'cmdDonate', 'cmdPreviewDonate',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')
@@ -1804,9 +1808,13 @@ test("world.skills() serves the groups, the queue and the verbs' own answers; th
 test('a standing route round-trips: dark refusal, save, assign, the served state, pause, take off, delete', async () => {
   // Earlier tests sailed the house's fleet; bring any voyage in (a warp in this test's own database,
   // the idiom the chain's probes use) and clear her queue, so the route starts from a quay.
+  // A WHOLE REAL HOUR back, not a minute: voyage.arrival_at rolls each unresolved day's weather
+  // (voyage.hazard_roll, seeded by the voyage's own id), and at 9,600× a minute is 160 game hours —
+  // a heavy delay outran it and the fleet read SAILING (PR #151's acceptance 2/3, a flake that came
+  // and went with the voyage id). An hour is 9,600 game hours: every delay is behind her.
   await db.pg.query(
-    `update public.voyages set departed_at = departed_at - (eta - now()) - interval '1 minute',
-                               eta = now() - interval '1 minute' where status = 'SAILING'`,
+    `update public.voyages set departed_at = departed_at - (eta - now()) - interval '1 hour',
+                               eta = now() - interval '1 hour' where status = 'SAILING'`,
   )
   const first = expectOk(await worldFleets())[0]
   expectOk(await cmdClear(first.id))

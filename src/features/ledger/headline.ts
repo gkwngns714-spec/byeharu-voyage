@@ -26,6 +26,7 @@ import type { LedgerEvent } from '../../lib/rpc'
 //   ROUTE_LAP     {route, fleet, lap, stops, sold, bought, supplies, repairs, wages, net, skipped, skipped_lines}  (0092)
 //   ROUTE_PAUSED  {route, fleet, reason, code?, sentence?}        (0092; 0093: sentence names ports)
 //   NATION_CHANGED {from, from_name, to, to_name}                 (0143 — codes and names)
+//   DONATED       {port, port_name, amount, nation}               (0144 — a gift to a city)
 //
 // An unknown kind falls through to the kind itself rather than to an invented sentence — a new
 // migration's event shows up as a legible row on the day it lands, without lying about its content.
@@ -203,6 +204,12 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     // A ROUTE THAT STOPPED ITSELF WHILE YOU WERE AWAY SAYS SO — the served REASON, worded in
     // src/domain/route (the one wording, shared with COMMAND's fold); the server's sentence only
     // for `error`, where it is the caught refusal's own.
+    // 0144: a gift to a city — it counts as influence for your country there.
+    case 'DONATED': {
+      const amount = num(p, 'amount')
+      const where = str(p, 'port_name') ?? (str(p, 'port') ? portName(str(p, 'port') as string) : null)
+      return `Gave ${amount !== null ? formatDucats(amount) : 'coin'}${where ? ` to ${where}` : ''}.`
+    }
     // 0143: the company's change of country, in the country's own name.
     case 'NATION_CHANGED': {
       const to = str(p, 'to_name') ?? str(p, 'to')

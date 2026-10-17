@@ -2190,6 +2190,33 @@ export interface TownHallView {
   works: CityWork[]
   investors: CityInvestor[]
   you: { docked: boolean; holdings: { kind: WorkKind; shares: number; paid: number; owed: number }[] }
+  /** 0144 — who holds the city, each country's influence there, and Donate. */
+  influence: CityInfluence
+}
+
+/** 0144 (docs/INFLUENCE.md I2) — the Town Hall's influence block. */
+export interface CityInfluence {
+  /** The country that holds the city today (`public.port_nation`), or null: no country. */
+  holder: string | null
+  /** A home city never changes hands (OWNER O1). */
+  home: boolean
+  since: string | null
+  /** Donate is offered (the influence race and the city purses are on). */
+  open: boolean
+  /** Each country's influence here, most first: points and the share of all (0..1). */
+  shares: { nation: string; points: number; share: number }[]
+  /** Yours, for the country you sail for now — null for a viewer with no company. */
+  you: { nation: string | null; points: number; given_today: number; cap: number; min: number } | null
+}
+
+/** `cmd.donate` — the gift (also the dry run's `estimate`). */
+export interface DonateReceipt {
+  port: string
+  amount: number
+  purse: number
+  points: number
+  given_today: number
+  cap: number
 }
 
 /** `cmd.invest` — the stake bought (also the dry run's `estimate`). */

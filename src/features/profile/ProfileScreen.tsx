@@ -196,6 +196,9 @@ function CountrySection({ nation, changeAt, nowMs }: { nation: string; changeAt:
       {open && !waiting && (
         <div className="mt-3">
           <NationPicker value={pick} onChange={setPick} label="Country" />
+          <p className="mt-2 text-t-caption text-ink-muted" data-testid="country-cost">
+            The influence your company has given stays with the country it leaves.
+          </p>
           {refusal && (
             <Note tone="danger" code={refusal.code} className="mt-3">
               {refusal.sentence}

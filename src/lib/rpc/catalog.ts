@@ -407,6 +407,9 @@ export const RPCS = {
   // 0143 (docs/INFLUENCE.md I1): every harbour's flag, and a company's change of country.
   worldAllegiance: { schema: 'world', fn: 'allegiance', args: [] },
   cmdChangeCountry: { schema: 'cmd', fn: 'change_country', args: [{ name: 'p_nation_code', type: 'text' }] },
+  // 0144 (docs/INFLUENCE.md I2): a gift to a city, and its dry run (the Town Hall's Donate).
+  cmdDonate: { schema: 'cmd', fn: 'donate', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_coin', type: 'bigint' }] },
+  cmdPreviewDonate: { schema: 'cmd', fn: 'preview_donate', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_coin', type: 'bigint' }] },
   cmdFoundHouse: {
     schema: 'cmd',
     fn: 'found_house',
