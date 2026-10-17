@@ -2,9 +2,9 @@
   "_": "THE CAPTAINS' CATALOGUE (K4, docs/SKILLS_AND_CAPTAINS.md §4.1, §4.2, §4.9) — authored. Who the captains ARE is data/officers.json; what a grade, a trait and a language ARE is this file. scripts/build-captains.mjs reads both and generates data/captains.generated.json (every captain's grade, kit of ten traits and languages, and every harbour's language); migration 0156 loads them and scripts/db/world-guard.mjs holds the database to all three files on every apply.",
   "_grades": "OWNER O3 (row 61): S 5 slots / 10 traits, A 4 / 8, you get the pattern — B 3 / 6, C 2 / 4. `floor_pct` is DEFAULT D10 / D12: a captain's grade at birth is the highest grade whose floor her job value reaches (C 4-5 %, B 5.5-6.5 %, A 7-8 %, S 8.5-9 %), and a promotion (K8) lifts every trait to at least the new floor. A grade above S costs one row (\"for now\").",
   "grades": [
-    { "code": "C", "ord": 1, "slots": 2, "known": 4, "floor_pct": 4.0 },
+    { "code": "C", "ord": 1, "slots": 2, "known": 4, "floor_pct": 4 },
     { "code": "B", "ord": 2, "slots": 3, "known": 6, "floor_pct": 5.5 },
-    { "code": "A", "ord": 3, "slots": 4, "known": 8, "floor_pct": 7.0 },
+    { "code": "A", "ord": 3, "slots": 4, "known": 8, "floor_pct": 7 },
     { "code": "S", "ord": 4, "slots": 5, "known": 10, "floor_pct": 8.5 }
   ],
   "_kit": "DEFAULT D15: every captain carries TEN ordered traits — her job first at her own value, then up to `same_focus` more of her job's focus, then the rest, each at `extra_pct` % of her job's value (rounded to 0.1). The order after the first is a pure function of her code (md5), so the kit is the same on every build.",
@@ -15,19 +15,19 @@
     { "code": "trading", "word": "Trading" },
     { "code": "combat", "word": "Combat" }
   ],
-  "_effects": "What a trait does, by effect (§4.2, §5). `scope` fleet = every seated captain of the fleet adds up; ship = only the ship she sits on (K5). `live` = a rule reads it TODAY while crew_bite is off: the four effects public.fleet_officer_bonus has always served (speed, cargo space, spread, crew saved) — and only for a captain's job (her first trait). `words` is the line the trait card prints ({pct}, {goods}); `waits` is the sentence printed when the trait does not work for this captain yet. `reader` names the ONE rule that will read it. The cap per effect arrives with its reader, public.crew_pct, in K5 (a number nothing reads is a second source of truth beside officer_bonus_cap_pct).",
+  "_effects": "What a trait does, by effect (§4.2, §5). `scope` fleet = every seated captain of the fleet adds up; ship = only the ship she sits on (K5). `live` = a rule reads it TODAY while crew_bite is off: the four effects public.fleet_officer_bonus has always served (speed, cargo space, spread, crew saved) — and only for a captain's job (her first trait). `words` is the line the trait card prints ({pct}, {goods}); `waits` is the sentence printed when the trait does not work for this captain yet. `reader` names the ONE rule that will read it. `cap_pct` (K5) is the most a fleet can gain from that effect — read by public.crew_pct, the one reader, which also retired the old `officer_bonus_cap_pct` knob (the four live effects carry its 25). category_spread's cap is per goods category.",
   "effects": [
-    { "code": "speed", "scope": "fleet", "live": true, "words": "+{pct}% speed", "waits": "Not in use yet.", "reader": "voyage.fleet_speed" },
-    { "code": "hold", "scope": "fleet", "live": true, "words": "+{pct}% cargo space", "waits": "Not in use yet.", "reader": "public.ship_hold_capacity" },
-    { "code": "spread", "scope": "fleet", "live": true, "words": "+{pct}% better prices", "waits": "Not in use yet.", "reader": "world.spread_effective" },
-    { "code": "crew_saved", "scope": "fleet", "live": true, "words": "−{pct}% crew lost to pirates", "waits": "Not in use yet.", "reader": "public.raid_crew_lost" },
-    { "code": "homesick_relief", "scope": "fleet", "live": false, "words": "−{pct} points of homesickness", "waits": "Not in use yet.", "reader": "public.crew_pct" },
-    { "code": "storm", "scope": "fleet", "live": false, "words": "−{pct}% storm damage", "waits": "Not in use yet.", "reader": "voyage.settle" },
-    { "code": "supplies", "scope": "fleet", "live": false, "words": "+{pct}% days of supplies", "waits": "Not in use yet.", "reader": "voyage.endurance_days" },
-    { "code": "category_spread", "scope": "fleet", "live": false, "words": "+{pct}% better prices on {goods}", "waits": "Not in use yet.", "reader": "world.spread_effective" },
-    { "code": "accuracy", "scope": "ship", "live": false, "words": "+{pct}% accuracy", "waits": "Works when combat arrives.", "reader": "world.ship_stats" },
-    { "code": "reach", "scope": "ship", "live": false, "words": "+{pct}% reach", "waits": "Works when combat arrives.", "reader": "world.ship_stats" },
-    { "code": "attack", "scope": "ship", "live": false, "words": "+{pct}% attack", "waits": "Works when combat arrives.", "reader": "world.ship_stats" }
+    { "code": "speed", "scope": "fleet", "live": true, "cap_pct": 25, "words": "+{pct}% speed", "waits": "Not in use yet.", "reader": "voyage.fleet_speed" },
+    { "code": "hold", "scope": "fleet", "live": true, "cap_pct": 25, "words": "+{pct}% cargo space", "waits": "Not in use yet.", "reader": "public.ship_hold_capacity" },
+    { "code": "spread", "scope": "fleet", "live": true, "cap_pct": 25, "words": "+{pct}% better prices", "waits": "Not in use yet.", "reader": "world.spread_effective" },
+    { "code": "crew_saved", "scope": "fleet", "live": true, "cap_pct": 25, "words": "−{pct}% crew lost to pirates", "waits": "Not in use yet.", "reader": "public.raid_crew_lost" },
+    { "code": "homesick_relief", "scope": "fleet", "live": false, "cap_pct": 20, "words": "−{pct} points of homesickness", "waits": "Not in use yet.", "reader": "public.crew_pct" },
+    { "code": "storm", "scope": "fleet", "live": false, "cap_pct": 25, "words": "−{pct}% storm damage", "waits": "Not in use yet.", "reader": "voyage.settle" },
+    { "code": "supplies", "scope": "fleet", "live": false, "cap_pct": 25, "words": "+{pct}% days of supplies", "waits": "Not in use yet.", "reader": "voyage.endurance_days" },
+    { "code": "category_spread", "scope": "fleet", "live": false, "cap_pct": 20, "words": "+{pct}% better prices on {goods}", "waits": "Not in use yet.", "reader": "world.spread_effective" },
+    { "code": "accuracy", "scope": "ship", "live": false, "cap_pct": 25, "words": "+{pct}% accuracy", "waits": "Works when combat arrives.", "reader": "world.ship_stats" },
+    { "code": "reach", "scope": "ship", "live": false, "cap_pct": 25, "words": "+{pct}% reach", "waits": "Works when combat arrives.", "reader": "world.ship_stats" },
+    { "code": "attack", "scope": "ship", "live": false, "cap_pct": 25, "words": "+{pct}% attack", "waits": "Works when combat arrives.", "reader": "world.ship_stats" }
   ],
   "_traits": "The 25 traits (§4.2): the four live jobs (O6), Pilot (O6: kinder weather), Provisioner (D15), one trader per goods category (O5, the owner's 17 categories of row 70: jewellery → Gem trader, meat → Food trader) and the two combat jobs (O5: long range, close). `ord` is the catalogue order; `goods` is data/goods.json's category code a trader works on, `goods_word` how the card names it. A trait may carry two effects (the surgeon). Every trait is some captain's job (at least two captains each, D15).",
   "traits": [
@@ -57,6 +57,16 @@
     { "code": "GUNNER", "ord": 24, "word": "Gunner", "focus": "combat", "effects": [{ "effect": "accuracy", "mult": 1 }, { "effect": "reach", "mult": 1 }] },
     { "code": "BOARDER", "ord": 25, "word": "Boarder", "focus": "combat", "effects": [{ "effect": "attack", "mult": 1 }] }
   ],
+  "_cabins": "DEFAULT D9 (§4.3): seat 1 of every ship is the Captain's cabin, where every trait works at 100 %. The other seats (class_cabins: 3-8 per hull) are typed, in turn, starting with the hull's own role (`rotation`, by class_profile.role): a trait of the cabin's focus works at 100 %, any other at `cabin_off_focus_pct` % (the knob, 50 — Origin's official figure). Captains are seated, moved and put ashore only while the ship is in port; no ship needs a captain to sail.",
+  "cabins": {
+    "kinds": [
+      { "code": "captain", "word": "Captain's cabin" },
+      { "code": "trading", "word": "Trade cabin" },
+      { "code": "exploration", "word": "Exploration cabin" },
+      { "code": "combat", "word": "Combat cabin" }
+    ],
+    "rotation": { "trade": ["trading", "exploration", "combat"], "explorer": ["exploration", "trading", "combat"], "support": ["exploration", "trading", "combat"], "combat": ["combat", "trading", "exploration"] }
+  },
   "_languages": "DEFAULT D14 (§4.9): twenty languages, one for each people the map has. A language is NEVER a gate. A harbour's language: a named exception (`by_port`), else its founding nation's (`by_nation`), else its culture's (`by_culture`), else — only for a Latin harbour of no nation, since there is no single Latin language — its country's (`by_country`); a harbour none of the four names fails the generator rather than being guessed. A captain speaks her home's language; an A captain one more and an S captain two more, the languages most spoken in her home region first.",
   "languages": [
     { "code": "PORTUGUESE", "ord": 1, "name": "Portuguese" },
@@ -82,21 +92,58 @@
   ],
   "extra_languages": { "C": 0, "B": 0, "A": 1, "S": 2 },
   "by_nation": {
-    "AYU": "THAI", "BAN": "MALAY", "DNK": "NORDIC", "ENG": "ENGLISH", "ESP": "SPANISH", "FRA": "FRENCH",
-    "GEN": "ITALIAN", "GUJ": "INDIC", "HAN": "GERMAN", "JOS": "KOREAN", "JPN": "JAPANESE", "MAR": "ARABIC",
-    "MLB": "INDIC", "MNG": "CHINESE", "MUG": "INDIC", "NLD": "DUTCH", "OTT": "TURKISH", "PER": "PERSIAN",
-    "POL": "SLAVIC", "PRT": "PORTUGUESE", "RUS": "SLAVIC", "SWE": "NORDIC", "VEN": "ITALIAN"
+    "AYU": "THAI",
+    "BAN": "MALAY",
+    "DNK": "NORDIC",
+    "ENG": "ENGLISH",
+    "ESP": "SPANISH",
+    "FRA": "FRENCH",
+    "GEN": "ITALIAN",
+    "GUJ": "INDIC",
+    "HAN": "GERMAN",
+    "JOS": "KOREAN",
+    "JPN": "JAPANESE",
+    "MAR": "ARABIC",
+    "MLB": "INDIC",
+    "MNG": "CHINESE",
+    "MUG": "INDIC",
+    "NLD": "DUTCH",
+    "OTT": "TURKISH",
+    "PER": "PERSIAN",
+    "POL": "SLAVIC",
+    "PRT": "PORTUGUESE",
+    "RUS": "SLAVIC",
+    "SWE": "NORDIC",
+    "VEN": "ITALIAN"
   },
   "_by_port": "Feodosia (Kaffa) was an Ottoman port from 1475; the data gives it no nation, and its culture would say Arabic.",
   "by_port": { "FEO": "TURKISH" },
   "by_country": {
-    "Barbados": "ENGLISH", "Canada": "FRENCH", "Croatia": "ITALIAN", "Curaçao": "DUTCH", "Cyprus": "ITALIAN",
-    "Gibraltar": "SPANISH", "Italy": "ITALIAN", "Jamaica": "SPANISH", "Malta": "ITALIAN", "Puerto Rico": "SPANISH",
-    "Suriname": "DUTCH", "United States": "SPANISH"
+    "Barbados": "ENGLISH",
+    "Canada": "FRENCH",
+    "Croatia": "ITALIAN",
+    "Curaçao": "DUTCH",
+    "Cyprus": "ITALIAN",
+    "Gibraltar": "SPANISH",
+    "Italy": "ITALIAN",
+    "Jamaica": "SPANISH",
+    "Malta": "ITALIAN",
+    "Puerto Rico": "SPANISH",
+    "Suriname": "DUTCH",
+    "United States": "SPANISH"
   },
   "by_culture": {
-    "anglo": "ENGLISH", "germanic": "GERMAN", "guinean": "GUINEAN", "indic": "INDIC", "islamic": "ARABIC",
-    "japanese": "JAPANESE", "korean": "KOREAN", "malay": "MALAY", "nordic": "NORDIC", "oceanic": "MALAY",
-    "sinic": "CHINESE", "swahili": "SWAHILI"
+    "anglo": "ENGLISH",
+    "germanic": "GERMAN",
+    "guinean": "GUINEAN",
+    "indic": "INDIC",
+    "islamic": "ARABIC",
+    "japanese": "JAPANESE",
+    "korean": "KOREAN",
+    "malay": "MALAY",
+    "nordic": "NORDIC",
+    "oceanic": "MALAY",
+    "sinic": "CHINESE",
+    "swahili": "SWAHILI"
   }
 }

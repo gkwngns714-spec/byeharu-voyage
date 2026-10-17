@@ -37,6 +37,7 @@
 // RUN:   node scripts/build-captains.mjs           writes data/captains.generated.json
 //        node scripts/build-captains.mjs --check   fails if the file is not what the generator gives
 //        node scripts/build-captains.mjs --sql     prints the VALUES migration 0156 loads
+//        node scripts/build-captains.mjs --sql cabins   prints the VALUES migration 0157 loads (caps, cabins)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { createHash } from 'node:crypto'
@@ -214,6 +215,27 @@ export function captainsSql(gen = generateCaptains()) {
   ].join('\n')
 }
 
+/** The VALUES migration 0157 (K5: cabins and seats) loads — each effect's cap and the cabin rules. The
+ *  world guard holds the database to data/captains.json for both. */
+export function cabinsSql() {
+  const { cat } = captainInputs()
+  const roles = Object.keys(cat.cabins.rotation)
+  const kinds = new Set(cat.cabins.kinds.map((k) => k.code))
+  if (!kinds.has('captain')) fail("the cabin kinds have no Captain's cabin")
+  for (const r of roles) {
+    for (const f of cat.cabins.rotation[r]) if (!kinds.has(f) || f === 'captain') fail(`rotation ${r}: ${f} is not a typed cabin`)
+  }
+  const rows = (list) => list.join(',\n')
+  return [
+    '-- @@caps',
+    rows(cat.effects.map((e) => `  (${q(e.code)}, ${num(e.cap_pct)})`)),
+    '-- @@cabin_kinds',
+    rows(cat.cabins.kinds.map((k, i) => `  (${q(k.code)}, ${q(k.word)}, ${i + 1})`)),
+    '-- @@cabin_rotation',
+    rows(roles.flatMap((r) => cat.cabins.rotation[r].map((f, i) => `  (${q(r)}, ${i + 1}, ${q(f)})`))),
+  ].join('\n')
+}
+
 /** The 63 captains production holds before 0156 (0015's 8, 0073's 43, 0098's 12). Their rows are not
  *  re-inserted; 0156 asserts every one of them equals data/officers.json instead. */
 export const OLD_63 = new Set(('ALBUQUERQ ALCANT AMSPURSER BARENTS BARROS BERGENNAV CABRALNAV CHANCELLOR COENQM DANESURG DIASNAV ' +
@@ -229,7 +251,7 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/bui
   const grades = gen.captains.reduce((m, c) => ({ ...m, [c.grade]: (m[c.grade] ?? 0) + 1 }), {})
   const say = `${gen.captains.length} captains (C ${grades.C ?? 0} · B ${grades.B ?? 0} · A ${grades.A ?? 0} · S ${grades.S ?? 0}), ${gen.harbours.length} harbours`
   if (process.argv.includes('--sql')) {
-    console.log(captainsSql(gen))
+    console.log(process.argv.includes('cabins') ? cabinsSql() : captainsSql(gen))
   } else if (process.argv.includes('--check')) {
     const now = readFileSync(join(ROOT, CAPTAINS_FILE), 'utf8')
     if (now !== text) { console.error(`${CAPTAINS_FILE} is NOT what scripts/build-captains.mjs generates — re-run it.`); process.exit(1) }

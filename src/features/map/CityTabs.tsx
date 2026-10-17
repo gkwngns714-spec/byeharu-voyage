@@ -61,7 +61,7 @@ export function CityTabs({ portCode, harbour }: { portCode: string; harbour: Rea
       <div role="tabpanel" data-testid={`map-city-${tab}`}>
         {tab === 'port' && harbour}
         {tab === 'market' && port && <CityMarket port={port} reader={acting} />}
-        {tab === 'inn' && port && <PortInn port={port} fleet={acting} alongside={docked[0] ?? null} trayMode="side-next" />}
+        {tab === 'inn' && port && <PortInn port={port} alongside={docked[0] ?? null} trayMode="side-next" />}
         {tab === 'townhall' && port && <CityTownHall port={port} trayMode="side-next" />}
       </div>
     </div>

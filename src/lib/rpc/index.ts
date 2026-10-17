@@ -52,6 +52,7 @@ import type {
   OfficerRoster,
   PlayerView,
   PostedOfficer,
+  SeatedCaptain,
   PresetApplied,
   PresetDeleted,
   PresetSaved,
@@ -468,6 +469,12 @@ export function worldBuffs(portId: string | null = null): Promise<RpcResult<Buff
  *  the one money mover, so the ledger and the purse cannot disagree. */
 export function cmdHireOfficer(code: string, fleetId: string | null = null) {
   return call<HiredOfficer>('cmdHireOfficer', [code, fleetId])
+}
+
+/** 0157 — seat a captain you keep in a cabin of one of your ships (`seat` null: the server's picker),
+ *  move her, or put her ashore (`shipId` null). Only in port; the refusal says why. */
+export function cmdSeatCaptain(code: string, shipId: string | null, seat: number | null = null) {
+  return call<SeatedCaptain>('cmdSeatCaptain', [code, shipId, seat])
 }
 
 /** Move an officer already in the house's service to a fleet, or ashore with `null`. */

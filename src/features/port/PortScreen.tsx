@@ -300,7 +300,7 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
         {shownFace.id === 'workstation' && (
           <PortWorkstation portId={port.id} fleet={acting} tier={buildingTier(port, 'workstation')} />
         )}
-        {shownFace.id === 'inn' && <PortInn port={port} fleet={acting} alongside={docked[0] ?? null} />}
+        {shownFace.id === 'inn' && <PortInn port={port} alongside={docked[0] ?? null} />}
         {shownFace.id === 'shipyard' && <PortShipyard port={port} fleet={docked[0] ?? null} />}
         {shownFace.id === 'building_yard' && (
           <PortYard

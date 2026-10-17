@@ -50,7 +50,8 @@ declare
   k_harden  numeric := public.wc_num('haggle_hardening_per_fail');
   k_base    numeric := public.wc_num('haggle_base_success');
   k_tries   int     := public.wc_int('haggle_attempts_per_day');
-  k_offcap  numeric := public.wc_num('officer_bonus_cap_pct');
+  -- 0157: the captains' cap is crew_effects.cap_pct (the knob officer_bonus_cap_pct was retired onto it)
+  k_offcap  numeric := (select cap_pct from public.crew_effects where code = 'spread');
   -- measurements
   v_pub     numeric;
   v_mid0    numeric; v_ask0 numeric; v_bid0 numeric;
@@ -63,6 +64,7 @@ declare
   v_odds_fresh numeric;
   v_roll    numeric;
   v_officer uuid;
+  v_signing uuid;
   v_i       int;
   v_n       int;
   v_bad     int;
@@ -194,19 +196,23 @@ begin
           'Exists for the length of one rolled-back proof, to drive the stack onto the floor.')
   returning id into v_officer;
   insert into public.player_officers (player_id, officer_id, fleet_id)
-  values (v_player, v_officer, v_fleet);
+  values (v_player, v_officer, v_fleet)
+  returning id into v_signing;
+  -- 0157: a captain counts where she SITS — in the Captain's cabin of the flagship, through the one seat core
+  perform public.captain_seat_put(v_signing,
+    (select s.id from public.ships s where s.fleet_id = v_fleet order by s.is_flagship desc, s.id limit 1), 1, false);
 
   v_eff := world.spread_effective(v_port, v_good, v_fleet);
   if v_eff <> v_pub * k_floor then
     raise exception 'PROOF 6 FAILED: with a % per cent purser and a % concession the executed spread is % and the floor is %; the floor did not hold',
       k_offcap, k_cap, v_eff, v_pub * k_floor;
   end if;
-  if v_eff <= v_pub * (1 - public.fleet_officer_bonus(v_fleet, 'PURSER')) * (1 - k_cap) then
+  if v_eff <= v_pub * (1 - public.crew_pct(v_fleet, null, 'spread')) * (1 - k_cap) then
     raise exception 'PROOF 6 FAILED: the floor is at or below the naive product, so it can never fire and this check proves nothing';
   end if;
   raise notice 'PASS: HAGGLE_FLOOR_BITES — a purser at the % per cent cap and a bargain at its % cap would have multiplied the port''s spread down to %, and the floor held it at % (% of the published %) — the quay keeps more than half its living whatever stacks',
     k_offcap, k_cap,
-    v_pub * (1 - public.fleet_officer_bonus(v_fleet, 'PURSER')) * (1 - k_cap),
+    v_pub * (1 - public.crew_pct(v_fleet, null, 'spread')) * (1 - k_cap),
     v_eff, k_floor, v_pub;
 
   -- Put the world back the way it was before the timing checks: this block owned those knobs, and

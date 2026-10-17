@@ -92,3 +92,14 @@ test('§12: no captain, trait or language is a gate — the catalogue names no r
   const text = readFileSync(path.join(process.cwd(), 'data', 'captains.json'), 'utf8')
   expect(text).not.toMatch(/\bE_[A-Z_]+\b/)
 })
+
+test('D9 (0157): every hull role has a cabin rotation of the three typed cabins, and a Captain\'s cabin exists', () => {
+  const cabins = (read('data/captains.json') as { cabins: { kinds: { code: string }[]; rotation: Record<string, string[]> } }).cabins
+  expect(cabins.kinds.map((k) => k.code)).toContain('captain')
+  const typed = cabins.kinds.map((k) => k.code).filter((c) => c !== 'captain').sort()
+  for (const [role, list] of Object.entries(cabins.rotation)) expect([...list].sort(), role).toEqual(typed)
+  const lines = read('data/ship-lines.json') as { profiles: { role: string }[] }
+  const ships = read('data/ships.generated.json') as { hulls: { role: string }[] }
+  const roles = new Set([...lines.profiles.map((p) => p.role), ...ships.hulls.map((h) => h.role)])
+  expect([...roles].filter((r) => !(r in cabins.rotation))).toEqual([])
+})

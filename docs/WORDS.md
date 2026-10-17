@@ -59,6 +59,9 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | what she does (0156) | her **job**, by its word — **Navigator**, **Gem trader**, **Boarder** — and its focus **Exploration** · **Trading** · **Combat** (Codex filter **Role**, then **Job**) | specialty, class, profession |
 | what a captain can do (0156) | **traits**, each named by its job word with the server's line (`Navigator · +7.5% speed`, `Gem trader · +4.5% better prices on gems`) | skills (the Academy's word), effects, perks |
 | a trait that does not work yet (0156) | the server's sentence: *Not in use yet.* · *Works when combat arrives.* | locked, disabled, coming soon |
+| where a captain sits (0157, D9) | the cabin's word, served: **Captain's cabin** · **Trade cabin** · **Exploration cabin** · **Combat cabin**; an empty one is **Empty**; her job's worth there **100%** / **50%**; *Cabin rates are not in use yet.* while they do not count | slot, berth, posted |
+| seating her (0157) | **Seat** (then her name) · **Ashore**; on hiring: **Joins Gaivota on hiring** / **Goes ashore on hiring** | post, assign, sign on |
+| what the captains add to a fleet (0157) | **Crew bonuses** — one line per source (`Ana de Sousa · Navigator · Exploration cabin` · `+9% speed`), the totals beside the heading | expertise, buff, officer bonus |
 | the languages she speaks (0156) | the server's sentence **Speaks Portuguese, Spanish** | LV, fluency |
 | the market | **market** / **here** | the quay |
 | price paid | **Bought at** | paid, basis |
