@@ -68,6 +68,7 @@ import type {
   PortMerchants,
   TownHallView,
   InvestReceipt,
+  TowReceipt,
   AllegianceView,
   CountryChanged,
   DonateReceipt,
@@ -600,6 +601,18 @@ export function worldPortMerchants(portId: string): Promise<RpcResult<PortMercha
  *  there. Asked when the tab is open, not on the beat. */
 export function worldTownHall(portId: string): Promise<RpcResult<TownHallView>> {
   return call<TownHallView>('worldTownHall', [portId])
+}
+
+/** What `cmdTow` would do (0152) — the real tow, rolled back — or the refusal it would give
+ *  (E_NOT_WRECKED, E_NOT_AT_PORT, E_NO_YARD, E_TOW_FUNDS with have / need in ducats). */
+export async function cmdPreviewTow(fleetId: string): Promise<RpcResult<TowReceipt>> {
+  const r = await call<{ estimate: TowReceipt }>('cmdPreviewTow', [fleetId])
+  return r.ok ? ok(r.value.estimate) : r
+}
+
+/** Tow your wrecked fleet to the nearest harbour with a shipyard (0152); it lies docked there. */
+export function cmdTow(fleetId: string, expectedVersion: number | null): Promise<RpcResult<TowReceipt>> {
+  return call<TowReceipt>('cmdTow', [fleetId, expectedVersion])
 }
 
 /** What `cmdInvest` would do — the real buy, rolled back — or the refusal it would give

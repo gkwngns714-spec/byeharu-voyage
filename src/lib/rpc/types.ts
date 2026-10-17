@@ -2250,6 +2250,23 @@ export interface InvestReceipt {
   purse: number
 }
 
+// ── 0152: a wreck is towed to a shipyard ───────────────────────────────────────────────────────
+
+/** `public.tow_for`'s answer — the tow done (`cmd.tow`) or the tow quoted (`cmd.preview_tow`'s
+ *  `estimate`). Every figure is the server's; `sentence` is its own words for what happens. */
+export interface TowReceipt {
+  fleet: string
+  /** port codes */
+  from: string
+  to: string
+  to_name: string
+  /** sailed miles, the reach table's; 0 when it lies at a shipyard already */
+  nm: number
+  fee: number
+  purse: number
+  sentence: string
+}
+
 // ── 0143: a city flies a flag (docs/INFLUENCE.md I1) ───────────────────────────────────────────
 
 /** One harbour's flag — the country that holds it today (null: no country), and whether it is a
