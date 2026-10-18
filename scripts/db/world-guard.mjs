@@ -70,6 +70,8 @@
 //                 and the rotation of cabins by hull role; (0162, K8) the grades' promotion gates, the
 //                 promotion items (item_kinds rows of kind 'promotion' + public.promotion_items)
 //
+//   * hauls       (0173) every port_goods row's haul_nm / haul EQUALS world.haul_rows() — derived from the
+//                 roster, public.sea_reaches and the haul_* knobs, and refilled by no later apply
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
 // re-runs on every chain apply); the browser's own apply (src/lib/db) — the chain FINGERPRINT
@@ -714,6 +716,32 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   }
 
   const findings = drift(db_, want)
+
+  // 0173: THE HAUL IS THE DERIVATION — every market row's haul_nm / haul equals world.haul_rows() (the
+  // sailing distance from the nearest maker and its multiplier, from the roster, public.sea_reaches and the
+  // haul_* knobs). Not data/*.json but derived from it, like affinity — and unlike affinity no migration
+  // re-derives it on every apply, so a roster, sea or knob change that forgets to refill it is caught here.
+  // Its own positive control: the same comparison with one row's haul bent must see exactly one more.
+  const hasHaul = (await db.query(`select to_regprocedure('world.haul_rows()') is not null as ok`)).rows[0].ok
+  let haulRows = 0
+  if (hasHaul) {
+    const h = (await db.query(`
+      with h as materialized (select * from world.haul_rows()),
+      j as (select pg.haul_nm, pg.haul, h.haul_nm as want_nm, h.haul as want, h.port_id is null as missing,
+                   row_number() over (order by pg.port_id, pg.good_id) as rn
+              from public.port_goods pg left join h on h.port_id = pg.port_id and h.good_id = pg.good_id)
+      select count(*) filter (where missing or haul_nm is distinct from want_nm or haul is distinct from want)::int as bad,
+             count(*) filter (where missing or haul_nm is distinct from want_nm
+                                 or haul is distinct from (case when rn = 1 then want + 1 else want end))::int as planted,
+             count(*)::int as n
+        from j`)).rows[0]
+    if (h.planted !== h.bad + 1) {
+      throw new Error(`WORLD GUARD IS BLIND: a deliberately bent haul was not seen (bad ${h.bad}, with the plant ${h.planted}).`)
+    }
+    if (h.bad > 0) findings.push(`port_goods: ${h.bad} of ${h.n} market rows' haul_nm / haul differ from world.haul_rows() — re-derive (update public.port_goods from world.haul_rows())`)
+    haulRows = h.n
+  }
+
   if (findings.length > 0) {
     const head = findings.slice(0, 40)
     throw new Error(
@@ -737,7 +765,8 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       `${want.skillEffects.length} skill effects, ${want.skillRequirements.length} skill requirements, ${want.itemUse.length} item uses, ${want.itemCity.length} Named items' cities, ${want.perks.length} perks, ${want.setNames.length} sets, ${want.itemLine.length} Country items' lines, ` +
       `${want.waveA.liveClasses.length + want.waveA.classes.length} ship classes and ${want.waveA.items.length} items (generators re-run = files = database), ` +
       `${db_.homes.length} home cities, ${want.captains.people.length} captains with ${db_.captains.kit.length} traits and ` +
-      `${db_.captains.speaks.length} languages, ${db_.captains.portLanguage.length} harbour languages (generator re-run = file = database) ` +
+      `${db_.captains.speaks.length} languages, ${db_.captains.portLanguage.length} harbour languages (generator re-run = file = database)` +
+      (hasHaul ? `, ${haulRows} market rows' hauls = world.haul_rows() (a planted bend seen) ` : ' ') +
       `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, bent merchant line hull, bent perk, bent generated hull, dropped home city and bent captain trait were all seen)`,
   )
 }

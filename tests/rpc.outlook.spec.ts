@@ -51,7 +51,8 @@ test.beforeAll(async () => {
   test.setTimeout(360_000)
   db = await openLocalDb({ loadChain, loadImage: builtWorldImage, dataDir: 'memory://', log: () => {} })
   // A row whose price sits well inside the world's band whatever the bends below do to it, so the
-  // estimate can move: Lisbon, the first good (by code) whose terms keep it off both clamps.
+  // estimate can move: Lisbon, the first good (by code) whose terms keep it off both clamps (0173: the band
+  // is the base's × the row's haul, the sea it crossed).
   const r = await db.pg.query<{ port_id: string; good_id: string }>(`
     select pg.port_id, pg.good_id
       from public.port_goods pg
@@ -59,10 +60,10 @@ test.beforeAll(async () => {
       join public.goods g on g.id = pg.good_id
      cross join lateral world.mid_terms(pg.port_id, pg.good_id) t
      where p.code = 'LIS'
-       and world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_target, t.m_target / 2, 0.2, t.m_season, t.m_dev,
-                                t.m_elasticity, t.m_dev_discount, t.m_band_lo, t.m_band_hi) < t.m_band_hi * t.m_base * 0.99
-       and world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_target, t.m_target * 2, -0.2, t.m_season, t.m_dev,
-                                t.m_elasticity, t.m_dev_discount, t.m_band_lo, t.m_band_hi) > t.m_band_lo * t.m_base * 1.01
+       and world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_haul, t.m_target, t.m_target / 2, 0.2, t.m_season, t.m_dev,
+                                t.m_elasticity, t.m_dev_discount, t.m_band_lo, t.m_band_hi) < t.m_band_hi * t.m_base * t.m_haul * 0.99
+       and world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_haul, t.m_target, t.m_target * 2, -0.2, t.m_season, t.m_dev,
+                                t.m_elasticity, t.m_dev_discount, t.m_band_lo, t.m_band_hi) > t.m_band_lo * t.m_base * t.m_haul * 1.01
      order by g.code limit 1`)
   expect(r.rows, 'no Lisbon row sits inside the band').toHaveLength(1)
   port = r.rows[0].port_id
