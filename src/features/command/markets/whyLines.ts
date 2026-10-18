@@ -1,4 +1,4 @@
-import { formatFixed, formatInt, formatPctChange } from '../../../lib/format'
+import { formatFixed, formatInt, formatPct, formatPctChange } from '../../../lib/format'
 import type { PriceWhy } from '../../../lib/rpc'
 
 // WHY THIS PRICE, AS LINES (docs/PRICE_FACTORS.md §5; migration 0185): world.price_why's served terms named
@@ -25,6 +25,30 @@ export function stakeLine(why: PriceWhy): string | null {
   return shave > 0
     ? `Your company is #${s.rank} among this city's givers: ${formatFixed(shave * 100, 0)}% off the port's spread`
     : `Your company is #${s.rank} among this city's givers`
+}
+
+/** 0195: the company's own profit tax here and the relation that moves it (world.price_why `tariff`). The
+ *  stance is named only when it moves the rate (the race off, every company pays the city's rate); the
+ *  multiplier is the served rate over the served base, never a rule re-derived here. */
+export function tariffLine(why: PriceWhy): { label: string; value: string } | null {
+  const t = why.tariff
+  if (!t) return null
+  const rate = Number(t.rate)
+  const base = Number(t.base)
+  const moved = base > 0 && Math.abs(rate - base) > 1e-9
+  const where = t.stance === 'home' ? 'your own country' : t.holder ? t.holder.name : 'a free city'
+  const how = !moved || t.stance === 'home' ? '' : `, ${STANCE_WORD[t.stance]}`
+  return {
+    label: `Tax on your profit · ${where}${how}`,
+    value: moved ? `${formatPct(rate, 1)} (×${Number((rate / base).toFixed(2))})` : formatPct(rate, 1),
+  }
+}
+
+const STANCE_WORD: Record<'ally' | 'peace' | 'rival' | 'war', string> = {
+  ally: 'an ally',
+  peace: 'at peace',
+  rival: 'a rival',
+  war: 'at war',
 }
 
 function effectOf(mult: number): string {

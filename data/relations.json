@@ -1,0 +1,19 @@
+{
+  "$doc": "HOW THE GREAT POWERS STAND WITH EACH OTHER - the tariff half of a company's profit tax (docs/PRICE_FACTORS.md §3.2, F4/F5, slice P4; migration 0195).",
+  "note": "The owner, 2026-10-18: 'is there a way for the prices move on many different factors? like relationship with other countries'. One row per UNORDERED pair of the ten great powers (public.great_powers, 0187) that is NOT at peace; every pair not listed is at peace. The stance multiplies the profit tax a company of one power pays in a city the other holds (world.tax_rate): ally x0.5, rival x1.5, war x2 (knob tariff_stance_mult), never above tariff_rate_max 35 %. Authored, not simulated (F5): the stances of the years 1580-1640 that the histories agree on, each defended in a line. NOT the owner's - confirm every row.",
+  "relations": [
+    { "a": "ENG", "b": "PRT", "stance": "ally", "why": "the Treaty of Windsor (1386), the oldest alliance in Europe, held through the century" },
+    { "a": "ESP", "b": "PRT", "stance": "ally", "why": "the Iberian Union (1580-1640): one king in Madrid and Lisbon" },
+    { "a": "ENG", "b": "NLD", "stance": "ally", "why": "the Treaty of Nonsuch (1585): England sent an army to the Dutch revolt against Spain" },
+    { "a": "FRA", "b": "OTT", "stance": "ally", "why": "the Franco-Ottoman alliance and the capitulations of 1536 lowered French customs in the Levant" },
+    { "a": "JOS", "b": "MNG", "stance": "ally", "why": "Joseon was Ming's tributary, and Ming armies fought for it in the Imjin War (1592-98)" },
+    { "a": "ENG", "b": "ESP", "stance": "rival", "why": "the Anglo-Spanish War (1585-1604) and the Armada of 1588" },
+    { "a": "ESP", "b": "FRA", "stance": "rival", "why": "Habsburg against Valois and Bourbon, from the Italian Wars to the war of 1635" },
+    { "a": "ESP", "b": "OTT", "stance": "rival", "why": "the Habsburg-Ottoman wars for the Mediterranean: Tunis, Malta, Lepanto (1571)" },
+    { "a": "OTT", "b": "PRT", "stance": "rival", "why": "the Ottoman-Portuguese wars for the Indian Ocean, Diu (1538) to Hormuz" },
+    { "a": "JPN", "b": "MNG", "stance": "rival", "why": "the wokou raids and Ming's ban on trade with Japan; Ming fought Japan in Korea" },
+    { "a": "JOS", "b": "JPN", "stance": "rival", "why": "the Imjin War (1592-98); trade reopened only by the Treaty of Giyu (1609)" },
+    { "a": "ESP", "b": "NLD", "stance": "war", "why": "the Eighty Years' War (1568-1648), the Dutch revolt against the Spanish crown" },
+    { "a": "NLD", "b": "PRT", "stance": "war", "why": "the Dutch-Portuguese War (1602-1663) for the spice trade, from Malacca to Brazil" }
+  ]
+}
