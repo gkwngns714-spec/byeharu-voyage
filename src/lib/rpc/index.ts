@@ -71,6 +71,9 @@ import type {
   FleetTrades,
   PortMerchants,
   TownHallView,
+  PriceOutlook,
+  GoodBoard,
+  Watchlist,
   InvestReceipt,
   TowReceipt,
   AllegianceView,
@@ -628,6 +631,34 @@ export function worldPortMerchants(portId: string): Promise<RpcResult<PortMercha
  *  there. Asked when the tab is open, not on the beat. */
 export function worldTownHall(portId: string): Promise<RpcResult<TownHallView>> {
   return call<TownHallView>('worldTownHall', [portId])
+}
+
+/** A good's estimated price at one city (0170), on one side — mid (the chart), ask (where you buy)
+ *  or bid (where you sell). The server draws nothing and the client multiplies nothing: this is the
+ *  path and its band, served. */
+export function worldPriceOutlook(
+  portId: string,
+  goodId: string,
+  slots: number | null,
+  side: 'mid' | 'ask' | 'bid',
+): Promise<RpcResult<PriceOutlook>> {
+  return call<PriceOutlook>('worldPriceOutlook', [portId, goodId, slots, side])
+}
+
+/** One good at every city, for your fleet (0171): where it is sold and what it costs, where it is
+ *  bought and what you would net. `fromPortId` names the city to buy at; `qty` an amount. */
+export function worldGoodBoard(
+  goodId: string,
+  fleetId: string,
+  fromPortId: string | null = null,
+  qty: number | null = null,
+): Promise<RpcResult<GoodBoard>> {
+  return call<GoodBoard>('worldGoodBoard', [goodId, fleetId, fromPortId, qty])
+}
+
+/** Every good once (0171): its cheapest seller, the record's line, what your fleet carries. */
+export function worldWatchlist(fleetId: string | null): Promise<RpcResult<Watchlist>> {
+  return call<Watchlist>('worldWatchlist', [fleetId])
 }
 
 /** What `cmdTow` would do (0152) — the real tow, rolled back — or the refusal it would give

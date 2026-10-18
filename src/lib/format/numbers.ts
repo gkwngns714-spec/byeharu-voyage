@@ -68,6 +68,43 @@ export function formatUnitPrice(n: number): string {
   return `${formatInt(n)}${NBSP}${COIN} each`
 }
 
+/** A PRICE AT ANY SCALE (the COMMAND DESK, 2026-10-18): the game's prices run from about 1 to about
+ *  100,000 a unit (distance pricing is coming), and a figure must keep its meaning at both ends —
+ *  "1 🪙" for 1.42 hides a 40 % move, "12,345.67 🪙" is noise. So the decimals follow the size:
+ *  below 10 two places (1.42), below 100 one (42.6), from 100 none (1,240 · 98,400). */
+export function priceDigits(n: number): number {
+  const a = Math.abs(n)
+  return a < 10 ? 2 : a < 100 ? 1 : 0
+}
+
+/** The bare figure of `formatPrice`, for an axis label or a column: 1.42 · 42.6 · 1,240. */
+export function formatPriceFigure(n: number): string {
+  if (!Number.isFinite(n)) return '—'
+  return formatFixed(n, priceDigits(n))
+}
+
+/** A price with its coin: 1.42 → "1.42 🪙", 98400 → "98,400 🪙". */
+export function formatPrice(n: number): string {
+  return `${formatPriceFigure(n)}${NBSP}${COIN}`
+}
+
+/** A signed price: +0.42 🪙, −1,240 🪙 — a net per unit or per ton at any scale (formatPrice's digits). */
+export function formatPriceDelta(n: number): string {
+  if (!Number.isFinite(n)) return '—'
+  const dp = priceDigits(n)
+  const r = Math.round(n * 10 ** dp) / 10 ** dp
+  if (r === 0) return `0${NBSP}${COIN}`
+  return `${r > 0 ? '+' : MINUS}${formatPrice(Math.abs(r))}`
+}
+
+/** A signed movement in points already (4.1 → "+4.1%", −2 → "−2.0%", 0 → "0.0%"): the change chip. */
+export function formatPctChange(points: number): string {
+  if (!Number.isFinite(points)) return '—'
+  const r = Math.round(points * 10) / 10
+  if (r === 0) return '0.0%'
+  return `${r > 0 ? '+' : MINUS}${formatFixed(Math.abs(r), 1)}%`
+}
+
 /** A trade quantity: 20 → "20 units", 1 → "1 unit". The count the server trades in; the space it
  *  takes is `formatTons(qty * bulk)`, and the two are never confused (docs/WORDS.md law 2). */
 export function formatUnits(n: number): string {

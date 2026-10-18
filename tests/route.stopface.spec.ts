@@ -131,6 +131,8 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   await expect(page.getByTestId('fleet-keep')).toHaveCount(0, { timeout: 60_000 })
   await page.getByTestId('fleet-command').click()
   await expect(page.getByTestId('command')).toBeVisible()
+  // 2026-10-18: the route is on the desk's Plans face (docs/COMMAND_DESK.md §3.5)
+  await page.getByRole('tab', { name: 'Plans' }).click()
 
   const routeRow = page.getByTestId('route-row')
   await expect(routeRow).toContainText('No route', { timeout: 60_000 })

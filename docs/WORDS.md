@@ -70,6 +70,13 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | promotion items (0162) | **Sea Chart** · **Trade Seal** · **Battle Honour** (in Storage, like any item) | contract, astrolabe, certificate |
 | the languages she speaks (0156) | the server's sentence **Speaks Portuguese, Spanish** | LV, fluency |
 | the market | **market** / **here** | the quay |
+| the trading screen (2026-10-18, docs/COMMAND_DESK.md §9) | the tab stays **Command**; its faces **Markets · Plans** (City, Invest, Profit join with their slices) | desk, terminal, exchange |
+| the list of every good | **Markets**, column head **Market price** | watchlist, ticker |
+| where a good is sold / bought | **Buy at** / **Sell at** | sources, suppliers / buyers, destinations |
+| profit after costs, per ton | **net per ton** (`+31 🪙 / ton`) | margin, spread, P/L |
+| the server's estimate | **Estimate** · `If nobody else trades here, the price is likely 88–101 🪙 at 17:40.` | forecast, prediction, projection, confidence interval |
+| when it is best | **best 19:10 +2%** | optimal, ideal |
+| arrival | **arrive 17:52** | ETA |
 | price paid | **Bought at** | paid, basis |
 | sale proceeds | **You get** | fetches |
 | a price ceiling from the server | **Max** | at most |

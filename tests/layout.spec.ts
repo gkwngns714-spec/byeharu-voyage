@@ -628,6 +628,8 @@ test(`COMMAND: the route row unfolds in place above the queue at ${PHONE.width}p
   )
   await page.goto('command')
   await ready(page)
+  // 2026-10-18: the route and the queue are the desk's Plans face (docs/COMMAND_DESK.md §3.5)
+  await page.getByRole('tab', { name: 'Plans' }).click()
   const row = page.getByTestId('route-row')
   await expect(row).toBeVisible()
   // The route book has landed (the label names what it read), so no late text moves the row.

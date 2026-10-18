@@ -86,6 +86,11 @@ export interface ServedReadOptions {
    *  one ask, as the four port faces use it. Null with a subject means "nothing to ask right now"
    *  (a quantity of nought); the last answer still stands. */
   question?: string | null
+  /** WHAT RE-ASKS, when it is not the world's beat (2026-10-18, the COMMAND desk): a number the caller
+   *  moves when the answer is due again — `useEdgeRead` moves it when the served clock's edge passes.
+   *  A read that costs a third of a second on prod (world.good_board) must not ride a 3-s beat.
+   *  Absent: the world's beat, as every other read. */
+  trigger?: number
 }
 
 /**
@@ -98,10 +103,11 @@ export interface ServedReadOptions {
 export function useServedRead<V>(
   subject: string | null,
   ask: () => Promise<RpcResult<V>>,
-  { question = subject }: ServedReadOptions = {},
+  { question = subject, trigger }: ServedReadOptions = {},
 ): ServedRead<V> {
-  // The world's read: a new one re-asks the same question.
-  const beat = useWorld((s) => s.readAt) ?? 0
+  // The world's read: a new one re-asks the same question — unless the caller names its own trigger.
+  const worldBeat = useWorld((s) => s.readAt) ?? 0
+  const beat = trigger ?? worldBeat
 
   const askRef = useRef(ask)
   useEffect(() => {

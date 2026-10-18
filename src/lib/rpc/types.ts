@@ -2504,3 +2504,130 @@ export interface NationStandings {
     top: { name: string; merchant: boolean; points: number }[]
   }[]
 }
+
+// ── 0170 / 0171: THE COMMAND DESK (docs/COMMAND_DESK.md §7) ──────────────────────────────────────
+
+/** One point of a served estimate: the price on the asked side, and its band. At k = 0 the band is
+ *  the price itself (now is known). */
+export interface OutlookPoint {
+  at: string
+  value: number
+  lo: number
+  hi: number
+}
+
+/** When the estimate is best ahead — served only when its gain beats the band there (0171's rule). */
+export interface OutlookBest {
+  at: string
+  value: number
+  gain_pct: number
+}
+
+/** `world.price_outlook(port, good, slots, side)` (0170) — a good's estimated price at one city. */
+export interface PriceOutlook {
+  port: string
+  good: string
+  side: 'mid' | 'ask' | 'bid'
+  slot_seconds: number
+  now: string
+  horizon_slots: number
+  band_z: number
+  /** The server's words: "If nobody else trades here". */
+  assumes: string
+  /** The server's words for what is held as now (the port fee, the tax, the purse). */
+  held: string
+  points: OutlookPoint[]
+  best: OutlookBest | null
+  /** The fairs that fall in the window (a fair moves the port fee). */
+  events: { code: string; name: string; effect: string; from: string; to: string }[]
+  clock: { now: string; next_change_at: string }
+}
+
+/** The estimate where a row would be reached: the first served point at or after the arrival. */
+export interface OutlookAtArrival {
+  value: number
+  lo: number
+  hi: number
+}
+
+/** A city that sells the good (0171 good_board `buy`). */
+export interface BoardBuyRow {
+  port: string
+  name: string
+  /** The fleet is docked there. */
+  here: boolean
+  /** What the asked amount fills there (stock-limited), and what it costs (world.quote, buy). */
+  units: number
+  cost: number
+  price_each: number | null
+  stock: number
+  miles: number | null
+  days: number | null
+  arrive_at: string | null
+  at_arrival: OutlookAtArrival | null
+  best: OutlookBest | null
+}
+
+/** A harbour that buys the good (0171 good_board `sell`). Only `quoted` rows carry the money. */
+export interface BoardSellRow {
+  port: string
+  name: string
+  /** The market price there now (world.mid_price). */
+  mid: number
+  quoted: boolean
+  miles: number | null
+  days: number | null
+  arrive_at: string | null
+  units: number | null
+  price_each: number | null
+  proceeds: number | null
+  cost: number | null
+  profit_tax: number | null
+  /** Inside `proceeds` already — shown, never subtracted again. */
+  port_fee: number | null
+  wages: number | null
+  net: number | null
+  net_per_ton: number | null
+  cap_left: number | null
+  at_arrival: OutlookAtArrival | null
+  best: OutlookBest | null
+  request: { premium_pct: number; days_left: number } | null
+}
+
+/** `world.good_board(good, fleet, from, qty)` (0171) — one good at every city, for your fleet. */
+export interface GoodBoard {
+  good: string
+  fleet: {
+    id: string
+    name: string
+    where: { kind: 'docked' | 'sailing' | 'at_sea'; port: string | null; miles_left?: number; eta?: string }
+    speed_kn: number
+    wage_per_day: number
+  }
+  qty: { units: number; basis: 'on_board' | 'asked' | 'capacity' | 'step'; tons: number; bought_at: string | null; cost_each: number | null }
+  buy: BoardBuyRow[]
+  sell: BoardSellRow[]
+  /** How many of the dearest cities are priced in full (the knob good_board_quoted). */
+  quoted: number
+  assumes: string
+  clock: { now: string; next_change_at: string }
+}
+
+/** One good on the watchlist (0171). The price is the record's newest (or live, `recorded: false`). */
+export interface WatchGood {
+  code: string
+  sellers: number
+  best: { port: string; mid: number; as_of: string | null; recorded: boolean } | null
+  change_pct: number | null
+  /** The cheapest seller's record, an hour apart, oldest first. */
+  spark: number[]
+  on_board: number
+  wanted_at: string[]
+}
+
+/** `world.watchlist(fleet)` (0171) — every good once. */
+export interface Watchlist {
+  window_slots: number
+  goods: WatchGood[]
+  clock: { now: string; next_change_at: string }
+}
