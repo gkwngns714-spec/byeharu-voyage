@@ -154,7 +154,7 @@ comment on function public.npc_purse_ceiling(uuid) is
 revoke all on function public.npc_purse_ceiling(uuid) from public, anon, authenticated;
 
 -- ── 4. (a) ABOVE THE CEILING, TO THE CITIES OF HER LOOP ─────────────────────────────────────────
-create function public.npc_give_above_ceiling(p_now timestamptz default now())
+create function public.npc_give_above_ceiling(p_now timestamptz default now(), p_player uuid default null)
 returns jsonb
 language plpgsql
 security definer
@@ -167,7 +167,8 @@ as $$
 -- the rest as MERCHANT_SURPLUS (public.pay_city — no influence). Her purse ends AT her ceiling. Lit
 -- only (dark, a payment to a city writes nothing, so nothing is given). Composed by
 -- public.npc_tend_houses after public.npc_invest, while the merchants are on. Budgeted by 0114's
--- deadline (public.npc_upkeep_spent): a house not reached is deferred to the next hour.
+-- deadline (public.npc_upkeep_spent): a house not reached is deferred to the next hour. p_player, when
+-- given, limits the pass to that one house (the hourly caller gives none: every house).
 declare
   hh        record;
   w         record;
@@ -192,6 +193,7 @@ begin
   for hh in select h.player_id, h.home_port_id, pl.company_name
               from public.npc_houses h join public.players pl on pl.id = h.player_id and pl.is_npc
              where pl.ducats > public.npc_purse_ceiling(h.player_id)
+               and (p_player is null or h.player_id = p_player)
              order by h.roster_ord loop
     if public.npc_upkeep_spent() then
       v_deferred := v_deferred + 1;
@@ -246,10 +248,10 @@ begin
   return jsonb_build_object('ceiling', v_houses, 'given', v_given, 'shares', v_shares,
                             'deferred', v_deferred, 'failed', v_failed, 'notes', v_notes);
 end $$;
-comment on function public.npc_give_above_ceiling(timestamptz) is
+comment on function public.npc_give_above_ceiling(timestamptz, uuid) is
   '0180 (a): every merchant house above her purse ceiling gives the excess to the harbours of her loop '
   '(SHARES where offered, the rest MERCHANT_SURPLUS). Composed by npc_tend_houses. Server-only.';
-revoke all on function public.npc_give_above_ceiling(timestamptz) from public, anon, authenticated;
+revoke all on function public.npc_give_above_ceiling(timestamptz, uuid) from public, anon, authenticated;
 
 -- ── 5. (d) A HULL AT THE YARD SHE LIES AT ──────────────────────────────────────────────────────
 create function public.npc_build_for(p_fleet uuid, p_now timestamptz default now())
@@ -560,6 +562,7 @@ declare
   v_flow0  bigint;
   v_world0 numeric;
   v_world1 numeric;
+  v_inf0   numeric;   -- her influence day_given before the pass (a real house may have given today)
   v_ports  int;
   v_t0     timestamptz;
   v_out    jsonb := '{}'::jsonb;
@@ -568,25 +571,29 @@ begin
     if not public.city_treasury_on() then
       perform public.city_treasury_switch(true);
     end if;
-    -- her fleet: docked, one hull, at a yard of a tier her line hull's recipe asks, in a country that builds it
-    select nf.fleet_id, nf.player_id, nf.route_id, f.port_id, h.capital into v_f
+    -- her house: one hull in one fleet, and a HOME with a yard of the tier her line hull's recipe asks, in a
+    -- country that builds it. Chosen by the roster, never by where her fleet happens to lie now: the probe
+    -- then lays her fleet at her home quay itself (its own precondition, rolled back with the rest).
+    select nf.fleet_id, nf.player_id, nf.route_id, h.home_port_id as port_id, h.capital into v_f
       from public.npc_fleets nf
-      join public.fleets f on f.id = nf.fleet_id and f.status = 'DOCKED'
       join public.npc_houses h on h.player_id = nf.player_id
-      join public.port_buildings b on b.port_id = f.port_id and b.kind = 'building_yard'
-      join lateral (select public.npc_hull_for(coalesce((select lh.live_class from public.npc_line_hulls lh where lh.class_code = c.code), c.code), f.port_id) as cls
+      join public.port_buildings b on b.port_id = h.home_port_id and b.kind = 'building_yard'
+      join lateral (select public.npc_hull_for(coalesce((select lh.live_class from public.npc_line_hulls lh where lh.class_code = c.code), c.code), h.home_port_id) as cls
                       from public.ships s join public.ship_classes c on c.id = s.class_id
                      where s.fleet_id = nf.fleet_id order by s.is_flagship desc, s.name limit 1) k on true
       join public.hull_recipes hr on hr.class_code = k.cls and hr.yard_tier <= b.tier
      where (select count(*) from public.ships s where s.fleet_id = nf.fleet_id) = 1
        and (select count(*) from public.ships s where s.player_id = nf.player_id) = 1
-       and public.yard_wrong_country(f.port_id, k.cls) is null
+       and public.yard_wrong_country(h.home_port_id, k.cls) is null
        and public.requirements_met(nf.player_id, 'hull', k.cls)
        and not exists (select 1 from public.class_profile cp where cp.class_code = k.cls and cp.tech = 'F')
      order by nf.roster_ord limit 1;
     if v_f.fleet_id is null then
-      raise exception '0180 self-assert FAIL: no merchant fleet lies docked at a yard that builds her line hull — the roster moved, not this file';
+      raise exception '0180 self-assert FAIL: no one-hull merchant house homes at a yard that builds her line hull — the roster moved, not this file';
     end if;
+    -- THE PRECONDITION: her fleet lies docked at her home quay (a passage she is on is set aside)
+    update public.voyages set status = 'ABORTED' where fleet_id = v_f.fleet_id and status = 'SAILING';
+    update public.fleets set status = 'DOCKED', port_id = v_f.port_id, lat = null, lon = null where id = v_f.fleet_id;
     v_ceil := public.npc_purse_ceiling(v_f.player_id);
     -- AT her ceiling: nothing is tried
     perform public.credit(v_f.player_id, 'PROBE_0180', v_ceil - (select ducats from public.players where id = v_f.player_id));
@@ -596,11 +603,12 @@ begin
     select count(*), sum(s.crew) into v_n0, v_crew0 from public.ships s where s.fleet_id = v_f.fleet_id;
     select sr.hold_until into v_hold0 from public.standing_routes sr where sr.id = v_f.route_id;
     select coalesce(max(id), 0) into v_flow0 from public.treasury_flows;
-    select coalesce(sum(p.ducats), 0) + coalesce((select sum(t.ducats) from public.treasury_flows t), 0) into v_world0 from public.players p;
+    select ducats into v_world0 from public.players where id = v_f.player_id;
     v_t0 := clock_timestamp();
     v_r := public.npc_build_for(v_f.fleet_id, now());
     v_out := v_out || jsonb_build_object('build_ms', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
-    select coalesce(sum(p.ducats), 0) + coalesce((select sum(t.ducats) from public.treasury_flows t), 0) into v_world1 from public.players p;
+    select pl.ducats + coalesce((select sum(t.ducats) from public.treasury_flows t where t.id > v_flow0 and t.player_id = v_f.player_id), 0)
+      into v_world1 from public.players pl where pl.id = v_f.player_id;
     select c.code into v_cls from public.ships s join public.ship_classes c on c.id = s.class_id
      where s.fleet_id = v_f.fleet_id and not s.is_flagship order by s.name limit 1;
     v_out := v_out || jsonb_build_object('r', v_r, 'cls', v_cls, 'ceil', v_ceil,
@@ -612,11 +620,11 @@ begin
       'fit_flag', (select count(*) from public.fitted_units u join public.ships s on s.id = u.ship_id
                     where s.fleet_id = v_f.fleet_id and s.is_flagship),
       'build_paid', (select coalesce(sum(t.ducats), 0) from public.treasury_flows t
-                      where t.id > v_flow0 and t.kind = 'BUILD' and t.port_id = v_f.port_id),
+                      where t.id > v_flow0 and t.kind = 'BUILD' and t.port_id = v_f.port_id and t.player_id = v_f.player_id),
       'labour', public.yard_labour(v_f.player_id, v_cls),
-      'hire_paid', (select coalesce(sum(t.ducats), 0) from public.treasury_flows t where t.id > v_flow0 and t.kind = 'HIRE' and t.port_id = v_f.port_id),
-      'prov_paid', (select coalesce(sum(t.ducats), 0) from public.treasury_flows t where t.id > v_flow0 and t.kind = 'PROVISION' and t.port_id = v_f.port_id),
-      'other_ports', (select count(*) from public.treasury_flows t where t.id > v_flow0 and t.port_id <> v_f.port_id),
+      'hire_paid', (select coalesce(sum(t.ducats), 0) from public.treasury_flows t where t.id > v_flow0 and t.kind = 'HIRE' and t.port_id = v_f.port_id and t.player_id = v_f.player_id),
+      'prov_paid', (select coalesce(sum(t.ducats), 0) from public.treasury_flows t where t.id > v_flow0 and t.kind = 'PROVISION' and t.port_id = v_f.port_id and t.player_id = v_f.player_id),
+      'other_ports', (select count(*) from public.treasury_flows t where t.id > v_flow0 and t.player_id = v_f.player_id and t.port_id <> v_f.port_id),
       'purse', (select ducats from public.players where id = v_f.player_id),
       'status', (select status from public.fleets where id = v_f.fleet_id),
       'hold_same', (select sr.hold_until is not distinct from v_hold0 from public.standing_routes sr where sr.id = v_f.route_id),
@@ -638,18 +646,20 @@ begin
       join public.ports po on po.id = s.port_id and po.kind = 'HARBOUR'
      where nf.player_id = v_g.player_id;
     select coalesce(max(id), 0) into v_flow0 from public.treasury_flows;
-    select coalesce(sum(p.ducats), 0) + coalesce((select sum(t.ducats) from public.treasury_flows t), 0) into v_world0 from public.players p;
+    select ducats into v_world0 from public.players where id = v_g.player_id;
+    select coalesce(sum(i.day_given), 0) into v_inf0 from public.port_influence i where i.player_id = v_g.player_id;
     v_t0 := clock_timestamp();
-    v_r := public.npc_give_above_ceiling(now());
+    v_r := public.npc_give_above_ceiling(now(), v_g.player_id);   -- her house only (own state)
     v_out := v_out || jsonb_build_object('give_ms', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
-    select coalesce(sum(p.ducats), 0) + coalesce((select sum(t.ducats) from public.treasury_flows t), 0) into v_world1 from public.players p;
+    select pl.ducats + coalesce((select sum(t.ducats) from public.treasury_flows t where t.id > v_flow0 and t.player_id = v_g.player_id), 0)
+      into v_world1 from public.players pl where pl.id = v_g.player_id;
     v_out := v_out || jsonb_build_object('give', v_r - 'notes', 'give_notes', v_r->'notes', 'loop_ports', v_ports,
       'g_purse', (select ducats from public.players where id = v_g.player_id), 'g_ceil', public.npc_purse_ceiling(v_g.player_id),
-      'g_flows', (select coalesce(sum(t.ducats), 0) from public.treasury_flows t where t.id > v_flow0 and t.kind in ('SHARE', 'MERCHANT_SURPLUS')),
-      'g_ports', (select count(distinct t.port_id) from public.treasury_flows t where t.id > v_flow0 and t.kind in ('SHARE', 'MERCHANT_SURPLUS')),
-      'g_others', (select count(*) from public.treasury_flows t where t.id > v_flow0 and t.player_id is distinct from v_g.player_id),
+      'g_flows', (select coalesce(sum(t.ducats), 0) from public.treasury_flows t where t.id > v_flow0 and t.player_id = v_g.player_id and t.kind in ('SHARE', 'MERCHANT_SURPLUS')),
+      'g_ports', (select count(distinct t.port_id) from public.treasury_flows t where t.id > v_flow0 and t.player_id = v_g.player_id and t.kind in ('SHARE', 'MERCHANT_SURPLUS')),
+      'g_others', (select count(*) from public.treasury_flows t where t.id > v_flow0 and t.player_id = v_g.player_id and t.kind not in ('SHARE', 'MERCHANT_SURPLUS')),
       'g_world_moved', v_world1 - v_world0,
-      'g_influence', (select coalesce(sum(i.day_given), 0) from public.port_influence i where i.player_id = v_g.player_id),
+      'g_influence', (select coalesce(sum(i.day_given), 0) from public.port_influence i where i.player_id = v_g.player_id) - v_inf0,
       'sum', public.npc_tend_sum(jsonb_build_object('built', 1, 'ceiling', 2, 'ceiling_given', 5), jsonb_build_object('built', 1)));
     raise exception 'PROBE_ROLLBACK_0180:%', v_out::text;
   exception when others then
@@ -698,13 +708,14 @@ begin
   end if;
   if (s->>'other_ports')::int <> 0 or (s->>'world_moved')::numeric <> 0 or (s->>'shed_left')::int <> 0
      or not (s->>'ledger_ok')::boolean then
-    raise exception '0180 self-assert FAIL: the hull''s money left this city or the world moved (% flows elsewhere, world %, shed %, ledger %)',
+    raise exception '0180 self-assert FAIL: the hull''s money left this city or her money moved (% of her flows elsewhere, her purse + flows %, shed %, ledger %)',
       s->>'other_ports', s->>'world_moved', s->>'shed_left', s->>'ledger_ok';
   end if;
   if (s->>'purse')::bigint < (s->>'ceil')::bigint or s->>'status' <> 'DOCKED' or not (s->>'hold_same')::boolean then
     raise exception '0180 self-assert FAIL: after the hull her purse % (ceiling %), her fleet %, her rest moved %', s->>'purse', s->>'ceil', s->>'status', not (s->>'hold_same')::boolean;
   end if;
   -- (ii) (a)
+  -- the pass was given HER house only (p_player), so it gives for exactly one
   if (s->'give'->>'ceiling')::int <> 1 or (s->'give'->>'failed')::int <> 0 then
     raise exception '0180 self-assert FAIL: the ceiling pass gave for % house(s) (want 1), failed % — %', s->'give'->>'ceiling', s->'give'->>'failed', s->'give_notes';
   end if;
@@ -714,14 +725,14 @@ begin
   end if;
   if (s->>'g_ports')::int <> greatest((s->>'loop_ports')::int, 1) or (s->>'g_others')::int <> 0 or (s->>'g_world_moved')::numeric <> 0
      or (s->>'g_influence')::numeric <> 0 then
-    raise exception '0180 self-assert FAIL: given to % harbours of her % loop harbours; % flows not hers; world moved %; influence day_given %',
+    raise exception '0180 self-assert FAIL: given to % harbours of her % loop harbours; % other flows of hers; her money moved %; influence day_given moved %',
       s->>'g_ports', s->>'loop_ports', s->>'g_others', s->>'g_world_moved', s->>'g_influence';
   end if;
   if (s->'sum'->>'built')::int <> 2 or (s->'sum'->>'ceiling')::int <> 2 or (s->'sum'->>'ceiling_given')::int <> 5 then
     raise exception '0180 self-assert FAIL: npc_tend_sum does not add the new counts: %', s->'sum';
   end if;
 
-  raise notice '0180 self-assert ok: A MERCHANT SPENDS WHAT SHE EARNS. (3) LINES: % merchant legs at 65 %% maker stock — the new planner wrote % BUY lines, 0 refused by their own limit; the old one % lines, % refused (positive control); priced in % ms new / % ms old. (d) A HULL: a house AT her ceiling is offered none; % d. above it, her fleet at % laid down a % (% → % hulls) through cmd.do_build: BUILD % = the yard''s labour, HIRE % for % hands, PROVISION %, her gear % = her flagship''s, her purse % ≥ her ceiling %, still DOCKED, her rest untouched, no flow outside the city, the world''s money unchanged (% ms). (a) THE CEILING (3 × capital): a house 1234567 above it gave % in shares + % as MERCHANT_SURPLUS to % harbours of her loop and stands at her ceiling %; no influence, the world''s money unchanged (% ms). Bodies reverse, ACLs unchanged.',
+  raise notice '0180 self-assert ok: A MERCHANT SPENDS WHAT SHE EARNS. (3) LINES: % merchant legs at 65 %% maker stock — the new planner wrote % BUY lines, 0 refused by their own limit; the old one % lines, % refused (positive control); priced in % ms new / % ms old. (d) A HULL: a house AT her ceiling is offered none; % d. above it, her fleet at % laid down a % (% → % hulls) through cmd.do_build: BUILD % = the yard''s labour, HIRE % for % hands, PROVISION %, her gear % = her flagship''s, her purse % ≥ her ceiling %, still DOCKED, her rest untouched, no flow of hers outside the city, her purse + her flows unchanged (% ms). (a) THE CEILING (3 × capital): a house 1234567 above it gave % in shares + % as MERCHANT_SURPLUS to % harbours of her loop and stands at her ceiling %; no influence, her purse + her flows unchanged (% ms). Bodies reverse, ACLs unchanged.',
     l->>'legs', l->>'new_lines', l->>'old_lines', l->>'old_dead', round((l->>'new_ms')::numeric), round((l->>'old_ms')::numeric),
     2000000, s->'r'->>'port', s->>'cls', s->>'hulls0', s->>'hulls', s->>'build_paid', s->>'hire_paid', s->>'crew_added', s->>'prov_paid',
     s->>'fit_new', s->>'purse', s->>'ceil', s->>'build_ms',
