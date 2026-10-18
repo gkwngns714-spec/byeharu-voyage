@@ -48,7 +48,7 @@ async function domCounts(page: Page) {
     // Null-safe: before the world has opened there is no chart on the page, and the poll below
     // reads zero hulls rather than a thrown error.
     const chart = document.querySelector('[data-testid="map-chart"]')
-    const svg = chart?.querySelector('svg')
+    const svg = chart?.querySelector('[data-testid="map-view"]')
     return {
       hulls: document.querySelectorAll('path[data-hull-class]').length,
       ships: document.querySelectorAll('[data-testid="map-merchant"], [data-testid="map-ship"]').length,

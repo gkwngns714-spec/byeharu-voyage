@@ -213,17 +213,17 @@ async function wrapOnTheGlass(page: Page) {
   return page.evaluate(() => {
     const chart = document.querySelector('[data-testid="map-chart"]')
     const root = chart?.querySelector('[data-sheet-copies]')
-    const svg = chart?.querySelector('svg')
+    const svg = chart?.querySelector('[data-testid="map-view"]')
     // Null-safe: before the world has opened there is no chart, and the poll reads an empty sheet.
     if (!chart || !root || !svg) {
       return { viewX: Number.NaN, spanDeg: Number.NaN, copies: [] as number[], perCopy: [] as { k: number; ports: number; ships: number }[], coastBodies: 0, coastUses: 0, dayCoastUses: 0, labels: 0 }
     }
     const [x, , w] = svg.getAttribute('viewBox')!.split(/\s+/).map(Number)
     const copies = (root.getAttribute('data-sheet-copies') ?? '').split(' ').map(Number)
-    // THE MARKS' group for the copy — not the coast sheet's, which carries the same attribute and
-    // comes first in the DOM.
+    // THE MARKS' group for the copy — not the coast sheets', which carry the same attribute and come
+    // first in the DOM (the night one, and since 2026-10-18 the day one beside it).
     const perCopy = copies.map((k) => {
-      const g = [...chart.querySelectorAll(`svg g[data-sheet-copy="${k}"]`)].find((el) => !el.closest('[data-testid="map-coast-sheet"]'))
+      const g = [...chart.querySelectorAll(`svg g[data-sheet-copy="${k}"]`)].find((el) => !el.closest('[data-testid="map-coast-sheet"], [data-testid="map-coast-sheet-day"]'))
       return {
         k,
         ports: g ? g.querySelectorAll('[data-port-code]').length : 0,
@@ -237,10 +237,11 @@ async function wrapOnTheGlass(page: Page) {
       copies,
       perCopy,
       coastBodies: sheet.querySelectorAll('[data-testid="map-coastline"]').length,
-      // The night coast's own <use>s: since 2026-10-17 the day coast is a second picture on its own
-      // sheet (src/chart/DaylightSheet.tsx) with its own copies, counted apart.
+      // The night coast's own <use>s: the day coast is a second picture with its own copies, counted
+      // apart — since 2026-10-18 on a sheet of its own beside this one, under a mask of the glass
+      // (src/chart/ChartCanvas.tsx, CoastSheet).
       coastUses: sheet.querySelectorAll(':scope > svg use[data-sheet-copy]').length,
-      dayCoastUses: sheet.querySelectorAll('[data-testid="map-daylight-mask"] use[data-sheet-copy]').length,
+      dayCoastUses: document.querySelectorAll('[data-testid="map-coast-sheet-day"] use[data-sheet-copy]').length,
       labels: document.querySelectorAll('[data-testid="map-labels"] text').length,
     }
   })
@@ -254,7 +255,7 @@ async function markOnGlass(page: Page, k: number) {
   return page.evaluate((copy) => {
     const chart = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
     const marks = [...document.querySelectorAll(`[data-testid="map-chart"] svg g[data-sheet-copy="${copy}"] [data-port-code]`)].filter(
-      (el) => !el.closest('[data-testid="map-coast-sheet"]'),
+      (el) => !el.closest('[data-testid="map-coast-sheet"], [data-testid="map-coast-sheet-day"]'),
     )
     const onGlass = marks
       .map((g) => {

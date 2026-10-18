@@ -7,7 +7,7 @@ import { LabelsLayer } from './LabelsLayer'
 import { PortsLayer } from './PortsLayer'
 import { RoadsteadsLayer } from './RoadsteadsLayer'
 import { DaylightSheet } from './DaylightSheet'
-import { DaySeaLayer, GraticuleLayer, SeaLayer } from './SeaLayer'
+import { DaySeaLayer, GraticuleLayer, SEA_VIEWBOX, SeaLayer } from './SeaLayer'
 import { DOT_SPAN_DEG, LANE_SPAN_DEG } from './chartView'
 import { portMarks, type ChartModel, type PortRole } from './chartModel'
 import type { CoastlineData } from './coastlineBuild'
@@ -315,12 +315,13 @@ export function ChartCanvas({
   const sheetLeft = snap((paper.x - box.x) / unitsPerPx)
   const sheetTop = snap((paper.y - box.y) / unitsPerPx)
 
-  // THREE SHEETS, ONE PICTURE, in the one paint order (header). The first and last are the view:
-  // their viewBox is `box` and they re-render with it, which costs nothing — the sea is three rects
-  // and a hairline, the marks are small. The middle one is the coast, the only expensive thing on
-  // the paper (measured: every frame of a pan re-rasterised it, 25–55 ms of GPU time): drawn over
-  // `paper`, not the view, and moved by a CSS transform, so a pan MOVES it on the compositor and
-  // repaints it only when the view crosses into the next half-glass of the grid (`paperOf`) or
+  // FIVE SHEETS, ONE PICTURE, in the one paint order (header): the night sea, the day sea through
+  // the Sun's mask, the night chart (graticule and coast), the day coast through the Sun's mask, the
+  // marks. Only the marks are the view: their viewBox is `box` and they re-render with it, which
+  // costs little — they are small. The seas are the glass's own picture and never change on a pan. The two charts — the only expensive things
+  // on the paper (every frame of a pan used to re-rasterise them, 25–55 ms of GPU) — are drawn over
+  // `paper`, not the view, and moved by a CSS transform, so a pan MOVES them on the compositor and
+  // repaints them only when the view crosses into the next half-glass of the grid (`paperOf`) or
   // zooms (docs/MAP_ATMOSPHERE.md §10).
   return (
     <div
@@ -334,29 +335,22 @@ export function ChartCanvas({
       data-sun-lat={sun.lat.toFixed(4)}
       data-sun-lon={sun.lon.toFixed(4)}
     >
-      <svg
-        className="absolute inset-0 h-full w-full"
-        viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
-        aria-hidden="true"
-      >
-        {/* THE SEA — the ground everything else is measured against, and its depth (./SeaLayer.tsx). */}
-        <SeaLayer box={box} />
+      {/* THE SEA — the ground everything else is measured against, and its depth (./SeaLayer.tsx).
+          The same picture at every pan, so it is drawn on the glass's unit square and never moves. */}
+      <svg className="absolute inset-0 h-full w-full" viewBox={SEA_VIEWBOX} preserveAspectRatio="none" aria-hidden="true">
+        <SeaLayer />
       </svg>
-      {/* THE DAY'S WATER, where the Sun is up (./DaylightSheet.tsx), then the graticule over it. */}
+      {/* THE DAY'S WATER, where the Sun is up (./DaylightSheet.tsx) — a picture of the glass, so a
+          pan slides only its mask and never repaints the picture. */}
       {sunlight.rasterUrl && (
         <DaylightSheet rasterUrl={sunlight.rasterUrl} x={box.x} y={box.y} unitsPerPx={unitsPerPx} className="absolute inset-0">
-          <svg className="block h-full w-full" viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`} aria-hidden="true">
-            <DaySeaLayer box={box} />
+          <svg className="block h-full w-full" viewBox={SEA_VIEWBOX} preserveAspectRatio="none" aria-hidden="true">
+            <DaySeaLayer />
           </svg>
         </DaylightSheet>
       )}
-      <svg
-        className="absolute inset-0 h-full w-full"
-        viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
-        aria-hidden="true"
-      >
-        <GraticuleLayer box={box} />
-      </svg>
+      {/* THE NIGHT CHART — the graticule over both waters, then the coast, on the paper, moved by a
+          translate. */}
       <CoastSheet
         coast={coast}
         paper={paper}
@@ -367,12 +361,32 @@ export function ChartCanvas({
         regions={regions}
         islets={islets}
         unitsPerPx={unitsPerPx}
-        rasterUrl={sunlight.rasterUrl}
       />
+      {/* THE DAY COAST — the same coast in the Earth's colours, where the Sun is up. Its mask stands
+          still on the glass like the day sea's, and the paper moves under it by the night sheet's
+          own translate (CoastSheet's header says why the mask may not ride on the moving sheet). */}
+      {sunlight.rasterUrl && coast && (
+        <DaylightSheet rasterUrl={sunlight.rasterUrl} x={box.x} y={box.y} unitsPerPx={unitsPerPx} className="absolute inset-0">
+          <CoastSheet
+            coast={coast}
+            paper={paper}
+            copies={paperCopies}
+            left={sheetLeft}
+            top={sheetTop}
+            strokeWidth={coastStrokeWidth(box.width)}
+            regions={regions}
+            islets={islets}
+            unitsPerPx={unitsPerPx}
+            face="day"
+          />
+        </DaylightSheet>
+      )}
+      {/* THE VIEW SHEET — the one svg whose viewBox IS the view (`map-view`, which the specs read). */}
       <svg
         className="absolute inset-0 h-full w-full"
         viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
         aria-hidden="true"
+        data-testid="map-view"
       >
         {/* THE MARKS, ONCE PER COPY OF THE SHEET (header): each copy's group is the world drawn at
             x + 360k, from that copy's own window, in the one paint order. */}
@@ -436,14 +450,29 @@ export function ChartCanvas({
 }
 
 /**
- * THE COAST'S SHEET — the coast (./CoastlineLayer.tsx: shallows, body, relief, line, tints,
- * islets, and the day picture over them) in its own `<svg>` over `paper`, on its own compositor
- * layer (`will-change: transform`), placed by a translate of `left`/`top` CSS pixels. Memoised, and
- * CoastlineLayer inside it too, so a pan — which changes only `left`/`top` — writes one `transform`
- * and the browser moves the layer. The svg's viewBox IS `paper` and its size is `paper` in pixels,
- * so a chart unit is exactly the pixel it is on the view sheets and every coordinate inside is the
- * chart's own. `copies` is `sheetCopies` of the PAPER, which is wider than the view: the coast is
- * drawn once and <use>d for the rest.
+ * THE COAST'S SHEET — one face of the coast (./CoastlineLayer.tsx: shallows, body, relief, line,
+ * tints, islets — or, `face="day"`, the same coast in the Earth's colours) in its own `<svg>` over
+ * `paper`, on its own compositor layer (`will-change: transform`), placed by a translate of
+ * `left`/`top` CSS pixels. Memoised, and CoastlineLayer inside it too, so a pan — which changes only
+ * `left`/`top` — writes one `transform` and the browser moves the layer. The svg's viewBox IS `paper`
+ * and its size is `paper` in pixels, so a chart unit is exactly the pixel it is on the view sheets
+ * and every coordinate inside is the chart's own. `copies` is `sheetCopies` of the PAPER, which is
+ * wider than the view: the coast is drawn once and <use>d for the rest.
+ *
+ * TWO OF THEM, AND NO MASK ON EITHER (2026-10-18, owner: *"when i move map, it blinks too much"*
+ * — *"move the map faster, it will show blink, way faster"*). The night face is drawn straight on
+ * the glass, with the graticule under its coast; the day face is a sheet INSIDE a DaylightSheet
+ * that is the glass itself, so the Sun's mask is the glass's and only the picture under it moves.
+ * Before, the day coast's mask sheet was nested inside the night sheet and rode its translate, the
+ * graticule was a glass-sized svg of its own, and both seas re-drew a glass on every frame: eight
+ * compositor layers the size of the glass and two mask surfaces. On a fast drag in headed Chrome on
+ * the GPU (3,000 px in 300 ms) that ran past the tile-memory budget, and Chrome put frames on the
+ * glass with tiles it had not rasterised — the land flashing to sea in rectangles, the day side
+ * going to night and back, once the whole page dark. Proved by the budget, not guessed: the same
+ * drag with `--force-gpu-mem-available-mb=4096` showed no such frame; the default showed 4 to 17 a
+ * run (docs/dev-log/2026-10-18-map-no-blink.md has the frames and the layer lists). Now the
+ * graticule rides this paper, the seas are still pictures, and the day coast's mask is the
+ * glass's: seven such layers, none re-drawn by a pan, and no blank frame in any run.
  */
 const CoastSheet = memo(function CoastSheet({
   coast,
@@ -455,7 +484,7 @@ const CoastSheet = memo(function CoastSheet({
   regions,
   islets,
   unitsPerPx,
-  rasterUrl,
+  face = 'night',
 }: {
   coast: CoastlineData | null
   paper: ViewBox
@@ -467,7 +496,7 @@ const CoastSheet = memo(function CoastSheet({
   regions: readonly RegionTint[] | null
   islets: readonly Point[]
   unitsPerPx: number
-  rasterUrl: string | null
+  face?: 'night' | 'day'
 }) {
   const style: CSSProperties = {
     width: paper.width / unitsPerPx,
@@ -475,7 +504,11 @@ const CoastSheet = memo(function CoastSheet({
     transform: `translate(${left}px, ${top}px)`,
   }
   return (
-    <div className="absolute top-0 left-0 will-change-transform" style={style} data-testid="map-coast-sheet">
+    <div
+      className="absolute top-0 left-0 will-change-transform"
+      style={style}
+      data-testid={face === 'day' ? 'map-coast-sheet-day' : 'map-coast-sheet'}
+    >
       {/* The svg's own viewport clips at `paper` (an inline svg is overflow: hidden), which is what
           bounds the layer to 1.5 views square instead of the whole world at harbour zoom. */}
       <svg
@@ -484,6 +517,8 @@ const CoastSheet = memo(function CoastSheet({
         preserveAspectRatio="none"
         aria-hidden="true"
       >
+        {/* The grid, on the night sheet only: it is over both waters and under every coast. */}
+        {face === 'night' && <GraticuleLayer box={paper} />}
         <CoastlineLayer
           coast={coast}
           strokeWidth={strokeWidth}
@@ -491,31 +526,9 @@ const CoastSheet = memo(function CoastSheet({
           islets={islets}
           unitsPerPx={unitsPerPx}
           copies={copies}
+          face={face}
         />
       </svg>
-      {/* THE DAY COAST — the same coast in the Earth's colours, on a sheet of its own over the night
-          one, shown where the Sun is up (./DaylightSheet.tsx). Its picture is a composited layer
-          that the Sun's glide never repaints: only the mask over it moves. */}
-      {rasterUrl && coast && (
-        <DaylightSheet rasterUrl={rasterUrl} x={paper.x} y={paper.y} unitsPerPx={unitsPerPx} className="absolute inset-0">
-          <svg
-            className="block h-full w-full"
-            viewBox={`${paper.x} ${paper.y} ${paper.width} ${paper.height}`}
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <CoastlineLayer
-              coast={coast}
-              strokeWidth={strokeWidth}
-              regions={regions}
-              islets={islets}
-              unitsPerPx={unitsPerPx}
-              copies={copies}
-              face="day"
-            />
-          </svg>
-        </DaylightSheet>
-      )}
     </div>
   )
 })
