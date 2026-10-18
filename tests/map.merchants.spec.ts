@@ -19,7 +19,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
-import { LAID_UP_AT_LISBON, RESTING_AT_PORTO, RESTING_PORT_CODE, serveNpcOn } from './npcOn.fixture'
+import { RESTING_AT_PORTO, RESTING_PORT_CODE, serveNpcOn } from './npcOn.fixture'
 import { pullBackUntilMerchants, TAP_ZONE, WHOLE_GLASS, type GlassZone } from './seaFrame.fixture'
 import {
   GLYPH,
@@ -590,22 +590,8 @@ test('the merchants sail on the chart, and a tap opens a read-only sheet', async
   await page.screenshot({ path: path.join(SHOTS, 'merchant-ship-panel-390.png') })
 })
 
-test('PORT at Lisbon lists the merchant in port and opens the same sheet', async ({ page, request, baseURL }) => {
-  test.setTimeout(600_000)
-  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-  await serveNpcOn(page)
-  await page.goto('port')
-  await ready(page)
-  const section = page.getByTestId('port-merchants')
-  await expect(section).toBeVisible({ timeout: 60_000 })
-  const row = section.getByTestId('merchant-row').filter({ hasText: LAID_UP_AT_LISBON })
-  await expect(row).toHaveCount(1)
-  await row.click()
-  await expect(page.getByTestId('merchant-sheet')).toBeVisible()
-  await expect(page.getByTestId('merchant-sheet-name')).toHaveText(LAID_UP_AT_LISBON, { timeout: 60_000 })
-  mkdirSync(SHOTS, { recursive: true })
-  await page.screenshot({ path: path.join(SHOTS, 'port-merchants-390.png') })
-})
+// PORT went under COMMAND on 2026-10-18 (docs/COMMAND_DESK.md D8): PORT's "Merchants in port" section went with it. The map's city panel is the one
+// list (COMMAND_DESK D8) — "Porto lists every merchant it concerns … and her row opens her sheet", below.
 
 test.describe('wide', () => {
   test.use({ viewport: { width: 1280, height: 800 } })
@@ -636,10 +622,7 @@ test('with the shipped image (merchants dark) there are no merchant hulls and no
   // longer than one of the shell's 3-s beats, so a traffic read would have landed
   await page.waitForTimeout(7_000)
   await expect(page.getByTestId('map-merchant')).toHaveCount(0)
-  await page.goto('port')
-  await ready(page)
-  await expect(page.getByTestId('port')).toBeVisible()
-  await expect(page.getByTestId('port-merchants')).toHaveCount(0)
+  // (PORT's "Merchants in port" section went with PORT, 2026-10-18; the map's list is the one list.)
 })
 
 test('the eight nation inks exist in both schemes and stand off the sea', async ({ page, request, baseURL }) => {
@@ -901,6 +884,9 @@ test('Porto lists every merchant it concerns, grouped — the fixture\'s resting
   await expect(page.getByTestId('merchant-sheet-name')).toHaveText(RESTING_AT_PORTO, { timeout: 60_000 })
   await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
   await expect(page.getByTestId('merchant-level')).toContainText(level)
+  // her sheet flies her country's flag (moved here from flags.spec 2026-10-18: PORT's merchant list went
+  // with PORT, and this is the one list a merchant's sheet opens from)
+  await expect(page.getByTestId('merchant-sheet-flag').locator('img[data-testid="flag"]').first()).toBeVisible({ timeout: 60_000 })
   await page.screenshot({ path: path.join(SHOTS, 'city-tray-merchant-from-list-390.png') })
 })
 

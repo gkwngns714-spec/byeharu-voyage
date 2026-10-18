@@ -32,6 +32,7 @@
 
 import { test, expect, type Page } from '@playwright/test'
 import { PHONE, ready, reachable } from './appReady.fixture'
+import { openCityFace } from './desk.fixture'
 
 test.use({ viewport: PHONE })
 
@@ -148,8 +149,9 @@ async function openPort(page: Page, request: { get: (url: string) => Promise<{ o
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('port')
+  await page.goto('command')
   await ready(page)
+  await openCityFace(page)
   await page.waitForTimeout(1200)
   const rows = page.locator('[data-testid="trade-row"]')
   expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)

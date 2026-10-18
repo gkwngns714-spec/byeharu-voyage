@@ -5,8 +5,8 @@ import { FLAG_ADVANCE_EM, mapLabelRequests, planLabels } from '../src/chart/labe
 import { buildChartModel } from '../src/chart/chartModel'
 import type { MapPort } from '../src/chart/mapTypes'
 import { PHONE, reachable, ready } from './appReady.fixture'
+import { openCityFace } from './desk.fixture'
 import { openCityPanel } from './openCity.fixture'
-import { serveNpcOn } from './npcOn.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE FLAGS (the owner, 2026-10-18): "flag images for each city … find country flags, apply to our
@@ -151,23 +151,18 @@ for (const [glass, size] of [['1440', WIDE], ['390', PHONE]] as const) {
   })
 }
 
-test('a merchant\'s sheet and the Port tab\'s title fly their flags (merchants on)', async ({ page, request, baseURL }) => {
-  test.setTimeout(600_000)
+// 2026-10-18 (docs/COMMAND_DESK.md D8): PORT's title is the desk City's heading now. A merchant's sheet flag is
+// checked where her sheet opens from — the map's city list (map.merchants.spec, the Porto test).
+test('the desk City\'s title flies its city\'s flag', async ({ page, request, baseURL }) => {
+  test.setTimeout(420_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   mkdirSync(SHOTS, { recursive: true })
-  await serveNpcOn(page)
   for (const [glass, size] of [['1440', WIDE], ['390', PHONE]] as const) {
     await page.setViewportSize(size)
-    await page.goto('port')
+    await page.goto('command')
     await ready(page)
-    await expectFlags(page.getByTestId('port').locator('h1, h2').first())
-    const section = page.getByTestId('port-merchants')
-    await expect(section).toBeVisible({ timeout: 120_000 })
-    await section.getByTestId('merchant-row').first().click()
-    const sheet = page.getByTestId('merchant-sheet')
-    await expect(sheet).toBeVisible()
-    await expectFlags(sheet.getByTestId('merchant-sheet-flag'))
-    await page.waitForTimeout(400)
-    await page.screenshot({ path: path.join(SHOTS, `merchant-${glass}.png`) })
+    await openCityFace(page)
+    await expectFlags(page.getByTestId('desk-city').locator('h2').first())
+    await page.screenshot({ path: path.join(SHOTS, `city-${glass}.png`) })
   }
 })

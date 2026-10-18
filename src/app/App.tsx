@@ -8,7 +8,7 @@ import { AuthPage } from '../features/auth/AuthPage'
 import { GalleryScreen } from '../features/gallery/GalleryScreen'
 import { CommandScreen } from '../features/command/CommandScreen'
 import { FleetsScreen } from '../features/fleets/FleetsScreen'
-import { PortScreen } from '../features/port/PortScreen'
+import { useDeskView } from '../features/command/deskView'
 import { MapScreen } from '../features/map/MapScreen'
 import { LedgerScreen } from '../features/ledger/LedgerScreen'
 import { RankScreen } from '../features/rank/RankScreen'
@@ -49,7 +49,9 @@ export function App() {
         >
           <Route path="/command" element={<CommandScreen />} />
           <Route path="/fleets" element={<FleetsScreen />} />
-          <Route path="/port" element={<PortScreen />} />
+          {/* 2026-10-18 (docs/COMMAND_DESK.md D8, the owner: "delete port tab, and focus on command tab"): PORT
+              is gone; an old link to it opens the desk's City face, where every building it carried now is. */}
+          <Route path="/port" element={<PortMovedToCity />} />
           <Route path="/map" element={<MapScreen />} />
           <Route path="/ledger" element={<LedgerScreen />} />
           <Route path="/rank" element={<RankScreen />} />
@@ -62,4 +64,12 @@ export function App() {
       </Routes>
     </BrowserRouter>
   )
+}
+
+/** An old `/port` link: the desk's City face, where PORT's buildings now are (COMMAND_DESK D8). */
+function PortMovedToCity() {
+  useEffect(() => {
+    useDeskView.getState().turnTo('city')
+  }, [])
+  return <Navigate to="/command" replace />
 }

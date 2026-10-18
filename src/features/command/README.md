@@ -1,5 +1,13 @@
 # CMD — orders are MADE, not typed
 
+> **THE DESK — 2026-10-18 (owner row 137, `docs/COMMAND_DESK.md`).** *"delete port tab, and focus on
+> command tab."* COMMAND is the trading desk now: five faces — Markets (`markets/`), Plans (`plans/`),
+> City (`city/`), Invest (`invest/`), Profit (`profit/`) — under the fleet strip, chosen in `deskView.ts`.
+> PORT is DELETED (D8): every building face it carried lives in `src/live/` and is composed by City
+> (`live/cityFaces.ts` names them), an old `/port` link opens City, and `tests/desk.sweep.spec.ts` walks
+> every act PORT carried from here. The 2026-09-09 note below is history: its "on PORT" now reads "on
+> COMMAND · City".
+
 > **THE VERBS LEFT THIS SCREEN — 2026-09-09.** The owner: *"In command, there are so many things,
 > like buy, sell, fit, take etc. Buy and sell should be in port - market. Get it? they should be
 > located accordingly at different locations - the command."* The twelve-tile verb grid, the trade

@@ -40,6 +40,7 @@ import { test, expect } from '@playwright/test'
 // same three, and two copies of `ready()` would drift apart in silence. The reasoning that used to
 // sit inline here travelled with them; nothing about it changed.
 import { PHONE, ready, reachable } from './appReady.fixture'
+import { openCityFace } from './desk.fixture'
 
 // 'rank' joined the list 2026-08-23, when 0025 gave that tab a wide table to draw. It was the only
 // tab carrying a scrolling table that this guard did not measure, which is the combination the guard
@@ -202,7 +203,7 @@ for (const tab of TABS) {
 // Ledger), and the good is ONE ROW now rather than a tile: `TradeRow` under `trade-row`. The proof
 // is the same proof — complete priced goods above the fold, the first carrying its range as a
 // meter — measured on the screen that draws them.
-test('PORT puts complete priced goods above the fold, per K.1', async ({ page, request, baseURL }) => {
+test('the desk puts complete priced goods above the fold, per K.1 — Markets, and City › Trade', async ({ page, request, baseURL }) => {
   // The same measured budget its sibling tests carry (line ~133): a cold boot builds the whole
   // chain in the tab — ~100 s at 39 migrations, more under parallel load, and 0041's 52k-row
   // affinity recompute adds to it — so the global 120 s timeout fails a CORRECT build. The
@@ -213,8 +214,9 @@ test('PORT puts complete priced goods above the fold, per K.1', async ({ page, r
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('port')
+  await page.goto('command')
   await ready(page)
+  await openCityFace(page)
   await page.waitForTimeout(1200)
 
   // THE GOODS WERE TILES from 2026-08-23 ("make trade goods in blocks") to 2026-09-11, when the
@@ -240,20 +242,37 @@ test('PORT puts complete priced goods above the fold, per K.1', async ({ page, r
     }
   })
 
-  console.log(`PORT fold @${PHONE.width}px: ${JSON.stringify(fold)}`)
+  console.log(`CITY › Trade fold @${PHONE.width}px: ${JSON.stringify(fold)}`)
 
-  // K.1's beat: "Sal is 62% of its neighbours. The BUY block is at the top; you did not have to
-  // know anything to see it." If you have to scroll first, the game has said nothing.
+  // RETARGETED AGAIN 2026-10-18, PORT → COMMAND (docs/COMMAND_DESK.md D8). The board is City's Trade face
+  // now, under the fleet strip, the desk's faces, the city's name and its buildings: MEASURED at 390×844 the
+  // first row stands at 536px and THREE complete rows fit above the 787px fold. The face a player LANDS on
+  // is Markets, every good priced on one 52-px row — K.1's beat ("you did not have to know anything to see
+  // it") is measured there, below, with the floor five rows.
   expect(
     fold.completeRowsAboveFold,
     `only ${fold.completeRowsAboveFold} complete good rows above the fold at ${fold.foldY}px ` +
-      `(first row at ${fold.firstRowTop}px, ${fold.rowHeight}px each) — five fit on 2026-09-11`,
-  ).toBeGreaterThanOrEqual(5)
+      `(first row at ${fold.firstRowTop}px, ${fold.rowHeight}px each) — three fit on City › Trade on 2026-10-18`,
+  ).toBeGreaterThanOrEqual(3)
   // 0071: this used to require a `%` — the nearby index. That figure is gone, and with it the
   // only thing on the row that was a comparison rather than a fact. What must be on screen now is
   // the RANGE, which is what replaced it: how far this price can travel, here — on EVERY row.
   expect(fold.firstRowHasRange, 'the first good row carries no price-range bar').toBe(true)
   expect(fold.rowsWithoutRange, 'a good row carries no price-range bar — the tide is the row\'s second line').toBe(0)
+
+  // K.1 on the face a player lands on: Markets, priced goods above the fold.
+  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Markets', exact: true }).click()
+  await expect(page.getByTestId('watch-row').first()).toBeVisible({ timeout: 60_000 })
+  const markets = await page.evaluate(() => {
+    const nav = document.querySelector('nav')
+    const foldY = nav ? nav.getBoundingClientRect().top : window.innerHeight
+    const rows = [...document.querySelectorAll('[data-testid="watch-row"]')]
+    const above = rows.filter((r) => r.getBoundingClientRect().bottom <= foldY)
+    return { complete: above.length, priced: above.filter((r) => /🪙/.test(r.textContent ?? '')).length }
+  })
+  console.log(`MARKETS fold @${PHONE.width}px: ${JSON.stringify(markets)}`)
+  expect(markets.complete, 'fewer than five goods above the fold on Markets').toBeGreaterThanOrEqual(5)
+  expect(markets.priced, 'a good above the fold on Markets carries no price').toBe(markets.complete)
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -390,8 +409,9 @@ test(`PORT: the ledger's price cells are the trade, and a press moves nothing ab
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('port')
+  await page.goto('command')
   await ready(page)
+  await openCityFace(page)
   await page.waitForTimeout(1200)
 
   const shape = await page.evaluate(MEASURE_FIELD, 'trade-row')
@@ -684,69 +704,10 @@ test(`COMMAND: the route row unfolds in place above the queue at ${PHONE.width}p
   expect(closed.row).toEqual(before.row)
 })
 
-test(`PORT: the port field is on the sheet, and a harbour with nobody alongside opens the read-only tray`, async ({
-  page,
-  request,
-  baseURL,
-}) => {
-  test.setTimeout(420_000)
-  test.skip(
-    !(await reachable(request, baseURL ?? '')),
-    `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
-  )
-  await page.goto('port')
-  await ready(page)
-  await page.waitForTimeout(1200)
+// PORT went under COMMAND on 2026-10-18 (docs/COMMAND_DESK.md D8): the "port field on the sheet / a harbour with nobody alongside opens the read-only tray" test went with
+// PORT's field. A distant city's prices are read on the desk's good page (desk.layout.spec) and on the map's
+// city panel (map.townhall / PortPrices); the field itself lives on in the route editor (route.stopface.spec).
 
-  const field = page.locator('[data-testid="port-field"]')
-  await expect(field, 'no port field on PORT — MARKET folded into PORT and brought its field').toBeVisible()
-  const home = await field.inputValue()
-  expect(home, 'the port field names no harbour at rest').not.toBe('')
-
-  // Focus opens the nearest-ten chips; the current harbour is the `on` chip. Take another.
-  await field.focus()
-  const chips = page.locator('[data-testid="port-chip"]')
-  await expect(chips.first()).toBeVisible()
-  const other = chips.filter({ hasNotText: home }).first()
-  const there = (await other.innerText()).trim()
-  await other.click()
-  await expect(field).toHaveValue(there)
-  // The market for the picked harbour is fetched on demand; wait for the placeholder to go.
-  await ready(page)
-  await page.waitForTimeout(600)
-
-  // No hull of yours lies there, and the ledger is the SAME ledger (QuayLedger under
-  // `quay-ledger`). Its floor is the owner's own: a city trades at least FOUR goods
-  // (docs/OWNER_REQUESTS.md row 48, migration 0061), so fewer than four rows means the read did
-  // not land, not a small quay.
-  const rows = page.locator('[data-testid="trade-row"]')
-  await expect(page.locator('[data-testid="quay-ledger"]'), `${there} drew no ledger`).toBeVisible()
-  expect(await rows.count(), `${there} drew fewer than the four goods every city trades`).toBeGreaterThanOrEqual(4)
-
-  // Press the first live cell: it opens the READ-ONLY tray, never the trade tray.
-  await rows.locator('button:enabled').first().click()
-  await expect(page.locator('[data-testid="price-tray"]')).toBeVisible()
-  await expect(page.locator('[data-testid="trade-tray"]')).toHaveCount(0)
-
-  // The closed field's ✕ is "back to her quay": the pick clears and the board follows the fleet.
-  await page.locator('[data-testid="port-field"] ~ button[aria-label="Clear"]').click()
-  await expect(field).toHaveValue(home)
-})
-
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-// PORT'S BASKET ON A PHONE — a line staged instead of traded; one tray; nothing above the press
-// moves; the basket lands as a receipt and the world is read back
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-//
-// ADDED 2026-09-13 with slice 2 of the Quay Ledger (docs/QUAY_LEDGER.md §3 C/E, migration 0083;
-// owner rows 76 and 80). A price cell's tray carries `Add to basket` beside its one button.
-// Pressing it closes the pick and docks the BASKET at PEEK — the title is the whole basket in one
-// line — and nothing at or above the pressed row moves (row 15, the same measurement as the trade
-// test). Every control in the basket clears the 44px floor. Dragged to half, the one button lands
-// the basket through cmd.trade_basket and the same tray turns over to the RECEIPT, whose rows are
-// the server's own settled figures; the ledger row of the good then says what is ON BOARD, which
-// proves the world was read back and not patched (PR #59 review SHOULD 8). The in-tab PGlite
-// world is disposable, so a real trade here is fine.
 test(`PORT: a line staged onto the basket docks the one tray at peek, moves nothing, and lands as a receipt`, async ({
   page,
   request,
@@ -757,8 +718,9 @@ test(`PORT: a line staged onto the basket docks the one tray at peek, moves noth
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('port')
+  await page.goto('command')
   await ready(page)
+  await openCityFace(page)
   await page.waitForTimeout(1200)
 
   const rows = page.locator('[data-testid="trade-row"]')
@@ -868,8 +830,9 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('port')
+  await page.goto('command')
   await ready(page)
+  await openCityFace(page)
   await page.waitForTimeout(1200)
 
   const rows = page.locator('[data-testid="trade-row"]')
@@ -1024,8 +987,9 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('port')
+  await page.goto('command')
   await ready(page)
+  await openCityFace(page)
   await page.waitForTimeout(1200)
 
   const rows = page.locator('[data-testid="trade-row"]')
@@ -1109,8 +1073,9 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('port')
+  await page.goto('command')
   await ready(page)
+  await openCityFace(page)
   await page.waitForTimeout(1200)
 
   // The three faces stand in one strip, Buy up first, and the ledger is under it.
@@ -1131,7 +1096,7 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
       return {
         header: rect(document.querySelector('[data-testid="sheet-header"]')),
         supplies: rect(document.querySelector('[data-testid="quay-stores"]')),
-        field: rect(document.querySelector('[data-testid="port-field"]')),
+        field: rect(document.querySelector('[data-testid="desk-city"] h2')),
         faces: rect(document.querySelector('[role="tablist"][aria-label="Trade faces"]')),
       }
     })
@@ -1215,8 +1180,9 @@ test(`PORT › Storage: a cell opens the one tray with a stepper, moves nothing 
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('port')
+  await page.goto('command')
   await ready(page)
+  await openCityFace(page)
   await page.waitForTimeout(1200)
 
   // SOMETHING ON BOARD: buy the first live good through the trade tray, and wait for the world to
@@ -1318,8 +1284,9 @@ test(`PORT: the Inn's crew face is a figure, a stepper, a served daily cost and 
     !(await reachable(request, baseURL ?? '')),
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
-  await page.goto('port')
+  await page.goto('command')
   await ready(page)
+  await openCityFace(page)
   await page.getByRole('tab', { name: /^Inn/i }).first().click()
   await page.waitForTimeout(600)
 

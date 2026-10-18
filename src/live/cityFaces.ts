@@ -1,6 +1,6 @@
 // THE FACES OF ONE CITY — which building a face is, and the ONE player word for it (moved 2026-10-18 from
-// features/port/portView.ts, docs/COMMAND_DESK.md D5): PORT's face strip (until D8) and the COMMAND desk's
-// City face compose this one table, so a building is named once and offered by one rule.
+// features/port/portView.ts, docs/COMMAND_DESK.md D5): the COMMAND desk's City face composes this one
+// table (PORT's face strip did too, until PORT was deleted in D8), so a building is named once and offered by one rule.
 
 import type { BuildingKind } from '../lib/rpc'
 
