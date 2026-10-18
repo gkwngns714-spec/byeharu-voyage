@@ -55,3 +55,15 @@ test('every building face opens on the desk, and a buy runs from its Trade face'
   await send.click()
   await expect.poll(async () => cargo.innerText(), { timeout: 60_000 }).not.toBe(before)
 })
+
+test('the Invest face: your holdings, and the Town Hall of the city the fleet is at', async ({ page, request, baseURL }) => {
+  test.setTimeout(420_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+  await page.goto('command')
+  await ready(page)
+  await page.getByRole('tab', { name: 'Invest', exact: true }).click()
+  await expect(page.getByTestId('invest-holdings')).toBeVisible()
+  await expect(page.getByTestId('invest-holdings')).toContainText(/shares|Held/, { timeout: 30_000 })
+  await expect(page.getByTestId('invest-hall')).toBeVisible({ timeout: 30_000 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+})

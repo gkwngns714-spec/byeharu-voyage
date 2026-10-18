@@ -1565,6 +1565,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // enqueuer. No player id; the fleet must be yours (E_NO_SUCH_FLEET), as cmd.issue's. Landed WITH
       // the face that presses it (features/command/plans/PlanBuilder.tsx).
       'cmdIssueLines',
+      // Pin moved deliberately 2026-10-18 with migration 0176 (docs/COMMAND_DESK.md D6): WHAT YOU HOLD in every
+      // city — a READ, no arguments (the caller's company). Landed WITH the face that reads it (the desk's Invest).
+      'worldHoldings',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

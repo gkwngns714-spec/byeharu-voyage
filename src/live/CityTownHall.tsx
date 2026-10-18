@@ -4,9 +4,10 @@ import { useServedRead } from './useServedRead'
 import { useSettled } from './useSettled'
 import { useWorld } from './worldStore'
 import { cmdInvest, cmdPreviewInvest, ok, worldTownHall } from '../lib/rpc'
-import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallView, WorkKind } from '../lib/rpc'
+import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallView } from '../lib/rpc'
 import { formatDucats, formatInt, formatPct } from '../lib/format'
 import { TownHallInfluence } from './TownHallInfluence'
+import { WORK_NAME } from './workNames'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TOWN HALL — the city's fourth building: its purse, its works, Invest, and who invested
@@ -29,12 +30,6 @@ import { TownHallInfluence } from './TownHallInfluence'
 // the tab says so in one line.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-const WORK_NAME: Record<WorkKind, string> = {
-  docks: 'Docks',
-  market: 'Market',
-  production: 'Workshops',
-  inn: 'Inn',
-}
 
 /** The served answer or the served refusal, folded into one value (useOrderPreview's shape). */
 interface Served<V> {

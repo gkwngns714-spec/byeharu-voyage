@@ -2645,3 +2645,30 @@ export interface IssueLinesResult {
   queue: QueuedOrder[]
   version: number
 }
+
+/** One holding (0176): your shares in one work of one city. */
+export interface Holding {
+  port: string
+  name: string
+  kind: WorkKind
+  shares: number
+  /** What you paid for them (the coupon's base). */
+  paid: number
+  /** Coupons the city has set aside for you, collected when a fleet of yours makes this harbour. */
+  owed: number
+  level: number
+  level_max: number
+  /** A share's price there now (world.town_hall's leaf); null at the top level. */
+  share_price: number | null
+}
+
+/** `world.holdings()` (0176) — what your company holds in every city. */
+export interface Holdings {
+  enabled: boolean
+  rows: Holding[]
+  held: number
+  owed: number
+  /** Dividends collected, this game day and the last full one. */
+  paid: { today: number; yesterday: number }
+  game_day: number
+}
