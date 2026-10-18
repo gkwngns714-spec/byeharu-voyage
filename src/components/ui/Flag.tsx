@@ -11,7 +11,7 @@
 // props, reads no store. Its callers are the live wrappers that know WHICH nation: HullCountry (a
 // hull's, a merchant's, a company's, the picker's) and PortFlag (a city's, through `portNationOf`),
 // plus the Codex's nation rows. The chart's names draw the same file through `flagSrc` and the
-// same 3:2 box (src/chart/LabelsLayer.tsx), because an <img> cannot stand inside an <svg>.
+// same 3:2 box (src/chart/LabelsLayer.tsx, one <symbol> per nation: src/chart/flagSymbolStore.ts).
 //
 // THE SIZE SCALE is three steps tied to the type ladder (docs/UI_DIRECTION.md §4.1): `caption`
 // beside a caption line, `body` beside a row's label, `title` beside a tray's name. The box is

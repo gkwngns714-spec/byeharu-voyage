@@ -130,9 +130,11 @@ export interface LabelRequest {
 }
 
 /** A label's flag, in ems of its own type size: the flag's height (its width is 1.5 × that, the
- *  design system's 3:2 box) and the gap after it. LabelsLayer draws exactly this box. */
-export const FLAG_HEIGHT_EM = 0.95
-export const FLAG_GAP_EM = 0.35
+ *  design system's 3:2 box) and the gap after it, before the name. LabelsLayer draws exactly this
+ *  box, flag first. 1.25 em is a 13 px flag beside a 10.5 px name (15 px beside a great harbour's
+ *  12 px) — at 0.95 em the owner read a 10 px flag as a blank chip; the gap is ~3.5–4 px. */
+export const FLAG_HEIGHT_EM = 1.25
+export const FLAG_GAP_EM = 0.33
 export const FLAG_ADVANCE_EM = FLAG_HEIGHT_EM * 1.5 + FLAG_GAP_EM
 
 export interface PlacedLabel {
@@ -479,10 +481,9 @@ export function mapLabelRequests(
     requests.push({
       id: `port:${port.code}`,
       text: port.name,
-      // The flag rides with the name only once the chart is close enough to name quiet harbours
-      // (`showQuietPorts`): pulled back to the world, a 10 px flag on every great harbour is noise,
-      // and measured, the globe's pan at 1440×900 cost ~30 % more frame time with them drawn.
-      ...(showQuietPorts && flags?.has(port.code) ? { flag: flags.get(port.code) } : {}),
+      // The flag rides with the name at EVERY zoom, the world view included (the owner, 2026-10-18:
+      // "beside the name show flag"); its cost is one <symbol> per nation (./flagSymbolStore.ts).
+      ...(flags?.has(port.code) ? { flag: flags.get(port.code) } : {}),
       at: project(port),
       priority: selected
         ? LABEL_PRIORITY.selected

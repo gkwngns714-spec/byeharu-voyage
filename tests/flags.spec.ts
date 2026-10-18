@@ -3,6 +3,7 @@ import { mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { FLAG_ADVANCE_EM, mapLabelRequests, planLabels } from '../src/chart/labels'
 import { buildChartModel } from '../src/chart/chartModel'
+import { hitTest } from '../src/chart/hitTest'
 import type { MapPort } from '../src/chart/mapTypes'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { openCityFace } from './desk.fixture'
@@ -84,6 +85,16 @@ test('a harbour\'s name on the chart carries its holder\'s code, and the planned
   expect(flagged.box.width - bare.box.width).toBeCloseTo(FLAG_ADVANCE_EM * 10, 5)
 })
 
+test('a tap on a drawn name — flag or letters, its far end included — opens that harbour', () => {
+  const ports: MapPort[] = [{ code: 'LIS', name: 'Lisbon', lat: 38.7, lon: -9.1, sizeTier: 3 } as MapPort]
+  // A name drawn 30 units east of the mark, far outside any reach: the tap on it still opens Lisbon.
+  const lis = buildChartModel([], ports)
+  const mark = { x: -9.1, y: 0 }
+  const names = [{ code: 'LIS', box: { x: mark.x + 30, y: -1, width: 10, height: 2 } }]
+  expect(hitTest(lis, ports, { x: mark.x + 39, y: 0 }, 0.5, [], 0, [], names)).toEqual({ kind: 'port', code: 'LIS' })
+  expect(hitTest(lis, ports, { x: mark.x + 45, y: 0 }, 0.5, [], 0, [], names)).toBeNull()
+})
+
 test('every flag is recognisable at 14 px: its picture is not near-uniform (a pixel-variance check, border excluded)', async ({ browser }) => {
   // THE DEFECT (the owner, 2026-10-18: "france flag looks shit"): France's royal white flag with
   // tiny fleurs-de-lis rasterised to a blank cream chip at 12–16 px (σ 12–27), Morocco's thin gold
@@ -133,6 +144,32 @@ async function expectFlags(scope: Locator, nation?: string): Promise<void> {
   for (const t of titles) expect(t.length, 'a flag says whose it is').toBeGreaterThan(2)
 }
 
+/** Every flagged harbour name on the chart: its flag is drawn from a defined symbol, stands BEFORE
+ *  the name, and the gap between them is a few pixels (FLAG_GAP_EM of the type size, ~3.5–4 px). */
+async function expectSnugFlags(page: Page): Promise<{ flagged: number }> {
+  await expect.poll(() => page.locator('[data-testid="map-labels"] [data-label-flag]').count(), { timeout: 120_000 }).toBeGreaterThan(0)
+  await expect.poll(() => page.locator('[data-testid="map-flag-symbols"] symbol').count(), { timeout: 30_000 }).toBeGreaterThan(0)
+  const rows = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="map-labels"] [data-label-flag]')].map((g) => {
+      const use = g.querySelector('use')!
+      const id = (use.getAttribute('href') ?? '').slice(1)
+      const symbol = document.getElementById(id)
+      const f = use.getBoundingClientRect()
+      const t = g.querySelector('text')!.getBoundingClientRect()
+      return { id, defined: !!symbol && symbol.childElementCount > 0, gap: t.left - f.right, w: f.width, h: f.height }
+    }),
+  )
+  for (const r of rows) {
+    expect(r.defined, `${r.id} is drawn from a defined symbol`).toBe(true)
+    expect(r.gap, `${r.id}: the flag stands before the name, snug`).toBeGreaterThanOrEqual(1)
+    expect(r.gap, `${r.id}: the flag stands before the name, snug`).toBeLessThanOrEqual(7)
+    // The 3:2 box's height; a flag of another shape (Genoa 2:1) is fitted inside it, so its box is
+    // the larger of its height and two-thirds of its width.
+    expect(Math.max(r.h, r.w / 1.5), `${r.id}: the flag is legible (a ≥ 12 px box)`).toBeGreaterThanOrEqual(12)
+  }
+  return { flagged: rows.length }
+}
+
 async function openMap(page: Page) {
   await page.goto('map')
   await ready(page)
@@ -147,14 +184,20 @@ for (const [glass, size] of [['1440', WIDE], ['390', PHONE]] as const) {
     await page.setViewportSize(size)
     await openMap(page)
 
-    // THE CHART: harbour names carry an <image> of their holder's flag, and it is a served file.
-    await expect.poll(() => page.locator('[data-testid="map-labels"] [data-label-flag]').count(), { timeout: 120_000 }).toBeGreaterThan(0)
-    const href = await page.locator('[data-testid="map-labels"] [data-label-flag] image').first().getAttribute('href')
-    expect(href).toMatch(/flags\/[A-Z]{3}\.svg$/)
-    expect((await request.get(new URL(href!, page.url()).toString())).ok()).toBe(true)
+    // THE CHART: harbour names carry their holder's flag — a <use> of that nation's one <symbol>,
+    // drawn — FIRST and SNUG against the name (the owner: "the flag is too far away from the name").
+    await expectSnugFlags(page)
     await page.waitForTimeout(800)
     await page.screenshot({ path: path.join(SHOTS, `map-${glass}.png`) })
+    // …AND AT THE WORLD VIEW (the owner: "beside the name show flag" — PR #198 left them bare there).
+    for (let i = 0; i < 14; i++) await page.getByLabel('Zoom out').click()
+    await expect.poll(async () => Number(await page.getByTestId('map-zoom-percent').getAttribute('data-zoom-percent'))).toBe(0)
+    const world = await expectSnugFlags(page)
+    expect(world.flagged, 'at the world view every named harbour a country holds flies its flag').toBeGreaterThanOrEqual(10)
+    await page.waitForTimeout(800)
+    await page.screenshot({ path: path.join(SHOTS, `map-world-${glass}.png`) })
 
+    await openMap(page)
     // A CITY PRESSED: Lisbon's name carries Portugal's flag; the line under it names the holder.
     await openCityPanel(page, 'LIS', 'Lisbon')
     await expectFlags(page.getByTestId('map-place-name'), 'PRT')

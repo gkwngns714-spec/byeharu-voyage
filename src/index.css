@@ -197,6 +197,7 @@
   --color-chart-day-tropic: #5e9650;
   --color-chart-day-mark: #16212c;
   --color-chart-day-hull: #eef2f4;
+  --color-chart-day-name-halo: #eef3f5;
 
   /* ── THE NATION INKS (0099, docs/NPC_TRADERS.md §8.2) — the hull fill of a MERCHANT fleet, by
      the nation family its company sails for (npc_houses.ink, served; never chosen on the client).
@@ -479,6 +480,7 @@
     --color-chart-day-tropic: #5e9650;
     --color-chart-day-mark: #16212c;
     --color-chart-day-hull: #eef2f4;
+    --color-chart-day-name-halo: #eef3f5;
 
     /* THE DAY NATION INKS — the same eight hues, dark enough to stand on the day's blue water. */
     --color-nation-prt: oklch(0.42 0.13 150);
@@ -738,18 +740,60 @@ body {
   fill: color-mix(in srgb, var(--nation-ink) calc(var(--night, 1) * 100%), var(--color-chart-day-hull));
 }
 .bv-sun-name-quiet {
-  fill: color-mix(in srgb, var(--color-ink-faint) calc(var(--night, 1) * 100%), var(--color-chart-day-mark));
+  fill: color-mix(in srgb, var(--color-ink-faint) var(--bv-name-night), var(--color-chart-day-mark));
 }
 .bv-sun-name-active {
-  fill: color-mix(in srgb, var(--color-ink) calc(var(--night, 1) * 100%), var(--color-chart-day-mark));
+  fill: color-mix(in srgb, var(--color-ink) var(--bv-name-night), var(--color-chart-day-mark));
 }
 .bv-sun-name-water {
   fill: color-mix(in srgb, var(--color-chart-sea-name) calc(var(--night, 1) * 100%), var(--color-chart-day-shallow));
 }
+/* A CITY'S NAME IN DAYLIGHT IS BLACK (the owner, 2026-10-18: "make the city name in light touching
+   zone black"): dark ink on a thin PALE halo, which reads on the day's green land and blue water
+   alike, where the day-sea halo it had was a blue rim on green. And the switch is the terminator's,
+   not the twilight's: ink and halo turn over TOGETHER at `--night` 0.5 (`--bv-name-night`, a step,
+   not a ramp), so a name is black-on-pale or light-on-dark and never the grey-on-grey a blend
+   gives halfway (measured: "Ponta Delgada" in the twilight band, illegible with a 0.375–0.625
+   ramp). The one `--night` (src/chart/sun.ts) — nothing new. */
+.bv-sun-name-quiet,
+.bv-sun-name-active {
+  --bv-name-night: calc(clamp(0, (var(--night, 1) - 0.5) * 10000, 1) * 100%);
+}
 /* The halo behind a name, the keyline round a hull, and the disc under a fleet of yours are all
-   "the sea's own colour" — so by day they are the day sea's. */
+   "the sea's own colour" — so by day they are the day sea's; a CITY's name is haloed pale by day
+   (above). */
 .bv-sun-name-halo {
   stroke: color-mix(in srgb, var(--color-chart-sea) calc(var(--night, 1) * 100%), var(--color-chart-day-sea));
+}
+.bv-sun-name-halo.bv-sun-name-quiet,
+.bv-sun-name-halo.bv-sun-name-active {
+  stroke: color-mix(in srgb, var(--color-chart-sea) var(--bv-name-night), var(--color-chart-day-name-halo));
+}
+/* THE CITY'S DAY LAMP (the owner, 2026-10-18: "give black light blink in cities like in night"):
+   the daytime counterpart of the night's light — a dark glow round the harbour's dot that breathes
+   slowly, out by night and in by day (`1 - --night`), each harbour on its own phase so the coast
+   breathes rather than pulsing in unison. Opacity only; reduced motion lands it on the 100 % stop
+   (the §4.6 sweep at the bottom of this file). PortsLayer's HarbourLight draws it.
+   STEPPED, AND THAT IS A FRAME-RATE DECISION: any animated mark repaints the whole chart sheet, and
+   a smooth breath on 252 harbours repainted it every frame (measured at the world view, DPR 2: pan
+   ~31 fps with the lamps still, ~20 with them breathing). `steps(12)` over 4.2 s changes the
+   picture every 350 ms, and each harbour's phase is a whole number of steps (PortsLayer
+   `lampPhase`), so every lamp changes on the same beat: ~3 repaints a second, not 60. */
+.bv-sun-shade {
+  fill: var(--color-chart-day-mark);
+  fill-opacity: calc((1 - var(--night, 1)) * 0.38);
+}
+@keyframes bv-day-lamp {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.bv-day-lamp {
+  animation: bv-day-lamp 4.2s steps(12, jump-none) infinite;
 }
 .bv-sun-keyline {
   stroke: color-mix(in srgb, var(--color-chart-sea) calc(var(--night, 1) * 100%), var(--color-chart-day-sea));
@@ -848,30 +892,3 @@ body {
   }
 }
 
-
-/* ── SCROLLBARS ON THE DESK (2026-10-18; the owner's screen showed the platform's native bars) ──────
-   `.bv-scroll`: a pane that scrolls vertically draws a 6-px thumb in the ink-faint tone on no track,
-   and only the thumb. `.bv-scroll-x`: a sideways chip row draws no bar at all — the clipped chip at
-   the edge says there is more, as a phone's chip rows do. Both on every engine (the standard
-   `scrollbar-*` properties, and WebKit's pseudo-elements for Safari). */
-.bv-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-ink-faint) 45%, transparent) transparent;
-}
-.bv-scroll::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.bv-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-.bv-scroll::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-ink-faint) 45%, transparent);
-}
-.bv-scroll-x {
-  scrollbar-width: none;
-}
-.bv-scroll-x::-webkit-scrollbar {
-  display: none;
-}
