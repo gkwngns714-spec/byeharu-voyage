@@ -170,7 +170,8 @@ test('world.snapshot() carries the whole static world, and not the world secret'
   // 0100 handed back the x20 that 0045 took "for faster testing": a voyage-day is 90 real seconds.
   expect(snap.config.time_compression).toBe(960)
   expect(snap.config.time_compression).toBe(TIME_COMPRESSION)
-  expect(snap.config.order_queue_max).toBe(12)
+  // 0193: 48, so a long passage planned as a chain of legs (0188) can be queued whole (0175). Was 12.
+  expect(snap.config.order_queue_max).toBe(48)
   for (const key of [
     'fleet_max',
     'ship_max',
