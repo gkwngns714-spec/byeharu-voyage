@@ -135,5 +135,5 @@ export function reachWords(
       : null
     return `${name(row.port)} cannot be reached in legs of ${reachNm !== null ? `${formatInt(reachNm)} nm` : 'her reach'}${need ? ` — ${need}` : ''}.`
   }
-  return `Her stores will not cover the passage to ${name(row.port)}${row.longest_leg ? ` (its longest leg is ${formatVoyageDays(row.longest_leg.days)})` : ''} — provision first.`
+  return `Supplies on board will not cover the voyage to ${name(row.port)}${row.longest_leg ? ` (its longest leg is ${formatVoyageDays(row.longest_leg.days)})` : ''} — resupply first.`
 }
