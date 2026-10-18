@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Chip, Field, Figure, Hint, Note, Row, Skeleton, Tray, type TrayDetent, type TrayMode } from '../../../components/ui'
+import { ChipRow, Button, Chip, Field, Figure, Hint, Note, Row, Skeleton, Tray, type TrayDetent, type TrayMode } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { PortFlag } from '../../../live/PortFlag'
 import { usePress } from '../../../live/usePress'
@@ -127,7 +127,7 @@ export function PlanBuilder({
       }
     >
       <span className="block text-t-caption text-ink-faint">Buy at</span>
-      <div className="-mx-gutter mt-1 bv-scroll-x flex gap-2 overflow-x-auto px-gutter pb-1" role="group" aria-label="Buy at">
+      <ChipRow label="Buy at" className="mt-1">
         {aboard > 0 && (
           <Chip on={plan.buyAt === null} onClick={() => set({ buyAt: null })} className="shrink-0 whitespace-nowrap">
             {formatUnits(aboard)} on board
@@ -139,7 +139,7 @@ export function PlanBuilder({
             {name(r.port)}
           </Chip>
         ))}
-      </div>
+      </ChipRow>
       {plan.buyAt && (
         <div className="mt-2 grid grid-cols-2 gap-3">
           <Field
@@ -166,14 +166,14 @@ export function PlanBuilder({
       )}
 
       <span className="mt-4 block text-t-caption text-ink-faint">Sell at</span>
-      <div className="-mx-gutter mt-1 bv-scroll-x flex gap-2 overflow-x-auto px-gutter pb-1" role="group" aria-label="Sell at">
+      <ChipRow label="Sell at" className="mt-1">
         {sellChoices.map((c) => (
           <Chip key={c} on={plan.sellAt === c} onClick={() => set({ sellAt: c })} className="shrink-0 whitespace-nowrap">
             <PortFlag code={c} />
             {name(c)}
           </Chip>
         ))}
-      </div>
+      </ChipRow>
       <Field
         icon={null}
         inputMode="decimal"

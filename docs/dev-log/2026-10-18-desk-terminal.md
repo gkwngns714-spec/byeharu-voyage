@@ -76,11 +76,11 @@ a read (12.5 s measured on PGlite), so it needs a precompute at the market tick.
 **Verified once (local canary build, localhost:4330):**
 - `tsc -b` and eslint are clean.
 - Playwright: desk.terminal (new), desk.layout, desk.plan, priceChart, layout, wide.layout and
-  trade.ceiling. **43 passed, 0 skipped, 0 failed (7.9 min).**
+  trade.ceiling. **43 passed, 0 skipped, 0 failed (7.9 min); after the fixes, duplication + sections + the desk specs 29 passed, then desk.terminal + desk.layout + wide.layout 13 passed.**
 
 **Screenshots** (DPR 2) are in `2026-10-18-desk-terminal/`:
 - before: `before-1440-*`
-- after, at 1440×731: markets, good, plan, queued
+- after, at 1440×731: markets, good, plan, queued, city (the City face's trade board with the stock gauge)
 - after, at 390×844: markets, good, plan, queued
 
 The local world has a one-slot record and stock at its normal level, so the stock strip is flat

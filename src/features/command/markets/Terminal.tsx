@@ -95,7 +95,7 @@ function GoodPanes({
       <section className="flex min-h-0 flex-col px-6 pb-3 pt-4" data-testid="desk-pane-chart">
         <GoodChart good={good} desk={desk} fill />
       </section>
-      <section className="min-h-0 border-l border-edge bg-surface" data-testid="desk-pane-ticket">
+      <section className="min-h-0 border-l border-edge" data-testid="desk-pane-ticket">
         {slot ?? (
           <div className="bv-scroll h-full overflow-y-auto px-4 pb-6 pt-4" data-testid="good-page">
             <GoodTicket good={good} desk={desk} onTrade={(intent) => onTrade(good.code, intent)} onPlan={onPlan} />

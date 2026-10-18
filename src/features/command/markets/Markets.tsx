@@ -1,4 +1,4 @@
-import { Chip, Field, Note, Segmented, Skeleton } from '../../../components/ui'
+import { ChipRow, Chip, Field, Note, Segmented, Skeleton } from '../../../components/ui'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import type { FleetView } from '../../../lib/rpc'
 import { useDeskGood } from '../../../store/deskGood'
@@ -64,13 +64,13 @@ function MarketsList({ selected, market }: { fleet: FleetView; selected: string 
         autoCorrect="off"
       />
       {/* THE FILTERS — one scrolling row, one on at a time; a press selects and moves nothing. */}
-      <div className="-mx-gutter mt-2 bv-scroll-x flex gap-2 overflow-x-auto px-gutter pb-1" role="group" aria-label="Filter goods">
+      <ChipRow label="Filter goods" className="mt-2">
         {chips.map((c) => (
           <Chip key={c.id} on={filter === c.id} onClick={() => setFilter(c.id)} className="shrink-0 whitespace-nowrap">
             {c.label}
           </Chip>
         ))}
-      </div>
+      </ChipRow>
 
       <div className="mt-3 flex items-center justify-between gap-3">
         <Segmented<DeskSort> segments={DESK_SORTS} value={sort} onChange={setSort} label="Sort goods" />

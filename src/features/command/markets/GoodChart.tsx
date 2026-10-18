@@ -108,7 +108,7 @@ export function GoodChart({
       <div className="flex items-start justify-between gap-4" data-testid="good-hero">
         <div className="min-w-0">
           {showName && (
-            <span className="flex items-center gap-2 text-t-body font-semibold text-ink">
+            <span className="flex items-center gap-1.5 text-t-body font-semibold">
               <Icon name={goodIcon(good.code, good.category)} size={18} className="shrink-0 text-ink-muted" />
               <span className="truncate">{good.name}</span>
               <RarityMark rarity={good.rarity} />

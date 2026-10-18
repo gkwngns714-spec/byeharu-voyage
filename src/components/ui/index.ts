@@ -140,6 +140,8 @@ export { useReaskAtEdge } from './reaskAtEdge'
 // eventually; the fold waits for the screen that needs both in one place.
 export { Sparkline, type SparkTone } from './Sparkline'
 export { StockGauge } from './StockGauge'
+export { ChipRow } from './ChipRow'
+export { sheetBodyClass, sheetColumnClass } from './screenLayout'
 export { stockLevel, stockFillPct, type StockLevel } from './stockLevel'
 // THE ONE READING OF "IS THIS A WIDE GLASS?" (screenLayout.ts). The Tray reads it to stand as a
 // side panel; a screen reads it when what a tray MEANS differs by glass — the basket panel is

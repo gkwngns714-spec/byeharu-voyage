@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Note, Row, Segmented, Sheet, useWide } from '../../components/ui'
-import { sheetBodyClass } from '../../components/ui/screenLayout'
+import { Note, Row, Segmented, Sheet, sheetBodyClass, sheetColumnClass, useWide } from '../../components/ui'
 import { useCommandDraft } from '../../domain/order'
 import { useWorld } from '../../live/worldStore'
 import type { FleetView } from '../../lib/rpc'
@@ -166,10 +165,21 @@ export function CommandScreen() {
       ) : null
     return (
       <div className="flex h-full min-h-0 flex-col" data-testid="command" data-desk="terminal">
-        <header className="flex shrink-0 items-center gap-6 border-b border-edge px-6 py-2" data-testid="desk-header">
-          <h1 className="shrink-0 text-t-body font-semibold text-ink">Command</h1>
-          <FleetStrip fleets={fleets} fleetId={fleetId} onSelect={selectFleet} fleet={fleet ?? null} inline />
-          <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label="Desk faces" className="shrink-0" />
+        {/* THE HEADER spans the glass on the terminal; on the other faces it stands over the column, so
+            the side tray those faces dock (City's basket, the plan builder) never covers the faces. */}
+        <header
+          className={
+            face === 'markets'
+              ? 'flex shrink-0 items-center gap-6 border-b border-edge px-6 py-2'
+              : `flex shrink-0 flex-col gap-2 px-gutter pb-1 pt-3 ${sheetColumnClass()}`
+          }
+          data-testid="desk-header"
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-6">
+            <h1 className="shrink-0 text-t-body font-semibold text-ink">Command</h1>
+            <FleetStrip fleets={fleets} fleetId={fleetId} onSelect={selectFleet} fleet={fleet ?? null} inline />
+          </div>
+          <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label="Desk faces" className="shrink-0" fill={face !== 'markets'} />
         </header>
         {fleet && face === 'markets' ? (
           <Terminal
@@ -181,7 +191,7 @@ export function CommandScreen() {
           />
         ) : (
           <div className="bv-scroll min-h-0 flex-1 overflow-y-auto">
-            <div className={`${sheetBodyClass()} pt-4`}>{fleet && faceBody(fleet)}</div>
+            <div className={`${sheetBodyClass()} pt-2`}>{fleet && faceBody(fleet)}</div>
             {/* Plans: the plan builder stands beside the column, as a side tray */}
             {face === 'plans' && fleet && plan && goodByCode[plan.good] && (
               <PlanBuilder
