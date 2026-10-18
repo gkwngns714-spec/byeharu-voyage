@@ -49,10 +49,10 @@
 -- Timings: raise notice only.
 -- ROLLBACK: set tariff_stance_mult to {"ally": 1, "rival": 1, "war": 1} (every tariff 1), or a forward slice
 -- reversing the hunks.
--- VERSION: 0195 PROVISIONAL — prod head 0192 when read (2026-10-19), 0193 (queue 48) and 0194 (glut) deploying;
--- neither touches world.tax_rate, and 0194's one world.price_why hunk (the band term) is disjoint from this
--- file's (the fee). All three hunks were asserted to occur once on prod at 0192, read-only. Renumbered to
--- head + 1 at push.
+-- VERSION: 0195 — prod head 0194 when re-read (2026-10-19, after 0193 queue 48 and 0194 glut landed); neither
+-- touches world.tax_rate, and 0194's one world.price_why hunk (the band term) is disjoint from this file's (the
+-- fee). All three hunks were asserted to occur exactly once on prod's live bodies at 0192 and again at 0194,
+-- read-only. Renumber to head + 1 if anything lands first.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
