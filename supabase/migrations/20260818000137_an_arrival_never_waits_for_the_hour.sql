@@ -1187,7 +1187,11 @@ with per_port as (
          count(*) as n
     from public.port_goods pg group by pg.port_id
 ), works as (
-  select po.id as port_id, public.works_factor(po.id, 'production', 'production_per_level') as f from public.ports po
+  -- 2026-10-18 (self-assert only): a harbour WITH A MARKET. Over every port, a world whose works all
+  -- read 1 (any fresh world) took the lowest id, which is a SEA_PLACE 14 times in 252: no port_goods,
+  -- no roster, an empty quay, and the quay probe below failed on a correct system.
+  select po.id as port_id, public.works_factor(po.id, 'production', 'production_per_level') as f
+    from public.ports po where po.id in (select port_id from per_port)
 )
 select distinct s.port_id from (
   (select port_id from per_port order by producing desc, port_id limit 1)
@@ -1336,7 +1340,8 @@ begin
      and not exists (select 1 from public.port_goods pg join drift_rows_0137 s using (port_id, good_id) where pg.production_rate > 0) then
     raise exception '0137 self-assert FAIL: the drift sample holds no producing row, and the world has some';
   end if;
-  if exists (select 1 from public.ports po where public.works_factor(po.id, 'production', 'production_per_level') <> 1)
+  if exists (select 1 from public.ports po where po.id in (select port_id from public.port_goods)
+                and public.works_factor(po.id, 'production', 'production_per_level') <> 1)
      and not exists (select 1 from drift_sample_0137 s where public.works_factor(s.port_id, 'production', 'production_per_level') <> 1) then
     raise exception '0137 self-assert FAIL: the drift sample holds no harbour whose works bend production, and the world has one';
   end if;

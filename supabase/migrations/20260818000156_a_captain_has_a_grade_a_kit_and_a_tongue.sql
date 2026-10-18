@@ -2313,11 +2313,23 @@ begin
     if (v_new - 'present') <> (h.j - 'present') then
       raise exception '0156 self-assert FAIL: world.inn''s frame moved at %', h.port_id;
     end if;
-    select coalesce(jsonb_agg(g - v_card order by o), '[]'::jsonb) into v_old
-      from jsonb_array_elements(v_new->'present') with ordinality x(g, o)
+    -- 2026-10-18 (self-assert only): world.inn orders its room by (specialty, name), and two PURSERs
+    -- share a name (MUGPURSER 0073, NPCPURSERMUG 0098: Virji Vora), so their relative order is the
+    -- plan's, not the read's — it flipped in a from-zero world (nightly, 2026-10-17). Both sides are
+    -- compared in one canonical order (specialty, name, code), as 0166 later does with canon_0166, and
+    -- the read's own order is asserted to be (specialty, name) — the order its body states.
+    select coalesce(jsonb_agg(g - v_card order by g->>'specialty', g->>'name', g->>'code'), '[]'::jsonb) into v_old
+      from jsonb_array_elements(v_new->'present') g
      where g->>'code' in (select code from old_officers_0156);
-    if v_old <> h.j->'present' then
+    if v_old <> (select coalesce(jsonb_agg(g order by g->>'specialty', g->>'name', g->>'code'), '[]'::jsonb)
+                   from jsonb_array_elements(h.j->'present') g) then
       raise exception '0156 self-assert FAIL: world.inn at % serves the captains of today differently: % vs %', h.port_id, v_old, h.j->'present';
+    end if;
+    if exists (select 1
+                 from jsonb_array_elements(v_new->'present') with ordinality x(g, o)
+                 join jsonb_array_elements(v_new->'present') with ordinality y(g2, o2) on o2 = o + 1
+                where (g->>'specialty', g->>'name') > (g2->>'specialty', g2->>'name')) then
+      raise exception '0156 self-assert FAIL: world.inn at % does not seat its room by job and name', h.port_id;
     end if;
     if exists (select 1 from jsonb_array_elements(v_new->'present') g where not (g ?& v_card)) then
       raise exception '0156 self-assert FAIL: a guest at % has no card', h.port_id;
