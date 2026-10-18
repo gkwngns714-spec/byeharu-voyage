@@ -67,6 +67,12 @@
 //   only some trading goods but some items" — refuses a hull fitting that no city can make. So a Famous
 //   piece is MADE at a tier-3 workshop, of its base type's T2 recipe × 1.5 (rounded up), and spent when
 //   its hull is laid down (NOT the owner's — confirm; written in the S17 PR).
+//   0184 (the owner, 2026-10-18: "yes famous gear can be made, but later. there will be other items that
+//   needs to be gained in act of pirating, trading, and all. i will set them later."): FAMOUS_MADE is false,
+//   so every Famous piece is written `made: false` — public.item_unmade's rows, held by the world guard —
+//   and no workshop makes it (public.item_not_made, read by public.made_only_in); its hull cannot be laid
+//   down while its piece is made nowhere (public.hull_unmade). The recipe stays authored here, for the day
+//   the owner sets how the piece is won.
 //   §6.4's Drake's Culverins (Famous Long Guns) come out 180 / 45, accuracy +12 — asserted.
 //
 // §6.3 lists ELEVEN new base types (Carronades, Chase Guns, Swivel Guns, Studding Sails, Storm
@@ -75,6 +81,7 @@
 //
 // RUN:   node scripts/build-gear.mjs             writes data/gear.generated.json
 //        node scripts/build-gear.mjs --check     fails if the file is not what the generator gives
+//        node scripts/build-gear.mjs --sql-0184  the items made nowhere (public.item_unmade, migration 0184)
 //        node scripts/build-gear.mjs --sql       the VALUES 0135 loaded (103 Wave A items)
 //        node scripts/build-gear.mjs --sql-0158  the VALUES 0158 loaded (14 refits + item_use)
 //        node scripts/build-gear.mjs --sql-0159  the VALUES 0159 loaded (22 T2 + 12 Named, item_use, item_city)
@@ -585,6 +592,10 @@ export const FAMOUS = [
     "The cannon fired through the dragon's mouth of Yi Sun-sin's turtle ship, which smashed Japanese hulls at close range in 1592."],
 ]
 export const FAMOUS_MULT = { buys: 3, money: 2, deckHands: 1.6, recipe: 1.5 }
+/** 0184: whether a workshop makes the Famous pieces. The owner (2026-10-18): later, and how they are won he
+ *  will set. False writes every Famous `made: false` (public.item_unmade), so none is made and no famous hull
+ *  is laid down. */
+export const FAMOUS_MADE = false
 /** One effect of a Famous (meta 8): buys × 3.00 (speed / hold × 2.00; half up, speed to 0.01), spends × 1.00. */
 export function famousDelta(stat, delta) {
   if (delta < 0) return delta
@@ -892,6 +903,7 @@ export function generateGear() {
       baseType: base, rack: b.rack, grade: 5, meta: 8, hull,
       deck: roundUp(g1.deck * FAMOUS_MULT.deckHands), hands: roundUp(g1.hands * FAMOUS_MULT.deckHands), active: g1.active,
       effects, recipe, requirements,
+      ...(FAMOUS_MADE ? {} : { made: false }),   // 0184: made nowhere until the owner sets how it is won
     })
     use.push({ code, ...useOf(code, base, g1.active) })
   }
@@ -996,6 +1008,12 @@ export function s17Sql(gen = generateGear()) {
   ].join(NL)
 }
 
+/** The SQL VALUES migration 0184 loads (`--sql-0184`), pasted verbatim: public.item_unmade, every item written
+ *  `made: false` (the Famous pieces while FAMOUS_MADE is false). */
+export function unmadeSql(gen = generateGear()) {
+  return gen.items.filter((i) => i.made === false).map((i) => `  ('${i.code}')`).join(',' + NL)
+}
+
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/build-gear.mjs')) {
   const gen = generateGear()
   const text = JSON.stringify(gen, null, 1) + NL
@@ -1011,6 +1029,8 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/bui
     console.log(s16Sql(gen))
   } else if (process.argv.includes('--sql-0166')) {
     console.log(s17Sql(gen))
+  } else if (process.argv.includes('--sql-0184')) {
+    console.log(unmadeSql(gen))
   } else if (process.argv.includes('--check')) {
     const now = readFileSync(join(ROOT, GEAR_FILE), 'utf8')
     if (now !== text) { console.error(`${GEAR_FILE} is NOT what scripts/build-gear.mjs generates — re-run it.`); process.exit(1) }

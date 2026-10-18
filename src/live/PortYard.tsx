@@ -201,6 +201,11 @@ export function PortYard({
               {open.needs}
             </Note>
           )}
+          {open.unmade && (
+            <Note tone="warning" data-testid="yard-unmade">
+              {open.unmade}
+            </Note>
+          )}
           {open.famous_held && (
             <Note tone="warning" data-testid="yard-famous-held">
               {open.famous_held}
