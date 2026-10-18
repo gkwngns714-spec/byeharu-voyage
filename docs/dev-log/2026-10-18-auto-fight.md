@@ -332,3 +332,47 @@ method follows `2026-10-18-lighting-skills.md`:
 - lost (plundered + stripped) share not above today's + 5 points;
 - crew lost per raid not above today's + 1 point;
 - mean lap net not lower.
+
+## Live — 0189 dark, then 0192 lit, and the after-check (2026-10-18, read-only)
+
+0189 went live at ~16:03 UTC, still dark. 0192 went live at ~16:51 UTC: `combat_bite` true, `armour_turns_pct` 0.5.
+The windows are 15:30–16:00 (before 0189), 16:05–16:35 (0189 dark) and 16:52–17:22 (0192 lit).
+
+| measure | before | 0189 dark | 0192 lit | bound | holds |
+|---|---|---|---|---|---|
+| arrivals runs | 116 | 116 | 117 | — | |
+| arrivals avg | 2.80 s | 2.95 s | **3.18 s** | ≤ 3 s | **no** |
+| arrivals p95 | 3.89 s | 3.98 s | 4.54 s | < 5 s | yes |
+| arrivals max | 6.85 s | 6.36 s | 6.77 s | — | |
+| failed runs | 1 ("job canceled") | 1 ("job canceled") | 1 ("job canceled") | 0 | as before (one in each window) |
+| PIRATES days | 17 | 17 | 24 | — | |
+| fought in rounds | 0 | 0 | 24 | every day | yes |
+| won (evaded + driven off) | 47.1 % | 58.8 % | 75.0 % | — | |
+| lost (plundered + stripped) | 35.3 % | 17.6 % | 20.8 % | ≤ dark + 5 | yes |
+| crew lost per raid | 7.35 % | 5.51 % | 5.21 % | ≤ dark + 1 | yes |
+| mean hull a fight took | — | — | 27.9 points | — | |
+| merchant laps closed | 450 | 470 | 390 | — | |
+| lap net ≤ 0 | 52.9 % | 48.3 % | 52.6 % | — | |
+| mean lap net | 17,034 | 11,005 | 33,278 | not lower | yes |
+| REPAIR orders | 22 | 37 | **70** | — | |
+| VOYAGE_REPORTs with `fights` | 0 / 1,095 | 0 / 1,091 | 15 / 987 | — | |
+
+**0189 dark held** in every check:
+- No day was fought.
+- Every raid outcome is the old ratio table from that day's own escort and raider.
+- Every shoal day equals the knob-0 formula.
+- No report carries `fights`.
+
+**0192 lit:** every raid was fought in rounds, and the raid bounds held. **The arrivals average broke its bound: 3.18 s
+against 3 s.** At the mid-window read (17:07) it was already 3.12 s.
+
+**Cause: not established.**
+- Fights alone are about 24 in 30 minutes at a few ms each, which is far less than the 0.2 s per run the average rose by.
+- 0193 and 0194 also reached production after 0192 (prod head was 0194 at ~17:25). I did not establish when, so I
+  cannot say whether their pushes fell inside the window.
+- REPAIR orders doubled (37 → 70). That is consistent with fights now taking hull from more raids (EVADED / RANSOM
+  days took no hull before), and repairs are work the arrivals sweep does.
+
+The method says a broken bound is a rollback, so **0195 (`the_raids_are_rolled_back`) puts both switches back** as a
+forward migration. Nothing written while lit becomes unreadable: the days keep their rounds, and History keeps
+printing them.
