@@ -28,7 +28,9 @@
 -- Supabase (docs/NPC_TRADERS.md §4.5, §13). The refound cap is asserted by 0097 on its probe.
 --
 -- Every precondition is set here (hazards off, routes on, merchant pace 0 so a rewound clock is not
--- held, the switch) and all of it rolls back with the proof.
+-- held, the market pinned by proof.pin_market, the switch, and the probe merchant's lap built and
+-- asserted before the soak) and all of it rolls back with the proof. Nothing here reads the wall
+-- clock's state of the world: see the two blocks above the soak (2026-10-18).
 --
 -- @pass MERCHANT_CLIENT_WALL  as authenticated: every merchant core and npc function is refused 42501, a merchant fleet cannot be written, every door handed a merchant fleet refuses it, RLS shows no merchant fleet, and sea_traffic and the card answer (the card refusing the player's own fleet)
 -- @pass MERCHANT_AFK_LAP      tick_arrivals and tick_reconcile alone: the probe merchant closed a lap with net > 0, every merchant BOUGHT/SOLD came from a route-born order, and every roster fleet closed at least one lap
@@ -84,33 +86,21 @@ begin
     into v_leg from public.sea_reaches a, public.sea_reaches b where a.code = 'LIS' and b.code = 'FNC';
   v_back := jsonb_build_array(v_leg->1, v_leg->0);
 
-  -- A PROBE MERCHANT on a hand-set Lisbon → Funchal market, so its profit is deterministic: a good
-  -- Lisbon sells at target stock, Funchal starved of it.
-  select pg.good_id, g.code into v_good, v_code
-    from public.port_goods pg join public.goods g on g.id = pg.good_id
-   where pg.port_id = v_lis and public.port_offers(v_lis, pg.good_id) and pg.stock_target >= 100
-     and exists (select 1 from public.port_goods q where q.port_id = v_fnc and q.good_id = pg.good_id)
-     and not public.culture_refuses((select culture from public.ports where id = v_fnc), g.culture_mask)
-   order by g.code limit 1;
-  update public.port_goods set stock = stock_target where port_id = v_lis and good_id = v_good;
-  update public.port_goods set stock = greatest(1, round(stock_target * 0.15)) where port_id = v_fnc and good_id = v_good;
-  v_spec := jsonb_build_object(
-    'company', 'Casa da Prova Doze', 'alt_company', 'Casa da Prova XII', 'nation', 'PRT', 'ink', 'prt',
-    'master', 'Capitão Probo', 'blurb', 'A probe company that lives for one proof.',
-    'capital', 80000, 'patience', 0.30, 'wares', jsonb_build_array(v_code), 'roster_ord', 0,
-    'skills', jsonb_build_object('SEAMANSHIP', 1),
-    'fleets', jsonb_build_array(jsonb_build_object(
-       'name', 'Prova Doze', 'roster_ord', 0, 'days', 12,
-       'ships', jsonb_build_array(jsonb_build_object('class', 'carlat', 'name', 'Prova Doze')),
-       'officers', '[]'::jsonb,
-       'stops', jsonb_build_array(jsonb_build_object('port', 'LIS', 'course', v_leg),
-                                  jsonb_build_object('port', 'FNC', 'course', v_back)))));
-  v_m := public.npc_found(v_spec);
-  select fleet_id, route_id into v_mfleet, v_mroute from public.npc_fleets where player_id = v_m;
-
-  -- A PLAYER, with a fleet of her own.
-  v_player := public.new_house(c_auth, 'Casa da Testemunha', 'PRT');
-  select id into v_pfleet from public.fleets where player_id = v_player;
+  -- THE MARKET IS PINNED (proof.pin_market, scripts/db/market-fixture.mjs, the one authority for
+  -- it), with this file's own key. Without it every input below was the wall clock's: the drift is
+  -- re-drawn by random() whenever a read lands in a later 10-minute slot than the image was built
+  -- in, and stock regenerates by world.game_day(now()) against whatever last_regen_day the image
+  -- carries. So which goods the roster fleets planned at Lisbon, and therefore what was left for
+  -- the probe, changed with the hour the proof ran (2026-10-18: green at 00:33 UTC on 0172, red
+  -- from then on, with or without 0173). The fixture parks the drift slot a day ahead of now() and
+  -- pins stock to stock_target at the current game-day, so inside this one transaction, where
+  -- now() never moves, the market is a pure function of the chain.
+  v_res := proof.pin_market('00000000-0f12-4000-8000-0000000000dd'::uuid, 'proof-12-fixture', 'p12u1:', 'p12u2:');
+  if (v_res->>'nonzero')::int < 14000 or (v_res->>'distinct')::int < 1000
+     or exists (select 1 from public.port_goods
+                 where drift_slot <= public.drift_slot_of(now()) or last_regen_day <> world.game_day(now())) then
+    raise exception 'PROOF 12 FAILED: the market fixture did not take (%), so this file is back to playing whatever the clock dealt it', v_res;
+  end if;
 
   -- ── A SOAK WHOSE COST DOES NOT GROW WITH THE WORLD ───────────────────────────────────────────
   -- The roster went from 32 fleets to 76 on 2026-10-11 and this gate's budget did not: the job
@@ -135,10 +125,100 @@ begin
   -- WERE ACTUALLY STARTED: a fleet assigned, and not dark.
   update public.world_config set value = to_jsonb(21) where key = 'npc_fleet_max';
   perform public.npc_traders_switch(true);
-  if (select fleet_id from public.standing_routes where id = v_mroute) is distinct from v_mfleet then
-    raise exception 'PROOF 12 FAILED: the switch did not start the probe merchant';
+  if (select count(*) from public.standing_routes sr join public.players p on p.id = sr.player_id and p.is_npc
+       where sr.fleet_id is not null) < 15 then
+    raise exception 'PROOF 12 FAILED: the switch started too few merchants to soak';
   end if;
 
+  -- A PROBE MERCHANT, AND HER LAP STATE BUILT HERE, NEVER LEFT TO PLANNING ORDER.
+  --
+  -- THE DEFECT THIS BLOCK REPLACED (2026-10-18). She used to be founded BEFORE the switch on a
+  -- hand-set Lisbon -> Funchal market for the first Lisbon good by code, and her lines were left to
+  -- the planner. The switch plans every merchant route (838 on the failing run, sailing or not:
+  -- the soak's npc_fleet_max decides which START, not which are planned), longest-planned first,
+  -- so the probe, founded a moment before, LAST; and the leg planner keeps at most
+  -- npc_buyers_per_good OTHER merchant buyers of a good at a port. Measured on the failing run:
+  -- her ware (anise) already had its three merchant buyers at Lisbon, so it was struck off,
+  -- nothing else on the leg passed, and she was written in ballast, SELL lines only. On this
+  -- file's pinned market every one of the ten Lisbon goods Funchal trades is so held (most of
+  -- those routes never sail in this proof). Her one lap bought nothing and closed at minus her
+  -- stores (net -9). Her second lap can never start inside this proof: the fortnight at home
+  -- (0101) is measured from closed_at = now(), and now() does not move in one transaction. So the
+  -- proof passed only on the hours when the drift had left one Lisbon place free.
+  --
+  -- NOW the roster is switched on FIRST, so every merchant line that will exist is already written,
+  -- and her lap is BUILT, not planned: her good is one no SAILING merchant buys anywhere (so no one
+  -- fills the Funchal sink before her); her market is hand-set on top of the pinned one (Lisbon a
+  -- maker at target stock, Funchal starved of it); her lines are written through the planner's own
+  -- save door (cmd.standing_route_save_for) as the planner writes them: SELL at a profit at both
+  -- stops, and at Lisbon BUY <good> <qty> AT the merchant ceiling (public.npc_buy_ceiling), sized
+  -- inside the daily cap at both ends and half her hold; and she is started through the upkeep's
+  -- own assign door (cmd.standing_route_assign_for). Everything after that is the real path: the
+  -- executor's route-born orders, tick_arrivals, the SELL at Funchal and the lap close. Her lap
+  -- state is ASSERTED before anything runs, and the claim at the end ("she closes a profitable
+  -- lap") is unchanged.
+  select pg.good_id, g.code into v_good, v_code
+    from public.port_goods pg join public.goods g on g.id = pg.good_id
+   where pg.port_id = v_lis and public.port_offers(v_lis, pg.good_id) and pg.stock_target >= 100
+     and exists (select 1 from public.port_goods q where q.port_id = v_fnc and q.good_id = pg.good_id)
+     and not public.culture_refuses((select culture from public.ports where id = v_fnc), g.culture_mask)
+     and not exists (select 1 from public.standing_route_lines l
+                       join public.standing_routes sr on sr.id = l.route_id and sr.fleet_id is not null
+                       join public.players p on p.id = sr.player_id and p.is_npc
+                      where l.good_id = pg.good_id and l.kind = 'BUY')
+   order by g.code limit 1;
+  if v_good is null then
+    raise exception 'PROOF 12 FAILED: every Lisbon good that Funchal trades is bought by a sailing merchant, so there is no free ware to probe with';
+  end if;
+  update public.port_goods set stock = stock_target where port_id = v_lis and good_id = v_good;
+  update public.port_goods set stock = greatest(1, round(stock_target * 0.15)) where port_id = v_fnc and good_id = v_good;
+  v_spec := jsonb_build_object(
+    'company', 'Casa da Prova Doze', 'alt_company', 'Casa da Prova XII', 'nation', 'PRT', 'ink', 'prt',
+    'master', 'Capitão Probo', 'blurb', 'A probe company that lives for one proof.',
+    'capital', 80000, 'patience', 0.30, 'wares', jsonb_build_array(v_code), 'roster_ord', 0,
+    'skills', jsonb_build_object('SEAMANSHIP', 1),
+    'fleets', jsonb_build_array(jsonb_build_object(
+       'name', 'Prova Doze', 'roster_ord', 0, 'days', 12,
+       'ships', jsonb_build_array(jsonb_build_object('class', 'carlat', 'name', 'Prova Doze')),
+       'officers', '[]'::jsonb,
+       'stops', jsonb_build_array(jsonb_build_object('port', 'LIS', 'course', v_leg),
+                                  jsonb_build_object('port', 'FNC', 'course', v_back)))));
+  v_m := public.npc_found(v_spec);
+  select fleet_id, route_id into v_mfleet, v_mroute from public.npc_fleets where player_id = v_m;
+  select floor(least(world.daily_cap_remaining(v_m, v_lis, v_good), world.daily_cap_remaining(v_m, v_fnc, v_good),
+                     ((select coalesce(sum(public.ship_cargo_tuns(s.id)), 0) from public.ships s where s.fleet_id = v_mfleet)
+                      + public.fleet_free_hold(v_mfleet)) / 2 / greatest(g.bulk, 0.001)))::int
+    into v_k from public.goods g where g.id = v_good;
+  if coalesce(v_k, 0) < 1 or public.npc_buy_ceiling(v_lis, v_good, 0.30) is null then
+    raise exception 'PROOF 12 FAILED: the probe''s parcel of % is % unit(s), ceiling % — nothing to build her lap on',
+      v_code, v_k, public.npc_buy_ceiling(v_lis, v_good, 0.30);
+  end if;
+  v_res := cmd.standing_route_save_for(v_m, v_mroute, null, jsonb_build_array(
+    jsonb_build_object('port', 'LIS', 'course', v_leg, 'repair', true, 'crew_up', true, 'lines', jsonb_build_array(
+      jsonb_build_object('kind', 'SELL', 'at_profit', true),
+      jsonb_build_object('kind', 'BUY', 'good', v_code, 'qty', v_k, 'price_limit', public.npc_buy_ceiling(v_lis, v_good, 0.30)))),
+    jsonb_build_object('port', 'FNC', 'course', v_back, 'repair', false, 'crew_up', true, 'lines', jsonb_build_array(
+      jsonb_build_object('kind', 'SELL', 'at_profit', true)))), null, null, 0);
+  if not coalesce((v_res->>'ok')::boolean, false) then
+    raise exception 'PROOF 12 FAILED: the save door refused the probe''s lap: %', v_res;
+  end if;
+  v_res := cmd.standing_route_assign_for(v_m, v_mroute, v_mfleet);
+  if not coalesce((v_res->>'ok')::boolean, false)
+     or (select fleet_id from public.standing_routes where id = v_mroute) is distinct from v_mfleet
+     or (select lap_no from public.standing_routes where id = v_mroute) <> 1 then
+    raise exception 'PROOF 12 FAILED: the assign door did not start the probe merchant: %', v_res;
+  end if;
+  if not exists (select 1 from public.orders o where o.fleet_id = v_mfleet and o.verb = 'BUY' and o.status = 'done'
+                    and o.route_lap_id is not null)
+     or (select status from public.fleets where id = v_mfleet) <> 'SAILING' then
+    raise exception 'PROOF 12 FAILED: the probe merchant''s lap 1 did not BUY % at Lisbon through a route-born order and sail: orders %',
+      v_code,
+      (select jsonb_agg(jsonb_build_array(o.verb, o.status, o.error_code, o.raw_text) order by o.seq) from public.orders o where o.fleet_id = v_mfleet);
+  end if;
+
+  -- A PLAYER, with a fleet of her own.
+  v_player := public.new_house(c_auth, 'Casa da Testemunha', 'PRT');
+  select id into v_pfleet from public.fleets where player_id = v_player;
   -- ── 1. THE WALL ──────────────────────────────────────────────────────────────────────────────
   select nf.fleet_id into v_rfleet from public.npc_fleets nf where nf.player_id <> v_m order by nf.roster_ord limit 1;
   perform cmd.assume_identity(c_auth);
