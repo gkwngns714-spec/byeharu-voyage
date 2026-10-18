@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Chip, Field, Figure, Hint, Note, Row, Skeleton, Tray, type TrayDetent } from '../../../components/ui'
+import { Button, Chip, Field, Figure, Hint, Note, Row, Skeleton, Tray, type TrayDetent, type TrayMode } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { PortFlag } from '../../../live/PortFlag'
 import { usePress } from '../../../live/usePress'
@@ -42,7 +42,10 @@ export function PlanBuilder({
   plan,
   onQueued,
   onRoute,
+  mode = 'docked',
 }: {
+  /** A desk pane on a wide glass; docked on a phone. */
+  mode?: TrayMode
   fleet: FleetView
   good: SnapshotGood
   plan: PlanDraft
@@ -95,6 +98,7 @@ export function PlanBuilder({
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? close() : setDetent(next))}
       title={`Plan · ${good.name}`}
+      mode={mode}
       data-testid="plan-builder"
       action={
         <div className="grid grid-cols-2 gap-3">
@@ -123,7 +127,7 @@ export function PlanBuilder({
       }
     >
       <span className="block text-t-caption text-ink-faint">Buy at</span>
-      <div className="-mx-gutter mt-1 flex gap-2 overflow-x-auto px-gutter pb-1" role="group" aria-label="Buy at">
+      <div className="-mx-gutter mt-1 bv-scroll-x flex gap-2 overflow-x-auto px-gutter pb-1" role="group" aria-label="Buy at">
         {aboard > 0 && (
           <Chip on={plan.buyAt === null} onClick={() => set({ buyAt: null })} className="shrink-0 whitespace-nowrap">
             {formatUnits(aboard)} on board
@@ -162,7 +166,7 @@ export function PlanBuilder({
       )}
 
       <span className="mt-4 block text-t-caption text-ink-faint">Sell at</span>
-      <div className="-mx-gutter mt-1 flex gap-2 overflow-x-auto px-gutter pb-1" role="group" aria-label="Sell at">
+      <div className="-mx-gutter mt-1 bv-scroll-x flex gap-2 overflow-x-auto px-gutter pb-1" role="group" aria-label="Sell at">
         {sellChoices.map((c) => (
           <Chip key={c} on={plan.sellAt === c} onClick={() => set({ sellAt: c })} className="shrink-0 whitespace-nowrap">
             <PortFlag code={c} />

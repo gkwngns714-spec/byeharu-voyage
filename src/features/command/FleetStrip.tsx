@@ -17,16 +17,51 @@ export function FleetStrip({
   fleetId,
   onSelect,
   fleet,
+  inline = false,
 }: {
   fleets: readonly FleetView[]
   fleetId: string | null
   onSelect: (id: string) => void
   fleet: FleetView | null
+  /** The wide desk's header: the chips and the two figures on ONE line (docs/COMMAND_DESK.md §3.9). */
+  inline?: boolean
 }) {
   const portByCode = useWorld((s) => s.portByCode)
+  if (inline) {
+    return (
+      <div className="flex min-w-0 flex-1 items-center gap-6" data-testid="fleet-strip">
+        <div className="bv-scroll-x flex min-w-0 shrink gap-2 overflow-x-auto">
+          {fleets.map((f) => (
+            <Chip key={f.id} on={f.id === fleetId} onClick={() => onSelect(f.id)} className="shrink-0 whitespace-nowrap">
+              {fleetPortCode(f) && <PortFlag code={fleetPortCode(f) as string} />}
+              {f.name} · {whereLine(whereabouts(f), (c) => portNameOf(portByCode, c))}
+            </Chip>
+          ))}
+        </div>
+        {fleet && (
+          <div className="flex shrink-0 items-center gap-6" data-testid="command-line">
+            <span className="flex items-baseline gap-2">
+              <span className="text-t-caption text-ink-faint">Supplies</span>
+              <Figure value={formatVoyageDays(fleet.endurance_days)} />
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="text-t-caption text-ink-faint">Cargo</span>
+              <Figure value={formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} unit={tonsWord(fleetHoldTotal(fleet))} />
+              <Bar
+                pct={fleetHoldTotal(fleet) > 0 ? (fleetHoldUsed(fleet) / fleetHoldTotal(fleet)) * 100 : 0}
+                tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}
+                label={`cargo, ${formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} ${tonsWord(fleetHoldTotal(fleet))}`}
+                className="w-24"
+              />
+            </span>
+          </div>
+        )}
+      </div>
+    )
+  }
   return (
     <div data-testid="fleet-strip">
-      <div className="-mx-gutter flex gap-2 overflow-x-auto px-gutter pb-1">
+      <div className="-mx-gutter bv-scroll-x flex gap-2 overflow-x-auto px-gutter pb-1">
         {fleets.map((f) => (
           <Chip key={f.id} on={f.id === fleetId} onClick={() => onSelect(f.id)} className="shrink-0 whitespace-nowrap">
             {fleetPortCode(f) && <PortFlag code={fleetPortCode(f) as string} />}

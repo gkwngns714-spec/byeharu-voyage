@@ -6,7 +6,7 @@ import { Note } from './Note'
 import { PriceRows, type PriceTrend } from './PriceRows'
 import { Row } from './Row'
 import { Stepper } from './Stepper'
-import { Tray } from './Tray'
+import { Tray, type TrayMode } from './Tray'
 import type { TrayDetent } from './trayDetents'
 import { formatDucats, formatDucatsDelta, formatInt, formatPctDelta, formatTons, formatUnitPrice, formatUnits } from '../../lib/format'
 import type { MarketGood, Refusal } from '../../lib/rpc'
@@ -155,7 +155,10 @@ export function TradeTray({
   qty,
   onClose,
   children,
+  mode = 'docked',
 }: {
+  /** Where it stands: docked (a phone's bottom edge, a wide glass's side panel), or a desk pane. */
+  mode?: TrayMode
   /** What was tapped: the good, and which of its two prices. */
   pick: TradePick
   quay: TradeQuay
@@ -238,6 +241,7 @@ export function TradeTray({
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={good.name}
+      mode={mode}
       data-testid="trade-tray"
       action={
         <>

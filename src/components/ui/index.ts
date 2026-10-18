@@ -139,6 +139,8 @@ export { useReaskAtEdge } from './reaskAtEdge'
 // The price LINE (0013 gave the server a memory to draw one from). §5 names it `Bar.trend`
 // eventually; the fold waits for the screen that needs both in one place.
 export { Sparkline, type SparkTone } from './Sparkline'
+export { StockGauge } from './StockGauge'
+export { stockLevel, stockFillPct, type StockLevel } from './stockLevel'
 // THE ONE READING OF "IS THIS A WIDE GLASS?" (screenLayout.ts). The Tray reads it to stand as a
 // side panel; a screen reads it when what a tray MEANS differs by glass — the basket panel is
 // permanent beside the column and puts itself away only on a phone (ManifestPanel.tsx).

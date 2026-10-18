@@ -1,12 +1,9 @@
-import { useMemo } from 'react'
-import { Chip, Field, Note, Segmented, Skeleton, categoryLabel } from '../../../components/ui'
-import { usePortMarket } from '../../../live/usePortMarket'
-import { useWatchlist } from '../../../live/useDesk'
+import { Chip, Field, Note, Segmented, Skeleton } from '../../../components/ui'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import { fold, foldedMatch } from '../../../lib/text'
-import type { FleetView, SnapshotGood, WatchGood } from '../../../lib/rpc'
+import type { FleetView } from '../../../lib/rpc'
 import { useDeskGood } from '../../../store/deskGood'
-import { DESK_SORTS, useDeskView, type DeskFilter, type DeskSort } from '../deskView'
+import { DESK_SORTS, useDeskView, type DeskSort } from '../deskView'
+import { useMarketRows, type MarketRows } from './marketRows'
 import { WatchRow } from './WatchRow'
 
 // MARKETS — every good once, like a broker's watchlist (docs/COMMAND_DESK.md §3.2). The owner,
@@ -22,60 +19,37 @@ import { WatchRow } from './WatchRow'
 // figure. What you would pay and what you would get are on the good's page, from the quote (§3.2's
 // DEFAULT, technical: the ask needs each city's spread, ~1 ms a city on prod).
 
-export function Markets({ fleet }: { fleet: FleetView }) {
-  const snapshot = useWorld((s) => s.snapshot)
+export function Markets({
+  fleet,
+  selected = null,
+  market,
+}: {
+  fleet: FleetView
+  /** The row the wide desk shows by default, when no good is open. */
+  selected?: string | null
+  /** The rows, when the caller already reads them (the wide desk); otherwise read here. */
+  market?: MarketRows
+}) {
+  return market ? (
+    <MarketsList fleet={fleet} selected={selected} market={market} />
+  ) : (
+    <MarketsOwnRows fleet={fleet} selected={selected} />
+  )
+}
+
+function MarketsOwnRows({ fleet, selected }: { fleet: FleetView; selected: string | null }) {
+  const market = useMarketRows(fleet)
+  return <MarketsList fleet={fleet} selected={selected} market={market} />
+}
+
+function MarketsList({ selected, market }: { fleet: FleetView; selected: string | null; market: MarketRows }) {
   const portByCode = useWorld((s) => s.portByCode)
   const { filter, sort, search, setFilter, setSort, setSearch } = useDeskView()
   const openGood = useDeskGood((s) => s.open)
   const openCode = useDeskGood((s) => s.code)
-  const list = useWatchlist(fleet.id, fleet.version)
-
-  const docked = fleet.status === 'DOCKED' && fleet.port ? (portByCode[fleet.port] ?? null) : null
-  const quay = usePortMarket(filter === 'here' && docked ? docked.id : null)
-
-  const byCode = useMemo(() => {
-    const m: Record<string, WatchGood> = {}
-    for (const g of list.view?.goods ?? []) m[g.code] = g
-    return m
-  }, [list.view])
-
-  const categories = useMemo(() => [...new Set((snapshot?.goods ?? []).map((g) => g.category))].sort(), [snapshot])
-
-  const rows = useMemo(() => {
-    const goods: readonly SnapshotGood[] = snapshot?.goods ?? []
-    const q = fold(search.trim())
-    const offered =
-      filter === 'here' ? new Set((quay.market?.goods ?? []).filter((g) => g.offered).map((g) => g.code)) : null
-    const kept = goods.filter((g) => {
-      if (!foldedMatch(q, g.name, g.code, g.category)) return false
-      if (filter === 'on_board') return (byCode[g.code]?.on_board ?? 0) > 0
-      if (filter === 'here') return offered?.has(g.code) ?? false
-      if (filter.startsWith('cat:')) return g.category === filter.slice(4)
-      return true
-    })
-    const price = (g: SnapshotGood) => byCode[g.code]?.best?.mid ?? Number.POSITIVE_INFINITY
-    const change = (g: SnapshotGood) => byCode[g.code]?.change_pct ?? Number.NEGATIVE_INFINITY
-    return [...kept].sort((a, b) =>
-      sort === 'price'
-        ? price(a) - price(b) || a.name.localeCompare(b.name)
-        : sort === 'change'
-          ? change(b) - change(a) || a.name.localeCompare(b.name)
-          : a.name.localeCompare(b.name),
-    )
-  }, [snapshot, search, filter, sort, byCode, quay.market])
-
-  const chips: { id: DeskFilter; label: string }[] = [
-    { id: 'all', label: 'All' },
-    ...(docked ? [{ id: 'here' as DeskFilter, label: 'Here' }] : []),
-    { id: 'on_board', label: 'On board' },
-    ...categories.map((c) => {
-      const word = categoryLabel(c)
-      return {
-        id: `cat:${c}` as DeskFilter,
-        label: word.charAt(0).toUpperCase() + word.slice(1),
-      }
-    }),
-  ]
+  const { list, rows, byCode, chips } = market
+  // The row that takes the wash: the good open, else the one the wide desk shows by default.
+  const on = openCode ?? selected
 
   return (
     <div data-testid="desk-markets">
@@ -90,7 +64,7 @@ export function Markets({ fleet }: { fleet: FleetView }) {
         autoCorrect="off"
       />
       {/* THE FILTERS — one scrolling row, one on at a time; a press selects and moves nothing. */}
-      <div className="-mx-gutter mt-2 flex gap-2 overflow-x-auto px-gutter pb-1" role="group" aria-label="Filter goods">
+      <div className="-mx-gutter mt-2 bv-scroll-x flex gap-2 overflow-x-auto px-gutter pb-1" role="group" aria-label="Filter goods">
         {chips.map((c) => (
           <Chip key={c.id} on={filter === c.id} onClick={() => setFilter(c.id)} className="shrink-0 whitespace-nowrap">
             {c.label}
@@ -118,7 +92,7 @@ export function Markets({ fleet }: { fleet: FleetView }) {
               key={g.code}
               good={g}
               watch={byCode[g.code]}
-              on={openCode === g.code}
+              on={on === g.code}
               onOpen={() => openGood(g.code)}
               portName={(c) => portNameOf(portByCode, c)}
             />

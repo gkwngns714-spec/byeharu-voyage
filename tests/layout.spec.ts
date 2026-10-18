@@ -236,8 +236,10 @@ test('the desk puts complete priced goods above the fold, per K.1 — Markets, a
       firstRowTop: Math.round(rows[0]?.getBoundingClientRect().top ?? 0),
       rowHeight: Math.round(rows[0]?.getBoundingClientRect().height ?? 0),
       completeRowsAboveFold: complete.length,
-      firstRowHasRange: rows[0]?.querySelector('[role="meter"][aria-label$="price range"]') !== null,
-      rowsWithoutRange: rows.filter((r) => r.querySelector('[role="meter"][aria-label$="price range"]') === null).length,
+      // 2026-10-18 (owner: "i don't see stock of the trade goods"): the row's meter is the city's STOCK
+      // against its normal level (StockGauge), which replaced the tide-in-range bar.
+      firstRowHasRange: rows[0]?.querySelector('[data-testid="stock-gauge"]') !== null,
+      rowsWithoutRange: rows.filter((r) => r.querySelector('[data-testid="stock-gauge"]') === null).length,
     }
   })
 

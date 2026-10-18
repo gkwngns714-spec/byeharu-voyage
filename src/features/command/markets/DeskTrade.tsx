@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Note, TradeTray } from '../../../components/ui'
+import { Note, TradeTray, type TrayMode } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { usePortHistory } from '../../../live/usePortHistory'
 import { usePortMarket } from '../../../live/usePortMarket'
@@ -19,7 +19,10 @@ export function DeskTrade({
   code,
   intent,
   onClose,
+  mode = 'docked',
 }: {
+  /** A desk pane on a wide glass; docked on a phone. */
+  mode?: TrayMode
   fleet: FleetView
   code: string
   intent: 'buy' | 'sell'
@@ -55,6 +58,7 @@ export function DeskTrade({
       trade={trade}
       qty={{ value: qty, onChange: setQty }}
       onClose={onClose}
+      mode={mode}
     />
   )
 }

@@ -1,10 +1,10 @@
 import { ActCell } from './ActCell'
-import { Bar } from './Bar'
 import { Figure } from './Figure'
 import { Icon } from './Icon'
 import { goodIcon } from './goodIcons'
 import { RarityMark } from './Rarity'
 import { Row } from './Row'
+import { StockGauge } from './StockGauge'
 import { formatInt, formatUnits } from '../../lib/format'
 import type { MarketGood } from '../../lib/rpc'
 
@@ -102,21 +102,15 @@ export function TradeRow({
       }
       data-testid="trade-row"
     >
-      <Bar pct={tidePct(good)} tone="neutral" label={`${good.name} price range`} className="mt-1 max-w-40" />
+      {/* THE CITY'S STOCK AGAINST ITS NORMAL LEVEL (owner, 2026-10-18: "i don't see stock of the trade
+          goods"). It replaces the tide-in-range bar: the stock IS why the price stands where it does. */}
+      <StockGauge stock={good.stock} target={good.stock_target} label={good.name} className="mt-1" />
     </Row>
   )
 }
 
 /** A no-break space, spelled as an escape so the source carries no invisible character. */
 const NBSP = String.fromCharCode(0xa0)
-
-/** WHERE TODAY'S MID STANDS INSIDE THE SERVED RANGE, 0–100 — pure formatting of three served
- *  figures, spelt in this ONE place. A band of zero width reads as full. */
-function tidePct(g: MarketGood): number {
-  const width = g.range_hi - g.range_lo
-  if (!(width > 0)) return 100
-  return ((g.mid - g.range_lo) / width) * 100
-}
 
 /** One price, and the tap that makes it a trade. The label and the figure are what layout.spec
  *  counts; the reason line is what keeps a dead cell honest. Moved unchanged from TradeTile, plus

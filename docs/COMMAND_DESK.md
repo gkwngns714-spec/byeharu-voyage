@@ -419,6 +419,66 @@ supplies, wages, repairs, port fees, profit tax, invested, coupons, **net**. The
 A fleet row opens today's `TradeHistoryPanel` for that fleet (laps, stops, lines). Routes show their
 last lap net (already served by `world.standing_routes`).
 
+### 3.9 The layout: a trading terminal (2026-10-18) [OWNER: "it will be like stock trading screen"]
+
+This section **supersedes §3.1's desktop sketch and §5.5–5.6's column table.** On his own screen
+(Chrome, DPR 2, 1440×731) the owner saw the desk as a phone list: a ~750-px column with half the glass
+empty until a good was pressed, a 360-px chart in a tray, and Buy at / Sell at below the fold inside a
+second scroll. Then: *"wtf what about the command tab? huh?"* and *"i don't see stock of the trade goods
+so there needs fixing"*. The model is a broker's terminal (TradingView, Bloomberg): a watchlist, a chart
+and an order ticket side by side, using the whole glass.
+
+```
+ WIDE (≥ 1024 px — WIDE_QUERY), the Markets face — 1440 × 731 shown
+ ┌ Command  [⚑ Gaivota · Lisbon]  Supplies 15.0 days  Cargo 4 / 60 t ▬▬   [Markets◆|Plans|City|Invest|Profit] ┐
+ ├ WATCHLIST 17–22 rem ─┬ CHART (the rest) ──────────────────────────────────┬ TICKET 20–25 rem ──────────┤
+ │ 🔍 Search goods       │ ☕ Coffee ◇                         Stock · normal │ BEST TRADE      for 39 u  │
+ │ [All◆][Here][On b.]…  │ ⚑ Mocha · market price             ▬▬|▬ 240 / 300 │ Buy  ⚑ Mocha     94 🪙    │
+ │ [Name|Change|Price]   │ 94 🪙  +4.1 % · 12 h                              │ Sell ⚑ Lisbon   141 🪙    │
+ │ ☕ Coffee   ╱╲╱  112  │ [⚑Mocha◆][⚑Aden][⚑Lisbon]…           [1h|6h|12h◆] │ Net / t   Net, the hold   │
+ │   ▬|▬ 240/300 +4.1 % │ ┌────────────────────────────────────────────────┐ │ +31 🪙    +1,860 🪙       │
+ │ 🌶 Pepper  ‾╲_  149  │ │ record ─── now ● estimate ┄┄ band ░░  ◆ best   │ │ 3.4 days · arrive 17:52 · │
+ │ …  (own scroll,      │ │ ┆ arrive                                       │ │ best to sell 19:10 (+2 %) │
+ │    thin bar)         │ │ normal ┄┄┄┄┄┄┄ stock ▁▂▃▅▆ (info) ┄┄ (est.)   │ │ [Buy here]  [Plan trade]  │
+ │                      │ └────────────────────────────────────────────────┘ │ Buy at   price·stock·away │
+ │                      │ ◆ Best time to sell at Lisbon: 19:10 · 144 (+2 %) │ Sell at  you get · net/t  │
+ │                      │ If nobody else trades here, likely 88–101 at …   │ … (own scroll)            │
+ └──────────────────────┴────────────────────────────────────────────────────┴───────────────────────────┘
+```
+
+- **One header line** (the old fleet strip's 52 px and the faces' 44 px folded into one 60-px bar):
+  the fleet chips, the two figures, the faces.
+- **Three panes, each with its own scroll** and a thin, quiet bar (`.bv-scroll`, `src/index.css`). This
+  replaces §5.5's "no inner scroll box". The panes sit side by side, so the Best trade card stays
+  above the fold while the list is read; on a terminal a pane that scrolls on its own is the norm.
+  Sideways chip rows draw no bar at all (`.bv-scroll-x`).
+- **Nothing chosen yet → the list's first good is shown.** The centre and the right are never empty.
+  The row takes the wash as if pressed; the store is not written.
+- **The ticket pane is THE SLOT.** The plan builder and the trade tray stand in it (`Tray
+  mode="pane"`), and closing them gives the ticket back. The chart and the list do not move.
+- **Best trade** is the board's own first answer, printed whole (§7.2): buy at `qty.bought_at` (or what
+  is on board), sell at the first sell row. The board sorts by net, server-side, so the client ranks
+  nothing.
+- **The chart** fills its pane, measured with `ResizeObserver`, so the SVG's units are screen pixels and
+  its labels keep their true size. The history window is 1 h / 6 h / 12 h (the served record, cut).
+  The city chips carry flags. ◆ marks the best time, and a line under the chart names it.
+- **Stock** [OWNER 2026-10-18]: every watchlist row, every Buy at / Sell at row, the chart head, the City
+  face's trade board and the map city panel's Market tab draw ONE component, `StockGauge`. It shows
+  `240 / 300` and a thin bar whose tick is the normal level (`stock_target`). Low stock (scarce, so
+  dear) reads `danger`; high (plenty, so cheap) reads `success`; within a third of normal reads quiet.
+  The chart has a **stock strip** under the price on the same time axis, with the normal level
+  dashed: the reason the price moved. Served by 0183.
+- **At sea**: the board runs from the nearest harbour (0183). Sell at says so in one line (`At sea:
+  reckoned from Lisbon, 20 miles off`), and no row is bare.
+
+**Phone (< 1024):** unchanged in shape: the Sheet, the list, and the good's page as a tray at full. The
+tray holds the chart first, then the ticket (Best trade, Buy at, Sell at), so the same two halves stack.
+No sideways scroll.
+
+**Not built here, and why:** a *best-margin* column on the watchlist. It needs every good's dearest
+buyer: about 132,000 market prices a read (measured 12.5 s on the local engine). That is a server
+precompute at the market tick, which is a slice of its own.
+
 ---
 
 ## 4. The estimate — what it is, exactly
@@ -545,6 +605,9 @@ The existing 4-pt scale: gutter 16, row 52, section gap 24, control gap 8. Watch
 watchlist and ticket columns scroll with the page (no inner scroll box — reach law, `CORE_REUSE` §1.5).
 
 ### 5.6 Phone vs wide
+
+*Superseded by §3.9 (2026-10-18): from 1024 px the Markets face is the three-pane terminal; the table
+below is the plan as first written.*
 
 | | Phone (< 768) | Tablet (768–1279) | Wide (≥ 1280) |
 |---|---|---|---|

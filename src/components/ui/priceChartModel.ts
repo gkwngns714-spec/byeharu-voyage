@@ -55,6 +55,25 @@ export interface ChartMark {
   index: number
 }
 
+/** THE STOCK STRIP (0183; owner, 2026-10-18: "i don't see stock of the trade goods"): the city's stock
+ *  under the price, on the same time axis — a trading terminal's volume pane. Its scale is 0 … the
+ *  larger of twice the normal level and the most drawn, so the normal rule sits at or under the middle. */
+export interface ChartStock {
+  /** The strip's rectangle, under the price plot. */
+  y: number
+  h: number
+  /** The record's stock, as a line and its ground ('' when the record carries none). */
+  line: string
+  area: string
+  /** The estimate's stepped stock, dashed from now ('' without one). */
+  estimate: string
+  /** The normal level's rule. */
+  normalY: number
+  /** The stock now: the estimate's first point, else the record's last. */
+  now: { x: number; y: number; value: number } | null
+  target: number
+}
+
 /** What the estimate adds to the plane. */
 export interface ChartOutlook {
   /** The dashed line, now → the last served point. */
@@ -92,6 +111,8 @@ export interface PriceChartModel {
   high: ChartMark
   now: ChartMark
   outlook: ChartOutlook | null
+  /** The stock strip, when a normal level was given and any point carries a stock. */
+  stock: ChartStock | null
 }
 
 /** Hours as an axis label: whole hours as `8h`, otherwise one decimal (`7.5h`). */
@@ -135,6 +156,8 @@ export function priceChartModel(
     width: PRICE_CHART_W,
     height: PRICE_CHART_H,
   },
+  /** The city's normal stock for the good (served): draws the stock strip under the price. */
+  stockTarget: number | null = null,
 ): PriceChartModel | null {
   const est = outlook && outlook.points.length >= 2 ? outlook.points : null
   if (!(slotSeconds > 0) || !Number.isFinite(nowMs)) return null
@@ -150,11 +173,19 @@ export function priceChartModel(
   const hi = Math.max(...drawn)
   const band = hi - lo
 
+  // THE STOCK STRIP takes the bottom of the plane when there is anything to draw in it.
+  const hasStock =
+    stockTarget !== null &&
+    stockTarget > 0 &&
+    (points.some((p) => typeof p.stock === 'number') || (est?.some((p) => typeof p.stock === 'number') ?? false))
+  const inner = size.height - PAD.top - PAD.bottom
+  const stockH = hasStock ? Math.max(28, Math.round(inner * 0.22)) : 0
+  const stockGap = hasStock ? 10 : 0
   const plot = {
     x: PAD.left,
     y: PAD.top,
     w: size.width - PAD.left - PAD.right,
-    h: size.height - PAD.top - PAD.bottom,
+    h: inner - stockH - stockGap,
   }
 
   // THE RECORD'S SPAN: the wider of its true age and its cadence × count, never a constant. With
@@ -204,7 +235,7 @@ export function priceChartModel(
   const nowX = xOf(nowMs)
   // Two labels never stand on each other: a record too short to give its own left label room beside
   // `now` (a fresh record of two slots against six hours of estimate) is labelled at now alone.
-  const roomForLeft = nowX - plot.x >= 44
+  const roomForLeft = nowX - plot.x >= 64
   const xTicks = points.length && roomForLeft
     ? [
         { x: plot.x, label: `${MINUS}${hoursLabel(spanHours)}` },
@@ -249,6 +280,34 @@ export function priceChartModel(
     }
   }
 
+  let chartStock: ChartStock | null = null
+  if (hasStock && stockTarget !== null) {
+    const sy = plot.y + plot.h + stockGap
+    const recS = points.map((p, i) => ({ t: ats[i], v: p.stock })).filter((p): p is { t: number; v: number } => typeof p.v === 'number')
+    const estS = est
+      ? est.map((p, i) => ({ t: estAts[i], v: p.stock })).filter((p): p is { t: number; v: number } => typeof p.v === 'number')
+      : []
+    const top = Math.max(stockTarget * 2, ...recS.map((p) => p.v), ...estS.map((p) => p.v))
+    const ys = (v: number) => sy + stockH - (Math.max(0, v) / top) * stockH
+    const path = (pts: { t: number; v: number }[]) =>
+      pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${xOf(p.t).toFixed(1)} ${ys(p.v).toFixed(1)}`).join(' ')
+    const sline = path(recS)
+    const sfloor = (sy + stockH).toFixed(1)
+    const nowS = estS[0] ?? recS[recS.length - 1] ?? null
+    chartStock = {
+      y: sy,
+      h: stockH,
+      line: sline,
+      area: recS.length
+        ? `${sline} L${xOf(recS[recS.length - 1].t).toFixed(1)} ${sfloor} L${xOf(recS[0].t).toFixed(1)} ${sfloor} Z`
+        : '',
+      estimate: path(estS),
+      normalY: ys(stockTarget),
+      now: nowS ? { x: xOf(nowS.t), y: ys(nowS.v), value: nowS.v } : null,
+      target: stockTarget,
+    }
+  }
+
   return {
     width: size.width,
     height: size.height,
@@ -263,5 +322,6 @@ export function priceChartModel(
     high: points.length ? mark(highI) : mark(-1),
     now: est ? mark(-1) : mark(mids.length - 1),
     outlook: chartOutlook,
+    stock: chartStock,
   }
 }

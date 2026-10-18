@@ -1436,6 +1436,8 @@ export interface PricePoint {
   slot: number
   at: string
   mid: number
+  /** The stock the snapshot wrote beside the mid (0183). */
+  stock?: number
 }
 
 /** `world.price_history(port, slots)` — ONE call per port, keyed by good CODE, oldest point first.
@@ -2514,6 +2516,8 @@ export interface OutlookPoint {
   value: number
   lo: number
   hi: number
+  /** The city's stock at that instant, as public.price_path steps it (0183). */
+  stock?: number
 }
 
 /** When the estimate is best ahead — served only when its gain beats the band there (0171's rule). */
@@ -2537,6 +2541,8 @@ export interface PriceOutlook {
   /** The server's words for what is held as now (the port fee, the tax, the purse). */
   held: string
   points: OutlookPoint[]
+  /** The city's normal stock for the good — the level the price is centred on (0183). */
+  stock_target?: number | null
   best: OutlookBest | null
   /** The fairs that fall in the window (a fair moves the port fee). */
   events: { code: string; name: string; effect: string; from: string; to: string }[]
@@ -2561,6 +2567,8 @@ export interface BoardBuyRow {
   cost: number
   price_each: number | null
   stock: number
+  /** The city's normal stock — the level the price is centred on (0183). */
+  stock_target?: number
   miles: number | null
   days: number | null
   arrive_at: string | null
@@ -2575,6 +2583,9 @@ export interface BoardSellRow {
   /** The market price there now (world.mid_price). */
   mid: number
   quoted: boolean
+  /** The city's stock and its normal level (0183). */
+  stock?: number
+  stock_target?: number
   miles: number | null
   days: number | null
   arrive_at: string | null
@@ -2600,7 +2611,8 @@ export interface GoodBoard {
   fleet: {
     id: string
     name: string
-    where: { kind: 'docked' | 'sailing' | 'at_sea'; port: string | null; miles_left?: number; eta?: string }
+    /** At sea (0183): `via` is the nearest harbour the board runs from, `miles_left` the miles to it. */
+    where: { kind: 'docked' | 'sailing' | 'at_sea'; port: string | null; via?: string | null; miles_left?: number; eta?: string }
     speed_kn: number
     wage_per_day: number
   }
@@ -2617,7 +2629,8 @@ export interface GoodBoard {
 export interface WatchGood {
   code: string
   sellers: number
-  best: { port: string; mid: number; as_of: string | null; recorded: boolean } | null
+  /** The cheapest seller; `stock` / `stock_target` its stock and normal level (0183). */
+  best: { port: string; mid: number; as_of: string | null; recorded: boolean; stock?: number; stock_target?: number } | null
   change_pct: number | null
   /** The cheapest seller's record, an hour apart, oldest first. */
   spark: number[]

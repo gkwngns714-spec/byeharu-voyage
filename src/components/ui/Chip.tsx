@@ -79,7 +79,7 @@ export function Segmented<T extends string>({
     <div
       role="tablist"
       aria-label={label}
-      className={`flex gap-1 overflow-x-auto rounded-control bg-surface-2 p-1 ${className}`}
+      className={`bv-scroll-x flex gap-1 overflow-x-auto rounded-control bg-surface-2 p-1 ${className}`}
     >
       {segments.map((s) => {
         const on = s.id === value
