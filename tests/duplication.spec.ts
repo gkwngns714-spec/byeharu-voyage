@@ -330,17 +330,31 @@ function chain(): Migration[] {
     .map((file) => ({ file, short: file.slice(10, 14), sql: read(path.join(MIGRATIONS, file)) }))
 }
 
+// THE TAG A SELF-ASSERT NAMES ITSELF BY is the file's four-digit number — with ONE exception, dated.
+// 0187 (applied on production 2026-10-18, PR #229) raises its 36 failures as
+// 'GP1 self-assert FAIL: …' and closes with 'GP1 self-assert ok: THE GREAT POWERS — …', GP1 being
+// the slice name its header and docs/GREAT_POWERS.md give it. The rule's intent — every migration
+// proves itself in its own transaction, and a failure is greppable to one file — is met: "GP1" names
+// exactly 0187 and nothing else in the chain. A live migration is never edited to appease a
+// word-match (an edited file forces CI's from-zero rebuild, and prod already carries the original),
+// so this map accepts that one tag for that one file. It is keyed by the full file name, so a new
+// migration cannot inherit it, and the tag must still open BOTH the FAIL raise and the ok receipt.
+const SELF_ASSERT_TAG_EXCEPTIONS: Readonly<Record<string, string>> = {
+  '20260818000187_the_great_powers.sql': 'GP1',
+}
+
 test('every migration proves itself in the transaction that applies it, and prints the receipt', () => {
   const files = chain()
   expect(files.length, 'no migrations were read').toBeGreaterThan(10)
 
   const bad: string[] = []
   for (const m of files) {
+    const tag = SELF_ASSERT_TAG_EXCEPTIONS[m.file] ?? m.short
     if (!/do\s+\$\$/i.test(m.sql)) bad.push(`${m.file}  — no do $$ … $$ self-assert block at all`)
-    else if (!new RegExp(`${m.short}\\s+self-assert FAIL`, 'i').test(m.sql))
-      bad.push(`${m.file}  — no "raise exception '${m.short} self-assert FAIL: …'"`)
-    else if (!new RegExp(`raise\\s+notice\\s+'${m.short}[^']*self-assert ok`, 'i').test(m.sql))
-      bad.push(`${m.file}  — no closing "raise notice '${m.short} self-assert ok: …'" receipt`)
+    else if (!new RegExp(`${tag}\\s+self-assert FAIL`, 'i').test(m.sql))
+      bad.push(`${m.file}  — no "raise exception '${tag} self-assert FAIL: …'"`)
+    else if (!new RegExp(`raise\\s+notice\\s+'${tag}[^']*self-assert ok`, 'i').test(m.sql))
+      bad.push(`${m.file}  — no closing "raise notice '${tag} self-assert ok: …'" receipt`)
   }
 
   expect(
