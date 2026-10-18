@@ -2631,3 +2631,17 @@ export interface Watchlist {
   goods: WatchGood[]
   clock: { now: string; next_change_at: string }
 }
+
+/** One line of a plan (0175): a line of the grammar, and a SAIL's proposed course. */
+export interface PlanLine {
+  text: string
+  path?: [number, number][] | null
+}
+
+/** `cmd.issue_lines` (0175) — the plan's lines, queued together. A refusal names its `line`. */
+export interface IssueLinesResult {
+  ok: true
+  orders: { id: string; seq: number; status: string; text: string; error_code: string | null; error_message: string | null }[]
+  queue: QueuedOrder[]
+  version: number
+}

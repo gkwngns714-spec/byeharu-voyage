@@ -56,6 +56,7 @@ import {
   cmdHaggle,
   cmdHireOfficer,
   cmdIssue,
+  cmdIssueLines,
   cmdPreview,
   cmdProvisionPresetApply,
   cmdProvisionPresetDelete,
@@ -95,6 +96,7 @@ import type {
   HaggleAttempt,
   LedgerEvent,
   ManifestLine,
+  PlanLine,
   ManifestReceipt,
   MarketView,
   OfficerRoster,
@@ -289,6 +291,9 @@ export interface LiveWorld {
    *  string a keyboard would. A SAIL also carries its PROPOSED course (0039), which the server
    *  verifies and measures itself. Refreshes on success so the queue and purse are never stale. */
   issue: (fleetId: string, text: string, path?: [number, number][] | null) => Promise<boolean>
+  /** A PLAN (0175): several lines queued together or not at all — the desk's "Queue it once". A refusal
+   *  (naming its line) lands in `refusal` as every verb's does; the world is read back as after `issue`. */
+  issueLines: (fleetId: string, lines: readonly PlanLine[]) => Promise<boolean>
   /** THE MANIFEST (0083): several buy and sell lines at the quay she lies at, landing together or
    *  not at all. Returns the served receipt, or null when the quay refused — the refusal (with
    *  `line`, the input index that refused) lands in `refusal` as every verb's does. Re-reads the
@@ -864,6 +869,13 @@ export const useWorld = create<LiveWorld>((set, get) => {
   issue: async (fleetId, text, path = null) => {
     const fleet = get().fleets.find((f) => f.id === fleetId)
     return (await verb(cmdIssue(fleetId, text, fleet?.version ?? null, path), () => afterTrade(fleet))) !== null
+  },
+
+  issueLines: async (fleetId, lines) => {
+    const fleet = get().fleets.find((f) => f.id === fleetId)
+    return (
+      (await verb(cmdIssueLines(fleetId, lines, fleet?.version ?? null), () => afterTrade(fleet), { refreshOnStale: true })) !== null
+    )
   },
 
   issueManifest: async (fleetId, lines) => {

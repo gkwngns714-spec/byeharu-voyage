@@ -48,12 +48,14 @@ export function useGoodBoard(
   fleetId: string | null,
   fleetVersion: number | null,
   qty: number | null,
+  /** The city it would be bought at (the plan builder's choice); null: the board's own (the cheapest). */
+  fromPortId: string | null = null,
 ): ServedRead<GoodBoard> {
   const subject = goodId && fleetId ? `${goodId}:${fleetId}` : null
   return useEdgeRead<GoodBoard>(
     subject,
-    () => worldGoodBoard(goodId as string, fleetId as string, null, qty),
-    subject ? `${subject}:${fleetVersion ?? '-'}:${qty ?? '-'}` : null,
+    () => worldGoodBoard(goodId as string, fleetId as string, fromPortId, qty),
+    subject ? `${subject}:${fleetVersion ?? '-'}:${qty ?? '-'}:${fromPortId ?? '-'}` : null,
   )
 }
 
