@@ -29,6 +29,7 @@ interface BuyRow {
   best: { at: string; value: number; gain_pct: number } | null
 }
 interface SellRow {
+  sailable?: boolean   // 0188
   port: string
   mid: number
   quoted: boolean
@@ -107,11 +108,15 @@ test('world.good_board: where it is sold, and every harbour that buys it, best n
   const quoted = b.sell.filter((r) => r.quoted)
   expect(quoted).toHaveLength(Math.min(b.quoted, harbours))
   expect(b.sell.slice(0, quoted.length).every((r) => r.quoted)).toBe(true)
-  for (let i = 1; i < quoted.length; i++) expect(quoted[i].net!).toBeLessThanOrEqual(quoted[i - 1].net!)
+  // 0188: a city no chain of legs within her captain's reach gets to has no passage, so no miles, days or net —
+  // it ranks after every city she can sail to; the rest are best net first
+  const netted = quoted.filter((r) => r.net !== null)
+  expect(quoted.slice(netted.length).every((r) => r.net === null && r.miles === null && r.sailable === false)).toBe(true)
+  for (let i = 1; i < netted.length; i++) expect(netted[i].net!).toBeLessThanOrEqual(netted[i - 1].net!)
   // what it costs is the buy row it would be bought at: the cheapest that can fill any of it
   const src = b.buy.find((r) => r.port === b.qty.bought_at)!
   expect(src.units).toBeGreaterThan(0)
-  for (const r of quoted) {
+  for (const r of netted) {
     // the net is the money's own parts; the port fee is inside what she gets, never subtracted twice
     expect(r.net).toBe(r.proceeds! - r.cost! - r.profit_tax! - r.wages!)
     expect(r.port_fee!).toBeGreaterThanOrEqual(0)

@@ -2611,6 +2611,16 @@ export interface BoardBuyRow {
   arrive_at: string | null
   at_arrival: OutlookAtArrival | null
   best: OutlookBest | null
+  /** THE PASSAGE SHE CAN SAIL (0188): the harbours between, in order (every leg within her captain's reach);
+   *  null when no chain of legs within reach gets there. */
+  stops?: string[] | null
+  /** The Navigation a DIRECT leg there would need, with that level's reach; null when it is within her reach
+   *  (navigation null: no level reaches it). */
+  needs?: PassageNeeds | null
+  /** Every leg within her captain's reach AND her stores (she provisions at each stop) — 0188. */
+  sailable?: boolean
+  /** The passage's longest leg. */
+  longest_leg?: { miles: number; days: number } | null
 }
 
 /** A harbour that buys the good (0171 good_board `sell`). Only `quoted` rows carry the money. */
@@ -2640,6 +2650,22 @@ export interface BoardSellRow {
   at_arrival: OutlookAtArrival | null
   best: OutlookBest | null
   request: { premium_pct: number; days_left: number } | null
+  /** THE PASSAGE SHE CAN SAIL (0188): the harbours between, in order (every leg within her captain's reach);
+   *  null when no chain of legs within reach gets there. */
+  stops?: string[] | null
+  /** The Navigation a DIRECT leg there would need, with that level's reach; null when it is within her reach
+   *  (navigation null: no level reaches it). */
+  needs?: PassageNeeds | null
+  /** Every leg within her captain's reach AND her stores (she provisions at each stop) — 0188. */
+  sailable?: boolean
+  /** The passage's longest leg. */
+  longest_leg?: { miles: number; days: number } | null
+}
+
+/** The Navigation a leg needs (0188 public.passage_needs). */
+export interface PassageNeeds {
+  navigation: number | null
+  reach_nm: number
 }
 
 /** `world.good_board(good, fleet, from, qty)` (0171) — one good at every city, for your fleet. */
@@ -2658,6 +2684,10 @@ export interface GoodBoard {
   sell: BoardSellRow[]
   /** How many of the dearest cities are priced in full (the knob good_board_quoted). */
   quoted: number
+  /** Her captain's reach (0188); null for a company that sails without one. */
+  reach?: { navigation: number; reach_nm: number } | null
+  /** The stores `sailable` read (0188): days at sea her casks carry now, and the margin a leg must leave. */
+  supplies?: { days: number; margin: number }
   assumes: string
   clock: { now: string; next_change_at: string }
 }

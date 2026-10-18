@@ -8,7 +8,7 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatClock, formatPrice, formatPriceDelta, formatUnits, formatVoyageDays } from '../../../lib/format'
 import type { FleetView, Refusal, SnapshotGood } from '../../../lib/rpc'
 import { useDeskPlan, type PlanDraft } from './planDraft'
-import { planLines, planRoute } from './planLines'
+import { planLines, planRoute, reachWords, viaWords } from './planLines'
 
 // THE PLAN BUILDER (docs/COMMAND_DESK.md §3.5) — the owner's coffee example as one tray:
 //
@@ -26,6 +26,10 @@ import { planLines, planRoute } from './planLines'
 // QUEUE IT ONCE: the lines (planLines.ts) go to cmd.issue_lines (0175), all queued or none; the desk then
 // turns to Plans, where they stand in the queue. MAKE IT A ROUTE: the route editor's own draft is seeded
 // (planDraft.ts) and the editor opens on it on Plans.
+//
+// THE PASSAGE SHE CAN SAIL (0188). The board serves each city's `stops` (every leg within her captain's
+// reach), `needs` (the Navigation a direct leg would need) and `sailable` (reach AND stores). The lines go
+// through those stops (planLines.ts); a city she cannot reach says why and is not queued.
 //
 // A press selects: a chip or a figure changes the estimate in place (the old figures stand while the
 // board is re-asked). The two buttons are busy only while their own press is on the wire (usePress).
@@ -74,11 +78,19 @@ export function PlanBuilder({
   const name = (c: string) => portNameOf(portByCode, c)
 
   const sellChoices = b ? b.sell.filter((r) => r.quoted || r.port === plan.sellAt).map((r) => r.port) : []
+  const buyRow = b && plan.buyAt ? (b.buy.find((r) => r.port === plan.buyAt) ?? null) : null
+  // the passage the board serves: through its stops; a city it cannot reach within her reach and stores is not planned
+  const unreachable = [plan.buyAt ? buyRow : null, sellRow].find((r) => r && r.sailable === false) ?? null
 
   const queue = () =>
     press.run(async () => {
       if (!seaNav) return
-      const text = planLines(plan, fleet, seaNav, portByCode)
+      if (unreachable) return
+      const text = planLines(plan, fleet, seaNav, portByCode, {
+        toBuy: buyRow?.stops ?? [],
+        toSell: sellRow?.stops ?? [],
+        stores: b?.supplies ? { speedKn: b.fleet.speed_kn, days: b.supplies.days, margin: b.supplies.margin } : null,
+      })
       if (!text.ok) {
         setNoCourse(text.noCourseTo)
         return
@@ -107,7 +119,7 @@ export function PlanBuilder({
             onClick={queue}
             busy={press.pending}
             busyLabel="Queueing…"
-            disabled={!plan.sellAt || !seaNav || (!plan.buyAt && aboard <= 0)}
+            disabled={!plan.sellAt || !seaNav || (!plan.buyAt && aboard <= 0) || unreachable !== null}
             data-testid="plan-queue"
           >
             Queue it once
@@ -217,6 +229,7 @@ export function PlanBuilder({
                 b?.qty ? `for ${formatUnits(b.qty.units)}` : null,
                 sellRow.days !== null ? formatVoyageDays(sellRow.days) : null,
                 sellRow.arrive_at ? `arrive ${formatClock(Date.parse(sellRow.arrive_at))}` : null,
+                viaWords([...(buyRow?.stops ?? []), ...(plan.buyAt ? [plan.buyAt] : []), ...(sellRow.stops ?? [])], name),
               ]
                 .filter(Boolean)
                 .join(' · ')}
@@ -224,6 +237,11 @@ export function PlanBuilder({
           </>
         )}
       </div>
+      {unreachable && (
+        <Note tone="danger" className="mt-3" data-testid="plan-unreachable">
+          {reachWords(unreachable, name, b?.reach?.reach_nm ?? null)}
+        </Note>
+      )}
       {noCourse && (
         <Note tone="danger" className="mt-3">
           No open water was found to {name(noCourse)}.
@@ -237,3 +255,4 @@ export function PlanBuilder({
     </Tray>
   )
 }
+
