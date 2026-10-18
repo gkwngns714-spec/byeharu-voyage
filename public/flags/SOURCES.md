@@ -20,7 +20,7 @@ namespaces removed by the preset), then scanned: no `<script>`, no `<style>`, no
 Commons file's; only the markup was minified (and JOS.svg's `svg:`-prefixed markup rewritten to
 the default namespace, its width and height turned into a viewBox, so it scales into the 3:2 box).
 
-Total: **23 files, 54,601 bytes (53.3 KB)**.
+Total: **23 files, 52,584 bytes (51.4 KB)**.
 
 | Code | Nation | File here | Source | Licence | Author |
 |---|---|---|---|---|---|
@@ -29,7 +29,7 @@ Total: **23 files, 54,601 bytes (53.3 KB)**.
 | DNK | Denmark-Norway | DNK.svg | [File:Flag of Denmark.svg](https://commons.wikimedia.org/wiki/File:Flag_of_Denmark.svg) | Public domain (PD-shape) | Madden and others |
 | ENG | England | ENG.svg | [File:Flag of England.svg](https://commons.wikimedia.org/wiki/File:Flag_of_England.svg) | Public domain (PD-shape) | traditional; vector Nicholas Shanks |
 | ESP | Castile-Spain | ESP.svg | [File:Flag of Cross of Burgundy.svg](https://commons.wikimedia.org/wiki/File:Flag_of_Cross_of_Burgundy.svg) | Public domain (PD-self) | Ningyou |
-| FRA | France | FRA.svg | [File:Pavillon royal de France.svg](https://commons.wikimedia.org/wiki/File:Pavillon_royal_de_France.svg) | Public domain (PD-user) | Zippanova |
+| FRA | France | FRA.svg | original drawing (2026-10-18): the banner of the royal arms of France, *azure, three fleurs-de-lis or* (France moderne, borne by the kings from c. 1376), two over one, drawn large for 12–20 px, with a 1.5 px mid-grey edge. Replaced the Commons *Pavillon royal de France* (PD-user, Zippanova), whose small gold fleurs on white vanished into a blank cream chip at the sizes the game draws | CC0 (this project) | byeharu-voyage |
 | GEN | Genoa | GEN.svg | [File:Flag of Genoa.svg](https://commons.wikimedia.org/wiki/File:Flag_of_Genoa.svg) | Public domain (PD-self) | see the file history on Commons |
 | GUJ | Gujarat Sultanate | GUJ.svg | original drawing: a golden rosette on green (no attested flag; the CC0 Commons file is in "Fictional SVG flags of India") | CC0 (this project) | byeharu-voyage |
 | HAN | The Hanse | HAN.svg | [File:Flag of the Free City of Lübeck.svg](https://commons.wikimedia.org/wiki/File:Flag_of_the_Free_City_of_L%C3%BCbeck.svg) — Lübeck's white over red, the Hanseatic colours | Public domain (PD-Flag-Germany) | not stated on Commons |
@@ -67,7 +67,6 @@ Fetched with the Commons API (`action=query&prop=imageinfo|revisions`), verbatim
 - **DNK** — `|permission= {{Insignia}}{{PD-shape}}`; LicenseShortName `Public domain`.
 - **ENG** — `== {{int:license-header}} ==` `{{PD-shape}}{{insignia}}`; LicenseShortName `Public domain`.
 - **ESP** — `{{PD-Self}}{{insignia}}`; LicenseShortName `Public domain`.
-- **FRA** — `|permission={{PD-user|Zippanova}}{{insignia}}`; LicenseShortName `Public domain`.
 - **GEN** — `== {{int:license-header}} ==` `{{PD-self}}` `{{insignia}}`; LicenseShortName `Public domain`.
 - **HAN** — `{{PD-Flag-Germany}}`; LicenseShortName `Public domain`.
 - **JOS** — `=={{int:license-header}}==` `{{PD-South Korea}}` `{{PD-US-expired|country= KR|hide_us_warning= 1}}` `{{PD-old-assumed}}` (the page also carries `{{PD-old-100}}`); LicenseShortName `Public domain`.
