@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0184 — THE DESK READS STOCK, AND A FLEET AT ANCHOR IS PRICED FROM WHERE SHE LIES
+-- 0183 — THE DESK READS STOCK, AND A FLEET AT ANCHOR IS PRICED FROM WHERE SHE LIES
 --        (stock and its normal level on every desk read; world.good_board from the nearest harbour)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
@@ -45,7 +45,7 @@
 -- asserted to occur exactly once and to reverse to its pre-image, ACL unchanged). The probe runs on
 -- its own house inside a sub-transaction rolled back whole. No LOCK TABLE, no set role, no begin.
 -- ROLLBACK: a forward slice puts the hunk's OLD text back (it is here verbatim).
--- VERSION: 0184 (after #220 0182 and #219 0183, in flight; renumbered at push if they move). Written on prod head 0181; touches none of their functions.
+-- VERSION: 0183 (renumbered from 0184 at deploy: deployed ahead of #219, which becomes 0184). Written on prod head 0181; touches none of their functions.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -55,14 +55,14 @@ begin
 end $guard$;
 
 -- ── 0. HELPERS (pg_temp, gone at commit) ───────────────────────────────────────────────────────
-create or replace function pg_temp.occurs_0184(p_hay text, p_needle text)
+create or replace function pg_temp.occurs_0183(p_hay text, p_needle text)
 returns int
 language sql
 immutable
 as $$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_needle) $$;
 
 -- ── 1. THE PRE-IMAGE ───────────────────────────────────────────────────────────────────────────
-create temp table defs_before_0184 on commit drop as
+create temp table defs_before_0183 on commit drop as
 select f.fn,
        replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl
@@ -73,31 +73,31 @@ select f.fn,
 
 do $$
 begin
-  if (select count(*) from defs_before_0184 where def is not null) <> 4 then
-    raise exception '0184 self-assert FAIL: % of the 4 bodies found', (select count(*) from defs_before_0184 where def is not null);
+  if (select count(*) from defs_before_0183 where def is not null) <> 4 then
+    raise exception '0183 self-assert FAIL: % of the 4 bodies found', (select count(*) from defs_before_0183 where def is not null);
   end if;
 end $$;
 
 -- the old board under a pg_temp name, for the side-by-side probe (positive control)
 do $$
 declare
-  v_def text := replace((select def from defs_before_0184 where fn like 'world.good_board%'),
-                        'CREATE OR REPLACE FUNCTION world.good_board(', 'CREATE OR REPLACE FUNCTION pg_temp.good_board_old_0184(');
+  v_def text := replace((select def from defs_before_0183 where fn like 'world.good_board%'),
+                        'CREATE OR REPLACE FUNCTION world.good_board(', 'CREATE OR REPLACE FUNCTION pg_temp.good_board_old_0183(');
 begin
-  if v_def not like '%pg_temp.good_board_old_0184(%' then
-    raise exception '0184 self-assert FAIL: the old copy of world.good_board was not renamed';
+  if v_def not like '%pg_temp.good_board_old_0183(%' then
+    raise exception '0183 self-assert FAIL: the old copy of world.good_board was not renamed';
   end if;
   execute v_def;
 end $$;
 
 -- ── 2. THE HUNK ────────────────────────────────────────────────────────────────────────────────
-create temporary table hunks_0184 (fn text not null, n int not null, old text not null, new text not null,
+create temporary table hunks_0183 (fn text not null, n int not null, old text not null, new text not null,
                                    primary key (fn, n)) on commit drop;
-insert into hunks_0184 values
+insert into hunks_0183 values
 ('world.good_board(uuid,uuid,uuid,numeric)', 1,
 $h$      v_where := jsonb_build_object('kind', 'at_sea', 'port', null);
 $h$,
-$h$      -- 0184: AT ANCHOR (no berth, no voyage under way): from THE NEAREST HARBOUR to where she lies —
+$h$      -- 0183: AT ANCHOR (no berth, no voyage under way): from THE NEAREST HARBOUR to where she lies —
       -- the great-circle miles to it are the lead, as a voyage's miles left are, and the lead's time is
       -- those miles at her speed. The sailed-distance table holds harbours only. Never a board of bare rows.
       select p.id, voyage.gc_distance_nm(f.lat, f.lon, p.lat, p.lon)
@@ -119,64 +119,64 @@ $h$),
 $h$    select p.id, p.code, p.name, rc.nm, pg.stock,
            qb.units, qb.total, qb.avg_price
 $h$,
-$h$    select p.id, p.code, p.name, rc.nm, pg.stock, pg.stock_target,   -- 0184: + the normal level
+$h$    select p.id, p.code, p.name, rc.nm, pg.stock, pg.stock_target,   -- 0183: + the normal level
            qb.units, qb.total, qb.avg_price
 $h$),
 ('world.good_board(uuid,uuid,uuid,numeric)', 3,
 $h$           'units', s.units, 'cost', s.total, 'price_each', s.avg_price, 'stock', s.stock,
 $h$,
 $h$           'units', s.units, 'cost', s.total, 'price_each', s.avg_price, 'stock', s.stock,
-           'stock_target', s.stock_target,   -- 0184
+           'stock_target', s.stock_target,   -- 0183
 $h$),
 ('world.good_board(uuid,uuid,uuid,numeric)', 4,
 $h$    select p.id, p.code, p.name,
            world.mid_price(p.id, p_good, pg.stock) as mid,
 $h$,
-$h$    select p.id, p.code, p.name, pg.stock, pg.stock_target,   -- 0184: + the city's stock and its normal level
+$h$    select p.id, p.code, p.name, pg.stock, pg.stock_target,   -- 0183: + the city's stock and its normal level
            world.mid_price(p.id, p_good, pg.stock) as mid,
 $h$),
 ('world.good_board(uuid,uuid,uuid,numeric)', 5,
 $h$           'port', r.code, 'name', r.name, 'mid', r.mid, 'quoted', p.id is not null,
 $h$,
 $h$           'port', r.code, 'name', r.name, 'mid', r.mid, 'quoted', p.id is not null,
-           'stock', r.stock, 'stock_target', r.stock_target,   -- 0184
+           'stock', r.stock, 'stock_target', r.stock_target,   -- 0183
 $h$),
 -- watchlist: the cheapest seller's stock and normal level
 ('world.watchlist(uuid)', 1,
 $h$           h.at as as_of, h.mid is not null as recorded
 $h$,
 $h$           h.at as as_of, h.mid is not null as recorded,
-           pg.stock, pg.stock_target   -- 0184
+           pg.stock, pg.stock_target   -- 0183
 $h$),
 ('world.watchlist(uuid)', 2,
 $h$                        else jsonb_build_object('port', b.port, 'mid', round(b.mid, 2), 'as_of', b.as_of, 'recorded', b.recorded) end,
 $h$,
 $h$                        else jsonb_build_object('port', b.port, 'mid', round(b.mid, 2), 'as_of', b.as_of, 'recorded', b.recorded,
-                                                'stock', round(b.stock, 2), 'stock_target', b.stock_target) end,   -- 0184
+                                                'stock', round(b.stock, 2), 'stock_target', b.stock_target) end,   -- 0183
 $h$),
 -- price_history: the stock the snapshot wrote beside each mid
 ('world.price_history(uuid,integer)', 1,
 $h$             jsonb_agg(jsonb_build_object('slot', h.slot, 'at', h.at, 'mid', round(h.mid, 2))
 $h$,
-$h$             jsonb_agg(jsonb_build_object('slot', h.slot, 'at', h.at, 'mid', round(h.mid, 2), 'stock', round(h.stock, 2))   -- 0184
+$h$             jsonb_agg(jsonb_build_object('slot', h.slot, 'at', h.at, 'mid', round(h.mid, 2), 'stock', round(h.stock, 2))   -- 0183
 $h$),
 -- price_outlook: price_path's stepped stock on each point, and the normal level once
 ('world.price_outlook(uuid,uuid,integer,text)', 1,
 $h$    select p.k, p.at,
 $h$,
-$h$    select p.k, p.at, p.stock,   -- 0184
+$h$    select p.k, p.at, p.stock,   -- 0183
 $h$),
 ('world.price_outlook(uuid,uuid,integer,text)', 2,
 $h$  select (select jsonb_agg(jsonb_build_object('at', pp.at, 'value', pp.value, 'lo', pp.lo, 'hi', pp.hi) order by pp.k) from pp),
 $h$,
 $h$  select (select jsonb_agg(jsonb_build_object('at', pp.at, 'value', pp.value, 'lo', pp.lo, 'hi', pp.hi,
-                                               'stock', round(pp.stock, 2)) order by pp.k) from pp),   -- 0184
+                                               'stock', round(pp.stock, 2)) order by pp.k) from pp),   -- 0183
 $h$),
 ('world.price_outlook(uuid,uuid,integer,text)', 3,
 $h$    'points', v_pts,
 $h$,
 $h$    'points', v_pts,
-    'stock_target', (select pg.stock_target from public.port_goods pg where pg.port_id = p_port and pg.good_id = p_good),   -- 0184
+    'stock_target', (select pg.stock_target from public.port_goods pg where pg.port_id = p_port and pg.good_id = p_good),   -- 0183
 $h$);
 
 do $$
@@ -186,28 +186,28 @@ declare
   v_def text;
   v_rev text;
 begin
-  for d in select * from defs_before_0184 order by fn loop
+  for d in select * from defs_before_0183 order by fn loop
     v_def := d.def;
-    for h in select * from hunks_0184 where fn = d.fn order by n loop
-      if pg_temp.occurs_0184(v_def, h.old) <> 1 then
-        raise exception '0184 self-assert FAIL: hunk % of % occurs % time(s), not once — the deployed body is not what this file was written against',
-          h.n, d.fn, pg_temp.occurs_0184(v_def, h.old);
+    for h in select * from hunks_0183 where fn = d.fn order by n loop
+      if pg_temp.occurs_0183(v_def, h.old) <> 1 then
+        raise exception '0183 self-assert FAIL: hunk % of % occurs % time(s), not once — the deployed body is not what this file was written against',
+          h.n, d.fn, pg_temp.occurs_0183(v_def, h.old);
       end if;
       v_def := replace(v_def, h.old, h.new);
     end loop;
     execute v_def;
     v_rev := replace(pg_get_functiondef(d.fn::regprocedure), E'\r', '');
-    for h in select * from hunks_0184 where fn = d.fn order by n desc loop
-      if pg_temp.occurs_0184(v_rev, h.new) <> 1 then
-        raise exception '0184 self-assert FAIL: hunk % of % is not in the new body once', h.n, d.fn;
+    for h in select * from hunks_0183 where fn = d.fn order by n desc loop
+      if pg_temp.occurs_0183(v_rev, h.new) <> 1 then
+        raise exception '0183 self-assert FAIL: hunk % of % is not in the new body once', h.n, d.fn;
       end if;
       v_rev := replace(v_rev, h.new, h.old);
     end loop;
     if v_rev <> d.def then
-      raise exception '0184 self-assert FAIL: % does not reverse to its pre-image', d.fn;
+      raise exception '0183 self-assert FAIL: % does not reverse to its pre-image', d.fn;
     end if;
     if coalesce((select p.proacl::text from pg_proc p where p.oid = d.fn::regprocedure), '') <> d.acl then
-      raise exception '0184 self-assert FAIL: the ACL of % moved', d.fn;
+      raise exception '0183 self-assert FAIL: the ACL of % moved', d.fn;
     end if;
   end loop;
 end $$;
@@ -215,7 +215,7 @@ end $$;
 -- ── 3. THE PROBE AND THE SELF-ASSERT (an own house at Lisbon, put to anchor off it; rolled back whole)
 do $$
 declare
-  c_uid   constant uuid := '00000000-0184-4000-8000-000000000001';
+  c_uid   constant uuid := '00000000-0183-4000-8000-000000000001';
   v_lis   uuid := (select id from public.ports where code = 'LIS');
   v_p     uuid;
   v_pf    uuid;
@@ -230,7 +230,7 @@ declare
   v_res   jsonb;
 begin
   begin
-    v_p := public.new_house(c_uid, 'Casa da Âncora 0184', 'PRT', 'LIS');
+    v_p := public.new_house(c_uid, 'Casa da Âncora 0183', 'PRT', 'LIS');
     select id into v_pf from public.fleets where player_id = v_p;
     perform cmd.assume_identity(c_uid);
     select g.id into v_good
@@ -243,7 +243,7 @@ begin
     v_t0 := clock_timestamp();
     v_b1 := world.good_board(v_good, v_pf);
     v_out := jsonb_build_object('ms', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
-    v_old := pg_temp.good_board_old_0184(v_good, v_pf);
+    v_old := pg_temp.good_board_old_0183(v_good, v_pf);
     v_w := world.watchlist(v_pf);
     v_o := world.price_outlook(v_lis, v_good, 4, 'mid');
     v_out := v_out || jsonb_build_object(
@@ -288,32 +288,32 @@ begin
   end;
 
   if exists (select 1 from public.players where id = v_p) then
-    raise exception '0184 self-assert FAIL: the probe house survived its rolled-back block';
+    raise exception '0183 self-assert FAIL: the probe house survived its rolled-back block';
   end if;
   if v_res->'where'->>'kind' <> 'at_sea' or v_res->'where'->>'via' is distinct from v_res->>'via_nearest'
      or (v_res->'where'->>'miles_left')::numeric <= 0 then
-    raise exception '0184 self-assert FAIL: at anchor the board does not name the nearest harbour and the miles to it: %', v_res;
+    raise exception '0183 self-assert FAIL: at anchor the board does not name the nearest harbour and the miles to it: %', v_res;
   end if;
   if (v_res->>'quoted')::int < 1 or (v_res->>'bare')::int <> 0 or (v_res->>'buy_bare')::int <> 0 then
-    raise exception '0184 self-assert FAIL: at anchor % quoted sell row(s), % of them bare, % bare buy row(s): %',
+    raise exception '0183 self-assert FAIL: at anchor % quoted sell row(s), % of them bare, % bare buy row(s): %',
       v_res->>'quoted', v_res->>'bare', v_res->>'buy_bare', v_res;
   end if;
   if (v_res->>'old_bare')::int < 1 then
-    raise exception '0184 self-assert FAIL: the positive control — the old board was not bare at anchor: %', v_res;
+    raise exception '0183 self-assert FAIL: the positive control — the old board was not bare at anchor: %', v_res;
   end if;
   if (v_res->>'sell_no_stock')::int <> 0 or (v_res->>'buy_no_target')::int <> 0 or (v_res->>'stock_off')::int <> 0
      or (v_res->>'watch_no_target')::int <> 0 or (v_res->>'watch_n')::int < 1
      or (v_res->>'outlook_no_stock')::int <> 0 or v_res->'outlook_target' = 'null'::jsonb
      or round((v_res->>'outlook_now_stock')::numeric) <> round((v_res->>'lis_stock')::numeric)
      or not (v_res->>'history_runs')::boolean then
-    raise exception '0184 self-assert FAIL: a desk read does not serve stock beside its normal level: %', v_res;
+    raise exception '0183 self-assert FAIL: a desk read does not serve stock beside its normal level: %', v_res;
   end if;
   if v_res->>'via_nearest' = 'LIS' and ((v_res->>'off')::int <> 0 or not (v_res->>'lead_ok')::boolean) then
-    raise exception '0184 self-assert FAIL: off Lisbon the anchored miles are not the docked miles + the lead: %', v_res;
+    raise exception '0183 self-assert FAIL: off Lisbon the anchored miles are not the docked miles + the lead: %', v_res;
   end if;
 
-  raise notice '0184 self-assert ok: STOCK on every desk read — % sell row(s) carry stock and its normal level equal to port_goods, every buy row its normal level, % watchlist goods, the outlook % point(s) from stock % (normal %).',
+  raise notice '0183 self-assert ok: STOCK on every desk read — % sell row(s) carry stock and its normal level equal to port_goods, every buy row its normal level, % watchlist goods, the outlook % point(s) from stock % (normal %).',
     v_res->>'quoted', v_res->>'watch_n', 4, v_res->>'lis_stock', v_res->>'outlook_target';
-  raise notice '0184 self-assert ok: A FLEET AT ANCHOR IS PRICED FROM WHERE SHE LIES. Off the Tagus bar the board runs from % (% miles, the nearest harbour); % quoted sell row(s), none bare (the old board: % bare); anchored miles = docked miles + the lead on every row (% off); % ms. Body reverses, ACL unchanged.',
+  raise notice '0183 self-assert ok: A FLEET AT ANCHOR IS PRICED FROM WHERE SHE LIES. Off the Tagus bar the board runs from % (% miles, the nearest harbour); % quoted sell row(s), none bare (the old board: % bare); anchored miles = docked miles + the lead on every row (% off); % ms. Body reverses, ACL unchanged.',
     v_res->'where'->>'via', v_res->'where'->>'miles_left', v_res->>'quoted', v_res->>'old_bare', v_res->>'off', v_res->>'ms';
 end $$;
