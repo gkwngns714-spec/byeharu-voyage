@@ -2563,7 +2563,7 @@ export interface PriceOutlook {
 // ── 0185: WHY THIS PRICE (docs/PRICE_FACTORS.md §5) ─────────────────────────────────────────────
 
 /** One term of a market price, as its multiplier on the price (1 = no effect). */
-export type PriceTermKey = 'haul' | 'affinity' | 'taste' | 'stock' | 'drift' | 'season' | 'development' | 'band'
+export type PriceTermKey = 'haul' | 'affinity' | 'taste' | 'stock' | 'drift' | 'season' | 'development' | 'band' | 'glut'
 export interface PriceTerm {
   key: PriceTermKey
   mult: number

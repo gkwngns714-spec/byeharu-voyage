@@ -375,7 +375,7 @@ product of the lines is the middle, so the page never shows a number the server 
 | **P2 · 0190** | **Volume line** (§3.4's visible half): "312 t sold here in a day by 9 houses" in `price_why` | the owner's "merchants", seen | low: one aggregate over today's flows for one (port, good) | P1 |
 | **P3 · 0191** | **Investor shave** (§3.3) | rewards giving, per company | low: one precomputed rank table, one hunk in `spread_effective` | I1–I6 live |
 | **P4** | **Tariffs by relation** (§3.2) | the owner's "relationship with other countries" | medium: a relation table, one hunk in `world.tax_rate` | the 10 great powers |
-| **P5** | **Glut** (§3.4's price half) | crowding felt | medium: `mid_from_terms` 13 → 14 arguments and four callers re-cut, two UPDATEs | P2 measured |
+| **P5 · 0194** | **Glut** (§3.4's price half) | crowding felt | medium: `mid_from_terms` 13 → 14 arguments and four callers re-cut, two UPDATEs | P2 measured |
 
 ## 7. Later candidates — one line each
 
