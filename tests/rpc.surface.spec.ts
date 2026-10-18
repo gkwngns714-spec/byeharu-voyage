@@ -1568,6 +1568,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-10-18 with migration 0176 (docs/COMMAND_DESK.md D6): WHAT YOU HOLD in every
       // city — a READ, no arguments (the caller's company). Landed WITH the face that reads it (the desk's Invest).
       'worldHoldings',
+      // Pin moved deliberately 2026-10-18 with migration 0177 (docs/COMMAND_DESK.md D7): THE BOOKS — the
+      // caller's ledger by game day and kind. A READ; the window only. Landed WITH the face (the desk's Profit).
+      'worldBooks',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

@@ -11,6 +11,7 @@ import { Markets } from './markets/Markets'
 import { Plans } from './plans/Plans'
 import { City } from './city/City'
 import { Invest } from './invest/Invest'
+import { Profit } from './profit/Profit'
 import { PlanBuilder } from './plans/PlanBuilder'
 import { useDeskPlan } from './plans/planDraft'
 
@@ -135,13 +136,15 @@ export function CommandScreen() {
           <City fleet={fleet} />
         ) : face === 'invest' ? (
           <Invest fleet={fleet} />
+        ) : face === 'profit' ? (
+          <Profit />
         ) : (
           <Markets fleet={fleet} />
         ))}
 
       {/* THE SLOT — one tray at a time: the plan builder, else the trade tray, else the good's page. Not on
           City: there the slot is the city's own (the Trade face's basket stands in it on a wide glass). */}
-      {face === 'city' || face === 'invest' ? null : fleet && plan && goodByCode[plan.good] ? (
+      {face === 'city' || face === 'invest' || face === 'profit' ? null : fleet && plan && goodByCode[plan.good] ? (
         <PlanBuilder
           key={`${plan.good}:${fleet.id}`}
           fleet={fleet}

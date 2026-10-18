@@ -37,6 +37,7 @@
     "priceChart.spec.ts": 1,
     "primitives.geometry.spec.ts": 7,
     "route.stopface.spec.ts": 114,
+    "rpc.books.spec.ts": 20,
     "rpc.firstSession.spec.ts": 4,
     "rpc.goodBoard.spec.ts": 20,
     "rpc.holdings.spec.ts": 20,

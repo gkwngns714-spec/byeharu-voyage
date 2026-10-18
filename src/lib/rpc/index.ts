@@ -76,6 +76,7 @@ import type {
   Watchlist,
   PlanLine,
   Holdings,
+  Books,
   IssueLinesResult,
   InvestReceipt,
   TowReceipt,
@@ -672,6 +673,11 @@ export function cmdIssueLines(
 /** What your company holds in every city (0176): the register's rows, a share's price now, the dividends. */
 export function worldHoldings(): Promise<RpcResult<Holdings>> {
   return call<Holdings>('worldHoldings')
+}
+
+/** The books (0177): the company's ledger by game day and kind, each day's net. */
+export function worldBooks(days: number | null = null): Promise<RpcResult<Books>> {
+  return call<Books>('worldBooks', [days])
 }
 
 /** Every good once (0171): its cheapest seller, the record's line, what your fleet carries. */

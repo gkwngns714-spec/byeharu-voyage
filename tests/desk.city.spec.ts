@@ -67,3 +67,16 @@ test('the Invest face: your holdings, and the Town Hall of the city the fleet is
   await expect(page.getByTestId('invest-hall')).toBeVisible({ timeout: 30_000 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 })
+
+test('the Profit face: today, the window, seven bars and the day by day books', async ({ page, request, baseURL }) => {
+  test.setTimeout(420_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+  await page.goto('command')
+  await ready(page)
+  await page.getByRole('tab', { name: 'Profit', exact: true }).click()
+  await expect(page.getByTestId('desk-profit')).toBeVisible()
+  await expect(page.getByTestId('profit-bars')).toBeVisible({ timeout: 30_000 })
+  // a new company has made nothing yet (its starting money is capital, not profit): the books say so
+  await expect(page.getByTestId('desk-profit')).toContainText(/Nothing earned or spent|Today/, { timeout: 30_000 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+})
