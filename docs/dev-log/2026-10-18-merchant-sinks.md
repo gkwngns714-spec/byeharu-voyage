@@ -206,8 +206,8 @@ merchants on.
   - restored 171/172, applied 1 (0180), world-guard ok;
   - tsc + vite built in 19.7 s.
 - **tsc -b** clean, **eslint .** clean, **db:check-versions** 172 distinct, no collisions.
-- **Proofs on the built image** (scratch ): 12/12 green, proof 12 (merchants) included.
-- **Prod head re-read at push:** , so this file is 0180.
+- **Proofs on the built image** (scratch `proofs-on-image.mjs`): 12/12 green, proof 12 (merchants) included.
+- **Prod head re-read at push:** `20260818000179`, so this file is 0180.
 - **PR #211 CI** (run 39104305593, about 10 min wall-clock):
 
   | check | result |
