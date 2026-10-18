@@ -156,6 +156,18 @@ for (const size of [
       expect(m.clipped, 'a good name is clipped').toEqual([])
       expect(m.scroll).toBe(true)
 
+      // BEST TRADE IS A PASSAGE SHE CAN SAIL (2026-10-19: Monterey → Antalya, 275.8 days, for a 1,700-nm
+      // captain with 36 days of supplies). The server marks each row `sailable`; the card never shows
+      // one marked false — when nothing is, it says so and offers no plan.
+      if (size.width >= 1024) {
+        const card = page.getByTestId('best-trade')
+        await expect(card).toBeVisible({ timeout: 60_000 })
+        await expect(page.getByTestId('sell-row').first()).toBeVisible({ timeout: 60_000 })
+        const sailable = await card.getAttribute('data-sailable')
+        if (sailable !== null) expect(sailable, 'Best trade offers a passage the server marks unsailable').not.toBe('false')
+        else await expect(card.getByTestId('best-trade-plan')).toHaveCount(0)
+      }
+
     })
   })
 }

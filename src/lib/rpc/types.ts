@@ -2600,8 +2600,22 @@ export interface OutlookAtArrival {
   hi: number
 }
 
+/** The passage THIS fleet can sail to a row's city (0188): her captain's reach a leg and her stores,
+ *  provisioning at each stop. `miles` / `days` / `net` describe that passage. */
+export interface BoardPassage {
+  /** The harbours called at between, in order ([] direct); null when no passage within reach exists. */
+  stops?: string[] | null
+  /** What the DIRECT leg would ask when it is past her reach: the least Navigation that sails it
+   *  (null when no level does) and that level's reach. Null when the direct leg is within reach. */
+  needs?: { navigation: number | null; reach_nm: number } | null
+  /** Her captain's reach AND her stores carry every leg. */
+  sailable?: boolean
+  /** The passage's longest leg. */
+  longest_leg?: { miles: number; days: number } | null
+}
+
 /** A city that sells the good (0171 good_board `buy`). */
-export interface BoardBuyRow {
+export interface BoardBuyRow extends BoardPassage {
   port: string
   name: string
   /** The fleet is docked there. */
@@ -2631,7 +2645,7 @@ export interface BoardBuyRow {
 }
 
 /** A harbour that buys the good (0171 good_board `sell`). Only `quoted` rows carry the money. */
-export interface BoardSellRow {
+export interface BoardSellRow extends BoardPassage {
   port: string
   name: string
   /** The market price there now (world.mid_price). */

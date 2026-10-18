@@ -107,3 +107,29 @@ page has no sideways scroll. Locally, desk.terminal, desk.layout, wide.layout an
 
 **Best trade must be sailable (fix 3)** waits for `osn-plan-reach-2`'s served `sailable`, `stops`,
 `needs` and `supplies`. It ships in its own PR once those fields are live.
+
+## Part 4 (2026-10-19): Best trade is a passage she can sail (reads 0188)
+
+0188 serves these on every board row: `stops`, `needs` (the direct leg's Navigation), `sailable` and
+`longest_leg`. On the board it serves `reach` and `supplies {days, margin}`.
+
+- **Best trade** takes the first quoted sell row marked `sailable` and shows its stops ("via Angra ·
+  St. John's · Jamestown").
+- **The dearer row it skips** is named, with the server's reason: "needs Navigation 4 (reach
+  13,600 nm a leg)", or "its longest leg is N days at sea, more than your M days of supplies".
+- **Nothing sailable:** the card says "No buyer you can reach from here." and shows no Plan.
+- **The ladders** say the same.
+
+**Server quirk, reported.** 0188 serves an unreachable BUY row as `stops: []` with
+`longest_leg {0, 0}` and `miles: null`, where a sell row gets `stops: null`. The client treats
+`miles: null` as "no passage".
+
+**Headless screenshots** (DPR 2):
+- `sail-1280-sailable` and `sail-1440-sailable`: Black Pepper, Lisbon → St. Augustine via three
+  stops, 32.6 days.
+- `sail-1280-unreachable` and `sail-1440-unreachable`: Alerce Timber, every buyer past a
+  1,700-nm reach.
+
+**Tests.** desk.terminal, desk.layout and desk.plan: 20 passed, 0 skipped. duplication fails only on
+`20260818000187_the_great_powers.sql`, which has no `raise exception '0187 self-assert FAIL: …'`.
+That migration comes from #229, not this PR.
