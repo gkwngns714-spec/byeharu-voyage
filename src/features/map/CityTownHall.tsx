@@ -192,6 +192,11 @@ function DayBook({ hall }: { hall: TownHallView }) {
     ['Shares', hall.day.in.SHARE ?? 0],
     ['Gifts', hall.day.in.DONATION ?? 0],
     ['Coupons', hall.day.out.DIVIDEND ?? 0],
+    // 0172: the grant, the city's own earnings, and what passes between it and its capital.
+    ['Grant', hall.day.in.GRANT ?? 0],
+    ['Earnings', hall.day.in.EARNINGS ?? 0],
+    ['From the crown', (hall.day.in.CROWN_TAX ?? 0) + (hall.day.in.CROWN_AID ?? 0)],
+    ['To the crown', (hall.day.out.CROWN_TAX ?? 0) + (hall.day.out.CROWN_AID ?? 0)],
   ]
   const moved = rows.filter(([, n]) => n !== 0)
   if (!hall.enabled || moved.length === 0) return null
