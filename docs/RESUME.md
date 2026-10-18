@@ -6,6 +6,40 @@ rows 76–90. Everything under the 2026-09-13 anchor and lower is older and is k
 
 ---
 
+# ▼ RESUME ANCHOR — 2026-10-18 ~07:10 UTC — READ THIS FIRST ▼
+
+**Everything below this anchor is HISTORY.** The live list is `docs/WORK_QUEUE.md` (coordinator's, untracked) and `docs/OWNER_REQUESTS.md`.
+
+## State (verified on prod 2026-10-18 ~07:05 UTC)
+| | |
+|---|---|
+| **Prod DB head** | **0179**. Main also holds **0180** (merchant sinks + lap fix), which FAILED its self-assert on the prod push and rolled back; a fix-forward PR is coming. Deploy it before anything else |
+| Switches | influence ON, city treasury ON, **skills_bite ON (0178)**, **crew_bite ON (0179)**; combat_bite OFF, armour_turns_pct 0 (the owner's combat questions are open) |
+| Arrivals sweep | avg ~2.9–3.2 s, p95 ~4.5 s (budget 10 s) |
+| Deploy | **only via `~/bin/bv-deploy.sh <pr>`**: unwind → push → wind, and it merges ONLY if the push landed (see 0180) |
+
+## LIVE since the 2026-10-17 anchor (0140 → 0179)
+- 0140 Karachi capital · 0141 no native tag · 0142/0150 merchants unstuck and stuck laps · 0143–0148 influence (Uncharted Waters style, ON) · 0149/0151/0154/0155 skills K0–K3 · 0152 towing · 0153 hull tie-break · 0156–0166 captains K4–K9 (0166 = K9 retire + the Goa fix) · 0158/0159/0163/0165/0167 ships S13/S15/S16/S17/S18 · 0168 S4+K10 combat stats (dark) · 0164/0169 arrivals speed (sea chart decompressed once; quote terms read once a port; day count linear).
+- **0170/0171/0175/0176/0177 + client D3/D5/D8: the COMMAND trading desk** (Markets · Plans · City · Invest · Profit). The **PORT tab is deleted**; `/port` redirects to COMMAND · City.
+- **0172 city purses**: every city topped up to 2 M and capitals to 10 M (644 M granted); crown tax and aid; development earnings.
+- **0173 distance pricing** (owner: "Korea → London … like 50k each"): `haul = 600^((nm/14500)^2)` from the nearest maker by sailing distance. Kimchi bids Busan 95 → London ~50 k. Research: `docs/research/UWO_TRADE_PRICES.md`.
+- **0174 circulation**: a city's people pay the distance premium (`IMPORT_DEMAND`); the bid reads the live purse; merchants reinvest up to 1000 houses/h. Cities went from −11.8 M/h to +4.4 M/h, 0 refusals. World money grows +11.5 M/h, piling up in merchant purses → 0180.
+- **0178 skills_bite ON, 0179 crew_bite ON**: both after-checks passed.
+- Client: flags (23, Public Domain/CC0, `public/flags/SOURCES.md`); map blink fixed (GPU tile memory; 7 layers, seas never repaint on a pan).
+
+## Next (in order)
+1. **Deploy the fixed 0180**: the lap fix (BUY lines priced at the live ask, not the target-stock ask) plus sinks (d)+(a), DECIDED BY DEFAULT.
+2. **The nightly from-zero rebuild is RED at 0137** (self-assert world-dependent); being fixed self-assert-only (`osn-fresh-chain`).
+3. **CI**: the acceptance db shard takes 45–65 min; being cut (`osn-ci-db-shard`).
+4. **Owner open:** the combat questions (accuracy/reach in rolls, gear and trait actives, pirate strength, shoal armour) before combat_bite; deleting the 16 companies (blocked by the classifier; needs the owner's allow rule); optional mint cut via sink (b) or (c).
+
+## Lessons (this session)
+- **Self-asserts that pass on CI's empty world fail on prod's live data** (S16 0163, K9 0165, 0180). Count only your own probe rows, and run the selections READ-ONLY on prod before handing back.
+- **Merge only after the push lands** (0180 was merged after a failed push). **List ALL checks** before a merge (#195 merged with a red merchants leg).
+- **Prod read-only means checking provolatile**: an EXPLAIN ANALYZE of a volatile function rewrote 757 voyages.
+
+---
+
 # ▼ RESUME ANCHOR — 2026-10-17 ~11:45 UTC — READ THIS FIRST ▼
 
 **Everything below this anchor is HISTORY.**
