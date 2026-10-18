@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable } from './appReady.fixture'
 
@@ -30,6 +30,12 @@ import { PHONE, reachable } from './appReady.fixture'
 // Run it: npm run build && npx vite preview --port 4370, then
 //   PLAYWRIGHT_BASE_URL=http://localhost:4370/byeharu-voyage/ npx playwright test version.banner
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** THE FILES THIS SPEC STANDS ON BUT DOES NOT IMPORT — the browser reaches them through the
+ *  bundle, so the CI selector's import graph (rule G) cannot see them. Quoted here by base name
+ *  so its rule N picks this spec whenever one of them changes (scripts/ci/select-specs.mjs):
+ *  the leaf and the toast (rule A reaches the toast too). The first test checks they are there. */
+const STANDS_ON = ['src/lib/version.ts', 'src/app/NewVersionToast.tsx']
 
 const SHOTS = path.join(process.cwd(), 'docs', 'dev-log', '2026-10-19-new-version-banner')
 const WIDE = { width: 1440, height: 731 }
@@ -73,6 +79,7 @@ test.describe('phone', () => {
     request,
     baseURL,
   }) => {
+    for (const f of STANDS_ON) expect(existsSync(path.join(process.cwd(), f)), `${f} is where this spec says`).toBe(true)
     await openGallery(page, request, baseURL)
     const res = await request.get(`${baseURL}version.json?t=${Date.now()}`)
     expect(res.ok(), 'version.json is served beside index.html').toBe(true)
