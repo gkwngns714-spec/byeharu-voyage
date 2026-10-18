@@ -2600,8 +2600,21 @@ export interface OutlookAtArrival {
   hi: number
 }
 
+/** Whether a row's passage can be sailed by THIS fleet (osn-plan-reach-2): the passage gate run per leg
+ *  (a captain's Navigation reach) and her supplies. `miles` / `days` / `net` describe the reachable
+ *  passage — through `stops` when a direct leg is past reach. Optional until that read is live. */
+export interface BoardPassage {
+  /** The harbours called at between, in order; null when no passage within reach exists. */
+  stops?: string[] | null
+  /** What a direct leg past reach would ask: null when none does. */
+  needs?: { navigation: number; reach_nm: number } | null
+  sailable?: boolean
+  /** The longest leg's days at sea against what she carries. */
+  supplies?: { days_at_sea_max_leg: number; endurance_days: number }
+}
+
 /** A city that sells the good (0171 good_board `buy`). */
-export interface BoardBuyRow {
+export interface BoardBuyRow extends BoardPassage {
   port: string
   name: string
   /** The fleet is docked there. */
@@ -2631,7 +2644,7 @@ export interface BoardBuyRow {
 }
 
 /** A harbour that buys the good (0171 good_board `sell`). Only `quoted` rows carry the money. */
-export interface BoardSellRow {
+export interface BoardSellRow extends BoardPassage {
   port: string
   name: string
   /** The market price there now (world.mid_price). */
@@ -2689,6 +2702,8 @@ export interface GoodBoard {
   qty: { units: number; basis: 'on_board' | 'asked' | 'capacity' | 'step'; tons: number; bought_at: string | null; cost_each: number | null }
   buy: BoardBuyRow[]
   sell: BoardSellRow[]
+  /** The captain's reach a leg (osn-plan-reach-2). */
+  reach?: { navigation: number; reach_nm: number }
   /** How many of the dearest cities are priced in full (the knob good_board_quoted). */
   quoted: number
   /** Her captain's reach (0188); null for a company that sails without one. */

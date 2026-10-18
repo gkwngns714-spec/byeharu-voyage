@@ -12,7 +12,7 @@ import {
   formatUnits,
   formatVoyageDays,
 } from '../../../lib/format'
-import type { BoardBuyRow, BoardSellRow, GoodBoard, SnapshotGood } from '../../../lib/rpc'
+import type { BoardBuyRow, BoardPassage, BoardSellRow, GoodBoard, SnapshotGood } from '../../../lib/rpc'
 import type { PlanDraft } from '../plans/planDraft'
 import type { GoodDesk } from './useGoodDesk'
 import { WhyThisPrice } from './WhyThisPrice'
@@ -141,7 +141,30 @@ function BestTrade({
   }
   const onBoard = board.qty.basis === 'on_board'
   const buy: BoardBuyRow | null = onBoard ? null : (board.buy.find((r) => r.port === board.qty.bought_at) ?? null)
-  const sell: BoardSellRow | null = board.sell.find((r) => r.quoted) ?? null
+  // ONLY A PASSAGE SHE CAN SAIL (2026-10-19: the card offered Monterey → Antalya, 275.8 days at sea, to
+  // a 1,700-nm captain with 36 days of supplies). The server marks every row `sailable` — the passage
+  // gate run per leg and her supplies — and prices the reachable passage (through `stops`). The board
+  // is sorted by net; the card takes its first quoted row she can sail, and names the dearer one it
+  // passed over with the server's reason. A board from before that read (no `sailable`) is taken as is.
+  const quoted = board.sell.filter((r) => r.quoted)
+  const sell: BoardSellRow | null = quoted.find((r) => r.sailable !== false) ?? null
+  const passed = quoted[0] && quoted[0].sailable === false ? quoted[0] : null
+  const beyond = passed ? (
+    <p className="mt-2 text-t-caption text-warning" data-testid="best-trade-beyond">
+      {sell ? 'Dearer, out of reach: ' : 'The best, '}
+      <PortFlag code={passed.port} /> {name(passed.port)}
+      {passed.net_per_ton !== null ? ` (${formatPriceDelta(passed.net_per_ton)} / t)` : ''} — {whyNot(passed)}.
+    </p>
+  ) : null
+  if (!sell && passed) {
+    return (
+      <section className="rounded-tile bg-surface-2 p-4" data-testid="best-trade">
+        <span className="text-t-caption font-semibold uppercase tracking-wide text-ink-faint">Best trade</span>
+        <p className="mt-1 text-t-body text-ink">No buyer you can reach from here.</p>
+        {beyond}
+      </section>
+    )
+  }
   if (!sell || (!onBoard && !buy)) {
     return (
       <section className="rounded-tile bg-surface-2 p-4" data-testid="best-trade">
@@ -158,7 +181,7 @@ function BestTrade({
   const buyHere = buy !== null && buy.port === docked
   const sellHere = onBoard && sell.port === docked && aboard > 0
   return (
-    <section className="rounded-tile bg-surface-2 p-4" data-testid="best-trade">
+    <section className="rounded-tile bg-surface-2 p-4" data-testid="best-trade" data-sailable={sell.sailable === undefined ? "unserved" : String(sell.sailable)}>
       <div className="flex items-center justify-between">
         <span className="text-t-caption font-semibold uppercase tracking-wide text-ink-faint">Best trade</span>
         <span className="text-t-caption text-ink-faint">for {formatUnits(board.qty.units)}</span>
@@ -211,6 +234,12 @@ function BestTrade({
           .filter(Boolean)
           .join(' · ')}
       </p>
+      {viaLine(sell, name) && (
+        <p className="mt-1 text-t-caption text-ink-muted" data-testid="best-trade-via">
+          {viaLine(sell, name)}
+        </p>
+      )}
+      {beyond}
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         {buyHere ? (
@@ -233,6 +262,24 @@ function BestTrade({
       </div>
     </section>
   )
+}
+
+/** The harbours a passage calls at between, in the server's order: "via Lisbon · Funchal". */
+function viaLine(row: BoardPassage, name: (c: string) => string): string | null {
+  return row.stops && row.stops.length > 0 ? `via ${row.stops.map(name).join(' · ')}` : null
+}
+
+/** Why a row cannot be sailed, from the server's own figures: the Navigation a leg needs, or the
+ *  days a leg asks against her supplies. */
+function whyNot(row: BoardPassage): string {
+  const parts: string[] = []
+  if (row.needs) parts.push(`needs Navigation ${row.needs.navigation} (a ${formatInt(row.needs.reach_nm)}-nm leg)`)
+  if (row.supplies && row.supplies.days_at_sea_max_leg > row.supplies.endurance_days) {
+    parts.push(
+      `${formatVoyageDays(row.supplies.days_at_sea_max_leg)} at sea a leg, more than your ${formatVoyageDays(row.supplies.endurance_days)} of supplies`,
+    )
+  }
+  return parts.length ? parts.join('; ') : 'no passage within your reach'
 }
 
 function RowsSkeleton({ n }: { n: number }) {
@@ -289,9 +336,7 @@ function BuyAt({
                 <span className={`truncate text-t-body ${r.here ? 'text-accent' : 'text-ink'}`}>
                   <PortFlag code={r.port} /> {name(r.port)}
                 </span>
-                <span className="shrink-0 whitespace-nowrap text-t-body tabular-nums text-ink">
-                  {r.price_each !== null ? formatPrice(r.price_each) : '—'}
-                </span>
+                <Figure value={r.price_each !== null ? formatPrice(r.price_each) : '—'} className="shrink-0" />
               </span>
               <span className="mt-0.5 flex items-center justify-between gap-2">
                 {typeof r.stock_target === 'number' ? (
@@ -300,7 +345,8 @@ function BuyAt({
                   <span className="text-t-caption text-ink-faint">{formatUnits(r.stock)}</span>
                 )}
                 <span className="truncate text-t-caption text-ink-faint">
-                  {away(r, r.port === docked)}
+                  {r.sailable === false ? whyNot(r) : away(r, r.port === docked)}
+                  {r.sailable !== false && viaLine(r, name) ? ` · ${viaLine(r, name)}` : ''}
                   {r.best ? ` · ◆ ${formatClock(Date.parse(r.best.at))} ${formatPctChange(-r.best.gain_pct)}` : ''}
                 </span>
               </span>
@@ -381,9 +427,10 @@ function SellAt({
                       <span className="ml-1.5 text-t-caption text-warning">wanted +{formatInt(r.request.premium_pct)}%</span>
                     ) : null}
                   </span>
-                  <span className="shrink-0 whitespace-nowrap text-t-body tabular-nums text-ink">
-                    {r.quoted && r.price_each !== null ? formatPrice(r.price_each) : formatPrice(r.mid)}
-                  </span>
+                  <Figure
+                    value={r.quoted && r.price_each !== null ? formatPrice(r.price_each) : formatPrice(r.mid)}
+                    className="shrink-0"
+                  />
                 </span>
                 <span className="mt-0.5 flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2">
@@ -391,7 +438,10 @@ function SellAt({
                       <StockGauge stock={r.stock} target={r.stock_target} label={`${goodName} at ${name(r.port)}`} />
                     )}
                     <span className="truncate text-t-caption text-ink-faint">
-                      {away(r, r.port === docked)}
+                      <span className={r.sailable === false ? 'text-warning' : undefined}>
+                        {r.sailable === false ? whyNot(r) : away(r, r.port === docked)}
+                      </span>
+                      {r.sailable !== false && viaLine(r, name) ? ` · ${viaLine(r, name)}` : ''}
                       {r.best ? ` · ◆ ${formatClock(Date.parse(r.best.at))} +${formatFixed(r.best.gain_pct, 1)}%` : ''}
                     </span>
                   </span>
