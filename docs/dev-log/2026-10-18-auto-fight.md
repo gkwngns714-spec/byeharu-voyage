@@ -376,3 +376,103 @@ against 3 s.** At the mid-window read (17:07) it was already 3.12 s.
 The method says a broken bound is a rollback, so **0195 (`the_raids_are_rolled_back`) puts both switches back** as a
 forward migration. Nothing written while lit becomes unreadable: the days keep their rounds, and History keeps
 printing them.
+
+## Why the sweep rose — and 0198 (perf, dark), then 0199 (the switch again)
+
+(Numbered 0197 / 0198 when written. 0197 went to "a merchant's route always pays", so these are now 0198 and 0199 by the coordinator's order.)
+
+The clean lit window (17:25–17:52, no deploys) averaged 3.07 s. 0195 rolled the fight back at ~17:52. Dark again
+(17:52–18:02), the sweep still averaged 3.04 s. So the fight was not the only cost.
+
+### Production, read-only (`cron.job_run_details`, job 1, 10-minute bins; push times from `~/bv-push-logs`)
+
+| window (UTC) | what was live | avg | p10 | p50 | p90 |
+|---|---|---|---|---|---|
+| 13:00–14:10 | ≤ 0181 | 2.11 s | 1.38 | 2.07 | 2.98 |
+| 15:20–15:50 | 0182–0186 | 2.85 s | 2.22 | 2.80 | 3.65 |
+| 16:20–16:45 | 0187–0191, combat dark | 2.80 s | 2.13 | 2.70 | 3.49 |
+| 17:55–18:10 | ≤ 0195, combat dark | 2.88 s | 2.20 | 2.85 | 3.69 |
+
+- **The step is at 0182** (pushed 14:18; the 14:20 bin already read 2.74 s, before 0183 at 14:32).
+  - The whole distribution moved by ~0.7 s, not a tail: p10 1.38 → 2.22 s.
+  - No 10-minute cadence shows in it.
+  - 0182 gives each sweep a re-plan batch of waiting merchants, budgeted at `npc_replan_sweep_ms` = 600 ms, and
+    its own header says that budget is what holds the average under 3 s. It does, but only just.
+- **Nothing deployed after 0182 moved the dark baseline measurably**: 0186, 0190, 0191, 0193 and 0194 included.
+- **Lit adds on top of it.** 0192 gave 3.18 s over its contaminated window and 3.07 s over the clean one, against
+  2.85–2.88 s dark around it.
+
+### The prod-shaped world (`prodlike.mjs`; prod's knobs, stocks, purses and 1,491 loops)
+
+The sweep is fixed: the SAME 15 merchant landings each round, every other voyage held a day off, each arm rolled
+back.
+
+- **Deploy by deploy** (dark, 10 rounds each, one world per step): 0180 890 / 1,051 ms (the same world twice: the
+  run-to-run noise is ±15 %), 0184 709, 0189 756, 0192 794, 0194 738, 0195 845, +0196 tariffs 787 ms.
+  - No step moves the landing cost beyond that noise.
+  - 0182's batch does not show here, because no merchant is laid up in this setup. Production shows it.
+- **Dark vs lit, paired in one world** (16 rounds):
+
+  | world | dark | lit | lit + the 0198 guard |
+  |---|---|---|---|
+  | 0195 | 742 ms | 872 ms (+17.5 %) | 715 ms |
+  | 0195 + 0196 + **0198** | 752 ms | **756 ms** (+0.5 %, 8 raids fought) | — |
+
+- **Where lit's cost was:** `world.ship_stats`. While `combat_bite` is on, every call runs
+  `public.ship_crew_terms`' K10 loop: `crew_pct` three times, each a full `crew_terms` of the fleet. That is every
+  speed, cargo-space and supplies read, for every hull of every landing and every re-plan. For nothing: no hull on
+  production has a seated Gunner or Boarder.
+  - On the prod-shaped world, lit vs dark: ship_stats over every hull 329 → 1,071 ms; fleet speed + supplies
+    1,425 → 3,069 ms; cargo space 526 → 1,293 ms.
+  - On production (read-only), 3 × `crew_terms` for 915 hulls took 2.2 s.
+  - `voyage.fight` itself (a few per hour) and `armour_soak` on shoals are not where the cost is.
+
+### 0198 — a hull with no fighting captain is read at once (DARK; no knob)
+
+**What it does:** one hunk on `public.ship_crew_terms`. If no captain seated on the hull has a job or an active
+trait with a ship-scope effect, it returns the stats as given.
+
+**Why the answer is exactly the old one:** every term `crew_pct` sums for that hull comes from such a captain.
+
+**Its own check:**
+- dark, 908 hulls read the same stats;
+- lit, every hull's new body = old body;
+- a nau with a seated Gunner (her job) and Boarder (a trait in use) still reads through: accuracy 55 → 57, attack
+  120 → 125, the same as the old body;
+- ship_stats lit over every hull 894 → 219 ms;
+- the hunk reverses, and its ACL and volatility are unmoved.
+
+**The fight results are untouched**: `voyage.fight` and `fight_resolve` are not edited, and the stats they read are
+asserted equal.
+
+### REPAIR orders (37 → 70), read-only
+
+The repair orders came first, the fight after. Per half hour:
+
+| from | 15:30 | 16:00 | 16:30 | 17:00 | 17:30 |
+|---|---|---|---|---|---|
+| REPAIR orders | 16 | 26 | 42 | 53 | 64 |
+| combat | dark | dark | dark (0192 lit at 16:50) | lit | lit |
+
+The 16:30 bin, with combat still dark, already had 42. Before 15:00 it was 2–14 per half hour.
+
+Classified by the fleet's last arrived voyage before the order (clean lit window, 65 orders):
+- 0 followed a fight that took hull;
+- 30 followed a storm or shoal;
+- 35 followed no hazard at all.
+
+So the fight is not the cause. A repair is due whenever any hull is short of its class durability
+(`public.fleet_repair_due`, 0181's "REPAIR only when due"). Merchants' routes reach their repair stops with damage
+from earlier passages. My reading is that the rise follows 0181 / 0182's re-planned routes: an inference, not proven.
+
+### 0199 — the switch again
+
+It is 0192's file, re-numbered, after 0198: same refusal, probe, notices, rollback, 30-minute after-check and
+bounds. No other deploy goes inside the window.
+
+**Expected on production** (my estimate, not a measurement):
+- dark is ~2.85–2.9 s;
+- lit with 0198 should be within the run-to-run noise of dark.
+
+So the 3 s bound should hold, but with little room. If it is to have more room, the lever is 0182's
+`npc_replan_sweep_ms` (600 ms of every sweep). That is its owner's knob.
