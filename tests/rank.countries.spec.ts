@@ -3,7 +3,7 @@ import { PHONE, reachable, ready } from './appReady.fixture'
 
 // RANK → COUNTRIES (0148, docs/INFLUENCE.md I6): world.nation_standings / worldNationStandings — every
 // country's cities, home and won, served by the server (public.port_nation) and printed as served.
-// The precondition is the shipped world's own: since 0185 the ten great powers, each with its 4 home cities
+// The precondition is the shipped world's own: since 0187 the ten great powers, each with its 4 home cities
 // (data/home-ports.json, 0143) — the spec reads the count from the data file, never a literal.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'

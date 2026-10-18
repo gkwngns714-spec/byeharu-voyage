@@ -1,6 +1,6 @@
 # GREAT POWERS — ten powers compete; thirteen nations rule their own cities
 
-**Status: BUILT as slice GP1, 2026-10-18 — migration 0185 (provisional number) + its client, on branch
+**Status: BUILT as slice GP1, 2026-10-18 — migration 0187 (after 0185 faith pricing and 0186) + its client, on branch
 `osn-seven-powers`; not merged, not deployed.** The ten,
 their homes and every DEFAULT here are the coordinator's and mine; the owner may swap any of them.
 
@@ -276,7 +276,7 @@ Each difference rests on an authority that already exists. Anything new is marke
 
 ## 7. The slice
 
-**GP1 · `the_great_powers` (migration 0185, provisional; numbered at push time) + client.** This is
+**GP1 · `the_great_powers` (migration 0187, after 0185 faith pricing and 0186) + client.** This is
 one vertical slice, because the demotion and the ten-country picker are two sides of one contract
 (never ship half a slice).
 

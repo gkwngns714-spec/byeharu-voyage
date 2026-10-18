@@ -235,7 +235,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     case 'NATION_CHANGED': {
       const to = str(p, 'to_name') ?? str(p, 'to')
       const from = str(p, 'from_name') ?? str(p, 'from')
-      // 0185 (GP1, docs/GREAT_POWERS.md): the world moved the company — its old country is a local ruler now.
+      // 0187 (GP1, docs/GREAT_POWERS.md): the world moved the company — its old country is a local ruler now.
       if (str(p, 'reason') === 'great_powers' && to && from) {
         return `${from} is a local ruler now; your company sails for ${to}.`
       }

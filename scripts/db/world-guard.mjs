@@ -59,7 +59,7 @@
 //   * perks, sets, Country lines (0163, S16) public.perks, public.gear_set_bonuses and public.gear_set_names
 //                 EQUAL data/gear.json `perks` / `sets`, and public.item_line the gear generator's Country
 //                 items' `line`, every column, both directions
-//   * great powers (0185, GP1) public.great_powers EQUALS world-derive.mjs GREAT_POWERS, both
+//   * great powers (0187, GP1) public.great_powers EQUALS world-derive.mjs GREAT_POWERS, both
 //                 directions; only a great power has home cities, and every one has four
 //   * home cities (0143) public.port_allegiance's `home` rows EQUAL data/home-ports.json, both
 //                 directions; every country has 3 or 4; no harbour is home to two; every home city
@@ -216,7 +216,7 @@ function drift(db_, want) {
     }
   }
 
-  // great powers (0185, GP1) — world-derive.mjs GREAT_POWERS, both directions
+  // great powers (0187, GP1) — world-derive.mjs GREAT_POWERS, both directions
   {
     const dbGreat = new Set(db_.great)
     for (const c of want.great) if (!dbGreat.has(c)) say(`great power ${c} is in world-derive.mjs GREAT_POWERS but not in public.great_powers`)
@@ -508,9 +508,9 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   // 0143: the home cities
   const hasAllegiance = (await db.query(`select to_regclass('public.port_allegiance') is not null as ok`)).rows[0].ok
   if (!hasAllegiance) throw new Error('world-guard: public.port_allegiance is missing — the chain no longer reaches 0143, so the home cities cannot be checked')
-  // 0185 (GP1): the great powers
+  // 0187 (GP1): the great powers
   const hasGreat = (await db.query(`select to_regclass('public.great_powers') is not null as ok`)).rows[0].ok
-  if (!hasGreat) throw new Error('world-guard: public.great_powers is missing — the chain no longer reaches 0185, so the great powers cannot be checked')
+  if (!hasGreat) throw new Error('world-guard: public.great_powers is missing — the chain no longer reaches 0187, so the great powers cannot be checked')
   db_.great = (await db.query(`select n.code from public.great_powers g join public.nations n on n.id = g.nation_id order by n.code`)).rows.map((r) => r.code)
   db_.homes = (await db.query(`
     select p.code as port, n.code as nation from public.port_allegiance a
@@ -622,7 +622,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   }
   want.gear = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'gear.json'), 'utf8'))
   want.homes = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'home-ports.json'), 'utf8')).homes   // 0143
-  want.great = [...GREAT_POWERS].sort()   // 0185 (GP1)
+  want.great = [...GREAT_POWERS].sort()   // 0187 (GP1)
 
   // 0135: THE GENERATORS, RE-RUN. Their output must equal the committed files (a stale file is drift)
   // and, with the live rows' data files, the database (below, in `drift`).
@@ -723,7 +723,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     itemUse: want.itemUse.map((u, i) => (i === 0 ? { ...u, trigger: u.trigger === 'STORM' ? 'MILES' : 'STORM' } : u)), // 0158: one item's trigger bent
     waveA: { ...want.waveA, classes: want.waveA.classes.map((c, i) => (i === 0 ? { ...c, hold: c.hold + 5 } : c)) }, // 0135: one generated hull's hold bent
     homes: Object.fromEntries(Object.entries(want.homes).map(([n, ps], i) => [n, i === 0 ? ps.slice(1) : ps])), // 0143: one home city dropped
-    great: want.great.slice(1), // 0185: one great power dropped
+    great: want.great.slice(1), // 0187: one great power dropped
     captains: { ...want.captains, gen: { ...want.captains.gen, captains: want.captains.gen.captains.map((x, i) => (i === 0
       ? { ...x, kit: x.kit.map((k, j) => (j === 1 ? { ...k, pct: k.pct + 1 } : k)) } : x)) } }, // 0156: one captain's second trait bent
   }

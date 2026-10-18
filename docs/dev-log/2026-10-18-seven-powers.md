@@ -1,4 +1,4 @@
-# 2026-10-18 — The great powers (GP1, migration 0185 provisional)
+# 2026-10-18 — The great powers (GP1, migration 0187)
 
 **The owner, verbatim:**
 - *"make it 7 big power like uncharted island, spread mainly on europe and asia, as well as islamic region"*
@@ -11,8 +11,8 @@ Every DEFAULT (G0–G5) is listed for the owner. Owner request row 161.
 
 ## What landed (branch `osn-seven-powers`)
 
-**Migration `20260818000185_the_great_powers.sql`.** The number is provisional: 0182–0184 are taken
-by other worktrees, and none touches these bodies or tables.
+**Migration `20260818000187_the_great_powers.sql`.** It is numbered 0187 because 0185 is faith pricing (#224) and 0186 is the
+refused-order queue (#226). None of 0182–0186 touches these bodies or tables.
 - **New table:** `public.great_powers` (10 rows).
 - **Three foreign keys** move from `nations` to `great_powers`: `players.nation_id`,
   `port_allegiance.nation_id` and `port_influence.nation_id`.

@@ -7,8 +7,8 @@
 //
 // THE RULE (D1), computed once from the applied chain's sailed distances (public.sea_reaches, the
 // miles the SAIL picker uses), then AUTHORED: data/home-ports.json is the one list, the owner may
-// edit it, and migrations 0143 / 0185 + the world guard hold the database equal to it.
-// Since GP1 (0185, docs/GREAT_POWERS.md) only the TEN GREAT POWERS have homes:
+// edit it, and migrations 0143 / 0187 + the world guard hold the database equal to it.
+// Since GP1 (0187, docs/GREAT_POWERS.md) only the TEN GREAT POWERS have homes:
 //   1. Each great power takes its capital, then the harbours it FOUNDED in order of sailed miles from
 //      the capital (ties: port code), up to 4.
 //   2. A power left short takes the nearest harbours no great power founded (free, or founded by one
@@ -86,7 +86,7 @@ if (check) {
   for (const n of diffs) console.log(`home-ports --check: ${n.code} file ${JSON.stringify(file[n.code] ?? [])} vs rule ${JSON.stringify(homes[n.code])}`)
 } else {
   writeFileSync(OUT, JSON.stringify({
-    _comment: 'Every country\'s home cities (docs/INFLUENCE.md §3, rule D1). AUTHORED after scripts/build-home-ports.mjs wrote it once; a home city never changes hands. Only the ten great powers have homes (docs/GREAT_POWERS.md, 0185). Migrations 0143 and 0185 seed public.port_allegiance.home from it, and scripts/db/world-guard.mjs holds the database equal to it.',
+    _comment: 'Every country\'s home cities (docs/INFLUENCE.md §3, rule D1). AUTHORED after scripts/build-home-ports.mjs wrote it once; a home city never changes hands. Only the ten great powers have homes (docs/GREAT_POWERS.md, 0187). Migrations 0143 and 0187 seed public.port_allegiance.home from it, and scripts/db/world-guard.mjs holds the database equal to it.',
     homes,
   }, null, 2) + '\n')
   console.log(table)

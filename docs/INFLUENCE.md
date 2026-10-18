@@ -1,6 +1,6 @@
 # INFLUENCE — countries compete for cities with money
 
-> **Since 0185 (GP1, 2026-10-18): only the TEN GREAT POWERS race** — PRT ESP ENG NLD FRA · OTT MUG ·
+> **Since 0187 (GP1, 2026-10-18): only the TEN GREAT POWERS race** — PRT ESP ENG NLD FRA · OTT MUG ·
 > MNG JOS JPN. The other thirteen countries are local rulers of the cities they founded; every home city
 > is a great power's, four each. Who races, and how the 23 became 10: `docs/GREAT_POWERS.md`. How the
 > race runs is unchanged and stays here.

@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0185 — THE GREAT POWERS  (docs/GREAT_POWERS.md, slice GP1)
+-- 0187 — THE GREAT POWERS  (docs/GREAT_POWERS.md, slice GP1)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- ── THE OWNER'S WORDS ───────────────────────────────────────────────────────────────────────────
@@ -78,8 +78,8 @@
 -- occur exactly once): world.snapshot (0135/0143), world.inn_chance (0166), public.yard_wrong_country
 -- (0143), public.skill_taught_at (0151), world.nation_standings (0148), world.allegiance (0143),
 -- cmd.found_house (0143), cmd.change_country (0143), public.nation_change_next_at (0143).
--- VERSION: 0185 = prod head + 1 (prod 0184, 2026-10-18 ~23:50 UTC; renumber if another lands first).
--- 0182–0184 touch none of these bodies or tables.
+-- VERSION: 0187. Applies after 0185 (faith pricing: world.demand_for, world.price_why) and 0186 (the refused-order
+-- queue: cmd.advance / cmd.cancel_at / cmd.issue_lines, orders.plan_id); 0182–0186 touch none of these bodies or tables.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -719,7 +719,7 @@ returns jsonb
 language plpgsql
 as $$
 declare
-  c_uid    constant uuid := '00000000-0185-4000-8000-000000000001';
+  c_uid    constant uuid := '00000000-0187-4000-8000-000000000001';
   v_base   int := (select count(*) from public.players);
   v_r      jsonb;
   v_player uuid;
@@ -727,10 +727,10 @@ declare
 begin
   begin
     perform cmd.assume_identity(c_uid);   -- both JWT shapes: the PGlite shim's and Supabase's
-    v_r := cmd.found_house('Casa do Leao 0185', 'VEN');
+    v_r := cmd.found_house('Casa do Leao 0187', 'VEN');
     v_out := v_out || jsonb_build_object('found_minor', v_r->>'error_code',
                                          'found_minor_fixes', jsonb_array_length(coalesce(v_r->'fixes', '[]'::jsonb)));
-    v_r := cmd.found_house('Casa do Leao 0185', 'jos');
+    v_r := cmd.found_house('Casa do Leao 0187', 'jos');
     if not coalesce((v_r->>'ok')::boolean, false) then
       raise exception 'GP1 self-assert FAIL: founding under Joseon was refused: %', v_r;
     end if;

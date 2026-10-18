@@ -9,7 +9,7 @@ import { nationNameOf, useWorld } from './worldStore'
 // (worldStore), which is `world.allegiance`, which is `public.port_nation`. Words: docs/WORDS.md
 // (Home city / Contested / No country).
 //
-// GP1 (0185, docs/GREAT_POWERS.md §4): a city founded by one of the thirteen minor nations names its
+// GP1 (0187, docs/GREAT_POWERS.md §4): a city founded by one of the thirteen minor nations names its
 // LOCAL RULER after the words — `No country · ruled by Venice` — with the ruler's flag at caption
 // size. The ruler holds no influence; the great power's flag stays the one beside the name
 // (PortFlag). The ruler is the server's (`allegiance.ruler`, `public.port_ruler`); nothing is

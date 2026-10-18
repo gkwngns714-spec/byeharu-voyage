@@ -137,8 +137,8 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | the person in charge of a fleet | **captain** = the player, for their own fleets; a merchant fleet's named **Master** (flavour only) | — |
 | the country a city belongs to today (0143, docs/INFLUENCE.md) | its flag and name, **Home city** or **Contested** (`⚓ Portugal · Home city`, `⚔ Castile-Spain · Contested`) | territory, core, alliance port, free port, owner |
 | a city held by no country (0143) | **No country** | free port, neutral, stateless |
-| one of the ten countries that race for cities (0185, docs/GREAT_POWERS.md) | **Great power** (the Codex's heading) | major, faction, nation, empire |
-| one of the thirteen other countries, as a city's founder (0185) | **Local ruler**; on a city line `ruled by Venice` with its flag (`No country · ruled by Venice`) | minor, vassal, owner, holder |
+| one of the ten countries that race for cities (0187, docs/GREAT_POWERS.md) | **Great power** (the Codex's heading) | major, faction, nation, empire |
+| one of the thirteen other countries, as a city's founder (0187) | **Local ruler**; on a city line `ruled by Venice` with its flag (`No country · ruled by Venice`) | minor, vassal, owner, holder |
 | the country a company sails for (0143) | **Country** (`Sail for England`, `Your company now sails for England`); a merchant's company shows its flag | nation (on screen), faction, allegiance |
 | a country's weight in a city (0144) | **Influence** (`Influence · Portugal 54%`, `Your influence 1,500`) | share (that word is 0123's), control, sway |
 | a gift of coin to a city (0144) | **Donate** (`Donate 5,000 🪙`, `Gave 5,000 🪙 to Havana.`, `5,000 🪙 / 20,000 🪙 given today`) | patronage, aid, tribute |

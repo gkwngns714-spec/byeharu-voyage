@@ -9,7 +9,7 @@ import { NoAnswer } from './NoAnswer'
 // table: a nation is two facts. The three-letter code is not one of them any more — every screen
 // prints the name now (0028's catalogue is why), so the code is a filter word, never a column.
 //
-// GP1 (0185, docs/GREAT_POWERS.md): two groups, in the server's words — the ten GREAT POWERS a
+// GP1 (0187, docs/GREAT_POWERS.md): two groups, in the server's words — the ten GREAT POWERS a
 // company sails for (`great`, the flags shown large), then the thirteen LOCAL RULERS, who rule the
 // cities they founded and hold no influence. `great` is the server's; nothing here decides it.
 

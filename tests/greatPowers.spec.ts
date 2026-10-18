@@ -6,7 +6,7 @@ import { PHONE, reachable, ready } from './appReady.fixture'
 import { openCityPanel } from './openCity.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE GREAT POWERS (0185, docs/GREAT_POWERS.md slice GP1). The owner, 2026-10-18: "make it 7 big
+// THE GREAT POWERS (0187, docs/GREAT_POWERS.md slice GP1). The owner, 2026-10-18: "make it 7 big
 // power like uncharted island, spread mainly on europe and asia, as well as islamic region" … "in
 // asia add korea, in europe add more". Ten powers race for cities; the thirteen other nations are
 // LOCAL RULERS of the cities they founded. Names this spec selects by: public.great_powers,
@@ -14,7 +14,7 @@ import { openCityPanel } from './openCity.fixture'
 // world.nation_standings / worldNationStandings, cmd.found_house / cmdFoundHouse,
 // cmd.change_country / cmdChangeCountry, world.snapshot.
 //
-//   * one list: world-derive.mjs GREAT_POWERS = the homes in data/home-ports.json = what 0185 seeds;
+//   * one list: world-derive.mjs GREAT_POWERS = the homes in data/home-ports.json = what 0187 seeds;
 //     four homes each, a capital first;
 //   * Start / Profile offer the ten and no ruler;
 //   * a ruler's city says so: Safi → "ruled by Morocco", with the ruler's flag;
@@ -32,7 +32,7 @@ const homes = (JSON.parse(readFileSync(path.join(ROOT, 'data', 'home-ports.json'
 const minors = NATIONS.filter(([c]) => !GREAT_POWERS.includes(c))
 const nameOf = (code: string) => NATIONS.find(([c]) => c === code)?.[1] ?? code
 
-test('one list of ten: GREAT_POWERS = the home cities\' powers = what 0185 seeds, four homes each', () => {
+test('one list of ten: GREAT_POWERS = the home cities\' powers = what 0187 seeds, four homes each', () => {
   expect(GREAT_POWERS).toHaveLength(10)
   expect(Object.keys(homes).sort()).toEqual([...GREAT_POWERS].sort())
   for (const c of GREAT_POWERS) expect(homes[c], c).toHaveLength(4)
@@ -47,7 +47,7 @@ test('one list of ten: GREAT_POWERS = the home cities\' powers = what 0185 seeds
   const seeded = /insert into public\.great_powers \(nation_id\)\s+select n\.id from public\.nations n\s+where n\.code in \(([^)]*)\)/.exec(sql)?.[1].match(/'([A-Z]{3})'/g)?.map((s) => s.slice(1, 4)) ?? []
   expect(seeded.sort()).toEqual([...GREAT_POWERS].sort())
   for (const [c, ports] of Object.entries(homes)) {
-    expect(sql, `0185 seeds ${c}'s homes as data/home-ports.json lists them`).toContain(
+    expect(sql, `0187 seeds ${c}'s homes as data/home-ports.json lists them`).toContain(
       `('${c}', array[${ports.map((p) => `'${p}'`).join(', ')}])`,
     )
   }

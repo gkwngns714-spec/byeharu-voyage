@@ -403,7 +403,7 @@ export const NATIONS = [
  * THE GREAT POWERS (GP1, docs/GREAT_POWERS.md; the owner, 2026-10-18: "make it 7 big power like
  * uncharted island, spread mainly on europe and asia, as well as islamic region" … "in asia add korea,
  * in europe add more"). The ten that race for cities; the other thirteen of NATIONS are LOCAL RULERS
- * of the cities they founded and hold no influence. Migration 0185 seeds public.great_powers from this
+ * of the cities they founded and hold no influence. Migration 0187 seeds public.great_powers from this
  * list and the world guard holds the database equal to it, both directions — so the list moves only
  * with a migration that moves the table.
  */
