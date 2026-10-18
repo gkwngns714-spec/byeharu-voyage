@@ -1655,6 +1655,9 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.tick_reconcile(boolean)',
     'public.tick_market_drift(timestamptz, uuid)',
     'public.tick_market_drift_each_port()',
+    // 0182: the waiting merchants' queue and the arrivals sweep's ask. Server-only.
+    'public.npc_waiting_queue(timestamptz)',
+    'public.npc_ask_waiting(timestamptz, timestamptz)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f
