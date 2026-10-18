@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0187 — A RAID IS FOUGHT IN ROUNDS  (the owner's automatic fight — DARK: combat_bite false,
+-- 0189 — A RAID IS FOUGHT IN ROUNDS  (the owner's automatic fight — DARK: combat_bite false,
 --        armour_turns_pct 0)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
@@ -63,9 +63,9 @@
 -- public.armour_turns (0168).
 --
 -- ROLLBACK: combat_bite false and armour_turns_pct 0 (as landed) is every answer of today. Full (forward
--- migration): reverse the two bodies' hunks (old text in hunks_0187); drop voyage.fight, voyage.fight_resolve,
+-- migration): reverse the two bodies' hunks (old text in hunks_0189); drop voyage.fight, voyage.fight_resolve,
 -- public.armour_soak; delete the nine fight_* knobs.
--- VERSION: 0187 (provisional; renumbered to head + 1 at deploy). Applies on 0186.
+-- VERSION: 0189 (provisional; renumbered to head + 1 at deploy). Applies on 0188 (deploy order set by the coordinator: 0187 great powers, 0188 plan-reach-2, 0189 this, 0190 its switch).
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -76,14 +76,14 @@ begin
 end $guard$;
 
 -- ── 0. HELPERS (pg_temp, gone at commit) ───────────────────────────────────────────────────────
-create or replace function pg_temp.occurs_0187(p_hay text, p_needle text)
+create or replace function pg_temp.occurs_0189(p_hay text, p_needle text)
 returns int
 language sql
 immutable
 as $$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_needle) $$;
 
 -- ── 1. THE PRE-IMAGES ──────────────────────────────────────────────────────────────────────────
-create temp table defs_before_0187 on commit drop as
+create temp table defs_before_0189 on commit drop as
 select f.fn,
        replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl,
@@ -92,7 +92,7 @@ select f.fn,
        (select coalesce(p.proconfig::text, '') from pg_proc p where p.oid = f.fn::regprocedure) as cfg
   from (values ('voyage.settle(uuid, timestamp with time zone)'), ('public.armour_turns(uuid, numeric)')) f(fn);
 
-create temp table untouched_before_0187 on commit drop as
+create temp table untouched_before_0189 on commit drop as
 select f.fn, replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def
   from (values ('voyage.escort_score(uuid)'), ('voyage.storm_hull_lost(uuid, numeric, numeric)'),
                ('public.raid_crew_lost(uuid, numeric, numeric)'), ('voyage.report_line(integer, text, jsonb)'),
@@ -101,19 +101,19 @@ select f.fn, replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def
                ('public.crew_terms(uuid, timestamp with time zone)'), ('public.fight_points(text)'),
                ('public.wear_units_for(uuid, uuid)'), ('public.voyage_xp_tracks(uuid)')) f(fn);
 
-create temp table before_0187 on commit drop as
+create temp table before_0189 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select count(*) from public.world_config where key like 'fight\_%') as own_knobs;
 
 -- the old settle under a pg_temp name, so the probe can settle one passage by both bodies
 do $$
 declare
-  v_def text := (select def from defs_before_0187 where fn = 'voyage.settle(uuid, timestamp with time zone)');
-  v_new text := 'CREATE OR REPLACE FUNCTION pg_temp.voyage_settle_b0187(';
+  v_def text := (select def from defs_before_0189 where fn = 'voyage.settle(uuid, timestamp with time zone)');
+  v_new text := 'CREATE OR REPLACE FUNCTION pg_temp.voyage_settle_b0189(';
 begin
   v_def := replace(v_def, 'CREATE OR REPLACE FUNCTION voyage.settle(', v_new);
-  if pg_temp.occurs_0187(v_def, v_new) <> 1 then
-    raise exception '0187 self-assert FAIL: could not rename the pre-image of voyage.settle';
+  if pg_temp.occurs_0189(v_def, v_new) <> 1 then
+    raise exception '0189 self-assert FAIL: could not rename the pre-image of voyage.settle';
   end if;
   execute v_def;
 end $$;
@@ -121,30 +121,30 @@ end $$;
 -- ── 2. THE KNOBS (only where absent: a knob already set is left alone) ──────────────────────────
 insert into public.world_config (key, value, description) values
   ('fight_raider_class', '"xebec"'::jsonb,
-   '0187 (the automatic fight): the class whose own figures the raiders fight with — accuracy, reach, armour, '
+   '0189 (the automatic fight): the class whose own figures the raiders fight with — accuracy, reach, armour, '
    'sighting, attack per hull, hull and crew (crew_required). The hazard''s strength (piracy × 40 × (0.5 + '
    'magnitude), DESIGN B.6) says how many of them: strength / that class''s escort score. NOT the owner''s — confirm.'),
   ('fight_ranges', '[["LONG",0.6],["LONG",0.6],["LONG",0.6],["MEDIUM",0.8],["MEDIUM",0.8],["CLOSE",1.0]]'::jsonb,
-   '0187: the rounds of a fight, in order — a range (LONG: only guns whose reach is at least the other side''s '
+   '0189: the rounds of a fight, in order — a range (LONG: only guns whose reach is at least the other side''s '
    'fire) and the share of a gun''s accuracy that hits at it. After the last, the boarding. NOT the owner''s — confirm.'),
   ('fight_damage_per_attack', '0.7'::jsonb,
-   '0187: hull points one hit takes per point of the firing hull''s attack (× 0.75–1.25 by the roll), before '
+   '0189: hull points one hit takes per point of the firing hull''s attack (× 0.75–1.25 by the roll), before '
    'armour (public.armour_soak). NOT the owner''s — confirm.'),
   ('fight_raider_break', '0.15'::jsonb,
-   '0187: the raiders break off once they have taken this share of their hull. NOT the owner''s — confirm.'),
+   '0189: the raiders break off once they have taken this share of their hull. NOT the owner''s — confirm.'),
   ('fight_evade_per_sighting', '0.03'::jsonb,
-   '0187: when the fleet''s best sighting beats the raiders'', the chance per point of the lead that it slips away '
+   '0189: when the fleet''s best sighting beats the raiders'', the chance per point of the lead that it slips away '
    'before a shot (capped by fight_evade_max). NOT the owner''s — confirm.'),
   ('fight_evade_max', '0.30'::jsonb,
-   '0187: the cap on that chance. NOT the owner''s — confirm.'),
+   '0189: the cap on that chance. NOT the owner''s — confirm.'),
   ('fight_standoff_ratio', '2.0'::jsonb,
-   '0187: raiders do not close on a fleet whose escort score (voyage.escort_score) is this many times their strength '
+   '0189: raiders do not close on a fleet whose escort score (voyage.escort_score) is this many times their strength '
    'or more — DESIGN B.6''s own EVADED band. NOT the owner''s — confirm.'),
   ('fight_hand_value', '0.15'::jsonb,
-   '0187: what one hand weighs at a boarding, beside tier × 3 (DESIGN B.6''s escort weighs a hand 0.02, beside guns). '
+   '0189: what one hand weighs at a boarding, beside tier × 3 (DESIGN B.6''s escort weighs a hand 0.02, beside guns). '
    'NOT the owner''s — confirm.'),
   ('fight_board_bands', '[1.2, 0.7, 0.3]'::jsonb,
-   '0187: at the boarding, your hulls'' (crew × fight_hand_value × (1 + a Boarder''s share) + tier × 3) × hull left '
+   '0189: at the boarding, your hulls'' (crew × fight_hand_value × (1 + a Boarder''s share) + tier × 3) × hull left '
    'against theirs: at least the first → driven off, the second → ransom, the third → plundered, below → stripped (DESIGN B.6''s '
    'own bands). NOT the owner''s — confirm.')
 on conflict (key) do nothing;
@@ -157,7 +157,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
--- 0187: THE ARMOUR FORMULA (docs/SHIPS_AND_GEAR.md §5, as 0168 wrote it in public.armour_turns): what is left
+-- 0189: THE ARMOUR FORMULA (docs/SHIPS_AND_GEAR.md §5, as 0168 wrote it in public.armour_turns): what is left
 -- of a hull loss once this much armour has turned its share — loss × (1 − armour / 100 × armour_turns_pct),
 -- never below 0, to the hundredth. The knob at 0 is OFF: the loss itself comes back, the same numeric.
 -- Read by public.armour_turns (a hull, its armour from world.ship_stat) and voyage.fight_resolve (the
@@ -171,7 +171,7 @@ begin
   return round(p_loss * greatest(0, 1 - coalesce(p_armour, 0) / 100.0 * v_k), 2);
 end $$;
 comment on function public.armour_soak(numeric, numeric) is
-  '0187: THE armour formula — loss × (1 − armour / 100 × armour_turns_pct), ≥ 0; the knob at 0 returns the loss '
+  '0189: THE armour formula — loss × (1 − armour / 100 × armour_turns_pct), ≥ 0; the knob at 0 returns the loss '
   'itself. Read by public.armour_turns and voyage.fight_resolve. Server-only.';
 revoke all on function public.armour_soak(numeric, numeric) from public, anon, authenticated;
 
@@ -182,7 +182,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
--- 0187: THE FIGHT — the one combat authority. A raid on (voyage, day) by raiders of strength p_raider
+-- 0189: THE FIGHT — the one combat authority. A raid on (voyage, day) by raiders of strength p_raider
 -- (DESIGN B.6's piracy × 40 × (0.5 + magnitude)) against a fleet whose escort score is p_escort
 -- (voyage.escort_score) and whose hulls are p_ships, an array of
 --   {id, name, tier, hull, maxd, crew, attack, accuracy, reach, armour, sighting, boarder_pct, boarder, gunner, gear[]}
@@ -491,7 +491,7 @@ begin
     'hits', jsonb_build_object('yours', v_tot_you, 'theirs', v_tot_they));
 end $$;
 comment on function voyage.fight_resolve(uuid, int, numeric, numeric, jsonb) is
-  '0187: THE FIGHT — sighting, rounds of range / accuracy / attack / armour, boarding; deterministic per (voyage, '
+  '0189: THE FIGHT — sighting, rounds of range / accuracy / attack / armour, boarding; deterministic per (voyage, '
   'day). Returns {outcome, rounds[], hull_lost, raiders, first, hits}. Read by voyage.fight. Server-only.';
 revoke all on function voyage.fight_resolve(uuid, int, numeric, numeric, jsonb) from public, anon, authenticated;
 
@@ -502,7 +502,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
--- 0187: A RAID ON THIS FLEET, FOUGHT — the fleet as it is (world.ship_stats, the one reading of a hull: her
+-- 0189: A RAID ON THIS FLEET, FOUGHT — the fleet as it is (world.ship_stats, the one reading of a hull: her
 -- class, gear, company skills and seated captains; her hull and crew), the share of a Boarder seated on each
 -- hull (public.crew_pct 'attack', K10's ship effect), the Boarder and the Gunner by name, and the gear that
 -- works on a PIRATES day (item_use, 0158) — handed to voyage.fight_resolve. Read by voyage.settle's PIRATES
@@ -536,19 +536,19 @@ begin
      where s.fleet_id = p_fleet));
 end $$;
 comment on function voyage.fight(uuid, int, uuid, numeric) is
-  '0187: a raid on this fleet fought (voyage.fight_resolve over her live hulls). Read by voyage.settle''s PIRATES '
+  '0189: a raid on this fleet fought (voyage.fight_resolve over her live hulls). Read by voyage.settle''s PIRATES '
   'arm while combat_bite is on; refused while it is off. Server-only.';
 revoke all on function voyage.fight(uuid, int, uuid, numeric) from public, anon, authenticated;
 
 -- ── 4. THE HUNKS (old → new), sliced from the live bodies ──────────────────────────────────────
-create temp table hunks_0187 (fn text, n int, old text, new text) on commit drop;
-insert into hunks_0187 values
+create temp table hunks_0189 (fn text, n int, old text, new text) on commit drop;
+insert into hunks_0189 values
 -- voyage.settle: a place for the fight's answer
 ('voyage.settle(uuid, timestamp with time zone)', 1,
 $h$  v_bonus     jsonb;     -- 0155 (K3): the sailing bonus's answer, for the report
 $h$,
 $h$  v_bonus     jsonb;     -- 0155 (K3): the sailing bonus's answer, for the report
-  v_fight     jsonb;     -- 0187: the fight's answer (voyage.fight) while combat_bite is on, else null
+  v_fight     jsonb;     -- 0189: the fight's answer (voyage.fight) while combat_bite is on, else null
 $h$),
 -- voyage.settle: THE FIGHT decides, while combat_bite is on
 ('voyage.settle(uuid, timestamp with time zone)', 2,
@@ -560,7 +560,7 @@ $h$      v_ratio := case when v_raider <= 0 then 99 else v_escort / v_raider end
       else                      v_outcome := 'STRIPPED';
       end if;
 $h$,
-$h$      -- 0187: THE FIGHT. While combat_bite is on, voyage.fight decides — sighting, rounds of range, accuracy,
+$h$      -- 0189: THE FIGHT. While combat_bite is on, voyage.fight decides — sighting, rounds of range, accuracy,
       -- attack and armour, then the boarding — and says what each hull lost to the shot, written here whatever
       -- the outcome. While it is off, DESIGN B.6's ratio table, as before.
       v_fight := case when public.combat_bite_on() then voyage.fight(v.id, d, p_fleet, v_raider) end;
@@ -586,7 +586,7 @@ $h$               durability = greatest(0, sh.durability - public.armour_turns(s
                                                                               when 'PLUNDERED' then 0.80
                                                                               else 1.00 end)))
 $h$,
-$h$               -- 0187: while the fight decides (v_fight), it has written the hull already — the crew loss only
+$h$               -- 0189: while the fight decides (v_fight), it has written the hull already — the crew loss only
                durability = case when v_fight is not null then sh.durability
                             else greatest(0, sh.durability - public.armour_turns(sh.id,
                               sh.durability - sh.durability * (case v_outcome when 'DRIVEN_OFF' then 0.95
@@ -598,7 +598,7 @@ $h$),
 $h$                                                   'surgeon_pct', round(public.crew_pct(p_fleet, null, 'crew_saved') * 100, 2));
 $h$,
 $h$                                                   'surgeon_pct', round(public.crew_pct(p_fleet, null, 'crew_saved') * 100, 2))
-                   -- 0187: the battle report, in words, and what the fight was (only when one was fought)
+                   -- 0189: the battle report, in words, and what the fight was (only when one was fought)
                    || case when v_fight is null then '{}'::jsonb
                            else jsonb_build_object('rounds', v_fight->'rounds',
                                                    'fight', (v_fight - 'rounds' - 'outcome' - 'sentence' - 'hull_lost')
@@ -610,7 +610,7 @@ $h$),
 ('voyage.settle(uuid, timestamp with time zone)', 5,
 $h$        v_lost := round(s.maxd * (0.04 + 0.11 * h.magnitude), 2);
 $h$,
-$h$        -- 0187: less what her armour turns (public.armour_turns; at 0, the loss itself)
+$h$        -- 0189: less what her armour turns (public.armour_turns; at 0, the loss itself)
         v_lost := public.armour_turns(s.id, round(s.maxd * (0.04 + 0.11 * h.magnitude), 2));
 $h$),
 -- voyage.settle: the VOYAGE_REPORT says where each fight's rounds belong (only when there was one)
@@ -618,7 +618,7 @@ $h$),
 $h$      || case when v_bonus is null then '{}'::jsonb else jsonb_build_object('training', v_bonus) end);
 $h$,
 $h$      || case when v_bonus is null then '{}'::jsonb else jsonb_build_object('training', v_bonus) end
-      -- 0187: `fights` — for each day fought in rounds, the index of its line in `lines` (the same order) and
+      -- 0189: `fights` — for each day fought in rounds, the index of its line in `lines` (the same order) and
       -- its rounds; absent when none was, so a report without a fight is the report it always was
       || (select case when count(*) = 0 then '{}'::jsonb
                       else jsonb_build_object('fights', jsonb_agg(jsonb_build_object('line', z.n - 1, 'rounds', z.payload->'rounds')
@@ -636,7 +636,7 @@ $h$      v_prose := case v_outcome
         when 'PLUNDERED'  then 'They came aboard and took what they could carry.'
         else 'They took everything but the ship itself.' end;
 $h$,
-$h$      -- 0187: while the fight decides, its own sentence ("They came alongside and we threw them back."): true of
+$h$      -- 0189: while the fight decides, its own sentence ("They came alongside and we threw them back."): true of
       -- THIS fight, where the table's "We fired twice …" would contradict the rounds printed beneath it
       v_prose := coalesce(v_fight->>'sentence', case v_outcome
         when 'EVADED'     then 'They stood off and did not close.'
@@ -649,11 +649,11 @@ $h$),
 ('public.armour_turns(uuid, numeric)', 1,
 $h$  return round(p_loss * greatest(0, 1 - world.ship_stat(p_ship, 'armour') / 100.0 * v_k), 2);
 $h$,
-$h$  -- 0187: the one formula, public.armour_soak (shared with the fight's raiders)
+$h$  -- 0189: the one formula, public.armour_soak (shared with the fight's raiders)
   return public.armour_soak(world.ship_stat(p_ship, 'armour'), p_loss);
 $h$);
 
-create or replace function pg_temp.recut_0187(p_fn text)
+create or replace function pg_temp.recut_0189(p_fn text)
 returns void
 language plpgsql
 as $$
@@ -662,10 +662,10 @@ declare
   h     record;
   v_n   int;
 begin
-  for h in select * from hunks_0187 where fn = p_fn order by n loop
-    v_n := pg_temp.occurs_0187(v_def, h.old);
+  for h in select * from hunks_0189 where fn = p_fn order by n loop
+    v_n := pg_temp.occurs_0189(v_def, h.old);
     if v_n <> 1 then
-      raise exception '0187 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
+      raise exception '0189 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
         h.n, p_fn, v_n;
     end if;
     v_def := replace(v_def, h.old, h.new);
@@ -673,15 +673,15 @@ begin
   execute v_def;
 end $$;
 
-select pg_temp.recut_0187(fn) from defs_before_0187 order by fn;
+select pg_temp.recut_0189(fn) from defs_before_0189 order by fn;
 
 comment on function public.armour_turns(uuid, numeric) is
-  '0168/0187: THE armour rule for a hull — public.armour_soak with her armour (world.ship_stat); the knob at 0 '
+  '0168/0189: THE armour rule for a hull — public.armour_soak with her armour (world.ship_stat); the knob at 0 '
   'returns the loss itself. Read by voyage.settle (STORM, SHOAL_WATER, the old raid). Server-only.';
 
 -- ── 5. THE PROBE (its own company and passages; rolled back whole) ─────────────────────────────
 -- a passage between two harbours' anchorages, departed 30 days ago (0158's helper)
-create or replace function pg_temp.passage_0187(p_fleet uuid, p_from uuid, p_to uuid)
+create or replace function pg_temp.passage_0189(p_fleet uuid, p_from uuid, p_to uuid)
 returns uuid
 language plpgsql
 as $$
@@ -694,7 +694,7 @@ begin
 end $$;
 
 -- one passage settled by the old body or the new, everything it left captured, and the writes rolled back
-create or replace function pg_temp.settle_0187(p_voyage uuid, p_fleet uuid, p_old boolean)
+create or replace function pg_temp.settle_0189(p_voyage uuid, p_fleet uuid, p_old boolean)
 returns jsonb
 language plpgsql
 as $$
@@ -706,7 +706,7 @@ begin
   begin
     v_t0 := clock_timestamp();
     if p_old then
-      perform pg_temp.voyage_settle_b0187(p_fleet, now());
+      perform pg_temp.voyage_settle_b0189(p_fleet, now());
     else
       perform voyage.settle(p_fleet, now());
     end if;
@@ -728,19 +728,19 @@ begin
                   from public.fitted_units u join public.ships s on s.id = u.ship_id where s.fleet_id = p_fleet),
       'ducats', (select ducats from public.players where id = v_p));
     r := r || jsonb_build_object('ms', round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1));
-    raise exception 'RB_0187';
+    raise exception 'RB_0189';
   exception when others then
-    if sqlerrm <> 'RB_0187' then raise; end if;
+    if sqlerrm <> 'RB_0189' then raise; end if;
   end;
   return r;
 end $$;
 
 -- a fight's outcome over many days of one crafted fleet: the engine's properties, on a fixed seed
-create or replace function pg_temp.engine_0187(p_ships jsonb, p_raider numeric, p_days int, p_escort numeric default 11.74)
+create or replace function pg_temp.engine_0189(p_ships jsonb, p_raider numeric, p_days int, p_escort numeric default 11.74)
 returns jsonb
 language sql
 as $$
-  with f as (select voyage.fight_resolve('00000000-0187-4000-8000-0000000000ff'::uuid, d, p_raider, p_escort, p_ships) j
+  with f as (select voyage.fight_resolve('00000000-0189-4000-8000-0000000000ff'::uuid, d, p_raider, p_escort, p_ships) j
                from generate_series(1, p_days) d)
   select jsonb_build_object(
     'won', count(*) filter (where j->>'outcome' in ('EVADED', 'DRIVEN_OFF')),
@@ -753,12 +753,12 @@ $$;
 
 -- the probe's company at Lisbon: the barca it was founded with and a nau with broadside guns; with p_captains,
 -- Turgut Reis (Boarder) in the barca's Captain's cabin and Tartaglia (Gunner) in the nau's
-create or replace function pg_temp.house_0187(p_captains boolean)
+create or replace function pg_temp.house_0189(p_captains boolean)
 returns jsonb
 language plpgsql
 as $$
 declare
-  c_p     constant uuid := '00000000-0187-4000-8000-000000000001';
+  c_p     constant uuid := '00000000-0189-4000-8000-000000000001';
   v_lis   uuid := (select id from public.ports where code = 'LIS');
   v_p     uuid;
   v_pf    uuid;
@@ -766,9 +766,9 @@ declare
   v_nau   uuid;
   v_r     jsonb;
 begin
-  v_p := public.new_house(c_p, 'Casa da Peleja 0187', 'PRT', 'LIS');
+  v_p := public.new_house(c_p, 'Casa da Peleja 0189', 'PRT', 'LIS');
   select id into v_pf from public.fleets where player_id = v_p;
-  perform public.credit(v_p, 'PROBE_0187', 10000000);
+  perform public.credit(v_p, 'PROBE_0189', 10000000);
   select id into v_barca from public.ships where fleet_id = v_pf;
   v_nau := public.commission_ship(v_p, v_pf, 'nau', 'Prova Nau', false, true);
   insert into public.player_items (player_id, port_id, item_code, qty) values (v_p, v_lis, 'broadside-guns', 1)
@@ -790,7 +790,7 @@ end $$;
 -- untouched) and nearly every hazard of that one kind (the other kinds' mix_base at 0.0001, the column's least).
 -- Without: the passage as the sea deals it — NOT every day a hazard, because a run of calms and storms that each
 -- add days to a passage whose every day is a hazard never arrives (the first cut of this probe met exactly that).
-create or replace function pg_temp.forced_passage_0187(p_fleet uuid, p_kind text)
+create or replace function pg_temp.forced_passage_0189(p_fleet uuid, p_kind text)
 returns uuid
 language plpgsql
 as $$
@@ -801,7 +801,7 @@ begin
     update public.world_config set value = '1'::jsonb where key = 'hazard_p_max';
     update public.voyage_event_kinds set mix_base = case when code = p_kind then 1 else 0.0001 end where in_sea_mix;
   end if;
-  v_voy := pg_temp.passage_0187(p_fleet, (select id from public.ports where code = 'LIS'), (select id from public.ports where code = 'FNC'));
+  v_voy := pg_temp.passage_0189(p_fleet, (select id from public.ports where code = 'LIS'), (select id from public.ports where code = 'FNC'));
   if p_kind is not null then
     update public.voyages vo
        set path = (select jsonb_agg(e || jsonb_build_object('hazard_mult', 1000) order by o)
@@ -811,7 +811,7 @@ begin
   return v_voy;
 end $$;
 
-create or replace function pg_temp.probe_0187()
+create or replace function pg_temp.probe_0189()
 returns jsonb
 language plpgsql
 as $$
@@ -830,11 +830,11 @@ begin
     update public.world_config set value = 'false'::jsonb where key = 'combat_bite';
     update public.world_config set value = '0'::jsonb where key = 'armour_turns_pct';
     update public.world_config set value = 'true'::jsonb where key = 'crew_bite';
-    v_h := pg_temp.house_0187(true);
+    v_h := pg_temp.house_0189(true);
     v_pf := (v_h->>'fleet')::uuid;
-    v_voy := pg_temp.forced_passage_0187(v_pf, 'PIRATES');
+    v_voy := pg_temp.forced_passage_0189(v_pf, 'PIRATES');
     v_out := v_out || jsonb_build_object('house', v_h, 'raids', jsonb_build_object(
-      'old', pg_temp.settle_0187(v_voy, v_pf, true), 'new', pg_temp.settle_0187(v_voy, v_pf, false)));
+      'old', pg_temp.settle_0189(v_voy, v_pf, true), 'new', pg_temp.settle_0189(v_voy, v_pf, false)));
     update public.world_config set value = 'true'::jsonb where key = 'combat_bite';
     update public.world_config set value = '0.5'::jsonb where key = 'armour_turns_pct';
     -- the probe's raiders always close (this passage's seas breed small ones, which a nau would stare down)
@@ -848,7 +848,7 @@ begin
     v_out := jsonb_set(v_out, '{raids,fight2}', voyage.fight(v_voy, 1, v_pf, 20));
     v_out := jsonb_set(v_out, '{raids,before}', (select jsonb_agg(jsonb_build_object('id', s.id, 'd', s.durability) order by s.id)
                                                    from public.ships s where s.fleet_id = v_pf));
-    v_out := jsonb_set(v_out, '{raids,lit}', pg_temp.settle_0187(v_voy, v_pf, false));
+    v_out := jsonb_set(v_out, '{raids,lit}', pg_temp.settle_0189(v_voy, v_pf, false));
     -- what a lit fight costs to read, over 200 merchant fleets (notice only; a sweep fights a handful)
     v_t0 := clock_timestamp();
     perform voyage.fight(v_voy, 1, z.id, 10)
@@ -857,71 +857,71 @@ begin
     v_out := jsonb_set(v_out, '{raids,merchant_fights_ms}', to_jsonb(round(extract(epoch from clock_timestamp() - v_t0) * 1000, 1)));
     v_out := jsonb_set(v_out, '{raids,merchant_fleets}', to_jsonb((select count(*) from (select 1 from public.fleets f join public.players pl on pl.id = f.player_id
                                                                    where pl.is_npc and exists (select 1 from public.ships s where s.fleet_id = f.id) limit 200) z)));
-    raise exception 'PROBE_ROLLBACK_0187';
+    raise exception 'PROBE_ROLLBACK_0189';
   exception when others then
-    if sqlerrm <> 'PROBE_ROLLBACK_0187' then raise; end if;
+    if sqlerrm <> 'PROBE_ROLLBACK_0189' then raise; end if;
   end;
-  raise notice '0187 probe: block % done at % ms', 1, round(extract(epoch from clock_timestamp() - v_t1) * 1000);
+  raise notice '0189 probe: block % done at % ms', 1, round(extract(epoch from clock_timestamp() - v_t1) * 1000);
 
   -- (D2) A PASSAGE OF SHOALS: dark alike; lit (armour at 0.5, combat still off), less lost on every shoal day
   begin
     update public.world_config set value = 'false'::jsonb where key = 'combat_bite';
     update public.world_config set value = '0'::jsonb where key = 'armour_turns_pct';
-    v_h := pg_temp.house_0187(false);
+    v_h := pg_temp.house_0189(false);
     v_pf := (v_h->>'fleet')::uuid;
-    v_voy := pg_temp.forced_passage_0187(v_pf, 'SHOAL_WATER');
+    v_voy := pg_temp.forced_passage_0189(v_pf, 'SHOAL_WATER');
     v_out := v_out || jsonb_build_object('shoals', jsonb_build_object(
-      'old', pg_temp.settle_0187(v_voy, v_pf, true), 'new', pg_temp.settle_0187(v_voy, v_pf, false)));
+      'old', pg_temp.settle_0189(v_voy, v_pf, true), 'new', pg_temp.settle_0189(v_voy, v_pf, false)));
     update public.world_config set value = '0.5'::jsonb where key = 'armour_turns_pct';
-    v_out := jsonb_set(v_out, '{shoals,lit}', pg_temp.settle_0187(v_voy, v_pf, false));
-    raise exception 'PROBE_ROLLBACK_0187';
+    v_out := jsonb_set(v_out, '{shoals,lit}', pg_temp.settle_0189(v_voy, v_pf, false));
+    raise exception 'PROBE_ROLLBACK_0189';
   exception when others then
-    if sqlerrm <> 'PROBE_ROLLBACK_0187' then raise; end if;
+    if sqlerrm <> 'PROBE_ROLLBACK_0189' then raise; end if;
   end;
-  raise notice '0187 probe: block % done at % ms', 2, round(extract(epoch from clock_timestamp() - v_t1) * 1000);
+  raise notice '0189 probe: block % done at % ms', 2, round(extract(epoch from clock_timestamp() - v_t1) * 1000);
 
   -- (D3) A PASSAGE AS THE SEA DEALS IT (the world's own odds and mix): dark alike
   begin
     update public.world_config set value = 'false'::jsonb where key = 'combat_bite';
     update public.world_config set value = '0'::jsonb where key = 'armour_turns_pct';
-    v_h := pg_temp.house_0187(true);
+    v_h := pg_temp.house_0189(true);
     v_pf := (v_h->>'fleet')::uuid;
-    v_voy := pg_temp.forced_passage_0187(v_pf, null);
+    v_voy := pg_temp.forced_passage_0189(v_pf, null);
     v_out := v_out || jsonb_build_object('mixed', jsonb_build_object(
-      'old', pg_temp.settle_0187(v_voy, v_pf, true), 'new', pg_temp.settle_0187(v_voy, v_pf, false)));
-    raise exception 'PROBE_ROLLBACK_0187';
+      'old', pg_temp.settle_0189(v_voy, v_pf, true), 'new', pg_temp.settle_0189(v_voy, v_pf, false)));
+    raise exception 'PROBE_ROLLBACK_0189';
   exception when others then
-    if sqlerrm <> 'PROBE_ROLLBACK_0187' then raise; end if;
+    if sqlerrm <> 'PROBE_ROLLBACK_0189' then raise; end if;
   end;
-  raise notice '0187 probe: block % done at % ms', 3, round(extract(epoch from clock_timestamp() - v_t1) * 1000);
+  raise notice '0189 probe: block % done at % ms', 3, round(extract(epoch from clock_timestamp() - v_t1) * 1000);
 
   -- (E) THE ENGINE'S PROPERTIES on crafted hulls, a fixed seed, 300 days each (armour at 0.5, rolled back)
   begin
     update public.world_config set value = '0.5'::jsonb where key = 'armour_turns_pct';
-    v_base := jsonb_build_array(jsonb_build_object('id', '00000000-0187-4000-8000-0000000000a1', 'name', 'Probe', 'tier', 2, 'hull', 550,
+    v_base := jsonb_build_array(jsonb_build_object('id', '00000000-0189-4000-8000-0000000000a1', 'name', 'Probe', 'tier', 2, 'hull', 550,
                 'maxd', 550, 'crew', 12, 'attack', 55, 'accuracy', 40, 'reach', 25, 'armour', 12, 'sighting', 10));
     v_out := v_out || jsonb_build_object('engine', jsonb_build_object(
-      'base',     pg_temp.engine_0187(v_base, 12, 300),
-      'reach',    pg_temp.engine_0187(jsonb_set(v_base, '{0,reach}', '60'), 12, 300),
-      'accuracy', pg_temp.engine_0187(jsonb_set(v_base, '{0,accuracy}', '70'), 12, 300),
-      'attack',   pg_temp.engine_0187(jsonb_set(v_base, '{0,attack}', '110'), 12, 300),
-      'armour',   pg_temp.engine_0187(jsonb_set(v_base, '{0,armour}', '50'), 12, 300),
-      'crew',     pg_temp.engine_0187(jsonb_set(v_base, '{0,crew}', '40'), 12, 300),
-      'boarder',  pg_temp.engine_0187(jsonb_set(jsonb_set(v_base, '{0,boarder_pct}', '0.5'), '{0,boarder}', '"Probe Boarder"'), 12, 300),
-      'unarmed',  pg_temp.engine_0187(jsonb_set(jsonb_set(v_base, '{0,attack}', '0'), '{0,accuracy}', '0'), 12, 300),
-      'same',     voyage.fight_resolve('00000000-0187-4000-8000-0000000000ff'::uuid, 7, 12, 11.74, v_base)
-                    = voyage.fight_resolve('00000000-0187-4000-8000-0000000000ff'::uuid, 7, 12, 11.74, v_base),
-      'no_raider', voyage.fight_resolve('00000000-0187-4000-8000-0000000000ff'::uuid, 7, 0, 11.74, v_base),
-      'standoff', pg_temp.engine_0187(v_base, 12, 50, 24)));
-    raise exception 'PROBE_ROLLBACK_0187';
+      'base',     pg_temp.engine_0189(v_base, 12, 300),
+      'reach',    pg_temp.engine_0189(jsonb_set(v_base, '{0,reach}', '60'), 12, 300),
+      'accuracy', pg_temp.engine_0189(jsonb_set(v_base, '{0,accuracy}', '70'), 12, 300),
+      'attack',   pg_temp.engine_0189(jsonb_set(v_base, '{0,attack}', '110'), 12, 300),
+      'armour',   pg_temp.engine_0189(jsonb_set(v_base, '{0,armour}', '50'), 12, 300),
+      'crew',     pg_temp.engine_0189(jsonb_set(v_base, '{0,crew}', '40'), 12, 300),
+      'boarder',  pg_temp.engine_0189(jsonb_set(jsonb_set(v_base, '{0,boarder_pct}', '0.5'), '{0,boarder}', '"Probe Boarder"'), 12, 300),
+      'unarmed',  pg_temp.engine_0189(jsonb_set(jsonb_set(v_base, '{0,attack}', '0'), '{0,accuracy}', '0'), 12, 300),
+      'same',     voyage.fight_resolve('00000000-0189-4000-8000-0000000000ff'::uuid, 7, 12, 11.74, v_base)
+                    = voyage.fight_resolve('00000000-0189-4000-8000-0000000000ff'::uuid, 7, 12, 11.74, v_base),
+      'no_raider', voyage.fight_resolve('00000000-0189-4000-8000-0000000000ff'::uuid, 7, 0, 11.74, v_base),
+      'standoff', pg_temp.engine_0189(v_base, 12, 50, 24)));
+    raise exception 'PROBE_ROLLBACK_0189';
   exception when others then
-    if sqlerrm <> 'PROBE_ROLLBACK_0187' then raise; end if;
+    if sqlerrm <> 'PROBE_ROLLBACK_0189' then raise; end if;
   end;
-  raise notice '0187 probe: block % done at % ms', 4, round(extract(epoch from clock_timestamp() - v_t1) * 1000);
+  raise notice '0189 probe: block % done at % ms', 4, round(extract(epoch from clock_timestamp() - v_t1) * 1000);
   return v_out;
 end $$;
 
-create temp table probe_0187 (j jsonb) on commit drop;
+create temp table probe_0189 (j jsonb) on commit drop;
 do $$
 declare
   v_try   int := 0;
@@ -931,13 +931,13 @@ begin
   loop
     v_try := v_try + 1;
     begin
-      insert into probe_0187 select pg_temp.probe_0187();
+      insert into probe_0189 select pg_temp.probe_0189();
       exit;
     exception when lock_not_available or deadlock_detected then
       get stacked diagnostics v_msg = message_text, v_state = returned_sqlstate;
     end;
     if v_try >= 5 then
-      raise exception '0187 self-assert FAIL: LOCK CONTENTION, not a result — the probe could not get its locks in 5 tries (%: %). Re-run the push.',
+      raise exception '0189 self-assert FAIL: LOCK CONTENTION, not a result — the probe could not get its locks in 5 tries (%: %). Re-run the push.',
         v_state, v_msg;
     end if;
     perform pg_sleep(0.2);
@@ -951,7 +951,7 @@ declare
   v_d     record;
   v_h     record;
   v_pp    record;
-  v_pr    jsonb := (select j from probe_0187);
+  v_pr    jsonb := (select j from probe_0189);
   v_x     jsonb;
   v_e     jsonb;
   v_def   text;
@@ -964,31 +964,31 @@ declare
   v_lit   numeric;
   v_eng   jsonb;
 begin
-  select * into v_b from before_0187;
+  select * into v_b from before_0189;
   if v_pr is null then
-    raise exception '0187 self-assert FAIL: the probe returned nothing';
+    raise exception '0189 self-assert FAIL: the probe returned nothing';
   end if;
   if not coalesce((v_pr->'house'->>'mounted')::boolean, false) then
-    raise exception '0187 self-assert FAIL: the probe could not fit its broadside guns: %', v_pr->'house'->'fit';
+    raise exception '0189 self-assert FAIL: the probe could not fit its broadside guns: %', v_pr->'house'->'fit';
   end if;
 
   -- (a) DARK, EVERY PASSAGE: the old body and the new leave the same world, day for day (the time aside)
   for v_x in select v_pr->k from unnest(array['raids', 'shoals', 'mixed']) k loop
     if (v_x->'old') - 'ms' is distinct from (v_x->'new') - 'ms' then
-      raise exception '0187 self-assert FAIL: dark, a passage settled differently by the new body: old % new %', v_x->'old', v_x->'new';
+      raise exception '0189 self-assert FAIL: dark, a passage settled differently by the new body: old % new %', v_x->'old', v_x->'new';
     end if;
     if jsonb_array_length(v_x->'old'->'events') < 2 or v_x->'old'->'voyage'->>'status' <> 'ARRIVED' or v_x->'old'->'report' is null then
-      raise exception '0187 self-assert FAIL: a probe passage did not settle to an arrival with a report: %', v_x->'old'->'voyage';
+      raise exception '0189 self-assert FAIL: a probe passage did not settle to an arrival with a report: %', v_x->'old'->'voyage';
     end if;
   end loop;
   select count(*) into v_n from jsonb_array_elements(v_pr->'raids'->'old'->'events') e where e->>'kind' = 'PIRATES';
   select count(*) into v_m from jsonb_array_elements(v_pr->'shoals'->'old'->'events') e where e->>'kind' = 'SHOAL_WATER';
   if v_n = 0 or v_m = 0 then
-    raise exception '0187 self-assert FAIL: the forced passages met % raid(s) and % shoal(s) — the probe proves nothing', v_n, v_m;
+    raise exception '0189 self-assert FAIL: the forced passages met % raid(s) and % shoal(s) — the probe proves nothing', v_n, v_m;
   end if;
   if exists (select 1 from jsonb_array_elements(v_pr->'raids'->'new'->'events') e where e->'payload' ? 'rounds')
      or v_pr->'raids'->'new'->'report' ? 'fights' then
-    raise exception '0187 self-assert FAIL: dark, a raid was fought in rounds';
+    raise exception '0189 self-assert FAIL: dark, a raid was fought in rounds';
   end if;
 
   -- (b) LIT: every raid day fought in rounds, the report pointing at each fought day's line
@@ -1004,14 +1004,14 @@ begin
                                     'They came aboard and took what they could carry.', 'They took everything but the ships themselves.');
   select count(*) into v_n from jsonb_array_elements(v_x->'events') e where e->>'kind' = 'PIRATES';
   if v_n = 0 or v_m <> v_n then
-    raise exception '0187 self-assert FAIL: lit, % of % raid day(s) were fought in rounds: %', v_m, v_n, v_x->'events';
+    raise exception '0189 self-assert FAIL: lit, % of % raid day(s) were fought in rounds: %', v_m, v_n, v_x->'events';
   end if;
   if jsonb_array_length(coalesce(v_x->'report'->'fights', '[]'::jsonb)) <> v_n
      or exists (select 1 from jsonb_array_elements(v_x->'report'->'fights') f
                  where (v_lines->>((f->>'line')::int)) not like
                          format('Day %s. Sail sighted%%', (select e->>'day' from jsonb_array_elements(v_x->'events') e
                                                             where e->'payload'->'rounds' = f->'rounds' limit 1))) then
-    raise exception '0187 self-assert FAIL: lit, the report''s fights do not point at their days'' lines: % / %', v_x->'report'->'fights', v_lines;
+    raise exception '0189 self-assert FAIL: lit, the report''s fights do not point at their days'' lines: % / %', v_x->'report'->'fights', v_lines;
   end if;
   -- the hull each fight said it took is the hull that went (with any storm's or shoal's own hull_lost)
   select coalesce(sum(coalesce((e->'payload'->'fight'->>'hull_lost')::numeric, (e->'payload'->>'hull_lost')::numeric, 0)), 0) into v_lost
@@ -1020,15 +1020,15 @@ begin
     from jsonb_array_elements(v_pr->'raids'->'before') b
     join jsonb_array_elements(v_x->'ships') a on a->>'id' = b->>'id';
   if not (v_lost > 0) or abs(v_lost - v_drop) > 0.02 * greatest(1, v_n) then
-    raise exception '0187 self-assert FAIL: lit, the fights said % hull was lost and the hulls lost %', v_lost, v_drop;
+    raise exception '0189 self-assert FAIL: lit, the fights said % hull was lost and the hulls lost %', v_lost, v_drop;
   end if;
   -- the same fight read twice is the same fight; it names the Gunner, the Boarder (at a boarding) and the gear
   if v_pr->'raids'->'fight1' is distinct from v_pr->'raids'->'fight2' then
-    raise exception '0187 self-assert FAIL: one day''s fight read twice differed';
+    raise exception '0189 self-assert FAIL: one day''s fight read twice differed';
   end if;
   if not exists (select 1 from jsonb_array_elements_text(v_pr->'raids'->'fight1'->'rounds') l where l like '%lays the guns on Prova Nau.%')
      or not exists (select 1 from jsonb_array_elements_text(v_pr->'raids'->'fight1'->'rounds') l where l like 'Ready for them: %Prova Nau (Broadside Guns)%') then
-    raise exception '0187 self-assert FAIL: the fight did not name the Gunner or the gear that works on a raid: %', v_pr->'raids'->'fight1'->'rounds';
+    raise exception '0189 self-assert FAIL: the fight did not name the Gunner or the gear that works on a raid: %', v_pr->'raids'->'fight1'->'rounds';
   end if;
 
   -- (c) SHOALS: dark alike (above); lit, every shoal day takes less, by armour_soak's own formula
@@ -1040,7 +1040,7 @@ begin
        select 1 from jsonb_array_elements(v_pr->'shoals'->'new'->'events') dk
          join jsonb_array_elements(v_pr->'shoals'->'lit'->'events') lt on lt->>'day' = dk->>'day'
         where dk->>'kind' = 'SHOAL_WATER' and not ((lt->'payload'->>'hull_lost')::numeric < (dk->'payload'->>'hull_lost')::numeric)) then
-    raise exception '0187 self-assert FAIL: armour did not lessen every shoal day (dark %, lit %)', v_dark, v_lit;
+    raise exception '0189 self-assert FAIL: armour did not lessen every shoal day (dark %, lit %)', v_dark, v_lit;
   end if;
 
   -- (d) THE ENGINE: range, accuracy and attack each win more often; armour takes less hull; crew and a
@@ -1056,11 +1056,11 @@ begin
           and (v_eng->>'same')::boolean
           and v_eng->'no_raider'->>'outcome' = 'EVADED'
           and (v_eng->'standoff'->>'won')::int = 50 and (v_eng->'standoff'->>'hull')::numeric = 0) then
-    raise exception '0187 self-assert FAIL: the engine''s properties do not hold: %', v_eng;
+    raise exception '0189 self-assert FAIL: the engine''s properties do not hold: %', v_eng;
   end if;
 
   -- (e) THE READERS: armour_soak by armour_turns and the core; the core by voyage.fight; voyage.fight by settle
-  create or replace function pg_temp.readers_0187(p_name text)
+  create or replace function pg_temp.readers_0189(p_name text)
   returns text
   language sql
   as $f$
@@ -1070,46 +1070,46 @@ begin
        and p.prosrc like '%' || p_name || '(%'
        and n.nspname || '.' || p.proname <> p_name
   $f$;
-  if pg_temp.readers_0187('public.armour_soak') is distinct from 'public.armour_turns,voyage.fight_resolve'
-     or pg_temp.readers_0187('voyage.fight_resolve') is distinct from 'voyage.fight'
-     or pg_temp.readers_0187('voyage.fight') is distinct from 'voyage.settle'
-     or pg_temp.readers_0187('public.armour_turns') is distinct from 'voyage.settle' then
-    raise exception '0187 self-assert FAIL: readers — armour_soak %, fight_resolve %, fight %, armour_turns %',
-      pg_temp.readers_0187('public.armour_soak'), pg_temp.readers_0187('voyage.fight_resolve'),
-      pg_temp.readers_0187('voyage.fight'), pg_temp.readers_0187('public.armour_turns');
+  if pg_temp.readers_0189('public.armour_soak') is distinct from 'public.armour_turns,voyage.fight_resolve'
+     or pg_temp.readers_0189('voyage.fight_resolve') is distinct from 'voyage.fight'
+     or pg_temp.readers_0189('voyage.fight') is distinct from 'voyage.settle'
+     or pg_temp.readers_0189('public.armour_turns') is distinct from 'voyage.settle' then
+    raise exception '0189 self-assert FAIL: readers — armour_soak %, fight_resolve %, fight %, armour_turns %',
+      pg_temp.readers_0189('public.armour_soak'), pg_temp.readers_0189('voyage.fight_resolve'),
+      pg_temp.readers_0189('voyage.fight'), pg_temp.readers_0189('public.armour_turns');
   end if;
   begin
-    execute $planted$create function public.zz_planted_reader_0187() returns jsonb language sql as
+    execute $planted$create function public.zz_planted_reader_0189() returns jsonb language sql as
       'select voyage.fight(null, 1, null, 1)'$planted$;
-    if pg_temp.readers_0187('voyage.fight') is not distinct from 'voyage.settle' then
-      raise exception '0187 self-assert FAIL: the reader scan did not see a planted reader — it proves nothing';
+    if pg_temp.readers_0189('voyage.fight') is not distinct from 'voyage.settle' then
+      raise exception '0189 self-assert FAIL: the reader scan did not see a planted reader — it proves nothing';
     end if;
-    raise exception 'CONTROL_ROLLBACK_0187';
+    raise exception 'CONTROL_ROLLBACK_0189';
   exception when others then
-    if sqlerrm <> 'CONTROL_ROLLBACK_0187' then raise; end if;
+    if sqlerrm <> 'CONTROL_ROLLBACK_0189' then raise; end if;
   end;
 
   -- (f) THE RE-CUTS reverse to their pre-images; ACL / volatility / definer / config unmoved; the rest untouched
-  for v_d in select * from defs_before_0187 order by fn loop
+  for v_d in select * from defs_before_0189 order by fn loop
     v_def := replace(pg_get_functiondef(v_d.fn::regprocedure), E'\r', '');
-    for v_h in select * from hunks_0187 where fn = v_d.fn order by n desc loop
-      if pg_temp.occurs_0187(v_def, v_h.new) <> 1 then
-        raise exception '0187 self-assert FAIL: hunk % of % is not in the new body exactly once', v_h.n, v_d.fn;
+    for v_h in select * from hunks_0189 where fn = v_d.fn order by n desc loop
+      if pg_temp.occurs_0189(v_def, v_h.new) <> 1 then
+        raise exception '0189 self-assert FAIL: hunk % of % is not in the new body exactly once', v_h.n, v_d.fn;
       end if;
       v_def := replace(v_def, v_h.new, v_h.old);
     end loop;
     if v_def <> v_d.def then
-      raise exception '0187 self-assert FAIL: % does not reverse to its pre-image', v_d.fn;
+      raise exception '0189 self-assert FAIL: % does not reverse to its pre-image', v_d.fn;
     end if;
     select coalesce(pr.proacl::text, '') as acl, pr.provolatile as vol, pr.prosecdef as secdef, coalesce(pr.proconfig::text, '') as cfg
       into v_pp from pg_proc pr where pr.oid = v_d.fn::regprocedure;
     if v_pp.acl <> v_d.acl or v_pp.vol <> v_d.vol or v_pp.secdef <> v_d.secdef or v_pp.cfg <> v_d.cfg then
-      raise exception '0187 self-assert FAIL: % changed its ACL, volatility, definer or config', v_d.fn;
+      raise exception '0189 self-assert FAIL: % changed its ACL, volatility, definer or config', v_d.fn;
     end if;
   end loop;
-  for v_d in select * from untouched_before_0187 loop
+  for v_d in select * from untouched_before_0189 loop
     if replace(pg_get_functiondef(v_d.fn::regprocedure), E'\r', '') <> v_d.def then
-      raise exception '0187 self-assert FAIL: % moved — it was to be left untouched', v_d.fn;
+      raise exception '0189 self-assert FAIL: % moved — it was to be left untouched', v_d.fn;
     end if;
   end loop;
 
@@ -1117,11 +1117,11 @@ begin
   if (select count(*) from public.world_config where key in ('fight_raider_class', 'fight_ranges', 'fight_damage_per_attack',
         'fight_raider_break', 'fight_evade_per_sighting', 'fight_evade_max', 'fight_standoff_ratio', 'fight_hand_value',
         'fight_board_bands')) <> 9 then
-    raise exception '0187 self-assert FAIL: the nine fight knobs are not all present';
+    raise exception '0189 self-assert FAIL: the nine fight knobs are not all present';
   end if;
   if (select value from public.world_config where key = 'combat_bite') <> 'false'::jsonb
      or (select value from public.world_config where key = 'armour_turns_pct') <> '0'::jsonb then
-    raise exception '0187 self-assert FAIL: this file is dark, and combat_bite or armour_turns_pct is not';
+    raise exception '0189 self-assert FAIL: this file is dark, and combat_bite or armour_turns_pct is not';
   end if;
   if (select count(*) from public.client_rpc_entry_points()) <> v_b.entry_points
      or (select count(*) from public.client_write_grants()) <> 0
@@ -1131,11 +1131,11 @@ begin
                                            'voyage.fight(uuid, integer, uuid, numeric)']) f(fn),
                        unnest(array['anon', 'authenticated']) rl(role)
                  where has_function_privilege(rl.role, f.fn, 'execute')) then
-    raise exception '0187 self-assert FAIL: the registry, the grant wall or the read wall moved, or a client can reach a new function';
+    raise exception '0189 self-assert FAIL: the registry, the grant wall or the read wall moved, or a client can reach a new function';
   end if;
 
   v_e := (select e from jsonb_array_elements(v_pr->'raids'->'lit'->'events') e where e->>'kind' = 'PIRATES' order by (e->>'day')::int limit 1);
-  raise notice '0187 self-assert ok: A RAID IS FOUGHT IN ROUNDS (dark: combat_bite false, armour_turns_pct 0). DARK: three probe passages (% raid day(s), % shoal day(s), and one as the sea deals it) settled by the old body and the new alike — events, hulls, crew, cargo, report, experience, wear, purse. LIT (rolled back): % raid day(s) fought in rounds, the report''s fights at their days'' lines, % hull said = % hull lost; one day read twice the same; the Gunner and the gear named; shoals: % → % hull with armour at 0.5. ENGINE (300 days, fixed seed, won / lost / hull): base %/%/%, reach 60 %/%, accuracy 70 %/%, attack 110 %/%, armour 50 hull %, crew 40 lost %, a Boarder +50%% lost %, unarmed won %. FIRST FIGHT: % — %. READ COST (notice only): voyage.fight over % merchant fleet(s) % ms; the raid passage settled old % ms, new % ms. READERS: armour_soak by armour_turns and the core, the core by voyage.fight, voyage.fight by settle (a planted reader seen). 2 bodies reverse, 11 untouched, nine knobs, no entry point.',
+  raise notice '0189 self-assert ok: A RAID IS FOUGHT IN ROUNDS (dark: combat_bite false, armour_turns_pct 0). DARK: three probe passages (% raid day(s), % shoal day(s), and one as the sea deals it) settled by the old body and the new alike — events, hulls, crew, cargo, report, experience, wear, purse. LIT (rolled back): % raid day(s) fought in rounds, the report''s fights at their days'' lines, % hull said = % hull lost; one day read twice the same; the Gunner and the gear named; shoals: % → % hull with armour at 0.5. ENGINE (300 days, fixed seed, won / lost / hull): base %/%/%, reach 60 %/%, accuracy 70 %/%, attack 110 %/%, armour 50 hull %, crew 40 lost %, a Boarder +50%% lost %, unarmed won %. FIRST FIGHT: % — %. READ COST (notice only): voyage.fight over % merchant fleet(s) % ms; the raid passage settled old % ms, new % ms. READERS: armour_soak by armour_turns and the core, the core by voyage.fight, voyage.fight by settle (a planted reader seen). 2 bodies reverse, 11 untouched, nine knobs, no entry point.',
     (select count(*) from jsonb_array_elements(v_pr->'raids'->'old'->'events') e where e->>'kind' = 'PIRATES'),
     (select count(*) from jsonb_array_elements(v_pr->'shoals'->'old'->'events') e where e->>'kind' = 'SHOAL_WATER'),
     v_n, v_lost, v_drop, v_dark, v_lit,

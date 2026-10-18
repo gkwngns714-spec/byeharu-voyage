@@ -838,10 +838,10 @@ gear matter in a roll only once S4 and the hazard re-cut land. Its **S5/S6** are
 and §6.
 
 **The fight** (the owner, 2026-10-18: *"yes lets do a automatic fight, so that range and accuracy is an
-important factor. … yes shoals and damage too"*) is that re-cut for the raid: **0187** (built 2026-10-18,
+important factor. … yes shoals and damage too"*) is that re-cut for the raid: **0189** (built 2026-10-18,
 not deployed, DARK) — `voyage.fight_resolve` fights a raid in rounds (sighting, range, accuracy, attack,
 armour, boarding) and writes a battle report to the day and the VOYAGE_REPORT; SHOAL_WATER's loss goes
-through `public.armour_turns`. **0188** throws `combat_bite` and `armour_turns_pct` 0.5 once 0187 is live and
+through `public.armour_turns`. **0190** throws `combat_bite` and `armour_turns_pct` 0.5 once 0189 is live and
 measured. Gear actives still do not spend anything. `docs/dev-log/2026-10-18-auto-fight.md`.
 
 ---

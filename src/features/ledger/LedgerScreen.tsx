@@ -125,7 +125,7 @@ function LedgerBody() {
   const shown = face === 'all' ? events : events.filter((e) => FACE_OF[e.kind] === face)
   // A CALLER, not a second author: `portNameOf` is the one reading of "what is this code called".
   const portName = (code: string) => portNameOf(portByCode, code)
-  // 0187: the open report's battle reports, each hung under its day's line in the tray below
+  // 0189: the open report's battle reports, each hung under its day's line in the tray below
   const fights = open === null ? [] : payloadFights(open.payload)
 
   const show = (event: LedgerEvent) => {
@@ -183,7 +183,7 @@ function LedgerBody() {
         >
           <div className="space-y-3 pb-2">
             {payloadLines(open.payload).map((line, i) => {
-              // 0187: a day fought in rounds carries its battle report — served words, hung under
+              // 0189: a day fought in rounds carries its battle report — served words, hung under
               // the day's own sentence, one round to a line, so the fight reads top to bottom.
               const fight = fights.find((f) => f.line === i)
               return (

@@ -261,7 +261,7 @@ export function payloadLines(payload: Record<string, unknown>): string[] {
   return Array.isArray(v) ? v.filter((line): line is string => typeof line === 'string') : []
 }
 
-/** 0187: THE BATTLE REPORTS of a VOYAGE_REPORT — `payload.fights`, one per day a raid was fought in
+/** 0189: THE BATTLE REPORTS of a VOYAGE_REPORT — `payload.fights`, one per day a raid was fought in
  *  rounds: `line` is the index into `payload.lines` of that day's sentence ("Day 4. Sail sighted…"),
  *  `rounds` the fight in words, composed server-side by `voyage.fight_resolve`. The client neither
  *  re-words nor re-orders them; it only hangs each fight under its day. Absent on a report with no

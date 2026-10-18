@@ -1,4 +1,4 @@
-# 2026-10-18 — 0187: a raid is fought in rounds (DARK), and 0188: the raids are fought (the switch) — `osn-auto-fight`
+# 2026-10-18 — 0189: a raid is fought in rounds (DARK), and 0190: the raids are fought (the switch) — `osn-auto-fight`
 
 **The owner, 2026-10-18 ~13:40 UTC (verbatim):** *"yes lets do a automatic fight, so that range and accuracy is
 an important factor. … yes shoals and damage too."*
@@ -10,10 +10,11 @@ Text and tabs; no visual combat, ever; the map only shows. Today a raid is DESIG
 (off) and `armour_turns_pct` (0). Its "not in this slice" list is this slice: accuracy, reach and sighting
 fed no roll, and SHOAL_WATER's loss was un-armoured.
 
-**Numbers.** First cut as 0183, then 0185. Main moved twice during the work (0182 re-plan batches, 0183
-merchant sinks, 0184 desk, then 0186 refused orders; PRs #224 and #229 both claim 0185). So it is now
-**0187**. **Not deployed.** 0187 is the dark slice. **0188** (the switch) is on its own branch and is pushed
-only after 0187 is live and measured. Renumber both to head + 1 at push time.
+**Numbers.** First cut as 0183, then 0185 and 0187 as main moved. The coordinator then fixed the deploy
+order: 0187 great powers, 0188 plan-reach-2, **0189 this dark slice**, **0190 its switch**, 0191 P2 volume,
+0192 P3 stake. **Not deployed.** 0190 is on its own branch and goes in only after 0189 is live and measured.
+Both are rebased onto main once 0188 is live, and their hunks are re-checked then (the great powers touch
+`world.snapshot` and `allegiance`, not these bodies).
 
 ## The design — one combat authority, three functions
 
@@ -75,7 +76,7 @@ with the Surgeon), and cargo stripped on STRIPPED. Two things change, lit only:
   day's line as an indented list, one round to a line. It is client text only: the server's words, never
   re-worded.
 
-A real fight from the probe (0187's receipt on the 0184 world, lit, rolled back):
+A real fight from the probe (0189's receipt on the 0184 world, lit, rolled back):
 
 ```
 Day 1. Sail sighted to windward. They came alongside and we threw them back.
@@ -116,7 +117,7 @@ There are two samples:
 
 **BEFORE** is what production rolls today: DESIGN B.6's table on the dark escort. **AFTER** is the fight
 with the knobs below and `armour_turns_pct` 0.5. The simulator is scratchpad `fight/sim.mjs`: PGlite on the
-0181 world image, with 0187's readings applied. It calls `voyage.fight_resolve` on the exported hulls.
+0181 world image, with 0189's readings applied. It calls `voyage.fight_resolve` on the exported hulls.
 
 **The knobs, as landed** (every one **NOT the owner's — confirm**). Tuned over 11 settings:
 
@@ -192,10 +193,10 @@ Boarding Gear) is tested against its 10,608 synth raids with one figure changed:
   fleets (S4). A raider broken off without landing a hit is EVADED. Combat experience comes from both
   (`fight_points`), so its total moves with those shares.
 
-## Proof — 0187's own receipt
+## Proof — 0189's own receipt
 
 It applied in three worlds, green each time:
-- the cached-prefix `npm run build` (main at 0186 + 0187);
+- the cached-prefix `npm run build` (main at 0186 + 0189);
 - the 0184 browser world;
 - the **prod-shaped** world. That is `bv-harness/laps-scratch/prodlike.mjs` on main's 0186 snapshot, with
   prod's knobs, stocks, purses, treasuries and 1,491 loops (prod-state of 2026-10-18 18:26 KST). The receipt
@@ -244,7 +245,7 @@ the column's least. All of it is rolled back.
 across every fleet, about 6 an hour, against about 240 sweeps an hour: roughly one fight per 38 sweeps.
 
 **What one fight costs:**
-- PGlite (notice of 0187's receipt, over 200 merchant fleets): 13–37 ms. The range is the load on this
+- PGlite (notice of 0189's receipt, over 200 merchant fleets): 13–37 ms. The range is the load on this
   machine during the runs.
 - Production, read-only: the same per-hull reads (`ship_stats`, `crew_terms` twice, the gear) for all 915
   hulls took 2.2–2.4 s, about 2.5 ms a hull.
@@ -260,12 +261,12 @@ into `arrivals_tick_budget_ms` (10 s) both dark and lit, with a backlog of 16–
 - Every landing day a raid: 10.12 s vs 10.13 s.
 
 Indistinguishable, but budget-bound. **The bound (avg ≤ 3 s, p95 < 5 s) can only be judged on production**:
-it is in 0188's 30-minute after-check.
+it is in 0190's 30-minute after-check.
 
 ## Verification (once each; worktree off origin/main, real `npm ci`, warm `node_modules/.cache`, no `.env.local`)
 
 - Cached-prefix `npm run build` (with `tsc -b`) on main at 004b906: 176/179 restored; main's 0185 (faith)
-  and 0186, then 0187, applied; the world guard ok. Exit 0.
+  and 0186, then 0189, applied; the world guard ok. Exit 0.
 - `eslint .`: 0. `db:check-versions`: 178 distinct.
 - `tests/ledger.fights.spec.ts` (new; the seam, node-side on the built image): 2 passed.
   - Lit: every raid day is fought in rounds, and `payloadFights` finds each fight under its "Day N. Sail
@@ -290,9 +291,9 @@ it is in 0188's 30-minute after-check.
   active is invented.
 - **Unarmed hulls take more hull damage**: the barca's 7.8 → 15.1 % above.
 
-## 0188 — the switch (separate branch; push only after 0187 is live and measured)
+## 0190 — the switch (separate branch; push only after 0189 is live and measured)
 
-**Receipt on the prod-shaped 0187 world** (applied in 25.2 s): the probe's 5 raid days were fought in rounds;
+**Receipt on the prod-shaped 0189 world** (applied in 25.2 s): the probe's 5 raid days were fought in rounds;
 shoals 940.78 → 821.06 hull. Measured, not asserted (800 merchant fights, raiders 4 / 9 / 16 / 24):
 - won 32.1 → 45.0 %;
 - lost 43.1 → 40.6 %;
@@ -306,7 +307,7 @@ draws from production's own raids.
 `update world_config` for `combat_bite` true and `armour_turns_pct` 0.5 (SHIPS_AND_GEAR §5's probe value). The
 method follows `2026-10-18-lighting-skills.md`:
 
-1. It refuses unless the world is dark and 0187 is present.
+1. It refuses unless the world is dark and 0189 is present.
 2. It measures 200 merchant fleets × 4 raider strengths before (the old roll) and after (the fight), and a
    storm's loss for every hull. These are **notices only**: production's fleets are not its probe rows.
 3. It throws the two switches.

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// A RAID IS FOUGHT IN ROUNDS — the battle report's seam (0187, docs/dev-log/2026-10-18-auto-fight.md)
+// A RAID IS FOUGHT IN ROUNDS — the battle report's seam (0189, docs/dev-log/2026-10-18-auto-fight.md)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // The server writes a fight's rounds into the PIRATES day (voyage.settle, voyage.fight) and the
 // VOYAGE_REPORT says where each belongs (`fights`: the index of its day's line in `lines`, and its
