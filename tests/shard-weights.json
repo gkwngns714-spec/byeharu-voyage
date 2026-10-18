@@ -52,6 +52,7 @@
     "selection.lock.spec.ts": 79,
     "trade.ceiling.spec.ts": 178,
     "verbHomes.spec.ts": 1,
+    "version.banner.spec.ts": 10,
     "waters.panel.spec.ts": 9,
     "wide.layout.spec.ts": 89,
     "words.spec.ts": 1
