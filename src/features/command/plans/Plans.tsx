@@ -20,7 +20,7 @@ export function Plans({ fleet }: { fleet: FleetView }) {
         <Queue
           fleet={fleet}
           readAt={readAt}
-          onCancel={(seq) => cancel(fleet.id, seq)}
+          onCancel={(position) => cancel(fleet.id, position)}
           onClear={() => clearQueue(fleet.id)}
         />
       </SheetSection>

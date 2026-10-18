@@ -21,6 +21,12 @@ import type { FleetView, QueuedOrder } from '../../lib/rpc'
 // 2026-09-30: "a bar ... blinks occasionally on its own"). Now the queue wears one gate: a CANCEL
 // addresses its order by `seq` and awaits the read that renumbers them, so while one press is on
 // the wire no other ✕ may fire on a stale seq — and outside a press, nothing greys anything.
+//
+// A REFUSED ORDER NO LONGER STOPS HER (0186; the owner, 2026-10-18: "stopped at order 29 and will not skip
+// it"). The server cancels what depended on it — the rest of its plan, whatever stood behind a refused SAIL —
+// each with the reason, and runs the rest. The refused row stays as a record until it is dismissed, so every
+// row, refused or live, has a ✕. The ✕ sends the row's POSITION in the served queue (1-based, what
+// cmd.cancel_at counts), never its seq: sending the seq is why the ✕ did nothing once a fleet had a history.
 
 export function Queue({
   fleet,
@@ -30,8 +36,9 @@ export function Queue({
 }: {
   fleet: FleetView
   readAt: number | null
-  /** The verbs, as promises: a press is busy until its own act settles (worldStore's cancel/clear). */
-  onCancel: (seq: number) => Promise<boolean>
+  /** The verbs, as promises: a press is busy until its own act settles (worldStore's cancel/clear).
+   *  `onCancel` takes the row's 1-based position in `fleet.queue` — cmd.cancel_at's index (0186). */
+  onCancel: (position: number) => Promise<boolean>
   onClear: () => Promise<boolean>
 }) {
   const portByCode = useWorld((s) => s.portByCode)
@@ -49,7 +56,8 @@ export function Queue({
     <>
       {failedRefusal && (
         <Note tone="danger" code={failedRefusal.code} data-testid="queue-halt">
-          {fleet.name} stopped at order {failed?.seq} and will not skip it. {failedRefusal.sentence}
+          Order {failed?.seq} was refused: {failedRefusal.sentence.replace(/\.$/, '')}. Anything that depended on it was cancelled;
+          {' '}{fleet.name} is free.
         </Note>
       )}
 
@@ -70,6 +78,7 @@ export function Queue({
       ) : (
         orders.map((order, i) => {
           const live = order.status === 'pending' || order.status === 'active'
+          const refused = order.status === 'failed'
           return (
             <Row
               key={order.id}
@@ -78,16 +87,19 @@ export function Queue({
               hairline={i < orders.length - 1}
               data-testid="queue-row"
               value={
-                live ? (
-                  <Button
-                    variant="quiet"
-                    size="icon"
-                    busy={press.pending}
-                    aria-label={`Cancel order ${order.seq}`}
-                    onClick={() => void press.run(() => onCancel(order.seq))}
-                  >
-                    <Icon name="close" size={18} />
-                  </Button>
+                live || refused ? (
+                  <span className="inline-flex items-center gap-2">
+                    {refused && <span className="text-t-caption text-ink-faint">{statusWord(order.status)}</span>}
+                    <Button
+                      variant="quiet"
+                      size="icon"
+                      busy={press.pending}
+                      aria-label={refused ? `Dismiss refused order ${order.seq}` : `Cancel order ${order.seq}`}
+                      onClick={() => void press.run(() => onCancel(i + 1))}
+                    >
+                      <Icon name="close" size={18} />
+                    </Button>
+                  </span>
                 ) : (
                   <span className="text-t-caption text-ink-faint">{statusWord(order.status)}</span>
                 )
@@ -103,13 +115,13 @@ export function Queue({
 
       {orders.length > 0 && (
         <Button
-          variant={failed ? 'destructive' : 'secondary'}
+          variant="secondary"
           className="mt-3 w-full"
           busy={press.pending}
           onClick={() => void press.run(onClear)}
           data-testid="queue-clear"
         >
-          {failed ? 'Clear the stopped order' : 'Clear all orders'}
+          Clear all orders
         </Button>
       )}
     </>
@@ -121,7 +133,7 @@ function statusWord(status: QueuedOrder['status']): string {
     case 'done':
       return 'done'
     case 'failed':
-      return 'halted'
+      return 'refused'
     default:
       return status
   }

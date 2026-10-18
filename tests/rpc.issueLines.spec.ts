@@ -11,7 +11,7 @@ import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
-import { clearBackend, cmdIssueLines, createLocalBackend, setBackend } from '../src/lib/rpc'
+import { clearBackend, cmdCancel, cmdClear, cmdIssue, cmdIssueLines, createLocalBackend, setBackend } from '../src/lib/rpc'
 
 let db: LocalDb
 let fleet: string
@@ -80,4 +80,51 @@ test('another company\'s fleet is refused', async () => {
   const r = await cmdIssueLines(other, [{ text: `BUY ${good} 1` }])
   expect(r.ok).toBe(false)
   if (!r.ok) expect(r.refusal.code).toBe('E_NO_SUCH_FLEET')
+})
+
+// ── 0186: A REFUSED ORDER DOES NOT FREEZE THE QUEUE ───────────────────────────────────────────────
+// The owner, 2026-10-18: "Gaivota stopped at order 29 and will not skip it". A line refused when it RUNS
+// cancels the rest of its plan, each line with the reason, and the fleet is free; the ✕ (cmd.cancel_at by
+// the row's position in the served queue) dismisses the refused row; CLEAR empties what is left.
+
+const since = (seq: number) =>
+  db.callAs<{ seq: number; text: string; status: string; why: string | null }[] | null>(
+    `select jsonb_agg(jsonb_build_object('seq', seq, 'text', raw_text, 'status', status, 'why', error_message) order by seq) as result
+       from public.orders where fleet_id = $1::uuid and seq > $2::int`,
+    [fleet, seq],
+  )
+const lastSeq = () =>
+  db.callAs<number>(`select coalesce(max(seq), 0) as result from public.orders where fleet_id = $1::uuid`, [fleet])
+
+test('a line refused at execution cancels the rest of its plan, with the reason, and the fleet is free', async () => {
+  expect((await cmdClear(fleet)).ok).toBe(true)
+  const s0 = await lastSeq()
+  const r = await cmdIssueLines(fleet, [
+    { text: `BUY ${good} 1 AT <= 0.01` }, // the limit is missed when it runs: refused at execution
+    { text: `BUY ${good} 5 AT <= 100000` },
+    { text: `SELL ${good} ALL AT >= 1` },
+  ])
+  expect(r.ok).toBe(true)
+  const rows = (await since(s0))!
+  expect(rows.map((o) => o.status)).toEqual(['failed', 'cancelled', 'cancelled'])
+  for (const o of rows.slice(1)) expect(o.why?.startsWith(`cancelled: BUY ${good} 1 AT <= 0.01 was refused — `)).toBe(true)
+
+  // free: the next order runs at once
+  const next = await cmdIssue(fleet, `BUY ${good} 1 AT <= 100000`)
+  expect(next.ok).toBe(true)
+  expect((await since(s0))!.at(-1)!.status).toBe('done')
+
+  // the ✕ by position dismisses the refused row the queue still shows
+  const q = r.ok ? r.value.queue : []
+  const at = q.findIndex((o) => o.status === 'failed') + 1
+  expect(at).toBeGreaterThan(0)
+  const dismissed = await cmdCancel(fleet, at)
+  expect(dismissed.ok).toBe(true)
+  if (dismissed.ok) expect(dismissed.value.queue.some((o) => o.status === 'failed')).toBe(false)
+
+  // CLEAR empties the rest
+  await cmdIssue(fleet, `BUY ${good} 1 AT <= 0.01`)
+  const cleared = await cmdClear(fleet)
+  expect(cleared.ok).toBe(true)
+  if (cleared.ok) expect(cleared.value.queue).toHaveLength(0)
 })
