@@ -20,22 +20,22 @@ namespaces removed by the preset), then scanned: no `<script>`, no `<style>`, no
 Commons file's; only the markup was minified (and JOS.svg's `svg:`-prefixed markup rewritten to
 the default namespace, its width and height turned into a viewBox, so it scales into the 3:2 box).
 
-Total: **23 files, 52,584 bytes (51.4 KB)**.
+Total: **23 files, 56,253 bytes (54.9 KB)**.
 
 | Code | Nation | File here | Source | Licence | Author |
 |---|---|---|---|---|---|
-| AYU | Ayutthaya | AYU.svg | original drawing: the plain red ensign of Siam (attested c. 1680) | CC0 (this project) | byeharu-voyage |
+| AYU | Ayutthaya | AYU.svg | original drawing: the red ensign of Siam (plain red attested c. 1680) with a white elephant, the royal beast of the Ayutthaya kings — added 2026-10-18 because a plain red field drew as a blank red chip beside a name | CC0 (this project) | byeharu-voyage |
 | BAN | Banten | BAN.svg | [File:Flag of the Sultanate of Banten.svg](https://commons.wikimedia.org/wiki/File:Flag_of_the_Sultanate_of_Banten.svg) | CC0 | Prawiroatmodjo |
 | DNK | Denmark-Norway | DNK.svg | [File:Flag of Denmark.svg](https://commons.wikimedia.org/wiki/File:Flag_of_Denmark.svg) | Public domain (PD-shape) | Madden and others |
 | ENG | England | ENG.svg | [File:Flag of England.svg](https://commons.wikimedia.org/wiki/File:Flag_of_England.svg) | Public domain (PD-shape) | traditional; vector Nicholas Shanks |
 | ESP | Castile-Spain | ESP.svg | [File:Flag of Cross of Burgundy.svg](https://commons.wikimedia.org/wiki/File:Flag_of_Cross_of_Burgundy.svg) | Public domain (PD-self) | Ningyou |
-| FRA | France | FRA.svg | original drawing (2026-10-18): the banner of the royal arms of France, *azure, three fleurs-de-lis or* (France moderne, borne by the kings from c. 1376), two over one, drawn large for 12–20 px, with a 1.5 px mid-grey edge. Replaced the Commons *Pavillon royal de France* (PD-user, Zippanova), whose small gold fleurs on white vanished into a blank cream chip at the sizes the game draws | CC0 (this project) | byeharu-voyage |
+| FRA | France | FRA.svg | original drawing (2026-10-18): the banner of the royal arms of France, *azure, three fleurs-de-lis or* (France moderne, borne by the kings from c. 1376), two over one, drawn large for 12–20 px. Replaced the Commons *Pavillon royal de France* (PD-user, Zippanova), whose small gold fleurs on white vanished into a blank cream chip at the sizes the game draws | CC0 (this project) | byeharu-voyage |
 | GEN | Genoa | GEN.svg | [File:Flag of Genoa.svg](https://commons.wikimedia.org/wiki/File:Flag_of_Genoa.svg) | Public domain (PD-self) | see the file history on Commons |
 | GUJ | Gujarat Sultanate | GUJ.svg | original drawing: a golden rosette on green (no attested flag; the CC0 Commons file is in "Fictional SVG flags of India") | CC0 (this project) | byeharu-voyage |
 | HAN | The Hanse | HAN.svg | [File:Flag of the Free City of Lübeck.svg](https://commons.wikimedia.org/wiki/File:Flag_of_the_Free_City_of_L%C3%BCbeck.svg) — Lübeck's white over red, the Hanseatic colours | Public domain (PD-Flag-Germany) | not stated on Commons |
 | JOS | Joseon | JOS.svg | [File:Flag of the king of Joseon.svg](https://commons.wikimedia.org/wiki/File:Flag_of_the_king_of_Joseon.svg) | Public domain (PD-old-100, PD-South Korea, PD-old-assumed) | not stated on Commons |
 | JPN | Japan | JPN.svg | [File:Flag of Japan.svg](https://commons.wikimedia.org/wiki/File:Flag_of_Japan.svg) — the hinomaru | Public domain (PD-JapanGov, PD-shape) | various |
-| MAR | Morocco | MAR.svg | [File:Flag of Marinid and Saadi Dynasty (1258-1420) (1554-1659).svg](https://commons.wikimedia.org/wiki/File:Flag_of_Marinid_and_Saadi_Dynasty_(1258-1420)_(1554-1659).svg) | Public domain (PD-self) | Flad |
+| MAR | Morocco | MAR.svg | (gold lines thickened ~3× on 2026-10-18 so they survive at 14 px) [File:Flag of Marinid and Saadi Dynasty (1258-1420) (1554-1659).svg](https://commons.wikimedia.org/wiki/File:Flag_of_Marinid_and_Saadi_Dynasty_(1258-1420)_(1554-1659).svg) | Public domain (PD-self) | Flad |
 | MLB | Malabar | MLB.svg | original drawing: a golden eight-pointed star on red (no attested flag of the Zamorin found on Commons) | CC0 (this project) | byeharu-voyage |
 | MNG | Ming China | MNG.svg | original drawing: a sun-and-moon banner (日 + 月 = 明) on red; the only PD Commons file is titled "(fictitious)" | CC0 (this project) | byeharu-voyage |
 | MUG | Mughal India | MUG.svg | original drawing: a golden sun on green (both Commons Mughal standards are CC BY-SA) | CC0 (this project) | byeharu-voyage |
@@ -43,7 +43,7 @@ Total: **23 files, 52,584 bytes (51.4 KB)**.
 | OTT | Ottoman Empire | OTT.svg | original drawing: a white crescent on red; the PD Commons "1517-1793" file is in "Fictional flags of historical entities" | CC0 (this project) | byeharu-voyage |
 | PER | Safavid Persia | PER.svg | [File:Safavid Flag.svg](https://commons.wikimedia.org/wiki/File:Safavid_Flag.svg) — the lion and sun on green | Public domain (PD-user-w) | Orange Tuesday (en.wikipedia) |
 | POL | Poland-Lithuania | POL.svg | [File:Flag of the Kingdom of Poland.svg](https://commons.wikimedia.org/wiki/File:Flag_of_the_Kingdom_of_Poland.svg) | Public domain (PD-self) | Alex Tora |
-| PRT | Portugal | PRT.svg | original drawing after the PD design [File:Flag of Portugal (1521).svg](https://commons.wikimedia.org/wiki/File:Flag_of_Portugal_(1521).svg): the crowned royal shield on white, simplified (the Commons file is 335 KB) | CC0 (this project) | byeharu-voyage |
+| PRT | Portugal | PRT.svg | original drawing after the PD design [File:Flag of Portugal (1521).svg](https://commons.wikimedia.org/wiki/File:Flag_of_Portugal_(1521).svg): the crowned royal shield on white, simplified (the Commons file is 335 KB); the shield drawn 15 % larger on 2026-10-18 | CC0 (this project) | byeharu-voyage |
 | RUS | Muscovy | RUS.svg | [File:Flag of Russia (1668–1693).svg](https://commons.wikimedia.org/wiki/File:Flag_of_Russia_(1668%E2%80%931693).svg) | Public domain (PD-RU-exempt) | Milop |
 | SWE | Sweden | SWE.svg | [File:Flag of Sweden.svg](https://commons.wikimedia.org/wiki/File:Flag_of_Sweden.svg) | Public domain (PD-shape) | Jon Harald Søby and others |
 | VEN | Venice | VEN.svg | original drawing after the PD design [File:Flag of Most Serene Republic of Venice.svg](https://commons.wikimedia.org/wiki/File:Flag_of_Most_Serene_Republic_of_Venice.svg): the six-tailed crimson gonfalon with St Mark's gold halo and open book (the Commons file is 787 KB) | CC0 (this project) | byeharu-voyage |
@@ -58,6 +58,20 @@ Bourbonic banners - France (CC BY-SA 3.0).
 Note on insignia: several Commons pages carry `{{insignia}}` (and Sweden's names Act 1970:498).
 That is a non-copyright restriction on using a state's insignia as a trademark or to imply
 official endorsement; drawing a historical flag beside a city's name in a game does neither.
+
+## Drawn to be read at 12–20 px (2026-10-18)
+
+The owner found the flags hard to see and France "a broken image". Every file was rendered at
+18×12, 21×14 and 27×18 CSS px at DPR 1 and 2 and its pixel spread measured
+(`tests/flags.spec.ts`, "recognisable at 14 px": the RGB standard deviation inside the edge must
+be at least 35). Four failed or nearly failed and were redrawn as above: **FRA** (σ 12–27, a cream
+chip), **MAR** (σ 15–29), **AYU** (σ 0), **PRT** (a small shield on white).
+
+**Every file ends in the same edge:** a 1.5 px mid-grey (`#6f6f6f`) hairline along the flag's own
+outline (`vector-effect="non-scaling-stroke"`, so it is 1.5 px at every size), so a white flag
+(England, Japan, Portugal) reads on the pale panels and a dark one (Sweden, France) on the night
+chart. It is the only change to the Commons files besides those named above; the edge is part of
+this project's CC0 contribution.
 
 ## Licence evidence — the licence lines of each Commons page, as read on 2026-10-18
 
