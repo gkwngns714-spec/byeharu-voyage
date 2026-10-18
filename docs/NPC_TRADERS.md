@@ -1498,8 +1498,9 @@ per plan). **Score = ducats per real hour of the lap**: Σ nm ÷ speed is voyage
 (`game_day_seconds`), because the daily cap lets a parcel be bought once a game-day; without that
 floor the first proof sent the Carreira da Índia's nau to Porto (77,836/h on a five-minute hop that
 cannot repeat). She changes loop when the best beats her present one by `npc_route_switch_pct`
-(10 %); if her present loop pays nothing, any paying loop wins. Nothing pays anywhere: she keeps
-her loop and sails it in ballast (0115). Her stop 0 — home — is where every loop starts and ends:
+(10 %); if her present loop pays nothing, any paying loop wins. Nothing pays anywhere: with cargo
+aboard she keeps her loop and sails it in ballast (0115); empty-handed she waits in port, laid up,
+and the hourly tend re-plans her until a loop pays (0181). Her stop 0 — home — is where every loop starts and ends:
 she chooses where to go, not where to live.
 
 **Deterministic**: ties fall to the port id; the same world plans the same loop.
