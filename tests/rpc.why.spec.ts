@@ -19,7 +19,7 @@ import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
-import { stakeLine, volumeLine, whyLines } from '../src/features/command/markets/whyLines'
+import { stakeLine, tariffLine, volumeLine, whyLines } from '../src/features/command/markets/whyLines'
 import type { PriceWhy } from '../src/lib/rpc/types'
 
 let db: LocalDb
@@ -43,6 +43,13 @@ async function row(goodCode: string, faith: string | null): Promise<{ port_id: s
   )
   expect(r.rows, `no ${goodCode} row in a ${faith ?? 'faithless'} city`).toHaveLength(1)
   return r.rows[0]
+}
+
+/** The signed-in company (Portuguese, founded at Lisbon if the built world has none for this caller). */
+async function myCompany(): Promise<string> {
+  const pid = await db.callAs<string | null>('select public.current_player_id() as result')
+  if (pid) return pid
+  return (await db.pg.query<{ id: string }>('select public.new_house($1, $2, $3, $4) as id', [db.authUid, 'Casa Spec 0191', 'PRT', 'LIS'])).rows[0].id
 }
 
 async function why(p: string, g: string): Promise<PriceWhy> {
@@ -113,10 +120,7 @@ test('0190: a busy quay is seen — what changed hands here today, and by how ma
 
 test('0191: a city\'s best friends trade cheaper — rank 1 among its givers is spared 10 % of the spread', async () => {
   await db.pg.query(`update public.world_config set value = 'true'::jsonb where key = 'influence_enabled'`)
-  let pid = await db.callAs<string | null>('select public.current_player_id() as result')
-  if (!pid) {
-    pid = (await db.pg.query<{ id: string }>('select public.new_house($1, $2, $3, $4) as id', [db.authUid, 'Casa Spec 0191', 'PRT', 'LIS'])).rows[0].id
-  }
+  const pid = await myCompany()
   const f = (await db.pg.query<{ id: string; nation_id: string }>(
     'select f.id, pl.nation_id from public.fleets f join public.players pl on pl.id = f.player_id where f.player_id = $1 order by f.id limit 1', [pid])).rows[0]
   const at = (await db.pg.query<{ port: string; good: string; far: string }>(`
@@ -150,6 +154,53 @@ test('0194: a glutted market remembers — the glut is its own term, and it is p
   await db.pg.query('update public.port_goods set glut = 0 where port_id = $1 and good_id = $2', [r.port_id, r.good_id])
 })
 
+test("0196: a rival pays the tariff — the profit tax by how the company's power stands with the city's holder", async () => {
+  await db.pg.query(`update public.world_config set value = 'true'::jsonb where key in ('influence_enabled', 'city_treasury_enabled')`)
+  const pid = await myCompany()
+  const nation = (await db.pg.query<{ code: string }>(
+    'select n.code from public.players pl join public.nations n on n.id = pl.nation_id where pl.id = $1', [pid])).rows[0].code
+  expect(nation, "the spec's company is Portuguese (data/relations.json is read for Portugal below)").toBe('PRT')
+  const good = (await db.pg.query<{ id: string }>('select id from public.goods order by code limit 1')).rows[0].id
+  const cap = Number((await db.pg.query<{ v: string }>(`select public.wc_num('tariff_rate_max') as v`)).rows[0].v)
+  const cut = Number((await db.pg.query<{ v: string }>(`select public.wc_num('influence_citizen_tax_cut') as v`)).rows[0].v)
+  // each a great power's HOME city (data/home-ports.json; a home never changes hands), so the holder is the data's
+  const cases = [
+    { port: 'LIS', holder: 'PRT', stance: 'home', want: (b: number) => b * (1 - cut) },
+    { port: 'CAD', holder: 'ESP', stance: 'ally', want: (b: number) => b * 0.5 },
+    { port: 'IST', holder: 'OTT', stance: 'rival', want: (b: number) => Math.min(b * 1.5, Math.max(b, cap)) },
+    { port: 'AMS', holder: 'NLD', stance: 'war', want: (b: number) => Math.min(b * 2, Math.max(b, cap)) },
+    { port: 'LAR', holder: 'FRA', stance: 'peace', want: (b: number) => b },
+  ] as const
+  for (const c of cases) {
+    const port = (await db.pg.query<{ id: string; holder: string | null }>(
+      `select p.id, (select n.code from public.nations n where n.id = public.port_nation(p.id)) as holder
+         from public.ports p where p.code = $1`, [c.port])).rows[0]
+    expect(port.holder, `${c.port}'s flag`).toBe(c.holder)
+    const w = await why(port.id, good)
+    expect(w.tariff, `${c.port}: price_why's tariff`).toBeTruthy()
+    const base = Number(w.tariff!.base)
+    expect(w.tariff!.stance).toBe(c.stance)
+    expect(w.tariff!.holder?.code).toBe(c.holder)
+    expect(Number(w.tariff!.rate)).toBeCloseTo(c.want(base), 9)
+    // the charge is the same authority: profit_tax on 1,000 d. of profit at the company's rate
+    const tax = Number((await db.pg.query<{ t: string }>('select public.profit_tax($1, 1000, $2) as t', [port.id, pid])).rows[0].t)
+    expect(tax).toBe(Math.round(1000 * Number(w.tariff!.rate)))
+    expect(Number(w.tariff!.rate)).toBeLessThanOrEqual(Math.max(base, cap) + 1e-12)
+  }
+  const ist = (await db.pg.query<{ id: string }>(`select id from public.ports where code = 'IST'`)).rows[0].id
+  const line = tariffLine(await why(ist, good))!
+  expect(line.label).toBe('Tax on your profit · Ottoman Empire, a rival')
+  expect(line.value).toMatch(/^\d+(\.\d)?% \(×1\.5\)$/)
+  const lis = (await db.pg.query<{ id: string }>(`select id from public.ports where code = 'LIS'`)).rows[0].id
+  expect(tariffLine(await why(lis, good))!.label).toBe('Tax on your profit · your own country')
+  // the race off: every company pays the city's rate, and the line names no stance
+  await db.pg.query(`update public.world_config set value = 'false'::jsonb where key = 'influence_enabled'`)
+  const off = await why(ist, good)
+  expect(Number(off.tariff!.rate)).toBe(Number(off.tariff!.base))
+  expect(tariffLine(off)!.label).toBe('Tax on your profit · Ottoman Empire')
+  await db.pg.query(`update public.world_config set value = 'true'::jsonb where key = 'influence_enabled'`)
+})
+
 test('it refuses what it cannot answer', async () => {
   const r = await row('coffee', 'islamic')
   await expect(why(r.port_id, '00000000-0000-0000-0000-000000000000')).rejects.toThrow(/E_NO_SUCH_GOOD/)
@@ -160,14 +211,20 @@ test('a signed-in player may read it, anon may not, and the leaves and tables ar
   const grants = await db.pg.query<{ fn: string; auth: boolean; anon: boolean }>(`
     select f.fn, has_function_privilege('authenticated', f.fn, 'execute') as auth, has_function_privilege('anon', f.fn, 'execute') as anon
       from unnest(array['world.price_why(uuid, uuid)', 'world.port_faith(uuid)', 'world.faith_taste(uuid, uuid)',
-                        'world.region_taste(uuid, uuid)', 'world.demand_for(uuid, uuid)']) f(fn)`)
+                        'world.region_taste(uuid, uuid)', 'world.demand_for(uuid, uuid)',
+                        'public.power_stance(uuid, uuid)', 'public.stance_mult(text)']) f(fn)`)
   expect(grants.rows).toEqual([
     { fn: 'world.price_why(uuid, uuid)', auth: true, anon: false },
     { fn: 'world.port_faith(uuid)', auth: false, anon: false },
     { fn: 'world.faith_taste(uuid, uuid)', auth: false, anon: false },
     { fn: 'world.region_taste(uuid, uuid)', auth: false, anon: false },
     { fn: 'world.demand_for(uuid, uuid)', auth: false, anon: false },
+    { fn: 'public.power_stance(uuid, uuid)', auth: false, anon: false },
+    { fn: 'public.stance_mult(text)', auth: false, anon: false },
   ])
+  const table = await db.pg.query<{ sel: boolean }>(
+    `select has_table_privilege('authenticated', 'public.power_relations', 'select') or has_table_privilege('anon', 'public.power_relations', 'select') as sel`)
+  expect(table.rows[0].sel).toBe(false)
   const registered = await db.pg.query<{ n: number }>(
     `select count(*)::int as n from public.client_rpc_entry_points() where function_name = 'price_why' and arg_types = 'uuid, uuid'`,
   )

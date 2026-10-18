@@ -79,6 +79,8 @@
 //   * faiths      (0185) world.faiths, world.culture_faith, world.port_faith_override and world.faith_demand
 //                 EQUAL data/faiths.json and data/faith-demand.json, both directions; every port_goods row's
 //                 demand EQUALS world.demand_for() (the region × category taste × the faith × good taste)
+//   * relations   (0195) public.power_relations EQUALS data/relations.json, every pair (unordered), its
+//                 stance and its why, both directions
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
 // re-runs on every chain apply); the browser's own apply (src/lib/db) — the chain FINGERPRINT
@@ -825,6 +827,38 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     faithRows = ddata.length
   }
 
+  // 0195: HOW THE POWERS STAND IS THE DATA — public.power_relations EQUALS data/relations.json, both
+  // directions, every column (the pair unordered: sorted by code on both sides). Its own positive control:
+  // the same comparison with one stance bent must see it.
+  const hasRelations = (await db.query(`select to_regclass('public.power_relations') is not null as ok`)).rows[0].ok
+  let relationRows = 0
+  if (hasRelations) {
+    const rdata = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'relations.json'), 'utf8')).relations
+    const key = (a, b, stance, why) => {
+      const [x, y] = [a, b].sort()
+      return `${x}|${y}|${stance}|${why}`
+    }
+    const want = rdata.map((x) => key(x.a, x.b, x.stance, x.why))
+    const have = (await db.query(`
+      select na.code as a, nb.code as b, r.stance, r.why
+        from public.power_relations r join public.nations na on na.id = r.a join public.nations nb on nb.id = r.b`))
+      .rows.map((x) => key(x.a, x.b, x.stance, x.why))
+    const compare = (w, d, out) => {
+      const ws = new Set(w)
+      const ds = new Set(d)
+      if (ws.size !== w.length) out.push('relation: data/relations.json names one pair twice')
+      for (const k of ws) if (!ds.has(k)) out.push(`relation ${k} is in data/relations.json but not in public.power_relations`)
+      for (const k of ds) if (!ws.has(k)) out.push(`relation ${k} is in public.power_relations but not in data/relations.json`)
+    }
+    const planted = []
+    compare(want, [`${have[0] ?? 'ENG|PRT|ally|'}`.replace(/\|(ally|rival|war)\|/, '|peace|'), ...have.slice(1)], planted)
+    if (!planted.some((s) => s.includes('|peace|'))) {
+      throw new Error('WORLD GUARD IS BLIND: a deliberately bent power relation was not seen.')
+    }
+    compare(want, have, findings)
+    relationRows = rdata.length
+  }
+
   if (findings.length > 0) {
     const head = findings.slice(0, 40)
     throw new Error(
@@ -851,6 +885,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       `${db_.captains.speaks.length} languages, ${db_.captains.portLanguage.length} harbour languages (generator re-run = file = database)` +
       (hasHaul ? `, ${haulRows} market rows' hauls = world.haul_rows() (a planted bend seen) ` : ' ') +
       (hasFaith ? `, ${faithRows} faith tastes = data/faith-demand.json and every demand = world.demand_for() (planted bends seen) ` : ' ') +
+      (hasRelations ? `, ${relationRows} power relations = data/relations.json (a planted bend seen) ` : ' ') +
       `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, dropped item made nowhere, bent merchant line hull, bent perk, bent generated hull, dropped home city, bent captain trait and dropped great power were all seen)`,
   )
 }
