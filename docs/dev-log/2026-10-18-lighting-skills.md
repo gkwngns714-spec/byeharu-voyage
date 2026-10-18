@@ -161,3 +161,142 @@ Simulated on the cached world with 0178 applied (skills lit): every merchant and
 stores, wage, cargo space, the four per cents, supplies, caps, hiring, budgets, stats, 300 spreads). Read cost:
 merchant speed + cargo space 734 → 891 ms (+21 %), endurance + wage 189 → 248 ms (+31 %, `crew_pct('supplies')`
 now walks the lit terms), ship_view 1,623 → 1,648 ms.
+
+## Switch 1 — after: 0178 LIVE (prod head 0178, `skills_bite` true, read at 03:51 UTC; 8 cron jobs active)
+
+Read-only, 30 min after (03:52–04:22 UTC) against the 30 min before (03:20–03:50 UTC):
+
+| measure | before | after | bound | holds |
+|---|---|---|---|---|
+| arrivals runs | 116 | 121 | — | |
+| arrivals avg | 2.74 s | 2.91 s | ≤ 3 s (§11) | yes |
+| arrivals p95 | 3.90 s | 3.91 s | < 5 s (§7.6) | yes |
+| arrivals max | 4.66 s | 9.56 s, one run at 03:52:55, in the push (03:50:55 and 03:51:10 ran 10.3 s) | < 8 s | once, at the push; 0 runs over 8 s after it |
+| failed cron runs, every job | 0 | 0 | 0 | yes |
+| merchant laps closed | 726 | 798 | — | |
+| zero-or-negative net | 68.5 % | 67.0 % (baseline 67.0 %) | unchanged | yes |
+| mean lap net | 3,980 | 6,305 | not lower | yes |
+| mean lap | 30.1 min | 31.2 min | — | |
+| refusals (skipped lines) | E_UNAVAILABLE 297, E_PRICE_LIMIT 258, E_HOLD_FULL 49, E_NO_CARGO 23, E_INSUFFICIENT_FUNDS 6 of 2,584 done | 643, 443, 65, 23, 14 of 5,114 done | same shares | yes (11.5 → 12.6 %, 10.0 → 8.7 %) |
+| E_ENDURANCE SAILs | ~10–14 an hour since 22:00 UTC yesterday | 8 in 30 min, the same fleets (c4e54338, 4476d661, 92fdecc4, daafd9e8 …) | — | not caused by 0178 (stores asserted unmoved for every merchant) |
+
+- **Order volume** doubled across the window (2,584 → 5,114 done). It has been climbing since 02:00 UTC (140 → 2,261 per
+  10 min), so the climb started before 0178.
+- **E_ENDURANCE status**: the eight after 04:07 read `failed` instead of `cancelled`. That is their age: 0150 leaves a
+  refused lap `failed` until the next clear answers it. Every older one has been answered.
+- **The 9 faster English fleets**: speeds now 5.04–6.45 kn. Each closed 0–1 laps in the window, so the sample is too
+  small for lap economics. Lap minutes equal or shorter (25.8 vs 23.7, 32.5 vs 35.3, 25.0 vs 25.8, 26.0 vs 26.2, 108.2
+  vs 108.5, 24.8 vs 25.1).
+- Two of the nine (4476d661, 92fdecc4) are among the E_ENDURANCE fleets, before and after the flip alike.
+
+**Verdict: every bound holds. No rollback.**
+
+## Switch 2 — `crew_bite` (0179, `a_captain_works_where_she_sits`)
+
+**Not deployed.** Built on origin/main `d432aaf` (prod head 0178); number 0179 = prod head + 1.
+
+### Flip — 0179
+
+1. Refuses to run if `crew_bite` is already on, or if `combat_bite` is on.
+2. For every live fleet, takes these answers dark:
+   - speed, stores, wage, cargo space;
+   - the captains' per cents for speed, spread, hold, crew_saved, supplies and storm;
+   - every live-effect crew term, row by row, rounded to 8 places (the dark and lit branches differ only in numeric
+     scale).
+   Also takes 300 merchant quay spreads, and times merchant speed + cargo space and endurance + wage.
+3. Throws `crew_bite` true (its description says so).
+4. Takes the same answers lit, and times them again.
+5. A probe on its own house at Lisbon (rolled back). It signs a Navigator who speaks Lisbon's language and seats her:
+   - in the Captain's cabin: 100 %;
+   - in an off-focus cabin: × `cabin_off_focus_pct`, 50 %;
+   - homesick for 73 h with no Surgeon: × (1 − 20 %);
+   - haggle odds with her fleet: + `language_haggle_points`.
+   Dark, the same three states read her whole job value and the odds unchanged. The cabins note is gone lit and
+   present dark.
+6. Asserts for every live merchant fleet: every answer and every live-effect term is the exact pre-image (K5's row);
+   0 of 300 spreads moved. Players are reported, not bounded.
+
+The Surgeon's `homesick_relief` term appears in the lit term list for the 12 merchant fleets that carry one. It is
+read only for a homesick captain, and no merchant has a home clock (O8). So it is left out of the row-by-row
+comparison and said so in the file. The answers it could move (crew_saved, the homesick factor) are compared.
+
+Receipt on the cached world (origin/main + 0179, PGlite, 8.1 s):
+
+```
+0179 self-assert ok: A CAPTAIN WORKS WHERE SHE SITS — crew_bite thrown true. MERCHANTS (837 fleets, 498 with
+captains): 0 moved (…); 0 of 300 sampled quay spreads moved. PLAYERS (13 fleets): 0 moved. PROBE (own house,
+CABRALNAV on a barca, rolled back): Captain's cabin speed 0.075 (job 7.50 %, dark and lit); off-focus cabin 2 →
+0.0375 lit (× 50 %), 0.075 dark; homesick 73 h 0.060 lit (× 80 %), 0.075 dark; speaks Lisbon's language: odds
+0.4500 → 0.5000 with her fleet lit, unchanged dark; the cabins note gone. READ COST over the live merchants
+(fastest of 2, notice only): speed + cargo space 662.0 → 862.0 ms, endurance + wage 193.0 → 265.0 ms.
+```
+
+**Client seam**: `world.ship_seats` stops serving "Cabin rates are not in use yet." The ship panel prints the server's
+note, so `tests/ship.cabins.spec.ts` now asserts that the sentence is absent. That lands in the same PR. No client
+code changes.
+
+**Rollback** (a forward migration): `update public.world_config set value = 'false'::jsonb where key = 'crew_bite';`.
+No table changes here, so nothing written lit is unreadable dark.
+
+### Verification (once; worktree re-made off `d432aaf`, real `npm ci`, prefix cache from `bv-circ`, no `.env.local`)
+
+- Cached-prefix `npm run build` (with `tsc -b`): 170/171 restored, 0179 applied, world guard ok. Exit 0.
+- `eslint .`: 0. `db:check-versions`: 171 distinct, ok.
+- `tests/ship.cabins.spec.ts` on a local PGlite preview (`localhost:4247`): 1 passed, 0 skipped.
+
+### #208 round 2 — proof 6 red, and the merchant sheet spec
+
+**Proof 6 red** (`pglite-gate (the rest)`, run 39096990249):
+
+```
+PROOF 6 FAILED: with a 25 per cent purser and a 0.75 concession the executed spread is 0.005… and the floor is 0.004…; the floor did not hold
+```
+
+- **The cause, from the code:** it is (a), the intended lit rule. It is not a defect.
+  - Lit, `public.crew_terms` counts a captain through the traits she USES, joining `public.captain_active` (D15 / §4.2:
+    she knows 4–10 traits and uses 2–5).
+  - Dark, it reads her job alone.
+  - Proof 6 authors its 25 % purser by hand (officers + profile + traits + signing + seat) and never writes a
+    `captain_active` row. So lit she uses no trait and gives 0 %. That is why the spread stayed at the
+    concession-only 0.005, above the floor.
+- **No real path writes a signing without active traits.** `sign_officer` makes her first traits active (K5). On
+  prod, every one of the 512 signings (511 merchant, 1 player) has an active row.
+- **The fix is in the proof:** it now states the precondition itself (`captain_active (signing, 'PURSER')`). She sits in
+  the Captain's cabin (100 %), has no home clock (never homesick), and is at her birth grade. So dark and lit she
+  gives the same 25 %, and the floor assertion is unchanged.
+- **The whole class:** the only other hand-authored signing is in `03_grant_lockdown.sql:393`. It passed in CI, because
+  it tests a grant, not a bonus. No spec inserts `player_officers`.
+- **Why my checks missed it:** the cached-prefix `npm run build` applies migrations and runs their self-asserts. It
+  does not run `scripts/db/proofs/*` — that is `npm run db:proof`, which I never ran for 0178 or 0179. My checklist
+  had build, tsc, eslint and the one changed spec, but not the proof suite. A migration that flips a switch changes
+  the world every proof runs in, so the proof suite belongs in the checklist for every switch-flip.
+
+**`tests/map.merchants.spec.ts`**: "… a tap opens a read-only sheet" expected 4 `skill-*` tiles and got 6.
+
+- **The sheet is right.** `world.npc_fleet_card` serves the four skills that need no enrolment plus every skill the
+  house HOLDS, and it does not read `skills_bite`. S18 (0167) fixed hull-line skills for the English and French
+  houses. On prod, 764 merchant houses' cards serve 4 tiles, 14 serve 5 and 43 serve 6, whatever the switch says.
+- **The pinned 4 was an ambient-default assertion.** It held only while the merchant the spec happens to open was a
+  four-skill house. My inference, not proven: lit speed changed which merchant that was.
+- **The spec now derives the truth:**
+  - every `enrol: "none"` skill of `data/skills.json` has its tile;
+  - there are at least that many tiles;
+  - every other tile is a skill she holds (its bar reads level ≥ 1).
+- It lands in #208, because it is the same lit-world class.
+
+**Round-2 checks (once):**
+
+- **The whole proof set on the 0179 chain: 12/12 files green, every declared marker.**
+  - World: the cached BROWSER world image (origin/main + 0179). Fixtures: `proof-courses` and `market-fixture`
+    installed as `proof.mjs` installs them. Each file ran in begin … rollback, judged by its own `@pass` markers.
+    Runner: a scratchpad copy of `proof.mjs`'s rule. Wall clock: 8 m 52 s.
+  - Results: 01 6/6, 02 6/6, 03 12/12, 04 9/9, 05 5/5, 06 10/10, 07 6/6, 08 6/6, 09 4/4, 10 10/10, 11 5/5, 12 6/6.
+- **`npm run db:proof` itself (the preamble variant) could not build a world here, and that is a separate finding.**
+  - This machine had no preamble prefix past 0128. From zero (33 min), and again from the 0128 snapshot it wrote, it
+    fails in **0137**: `0137 self-assert FAIL: the quay probe priced 4 / 4 of 4 harbour(s), or one served no goods`.
+  - It failed the same way twice. CI passes only because it restores a prefix past 0137.
+  - That is an old migration whose self-assert does not reproduce on a fresh apply today. The nightly from-zero run
+    (`23 18 * * *`) may meet it too. Not caused by 0178 / 0179; reported.
+- `tests/map.merchants.spec.ts` "… a tap opens a read-only sheet" on a local PGlite preview (`localhost:4248`):
+  1 passed. The tapped merchant's tile count is not printed, so this run does not show whether the >4 branch ran.
+- `eslint tests/map.merchants.spec.ts` and `tsc -b`: 0.
