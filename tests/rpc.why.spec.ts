@@ -90,7 +90,7 @@ test('a faith wants what it wants: coffee dear and sherry cheap in an Islamic ci
   }
 })
 
-test('0188: a busy quay is seen — what changed hands here today, and by how many companies', async () => {
+test('0191: a busy quay is seen — what changed hands here today, and by how many companies', async () => {
   const r = await row('coffee', 'islamic')
   const before = await why(r.port_id, r.good_id)
   const players = (await db.pg.query<{ id: string }>('select id from public.players order by id limit 2')).rows

@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0188 — A BUSY QUAY IS SEEN  (PRICE_FACTORS slice P2: how much of a good changed hands here today)
+-- 0191 — A BUSY QUAY IS SEEN  (PRICE_FACTORS slice P2: how much of a good changed hands here today)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- ── WHY ─────────────────────────────────────────────────────────────────────────────────────────
@@ -27,7 +27,7 @@
 -- second 5 add 5 and no house; an earlier game day is not counted; the read's other keys are what they
 -- were (the hunk adds one key and touches no other); the leaf is server-only and STABLE.
 -- ROLLBACK: a forward slice reversing the hunk (old text below) and dropping public.traded_today.
--- VERSION: 0188 PROVISIONAL — prod head 0186 when written (2026-10-19; 0187 left for GP1, #229); renumbered to head + 1 at push.
+-- VERSION: 0191 PROVISIONAL — prod head 0186 when written (2026-10-19; deploy order fixed by the coordinator: 0187 great powers, 0188 plan-reach-2, 0189–0190 auto-fight, then this); renumbered to head + 1 at push.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -36,13 +36,13 @@ begin
   perform set_config('lock_timeout', '5s', true);
 end $guard$;
 
-create or replace function pg_temp.occurs_0188(p_hay text, p_needle text)
+create or replace function pg_temp.occurs_0191(p_hay text, p_needle text)
 returns int
 language sql
 immutable
 as $$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_needle) $$;
 
-create temp table before_0188 on commit drop as
+create temp table before_0191 on commit drop as
 select replace(pg_get_functiondef('world.price_why(uuid, uuid)'::regprocedure), E'\r', '') as def,
        (select row(coalesce(p.proacl::text, ''), p.proowner, p.provolatile, p.prosecdef, coalesce(p.proconfig::text, ''))::text
           from pg_proc p where p.oid = 'world.price_why(uuid, uuid)'::regprocedure) as meta,
@@ -51,7 +51,7 @@ select replace(pg_get_functiondef('world.price_why(uuid, uuid)'::regprocedure), 
 do $$
 begin
   if to_regprocedure('public.traded_today(uuid, uuid)') is not null then
-    raise exception '0188 self-assert FAIL: public.traded_today already exists';
+    raise exception '0191 self-assert FAIL: public.traded_today already exists';
   end if;
 end $$;
 
@@ -63,7 +63,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0188: WHAT CHANGED HANDS HERE TODAY — the units of this good bought and sold at this port in the
+  -- 0191: WHAT CHANGED HANDS HERE TODAY — the units of this good bought and sold at this port in the
   -- current game day, and by how many companies (players and merchants alike), from public.trade_daily:
   -- the one record cmd.do_buy / cmd.do_sell write per (company, port, good, game day). Derived per read.
   select coalesce(sum(td.qty), 0), count(distinct td.player_id)::int
@@ -73,11 +73,11 @@ $$;
 revoke all on function public.traded_today(uuid, uuid) from public, anon, authenticated;
 
 -- ── 2. world.price_why SERVES IT (one hunk, sliced from the live body; reverses) ──────────────
-create temp table hunks_0188 (n int, old text, new text) on commit drop;
-insert into hunks_0188 values
+create temp table hunks_0191 (n int, old text, new text) on commit drop;
+insert into hunks_0191 values
 (1,
 $h$    'fee', jsonb_build_object('spread', q.spread, 'tax', q.tax, 'bid_factor', q.bid_factor,$h$,
-$h$    -- 0188: what changed hands here today (public.traded_today — the daily-cap record, bought + sold)
+$h$    -- 0191: what changed hands here today (public.traded_today — the daily-cap record, bought + sold)
     'volume', (select jsonb_build_object('game_day', world.game_day(), 'units', v.units, 'houses', v.houses)
                  from public.traded_today(p_port, p_good) v),
     'fee', jsonb_build_object('spread', q.spread, 'tax', q.tax, 'bid_factor', q.bid_factor,$h$);
@@ -88,27 +88,27 @@ declare
   h     record;
   v_rev text;
 begin
-  select * into b from before_0188;
-  select * into h from hunks_0188 where n = 1;
-  if pg_temp.occurs_0188(b.def, h.old) <> 1 then
-    raise exception '0188 self-assert FAIL: world.price_why hunk occurs % time(s), not once — the deployed body is not what this file was written against',
-      pg_temp.occurs_0188(b.def, h.old);
+  select * into b from before_0191;
+  select * into h from hunks_0191 where n = 1;
+  if pg_temp.occurs_0191(b.def, h.old) <> 1 then
+    raise exception '0191 self-assert FAIL: world.price_why hunk occurs % time(s), not once — the deployed body is not what this file was written against',
+      pg_temp.occurs_0191(b.def, h.old);
   end if;
   execute replace(b.def, h.old, h.new);
   v_rev := replace(pg_get_functiondef('world.price_why(uuid, uuid)'::regprocedure), E'\r', '');
-  if pg_temp.occurs_0188(v_rev, h.new) <> 1 or replace(v_rev, h.new, h.old) <> b.def then
-    raise exception '0188 self-assert FAIL: world.price_why does not reverse to its pre-image';
+  if pg_temp.occurs_0191(v_rev, h.new) <> 1 or replace(v_rev, h.new, h.old) <> b.def then
+    raise exception '0191 self-assert FAIL: world.price_why does not reverse to its pre-image';
   end if;
   if (select row(coalesce(p.proacl::text, ''), p.proowner, p.provolatile, p.prosecdef, coalesce(p.proconfig::text, ''))::text
         from pg_proc p where p.oid = 'world.price_why(uuid, uuid)'::regprocedure) <> b.meta then
-    raise exception '0188 self-assert FAIL: world.price_why''s ACL, owner, volatility, definer or config moved';
+    raise exception '0191 self-assert FAIL: world.price_why''s ACL, owner, volatility, definer or config moved';
   end if;
 end $$;
 
 -- ── 3. THE PROOF (a probe company, rolled back whole) ─────────────────────────────────────────
 do $$
 declare
-  c_uid  constant uuid := '00000000-0188-4000-8000-000000000001';
+  c_uid  constant uuid := '00000000-0191-4000-8000-000000000001';
   v_p    uuid;
   v_port uuid;
   v_good uuid;
@@ -121,7 +121,7 @@ begin
     from public.port_goods pg join public.ports p on p.id = pg.port_id join public.goods g on g.id = pg.good_id
    where p.code = 'LIS' order by g.code limit 1;
   begin
-    v_p := public.new_house(c_uid, 'Casa do Cais 0188', 'PRT', 'LIS');
+    v_p := public.new_house(c_uid, 'Casa do Cais 0191', 'PRT', 'LIS');
     j0 := world.price_why(v_port, v_good);
     insert into public.trade_daily (player_id, port_id, good_id, game_day, qty)
     values (v_p, v_port, v_good, world.game_day() - 1, 1000);                      -- yesterday: not counted
@@ -136,10 +136,10 @@ begin
        or (j2->'volume'->>'units')::numeric - (j1->'volume'->>'units')::numeric <> 5
        or (j2->'volume'->>'houses')::int <> (j1->'volume'->>'houses')::int
        or (j1->'volume'->>'game_day')::int <> world.game_day() then
-      raise exception '0188 self-assert FAIL: the volume did not count the probe''s trades: % → % → %', j0->'volume', j1->'volume', j2->'volume';
+      raise exception '0191 self-assert FAIL: the volume did not count the probe''s trades: % → % → %', j0->'volume', j1->'volume', j2->'volume';
     end if;
     if (j1 - 'volume' - 'clock') <> (j0 - 'volume' - 'clock') then
-      raise exception '0188 self-assert FAIL: the hunk moved a key other than volume: % vs %', j0, j1;
+      raise exception '0191 self-assert FAIL: the hunk moved a key other than volume: % vs %', j0, j1;
     end if;
     v_out := format('%s → %s → %s', j0->'volume', j1->'volume', j2->'volume');
     raise exception using errcode = 'ZX186', message = v_out;
@@ -147,16 +147,16 @@ begin
     v_out := sqlerrm;
   end;
   if exists (select 1 from public.players where id = v_p) then
-    raise exception '0188 self-assert FAIL: the probe company survived its rollback';
+    raise exception '0191 self-assert FAIL: the probe company survived its rollback';
   end if;
   if has_function_privilege('anon', 'public.traded_today(uuid, uuid)', 'execute')
      or has_function_privilege('authenticated', 'public.traded_today(uuid, uuid)', 'execute')
      or (select provolatile from pg_proc where oid = 'public.traded_today(uuid, uuid)'::regprocedure) <> 's'
-     or (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0188)
+     or (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0191)
      or (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0188 self-assert FAIL: the leaf is reachable or not STABLE, or the registry or a wall moved';
+    raise exception '0191 self-assert FAIL: the leaf is reachable or not STABLE, or the registry or a wall moved';
   end if;
-  raise notice '0188 self-assert ok: A BUSY QUAY IS SEEN. public.traded_today (server-only, STABLE) from public.trade_daily; world.price_why serves volume {game_day, units, houses} (one hunk, reverses). Probe at LIS: %; yesterday not counted; no other key moved; registry unchanged.', v_out;
+  raise notice '0191 self-assert ok: A BUSY QUAY IS SEEN. public.traded_today (server-only, STABLE) from public.trade_daily; world.price_why serves volume {game_day, units, houses} (one hunk, reverses). Probe at LIS: %; yesterday not counted; no other key moved; registry unchanged.', v_out;
 end $$;
