@@ -91,6 +91,28 @@ runs:
         key: world-image-${{ hashFiles('supabase/migrations/*.sql') }}
         restore-keys: world-image-
 
+    # THE GROWTH TEST'S SNAPSHOTS (2026-10-18; the owner: "save everything when you checked so that
+    # CI becomes always faster"). db.chain's "the world grows under a live house" applies the growth
+    # (0041 → the head) THROUGH the prefix cache (tests/db.chain.spec.ts says why that is the same
+    # proof): it restores the longest growth prefix a previous run already applied on the same house
+    # and applies only the files after it. Cold it was 32-78 min of the db shard; this cache is what
+    # makes it minutes. Keyed on the chain AND on everything that decides what a snapshot holds (the
+    # spec's own setup, the frozen chain, the applier, the cache module, the engine version), so a
+    # changed setup misses the exact key and saves a fresh entry; restore-keys bring back the newest
+    # entry for this chain (a partial one a cancelled run saved) and then the newest of any chain —
+    # prefix-cache.mjs proves every snapshot it restores against its manifest and its content digest.
+    # Only the db pool, only when the growth test is planned (on a PR it is usually deferred to main).
+    - name: Restore the growth test's snapshots (the longest growth prefix already applied)
+      id: growth
+      if: inputs.kind == 'db' && inputs.grep-invert == '' && steps.plan.outputs.planned != '0'
+      uses: actions/cache/restore@v4
+      with:
+        path: node_modules/.cache/byeharu-growth-house
+        key: growth-house-${{ hashFiles('supabase/migrations/*.sql', 'tests/db.chain.spec.ts', 'tests/frozenChain.ts', 'src/lib/db/applyChain.ts', 'src/lib/db/chain.ts', 'scripts/db/prefix-cache.mjs', 'package-lock.json') }}
+        restore-keys: |
+          growth-house-${{ hashFiles('supabase/migrations/*.sql', 'tests/db.chain.spec.ts', 'tests/frozenChain.ts', 'src/lib/db/applyChain.ts', 'src/lib/db/chain.ts', 'scripts/db/prefix-cache.mjs', 'package-lock.json') }}-
+          growth-house-
+
     # chromium ONLY, and only for the pools that open a page. The db.* specs are pure Node.
     - name: Install the browser
       if: inputs.kind != 'db' && steps.plan.outputs.planned != '0'
@@ -187,6 +209,28 @@ runs:
           exit 1
         fi
         echo "OK: $expected test(s) ran, none skipped."
+
+    # SAVED WHENEVER THE RUN GOT FURTHER THAN THE CACHE IT STARTED FROM — on success under the exact
+    # key, and on a failure or a CANCELLATION under a per-run partial key, so the growth files a
+    # cancelled run (a newer merge superseded it) had already applied are not applied again: the next
+    # run's restore-keys find the partial entry. Every snapshot in the directory is complete by
+    # construction (prefix-cache.mjs writes the tarball, then the manifest, each by rename) and is
+    # proven again on load, so a cut-short run can only leave fewer of them, never a wrong one.
+    - name: Save the growth test's snapshots
+      if: success() && inputs.kind == 'db' && inputs.grep-invert == '' && steps.plan.outputs.planned != '0' && steps.growth.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@v4
+      with:
+        path: node_modules/.cache/byeharu-growth-house
+        key: ${{ steps.growth.outputs.cache-primary-key }}
+
+    - name: Save the growth test's snapshots (a failed or cancelled run's progress)
+      if: always() && !success() && inputs.kind == 'db' && inputs.grep-invert == '' && steps.plan.outputs.planned != '0' && steps.growth.outputs.cache-primary-key != ''
+      continue-on-error: true
+      uses: actions/cache/save@v4
+      with:
+        path: node_modules/.cache/byeharu-growth-house
+        key: ${{ steps.growth.outputs.cache-primary-key }}-partial-${{ github.run_id }}-${{ github.run_attempt }}
 
     # The shard's COUNTS only — a few hundred bytes — for the verdict job. Never the report: a
     # report on every run is what hit the artifact quota on 2026-08-22. `planned` travels with them
