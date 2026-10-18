@@ -152,7 +152,6 @@ async function openPort(page: Page, request: { get: (url: string) => Promise<{ o
   await page.goto('command')
   await ready(page)
   await openCityFace(page)
-  await page.waitForTimeout(1200)
   const rows = page.locator('[data-testid="trade-row"]')
   expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
   return rows

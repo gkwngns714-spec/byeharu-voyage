@@ -1,4 +1,4 @@
-import { test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 // THE ONE "IS THE APP UP" APPARATUS for every browser spec in this repo.
 //
@@ -37,12 +37,36 @@ export async function reachable(
  * `world.snapshot()` has answered, so every measurement below was taken against the skeleton:
  * "only 0 complete price rows above the fold" was the loading placeholder, measured honestly.
  *
- * READY IS THE ABSENCE OF THE TWO THINGS LOADING LOOKS LIKE, and nothing screen-shaped. Waiting
- * for a table row was the obvious idea and it was wrong: COMMAND has no table at all, so the wait
- * timed out on a screen that had been up for a minute. Both signals below are design-system-wide —
- * `Skeleton` is the ONE loading placeholder (`animate-pulse`), and "Opening the world" is the one
- * sentence every screen prints while the chain applies.
+ * READY IS THE STORE SAYING SO, and then nothing pulsing. Waiting for a table row was the obvious
+ * idea and it was wrong: COMMAND has no table at all, so the wait timed out on a screen that had
+ * been up for a minute. So this waited for the ABSENCE of the two things loading looked like — a
+ * `Skeleton` (`animate-pulse`) and "Opening the world" — and absence is true of an EMPTY page too.
+ * It returned ~50 ms after `domcontentloaded`, before React had drawn anything, and on COMMAND
+ * (whose "not yet" is its own "Loading…" row) and the map ("opening the chart…") it never saw the
+ * boot at all. Every spec then raced PGlite on its next step: CI runs 39097978019, 39107062920 and
+ * 39107806852 counted 0 ledger rows on COMMAND · City with `[db] ready` still 4 s away (the traces'
+ * console), and #209's `chartOpen` patched the same race for the map route alone.
+ *
+ * The positive signal is the shell's `data-world` (src/app/AppShell.tsx): the world store's own
+ * load phase, the one authority every screen gates on, so it is right for every route at once.
+ * The absence check stays after it, for a screen that is still drawing its first read's skeleton.
  */
+/** THE WORLD-BOOT BUDGET (see the measurement in `ready()`), named once so a wait that is the same
+ *  boot — or a first read behind it — carries the same number rather than a second guess. */
+export const WORLD_BOOT_MS = 300_000
+
+/**
+ * A PANEL HAS SETTLED: no `Skeleton` left inside `scope`. `Skeleton` is the design system's ONE
+ * loading placeholder, so this is the panel's own "my read has landed" — the same signal `ready()`
+ * reads for the whole page, scoped to the panel a spec has just opened. It replaces the fixed
+ * 1200 ms sleeps that followed opening COMMAND · City: under CI load the quay's market read took
+ * longer than that, and the specs counted 0 ledger rows beside a Skeleton (run 39107806852's
+ * screencast). A sleep is a guess about a machine; this is the panel saying it is done.
+ */
+export async function settled(scope: import('@playwright/test').Locator): Promise<void> {
+  await expect(scope.locator('.animate-pulse'), 'the panel is still drawing its first read').toHaveCount(0, { timeout: WORLD_BOOT_MS })
+}
+
 export async function ready(page: import('@playwright/test').Page) {
   await page.waitForLoadState('domcontentloaded')
   // BUDGET, MEASURED (2026-08-23, D21): the 243-good world cold-boots in 78.8 s in an idle
@@ -51,15 +75,26 @@ export async function ready(page: import('@playwright/test').Page) {
   // ~8-15 s chain this comment block used to describe and it now fails a CORRECT build. 300 s
   // covers the measured boot times a loaded machine; the real cure is the pre-built database
   // image DEV_LOG D21 names, at which point this number can shrink back.
-  await page.waitForFunction(
+  //
+  // A cloud build redirects to /auth and never mounts the shell; that page is "up" too, and the
+  // skip below names it. A world that FAILED to open is up as well — and is a failure, said with
+  // the sentence the screen printed rather than left to time out 300 s later.
+  const phase = await page.waitForFunction(
     () => {
+      if (/\/auth$/.test(location.pathname)) return 'auth'
+      const world = document.querySelector('[data-world]')?.getAttribute('data-world')
+      if (world === 'failed') return 'failed'
+      if (world !== 'ready') return false
       const pulsing = document.querySelectorAll('.animate-pulse').length
       const opening = /Opening the world/i.test(document.body.innerText)
-      return pulsing === 0 && !opening
+      return pulsing === 0 && !opening ? 'ready' : false
     },
     undefined,
-    { timeout: 300_000 },
+    { timeout: WORLD_BOOT_MS },
   )
+  if ((await phase.jsonValue()) === 'failed') {
+    throw new Error(`the world failed to open: ${(await page.evaluate(() => document.body.innerText)).slice(0, 400)}`)
+  }
   // One frame, so nothing measures a box that is still being laid out.
   await page.waitForTimeout(250)
 

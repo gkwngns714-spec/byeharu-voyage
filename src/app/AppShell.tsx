@@ -119,8 +119,13 @@ export function AppShell() {
       {/* THE WORLD IS BEHIND THE GLASS (docs/UI_DIRECTION.md rule 6). The shell root is a lit sea
           rather than a flat colour, and it does NOT scroll — each screen scrolls its own panels
           over it, so the horizon stays put the way it would from a deck. The bar and the tab rail
-          paint their own opaque material on top. */}
-      <div className="bv-sea flex h-[100dvh] flex-col text-ink">
+          paint their own opaque material on top.
+          `data-world` IS THE STORE'S LOAD PHASE, said on the shell (2026-10-18). Each screen draws
+          its own "not yet" — COMMAND a "Loading…" row, the map "opening the chart…", the other tabs
+          WorldLoading's skeleton — so nothing screen-shaped can say "the world is up" for every
+          route. The phase can: it is the one authority every screen gates on. The browser specs'
+          ready() (tests/appReady.fixture.ts) waits on it; nothing in the app reads it. */}
+      <div className="bv-sea flex h-[100dvh] flex-col text-ink" data-world={worldPhase}>
         {/* The persistent game chrome, and since step 3 it is a 32px STATUS STRIP: the purse, and
             the market countdown while you are on a trade screen. TopBar.tsx carries what the
             wordmark and the live-read dot were costing, and why neither is missed. */}
