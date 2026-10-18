@@ -476,3 +476,41 @@ bounds. No other deploy goes inside the window.
 
 So the 3 s bound should hold, but with little room. If it is to have more room, the lever is 0182's
 `npc_replan_sweep_ms` (600 ms of every sweep). That is its owner's knob.
+
+## 0199 — a waiting merchant's batch keeps its budget (the coordinator's decision; the owner may reverse it)
+
+Numbering after this change: perf fix 0198, live. This batch fix 0199. The re-light becomes **0200** (#249).
+
+**What it changes:**
+- `npc_replan_sweep_ms` goes from 600 to **300**. The file refuses to run unless the pre-image is 600.
+- `public.npc_ask_waiting` becomes **strict**. It begins another merchant only if the time the batch has run plus
+  the last re-plan's own measured cost (this sweep) stays within the budget.
+  - The first merchant of a sweep is begun as before, so a due merchant is never starved.
+  - The only overrun left is a single re-plan longer than the whole budget.
+- Who is asked, in what order, and what a re-plan answers are unchanged. `npc_tend_route`, `npc_plan` and the queue
+  are untouched.
+
+**Its own check:** four merchants of its own (two companies, two fleets each), all due, with a stand-in re-plan of
+120 ms:
+- the strict batch asked **2 in 245 ms**;
+- the old body asked **3 in 365 ms**.
+
+**Cadence on the prod-shaped world.** 0199 applied on main's 0198 world with prod's knobs, stocks, purses and
+1,491 loops. 122 merchants were laid up (prod's count at 19:05 UTC), and the kickoff laid up more: 261 were
+waiting. Each arm then ran 300 sweeps, one every 15 s (75 game-minutes), from the same start, rolled back:
+
+| | asks | batch avg / p95 / max a sweep | wait between asks avg / **max** |
+|---|---|---|---|
+| old (600 ms, can overshoot) | 1,365 | 645 / 841 / 1,019 ms | 10.8 / 16.8 min |
+| **new (300 ms, strict)** | 570 | **258** / 413 / 561 ms | 20.7 / **34.0 min** |
+
+- **Every waiting merchant is still asked well inside the 60-minute promise.** The hourly reconcile remains the
+  backstop for any that are overdue.
+- **The batch's mean cost per sweep falls by ~0.39 s.**
+- **p95 and max still exceed 300 ms.** That is where one re-plan costs more than the last one did. Strict means "no
+  second one past the budget", not "no re-plan longer than predicted".
+- **On production** a re-plan takes 170–230 ms (0182's measure), so the batch is about 1–2 re-plans a sweep. At
+  today's 122 waiting, my estimate is that each is asked about every 20–30 minutes. That is an inference, not a
+  measurement.
+- **Expected effect on the arrivals average:** −0.3 to −0.4 s, which would bring the dark ~3.0 s back to ~2.6–2.7 s.
+  To be confirmed in the clean 30-minute window after it is live, before 0200.
