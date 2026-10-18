@@ -514,3 +514,148 @@ waiting. Each arm then ran 300 sweeps, one every 15 s (75 game-minutes), from th
   measurement.
 - **Expected effect on the arrivals average:** −0.3 to −0.4 s, which would bring the dark ~3.0 s back to ~2.6–2.7 s.
   To be confirmed in the clean 30-minute window after it is live, before 0200.
+
+## 0203 — the raid balance: a crew that cannot hold the deck surrenders (DARK; `osn-raid-balance`)
+
+0200 lit the fight at 20:48 UTC. Its 30-minute after-check (20:50–21:20) broke two raid bounds: lost share
+43.8 % against 35.0 % dark, crew lost per raid 12.50 % against 6.43 %. Arrivals held at 2.42 s. 0201 rolls the
+switches back. This section is what was measured after, and the one change made.
+
+### The method: production's real raids, replayed
+
+- **Export, read-only** (`begin transaction read only`; every function called is `provolatile` s): all 236
+  PIRATES days on production (2026-10-16 14:40 → 2026-10-18 21:21 UTC; 176 dark, 60 lit), each with its voyage,
+  day, recorded raider strength, outcome and crew. Also the 192 fleets that met them, each hull read with
+  `world.ship_stats` (prod was lit at the export, so these are the lit figures the fight reads).
+- **Dark** is DESIGN B.6's table on each raid's dark escort. On all 176 dark days it gives the recorded outcome.
+- **Lit** is `voyage.fight_resolve` on the main 0200 world image (PGlite), with prod's fight knobs and
+  `armour_turns_pct` 0.5. Each raid is fought 20 times (its own voyage id, then 19 derived ones), so a share is
+  not one roll. Crew is counted per hull by `public.raid_crew_lost`'s own floor (no Surgeon is seated on prod).
+- The scripts are in `bv-harness/raid-scratch/`: `exp.sql` (the export), `sim.mjs` (the replay),
+  `gen-cands.mjs` (the candidate bodies) and `paired.sql` (below).
+
+### The cause
+
+| raids, by target | n | dark lost | lit (0189) lost | dark crew | lit (0189) crew | dark STRIPPED | lit (0189) STRIPPED |
+|---|---|---|---|---|---|---|---|
+| all | 236 | 27.1 % | 25.2 % | 6.48 % | 7.13 % | 4.7 % | 8.2 % |
+| one hull, ≤ 12 crew | 141 | 43.3 % | 40.3 % | 9.76 % | **11.28 %** | 6.4 % | **13.4 %** |
+| one hull, > 12 crew | 82 | 0 | 0 | 0.69 % | 0.36 % | 0 | 0 |
+| two or more hulls | 13 | 23.1 % | 21.2 % | 7.48 % | 4.79 % | 15.4 % | 2.7 % |
+
+- **Over the whole real mix, 0189 already held both bounds**: lost 25.2 ≤ 32.1, crew 7.13 ≤ 7.48.
+- **But a lone hull of 12 crew or fewer (60 % of the raided) buried more.** Crew went 9.76 → 11.28 % and STRIPPED
+  doubled. Every one of those STRIPPED days was a boarding below the last band: a 40–70-crew xebec against 8–12
+  hands. The crew fought for a deck it could not hold and lost 30 % of its hands.
+- **The after-check's window was not a like-for-like comparison.** The dark table on the SAME 16 raids of 0200's
+  lit window gives lost **50.0 %** and crew **12.71 %** (`paired.sql`, read-only on prod; current hulls). The fight
+  did no worse than the table there (43.8 % / 12.50 %). That window simply met heavier raids on smaller hulls:
+  barcas against raider strength 20–25, where the table strips them too. It was compared with a different 19.
+- **A window of 16 against a window of 19 is close to a coin toss.** Resampled from this mix, the after-check's
+  two bounds both hold only **52 %** of the time for 0189, and **56 %** for the dark table against itself.
+
+### The candidates, measured (the same 236 raids × 20)
+
+| candidate (all NOT the owner's) | lost | crew | crew, ≤ 12 | STRIPPED | paired check holds | windowed check holds |
+|---|---|---|---|---|---|---|
+| dark table | 27.1 | 6.48 | 9.76 | 4.7 | — | 56 % (vs itself) |
+| 0189 as lit | 25.2 | 7.13 | 11.28 | 8.2 | 59 % | 52 % |
+| `fight_hand_value` 0.15 → 0.04 | 21.8 | 6.20 | 9.76 | 4.4 | 82 % | 64 % |
+| raiders sized to the prey, ≤ 2 × her boarding strength | 24.3 | 5.50 | 8.61 | 0.5 | 86 % | 68 % |
+| raiders sized to the prey, ≤ 1.5 × | 22.1 | 5.14 | 8.01 | 0.2 | — | 73 % |
+| outnumbered 5 : 1 at the boarding → RANSOM | 16.4 | 4.35 | 6.63 | 1.2 | — | 84 % |
+| gives up at sight (escort < 0.3 × raider) → RANSOM | 20.6 | 5.63 | 9.02 | 4.6 | — | 70 % |
+| **below the last band the crew surrenders → PLUNDERED (0203)** | **25.2** | **5.47** | **8.56** | **0** | **85 %** | **67 %** |
+
+("paired": 16 raids drawn, lit against the table on those same raids. "windowed": 16 lit against 19 other dark
+ones, as the after-check did. 4,000 draws each.)
+
+**Why the surrender was chosen:**
+- It is the one rule that removes the measured harm, the 30 % crew loss at a hopeless boarding, and changes
+  nothing else. The sighting, every round, the break-off and every fight above the last band are word for word
+  the same (0203's own probe asserts this on 960 days).
+- So range, accuracy and attack matter exactly as much as they did. The won column is identical to 0189's.
+- **It keeps crew meaningful**, as the measurements below show. Sizing the raiders to the prey does not: it fixes
+  the boarding ratio of every capped fight, so extra hands buy less.
+- Unlike "outnumbered → RANSOM", it keeps the outcome monotone: a weaker crew never fares better than a stronger
+  one.
+- **Historically** it is the rule, not the exception. A merchant crew that could not hope to hold the deck
+  surrendered rather than fight. The pirates' and the corsairs' terror worked by offering quarter to a crew that
+  yielded and none to one that resisted, so a prize cost its cargo, not its crew.
+- Giving up at sight was rejected: it decides a fight before range or accuracy can count.
+
+**What it costs, stated:** a fight no longer ends STRIPPED (dark, the table still strips: 4.7 %). PLUNDERED keeps
+DESIGN B.6's crew −10 %. A lone small hull still loses 11 % of its hull per raid (dark 7.8 %): the rounds are
+unchanged, and the hull is not a bound.
+
+### Range and accuracy still decide (0203, the same 236 raids; every hull's figure set as shown)
+
+| every hull's | won | won, one hull ≤ 12 crew | lost | crew |
+|---|---|---|---|---|
+| reach 5 / 15 / 25 (under the xebec's 26) | 61.6 % | 44.3 % | 25.3 % | 5.56 % |
+| reach 40 / 60 (over it) | **68.4 %** | **51.8 %** | 22.6 % | 4.65 % |
+| accuracy 20 | 56.8 % | 39.0 % | 26.9 % | 5.62 % |
+| accuracy 40 | 63.3 % | 46.1 % | 25.0 % | 5.53 % |
+| accuracy 60 | 70.9 % | 55.5 % | 22.1 % | 5.47 % |
+| accuracy 80 | **78.7 %** | **66.6 %** | 18.3 % | 5.37 % |
+| attack × 0 / 0.5 / 1 / 2 | 51.5 / 56.5 / 63.4 / 73.8 % | 34.1 / 37.1 / 44.3 / 58.5 % | 28.1 → 20.2 % | 5.60 → 5.23 % |
+| crew 6 / 12 / 20 / 30 | 61.4 / 63.5 / 66.2 / 68.9 % | 41.8 / 45.2 / 49.1 / 53.2 % | 28.5 → 20.0 % | 7.75 → 2.85 % |
+
+Reach works as a threshold, as 0189 built it: at LONG range a hull fires only if her reach is at least the other
+side's. All raiders are xebecs (reach 26), so every reach under 26 reads the same, and so does every reach over it.
+
+### The bounds on production's raid mix (0203 lit vs the dark table, the same raids)
+
+- **Lost share:** 25.2 % vs 27.1 % (bound ≤ 32.1). Holds.
+- **Crew lost per raid:** 5.47 % vs 6.48 % (bound ≤ 7.48). Holds, with 2.0 points to spare. For a lone small hull
+  it is 8.56 % vs 9.76 %.
+- **Better range and accuracy clearly win more often**: see the table above.
+- **The arrivals cost is unchanged.** The change is which outcome a boarding below the last band names, with no
+  new read and no new loop. Replaying the 4,720 fights took 5.0 s by the old body and 4.4 s by the new on PGlite;
+  the difference is noise. `voyage.fight` (the per-hull reads) is untouched.
+
+### 0203 itself
+
+- **Four hunks on `voyage.fight_resolve`**, sliced from the live body (read-only on prod at head 0200: each
+  occurs exactly once):
+  - the header comment;
+  - a `v_surrender` flag;
+  - the outcome: below the last band, PLUNDERED;
+  - the closing line ("You surrender; they board and take what they can carry.") and the day's sentence ("We
+    surrendered, and they took what they could carry.").
+- `fight_board_bands`' description says its third band is where the crew surrenders. No knob's value moves, and
+  no switch moves: it lands dark. `voyage.fight_resolve` is read only by `voyage.fight`, which is refused while
+  `combat_bite` is off.
+- **Its own check** (pure engine, its own knob values, rolled back), on a lone carlat and an unarmed barca ×
+  raiders 6 / 12 / 18 / 24 × 120 days, old body against new:
+  - 485 of 960 days the old body STRIPPED. Each is now PLUNDERED with the same rounds, hits and hull, and the
+    surrender's line and sentence.
+  - The other 475 days are word for word the same.
+  - The new body never strips.
+  - Over 300 days, each of reach 60, accuracy 70 and attack 110 wins more than the base, crew 40 loses less, and
+    unarmed wins less. One day fought twice is the same fight.
+  - The body reverses to its pre-image, with ACL, volatility, definer and config unmoved. Eight neighbours are
+    untouched (`voyage.fight`, `voyage.settle`, `armour_soak`, `armour_turns`, `escort_score`, `raid_crew_lost`,
+    `fight_points`, `report_line`).
+  - The knobs and switches are as before. The core is read by `voyage.fight` alone. There is no entry point.
+- It applied green in four worlds:
+  - main's 0200 image, lit (3.7 s);
+  - main's 0200 image + 0201, dark (3.7 s);
+  - the prod-shaped world (`redesign-scratch/setup.mjs`: prod's knobs, stocks, purses, treasuries and 837 loops)
+    + 0201 (3.4 s);
+  - the cached-prefix `npm run build`.
+- **`tests/ledger.fights.spec.ts`** now also asserts that a fought raid never ends STRIPPED.
+
+### For the re-light's after-check: compare like with like
+
+The window-against-window check fails a correct engine about half the time at these sample sizes (above). The
+**paired** check compares each lit raid with DESIGN B.6's table on that same raid: `bv-harness/raid-scratch/paired.sql`,
+read-only, which takes the window as two timestamps. On 0200's window it reads lost 43.8 % vs 50.0 % and crew
+12.50 % vs 12.71 %: both bounds held there. For 0203, resampled, the paired check holds both bounds 85 % of the
+time on 16-raid windows. A longer window raises that.
+
+### Not the owner's — confirm
+
+- The surrender rule; its band (the third of `fight_board_bands`, 0.3); and that a fight never ends STRIPPED.
+- The words of the surrender: "You surrender; they board and take what they can carry." and "We surrendered, and
+  they took what they could carry."

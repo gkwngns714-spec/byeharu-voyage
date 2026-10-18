@@ -82,7 +82,8 @@ test('lit, every raid day is fought in rounds and the report hangs each fight un
   for (const r of raids) {
     expect(r.rounds, `day ${r.day} was not fought in rounds`).not.toBeNull()
     expect(r.rounds![0]).toMatch(/^Raiders: /)
-    expect(['EVADED', 'DRIVEN_OFF', 'RANSOM', 'PLUNDERED', 'STRIPPED']).toContain(r.outcome)
+    // 0203: below the last boarding band the crew surrenders (PLUNDERED) — a fought raid never ends STRIPPED
+    expect(['EVADED', 'DRIVEN_OFF', 'RANSOM', 'PLUNDERED']).toContain(r.outcome)
   }
   const report = await reportOf(voyage)
   const lines = payloadLines(report.payload)
