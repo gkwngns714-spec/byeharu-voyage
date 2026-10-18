@@ -114,3 +114,48 @@ test.describe('the desk at 390×844', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// 2026-10-19, ON THE OWNER'S 1280×707 GLASS: the stock figure was drawn over its bar and the facts
+// beside it ("1205 / 268" overprinting) and names truncated to "Abalone …". Measured at 1280, 1440
+// and 390.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+for (const size of [
+  { width: 1280, height: 707 },
+  { width: 1440, height: 731 },
+  { width: 390, height: 844 },
+]) {
+  test.describe(`the watchlist at ${size.width}×${size.height}`, () => {
+    test.use({ viewport: size })
+
+    test('stock never overprints; names are whole', async ({ page, request, baseURL }) => {
+      await openDesk(page, request, baseURL)
+      const m = await page.evaluate(() => {
+        const rows = [...document.querySelectorAll('[data-testid="watch-row"]')].slice(0, 12)
+        const overlaps: string[] = []
+        const clipped: string[] = []
+        for (const row of rows) {
+          const gauge = row.querySelector('[data-testid="stock-gauge"]')
+          if (gauge) {
+            const g = gauge.getBoundingClientRect()
+            // the gauge's own parts fit inside it, and nothing beside it starts before it ends
+            for (const part of gauge.querySelectorAll('span')) {
+              const r = part.getBoundingClientRect()
+              if (r.width > 0 && r.right > g.right + 0.5) overlaps.push(row.getAttribute('data-good') ?? '?')
+            }
+            const next = gauge.nextElementSibling
+            if (next && next.getBoundingClientRect().left < g.right - 0.5) overlaps.push(row.getAttribute('data-good') ?? '?')
+          }
+          const name = row.querySelector('.line-clamp-2') as HTMLElement | null
+          if (name && name.scrollHeight > name.clientHeight + 1) clipped.push(row.getAttribute('data-good') ?? '?')
+        }
+        return { n: rows.length, overlaps: [...new Set(overlaps)], clipped, scroll: document.documentElement.scrollWidth <= document.documentElement.clientWidth }
+      })
+      expect(m.n).toBeGreaterThan(5)
+      expect(m.overlaps, 'a stock figure overprints its row').toEqual([])
+      expect(m.clipped, 'a good name is clipped').toEqual([])
+      expect(m.scroll).toBe(true)
+
+    })
+  })
+}

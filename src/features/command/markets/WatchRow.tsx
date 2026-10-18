@@ -48,7 +48,7 @@ export function WatchRow({
         onClick={onOpen}
         aria-pressed={on}
         className={[
-          'flex min-h-row w-full items-center gap-3 rounded-control px-2 py-2 text-left transition',
+          'flex min-h-row w-full items-center gap-2.5 rounded-control px-2 py-2 text-left transition',
           on ? 'bg-accent-soft' : 'hover:bg-surface-2',
         ].join(' ')}
         data-testid="watch-row"
@@ -56,12 +56,13 @@ export function WatchRow({
       >
         <Icon name={goodIcon(good.code, good.category)} size={20} className="shrink-0 text-ink-muted" />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 truncate text-t-body text-ink">
-            <span className="truncate">{good.name}</span>
-            <RarityMark rarity={good.rarity} />
+          {/* THE NAME WRAPS, never truncates (2026-10-19: "Abalone …", "Adire Cl…" at 1280): two lines
+              at most, the rarity mark riding at its end. */}
+          <span className="line-clamp-2 break-words text-t-body leading-tight text-ink">
+            {good.name} <RarityMark rarity={good.rarity} />
           </span>
           {/* THE CHEAPEST SELLER'S STOCK against its normal level (owner, 2026-10-18), then the facts */}
-          <span className="flex min-w-0 items-center gap-2">
+          <span className="mt-0.5 flex min-w-0 items-center gap-2">
             {stock && best && (
               <StockGauge stock={stock.stock} target={stock.target} label={`${good.name} at ${portName(best.port)}`} />
             )}
@@ -71,12 +72,12 @@ export function WatchRow({
         <Sparkline
           values={watch?.spark ?? []}
           tone="even"
-          width={56}
-          height={20}
+          width={40}
+          height={18}
           label={`${good.name}, the last hours at ${best ? portName(best.port) : 'no city'}`}
           className="hidden shrink-0 min-[360px]:inline-block"
         />
-        <span className="flex min-w-20 shrink-0 flex-col items-end">
+        <span className="flex shrink-0 flex-col items-end">
           <span className="whitespace-nowrap text-t-body tabular-nums text-ink">{best ? formatPrice(best.mid) : '—'}</span>
           {change !== null && (
             <span
