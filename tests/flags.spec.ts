@@ -84,6 +84,43 @@ test('a harbour\'s name on the chart carries its holder\'s code, and the planned
   expect(flagged.box.width - bare.box.width).toBeCloseTo(FLAG_ADVANCE_EM * 10, 5)
 })
 
+test('every flag is recognisable at 14 px: its picture is not near-uniform (a pixel-variance check, border excluded)', async ({ browser }) => {
+  // THE DEFECT (the owner, 2026-10-18: "france flag looks shit"): France's royal white flag with
+  // tiny fleurs-de-lis rasterised to a blank cream chip at 12–16 px (σ 12–27), Morocco's thin gold
+  // lines to a red chip (σ 15–29), Ayutthaya's plain red to a red chip (σ 0). Each flag is drawn at
+  // 21×14 CSS px at DPR 1 and 2, its outer 2 device px (the hairline edge) cropped off, and the
+  // RGB standard deviation of what is left must be at least 35 — a flag with a design you can see.
+  const sigma: Record<string, number> = {}
+  for (const dpr of [1, 2]) {
+    const context = await browser.newContext({ viewport: { width: 600, height: 400 }, deviceScaleFactor: dpr })
+    const page = await context.newPage()
+    for (const code of seededNations()) {
+      const uri = `data:image/svg+xml;base64,${readFileSync(path.join(FLAGS, `${code}.svg`)).toString('base64')}`
+      await page.setContent(`<body style="margin:0;background:#f4f1e8"><img id="f" src="${uri}" width="21" height="14" style="object-fit:contain;display:block">`)
+      await page.locator('#f').evaluate((i: HTMLImageElement) => i.decode())
+      const png = await page.locator('#f').screenshot()
+      sigma[`${code}@${dpr}`] = await page.evaluate(async ([b64, crop]) => {
+        const img = new Image()
+        img.src = `data:image/png;base64,${b64}`
+        await img.decode()
+        const c = new OffscreenCanvas(img.width, img.height)
+        const g = c.getContext('2d')!
+        g.drawImage(img, 0, 0)
+        const d = g.getImageData(crop, crop, img.width - 2 * crop, img.height - 2 * crop).data
+        const n = d.length / 4
+        const m = [0, 0, 0]
+        for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 3; k++) m[k] += d[i + k] / n
+        let v = 0
+        for (let i = 0; i < d.length; i += 4) for (let k = 0; k < 3; k++) v += (d[i + k] - m[k]) ** 2
+        return Math.round(Math.sqrt(v / n))
+      }, [png.toString('base64'), 2 * dpr] as const)
+    }
+    await context.close()
+  }
+  console.log('flag σ at 14 px:', JSON.stringify(sigma))
+  for (const [k, s] of Object.entries(sigma)) expect(s, `${k} is not a blank chip`).toBeGreaterThanOrEqual(35)
+})
+
 /** Every Flag under `scope` names a nation and its picture has loaded (not a broken image). */
 async function expectFlags(scope: Locator, nation?: string): Promise<void> {
   const flags = scope.locator('img[data-testid="flag"]')

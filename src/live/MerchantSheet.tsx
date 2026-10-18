@@ -104,14 +104,22 @@ export function MerchantSheet({
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={
         <TrayTitle
-          name={card ? <GoToLink to={{ kind: 'fleet', id: card.fleet.id, where: whereabouts(card.fleet) }}>{card.fleet.name}</GoToLink> : '…'}
+          name={
+            card ? (
+              // 0143 (owner, 2026-10-17): every merchant shows the flag of her company's country —
+              // since 2026-10-18 BEFORE HER NAME at the title's size, as your own fleet's tray does
+              // (VoyageTray), where the owner looks when he presses a ship.
+              <span className="inline-flex max-w-full items-center gap-1.5" data-testid="merchant-sheet-flag">
+                <HullCountry nation={card.company.nation_code} compact size="title" />
+                <GoToLink to={{ kind: 'fleet', id: card.fleet.id, where: whereabouts(card.fleet) }}>{card.fleet.name}</GoToLink>
+              </span>
+            ) : (
+              '…'
+            )
+          }
           line={
             card ? (
               <>
-                {/* 0143 (owner, 2026-10-17): every merchant shows the flag of her company's country. */}
-                <span className="inline-flex items-center gap-1" data-testid="merchant-sheet-flag">
-                  <HullCountry nation={card.company.nation_code} compact size="caption" />
-                </span>{' '}
                 {card.company.name}
                 {line ? <> · {line}</> : null}
               </>

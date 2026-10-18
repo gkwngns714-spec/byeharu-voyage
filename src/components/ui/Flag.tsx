@@ -48,9 +48,10 @@ export function Flag({
       height={height}
       draggable={false}
       decoding="async"
-      // A hairline that follows the flag's own outline, so a white flag (England, Japan) still has
-      // an edge on the pale surface; `object-contain` fits any shape into the 3:2 box uncut.
-      className={`inline-block shrink-0 object-contain align-[-0.15em] [filter:drop-shadow(0_0_0.6px_rgb(0_0_0/0.55))] ${className}`}
+      // The edge is IN the file (every flag ends in a 1.5 px mid-grey hairline along its own outline,
+      // public/flags/SOURCES.md), so a white flag reads on the pale surface and a dark one on the
+      // night chart, the same here and on the chart's names; `object-contain` fits any shape uncut.
+      className={`inline-block shrink-0 object-contain align-[-0.15em] ${className}`}
       data-testid="flag"
       data-nation={code}
     />
