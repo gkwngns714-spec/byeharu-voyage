@@ -38,21 +38,48 @@ export const WHOLE_GLASS: GlassZone = { left: 0, right: 0, top: 0, bottom: 0 }
 /** Where a hull can be TAPPED: clear of the corner chrome and the tray's peek. */
 export const TAP_ZONE: GlassZone = { left: 60, right: 120, top: 100, bottom: 120 }
 
-/** How many merchant marks have their centre inside `zone`, and the chart's degrees per pixel. */
+/** THE VIEW SHEET (src/chart/ChartCanvas.tsx): the one svg whose viewBox IS the view. The sea's
+ *  svgs are pictures of the glass on a unit square since the no-blink fix (SeaLayer.tsx header), so
+ *  "the first svg" or "the svg around the marks" is not how the view is read — this selector is. */
+const VIEW_SHEET = '[data-testid="map-view"]'
+
+/**
+ * THE CHART IS OPEN: its view sheet is on the glass. `ready()` (./appReady.fixture.ts) cannot see
+ * this. On the map route the world's boot shows as the chart's own "opening the chart…" line
+ * (src/features/map/ChartMessage.tsx), not as the gate's "Opening the world." that `ready()` waits
+ * out — so `ready()` returns while PGlite is still loading the world image, and a spec that counts
+ * merchants next counts them on a chart that is not there. CI runs 39088373678 and 39092641268
+ * (map.merchants "wide" and "Porto lists …"): the first count came 0.8 s after the goto, every one
+ * of the twenty-two reads over the next 22 s said "0 merchants, NaN °/px", the screencast at 22.9 s
+ * still read "opening the chart…", and the chart was open by the time the failure screenshot was
+ * taken four seconds later. The budget is `ready()`'s world-boot budget, because it is the same boot.
+ */
+export async function chartOpen(page: Page): Promise<void> {
+  await page.locator(VIEW_SHEET).waitFor({ state: 'attached', timeout: 300_000 })
+}
+
+/** How many merchant marks have their centre inside `zone`, and the chart's degrees per pixel.
+ *  Throws, rather than answering NaN, when the chart is not open: a density of NaN is not a
+ *  measurement, and the one caller's guard read it as "the next press would pass the limit". */
 export async function merchantsInZone(page: Page, zone: GlassZone): Promise<{ inZone: number; unitsPerPx: number }> {
-  return page.evaluate((z) => {
-    const chart = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
-    const svg = document.querySelector('[data-testid="map-fleets"]')?.closest('svg')
-    const unitsPerPx = svg && chart.width > 0 ? svg.viewBox.baseVal.width / chart.width : NaN
-    let inZone = 0
-    for (const g of document.querySelectorAll('[data-testid="map-merchant"]')) {
-      const r = g.getBoundingClientRect()
-      const cx = r.left + r.width / 2
-      const cy = r.top + r.height / 2
-      if (cx >= chart.left + z.left && cx <= chart.right - z.right && cy >= chart.top + z.top && cy <= chart.bottom - z.bottom) inZone++
-    }
-    return { inZone, unitsPerPx }
-  }, zone)
+  return page.evaluate(
+    ([z, viewSheet]) => {
+      const view = document.querySelector(viewSheet) as SVGSVGElement | null
+      if (!view) throw new Error(`the chart is not open: no view sheet (${viewSheet}) on the glass`)
+      const chart = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
+      if (!(chart.width > 0)) throw new Error('the chart has no width')
+      const unitsPerPx = view.viewBox.baseVal.width / chart.width
+      let inZone = 0
+      for (const g of document.querySelectorAll('[data-testid="map-merchant"]')) {
+        const r = g.getBoundingClientRect()
+        const cx = r.left + r.width / 2
+        const cy = r.top + r.height / 2
+        if (cx >= chart.left + z.left && cx <= chart.right - z.right && cy >= chart.top + z.top && cy <= chart.bottom - z.bottom) inZone++
+      }
+      return { inZone, unitsPerPx }
+    },
+    [zone, VIEW_SHEET] as const,
+  )
 }
 
 /**
@@ -72,6 +99,8 @@ export async function pullBackUntilMerchants(
     waitMs?: number
   } = {},
 ): Promise<number> {
+  // The precondition's own precondition: the chart is open before anything on it is counted.
+  await chartOpen(page)
   for (let presses = 0; ; presses++) {
     const enough = await expect
       .poll(async () => (await merchantsInZone(page, zone)).inZone, { timeout: waitMs })

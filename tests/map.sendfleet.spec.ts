@@ -214,7 +214,8 @@ test.describe('the whole send, driven on a phone', () => {
     await ready(page)
     await page.waitForSelector('[data-testid="map-ports"] > g', { timeout: 300_000 })
     // The chart is ONE picture on three sheets since 2026-09-27 (the map-lag fix, ChartCanvas.tsx):
-    // the labelled element is their wrapper, and the view's viewBox is on its first `<svg>`.
+    // the labelled element is their wrapper, and the view's viewBox is on its `map-view` svg (the first
+    // svg is the sea's, a picture of the glass on a unit square since the no-blink fix).
     const chart = page.locator('[aria-label^="Chart of the world"]')
     await expect(chart.getByTestId('map-coastline')).toHaveCount(1)
 
