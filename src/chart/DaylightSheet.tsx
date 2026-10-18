@@ -12,9 +12,10 @@ import { subsolarPoint } from './sun'
 //
 // ── §7B ────────────────────────────────────────────────────────────────────────────────────────
 // WHAT IT IS   one concept: WHERE THE SUN IS UP ON THE GLASS — the raster as a CSS `mask-image`
-//              on an HTML sheet, tiled once per turn of the world, slid to the Sun's longitude on
-//              every animation frame (owner, 2026-10-15: "right now the light zone moves rigid.
-//              make it soft" — and kept soft at the owner's insistence when it was reverted).
+//              on an HTML sheet, tiled once per turn of the world, slid to the Sun's longitude
+//              (owner, 2026-10-15: "right now the light zone moves rigid. make it soft" — and kept
+//              soft at the owner's insistence when it was reverted) in steps too small to see
+//              (THE GLIDE'S STEP, below).
 // WHERE        src/chart, beside the sun it reads (./sun.ts holds every formula; this holds none).
 // SECOND CALLER  the sea and the coast; both pass the chart-unit ORIGIN of the sheet they cover
 //              and the chart units per CSS pixel, and nothing else.
@@ -66,6 +67,28 @@ function sunLonNow(): number {
   return subsolarPoint(gameSunInstantMs(serverNow())).lon
 }
 
+// ── THE GLIDE'S STEP (2026-10-19, docs/dev-log/2026-10-19-daylight-raster.md) ─────────────────
+// Every NEW `mask-position` repaints the mask: both sheets' masks, 2884×1288 device px each on the
+// owner's DPR-2 glass, re-rasterised by Chrome — ~4,670 tile rasters per mask in one probe run,
+// four times the coast's. Written every animation frame, that was every frame, at rest as in a pan.
+//
+// So the glide moves the mask only when the Sun has gone far enough for the picture to show it:
+// GLIDE_STEP_DEG of longitude, or one device pixel where that is less than a pixel. The step is
+// read off the raster, not guessed: the steepest the daylight ever falls is between sunrise
+// (−0.833°) and the end of civil twilight (−6°, daylight 0.62) — 0.38 over 5.17° of elevation,
+// 18.8/255 per degree — and a degree of longitude moves the elevation by at most a degree. A mask
+// that lags the Sun by 0.1° is therefore at most 1.9/255 off anywhere on the glass, even where the
+// day and night pictures differ by the full 255; measured on the opening view against the build
+// before it at the worst lag, 3/255 at most. The Sun travels 0.5° a real second (a game day is 12 minutes),
+// so the mask moves ~5 times a second instead of 60–144. A pan or a zoom (a new FRAME) is always
+// placed at once, exactly, before the browser paints it.
+const GLIDE_STEP_DEG = 0.1
+
+/** The Sun's travel from `from` to `to` in degrees of longitude, the short way round. */
+function lonTravel(from: number, to: number): number {
+  return Math.abs((((to - from) % 360) + 540) % 360 - 180)
+}
+
 export function DaylightSheet({
   rasterUrl,
   x,
@@ -88,21 +111,36 @@ export function DaylightSheet({
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const frame = useRef<SheetFrame>({ x, y, unitsPerPx })
+  // The Sun's longitude the mask was last placed for (THE GLIDE'S STEP).
+  const placedLon = useRef<number | null>(null)
 
   // A NEW FRAME (a pan, a zoom) is placed before the browser paints it, so the mask never lags the
   // picture by a frame.
   useLayoutEffect(() => {
     frame.current = { x, y, unitsPerPx }
     const el = ref.current
-    if (el && unitsPerPx > 0) place(el, maskPosition(frame.current, sunLonNow()))
+    if (el && unitsPerPx > 0) {
+      const lon = sunLonNow()
+      place(el, maskPosition(frame.current, lon))
+      placedLon.current = lon
+    }
   }, [x, y, unitsPerPx])
 
-  // THE SUN'S GLIDE — one style write per animation frame, no React render.
+  // THE SUN'S GLIDE — read every animation frame, written only once the Sun has gone a step (above).
+  // No React render.
   useEffect(() => {
     let id = 0
     const step = () => {
       const el = ref.current
-      if (el && frame.current.unitsPerPx > 0) place(el, maskPosition(frame.current, sunLonNow()))
+      const f = frame.current
+      if (el && f.unitsPerPx > 0) {
+        const lon = sunLonNow()
+        const devicePxDeg = f.unitsPerPx / (window.devicePixelRatio > 0 ? window.devicePixelRatio : 1)
+        if (placedLon.current === null || lonTravel(placedLon.current, lon) >= Math.max(GLIDE_STEP_DEG, devicePxDeg)) {
+          place(el, maskPosition(f, lon))
+          placedLon.current = lon
+        }
+      }
       id = requestAnimationFrame(step)
     }
     id = requestAnimationFrame(step)
