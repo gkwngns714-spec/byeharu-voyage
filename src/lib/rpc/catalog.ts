@@ -495,6 +495,16 @@ export const RPCS = {
   // 0177 — THE BOOKS: the ledger by game day and kind, each kind under its one word, each day's net
   // (docs/COMMAND_DESK.md §3.8). The window in game days, 1..30.
   worldBooks: { schema: 'world', fn: 'books', args: [{ name: 'p_days', type: 'int' }] },
+  // 0185 — WHY THIS PRICE (docs/PRICE_FACTORS.md §5): a good's market price at one city and each term it
+  // is made of, as a multiplier. A READ; asked when the good page's city changes and at the market's edge.
+  worldPriceWhy: {
+    schema: 'world',
+    fn: 'price_why',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_good', type: 'uuid' },
+    ],
+  },
   // 0175 — A PLAN'S LINES AS ONE (docs/COMMAND_DESK.md §7.4): every line parsed by the one grammar,
   // queued by the one enqueuer, all or none. The plan builder's "Queue it once".
   cmdIssueLines: {

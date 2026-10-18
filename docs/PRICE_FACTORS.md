@@ -1,7 +1,7 @@
 # PRICE FACTORS — what else moves a price, and where each factor lives in the one price
 
-**Status: DESIGN, 2026-10-18.** Nothing here is built except slice P1 (§6), which follows this doc as
-its own PR. Every DEFAULT is listed in the table below for the owner to confirm.
+**Status: DESIGN, 2026-10-18; slice P1 BUILT in migration 0185** (faith tastes, `world.price_why`, the good
+page's "Why this price"; not yet on prod). Every DEFAULT is listed in the table below for the owner to confirm.
 
 **The owner, 2026-10-18, verbatim:**
 - *"is there a way for the prices move on many different factors? like relationship with other countries,
@@ -371,7 +371,7 @@ product of the lines is the middle, so the page never shows a number the server 
 
 | slice | what | value | cost | depends on |
 |---|---|---|---|---|
-| **P1** | **Faith tastes** (§3.1) + **"Why this price"** (§5): data files, three tables, `world.demand_for` re-cut, re-derive of `port_goods.demand`, `world.price_why`, the good page's lines | the owner's "religion"; every later factor shows up through the same reader | low: no pricing function changes signature; the quote path reads the same column | — |
+| **P1 · 0185** | **Faith tastes** (§3.1) + **"Why this price"** (§5): data files, three tables, `world.demand_for` re-cut, re-derive of `port_goods.demand`, `world.price_why`, the good page's lines | the owner's "religion"; every later factor shows up through the same reader | low: no pricing function changes signature; the quote path reads the same column | — |
 | **P2** | **Volume line** (§3.4's visible half): "312 t sold here in a day by 9 houses" in `price_why` | the owner's "merchants", seen | low: one aggregate over today's flows for one (port, good) | P1 |
 | **P3** | **Investor shave** (§3.3) | rewards giving, per company | low: one precomputed rank table, one hunk in `spread_effective` | I1–I6 live |
 | **P4** | **Tariffs by relation** (§3.2) | the owner's "relationship with other countries" | medium: a relation table, one hunk in `world.tax_rate` | the 10 great powers |

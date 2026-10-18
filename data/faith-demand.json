@@ -1,0 +1,414 @@
+{
+  "$doc": "WHAT A FAITH WANTS - per GOOD, the faith half of a city's taste (docs/PRICE_FACTORS.md §3.1, slice P1).",
+  "note": "Each row: a faith, a good, what its cities pay as a multiple (0.60 - 1.35), and why. Absent means 1.00. Applied as 1 + (multiplier - 1) x faith_demand_amplitude, multiplied into port_goods.demand by world.demand_for beside 0066's region x category appetite. Per good, not per category, because coffee and wine are both Drink and Islam loved one and forbade the other. Goods a culture refuses outright stay in goods.cultureMask (0080); this file only prices what is traded.",
+  "demand": [
+    {
+      "faith": "christian",
+      "good": "wax",
+      "multiplier": 1.35,
+      "why": "altar candles had to be beeswax; tallow was not lit before the sacrament"
+    },
+    {
+      "faith": "christian",
+      "good": "frankincense",
+      "multiplier": 1.25,
+      "why": "the censer swung at every High Mass and every funeral"
+    },
+    {
+      "faith": "christian",
+      "good": "myrrh",
+      "multiplier": 1.15,
+      "why": "blended into church incense and the chrism"
+    },
+    {
+      "faith": "christian",
+      "good": "stockfish",
+      "multiplier": 1.25,
+      "why": "some 150 fast days a year without meat put salt fish on every Christian table"
+    },
+    {
+      "faith": "christian",
+      "good": "salt-cod",
+      "multiplier": 1.25,
+      "why": "some 150 fast days a year without meat put salt fish on every Christian table"
+    },
+    {
+      "faith": "christian",
+      "good": "bacalhau",
+      "multiplier": 1.25,
+      "why": "some 150 fast days a year without meat put salt fish on every Christian table"
+    },
+    {
+      "faith": "christian",
+      "good": "herring",
+      "multiplier": 1.25,
+      "why": "some 150 fast days a year without meat put salt fish on every Christian table"
+    },
+    {
+      "faith": "christian",
+      "good": "dried-fish",
+      "multiplier": 1.25,
+      "why": "some 150 fast days a year without meat put salt fish on every Christian table"
+    },
+    {
+      "faith": "christian",
+      "good": "wine",
+      "multiplier": 1.15,
+      "why": "the Mass needs wine, and every parish bought it"
+    },
+    {
+      "faith": "islamic",
+      "good": "coffee",
+      "multiplier": 1.35,
+      "why": "the drink of the Sufi orders and of the coffee houses of Mecca, Cairo and Istanbul from the 1500s"
+    },
+    {
+      "faith": "islamic",
+      "good": "frankincense",
+      "multiplier": 1.3,
+      "why": "bakhoor and oud perfumed the mosque, the house and the guest"
+    },
+    {
+      "faith": "islamic",
+      "good": "aloeswood",
+      "multiplier": 1.3,
+      "why": "bakhoor and oud perfumed the mosque, the house and the guest"
+    },
+    {
+      "faith": "islamic",
+      "good": "attar-of-roses",
+      "multiplier": 1.25,
+      "why": "the Prophet's love of scent made rose oil and rosewater a pious luxury"
+    },
+    {
+      "faith": "islamic",
+      "good": "rosewater",
+      "multiplier": 1.25,
+      "why": "the Prophet's love of scent made rose oil and rosewater a pious luxury"
+    },
+    {
+      "faith": "islamic",
+      "good": "ambergris",
+      "multiplier": 1.2,
+      "why": "burned and worn as a perfume from Baghdad to Malacca"
+    },
+    {
+      "faith": "islamic",
+      "good": "dates",
+      "multiplier": 1.2,
+      "why": "the fast of Ramadan is broken with a date"
+    },
+    {
+      "faith": "islamic",
+      "good": "quran-manuscripts",
+      "multiplier": 1.3,
+      "why": "every mosque and madrasa wanted a fair copy"
+    },
+    {
+      "faith": "islamic",
+      "good": "carpets",
+      "multiplier": 1.15,
+      "why": "the prayer rug and the mosque floor"
+    },
+    {
+      "faith": "islamic",
+      "good": "persian-carpet",
+      "multiplier": 1.15,
+      "why": "the prayer rug and the mosque floor"
+    },
+    {
+      "faith": "islamic",
+      "good": "port-wine",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "sherry",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "madeira-wine",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "canary-sack",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "malmsey",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "rhenish-wine",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "claret",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "burgundy",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "chianti",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "retsina",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "commandaria",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "tokay",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "mission-wine",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "chilean-wine",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "palm-wine",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "coconut-wine",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "cider",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "perry",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "mead",
+      "multiplier": 0.6,
+      "why": "wine is forbidden; only foreign quarters and non-Muslim subjects buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "english-ale",
+      "multiplier": 0.6,
+      "why": "intoxicating drink is forbidden; only foreigners and minorities buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "porter-beer",
+      "multiplier": 0.6,
+      "why": "intoxicating drink is forbidden; only foreigners and minorities buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "hamburg-beer",
+      "multiplier": 0.6,
+      "why": "intoxicating drink is forbidden; only foreigners and minorities buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "kvass",
+      "multiplier": 0.6,
+      "why": "intoxicating drink is forbidden; only foreigners and minorities buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "chicha",
+      "multiplier": 0.6,
+      "why": "intoxicating drink is forbidden; only foreigners and minorities buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "pulque",
+      "multiplier": 0.6,
+      "why": "intoxicating drink is forbidden; only foreigners and minorities buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "toddy",
+      "multiplier": 0.6,
+      "why": "intoxicating drink is forbidden; only foreigners and minorities buy it"
+    },
+    {
+      "faith": "islamic",
+      "good": "vodka",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "whisky",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "gin",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "aquavit",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "cognac",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "grappa",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "rakia",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "ouzo",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "arak-levant",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "baijiu",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "soju",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "shochu",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "cachaca",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "coconut-arrack",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "mezcal",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "islamic",
+      "good": "pisco",
+      "multiplier": 0.6,
+      "why": "spirits are forbidden; only foreigners and minorities buy them"
+    },
+    {
+      "faith": "hindu",
+      "good": "camphor",
+      "multiplier": 1.3,
+      "why": "camphor is burned in the aarti before every image"
+    },
+    {
+      "faith": "hindu",
+      "good": "sandalwood",
+      "multiplier": 1.3,
+      "why": "sandal paste marks the brow and anoints the image in puja"
+    },
+    {
+      "faith": "hindu",
+      "good": "ghee",
+      "multiplier": 1.2,
+      "why": "ghee feeds the temple lamps and the fire offering"
+    },
+    {
+      "faith": "buddhist",
+      "good": "aloeswood",
+      "multiplier": 1.3,
+      "why": "the temple's incense, burned before every altar from Kyoto to Canton"
+    },
+    {
+      "faith": "buddhist",
+      "good": "sandalwood",
+      "multiplier": 1.3,
+      "why": "the temple's incense, burned before every altar from Kyoto to Canton"
+    },
+    {
+      "faith": "buddhist",
+      "good": "benzoin",
+      "multiplier": 1.2,
+      "why": "an incense resin of the temple censers"
+    },
+    {
+      "faith": "buddhist",
+      "good": "sutra-scrolls",
+      "multiplier": 1.25,
+      "why": "monasteries copied and bought the sutras as acts of merit"
+    }
+  ]
+}

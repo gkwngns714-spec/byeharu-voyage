@@ -1,0 +1,30 @@
+{
+  "$doc": "WHAT A CITY BELIEVES - the faith half of a city's taste (docs/PRICE_FACTORS.md §3.1, slice P1).",
+  "note": "The owner, 2026-10-18: 'is there a way for the prices move on many different factors? like relationship with other countries, religion, merchants'. A port's faith comes from the culture it already carries (ports.culture, scripts/lib/world-derive.mjs), with the named exceptions below. A culture or port not listed has no faith row: its goods carry no faith taste. Each line is defended, because a seeded faith can invent a belief but it cannot mean one.",
+  "faiths": [
+    { "code": "christian", "name": "Christian" },
+    { "code": "islamic", "name": "Islamic" },
+    { "code": "hindu", "name": "Hindu" },
+    { "code": "buddhist", "name": "Buddhist" }
+  ],
+  "cultures": [
+    { "culture": "latin", "faith": "christian", "why": "Catholic Iberia, Italy, France and their colonies" },
+    { "culture": "anglo", "faith": "christian", "why": "England and its colonies, Protestant after 1534" },
+    { "culture": "germanic", "faith": "christian", "why": "the Hanse and the Low Countries, Lutheran and Reformed" },
+    { "culture": "nordic", "faith": "christian", "why": "Lutheran Scandinavia from the 1530s" },
+    { "culture": "islamic", "faith": "islamic", "why": "the Ottoman, Persian, Arab and Maghrebi lands" },
+    { "culture": "swahili", "faith": "islamic", "why": "the Swahili coast's towns were Muslim from the twelfth century" },
+    { "culture": "malay", "faith": "islamic", "why": "Malacca, Aceh, Banten, Demak and Ternate were sultanates by 1550" },
+    { "culture": "indic", "faith": "hindu", "why": "the coasts of India, Hindu in their people under Hindu and Muslim rulers alike" },
+    { "culture": "sinic", "faith": "buddhist", "why": "Ming China's temples, beside Confucian rites" },
+    { "culture": "korean", "faith": "buddhist", "why": "Joseon kept its Buddhist temples under a Confucian court" },
+    { "culture": "japanese", "faith": "buddhist", "why": "Japan's temples, beside Shinto shrines" }
+  ],
+  "ports": [
+    { "port": "AYU", "faith": "buddhist", "why": "Ayutthaya, Theravada Siam" },
+    { "port": "HAN", "faith": "buddhist", "why": "Hanoi, Dai Viet's Buddhist and Confucian capital" },
+    { "port": "HOI", "faith": "buddhist", "why": "Hoi An, a Vietnamese and Chinese port of temples and clan halls" },
+    { "port": "MNL", "faith": "christian", "why": "Manila, Spanish and Catholic from 1571" },
+    { "port": "CEB", "faith": "christian", "why": "Cebu, where Legazpi founded the first Spanish town in 1565" }
+  ]
+}
