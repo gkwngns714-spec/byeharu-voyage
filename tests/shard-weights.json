@@ -23,6 +23,7 @@
     "map.geo.spec.ts": 1,
     "map.hulls.spec.ts": 580,
     "map.labels.spec.ts": 1,
+    "map.daylight.raster.spec.ts": 18,
     "map.lag.spec.ts": 26,
     "map.landfall.spec.ts": 23,
     "map.marks.spec.ts": 41,
