@@ -1,5 +1,5 @@
 {
-  "source": "per-test durations from the list reporter, CI run 38345661180 (2026-10-13, ubuntu-latest, 2 workers per shard); refresh when a spec grows; osn-npc-traders merge 2026-10-13: map.hulls (9.6m measured on run 38312840082), map.night / map.merchants (npc-on fixture, ~9 min cold per worker) and port.merchants / seaWindow ESTIMATED, the db.chain rebuild test re-weighted for its prefix chain — refresh from the first sharded run",
+  "source": "per-test durations from the list reporter, CI run 38345661180 (2026-10-13, ubuntu-latest, 2 workers per shard); refresh when a spec grows; osn-npc-traders merge 2026-10-13: map.hulls (9.6m measured on run 38312840082), map.night / map.merchants (npc-on fixture, ~9 min cold per worker) and port.merchants / seaWindow ESTIMATED, the db.chain rebuild test re-weighted for its prefix chain — refresh from the first sharded run; 2026-10-18: the growth test re-weighted to its snapshot path (4.0 s warm on run 39112184706, 8 s with one new migration locally; 68 min cold on run 39107806852)",
   "splitFiles": [
     "db.chain.spec.ts"
   ],
@@ -65,6 +65,6 @@
     "db.chain.spec.ts › progress never goes backwards and never claims done before it is": 1,
     "db.chain.spec.ts › the chain the client loads is the chain on disk, in apply order, LF-only": 1,
     "db.chain.spec.ts › the fingerprint moves when a migration changes, and only then": 1,
-    "db.chain.spec.ts › the world grows under a live house: player rows survive the growth to the ducat": 342
+    "db.chain.spec.ts › the world grows under a live house: player rows survive the growth to the ducat": 10
   }
 }
