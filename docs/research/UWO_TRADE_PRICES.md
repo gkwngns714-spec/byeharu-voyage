@@ -5,7 +5,11 @@ higher for cash. for example korea - london is one of the longest trip. you boug
 like 50k each. Or something like that. Do a thorough research on 대항해시대 오리진 again, and check for trading
 prices and apply."*
 
-Covers Uncharted Waters Origin (대항해시대 오리진, 2020–), Uncharted Waters Online (대항해시대 온라인 / 大航海時代
+> **Audited 2026-10-18** against every cited URL — see `docs/research/AUDIT_2026-10-18.md`. Corrections are
+> marked `[audit 2026-10-18]` inline. The curve's SOURCED ratios held; four quotes/numbers did not (noted below).
+
+Covers Uncharted Waters Origin (대항해시대 오리진, KR release 2022-08-23, global 2023-03-07 — `[audit 2026-10-18]` this
+line said "2020–", which is wrong), Uncharted Waters Online (대항해시대 온라인 / 大航海時代
 Online, 2005–), and the offline games Origin descends from (UW2, UW4). Every statement is marked **SOURCED** (with
 its URL) or **INFERENCE**. The section at the end says what migration 0173 does with it.
 
@@ -30,11 +34,13 @@ The shape of the curve is therefore inferred from the prices players quote.
   before"; "These trade goods may result in losses when sold at short distances"; the premium limit was raised
   from 40 % to 70 % per category; the maximum purchase discount was set to 90 %.
   https://uwo.floor.line.games/us/bbs/guide/guide_us/1/detail/1736232803694014470
-- **SOURCED.** April 2025: national capitals were split into their own cultural zones, and about 80 cities
-  were re-zoned. A seasonal 5 % preferential rate was added for spices, gems and firearms.
+- **SOURCED.** April 2025: national capitals and territories were split into their own cultural zones, and the
+  notice's table lists about 71 re-zoned cities (`[audit 2026-10-18]` this line said "about 80"; the table has ~71). A seasonal 5 % preferential rate was added for spices, gems and firearms.
   https://uwo.floor.line.games/us/bbsCmn/detail/1743482581594026184
-- **SOURCED.** October 2023: some goods carry a regional preference, for example "아줄레주 : 일본, +60%",
-  "네롤리 : 일본, +40%", "니시진오리 : 이베리아, +40%". Goodwill is "교역품 가격 및 거리에 대체로 비례합니다".
+- **SOURCED.** October 2023: some goods carry a regional preference, for example "아줄레주 : 일본, +50%"
+  (`[audit 2026-10-18]` the notice first said +60 % and was corrected to 50 % on 10/25 18:23; this doc had the
+  uncorrected figure), "네롤리 : 일본, +40%", "니시진오리 : 이베리아, +40%". Trade-goods 우호도 (goodwill) points are
+  "교역품 가격 및 거리에 대체로 비례합니다".
   https://uwo.floor.line.games/kr/bbsCmn/detail/1698050278274002785
 - **SOURCED.** Namu: "거리에 따른 가치 상승 보정이 굉장히 강력하게 걸려 있어 대부분의 경우 멀리 나가서 팔수록 그만큼의
   값을 하게 되며". Special ports pay more for particular goods (England for tea). Islamic ports fix alcohol and
@@ -55,7 +61,9 @@ The shape of the curve is therefore inferred from the prices players quote.
 - **SOURCED.** DC gallery survey (2022-08): a map price is the unmodified base. Base prices at 100 %: pepper
   8,971, western cannon 1,748, ambergris 1,566, saffron 1,462, perfume 1,418.
   https://gall.dcinside.com/mgallery/board/view/?id=bigtimeofnavigation&no=43357
-- **SOURCED.** A Japanese guide gives the rule as "端の地域で買って逆の端の地域で売るのが最大利益を得る基本".
+- **SOURCED.** A Japanese guide gives the rule as "その地域の一番遠くにある港で交易品を売却することが基本" — sell at the
+  farthest port of the region. `[audit 2026-10-18]` this line previously carried a quotation ("端の地域で買って逆の
+  端の地域で売る…") that is NOT on the page; replaced with the page's own sentence.
   https://oyururi.info/dak-koueki-route/
 - **SOURCED.** Steam forum: "longer routes are usually better".
   https://steamcommunity.com/app/1574360/discussions/0/3819655463297857506
@@ -63,11 +71,14 @@ The shape of the curve is therefore inferred from the prices players quote.
 ### Online (UWO / DOL)
 
 - **SOURCED.** A 名産 (famous product) bonus applies only when the good is sold outside its own and the adjacent
-  cultural circles. "Sell too close to home, and ye'll get naught but the common rate."
+  cultural circles (17173: "相邻文化圈，互不认定名品"; UWO-HQ: "at least two cultural regions away"). "Sell too close to
+  home, and ye'll get naught but the common rate."
   - https://news.17173.com/z/dol/content/2006-03-24/20060324163606659.shtml
   - https://uwo-hq.blogspot.com/2019/01/rare-trade-goods.html
 - **SOURCED.** Players measured 명산 distance scores, for example Netherlands goods at Calais 1, at Arguin 5 and in
-  the Caribbean 8. "명산품의 이익과 명성치 획득은 거리에 비례합니다."
+  the Caribbean 8 (Inven 498/13516). "명산품의 이익과 명성치의 차이는 거리에 비례합니다" (Inven 486/440, 2009).
+  `[audit 2026-10-18]` the quotation was previously mis-worded ("…명성치 획득은…") and attributed to both posts; it is
+  on 486/440 only. The same 13516 post also notes one good (깃털) whose price no longer rises with distance.
   - https://www.inven.co.kr/board/dho/498/13516
   - https://www.inven.co.kr/board/dho/486/440
 - **SOURCED.** The only published distance formula is for experience points, not price:
@@ -79,8 +90,11 @@ The shape of the curve is therefore inferred from the prices players quote.
     the nearer market pays. https://forum.gamer.com.tw/C.php?bsn=7200&snA=46399
   - Nutmeg and mace bought at ~1,000 in Southeast Asia sell for ~16,000 in Europe, **16×**.
     https://www.inven.co.kr/board/dho/2597/147
-  - Silver bought at 1,000 in the Caribbean sells for 5,500 in Europe, **5.5×**. Tea sells for ~5,600 in Europe
-    and ~8,600 in Britain, so its special port pays **1.5×**.
+  - Silver: namu gives a 100 % buy price of 2,510 at its European and African sources and a sale price of
+    "5,500D대", calling the margin LOW (**2.2×**); the ~1,000 buy price is at Mérida / Portobelo, and the page does
+    not name where that silver is sold. `[audit 2026-10-18]` this line previously read "bought at 1,000 in the
+    Caribbean sells for 5,500 in Europe, 5.5×" — the 5.5× was a derivation the page does not make. Tea sells for
+    ~5,600 in Europe and ~8,600 in Britain (later ~10,800), so its special port pays **1.5×**.
     https://namu.wiki/w/%EB%8C%80%ED%95%AD%ED%95%B4%EC%8B%9C%EB%8C%80%20%EC%98%A8%EB%9D%BC%EC%9D%B8/%EA%B5%90%EC%97%AD%ED%92%88
   - Caribbean tobacco sold in Lisbon: 5,300, with 4,790 profit, about **10×**.
     https://www.inven.co.kr/board/dho/498/19878
@@ -107,8 +121,10 @@ The shape of the curve is therefore inferred from the prices players quote.
     https://guide.floor.line.games/UWO/en_US/detail/1167031329446900354
   - The highest rate observed was 319 %. https://www.inven.co.kr/webzine/news/?news=281107&site=uwo
 - **SOURCED (Online).**
-  - The usual range is 60–130 %, with ~50 % in a crash.
-  - Crashes recover after about 4 changes, roughly 4 hours. https://wikiwiki.jp/gvo/TradeItem
+  - UNSUPPORTED (`[audit 2026-10-18]`): "the usual range is 60–130 %, ~50 % in a crash" — the cited wikiwiki page
+    gives no normal band and no crash percentage. namu (교역품) says a 대폭락/대폭등 halves / doubles the category.
+  - Crashes recover after four market changes, about 4 hours at most ("1回の変動は最長1時間程度なので…最長4時間程度").
+    https://wikiwiki.jp/gvo/TradeItem
 - **SOURCED (UW2).** "물가는 최대 150%까지만 오르고, 최소 50%까지만 떨어진다."
 - **Ours:** `drift` (an OU walk clamped at ±`drift_clamp`), `season_mod` and `demand` play this part. 0173 does not
   touch them.
@@ -118,8 +134,10 @@ The shape of the curve is therefore inferred from the prices players quote.
 - **SOURCED.**
   - Origin: the price falls as sales rise; the volume needed to move the rate was retuned in 2024-12, with no
     numbers published.
-  - UWO: a sale of one category worth ≥ 100,000 profit can trigger a 폭락 that halves prices, so players split
-    their sales into 20–50 units (namu 교역품; Inven 2597/146).
+  - UWO: a sale including one good (namu: "한 가지 교역품"; Inven 2597/146: "특정 교역품 계열") worth ≥ 100,000 profit
+    can trigger a 폭락 that halves the category's prices. `[audit 2026-10-18]` "players split their sales into
+    20–50 units" is UNSUPPORTED — neither cited page says it; Inven describes a deliberate 방어폭락 with another good
+    instead.
   - UW2: a 1,000-coin purchase moves the price 1 %, at most 13 % per transaction.
 - **Ours:** the stock term √(stock_target / stock), walked 10 tuns at a time in `world.quote_priced`. It is
   untouched, so a big sale still walks its own price down.
@@ -127,7 +145,11 @@ The shape of the curve is therefore inferred from the prices players quote.
 ## 4. Tax, investment, development
 
 - **SOURCED.**
-  - Origin: the base tariff is "20~30%", adjustable by the mayor −5…+15 %; an allied port charges none.
+  - Origin: the base tariff is "기본 관세율이 20~30%로 매우 높다", adjustable per nation by (−5 % ~ 15 %) — a FAN figure
+    from namu (게임 관련 정보). The official "How to Invest" page says only that the mayor sets a tax on market goods
+    and shipyard builds, once per day per city/nation. `[audit 2026-10-18]` this line cited the official page for
+    the numbers, which are not on it; "an allied port charges none" is UNSUPPORTED.
+    https://namu.wiki/w/%EB%8C%80%ED%95%AD%ED%95%B4%EC%8B%9C%EB%8C%80%20%EC%98%A4%EB%A6%AC%EC%A7%84/%EA%B2%8C%EC%9E%84%20%EA%B4%80%EB%A0%A8%20%EC%A0%95%EB%B3%B4 ·
     https://guide.floor.line.games/UWO/en_US/detail/1167031186467500250
   - UWO: tariffs of 6–14 % by nation rank, and investor ranks get a 10/8/6/4/2 % discount (Inven 2597/147).
   - UW4: commerce investment raises the goods' grade, and so their price.
@@ -137,8 +159,9 @@ The shape of the curve is therefore inferred from the prices players quote.
 ## 5. Skills
 
 - **SOURCED.**
-  - Origin: Purchase / Sales Expert gives 2.5 % → 15 % (cap 20 %). Negotiation success 3 → 15 % (cap 35 %). The
-    sale guild bonus is capped at ~54 %.
+  - Origin: Purchase / Sales Expert gives 2.5 % → 15 % (cap 20 %). Negotiation success 3 → 15 % (cap 35 %) — both
+    official. The trading post's 판매조합 (sales cooperative) bonus is capped at 54 % ("최대 54퍼 즉 1.54배") — a fan
+    reading of the in-game text (`[audit 2026-10-18]` previously called a "guild bonus").
     - https://uwo.floor.line.games/us/bbsCmn/detail/1726144278318014479
     - https://www.inven.co.kr/board/uwo/5714/889
   - UWO: haggle up to 20 % (Inven 486/440).
@@ -154,10 +177,11 @@ Sell ÷ buy ratios that players quote, by the length of the haul (**SOURCED** ab
 | one ocean | gems and silver, Africa / Caribbean → Europe | 3–5.5× |
 | one ocean, cheap specialty | Caribbean tobacco → Lisbon | ~10× |
 | the far side | nutmeg, Southeast Asia → Europe | ~16× |
-| the far side, top goods (Origin) | East Asian perfume → Europe / Caribbean | ~40,000 net a unit on a ~1–1.5k-class base (≈ 25–40×) |
+| the far side, top goods (Origin) | East Asian perfume → Europe / Caribbean | ~40,000 net a unit (SOURCED, Inven 2022-12). The "≈ 25–40×" is an **INFERENCE** (`[audit 2026-10-18]`): the ~1–1.5k base is the DC-gallery price of European 향수, not of 진달래/치자나무/해당화/금목서, whose buy prices no source gives |
 
 **INFERENCE.** The shape is convex. Near home the multiplier barely leaves 1, over one ocean it grows to a few
-times, and at the far side of the world it is tens of times. Origin even lets a short sale of a high-value good
+times, and at the far side of the world it is tens of times. (`[audit 2026-10-18]` the only far-side figure that is
+a sourced RATIO is UWO Online's nutmeg ~16×, 2011; Origin's far side is sourced only as net profit per unit.) Origin even lets a short sale of a high-value good
 lose money, which a flat or linear curve could not do.
 
 **The owner's number sets the scale.** Korea → London should take a ~100 jar to ~50,000, so the farthest haul

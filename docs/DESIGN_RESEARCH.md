@@ -28,6 +28,11 @@ direct fetch from this environment (402 / 403). Anything sourced from them is **
   age gate and returned only the gate to me.
 - Advertised world scale: **8 national powers, ~200 ports, ~60 villages, 300+ battlegrounds, 20+ weather types.** **[S]**
   (Publisher marketing copy, via search extract. Useful as a *scale target*, not as verified content.)
+  `[audit 2026-10-18]` The eight nations, verified: **Portugal, España, England, the Netherlands and the Ottoman
+  Empire** are chosen at the start through the starting admiral (invenglobal launch article); **Joseon, Ming and
+  Japan** are reachable only by 이민 (immigration) — namu 게임 관련 정보: "플레이어는 이민을 통해 동아시아 3개국으로
+  국적을 변경할 수 있는데, 동아시아 국가는 시작 시 선택할 수 없고 이민으로만 플레이할 수 있다"; the city list gives each
+  of the eight a 본거지 (London, Amsterdam, Lisbon, Seville, Istanbul, Beijing, Hanyang, Edo). Not seven.
 
 ### 1.2 The Company = the player's account and org unit **[P]**
 
