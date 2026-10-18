@@ -74,12 +74,12 @@
 -- ROLLBACK: the move is data — every company's NATION_CHANGED {reason: 'great_powers'} event records
 -- from / to; a forward slice restores the bodies (each hunk's OLD text is here verbatim) and the three
 -- foreign keys to public.nations. The flags and the books are the race's state from then on.
--- SUPERSEDES, by hunks sliced from the LIVE bodies (prod head 0181, LF-normalised, each asserted to
+-- SUPERSEDES, by hunks sliced from the LIVE bodies (read on prod at head 0181, LF-normalised, each asserted to
 -- occur exactly once): world.snapshot (0135/0143), world.inn_chance (0166), public.yard_wrong_country
 -- (0143), public.skill_taught_at (0151), world.nation_standings (0148), world.allegiance (0143),
 -- cmd.found_house (0143), cmd.change_country (0143), public.nation_change_next_at (0143).
--- VERSION: 0185 (provisional; renumbered to head + 1 at deploy). Applies on prod head 0181; 0182–0184
--- in flight touch none of these bodies or tables.
+-- VERSION: 0185 = prod head + 1 (prod 0184, 2026-10-18 ~23:50 UTC; renumber if another lands first).
+-- 0182–0184 touch none of these bodies or tables.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$

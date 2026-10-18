@@ -72,50 +72,42 @@ local only, not committed): 1,000 rows, 45,599,491 points, holders and mayors.
 - The cities held afterwards: OTT 32 · JPN 29 · ESP 28 · PRT 24 · MNG 22 · MUG 18 · NLD 17 · ENG 16 ·
   JOS 13 · FRA 9 · No country 30.
 
-## Checks (all run once, this session, on this branch)
+## Checks (run once each on the branch rebased onto main `8a0212b`, chain head 0184; prod is at 0184)
 
-**Migration on the cached head (173 files, prefix cache p0173), dark world:**
-- Applied in 4 s; the self-assert passed.
-- Re-cut: 9 bodies reverse to their pre-images, with ACL and attributes unmoved.
-- Conserved: W unchanged (26,243,115 d.); 261 companies moved, with purses, ships, fleets, routes
-  and homes unmoved.
-- Doors:
-  - founding under VEN is refused `E_MINOR_POWER`, and its fixes name the 10;
-  - founding under JOS starts the house at BUS;
-  - a change to VEN is refused `E_MINOR_POWER`;
-  - a world move starts no cooldown.
-- Keys: all three foreign keys refuse a minor.
-- Reads:
-  - the Countries board has 10 rows;
-  - 37 cities serve a ruler;
-  - the snapshot marks 10 of 23 nations great.
-- Regional designs:
-  - 3,605 yard answers, 5,564 academy answers and 3,780 inn answers equal their pre-images wherever
-    a city's countries did not change;
-  - at all 10 minor-ruled yards, the ruler's line builds.
-
-**Migration on the prod-shaped race (above):** passed.
-
-**`npm run build`** (tsc -b + vite + world image + world guard): green.
-- World guard: ok, with **40 home cities** and the positive control seen.
-- Image: `world-75825d0eb92ebdd5-174-f2f720`, 13.89 MB.
-
-**DB proofs, `scripts/db/proofs/*` on that image:** see the result below.
-
-**ESLint** on every touched file: 0.
-
-**Playwright** against `vite preview --port 4350` (a PGlite build with no `.env.local`):
-- `greatPowers.spec.ts`: 4 / 4.
-- `map.flag.spec.ts`, `rank.countries.spec.ts`, `flags.spec.ts`, `layout.spec.ts`,
-  `wide.layout.spec.ts`: 39 / 39.
-- `rpc.surface.spec.ts -g "found_house|nation|allegiance|snapshot"`: 5 / 5.
-- No skips.
-
-**Screenshots** at DPR 2, 1440×731 and 390 wide, in `docs/dev-log/2026-10-18-seven-powers/`:
-- the picker (the ten);
-- the Codex (Great powers, then Local rulers);
-- Rank → Countries (the ten);
-- the city line `No country · ruled by 🇲🇦 Morocco` (Tangier wide, Safi phone).
+- **The migration on the cached head** (176 files, prefix cache):
+  - It applied in 4 s, and its self-assert passed.
+  - Re-cut: 9 bodies reverse to their pre-images, with ACL and attributes unmoved.
+  - Conserved: W unchanged; 261 companies moved, with purses, ships, fleets, routes and homes
+    unmoved.
+  - Doors: founding under VEN is refused `E_MINOR_POWER` (fixes name 10); founding under JOS starts
+    at BUS; a change to VEN is refused `E_MINOR_POWER`; a world move starts no cooldown.
+  - Keys: all three foreign keys refuse a minor.
+  - Reads: the Countries board has 10 rows; 37 cities serve a ruler; the snapshot marks 10 of 23
+    nations great.
+  - Regional designs: 3,605 yard answers, 5,564 academy answers and 3,780 inn answers equal their
+    pre-images wherever a city's countries did not change. At all 10 minor-ruled yards, the ruler's
+    line builds.
+- **The same migration on the prod-shaped race** (1,000 influence rows, 45,599,491 points):
+  - Σ points were unchanged, and 291 rows were re-keyed.
+  - The REAL `tick_influence`, run afterwards, claimed 74 cities and changed 23 flags, with 0 errors.
+- **`npm run build`** (tsc -b, vite, world image, world guard): green.
+  - World guard: ok, with **10 great powers and 40 home cities**; the positive control saw the
+    dropped great power.
+  - Image: `world-3896bb74b5ca48b1-177-f41cd1`, 13.83 MB. The chain applied in 17.8 s from the
+    prefix cache.
+- **DB proofs, `scripts/db/proofs/*`, on that image:** **12 files, 85 / 85 PASS markers.** The run
+  was a copy of `proof.mjs`'s loop loaded from the image, the same runner the redesign used.
+- **ESLint** on every touched file: 0.
+- **Playwright** against `vite preview --port 4350` (a PGlite build with no `.env.local`), no skips:
+  - `greatPowers.spec.ts`, `map.flag.spec.ts`, `rank.countries.spec.ts`, `flags.spec.ts`:
+    14 / 14;
+  - `layout.spec.ts` and `wide.layout.spec.ts`: 29 / 29;
+  - `rpc.surface.spec.ts -g "found_house|nation|allegiance|snapshot"`: 5 / 5.
+- **Screenshots** at DPR 2, 1440×731 and 390 wide, in `docs/dev-log/2026-10-18-seven-powers/`:
+  - the picker (the ten);
+  - the Codex (Great powers, then Local rulers);
+  - Rank → Countries (the ten);
+  - the city line `No country · ruled by Morocco` with Morocco's flag (Tangier wide, Safi phone).
 
 ## Deploy notes (for the coordinator)
 
