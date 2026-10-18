@@ -206,3 +206,17 @@ The 30-minute run agreed. Counting every lap there, closing ≤ 0 fell from 73.1
   - SCOPED, 20 specs;
   - pglite-gate legs: the rest, ledger, merchants;
   - growth test deferred to main; no from-zero.
+
+## 7. PR #217 CI (runs 39122042382 + 39122042422, about 13 min wall-clock)
+
+| check | result |
+|---|---|
+| select | pass (6 s) — SCOPED |
+| build | pass (1 m 16 s) |
+| disposable-chain | pass (2 m 30 s) — restored the 172-file snapshot, applied 0181 on real Supabase; no from-zero |
+| pglite-gate (merchants) | pass (2 m 37 s) |
+| pglite-gate (the rest) | pass (4 m 41 s) |
+| pglite-gate (ledger) | pass (12 m 45 s) |
+
+**Not merged and not pushed to the database.** Deploy with `~/bin/bv-deploy.sh 217` (prod head must still be 0180), then
+watch `byeharu-voyage:reconcile` and `:arrivals` in `cron.job_run_details`, and the laps closing ≤ 0.
