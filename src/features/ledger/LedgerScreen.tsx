@@ -14,7 +14,7 @@ import { MINUS, formatClock, formatInt } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
-import { headline, payloadLines } from './headline'
+import { headline, payloadFights, payloadLines } from './headline'
 
 // LEDGER — E.6. "The narrative organ of the game. This is where combat lives, as prose."
 //
@@ -125,6 +125,8 @@ function LedgerBody() {
   const shown = face === 'all' ? events : events.filter((e) => FACE_OF[e.kind] === face)
   // A CALLER, not a second author: `portNameOf` is the one reading of "what is this code called".
   const portName = (code: string) => portNameOf(portByCode, code)
+  // 0187: the open report's battle reports, each hung under its day's line in the tray below
+  const fights = open === null ? [] : payloadFights(open.payload)
 
   const show = (event: LedgerEvent) => {
     setOpen(event)
@@ -180,11 +182,25 @@ function LedgerBody() {
           data-testid="ledger-report"
         >
           <div className="space-y-3 pb-2">
-            {payloadLines(open.payload).map((line, i) => (
-              <p key={i} className="text-t-label text-ink-muted">
-                {line}
-              </p>
-            ))}
+            {payloadLines(open.payload).map((line, i) => {
+              // 0187: a day fought in rounds carries its battle report — served words, hung under
+              // the day's own sentence, one round to a line, so the fight reads top to bottom.
+              const fight = fights.find((f) => f.line === i)
+              return (
+                <div key={i}>
+                  <p className="text-t-label text-ink-muted">{line}</p>
+                  {fight && fight.rounds.length > 0 && (
+                    <ol data-testid="battle-report" className="mt-2 space-y-1 border-l border-edge pl-3">
+                      {fight.rounds.map((round, j) => (
+                        <li key={j} className="text-t-caption text-ink-muted">
+                          {round}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </Tray>
       )}
