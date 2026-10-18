@@ -1,6 +1,7 @@
+import { flagSrc } from '../components/ui'
 import { unproject, type LatLon } from '../lib/geo'
 import { GLYPH } from './glyphs'
-import type { LabelTone, PlacedLabel } from './labels'
+import { FLAG_ADVANCE_EM, FLAG_HEIGHT_EM, type LabelTone, type PlacedLabel } from './labels'
 import { nightStyle } from './sun'
 
 // EVERY NAME ON THE CHART, DRAWN IN ONE PLACE.
@@ -22,6 +23,15 @@ import { nightStyle } from './sun'
 // THE SUN (2026-10-14): a name carries `--night` for the point it names, and its ink and halo mix
 // from the night's tokens toward the day's dark mark on the day's water (`.bv-sun-name-*`,
 // src/index.css) — the same one number every mark on this sheet reads.
+//
+// A HARBOUR'S FLAG (2026-10-18, the owner: "beside the name show flag") takes the box the planner
+// kept for the name (labels.ts widened it by FLAG_ADVANCE_EM) at the name's OUTER end: after a name
+// set to the right of its mark, before a name set to the left, before a name set above or below.
+// The name itself never moves off its mark — a tap on the name lands within the mark's reach
+// (glyphs.ts `hitRadius`), as it did before the flag; with the flag always first, a right-hand name
+// slid ~19 px away and taps on it fell into open water (measured: map.goto, map.merchants).
+// The picture is the design system's bundled flag (`flagSrc`), the same file a tray's Flag draws,
+// in the same 3:2 box.
 
 /** Each tone's night class (the token the scheme defines) beside its Sun-mixing rule. */
 const TONE: Record<LabelTone, string> = {
@@ -34,12 +44,13 @@ const TONE: Record<LabelTone, string> = {
 }
 
 function Name({ label, unitsPerPx, sun }: { label: PlacedLabel; unitsPerPx: number; sun: LatLon }) {
-  return (
+  const size = label.sizePx * unitsPerPx
+  const text = (
     <text
-      x={label.x}
+      x={label.flag && label.anchor === 'middle' ? label.box.x + FLAG_ADVANCE_EM * size : label.x}
       y={label.y}
-      fontSize={label.sizePx * unitsPerPx}
-      textAnchor={label.anchor}
+      fontSize={size}
+      textAnchor={label.flag && label.anchor === 'middle' ? 'start' : label.anchor}
       dominantBaseline="middle"
       className={`bv-sun-name-halo stroke-chart-sea font-mono ${TONE[label.tone]}`}
       strokeWidth={GLYPH.labelHaloWidth * unitsPerPx}
@@ -53,6 +64,26 @@ function Name({ label, unitsPerPx, sun }: { label: PlacedLabel; unitsPerPx: numb
     >
       {label.text}
     </text>
+  )
+  if (!label.flag) return text
+  const flagHeight = FLAG_HEIGHT_EM * size
+  // After a right-hand name (anchor start) the flag ends at the box's right edge; otherwise it
+  // starts at the box's left edge.
+  const flagX = label.anchor === 'start' ? label.box.x + label.box.width - flagHeight * 1.5 : label.box.x
+  return (
+    <g data-label-flag={label.flag}>
+      {/* Drawn at a 30×20 box and scaled down to the label's size: the chart's units are tiny
+          (a name is ~0.15 units tall), and Chrome rasterises an <image> of a fraction of a unit
+          to nothing — measured, the picture loaded and laid out at 17×11 px and painted blank. */}
+      <image
+        href={flagSrc(label.flag)}
+        width={30}
+        height={20}
+        transform={`translate(${flagX} ${label.y - flagHeight / 2}) scale(${flagHeight / 20})`}
+        preserveAspectRatio="xMidYMid meet"
+      />
+      {text}
+    </g>
   )
 }
 

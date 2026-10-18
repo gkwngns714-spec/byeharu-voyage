@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Row } from '../../components/ui'
+import { Flag, Row } from '../../components/ui'
 import type { SnapshotNation } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { portNameOf, useWorld } from '../../live/worldStore'
@@ -32,7 +32,7 @@ export function NationsFace({ query }: { query: string }) {
       {rows.map((n, i) => (
         <Row
           key={n.code}
-          mark={<span aria-hidden>{n.flag_char}</span>}
+          mark={<Flag code={n.code} name={n.name} size="title" />}
           label={n.name}
           value={n.capital === null ? 'no capital named' : portNameOf(portByCode, n.capital)}
           tone={n.capital === null ? 'muted' : 'default'}

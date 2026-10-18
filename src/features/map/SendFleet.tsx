@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Button, Hint, Row, SheetSection, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
+import { PortFlag } from '../../live/PortFlag'
 import { formatVoyageDays } from '../../lib/format'
 import { CHART_CHROME, GoToLink } from '../../chart'
 import { CityTabs } from './CityTabs'
@@ -111,9 +112,13 @@ export function SendFleet({
       title={
         <TrayTitle
           name={
-            <GoToLink to={dest.kind === 'port' ? { kind: 'port', code: dest.code } : { kind: 'point', at: dest.at }}>
-              {flow.destName}
-            </GoToLink>
+            // 2026-10-18 (the owner): the flag of the nation that holds the city, beside its name.
+            <span className="inline-flex max-w-full items-center gap-1.5">
+              {dest.kind === 'port' && <PortFlag code={dest.code} size="title" />}
+              <GoToLink to={dest.kind === 'port' ? { kind: 'port', code: dest.code } : { kind: 'point', at: dest.at }}>
+                {flow.destName}
+              </GoToLink>
+            </span>
           }
           line={line}
           testId="map-place-name"

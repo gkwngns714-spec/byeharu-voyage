@@ -121,6 +121,11 @@ export { TradeTray, type TradeAct, type TradeControls, type TradePick, type Trad
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export { Icon, IconDisc, type IconDiscTone } from './Icon'
+// A NATION'S FLAG (2026-10-18) — the bundled picture for a server nation code, one 3:2 box in three
+// sizes. Pure: HullCountry and PortFlag (src/live) decide WHICH nation; the chart's names draw the
+// same file through `flagSrc`. Sources and licences: public/flags/SOURCES.md.
+export { Flag } from './Flag'
+export { flagSrc, FLAG_SIZES, type FlagSize } from './flagSrc'
 export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
 // A mark for a trade good, and the human spelling of its category. Every good in data/goods.json
 // has its OWN drawn glyph — see goodIcons.ts for the table and for why seven was the wrong answer.

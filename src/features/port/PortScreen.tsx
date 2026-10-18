@@ -10,6 +10,7 @@ import {
   Skeleton,
 } from '../../components/ui'
 import { portNameOf, useWorld } from '../../live/worldStore'
+import { PortFlag } from '../../live/PortFlag'
 import { usePortMarket } from '../../live/usePortMarket'
 import type { WorldSnapshot } from '../../lib/rpc'
 import { useCommandDraft } from '../../domain/order'
@@ -185,7 +186,13 @@ function PortBody({ snapshot }: { snapshot: WorldSnapshot }) {
 
   return (
     <Sheet
-      title={port.name}
+      // 2026-10-18 (the owner): the flag of the nation that holds the city, beside its name.
+      title={
+        <span className="inline-flex items-center gap-2">
+          <PortFlag code={port.code} size="title" />
+          {port.name}
+        </span>
+      }
       data-testid="port"
       /* WHO OF YOURS IS HERE — the one thing about the harbour that is about YOU, on the title's
          own line (§6's sketch: `Lisbon                ⛵ Gaivota`). Nothing when none of your

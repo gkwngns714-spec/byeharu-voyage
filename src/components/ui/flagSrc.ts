@@ -1,0 +1,12 @@
+// THE FLAG'S FILE AND SIZES (2026-10-18) — beside Flag.tsx, because a component file may export only
+// components (react-refresh). Read Flag.tsx's header for what a flag is and who draws one; the chart's
+// names (src/chart/LabelsLayer.tsx) draw the same file through `flagSrc`.
+
+/** The three heights, in CSS pixels; the width is always 1.5 × the height (a 3:2 box). */
+export const FLAG_SIZES = { caption: 12, body: 14, title: 18 } as const
+export type FlagSize = keyof typeof FLAG_SIZES
+
+/** The bundled picture for a server nation code (`PRT` → `/byeharu-voyage/flags/PRT.svg`). */
+export function flagSrc(code: string): string {
+  return `${import.meta.env.BASE_URL}flags/${code}.svg`
+}

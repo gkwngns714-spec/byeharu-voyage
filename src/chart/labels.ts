@@ -121,7 +121,19 @@ export interface LabelRequest {
    * names at the marks' priority: 8 of 25 set; with three lines of give, all 25).
    */
   readonly slackLines?: number
+  /**
+   * 2026-10-18 (the owner: "beside the name show flag") — the NATION CODE whose flag is drawn
+   * at the name's outer end (LabelsLayer.tsx) (a harbour's holder, `usePortFlags`). The planned box is widened by
+   * FLAG_ADVANCE_EM so the flag is inside the box the collision rule kept clear.
+   */
+  readonly flag?: string
 }
+
+/** A label's flag, in ems of its own type size: the flag's height (its width is 1.5 × that, the
+ *  design system's 3:2 box) and the gap after it. LabelsLayer draws exactly this box. */
+export const FLAG_HEIGHT_EM = 0.95
+export const FLAG_GAP_EM = 0.35
+export const FLAG_ADVANCE_EM = FLAG_HEIGHT_EM * 1.5 + FLAG_GAP_EM
 
 export interface PlacedLabel {
   readonly id: string
@@ -138,6 +150,8 @@ export interface PlacedLabel {
   /** How it is set — carried through so the layer draws exactly the box that was planned. */
   readonly sizePx: number
   readonly spacingEm: number
+  /** The nation code whose flag stands at the name's outer end inside the box (see LabelRequest). */
+  readonly flag?: string
 }
 
 export interface LabelLayoutOptions {
@@ -349,7 +363,7 @@ export function planLabels(
     const sizePx = request.sizePx ?? options.fontSizePx ?? DEFAULTS.fontSizePx
     const spacingEm = request.spacingEm ?? 0
     const size = sizePx * u
-    const width = request.text.length * (ADVANCE_EM + spacingEm) * size
+    const width = request.text.length * (ADVANCE_EM + spacingEm) * size + (request.flag ? FLAG_ADVANCE_EM * size : 0)
     const options_ =
       request.placement === 'centred'
         ? centredNear(request.at, width, size, request.slackLines ?? 0)
@@ -383,6 +397,7 @@ export function planLabels(
       box: chosen.box,
       sizePx,
       spacingEm,
+      ...(request.flag ? { flag: request.flag } : {}),
     })
   }
 
@@ -447,8 +462,8 @@ export function mapLabelRequests(
   ports: readonly MapPort[],
   selection: MapSelection,
   showQuietPorts: boolean,
-  /** 0143 (docs/INFLUENCE.md D14): each harbour's flag by port code, set before its name — only
-   *  while the Regions filter is on (the screen passes null otherwise, and the map stays clean). */
+  /** 0143 (docs/INFLUENCE.md D14): each harbour's holder (a NATION CODE, 2026-10-18) by port
+   *  code; its flag is drawn beside the name. Null draws the bare names. */
   flags: ReadonlyMap<string, string> | null = null,
 ): LabelRequest[] {
   const requests: LabelRequest[] = []
@@ -463,7 +478,11 @@ export function mapLabelRequests(
     const selected = selection?.kind === 'port' && selection.code === port.code
     requests.push({
       id: `port:${port.code}`,
-      text: flags?.has(port.code) ? `${flags.get(port.code)} ${port.name}` : port.name,
+      text: port.name,
+      // The flag rides with the name only once the chart is close enough to name quiet harbours
+      // (`showQuietPorts`): pulled back to the world, a 10 px flag on every great harbour is noise,
+      // and measured, the globe's pan at 1440×900 cost ~30 % more frame time with them drawn.
+      ...(showQuietPorts && flags?.has(port.code) ? { flag: flags.get(port.code) } : {}),
       at: project(port),
       priority: selected
         ? LABEL_PRIORITY.selected
