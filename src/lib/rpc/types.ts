@@ -2553,6 +2553,39 @@ export interface PriceOutlook {
   clock: { now: string; next_change_at: string }
 }
 
+// ── 0185: WHY THIS PRICE (docs/PRICE_FACTORS.md §5) ─────────────────────────────────────────────
+
+/** One term of a market price, as its multiplier on the price (1 = no effect). */
+export type PriceTermKey = 'haul' | 'affinity' | 'taste' | 'stock' | 'drift' | 'season' | 'development' | 'band'
+export interface PriceTerm {
+  key: PriceTermKey
+  mult: number
+  /** haul: the sailing distance from the good's nearest maker. */
+  nm?: number | null
+  /** taste: its two halves — the region's appetite for the kind of good, the faith's for the good. */
+  region?: number
+  faith?: number
+  /** stock: what the market holds and its depth. */
+  stock?: number
+  target?: number
+}
+
+/** `world.price_why(port, good)` (0185) — the market price and every term it is made of. The terms
+ *  multiply back to `mid` (base × each mult). */
+export interface PriceWhy {
+  port: string
+  good: string
+  base: number
+  mid: number
+  ask: number
+  bid: number
+  faith: { code: string; name: string } | null
+  region: string | null
+  terms: PriceTerm[]
+  fee: { spread: number; tax: number; bid_factor: number; profit_tax: number }
+  clock: { now: string; next_change_at: string }
+}
+
 /** The estimate where a row would be reached: the first served point at or after the arrival. */
 export interface OutlookAtArrival {
   value: number

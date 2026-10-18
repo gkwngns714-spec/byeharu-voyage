@@ -12,8 +12,8 @@
 import { useCallback, useState } from 'react'
 import { useReaskAtEdge } from '../components/ui'
 import { useShellState } from '../app/shellState'
-import { worldGoodBoard, worldPriceOutlook, worldWatchlist } from '../lib/rpc'
-import type { GoodBoard, PriceOutlook, RpcResult, Watchlist } from '../lib/rpc'
+import { worldGoodBoard, worldPriceOutlook, worldPriceWhy, worldWatchlist } from '../lib/rpc'
+import type { GoodBoard, PriceOutlook, PriceWhy, RpcResult, Watchlist } from '../lib/rpc'
 import { useServedRead, type ServedRead } from './useServedRead'
 
 /** A served read with a clock, re-asked when its own edge passes. */
@@ -72,4 +72,10 @@ export function usePriceOutlook(
     () => worldPriceOutlook(portId as string, goodId as string, slots, side),
     subject ? `${subject}:${slots ?? '-'}` : null,
   )
+}
+
+/** Why a good's market price at one city is what it is (world.price_why, 0185). */
+export function usePriceWhy(portId: string | null, goodId: string | null): ServedRead<PriceWhy> {
+  const subject = portId && goodId ? `${portId}:${goodId}` : null
+  return useEdgeRead<PriceWhy>(subject, () => worldPriceWhy(portId as string, goodId as string))
 }

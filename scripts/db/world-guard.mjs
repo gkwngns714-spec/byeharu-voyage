@@ -74,6 +74,9 @@
 //
 //   * hauls       (0173) every port_goods row's haul_nm / haul EQUALS world.haul_rows() — derived from the
 //                 roster, public.sea_reaches and the haul_* knobs, and refilled by no later apply
+//   * faiths      (0185) world.faiths, world.culture_faith, world.port_faith_override and world.faith_demand
+//                 EQUAL data/faiths.json and data/faith-demand.json, both directions; every port_goods row's
+//                 demand EQUALS world.demand_for() (the region × category taste × the faith × good taste)
 // WHAT IT DOES NOT CHECK (and why): runtime state (stock, drift, season_mod, crew_pool — the
 // game's, not the data's); affinity values (0041's self-assert pins them to the one formula, and
 // re-runs on every chain apply); the browser's own apply (src/lib/db) — the chain FINGERPRINT
@@ -757,6 +760,52 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     haulRows = h.n
   }
 
+  // 0185: THE FAITHS ARE THE DATA, AND EVERY TASTE IS ITS DERIVATION — world.faiths, world.culture_faith,
+  // world.port_faith_override and world.faith_demand EQUAL data/faiths.json and data/faith-demand.json, both
+  // directions, every column; and every market row's demand equals world.demand_for (region × faith). Its
+  // own positive control: the same comparisons with one taste row bent and one demand bent must see both.
+  const hasFaith = (await db.query(`select to_regclass('world.faith_demand') is not null as ok`)).rows[0].ok
+  let faithRows = 0
+  if (hasFaith) {
+    const fdata = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'faiths.json'), 'utf8'))
+    const ddata = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'faith-demand.json'), 'utf8')).demand
+    const q = async (sql) => (await db.query(sql)).rows
+    const sets = [
+      ['faith', fdata.faiths.map((x) => `${x.code}|${x.name}`),
+        (await q(`select code, name from world.faiths`)).map((x) => `${x.code}|${x.name}`)],
+      ['culture faith', fdata.cultures.map((x) => `${x.culture}|${x.faith}|${x.why}`),
+        (await q(`select culture, faith, why from world.culture_faith`)).map((x) => `${x.culture}|${x.faith}|${x.why}`)],
+      ['port faith', fdata.ports.map((x) => `${x.port}|${x.faith}|${x.why}`),
+        (await q(`select p.code, o.faith, o.why from world.port_faith_override o join public.ports p on p.id = o.port_id`))
+          .map((x) => `${x.code}|${x.faith}|${x.why}`)],
+      ['faith taste', ddata.map((x) => `${x.faith}|${x.good}|${Number(x.multiplier).toFixed(3)}|${x.why}`),
+        (await q(`select d.faith, g.code, d.multiplier::text as m, d.why from world.faith_demand d join public.goods g on g.id = d.good_id`))
+          .map((x) => `${x.faith}|${x.code}|${Number(x.m).toFixed(3)}|${x.why}`)],
+    ]
+    const compare = (wantRows, dbRows, what, out) => {
+      const w = new Set(wantRows)
+      const d = new Set(dbRows)
+      for (const k of w) if (!d.has(k)) out.push(`${what} ${k} is in the data but not in the database`)
+      for (const k of d) if (!w.has(k)) out.push(`${what} ${k} is in the database but not in the data`)
+    }
+    const planted = []
+    for (const [what, w, d] of sets) compare(w, what === 'faith taste' ? [...d.slice(1), d[0] + 'x'] : d, what, planted)
+    const t = (await q(`
+      with j as (select pg.demand, world.demand_for(pg.port_id, pg.good_id) as want,
+                        row_number() over (order by pg.port_id, pg.good_id) as rn
+                   from public.port_goods pg)
+      select count(*) filter (where demand is distinct from want)::int as bad,
+             count(*) filter (where (case when rn = 1 then demand + 1 else demand end) is distinct from want)::int as planted,
+             count(*)::int as n
+        from j`))[0]
+    if (!planted.some((s) => s.startsWith('faith taste')) || t.planted !== t.bad + 1) {
+      throw new Error(`WORLD GUARD IS BLIND: a deliberately bent faith taste or demand was not seen (tastes ${planted.length}, demand bad ${t.bad}, with the plant ${t.planted}).`)
+    }
+    for (const [what, w, d] of sets) compare(w, d, what, findings)
+    if (t.bad > 0) findings.push(`port_goods: ${t.bad} of ${t.n} market rows' demand differ from world.demand_for() — re-derive (update public.port_goods set demand = world.demand_for(port_id, good_id))`)
+    faithRows = ddata.length
+  }
+
   if (findings.length > 0) {
     const head = findings.slice(0, 40)
     throw new Error(
@@ -782,6 +831,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       `${db_.homes.length} home cities, ${want.captains.people.length} captains with ${db_.captains.kit.length} traits and ` +
       `${db_.captains.speaks.length} languages, ${db_.captains.portLanguage.length} harbour languages (generator re-run = file = database)` +
       (hasHaul ? `, ${haulRows} market rows' hauls = world.haul_rows() (a planted bend seen) ` : ' ') +
+      (hasFaith ? `, ${faithRows} faith tastes = data/faith-demand.json and every demand = world.demand_for() (planted bends seen) ` : ' ') +
       `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, dropped item made nowhere, bent merchant line hull, bent perk, bent generated hull, dropped home city and bent captain trait were all seen)`,
   )
 }

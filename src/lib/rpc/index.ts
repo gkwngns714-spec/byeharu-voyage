@@ -72,6 +72,7 @@ import type {
   PortMerchants,
   TownHallView,
   PriceOutlook,
+  PriceWhy,
   GoodBoard,
   Watchlist,
   PlanLine,
@@ -647,6 +648,11 @@ export function worldPriceOutlook(
   side: 'mid' | 'ask' | 'bid',
 ): Promise<RpcResult<PriceOutlook>> {
   return call<PriceOutlook>('worldPriceOutlook', [portId, goodId, slots, side])
+}
+
+/** Why a good's market price at one city is what it is (0185): each term as its multiplier. */
+export function worldPriceWhy(portId: string, goodId: string): Promise<RpcResult<PriceWhy>> {
+  return call<PriceWhy>('worldPriceWhy', [portId, goodId])
 }
 
 /** One good at every city, for your fleet (0171): where it is sold and what it costs, where it is

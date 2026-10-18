@@ -15,6 +15,7 @@ import {
 import type { BoardBuyRow, BoardSellRow, GoodBoard, SnapshotGood } from '../../../lib/rpc'
 import type { PlanDraft } from '../plans/planDraft'
 import type { GoodDesk } from './useGoodDesk'
+import { WhyThisPrice } from './WhyThisPrice'
 
 // THE TICKET — the right pane of the desk (docs/COMMAND_DESK.md §3.9): what a broker's order ticket is
 // to a stock. The owner, 2026-10-17: *"i will be able to see the estimated price movement so that i can
@@ -96,6 +97,8 @@ export function GoodTicket({
         onFocus={setFocus}
         onTrade={() => onTrade('sell')}
       />
+      {/* 0185: why the focus city's price is what it is (docs/PRICE_FACTORS.md §5) */}
+      <WhyThisPrice why={desk.why.view} loading={desk.why.loading} />
     </div>
   )
 }
