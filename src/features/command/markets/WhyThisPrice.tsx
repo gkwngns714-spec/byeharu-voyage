@@ -1,7 +1,7 @@
 import { Hint, Note, Row, SheetSection, Skeleton } from '../../../components/ui'
 import { formatPrice } from '../../../lib/format'
 import type { PriceWhy } from '../../../lib/rpc'
-import { volumeLine, whyLines } from './whyLines'
+import { stakeLine, volumeLine, whyLines } from './whyLines'
 
 // WHY THIS PRICE — the good page's breakdown (docs/PRICE_FACTORS.md §5, slice P1; migration 0185). The
 // server (world.price_why) serves the market price at the focus city and every term it is made of, each as
@@ -17,6 +17,11 @@ export function WhyThisPrice({ why, loading }: { why: PriceWhy | null; loading: 
       trailing={why ? <span className="text-t-caption text-ink-faint">base {formatPrice(why.base)}</span> : undefined}
       data-testid="why-price"
     >
+      {why && stakeLine(why) && (
+        <Hint className="mb-1" data-testid="why-stake">
+          {stakeLine(why)}
+        </Hint>
+      )}
       {!why ? (
         loading ? (
           <Skeleton className="h-16 w-full" />

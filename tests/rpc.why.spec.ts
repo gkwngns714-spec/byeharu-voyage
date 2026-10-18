@@ -19,7 +19,7 @@ import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
-import { volumeLine, whyLines } from '../src/features/command/markets/whyLines'
+import { stakeLine, volumeLine, whyLines } from '../src/features/command/markets/whyLines'
 import type { PriceWhy } from '../src/lib/rpc/types'
 
 let db: LocalDb
@@ -109,6 +109,34 @@ test('0190: a busy quay is seen — what changed hands here today, and by how ma
   expect(after.volume!.houses).toBeGreaterThanOrEqual(1)
   expect(volumeLine(after)).toMatch(/^Traded here today: [\d,]+ units by \d+ compan(y|ies)$/)
   expect(volumeLine({ ...after, volume: { game_day: day, units: 0, houses: 0 } })).toBe('Nobody has traded it here today.')
+})
+
+test('0191: a city\'s best friends trade cheaper — rank 1 among its givers is spared 10 % of the spread', async () => {
+  await db.pg.query(`update public.world_config set value = 'true'::jsonb where key = 'influence_enabled'`)
+  let pid = await db.callAs<string | null>('select public.current_player_id() as result')
+  if (!pid) {
+    pid = (await db.pg.query<{ id: string }>('select public.new_house($1, $2, $3, $4) as id', [db.authUid, 'Casa Spec 0191', 'PRT', 'LIS'])).rows[0].id
+  }
+  const f = (await db.pg.query<{ id: string; nation_id: string }>(
+    'select f.id, pl.nation_id from public.fleets f join public.players pl on pl.id = f.player_id where f.player_id = $1 order by f.id limit 1', [pid])).rows[0]
+  const at = (await db.pg.query<{ port: string; good: string; far: string }>(`
+    select (select id from public.ports where code = 'LIS') as port, (select id from public.goods order by code limit 1) as good,
+           (select id from public.ports where code = 'LON') as far`)).rows[0]
+  const spread = async (port: string) =>
+    Number((await db.pg.query<{ s: string }>('select world.spread_effective($1, $2, $3) as s', [port, at.good, f.id])).rows[0].s)
+  const floor = Number((await db.pg.query<{ s: string }>(
+    `select world.spread($1) * public.wc_num('haggle_spread_floor_frac') as s`, [at.port])).rows[0].s)
+  const before = await spread(at.port)
+  const farBefore = await spread(at.far)
+  await db.pg.query(`
+    insert into public.port_influence (port_id, nation_id, player_id, points)
+    values ($1, $2, $3, coalesce((select max(t.p) from (select sum(points) as p from public.port_influence where port_id = $1 group by player_id) t), 0) + 1000)
+    on conflict (port_id, nation_id, player_id) do update set points = excluded.points`, [at.port, f.nation_id, pid])
+  expect(await spread(at.port)).toBeCloseTo(Math.max(floor, before * 0.9), 9)
+  expect(await spread(at.far)).toBe(farBefore)
+  const w = await db.callAs<PriceWhy>('select world.price_why($1::uuid, $2::uuid) as result', [at.port, at.good])
+  expect(w.stake).toEqual({ rank: 1, shave: 0.1 })
+  expect(stakeLine(w)).toBe("Your company is #1 among this city's givers: 10% off the port's spread")
 })
 
 test('it refuses what it cannot answer', async () => {

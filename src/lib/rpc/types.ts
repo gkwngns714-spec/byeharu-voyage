@@ -2588,6 +2588,9 @@ export interface PriceWhy {
   bid: number
   faith: { code: string; name: string } | null
   region: string | null
+  /** 0191: the signed-in company's own standing here — its rank among the city's givers and the share of
+   *  the spread it is spared (0 past rank 5 or while the race is off); null with no points here. */
+  stake?: { rank: number; shave: number } | null
   terms: PriceTerm[]
   fee: { spread: number; tax: number; bid_factor: number; profit_tax: number }
   /** 0190: what changed hands here in the current game day (bought + sold) and by how many companies. */

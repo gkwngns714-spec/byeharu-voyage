@@ -17,6 +17,16 @@ export interface WhyLine {
 /** Below this a term does not move the price enough to print (0.5 %). */
 const QUIET = 0.005
 
+/** 0191: the company's own line — its rank among this city's givers and what that spares it of the spread. */
+export function stakeLine(why: PriceWhy): string | null {
+  const s = why.stake
+  if (!s) return null
+  const shave = Number(s.shave)
+  return shave > 0
+    ? `Your company is #${s.rank} among this city's givers: ${formatFixed(shave * 100, 0)}% off the port's spread`
+    : `Your company is #${s.rank} among this city's givers`
+}
+
 function effectOf(mult: number): string {
   return mult >= 2 ? `×${formatFixed(mult, mult >= 10 ? 0 : 1)}` : formatPctChange((mult - 1) * 100)
 }
