@@ -175,6 +175,8 @@ export {
   type Rect,
 } from './labels'
 export { hitTest, toggleSelection } from './hitTest'
+// The harbour names as last drawn (LabelsLayer), so a tap on a name — flag and letters — opens it.
+export { placedNames } from './placedNames'
 // 2026-10-14 — WHICH SHIPS A VIEW DRAWS (every one of them as a ship): the decision, exported like
 // `portMarks` is, so the Map tab's hit test and a spec read the same thinning the picture did.
 export { shipMarks, SHIP_CELL_PX, type ShipMarks } from './shipMarks'

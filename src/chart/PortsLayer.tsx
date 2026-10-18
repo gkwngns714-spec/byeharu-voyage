@@ -60,6 +60,15 @@ import { nightStyle } from './sun'
 // and no handler at all (taps are resolved by one nearest-wins hit test on the surface,
 // ./hitTest.ts). There is nothing in this file that could ever grow into an order.
 
+/** A harbour's place in the day lamp's 4.2 s breath, from its code — fixed, so a re-render never
+ *  restarts the coast in unison — and a whole number of the breath's twelve 350 ms steps, so every
+ *  lamp changes on the same beat and the sheet repaints ~3 times a second (src/index.css). */
+function lampPhase(code: string): number {
+  let h = 0
+  for (let i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) % 12
+  return h * 350
+}
+
 /**
  * A HARBOUR'S LIGHT — bloom, glow, core (owner row 125, rebuilt 2026-10-12).
  *
@@ -78,10 +87,17 @@ import { nightStyle } from './sun'
  * not re-render while a fleet drifts.
  *
  * LIT BY THE SUN: the two rings carry `.bv-sun-light`, whose opacity is the group's `--night`.
+ *
+ * AND BY DAY, A DARK LAMP (the owner, 2026-10-18: "give black light blink in cities like in
+ * night"): one more circle at the glow's radius in the day's mark ink (`.bv-sun-shade`, out by night)
+ * that breathes slowly (`.bv-day-lamp`), each harbour on its own phase taken from its code.
  */
-function HarbourLight({ x, y, tier, unitsPerPx }: { x: number; y: number; tier: number; unitsPerPx: number }) {
+function HarbourLight({ code, x, y, tier, unitsPerPx }: { code: string; x: number; y: number; tier: number; unitsPerPx: number }) {
   return (
     <>
+      <g className="bv-day-lamp" style={{ animationDelay: `-${lampPhase(code)}ms` }} data-testid="day-lamp">
+        <circle cx={x} cy={y} r={harbourLightGlow(tier, unitsPerPx)} className="bv-sun-shade" pointerEvents="none" />
+      </g>
       <circle cx={x} cy={y} r={harbourLightHalo(tier, unitsPerPx)} className="bv-sun-light fill-harbour-light/15" pointerEvents="none" />
       <circle cx={x} cy={y} r={harbourLightGlow(tier, unitsPerPx)} className="bv-sun-light fill-harbour-light/35" pointerEvents="none" />
     </>
@@ -157,7 +173,7 @@ export const PortsLayer = memo(function PortsLayer({
               data-port-y={y}
               style={night}
             >
-              <HarbourLight x={x} y={y} tier={port.sizeTier} unitsPerPx={unitsPerPx} />
+              <HarbourLight code={port.code} x={x} y={y} tier={port.sizeTier} unitsPerPx={unitsPerPx} />
               <circle
                 cx={x}
                 cy={y}
@@ -200,7 +216,7 @@ export const PortsLayer = memo(function PortsLayer({
                 still drawn on top; the halo is behind it, and the TRIANGLE keeps its own ink, because
                 the weight rule (quiet vs a port a fleet is using) is a different channel from how big
                 a place is and row 125 was not asked to merge them. */}
-            <HarbourLight x={x} y={y} tier={port.sizeTier} unitsPerPx={unitsPerPx} />
+            <HarbourLight code={port.code} x={x} y={y} tier={port.sizeTier} unitsPerPx={unitsPerPx} />
             <path
               d={
                 active

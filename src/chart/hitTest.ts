@@ -78,7 +78,14 @@ export function hitTest(
    *  the same rule the ports keep ("a port not on the sheet at all is not tappable"). Defaults to
    *  the whole list for a caller that draws everything. */
   traffic: ChartModel['traffic'] = model.traffic,
+  /** THE HARBOUR NAMES AS DRAWN (2026-10-18, ./placedNames.ts) — each name's box, flag and letters,
+   *  in chart units on the copy it was drawn on. A tap inside one is that harbour, before any
+   *  reach is weighed: the name is the thing the thumb was on, and its far end lies beyond the
+   *  mark's reach on a long name (PR #198 measured taps on a name's tail opening open water). */
+  names: readonly { code: string; box: { x: number; y: number; width: number; height: number } }[] = [],
 ): MapSelection {
+  const onName = names.find((n) => at.x >= n.box.x && at.x <= n.box.x + n.box.width && at.y >= n.box.y && at.y <= n.box.y + n.box.height)
+  if (onName) return { kind: 'port', code: onName.code }
   let nearestFleet: { id: string; d: number; dockedAt: string | null } | null = null
   for (const f of model.fleets) {
     const d = distance(project(f.at), at)
