@@ -67,7 +67,7 @@ export function whyLines(why: PriceWhy): WhyLine[] {
   return out.sort((a, b) => Math.abs(Math.log(b.mult)) - Math.abs(Math.log(a.mult)))
 }
 
-/** 0191: the volume line under the terms — what changed hands here today (bought + sold) and by how many
+/** 0190: the volume line under the terms — what changed hands here today (bought + sold) and by how many
  *  companies, players and merchants alike. Null before the server serves it. */
 export function volumeLine(why: PriceWhy): string | null {
   const v = why.volume
