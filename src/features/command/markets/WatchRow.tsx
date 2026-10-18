@@ -66,8 +66,8 @@ export function WatchRow({
           label={`${good.name}, the last hours at ${best ? portName(best.port) : 'no city'}`}
           className="hidden shrink-0 min-[360px]:inline-block"
         />
-        <span className="flex w-24 shrink-0 flex-col items-end">
-          <span className="text-t-body tabular-nums text-ink">{best ? formatPrice(best.mid) : '—'}</span>
+        <span className="flex min-w-24 shrink-0 flex-col items-end">
+          <span className="whitespace-nowrap text-t-body tabular-nums text-ink">{best ? formatPrice(best.mid) : '—'}</span>
           {change !== null && (
             <span
               className={[

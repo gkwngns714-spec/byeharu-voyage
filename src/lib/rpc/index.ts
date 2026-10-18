@@ -74,6 +74,8 @@ import type {
   PriceOutlook,
   GoodBoard,
   Watchlist,
+  PlanLine,
+  IssueLinesResult,
   InvestReceipt,
   TowReceipt,
   AllegianceView,
@@ -654,6 +656,16 @@ export function worldGoodBoard(
   qty: number | null = null,
 ): Promise<RpcResult<GoodBoard>> {
   return call<GoodBoard>('worldGoodBoard', [goodId, fleetId, fromPortId, qty])
+}
+
+/** A PLAN, queued whole or not at all (0174): each line parsed by the one grammar, each queued by the
+ *  one enqueuer, then the queue advanced once — what N `cmdIssue` calls would do, without half a plan. */
+export function cmdIssueLines(
+  fleetId: string,
+  lines: readonly PlanLine[],
+  expectedVersion: number | null = null,
+): Promise<RpcResult<IssueLinesResult>> {
+  return call<IssueLinesResult>('cmdIssueLines', [fleetId, lines, expectedVersion])
 }
 
 /** Every good once (0171): its cheapest seller, the record's line, what your fleet carries. */

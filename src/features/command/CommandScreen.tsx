@@ -9,6 +9,8 @@ import { DeskTrade } from './markets/DeskTrade'
 import { GoodPage } from './markets/GoodPage'
 import { Markets } from './markets/Markets'
 import { Plans } from './plans/Plans'
+import { PlanBuilder } from './plans/PlanBuilder'
+import { useDeskPlan } from './plans/planDraft'
 
 // COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). The owner, 2026-10-17: *"i want you to delete
 // port tab, and focus on command tab. it will be like stock trading screen, with buy and sell plans,
@@ -65,6 +67,8 @@ export function CommandScreen() {
   const face = useDeskView((s) => s.face)
   const turnTo = useDeskView((s) => s.turnTo)
   const goodCode = useDeskGood((s) => s.code)
+  const plan = useDeskPlan((s) => s.plan)
+  const openPlan = useDeskPlan((s) => s.open)
   // WHICH TRAY STANDS IN THE SLOT: the good's page, or the trade tray it handed over to.
   const [trading, setTrading] = useState<{
     code: string
@@ -124,17 +128,27 @@ export function CommandScreen() {
       />
       {fleet && (face === 'plans' ? <Plans fleet={fleet} /> : <Markets fleet={fleet} />)}
 
-      {fleet && good && !tradingHere && (
+      {/* THE SLOT — one tray at a time: the plan builder, else the trade tray, else the good's page */}
+      {fleet && plan && goodByCode[plan.good] ? (
+        <PlanBuilder
+          key={`${plan.good}:${fleet.id}`}
+          fleet={fleet}
+          good={goodByCode[plan.good]}
+          plan={plan}
+          onQueued={() => turnTo('plans')}
+          onRoute={() => turnTo('plans')}
+        />
+      ) : fleet && tradingHere ? (
+        <DeskTrade fleet={fleet} code={tradingHere.code} intent={tradingHere.intent} onClose={() => setTrading(null)} />
+      ) : fleet && good ? (
         <GoodPage
           key={`${good.code}:${fleet.id}`}
           fleet={fleet}
           good={good}
           onTrade={(intent) => setTrading({ code: good.code, intent })}
+          onPlan={openPlan}
         />
-      )}
-      {fleet && tradingHere && (
-        <DeskTrade fleet={fleet} code={tradingHere.code} intent={tradingHere.intent} onClose={() => setTrading(null)} />
-      )}
+      ) : null}
     </Sheet>
   )
 }

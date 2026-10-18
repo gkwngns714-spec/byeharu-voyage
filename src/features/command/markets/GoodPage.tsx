@@ -30,6 +30,7 @@ import {
 } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, FleetView, GoodBoard, SnapshotGood } from '../../../lib/rpc'
 import { useDeskGood } from '../../../store/deskGood'
+import type { PlanDraft } from '../plans/planDraft'
 
 // ONE GOOD, EVERY CITY — the good's page on the desk (docs/COMMAND_DESK.md §3.3). The owner, 2026-10-17:
 // *"when i press coffee trade goods, it will show chart, where i can buy, the price if i sell to other
@@ -57,11 +58,14 @@ export function GoodPage({
   fleet,
   good,
   onTrade,
+  onPlan,
 }: {
   fleet: FleetView
   good: SnapshotGood
   /** The docked city's Buy / Sell cell: the desk opens the trade tray in this slot. */
   onTrade: (intent: 'buy' | 'sell') => void
+  /** A Buy at row's Plan: the desk opens the plan builder in this slot, buying there. */
+  onPlan: (plan: PlanDraft) => void
 }) {
   const portByCode = useWorld((s) => s.portByCode)
   const close = useDeskGood((s) => s.close)
@@ -168,6 +172,20 @@ export function GoodPage({
       )}
 
       <BuyAt
+        onPlan={(buyAt) =>
+          onPlan({
+            good: good.code,
+            buyAt,
+            // where to sell: the city the chart follows when it is a buyer, else the board's best net
+            sellAt:
+              (focus && b?.sell.some((r) => r.port === focus) && !b.buy.some((r) => r.port === focus) ? focus : null) ??
+              b?.sell.find((r) => r.quoted)?.port ??
+              null,
+            units: null,
+            max: null,
+            min: null,
+          })
+        }
         board={b}
         loading={board.loading && !b}
         docked={docked}
@@ -228,6 +246,7 @@ function RowsSkeleton({ n }: { n: number }) {
 }
 
 function BuyAt({
+  onPlan,
   board,
   loading,
   docked,
@@ -240,6 +259,7 @@ function BuyAt({
   docked: string | null
   onFocus: (port: string) => void
   onTrade: () => void
+  onPlan: (buyAt: string) => void
   portName: (code: string) => string
 }) {
   return (
@@ -273,13 +293,17 @@ function BuyAt({
                   {r.best ? ` · best ${formatClock(Date.parse(r.best.at))} ${formatPctChange(-r.best.gain_pct)}` : ''}
                 </span>
               </span>
-              <span className="shrink-0 text-right text-t-body tabular-nums text-ink">
+              <span className="shrink-0 whitespace-nowrap text-right text-t-body tabular-nums text-ink">
                 {r.price_each !== null ? formatPrice(r.price_each) : '—'}
               </span>
             </button>
-            {r.port === docked && (
+            {r.port === docked ? (
               <Button variant="primary" onClick={onTrade} className="shrink-0" data-testid="desk-buy">
                 Buy
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={() => onPlan(r.port)} className="shrink-0" data-testid="desk-plan">
+                Plan
               </Button>
             )}
           </div>
@@ -358,12 +382,12 @@ function SellAt({
                   </span>
                 </span>
                 <span className="flex shrink-0 flex-col items-end">
-                  <span className="text-t-body tabular-nums text-ink">
+                  <span className="whitespace-nowrap text-t-body tabular-nums text-ink">
                     {r.quoted && r.price_each !== null ? formatPrice(r.price_each) : formatPrice(r.mid)}
                   </span>
                   {r.net_per_ton !== null ? (
                     <span
-                      className={`text-t-caption tabular-nums ${r.net_per_ton >= 0 ? 'text-success' : 'text-danger'}`}
+                      className={`whitespace-nowrap text-t-caption tabular-nums ${r.net_per_ton >= 0 ? 'text-success' : 'text-danger'}`}
                     >
                       {formatPriceDelta(r.net_per_ton)} / ton
                     </span>
