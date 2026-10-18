@@ -1485,9 +1485,17 @@ never past the upkeep budget), a merchant prices:
 2. **near**: out-and-back to each of the `npc_route_neighbours` (5) nearest known harbours;
 3. **near3**: home → B → C → home for neighbours B, C where the roster knows B → C, shortest first,
    into whatever room `npc_route_candidates` (16) leaves;
-4. **far** (hold ≥ `npc_route_far_hold_tuns`, 200 tuns — p90 of the roster is 396): out-and-back on
-   the `npc_route_far_candidates` (3) farthest known legs of `npc_route_far_nm` (2,000) or more; her
-   harbour having none, via each neighbour's farthest such leg (home → X → F → X → home).
+4. **trade** (0197, replacing 0120's *far*, for every hull): out-and-back to the
+   `npc_route_trade_candidates` (6) harbours where the goods her harbour makes fetch the greatest
+   distance premium (`port_goods.haul`, 0173), plus the premium the goods made there fetch at home —
+   over every feasible known leg of hers (home → D → home) and every known leg of `npc_route_far_nm`
+   (2,000) or more out of a neighbour (home → X → D → X → home). (0120's far loops went only to the
+   farthest legs, and only for a hold of 200 tuns or more.)
+
+**0197: a loop pays when a lap of it leaves her more than nothing** — the net the score is made of
+(parcels' profit after tax, less the loop's wages and stores), not when some leg carries a parcel.
+The loop she sails, chosen or kept, is written with no BUY when it does not pay, and at her lap start
+with nothing aboard she is laid up (0181) and re-asked every ~10 minutes (0182).
 
 Every candidate destination must take her draft, be open, and lie within the days of stores she
 can carry — her preset as it stands, or what the planner may raise it to through
@@ -1566,9 +1574,9 @@ of every plan on PGlite (profiled; not its course loop — a set-based rewrite m
 
 ### 16.6 Knobs added
 
-`npc_route_candidates` 16 · `npc_route_neighbours` 5 · `npc_route_far_candidates` 3 ·
-`npc_route_far_nm` 2000 · `npc_route_far_hold_tuns` 200 · `npc_route_switch_pct` 10 ·
-`npc_preset_days_max` 90. `npc_route_candidates` 0 turns the choice off and leaves every rule above
+`npc_route_candidates` 16 · `npc_route_neighbours` 5 · `npc_route_far_nm` 2000 ·
+`npc_route_switch_pct` 10 · `npc_preset_days_max` 90 · (0197) `npc_route_trade_candidates` 6 · `npc_route_review_laps` 3.
+0120's `npc_route_far_candidates` 3 and `npc_route_far_hold_tuns` 200 were deleted by 0197. `npc_route_candidates` 0 turns the choice off and leaves every rule above
 in place.
 
 ### 16.7 Known limitations, stated
