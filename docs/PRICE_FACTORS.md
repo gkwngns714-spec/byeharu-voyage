@@ -286,8 +286,8 @@ panel shows the city's flag and your stance with it.
 The rank is the company's points in the city's influence book (`public.port_influence`, 0144; it decays 10 % a day, D6). **Trader's
 quote, per company.**
 
-**Data.** The influence book that exists. A nightly table `port_top_givers(port, player, rank)` (top 5 a city)
-filled by the daily evaluation (D4, 00:47 UTC), so the quote reads one row.
+**Data.** The influence book that exists, read per quote (built in 0191: no stored rank — the book holds at most
+a few dozen rows a city, and the shave's reads cost ~0.05 ms against the quote's 2.7 ms on prod).
 
 **Size.** The spread is a few per cent of the middle, so a 10 % shave of it is a fraction of one per cent of the
 price: a reward that shows on every trade and never pays for a voyage on its own.
@@ -373,7 +373,7 @@ product of the lines is the middle, so the page never shows a number the server 
 |---|---|---|---|---|
 | **P1 · 0185** | **Faith tastes** (§3.1) + **"Why this price"** (§5): data files, three tables, `world.demand_for` re-cut, re-derive of `port_goods.demand`, `world.price_why`, the good page's lines | the owner's "religion"; every later factor shows up through the same reader | low: no pricing function changes signature; the quote path reads the same column | — |
 | **P2 · 0190** | **Volume line** (§3.4's visible half): "312 t sold here in a day by 9 houses" in `price_why` | the owner's "merchants", seen | low: one aggregate over today's flows for one (port, good) | P1 |
-| **P3** | **Investor shave** (§3.3) | rewards giving, per company | low: one precomputed rank table, one hunk in `spread_effective` | I1–I6 live |
+| **P3 · 0191** | **Investor shave** (§3.3) | rewards giving, per company | low: one precomputed rank table, one hunk in `spread_effective` | I1–I6 live |
 | **P4** | **Tariffs by relation** (§3.2) | the owner's "relationship with other countries" | medium: a relation table, one hunk in `world.tax_rate` | the 10 great powers |
 | **P5** | **Glut** (§3.4's price half) | crowding felt | medium: `mid_from_terms` 13 → 14 arguments and four callers re-cut, two UPDATEs | P2 measured |
 
