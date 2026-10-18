@@ -1,6 +1,6 @@
 # COMMAND DESK — the PORT tab goes; COMMAND becomes a trading desk
 
-**Status: DESIGN v1, BUILD-READY (2026-10-17). Nothing in this file is built.** No migration, no code,
+**Status: BUILT, D1–D8 (2026-10-18): 0170 · 0171 · 0175 · 0176 · 0177 and the client slices; PORT deleted (D8). Each slice's dev-log (`docs/dev-log/2026-10-18-command-desk-d*.md`) says where it departed from this design.** Design v1 (2026-10-17) follows as written. No migration, no code,
 no production change. Written against `main` `3814ec9` (production head **0141**). Every production
 number below was read **read-only** on 2026-10-17 between 13:50 and 14:30 UTC with
 `npx supabase@2.120.0 db query --linked "<one select>"` (or `explain analyze` of a STABLE read). The

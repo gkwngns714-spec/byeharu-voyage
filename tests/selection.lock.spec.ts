@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { openCityFace } from './desk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A PRESS AFTER A TEXT SELECTION MUST ACT — the owner, 2026-09-14, desktop Chrome:
@@ -56,73 +57,22 @@ function up() {
 
 test.beforeEach(up())
 
-test('PORT: a drag inside the port field, then a press on a buy cell — the press acts', async ({ page }) => {
-  await page.goto('port')
-  await ready(page)
-  const field = page.getByTestId('port-field')
-  const home = await field.inputValue()
-  expect(home, 'the port field names no harbour at rest').not.toBe('')
+// PORT went under COMMAND on 2026-10-18 (docs/COMMAND_DESK.md D8): this port-field-over-the-board test went with PORT's field. The City face draws
+// no field above its board, so the board cannot drop under a press; PortField's fold-on-click rule is unchanged
+// and the route editor's field is pressed in route.stopface.spec.
 
-  const buy = page.locator('[data-testid="trade-row"] button:not([disabled])').first()
-  const rest = await buy.boundingBox()
+// PORT went under COMMAND on 2026-10-18 (docs/COMMAND_DESK.md D8): this port-field-over-the-board test went with PORT's field. The City face draws
+// no field above its board, so the board cannot drop under a press; PortField's fold-on-click rule is unchanged
+// and the route editor's field is pressed in route.stopface.spec.
 
-  // The owner's drag: across the harbour's name, inside the field.
-  const f = await field.boundingBox()
-  await drag(page, { x: f!.x + 42, y: f!.y + f!.height / 2 }, { x: f!.x + 140, y: f!.y + f!.height / 2 })
-
-  // The field is open: chips stand under it and the board has moved down (the inline unfold).
-  await expect(page.getByTestId('port-chip').first()).toBeVisible()
-  const opened = await buy.boundingBox()
-  expect(opened!.y, 'the chips did not unfold under the field').toBeGreaterThan(rest!.y)
-
-  // Press the buy cell WHERE IT STANDS. Before the fix this press died: the mousedown folded the
-  // chips, the cell jumped back up under the pointer, and the mouseup landed on another element.
-  await pressWhereItStands(page, buy)
-  await expect(page.getByTestId('trade-tray'), 'the press after a drag in the port field opened nothing').toBeVisible()
-  await expect(buy).toHaveAttribute('aria-pressed', 'true')
-
-  // …and the picker folded AFTER the press landed: name back, chips gone.
-  await expect(field).toHaveValue(home)
-  await expect(page.getByTestId('port-chip')).toHaveCount(0)
-})
-
-test('PORT: a press into the port field, then a press on a buy cell — the press acts', async ({ page }) => {
-  await page.goto('port')
-  await ready(page)
-  const field = page.getByTestId('port-field')
-  const home = await field.inputValue()
-  await pressWhereItStands(page, field)
-  await expect(page.getByTestId('port-chip').first()).toBeVisible()
-
-  const buy = page.locator('[data-testid="trade-row"] button:not([disabled])').first()
-  await pressWhereItStands(page, buy)
-  await expect(page.getByTestId('trade-tray'), 'the press after focusing the port field opened nothing').toBeVisible()
-  await expect(field).toHaveValue(home)
-})
-
-test('PORT: with the picker open, a chip still picks and Escape still leaves', async ({ page }) => {
-  await page.goto('port')
-  await ready(page)
-  const field = page.getByTestId('port-field')
-  const home = await field.inputValue()
-
-  await pressWhereItStands(page, field)
-  const other = page.getByTestId('port-chip').filter({ hasNotText: home }).first()
-  const there = (await other.innerText()).trim()
-  await pressWhereItStands(page, other)
-  await expect(field, 'a chip press no longer picks').toHaveValue(there)
-  await expect(page.getByTestId('port-chip')).toHaveCount(0)
-
-  await pressWhereItStands(page, field)
-  await expect(page.getByTestId('port-chip').first()).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(field, 'Escape no longer leaves').toHaveValue(there)
-  await expect(page.getByTestId('port-chip')).toHaveCount(0)
-})
+// PORT went under COMMAND on 2026-10-18 (docs/COMMAND_DESK.md D8): this port-field-over-the-board test went with PORT's field. The City face draws
+// no field above its board, so the board cannot drop under a press; PortField's fold-on-click rule is unchanged
+// and the route editor's field is pressed in route.stopface.spec.
 
 test('PORT: a selection swept across the board, ending on the nav bar, then a nav press — it acts', async ({ page }) => {
-  await page.goto('port')
+  await page.goto('command')
   await ready(page)
+  await openCityFace(page)
   const first = await page.getByTestId('trade-row').nth(0).boundingBox()
   const nav = await page.getByTestId('nav-bar').boundingBox()
   await drag(page, { x: first!.x + 4, y: first!.y + 10 }, { x: nav!.x + 300, y: nav!.y + 20 })

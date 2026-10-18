@@ -94,7 +94,6 @@ const GROUPS: Record<NavGroupId, NavGroup> = {
 const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] = [
   { to: '/command', label: 'Command', icon: 'compass', enabled: true },
   { to: '/fleets', label: 'Fleets', icon: 'ship', enabled: true },
-  { to: '/port', label: 'Port', icon: 'anchor', enabled: true },
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
   { to: '/ledger', label: 'History', icon: 'ledger', enabled: true, group: 'cabin' },
   { to: '/rank', label: 'Rank', icon: 'wreath', enabled: true, group: 'cabin' },
@@ -102,8 +101,8 @@ const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] =
   // group's own stated kind — it acts on nothing; a route is COMPOSED on Command, where its verb
   // lives, and this is where you find out what the world's lanes are worth. The word is "Routes"
   // and not a second word for the same idea: Command's fold is where you make one, this is where
-  // you read them, as Port and Market turned out to be one place drawn twice. The bar still draws
-  // FIVE cells — a group member costs no cell, which is what the group is for.
+  // you read them, as Port and Market turned out to be one place drawn twice. The bar draws FOUR
+  // cells since PORT went under Command (2026-10-18, COMMAND_DESK D8) — a group member costs no cell.
   { to: '/routes', label: 'Routes', icon: 'chart', enabled: true, group: 'cabin' },
   // "Codex", not "Compendium": both mean the 도감, and the shorter word is the one that must fit a
   // cell. The screen's own title spells it out in full.
@@ -172,11 +171,11 @@ export function tabHref(to: string): string {
  *  about a decision you are in the middle of; on the chart, on the standings or in the cabin it is
  *  a number with nothing to do, which is precisely what §2 counted 93 lines of.
  *
- *  These two are the screens that hold a market payload: Command (whose queue prices its orders)
- *  and Port, which shows the quay's own prices and, through its port field, any other harbour's
- *  (MARKET folded into it 2026-09-11). Derived from nothing — it is a JUDGEMENT about which
- *  screens are about prices, so it is written down once rather than re-decided in the bar. */
-export const TRADE_ROUTES: readonly string[] = ['/command', '/port']
+ *  The one screen that holds a market payload is Command — the desk (docs/COMMAND_DESK.md): its
+ *  Markets, its City's quay, its plans. PORT was the second until 2026-10-18 (D8), when its every
+ *  face moved under Command's City. Derived from nothing — it is a JUDGEMENT about which screens are
+ *  about prices, so it is written down once rather than re-decided in the bar. */
+export const TRADE_ROUTES: readonly string[] = ['/command']
 
 /** Is this pathname one of the price screens? Takes the router's `pathname`, basename already
  *  stripped, which is what `useLocation()` serves. */

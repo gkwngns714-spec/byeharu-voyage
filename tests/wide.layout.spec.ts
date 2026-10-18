@@ -22,6 +22,7 @@ import {
   trayDockWideClass,
 } from '../src/components/ui/screenLayout'
 import { reachable, ready } from './appReady.fixture'
+import { openCityFace } from './desk.fixture'
 
 const WIDE = { width: 1440, height: 900 }
 
@@ -56,8 +57,9 @@ test.describe('wide glass', () => {
       !(await reachable(request, baseURL ?? '')),
       `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
     )
-    await page.goto('port')
+    await page.goto('command')
     await ready(page)
+    await openCityFace(page)
     await page.getByRole('tab', { name: /^Trade/i }).first().click()
     await page.waitForTimeout(400)
 
@@ -122,8 +124,9 @@ test.describe('wide glass', () => {
       !(await reachable(request, baseURL ?? '')),
       `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
     )
-    await page.goto('port')
+    await page.goto('command')
     await ready(page)
+    await openCityFace(page)
     await page.getByRole('tab', { name: /^Trade/i }).first().click()
     await page.waitForTimeout(400)
 
@@ -213,8 +216,9 @@ test.describe('wide glass', () => {
       !(await reachable(request, baseURL ?? '')),
       `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
     )
-    await page.goto('port')
+    await page.goto('command')
     await ready(page)
+    await openCityFace(page)
     await page.getByRole('tab', { name: /^Trade/i }).first().click()
     await page.waitForTimeout(400)
 
