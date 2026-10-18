@@ -1,5 +1,10 @@
 # INFLUENCE — countries compete for cities with money
 
+> **Since 0185 (GP1, 2026-10-18): only the TEN GREAT POWERS race** — PRT ESP ENG NLD FRA · OTT MUG ·
+> MNG JOS JPN. The other thirteen countries are local rulers of the cities they founded; every home city
+> is a great power's, four each. Who races, and how the 23 became 10: `docs/GREAT_POWERS.md`. How the
+> race runs is unchanged and stays here.
+
 **Status: APPROVED by the owner 2026-10-17 ("make the game — country region influences and all like
 uncharted [waters]"), D1–D14 as written plus the three additions below. BEING BUILT from migration
 0143** (0141 and 0142 were taken by other work). Slices: I1 0143 · I2 0144 · I3 0145 · I4 0146 ·

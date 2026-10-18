@@ -28,3 +28,9 @@ export declare function deriveWorld(): DerivedWorld
 
 /** The one rounding the seed applies to a coordinate. */
 export declare function round2(n: number): number
+
+/** The 23 nations: [code, name, flag glyph, fallback capital code]. */
+export declare const NATIONS: readonly (readonly [string, string, string, string | null])[]
+
+/** GP1 (0185, docs/GREAT_POWERS.md): the ten great powers that race for cities. */
+export declare const GREAT_POWERS: readonly string[]

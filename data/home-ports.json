@@ -1,22 +1,6 @@
 {
-  "_comment": "Every country's home cities (docs/INFLUENCE.md §3, rule D1). AUTHORED after scripts/build-home-ports.mjs wrote it once; a home city never changes hands. Migration 0143 seeds public.port_allegiance.home from it, and scripts/db/world-guard.mjs holds the database equal to it.",
+  "_comment": "Every country's home cities (docs/INFLUENCE.md §3, rule D1). AUTHORED after scripts/build-home-ports.mjs wrote it once; a home city never changes hands. Only the ten great powers have homes (docs/GREAT_POWERS.md, 0185). Migrations 0143 and 0185 seed public.port_allegiance.home from it, and scripts/db/world-guard.mjs holds the database equal to it.",
   "homes": {
-    "AYU": [
-      "AYU",
-      "PTT",
-      "HOI"
-    ],
-    "BAN": [
-      "BNT",
-      "JAK",
-      "SUR"
-    ],
-    "DNK": [
-      "COP",
-      "BER",
-      "TRO",
-      "REY"
-    ],
     "ENG": [
       "LON",
       "PTH",
@@ -35,21 +19,6 @@
       "LAR",
       "NAN"
     ],
-    "GEN": [
-      "GOA",
-      "CHS",
-      "LIV"
-    ],
-    "GUJ": [
-      "KHA",
-      "SRT",
-      "MUM"
-    ],
-    "HAN": [
-      "HAM",
-      "LUB",
-      "TOR"
-    ],
     "JOS": [
       "BUS",
       "ULS",
@@ -62,18 +31,6 @@
       "TOK",
       "KAG"
     ],
-    "MAR": [
-      "SAF",
-      "AGA",
-      "SAL",
-      "TAN"
-    ],
-    "MLB": [
-      "KOZ",
-      "KAN",
-      "KOC",
-      "MNG"
-    ],
     "MNG": [
       "GUA",
       "XIA",
@@ -83,7 +40,8 @@
     "MUG": [
       "KAR",
       "CHI",
-      "HAD"
+      "SRT",
+      "KHA"
     ],
     "NLD": [
       "AMS",
@@ -97,37 +55,11 @@
       "THE",
       "RHO"
     ],
-    "PER": [
-      "BAS",
-      "MUS",
-      "MAN"
-    ],
-    "POL": [
-      "GDA",
-      "RIG",
-      "TAL"
-    ],
     "PRT": [
       "LIS",
       "SET",
       "OPO",
       "FNC"
-    ],
-    "RUS": [
-      "ARK",
-      "KAL",
-      "NUU"
-    ],
-    "SWE": [
-      "STO",
-      "VIS",
-      "TUR"
-    ],
-    "VEN": [
-      "VEN",
-      "COR",
-      "ZAK",
-      "HER"
     ]
   }
 }

@@ -59,6 +59,8 @@
 //   * perks, sets, Country lines (0163, S16) public.perks, public.gear_set_bonuses and public.gear_set_names
 //                 EQUAL data/gear.json `perks` / `sets`, and public.item_line the gear generator's Country
 //                 items' `line`, every column, both directions
+//   * great powers (0185, GP1) public.great_powers EQUALS world-derive.mjs GREAT_POWERS, both
+//                 directions; only a great power has home cities, and every one has four
 //   * home cities (0143) public.port_allegiance's `home` rows EQUAL data/home-ports.json, both
 //                 directions; every country has 3 or 4; no harbour is home to two; every home city
 //                 flies its own country (a home never changes hands — docs/INFLUENCE.md §3.2).
@@ -89,7 +91,7 @@
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { deriveWorld, REPO_ROOT, round2 } from '../lib/world-derive.mjs'
+import { deriveWorld, GREAT_POWERS, REPO_ROOT, round2 } from '../lib/world-derive.mjs'
 import { generateShips, SHIPS_FILE } from '../build-ships.mjs'
 import { generateGear, GEAR_FILE } from '../build-gear.mjs'
 import { captainInputs, generateCaptains, CAPTAINS_FILE } from '../build-captains.mjs'
@@ -212,6 +214,16 @@ function drift(db_, want) {
     if ((d.capital_port_code ?? null) !== (n.capital_port_code ?? null)) {
       say(`nation ${n.code}.capital: database has ${d.capital_port_code}, data says ${n.capital_port_code}`)
     }
+  }
+
+  // great powers (0185, GP1) — world-derive.mjs GREAT_POWERS, both directions
+  {
+    const dbGreat = new Set(db_.great)
+    for (const c of want.great) if (!dbGreat.has(c)) say(`great power ${c} is in world-derive.mjs GREAT_POWERS but not in public.great_powers`)
+    for (const c of dbGreat) if (!want.great.includes(c)) say(`great power ${c} is in public.great_powers but not in world-derive.mjs GREAT_POWERS`)
+    // GP1: the home cities are the great powers' — four each, and nobody else's
+    for (const c of want.great) if ((want.homes[c] ?? []).length !== 4) say(`home cities: great power ${c} has ${(want.homes[c] ?? []).length} in data/home-ports.json, the rule is 4`)
+    for (const c of Object.keys(want.homes)) if (!want.great.includes(c)) say(`home cities: ${c} has homes in data/home-ports.json but is not a great power`)
   }
 
   // home cities (0143) — data/home-ports.json, both directions; each flies its own country
@@ -496,6 +508,10 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   // 0143: the home cities
   const hasAllegiance = (await db.query(`select to_regclass('public.port_allegiance') is not null as ok`)).rows[0].ok
   if (!hasAllegiance) throw new Error('world-guard: public.port_allegiance is missing — the chain no longer reaches 0143, so the home cities cannot be checked')
+  // 0185 (GP1): the great powers
+  const hasGreat = (await db.query(`select to_regclass('public.great_powers') is not null as ok`)).rows[0].ok
+  if (!hasGreat) throw new Error('world-guard: public.great_powers is missing — the chain no longer reaches 0185, so the great powers cannot be checked')
+  db_.great = (await db.query(`select n.code from public.great_powers g join public.nations n on n.id = g.nation_id order by n.code`)).rows.map((r) => r.code)
   db_.homes = (await db.query(`
     select p.code as port, n.code as nation from public.port_allegiance a
       join public.ports p on p.id = a.port_id left join public.nations n on n.id = a.nation_id
@@ -606,6 +622,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   }
   want.gear = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'gear.json'), 'utf8'))
   want.homes = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'home-ports.json'), 'utf8')).homes   // 0143
+  want.great = [...GREAT_POWERS].sort()   // 0185 (GP1)
 
   // 0135: THE GENERATORS, RE-RUN. Their output must equal the committed files (a stale file is drift)
   // and, with the live rows' data files, the database (below, in `drift`).
@@ -706,6 +723,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     itemUse: want.itemUse.map((u, i) => (i === 0 ? { ...u, trigger: u.trigger === 'STORM' ? 'MILES' : 'STORM' } : u)), // 0158: one item's trigger bent
     waveA: { ...want.waveA, classes: want.waveA.classes.map((c, i) => (i === 0 ? { ...c, hold: c.hold + 5 } : c)) }, // 0135: one generated hull's hold bent
     homes: Object.fromEntries(Object.entries(want.homes).map(([n, ps], i) => [n, i === 0 ? ps.slice(1) : ps])), // 0143: one home city dropped
+    great: want.great.slice(1), // 0185: one great power dropped
     captains: { ...want.captains, gen: { ...want.captains.gen, captains: want.captains.gen.captains.map((x, i) => (i === 0
       ? { ...x, kit: x.kit.map((k, j) => (j === 1 ? { ...k, pct: k.pct + 1 } : k)) } : x)) } }, // 0156: one captain's second trait bent
   }
@@ -724,11 +742,12 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const sawHull = seen.some((s) => s.includes(`ship class ${want.waveA.classes[0].code}.hold:`))
   const droppedHome = Object.values(want.homes)[0][0]
   const sawHome = seen.some((s) => s.includes(`home city ${droppedHome} `))
+  const sawGreat = seen.some((s) => s.includes(`great power ${want.great[0]} is in public.great_powers`))
   const sawCaptain = seen.some((s) => s.includes(`captain trait ${want.captains.gen.captains[0].code}#2.pct:`))
-  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawUse || !sawCity || !sawUnmade || !sawLineHull || !sawPerk || !sawHull || !sawHome || !sawCaptain) {
+  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawUse || !sawCity || !sawUnmade || !sawLineHull || !sawPerk || !sawHull || !sawHome || !sawCaptain || !sawGreat) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, dropped item made nowhere, bent merchant line hull, bent perk, bent generated hull, dropped home city or bent captain trait was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, dropped item made nowhere, bent merchant line hull, bent perk, bent generated hull, dropped home city, bent captain trait or dropped great power was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }
@@ -828,10 +847,10 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
       `${want.gear.racks.length} gear racks, ${want.gear.items.length} item profiles, ${db_.rackSlots.length} rack places, ` +
       `${want.skillEffects.length} skill effects, ${want.skillRequirements.length} skill requirements, ${want.itemUse.length} item uses, ${want.itemCity.length} Named items' cities, ${want.itemUnmade.length} items made nowhere, ${want.perks.length} perks, ${want.setNames.length} sets, ${want.itemLine.length} Country items' lines, ` +
       `${want.waveA.liveClasses.length + want.waveA.classes.length} ship classes and ${want.waveA.items.length} items (generators re-run = files = database), ` +
-      `${db_.homes.length} home cities, ${want.captains.people.length} captains with ${db_.captains.kit.length} traits and ` +
+      `${db_.great.length} great powers, ${db_.homes.length} home cities, ${want.captains.people.length} captains with ${db_.captains.kit.length} traits and ` +
       `${db_.captains.speaks.length} languages, ${db_.captains.portLanguage.length} harbour languages (generator re-run = file = database)` +
       (hasHaul ? `, ${haulRows} market rows' hauls = world.haul_rows() (a planted bend seen) ` : ' ') +
       (hasFaith ? `, ${faithRows} faith tastes = data/faith-demand.json and every demand = world.demand_for() (planted bends seen) ` : ' ') +
-      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, dropped item made nowhere, bent merchant line hull, bent perk, bent generated hull, dropped home city and bent captain trait were all seen)`,
+      `(positive control: a planted dropped-harbour, bent-good-value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, dropped item made nowhere, bent merchant line hull, bent perk, bent generated hull, dropped home city, bent captain trait and dropped great power were all seen)`,
   )
 }

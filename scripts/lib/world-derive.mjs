@@ -399,6 +399,15 @@ export const NATIONS = [
   ['MLB', 'Malabar', '✹', null],
   ['BAN', 'Banten', '✧', null],
 ]
+/**
+ * THE GREAT POWERS (GP1, docs/GREAT_POWERS.md; the owner, 2026-10-18: "make it 7 big power like
+ * uncharted island, spread mainly on europe and asia, as well as islamic region" … "in asia add korea,
+ * in europe add more"). The ten that race for cities; the other thirteen of NATIONS are LOCAL RULERS
+ * of the cities they founded and hold no influence. Migration 0185 seeds public.great_powers from this
+ * list and the world guard holds the database equal to it, both directions — so the list moves only
+ * with a migration that moves the table.
+ */
+export const GREAT_POWERS = ['PRT', 'ESP', 'ENG', 'NLD', 'FRA', 'OTT', 'MUG', 'MNG', 'JOS', 'JPN']
 /** Modern country code → the 1550 power, where it is not in dispute. */
 const NATION_BY_COUNTRY = {
   PT: 'PRT', ES: 'ESP', FR: 'FRA', GB: 'ENG', IE: 'ENG', NL: 'NLD', BE: 'NLD',

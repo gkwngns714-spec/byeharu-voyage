@@ -3,7 +3,9 @@ import { HullCountry } from './HullCountry'
 import { useWorld } from './worldStore'
 
 // THE COUNTRY PICKER (0143, owner 2026-10-17: like Uncharted Waters, a company belongs to a country
-// and can change it). Every country the world serves (`snapshot.nations`), in the catalogue's order,
+// and can change it). Since GP1 (0185, docs/GREAT_POWERS.md) it offers the TEN GREAT POWERS only —
+// `great` as the server serves it in `snapshot.nations`; the thirteen local rulers are never a
+// choice (cmd.found_house / cmd.change_country refuse them, E_MINOR_POWER). Alphabetical,
 // as chips — the flag and the name through HullCountry. Two callers: Start your company
 // (SignTheBook) and Profile's change of country. It chooses; the server decides (cmd.found_house,
 // cmd.change_country) and its refusal is printed by the caller.
@@ -18,7 +20,9 @@ export function NationPicker({
   label: string
 }) {
   const nationByCode = useWorld((s) => s.nationByCode)
-  const nations = Object.values(nationByCode).sort((a, b) => a.name.localeCompare(b.name))
+  const nations = Object.values(nationByCode)
+    .filter((n) => n.great)
+    .sort((a, b) => a.name.localeCompare(b.name))
   return (
     <div role="group" aria-label={label} className="flex flex-wrap gap-1.5" data-testid="nation-picker">
       {nations.map((n) => (
